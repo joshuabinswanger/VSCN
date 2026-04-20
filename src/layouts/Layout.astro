@@ -1,0 +1,71 @@
+---
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: system-ui, sans-serif; line-height: 1.6; color: #111; }
+      nav {
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+        padding: 1rem 2rem;
+        border-bottom: 1px solid #ddd;
+      }
+      nav .brand { font-weight: bold; margin-right: auto; text-decoration: none; color: inherit; }
+      nav a { text-decoration: none; color: #555; }
+      nav a:hover { color: #000; }
+      main { max-width: 860px; margin: 0 auto; padding: 2rem; }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a class="brand" href="/">MySite</a>
+      <a href="/community">Community</a>
+      <a href="/info">Info</a>
+      <a id="nav-signup" href="/signup">Sign Up</a>
+      <a id="nav-profile" href="/profile" style="display:none">Profile</a>
+      <a id="nav-logout" href="#" style="display:none">Log Out</a>
+    </nav>
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>
+
+<script>
+  import { auth } from "../lib/firebase.ts";
+  import { onAuthStateChanged, signOut } from "firebase/auth";
+
+  onAuthStateChanged(auth, (user) => {
+    const signupLink = document.getElementById("nav-signup")!;
+    const profileLink = document.getElementById("nav-profile")!;
+    const logoutLink = document.getElementById("nav-logout")!;
+
+    if (user) {
+      signupLink.style.display = "none";
+      profileLink.style.display = "inline";
+      logoutLink.style.display = "inline";
+    } else {
+      signupLink.style.display = "inline";
+      profileLink.style.display = "none";
+      logoutLink.style.display = "none";
+    }
+  });
+
+  document.getElementById("nav-logout")!.addEventListener("click", async (e) => {
+    e.preventDefault();
+    await signOut(auth);
+    window.location.href = "/";
+  });
+</script>

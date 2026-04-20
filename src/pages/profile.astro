@@ -1,0 +1,150 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Edit Profile">
+  <h1>Edit Profile</h1>
+
+  <div id="loading" style="color:#999; margin-top:1rem;">Loading...</div>
+
+  <form id="profile-form" style="display:none; margin-top:1.5rem; flex-direction:column; gap:1rem; max-width:360px;">
+
+    <div>
+      <label for="name">Display Name</label><br />
+      <input id="name" type="text" style="width:100%; padding:0.5rem; margin-top:0.3rem; border:1px solid #ccc; border-radius:4px;" />
+    </div>
+
+    <div>
+      <label for="avatar">Profile Image</label><br />
+      <img id="avatar-preview" src="" alt="" style="display:none; margin-top:0.6rem; width:64px; height:64px; border-radius:50%; object-fit:cover; border:1px solid #ddd;" />
+      <input id="avatar" type="file" accept="image/*" style="margin-top:0.5rem;" />
+      <p id="upload-status" style="font-size:0.85rem; color:#555; margin-top:0.3rem; display:none;"></p>
+    </div>
+
+    <div>
+      <label for="bio">Bio</label><br />
+      <textarea id="bio" rows="3" style="width:100%; padding:0.5rem; margin-top:0.3rem; border:1px solid #ccc; border-radius:4px; resize:vertical; font:inherit;"></textarea>
+    </div>
+
+    <p id="save-msg" style="display:none; color:green;">Saved!</p>
+    <p id="save-error" style="display:none; color:red;"></p>
+
+    <button type="submit" style="padding:0.6rem; background:#111; color:#fff; border:none; border-radius:4px; cursor:pointer;">
+      Save Changes
+    </button>
+  </form>
+</Layout>
+
+<script>
+  import { auth, db, storage } from "../lib/firebase.ts";
+  import { onAuthStateChanged, updateProfile } from "firebase/auth";
+  import { doc, getDoc, setDoc } from "firebase/firestore";
+  import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+
+  const loadingEl = document.getElementById("loading")!;
+  const form = document.getElementById("profile-form") as HTMLFormElement;
+  const nameInput = document.getElementById("name") as HTMLInputElement;
+  const avatarInput = document.getElementById("avatar") as HTMLInputElement;
+  const avatarPreview = document.getElementById("avatar-preview") as HTMLImageElement;
+  const uploadStatus = document.getElementById("upload-status")!;
+  const bioInput = document.getElementById("bio") as HTMLTextAreaElement;
+  const saveMsg = document.getElementById("save-msg")!;
+  const saveError = document.getElementById("save-error")!;
+
+  function showPreview(url: string) {
+    if (url) {
+      avatarPreview.src = url;
+      avatarPreview.style.display = "block";
+      avatarPreview.onerror = () => { avatarPreview.style.display = "none"; };
+    } else {
+      avatarPreview.style.display = "none";
+    }
+  }
+
+  // Show local preview immediately when user picks a file
+  avatarInput.addEventListener("change", () => {
+    const file = avatarInput.files?.[0];
+    if (file) {
+      showPreview(URL.createObjectURL(file));
+      uploadStatus.textContent = `Selected: ${file.name}`;
+      uploadStatus.style.display = "block";
+    }
+  });
+
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      window.location.href = "/signup";
+      return;
+    }
+
+    const snap = await getDoc(doc(db, "users", user.uid));
+    const data = snap.exists() ? snap.data() : {};
+
+    nameInput.value = data.displayName ?? user.displayName ?? "";
+    bioInput.value = data.bio ?? "";
+    showPreview(data.photoURL ?? user.photoURL ?? "");
+
+    loadingEl.style.display = "none";
+    form.style.display = "flex";
+  });
+
+  async function uploadAvatar(uid: string, file: File): Promise<string> {
+    const ext = file.name.split(".").pop();
+    const storageRef = ref(storage, `avatars/${uid}.${ext}`);
+
+    return new Promise((resolve, reject) => {
+      const task = uploadBytesResumable(storageRef, file);
+
+      task.on("state_changed",
+        (snapshot) => {
+          const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+          uploadStatus.textContent = `Uploading... ${pct}%`;
+          uploadStatus.style.display = "block";
+        },
+        reject,
+        async () => resolve(await getDownloadURL(task.snapshot.ref))
+      );
+    });
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    saveMsg.style.display = "none";
+    saveError.style.display = "none";
+
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const name = nameInput.value.trim();
+    const bio = bioInput.value.trim();
+    const file = avatarInput.files?.[0];
+
+    try {
+      let photoURL: string = auth.currentUser?.photoURL ?? "";
+
+      if (file) {
+        photoURL = await uploadAvatar(user.uid, file);
+        uploadStatus.textContent = "Upload complete.";
+      }
+
+      await updateProfile(user, {
+        displayName: name || null,
+        photoURL: photoURL || null,
+      });
+
+      await setDoc(doc(db, "users", user.uid), {
+        displayName: name,
+        photoURL,
+        bio,
+        email: user.email,
+        updatedAt: new Date(),
+      }, { merge: true });
+
+      saveMsg.style.display = "block";
+      setTimeout(() => { saveMsg.style.display = "none"; }, 3000);
+    } catch (err: any) {
+      saveError.textContent = err.message;
+      saveError.style.display = "block";
+    }
+  });
+</script>

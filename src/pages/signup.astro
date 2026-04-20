@@ -1,0 +1,144 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Sign Up">
+  <h1>Create an Account</h1>
+  <p style="margin-top: 0.4rem; color: #555;">Already have one? <a href="#" id="toggle-link">Log in instead</a></p>
+
+  <form id="auth-form" style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 1rem; max-width: 360px;">
+
+    <div id="signup-fields">
+      <div style="margin-bottom: 1rem;">
+        <label for="name">Display Name</label><br />
+        <input id="name" type="text" placeholder="Your name" style="width:100%; padding:0.5rem; margin-top:0.3rem; border:1px solid #ccc; border-radius:4px;" />
+      </div>
+
+      <div style="margin-bottom: 1rem;">
+        <label for="avatar">Profile Image</label><br />
+        <img id="avatar-preview" src="" alt="" style="display:none; margin-top:0.6rem; width:64px; height:64px; border-radius:50%; object-fit:cover; border:1px solid #ddd;" />
+        <input id="avatar" type="file" accept="image/*" style="margin-top:0.5rem;" />
+        <p id="upload-status" style="font-size:0.85rem; color:#555; margin-top:0.3rem; display:none;"></p>
+      </div>
+
+      <div>
+        <label for="bio">Bio</label><br />
+        <textarea id="bio" placeholder="A short description about yourself..." rows="3" style="width:100%; padding:0.5rem; margin-top:0.3rem; border:1px solid #ccc; border-radius:4px; resize:vertical; font:inherit;"></textarea>
+      </div>
+    </div>
+
+    <div>
+      <label for="email">Email</label><br />
+      <input id="email" type="email" placeholder="you@example.com" required autocomplete="email" style="width:100%; padding:0.5rem; margin-top:0.3rem; border:1px solid #ccc; border-radius:4px;" />
+    </div>
+
+    <div>
+      <label for="password">Password</label><br />
+      <input id="password" type="password" placeholder="••••••••" required autocomplete="current-password" style="width:100%; padding:0.5rem; margin-top:0.3rem; border:1px solid #ccc; border-radius:4px;" />
+    </div>
+
+    <p id="auth-error" style="color: red; display: none;"></p>
+
+    <button type="submit" style="padding:0.6rem; background:#111; color:#fff; border:none; border-radius:4px; cursor:pointer;">
+      Sign Up
+    </button>
+  </form>
+</Layout>
+
+<script>
+  import { auth, db, storage } from "../lib/firebase.ts";
+  import {
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    updateProfile,
+  } from "firebase/auth";
+  import { doc, setDoc } from "firebase/firestore";
+  import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+
+  let isLogin = false;
+
+  const form = document.getElementById("auth-form") as HTMLFormElement;
+  const toggleLink = document.getElementById("toggle-link")!;
+  const signupFields = document.getElementById("signup-fields")!;
+  const submitBtn = form.querySelector("button[type=submit]")!;
+  const errorEl = document.getElementById("auth-error")!;
+  const avatarInput = document.getElementById("avatar") as HTMLInputElement;
+  const avatarPreview = document.getElementById("avatar-preview") as HTMLImageElement;
+  const uploadStatus = document.getElementById("upload-status")!;
+
+  avatarInput.addEventListener("change", () => {
+    const file = avatarInput.files?.[0];
+    if (file) {
+      avatarPreview.src = URL.createObjectURL(file);
+      avatarPreview.style.display = "block";
+      uploadStatus.textContent = `Selected: ${file.name}`;
+      uploadStatus.style.display = "block";
+    }
+  });
+
+  toggleLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    isLogin = !isLogin;
+    signupFields.style.display = isLogin ? "none" : "block";
+    submitBtn.textContent = isLogin ? "Log In" : "Sign Up";
+    toggleLink.textContent = isLogin ? "Sign up instead" : "Log in instead";
+    document.querySelector("h1")!.textContent = isLogin ? "Log In" : "Create an Account";
+    errorEl.style.display = "none";
+  });
+
+  async function uploadAvatar(uid: string, file: File): Promise<string> {
+    const ext = file.name.split(".").pop();
+    const storageRef = ref(storage, `avatars/${uid}.${ext}`);
+    return new Promise((resolve, reject) => {
+      const task = uploadBytesResumable(storageRef, file);
+      task.on("state_changed",
+        (snapshot) => {
+          const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+          uploadStatus.textContent = `Uploading... ${pct}%`;
+          uploadStatus.style.display = "block";
+        },
+        reject,
+        async () => resolve(await getDownloadURL(task.snapshot.ref))
+      );
+    });
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorEl.style.display = "none";
+
+    const email = (document.getElementById("email") as HTMLInputElement).value;
+    const password = (document.getElementById("password") as HTMLInputElement).value;
+    const name = (document.getElementById("name") as HTMLInputElement).value;
+    const bio = (document.getElementById("bio") as HTMLTextAreaElement).value.trim();
+    const file = avatarInput.files?.[0];
+
+    try {
+      if (isLogin) {
+        await signInWithEmailAndPassword(auth, email, password);
+      } else {
+        const { user } = await createUserWithEmailAndPassword(auth, email, password);
+
+        let photoURL = "";
+        if (file) photoURL = await uploadAvatar(user.uid, file);
+
+        await updateProfile(user, {
+          displayName: name || null,
+          photoURL: photoURL || null,
+        });
+
+        await setDoc(doc(db, "users", user.uid), {
+          displayName: name || "",
+          photoURL,
+          bio,
+          email: user.email,
+          createdAt: new Date(),
+        });
+      }
+      window.location.href = "/community";
+    } catch (err: any) {
+      errorEl.textContent = err.message;
+      errorEl.style.display = "block";
+    }
+  });
+</script>

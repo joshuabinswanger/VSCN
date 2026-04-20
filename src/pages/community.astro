@@ -1,0 +1,50 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Community">
+  <h1>Community</h1>
+  <p style="margin-top: 0.5rem; color: #555;">
+    Posts and discussions from members will appear here.
+  </p>
+
+  <!-- Post list — populated dynamically via Firebase -->
+  <div id="posts" style="margin-top: 2rem;">
+    <p style="color: #999;">Loading posts...</p>
+  </div>
+</Layout>
+
+<script>
+  import { db } from "../lib/firebase.ts";
+  import { collection, query, orderBy, limit, getDocs } from "firebase/firestore";
+
+  const postsEl = document.getElementById("posts");
+
+  async function loadPosts() {
+    try {
+      const q = query(collection(db, "posts"), orderBy("createdAt", "desc"), limit(20));
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        postsEl.innerHTML = "<p style='color:#999'>No posts yet. Be the first!</p>";
+        return;
+      }
+
+      postsEl.innerHTML = snapshot.docs
+        .map((doc) => {
+          const d = doc.data();
+          return `
+            <div style="border:1px solid #eee; border-radius:6px; padding:1rem; margin-bottom:1rem;">
+              <strong>${d.author ?? "Anonymous"}</strong>
+              <p style="margin-top:0.4rem">${d.body ?? ""}</p>
+            </div>`;
+        })
+        .join("");
+    } catch (err) {
+      postsEl.innerHTML = "<p style='color:red'>Could not load posts.</p>";
+      console.error(err);
+    }
+  }
+
+  loadPosts();
+</script>
