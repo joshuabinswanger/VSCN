@@ -12,30 +12,82 @@ const { title } = Astro.props;
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: system-ui, sans-serif; line-height: 1.6; color: #111; }
+      body { font-family: system-ui, sans-serif; line-height: 1.6; color: #111; background: #fafafa; }
       nav {
-        display: flex;
-        gap: 1.5rem;
-        align-items: center;
-        padding: 1rem 2rem;
-        border-bottom: 1px solid #ddd;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: #fafafa;
+        border-bottom: none;
+        overflow: hidden;
+        line-height: 1;
       }
-      nav .brand { font-weight: bold; margin-right: auto; text-decoration: none; color: inherit; }
-      nav a { text-decoration: none; color: #555; }
+      /* ticker fills the full nav width, same size as landing page top row */
+      .brand-ticker {
+        display: block;
+        width: 100%;
+        overflow: hidden;
+        text-decoration: none;
+      }
+      .brand-track {
+        display: flex;
+        gap: 0;
+        white-space: nowrap;
+        width: max-content;
+        align-items: baseline;
+        animation: nav-scroll 32s linear infinite;
+        font-family: 'Space Mono', monospace;
+        font-weight: 700;
+        font-size: 12vh;
+        letter-spacing: -0.03em;
+        color: #0a0a0a;
+      }
+      .brand-track span { padding-right: 0; }
+      @keyframes nav-scroll {
+        from { transform: translateX(0); }
+        to   { transform: translateX(-50%); }
+      }
+      /* nav links float over the ticker bottom-right */
+      .nav-links {
+        position: absolute;
+        bottom: 0.5rem;
+        right: 0;
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        padding: 0 1.25rem;
+        background: linear-gradient(to right, transparent, #fafafa 28%);
+      }
+      nav a { text-decoration: none; color: #555; font-size: 0.9rem; }
       nav a:hover { color: #000; }
-      main { max-width: 860px; margin: 0 auto; padding: 2rem; }
+      @media (max-width: 480px) {
+        nav .nav-links { display: none; }
+      }
+      body { overflow-x: hidden; }
+      main { max-width: 900px; margin: 0 auto; padding: 1.5rem 1.25rem; }
     </style>
   </head>
   <body>
     <nav>
-      <a class="brand" href="/">MySite</a>
-      <a href="/community">Community</a>
-      <a href="/info">Info</a>
-      <a id="nav-signup" href="/signup">Sign Up</a>
-      <a id="nav-profile" href="/profile" style="display:none">Profile</a>
-      <a id="nav-logout" href="#" style="display:none">Log Out</a>
+      <a href="/" class="brand-ticker" aria-label="Home">
+        <div class="brand-track">
+          <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
+          <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
+          <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
+          <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
+        </div>
+      </a>
+      <span class="nav-links">
+        <a href="/community">Community</a>
+        <a id="nav-signup" href="/signup">Sign Up</a>
+        <a id="nav-profile" href="/profile" style="display:none">Profile</a>
+        <a id="nav-logout" href="#" style="display:none">Log Out</a>
+      </span>
     </nav>
     <main>
       <slot />

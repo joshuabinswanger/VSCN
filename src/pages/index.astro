@@ -1,19 +1,197 @@
 ---
-import Layout from "../layouts/Layout.astro";
+// Standalone full-screen page — no Layout/nav
 ---
 
-<Layout title="Home">
-  <h1>Welcome to the Community</h1>
-  <p style="margin-top: 1rem; color: #555; max-width: 520px;">
-    A place to connect, share, and learn together. Join us to be part of the conversation.
-  </p>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VSCN — Visual Science Communication Network</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@700&display=swap" rel="stylesheet" />
+</head>
+<body>
 
-  <div style="margin-top: 2rem; display: flex; gap: 1rem;">
-    <a href="/signup" style="padding: 0.6rem 1.2rem; background: #111; color: #fff; text-decoration: none; border-radius: 4px;">
-      Join Now
-    </a>
-    <a href="/info" style="padding: 0.6rem 1.2rem; border: 1px solid #ccc; text-decoration: none; border-radius: 4px; color: #333;">
-      Learn More
-    </a>
+  <div class="scene">
+
+    <!-- 7 repeating ticker rows filling the full background -->
+    <div class="tickers">
+      {[60, 68, 76, 84, 92, 100, 108] .map((speed) => (
+        <div class="ticker-row">
+          <div class="ticker-track" style={`animation-duration: ${speed}s`}>
+            {["VSCN","VSCN","VSCN","VSCN","VSCN","VSCN","VSCN","VSCN",
+              "VSCN","VSCN","VSCN","VSCN","VSCN","VSCN","VSCN","VSCN"].map((t) => (
+              <span>{t}</span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <!-- Content overlay -->
+    <div class="content">
+      <div class="card">
+        <p class="desc">
+          <strong>VSCN</strong> — Visual Science Communication Network — is a community of illustrators, scientists, designers, and storytellers who care about making knowledge look as good as it feels to understand.
+        </br>
+        </br>
+          We're just getting started — come join us!
+        </p>
+        <div class="actions">
+          <a href="/signup" class="btn-primary">Join the Network</a>
+          <a href="/community" class="btn-ghost">Community</a>
+          <a href="/profile" class="btn-ghost">Profile</a>
+        </div>
+      </div>
+    </div>
+
   </div>
-</Layout>
+
+</body>
+</html>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    background: #fafafa;
+  }
+
+  /* ── Full-screen scene ── */
+  .scene {
+    position: relative;
+    width: 100%;
+    height: 100svh;
+    overflow: hidden;
+  }
+
+  /* ── Ticker background ── */
+  .tickers {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ticker-row {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+  }
+
+  .ticker-track {
+    display: flex;
+    gap: 0;
+    white-space: nowrap;
+    width: max-content;
+    animation: scroll 45s linear infinite;
+  }
+
+  .ticker-track span {
+    font-family: 'Space Mono', monospace;
+    font-size: 12vh;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: #0a0a0a;
+    user-select: none;
+  }
+
+  @keyframes scroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+
+  /* ── Full-height gradient overlay ── */
+  .scene::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      transparent 15%,
+      rgba(250,250,250,0.95) 15%,
+      #fafafa 95%
+    );
+    pointer-events: none;
+  }
+
+  /* ── Content overlay ── */
+  .content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 2.5rem;
+    z-index: 1;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 2rem 2.25rem;
+    max-width: 520px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1.5px solid rgba(0, 0, 0, 0.08);
+    border-radius: 14px;
+    box-shadow: 0 4px 32px rgba(0, 0, 0, 0.07);
+  }
+
+  .desc {
+    font-family: system-ui, sans-serif;
+    font-weight: 400;
+    font-size: clamp(0.85rem, 2vw, 1rem);
+    color: #111;
+    line-height: 1.8;
+  }
+
+  .actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    background: #0a0a0a;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 5px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    transition: background 0.2s;
+  }
+
+  .btn-primary:hover { background: #333; }
+
+  .btn-ghost {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border: 1.5px solid #111;
+    text-decoration: none;
+    border-radius: 5px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    color: #111;
+    transition: opacity 0.2s;
+  }
+
+  .btn-ghost:hover { opacity: 0.6; }
+</style>
