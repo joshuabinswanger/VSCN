@@ -2,7 +2,7 @@
 import Layout from "../layouts/Layout.astro";
 ---
 
-<Layout title="Edit Profile">
+<Layout title="Edit Profile" navLinks={false}>
 
   <div id="loading" class="loading-state">Loading profile…</div>
 
@@ -63,7 +63,10 @@ import Layout from "../layouts/Layout.astro";
     <div class="form-footer">
       <p id="save-msg" class="msg-ok" style="display:none;">Changes saved.</p>
       <p id="save-error" class="msg-err" style="display:none;"></p>
-      <button type="submit" class="btn-save">Save Changes</button>
+      <div class="footer-actions">
+        <button id="btn-logout" type="button" class="btn-logout">Log Out</button>
+        <button type="submit" class="btn-save">Save Changes</button>
+      </div>
     </div>
 
   </form>
@@ -227,11 +230,30 @@ import Layout from "../layouts/Layout.astro";
   /* ── Footer ── */
   .form-footer {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 0.75rem;
   }
+
+  .footer-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .btn-logout {
+    padding: 0.75rem 1.5rem;
+    background: transparent;
+    color: #888;
+    border: 1.5px solid #ddd;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+
+  .btn-logout:hover { border-color: #aaa; color: #333; }
 
   .btn-save {
     padding: 0.75rem 2rem;
@@ -255,7 +277,7 @@ import Layout from "../layouts/Layout.astro";
 
 <script>
   import { auth, db, storage } from "../lib/firebase.ts";
-  import { onAuthStateChanged, updateProfile } from "firebase/auth";
+  import { onAuthStateChanged, updateProfile, signOut } from "firebase/auth";
   import { doc, getDoc, setDoc } from "firebase/firestore";
   import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
@@ -328,6 +350,11 @@ import Layout from "../layouts/Layout.astro";
       );
     });
   }
+
+  document.getElementById("btn-logout")!.addEventListener("click", async () => {
+    await signOut(auth);
+    window.location.href = "/";
+  });
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
