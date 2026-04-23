@@ -83,8 +83,6 @@ const { title } = Astro.props;
         </div>
       </a>
       <span class="nav-links">
-        <a href="/community">Community</a>
-        <a id="nav-signup" href="/signup">Sign Up</a>
         <a id="nav-profile" href="/profile" style="display:none">Profile</a>
         <a id="nav-logout" href="#" style="display:none">Log Out</a>
       </span>
@@ -100,16 +98,13 @@ const { title } = Astro.props;
   import { onAuthStateChanged, signOut } from "firebase/auth";
 
   onAuthStateChanged(auth, (user) => {
-    const signupLink = document.getElementById("nav-signup")!;
     const profileLink = document.getElementById("nav-profile")!;
     const logoutLink = document.getElementById("nav-logout")!;
 
     if (user) {
-      signupLink.style.display = "none";
       profileLink.style.display = "inline";
       logoutLink.style.display = "inline";
     } else {
-      signupLink.style.display = "inline";
       profileLink.style.display = "none";
       logoutLink.style.display = "none";
     }
