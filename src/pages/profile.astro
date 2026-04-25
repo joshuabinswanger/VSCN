@@ -320,6 +320,7 @@ import Layout from "../layouts/Layout.astro";
 
   onAuthStateChanged(auth, async (user) => {
     if (!user) { window.location.href = "/signup"; return; }
+    if (!user.emailVerified) { window.location.href = "/verify-email"; return; }
 
     const snap = await getDoc(doc(db, "users", user.uid));
     const data = snap.exists() ? snap.data() : {};

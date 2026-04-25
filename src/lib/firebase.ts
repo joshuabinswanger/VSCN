@@ -3,6 +3,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 const firebaseConfig = {
   apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
@@ -15,11 +16,19 @@ const firebaseConfig = {
 };
 
 // Avoid re-initializing on hot reload
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const app =
+  getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
 // Analytics only runs in the browser (not during SSR/build)
-export const analytics = isSupported().then((yes) => yes ? getAnalytics(app) : null);
+export const analytics = isSupported().then((yes) =>
+  yes ? getAnalytics(app) : null,
+);
+
+const appCheck = initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider("6Lcj1cksAAAAAPzymNPkcT3_LZC_TMDcmH0Jz5Do"),
+  isTokenAutoRefreshEnabled: true,
+});

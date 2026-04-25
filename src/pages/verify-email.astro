@@ -1,0 +1,176 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Verify Your Email" navLinks={false}>
+
+  <div class="verify-wrap">
+
+    <header class="verify-header">
+      <h1 class="verify-title">Check your inbox</h1>
+      <p class="verify-sub">
+        We sent a verification link to <strong id="user-email"></strong>.
+        Click it to activate your account.
+      </p>
+    </header>
+
+    <div class="verify-body">
+      <p id="status-msg" class="status-msg" style="display:none;"></p>
+
+      <button id="btn-check" class="btn-primary">I've verified — continue</button>
+
+      <div class="resend-row">
+        <span class="resend-label">Didn't get it?</span>
+        <button id="btn-resend" class="btn-link">Resend email</button>
+      </div>
+
+      <p id="resend-msg" class="resend-confirm" style="display:none;">Email sent — check your inbox.</p>
+    </div>
+
+  </div>
+
+</Layout>
+
+<style>
+  .verify-wrap {
+    width: 100%;
+    max-width: 440px;
+    margin: 3rem auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  .verify-header { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .verify-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #0a0a0a;
+  }
+
+  .verify-sub {
+    font-size: 0.9rem;
+    color: #666;
+    line-height: 1.5;
+  }
+
+  .verify-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .btn-primary {
+    padding: 0.78rem 2rem;
+    background: #0a0a0a;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+    align-self: flex-start;
+  }
+  .btn-primary:hover { background: #333; }
+  .btn-primary:disabled { background: #999; cursor: not-allowed; }
+
+  .resend-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.88rem;
+  }
+
+  .resend-label { color: #888; }
+
+  .btn-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #0a0a0a;
+    cursor: pointer;
+    border-bottom: 1px solid #ccc;
+    transition: border-color 0.15s;
+  }
+  .btn-link:hover { border-color: #0a0a0a; }
+  .btn-link:disabled { color: #aaa; border-color: transparent; cursor: not-allowed; }
+
+  .resend-confirm { font-size: 0.88rem; color: #2a9d5c; }
+
+  .status-msg { font-size: 0.88rem; color: #d94f4f; }
+</style>
+
+<script>
+  import { auth } from "../lib/firebase.ts";
+  import { onAuthStateChanged, sendEmailVerification } from "firebase/auth";
+
+  const userEmailEl = document.getElementById("user-email")!;
+  const btnCheck    = document.getElementById("btn-check") as HTMLButtonElement;
+  const btnResend   = document.getElementById("btn-resend") as HTMLButtonElement;
+  const statusMsg   = document.getElementById("status-msg")!;
+  const resendMsg   = document.getElementById("resend-msg")!;
+
+  let currentUser: import("firebase/auth").User | null = null;
+  let resendCooldown = false;
+
+  onAuthStateChanged(auth, (user) => {
+    if (!user) {
+      window.location.href = "/signup";
+      return;
+    }
+    if (user.emailVerified) {
+      window.location.href = "/community";
+      return;
+    }
+    currentUser = user;
+    userEmailEl.textContent = user.email ?? "";
+  });
+
+  btnCheck.addEventListener("click", async () => {
+    if (!currentUser) return;
+    btnCheck.disabled = true;
+    btnCheck.textContent = "Checking…";
+    try {
+      await currentUser.reload();
+      if (currentUser.emailVerified) {
+        window.location.href = "/community";
+      } else {
+        statusMsg.textContent = "Email not verified yet. Check your inbox and click the link.";
+        statusMsg.style.display = "block";
+        btnCheck.disabled = false;
+        btnCheck.textContent = "I've verified — continue";
+      }
+    } catch {
+      statusMsg.textContent = "Something went wrong. Please try again.";
+      statusMsg.style.display = "block";
+      btnCheck.disabled = false;
+      btnCheck.textContent = "I've verified — continue";
+    }
+  });
+
+  btnResend.addEventListener("click", async () => {
+    if (!currentUser || resendCooldown) return;
+    resendCooldown = true;
+    btnResend.disabled = true;
+    resendMsg.style.display = "none";
+    try {
+      await sendEmailVerification(currentUser);
+      resendMsg.style.display = "block";
+    } catch {
+      statusMsg.textContent = "Could not resend. Please wait a moment and try again.";
+      statusMsg.style.display = "block";
+    }
+    // 30-second cooldown before allowing another resend
+    setTimeout(() => {
+      resendCooldown = false;
+      btnResend.disabled = false;
+    }, 30000);
+  });
+</script>

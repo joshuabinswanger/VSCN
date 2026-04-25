@@ -177,12 +177,14 @@ import Layout from "../layouts/Layout.astro";
   import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
+    sendEmailVerification,
     updateProfile,
   } from "firebase/auth";
   import { doc, setDoc } from "firebase/firestore";
   import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 
   let isLogin = false;
+  let lastSubmit = 0;
 
   const form         = document.getElementById("auth-form") as HTMLFormElement;
   const toggleLink   = document.getElementById("toggle-link")!;
@@ -196,12 +198,28 @@ import Layout from "../layouts/Layout.astro";
 
   avatarInput.addEventListener("change", () => {
     const file = avatarInput.files?.[0];
-    if (file) {
-      avatarPreview.src = URL.createObjectURL(file);
-      avatarPreview.style.display = "block";
-      uploadStatus.textContent = `Selected: ${file.name}`;
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      uploadStatus.textContent = "Image must be under 2MB.";
       uploadStatus.style.display = "block";
+      avatarInput.value = "";
+      avatarPreview.style.display = "none";
+      return;
     }
+
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      uploadStatus.textContent = "Only JPEG, PNG, or WebP images are allowed.";
+      uploadStatus.style.display = "block";
+      avatarInput.value = "";
+      avatarPreview.style.display = "none";
+      return;
+    }
+
+    avatarPreview.src = URL.createObjectURL(file);
+    avatarPreview.style.display = "block";
+    uploadStatus.textContent = `Selected: ${file.name}`;
+    uploadStatus.style.display = "block";
   });
 
   toggleLink.addEventListener("click", (e) => {
@@ -235,6 +253,14 @@ import Layout from "../layouts/Layout.astro";
     e.preventDefault();
     errorEl.style.display = "none";
 
+    const now = Date.now();
+    if (now - lastSubmit < 5000) {
+      errorEl.textContent = "Please wait a moment before trying again.";
+      errorEl.style.display = "block";
+      return;
+    }
+    lastSubmit = now;
+
     const email    = (document.getElementById("email") as HTMLInputElement).value;
     const password = (document.getElementById("password") as HTMLInputElement).value;
     const name     = (document.getElementById("name") as HTMLInputElement).value;
@@ -244,6 +270,7 @@ import Layout from "../layouts/Layout.astro";
     try {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
+        window.location.href = "/community";
       } else {
         const { user } = await createUserWithEmailAndPassword(auth, email, password);
         let photoURL = "";
@@ -256,10 +283,20 @@ import Layout from "../layouts/Layout.astro";
           email: user.email,
           createdAt: new Date(),
         });
+        await sendEmailVerification(user);
+        window.location.href = "/verify-email";
       }
-      window.location.href = "/community";
     } catch (err: any) {
-      errorEl.textContent = err.message;
+      const friendlyErrors: Record<string, string> = {
+        "auth/email-already-in-use":  "Unable to create account. Please try again.",
+        "auth/invalid-email":         "Please enter a valid email address.",
+        "auth/weak-password":         "Password must be at least 6 characters.",
+        "auth/user-not-found":        "Invalid email or password.",
+        "auth/wrong-password":        "Invalid email or password.",
+        "auth/invalid-credential":    "Invalid email or password.",
+        "auth/too-many-requests":     "Too many attempts. Please wait and try again.",
+      };
+      errorEl.textContent = friendlyErrors[err.code] ?? "Something went wrong. Please try again.";
       errorEl.style.display = "block";
     }
   });
