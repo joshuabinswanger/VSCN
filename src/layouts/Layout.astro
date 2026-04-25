@@ -100,22 +100,19 @@ const { title, navLinks = true } = Astro.props;
   import { auth } from "../lib/firebase.ts";
   import { onAuthStateChanged, signOut } from "firebase/auth";
 
-  onAuthStateChanged(auth, (user) => {
-    const profileLink = document.getElementById("nav-profile")!;
-    const logoutLink = document.getElementById("nav-logout")!;
+  const profileLink = document.getElementById("nav-profile");
+  const logoutLink  = document.getElementById("nav-logout");
 
-    if (user) {
-      profileLink.style.display = "inline";
-      logoutLink.style.display = "inline";
-    } else {
-      profileLink.style.display = "none";
-      logoutLink.style.display = "none";
-    }
-  });
+  if (profileLink && logoutLink) {
+    onAuthStateChanged(auth, (user) => {
+      profileLink.style.display = user ? "inline" : "none";
+      logoutLink.style.display  = user ? "inline" : "none";
+    });
 
-  document.getElementById("nav-logout")!.addEventListener("click", async (e) => {
-    e.preventDefault();
-    await signOut(auth);
-    window.location.href = "/";
-  });
+    logoutLink.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await signOut(auth);
+      window.location.href = "/";
+    });
+  }
 </script>
