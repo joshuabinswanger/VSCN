@@ -1,0 +1,40 @@
+---
+import MemberCard from "./MemberCard.astro";
+import { getStaticMembers } from "../lib/firebase-server.ts";
+
+const members = await getStaticMembers();
+---
+
+<div class="page-header">
+  <h1 class="page-title">Community</h1>
+  <p class="page-sub">Everyone in the Visual Science Communication Network</p>
+</div>
+
+<div class="member-grid">
+  {members.length === 0
+    ? <p class="state-msg">No members yet.</p>
+    : members.map((m) => <MemberCard member={m} />)
+  }
+</div>
+
+<style>
+  .page-header { margin-bottom: 2rem; }
+
+  .page-title {
+    font-family: var(--font-space-mono), monospace;
+    font-size: clamp(1.6rem, 5vw, 2.4rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-dark);
+  }
+
+  .page-sub { margin-top: 0.35rem; font-size: 0.9rem; color: var(--color-muted); }
+
+  .member-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+
+  .state-msg { color: #999; font-size: 0.9rem; }
+</style>

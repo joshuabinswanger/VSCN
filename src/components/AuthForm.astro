@@ -1,0 +1,224 @@
+<div class="auth-wrap">
+
+  <header class="auth-header">
+    <h1 id="auth-title" class="auth-title">Create an Account</h1>
+    <p class="auth-sub">
+      Already have one?
+      <a href="#" id="toggle-link" class="toggle-link">Log in instead</a>
+    </p>
+  </header>
+
+  <form id="auth-form" class="auth-form">
+
+    <div id="signup-fields">
+
+      <div class="field">
+        <label class="label" for="name">Display Name</label>
+        <input id="name" type="text" class="input" placeholder="Your name" />
+      </div>
+
+      <div class="field">
+        <label class="label">Profile Image</label>
+        <div class="avatar-row">
+          <img id="avatar-preview" src="" alt="" class="avatar-preview" style="display:none;" />
+          <label class="file-btn" for="avatar">
+            Choose image
+            <input id="avatar" type="file" accept="image/*" style="display:none;" />
+          </label>
+        </div>
+        <p id="upload-status" class="upload-status" style="display:none;"></p>
+      </div>
+
+      <div class="field">
+        <label class="label" for="bio">About you</label>
+        <textarea id="bio" class="input textarea" rows="3" placeholder="A short description about yourself…"></textarea>
+      </div>
+
+    </div>
+
+    <div class="field">
+      <label class="label" for="email">Email</label>
+      <input id="email" type="email" class="input" placeholder="you@example.com" required autocomplete="email" />
+    </div>
+
+    <div class="field">
+      <label class="label" for="password">Password</label>
+      <input id="password" type="password" class="input" placeholder="••••••••" required autocomplete="current-password" />
+    </div>
+
+    <p id="auth-error" class="msg-err" style="display:none;"></p>
+
+    <button id="submit-btn" type="submit" class="btn-save">Sign Up</button>
+
+  </form>
+</div>
+
+<style>
+  .auth-wrap {
+    width: 100%;
+    max-width: 440px;
+    margin: 2.5rem auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
+
+  .auth-header { display: flex; flex-direction: column; gap: 0.3rem; }
+
+  .auth-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-dark);
+  }
+
+  .auth-sub { font-size: 0.88rem; color: var(--color-muted); }
+
+  .toggle-link {
+    color: var(--color-dark);
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px solid #ccc;
+    transition: border-color 0.15s;
+  }
+  .toggle-link:hover { border-color: var(--color-dark); }
+
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  #signup-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .avatar-row { display: flex; align-items: center; gap: 1rem; }
+
+  .avatar-preview {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1.5px solid #e5e5e5;
+    flex-shrink: 0;
+  }
+</style>
+
+<script>
+  import { auth } from "../lib/firebase.ts";
+  import {
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    sendEmailVerification,
+    updateProfile,
+  } from "firebase/auth";
+  import { friendlyError } from "../lib/auth.ts";
+  import { uploadAvatar } from "../lib/storage.ts";
+  import { validateAvatar } from "../lib/validation.ts";
+  import { createUser } from "../lib/firestore.ts";
+
+  let isLogin = false;
+  let lastSubmit = 0;
+
+  document.addEventListener("astro:page-load", () => {
+    const form          = document.getElementById("auth-form") as HTMLFormElement;
+    if (!form) return;
+
+    const toggleLink    = document.getElementById("toggle-link")!;
+    const signupFields  = document.getElementById("signup-fields")!;
+    const submitBtn     = document.getElementById("submit-btn")!;
+    const authTitle     = document.getElementById("auth-title")!;
+    const errorEl       = document.getElementById("auth-error")!;
+    const avatarInput   = document.getElementById("avatar") as HTMLInputElement;
+    const avatarPreview = document.getElementById("avatar-preview") as HTMLImageElement;
+    const uploadStatus  = document.getElementById("upload-status")!;
+
+    // Reset state on each page load
+    isLogin = false;
+    signupFields.style.display = "flex";
+    submitBtn.textContent = "Sign Up";
+    authTitle.textContent = "Create an Account";
+    toggleLink.textContent = "Log in instead";
+
+    avatarInput.addEventListener("change", () => {
+      const file = avatarInput.files?.[0];
+      if (!file) return;
+      const result = validateAvatar(file);
+      if (!result.ok) {
+        uploadStatus.textContent = result.error!;
+        uploadStatus.style.display = "block";
+        avatarInput.value = "";
+        avatarPreview.style.display = "none";
+        return;
+      }
+      avatarPreview.src = URL.createObjectURL(file);
+      avatarPreview.style.display = "block";
+      uploadStatus.textContent = `Selected: ${file.name}`;
+      uploadStatus.style.display = "block";
+    });
+
+    toggleLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      isLogin = !isLogin;
+      signupFields.style.display  = isLogin ? "none" : "flex";
+      submitBtn.textContent       = isLogin ? "Log In" : "Sign Up";
+      toggleLink.textContent      = isLogin ? "Sign up instead" : "Log in instead";
+      authTitle.textContent       = isLogin ? "Log In" : "Create an Account";
+      errorEl.style.display       = "none";
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorEl.style.display = "none";
+
+      const now = Date.now();
+      if (now - lastSubmit < 5000) {
+        errorEl.textContent = "Please wait a moment before trying again.";
+        errorEl.style.display = "block";
+        return;
+      }
+      lastSubmit = now;
+
+      const email    = (document.getElementById("email") as HTMLInputElement).value;
+      const password = (document.getElementById("password") as HTMLInputElement).value;
+      const name     = (document.getElementById("name") as HTMLInputElement).value;
+      const bio      = (document.getElementById("bio") as HTMLTextAreaElement).value.trim();
+      const file     = avatarInput.files?.[0];
+
+      try {
+        if (isLogin) {
+          await signInWithEmailAndPassword(auth, email, password);
+          window.location.href = "/community";
+        } else {
+          const { user } = await createUserWithEmailAndPassword(auth, email, password);
+          let photoURL = "";
+          if (file) {
+            photoURL = await uploadAvatar(user.uid, file, (pct) => {
+              uploadStatus.textContent = `Uploading… ${pct}%`;
+              uploadStatus.style.display = "block";
+            });
+          }
+          await updateProfile(user, { displayName: name || null, photoURL: photoURL || null });
+          await createUser(user.uid, {
+            displayName: name || "",
+            photoURL,
+            bio,
+            email: user.email!,
+            createdAt: new Date(),
+          });
+          await sendEmailVerification(user);
+          window.location.href = "/verify-email";
+        }
+      } catch (err: any) {
+        errorEl.textContent = friendlyError(err.code);
+        errorEl.style.display = "block";
+      }
+    });
+  });
+</script>

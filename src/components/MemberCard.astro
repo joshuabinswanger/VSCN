@@ -1,0 +1,88 @@
+---
+import type { UserDoc } from "../lib/firestore.ts";
+import { normaliseUrl } from "../lib/validation.ts";
+
+interface Props {
+  member: UserDoc & { uid: string };
+}
+
+const { member: m } = Astro.props;
+const href = normaliseUrl(m.portfolio ?? "");
+const initial = m.displayName?.[0]?.toUpperCase() ?? "?";
+---
+
+<div class="member-card">
+  {m.photoURL
+    ? <img class="member-avatar" src={m.photoURL} alt={m.displayName} />
+    : <div class="member-avatar">{initial}</div>
+  }
+  <div class="member-info">
+    <div class="member-name">{m.displayName || "Anonymous"}</div>
+    {m.role && <div class="member-role">{m.role}</div>}
+    {href && (
+      <a class="member-portfolio" href={href} target="_blank" rel="noopener">
+        {m.portfolio}
+      </a>
+    )}
+  </div>
+</div>
+
+<style>
+  .member-card {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    border: 1.5px solid #e8e8e8;
+    border-radius: 10px;
+    background: var(--color-bg);
+    transition: border-color 0.15s;
+  }
+  .member-card:hover { border-color: #aaa; }
+
+  .member-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #f0f0f0;
+    border: 1.5px solid #e5e5e5;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    color: #bbb;
+  }
+
+  .member-info { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
+
+  .member-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--color-dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .member-role {
+    font-size: 0.8rem;
+    color: #777;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .member-portfolio {
+    display: inline-block;
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    color: #555;
+    text-decoration: none;
+    word-break: break-all;
+    transition: color 0.15s;
+  }
+  .member-portfolio:hover { color: #000; }
+</style>

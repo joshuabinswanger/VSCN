@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:docs.astro.build)",
+      "Bash(npm uninstall:*)",
+      "WebFetch(domain:astro.build)",
+      "Bash(node -e \"const a = require\\(''''./node_modules/astro/dist/config.js''''\\); console.log\\(Object.keys\\(a\\).filter\\(k => k.includes\\(''''font''''\\) || k.includes\\(''''Font''''\\)\\)\\)\")",
+      "Bash(node --input-type=module -e \"import * as a from ''astro/config''; console.log\\(Object.keys\\(a\\).filter\\(k => k.toLowerCase\\(\\).includes\\(''font''\\)\\)\\)\")",
+      "Bash(node --input-type=module -e \"import { fontProviders } from ''astro/config''; console.log\\(Object.keys\\(fontProviders\\)\\)\")",
+      "Bash(node --input-type=module -e \"import pkg from ''./node_modules/astro/package.json'', { assert: { type: ''json'' } }; console.log\\(pkg.version\\)\")",
+      "Bash(node -e \"const d=require\\(''''fs''''\\).readFileSync\\(''''/dev/stdin'''',''''utf8''''\\);console.log\\(JSON.parse\\(d\\).version\\)\")",
+      "Bash(node -p \"require\\(''./node_modules/astro/package.json''\\).version\")",
+      "Bash(node --input-type=module -e \"import { Font } from ''astro:assets''; console.log\\(typeof Font\\);\")",
+      "Bash(npx firebase-tools:*)",
+      "Bash(npm run:*)",
+      "Bash(gcloud projects:*)"
+    ]
+  }
+}

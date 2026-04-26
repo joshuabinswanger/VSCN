@@ -1,0 +1,101 @@
+---
+interface Props {
+  navLinks?: boolean;
+}
+const { navLinks = true } = Astro.props;
+---
+
+<nav transition:persist>
+  <a href="/" class="brand-ticker" aria-label="Home">
+    <div class="brand-track">
+      <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
+      <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
+      <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
+      <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
+    </div>
+  </a>
+  {navLinks && (
+    <span class="nav-links">
+      <a id="nav-profile" href="/profile" style="display:none">Profile</a>
+      <a id="nav-logout" href="#" style="display:none">Log Out</a>
+    </span>
+  )}
+</nav>
+
+<style>
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #fafafa;
+    border-bottom: none;
+    overflow: hidden;
+    line-height: 1;
+  }
+
+  .brand-ticker {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    text-decoration: none;
+  }
+
+  .brand-track {
+    display: flex;
+    gap: 0;
+    white-space: nowrap;
+    width: max-content;
+    align-items: baseline;
+    animation: nav-scroll 32s linear infinite;
+    font-weight: 700;
+    font-size: 12vh;
+    letter-spacing: -0.03em;
+    color: var(--color-dark);
+  }
+
+  .brand-track span { padding-right: 0; }
+
+  @keyframes nav-scroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+
+  .nav-links {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    padding: 0 1.25rem;
+    background: linear-gradient(to right, transparent, #fafafa 28%);
+  }
+
+  nav :global(a) { text-decoration: none; color: #555; font-size: 0.9rem; }
+  nav :global(a:hover) { color: #000; }
+
+  @media (max-width: 480px) {
+    .nav-links { display: none; }
+  }
+</style>
+
+<script>
+  import { auth } from "../lib/firebase.ts";
+  import { onAuthStateChanged, signOut } from "firebase/auth";
+
+  const profileLink = document.getElementById("nav-profile");
+  const logoutLink  = document.getElementById("nav-logout");
+
+  if (profileLink && logoutLink) {
+    onAuthStateChanged(auth, (user) => {
+      profileLink.style.display = user ? "inline" : "none";
+      logoutLink.style.display  = user ? "inline" : "none";
+    });
+
+    logoutLink.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await signOut(auth);
+      window.location.href = "/";
+    });
+  }
+</script>

@@ -1,9 +1,13 @@
 ---
+import { ClientRouter } from "astro:transitions";
+import { Font } from "astro:assets";
+import Navbar from "../components/Navbar.astro";
 interface Props {
   title: string;
   navLinks?: boolean;
+  fullscreen?: boolean;
 }
-const { title, navLinks = true } = Astro.props;
+const { title, navLinks = true, fullscreen = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -13,106 +17,157 @@ const { title, navLinks = true } = Astro.props;
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
-    <style>
+    <ClientRouter />
+    <Font cssVariable="--font-space-mono" preload />
+    <style is:global>
+      /* ── Design tokens ── */
+      :root {
+        --color-dark:    #0a0a0a;
+        --color-bg:      #fafafa;
+        --color-border:  #e0e0e0;
+        --color-muted:   #888;
+        --color-error:   #d94f4f;
+        --color-success: #2a9d5c;
+      }
+
+      /* ── Reset ── */
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: system-ui, sans-serif; line-height: 1.6; color: #111; background: #fafafa; }
-      nav {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background: #fafafa;
-        border-bottom: none;
-        overflow: hidden;
-        line-height: 1;
-      }
-      /* ticker fills the full nav width, same size as landing page top row */
-      .brand-ticker {
-        display: block;
-        width: 100%;
-        overflow: hidden;
-        text-decoration: none;
-      }
-      .brand-track {
-        display: flex;
-        gap: 0;
-        white-space: nowrap;
-        width: max-content;
-        align-items: baseline;
-        animation: nav-scroll 32s linear infinite;
-        font-family: 'Space Mono', monospace;
-        font-weight: 700;
-        font-size: 12vh;
-        letter-spacing: -0.03em;
-        color: #0a0a0a;
-      }
-      .brand-track span { padding-right: 0; }
-      @keyframes nav-scroll {
-        from { transform: translateX(0); }
-        to   { transform: translateX(-50%); }
-      }
-      /* nav links float over the ticker bottom-right */
-      .nav-links {
-        position: absolute;
-        bottom: 0.5rem;
-        right: 0;
-        display: flex;
-        gap: 1rem;
-        align-items: center;
-        padding: 0 1.25rem;
-        background: linear-gradient(to right, transparent, #fafafa 28%);
-      }
-      nav a { text-decoration: none; color: #555; font-size: 0.9rem; }
-      nav a:hover { color: #000; }
-      @media (max-width: 480px) {
-        nav .nav-links { display: none; }
-      }
-      body { overflow-x: hidden; }
+      body { font-family: system-ui, sans-serif; line-height: 1.6; color: #111; background: var(--color-bg); overflow-x: hidden; }
       main { max-width: 900px; margin: 0 auto; padding: 1.5rem 1.25rem; }
+
+      /* ── Font utility ── */
+      .font-mono, .brand-track, .brand-ticker {
+        font-family: var(--font-space-mono), monospace;
+      }
+
+      /* ── Form primitives ── */
+      .field { display: flex; flex-direction: column; gap: 0.45rem; }
+
+      .label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #555;
+      }
+
+      .input {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: 0.7rem 0.9rem;
+        border: 1.5px solid var(--color-border);
+        border-radius: 8px;
+        font: inherit;
+        font-size: 0.95rem;
+        color: #111;
+        background: var(--color-bg);
+        transition: border-color 0.15s;
+        outline: none;
+      }
+      .input:focus { border-color: #111; }
+      .input::placeholder { color: #bbb; }
+      .textarea { resize: vertical; min-height: 80px; }
+
+      /* ── File input ── */
+      .file-btn {
+        display: inline-block;
+        padding: 0.65rem 1.2rem;
+        border: 1.5px solid #ddd;
+        border-radius: 8px;
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #333;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+        width: fit-content;
+      }
+      .file-btn:hover { border-color: #111; background: #f4f4f4; }
+      .upload-status { font-size: 0.82rem; color: #666; }
+
+      /* ── Buttons ── */
+      .btn-primary {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        background: var(--color-dark);
+        color: #fff;
+        text-decoration: none;
+        border: none;
+        border-radius: 8px;
+        font: inherit;
+        font-family: var(--font-space-mono), monospace;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .btn-primary:hover { background: #333; }
+      .btn-primary:disabled { background: #999; cursor: not-allowed; }
+
+      .btn-ghost {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        border: 1.5px solid #111;
+        text-decoration: none;
+        border-radius: 8px;
+        font-family: var(--font-space-mono), monospace;
+        font-size: 0.85rem;
+        color: #111;
+        transition: opacity 0.2s;
+      }
+      .btn-ghost:hover { opacity: 0.6; }
+
+      .btn-save {
+        padding: 0.78rem 2rem;
+        background: var(--color-dark);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font: inherit;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.2s;
+        align-self: flex-start;
+      }
+      .btn-save:hover { background: #333; }
+
+      .btn-logout {
+        padding: 0.75rem 1.5rem;
+        background: transparent;
+        color: var(--color-muted);
+        border: 1.5px solid #ddd;
+        border-radius: 8px;
+        font: inherit;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: border-color 0.2s, color 0.2s;
+      }
+      .btn-logout:hover { border-color: #aaa; color: #333; }
+
+      .btn-link {
+        background: none;
+        border: none;
+        padding: 0;
+        font: inherit;
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--color-dark);
+        cursor: pointer;
+        border-bottom: 1px solid #ccc;
+        transition: border-color 0.15s;
+      }
+      .btn-link:hover { border-color: var(--color-dark); }
+      .btn-link:disabled { color: #aaa; border-color: transparent; cursor: not-allowed; }
+
+      /* ── Feedback messages ── */
+      .msg-ok  { font-size: 0.88rem; color: var(--color-success); }
+      .msg-err { font-size: 0.88rem; color: var(--color-error); }
     </style>
   </head>
   <body>
-    <nav>
-      <a href="/" class="brand-ticker" aria-label="Home">
-        <div class="brand-track">
-          <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
-          <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
-          <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
-          <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
-        </div>
-      </a>
-      {navLinks && (
-        <span class="nav-links">
-          <a id="nav-profile" href="/profile" style="display:none">Profile</a>
-          <a id="nav-logout" href="#" style="display:none">Log Out</a>
-        </span>
-      )}
-    </nav>
-    <main>
-      <slot />
-    </main>
+    <Navbar navLinks={navLinks} />
+    {fullscreen ? <slot /> : <main><slot /></main>}
   </body>
 </html>
 
-<script>
-  import { auth } from "../lib/firebase.ts";
-  import { onAuthStateChanged, signOut } from "firebase/auth";
-
-  const profileLink = document.getElementById("nav-profile");
-  const logoutLink  = document.getElementById("nav-logout");
-
-  if (profileLink && logoutLink) {
-    onAuthStateChanged(auth, (user) => {
-      profileLink.style.display = user ? "inline" : "none";
-      logoutLink.style.display  = user ? "inline" : "none";
-    });
-
-    logoutLink.addEventListener("click", async (e) => {
-      e.preventDefault();
-      await signOut(auth);
-      window.location.href = "/";
-    });
-  }
-</script>
