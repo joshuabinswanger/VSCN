@@ -23,12 +23,12 @@ import "../styles/global.css";
   </div>
 
   <div class="field">
-    <label class="label" for="role">What you do</label>
+    <label class="label" for="role">Role</label>
     <input
       id="role"
       type="text"
       class="input"
-      placeholder="e.g. Science Illustrator, Data Journalist, Researcher…"
+      placeholder="e.g. Science Illustrator, Researcher, Data Journalist…"
     />
   </div>
 
@@ -39,6 +39,7 @@ import "../styles/global.css";
       rows="4"
       class="input textarea"
       placeholder="A short description of your work, interests, or background…"></textarea>
+    <p class="field-note">Maximum 35 words.</p>
   </div>
 
   <div class="field">
@@ -47,6 +48,14 @@ import "../styles/global.css";
       <span class="input-prefix">https://</span>
       <input id="portfolio" type="text" class="input input-prefixed" placeholder="yoursite.com" />
     </div>
+  </div>
+
+  <div class="field">
+    <label class="label" for="phone">Phone Number</label>
+    <input id="phone" type="tel" class="input" placeholder="+41 79 123 45 67" autocomplete="tel" />
+    <p class="field-note">
+      Hidden from the community page. Used only to help create a VSCN chat group.
+    </p>
   </div>
 
   <div class="form-footer">
@@ -73,9 +82,13 @@ import "../styles/global.css";
     width: 100%;
     max-width: 560px;
     margin: clamp(2rem, 4vw, 4rem) auto;
-    padding: 0;
+    padding: 0 15px;
     box-sizing: border-box;
     overflow: hidden;
+
+    @media (--bp-desktop) {
+      padding: 0;
+    }
   }
 
   .profile-form.is-loaded {
@@ -142,6 +155,13 @@ import "../styles/global.css";
     border: none;
     border-top: 1px solid #eee;
     margin: 0;
+  }
+
+  .field-note {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--color-muted);
   }
 
   .input-prefix-wrap {
@@ -222,6 +242,7 @@ import "../styles/global.css";
   import { requireVerifiedAuth } from "../lib/auth.ts";
   import { uploadAvatar } from "../lib/storage.ts";
   import { getUser, updateUser } from "../lib/firestore.ts";
+  import { validateBio } from "../lib/validation.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
 
@@ -234,6 +255,7 @@ import "../styles/global.css";
     const roleInput = document.getElementById("role") as HTMLInputElement;
     const bioInput = document.getElementById("bio") as HTMLTextAreaElement;
     const portfolioInput = document.getElementById("portfolio") as HTMLInputElement;
+    const phoneInput = document.getElementById("phone") as HTMLInputElement;
     const avatarInput = document.getElementById("avatar") as HTMLInputElement;
     const avatarImg = document.getElementById("avatar-preview") as HTMLImageElement;
     const uploadStatus = document.getElementById("upload-status")!;
@@ -267,6 +289,7 @@ import "../styles/global.css";
       roleInput.value = data.role ?? "";
       bioInput.value = data.bio ?? "";
       portfolioInput.value = data.portfolio ?? "";
+      phoneInput.value = data.phone ?? "";
       showPreview(data.photoURL ?? user.photoURL ?? "");
 
       if (loadingEl) loadingEl.style.display = "none";
@@ -290,7 +313,15 @@ import "../styles/global.css";
       const role = roleInput.value.trim();
       const bio = bioInput.value.trim();
       const portfolio = portfolioInput.value.trim();
+      const phone = phoneInput.value.trim();
       const file = avatarInput.files?.[0];
+      const bioResult = validateBio(bio);
+
+      if (!bioResult.ok) {
+        saveError.textContent = bioResult.error!;
+        saveError.style.display = "block";
+        return;
+      }
 
       try {
         let photoURL: string = auth.currentUser?.photoURL ?? "";
@@ -313,6 +344,7 @@ import "../styles/global.css";
           role,
           bio,
           portfolio,
+          phone,
           email: user.email!,
           updatedAt: new Date(),
         });

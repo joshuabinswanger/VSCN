@@ -32,15 +32,18 @@ service cloud.firestore {
 
 function validUserFields(data, auth) {
   // Only known fields are allowed — no injecting extra keys
-  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'email', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'phone', 'email', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
 
     // String field length limits
     && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100))
-    && (!('bio'         in data) || (data.bio         is string && data.bio.size()         <= 500))
+    && (!('bio'         in data) || (data.bio         is string
+                                     && data.bio.size() <= 500
+                                     && validBioWordCount(data.bio)))
     && (!('role'        in data) || (data.role        is string && data.role.size()        <= 100))
     && (!('portfolio'   in data) || (data.portfolio   is string && data.portfolio.size()   <= 200))
+    && (!('phone'       in data) || (data.phone       is string && data.phone.size()       <= 40))
 
     // Email must match the authenticated user's actual email — not user-supplied
     && (!('email' in data) || data.email == auth.token.email)
@@ -53,4 +56,8 @@ function validUserFields(data, auth) {
     // Timestamps must be actual Firestore timestamps, not arbitrary strings
     && (!('createdAt' in data) || data.createdAt is timestamp)
     && (!('updatedAt' in data) || data.updatedAt is timestamp);
+}
+
+function validBioWordCount(bio) {
+  return bio.size() == 0 || bio.matches('^\\s*\\S+(\\s+\\S+){0,34}\\s*$');
 }

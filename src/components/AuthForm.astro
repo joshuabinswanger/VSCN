@@ -32,6 +32,13 @@
       <div class="field">
         <label class="label" for="bio">About you</label>
         <textarea id="bio" class="input textarea" rows="3" placeholder="A short description about yourself…"></textarea>
+        <p class="field-note">Maximum 35 words.</p>
+      </div>
+
+      <div class="field">
+        <label class="label" for="phone">Phone Number</label>
+        <input id="phone" type="tel" class="input" placeholder="+41 79 123 45 67" autocomplete="tel" />
+        <p class="field-note">Hidden from the community page. Used only to help create a VSCN chat group.</p>
       </div>
 
     </div>
@@ -109,6 +116,13 @@
 
   .avatar-row { display: flex; align-items: center; gap: 1rem; }
 
+  .field-note {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--color-muted);
+  }
+
   .avatar-preview {
     width: 48px;
     height: 48px;
@@ -130,7 +144,7 @@
   } from "firebase/auth";
   import { friendlyError } from "../lib/auth.ts";
   import { uploadAvatar } from "../lib/storage.ts";
-  import { validateAvatar } from "../lib/validation.ts";
+  import { validateAvatar, validateBio } from "../lib/validation.ts";
   import { createUser } from "../lib/firestore.ts";
 
   let isLogin = false;
@@ -206,7 +220,15 @@
       const password = (document.getElementById("password") as HTMLInputElement).value;
       const name     = (document.getElementById("name") as HTMLInputElement).value;
       const bio      = (document.getElementById("bio") as HTMLTextAreaElement).value.trim();
+      const phone    = (document.getElementById("phone") as HTMLInputElement).value.trim();
       const file     = avatarInput.files?.[0];
+      const bioResult = validateBio(bio);
+
+      if (!bioResult.ok) {
+        errorEl.textContent = bioResult.error!;
+        errorEl.style.display = "block";
+        return;
+      }
 
       try {
         if (isLogin) {
@@ -226,6 +248,7 @@
             displayName: name || "",
             photoURL,
             bio,
+            phone,
             email: user.email!,
             createdAt: new Date(),
           });

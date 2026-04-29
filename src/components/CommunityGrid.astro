@@ -1,7 +1,6 @@
 <div class="community-wrapper">
   <div class="page-header">
     <h1 class="page-title">
-      Community
       <span id="member-count" class="member-count" aria-live="polite"></span>
     </h1>
   </div>
@@ -42,11 +41,25 @@
     grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
     width: 100%;
+    align-items: start;
   }
 
   @media (--bp-desktop), (--bp-desktop-wide) {
     .member-grid {
       grid-template-columns: repeat(3, minmax(330px, 1fr));
+      align-items: start;
+    }
+  }
+
+  @media (width <= 1050px) {
+    .member-grid {
+      grid-template-columns: repeat(2, minmax(330px, 1fr));
+    }
+  }
+
+  @media (--bp-mobile) {
+    .member-grid {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 
@@ -57,13 +70,13 @@
 
   :global(.member-card) {
     display: grid;
-    width: 100%;
+    width: 85vw;
     min-width: 0;
     box-sizing: border-box;
-    grid-template-columns: min-content minmax(0, 1fr);
+    grid-template-columns: min-content minmax(0, 1fr) 16px;
     align-items: center;
-    gap: clamp(1rem, 4vw, 25px);
-    padding: 10px 25px 10px 15px;
+    gap: 5px 20px;
+    padding: 10px 15px 10px 20px;
     border: 1.5px solid #e8e8e8;
     border-radius: var(--radius-sm);
     background: #fff;
@@ -71,10 +84,13 @@
       border-color 0.2s,
       box-shadow 0.2s;
     text-align: center;
+    align-self: start;
 
     @media (--bp-desktop) {
+      grid-template-columns: min-content minmax(0, 1fr);
       padding: 15px 25px 15px 15px;
-      gap: 25px;
+      gap: 5px 25px;
+      width: 100%;
     }
   }
 
@@ -150,13 +166,97 @@
   :global(.member-portfolio:hover) {
     color: #000;
   }
+
+  :global(.member-bio-toggle) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--color-muted);
+    cursor: pointer;
+    transition:
+      color 0.15s,
+      transform 0.15s;
+  }
+
+  :global(.member-bio-toggle:hover) {
+    color: #333;
+  }
+
+  :global(.member-bio-arrow) {
+    display: block;
+    width: 12px;
+    height: 12px;
+  }
+
+  :global(.member-card.is-expanded .member-bio-toggle) {
+    transform: rotate(180deg);
+  }
+
+  :global(.member-bio) {
+    display: none;
+    grid-column: 1 / -1;
+    margin: 10px 0 0;
+    padding-top: 0;
+
+    color: #444;
+    font-size: var(--font-size-base);
+    line-height: 1.6;
+    text-align: left;
+    min-width: 0;
+    max-width: calc(85vw - 40px);
+  }
+
+  :global(.member-card.is-expanded .member-bio) {
+    display: block;
+  }
+
+  @media (--bp-desktop), (--bp-desktop-wide) {
+    :global(.member-card) {
+      position: relative;
+    }
+
+    :global(.member-bio-toggle) {
+      display: none;
+    }
+
+    :global(.member-bio) {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      z-index: 5;
+      display: none;
+      width: 100%;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0.85rem;
+      border: 1.5px solid #e8e8e8;
+      border-radius: var(--radius-sm);
+      background: #fff;
+      box-shadow:
+        0 18px 45px rgba(0, 0, 0, 0.16),
+        0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    :global(.member-card:hover .member-bio),
+    :global(.member-card:focus-within .member-bio) {
+      display: block;
+    }
+  }
 </style>
 
 <script>
   import { getMembers, type UserDoc } from "../lib/firestore.ts";
   import { normaliseUrl } from "../lib/validation.ts";
+  import downArrowUrl from "../assets/downarrow.svg";
 
   type Member = UserDoc & { uid: string };
+
+  const desktopQuery = window.matchMedia("(width >= 1120px)");
 
   function text(value: string): Text {
     return document.createTextNode(value);
@@ -210,7 +310,40 @@
       info.append(portfolio);
     }
 
-    card.append(avatarWrap, info);
+    if (member.bio) {
+      const toggle = document.createElement("button");
+      const bioId = `member-bio-${member.uid}`;
+      toggle.className = "member-bio-toggle";
+      toggle.type = "button";
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.setAttribute("aria-controls", bioId);
+      toggle.setAttribute("aria-label", `Show bio for ${displayName}`);
+
+      const arrow = document.createElement("img");
+      arrow.className = "member-bio-arrow";
+      arrow.src = downArrowUrl.src;
+      arrow.alt = "";
+      arrow.setAttribute("aria-hidden", "true");
+      toggle.append(arrow);
+
+      const bio = document.createElement("p");
+      bio.id = bioId;
+      bio.className = "member-bio";
+      bio.append(text(member.bio));
+
+      toggle.addEventListener("click", () => {
+        const expanded = card.classList.toggle("is-expanded");
+        toggle.setAttribute("aria-expanded", String(expanded));
+        toggle.setAttribute("aria-label", `${expanded ? "Hide" : "Show"} bio for ${displayName}`);
+      });
+
+      card.append(avatarWrap, info, toggle, bio);
+      return card;
+    }
+
+    const spacer = document.createElement("div");
+    spacer.setAttribute("aria-hidden", "true");
+    card.append(avatarWrap, info, spacer);
     return card;
   }
 
@@ -218,6 +351,16 @@
     const grid = document.getElementById("member-grid");
     const count = document.getElementById("member-count");
     if (!grid || !count) return;
+
+    desktopQuery.addEventListener("change", (event) => {
+      if (event.matches) return;
+      document.querySelectorAll(".member-card.is-expanded").forEach((card) => {
+        card.classList.remove("is-expanded");
+      });
+      document.querySelectorAll<HTMLButtonElement>(".member-bio-toggle").forEach((button) => {
+        button.setAttribute("aria-expanded", "false");
+      });
+    });
 
     try {
       const members = await getMembers();

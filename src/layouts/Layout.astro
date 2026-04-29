@@ -2,6 +2,7 @@
 import { ClientRouter } from "astro:transitions";
 import { Font } from "astro:assets";
 import Navbar from "../components/Navbar.astro";
+import favicon from "../assets/favicon.png";
 import "../styles/global.css";
 interface Props {
   title: string;
@@ -15,7 +16,7 @@ const { title, navLinks = true, fullscreen = false } = Astro.props;
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href={favicon.src} />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!-- Inline: prevents white flash and font jump before external CSS loads -->
     <style>html,body{background:#fafafa;font-family:"Space Mono",monospace}</style>
@@ -28,4 +29,3 @@ const { title, navLinks = true, fullscreen = false } = Astro.props;
     {fullscreen ? <slot /> : <main><slot /></main>}
   </body>
 </html>
-
