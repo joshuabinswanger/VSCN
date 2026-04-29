@@ -23,16 +23,7 @@ const firebaseConfig = {
 const app =
   getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-
-// Analytics only runs in the browser (not during SSR/build)
-export const analytics = isSupported().then((yes) =>
-  yes ? getAnalytics(app) : null,
-);
-
-// In dev, reCAPTCHA v3 doesn't work on localhost.
+// In dev, App Check needs a debug token for localhost.
 // Setting this flag makes Firebase generate a debug token (printed to the console).
 // Register that token in Firebase Console → App Check → your app → Manage debug tokens.
 declare global { var FIREBASE_APPCHECK_DEBUG_TOKEN: boolean | string | undefined; }
@@ -48,3 +39,12 @@ export const appCheck: AppCheck | null = recaptchaSiteKey
       isTokenAutoRefreshEnabled: true,
     })
   : null;
+
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const storage = getStorage(app);
+
+// Analytics only runs in the browser (not during SSR/build)
+export const analytics = isSupported().then((yes) =>
+  yes ? getAnalytics(app) : null,
+);

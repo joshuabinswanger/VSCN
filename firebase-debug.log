@@ -1,0 +1,61 @@
+[debug] [2026-04-29T19:40:02.075Z] ----------------------------------------------------------------------
+[debug] [2026-04-29T19:40:02.077Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Josh\AppData\Local\npm-cache\_npx\ba4f1959e38407b5\node_modules\firebase-tools\lib\bin\firebase.js deploy --only firestore:rules
+[debug] [2026-04-29T19:40:02.078Z] CLI Version:   15.15.0
+[debug] [2026-04-29T19:40:02.078Z] Platform:      win32
+[debug] [2026-04-29T19:40:02.078Z] Node Version:  v24.11.1
+[debug] [2026-04-29T19:40:02.078Z] Time:          Wed Apr 29 2026 21:40:02 GMT+0200 (Central European Summer Time)
+[debug] [2026-04-29T19:40:02.078Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-04-29T19:40:04.026Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-04-29T19:40:04.027Z] > authorizing via signed-in user (joshua.binswanger@gmail.com)
+[debug] [2026-04-29T19:40:04.027Z] [iam] checking project vscn-39508 for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]
+[debug] [2026-04-29T19:40:04.028Z] Checked if tokens are valid: true, expires at: 1777494800192
+[debug] [2026-04-29T19:40:04.028Z] Checked if tokens are valid: true, expires at: 1777494800192
+[debug] [2026-04-29T19:40:04.029Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/vscn-39508:testIamPermissions [none]
+[debug] [2026-04-29T19:40:04.029Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/vscn-39508:testIamPermissions  x-goog-user-project=vscn-39508
+[debug] [2026-04-29T19:40:04.029Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/vscn-39508:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[debug] [2026-04-29T19:40:04.237Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/vscn-39508:testIamPermissions 200
+[debug] [2026-04-29T19:40:04.238Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/vscn-39508:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[info] 
+[info] === Deploying to 'vscn-39508'...
+[info] 
+[info] i  deploying firestore 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[debug] [2026-04-29T19:40:04.240Z] Checked if tokens are valid: true, expires at: 1777494800192
+[debug] [2026-04-29T19:40:04.240Z] Checked if tokens are valid: true, expires at: 1777494800192
+[debug] [2026-04-29T19:40:04.240Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/vscn-39508/databases/(default) [none]
+[debug] [2026-04-29T19:40:04.410Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/vscn-39508/databases/(default) 200
+[debug] [2026-04-29T19:40:04.410Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/vscn-39508/databases/(default) {"name":"projects/vscn-39508/databases/(default)","uid":"63a33b4f-f711-4225-9229-0fa40e2e626e","createTime":"2026-04-20T15:32:55.551989Z","updateTime":"2026-04-20T15:32:55.551989Z","locationId":"eur3","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2026-04-29T18:40:04.646876Z","appEngineIntegrationMode":"DISABLED","keyPrefix":"e","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"realtimeUpdatesMode":"REALTIME_UPDATES_MODE_ENABLED","etag":"ILPTvp3ok5QDMLTa9YWMiZQD"}
+[info] i  cloud.firestore: checking firestore.rules for compilation errors... 
+[debug] [2026-04-29T19:40:04.411Z] Checked if tokens are valid: true, expires at: 1777494800192
+[debug] [2026-04-29T19:40:04.411Z] Checked if tokens are valid: true, expires at: 1777494800192
+[debug] [2026-04-29T19:40:04.411Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/vscn-39508:test [none]
+[debug] [2026-04-29T19:40:04.412Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/vscn-39508:test [omitted]
+[debug] [2026-04-29T19:40:04.679Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/vscn-39508:test 200
+[debug] [2026-04-29T19:40:04.679Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/vscn-39508:test {}
+[info] +  cloud.firestore: rules file firestore.rules compiled successfully 
+[debug] [2026-04-29T19:40:04.680Z] Checked if tokens are valid: true, expires at: 1777494800192
+[debug] [2026-04-29T19:40:04.680Z] Checked if tokens are valid: true, expires at: 1777494800192
+[debug] [2026-04-29T19:40:04.680Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/vscn-39508/releases pageSize=10&pageToken=
+[debug] [2026-04-29T19:40:04.872Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/vscn-39508/releases 200
+[debug] [2026-04-29T19:40:04.872Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/vscn-39508/releases {"releases":[{"name":"projects/vscn-39508/releases/cloud.firestore","rulesetName":"projects/vscn-39508/rulesets/a90709c5-5bfe-436b-96bc-1f1df5fa8115","createTime":"2026-04-20T15:32:57.549524Z","updateTime":"2026-04-29T19:33:25.243221Z"},{"name":"projects/vscn-39508/releases/firebase.storage/vscn-39508.firebasestorage.app","rulesetName":"projects/vscn-39508/rulesets/559f7d06-8b5c-4748-999b-c64751e650e3","createTime":"2026-04-20T17:48:19.286445Z","updateTime":"2026-04-29T18:31:00.487874Z"}]}
+[debug] [2026-04-29T19:40:04.883Z] Checked if tokens are valid: true, expires at: 1777494800192
+[debug] [2026-04-29T19:40:04.883Z] Checked if tokens are valid: true, expires at: 1777494800192
+[debug] [2026-04-29T19:40:04.883Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/vscn-39508/rulesets/a90709c5-5bfe-436b-96bc-1f1df5fa8115 [none]
+[debug] [2026-04-29T19:40:05.164Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/vscn-39508/rulesets/a90709c5-5bfe-436b-96bc-1f1df5fa8115 200
+[debug] [2026-04-29T19:40:05.164Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/vscn-39508/rulesets/a90709c5-5bfe-436b-96bc-1f1df5fa8115 [omitted]
+[info] i  firestore: latest version of firestore.rules already up to date, skipping upload... 
+[debug] [2026-04-29T19:40:05.165Z] [rules] releasing cloud.firestore/(default) with ruleset projects/vscn-39508/rulesets/a90709c5-5bfe-436b-96bc-1f1df5fa8115
+[debug] [2026-04-29T19:40:05.165Z] Checked if tokens are valid: true, expires at: 1777494800192
+[debug] [2026-04-29T19:40:05.165Z] Checked if tokens are valid: true, expires at: 1777494800192
+[debug] [2026-04-29T19:40:05.166Z] >>> [apiv2][query] PATCH https://firebaserules.googleapis.com/v1/projects/vscn-39508/releases/cloud.firestore/(default) [none]
+[debug] [2026-04-29T19:40:05.166Z] >>> [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/vscn-39508/releases/cloud.firestore/(default) {"release":{"name":"projects/vscn-39508/releases/cloud.firestore/(default)","rulesetName":"projects/vscn-39508/rulesets/a90709c5-5bfe-436b-96bc-1f1df5fa8115"}}
+[debug] [2026-04-29T19:40:06.041Z] <<< [apiv2][status] PATCH https://firebaserules.googleapis.com/v1/projects/vscn-39508/releases/cloud.firestore/(default) 200
+[debug] [2026-04-29T19:40:06.042Z] <<< [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/vscn-39508/releases/cloud.firestore/(default) {"name":"projects/vscn-39508/releases/cloud.firestore","rulesetName":"projects/vscn-39508/rulesets/a90709c5-5bfe-436b-96bc-1f1df5fa8115","createTime":"2026-04-20T15:32:57.549524Z","updateTime":"2026-04-29T19:40:06.205364Z"}
+[debug] [2026-04-29T19:40:06.042Z] [rules] updated release projects/vscn-39508/releases/cloud.firestore
+[info] +  firestore: released rules firestore.rules to cloud.firestore 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/vscn-39508/overview
