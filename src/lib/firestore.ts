@@ -26,7 +26,7 @@ export async function getUser(uid: string): Promise<Partial<UserDoc>> {
 }
 
 export async function createUser(uid: string, data: Partial<UserDoc>): Promise<void> {
-  await setDoc(doc(db, "users", uid), data);
+  await setDoc(doc(db, "users", uid), data, { merge: true });
 }
 
 export async function updateUser(uid: string, data: Partial<UserDoc>): Promise<void> {

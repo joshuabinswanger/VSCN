@@ -13,5 +13,5 @@ export function validateAvatar(file: File): { ok: boolean; error?: string } {
 
 export function normaliseUrl(raw: string): string {
   if (!raw) return "";
-  return raw.startsWith("http") ? raw : `https://${raw}`;
+  return raw.startsWith("http://") || raw.startsWith("https://") ? raw : `https://${raw}`;
 }

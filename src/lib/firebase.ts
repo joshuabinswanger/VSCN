@@ -31,11 +31,12 @@ export const analytics = isSupported().then((yes) =>
 // In dev, reCAPTCHA v3 doesn't work on localhost.
 // Setting this flag makes Firebase generate a debug token (printed to the console).
 // Register that token in Firebase Console → App Check → your app → Manage debug tokens.
+declare global { var FIREBASE_APPCHECK_DEBUG_TOKEN: boolean | string | undefined; }
 if (import.meta.env.DEV) {
-  (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+  globalThis.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
 }
 
 const appCheck = initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider("6Lcj1cksAAAAAPzymNPkcT3_LZC_TMDcmH0Jz5Do"),
+  provider: new ReCaptchaV3Provider(import.meta.env.PUBLIC_FIREBASE_RECAPTCHA_SITE_KEY),
   isTokenAutoRefreshEnabled: true,
 });
