@@ -1,10 +1,9 @@
 <div class="verify-wrap">
-
   <header class="verify-header">
     <h1 class="verify-title">Check your inbox</h1>
     <p class="verify-sub">
-      We sent a verification link to <strong id="user-email"></strong>.
-      Click it to activate your account.
+      We sent a verification link to <strong id="user-email"></strong>. Click it to activate your
+      account.
     </p>
   </header>
 
@@ -18,9 +17,10 @@
       <button id="btn-resend" class="btn-link">Resend email</button>
     </div>
 
-    <p id="resend-msg" class="msg-ok" style="display:none;">Email sent — check your inbox.</p>
+    <p id="resend-msg" class="msg-ok" style="display:none;">
+      We’ve sent a link to your email. If you don't see it shortly, please check your spam filter.
+    </p>
   </div>
-
 </div>
 
 <style>
@@ -42,58 +42,98 @@
     }
   }
 
-  .verify-header { display: flex; flex-direction: column; gap: 0.5rem; }
+  .verify-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
 
-  .verify-title { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; color: var(--color-dark); }
+  .verify-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-dark);
+  }
 
-  .verify-sub { font-size: 0.9rem; color: #666; line-height: 1.5; }
+  .verify-sub {
+    font-size: 0.9rem;
+    color: #666;
+    line-height: 1.5;
+  }
 
-  .verify-body { display: flex; flex-direction: column; gap: 1.25rem; }
+  .verify-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
 
-  .resend-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; }
-  .resend-label { color: var(--color-muted); }
+  .resend-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.88rem;
+  }
+  .resend-label {
+    color: var(--color-muted);
+  }
 </style>
 
 <script>
   import { auth } from "../lib/firebase.ts";
   import { onAuthStateChanged, sendEmailVerification } from "firebase/auth";
+  import { publishCurrentUserProfile } from "../lib/firestore.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
 
   document.addEventListener("astro:page-load", () => {
-    const btnCheck  = document.getElementById("btn-check") as HTMLButtonElement;
+    const btnCheck = document.getElementById("btn-check") as HTMLButtonElement;
     if (!btnCheck) return;
 
     const userEmailEl = document.getElementById("user-email")!;
-    const btnResend   = document.getElementById("btn-resend") as HTMLButtonElement;
-    const statusMsg   = document.getElementById("status-msg")!;
-    const resendMsg   = document.getElementById("resend-msg")!;
+    const btnResend = document.getElementById("btn-resend") as HTMLButtonElement;
+    const statusMsg = document.getElementById("status-msg")!;
+    const resendMsg = document.getElementById("resend-msg")!;
 
     let currentUser: import("firebase/auth").User | null = null;
     let resendCooldown = false;
 
     unsubscribeAuth?.();
-    unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      if (!user) { window.location.href = "/signup"; return; }
-      if (user.emailVerified) { window.location.href = "/community"; return; }
+    unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "/signup";
+        return;
+      }
+      if (user.emailVerified) {
+        await user.getIdToken(true);
+        publishCurrentUserProfile(user.uid).finally(() => {
+          window.location.href = "/community";
+        });
+        return;
+      }
       currentUser = user;
       userEmailEl.textContent = user.email ?? "";
     });
+
+    async function continueIfVerified(user: import("firebase/auth").User) {
+      await user.reload();
+      if (user.emailVerified) {
+        await user.getIdToken(true);
+        await publishCurrentUserProfile(user.uid);
+        window.location.href = "/community";
+        return;
+      }
+      statusMsg.textContent = "Email not verified yet. Check your inbox and click the link.";
+      statusMsg.style.display = "block";
+      btnCheck.disabled = false;
+      btnCheck.textContent = "I've verified — continue";
+    }
 
     btnCheck.addEventListener("click", async () => {
       if (!currentUser) return;
       btnCheck.disabled = true;
       btnCheck.textContent = "Checking…";
       try {
-        await currentUser.reload();
-        if (currentUser.emailVerified) {
-          window.location.href = "/community";
-        } else {
-          statusMsg.textContent = "Email not verified yet. Check your inbox and click the link.";
-          statusMsg.style.display = "block";
-          btnCheck.disabled = false;
-          btnCheck.textContent = "I've verified — continue";
-        }
+        await continueIfVerified(currentUser);
       } catch {
         statusMsg.textContent = "Something went wrong. Please try again.";
         statusMsg.style.display = "block";

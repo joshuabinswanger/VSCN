@@ -221,8 +221,8 @@ import "../styles/global.css";
     }
 
     .footer-actions {
-      flex-direction: column-reverse;
-      align-items: stretch;
+      grid-template-columns: 1fr;
+      justify-content: stretch;
     }
 
     .profile-save-button {
@@ -241,7 +241,7 @@ import "../styles/global.css";
   import { updateProfile, signOut } from "firebase/auth";
   import { requireVerifiedAuth } from "../lib/auth.ts";
   import { uploadAvatar } from "../lib/storage.ts";
-  import { getUser, updateUser } from "../lib/firestore.ts";
+  import { getUser, updateUserProfile } from "../lib/firestore.ts";
   import { validateBio } from "../lib/validation.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
@@ -338,7 +338,8 @@ import "../styles/global.css";
           photoURL: photoURL || null,
         });
 
-        await updateUser(user.uid, {
+        await user.getIdToken(true);
+        await updateUserProfile(user.uid, {
           displayName: name,
           photoURL,
           role,
@@ -353,8 +354,8 @@ import "../styles/global.css";
         setTimeout(() => {
           saveMsg.style.display = "none";
         }, 3000);
-      } catch (err: any) {
-        saveError.textContent = err.message;
+      } catch (err: unknown) {
+        saveError.textContent = err instanceof Error ? err.message : "Could not save changes.";
         saveError.style.display = "block";
       }
     });

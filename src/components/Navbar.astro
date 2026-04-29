@@ -123,6 +123,8 @@ import "../styles/global.css";
   import { auth } from "../lib/firebase.ts";
   import { onAuthStateChanged } from "firebase/auth";
 
+  let unsubscribeAuth: (() => void) | null = null;
+
   function normalisePath(path: string): string {
     return path.replace(/\/+$/, "") || "/";
   }
@@ -147,7 +149,8 @@ import "../styles/global.css";
     const navProfile = document.getElementById("nav-profile");
     if (!navJoin || !navProfile) return;
 
-    onAuthStateChanged(auth, (user) => {
+    unsubscribeAuth?.();
+    unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       navJoin.style.display = user ? "none" : "block";
       navProfile.style.display = user ? "block" : "none";
       setActiveLink();

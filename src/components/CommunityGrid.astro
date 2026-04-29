@@ -250,16 +250,33 @@
 </style>
 
 <script>
-  import { getMembers, type UserDoc } from "../lib/firestore.ts";
+  import { getMembers, type PublicProfileDoc } from "../lib/firestore.ts";
   import { normaliseUrl } from "../lib/validation.ts";
   import downArrowUrl from "../assets/downarrow.svg";
 
-  type Member = UserDoc & { uid: string };
+  type Member = PublicProfileDoc & { uid: string };
 
   const desktopQuery = window.matchMedia("(width >= 1120px)");
+  let hasDesktopQueryListener = false;
 
   function text(value: string): Text {
     return document.createTextNode(value);
+  }
+
+  function createStateMessage(message: string): HTMLParagraphElement {
+    const element = document.createElement("p");
+    element.className = "state-msg";
+    element.append(text(message));
+    return element;
+  }
+
+  function collapseMobileBioPanels() {
+    document.querySelectorAll(".member-card.is-expanded").forEach((card) => {
+      card.classList.remove("is-expanded");
+    });
+    document.querySelectorAll<HTMLButtonElement>(".member-bio-toggle").forEach((button) => {
+      button.setAttribute("aria-expanded", "false");
+    });
   }
 
   function createMemberCard(member: Member): HTMLElement {
@@ -352,22 +369,19 @@
     const count = document.getElementById("member-count");
     if (!grid || !count) return;
 
-    desktopQuery.addEventListener("change", (event) => {
-      if (event.matches) return;
-      document.querySelectorAll(".member-card.is-expanded").forEach((card) => {
-        card.classList.remove("is-expanded");
+    if (!hasDesktopQueryListener) {
+      desktopQuery.addEventListener("change", (event) => {
+        if (!event.matches) collapseMobileBioPanels();
       });
-      document.querySelectorAll<HTMLButtonElement>(".member-bio-toggle").forEach((button) => {
-        button.setAttribute("aria-expanded", "false");
-      });
-    });
+      hasDesktopQueryListener = true;
+    }
 
     try {
       const members = await getMembers();
       grid.replaceChildren();
 
       if (members.length === 0) {
-        grid.innerHTML = `<p class="state-msg">No members yet.</p>`;
+        grid.replaceChildren(createStateMessage("No members yet."));
         count.textContent = "";
         return;
       }
@@ -376,7 +390,7 @@
       grid.append(...members.map(createMemberCard));
     } catch (err) {
       console.error(err);
-      grid.innerHTML = `<p class="state-msg">Could not load members.</p>`;
+      grid.replaceChildren(createStateMessage("Could not load members."));
       count.textContent = "";
     }
   });

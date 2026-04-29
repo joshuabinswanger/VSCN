@@ -36,7 +36,7 @@ if (import.meta.env.DEV) {
   globalThis.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
 }
 
-const appCheck = initializeAppCheck(app, {
+export const appCheck = initializeAppCheck(app, {
   provider: new ReCaptchaV3Provider(import.meta.env.PUBLIC_FIREBASE_RECAPTCHA_SITE_KEY),
   isTokenAutoRefreshEnabled: true,
 });

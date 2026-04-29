@@ -17,9 +17,10 @@ export function friendlyError(code: string): string {
 
 /** Redirects to /signup if not logged in, /verify-email if not yet verified. */
 export function requireVerifiedAuth(onUser: (user: User) => void): () => void {
-  return onAuthStateChanged(auth, (user) => {
+  return onAuthStateChanged(auth, async (user) => {
     if (!user) { window.location.href = "/signup"; return; }
     if (!user.emailVerified) { window.location.href = "/verify-email"; return; }
+    await user.getIdToken(true);
     onUser(user);
   });
 }

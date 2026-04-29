@@ -1,5 +1,6 @@
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2MB
+// Keep this in sync with validBioWordCount() in firestore.rules.
 export const MAX_BIO_WORDS = 35;
 
 export function validateAvatar(file: File): { ok: boolean; error?: string } {

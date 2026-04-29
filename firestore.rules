@@ -3,61 +3,66 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    match /users/{uid} {
-      // Anyone can read public profiles (needed for the community page)
+    match /publicProfiles/{uid} {
+      // Public directory data only. Never store phone numbers or emails here.
       allow read: if true;
 
-      // Only the authenticated owner can create their own document
-      allow create: if request.auth != null
-                    && request.auth.uid == uid
-                    && request.auth.token.email_verified == true
-                    && validUserFields(request.resource.data, request.auth);
+      allow create, update: if request.auth != null
+                            && request.auth.uid == uid
+                            && request.auth.token.email_verified == true
+                            && validPublicProfile(request.resource.data);
 
-      // Only the authenticated owner can update their own document
-      allow update: if request.auth != null
-                    && request.auth.uid == uid
-                    && request.auth.token.email_verified == true
-                    && validUserFields(request.resource.data, request.auth);
-
-      // No one can delete a user document from the client
       allow delete: if false;
     }
 
-    // Reject all other collections by default
+    match /users/{uid} {
+      // Private owner profile data. Contains email and phone.
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      allow create, update: if request.auth != null
+                            && request.auth.uid == uid
+                            && validPrivateUser(request.resource.data, request.auth);
+
+      allow delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
 
-function validUserFields(data, auth) {
-  // Only known fields are allowed — no injecting extra keys
+function validPublicProfile(data) {
+  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'createdAt', 'updatedAt'];
+
+  return data.keys().hasOnly(allowedKeys)
+    && validPublicFields(data);
+}
+
+function validPrivateUser(data, auth) {
   let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'phone', 'email', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
+    && validPublicFields(data)
+    && (!('phone' in data) || (data.phone is string && data.phone.size() <= 40))
+    && (!('email' in data) || data.email == auth.token.email);
+}
 
-    // String field length limits
-    && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100))
-    && (!('bio'         in data) || (data.bio         is string
-                                     && data.bio.size() <= 500
-                                     && validBioWordCount(data.bio)))
-    && (!('role'        in data) || (data.role        is string && data.role.size()        <= 100))
-    && (!('portfolio'   in data) || (data.portfolio   is string && data.portfolio.size()   <= 200))
-    && (!('phone'       in data) || (data.phone       is string && data.phone.size()       <= 40))
-
-    // Email must match the authenticated user's actual email — not user-supplied
-    && (!('email' in data) || data.email == auth.token.email)
-
-    // photoURL must be empty or a Firebase Storage URL for this project
+function validPublicFields(data) {
+  return (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100))
+    && (!('bio' in data) || (data.bio is string
+                             && data.bio.size() <= 500
+                             && validBioWordCount(data.bio)))
+    && (!('role' in data) || (data.role is string && data.role.size() <= 100))
+    && (!('portfolio' in data) || (data.portfolio is string && data.portfolio.size() <= 200))
     && (!('photoURL' in data) || data.photoURL == ''
         || data.photoURL.matches('https://firebasestorage\\.googleapis\\.com/v0/b/vscn-39508\\.firebasestorage\\.app/.*')
         || data.photoURL.matches('https://storage\\.googleapis\\.com/vscn-39508\\.firebasestorage\\.app/.*'))
-
-    // Timestamps must be actual Firestore timestamps, not arbitrary strings
     && (!('createdAt' in data) || data.createdAt is timestamp)
     && (!('updatedAt' in data) || data.updatedAt is timestamp);
 }
 
 function validBioWordCount(bio) {
+  // Keep this regex in sync with MAX_BIO_WORDS in src/lib/validation.ts.
   return bio.size() == 0 || bio.matches('^\\s*\\S+(\\s+\\S+){0,34}\\s*$');
 }

@@ -149,6 +149,7 @@
 
   let isLogin = false;
   let lastSubmit = 0;
+  let isSubmitting = false;
   let unsubscribeAuth: (() => void) | null = null;
 
   document.addEventListener("astro:page-load", () => {
@@ -167,6 +168,7 @@
     unsubscribeAuth?.();
     unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (!user) return;
+      if (isSubmitting) return;
       window.location.href = user.emailVerified ? "/community" : "/verify-email";
     });
 
@@ -231,6 +233,7 @@
       }
 
       try {
+        isSubmitting = true;
         if (isLogin) {
           await signInWithEmailAndPassword(auth, email, password);
           window.location.href = "/community";
@@ -255,8 +258,15 @@
           await sendEmailVerification(user);
           window.location.href = "/verify-email";
         }
-      } catch (err: any) {
-        errorEl.textContent = friendlyError(err.code);
+      } catch (err: unknown) {
+        isSubmitting = false;
+        const code =
+          typeof err === "object" && err !== null && "code" in err
+            ? String((err as { code: unknown }).code)
+            : "";
+        errorEl.textContent = code
+          ? friendlyError(code)
+          : "Could not send verification email. Please try again.";
         errorEl.style.display = "block";
       }
     });

@@ -182,6 +182,7 @@ const now = new Date();
 if (process.argv.includes("--delete")) {
   for (const member of fakeMembers) {
     batch.delete(db.collection("users").doc(member.id));
+    batch.delete(db.collection("publicProfiles").doc(member.id));
   }
   await batch.commit();
 
@@ -199,6 +200,19 @@ for (const { id, ...member } of fakeMembers) {
     db.collection("users").doc(id),
     {
       ...member,
+      createdAt: now,
+      updatedAt: now,
+    },
+    { merge: true },
+  );
+  batch.set(
+    db.collection("publicProfiles").doc(id),
+    {
+      displayName: member.displayName,
+      photoURL: member.photoURL,
+      role: member.role,
+      bio: member.bio,
+      portfolio: member.portfolio,
       createdAt: now,
       updatedAt: now,
     },
