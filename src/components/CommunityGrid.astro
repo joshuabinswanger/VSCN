@@ -22,7 +22,7 @@
     align-items: baseline;
     gap: 15px;
     flex-wrap: wrap;
-    font-family: var(--font-space-mono), monospace;
+    font-family: var(--font-space-mono, "Space Mono", monospace);
     font-size: clamp(1.6rem, 5vw, 2.4rem);
     font-weight: 700;
     letter-spacing: -0.02em;
@@ -79,10 +79,10 @@
     padding: 10px 15px 10px 20px;
     border: 1.5px solid #e8e8e8;
     border-radius: var(--radius-sm);
-    background: #fcf8f5;
+    background: #ffffff;
     transition:
       border-color 0.2s,
-      box-shadow 0.2s;
+      filter 0.2s;
     text-align: center;
     align-self: start;
 
@@ -90,13 +90,25 @@
       grid-template-columns: min-content minmax(0, 1fr);
       padding: 15px 25px 15px 15px;
       gap: 5px 25px;
-      width: 100%;
+      width: 330px;
     }
   }
 
   :global(.member-card:hover) {
     border-color: var(--color-border);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+  }
+
+  @media (--bp-desktop), (--bp-desktop-wide) {
+    :global(.member-card:hover),
+    :global(.member-card:focus-within) {
+      filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.07));
+    }
+
+    :global(.member-card:has(.member-bio):hover),
+    :global(.member-card:has(.member-bio):focus-within) {
+      border-bottom-right-radius: 0;
+      border-bottom-left-radius: 0;
+    }
   }
 
   :global(.member-avatar-wrap) {
@@ -226,20 +238,18 @@
 
     :global(.member-bio) {
       position: absolute;
-      top: calc(100% + 8px);
-      left: 0;
+      top: 100%;
+      left: -16.5px;
       z-index: 5;
       display: none;
-      width: 100%;
+      width: 330px;
       box-sizing: border-box;
       margin: 0;
-      padding: 0.85rem;
-      border: 1.5px solid #e8e8e8;
-      border-radius: var(--radius-sm);
-      background: #fff;
-      box-shadow:
-        0 18px 45px rgba(0, 0, 0, 0.16),
-        0 4px 12px rgba(0, 0, 0, 0.1);
+      padding: 25px;
+      border: 1.5px solid var(--color-border);
+      border-top: 0;
+      border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+      background: #ffffff;
     }
 
     :global(.member-card:hover .member-bio),

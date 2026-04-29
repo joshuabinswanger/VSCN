@@ -17,14 +17,20 @@ const { title, fullscreen = false } = Astro.props;
     <meta charset="utf-8" />
     <link rel="icon" type="image/png" href={favicon.src} />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- Inline: prevents white flash and font jump before external CSS loads -->
-    <style>html,body{background:#fafafa;font-family:"Space Mono",monospace}</style>
     <title>{title}</title>
     <ClientRouter />
     <Font cssVariable="--font-space-mono" preload />
   </head>
   <body>
     <Navbar />
-    {fullscreen ? <slot /> : <main><slot /></main>}
+    {
+      fullscreen ? (
+        <slot />
+      ) : (
+        <main>
+          <slot />
+        </main>
+      )
+    }
   </body>
 </html>

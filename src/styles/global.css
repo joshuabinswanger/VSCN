@@ -1,6 +1,6 @@
 /* ── Design tokens ── */
 :root {
-  --font-space-mono: "Space Mono";
+  font-family: var(--font-space-mono);
   --font-size-base: 13px;
   --color-dark: #000000;
   --color-bg: #fafafa;
@@ -33,7 +33,6 @@ html {
   scroll-behavior: smooth;
 }
 body {
-  font-family: var(--font-space-mono), monospace;
   color: black;
   background: var(--color-bg);
   overflow-x: hidden;
@@ -120,7 +119,7 @@ a:hover {
 .font-mono,
 .brand-track,
 .brand-ticker {
-  font-family: var(--font-space-mono), monospace;
+  font-family: var(--font-space-mono, "Space Mono", monospace);
 }
 
 /* ── Form primitives ── */
@@ -200,7 +199,7 @@ a:hover {
   border: none;
   border-radius: var(--radius-sm);
   font: inherit;
-  font-family: var(--font-space-mono), monospace;
+  font-family: var(--font-space-mono, "Space Mono", monospace);
   font-size: var(--font-size-base);
   font-weight: 700;
   cursor: pointer;
@@ -224,7 +223,7 @@ a:hover {
   border: 1.5px solid #111;
   text-decoration: none;
   border-radius: var(--radius-sm);
-  font-family: var(--font-space-mono), monospace;
+  font-family: var(--font-space-mono, "Space Mono", monospace);
   font-size: 0.85rem;
   color: #111;
   transition: opacity 0.2s;
