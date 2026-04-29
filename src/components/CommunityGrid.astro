@@ -39,14 +39,14 @@
 
   .member-grid {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
-    width: 100;
+    width: 100%;
   }
 
   @media (--bp-desktop), (--bp-desktop-wide) {
     .member-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(330px, 1fr));
     }
   }
 
@@ -58,10 +58,11 @@
   :global(.member-card) {
     display: grid;
     width: 100%;
+    min-width: 0;
     box-sizing: border-box;
     grid-template-columns: min-content minmax(0, 1fr);
     align-items: center;
-    gap: 10vw;
+    gap: clamp(1rem, 4vw, 25px);
     padding: 10px 25px 10px 15px;
     border: 1.5px solid #e8e8e8;
     border-radius: var(--radius-sm);
