@@ -1,5 +1,4 @@
 <div class="auth-wrap">
-
   <header class="auth-header">
     <h1 id="auth-title" class="auth-title">Create an Account</h1>
     <p class="auth-sub">
@@ -9,9 +8,7 @@
   </header>
 
   <form id="auth-form" class="auth-form">
-
     <div id="signup-fields">
-
       <div class="field">
         <label class="label" for="name">Display Name</label>
         <input id="name" type="text" class="input" placeholder="Your name" />
@@ -19,67 +16,97 @@
 
       <div class="field">
         <label class="label">Profile Image</label>
-        <div class="avatar-row">
-          <img id="avatar-preview" src="" alt="" class="avatar-preview" style="display:none;" />
-          <label class="file-btn" for="avatar">
+        <div class="auth-avatar-wrap">
+          <div class="avatar-image">
+            <img id="avatar-preview" src="" alt="" class="avatar-img" />
+            <div id="avatar-placeholder" class="avatar-placeholder">?</div>
+          </div>
+          <label class="btn-outline choose-img" for="avatar">
             Choose image
             <input id="avatar" type="file" accept="image/*" style="display:none;" />
           </label>
+          <p id="upload-status" class="upload-status" style="display:none;"></p>
         </div>
-        <p id="upload-status" class="upload-status" style="display:none;"></p>
       </div>
 
       <div class="field">
         <label class="label" for="bio">About you</label>
-        <textarea id="bio" class="input textarea" rows="3" placeholder="A short description about yourself…"></textarea>
+        <textarea
+          id="bio"
+          class="input textarea"
+          rows="3"
+          placeholder="A short description about yourself…"></textarea>
         <p class="field-note">Maximum 35 words.</p>
       </div>
 
-      <div class="field">
+      <div class="field phone">
         <label class="label" for="phone">Phone Number</label>
-        <input id="phone" type="tel" class="input" placeholder="+41 79 123 45 67" autocomplete="tel" />
-        <p class="field-note">Hidden from the community page. Used only to help create a VSCN chat group.</p>
+        <input
+          id="phone"
+          type="tel"
+          class="input"
+          placeholder="+41 79 123 45 67"
+          autocomplete="tel"
+        />
+        <p class="field-note">
+          Hidden from the community page. Used only to help create a VSCN chat group.
+        </p>
       </div>
-
     </div>
 
     <div class="field">
       <label class="label" for="email">Email</label>
-      <input id="email" type="email" class="input" placeholder="you@example.com" required autocomplete="email" />
+      <input
+        id="email"
+        type="email"
+        class="input"
+        placeholder="you@example.com"
+        required
+        autocomplete="email"
+      />
     </div>
 
     <div class="field">
       <label class="label" for="password">Password</label>
-      <input id="password" type="password" class="input" placeholder="••••••••" required autocomplete="current-password" />
+      <input
+        id="password"
+        type="password"
+        class="input"
+        placeholder="••••••••"
+        required
+        autocomplete="current-password"
+      />
     </div>
 
     <p id="auth-error" class="msg-err" style="display:none;"></p>
 
-    <button id="submit-btn" type="submit" class="btn-save">Sign Up</button>
-
+    <div class="auth-footer">
+      <button id="submit-btn" type="submit" class="btn-solid auth-submit-button">Sign Up</button>
+    </div>
   </form>
 </div>
 
 <style>
   .auth-wrap {
     width: 100%;
-    max-width: 500px;
+    max-width: 560px;
     margin: clamp(2rem, 4vw, 4rem) auto;
-    display: flex;
-    flex-direction: column;
-    gap: 1.75rem;
-  }
+    display: grid;
+    grid-auto-rows: min-content;
+    gap: 1.5rem;
+    padding: 0 15px;
+    box-sizing: border-box;
+    overflow: hidden;
 
-  @media (min-width: 560px) {
-    .auth-wrap {
-      background: #fff;
-      border: 1.5px solid #ebebeb;
-      border-radius: var(--radius-xl);
-      padding: clamp(2rem, 4vw, 3rem);
+    @media (--bp-desktop) {
+      padding: 0;
     }
   }
 
-  .auth-header { display: flex; flex-direction: column; gap: 0.3rem; }
+  .auth-header {
+    display: grid;
+    gap: 0.3rem;
+  }
 
   .auth-title {
     font-size: 1.4rem;
@@ -88,7 +115,11 @@
     color: var(--color-dark);
   }
 
-  .auth-sub { font-size: 0.88rem; color: var(--color-muted); }
+  .auth-sub {
+    font-size: 0.88rem;
+    color: var(--color-muted);
+    margin-top: -5px;
+  }
 
   .toggle-link {
     color: var(--color-dark);
@@ -97,24 +128,69 @@
     border-bottom: 1px solid #ccc;
     transition: border-color 0.15s;
   }
-  .toggle-link:hover { border-color: var(--color-dark); }
+  .toggle-link:hover {
+    border-color: var(--color-dark);
+  }
 
   .auth-form {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
+    display: grid;
+    grid-auto-rows: min-content;
+    gap: 1.5rem;
     width: 100%;
     box-sizing: border-box;
     overflow: hidden;
+    margin-bottom: 25vh;
   }
 
   #signup-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
+    display: grid;
+    grid-auto-rows: min-content;
+    gap: 1.5rem;
   }
 
-  .avatar-row { display: flex; align-items: center; gap: 1rem; }
+  .auth-avatar-wrap {
+    position: relative;
+    display: grid;
+    grid-template-columns: min-content 1fr 1fr;
+    justify-items: start;
+    align-items: center;
+    gap: 25px;
+    flex-shrink: 0;
+  }
+
+  .avatar-img,
+  .avatar-placeholder {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .avatar-img {
+    display: none;
+  }
+
+  .auth-avatar-wrap.has-image .avatar-img {
+    display: block;
+  }
+
+  .auth-avatar-wrap.has-image .avatar-placeholder {
+    display: none;
+  }
+
+  .avatar-placeholder {
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    color: #bbb;
+    border: 1.5px solid #e5e5e5;
+  }
+
+  .choose-img {
+    width: fit-content;
+  }
 
   .field-note {
     margin: 0;
@@ -123,13 +199,37 @@
     color: var(--color-muted);
   }
 
-  .avatar-preview {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 1.5px solid #e5e5e5;
-    flex-shrink: 0;
+  .phone {
+    padding-bottom: 2rem;
+  }
+
+  .auth-footer {
+    display: grid;
+    justify-content: end;
+    padding-top: 25px;
+  }
+
+  .auth-submit-button {
+    margin-left: auto;
+  }
+
+  @media (max-width: 520px) {
+    .auth-avatar-wrap {
+      grid-template-columns: min-content 1fr;
+    }
+
+    .upload-status {
+      grid-column: 1 / -1;
+    }
+
+    .auth-footer {
+      justify-content: stretch;
+    }
+
+    .auth-submit-button {
+      width: 100%;
+      margin-left: 0;
+    }
   }
 </style>
 
@@ -153,17 +253,26 @@
   let unsubscribeAuth: (() => void) | null = null;
 
   document.addEventListener("astro:page-load", () => {
-    const form          = document.getElementById("auth-form") as HTMLFormElement;
+    const form = document.getElementById("auth-form") as HTMLFormElement;
     if (!form) return;
 
-    const toggleLink    = document.getElementById("toggle-link")!;
-    const signupFields  = document.getElementById("signup-fields")!;
-    const submitBtn     = document.getElementById("submit-btn")!;
-    const authTitle     = document.getElementById("auth-title")!;
-    const errorEl       = document.getElementById("auth-error")!;
-    const avatarInput   = document.getElementById("avatar") as HTMLInputElement;
+    const toggleLink = document.getElementById("toggle-link")!;
+    const signupFields = document.getElementById("signup-fields")!;
+    const submitBtn = document.getElementById("submit-btn")!;
+    const authTitle = document.getElementById("auth-title")!;
+    const errorEl = document.getElementById("auth-error")!;
+    const avatarInput = document.getElementById("avatar") as HTMLInputElement;
     const avatarPreview = document.getElementById("avatar-preview") as HTMLImageElement;
-    const uploadStatus  = document.getElementById("upload-status")!;
+    const uploadStatus = document.getElementById("upload-status")!;
+    const avatarWrap = avatarPreview.closest<HTMLElement>(".auth-avatar-wrap")!;
+
+    function showPreview(url: string) {
+      avatarPreview.src = url;
+      avatarWrap.classList.toggle("has-image", !!url);
+      avatarPreview.onerror = () => {
+        avatarWrap.classList.remove("has-image");
+      };
+    }
 
     unsubscribeAuth?.();
     unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -174,7 +283,7 @@
 
     // Reset state on each page load
     isLogin = false;
-    signupFields.style.display = "flex";
+    signupFields.style.display = "grid";
     submitBtn.textContent = "Sign Up";
     authTitle.textContent = "Create an Account";
     toggleLink.textContent = "Log in instead";
@@ -187,11 +296,10 @@
         uploadStatus.textContent = result.error!;
         uploadStatus.style.display = "block";
         avatarInput.value = "";
-        avatarPreview.style.display = "none";
+        showPreview("");
         return;
       }
-      avatarPreview.src = URL.createObjectURL(file);
-      avatarPreview.style.display = "block";
+      showPreview(URL.createObjectURL(file));
       uploadStatus.textContent = `Selected: ${file.name}`;
       uploadStatus.style.display = "block";
     });
@@ -199,11 +307,11 @@
     toggleLink.addEventListener("click", (e) => {
       e.preventDefault();
       isLogin = !isLogin;
-      signupFields.style.display  = isLogin ? "none" : "flex";
-      submitBtn.textContent       = isLogin ? "Log In" : "Sign Up";
-      toggleLink.textContent      = isLogin ? "Sign up instead" : "Log in instead";
-      authTitle.textContent       = isLogin ? "Log In" : "Create an Account";
-      errorEl.style.display       = "none";
+      signupFields.style.display = isLogin ? "none" : "grid";
+      submitBtn.textContent = isLogin ? "Log In" : "Sign Up";
+      toggleLink.textContent = isLogin ? "Sign up instead" : "Log in instead";
+      authTitle.textContent = isLogin ? "Log In" : "Create an Account";
+      errorEl.style.display = "none";
     });
 
     form.addEventListener("submit", async (e) => {
@@ -218,12 +326,12 @@
       }
       lastSubmit = now;
 
-      const email    = (document.getElementById("email") as HTMLInputElement).value;
+      const email = (document.getElementById("email") as HTMLInputElement).value;
       const password = (document.getElementById("password") as HTMLInputElement).value;
-      const name     = (document.getElementById("name") as HTMLInputElement).value;
-      const bio      = (document.getElementById("bio") as HTMLTextAreaElement).value.trim();
-      const phone    = (document.getElementById("phone") as HTMLInputElement).value.trim();
-      const file     = avatarInput.files?.[0];
+      const name = (document.getElementById("name") as HTMLInputElement).value;
+      const bio = (document.getElementById("bio") as HTMLTextAreaElement).value.trim();
+      const phone = (document.getElementById("phone") as HTMLInputElement).value.trim();
+      const file = avatarInput.files?.[0];
       const bioResult = validateBio(bio);
 
       if (!bioResult.ok) {

@@ -20,7 +20,7 @@
 @custom-media --bp-mobile (width <= 767px);
 @custom-media --bp-desktop (767px < width);
 
-@media (min-width: 767px) {
+@media (--bp-desktop) {
   :root {
     --font-size-base: 15px;
   }
@@ -49,7 +49,7 @@ body::before {
   height: 200%;
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.35;
+  opacity: 0.5;
   background-image: url("../assets/noise-transparent.png");
   background-repeat: repeat;
   background-size: 180px 180px;
