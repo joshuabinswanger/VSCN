@@ -1,28 +1,36 @@
 ---
-import TickerBackground from "./TickerBackground.astro";
+import "../styles/global.css";
 ---
 
-<div class="content">
-  <p class="desc">
-    <strong>VSCN</strong> — Visual Science Communication Network — is a community of illustrators, scientists,
-    designers, and storytellers who care about making knowledge look as good as it feels to understand.
-    <br /><br />
-    We're just getting started — come join us!
-  </p>
-  <div class="actions">
-    <a href="/community" class="btn-solid btn-join">Community</a>
+<div class="wrapper">
+  <div class="content">
+    <p class="desc">
+      <strong>VSCN</strong> — Visual Science Communication Network — is a community of illustrators, scientists,
+      designers, and storytellers who care about making knowledge look as good as it feels to understand.
+      <br /><br />
+      We're just getting started — come join us!
+    </p>
+    <div class="actions">
+      <a id="hero-cta" href="/signup" class="btn-solid btn-join">Join the Network</a>
+    </div>
   </div>
 </div>
 
 <style>
+  .wrapper {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    align-items: center;
+    padding-top: 145px;
+  }
   .content {
-    position: absolute;
-    inset: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: flex-start;
-    padding: 2.5rem;
+    gap: 1.5rem;
+    padding: clamp(2rem, 6vw, 7rem);
   }
 
   .card {
@@ -41,10 +49,11 @@ import TickerBackground from "./TickerBackground.astro";
   }
 
   .desc {
+    max-width: 680px;
     font-weight: 400;
-    font-size: clamp(0.9rem, 2vw, 1.05rem);
+    font-size: clamp(1rem, 1.4vw, 1.25rem);
     color: #111;
-    line-height: 1.85;
+    line-height: 1.8;
   }
 
   .actions {
@@ -53,15 +62,33 @@ import TickerBackground from "./TickerBackground.astro";
     flex-wrap: wrap;
   }
 
-  @media (max-width: 600px) {
+  @media (--bp-desktop) {
     .content {
       align-items: center;
       padding: 1.5rem;
+      width: fit-content;
     }
 
     .actions {
-      flex-direction: column;
-      width: 100%;
+      align-self: flex-start;
     }
   }
 </style>
+
+<script>
+  import { onAuthStateChanged } from "firebase/auth";
+  import { auth } from "../lib/firebase.ts";
+
+  let unsubscribeAuth: (() => void) | null = null;
+
+  document.addEventListener("astro:page-load", () => {
+    const cta = document.getElementById("hero-cta") as HTMLAnchorElement | null;
+    if (!cta) return;
+
+    unsubscribeAuth?.();
+    unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      cta.href = user ? "/community" : "/signup";
+      cta.textContent = user ? "Community" : "Join the Network";
+    });
+  });
+</script>

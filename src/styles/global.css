@@ -8,13 +8,19 @@
   --color-muted: #888;
   --color-error: #d94f4f;
   --color-success: #2a9d5c;
+  --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 16px;
 }
 
-@media (min-width: 640px) {
+/* Media query aliases available in global CSS and Astro component styles. */
+
+@custom-media --bp-mobile (width <= 767px);
+@custom-media --bp-desktop (767px < width);
+
+@media (min-width: 767px) {
   :root {
     --font-size-base: 15px;
   }
@@ -33,10 +39,71 @@ body {
   overflow-x: hidden;
   margin: 0;
 }
+
+body::before {
+  content: "";
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.4;
+  background-image: url("../assets/noise-transparent.png");
+  background-repeat: repeat;
+  background-size: 180px 180px;
+  mix-blend-mode: multiply;
+  animation: page-noise 0.35s steps(5) infinite;
+  will-change: transform;
+}
+
+@keyframes page-noise {
+  0% {
+    transform: translate(0, 0);
+  }
+  10% {
+    transform: translate(-4%, -5%);
+  }
+  20% {
+    transform: translate(-8%, 4%);
+  }
+  30% {
+    transform: translate(5%, -8%);
+  }
+  40% {
+    transform: translate(-4%, 8%);
+  }
+  50% {
+    transform: translate(-8%, 4%);
+  }
+  60% {
+    transform: translate(8%, 0);
+  }
+  70% {
+    transform: translate(0, 6%);
+  }
+  80% {
+    transform: translate(-8%, 0);
+  }
+  90% {
+    transform: translate(6%, 4%);
+  }
+  100% {
+    transform: translate(4%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    animation: none;
+  }
+}
+
 main {
   max-width: 900px;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  justify-items: center;
 }
 
 /* ── Links — kill browser default blue/purple ── */
@@ -76,7 +143,7 @@ a:hover {
   box-sizing: border-box;
   padding: 5px 15px;
   border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.95rem;
   color: black;
@@ -104,7 +171,7 @@ a:hover {
   display: inline-block;
   padding: 10px 15px;
   border: 1.5px solid #ddd;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   font-size: 0.88rem;
   font-weight: 600;
   color: #333;
@@ -131,7 +198,7 @@ a:hover {
   color: #fff;
   text-decoration: none;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   font: inherit;
   font-family: var(--font-space-mono), monospace;
   font-size: var(--font-size-base);
@@ -156,7 +223,7 @@ a:hover {
   padding: 0.75rem 1.5rem;
   border: 1.5px solid #111;
   text-decoration: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   font-family: var(--font-space-mono), monospace;
   font-size: 0.85rem;
   color: #111;
@@ -177,7 +244,7 @@ a:hover {
   background: var(--color-dark);
   color: #fff;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.95rem;
   font-weight: 700;
@@ -210,7 +277,7 @@ a:hover {
   background: transparent;
   color: var(--color-muted);
   border: 1.5px solid #ddd;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   font: inherit;
   font-size: 0.95rem;
   cursor: pointer;

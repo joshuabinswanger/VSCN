@@ -82,6 +82,8 @@ import "../styles/global.css";
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     padding: 5px 2px;
+    max-width: 720px;
+    margin: auto;
   }
 
   .nav-link {
@@ -89,7 +91,9 @@ import "../styles/global.css";
     font-weight: 400;
     letter-spacing: 0.04em;
     text-decoration: none;
-    transition: color 0.15s;
+    transition:
+      color 0.15s,
+      font-weight 0.15s;
   }
 
   .nav-link:hover {
@@ -98,6 +102,7 @@ import "../styles/global.css";
 
   .nav-link--active {
     font-weight: 700;
+    color: var(--color-dark);
   }
 
   /* Left item: default (justify-self: start) */
@@ -118,10 +123,20 @@ import "../styles/global.css";
   import { auth } from "../lib/firebase.ts";
   import { onAuthStateChanged } from "firebase/auth";
 
+  function normalisePath(path: string): string {
+    return path.replace(/\/+$/, "") || "/";
+  }
+
   function setActiveLink() {
-    const path = window.location.pathname;
+    const path = normalisePath(window.location.pathname);
     document.querySelectorAll<HTMLAnchorElement>(".nav-link").forEach((link) => {
-      link.classList.toggle("nav-link--active", link.getAttribute("href") === path);
+      const isActive = normalisePath(link.pathname) === path;
+      link.classList.toggle("nav-link--active", isActive);
+      if (isActive) {
+        link.setAttribute("aria-current", "page");
+      } else {
+        link.removeAttribute("aria-current");
+      }
     });
   }
 
@@ -135,6 +150,7 @@ import "../styles/global.css";
     onAuthStateChanged(auth, (user) => {
       navJoin.style.display = user ? "none" : "block";
       navProfile.style.display = user ? "block" : "none";
+      setActiveLink();
     });
   });
 </script>
