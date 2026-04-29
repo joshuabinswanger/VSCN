@@ -15,10 +15,10 @@ import "../styles/global.css";
   </div>
 
   <div class="nav-links">
-    <a href="/info" class="nav-link">Info</a>
-    <a href="/community" class="nav-link nav-center">Community</a>
-    <a href="/signup" class="nav-link nav-right" id="nav-join">Join</a>
-    <a href="/profile" class="nav-link nav-right" id="nav-profile" style="display:none;">Profile</a>
+    <a href="/info" class="nav-link" data-label="Info">Info</a>
+    <a href="/community" class="nav-link nav-center" data-label="Community">Community</a>
+    <a href="/signup" class="nav-link nav-right" id="nav-join" data-label="Join">Join</a>
+    <a href="/profile" class="nav-link nav-right" id="nav-profile" data-label="Profile" style="display:none;">Profile</a>
   </div>
 </nav>
 
@@ -87,6 +87,7 @@ import "../styles/global.css";
   }
 
   .nav-link {
+    display: inline-grid;
     font-size: var(--font-size-base);
     font-weight: 400;
     letter-spacing: 0.04em;
@@ -94,6 +95,15 @@ import "../styles/global.css";
     transition:
       color 0.15s,
       font-weight 0.15s;
+  }
+
+  .nav-link::after {
+    content: attr(data-label);
+    grid-area: 1 / 1;
+    height: 0;
+    overflow: hidden;
+    font-weight: 700;
+    visibility: hidden;
   }
 
   .nav-link:hover {
