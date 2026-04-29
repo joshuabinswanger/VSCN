@@ -1,0 +1,262 @@
+/* ── Design tokens ── */
+:root {
+  --font-space-mono: "Space Mono";
+  --font-size-base: 13px;
+  --color-dark: #000000;
+  --color-bg: #fafafa;
+  --color-border: #e0e0e0;
+  --color-muted: #888;
+  --color-error: #d94f4f;
+  --color-success: #2a9d5c;
+  --radius-sm: 4px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 16px;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --font-size-base: 15px;
+  }
+}
+
+/* ── Reset ── */
+
+html {
+  font-size: var(--font-size-base);
+  scroll-behavior: smooth;
+}
+body {
+  font-family: var(--font-space-mono), monospace;
+  color: black;
+  background: var(--color-bg);
+  overflow-x: hidden;
+  margin: 0;
+}
+main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* ── Links — kill browser default blue/purple ── */
+a,
+a:visited {
+  color: inherit;
+  text-decoration: none;
+}
+a:hover {
+  opacity: 1;
+}
+
+/* ── Font utility ── */
+.font-mono,
+.brand-track,
+.brand-ticker {
+  font-family: var(--font-space-mono), monospace;
+}
+
+/* ── Form primitives ── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.input {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 5px 15px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: 0.95rem;
+  color: black;
+  background: var(--color-bg);
+  transition: border-color 0.15s;
+  outline: none;
+}
+.input:focus {
+  border-color: #111;
+}
+.input:focus-visible {
+  border: 2px solid #111;
+  outline-offset: 2px;
+}
+.input::placeholder {
+  color: #bbb;
+}
+.textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* ── File input ── */
+.file-btn {
+  display: inline-block;
+  padding: 10px 15px;
+  border: 1.5px solid #ddd;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #333;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+  width: fit-content;
+  height: fit-content;
+}
+.file-btn:hover {
+  border-color: #111;
+  background: #f4f4f4;
+}
+.upload-status {
+  font-size: 0.82rem;
+  color: #666;
+}
+
+/* ── Buttons ── */
+.btn-primary {
+  display: inline-block;
+  padding: 10px 15px;
+  color: #fff;
+  text-decoration: none;
+  border: none;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-family: var(--font-space-mono), monospace;
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-primary:hover {
+  background: black;
+}
+.btn-primary:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
+.btn-primary:focus-visible {
+  outline: 2px solid #111;
+  outline-offset: 2px;
+}
+
+.btn-ghost {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  border: 1.5px solid #111;
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-space-mono), monospace;
+  font-size: 0.85rem;
+  color: #111;
+  transition: opacity 0.2s;
+}
+.btn-ghost:hover {
+  opacity: 0.6;
+}
+
+/* ── Generic reusable buttons ── */
+.btn-save,
+.btn-solid {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  padding: 0.78rem 2rem;
+  background: var(--color-dark);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.btn-solid,
+.btn-solid:visited,
+.btn-solid a,
+.btn-solid a:visited {
+  color: #fff;
+}
+.btn-save:hover,
+.btn-solid:hover {
+  background: #333;
+}
+.btn-save:disabled,
+.btn-solid:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
+
+.btn-logout,
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  color: var(--color-muted);
+  border: 1.5px solid #ddd;
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    border-color 0.2s,
+    color 0.2s;
+}
+.btn-logout:hover,
+.btn-outline:hover {
+  border-color: #aaa;
+  color: #333;
+}
+.btn-logout:disabled,
+.btn-outline:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-dark);
+  cursor: pointer;
+  border-bottom: 1px solid #ccc;
+  transition: border-color 0.15s;
+}
+.btn-link:hover {
+  border-color: var(--color-dark);
+}
+.btn-link:disabled {
+  color: #aaa;
+  border-color: transparent;
+  cursor: not-allowed;
+}
+
+/* ── Feedback messages ── */
+.msg-ok {
+  font-size: 0.88rem;
+  color: var(--color-success);
+}
+.msg-err {
+  font-size: 0.88rem;
+  color: var(--color-error);
+}

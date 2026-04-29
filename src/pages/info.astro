@@ -2,31 +2,133 @@
 import Layout from "../layouts/Layout.astro";
 ---
 
-<Layout title="Info">
-  <h1>About This Community</h1>
+<Layout title="Info — VSCN">
+  <div class="info-page">
 
-  <section style="margin-top: 1.5rem;">
-    <h2>What we are</h2>
-    <p style="margin-top: 0.5rem; color: #555;">
-      We are a community of [describe your community here]. Fill this section with
-      your mission, values, or whatever best describes who you are.
-    </p>
-  </section>
+    <header class="info-header">
+      <h1 class="info-title">About VSCN</h1>
+      <p class="info-sub">Visual Science Communication Network</p>
+    </header>
 
-  <section style="margin-top: 2rem;">
-    <h2>Rules</h2>
-    <ol style="margin-top: 0.5rem; padding-left: 1.4rem; color: #555; display: flex; flex-direction: column; gap: 0.4rem;">
-      <li>Be respectful to other members.</li>
-      <li>No spam or self-promotion without permission.</li>
-      <li>Keep discussions on topic.</li>
-      <li>Add your own rules here.</li>
-    </ol>
-  </section>
+    <section class="info-section">
+      <p>
+        VSCN is a community built for illustrators, scientists, designers, and anyone else
+        who cares about making scientific knowledge visible, accessible, and beautiful.
+        The idea is simple: the people doing science illustration and science communication
+        deserve a place to find each other.
+      </p>
+      <p>
+        This site was created alongside <a href="https://rhizome.ch" target="_blank" rel="noopener noreferrer">rhizome.ch</a> as
+        a space for the science illustration community to connect — to share work, discover
+        collaborators, and stay in touch with what's happening in the field.
+      </p>
+    </section>
 
-  <section style="margin-top: 2rem;">
-    <h2>Contact</h2>
-    <p style="margin-top: 0.5rem; color: #555;">
-      Reach us at <a href="mailto:hello@example.com">hello@example.com</a>
-    </p>
-  </section>
+    <section class="info-section">
+      <h2 class="info-heading">What we're building toward</h2>
+      <ul class="info-list">
+        <li>A directory of science communicators and illustrators you can actually browse</li>
+        <li>Events — online and in person — for the community to meet and collaborate</li>
+        <li>A place to surface and celebrate the work being done in this space</li>
+        <li>Connections between scientists who need visuals and the people who make them</li>
+      </ul>
+    </section>
+
+    <section class="info-section">
+      <h2 class="info-heading">We just got started</h2>
+      <p>
+        This is early days. If you want to help build this — whether that's design,
+        development, community organising, or just having ideas — please reach out.
+        The more people who shape this, the better it'll be.
+      </p>
+      <a href="mailto:hello@rhizome.ch" class="info-contact">Get in touch →</a>
+    </section>
+
+  </div>
 </Layout>
+
+<style>
+  .info-page {
+    max-width: 600px;
+    margin: 2rem auto;
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+  }
+
+  .info-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .info-title {
+    font-family: var(--font-space-mono), monospace;
+    font-size: clamp(1.8rem, 5vw, 2.6rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--color-dark);
+    line-height: 1.1;
+  }
+
+  .info-sub {
+    font-size: 0.88rem;
+    color: var(--color-muted);
+    letter-spacing: 0.02em;
+  }
+
+  .info-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .info-heading {
+    font-family: var(--font-space-mono), monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-dark);
+  }
+
+  .info-section p {
+    font-size: 1rem;
+    color: #333;
+    line-height: 1.85;
+  }
+
+  .info-section a {
+    color: var(--color-dark);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .info-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding-left: 1.25rem;
+  }
+
+  .info-list li {
+    font-size: 1rem;
+    color: #333;
+    line-height: 1.6;
+  }
+
+  .info-contact {
+    display: inline-block;
+    font-family: var(--font-space-mono), monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-dark);
+    text-decoration: none;
+    border-bottom: 1.5px solid var(--color-dark);
+    padding-bottom: 1px;
+    transition: opacity 0.15s;
+    width: fit-content;
+  }
+
+  .info-contact:hover { opacity: 0.5; }
+</style>

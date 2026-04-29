@@ -1,6 +1,7 @@
 ---
 import type { UserDoc } from "../lib/firestore.ts";
 import { normaliseUrl } from "../lib/validation.ts";
+import "../styles/global.css";
 
 interface Props {
   member: UserDoc & { uid: string };
@@ -12,77 +13,114 @@ const initial = m.displayName?.[0]?.toUpperCase() ?? "?";
 ---
 
 <div class="member-card">
-  {m.photoURL
-    ? <img class="member-avatar" src={m.photoURL} alt={m.displayName} />
-    : <div class="member-avatar">{initial}</div>
-  }
+  <div class="avatar-wrap">
+    {
+      m.photoURL ? (
+        <img class="member-avatar" src={m.photoURL} alt={m.displayName} />
+      ) : (
+        <div class="member-avatar member-avatar--placeholder">{initial}</div>
+      )
+    }
+  </div>
   <div class="member-info">
     <div class="member-name">{m.displayName || "Anonymous"}</div>
     {m.role && <div class="member-role">{m.role}</div>}
-    {href && (
-      <a class="member-portfolio" href={href} target="_blank" rel="noopener">
-        {m.portfolio}
-      </a>
-    )}
+    {
+      href && (
+        <a class="member-portfolio" href={href} target="_blank" rel="noopener noreferrer">
+          {m.portfolio}
+        </a>
+      )
+    }
   </div>
 </div>
 
 <style>
   .member-card {
-    display: flex;
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: 1fr 2fr;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem 1.1rem;
+    gap: 0.9rem;
+    padding: 10px;
     border: 1.5px solid #e8e8e8;
-    border-radius: 10px;
-    background: var(--color-bg);
-    transition: border-color 0.15s;
+    border-radius: var(--radius-sm);
+    background: #fff;
+    transition:
+      border-color 0.2s,
+      box-shadow 0.2s;
+    text-align: center;
   }
-  .member-card:hover { border-color: #aaa; }
 
-  .member-avatar {
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    object-fit: cover;
-    background: #f0f0f0;
-    border: 1.5px solid #e5e5e5;
-    flex-shrink: 0;
+  .member-card:hover {
+    border-color: var(--color-border);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+  }
+
+  .avatar-wrap {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.3rem;
+  }
+
+  .member-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid #e5e5e5;
+  }
+
+  .member-avatar--placeholder {
+    background: #f0f0f0;
+    display: flex;
+    font-size: 1.8rem;
     color: #bbb;
   }
 
-  .member-info { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
+  .member-info {
+    display: grid;
+    grid-template-rows: min-content 1fr 1fr;
+    text-align: left;
+    align-items: left;
+    gap: 0.2rem;
+    width: 100%;
+    min-width: 0;
+  }
 
   .member-name {
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: 1rem;
     color: var(--color-dark);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 100%;
   }
 
   .member-role {
-    font-size: 0.8rem;
-    color: #777;
+    font-size: 0.78rem;
+    color: var(--color-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 100%;
   }
 
   .member-portfolio {
     display: inline-block;
-    margin-top: 0.25rem;
-    font-size: 0.8rem;
-    color: #555;
-    text-decoration: none;
-    word-break: break-all;
+    margin-top: 0.4rem;
+    color: black;
+    text-decoration: underline;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
     transition: color 0.15s;
   }
-  .member-portfolio:hover { color: #000; }
+
+  .member-portfolio:hover {
+    color: #000;
+  }
 </style>

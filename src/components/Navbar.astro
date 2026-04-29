@@ -1,19 +1,25 @@
 ---
-interface Props {
-  navLinks?: boolean;
-}
-const { navLinks = true } = Astro.props;
+import "../styles/global.css";
 ---
 
 <nav transition:persist>
-  <a href="/" class="brand-ticker" aria-label="Home">
-    <div class="brand-track">
-      <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
-      <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
-      <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
-      <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
-    </div>
-  </a>
+  <div class="brand-ticker">
+    <a href="/" class="brand-link">
+      <div class="brand-track">
+        <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
+        <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
+        <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
+        <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
+      </div>
+    </a>
+  </div>
+
+  <div class="nav-links">
+    <a href="/info" class="nav-link">Info</a>
+    <a href="/community" class="nav-link nav-center">Community</a>
+    <a href="/signup" class="nav-link nav-right" id="nav-join">Join</a>
+    <a href="/profile" class="nav-link nav-right" id="nav-profile" style="display:none;">Profile</a>
+  </div>
 </nav>
 
 <style>
@@ -21,8 +27,7 @@ const { navLinks = true } = Astro.props;
     position: sticky;
     top: 0;
     z-index: 10;
-    background: #fafafa;
-    border-bottom: none;
+    background: var(--color-bg);
     overflow: hidden;
     line-height: 1;
   }
@@ -31,7 +36,18 @@ const { navLinks = true } = Astro.props;
     display: block;
     width: 100%;
     overflow: hidden;
+    height: 8vh;
+  }
+
+  .brand-link {
+    display: block;
+    height: 100%;
     text-decoration: none;
+    color: inherit;
+  }
+
+  .brand-link:visited {
+    color: black;
   }
 
   .brand-track {
@@ -42,54 +58,83 @@ const { navLinks = true } = Astro.props;
     align-items: baseline;
     animation: nav-scroll 32s linear infinite;
     font-weight: 700;
-    font-size: 12vh;
+    font-size: 8vh;
     letter-spacing: -0.03em;
     color: var(--color-dark);
   }
 
-  .brand-track span { padding-right: 0; }
+  .brand-track span {
+    padding-right: 0;
+    height: min-content;
+  }
 
   @keyframes nav-scroll {
-    from { transform: translateX(0); }
-    to   { transform: translateX(-50%); }
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
   }
 
+  /* ── Nav links row ── */
   .nav-links {
-    position: absolute;
-    bottom: 0.5rem;
-    right: 0;
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    padding: 0 1.25rem;
-    background: linear-gradient(to right, transparent, #fafafa 28%);
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    padding: 5px 2px;
   }
 
-  nav :global(a) { text-decoration: none; color: #555; font-size: 0.9rem; }
-  nav :global(a:hover) { color: #000; }
+  .nav-link {
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
 
-  @media (max-width: 480px) {
-    .nav-links { display: none; }
+  .nav-link:hover {
+    color: #000;
+  }
+
+  .nav-link--active {
+    font-weight: 700;
+  }
+
+  /* Left item: default (justify-self: start) */
+  /* Center item */
+  .nav-center {
+    justify-self: center;
+    text-align: center;
+  }
+
+  /* Right item */
+  .nav-right {
+    justify-self: end;
+    text-align: right;
   }
 </style>
 
 <script>
   import { auth } from "../lib/firebase.ts";
-  import { onAuthStateChanged, signOut } from "firebase/auth";
+  import { onAuthStateChanged } from "firebase/auth";
 
-  const profileLink = document.getElementById("nav-profile");
-  const logoutLink  = document.getElementById("nav-logout");
-
-  if (profileLink && logoutLink) {
-    onAuthStateChanged(auth, (user) => {
-      profileLink.style.display = user ? "inline" : "none";
-      logoutLink.style.display  = user ? "inline" : "none";
-    });
-
-    logoutLink.addEventListener("click", async (e) => {
-      e.preventDefault();
-      await signOut(auth);
-      window.location.href = "/";
+  function setActiveLink() {
+    const path = window.location.pathname;
+    document.querySelectorAll<HTMLAnchorElement>(".nav-link").forEach((link) => {
+      link.classList.toggle("nav-link--active", link.getAttribute("href") === path);
     });
   }
+
+  document.addEventListener("astro:page-load", () => {
+    setActiveLink();
+
+    const navJoin = document.getElementById("nav-join");
+    const navProfile = document.getElementById("nav-profile");
+    if (!navJoin || !navProfile) return;
+
+    onAuthStateChanged(auth, (user) => {
+      navJoin.style.display = user ? "none" : "block";
+      navProfile.style.display = user ? "block" : "none";
+    });
+  });
 </script>

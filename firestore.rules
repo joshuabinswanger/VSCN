@@ -1,0 +1,56 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{uid} {
+      // Anyone can read public profiles (needed for the community page)
+      allow read: if true;
+
+      // Only the authenticated owner can create their own document
+      allow create: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.auth.token.email_verified == true
+                    && validUserFields(request.resource.data, request.auth);
+
+      // Only the authenticated owner can update their own document
+      allow update: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.auth.token.email_verified == true
+                    && validUserFields(request.resource.data, request.auth);
+
+      // No one can delete a user document from the client
+      allow delete: if false;
+    }
+
+    // Reject all other collections by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+function validUserFields(data, auth) {
+  // Only known fields are allowed — no injecting extra keys
+  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'email', 'createdAt', 'updatedAt'];
+
+  return data.keys().hasOnly(allowedKeys)
+
+    // String field length limits
+    && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100))
+    && (!('bio'         in data) || (data.bio         is string && data.bio.size()         <= 500))
+    && (!('role'        in data) || (data.role        is string && data.role.size()        <= 100))
+    && (!('portfolio'   in data) || (data.portfolio   is string && data.portfolio.size()   <= 200))
+
+    // Email must match the authenticated user's actual email — not user-supplied
+    && (!('email' in data) || data.email == auth.token.email)
+
+    // photoURL must be empty or a Firebase Storage URL for this project
+    && (!('photoURL' in data) || data.photoURL == ''
+        || data.photoURL.matches('https://firebasestorage\\.googleapis\\.com/v0/b/vscn-39508\\.firebasestorage\\.app/.*')
+        || data.photoURL.matches('https://storage\\.googleapis\\.com/vscn-39508\\.firebasestorage\\.app/.*'))
+
+    // Timestamps must be actual Firestore timestamps, not arbitrary strings
+    && (!('createdAt' in data) || data.createdAt is timestamp)
+    && (!('updatedAt' in data) || data.updatedAt is timestamp);
+}

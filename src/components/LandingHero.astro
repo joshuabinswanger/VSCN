@@ -1,0 +1,67 @@
+---
+import TickerBackground from "./TickerBackground.astro";
+---
+
+<div class="content">
+  <p class="desc">
+    <strong>VSCN</strong> — Visual Science Communication Network — is a community of illustrators, scientists,
+    designers, and storytellers who care about making knowledge look as good as it feels to understand.
+    <br /><br />
+    We're just getting started — come join us!
+  </p>
+  <div class="actions">
+    <a href="/community" class="btn-solid btn-join">Community</a>
+  </div>
+</div>
+
+<style>
+  .content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 2.5rem;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 2rem 2.25rem;
+    max-width: 520px;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1.5px solid rgba(0, 0, 0, 0.07);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 4px 32px rgba(0, 0, 0, 0.06);
+  }
+
+  .desc {
+    font-weight: 400;
+    font-size: clamp(0.9rem, 2vw, 1.05rem);
+    color: #111;
+    line-height: 1.85;
+  }
+
+  .actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 600px) {
+    .content {
+      align-items: center;
+      padding: 1.5rem;
+    }
+
+    .actions {
+      flex-direction: column;
+      width: 100%;
+    }
+  }
+</style>

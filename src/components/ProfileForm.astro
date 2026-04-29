@@ -1,19 +1,17 @@
 <div id="loading" class="loading-state">Loading profile…</div>
 
-<form id="profile-form" class="profile-form" style="display:none;">
-
-  <header class="form-header">
-    <div class="avatar-wrap">
-      <img id="avatar-preview" src="" alt="" class="avatar-img" style="display:none;" />
+<form id="profile-form" class="profile-form">
+  <div class="avatar-wrap">
+    <div class="avatar-image">
+      <img id="avatar-preview" src="" alt="" class="avatar-img" />
       <div id="avatar-placeholder" class="avatar-placeholder">?</div>
+      <p id="upload-status" class="upload-status" style="display:none;"></p>
     </div>
-    <div>
-      <h1 class="form-title">Edit Profile</h1>
-      <p class="form-sub">How you appear to the community</p>
-    </div>
-  </header>
-
-  <hr class="divider" />
+    <label class="btn-outline" for="avatar">
+      Choose image
+      <input id="avatar" type="file" accept="image/*" style="display:none;" />
+    </label>
+  </div>
 
   <div class="field">
     <label class="label" for="name">Display Name</label>
@@ -22,12 +20,21 @@
 
   <div class="field">
     <label class="label" for="role">What you do</label>
-    <input id="role" type="text" class="input" placeholder="e.g. Science Illustrator, Data Journalist, Researcher…" />
+    <input
+      id="role"
+      type="text"
+      class="input"
+      placeholder="e.g. Science Illustrator, Data Journalist, Researcher…"
+    />
   </div>
 
   <div class="field">
     <label class="label" for="bio">About you</label>
-    <textarea id="bio" rows="4" class="input textarea" placeholder="A short description of your work, interests, or background…"></textarea>
+    <textarea
+      id="bio"
+      rows="4"
+      class="input textarea"
+      placeholder="A short description of your work, interests, or background…"></textarea>
   </div>
 
   <div class="field">
@@ -38,34 +45,28 @@
     </div>
   </div>
 
-  <div class="field">
-    <label class="label">Profile Image</label>
-    <label class="file-btn" for="avatar">
-      Choose image
-      <input id="avatar" type="file" accept="image/*" style="display:none;" />
-    </label>
-    <p id="upload-status" class="upload-status" style="display:none;"></p>
-  </div>
-
   <hr class="divider" />
 
   <div class="form-footer">
     <p id="save-msg" class="msg-ok" style="display:none;">Changes saved.</p>
     <p id="save-error" class="msg-err" style="display:none;"></p>
     <div class="footer-actions">
-      <button id="btn-logout" type="button" class="btn-logout">Log Out</button>
-      <button type="submit" class="btn-save">Save Changes</button>
+      <button id="btn-logout" type="button" class="btn-outline">Log Out</button>
+      <button type="submit" class="btn-solid profile-save-button">Save Changes</button>
     </div>
   </div>
-
 </form>
 
 <style>
-  .loading-state { margin-top: 3rem; color: #999; font-size: 0.9rem; }
+  .loading-state {
+    margin-top: 3rem;
+    color: #999;
+    font-size: 0.9rem;
+  }
 
   .profile-form {
-    display: flex;
-    flex-direction: column;
+    display: none;
+    grid-auto-rows: min-content;
     gap: 1.5rem;
     width: 100%;
     max-width: 480px;
@@ -75,8 +76,28 @@
     overflow: hidden;
   }
 
-  .form-header { display: flex; align-items: center; gap: 1.25rem; }
-  .avatar-wrap { position: relative; flex-shrink: 0; }
+  .profile-form.is-loaded {
+    display: grid;
+  }
+
+  @media (min-width: 560px) {
+    .profile-form {
+      background: #fff;
+      border: 1.5px solid #ebebeb;
+      border-radius: var(--radius-xl);
+      padding: 2.5rem;
+    }
+  }
+
+  .avatar-wrap {
+    position: relative;
+    display: grid;
+    grid-template-columns: min-content 1fr;
+    justify-items: start;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
 
   .avatar-img,
   .avatar-placeholder {
@@ -84,6 +105,19 @@
     height: 72px;
     border-radius: 50%;
     object-fit: cover;
+  }
+
+  /* default: show placeholder, hide image */
+  .avatar-img {
+    display: none;
+  }
+
+  /* has-image: show image, hide placeholder */
+  .avatar-wrap.has-image .avatar-img {
+    display: block;
+  }
+  .avatar-wrap.has-image .avatar-placeholder {
+    display: none;
   }
 
   .avatar-placeholder {
@@ -96,25 +130,39 @@
     border: 1.5px solid #e5e5e5;
   }
 
-  .form-title { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; color: var(--color-dark); }
-  .form-sub   { font-size: 0.85rem; color: var(--color-muted); margin-top: 0.2rem; }
+  .form-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-dark);
+  }
+  .form-sub {
+    font-size: 0.85rem;
+    color: var(--color-muted);
+    margin-top: 0.2rem;
+  }
 
-  .divider { border: none; border-top: 1px solid #eee; margin: 0; }
+  .divider {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 0;
+  }
 
   .input-prefix-wrap {
     display: flex;
     align-items: center;
     border: 1.5px solid var(--color-border);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     overflow: hidden;
     transition: border-color 0.15s;
-    width: 100%;
     min-width: 0;
   }
-  .input-prefix-wrap:focus-within { border-color: #111; }
+  .input-prefix-wrap:focus-within {
+    border-color: #111;
+  }
 
   .input-prefix {
-    padding: 0.7rem 0.75rem;
+    padding: 5px 5px;
     background: #f5f5f5;
     color: var(--color-muted);
     font-size: 0.88rem;
@@ -122,10 +170,21 @@
     white-space: nowrap;
   }
 
-  .input-prefixed { border: none; border-radius: 0; flex: 1; min-width: 0; }
-  .input-prefixed:focus { border-color: transparent; }
+  .input-prefixed {
+    border: none;
+    border-radius: 0;
+    flex: 1;
+    min-width: 0;
+  }
+  .input-prefixed:focus {
+    border-color: transparent;
+  }
 
-  .form-footer { display: flex; flex-direction: column; gap: 0.75rem; }
+  .form-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
 
   .footer-actions {
     display: flex;
@@ -134,7 +193,9 @@
     align-items: center;
   }
 
-  .btn-save { margin-left: auto; }
+  .profile-save-button {
+    margin-left: auto;
+  }
 </style>
 
 <script>
@@ -147,34 +208,28 @@
   let unsubscribeAuth: (() => void) | null = null;
 
   document.addEventListener("astro:page-load", () => {
-    const loadingEl         = document.getElementById("loading");
-    const form              = document.getElementById("profile-form") as HTMLFormElement;
+    const loadingEl = document.getElementById("loading");
+    const form = document.getElementById("profile-form") as HTMLFormElement;
     if (!form) return;
 
-    const nameInput         = document.getElementById("name") as HTMLInputElement;
-    const roleInput         = document.getElementById("role") as HTMLInputElement;
-    const bioInput          = document.getElementById("bio") as HTMLTextAreaElement;
-    const portfolioInput    = document.getElementById("portfolio") as HTMLInputElement;
-    const avatarInput       = document.getElementById("avatar") as HTMLInputElement;
-    const avatarImg         = document.getElementById("avatar-preview") as HTMLImageElement;
-    const avatarPlaceholder = document.getElementById("avatar-placeholder")!;
-    const uploadStatus      = document.getElementById("upload-status")!;
-    const saveMsg           = document.getElementById("save-msg")!;
-    const saveError         = document.getElementById("save-error")!;
+    const nameInput = document.getElementById("name") as HTMLInputElement;
+    const roleInput = document.getElementById("role") as HTMLInputElement;
+    const bioInput = document.getElementById("bio") as HTMLTextAreaElement;
+    const portfolioInput = document.getElementById("portfolio") as HTMLInputElement;
+    const avatarInput = document.getElementById("avatar") as HTMLInputElement;
+    const avatarImg = document.getElementById("avatar-preview") as HTMLImageElement;
+    const uploadStatus = document.getElementById("upload-status")!;
+    const saveMsg = document.getElementById("save-msg")!;
+    const saveError = document.getElementById("save-error")!;
+
+    const avatarWrap = avatarImg.closest<HTMLElement>(".avatar-wrap")!;
 
     function showPreview(url: string) {
-      if (url) {
-        avatarImg.src = url;
-        avatarImg.style.display = "block";
-        avatarPlaceholder.style.display = "none";
-        avatarImg.onerror = () => {
-          avatarImg.style.display = "none";
-          avatarPlaceholder.style.display = "flex";
-        };
-      } else {
-        avatarImg.style.display = "none";
-        avatarPlaceholder.style.display = "flex";
-      }
+      avatarImg.src = url;
+      avatarWrap.classList.toggle("has-image", !!url);
+      avatarImg.onerror = () => {
+        avatarWrap.classList.remove("has-image");
+      };
     }
 
     avatarInput.addEventListener("change", () => {
@@ -190,14 +245,14 @@
     unsubscribeAuth = requireVerifiedAuth(async (user) => {
       const data = await getUser(user.uid);
 
-      nameInput.value      = data.displayName ?? user.displayName ?? "";
-      roleInput.value      = data.role ?? "";
-      bioInput.value       = data.bio ?? "";
+      nameInput.value = data.displayName ?? user.displayName ?? "";
+      roleInput.value = data.role ?? "";
+      bioInput.value = data.bio ?? "";
       portfolioInput.value = data.portfolio ?? "";
       showPreview(data.photoURL ?? user.photoURL ?? "");
 
       if (loadingEl) loadingEl.style.display = "none";
-      form.style.display = "flex";
+      form.classList.add("is-loaded");
     });
 
     document.getElementById("btn-logout")!.addEventListener("click", async () => {
@@ -207,17 +262,17 @@
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      saveMsg.style.display   = "none";
+      saveMsg.style.display = "none";
       saveError.style.display = "none";
 
       const user = auth.currentUser;
       if (!user) return;
 
-      const name      = nameInput.value.trim();
-      const role      = roleInput.value.trim();
-      const bio       = bioInput.value.trim();
+      const name = nameInput.value.trim();
+      const role = roleInput.value.trim();
+      const bio = bioInput.value.trim();
       const portfolio = portfolioInput.value.trim();
-      const file      = avatarInput.files?.[0];
+      const file = avatarInput.files?.[0];
 
       try {
         let photoURL: string = auth.currentUser?.photoURL ?? "";
@@ -245,7 +300,9 @@
         });
 
         saveMsg.style.display = "block";
-        setTimeout(() => { saveMsg.style.display = "none"; }, 3000);
+        setTimeout(() => {
+          saveMsg.style.display = "none";
+        }, 3000);
       } catch (err: any) {
         saveError.textContent = err.message;
         saveError.style.display = "block";
