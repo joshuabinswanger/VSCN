@@ -8,9 +8,9 @@
   </header>
 
   <div class="verify-body">
-    <p id="status-msg" class="msg-err" style="display:none;"></p>
+    <button id="btn-check" class="btn-solid">I've verified my email — continue</button>
 
-    <button id="btn-check" class="btn-primary">I've verified — continue</button>
+    <p id="status-msg" class="msg-err" style="display:none;"></p>
 
     <div class="resend-row">
       <span class="resend-label">Didn't get it?</span>
@@ -32,6 +32,8 @@
     width: 100%;
     max-width: 500px;
     margin: clamp(2rem, 4vw, 4rem) auto;
+    padding: 0 15px;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     gap: 2rem;
@@ -81,8 +83,27 @@
     color: var(--color-muted);
   }
 
+  :global(#btn-check) {
+    transition:
+      background 0.2s,
+      transform 0.15s,
+      box-shadow 0.15s;
+  }
+
+  :global(#btn-check:hover:not(:disabled)) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  }
+
+  :global(#btn-check:active:not(:disabled)) {
+    transform: translateY(0);
+    box-shadow: none;
+  }
+
   .back-row {
     display: flex;
+    padding-top: 2rem;
+    justify-content: flex-end;
     font-size: 0.88rem;
   }
 </style>
@@ -134,7 +155,7 @@
       statusMsg.textContent = "Email not verified yet. Check your inbox and click the link.";
       statusMsg.style.display = "block";
       btnCheck.disabled = false;
-      btnCheck.textContent = "I've verified — continue";
+      btnCheck.textContent = "I've verified my email — continue";
     }
 
     btnCheck.addEventListener("click", async () => {
@@ -147,7 +168,7 @@
         statusMsg.textContent = "Something went wrong. Please try again.";
         statusMsg.style.display = "block";
         btnCheck.disabled = false;
-        btnCheck.textContent = "I've verified — continue";
+        btnCheck.textContent = "I've verified my email — continue";
       }
     });
 
