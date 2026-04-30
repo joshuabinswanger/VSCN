@@ -17,6 +17,10 @@
       <button id="btn-resend" class="btn-link">Resend email</button>
     </div>
 
+    <div class="back-row">
+      <button id="btn-back" class="btn-link">← Back to sign up</button>
+    </div>
+
     <p id="resend-msg" class="msg-ok" style="display:none;">
       We’ve sent a link to your email. If you don't see it shortly, please check your spam filter.
     </p>
@@ -76,11 +80,16 @@
   .resend-label {
     color: var(--color-muted);
   }
+
+  .back-row {
+    display: flex;
+    font-size: 0.88rem;
+  }
 </style>
 
 <script>
   import { auth } from "../lib/firebase.ts";
-  import { onAuthStateChanged, sendEmailVerification } from "firebase/auth";
+  import { onAuthStateChanged, sendEmailVerification, signOut } from "firebase/auth";
   import { publishCurrentUserProfile } from "../lib/firestore.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
@@ -158,6 +167,12 @@
         resendCooldown = false;
         btnResend.disabled = false;
       }, 30000);
+    });
+
+    const btnBack = document.getElementById("btn-back") as HTMLButtonElement;
+    btnBack.addEventListener("click", async () => {
+      await signOut(auth);
+      window.location.href = "/signup";
     });
   });
 </script>
