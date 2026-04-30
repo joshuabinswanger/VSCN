@@ -2,7 +2,7 @@ import { auth } from "./firebase.ts";
 import { onAuthStateChanged, type User } from "firebase/auth";
 
 const FRIENDLY_ERRORS: Record<string, string> = {
-  "auth/email-already-in-use": "Unable to create account. Please try again.",
+  "auth/email-already-in-use": "An account with this email already exists. Try logging in instead.",
   "auth/invalid-email":        "Please enter a valid email address.",
   "auth/weak-password":        "Password must be at least 6 characters.",
   "auth/user-not-found":       "Invalid email or password.",

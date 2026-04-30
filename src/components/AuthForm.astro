@@ -69,7 +69,9 @@
     <div class="field">
       <div class="field-label-row">
         <label class="label" for="password">Password</label>
-        <button type="button" id="forgot-link" class="btn-link forgot-btn" style="display:none;">Forgot?</button>
+        <button type="button" id="forgot-link" class="btn-link forgot-btn" style="display:none;"
+          >Forgot?</button
+        >
       </div>
       <input
         id="password"
@@ -401,7 +403,8 @@
         forgotSuccess.style.display = "block";
         forgotSubmit.textContent = "Sent";
       } catch {
-        forgotError.textContent = "Could not send reset email. Please check the address and try again.";
+        forgotError.textContent =
+          "Could not send reset email. Please check the address and try again.";
         forgotError.style.display = "block";
         forgotSubmit.disabled = false;
         forgotSubmit.textContent = "Send reset link";
@@ -464,8 +467,8 @@
       try {
         isSubmitting = true;
         if (isLogin) {
-          await signInWithEmailAndPassword(auth, email, password);
-          window.location.href = "/profile";
+          const { user } = await signInWithEmailAndPassword(auth, email, password);
+          window.location.href = user.emailVerified ? "/profile" : "/verify-email";
         } else {
           const { user } = await createUserWithEmailAndPassword(auth, email, password);
           let photoURL = "";
