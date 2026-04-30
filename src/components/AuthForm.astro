@@ -67,7 +67,10 @@
     </div>
 
     <div class="field">
-      <label class="label" for="password">Password</label>
+      <div class="field-label-row">
+        <label class="label" for="password">Password</label>
+        <button type="button" id="forgot-link" class="btn-link forgot-btn" style="display:none;">Forgot?</button>
+      </div>
       <input
         id="password"
         type="password"
@@ -84,6 +87,31 @@
       <button id="submit-btn" type="submit" class="btn-solid auth-submit-button">Sign Up</button>
     </div>
   </form>
+
+  <div id="forgot-section" style="display:none;">
+    <div class="field">
+      <label class="label" for="forgot-email">Email</label>
+      <input
+        id="forgot-email"
+        type="email"
+        class="input"
+        placeholder="you@example.com"
+        autocomplete="email"
+      />
+    </div>
+    <p id="forgot-error" class="msg-err" style="display:none;"></p>
+    <p id="forgot-success" class="msg-ok" style="display:none;">
+      Check your inbox for a reset link.
+    </p>
+    <div class="auth-footer">
+      <button id="forgot-submit" type="button" class="btn-solid auth-submit-button">
+        Send reset link
+      </button>
+    </div>
+    <div class="forgot-back-row">
+      <button id="forgot-back" type="button" class="btn-link">← Back to log in</button>
+    </div>
+  </div>
 </div>
 
 <style>
@@ -203,6 +231,36 @@
     padding-bottom: 2rem;
   }
 
+  .field-label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+
+  .forgot-btn {
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: var(--color-muted);
+    border-bottom-color: transparent;
+  }
+
+  .forgot-btn:hover {
+    color: var(--color-dark);
+    border-bottom-color: var(--color-dark);
+  }
+
+  #forgot-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-bottom: 25vh;
+  }
+
+  .forgot-back-row {
+    display: flex;
+    justify-content: flex-end;
+  }
+
   .auth-footer {
     display: grid;
     justify-content: end;
@@ -240,6 +298,7 @@
     onAuthStateChanged,
     signInWithEmailAndPassword,
     sendEmailVerification,
+    sendPasswordResetEmail,
     updateProfile,
   } from "firebase/auth";
   import { friendlyError } from "../lib/auth.ts";
@@ -260,11 +319,19 @@
     const signupFields = document.getElementById("signup-fields")!;
     const submitBtn = document.getElementById("submit-btn")!;
     const authTitle = document.getElementById("auth-title")!;
+    const authSub = document.querySelector<HTMLElement>(".auth-sub")!;
     const errorEl = document.getElementById("auth-error")!;
     const avatarInput = document.getElementById("avatar") as HTMLInputElement;
     const avatarPreview = document.getElementById("avatar-preview") as HTMLImageElement;
     const uploadStatus = document.getElementById("upload-status")!;
     const avatarWrap = avatarPreview.closest<HTMLElement>(".auth-avatar-wrap")!;
+    const forgotLink = document.getElementById("forgot-link") as HTMLButtonElement;
+    const forgotSection = document.getElementById("forgot-section")!;
+    const forgotEmailInput = document.getElementById("forgot-email") as HTMLInputElement;
+    const forgotSubmit = document.getElementById("forgot-submit") as HTMLButtonElement;
+    const forgotBack = document.getElementById("forgot-back") as HTMLButtonElement;
+    const forgotError = document.getElementById("forgot-error")!;
+    const forgotSuccess = document.getElementById("forgot-success")!;
 
     function showPreview(url: string) {
       avatarPreview.src = url;
@@ -281,12 +348,65 @@
       window.location.href = user.emailVerified ? "/community" : "/verify-email";
     });
 
+    function showForgotView() {
+      form.style.display = "none";
+      forgotSection.style.display = "flex";
+      authTitle.textContent = "Reset Password";
+      authSub.style.display = "none";
+      forgotEmailInput.value = (document.getElementById("email") as HTMLInputElement).value;
+      forgotError.style.display = "none";
+      forgotSuccess.style.display = "none";
+      forgotSubmit.disabled = false;
+      forgotSubmit.textContent = "Send reset link";
+    }
+
+    function showLoginView() {
+      forgotSection.style.display = "none";
+      form.style.display = "grid";
+      authTitle.textContent = "Log In";
+      authSub.style.display = "";
+    }
+
     // Reset state on each page load
     isLogin = false;
     signupFields.style.display = "grid";
     submitBtn.textContent = "Sign Up";
     authTitle.textContent = "Create an Account";
     toggleLink.textContent = "Log in instead";
+    forgotLink.style.display = "none";
+    forgotSection.style.display = "none";
+    form.style.display = "grid";
+    authSub.style.display = "";
+
+    forgotLink.addEventListener("click", () => showForgotView());
+
+    forgotBack.addEventListener("click", () => showLoginView());
+
+    forgotSubmit.addEventListener("click", async () => {
+      const email = forgotEmailInput.value.trim();
+      forgotError.style.display = "none";
+      forgotSuccess.style.display = "none";
+
+      if (!email) {
+        forgotError.textContent = "Please enter your email address.";
+        forgotError.style.display = "block";
+        return;
+      }
+
+      forgotSubmit.disabled = true;
+      forgotSubmit.textContent = "Sending…";
+
+      try {
+        await sendPasswordResetEmail(auth, email);
+        forgotSuccess.style.display = "block";
+        forgotSubmit.textContent = "Sent";
+      } catch {
+        forgotError.textContent = "Could not send reset email. Please check the address and try again.";
+        forgotError.style.display = "block";
+        forgotSubmit.disabled = false;
+        forgotSubmit.textContent = "Send reset link";
+      }
+    });
 
     avatarInput.addEventListener("change", () => {
       const file = avatarInput.files?.[0];
@@ -311,6 +431,7 @@
       submitBtn.textContent = isLogin ? "Log In" : "Sign Up";
       toggleLink.textContent = isLogin ? "Sign up instead" : "Log in instead";
       authTitle.textContent = isLogin ? "Log In" : "Create an Account";
+      forgotLink.style.display = isLogin ? "inline" : "none";
       errorEl.style.display = "none";
     });
 
