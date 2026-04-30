@@ -12,7 +12,7 @@ service cloud.firestore {
                             && request.auth.token.email_verified == true
                             && validPublicProfile(request.resource.data);
 
-      allow delete: if false;
+      allow delete: if request.auth != null && request.auth.uid == uid;
     }
 
     match /users/{uid} {
@@ -23,7 +23,7 @@ service cloud.firestore {
                             && request.auth.uid == uid
                             && validPrivateUser(request.resource.data, request.auth);
 
-      allow delete: if false;
+      allow delete: if request.auth != null && request.auth.uid == uid;
     }
 
     match /{document=**} {

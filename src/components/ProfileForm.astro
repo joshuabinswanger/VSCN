@@ -65,6 +65,38 @@
       <button type="submit" class="btn-solid profile-save-button">Save Changes</button>
     </div>
   </div>
+
+  <div class="danger-zone">
+    <div id="delete-idle">
+      <button type="button" id="btn-delete-start" class="btn-danger-link">Delete account</button>
+    </div>
+
+    <div id="delete-confirm" style="display:none;">
+      <p class="danger-text">
+        This will permanently delete your account, profile, and avatar. This cannot be undone.
+      </p>
+      <div class="danger-actions">
+        <button type="button" id="btn-delete-cancel" class="btn-link">Cancel</button>
+        <button type="button" id="btn-delete-confirm" class="btn-danger">Delete my account</button>
+      </div>
+    </div>
+
+    <div id="delete-reauth" style="display:none;">
+      <p class="danger-text">Please enter your password to confirm.</p>
+      <input
+        id="reauth-password"
+        type="password"
+        class="input"
+        placeholder="••••••••"
+        autocomplete="current-password"
+      />
+      <p id="reauth-error" class="msg-err" style="display:none;"></p>
+      <div class="danger-actions">
+        <button type="button" id="btn-reauth-cancel" class="btn-link">Cancel</button>
+        <button type="button" id="btn-reauth-confirm" class="btn-danger">Confirm delete</button>
+      </div>
+    </div>
+  </div>
 </form>
 
 <style>
@@ -210,6 +242,65 @@
     margin-left: auto;
   }
 
+  .danger-zone {
+    padding-top: 2rem;
+    border-top: 1px solid #f0f0f0;
+  }
+
+  .danger-text {
+    font-size: 0.88rem;
+    color: var(--color-muted);
+    margin: 0 0 1rem;
+    line-height: 1.5;
+  }
+
+  .danger-actions {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .btn-danger-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-size: 0.88rem;
+    color: #bbb;
+    cursor: pointer;
+    border-bottom: 1px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .btn-danger-link:hover {
+    color: var(--color-error);
+    border-bottom-color: var(--color-error);
+  }
+
+  .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.6rem 1.25rem;
+    background: var(--color-error);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .btn-danger:hover {
+    background: #b91c1c;
+  }
+
+  .btn-danger:disabled {
+    background: #999;
+    cursor: not-allowed;
+  }
+
   @media (max-width: 520px) {
     .avatar-wrap {
       grid-template-columns: min-content 1fr;
@@ -237,10 +328,15 @@
 
 <script>
   import { auth } from "../lib/firebase.ts";
-  import { updateProfile, signOut } from "firebase/auth";
+  import {
+    updateProfile,
+    signOut,
+    reauthenticateWithCredential,
+    EmailAuthProvider,
+  } from "firebase/auth";
   import { requireVerifiedAuth } from "../lib/auth.ts";
-  import { uploadAvatar } from "../lib/storage.ts";
-  import { getUser, updateUserProfile } from "../lib/firestore.ts";
+  import { uploadAvatar, deleteAvatar } from "../lib/storage.ts";
+  import { getUser, updateUserProfile, deleteUserData } from "../lib/firestore.ts";
   import { validateBio } from "../lib/validation.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
@@ -356,6 +452,80 @@
       } catch (err: unknown) {
         saveError.textContent = err instanceof Error ? err.message : "Could not save changes.";
         saveError.style.display = "block";
+      }
+    });
+
+    // ── Delete account ──────────────────────────────────────────────
+    const deleteIdle    = document.getElementById("delete-idle")!;
+    const deleteConfirm = document.getElementById("delete-confirm")!;
+    const deleteReauth  = document.getElementById("delete-reauth")!;
+    const reauthInput   = document.getElementById("reauth-password") as HTMLInputElement;
+    const reauthError   = document.getElementById("reauth-error")!;
+
+    function showDeleteView(view: "idle" | "confirm" | "reauth") {
+      deleteIdle.style.display    = view === "idle"    ? "block" : "none";
+      deleteConfirm.style.display = view === "confirm" ? "block" : "none";
+      deleteReauth.style.display  = view === "reauth"  ? "block" : "none";
+    }
+
+    async function performDelete() {
+      const user = auth.currentUser;
+      if (!user) return;
+      const photoURL = user.photoURL ?? "";
+      await deleteUserData(user.uid);
+      await deleteAvatar(photoURL);
+      await user.delete();
+      window.location.href = "/";
+    }
+
+    document.getElementById("btn-delete-start")!.addEventListener("click", () => {
+      showDeleteView("confirm");
+    });
+
+    document.getElementById("btn-delete-cancel")!.addEventListener("click", () => {
+      showDeleteView("idle");
+    });
+
+    document.getElementById("btn-delete-confirm")!.addEventListener("click", async () => {
+      const btn = document.getElementById("btn-delete-confirm") as HTMLButtonElement;
+      btn.disabled = true;
+      btn.textContent = "Deleting…";
+      try {
+        await performDelete();
+      } catch (err: unknown) {
+        const code = typeof err === "object" && err !== null && "code" in err
+          ? String((err as { code: unknown }).code) : "";
+        if (code === "auth/requires-recent-login") {
+          showDeleteView("reauth");
+        } else {
+          btn.disabled = false;
+          btn.textContent = "Delete my account";
+        }
+      }
+    });
+
+    document.getElementById("btn-reauth-cancel")!.addEventListener("click", () => {
+      reauthInput.value = "";
+      reauthError.style.display = "none";
+      showDeleteView("idle");
+    });
+
+    document.getElementById("btn-reauth-confirm")!.addEventListener("click", async () => {
+      const user = auth.currentUser;
+      if (!user || !user.email) return;
+      const btn = document.getElementById("btn-reauth-confirm") as HTMLButtonElement;
+      btn.disabled = true;
+      btn.textContent = "Confirming…";
+      reauthError.style.display = "none";
+      try {
+        const credential = EmailAuthProvider.credential(user.email, reauthInput.value);
+        await reauthenticateWithCredential(user, credential);
+        await performDelete();
+      } catch {
+        reauthError.textContent = "Incorrect password. Please try again.";
+        reauthError.style.display = "block";
+        btn.disabled = false;
+        btn.textContent = "Confirm delete";
       }
     });
   });

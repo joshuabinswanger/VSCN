@@ -2,6 +2,7 @@ import { db } from "./firebase.ts";
 import {
   collection,
   doc,
+  deleteDoc,
   getDoc,
   getDocs,
   setDoc,
@@ -65,6 +66,13 @@ export async function publishCurrentUserProfile(uid: string): Promise<void> {
     ...data,
     updatedAt: new Date(),
   });
+}
+
+export async function deleteUserData(uid: string): Promise<void> {
+  await Promise.all([
+    deleteDoc(doc(db, "users", uid)),
+    deleteDoc(doc(db, "publicProfiles", uid)),
+  ]);
 }
 
 export async function getMembers(): Promise<(PublicProfileDoc & { uid: string })[]> {
