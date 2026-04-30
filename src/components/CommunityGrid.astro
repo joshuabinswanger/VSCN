@@ -261,6 +261,8 @@
 
 <script>
   import { getMembers, type PublicProfileDoc } from "../lib/firestore.ts";
+  import { appCheck } from "../lib/firebase.ts";
+  import { getToken } from "firebase/app-check";
   import { normaliseUrl } from "../lib/validation.ts";
   import downArrowUrl from "../assets/downarrow.svg";
 
@@ -386,22 +388,31 @@
       hasDesktopQueryListener = true;
     }
 
-    try {
-      const members = await getMembers();
-      grid.replaceChildren();
+    async function loadMembers(grid: HTMLElement, count: HTMLElement, retrying = false): Promise<void> {
+      try {
+        if (appCheck) await getToken(appCheck, false);
+        const members = await getMembers();
+        grid.replaceChildren();
 
-      if (members.length === 0) {
-        grid.replaceChildren(createStateMessage("No members yet."));
+        if (members.length === 0) {
+          grid.replaceChildren(createStateMessage("No members yet."));
+          count.textContent = "";
+          return;
+        }
+
+        count.textContent = `${members.length} member${members.length === 1 ? "" : "s"}`;
+        grid.append(...members.map(createMemberCard));
+      } catch (err) {
+        if (!retrying) {
+          await new Promise((r) => setTimeout(r, 1500));
+          return loadMembers(grid, count, true);
+        }
+        console.error(err);
+        grid.replaceChildren(createStateMessage("Could not load members."));
         count.textContent = "";
-        return;
       }
-
-      count.textContent = `${members.length} member${members.length === 1 ? "" : "s"}`;
-      grid.append(...members.map(createMemberCard));
-    } catch (err) {
-      console.error(err);
-      grid.replaceChildren(createStateMessage("Could not load members."));
-      count.textContent = "";
     }
+
+    loadMembers(grid, count);
   });
 </script>
