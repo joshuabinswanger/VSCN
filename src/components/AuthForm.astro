@@ -344,7 +344,7 @@
         isSubmitting = true;
         if (isLogin) {
           await signInWithEmailAndPassword(auth, email, password);
-          window.location.href = "/community";
+          window.location.href = "/profile";
         } else {
           const { user } = await createUserWithEmailAndPassword(auth, email, password);
           let photoURL = "";
