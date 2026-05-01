@@ -261,8 +261,6 @@
 
 <script>
   import { getMembers, type PublicProfileDoc } from "../lib/firestore.ts";
-  import { appCheck } from "../lib/firebase.ts";
-  import { getToken } from "firebase/app-check";
   import { normaliseUrl } from "../lib/validation.ts";
   import downArrowUrl from "../assets/downarrow.svg";
 
@@ -390,7 +388,6 @@
 
     async function loadMembers(grid: HTMLElement, count: HTMLElement, retrying = false): Promise<void> {
       try {
-        if (appCheck) await getToken(appCheck, false);
         const members = await getMembers();
         grid.replaceChildren();
 
