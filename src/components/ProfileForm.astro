@@ -57,6 +57,30 @@
     </p>
   </div>
 
+  <div class="preview-section">
+    <p class="label">Community card preview</p>
+    <article id="preview-card" class="member-card member-card--preview">
+      <div class="member-avatar-wrap">
+        <img id="preview-avatar-img" class="member-avatar" src="" alt="" style="display:none" />
+        <div id="preview-avatar-ph" class="member-avatar member-avatar--placeholder">?</div>
+      </div>
+      <div class="member-info">
+        <div id="preview-name" class="member-name"></div>
+        <div id="preview-role" class="member-role" style="display:none"></div>
+        <a
+          id="preview-portfolio"
+          class="member-portfolio"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          style="display:none"
+        ></a>
+      </div>
+      <div aria-hidden="true"></div>
+      <p id="preview-bio" class="member-bio" style="display:none"></p>
+    </article>
+  </div>
+
   <div class="form-footer">
     <p id="save-msg" class="msg-ok" style="display:none;">Changes saved.</p>
     <p id="save-error" class="msg-err" style="display:none;"></p>
@@ -227,6 +251,34 @@
     border-color: transparent;
   }
 
+  .preview-section {
+    padding-top: 0.5rem;
+  }
+
+  .preview-section .label {
+    display: block;
+    margin-bottom: 0.75rem;
+  }
+
+  /* In preview context: always show bio inline, hide toggle */
+  :global(.member-card--preview) {
+    width: auto !important;
+    max-width: 360px;
+  }
+
+  :global(.member-card--preview .member-bio-toggle) {
+    display: none !important;
+  }
+
+  :global(.member-card--preview .member-bio) {
+    display: block !important;
+    position: static !important;
+    width: auto !important;
+    border: none !important;
+    padding: 0 !important;
+    margin-top: 10px !important;
+  }
+
   .form-footer {
     padding-top: 25px;
   }
@@ -326,6 +378,10 @@
   }
 </style>
 
+<style is:global>
+  @import "../styles/member-card.css";
+</style>
+
 <script>
   import { auth } from "../lib/firebase.ts";
   import {
@@ -337,9 +393,66 @@
   import { requireVerifiedAuth } from "../lib/auth.ts";
   import { uploadAvatar, deleteAvatar } from "../lib/storage.ts";
   import { getUser, updateUserProfile, deleteUserData } from "../lib/firestore.ts";
-  import { validateBio } from "../lib/validation.ts";
+  import { validateBio, normaliseUrl } from "../lib/validation.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
+
+  function updatePreview(
+    name: string,
+    role: string,
+    bio: string,
+    portfolio: string,
+    photoURL: string,
+  ) {
+    const previewName = document.getElementById("preview-name")!;
+    const previewRole = document.getElementById("preview-role") as HTMLElement;
+    const previewPortfolio = document.getElementById("preview-portfolio") as HTMLAnchorElement;
+    const previewBio = document.getElementById("preview-bio") as HTMLElement;
+    const previewAvatarImg = document.getElementById("preview-avatar-img") as HTMLImageElement;
+    const previewAvatarPh = document.getElementById("preview-avatar-ph") as HTMLElement;
+
+    const displayName = name || "Your name";
+    previewName.textContent = displayName;
+
+    if (role) {
+      previewRole.textContent = role;
+      previewRole.style.display = "";
+    } else {
+      previewRole.style.display = "none";
+    }
+
+    const href = normaliseUrl(portfolio);
+    if (href) {
+      previewPortfolio.href = href;
+      previewPortfolio.textContent = portfolio;
+      previewPortfolio.style.display = "";
+    } else {
+      previewPortfolio.style.display = "none";
+    }
+
+    if (bio) {
+      previewBio.textContent = bio;
+      previewBio.style.display = "";
+    } else {
+      previewBio.style.display = "none";
+    }
+
+    if (photoURL) {
+      previewAvatarImg.src = photoURL;
+      previewAvatarImg.alt = displayName;
+      previewAvatarImg.style.display = "";
+      previewAvatarPh.style.display = "none";
+      previewAvatarImg.onerror = () => {
+        previewAvatarImg.style.display = "none";
+        previewAvatarPh.style.display = "";
+        previewAvatarPh.textContent = displayName[0]?.toUpperCase() ?? "?";
+      };
+    } else {
+      previewAvatarImg.style.display = "none";
+      previewAvatarPh.style.display = "";
+      previewAvatarPh.textContent = displayName[0]?.toUpperCase() ?? "?";
+    }
+  }
 
   document.addEventListener("astro:page-load", () => {
     const loadingEl = document.getElementById("loading");
@@ -359,18 +472,38 @@
 
     const avatarWrap = avatarImg.closest<HTMLElement>(".avatar-wrap")!;
 
+    let currentPhotoURL = "";
+
     function showPreview(url: string) {
+      currentPhotoURL = url;
       avatarImg.src = url;
       avatarWrap.classList.toggle("has-image", !!url);
       avatarImg.onerror = () => {
         avatarWrap.classList.remove("has-image");
       };
+      syncPreview();
     }
+
+    function syncPreview() {
+      updatePreview(
+        nameInput.value.trim(),
+        roleInput.value.trim(),
+        bioInput.value.trim(),
+        portfolioInput.value.trim(),
+        currentPhotoURL,
+      );
+    }
+
+    nameInput.addEventListener("input", syncPreview);
+    roleInput.addEventListener("input", syncPreview);
+    bioInput.addEventListener("input", syncPreview);
+    portfolioInput.addEventListener("input", syncPreview);
 
     avatarInput.addEventListener("change", () => {
       const file = avatarInput.files?.[0];
       if (file) {
-        showPreview(URL.createObjectURL(file));
+        const objectUrl = URL.createObjectURL(file);
+        showPreview(objectUrl);
         uploadStatus.textContent = `Selected: ${file.name}`;
         uploadStatus.style.display = "block";
       }
@@ -444,6 +577,25 @@
           email: user.email!,
           updatedAt: new Date(),
         });
+
+        // Trigger community page rebuild
+        const ghToken = import.meta.env.PUBLIC_GITHUB_REBUILD_TOKEN;
+        const ghOwner = import.meta.env.PUBLIC_GITHUB_OWNER;
+        const ghRepo  = import.meta.env.PUBLIC_GITHUB_REPO;
+        if (ghToken && ghOwner && ghRepo) {
+          fetch(
+            `https://api.github.com/repos/${ghOwner}/${ghRepo}/actions/workflows/firebase-hosting-merge.yml/dispatches`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${ghToken}`,
+                Accept: "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+              },
+              body: JSON.stringify({ ref: "main" }),
+            },
+          ).catch(() => {});
+        }
 
         saveMsg.style.display = "block";
         setTimeout(() => {

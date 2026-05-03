@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
@@ -25,6 +26,10 @@ jobs:
           PUBLIC_FIREBASE_APP_ID: ${{ secrets.PUBLIC_FIREBASE_APP_ID }}
           PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.PUBLIC_FIREBASE_MEASUREMENT_ID }}
           PUBLIC_FIREBASE_RECAPTCHA_SITE_KEY: ${{ secrets.PUBLIC_FIREBASE_RECAPTCHA_SITE_KEY }}
+          PUBLIC_GITHUB_REBUILD_TOKEN: ${{ secrets.PUBLIC_GITHUB_REBUILD_TOKEN }}
+          PUBLIC_GITHUB_OWNER: ${{ secrets.PUBLIC_GITHUB_OWNER }}
+          PUBLIC_GITHUB_REPO: ${{ secrets.PUBLIC_GITHUB_REPO }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_VSCN_39508 }}
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
