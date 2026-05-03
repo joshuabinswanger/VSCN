@@ -82,7 +82,7 @@
   </div>
 
   <div class="form-footer">
-    <p id="save-msg" class="msg-ok" style="display:none;">Changes saved.</p>
+    <p id="save-msg" class="msg-ok" style="display:none;">Changes saved. Your community card will update within a few minutes.</p>
     <p id="save-error" class="msg-err" style="display:none;"></p>
     <div class="footer-actions">
       <button id="btn-logout" type="button" class="btn-outline">Log Out</button>
@@ -598,9 +598,6 @@
         }
 
         saveMsg.style.display = "block";
-        setTimeout(() => {
-          saveMsg.style.display = "none";
-        }, 3000);
       } catch (err: unknown) {
         saveError.textContent = err instanceof Error ? err.message : "Could not save changes.";
         saveError.style.display = "block";
