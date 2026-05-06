@@ -24,7 +24,7 @@ export interface UserDoc {
   updatedAt?:   Date;
 }
 
-export type PublicProfileDoc = Omit<UserDoc, "phone" | "email">;
+export type PublicProfileDoc = Omit<UserDoc, "phone" | "email"> & { active?: boolean };
 
 function toPublicProfile(data: Partial<UserDoc>): Partial<PublicProfileDoc> {
   return {
@@ -54,7 +54,13 @@ export async function updateUser(uid: string, data: Partial<UserDoc>): Promise<v
 }
 
 export async function publishPublicProfile(uid: string, data: Partial<UserDoc>): Promise<void> {
-  await setDoc(doc(db, "publicProfiles", uid), toPublicProfile(data), { merge: true });
+  const ref = doc(db, "publicProfiles", uid);
+  const publicData: Partial<PublicProfileDoc> = toPublicProfile(data);
+  const existing = await getDoc(ref);
+  if (!existing.exists()) {
+    publicData.active = true;
+  }
+  await setDoc(ref, publicData, { merge: true });
 }
 
 export async function updateUserProfile(uid: string, data: Partial<UserDoc>): Promise<void> {
@@ -81,5 +87,7 @@ export async function deleteUserData(uid: string): Promise<void> {
 
 export async function getMembers(): Promise<(PublicProfileDoc & { uid: string })[]> {
   const snap = await getDocs(query(collection(db, "publicProfiles"), orderBy("displayName")));
-  return snap.docs.map((d) => ({ uid: d.id, ...(d.data() as PublicProfileDoc) }));
+  return snap.docs
+    .filter((d) => d.data().active !== false)
+    .map((d) => ({ uid: d.id, ...(d.data() as PublicProfileDoc) }));
 }

@@ -33,7 +33,7 @@ service cloud.firestore {
 }
 
 function validPublicProfile(data) {
-  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'active', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data);
@@ -57,6 +57,7 @@ function validPublicFields(data) {
     && (!('portfolio' in data) || (data.portfolio is string && data.portfolio.size() <= 200))
     && (!('socialMedia' in data) || (data.socialMedia is string && data.socialMedia.size() <= 200))
     && (!('openTo' in data) || (data.openTo is list && data.openTo.size() <= 3 && data.openTo.hasOnly(['offering', 'seeking', 'networking'])))
+    && (!('active' in data) || data.active is bool)
     && (!('photoURL' in data) || data.photoURL == ''
         || data.photoURL.matches('https://firebasestorage\\.googleapis\\.com/v0/b/vscn-39508\\.firebasestorage\\.app/.*')
         || data.photoURL.matches('https://storage\\.googleapis\\.com/vscn-39508\\.firebasestorage\\.app/.*'))
