@@ -3,7 +3,8 @@
     "allow": [
       "Bash(xargs ls *)",
       "Bash(curl -s -X POST \"https://firestore.googleapis.com/v1/projects/vscn-39508/databases/\\(default\\)/documents:runQuery\" -H \"Content-Type: application/json\" -d \"{\\\\\"structuredQuery\\\\\":{\\\\\"from\\\\\":[{\\\\\"collectionId\\\\\":\\\\\"publicProfiles\\\\\"}],\\\\\"orderBy\\\\\":[{\\\\\"field\\\\\":{\\\\\"fieldPath\\\\\":\\\\\"displayName\\\\\"},\\\\\"direction\\\\\":\\\\\"ASCENDING\\\\\"}]}}\")",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(npx -y firebase-tools@latest deploy --only firestore:rules)"
     ]
   }
 }

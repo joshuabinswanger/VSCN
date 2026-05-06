@@ -11,15 +11,17 @@ import {
 } from "firebase/firestore";
 
 export interface UserDoc {
-  displayName: string;
-  photoURL:    string;
-  role:        string;
-  bio:         string;
-  portfolio:   string;
-  phone:       string;
-  email:       string;
-  createdAt?:  Date;
-  updatedAt?:  Date;
+  displayName:  string;
+  photoURL:     string;
+  role:         string;
+  bio:          string;
+  portfolio:    string;
+  socialMedia:  string;
+  openTo:       string[];
+  phone:        string;
+  email:        string;
+  createdAt?:   Date;
+  updatedAt?:   Date;
 }
 
 export type PublicProfileDoc = Omit<UserDoc, "phone" | "email">;
@@ -31,6 +33,8 @@ function toPublicProfile(data: Partial<UserDoc>): Partial<PublicProfileDoc> {
     role: data.role ?? "",
     bio: data.bio ?? "",
     portfolio: data.portfolio ?? "",
+    socialMedia: data.socialMedia ?? "",
+    openTo: data.openTo ?? [],
     ...(data.createdAt ? { createdAt: data.createdAt } : {}),
     ...(data.updatedAt ? { updatedAt: data.updatedAt } : {}),
   };

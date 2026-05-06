@@ -50,6 +50,36 @@
   </div>
 
   <div class="field">
+    <label class="label" for="social-media">Social Media</label>
+    <div class="input-prefix-wrap">
+      <span class="input-prefix">https://</span>
+      <input
+        id="social-media"
+        type="text"
+        class="input input-prefixed"
+        placeholder="linkedin.com/in/yourname"
+      />
+    </div>
+    <p class="field-note">LinkedIn, Instagram, X, Bluesky, etc.</p>
+  </div>
+
+  <fieldset class="field field-open-to">
+    <legend class="label">I'm here to…</legend>
+    <label class="checkbox-label">
+      <input type="checkbox" name="open-to" value="offering" />
+      Offer services
+    </label>
+    <label class="checkbox-label">
+      <input type="checkbox" name="open-to" value="seeking" />
+      Find services
+    </label>
+    <label class="checkbox-label">
+      <input type="checkbox" name="open-to" value="networking" />
+      Network &amp; collaborate
+    </label>
+  </fieldset>
+
+  <div class="field">
     <label class="label" for="phone">Phone Number</label>
     <input id="phone" type="tel" class="input" placeholder="+41 79 123 45 67" autocomplete="tel" />
     <p class="field-note">
@@ -353,6 +383,36 @@
     cursor: not-allowed;
   }
 
+  .field-open-to {
+    border: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .field-open-to legend {
+    margin-bottom: 0.5rem;
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.95rem;
+    color: #333;
+    cursor: pointer;
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-dark);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
   @media (max-width: 520px) {
     .avatar-wrap {
       grid-template-columns: min-content 1fr;
@@ -463,6 +523,8 @@
     const roleInput = document.getElementById("role") as HTMLInputElement;
     const bioInput = document.getElementById("bio") as HTMLTextAreaElement;
     const portfolioInput = document.getElementById("portfolio") as HTMLInputElement;
+    const socialMediaInput = document.getElementById("social-media") as HTMLInputElement;
+    const openToCheckboxes = document.querySelectorAll<HTMLInputElement>('input[name="open-to"]');
     const phoneInput = document.getElementById("phone") as HTMLInputElement;
     const avatarInput = document.getElementById("avatar") as HTMLInputElement;
     const avatarImg = document.getElementById("avatar-preview") as HTMLImageElement;
@@ -517,6 +579,9 @@
       roleInput.value = data.role ?? "";
       bioInput.value = data.bio ?? "";
       portfolioInput.value = data.portfolio ?? "";
+      socialMediaInput.value = data.socialMedia ?? "";
+      const savedOpenTo = data.openTo ?? [];
+      openToCheckboxes.forEach((cb) => { cb.checked = savedOpenTo.includes(cb.value); });
       phoneInput.value = data.phone ?? "";
       showPreview(data.photoURL ?? user.photoURL ?? "");
 
@@ -541,6 +606,8 @@
       const role = roleInput.value.trim();
       const bio = bioInput.value.trim();
       const portfolio = portfolioInput.value.trim();
+      const socialMedia = socialMediaInput.value.trim();
+      const openTo = Array.from(openToCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
       const phone = phoneInput.value.trim();
       const file = avatarInput.files?.[0];
       const bioResult = validateBio(bio);
@@ -573,6 +640,8 @@
           role,
           bio,
           portfolio,
+          socialMedia,
+          openTo,
           phone,
           email: user.email!,
           updatedAt: new Date(),
@@ -583,18 +652,28 @@
         const ghOwner = import.meta.env.PUBLIC_GITHUB_OWNER;
         const ghRepo  = import.meta.env.PUBLIC_GITHUB_REPO;
         if (ghToken && ghOwner && ghRepo) {
-          fetch(
-            `https://api.github.com/repos/${ghOwner}/${ghRepo}/actions/workflows/firebase-hosting-merge.yml/dispatches`,
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${ghToken}`,
-                Accept: "application/vnd.github+json",
-                "X-GitHub-Api-Version": "2022-11-28",
+          try {
+            const res = await fetch(
+              `https://api.github.com/repos/${ghOwner}/${ghRepo}/actions/workflows/firebase-hosting-merge.yml/dispatches`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${ghToken}`,
+                  Accept: "application/vnd.github+json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+                },
+                body: JSON.stringify({ ref: "main" }),
               },
-              body: JSON.stringify({ ref: "main" }),
-            },
-          ).catch(() => {});
+            );
+            if (!res.ok) {
+              const body = await res.text();
+              console.error(`Rebuild trigger failed: ${res.status}`, body);
+            }
+          } catch (rebuildErr) {
+            console.error("Rebuild trigger error:", rebuildErr);
+          }
+        } else {
+          console.warn("Rebuild skipped: missing PUBLIC_GITHUB_REBUILD_TOKEN / OWNER / REPO env vars");
         }
 
         saveMsg.style.display = "block";
