@@ -21,10 +21,12 @@ try {
   const adminDb = getFirestore(app);
   const snap = await adminDb.collection("publicProfiles").orderBy("displayName").get();
 
-  members = snap.docs.map((d) => ({
-    uid: d.id,
-    ...(d.data() as PublicProfileDoc),
-  }));
+  members = snap.docs
+    .filter((d) => d.data().active !== false)
+    .map((d) => ({
+      uid: d.id,
+      ...(d.data() as PublicProfileDoc),
+    }));
 } catch (err) {
   console.error("[community] Failed to fetch members at build time:", err);
 }
