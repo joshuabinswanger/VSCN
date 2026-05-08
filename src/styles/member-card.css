@@ -98,9 +98,23 @@
   max-width: 100%;
 }
 
-.member-portfolio {
-  display: inline-block;
+.member-links {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem;
   margin-top: 0.4rem;
+  min-width: 0;
+}
+
+.member-links-sep {
+  color: #ccc;
+  font-size: 0.78rem;
+  flex-shrink: 0;
+}
+
+.member-portfolio,
+.member-social {
   color: black;
   text-decoration: underline;
   overflow: hidden;
@@ -110,7 +124,8 @@
   transition: color 0.15s;
 }
 
-.member-portfolio:hover {
+.member-portfolio:hover,
+.member-social:hover {
   color: #000;
 }
 

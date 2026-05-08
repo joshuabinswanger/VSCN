@@ -21,61 +21,80 @@ const { members } = Astro.props;
 
   <div id="member-grid" class="member-grid">
     {members.length === 0 && <p class="state-msg">No members yet.</p>}
-    {members.map((m) => {
-      const displayName = m.displayName || "Anonymous";
-      const portfolioHref = normaliseUrl(m.portfolio ?? "");
-      const bioId = `member-bio-${m.uid}`;
-      return (
-        <article class="member-card">
-          <div class="member-avatar-wrap">
-            {m.photoURL ? (
-              <img class="member-avatar" src={m.photoURL} alt={displayName} />
+    {
+      members.map((m) => {
+        const displayName = m.displayName || "Anonymous";
+        const portfolioHref = normaliseUrl(m.portfolio ?? "");
+        const socialHref = normaliseUrl(m.socialMedia ?? "");
+        const bioId = `member-bio-${m.uid}`;
+        return (
+          <article class="member-card">
+            <div class="member-avatar-wrap">
+              {m.photoURL ? (
+                <img class="member-avatar" src={m.photoURL} alt={displayName} />
+              ) : (
+                <div class="member-avatar member-avatar--placeholder">
+                  {displayName[0]?.toUpperCase() ?? "?"}
+                </div>
+              )}
+            </div>
+
+            <div class="member-info">
+              <div class="member-name">{displayName}</div>
+              {m.role && <div class="member-role">{m.role}</div>}
+              {(portfolioHref || socialHref) && (
+                <div class="member-links">
+                  {portfolioHref && (
+                    <a
+                      class="member-portfolio"
+                      href={portfolioHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {(() => { const p = (m.portfolio ?? "").replace(/^www\./i, ""); const limit = socialHref ? 13 : 17; return p.length > limit ? "portfolio" : p; })()}
+                    </a>
+                  )}
+                  {portfolioHref && socialHref && (
+                    <span class="member-links-sep" aria-hidden="true">
+                      |
+                    </span>
+                  )}
+                  {socialHref && (
+                    <a
+                      class="member-social"
+                      href={socialHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      social
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {m.bio ? (
+              <>
+                <button
+                  class="member-bio-toggle"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls={bioId}
+                  aria-label={`Show bio for ${displayName}`}
+                >
+                  <img class="member-bio-arrow" src={downArrowUrl.src} alt="" aria-hidden="true" />
+                </button>
+                <p id={bioId} class="member-bio">
+                  {m.bio}
+                </p>
+              </>
             ) : (
-              <div class="member-avatar member-avatar--placeholder">
-                {displayName[0]?.toUpperCase() ?? "?"}
-              </div>
+              <div aria-hidden="true" />
             )}
-          </div>
-
-          <div class="member-info">
-            <div class="member-name">{displayName}</div>
-            {m.role && <div class="member-role">{m.role}</div>}
-            {portfolioHref && (
-              <a
-                class="member-portfolio"
-                href={portfolioHref}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {m.portfolio}
-              </a>
-            )}
-          </div>
-
-          {m.bio ? (
-            <>
-              <button
-                class="member-bio-toggle"
-                type="button"
-                aria-expanded="false"
-                aria-controls={bioId}
-                aria-label={`Show bio for ${displayName}`}
-              >
-                <img
-                  class="member-bio-arrow"
-                  src={downArrowUrl.src}
-                  alt=""
-                  aria-hidden="true"
-                />
-              </button>
-              <p id={bioId} class="member-bio">{m.bio}</p>
-            </>
-          ) : (
-            <div aria-hidden="true" />
-          )}
-        </article>
-      );
-    })}
+          </article>
+        );
+      })
+    }
   </div>
 </div>
 
@@ -136,6 +155,10 @@ const { members } = Astro.props;
 
 <style is:global>
   @import "../styles/member-card.css";
+
+  .member-grid .member-card:hover {
+    z-index: 10;
+  }
 </style>
 
 <script>

@@ -1,4 +1,5 @@
 ---
+
 ---
 
 <div id="loading" class="loading-state">Loading profile…</div>
@@ -80,6 +81,33 @@
   </fieldset>
 
   <div class="field">
+    <label class="label" for="tag-input">Tags</label>
+    <div class="tag-input-row">
+      <input
+        id="tag-input"
+        type="text"
+        class="input"
+        placeholder="Add a tag and press Enter"
+        maxlength="50"
+      />
+    </div>
+    <p class="field-note">Up to 7 tags. Press Enter to add a new tag.</p>
+    <div id="selected-tags" class="tag-list" aria-live="polite"></div>
+    <button
+      id="tag-suggestions-toggle"
+      class="tag-suggestions-toggle"
+      type="button"
+      aria-expanded="false"
+      aria-controls="tag-suggestion-panel"
+    >
+      Browse tags
+    </button>
+    <div id="tag-suggestion-panel" class="tag-suggestion-panel" aria-label="Tags" hidden>
+      <div id="tag-suggestion-list" class="tag-suggestion-list"></div>
+    </div>
+  </div>
+
+  <div class="field">
     <label class="label" for="phone">Phone Number</label>
     <input id="phone" type="tel" class="input" placeholder="+41 79 123 45 67" autocomplete="tel" />
     <p class="field-note">
@@ -103,8 +131,7 @@
           href="#"
           target="_blank"
           rel="noopener noreferrer"
-          style="display:none"
-        ></a>
+          style="display:none"></a>
       </div>
       <div aria-hidden="true"></div>
       <p id="preview-bio" class="member-bio" style="display:none"></p>
@@ -112,7 +139,9 @@
   </div>
 
   <div class="form-footer">
-    <p id="save-msg" class="msg-ok" style="display:none;">Changes saved. Your community card will update within a few minutes.</p>
+    <p id="save-msg" class="msg-ok" style="display:none;">
+      Changes saved. Your community card will update within a few minutes.
+    </p>
     <p id="save-error" class="msg-err" style="display:none;"></p>
     <div class="footer-actions">
       <button id="btn-logout" type="button" class="btn-outline">Log Out</button>
@@ -249,6 +278,108 @@
     color: var(--color-muted);
   }
 
+  .tag-input-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .tag-list:not(:empty) {
+    margin-top: 0.5rem;
+  }
+
+  .tag-suggestions-toggle {
+    width: fit-content;
+    margin-top: 0.4rem;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #333;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  .tag-suggestion-panel {
+    margin-top: 0.6rem;
+  }
+
+  .tag-suggestion-panel[hidden] {
+    display: none;
+  }
+
+  .tag-suggestion-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  :global(.tag-chip) {
+    font-family: monospace;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid #111;
+    background: #111;
+    color: #fff;
+    font-size: 0.83rem;
+    font-weight: 500;
+    line-height: 1.25;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      border-color 0.15s;
+  }
+
+  :global(.tag-chip:hover) {
+    background: #333;
+    border-color: #333;
+  }
+
+  :global(.tag-chip span) {
+    opacity: 0.65;
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  :global(.tag-suggestion-chip) {
+    font-family: monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.45rem 0.6rem;
+    min-height: 2.2rem;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--color-border);
+    color: var(--color-muted);
+    background: #fff;
+    font-size: 0.83rem;
+    line-height: 1.25;
+    text-align: center;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      border-color 0.15s;
+  }
+
+  :global(.tag-suggestion-chip:hover) {
+    border-color: #999;
+    color: #999;
+    background: #f5f5f5;
+  }
+
   .input-prefix-wrap {
     display: flex;
     align-items: center;
@@ -351,7 +482,9 @@
     color: #bbb;
     cursor: pointer;
     border-bottom: 1px solid transparent;
-    transition: color 0.15s, border-color 0.15s;
+    transition:
+      color 0.15s,
+      border-color 0.15s;
   }
 
   .btn-danger-link:hover {
@@ -435,6 +568,10 @@
     .footer-actions .btn-outline {
       width: 100%;
     }
+
+    .tag-suggestion-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 </style>
 
@@ -452,8 +589,14 @@
   } from "firebase/auth";
   import { requireVerifiedAuth } from "../lib/auth.ts";
   import { uploadAvatar, deleteAvatar } from "../lib/storage.ts";
-  import { getUser, updateUserProfile, deleteUserData } from "../lib/firestore.ts";
-  import { validateBio, normaliseUrl } from "../lib/validation.ts";
+  import {
+    getUser,
+    updateUserProfile,
+    deleteUserData,
+    getTags,
+    getOrCreateTag,
+  } from "../lib/firestore.ts";
+  import { validateBio, validateAvatar, resizeAvatar, normaliseUrl } from "../lib/validation.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
 
@@ -462,7 +605,7 @@
     role: string,
     bio: string,
     portfolio: string,
-    photoURL: string,
+    photoURL: string
   ) {
     const previewName = document.getElementById("preview-name")!;
     const previewRole = document.getElementById("preview-role") as HTMLElement;
@@ -525,6 +668,13 @@
     const portfolioInput = document.getElementById("portfolio") as HTMLInputElement;
     const socialMediaInput = document.getElementById("social-media") as HTMLInputElement;
     const openToCheckboxes = document.querySelectorAll<HTMLInputElement>('input[name="open-to"]');
+    const tagInput = document.getElementById("tag-input") as HTMLInputElement;
+    const selectedTagsContainer = document.getElementById("selected-tags") as HTMLElement;
+    const tagSuggestionsToggle = document.getElementById(
+      "tag-suggestions-toggle"
+    ) as HTMLButtonElement;
+    const tagSuggestionPanel = document.getElementById("tag-suggestion-panel") as HTMLElement;
+    const tagSuggestionList = document.getElementById("tag-suggestion-list") as HTMLElement;
     const phoneInput = document.getElementById("phone") as HTMLInputElement;
     const avatarInput = document.getElementById("avatar") as HTMLInputElement;
     const avatarImg = document.getElementById("avatar-preview") as HTMLImageElement;
@@ -535,6 +685,166 @@
     const avatarWrap = avatarImg.closest<HTMLElement>(".avatar-wrap")!;
 
     let currentPhotoURL = "";
+    let resizedAvatarBlob: Blob | null = null;
+    let tags: string[] = [];
+    let registryTags: Set<string> = new Set();
+    let panelOpen = false;
+    let autocompleteMatch: string | null = null;
+
+    function setTagSuggestionsVisibility(isVisible: boolean) {
+      panelOpen = isVisible;
+      tagSuggestionPanel.hidden = !isVisible;
+      tagSuggestionsToggle.setAttribute("aria-expanded", String(isVisible));
+      tagSuggestionsToggle.textContent = isVisible ? "Hide tags" : "Browse tags";
+    }
+
+    tagSuggestionsToggle.addEventListener("click", () => {
+      setTagSuggestionsVisibility(!panelOpen);
+    });
+
+    async function loadRegistryTags() {
+      try {
+        const tagDocs = await getTags();
+        registryTags = new Set(tagDocs.map((t) => t.label));
+        updateSuggestions("");
+      } catch (err) {
+        console.warn("Failed to load tag registry", err);
+      }
+    }
+
+    function updateSuggestions(input: string) {
+      renderTagSuggestions(input);
+    }
+
+    function normalizeTag(value: string): string {
+      return value.trim().replace(/^#+/, "").replace(/\s+/g, " ");
+    }
+
+    function renderTags() {
+      selectedTagsContainer.innerHTML = "";
+      tags.forEach((tag) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "tag-chip";
+        button.dataset.tag = tag;
+        button.textContent = tag;
+
+        const remove = document.createElement("span");
+        remove.setAttribute("aria-hidden", "true");
+        remove.textContent = "×";
+        button.appendChild(remove);
+
+        selectedTagsContainer.appendChild(button);
+      });
+    }
+
+    function renderTagSuggestions(filter = "") {
+      tagSuggestionList.innerHTML = "";
+      const availableTags = Array.from(registryTags)
+        .filter((tag) => !tags.some((selected) => selected.toLowerCase() === tag.toLowerCase()))
+        .filter((tag) => !filter || tag.toLowerCase().includes(filter.toLowerCase()))
+        .sort();
+
+      availableTags.forEach((tag) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "tag-suggestion-chip";
+        button.dataset.tag = tag;
+        button.textContent = tag;
+        tagSuggestionList.appendChild(button);
+      });
+    }
+
+    async function addTag(value: string, userId: string): Promise<boolean> {
+      const normalized = normalizeTag(value);
+      if (!normalized || normalized.length > 50) return false;
+      if (tags.length >= 7) return false;
+      if (tags.some((existing) => existing.toLowerCase() === normalized.toLowerCase()))
+        return false;
+
+      try {
+        await getOrCreateTag(normalized, userId);
+        tags = [...tags, normalized];
+        registryTags.add(normalized);
+        renderTags();
+        renderTagSuggestions();
+        return true;
+      } catch (err) {
+        console.error("Failed to create tag", err);
+        return false;
+      }
+    }
+
+    tagInput.addEventListener("keydown", async (event) => {
+      if (event.key === "Backspace" || event.key === "Delete") {
+        if (autocompleteMatch) {
+          event.preventDefault();
+          const typed = tagInput.value.substring(0, tagInput.selectionStart ?? 0);
+          autocompleteMatch = null;
+          tagInput.value = typed;
+          updateSuggestions(typed);
+        }
+        return;
+      }
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      const value = autocompleteMatch ?? tagInput.value;
+      autocompleteMatch = null;
+      if (!value.trim()) return;
+      const user = auth.currentUser;
+      if (!user) return;
+      if (!(await addTag(value, user.uid))) {
+        saveError.textContent = "Tags must be unique, 1–50 characters, and no more than 7 tags.";
+        saveError.style.display = "block";
+      } else {
+        saveError.style.display = "none";
+        tagInput.value = "";
+        updateSuggestions("");
+      }
+    });
+
+    tagInput.addEventListener("input", () => {
+      const raw = tagInput.value;
+      updateSuggestions(raw);
+      const match = Array.from(registryTags)
+        .filter((t) => !tags.some((s) => s.toLowerCase() === t.toLowerCase()))
+        .find((t) => raw.length > 0 && t.toLowerCase().startsWith(raw.toLowerCase()));
+      if (match) {
+        autocompleteMatch = match;
+        tagInput.value = match;
+        tagInput.setSelectionRange(raw.length, match.length);
+      } else {
+        autocompleteMatch = null;
+      }
+    });
+
+    tagSuggestionPanel.addEventListener("click", async (event) => {
+      const button = (event.target as HTMLElement).closest(
+        "button.tag-suggestion-chip"
+      ) as HTMLButtonElement | null;
+      if (!button) return;
+      const tag = button.dataset.tag;
+      const user = auth.currentUser;
+      if (!tag || !user) return;
+
+      if (await addTag(tag, user.uid)) {
+        saveError.style.display = "none";
+        tagInput.value = "";
+        updateSuggestions("");
+      }
+    });
+
+    selectedTagsContainer.addEventListener("click", (event) => {
+      const button = (event.target as HTMLElement).closest(
+        "button.tag-chip"
+      ) as HTMLButtonElement | null;
+      if (!button) return;
+      const tag = button.dataset.tag;
+      if (!tag) return;
+      tags = tags.filter((existing) => existing !== tag);
+      renderTags();
+      updateSuggestions(tagInput.value);
+    });
 
     function showPreview(url: string) {
       currentPhotoURL = url;
@@ -552,7 +862,7 @@
         roleInput.value.trim(),
         bioInput.value.trim(),
         portfolioInput.value.trim(),
-        currentPhotoURL,
+        currentPhotoURL
       );
     }
 
@@ -561,18 +871,35 @@
     bioInput.addEventListener("input", syncPreview);
     portfolioInput.addEventListener("input", syncPreview);
 
-    avatarInput.addEventListener("change", () => {
+    avatarInput.addEventListener("change", async () => {
       const file = avatarInput.files?.[0];
-      if (file) {
-        const objectUrl = URL.createObjectURL(file);
-        showPreview(objectUrl);
-        uploadStatus.textContent = `Selected: ${file.name}`;
+      if (!file) return;
+
+      const validation = validateAvatar(file);
+      if (!validation.ok) {
+        uploadStatus.textContent = validation.error!;
         uploadStatus.style.display = "block";
+        resizedAvatarBlob = null;
+        avatarInput.value = "";
+        return;
+      }
+
+      uploadStatus.textContent = "Processing…";
+      uploadStatus.style.display = "block";
+      try {
+        resizedAvatarBlob = await resizeAvatar(file);
+        const previewUrl = URL.createObjectURL(resizedAvatarBlob);
+        showPreview(previewUrl);
+        uploadStatus.textContent = `Selected: ${file.name}`;
+      } catch {
+        uploadStatus.textContent = "Could not process image.";
+        resizedAvatarBlob = null;
       }
     });
 
     unsubscribeAuth?.();
     unsubscribeAuth = requireVerifiedAuth(async (user) => {
+      await loadRegistryTags();
       const data = await getUser(user.uid);
 
       nameInput.value = data.displayName ?? user.displayName ?? "";
@@ -581,7 +908,11 @@
       portfolioInput.value = data.portfolio ?? "";
       socialMediaInput.value = data.socialMedia ?? "";
       const savedOpenTo = data.openTo ?? [];
-      openToCheckboxes.forEach((cb) => { cb.checked = savedOpenTo.includes(cb.value); });
+      openToCheckboxes.forEach((cb) => {
+        cb.checked = savedOpenTo.includes(cb.value);
+      });
+      tags = Array.isArray(data.tags) ? data.tags.filter(Boolean).slice(0, 7) : [];
+      renderTags();
       phoneInput.value = data.phone ?? "";
       showPreview(data.photoURL ?? user.photoURL ?? "");
 
@@ -607,9 +938,11 @@
       const bio = bioInput.value.trim();
       const portfolio = portfolioInput.value.trim();
       const socialMedia = socialMediaInput.value.trim();
-      const openTo = Array.from(openToCheckboxes).filter((cb) => cb.checked).map((cb) => cb.value);
+      const openTo = Array.from(openToCheckboxes)
+        .filter((cb) => cb.checked)
+        .map((cb) => cb.value);
       const phone = phoneInput.value.trim();
-      const file = avatarInput.files?.[0];
+      const tagsPayload = tags;
       const bioResult = validateBio(bio);
 
       if (!bioResult.ok) {
@@ -620,8 +953,9 @@
 
       try {
         let photoURL: string = auth.currentUser?.photoURL ?? "";
-        if (file) {
-          photoURL = await uploadAvatar(user.uid, file, (pct) => {
+        if (resizedAvatarBlob) {
+          const avatarFile = new File([resizedAvatarBlob], "avatar.jpg", { type: "image/jpeg" });
+          photoURL = await uploadAvatar(user.uid, avatarFile, (pct) => {
             uploadStatus.textContent = `Uploading… ${pct}%`;
             uploadStatus.style.display = "block";
           });
@@ -642,6 +976,7 @@
           portfolio,
           socialMedia,
           openTo,
+          tags: tagsPayload,
           phone,
           email: user.email!,
           updatedAt: new Date(),
@@ -650,7 +985,7 @@
         // Trigger community page rebuild
         const ghToken = import.meta.env.PUBLIC_GITHUB_REBUILD_TOKEN;
         const ghOwner = import.meta.env.PUBLIC_GITHUB_OWNER;
-        const ghRepo  = import.meta.env.PUBLIC_GITHUB_REPO;
+        const ghRepo = import.meta.env.PUBLIC_GITHUB_REPO;
         if (ghToken && ghOwner && ghRepo) {
           try {
             const res = await fetch(
@@ -663,7 +998,7 @@
                   "X-GitHub-Api-Version": "2022-11-28",
                 },
                 body: JSON.stringify({ ref: "main" }),
-              },
+              }
             );
             if (!res.ok) {
               const body = await res.text();
@@ -673,7 +1008,9 @@
             console.error("Rebuild trigger error:", rebuildErr);
           }
         } else {
-          console.warn("Rebuild skipped: missing PUBLIC_GITHUB_REBUILD_TOKEN / OWNER / REPO env vars");
+          console.warn(
+            "Rebuild skipped: missing PUBLIC_GITHUB_REBUILD_TOKEN / OWNER / REPO env vars"
+          );
         }
 
         saveMsg.style.display = "block";
@@ -684,16 +1021,16 @@
     });
 
     // ── Delete account ──────────────────────────────────────────────
-    const deleteIdle    = document.getElementById("delete-idle")!;
+    const deleteIdle = document.getElementById("delete-idle")!;
     const deleteConfirm = document.getElementById("delete-confirm")!;
-    const deleteReauth  = document.getElementById("delete-reauth")!;
-    const reauthInput   = document.getElementById("reauth-password") as HTMLInputElement;
-    const reauthError   = document.getElementById("reauth-error")!;
+    const deleteReauth = document.getElementById("delete-reauth")!;
+    const reauthInput = document.getElementById("reauth-password") as HTMLInputElement;
+    const reauthError = document.getElementById("reauth-error")!;
 
     function showDeleteView(view: "idle" | "confirm" | "reauth") {
-      deleteIdle.style.display    = view === "idle"    ? "block" : "none";
+      deleteIdle.style.display = view === "idle" ? "block" : "none";
       deleteConfirm.style.display = view === "confirm" ? "block" : "none";
-      deleteReauth.style.display  = view === "reauth"  ? "block" : "none";
+      deleteReauth.style.display = view === "reauth" ? "block" : "none";
     }
 
     async function performDelete() {
@@ -721,8 +1058,10 @@
       try {
         await performDelete();
       } catch (err: unknown) {
-        const code = typeof err === "object" && err !== null && "code" in err
-          ? String((err as { code: unknown }).code) : "";
+        const code =
+          typeof err === "object" && err !== null && "code" in err
+            ? String((err as { code: unknown }).code)
+            : "";
         if (code === "auth/requires-recent-login") {
           showDeleteView("reauth");
         } else {

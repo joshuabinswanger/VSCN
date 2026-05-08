@@ -3,6 +3,17 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    match /tags/{slug} {
+      // Public tag registry. Readable by everyone.
+      allow read: if true;
+
+      allow create: if request.auth != null
+                    && request.auth.token.email_verified == true
+                    && validTag(request.resource.data);
+
+      allow update, delete: if false;
+    }
+
     match /publicProfiles/{uid} {
       // Public directory data only. Never store phone numbers or emails here.
       allow read: if true;
@@ -33,14 +44,14 @@ service cloud.firestore {
 }
 
 function validPublicProfile(data) {
-  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'active', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'tags', 'active', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data);
 }
 
 function validPrivateUser(data, auth) {
-  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'phone', 'email', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'tags', 'phone', 'email', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data)
@@ -57,6 +68,7 @@ function validPublicFields(data) {
     && (!('portfolio' in data) || (data.portfolio is string && data.portfolio.size() <= 200))
     && (!('socialMedia' in data) || (data.socialMedia is string && data.socialMedia.size() <= 200))
     && (!('openTo' in data) || (data.openTo is list && data.openTo.size() <= 3 && data.openTo.hasOnly(['offering', 'seeking', 'networking'])))
+    && (!('tags' in data) || (data.tags is list && data.tags.size() <= 7))
     && (!('active' in data) || data.active is bool)
     && (!('photoURL' in data) || data.photoURL == ''
         || data.photoURL.matches('https://firebasestorage\\.googleapis\\.com/v0/b/vscn-39508\\.firebasestorage\\.app/.*')
@@ -68,4 +80,12 @@ function validPublicFields(data) {
 function validBioWordCount(bio) {
   // Keep this regex in sync with MAX_BIO_WORDS in src/lib/validation.ts.
   return bio.size() == 0 || bio.matches('^\\s*\\S+(\\s+\\S+){0,34}\\s*$');
+}
+
+function validTag(data) {
+  return data.label is string
+    && data.label.size() > 0
+    && data.label.size() <= 50
+    && data.createdAt is timestamp
+    && data.createdBy is string;
 }

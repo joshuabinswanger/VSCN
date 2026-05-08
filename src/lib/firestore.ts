@@ -11,17 +11,18 @@ import {
 } from "firebase/firestore";
 
 export interface UserDoc {
-  displayName:  string;
-  photoURL:     string;
-  role:         string;
-  bio:          string;
-  portfolio:    string;
-  socialMedia:  string;
-  openTo:       string[];
-  phone:        string;
-  email:        string;
-  createdAt?:   Date;
-  updatedAt?:   Date;
+  displayName: string;
+  photoURL: string;
+  role: string;
+  bio: string;
+  portfolio: string;
+  socialMedia: string;
+  openTo: string[];
+  tags: string[];
+  phone: string;
+  email: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export type PublicProfileDoc = Omit<UserDoc, "phone" | "email"> & { active?: boolean };
@@ -35,6 +36,7 @@ function toPublicProfile(data: Partial<UserDoc>): Partial<PublicProfileDoc> {
     portfolio: data.portfolio ?? "",
     socialMedia: data.socialMedia ?? "",
     openTo: data.openTo ?? [],
+    tags: data.tags ?? [],
     ...(data.createdAt ? { createdAt: data.createdAt } : {}),
     ...(data.updatedAt ? { updatedAt: data.updatedAt } : {}),
   };
@@ -64,10 +66,7 @@ export async function publishPublicProfile(uid: string, data: Partial<UserDoc>):
 }
 
 export async function updateUserProfile(uid: string, data: Partial<UserDoc>): Promise<void> {
-  await Promise.all([
-    updateUser(uid, data),
-    publishPublicProfile(uid, data),
-  ]);
+  await Promise.all([updateUser(uid, data), publishPublicProfile(uid, data)]);
 }
 
 export async function publishCurrentUserProfile(uid: string): Promise<void> {
@@ -79,10 +78,7 @@ export async function publishCurrentUserProfile(uid: string): Promise<void> {
 }
 
 export async function deleteUserData(uid: string): Promise<void> {
-  await Promise.all([
-    deleteDoc(doc(db, "users", uid)),
-    deleteDoc(doc(db, "publicProfiles", uid)),
-  ]);
+  await Promise.all([deleteDoc(doc(db, "users", uid)), deleteDoc(doc(db, "publicProfiles", uid))]);
 }
 
 export async function getMembers(): Promise<(PublicProfileDoc & { uid: string })[]> {
@@ -90,4 +86,28 @@ export async function getMembers(): Promise<(PublicProfileDoc & { uid: string })
   return snap.docs
     .filter((d) => d.data().active !== false)
     .map((d) => ({ uid: d.id, ...(d.data() as PublicProfileDoc) }));
+}
+
+export interface TagDoc {
+  label: string;
+  createdAt: Date;
+  createdBy: string;
+}
+
+export async function getTags(): Promise<TagDoc[]> {
+  const snap = await getDocs(query(collection(db, "tags"), orderBy("label")));
+  return snap.docs.map((d) => d.data() as TagDoc);
+}
+
+export async function getOrCreateTag(label: string, uid: string): Promise<void> {
+  const normalized = label.trim().toLowerCase().replace(/\s+/g, "-");
+  const ref = doc(db, "tags", normalized);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    await setDoc(ref, {
+      label: label.trim(),
+      createdAt: new Date(),
+      createdBy: uid,
+    } as TagDoc);
+  }
 }
