@@ -1,59 +1,9 @@
 <div class="auth-wrap">
   <header class="auth-header">
     <h1 id="auth-title" class="auth-title">Create an Account</h1>
-    <p class="auth-sub">
-      Already have one?
-      <a href="#" id="toggle-link" class="toggle-link">Log in instead</a>
-    </p>
   </header>
 
   <form id="auth-form" class="auth-form">
-    <div id="signup-fields">
-      <div class="field">
-        <label class="label" for="name">Display Name</label>
-        <input id="name" type="text" class="input" placeholder="Your name" />
-      </div>
-
-      <div class="field">
-        <label class="label">Profile Image</label>
-        <div class="auth-avatar-wrap">
-          <div class="avatar-image">
-            <img id="avatar-preview" src="" alt="" class="avatar-img" />
-            <div id="avatar-placeholder" class="avatar-placeholder">?</div>
-          </div>
-          <label class="btn-outline choose-img" for="avatar">
-            Choose image
-            <input id="avatar" type="file" accept="image/*" style="display:none;" />
-          </label>
-          <p id="upload-status" class="upload-status" style="display:none;"></p>
-        </div>
-      </div>
-
-      <div class="field">
-        <label class="label" for="bio">About you</label>
-        <textarea
-          id="bio"
-          class="input textarea"
-          rows="3"
-          placeholder="A short description about yourself…"></textarea>
-        <p class="field-note">Maximum 35 words.</p>
-      </div>
-
-      <div class="field phone">
-        <label class="label" for="phone">Phone Number</label>
-        <input
-          id="phone"
-          type="tel"
-          class="input"
-          placeholder="+41 79 123 45 67"
-          autocomplete="tel"
-        />
-        <p class="field-note">
-          Hidden from the community page. Used only to help create a VSCN chat group.
-        </p>
-      </div>
-    </div>
-
     <div class="field">
       <label class="label" for="email">Email</label>
       <input
@@ -82,10 +32,13 @@
         autocomplete="current-password"
       />
     </div>
-
     <p id="auth-error" class="msg-err" style="display:none;"></p>
 
     <div class="auth-footer">
+      <p class="auth-sub already-have">
+        Already have one?
+        <a href="#" id="toggle-link" class="toggle-link">Log in instead</a>
+      </p>
       <button id="submit-btn" type="submit" class="btn-solid auth-submit-button">Sign Up</button>
     </div>
   </form>
@@ -172,67 +125,6 @@
     margin-bottom: 25vh;
   }
 
-  #signup-fields {
-    display: grid;
-    grid-auto-rows: min-content;
-    gap: 1.5rem;
-  }
-
-  .auth-avatar-wrap {
-    position: relative;
-    display: grid;
-    grid-template-columns: min-content 1fr 1fr;
-    justify-items: start;
-    align-items: center;
-    gap: 25px;
-    flex-shrink: 0;
-  }
-
-  .avatar-img,
-  .avatar-placeholder {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    object-fit: cover;
-  }
-
-  .avatar-img {
-    display: none;
-  }
-
-  .auth-avatar-wrap.has-image .avatar-img {
-    display: block;
-  }
-
-  .auth-avatar-wrap.has-image .avatar-placeholder {
-    display: none;
-  }
-
-  .avatar-placeholder {
-    background: #f0f0f0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.8rem;
-    color: #bbb;
-    border: 1.5px solid #e5e5e5;
-  }
-
-  .choose-img {
-    width: fit-content;
-  }
-
-  .field-note {
-    margin: 0;
-    font-size: 0.78rem;
-    line-height: 1.5;
-    color: var(--color-muted);
-  }
-
-  .phone {
-    padding-bottom: 2rem;
-  }
-
   .field-label-row {
     display: flex;
     align-items: baseline;
@@ -264,31 +156,25 @@
   }
 
   .auth-footer {
-    display: grid;
-    justify-content: end;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     padding-top: 25px;
   }
 
-  .auth-submit-button {
-    margin-left: auto;
+  .already-have {
+    margin-top: 0;
   }
 
   @media (max-width: 520px) {
-    .auth-avatar-wrap {
-      grid-template-columns: min-content 1fr;
-    }
-
-    .upload-status {
-      grid-column: 1 / -1;
-    }
-
     .auth-footer {
-      justify-content: stretch;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1rem;
     }
 
     .auth-submit-button {
       width: 100%;
-      margin-left: 0;
     }
   }
 </style>
@@ -301,11 +187,8 @@
     signInWithEmailAndPassword,
     sendEmailVerification,
     sendPasswordResetEmail,
-    updateProfile,
   } from "firebase/auth";
   import { friendlyError } from "../lib/auth.ts";
-  import { uploadAvatar } from "../lib/storage.ts";
-  import { validateAvatar, validateBio } from "../lib/validation.ts";
   import { createUser } from "../lib/firestore.ts";
 
   let isLogin = false;
@@ -318,15 +201,10 @@
     if (!form) return;
 
     const toggleLink = document.getElementById("toggle-link")!;
-    const signupFields = document.getElementById("signup-fields")!;
     const submitBtn = document.getElementById("submit-btn")!;
     const authTitle = document.getElementById("auth-title")!;
     const authSub = document.querySelector<HTMLElement>(".auth-sub")!;
     const errorEl = document.getElementById("auth-error")!;
-    const avatarInput = document.getElementById("avatar") as HTMLInputElement;
-    const avatarPreview = document.getElementById("avatar-preview") as HTMLImageElement;
-    const uploadStatus = document.getElementById("upload-status")!;
-    const avatarWrap = avatarPreview.closest<HTMLElement>(".auth-avatar-wrap")!;
     const forgotLink = document.getElementById("forgot-link") as HTMLButtonElement;
     const forgotSection = document.getElementById("forgot-section")!;
     const forgotEmailInput = document.getElementById("forgot-email") as HTMLInputElement;
@@ -334,14 +212,6 @@
     const forgotBack = document.getElementById("forgot-back") as HTMLButtonElement;
     const forgotError = document.getElementById("forgot-error")!;
     const forgotSuccess = document.getElementById("forgot-success")!;
-
-    function showPreview(url: string) {
-      avatarPreview.src = url;
-      avatarWrap.classList.toggle("has-image", !!url);
-      avatarPreview.onerror = () => {
-        avatarWrap.classList.remove("has-image");
-      };
-    }
 
     unsubscribeAuth?.();
     unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -371,7 +241,6 @@
 
     // Reset state on each page load
     isLogin = false;
-    signupFields.style.display = "grid";
     submitBtn.textContent = "Sign Up";
     authTitle.textContent = "Create an Account";
     toggleLink.textContent = "Log in instead";
@@ -411,26 +280,9 @@
       }
     });
 
-    avatarInput.addEventListener("change", () => {
-      const file = avatarInput.files?.[0];
-      if (!file) return;
-      const result = validateAvatar(file);
-      if (!result.ok) {
-        uploadStatus.textContent = result.error!;
-        uploadStatus.style.display = "block";
-        avatarInput.value = "";
-        showPreview("");
-        return;
-      }
-      showPreview(URL.createObjectURL(file));
-      uploadStatus.textContent = `Selected: ${file.name}`;
-      uploadStatus.style.display = "block";
-    });
-
     toggleLink.addEventListener("click", (e) => {
       e.preventDefault();
       isLogin = !isLogin;
-      signupFields.style.display = isLogin ? "none" : "grid";
       submitBtn.textContent = isLogin ? "Log In" : "Sign Up";
       toggleLink.textContent = isLogin ? "Sign up instead" : "Log in instead";
       authTitle.textContent = isLogin ? "Log In" : "Create an Account";
@@ -452,17 +304,6 @@
 
       const email = (document.getElementById("email") as HTMLInputElement).value;
       const password = (document.getElementById("password") as HTMLInputElement).value;
-      const name = (document.getElementById("name") as HTMLInputElement).value;
-      const bio = (document.getElementById("bio") as HTMLTextAreaElement).value.trim();
-      const phone = (document.getElementById("phone") as HTMLInputElement).value.trim();
-      const file = avatarInput.files?.[0];
-      const bioResult = validateBio(bio);
-
-      if (!bioResult.ok) {
-        errorEl.textContent = bioResult.error!;
-        errorEl.style.display = "block";
-        return;
-      }
 
       try {
         isSubmitting = true;
@@ -471,19 +312,7 @@
           window.location.href = user.emailVerified ? "/profile" : "/verify-email";
         } else {
           const { user } = await createUserWithEmailAndPassword(auth, email, password);
-          let photoURL = "";
-          if (file) {
-            photoURL = await uploadAvatar(user.uid, file, (pct) => {
-              uploadStatus.textContent = `Uploading… ${pct}%`;
-              uploadStatus.style.display = "block";
-            });
-          }
-          await updateProfile(user, { displayName: name || null, photoURL: photoURL || null });
           await createUser(user.uid, {
-            displayName: name || "",
-            photoURL,
-            bio,
-            phone,
             email: user.email!,
             createdAt: new Date(),
           });
@@ -498,7 +327,7 @@
             : "";
         errorEl.textContent = code
           ? friendlyError(code)
-          : "Could not send verification email. Please try again.";
+          : "Something went wrong. Please try again.";
         errorEl.style.display = "block";
       }
     });

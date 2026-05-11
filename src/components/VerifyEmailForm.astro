@@ -111,7 +111,6 @@
 <script>
   import { auth } from "../lib/firebase.ts";
   import { onAuthStateChanged, sendEmailVerification, signOut } from "firebase/auth";
-  import { publishCurrentUserProfile } from "../lib/firestore.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
 
@@ -134,10 +133,7 @@
         return;
       }
       if (user.emailVerified) {
-        await user.getIdToken(true);
-        publishCurrentUserProfile(user.uid).finally(() => {
-          window.location.href = "/community";
-        });
+        window.location.href = "/profile";
         return;
       }
       currentUser = user;
@@ -147,9 +143,7 @@
     async function continueIfVerified(user: import("firebase/auth").User) {
       await user.reload();
       if (user.emailVerified) {
-        await user.getIdToken(true);
-        await publishCurrentUserProfile(user.uid);
-        window.location.href = "/community";
+        window.location.href = "/profile";
         return;
       }
       statusMsg.textContent = "Email not verified yet. Check your inbox and click the link.";
