@@ -217,7 +217,7 @@
     unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (!user) return;
       if (isSubmitting) return;
-      window.location.href = user.emailVerified ? "/community" : "/verify-email";
+      window.location.href = "/community";
     });
 
     function showForgotView() {
@@ -308,8 +308,8 @@
       try {
         isSubmitting = true;
         if (isLogin) {
-          const { user } = await signInWithEmailAndPassword(auth, email, password);
-          window.location.href = user.emailVerified ? "/profile" : "/verify-email";
+          await signInWithEmailAndPassword(auth, email, password);
+          window.location.href = "/profile";
         } else {
           const { user } = await createUserWithEmailAndPassword(auth, email, password);
           await createUser(user.uid, {
@@ -317,7 +317,7 @@
             createdAt: new Date(),
           });
           await sendEmailVerification(user);
-          window.location.href = "/verify-email";
+          window.location.href = "/profile";
         }
       } catch (err: unknown) {
         isSubmitting = false;

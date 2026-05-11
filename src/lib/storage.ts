@@ -1,5 +1,24 @@
 import { storage } from "./firebase.ts";
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
+import { ref, uploadBytesResumable, deleteObject } from "firebase/storage";
+
+function publicStorageUrl(storagePath: string): string {
+  const bucket = storage.app.options.storageBucket ?? "";
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(storagePath)}?alt=media`;
+}
+
+export function stripStorageToken(url: string): string {
+  if (!url) return url;
+  try {
+    const u = new URL(url);
+    if (u.hostname === "firebasestorage.googleapis.com") {
+      u.searchParams.delete("token");
+      return u.toString();
+    }
+  } catch {
+    // not a valid URL, return as-is
+  }
+  return url;
+}
 
 export async function deleteAvatar(photoURL: string): Promise<void> {
   if (!photoURL) return;
@@ -22,10 +41,10 @@ export function uploadAvatar(
   uid: string,
   file: File,
   onProgress: (pct: number) => void = () => {},
-  oldPhotoURL?: string,
 ): Promise<string> {
   const ext = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
-  const storageRef = ref(storage, `avatars/${uid}.${ext}`);
+  const storagePath = `avatars/${uid}.${ext}`;
+  const storageRef = ref(storage, storagePath);
   return new Promise((resolve, reject) => {
     const task = uploadBytesResumable(storageRef, file);
     task.on(
@@ -34,17 +53,7 @@ export function uploadAvatar(
         onProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100));
       },
       reject,
-      async () => {
-        const newURL = await getDownloadURL(task.snapshot.ref);
-        if (oldPhotoURL && oldPhotoURL !== newURL) {
-          try {
-            await deleteObject(ref(storage, oldPhotoURL));
-          } catch {
-            // Old file may already be gone — not a fatal error
-          }
-        }
-        resolve(newURL);
-      },
+      () => resolve(publicStorageUrl(storagePath)),
     );
   });
 }

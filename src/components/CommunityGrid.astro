@@ -1,7 +1,6 @@
 ---
 import type { PublicProfileDoc } from "../lib/firestore.ts";
-import { normaliseUrl } from "../lib/validation.ts";
-import downArrowUrl from "../assets/downarrow.svg";
+import MemberCard from "./MemberCard.astro";
 
 interface Props {
   members: (PublicProfileDoc & { uid: string })[];
@@ -21,80 +20,7 @@ const { members } = Astro.props;
 
   <div id="member-grid" class="member-grid">
     {members.length === 0 && <p class="state-msg">No members yet.</p>}
-    {
-      members.map((m) => {
-        const displayName = m.displayName || "Anonymous";
-        const portfolioHref = normaliseUrl(m.portfolio ?? "");
-        const socialHref = normaliseUrl(m.socialMedia ?? "");
-        const bioId = `member-bio-${m.uid}`;
-        return (
-          <article class="member-card">
-            <div class="member-avatar-wrap">
-              {m.photoURL ? (
-                <img class="member-avatar" src={m.photoURL} alt={displayName} />
-              ) : (
-                <div class="member-avatar member-avatar--placeholder">
-                  {displayName[0]?.toUpperCase() ?? "?"}
-                </div>
-              )}
-            </div>
-
-            <div class="member-info">
-              <div class="member-name">{displayName}</div>
-              {m.role && <div class="member-role">{m.role}</div>}
-              {(portfolioHref || socialHref) && (
-                <div class="member-links">
-                  {portfolioHref && (
-                    <a
-                      class="member-portfolio"
-                      href={portfolioHref}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {(() => { const p = (m.portfolio ?? "").replace(/^www\./i, ""); const limit = socialHref ? 13 : 17; return p.length > limit ? "portfolio" : p; })()}
-                    </a>
-                  )}
-                  {portfolioHref && socialHref && (
-                    <span class="member-links-sep" aria-hidden="true">
-                      |
-                    </span>
-                  )}
-                  {socialHref && (
-                    <a
-                      class="member-social"
-                      href={socialHref}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      social
-                    </a>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {m.bio ? (
-              <>
-                <button
-                  class="member-bio-toggle"
-                  type="button"
-                  aria-expanded="false"
-                  aria-controls={bioId}
-                  aria-label={`Show bio for ${displayName}`}
-                >
-                  <img class="member-bio-arrow" src={downArrowUrl.src} alt="" aria-hidden="true" />
-                </button>
-                <p id={bioId} class="member-bio">
-                  {m.bio}
-                </p>
-              </>
-            ) : (
-              <div aria-hidden="true" />
-            )}
-          </article>
-        );
-      })
-    }
+    {members.map((m) => <MemberCard member={m} />)}
   </div>
 </div>
 
@@ -111,7 +37,7 @@ const { members } = Astro.props;
     align-items: baseline;
     gap: 15px;
     flex-wrap: wrap;
-    font-family: var(--font-space-mono, "Space Mono", monospace);
+    font-family: "Archivo", sans-serif;
     font-size: clamp(1.6rem, 5vw, 2.4rem);
     font-weight: 700;
     letter-spacing: -0.02em;
@@ -125,6 +51,11 @@ const { members } = Astro.props;
     color: #bbb;
   }
 
+  .state-msg {
+    color: #999;
+    font-size: 0.9rem;
+  }
+
   .member-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -135,29 +66,23 @@ const { members } = Astro.props;
 
   @media (--bp-desktop), (--bp-desktop-wide) {
     .member-grid {
-      grid-template-columns: repeat(3, minmax(330px, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       align-items: start;
+      gap: 3rem;
     }
   }
 
   @media (width <= 1050px) {
     .member-grid {
-      grid-template-columns: repeat(2, minmax(330px, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 330px));
+      gap: 2rem;
     }
   }
 
   @media (--bp-mobile) {
     .member-grid {
-      grid-template-columns: minmax(0, 1fr);
+      grid-template-columns: minmax(0, 400px);
     }
-  }
-</style>
-
-<style is:global>
-  @import "../styles/member-card.css";
-
-  .member-grid .member-card:hover {
-    z-index: 10;
   }
 </style>
 
@@ -166,8 +91,8 @@ const { members } = Astro.props;
   let hasDesktopQueryListener = false;
 
   function collapseMobileBioPanels() {
-    document.querySelectorAll(".member-card.is-expanded").forEach((card) => {
-      card.classList.remove("is-expanded");
+    document.querySelectorAll(".member-card-wrap.is-expanded").forEach((wrap) => {
+      wrap.classList.remove("is-expanded");
     });
     document.querySelectorAll<HTMLButtonElement>(".member-bio-toggle").forEach((button) => {
       button.setAttribute("aria-expanded", "false");
@@ -177,10 +102,10 @@ const { members } = Astro.props;
   function wireBioToggles() {
     document.querySelectorAll<HTMLButtonElement>(".member-bio-toggle").forEach((toggle) => {
       toggle.addEventListener("click", () => {
-        const card = toggle.closest(".member-card")!;
-        const expanded = card.classList.toggle("is-expanded");
+        const wrap = toggle.closest(".member-card-wrap")!;
+        const expanded = wrap.classList.toggle("is-expanded");
         toggle.setAttribute("aria-expanded", String(expanded));
-        const name = card.querySelector(".member-name")?.textContent ?? "";
+        const name = wrap.querySelector(".member-name")?.textContent ?? "";
         toggle.setAttribute("aria-label", `${expanded ? "Hide" : "Show"} bio for ${name}`);
       });
     });

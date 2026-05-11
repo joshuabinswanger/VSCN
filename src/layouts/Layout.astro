@@ -1,6 +1,5 @@
 ---
 import { ClientRouter } from "astro:transitions";
-import { Font } from "astro:assets";
 import Navbar from "../components/Navbar.astro";
 import favicon from "../assets/favicon.png";
 import ogImageAsset from "../assets/OG_Image.png";
@@ -47,18 +46,73 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
     <meta name="twitter:image" content={ogImageUrl} />
 
     <ClientRouter />
-    <Font cssVariable="--font-space-mono" preload />
   </head>
   <body>
-    <Navbar />
-    {
-      fullscreen ? (
-        <slot />
-      ) : (
-        <main>
+    <div class="brand-ticker" transition:persist>
+      <a href="/" class="brand-link">
+        <div class="brand-track">
+          <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
+          <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
+          <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
+          <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
+        </div>
+      </a>
+    </div>
+    <div class="page-wrap">
+      <Navbar />
+      {
+        fullscreen ? (
           <slot />
-        </main>
-      )
-    }
+        ) : (
+          <main>
+            <slot />
+          </main>
+        )
+      }
+    </div>
   </body>
 </html>
+
+<style>
+  .brand-ticker {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .brand-link {
+    display: block;
+    height: 100%;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .brand-link:visited {
+    color: black;
+  }
+
+  .brand-track {
+    display: flex;
+    gap: 0;
+    white-space: nowrap;
+    width: max-content;
+    align-items: baseline;
+    animation: nav-scroll 32s linear infinite;
+    font-weight: 700;
+    font-size: 8vh;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--color-dark);
+  }
+
+  .brand-track span {
+    padding-right: 0;
+    height: min-content;
+  }
+
+  @keyframes nav-scroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+</style>

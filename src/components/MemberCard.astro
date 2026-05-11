@@ -1,0 +1,358 @@
+---
+import type { PublicProfileDoc } from "../lib/firestore.ts";
+import { normaliseUrl } from "../lib/validation.ts";
+import downArrowUrl from "../assets/downarrow.svg";
+
+function stripStorageToken(url: string): string {
+  if (!url) return url;
+  try {
+    const u = new URL(url);
+    if (u.hostname === "firebasestorage.googleapis.com") {
+      u.searchParams.delete("token");
+      return u.toString();
+    }
+  } catch {
+    // not a valid URL — return as-is
+  }
+  return url;
+}
+
+interface Props {
+  member?: PublicProfileDoc & { uid: string };
+  preview?: boolean;
+}
+
+const { member: m, preview = false } = Astro.props;
+const displayName = m?.displayName || "Anonymous";
+const portfolioHref = normaliseUrl(m?.portfolio ?? "");
+const socialHref = normaliseUrl(m?.socialMedia ?? "");
+const bioId = m ? `member-bio-${m.uid}` : undefined;
+const avatarSrc = stripStorageToken(m?.photoURL ?? "");
+---
+
+{
+  preview ? (
+    <article id="preview-card" class="member-card member-card--preview">
+      <div class="member-avatar-wrap">
+        <img id="preview-avatar-img" class="member-avatar" src="" alt="" style="display:none" />
+        <div id="preview-avatar-ph" class="member-avatar member-avatar--placeholder">
+          ?
+        </div>
+      </div>
+      <div class="member-info">
+        <div id="preview-name" class="member-name" />
+        <div id="preview-role" class="member-role" style="display:none" />
+        <a
+          id="preview-portfolio"
+          class="member-portfolio"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          style="display:none"
+        />
+      </div>
+      <div aria-hidden="true" />
+      <p id="preview-bio" class="member-bio" style="display:none" />
+    </article>
+  ) : (
+    <div class="member-card-wrap">
+      <article class="member-card">
+        <div class="member-avatar-wrap">
+          {avatarSrc ? (
+            <img class="member-avatar" src={avatarSrc} alt={displayName} width="80" height="80" loading="lazy" />
+          ) : (
+            <div class="member-avatar member-avatar--placeholder">
+              {displayName[0]?.toUpperCase() ?? "?"}
+            </div>
+          )}
+        </div>
+
+        <div class="member-info">
+          <div class="member-name">{displayName}</div>
+          {m?.role && <div class="member-role">{m.role}</div>}
+          {(portfolioHref || socialHref) && (
+            <div class="member-links">
+              {portfolioHref && (
+                <a
+                  class="member-portfolio"
+                  href={portfolioHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {(() => {
+                    const p = (m?.portfolio ?? "").replace(/^www\./i, "");
+                    const limit = socialHref ? 13 : 17;
+                    return p.length > limit ? "portfolio" : p;
+                  })()}
+                </a>
+              )}
+              {portfolioHref && socialHref && (
+                <span class="member-links-sep" aria-hidden="true">
+                  |
+                </span>
+              )}
+              {socialHref && (
+                <a class="member-social" href={socialHref} target="_blank" rel="noopener noreferrer">
+                  social
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+
+        {m?.bio ? (
+          <>
+            <button
+              class="member-bio-toggle"
+              type="button"
+              aria-expanded="false"
+              aria-controls={bioId}
+              aria-label={`Show bio for ${displayName}`}
+            >
+              <img class="member-bio-arrow" src={downArrowUrl.src} alt="" aria-hidden="true" />
+            </button>
+            <p id={bioId} class="member-bio">
+              {m.bio}
+            </p>
+          </>
+        ) : (
+          <div aria-hidden="true" />
+        )}
+      </article>
+    </div>
+  )
+}
+
+<style is:global>
+  .member-card {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    grid-template-columns: min-content minmax(0, 1fr) 16px;
+    align-items: center;
+    gap: 5px 20px;
+    padding: 10px 15px 10px 20px;
+    border: 1.5px solid #e8e8e8;
+    border-radius: var(--radius-sm);
+    background: #ffffff;
+    transition:
+      border-color 0.2s,
+      filter 0.2s,
+      border-bottom-right-radius 0.18s ease,
+      border-bottom-left-radius 0.18s ease;
+    text-align: center;
+    align-self: start;
+
+    @media (--bp-desktop) {
+      grid-template-columns: min-content minmax(0, 1fr);
+      padding: 15px 25px 15px 15px;
+      gap: 5px 25px;
+    }
+  }
+
+  .member-card:hover {
+    border-color: var(--color-border);
+  }
+
+  @media (--bp-desktop), (--bp-desktop-wide) {
+    .member-card-wrap:hover .member-card,
+    .member-card-wrap:focus-within .member-card {
+      filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.07));
+    }
+
+    .member-card-wrap:has(.member-bio):hover .member-card,
+    .member-card-wrap:has(.member-bio):focus-within .member-card {
+      border-bottom-right-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+  }
+
+  .member-avatar-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .member-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid #e5e5e5;
+  }
+
+  .member-avatar--placeholder {
+    background: #f0f0f0;
+    display: flex;
+    font-size: 1.8rem;
+    color: #bbb;
+  }
+
+  .member-info {
+    display: grid;
+    grid-template-rows: min-content min-content min-content;
+    text-align: left;
+    align-items: start;
+    gap: 0.2rem;
+
+    width: 100%;
+    min-width: 0;
+  }
+
+  .member-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--color-dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .member-role {
+    font-size: 0.78rem;
+    color: var(--color-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .member-links {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.4rem;
+    min-width: 0;
+  }
+
+  .member-links-sep {
+    color: #ccc;
+    font-size: 0.78rem;
+    flex-shrink: 0;
+  }
+
+  .member-portfolio,
+  .member-social {
+    color: black;
+    text-decoration: underline;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    transition: color 0.15s;
+  }
+
+  .member-portfolio:hover,
+  .member-social:hover {
+    color: #000;
+  }
+
+  .member-bio-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--color-muted);
+    cursor: pointer;
+    transition:
+      color 0.15s,
+      transform 0.15s;
+  }
+
+  .member-bio-toggle:hover {
+    color: #333;
+  }
+
+  .member-bio-arrow {
+    display: block;
+    width: 12px;
+    height: 12px;
+  }
+
+  .member-card-wrap.is-expanded .member-bio-toggle {
+    transform: rotate(180deg);
+  }
+
+  /* Mobile: bio inside card grid, animate with max-height + opacity */
+  .member-bio {
+    grid-column: 1 / -1;
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    margin: 0;
+    padding: 0 5px 0 5px;
+    transition:
+      max-height 0.3s ease,
+      opacity 0.2s ease,
+      padding-top 0.2s ease,
+      padding-bottom 0.2s ease;
+    color: #444;
+    font-size: var(--font-size-base);
+    line-height: 1.6;
+    text-align: left;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .member-card-wrap.is-expanded .member-bio {
+    max-height: 200px;
+    opacity: 1;
+    padding-top: 8px;
+    padding-bottom: 4px;
+  }
+
+  @media (--bp-desktop), (--bp-desktop-wide) {
+    .member-card-wrap {
+      position: relative;
+    }
+
+    .member-bio-toggle {
+      display: none;
+    }
+
+    /* Desktop: fade + slide from above */
+    .member-bio {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 5;
+      overflow: visible;
+      max-height: none;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-6px);
+      transition:
+        opacity 0.18s ease,
+        transform 0.18s ease,
+        visibility 0.18s;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 25px;
+      border: 1.5px solid var(--color-border);
+      border-top: 0;
+      border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+      background: #ffffff;
+    }
+
+    .member-card-wrap:hover .member-bio,
+    .member-card-wrap:focus-within .member-bio {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .member-grid .member-card-wrap:hover {
+      z-index: 10;
+    }
+  }
+</style>
