@@ -59,7 +59,14 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
       <article class="member-card">
         <div class="member-avatar-wrap">
           {avatarSrc ? (
-            <img class="member-avatar" src={avatarSrc} alt={displayName} width="80" height="80" loading="lazy" />
+            <img
+              class="member-avatar"
+              src={avatarSrc}
+              alt={displayName}
+              width="80"
+              height="80"
+              loading="lazy"
+            />
           ) : (
             <div class="member-avatar member-avatar--placeholder">
               {displayName[0]?.toUpperCase() ?? "?"}
@@ -92,7 +99,12 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
                 </span>
               )}
               {socialHref && (
-                <a class="member-social" href={socialHref} target="_blank" rel="noopener noreferrer">
+                <a
+                  class="member-social"
+                  href={socialHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   social
                 </a>
               )}
@@ -101,24 +113,24 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
         </div>
 
         {m?.bio ? (
-          <>
-            <button
-              class="member-bio-toggle"
-              type="button"
-              aria-expanded="false"
-              aria-controls={bioId}
-              aria-label={`Show bio for ${displayName}`}
-            >
-              <img class="member-bio-arrow" src={downArrowUrl.src} alt="" aria-hidden="true" />
-            </button>
-            <p id={bioId} class="member-bio">
-              {m.bio}
-            </p>
-          </>
+          <button
+            class="member-bio-toggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls={bioId}
+            aria-label={`Show bio for ${displayName}`}
+          >
+            <img class="member-bio-arrow" src={downArrowUrl.src} alt="" aria-hidden="true" />
+          </button>
         ) : (
           <div aria-hidden="true" />
         )}
       </article>
+      {m?.bio && (
+        <p id={bioId} class="member-bio">
+          {m.bio}
+        </p>
+      )}
     </div>
   )
 }
@@ -282,14 +294,16 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
     transform: rotate(180deg);
   }
 
-  /* Mobile: bio inside card grid, animate with max-height + opacity */
   .member-bio {
-    grid-column: 1 / -1;
     overflow: hidden;
     max-height: 0;
     opacity: 0;
-    margin: 0;
-    padding: 0 5px 0 5px;
+    margin: -1.5px 0 0 0;
+    padding: 0 15px 0 20px;
+    border: 1.5px solid #e8e8e8;
+    border-top: 0;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    background: #ffffff;
     transition:
       max-height 0.3s ease,
       opacity 0.2s ease,
@@ -299,15 +313,18 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
     font-size: var(--font-size-base);
     line-height: 1.6;
     text-align: left;
-    min-width: 0;
-    max-width: 100%;
+  }
+
+  .member-card-wrap.is-expanded .member-card {
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
   }
 
   .member-card-wrap.is-expanded .member-bio {
     max-height: 200px;
     opacity: 1;
-    padding-top: 8px;
-    padding-bottom: 4px;
+    padding-top: 15px;
+    padding-bottom: 15px;
   }
 
   @media (--bp-desktop), (--bp-desktop-wide) {
@@ -336,7 +353,7 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
         transform 0.18s ease,
         visibility 0.18s;
       box-sizing: border-box;
-      margin: 0;
+      margin: -1.5px 0 0 0;
       padding: 25px;
       border: 1.5px solid var(--color-border);
       border-top: 0;
