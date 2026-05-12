@@ -464,11 +464,10 @@ import MemberCard from "./MemberCard.astro";
 
   /* In preview context: always show bio inline, hide toggle */
   :global(.member-card--preview) {
-    width: auto !important;
     max-width: 360px;
   }
 
-  :global(.member-card--preview .member-bio-toggle) {
+  :global(.member-card--preview > [aria-hidden="true"]) {
     display: none !important;
   }
 
@@ -479,7 +478,8 @@ import MemberCard from "./MemberCard.astro";
     visibility: visible !important;
     overflow: visible !important;
     transform: none !important;
-    padding: 8px 5px 6px !important;
+    grid-column: 1 / -1 !important;
+    padding: 8px 15px 8px 20px !important;
     border: none !important;
     margin: 0 !important;
   }
