@@ -8,7 +8,7 @@
     {[60, 68, 76, 84, 92, 100, 108, 116].map((speed) => (
       <div class="ticker-row">
         <div class="ticker-track" style={`animation-duration: ${speed}s`}>
-          {Array(16).fill("VSCN").map((t) => <span>{t}</span>)}
+          <span>VSCN</span><span>VSCN</span><span>VSCN</span><span>VSCN</span>
         </div>
       </div>
     ))}
@@ -91,3 +91,24 @@
     .ticker-track span { font-size: 8vh; }
   }
 </style>
+
+<script>
+  function fillTickers() {
+    document.querySelectorAll<HTMLElement>(".ticker-track").forEach((track) => {
+      // Clone existing spans in batches until track covers 3× viewport width.
+      // -50% animation needs ≥ 2× — the extra buffer eliminates any edge-case gap.
+      while (track.scrollWidth < window.innerWidth * 3) {
+        const spans = Array.from(track.querySelectorAll("span"));
+        spans.forEach((s) => track.appendChild(s.cloneNode(true)));
+      }
+    });
+  }
+
+  document.addEventListener("astro:page-load", fillTickers);
+
+  let resizeTimer: ReturnType<typeof setTimeout>;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(fillTickers, 200);
+  });
+</script>
