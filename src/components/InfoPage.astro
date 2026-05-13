@@ -1,36 +1,38 @@
+---
+import { useTranslations } from "../i18n/utils.ts";
+import type { Lang } from "../i18n/utils.ts";
+
+interface Props {
+  lang?: Lang;
+}
+
+const { lang = 'en' } = Astro.props;
+const t = useTranslations(lang);
+---
+
 <div class="info-page">
   <section class="info-section">
     <p>
-      <strong>VSCN</strong> — Visual Science Communication Network — is a growing network for people who
-      want to make science more visual, accessible, and engaging. It brings together scientists, illustrators,
-      designers, communicators, and anyone working where knowledge meets visual culture.
+      <strong>VSCN</strong>{t('info.intro')}
     </p>
-    <p>
-      By growing this community, we hope to encourage exchange, make collaboration easier, and
-      create a place where people can find partners for visual science communication projects.
-    </p>
+    <p>{t('info.p2')}</p>
   </section>
 
   <section class="info-section">
-    <h2 class="info-heading">What we're building toward</h2>
+    <h2 class="info-heading">{t('info.h2.building')}</h2>
     <ul class="info-list">
-      <li>A directory of science communicators and illustrators you can actually browse</li>
-      <li>Events, online and in person, for the community to meet and collaborate</li>
-      <li>A place to surface and celebrate strong visual science communication</li>
-      <li>Connections between the sciences, design, illustration, and storytelling</li>
+      <li>{t('info.li.1')}</li>
+      <li>{t('info.li.2')}</li>
+      <li>{t('info.li.3')}</li>
+      <li>{t('info.li.4')}</li>
     </ul>
   </section>
 
   <section class="info-section">
-    <h2 class="info-heading">We just got started</h2>
-    <p>
-      This is early days. If you want to help build VSCN, whether through design, development,
-      community organising, or simply by sharing ideas, please reach out. The more people who shape
-      this, the better it will become.
-    </p>
+    <h2 class="info-heading">{t('info.h2.started')}</h2>
+    <p>{t('info.p3')}</p>
     <p class="info-contact">
-      Get in touch via <a href="mailto:info@vscn.ch"><!--email_off-->info@vscn.ch<!--/email_off--></a
-      >
+      {t('info.contact')} <a href="mailto:info@vscn.ch"><!--email_off-->info@vscn.ch<!--/email_off--></a>
     </p>
   </section>
 </div>

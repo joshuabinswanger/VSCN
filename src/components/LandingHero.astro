@@ -1,18 +1,22 @@
 ---
+import { useTranslations } from "../i18n/utils.ts";
+import type { Lang } from "../i18n/utils.ts";
 
+interface Props {
+  lang?: Lang;
+}
+
+const { lang = 'en' } = Astro.props;
+const t = useTranslations(lang);
 ---
 
-<div class="wrapper">
+<div class="wrapper" data-lang={lang}>
   <div class="content">
     <p class="desc">
-      <strong>VSCN</strong> — Visual Science Communication Network — brings together illustrators, scientists,
-      designers, and storytellers dedicated to the art of making knowledge visible. We are building a
-      home for people to connect, share, and celebrate the power of visualization.
-      <br /><br />
-      If this sounds like you, we’d love to have you with us.
+      <strong>VSCN</strong>{t('hero.tagline')}<br /><br />{t('hero.invite')}
     </p>
     <div class="actions">
-      <a id="hero-cta" href="/signup" class="btn-solid btn-join">Join the Network</a>
+      <a id="hero-cta" href="/signup" class="btn-solid btn-join">{t('hero.cta.join')}</a>
     </div>
   </div>
 </div>
@@ -79,6 +83,7 @@
 <script>
   import { onAuthStateChanged } from "firebase/auth";
   import { auth } from "../lib/firebase.ts";
+  import { ui } from "../i18n/translations.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
 
@@ -86,10 +91,15 @@
     const cta = document.getElementById("hero-cta") as HTMLAnchorElement | null;
     if (!cta) return;
 
+    const wrapper = document.querySelector<HTMLElement>(".wrapper[data-lang]");
+    const lang = (wrapper?.dataset.lang ?? "en") as "en" | "de";
+    const prefix = lang === "de" ? "/de" : "";
+    const strings = ui[lang];
+
     unsubscribeAuth?.();
     unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      cta.href = user ? "/community" : "/signup";
-      cta.textContent = user ? "Community" : "Join the Network";
+      cta.href = user ? `${prefix}/community` : `${prefix}/signup`;
+      cta.textContent = user ? strings["hero.cta.community"] : strings["hero.cta.join"];
     });
   });
 </script>

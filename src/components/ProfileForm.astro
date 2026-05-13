@@ -1,107 +1,115 @@
 ---
 import MemberCard from "./MemberCard.astro";
+import { useTranslations } from "../i18n/utils";
+import type { Lang } from "../i18n/utils";
+
+interface Props {
+  lang?: Lang;
+}
+const { lang = 'en' } = Astro.props;
+const t = useTranslations(lang);
 ---
 
-<div id="loading" class="loading-state">Loading profile…</div>
+<div id="loading" class="loading-state">{t('profile.loading')}</div>
 
 <div id="verify-banner" class="verify-banner" style="display:none;">
   <p class="verify-banner-text">
-    Please verify your email to secure your account.
-    <button id="btn-resend-verify" type="button" class="btn-resend-verify">Resend email</button>
+    {t('profile.verifyBanner')}
+    <button id="btn-resend-verify" type="button" class="btn-resend-verify">{t('profile.verifyResend')}</button>
   </p>
   <p id="verify-banner-sent" class="verify-banner-sent" style="display:none;">
-    Email sent — check your inbox.
+    {t('profile.verifySent')}
   </p>
 </div>
 
-<form id="profile-form" class="profile-form">
+<form id="profile-form" class="profile-form" data-lang={lang}>
   <div class="avatar-wrap">
     <div class="avatar-image">
       <img id="avatar-preview" src="" alt="" class="avatar-img" />
       <div id="avatar-placeholder" class="avatar-placeholder">?</div>
     </div>
     <label class="btn-outline choose-img" for="avatar">
-      Choose image
+      {t('profile.chooseImage')}
       <input id="avatar" type="file" accept="image/*" style="display:none;" />
     </label>
     <p id="upload-status" class="upload-status" style="display:none;"></p>
   </div>
 
   <div class="field">
-    <label class="label" for="name">Display Name</label>
-    <input id="name" type="text" class="input" placeholder="Your name" />
+    <label class="label" for="name">{t('profile.label.name')}</label>
+    <input id="name" type="text" class="input" placeholder={t('profile.ph.name')} />
   </div>
 
   <div class="field">
-    <label class="label" for="role">Role</label>
+    <label class="label" for="role">{t('profile.label.role')}</label>
     <input
       id="role"
       type="text"
       class="input"
-      placeholder="e.g. Science Illustrator, Researcher, Data Journalist…"
+      placeholder={t('profile.ph.role')}
     />
   </div>
 
   <div class="field">
-    <label class="label" for="bio">About you</label>
+    <label class="label" for="bio">{t('profile.label.bio')}</label>
     <textarea
       id="bio"
       rows="4"
       class="input textarea"
-      placeholder="A short description of your work, interests, or background…"></textarea>
-    <p class="field-note">Maximum 35 words.</p>
+      placeholder={t('profile.ph.bio')}></textarea>
+    <p class="field-note">{t('profile.note.bio')}</p>
   </div>
 
   <div class="field">
-    <label class="label" for="portfolio">Portfolio / Website</label>
+    <label class="label" for="portfolio">{t('profile.label.portfolio')}</label>
     <div class="input-prefix-wrap">
       <span class="input-prefix">https://</span>
-      <input id="portfolio" type="text" class="input input-prefixed" placeholder="yoursite.com" />
+      <input id="portfolio" type="text" class="input input-prefixed" placeholder={t('profile.ph.portfolio')} />
     </div>
   </div>
 
   <div class="field">
-    <label class="label" for="social-media">Social Media</label>
+    <label class="label" for="social-media">{t('profile.label.social')}</label>
     <div class="input-prefix-wrap">
       <span class="input-prefix">https://</span>
       <input
         id="social-media"
         type="text"
         class="input input-prefixed"
-        placeholder="linkedin.com/in/yourname"
+        placeholder={t('profile.ph.social')}
       />
     </div>
-    <p class="field-note">LinkedIn, Instagram, X, Bluesky, etc.</p>
+    <p class="field-note">{t('profile.note.social')}</p>
   </div>
 
   <fieldset class="field field-open-to">
-    <legend class="label">I'm here to…</legend>
+    <legend class="label">{t('profile.openTo.legend')}</legend>
     <label class="checkbox-label">
       <input type="checkbox" name="open-to" value="offering" />
-      Offer services
+      {t('profile.openTo.offering')}
     </label>
     <label class="checkbox-label">
       <input type="checkbox" name="open-to" value="seeking" />
-      Find services
+      {t('profile.openTo.seeking')}
     </label>
     <label class="checkbox-label">
       <input type="checkbox" name="open-to" value="networking" />
-      Network &amp; collaborate
+      {t('profile.openTo.networking')}
     </label>
   </fieldset>
 
   <div class="field">
-    <label class="label" for="tag-input">Tags</label>
+    <label class="label" for="tag-input">{t('profile.label.tags')}</label>
     <div class="tag-input-row">
       <input
         id="tag-input"
         type="text"
         class="input"
-        placeholder="Add a tag and press Enter"
+        placeholder={t('profile.ph.tags')}
         maxlength="50"
       />
     </div>
-    <p class="field-note">Up to 7 tags. Press Enter to add a new tag.</p>
+    <p class="field-note">{t('profile.note.tags')}</p>
     <div id="selected-tags" class="tag-list" aria-live="polite"></div>
     <button
       id="tag-suggestions-toggle"
@@ -110,7 +118,7 @@ import MemberCard from "./MemberCard.astro";
       aria-expanded="false"
       aria-controls="tag-suggestion-panel"
     >
-      Browse tags
+      {t('profile.browseTags')}
     </button>
     <div id="tag-suggestion-panel" class="tag-suggestion-panel" aria-label="Tags" hidden>
       <div id="tag-suggestion-list" class="tag-suggestion-list"></div>
@@ -118,46 +126,46 @@ import MemberCard from "./MemberCard.astro";
   </div>
 
   <div class="field">
-    <label class="label" for="phone">Phone Number</label>
+    <label class="label" for="phone">{t('profile.label.phone')}</label>
     <input id="phone" type="tel" class="input" placeholder="+41 79 123 45 67" autocomplete="tel" />
     <p class="field-note">
-      Hidden from the community page. Used only to help create a VSCN chat group.
+      {t('profile.note.phone')}
     </p>
   </div>
 
   <div class="preview-section">
-    <p class="label">Community card preview</p>
-    <MemberCard preview />
+    <p class="label">{t('profile.cardPreview')}</p>
+    <MemberCard preview lang={lang} />
   </div>
 
   <div class="form-footer">
     <p id="save-msg" class="msg-ok" style="display:none;">
-      Changes saved. Your community card will update within a few minutes.
+      {t('profile.saveMsg')}
     </p>
     <p id="save-error" class="msg-err" style="display:none;"></p>
     <div class="footer-actions">
-      <button id="btn-logout" type="button" class="btn-outline">Log Out</button>
-      <button type="submit" class="btn-solid profile-save-button">Save Changes</button>
+      <button id="btn-logout" type="button" class="btn-outline">{t('profile.logout')}</button>
+      <button type="submit" class="btn-solid profile-save-button">{t('profile.save')}</button>
     </div>
   </div>
 
   <div class="danger-zone">
     <div id="delete-idle">
-      <button type="button" id="btn-delete-start" class="btn-danger-link">Delete account</button>
+      <button type="button" id="btn-delete-start" class="btn-danger-link">{t('profile.delete.idle')}</button>
     </div>
 
     <div id="delete-confirm" style="display:none;">
       <p class="danger-text">
-        This will permanently delete your account, profile, and avatar. This cannot be undone.
+        {t('profile.delete.text')}
       </p>
       <div class="danger-actions">
-        <button type="button" id="btn-delete-cancel" class="btn-link">Cancel</button>
-        <button type="button" id="btn-delete-confirm" class="btn-danger">Delete my account</button>
+        <button type="button" id="btn-delete-cancel" class="btn-link">{t('profile.delete.cancel')}</button>
+        <button type="button" id="btn-delete-confirm" class="btn-danger">{t('profile.delete.confirm')}</button>
       </div>
     </div>
 
     <div id="delete-reauth" style="display:none;">
-      <p class="danger-text">Please enter your password to confirm.</p>
+      <p class="danger-text">{t('profile.reauth.text')}</p>
       <input
         id="reauth-password"
         type="password"
@@ -167,8 +175,8 @@ import MemberCard from "./MemberCard.astro";
       />
       <p id="reauth-error" class="msg-err" style="display:none;"></p>
       <div class="danger-actions">
-        <button type="button" id="btn-reauth-cancel" class="btn-link">Cancel</button>
-        <button type="button" id="btn-reauth-confirm" class="btn-danger">Confirm delete</button>
+        <button type="button" id="btn-reauth-cancel" class="btn-link">{t('profile.reauth.cancel')}</button>
+        <button type="button" id="btn-reauth-confirm" class="btn-danger">{t('profile.reauth.confirm')}</button>
       </div>
     </div>
   </div>
@@ -638,6 +646,7 @@ import MemberCard from "./MemberCard.astro";
     getOrCreateTag,
   } from "../lib/firestore.ts";
   import { validateBio, validateAvatar, resizeAvatar, normaliseUrl } from "../lib/validation.ts";
+  import { ui } from "../i18n/translations.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
 
@@ -646,7 +655,8 @@ import MemberCard from "./MemberCard.astro";
     role: string,
     bio: string,
     portfolio: string,
-    photoURL: string
+    photoURL: string,
+    defaultName = "Your name"
   ) {
     const previewName = document.getElementById("preview-name")!;
     const previewRole = document.getElementById("preview-role") as HTMLElement;
@@ -655,7 +665,7 @@ import MemberCard from "./MemberCard.astro";
     const previewAvatarImg = document.getElementById("preview-avatar-img") as HTMLImageElement;
     const previewAvatarPh = document.getElementById("preview-avatar-ph") as HTMLElement;
 
-    const displayName = name || "Your name";
+    const displayName = name || defaultName;
     previewName.textContent = displayName;
 
     if (role) {
@@ -703,6 +713,10 @@ import MemberCard from "./MemberCard.astro";
     const form = document.getElementById("profile-form") as HTMLFormElement;
     if (!form) return;
 
+    const lang = (form.dataset.lang ?? "en") as keyof typeof ui;
+    const s = ui[lang] ?? ui.en;
+    const prefix = lang === "de" ? "/de" : "";
+
     const nameInput = document.getElementById("name") as HTMLInputElement;
     const roleInput = document.getElementById("role") as HTMLInputElement;
     const bioInput = document.getElementById("bio") as HTMLTextAreaElement;
@@ -736,7 +750,7 @@ import MemberCard from "./MemberCard.astro";
       panelOpen = isVisible;
       tagSuggestionPanel.hidden = !isVisible;
       tagSuggestionsToggle.setAttribute("aria-expanded", String(isVisible));
-      tagSuggestionsToggle.textContent = isVisible ? "Hide tags" : "Browse tags";
+      tagSuggestionsToggle.textContent = isVisible ? s['profile.hideTags'] : s['profile.browseTags'];
     }
 
     tagSuggestionsToggle.addEventListener("click", () => {
@@ -835,7 +849,7 @@ import MemberCard from "./MemberCard.astro";
       const user = auth.currentUser;
       if (!user) return;
       if (!(await addTag(value, user.uid))) {
-        saveError.textContent = "Tags must be unique, 1–50 characters, and no more than 7 tags.";
+        saveError.textContent = s['profile.tag.error'];
         saveError.style.display = "block";
       } else {
         saveError.style.display = "none";
@@ -903,7 +917,8 @@ import MemberCard from "./MemberCard.astro";
         roleInput.value.trim(),
         bioInput.value.trim(),
         portfolioInput.value.trim(),
-        currentPhotoURL
+        currentPhotoURL,
+        s['profile.preview.defaultName']
       );
     }
 
@@ -925,15 +940,15 @@ import MemberCard from "./MemberCard.astro";
         return;
       }
 
-      uploadStatus.textContent = "Processing…";
+      uploadStatus.textContent = s['profile.upload.processing'];
       uploadStatus.style.display = "block";
       try {
         resizedAvatarBlob = await resizeAvatar(file);
         const previewUrl = URL.createObjectURL(resizedAvatarBlob);
         showPreview(previewUrl);
-        uploadStatus.textContent = `Selected: ${file.name}`;
+        uploadStatus.textContent = `${s['profile.upload.selected']}${file.name}`;
       } catch {
-        uploadStatus.textContent = "Could not process image.";
+        uploadStatus.textContent = s['profile.upload.error'];
         resizedAvatarBlob = null;
       }
     });
@@ -987,7 +1002,7 @@ import MemberCard from "./MemberCard.astro";
 
     document.getElementById("btn-logout")!.addEventListener("click", async () => {
       await signOut(auth);
-      window.location.href = "/";
+      window.location.href = prefix || "/";
     });
 
     form.addEventListener("submit", async (e) => {
@@ -1021,10 +1036,10 @@ import MemberCard from "./MemberCard.astro";
         if (resizedAvatarBlob) {
           const avatarFile = new File([resizedAvatarBlob], "avatar.jpg", { type: "image/jpeg" });
           photoURL = await uploadAvatar(user.uid, avatarFile, (pct) => {
-            uploadStatus.textContent = `Uploading… ${pct}%`;
+            uploadStatus.textContent = `${s['profile.upload.uploading']} ${pct}%`;
             uploadStatus.style.display = "block";
           });
-          uploadStatus.textContent = "Upload complete.";
+          uploadStatus.textContent = s['profile.upload.complete'];
         }
 
         await updateProfile(user, {
@@ -1080,7 +1095,7 @@ import MemberCard from "./MemberCard.astro";
 
         saveMsg.style.display = "block";
       } catch (err: unknown) {
-        saveError.textContent = err instanceof Error ? err.message : "Could not save changes.";
+        saveError.textContent = err instanceof Error ? err.message : s['profile.save.error'];
         saveError.style.display = "block";
       }
     });
@@ -1105,7 +1120,7 @@ import MemberCard from "./MemberCard.astro";
       await deleteUserData(user.uid);
       await deleteAvatar(photoURL);
       await user.delete();
-      window.location.href = "/";
+      window.location.href = prefix || "/";
     }
 
     document.getElementById("btn-delete-start")!.addEventListener("click", () => {
@@ -1119,7 +1134,7 @@ import MemberCard from "./MemberCard.astro";
     document.getElementById("btn-delete-confirm")!.addEventListener("click", async () => {
       const btn = document.getElementById("btn-delete-confirm") as HTMLButtonElement;
       btn.disabled = true;
-      btn.textContent = "Deleting…";
+      btn.textContent = s['profile.delete.deleting'];
       try {
         await performDelete();
       } catch (err: unknown) {
@@ -1131,7 +1146,7 @@ import MemberCard from "./MemberCard.astro";
           showDeleteView("reauth");
         } else {
           btn.disabled = false;
-          btn.textContent = "Delete my account";
+          btn.textContent = s['profile.delete.confirm'];
         }
       }
     });
@@ -1147,17 +1162,17 @@ import MemberCard from "./MemberCard.astro";
       if (!user || !user.email) return;
       const btn = document.getElementById("btn-reauth-confirm") as HTMLButtonElement;
       btn.disabled = true;
-      btn.textContent = "Confirming…";
+      btn.textContent = s['profile.reauth.confirming'];
       reauthError.style.display = "none";
       try {
         const credential = EmailAuthProvider.credential(user.email, reauthInput.value);
         await reauthenticateWithCredential(user, credential);
         await performDelete();
       } catch {
-        reauthError.textContent = "Incorrect password. Please try again.";
+        reauthError.textContent = s['profile.reauth.error'];
         reauthError.style.display = "block";
         btn.disabled = false;
-        btn.textContent = "Confirm delete";
+        btn.textContent = s['profile.reauth.confirm'];
       }
     });
   });

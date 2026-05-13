@@ -1,26 +1,31 @@
 ---
 import type { PublicProfileDoc } from "../lib/firestore.ts";
 import MemberCard from "./MemberCard.astro";
+import { useTranslations } from "../i18n/utils.ts";
+import type { Lang } from "../i18n/utils.ts";
 
 interface Props {
   members: (PublicProfileDoc & { uid: string })[];
+  lang?: Lang;
 }
 
-const { members } = Astro.props;
+const { members, lang = 'en' } = Astro.props;
+const t = useTranslations(lang);
+const memberLabel = members.length === 1 ? t('community.member') : t('community.members');
 ---
 
-<div class="community-wrapper">
+<div class="community-wrapper" data-lang={lang}>
   <div class="page-header">
     <h1 class="page-title">
       <span class="member-count">
-        {members.length} member{members.length !== 1 ? "s" : ""}
+        {members.length} {memberLabel}
       </span>
     </h1>
   </div>
 
   <div id="member-grid" class="member-grid">
-    {members.length === 0 && <p class="state-msg">No members yet.</p>}
-    {members.map((m) => <MemberCard member={m} />)}
+    {members.length === 0 && <p class="state-msg">{t('community.empty')}</p>}
+    {members.map((m) => <MemberCard member={m} lang={lang} />)}
   </div>
 </div>
 
@@ -87,6 +92,8 @@ const { members } = Astro.props;
 </style>
 
 <script>
+  import { ui } from "../i18n/translations.ts";
+
   const desktopQuery = window.matchMedia("(width >= 1120px)");
   let hasDesktopQueryListener = false;
 
@@ -100,13 +107,18 @@ const { members } = Astro.props;
   }
 
   function wireBioToggles() {
+    const wrapper = document.querySelector<HTMLElement>(".community-wrapper[data-lang]");
+    const lang = (wrapper?.dataset.lang ?? "en") as "en" | "de";
+    const strings = ui[lang];
+
     document.querySelectorAll<HTMLButtonElement>(".member-bio-toggle").forEach((toggle) => {
       toggle.addEventListener("click", () => {
         const wrap = toggle.closest(".member-card-wrap")!;
         const expanded = wrap.classList.toggle("is-expanded");
         toggle.setAttribute("aria-expanded", String(expanded));
         const name = wrap.querySelector(".member-name")?.textContent ?? "";
-        toggle.setAttribute("aria-label", `${expanded ? "Hide" : "Show"} bio for ${name}`);
+        const label = expanded ? strings["member.hideBio"] : strings["member.showBio"];
+        toggle.setAttribute("aria-label", `${label} ${name}`);
       });
     });
   }

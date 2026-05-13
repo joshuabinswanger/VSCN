@@ -1,6 +1,23 @@
 ---
-// Fullscreen scrolling VSCN ticker background.
-// Wrap your page content in a <slot /> on top of this.
+/**
+ * TickerBackground
+ *
+ * Fullscreen fixed background of scrolling "VSCN" rows.
+ * Page content is placed via <slot /> and rendered above the ticker.
+ *
+ * Usage:
+ *   <TickerBackground>
+ *     <YourPageContent />
+ *   </TickerBackground>
+ *
+ * How it works:
+ *   - 8 rows scroll at different speeds (60–116 s) for a parallax feel.
+ *   - Each row starts with 4 seed spans; JS clones them on load and resize
+ *     until the track is ≥ 3× the viewport width. This guarantees the
+ *     CSS `translateX(-50%)` loop animation never shows a gap.
+ *   - A vertical gradient overlay fades the ticker into the page background.
+ *   - `transition:animate="none"` prevents Astro view-transition flicker.
+ */
 ---
 
 <div class="ticker-bg" transition:animate="none">

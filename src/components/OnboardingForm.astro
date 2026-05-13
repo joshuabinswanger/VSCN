@@ -1,0 +1,1095 @@
+---
+import { useTranslations } from "../i18n/utils";
+import type { Lang } from "../i18n/utils";
+
+interface Props {
+  lang?: Lang;
+}
+const { lang = "en" } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<div id="ob-loading" class="ob-loading">{t("profile.loading")}</div>
+
+<div id="ob-verify-banner" class="verify-banner" style="display:none;">
+  <p class="verify-banner-text">
+    {t("profile.verifyBanner")}
+    <button id="ob-resend-verify" type="button" class="btn-resend-verify"
+      >{t("profile.verifyResend")}</button
+    >
+  </p>
+  <p id="ob-verify-sent" class="verify-banner-sent" style="display:none;">
+    {t("profile.verifySent")}
+  </p>
+</div>
+
+<div id="onboarding-wrap" class="onboarding-wrap" data-lang={lang} style="display:none;">
+  <div id="ob-progress" class="ob-progress">
+    <div class="ob-progress-bar">
+      <div id="ob-progress-fill" class="ob-progress-fill" style="width:25%"></div>
+    </div>
+    <span id="ob-progress-text" class="ob-progress-text">1 / 4</span>
+  </div>
+
+  <p id="ob-error" class="msg-err" style="display:none;"></p>
+
+  <!-- Step 0: About you -->
+  <div class="onboarding-step" data-step="0">
+    <header class="ob-header">
+      <h1 class="ob-title">{t("onboarding.step1.title")}</h1>
+      <p class="ob-sub">{t("onboarding.step1.sub")}</p>
+    </header>
+    <div class="ob-fields">
+      <div class="field">
+        <label class="label" for="ob-name">{t("profile.label.name")}</label>
+        <input id="ob-name" type="text" class="input" placeholder={t("profile.ph.name")} />
+      </div>
+      <div class="field">
+        <label class="label" for="ob-role">{t("profile.label.role")}</label>
+        <input id="ob-role" type="text" class="input" placeholder={t("profile.ph.role")} />
+      </div>
+      <div class="field">
+        <label class="label" for="ob-portfolio">{t("profile.label.portfolio")}</label>
+        <div class="input-prefix-wrap">
+          <span class="input-prefix">https://</span>
+          <input
+            id="ob-portfolio"
+            type="text"
+            class="input input-prefixed"
+            placeholder={t("profile.ph.portfolio")}
+          />
+        </div>
+      </div>
+      <div class="field">
+        <label class="label" for="ob-social">{t("profile.label.social")}</label>
+        <div class="input-prefix-wrap">
+          <span class="input-prefix">https://</span>
+          <input
+            id="ob-social"
+            type="text"
+            class="input input-prefixed"
+            placeholder={t("profile.ph.social")}
+          />
+        </div>
+        <p class="field-note">{t("profile.note.social")}</p>
+      </div>
+      <div class="field">
+        <label class="label" for="ob-phone">{t("profile.label.phone")}</label>
+        <input
+          id="ob-phone"
+          type="tel"
+          class="input"
+          placeholder="+41 79 123 45 67"
+          autocomplete="tel"
+        />
+        <p class="field-note">{t("profile.note.phone")}</p>
+      </div>
+    </div>
+    <div class="ob-footer">
+      <button id="ob-next-0" type="button" class="btn-solid">{t("onboarding.nav.next")}</button>
+    </div>
+  </div>
+
+  <!-- Step 1: Community goals -->
+  <div class="onboarding-step" data-step="1" style="display:none;">
+    <header class="ob-header">
+      <h1 class="ob-title">{t("onboarding.step2.title")}</h1>
+      <p class="ob-sub">{t("onboarding.step2.sub")}</p>
+    </header>
+    <div class="ob-fields">
+      <div class="field">
+        <p class="label">{t("onboarding.label.goals")}</p>
+        <div class="goal-chips">
+          <button type="button" class="goal-chip" data-goal="networking"
+            >{t("onboarding.goal.networking")}</button
+          >
+          <button type="button" class="goal-chip" data-goal="portfolio"
+            >{t("onboarding.goal.portfolio")}</button
+          >
+          <button type="button" class="goal-chip" data-goal="events"
+            >{t("onboarding.goal.events")}</button
+          >
+          <button type="button" class="goal-chip" data-goal="scivis"
+            >{t("onboarding.goal.scivis")}</button
+          >
+        </div>
+        <div id="ob-goal-custom-list" class="goal-custom-list"></div>
+        <input
+          id="ob-goal-input"
+          type="text"
+          class="input"
+          placeholder={t("onboarding.goal.custom.ph")}
+        />
+      </div>
+    </div>
+    <div class="ob-footer">
+      <button id="ob-next-1" type="button" class="btn-solid">{t("onboarding.nav.next")}</button>
+    </div>
+  </div>
+
+  <!-- Step 2: Bridge -->
+  <div class="onboarding-step ob-bridge" data-step="2" style="display:none;">
+    <div class="ob-bridge-icon">✓</div>
+    <h1 class="ob-title">{t("onboarding.bridge.title")}</h1>
+    <p class="ob-sub">{t("onboarding.bridge.sub")}</p>
+    <div class="ob-footer ob-footer--bridge">
+      <button id="ob-continue-2" type="button" class="btn-solid"
+        >{t("onboarding.bridge.continue")}</button
+      >
+      <button id="ob-skip-2" type="button" class="btn-link">{t("onboarding.nav.skip")}</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Tags -->
+  <div class="onboarding-step" data-step="3" style="display:none;">
+    <header class="ob-header">
+      <h1 class="ob-title">{t("onboarding.step3.title")}</h1>
+      <p class="ob-sub">{t("onboarding.step3.sub")}</p>
+    </header>
+    <div class="ob-fields">
+      <div class="field">
+        <label class="label" for="ob-tag-input">{t("profile.label.tags")}</label>
+        <input
+          id="ob-tag-input"
+          type="text"
+          class="input"
+          placeholder={t("profile.ph.tags")}
+          maxlength="50"
+        />
+        <p class="field-note">{t("profile.note.tags")}</p>
+        <div id="ob-selected-tags" class="tag-list" aria-live="polite"></div>
+        <button
+          id="ob-tag-toggle"
+          class="tag-suggestions-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="ob-tag-panel"
+        >
+          {t("profile.browseTags")}
+        </button>
+        <div id="ob-tag-panel" class="tag-suggestion-panel" hidden>
+          <div id="ob-tag-list" class="tag-suggestion-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="ob-footer ob-footer--with-skip">
+      <button id="ob-skip-3" type="button" class="btn-link">{t("onboarding.nav.skip")}</button>
+      <button id="ob-next-3" type="button" class="btn-solid">{t("onboarding.nav.next")}</button>
+    </div>
+  </div>
+
+  <!-- Step 4: Bio & Avatar -->
+  <div class="onboarding-step" data-step="4" style="display:none;">
+    <header class="ob-header">
+      <h1 class="ob-title">{t("onboarding.step4.title")}</h1>
+      <p class="ob-sub">{t("onboarding.step4.sub")}</p>
+    </header>
+    <div class="ob-fields">
+      <div class="ob-avatar-row">
+        <div id="ob-avatar-wrap" class="ob-avatar-wrap">
+          <img id="ob-avatar-img" src="" alt="" class="ob-avatar-img" />
+          <div id="ob-avatar-ph" class="ob-avatar-ph">?</div>
+        </div>
+        <div>
+          <label class="btn-outline" for="ob-avatar-input">
+            {t("profile.chooseImage")}
+            <input id="ob-avatar-input" type="file" accept="image/*" style="display:none;" />
+          </label>
+          <p id="ob-upload-status" class="ob-upload-status" style="display:none;"></p>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label" for="ob-bio">{t("profile.label.bio")}</label>
+        <textarea
+          id="ob-bio"
+          rows="4"
+          class="input textarea"
+          placeholder={t("profile.ph.bio")}></textarea>
+        <p class="field-note">{t("profile.note.bio")}</p>
+      </div>
+    </div>
+    <div class="ob-footer ob-footer--with-skip">
+      <button id="ob-skip-4" type="button" class="btn-link">{t("onboarding.nav.skip")}</button>
+      <button id="ob-finish" type="button" class="btn-solid">{t("onboarding.nav.finish")}</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .ob-loading {
+    margin-top: 3rem;
+    color: #999;
+    font-size: 0.9rem;
+  }
+
+  .verify-banner {
+    width: 100%;
+    max-width: 500px;
+    margin: clamp(1.5rem, 3vw, 2.5rem) auto 0;
+    padding: 0.75rem 1rem;
+    background: #fffbeb;
+    border: 1.5px solid #f59e0b;
+    border-radius: var(--radius-sm);
+    box-sizing: border-box;
+  }
+
+  .verify-banner-text {
+    margin: 0;
+    font-size: 0.88rem;
+    color: #92400e;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-resend-verify {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #92400e;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .btn-resend-verify:hover {
+    color: #78350f;
+  }
+
+  .verify-banner-sent {
+    margin: 0.4rem 0 0;
+    font-size: 0.82rem;
+    color: #65a30d;
+  }
+
+  .onboarding-wrap {
+    width: 100%;
+    max-width: 500px;
+    margin: clamp(2rem, 4vw, 4rem) auto;
+    padding: 0 15px;
+    box-sizing: border-box;
+
+    @media (min-width: 560px) {
+      background: #fff;
+      border: 1.5px solid #ebebeb;
+      border-radius: var(--radius-xl);
+      padding: clamp(2rem, 4vw, 3rem);
+    }
+  }
+
+  .ob-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+  }
+
+  .ob-progress-bar {
+    flex: 1;
+    height: 3px;
+    background: #eee;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .ob-progress-fill {
+    height: 100%;
+    background: var(--color-dark);
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+
+  .ob-progress-text {
+    font-size: 0.78rem;
+    color: var(--color-muted);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ob-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .ob-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-dark);
+  }
+
+  .ob-sub {
+    font-size: 0.9rem;
+    color: var(--color-muted);
+    line-height: 1.5;
+  }
+
+  .ob-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .ob-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 1.75rem;
+  }
+
+  .ob-footer--with-skip {
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .ob-footer--bridge {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding-top: 2rem;
+  }
+
+  /* Goal chips */
+  .goal-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .goal-chip {
+    font-family: inherit;
+    font-size: 0.88rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--color-border);
+    background: #fff;
+    color: #555;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      border-color 0.15s,
+      color 0.15s;
+  }
+
+  .goal-chip:hover {
+    border-color: #999;
+    color: #333;
+  }
+
+  .goal-chip--selected {
+    background: var(--color-dark);
+    border-color: var(--color-dark);
+    color: #fff;
+  }
+
+  .goal-chip--selected:hover {
+    background: #333;
+    border-color: #333;
+  }
+
+  .goal-custom-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .goal-custom-list:empty {
+    display: none;
+  }
+
+  :global(.goal-custom-chip) {
+    font-family: monospace;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid #111;
+    background: #111;
+    color: #fff;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+
+  :global(.goal-custom-chip span) {
+    opacity: 0.65;
+  }
+
+  /* Bridge step */
+  .ob-bridge {
+    text-align: center;
+    padding: 1rem 0;
+  }
+
+  .ob-bridge-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #f0fdf4;
+    border: 1.5px solid #86efac;
+    color: #16a34a;
+    font-size: 1.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.25rem;
+  }
+
+  .ob-bridge .ob-sub {
+    max-width: 320px;
+    margin: 0.5rem auto 0;
+  }
+
+  /* Avatar row */
+  .ob-avatar-row {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+
+  .ob-avatar-wrap {
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .ob-avatar-img,
+  .ob-avatar-ph {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+  }
+
+  .ob-avatar-img {
+    display: none;
+    object-fit: cover;
+  }
+
+  .ob-avatar-ph {
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    color: #bbb;
+    border: 1.5px solid #e5e5e5;
+  }
+
+  .ob-avatar-wrap.has-image .ob-avatar-img {
+    display: block;
+  }
+
+  .ob-avatar-wrap.has-image .ob-avatar-ph {
+    display: none;
+  }
+
+  .ob-upload-status {
+    font-size: 0.82rem;
+    color: var(--color-muted);
+    margin-top: 0.4rem;
+  }
+
+  /* Reuse ProfileForm field/tag styles */
+  .input-prefix-wrap {
+    display: flex;
+    align-items: center;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    transition: border-color 0.15s;
+    min-width: 0;
+  }
+
+  .input-prefix-wrap:focus-within {
+    border-color: #111;
+  }
+
+  .input-prefix {
+    padding: 8px 10px;
+    background: #f5f5f5;
+    color: var(--color-muted);
+    font-size: 0.88rem;
+    border-right: 1.5px solid var(--color-border);
+    white-space: nowrap;
+  }
+
+  .input-prefixed {
+    border: none;
+    border-radius: 0;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .input-prefixed:focus {
+    border-color: transparent;
+  }
+
+  .tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .tag-list:not(:empty) {
+    margin-top: 0.5rem;
+  }
+
+  .tag-suggestions-toggle {
+    width: fit-content;
+    margin-top: 0.4rem;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #333;
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  .tag-suggestion-panel {
+    margin-top: 0.6rem;
+  }
+
+  .tag-suggestion-panel[hidden] {
+    display: none;
+  }
+
+  .tag-suggestion-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  :global(.tag-chip) {
+    font-family: monospace;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid #111;
+    background: #111;
+    color: #fff;
+    font-size: 0.83rem;
+    font-weight: 500;
+    line-height: 1.25;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      border-color 0.15s;
+  }
+
+  :global(.tag-chip:hover) {
+    background: #333;
+    border-color: #333;
+  }
+
+  :global(.tag-chip span) {
+    opacity: 0.65;
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  :global(.tag-suggestion-chip) {
+    font-family: monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.45rem 0.6rem;
+    min-height: 2.2rem;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--color-border);
+    color: var(--color-muted);
+    background: #fff;
+    font-size: 0.83rem;
+    line-height: 1.25;
+    text-align: center;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      border-color 0.15s;
+  }
+
+  :global(.tag-suggestion-chip:hover) {
+    border-color: #999;
+    color: #999;
+    background: #f5f5f5;
+  }
+
+  @media (max-width: 520px) {
+    .tag-suggestion-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>
+
+<script>
+  import { auth } from "../lib/firebase.ts";
+  import { updateProfile, sendEmailVerification } from "firebase/auth";
+  import { requireAuth } from "../lib/auth.ts";
+  import { uploadAvatar } from "../lib/storage.ts";
+  import { validateBio, validateAvatar, resizeAvatar } from "../lib/validation.ts";
+  import {
+    getUser,
+    updateUser,
+    updateUserProfile,
+    getTags,
+    getOrCreateTag,
+  } from "../lib/firestore.ts";
+  import { ui } from "../i18n/translations.ts";
+
+  let unsubscribeAuth: (() => void) | null = null;
+
+  document.addEventListener("astro:page-load", () => {
+    const wrap = document.getElementById("onboarding-wrap") as HTMLElement | null;
+    if (!wrap) return;
+
+    const lang = (wrap.dataset.lang ?? "en") as keyof typeof ui;
+    const s = ui[lang] ?? ui.en;
+    const prefix = lang === "de" ? "/de" : "";
+
+    const loadingEl = document.getElementById("ob-loading");
+    const errorEl = document.getElementById("ob-error")!;
+
+    // ── Helpers ───────────────────────────────────────────────────
+    function setStep(n: number) {
+      document.querySelectorAll<HTMLElement>(".onboarding-step").forEach((el) => {
+        el.style.display = el.dataset.step === String(n) ? "" : "none";
+      });
+      const progressEl = document.getElementById("ob-progress");
+      const progressText = document.getElementById("ob-progress-text");
+      const progressFill = document.getElementById("ob-progress-fill");
+      const realSteps = [0, 1, 3, 4];
+      const idx = realSteps.indexOf(n);
+      if (progressEl) progressEl.style.display = n === 2 ? "none" : "";
+      if (progressText && idx >= 0) progressText.textContent = `${idx + 1} / 4`;
+      if (progressFill && idx >= 0) progressFill.style.width = `${(idx + 1) * 25}%`;
+      errorEl.style.display = "none";
+    }
+
+    function setError(msg: string) {
+      errorEl.textContent = msg;
+      errorEl.style.display = msg ? "block" : "none";
+    }
+
+    function setBtnState(id: string, loading: boolean, idleText: string) {
+      const btn = document.getElementById(id) as HTMLButtonElement | null;
+      if (!btn) return;
+      btn.disabled = loading;
+      btn.textContent = loading ? s["onboarding.saving"] : idleText;
+    }
+
+    async function completeOnboarding() {
+      const user = auth.currentUser;
+      if (!user) return;
+      try {
+        await updateUser(user.uid, { onboardingComplete: true });
+      } catch {
+        // non-critical
+      }
+      window.location.href = `${prefix}/community`;
+    }
+
+    // ── Community goals ────────────────────────────────────────────
+    const presetGoalKeys = new Set(["networking", "portfolio", "events", "scivis"]);
+    const selectedGoals = new Set<string>();
+    let customGoals: string[] = [];
+    const customGoalList = document.getElementById("ob-goal-custom-list")!;
+
+    document.querySelectorAll<HTMLElement>("[data-goal]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const goal = el.dataset.goal!;
+        if (selectedGoals.has(goal)) {
+          selectedGoals.delete(goal);
+          el.classList.remove("goal-chip--selected");
+        } else {
+          selectedGoals.add(goal);
+          el.classList.add("goal-chip--selected");
+        }
+      });
+    });
+
+    function renderCustomGoals() {
+      customGoalList.innerHTML = "";
+      customGoals.forEach((goal) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "goal-custom-chip";
+        btn.textContent = goal;
+        const x = document.createElement("span");
+        x.setAttribute("aria-hidden", "true");
+        x.textContent = "×";
+        btn.appendChild(x);
+        btn.addEventListener("click", () => {
+          customGoals = customGoals.filter((g) => g !== goal);
+          renderCustomGoals();
+        });
+        customGoalList.appendChild(btn);
+      });
+    }
+
+    const goalInput = document.getElementById("ob-goal-input") as HTMLInputElement;
+    goalInput?.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      const val = goalInput.value.trim();
+      if (!val || customGoals.includes(val) || presetGoalKeys.has(val.toLowerCase())) return;
+      customGoals = [...customGoals, val];
+      goalInput.value = "";
+      renderCustomGoals();
+    });
+
+    function getSelectedGoals(): string[] {
+      return [...selectedGoals, ...customGoals];
+    }
+
+    // ── Tags ───────────────────────────────────────────────────────
+    const tagInput = document.getElementById("ob-tag-input") as HTMLInputElement;
+    const selectedTagsEl = document.getElementById("ob-selected-tags") as HTMLElement;
+    const tagToggle = document.getElementById("ob-tag-toggle") as HTMLButtonElement;
+    const tagPanel = document.getElementById("ob-tag-panel") as HTMLElement;
+    const tagListEl = document.getElementById("ob-tag-list") as HTMLElement;
+
+    let tags: string[] = [];
+    let registryTags: Set<string> = new Set();
+    let tagPanelOpen = false;
+    let autocompleteMatch: string | null = null;
+
+    function normalizeTag(v: string) {
+      return v.trim().replace(/^#+/, "").replace(/\s+/g, " ");
+    }
+
+    function renderTags() {
+      selectedTagsEl.innerHTML = "";
+      tags.forEach((tag) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "tag-chip";
+        btn.dataset.tag = tag;
+        btn.textContent = tag;
+        const x = document.createElement("span");
+        x.setAttribute("aria-hidden", "true");
+        x.textContent = "×";
+        btn.appendChild(x);
+        selectedTagsEl.appendChild(btn);
+      });
+    }
+
+    function renderTagSuggestions(filter = "") {
+      tagListEl.innerHTML = "";
+      Array.from(registryTags)
+        .filter((t) => !tags.some((s) => s.toLowerCase() === t.toLowerCase()))
+        .filter((t) => !filter || t.toLowerCase().includes(filter.toLowerCase()))
+        .sort()
+        .forEach((tag) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "tag-suggestion-chip";
+          btn.dataset.tag = tag;
+          btn.textContent = tag;
+          tagListEl.appendChild(btn);
+        });
+    }
+
+    async function addTag(value: string, userId: string): Promise<boolean> {
+      const norm = normalizeTag(value);
+      if (!norm || norm.length > 50 || tags.length >= 7) return false;
+      if (tags.some((t) => t.toLowerCase() === norm.toLowerCase())) return false;
+      try {
+        await getOrCreateTag(norm, userId);
+        tags = [...tags, norm];
+        registryTags.add(norm);
+        renderTags();
+        renderTagSuggestions();
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    function setTagPanelVisible(visible: boolean) {
+      tagPanelOpen = visible;
+      tagPanel.hidden = !visible;
+      tagToggle.setAttribute("aria-expanded", String(visible));
+      tagToggle.textContent = visible ? s["profile.hideTags"] : s["profile.browseTags"];
+    }
+
+    tagToggle?.addEventListener("click", () => setTagPanelVisible(!tagPanelOpen));
+
+    tagInput?.addEventListener("keydown", async (e) => {
+      if (e.key === "Backspace" || e.key === "Delete") {
+        if (autocompleteMatch) {
+          e.preventDefault();
+          const typed = tagInput.value.substring(0, tagInput.selectionStart ?? 0);
+          autocompleteMatch = null;
+          tagInput.value = typed;
+          renderTagSuggestions(typed);
+        }
+        return;
+      }
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      const val = autocompleteMatch ?? tagInput.value;
+      autocompleteMatch = null;
+      if (!val.trim()) return;
+      const user = auth.currentUser;
+      if (!user) return;
+      await addTag(val, user.uid);
+      tagInput.value = "";
+      renderTagSuggestions("");
+    });
+
+    tagInput?.addEventListener("input", () => {
+      const raw = tagInput.value;
+      renderTagSuggestions(raw);
+      const match = Array.from(registryTags)
+        .filter((t) => !tags.some((s) => s.toLowerCase() === t.toLowerCase()))
+        .find((t) => raw.length > 0 && t.toLowerCase().startsWith(raw.toLowerCase()));
+      if (match) {
+        autocompleteMatch = match;
+        tagInput.value = match;
+        tagInput.setSelectionRange(raw.length, match.length);
+      } else {
+        autocompleteMatch = null;
+      }
+    });
+
+    selectedTagsEl?.addEventListener("click", (e) => {
+      const btn = (e.target as HTMLElement).closest("button.tag-chip") as HTMLButtonElement | null;
+      if (!btn?.dataset.tag) return;
+      tags = tags.filter((t) => t !== btn.dataset.tag);
+      renderTags();
+      renderTagSuggestions(tagInput?.value ?? "");
+    });
+
+    tagPanel?.addEventListener("click", async (e) => {
+      const btn = (e.target as HTMLElement).closest(
+        "button.tag-suggestion-chip"
+      ) as HTMLButtonElement | null;
+      if (!btn?.dataset.tag) return;
+      const user = auth.currentUser;
+      if (!user) return;
+      if (await addTag(btn.dataset.tag, user.uid)) {
+        tagInput.value = "";
+        renderTagSuggestions("");
+      }
+    });
+
+    async function loadRegistryTags() {
+      try {
+        const docs = await getTags();
+        registryTags = new Set(docs.map((d) => d.label));
+        renderTagSuggestions("");
+      } catch {
+        // non-critical
+      }
+    }
+
+    // ── Avatar (step 4) ────────────────────────────────────────────
+    const avatarInput = document.getElementById("ob-avatar-input") as HTMLInputElement;
+    const avatarImg = document.getElementById("ob-avatar-img") as HTMLImageElement;
+    const avatarWrap = document.getElementById("ob-avatar-wrap") as HTMLElement;
+    const uploadStatus = document.getElementById("ob-upload-status") as HTMLElement;
+    let resizedAvatarBlob: Blob | null = null;
+
+    avatarInput?.addEventListener("change", async () => {
+      const file = avatarInput.files?.[0];
+      if (!file) return;
+      const validation = validateAvatar(file);
+      if (!validation.ok) {
+        uploadStatus.textContent = validation.error!;
+        uploadStatus.style.display = "block";
+        return;
+      }
+      uploadStatus.textContent = s["profile.upload.processing"];
+      uploadStatus.style.display = "block";
+      try {
+        resizedAvatarBlob = await resizeAvatar(file);
+        const url = URL.createObjectURL(resizedAvatarBlob);
+        avatarImg.src = url;
+        avatarWrap.classList.add("has-image");
+        uploadStatus.textContent = `${s["profile.upload.selected"]}${file.name}`;
+      } catch {
+        uploadStatus.textContent = s["profile.upload.error"];
+        resizedAvatarBlob = null;
+      }
+    });
+
+    // ── Navigation buttons ─────────────────────────────────────────
+    document.getElementById("ob-next-0")?.addEventListener("click", async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      setBtnState("ob-next-0", true, s["onboarding.nav.next"]);
+      try {
+        const nameVal = (document.getElementById("ob-name") as HTMLInputElement).value.trim();
+        const roleVal = (document.getElementById("ob-role") as HTMLInputElement).value.trim();
+        const portfolioVal = (document.getElementById("ob-portfolio") as HTMLInputElement).value.trim();
+        const socialVal = (document.getElementById("ob-social") as HTMLInputElement).value.trim();
+        const phoneVal = (document.getElementById("ob-phone") as HTMLInputElement).value.trim();
+        if (nameVal) await updateProfile(user, { displayName: nameVal }).catch(() => {});
+        await updateUserProfile(user.uid, {
+          displayName: nameVal,
+          role: roleVal,
+          portfolio: portfolioVal,
+          socialMedia: socialVal,
+          phone: phoneVal,
+          email: user.email!,
+          updatedAt: new Date(),
+        }).catch(() => {});
+      } finally {
+        setBtnState("ob-next-0", false, s["onboarding.nav.next"]);
+        setStep(1);
+      }
+    });
+
+    document.getElementById("ob-next-1")?.addEventListener("click", async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      setBtnState("ob-next-1", true, s["onboarding.nav.next"]);
+      try {
+        await updateUser(user.uid, { communityGoals: getSelectedGoals() }).catch(() => {});
+      } finally {
+        setBtnState("ob-next-1", false, s["onboarding.nav.next"]);
+        setStep(2);
+      }
+    });
+
+    document.getElementById("ob-continue-2")?.addEventListener("click", () => setStep(3));
+    document.getElementById("ob-skip-2")?.addEventListener("click", completeOnboarding);
+
+    document.getElementById("ob-next-3")?.addEventListener("click", async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      setBtnState("ob-next-3", true, s["onboarding.nav.next"]);
+      try {
+        await updateUserProfile(user.uid, { tags, updatedAt: new Date() }).catch(() => {});
+      } finally {
+        setBtnState("ob-next-3", false, s["onboarding.nav.next"]);
+        setStep(4);
+      }
+    });
+
+    document.getElementById("ob-skip-3")?.addEventListener("click", completeOnboarding);
+
+    document.getElementById("ob-finish")?.addEventListener("click", async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      setBtnState("ob-finish", true, s["onboarding.nav.finish"]);
+      setError("");
+      try {
+        const bioVal = (document.getElementById("ob-bio") as HTMLTextAreaElement).value.trim();
+        const bioResult = validateBio(bioVal);
+        if (!bioResult.ok) {
+          setError(bioResult.error!);
+          setBtnState("ob-finish", false, s["onboarding.nav.finish"]);
+          return;
+        }
+        let photoURL = user.photoURL ?? "";
+        if (resizedAvatarBlob) {
+          const avatarFile = new File([resizedAvatarBlob], "avatar.jpg", { type: "image/jpeg" });
+          photoURL = await uploadAvatar(user.uid, avatarFile, (pct) => {
+            uploadStatus.textContent = `${s["profile.upload.uploading"]} ${pct}%`;
+            uploadStatus.style.display = "block";
+          });
+          await updateProfile(user, { photoURL: photoURL || null });
+          await user.getIdToken(true);
+        }
+        await updateUserProfile(user.uid, { bio: bioVal, photoURL, updatedAt: new Date() });
+        await updateUser(user.uid, { onboardingComplete: true });
+        window.location.href = `${prefix}/community`;
+      } catch {
+        setError(s["onboarding.error.save"]);
+        setBtnState("ob-finish", false, s["onboarding.nav.finish"]);
+      }
+    });
+
+    document.getElementById("ob-skip-4")?.addEventListener("click", completeOnboarding);
+
+    // ── Verify banner ──────────────────────────────────────────────
+    const verifyBanner = document.getElementById("ob-verify-banner")!;
+    const btnResend = document.getElementById("ob-resend-verify") as HTMLButtonElement;
+    const verifySent = document.getElementById("ob-verify-sent")!;
+
+    // ── Auth guard ─────────────────────────────────────────────────
+    unsubscribeAuth?.();
+    unsubscribeAuth = requireAuth(async (user) => {
+      try {
+        const data = await getUser(user.uid);
+        if (data.onboardingComplete) {
+          window.location.href = `${prefix}/community`;
+          return;
+        }
+
+        // Pre-fill existing data
+        const nameEl = document.getElementById("ob-name") as HTMLInputElement;
+        const roleEl = document.getElementById("ob-role") as HTMLInputElement;
+        const portfolioEl = document.getElementById("ob-portfolio") as HTMLInputElement;
+        const socialEl = document.getElementById("ob-social") as HTMLInputElement;
+        const phoneEl = document.getElementById("ob-phone") as HTMLInputElement;
+        const bioEl = document.getElementById("ob-bio") as HTMLTextAreaElement;
+
+        nameEl.value = data.displayName ?? user.displayName ?? "";
+        roleEl.value = data.role ?? "";
+        portfolioEl.value = data.portfolio ?? "";
+        socialEl.value = data.socialMedia ?? "";
+        phoneEl.value = data.phone ?? "";
+        if (bioEl) bioEl.value = data.bio ?? "";
+
+        if (Array.isArray(data.communityGoals)) {
+          data.communityGoals.forEach((goal) => {
+            if (presetGoalKeys.has(goal)) {
+              selectedGoals.add(goal);
+              document
+                .querySelector<HTMLElement>(`[data-goal="${goal}"]`)
+                ?.classList.add("goal-chip--selected");
+            } else {
+              customGoals.push(goal);
+            }
+          });
+          renderCustomGoals();
+        }
+
+        tags = Array.isArray(data.tags) ? data.tags.filter(Boolean).slice(0, 7) : [];
+        renderTags();
+      } catch {
+        // Permission denied or network error — show form with empty fields
+      }
+
+      await loadRegistryTags();
+
+      if (!user.emailVerified) {
+        verifyBanner.style.display = "block";
+        let cooldown = false;
+        btnResend?.addEventListener("click", async () => {
+          if (cooldown) return;
+          cooldown = true;
+          btnResend.disabled = true;
+          try {
+            await sendEmailVerification(user);
+            verifySent.style.display = "block";
+          } catch {
+            // ignore
+          }
+          setTimeout(() => {
+            cooldown = false;
+            btnResend.disabled = false;
+          }, 30000);
+        });
+      }
+
+      if (loadingEl) loadingEl.style.display = "none";
+      wrap.style.display = "block";
+      setStep(0);
+    });
+  });
+</script>

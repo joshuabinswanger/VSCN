@@ -21,6 +21,8 @@ export interface UserDoc {
   tags: string[];
   phone: string;
   email: string;
+  communityGoals?: string[];
+  onboardingComplete?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }

@@ -2,14 +2,20 @@
 import "../styles/global.css";
 ---
 
-<nav transition:persist>
+<nav transition:persist="navbar">
   <div class="nav-links">
-    <a href="/info" class="nav-link">INFO</a>
-    <a href="/community" class="nav-link nav-center">COMMUNITY</a>
-    <a href="/signup" class="nav-link nav-right" id="nav-join">LOGIN</a>
-    <a href="/profile" class="nav-link nav-right" id="nav-profile" style="display:none;">PROFILE</a>
+    <a href="/info" class="nav-link" id="nav-info">INFO</a>
+    <a href="/community" class="nav-link nav-center" id="nav-community">COMMUNITY</a>
+    <div class="nav-right-group">
+      <a href="/signup" class="nav-link" id="nav-join">LOGIN</a>
+      <a href="/profile" class="nav-link" id="nav-profile" style="display:none;">PROFILE</a>
+    </div>
   </div>
 </nav>
+
+<a href="/de" class="lang-toggle" id="nav-lang" transition:persist="lang-toggle">
+  <span class="lang-cur">EN</span><span class="lang-sep"> / </span><span class="lang-tgt">DE</span>
+</a>
 
 <style>
   nav {
@@ -20,7 +26,6 @@ import "../styles/global.css";
     line-height: 1;
   }
 
-  /* ── Nav links row ── */
   .nav-links {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -62,22 +67,61 @@ import "../styles/global.css";
     transform: scaleX(1);
   }
 
-  /* Center item */
   .nav-center {
     justify-self: center;
     text-align: center;
   }
 
-  /* Right item */
-  .nav-right {
+  .nav-right-group {
+    display: flex;
+    gap: 1.25rem;
     justify-self: end;
-    text-align: right;
+    align-items: center;
+  }
+
+  .lang-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 30px;
+    z-index: 20;
+    font-family: "Archivo", sans-serif;
+    font-size: var(--font-size-base);
+    text-decoration: none;
+  }
+
+  .lang-toggle :global(.lang-sep) {
+    color: var(--color-muted);
+  }
+
+  .lang-toggle :global(.lang-cur) {
+    color: var(--color-dark);
+    font-weight: 600;
+  }
+
+  .lang-toggle :global(.lang-tgt) {
+    color: var(--color-muted);
+    font-weight: 400;
+    transition: color 0.15s;
+  }
+
+  .lang-toggle:hover :global(.lang-tgt) {
+    color: var(--color-dark);
   }
 </style>
 
 <script>
   import { auth } from "../lib/firebase.ts";
   import { onAuthStateChanged } from "firebase/auth";
+
+  type Lang = "en" | "de";
+
+  const navLabels: Record<
+    Lang,
+    { info: string; community: string; login: string; profile: string }
+  > = {
+    en: { info: "INFO", community: "COMMUNITY", login: "LOGIN", profile: "PROFILE" },
+    de: { info: "INFO", community: "COMMUNITY", login: "ANMELDEN", profile: "PROFIL" },
+  };
 
   let unsubscribeAuth: (() => void) | null = null;
 
@@ -88,6 +132,7 @@ import "../styles/global.css";
   function setActiveLink() {
     const path = normalisePath(window.location.pathname);
     document.querySelectorAll<HTMLAnchorElement>(".nav-link").forEach((link) => {
+      if (link.id === "nav-lang") return;
       const isActive = normalisePath(link.pathname) === path;
       link.classList.toggle("nav-link--active", isActive);
       if (isActive) {
@@ -98,7 +143,67 @@ import "../styles/global.css";
     });
   }
 
+  // Update nav links and language toggle for the given language + current path.
+  // Called both in astro:before-swap (with new page values) and astro:page-load.
+  function updateNavLinks(lang: Lang, currentPath: string) {
+    const prefix = lang === "de" ? "/de" : "";
+    const labels = navLabels[lang];
+    const normPath = normalisePath(currentPath);
+
+    const navInfo = document.getElementById("nav-info") as HTMLAnchorElement | null;
+    const navCommunity = document.getElementById("nav-community") as HTMLAnchorElement | null;
+    const navJoin = document.getElementById("nav-join") as HTMLAnchorElement | null;
+    const navProfile = document.getElementById("nav-profile") as HTMLAnchorElement | null;
+    const navLang = document.getElementById("nav-lang") as HTMLAnchorElement | null;
+
+    if (navInfo) {
+      navInfo.href = `${prefix}/info`;
+      navInfo.textContent = labels.info;
+    }
+    if (navCommunity) {
+      navCommunity.href = `${prefix}/community`;
+      navCommunity.textContent = labels.community;
+    }
+    if (navJoin) {
+      navJoin.href = `${prefix}/signup`;
+      navJoin.textContent = labels.login;
+    }
+    if (navProfile) {
+      navProfile.href = `${prefix}/profile`;
+      navProfile.textContent = labels.profile;
+    }
+
+    if (navLang) {
+      if (lang === "de") {
+        const enPath = normalisePath(normPath.replace(/^\/de/, "")) || "/";
+        navLang.href = enPath;
+        navLang.innerHTML =
+          '<span class="lang-tgt">EN</span><span class="lang-sep"> / </span><span class="lang-cur">DE</span>';
+      } else {
+        navLang.href = "/de" + normPath;
+        navLang.innerHTML =
+          '<span class="lang-cur">EN</span><span class="lang-sep"> / </span><span class="lang-tgt">DE</span>';
+      }
+    }
+  }
+
+  // Pre-update the nav BEFORE the DOM swap so there is no flash of
+  // wrong-language links during the View Transition animation.
+  document.addEventListener("astro:before-swap", (e) => {
+    const event = e as unknown as { newDocument?: Document };
+    const newDoc = event.newDocument;
+    if (!newDoc) return;
+    const newLang = (newDoc.documentElement?.lang ?? "en") as Lang;
+    const newPath = newDoc.URL
+      ? normalisePath(new URL(newDoc.URL).pathname)
+      : normalisePath(window.location.pathname);
+    updateNavLinks(newLang === "de" ? "de" : "en", newPath);
+  });
+
+  // Handle initial page load and post-navigation cleanup (active link, auth).
   document.addEventListener("astro:page-load", () => {
+    const lang = (document.documentElement.lang ?? "en") as Lang;
+    updateNavLinks(lang === "de" ? "de" : "en", window.location.pathname);
     setActiveLink();
 
     const navJoin = document.getElementById("nav-join");

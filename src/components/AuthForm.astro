@@ -1,6 +1,18 @@
-<div class="auth-wrap">
+---
+import { useTranslations } from "../i18n/utils.ts";
+import type { Lang } from "../i18n/utils.ts";
+
+interface Props {
+  lang?: Lang;
+}
+
+const { lang = 'en' } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<div class="auth-wrap" data-lang={lang}>
   <header class="auth-header">
-    <h1 id="auth-title" class="auth-title">Create an Account</h1>
+    <h1 id="auth-title" class="auth-title">{t('auth.title.signup')}</h1>
   </header>
 
   <form id="auth-form" class="auth-form">
@@ -20,7 +32,7 @@
       <div class="field-label-row">
         <label class="label" for="password">Password</label>
         <button type="button" id="forgot-link" class="btn-link forgot-btn" style="display:none;"
-          >Forgot?</button
+          >{t('auth.forgot')}</button
         >
       </div>
       <input
@@ -36,10 +48,10 @@
 
     <div class="auth-footer">
       <p class="auth-sub already-have">
-        Already have one?
-        <a href="#" id="toggle-link" class="toggle-link">Log in instead</a>
+        {t('auth.alreadyHave')}
+        <a href="#" id="toggle-link" class="toggle-link">{t('auth.toggle.toLogin')}</a>
       </p>
-      <button id="submit-btn" type="submit" class="btn-solid auth-submit-button">Sign Up</button>
+      <button id="submit-btn" type="submit" class="btn-solid auth-submit-button">{t('auth.submit.signup')}</button>
     </div>
   </form>
 
@@ -56,15 +68,15 @@
     </div>
     <p id="forgot-error" class="msg-err" style="display:none;"></p>
     <p id="forgot-success" class="msg-ok" style="display:none;">
-      Check your inbox for a reset link.
+      {t('auth.reset.success')}
     </p>
     <div class="auth-footer">
       <button id="forgot-submit" type="button" class="btn-solid auth-submit-button">
-        Send reset link
+        {t('auth.reset.send')}
       </button>
     </div>
     <div class="forgot-back-row">
-      <button id="forgot-back" type="button" class="btn-link">← Back to log in</button>
+      <button id="forgot-back" type="button" class="btn-link">{t('auth.reset.back')}</button>
     </div>
   </div>
 </div>
@@ -190,6 +202,7 @@
   } from "firebase/auth";
   import { friendlyError } from "../lib/auth.ts";
   import { createUser } from "../lib/firestore.ts";
+  import { ui } from "../i18n/translations.ts";
 
   let isLogin = false;
   let lastSubmit = 0;
@@ -199,6 +212,11 @@
   document.addEventListener("astro:page-load", () => {
     const form = document.getElementById("auth-form") as HTMLFormElement;
     if (!form) return;
+
+    const wrap = document.querySelector<HTMLElement>(".auth-wrap[data-lang]");
+    const lang = (wrap?.dataset.lang ?? "en") as "en" | "de";
+    const prefix = lang === "de" ? "/de" : "";
+    const s = ui[lang];
 
     const toggleLink = document.getElementById("toggle-link")!;
     const submitBtn = document.getElementById("submit-btn")!;
@@ -217,33 +235,33 @@
     unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       if (!user) return;
       if (isSubmitting) return;
-      window.location.href = "/community";
+      window.location.href = `${prefix}/community`;
     });
 
     function showForgotView() {
       form.style.display = "none";
       forgotSection.style.display = "flex";
-      authTitle.textContent = "Reset Password";
+      authTitle.textContent = s["auth.title.reset"];
       authSub.style.display = "none";
       forgotEmailInput.value = (document.getElementById("email") as HTMLInputElement).value;
       forgotError.style.display = "none";
       forgotSuccess.style.display = "none";
       forgotSubmit.disabled = false;
-      forgotSubmit.textContent = "Send reset link";
+      forgotSubmit.textContent = s["auth.reset.send"];
     }
 
     function showLoginView() {
       forgotSection.style.display = "none";
       form.style.display = "grid";
-      authTitle.textContent = "Log In";
+      authTitle.textContent = s["auth.title.login"];
       authSub.style.display = "";
     }
 
     // Reset state on each page load
     isLogin = false;
-    submitBtn.textContent = "Sign Up";
-    authTitle.textContent = "Create an Account";
-    toggleLink.textContent = "Log in instead";
+    submitBtn.textContent = s["auth.submit.signup"];
+    authTitle.textContent = s["auth.title.signup"];
+    toggleLink.textContent = s["auth.toggle.toLogin"];
     forgotLink.style.display = "none";
     forgotSection.style.display = "none";
     form.style.display = "grid";
@@ -259,33 +277,32 @@
       forgotSuccess.style.display = "none";
 
       if (!email) {
-        forgotError.textContent = "Please enter your email address.";
+        forgotError.textContent = s["auth.error.enterEmail"];
         forgotError.style.display = "block";
         return;
       }
 
       forgotSubmit.disabled = true;
-      forgotSubmit.textContent = "Sending…";
+      forgotSubmit.textContent = s["auth.reset.sending"];
 
       try {
         await sendPasswordResetEmail(auth, email);
         forgotSuccess.style.display = "block";
-        forgotSubmit.textContent = "Sent";
+        forgotSubmit.textContent = s["auth.reset.sent"];
       } catch {
-        forgotError.textContent =
-          "Could not send reset email. Please check the address and try again.";
+        forgotError.textContent = s["auth.error.resetFailed"];
         forgotError.style.display = "block";
         forgotSubmit.disabled = false;
-        forgotSubmit.textContent = "Send reset link";
+        forgotSubmit.textContent = s["auth.reset.send"];
       }
     });
 
     toggleLink.addEventListener("click", (e) => {
       e.preventDefault();
       isLogin = !isLogin;
-      submitBtn.textContent = isLogin ? "Log In" : "Sign Up";
-      toggleLink.textContent = isLogin ? "Sign up instead" : "Log in instead";
-      authTitle.textContent = isLogin ? "Log In" : "Create an Account";
+      submitBtn.textContent = isLogin ? s["auth.submit.login"] : s["auth.submit.signup"];
+      toggleLink.textContent = isLogin ? s["auth.toggle.toSignup"] : s["auth.toggle.toLogin"];
+      authTitle.textContent = isLogin ? s["auth.title.login"] : s["auth.title.signup"];
       forgotLink.style.display = isLogin ? "inline" : "none";
       errorEl.style.display = "none";
     });
@@ -296,7 +313,7 @@
 
       const now = Date.now();
       if (now - lastSubmit < 5000) {
-        errorEl.textContent = "Please wait a moment before trying again.";
+        errorEl.textContent = s["auth.error.wait"];
         errorEl.style.display = "block";
         return;
       }
@@ -309,7 +326,7 @@
         isSubmitting = true;
         if (isLogin) {
           await signInWithEmailAndPassword(auth, email, password);
-          window.location.href = "/profile";
+          window.location.href = `${prefix}/profile`;
         } else {
           const { user } = await createUserWithEmailAndPassword(auth, email, password);
           await createUser(user.uid, {
@@ -317,7 +334,7 @@
             createdAt: new Date(),
           });
           await sendEmailVerification(user);
-          window.location.href = "/profile";
+          window.location.href = `${prefix}/onboarding`;
         }
       } catch (err: unknown) {
         isSubmitting = false;
@@ -327,7 +344,7 @@
             : "";
         errorEl.textContent = code
           ? friendlyError(code)
-          : "Something went wrong. Please try again.";
+          : s["auth.error.generic"];
         errorEl.style.display = "block";
       }
     });

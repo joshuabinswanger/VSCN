@@ -1,0 +1,41 @@
+---
+import { cert, getApps, initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+import Layout from "../../layouts/Layout.astro";
+import CommunityGrid from "../../components/CommunityGrid.astro";
+import type { PublicProfileDoc } from "../../lib/firestore.ts";
+
+type Member = PublicProfileDoc & { uid: string };
+
+let members: Member[] = [];
+
+try {
+  const serviceAccountJson = import.meta.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!serviceAccountJson) throw new Error("FIREBASE_SERVICE_ACCOUNT env var not set");
+
+  const app =
+    getApps().length === 0
+      ? initializeApp({ credential: cert(JSON.parse(serviceAccountJson)) })
+      : getApps()[0];
+
+  const adminDb = getFirestore(app);
+  const snap = await adminDb.collection("publicProfiles").orderBy("displayName").get();
+
+  members = snap.docs
+    .filter((d) => d.data().active !== false)
+    .map((d) => ({
+      uid: d.id,
+      ...(d.data() as PublicProfileDoc),
+    }));
+} catch (err) {
+  console.error("[community/de] Failed to fetch members at build time:", err);
+}
+---
+
+<Layout
+  title="Community — VSCN"
+  description="Durchsuche die VSCN-Community — ein wachsendes Verzeichnis von Wissenschaftler:innen, Illustrator:innen, Designer:innen und Wissenschaftskommunikator:innen."
+  lang="de"
+>
+  <CommunityGrid members={members} lang="de" />
+</Layout>

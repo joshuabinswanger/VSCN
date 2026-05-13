@@ -20,7 +20,6 @@ service cloud.firestore {
 
       allow create, update: if request.auth != null
                             && request.auth.uid == uid
-                            && request.auth.token.email_verified == true
                             && validPublicProfile(request.resource.data);
 
       allow delete: if request.auth != null && request.auth.uid == uid;
@@ -51,12 +50,14 @@ function validPublicProfile(data) {
 }
 
 function validPrivateUser(data, auth) {
-  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'tags', 'phone', 'email', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'tags', 'phone', 'email', 'communityGoals', 'onboardingComplete', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data)
     && (!('phone' in data) || (data.phone is string && data.phone.size() <= 40))
-    && (!('email' in data) || data.email == auth.token.email);
+    && (!('email' in data) || data.email == auth.token.email)
+    && (!('communityGoals' in data) || data.communityGoals is list)
+    && (!('onboardingComplete' in data) || data.onboardingComplete is bool);
 }
 
 function validPublicFields(data) {

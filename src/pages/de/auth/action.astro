@@ -1,0 +1,227 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+---
+
+<Layout title="Konto" lang="de">
+  <div class="action-wrap">
+    <div id="view-loading" class="action-view">
+      <p class="state-msg">Bitte warten…</p>
+    </div>
+
+    <div id="view-reset-form" class="action-view" style="display:none;">
+      <header class="action-header">
+        <h1 class="action-title">Neues Passwort festlegen</h1>
+      </header>
+      <form id="reset-form" class="action-form">
+        <div class="field">
+          <label class="label" for="new-password">Neues Passwort</label>
+          <input id="new-password" type="password" class="input" placeholder="••••••••" required autocomplete="new-password" />
+        </div>
+        <div class="field">
+          <label class="label" for="confirm-password">Passwort bestätigen</label>
+          <input id="confirm-password" type="password" class="input" placeholder="••••••••" required autocomplete="new-password" />
+        </div>
+        <p id="reset-error" class="msg-err" style="display:none;"></p>
+        <div class="action-footer">
+          <button type="submit" id="reset-submit" class="btn-solid">Passwort setzen</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="view-success" class="action-view" style="display:none;">
+      <header class="action-header">
+        <h1 class="action-title" id="success-title"></h1>
+        <p class="action-sub" id="success-sub"></p>
+      </header>
+      <a id="success-link" href="/de/signup" class="btn-solid">Weiter</a>
+    </div>
+
+    <div id="view-error" class="action-view" style="display:none;">
+      <header class="action-header">
+        <h1 class="action-title">Link abgelaufen</h1>
+        <p class="action-sub">
+          Dieser Link ist nicht mehr gültig. Er wurde möglicherweise bereits verwendet oder ist abgelaufen.
+        </p>
+      </header>
+      <a href="/de/signup" class="btn-solid">Zurück zur Anmeldung</a>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .action-wrap {
+    width: 100%;
+    max-width: 500px;
+    margin: clamp(2rem, 4vw, 4rem) auto;
+    padding: 0 15px;
+    box-sizing: border-box;
+
+    @media (--bp-desktop) {
+      padding: 0;
+    }
+  }
+
+  @media (min-width: 560px) {
+    .action-wrap {
+      background: #fff;
+      border: 1.5px solid #ebebeb;
+      border-radius: var(--radius-xl);
+      padding: clamp(2rem, 4vw, 3rem);
+    }
+  }
+
+  .action-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .action-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-dark);
+  }
+
+  .action-sub {
+    font-size: 0.9rem;
+    color: #666;
+    line-height: 1.5;
+  }
+
+  .action-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .action-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 0.5rem;
+  }
+
+  .state-msg {
+    color: #999;
+    font-size: 0.9rem;
+  }
+</style>
+
+<script>
+  import { auth } from "../../../lib/firebase.ts";
+  import {
+    applyActionCode,
+    confirmPasswordReset,
+    verifyPasswordResetCode,
+  } from "firebase/auth";
+  import { publishCurrentUserProfile } from "../../../lib/firestore.ts";
+
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get("mode");
+  const oobCode = params.get("oobCode");
+
+  function showView(id: string) {
+    document.querySelectorAll<HTMLElement>(".action-view").forEach((v) => {
+      v.style.display = "none";
+    });
+    const el = document.getElementById(id);
+    if (el) el.style.display = "block";
+  }
+
+  function showSuccess(title: string, sub: string, href = "/de/signup") {
+    document.getElementById("success-title")!.textContent = title;
+    document.getElementById("success-sub")!.textContent = sub;
+    (document.getElementById("success-link") as HTMLAnchorElement).href = href;
+    showView("view-success");
+  }
+
+  document.addEventListener("astro:page-load", async () => {
+    if (!oobCode) {
+      showView("view-error");
+      return;
+    }
+
+    if (mode === "verifyEmail") {
+      try {
+        await applyActionCode(auth, oobCode);
+        const user = auth.currentUser;
+        if (user) {
+          await user.reload();
+          await user.getIdToken(true);
+          await publishCurrentUserProfile(user.uid);
+        }
+        showSuccess(
+          "E-Mail bestätigt!",
+          "Dein Konto ist jetzt aktiv. Weiter zur Community.",
+          "/de/community",
+        );
+      } catch {
+        showView("view-error");
+      }
+
+    } else if (mode === "resetPassword") {
+      try {
+        await verifyPasswordResetCode(auth, oobCode);
+        showView("view-reset-form");
+
+        const form = document.getElementById("reset-form") as HTMLFormElement;
+        const submitBtn = document.getElementById("reset-submit") as HTMLButtonElement;
+        const errorEl = document.getElementById("reset-error")!;
+
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const newPw = (document.getElementById("new-password") as HTMLInputElement).value;
+          const confirmPw = (document.getElementById("confirm-password") as HTMLInputElement).value;
+
+          errorEl.style.display = "none";
+
+          if (newPw !== confirmPw) {
+            errorEl.textContent = "Passwörter stimmen nicht überein.";
+            errorEl.style.display = "block";
+            return;
+          }
+          if (newPw.length < 6) {
+            errorEl.textContent = "Das Passwort muss mindestens 6 Zeichen lang sein.";
+            errorEl.style.display = "block";
+            return;
+          }
+
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Wird gespeichert…";
+
+          try {
+            await confirmPasswordReset(auth, oobCode, newPw);
+            showSuccess(
+              "Passwort aktualisiert!",
+              "Du kannst dich jetzt mit deinem neuen Passwort anmelden.",
+              "/de/signup",
+            );
+          } catch {
+            errorEl.textContent = "Passwort konnte nicht gesetzt werden. Der Link ist möglicherweise abgelaufen.";
+            errorEl.style.display = "block";
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Passwort setzen";
+          }
+        });
+      } catch {
+        showView("view-error");
+      }
+
+    } else if (mode === "recoverEmail") {
+      try {
+        await applyActionCode(auth, oobCode);
+        showSuccess(
+          "E-Mail wiederhergestellt",
+          "Deine ursprüngliche E-Mail-Adresse wurde wiederhergestellt. Bitte melde dich erneut an.",
+          "/de/signup",
+        );
+      } catch {
+        showView("view-error");
+      }
+
+    } else {
+      showView("view-error");
+    }
+  });
+</script>

@@ -2,6 +2,8 @@
 import type { PublicProfileDoc } from "../lib/firestore.ts";
 import { normaliseUrl } from "../lib/validation.ts";
 import downArrowUrl from "../assets/downarrow.svg";
+import { useTranslations } from "../i18n/utils.ts";
+import type { Lang } from "../i18n/utils.ts";
 
 function stripStorageToken(url: string): string {
   if (!url) return url;
@@ -20,9 +22,11 @@ function stripStorageToken(url: string): string {
 interface Props {
   member?: PublicProfileDoc & { uid: string };
   preview?: boolean;
+  lang?: Lang;
 }
 
-const { member: m, preview = false } = Astro.props;
+const { member: m, preview = false, lang = 'en' } = Astro.props;
+const t = useTranslations(lang);
 const displayName = m?.displayName || "Anonymous";
 const portfolioHref = normaliseUrl(m?.portfolio ?? "");
 const socialHref = normaliseUrl(m?.socialMedia ?? "");
@@ -118,7 +122,7 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
             type="button"
             aria-expanded="false"
             aria-controls={bioId}
-            aria-label={`Show bio for ${displayName}`}
+            aria-label={`${t('member.showBio')} ${displayName}`}
           >
             <img class="member-bio-arrow" src={downArrowUrl.src} alt="" aria-hidden="true" />
           </button>
