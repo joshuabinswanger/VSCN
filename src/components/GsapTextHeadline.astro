@@ -1,0 +1,204 @@
+---
+interface Props {
+  holdDuration?: number;
+  replaceDuration?: number;
+  collapseDuration?: number;
+  ease?: string;
+}
+
+const baseText = "VSCNVSCNVSCNVSCN";
+const {
+  holdDuration = 1.65,
+  replaceDuration = 1.15,
+  collapseDuration = 0.75,
+  ease = "expo.inOut",
+} = Astro.props;
+---
+
+<div
+  class="gsap-text-headline"
+  data-gsap-text-headline
+  data-base-text={baseText}
+  data-hold-duration={holdDuration}
+  data-replace-duration={replaceDuration}
+  data-collapse-duration={collapseDuration}
+  data-ease={ease}
+  aria-label="Visual Science Communication Network"
+>
+  <span class="gsap-text-headline__text" data-headline-text>{baseText}</span>
+</div>
+
+<style>
+  .gsap-text-headline {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    overflow: hidden;
+    color: var(--color-dark);
+    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: var(--gsap-text-headline-size, clamp(2.5rem, 10.4vw, 8rem));
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: 0;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .gsap-text-headline__text {
+    display: inline-block;
+    width: var(--gsap-text-headline-width, 100vw);
+    text-align: left;
+    transform-style: preserve-3d;
+  }
+
+  :global(.gsap-text-headline__slot) {
+    display: inline-block;
+    position: relative;
+    width: 1ch;
+    height: 1em;
+    overflow: hidden;
+    vertical-align: top;
+  }
+
+  :global(.gsap-text-headline__column) {
+    display: block;
+    will-change: transform;
+  }
+
+  :global(.gsap-text-headline__char) {
+    display: block;
+    height: 1em;
+    line-height: 1;
+  }
+</style>
+
+<script>
+  import gsap from "gsap";
+
+  const timelines = new WeakMap<HTMLElement, gsap.core.Timeline>();
+  const roots = new Set<HTMLElement>();
+
+  const words = ["Visual", "Science", "Communication", "Network"];
+
+  function renderCharacterColumns(target: HTMLElement, values: string[], slotCount: number) {
+    target.textContent = "";
+
+    for (let columnIndex = 0; columnIndex < slotCount; columnIndex += 1) {
+      const slot = document.createElement("span");
+      const column = document.createElement("span");
+
+      slot.className = "gsap-text-headline__slot";
+      slot.setAttribute("aria-hidden", "true");
+      column.className = "gsap-text-headline__column";
+
+      values.forEach((value) => {
+        const char = document.createElement("span");
+        char.className = "gsap-text-headline__char";
+        setCharacter(char, value[columnIndex] ?? "");
+        column.appendChild(char);
+      });
+
+      slot.appendChild(column);
+      target.appendChild(slot);
+    }
+  }
+
+  function setCharacter(span: HTMLElement, character: string) {
+    span.textContent = character === " " ? "\u00a0" : character;
+  }
+
+  function transitionText(
+    timeline: gsap.core.Timeline,
+    target: HTMLElement,
+    rowIndex: number,
+    duration: number,
+    ease: string,
+    slotCount: number
+  ) {
+    const columns = Array.from(
+      target.querySelectorAll<HTMLElement>(".gsap-text-headline__column")
+    ).slice(0, slotCount);
+
+    timeline.to(columns, {
+      duration,
+      y: `${-rowIndex}em`,
+      stagger: 0.026,
+      ease,
+    });
+  }
+
+  function resetColumns(timeline: gsap.core.Timeline, target: HTMLElement, slotCount: number) {
+    const columns = Array.from(
+      target.querySelectorAll<HTMLElement>(".gsap-text-headline__column")
+    ).slice(0, slotCount);
+
+    timeline.set(columns, { y: 0 });
+  }
+
+  function destroyHeadline(root: HTMLElement) {
+    const timeline = timelines.get(root);
+    if (!timeline) return;
+
+    timeline.kill();
+    timelines.delete(root);
+    roots.delete(root);
+  }
+
+  function initHeadline(root: HTMLElement) {
+    destroyHeadline(root);
+
+    const target = root.querySelector<HTMLElement>("[data-headline-text]");
+    if (!target) return;
+
+    const baseText = root.dataset.baseText ?? "VSCNVSCNVSCNVSCN";
+    const holdDuration = Number(root.dataset.holdDuration ?? 1.65);
+    const replaceDuration = Number(root.dataset.replaceDuration ?? 1.15);
+    const collapseDuration = Number(root.dataset.collapseDuration ?? 0.75);
+    const ease = root.dataset.ease ?? "expo.inOut";
+    const slotCount = baseText.length;
+    const rows = [baseText, ...words, baseText];
+    const finalBaseRowIndex = rows.length - 1;
+
+    renderCharacterColumns(target, rows, slotCount);
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      target.textContent = baseText;
+      return;
+    }
+
+    const timeline = gsap.timeline({ repeat: -1 });
+
+    timeline.to({}, { duration: holdDuration });
+
+    words.forEach((_, index) => {
+      transitionText(timeline, target, index + 1, replaceDuration, ease, slotCount);
+
+      if (index < words.length - 1) {
+        timeline.to({}, { duration: holdDuration });
+      }
+    });
+
+    timeline.to({}, { duration: holdDuration });
+    transitionText(timeline, target, finalBaseRowIndex, collapseDuration, ease, slotCount);
+    resetColumns(timeline, target, slotCount);
+    timeline.to({}, { duration: 0.3 });
+
+    timelines.set(root, timeline);
+    roots.add(root);
+  }
+
+  function initHeadlines() {
+    document.querySelectorAll<HTMLElement>("[data-gsap-text-headline]").forEach(initHeadline);
+  }
+
+  document.addEventListener("astro:page-load", initHeadlines);
+  document.addEventListener("astro:before-swap", () => {
+    Array.from(roots).forEach(destroyHeadline);
+  });
+
+  if (document.readyState !== "loading") {
+    initHeadlines();
+  } else {
+    document.addEventListener("DOMContentLoaded", initHeadlines, { once: true });
+  }
+</script>

@@ -7,11 +7,17 @@ service cloud.firestore {
       // Public tag registry. Readable by everyone.
       allow read: if true;
 
-      allow create: if request.auth != null
-                    && request.auth.token.email_verified == true
-                    && validTag(request.resource.data);
+      allow create, update: if request.auth != null
+                            && request.auth.token.email_verified == true
+                            && validTag(request.resource.data);
 
-      allow update, delete: if false;
+      allow delete: if false;
+    }
+
+    match /openTo/{id} {
+      // Public registry of 'Open To' options.
+      allow read: if true;
+      allow write: if false;
     }
 
     match /publicProfiles/{uid} {
@@ -68,7 +74,7 @@ function validPublicFields(data) {
     && (!('role' in data) || (data.role is string && data.role.size() <= 100))
     && (!('portfolio' in data) || (data.portfolio is string && data.portfolio.size() <= 200))
     && (!('socialMedia' in data) || (data.socialMedia is string && data.socialMedia.size() <= 200))
-    && (!('openTo' in data) || (data.openTo is list && data.openTo.size() <= 3 && data.openTo.hasOnly(['offering', 'seeking', 'networking'])))
+    && (!('openTo' in data) || (data.openTo is list && data.openTo.size() <= 5))
     && (!('tags' in data) || (data.tags is list && data.tags.size() <= 7))
     && (!('active' in data) || data.active is bool)
     && (!('photoURL' in data) || data.photoURL == ''
@@ -88,5 +94,8 @@ function validTag(data) {
     && data.label.size() > 0
     && data.label.size() <= 50
     && data.createdAt is timestamp
-    && data.createdBy is string;
+    && data.createdBy is string
+    && (!('active' in data) || data.active is bool)
+    && (!('group' in data) || data.group is string)
+    && (!('updatedAt' in data) || data.updatedAt is timestamp);
 }

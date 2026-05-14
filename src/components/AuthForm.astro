@@ -4,13 +4,14 @@ import type { Lang } from "../i18n/utils.ts";
 
 interface Props {
   lang?: Lang;
+  initialMode?: 'login' | 'signup';
 }
 
-const { lang = 'en' } = Astro.props;
+const { lang = 'en', initialMode = 'signup' } = Astro.props;
 const t = useTranslations(lang);
 ---
 
-<div class="auth-wrap" data-lang={lang}>
+<div class="auth-wrap" data-lang={lang} data-initial-mode={initialMode}>
   <header class="auth-header">
     <h1 id="auth-title" class="auth-title">{t('auth.title.signup')}</h1>
   </header>
@@ -257,12 +258,21 @@ const t = useTranslations(lang);
       authSub.style.display = "";
     }
 
+    function updateView() {
+      submitBtn.textContent = isLogin ? s["auth.submit.login"] : s["auth.submit.signup"];
+      toggleLink.textContent = isLogin ? s["auth.toggle.toSignup"] : s["auth.toggle.toLogin"];
+      authTitle.textContent = isLogin ? s["auth.title.login"] : s["auth.title.signup"];
+      forgotLink.style.display = isLogin ? "inline" : "none";
+      
+      const alreadyHaveEl = document.querySelector('.already-have') as HTMLElement;
+      if (alreadyHaveEl) {
+        alreadyHaveEl.firstChild!.textContent = isLogin ? (s["auth.noAccount"] || "Don't have an account? ") : (s["auth.alreadyHave"] || "Already have one? ");
+      }
+    }
+
     // Reset state on each page load
-    isLogin = false;
-    submitBtn.textContent = s["auth.submit.signup"];
-    authTitle.textContent = s["auth.title.signup"];
-    toggleLink.textContent = s["auth.toggle.toLogin"];
-    forgotLink.style.display = "none";
+    isLogin = (wrap as HTMLElement).dataset.initialMode === 'login';
+    updateView();
     forgotSection.style.display = "none";
     form.style.display = "grid";
     authSub.style.display = "";
@@ -300,10 +310,7 @@ const t = useTranslations(lang);
     toggleLink.addEventListener("click", (e) => {
       e.preventDefault();
       isLogin = !isLogin;
-      submitBtn.textContent = isLogin ? s["auth.submit.login"] : s["auth.submit.signup"];
-      toggleLink.textContent = isLogin ? s["auth.toggle.toSignup"] : s["auth.toggle.toLogin"];
-      authTitle.textContent = isLogin ? s["auth.title.login"] : s["auth.title.signup"];
-      forgotLink.style.display = isLogin ? "inline" : "none";
+      updateView();
       errorEl.style.display = "none";
     });
 

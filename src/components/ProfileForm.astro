@@ -1,24 +1,28 @@
 ---
 import MemberCard from "./MemberCard.astro";
+import OpenToSelector from "./OpenToSelector.astro";
+import TagSelector from "./TagSelector.astro";
 import { useTranslations } from "../i18n/utils";
 import type { Lang } from "../i18n/utils";
 
 interface Props {
   lang?: Lang;
 }
-const { lang = 'en' } = Astro.props;
+const { lang = "en" } = Astro.props;
 const t = useTranslations(lang);
 ---
 
-<div id="loading" class="loading-state">{t('profile.loading')}</div>
+<div id="loading" class="loading-state">{t("profile.loading")}</div>
 
 <div id="verify-banner" class="verify-banner" style="display:none;">
   <p class="verify-banner-text">
-    {t('profile.verifyBanner')}
-    <button id="btn-resend-verify" type="button" class="btn-resend-verify">{t('profile.verifyResend')}</button>
+    {t("profile.verifyBanner")}
+    <button id="btn-resend-verify" type="button" class="btn-resend-verify"
+      >{t("profile.verifyResend")}</button
+    >
   </p>
   <p id="verify-banner-sent" class="verify-banner-sent" style="display:none;">
-    {t('profile.verifySent')}
+    {t("profile.verifySent")}
   </p>
 </div>
 
@@ -29,143 +33,109 @@ const t = useTranslations(lang);
       <div id="avatar-placeholder" class="avatar-placeholder">?</div>
     </div>
     <label class="btn-outline choose-img" for="avatar">
-      {t('profile.chooseImage')}
+      {t("profile.chooseImage")}
       <input id="avatar" type="file" accept="image/*" style="display:none;" />
     </label>
     <p id="upload-status" class="upload-status" style="display:none;"></p>
   </div>
 
   <div class="field">
-    <label class="label" for="name">{t('profile.label.name')}</label>
-    <input id="name" type="text" class="input" placeholder={t('profile.ph.name')} />
+    <label class="label" for="name">{t("profile.label.name")}</label>
+    <input id="name" type="text" class="input" placeholder={t("profile.ph.name")} />
   </div>
 
   <div class="field">
-    <label class="label" for="role">{t('profile.label.role')}</label>
-    <input
-      id="role"
-      type="text"
-      class="input"
-      placeholder={t('profile.ph.role')}
-    />
+    <label class="label" for="role">{t("profile.label.role")}</label>
+    <input id="role" type="text" class="input" placeholder={t("profile.ph.role")} />
   </div>
 
   <div class="field">
-    <label class="label" for="bio">{t('profile.label.bio')}</label>
-    <textarea
-      id="bio"
-      rows="4"
-      class="input textarea"
-      placeholder={t('profile.ph.bio')}></textarea>
-    <p class="field-note">{t('profile.note.bio')}</p>
+    <label class="label" for="bio">{t("profile.label.bio")}</label>
+    <textarea id="bio" rows="4" class="input textarea" placeholder={t("profile.ph.bio")}></textarea>
+    <p class="field-note">{t("profile.note.bio")}</p>
   </div>
 
   <div class="field">
-    <label class="label" for="portfolio">{t('profile.label.portfolio')}</label>
+    <label class="label" for="portfolio">{t("profile.label.portfolio")}</label>
     <div class="input-prefix-wrap">
       <span class="input-prefix">https://</span>
-      <input id="portfolio" type="text" class="input input-prefixed" placeholder={t('profile.ph.portfolio')} />
+      <input
+        id="portfolio"
+        type="text"
+        class="input input-prefixed"
+        placeholder={t("profile.ph.portfolio")}
+      />
     </div>
   </div>
 
   <div class="field">
-    <label class="label" for="social-media">{t('profile.label.social')}</label>
+    <label class="label" for="social-media">{t("profile.label.social")}</label>
     <div class="input-prefix-wrap">
       <span class="input-prefix">https://</span>
       <input
         id="social-media"
         type="text"
         class="input input-prefixed"
-        placeholder={t('profile.ph.social')}
+        placeholder={t("profile.ph.social")}
       />
     </div>
-    <p class="field-note">{t('profile.note.social')}</p>
+    <p class="field-note">{t("profile.note.social")}</p>
   </div>
 
-  <fieldset class="field field-open-to">
-    <legend class="label">{t('profile.openTo.legend')}</legend>
-    <label class="checkbox-label">
-      <input type="checkbox" name="open-to" value="offering" />
-      {t('profile.openTo.offering')}
-    </label>
-    <label class="checkbox-label">
-      <input type="checkbox" name="open-to" value="seeking" />
-      {t('profile.openTo.seeking')}
-    </label>
-    <label class="checkbox-label">
-      <input type="checkbox" name="open-to" value="networking" />
-      {t('profile.openTo.networking')}
-    </label>
-  </fieldset>
+  <OpenToSelector lang={lang} />
 
   <div class="field">
-    <label class="label" for="tag-input">{t('profile.label.tags')}</label>
-    <div class="tag-input-row">
-      <input
-        id="tag-input"
-        type="text"
-        class="input"
-        placeholder={t('profile.ph.tags')}
-        maxlength="50"
-      />
-    </div>
-    <p class="field-note">{t('profile.note.tags')}</p>
-    <div id="selected-tags" class="tag-list" aria-live="polite"></div>
-    <button
-      id="tag-suggestions-toggle"
-      class="tag-suggestions-toggle"
-      type="button"
-      aria-expanded="false"
-      aria-controls="tag-suggestion-panel"
-    >
-      {t('profile.browseTags')}
-    </button>
-    <div id="tag-suggestion-panel" class="tag-suggestion-panel" aria-label="Tags" hidden>
-      <div id="tag-suggestion-list" class="tag-suggestion-list"></div>
-    </div>
+    <label class="label" for="tag-input">{t("profile.label.tags")}</label>
+    <TagSelector lang={lang} maxTags={7} inputId="tag-input" />
   </div>
 
   <div class="field">
-    <label class="label" for="phone">{t('profile.label.phone')}</label>
+    <label class="label" for="phone">{t("profile.label.phone")}</label>
     <input id="phone" type="tel" class="input" placeholder="+41 79 123 45 67" autocomplete="tel" />
     <p class="field-note">
-      {t('profile.note.phone')}
+      {t("profile.note.phone")}
     </p>
   </div>
 
   <div class="preview-section">
-    <p class="label">{t('profile.cardPreview')}</p>
+    <p class="label">{t("profile.cardPreview")}</p>
     <MemberCard preview lang={lang} />
   </div>
 
   <div class="form-footer">
     <p id="save-msg" class="msg-ok" style="display:none;">
-      {t('profile.saveMsg')}
+      {t("profile.saveMsg")}
     </p>
     <p id="save-error" class="msg-err" style="display:none;"></p>
     <div class="footer-actions">
-      <button id="btn-logout" type="button" class="btn-outline">{t('profile.logout')}</button>
-      <button type="submit" class="btn-solid profile-save-button">{t('profile.save')}</button>
+      <button id="btn-logout" type="button" class="btn-outline">{t("profile.logout")}</button>
+      <button type="submit" class="btn-solid profile-save-button">{t("profile.save")}</button>
     </div>
   </div>
 
   <div class="danger-zone">
     <div id="delete-idle">
-      <button type="button" id="btn-delete-start" class="btn-danger-link">{t('profile.delete.idle')}</button>
+      <button type="button" id="btn-delete-start" class="btn-danger-link"
+        >{t("profile.delete.idle")}</button
+      >
     </div>
 
     <div id="delete-confirm" style="display:none;">
       <p class="danger-text">
-        {t('profile.delete.text')}
+        {t("profile.delete.text")}
       </p>
       <div class="danger-actions">
-        <button type="button" id="btn-delete-cancel" class="btn-link">{t('profile.delete.cancel')}</button>
-        <button type="button" id="btn-delete-confirm" class="btn-danger">{t('profile.delete.confirm')}</button>
+        <button type="button" id="btn-delete-cancel" class="btn-link"
+          >{t("profile.delete.cancel")}</button
+        >
+        <button type="button" id="btn-delete-confirm" class="btn-danger"
+          >{t("profile.delete.confirm")}</button
+        >
       </div>
     </div>
 
     <div id="delete-reauth" style="display:none;">
-      <p class="danger-text">{t('profile.reauth.text')}</p>
+      <p class="danger-text">{t("profile.reauth.text")}</p>
       <input
         id="reauth-password"
         type="password"
@@ -175,8 +145,12 @@ const t = useTranslations(lang);
       />
       <p id="reauth-error" class="msg-err" style="display:none;"></p>
       <div class="danger-actions">
-        <button type="button" id="btn-reauth-cancel" class="btn-link">{t('profile.reauth.cancel')}</button>
-        <button type="button" id="btn-reauth-confirm" class="btn-danger">{t('profile.reauth.confirm')}</button>
+        <button type="button" id="btn-reauth-cancel" class="btn-link"
+          >{t("profile.reauth.cancel")}</button
+        >
+        <button type="button" id="btn-reauth-confirm" class="btn-danger"
+          >{t("profile.reauth.confirm")}</button
+        >
       </div>
     </div>
   </div>
@@ -325,108 +299,6 @@ const t = useTranslations(lang);
     font-size: 0.78rem;
     line-height: 1.5;
     color: var(--color-muted);
-  }
-
-  .tag-input-row {
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-  }
-
-  .tag-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .tag-list:not(:empty) {
-    margin-top: 0.5rem;
-  }
-
-  .tag-suggestions-toggle {
-    width: fit-content;
-    margin-top: 0.4rem;
-    padding: 0;
-    border: none;
-    background: transparent;
-    color: #333;
-    font: inherit;
-    font-size: 0.82rem;
-    font-weight: 700;
-    cursor: pointer;
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 3px;
-  }
-
-  .tag-suggestion-panel {
-    margin-top: 0.6rem;
-  }
-
-  .tag-suggestion-panel[hidden] {
-    display: none;
-  }
-
-  .tag-suggestion-list {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.5rem;
-  }
-
-  :global(.tag-chip) {
-    font-family: monospace;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.4rem 0.7rem;
-    border-radius: var(--radius-sm);
-    border: 1.5px solid #111;
-    background: #111;
-    color: #fff;
-    font-size: 0.83rem;
-    font-weight: 500;
-    line-height: 1.25;
-    cursor: pointer;
-    transition:
-      background 0.15s,
-      border-color 0.15s;
-  }
-
-  :global(.tag-chip:hover) {
-    background: #333;
-    border-color: #333;
-  }
-
-  :global(.tag-chip span) {
-    opacity: 0.65;
-    font-size: 0.95rem;
-    line-height: 1;
-  }
-
-  :global(.tag-suggestion-chip) {
-    font-family: monospace;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.45rem 0.6rem;
-    min-height: 2.2rem;
-    border-radius: var(--radius-sm);
-    border: 1.5px solid var(--color-border);
-    color: var(--color-muted);
-    background: #fff;
-    font-size: 0.83rem;
-    line-height: 1.25;
-    text-align: center;
-    cursor: pointer;
-    transition:
-      background 0.15s,
-      border-color 0.15s;
-  }
-
-  :global(.tag-suggestion-chip:hover) {
-    border-color: #999;
-    color: #999;
-    background: #f5f5f5;
   }
 
   .input-prefix-wrap {
@@ -620,10 +492,6 @@ const t = useTranslations(lang);
     .footer-actions .btn-outline {
       width: 100%;
     }
-
-    .tag-suggestion-list {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
   }
 </style>
 
@@ -638,13 +506,7 @@ const t = useTranslations(lang);
   } from "firebase/auth";
   import { requireAuth } from "../lib/auth.ts";
   import { uploadAvatar, deleteAvatar } from "../lib/storage.ts";
-  import {
-    getUser,
-    updateUserProfile,
-    deleteUserData,
-    getTags,
-    getOrCreateTag,
-  } from "../lib/firestore.ts";
+  import { getUser, updateUserProfile, deleteUserData } from "../lib/firestore.ts";
   import { validateBio, validateAvatar, resizeAvatar, normaliseUrl } from "../lib/validation.ts";
   import { ui } from "../i18n/translations.ts";
 
@@ -722,14 +584,6 @@ const t = useTranslations(lang);
     const bioInput = document.getElementById("bio") as HTMLTextAreaElement;
     const portfolioInput = document.getElementById("portfolio") as HTMLInputElement;
     const socialMediaInput = document.getElementById("social-media") as HTMLInputElement;
-    const openToCheckboxes = document.querySelectorAll<HTMLInputElement>('input[name="open-to"]');
-    const tagInput = document.getElementById("tag-input") as HTMLInputElement;
-    const selectedTagsContainer = document.getElementById("selected-tags") as HTMLElement;
-    const tagSuggestionsToggle = document.getElementById(
-      "tag-suggestions-toggle"
-    ) as HTMLButtonElement;
-    const tagSuggestionPanel = document.getElementById("tag-suggestion-panel") as HTMLElement;
-    const tagSuggestionList = document.getElementById("tag-suggestion-list") as HTMLElement;
     const phoneInput = document.getElementById("phone") as HTMLInputElement;
     const avatarInput = document.getElementById("avatar") as HTMLInputElement;
     const avatarImg = document.getElementById("avatar-preview") as HTMLImageElement;
@@ -739,167 +593,21 @@ const t = useTranslations(lang);
 
     const avatarWrap = avatarImg.closest<HTMLElement>(".avatar-wrap")!;
 
+    // Tag selection is handled by the <tag-selector> custom element.
+    const tagSelector = document.querySelector<
+      HTMLElement & {
+        value: string[];
+        inputValue: string;
+      }
+    >("tag-selector");
+    const openToSelector = document.querySelector<
+      HTMLElement & {
+        value: string[];
+      }
+    >("open-to-selector");
+
     let currentPhotoURL = "";
     let resizedAvatarBlob: Blob | null = null;
-    let tags: string[] = [];
-    let registryTags: Set<string> = new Set();
-    let panelOpen = false;
-    let autocompleteMatch: string | null = null;
-
-    function setTagSuggestionsVisibility(isVisible: boolean) {
-      panelOpen = isVisible;
-      tagSuggestionPanel.hidden = !isVisible;
-      tagSuggestionsToggle.setAttribute("aria-expanded", String(isVisible));
-      tagSuggestionsToggle.textContent = isVisible ? s['profile.hideTags'] : s['profile.browseTags'];
-    }
-
-    tagSuggestionsToggle.addEventListener("click", () => {
-      setTagSuggestionsVisibility(!panelOpen);
-    });
-
-    async function loadRegistryTags() {
-      try {
-        const tagDocs = await getTags();
-        registryTags = new Set(tagDocs.map((t) => t.label));
-        updateSuggestions("");
-      } catch (err) {
-        console.warn("Failed to load tag registry", err);
-      }
-    }
-
-    function updateSuggestions(input: string) {
-      renderTagSuggestions(input);
-    }
-
-    function normalizeTag(value: string): string {
-      return value.trim().replace(/^#+/, "").replace(/\s+/g, " ");
-    }
-
-    function renderTags() {
-      selectedTagsContainer.innerHTML = "";
-      tags.forEach((tag) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "tag-chip";
-        button.dataset.tag = tag;
-        button.textContent = tag;
-
-        const remove = document.createElement("span");
-        remove.setAttribute("aria-hidden", "true");
-        remove.textContent = "×";
-        button.appendChild(remove);
-
-        selectedTagsContainer.appendChild(button);
-      });
-    }
-
-    function renderTagSuggestions(filter = "") {
-      tagSuggestionList.innerHTML = "";
-      const availableTags = Array.from(registryTags)
-        .filter((tag) => !tags.some((selected) => selected.toLowerCase() === tag.toLowerCase()))
-        .filter((tag) => !filter || tag.toLowerCase().includes(filter.toLowerCase()))
-        .sort();
-
-      availableTags.forEach((tag) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "tag-suggestion-chip";
-        button.dataset.tag = tag;
-        button.textContent = tag;
-        tagSuggestionList.appendChild(button);
-      });
-    }
-
-    async function addTag(value: string, userId: string): Promise<boolean> {
-      const normalized = normalizeTag(value);
-      if (!normalized || normalized.length > 50) return false;
-      if (tags.length >= 7) return false;
-      if (tags.some((existing) => existing.toLowerCase() === normalized.toLowerCase()))
-        return false;
-
-      try {
-        await getOrCreateTag(normalized, userId);
-        tags = [...tags, normalized];
-        registryTags.add(normalized);
-        renderTags();
-        renderTagSuggestions();
-        return true;
-      } catch (err) {
-        console.error("Failed to create tag", err);
-        return false;
-      }
-    }
-
-    tagInput.addEventListener("keydown", async (event) => {
-      if (event.key === "Backspace" || event.key === "Delete") {
-        if (autocompleteMatch) {
-          event.preventDefault();
-          const typed = tagInput.value.substring(0, tagInput.selectionStart ?? 0);
-          autocompleteMatch = null;
-          tagInput.value = typed;
-          updateSuggestions(typed);
-        }
-        return;
-      }
-      if (event.key !== "Enter") return;
-      event.preventDefault();
-      const value = autocompleteMatch ?? tagInput.value;
-      autocompleteMatch = null;
-      if (!value.trim()) return;
-      const user = auth.currentUser;
-      if (!user) return;
-      if (!(await addTag(value, user.uid))) {
-        saveError.textContent = s['profile.tag.error'];
-        saveError.style.display = "block";
-      } else {
-        saveError.style.display = "none";
-        tagInput.value = "";
-        updateSuggestions("");
-      }
-    });
-
-    tagInput.addEventListener("input", () => {
-      const raw = tagInput.value;
-      updateSuggestions(raw);
-      const match = Array.from(registryTags)
-        .filter((t) => !tags.some((s) => s.toLowerCase() === t.toLowerCase()))
-        .find((t) => raw.length > 0 && t.toLowerCase().startsWith(raw.toLowerCase()));
-      if (match) {
-        autocompleteMatch = match;
-        tagInput.value = match;
-        tagInput.setSelectionRange(raw.length, match.length);
-      } else {
-        autocompleteMatch = null;
-      }
-    });
-
-    tagSuggestionPanel.addEventListener("click", async (event) => {
-      const button = (event.target as HTMLElement).closest(
-        "button.tag-suggestion-chip"
-      ) as HTMLButtonElement | null;
-      if (!button) return;
-      const tag = button.dataset.tag;
-      const user = auth.currentUser;
-      if (!tag || !user) return;
-
-      if (await addTag(tag, user.uid)) {
-        saveError.style.display = "none";
-        tagInput.value = "";
-        updateSuggestions("");
-      }
-    });
-
-    selectedTagsContainer.addEventListener("click", (event) => {
-      const button = (event.target as HTMLElement).closest(
-        "button.tag-chip"
-      ) as HTMLButtonElement | null;
-      if (!button) return;
-      const tag = button.dataset.tag;
-      if (!tag) return;
-      tags = tags.filter((existing) => existing !== tag);
-      renderTags();
-      updateSuggestions(tagInput.value);
-    });
 
     function showPreview(url: string) {
       currentPhotoURL = url;
@@ -918,7 +626,7 @@ const t = useTranslations(lang);
         bioInput.value.trim(),
         portfolioInput.value.trim(),
         currentPhotoURL,
-        s['profile.preview.defaultName']
+        s["profile.preview.defaultName"]
       );
     }
 
@@ -940,15 +648,15 @@ const t = useTranslations(lang);
         return;
       }
 
-      uploadStatus.textContent = s['profile.upload.processing'];
+      uploadStatus.textContent = s["profile.upload.processing"];
       uploadStatus.style.display = "block";
       try {
         resizedAvatarBlob = await resizeAvatar(file);
         const previewUrl = URL.createObjectURL(resizedAvatarBlob);
         showPreview(previewUrl);
-        uploadStatus.textContent = `${s['profile.upload.selected']}${file.name}`;
+        uploadStatus.textContent = `${s["profile.upload.selected"]}${file.name}`;
       } catch {
-        uploadStatus.textContent = s['profile.upload.error'];
+        uploadStatus.textContent = s["profile.upload.error"];
         resizedAvatarBlob = null;
       }
     });
@@ -979,7 +687,6 @@ const t = useTranslations(lang);
         });
       }
 
-      await loadRegistryTags();
       const data = await getUser(user.uid);
 
       nameInput.value = data.displayName ?? user.displayName ?? "";
@@ -987,12 +694,12 @@ const t = useTranslations(lang);
       bioInput.value = data.bio ?? "";
       portfolioInput.value = data.portfolio ?? "";
       socialMediaInput.value = data.socialMedia ?? "";
-      const savedOpenTo = data.openTo ?? [];
-      openToCheckboxes.forEach((cb) => {
-        cb.checked = savedOpenTo.includes(cb.value);
-      });
-      tags = Array.isArray(data.tags) ? data.tags.filter(Boolean).slice(0, 7) : [];
-      renderTags();
+      if (openToSelector) {
+        openToSelector.value = Array.isArray(data.openTo) ? data.openTo.filter(Boolean) : [];
+      }
+      if (tagSelector) {
+        tagSelector.value = Array.isArray(data.tags) ? data.tags.filter(Boolean).slice(0, 7) : [];
+      }
       phoneInput.value = data.phone ?? "";
       showPreview(data.photoURL ?? user.photoURL ?? "");
 
@@ -1018,11 +725,9 @@ const t = useTranslations(lang);
       const bio = bioInput.value.trim();
       const portfolio = portfolioInput.value.trim();
       const socialMedia = socialMediaInput.value.trim();
-      const openTo = Array.from(openToCheckboxes)
-        .filter((cb) => cb.checked)
-        .map((cb) => cb.value);
+      const openTo = openToSelector?.value ?? [];
       const phone = phoneInput.value.trim();
-      const tagsPayload = tags;
+      const tagsPayload = tagSelector?.value ?? [];
       const bioResult = validateBio(bio);
 
       if (!bioResult.ok) {
@@ -1036,10 +741,10 @@ const t = useTranslations(lang);
         if (resizedAvatarBlob) {
           const avatarFile = new File([resizedAvatarBlob], "avatar.jpg", { type: "image/jpeg" });
           photoURL = await uploadAvatar(user.uid, avatarFile, (pct) => {
-            uploadStatus.textContent = `${s['profile.upload.uploading']} ${pct}%`;
+            uploadStatus.textContent = `${s["profile.upload.uploading"]} ${pct}%`;
             uploadStatus.style.display = "block";
           });
-          uploadStatus.textContent = s['profile.upload.complete'];
+          uploadStatus.textContent = s["profile.upload.complete"];
         }
 
         await updateProfile(user, {
@@ -1095,7 +800,7 @@ const t = useTranslations(lang);
 
         saveMsg.style.display = "block";
       } catch (err: unknown) {
-        saveError.textContent = err instanceof Error ? err.message : s['profile.save.error'];
+        saveError.textContent = err instanceof Error ? err.message : s["profile.save.error"];
         saveError.style.display = "block";
       }
     });
@@ -1134,7 +839,7 @@ const t = useTranslations(lang);
     document.getElementById("btn-delete-confirm")!.addEventListener("click", async () => {
       const btn = document.getElementById("btn-delete-confirm") as HTMLButtonElement;
       btn.disabled = true;
-      btn.textContent = s['profile.delete.deleting'];
+      btn.textContent = s["profile.delete.deleting"];
       try {
         await performDelete();
       } catch (err: unknown) {
@@ -1146,7 +851,7 @@ const t = useTranslations(lang);
           showDeleteView("reauth");
         } else {
           btn.disabled = false;
-          btn.textContent = s['profile.delete.confirm'];
+          btn.textContent = s["profile.delete.confirm"];
         }
       }
     });
@@ -1162,17 +867,17 @@ const t = useTranslations(lang);
       if (!user || !user.email) return;
       const btn = document.getElementById("btn-reauth-confirm") as HTMLButtonElement;
       btn.disabled = true;
-      btn.textContent = s['profile.reauth.confirming'];
+      btn.textContent = s["profile.reauth.confirming"];
       reauthError.style.display = "none";
       try {
         const credential = EmailAuthProvider.credential(user.email, reauthInput.value);
         await reauthenticateWithCredential(user, credential);
         await performDelete();
       } catch {
-        reauthError.textContent = s['profile.reauth.error'];
+        reauthError.textContent = s["profile.reauth.error"];
         reauthError.style.display = "block";
         btn.disabled = false;
-        btn.textContent = s['profile.reauth.confirm'];
+        btn.textContent = s["profile.reauth.confirm"];
       }
     });
   });

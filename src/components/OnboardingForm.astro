@@ -1,12 +1,16 @@
 ---
 import { useTranslations } from "../i18n/utils";
 import type { Lang } from "../i18n/utils";
+import MemberCard from "./MemberCard.astro";
+import TagSelector from "./TagSelector.astro";
+import OpenToSelector from "./OpenToSelector.astro";
 
 interface Props {
   lang?: Lang;
 }
 const { lang = "en" } = Astro.props;
 const t = useTranslations(lang);
+const prefix = lang === "de" ? "/de" : "";
 ---
 
 <div id="ob-loading" class="ob-loading">{t("profile.loading")}</div>
@@ -121,6 +125,10 @@ const t = useTranslations(lang);
           placeholder={t("onboarding.goal.custom.ph")}
         />
       </div>
+
+      <div class="field">
+        <OpenToSelector lang={lang} />
+      </div>
     </div>
     <div class="ob-footer">
       <button id="ob-next-1" type="button" class="btn-solid">{t("onboarding.nav.next")}</button>
@@ -149,27 +157,7 @@ const t = useTranslations(lang);
     <div class="ob-fields">
       <div class="field">
         <label class="label" for="ob-tag-input">{t("profile.label.tags")}</label>
-        <input
-          id="ob-tag-input"
-          type="text"
-          class="input"
-          placeholder={t("profile.ph.tags")}
-          maxlength="50"
-        />
-        <p class="field-note">{t("profile.note.tags")}</p>
-        <div id="ob-selected-tags" class="tag-list" aria-live="polite"></div>
-        <button
-          id="ob-tag-toggle"
-          class="tag-suggestions-toggle"
-          type="button"
-          aria-expanded="false"
-          aria-controls="ob-tag-panel"
-        >
-          {t("profile.browseTags")}
-        </button>
-        <div id="ob-tag-panel" class="tag-suggestion-panel" hidden>
-          <div id="ob-tag-list" class="tag-suggestion-list"></div>
-        </div>
+        <TagSelector lang={lang} maxTags={7} inputId="ob-tag-input" />
       </div>
     </div>
     <div class="ob-footer ob-footer--with-skip">
@@ -200,17 +188,30 @@ const t = useTranslations(lang);
       </div>
       <div class="field">
         <label class="label" for="ob-bio">{t("profile.label.bio")}</label>
-        <textarea
-          id="ob-bio"
-          rows="4"
-          class="input textarea"
-          placeholder={t("profile.ph.bio")}></textarea>
+        <textarea id="ob-bio" rows="4" class="input textarea" placeholder={t("profile.ph.bio")}
+        ></textarea>
         <p class="field-note">{t("profile.note.bio")}</p>
       </div>
     </div>
     <div class="ob-footer ob-footer--with-skip">
       <button id="ob-skip-4" type="button" class="btn-link">{t("onboarding.nav.skip")}</button>
       <button id="ob-finish" type="button" class="btn-solid">{t("onboarding.nav.finish")}</button>
+    </div>
+  </div>
+
+  <!-- Step 5: Done -->
+  <div class="onboarding-step ob-done" data-step="5" style="display:none;">
+    <header class="ob-header ob-done-header">
+      <h1 class="ob-title">{t("onboarding.done.title")}</h1>
+      <p class="ob-sub">{t("onboarding.done.sub")}</p>
+    </header>
+    <div class="ob-done-card">
+      <MemberCard preview lang={lang} />
+    </div>
+    <p class="ob-done-disclaimer">{t("onboarding.done.disclaimer")}</p>
+    <div class="ob-footer ob-footer--done">
+      <a href={`${prefix}/profile`} class="btn-outline">{t("onboarding.done.edit")}</a>
+      <a href={`${prefix}/community`} class="btn-solid">{t("onboarding.done.goCommunity")}</a>
     </div>
   </div>
 </div>
@@ -382,15 +383,16 @@ const t = useTranslations(lang);
     color: #333;
   }
 
-  .goal-chip--selected {
-    background: var(--color-dark);
-    border-color: var(--color-dark);
+  button.goal-chip.goal-chip--selected {
+    background: #111;
+    border-color: #111;
     color: #fff;
   }
 
-  .goal-chip--selected:hover {
+  button.goal-chip.goal-chip--selected:hover {
     background: #333;
     border-color: #333;
+    color: #fff;
   }
 
   .goal-custom-list {
@@ -404,7 +406,7 @@ const t = useTranslations(lang);
     display: none;
   }
 
-  :global(.goal-custom-chip) {
+  :global(button.goal-custom-chip) {
     font-family: monospace;
     display: inline-flex;
     align-items: center;
@@ -418,7 +420,8 @@ const t = useTranslations(lang);
     cursor: pointer;
   }
 
-  :global(.goal-custom-chip span) {
+  :global(button.goal-custom-chip span) {
+    color: inherit;
     opacity: 0.65;
   }
 
@@ -530,106 +533,37 @@ const t = useTranslations(lang);
     border-color: transparent;
   }
 
-  .tag-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .tag-list:not(:empty) {
-    margin-top: 0.5rem;
-  }
-
-  .tag-suggestions-toggle {
-    width: fit-content;
-    margin-top: 0.4rem;
-    padding: 0;
-    border: none;
-    background: transparent;
-    color: #333;
-    font: inherit;
-    font-size: 0.82rem;
-    font-weight: 700;
-    cursor: pointer;
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 3px;
-  }
-
-  .tag-suggestion-panel {
-    margin-top: 0.6rem;
-  }
-
-  .tag-suggestion-panel[hidden] {
-    display: none;
-  }
-
-  .tag-suggestion-list {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.5rem;
-  }
-
-  :global(.tag-chip) {
-    font-family: monospace;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.4rem 0.7rem;
-    border-radius: var(--radius-sm);
-    border: 1.5px solid #111;
-    background: #111;
-    color: #fff;
-    font-size: 0.83rem;
-    font-weight: 500;
-    line-height: 1.25;
-    cursor: pointer;
-    transition:
-      background 0.15s,
-      border-color 0.15s;
-  }
-
-  :global(.tag-chip:hover) {
-    background: #333;
-    border-color: #333;
-  }
-
-  :global(.tag-chip span) {
-    opacity: 0.65;
-    font-size: 0.95rem;
-    line-height: 1;
-  }
-
-  :global(.tag-suggestion-chip) {
-    font-family: monospace;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.45rem 0.6rem;
-    min-height: 2.2rem;
-    border-radius: var(--radius-sm);
-    border: 1.5px solid var(--color-border);
-    color: var(--color-muted);
-    background: #fff;
-    font-size: 0.83rem;
-    line-height: 1.25;
+  /* Done step (step 5) */
+  .ob-done .ob-done-header {
     text-align: center;
-    cursor: pointer;
-    transition:
-      background 0.15s,
-      border-color 0.15s;
+    margin-bottom: 1.5rem;
   }
 
-  :global(.tag-suggestion-chip:hover) {
-    border-color: #999;
-    color: #999;
-    background: #f5f5f5;
+  .ob-done-card {
+    width: 100%;
+    margin-bottom: 1.25rem;
   }
 
-  @media (max-width: 520px) {
-    .tag-suggestion-list {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+  .ob-done-disclaimer {
+    margin: 0 0 1.5rem;
+    padding: 0.75rem 1rem;
+    background: #fffbeb;
+    border: 1.5px solid #fde68a;
+    border-radius: var(--radius-sm);
+    color: #92400e;
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+
+  .ob-footer--done {
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-top: 0.5rem;
+  }
+
+  .ob-footer--done .btn-outline,
+  .ob-footer--done .btn-solid {
+    text-decoration: none;
   }
 </style>
 
@@ -638,17 +572,20 @@ const t = useTranslations(lang);
   import { updateProfile, sendEmailVerification } from "firebase/auth";
   import { requireAuth } from "../lib/auth.ts";
   import { uploadAvatar } from "../lib/storage.ts";
-  import { validateBio, validateAvatar, resizeAvatar } from "../lib/validation.ts";
+  import { validateBio, validateAvatar, resizeAvatar, normaliseUrl } from "../lib/validation.ts";
   import {
     getUser,
     updateUser,
     updateUserProfile,
-    getTags,
-    getOrCreateTag,
+    publishCurrentUserProfile,
   } from "../lib/firestore.ts";
   import { ui } from "../i18n/translations.ts";
 
+  const STORAGE_KEY = "vscn:onboarding:state";
+
   let unsubscribeAuth: (() => void) | null = null;
+  let prevNavLangHandler: ((e: Event) => void) | null = null;
+  let prevPageHideHandler: ((e: Event) => void) | null = null;
 
   document.addEventListener("astro:page-load", () => {
     const wrap = document.getElementById("onboarding-wrap") as HTMLElement | null;
@@ -661,8 +598,11 @@ const t = useTranslations(lang);
     const loadingEl = document.getElementById("ob-loading");
     const errorEl = document.getElementById("ob-error")!;
 
+    let currentStep = 0;
+
     // ── Helpers ───────────────────────────────────────────────────
     function setStep(n: number) {
+      currentStep = n;
       document.querySelectorAll<HTMLElement>(".onboarding-step").forEach((el) => {
         el.style.display = el.dataset.step === String(n) ? "" : "none";
       });
@@ -671,7 +611,8 @@ const t = useTranslations(lang);
       const progressFill = document.getElementById("ob-progress-fill");
       const realSteps = [0, 1, 3, 4];
       const idx = realSteps.indexOf(n);
-      if (progressEl) progressEl.style.display = n === 2 ? "none" : "";
+      const hideProgress = n === 2 || n === 5;
+      if (progressEl) progressEl.style.display = hideProgress ? "none" : "";
       if (progressText && idx >= 0) progressText.textContent = `${idx + 1} / 4`;
       if (progressFill && idx >= 0) progressFill.style.width = `${(idx + 1) * 25}%`;
       errorEl.style.display = "none";
@@ -689,15 +630,108 @@ const t = useTranslations(lang);
       btn.textContent = loading ? s["onboarding.saving"] : idleText;
     }
 
-    async function completeOnboarding() {
+    async function finishToPreview(opts: {
+      bio?: string;
+      avatarObjectUrl?: string | null;
+      photoURL?: string;
+    }) {
       const user = auth.currentUser;
       if (!user) return;
+
+      // Unsubscribe the auth guard first so a stray onAuthStateChanged
+      // re-fire (e.g. after updateProfile/getIdToken) can't redirect us
+      // to /community once onboardingComplete is true.
+      unsubscribeAuth?.();
+      unsubscribeAuth = null;
+
+      clearTransientState();
+
+      try {
+        // Republish a complete publicProfile from the private user doc.
+        // Heals any wipe that may have happened from earlier partial saves.
+        await publishCurrentUserProfile(user.uid);
+      } catch {
+        // non-critical
+      }
+
       try {
         await updateUser(user.uid, { onboardingComplete: true });
       } catch {
         // non-critical
       }
-      window.location.href = `${prefix}/community`;
+
+      populatePreviewCard({
+        displayName: getInputValue("ob-name").trim(),
+        role: getInputValue("ob-role").trim(),
+        portfolio: getInputValue("ob-portfolio").trim(),
+        bio: opts.bio ?? "",
+        photoURL: opts.photoURL ?? user.photoURL ?? "",
+        avatarObjectUrl: opts.avatarObjectUrl ?? null,
+      });
+      setStep(5);
+    }
+
+    function getInputValue(id: string): string {
+      const el = document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | null;
+      return el?.value ?? "";
+    }
+
+    function saveTransientState() {
+      if (currentStep === 5) return;
+      try {
+        sessionStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            step: currentStep,
+            name: getInputValue("ob-name"),
+            role: getInputValue("ob-role"),
+            portfolio: getInputValue("ob-portfolio"),
+            social: getInputValue("ob-social"),
+            phone: getInputValue("ob-phone"),
+            bio: getInputValue("ob-bio"),
+            selectedGoals: [...selectedGoals],
+            customGoals: [...customGoals],
+            goalInput: getInputValue("ob-goal-input"),
+            openTo: openToSelector?.value ?? [],
+            tags: tagSelector?.value ?? [],
+            tagInput: tagSelector?.inputValue ?? "",
+          })
+        );
+      } catch {
+        // sessionStorage unavailable — ignore
+      }
+    }
+
+    function clearTransientState() {
+      try {
+        sessionStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // ignore
+      }
+    }
+
+    function readTransientState(): {
+      step?: number;
+      name?: string;
+      role?: string;
+      portfolio?: string;
+      social?: string;
+      phone?: string;
+      bio?: string;
+      selectedGoals?: string[];
+      customGoals?: string[];
+      goalInput?: string;
+      openTo?: string[];
+      tags?: string[];
+      tagInput?: string;
+    } | null {
+      try {
+        const raw = sessionStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch {
+        return null;
+      }
     }
 
     // ── Community goals ────────────────────────────────────────────
@@ -705,6 +739,12 @@ const t = useTranslations(lang);
     const selectedGoals = new Set<string>();
     let customGoals: string[] = [];
     const customGoalList = document.getElementById("ob-goal-custom-list")!;
+
+    const openToSelector = document.querySelector<
+      HTMLElement & {
+        value: string[];
+      }
+    >("open-to-selector");
 
     document.querySelectorAll<HTMLElement>("[data-goal]").forEach((el) => {
       el.addEventListener("click", () => {
@@ -753,147 +793,13 @@ const t = useTranslations(lang);
       return [...selectedGoals, ...customGoals];
     }
 
-    // ── Tags ───────────────────────────────────────────────────────
-    const tagInput = document.getElementById("ob-tag-input") as HTMLInputElement;
-    const selectedTagsEl = document.getElementById("ob-selected-tags") as HTMLElement;
-    const tagToggle = document.getElementById("ob-tag-toggle") as HTMLButtonElement;
-    const tagPanel = document.getElementById("ob-tag-panel") as HTMLElement;
-    const tagListEl = document.getElementById("ob-tag-list") as HTMLElement;
-
-    let tags: string[] = [];
-    let registryTags: Set<string> = new Set();
-    let tagPanelOpen = false;
-    let autocompleteMatch: string | null = null;
-
-    function normalizeTag(v: string) {
-      return v.trim().replace(/^#+/, "").replace(/\s+/g, " ");
-    }
-
-    function renderTags() {
-      selectedTagsEl.innerHTML = "";
-      tags.forEach((tag) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "tag-chip";
-        btn.dataset.tag = tag;
-        btn.textContent = tag;
-        const x = document.createElement("span");
-        x.setAttribute("aria-hidden", "true");
-        x.textContent = "×";
-        btn.appendChild(x);
-        selectedTagsEl.appendChild(btn);
-      });
-    }
-
-    function renderTagSuggestions(filter = "") {
-      tagListEl.innerHTML = "";
-      Array.from(registryTags)
-        .filter((t) => !tags.some((s) => s.toLowerCase() === t.toLowerCase()))
-        .filter((t) => !filter || t.toLowerCase().includes(filter.toLowerCase()))
-        .sort()
-        .forEach((tag) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "tag-suggestion-chip";
-          btn.dataset.tag = tag;
-          btn.textContent = tag;
-          tagListEl.appendChild(btn);
-        });
-    }
-
-    async function addTag(value: string, userId: string): Promise<boolean> {
-      const norm = normalizeTag(value);
-      if (!norm || norm.length > 50 || tags.length >= 7) return false;
-      if (tags.some((t) => t.toLowerCase() === norm.toLowerCase())) return false;
-      try {
-        await getOrCreateTag(norm, userId);
-        tags = [...tags, norm];
-        registryTags.add(norm);
-        renderTags();
-        renderTagSuggestions();
-        return true;
-      } catch {
-        return false;
+    // ── Tags (delegated to the <tag-selector> custom element) ─────
+    const tagSelector = document.querySelector<
+      HTMLElement & {
+        value: string[];
+        inputValue: string;
       }
-    }
-
-    function setTagPanelVisible(visible: boolean) {
-      tagPanelOpen = visible;
-      tagPanel.hidden = !visible;
-      tagToggle.setAttribute("aria-expanded", String(visible));
-      tagToggle.textContent = visible ? s["profile.hideTags"] : s["profile.browseTags"];
-    }
-
-    tagToggle?.addEventListener("click", () => setTagPanelVisible(!tagPanelOpen));
-
-    tagInput?.addEventListener("keydown", async (e) => {
-      if (e.key === "Backspace" || e.key === "Delete") {
-        if (autocompleteMatch) {
-          e.preventDefault();
-          const typed = tagInput.value.substring(0, tagInput.selectionStart ?? 0);
-          autocompleteMatch = null;
-          tagInput.value = typed;
-          renderTagSuggestions(typed);
-        }
-        return;
-      }
-      if (e.key !== "Enter") return;
-      e.preventDefault();
-      const val = autocompleteMatch ?? tagInput.value;
-      autocompleteMatch = null;
-      if (!val.trim()) return;
-      const user = auth.currentUser;
-      if (!user) return;
-      await addTag(val, user.uid);
-      tagInput.value = "";
-      renderTagSuggestions("");
-    });
-
-    tagInput?.addEventListener("input", () => {
-      const raw = tagInput.value;
-      renderTagSuggestions(raw);
-      const match = Array.from(registryTags)
-        .filter((t) => !tags.some((s) => s.toLowerCase() === t.toLowerCase()))
-        .find((t) => raw.length > 0 && t.toLowerCase().startsWith(raw.toLowerCase()));
-      if (match) {
-        autocompleteMatch = match;
-        tagInput.value = match;
-        tagInput.setSelectionRange(raw.length, match.length);
-      } else {
-        autocompleteMatch = null;
-      }
-    });
-
-    selectedTagsEl?.addEventListener("click", (e) => {
-      const btn = (e.target as HTMLElement).closest("button.tag-chip") as HTMLButtonElement | null;
-      if (!btn?.dataset.tag) return;
-      tags = tags.filter((t) => t !== btn.dataset.tag);
-      renderTags();
-      renderTagSuggestions(tagInput?.value ?? "");
-    });
-
-    tagPanel?.addEventListener("click", async (e) => {
-      const btn = (e.target as HTMLElement).closest(
-        "button.tag-suggestion-chip"
-      ) as HTMLButtonElement | null;
-      if (!btn?.dataset.tag) return;
-      const user = auth.currentUser;
-      if (!user) return;
-      if (await addTag(btn.dataset.tag, user.uid)) {
-        tagInput.value = "";
-        renderTagSuggestions("");
-      }
-    });
-
-    async function loadRegistryTags() {
-      try {
-        const docs = await getTags();
-        registryTags = new Set(docs.map((d) => d.label));
-        renderTagSuggestions("");
-      } catch {
-        // non-critical
-      }
-    }
+    >("tag-selector");
 
     // ── Avatar (step 4) ────────────────────────────────────────────
     const avatarInput = document.getElementById("ob-avatar-input") as HTMLInputElement;
@@ -933,7 +839,9 @@ const t = useTranslations(lang);
       try {
         const nameVal = (document.getElementById("ob-name") as HTMLInputElement).value.trim();
         const roleVal = (document.getElementById("ob-role") as HTMLInputElement).value.trim();
-        const portfolioVal = (document.getElementById("ob-portfolio") as HTMLInputElement).value.trim();
+        const portfolioVal = (
+          document.getElementById("ob-portfolio") as HTMLInputElement
+        ).value.trim();
         const socialVal = (document.getElementById("ob-social") as HTMLInputElement).value.trim();
         const phoneVal = (document.getElementById("ob-phone") as HTMLInputElement).value.trim();
         if (nameVal) await updateProfile(user, { displayName: nameVal }).catch(() => {});
@@ -957,7 +865,10 @@ const t = useTranslations(lang);
       if (!user) return;
       setBtnState("ob-next-1", true, s["onboarding.nav.next"]);
       try {
-        await updateUser(user.uid, { communityGoals: getSelectedGoals() }).catch(() => {});
+        await updateUser(user.uid, {
+          communityGoals: getSelectedGoals(),
+          openTo: openToSelector?.value ?? [],
+        }).catch(() => {});
       } finally {
         setBtnState("ob-next-1", false, s["onboarding.nav.next"]);
         setStep(2);
@@ -965,21 +876,96 @@ const t = useTranslations(lang);
     });
 
     document.getElementById("ob-continue-2")?.addEventListener("click", () => setStep(3));
-    document.getElementById("ob-skip-2")?.addEventListener("click", completeOnboarding);
+    document.getElementById("ob-skip-2")?.addEventListener("click", () => finishToPreview({}));
 
     document.getElementById("ob-next-3")?.addEventListener("click", async () => {
       const user = auth.currentUser;
       if (!user) return;
       setBtnState("ob-next-3", true, s["onboarding.nav.next"]);
       try {
-        await updateUserProfile(user.uid, { tags, updatedAt: new Date() }).catch(() => {});
+        const tagsValue = tagSelector?.value ?? [];
+        await updateUserProfile(user.uid, {
+          tags: tagsValue,
+          updatedAt: new Date(),
+        }).catch(() => {});
       } finally {
         setBtnState("ob-next-3", false, s["onboarding.nav.next"]);
         setStep(4);
       }
     });
 
-    document.getElementById("ob-skip-3")?.addEventListener("click", completeOnboarding);
+    document.getElementById("ob-skip-3")?.addEventListener("click", () => finishToPreview({}));
+
+    function populatePreviewCard(opts: {
+      displayName: string;
+      role: string;
+      portfolio: string;
+      bio: string;
+      photoURL: string;
+      avatarObjectUrl: string | null;
+    }) {
+      const previewName = document.getElementById("preview-name");
+      const previewRole = document.getElementById("preview-role") as HTMLElement | null;
+      const previewPortfolio = document.getElementById(
+        "preview-portfolio"
+      ) as HTMLAnchorElement | null;
+      const previewBio = document.getElementById("preview-bio") as HTMLElement | null;
+      const previewAvatarImg = document.getElementById(
+        "preview-avatar-img"
+      ) as HTMLImageElement | null;
+      const previewAvatarPh = document.getElementById("preview-avatar-ph") as HTMLElement | null;
+
+      const displayName = opts.displayName || "Anonymous";
+      if (previewName) previewName.textContent = displayName;
+
+      if (previewRole) {
+        if (opts.role) {
+          previewRole.textContent = opts.role;
+          previewRole.style.display = "";
+        } else {
+          previewRole.style.display = "none";
+        }
+      }
+
+      if (previewPortfolio) {
+        const href = normaliseUrl(opts.portfolio);
+        if (href) {
+          previewPortfolio.href = href;
+          previewPortfolio.textContent = opts.portfolio;
+          previewPortfolio.style.display = "";
+        } else {
+          previewPortfolio.style.display = "none";
+        }
+      }
+
+      if (previewBio) {
+        if (opts.bio) {
+          previewBio.textContent = opts.bio;
+          previewBio.style.display = "";
+        } else {
+          previewBio.style.display = "none";
+        }
+      }
+
+      const imgSrc = opts.avatarObjectUrl || opts.photoURL || "";
+      if (previewAvatarImg && previewAvatarPh) {
+        if (imgSrc) {
+          previewAvatarImg.src = imgSrc;
+          previewAvatarImg.alt = displayName;
+          previewAvatarImg.style.display = "";
+          previewAvatarPh.style.display = "none";
+          previewAvatarImg.onerror = () => {
+            previewAvatarImg.style.display = "none";
+            previewAvatarPh.style.display = "";
+            previewAvatarPh.textContent = displayName[0]?.toUpperCase() ?? "?";
+          };
+        } else {
+          previewAvatarImg.style.display = "none";
+          previewAvatarPh.style.display = "";
+          previewAvatarPh.textContent = displayName[0]?.toUpperCase() ?? "?";
+        }
+      }
+    }
 
     document.getElementById("ob-finish")?.addEventListener("click", async () => {
       const user = auth.currentUser;
@@ -995,7 +981,9 @@ const t = useTranslations(lang);
           return;
         }
         let photoURL = user.photoURL ?? "";
+        let avatarObjectUrl: string | null = null;
         if (resizedAvatarBlob) {
+          avatarObjectUrl = URL.createObjectURL(resizedAvatarBlob);
           const avatarFile = new File([resizedAvatarBlob], "avatar.jpg", { type: "image/jpeg" });
           photoURL = await uploadAvatar(user.uid, avatarFile, (pct) => {
             uploadStatus.textContent = `${s["profile.upload.uploading"]} ${pct}%`;
@@ -1005,15 +993,15 @@ const t = useTranslations(lang);
           await user.getIdToken(true);
         }
         await updateUserProfile(user.uid, { bio: bioVal, photoURL, updatedAt: new Date() });
-        await updateUser(user.uid, { onboardingComplete: true });
-        window.location.href = `${prefix}/community`;
+
+        await finishToPreview({ bio: bioVal, photoURL, avatarObjectUrl });
       } catch {
         setError(s["onboarding.error.save"]);
         setBtnState("ob-finish", false, s["onboarding.nav.finish"]);
       }
     });
 
-    document.getElementById("ob-skip-4")?.addEventListener("click", completeOnboarding);
+    document.getElementById("ob-skip-4")?.addEventListener("click", () => finishToPreview({}));
 
     // ── Verify banner ──────────────────────────────────────────────
     const verifyBanner = document.getElementById("ob-verify-banner")!;
@@ -1059,13 +1047,85 @@ const t = useTranslations(lang);
           renderCustomGoals();
         }
 
-        tags = Array.isArray(data.tags) ? data.tags.filter(Boolean).slice(0, 7) : [];
-        renderTags();
+        if (openToSelector && Array.isArray(data.openTo)) {
+          openToSelector.value = data.openTo.filter(Boolean);
+        }
+
+        const savedTags = Array.isArray(data.tags) ? data.tags.filter(Boolean).slice(0, 7) : [];
+        if (tagSelector) tagSelector.value = savedTags;
       } catch {
         // Permission denied or network error — show form with empty fields
       }
 
-      await loadRegistryTags();
+      // Restore transient state (e.g. after a language switch)
+      const restoreState = readTransientState();
+      let restoredStep = 0;
+      if (restoreState) {
+        const setIfPresent = (id: string, val?: string) => {
+          if (val == null) return;
+          const el = document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | null;
+          if (el) el.value = val;
+        };
+        setIfPresent("ob-name", restoreState.name);
+        setIfPresent("ob-role", restoreState.role);
+        setIfPresent("ob-portfolio", restoreState.portfolio);
+        setIfPresent("ob-social", restoreState.social);
+        setIfPresent("ob-phone", restoreState.phone);
+        setIfPresent("ob-bio", restoreState.bio);
+        setIfPresent("ob-goal-input", restoreState.goalInput);
+
+        if (Array.isArray(restoreState.selectedGoals)) {
+          restoreState.selectedGoals.forEach((goal) => {
+            if (selectedGoals.has(goal)) return;
+            selectedGoals.add(goal);
+            document
+              .querySelector<HTMLElement>(`[data-goal="${goal}"]`)
+              ?.classList.add("goal-chip--selected");
+          });
+        }
+        if (Array.isArray(restoreState.customGoals)) {
+          restoreState.customGoals.forEach((goal) => {
+            if (!customGoals.includes(goal)) customGoals.push(goal);
+          });
+          renderCustomGoals();
+        }
+        if (openToSelector && Array.isArray(restoreState.openTo)) {
+          openToSelector.value = restoreState.openTo;
+        }
+        if (tagSelector && Array.isArray(restoreState.tags)) {
+          const current = tagSelector.value;
+          const merged = [...current];
+          restoreState.tags.forEach((t) => {
+            if (!merged.some((s) => s.toLowerCase() === t.toLowerCase())) merged.push(t);
+          });
+          tagSelector.value = merged.slice(0, 7);
+        }
+        if (tagSelector && typeof restoreState.tagInput === "string") {
+          tagSelector.inputValue = restoreState.tagInput;
+        }
+
+        if (typeof restoreState.step === "number" && restoreState.step !== 5) {
+          restoredStep = restoreState.step;
+        }
+        clearTransientState();
+      }
+
+      // Save state before navigating away (e.g. clicking the lang toggle).
+      // Re-binding is safe because nav-lang is `transition:persist`-ed across
+      // navigations, so remove any previous handler first.
+      const navLang = document.getElementById("nav-lang");
+      if (prevNavLangHandler) {
+        navLang?.removeEventListener("click", prevNavLangHandler, { capture: true });
+      }
+      if (prevPageHideHandler) {
+        window.removeEventListener("pagehide", prevPageHideHandler);
+      }
+      const onNavLangClick = () => saveTransientState();
+      const onPageHide = () => saveTransientState();
+      navLang?.addEventListener("click", onNavLangClick, { capture: true });
+      window.addEventListener("pagehide", onPageHide);
+      prevNavLangHandler = onNavLangClick;
+      prevPageHideHandler = onPageHide;
 
       if (!user.emailVerified) {
         verifyBanner.style.display = "block";
@@ -1089,7 +1149,7 @@ const t = useTranslations(lang);
 
       if (loadingEl) loadingEl.style.display = "none";
       wrap.style.display = "block";
-      setStep(0);
+      setStep(restoredStep);
     });
   });
 </script>

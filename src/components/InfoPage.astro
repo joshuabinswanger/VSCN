@@ -35,6 +35,10 @@ const t = useTranslations(lang);
       {t('info.contact')} <a href="mailto:info@vscn.ch"><!--email_off-->info@vscn.ch<!--/email_off--></a>
     </p>
   </section>
+
+  <section id="info-signup-cta" class="info-signup-cta" style="display:none;">
+    <a href={lang === 'de' ? '/de/signup' : '/signup'} class="btn-solid">{t('signup.cta.info')}</a>
+  </section>
 </div>
 
 <style>
@@ -127,4 +131,24 @@ const t = useTranslations(lang);
   .info-contact:hover {
     opacity: 0.5;
   }
+
+  .info-signup-cta {
+    padding-top: 4rem;
+    display: flex;
+    justify-content: center;
+  }
 </style>
+
+<script>
+  import { auth } from "../lib/firebase.ts";
+  import { onAuthStateChanged } from "firebase/auth";
+
+  document.addEventListener("astro:page-load", () => {
+    const cta = document.getElementById("info-signup-cta");
+    if (!cta) return;
+
+    onAuthStateChanged(auth, (user) => {
+      cta.style.display = user ? "none" : "flex";
+    });
+  });
+</script>

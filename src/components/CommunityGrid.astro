@@ -27,6 +27,10 @@ const memberLabel = members.length === 1 ? t('community.member') : t('community.
     {members.length === 0 && <p class="state-msg">{t('community.empty')}</p>}
     {members.map((m) => <MemberCard member={m} lang={lang} />)}
   </div>
+
+  <div id="community-signup-cta" class="community-signup-cta" style="display:none;">
+    <a href={lang === 'de' ? '/de/signup' : '/signup'} class="btn-solid">{t('signup.cta.community')}</a>
+  </div>
 </div>
 
 <style>
@@ -89,9 +93,17 @@ const memberLabel = members.length === 1 ? t('community.member') : t('community.
       grid-template-columns: minmax(0, 400px);
     }
   }
+
+  .community-signup-cta {
+    padding-top: 5rem;
+    display: flex;
+    justify-content: center;
+  }
 </style>
 
 <script>
+  import { auth } from "../lib/firebase.ts";
+  import { onAuthStateChanged } from "firebase/auth";
   import { ui } from "../i18n/translations.ts";
 
   const desktopQuery = window.matchMedia("(width >= 1120px)");
@@ -124,6 +136,13 @@ const memberLabel = members.length === 1 ? t('community.member') : t('community.
   }
 
   document.addEventListener("astro:page-load", () => {
+    const cta = document.getElementById("community-signup-cta");
+    if (cta) {
+      onAuthStateChanged(auth, (user) => {
+        cta.style.display = user ? "none" : "flex";
+      });
+    }
+
     if (!hasDesktopQueryListener) {
       desktopQuery.addEventListener("change", (event) => {
         if (!event.matches) collapseMobileBioPanels();

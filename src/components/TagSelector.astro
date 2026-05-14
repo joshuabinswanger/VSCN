@@ -1,0 +1,523 @@
+---
+import { useTranslations } from "../i18n/utils";
+import type { Lang } from "../i18n/utils";
+
+interface Props {
+  lang?: Lang;
+  maxTags?: number;
+  inputId?: string;
+}
+
+const { lang = "en", maxTags = 7, inputId = "tag-selector-input" } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<tag-selector data-lang={lang} data-max-tags={maxTags}>
+  <input
+    id={inputId}
+    type="text"
+    class="input ts-input"
+    placeholder={t("profile.ph.tags")}
+    maxlength="50"
+    autocomplete="off"
+  />
+  <p class="field-note">{t("profile.note.tags")}</p>
+  <div class="tag-list ts-selected" aria-live="polite"></div>
+  <p class="ts-error msg-err" hidden></p>
+  <div class="tag-groups">
+    <details class="tag-group" data-group-key="disciplines">
+      <summary class="tag-group-summary">
+        <span class="tag-group-title">{t("onboarding.tags.group.disciplines")}</span>
+        <span class="tag-group-count" data-tag-group-count="disciplines"></span>
+        <span class="tag-group-chevron" aria-hidden="true"></span>
+      </summary>
+      <div class="tag-suggestion-list" data-tag-group="disciplines"></div>
+    </details>
+    <details class="tag-group" data-group-key="topics">
+      <summary class="tag-group-summary">
+        <span class="tag-group-title">{t("onboarding.tags.group.topics")}</span>
+        <span class="tag-group-count" data-tag-group-count="topics"></span>
+        <span class="tag-group-chevron" aria-hidden="true"></span>
+      </summary>
+      <div class="tag-suggestion-list" data-tag-group="topics"></div>
+    </details>
+    <details class="tag-group" data-group-key="other">
+      <summary class="tag-group-summary">
+        <span class="tag-group-title">{t("onboarding.tags.group.other")}</span>
+        <span class="tag-group-count" data-tag-group-count="other"></span>
+        <span class="tag-group-chevron" aria-hidden="true"></span>
+      </summary>
+      <div class="tag-suggestion-list" data-tag-group="other"></div>
+    </details>
+  </div>
+</tag-selector>
+
+<style is:global>
+  tag-selector {
+    display: block;
+  }
+
+  tag-selector .ts-error {
+    margin-top: 0.5rem;
+  }
+
+  tag-selector .ts-error[hidden] {
+    display: none;
+  }
+
+  tag-selector .tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  tag-selector .tag-list:not(:empty) {
+    margin-top: 0.5rem;
+  }
+
+  tag-selector .tag-chip {
+    font-family: monospace;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid #111;
+    background: #111;
+    color: #fff;
+    font-size: 0.83rem;
+    font-weight: 500;
+    line-height: 1.25;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      border-color 0.15s;
+  }
+
+  tag-selector .tag-chip:hover {
+    background: #333;
+    border-color: #333;
+    color: #fff;
+  }
+
+  tag-selector .tag-chip span {
+    color: inherit;
+    opacity: 0.65;
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  tag-selector .tag-suggestion-chip {
+    font-family: monospace;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.45rem 0.6rem;
+    min-height: 2.2rem;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--color-border);
+    color: var(--color-muted);
+    background: #fff;
+    font-size: 0.83rem;
+    line-height: 1.25;
+    text-align: center;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      border-color 0.15s,
+      color 0.15s;
+  }
+
+  tag-selector .tag-suggestion-chip:hover {
+    border-color: #999;
+    color: #333;
+    background: #f5f5f5;
+  }
+
+  tag-selector .tag-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-top: 0.9rem;
+  }
+
+  tag-selector .tag-group {
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: #fff;
+    overflow: hidden;
+  }
+
+  tag-selector .tag-group-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.8rem;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    transition: background 0.15s;
+  }
+
+  tag-selector .tag-group-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  tag-selector .tag-group-summary:hover {
+    background: #fafafa;
+  }
+
+  tag-selector .tag-group-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-dark);
+  }
+
+  tag-selector .tag-group-count {
+    font-size: 0.78rem;
+    color: var(--color-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  tag-selector .tag-group-count:empty {
+    display: none;
+  }
+
+  tag-selector .tag-group-chevron {
+    margin-left: auto;
+    width: 8px;
+    height: 8px;
+    border-right: 1.5px solid var(--color-muted);
+    border-bottom: 1.5px solid var(--color-muted);
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+    transform-origin: 60% 60%;
+  }
+
+  tag-selector .tag-group[open] .tag-group-chevron {
+    transform: rotate(225deg);
+  }
+
+  tag-selector .tag-group .tag-suggestion-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+    padding: 0.6rem 0.8rem 0.8rem;
+    border-top: 1.5px solid var(--color-border);
+  }
+
+  tag-selector .tag-group .tag-suggestion-list:empty {
+    padding: 0.6rem 0.8rem;
+  }
+
+  tag-selector .tag-group .tag-suggestion-list:empty::after {
+    content: "—";
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--color-muted);
+    opacity: 0.4;
+    font-size: 0.82rem;
+  }
+
+  @media (max-width: 520px) {
+    tag-selector .tag-group .tag-suggestion-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>
+
+<script>
+  import { auth } from "../lib/firebase.ts";
+  import { getTags, getOrCreateTag } from "../lib/firestore.ts";
+  import type { TagDoc } from "../lib/firestore.ts";
+  import { ui } from "../i18n/translations.ts";
+
+  type GroupKey = "disciplines" | "topics" | "other";
+
+  function normalizeTag(value: string): string {
+    return value.trim().replace(/^#+/, "").replace(/\s+/g, " ");
+  }
+
+  function normalizeForCompare(label: string): string {
+    return label.trim().toLowerCase().replace(/\s+/g, "-");
+  }
+
+  class TagSelectorElement extends HTMLElement {
+    private _tags: string[] = [];
+    private registryTags: TagDoc[] = [];
+    private autocompleteMatch: string | null = null;
+    private maxTags = 7;
+    private lang: "en" | "de" = "en";
+    private inputEl!: HTMLInputElement;
+    private selectedEl!: HTMLElement;
+    private errorEl!: HTMLElement;
+    private bound = false;
+
+    connectedCallback() {
+      if (this.bound) return;
+      this.bound = true;
+
+      this.maxTags = Number(this.dataset.maxTags ?? 7) || 7;
+      this.lang = (this.dataset.lang === "de" ? "de" : "en") as "en" | "de";
+
+      this.inputEl = this.querySelector<HTMLInputElement>(".ts-input")!;
+      this.selectedEl = this.querySelector<HTMLElement>(".ts-selected")!;
+      this.errorEl = this.querySelector<HTMLElement>(".ts-error")!;
+
+      // Promote any pre-upgrade property assignments through the setters
+      // so consumers that set `.value` before the element upgraded don't
+      // get their assignment shadowed by the prototype's getter/setter.
+      for (const key of ["value", "inputValue"] as const) {
+        if (Object.prototype.hasOwnProperty.call(this, key)) {
+          const captured = (this as unknown as Record<string, unknown>)[key];
+          delete (this as unknown as Record<string, unknown>)[key];
+          (this as unknown as Record<string, unknown>)[key] = captured;
+        }
+      }
+
+      this.attachListeners();
+      this.render();
+      void this.loadRegistry();
+    }
+
+    get value(): string[] {
+      return [...this._tags];
+    }
+
+    set value(arr: string[]) {
+      this._tags = Array.isArray(arr) ? arr.filter(Boolean).slice(0, this.maxTags) : [];
+      this.render();
+    }
+
+    /** Current text in the input box (for state save/restore). */
+    get inputValue(): string {
+      return this.inputEl?.value ?? "";
+    }
+
+    set inputValue(v: string) {
+      if (this.inputEl) {
+        this.inputEl.value = v;
+        this.renderSuggestions(v);
+      }
+    }
+
+    private emitChange() {
+      this.dispatchEvent(
+        new CustomEvent("change", { detail: { tags: this.value }, bubbles: true })
+      );
+    }
+
+    private setError(msg: string) {
+      if (!this.errorEl) return;
+      if (msg) {
+        this.errorEl.textContent = msg;
+        this.errorEl.hidden = false;
+      } else {
+        this.errorEl.hidden = true;
+      }
+    }
+
+    private async loadRegistry() {
+      try {
+        this.registryTags = await getTags();
+        this.renderSuggestions(this.inputEl.value);
+      } catch (err) {
+        console.warn("[tag-selector] Failed to load tag registry", err);
+      }
+    }
+
+    private render() {
+      this.renderSelected();
+      this.renderSuggestions(this.inputEl?.value ?? "");
+    }
+
+    private renderSelected() {
+      this.selectedEl.innerHTML = "";
+      this._tags.forEach((tag) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "tag-chip";
+        btn.dataset.tag = tag;
+        btn.textContent = tag;
+        const x = document.createElement("span");
+        x.setAttribute("aria-hidden", "true");
+        x.textContent = "×";
+        btn.appendChild(x);
+        this.selectedEl.appendChild(btn);
+      });
+    }
+
+    private tagIsSelected(tag: string): boolean {
+      return this._tags.some((s) => s.toLowerCase() === tag.toLowerCase());
+    }
+
+    private tagMatches(tag: string, filter: string): boolean {
+      if (!filter) return true;
+      return tag.toLowerCase().includes(filter.toLowerCase());
+    }
+
+    private makeSuggestionChip(tag: string): HTMLButtonElement {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "tag-suggestion-chip";
+      btn.dataset.tag = tag;
+      btn.textContent = tag;
+      return btn;
+    }
+
+    private renderGroup(groupKey: string, items: string[], filter: string) {
+      const container = this.querySelector<HTMLElement>(`[data-tag-group="${groupKey}"]`);
+      const countEl = this.querySelector<HTMLElement>(`[data-tag-group-count="${groupKey}"]`);
+      if (!container) return;
+      container.innerHTML = "";
+      const visible = items
+        .filter((t) => !this.tagIsSelected(t))
+        .filter((t) => this.tagMatches(t, filter));
+      visible.forEach((tag) => container.appendChild(this.makeSuggestionChip(tag)));
+      if (countEl) countEl.textContent = visible.length ? `(${visible.length})` : "";
+    }
+
+    private renderSuggestions(filter = "") {
+      const groups: Record<GroupKey, string[]> = {
+        disciplines: [],
+        topics: [],
+        other: [],
+      };
+
+      this.registryTags.forEach((tag) => {
+        const key = (tag.group as GroupKey) || "other";
+        if (groups[key]) {
+          groups[key].push(tag.label);
+        } else {
+          groups["other"].push(tag.label);
+        }
+      });
+
+      (Object.keys(groups) as GroupKey[]).forEach((key) =>
+        this.renderGroup(key, groups[key], filter)
+      );
+    }
+
+    private async addTag(value: string): Promise<boolean> {
+      const norm = normalizeTag(value);
+      if (!norm) return false;
+      if (norm.length > 50) {
+        this.setError(ui[this.lang]["profile.tag.error"]);
+        return false;
+      }
+      if (this._tags.length >= this.maxTags) {
+        this.setError(ui[this.lang]["profile.tag.error"]);
+        return false;
+      }
+      if (this._tags.some((t) => t.toLowerCase() === norm.toLowerCase())) {
+        return false;
+      }
+
+      // Best-effort registry write — failures (e.g. unverified email) are
+      // OK, the tag still lands on the user's profile via the parent's save.
+      const user = auth.currentUser;
+      if (user) {
+        try {
+          await getOrCreateTag(norm, user.uid);
+          if (!this.registryTags.some((t) => t.label.toLowerCase() === norm.toLowerCase())) {
+            this.registryTags.push({
+              label: norm,
+              active: true,
+              group: "other",
+              createdAt: new Date(),
+              createdBy: user.uid,
+            });
+          }
+        } catch (err) {
+          console.warn("[tag-selector] Registry write skipped:", err);
+        }
+      }
+
+      this._tags = [...this._tags, norm];
+      this.setError("");
+      this.renderSelected();
+      this.renderSuggestions("");
+      this.emitChange();
+      return true;
+    }
+
+    private removeTag(tag: string) {
+      this._tags = this._tags.filter((t) => t !== tag);
+      this.renderSelected();
+      this.renderSuggestions(this.inputEl.value);
+      this.emitChange();
+    }
+
+    private attachListeners() {
+      this.inputEl.addEventListener("keydown", async (e) => {
+        if (e.key === "Backspace" || e.key === "Delete") {
+          if (this.autocompleteMatch) {
+            e.preventDefault();
+            const typed = this.inputEl.value.substring(0, this.inputEl.selectionStart ?? 0);
+            this.autocompleteMatch = null;
+            this.inputEl.value = typed;
+            this.renderSuggestions(typed);
+          }
+          return;
+        }
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        const val = this.autocompleteMatch ?? this.inputEl.value;
+        this.autocompleteMatch = null;
+        if (!val.trim()) return;
+        if (await this.addTag(val)) {
+          this.inputEl.value = "";
+          this.renderSuggestions("");
+        }
+      });
+
+      this.inputEl.addEventListener("input", () => {
+        const raw = this.inputEl.value;
+        this.renderSuggestions(raw);
+        const match = this.registryTags
+          .map((t) => t.label)
+          .filter((t) => !this.tagIsSelected(t))
+          .find((t) => raw.length > 0 && t.toLowerCase().startsWith(raw.toLowerCase()));
+        if (match && match.length > raw.length) {
+          this.autocompleteMatch = match;
+          this.inputEl.value = match;
+          this.inputEl.setSelectionRange(raw.length, match.length);
+        } else {
+          this.autocompleteMatch = null;
+        }
+      });
+
+      this.selectedEl.addEventListener("click", (e) => {
+        const btn = (e.target as HTMLElement).closest(
+          "button.tag-chip"
+        ) as HTMLButtonElement | null;
+        if (!btn?.dataset.tag) return;
+        this.removeTag(btn.dataset.tag);
+      });
+
+      this.addEventListener("click", async (e) => {
+        const btn = (e.target as HTMLElement).closest(
+          "button.tag-suggestion-chip"
+        ) as HTMLButtonElement | null;
+        if (!btn?.dataset.tag) return;
+        if (await this.addTag(btn.dataset.tag)) {
+          this.inputEl.value = "";
+          this.renderSuggestions("");
+        }
+      });
+    }
+  }
+
+  if (!customElements.get("tag-selector")) {
+    customElements.define("tag-selector", TagSelectorElement);
+  }
+
+  // Expose the type so consumers can cast their element references.
+  declare global {
+    interface HTMLElementTagNameMap {
+      "tag-selector": TagSelectorElement;
+    }
+  }
+</script>

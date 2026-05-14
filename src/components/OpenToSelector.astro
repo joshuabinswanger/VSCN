@@ -1,0 +1,226 @@
+---
+import { useTranslations } from "../i18n/utils";
+import type { Lang } from "../i18n/utils";
+
+interface Props {
+  lang?: Lang;
+}
+
+const { lang = "en" } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<open-to-selector class="field open-to-selector" data-lang={lang}>
+  <label class="label">{t("profile.openTo.legend")}</label>
+  <div id="openTo-chips" class="openTo-chips">
+    <!-- Buttons rendered dynamically -->
+  </div>
+  <div id="openTo-custom-list" class="openTo-custom-list"></div>
+  <input id="openTo-input" type="text" class="input" placeholder={t("profile.openTo.custom.ph")} />
+</open-to-selector>
+
+<style is:global>
+  open-to-selector {
+    display: flex;
+  }
+
+  open-to-selector.open-to-selector .openTo-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  open-to-selector.open-to-selector .openTo-chip {
+    font-family: inherit;
+    font-size: 0.88rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--color-border);
+    background: #fff;
+    color: #555;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      border-color 0.15s,
+      color 0.15s;
+  }
+
+  open-to-selector.open-to-selector .openTo-chip:hover {
+    border-color: #999;
+    color: #333;
+  }
+
+  open-to-selector.open-to-selector button.openTo-chip.openTo-chip--selected {
+    background: #111;
+    border-color: #111;
+    color: #fff;
+  }
+
+  open-to-selector.open-to-selector button.openTo-chip.openTo-chip--selected:hover {
+    background: #333;
+    border-color: #333;
+    color: #fff;
+  }
+
+  open-to-selector.open-to-selector .openTo-custom-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  open-to-selector.open-to-selector .openTo-custom-list:empty {
+    display: none;
+  }
+
+  open-to-selector.open-to-selector button.openTo-custom-chip {
+    font-family: monospace;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid #111;
+    background: #111;
+    color: #fff;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+
+  open-to-selector.open-to-selector button.openTo-custom-chip span {
+    color: inherit;
+    opacity: 0.65;
+  }
+</style>
+
+<script>
+  import { getOpenToOptions } from "../lib/firestore.ts";
+  import type { OpenToDoc } from "../lib/firestore.ts";
+
+  class OpenToSelectorElement extends HTMLElement {
+    private presetOpenToOptions: OpenToDoc[] = [];
+    private selectedOpenTo = new Set<string>();
+    private customOpenTo: string[] = [];
+    private initialized = false;
+    private lang: "en" | "de" = "en";
+
+    async connectedCallback() {
+      if (this.initialized) return;
+      this.initialized = true;
+      this.lang = (this.dataset.lang === "de" ? "de" : "en") as "en" | "de";
+
+      try {
+        this.presetOpenToOptions = await getOpenToOptions();
+        this.renderPresetChips();
+      } catch (err) {
+        console.warn("[open-to-selector] Failed to load options:", err);
+      }
+
+      const openToInput = this.querySelector<HTMLInputElement>("#openTo-input");
+      openToInput?.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+
+        const value = openToInput.value.trim();
+        if (
+          !value ||
+          this.customOpenTo.includes(value) ||
+          this.presetOpenToOptions.some((opt) => opt.id === value.toLowerCase())
+        ) {
+          return;
+        }
+
+        this.customOpenTo = [...this.customOpenTo, value];
+        openToInput.value = "";
+        this.renderCustomOpenTo();
+      });
+    }
+
+    get value(): string[] {
+      return [...this.selectedOpenTo, ...this.customOpenTo];
+    }
+
+    set value(items: string[]) {
+      const uniqueItems = [...new Set(items.filter(Boolean))];
+
+      this.selectedOpenTo.clear();
+      this.customOpenTo = [];
+
+      const presetIds = new Set(this.presetOpenToOptions.map((opt) => opt.id));
+
+      uniqueItems.forEach((item) => {
+        if (presetIds.has(item)) {
+          this.selectedOpenTo.add(item);
+        } else {
+          this.customOpenTo.push(item);
+        }
+      });
+
+      this.syncPresetChips();
+      this.renderCustomOpenTo();
+    }
+
+    private renderPresetChips() {
+      const container = this.querySelector("#openTo-chips");
+      if (!container) return;
+      container.innerHTML = "";
+
+      this.presetOpenToOptions.forEach((opt) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "openTo-chip";
+        btn.dataset.openTo = opt.id;
+        btn.textContent = this.lang === "de" ? opt.label_de : opt.label_en;
+
+        btn.addEventListener("click", () => {
+          if (this.selectedOpenTo.has(opt.id)) {
+            this.selectedOpenTo.delete(opt.id);
+          } else {
+            this.selectedOpenTo.add(opt.id);
+          }
+          this.syncPresetChips();
+        });
+
+        container.appendChild(btn);
+      });
+      this.syncPresetChips();
+    }
+
+    private syncPresetChips() {
+      this.querySelectorAll<HTMLElement>("[data-open-to]").forEach((el) => {
+        const openTo = el.dataset.openTo;
+        el.classList.toggle("openTo-chip--selected", !!openTo && this.selectedOpenTo.has(openTo));
+      });
+    }
+
+    private renderCustomOpenTo() {
+      const customOpenToList = this.querySelector("#openTo-custom-list");
+      if (!customOpenToList) return;
+
+      customOpenToList.innerHTML = "";
+      this.customOpenTo.forEach((item) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "openTo-custom-chip";
+        btn.textContent = item;
+
+        const remove = document.createElement("span");
+        remove.setAttribute("aria-hidden", "true");
+        remove.textContent = "\u00d7";
+        btn.appendChild(remove);
+
+        btn.addEventListener("click", () => {
+          this.customOpenTo = this.customOpenTo.filter((value) => value !== item);
+          this.renderCustomOpenTo();
+        });
+
+        customOpenToList.appendChild(btn);
+      });
+    }
+  }
+
+  if (!customElements.get("open-to-selector")) {
+    customElements.define("open-to-selector", OpenToSelectorElement);
+  }
+</script>
