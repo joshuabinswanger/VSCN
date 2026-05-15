@@ -77,13 +77,52 @@ const {
 
   const timelines = new WeakMap<HTMLElement, gsap.core.Timeline>();
   const roots = new Set<HTMLElement>();
+  const slotCounts = new WeakMap<HTMLElement, number>();
 
-  const words = ["Visual", "Science", "Communication", "Network"];
+  const words = ["Visual", "VScience", "VSCommunication", "VSCNetwork", "VSCN"];
 
-  function renderCharacterColumns(target: HTMLElement, values: string[], slotCount: number) {
+  function measureChRatio(target: HTMLElement): number {
+    const probe = document.createElement("span");
+    const cs = getComputedStyle(target);
+    probe.style.cssText =
+      `position:absolute;visibility:hidden;white-space:pre;` +
+      `font-family:${cs.fontFamily};font-weight:${cs.fontWeight};` +
+      `letter-spacing:${cs.letterSpacing};font-size:100px;line-height:1;`;
+    probe.textContent = "0";
+    document.body.appendChild(probe);
+    const w = probe.getBoundingClientRect().width;
+    probe.remove();
+    return w / 100;
+  }
+
+  function applyHeadlineSize(root: HTMLElement, slotCount: number) {
+    const target = root.querySelector<HTMLElement>("[data-headline-text]");
+    if (!target) return;
+    const targetWidthPx = target.getBoundingClientRect().width;
+    if (!targetWidthPx) return;
+    const chRatio = measureChRatio(target);
+    if (!chRatio) return;
+    const fontSizePx = targetWidthPx / slotCount / chRatio;
+    target.style.fontSize = `${fontSizePx}px`;
+  }
+
+  function buildColumnSequences(rows: string[], slotCount: number): string[][] {
+    const sequences: string[][] = [];
+    for (let col = 0; col < slotCount; col += 1) {
+      const seq: string[] = [];
+      rows.forEach((row) => {
+        const ch = row[col] ?? " ";
+        if (seq.length === 0 || seq[seq.length - 1] !== ch) seq.push(ch);
+      });
+      sequences.push(seq);
+    }
+    return sequences;
+  }
+
+  function renderCharacterColumns(target: HTMLElement, sequences: string[][]) {
     target.textContent = "";
 
-    for (let columnIndex = 0; columnIndex < slotCount; columnIndex += 1) {
+    sequences.forEach((seq) => {
       const slot = document.createElement("span");
       const column = document.createElement("span");
 
@@ -91,16 +130,16 @@ const {
       slot.setAttribute("aria-hidden", "true");
       column.className = "gsap-text-headline__column";
 
-      values.forEach((value) => {
+      seq.forEach((value) => {
         const char = document.createElement("span");
         char.className = "gsap-text-headline__char";
-        setCharacter(char, value[columnIndex] ?? "");
+        setCharacter(char, value);
         column.appendChild(char);
       });
 
       slot.appendChild(column);
       target.appendChild(slot);
-    }
+    });
   }
 
   function setCharacter(span: HTMLElement, character: string) {
@@ -110,18 +149,39 @@ const {
   function transitionText(
     timeline: gsap.core.Timeline,
     target: HTMLElement,
+    rows: string[],
     rowIndex: number,
+    columnPositions: number[],
     duration: number,
     ease: string,
     slotCount: number
   ) {
-    const columns = Array.from(
+    const allColumns = Array.from(
       target.querySelectorAll<HTMLElement>(".gsap-text-headline__column")
     ).slice(0, slotCount);
 
-    timeline.to(columns, {
+    const changing: HTMLElement[] = [];
+    const targetYs: number[] = [];
+    const prevRow = rows[rowIndex - 1] ?? "";
+    const nextRow = rows[rowIndex] ?? "";
+    for (let col = 0; col < slotCount; col += 1) {
+      const prev = prevRow[col] ?? " ";
+      const next = nextRow[col] ?? " ";
+      if (prev !== next) {
+        columnPositions[col] += 1;
+        changing.push(allColumns[col]);
+        targetYs.push(-columnPositions[col]);
+      }
+    }
+
+    if (changing.length === 0) {
+      timeline.to({}, { duration });
+      return;
+    }
+
+    timeline.to(changing, {
       duration,
-      y: `${-rowIndex}em`,
+      y: (i: number) => `${targetYs[i]}em`,
       stagger: 0.026,
       ease,
     });
@@ -137,11 +197,28 @@ const {
 
   function destroyHeadline(root: HTMLElement) {
     const timeline = timelines.get(root);
-    if (!timeline) return;
-
-    timeline.kill();
-    timelines.delete(root);
+    if (timeline) {
+      timeline.kill();
+      timelines.delete(root);
+    }
     roots.delete(root);
+    slotCounts.delete(root);
+  }
+
+  function resizeAllHeadlines() {
+    roots.forEach((root) => {
+      const slotCount = slotCounts.get(root);
+      if (slotCount) applyHeadlineSize(root, slotCount);
+    });
+  }
+
+  let resizeRaf = 0;
+  function onResize() {
+    if (resizeRaf) cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(() => {
+      resizeRaf = 0;
+      resizeAllHeadlines();
+    });
   }
 
   function initHeadline(root: HTMLElement) {
@@ -156,22 +233,37 @@ const {
     const collapseDuration = Number(root.dataset.collapseDuration ?? 0.75);
     const ease = root.dataset.ease ?? "expo.inOut";
     const slotCount = baseText.length;
-    const rows = [baseText, ...words, baseText];
+    const padToSlot = (s: string) => (s + " ".repeat(slotCount)).slice(0, slotCount);
+    const rows = [baseText, ...words.map(padToSlot), baseText];
     const finalBaseRowIndex = rows.length - 1;
+    const sequences = buildColumnSequences(rows, slotCount);
 
-    renderCharacterColumns(target, rows, slotCount);
+    slotCounts.set(root, slotCount);
+    applyHeadlineSize(root, slotCount);
+    renderCharacterColumns(target, sequences);
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       target.textContent = baseText;
+      roots.add(root);
       return;
     }
 
+    const columnPositions = new Array<number>(slotCount).fill(0);
     const timeline = gsap.timeline({ repeat: -1 });
 
     timeline.to({}, { duration: holdDuration });
 
     words.forEach((_, index) => {
-      transitionText(timeline, target, index + 1, replaceDuration, ease, slotCount);
+      transitionText(
+        timeline,
+        target,
+        rows,
+        index + 1,
+        columnPositions,
+        replaceDuration,
+        ease,
+        slotCount
+      );
 
       if (index < words.length - 1) {
         timeline.to({}, { duration: holdDuration });
@@ -179,9 +271,20 @@ const {
     });
 
     timeline.to({}, { duration: holdDuration });
-    transitionText(timeline, target, finalBaseRowIndex, collapseDuration, ease, slotCount);
+    transitionText(
+      timeline,
+      target,
+      rows,
+      finalBaseRowIndex,
+      columnPositions,
+      collapseDuration,
+      ease,
+      slotCount
+    );
     resetColumns(timeline, target, slotCount);
     timeline.to({}, { duration: 0.3 });
+
+    timeline.timeScale(1.6);
 
     timelines.set(root, timeline);
     roots.add(root);
@@ -189,12 +292,16 @@ const {
 
   function initHeadlines() {
     document.querySelectorAll<HTMLElement>("[data-gsap-text-headline]").forEach(initHeadline);
+    if (document.fonts?.ready) {
+      document.fonts.ready.then(resizeAllHeadlines);
+    }
   }
 
   document.addEventListener("astro:page-load", initHeadlines);
   document.addEventListener("astro:before-swap", () => {
     Array.from(roots).forEach(destroyHeadline);
   });
+  window.addEventListener("resize", onResize);
 
   if (document.readyState !== "loading") {
     initHeadlines();

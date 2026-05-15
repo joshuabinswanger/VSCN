@@ -240,10 +240,6 @@ const t = useTranslations(lang);
     return value.trim().replace(/^#+/, "").replace(/\s+/g, " ");
   }
 
-  function normalizeForCompare(label: string): string {
-    return label.trim().toLowerCase().replace(/\s+/g, "-");
-  }
-
   class TagSelectorElement extends HTMLElement {
     private _tags: string[] = [];
     private registryTags: TagDoc[] = [];

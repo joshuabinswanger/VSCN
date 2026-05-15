@@ -1,43 +1,50 @@
-# Astro Starter Kit: Minimal
+# VSCN — Visual Science Communication Network
 
-```sh
-npm create astro@latest -- --template minimal
-```
+A platform for visual science communicators to connect, showcase their work, and find collaborators. Built with Astro, Firebase, and GSAP.
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## 🚀 Features
+- **Member Directory:** A searchable grid of professionals in visual science communication.
+- **Onboarding Flow:** A multi-step process for new users to set up their profiles.
+- **Profile Management:** Users can update their skills (tags), portfolio links, and bio.
+- **Multilingual Support:** Full English (default) and German (`/de`) support via a custom i18n system.
+- **Dynamic Headline:** Interactive GSAP-powered ticker/headline on the landing page.
+- **Automated Rebuilds:** Updates to profiles trigger GitHub Action dispatches to refresh the static community grid.
 
-## 🚀 Project Structure
+## 🛠 Tech Stack
+- **Frontend:** [Astro](https://astro.build/) (v6)
+- **Styling:** Vanilla CSS with PostCSS (Custom Media, Global Data)
+- **Animations:** [GSAP](https://gsap.com/)
+- **Backend/DB:** [Firebase](https://firebase.google.com/) (Auth, Firestore, Storage)
+- **Localization:** Custom i18n utility in `src/i18n/`
 
-Inside of your Astro project, you'll see the following folders and files:
+## 📁 Project Structure
+- `src/components/`: Reusable UI components (MemberCard, TagSelector, etc.)
+- `src/layouts/`: Main page layout and global styles.
+- `src/lib/`: Firebase configuration and core logic (Auth, Firestore, Storage).
+- `src/pages/`: File-based routing (including German overrides in `/de`).
+- `scripts/`: Maintenance scripts for seeding data and migrations.
+- `documentation/`: Detailed decision logs and technical updates.
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
-```
+## 🏁 Getting Started
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+1. **Install Dependencies:**
+   ```bash
+   npm install
+   ```
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+2. **Environment Variables:**
+   Create a `.env` file based on `.env.example` with your Firebase and GitHub API credentials.
 
-Any static assets, like images, can be placed in the `public/` directory.
+3. **Development Server:**
+   ```bash
+   npm run dev
+   ```
 
-## 🧞 Commands
+4. **Building for Production:**
+   ```bash
+   npm run build
+   ```
 
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+## 🧹 Maintenance
+- **Linting:** `npm run lint`
+- **Formatting:** `npm run format`
