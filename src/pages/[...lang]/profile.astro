@@ -1,0 +1,23 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import ProfileForm from "../../components/ProfileForm.astro";
+import { useTranslations } from "../../i18n/utils";
+import type { Lang } from "../../i18n/utils";
+
+export function getStaticPaths() {
+  return [
+    { params: { lang: undefined } },
+    { params: { lang: "de" } },
+  ];
+}
+
+const { lang = "en" } = Astro.params;
+const currentLang = (lang || "en") as Lang;
+const t = useTranslations(currentLang);
+
+const title = currentLang === "de" ? "Profil bearbeiten — VSCN" : "Edit Profile — VSCN";
+---
+
+<Layout title={title} noindex lang={currentLang}>
+  <ProfileForm lang={currentLang} />
+</Layout>

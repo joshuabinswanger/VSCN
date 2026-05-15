@@ -1,0 +1,23 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import VerifyEmailForm from "../../components/VerifyEmailForm.astro";
+import { useTranslations } from "../../i18n/utils";
+import type { Lang } from "../../i18n/utils";
+
+export function getStaticPaths() {
+  return [
+    { params: { lang: undefined } },
+    { params: { lang: "de" } },
+  ];
+}
+
+const { lang = "en" } = Astro.params;
+const currentLang = (lang || "en") as Lang;
+const t = useTranslations(currentLang);
+
+const title = currentLang === "de" ? "E-Mail verifizieren — VSCN" : "Verify Your Email — VSCN";
+---
+
+<Layout title={title} noindex lang={currentLang}>
+  <VerifyEmailForm lang={currentLang} />
+</Layout>

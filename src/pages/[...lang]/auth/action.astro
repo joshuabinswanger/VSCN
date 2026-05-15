@@ -1,29 +1,44 @@
 ---
 import Layout from "../../../layouts/Layout.astro";
+import { useTranslations } from "../../../i18n/utils";
+import type { Lang } from "../../../i18n/utils";
+
+export function getStaticPaths() {
+  return [
+    { params: { lang: undefined } },
+    { params: { lang: "de" } },
+  ];
+}
+
+const { lang = "en" } = Astro.params;
+const currentLang = (lang || "en") as Lang;
+const t = useTranslations(currentLang);
+
+const title = currentLang === "de" ? "Konto" : "Account";
 ---
 
-<Layout title="Konto" lang="de">
+<Layout title={title} lang={currentLang}>
   <div class="action-wrap">
     <div id="view-loading" class="action-view">
-      <p class="state-msg">Bitte warten…</p>
+      <p class="state-msg">{currentLang === "de" ? "Bitte warten…" : "Please wait…"}</p>
     </div>
 
     <div id="view-reset-form" class="action-view" style="display:none;">
       <header class="action-header">
-        <h1 class="action-title">Neues Passwort festlegen</h1>
+        <h1 class="action-title">{currentLang === "de" ? "Neues Passwort festlegen" : "Set a new password"}</h1>
       </header>
       <form id="reset-form" class="action-form">
         <div class="field">
-          <label class="label" for="new-password">Neues Passwort</label>
+          <label class="label" for="new-password">{currentLang === "de" ? "Neues Passwort" : "New password"}</label>
           <input id="new-password" type="password" class="input" placeholder="••••••••" required autocomplete="new-password" />
         </div>
         <div class="field">
-          <label class="label" for="confirm-password">Passwort bestätigen</label>
+          <label class="label" for="confirm-password">{currentLang === "de" ? "Passwort bestätigen" : "Confirm password"}</label>
           <input id="confirm-password" type="password" class="input" placeholder="••••••••" required autocomplete="new-password" />
         </div>
         <p id="reset-error" class="msg-err" style="display:none;"></p>
         <div class="action-footer">
-          <button type="submit" id="reset-submit" class="btn-solid">Passwort setzen</button>
+          <button type="submit" id="reset-submit" class="btn-solid">{currentLang === "de" ? "Passwort festlegen" : "Set password"}</button>
         </div>
       </form>
     </div>
@@ -33,17 +48,19 @@ import Layout from "../../../layouts/Layout.astro";
         <h1 class="action-title" id="success-title"></h1>
         <p class="action-sub" id="success-sub"></p>
       </header>
-      <a id="success-link" href="/de/signup" class="btn-solid">Weiter</a>
+      <a id="success-link" href={currentLang === "de" ? "/de/signup" : "/signup"} class="btn-solid">{currentLang === "de" ? "Weiter" : "Continue"}</a>
     </div>
 
     <div id="view-error" class="action-view" style="display:none;">
       <header class="action-header">
-        <h1 class="action-title">Link abgelaufen</h1>
+        <h1 class="action-title">{currentLang === "de" ? "Link abgelaufen" : "Link expired"}</h1>
         <p class="action-sub">
-          Dieser Link ist nicht mehr gültig. Er wurde möglicherweise bereits verwendet oder ist abgelaufen.
+          {currentLang === "de" 
+            ? "Dieser Link ist nicht mehr gültig. Er wurde möglicherweise bereits verwendet oder ist abgelaufen."
+            : "This link is no longer valid. It may have already been used or has expired."}
         </p>
       </header>
-      <a href="/de/signup" class="btn-solid">Zurück zur Anmeldung</a>
+      <a href={currentLang === "de" ? "/de/signup" : "/signup"} class="btn-solid">{currentLang === "de" ? "Zurück zur Registrierung" : "Back to sign up"}</a>
     </div>
   </div>
 </Layout>
@@ -121,6 +138,10 @@ import Layout from "../../../layouts/Layout.astro";
   const mode = params.get("mode");
   const oobCode = params.get("oobCode");
 
+  // Determine language from the URL path
+  const lang = window.location.pathname.startsWith("/de/") ? "de" : "en";
+  const prefix = lang === "de" ? "/de" : "";
+
   function showView(id: string) {
     document.querySelectorAll<HTMLElement>(".action-view").forEach((v) => {
       v.style.display = "none";
@@ -129,10 +150,10 @@ import Layout from "../../../layouts/Layout.astro";
     if (el) el.style.display = "block";
   }
 
-  function showSuccess(title: string, sub: string, href = "/de/signup") {
+  function showSuccess(title: string, sub: string, href = "/signup") {
     document.getElementById("success-title")!.textContent = title;
     document.getElementById("success-sub")!.textContent = sub;
-    (document.getElementById("success-link") as HTMLAnchorElement).href = href;
+    (document.getElementById("success-link") as HTMLAnchorElement).href = prefix + href;
     showView("view-success");
   }
 
@@ -152,9 +173,11 @@ import Layout from "../../../layouts/Layout.astro";
           await publishCurrentUserProfile(user.uid);
         }
         showSuccess(
-          "E-Mail bestätigt!",
-          "Dein Konto ist jetzt aktiv. Weiter zur Community.",
-          "/de/community",
+          lang === "de" ? "E-Mail verifiziert!" : "Email verified!",
+          lang === "de" 
+            ? "Ihr Konto ist jetzt aktiv. Weiter zur Community." 
+            : "Your account is now active. Continue to the community.",
+          "/community",
         );
       } catch {
         showView("view-error");
@@ -177,31 +200,35 @@ import Layout from "../../../layouts/Layout.astro";
           errorEl.style.display = "none";
 
           if (newPw !== confirmPw) {
-            errorEl.textContent = "Passwörter stimmen nicht überein.";
+            errorEl.textContent = lang === "de" ? "Passwörter stimmen nicht überein." : "Passwords don't match.";
             errorEl.style.display = "block";
             return;
           }
           if (newPw.length < 6) {
-            errorEl.textContent = "Das Passwort muss mindestens 6 Zeichen lang sein.";
+            errorEl.textContent = lang === "de" ? "Das Passwort muss mindestens 6 Zeichen lang sein." : "Password must be at least 6 characters.";
             errorEl.style.display = "block";
             return;
           }
 
           submitBtn.disabled = true;
-          submitBtn.textContent = "Wird gespeichert…";
+          submitBtn.textContent = lang === "de" ? "Speichern…" : "Saving…";
 
           try {
             await confirmPasswordReset(auth, oobCode, newPw);
             showSuccess(
-              "Passwort aktualisiert!",
-              "Du kannst dich jetzt mit deinem neuen Passwort anmelden.",
-              "/de/signup",
+              lang === "de" ? "Passwort aktualisiert!" : "Password updated!",
+              lang === "de"
+                ? "Sie können sich jetzt mit Ihrem neuen Passwort anmelden."
+                : "You can now sign in with your new password.",
+              "/signup",
             );
           } catch {
-            errorEl.textContent = "Passwort konnte nicht gesetzt werden. Der Link ist möglicherweise abgelaufen.";
+            errorEl.textContent = lang === "de" 
+              ? "Passwort konnte nicht festgelegt werden. Der Link ist möglicherweise abgelaufen."
+              : "Could not set password. The link may have expired.";
             errorEl.style.display = "block";
             submitBtn.disabled = false;
-            submitBtn.textContent = "Passwort setzen";
+            submitBtn.textContent = lang === "de" ? "Passwort festlegen" : "Set password";
           }
         });
       } catch {
@@ -212,9 +239,11 @@ import Layout from "../../../layouts/Layout.astro";
       try {
         await applyActionCode(auth, oobCode);
         showSuccess(
-          "E-Mail wiederhergestellt",
-          "Deine ursprüngliche E-Mail-Adresse wurde wiederhergestellt. Bitte melde dich erneut an.",
-          "/de/signup",
+          lang === "de" ? "E-Mail wiederhergestellt" : "Email recovered",
+          lang === "de"
+            ? "Ihre ursprüngliche E-Mail-Adresse wurde wiederhergestellt. Bitte melden Sie sich erneut an."
+            : "Your original email address has been restored. Please sign in again.",
+          "/signup",
         );
       } catch {
         showView("view-error");

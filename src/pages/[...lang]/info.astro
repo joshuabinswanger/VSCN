@@ -1,0 +1,30 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import InfoPage from "../../components/InfoPage.astro";
+import { useTranslations } from "../../i18n/utils";
+import type { Lang } from "../../i18n/utils";
+
+export function getStaticPaths() {
+  return [
+    { params: { lang: undefined } },
+    { params: { lang: "de" } },
+  ];
+}
+
+const { lang = "en" } = Astro.params;
+const currentLang = (lang || "en") as Lang;
+const t = useTranslations(currentLang);
+
+const title = "Info — VSCN";
+const description = currentLang === "de"
+  ? "Erfahren Sie mehr über das Visual Science Communication Network — was wir aufbauen und wie Sie sich beteiligen können."
+  : "Learn about the Visual Science Communication Network — what we're building and how to get involved.";
+---
+
+<Layout
+  title={title}
+  description={description}
+  lang={currentLang}
+>
+  <InfoPage lang={currentLang} />
+</Layout>

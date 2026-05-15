@@ -1,0 +1,31 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import LandingHero from "../../components/LandingHero.astro";
+import { useTranslations } from "../../i18n/utils";
+import type { Lang } from "../../i18n/utils";
+
+export function getStaticPaths() {
+  return [
+    { params: { lang: undefined } },
+    { params: { lang: "de" } },
+  ];
+}
+
+const { lang = "en" } = Astro.params;
+const currentLang = (lang || "en") as Lang;
+const t = useTranslations(currentLang);
+
+const title = "VSCN — Visual Science Communication Network";
+const description = currentLang === "de" 
+  ? "Ein Zuhause für Illustratoren, Wissenschaftler, Designer und Geschichtenerzähler, die Wissen sichtbar machen. Werden Sie Teil des Visual Science Communication Network."
+  : "A home for illustrators, scientists, designers, and storytellers who make knowledge visible. Join the Visual Science Communication Network.";
+---
+
+<Layout
+  title={title}
+  description={description}
+  fullscreen
+  lang={currentLang}
+>
+  <LandingHero lang={currentLang} />
+</Layout>
