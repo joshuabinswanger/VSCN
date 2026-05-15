@@ -498,16 +498,16 @@ const t = useTranslations(lang);
 <script>
   import { auth } from "../lib/firebase.ts";
   import {
-    updateProfile,
     signOut,
     reauthenticateWithCredential,
     EmailAuthProvider,
     sendEmailVerification,
   } from "firebase/auth";
   import { requireAuth } from "../lib/auth.ts";
-  import { uploadAvatar, deleteAvatar } from "../lib/storage.ts";
-  import { getUser, updateUserProfile, deleteUserData } from "../lib/firestore.ts";
-  import { validateBio, validateAvatar, resizeAvatar, normaliseUrl } from "../lib/validation.ts";
+  import { deleteAvatar } from "../lib/storage.ts";
+  import { getUser, deleteUserData } from "../lib/firestore.ts";
+  import { validateAvatar, resizeAvatar, normaliseUrl } from "../lib/validation.ts";
+  import { handleProfileUpdate, triggerRebuild } from "../lib/profile.ts";
   import { ui } from "../i18n/translations.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
@@ -720,84 +720,33 @@ const t = useTranslations(lang);
       const user = auth.currentUser;
       if (!user) return;
 
-      const name = nameInput.value.trim();
-      const role = roleInput.value.trim();
-      const bio = bioInput.value.trim();
-      const portfolio = portfolioInput.value.trim();
-      const socialMedia = socialMediaInput.value.trim();
-      const openTo = openToSelector?.value ?? [];
-      const phone = phoneInput.value.trim();
-      const tagsPayload = tagSelector?.value ?? [];
-      const bioResult = validateBio(bio);
-
-      if (!bioResult.ok) {
-        saveError.textContent = bioResult.error!;
-        saveError.style.display = "block";
-        return;
-      }
-
       try {
-        let photoURL: string = auth.currentUser?.photoURL ?? "";
-        if (resizedAvatarBlob) {
-          const avatarFile = new File([resizedAvatarBlob], "avatar.jpg", { type: "image/jpeg" });
-          photoURL = await uploadAvatar(user.uid, avatarFile, (pct) => {
+        const { photoURL } = await handleProfileUpdate(
+          user,
+          {
+            displayName: nameInput.value.trim(),
+            role: roleInput.value.trim(),
+            bio: bioInput.value.trim(),
+            portfolio: portfolioInput.value.trim(),
+            socialMedia: socialMediaInput.value.trim(),
+            openTo: openToSelector?.value ?? [],
+            tags: tagSelector?.value ?? [],
+            phone: phoneInput.value.trim(),
+            email: user.email!,
+            resizedAvatarBlob,
+          },
+          (pct) => {
             uploadStatus.textContent = `${s["profile.upload.uploading"]} ${pct}%`;
             uploadStatus.style.display = "block";
-          });
-          uploadStatus.textContent = s["profile.upload.complete"];
-        }
-
-        await updateProfile(user, {
-          displayName: name || null,
-          photoURL: photoURL || null,
-        });
-
-        await user.getIdToken(true);
-        await updateUserProfile(user.uid, {
-          displayName: name,
-          photoURL,
-          role,
-          bio,
-          portfolio,
-          socialMedia,
-          openTo,
-          tags: tagsPayload,
-          phone,
-          email: user.email!,
-          updatedAt: new Date(),
-        });
-
-        // Trigger community page rebuild
-        const ghToken = import.meta.env.PUBLIC_GITHUB_REBUILD_TOKEN;
-        const ghOwner = import.meta.env.PUBLIC_GITHUB_OWNER;
-        const ghRepo = import.meta.env.PUBLIC_GITHUB_REPO;
-        if (ghToken && ghOwner && ghRepo) {
-          try {
-            const res = await fetch(
-              `https://api.github.com/repos/${ghOwner}/${ghRepo}/actions/workflows/firebase-hosting-merge.yml/dispatches`,
-              {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${ghToken}`,
-                  Accept: "application/vnd.github+json",
-                  "X-GitHub-Api-Version": "2022-11-28",
-                },
-                body: JSON.stringify({ ref: "main" }),
-              }
-            );
-            if (!res.ok) {
-              const body = await res.text();
-              console.error(`Rebuild trigger failed: ${res.status}`, body);
-            }
-          } catch (rebuildErr) {
-            console.error("Rebuild trigger error:", rebuildErr);
           }
-        } else {
-          console.warn(
-            "Rebuild skipped: missing PUBLIC_GITHUB_REBUILD_TOKEN / OWNER / REPO env vars"
-          );
+        );
+
+        if (resizedAvatarBlob) {
+          uploadStatus.textContent = s["profile.upload.complete"];
+          currentPhotoURL = photoURL;
         }
 
+        await triggerRebuild();
         saveMsg.style.display = "block";
       } catch (err: unknown) {
         saveError.textContent = err instanceof Error ? err.message : s["profile.save.error"];

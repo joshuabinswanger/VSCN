@@ -544,16 +544,16 @@ const prefix = lang === "de" ? "/de" : "";
 
 <script>
   import { auth } from "../lib/firebase.ts";
-  import { updateProfile, sendEmailVerification } from "firebase/auth";
+  import { sendEmailVerification } from "firebase/auth";
   import { requireAuth } from "../lib/auth.ts";
-  import { uploadAvatar } from "../lib/storage.ts";
-  import { validateBio, validateAvatar, resizeAvatar, normaliseUrl } from "../lib/validation.ts";
+  import { validateAvatar, resizeAvatar, normaliseUrl } from "../lib/validation.ts";
   import {
     getUser,
     updateUser,
     updateUserProfile,
     publishCurrentUserProfile,
   } from "../lib/firestore.ts";
+  import { handleProfileUpdate, triggerRebuild } from "../lib/profile.ts";
   import { ui } from "../i18n/translations.ts";
 
   const STORAGE_KEY = "vscn:onboarding:state";
@@ -644,6 +644,7 @@ const prefix = lang === "de" ? "/de" : "";
         avatarObjectUrl: opts.avatarObjectUrl ?? null,
       });
       setStep(5);
+      await triggerRebuild();
     }
 
     function getInputValue(id: string): string {
@@ -812,23 +813,20 @@ const prefix = lang === "de" ? "/de" : "";
       if (!user) return;
       setBtnState("ob-next-0", true, s["onboarding.nav.next"]);
       try {
-        const nameVal = (document.getElementById("ob-name") as HTMLInputElement).value.trim();
-        const roleVal = (document.getElementById("ob-role") as HTMLInputElement).value.trim();
-        const portfolioVal = (
-          document.getElementById("ob-portfolio") as HTMLInputElement
-        ).value.trim();
-        const socialVal = (document.getElementById("ob-social") as HTMLInputElement).value.trim();
-        const phoneVal = (document.getElementById("ob-phone") as HTMLInputElement).value.trim();
-        if (nameVal) await updateProfile(user, { displayName: nameVal }).catch(() => {});
-        await updateUserProfile(user.uid, {
+        const nameVal = getInputValue("ob-name").trim();
+        const roleVal = getInputValue("ob-role").trim();
+        const portfolioVal = getInputValue("ob-portfolio").trim();
+        const socialVal = getInputValue("ob-social").trim();
+        const phoneVal = getInputValue("ob-phone").trim();
+
+        await handleProfileUpdate(user, {
           displayName: nameVal,
           role: roleVal,
           portfolio: portfolioVal,
           socialMedia: socialVal,
           phone: phoneVal,
           email: user.email!,
-          updatedAt: new Date(),
-        }).catch(() => {});
+        });
       } finally {
         setBtnState("ob-next-0", false, s["onboarding.nav.next"]);
         setStep(1);
@@ -948,30 +946,27 @@ const prefix = lang === "de" ? "/de" : "";
       setBtnState("ob-finish", true, s["onboarding.nav.finish"]);
       setError("");
       try {
-        const bioVal = (document.getElementById("ob-bio") as HTMLTextAreaElement).value.trim();
-        const bioResult = validateBio(bioVal);
-        if (!bioResult.ok) {
-          setError(bioResult.error!);
-          setBtnState("ob-finish", false, s["onboarding.nav.finish"]);
-          return;
-        }
-        let photoURL = user.photoURL ?? "";
+        const bioVal = getInputValue("ob-bio").trim();
         let avatarObjectUrl: string | null = null;
         if (resizedAvatarBlob) {
           avatarObjectUrl = URL.createObjectURL(resizedAvatarBlob);
-          const avatarFile = new File([resizedAvatarBlob], "avatar.jpg", { type: "image/jpeg" });
-          photoURL = await uploadAvatar(user.uid, avatarFile, (pct) => {
+        }
+
+        const { photoURL } = await handleProfileUpdate(
+          user,
+          {
+            bio: bioVal,
+            resizedAvatarBlob,
+          },
+          (pct) => {
             uploadStatus.textContent = `${s["profile.upload.uploading"]} ${pct}%`;
             uploadStatus.style.display = "block";
-          });
-          await updateProfile(user, { photoURL: photoURL || null });
-          await user.getIdToken(true);
-        }
-        await updateUserProfile(user.uid, { bio: bioVal, photoURL, updatedAt: new Date() });
+          }
+        );
 
         await finishToPreview({ bio: bioVal, photoURL, avatarObjectUrl });
-      } catch {
-        setError(s["onboarding.error.save"]);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : s["onboarding.error.save"]);
         setBtnState("ob-finish", false, s["onboarding.nav.finish"]);
       }
     });
