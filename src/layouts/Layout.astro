@@ -1,7 +1,7 @@
 ---
 import { ClientRouter } from "astro:transitions";
 import Navbar from "../components/Navbar.astro";
-import GsapTextHeadline from "../components/GsapTextHeadline.astro";
+import ScrollingBanner from "../components/ScrollingBanner.astro";
 import favicon from "../assets/favicon.png";
 import ogImageAsset from "../assets/OG_Image.png";
 import "../styles/global.css";
@@ -52,7 +52,7 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
   <body>
     <div class="brand-ticker" transition:persist>
       <a href="/" class="brand-link">
-        <GsapTextHeadline />
+        <ScrollingBanner />
       </a>
     </div>
     <div class="page-wrap">
@@ -94,18 +94,10 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
     color: black;
   }
 
-  :global(.brand-ticker .gsap-text-headline) {
-    --gsap-text-headline-width: 900px;
-  }
-
   @media (--bp-mobile) {
     .brand-ticker {
       padding-right: 5px;
       padding-left: 5px;
-    }
-
-    :global(.brand-ticker .gsap-text-headline) {
-      --gsap-text-headline-width: calc(100vw - 10px);
     }
   }
 </style>
