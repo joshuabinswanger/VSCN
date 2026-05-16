@@ -6,9 +6,6 @@ import CommunityGrid from "../../components/CommunityGrid.astro";
 import type { PublicProfileDoc } from "../../lib/firestore.ts";
 import { useTranslations } from "../../i18n/utils";
 import type { Lang } from "../../i18n/utils";
-import { loadEnvFile } from "node:process";
-import { resolve } from "node:path";
-
 export function getStaticPaths() {
   return [
     { params: { lang: undefined } },
@@ -24,7 +21,6 @@ type Member = PublicProfileDoc & { uid: string };
 let members: Member[] = [];
 
 try {
-  loadEnvFile(resolve(process.cwd(), ".env"));
   const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!serviceAccountJson) throw new Error("FIREBASE_SERVICE_ACCOUNT env var not set");
 
