@@ -104,36 +104,6 @@ const memberLabel = members.length === 1 ? t('community.member') : t('community.
 <script>
   import { auth } from "../lib/firebase.ts";
   import { onAuthStateChanged } from "firebase/auth";
-  import { ui } from "../i18n/translations.ts";
-
-  const desktopQuery = window.matchMedia("(width >= 1120px)");
-  let hasDesktopQueryListener = false;
-
-  function collapseMobileBioPanels() {
-    document.querySelectorAll(".member-card-wrap.is-expanded").forEach((wrap) => {
-      wrap.classList.remove("is-expanded");
-    });
-    document.querySelectorAll<HTMLButtonElement>(".member-bio-toggle").forEach((button) => {
-      button.setAttribute("aria-expanded", "false");
-    });
-  }
-
-  function wireBioToggles() {
-    const wrapper = document.querySelector<HTMLElement>(".community-wrapper[data-lang]");
-    const lang = (wrapper?.dataset.lang ?? "en") as "en" | "de";
-    const strings = ui[lang];
-
-    document.querySelectorAll<HTMLButtonElement>(".member-bio-toggle").forEach((toggle) => {
-      toggle.addEventListener("click", () => {
-        const wrap = toggle.closest(".member-card-wrap")!;
-        const expanded = wrap.classList.toggle("is-expanded");
-        toggle.setAttribute("aria-expanded", String(expanded));
-        const name = wrap.querySelector(".member-name")?.textContent ?? "";
-        const label = expanded ? strings["member.hideBio"] : strings["member.showBio"];
-        toggle.setAttribute("aria-label", `${label} ${name}`);
-      });
-    });
-  }
 
   document.addEventListener("astro:page-load", () => {
     const cta = document.getElementById("community-signup-cta");
@@ -142,13 +112,5 @@ const memberLabel = members.length === 1 ? t('community.member') : t('community.
         cta.style.display = user ? "none" : "flex";
       });
     }
-
-    if (!hasDesktopQueryListener) {
-      desktopQuery.addEventListener("change", (event) => {
-        if (!event.matches) collapseMobileBioPanels();
-      });
-      hasDesktopQueryListener = true;
-    }
-    wireBioToggles();
   });
 </script>

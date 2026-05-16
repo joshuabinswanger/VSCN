@@ -42,6 +42,18 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
 
+    match /onboardingRequests/{uid} {
+      // Private onboarding feedback. Users can only access their own request.
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow list: if false;
+
+      allow create, update: if request.auth != null
+                            && request.auth.uid == uid
+                            && validOnboardingRequest(request.resource.data, request.auth);
+
+      allow delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
@@ -49,14 +61,14 @@ service cloud.firestore {
 }
 
 function validPublicProfile(data) {
-  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'tags', 'active', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'primaryAudiences', 'tags', 'active', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data);
 }
 
 function validPrivateUser(data, auth) {
-  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'tags', 'phone', 'email', 'communityGoals', 'onboardingComplete', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'primaryAudiences', 'tags', 'phone', 'email', 'communityGoals', 'onboardingComplete', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data)
@@ -75,11 +87,45 @@ function validPublicFields(data) {
     && (!('portfolio' in data) || (data.portfolio is string && data.portfolio.size() <= 200))
     && (!('socialMedia' in data) || (data.socialMedia is string && data.socialMedia.size() <= 200))
     && (!('openTo' in data) || (data.openTo is list && data.openTo.size() <= 5))
+    && (!('primaryAudiences' in data) || validPrimaryAudiences(data.primaryAudiences))
     && (!('tags' in data) || (data.tags is list && data.tags.size() <= 7))
     && (!('active' in data) || data.active is bool)
     && (!('photoURL' in data) || data.photoURL == ''
         || data.photoURL.matches('https://firebasestorage\\.googleapis\\.com/v0/b/vscn-39508\\.firebasestorage\\.app/.*')
         || data.photoURL.matches('https://storage\\.googleapis\\.com/vscn-39508\\.firebasestorage\\.app/.*'))
+    && (!('createdAt' in data) || data.createdAt is timestamp)
+    && (!('updatedAt' in data) || data.updatedAt is timestamp);
+}
+
+function validPrimaryAudiences(value) {
+  return value is list
+    && value.size() <= 4
+    && (value.size() < 1 || validPrimaryAudienceValue(value[0]))
+    && (value.size() < 2 || validPrimaryAudienceValue(value[1]))
+    && (value.size() < 3 || validPrimaryAudienceValue(value[2]))
+    && (value.size() < 4 || validPrimaryAudienceValue(value[3]));
+}
+
+function validPrimaryAudienceValue(value) {
+  return value is string
+    && (value == 'science'
+        || value == 'public'
+        || value == 'policy-makers'
+        || value == 'education');
+}
+
+function validOnboardingRequest(data, auth) {
+  let allowedKeys = ['userId', 'message', 'lang', 'email', 'displayName', 'createdAt', 'updatedAt'];
+
+  return data.keys().hasOnly(allowedKeys)
+    && data.userId == auth.uid
+    && data.message is string
+    && data.message.size() > 0
+    && data.message.size() <= 1000
+    && data.lang is string
+    && (data.lang == 'en' || data.lang == 'de')
+    && (!('email' in data) || data.email == auth.token.email)
+    && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100))
     && (!('createdAt' in data) || data.createdAt is timestamp)
     && (!('updatedAt' in data) || data.updatedAt is timestamp);
 }

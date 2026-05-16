@@ -76,10 +76,13 @@ const {
   import gsap from "gsap";
 
   const timelines = new WeakMap<HTMLElement, gsap.core.Timeline>();
+  const replayTimeouts = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>();
   const roots = new Set<HTMLElement>();
   const slotCounts = new WeakMap<HTMLElement, number>();
 
-  const words = ["Visual", "VScience", "VSCommunication", "VSCNetwork", "VSCN"];
+  const REPLAY_DELAY_MS = 60_000;
+
+  const words = ["Visual", "Science", "Communication", "Network"];
 
   function measureChRatio(target: HTMLElement): number {
     const probe = document.createElement("span");
@@ -196,6 +199,11 @@ const {
   }
 
   function destroyHeadline(root: HTMLElement) {
+    const t = replayTimeouts.get(root);
+    if (t !== undefined) {
+      clearTimeout(t);
+      replayTimeouts.delete(root);
+    }
     const timeline = timelines.get(root);
     if (timeline) {
       timeline.kill();
@@ -249,7 +257,15 @@ const {
     }
 
     const columnPositions = new Array<number>(slotCount).fill(0);
-    const timeline = gsap.timeline({ repeat: -1 });
+    const timeline = gsap.timeline({
+      repeat: 0,
+      onComplete: () => {
+        const t = setTimeout(() => {
+          if (roots.has(root)) initHeadline(root);
+        }, REPLAY_DELAY_MS);
+        replayTimeouts.set(root, t);
+      },
+    });
 
     timeline.to({}, { duration: holdDuration });
 
@@ -284,7 +300,7 @@ const {
     resetColumns(timeline, target, slotCount);
     timeline.to({}, { duration: 0.3 });
 
-    timeline.timeScale(1.6);
+    timeline.timeScale(1.75);
 
     timelines.set(root, timeline);
     roots.add(root);

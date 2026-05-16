@@ -13,17 +13,7 @@ const t = useTranslations(lang);
 ---
 
 <tag-selector data-lang={lang} data-max-tags={maxTags}>
-  <input
-    id={inputId}
-    type="text"
-    class="input ts-input"
-    placeholder={t("profile.ph.tags")}
-    maxlength="50"
-    autocomplete="off"
-  />
-  <p class="field-note">{t("profile.note.tags")}</p>
   <div class="tag-list ts-selected" aria-live="polite"></div>
-  <p class="ts-error msg-err" hidden></p>
   <div class="tag-groups">
     <details class="tag-group" data-group-key="disciplines">
       <summary class="tag-group-summary">
@@ -50,11 +40,56 @@ const t = useTranslations(lang);
       <div class="tag-suggestion-list" data-tag-group="other"></div>
     </details>
   </div>
+  <div class="ts-input-row">
+    <input
+      id={inputId}
+      type="text"
+      class="input ts-input"
+      placeholder={t("profile.ph.tags")}
+      maxlength="50"
+      autocomplete="off"
+    />
+    <button type="button" class="ts-add-btn" aria-label={t("profile.tag.add")}>+</button>
+  </div>
+  <p class="field-note">{t("profile.note.tags")}</p>
+  <p class="ts-error msg-err" hidden></p>
 </tag-selector>
 
 <style is:global>
   tag-selector {
     display: block;
+  }
+
+  tag-selector .ts-input-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.9rem;
+  }
+
+  tag-selector .ts-input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  tag-selector .ts-add-btn {
+    flex-shrink: 0;
+    padding: 0 1rem;
+    background: #111;
+    color: #fff;
+    border: 1.5px solid #111;
+    border-radius: var(--radius-sm);
+    font-size: 1.3rem;
+    font-weight: 300;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      border-color 0.15s;
+  }
+
+  tag-selector .ts-add-btn:hover {
+    background: #333;
+    border-color: #333;
   }
 
   tag-selector .ts-error {
@@ -72,11 +107,11 @@ const t = useTranslations(lang);
   }
 
   tag-selector .tag-list:not(:empty) {
-    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
   }
 
   tag-selector .tag-chip {
-    font-family: monospace;
+    font-family: "Archivo", sans-serif;
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
@@ -86,7 +121,7 @@ const t = useTranslations(lang);
     background: #111;
     color: #fff;
     font-size: 0.83rem;
-    font-weight: 500;
+    font-weight: 400;
     line-height: 1.25;
     cursor: pointer;
     transition:
@@ -108,7 +143,7 @@ const t = useTranslations(lang);
   }
 
   tag-selector .tag-suggestion-chip {
-    font-family: monospace;
+    font-family: "Archivo", sans-serif;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -119,6 +154,7 @@ const t = useTranslations(lang);
     color: var(--color-muted);
     background: #fff;
     font-size: 0.83rem;
+    font-weight: 400;
     line-height: 1.25;
     text-align: center;
     cursor: pointer;
@@ -446,6 +482,17 @@ const t = useTranslations(lang);
       this.emitChange();
     }
 
+    private async submitInput() {
+      const val = this.autocompleteMatch ?? this.inputEl.value;
+      this.autocompleteMatch = null;
+      if (!val.trim()) return;
+      if (await this.addTag(val)) {
+        this.inputEl.value = "";
+        this.renderSuggestions("");
+      }
+      this.inputEl.focus();
+    }
+
     private attachListeners() {
       this.inputEl.addEventListener("keydown", async (e) => {
         if (e.key === "Backspace" || e.key === "Delete") {
@@ -460,14 +507,13 @@ const t = useTranslations(lang);
         }
         if (e.key !== "Enter") return;
         e.preventDefault();
-        const val = this.autocompleteMatch ?? this.inputEl.value;
-        this.autocompleteMatch = null;
-        if (!val.trim()) return;
-        if (await this.addTag(val)) {
-          this.inputEl.value = "";
-          this.renderSuggestions("");
-        }
+        await this.submitInput();
       });
+
+      const addBtn = this.querySelector<HTMLButtonElement>(".ts-add-btn");
+      if (addBtn) {
+        addBtn.addEventListener("click", () => void this.submitInput());
+      }
 
       this.inputEl.addEventListener("input", () => {
         const raw = this.inputEl.value;

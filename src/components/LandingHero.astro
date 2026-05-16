@@ -6,100 +6,169 @@ interface Props {
   lang?: Lang;
 }
 
-const { lang = 'en' } = Astro.props;
+const { lang = "en" } = Astro.props;
 const t = useTranslations(lang);
+const networkName = "Visual Science Communication Network";
+const connectStatement = t("hero.statement.connect");
+const networkNameIndex = connectStatement.indexOf(networkName);
+const connectBefore = networkNameIndex >= 0 ? connectStatement.slice(0, networkNameIndex) : "";
+const connectAfter =
+  networkNameIndex >= 0 ? connectStatement.slice(networkNameIndex + networkName.length) : "";
 ---
 
-<div class="wrapper" data-lang={lang}>
-  <div class="content">
-    <p class="desc">
-      <strong>VSCN</strong>{t('hero.tagline')}<br /><br />{t('hero.invite')}
+<div class="landing-hero" data-landing-hero data-lang={lang}>
+  <section class="landing-hero__content" aria-labelledby="landing-title">
+    <h1
+      id="landing-title"
+      class="landing-hero__statement landing-hero__statement--primary"
+      data-hero-reveal
+    >
+      {
+        networkNameIndex >= 0 ? (
+          <span>
+            {connectBefore}
+            <strong class="landing-hero__network-name">{networkName}</strong>
+            {connectAfter}
+          </span>
+        ) : (
+          <span>{connectStatement}</span>
+        )
+      }
+    </h1>
+
+    <p class="landing-hero__statement landing-hero__statement--purpose" data-hero-reveal>
+      {t("hero.statement.purpose")}
     </p>
-    <div class="actions">
-      <a id="hero-cta" href="/signup" class="btn-solid btn-join">{t('hero.cta.join')}</a>
+
+    <div class="landing-hero__join" data-hero-reveal>
+      <a id="hero-cta" href={lang === "de" ? "/de/signup" : "/signup"} class="btn-solid btn-join">
+        {t("hero.cta.join")}
+      </a>
     </div>
-  </div>
+  </section>
 </div>
 
 <style>
-  .wrapper {
+  .landing-hero {
     display: grid;
-    grid-template-columns: 1fr;
-    justify-items: center;
     align-items: center;
-    padding-top: 145px;
+    box-sizing: border-box;
+    padding: clamp(3rem, 6vw, 6rem) clamp(1.5rem, 5vw, 5rem) clamp(5rem, 9vw, 8rem);
   }
-  .content {
+
+  .landing-hero__content {
+    width: min(1000px, 100%);
+    margin: 0 auto;
+    display: grid;
+    gap: clamp(1.3rem, 3vw, 2.4rem);
+  }
+
+  .landing-hero__statement {
+    margin: 0;
+    color: var(--color-dark);
+    font-size: clamp(1.55rem, 3vw, 2.8rem);
+    font-weight: 300;
+    line-height: 1.12;
+    letter-spacing: 0;
+  }
+
+  .landing-hero__network-name {
+    font-weight: 700;
+  }
+
+  .landing-hero__statement--primary {
+    max-width: 880px;
+  }
+
+  .landing-hero__statement--purpose {
+    max-width: 880px;
+  }
+
+  .landing-hero__join {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
     align-items: flex-start;
-    gap: 1.5rem;
-    padding: clamp(2rem, 6vw, 7rem);
+    padding-top: 1.5rem;
   }
 
-  .card {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    padding: 2rem 2.25rem;
-    max-width: 520px;
-    width: 100%;
-    background: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1.5px solid rgba(0, 0, 0, 0.07);
-    border-radius: var(--radius-xl);
-    box-shadow: 0 4px 32px rgba(0, 0, 0, 0.06);
+  .btn-join {
+    align-self: center;
   }
 
-  .desc {
-    max-width: 680px;
-    font-weight: 400;
-    font-size: clamp(1rem, 1.4vw, 1.25rem);
-    color: #111;
-    line-height: 1.8;
-  }
-
-  .actions {
-    display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
-  @media (--bp-desktop) {
-    .content {
-      align-items: center;
-      padding: 1.5rem;
-      width: fit-content;
+  @media (max-width: 700px) {
+    .landing-hero {
+      align-items: start;
+      padding: clamp(3rem, 12vw, 5rem) 24px clamp(5rem, 14vw, 7rem);
     }
 
-    .actions {
-      align-self: flex-start;
+    .landing-hero__content {
+      gap: 2rem;
+    }
+
+    .landing-hero__statement--primary,
+    .landing-hero__statement--purpose {
+      font-size: 20px;
+      line-height: 1.18;
+    }
+
+    .landing-hero__join {
+      align-items: flex-start;
+      flex-direction: column;
+      width: max-content;
     }
   }
 </style>
 
 <script>
   import { onAuthStateChanged } from "firebase/auth";
+  import gsap from "gsap";
   import { auth } from "../lib/firebase.ts";
   import { ui } from "../i18n/translations.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
+  let heroTimeline: gsap.core.Timeline | null = null;
+
+  function revealHero(root: HTMLElement) {
+    heroTimeline?.kill();
+    heroTimeline = null;
+
+    const revealItems = Array.from(root.querySelectorAll<HTMLElement>("[data-hero-reveal]"));
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      gsap.set(revealItems, { clearProps: "all" });
+      return;
+    }
+
+    gsap.set(revealItems, { autoAlpha: 0, y: 28 });
+
+    heroTimeline = gsap.timeline({ defaults: { ease: "power3.out" } });
+    heroTimeline
+      .to(revealItems[0], { autoAlpha: 1, y: 0, duration: 0.78 })
+      .to(revealItems[1], { autoAlpha: 1, y: 0, duration: 0.62 }, "-=0.02")
+      .to(revealItems[2], { autoAlpha: 1, y: 0, duration: 0.52 }, "-=0.02");
+  }
 
   document.addEventListener("astro:page-load", () => {
     const cta = document.getElementById("hero-cta") as HTMLAnchorElement | null;
-    if (!cta) return;
+    const wrapper = document.querySelector<HTMLElement>("[data-landing-hero][data-lang]");
+    if (!cta || !wrapper) return;
 
-    const wrapper = document.querySelector<HTMLElement>(".wrapper[data-lang]");
-    const lang = (wrapper?.dataset.lang ?? "en") as "en" | "de";
+    const lang = (wrapper.dataset.lang ?? "en") as "en" | "de";
     const prefix = lang === "de" ? "/de" : "";
     const strings = ui[lang];
+
+    revealHero(wrapper);
 
     unsubscribeAuth?.();
     unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       cta.href = user ? `${prefix}/community` : `${prefix}/signup`;
       cta.textContent = user ? strings["hero.cta.community"] : strings["hero.cta.join"];
     });
+  });
+
+  document.addEventListener("astro:before-swap", () => {
+    heroTimeline?.kill();
+    heroTimeline = null;
+    unsubscribeAuth?.();
+    unsubscribeAuth = null;
   });
 </script>

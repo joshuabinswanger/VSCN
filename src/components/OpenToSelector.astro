@@ -16,7 +16,10 @@ const t = useTranslations(lang);
     <!-- Buttons rendered dynamically -->
   </div>
   <div id="openTo-custom-list" class="openTo-custom-list"></div>
-  <input id="openTo-input" type="text" class="input" placeholder={t("profile.openTo.custom.ph")} />
+  <div class="openTo-input-row">
+    <input id="openTo-input" type="text" class="input" placeholder={t("profile.openTo.custom.ph")} />
+    <button type="button" class="openTo-add-btn" aria-label="Add custom option">+</button>
+  </div>
 </open-to-selector>
 
 <style is:global>
@@ -74,18 +77,58 @@ const t = useTranslations(lang);
     display: none;
   }
 
+  open-to-selector.open-to-selector .openTo-input-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  open-to-selector.open-to-selector .openTo-input-row .input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  open-to-selector.open-to-selector .openTo-add-btn {
+    flex-shrink: 0;
+    padding: 0 1rem;
+    background: #111;
+    color: #fff;
+    border: 1.5px solid #111;
+    border-radius: var(--radius-sm);
+    font-size: 1.3rem;
+    font-weight: 300;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      border-color 0.15s;
+  }
+
+  open-to-selector.open-to-selector .openTo-add-btn:hover {
+    background: #333;
+    border-color: #333;
+  }
+
   open-to-selector.open-to-selector button.openTo-custom-chip {
-    font-family: monospace;
+    font-family: inherit;
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.35rem 0.65rem;
-    border-radius: var(--radius-sm);
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
     border: 1.5px solid #111;
     background: #111;
     color: #fff;
-    font-size: 0.8rem;
+    font-size: 0.88rem;
     cursor: pointer;
+    transition:
+      background 0.15s,
+      border-color 0.15s;
+  }
+
+  open-to-selector.open-to-selector button.openTo-custom-chip:hover {
+    background: #333;
+    border-color: #333;
   }
 
   open-to-selector.open-to-selector button.openTo-custom-chip span {
@@ -118,10 +161,9 @@ const t = useTranslations(lang);
       }
 
       const openToInput = this.querySelector<HTMLInputElement>("#openTo-input");
-      openToInput?.addEventListener("keydown", (event) => {
-        if (event.key !== "Enter") return;
-        event.preventDefault();
 
+      const submitInput = () => {
+        if (!openToInput) return;
         const value = openToInput.value.trim();
         if (
           !value ||
@@ -130,11 +172,20 @@ const t = useTranslations(lang);
         ) {
           return;
         }
-
         this.customOpenTo = [...this.customOpenTo, value];
         openToInput.value = "";
         this.renderCustomOpenTo();
+        openToInput.focus();
+      };
+
+      openToInput?.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        submitInput();
       });
+
+      this.querySelector<HTMLButtonElement>(".openTo-add-btn")
+        ?.addEventListener("click", submitInput);
     }
 
     get value(): string[] {

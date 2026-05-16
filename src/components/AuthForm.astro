@@ -46,6 +46,7 @@ const t = useTranslations(lang);
       />
     </div>
     <p id="auth-error" class="msg-err" style="display:none;"></p>
+    <p id="auth-status" class="auth-status" aria-live="polite" style="display:none;"></p>
 
     <div class="auth-footer">
       <p class="auth-sub already-have">
@@ -179,6 +180,12 @@ const t = useTranslations(lang);
     margin-top: 0;
   }
 
+  .auth-status {
+    margin: -0.5rem 0 0;
+    font-size: 0.88rem;
+    color: var(--color-muted);
+  }
+
   @media (max-width: 520px) {
     .auth-footer {
       flex-direction: column;
@@ -206,7 +213,6 @@ const t = useTranslations(lang);
   import { ui } from "../i18n/translations.ts";
 
   let isLogin = false;
-  let lastSubmit = 0;
   let isSubmitting = false;
   let unsubscribeAuth: (() => void) | null = null;
 
@@ -220,10 +226,11 @@ const t = useTranslations(lang);
     const s = ui[lang];
 
     const toggleLink = document.getElementById("toggle-link")!;
-    const submitBtn = document.getElementById("submit-btn")!;
+    const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
     const authTitle = document.getElementById("auth-title")!;
     const authSub = document.querySelector<HTMLElement>(".auth-sub")!;
     const errorEl = document.getElementById("auth-error")!;
+    const statusEl = document.getElementById("auth-status")!;
     const forgotLink = document.getElementById("forgot-link") as HTMLButtonElement;
     const forgotSection = document.getElementById("forgot-section")!;
     const forgotEmailInput = document.getElementById("forgot-email") as HTMLInputElement;
@@ -247,6 +254,7 @@ const t = useTranslations(lang);
       forgotEmailInput.value = (document.getElementById("email") as HTMLInputElement).value;
       forgotError.style.display = "none";
       forgotSuccess.style.display = "none";
+      statusEl.style.display = "none";
       forgotSubmit.disabled = false;
       forgotSubmit.textContent = s["auth.reset.send"];
     }
@@ -259,7 +267,10 @@ const t = useTranslations(lang);
     }
 
     function updateView() {
-      submitBtn.textContent = isLogin ? s["auth.submit.login"] : s["auth.submit.signup"];
+      if (!isSubmitting) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = isLogin ? s["auth.submit.login"] : s["auth.submit.signup"];
+      }
       toggleLink.textContent = isLogin ? s["auth.toggle.toSignup"] : s["auth.toggle.toLogin"];
       authTitle.textContent = isLogin ? s["auth.title.login"] : s["auth.title.signup"];
       forgotLink.style.display = isLogin ? "inline" : "none";
@@ -270,8 +281,30 @@ const t = useTranslations(lang);
       }
     }
 
+    function setStatus(message = "") {
+      statusEl.textContent = message;
+      statusEl.style.display = message ? "block" : "none";
+    }
+
+    function setSubmitState(submitting: boolean) {
+      isSubmitting = submitting;
+      form.setAttribute("aria-busy", submitting ? "true" : "false");
+      submitBtn.disabled = submitting;
+      if (submitting) {
+        submitBtn.textContent = isLogin
+          ? s["auth.submit.loginLoading"]
+          : s["auth.submit.signupLoading"];
+        setStatus(isLogin ? s["auth.status.login"] : s["auth.status.signup"]);
+      } else {
+        submitBtn.textContent = isLogin ? s["auth.submit.login"] : s["auth.submit.signup"];
+        setStatus();
+      }
+    }
+
     // Reset state on each page load
     isLogin = (wrap as HTMLElement).dataset.initialMode === 'login';
+    isSubmitting = false;
+    form.setAttribute("aria-busy", "false");
     updateView();
     forgotSection.style.display = "none";
     form.style.display = "grid";
@@ -312,27 +345,23 @@ const t = useTranslations(lang);
       isLogin = !isLogin;
       updateView();
       errorEl.style.display = "none";
+      setStatus();
     });
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      errorEl.style.display = "none";
+      if (isSubmitting) return;
 
-      const now = Date.now();
-      if (now - lastSubmit < 5000) {
-        errorEl.textContent = s["auth.error.wait"];
-        errorEl.style.display = "block";
-        return;
-      }
-      lastSubmit = now;
+      errorEl.style.display = "none";
+      setSubmitState(true);
 
       const email = (document.getElementById("email") as HTMLInputElement).value;
       const password = (document.getElementById("password") as HTMLInputElement).value;
 
       try {
-        isSubmitting = true;
         if (isLogin) {
           await signInWithEmailAndPassword(auth, email, password);
+          setStatus(s["auth.status.redirecting"]);
           window.location.href = `${prefix}/profile`;
         } else {
           const { user } = await createUserWithEmailAndPassword(auth, email, password);
@@ -341,10 +370,11 @@ const t = useTranslations(lang);
             createdAt: new Date(),
           });
           await sendEmailVerification(user);
+          setStatus(s["auth.status.redirecting"]);
           window.location.href = `${prefix}/onboarding`;
         }
       } catch (err: unknown) {
-        isSubmitting = false;
+        setSubmitState(false);
         const code =
           typeof err === "object" && err !== null && "code" in err
             ? String((err as { code: unknown }).code)

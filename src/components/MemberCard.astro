@@ -30,114 +30,134 @@ const t = useTranslations(lang);
 const displayName = m?.displayName || "Anonymous";
 const portfolioHref = normaliseUrl(m?.portfolio ?? "");
 const socialHref = normaliseUrl(m?.socialMedia ?? "");
-const bioId = m ? `member-bio-${m.uid}` : undefined;
+const bioId = preview ? "preview-bio" : m ? `member-bio-${m.uid}` : undefined;
 const avatarSrc = stripStorageToken(m?.photoURL ?? "");
 ---
 
-{
-  preview ? (
-    <article id="preview-card" class="member-card member-card--preview">
-      <div class="member-avatar-wrap">
-        <img id="preview-avatar-img" class="member-avatar" src="" alt="" style="display:none" />
-        <div id="preview-avatar-ph" class="member-avatar member-avatar--placeholder">
-          ?
-        </div>
-      </div>
-      <div class="member-info">
-        <div id="preview-name" class="member-name" />
-        <div id="preview-role" class="member-role" style="display:none" />
-        <a
-          id="preview-portfolio"
-          class="member-portfolio"
-          href="#"
-          target="_blank"
-          rel="noopener noreferrer"
-          style="display:none"
+<div class:list={["member-card-wrap", preview && "member-card-wrap--preview"]}>
+  <article id={preview ? "preview-card" : undefined} class:list={["member-card", preview && "member-card--preview"]}>
+    <div class="member-avatar-wrap">
+      {preview ? (
+        <>
+          <img
+            id="preview-avatar-img"
+            class="member-avatar"
+            src=""
+            alt=""
+            width="80"
+            height="80"
+            hidden
+          />
+          <div id="preview-avatar-ph" class="member-avatar member-avatar--placeholder">
+            ?
+          </div>
+        </>
+      ) : avatarSrc ? (
+        <img
+          class="member-avatar"
+          src={avatarSrc}
+          alt={displayName}
+          width="80"
+          height="80"
+          loading="lazy"
         />
-      </div>
-      <div aria-hidden="true" />
-      <p id="preview-bio" class="member-bio" style="display:none" />
-    </article>
-  ) : (
-    <div class="member-card-wrap">
-      <article class="member-card">
-        <div class="member-avatar-wrap">
-          {avatarSrc ? (
-            <img
-              class="member-avatar"
-              src={avatarSrc}
-              alt={displayName}
-              width="80"
-              height="80"
-              loading="lazy"
-            />
-          ) : (
-            <div class="member-avatar member-avatar--placeholder">
-              {displayName[0]?.toUpperCase() ?? "?"}
-            </div>
-          )}
+      ) : (
+        <div class="member-avatar member-avatar--placeholder">
+          {displayName[0]?.toUpperCase() ?? "?"}
         </div>
-
-        <div class="member-info">
-          <div class="member-name">{displayName}</div>
-          {m?.role && <div class="member-role">{m.role}</div>}
-          {(portfolioHref || socialHref) && (
-            <div class="member-links">
-              {portfolioHref && (
-                <a
-                  class="member-portfolio"
-                  href={portfolioHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {(() => {
-                    const p = (m?.portfolio ?? "").replace(/^www\./i, "");
-                    const limit = socialHref ? 13 : 17;
-                    return p.length > limit ? "portfolio" : p;
-                  })()}
-                </a>
-              )}
-              {portfolioHref && socialHref && (
-                <span class="member-links-sep" aria-hidden="true">
-                  |
-                </span>
-              )}
-              {socialHref && (
-                <a
-                  class="member-social"
-                  href={socialHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  social
-                </a>
-              )}
-            </div>
-          )}
-        </div>
-
-        {m?.bio ? (
-          <button
-            class="member-bio-toggle"
-            type="button"
-            aria-expanded="false"
-            aria-controls={bioId}
-            aria-label={`${t('member.showBio')} ${displayName}`}
-          >
-            <img class="member-bio-arrow" src={downArrowUrl.src} alt="" aria-hidden="true" />
-          </button>
-        ) : (
-          <div aria-hidden="true" />
-        )}
-      </article>
-      {m?.bio && (
-        <p id={bioId} class="member-bio">
-          {m.bio}
-        </p>
       )}
     </div>
-  )
-}
+
+    <div class="member-info">
+      <div id={preview ? "preview-name" : undefined} class="member-name">{displayName}</div>
+      {preview ? (
+        <div id="preview-role" class="member-role" hidden />
+      ) : (
+        m?.role && <div class="member-role">{m.role}</div>
+      )}
+      {preview ? (
+        <div id="preview-links" class="member-links" hidden>
+          <a
+            id="preview-portfolio"
+            class="member-portfolio"
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+            hidden
+          />
+          <span id="preview-links-sep" class="member-links-sep" aria-hidden="true" hidden>
+            |
+          </span>
+          <a
+            id="preview-social"
+            class="member-social"
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+            hidden
+          >
+            social
+          </a>
+        </div>
+      ) : (
+        (portfolioHref || socialHref) && (
+          <div class="member-links">
+            {portfolioHref && (
+              <a
+                class="member-portfolio"
+                href={portfolioHref}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {(() => {
+                  const p = (m?.portfolio ?? "").replace(/^www\./i, "");
+                  const limit = socialHref ? 13 : 17;
+                  return p.length > limit ? "portfolio" : p;
+                })()}
+              </a>
+            )}
+            {portfolioHref && socialHref && (
+              <span class="member-links-sep" aria-hidden="true">
+                |
+              </span>
+            )}
+            {socialHref && (
+              <a
+                class="member-social"
+                href={socialHref}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                social
+              </a>
+            )}
+          </div>
+        )
+      )}
+    </div>
+
+    {preview || m?.bio ? (
+      <button
+        id={preview ? "preview-bio-toggle" : undefined}
+        class="member-bio-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls={bioId}
+        aria-label={`${t('member.showBio')} ${displayName}`}
+        hidden={preview}
+      >
+        <img class="member-bio-arrow" src={downArrowUrl.src} alt="" aria-hidden="true" />
+      </button>
+    ) : (
+      <div aria-hidden="true" />
+    )}
+  </article>
+  {(preview || m?.bio) && (
+    <p id={bioId} class="member-bio" hidden={preview}>
+      {m?.bio}
+    </p>
+  )}
+</div>
 
 <style is:global>
   .member-card {
@@ -177,11 +197,19 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
       filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.07));
     }
 
-    .member-card-wrap:has(.member-bio):hover .member-card,
-    .member-card-wrap:has(.member-bio):focus-within .member-card {
+    .member-card-wrap:has(.member-bio:not([hidden])):hover .member-card,
+    .member-card-wrap:has(.member-bio:not([hidden])):focus-within .member-card {
       border-bottom-right-radius: 0;
       border-bottom-left-radius: 0;
     }
+  }
+
+  .member-card-wrap--preview {
+    max-width: 360px;
+  }
+
+  .member-card-wrap [hidden] {
+    display: none !important;
   }
 
   .member-avatar-wrap {
@@ -332,7 +360,7 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
     border-bottom-left-radius: 0;
   }
 
-  .member-card-wrap.is-expanded .member-bio {
+  .member-card-wrap.is-expanded .member-bio:not([hidden]) {
     max-height: 200px;
     opacity: 1;
     padding-top: 8px;
@@ -373,8 +401,8 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
       background: #ffffff;
     }
 
-    .member-card-wrap:hover .member-bio,
-    .member-card-wrap:focus-within .member-bio {
+    .member-card-wrap:hover .member-bio:not([hidden]),
+    .member-card-wrap:focus-within .member-bio:not([hidden]) {
       opacity: 1;
       visibility: visible;
       transform: translateY(0);
@@ -385,3 +413,52 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
     }
   }
 </style>
+
+<script>
+  import { ui } from "../i18n/translations.ts";
+
+  const desktopQuery = window.matchMedia("(width >= 1120px)");
+  let hasDesktopQueryListener = false;
+
+  function collapseMobileBioPanels() {
+    document.querySelectorAll(".member-card-wrap.is-expanded").forEach((wrap) => {
+      wrap.classList.remove("is-expanded");
+    });
+    document.querySelectorAll<HTMLButtonElement>(".member-bio-toggle").forEach((button) => {
+      button.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  function getCardLanguage(toggle: HTMLButtonElement): "en" | "de" {
+    const scoped = toggle.closest<HTMLElement>("[data-lang]")?.dataset.lang;
+    const pageLang = document.documentElement.lang;
+    return scoped === "de" || pageLang === "de" ? "de" : "en";
+  }
+
+  function wireBioToggles() {
+    document.querySelectorAll<HTMLButtonElement>(".member-bio-toggle").forEach((toggle) => {
+      if (toggle.dataset.bioToggleWired === "true") return;
+      toggle.dataset.bioToggleWired = "true";
+      toggle.addEventListener("click", () => {
+        const wrap = toggle.closest(".member-card-wrap");
+        if (!wrap) return;
+        const expanded = wrap.classList.toggle("is-expanded");
+        toggle.setAttribute("aria-expanded", String(expanded));
+        const name = wrap.querySelector(".member-name")?.textContent ?? "";
+        const strings = ui[getCardLanguage(toggle)];
+        const label = expanded ? strings["member.hideBio"] : strings["member.showBio"];
+        toggle.setAttribute("aria-label", `${label} ${name}`);
+      });
+    });
+  }
+
+  document.addEventListener("astro:page-load", () => {
+    if (!hasDesktopQueryListener) {
+      desktopQuery.addEventListener("change", (event) => {
+        if (!event.matches) collapseMobileBioPanels();
+      });
+      hasDesktopQueryListener = true;
+    }
+    wireBioToggles();
+  });
+</script>

@@ -7,26 +7,26 @@ export const ui: Record<string, Record<string, string>> = {
     "nav.profile": "PROFILE",
 
     // LandingHero
-    "hero.tagline":
-      " — Visual Science Communication Network — brings together illustrators, scientists, designers, and storytellers dedicated to the art of making knowledge visible. We are building a home for people to connect, share, and celebrate the power of visualization.",
-    "hero.invite": "If this sounds like you, we'd love to have you with us.",
-    "hero.cta.join": "Join the Network",
+    "hero.statement.connect":
+      "The Visual Science Communication Network brings together everyone who turns knowledge into visual stories.",
+    "hero.statement.purpose":
+      "A growing community of illustrators, designers, and scientists — connected through a shared directory, events, and showcases.",
+    "hero.cta.join": "Join our community",
     "hero.cta.community": "Community",
 
     // InfoPage
     "info.intro":
-      " — Visual Science Communication Network — is a growing network for people who want to make science more visual, accessible, and engaging. It brings together scientists, illustrators, designers, communicators, and anyone working where knowledge meets visual culture.",
+      "The Visual Science Communication Network — VSCN, pronounced “Vision” — connects people passionate about visualizing knowledge.",
     "info.p2":
-      "By growing this community, we hope to encourage exchange, make collaboration easier, and create a place where people can find partners for visual science communication projects.",
-    "info.h2.building": "What we're building toward",
-    "info.li.1": "A directory of science communicators and illustrators you can actually browse",
-    "info.li.2": "Events, online and in person, for the community to meet and collaborate",
-    "info.li.3": "A place to surface and celebrate strong visual science communication",
-    "info.li.4": "Connections between the sciences, design, illustration, and storytelling",
-    "info.h2.started": "We just got started",
-    "info.p3":
-      "This is early days. If you want to help build VSCN, whether through design, development, community organising, or simply by sharing ideas, please reach out. The more people who shape this, the better it will become.",
-    "info.contact": "Get in touch via",
+      "Science shapes our public discourse and fuels our understanding of the world, yet it too often remains locked behind dense data. We believe that turning research into beautiful visual stories is the key to unlocking that knowledge for everyone.",
+    "info.h2.building": "What We’re Building",
+    "info.li.1": "Building a comprehensive registry of illustrators and designers.",
+    "info.li.2": "Organizing events for and about visual science communication.",
+    "info.li.3": "Showcasing and celebrating outstanding visual storytelling.",
+    "info.li.4": "Creating stronger links between the sciences, illustration, and design.",
+    "info.h2.started": "We’re in the early stages",
+    "info.p4": "If you’d like to help build and shape this community, feel free to reach out:",
+    "info.contact": "Contact",
 
     // CommunityGrid
     "community.member": "member",
@@ -45,6 +45,11 @@ export const ui: Record<string, Record<string, string>> = {
     "auth.toggle.toSignup": "Sign Up",
     "auth.submit.signup": "Sign Up",
     "auth.submit.login": "Log In",
+    "auth.submit.signupLoading": "Creating account...",
+    "auth.submit.loginLoading": "Logging in...",
+    "auth.status.signup": "Creating your account...",
+    "auth.status.login": "Logging you in...",
+    "auth.status.redirecting": "Redirecting...",
     "auth.alreadyHave": "",
     "auth.noAccount": "",
     "auth.forgot": "Forgot?",
@@ -95,10 +100,16 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.openTo.offering": "Offer services",
     "profile.openTo.seeking": "Find services",
     "profile.openTo.networking": "Network & collaborate",
-    "profile.openTo.custom.ph": "Something else? Type and press Enter",
+    "profile.openTo.custom.ph": "Something else? Add a custom option…",
+    "profile.primaryAudience.legend": "Primary target audiences",
+    "profile.primaryAudience.science": "Science",
+    "profile.primaryAudience.public": "Public",
+    "profile.primaryAudience.policyMakers": "Policy makers",
+    "profile.primaryAudience.education": "Education",
     "profile.label.tags": "Tags",
-    "profile.ph.tags": "Add a tag and press Enter",
-    "profile.note.tags": "Up to 7 tags. Press Enter to add a new tag.",
+    "profile.ph.tags": "Add a custom tag…",
+    "profile.note.tags": "Up to 7 tags.",
+    "profile.tag.add": "Add tag",
     "profile.browseTags": "Browse tags",
     "profile.browseAllTags": "Browse all tags",
     "profile.hideTags": "Hide tags",
@@ -129,40 +140,13 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.reauth.error": "Incorrect password. Please try again.",
     "profile.save.error": "Could not save changes.",
 
-    // Auth action page
-    "action.loading": "Please wait…",
-    "action.reset.title": "Set a new password",
-    "action.reset.newLabel": "New password",
-    "action.reset.confirmLabel": "Confirm password",
-    "action.reset.submit": "Set password",
-    "action.reset.saving": "Saving…",
-    "action.success.link": "Continue",
-    "action.error.title": "Link expired",
-    "action.error.sub":
-      "This link is no longer valid. It may have already been used or has expired.",
-    "action.error.back": "Back to sign up",
-    "action.verified.title": "Email verified!",
-    "action.verified.sub": "Your account is now active. Continue to the community.",
-    "action.pwUpdated.title": "Password updated!",
-    "action.pwUpdated.sub": "You can now sign in with your new password.",
-    "action.emailRecovered.title": "Email recovered",
-    "action.emailRecovered.sub":
-      "Your original email address has been restored. Please sign in again.",
-    "action.error.pwMismatch": "Passwords don't match.",
-    "action.error.pwShort": "Password must be at least 6 characters.",
-    "action.error.pwFailed": "Could not set password. The link may have expired.",
-
     // Onboarding
     "onboarding.step1.title": "About you",
     "onboarding.step1.sub": "Tell us the basics to get your profile started.",
     "onboarding.step2.title": "What are you looking for?",
     "onboarding.step2.sub": "Help us understand what you want from VSCN.",
-    "onboarding.label.goals": "I'm looking for…",
-    "onboarding.goal.networking": "Networking",
-    "onboarding.goal.portfolio": "Portfolio showcase",
-    "onboarding.goal.events": "Events",
-    "onboarding.goal.scivis": "Information about science visualization",
-    "onboarding.goal.custom.ph": "Something else? Type and press Enter",
+    "onboarding.request.label": "What would you like to see from this platform?",
+    "onboarding.request.helper": "Share requests, ideas, needs, or problems VSCN could help with.",
     "onboarding.bridge.title": "Basic profile complete!",
     "onboarding.bridge.sub": "For a more rounded profile, consider adding tags and a bio.",
     "onboarding.bridge.continue": "Continue",
@@ -187,7 +171,7 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.done.goCommunity": "Go to community",
 
     // Signup CTA
-    "signup.cta.info": "Join the Network",
+    "signup.cta.info": "Join our community",
     "signup.cta.community": "Join the Community",
   },
   de: {
@@ -198,29 +182,26 @@ export const ui: Record<string, Record<string, string>> = {
     "nav.profile": "PROFIL",
 
     // LandingHero
-    "hero.tagline":
-      " — Visual Science Communication Network — vernetzt Illustrator:innen, Wissenschaftler:innen, Designer:innen und Geschichtenerzähler:innen, die sich der Kunst widmen, Wissen sichtbar zu machen. Wir schaffen einen Ort, an dem Menschen sich verbinden, austauschen und die Kraft der Visualisierung erleben können.",
-    "hero.invite": "Wenn du dich angesprochen fühlst, freuen wir uns auf dich.",
-    "hero.cta.join": "Dem Netzwerk beitreten",
+    "hero.statement.connect":
+      "Das Visual Science Communication Network — VSCN — verbindet Menschen, die mit Leidenschaft Wissen visualisieren.",
+    "hero.statement.purpose":
+      "Unser Ziel ist einfach: komplexe Wissenschaft in fesselnde visuelle Geschichten verwandeln.",
+    "hero.cta.join": "Werde Teil unserer Community",
     "hero.cta.community": "Community",
 
     // InfoPage
     "info.intro":
-      " — Visual Science Communication Network — ist ein wachsendes Netzwerk für Menschen, die Wissenschaft visueller, zugänglicher und ansprechender machen wollen. Es bringt Wissenschaftler:innen, Illustrator:innen, Designer:innen, Kommunikator:innen und alle zusammen, die dort arbeiten, wo Wissen auf visuelle Kultur trifft.",
+      "Das Visual Science Communication Network — VSCN, ausgesprochen „Vision“ — verbindet Menschen, die mit Leidenschaft Wissen visualisieren.",
     "info.p2":
-      "Indem wir diese Gemeinschaft aufbauen, hoffen wir, den Austausch zu fördern, die Zusammenarbeit zu erleichtern und einen Ort zu schaffen, an dem Menschen Partner:innen für Projekte der visuellen Wissenschaftskommunikation finden können.",
+      "Wissenschaft prägt unseren öffentlichen Diskurs und unser Verständnis der Welt, bleibt aber zu oft hinter dichten Daten verborgen. Wir glauben, dass die Übersetzung von Forschung in schöne visuelle Geschichten der Schlüssel ist, um dieses Wissen für alle zugänglich zu machen.",
     "info.h2.building": "Was wir aufbauen",
-    "info.li.1":
-      "Ein Verzeichnis von Wissenschaftskommunikator:innen und Illustrator:innen, das wirklich durchstöbert werden kann",
-    "info.li.2":
-      "Veranstaltungen, online und vor Ort, bei denen sich die Community treffen und zusammenarbeiten kann",
-    "info.li.3":
-      "Ein Ort, um starke visuelle Wissenschaftskommunikation sichtbar zu machen und zu feiern",
-    "info.li.4": "Verbindungen zwischen den Wissenschaften, Design, Illustration und Storytelling",
-    "info.h2.started": "Wir haben gerade erst begonnen",
-    "info.p3":
-      "Das sind noch frühe Tage. Wenn du VSCN mitgestalten möchtest — durch Design, Entwicklung, Community-Aufbau oder einfach durch das Teilen von Ideen — melde dich gerne. Je mehr Menschen daran mitwirken, desto besser wird es werden.",
-    "info.contact": "Kontakt via",
+    "info.li.1": "Ein umfassendes Verzeichnis von Illustrator:innen und Designer:innen aufbauen.",
+    "info.li.2": "Veranstaltungen für und über visuelle Wissenschaftskommunikation organisieren.",
+    "info.li.3": "Herausragendes visuelles Storytelling zeigen und feiern.",
+    "info.li.4": "Stärkere Verbindungen zwischen Wissenschaften, Illustration und Design schaffen.",
+    "info.h2.started": "Wir stehen noch am Anfang",
+    "info.p4": "Wenn du diese Community mit aufbauen und gestalten möchtest, melde dich gerne:",
+    "info.contact": "Kontakt",
 
     // CommunityGrid
     "community.member": "Mitglied",
@@ -239,6 +220,11 @@ export const ui: Record<string, Record<string, string>> = {
     "auth.toggle.toSignup": "Sign Up",
     "auth.submit.signup": "Sign Up",
     "auth.submit.login": "Anmelden",
+    "auth.submit.signupLoading": "Konto wird erstellt...",
+    "auth.submit.loginLoading": "Wird angemeldet...",
+    "auth.status.signup": "Dein Konto wird erstellt...",
+    "auth.status.login": "Du wirst angemeldet...",
+    "auth.status.redirecting": "Weiterleitung...",
     "auth.alreadyHave": "",
     "auth.noAccount": "",
     "auth.forgot": "Vergessen?",
@@ -292,10 +278,16 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.openTo.offering": "Dienste anzubieten",
     "profile.openTo.seeking": "Dienste zu finden",
     "profile.openTo.networking": "Netzwerken & zusammenzuarbeiten",
-    "profile.openTo.custom.ph": "Etwas anderes? Tippen und Enter drücken",
+    "profile.openTo.custom.ph": "Etwas anderes? Eigene Option hinzufügen…",
+    "profile.primaryAudience.legend": "Primäre Zielgruppen",
+    "profile.primaryAudience.science": "Wissenschaft",
+    "profile.primaryAudience.public": "Öffentlichkeit",
+    "profile.primaryAudience.policyMakers": "Politische Entscheidungsträger:innen",
+    "profile.primaryAudience.education": "Bildung",
     "profile.label.tags": "Tags",
-    "profile.ph.tags": "Tag hinzufügen und Enter drücken",
-    "profile.note.tags": "Bis zu 7 Tags. Enter drücken, um einen neuen Tag hinzuzufügen.",
+    "profile.ph.tags": "Eigenen Tag hinzufügen…",
+    "profile.note.tags": "Bis zu 7 Tags.",
+    "profile.tag.add": "Tag hinzufügen",
     "profile.browseTags": "Tags durchsuchen",
     "profile.browseAllTags": "Alle Tags durchsuchen",
     "profile.hideTags": "Tags ausblenden",
@@ -332,12 +324,9 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.step1.sub": "Erzähl uns das Wichtigste, um dein Profil zu starten.",
     "onboarding.step2.title": "Was suchst du?",
     "onboarding.step2.sub": "Hilf uns zu verstehen, was du von VSCN erwartest.",
-    "onboarding.label.goals": "Ich suche…",
-    "onboarding.goal.networking": "Netzwerken",
-    "onboarding.goal.portfolio": "Portfolio präsentieren",
-    "onboarding.goal.events": "Veranstaltungen",
-    "onboarding.goal.scivis": "Informationen zur Wissenschaftsvisualisierung",
-    "onboarding.goal.custom.ph": "Etwas anderes? Tippen und Enter drücken",
+    "onboarding.request.label": "Was würdest du dir von dieser Plattform wünschen?",
+    "onboarding.request.helper":
+      "Teile Wünsche, Ideen, Bedürfnisse oder Probleme, bei denen VSCN helfen könnte.",
     "onboarding.bridge.title": "Basis-Profil vollständig!",
     "onboarding.bridge.sub":
       "Für ein vollständigeres Profil kannst du noch Tags und eine Bio hinzufügen.",
@@ -363,7 +352,7 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.done.goCommunity": "Zur Community",
 
     // Signup CTA
-    "signup.cta.info": "Trete dem Netzwerk bei",
+    "signup.cta.info": "Werde Teil unserer Community",
     "signup.cta.community": "Join der Community",
   },
 };

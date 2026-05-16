@@ -6,38 +6,36 @@ interface Props {
   lang?: Lang;
 }
 
-const { lang = 'en' } = Astro.props;
+const { lang = "en" } = Astro.props;
 const t = useTranslations(lang);
 ---
 
 <div class="info-page">
   <section class="info-section">
-    <p>
-      <strong>VSCN</strong>{t('info.intro')}
-    </p>
-    <p>{t('info.p2')}</p>
+    <p>{t("info.intro")}</p>
+    <p>{t("info.p2")}</p>
   </section>
 
   <section class="info-section">
-    <h2 class="info-heading">{t('info.h2.building')}</h2>
+    <h2 class="info-heading">{t("info.h2.building")}</h2>
     <ul class="info-list">
-      <li>{t('info.li.1')}</li>
-      <li>{t('info.li.2')}</li>
-      <li>{t('info.li.3')}</li>
-      <li>{t('info.li.4')}</li>
+      <li>{t("info.li.1")}</li>
+      <li>{t("info.li.2")}</li>
+      <li>{t("info.li.3")}</li>
+      <li>{t("info.li.4")}</li>
     </ul>
   </section>
 
   <section class="info-section">
-    <h2 class="info-heading">{t('info.h2.started')}</h2>
-    <p>{t('info.p3')}</p>
+    <h2 class="info-heading">{t("info.h2.started")}</h2>
     <p class="info-contact">
-      {t('info.contact')} <a href="mailto:info@vscn.ch"><!--email_off-->info@vscn.ch<!--/email_off--></a>
+      {t("info.p4")}
+      <a href="mailto:info@vscn.ch"><!--email_off-->info@vscn.ch<!--/email_off--></a>
     </p>
   </section>
 
   <section id="info-signup-cta" class="info-signup-cta" style="display:none;">
-    <a href={lang === 'de' ? '/de/signup' : '/signup'} class="btn-solid">{t('signup.cta.info')}</a>
+    <a href={lang === "de" ? "/de/signup" : "/signup"} class="btn-solid">{t("signup.cta.info")}</a>
   </section>
 </div>
 
@@ -82,14 +80,13 @@ const t = useTranslations(lang);
   .info-section {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
     padding-bottom: 1rem;
   }
 
   .info-heading {
     font-family: "Archivo", sans-serif;
     font-size: 0.85rem;
-    font-weight: 700;
+    font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--color-dark);
@@ -115,27 +112,26 @@ const t = useTranslations(lang);
   }
 
   .info-contact {
-    display: inline-block;
-    font-family: "Archivo", sans-serif;
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--color-dark);
-    text-decoration: none;
-    border-bottom: 1.5px solid var(--color-dark);
-    padding-top: 3rem;
-    padding-bottom: 1px;
-    transition: opacity 0.15s;
-    width: fit-content;
+    display: block;
   }
 
-  .info-contact:hover {
+  .info-contact a {
+    color: var(--color-dark);
+    border-bottom: 0;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+
+  .info-contact a:hover,
+  .info-contact a:focus-visible {
     opacity: 0.5;
   }
 
   .info-signup-cta {
     padding-top: 4rem;
     display: flex;
-    justify-content: center;
+    justify-content: left;
   }
 </style>
 

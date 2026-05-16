@@ -33,12 +33,13 @@ if (import.meta.env.DEV) {
 
 const recaptchaSiteKey = import.meta.env.PUBLIC_FIREBASE_RECAPTCHA_SITE_KEY;
 
-export const appCheck: AppCheck | null = recaptchaSiteKey
-  ? initializeAppCheck(app, {
-      provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
-      isTokenAutoRefreshEnabled: true,
-    })
-  : null;
+export const appCheck: AppCheck | null =
+  typeof window !== "undefined" && recaptchaSiteKey
+    ? initializeAppCheck(app, {
+        provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
+        isTokenAutoRefreshEnabled: true,
+      })
+    : null;
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);

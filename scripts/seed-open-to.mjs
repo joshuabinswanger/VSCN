@@ -1,24 +1,19 @@
 import { initializeApp, cert, deleteApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
-import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
+import { loadEnvFile } from "node:process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const envPath = resolve(__dirname, "../.env");
-const env = Object.fromEntries(
-  readFileSync(envPath, "utf8")
-    .split(/\r?\n/)
-    .filter((line) => line.includes("=") && !line.trimStart().startsWith("#"))
-    .map((line) => [line.slice(0, line.indexOf("=")), line.slice(line.indexOf("=") + 1)])
-);
+loadEnvFile(resolve(__dirname, "../.env"));
 
-if (!env.FIREBASE_SERVICE_ACCOUNT) {
-  throw new Error("Missing FIREBASE_SERVICE_ACCOUNT in .env");
+const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+if (!serviceAccountJson) {
+  throw new Error("Missing FIREBASE_SERVICE_ACCOUNT in environment");
 }
 
 const app = initializeApp({
-  credential: cert(JSON.parse(env.FIREBASE_SERVICE_ACCOUNT.trim())),
+  credential: cert(JSON.parse(serviceAccountJson.trim())),
 });
 
 const db = getFirestore();

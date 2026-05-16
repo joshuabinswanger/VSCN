@@ -17,28 +17,7 @@ const app = initializeApp({
 });
 
 const db = getFirestore();
-const users = await db.collection("users").get();
-const batch = db.batch();
-let count = 0;
-
-for (const doc of users.docs) {
-  const data = doc.data();
-  batch.set(
-    db.collection("publicProfiles").doc(doc.id),
-    {
-      displayName: data.displayName ?? "",
-      photoURL: data.photoURL ?? "",
-      role: data.role ?? "",
-      bio: data.bio ?? "",
-      portfolio: data.portfolio ?? "",
-      ...(data.createdAt ? { createdAt: data.createdAt } : {}),
-      updatedAt: new Date(),
-    },
-    { merge: true },
-  );
-  count += 1;
-}
-
-await batch.commit();
-console.log(`Done. Migrated ${count} public profiles.`);
+const snap = await db.collection("publicProfiles").get();
+console.log(`Found ${snap.size} public profiles.`);
+snap.docs.forEach(d => console.log(`- ${d.id}: ${d.data().displayName} (active: ${d.data().active})`));
 await deleteApp(app);

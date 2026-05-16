@@ -15,18 +15,6 @@ const prefix = lang === "de" ? "/de" : "";
 
 <div id="ob-loading" class="ob-loading">{t("profile.loading")}</div>
 
-<div id="ob-verify-banner" class="verify-banner" style="display:none;">
-  <p class="verify-banner-text">
-    {t("profile.verifyBanner")}
-    <button id="ob-resend-verify" type="button" class="btn-resend-verify"
-      >{t("profile.verifyResend")}</button
-    >
-  </p>
-  <p id="ob-verify-sent" class="verify-banner-sent" style="display:none;">
-    {t("profile.verifySent")}
-  </p>
-</div>
-
 <div id="onboarding-wrap" class="onboarding-wrap" data-lang={lang} style="display:none;">
   <div id="ob-progress" class="ob-progress">
     <div class="ob-progress-bar">
@@ -103,6 +91,12 @@ const prefix = lang === "de" ? "/de" : "";
     <div class="ob-fields">
       <div class="field">
         <OpenToSelector lang={lang} />
+      </div>
+      <div class="field">
+        <label class="label" for="ob-platform-request">{t("onboarding.request.label")}</label>
+        <p class="field-note">{t("onboarding.request.helper")}</p>
+        <textarea id="ob-platform-request" rows="4" maxlength="1000" class="input textarea"
+        ></textarea>
       </div>
     </div>
     <div class="ob-footer">
@@ -191,6 +185,18 @@ const prefix = lang === "de" ? "/de" : "";
   </div>
 </div>
 
+<div id="ob-verify-banner" class="verify-banner" style="display:none;">
+  <p class="verify-banner-text">
+    {t("profile.verifyBanner")}
+    <button id="ob-resend-verify" type="button" class="btn-resend-verify"
+      >{t("profile.verifyResend")}</button
+    >
+  </p>
+  <p id="ob-verify-sent" class="verify-banner-sent" style="display:none;">
+    {t("profile.verifySent")}
+  </p>
+</div>
+
 <style>
   .ob-loading {
     margin-top: 3rem;
@@ -198,10 +204,17 @@ const prefix = lang === "de" ? "/de" : "";
     font-size: 0.9rem;
   }
 
+  .field-note {
+    margin-top: 0;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--color-muted);
+  }
+
   .verify-banner {
     width: 100%;
     max-width: 500px;
-    margin: clamp(1.5rem, 3vw, 2.5rem) auto 0;
+    margin: 0 auto clamp(1.5rem, 3vw, 2.5rem);
     padding: 0.75rem 1rem;
     background: #fffbeb;
     border: 1.5px solid #f59e0b;
@@ -304,12 +317,13 @@ const prefix = lang === "de" ? "/de" : "";
     font-size: 0.9rem;
     color: var(--color-muted);
     line-height: 1.5;
+    margin-top: 0;
   }
 
   .ob-fields {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 3rem;
   }
 
   .ob-footer {
@@ -328,76 +342,6 @@ const prefix = lang === "de" ? "/de" : "";
     align-items: center;
     gap: 0.75rem;
     padding-top: 2rem;
-  }
-
-  /* Goal chips */
-  .goal-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-  }
-
-  .goal-chip {
-    font-family: inherit;
-    font-size: 0.88rem;
-    padding: 0.45rem 0.9rem;
-    border-radius: 999px;
-    border: 1.5px solid var(--color-border);
-    background: #fff;
-    color: #555;
-    cursor: pointer;
-    transition:
-      background 0.15s,
-      border-color 0.15s,
-      color 0.15s;
-  }
-
-  .goal-chip:hover {
-    border-color: #999;
-    color: #333;
-  }
-
-  button.goal-chip.goal-chip--selected {
-    background: #111;
-    border-color: #111;
-    color: #fff;
-  }
-
-  button.goal-chip.goal-chip--selected:hover {
-    background: #333;
-    border-color: #333;
-    color: #fff;
-  }
-
-  .goal-custom-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-  }
-
-  .goal-custom-list:empty {
-    display: none;
-  }
-
-  :global(button.goal-custom-chip) {
-    font-family: monospace;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.35rem 0.65rem;
-    border-radius: var(--radius-sm);
-    border: 1.5px solid #111;
-    background: #111;
-    color: #fff;
-    font-size: 0.8rem;
-    cursor: pointer;
-  }
-
-  :global(button.goal-custom-chip span) {
-    color: inherit;
-    opacity: 0.65;
   }
 
   /* Bridge step */
@@ -422,7 +366,7 @@ const prefix = lang === "de" ? "/de" : "";
 
   .ob-bridge .ob-sub {
     max-width: 320px;
-    margin: 0.5rem auto 0;
+    margin: 0 auto 0;
   }
 
   /* Avatar row */
@@ -552,6 +496,7 @@ const prefix = lang === "de" ? "/de" : "";
     updateUser,
     updateUserProfile,
     publishCurrentUserProfile,
+    upsertOnboardingRequest,
   } from "../lib/firestore.ts";
   import { handleProfileUpdate, triggerRebuild } from "../lib/profile.ts";
   import { ui } from "../i18n/translations.ts";
@@ -639,6 +584,7 @@ const prefix = lang === "de" ? "/de" : "";
         displayName: getInputValue("ob-name").trim(),
         role: getInputValue("ob-role").trim(),
         portfolio: getInputValue("ob-portfolio").trim(),
+        socialMedia: getInputValue("ob-social").trim(),
         bio: opts.bio ?? "",
         photoURL: opts.photoURL ?? user.photoURL ?? "",
         avatarObjectUrl: opts.avatarObjectUrl ?? null,
@@ -665,9 +611,7 @@ const prefix = lang === "de" ? "/de" : "";
             social: getInputValue("ob-social"),
             phone: getInputValue("ob-phone"),
             bio: getInputValue("ob-bio"),
-            selectedGoals: [...selectedGoals],
-            customGoals: [...customGoals],
-            goalInput: getInputValue("ob-goal-input"),
+            platformRequest: getInputValue("ob-platform-request"),
             openTo: openToSelector?.value ?? [],
             tags: tagSelector?.value ?? [],
             tagInput: tagSelector?.inputValue ?? "",
@@ -694,9 +638,7 @@ const prefix = lang === "de" ? "/de" : "";
       social?: string;
       phone?: string;
       bio?: string;
-      selectedGoals?: string[];
-      customGoals?: string[];
-      goalInput?: string;
+      platformRequest?: string;
       openTo?: string[];
       tags?: string[];
       tagInput?: string;
@@ -710,64 +652,11 @@ const prefix = lang === "de" ? "/de" : "";
       }
     }
 
-    // ── Community goals ────────────────────────────────────────────
-    const presetGoalKeys = new Set(["networking", "portfolio", "events", "scivis"]);
-    const selectedGoals = new Set<string>();
-    let customGoals: string[] = [];
-    const customGoalList = document.getElementById("ob-goal-custom-list")!;
-
     const openToSelector = document.querySelector<
       HTMLElement & {
         value: string[];
       }
     >("open-to-selector");
-
-    document.querySelectorAll<HTMLElement>("[data-goal]").forEach((el) => {
-      el.addEventListener("click", () => {
-        const goal = el.dataset.goal!;
-        if (selectedGoals.has(goal)) {
-          selectedGoals.delete(goal);
-          el.classList.remove("goal-chip--selected");
-        } else {
-          selectedGoals.add(goal);
-          el.classList.add("goal-chip--selected");
-        }
-      });
-    });
-
-    function renderCustomGoals() {
-      customGoalList.innerHTML = "";
-      customGoals.forEach((goal) => {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "goal-custom-chip";
-        btn.textContent = goal;
-        const x = document.createElement("span");
-        x.setAttribute("aria-hidden", "true");
-        x.textContent = "×";
-        btn.appendChild(x);
-        btn.addEventListener("click", () => {
-          customGoals = customGoals.filter((g) => g !== goal);
-          renderCustomGoals();
-        });
-        customGoalList.appendChild(btn);
-      });
-    }
-
-    const goalInput = document.getElementById("ob-goal-input") as HTMLInputElement;
-    goalInput?.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter") return;
-      e.preventDefault();
-      const val = goalInput.value.trim();
-      if (!val || customGoals.includes(val) || presetGoalKeys.has(val.toLowerCase())) return;
-      customGoals = [...customGoals, val];
-      goalInput.value = "";
-      renderCustomGoals();
-    });
-
-    function getSelectedGoals(): string[] {
-      return [...selectedGoals, ...customGoals];
-    }
 
     // ── Tags (delegated to the <tag-selector> custom element) ─────
     const tagSelector = document.querySelector<
@@ -839,9 +728,19 @@ const prefix = lang === "de" ? "/de" : "";
       setBtnState("ob-next-1", true, s["onboarding.nav.next"]);
       try {
         await updateUser(user.uid, {
-          communityGoals: getSelectedGoals(),
           openTo: openToSelector?.value ?? [],
         }).catch(() => {});
+        const platformRequest = getInputValue("ob-platform-request").trim();
+        if (platformRequest) {
+          await upsertOnboardingRequest(user.uid, {
+            message: platformRequest,
+            lang: lang === "de" ? "de" : "en",
+            email: user.email ?? undefined,
+            displayName: getInputValue("ob-name").trim() || user.displayName || undefined,
+          }).catch((err) => {
+            console.warn("[onboarding] Request save skipped:", err);
+          });
+        }
       } finally {
         setBtnState("ob-next-1", false, s["onboarding.nav.next"]);
         setStep(2);
@@ -873,16 +772,23 @@ const prefix = lang === "de" ? "/de" : "";
       displayName: string;
       role: string;
       portfolio: string;
+      socialMedia: string;
       bio: string;
       photoURL: string;
       avatarObjectUrl: string | null;
     }) {
       const previewName = document.getElementById("preview-name");
       const previewRole = document.getElementById("preview-role") as HTMLElement | null;
+      const previewLinks = document.getElementById("preview-links") as HTMLElement | null;
       const previewPortfolio = document.getElementById(
         "preview-portfolio"
       ) as HTMLAnchorElement | null;
+      const previewLinksSep = document.getElementById("preview-links-sep") as HTMLElement | null;
+      const previewSocial = document.getElementById("preview-social") as HTMLAnchorElement | null;
       const previewBio = document.getElementById("preview-bio") as HTMLElement | null;
+      const previewBioToggle = document.getElementById(
+        "preview-bio-toggle"
+      ) as HTMLButtonElement | null;
       const previewAvatarImg = document.getElementById(
         "preview-avatar-img"
       ) as HTMLImageElement | null;
@@ -894,9 +800,9 @@ const prefix = lang === "de" ? "/de" : "";
       if (previewRole) {
         if (opts.role) {
           previewRole.textContent = opts.role;
-          previewRole.style.display = "";
+          previewRole.hidden = false;
         } else {
-          previewRole.style.display = "none";
+          previewRole.hidden = true;
         }
       }
 
@@ -905,18 +811,39 @@ const prefix = lang === "de" ? "/de" : "";
         if (href) {
           previewPortfolio.href = href;
           previewPortfolio.textContent = opts.portfolio;
-          previewPortfolio.style.display = "";
+          previewPortfolio.hidden = false;
         } else {
-          previewPortfolio.style.display = "none";
+          previewPortfolio.hidden = true;
         }
       }
+
+      const socialHref = normaliseUrl(opts.socialMedia);
+      if (previewSocial) {
+        if (socialHref) {
+          previewSocial.href = socialHref;
+          previewSocial.hidden = false;
+        } else {
+          previewSocial.hidden = true;
+        }
+      }
+      if (previewLinksSep) previewLinksSep.hidden = !normaliseUrl(opts.portfolio) || !socialHref;
+      if (previewLinks) previewLinks.hidden = !normaliseUrl(opts.portfolio) && !socialHref;
 
       if (previewBio) {
         if (opts.bio) {
           previewBio.textContent = opts.bio;
-          previewBio.style.display = "";
+          previewBio.hidden = false;
+          if (previewBioToggle) {
+            previewBioToggle.hidden = false;
+            previewBioToggle.setAttribute("aria-label", `${s["member.showBio"]} ${displayName}`);
+          }
         } else {
-          previewBio.style.display = "none";
+          previewBio.hidden = true;
+          if (previewBioToggle) {
+            previewBioToggle.hidden = true;
+            previewBioToggle.closest(".member-card-wrap")?.classList.remove("is-expanded");
+            previewBioToggle.setAttribute("aria-expanded", "false");
+          }
         }
       }
 
@@ -925,16 +852,16 @@ const prefix = lang === "de" ? "/de" : "";
         if (imgSrc) {
           previewAvatarImg.src = imgSrc;
           previewAvatarImg.alt = displayName;
-          previewAvatarImg.style.display = "";
-          previewAvatarPh.style.display = "none";
+          previewAvatarImg.hidden = false;
+          previewAvatarPh.hidden = true;
           previewAvatarImg.onerror = () => {
-            previewAvatarImg.style.display = "none";
-            previewAvatarPh.style.display = "";
+            previewAvatarImg.hidden = true;
+            previewAvatarPh.hidden = false;
             previewAvatarPh.textContent = displayName[0]?.toUpperCase() ?? "?";
           };
         } else {
-          previewAvatarImg.style.display = "none";
-          previewAvatarPh.style.display = "";
+          previewAvatarImg.hidden = true;
+          previewAvatarPh.hidden = false;
           previewAvatarPh.textContent = displayName[0]?.toUpperCase() ?? "?";
         }
       }
@@ -995,6 +922,7 @@ const prefix = lang === "de" ? "/de" : "";
         const socialEl = document.getElementById("ob-social") as HTMLInputElement;
         const phoneEl = document.getElementById("ob-phone") as HTMLInputElement;
         const bioEl = document.getElementById("ob-bio") as HTMLTextAreaElement;
+        const requestEl = document.getElementById("ob-platform-request") as HTMLTextAreaElement;
 
         nameEl.value = data.displayName ?? user.displayName ?? "";
         roleEl.value = data.role ?? "";
@@ -1002,20 +930,7 @@ const prefix = lang === "de" ? "/de" : "";
         socialEl.value = data.socialMedia ?? "";
         phoneEl.value = data.phone ?? "";
         if (bioEl) bioEl.value = data.bio ?? "";
-
-        if (Array.isArray(data.communityGoals)) {
-          data.communityGoals.forEach((goal) => {
-            if (presetGoalKeys.has(goal)) {
-              selectedGoals.add(goal);
-              document
-                .querySelector<HTMLElement>(`[data-goal="${goal}"]`)
-                ?.classList.add("goal-chip--selected");
-            } else {
-              customGoals.push(goal);
-            }
-          });
-          renderCustomGoals();
-        }
+        if (requestEl) requestEl.value = "";
 
         if (openToSelector && Array.isArray(data.openTo)) {
           openToSelector.value = data.openTo.filter(Boolean);
@@ -1042,23 +957,7 @@ const prefix = lang === "de" ? "/de" : "";
         setIfPresent("ob-social", restoreState.social);
         setIfPresent("ob-phone", restoreState.phone);
         setIfPresent("ob-bio", restoreState.bio);
-        setIfPresent("ob-goal-input", restoreState.goalInput);
-
-        if (Array.isArray(restoreState.selectedGoals)) {
-          restoreState.selectedGoals.forEach((goal) => {
-            if (selectedGoals.has(goal)) return;
-            selectedGoals.add(goal);
-            document
-              .querySelector<HTMLElement>(`[data-goal="${goal}"]`)
-              ?.classList.add("goal-chip--selected");
-          });
-        }
-        if (Array.isArray(restoreState.customGoals)) {
-          restoreState.customGoals.forEach((goal) => {
-            if (!customGoals.includes(goal)) customGoals.push(goal);
-          });
-          renderCustomGoals();
-        }
+        setIfPresent("ob-platform-request", restoreState.platformRequest);
         if (openToSelector && Array.isArray(restoreState.openTo)) {
           openToSelector.value = restoreState.openTo;
         }

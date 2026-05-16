@@ -3,11 +3,14 @@ import {
   collection,
   doc,
   deleteDoc,
+  deleteField,
+  type FieldValue,
   getDoc,
   getDocs,
   setDoc,
   orderBy,
   query,
+  serverTimestamp,
 } from "firebase/firestore";
 
 export interface UserDoc {
@@ -18,6 +21,7 @@ export interface UserDoc {
   portfolio: string;
   socialMedia: string;
   openTo: string[];
+  primaryAudiences: string[];
   tags: string[];
   phone: string;
   email: string;
@@ -29,6 +33,20 @@ export interface UserDoc {
 
 export type PublicProfileDoc = Omit<UserDoc, "phone" | "email"> & { active?: boolean };
 
+export interface OnboardingRequestDoc {
+  userId: string;
+  message: string;
+  lang: "en" | "de";
+  email?: string;
+  displayName?: string;
+  createdAt?: Date | FieldValue;
+  updatedAt?: Date | FieldValue;
+}
+
+type LegacyAudienceCleanup = {
+  primaryAudience?: FieldValue;
+};
+
 function toPublicProfile(data: Partial<UserDoc>): Partial<PublicProfileDoc> {
   const out: Partial<PublicProfileDoc> = {};
   if (data.displayName !== undefined) out.displayName = data.displayName;
@@ -38,6 +56,7 @@ function toPublicProfile(data: Partial<UserDoc>): Partial<PublicProfileDoc> {
   if (data.portfolio !== undefined) out.portfolio = data.portfolio;
   if (data.socialMedia !== undefined) out.socialMedia = data.socialMedia;
   if (data.openTo !== undefined) out.openTo = data.openTo;
+  if (data.primaryAudiences !== undefined) out.primaryAudiences = data.primaryAudiences;
   if (data.tags !== undefined) out.tags = data.tags;
   if (data.createdAt) out.createdAt = data.createdAt;
   if (data.updatedAt) out.updatedAt = data.updatedAt;
@@ -54,12 +73,19 @@ export async function createUser(uid: string, data: Partial<UserDoc>): Promise<v
 }
 
 export async function updateUser(uid: string, data: Partial<UserDoc>): Promise<void> {
-  await setDoc(doc(db, "users", uid), data, { merge: true });
+  await setDoc(
+    doc(db, "users", uid),
+    { ...data, primaryAudience: deleteField() } as Partial<UserDoc> & LegacyAudienceCleanup,
+    { merge: true }
+  );
 }
 
 export async function publishPublicProfile(uid: string, data: Partial<UserDoc>): Promise<void> {
   const ref = doc(db, "publicProfiles", uid);
-  const publicData: Partial<PublicProfileDoc> = toPublicProfile(data);
+  const publicData: Partial<PublicProfileDoc> & LegacyAudienceCleanup = {
+    ...toPublicProfile(data),
+    primaryAudience: deleteField(),
+  };
   const existing = await getDoc(ref);
   if (!existing.exists()) {
     publicData.active = true;
@@ -69,6 +95,26 @@ export async function publishPublicProfile(uid: string, data: Partial<UserDoc>):
 
 export async function updateUserProfile(uid: string, data: Partial<UserDoc>): Promise<void> {
   await Promise.all([updateUser(uid, data), publishPublicProfile(uid, data)]);
+}
+
+export async function upsertOnboardingRequest(
+  uid: string,
+  data: Omit<OnboardingRequestDoc, "userId" | "createdAt" | "updatedAt">
+): Promise<void> {
+  const ref = doc(db, "onboardingRequests", uid);
+  const existing = await getDoc(ref);
+  const payload: OnboardingRequestDoc = {
+    userId: uid,
+    message: data.message,
+    lang: data.lang,
+    updatedAt: serverTimestamp(),
+  };
+  if (data.email) payload.email = data.email;
+  if (data.displayName) payload.displayName = data.displayName;
+  if (!existing.exists()) {
+    payload.createdAt = serverTimestamp();
+  }
+  await setDoc(ref, payload, { merge: true });
 }
 
 export async function publishCurrentUserProfile(uid: string): Promise<void> {

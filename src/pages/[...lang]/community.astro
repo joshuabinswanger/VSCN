@@ -6,6 +6,8 @@ import CommunityGrid from "../../components/CommunityGrid.astro";
 import type { PublicProfileDoc } from "../../lib/firestore.ts";
 import { useTranslations } from "../../i18n/utils";
 import type { Lang } from "../../i18n/utils";
+import { loadEnvFile } from "node:process";
+import { resolve } from "node:path";
 
 export function getStaticPaths() {
   return [
@@ -19,11 +21,11 @@ const currentLang = (lang || "en") as Lang;
 const t = useTranslations(currentLang);
 
 type Member = PublicProfileDoc & { uid: string };
-
 let members: Member[] = [];
 
 try {
-  const serviceAccountJson = import.meta.env.FIREBASE_SERVICE_ACCOUNT;
+  loadEnvFile(resolve(process.cwd(), ".env"));
+  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!serviceAccountJson) throw new Error("FIREBASE_SERVICE_ACCOUNT env var not set");
 
   const app =
@@ -40,6 +42,7 @@ try {
       uid: d.id,
       ...(d.data() as PublicProfileDoc),
     }));
+  console.log(`[community] Fetched ${members.length} members using Admin SDK.`);
 } catch (err) {
   console.error("[community] Failed to fetch members at build time:", err);
 }
