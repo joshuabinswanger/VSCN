@@ -71,6 +71,13 @@ const t = useTranslations(lang);
     <p class="field-note">{t("profile.note.social")}</p>
   </div>
 
+  <div class="field">
+    <label class="checkbox-label" for="wants-to-contribute">
+      <input id="wants-to-contribute" type="checkbox" />
+      <span>{t("profile.wantsToContribute")}</span>
+    </label>
+  </div>
+
   <OpenToSelector lang={lang} />
 
   <fieldset class="target-audience-field">
@@ -655,6 +662,7 @@ const t = useTranslations(lang);
 
     const nameInput = document.getElementById("name") as HTMLInputElement;
     const roleInput = document.getElementById("role") as HTMLInputElement;
+    const wantsToContributeInput = document.getElementById("wants-to-contribute") as HTMLInputElement;
     const bioInput = document.getElementById("bio") as HTMLTextAreaElement;
     const portfolioInput = document.getElementById("portfolio") as HTMLInputElement;
     const socialMediaInput = document.getElementById("social-media") as HTMLInputElement;
@@ -793,6 +801,7 @@ const t = useTranslations(lang);
       }
       setSelectedPrimaryAudiences(data.primaryAudiences ?? []);
       phoneInput.value = data.phone ?? "";
+      wantsToContributeInput.checked = data.wantsToContribute ?? false;
       showPreview(data.photoURL ?? user.photoURL ?? "");
 
       if (loadingEl) loadingEl.style.display = "none";
@@ -825,6 +834,7 @@ const t = useTranslations(lang);
             primaryAudiences: getSelectedPrimaryAudiences(),
             tags: tagSelector?.value ?? [],
             phone: phoneInput.value.trim(),
+            wantsToContribute: wantsToContributeInput.checked,
             email: user.email!,
             resizedAvatarBlob,
           },

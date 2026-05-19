@@ -26,6 +26,7 @@ export interface UserDoc {
   phone: string;
   email: string;
   communityGoals?: string[];
+  wantsToContribute?: boolean;
   onboardingComplete?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
