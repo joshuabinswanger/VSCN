@@ -146,7 +146,7 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
     </div>
 
     {
-      preview || m?.bio ? (
+      (preview || m?.bio) && (
         <button
           id={preview ? "preview-bio-toggle" : undefined}
           class="member-bio-toggle"
@@ -158,8 +158,6 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
         >
           <img class="member-bio-arrow" src={downArrowUrl.src} alt="" aria-hidden="true" />
         </button>
-      ) : (
-        <div aria-hidden="true" />
       )
     }
   </article>
@@ -218,6 +216,7 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
   }
 
   .member-card-wrap {
+    width: 100%;
     max-width: 360px;
     margin: 0 auto;
   }

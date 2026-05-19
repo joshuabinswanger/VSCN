@@ -8,7 +8,7 @@ interface Props {
 
 const words = ["Visual", "Science", "Communication", "Network", "VSCNVSCNVSCNVSCN"];
 const {
-  holdDuration = 0.75,
+  holdDuration = 0.3,
   replaceDuration = 0.3,
   collapseDuration = 0.3,
   ease = "power3.inOut",
@@ -106,6 +106,12 @@ const {
 
 <script>
   import gsap from "gsap";
+
+  declare global {
+    interface Window {
+      _gsapHeadlineDone?: boolean;
+    }
+  }
 
   const timelines = new WeakMap<HTMLElement, gsap.core.Timeline>();
   const resizeObservers = new WeakMap<HTMLElement, ResizeObserver>();
@@ -231,6 +237,8 @@ const {
       gsap.set(words[0], { autoAlpha: 1 });
       gsap.set(getChars(words[0]), { yPercent: 0, rotateX: 0, opacity: 1 });
       root.dataset.headlineReady = "true";
+      window._gsapHeadlineDone = true;
+      document.dispatchEvent(new CustomEvent("gsap-headline-complete"));
       return;
     }
 
@@ -242,6 +250,10 @@ const {
     const timeline = gsap.timeline({
       repeat: 0,
       defaults: { ease },
+      onComplete: () => {
+        window._gsapHeadlineDone = true;
+        document.dispatchEvent(new CustomEvent("gsap-headline-complete"));
+      },
     });
 
     root.dataset.headlineReady = "true";

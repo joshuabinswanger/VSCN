@@ -8,7 +8,7 @@ export const ui: Record<string, Record<string, string>> = {
 
     // LandingHero
     "hero.statement.connect":
-      "The Visual Science Communication Network brings together everyone who turns knowledge into visual stories.",
+      "The Visual Science Communication Network brings together everyone who gives knowledge a visual form.",
     "hero.statement.purpose":
       "A growing community of illustrators, designers, and scientists — connected through a shared directory, events, and showcases.",
     "hero.cta.join": "Join our community",
@@ -18,7 +18,7 @@ export const ui: Record<string, Record<string, string>> = {
     "info.intro":
       "The Visual Science Communication Network — VSCN, pronounced “Vision” — connects people passionate about visualizing knowledge.",
     "info.p2":
-      "Science shapes our public discourse and fuels our understanding of the world, yet it too often remains locked behind dense data. We believe that turning research into beautiful visual stories is the key to unlocking that knowledge for everyone.",
+      "We believe that more knowledge deserves to be given a visual form. Images make research accessible, spark curiosity, and build bridges between science and society.",
     "info.h2.building": "What We’re Building",
     "info.li.1": "Building a comprehensive registry of illustrators and designers.",
     "info.li.2": "Organizing events for and about visual science communication.",
@@ -88,6 +88,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.ph.name": "Your name",
     "profile.label.role": "Role",
     "profile.ph.role": "e.g. Science Illustrator, Researcher, Data Journalist…",
+    "profile.note.role": "Shown on your card — best kept under 25 characters.",
     "profile.label.bio": "About you",
     "profile.ph.bio": "A short description of your work, interests, or background…",
     "profile.note.bio": "Maximum 35 words.",
@@ -191,12 +192,12 @@ export const ui: Record<string, Record<string, string>> = {
 
     // InfoPage
     "info.intro":
-      "Das Visual Science Communication Network — VSCN, ausgesprochen „Vision“ — verbindet Menschen, die Wissen mit visuellen Mitteln zugänglich machen.",
+      "Das Visual Science Communication Network — VSCN, ausgesprochen „Vision“ — verbindet Menschen, die mit Leidenschaft Wissen in Bilder übersetzten.",
     "info.p2":
-      "Wissenschaft prägt unseren öffentlichen Diskurs und unser Verständnis der Welt. Doch Forschung bleibt oft hinter Fachsprache, komplexen Zusammenhängen und schwer zugänglichen Darstellungen verborgen. Wir glauben, dass gute Visualisierung Wissen zugänglich macht: Sie macht Forschung verständlich, weckt Neugier und schafft Brücken zwischen Wissenschaft und Gesellschaft.",
+      "Wir glauben, dass es mehr Wissen verdient hat eine visuelle Form zu bekommen! Bilder machen Forschung verständlich, wecken Neugier und schaffen Brücken zwischen Wissenschaft und Gesellschaft.",
     "info.h2.building": "Was wir aufbauen",
     "info.li.1":
-      "Ein umfassendes Verzeichnis von Gestalter:innen im Bereich visueller Wissenschaftskommunikation.",
+      "Ein umfassendes Verzeichnis von Gestalter:innen im Bereich wissenschaftlicher Illustration.",
     "info.li.2": "Veranstaltungen für Austausch, Wissenstransfer und Vernetzung.",
     "info.li.3": "Herausragendes visuelles Storytelling sichtbar machen.",
     "info.li.4": "Verbindungen zwischen Wissenschaft, Illustration und Design stärken.",
@@ -267,6 +268,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.ph.name": "Dein Name",
     "profile.label.role": "Rolle",
     "profile.ph.role": "z.B. Wissenschaftsillustrator:in, Forscher:in, Datenjournalist:in…",
+    "profile.note.role": "Wird auf deiner Karte angezeigt — am besten unter 25 Zeichen.",
     "profile.label.bio": "Über dich",
     "profile.ph.bio": "Eine kurze Beschreibung deiner Arbeit, Interessen oder deines Hintergrunds…",
     "profile.note.bio": "Maximal 35 Wörter.",
