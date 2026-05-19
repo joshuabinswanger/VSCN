@@ -12,9 +12,17 @@ interface Props {
   noindex?: boolean;
   fullscreen?: boolean;
   lang?: string;
+  wide?: boolean;
 }
 
-const { title, description, noindex = false, fullscreen = false, lang = "en" } = Astro.props;
+const {
+  title,
+  description,
+  noindex = false,
+  fullscreen = false,
+  lang = "en",
+  wide = false,
+} = Astro.props;
 
 const DEFAULT_DESCRIPTION =
   "VSCN — Visual Science Communication Network — brings together illustrators, scientists, designers, and storytellers dedicated to making knowledge visible.";
@@ -61,7 +69,7 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
         fullscreen ? (
           <slot />
         ) : (
-          <main>
+          <main class:list={[{ "is-wide": wide }]}>
             <slot />
           </main>
         )

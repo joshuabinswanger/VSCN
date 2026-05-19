@@ -25,7 +25,7 @@ interface Props {
   lang?: Lang;
 }
 
-const { member: m, preview = false, lang = 'en' } = Astro.props;
+const { member: m, preview = false, lang = "en" } = Astro.props;
 const t = useTranslations(lang);
 const displayName = m?.displayName || "Anonymous";
 const portfolioHref = normaliseUrl(m?.portfolio ?? "");
@@ -35,128 +35,141 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
 ---
 
 <div class:list={["member-card-wrap", preview && "member-card-wrap--preview"]}>
-  <article id={preview ? "preview-card" : undefined} class:list={["member-card", preview && "member-card--preview"]}>
+  <article
+    id={preview ? "preview-card" : undefined}
+    class:list={["member-card", preview && "member-card--preview"]}
+  >
     <div class="member-avatar-wrap">
-      {preview ? (
-        <>
+      {
+        preview ? (
+          <>
+            <img
+              id="preview-avatar-img"
+              class="member-avatar"
+              src=""
+              alt=""
+              width="80"
+              height="80"
+              hidden
+            />
+            <div id="preview-avatar-ph" class="member-avatar member-avatar--placeholder">
+              ?
+            </div>
+          </>
+        ) : avatarSrc ? (
           <img
-            id="preview-avatar-img"
             class="member-avatar"
-            src=""
-            alt=""
+            src={avatarSrc}
+            alt={displayName}
             width="80"
             height="80"
-            hidden
+            loading="lazy"
           />
-          <div id="preview-avatar-ph" class="member-avatar member-avatar--placeholder">
-            ?
+        ) : (
+          <div class="member-avatar member-avatar--placeholder">
+            {displayName[0]?.toUpperCase() ?? "?"}
           </div>
-        </>
-      ) : avatarSrc ? (
-        <img
-          class="member-avatar"
-          src={avatarSrc}
-          alt={displayName}
-          width="80"
-          height="80"
-          loading="lazy"
-        />
-      ) : (
-        <div class="member-avatar member-avatar--placeholder">
-          {displayName[0]?.toUpperCase() ?? "?"}
-        </div>
-      )}
+        )
+      }
     </div>
 
     <div class="member-info">
       <div id={preview ? "preview-name" : undefined} class="member-name">{displayName}</div>
-      {preview ? (
-        <div id="preview-role" class="member-role" hidden />
-      ) : (
-        m?.role && <div class="member-role">{m.role}</div>
-      )}
-      {preview ? (
-        <div id="preview-links" class="member-links" hidden>
-          <a
-            id="preview-portfolio"
-            class="member-portfolio"
-            href="#"
-            target="_blank"
-            rel="noopener noreferrer"
-            hidden
-          />
-          <span id="preview-links-sep" class="member-links-sep" aria-hidden="true" hidden>
-            |
-          </span>
-          <a
-            id="preview-social"
-            class="member-social"
-            href="#"
-            target="_blank"
-            rel="noopener noreferrer"
-            hidden
-          >
-            social
-          </a>
-        </div>
-      ) : (
-        (portfolioHref || socialHref) && (
-          <div class="member-links">
-            {portfolioHref && (
-              <a
-                class="member-portfolio"
-                href={portfolioHref}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {(() => {
-                  const p = (m?.portfolio ?? "").replace(/^www\./i, "");
-                  const limit = socialHref ? 13 : 17;
-                  return p.length > limit ? "portfolio" : p;
-                })()}
-              </a>
-            )}
-            {portfolioHref && socialHref && (
-              <span class="member-links-sep" aria-hidden="true">
-                |
-              </span>
-            )}
-            {socialHref && (
-              <a
-                class="member-social"
-                href={socialHref}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                social
-              </a>
-            )}
-          </div>
+      {
+        preview ? (
+          <div id="preview-role" class="member-role" hidden />
+        ) : (
+          m?.role && <div class="member-role">{m.role}</div>
         )
-      )}
+      }
+      {
+        preview ? (
+          <div id="preview-links" class="member-links" hidden>
+            <a
+              id="preview-portfolio"
+              class="member-portfolio"
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              hidden
+            />
+            <span id="preview-links-sep" class="member-links-sep" aria-hidden="true" hidden>
+              |
+            </span>
+            <a
+              id="preview-social"
+              class="member-social"
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              hidden
+            >
+              social
+            </a>
+          </div>
+        ) : (
+          (portfolioHref || socialHref) && (
+            <div class="member-links">
+              {portfolioHref && (
+                <a
+                  class="member-portfolio"
+                  href={portfolioHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {(() => {
+                    const p = (m?.portfolio ?? "").replace(/^www\./i, "");
+                    const limit = socialHref ? 13 : 17;
+                    return p.length > limit ? "portfolio" : p;
+                  })()}
+                </a>
+              )}
+              {portfolioHref && socialHref && (
+                <span class="member-links-sep" aria-hidden="true">
+                  |
+                </span>
+              )}
+              {socialHref && (
+                <a
+                  class="member-social"
+                  href={socialHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  social
+                </a>
+              )}
+            </div>
+          )
+        )
+      }
     </div>
 
-    {preview || m?.bio ? (
-      <button
-        id={preview ? "preview-bio-toggle" : undefined}
-        class="member-bio-toggle"
-        type="button"
-        aria-expanded="false"
-        aria-controls={bioId}
-        aria-label={`${t('member.showBio')} ${displayName}`}
-        hidden={preview}
-      >
-        <img class="member-bio-arrow" src={downArrowUrl.src} alt="" aria-hidden="true" />
-      </button>
-    ) : (
-      <div aria-hidden="true" />
-    )}
+    {
+      preview || m?.bio ? (
+        <button
+          id={preview ? "preview-bio-toggle" : undefined}
+          class="member-bio-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls={bioId}
+          aria-label={`${t("member.showBio")} ${displayName}`}
+          hidden={preview}
+        >
+          <img class="member-bio-arrow" src={downArrowUrl.src} alt="" aria-hidden="true" />
+        </button>
+      ) : (
+        <div aria-hidden="true" />
+      )
+    }
   </article>
-  {(preview || m?.bio) && (
-    <p id={bioId} class="member-bio" hidden={preview}>
-      {m?.bio}
-    </p>
-  )}
+  {
+    (preview || m?.bio) && (
+      <p id={bioId} class="member-bio" hidden={preview}>
+        {m?.bio}
+      </p>
+    )
+  }
 </div>
 
 <style is:global>
@@ -168,7 +181,7 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
     grid-template-columns: min-content minmax(0, 1fr) 16px;
     align-items: center;
     gap: 5px 25px;
-    padding: 20px;
+    padding: 10px 15px;
     border: 1.5px solid #e8e8e8;
     border-radius: var(--radius-sm);
     background: #ffffff;
@@ -182,7 +195,7 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
 
     @media (--bp-desktop) {
       grid-template-columns: min-content minmax(0, 1fr);
-      padding: 30px;
+      padding: 15px 20px;
       gap: 5px 30px;
     }
   }
