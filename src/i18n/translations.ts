@@ -183,24 +183,25 @@ export const ui: Record<string, Record<string, string>> = {
 
     // LandingHero
     "hero.statement.connect":
-      "Das Visual Science Communication Network — VSCN — verbindet Menschen, die mit Leidenschaft Wissen visualisieren.",
+      "Das Visual Science Communication Network verbindet Menschen, die Wissen visuell zugänglich machen.",
     "hero.statement.purpose":
-      "Unser Ziel ist einfach: komplexe Wissenschaft in fesselnde visuelle Geschichten verwandeln.",
+      "Eine wachsende Community aus Illustration, Design und Wissenschaft — vernetzt durch ein zentrales Verzeichnis, Veranstaltungen und Showcases.",
     "hero.cta.join": "Werde Teil unserer Community",
     "hero.cta.community": "Community",
 
     // InfoPage
     "info.intro":
-      "Das Visual Science Communication Network — VSCN, ausgesprochen „Vision“ — verbindet Menschen, die mit Leidenschaft Wissen visualisieren.",
+      "Das Visual Science Communication Network — VSCN, ausgesprochen „Vision“ — verbindet Menschen, die Wissen mit visuellen Mitteln zugänglich machen.",
     "info.p2":
-      "Wissenschaft prägt unseren öffentlichen Diskurs und unser Verständnis der Welt, bleibt aber zu oft hinter dichten Daten verborgen. Wir glauben, dass die Übersetzung von Forschung in schöne visuelle Geschichten der Schlüssel ist, um dieses Wissen für alle zugänglich zu machen.",
+      "Wissenschaft prägt unseren öffentlichen Diskurs und unser Verständnis der Welt. Doch Forschung bleibt oft hinter Fachsprache, komplexen Zusammenhängen und schwer zugänglichen Darstellungen verborgen. Wir glauben, dass gute Visualisierung Wissen zugänglich macht: Sie macht Forschung verständlich, weckt Neugier und schafft Brücken zwischen Wissenschaft und Gesellschaft.",
     "info.h2.building": "Was wir aufbauen",
-    "info.li.1": "Ein umfassendes Verzeichnis von Illustrator:innen und Designer:innen aufbauen.",
-    "info.li.2": "Veranstaltungen für und über visuelle Wissenschaftskommunikation organisieren.",
-    "info.li.3": "Herausragendes visuelles Storytelling zeigen und feiern.",
-    "info.li.4": "Stärkere Verbindungen zwischen Wissenschaften, Illustration und Design schaffen.",
-    "info.h2.started": "Wir stehen noch am Anfang",
-    "info.p4": "Wenn du diese Community mit aufbauen und gestalten möchtest, melde dich gerne:",
+    "info.li.1":
+      "Ein umfassendes Verzeichnis von Gestalter:innen im Bereich visueller Wissenschaftskommunikation.",
+    "info.li.2": "Veranstaltungen für Austausch, Wissenstransfer und Vernetzung.",
+    "info.li.3": "Herausragendes visuelles Storytelling sichtbar machen.",
+    "info.li.4": "Verbindungen zwischen Wissenschaft, Illustration und Design stärken.",
+    "info.h2.started": "Wir sind gerade erst gestartet",
+    "info.p4": "Wenn du diese Community mitgestalten möchtest, melde dich gerne direkt bei:",
     "info.contact": "Kontakt",
 
     // CommunityGrid

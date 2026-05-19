@@ -33,13 +33,19 @@ if (import.meta.env.DEV) {
 
 const recaptchaSiteKey = import.meta.env.PUBLIC_FIREBASE_RECAPTCHA_SITE_KEY;
 
-export const appCheck: AppCheck | null =
-  typeof window !== "undefined" && recaptchaSiteKey
-    ? initializeAppCheck(app, {
-        provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
-        isTokenAutoRefreshEnabled: true,
-      })
-    : null;
+let appCheckInstance: AppCheck | null = null;
+if (typeof window !== "undefined" && recaptchaSiteKey && !import.meta.env.DEV) {
+  try {
+    appCheckInstance = initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (err) {
+    console.warn("Firebase App Check failed to initialize:", err);
+  }
+}
+
+export const appCheck = appCheckInstance;
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);

@@ -51,13 +51,15 @@ const connectAfter =
 <style>
   .landing-hero {
     display: grid;
+    justify-items: center;
     align-items: center;
     box-sizing: border-box;
-    padding: clamp(3rem, 6vw, 6rem) clamp(1.5rem, 5vw, 5rem) clamp(5rem, 9vw, 8rem);
+    padding: clamp(3rem, 6vw, 6rem) 15px clamp(5rem, 9vw, 8rem);
   }
 
   .landing-hero__content {
-    width: min(1000px, 100%);
+    width: 100%;
+    max-width: 900px;
     margin: 0 auto;
     display: grid;
     gap: clamp(1.3rem, 3vw, 2.4rem);
@@ -77,11 +79,9 @@ const connectAfter =
   }
 
   .landing-hero__statement--primary {
-    max-width: 880px;
   }
 
   .landing-hero__statement--purpose {
-    max-width: 880px;
   }
 
   .landing-hero__join {

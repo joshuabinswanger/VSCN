@@ -7,9 +7,10 @@ import type { Lang } from "../i18n/utils.ts";
 interface Props {
   members: (PublicProfileDoc & { uid: string })[];
   lang?: Lang;
+  debugInfo?: string;
 }
 
-const { members, lang = 'en' } = Astro.props;
+const { members, lang = 'en', debugInfo } = Astro.props;
 const t = useTranslations(lang);
 const memberLabel = members.length === 1 ? t('community.member') : t('community.members');
 ---
@@ -36,9 +37,10 @@ const memberLabel = members.length === 1 ? t('community.member') : t('community.
 <style>
   .community-wrapper {
     padding-bottom: 5rem;
+    width: 100%;
   }
   .page-header {
-    margin-bottom: 2rem;
+    margin-bottom: 3rem;
   }
 
   .page-title {
@@ -67,30 +69,22 @@ const memberLabel = members.length === 1 ? t('community.member') : t('community.
 
   .member-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1rem;
+    grid-template-columns: 1fr;
+    gap: 2rem;
     width: 100%;
     align-items: start;
   }
 
-  @media (--bp-desktop), (--bp-desktop-wide) {
+  @media (--bp-desktop) {
     .member-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      align-items: start;
-      gap: 3rem;
-    }
-  }
-
-  @media (width <= 1050px) {
-    .member-grid {
-      grid-template-columns: repeat(2, minmax(0, 330px));
-      gap: 2rem;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4rem;
     }
   }
 
   @media (--bp-mobile) {
     .member-grid {
-      grid-template-columns: minmax(0, 400px);
+      gap: 2rem;
     }
   }
 

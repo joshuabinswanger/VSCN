@@ -7,10 +7,7 @@ import type { PublicProfileDoc } from "../../lib/firestore.ts";
 import { useTranslations } from "../../i18n/utils";
 import type { Lang } from "../../i18n/utils";
 export function getStaticPaths() {
-  return [
-    { params: { lang: undefined } },
-    { params: { lang: "de" } },
-  ];
+  return [{ params: { lang: undefined } }, { params: { lang: "de" } }];
 }
 
 const { lang = "en" } = Astro.params;
@@ -21,7 +18,7 @@ type Member = PublicProfileDoc & { uid: string };
 let members: Member[] = [];
 
 try {
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+  const serviceAccountJson = import.meta.env.FIREBASE_SERVICE_ACCOUNT;
   if (!serviceAccountJson) throw new Error("FIREBASE_SERVICE_ACCOUNT env var not set");
 
   const app =
@@ -38,21 +35,17 @@ try {
       uid: d.id,
       ...(d.data() as PublicProfileDoc),
     }));
-  console.log(`[community] Fetched ${members.length} members using Admin SDK.`);
 } catch (err) {
-  console.error("[community] Failed to fetch members at build time:", err);
+  console.error("[community] Failed to fetch members:", err);
 }
 
 const title = currentLang === "de" ? "Community — VSCN" : "Community — VSCN";
-const description = currentLang === "de"
-  ? "Entdecken Sie die VSCN-Community — ein wachsendes Verzeichnis von Wissenschaftlern, Illustratoren, Designern und Wissenschaftskommunikatoren."
-  : "Browse the VSCN community — a growing directory of scientists, illustrators, designers, and science communicators.";
+const description =
+  currentLang === "de"
+    ? "Entdecken Sie die VSCN-Community — ein wachsendes Verzeichnis von Wissenschaftlern, Illustratoren, Designern und Wissenschaftskommunikatoren."
+    : "Browse the VSCN community — a growing directory of scientists, illustrators, designers, and science communicators.";
 ---
 
-<Layout
-  title={title}
-  description={description}
-  lang={currentLang}
->
+<Layout title={title} description={description} lang={currentLang}>
   <CommunityGrid members={members} lang={currentLang} />
 </Layout>

@@ -5,6 +5,9 @@ import sitemap from '@astrojs/sitemap';
 // https://astro.build/config
 export default defineConfig({
   site: 'https://vscn.ch',
+  server: {
+    host: '127.0.0.1',
+  },
   i18n: {
     defaultLocale: 'en',
     locales: ['en', 'de'],

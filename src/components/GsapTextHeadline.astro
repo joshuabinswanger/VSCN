@@ -6,69 +6,101 @@ interface Props {
   ease?: string;
 }
 
-const baseText = "VSCNVSCNVSCNVSCN";
+const words = ["Visual", "Science", "Communication", "Network", "VSCNVSCNVSCNVSCN"];
 const {
-  holdDuration = 1.65,
-  replaceDuration = 1.15,
-  collapseDuration = 0.75,
-  ease = "expo.inOut",
+  holdDuration = 0.75,
+  replaceDuration = 0.3,
+  collapseDuration = 0.3,
+  ease = "power3.inOut",
 } = Astro.props;
 ---
 
 <div
   class="gsap-text-headline"
   data-gsap-text-headline
-  data-base-text={baseText}
   data-hold-duration={holdDuration}
   data-replace-duration={replaceDuration}
   data-collapse-duration={collapseDuration}
   data-ease={ease}
+  data-headline-ready="false"
   aria-label="Visual Science Communication Network"
 >
-  <span class="gsap-text-headline__text" data-headline-text>{baseText}</span>
+  <span class="gsap-text-headline__stage" aria-hidden="true">
+    {
+      words.map((word, wordIndex) => (
+        <span
+          class:list={[
+            "gsap-text-headline__word",
+            wordIndex === 0 && "gsap-text-headline__word--active",
+          ]}
+          data-headline-word
+          data-final-word={wordIndex === words.length - 1 ? "true" : "false"}
+        >
+          {Array.from(word).map((char) => (
+            <span class="gsap-text-headline__char">{char}</span>
+          ))}
+        </span>
+      ))
+    }
+  </span>
 </div>
 
 <style>
   .gsap-text-headline {
     display: flex;
-    justify-content: center;
-    width: 100%;
+    justify-content: flex-start;
+    width: var(--gsap-text-headline-width, 100%);
     overflow: hidden;
     color: var(--color-dark);
-    font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
-    font-size: var(--gsap-text-headline-size, clamp(2.5rem, 10.4vw, 8rem));
+    font-size: var(--gsap-text-headline-fit-size, var(--gsap-text-headline-size, 8rem));
     font-weight: 800;
     line-height: 0.95;
     letter-spacing: 0;
-    text-align: center;
     white-space: nowrap;
   }
 
-  .gsap-text-headline__text {
-    display: inline-block;
-    width: var(--gsap-text-headline-width, 100vw);
-    text-align: left;
+  .gsap-text-headline__stage {
+    display: grid;
+    justify-items: start;
+    height: 1em;
+    overflow: hidden;
+    perspective: 12ch;
+    transform-style: preserve-3d;
+    opacity: 0;
+  }
+
+  .gsap-text-headline[data-headline-ready="true"] .gsap-text-headline__stage {
+    opacity: 1;
+  }
+
+  .gsap-text-headline__word {
+    display: inline-flex;
+    grid-area: 1 / 1;
+    opacity: 0;
+    visibility: hidden;
     transform-style: preserve-3d;
   }
 
-  :global(.gsap-text-headline__slot) {
+  .gsap-text-headline__word--active {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .gsap-text-headline__char {
     display: inline-block;
-    position: relative;
-    width: 1ch;
-    height: 1em;
-    overflow: hidden;
-    vertical-align: top;
+    transform-origin: 50% 50%;
+    will-change: transform, opacity;
   }
 
-  :global(.gsap-text-headline__column) {
-    display: block;
-    will-change: transform;
-  }
+  @media (prefers-reduced-motion: reduce) {
+    .gsap-text-headline__word:first-child {
+      opacity: 1;
+      visibility: visible;
+    }
 
-  :global(.gsap-text-headline__char) {
-    display: block;
-    height: 1em;
-    line-height: 1;
+    .gsap-text-headline__char {
+      transform: none !important;
+    }
   }
 </style>
 
@@ -76,252 +108,164 @@ const {
   import gsap from "gsap";
 
   const timelines = new WeakMap<HTMLElement, gsap.core.Timeline>();
-  const replayTimeouts = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>();
-  const roots = new Set<HTMLElement>();
-  const slotCounts = new WeakMap<HTMLElement, number>();
+  const resizeObservers = new WeakMap<HTMLElement, ResizeObserver>();
 
-  const REPLAY_DELAY_MS = 60_000;
+  const STAGGER = 0.035;
+  let didInitHeadlines = false;
 
-  const words = ["Visual", "Science", "Communication", "Network"];
-
-  function measureChRatio(target: HTMLElement): number {
-    const probe = document.createElement("span");
-    const cs = getComputedStyle(target);
-    probe.style.cssText =
-      `position:absolute;visibility:hidden;white-space:pre;` +
-      `font-family:${cs.fontFamily};font-weight:${cs.fontWeight};` +
-      `letter-spacing:${cs.letterSpacing};font-size:100px;line-height:1;`;
-    probe.textContent = "0";
-    document.body.appendChild(probe);
-    const w = probe.getBoundingClientRect().width;
-    probe.remove();
-    return w / 100;
+  function getChars(word: HTMLElement) {
+    return Array.from(word.querySelectorAll<HTMLElement>(".gsap-text-headline__char"));
   }
 
-  function applyHeadlineSize(root: HTMLElement, slotCount: number) {
-    const target = root.querySelector<HTMLElement>("[data-headline-text]");
-    if (!target) return;
-    const targetWidthPx = target.getBoundingClientRect().width;
-    if (!targetWidthPx) return;
-    const chRatio = measureChRatio(target);
-    if (!chRatio) return;
-    const fontSizePx = targetWidthPx / slotCount / chRatio;
-    target.style.fontSize = `${fontSizePx}px`;
+  function fitHeadlineToFinalWord(root: HTMLElement, finalWord: HTMLElement) {
+    const availableWidth = root.clientWidth;
+    const finalWordWidth = finalWord.offsetWidth;
+    const currentFontSize = Number.parseFloat(getComputedStyle(root).fontSize);
+
+    if (availableWidth <= 0 || finalWordWidth <= 0 || currentFontSize <= 0) return;
+
+    const nextFontSize = (currentFontSize * availableWidth) / finalWordWidth;
+    root.style.setProperty("--gsap-text-headline-fit-size", `${nextFontSize}px`);
   }
 
-  function buildColumnSequences(rows: string[], slotCount: number): string[][] {
-    const sequences: string[][] = [];
-    for (let col = 0; col < slotCount; col += 1) {
-      const seq: string[] = [];
-      rows.forEach((row) => {
-        const ch = row[col] ?? " ";
-        if (seq.length === 0 || seq[seq.length - 1] !== ch) seq.push(ch);
-      });
-      sequences.push(seq);
-    }
-    return sequences;
+  function observeHeadlineFit(root: HTMLElement, finalWord: HTMLElement) {
+    root.style.removeProperty("--gsap-text-headline-fit-size");
+    fitHeadlineToFinalWord(root, finalWord);
+
+    const resizeObserver = new ResizeObserver(() => {
+      fitHeadlineToFinalWord(root, finalWord);
+    });
+
+    resizeObserver.observe(root);
+    resizeObservers.set(root, resizeObserver);
   }
 
-  function renderCharacterColumns(target: HTMLElement, sequences: string[][]) {
-    target.textContent = "";
-
-    sequences.forEach((seq) => {
-      const slot = document.createElement("span");
-      const column = document.createElement("span");
-
-      slot.className = "gsap-text-headline__slot";
-      slot.setAttribute("aria-hidden", "true");
-      column.className = "gsap-text-headline__column";
-
-      seq.forEach((value) => {
-        const char = document.createElement("span");
-        char.className = "gsap-text-headline__char";
-        setCharacter(char, value);
-        column.appendChild(char);
-      });
-
-      slot.appendChild(column);
-      target.appendChild(slot);
+  function resetWords(words: HTMLElement[]) {
+    words.forEach((word) => {
+      gsap.set(word, { autoAlpha: 0 });
+      gsap.set(getChars(word), { yPercent: 115, rotateX: -70, opacity: 0 });
     });
   }
 
-  function setCharacter(span: HTMLElement, character: string) {
-    span.textContent = character === " " ? "\u00a0" : character;
-  }
-
-  function transitionText(
+  function flipWordIn(
     timeline: gsap.core.Timeline,
-    target: HTMLElement,
-    rows: string[],
-    rowIndex: number,
-    columnPositions: number[],
+    word: HTMLElement,
     duration: number,
-    ease: string,
-    slotCount: number
+    ease: string
   ) {
-    const allColumns = Array.from(
-      target.querySelectorAll<HTMLElement>(".gsap-text-headline__column")
-    ).slice(0, slotCount);
+    const chars = getChars(word);
 
-    const changing: HTMLElement[] = [];
-    const targetYs: number[] = [];
-    const prevRow = rows[rowIndex - 1] ?? "";
-    const nextRow = rows[rowIndex] ?? "";
-    for (let col = 0; col < slotCount; col += 1) {
-      const prev = prevRow[col] ?? " ";
-      const next = nextRow[col] ?? " ";
-      if (prev !== next) {
-        columnPositions[col] += 1;
-        changing.push(allColumns[col]);
-        targetYs.push(-columnPositions[col]);
+    timeline.set(word, { autoAlpha: 1 }).fromTo(
+      chars,
+      { yPercent: 115, rotateX: -70, opacity: 0 },
+      {
+        yPercent: 0,
+        rotateX: 0,
+        opacity: 1,
+        duration,
+        ease,
+        stagger: STAGGER,
       }
-    }
-
-    if (changing.length === 0) {
-      timeline.to({}, { duration });
-      return;
-    }
-
-    timeline.to(changing, {
-      duration,
-      y: (i: number) => `${targetYs[i]}em`,
-      stagger: 0.026,
-      ease,
-    });
+    );
   }
 
-  function resetColumns(timeline: gsap.core.Timeline, target: HTMLElement, slotCount: number) {
-    const columns = Array.from(
-      target.querySelectorAll<HTMLElement>(".gsap-text-headline__column")
-    ).slice(0, slotCount);
+  function flipWordSwap(
+    timeline: gsap.core.Timeline,
+    outgoing: HTMLElement,
+    incoming: HTMLElement,
+    inDuration: number,
+    outDuration: number,
+    ease: string
+  ) {
+    const outgoingChars = getChars(outgoing);
+    const incomingChars = getChars(incoming);
+    const label = `swap-${timeline.labels ? Object.keys(timeline.labels).length : 0}`;
 
-    timeline.set(columns, { y: 0 });
-  }
-
-  function destroyHeadline(root: HTMLElement) {
-    const t = replayTimeouts.get(root);
-    if (t !== undefined) {
-      clearTimeout(t);
-      replayTimeouts.delete(root);
-    }
-    const timeline = timelines.get(root);
-    if (timeline) {
-      timeline.kill();
-      timelines.delete(root);
-    }
-    roots.delete(root);
-    slotCounts.delete(root);
-  }
-
-  function resizeAllHeadlines() {
-    roots.forEach((root) => {
-      const slotCount = slotCounts.get(root);
-      if (slotCount) applyHeadlineSize(root, slotCount);
-    });
-  }
-
-  let resizeRaf = 0;
-  function onResize() {
-    if (resizeRaf) cancelAnimationFrame(resizeRaf);
-    resizeRaf = requestAnimationFrame(() => {
-      resizeRaf = 0;
-      resizeAllHeadlines();
-    });
+    timeline
+      .addLabel(label)
+      .to(
+        outgoingChars,
+        {
+          yPercent: -115,
+          rotateX: 70,
+          opacity: 0,
+          duration: outDuration,
+          ease,
+          stagger: STAGGER,
+        },
+        label
+      )
+      .set(incoming, { autoAlpha: 1 }, label)
+      .fromTo(
+        incomingChars,
+        { yPercent: 115, rotateX: -70, opacity: 0 },
+        {
+          yPercent: 0,
+          rotateX: 0,
+          opacity: 1,
+          duration: inDuration,
+          ease,
+          stagger: STAGGER,
+        },
+        `${label}+=0.06`
+      )
+      .set(outgoing, { autoAlpha: 0 });
   }
 
   function initHeadline(root: HTMLElement) {
-    destroyHeadline(root);
+    if (timelines.has(root) || root.dataset.headlineInitialized === "true") return;
+    root.dataset.headlineInitialized = "true";
 
-    const target = root.querySelector<HTMLElement>("[data-headline-text]");
-    if (!target) return;
+    const words = Array.from(root.querySelectorAll<HTMLElement>("[data-headline-word]"));
+    if (words.length === 0) return;
 
-    const baseText = root.dataset.baseText ?? "VSCNVSCNVSCNVSCN";
-    const holdDuration = Number(root.dataset.holdDuration ?? 1.65);
-    const replaceDuration = Number(root.dataset.replaceDuration ?? 1.15);
-    const collapseDuration = Number(root.dataset.collapseDuration ?? 0.75);
-    const ease = root.dataset.ease ?? "expo.inOut";
-    const slotCount = baseText.length;
-    const padToSlot = (s: string) => (s + " ".repeat(slotCount)).slice(0, slotCount);
-    const rows = [baseText, ...words.map(padToSlot), baseText];
-    const finalBaseRowIndex = rows.length - 1;
-    const sequences = buildColumnSequences(rows, slotCount);
+    const finalWord = root.querySelector<HTMLElement>('[data-final-word="true"]') ?? words.at(-1);
+    if (finalWord) {
+      observeHeadlineFit(root, finalWord);
+    }
 
-    slotCounts.set(root, slotCount);
-    applyHeadlineSize(root, slotCount);
-    renderCharacterColumns(target, sequences);
+    resetWords(words);
+    fitHeadlineToFinalWord(root, finalWord);
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      target.textContent = baseText;
-      roots.add(root);
+      gsap.set(words[0], { autoAlpha: 1 });
+      gsap.set(getChars(words[0]), { yPercent: 0, rotateX: 0, opacity: 1 });
+      root.dataset.headlineReady = "true";
       return;
     }
 
-    const columnPositions = new Array<number>(slotCount).fill(0);
+    const holdDuration = Number(root.dataset.holdDuration ?? 0.72);
+    const replaceDuration = Number(root.dataset.replaceDuration ?? 0.52);
+    const collapseDuration = Number(root.dataset.collapseDuration ?? 0.42);
+    const ease = root.dataset.ease ?? "power3.inOut";
+
     const timeline = gsap.timeline({
       repeat: 0,
-      onComplete: () => {
-        const t = setTimeout(() => {
-          if (roots.has(root)) initHeadline(root);
-        }, REPLAY_DELAY_MS);
-        replayTimeouts.set(root, t);
-      },
+      defaults: { ease },
     });
 
+    root.dataset.headlineReady = "true";
+
+    flipWordIn(timeline, words[0], replaceDuration, ease);
     timeline.to({}, { duration: holdDuration });
 
-    words.forEach((_, index) => {
-      transitionText(
-        timeline,
-        target,
-        rows,
-        index + 1,
-        columnPositions,
-        replaceDuration,
-        ease,
-        slotCount
-      );
-
-      if (index < words.length - 1) {
-        timeline.to({}, { duration: holdDuration });
-      }
+    words.slice(1).forEach((incoming, index) => {
+      flipWordSwap(timeline, words[index], incoming, replaceDuration, collapseDuration, ease);
+      timeline.to({}, { duration: holdDuration });
     });
-
-    timeline.to({}, { duration: holdDuration });
-    transitionText(
-      timeline,
-      target,
-      rows,
-      finalBaseRowIndex,
-      columnPositions,
-      collapseDuration,
-      ease,
-      slotCount
-    );
-    resetColumns(timeline, target, slotCount);
-    timeline.to({}, { duration: 0.3 });
-
-    timeline.timeScale(1.75);
 
     timelines.set(root, timeline);
-    roots.add(root);
   }
 
   function initHeadlines() {
+    if (didInitHeadlines) return;
+    didInitHeadlines = true;
     document.querySelectorAll<HTMLElement>("[data-gsap-text-headline]").forEach(initHeadline);
-    if (document.fonts?.ready) {
-      document.fonts.ready.then(resizeAllHeadlines);
-    }
   }
-
-  document.addEventListener("astro:page-load", initHeadlines);
-  document.addEventListener("astro:before-swap", () => {
-    Array.from(roots).forEach(destroyHeadline);
-  });
-  window.addEventListener("resize", onResize);
 
   if (document.readyState !== "loading") {
     initHeadlines();
   } else {
-    document.addEventListener("DOMContentLoaded", initHeadlines, { once: true });
+    document.addEventListener("DOMContentLoaded", initHeadlines);
   }
 </script>

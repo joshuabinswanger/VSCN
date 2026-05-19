@@ -1,7 +1,7 @@
 ---
 import { ClientRouter } from "astro:transitions";
 import Navbar from "../components/Navbar.astro";
-import ScrollingBanner from "../components/ScrollingBanner.astro";
+import GsapTextHeadline from "../components/GsapTextHeadline.astro";
 import favicon from "../assets/favicon.png";
 import ogImageAsset from "../assets/OG_Image.png";
 import "../styles/global.css";
@@ -51,8 +51,8 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
   </head>
   <body>
     <div class="brand-ticker" transition:persist>
-      <a href="/" class="brand-link">
-        <ScrollingBanner />
+      <a id="brand-home-link" href={lang === "de" ? "/de" : "/"} class="brand-link">
+        <GsapTextHeadline />
       </a>
     </div>
     <div class="page-wrap">
@@ -78,9 +78,12 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
   .brand-ticker {
     display: block;
     width: 100%;
+    max-width: 900px;
+    margin: auto;
     overflow: hidden;
     flex-shrink: 0;
     box-sizing: border-box;
+    padding: 0 5px;
   }
 
   .brand-link {
@@ -93,11 +96,25 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
   .brand-link:visited {
     color: black;
   }
-
-  @media (--bp-mobile) {
-    .brand-ticker {
-      padding-right: 5px;
-      padding-left: 5px;
-    }
-  }
 </style>
+
+<script>
+  type Lang = "en" | "de";
+
+  function updateBrandHomeLink(lang: Lang) {
+    const brandLink = document.getElementById("brand-home-link") as HTMLAnchorElement | null;
+    if (!brandLink) return;
+    brandLink.href = lang === "de" ? "/de" : "/";
+  }
+
+  document.addEventListener("astro:before-swap", (event) => {
+    const swapEvent = event as unknown as { newDocument?: Document };
+    const newLang = swapEvent.newDocument?.documentElement?.lang === "de" ? "de" : "en";
+    updateBrandHomeLink(newLang);
+  });
+
+  document.addEventListener("astro:page-load", () => {
+    const lang = document.documentElement.lang === "de" ? "de" : "en";
+    updateBrandHomeLink(lang);
+  });
+</script>
