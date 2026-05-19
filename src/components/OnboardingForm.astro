@@ -90,6 +90,12 @@ const prefix = lang === "de" ? "/de" : "";
     </header>
     <div class="ob-fields">
       <div class="field">
+        <label class="checkbox-label" for="ob-wants-to-contribute">
+          <input id="ob-wants-to-contribute" type="checkbox" />
+          <span>{t("profile.wantsToContribute")}</span>
+        </label>
+      </div>
+      <div class="field">
         <OpenToSelector lang={lang} />
       </div>
       <div class="field">
@@ -613,6 +619,7 @@ const prefix = lang === "de" ? "/de" : "";
             bio: getInputValue("ob-bio"),
             platformRequest: getInputValue("ob-platform-request"),
             openTo: openToSelector?.value ?? [],
+            wantsToContribute: (document.getElementById("ob-wants-to-contribute") as HTMLInputElement | null)?.checked ?? false,
             tags: tagSelector?.value ?? [],
             tagInput: tagSelector?.inputValue ?? "",
           })
@@ -640,6 +647,7 @@ const prefix = lang === "de" ? "/de" : "";
       bio?: string;
       platformRequest?: string;
       openTo?: string[];
+      wantsToContribute?: boolean;
       tags?: string[];
       tagInput?: string;
     } | null {
@@ -727,8 +735,10 @@ const prefix = lang === "de" ? "/de" : "";
       if (!user) return;
       setBtnState("ob-next-1", true, s["onboarding.nav.next"]);
       try {
+        const wantsToContributeEl = document.getElementById("ob-wants-to-contribute") as HTMLInputElement | null;
         await updateUser(user.uid, {
           openTo: openToSelector?.value ?? [],
+          wantsToContribute: wantsToContributeEl?.checked ?? false,
         }).catch(() => {});
         const platformRequest = getInputValue("ob-platform-request").trim();
         if (platformRequest) {
@@ -932,6 +942,9 @@ const prefix = lang === "de" ? "/de" : "";
         if (bioEl) bioEl.value = data.bio ?? "";
         if (requestEl) requestEl.value = "";
 
+        const wantsToContributeEl = document.getElementById("ob-wants-to-contribute") as HTMLInputElement | null;
+        if (wantsToContributeEl) wantsToContributeEl.checked = data.wantsToContribute ?? false;
+
         if (openToSelector && Array.isArray(data.openTo)) {
           openToSelector.value = data.openTo.filter(Boolean);
         }
@@ -960,6 +973,10 @@ const prefix = lang === "de" ? "/de" : "";
         setIfPresent("ob-platform-request", restoreState.platformRequest);
         if (openToSelector && Array.isArray(restoreState.openTo)) {
           openToSelector.value = restoreState.openTo;
+        }
+        const wantsToContributeElRestore = document.getElementById("ob-wants-to-contribute") as HTMLInputElement | null;
+        if (wantsToContributeElRestore && restoreState.wantsToContribute != null) {
+          wantsToContributeElRestore.checked = restoreState.wantsToContribute;
         }
         if (tagSelector && Array.isArray(restoreState.tags)) {
           const current = tagSelector.value;
