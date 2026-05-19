@@ -217,6 +217,11 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
     }
   }
 
+  .member-card-wrap {
+    max-width: 360px;
+    margin: 0 auto;
+  }
+
   .member-card-wrap--preview {
     max-width: 360px;
   }
@@ -381,6 +386,12 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
   @media (--bp-desktop), (--bp-desktop-wide) {
     .member-card-wrap {
       position: relative;
+      max-width: none;
+      margin: 0;
+    }
+
+    .member-card-wrap--preview {
+      max-width: 360px;
     }
 
     .member-bio-toggle {

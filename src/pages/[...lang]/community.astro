@@ -4,7 +4,6 @@ import { getFirestore } from "firebase-admin/firestore";
 import Layout from "../../layouts/Layout.astro";
 import CommunityGrid from "../../components/CommunityGrid.astro";
 import type { PublicProfileDoc } from "../../lib/firestore.ts";
-import { useTranslations } from "../../i18n/utils";
 import type { Lang } from "../../i18n/utils";
 export function getStaticPaths() {
   return [{ params: { lang: undefined } }, { params: { lang: "de" } }];
@@ -12,7 +11,6 @@ export function getStaticPaths() {
 
 const { lang = "en" } = Astro.params;
 const currentLang = (lang || "en") as Lang;
-const t = useTranslations(currentLang);
 
 type Member = PublicProfileDoc & { uid: string };
 let members: Member[] = [];
@@ -39,7 +37,7 @@ try {
   console.error("[community] Failed to fetch members:", err);
 }
 
-const title = currentLang === "de" ? "Community — VSCN" : "Community — VSCN";
+const title = "Community — VSCN";
 const description =
   currentLang === "de"
     ? "Entdecken Sie die VSCN-Community — ein wachsendes Verzeichnis von Wissenschaftlern, Illustratoren, Designern und Wissenschaftskommunikatoren."
