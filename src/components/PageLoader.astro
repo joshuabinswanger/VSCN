@@ -1,0 +1,185 @@
+---
+
+---
+
+<div id="page-loader" aria-hidden="true">
+  <div class="pl-dots">
+    <span></span><span></span><span></span>
+  </div>
+  <div class="pl-stage">
+    <div class="pl-words" aria-label="Visual Science Communication Network">
+      <span class="pl-word"></span>
+      <span class="pl-word"></span>
+      <span class="pl-word"></span>
+      <span class="pl-word"></span>
+    </div>
+  </div>
+</div>
+
+<style>
+  #page-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #f7f6f5;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+  }
+
+  @keyframes pl-dot {
+    0%,
+    60%,
+    100% {
+      transform: translateY(0);
+    }
+    30% {
+      transform: translateY(-7px);
+    }
+  }
+
+  .pl-dots {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .pl-dots span {
+    display: block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-dark);
+    animation: pl-dot 1.8s ease-in-out infinite;
+  }
+
+  .pl-dots span:nth-child(2) {
+    animation-delay: 0.25s;
+  }
+  .pl-dots span:nth-child(3) {
+    animation-delay: 0.5s;
+  }
+
+  .pl-stage {
+    width: 70vw;
+    margin: 0 auto;
+    padding: 0 15px;
+    box-sizing: border-box;
+  }
+
+  @media (--bp-desktop) {
+    .pl-stage {
+      width: 600px;
+    }
+  }
+
+  .pl-words {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    width: min-content;
+  }
+
+  .pl-word {
+    display: none;
+    font-size: 36px;
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: 0;
+    color: var(--color-dark);
+    white-space: nowrap;
+  }
+
+  @media (--bp-desktop) {
+    .pl-word {
+      font-size: 64px;
+    }
+  }
+</style>
+
+<script>
+  import gsap from "gsap";
+
+  const WORDS = ["Visual", "Science", "Communication", "Network"];
+  const CHARS = "VSCN";
+  const LETTER_DURATION = 0.22;
+  const LETTER_STAGGER = 0.06;
+  const WORD_GAP = 0.12;
+
+  function delay(ms: number) {
+    return new Promise<void>((r) => setTimeout(r, ms));
+  }
+
+  function animateWord(wordEl: HTMLElement, word: string): Promise<void> {
+    return new Promise((resolve) => {
+      const slots: (string | null)[] = new Array(word.length).fill(null);
+      let activeCount = 0;
+
+      wordEl.style.display = "block";
+
+      function render() {
+        if (activeCount === 0) return;
+        let text = "";
+        for (let i = 0; i < activeCount; i++) {
+          text += slots[i] ?? CHARS[Math.floor(Math.random() * CHARS.length)];
+        }
+        wordEl.textContent = text;
+      }
+
+      gsap.ticker.add(render);
+
+      const letterDones = word.split("").map(
+        (char, i) =>
+          new Promise<void>((resolveLetter) => {
+            gsap.delayedCall(i * LETTER_STAGGER, () => {
+              activeCount = i + 1;
+              slots[i] = null;
+              const obj = { p: 0 };
+              gsap.to(obj, {
+                p: 1,
+                duration: LETTER_DURATION,
+                ease: "none",
+                onUpdate() {
+                  if (obj.p >= 0.8) slots[i] = char;
+                },
+                onComplete() {
+                  slots[i] = char;
+                  resolveLetter();
+                },
+              });
+            });
+          })
+      );
+
+      Promise.all(letterDones).then(() => {
+        gsap.ticker.remove(render);
+        wordEl.textContent = word;
+        resolve();
+      });
+    });
+  }
+
+  window.addEventListener("load", async () => {
+    const loader = document.getElementById("page-loader");
+    const dotsEl = loader?.querySelector<HTMLElement>(".pl-dots");
+    const wordEls = Array.from(loader?.querySelectorAll<HTMLElement>(".pl-word") ?? []);
+    if (!loader || !wordEls.length) return;
+
+    await delay(400);
+    if (dotsEl) await gsap.to(dotsEl, { opacity: 0, duration: 0.25, ease: "power1.in" });
+
+    for (let i = 0; i < wordEls.length; i++) {
+      await animateWord(wordEls[i], WORDS[i]);
+      if (i < wordEls.length - 1) await delay(WORD_GAP * 1000);
+    }
+
+    await delay(500);
+    await gsap.to(loader, { opacity: 0, duration: 0.4, ease: "power1.in" });
+    loader.remove();
+    document.body.classList.add("page-loaded");
+  });
+</script>
