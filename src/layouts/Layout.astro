@@ -62,6 +62,9 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
         <span class="brand-name" id="brand-name" aria-label="Visual Science Communication Network">VSCNVSCNVSCNVSCN</span>
       </a>
     </div>
+    <div id="page-loader" aria-hidden="true">
+      <span class="loader-brand">VSCN</span>
+    </div>
     <div class="page-wrap">
       <Navbar />
       {
@@ -78,6 +81,26 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
 </html>
 
 <style>
+  #page-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: var(--color-bg, #fff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+  }
+
+  .loader-brand {
+    font-size: clamp(4rem, 15vw, 10rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0;
+    color: var(--color-dark);
+  }
+
   .page-wrap {
     padding-bottom: 80px;
   }
@@ -150,10 +173,20 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
     brandResizeObserver.observe(ticker);
   }
 
+  window.addEventListener("load", () => {
+    const loader = document.getElementById("page-loader");
+    if (!loader) return;
+    setTimeout(() => {
+      loader.style.opacity = "0";
+      loader.addEventListener("transitionend", () => loader.remove(), { once: true });
+    }, 700);
+  });
+
   document.addEventListener("astro:before-swap", (event) => {
     const swapEvent = event as unknown as { newDocument?: Document };
     const newLang = swapEvent.newDocument?.documentElement?.lang === "de" ? "de" : "en";
     updateBrandHomeLink(newLang);
+    swapEvent.newDocument?.getElementById("page-loader")?.remove();
   });
 
   document.addEventListener("astro:page-load", () => {
