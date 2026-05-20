@@ -94,6 +94,10 @@ const connectAfter =
     align-self: center;
   }
 
+  [data-hero-reveal] {
+    visibility: hidden;
+  }
+
   @media (max-width: 700px) {
     .landing-hero {
       align-items: start;
@@ -124,13 +128,8 @@ const connectAfter =
   import { auth } from "../lib/firebase.ts";
   import { ui } from "../i18n/translations.ts";
 
-  declare global {
-    interface Window { _gsapHeadlineDone?: boolean; }
-  }
-
   let unsubscribeAuth: (() => void) | null = null;
   let heroTimeline: gsap.core.Timeline | null = null;
-  let pendingHeadlineListener: (() => void) | null = null;
 
   function revealHero(root: HTMLElement) {
     heroTimeline?.kill();
@@ -139,7 +138,7 @@ const connectAfter =
     const revealItems = Array.from(root.querySelectorAll<HTMLElement>("[data-hero-reveal]"));
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      gsap.set(revealItems, { clearProps: "all" });
+      gsap.set(revealItems, { autoAlpha: 1, y: 0 });
       return;
     }
 
@@ -161,20 +160,7 @@ const connectAfter =
     const prefix = lang === "de" ? "/de" : "";
     const strings = ui[lang];
 
-    if (window._gsapHeadlineDone) {
-      revealHero(wrapper);
-    } else {
-      const revealItems = Array.from(wrapper.querySelectorAll<HTMLElement>("[data-hero-reveal]"));
-      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        gsap.set(revealItems, { autoAlpha: 0, y: 28 });
-      }
-      const onDone = () => {
-        pendingHeadlineListener = null;
-        revealHero(wrapper);
-      };
-      pendingHeadlineListener = onDone;
-      document.addEventListener("gsap-headline-complete", onDone, { once: true });
-    }
+    revealHero(wrapper);
 
     unsubscribeAuth?.();
     unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -186,10 +172,6 @@ const connectAfter =
   document.addEventListener("astro:before-swap", () => {
     heroTimeline?.kill();
     heroTimeline = null;
-    if (pendingHeadlineListener) {
-      document.removeEventListener("gsap-headline-complete", pendingHeadlineListener);
-      pendingHeadlineListener = null;
-    }
     unsubscribeAuth?.();
     unsubscribeAuth = null;
   });

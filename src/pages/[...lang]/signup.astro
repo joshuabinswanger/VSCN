@@ -1,9 +1,4 @@
 ---
-import Layout from "../../layouts/Layout.astro";
-import AuthForm from "../../components/AuthForm.astro";
-import { useTranslations } from "../../i18n/utils";
-import type { Lang } from "../../i18n/utils";
-
 export function getStaticPaths() {
   return [
     { params: { lang: undefined } },
@@ -11,13 +6,8 @@ export function getStaticPaths() {
   ];
 }
 
-const { lang = "en" } = Astro.params;
-const currentLang = (lang || "en") as Lang;
-const t = useTranslations(currentLang);
+const { lang } = Astro.params;
+const target = lang === "de" ? "/de/onboarding" : "/onboarding";
 
-const title = currentLang === "de" ? "Registrieren — VSCN" : "Sign Up — VSCN";
+return Astro.redirect(target, 301);
 ---
-
-<Layout title={title} noindex lang={currentLang}>
-  <AuthForm lang={currentLang} />
-</Layout>

@@ -72,10 +72,11 @@ const t = useTranslations(lang);
   </div>
 
   <div class="field">
-    <label class="checkbox-label" for="wants-to-contribute">
-      <input id="wants-to-contribute" type="checkbox" />
-      <span>{t("profile.wantsToContribute")}</span>
+    <label class="checkbox-label" for="profile-active">
+      <input id="profile-active" type="checkbox" />
+      <span>{t("profile.active.label")}</span>
     </label>
+    <p class="field-note">{t("profile.active.note")}</p>
   </div>
 
   <OpenToSelector lang={lang} />
@@ -564,7 +565,7 @@ const t = useTranslations(lang);
   } from "firebase/auth";
   import { requireAuth } from "../lib/auth.ts";
   import { deleteAvatar } from "../lib/storage.ts";
-  import { getUser, deleteUserData } from "../lib/firestore.ts";
+  import { getUser, deleteUserData, getPublicProfileActive, setProfileActive } from "../lib/firestore.ts";
   import { validateAvatar, resizeAvatar, normaliseUrl } from "../lib/validation.ts";
   import { handleProfileUpdate, triggerRebuild } from "../lib/profile.ts";
   import { ui } from "../i18n/translations.ts";
@@ -662,7 +663,7 @@ const t = useTranslations(lang);
 
     const nameInput = document.getElementById("name") as HTMLInputElement;
     const roleInput = document.getElementById("role") as HTMLInputElement;
-    const wantsToContributeInput = document.getElementById("wants-to-contribute") as HTMLInputElement;
+    const activeInput = document.getElementById("profile-active") as HTMLInputElement;
     const bioInput = document.getElementById("bio") as HTMLTextAreaElement;
     const portfolioInput = document.getElementById("portfolio") as HTMLInputElement;
     const socialMediaInput = document.getElementById("social-media") as HTMLInputElement;
@@ -801,7 +802,7 @@ const t = useTranslations(lang);
       }
       setSelectedPrimaryAudiences(data.primaryAudiences ?? []);
       phoneInput.value = data.phone ?? "";
-      wantsToContributeInput.checked = data.wantsToContribute ?? false;
+      activeInput.checked = await getPublicProfileActive(user.uid);
       showPreview(data.photoURL ?? user.photoURL ?? "");
 
       if (loadingEl) loadingEl.style.display = "none";
@@ -834,7 +835,6 @@ const t = useTranslations(lang);
             primaryAudiences: getSelectedPrimaryAudiences(),
             tags: tagSelector?.value ?? [],
             phone: phoneInput.value.trim(),
-            wantsToContribute: wantsToContributeInput.checked,
             email: user.email!,
             resizedAvatarBlob,
           },
@@ -849,6 +849,7 @@ const t = useTranslations(lang);
           currentPhotoURL = photoURL;
         }
 
+        await setProfileActive(user.uid, activeInput.checked);
         await triggerRebuild();
         saveMsg.style.display = "block";
       } catch (err: unknown) {

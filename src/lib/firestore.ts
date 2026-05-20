@@ -87,11 +87,20 @@ export async function publishPublicProfile(uid: string, data: Partial<UserDoc>):
     ...toPublicProfile(data),
     primaryAudience: deleteField(),
   };
-  const existing = await getDoc(ref);
-  if (!existing.exists()) {
-    publicData.active = true;
-  }
   await setDoc(ref, publicData, { merge: true });
+}
+
+export async function activatePublicProfile(uid: string): Promise<void> {
+  await setDoc(doc(db, "publicProfiles", uid), { active: true }, { merge: true });
+}
+
+export async function setProfileActive(uid: string, active: boolean): Promise<void> {
+  await setDoc(doc(db, "publicProfiles", uid), { active }, { merge: true });
+}
+
+export async function getPublicProfileActive(uid: string): Promise<boolean> {
+  const snap = await getDoc(doc(db, "publicProfiles", uid));
+  return snap.exists() ? ((snap.data().active as boolean | undefined) ?? false) : false;
 }
 
 export async function updateUserProfile(uid: string, data: Partial<UserDoc>): Promise<void> {

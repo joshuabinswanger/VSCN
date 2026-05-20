@@ -172,6 +172,21 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.done.edit": "Edit profile",
     "onboarding.done.goCommunity": "Go to community",
 
+    // Onboarding auth step
+    "onboarding.auth.title": "Create your account",
+    "onboarding.auth.sub": "Join VSCN to build your public profile.",
+    "onboarding.auth.email": "Email",
+    "onboarding.auth.password": "Password",
+    "onboarding.auth.cta": "Create Account",
+    "onboarding.auth.passwordConfirm": "Confirm password",
+    "onboarding.auth.error.invalid": "Invalid email or password. Please try again.",
+    "onboarding.auth.error.weak": "Password must be at least 6 characters.",
+    "onboarding.auth.error.mismatch": "Passwords don't match.",
+
+    // Profile active toggle
+    "profile.active.label": "Active",
+    "profile.active.note": "Should your community card be visible?",
+
     // Signup CTA
     "signup.cta.info": "Join our community",
     "signup.cta.community": "Join the Community",
@@ -355,6 +370,21 @@ export const ui: Record<string, Record<string, string>> = {
       "Hinweis: Es kann einen Moment dauern, bis dein Profil im öffentlichen Community-Feed erscheint. Du kannst es jederzeit auf deiner Profilseite bearbeiten.",
     "onboarding.done.edit": "Profil bearbeiten",
     "onboarding.done.goCommunity": "Zur Community",
+
+    // Onboarding auth step
+    "onboarding.auth.title": "Konto erstellen",
+    "onboarding.auth.sub": "Tritt VSCN bei und erstelle dein öffentliches Profil.",
+    "onboarding.auth.email": "E-Mail",
+    "onboarding.auth.password": "Passwort",
+    "onboarding.auth.cta": "Konto erstellen",
+    "onboarding.auth.passwordConfirm": "Passwort bestätigen",
+    "onboarding.auth.error.invalid": "Ungültige E-Mail oder falsches Passwort. Bitte erneut versuchen.",
+    "onboarding.auth.error.weak": "Das Passwort muss mindestens 6 Zeichen haben.",
+    "onboarding.auth.error.mismatch": "Die Passwörter stimmen nicht überein.",
+
+    // Profile active toggle
+    "profile.active.label": "Aktiv",
+    "profile.active.note": "Soll deine Community-Karte sichtbar sein?",
 
     // Signup CTA
     "signup.cta.info": "Werde Teil unserer Community",

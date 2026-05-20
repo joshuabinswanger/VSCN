@@ -25,6 +25,36 @@ const prefix = lang === "de" ? "/de" : "";
 
   <p id="ob-error" class="msg-err" style="display:none;"></p>
 
+  <!-- Step auth: Create account -->
+  <div class="onboarding-step" data-step="-1" style="display:none;">
+    <header class="ob-header">
+      <h1 class="ob-title">{t("onboarding.auth.title")}</h1>
+      <p class="ob-sub">{t("onboarding.auth.sub")}</p>
+    </header>
+    <div id="ob-auth-cta" class="ob-footer">
+      <button id="ob-start-auth" type="button" class="btn-solid">{t("onboarding.auth.cta")}</button>
+    </div>
+    <div id="ob-auth-form" style="display:none;">
+      <div class="ob-fields">
+        <div class="field">
+          <label class="label" for="ob-email">{t("onboarding.auth.email")}</label>
+          <input id="ob-email" type="email" class="input" autocomplete="email" />
+        </div>
+        <div class="field">
+          <label class="label" for="ob-password">{t("onboarding.auth.password")}</label>
+          <input id="ob-password" type="password" class="input" autocomplete="new-password" />
+        </div>
+        <div class="field">
+          <label class="label" for="ob-password-confirm">{t("onboarding.auth.passwordConfirm")}</label>
+          <input id="ob-password-confirm" type="password" class="input" autocomplete="new-password" />
+        </div>
+      </div>
+      <div class="ob-footer">
+        <button id="ob-next-auth" type="button" class="btn-solid">{t("onboarding.nav.next")}</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Step 0: About you -->
   <div class="onboarding-step" data-step="0">
     <header class="ob-header">
@@ -494,15 +524,22 @@ const prefix = lang === "de" ? "/de" : "";
 
 <script>
   import { auth } from "../lib/firebase.ts";
-  import { sendEmailVerification } from "firebase/auth";
-  import { requireAuth } from "../lib/auth.ts";
+  import {
+    onAuthStateChanged,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    sendEmailVerification,
+    type User,
+  } from "firebase/auth";
   import { validateAvatar, resizeAvatar, normaliseUrl } from "../lib/validation.ts";
   import {
     getUser,
+    createUser,
     updateUser,
     updateUserProfile,
     publishCurrentUserProfile,
     upsertOnboardingRequest,
+    activatePublicProfile,
   } from "../lib/firestore.ts";
   import { handleProfileUpdate, triggerRebuild } from "../lib/profile.ts";
   import { ui } from "../i18n/translations.ts";
@@ -537,7 +574,7 @@ const prefix = lang === "de" ? "/de" : "";
       const progressFill = document.getElementById("ob-progress-fill");
       const realSteps = [0, 1, 3, 4];
       const idx = realSteps.indexOf(n);
-      const hideProgress = n === 2 || n === 5;
+      const hideProgress = n === -1 || n === 2 || n === 5;
       if (progressEl) progressEl.style.display = hideProgress ? "none" : "";
       if (progressText && idx >= 0) progressText.textContent = `${idx + 1} / 4`;
       if (progressFill && idx >= 0) progressFill.style.width = `${(idx + 1) * 25}%`;
@@ -757,8 +794,16 @@ const prefix = lang === "de" ? "/de" : "";
       }
     });
 
-    document.getElementById("ob-continue-2")?.addEventListener("click", () => setStep(3));
-    document.getElementById("ob-skip-2")?.addEventListener("click", () => finishToPreview({}));
+    document.getElementById("ob-continue-2")?.addEventListener("click", async () => {
+      const user = auth.currentUser;
+      if (user) await activatePublicProfile(user.uid).catch(() => {});
+      setStep(3);
+    });
+    document.getElementById("ob-skip-2")?.addEventListener("click", async () => {
+      const user = auth.currentUser;
+      if (user) await activatePublicProfile(user.uid).catch(() => {});
+      finishToPreview({});
+    });
 
     document.getElementById("ob-next-3")?.addEventListener("click", async () => {
       const user = auth.currentUser;
@@ -916,8 +961,7 @@ const prefix = lang === "de" ? "/de" : "";
     const verifySent = document.getElementById("ob-verify-sent")!;
 
     // ── Auth guard ─────────────────────────────────────────────────
-    unsubscribeAuth?.();
-    unsubscribeAuth = requireAuth(async (user) => {
+    async function onUserAuthenticated(user: User) {
       try {
         const data = await getUser(user.uid);
         if (data.onboardingComplete) {
@@ -1036,6 +1080,71 @@ const prefix = lang === "de" ? "/de" : "";
       if (loadingEl) loadingEl.style.display = "none";
       wrap.style.display = "block";
       setStep(restoredStep);
+    }
+
+    unsubscribeAuth?.();
+    unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      unsubscribeAuth?.();
+      unsubscribeAuth = null;
+      if (!user) {
+        if (loadingEl) loadingEl.style.display = "none";
+        wrap.style.display = "block";
+        setStep(-1);
+        return;
+      }
+      onUserAuthenticated(user).catch(() => {});
+    });
+
+    document.getElementById("ob-start-auth")?.addEventListener("click", () => {
+      const ctaEl = document.getElementById("ob-auth-cta");
+      const formEl = document.getElementById("ob-auth-form");
+      if (ctaEl) ctaEl.style.display = "none";
+      if (formEl) formEl.style.display = "";
+      document.getElementById("ob-email")?.focus();
+    });
+
+    document.getElementById("ob-next-auth")?.addEventListener("click", async () => {
+      const emailEl = document.getElementById("ob-email") as HTMLInputElement;
+      const passwordEl = document.getElementById("ob-password") as HTMLInputElement;
+      const confirmEl = document.getElementById("ob-password-confirm") as HTMLInputElement;
+      const email = emailEl.value.trim();
+      const password = passwordEl.value;
+      const confirm = confirmEl.value;
+
+      if (!email) { setError(s["auth.error.enterEmail"]); return; }
+      if (!password) { setError(s["onboarding.auth.error.weak"]); return; }
+      if (password !== confirm) { setError(s["onboarding.auth.error.mismatch"]); return; }
+
+      setBtnState("ob-next-auth", true, s["onboarding.nav.next"]);
+      setError("");
+
+      try {
+        let userCredential;
+        let isNewUser = false;
+        try {
+          userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          isNewUser = true;
+        } catch (createErr: unknown) {
+          if ((createErr as { code?: string }).code === "auth/email-already-in-use") {
+            userCredential = await signInWithEmailAndPassword(auth, email, password);
+          } else {
+            throw createErr;
+          }
+        }
+        const user = userCredential.user;
+        if (isNewUser) {
+          await createUser(user.uid, { email: user.email! }).catch(() => {});
+          await sendEmailVerification(user).catch(() => {});
+        }
+        await onUserAuthenticated(user);
+      } catch (err: unknown) {
+        const code = (err as { code?: string }).code;
+        let msg = s["onboarding.auth.error.invalid"];
+        if (code === "auth/weak-password") msg = s["onboarding.auth.error.weak"];
+        else if (code === "auth/invalid-email") msg = s["auth.error.enterEmail"];
+        setError(msg);
+        setBtnState("ob-next-auth", false, s["onboarding.nav.next"]);
+      }
     });
   });
 </script>

@@ -1,7 +1,6 @@
 ---
 import { ClientRouter } from "astro:transitions";
 import Navbar from "../components/Navbar.astro";
-import GsapTextHeadline from "../components/GsapTextHeadline.astro";
 import favicon from "../assets/favicon.png";
 import ogImageAsset from "../assets/OG_Image.png";
 import "../styles/global.css";
@@ -60,7 +59,7 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
   <body>
     <div class="brand-ticker" transition:persist>
       <a id="brand-home-link" href={lang === "de" ? "/de" : "/"} class="brand-link">
-        <GsapTextHeadline />
+        <span class="brand-name" id="brand-name" aria-label="Visual Science Communication Network">VSCNVSCNVSCNVSCN</span>
       </a>
     </div>
     <div class="page-wrap">
@@ -104,6 +103,17 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
   .brand-link:visited {
     color: black;
   }
+
+  .brand-name {
+    display: block;
+    font-size: 8rem;
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: 0;
+    color: var(--color-dark);
+    white-space: nowrap;
+    overflow: hidden;
+  }
 </style>
 
 <script>
@@ -115,6 +125,31 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
     brandLink.href = lang === "de" ? "/de" : "/";
   }
 
+  let brandResizeObserver: ResizeObserver | null = null;
+
+  function fitBrandName() {
+    const el = document.getElementById("brand-name") as HTMLElement | null;
+    if (!el) return;
+    el.style.fontSize = "8rem";
+    const ticker = el.closest<HTMLElement>(".brand-ticker");
+    if (!ticker) return;
+    const available = ticker.clientWidth;
+    const textWidth = el.scrollWidth;
+    if (available > 0 && textWidth > 0) {
+      const current = parseFloat(getComputedStyle(el).fontSize);
+      el.style.fontSize = `${(current * available) / textWidth}px`;
+    }
+  }
+
+  function initBrandFit() {
+    brandResizeObserver?.disconnect();
+    const ticker = document.querySelector<HTMLElement>(".brand-ticker");
+    if (!ticker) return;
+    fitBrandName();
+    brandResizeObserver = new ResizeObserver(fitBrandName);
+    brandResizeObserver.observe(ticker);
+  }
+
   document.addEventListener("astro:before-swap", (event) => {
     const swapEvent = event as unknown as { newDocument?: Document };
     const newLang = swapEvent.newDocument?.documentElement?.lang === "de" ? "de" : "en";
@@ -124,5 +159,6 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
   document.addEventListener("astro:page-load", () => {
     const lang = document.documentElement.lang === "de" ? "de" : "en";
     updateBrandHomeLink(lang);
+    initBrandFit();
   });
 </script>
