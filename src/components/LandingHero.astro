@@ -21,7 +21,6 @@ const connectAfter =
     <h1
       id="landing-title"
       class="landing-hero__statement landing-hero__statement--primary"
-      data-hero-reveal
     >
       {
         networkNameIndex >= 0 ? (
@@ -36,11 +35,11 @@ const connectAfter =
       }
     </h1>
 
-    <p class="landing-hero__statement landing-hero__statement--purpose" data-hero-reveal>
+    <p class="landing-hero__statement landing-hero__statement--purpose">
       {t("hero.statement.purpose")}
     </p>
 
-    <div class="landing-hero__join" data-hero-reveal>
+    <div class="landing-hero__join">
       <a id="hero-cta" href={lang === "de" ? "/de/signup" : "/signup"} class="btn-solid btn-join">
         {t("hero.cta.join")}
       </a>
@@ -49,6 +48,17 @@ const connectAfter =
 </div>
 
 <style>
+  @keyframes hero-fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   .landing-hero {
     display: grid;
     justify-items: center;
@@ -68,7 +78,7 @@ const connectAfter =
   .landing-hero__statement {
     margin: 0;
     color: var(--color-dark);
-    font-size: clamp(1.55rem, 3vw, 2.8rem);
+    font-size: clamp(1.2rem, 5vw, 2.8rem);
     font-weight: 300;
     line-height: 1.12;
     letter-spacing: 0;
@@ -79,23 +89,42 @@ const connectAfter =
   }
 
   .landing-hero__statement--primary {
+    animation: hero-fade-up 0.78s ease-out both;
+    animation-play-state: paused;
   }
 
   .landing-hero__statement--purpose {
+    animation: hero-fade-up 1s ease-out 0.1s both;
+    animation-play-state: paused;
   }
 
   .landing-hero__join {
     display: flex;
     align-items: flex-start;
     padding-top: 1.5rem;
+    animation: hero-fade-up 1s ease-out 0.2s both;
+    animation-play-state: paused;
+  }
+
+  :global(.page-loaded) .landing-hero__statement--primary,
+  :global(.page-loaded) .landing-hero__statement--purpose,
+  :global(.page-loaded) .landing-hero__join {
+    animation-play-state: running;
   }
 
   .btn-join {
     align-self: center;
   }
 
-  [data-hero-reveal] {
-    visibility: hidden;
+  @media (prefers-reduced-motion: reduce) {
+    .landing-hero__statement--primary,
+    .landing-hero__statement--purpose,
+    .landing-hero__join,
+    :global(.page-loaded) .landing-hero__statement--primary,
+    :global(.page-loaded) .landing-hero__statement--purpose,
+    :global(.page-loaded) .landing-hero__join {
+      animation: none;
+    }
   }
 
   @media (max-width: 700px) {
@@ -108,48 +137,19 @@ const connectAfter =
       gap: 2rem;
     }
 
-    .landing-hero__statement--primary,
-    .landing-hero__statement--purpose {
-      font-size: 20px;
-      line-height: 1.18;
-    }
-
     .landing-hero__join {
       align-items: flex-start;
       flex-direction: column;
-      width: max-content;
     }
   }
 </style>
 
 <script>
   import { onAuthStateChanged } from "firebase/auth";
-  import gsap from "gsap";
   import { auth } from "../lib/firebase.ts";
   import { ui } from "../i18n/translations.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
-  let heroTimeline: gsap.core.Timeline | null = null;
-
-  function revealHero(root: HTMLElement) {
-    heroTimeline?.kill();
-    heroTimeline = null;
-
-    const revealItems = Array.from(root.querySelectorAll<HTMLElement>("[data-hero-reveal]"));
-
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      gsap.set(revealItems, { autoAlpha: 1, y: 0 });
-      return;
-    }
-
-    gsap.set(revealItems, { autoAlpha: 0, y: 28 });
-
-    heroTimeline = gsap.timeline({ defaults: { ease: "power3.out" } });
-    heroTimeline
-      .to(revealItems[0], { autoAlpha: 1, y: 0, duration: 0.78 })
-      .to(revealItems[1], { autoAlpha: 1, y: 0, duration: 1 }, "-=0.02")
-      .to(revealItems[2], { autoAlpha: 1, y: 0, duration: 1 }, "-=0.02");
-  }
 
   document.addEventListener("astro:page-load", () => {
     const cta = document.getElementById("hero-cta") as HTMLAnchorElement | null;
@@ -160,8 +160,6 @@ const connectAfter =
     const prefix = lang === "de" ? "/de" : "";
     const strings = ui[lang];
 
-    revealHero(wrapper);
-
     unsubscribeAuth?.();
     unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       cta.href = user ? `${prefix}/community` : `${prefix}/signup`;
@@ -170,8 +168,6 @@ const connectAfter =
   });
 
   document.addEventListener("astro:before-swap", () => {
-    heroTimeline?.kill();
-    heroTimeline = null;
     unsubscribeAuth?.();
     unsubscribeAuth = null;
   });

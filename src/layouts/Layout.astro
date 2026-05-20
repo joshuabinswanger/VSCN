@@ -93,12 +93,18 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
     pointer-events: none;
   }
 
+  @keyframes loader-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.35; }
+  }
+
   .loader-brand {
     font-size: clamp(4rem, 15vw, 10rem);
     font-weight: 800;
     line-height: 1;
     letter-spacing: 0;
     color: var(--color-dark);
+    animation: loader-pulse 2.6s ease-in-out infinite;
   }
 
   .page-wrap {
@@ -178,7 +184,10 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
     if (!loader) return;
     setTimeout(() => {
       loader.style.opacity = "0";
-      loader.addEventListener("transitionend", () => loader.remove(), { once: true });
+      loader.addEventListener("transitionend", () => {
+        loader.remove();
+        document.body.classList.add("page-loaded");
+      }, { once: true });
     }, 700);
   });
 
@@ -193,5 +202,9 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
     const lang = document.documentElement.lang === "de" ? "de" : "en";
     updateBrandHomeLink(lang);
     initBrandFit();
+    // On client-side navigation there's no loader, so start animations immediately
+    if (!document.getElementById("page-loader")) {
+      document.body.classList.add("page-loaded");
+    }
   });
 </script>
