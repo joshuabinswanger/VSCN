@@ -262,7 +262,10 @@ const {
     timeline.to({}, { duration: holdDuration });
 
     words.slice(1).forEach((incoming, index) => {
-      flipWordSwap(timeline, words[index], incoming, replaceDuration, collapseDuration, ease);
+      const isCommunication = incoming.textContent?.trim() === "Communication";
+      const inDur = isCommunication ? replaceDuration / 1.5 : replaceDuration;
+      const outDur = isCommunication ? collapseDuration / 1.5 : collapseDuration;
+      flipWordSwap(timeline, words[index], incoming, inDur, outDur, ease);
       timeline.to({}, { duration: holdDuration });
     });
 
