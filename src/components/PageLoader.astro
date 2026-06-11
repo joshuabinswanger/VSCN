@@ -108,13 +108,21 @@
   const CHARS = "VSCN";
   const LETTER_DURATION = 0.22;
   const LETTER_STAGGER = 0.06;
+  // "Communication" has 13 letters vs ~6 for the others, so at the normal
+  // stagger it takes ~0.94s to resolve. A tighter stagger brings it in line
+  // with the shorter words (~0.5s) without changing the rest of the intro.
+  const COMM_LETTER_STAGGER = 0.025;
   const WORD_GAP = 0.12;
 
   function delay(ms: number) {
     return new Promise<void>((r) => setTimeout(r, ms));
   }
 
-  function animateWord(wordEl: HTMLElement, word: string): Promise<void> {
+  function animateWord(
+    wordEl: HTMLElement,
+    word: string,
+    letterStagger = LETTER_STAGGER
+  ): Promise<void> {
     return new Promise((resolve) => {
       const slots: (string | null)[] = new Array(word.length).fill(null);
       let activeCount = 0;
@@ -135,7 +143,7 @@
       const letterDones = word.split("").map(
         (char, i) =>
           new Promise<void>((resolveLetter) => {
-            gsap.delayedCall(i * LETTER_STAGGER, () => {
+            gsap.delayedCall(i * letterStagger, () => {
               activeCount = i + 1;
               slots[i] = null;
               const obj = { p: 0 };
@@ -173,7 +181,11 @@
     if (dotsEl) await gsap.to(dotsEl, { opacity: 0, duration: 0.25, ease: "power1.in" });
 
     for (let i = 0; i < wordEls.length; i++) {
-      await animateWord(wordEls[i], WORDS[i]);
+      await animateWord(
+        wordEls[i],
+        WORDS[i],
+        WORDS[i] === "Communication" ? COMM_LETTER_STAGGER : LETTER_STAGGER
+      );
       if (i < wordEls.length - 1) await delay(WORD_GAP * 1000);
     }
 
