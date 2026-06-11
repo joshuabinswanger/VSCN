@@ -181,6 +181,8 @@ const {
     incoming: HTMLElement,
     inDuration: number,
     outDuration: number,
+    inStagger: number,
+    outStagger: number,
     ease: string
   ) {
     const outgoingChars = getChars(outgoing);
@@ -197,7 +199,7 @@ const {
           opacity: 0,
           duration: outDuration,
           ease,
-          stagger: STAGGER,
+          stagger: outStagger,
         },
         label
       )
@@ -211,7 +213,7 @@ const {
           opacity: 1,
           duration: inDuration,
           ease,
-          stagger: STAGGER,
+          stagger: inStagger,
         },
         `${label}+=0.06`
       )
@@ -261,14 +263,33 @@ const {
     flipWordIn(timeline, words[0], replaceDuration, ease);
     timeline.to({}, { duration: holdDuration });
 
+    // "Communication" is 13 chars vs ~6 for the other words, so the per-char
+    // stagger spread makes its cascade ~2.4× longer. Tighten the stagger for
+    // the Communication transitions and shorten its incoming duration so the
+    // word appears faster without changing the rest of the sequence.
+    const COMM_STAGGER_FACTOR = 3.5;
+    const COMM_IN_DURATION_FACTOR = 0.6;
+
     words.slice(1).forEach((incoming, index) => {
-      const isCommunication = index === 1; // words[2] = "Communication"
-      const inDur = isCommunication ? replaceDuration / 1.5 : replaceDuration;
-      const outDur = isCommunication ? collapseDuration / 1.5 : collapseDuration;
-      flipWordSwap(timeline, words[index], incoming, inDur, outDur, ease);
+      const isIncomingComm = index === 1; // Science → Communication
+      const isOutgoingComm = index === 2; // Communication → Network
+
+      const inStag = STAGGER / (isIncomingComm ? COMM_STAGGER_FACTOR : 1);
+      const outStag = STAGGER / (isOutgoingComm ? COMM_STAGGER_FACTOR : 1);
+      const inDur = replaceDuration * (isIncomingComm ? COMM_IN_DURATION_FACTOR : 1);
+
+      flipWordSwap(
+        timeline,
+        words[index],
+        incoming,
+        inDur,
+        collapseDuration,
+        inStag,
+        outStag,
+        ease
+      );
       timeline.to({}, { duration: holdDuration });
     });
-
 
     timelines.set(root, timeline);
   }
