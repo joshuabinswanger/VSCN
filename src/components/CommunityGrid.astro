@@ -102,6 +102,16 @@ const memberLabel = members.length === 1 ? t('community.member') : t('community.
   import { onAuthStateChanged } from "firebase/auth";
 
   document.addEventListener("astro:page-load", () => {
+    const grid = document.getElementById("member-grid");
+    if (grid) {
+      const cards = [...grid.children];
+      for (let i = cards.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        grid.appendChild(cards[j]);
+        cards.splice(j, 1);
+      }
+    }
+
     const cta = document.getElementById("community-signup-cta");
     if (cta) {
       onAuthStateChanged(auth, (user) => {
