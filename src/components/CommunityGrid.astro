@@ -13,21 +13,64 @@ interface Props {
 const { members, lang = 'en', debugInfo } = Astro.props;
 const t = useTranslations(lang);
 const memberLabel = members.length === 1 ? t('community.member') : t('community.members');
+
+const typeFilters = [
+  { value: 'all', label: t('community.filter.all') },
+  { value: 'creator', label: t('community.filter.creators') },
+  { value: 'scientist', label: t('community.filter.scientists') },
+  { value: 'organization', label: t('community.filter.organizations') },
+];
+
+const openToFilters = [
+  { value: 'all', label: t('community.filter.all') },
+  { value: 'offering', label: t('community.filter.offering') },
+  { value: 'seeking', label: t('community.filter.seeking') },
+];
 ---
 
 <div class="community-wrapper" data-lang={lang}>
   <div class="page-header">
     <h1 class="page-title">
-      <span class="member-count">
+      <span id="member-count" class="member-count">
         {members.length} {memberLabel}
       </span>
     </h1>
   </div>
 
+  {
+    members.length > 0 && (
+      <div class="community-filters">
+        {[
+          { group: 'type', legend: t('community.filter.type'), options: typeFilters },
+          { group: 'openTo', legend: t('community.filter.looking'), options: openToFilters },
+        ].map((row) => (
+          <div class="filter-row" role="group" aria-label={row.legend}>
+            <span class="filter-legend">{row.legend}</span>
+            <div class="filter-chips">
+              {row.options.map((option) => (
+                <button
+                  type="button"
+                  class:list={['filter-chip', option.value === 'all' && 'filter-chip--active']}
+                  data-filter-group={row.group}
+                  data-filter-value={option.value}
+                  aria-pressed={option.value === 'all' ? 'true' : 'false'}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   <div id="member-grid" class="member-grid">
     {members.length === 0 && <p class="state-msg">{t('community.empty')}</p>}
     {members.map((m) => <MemberCard member={m} lang={lang} />)}
   </div>
+
+  <p id="filter-empty" class="state-msg" hidden>{t('community.filter.none')}</p>
 
   <div id="community-signup-cta" class="community-signup-cta" style="display:none;">
     <a href={lang === 'de' ? '/de/signup' : '/signup'} class="btn-solid">{t('signup.cta.community')}</a>
@@ -69,12 +112,81 @@ const memberLabel = members.length === 1 ? t('community.member') : t('community.
     font-size: 0.9rem;
   }
 
+  .community-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    margin: -1.5rem 0 2.5rem;
+  }
+
+  .filter-row {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+  }
+
+  .filter-legend {
+    font-family: "Archivo", sans-serif;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    flex: 0 0 auto;
+    min-width: 7ch;
+  }
+
+  .filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .filter-chip {
+    font-family: inherit;
+    font-size: 0.82rem;
+    line-height: 1.2;
+    padding: 0.35rem 0.75rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: 999px;
+    background: #fff;
+    color: #555;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      border-color 0.15s,
+      color 0.15s;
+  }
+
+  .filter-chip:hover {
+    border-color: #999;
+    color: #333;
+  }
+
+  .filter-chip--active {
+    background: #111;
+    border-color: #111;
+    color: #fff;
+  }
+
+  .filter-chip--active:hover {
+    background: #333;
+    border-color: #333;
+    color: #fff;
+  }
+
   .member-grid {
     display: grid;
     grid-template-columns: 1fr;
     gap: 2rem;
     width: 100%;
     align-items: start;
+  }
+
+  /* Filtered-out cards must leave the grid flow entirely. */
+  .member-grid :global(.member-card-wrap[hidden]) {
+    display: none;
   }
 
   @media (--bp-desktop) {
@@ -100,6 +212,7 @@ const memberLabel = members.length === 1 ? t('community.member') : t('community.
 <script>
   import { auth } from "../lib/firebase.ts";
   import { onAuthStateChanged } from "firebase/auth";
+  import { ui } from "../i18n/translations.ts";
 
   document.addEventListener("astro:page-load", () => {
     const grid = document.getElementById("member-grid");
@@ -112,6 +225,8 @@ const memberLabel = members.length === 1 ? t('community.member') : t('community.
       }
     }
 
+    wireFilters(grid);
+
     const cta = document.getElementById("community-signup-cta");
     if (cta) {
       onAuthStateChanged(auth, (user) => {
@@ -119,4 +234,68 @@ const memberLabel = members.length === 1 ? t('community.member') : t('community.
       });
     }
   });
+
+  /**
+   * Profiles created before member types existed have no value. A card with no
+   * type reads as a creator on the card itself (no badge), so it filters the
+   * same way — otherwise the whole legacy directory would vanish under "Creators".
+   */
+  function matchesType(cardType: string, filter: string): boolean {
+    if (filter === "all") return true;
+    if (filter === "creator") return cardType === "" || cardType === "creator" || cardType === "both";
+    if (filter === "scientist") return cardType === "scientist" || cardType === "both";
+    return cardType === filter;
+  }
+
+  function matchesOpenTo(cardOpenTo: string, filter: string): boolean {
+    return filter === "all" || cardOpenTo.includes(`|${filter}|`);
+  }
+
+  function wireFilters(grid: HTMLElement | null) {
+    const wrapper = document.querySelector<HTMLElement>(".community-wrapper");
+    const chips = Array.from(document.querySelectorAll<HTMLButtonElement>(".filter-chip"));
+    if (!grid || !wrapper || chips.length === 0) return;
+
+    const strings = ui[wrapper.dataset.lang === "de" ? "de" : "en"] ?? ui.en;
+    const countEl = document.getElementById("member-count");
+    const emptyEl = document.getElementById("filter-empty");
+    const cards = Array.from(grid.querySelectorAll<HTMLElement>(".member-card-wrap"));
+    const selected: Record<string, string> = { type: "all", openTo: "all" };
+
+    function applyFilters() {
+      let visible = 0;
+      cards.forEach((card) => {
+        const show =
+          matchesType(card.dataset.memberType ?? "", selected.type) &&
+          matchesOpenTo(card.dataset.openTo ?? "", selected.openTo);
+        card.hidden = !show;
+        if (show) visible += 1;
+      });
+
+      if (countEl) {
+        const label = visible === 1 ? strings["community.member"] : strings["community.members"];
+        countEl.textContent = `${visible} ${label}`;
+      }
+      if (emptyEl) emptyEl.hidden = visible > 0;
+    }
+
+    chips.forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const group = chip.dataset.filterGroup;
+        const value = chip.dataset.filterValue;
+        if (!group || !value) return;
+
+        selected[group] = value;
+        chips
+          .filter((other) => other.dataset.filterGroup === group)
+          .forEach((other) => {
+            const isActive = other === chip;
+            other.classList.toggle("filter-chip--active", isActive);
+            other.setAttribute("aria-pressed", String(isActive));
+          });
+
+        applyFilters();
+      });
+    });
+  }
 </script>

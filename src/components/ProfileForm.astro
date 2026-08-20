@@ -1,5 +1,6 @@
 ---
 import MemberCard from "./MemberCard.astro";
+import MemberTypeSelector from "./MemberTypeSelector.astro";
 import OpenToSelector from "./OpenToSelector.astro";
 import TagSelector from "./TagSelector.astro";
 import { useTranslations } from "../i18n/utils";
@@ -27,6 +28,8 @@ const t = useTranslations(lang);
     <p id="upload-status" class="upload-status" style="display:none;"></p>
   </div>
 
+  <MemberTypeSelector lang={lang} />
+
   <div class="field">
     <label class="label" for="name">{t("profile.label.name")}</label>
     <input id="name" type="text" class="input" placeholder={t("profile.ph.name")} />
@@ -45,7 +48,9 @@ const t = useTranslations(lang);
   </div>
 
   <div class="field">
-    <label class="label" for="portfolio">{t("profile.label.portfolio")}</label>
+    <label id="portfolio-label" class="label" for="portfolio"
+      >{t("profile.label.portfolio")}</label
+    >
     <div class="input-prefix-wrap">
       <span class="input-prefix">https://</span>
       <input
@@ -106,6 +111,23 @@ const t = useTranslations(lang);
   <div class="field">
     <label class="label" for="tag-input">{t("profile.label.tags")}</label>
     <TagSelector lang={lang} maxTags={7} inputId="tag-input" />
+  </div>
+
+  <div class="field">
+    <p class="label">{t("profile.label.gallery")}</p>
+    <div id="gallery-editor" class="gallery-editor"></div>
+    <label class="btn-outline choose-img" for="gallery-files">
+      {t("profile.gallery.add")}
+      <input
+        id="gallery-files"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+        style="display:none;"
+      />
+    </label>
+    <p id="gallery-status" class="field-note" style="display:none;"></p>
+    <p class="field-note">{t("profile.note.gallery")}</p>
   </div>
 
   <div class="field">
@@ -364,6 +386,54 @@ const t = useTranslations(lang);
     border-color: transparent;
   }
 
+  .gallery-editor {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 10px;
+    margin-bottom: 0.5rem;
+  }
+
+  .gallery-editor:empty {
+    display: none;
+  }
+
+  .gallery-thumb {
+    position: relative;
+    aspect-ratio: 1;
+  }
+
+  .gallery-thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--color-border);
+    box-sizing: border-box;
+  }
+
+  .gallery-thumb-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .gallery-thumb-remove:hover {
+    background: var(--color-error);
+  }
+
   .preview-section {
     padding-top: 0.5rem;
     padding-bottom: 7rem;
@@ -568,6 +638,17 @@ const t = useTranslations(lang);
   import { getUser, deleteUserData, getPublicProfileActive, setProfileActive } from "../lib/firestore.ts";
   import { validateAvatar, resizeAvatar, normaliseUrl } from "../lib/validation.ts";
   import { handleProfileUpdate, triggerRebuild } from "../lib/profile.ts";
+  import { isMemberType } from "../lib/firestore.ts";
+  import { memberBadgeLabel, memberTypeFieldCopy } from "../lib/memberType.ts";
+  import {
+    MAX_GALLERY_IMAGES,
+    validateGalleryFile,
+    compressGalleryImage,
+    uploadGalleryImage,
+    deleteGalleryImages,
+    type GalleryItem,
+  } from "../lib/gallery.ts";
+  import { updateUserProfile } from "../lib/firestore.ts";
   import { ui } from "../i18n/translations.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
@@ -691,9 +772,106 @@ const t = useTranslations(lang);
         value: string[];
       }
     >("open-to-selector");
+    const memberTypeSelector = document.querySelector<
+      HTMLElement & {
+        value: string;
+      }
+    >("member-type-selector");
+    const portfolioLabel = document.getElementById("portfolio-label");
 
     let currentPhotoURL = "";
     let resizedAvatarBlob: Blob | null = null;
+    let gallery: GalleryItem[] = [];
+
+    const galleryInput = document.getElementById("gallery-files") as HTMLInputElement;
+    const galleryEditor = document.getElementById("gallery-editor")!;
+    const galleryStatus = document.getElementById("gallery-status")!;
+
+    function setGalleryStatus(text: string) {
+      galleryStatus.textContent = text;
+      galleryStatus.style.display = text ? "block" : "none";
+    }
+
+    function renderGallery() {
+      galleryEditor.replaceChildren(
+        ...gallery.map((item, index) => {
+          const wrap = document.createElement("div");
+          wrap.className = "gallery-thumb";
+          const img = document.createElement("img");
+          img.src = item.url;
+          img.alt = "";
+          img.loading = "lazy";
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "gallery-thumb-remove";
+          remove.textContent = "✕";
+          remove.setAttribute("aria-label", s["profile.gallery.remove"]);
+          remove.addEventListener("click", () => removeGalleryImage(index));
+          wrap.append(img, remove);
+          return wrap;
+        })
+      );
+    }
+
+    async function persistGallery() {
+      const user = auth.currentUser;
+      if (!user) return;
+      await updateUserProfile(user.uid, { gallery, updatedAt: new Date() });
+    }
+
+    async function removeGalleryImage(index: number) {
+      const [removed] = gallery.splice(index, 1);
+      renderGallery();
+      try {
+        await persistGallery();
+        if (removed) await deleteGalleryImages([removed.url]);
+        setGalleryStatus("");
+      } catch {
+        setGalleryStatus(s["profile.gallery.error"]);
+      }
+    }
+
+    galleryInput.addEventListener("change", async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      const files = Array.from(galleryInput.files ?? []);
+      galleryInput.value = "";
+      if (files.length === 0) return;
+
+      let uploaded = false;
+      for (const file of files) {
+        if (gallery.length >= MAX_GALLERY_IMAGES) {
+          setGalleryStatus(s["profile.gallery.full"]);
+          break;
+        }
+        const validation = validateGalleryFile(file);
+        if (!validation.ok) {
+          setGalleryStatus(validation.error!);
+          continue;
+        }
+        try {
+          setGalleryStatus(s["profile.upload.processing"]);
+          const { blob, width, height } = await compressGalleryImage(file);
+          const url = await uploadGalleryImage(user.uid, blob, (pct) => {
+            setGalleryStatus(`${s["profile.upload.uploading"]} ${pct}%`);
+          });
+          gallery.push({ url, caption: "", width, height });
+          uploaded = true;
+          renderGallery();
+        } catch {
+          setGalleryStatus(s["profile.gallery.error"]);
+        }
+      }
+
+      if (uploaded) {
+        try {
+          await persistGallery();
+          setGalleryStatus(s["profile.upload.complete"]);
+        } catch {
+          setGalleryStatus(s["profile.gallery.error"]);
+        }
+      }
+    });
 
     function getSelectedPrimaryAudiences() {
       return primaryAudienceInputs.filter((input) => input.checked).map((input) => input.value);
@@ -727,7 +905,30 @@ const t = useTranslations(lang);
         s["profile.preview.defaultName"],
         s["member.showBio"]
       );
+      syncBadgePreview();
     }
+
+    function syncBadgePreview() {
+      const previewBadge = document.getElementById("preview-badge");
+      if (!previewBadge) return;
+      const badge = memberBadgeLabel(memberTypeSelector?.value ?? "", (key) => s[key] ?? key);
+      previewBadge.textContent = badge;
+      previewBadge.hidden = !badge;
+    }
+
+    /** Scientists and research groups get lab-facing field wording. */
+    function syncMemberTypeCopy() {
+      const copy = memberTypeFieldCopy(memberTypeSelector?.value ?? "", (key) => s[key] ?? key);
+      nameInput.placeholder = copy.namePlaceholder;
+      roleInput.placeholder = copy.rolePlaceholder;
+      portfolioInput.placeholder = copy.portfolioPlaceholder;
+      if (portfolioLabel) portfolioLabel.textContent = copy.portfolioLabel;
+    }
+
+    memberTypeSelector?.addEventListener("member-type-change", () => {
+      syncMemberTypeCopy();
+      syncBadgePreview();
+    });
 
     nameInput.addEventListener("input", syncPreview);
     roleInput.addEventListener("input", syncPreview);
@@ -794,6 +995,10 @@ const t = useTranslations(lang);
       bioInput.value = data.bio ?? "";
       portfolioInput.value = data.portfolio ?? "";
       socialMediaInput.value = data.socialMedia ?? "";
+      if (memberTypeSelector) {
+        memberTypeSelector.value = data.memberType ?? "";
+        syncMemberTypeCopy();
+      }
       if (openToSelector) {
         openToSelector.value = Array.isArray(data.openTo) ? data.openTo.filter(Boolean) : [];
       }
@@ -801,6 +1006,8 @@ const t = useTranslations(lang);
         tagSelector.value = Array.isArray(data.tags) ? data.tags.filter(Boolean).slice(0, 7) : [];
       }
       setSelectedPrimaryAudiences(data.primaryAudiences ?? []);
+      gallery = Array.isArray(data.gallery) ? data.gallery.slice(0, MAX_GALLERY_IMAGES) : [];
+      renderGallery();
       phoneInput.value = data.phone ?? "";
       activeInput.checked = await getPublicProfileActive(user.uid);
       showPreview(data.photoURL ?? user.photoURL ?? "");
@@ -822,11 +1029,15 @@ const t = useTranslations(lang);
       const user = auth.currentUser;
       if (!user) return;
 
+      const memberType = memberTypeSelector?.value ?? "";
+
       try {
         const { photoURL } = await handleProfileUpdate(
           user,
           {
             displayName: nameInput.value.trim(),
+            // Omit rather than write "" — the field is absent until chosen.
+            ...(isMemberType(memberType) ? { memberType } : {}),
             role: roleInput.value.trim(),
             bio: bioInput.value.trim(),
             portfolio: portfolioInput.value.trim(),
@@ -877,6 +1088,7 @@ const t = useTranslations(lang);
       const photoURL = user.photoURL ?? "";
       await deleteUserData(user.uid);
       await deleteAvatar(photoURL);
+      await deleteGalleryImages(gallery.map((item) => item.url));
       await user.delete();
       window.location.href = prefix || "/";
     }

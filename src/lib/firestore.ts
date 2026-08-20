@@ -1,4 +1,5 @@
 import { db } from "./firebase.ts";
+import type { GalleryItem } from "./gallery.ts";
 import {
   collection,
   doc,
@@ -13,9 +14,20 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 
+// Keep in sync with validMemberType() in firestore.rules.
+export const MEMBER_TYPES = ["creator", "scientist", "both", "organization"] as const;
+
+export type MemberType = (typeof MEMBER_TYPES)[number];
+
+export function isMemberType(value: unknown): value is MemberType {
+  return typeof value === "string" && (MEMBER_TYPES as readonly string[]).includes(value);
+}
+
 export interface UserDoc {
   displayName: string;
   photoURL: string;
+  // Optional: profiles created before member types existed have no value.
+  memberType?: MemberType;
   role: string;
   bio: string;
   portfolio: string;
@@ -23,6 +35,7 @@ export interface UserDoc {
   openTo: string[];
   primaryAudiences: string[];
   tags: string[];
+  gallery: GalleryItem[];
   phone: string;
   email: string;
   communityGoals?: string[];
@@ -52,6 +65,7 @@ function toPublicProfile(data: Partial<UserDoc>): Partial<PublicProfileDoc> {
   const out: Partial<PublicProfileDoc> = {};
   if (data.displayName !== undefined) out.displayName = data.displayName;
   if (data.photoURL !== undefined) out.photoURL = data.photoURL;
+  if (data.memberType !== undefined) out.memberType = data.memberType;
   if (data.role !== undefined) out.role = data.role;
   if (data.bio !== undefined) out.bio = data.bio;
   if (data.portfolio !== undefined) out.portfolio = data.portfolio;
@@ -59,6 +73,7 @@ function toPublicProfile(data: Partial<UserDoc>): Partial<PublicProfileDoc> {
   if (data.openTo !== undefined) out.openTo = data.openTo;
   if (data.primaryAudiences !== undefined) out.primaryAudiences = data.primaryAudiences;
   if (data.tags !== undefined) out.tags = data.tags;
+  if (data.gallery !== undefined) out.gallery = data.gallery;
   if (data.createdAt) out.createdAt = data.createdAt;
   if (data.updatedAt) out.updatedAt = data.updatedAt;
   return out;

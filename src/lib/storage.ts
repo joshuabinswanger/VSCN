@@ -20,10 +20,10 @@ export function stripStorageToken(url: string): string {
   return url;
 }
 
-export async function deleteAvatar(photoURL: string): Promise<void> {
-  if (!photoURL) return;
+export async function deleteStorageFile(fileURL: string): Promise<void> {
+  if (!fileURL) return;
   try {
-    const url = new URL(photoURL);
+    const url = new URL(fileURL);
     let storagePath: string | null = null;
     if (url.hostname === "firebasestorage.googleapis.com") {
       const match = url.pathname.match(/\/o\/(.+)$/);
@@ -33,8 +33,12 @@ export async function deleteAvatar(photoURL: string): Promise<void> {
     }
     if (storagePath) await deleteObject(ref(storage, storagePath));
   } catch {
-    // Best-effort — avatar deletion failure should not block account deletion
+    // Best-effort — file deletion failure should not block account deletion
   }
+}
+
+export async function deleteAvatar(photoURL: string): Promise<void> {
+  await deleteStorageFile(photoURL);
 }
 
 export function uploadAvatar(

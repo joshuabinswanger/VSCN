@@ -61,20 +61,21 @@ service cloud.firestore {
 }
 
 function validPublicProfile(data) {
-  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'primaryAudiences', 'tags', 'active', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'active', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data);
 }
 
 function validPrivateUser(data, auth) {
-  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'primaryAudiences', 'tags', 'phone', 'email', 'communityGoals', 'onboardingComplete', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'phone', 'email', 'communityGoals', 'wantsToContribute', 'onboardingComplete', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data)
     && (!('phone' in data) || (data.phone is string && data.phone.size() <= 40))
     && (!('email' in data) || data.email == auth.token.email)
     && (!('communityGoals' in data) || data.communityGoals is list)
+    && (!('wantsToContribute' in data) || data.wantsToContribute is bool)
     && (!('onboardingComplete' in data) || data.onboardingComplete is bool);
 }
 
@@ -83,18 +84,55 @@ function validPublicFields(data) {
     && (!('bio' in data) || (data.bio is string
                              && data.bio.size() <= 500
                              && validBioWordCount(data.bio)))
+    && (!('memberType' in data) || validMemberType(data.memberType))
     && (!('role' in data) || (data.role is string && data.role.size() <= 100))
     && (!('portfolio' in data) || (data.portfolio is string && data.portfolio.size() <= 200))
     && (!('socialMedia' in data) || (data.socialMedia is string && data.socialMedia.size() <= 200))
     && (!('openTo' in data) || (data.openTo is list && data.openTo.size() <= 5))
     && (!('primaryAudiences' in data) || validPrimaryAudiences(data.primaryAudiences))
     && (!('tags' in data) || (data.tags is list && data.tags.size() <= 7))
+    && (!('gallery' in data) || validGallery(data.gallery))
     && (!('active' in data) || data.active is bool)
     && (!('photoURL' in data) || data.photoURL == ''
         || data.photoURL.matches('https://firebasestorage\\.googleapis\\.com/v0/b/vscn-39508\\.firebasestorage\\.app/.*')
         || data.photoURL.matches('https://storage\\.googleapis\\.com/vscn-39508\\.firebasestorage\\.app/.*'))
     && (!('createdAt' in data) || data.createdAt is timestamp)
     && (!('updatedAt' in data) || data.updatedAt is timestamp);
+}
+
+// Keep MAX_GALLERY_IMAGES in src/lib/gallery.ts in sync with the size cap
+// and the unrolled item checks below (rules cannot loop over lists).
+function validGallery(value) {
+  return value is list
+    && value.size() <= 8
+    && (value.size() < 1 || validGalleryItem(value[0]))
+    && (value.size() < 2 || validGalleryItem(value[1]))
+    && (value.size() < 3 || validGalleryItem(value[2]))
+    && (value.size() < 4 || validGalleryItem(value[3]))
+    && (value.size() < 5 || validGalleryItem(value[4]))
+    && (value.size() < 6 || validGalleryItem(value[5]))
+    && (value.size() < 7 || validGalleryItem(value[6]))
+    && (value.size() < 8 || validGalleryItem(value[7]));
+}
+
+function validGalleryItem(item) {
+  return item is map
+    && item.keys().hasOnly(['url', 'caption', 'width', 'height'])
+    && item.url is string
+    && (item.url.matches('https://firebasestorage\\.googleapis\\.com/v0/b/vscn-39508\\.firebasestorage\\.app/.*')
+        || item.url.matches('https://storage\\.googleapis\\.com/vscn-39508\\.firebasestorage\\.app/.*'))
+    && (!('caption' in item) || (item.caption is string && item.caption.size() <= 140))
+    && item.width is int && item.width > 0 && item.width <= 10000
+    && item.height is int && item.height > 0 && item.height <= 10000;
+}
+
+// Keep in sync with MEMBER_TYPES in src/lib/firestore.ts.
+function validMemberType(value) {
+  return value is string
+    && (value == 'creator'
+        || value == 'scientist'
+        || value == 'both'
+        || value == 'organization');
 }
 
 function validPrimaryAudiences(value) {
