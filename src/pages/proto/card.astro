@@ -1,0 +1,13 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import ProtoMemberCard from "../../components/proto/ProtoMemberCard.astro";
+import { PROTO_MEMBERS } from "../../lib/proto-data.ts";
+---
+
+<Layout title="Proto card" noindex={true}>
+  <div style="display:flex;flex-direction:column;gap:3rem;max-width:360px;margin:0 auto;padding:4rem 0;">
+    {/* First six deliberately: their image counts run 3, 2, 3, 1, 2, 3 — so
+        every flip branch, including the static one-image card, is on screen. */}
+    {PROTO_MEMBERS.slice(0, 6).map((m, i) => <ProtoMemberCard member={m} index={i} />)}
+  </div>
+</Layout>
