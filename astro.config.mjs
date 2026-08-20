@@ -24,6 +24,7 @@ export default defineConfig({
   integrations: [
     sitemap({
       filter: (page) =>
+        !page.includes('/proto') &&
         !page.includes('/profile') &&
         !page.includes('/verify-email') &&
         !page.includes('/auth/') &&
