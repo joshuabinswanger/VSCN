@@ -47,9 +47,23 @@ const VARIANTS = [
   { w: "72%", dx: "12%", dy: "2rem" },
   { w: "96%", dx: "3%", dy: "-0.5rem" },
 ];
+
+// The grid's outer edges have no gutter to lean into: a negative nudge in the
+// first column (or a positive one in the last) pushes the card outside
+// .pgrid's content box, where overflow-x: clip amputates it. Mirror those
+// nudges inward rather than zeroing them, so boundary columns keep their
+// jitter magnitude — the worst inward case stays inside the track (max right
+// extent works out to 98.9% of it). Interior columns keep the table as-is.
+// Deterministic: same variant in the same column always yields the same dx.
+function edgeAwareDx(dx: string, ci: number): string {
+  const n = Number.parseFloat(dx);
+  if (ci === 0) return `${Math.abs(n)}%`;
+  if (ci === cols - 1) return `${-Math.abs(n)}%`;
+  return dx;
+}
 ---
 
-<div class="pgrid" style={`--pcols:${cols};--ptemplate:${template}`}>
+<div class="pgrid" style={`--ptemplate:${template}`}>
   {
     columns.map((col, ci) => (
       <div class="pgrid__col">
@@ -57,8 +71,10 @@ const VARIANTS = [
           col.map((m, ri) => {
             const v = VARIANTS[(ci * 3 + ri * 5) % VARIANTS.length];
             return (
-              <div class="pgrid__cell" style={`--cw:${v.w};--dx:${v.dx};--dy:${v.dy}`}>
-                <ProtoMemberCard member={m} index={ci * 8 + ri} />
+              <div class="pgrid__cell" style={`--cw:${v.w};--dx:${edgeAwareDx(v.dx, ci)};--dy:${v.dy}`}>
+                {/* ri * cols + ci is unique across the whole grid for any
+                    cols, so no two cards ever share a crossfade phase. */}
+                <ProtoMemberCard member={m} index={ri * cols + ci} />
               </div>
             );
           })
@@ -153,16 +169,37 @@ const VARIANTS = [
   // a scoped Astro script, and revert() is all we need off it.
   let mm: { revert: () => void } | null = null;
 
+  // Re-entry guard for the async gap. `mm` alone is not a mutex: it is read
+  // before the dynamic import but only assigned after it, so two overlapping
+  // build() calls (page-load + breakpoint change, or a swap completing while
+  // the import is in flight) would both pass the `if (mm)` check and the
+  // second would orphan the first context's ScrollTriggers. `building` closes
+  // that window synchronously, and `epoch` — bumped by every teardown — lets a
+  // build that was in flight when a teardown happened detect that its DOM is
+  // stale and abandon itself instead of assigning a context over dead nodes.
+  let building = false;
+  let epoch = 0;
+
   async function build() {
-    if (mm) return;
+    if (building || mm) return;
     if (!document.querySelector(".pgrid")) return;
     if (!window.matchMedia(DESKTOP).matches) return;
     if (window.matchMedia(REDUCED).matches) return;
+
+    building = true;
+    const startedIn = epoch;
 
     const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
       import("gsap"),
       import("gsap/ScrollTrigger"),
     ]);
+
+    // A teardown ran while the import was in flight: this build's DOM is gone
+    // (or going), and teardown already reset `building` so a fresh build for
+    // the new page can proceed — which may be mid-import right now. Abandon
+    // without touching either flag, or we would clobber that newer build.
+    if (epoch !== startedIn) return;
+
     gsap.registerPlugin(ScrollTrigger);
 
     // The scroll container is .page-wrap, never the window — body is
@@ -206,11 +243,18 @@ const VARIANTS = [
     // Archivo is a self-hosted variable font; if it lands after first paint,
     // every measured trigger position is stale.
     document.fonts?.ready.then(() => ScrollTrigger.refresh());
+
+    building = false;
   }
 
   function teardown() {
+    // Bumping the epoch marks any in-flight build as stale; clearing
+    // `building` here (rather than in the stale build) is what lets the next
+    // page's build start immediately instead of waiting on the orphan.
+    epoch++;
     mm?.revert();
     mm = null;
+    building = false;
   }
 
   document.addEventListener("astro:page-load", build);
