@@ -1122,11 +1122,13 @@ const sts = ScrollTrigger.getAll();
 console.log(sts.length, new Set(sts.map(t => t.scroller?.className)).size,
             sts.every(t => t.scroller === document.querySelector('.page-wrap')));
 
-// 2. Prove liveness on a card that is actually mid-range.
+// 2. Prove liveness on a card that is actually mid-range. Pick it against the
+//    SCROLLER's clientHeight, not innerHeight — same reason as the note below.
+const wrap = document.querySelector('.page-wrap');
 const c = [...document.querySelectorAll('.pcard')]
-  .find(el => el.getBoundingClientRect().top > innerHeight * 0.6);
+  .find(el => el.getBoundingClientRect().top > wrap.clientHeight * 0.6);
 const before = getComputedStyle(c).transform;
-document.querySelector('.page-wrap').scrollTop += 600;
+wrap.scrollTop += 600;
 requestAnimationFrame(() => console.log(before, getComputedStyle(c).transform));
 ```
 
