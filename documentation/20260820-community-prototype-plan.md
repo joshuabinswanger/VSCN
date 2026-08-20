@@ -573,7 +573,8 @@ const phase = -((index * 1.37) % CYCLE);
     overflow: hidden;
     border: 1.5px solid var(--color-border);
     border-radius: var(--radius-sm);
-    background: #fff;
+    /* Token, not raw #fff — the token-only constraint applies here too. */
+    background: var(--color-bg);
   }
 
   .pcard__img {
@@ -676,9 +677,12 @@ const phase = -((index * 1.37) % CYCLE);
     100% { opacity: 1; }
   }
 
-  .pcard:hover .pcard__img {
-    animation-play-state: paused;
-  }
+  /* NO hover pause. `animation-play-state: paused` can freeze the crossfade
+     mid-ramp and hold two images at partial opacity for as long as the pointer
+     rests there — a persistent double exposure, which is the one invariant this
+     component exists to guarantee. Reachable on ~16% of the cycle. A transient
+     blend during a ramp is normal; an indefinitely held one is a defect, and
+     CSS cannot express "pause only outside the ramps". */
 
   /* ── Grow on approach to the top ──────────────────────── */
   /* Deliberately NOT here. The scale is driven by GSAP ScrollTrigger in
@@ -688,10 +692,17 @@ const phase = -((index * 1.37) % CYCLE);
      that is the correct mobile and no-JS state, not a broken one. */
 
   @media (prefers-reduced-motion: reduce) {
-    .pcard__img {
+    /* `.pcard .pcard__img`, not a bare `.pcard__img`: media queries add no
+       specificity, so a bare selector (0-1-0) loses to the
+       `.pcard[data-slots="3"] .pcard__img` rule above (0-3-0) and
+       animation-name would stay pcard-flip-3. It would still LOOK static,
+       because the shorthand's other longhands (duration 0s, iteration 1,
+       fill-mode none) do win — but correct-by-accident breaks the moment
+       another [data-slots] rule is added. Win on specificity instead. */
+    .pcard .pcard__img {
       animation: none;
     }
-    .pcard__img:first-of-type {
+    .pcard .pcard__img:first-of-type {
       opacity: 1;
     }
   }
@@ -1280,6 +1291,8 @@ Named so nobody mistakes their absence for an oversight:
 - **Dark mode.** Cheap now that tokens are centralised, expensive after two more pages of hand-written CSS — worth deciding before this graduates.
 - **The View Transition morph** from card to artist page. Needs the artist page to exist.
 - **Accessible DOM order on desktop.** The round-robin columns diverge visual and DOM order; flagged in `ProtoGrid.astro`.
+- **The card's own accessibility.** Every image carries `alt=""` (decorative) and the member name is a `<p>`, not a heading — so the card's primary content is invisible to assistive technology and the page has no heading structure. Acceptable for a throwaway visual prototype; **must not survive into the real component.** Graduation needs a real heading level and either meaningful `alt` text or the caption wired up as an accessible name.
+- **Crossfade luminance dip.** Two stacked images with complementary opacity ramps sum to opacity 1 but not to constant perceived luminance, so the blend dips roughly 25% toward the frame background at the ramp midpoint — about 0.74s at N=2, 0.49s at N=3. Invisible on these flat placeholders; if it reads as a flash on real artwork, the fix is a hard cut (`steps(1)`) or animating `z-index` so the incoming image covers an opaque outgoing one instead of dissolving through it.
 - **i18n.** English-only; strings are inline, not in `translations.ts`.
 - **`getImage` optimisation.** The placeholders are SVG, which Astro's image pipeline does not process anyway.
 - **Removing the dead Space Mono registration** from `astro.config.mjs`. It is downloaded and served but referenced nowhere in `src`, and this prototype no longer plans to use it — so it is now unambiguously dead weight. A separate one-line commit, not part of this plan.
