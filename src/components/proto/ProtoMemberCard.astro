@@ -78,9 +78,16 @@ const phase = -((index * 1.37) % CYCLE);
 
   /* ── Image + tag rail ─────────────────────────────────── */
   .pcard__body {
+    position: relative;
     display: flex;
     align-items: flex-start;
-    gap: 0.5rem;
+    /* The rail strip. A vertical tag box is line-height (0.62rem) plus 3px
+       padding and 1px border per side wide; reserve that plus the old 0.5rem
+       gap, and pin the rail into the strip absolutely. The frame is then the
+       only in-flow child, so the IMAGE alone sets the body height — a long
+       rail can no longer push the caption away from the image. */
+    --rail-w: calc(0.62rem + 8px);
+    padding-inline-end: calc(var(--rail-w) + 0.5rem);
   }
 
   .pcard__frame {
@@ -117,7 +124,11 @@ const phase = -((index * 1.37) % CYCLE);
   }
 
   .pcard__tags {
-    flex: 0 0 auto;
+    position: absolute;
+    top: 0;
+    inset-inline-end: 0;
+    max-height: 100%;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     gap: 3px;

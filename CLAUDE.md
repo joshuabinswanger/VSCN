@@ -17,7 +17,7 @@ There is **no test framework** in this repo, and none should be added casually. 
 
 `npm run lint` has a **standing baseline of 9 warnings / 0 errors**: an unused `t` in seven page frontmatters, an unused `debugInfo` in `CommunityGrid.astro`, and one `no-explicit-any`. Treat only *errors* as yours. If you have time, zeroing this baseline is a real improvement — a warning currently means nothing because there are always warnings.
 
-`npm run build` is the strongest available gate: it type-checks and renders all 19 pages.
+`npm run build` is the strongest available gate: it type-checks and renders all 20 pages.
 
 ## Architecture
 
