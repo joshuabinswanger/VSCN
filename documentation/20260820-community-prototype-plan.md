@@ -42,7 +42,7 @@
 | `src/components/proto/ProtoGrid.astro` | **Create.** Column distribution, offsets, width variance and jitter — plus the desktop GSAP layer (scroll-linked scale + column parallax), which lives here because it needs the scroller and per-column context. Knows nothing about card internals. |
 | `src/pages/proto/community.astro` | **Create.** The route. Wires mock data into the grid inside `Layout`. |
 | `astro.config.mjs` | **Modify** (sitemap `filter`, ~line 25–30). Exclude `/proto`. |
-| `.claude/launch.json` | **Create.** Dev-server config so the browser pane can drive `astro dev`. Local tooling — may be gitignored, so it is not committed. |
+| `.claude/launch.json` | **Create.** Dev-server config so the browser pane can drive `astro dev`. It is **not** gitignored in this repo (checked), and it is useful to anyone running the preview, so it **is** committed. |
 
 Card internals and grid layout are split deliberately: the flip/grow behaviour is the risky part and must be reviewable before a grid exists to hide it, and the column offsets should be tunable without touching animation code.
 
@@ -705,7 +705,10 @@ const phase = -((index * 1.37) % CYCLE);
     .pcard[data-slots] .pcard__img {
       animation: none;
     }
-    .pcard[data-slots] .pcard__img:first-of-type {
+    /* Bare selector is fine here and matches what shipped: served (0,3,0)
+       beats the base `opacity: 0` at (0,2,0), and the only higher-specificity
+       opacity rule sets 1 anyway. */
+    .pcard__img:first-of-type {
       opacity: 1;
     }
   }
@@ -764,7 +767,9 @@ Start the `vscn-dev` preview and navigate to `/proto/card`.
     .filter(i => +getComputedStyle(i).opacity > 0.5).length)
 ```
 
-Expected: every entry `1` — for 1-, 2- and 3-image cards alike. A `0` means the phase maths is wrong or `--slots` is not reaching the CSS; a `2` means the keyframe windows overlap too far. Sample repeatedly over ~10 s, since the failure mode is intermittent by nature.
+Expected: every entry `1` — for 1-, 2- and 3-image cards alike. A `0` means the phase maths is wrong or `--slots` is not reaching the CSS. Sample repeatedly over ~10 s.
+
+**Know what this gate can and cannot prove.** Because the ramps are complementary, the pair sums to ~1 at every instant, so **at most one slot can ever exceed 0.5 by construction** — running, paused, or frozen mid-ramp. This metric therefore proves there is no *gap* in the cycle (never zero visible images), and it can never report a `2`. It is **not** evidence about double exposure: a held blend at 0.6 / 0.4 would score `1` just the same. To test for a held blend you need a different check — confirm no rule can pause the animation, and read `animationPlayState` directly.
 
 Then confirm the static case specifically:
 
@@ -797,11 +802,11 @@ Expected: `none` or `matrix(1, 0, 0, 1, 0, 0)`. Cards must sit at **full** size 
 
 - [ ] **Step 5: Screenshot and commit**
 
-Take a screenshot for the record. `.claude/launch.json` is local tooling and may be gitignored, so it is not added.
+Take a screenshot for the record. `.claude/launch.json` is **not** gitignored in this repo, so commit it rather than leaving it as standing untracked noise.
 
 ```bash
 npm run lint
-git add src/components/proto/ProtoMemberCard.astro src/pages/proto/card.astro
+git add src/components/proto/ProtoMemberCard.astro src/pages/proto/card.astro .claude/launch.json
 git commit -m "feat(proto): community card with image flip and scroll-driven grow
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
@@ -1309,4 +1314,5 @@ When the look is signed off, the prototype becomes the real page by:
 3. Swapping `<img src>` for build-time `getImage`, exactly as `MemberCard.astro` already does for gallery thumbs.
 4. Clamping real galleries to the 1–3 range the CSS supports. `MAX_GALLERY_IMAGES` in `src/lib/gallery.ts` is 8, so the card must either take the first three or gain a third keyframe block per additional count. Members with zero images need a decision too — the prototype has no such case, so `member.images[0]` would throw on one.
 5. Moving the route under `[...lang]` with the existing `getStaticPaths` pair, and adding the i18n strings.
-6. Deleting `scripts/gen-proto-images.mjs`, `public/proto/`, `src/lib/proto-images.json` and `src/lib/proto-data.ts` in one commit.
+6. **Hardening the reduced-motion override to win outright.** As shipped, `.pcard[data-slots] .pcard__img` only *ties* the slot rules at (0,5,0) and wins on source order — and `[data-slots]` is load-bearing purely as a specificity counter, not semantically. Two ways that breaks silently, with no visible symptom because the shorthand's other longhands keep faking a static state: renaming or dropping the attribute during the gallery rework in step 4, or any reorganisation that groups media queries above the slot rules. `.pcard.pcard .pcard__img.pcard__img` serves at (0,6,0) and removes both dependencies at once. Verified safe for this prototype — Tasks 5 and 6 touch neither selector — so it is deferred, not ignored.
+7. Deleting `scripts/gen-proto-images.mjs`, `public/proto/`, `src/lib/proto-images.json` and `src/lib/proto-data.ts` in one commit.
