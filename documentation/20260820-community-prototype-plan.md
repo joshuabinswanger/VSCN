@@ -692,17 +692,20 @@ const phase = -((index * 1.37) % CYCLE);
      that is the correct mobile and no-JS state, not a broken one. */
 
   @media (prefers-reduced-motion: reduce) {
-    /* `.pcard .pcard__img`, not a bare `.pcard__img`: media queries add no
-       specificity, so a bare selector (0-1-0) loses to the
-       `.pcard[data-slots="3"] .pcard__img` rule above (0-3-0) and
-       animation-name would stay pcard-flip-3. It would still LOOK static,
-       because the shorthand's other longhands (duration 0s, iteration 1,
-       fill-mode none) do win — but correct-by-accident breaks the moment
-       another [data-slots] rule is added. Win on specificity instead. */
-    .pcard .pcard__img {
+    /* Media queries add NO specificity, so this has to out-rank the
+       `.pcard[data-slots="3"] .pcard__img` rule above on its own merits or
+       `animation-name` stays `pcard-flip-3`. Count it as served, after Astro
+       appends its `[data-astro-cid-…]` scope attribute to every compound:
+         .pcard[data-slots="3"] .pcard__img  ->  2 classes + 1 attr + 2 scope = (0,5,0)
+         .pcard__img                         ->  1 class  +          1 scope = (0,2,0)  loses
+         .pcard .pcard__img                  ->  2 classes +         2 scope = (0,4,0)  STILL loses
+         .pcard[data-slots] .pcard__img      ->  2 classes + 1 attr + 2 scope = (0,5,0)  ties, wins on source order
+       Hence the attribute selector. Verified in the CSSOM, not reasoned about:
+       `animation-name` computes to `none` on a data-slots="3" card. */
+    .pcard[data-slots] .pcard__img {
       animation: none;
     }
-    .pcard .pcard__img:first-of-type {
+    .pcard[data-slots] .pcard__img:first-of-type {
       opacity: 1;
     }
   }
