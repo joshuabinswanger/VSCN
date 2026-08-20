@@ -52,8 +52,10 @@ const VARIANTS = [
 // first column (or a positive one in the last) pushes the card outside
 // .pgrid's content box, where overflow-x: clip amputates it. Mirror those
 // nudges inward rather than zeroing them, so boundary columns keep their
-// jitter magnitude — the worst inward case stays inside the track (max right
-// extent works out to 98.9% of it). Interior columns keep the table as-is.
+// jitter magnitude. The worst mirrored extent reaches 98.9% of the track;
+// the unmirrored w:100%/dx:0% cards sit at exactly 100% of it, so the right
+// content edge is met but never crossed. Interior columns keep the table
+// as-is.
 // Deterministic: same variant in the same column always yields the same dx.
 function edgeAwareDx(dx: string, ci: number): string {
   const n = Number.parseFloat(dx);
@@ -189,62 +191,88 @@ function edgeAwareDx(dx: string, ci: number): string {
     building = true;
     const startedIn = epoch;
 
-    const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
-      import("gsap"),
-      import("gsap/ScrollTrigger"),
-    ]);
+    // Everything from the import onward can reject or throw — a hashed chunk
+    // 404ing after a redeploy while ClientRouter keeps the session alive, a
+    // flaky network, a plugin error. Without recovery, a rejection here would
+    // leave `building` latched true with `mm` null, and every later build()
+    // would bounce off the re-entry gate: a silently dead motion layer until
+    // a full reload.
+    try {
+      const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
+        import("gsap"),
+        import("gsap/ScrollTrigger"),
+      ]);
 
-    // A teardown ran while the import was in flight: this build's DOM is gone
-    // (or going), and teardown already reset `building` so a fresh build for
-    // the new page can proceed — which may be mid-import right now. Abandon
-    // without touching either flag, or we would clobber that newer build.
-    if (epoch !== startedIn) return;
+      // A teardown ran while the import was in flight: this build's DOM is
+      // gone (or going), and teardown already reset `building` so a fresh
+      // build for the new page can proceed — which may be mid-import right
+      // now. Abandon without touching either flag, or we would clobber that
+      // newer build.
+      if (epoch !== startedIn) return;
 
-    gsap.registerPlugin(ScrollTrigger);
+      gsap.registerPlugin(ScrollTrigger);
 
-    // The scroll container is .page-wrap, never the window — body is
-    // overflow:hidden. Telling ScrollTrigger explicitly is the whole reason
-    // this is more robust than a CSS view() timeline.
-    const scroller = ".page-wrap";
+      // The scroll container is .page-wrap, never the window — body is
+      // overflow:hidden. Telling ScrollTrigger explicitly is the whole reason
+      // this is more robust than a CSS view() timeline.
+      const scroller = ".page-wrap";
 
-    mm = gsap.matchMedia();
-    // Tweens and ScrollTriggers created inside a matchMedia context are
-    // reverted and killed automatically, so no manual cleanup is needed here.
-    mm.add(DESKTOP, () => {
-      // 1. Grow on approach. Starts when the card's top enters at the bottom
-      //    of the scrollport, completes when its top reaches 38% from the top,
-      //    so cards are already full size in the upper region rather than
-      //    still swelling as they leave. scrub ties progress to scroll
-      //    position instead of to elapsed time.
-      gsap.utils.toArray<HTMLElement>(".pcard").forEach((card) => {
-        gsap.fromTo(
-          card,
-          { scale: 0.84, opacity: 0.5 },
-          {
-            scale: 1,
-            opacity: 1,
+      mm = gsap.matchMedia();
+      // Tweens and ScrollTriggers created inside a matchMedia context are
+      // reverted and killed automatically, so no manual cleanup is needed
+      // here.
+      mm.add(DESKTOP, () => {
+        // 1. Grow on approach. Starts when the card's top enters at the
+        //    bottom of the scrollport, completes when its top reaches 38%
+        //    from the top, so cards are already full size in the upper region
+        //    rather than still swelling as they leave. scrub ties progress to
+        //    scroll position instead of to elapsed time.
+        gsap.utils.toArray<HTMLElement>(".pcard").forEach((card) => {
+          gsap.fromTo(
+            card,
+            { scale: 0.84, opacity: 0.5 },
+            {
+              scale: 1,
+              opacity: 1,
+              ease: "none",
+              scrollTrigger: { scroller, trigger: card, start: "top bottom", end: "top 38%", scrub: true },
+            },
+          );
+        });
+
+        // 2. Column parallax. Drives .pgrid__col, while the per-card jitter
+        //    sets `translate` on .pgrid__cell — different elements, so they
+        //    compose.
+        gsap.utils.toArray<HTMLElement>(".pgrid__col").forEach((col, i) => {
+          gsap.to(col, {
+            y: DRIFT[i % DRIFT.length],
             ease: "none",
-            scrollTrigger: { scroller, trigger: card, start: "top bottom", end: "top 38%", scrub: true },
-          },
-        );
-      });
-
-      // 2. Column parallax. Drives .pgrid__col, while the per-card jitter sets
-      //    `translate` on .pgrid__cell — different elements, so they compose.
-      gsap.utils.toArray<HTMLElement>(".pgrid__col").forEach((col, i) => {
-        gsap.to(col, {
-          y: DRIFT[i % DRIFT.length],
-          ease: "none",
-          scrollTrigger: { scroller, trigger: ".pgrid", start: "top bottom", end: "bottom top", scrub: true },
+            scrollTrigger: { scroller, trigger: ".pgrid", start: "top bottom", end: "bottom top", scrub: true },
+          });
         });
       });
-    });
 
-    // Archivo is a self-hosted variable font; if it lands after first paint,
-    // every measured trigger position is stale.
-    document.fonts?.ready.then(() => ScrollTrigger.refresh());
+      // Archivo is a self-hosted variable font; if it lands after first
+      // paint, every measured trigger position is stale. Epoch-guarded: if a
+      // teardown has run since this build, the context is reverted and must
+      // not be refreshed — the owning build registers its own callback.
+      document.fonts?.ready.then(() => {
+        if (epoch === startedIn) ScrollTrigger.refresh();
+      });
 
-    building = false;
+      building = false;
+    } catch (err) {
+      // Release the latch only if this build still owns it. After a teardown,
+      // `building` belongs to whatever comes next — possibly a build already
+      // mid-import — so a bare `finally { building = false }` would reopen
+      // the clobber the epoch design exists to prevent.
+      if (epoch === startedIn) building = false;
+      // Swallow rather than re-throw: nothing awaits build() — it runs as an
+      // event listener, so a re-throw could only surface as unhandled-
+      // rejection noise. The page is fully usable without the motion layer;
+      // log for diagnosability, and the next astro:page-load retries cleanly.
+      console.error("[proto-grid] scroll motion layer failed to build:", err);
+    }
   }
 
   function teardown() {
