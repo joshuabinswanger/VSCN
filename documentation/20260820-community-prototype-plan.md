@@ -1114,15 +1114,23 @@ Four gates. The first replaces the assumption the earlier CSS-only version had t
 
 **5a. ScrollTrigger bound to the right scroller and is actually live.**
 
+**Do not probe a card that is high on the page.** An earlier version of this gate named `.pcard[8]`, which is the *head of a column* — already past its animation end at `scrollTop 0`, so it reports the identity matrix at both sample points even when everything works. That gate could not fail. Pick a card that is genuinely mid-viewport, and assert the trigger's own state rather than inferring it from a transform delta:
+
 ```js
-document.querySelector('.page-wrap').scrollTop = 0;
-const c = document.querySelectorAll('.pcard')[8];
-const a = getComputedStyle(c).transform;
+// 1. Name the scroller instead of inferring it.
+const sts = ScrollTrigger.getAll();
+console.log(sts.length, new Set(sts.map(t => t.scroller?.className)).size,
+            sts.every(t => t.scroller === document.querySelector('.page-wrap')));
+
+// 2. Prove liveness on a card that is actually mid-range.
+const c = [...document.querySelectorAll('.pcard')]
+  .find(el => el.getBoundingClientRect().top > innerHeight * 0.6);
+const before = getComputedStyle(c).transform;
 document.querySelector('.page-wrap').scrollTop += 600;
-requestAnimationFrame(() => console.log(a, getComputedStyle(c).transform));
+requestAnimationFrame(() => console.log(before, getComputedStyle(c).transform));
 ```
 
-Expected: two different `matrix(...)` values. If they are identical, the scroller is wrong — confirm `.page-wrap` exists and that `scroller` is being passed to every trigger.
+Expected: every trigger's `scroller` **is** the `.page-wrap` element, and the two matrices differ. Note that with a custom `scroller`, ScrollTrigger resolves percentage offsets such as `top 38%` against the **scroller's** `clientHeight`, not the window's — so do not check the arithmetic against `innerHeight`.
 
 **5b. Columns drift independently.** This is the parallax, and it is the thing CSS could not do:
 
@@ -1300,6 +1308,8 @@ Named so nobody mistakes their absence for an oversight:
 - **The View Transition morph** from card to artist page. Needs the artist page to exist.
 - **Accessible DOM order on desktop.** The round-robin columns diverge visual and DOM order; flagged in `ProtoGrid.astro`.
 - **The card's own accessibility.** Every image carries `alt=""` (decorative) and the member name is a `<p>`, not a heading — so the card's primary content is invisible to assistive technology and the page has no heading structure. Acceptable for a throwaway visual prototype; **must not survive into the real component.** Graduation needs a real heading level and either meaningful `alt` text or the caption wired up as an accessible name.
+- **Nav headroom is a residual, not a reservation.** `.pgrid`'s `padding-block` top (2.5rem) minus column 1's drift-at-rest happens to leave roughly 27px of clearance below the sticky nav. It works only because no first-in-column card draws a negative `dy`, and because the drift at rest is a fraction of its target. At `cols=4` the columns halve in height, the at-rest drift roughly doubles, and clearance falls to about 16px. Nothing reserves the nav's space deliberately — if the nav or the column count changes, re-check it.
+- **Column drift is not accounted for in the card triggers.** Each card's `start`/`end` is cached from its untransformed position, while its column is translated by up to 70px on scroll — so `end: "top 38%"` is only nominally where the grow completes, diverging by up to 70px of a ~450px range. Cosmetic; GSAP reverts scrubbed tweens before measuring, so the baseline is correct.
 - **Crossfade luminance dip.** Two stacked images with complementary opacity ramps sum to opacity 1 but not to constant perceived luminance, so the blend dips roughly 25% toward the frame background at the ramp midpoint — about 0.74s at N=2, 0.49s at N=3. Invisible on these flat placeholders; if it reads as a flash on real artwork, the fix is a hard cut (`steps(1)`) or animating `z-index` so the incoming image covers an opaque outgoing one instead of dissolving through it.
 - **i18n.** English-only; strings are inline, not in `translations.ts`.
 - **`getImage` optimisation.** The placeholders are SVG, which Astro's image pipeline does not process anyway.
