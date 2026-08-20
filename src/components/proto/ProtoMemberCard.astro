@@ -90,7 +90,7 @@ const phase = -((index * 1.37) % CYCLE);
     overflow: hidden;
     border: 1.5px solid var(--color-border);
     border-radius: var(--radius-sm);
-    background: #fff;
+    background: var(--color-bg);
   }
 
   .pcard__img {
@@ -193,10 +193,6 @@ const phase = -((index * 1.37) % CYCLE);
     100% { opacity: 1; }
   }
 
-  .pcard:hover .pcard__img {
-    animation-play-state: paused;
-  }
-
   /* ── Grow on approach to the top ──────────────────────── */
   /* Deliberately NOT here. The scale is driven by GSAP ScrollTrigger in
      ProtoGrid.astro, which needs the scroller and the per-column context.
@@ -205,7 +201,7 @@ const phase = -((index * 1.37) % CYCLE);
      that is the correct mobile and no-JS state, not a broken one. */
 
   @media (prefers-reduced-motion: reduce) {
-    .pcard__img {
+    .pcard[data-slots] .pcard__img {
       animation: none;
     }
     .pcard__img:first-of-type {
