@@ -1,0 +1,224 @@
+---
+import type { ProtoMember } from "../../lib/proto-data.ts";
+import ProtoMemberCard from "./ProtoMemberCard.astro";
+
+interface Props {
+  members: ProtoMember[];
+  cols?: number;
+}
+
+const { members, cols = 3 } = Astro.props;
+
+// Round-robin into fixed columns. Flex columns (rather than grid auto-flow or
+// CSS multicol at desktop) are what let each column carry its own vertical
+// offset while each card stays a single transformable box for the scroll
+// animation.
+//
+// Caveat: DOM order then runs down each column, so visual reading order and
+// DOM order diverge on desktop. Acceptable for a visual prototype; the real
+// page wants either a masonry grid or an ordered single column. Noted in the
+// plan's out-of-scope list.
+const columns: ProtoMember[][] = Array.from({ length: cols }, () => []);
+members.forEach((m, i) => columns[i % cols].push(m));
+
+// Unequal column widths, so the underlying grid is already off-square before
+// any card moves.
+const TEMPLATES: Record<number, string> = {
+  2: "1.08fr 0.92fr",
+  3: "1.12fr 0.82fr 1.06fr",
+  4: "1fr 0.86fr 1.1fr 0.9fr",
+};
+const template = TEMPLATES[cols] ?? `repeat(${cols}, minmax(0, 1fr))`;
+
+// Deterministic irregularity, as one table rather than three so the pairings
+// stay sane: `w` changes the card's footprint, `dx`/`dy` move it off the
+// column axis. Because `translate` does not affect layout, a card can lean
+// into a gutter or overlap a neighbour with no reflow and no gap left behind.
+// dx is a percentage of the card's OWN width, so wide cards are deliberately
+// paired with small nudges — every combination here stays inside ±11% of the
+// column, which reads as hand-placed rather than broken.
+const VARIANTS = [
+  { w: "100%", dx: "0%", dy: "0rem" },
+  { w: "78%", dx: "16%", dy: "1.5rem" },
+  { w: "92%", dx: "-6%", dy: "-1rem" },
+  { w: "68%", dx: "26%", dy: "2.75rem" },
+  { w: "100%", dx: "0%", dy: "0.5rem" },
+  { w: "84%", dx: "-13%", dy: "-1.75rem" },
+  { w: "72%", dx: "12%", dy: "2rem" },
+  { w: "96%", dx: "3%", dy: "-0.5rem" },
+];
+---
+
+<div class="pgrid" style={`--pcols:${cols};--ptemplate:${template}`}>
+  {
+    columns.map((col, ci) => (
+      <div class="pgrid__col">
+        {
+          col.map((m, ri) => {
+            const v = VARIANTS[(ci * 3 + ri * 5) % VARIANTS.length];
+            return (
+              <div class="pgrid__cell" style={`--cw:${v.w};--dx:${v.dx};--dy:${v.dy}`}>
+                <ProtoMemberCard member={m} index={ci * 8 + ri} />
+              </div>
+            );
+          })
+        }
+      </div>
+    ))
+  }
+</div>
+
+<style>
+  .pgrid {
+    --pgap: 2.5rem;
+    display: grid;
+    grid-template-columns: var(--ptemplate);
+    gap: var(--pgap);
+    align-items: start;
+    padding-block: 2.5rem 6rem;
+    /* Cards nudged outward must not create a horizontal scrollbar. `clip`
+       rather than `hidden` on purpose: `hidden` would make this a scroll
+       container, which ScrollTrigger would then have to reason about when
+       resolving positions against .page-wrap. `clip` does not. */
+    overflow-x: clip;
+  }
+
+  .pgrid__col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--pgap);
+    min-width: 0;
+  }
+
+  .pgrid__cell {
+    min-width: 0;
+    width: var(--cw);
+    /* Layout-free displacement. Separate longhand from the `scale` the card
+       animates, so the two compose instead of overwriting each other. */
+    translate: var(--dx) var(--dy);
+  }
+
+  /* Staggered column starts — deliberately not a linear multiple, so the
+     rhythm reads as irregular rather than mechanical. */
+  .pgrid__col:nth-child(2) {
+    margin-top: 7rem;
+  }
+  .pgrid__col:nth-child(3) {
+    margin-top: 2.5rem;
+  }
+
+  /* Mobile: two offset columns. `display: contents` lifts every cell out of
+     its flex column into a single multicol flow, so all members appear in a
+     2-up arrangement with no member dropped and no DOM change. Cards remain
+     single boxes, so the scroll animation is unaffected. */
+  @media (--bp-mobile) {
+    .pgrid {
+      --pgap: 1.25rem;
+      display: block;
+      columns: 2;
+      column-gap: var(--pgap);
+      padding-block: 1.5rem 4rem;
+    }
+    .pgrid__col {
+      display: contents;
+    }
+    .pgrid__cell {
+      width: 100%;
+      /* Jitter off on mobile — two narrow columns have no room for it. The
+         offset look comes for free from cards of differing height in the
+         multicol flow, which is what the sketch's mobile half shows. */
+      translate: none;
+      break-inside: avoid;
+      margin-bottom: var(--pgap);
+    }
+  }
+</style>
+
+<script>
+  // Desktop-only scroll motion, two jobs:
+  //   1. Cards scale up as they rise toward the top of the scrollport.
+  //   2. Columns drift at different rates — the parallax is what actually
+  //      destroys the grid feel; static jitter alone still reads as columns.
+  //
+  // Width is checked BEFORE the import, so mobile downloads no GSAP at all
+  // (~44 KB gzip saved). gsap and ScrollTrigger are already dependencies.
+  const DESKTOP = "(min-width: 768px)";
+  const REDUCED = "(prefers-reduced-motion: reduce)";
+
+  // Per-column drift in px across the whole scroll. Mixed signs and unequal
+  // magnitudes on purpose — matching speeds would just look like a slow page.
+  const DRIFT = [-70, 45, -28, 60];
+
+  // Loose type: gsap's global namespace types are not reliably in scope inside
+  // a scoped Astro script, and revert() is all we need off it.
+  let mm: { revert: () => void } | null = null;
+
+  async function build() {
+    if (mm) return;
+    if (!document.querySelector(".pgrid")) return;
+    if (!window.matchMedia(DESKTOP).matches) return;
+    if (window.matchMedia(REDUCED).matches) return;
+
+    const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
+      import("gsap"),
+      import("gsap/ScrollTrigger"),
+    ]);
+    gsap.registerPlugin(ScrollTrigger);
+
+    // The scroll container is .page-wrap, never the window — body is
+    // overflow:hidden. Telling ScrollTrigger explicitly is the whole reason
+    // this is more robust than a CSS view() timeline.
+    const scroller = ".page-wrap";
+
+    mm = gsap.matchMedia();
+    // Tweens and ScrollTriggers created inside a matchMedia context are
+    // reverted and killed automatically, so no manual cleanup is needed here.
+    mm.add(DESKTOP, () => {
+      // 1. Grow on approach. Starts when the card's top enters at the bottom
+      //    of the scrollport, completes when its top reaches 38% from the top,
+      //    so cards are already full size in the upper region rather than
+      //    still swelling as they leave. scrub ties progress to scroll
+      //    position instead of to elapsed time.
+      gsap.utils.toArray<HTMLElement>(".pcard").forEach((card) => {
+        gsap.fromTo(
+          card,
+          { scale: 0.84, opacity: 0.5 },
+          {
+            scale: 1,
+            opacity: 1,
+            ease: "none",
+            scrollTrigger: { scroller, trigger: card, start: "top bottom", end: "top 38%", scrub: true },
+          },
+        );
+      });
+
+      // 2. Column parallax. Drives .pgrid__col, while the per-card jitter sets
+      //    `translate` on .pgrid__cell — different elements, so they compose.
+      gsap.utils.toArray<HTMLElement>(".pgrid__col").forEach((col, i) => {
+        gsap.to(col, {
+          y: DRIFT[i % DRIFT.length],
+          ease: "none",
+          scrollTrigger: { scroller, trigger: ".pgrid", start: "top bottom", end: "bottom top", scrub: true },
+        });
+      });
+    });
+
+    // Archivo is a self-hosted variable font; if it lands after first paint,
+    // every measured trigger position is stale.
+    document.fonts?.ready.then(() => ScrollTrigger.refresh());
+  }
+
+  function teardown() {
+    mm?.revert();
+    mm = null;
+  }
+
+  document.addEventListener("astro:page-load", build);
+  document.addEventListener("astro:before-swap", teardown);
+
+  // Crossing the breakpoint on resize starts or stops the whole layer.
+  window.matchMedia(DESKTOP).addEventListener("change", () => {
+    teardown();
+    build();
+  });
+</script>
