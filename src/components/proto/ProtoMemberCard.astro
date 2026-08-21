@@ -1,8 +1,9 @@
 ---
-import type { ProtoMember } from "../../lib/proto-data.ts";
+import type { ProtoCardMember } from "../../lib/proto-data.ts";
+import ProtoDetailPanel from "./ProtoDetailPanel.astro";
 
 interface Props {
-  member: ProtoMember;
+  member: ProtoCardMember;
   index?: number;
 }
 
@@ -18,9 +19,30 @@ const frame = member.images[0];
 const slots = member.images.length;
 
 // Negative, deterministic phase so cards start mid-cycle and out of step with
-// each other. 9.2s over 3 slots ≈ 3.1s per image; over 2 slots, 4.6s.
-const CYCLE = 9.2;
-const phase = -((index * 1.37) % CYCLE);
+// each other. 16s over 3 slots ≈ 5.3s per image; over 2 slots, 8s — a slow
+// dwell, with a long dissolve at each handover (see the keyframes).
+// Must stay in step with --flip-cycle in the style block below.
+const CYCLE = 16;
+const phase = -((index * 2.53) % CYCLE);
+
+// How many tags the vertical rail can carry. Real profiles hold up to seven,
+// and their tags are far longer than the mock's ("Scientific Illustration" vs
+// "molecular"), so the rail has to be cut somewhere; three is the shape the
+// layout was designed around. Cutting here rather than in the data is what lets
+// the disclosure panel still show the full set, so no tag is actually lost.
+//
+// NOTE: this does not fix the rail clipping. The rail is `max-height: 100%;
+// overflow: hidden` against a frame whose height comes from the image's aspect
+// ratio, so on landscape artwork even three real tags overrun the frame and get
+// clipped mid-glyph. That is a live design decision, not something this slice
+// settles.
+const RAIL_TAGS = 3;
+const railTags = member.tags.slice(0, RAIL_TAGS);
+
+// A profile that lists what it is open to is the closest thing the real data
+// has to an availability signal. Rendered as a marker rather than prose because
+// the values themselves are inconsistent ("networking", "offering", "events").
+const isOpen = (member.openTo?.length ?? 0) > 0;
 ---
 
 <article class="pcard" data-slots={slots} style={`--phase:${phase.toFixed(2)}s;--slots:${slots}`}>
@@ -45,25 +67,36 @@ const phase = -((index * 1.37) % CYCLE);
     </div>
 
     <ul class="pcard__tags">
-      {member.tags.map((tag) => <li class="pcard__tag">{tag}</li>)}
+      {railTags.map((tag) => <li class="pcard__tag">{tag}</li>)}
     </ul>
   </div>
 
   <div class="pcard__caption">
-    <span class="pcard__role">{member.role}</span>
+    <span class="pcard__role">
+      {member.role}
+      {isOpen && <span class="pcard__open">open</span>}
+    </span>
     <span class="pcard__desc">{member.description}</span>
+    <ProtoDetailPanel member={member} />
   </div>
 </article>
 
 <style>
   .pcard {
-    --flip-cycle: 9.2s;
+    /* Mirrors CYCLE in the frontmatter — the phase offsets are computed there
+       against this number, so the two cannot be changed independently. */
+    --flip-cycle: 16s;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 1.3rem;
     /* Pivot for the GSAP scale in ProtoGrid. Declared here so the effect is
-       identical whoever drives the transform. */
-    transform-origin: 50% 50%;
+       identical whoever drives the transform. Anchored at the top edge, not
+       centre: the ScrollTrigger itself is keyed to the card's top ("top
+       bottom" / "top 38%"), and a centre origin recomputes with every height
+       change — opening the profile disclosure grows the card and, at any
+       scale short of 1, visibly shifts its top on screen. A top origin keeps
+       that edge fixed regardless of how tall the card becomes. */
+    transform-origin: 50% 0%;
   }
 
   /* ── Name ─────────────────────────────────────────────── */
@@ -82,12 +115,12 @@ const phase = -((index * 1.37) % CYCLE);
     display: flex;
     align-items: flex-start;
     /* The rail strip. A vertical tag box is line-height (0.62rem) plus 3px
-       padding and 1px border per side wide; reserve that plus the old 0.5rem
-       gap, and pin the rail into the strip absolutely. The frame is then the
+       padding and 1px border per side wide; reserve that plus the 1.1rem
+       gutter, and pin the rail into the strip absolutely. The frame is then the
        only in-flow child, so the IMAGE alone sets the body height — a long
        rail can no longer push the caption away from the image. */
     --rail-w: calc(0.62rem + 8px);
-    padding-inline-end: calc(var(--rail-w) + 0.5rem);
+    padding-inline-end: calc(var(--rail-w) + 1.1rem);
   }
 
   .pcard__frame {
@@ -96,7 +129,8 @@ const phase = -((index * 1.37) % CYCLE);
     min-width: 0;
     overflow: hidden;
     border: 1.5px solid var(--color-border);
-    border-radius: var(--radius-sm);
+    /* Square corners throughout the card — no --radius-* token here. */
+    border-radius: 0;
     background: var(--color-bg);
   }
 
@@ -131,7 +165,7 @@ const phase = -((index * 1.37) % CYCLE);
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 5px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -147,7 +181,7 @@ const phase = -((index * 1.37) % CYCLE);
     padding: 4px 3px;
     color: var(--color-muted);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-xs);
+    border-radius: 0;
     white-space: nowrap;
     writing-mode: vertical-rl;
   }
@@ -156,7 +190,7 @@ const phase = -((index * 1.37) % CYCLE);
   .pcard__caption {
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 6px;
     font-family: "Archivo", sans-serif;
   }
 
@@ -165,6 +199,31 @@ const phase = -((index * 1.37) % CYCLE);
     font-weight: 600;
     line-height: 1.3;
     color: var(--color-dark);
+  }
+
+  /* Availability marker. A dot plus a word rather than a coloured pill: the
+     page has no accent colour, and a bare dot would carry no meaning for anyone
+     who cannot see it. */
+  .pcard__open {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-inline-start: 0.45rem;
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    vertical-align: baseline;
+  }
+  .pcard__open::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    background: var(--color-dark);
+    /* The only round thing on the card, and deliberately so — it reads as a
+       status light rather than as another tag box. */
+    border-radius: 50%;
   }
 
   .pcard__desc {
@@ -181,26 +240,30 @@ const phase = -((index * 1.37) % CYCLE);
   }
 
   /* Each slot is visible for 1/N of the cycle, then fades out over the last
-     ~16% of its own window. Slot i is offset by -cycle/N * i, which lines its
+     40% of its own window. Slot i is offset by -cycle/N * i, which lines its
      fade-out up exactly with slot i+1's fade-in — that overlap IS the
      crossfade, and it guarantees exactly one slot at full opacity at any
      instant. The stop percentages are the only thing that cannot be
      parameterised, hence one block per count.
 
-     N=2 → window 50%, fade 8%.  N=3 → window 33.333%, fade 5.333%. */
+     The fade is a large share of each window on purpose: the handover should
+     read as a dissolve between two images, not as a swap.
+
+     N=2 → window 50%, fade 20% (3.2s of the 16s cycle).
+     N=3 → window 33.333%, fade 13.333% (2.13s). */
   @keyframes pcard-flip-2 {
     0% { opacity: 1; }
-    42% { opacity: 1; }
+    30% { opacity: 1; }
     50% { opacity: 0; }
-    92% { opacity: 0; }
+    80% { opacity: 0; }
     100% { opacity: 1; }
   }
 
   @keyframes pcard-flip-3 {
     0% { opacity: 1; }
-    28% { opacity: 1; }
+    20% { opacity: 1; }
     33.333% { opacity: 0; }
-    94.667% { opacity: 0; }
+    86.667% { opacity: 0; }
     100% { opacity: 1; }
   }
 
@@ -210,6 +273,34 @@ const phase = -((index * 1.37) % CYCLE);
      This component only declares the pivot, so the scale is predictable no
      matter what writes the transform. Cards render at full size with no JS —
      that is the correct mobile and no-JS state, not a broken one. */
+
+  /* ── Mobile: tags below the image, not beside it ──────── */
+  /* Two narrow columns have no width to spare for a vertical rail, so the tags
+     become a horizontal row under the frame. `display: block` retires the
+     rail strip entirely: with the frame and the list both in normal flow, the
+     frame takes the full card width and the tags sit directly beneath it, so
+     the --rail-w reservation must go too or it would leave phantom padding. */
+  @media (--bp-mobile) {
+    .pcard__body {
+      display: block;
+      padding-inline-end: 0;
+    }
+
+    .pcard__tags {
+      position: static;
+      flex-direction: row;
+      flex-wrap: wrap;
+      max-height: none;
+      overflow: visible;
+      gap: 6px;
+      margin-top: 1rem;
+    }
+
+    .pcard__tag {
+      writing-mode: horizontal-tb;
+      padding: 3px 4px;
+    }
+  }
 
   @media (prefers-reduced-motion: reduce) {
     .pcard[data-slots] .pcard__img {

@@ -1330,3 +1330,318 @@ When the look is signed off, the prototype becomes the real page by:
 7. **Answering the tag-rail question, which is now blocking rather than cosmetic.** On mobile, roughly 16 of 24 rails clip mid-box: what renders is a stub ~4–5px tall with a top and two side edges, no bottom edge, and a horizontally sliced glyph inside it, sitting flush above the caption. It reads as a rendering fault, not as an intentional crop. On four cards (Timo Bachmann, Nico Ammann, Yara Frei, Marta Egli) only **one of three** tags fits at all. This is the disclosed cost of taking the rail out of the height calculation — and pure CSS cannot hide a partially-visible flex item, so mid-box is the only outcome this mechanism can produce. The fix is not a taller rail; it is **fewer or shorter tags on mobile** (two tags plus a ~10-character cap removes every stub), or abandoning the vertical treatment for the horizontal pills the sketch originally drew.
 8. **Removing the `--rail-w` duplication before touching the tags.** `--rail-w: calc(0.62rem + 8px)` in `ProtoMemberCard.astro` restates, by hand and to the pixel, a value derived from three separate declarations on `.pcard__tag`: its `font-size`, its `line-height: 1`, its 3px inline padding and its 1px border. Change any one of them and the reserved strip desynchronises **with no error** — and the only tolerance is the 0.5rem caption gap before the rail lands on the artwork, which is exactly the outcome decision 1's ruling rejected. Invert the dependency so `--rail-w` is the single source and the tag's metrics derive from it, rather than the reverse. Do this *first*, because step 7 is precisely the change that trips it.
 9. Deleting `scripts/gen-proto-images.mjs`, `public/proto/`, `src/lib/proto-images.json` and `src/lib/proto-data.ts` in one commit.
+
+## Revision round 1 — art-direction pass (2026-08-20)
+
+Review notes taken on the shipped prototype, and what each one changed. These
+supersede the corresponding decisions above where they conflict.
+
+### The overlap was never about the column count
+
+The question raised was whether a grid with many more columns and rows, with
+cards spanning across them, would be an easier way to stop cards colliding.
+Half right, and worth separating into its two halves:
+
+- **A finer column base is the right call, and is now in.** `.pgrid` is a
+  24-track grid and each lane declares a whole-number `--span` (9/7/8 at
+  `cols=3`, 13/11 at 2, 7/5/6/6 at 4). Lane widths are now readable integers
+  that must sum to a derived base, instead of the hand-tuned `fr` triples the
+  first pass used. Two consequences worth knowing: the base grid must carry
+  `column-gap: 0` — with 24 tracks a 2.5rem gap spends more of the page on
+  gutters than on cards — so the lane gutter is a lane's own trailing
+  `padding-inline-end`, zeroed on the last lane; and every card percentage now
+  resolves against a lane box that already excludes that gutter.
+- **Spanning is NOT what fixed the overlap, and row spans would have made
+  things worse.** The overlap came from `translate`, which moves a card without
+  telling layout, so nothing downstream can react. Card irregularity is now
+  expressed in layout instead — `width` plus `margin-inline-start` plus
+  `margin-top` — under one invariant: `cw + mx <= 100%`. Both percentages
+  resolve against the same containing block, so a card cannot reach into a
+  neighbour, and `my` is real space that cannot close the gap above it. Overlap
+  is impossible by construction rather than avoided by careful table values.
+  Row spans, meanwhile, would have required knowing each card's height in
+  advance; card height is image-aspect-driven, so lanes remain the mechanism
+  for the masonry-like vertical packing.
+
+Three things fell out of the codebase as a result, all of them scaffolding for
+the transform approach that no longer exists: `edgeAwareDx()` and its mirroring
+rule, `.pgrid`'s `overflow-x: clip`, and the "these two compose instead of
+overwriting each other" pairing between cell `translate` and card `scale`.
+Verified after the change: 24 cells, **zero pairwise overlaps**, no horizontal
+overflow on `.page-wrap`, and no card escaping its lane (the one 1px flag in
+the harness is `offsetWidth` integer rounding on a 72%+28% pair).
+
+### The shell is one measure — but it must NOT be wide (see round 4)
+
+The giant `VSCNVSCN` title, the navbar and `<main>` were three independent
+`max-width: 900px` declarations; the title also sat 15px outside the other two
+because the ticker had no inline padding while both others did. They now read
+one `--shell-max` token, and the ticker carries `main`'s 15px so the first
+glyph lands on the content edge — `fitBrandName` subtracts that padding when it
+measures, or the title would overflow by exactly the padding and clip its last
+glyph. Measured on `/`: the `V` of VSCN and the `I` of INFO both start at 365px.
+
+`shellWide` on `Layout` widens that token to `min(94vw, 1800px)` — **desktop
+only**, because on mobile the shell is already the full viewport and a `vw` cap
+would pull the page in from both edges at the exact width the two-up grid has
+least to spare. Only `/proto/community` opts in; `/community` and
+`/styleguide` keep `is-wide`'s 1200px, so production measure is unchanged.
+
+### Graduation-path item 7 is resolved, not deferred
+
+The mobile tag rail clipped mid-box on roughly 16 of 24 cards, and the plan
+named the fix as "fewer or shorter tags on mobile, or abandoning the vertical
+treatment for the horizontal pills the sketch originally drew." The second
+option is now in: under `--bp-mobile` the body is `display: block`, the
+`--rail-w` reservation is zeroed, and the tags are a wrapping horizontal row
+directly under the frame. The frame gains the rail's width back, so mobile
+artwork is wider as well. Item 8 — the `--rail-w` duplication — still stands,
+since the desktop rail is untouched.
+
+### Motion: further to travel, longer to dissolve
+
+- Grow-on-approach now runs `scale 0.55 / opacity 0.35` to `1 / 1`, from
+  `0.84 / 0.5`. Verified live: the on-page spread is 0.55 to 1.
+- Lane drift went to `[-90, 60, -36, 75]`. Both the nav-headroom residual and
+  the trigger-vs-drift divergence noted in *Out of scope* scale with this —
+  re-read those two entries with the new numbers, not the old ones.
+- The flip cycle went 9.2s to 16s (about 5.3s per image at three slots, 8s at
+  two), and the crossfade ramp from 8%/5.33% of the cycle to 20%/13.33%.
+
+**The one thing this makes worse, deliberately.** *Out of scope* records a
+crossfade luminance dip: two stacked images with complementary opacity ramps
+sum to opacity 1 but not to constant perceived luminance, so the blend dips
+roughly 25% toward the frame background at the ramp midpoint. That dip's
+duration is the ramp duration, which just went from 0.74s to **3.2s** at two
+slots and from 0.49s to **2.13s** at three — 4.3x longer, on a request for a
+bigger fade. On these flat placeholders it should stay invisible; on real
+artwork it is now long enough to read as a wash rather than a flicker. The fix
+named there still applies, and one half of it is nearly free: for every
+handover except the wrap-around, the incoming slot is already later in the DOM
+and therefore painted above an opaque outgoing one, so fading only the incoming
+image in would not dip at all. Only the last-to-first handover needs the
+outgoing image faded out.
+
+### The title fit was shrink-only, and nothing said so
+
+Widening the shell exposed a latent bug in `fitBrandName()`. It sized the title
+by `el.scrollWidth`, but `.brand-name` is a **block**: its `scrollWidth` can
+never report less than its own box, so whenever the text was narrower than the
+ticker the ratio came out exactly 1 and the function silently did nothing. At
+the 900px measure that was invisible — 8rem always overflows 900px, so the
+shrink path always ran. On a 1800px shell the title just sat at its 8rem
+default and under-filled by 350px, with no error and no clipping to hint at it.
+Measured: true text width 1423px at 120px font, `scrollWidth` reporting 1770px.
+
+The fix measures with `width: max-content` and `getBoundingClientRect()`,
+restored synchronously so no frame is painted with the wider box. Letting it
+then work in *both* directions was the wrong call and was reverted in round 2
+below — 8rem is now an explicit ceiling. The measurement change stays, because
+it is what makes the shrink correct rather than incidental.
+
+**Testing note for this environment:** while the browser pane is hidden it does
+not composite, so neither `requestAnimationFrame` nor `ResizeObserver`
+callbacks fire. The title looks like it fails to refit on resize and the GSAP
+scrub looks frozen; both are artefacts. Reload after each `resize_window` and
+measure layout via `offsetTop`/`offsetLeft` (unaffected by transforms) rather
+than waiting on a frame.
+
+### Also in this pass
+
+- No border radius anywhere on the card — frame and tag both hard-edged.
+- No rule above the grid: `.proto-head` lost its `border-top`.
+- More vertical air at both breakpoints. Desktop lane rhythm 2.5rem to 7rem
+  and grid padding 2.5/6rem to 3.5/10rem; mobile card spacing 1.25rem to
+  3.5rem and padding 1.5/4rem to 2/6rem.
+
+## Revision round 2 — air and restraint (2026-08-21)
+
+Two notes on the round-1 result, and one reversal.
+
+### The title must not fill a wide shell
+
+Round 1 made `fitBrandName()` grow as well as shrink, so the `VSCNVSCN` band
+stretched to whatever measure it was given: 149px on an 1800px shell. Rejected
+on sight as far too big. `8rem` is now an explicit **ceiling** — the fit only
+ever shrinks the title to fit a narrower measure, and on a wide shell the band
+simply runs out before the right edge (1423px of text in a 1474px box at
+1600px viewport, 8rem flat at 2400px). That short right end is the intended
+reading: a repeating ticker that happens to be cut off, not a headline
+stretched to the margins. The left edge still lands on the content edge, so the
+alignment win from round 1 survives intact.
+
+Keep the `width: max-content` measurement even though the cap makes
+`scrollWidth` functionally equivalent today: with the cap, a `scrollWidth`
+measurement only works *because* an over-wide title always overflows its box,
+which is a coincidence of the current numbers rather than a property of the
+code. The explicit measurement plus the explicit `Math.min` says what is meant.
+
+### More air, less travel
+
+Everything opened up roughly 40%, and the scroll travel came back in.
+
+| | round 1 | round 2 |
+|---|---|---|
+| Lane gutter / row rhythm (desktop) | 2.5rem / 7rem | 3.5rem / 10rem |
+| Grid padding (desktop) | 3.5rem / 10rem | 5.5rem / 14rem |
+| Lane head starts | 0 / 9 / 3 / 12rem | 0 / 12 / 4.5 / 16rem |
+| Card spacing / row rhythm (mobile) | 1.25rem / 3.5rem | 1.75rem / 5rem |
+| Grid padding (mobile) | 2rem / 6rem | 3rem / 8rem |
+| Card stack gap | 0.5rem | 0.95rem |
+| Artwork-to-rail gutter | 0.5rem | 0.85rem |
+| Tag spacing | 3px | 5px |
+| Caption line gap | 1px | 4px |
+| Head-to-grid | 1.25rem | 2.25rem |
+| Grow-on-approach | scale 0.55 / opacity 0.35 | scale 0.72 / opacity 0.5 |
+
+The grid grew from 5849px to 6355px tall at a 1600px viewport. Re-verified
+after: 24 cells, zero overlaps, no horizontal overflow, scale spread 0.72 to
+1.0 measured live, mobile tags still seated under the frame with the page at
+its full 375px.
+
+**Two entries in *Out of scope* improved by accident and should be re-read with
+these numbers:** nav headroom is now a 5.5rem top padding against the same
+drift, so the clearance below the sticky nav is far more comfortable than the
+~27px recorded there; and the trigger-vs-drift divergence is unchanged in
+absolute px but now a smaller fraction of a longer scroll.
+
+## Revision round 3 — the artwork gets a ceiling (2026-08-21)
+
+### `--card-max`, and why the width had to stop being a percentage
+
+The brief was a smaller maximum image size on top of yet more whitespace. The
+obvious implementation — `max-width` on `.pgrid__cell` — would have quietly
+destroyed the design: every variant at or above the cap clamps to *exactly* the
+cap, so the 100%, 94% and 90% cards all become one width and the irregularity
+the whole grid exists for flattens out at wide viewports.
+
+So `cw` in `VARIANTS` is now a **unitless fraction** rather than a percentage,
+and the cell is:
+
+```css
+width: calc(var(--cw) * min(100%, var(--card-max)));
+```
+
+The basis is the lane, or `--card-max` (26rem) where the lane is wider than the
+artwork should ever be — and the card is a fraction *of that*. The ceiling drops
+without the spread collapsing. Measured at a 1600px viewport: card widths run
+261–390px across **14 distinct values**, where a `max-width` would have given
+far fewer. At 2400px, where every lane is wider than the cap, the lanes measure
+597/449/590 but no card exceeds 390 — so widening the shell now buys whitespace
+rather than bigger images, which is the behaviour the wide shell should have had
+from the start.
+
+The no-overlap invariant survived the change as `cw * 100 + mx <= 100`, and was
+then replaced outright in round 4b below — the `mx` it refers to no longer
+exists. Verified after: 24 cells, zero overlaps, zero cards escaping their lane,
+no horizontal overflow.
+
+Mobile opts out of both the cap and the fraction — the multicol column is
+already far narrower than 26rem, so `width: 100%` is the whole story there.
+
+### Spacing, round three
+
+| | round 2 | round 3 |
+|---|---|---|
+| Lane gutter / row rhythm (desktop) | 3.5 / 10rem | 4.5 / 13rem |
+| Grid padding (desktop) | 5.5 / 14rem | 7 / 18rem |
+| Lane head starts | 0 / 12 / 4.5 / 16rem | 0 / 15 / 6 / 20rem |
+| Per-card top offsets | 0–4rem | 0–5.5rem |
+| Card spacing / rhythm (mobile) | 1.75 / 5rem | 2.25 / 7rem |
+| Grid padding (mobile) | 3 / 8rem | 4 / 10rem |
+| Card stack gap | 0.95rem | 1.3rem |
+| Artwork-to-rail gutter | 0.85rem | 1.1rem |
+| Tag spacing | 5px | 6px |
+| Caption line gap | 4px | 6px |
+| Head-to-grid | 2.25rem | 3rem |
+
+Counter-intuitive result worth recording: **the page got shorter**, 6355px to
+6005px at 1600px viewport, despite every gap growing. Smaller artwork means
+shorter cards, and that outweighed the extra air. If a future round wants both
+smaller images *and* a taller page, `--pgap-y` is the lever — the cap works
+against it.
+
+## Revision round 4 — the header goes back to production (2026-08-21)
+
+Round 1's wide shell was wrong, and rounds 2 and 3 only softened it. Reverted:
+`--shell-max` stays at 900px on every page, and the prop that used to widen it
+is now `contentWide`, which widens `<main>` alone.
+
+**Why it kept coming back.** `fitBrandName()` sizes the title to *fill* its
+measure, so the measure is the type size. Widening the shell to
+`min(94vw, 1800px)` therefore did not merely move the title's right edge — it
+scaled the type from production's ~73px to 120px (capped) or 149px
+(uncapped). Every attempt to keep the wide shell and shrink the type produced
+the other failure: a short band ending a third of the way across an 1800px
+measure. Only the narrow measure gives the production look, because on it the
+shrink always runs and the title fills the header exactly.
+
+**Verified against the reference.** Both review screenshots turned out to be
+2560px viewports captured into 2000px-wide images (a 0.78 scale, confirmed
+three independent ways: the wide title's 1423px of text landing at 1105 image
+px, production's 900px measure landing at ~690, and the resulting cap heights).
+At a real 2560px viewport the header now measures: title 73.36px filling
+845–1715px, nav 830–1730px — which scales to 680px against the ~690px measured
+off the production screenshot. The grid still runs 395–2165px on the wide
+measure underneath.
+
+**The consequence to accept.** Wide content now starts *outside* the header's
+left edge instead of under it — at 2560px the grid begins at 395px while the
+title begins at 845px. That is the direct cost of "wide grid, production
+header" and there is no arrangement that avoids it; if it reads badly, the
+choice is between a narrower grid and a wider header, not both.
+
+Recorded in `global.css` and `CLAUDE.md` as a **do not widen `--shell-max`**
+rule, with the reason, so this is not attempted a fourth time.
+
+### Round 4a — content cap tightened to 1600px
+
+`min(94vw, 1800px)` → `min(94vw, 1600px)`. This also halves the break-out cost
+named above: the grid's left edge now sits 350px outside the title's rather
+than 450px. The cap only binds above roughly a 1700px viewport, so 1600px and
+below are unchanged. Verified at 1920px and 2560px: `<main>` 1600px, title
+73.36px, zero overlaps, lane inner widths 522/391/523, cards 281–390px.
+
+Note that lane 2's inner width (391px) now sits 1px above `--card-max`, so the
+middle lane is right at the boundary where the cap starts to bite. Nudging
+either number changes which lanes keep their own scaling — see round 3.
+
+### Round 4b — the cap left a dead margin down the right side
+
+Capping card width exposed a second-order problem that only shows on a wide
+viewport, and it is worth understanding because it was invisible in the numbers
+I had been checking.
+
+`mx` was a start margin expressed as a share of the lane. Once `--card-max`
+capped the width, the furthest right any card could reach in a 523px lane was
+`0.28 * 523 + 0.72 * 390 = 427px` — roughly 96px short of the lane's right
+edge, on **every** variant. The last lane's right edge is the content edge, so
+nothing on the page touched it: a dead margin running down the entire right
+side, while the first lane still had a card flush against the left. Read as
+imbalance, and correctly so.
+
+The fix changes what the offset is a fraction *of*. `ax` is a share of the
+card's **own slack**, not of the lane:
+
+```css
+--cardw: calc(var(--cw) * min(100%, var(--card-max)));
+width: var(--cardw);
+margin-inline-start: calc(var(--ax) * (100% - var(--cardw)));
+```
+
+`ax: 0` is flush left, `1` is flush right, `0.5` centres — whatever the cap did
+to the width. Three of the eight variants now sit at 1. Because the variant
+index is `(ci * 3 + ri * 5) % 8` and 5 is coprime with 8, every lane of eight
+cards draws all eight variants exactly once, so the last lane reliably gets all
+three right-anchored cards. Measured at 1920px and 2560px: **3 cards flush on
+the content's right edge, 1 flush on the left**, `maxRight` exactly the grid
+width, `minLeft` exactly 0.
+
+Two things this bought beyond the fix. The cap's leftover slack is now usable
+displacement range instead of dead space, which *increases* the irregularity
+rather than fighting it — the last lane's left edges now spread across 1047–1289
+where they used to cluster. And the overlap invariant became structural:
+`ax * (lane - card) + card <= lane` holds for any `ax` in [0, 1] and any
+`cw <= 1`, so there is no table arithmetic left to get wrong when someone edits
+`VARIANTS`. That is a strictly better guarantee than the two hand-summed
+invariants it replaces.

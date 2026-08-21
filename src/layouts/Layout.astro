@@ -13,6 +13,7 @@ interface Props {
   fullscreen?: boolean;
   lang?: string;
   wide?: boolean;
+  contentWide?: boolean;
 }
 
 const {
@@ -22,6 +23,7 @@ const {
   fullscreen = false,
   lang = "en",
   wide = false,
+  contentWide = false,
 } = Astro.props;
 
 const DEFAULT_DESCRIPTION =
@@ -57,7 +59,7 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
 
     <ClientRouter />
   </head>
-  <body>
+  <body class:list={[{ "content-wide": contentWide }]}>
     <div class="brand-ticker" transition:persist>
       <a id="brand-home-link" href={lang === "de" ? "/de" : "/"} class="brand-link">
         <span class="brand-name" id="brand-name" aria-label="Visual Science Communication Network"
@@ -89,12 +91,16 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
   .brand-ticker {
     display: block;
     width: 100%;
-    max-width: 900px;
+    /* Shared with <main> and the navbar — see --shell-max in global.css. The
+       15px inline padding matches main's, so the title's first glyph lands on
+       the content edge rather than 15px outside it. fitBrandName subtracts
+       this padding when it measures. */
+    max-width: var(--shell-max);
     margin: auto;
     overflow: hidden;
     flex-shrink: 0;
     box-sizing: border-box;
-    padding: 0px;
+    padding: 0 15px;
   }
 
   .brand-link {
@@ -137,11 +143,27 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
     el.style.fontSize = "8rem";
     const ticker = el.closest<HTMLElement>(".brand-ticker");
     if (!ticker) return;
-    const available = ticker.clientWidth;
-    const textWidth = el.scrollWidth;
+    // clientWidth includes the ticker's inline padding; the text can only use
+    // the content box, so subtract it or the title overflows by exactly the
+    // padding and the last glyph is clipped.
+    const cs = getComputedStyle(ticker);
+    const available = ticker.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    // `width: max-content` for the measurement, because .brand-name is a block:
+    // its scrollWidth can never report LESS than its own box, so a text
+    // narrower than the ticker measures as exactly the ticker and the ratio
+    // comes out 1 — the shrink would silently no-op. Restored synchronously,
+    // so no frame is painted with the wider box.
+    const prevWidth = el.style.width;
+    el.style.width = "max-content";
+    const textWidth = el.getBoundingClientRect().width;
+    el.style.width = prevWidth;
     if (available > 0 && textWidth > 0) {
       const current = parseFloat(getComputedStyle(el).fontSize);
-      el.style.fontSize = `${(current * available) / textWidth}px`;
+      // 8rem is a CEILING, not a starting point: this fit shrinks the title to
+      // the measure and never grows it past its design size. At the 900px
+      // measure the shrink always runs, so the title fills the header exactly —
+      // that is the production look, and the reason no page widens --shell-max.
+      el.style.fontSize = `${Math.min(current, (current * available) / textWidth)}px`;
     }
   }
 

@@ -1,21 +1,32 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import ProtoGrid from "../../components/proto/ProtoGrid.astro";
-import { PROTO_MEMBERS } from "../../lib/proto-data.ts";
+import { PROTO_REAL_MEMBERS, PROTO_REAL_TEXT_ONLY } from "../../lib/proto-data-real.ts";
+
+// Real member data now, not the mock set — see src/lib/proto-data-real.ts.
+// PROTO_MEMBERS in proto-data.ts is kept for comparison and still typed against
+// the same ProtoMember shape, so swapping this import back is a one-line change.
+//
+// Every active member is rendered. ProtoGrid picks the card per member: the
+// image card where there is curated artwork, the typographic card where there
+// is none. Nobody is filtered out of the directory.
+const members = PROTO_REAL_MEMBERS;
+const textOnly = PROTO_REAL_TEXT_ONLY.length;
 ---
 
 <Layout
   title="Community — VSCN (prototype)"
-  description="Visual prototype of the VSCN community page. Mock data."
+  description="Visual prototype of the VSCN community page. Real member data."
   noindex={true}
   wide={true}
+  contentWide={true}
 >
   <div class="proto-head">
-    <span>{PROTO_MEMBERS.length} members</span>
-    <span>prototype — mock data</span>
+    <span>{PROTO_REAL_MEMBERS.length} members</span>
+    <span>prototype — real data, {textOnly} without artwork</span>
   </div>
 
-  <ProtoGrid members={PROTO_MEMBERS} />
+  <ProtoGrid members={members} />
 </Layout>
 
 <style>
@@ -24,8 +35,9 @@ import { PROTO_MEMBERS } from "../../lib/proto-data.ts";
     justify-content: space-between;
     align-items: baseline;
     gap: 1rem;
-    padding-top: 1.25rem;
-    border-top: 1px solid var(--color-border);
+    padding-top: 3rem;
+    /* No rule above the grid — the title band is the only thing that should
+       divide the page here. */
     font-family: "Archivo", sans-serif;
     font-weight: 500;
     font-size: 0.7rem;

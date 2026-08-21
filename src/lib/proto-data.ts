@@ -19,6 +19,63 @@ export interface ProtoMember {
   images: ProtoImage[];
 }
 
+/**
+ * Everything a member profile holds beyond what the resting card shows. Only
+ * the real data (proto-data-real.ts) fills these in; the mock set does not, so
+ * the cards treat them as optional and simply omit the disclosure panel when
+ * they are absent.
+ */
+export interface ProtoMemberDetail {
+  /** Full bio. `description` on ProtoMember is the truncated caption line. */
+  bio: string;
+  openTo: string[];
+  portfolio: string;
+  socialMedia: string;
+  hasPhoto: boolean;
+}
+
+/**
+ * What the card components accept. A plain mock ProtoMember is valid; a real
+ * member carries the extras and gets the expandable panel.
+ */
+export type ProtoCardMember = ProtoMember & Partial<ProtoMemberDetail>;
+
+/**
+ * Whether a member has anything worth putting behind a disclosure toggle. Both
+ * the panel and the cards need this answer — the panel to decide whether to
+ * render at all, the cards to decide whether their caption band would otherwise
+ * be empty — so it lives here rather than being written twice.
+ *
+ * `railShows` is how many tags the card face already displays; only tags beyond
+ * that count as new information.
+ */
+export function hasDisclosableDetail(m: ProtoCardMember, railShows = 3): boolean {
+  return Boolean(
+    m.bio?.trim() ||
+      m.portfolio?.trim() ||
+      m.socialMedia?.trim() ||
+      m.tags.length > railShows,
+  );
+}
+
+/**
+ * Card size tier — how much of the grid a member's card claims, driven by how
+ * filled-in the profile is rather than by layout. `large` needs artwork,
+ * because that is the one thing a bigger frame can actually show; a fuller
+ * text profile does not get more to say just because its box is wider.
+ */
+export type ProtoCardTier = "small" | "medium" | "large";
+
+/** "A couple of tags" for the medium tier. */
+const MEDIUM_MIN_TAGS = 2;
+
+export function getCardTier(m: ProtoCardMember): ProtoCardTier {
+  if (m.images.length > 0) return "large";
+  const hasLink = Boolean(m.portfolio?.trim() || m.socialMedia?.trim());
+  const hasTags = m.tags.length >= MEDIUM_MIN_TAGS;
+  return hasLink && hasTags ? "medium" : "small";
+}
+
 /** A member with one image does not flip at all. */
 export const PROTO_MIN_IMAGES = 1;
 /** ProtoMemberCard only has keyframes for 2 and 3 slots — do not exceed this. */

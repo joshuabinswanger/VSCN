@@ -59,7 +59,15 @@ export function getStaticPaths() {
 
 ### Styling
 
-All design tokens live at the top of [src/styles/global.css](src/styles/global.css): `--color-dark`, `--color-bg` (`#fcfbfa`), `--color-border`, `--color-muted`, `--radius-xs` … `--radius-xl`, and `--font-size-base` (13px mobile / 15px desktop, set on `html`, so `rem` units scale with the breakpoint automatically). Use tokens; raw hex values are treated as defects in review. [src/pages/styleguide.astro](src/pages/styleguide.astro) renders them all.
+All design tokens live at the top of [src/styles/global.css](src/styles/global.css): `--color-dark`, `--color-bg` (`#fcfbfa`), `--color-border`, `--color-muted`, `--radius-xs` … `--radius-xl`, `--shell-max`, and `--font-size-base` (13px mobile / 15px desktop, set on `html`, so `rem` units scale with the breakpoint automatically).
+
+`--shell-max` (900px) is the header's measure, and it is a **three-way contract**: the `VSCNVSCN` brand ticker in `Layout.astro`, `.nav-links` in `Navbar.astro` and `main` in `global.css` all size to it, which is what keeps the title, the nav links and the content on the same two vertical edges.
+
+**Do not widen `--shell-max`.** `fitBrandName()` sizes the title to fill that measure, so widening it scales the title up with it — at `min(94vw, 1800px)` the title went from production's ~73px to 120–149px, which was rejected twice. A page that wants wide content uses `Layout`'s `contentWide` prop, which widens `main` **only** (to `min(94vw, 1600px)` on desktop) and leaves the header at 900px; the accepted consequence is that wide content starts outside the header's left edge rather than under it. `/proto/community` is the only page using it. `wide` (1200px on `main`) is unaffected by either.
+
+Two things inside `fitBrandName()` look redundant and are not. The ticker's 15px inline padding is load-bearing — the function subtracts it, so removing one without the other either clips the last glyph or breaks the alignment. And it measures with `width: max-content` because `.brand-name` is a block: a block's `scrollWidth` never reports less than its own box, so measuring directly makes the ratio come out 1 on any measure the text does not already overflow — a silent no-op, not an error. The `Math.min` capping the result at `8rem` is what keeps the fit shrink-only.
+
+Use tokens; raw hex values are treated as defects in review. [src/pages/styleguide.astro](src/pages/styleguide.astro) renders them all.
 
 Breakpoints are **only** these two custom-media aliases, resolved by `@csstools/postcss-global-data` + `postcss-custom-media` and usable inside scoped Astro `<style>` blocks:
 

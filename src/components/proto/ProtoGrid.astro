@@ -1,82 +1,128 @@
 ---
-import type { ProtoMember } from "../../lib/proto-data.ts";
+import { getCardTier, type ProtoCardMember, type ProtoCardTier } from "../../lib/proto-data.ts";
 import ProtoMemberCard from "./ProtoMemberCard.astro";
+import ProtoTextCard from "./ProtoTextCard.astro";
 
 interface Props {
-  members: ProtoMember[];
+  members: ProtoCardMember[];
   cols?: number;
 }
 
 const { members, cols = 3 } = Astro.props;
 
-// Round-robin into fixed columns. Flex columns (rather than grid auto-flow or
-// CSS multicol at desktop) are what let each column carry its own vertical
-// offset while each card stays a single transformable box for the scroll
-// animation.
+// Round-robin into fixed lanes. Lanes (rather than grid auto-flow) are what
+// give the layout its masonry-like vertical packing: a short card does not
+// leave a hole under it the way a row-aligned grid item would, and each lane
+// can carry its own vertical offset and parallax while every card stays a
+// single transformable box.
 //
-// Caveat: DOM order then runs down each column, so visual reading order and
-// DOM order diverge on desktop. Acceptable for a visual prototype; the real
-// page wants either a masonry grid or an ordered single column. Noted in the
-// plan's out-of-scope list.
-const columns: ProtoMember[][] = Array.from({ length: cols }, () => []);
+// Caveat: DOM order then runs down each lane, so visual reading order and DOM
+// order diverge on desktop. Acceptable for a visual prototype; the real page
+// wants either a masonry grid or an ordered single column. Noted in the plan's
+// out-of-scope list.
+const columns: ProtoCardMember[][] = Array.from({ length: cols }, () => []);
 members.forEach((m, i) => columns[i % cols].push(m));
 
-// Unequal column widths, so the underlying grid is already off-square before
-// any card moves.
-const TEMPLATES: Record<number, string> = {
-  2: "1.08fr 0.92fr",
-  3: "1.12fr 0.82fr 1.06fr",
-  4: "1fr 0.86fr 1.1fr 0.9fr",
+// The grid underneath is a fine 24-column base, and each lane SPANS an unequal
+// number of those columns. That is what makes the lanes off-square without any
+// hand-written fr soup, and it is why lane widths are now whole numbers that
+// must sum to the base.
+const LANE_SPANS: Record<number, number[]> = {
+  1: [24],
+  2: [13, 11],
+  3: [9, 7, 8],
+  4: [7, 5, 6, 6],
 };
-const template = TEMPLATES[cols] ?? `repeat(${cols}, minmax(0, 1fr))`;
+const spans = LANE_SPANS[cols] ?? Array.from({ length: cols }, () => 1);
+// The base is derived, never assumed, so an off-table `cols` still tiles.
+const base = spans.reduce((a, b) => a + b, 0);
 
-// Deterministic irregularity, as one table rather than three so the pairings
-// stay sane: `w` changes the card's footprint, `dx`/`dy` move it off the
-// column axis. Because `translate` does not affect layout, a card can lean
-// into a gutter or overlap a neighbour with no reflow and no gap left behind.
-// dx is a percentage of the card's OWN width, so wide cards are deliberately
-// paired with small nudges — every combination here stays inside ±11% of the
-// column, which reads as hand-placed rather than broken.
-const VARIANTS = [
-  { w: "100%", dx: "0%", dy: "0rem" },
-  { w: "78%", dx: "16%", dy: "1.5rem" },
-  { w: "92%", dx: "-6%", dy: "-1rem" },
-  { w: "68%", dx: "26%", dy: "2.75rem" },
-  { w: "100%", dx: "0%", dy: "0.5rem" },
-  { w: "84%", dx: "-13%", dy: "-1.75rem" },
-  { w: "72%", dx: "12%", dy: "2rem" },
-  { w: "96%", dx: "3%", dy: "-0.5rem" },
-];
+// Lane head starts. Deliberately not a linear multiple, so the rhythm reads as
+// irregular rather than mechanical.
+const LANE_TOPS = ["0rem", "15rem", "6rem", "20rem"];
 
-// The grid's outer edges have no gutter to lean into: a negative nudge in the
-// first column (or a positive one in the last) pushes the card outside
-// .pgrid's content box, where overflow-x: clip amputates it. Mirror those
-// nudges inward rather than zeroing them, so boundary columns keep their
-// jitter magnitude. The worst mirrored extent reaches 98.9% of the track;
-// the unmirrored w:100%/dx:0% cards sit at exactly 100% of it, so the right
-// content edge is met but never crossed. Interior columns keep the table
-// as-is.
-// Deterministic: same variant in the same column always yields the same dx.
-function edgeAwareDx(dx: string, ci: number): string {
-  const n = Number.parseFloat(dx);
-  if (ci === 0) return `${Math.abs(n)}%`;
-  if (ci === cols - 1) return `${-Math.abs(n)}%`;
-  return dx;
-}
+// Deterministic irregularity, expressed entirely in LAYOUT rather than in
+// transforms. `cw` is the card's width as a fraction of its lane's card basis,
+// `ax` is where it sits across the lane, `my` opens space above it.
+//
+// `cw` is a UNITLESS fraction rather than a percentage, and that is what lets
+// --card-max cap the artwork without flattening the design. A plain
+// `max-width` would clamp every card at or above the cap to exactly the cap —
+// the 100%, 94% and 90% variants would all collapse into one width. Multiplying
+// the fraction by an already-capped basis keeps the full spread of widths and
+// only lowers the ceiling. See .pgrid__cell.
+//
+// `ax` is a fraction of the card's own SLACK, not of the lane: 0 puts the card
+// flush against the lane's left edge, 1 flush against its right, 0.5 centres
+// it. That is what gets cards onto the grid's outer edges — with a start margin
+// expressed as a share of the lane, a capped card could never reach the right
+// edge at all, and the cap's leftover slack read as a dead margin down the
+// whole right side of the page. Several variants sit at 1 on purpose, so the
+// last lane meets the content edge as often as the first lane does.
+//
+// It also turns the overlap invariant structural: margin + width resolves to
+// ax * (lane - card) + card, which is <= lane for ANY ax in [0, 1] and any
+// cw <= 1. There is no table arithmetic left to get wrong. `my` is real
+// vertical space rather than a translate, so it can never close the gap to the
+// card above. Nothing here needs clipping, nor mirroring at the grid's outer
+// edges, nor a gutter to lean into.
+//
+// `cw` is no longer a free irregularity knob — it is bucketed by the member's
+// tier (see getCardTier), so a filled-in profile visibly claims more of the
+// lane than a bare one. Each tier keeps its own small set of (cw, ax, my)
+// combinations so the composition variety survives within a size class.
+const TIER_VARIANTS: Record<ProtoCardTier, { cw: number; ax: number; my: string }[]> = {
+  large: [
+    { cw: 1, ax: 0, my: "0rem" },
+    { cw: 0.82, ax: 1, my: "3.5rem" },
+    { cw: 0.9, ax: 0.35, my: "1rem" },
+    { cw: 0.72, ax: 1, my: "5.5rem" },
+    { cw: 1, ax: 1, my: "2rem" },
+    { cw: 0.86, ax: 0.15, my: "0rem" },
+    { cw: 0.76, ax: 0.62, my: "4rem" },
+    { cw: 0.94, ax: 0.85, my: "1.5rem" },
+  ],
+  medium: [
+    { cw: 0.66, ax: 0.2, my: "2rem" },
+    { cw: 0.6, ax: 1, my: "0.5rem" },
+    { cw: 0.7, ax: 0.55, my: "3rem" },
+  ],
+  small: [
+    { cw: 0.48, ax: 0.5, my: "1.5rem" },
+    { cw: 0.44, ax: 1, my: "0rem" },
+    { cw: 0.52, ax: 0, my: "2.5rem" },
+  ],
+};
 ---
 
-<div class="pgrid" style={`--ptemplate:${template}`}>
+<div class="pgrid" style={`--base:${base}`}>
   {
     columns.map((col, ci) => (
-      <div class="pgrid__col">
+      <div class="pgrid__col" style={`--span:${spans[ci]};--lane-top:${LANE_TOPS[ci % LANE_TOPS.length]}`}>
         {
           col.map((m, ri) => {
-            const v = VARIANTS[(ci * 3 + ri * 5) % VARIANTS.length];
+            const tier = getCardTier(m);
+            const variants = TIER_VARIANTS[tier];
+            const v = variants[(ci * 3 + ri * 5) % variants.length];
             return (
-              <div class="pgrid__cell" style={`--cw:${v.w};--dx:${edgeAwareDx(v.dx, ci)};--dy:${v.dy}`}>
+              <div
+                class="pgrid__cell"
+                data-tier={tier}
+                style={`--cw:${v.cw};--ax:${v.ax};--my:${v.my}`}
+              >
                 {/* ri * cols + ci is unique across the whole grid for any
-                    cols, so no two cards ever share a crossfade phase. */}
-                <ProtoMemberCard member={m} index={ri * cols + ci} />
+                    cols, so no two cards ever share a crossfade phase — and,
+                    for the text card, no two neighbours share a box ratio. */}
+                {
+                  tier === "large" ? (
+                    <ProtoMemberCard member={m} index={ri * cols + ci} />
+                  ) : (
+                    /* No artwork to show. The typographic variant holds the
+                       same slot rather than dropping the member from the
+                       directory — see ProtoTextCard. */
+                    <ProtoTextCard member={m} index={ri * cols + ci} />
+                  )
+                }
               </div>
             );
           })
@@ -88,66 +134,82 @@ function edgeAwareDx(dx: string, ci: number): string {
 
 <style>
   .pgrid {
-    --pgap: 2.5rem;
+    /* Horizontal gutter between lanes, and the vertical rhythm inside one. */
+    --pgap-x: 4.5rem;
+    --pgap-y: 13rem;
+    /* Ceiling on the artwork itself, independent of how wide the shell goes. */
+    --card-max: 26rem;
     display: grid;
-    grid-template-columns: var(--ptemplate);
-    gap: var(--pgap);
+    /* The base grid carries NO column-gap. With 24 tracks a 4.5rem gap would
+       spend more of the page on gutters than on cards. The gutter is a lane's
+       own trailing padding instead, which also keeps every card percentage
+       resolving against a box that already excludes it. */
+    grid-template-columns: repeat(var(--base), minmax(0, 1fr));
+    column-gap: 0;
     align-items: start;
-    padding-block: 2.5rem 6rem;
-    /* Cards nudged outward must not create a horizontal scrollbar. `clip`
-       rather than `hidden` on purpose: `hidden` would make this a scroll
-       container, which ScrollTrigger would then have to reason about when
-       resolving positions against .page-wrap. `clip` does not. */
-    overflow-x: clip;
+    padding-block: 7rem 18rem;
   }
 
   .pgrid__col {
+    grid-column: span var(--span);
     display: flex;
     flex-direction: column;
-    gap: var(--pgap);
+    gap: var(--pgap-y);
     min-width: 0;
+    box-sizing: border-box;
+    padding-inline-end: var(--pgap-x);
+    margin-top: var(--lane-top);
+  }
+
+  /* The last lane has nothing to its right to be separated from, so it keeps
+     the whole track and the grid's right edge stays flush with the content. */
+  .pgrid__col:last-child {
+    padding-inline-end: 0;
   }
 
   .pgrid__cell {
     min-width: 0;
-    width: var(--cw);
-    /* Layout-free displacement. Separate longhand from the `scale` the card
-       animates, so the two compose instead of overwriting each other. */
-    translate: var(--dx) var(--dy);
-  }
-
-  /* Staggered column starts — deliberately not a linear multiple, so the
-     rhythm reads as irregular rather than mechanical. */
-  .pgrid__col:nth-child(2) {
-    margin-top: 7rem;
-  }
-  .pgrid__col:nth-child(3) {
-    margin-top: 2.5rem;
+    /* The basis is the lane, or --card-max where the lane is wider than the
+       artwork should ever be. The card is then a fraction OF that, so widening
+       the shell past the cap buys whitespace rather than bigger images, and
+       narrow lanes still scale down normally. */
+    --cardw: calc(var(--cw) * min(100%, var(--card-max)));
+    width: var(--cardw);
+    /* Distribute the card's own slack rather than offsetting by a share of the
+       lane: at --ax 1 the card lands flush on the lane's right edge whatever
+       the cap did to its width, and it can never exceed the lane. Both
+       percentages resolve against the lane's content box. */
+    margin-inline-start: calc(var(--ax) * (100% - var(--cardw)));
+    margin-top: var(--my);
   }
 
   /* Mobile: two offset columns. `display: contents` lifts every cell out of
-     its flex column into a single multicol flow, so all members appear in a
-     2-up arrangement with no member dropped and no DOM change. Cards remain
-     single boxes, so the scroll animation is unaffected. */
+     its lane into a single multicol flow, so all members appear in a 2-up
+     arrangement with no member dropped and no DOM change. Cards remain single
+     boxes, so the scroll animation is unaffected. */
   @media (--bp-mobile) {
     .pgrid {
-      --pgap: 1.25rem;
+      --pgap-x: 2.25rem;
+      --pgap-y: 7rem;
       display: block;
       columns: 2;
-      column-gap: var(--pgap);
-      padding-block: 1.5rem 4rem;
+      column-gap: var(--pgap-x);
+      padding-block: 4rem 10rem;
     }
     .pgrid__col {
       display: contents;
     }
     .pgrid__cell {
+      /* The multicol column is already narrower than --card-max, so both the
+         cap and the width fraction are off here. */
       width: 100%;
-      /* Jitter off on mobile — two narrow columns have no room for it. The
-         offset look comes for free from cards of differing height in the
+      /* Irregularity off on mobile — two narrow columns have no room for it.
+         The offset look comes for free from cards of differing height in the
          multicol flow, which is what the sketch's mobile half shows. */
-      translate: none;
+      margin-inline-start: 0;
+      margin-top: 0;
       break-inside: avoid;
-      margin-bottom: var(--pgap);
+      margin-bottom: var(--pgap-y);
     }
   }
 </style>
@@ -155,17 +217,20 @@ function edgeAwareDx(dx: string, ci: number): string {
 <script>
   // Desktop-only scroll motion, two jobs:
   //   1. Cards scale up as they rise toward the top of the scrollport.
-  //   2. Columns drift at different rates — the parallax is what actually
-  //      destroys the grid feel; static jitter alone still reads as columns.
+  //   2. Lanes drift at different rates — the parallax is what actually
+  //      destroys the grid feel; static irregularity alone still reads as
+  //      columns.
   //
   // Width is checked BEFORE the import, so mobile downloads no GSAP at all
   // (~44 KB gzip saved). gsap and ScrollTrigger are already dependencies.
   const DESKTOP = "(min-width: 768px)";
   const REDUCED = "(prefers-reduced-motion: reduce)";
 
-  // Per-column drift in px across the whole scroll. Mixed signs and unequal
+  // Per-lane drift in px across the whole scroll. Mixed signs and unequal
   // magnitudes on purpose — matching speeds would just look like a slow page.
-  const DRIFT = [-70, 45, -28, 60];
+  // Drift is vertical only and cards never leave their lane horizontally, so
+  // no amount of drift can make two cards overlap.
+  const DRIFT = [-90, 60, -36, 75];
 
   // Loose type: gsap's global namespace types are not reliably in scope inside
   // a scoped Astro script, and revert() is all we need off it.
@@ -225,12 +290,13 @@ function edgeAwareDx(dx: string, ci: number): string {
         // 1. Grow on approach. Starts when the card's top enters at the
         //    bottom of the scrollport, completes when its top reaches 38%
         //    from the top, so cards are already full size in the upper region
-        //    rather than still swelling as they leave. scrub ties progress to
-        //    scroll position instead of to elapsed time.
-        gsap.utils.toArray<HTMLElement>(".pcard").forEach((card) => {
+        //    rather than still swelling as they leave. The small state sits a
+        //    long way below full size on purpose — the travel IS the effect.
+        //    scrub ties progress to scroll position instead of elapsed time.
+        gsap.utils.toArray<HTMLElement>(".pcard, .ptcard").forEach((card) => {
           gsap.fromTo(
             card,
-            { scale: 0.84, opacity: 0.5 },
+            { scale: 0.72, opacity: 0.5 },
             {
               scale: 1,
               opacity: 1,
@@ -240,9 +306,9 @@ function edgeAwareDx(dx: string, ci: number): string {
           );
         });
 
-        // 2. Column parallax. Drives .pgrid__col, while the per-card jitter
-        //    sets `translate` on .pgrid__cell — different elements, so they
-        //    compose.
+        // 2. Lane parallax. Drives .pgrid__col, while the per-card offsets are
+        //    plain margins on .pgrid__cell — layout, not transform, so the two
+        //    cannot fight over a property.
         gsap.utils.toArray<HTMLElement>(".pgrid__col").forEach((col, i) => {
           gsap.to(col, {
             y: DRIFT[i % DRIFT.length],

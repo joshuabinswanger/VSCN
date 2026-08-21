@@ -31,7 +31,10 @@ import "../styles/global.css";
     grid-template-columns: 1fr 1fr 1fr;
     padding: 0px 5px;
     width: 100%;
-    max-width: 900px;
+    /* Shared with the brand ticker and <main> — see --shell-max in
+       global.css. 5px here plus the links' own 10px puts the nav text on
+       main's 15px content edge at any measure. */
+    max-width: var(--shell-max);
     box-sizing: border-box;
     margin: 0 auto;
   }

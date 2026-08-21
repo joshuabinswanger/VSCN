@@ -2,7 +2,7 @@
 
 ---
 name: member-curation-stage1
-description: "All three stages of the real-data community page are built: curation, real data, typographic + expandable cards. The desktop tag rail clipping is the one thing left open."
+description: "Real-data community page: curation, real data, typographic + expandable cards, and card-size tiers all built. Desktop tag rail clipping is still open; medium tier is unreachable with current data."
 metadata:
   type: project
 ---
@@ -58,6 +58,19 @@ Data-shape lessons baked into the panel:
 - Gregor Forster's malformed `https://.instagram.com/...` is rendered **as stored** and will
   visibly fail. That is deliberate — the view layer should not silently repair their data.
 - ikonaut's `openTo` contains the real typo `coolaborate`, shown verbatim.
+
+## Stage 4: card size tiers (2026-08-21)
+
+Card width is now driven by profile completeness, not the old decorative
+cycling table. `getCardTier()` in `proto-data.ts`: `large` = has artwork
+(unchanged card-type split), `medium` = no image but a link (portfolio or
+socialMedia) **and** 2+ tags, `small` = everything else. Full writeup and
+the bug it caught (narrow `small` cards overflowing the role-mode text) at
+[[card-size-tiers]] / `documentation/20260821-card-size-tiers.md`.
+
+**`medium` is dead with today's real data** — checked all 5 text-only
+members, none has both a link and tags. Only `small` and `large` actually
+render. Revisit if Josh wants the criterion to be OR instead of AND.
 
 ## Still open: the tag rail (the only thing Stage 3 did NOT settle)
 
