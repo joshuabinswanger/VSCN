@@ -96,6 +96,7 @@ const openToAttr = Array.isArray(m?.openTo) && m.openTo.length ? `|${m.openTo.jo
             width="80"
             height="80"
             loading="lazy"
+            style={`background-color: ${m?.photoColor ?? "var(--color-border)"}`}
           />
         ) : (
           <div class="member-avatar member-avatar--placeholder">
@@ -228,6 +229,7 @@ const openToAttr = Array.isArray(m?.openTo) && m.openTo.length ? `|${m.openTo.jo
                 height={g.height}
                 loading="lazy"
                 alt={g.caption || `${displayName} — gallery image`}
+                style={`background-color: ${g.color ?? "var(--color-border)"}`}
               />
             </a>
           ))}

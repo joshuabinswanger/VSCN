@@ -1,4 +1,4 @@
-import { decodeImage, toWebpBlob } from "./image.ts";
+import { decodeImage, toWebpBlob, dominantColor } from "./image.ts";
 
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024; // 10 MB — raw upload limit before client-side resize
@@ -15,7 +15,10 @@ export function validateAvatar(file: File): { ok: boolean; error?: string } {
   return { ok: true };
 }
 
-export async function resizeAvatar(file: File, size = 512): Promise<Blob> {
+export async function resizeAvatar(
+  file: File,
+  size = 512,
+): Promise<{ blob: Blob; color: string }> {
   const bitmap = await decodeImage(file);
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -27,7 +30,7 @@ export async function resizeAvatar(file: File, size = 512): Promise<Blob> {
   const h = bitmap.height * scale;
   ctx.drawImage(bitmap, (size - w) / 2, (size - h) / 2, w, h);
   bitmap.close();
-  return toWebpBlob(canvas);
+  return { blob: await toWebpBlob(canvas), color: dominantColor(canvas) };
 }
 
 export function normaliseUrl(raw: string): string {

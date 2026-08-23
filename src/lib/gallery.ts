@@ -1,13 +1,13 @@
 import { storage } from "./firebase.ts";
 import { ref, uploadBytesResumable } from "firebase/storage";
 import { deleteStorageFile, publicStorageUrl } from "./storage.ts";
+import { decodeImage, toWebpBlob, dominantColor } from "./image.ts";
 
 // Keep in sync with validGallery() in firestore.rules.
 export const MAX_GALLERY_IMAGES = 8;
 export const MAX_GALLERY_CAPTION = 140;
 
 const MAX_EDGE = 2000;
-const WEBP_QUALITY = 0.82;
 const MAX_RAW_BYTES = 25 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
@@ -16,12 +16,15 @@ export interface GalleryItem {
   caption: string;
   width: number;
   height: number;
+  /** Dominant color (#rrggbb), shown while the image loads. Optional: pre-existing items have none. */
+  color?: string;
 }
 
 export interface CompressedImage {
   blob: Blob;
   width: number;
   height: number;
+  color: string;
 }
 
 export function validateGalleryFile(file: File): { ok: boolean; error?: string } {
@@ -37,10 +40,10 @@ export function validateGalleryFile(file: File): { ok: boolean; error?: string }
 /**
  * Resizes to MAX_EDGE on the longest side (never upscales) and re-encodes
  * as WebP. Canvas re-encoding also strips EXIF metadata (GPS etc.);
- * `imageOrientation: "from-image"` bakes in the correct rotation first.
+ * decodeImage bakes in the correct rotation first.
  */
-export async function compressGalleryImage(file: File): Promise<CompressedImage> {
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+export async function compressGalleryImage(file: File | Blob): Promise<CompressedImage> {
+  const bitmap = await decodeImage(file);
   const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
   const width = Math.round(bitmap.width * scale);
   const height = Math.round(bitmap.height * scale);
@@ -51,14 +54,9 @@ export async function compressGalleryImage(file: File): Promise<CompressedImage>
   canvas.getContext("2d")!.drawImage(bitmap, 0, 0, width, height);
   bitmap.close();
 
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error("Canvas export failed"))),
-      "image/webp",
-      WEBP_QUALITY,
-    );
-  });
-  return { blob, width, height };
+  const color = dominantColor(canvas);
+  const blob = await toWebpBlob(canvas);
+  return { blob, width, height, color };
 }
 
 export function uploadGalleryImage(

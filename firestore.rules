@@ -61,14 +61,14 @@ service cloud.firestore {
 }
 
 function validPublicProfile(data) {
-  let allowedKeys = ['displayName', 'photoURL', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'active', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'active', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data);
 }
 
 function validPrivateUser(data, auth) {
-  let allowedKeys = ['displayName', 'photoURL', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'phone', 'email', 'communityGoals', 'wantsToContribute', 'onboardingComplete', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'phone', 'email', 'communityGoals', 'wantsToContribute', 'onboardingComplete', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data)
@@ -93,6 +93,7 @@ function validPublicFields(data) {
     && (!('tags' in data) || (data.tags is list && data.tags.size() <= 7))
     && (!('gallery' in data) || validGallery(data.gallery))
     && (!('active' in data) || data.active is bool)
+    && (!('photoColor' in data) || (data.photoColor is string && data.photoColor.matches('#[0-9a-f]{6}')))
     && (!('photoURL' in data) || data.photoURL == ''
         || data.photoURL.matches('https://firebasestorage\\.googleapis\\.com/v0/b/vscn-39508\\.firebasestorage\\.app/.*')
         || data.photoURL.matches('https://storage\\.googleapis\\.com/vscn-39508\\.firebasestorage\\.app/.*'))
@@ -117,7 +118,8 @@ function validGallery(value) {
 
 function validGalleryItem(item) {
   return item is map
-    && item.keys().hasOnly(['url', 'caption', 'width', 'height'])
+    && item.keys().hasOnly(['url', 'caption', 'width', 'height', 'color'])
+    && (!('color' in item) || (item.color is string && item.color.matches('#[0-9a-f]{6}')))
     && item.url is string
     && (item.url.matches('https://firebasestorage\\.googleapis\\.com/v0/b/vscn-39508\\.firebasestorage\\.app/.*')
         || item.url.matches('https://storage\\.googleapis\\.com/vscn-39508\\.firebasestorage\\.app/.*'))

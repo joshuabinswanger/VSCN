@@ -781,6 +781,7 @@ const t = useTranslations(lang);
 
     let currentPhotoURL = "";
     let resizedAvatarBlob: Blob | null = null;
+    let avatarColor = "";
     let gallery: GalleryItem[] = [];
 
     const galleryInput = document.getElementById("gallery-files") as HTMLInputElement;
@@ -851,11 +852,11 @@ const t = useTranslations(lang);
         }
         try {
           setGalleryStatus(s["profile.upload.processing"]);
-          const { blob, width, height } = await compressGalleryImage(file);
+          const { blob, width, height, color } = await compressGalleryImage(file);
           const url = await uploadGalleryImage(user.uid, blob, (pct) => {
             setGalleryStatus(`${s["profile.upload.uploading"]} ${pct}%`);
           });
-          gallery.push({ url, caption: "", width, height });
+          gallery.push({ url, caption: "", width, height, color });
           uploaded = true;
           renderGallery();
         } catch {
@@ -952,7 +953,7 @@ const t = useTranslations(lang);
       uploadStatus.textContent = s["profile.upload.processing"];
       uploadStatus.style.display = "block";
       try {
-        resizedAvatarBlob = await resizeAvatar(file);
+        ({ blob: resizedAvatarBlob, color: avatarColor } = await resizeAvatar(file));
         const previewUrl = URL.createObjectURL(resizedAvatarBlob);
         showPreview(previewUrl);
         uploadStatus.textContent = `${s["profile.upload.selected"]}${file.name}`;
@@ -1048,6 +1049,7 @@ const t = useTranslations(lang);
             phone: phoneInput.value.trim(),
             email: user.email!,
             resizedAvatarBlob,
+            ...(resizedAvatarBlob && avatarColor ? { photoColor: avatarColor } : {}),
           },
           (pct) => {
             uploadStatus.textContent = `${s["profile.upload.uploading"]} ${pct}%`;

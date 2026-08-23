@@ -26,6 +26,8 @@ export function isMemberType(value: unknown): value is MemberType {
 export interface UserDoc {
   displayName: string;
   photoURL: string;
+  /** Dominant color of the avatar (#rrggbb), shown while it loads. */
+  photoColor?: string;
   // Optional: profiles created before member types existed have no value.
   memberType?: MemberType;
   role: string;
@@ -65,6 +67,7 @@ function toPublicProfile(data: Partial<UserDoc>): Partial<PublicProfileDoc> {
   const out: Partial<PublicProfileDoc> = {};
   if (data.displayName !== undefined) out.displayName = data.displayName;
   if (data.photoURL !== undefined) out.photoURL = data.photoURL;
+  if (data.photoColor !== undefined) out.photoColor = data.photoColor;
   if (data.memberType !== undefined) out.memberType = data.memberType;
   if (data.role !== undefined) out.role = data.role;
   if (data.bio !== undefined) out.bio = data.bio;

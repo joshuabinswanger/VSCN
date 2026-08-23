@@ -748,6 +748,7 @@ const prefix = lang === "de" ? "/de" : "";
     const avatarWrap = document.getElementById("ob-avatar-wrap") as HTMLElement;
     const uploadStatus = document.getElementById("ob-upload-status") as HTMLElement;
     let resizedAvatarBlob: Blob | null = null;
+    let avatarColor = "";
 
     avatarInput?.addEventListener("change", async () => {
       const file = avatarInput.files?.[0];
@@ -761,7 +762,7 @@ const prefix = lang === "de" ? "/de" : "";
       uploadStatus.textContent = s["profile.upload.processing"];
       uploadStatus.style.display = "block";
       try {
-        resizedAvatarBlob = await resizeAvatar(file);
+        ({ blob: resizedAvatarBlob, color: avatarColor } = await resizeAvatar(file));
         const url = URL.createObjectURL(resizedAvatarBlob);
         avatarImg.src = url;
         avatarWrap.classList.add("has-image");
@@ -981,6 +982,7 @@ const prefix = lang === "de" ? "/de" : "";
           {
             bio: bioVal,
             resizedAvatarBlob,
+            ...(resizedAvatarBlob && avatarColor ? { photoColor: avatarColor } : {}),
           },
           (pct) => {
             uploadStatus.textContent = `${s["profile.upload.uploading"]} ${pct}%`;
