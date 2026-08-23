@@ -1,6 +1,6 @@
 import { storage } from "./firebase.ts";
 import { ref, uploadBytesResumable } from "firebase/storage";
-import { deleteStorageFile } from "./storage.ts";
+import { deleteStorageFile, publicStorageUrl } from "./storage.ts";
 
 // Keep in sync with validGallery() in firestore.rules.
 export const MAX_GALLERY_IMAGES = 8;
@@ -68,19 +68,18 @@ export function uploadGalleryImage(
 ): Promise<string> {
   const storagePath = `galleries/${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
   const storageRef = ref(storage, storagePath);
-  const bucket = storage.app.options.storageBucket ?? "";
   return new Promise((resolve, reject) => {
-    const task = uploadBytesResumable(storageRef, blob, { contentType: "image/webp" });
+    const task = uploadBytesResumable(storageRef, blob, {
+      contentType: "image/webp",
+      cacheControl: "public, max-age=31536000, immutable",
+    });
     task.on(
       "state_changed",
       (snap) => {
         onProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100));
       },
       reject,
-      () =>
-        resolve(
-          `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(storagePath)}?alt=media`,
-        ),
+      () => resolve(publicStorageUrl(storagePath)),
     );
   });
 }

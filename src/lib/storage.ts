@@ -1,7 +1,7 @@
 import { storage } from "./firebase.ts";
 import { ref, uploadBytesResumable, deleteObject } from "firebase/storage";
 
-function publicStorageUrl(storagePath: string): string {
+export function publicStorageUrl(storagePath: string): string {
   const bucket = storage.app.options.storageBucket ?? "";
   return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(storagePath)}?alt=media`;
 }
