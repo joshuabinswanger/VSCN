@@ -1,5 +1,22 @@
 export const WEBP_QUALITY = 0.82;
 
+// AVIF is decode-only: createImageBitmap reads it in all modern browsers; output stays WebP.
+export const ALLOWED_INPUT_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+
+/** Returns a user-facing error for unsupported files, or null if the type is accepted. */
+export function rejectionMessage(file: File): string | null {
+  if (file.type === "image/svg+xml") {
+    return "SVGs can't be uploaded. Please export your artwork as PNG or JPEG.";
+  }
+  if (file.type === "image/heic" || file.type === "image/heif") {
+    return "This photo is in HEIC format. Please export it as JPEG.";
+  }
+  if (!ALLOWED_INPUT_TYPES.includes(file.type)) {
+    return "Only JPEG, PNG, WebP, or AVIF images are allowed.";
+  }
+  return null;
+}
+
 /** Decode any supported image; bakes in EXIF orientation. Canvas re-encode later strips metadata. */
 export async function decodeImage(source: File | Blob): Promise<ImageBitmap> {
   try {

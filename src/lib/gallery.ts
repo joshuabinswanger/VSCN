@@ -1,7 +1,7 @@
 import { storage } from "./firebase.ts";
 import { ref, uploadBytesResumable } from "firebase/storage";
 import { deleteStorageFile, publicStorageUrl } from "./storage.ts";
-import { decodeImage, toWebpBlob, dominantColor } from "./image.ts";
+import { decodeImage, toWebpBlob, dominantColor, rejectionMessage } from "./image.ts";
 
 // Keep in sync with validGallery() in firestore.rules.
 export const MAX_GALLERY_IMAGES = 8;
@@ -9,7 +9,6 @@ export const MAX_GALLERY_CAPTION = 140;
 
 const MAX_EDGE = 2000;
 const MAX_RAW_BYTES = 25 * 1024 * 1024;
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export interface GalleryItem {
   url: string;
@@ -31,9 +30,8 @@ export function validateGalleryFile(file: File): { ok: boolean; error?: string }
   if (file.size > MAX_RAW_BYTES) {
     return { ok: false, error: "Image must be under 25 MB." };
   }
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    return { ok: false, error: "Only JPEG, PNG, or WebP images are allowed." };
-  }
+  const rejection = rejectionMessage(file);
+  if (rejection) return { ok: false, error: rejection };
   return { ok: true };
 }
 

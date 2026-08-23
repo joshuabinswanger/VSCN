@@ -1,6 +1,4 @@
-import { decodeImage, toWebpBlob, dominantColor } from "./image.ts";
-
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+import { decodeImage, toWebpBlob, dominantColor, rejectionMessage } from "./image.ts";
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024; // 10 MB — raw upload limit before client-side resize
 // Keep this in sync with validBioWordCount() in firestore.rules.
 export const MAX_BIO_WORDS = 35;
@@ -9,9 +7,8 @@ export function validateAvatar(file: File): { ok: boolean; error?: string } {
   if (file.size > MAX_AVATAR_BYTES) {
     return { ok: false, error: "Image must be under 10 MB." };
   }
-  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-    return { ok: false, error: "Only JPEG, PNG, or WebP images are allowed." };
-  }
+  const rejection = rejectionMessage(file);
+  if (rejection) return { ok: false, error: rejection };
   return { ok: true };
 }
 

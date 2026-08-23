@@ -190,7 +190,12 @@ const prefix = lang === "de" ? "/de" : "";
         <div>
           <label class="btn-outline" for="ob-avatar-input">
             {t("profile.chooseImage")}
-            <input id="ob-avatar-input" type="file" accept="image/*" style="display:none;" />
+            <input
+              id="ob-avatar-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/avif"
+              style="display:none;"
+            />
           </label>
           <p id="ob-upload-status" class="ob-upload-status" style="display:none;"></p>
         </div>
