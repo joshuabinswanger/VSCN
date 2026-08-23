@@ -1,5 +1,5 @@
 import { updateProfile, type User } from "firebase/auth";
-import { uploadAvatar } from "./storage.ts";
+import { uploadAvatar, deleteAvatar } from "./storage.ts";
 import { updateUserProfile } from "./firestore.ts";
 import { validateBio } from "./validation.ts";
 import type { UserDoc } from "./firestore.ts";
@@ -25,10 +25,11 @@ export async function handleProfileUpdate(
   }
 
   // 2. Avatar Upload
+  let oldPhotoURL = "";
   if (resizedAvatarBlob) {
-    const avatarFile = new File([resizedAvatarBlob], "avatar.jpg", { type: "image/jpeg" });
-    photoURL = await uploadAvatar(user.uid, avatarFile, onProgress);
-    
+    oldPhotoURL = user.photoURL ?? "";
+    photoURL = await uploadAvatar(user.uid, resizedAvatarBlob, onProgress);
+
     // Update Firebase Auth profile
     await updateProfile(user, { photoURL });
     // Force refresh token to include new photoURL in claims if needed
@@ -49,6 +50,10 @@ export async function handleProfileUpdate(
   }
 
   await updateUserProfile(user.uid, profileData);
+
+  // Best-effort cleanup of the replaced avatar, only after Firestore (the source
+  // of truth) holds the new URL. Works for legacy `{uid}.{ext}` names too.
+  if (oldPhotoURL && oldPhotoURL !== photoURL) await deleteAvatar(oldPhotoURL);
 
   return { photoURL };
 }

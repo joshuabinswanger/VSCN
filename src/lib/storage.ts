@@ -43,14 +43,18 @@ export async function deleteAvatar(photoURL: string): Promise<void> {
 
 export function uploadAvatar(
   uid: string,
-  file: File,
+  blob: Blob,
   onProgress: (pct: number) => void = () => {},
 ): Promise<string> {
-  const ext = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
-  const storagePath = `avatars/${uid}.${ext}`;
+  // Unique name per content: Storage files are immutable, so long caching is safe
+  // and avatar changes actually propagate (the old fixed-path scheme served stale images).
+  const storagePath = `avatars/${uid}-${Date.now()}.webp`;
   const storageRef = ref(storage, storagePath);
   return new Promise((resolve, reject) => {
-    const task = uploadBytesResumable(storageRef, file);
+    const task = uploadBytesResumable(storageRef, blob, {
+      contentType: "image/webp",
+      cacheControl: "public, max-age=31536000, immutable",
+    });
     task.on(
       "state_changed",
       (snap) => {

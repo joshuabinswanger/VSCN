@@ -1,3 +1,5 @@
+import { decodeImage, toWebpBlob } from "./image.ts";
+
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024; // 10 MB — raw upload limit before client-side resize
 // Keep this in sync with validBioWordCount() in firestore.rules.
@@ -13,36 +15,19 @@ export function validateAvatar(file: File): { ok: boolean; error?: string } {
   return { ok: true };
 }
 
-export function resizeAvatar(file: File, size = 512): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const canvas = document.createElement("canvas");
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext("2d")!;
-      // Cover crop: scale so the image fills the square, centered
-      const scale = Math.max(size / img.width, size / img.height);
-      const w = img.width * scale;
-      const h = img.height * scale;
-      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
-      canvas.toBlob(
-        (blob) => {
-          if (blob) resolve(blob);
-          else reject(new Error("Canvas export failed"));
-        },
-        "image/jpeg",
-        0.92,
-      );
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Image load failed"));
-    };
-    img.src = url;
-  });
+export async function resizeAvatar(file: File, size = 512): Promise<Blob> {
+  const bitmap = await decodeImage(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  // Cover crop: scale so the image fills the square, centered
+  const scale = Math.max(size / bitmap.width, size / bitmap.height);
+  const w = bitmap.width * scale;
+  const h = bitmap.height * scale;
+  ctx.drawImage(bitmap, (size - w) / 2, (size - h) / 2, w, h);
+  bitmap.close();
+  return toWebpBlob(canvas);
 }
 
 export function normaliseUrl(raw: string): string {
