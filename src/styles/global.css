@@ -390,3 +390,23 @@ a:hover {
   font-size: 0.88rem;
   color: var(--color-error);
 }
+
+/* Crop/rotate dialog (created via document.body.appendChild in imageEditor.ts,
+   so it cannot use component-scoped styles) */
+.image-editor {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  padding: 1rem;
+}
+.image-editor canvas {
+  max-width: 100%;
+  touch-action: none;
+  cursor: crosshair;
+}
+.image-editor-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
+}

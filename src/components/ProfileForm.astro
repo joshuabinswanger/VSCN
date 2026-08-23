@@ -654,6 +654,7 @@ const t = useTranslations(lang);
     type GalleryItem,
   } from "../lib/gallery.ts";
   import { updateUserProfile } from "../lib/firestore.ts";
+  import { openImageEditor } from "../lib/imageEditor.ts";
   import { ui } from "../i18n/translations.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
@@ -746,6 +747,11 @@ const t = useTranslations(lang);
     const lang = (form.dataset.lang ?? "en") as keyof typeof ui;
     const s = ui[lang] ?? ui.en;
     const prefix = lang === "de" ? "/de" : "";
+    const editorLabels = {
+      rotate: s["profile.edit.rotate"],
+      apply: s["profile.edit.apply"],
+      cancel: s["profile.edit.cancel"],
+    };
 
     const nameInput = document.getElementById("name") as HTMLInputElement;
     const roleInput = document.getElementById("role") as HTMLInputElement;
@@ -856,8 +862,9 @@ const t = useTranslations(lang);
           continue;
         }
         try {
+          const edited = await openImageEditor(file, editorLabels);
           setGalleryStatus(s["profile.upload.processing"]);
-          const { blob, width, height, color } = await compressGalleryImage(file);
+          const { blob, width, height, color } = await compressGalleryImage(edited ?? file);
           const url = await uploadGalleryImage(user.uid, blob, (pct) => {
             setGalleryStatus(`${s["profile.upload.uploading"]} ${pct}%`);
           });
@@ -958,7 +965,9 @@ const t = useTranslations(lang);
       uploadStatus.textContent = s["profile.upload.processing"];
       uploadStatus.style.display = "block";
       try {
-        ({ blob: resizedAvatarBlob, color: avatarColor } = await resizeAvatar(file));
+        const edited = await openImageEditor(file, editorLabels);
+        const source = edited ? new File([edited], "edited.png", { type: "image/png" }) : file;
+        ({ blob: resizedAvatarBlob, color: avatarColor } = await resizeAvatar(source));
         const previewUrl = URL.createObjectURL(resizedAvatarBlob);
         showPreview(previewUrl);
         uploadStatus.textContent = `${s["profile.upload.selected"]}${file.name}`;
