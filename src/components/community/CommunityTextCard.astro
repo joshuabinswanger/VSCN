@@ -1,0 +1,121 @@
+---
+import { hasDetail, type MemberView } from "../../lib/memberView.ts";
+import { memberHref } from "../../lib/links.ts";
+import type { Lang } from "../../i18n/utils.ts";
+import MemberDetailPanel from "./MemberDetailPanel.astro";
+
+// The typographic variant: a member without artwork holds the same anatomy —
+// name band, role, disclosure — instead of being demoted out of the directory.
+// The card upgrades to CommunityImageCard by itself the moment the member
+// uploads a gallery, because the grid picks per member on works.length.
+
+interface Props {
+  member: MemberView;
+  lang: Lang;
+}
+
+const { member, lang } = Astro.props;
+const hasCaption = hasDetail(member);
+const profileHref = memberHref(lang, member.slug);
+---
+
+<article class="ctcard">
+  {
+    hasCaption ? (
+      <div class="ctcard__caption">
+        <div class="ctcard__name-row">
+          <div class="ctcard__identity">
+            <h2 class="ctcard__name">
+              <a class="ctcard__name-link" href={profileHref} transition:name={`mname-${member.id}`}>
+                {member.displayName}
+              </a>
+            </h2>
+            {member.role && <span class="ctcard__role">{member.role}</span>}
+          </div>
+          <MemberDetailPanel member={member} lang={lang} />
+        </div>
+      </div>
+    ) : (
+      <h2 class="ctcard__name">
+        <a class="ctcard__name-link" href={profileHref} transition:name={`mname-${member.id}`}>
+          {member.displayName}
+        </a>
+      </h2>
+    )
+  }
+</article>
+
+<style>
+  .ctcard {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    /* Matches CommunityImageCard so the GSAP scale in CommunityGrid pivots
+       identically whichever card type a slot holds — see that file for why
+       the origin is top, not centre. */
+    transform-origin: 50% 0%;
+  }
+
+  /* Name band — identical to the image card's, on purpose. */
+  .ctcard__name {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: inherit;
+  }
+  .ctcard__name-link {
+    display: block;
+    font-family: "Archivo", sans-serif;
+    color: var(--color-dark);
+    text-decoration: none;
+  }
+  .ctcard__name-link:hover,
+  .ctcard__name-link:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
+  }
+
+  .ctcard__caption {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-family: "Archivo", sans-serif;
+  }
+
+  .ctcard__name-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 0.35rem;
+  }
+
+  .ctcard__identity {
+    min-width: 0;
+  }
+
+  .ctcard__name-row :global(.pdisc) {
+    display: contents;
+  }
+
+  .ctcard__name-row :global(.pdisc__toggle) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .ctcard__name-row :global(.pdisc__body) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .ctcard__role {
+    display: block;
+    margin-top: 0.2rem;
+    min-width: 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--color-dark);
+  }
+</style>

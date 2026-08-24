@@ -1,6 +1,7 @@
-// Link-shaping rules for the /proto views. The real profile link fields are
-// messy in specific, known ways, and the card disclosure panel and the profile
-// page must treat them identically — so the rules live here rather than twice.
+// Link-shaping rules for member renderings (cards, profile pages, previews).
+// The real profile link fields are messy in specific, known ways, and the card
+// panel and the profile page must treat them identically — so the rules live
+// here rather than twice.
 
 /**
  * Real `portfolio` values are stored without a scheme ("quaint.ch",
@@ -86,4 +87,13 @@ export function socialLinks(raw: string): SocialLink[] {
     .map((part) => part.trim())
     .filter(Boolean)
     .map((part) => cleanOne(part) ?? { href: null, label: part });
+}
+
+/**
+ * Canonical URL of a member's public profile page, locale-aware. One place
+ * rather than three, because the card, the panel and the editor preview all
+ * link to the same page and a drifted prefix would 404 only in German.
+ */
+export function memberHref(lang: string, slug: string): string {
+  return lang === "de" ? `/de/members/${slug}` : `/members/${slug}`;
 }

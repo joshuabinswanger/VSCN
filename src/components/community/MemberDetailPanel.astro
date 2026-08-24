@@ -1,57 +1,55 @@
 ---
-import { hasDisclosableDetail, type ProtoCardMember } from "../../lib/proto-data.ts";
+import { hasDetail, type MemberViewBase } from "../../lib/memberView.ts";
 import { href, socialLinks } from "../../lib/links.ts";
+import { useTranslations, type Lang } from "../../i18n/utils.ts";
 
 interface Props {
-  member: ProtoCardMember;
+  member: MemberViewBase;
+  lang: Lang;
 }
 
-const { member } = Astro.props;
+const { member, lang } = Astro.props;
+const t = useTranslations(lang);
 
 // Native <details> on purpose. ClientRouter is active site-wide, so any script
 // here would need an astro:page-load / astro:before-swap pair and would leak
-// state across navigations if it got that wrong (see MemberCard.astro for the
-// precedent). A disclosure element needs none of that, and comes with keyboard
-// and screen-reader behaviour already correct.
+// state across navigations if it got that wrong. A disclosure element needs
+// none of that, and comes with keyboard and screen-reader behaviour already
+// correct.
 
-// The href / socialLinks rules live in src/lib/links.ts —
-// the profile page needs identical treatment of the same messy fields.
+const bio = member.bio.trim();
+const portfolio = member.portfolio.trim();
+const social = socialLinks(member.socialMedia.trim());
+const tags = member.tags;
 
-const bio = member.bio?.trim() ?? "";
-const portfolio = member.portfolio?.trim() ?? "";
-const social = member.socialMedia?.trim() ?? "";
-const description = member.description?.trim() ?? "";
-const tags = member.tags ?? [];
-
-// Nothing to disclose — mock members, and real profiles that are name + role
-// only. Rendering an empty toggle would promise content that isn't there.
-const hasDetail = hasDisclosableDetail(member, 0);
+// Nothing to disclose — a profile that is name + role only. Rendering an
+// empty toggle would promise content that isn't there.
+const show = hasDetail(member);
 ---
 
 {
-  hasDetail && (
+  show && (
     <details class="pdisc">
-      <summary class="pdisc__toggle" aria-label="Expand profile"></summary>
+      <summary class="pdisc__toggle" aria-label={`${t("community.card.expand")} ${member.displayName}`}></summary>
 
       <div class="pdisc__body">
         <div class="pdisc__body-inner">
-          {description && <p class="pdisc__bio">{description}</p>}
           {bio && <p class="pdisc__bio">{bio}</p>}
 
           {tags.length > 0 && (
             <div class="pdisc__row">
-              <span class="pdisc__key">Tags</span>
+              <span class="pdisc__key">{t("member.tags")}</span>
               <ul class="pdisc__vals">
-                {tags.map((t) => (
-                  <li class="pdisc__val">{t}</li>
+                {tags.map((tag) => (
+                  <li class="pdisc__val">{tag}</li>
                 ))}
               </ul>
             </div>
           )}
 
-          {(portfolio || social) && (
+          {(portfolio || social.length > 0) && (
             <div class="pdisc__row">
-              <span class="pdisc__key">Elsewhere</span>
+              <span class="pdisc__key">{t("member.elsewhere")}</span>
               <ul class="pdisc__vals pdisc__vals--links">
                 {portfolio && (
                   <li>
@@ -60,7 +58,7 @@ const hasDetail = hasDisclosableDetail(member, 0);
                     </a>
                   </li>
                 )}
-                {socialLinks(social).map((s) =>
+                {social.map((s) =>
                   s.href ? (
                     <li>
                       <a class="pdisc__link" href={s.href} target="_blank" rel="noopener noreferrer">
@@ -86,8 +84,8 @@ const hasDetail = hasDisclosableDetail(member, 0);
   }
 
   .pdisc__toggle {
-    /* Kill the native marker in both engines; the +/− is drawn below so it can
-       sit on the correct side and use the type scale. */
+    /* Kill the native marker in both engines; the chevron is drawn below so it
+       can sit on the correct side and use the type scale. */
     list-style: none;
     cursor: pointer;
     display: flex;
@@ -138,7 +136,9 @@ const hasDetail = hasDisclosableDetail(member, 0);
     block-size: 0;
     content-visibility: hidden;
     overflow: hidden;
-    transition: block-size 320ms ease, content-visibility 320ms allow-discrete;
+    transition:
+      block-size 320ms ease,
+      content-visibility 320ms allow-discrete;
   }
   .pdisc[open]::details-content {
     block-size: auto;

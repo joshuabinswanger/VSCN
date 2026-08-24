@@ -1,9 +1,7 @@
 ---
-import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
 import Layout from "../../layouts/Layout.astro";
 import CommunityGrid from "../../components/CommunityGrid.astro";
-import type { PublicProfileDoc } from "../../lib/firestore.ts";
+import { fetchMemberViews } from "../../lib/membersBuild.ts";
 import type { Lang } from "../../i18n/utils";
 export function getStaticPaths() {
   return [{ params: { lang: undefined } }, { params: { lang: "de" } }];
@@ -12,35 +10,11 @@ export function getStaticPaths() {
 const { lang = "en" } = Astro.params;
 const currentLang = (lang || "en") as Lang;
 
-// Still the raw document shape here, because CommunityGrid and MemberCard read
-// fields this page does not project. It moves to fetchMemberViews() in
-// membersBuild.ts — which the member profile pages already use — when the grid
-// switches to the image cards. Two readers of the same collection is the reason
-// that helper exists; this one is the straggler, not the pattern.
-type Member = PublicProfileDoc & { uid: string };
-let members: Member[] = [];
-
-try {
-  const serviceAccountJson = import.meta.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!serviceAccountJson) throw new Error("FIREBASE_SERVICE_ACCOUNT env var not set");
-
-  const app =
-    getApps().length === 0
-      ? initializeApp({ credential: cert(JSON.parse(serviceAccountJson)) })
-      : getApps()[0];
-
-  const adminDb = getFirestore(app);
-  const snap = await adminDb.collection("publicProfiles").orderBy("displayName").get();
-
-  members = snap.docs
-    .filter((d) => d.data().active !== false)
-    .map((d) => ({
-      uid: d.id,
-      ...(d.data() as PublicProfileDoc),
-    }));
-} catch (err) {
-  console.error("[community] Failed to fetch members:", err);
-}
+// Same producer as the member profile pages, so the card and the page can
+// never disagree about a member. fetchMemberViews() returns [] and logs when
+// credentials are missing — "no members" and "no credentials" look identical
+// here, by long-standing (documented) design.
+const members = await fetchMemberViews();
 
 const title = "Community — VSCN";
 const description =
@@ -49,6 +23,9 @@ const description =
     : "Browse the VSCN community — a growing directory of scientists, illustrators, designers, and science communicators.";
 ---
 
-<Layout title={title} description={description} lang={currentLang} wide={true}>
+{/* contentWide: the irregular multicol grid was designed at the wide measure
+    (min(94vw, 1600px)); the 900px header shell stays untouched, and wide
+    content starting outside the header's left edge is the accepted trade. */}
+<Layout title={title} description={description} lang={currentLang} wide={true} contentWide={true}>
   <CommunityGrid members={members} lang={currentLang} />
 </Layout>

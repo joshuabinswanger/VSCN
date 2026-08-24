@@ -186,3 +186,32 @@ export function toMemberViewBase(uid: string, doc: PublicProfileDoc): MemberView
 export function hasArtwork(m: MemberViewBase): boolean {
   return m.works.length > 0;
 }
+
+/**
+ * Whether the card has anything to disclose beyond its own face (name, role,
+ * artwork). Shared by the detail panel (render at all?) and the typographic
+ * card (is there a caption band?) so the rule is not written twice.
+ */
+export function hasDetail(m: ProfileViewModel): boolean {
+  return Boolean(m.bio.trim() || m.portfolio.trim() || m.socialMedia.trim() || m.tags.length > 0);
+}
+
+/**
+ * Card size tier — how much of the grid a member's card claims, driven by how
+ * filled-in the profile is rather than by layout. `large` needs artwork,
+ * because that is the one thing a bigger frame can actually show; a fuller
+ * text profile does not get more to say just because its box is wider.
+ *
+ * `medium` (a link AND 2+ tags, no artwork) is unreachable with today's real
+ * data — no text-only member has both. Kept anyway: it is the tier members
+ * grow into, not a dead branch.
+ */
+export type CardTier = "small" | "medium" | "large";
+
+const MEDIUM_MIN_TAGS = 2;
+
+export function getCardTier(m: MemberViewBase): CardTier {
+  if (hasArtwork(m)) return "large";
+  const hasLink = Boolean(m.portfolio.trim() || m.socialMedia.trim());
+  return hasLink && m.tags.length >= MEDIUM_MIN_TAGS ? "medium" : "small";
+}

@@ -1,0 +1,315 @@
+---
+import { getImage } from "astro:assets";
+import type { MemberView } from "../../lib/memberView.ts";
+import { memberHref } from "../../lib/links.ts";
+import { useTranslations, type Lang } from "../../i18n/utils.ts";
+import MemberDetailPanel from "./MemberDetailPanel.astro";
+
+interface Props {
+  member: MemberView;
+  lang: Lang;
+}
+
+const { member, lang } = Astro.props;
+const t = useTranslations(lang);
+
+// Gallery images are Firebase Storage remote URLs; getImage optimises them at
+// build time (remotePatterns in astro.config.mjs). Originals are client-side
+// compressed to max 2000px WebP already — these are the sizes the card lays
+// out. 800 covers the ~480px card at 2x DPR.
+const works = await Promise.all(
+  member.works.map(async (w) => ({
+    ...w,
+    rendered: await getImage({
+      src: w.url,
+      width: w.width,
+      height: w.height,
+      widths: [400, 800],
+      format: "webp",
+    }),
+  })),
+);
+
+const frame = works[0];
+const profileHref = memberHref(lang, member.slug);
+
+// Alt: the member's own caption when they wrote one, a translated fallback
+// otherwise — never "" (a named debt of the prototype this card graduated
+// from).
+const altFor = (w: (typeof works)[number]) =>
+  w.caption?.trim() || `${member.displayName} — ${t("member.workAlt")}`;
+---
+
+<article class="ccard">
+  {/* h2, not a <p>: the directory's outline is h1 (member count) → h2 (member). */}
+  <h2 class="ccard__name">
+    <a class="ccard__name-link" href={profileHref} transition:name={`mname-${member.id}`}>
+      {member.displayName}
+    </a>
+  </h2>
+
+  <div class="ccard__body">
+    <div
+      class="ccard__frame"
+      style={`aspect-ratio:${frame.width} / ${frame.height};${frame.color ? `background:${frame.color}` : ""}`}
+      transition:name={`mimg-${member.id}`}
+      data-carousel
+    >
+      {
+        works.map((w, i) => (
+          <img
+            class="ccard__img"
+            class:list={{ "ccard__img--active": i === 0 }}
+            src={w.rendered.src}
+            srcset={w.rendered.srcSet.attribute}
+            sizes="(max-width: 767px) 50vw, 480px"
+            width={w.width}
+            height={w.height}
+            style={w.color ? `background:${w.color}` : undefined}
+            alt={altFor(w)}
+            loading="lazy"
+            decoding="async"
+          />
+        ))
+      }
+      {/* Whole-artwork click target. A sibling of the arrows rather than a
+          wrapper, so no interactive element nests inside another; the arrows
+          sit above it on z-index and keep working. */}
+      <a
+        class="ccard__frame-link"
+        href={profileHref}
+        aria-label={`${t("community.card.viewProfile")} ${member.displayName}`}
+      ></a>
+      {
+        works.length > 1 && (
+          <>
+            <button
+              class="ccard__arrow ccard__arrow--prev"
+              type="button"
+              data-carousel-prev
+              aria-label={t("community.card.prev")}
+            >
+              <span aria-hidden="true">&#8592;</span>
+            </button>
+            <button
+              class="ccard__arrow ccard__arrow--next"
+              type="button"
+              data-carousel-next
+              aria-label={t("community.card.next")}
+            >
+              <span aria-hidden="true">&#8594;</span>
+            </button>
+          </>
+        )
+      }
+    </div>
+  </div>
+
+  <div class="ccard__caption">
+    <div class="ccard__caption-row">
+      <span class="ccard__role">{member.role}</span>
+      <MemberDetailPanel member={member} lang={lang} />
+    </div>
+  </div>
+</article>
+
+<style>
+  .ccard {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    /* Pivot for the GSAP scale in CommunityGrid. Declared here so the effect
+       is identical whoever drives the transform. Anchored at the top edge, not
+       centre: the ScrollTrigger is keyed to the card's top, and a centre
+       origin recomputes with every height change — opening the disclosure
+       grows the card and, at any scale short of 1, visibly shifts its top on
+       screen. A top origin keeps that edge fixed however tall the card gets. */
+    transform-origin: 50% 0%;
+  }
+
+  /* ── Name ─────────────────────────────────────────────── */
+  .ccard__name {
+    margin: 0;
+    /* The heading is semantic; its size is the card's, not a heading scale. */
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: inherit;
+  }
+  .ccard__name-link {
+    display: block;
+    font-family: "Archivo", sans-serif;
+    color: var(--color-dark);
+    text-decoration: none;
+  }
+  .ccard__name-link:hover,
+  .ccard__name-link:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
+  }
+
+  /* ── Artwork frame ────────────────────────────────────── */
+  .ccard__body {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .ccard__frame {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    border: 1.5px solid var(--color-border);
+    /* Square corners throughout the card — no --radius-* token here. */
+    border-radius: 0;
+    /* Dominant colour is painted inline where the member has one; this is the
+       fallback ground. */
+    background: var(--color-bg);
+  }
+
+  .ccard__img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 260ms ease;
+  }
+
+  .ccard__img--active {
+    opacity: 1;
+  }
+
+  .ccard__frame-link {
+    position: absolute;
+    inset: 0;
+  }
+
+  .ccard__arrow {
+    position: absolute;
+    top: 50%;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 1.1rem;
+    height: 1.1rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--color-dark);
+    opacity: 0;
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition: opacity 180ms ease;
+  }
+  .ccard__frame:hover .ccard__arrow,
+  .ccard__arrow:focus-visible {
+    opacity: 1;
+  }
+  .ccard__arrow:hover,
+  .ccard__arrow:focus-visible {
+    color: var(--color-muted);
+  }
+  .ccard__arrow--prev {
+    left: 0.75rem;
+  }
+  .ccard__arrow--next {
+    right: 0.75rem;
+  }
+
+  /* ── Member caption ───────────────────────────────────── */
+  .ccard__caption {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding-top: 0.15rem;
+    font-family: "Archivo", sans-serif;
+  }
+
+  .ccard__caption-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 0.35rem;
+  }
+
+  .ccard__caption-row :global(.pdisc) {
+    display: contents;
+  }
+
+  .ccard__caption-row :global(.pdisc__toggle) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .ccard__caption-row :global(.pdisc__body) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .ccard__role {
+    min-width: 0;
+    margin-top: 0.15rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--color-dark);
+  }
+
+  /* ── Mobile ───────────────────────────────────────────── */
+  @media (--bp-mobile) {
+    .ccard__body {
+      display: block;
+    }
+
+    /* No hover on touch: arrows stay visible, and bigger. */
+    .ccard__arrow {
+      width: 3rem;
+      height: 3rem;
+      opacity: 1;
+      color: var(--color-dark);
+    }
+
+    .ccard__arrow--prev {
+      left: 0.5rem;
+    }
+
+    .ccard__arrow--next {
+      right: 0.5rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ccard__img {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  function initCarousels() {
+    document.querySelectorAll<HTMLElement>("[data-carousel]").forEach((carousel) => {
+      if (carousel.dataset.ready) return;
+      carousel.dataset.ready = "true";
+      const images = Array.from(carousel.querySelectorAll<HTMLImageElement>(".ccard__img"));
+      let current = 0;
+
+      const show = (next: number) => {
+        current = (next + images.length) % images.length;
+        images.forEach((image, index) =>
+          image.classList.toggle("ccard__img--active", index === current),
+        );
+      };
+
+      carousel.querySelector("[data-carousel-prev]")?.addEventListener("click", () => show(current - 1));
+      carousel.querySelector("[data-carousel-next]")?.addEventListener("click", () => show(current + 1));
+    });
+  }
+
+  document.addEventListener("astro:page-load", initCarousels);
+  initCarousels();
+</script>

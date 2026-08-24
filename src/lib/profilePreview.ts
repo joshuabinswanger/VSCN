@@ -11,10 +11,9 @@
 // in JS would match none of the component's rules. Nodes cloned from a rendered
 // template already carry the attribute and style correctly.
 //
-// NOTE: the link-shaping rules are imported from proto-links.ts, which still
-// lives in the prototype namespace. They graduate together with the profile
-// page itself; there is deliberately no second copy of them here.
-import { href, socialLinks } from "./proto-links.ts";
+// The link-shaping rules are imported from links.ts; there is deliberately no
+// second copy of them here.
+import { href, socialLinks } from "./links.ts";
 import type { ProfileViewModel } from "./profileView.ts";
 
 export interface ProfilePreviewLabels {
@@ -145,5 +144,47 @@ export function renderProfilePreview(
     works.replaceChildren(...figures);
     show(works, figures.length > 0);
     show(empty, figures.length === 0);
+  }
+}
+
+/**
+ * Fills the CommunityCardPreview shell — the directory card's face — from the
+ * same ProfileViewModel. Image face when the gallery has a first item,
+ * typographic face otherwise, which is exactly the rule the real grid applies
+ * (getCardTier: artwork → image card).
+ */
+export function renderCardPreview(
+  root: HTMLElement,
+  vm: ProfileViewModel,
+  labels: { defaultName: string },
+): void {
+  const part = (name: string) => root.querySelector<HTMLElement>(`[data-ccpv="${name}"]`);
+
+  const name = part("name");
+  if (name) name.textContent = vm.displayName.trim() || labels.defaultName;
+
+  const role = part("role");
+  if (role) {
+    role.textContent = vm.role;
+    role.hidden = !vm.role.trim();
+  }
+
+  const frame = part("frame");
+  const img = part("img") as HTMLImageElement | null;
+  const work = vm.works[0];
+  if (frame && img) {
+    if (work) {
+      frame.hidden = false;
+      frame.style.aspectRatio = `${work.width} / ${work.height}`;
+      frame.style.background = work.color ?? "";
+      // Raw Storage URL on purpose: the preview runs in the browser, where
+      // the build-time optimiser does not exist. The real card serves
+      // getImage() output.
+      if (img.src !== work.url) img.src = work.url;
+      img.alt = work.caption?.trim() || "";
+    } else {
+      frame.hidden = true;
+      img.removeAttribute("src");
+    }
   }
 }

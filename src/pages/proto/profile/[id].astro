@@ -2,7 +2,7 @@
 import Layout from "../../../layouts/Layout.astro";
 import { PROTO_REAL_MEMBERS } from "../../../lib/proto-data-real.ts";
 import type { ProtoRealMember } from "../../../lib/proto-data-real.ts";
-import { href, socialLinks } from "../../../lib/proto-links.ts";
+import { href, socialLinks } from "../../../lib/links.ts";
 
 // One static page per real member. The community cards link here, and the
 // site-wide ClientRouter turns the navigation into a view transition: the
@@ -28,7 +28,7 @@ const portfolio = member.portfolio?.trim() ?? "";
 const social = member.socialMedia?.trim() ?? "";
 const tags = member.tags ?? [];
 // Verbatim, typos included ("coolaborate") — prose is not repaired. Social
-// links are the exception: socialLinks() in proto-links.ts cleans those.
+// links are the exception: socialLinks() in links.ts cleans those.
 const openTo = member.openTo ?? [];
 ---
 

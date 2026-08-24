@@ -1,38 +1,92 @@
 ---
-import type { PublicProfileDoc } from "../lib/firestore.ts";
-import MemberCard from "./MemberCard.astro";
+import { getCardTier, hasArtwork, type CardTier, type MemberView } from "../lib/memberView.ts";
+import CommunityImageCard from "./community/CommunityImageCard.astro";
+import CommunityTextCard from "./community/CommunityTextCard.astro";
 import { useTranslations } from "../i18n/utils.ts";
 import type { Lang } from "../i18n/utils.ts";
 
+// The image-led directory: the prototype's visual language (irregular card
+// widths and offsets, scroll-linked growth, image/typographic card split)
+// carrying the production page's behaviour (member count, filters, shuffle,
+// empty states, signed-out CTA).
+//
+// Layout is CSS multicol, not the prototype's build-time lanes, and that is a
+// decision, not a simplification (documentation/20260824-image-card-directory-
+// design.md, conflict 1): filtering works by hiding a cell and letting the
+// columns repack — a hidden card in a build-time lane leaves a hole — and DOM
+// order stays reading order, which the lanes broke. The cost is per-LANE
+// parallax; a per-card drift keyed to index substitutes below.
+
 interface Props {
-  members: (PublicProfileDoc & { uid: string })[];
+  members: MemberView[];
   lang?: Lang;
-  debugInfo?: string;
 }
 
-const { members, lang = 'en', debugInfo } = Astro.props;
+const { members, lang = "en" } = Astro.props;
 const t = useTranslations(lang);
-const memberLabel = members.length === 1 ? t('community.member') : t('community.members');
+const memberLabel = members.length === 1 ? t("community.member") : t("community.members");
+
+// Server order: artwork first, so image cards lead the page even before the
+// client-side shuffle runs (and for anyone without JS). The shuffle then
+// randomises WITHIN each group — see the script — so ordering stays fair
+// inside a group while uploading visibly moves a member up. Revisit to a pure
+// shuffle once most members have artwork.
+const ordered = [...members.filter(hasArtwork), ...members.filter((m) => !hasArtwork(m))];
 
 const typeFilters = [
-  { value: 'all', label: t('community.filter.all') },
-  { value: 'creator', label: t('community.filter.creators') },
-  { value: 'scientist', label: t('community.filter.scientists') },
-  { value: 'organization', label: t('community.filter.organizations') },
+  { value: "all", label: t("community.filter.all") },
+  { value: "creator", label: t("community.filter.creators") },
+  { value: "scientist", label: t("community.filter.scientists") },
+  { value: "organization", label: t("community.filter.organizations") },
 ];
 
 const openToFilters = [
-  { value: 'all', label: t('community.filter.all') },
-  { value: 'offering', label: t('community.filter.offering') },
-  { value: 'seeking', label: t('community.filter.seeking') },
+  { value: "all", label: t("community.filter.all") },
+  { value: "offering", label: t("community.filter.offering") },
+  { value: "seeking", label: t("community.filter.seeking") },
 ];
+
+// Deterministic irregularity, expressed in LAYOUT rather than transforms.
+// `cw` is the card's width as a unitless fraction of an already-capped basis
+// (see .cgrid__cell — a plain max-width would collapse every capped variant
+// to one width), `ax` distributes the card's own slack across its column
+// (0 flush left, 1 flush right), `my` opens real space above. Bucketed by
+// tier so a filled-in profile visibly claims more of the column than a bare
+// one, with variety kept inside each size class.
+const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> = {
+  large: [
+    { cw: 1, ax: 0, my: "0rem" },
+    { cw: 0.86, ax: 1, my: "3.5rem" },
+    { cw: 0.92, ax: 0.35, my: "1rem" },
+    { cw: 0.8, ax: 1, my: "5.5rem" },
+    { cw: 1, ax: 1, my: "2rem" },
+    { cw: 0.9, ax: 0.15, my: "0rem" },
+    { cw: 0.82, ax: 0.62, my: "4rem" },
+    { cw: 0.96, ax: 0.85, my: "1.5rem" },
+  ],
+  medium: [
+    { cw: 0.66, ax: 0.2, my: "2rem" },
+    { cw: 0.6, ax: 1, my: "0.5rem" },
+    { cw: 0.7, ax: 0.55, my: "3rem" },
+  ],
+  small: [
+    { cw: 0.48, ax: 0.5, my: "1.5rem" },
+    { cw: 0.44, ax: 1, my: "0rem" },
+    { cw: 0.52, ax: 0, my: "2.5rem" },
+  ],
+};
+
+// Pipe-delimited so the filter can match a whole value even when a member
+// added a custom option containing spaces. Same encoding MemberCard used.
+const openToAttr = (m: MemberView) => (m.openTo.length ? `|${m.openTo.join("|")}|` : "");
 ---
 
 <div class="community-wrapper" data-lang={lang}>
   <div class="page-header">
     <h1 class="page-title">
       <span id="member-count" class="member-count">
-        {members.length} {memberLabel}
+        {members.length}
+        {memberLabel}
       </span>
     </h1>
   </div>
@@ -41,8 +95,8 @@ const openToFilters = [
     members.length > 0 && (
       <div class="community-filters">
         {[
-          { group: 'type', legend: t('community.filter.type'), options: typeFilters },
-          { group: 'openTo', legend: t('community.filter.looking'), options: openToFilters },
+          { group: "type", legend: t("community.filter.type"), options: typeFilters },
+          { group: "openTo", legend: t("community.filter.looking"), options: openToFilters },
         ].map((row) => (
           <div class="filter-row" role="group" aria-label={row.legend}>
             <span class="filter-legend">{row.legend}</span>
@@ -50,10 +104,10 @@ const openToFilters = [
               {row.options.map((option) => (
                 <button
                   type="button"
-                  class:list={['filter-chip', option.value === 'all' && 'filter-chip--active']}
+                  class:list={["filter-chip", option.value === "all" && "filter-chip--active"]}
                   data-filter-group={row.group}
                   data-filter-value={option.value}
-                  aria-pressed={option.value === 'all' ? 'true' : 'false'}
+                  aria-pressed={option.value === "all" ? "true" : "false"}
                 >
                   {option.label}
                 </button>
@@ -65,27 +119,53 @@ const openToFilters = [
     )
   }
 
-  <div id="member-grid" class="member-grid">
-    {members.length === 0 && <p class="state-msg">{t('community.empty')}</p>}
-    {members.map((m) => <MemberCard member={m} lang={lang} />)}
+  <div id="member-grid" class="cgrid">
+    {members.length === 0 && <p class="state-msg">{t("community.empty")}</p>}
+    {
+      ordered.map((m, i) => {
+        const tier = getCardTier(m);
+        const variants = TIER_VARIANTS[tier];
+        // Stride 5 is coprime with every variant-set length, so consecutive
+        // cards never share a variant and every variant still gets used.
+        const v = variants[(i * 5) % variants.length];
+        return (
+          <div
+            class="cgrid__cell"
+            data-tier={tier}
+            data-group={tier === "large" ? "img" : "text"}
+            data-member-type={m.memberType}
+            data-open-to={openToAttr(m)}
+            style={`--cw:${v.cw};--ax:${v.ax};--my:${v.my}`}
+          >
+            {tier === "large" ? (
+              <CommunityImageCard member={m} lang={lang} />
+            ) : (
+              /* No artwork to show. The typographic variant holds the same
+                 slot rather than dropping the member from the directory. */
+              <CommunityTextCard member={m} lang={lang} />
+            )}
+          </div>
+        );
+      })
+    }
   </div>
 
-  <p id="filter-empty" class="state-msg" hidden>{t('community.filter.none')}</p>
+  <p id="filter-empty" class="state-msg" hidden>{t("community.filter.none")}</p>
 
   <div id="community-signup-cta" class="community-signup-cta" style="display:none;">
-    <a href={lang === 'de' ? '/de/signup' : '/signup'} class="btn-solid">{t('signup.cta.community')}</a>
+    <a href={lang === "de" ? "/de/signup" : "/signup"} class="btn-solid">{t("signup.cta.community")}</a>
   </div>
 </div>
 
 <style>
   .community-wrapper {
-    padding-bottom: 5rem;
     width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
+    padding-bottom: 5rem;
   }
+
   .page-header {
     margin-bottom: 3rem;
+    padding-top: 3rem;
   }
 
   .page-title {
@@ -104,11 +184,11 @@ const openToFilters = [
     font-size: 0.9rem;
     font-weight: 400;
     letter-spacing: 0;
-    color: #bbb;
+    color: var(--color-muted);
   }
 
   .state-msg {
-    color: #999;
+    color: var(--color-muted);
     font-size: 0.9rem;
   }
 
@@ -150,8 +230,8 @@ const openToFilters = [
     padding: 0.35rem 0.75rem;
     border: 1.5px solid var(--color-border);
     border-radius: 999px;
-    background: #fff;
-    color: #555;
+    background: var(--color-bg);
+    color: var(--color-dark);
     cursor: pointer;
     transition:
       background 0.15s,
@@ -160,45 +240,67 @@ const openToFilters = [
   }
 
   .filter-chip:hover {
-    border-color: #999;
-    color: #333;
+    border-color: var(--color-muted);
   }
 
   .filter-chip--active {
-    background: #111;
-    border-color: #111;
-    color: #fff;
+    background: var(--color-dark);
+    border-color: var(--color-dark);
+    color: var(--color-bg);
   }
 
-  .filter-chip--active:hover {
-    background: #333;
-    border-color: #333;
-    color: #fff;
+  /* ── The grid ─────────────────────────────────────────── */
+  .cgrid {
+    /* Horizontal gutter between columns, vertical rhythm between cards. */
+    --pgap-x: 4.5rem;
+    --pgap-y: 20rem;
+    /* Ceiling on the artwork itself, independent of how wide the shell goes.
+       The artwork carries dense scientific detail, so the cap sits high
+       enough to read it — whitespace comes from the gaps, not from shrinking
+       cards. */
+    --card-max: 30rem;
+    columns: 3;
+    column-gap: var(--pgap-x);
+    padding-block: 2rem 14rem;
   }
 
-  .member-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 2rem;
-    width: 100%;
-    align-items: start;
+  .cgrid__cell {
+    min-width: 0;
+    /* The basis is the column, or --card-max where the column is wider than
+       the artwork should ever be. The card is a fraction OF that, so a wider
+       shell buys whitespace rather than bigger images. */
+    --cardw: calc(var(--cw) * min(100%, var(--card-max)));
+    width: var(--cardw);
+    /* Distribute the card's own slack: at --ax 1 the card lands flush on the
+       column's right edge whatever the cap did to its width, and it can never
+       exceed the column. */
+    margin-inline-start: calc(var(--ax) * (100% - var(--cardw)));
+    margin-top: var(--my);
+    margin-bottom: var(--pgap-y);
+    break-inside: avoid;
   }
 
-  /* Filtered-out cards must leave the grid flow entirely. */
-  .member-grid :global(.member-card-wrap[hidden]) {
+  /* Filtered-out cells leave the flow entirely; the columns repack. This is
+     the whole reason the grid is multicol rather than the prototype's
+     build-time lanes. */
+  .cgrid__cell[hidden] {
     display: none;
   }
 
-  @media (--bp-desktop) {
-    .member-grid {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 3rem;
-    }
-  }
-
   @media (--bp-mobile) {
-    .member-grid {
-      gap: 2rem;
+    .cgrid {
+      --pgap-x: 2.25rem;
+      --pgap-y: 8.5rem;
+      columns: 2;
+      padding-block: 1rem 8rem;
+    }
+    .cgrid__cell {
+      /* The column is already narrower than --card-max, so the cap and the
+         width fraction are off here. Two narrow columns have no room for
+         irregularity — the offset look comes free from varied card heights. */
+      width: 100%;
+      margin-inline-start: 0;
+      margin-top: 0;
     }
   }
 
@@ -214,31 +316,17 @@ const openToFilters = [
   import { onAuthStateChanged } from "firebase/auth";
   import { ui } from "../i18n/translations.ts";
 
-  document.addEventListener("astro:page-load", () => {
-    const grid = document.getElementById("member-grid");
-    if (grid) {
-      const cards = [...grid.children];
-      for (let i = cards.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        grid.appendChild(cards[j]);
-        cards.splice(j, 1);
-      }
-    }
-
-    wireFilters(grid);
-
-    const cta = document.getElementById("community-signup-cta");
-    if (cta) {
-      onAuthStateChanged(auth, (user) => {
-        cta.style.display = user ? "none" : "flex";
-      });
-    }
-  });
+  // ────────────────────────────────────────────────────────────────────────
+  // Behaviour layer: shuffle-within-groups, filters, signed-out CTA.
+  // Runs synchronously on astro:page-load, BEFORE the async motion layer
+  // below measures anything — a shuffle after ScrollTrigger creation would
+  // leave every trigger keyed to a stale position.
+  // ────────────────────────────────────────────────────────────────────────
 
   /**
-   * Profiles created before member types existed have no value. A card with no
-   * type reads as a creator on the card itself (no badge), so it filters the
-   * same way — otherwise the whole legacy directory would vanish under "Creators".
+   * Profiles created before member types existed have no value. A card with
+   * no type reads as a creator, so it filters the same way — otherwise the
+   * whole legacy directory would vanish under "Creators".
    */
   function matchesType(cardType: string, filter: string): boolean {
     if (filter === "all") return true;
@@ -251,24 +339,43 @@ const openToFilters = [
     return filter === "all" || cardOpenTo.includes(`|${filter}|`);
   }
 
-  function wireFilters(grid: HTMLElement | null) {
+  /**
+   * Shuffle within groups: image cards stay ahead of typographic ones, random
+   * inside each group. Artwork-first alone would permanently rank early
+   * uploaders above everyone; a pure shuffle would bury the artwork the page
+   * is built around. This is the compromise the design doc records.
+   */
+  function shuffleWithinGroups(grid: HTMLElement) {
+    const cells = Array.from(grid.querySelectorAll<HTMLElement>(".cgrid__cell"));
+    const groups: Record<string, HTMLElement[]> = { img: [], text: [] };
+    cells.forEach((cell) => groups[cell.dataset.group === "img" ? "img" : "text"].push(cell));
+    for (const group of [groups.img, groups.text]) {
+      for (let i = group.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [group[i], group[j]] = [group[j], group[i]];
+      }
+      group.forEach((cell) => grid.appendChild(cell));
+    }
+  }
+
+  function wireFilters(grid: HTMLElement) {
     const wrapper = document.querySelector<HTMLElement>(".community-wrapper");
     const chips = Array.from(document.querySelectorAll<HTMLButtonElement>(".filter-chip"));
-    if (!grid || !wrapper || chips.length === 0) return;
+    if (!wrapper || chips.length === 0) return;
 
     const strings = ui[wrapper.dataset.lang === "de" ? "de" : "en"] ?? ui.en;
     const countEl = document.getElementById("member-count");
     const emptyEl = document.getElementById("filter-empty");
-    const cards = Array.from(grid.querySelectorAll<HTMLElement>(".member-card-wrap"));
+    const cells = Array.from(grid.querySelectorAll<HTMLElement>(".cgrid__cell"));
     const selected: Record<string, string> = { type: "all", openTo: "all" };
 
     function applyFilters() {
       let visible = 0;
-      cards.forEach((card) => {
+      cells.forEach((cell) => {
         const show =
-          matchesType(card.dataset.memberType ?? "", selected.type) &&
-          matchesOpenTo(card.dataset.openTo ?? "", selected.openTo);
-        card.hidden = !show;
+          matchesType(cell.dataset.memberType ?? "", selected.type) &&
+          matchesOpenTo(cell.dataset.openTo ?? "", selected.openTo);
+        cell.hidden = !show;
         if (show) visible += 1;
       });
 
@@ -277,6 +384,10 @@ const openToFilters = [
         countEl.textContent = `${visible} ${label}`;
       }
       if (emptyEl) emptyEl.hidden = visible > 0;
+
+      // Hiding cells repacks the columns; every measured trigger position is
+      // now stale. The motion layer listens and refreshes.
+      document.dispatchEvent(new CustomEvent("community:filtered"));
     }
 
     chips.forEach((chip) => {
@@ -298,4 +409,160 @@ const openToFilters = [
       });
     });
   }
+
+  document.addEventListener("astro:page-load", () => {
+    const grid = document.getElementById("member-grid");
+    if (grid) {
+      shuffleWithinGroups(grid);
+      wireFilters(grid);
+    }
+
+    const cta = document.getElementById("community-signup-cta");
+    if (cta) {
+      onAuthStateChanged(auth, (user) => {
+        cta.style.display = user ? "none" : "flex";
+      });
+    }
+  });
+</script>
+
+<script>
+  // ────────────────────────────────────────────────────────────────────────
+  // Motion layer: desktop-only scroll effects, two jobs.
+  //   1. Cards scale up as they rise toward the top of the scrollport.
+  //   2. Cards drift vertically at index-keyed rates — the multicol layout
+  //      has no lane boxes to translate, so the prototype's per-lane parallax
+  //      becomes per-card drift. Transform-only, so it cannot fight the
+  //      column layout.
+  // Width is checked BEFORE the import, so mobile downloads no GSAP at all
+  // (~44 KB gzip). This page is the only importer of gsap in production —
+  // a deliberate, recorded cost (design doc, conflict 3).
+  // ────────────────────────────────────────────────────────────────────────
+  const DESKTOP = "(min-width: 768px)";
+  const REDUCED = "(prefers-reduced-motion: reduce)";
+
+  // Mixed signs and unequal magnitudes on purpose — matching speeds would
+  // just look like a slow page. Drift is vertical only, so no amount of it
+  // can push a card out of its column.
+  const DRIFT = [-90, 60, -36, 75, -54, 42];
+
+  // Loose type: gsap's global namespace types are not reliably in scope
+  // inside a scoped Astro script, and revert() is all we need off it.
+  let mm: { revert: () => void } | null = null;
+  let refreshTriggers: (() => void) | null = null;
+
+  // Re-entry guard for the async gap. `mm` alone is not a mutex: it is read
+  // before the dynamic import but only assigned after it, so two overlapping
+  // build() calls would both pass the `if (mm)` check and the second would
+  // orphan the first context's ScrollTriggers. `building` closes that window
+  // synchronously, and `epoch` — bumped by every teardown — lets a build that
+  // was in flight when a teardown happened detect that its DOM is stale and
+  // abandon itself instead of assigning a context over dead nodes.
+  let building = false;
+  let epoch = 0;
+
+  async function build() {
+    if (building || mm) return;
+    if (!document.querySelector(".cgrid")) return;
+    if (!window.matchMedia(DESKTOP).matches) return;
+    if (window.matchMedia(REDUCED).matches) return;
+
+    building = true;
+    const startedIn = epoch;
+
+    // Everything from the import onward can reject — a hashed chunk 404ing
+    // after a redeploy while ClientRouter keeps the session alive, a flaky
+    // network. Without recovery, a rejection would leave `building` latched
+    // true with `mm` null: a silently dead motion layer until a full reload.
+    try {
+      const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
+        import("gsap"),
+        import("gsap/ScrollTrigger"),
+      ]);
+
+      // A teardown ran while the import was in flight: this build's DOM is
+      // gone, and teardown already reset `building` so a fresh build for the
+      // new page can proceed. Abandon without touching either flag.
+      if (epoch !== startedIn) return;
+
+      gsap.registerPlugin(ScrollTrigger);
+
+      // The scroll container is .page-wrap, never the window — body is
+      // overflow:hidden (see Layout.astro).
+      const scroller = ".page-wrap";
+
+      mm = gsap.matchMedia();
+      // Tweens and ScrollTriggers created inside a matchMedia context are
+      // reverted and killed automatically on revert().
+      mm.add(DESKTOP, () => {
+        // 1. Grow on approach: starts when the card's top enters at the
+        //    bottom of the scrollport, completes at 38% from the top, so
+        //    cards are already full size in the upper region. scrub ties
+        //    progress to scroll position instead of elapsed time.
+        gsap.utils.toArray<HTMLElement>(".ccard, .ctcard").forEach((card) => {
+          gsap.fromTo(
+            card,
+            { scale: 0.72, opacity: 0.5 },
+            {
+              scale: 1,
+              opacity: 1,
+              ease: "none",
+              scrollTrigger: { scroller, trigger: card, start: "top bottom", end: "top 38%", scrub: true },
+            },
+          );
+        });
+
+        // 2. Per-card drift, keyed to DOM index. Drives the CELL while the
+        //    scale drives the card inside it, so the two transforms cannot
+        //    fight over one element's property.
+        gsap.utils.toArray<HTMLElement>(".cgrid__cell").forEach((cell, i) => {
+          gsap.to(cell, {
+            y: DRIFT[i % DRIFT.length],
+            ease: "none",
+            scrollTrigger: { scroller, trigger: ".cgrid", start: "top bottom", end: "bottom top", scrub: true },
+          });
+        });
+      });
+
+      // Filtering repacks the columns; recompute every trigger position.
+      refreshTriggers = () => {
+        if (epoch === startedIn) ScrollTrigger.refresh();
+      };
+
+      // Archivo is self-hosted; if it lands after first paint, measured
+      // trigger positions are stale. Epoch-guarded like the filter refresh.
+      document.fonts?.ready.then(() => {
+        if (epoch === startedIn) ScrollTrigger.refresh();
+      });
+
+      building = false;
+    } catch (err) {
+      // Release the latch only if this build still owns it — after a
+      // teardown, `building` belongs to whatever comes next.
+      if (epoch === startedIn) building = false;
+      // Swallow rather than re-throw: the page is fully usable without the
+      // motion layer, and the next astro:page-load retries cleanly.
+      console.error("[community-grid] scroll motion layer failed to build:", err);
+    }
+  }
+
+  function teardown() {
+    // Bumping the epoch marks any in-flight build as stale; clearing
+    // `building` here is what lets the next page's build start immediately.
+    epoch++;
+    mm?.revert();
+    mm = null;
+    refreshTriggers = null;
+    building = false;
+  }
+
+  document.addEventListener("astro:page-load", build);
+  document.addEventListener("astro:before-swap", teardown);
+  document.addEventListener("community:filtered", () => refreshTriggers?.());
+
+  // Crossing the breakpoint on resize starts or stops the whole layer.
+  window.matchMedia(DESKTOP).addEventListener("change", () => {
+    teardown();
+    build();
+  });
 </script>
