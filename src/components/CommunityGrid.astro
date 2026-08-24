@@ -192,6 +192,16 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
     padding-top: var(--my);
     margin-bottom: var(--pgap-y);
     break-inside: avoid;
+    /* --lead-y is set inline by staggerColumnLeaders() on the one card that
+       leads each column, and stays 0 on every other card. Relative
+       positioning is the mechanism because it is the only vertical offset
+       here that nothing else owns: `transform` and `translate` both belong
+       to the motion layer (GSAP writes `transform` and explicitly zeroes
+       `translate`, `rotate` and `scale` so its matrix cannot be fought
+       over), and margin or padding would be layout, which can change which
+       card leads a column and so invalidate the measurement that placed it. */
+    position: relative;
+    top: var(--lead-y, 0);
   }
 
   /* Nothing hides a cell today, but multicol means a hidden one would leave
@@ -236,6 +246,87 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
   // leave every trigger keyed to a stale position.
   // ────────────────────────────────────────────────────────────────────────
 
+  // The top row is the one place the per-card `--my` stagger cannot reach.
+  // Which card leads each column is decided by multicol balancing AFTER the
+  // shuffle, so whether those three drew a big offset or a small one is pure
+  // luck — and often enough all three drew small and the top of the page, the
+  // part you see first, reads as a flat row.
+  //
+  // Applied by RANK, not by column: the leader sitting highest keeps its
+  // position and the ones below it are pushed further down. That only ever
+  // widens the spread the three already have, so the top row cannot come out
+  // flat — whereas a fixed offset per column can be cancelled by whatever
+  // `--my` that column's leader happened to draw.
+  const LEAD_STAGGER = ["0rem", "3.5rem", "7rem"];
+
+  /**
+   * Push the cards leading each column apart vertically.
+   *
+   * The offset is relative positioning, and the alternatives all fail. Not
+   * margin or padding, because those are layout: making a column taller can
+   * push its last card into the next column and so change which card leads
+   * THAT one, and the measurement would invalidate itself. Not `transform`
+   * or `translate` either — the motion layer's GSAP drift animates
+   * `transform` on these cells and sets `translate: none` alongside it, so
+   * the offset silently vanished on the production build (where GSAP loads)
+   * while surviving on a dev server where GSAP had failed to. `top` on a
+   * relatively-positioned box is paint-only, so it cannot move a card
+   * between columns, and nothing else writes it.
+   */
+  function staggerColumnLeaders(grid: HTMLElement) {
+    const cells = Array.from(grid.querySelectorAll<HTMLElement>(".cgrid__cell"));
+    // Always clear first: this re-runs on resize, and a stale offset from a
+    // three-column layout must not survive into the two-column one. It also
+    // means the tops measured below are the natural ones.
+    cells.forEach((cell) => cell.style.removeProperty("--lead-y"));
+    // Mobile stacks two narrow columns and switches the stagger off entirely.
+    if (!window.matchMedia("(min-width: 768px)").matches) return;
+
+    const cs = getComputedStyle(grid);
+    const cols = parseInt(cs.columnCount, 10);
+    const gap = parseFloat(cs.columnGap);
+    if (!Number.isFinite(cols) || cols < 2 || !Number.isFinite(gap)) return;
+
+    // Multicol exposes no "which column is this box in?", so derive it from
+    // the column pitch. `--ax` can slide a card rightward inside its column
+    // but never past the column's own edge, so flooring by the pitch is
+    // exact — except that subpixel geometry lets a flush-left card measure a
+    // hair BELOW its column's start and floor into the previous column, which
+    // is what the +1 is for. A card can never legitimately sit within 1px
+    // under a column start: the nearest it gets from that side is a full
+    // column-gap away.
+    const padLeft = parseFloat(cs.paddingLeft) || 0;
+    const contentW = grid.clientWidth - padLeft - (parseFloat(cs.paddingRight) || 0);
+    const pitch = (contentW + gap) / cols;
+    const originX = grid.getBoundingClientRect().left + padLeft;
+
+    // The card, not the cell: `--my` is padding on the cell, so the cell's top
+    // is where the whitespace starts and the card's top is what the eye reads.
+    const cardTop = (cell: HTMLElement) =>
+      (cell.firstElementChild ?? cell).getBoundingClientRect().top;
+
+    const leaders: (HTMLElement | null)[] = new Array(cols).fill(null);
+    const tops: number[] = new Array(cols).fill(Infinity);
+    for (const cell of cells) {
+      if (cell.hidden) continue;
+      const col = Math.min(
+        cols - 1,
+        Math.max(0, Math.floor((cell.getBoundingClientRect().left - originX + 1) / pitch))
+      );
+      const top = cardTop(cell);
+      if (top < tops[col]) {
+        tops[col] = top;
+        leaders[col] = cell;
+      }
+    }
+
+    const found = leaders.filter((cell): cell is HTMLElement => cell !== null);
+    found.sort((a, b) => cardTop(a) - cardTop(b));
+    found.forEach((cell, rank) => {
+      cell.style.setProperty("--lead-y", LEAD_STAGGER[Math.min(rank, LEAD_STAGGER.length - 1)]);
+    });
+  }
+
   /**
    * Shuffle within groups: image cards stay ahead of typographic ones, random
    * inside each group. Artwork-first alone would permanently rank early
@@ -257,7 +348,15 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
 
   document.addEventListener("astro:page-load", () => {
     const grid = document.getElementById("member-grid");
-    if (grid) shuffleWithinGroups(grid);
+    if (grid) {
+      shuffleWithinGroups(grid);
+      staggerColumnLeaders(grid);
+      // Archivo landing after first paint changes card heights, which can
+      // change which card leads a column. Re-pick then. This handler is
+      // registered before the motion layer's own fonts.ready refresh, so the
+      // refresh sees the new positions.
+      document.fonts?.ready.then(() => staggerColumnLeaders(grid));
+    }
 
     const cta = document.getElementById("community-signup-cta");
     if (cta) {
@@ -266,6 +365,27 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
       });
     }
   });
+
+  // Column widths change on any resize, not only when the mobile breakpoint
+  // is crossed, and with them which card leads each column. Debounced, and it
+  // re-reads the grid every time because ClientRouter swaps the DOM out.
+  let restaggerTimer = 0;
+  function restagger() {
+    clearTimeout(restaggerTimer);
+    restaggerTimer = window.setTimeout(() => {
+      const grid = document.getElementById("member-grid");
+      if (!grid) return;
+      staggerColumnLeaders(grid);
+      // Cards just moved under the motion layer's measured trigger positions.
+      document.dispatchEvent(new CustomEvent("community:restaggered"));
+    }, 150);
+  }
+
+  window.addEventListener("resize", restagger);
+  // Crossing into mobile has to clear the offsets, and that is too important
+  // to hang on a resize event alone — an orientation change or a device-mode
+  // switch does not always deliver one. Same guard the motion layer uses.
+  window.matchMedia("(min-width: 768px)").addEventListener("change", restagger);
 </script>
 
 <script>
@@ -291,6 +411,7 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
   // Loose type: gsap's global namespace types are not reliably in scope
   // inside a scoped Astro script, and revert() is all we need off it.
   let mm: { revert: () => void } | null = null;
+  let refreshTriggers: (() => void) | null = null;
 
   // Re-entry guard for the async gap. `mm` alone is not a mutex: it is read
   // before the dynamic import but only assigned after it, so two overlapping
@@ -377,6 +498,12 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
         });
       });
 
+      // Re-picking the column leaders moves cards, so every measured trigger
+      // position is stale. Epoch-guarded like the font refresh below.
+      refreshTriggers = () => {
+        if (epoch === startedIn) ScrollTrigger.refresh();
+      };
+
       // Archivo is self-hosted; if it lands after first paint, measured
       // trigger positions are stale. Epoch-guarded so a refresh queued by a
       // page that has since been swapped away cannot fire against dead nodes.
@@ -401,11 +528,13 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
     epoch++;
     mm?.revert();
     mm = null;
+    refreshTriggers = null;
     building = false;
   }
 
   document.addEventListener("astro:page-load", build);
   document.addEventListener("astro:before-swap", teardown);
+  document.addEventListener("community:restaggered", () => refreshTriggers?.());
 
   // Crossing the breakpoint on resize starts or stops the whole layer.
   window.matchMedia(DESKTOP).addEventListener("change", () => {
