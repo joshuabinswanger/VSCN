@@ -26,7 +26,11 @@ const profileHref = memberHref(lang, member.slug);
         <div class="ctcard__name-row">
           <div class="ctcard__identity">
             <h2 class="ctcard__name">
-              <a class="ctcard__name-link" href={profileHref} transition:name={`mname-${member.id}`}>
+              <a
+                class="ctcard__name-link"
+                href={profileHref}
+                transition:name={`mname-${member.id}`}
+              >
                 {member.displayName}
               </a>
             </h2>
@@ -47,6 +51,9 @@ const profileHref = memberHref(lang, member.slug);
 
 <style>
   .ctcard {
+    /* Absolutely positioned by the grid (see CommunityGrid), which means no
+       flow to inherit a width from. */
+    width: 100%;
     display: flex;
     flex-direction: column;
     gap: 0.2rem;

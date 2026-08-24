@@ -47,7 +47,7 @@ const altFor = (w: (typeof works)[number]) =>
   w.caption?.trim() || `${member.displayName} — ${t("member.workAlt")}`;
 ---
 
-<article class="ccard">
+<article class="ccard" style={`--frame-ar:${frameAspect}`}>
   {/* h2, not a <p>: the directory's outline is h1 (member count) → h2 (member). */}
   <h2 class="ccard__name">
     <a class="ccard__name-link" href={profileHref} transition:name={`mname-${member.id}`}>
@@ -58,7 +58,7 @@ const altFor = (w: (typeof works)[number]) =>
   <div class="ccard__body">
     <div
       class="ccard__frame"
-      style={`--frame-ar:${frameAspect};aspect-ratio:${frame.width} / ${frame.height};${frame.color ? `background:${frame.color}` : ""}`}
+      style={`aspect-ratio:${frame.width} / ${frame.height};${frame.color ? `background:${frame.color}` : ""}`}
       transition:name={`mimg-${member.id}`}
       data-carousel
     >
@@ -135,6 +135,13 @@ const altFor = (w: (typeof works)[number]) =>
        profile page) the fallback is large enough to be no cap at all, which is
        the old behaviour exactly. */
     --frame-cap: calc(var(--slot-rows, 999) * var(--cgrid-row, 2rem) - var(--ccard-chrome));
+    /* The whole card narrows with its artwork, not just the frame. Putting
+       this on the frame alone left a 115px image under a 440px name and
+       caption row, which reads as a broken card rather than a narrow one.
+       Normally this is the full slot width; where the artwork is tall enough
+       that filling the width would overrun the slot, it is instead the width
+       that makes the frame exactly as tall as the slot allows. */
+    width: min(100%, calc(var(--frame-cap) * var(--frame-ar, 1)));
     /* Pivot for the GSAP scale in CommunityGrid. Declared here so the effect
        is identical whoever drives the transform. Anchored at the top edge, not
        centre: the ScrollTrigger is keyed to the card's top, and a centre
@@ -175,17 +182,9 @@ const altFor = (w: (typeof works)[number]) =>
 
   .ccard__frame {
     position: relative;
-    /* Not `1 1 auto`: the frame must take the width below rather than stretch
-       to the card's. */
-    flex: 0 1 auto;
+    /* Fills the card, which is itself already the right width — see .ccard. */
+    flex: 1 1 auto;
     min-width: 0;
-    /* The whole tall-image answer, in one line. Width is normally the full
-       card, but where the artwork is tall enough that filling the width would
-       overrun the slot, it is instead the width that makes it exactly as tall
-       as the slot allows — cap x aspect. aspect-ratio then sets the height
-       from it. Both cases fall out of the same min(); there is no branch, and
-       no ratio at which the image is cropped or letterboxed. */
-    width: min(100%, calc(var(--frame-cap) * var(--frame-ar, 1)));
     overflow: hidden;
     border: 1.5px solid var(--color-border);
     /* Square corners throughout the card — no --radius-* token here. */

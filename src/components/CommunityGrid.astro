@@ -232,9 +232,8 @@ function layOutSlots(bigCards: number, smallCards: number): Slot[] {
   return collapseEmptyBands(placed);
 }
 
-// Two streams. `hasArtwork` is the whole test: it is also what makes
-// getCardTier return "large", and a big slot is a frame drawn for artwork, so
-// a member with nothing to show must never land in one.
+// Two streams. `hasArtwork` is the whole test: a big slot is a frame drawn
+// for artwork, so a member with nothing to show must never land in one.
 const imageMembers = members.filter(hasArtwork);
 const textMembers = members.filter((m) => !hasArtwork(m));
 const slots = layOutSlots(imageMembers.length, textMembers.length);
@@ -359,12 +358,38 @@ const cells = slots.map((slot) => ({
        what three fixed lanes forced — a span says it directly. */
     grid-column: var(--gc);
     grid-row: var(--gr);
-    /* The card sits at the TOP of the rows its slot reserved and the rest of
-       the span is the whitespace beneath it. Without this the cell stretches
-       to fill the span and takes the card with it. */
-    align-self: start;
+    /* The cell fills the rows its slot reserved, and the card inside is taken
+       OUT OF FLOW (below). Together those two make the drawing unconditional:
+       with nothing in flow anywhere, every row stays at --cgrid-row, so the
+       grid's geometry is exactly the table and nothing a card does — opening
+       its disclosure, a late font, an image taller than expected — can feed
+       back into it. The card simply overflows into the whitespace its slot
+       already reserved.
+
+       This replaces `grid-auto-rows: minmax(row, auto)` as the safety valve.
+       That valve worked by letting a card push every row beneath it apart,
+       which is the failure it was supposed to prevent. */
+    align-self: stretch;
     /* Anchor for the debug label below; harmless otherwise. */
     position: relative;
+  }
+
+  /* Out of flow, so the card's height is its own business. Written global
+     because the card roots belong to other components. */
+  :global(.cgrid__cell > .ccard),
+  :global(.cgrid__cell > .ctcard) {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  /* An open disclosure paints over whatever is beneath it, so the cell
+     holding it has to rise above its neighbours — every cell carries a GSAP
+     transform and therefore its own stacking context, which otherwise lets a
+     later cell paint straight over the open panel. Written global because the
+     `details` it tests for belongs to another component. */
+  :global(.cgrid__cell:has(details[open])) {
+    z-index: 3;
   }
 
   /* Nothing hides a cell today. Kept because the filters are coming back, and
@@ -377,20 +402,15 @@ const cells = slots.map((slot) => ({
   /* ?grid — the drawing aid, for tuning the slot table against the real page
      instead of by arithmetic. Two rectangles per slot:
 
-       OUTER, grey — the slot exactly as the table reserved it, full rowSpan.
-         The cell is align-self:start in production, so it shrinks to its card
-         and would trace the CARD rather than the slot; here and only here it
-         stretches, with an inner grid that keeps the card at its natural
-         height at the top, sitting exactly where it does in production.
+       The grey outline is the slot exactly as the table reserved it. It needs
+       no debug-only trickery to be that: the cell fills its rows in production
+       too, because the card inside it is out of flow.
 
        There is no second box any more. It marked a 2:3 ceiling that no longer
        exists: a card is now bounded by its own slot (--slot-rows, read by
        CommunityImageCard), so nothing can outgrow the grey box and there is
        nothing to warn about. */
   .cgrid--debug .cgrid__cell {
-    align-self: stretch;
-    display: grid;
-    align-content: start;
     outline: 1px dashed color-mix(in srgb, var(--color-dark) 30%, transparent);
   }
 
