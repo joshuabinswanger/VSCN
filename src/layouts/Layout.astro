@@ -32,6 +32,17 @@ const DEFAULT_DESCRIPTION =
 const metaDescription = description ?? DEFAULT_DESCRIPTION;
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site).href;
 const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
+
+const BRAND_LETTERS = [
+  { head: "V", tail: "isual" },
+  { head: "S", tail: "cience" },
+  { head: "C", tail: "ommunication" },
+  { head: "N", tail: "etwork" },
+];
+const BRAND_REPEATS = 4;
+const BRAND_RESTING_TEXT = BRAND_LETTERS.map((l) => l.head)
+  .join("")
+  .repeat(BRAND_REPEATS);
 ---
 
 <!doctype html>
@@ -62,8 +73,16 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
   <body class:list={[{ "content-wide": contentWide }]}>
     <div class="brand-ticker" transition:persist>
       <a id="brand-home-link" href={lang === "de" ? "/de" : "/"} class="brand-link">
-        <span class="brand-name" id="brand-name" aria-label="Visual Science Communication Network"
-          >VSCNVSCNVSCNVSCN</span
+        <span
+          class="brand-name"
+          id="brand-name"
+          data-resting-text={BRAND_RESTING_TEXT}
+          aria-label="Visual Science Communication Network"
+          >{Array.from({ length: BRAND_REPEATS }).map(() => (
+            <span class="brand-vscn">{BRAND_LETTERS.map(({ head, tail }) => (
+              <span class="brand-letter">{head}<span class="brand-tail"><span aria-hidden="true">{tail}</span></span></span>
+            ))}</span>
+          ))}</span
         >
       </a>
     </div>
@@ -97,7 +116,11 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
        this padding when it measures. */
     max-width: var(--shell-max);
     margin: auto;
-    overflow: hidden;
+    /* overflow: visible so an expanding brand letter can push its neighbours
+       into the empty space next to the 900px shell instead of being clipped
+       at the shell edge. body { overflow: hidden } in global.css catches any
+       horizontal spill at the viewport edge, so we can't grow a scrollbar. */
+    overflow: visible;
     flex-shrink: 0;
     box-sizing: border-box;
     padding: 0 15px;
@@ -122,7 +145,57 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
     letter-spacing: 0;
     color: var(--color-dark);
     white-space: nowrap;
+    /* No overflow clip here — the ticker used to clip, but we now let the
+       hover expansion overflow the 900px shell. */
+    overflow: visible;
+    /* transform is driven by JS: on hover of a .brand-letter we translate
+       the whole line left by half its tail width, so growth splits equally
+       left and right of the hovered letter. Matched to the tail's own
+       0.78s ease-out so everything moves in lock-step. */
+    transition: transform 0.78s ease-out;
+    will-change: transform;
+  }
+
+  /* Interactive brand letters — each capital hides a word tail (V→isual,
+     S→cience, C→ommunication, N→etwork) that grows in on hover.
+     The tail uses the inline-grid 0fr↔1fr trick so the width animates to
+     the actual content width, not an arbitrary max. Trailing letters push
+     right into the empty space beside the 900px shell.
+
+     Motion matches the LandingHero `hero-fade-up` style: ease-out, opacity
+     fade combined with a 20px translateY rise. */
+  .brand-tail {
+    display: inline-grid;
+    grid-template-columns: 0fr;
+    vertical-align: baseline;
+    transition: grid-template-columns 0.78s ease-out;
+  }
+
+  .brand-tail > span {
+    min-width: 0;
     overflow: hidden;
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+      opacity 0.78s ease-out,
+      transform 0.78s ease-out;
+  }
+
+  .brand-letter:hover .brand-tail {
+    grid-template-columns: 1fr;
+  }
+
+  .brand-letter:hover .brand-tail > span {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .brand-tail,
+    .brand-tail > span {
+      transition: none;
+      transform: none;
+    }
   }
 </style>
 
@@ -148,15 +221,21 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
     // padding and the last glyph is clipped.
     const cs = getComputedStyle(ticker);
     const available = ticker.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-    // `width: max-content` for the measurement, because .brand-name is a block:
-    // its scrollWidth can never report LESS than its own box, so a text
-    // narrower than the ticker measures as exactly the ticker and the ratio
-    // comes out 1 — the shrink would silently no-op. Restored synchronously,
-    // so no frame is painted with the wider box.
-    const prevWidth = el.style.width;
-    el.style.width = "max-content";
-    const textWidth = el.getBoundingClientRect().width;
-    el.style.width = prevWidth;
+    // Measure with a text-only mirror rather than the live .brand-name.
+    // The live tree contains expandable letter tails whose inline-grid 0fr
+    // columns still contribute their content's max-content to a `width: max-content`
+    // measurement — so measuring the real element would size against the FULLY
+    // EXPANDED "VisualScienceCommunicationNetwork" and shrink the resting title
+    // to almost nothing. The mirror carries only the resting glyphs.
+    const restingText = el.dataset.restingText ?? "";
+    if (!restingText) return;
+    const mirror = document.createElement("span");
+    mirror.textContent = restingText;
+    mirror.style.cssText =
+      "position:absolute;visibility:hidden;pointer-events:none;white-space:nowrap;left:0;top:0";
+    el.appendChild(mirror);
+    const textWidth = mirror.getBoundingClientRect().width;
+    mirror.remove();
     if (available > 0 && textWidth > 0) {
       const current = parseFloat(getComputedStyle(el).fontSize);
       // 8rem is a CEILING, not a starting point: this fit shrinks the title to
@@ -167,12 +246,60 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
     }
   }
 
+  function refreshBrandTailShifts() {
+    const el = document.getElementById("brand-name") as HTMLElement | null;
+    if (!el) return;
+    // Reuse one hidden mirror inside .brand-name so it inherits font size/family.
+    const mirror = document.createElement("span");
+    mirror.style.cssText =
+      "position:absolute;visibility:hidden;pointer-events:none;white-space:nowrap;left:0;top:0";
+    el.appendChild(mirror);
+    const widths = new Map<string, number>();
+    el.querySelectorAll<HTMLElement>(".brand-tail > span").forEach((inner) => {
+      const text = inner.textContent ?? "";
+      if (!widths.has(text)) {
+        mirror.textContent = text;
+        widths.set(text, mirror.getBoundingClientRect().width);
+      }
+    });
+    mirror.remove();
+    el.querySelectorAll<HTMLElement>(".brand-letter").forEach((letter) => {
+      const inner = letter.querySelector<HTMLElement>(".brand-tail > span");
+      const text = inner?.textContent ?? "";
+      const w = widths.get(text) ?? 0;
+      letter.dataset.brandShift = String(w / 2);
+    });
+  }
+
+  function attachBrandHoverShift() {
+    const brandName = document.getElementById("brand-name") as HTMLElement | null;
+    if (!brandName) return;
+    // .brand-ticker has transition:persist, so this DOM survives navigations —
+    // guard against re-binding listeners on every astro:page-load.
+    if (brandName.dataset.hoverAttached === "1") return;
+    brandName.dataset.hoverAttached = "1";
+    brandName.querySelectorAll<HTMLElement>(".brand-letter").forEach((letter) => {
+      letter.addEventListener("pointerenter", () => {
+        const shift = letter.dataset.brandShift ?? "0";
+        brandName.style.transform = `translateX(-${shift}px)`;
+      });
+      letter.addEventListener("pointerleave", () => {
+        brandName.style.transform = "";
+      });
+    });
+  }
+
   function initBrandFit() {
     brandResizeObserver?.disconnect();
     const ticker = document.querySelector<HTMLElement>(".brand-ticker");
     if (!ticker) return;
     fitBrandName();
-    brandResizeObserver = new ResizeObserver(fitBrandName);
+    refreshBrandTailShifts();
+    attachBrandHoverShift();
+    brandResizeObserver = new ResizeObserver(() => {
+      fitBrandName();
+      refreshBrandTailShifts();
+    });
     brandResizeObserver.observe(ticker);
   }
 
