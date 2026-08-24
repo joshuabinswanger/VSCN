@@ -39,7 +39,7 @@ const memberLabel = members.length === 1 ? t("community.member") : t("community.
 //
 // A 24-column placement grid with NO column gap. Every slot is a rectangle:
 // where it starts and how big it is, in both axes. `colStart`/`colSpan` are
-// columns, `row`/`span` are rhythm units (`--cgrid-row`, 2rem = 30px on
+// columns, `rowStart`/`rowSpan` are rhythm units (`--cgrid-row`, 2rem = 30px
 // desktop). The tile repeats down the page until the members run out.
 //
 // Gutters are part of the drawing, not a CSS value. A column nothing occupies
@@ -53,7 +53,7 @@ const memberLabel = members.length === 1 ? t("community.member") : t("community.
 // is 440px, 6 is 330, 3 is 165. That cap is also what keeps the artwork from
 // growing without limit on a wide screen, the job `--card-max` used to do.
 //
-// `span` is the space a slot reserves, not the card's height: the card sits at
+// `rowSpan` is the space a slot reserves, not the card's height: it sits at
 // the top and the rest is the whitespace below. The numbers are sized against
 // the real directory measured at 1440px — an image card runs 0.75–1.5x its own
 // width tall (median 1.0) and a typographic card 0.16–0.72 (median 0.27) — so
@@ -62,7 +62,7 @@ const memberLabel = members.length === 1 ? t("community.member") : t("community.
 //
 // Four rules when editing. The first three are checked at build time and will
 // fail the build; the fourth is on you:
-//   1. No two slots share a `row`.
+//   1. No two slots share a `rowStart`.
 //   2. No two slots overlap as rectangles — including against the NEXT tile's
 //      copies, because the tile repeats and the seam is as real as the inside.
 //      Three lanes used to make this impossible; a free grid does not.
@@ -76,8 +76,8 @@ type SlotKind = "big" | "small";
 interface Slot {
   colStart: number;
   colSpan: number;
-  row: number;
-  span: number;
+  rowStart: number;
+  rowSpan: number;
   kind: SlotKind;
 }
 
@@ -85,25 +85,25 @@ const COLUMNS = 24;
 const TILE_ROWS = 84;
 
 const TILE: Slot[] = [
-  { colStart: 1, colSpan: 8, row: 1, span: 24, kind: "big" },
-  { colStart: 18, colSpan: 7, row: 7, span: 24, kind: "big" },
-  { colStart: 11, colSpan: 6, row: 14, span: 24, kind: "big" },
+  { colStart: 1, colSpan: 8, rowStart: 1, rowSpan: 24, kind: "big" },
+  { colStart: 18, colSpan: 7, rowStart: 7, rowSpan: 24, kind: "big" },
+  { colStart: 11, colSpan: 6, rowStart: 14, rowSpan: 24, kind: "big" },
   // The three small slots sit close together on purpose. They are the only
   // slots a text-only directory can fill, and spreading them down the tile the
   // way the big ones are spread would render prod's 21 typographic cards as a
   // single-file ribbon. Grouped, they still stagger by 5 rows (150px) and they
   // use the page's full width.
-  { colStart: 2, colSpan: 4, row: 30, span: 10, kind: "small" },
-  { colStart: 20, colSpan: 4, row: 35, span: 10, kind: "small" },
-  { colStart: 12, colSpan: 3, row: 40, span: 10, kind: "small" },
-  { colStart: 3, colSpan: 6, row: 45, span: 24, kind: "big" },
-  { colStart: 17, colSpan: 7, row: 51, span: 24, kind: "big" },
-  { colStart: 10, colSpan: 6, row: 58, span: 24, kind: "big" },
+  { colStart: 2, colSpan: 4, rowStart: 30, rowSpan: 10, kind: "small" },
+  { colStart: 20, colSpan: 4, rowStart: 35, rowSpan: 10, kind: "small" },
+  { colStart: 12, colSpan: 3, rowStart: 40, rowSpan: 10, kind: "small" },
+  { colStart: 3, colSpan: 6, rowStart: 45, rowSpan: 24, kind: "big" },
+  { colStart: 17, colSpan: 7, rowStart: 51, rowSpan: 24, kind: "big" },
+  { colStart: 10, colSpan: 6, rowStart: 58, rowSpan: 24, kind: "big" },
 ];
 
 /** Do two slots occupy any of the same space, given where each one's tile put it? */
 function slotsOverlap(a: Slot, aRow: number, b: Slot, bRow: number): boolean {
-  const rows = aRow < bRow + b.span && bRow < aRow + a.span;
+  const rows = aRow < bRow + b.rowSpan && bRow < aRow + a.rowSpan;
   const cols = a.colStart < b.colStart + b.colSpan && b.colStart < a.colStart + a.colSpan;
   return rows && cols;
 }
@@ -120,20 +120,20 @@ for (const [i, a] of TILE.entries()) {
     );
   }
   for (const [j, b] of TILE.entries()) {
-    if (i < j && a.row === b.row) {
+    if (i < j && a.rowStart === b.rowStart) {
       throw new Error(
-        `CommunityGrid: slots ${i} and ${j} both start on row ${a.row}. ` +
+        `CommunityGrid: slots ${i} and ${j} both start on row ${a.rowStart}. ` +
           `Two cards starting at the same height is the one thing this table exists to prevent.`
       );
     }
-    if (i < j && slotsOverlap(a, a.row, b, b.row)) {
+    if (i < j && slotsOverlap(a, a.rowStart, b, b.rowStart)) {
       throw new Error(
-        `CommunityGrid: slots ${i} (rows ${a.row}–${a.row + a.span - 1}, cols ` +
-          `${a.colStart}–${a.colStart + a.colSpan - 1}) and ${j} (rows ${b.row}–${b.row + b.span - 1}, ` +
+        `CommunityGrid: slots ${i} (rows ${a.rowStart}–${a.rowStart + a.rowSpan - 1}, cols ` +
+          `${a.colStart}–${a.colStart + a.colSpan - 1}) and ${j} (rows ${b.rowStart}–${b.rowStart + b.rowSpan - 1}, ` +
           `cols ${b.colStart}–${b.colStart + b.colSpan - 1}) overlap.`
       );
     }
-    if (slotsOverlap(a, a.row, b, b.row + TILE_ROWS)) {
+    if (slotsOverlap(a, a.rowStart, b, b.rowStart + TILE_ROWS)) {
       throw new Error(
         `CommunityGrid: slot ${i} overlaps slot ${j} of the following tile. ` +
           `Either shorten it or raise TILE_ROWS (currently ${TILE_ROWS}).`
@@ -150,25 +150,25 @@ const MAX_EMPTY_ROWS = 8;
 
 /** Close bands no column occupies, preserving the order and spans of what is left. */
 function collapseEmptyBands(slots: Slot[]): Slot[] {
-  const ordered = [...slots].sort((a, b) => a.row - b.row);
+  const ordered = [...slots].sort((a, b) => a.rowStart - b.rowStart);
   // Seed the shift with whatever sits above the first surviving slot, so the
   // band at the TOP closes too. Without this a directory with no artwork opens
   // on 29 empty rows — the big slots the tile starts with, dropped — which is
   // most of a screen of blank page before the first card.
-  let shift = (ordered[0]?.row ?? 1) - 1;
+  let shift = (ordered[0]?.rowStart ?? 1) - 1;
   let frontier = -Infinity;
   for (const slot of ordered) {
-    let row = slot.row - shift;
+    let row = slot.rowStart - shift;
     if (frontier > -Infinity && row - frontier > MAX_EMPTY_ROWS) {
       const extra = row - frontier - MAX_EMPTY_ROWS;
       shift += extra;
       row -= extra;
     }
-    slot.row = row;
+    slot.rowStart = row;
     // The frontier is the lowest point anything reaches, not the last slot's
     // end: slots overlap in row range across columns, and a band is only empty
     // once every column has cleared it.
-    frontier = Math.max(frontier, row + slot.span);
+    frontier = Math.max(frontier, row + slot.rowSpan);
   }
   return ordered;
 }
@@ -195,19 +195,19 @@ function layOutSlots(bigCards: number, smallCards: number): Slot[] {
       if (slot.kind === "big" ? big <= 0 : small <= 0) continue;
       if (slot.kind === "big") big -= 1;
       else small -= 1;
-      placed.push({ ...slot, row: slot.row + tile * TILE_ROWS });
+      placed.push({ ...slot, rowStart: slot.rowStart + tile * TILE_ROWS });
     }
   }
 
   // Insurance, not expected: reachable only if TILE loses every slot of one
   // kind. Stack the leftovers rather than drop members off the directory,
   // which is the kind of failure that hides.
-  let overflowRow = placed.reduce((low, s) => Math.max(low, s.row + s.span), 0) + 4;
+  let overflowRow = placed.reduce((low, s) => Math.max(low, s.rowStart + s.rowSpan), 0) + 4;
   for (let i = 0; i < big + small; i++) {
     const kind: SlotKind = i < big ? "big" : "small";
-    const span = kind === "big" ? 24 : 10;
-    placed.push({ colStart: 1 + (i % 3) * 8, colSpan: 7, row: overflowRow, span, kind });
-    overflowRow += span + 4;
+    const rowSpan = kind === "big" ? 24 : 10;
+    placed.push({ colStart: 1 + (i % 3) * 8, colSpan: 7, rowStart: overflowRow, rowSpan, kind });
+    overflowRow += rowSpan + 4;
   }
 
   return collapseEmptyBands(placed);
@@ -247,9 +247,9 @@ const cells = slots.map((slot) => ({
         <div
           class="cgrid__cell"
           data-slot={slot.kind}
-          data-row={slot.row}
+          data-row={slot.rowStart}
           data-col={`${slot.colStart}-${slot.colStart + slot.colSpan - 1}`}
-          style={`--gc:${slot.colStart} / span ${slot.colSpan};--gr:${slot.row} / span ${slot.span}`}
+          style={`--gc:${slot.colStart} / span ${slot.colSpan};--gr:${slot.rowStart} / span ${slot.rowSpan}`}
         >
           {slot.kind === "big" ? (
             <CommunityImageCard member={member} lang={lang} />
@@ -307,7 +307,7 @@ const cells = slots.map((slot) => ({
 
   /* ── The grid ─────────────────────────────────────────── */
   .cgrid {
-    /* One rhythm unit. Every `row` and `span` in the slot table is counted in
+    /* One rhythm unit. Every `rowStart` and `rowSpan` in the slot table counts in
        these, so this is the single knob that scales the page's whole vertical
        breathing without touching the drawing. */
     --cgrid-row: 2rem;
