@@ -159,7 +159,7 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
   .cgrid {
     /* Horizontal gutter between columns, vertical rhythm between cards. */
     --pgap-x: 4.5rem;
-    --pgap-y: 20rem;
+    --pgap-y: 28rem;
     /* Ceiling on the artwork itself, independent of how wide the shell goes.
        The artwork carries dense scientific detail, so the cap sits high
        enough to read it — whitespace comes from the gaps, not from shrinking
@@ -167,7 +167,7 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
     --card-max: 30rem;
     columns: 3;
     column-gap: var(--pgap-x);
-    padding-block: 2rem 14rem;
+    padding-block: 4rem 18rem;
   }
 
   .cgrid__cell {
@@ -192,8 +192,8 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
     padding-top: var(--my);
     margin-bottom: var(--pgap-y);
     break-inside: avoid;
-    /* --lead-y is set inline by staggerColumnLeaders() on the one card that
-       leads each column, and stays 0 on every other card. Relative
+    /* --lead-y is set inline by staggerCardTops() on any card it has to move
+       down, and stays 0 on the rest. Relative
        positioning is the mechanism because it is the only vertical offset
        here that nothing else owns: `transform` and `translate` both belong
        to the motion layer (GSAP writes `transform` and explicitly zeroes
@@ -214,9 +214,9 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
   @media (--bp-mobile) {
     .cgrid {
       --pgap-x: 2.25rem;
-      --pgap-y: 8.5rem;
+      --pgap-y: 12rem;
       columns: 2;
-      padding-block: 1rem 8rem;
+      padding-block: 2rem 10rem;
     }
     .cgrid__cell {
       /* The column is already narrower than --card-max, so the cap and the
@@ -246,38 +246,77 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
   // leave every trigger keyed to a stale position.
   // ────────────────────────────────────────────────────────────────────────
 
-  // The top row is the one place the per-card `--my` stagger cannot reach.
-  // Which card leads each column is decided by multicol balancing AFTER the
-  // shuffle, so whether those three drew a big offset or a small one is pure
-  // luck — and often enough all three drew small and the top of the page, the
-  // part you see first, reads as a flat row.
+  // Two jobs, both of them things `--my` cannot do on its own, and both
+  // measured rather than assumed. All distances are px, which is safe because
+  // none of this runs below the mobile breakpoint, where the root font size
+  // would change from 15px.
   //
-  // Applied by RANK, not by column: the leader sitting highest keeps its
-  // position and the ones below it are pushed further down. That only ever
-  // widens the spread the three already have, so the top row cannot come out
-  // flat — whereas a fixed offset per column can be cancelled by whatever
-  // `--my` that column's leader happened to draw.
-  const LEAD_STAGGER = ["0rem", "3.5rem", "7rem"];
+  // 1. THE TOP ROW. Which card leads each column is decided by multicol
+  //    balancing AFTER the shuffle, so whether those three drew a big `--my`
+  //    or a small one is pure luck — often enough all three drew small and the
+  //    top of the page, the part you see first, read as a flat row. The step
+  //    is applied by RANK, not by column: the leader sitting highest keeps its
+  //    place and the ones below it are pushed further down, so the spread can
+  //    only widen. A fixed offset per column gets cancelled by whatever `--my`
+  //    that column's leader happened to draw.
+  const LEAD_STAGGER = [0, 52, 104];
+  //
+  // 2. NO TWO CARDS START LEVEL. Card heights are content-driven, so tops
+  //    across columns land where they land: measured over 10 shuffles of 21
+  //    cards, one pair per load started within 10px of each other and 4.5
+  //    pairs within 80px, which reads as an accidental row. Cards closer than
+  //    MIN_TOP_GAP get nudged down until they clear it.
+  //
+  //    This is a guarantee about LAYOUT, and the motion layer spends part of
+  //    it: the per-card drift shifts cells by up to 90px over the scroll, so
+  //    a pair that layout put 60px apart can be brought level somewhere mid
+  //    scroll. The gap comfortably absorbs the drift's at-rest share (~15px at
+  //    scroll 0, where first impressions are made). Absorbing it at EVERY
+  //    scroll position would need the full 165px drift spread on top of the
+  //    gap between every pair, which the page has no room for; the alternative
+  //    is making the drift monotone in vertical position, which guarantees
+  //    separations can only widen but turns the effect from cards passing each
+  //    other into a uniform stretch. Not worth it.
+  const MIN_TOP_GAP = 180;
+  // Ceiling on how far any one card may be moved, TOTAL — the sweep below only
+  // ever pushes downward, so without it a dense run cascades and the last card
+  // in it ends up hundreds of px from where the layout put it. The budget is
+  // the in-column rhythm: cards in the SAME column sit --pgap-y (420px) apart
+  // before their own `--my` padding, so a card displaced by the full cap still
+  // leaves 160px above the card beneath it in its column. Hitting the cap means
+  // accepting a gap short of the target rather than tearing a hole in a column,
+  // which is the right trade — a 106px gap still reads as two different
+  // heights, and the hole would read as a mistake.
+  //
+  // These two numbers are a pair, and were picked by measurement over 16
+  // shuffles of the seeded dev directory. At 180/260 the median smallest gap on
+  // a page is 179px and the worst case is 106px. Pushing the target to 200 or
+  // 220 does NOT buy bigger gaps — the median stops improving around 180px
+  // because the cap starts binding, and all the higher target does is spend
+  // more of the column rhythm. If --pgap-y changes, re-measure: this budget is
+  // a fraction of it, and the target is what the page has room to hold.
+  const MAX_OFFSET = 260;
 
   /**
-   * Push the cards leading each column apart vertically.
+   * Place the cards' vertical offsets: step the column leaders apart, then
+   * push any two cards that would start level away from each other.
    *
-   * The offset is relative positioning, and the alternatives all fail. Not
-   * margin or padding, because those are layout: making a column taller can
-   * push its last card into the next column and so change which card leads
-   * THAT one, and the measurement would invalidate itself. Not `transform`
-   * or `translate` either — the motion layer's GSAP drift animates
-   * `transform` on these cells and sets `translate: none` alongside it, so
-   * the offset silently vanished on the production build (where GSAP loads)
-   * while surviving on a dev server where GSAP had failed to. `top` on a
-   * relatively-positioned box is paint-only, so it cannot move a card
-   * between columns, and nothing else writes it.
+   * The offset is `top` on a relatively-positioned cell, and the alternatives
+   * all fail. Not margin or padding, because those are layout: making a column
+   * taller can push its last card into the next column and so change which
+   * card leads THAT one, and the measurement would invalidate itself. Not
+   * `transform` or `translate` either — the motion layer's GSAP drift animates
+   * `transform` on these cells and sets `translate: none` alongside it, so a
+   * `translate` offset tested clean against a dev server whose GSAP had failed
+   * to load and then silently vanished on the production build. `top` on a
+   * relatively-positioned box is paint-only, so it cannot move a card between
+   * columns, and nothing else writes it.
    */
-  function staggerColumnLeaders(grid: HTMLElement) {
+  function staggerCardTops(grid: HTMLElement) {
     const cells = Array.from(grid.querySelectorAll<HTMLElement>(".cgrid__cell"));
     // Always clear first: this re-runs on resize, and a stale offset from a
     // three-column layout must not survive into the two-column one. It also
-    // means the tops measured below are the natural ones.
+    // means every position measured below is the natural one.
     cells.forEach((cell) => cell.style.removeProperty("--lead-y"));
     // Mobile stacks two narrow columns and switches the stagger off entirely.
     if (!window.matchMedia("(min-width: 768px)").matches) return;
@@ -287,14 +326,13 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
     const gap = parseFloat(cs.columnGap);
     if (!Number.isFinite(cols) || cols < 2 || !Number.isFinite(gap)) return;
 
-    // Multicol exposes no "which column is this box in?", so derive it from
-    // the column pitch. `--ax` can slide a card rightward inside its column
-    // but never past the column's own edge, so flooring by the pitch is
-    // exact — except that subpixel geometry lets a flush-left card measure a
-    // hair BELOW its column's start and floor into the previous column, which
-    // is what the +1 is for. A card can never legitimately sit within 1px
-    // under a column start: the nearest it gets from that side is a full
-    // column-gap away.
+    // Multicol exposes no "which column is this box in?", so derive it from the
+    // column pitch. `--ax` can slide a card rightward inside its column but
+    // never past the column's own edge, so flooring by the pitch is exact —
+    // except that subpixel geometry lets a flush-left card measure a hair
+    // BELOW its column's start and floor into the previous column, which is
+    // what the +1 is for. A card can never legitimately sit within 1px under a
+    // column start: the nearest it gets from that side is a full gap away.
     const padLeft = parseFloat(cs.paddingLeft) || 0;
     const contentW = grid.clientWidth - padLeft - (parseFloat(cs.paddingRight) || 0);
     const pitch = (contentW + gap) / cols;
@@ -305,26 +343,56 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
     const cardTop = (cell: HTMLElement) =>
       (cell.firstElementChild ?? cell).getBoundingClientRect().top;
 
-    const leaders: (HTMLElement | null)[] = new Array(cols).fill(null);
-    const tops: number[] = new Array(cols).fill(Infinity);
-    for (const cell of cells) {
-      if (cell.hidden) continue;
-      const col = Math.min(
-        cols - 1,
-        Math.max(0, Math.floor((cell.getBoundingClientRect().left - originX + 1) / pitch))
-      );
-      const top = cardTop(cell);
-      if (top < tops[col]) {
-        tops[col] = top;
-        leaders[col] = cell;
-      }
+    // One measuring pass. Everything after this is arithmetic on `placed`, so
+    // no read is interleaved with a write and nothing thrashes layout.
+    const placed = cells
+      .filter((cell) => !cell.hidden)
+      .map((cell) => ({
+        cell,
+        col: Math.min(
+          cols - 1,
+          Math.max(0, Math.floor((cell.getBoundingClientRect().left - originX + 1) / pitch))
+        ),
+        top: cardTop(cell),
+        offset: 0,
+      }));
+    if (placed.length === 0) return;
+
+    // 1. Step the column leaders apart, highest first.
+    const leaders = Array.from({ length: cols }, (_, col) =>
+      placed
+        .filter((p) => p.col === col)
+        .reduce<
+          (typeof placed)[number] | null
+        >((best, p) => (best === null || p.top < best.top ? p : best), null)
+    ).filter((p): p is (typeof placed)[number] => p !== null);
+    leaders.sort((a, b) => a.top - b.top);
+    leaders.forEach((p, rank) => {
+      p.offset = LEAD_STAGGER[Math.min(rank, LEAD_STAGGER.length - 1)];
+    });
+
+    // 2. Sweep top to bottom keeping every card clear of the one above it.
+    //    Downward only: an upward nudge would eat into the gap above, and the
+    //    topmost card would climb out of the grid's own top padding. Spreading
+    //    each cluster symmetrically about its centroid instead — which would
+    //    halve the displacement on paper — was tried and is worse in practice:
+    //    re-centring one cluster shoves cards into the next one, and the passes
+    //    oscillate instead of converging. This sweep is monotone and settles in
+    //    one pass. The clamp is on the card's TOTAL offset, so the leader step
+    //    from phase 1 is spent out of the same budget rather than added on top.
+    placed.sort((a, b) => a.top + a.offset - (b.top + b.offset));
+    let prevTop = -Infinity;
+    for (const p of placed) {
+      const wanted = Math.max(p.top + p.offset, prevTop + MIN_TOP_GAP);
+      p.offset = Math.min(wanted - p.top, MAX_OFFSET);
+      prevTop = p.top + p.offset;
     }
 
-    const found = leaders.filter((cell): cell is HTMLElement => cell !== null);
-    found.sort((a, b) => cardTop(a) - cardTop(b));
-    found.forEach((cell, rank) => {
-      cell.style.setProperty("--lead-y", LEAD_STAGGER[Math.min(rank, LEAD_STAGGER.length - 1)]);
-    });
+    // Ceil, not round: rounding two neighbours down can shave a pixel off a
+    // gap the arithmetic above guaranteed, and MIN_TOP_GAP should hold exactly.
+    for (const p of placed) {
+      if (p.offset > 0) p.cell.style.setProperty("--lead-y", `${Math.ceil(p.offset)}px`);
+    }
   }
 
   /**
@@ -350,12 +418,12 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
     const grid = document.getElementById("member-grid");
     if (grid) {
       shuffleWithinGroups(grid);
-      staggerColumnLeaders(grid);
+      staggerCardTops(grid);
       // Archivo landing after first paint changes card heights, which can
       // change which card leads a column. Re-pick then. This handler is
       // registered before the motion layer's own fonts.ready refresh, so the
       // refresh sees the new positions.
-      document.fonts?.ready.then(() => staggerColumnLeaders(grid));
+      document.fonts?.ready.then(() => staggerCardTops(grid));
     }
 
     const cta = document.getElementById("community-signup-cta");
@@ -375,7 +443,7 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
     restaggerTimer = window.setTimeout(() => {
       const grid = document.getElementById("member-grid");
       if (!grid) return;
-      staggerColumnLeaders(grid);
+      staggerCardTops(grid);
       // Cards just moved under the motion layer's measured trigger positions.
       document.dispatchEvent(new CustomEvent("community:restaggered"));
     }, 150);
