@@ -60,21 +60,16 @@ const memberLabel = members.length === 1 ? t("community.member") : t("community.
 // span 24 (720px) leaves a 440px-wide image card 130–390px of air, and span 10
 // (300px) leaves a 220px-wide text card 140–265px.
 //
-// SIZING A BIG SLOT. An image card is capped at 2:3 portrait
-// (CommunityImageCard), so the tallest card a slot can ever be dealt is
-// width x 1.5 plus ~63px of card furniture — the name line above the frame.
-// In grid units that is:
+// SIZING A BIG SLOT — there is no formula to satisfy. The cell passes its
+// `rowSpan` down as `--slot-rows`, and CommunityImageCard bounds the artwork
+// by it: a frame taller than the slot keeps its true aspect and gets NARROWER
+// instead, so it can never outgrow the rectangle you drew. Draw a short wide
+// slot and a portrait lands in it small, with space to its right. That is your
+// call to make, and the layout will not overrule it.
 //
-//     rowSpan >= colSpan * 2.75 + 3
-//
-// colSpan 8 wants rowSpan 25, colSpan 6 wants 19, colSpan 5 wants 16,
-// colSpan 4 wants 14. Draw a slot shorter than that and it still renders —
-// grid-auto-rows is minmax(row, auto), so the card simply expands the rows it
-// sits in and pushes everything below it down the page. It is not a break, it
-// is the drawing quietly stopping being the drawing. `?grid` shows this
-// directly: the red box is the 2:3 ceiling and the grey box is the slot, so
-// any red overflowing grey is a slot that will move when the wrong card lands
-// in it.
+// The consequence to know is about emphasis, not breakage: at a given slot a
+// tall artwork occupies less width than a wide one, so it carries less weight.
+// Draw a tall narrow slot when you want a portrait to dominate.
 //
 // Four rules when editing. The first three are checked at build time and will
 // fail the build; the fourth is on you:
@@ -101,11 +96,11 @@ const COLUMNS = 24;
 const TILE_ROWS = 200;
 
 const TILE: Slot[] = [
-  { colStart: 3, colSpan: 8, rowStart: 1, rowSpan: 12, kind: "big" },
+  { colStart: 3, colSpan: 8, rowStart: 1, rowSpan: 14, kind: "big" },
   { colStart: 18, colSpan: 6, rowStart: 6, rowSpan: 14, kind: "big" },
-  { colStart: 6, colSpan: 6, rowStart: 19, rowSpan: 16, kind: "big" },
-  { colStart: 19, colSpan: 6, rowStart: 24, rowSpan: 16, kind: "big" },
-  { colStart: 1, colSpan: 6, rowStart: 39, rowSpan: 16, kind: "big" },
+  { colStart: 6, colSpan: 6, rowStart: 22, rowSpan: 16, kind: "big" },
+  { colStart: 19, colSpan: 6, rowStart: 27, rowSpan: 16, kind: "big" },
+  { colStart: 1, colSpan: 6, rowStart: 41, rowSpan: 16, kind: "big" },
   { colStart: 11, colSpan: 4, rowStart: 46, rowSpan: 12, kind: "big" },
   { colStart: 19, colSpan: 5, rowStart: 53, rowSpan: 16, kind: "big" },
   { colStart: 4, colSpan: 6, rowStart: 62, rowSpan: 16, kind: "big" },
@@ -274,7 +269,7 @@ const cells = slots.map((slot) => ({
           data-row={slot.rowStart}
           data-span={slot.rowSpan}
           data-col={`${slot.colStart}-${slot.colStart + slot.colSpan - 1}`}
-          style={`--gc:${slot.colStart} / span ${slot.colSpan};--gr:${slot.rowStart} / span ${slot.rowSpan}`}
+          style={`--gc:${slot.colStart} / span ${slot.colSpan};--gr:${slot.rowStart} / span ${slot.rowSpan};--slot-rows:${slot.rowSpan}`}
         >
           {slot.kind === "big" ? (
             <CommunityImageCard member={member} lang={lang} />
@@ -388,26 +383,15 @@ const cells = slots.map((slot) => ({
          stretches, with an inner grid that keeps the card at its natural
          height at the top, sitting exactly where it does in production.
 
-       INNER, red — how far a 2:3 portrait reaches at this slot's width, the
-         ceiling CommunityImageCard enforces. It starts at the top of the SLOT,
-         while the real artwork starts below the name line, so treat it as the
-         worst case plus a little. If it overflows the grey box, the slot is
-         drawn too short for the tallest card it can be dealt, and that card
-         will push every row beneath it down the page. */
+       There is no second box any more. It marked a 2:3 ceiling that no longer
+       exists: a card is now bounded by its own slot (--slot-rows, read by
+       CommunityImageCard), so nothing can outgrow the grey box and there is
+       nothing to warn about. */
   .cgrid--debug .cgrid__cell {
     align-self: stretch;
     display: grid;
     align-content: start;
     outline: 1px dashed color-mix(in srgb, var(--color-dark) 30%, transparent);
-  }
-
-  .cgrid--debug .cgrid__cell::before {
-    content: "";
-    position: absolute;
-    inset: 0 0 auto 0;
-    aspect-ratio: 2 / 3;
-    outline: 1px dashed color-mix(in srgb, var(--color-error) 60%, transparent);
-    pointer-events: none;
   }
 
   .cgrid--debug .cgrid__cell::after {
@@ -482,6 +466,7 @@ const cells = slots.map((slot) => ({
   interface Geometry {
     gc: string;
     gr: string;
+    slotRows: string;
     row: string;
     span: string;
     col: string;
@@ -491,6 +476,7 @@ const cells = slots.map((slot) => ({
     return {
       gc: cell.style.getPropertyValue("--gc"),
       gr: cell.style.getPropertyValue("--gr"),
+      slotRows: cell.style.getPropertyValue("--slot-rows"),
       row: cell.dataset.row ?? "0",
       span: cell.dataset.span ?? "",
       col: cell.dataset.col ?? "",
@@ -500,6 +486,9 @@ const cells = slots.map((slot) => ({
   function writeGeometry(cell: HTMLElement, g: Geometry) {
     cell.style.setProperty("--gc", g.gc);
     cell.style.setProperty("--gr", g.gr);
+    // The card reads this to bound its frame — a re-deal that moved the
+    // geometry without it would leave a card capped to its old slot.
+    cell.style.setProperty("--slot-rows", g.slotRows);
     // Kept in step with the placement so the ?grid labels stay truthful after
     // a deal, and so the row sort below reads the row the cell actually has.
     cell.dataset.row = g.row;

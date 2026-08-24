@@ -32,17 +32,11 @@ const works = await Promise.all(
 
 const frame = works[0];
 
-// Portrait artwork is capped at 2:3 (width:height). Past that the frame stops
-// following the image, and because .ccard__img is object-fit: cover the excess
-// is centre-cropped — not letterboxed, not squashed.
-//
-// The cap is a layout constraint, not a taste one. Every card sits in a slot
-// that reserved a fixed rowSpan (see CommunityGrid's slot table), and
-// grid-auto-rows is minmax(row, auto) so a card taller than its slot pushes
-// every row beneath it apart. One 1:3 image would shove the rest of the
-// drawing down the page. Bounding the tallest card bounds that.
-const MAX_PORTRAIT = 3 / 2; // height / width
-const frameHeight = Math.min(frame.height, Math.round(frame.width * MAX_PORTRAIT));
+// The frame keeps the artwork's TRUE aspect at every ratio — nothing here is
+// cropped or letterboxed. Tall artwork is bounded by getting narrower instead,
+// which the stylesheet does with --frame-ar and the slot height the grid hands
+// down; see .ccard__frame. This ratio is the input to that.
+const frameAspect = frame.width / frame.height;
 
 const profileHref = memberHref(lang, member.slug);
 
@@ -64,7 +58,7 @@ const altFor = (w: (typeof works)[number]) =>
   <div class="ccard__body">
     <div
       class="ccard__frame"
-      style={`aspect-ratio:${frame.width} / ${frameHeight};${frame.color ? `background:${frame.color}` : ""}`}
+      style={`--frame-ar:${frameAspect};aspect-ratio:${frame.width} / ${frame.height};${frame.color ? `background:${frame.color}` : ""}`}
       transition:name={`mimg-${member.id}`}
       data-carousel
     >
@@ -131,6 +125,16 @@ const altFor = (w: (typeof works)[number]) =>
     display: flex;
     flex-direction: column;
     gap: 0.3rem;
+    /* Everything above and below the frame — the name line, the caption row and
+       the gaps around them. Measured at 63–78px across the seeded directory;
+       rounded UP on purpose, because under-estimating it lets the card exceed
+       its slot while over-estimating only leaves a little more air. */
+    --ccard-chrome: 5.4rem;
+    /* How tall the frame may be. --slot-rows and --cgrid-row come from the
+       grid cell this card was dealt into; absent them (the editor preview, the
+       profile page) the fallback is large enough to be no cap at all, which is
+       the old behaviour exactly. */
+    --frame-cap: calc(var(--slot-rows, 999) * var(--cgrid-row, 2rem) - var(--ccard-chrome));
     /* Pivot for the GSAP scale in CommunityGrid. Declared here so the effect
        is identical whoever drives the transform. Anchored at the top edge, not
        centre: the ScrollTrigger is keyed to the card's top, and a centre
@@ -171,8 +175,17 @@ const altFor = (w: (typeof works)[number]) =>
 
   .ccard__frame {
     position: relative;
-    flex: 1 1 auto;
+    /* Not `1 1 auto`: the frame must take the width below rather than stretch
+       to the card's. */
+    flex: 0 1 auto;
     min-width: 0;
+    /* The whole tall-image answer, in one line. Width is normally the full
+       card, but where the artwork is tall enough that filling the width would
+       overrun the slot, it is instead the width that makes it exactly as tall
+       as the slot allows — cap x aspect. aspect-ratio then sets the height
+       from it. Both cases fall out of the same min(); there is no branch, and
+       no ratio at which the image is cropped or letterboxed. */
+    width: min(100%, calc(var(--frame-cap) * var(--frame-ar, 1)));
     overflow: hidden;
     border: 1.5px solid var(--color-border);
     /* Square corners throughout the card — no --radius-* token here. */
