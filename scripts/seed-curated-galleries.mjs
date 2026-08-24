@@ -1,7 +1,7 @@
 // Seeds member galleries from the curated portfolio picks, so the image-led
 // directory has real content before members have uploaded anything themselves.
-// Uploads the prepped 1200px WebPs (public/proto/img/real/<slug>/, manifest
-// src/lib/proto-images-real.json) to galleries/{uid}/ in Storage and writes the
+// Uploads the prepped 1200px WebPs (scripts/assets/curated-galleries/img/,
+// manifest.json beside them) to galleries/{uid}/ in Storage and writes the
 // `gallery` array — the exact shape uploadGalleryImage() + compressGalleryImage()
 // in src/lib/gallery.ts produce: { url, caption, width, height, color }.
 //
@@ -90,8 +90,7 @@ console.log(doWrite ? "WRITE mode" : "Dry run (pass --write to apply)");
 
 // --- Curated images -------------------------------------------------------
 
-// displayName -> curation slug. Copied from scripts/gen-proto-real-data.mjs —
-// explicit because "Bürgisser"/"Stünzi"/"Karin S." are not round-trippable.
+// displayName -> curation slug. Explicit rather than derived, because "Bürgisser"/"Stünzi"/"Karin S." are not round-trippable.
 const SLUGS = {
   "Jasmin Peter": "jasmin-peter", ikonaut: "ikonaut", "Joshua Binswanger": "joshua-binswanger",
   "Michael Stünzi": "michael-stuenzi", "Lisa Cuthbertson": "lisa-cuthbertson",
@@ -105,9 +104,15 @@ const SLUGS = {
   "Wong Chi Lui": "wong-chi-lui", "Daniel Röttele": "daniel-roettele", Quaint: "quaint",
 };
 
-const manifest = JSON.parse(
-  fs.readFileSync(join(ROOT, "src/lib/proto-images-real.json"), "utf-8"),
-);
+// The curated picks moved out of the deleted prototype into scripts/assets/
+// when /community switched to the image cards; manifest srcs still carry the
+// old public path prefix, mapped onto the asset folder below.
+const ASSETS = join(ROOT, "scripts/assets/curated-galleries");
+const manifest = JSON.parse(fs.readFileSync(join(ASSETS, "manifest.json"), "utf-8"));
+
+function localPathFor(src) {
+  return join(ASSETS, "img", src.replace("/proto/img/real/", ""));
+}
 
 function publicStorageUrl(storagePath) {
   // Mirrors publicStorageUrl() in src/lib/storage.ts.
@@ -153,7 +158,7 @@ for (const [slug, images] of Object.entries(manifest)) {
 
   const gallery = [];
   for (const img of images) {
-    const localPath = join(ROOT, "public", img.src);
+    const localPath = localPathFor(img.src);
     if (!fs.existsSync(localPath)) throw new Error(`File missing on disk: ${localPath}`);
     const color = await dominantColor(localPath);
     // Same naming scheme as uploadGalleryImage() in src/lib/gallery.ts.

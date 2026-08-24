@@ -1,4 +1,5 @@
-// Downscale + WebP-encode the curated member images into public/proto/img/real,
+// Downscale + WebP-encode the curated member images into
+// scripts/assets/curated-galleries/img,
 // and emit a manifest with the REAL post-resize dimensions (the card's frame
 // aspect-ratio comes straight from these, so they must match the file on disk).
 import sharp from "sharp";
@@ -6,7 +7,7 @@ import { readdirSync, statSync, writeFileSync, rmSync, mkdirSync } from "node:fs
 import { join } from "node:path";
 
 const SRC = "D:/SynoDrive/VSCN/Design/member-curation";
-const OUT = "D:/SynoDrive/VSCN/repo/public/proto/img/real";
+const OUT = "D:/SynoDrive/VSCN/repo/scripts/assets/curated-galleries/img";
 const MAX_EDGE = 1200; // card caps at 26rem (~416px); 1200 covers 2x DPR with room
 const QUALITY = 82;    // same as the agreed gallery pipeline
 
@@ -33,5 +34,5 @@ for (const slug of readdirSync(SRC)) {
     console.log(`${slug}/${base}  ${info.width}x${info.height}  ${Math.round(info.size / 1024)}KB`);
   }
 }
-writeFileSync("D:/SynoDrive/VSCN/repo/src/lib/proto-images-real.json", JSON.stringify(manifest, null, 2) + "\n");
+writeFileSync("D:/SynoDrive/VSCN/repo/scripts/assets/curated-galleries/manifest.json", JSON.stringify(manifest, null, 2) + "\n");
 console.log(`\nmembers with images: ${Object.keys(manifest).length}`);

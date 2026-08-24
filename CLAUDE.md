@@ -15,7 +15,7 @@ npm run deploy:dev   # build in development mode + firebase deploy -P dev --only
 
 There is **no test framework** in this repo, and none should be added casually. Verification is `npm run lint`, `npm run build`, and browser inspection.
 
-`npm run lint` has a **standing baseline of 9 warnings / 0 errors**: an unused `t` in seven page frontmatters, an unused `debugInfo` in `CommunityGrid.astro`, and one `no-explicit-any`. Treat only *errors* as yours. If you have time, zeroing this baseline is a real improvement — a warning currently means nothing because there are always warnings.
+`npm run lint` has a **standing baseline of 8 warnings / 0 errors**: an unused `t` in seven page frontmatters, and one `no-explicit-any` in `firebase.ts`. Treat only *errors* as yours. If you have time, zeroing this baseline is a real improvement — a warning currently means nothing because there are always warnings.
 
 `npm run build` is the strongest available gate: it type-checks and renders all 20 pages.
 
@@ -63,7 +63,7 @@ All design tokens live at the top of [src/styles/global.css](src/styles/global.c
 
 `--shell-max` (900px) is the header's measure, and it is a **three-way contract**: the `VSCNVSCN` brand ticker in `Layout.astro`, `.nav-links` in `Navbar.astro` and `main` in `global.css` all size to it, which is what keeps the title, the nav links and the content on the same two vertical edges.
 
-**Do not widen `--shell-max`.** `fitBrandName()` sizes the title to fill that measure, so widening it scales the title up with it — at `min(94vw, 1800px)` the title went from production's ~73px to 120–149px, which was rejected twice. A page that wants wide content uses `Layout`'s `contentWide` prop, which widens `main` **only** (to `min(94vw, 1600px)` on desktop) and leaves the header at 900px; the accepted consequence is that wide content starts outside the header's left edge rather than under it. `/proto/community` is the only page using it. `wide` (1200px on `main`) is unaffected by either.
+**Do not widen `--shell-max`.** `fitBrandName()` sizes the title to fill that measure, so widening it scales the title up with it — at `min(94vw, 1800px)` the title went from production's ~73px to 120–149px, which was rejected twice. A page that wants wide content uses `Layout`'s `contentWide` prop, which widens `main` **only** (to `min(94vw, 1600px)` on desktop) and leaves the header at 900px; the accepted consequence is that wide content starts outside the header's left edge rather than under it. `/community` is the page using it. `wide` (1200px on `main`) is unaffected by either.
 
 Two things inside `fitBrandName()` look redundant and are not. The ticker's 15px inline padding is load-bearing — the function subtracts it, so removing one without the other either clips the last glyph or breaks the alignment. And it measures with `width: max-content` because `.brand-name` is a block: a block's `scrollWidth` never reports less than its own box, so measuring directly makes the ratio come out 1 on any measure the text does not already overflow — a silent no-op, not an error. The `Math.min` capping the result at `8rem` is what keeps the fit shrink-only.
 
@@ -90,7 +90,7 @@ The large repeating `VSCNVSCNVSCN` band is `.brand-ticker`, rendered *outside* `
 
 ### Astro specifics worth knowing
 
-`ClientRouter` (view transitions) is active site-wide. Client scripts must initialise on `astro:page-load` — not `DOMContentLoaded`, which fires once — and tear down on `astro:before-swap` or state leaks across navigations. [src/components/MemberCard.astro](src/components/MemberCard.astro) is the precedent.
+`ClientRouter` (view transitions) is active site-wide. Client scripts must initialise on `astro:page-load` — not `DOMContentLoaded`, which fires once — and tear down on `astro:before-swap` or state leaks across navigations. The motion layer in [src/components/CommunityGrid.astro](src/components/CommunityGrid.astro) is the precedent, epoch guard included.
 
 Two scoping facts, both verified against built CSS in this repo:
 
@@ -118,7 +118,7 @@ Branches: `main` is production, `dev` is integration. Work on a feature branch. 
 
 `documentation/` holds dated technical notes (`YYYYMMDD-topic.md`) recording decisions and their reasoning — check it before re-litigating a design choice. `documentation/agent-memory/` mirrors the user's `~/.claude` memory notes so they travel with the repo; leave those files untracked unless asked.
 
-`src/pages/proto/` and `src/lib/proto-*` are a **throwaway visual prototype** with mock data and generated placeholder art — no Firebase, `noindex`, excluded from the sitemap. Its plan, decisions and graduation path are in [documentation/20260820-community-prototype-plan.md](documentation/20260820-community-prototype-plan.md). Do not treat it as production code, and do not let its shortcuts (empty `alt` attributes, non-heading member names, DOM order diverging from visual order) reach the real components.
+The community visual prototype **graduated and was deleted** (2026-08-24): its card language lives on in `src/components/community/`, and its history and decisions are in [documentation/20260820-community-prototype-plan.md](documentation/20260820-community-prototype-plan.md) and [documentation/20260824-image-card-directory-design.md](documentation/20260824-image-card-directory-design.md). The one surviving `/proto` page is [src/pages/proto/profile-preview.astro](src/pages/proto/profile-preview.astro), a no-auth harness for the profile editor's preview renderer — `noindex`, sitemap-excluded, kept because `/profile` cannot be seen without credentials. The curated member images used for gallery seeding live in `scripts/assets/curated-galleries/` (see `scripts/seed-curated-galleries.mjs`).
 
 ## Tooling notes
 

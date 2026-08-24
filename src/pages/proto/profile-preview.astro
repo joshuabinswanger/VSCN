@@ -1,7 +1,7 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import ProfileViewPreview from "../../components/ProfileViewPreview.astro";
-import { PROTO_REAL_MEMBERS } from "../../lib/proto-data-real.ts";
+import { fetchMemberViews } from "../../lib/membersBuild.ts";
 
 // Harness for the profile-page preview that ProfileForm shows in preview mode.
 //
@@ -11,23 +11,24 @@ import { PROTO_REAL_MEMBERS } from "../../lib/proto-data-real.ts";
 // renderer from real member data, with a picker for the interesting cases:
 // a full profile, one with no artwork, and an empty one.
 //
-// It is a harness, not a feature: no Firebase, noindex, excluded from the
-// sitemap with the rest of /proto.
-const members = PROTO_REAL_MEMBERS;
+// It is a harness, not a feature: no client Firebase, noindex, excluded from
+// the sitemap with the rest of /proto. Data comes from the same build-time
+// fetch the real pages use, so the cases are whatever the directory holds.
+const members = await fetchMemberViews();
 
 // Serialised for the client so the picker can re-render without a round trip.
 const cases = members.map((m) => ({
-  id: m.id,
-  label: `${m.name}${m.images.length === 0 ? " — no artwork" : ""}`,
+  id: m.slug,
+  label: `${m.displayName}${m.works.length === 0 ? " — no artwork" : ""}`,
   view: {
-    displayName: m.name,
+    displayName: m.displayName,
     role: m.role,
     bio: m.bio,
     tags: m.tags,
     openTo: m.openTo,
     portfolio: m.portfolio,
     socialMedia: m.socialMedia,
-    works: m.images.map((i) => ({ url: i.src, width: i.width, height: i.height })),
+    works: m.works,
   },
 }));
 
