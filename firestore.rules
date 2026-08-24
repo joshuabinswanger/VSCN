@@ -94,11 +94,21 @@ function validPublicFields(data) {
     && (!('gallery' in data) || validGallery(data.gallery))
     && (!('active' in data) || data.active is bool)
     && (!('photoColor' in data) || (data.photoColor is string && data.photoColor.matches('#[0-9a-f]{6}')))
-    && (!('photoURL' in data) || data.photoURL == ''
-        || data.photoURL.matches('https://firebasestorage\\.googleapis\\.com/v0/b/vscn-39508\\.firebasestorage\\.app/.*')
-        || data.photoURL.matches('https://storage\\.googleapis\\.com/vscn-39508\\.firebasestorage\\.app/.*'))
+    && (!('photoURL' in data) || data.photoURL == '' || validStorageUrl(data.photoURL))
     && (!('createdAt' in data) || data.createdAt is timestamp)
     && (!('updatedAt' in data) || data.updatedAt is timestamp);
+}
+
+// One ruleset serves both Firebase projects, so both buckets must be accepted:
+// a prod-only allowlist deployed to dev rejects every avatar/gallery save
+// there, which breaks exactly the authenticated dev testing the rules
+// deploy exists for. Rules have no notion of "current project", hence the
+// explicit pair.
+function validStorageUrl(url) {
+  return url.matches('https://firebasestorage\\.googleapis\\.com/v0/b/vscn-39508\\.firebasestorage\\.app/.*')
+      || url.matches('https://storage\\.googleapis\\.com/vscn-39508\\.firebasestorage\\.app/.*')
+      || url.matches('https://firebasestorage\\.googleapis\\.com/v0/b/vscn-dev-f4b60\\.firebasestorage\\.app/.*')
+      || url.matches('https://storage\\.googleapis\\.com/vscn-dev-f4b60\\.firebasestorage\\.app/.*');
 }
 
 // Keep MAX_GALLERY_IMAGES in src/lib/gallery.ts in sync with the size cap
@@ -121,8 +131,7 @@ function validGalleryItem(item) {
     && item.keys().hasOnly(['url', 'caption', 'width', 'height', 'color'])
     && (!('color' in item) || (item.color is string && item.color.matches('#[0-9a-f]{6}')))
     && item.url is string
-    && (item.url.matches('https://firebasestorage\\.googleapis\\.com/v0/b/vscn-39508\\.firebasestorage\\.app/.*')
-        || item.url.matches('https://storage\\.googleapis\\.com/vscn-39508\\.firebasestorage\\.app/.*'))
+    && validStorageUrl(item.url)
     && (!('caption' in item) || (item.caption is string && item.caption.size() <= 140))
     && item.width is int && item.width > 0 && item.width <= 10000
     && item.height is int && item.height > 0 && item.height <= 10000;
