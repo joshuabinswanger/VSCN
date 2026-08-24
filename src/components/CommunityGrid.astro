@@ -1,5 +1,5 @@
 ---
-import { getCardTier, hasArtwork, type CardTier, type MemberView } from "../lib/memberView.ts";
+import { hasArtwork, type MemberView } from "../lib/memberView.ts";
 import CommunityImageCard from "./community/CommunityImageCard.astro";
 import CommunityTextCard from "./community/CommunityTextCard.astro";
 import { useTranslations } from "../i18n/utils.ts";
@@ -16,13 +16,15 @@ import type { Lang } from "../i18n/utils.ts";
 // `feat/community-filters` and are meant to come back once narrowing the
 // list is worth a control.
 //
-// Layout is CSS multicol, not the prototype's build-time lanes, and that is a
-// decision, not a simplification (documentation/20260824-image-card-directory-
-// design.md, conflict 1): DOM order stays reading order, which the lanes
-// broke, and the layout needs no JS — mobile was already `columns: 2`, so it
-// is proven here. It also keeps filtering-by-hiding available for when the
-// filters return, which build-time lanes could never support. The cost is
-// per-LANE parallax; a per-card drift keyed to index substitutes below.
+// LAYOUT IS DRAWN, NOT DERIVED. The grid below is a hand-authored table of
+// slots and cards are dealt into it at random, which replaces the multicol
+// layout the design doc chose (conflict 1) and everything that had grown on
+// top of it: per-tier width/offset variants, a runtime pass that ranked the
+// column leaders, and a sweep that measured every card and nudged the ones
+// that started level. All of that existed to approximate a designed page at
+// runtime. Now the page IS designed, and the properties it was chasing —
+// nothing starts at the same height, the top row steps down — are things you
+// can read off the table instead of enforce in JS.
 
 interface Props {
   members: MemberView[];
@@ -33,45 +35,145 @@ const { members, lang = "en" } = Astro.props;
 const t = useTranslations(lang);
 const memberLabel = members.length === 1 ? t("community.member") : t("community.members");
 
-// Server order: artwork first, so image cards lead the page even before the
-// client-side shuffle runs (and for anyone without JS). The shuffle then
-// randomises WITHIN each group — see the script — so ordering stays fair
-// inside a group while uploading visibly moves a member up. Revisit to a pure
-// shuffle once most members have artwork.
-const ordered = [...members.filter(hasArtwork), ...members.filter((m) => !hasArtwork(m))];
+// ── The hand-authored grid ────────────────────────────────────────────────
+//
+// Three columns on a fine row grid. Every slot names the column it sits in,
+// the row it starts on, how many rows it reserves, its width as a fraction of
+// the column, and where in its own slack it sits (0 flush left, 1 flush
+// right). The tile repeats down the page until the members run out.
+//
+// Rows are rhythm units (`--cgrid-row`, 2rem = 30px on desktop), NOT card
+// heights. `span` is the space a slot reserves: the card sits at the top of it
+// and the remainder is the whitespace below. The numbers are sized against the
+// real directory measured at 1440px — a full-column image card runs 297–594px
+// tall (median ~400) and a typographic card 63–285px (median ~107) — so span
+// 24 (720px) leaves a big card 130–420px of air, and span 10 (300px) leaves a
+// small one 15–240px.
+//
+// Three rules when editing this table:
+//   1. No two slots share a `row`. That is the whole point of authoring it.
+//   2. Within one column, a slot must end (`row + span`) before the next slot
+//      in that column starts — including across the tile seam, where the last
+//      slot in a column must end before TILE_ROWS + its first slot's row.
+//   3. Leave no band where all three columns are empty, or the page has a hole
+//      in it. Bands that open because a slot's card ran out are closed
+//      automatically; bands you author are not.
+type SlotKind = "big" | "small";
 
-// Deterministic irregularity, expressed in LAYOUT rather than transforms.
-// `cw` is the card's width as a unitless fraction of an already-capped basis
-// (see .cgrid__cell — a plain max-width would collapse every capped variant
-// to one width), `ax` distributes the card's own slack across its column
-// (0 flush left, 1 flush right), `my` opens real space above. The `my`
-// range is deliberately wide — up to 14rem on a large card — so adjacent
-// columns visibly refuse to line up; a timid stagger just reads as a grid
-// that failed to align. Bucketed by tier so a filled-in profile visibly
-// claims more of the column than a bare one, with variety kept inside each
-// size class.
-const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> = {
-  large: [
-    { cw: 1, ax: 0, my: "0rem" },
-    { cw: 0.86, ax: 1, my: "9rem" },
-    { cw: 0.92, ax: 0.35, my: "2.5rem" },
-    { cw: 0.8, ax: 1, my: "14rem" },
-    { cw: 1, ax: 1, my: "5rem" },
-    { cw: 0.9, ax: 0.15, my: "0.5rem" },
-    { cw: 0.82, ax: 0.62, my: "10.5rem" },
-    { cw: 0.96, ax: 0.85, my: "3.5rem" },
-  ],
-  medium: [
-    { cw: 0.66, ax: 0.2, my: "5rem" },
-    { cw: 0.6, ax: 1, my: "1rem" },
-    { cw: 0.7, ax: 0.55, my: "8rem" },
-  ],
-  small: [
-    { cw: 0.48, ax: 0.5, my: "4rem" },
-    { cw: 0.44, ax: 1, my: "0rem" },
-    { cw: 0.52, ax: 0, my: "6.5rem" },
-  ],
-};
+interface Slot {
+  col: 1 | 2 | 3;
+  row: number;
+  span: number;
+  w: number;
+  ax: number;
+  kind: SlotKind;
+}
+
+const TILE_ROWS = 84;
+
+const TILE: Slot[] = [
+  { col: 1, row: 1, span: 24, w: 1.0, ax: 0, kind: "big" },
+  { col: 3, row: 7, span: 24, w: 0.86, ax: 1, kind: "big" },
+  { col: 2, row: 14, span: 24, w: 0.94, ax: 0.35, kind: "big" },
+  // The three small slots sit close together on purpose. They are the only
+  // slots a text-only directory can fill, and spreading them down the tile the
+  // way the big ones are spread would render prod's 21-typographic-cards state
+  // as a single-file ribbon three screens longer than it needs to be. Grouped,
+  // they still stagger by 5 rows (150px) but use the page's full width.
+  { col: 1, row: 30, span: 10, w: 0.5, ax: 0.15, kind: "small" },
+  { col: 3, row: 35, span: 10, w: 0.46, ax: 0.8, kind: "small" },
+  { col: 2, row: 40, span: 10, w: 0.56, ax: 1, kind: "small" },
+  { col: 1, row: 45, span: 24, w: 0.88, ax: 1, kind: "big" },
+  { col: 3, row: 51, span: 24, w: 0.96, ax: 0.1, kind: "big" },
+  { col: 2, row: 58, span: 24, w: 0.82, ax: 0.55, kind: "big" },
+];
+
+// How much empty vertical band to tolerate before closing it up. Only bands
+// where ALL columns are empty count, and only ones the deal created — a slot
+// whose stream ran dry leaves its rows behind, and on a directory with no
+// artwork at all that is every big slot in every tile.
+const MAX_EMPTY_ROWS = 8;
+
+/** Close bands no column occupies, preserving the order and spans of what is left. */
+function collapseEmptyBands(slots: Slot[]): Slot[] {
+  const ordered = [...slots].sort((a, b) => a.row - b.row);
+  // Seed the shift with whatever sits above the first surviving slot, so the
+  // band at the TOP closes too. Without this a directory with no artwork opens
+  // on 29 empty rows — the big slots the tile starts with, dropped — which is
+  // most of a screen of blank page before the first card.
+  let shift = (ordered[0]?.row ?? 1) - 1;
+  let frontier = -Infinity;
+  for (const slot of ordered) {
+    let row = slot.row - shift;
+    if (frontier > -Infinity && row - frontier > MAX_EMPTY_ROWS) {
+      const extra = row - frontier - MAX_EMPTY_ROWS;
+      shift += extra;
+      row -= extra;
+    }
+    slot.row = row;
+    // The frontier is the lowest point anything reaches, not the last slot's
+    // end: slots overlap in row range across columns, and a band is only empty
+    // once every column has cleared it.
+    frontier = Math.max(frontier, row + slot.span);
+  }
+  return ordered;
+}
+
+/**
+ * Tile the table down the page until both kinds of card are used up, skipping
+ * any slot whose kind has already run out, then close the bands that leaves.
+ */
+function layOutSlots(bigCards: number, smallCards: number): Slot[] {
+  const perTile = {
+    big: TILE.filter((s) => s.kind === "big").length,
+    small: TILE.filter((s) => s.kind === "small").length,
+  };
+  const tiles = Math.max(
+    perTile.big ? Math.ceil(bigCards / perTile.big) : 0,
+    perTile.small ? Math.ceil(smallCards / perTile.small) : 0
+  );
+
+  const placed: Slot[] = [];
+  let big = bigCards;
+  let small = smallCards;
+  for (let tile = 0; tile < tiles; tile++) {
+    for (const slot of TILE) {
+      if (slot.kind === "big" ? big <= 0 : small <= 0) continue;
+      if (slot.kind === "big") big -= 1;
+      else small -= 1;
+      placed.push({ ...slot, row: slot.row + tile * TILE_ROWS });
+    }
+  }
+
+  // Insurance, not expected: reachable only if TILE loses every slot of one
+  // kind. Stack the leftovers rather than drop members off the directory,
+  // which is the kind of failure that hides.
+  let overflowRow = placed.reduce((low, s) => Math.max(low, s.row + s.span), 0) + 4;
+  for (let i = 0; i < big + small; i++) {
+    const kind: SlotKind = i < big ? "big" : "small";
+    const span = kind === "big" ? 24 : 10;
+    placed.push({ col: ((i % 3) + 1) as 1 | 2 | 3, row: overflowRow, span, w: 0.9, ax: 0, kind });
+    overflowRow += span + 4;
+  }
+
+  return collapseEmptyBands(placed);
+}
+
+// Two streams. `hasArtwork` is the whole test: it is also what makes
+// getCardTier return "large", and a big slot is a frame drawn for artwork, so
+// a member with nothing to show must never land in one.
+const imageMembers = members.filter(hasArtwork);
+const textMembers = members.filter((m) => !hasArtwork(m));
+const slots = layOutSlots(imageMembers.length, textMembers.length);
+
+// Deal in row order, so the server-rendered DOM already reads top to bottom
+// for anyone without JS. The client re-deals at random within each kind.
+let nextImage = 0;
+let nextText = 0;
+const cells = slots.map((slot) => ({
+  slot,
+  member: slot.kind === "big" ? imageMembers[nextImage++] : textMembers[nextText++],
+}));
 ---
 
 <div class="community-wrapper" data-lang={lang}>
@@ -87,29 +189,22 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
   <div id="member-grid" class="cgrid">
     {members.length === 0 && <p class="state-msg">{t("community.empty")}</p>}
     {
-      ordered.map((m, i) => {
-        const tier = getCardTier(m);
-        const variants = TIER_VARIANTS[tier];
-        // Stride 5 is coprime with every variant-set length, so consecutive
-        // cards never share a variant and every variant still gets used.
-        const v = variants[(i * 5) % variants.length];
-        return (
-          <div
-            class="cgrid__cell"
-            data-tier={tier}
-            data-group={tier === "large" ? "img" : "text"}
-            style={`--cw:${v.cw};--ax:${v.ax};--my:${v.my}`}
-          >
-            {tier === "large" ? (
-              <CommunityImageCard member={m} lang={lang} />
-            ) : (
-              /* No artwork to show. The typographic variant holds the same
-                 slot rather than dropping the member from the directory. */
-              <CommunityTextCard member={m} lang={lang} />
-            )}
-          </div>
-        );
-      })
+      cells.map(({ slot, member }) => (
+        <div
+          class="cgrid__cell"
+          data-slot={slot.kind}
+          data-row={slot.row}
+          style={`--gc:${slot.col};--gr:${slot.row} / span ${slot.span};--cw:${slot.w};--ax:${slot.ax}`}
+        >
+          {slot.kind === "big" ? (
+            <CommunityImageCard member={member} lang={lang} />
+          ) : (
+            /* No artwork to show. The typographic variant holds a slot drawn
+               for it rather than dropping the member from the directory. */
+            <CommunityTextCard member={member} lang={lang} />
+          )}
+        </div>
+      ))
     }
   </div>
 
@@ -157,21 +252,37 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
 
   /* ── The grid ─────────────────────────────────────────── */
   .cgrid {
-    /* Horizontal gutter between columns, vertical rhythm between cards. */
+    /* Horizontal gutter between columns. */
     --pgap-x: 4.5rem;
-    --pgap-y: 28rem;
+    /* One rhythm unit. Every `row` and `span` in the slot table is counted in
+       these, so this is the single knob that scales the page's whole vertical
+       breathing without touching the drawing. */
+    --cgrid-row: 2rem;
     /* Ceiling on the artwork itself, independent of how wide the shell goes.
        The artwork carries dense scientific detail, so the cap sits high
-       enough to read it — whitespace comes from the gaps, not from shrinking
+       enough to read it — whitespace comes from the slots, not from shrinking
        cards. */
     --card-max: 30rem;
-    columns: 3;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     column-gap: var(--pgap-x);
+    /* minmax, not a flat --cgrid-row: a card taller than the rows its slot
+       reserved has to be able to push the rows below it apart. On a fixed
+       track it would overflow its slot and overlap the next card instead.
+       This is the one way content moves anything — the table is authoritative
+       otherwise, and content can only ever add space, never collide. */
+    grid-auto-rows: minmax(var(--cgrid-row), auto);
     padding-block: 4rem 18rem;
   }
 
   .cgrid__cell {
     min-width: 0;
+    grid-column: var(--gc);
+    grid-row: var(--gr);
+    /* The card sits at the TOP of the rows its slot reserved and the rest of
+       the span is the whitespace beneath it. Without this the cell stretches
+       to fill the span and takes the card with it. */
+    align-self: start;
     /* The basis is the column, or --card-max where the column is wider than
        the artwork should ever be. The card is a fraction OF that, so a wider
        shell buys whitespace rather than bigger images. */
@@ -181,50 +292,63 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
        column's right edge whatever the cap did to its width, and it can never
        exceed the column. */
     margin-inline-start: calc(var(--ax) * (100% - var(--cardw)));
-    /* The stagger is PADDING, not margin, and that is load-bearing: a
-       margin-top here renders as nothing. Against the 20rem margin-bottom of
-       the card above it collapses away to max(--pgap-y, --my), and Chrome
-       discards a margin-top outright on the first card of columns 2 and 3 —
-       so it never reached the top row, the part you see first. Padding is
-       part of the box, so it survives both. Measured in Chrome 2026-08-24:
-       a uniform 6rem margin-top moved the grid by 30px, the same value as
-       padding-top moved it by 746px. */
-    padding-top: var(--my);
-    margin-bottom: var(--pgap-y);
-    break-inside: avoid;
-    /* --lead-y is set inline by staggerCardTops() on any card it has to move
-       down, and stays 0 on the rest. Relative
-       positioning is the mechanism because it is the only vertical offset
-       here that nothing else owns: `transform` and `translate` both belong
-       to the motion layer (GSAP writes `transform` and explicitly zeroes
-       `translate`, `rotate` and `scale` so its matrix cannot be fought
-       over), and margin or padding would be layout, which can change which
-       card leads a column and so invalidate the measurement that placed it. */
+    /* Anchor for the debug label below; harmless otherwise. */
     position: relative;
-    top: var(--lead-y, 0);
   }
 
-  /* Nothing hides a cell today, but multicol means a hidden one would leave
-     the flow and let the columns repack — the property the filters will need
-     when they come back, and the one build-time lanes cannot offer. */
+  /* Nothing hides a cell today. Kept because the filters are coming back, and
+     on a grid a hidden cell leaves its slot empty rather than repacking —
+     worth knowing before wiring them to this layout. */
   .cgrid__cell[hidden] {
     display: none;
+  }
+
+  /* ?grid — outline every slot and label it with its kind and row, so the
+     table in the frontmatter can be tuned against the real page instead of by
+     arithmetic. */
+  .cgrid--debug .cgrid__cell {
+    outline: 1px dashed color-mix(in srgb, var(--color-dark) 30%, transparent);
+    outline-offset: 8px;
+  }
+
+  .cgrid--debug .cgrid__cell::after {
+    content: attr(data-slot) " @ " attr(data-row);
+    position: absolute;
+    top: -1.6rem;
+    left: 0;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    pointer-events: none;
   }
 
   @media (--bp-mobile) {
     .cgrid {
       --pgap-x: 2.25rem;
       --pgap-y: 12rem;
+      /* The slot table is a desktop drawing — two narrow columns have no room
+         for it. Mobile falls back to the multicol stack, which packs by height
+         and needs no placement at all; the grid properties go inert. */
+      display: block;
       columns: 2;
+      column-gap: var(--pgap-x);
       padding-block: 2rem 10rem;
     }
     .cgrid__cell {
+      /* Declared here rather than left to the inline style, and that works
+         because the inline style sets --gc/--gr, not grid-column/grid-row:
+         these are the real properties, so a stylesheet rule can still win. */
+      grid-column: auto;
+      grid-row: auto;
       /* The column is already narrower than --card-max, so the cap and the
          width fraction are off here. Two narrow columns have no room for
          irregularity — the offset look comes free from varied card heights. */
       width: 100%;
       margin-inline-start: 0;
-      padding-top: 0;
+      margin-bottom: var(--pgap-y);
+      break-inside: avoid;
     }
   }
 
@@ -240,190 +364,77 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
   import { onAuthStateChanged } from "firebase/auth";
 
   // ────────────────────────────────────────────────────────────────────────
-  // Behaviour layer: shuffle-within-groups and the signed-out CTA.
+  // Behaviour layer: re-deal the slots, and the signed-out CTA.
   // Runs synchronously on astro:page-load, BEFORE the async motion layer
-  // below measures anything — a shuffle after ScrollTrigger creation would
-  // leave every trigger keyed to a stale position.
+  // below measures anything — a deal after ScrollTrigger creation would leave
+  // every trigger keyed to a stale position.
   // ────────────────────────────────────────────────────────────────────────
 
-  // Two jobs, both of them things `--my` cannot do on its own, and both
-  // measured rather than assumed. All distances are px, which is safe because
-  // none of this runs below the mobile breakpoint, where the root font size
-  // would change from 15px.
-  //
-  // 1. THE TOP ROW. Which card leads each column is decided by multicol
-  //    balancing AFTER the shuffle, so whether those three drew a big `--my`
-  //    or a small one is pure luck — often enough all three drew small and the
-  //    top of the page, the part you see first, read as a flat row. The step
-  //    is applied by RANK, not by column: the leader sitting highest keeps its
-  //    place and the ones below it are pushed further down, so the spread can
-  //    only widen. A fixed offset per column gets cancelled by whatever `--my`
-  //    that column's leader happened to draw.
-  const LEAD_STAGGER = [0, 52, 104];
-  //
-  // 2. NO TWO CARDS START LEVEL. Card heights are content-driven, so tops
-  //    across columns land where they land: measured over 10 shuffles of 21
-  //    cards, one pair per load started within 10px of each other and 4.5
-  //    pairs within 80px, which reads as an accidental row. Cards closer than
-  //    MIN_TOP_GAP get nudged down until they clear it.
-  //
-  //    This is a guarantee about LAYOUT, and the motion layer spends part of
-  //    it: the per-card drift shifts cells by up to 90px over the scroll, so
-  //    a pair that layout put 60px apart can be brought level somewhere mid
-  //    scroll. The gap comfortably absorbs the drift's at-rest share (~15px at
-  //    scroll 0, where first impressions are made). Absorbing it at EVERY
-  //    scroll position would need the full 165px drift spread on top of the
-  //    gap between every pair, which the page has no room for; the alternative
-  //    is making the drift monotone in vertical position, which guarantees
-  //    separations can only widen but turns the effect from cards passing each
-  //    other into a uniform stretch. Not worth it.
-  const MIN_TOP_GAP = 180;
-  // Ceiling on how far any one card may be moved, TOTAL — the sweep below only
-  // ever pushes downward, so without it a dense run cascades and the last card
-  // in it ends up hundreds of px from where the layout put it. The budget is
-  // the in-column rhythm: cards in the SAME column sit --pgap-y (420px) apart
-  // before their own `--my` padding, so a card displaced by the full cap still
-  // leaves 160px above the card beneath it in its column. Hitting the cap means
-  // accepting a gap short of the target rather than tearing a hole in a column,
-  // which is the right trade — a 106px gap still reads as two different
-  // heights, and the hole would read as a mistake.
-  //
-  // These two numbers are a pair, and were picked by measurement over 16
-  // shuffles of the seeded dev directory. At 180/260 the median smallest gap on
-  // a page is 179px and the worst case is 106px. Pushing the target to 200 or
-  // 220 does NOT buy bigger gaps — the median stops improving around 180px
-  // because the cap starts binding, and all the higher target does is spend
-  // more of the column rhythm. If --pgap-y changes, re-measure: this budget is
-  // a fraction of it, and the target is what the page has room to hold.
-  const MAX_OFFSET = 260;
-
   /**
-   * Place the cards' vertical offsets: step the column leaders apart, then
-   * push any two cards that would start level away from each other.
+   * The grid is drawn at build time; this decides who stands where in it.
    *
-   * The offset is `top` on a relatively-positioned cell, and the alternatives
-   * all fail. Not margin or padding, because those are layout: making a column
-   * taller can push its last card into the next column and so change which
-   * card leads THAT one, and the measurement would invalidate itself. Not
-   * `transform` or `translate` either — the motion layer's GSAP drift animates
-   * `transform` on these cells and sets `translate: none` alongside it, so a
-   * `translate` offset tested clean against a dev server whose GSAP had failed
-   * to load and then silently vanished on the production build. `top` on a
-   * relatively-positioned box is paint-only, so it cannot move a card between
-   * columns, and nothing else writes it.
+   * Slot geometry lives in inline custom properties, so re-dealing is just
+   * permuting those among the cells of one kind. A card never crosses from the
+   * big slots to the small ones — that is what keeps an image card in a frame
+   * drawn for artwork and stops a bare profile inheriting one.
+   *
+   * Permuting the geometry rather than moving the cards means the cards
+   * themselves never re-render, but it does decouple DOM order from what you
+   * see, so the DOM is re-sorted into the new row order afterwards and reading
+   * order still runs down the page.
    */
-  function staggerCardTops(grid: HTMLElement) {
-    const cells = Array.from(grid.querySelectorAll<HTMLElement>(".cgrid__cell"));
-    // Always clear first: this re-runs on resize, and a stale offset from a
-    // three-column layout must not survive into the two-column one. It also
-    // means every position measured below is the natural one.
-    cells.forEach((cell) => cell.style.removeProperty("--lead-y"));
-    // Mobile stacks two narrow columns and switches the stagger off entirely.
-    if (!window.matchMedia("(min-width: 768px)").matches) return;
-
-    const cs = getComputedStyle(grid);
-    const cols = parseInt(cs.columnCount, 10);
-    const gap = parseFloat(cs.columnGap);
-    if (!Number.isFinite(cols) || cols < 2 || !Number.isFinite(gap)) return;
-
-    // Multicol exposes no "which column is this box in?", so derive it from the
-    // column pitch. `--ax` can slide a card rightward inside its column but
-    // never past the column's own edge, so flooring by the pitch is exact —
-    // except that subpixel geometry lets a flush-left card measure a hair
-    // BELOW its column's start and floor into the previous column, which is
-    // what the +1 is for. A card can never legitimately sit within 1px under a
-    // column start: the nearest it gets from that side is a full gap away.
-    const padLeft = parseFloat(cs.paddingLeft) || 0;
-    const contentW = grid.clientWidth - padLeft - (parseFloat(cs.paddingRight) || 0);
-    const pitch = (contentW + gap) / cols;
-    const originX = grid.getBoundingClientRect().left + padLeft;
-
-    // The card, not the cell: `--my` is padding on the cell, so the cell's top
-    // is where the whitespace starts and the card's top is what the eye reads.
-    const cardTop = (cell: HTMLElement) =>
-      (cell.firstElementChild ?? cell).getBoundingClientRect().top;
-
-    // One measuring pass. Everything after this is arithmetic on `placed`, so
-    // no read is interleaved with a write and nothing thrashes layout.
-    const placed = cells
-      .filter((cell) => !cell.hidden)
-      .map((cell) => ({
-        cell,
-        col: Math.min(
-          cols - 1,
-          Math.max(0, Math.floor((cell.getBoundingClientRect().left - originX + 1) / pitch))
-        ),
-        top: cardTop(cell),
-        offset: 0,
-      }));
-    if (placed.length === 0) return;
-
-    // 1. Step the column leaders apart, highest first.
-    const leaders = Array.from({ length: cols }, (_, col) =>
-      placed
-        .filter((p) => p.col === col)
-        .reduce<
-          (typeof placed)[number] | null
-        >((best, p) => (best === null || p.top < best.top ? p : best), null)
-    ).filter((p): p is (typeof placed)[number] => p !== null);
-    leaders.sort((a, b) => a.top - b.top);
-    leaders.forEach((p, rank) => {
-      p.offset = LEAD_STAGGER[Math.min(rank, LEAD_STAGGER.length - 1)];
-    });
-
-    // 2. Sweep top to bottom keeping every card clear of the one above it.
-    //    Downward only: an upward nudge would eat into the gap above, and the
-    //    topmost card would climb out of the grid's own top padding. Spreading
-    //    each cluster symmetrically about its centroid instead — which would
-    //    halve the displacement on paper — was tried and is worse in practice:
-    //    re-centring one cluster shoves cards into the next one, and the passes
-    //    oscillate instead of converging. This sweep is monotone and settles in
-    //    one pass. The clamp is on the card's TOTAL offset, so the leader step
-    //    from phase 1 is spent out of the same budget rather than added on top.
-    placed.sort((a, b) => a.top + a.offset - (b.top + b.offset));
-    let prevTop = -Infinity;
-    for (const p of placed) {
-      const wanted = Math.max(p.top + p.offset, prevTop + MIN_TOP_GAP);
-      p.offset = Math.min(wanted - p.top, MAX_OFFSET);
-      prevTop = p.top + p.offset;
-    }
-
-    // Ceil, not round: rounding two neighbours down can shave a pixel off a
-    // gap the arithmetic above guaranteed, and MIN_TOP_GAP should hold exactly.
-    for (const p of placed) {
-      if (p.offset > 0) p.cell.style.setProperty("--lead-y", `${Math.ceil(p.offset)}px`);
-    }
+  interface Geometry {
+    gc: string;
+    gr: string;
+    cw: string;
+    ax: string;
+    row: string;
   }
 
-  /**
-   * Shuffle within groups: image cards stay ahead of typographic ones, random
-   * inside each group. Artwork-first alone would permanently rank early
-   * uploaders above everyone; a pure shuffle would bury the artwork the page
-   * is built around. This is the compromise the design doc records.
-   */
-  function shuffleWithinGroups(grid: HTMLElement) {
+  function readGeometry(cell: HTMLElement): Geometry {
+    return {
+      gc: cell.style.getPropertyValue("--gc"),
+      gr: cell.style.getPropertyValue("--gr"),
+      cw: cell.style.getPropertyValue("--cw"),
+      ax: cell.style.getPropertyValue("--ax"),
+      row: cell.dataset.row ?? "0",
+    };
+  }
+
+  function writeGeometry(cell: HTMLElement, g: Geometry) {
+    cell.style.setProperty("--gc", g.gc);
+    cell.style.setProperty("--gr", g.gr);
+    cell.style.setProperty("--cw", g.cw);
+    cell.style.setProperty("--ax", g.ax);
+    cell.dataset.row = g.row;
+  }
+
+  function dealSlots(grid: HTMLElement) {
     const cells = Array.from(grid.querySelectorAll<HTMLElement>(".cgrid__cell"));
-    const groups: Record<string, HTMLElement[]> = { img: [], text: [] };
-    cells.forEach((cell) => groups[cell.dataset.group === "img" ? "img" : "text"].push(cell));
-    for (const group of [groups.img, groups.text]) {
-      for (let i = group.length - 1; i > 0; i--) {
+    const kinds: Record<string, HTMLElement[]> = { big: [], small: [] };
+    cells.forEach((cell) => kinds[cell.dataset.slot === "big" ? "big" : "small"].push(cell));
+
+    for (const group of [kinds.big, kinds.small]) {
+      const geometry = group.map(readGeometry);
+      for (let i = geometry.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [group[i], group[j]] = [group[j], group[i]];
+        [geometry[i], geometry[j]] = [geometry[j], geometry[i]];
       }
-      group.forEach((cell) => grid.appendChild(cell));
+      group.forEach((cell, i) => writeGeometry(cell, geometry[i]));
     }
+
+    cells
+      .sort((a, b) => Number(a.dataset.row) - Number(b.dataset.row))
+      .forEach((cell) => grid.appendChild(cell));
   }
 
   document.addEventListener("astro:page-load", () => {
     const grid = document.getElementById("member-grid");
     if (grid) {
-      shuffleWithinGroups(grid);
-      staggerCardTops(grid);
-      // Archivo landing after first paint changes card heights, which can
-      // change which card leads a column. Re-pick then. This handler is
-      // registered before the motion layer's own fonts.ready refresh, so the
-      // refresh sees the new positions.
-      document.fonts?.ready.then(() => staggerCardTops(grid));
+      dealSlots(grid);
+      if (new URLSearchParams(window.location.search).has("grid")) {
+        grid.classList.add("cgrid--debug");
+      }
     }
 
     const cta = document.getElementById("community-signup-cta");
@@ -433,37 +444,16 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
       });
     }
   });
-
-  // Column widths change on any resize, not only when the mobile breakpoint
-  // is crossed, and with them which card leads each column. Debounced, and it
-  // re-reads the grid every time because ClientRouter swaps the DOM out.
-  let restaggerTimer = 0;
-  function restagger() {
-    clearTimeout(restaggerTimer);
-    restaggerTimer = window.setTimeout(() => {
-      const grid = document.getElementById("member-grid");
-      if (!grid) return;
-      staggerCardTops(grid);
-      // Cards just moved under the motion layer's measured trigger positions.
-      document.dispatchEvent(new CustomEvent("community:restaggered"));
-    }, 150);
-  }
-
-  window.addEventListener("resize", restagger);
-  // Crossing into mobile has to clear the offsets, and that is too important
-  // to hang on a resize event alone — an orientation change or a device-mode
-  // switch does not always deliver one. Same guard the motion layer uses.
-  window.matchMedia("(min-width: 768px)").addEventListener("change", restagger);
 </script>
 
 <script>
   // ────────────────────────────────────────────────────────────────────────
   // Motion layer: desktop-only scroll effects, two jobs.
   //   1. Cards scale up as they rise toward the top of the scrollport.
-  //   2. Cards drift vertically at index-keyed rates — the multicol layout
-  //      has no lane boxes to translate, so the prototype's per-lane parallax
-  //      becomes per-card drift. Transform-only, so it cannot fight the
-  //      column layout.
+  //   2. Cards drift vertically at index-keyed rates — there are no lane
+  //      boxes to translate, so the prototype's per-lane parallax becomes
+  //      per-card drift. Transform-only, so it cannot disturb the placement
+  //      the slot table fixed.
   // Width is checked BEFORE the import, so mobile downloads no GSAP at all
   // (~44 KB gzip). This page is the only importer of gsap in production —
   // a deliberate, recorded cost (design doc, conflict 3).
@@ -479,7 +469,6 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
   // Loose type: gsap's global namespace types are not reliably in scope
   // inside a scoped Astro script, and revert() is all we need off it.
   let mm: { revert: () => void } | null = null;
-  let refreshTriggers: (() => void) | null = null;
 
   // Re-entry guard for the async gap. `mm` alone is not a mutex: it is read
   // before the dynamic import but only assigned after it, so two overlapping
@@ -566,15 +555,11 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
         });
       });
 
-      // Re-picking the column leaders moves cards, so every measured trigger
-      // position is stale. Epoch-guarded like the font refresh below.
-      refreshTriggers = () => {
-        if (epoch === startedIn) ScrollTrigger.refresh();
-      };
-
-      // Archivo is self-hosted; if it lands after first paint, measured
-      // trigger positions are stale. Epoch-guarded so a refresh queued by a
-      // page that has since been swapped away cannot fire against dead nodes.
+      // Archivo is self-hosted; if it lands after first paint, card heights
+      // change, rows that were sized to fit a card resize with them, and every
+      // measured trigger position is stale. Epoch-guarded so a refresh queued
+      // by a page that has since been swapped away cannot fire against dead
+      // nodes.
       document.fonts?.ready.then(() => {
         if (epoch === startedIn) ScrollTrigger.refresh();
       });
@@ -596,13 +581,11 @@ const TIER_VARIANTS: Record<CardTier, { cw: number; ax: number; my: string }[]> 
     epoch++;
     mm?.revert();
     mm = null;
-    refreshTriggers = null;
     building = false;
   }
 
   document.addEventListener("astro:page-load", build);
   document.addEventListener("astro:before-swap", teardown);
-  document.addEventListener("community:restaggered", () => refreshTriggers?.());
 
   // Crossing the breakpoint on resize starts or stops the whole layer.
   window.matchMedia(DESKTOP).addEventListener("change", () => {
