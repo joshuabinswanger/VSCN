@@ -1,5 +1,5 @@
 ---
-import MemberCard from "./MemberCard.astro";
+import CommunityCardPreview from "./community/CommunityCardPreview.astro";
 import MemberTypeSelector from "./MemberTypeSelector.astro";
 import ProfileViewPreview from "./ProfileViewPreview.astro";
 import OpenToSelector from "./OpenToSelector.astro";
@@ -154,6 +154,10 @@ const t = useTranslations(lang);
     </label>
     <p id="gallery-status" class="field-note" style="display:none;"></p>
     <p class="field-note">{t("profile.note.gallery")}</p>
+    {/* The directory is image-led: a member without a gallery holds a
+        typographic card. Saying so here is the standing mechanism that fills
+        the directory — hidden the moment the first image lands. */}
+    <p id="gallery-nudge" class="field-note gallery-nudge" hidden>{t("profile.gallery.nudge")}</p>
   </div>
 
   <div class="field">
@@ -169,8 +173,8 @@ const t = useTranslations(lang);
 
       The profile page comes first: it is the artefact the member is actually
       building. The directory card is the smaller, secondary view of the same
-      data — still MemberCard today because that is what /community renders;
-      it is replaced by the image card when the directory switches over. */}
+      data — the image card's face, bound by renderCardPreview(), which is
+      what /community renders since the directory switched over. */}
   <div class="preview-section">
     <div class="preview-block">
       <p class="label">{t("profile.view.heading")}</p>
@@ -180,7 +184,7 @@ const t = useTranslations(lang);
 
     <div class="preview-block">
       <p class="label">{t("profile.view.directoryHeading")}</p>
-      <MemberCard preview lang={lang} />
+      <CommunityCardPreview />
     </div>
   </div>
 
@@ -738,10 +742,10 @@ const t = useTranslations(lang);
   import { requireAuth } from "../lib/auth.ts";
   import { deleteAvatar } from "../lib/storage.ts";
   import { getUser, deleteUserData, getPublicProfileActive, setProfileActive } from "../lib/firestore.ts";
-  import { validateAvatar, resizeAvatar, normaliseUrl } from "../lib/validation.ts";
+  import { validateAvatar, resizeAvatar } from "../lib/validation.ts";
   import { handleProfileUpdate, triggerRebuild } from "../lib/profile.ts";
   import { isMemberType } from "../lib/firestore.ts";
-  import { memberBadgeLabel, memberTypeFieldCopy } from "../lib/memberType.ts";
+  import { memberTypeFieldCopy } from "../lib/memberType.ts";
   import {
     MAX_GALLERY_IMAGES,
     validateGalleryFile,
@@ -752,90 +756,11 @@ const t = useTranslations(lang);
   } from "../lib/gallery.ts";
   import { updateUserProfile } from "../lib/firestore.ts";
   import { openImageEditor } from "../lib/imageEditor.ts";
-  import { renderProfilePreview } from "../lib/profilePreview.ts";
+  import { renderCardPreview, renderProfilePreview } from "../lib/profilePreview.ts";
   import { ui } from "../i18n/translations.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
 
-  function updatePreview(
-    name: string,
-    role: string,
-    bio: string,
-    portfolio: string,
-    socialMedia: string,
-    photoURL: string,
-    defaultName = "Your name",
-    showBioLabel = "Show bio for"
-  ) {
-    const previewName = document.getElementById("preview-name")!;
-    const previewRole = document.getElementById("preview-role") as HTMLElement;
-    const previewLinks = document.getElementById("preview-links") as HTMLElement;
-    const previewPortfolio = document.getElementById("preview-portfolio") as HTMLAnchorElement;
-    const previewLinksSep = document.getElementById("preview-links-sep") as HTMLElement;
-    const previewSocial = document.getElementById("preview-social") as HTMLAnchorElement;
-    const previewBio = document.getElementById("preview-bio") as HTMLElement;
-    const previewBioToggle = document.getElementById("preview-bio-toggle") as HTMLButtonElement;
-    const previewAvatarImg = document.getElementById("preview-avatar-img") as HTMLImageElement;
-    const previewAvatarPh = document.getElementById("preview-avatar-ph") as HTMLElement;
-
-    const displayName = name || defaultName;
-    previewName.textContent = displayName;
-
-    if (role) {
-      previewRole.textContent = role;
-      previewRole.hidden = false;
-    } else {
-      previewRole.hidden = true;
-    }
-
-    const href = normaliseUrl(portfolio);
-    if (href) {
-      previewPortfolio.href = href;
-      previewPortfolio.textContent = portfolio;
-      previewPortfolio.hidden = false;
-    } else {
-      previewPortfolio.hidden = true;
-    }
-
-    const socialHref = normaliseUrl(socialMedia);
-    if (socialHref) {
-      previewSocial.href = socialHref;
-      previewSocial.hidden = false;
-    } else {
-      previewSocial.hidden = true;
-    }
-
-    previewLinksSep.hidden = !href || !socialHref;
-    previewLinks.hidden = !href && !socialHref;
-
-    if (bio) {
-      previewBio.textContent = bio;
-      previewBio.hidden = false;
-      previewBioToggle.hidden = false;
-      previewBioToggle.setAttribute("aria-label", `${showBioLabel} ${displayName}`);
-    } else {
-      previewBio.hidden = true;
-      previewBioToggle.hidden = true;
-      previewBioToggle.closest(".member-card-wrap")?.classList.remove("is-expanded");
-      previewBioToggle.setAttribute("aria-expanded", "false");
-    }
-
-    if (photoURL) {
-      previewAvatarImg.src = photoURL;
-      previewAvatarImg.alt = displayName;
-      previewAvatarImg.hidden = false;
-      previewAvatarPh.hidden = true;
-      previewAvatarImg.onerror = () => {
-        previewAvatarImg.hidden = true;
-        previewAvatarPh.hidden = false;
-        previewAvatarPh.textContent = displayName[0]?.toUpperCase() ?? "?";
-      };
-    } else {
-      previewAvatarImg.hidden = true;
-      previewAvatarPh.hidden = false;
-      previewAvatarPh.textContent = displayName[0]?.toUpperCase() ?? "?";
-    }
-  }
 
   document.addEventListener("astro:page-load", () => {
     const loadingEl = document.getElementById("loading");
@@ -897,7 +822,6 @@ const t = useTranslations(lang);
       document.querySelectorAll<HTMLButtonElement>("#view-toggle .view-toggle__btn")
     );
 
-    let currentPhotoURL = "";
     let resizedAvatarBlob: Blob | null = null;
     let avatarColor = "";
     let gallery: GalleryItem[] = [];
@@ -930,10 +854,15 @@ const t = useTranslations(lang);
           return wrap;
         })
       );
-      // The gallery IS the profile page's content, so every add, removal and
-      // reorder has to reach the preview. This is the one place the gallery
-      // re-renders, which makes it the one place that needs to say so.
-      syncProfileView();
+      // The image-led directory renders a typographic card for an empty
+      // gallery; the nudge says so, and disappears with the first image.
+      const nudge = document.getElementById("gallery-nudge");
+      if (nudge) nudge.hidden = gallery.length > 0;
+      // The gallery IS the profile page's content AND the card's artwork, so
+      // every add, removal and reorder has to reach both previews. This is
+      // the one place the gallery re-renders, which makes it the one place
+      // that needs to say so.
+      syncPreview();
     }
 
     async function persistGallery() {
@@ -1009,7 +938,6 @@ const t = useTranslations(lang);
     }
 
     function showPreview(url: string) {
-      currentPhotoURL = url;
       avatarImg.src = url;
       avatarWrap.classList.toggle("has-image", !!url);
       avatarImg.onerror = () => {
@@ -1019,18 +947,33 @@ const t = useTranslations(lang);
     }
 
     function syncPreview() {
-      updatePreview(
-        nameInput.value.trim(),
-        roleInput.value.trim(),
-        bioInput.value.trim(),
-        portfolioInput.value.trim(),
-        socialMediaInput.value.trim(),
-        currentPhotoURL,
-        s["profile.preview.defaultName"],
-        s["member.showBio"]
-      );
-      syncBadgePreview();
+      const cardRoot = document.querySelector<HTMLElement>("[data-ccpv-root]");
+      if (cardRoot) {
+        renderCardPreview(cardRoot, currentViewModel(), {
+          defaultName: s["profile.preview.defaultName"],
+        });
+      }
       syncProfileView();
+    }
+
+    /** Live form state as the one view model every preview consumes. */
+    function currentViewModel() {
+      return {
+        displayName: nameInput.value.trim(),
+        role: roleInput.value.trim(),
+        bio: bioInput.value.trim(),
+        tags: tagSelector?.value ?? [],
+        openTo: openToSelector?.value ?? [],
+        portfolio: portfolioInput.value.trim(),
+        socialMedia: socialMediaInput.value.trim(),
+        works: gallery.map((g) => ({
+          url: g.url,
+          width: g.width,
+          height: g.height,
+          caption: g.caption,
+          color: g.color,
+        })),
+      };
     }
 
     /**
@@ -1042,22 +985,7 @@ const t = useTranslations(lang);
       if (!profileViewRoot || !form.classList.contains("is-previewing")) return;
       renderProfilePreview(
         profileViewRoot,
-        {
-          displayName: nameInput.value.trim(),
-          role: roleInput.value.trim(),
-          bio: bioInput.value.trim(),
-          tags: tagSelector?.value ?? [],
-          openTo: openToSelector?.value ?? [],
-          portfolio: portfolioInput.value.trim(),
-          socialMedia: socialMediaInput.value.trim(),
-          works: gallery.map((g) => ({
-            url: g.url,
-            width: g.width,
-            height: g.height,
-            caption: g.caption,
-            color: g.color,
-          })),
-        },
+        currentViewModel(),
         {
           defaultName: s["profile.view.defaultName"],
           tags: s["profile.view.tags"],
@@ -1080,14 +1008,6 @@ const t = useTranslations(lang);
       if (mode === "preview") syncProfileView();
     }
 
-    function syncBadgePreview() {
-      const previewBadge = document.getElementById("preview-badge");
-      if (!previewBadge) return;
-      const badge = memberBadgeLabel(memberTypeSelector?.value ?? "", (key) => s[key] ?? key);
-      previewBadge.textContent = badge;
-      previewBadge.hidden = !badge;
-    }
-
     /** Scientists and research groups get lab-facing field wording. */
     function syncMemberTypeCopy() {
       const copy = memberTypeFieldCopy(memberTypeSelector?.value ?? "", (key) => s[key] ?? key);
@@ -1099,7 +1019,6 @@ const t = useTranslations(lang);
 
     memberTypeSelector?.addEventListener("member-type-change", () => {
       syncMemberTypeCopy();
-      syncBadgePreview();
     });
 
     viewToggleButtons.forEach((btn) => {
@@ -1220,7 +1139,7 @@ const t = useTranslations(lang);
       const memberType = memberTypeSelector?.value ?? "";
 
       try {
-        const { photoURL } = await handleProfileUpdate(
+        await handleProfileUpdate(
           user,
           {
             displayName: nameInput.value.trim(),
@@ -1247,7 +1166,6 @@ const t = useTranslations(lang);
 
         if (resizedAvatarBlob) {
           uploadStatus.textContent = s["profile.upload.complete"];
-          currentPhotoURL = photoURL;
         }
 
         await setProfileActive(user.uid, activeInput.checked);
