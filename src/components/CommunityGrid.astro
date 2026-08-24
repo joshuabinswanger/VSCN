@@ -60,6 +60,22 @@ const memberLabel = members.length === 1 ? t("community.member") : t("community.
 // span 24 (720px) leaves a 440px-wide image card 130–390px of air, and span 10
 // (300px) leaves a 220px-wide text card 140–265px.
 //
+// SIZING A BIG SLOT. An image card is capped at 2:3 portrait
+// (CommunityImageCard), so the tallest card a slot can ever be dealt is
+// width x 1.5 plus ~63px of card furniture — the name line above the frame.
+// In grid units that is:
+//
+//     rowSpan >= colSpan * 2.75 + 3
+//
+// colSpan 8 wants rowSpan 25, colSpan 6 wants 19, colSpan 5 wants 16,
+// colSpan 4 wants 14. Draw a slot shorter than that and it still renders —
+// grid-auto-rows is minmax(row, auto), so the card simply expands the rows it
+// sits in and pushes everything below it down the page. It is not a break, it
+// is the drawing quietly stopping being the drawing. `?grid` shows this
+// directly: the red box is the 2:3 ceiling and the grey box is the slot, so
+// any red overflowing grey is a slot that will move when the wrong card lands
+// in it.
+//
 // Four rules when editing. The first three are checked at build time and will
 // fail the build; the fourth is on you:
 //   1. No two slots share a `rowStart`.
@@ -82,23 +98,31 @@ interface Slot {
 }
 
 const COLUMNS = 24;
-const TILE_ROWS = 84;
+const TILE_ROWS = 200;
 
 const TILE: Slot[] = [
-  { colStart: 1, colSpan: 8, rowStart: 1, rowSpan: 24, kind: "big" },
-  { colStart: 18, colSpan: 7, rowStart: 7, rowSpan: 24, kind: "big" },
-  { colStart: 11, colSpan: 6, rowStart: 14, rowSpan: 24, kind: "big" },
+  { colStart: 3, colSpan: 8, rowStart: 1, rowSpan: 12, kind: "big" },
+  { colStart: 18, colSpan: 6, rowStart: 6, rowSpan: 14, kind: "big" },
+  { colStart: 6, colSpan: 6, rowStart: 19, rowSpan: 16, kind: "big" },
+  { colStart: 19, colSpan: 6, rowStart: 24, rowSpan: 16, kind: "big" },
+  { colStart: 1, colSpan: 6, rowStart: 39, rowSpan: 16, kind: "big" },
+  { colStart: 11, colSpan: 4, rowStart: 46, rowSpan: 12, kind: "big" },
+  { colStart: 19, colSpan: 5, rowStart: 53, rowSpan: 16, kind: "big" },
+  { colStart: 4, colSpan: 6, rowStart: 62, rowSpan: 16, kind: "big" },
+  { colStart: 21, colSpan: 3, rowStart: 72, rowSpan: 8, kind: "small" },
+  { colStart: 1, colSpan: 3, rowStart: 76, rowSpan: 16, kind: "small" },
+  { colStart: 12, colSpan: 6, rowStart: 83, rowSpan: 16, kind: "big" },
   // The three small slots sit close together on purpose. They are the only
   // slots a text-only directory can fill, and spreading them down the tile the
   // way the big ones are spread would render prod's 21 typographic cards as a
   // single-file ribbon. Grouped, they still stagger by 5 rows (150px) and they
   // use the page's full width.
-  { colStart: 2, colSpan: 4, rowStart: 30, rowSpan: 10, kind: "small" },
+  /*   { colStart: 2, colSpan: 4, rowStart: 30, rowSpan: 10, kind: "small" },
   { colStart: 20, colSpan: 4, rowStart: 35, rowSpan: 10, kind: "small" },
   { colStart: 12, colSpan: 3, rowStart: 40, rowSpan: 10, kind: "small" },
   { colStart: 3, colSpan: 6, rowStart: 45, rowSpan: 24, kind: "big" },
   { colStart: 17, colSpan: 7, rowStart: 51, rowSpan: 24, kind: "big" },
-  { colStart: 10, colSpan: 6, rowStart: 58, rowSpan: 24, kind: "big" },
+  { colStart: 10, colSpan: 6, rowStart: 58, rowSpan: 24, kind: "big" }, */
 ];
 
 /** Do two slots occupy any of the same space, given where each one's tile put it? */
@@ -248,6 +272,7 @@ const cells = slots.map((slot) => ({
           class="cgrid__cell"
           data-slot={slot.kind}
           data-row={slot.rowStart}
+          data-span={slot.rowSpan}
           data-col={`${slot.colStart}-${slot.colStart + slot.colSpan - 1}`}
           style={`--gc:${slot.colStart} / span ${slot.colSpan};--gr:${slot.rowStart} / span ${slot.rowSpan}`}
         >
@@ -354,18 +379,41 @@ const cells = slots.map((slot) => ({
     display: none;
   }
 
-  /* ?grid — outline every slot and label it with its kind and row, so the
-     table in the frontmatter can be tuned against the real page instead of by
-     arithmetic. */
+  /* ?grid — the drawing aid, for tuning the slot table against the real page
+     instead of by arithmetic. Two rectangles per slot:
+
+       OUTER, grey — the slot exactly as the table reserved it, full rowSpan.
+         The cell is align-self:start in production, so it shrinks to its card
+         and would trace the CARD rather than the slot; here and only here it
+         stretches, with an inner grid that keeps the card at its natural
+         height at the top, sitting exactly where it does in production.
+
+       INNER, red — how far a 2:3 portrait reaches at this slot's width, the
+         ceiling CommunityImageCard enforces. It starts at the top of the SLOT,
+         while the real artwork starts below the name line, so treat it as the
+         worst case plus a little. If it overflows the grey box, the slot is
+         drawn too short for the tallest card it can be dealt, and that card
+         will push every row beneath it down the page. */
   .cgrid--debug .cgrid__cell {
+    align-self: stretch;
+    display: grid;
+    align-content: start;
     outline: 1px dashed color-mix(in srgb, var(--color-dark) 30%, transparent);
-    outline-offset: 8px;
+  }
+
+  .cgrid--debug .cgrid__cell::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    aspect-ratio: 2 / 3;
+    outline: 1px dashed color-mix(in srgb, var(--color-error) 60%, transparent);
+    pointer-events: none;
   }
 
   .cgrid--debug .cgrid__cell::after {
-    content: attr(data-slot) " @ r" attr(data-row) " c" attr(data-col);
+    content: attr(data-slot) " r" attr(data-row) "+" attr(data-span) " c" attr(data-col);
     position: absolute;
-    top: -1.6rem;
+    top: -1.4rem;
     left: 0;
     font-size: 0.65rem;
     font-weight: 600;
@@ -435,6 +483,7 @@ const cells = slots.map((slot) => ({
     gc: string;
     gr: string;
     row: string;
+    span: string;
     col: string;
   }
 
@@ -443,6 +492,7 @@ const cells = slots.map((slot) => ({
       gc: cell.style.getPropertyValue("--gc"),
       gr: cell.style.getPropertyValue("--gr"),
       row: cell.dataset.row ?? "0",
+      span: cell.dataset.span ?? "",
       col: cell.dataset.col ?? "",
     };
   }
@@ -453,6 +503,7 @@ const cells = slots.map((slot) => ({
     // Kept in step with the placement so the ?grid labels stay truthful after
     // a deal, and so the row sort below reads the row the cell actually has.
     cell.dataset.row = g.row;
+    cell.dataset.span = g.span;
     cell.dataset.col = g.col;
   }
 

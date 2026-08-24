@@ -27,10 +27,23 @@ const works = await Promise.all(
       widths: [400, 800],
       format: "webp",
     }),
-  })),
+  }))
 );
 
 const frame = works[0];
+
+// Portrait artwork is capped at 2:3 (width:height). Past that the frame stops
+// following the image, and because .ccard__img is object-fit: cover the excess
+// is centre-cropped — not letterboxed, not squashed.
+//
+// The cap is a layout constraint, not a taste one. Every card sits in a slot
+// that reserved a fixed rowSpan (see CommunityGrid's slot table), and
+// grid-auto-rows is minmax(row, auto) so a card taller than its slot pushes
+// every row beneath it apart. One 1:3 image would shove the rest of the
+// drawing down the page. Bounding the tallest card bounds that.
+const MAX_PORTRAIT = 3 / 2; // height / width
+const frameHeight = Math.min(frame.height, Math.round(frame.width * MAX_PORTRAIT));
+
 const profileHref = memberHref(lang, member.slug);
 
 // Alt: the member's own caption when they wrote one, a translated fallback
@@ -51,7 +64,7 @@ const altFor = (w: (typeof works)[number]) =>
   <div class="ccard__body">
     <div
       class="ccard__frame"
-      style={`aspect-ratio:${frame.width} / ${frame.height};${frame.color ? `background:${frame.color}` : ""}`}
+      style={`aspect-ratio:${frame.width} / ${frameHeight};${frame.color ? `background:${frame.color}` : ""}`}
       transition:name={`mimg-${member.id}`}
       data-carousel
     >
