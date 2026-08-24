@@ -7,23 +7,15 @@ interface Props {
   index?: number;
 }
 
-const { member, index = 0 } = Astro.props;
+const { member } = Astro.props;
 
-// The frame keeps the FIRST image's ratio for the whole cycle; every slot is
-// object-fit: cover. If the frame resized per slot, the grid would reflow on
-// every flip.
 const frame = member.images[0];
-
-// 1, 2 or 3 — drives both the keyframe choice and the per-slot delay.
-// A one-image card is static; the CSS has no 1-slot keyframe by design.
 const slots = member.images.length;
 
-// Negative, deterministic phase so cards start mid-cycle and out of step with
-// each other. 16s over 3 slots ≈ 5.3s per image; over 2 slots, 8s — a slow
-// dwell, with a long dissolve at each handover (see the keyframes).
-// Must stay in step with --flip-cycle in the style block below.
-const CYCLE = 16;
-const phase = -((index * 2.53) % CYCLE);
+// Clicking the member opens their profile page. Only the real dataset has
+// pages generated for it (see src/pages/proto/profile/[id].astro); mock
+// members would 404, and no live page renders mocks any more.
+const profileHref = `/proto/profile/${member.id}`;
 
 // How many tags the vertical rail can carry. Real profiles hold up to seven,
 // and their tags are far longer than the mock's ("Scientific Illustration" vs
@@ -36,24 +28,23 @@ const phase = -((index * 2.53) % CYCLE);
 // ratio, so on landscape artwork even three real tags overrun the frame and get
 // clipped mid-glyph. That is a live design decision, not something this slice
 // settles.
-const RAIL_TAGS = 3;
-const railTags = member.tags.slice(0, RAIL_TAGS);
-
-// A profile that lists what it is open to is the closest thing the real data
-// has to an availability signal. Rendered as a marker rather than prose because
-// the values themselves are inconsistent ("networking", "offering", "events").
-const isOpen = (member.openTo?.length ?? 0) > 0;
 ---
 
-<article class="pcard" data-slots={slots} style={`--phase:${phase.toFixed(2)}s;--slots:${slots}`}>
-  <p class="pcard__name">{member.name}</p>
+<article class="pcard" data-slots={slots}>
+  <a class="pcard__name" href={profileHref} transition:name={`pname-${member.id}`}>{member.name}</a>
 
   <div class="pcard__body">
-    <div class="pcard__frame" style={`aspect-ratio:${frame.width} / ${frame.height}`}>
+    <div
+      class="pcard__frame"
+      style={`aspect-ratio:${frame.width} / ${frame.height}`}
+      transition:name={`pimg-${member.id}`}
+      data-carousel
+    >
       {
         member.images.map((img, i) => (
           <img
             class="pcard__img"
+            class:list={{ "pcard__img--active": i === 0 }}
             style={`--i:${i}`}
             src={img.src}
             width={img.width}
@@ -64,31 +55,37 @@ const isOpen = (member.openTo?.length ?? 0) > 0;
           />
         ))
       }
+      {/* Whole-artwork click target. A sibling of the arrows rather than a
+          wrapper, so no interactive element nests inside another; the arrows
+          sit above it on z-index and keep working. */}
+      <a class="pcard__frame-link" href={profileHref} aria-label={`View profile: ${member.name}`}></a>
+      {slots > 1 && (
+        <>
+          <button class="pcard__arrow pcard__arrow--prev" type="button" data-carousel-prev aria-label="Previous image">
+            <span aria-hidden="true">&#8592;</span>
+          </button>
+          <button class="pcard__arrow pcard__arrow--next" type="button" data-carousel-next aria-label="Next image">
+            <span aria-hidden="true">&#8594;</span>
+          </button>
+        </>
+      )}
     </div>
 
-    <ul class="pcard__tags">
-      {railTags.map((tag) => <li class="pcard__tag">{tag}</li>)}
-    </ul>
   </div>
 
   <div class="pcard__caption">
-    <span class="pcard__role">
-      {member.role}
-      {isOpen && <span class="pcard__open">open</span>}
-    </span>
-    <span class="pcard__desc">{member.description}</span>
-    <ProtoDetailPanel member={member} />
+    <div class="pcard__caption-row">
+      <span class="pcard__role">{member.role}</span>
+      <ProtoDetailPanel member={member} />
+    </div>
   </div>
 </article>
 
 <style>
   .pcard {
-    /* Mirrors CYCLE in the frontmatter — the phase offsets are computed there
-       against this number, so the two cannot be changed independently. */
-    --flip-cycle: 16s;
     display: flex;
     flex-direction: column;
-    gap: 1.3rem;
+    gap: 0.3rem;
     /* Pivot for the GSAP scale in ProtoGrid. Declared here so the effect is
        identical whoever drives the transform. Anchored at the top edge, not
        centre: the ScrollTrigger itself is keyed to the card's top ("top
@@ -101,12 +98,20 @@ const isOpen = (member.openTo?.length ?? 0) > 0;
 
   /* ── Name ─────────────────────────────────────────────── */
   .pcard__name {
+    display: block;
     margin: 0;
     font-family: "Archivo", sans-serif;
-    font-size: 0.95rem;
+    font-size: 1.2rem;
     font-weight: 700;
     letter-spacing: -0.01em;
     color: var(--color-dark);
+    text-decoration: none;
+  }
+  .pcard__name:hover,
+  .pcard__name:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
   }
 
   /* ── Image + tag rail ─────────────────────────────────── */
@@ -119,8 +124,7 @@ const isOpen = (member.openTo?.length ?? 0) > 0;
        gutter, and pin the rail into the strip absolutely. The frame is then the
        only in-flow child, so the IMAGE alone sets the body height — a long
        rail can no longer push the caption away from the image. */
-    --rail-w: calc(0.62rem + 8px);
-    padding-inline-end: calc(var(--rail-w) + 1.1rem);
+    padding-inline-end: 0;
   }
 
   .pcard__frame {
@@ -141,60 +145,84 @@ const isOpen = (member.openTo?.length ?? 0) > 0;
     height: 100%;
     object-fit: cover;
     opacity: 0;
-    /* Default is the 2-slot keyframe; 1 and 3 override below. The delay is
-       shared across every count by dividing the cycle by --slots. */
-    animation: pcard-flip-2 var(--flip-cycle) linear infinite;
-    animation-delay: calc(var(--phase) - (var(--flip-cycle) / var(--slots)) * var(--i));
+    transition: opacity 260ms ease;
   }
 
-  /* One image: nothing to flip to. Show it and stop. */
-  .pcard[data-slots="1"] .pcard__img {
-    animation: none;
+  .pcard__img--active {
     opacity: 1;
   }
 
-  .pcard[data-slots="3"] .pcard__img {
-    animation-name: pcard-flip-3;
-  }
-
-  .pcard__tags {
+  .pcard__frame-link {
     position: absolute;
-    top: 0;
-    inset-inline-end: 0;
-    max-height: 100%;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
+    inset: 0;
   }
 
-  .pcard__tag {
-    font-family: "Archivo", sans-serif;
-    font-size: 0.62rem;
-    font-weight: 500;
-    line-height: 1;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    padding: 4px 3px;
-    color: var(--color-muted);
-    border: 1px solid var(--color-border);
+  .pcard__arrow {
+    position: absolute;
+    top: 50%;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 1.1rem;
+    height: 1.1rem;
+    padding: 0;
+    border: 0;
     border-radius: 0;
-    white-space: nowrap;
-    writing-mode: vertical-rl;
+    background: transparent;
+    color: var(--color-dark);
+    opacity: 0;
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition: opacity 180ms ease;
+  }
+  .pcard__frame:hover .pcard__arrow,
+  .pcard__arrow:focus-visible {
+    opacity: 1;
+  }
+  .pcard__arrow:hover,
+  .pcard__arrow:focus-visible {
+    color: var(--color-muted);
+  }
+  .pcard__arrow--prev {
+    left: 0.75rem;
+  }
+  .pcard__arrow--next {
+    right: 0.75rem;
   }
 
   /* ── Member caption — static, does not flip ───────────── */
   .pcard__caption {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 0.35rem;
+    padding-top: 0.15rem;
     font-family: "Archivo", sans-serif;
   }
 
+  .pcard__caption-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 0.35rem;
+  }
+
+  .pcard__caption-row :global(.pdisc) {
+    display: contents;
+  }
+
+  .pcard__caption-row :global(.pdisc__toggle) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .pcard__caption-row :global(.pdisc__body) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
   .pcard__role {
+    min-width: 0;
+    margin-top: 0.15rem;
     font-size: 0.78rem;
     font-weight: 600;
     line-height: 1.3;
@@ -251,22 +279,6 @@ const isOpen = (member.openTo?.length ?? 0) > 0;
 
      N=2 → window 50%, fade 20% (3.2s of the 16s cycle).
      N=3 → window 33.333%, fade 13.333% (2.13s). */
-  @keyframes pcard-flip-2 {
-    0% { opacity: 1; }
-    30% { opacity: 1; }
-    50% { opacity: 0; }
-    80% { opacity: 0; }
-    100% { opacity: 1; }
-  }
-
-  @keyframes pcard-flip-3 {
-    0% { opacity: 1; }
-    20% { opacity: 1; }
-    33.333% { opacity: 0; }
-    86.667% { opacity: 0; }
-    100% { opacity: 1; }
-  }
-
   /* ── Grow on approach to the top ──────────────────────── */
   /* Deliberately NOT here. The scale is driven by GSAP ScrollTrigger in
      ProtoGrid.astro, which needs the scroller and the per-column context.
@@ -286,28 +298,47 @@ const isOpen = (member.openTo?.length ?? 0) > 0;
       padding-inline-end: 0;
     }
 
-    .pcard__tags {
-      position: static;
-      flex-direction: row;
-      flex-wrap: wrap;
-      max-height: none;
-      overflow: visible;
-      gap: 6px;
-      margin-top: 1rem;
+    .pcard__arrow {
+      width: 3rem;
+      height: 3rem;
+      opacity: 1;
+      color: var(--color-dark);
     }
 
-    .pcard__tag {
-      writing-mode: horizontal-tb;
-      padding: 3px 4px;
+    .pcard__arrow--prev {
+      left: 0.5rem;
+    }
+
+    .pcard__arrow--next {
+      right: 0.5rem;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .pcard[data-slots] .pcard__img {
-      animation: none;
-    }
-    .pcard__img:first-of-type {
-      opacity: 1;
+    .pcard__img {
+      transition: none;
     }
   }
 </style>
+
+<script>
+  function initCarousels() {
+    document.querySelectorAll<HTMLElement>("[data-carousel]").forEach((carousel) => {
+      if (carousel.dataset.ready) return;
+      carousel.dataset.ready = "true";
+      const images = Array.from(carousel.querySelectorAll<HTMLImageElement>(".pcard__img"));
+      let current = 0;
+
+      const show = (next: number) => {
+        current = (next + images.length) % images.length;
+        images.forEach((image, index) => image.classList.toggle("pcard__img--active", index === current));
+      };
+
+      carousel.querySelector("[data-carousel-prev]")?.addEventListener("click", () => show(current - 1));
+      carousel.querySelector("[data-carousel-next]")?.addEventListener("click", () => show(current + 1));
+    });
+  }
+
+  document.addEventListener("astro:page-load", initCarousels);
+  initCarousels();
+</script>

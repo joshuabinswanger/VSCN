@@ -7,79 +7,41 @@ interface Props {
   index?: number;
 }
 
-const { member, index = 0 } = Astro.props;
+const { member } = Astro.props;
+const hasCaption = hasDisclosableDetail(member, 0);
 
-// Same anatomy as ProtoMemberCard — name band, framed box, caption, disclosure —
-// so a member with no artwork holds the identical slot in the grid rather than
-// being demoted to a list. What changes is only what fills the frame.
-
-// With no image there is no intrinsic ratio to inherit, and a grid of uniform
-// squares among varied photographs reads as a rendering fault. Cycling a small
-// set keeps these boxes as irregular as their neighbours.
-const RATIOS = ["4 / 5", "1 / 1", "5 / 4", "3 / 4"];
-const ratio = RATIOS[index % RATIOS.length];
-
-// Compose from whatever the profile actually holds, richest first. Every one of
-// the five real text-only members lands in exactly one of these, and the
-// fallback is a role — which every member has.
-const tags = member.tags ?? [];
-const bio = member.bio?.trim() ?? "";
-const mode = tags.length > 0 ? "tags" : bio ? "bio" : "role";
-
-// A long bio would overflow the box at display size; the panel below carries the
-// full text, so the frame can show an opening without losing anything.
-const MAX_FRAME_BIO = 150;
-const framedBio =
-  bio.length > MAX_FRAME_BIO ? `${bio.slice(0, bio.lastIndexOf(" ", MAX_FRAME_BIO))}…` : bio;
-
-const isOpen = (member.openTo?.length ?? 0) > 0;
-
-// In role mode the frame already carries the role at display size. Repeating it
-// verbatim in the caption directly underneath reads as a duplication bug, so the
-// caption band is dropped entirely unless it has something else to say.
-const showCaptionRole = mode !== "role";
-const hasCaption = showCaptionRole || isOpen || hasDisclosableDetail(member);
+// Same click-through as the image card: the name opens the profile page.
+const profileHref = `/proto/profile/${member.id}`;
 ---
 
-<article class="ptcard" data-mode={mode}>
-  <p class="ptcard__name">{member.name}</p>
-
-  <div class="ptcard__frame" style={`aspect-ratio:${ratio}`}>
-    {
-      mode === "tags" && (
-        <ul class="ptcard__tagset">
-          {tags.map((t) => (
-            <li class="ptcard__tagline">{t}</li>
-          ))}
-        </ul>
-      )
-    }
-
-    {mode === "bio" && <p class="ptcard__quote">{framedBio}</p>}
-
-    {mode === "role" && <p class="ptcard__bigrole">{member.role}</p>}
-  </div>
-
+<article class="ptcard">
   {
     hasCaption && (
       <div class="ptcard__caption">
-        {(showCaptionRole || isOpen) && (
-          <span class="ptcard__role">
-            {showCaptionRole && member.role}
-            {isOpen && <span class="ptcard__open">open</span>}
-          </span>
-        )}
-        <ProtoDetailPanel member={member} />
+        <div class="ptcard__name-row">
+          <div class="ptcard__identity">
+            <a class="ptcard__name" href={profileHref} transition:name={`pname-${member.id}`}>
+              {member.name}
+            </a>
+            <span class="ptcard__role">{member.role}</span>
+          </div>
+          <ProtoDetailPanel member={member} />
+        </div>
       </div>
     )
   }
+  {!hasCaption && (
+    <a class="ptcard__name" href={profileHref} transition:name={`pname-${member.id}`}>
+      {member.name}
+    </a>
+  )}
 </article>
 
 <style>
   .ptcard {
     display: flex;
     flex-direction: column;
-    gap: 1.3rem;
+    gap: 0.2rem;
     /* Matches ProtoMemberCard so the GSAP scale in ProtoGrid pivots identically
        whichever card type a lane happens to hold — see that file for why the
        origin is top, not centre. */
@@ -88,12 +50,20 @@ const hasCaption = showCaptionRole || isOpen || hasDisclosableDetail(member);
 
   /* Name band — identical to the image card's, on purpose. */
   .ptcard__name {
+    display: block;
     margin: 0;
     font-family: "Archivo", sans-serif;
-    font-size: 0.95rem;
+    font-size: 1.2rem;
     font-weight: 700;
     letter-spacing: -0.01em;
     color: var(--color-dark);
+    text-decoration: none;
+  }
+  .ptcard__name:hover,
+  .ptcard__name:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
   }
 
   .ptcard__frame {
@@ -167,8 +137,43 @@ const hasCaption = showCaptionRole || isOpen || hasDisclosableDetail(member);
   .ptcard__caption {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 0.35rem;
     font-family: "Archivo", sans-serif;
+  }
+
+  .ptcard__name-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 0.35rem;
+  }
+
+  .ptcard__identity {
+    min-width: 0;
+  }
+
+  .ptcard__name-row :global(.pdisc) {
+    display: contents;
+  }
+
+  .ptcard__name-row :global(.pdisc__toggle) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .ptcard__name-row :global(.pdisc__body) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .ptcard__role {
+    display: block;
+    margin-top: 0.2rem;
+    min-width: 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.1;
+    color: var(--color-dark);
   }
 
   .ptcard__role {

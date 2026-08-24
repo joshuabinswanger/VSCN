@@ -1,5 +1,6 @@
 ---
 import { hasDisclosableDetail, type ProtoCardMember } from "../../lib/proto-data.ts";
+import { href, socialLinks } from "../../lib/proto-links.ts";
 
 interface Props {
   member: ProtoCardMember;
@@ -13,90 +14,67 @@ const { member } = Astro.props;
 // precedent). A disclosure element needs none of that, and comes with keyboard
 // and screen-reader behaviour already correct.
 
-/**
- * Real `portfolio` values are stored without a scheme ("quaint.ch",
- * "www.ikonaut.ch"), so they need one to be a usable href. Anything that
- * already has a scheme is left exactly as stored — including the one malformed
- * value in the data ("https://.instagram.com/…"), which should visibly fail
- * here rather than be silently repaired in the view layer.
- */
-function href(raw: string): string {
-  return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-}
-
-/**
- * `socialMedia` is free text, not a URL field: it holds bare handles
- * ("compostdiv4"), comma-joined pairs, and full URLs. Only linkify what
- * actually looks like a single link.
- */
-function isLinkable(raw: string): boolean {
-  return !raw.includes(",") && !raw.includes(" ") && /\./.test(raw) && !raw.startsWith("@");
-}
-
-/**
- * `socialMedia` is Instagram for every real profile so far, and the raw
- * value is a full URL (often with a tracking query string) that's noisy
- * next to the plain-text `portfolio` link. Label it, don't display it.
- */
-function linkLabel(raw: string): string {
-  return /(^|\.)instagram\.com/i.test(raw) ? "instagram" : raw;
-}
+// The href / socialLinks rules live in src/lib/proto-links.ts —
+// the profile page needs identical treatment of the same messy fields.
 
 const bio = member.bio?.trim() ?? "";
 const portfolio = member.portfolio?.trim() ?? "";
 const social = member.socialMedia?.trim() ?? "";
+const description = member.description?.trim() ?? "";
 const tags = member.tags ?? [];
 
 // Nothing to disclose — mock members, and real profiles that are name + role
 // only. Rendering an empty toggle would promise content that isn't there.
-const hasDetail = hasDisclosableDetail(member);
+const hasDetail = hasDisclosableDetail(member, 0);
 ---
 
 {
   hasDetail && (
     <details class="pdisc">
-      <summary class="pdisc__toggle">
-        <span class="pdisc__label">Profile</span>
-      </summary>
+      <summary class="pdisc__toggle" aria-label="Expand profile"></summary>
 
       <div class="pdisc__body">
-        {bio && <p class="pdisc__bio">{bio}</p>}
+        <div class="pdisc__body-inner">
+          {description && <p class="pdisc__bio">{description}</p>}
+          {bio && <p class="pdisc__bio">{bio}</p>}
 
-        {tags.length > 0 && (
-          <div class="pdisc__row">
-            <span class="pdisc__key">Tags</span>
-            <ul class="pdisc__vals">
-              {tags.map((t) => (
-                <li class="pdisc__val">{t}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+          {tags.length > 0 && (
+            <div class="pdisc__row">
+              <span class="pdisc__key">Tags</span>
+              <ul class="pdisc__vals">
+                {tags.map((t) => (
+                  <li class="pdisc__val">{t}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-        {(portfolio || social) && (
-          <div class="pdisc__row">
-            <span class="pdisc__key">Elsewhere</span>
-            <ul class="pdisc__vals pdisc__vals--links">
-              {portfolio && (
-                <li>
-                  <a class="pdisc__link" href={href(portfolio)} target="_blank" rel="noopener noreferrer">
-                    {portfolio}
-                  </a>
-                </li>
-              )}
-              {social &&
-                (isLinkable(social) ? (
+          {(portfolio || social) && (
+            <div class="pdisc__row">
+              <span class="pdisc__key">Elsewhere</span>
+              <ul class="pdisc__vals pdisc__vals--links">
+                {portfolio && (
                   <li>
-                    <a class="pdisc__link" href={href(social)} target="_blank" rel="noopener noreferrer">
-                      {linkLabel(social)}
+                    <a class="pdisc__link" href={href(portfolio)} target="_blank" rel="noopener noreferrer">
+                      {portfolio}
                     </a>
                   </li>
-                ) : (
-                  <li class="pdisc__val">{social}</li>
-                ))}
-            </ul>
-          </div>
-        )}
+                )}
+                {socialLinks(social).map((s) =>
+                  s.href ? (
+                    <li>
+                      <a class="pdisc__link" href={s.href} target="_blank" rel="noopener noreferrer">
+                        {s.label}
+                      </a>
+                    </li>
+                  ) : (
+                    <li class="pdisc__val">{s.label}</li>
+                  ),
+                )}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
     </details>
   )
@@ -112,48 +90,63 @@ const hasDetail = hasDisclosableDetail(member);
        sit on the correct side and use the type scale. */
     list-style: none;
     cursor: pointer;
-    display: inline-flex;
+    display: flex;
     align-items: baseline;
-    gap: 0.4rem;
+    width: 1rem;
+    flex: 0 0 1rem;
+    justify-content: center;
     padding: 0;
     color: var(--color-muted);
   }
   .pdisc__toggle::-webkit-details-marker {
     display: none;
   }
-
-  .pdisc__label {
-    font-size: 0.62rem;
-    font-weight: 500;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+  .pdisc__toggle::marker {
+    content: "";
   }
 
-  /* Drawn marker. Square, to match the card's no-radius rule. */
-  .pdisc__label::before {
-    content: "+";
-    display: inline-block;
-    width: 0.75rem;
-    font-weight: 600;
+  .pdisc__toggle::after {
+    content: "";
+    width: 0.45rem;
+    height: 0.45rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg) translateY(-0.12rem);
+    transition: transform 320ms ease;
   }
-  .pdisc[open] .pdisc__label::before {
-    content: "–";
+  .pdisc[open] .pdisc__toggle::after {
+    transform: rotate(225deg) translate(-0.08rem, -0.08rem);
   }
 
-  .pdisc__toggle:hover .pdisc__label,
-  .pdisc__toggle:focus-visible .pdisc__label {
+  .pdisc__toggle:focus-visible {
     color: var(--color-dark);
   }
 
   .pdisc__body {
+    margin-top: 0.55rem;
     display: flex;
     flex-direction: column;
     gap: 0.85rem;
-    /* A rule rather than a box: the card is a set of stacked bands, and a
-       filled panel would read as a different component. */
-    margin-top: 0.7rem;
-    padding-top: 0.7rem;
-    border-top: 1px solid var(--color-border);
+  }
+
+  /* Animate the native details content while keeping the rule attached to the
+     full disclosure, so it moves down as the profile opens. */
+  .pdisc {
+    interpolate-size: allow-keywords;
+  }
+  .pdisc::details-content {
+    block-size: 0;
+    content-visibility: hidden;
+    overflow: hidden;
+    transition: block-size 320ms ease, content-visibility 320ms allow-discrete;
+  }
+  .pdisc[open]::details-content {
+    block-size: auto;
+    content-visibility: visible;
+  }
+
+  .pdisc__body-inner {
+    min-height: 0;
   }
 
   .pdisc__bio {

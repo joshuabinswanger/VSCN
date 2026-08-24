@@ -21,7 +21,10 @@ const { members, cols = 3 } = Astro.props;
 // wants either a masonry grid or an ordered single column. Noted in the plan's
 // out-of-scope list.
 const columns: ProtoCardMember[][] = Array.from({ length: cols }, () => []);
-members.forEach((m, i) => columns[i % cols].push(m));
+const orderedMembers = [...members].sort(
+  (a, b) => Number(b.images.length > 0) - Number(a.images.length > 0),
+);
+orderedMembers.forEach((m, i) => columns[i % cols].push(m));
 
 // The grid underneath is a fine 24-column base, and each lane SPANS an unequal
 // number of those columns. That is what makes the lanes off-square without any
@@ -39,7 +42,7 @@ const base = spans.reduce((a, b) => a + b, 0);
 
 // Lane head starts. Deliberately not a linear multiple, so the rhythm reads as
 // irregular rather than mechanical.
-const LANE_TOPS = ["0rem", "15rem", "6rem", "20rem"];
+const LANE_TOPS = ["0rem", "22rem", "10rem", "30rem"];
 
 // Deterministic irregularity, expressed entirely in LAYOUT rather than in
 // transforms. `cw` is the card's width as a fraction of its lane's card basis,
@@ -74,13 +77,13 @@ const LANE_TOPS = ["0rem", "15rem", "6rem", "20rem"];
 const TIER_VARIANTS: Record<ProtoCardTier, { cw: number; ax: number; my: string }[]> = {
   large: [
     { cw: 1, ax: 0, my: "0rem" },
-    { cw: 0.82, ax: 1, my: "3.5rem" },
-    { cw: 0.9, ax: 0.35, my: "1rem" },
-    { cw: 0.72, ax: 1, my: "5.5rem" },
+    { cw: 0.86, ax: 1, my: "3.5rem" },
+    { cw: 0.92, ax: 0.35, my: "1rem" },
+    { cw: 0.8, ax: 1, my: "5.5rem" },
     { cw: 1, ax: 1, my: "2rem" },
-    { cw: 0.86, ax: 0.15, my: "0rem" },
-    { cw: 0.76, ax: 0.62, my: "4rem" },
-    { cw: 0.94, ax: 0.85, my: "1.5rem" },
+    { cw: 0.9, ax: 0.15, my: "0rem" },
+    { cw: 0.82, ax: 0.62, my: "4rem" },
+    { cw: 0.96, ax: 0.85, my: "1.5rem" },
   ],
   medium: [
     { cw: 0.66, ax: 0.2, my: "2rem" },
@@ -136,9 +139,11 @@ const TIER_VARIANTS: Record<ProtoCardTier, { cw: number; ax: number; my: string 
   .pgrid {
     /* Horizontal gutter between lanes, and the vertical rhythm inside one. */
     --pgap-x: 4.5rem;
-    --pgap-y: 13rem;
-    /* Ceiling on the artwork itself, independent of how wide the shell goes. */
-    --card-max: 26rem;
+    --pgap-y: 20rem;
+    /* Ceiling on the artwork itself, independent of how wide the shell goes.
+       The artwork carries dense scientific detail, so the cap sits high enough
+       to read it — whitespace comes from the gaps, not from shrinking cards. */
+    --card-max: 30rem;
     display: grid;
     /* The base grid carries NO column-gap. With 24 tracks a 4.5rem gap would
        spend more of the page on gutters than on cards. The gutter is a lane's
@@ -190,7 +195,7 @@ const TIER_VARIANTS: Record<ProtoCardTier, { cw: number; ax: number; my: string 
   @media (--bp-mobile) {
     .pgrid {
       --pgap-x: 2.25rem;
-      --pgap-y: 7rem;
+      --pgap-y: 8.5rem;
       display: block;
       columns: 2;
       column-gap: var(--pgap-x);
