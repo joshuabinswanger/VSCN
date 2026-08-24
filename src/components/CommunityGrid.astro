@@ -37,56 +37,110 @@ const memberLabel = members.length === 1 ? t("community.member") : t("community.
 
 // ── The hand-authored grid ────────────────────────────────────────────────
 //
-// Three columns on a fine row grid. Every slot names the column it sits in,
-// the row it starts on, how many rows it reserves, its width as a fraction of
-// the column, and where in its own slack it sits (0 flush left, 1 flush
-// right). The tile repeats down the page until the members run out.
+// A 24-column placement grid with NO column gap. Every slot is a rectangle:
+// where it starts and how big it is, in both axes. `colStart`/`colSpan` are
+// columns, `row`/`span` are rhythm units (`--cgrid-row`, 2rem = 30px on
+// desktop). The tile repeats down the page until the members run out.
 //
-// Rows are rhythm units (`--cgrid-row`, 2rem = 30px on desktop), NOT card
-// heights. `span` is the space a slot reserves: the card sits at the top of it
-// and the remainder is the whitespace below. The numbers are sized against the
-// real directory measured at 1440px — a full-column image card runs 297–594px
-// tall (median ~400) and a typographic card 63–285px (median ~107) — so span
-// 24 (720px) leaves a big card 130–420px of air, and span 10 (300px) leaves a
-// small one 15–240px.
+// Gutters are part of the drawing, not a CSS value. A column nothing occupies
+// IS the gutter, so the air between two cards can differ down the page instead
+// of being one global number — which is what the old `--pgap-x` forced, and
+// what `w`/`ax` were working around when the layout only had three fixed lanes
+// to place things in.
 //
-// Three rules when editing this table:
-//   1. No two slots share a `row`. That is the whole point of authoring it.
-//   2. Within one column, a slot must end (`row + span`) before the next slot
-//      in that column starts — including across the tile seam, where the last
-//      slot in a column must end before TILE_ROWS + its first slot's row.
-//   3. Leave no band where all three columns are empty, or the page has a hole
-//      in it. Bands that open because a slot's card ran out are closed
-//      automatically; bands you author are not.
+// Widths: the grid is capped at --grid-max, so a column is a stable ~55px on
+// any viewport wide enough, and a span reads directly as a width — 8 columns
+// is 440px, 6 is 330, 3 is 165. That cap is also what keeps the artwork from
+// growing without limit on a wide screen, the job `--card-max` used to do.
+//
+// `span` is the space a slot reserves, not the card's height: the card sits at
+// the top and the rest is the whitespace below. The numbers are sized against
+// the real directory measured at 1440px — an image card runs 0.75–1.5x its own
+// width tall (median 1.0) and a typographic card 0.16–0.72 (median 0.27) — so
+// span 24 (720px) leaves a 440px-wide image card 130–390px of air, and span 10
+// (300px) leaves a 220px-wide text card 140–265px.
+//
+// Four rules when editing. The first three are checked at build time and will
+// fail the build; the fourth is on you:
+//   1. No two slots share a `row`.
+//   2. No two slots overlap as rectangles — including against the NEXT tile's
+//      copies, because the tile repeats and the seam is as real as the inside.
+//      Three lanes used to make this impossible; a free grid does not.
+//   3. Slots stay inside the 24 columns.
+//   4. Leave no band where every column is empty, or the page has a hole in
+//      it, and leave at least one empty column between two slots that share
+//      rows or their cards will touch. Bands that open up because a slot's
+//      card ran out are closed automatically; ones you author are not.
 type SlotKind = "big" | "small";
 
 interface Slot {
-  col: 1 | 2 | 3;
+  colStart: number;
+  colSpan: number;
   row: number;
   span: number;
-  w: number;
-  ax: number;
   kind: SlotKind;
 }
 
+const COLUMNS = 24;
 const TILE_ROWS = 84;
 
 const TILE: Slot[] = [
-  { col: 1, row: 1, span: 24, w: 1.0, ax: 0, kind: "big" },
-  { col: 3, row: 7, span: 24, w: 0.86, ax: 1, kind: "big" },
-  { col: 2, row: 14, span: 24, w: 0.94, ax: 0.35, kind: "big" },
+  { colStart: 1, colSpan: 8, row: 1, span: 24, kind: "big" },
+  { colStart: 18, colSpan: 7, row: 7, span: 24, kind: "big" },
+  { colStart: 11, colSpan: 6, row: 14, span: 24, kind: "big" },
   // The three small slots sit close together on purpose. They are the only
   // slots a text-only directory can fill, and spreading them down the tile the
-  // way the big ones are spread would render prod's 21-typographic-cards state
-  // as a single-file ribbon three screens longer than it needs to be. Grouped,
-  // they still stagger by 5 rows (150px) but use the page's full width.
-  { col: 1, row: 30, span: 10, w: 0.5, ax: 0.15, kind: "small" },
-  { col: 3, row: 35, span: 10, w: 0.46, ax: 0.8, kind: "small" },
-  { col: 2, row: 40, span: 10, w: 0.56, ax: 1, kind: "small" },
-  { col: 1, row: 45, span: 24, w: 0.88, ax: 1, kind: "big" },
-  { col: 3, row: 51, span: 24, w: 0.96, ax: 0.1, kind: "big" },
-  { col: 2, row: 58, span: 24, w: 0.82, ax: 0.55, kind: "big" },
+  // way the big ones are spread would render prod's 21 typographic cards as a
+  // single-file ribbon. Grouped, they still stagger by 5 rows (150px) and they
+  // use the page's full width.
+  { colStart: 2, colSpan: 4, row: 30, span: 10, kind: "small" },
+  { colStart: 20, colSpan: 4, row: 35, span: 10, kind: "small" },
+  { colStart: 12, colSpan: 3, row: 40, span: 10, kind: "small" },
+  { colStart: 3, colSpan: 6, row: 45, span: 24, kind: "big" },
+  { colStart: 17, colSpan: 7, row: 51, span: 24, kind: "big" },
+  { colStart: 10, colSpan: 6, row: 58, span: 24, kind: "big" },
 ];
+
+/** Do two slots occupy any of the same space, given where each one's tile put it? */
+function slotsOverlap(a: Slot, aRow: number, b: Slot, bRow: number): boolean {
+  const rows = aRow < bRow + b.span && bRow < aRow + a.span;
+  const cols = a.colStart < b.colStart + b.colSpan && b.colStart < a.colStart + a.colSpan;
+  return rows && cols;
+}
+
+// Validated once, here, because nothing downstream can catch it: an overlapping
+// table renders as cards stacked on top of each other, and the runtime pass
+// that used to measure and separate them is gone on purpose. Failing the build
+// is the right severity — the page would be broken, not merely ugly.
+for (const [i, a] of TILE.entries()) {
+  if (a.colStart < 1 || a.colStart + a.colSpan - 1 > COLUMNS) {
+    throw new Error(
+      `CommunityGrid: slot ${i} spans columns ${a.colStart}–${a.colStart + a.colSpan - 1}, ` +
+        `outside the ${COLUMNS}-column grid.`
+    );
+  }
+  for (const [j, b] of TILE.entries()) {
+    if (i < j && a.row === b.row) {
+      throw new Error(
+        `CommunityGrid: slots ${i} and ${j} both start on row ${a.row}. ` +
+          `Two cards starting at the same height is the one thing this table exists to prevent.`
+      );
+    }
+    if (i < j && slotsOverlap(a, a.row, b, b.row)) {
+      throw new Error(
+        `CommunityGrid: slots ${i} (rows ${a.row}–${a.row + a.span - 1}, cols ` +
+          `${a.colStart}–${a.colStart + a.colSpan - 1}) and ${j} (rows ${b.row}–${b.row + b.span - 1}, ` +
+          `cols ${b.colStart}–${b.colStart + b.colSpan - 1}) overlap.`
+      );
+    }
+    if (slotsOverlap(a, a.row, b, b.row + TILE_ROWS)) {
+      throw new Error(
+        `CommunityGrid: slot ${i} overlaps slot ${j} of the following tile. ` +
+          `Either shorten it or raise TILE_ROWS (currently ${TILE_ROWS}).`
+      );
+    }
+  }
+}
 
 // How much empty vertical band to tolerate before closing it up. Only bands
 // where ALL columns are empty count, and only ones the deal created — a slot
@@ -152,7 +206,7 @@ function layOutSlots(bigCards: number, smallCards: number): Slot[] {
   for (let i = 0; i < big + small; i++) {
     const kind: SlotKind = i < big ? "big" : "small";
     const span = kind === "big" ? 24 : 10;
-    placed.push({ col: ((i % 3) + 1) as 1 | 2 | 3, row: overflowRow, span, w: 0.9, ax: 0, kind });
+    placed.push({ colStart: 1 + (i % 3) * 8, colSpan: 7, row: overflowRow, span, kind });
     overflowRow += span + 4;
   }
 
@@ -194,7 +248,8 @@ const cells = slots.map((slot) => ({
           class="cgrid__cell"
           data-slot={slot.kind}
           data-row={slot.row}
-          style={`--gc:${slot.col};--gr:${slot.row} / span ${slot.span};--cw:${slot.w};--ax:${slot.ax}`}
+          data-col={`${slot.colStart}-${slot.colStart + slot.colSpan - 1}`}
+          style={`--gc:${slot.colStart} / span ${slot.colSpan};--gr:${slot.row} / span ${slot.span}`}
         >
           {slot.kind === "big" ? (
             <CommunityImageCard member={member} lang={lang} />
@@ -252,20 +307,22 @@ const cells = slots.map((slot) => ({
 
   /* ── The grid ─────────────────────────────────────────── */
   .cgrid {
-    /* Horizontal gutter between columns. */
-    --pgap-x: 4.5rem;
     /* One rhythm unit. Every `row` and `span` in the slot table is counted in
        these, so this is the single knob that scales the page's whole vertical
        breathing without touching the drawing. */
     --cgrid-row: 2rem;
-    /* Ceiling on the artwork itself, independent of how wide the shell goes.
-       The artwork carries dense scientific detail, so the cap sits high
-       enough to read it — whitespace comes from the slots, not from shrinking
-       cards. */
-    --card-max: 30rem;
+    /* Ceiling on the grid, and so on a column: ~55px wherever the viewport
+       allows it, which is what makes a colSpan read as a fixed width and keeps
+       the artwork from growing without limit on a wide screen. A wider shell
+       buys whitespace to the right rather than bigger images — the job
+       --card-max used to do per card, done once here instead. */
+    --grid-max: 88rem;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    column-gap: var(--pgap-x);
+    grid-template-columns: repeat(24, minmax(0, 1fr));
+    /* No gap: gutters are columns the table leaves empty, so they can vary
+       down the page. See the slot table's rule 4. */
+    column-gap: 0;
+    width: min(100%, var(--grid-max));
     /* minmax, not a flat --cgrid-row: a card taller than the rows its slot
        reserved has to be able to push the rows below it apart. On a fixed
        track it would overflow its slot and overlap the next card instead.
@@ -277,21 +334,15 @@ const cells = slots.map((slot) => ({
 
   .cgrid__cell {
     min-width: 0;
+    /* The slot IS the placement: a column range and a row range, nothing else.
+       Width used to be a fraction of a lane plus an offset within it, which is
+       what three fixed lanes forced — a span says it directly. */
     grid-column: var(--gc);
     grid-row: var(--gr);
     /* The card sits at the TOP of the rows its slot reserved and the rest of
        the span is the whitespace beneath it. Without this the cell stretches
        to fill the span and takes the card with it. */
     align-self: start;
-    /* The basis is the column, or --card-max where the column is wider than
-       the artwork should ever be. The card is a fraction OF that, so a wider
-       shell buys whitespace rather than bigger images. */
-    --cardw: calc(var(--cw) * min(100%, var(--card-max)));
-    width: var(--cardw);
-    /* Distribute the card's own slack: at --ax 1 the card lands flush on the
-       column's right edge whatever the cap did to its width, and it can never
-       exceed the column. */
-    margin-inline-start: calc(var(--ax) * (100% - var(--cardw)));
     /* Anchor for the debug label below; harmless otherwise. */
     position: relative;
   }
@@ -312,7 +363,7 @@ const cells = slots.map((slot) => ({
   }
 
   .cgrid--debug .cgrid__cell::after {
-    content: attr(data-slot) " @ " attr(data-row);
+    content: attr(data-slot) " @ r" attr(data-row) " c" attr(data-col);
     position: absolute;
     top: -1.6rem;
     left: 0;
@@ -326,14 +377,14 @@ const cells = slots.map((slot) => ({
 
   @media (--bp-mobile) {
     .cgrid {
-      --pgap-x: 2.25rem;
       --pgap-y: 12rem;
       /* The slot table is a desktop drawing — two narrow columns have no room
          for it. Mobile falls back to the multicol stack, which packs by height
          and needs no placement at all; the grid properties go inert. */
       display: block;
       columns: 2;
-      column-gap: var(--pgap-x);
+      column-gap: 2.25rem;
+      width: auto;
       padding-block: 2rem 10rem;
     }
     .cgrid__cell {
@@ -342,11 +393,8 @@ const cells = slots.map((slot) => ({
          these are the real properties, so a stylesheet rule can still win. */
       grid-column: auto;
       grid-row: auto;
-      /* The column is already narrower than --card-max, so the cap and the
-         width fraction are off here. Two narrow columns have no room for
-         irregularity — the offset look comes free from varied card heights. */
-      width: 100%;
-      margin-inline-start: 0;
+      /* Two narrow columns have no room for the drawing's irregularity — the
+         offset look comes free from varied card heights. */
       margin-bottom: var(--pgap-y);
       break-inside: avoid;
     }
@@ -386,27 +434,26 @@ const cells = slots.map((slot) => ({
   interface Geometry {
     gc: string;
     gr: string;
-    cw: string;
-    ax: string;
     row: string;
+    col: string;
   }
 
   function readGeometry(cell: HTMLElement): Geometry {
     return {
       gc: cell.style.getPropertyValue("--gc"),
       gr: cell.style.getPropertyValue("--gr"),
-      cw: cell.style.getPropertyValue("--cw"),
-      ax: cell.style.getPropertyValue("--ax"),
       row: cell.dataset.row ?? "0",
+      col: cell.dataset.col ?? "",
     };
   }
 
   function writeGeometry(cell: HTMLElement, g: Geometry) {
     cell.style.setProperty("--gc", g.gc);
     cell.style.setProperty("--gr", g.gr);
-    cell.style.setProperty("--cw", g.cw);
-    cell.style.setProperty("--ax", g.ax);
+    // Kept in step with the placement so the ?grid labels stay truthful after
+    // a deal, and so the row sort below reads the row the cell actually has.
     cell.dataset.row = g.row;
+    cell.dataset.col = g.col;
   }
 
   function dealSlots(grid: HTMLElement) {
