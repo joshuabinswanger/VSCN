@@ -148,6 +148,17 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.note.phone":
       "Hidden from the community page. Used only to help create a VSCN chat group.",
     "profile.cardPreview": "Community card preview",
+    "profile.mode.edit": "Edit",
+    "profile.mode.preview": "Preview",
+    "profile.view.heading": "Your profile page",
+    "profile.view.note": "How your profile looks to visitors. Unsaved changes are included.",
+    "profile.view.directoryHeading": "In the directory",
+    "profile.view.tags": "Tags",
+    "profile.view.elsewhere": "Elsewhere",
+    "profile.view.openTo": "Open to",
+    "profile.view.noWorks":
+      "No images yet. Add work in the gallery field and it will appear here.",
+    "profile.view.defaultName": "Your name",
     "profile.saveMsg": "Changes saved. Your community card will update within a few minutes.",
     "profile.logout": "Log Out",
     "profile.save": "Save Changes",
@@ -385,6 +396,18 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.note.phone":
       "Nicht auf der Community-Seite sichtbar. Nur zur Erstellung einer VSCN-Chat-Gruppe.",
     "profile.cardPreview": "Community-Karten-Vorschau",
+    "profile.mode.edit": "Bearbeiten",
+    "profile.mode.preview": "Vorschau",
+    "profile.view.heading": "Deine Profilseite",
+    "profile.view.note":
+      "So sehen Besucher dein Profil. Nicht gespeicherte Änderungen sind enthalten.",
+    "profile.view.directoryHeading": "Im Verzeichnis",
+    "profile.view.tags": "Tags",
+    "profile.view.elsewhere": "Weitere Links",
+    "profile.view.openTo": "Offen für",
+    "profile.view.noWorks":
+      "Noch keine Bilder. Füge Arbeiten im Galerie-Feld hinzu, dann erscheinen sie hier.",
+    "profile.view.defaultName": "Dein Name",
     "profile.saveMsg":
       "Änderungen gespeichert. Deine Community-Karte wird innerhalb weniger Minuten aktualisiert.",
     "profile.logout": "Abmelden",

@@ -1,6 +1,7 @@
 ---
 import MemberCard from "./MemberCard.astro";
 import MemberTypeSelector from "./MemberTypeSelector.astro";
+import ProfileViewPreview from "./ProfileViewPreview.astro";
 import OpenToSelector from "./OpenToSelector.astro";
 import TagSelector from "./TagSelector.astro";
 import { useTranslations } from "../i18n/utils";
@@ -16,6 +17,18 @@ const t = useTranslations(lang);
 <div id="loading" class="loading-state">{t("profile.loading")}</div>
 
 <form id="profile-form" class="profile-form" data-lang={lang}>
+  {/* Edit / Preview on one page. Preview needs no save and no rebuild, which
+      matters because the real profile page is a build-time snapshot: saving
+      alone would not show the member their own change for minutes. */}
+  <div class="view-toggle" role="group" id="view-toggle">
+    <button type="button" class="view-toggle__btn is-active" data-mode="edit" aria-pressed="true">
+      {t("profile.mode.edit")}
+    </button>
+    <button type="button" class="view-toggle__btn" data-mode="preview" aria-pressed="false">
+      {t("profile.mode.preview")}
+    </button>
+  </div>
+
   <div class="avatar-wrap">
     <div class="avatar-image">
       <img id="avatar-preview" src="" alt="" class="avatar-img" />
@@ -89,6 +102,14 @@ const t = useTranslations(lang);
     <p class="field-note">{t("profile.active.note")}</p>
   </div>
 
+  <div class="field">
+    <label class="checkbox-label" for="wants-to-contribute">
+      <input id="wants-to-contribute" type="checkbox" />
+      <span>{t("profile.wantsToContribute")}</span>
+    </label>
+    <p class="field-note">{t("profile.wantsToContribute.note")}</p>
+  </div>
+
   <OpenToSelector lang={lang} />
 
   <fieldset class="target-audience-field">
@@ -143,9 +164,24 @@ const t = useTranslations(lang);
     </p>
   </div>
 
+  {/* Only rendered in preview mode. Both representations sit here together so
+      they are comparable, and so the form itself stays a form.
+
+      The profile page comes first: it is the artefact the member is actually
+      building. The directory card is the smaller, secondary view of the same
+      data — still MemberCard today because that is what /community renders;
+      it is replaced by the image card when the directory switches over. */}
   <div class="preview-section">
-    <p class="label">{t("profile.cardPreview")}</p>
-    <MemberCard preview lang={lang} />
+    <div class="preview-block">
+      <p class="label">{t("profile.view.heading")}</p>
+      <p class="field-note preview-note">{t("profile.view.note")}</p>
+      <ProfileViewPreview lang={lang} />
+    </div>
+
+    <div class="preview-block">
+      <p class="label">{t("profile.view.directoryHeading")}</p>
+      <MemberCard preview lang={lang} />
+    </div>
   </div>
 
   <div class="form-footer">
@@ -439,14 +475,75 @@ const t = useTranslations(lang);
     background: var(--color-error);
   }
 
+  /* ── Edit / Preview switch ────────────────────────────── */
+  .view-toggle {
+    display: inline-flex;
+    align-self: start;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .view-toggle__btn {
+    padding: 0.5rem 1.1rem;
+    background: none;
+    border: none;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--color-muted);
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      color 0.15s;
+  }
+
+  .view-toggle__btn + .view-toggle__btn {
+    border-left: 1.5px solid var(--color-border);
+  }
+
+  .view-toggle__btn:hover {
+    color: var(--color-dark);
+  }
+
+  .view-toggle__btn.is-active {
+    background: var(--color-dark);
+    color: #fff;
+  }
+
+  /* Preview mode hides the fields but keeps the switch, the previews and the
+     footer, so the member can save without switching back. Selecting by
+     exclusion rather than wrapping every field in a container: the form's
+     children are already top-level blocks, and wrapping them would mean
+     restructuring 200 lines of markup for a visibility change. */
+  .profile-form .preview-section {
+    display: none;
+  }
+
+  .profile-form.is-previewing > *:not(.view-toggle):not(.preview-section):not(.form-footer) {
+    display: none;
+  }
+
+  .profile-form.is-previewing .preview-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4rem;
+  }
+
   .preview-section {
     padding-top: 0.5rem;
-    padding-bottom: 7rem;
+    padding-bottom: 3rem;
   }
 
   .preview-section .label {
     display: block;
     margin-bottom: 0.75rem;
+  }
+
+  .preview-note {
+    margin-top: -0.4rem;
+    margin-bottom: 1.25rem;
   }
 
   .form-footer {
@@ -655,6 +752,7 @@ const t = useTranslations(lang);
   } from "../lib/gallery.ts";
   import { updateUserProfile } from "../lib/firestore.ts";
   import { openImageEditor } from "../lib/imageEditor.ts";
+  import { renderProfilePreview } from "../lib/profilePreview.ts";
   import { ui } from "../i18n/translations.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
@@ -756,6 +854,9 @@ const t = useTranslations(lang);
     const nameInput = document.getElementById("name") as HTMLInputElement;
     const roleInput = document.getElementById("role") as HTMLInputElement;
     const activeInput = document.getElementById("profile-active") as HTMLInputElement;
+    const wantsToContributeInput = document.getElementById(
+      "wants-to-contribute"
+    ) as HTMLInputElement;
     const bioInput = document.getElementById("bio") as HTMLTextAreaElement;
     const portfolioInput = document.getElementById("portfolio") as HTMLInputElement;
     const socialMediaInput = document.getElementById("social-media") as HTMLInputElement;
@@ -790,6 +891,12 @@ const t = useTranslations(lang);
     >("member-type-selector");
     const portfolioLabel = document.getElementById("portfolio-label");
 
+    // The profile-page preview shell and the Edit/Preview switch.
+    const profileViewRoot = document.querySelector<HTMLElement>(".ppv");
+    const viewToggleButtons = Array.from(
+      document.querySelectorAll<HTMLButtonElement>("#view-toggle .view-toggle__btn")
+    );
+
     let currentPhotoURL = "";
     let resizedAvatarBlob: Blob | null = null;
     let avatarColor = "";
@@ -823,6 +930,10 @@ const t = useTranslations(lang);
           return wrap;
         })
       );
+      // The gallery IS the profile page's content, so every add, removal and
+      // reorder has to reach the preview. This is the one place the gallery
+      // re-renders, which makes it the one place that needs to say so.
+      syncProfileView();
     }
 
     async function persistGallery() {
@@ -919,6 +1030,54 @@ const t = useTranslations(lang);
         s["member.showBio"]
       );
       syncBadgePreview();
+      syncProfileView();
+    }
+
+    /**
+     * The profile-page preview. Skipped entirely while the form is in edit
+     * mode — it is off-screen there, so re-rendering it on every keystroke
+     * would be work nobody can see.
+     */
+    function syncProfileView() {
+      if (!profileViewRoot || !form.classList.contains("is-previewing")) return;
+      renderProfilePreview(
+        profileViewRoot,
+        {
+          displayName: nameInput.value.trim(),
+          role: roleInput.value.trim(),
+          bio: bioInput.value.trim(),
+          tags: tagSelector?.value ?? [],
+          openTo: openToSelector?.value ?? [],
+          portfolio: portfolioInput.value.trim(),
+          socialMedia: socialMediaInput.value.trim(),
+          works: gallery.map((g) => ({
+            url: g.url,
+            width: g.width,
+            height: g.height,
+            caption: g.caption,
+            color: g.color,
+          })),
+        },
+        {
+          defaultName: s["profile.view.defaultName"],
+          tags: s["profile.view.tags"],
+          elsewhere: s["profile.view.elsewhere"],
+          openTo: s["profile.view.openTo"],
+          noWorks: s["profile.view.noWorks"],
+        }
+      );
+    }
+
+    function setMode(mode: "edit" | "preview") {
+      form.classList.toggle("is-previewing", mode === "preview");
+      viewToggleButtons.forEach((btn) => {
+        const active = btn.dataset.mode === mode;
+        btn.classList.toggle("is-active", active);
+        btn.setAttribute("aria-pressed", String(active));
+      });
+      // Render on entry, not on every keystroke behind the scenes — see
+      // syncProfileView's early return.
+      if (mode === "preview") syncProfileView();
     }
 
     function syncBadgePreview() {
@@ -942,6 +1101,19 @@ const t = useTranslations(lang);
       syncMemberTypeCopy();
       syncBadgePreview();
     });
+
+    viewToggleButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setMode(btn.dataset.mode === "preview" ? "preview" : "edit");
+      });
+    });
+
+    // Tags and openTo reach only the profile view, not the directory card, so
+    // they sync that alone. <tag-selector> dispatches a bubbling `change`;
+    // <open-to-selector> has no event of its own, but the native `change` from
+    // its checkboxes bubbles to the form just the same.
+    tagSelector?.addEventListener("change", syncProfileView);
+    openToSelector?.addEventListener("change", syncProfileView);
 
     nameInput.addEventListener("input", syncPreview);
     roleInput.addEventListener("input", syncPreview);
@@ -1024,6 +1196,7 @@ const t = useTranslations(lang);
       gallery = Array.isArray(data.gallery) ? data.gallery.slice(0, MAX_GALLERY_IMAGES) : [];
       renderGallery();
       phoneInput.value = data.phone ?? "";
+      wantsToContributeInput.checked = data.wantsToContribute ?? false;
       activeInput.checked = await getPublicProfileActive(user.uid);
       showPreview(data.photoURL ?? user.photoURL ?? "");
 
@@ -1060,6 +1233,7 @@ const t = useTranslations(lang);
             openTo: openToSelector?.value ?? [],
             primaryAudiences: getSelectedPrimaryAudiences(),
             tags: tagSelector?.value ?? [],
+            wantsToContribute: wantsToContributeInput.checked,
             phone: phoneInput.value.trim(),
             email: user.email!,
             resizedAvatarBlob,

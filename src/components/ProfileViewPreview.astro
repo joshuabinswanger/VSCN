@@ -1,0 +1,222 @@
+---
+// The member's public profile page, rendered as an empty shell that
+// renderProfilePreview() (src/lib/profilePreview.ts) fills from live form
+// state. Same design as the profile page at /proto/profile/<id>, so what the
+// editor shows and what a visitor gets are one composition rather than two
+// that have to be kept in step by hand.
+//
+// Empty on the server, filled on the client: the editor is behind auth and the
+// member's data never reaches the build, so there is nothing to render here
+// until the form has loaded.
+import { useTranslations } from "../i18n/utils";
+import type { Lang } from "../i18n/utils";
+
+interface Props {
+  lang?: Lang;
+}
+const { lang = "en" } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<section class="ppv">
+  <header class="ppv__head">
+    <h3 class="ppv__name" data-ppv="name"></h3>
+    <p class="ppv__role" data-ppv="role" hidden></p>
+    <p class="ppv__open" data-ppv="open" hidden></p>
+  </header>
+
+  <p class="ppv__bio" data-ppv="bio" hidden></p>
+
+  <div class="ppv__meta">
+    <div class="ppv__row" data-ppv="tags-row" hidden>
+      <span class="ppv__key">{t("profile.view.tags")}</span>
+      <ul class="ppv__vals" data-ppv="tags"></ul>
+    </div>
+
+    <div class="ppv__row" data-ppv="links-row" hidden>
+      <span class="ppv__key">{t("profile.view.elsewhere")}</span>
+      <ul class="ppv__vals ppv__vals--links" data-ppv="links"></ul>
+    </div>
+  </div>
+
+  <div class="ppv__works" data-ppv="works" hidden></div>
+  <p class="ppv__empty" data-ppv="works-empty" hidden></p>
+
+  {/* Cloned by the renderer. Rendered here rather than built in JS so the
+      clones inherit Astro's scope attribute and match the styles below. */}
+  <template data-ppv-tpl="val"><li class="ppv__val"></li></template>
+  <template data-ppv-tpl="link"
+    ><li><a class="ppv__link" target="_blank" rel="noopener noreferrer"></a></li></template
+  >
+  <template data-ppv-tpl="work"
+    ><figure class="ppv__work"><img class="ppv__img" alt="" decoding="async" /></figure></template
+  >
+</section>
+
+<style>
+  .ppv {
+    font-family: "Archivo", sans-serif;
+  }
+
+  /* The renderer hides empty sections with the `hidden` attribute, which the UA
+     stylesheet implements as `display: none` — and ANY author `display` beats
+     it. Several parts here are `display: flex`, so without this rule an empty
+     "Open to" or "Elsewhere" row renders as a stray heading with nothing under
+     it. Served specificity (0,4,0) against the class rules' (0,2,0), counting
+     Astro's scope attribute on every compound. */
+  .ppv [hidden] {
+    display: none;
+  }
+
+  /* ── Identity ─────────────────────────────────────────── */
+  /* The card's name band grown to page scale — same face, same tightness. */
+  .ppv__name {
+    margin: 0;
+    font-size: clamp(1.9rem, 5vw, 2.8rem);
+    font-weight: 700;
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    color: var(--color-dark);
+    overflow-wrap: anywhere;
+  }
+
+  .ppv__role {
+    margin: 0.7rem 0 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--color-dark);
+  }
+
+  /* Availability — a dot plus the words, never a bare coloured pill: the page
+     has no accent colour, and a dot alone carries no meaning to anyone who
+     cannot see it. The only round thing here, and deliberately so. */
+  .ppv__open {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0.55rem 0 0;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+  .ppv__open::before {
+    content: "";
+    flex: 0 0 auto;
+    width: 5px;
+    height: 5px;
+    background: var(--color-dark);
+    border-radius: 50%;
+  }
+
+  /* ── Bio ──────────────────────────────────────────────── */
+  .ppv__bio {
+    margin: 2rem 0 0;
+    font-size: 0.95rem;
+    font-weight: 400;
+    line-height: 1.55;
+    color: var(--color-dark);
+    white-space: pre-line;
+  }
+
+  /* ── Meta rows ────────────────────────────────────────── */
+  .ppv__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+    margin-top: 2.2rem;
+  }
+
+  .ppv__row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .ppv__key {
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .ppv__vals {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ppv__val {
+    font-size: 0.68rem;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 5px 7px;
+    color: var(--color-muted);
+    border: 1px solid var(--color-border);
+    /* Square corners throughout, as on the cards. */
+    border-radius: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .ppv__vals--links {
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .ppv__link {
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--color-dark);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    overflow-wrap: anywhere;
+  }
+  .ppv__link:hover {
+    color: var(--color-muted);
+  }
+
+  /* ── Work ─────────────────────────────────────────────── */
+  .ppv__works {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    margin-top: 3rem;
+  }
+
+  .ppv__work {
+    margin: 0;
+    border: 1.5px solid var(--color-border);
+    border-radius: 0;
+    background: var(--color-bg);
+    overflow: hidden;
+  }
+
+  .ppv__img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  /* The honest empty state. Every member has an empty gallery today, so this
+     is the common case rather than an edge one — it has to read as an
+     invitation, not as a failure. */
+  .ppv__empty {
+    margin: 3rem 0 0;
+    padding: 2rem 1.25rem;
+    border: 1.5px dashed var(--color-border);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    text-align: center;
+    color: var(--color-muted);
+  }
+</style>

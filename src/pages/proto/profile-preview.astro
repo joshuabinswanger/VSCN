@@ -1,0 +1,142 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import ProfileViewPreview from "../../components/ProfileViewPreview.astro";
+import { PROTO_REAL_MEMBERS } from "../../lib/proto-data-real.ts";
+
+// Harness for the profile-page preview that ProfileForm shows in preview mode.
+//
+// It exists because /profile is behind auth and its form only renders for a
+// signed-in user, so the preview cannot be seen — by a reviewer or by me —
+// without credentials. This page feeds the same component and the same
+// renderer from real member data, with a picker for the interesting cases:
+// a full profile, one with no artwork, and an empty one.
+//
+// It is a harness, not a feature: no Firebase, noindex, excluded from the
+// sitemap with the rest of /proto.
+const members = PROTO_REAL_MEMBERS;
+
+// Serialised for the client so the picker can re-render without a round trip.
+const cases = members.map((m) => ({
+  id: m.id,
+  label: `${m.name}${m.images.length === 0 ? " — no artwork" : ""}`,
+  view: {
+    displayName: m.name,
+    role: m.role,
+    bio: m.bio,
+    tags: m.tags,
+    openTo: m.openTo,
+    portfolio: m.portfolio,
+    socialMedia: m.socialMedia,
+    works: m.images.map((i) => ({ url: i.src, width: i.width, height: i.height })),
+  },
+}));
+
+const labels = {
+  defaultName: "Your name",
+  tags: "Tags",
+  elsewhere: "Elsewhere",
+  openTo: "Open to",
+  noWorks: "No images yet. Add work in the gallery field and it will appear here.",
+};
+---
+
+<Layout title="Profile preview harness — VSCN (prototype)" noindex={true}>
+  <div class="harness">
+    <div class="harness__bar">
+      <label class="harness__label" for="case">Member</label>
+      <select id="case" class="harness__select">
+        {cases.map((c) => <option value={c.id}>{c.label}</option>)}
+      </select>
+      <button type="button" id="blank" class="harness__btn">Empty profile</button>
+    </div>
+
+    <div class="harness__stage">
+      <ProfileViewPreview />
+    </div>
+  </div>
+
+  <script is:inline define:vars={{ cases, labels }}>
+    window.__previewCases = cases;
+    window.__previewLabels = labels;
+  </script>
+
+  <script>
+    import { renderProfilePreview } from "../../lib/profilePreview.ts";
+
+    function initHarness() {
+      const root = document.querySelector(".ppv");
+      const select = document.getElementById("case");
+      const blank = document.getElementById("blank");
+      if (!(root instanceof HTMLElement) || !(select instanceof HTMLSelectElement)) return;
+
+      const cases = window.__previewCases ?? [];
+      const labels = window.__previewLabels;
+
+      const draw = (id) => {
+        const found = cases.find((c) => c.id === id);
+        if (found) renderProfilePreview(root, found.view, labels);
+      };
+
+      select.addEventListener("change", () => draw(select.value));
+      blank?.addEventListener("click", () => {
+        renderProfilePreview(
+          root,
+          {
+            displayName: "",
+            role: "",
+            bio: "",
+            tags: [],
+            openTo: [],
+            portfolio: "",
+            socialMedia: "",
+            works: [],
+          },
+          labels,
+        );
+      });
+
+      draw(select.value);
+    }
+
+    document.addEventListener("astro:page-load", initHarness);
+  </script>
+</Layout>
+
+<style>
+  .harness {
+    padding-block: 3rem 8rem;
+  }
+
+  .harness__bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid var(--color-border);
+    font-family: "Archivo", sans-serif;
+  }
+
+  .harness__label {
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .harness__select,
+  .harness__btn {
+    font: inherit;
+    font-size: 0.78rem;
+    padding: 0.4rem 0.6rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: 0;
+    background: var(--color-bg);
+    color: var(--color-dark);
+    cursor: pointer;
+  }
+
+  .harness__stage {
+    padding-top: 3rem;
+  }
+</style>
