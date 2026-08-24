@@ -154,7 +154,7 @@ multicol (1a), shuffle within tiers (2), keep GSAP (3).
    states so each commit carries only its own keys.
 2. Gate: `npm run lint` at baseline, `npm run build` = 84 pages, sitemap check. Passed.
 
-### Phase 0.5 — make dev reviewable
+### Phase 0.5 — make dev reviewable (done 2026-08-24)
 
 3. Sync prod → dev Firestore: 7 of 21 members are missing from the dev project, so a third
    of the review emails would link to a 404 without this.
@@ -163,7 +163,7 @@ multicol (1a), shuffle within tiers (2), keep GSAP (3).
    the same shape the upload pipeline produces. Run against dev now; re-run against prod
    for approved members at launch. Dominant color computed server-side.
 
-### Phase 1 — build Release B (the directory swap)
+### Phase 1 — build Release B (the directory swap) (done 2026-08-24)
 
 5. Design-doc steps 2 → 3 → 5 → 6 under the standing decisions, each behind lint + build:
    production cards with the prototype debts cleared, multicol grid keeping
@@ -176,7 +176,17 @@ multicol (1a), shuffle within tiers (2), keep GSAP (3).
    CTA), DOM order matches visual order, no `/proto` in the sitemap after deletion,
    `contentWide` special case removed.
 
-### Phase 2 — dev deploy and authenticated verification (Josh required)
+### Phase 2 — dev deploy and authenticated verification (partly done 2026-08-24)
+
+Done: both rules files AND dev hosting are deployed (`vscn-dev-f4b60.web.app`
+serves the image-led directory with 16 seeded galleries; seeded objects serve
+200 with the immutable cache header — the old dev rules 403'd them, which is
+exactly the rules-with-frontend coupling in action). firestore.rules got a fix
+along the way: the Storage-URL allowlists hardcoded the prod bucket and would
+have rejected every avatar/gallery save on dev. PhotoSwipe was exercised
+against a real seeded gallery on the member page — opens, loads, closes.
+
+Still Josh's, needs his signed-in session on dev:
 
 8. Deploy dev hosting **and** both rules files together:
    `firebase deploy -P dev --only hosting,firestore:rules,storage:rules`.
