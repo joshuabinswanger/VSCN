@@ -117,6 +117,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.ph.role.organization": "e.g. Research Group, Institute, Museum…",
     "profile.note.role": "Shown on your card — best kept under 25 characters.",
     "profile.wantsToContribute": "I'd like to help build this community",
+    "profile.wantsToContribute.note":
+      "VSCN is still in its early stages. Tick this and we'll reach out about ways to get involved.",
     "profile.label.bio": "About you",
     "profile.ph.bio": "A short description of your work, interests, or background…",
     "profile.note.bio": "Maximum 35 words.",
@@ -371,6 +373,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.ph.role.organization": "z.B. Forschungsgruppe, Institut, Museum…",
     "profile.note.role": "Wird auf deiner Karte angezeigt — am besten unter 25 Zeichen.",
     "profile.wantsToContribute": "Ich möchte helfen, diese Community aufzubauen",
+    "profile.wantsToContribute.note":
+      "VSCN steht noch am Anfang. Setze hier ein Häkchen und wir melden uns mit Möglichkeiten, dich einzubringen.",
     "profile.label.bio": "Über dich",
     "profile.ph.bio": "Eine kurze Beschreibung deiner Arbeit, Interessen oder deines Hintergrunds…",
     "profile.note.bio": "Maximal 35 Wörter.",
