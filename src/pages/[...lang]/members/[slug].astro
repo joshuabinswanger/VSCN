@@ -1,0 +1,395 @@
+---
+import { getImage } from "astro:assets";
+import Layout from "../../../layouts/Layout.astro";
+import { fetchMemberViews } from "../../../lib/membersBuild.ts";
+import type { MemberView } from "../../../lib/memberView.ts";
+import { href, socialLinks } from "../../../lib/proto-links.ts";
+import { useTranslations } from "../../../i18n/utils";
+import type { Lang } from "../../../i18n/utils";
+
+// One page per member per locale: `/members/<slug>` and `/de/members/<slug>`,
+// where the slug comes from the display name ("daniel-roettele").
+//
+// The slug is derived on every build rather than stored, so it follows a
+// rename — with the accepted consequence that the old URL 404s, since nothing
+// records what it used to be.
+//
+// Deliberately NOT under /profile: astro.config.mjs filters the sitemap with
+// `!page.includes("/profile")` to keep the private editor out of it, and member
+// pages under that prefix would be caught by the same test and silently
+// dropped — the opposite of what a public profile wants.
+export async function getStaticPaths() {
+  const members = await fetchMemberViews();
+  return members.flatMap((member) =>
+    [undefined, "de"].map((lang) => ({
+      params: { lang, slug: member.slug },
+      props: { member },
+    })),
+  );
+}
+
+interface Props {
+  member: MemberView;
+}
+
+const { member } = Astro.props;
+const { lang = "en" } = Astro.params;
+const currentLang = (lang || "en") as Lang;
+const t = useTranslations(currentLang);
+
+// Gallery originals are already client-side compressed to max 2000px WebP; this
+// generates the responsive sizes the page actually lays out. The lightbox still
+// opens the original.
+const works = await Promise.all(
+  member.works.map(async (w) => ({
+    ...w,
+    rendered: await getImage({
+      src: w.url,
+      width: w.width,
+      height: w.height,
+      widths: [600, 1000, 1600],
+      format: "webp",
+    }),
+  })),
+);
+
+const social = socialLinks(member.socialMedia);
+const communityHref = currentLang === "de" ? "/de/community" : "/community";
+
+const description = member.caption
+  ? `${member.displayName} — ${member.role}. ${member.caption}`
+  : `${member.displayName} — ${member.role}. VSCN.`;
+---
+
+<Layout title={`${member.displayName} — VSCN`} description={description} lang={currentLang}>
+  <article class="mprof">
+    <a class="mprof__back" href={communityHref}>&#8592; {t("member.backToCommunity")}</a>
+
+    <header class="mprof__head">
+      <h1 class="mprof__name">{member.displayName}</h1>
+      {member.role && <p class="mprof__role">{member.role}</p>}
+      {
+        member.openTo.length > 0 && (
+          <p class="mprof__open">
+            {t("member.openTo")} {member.openTo.join(", ")}
+          </p>
+        )
+      }
+    </header>
+
+    {member.bio && <p class="mprof__bio">{member.bio}</p>}
+
+    <div class="mprof__meta">
+      {
+        member.tags.length > 0 && (
+          <div class="mprof__row">
+            <h2 class="mprof__key">{t("member.tags")}</h2>
+            <ul class="mprof__vals">
+              {member.tags.map((tag) => (
+                <li class="mprof__val">{tag}</li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+
+      {
+        (member.portfolio || social.length > 0) && (
+          <div class="mprof__row">
+            <h2 class="mprof__key">{t("member.elsewhere")}</h2>
+            <ul class="mprof__vals mprof__vals--links">
+              {member.portfolio && (
+                <li>
+                  <a
+                    class="mprof__link"
+                    href={href(member.portfolio)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {member.portfolio}
+                  </a>
+                </li>
+              )}
+              {social.map((entry) =>
+                entry.href ? (
+                  <li>
+                    <a
+                      class="mprof__link"
+                      href={entry.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {entry.label}
+                    </a>
+                  </li>
+                ) : (
+                  <li class="mprof__val">{entry.label}</li>
+                ),
+              )}
+            </ul>
+          </div>
+        )
+      }
+    </div>
+
+    {
+      works.length > 0 && (
+        <div class="mprof__works">
+          <h2 class="mprof__key mprof__works-key">{t("member.work")}</h2>
+          {/* Each work is a link to the original, which is what PhotoSwipe
+              binds to — and what makes the image openable with scripting off
+              rather than being inert. */}
+          {works.map((w, i) => (
+            <figure class="mprof__work">
+              <a
+                class="mprof__work-link"
+                href={w.url}
+                target="_blank"
+                rel="noreferrer"
+                data-pswp-width={w.width}
+                data-pswp-height={w.height}
+              >
+                <img
+                  class="mprof__img"
+                  src={w.rendered.src}
+                  srcset={w.rendered.srcSet.attribute}
+                  sizes="(min-width: 768px) min(94vw, 900px), 94vw"
+                  width={w.width}
+                  height={w.height}
+                  loading={i === 0 ? "eager" : "lazy"}
+                  decoding="async"
+                  alt={w.caption?.trim() || `${member.displayName} — ${t("member.workAlt")}`}
+                  style={`background-color: ${w.color ?? "var(--color-border)"}`}
+                />
+              </a>
+              {w.caption?.trim() && <figcaption class="mprof__caption">{w.caption}</figcaption>}
+            </figure>
+          ))}
+        </div>
+      )
+    }
+  </article>
+</Layout>
+
+<style>
+  .mprof {
+    font-family: "Archivo", sans-serif;
+    padding-block: 3rem 10rem;
+  }
+
+  .mprof__back {
+    display: inline-block;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--color-muted);
+  }
+  .mprof__back:hover,
+  .mprof__back:focus-visible {
+    color: var(--color-dark);
+  }
+
+  /* ── Identity ─────────────────────────────────────────── */
+  .mprof__head {
+    margin-top: 2.5rem;
+  }
+
+  /* The card's name band grown to page scale — same face, same tightness, so
+     arriving from a card reads as the same object opening up. */
+  .mprof__name {
+    margin: 0;
+    font-size: clamp(2rem, 6vw, 3.2rem);
+    font-weight: 700;
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    color: var(--color-dark);
+    overflow-wrap: anywhere;
+  }
+
+  .mprof__role {
+    margin: 0.7rem 0 0;
+    max-width: 36rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--color-dark);
+  }
+
+  /* A dot plus the words, never a bare coloured pill: the site has no accent
+     colour, and a dot alone carries no meaning to anyone who cannot see it. */
+  .mprof__open {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0.55rem 0 0;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+  .mprof__open::before {
+    content: "";
+    flex: 0 0 auto;
+    width: 5px;
+    height: 5px;
+    background: var(--color-dark);
+    border-radius: 50%;
+  }
+
+  .mprof__bio {
+    margin: 2.2rem 0 0;
+    max-width: 38rem;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: var(--color-dark);
+    white-space: pre-line;
+  }
+
+  /* ── Meta ─────────────────────────────────────────────── */
+  .mprof__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+    margin-top: 2.4rem;
+  }
+
+  .mprof__row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  /* A real heading, so the page has an outline rather than styled spans. */
+  .mprof__key {
+    margin: 0;
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .mprof__vals {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .mprof__val {
+    font-size: 0.68rem;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 5px 7px;
+    color: var(--color-muted);
+    border: 1px solid var(--color-border);
+    /* Square corners throughout, as on the cards. */
+    border-radius: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .mprof__vals--links {
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .mprof__link {
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--color-dark);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    overflow-wrap: anywhere;
+  }
+  .mprof__link:hover {
+    color: var(--color-muted);
+  }
+
+  /* ── Work ─────────────────────────────────────────────── */
+  .mprof__works {
+    display: flex;
+    flex-direction: column;
+    gap: 4rem;
+    margin-top: 4.5rem;
+  }
+
+  .mprof__works-key {
+    margin-bottom: -2rem;
+  }
+
+  .mprof__work {
+    margin: 0;
+  }
+
+  .mprof__work-link {
+    display: block;
+    border: 1.5px solid var(--color-border);
+    border-radius: 0;
+    background: var(--color-bg);
+    overflow: hidden;
+    cursor: zoom-in;
+  }
+
+  .mprof__img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .mprof__caption {
+    margin: 0.7rem 0 0;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--color-muted);
+  }
+
+  @media (--bp-mobile) {
+    .mprof {
+      padding-block: 2rem 6rem;
+    }
+    .mprof__works {
+      gap: 2.5rem;
+      margin-top: 3rem;
+    }
+    .mprof__works-key {
+      margin-bottom: -1.25rem;
+    }
+  }
+</style>
+
+<script>
+  import PhotoSwipeLightbox from "photoswipe/lightbox";
+  import "photoswipe/style.css";
+
+  // Rebuilt per navigation rather than once: ClientRouter swaps the document,
+  // so a lightbox bound to the previous page's nodes would be holding dead
+  // elements. MemberCard is the existing precedent for this pair.
+  let lightbox: PhotoSwipeLightbox | null = null;
+
+  document.addEventListener("astro:page-load", () => {
+    lightbox?.destroy();
+    lightbox = null;
+    if (!document.querySelector(".mprof__works")) return;
+
+    lightbox = new PhotoSwipeLightbox({
+      gallery: ".mprof__works",
+      children: ".mprof__work-link",
+      pswpModule: () => import("photoswipe"),
+    });
+    lightbox.init();
+  });
+
+  document.addEventListener("astro:before-swap", () => {
+    lightbox?.destroy();
+    lightbox = null;
+  });
+</script>

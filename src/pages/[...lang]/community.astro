@@ -12,6 +12,11 @@ export function getStaticPaths() {
 const { lang = "en" } = Astro.params;
 const currentLang = (lang || "en") as Lang;
 
+// Still the raw document shape here, because CommunityGrid and MemberCard read
+// fields this page does not project. It moves to fetchMemberViews() in
+// membersBuild.ts — which the member profile pages already use — when the grid
+// switches to the image cards. Two readers of the same collection is the reason
+// that helper exists; this one is the straggler, not the pattern.
 type Member = PublicProfileDoc & { uid: string };
 let members: Member[] = [];
 
