@@ -1,6 +1,28 @@
 # Graduating the image cards to the real community page — design
 
-Date: 2026-08-24. Status: **design, awaiting decisions.** Nothing implemented.
+Date: 2026-08-24. Status: **implemented, with one decision reversed since.** Steps 1-6
+below have landed on dev.
+
+## Amendment, 2026-08-24 — the filters are gone for now
+
+Conflict 1 was resolved as (a) multicol, and shipped that way. The filter rows themselves
+have since been taken back out: at 21 profiles the directory reads whole, and two rows of
+chips above it cost more attention than they save. That is option (c), taken as a
+deliberate "not yet" rather than a permanent regression — their markup, styles and wiring
+are preserved on the branch `feat/community-filters` and should come back when the list
+grows past browsing length.
+
+Multicol stays regardless, and not only as a leftover of a decision that no longer
+applies. It keeps DOM order equal to reading order (which the build-time lanes broke), it
+keeps JS off the layout critical path, mobile was already `columns: 2` so it is proven in
+this codebase, and hiding-a-cell-and-repacking remains available for when the filters
+return — something the lanes could never have supported.
+
+One trap the multicol choice carries, found while widening the vertical stagger: a
+`margin-top` on a column child is not a usable offset. It collapses against the preceding
+card's `margin-bottom` (so any value below `--pgap-y` disappears) and Chrome discards it
+entirely on the first card of columns 2 and 3, which is exactly where the stagger is most
+visible. The per-card offset is `padding-top` for that reason.
 
 Decided: the gallery is canonical from the next release. `/community` moves to the
 image-led cards plus real member profile pages, and cards upgrade from typographic to
