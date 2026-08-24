@@ -59,14 +59,24 @@ const communityHref = currentLang === "de" ? "/de/community" : "/community";
 const description = member.caption
   ? `${member.displayName} — ${member.role}. ${member.caption}`
   : `${member.displayName} — ${member.role}. VSCN.`;
+
+// A member's share card shows their own first work, not the generic site
+// image. getImage already produced the responsive set; the widest source is
+// the one link previews want.
+const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href : undefined;
 ---
 
-<Layout title={`${member.displayName} — VSCN`} description={description} lang={currentLang}>
+<Layout
+  title={`${member.displayName} — VSCN`}
+  description={description}
+  lang={currentLang}
+  ogImage={ogImage}
+>
   <article class="mprof">
     <a class="mprof__back" href={communityHref}>&#8592; {t("member.backToCommunity")}</a>
 
     <header class="mprof__head">
-      <h1 class="mprof__name">{member.displayName}</h1>
+      <h1 class="mprof__name" transition:name={`mname-${member.id}`}>{member.displayName}</h1>
       {member.role && <p class="mprof__role">{member.role}</p>}
       {
         member.openTo.length > 0 && (
@@ -140,7 +150,7 @@ const description = member.caption
               binds to — and what makes the image openable with scripting off
               rather than being inert. */}
           {works.map((w, i) => (
-            <figure class="mprof__work">
+            <figure class="mprof__work" transition:name={i === 0 ? `mimg-${member.id}` : undefined}>
               <a
                 class="mprof__work-link"
                 href={w.url}

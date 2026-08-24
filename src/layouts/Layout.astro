@@ -14,6 +14,8 @@ interface Props {
   lang?: string;
   wide?: boolean;
   contentWide?: boolean;
+  /** Absolute URL overriding the default OG image — e.g. a member's first work. */
+  ogImage?: string;
 }
 
 const {
@@ -24,6 +26,7 @@ const {
   lang = "en",
   wide = false,
   contentWide = false,
+  ogImage,
 } = Astro.props;
 
 const DEFAULT_DESCRIPTION =
@@ -31,7 +34,7 @@ const DEFAULT_DESCRIPTION =
 
 const metaDescription = description ?? DEFAULT_DESCRIPTION;
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site).href;
-const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
+const ogImageUrl = ogImage ?? new URL(ogImageAsset.src, Astro.site).href;
 
 const BRAND_LETTERS = [
   { head: "V", tail: "isual" },
