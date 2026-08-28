@@ -5,6 +5,15 @@
   "storage": {
     "rules": "storage.rules"
   },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs22",
+      "predeploy": ["npm --prefix functions install", "npm --prefix functions run build"],
+      "ignore": ["node_modules", ".git", "*.log"]
+    }
+  ],
   "hosting": {
     "public": "dist",
     "cleanUrls": true,
