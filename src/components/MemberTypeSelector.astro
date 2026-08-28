@@ -1,0 +1,132 @@
+---
+import { MEMBER_TYPES } from "../lib/firestore.ts";
+import { useTranslations } from "../i18n/utils";
+import type { Lang } from "../i18n/utils";
+
+interface Props {
+  lang?: Lang;
+  name?: string;
+}
+
+const { lang = "en", name = "member-type" } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<member-type-selector class="member-type-selector" data-lang={lang}>
+  <fieldset class="memberType-field">
+    <legend class="label">{t("profile.memberType.legend")}</legend>
+    <div class="memberType-options">
+      {
+        MEMBER_TYPES.map((type) => (
+          <label class="memberType-option">
+            <input type="radio" name={name} value={type} />
+            <span>{t(`profile.memberType.${type}`)}</span>
+          </label>
+        ))
+      }
+    </div>
+    <p class="field-note">{t("profile.memberType.note")}</p>
+  </fieldset>
+</member-type-selector>
+
+<style>
+  .memberType-field {
+    border: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+
+  .memberType-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .memberType-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: #fff;
+    color: #333;
+    font-size: 0.9rem;
+    line-height: 1.2;
+    cursor: pointer;
+    transition:
+      border-color 0.15s,
+      background 0.15s;
+  }
+
+  .memberType-option:hover {
+    border-color: #999;
+    background: #f5f5f5;
+  }
+
+  .memberType-option:has(input:checked) {
+    border-color: var(--color-dark);
+    background: var(--color-dark);
+    color: #fff;
+  }
+
+  .memberType-option:focus-within {
+    border-color: var(--color-dark);
+  }
+
+  .memberType-option input {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--color-dark);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .field-note {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--color-muted);
+  }
+</style>
+
+<script>
+  class MemberTypeSelectorElement extends HTMLElement {
+    private initialized = false;
+
+    connectedCallback() {
+      if (this.initialized) return;
+      this.initialized = true;
+
+      this.radios().forEach((radio) => {
+        radio.addEventListener("change", () => {
+          this.dispatchEvent(
+            new CustomEvent("member-type-change", { detail: this.value, bubbles: true })
+          );
+        });
+      });
+    }
+
+    private radios(): HTMLInputElement[] {
+      return Array.from(this.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
+    }
+
+    /** Selected member type, or "" when the member has not chosen one. */
+    get value(): string {
+      return this.radios().find((radio) => radio.checked)?.value ?? "";
+    }
+
+    set value(next: string) {
+      this.radios().forEach((radio) => {
+        radio.checked = radio.value === next;
+      });
+    }
+  }
+
+  if (!customElements.get("member-type-selector")) {
+    customElements.define("member-type-selector", MemberTypeSelectorElement);
+  }
+</script>

@@ -1,6 +1,7 @@
 ---
 import type { PublicProfileDoc } from "../lib/firestore.ts";
 import { normaliseUrl } from "../lib/validation.ts";
+import { memberBadgeLabel } from "../lib/memberType.ts";
 import downArrowUrl from "../assets/downarrow.svg";
 import { useTranslations } from "../i18n/utils.ts";
 import type { Lang } from "../i18n/utils.ts";
@@ -32,6 +33,7 @@ const portfolioHref = normaliseUrl(m?.portfolio ?? "");
 const socialHref = normaliseUrl(m?.socialMedia ?? "");
 const bioId = preview ? "preview-bio" : m ? `member-bio-${m.uid}` : undefined;
 const avatarSrc = stripStorageToken(m?.photoURL ?? "");
+const badge = memberBadgeLabel(m?.memberType ?? "", t);
 ---
 
 <div class:list={["member-card-wrap", preview && "member-card-wrap--preview"]}>
@@ -80,6 +82,13 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
           <div id="preview-role" class="member-role" hidden />
         ) : (
           m?.role && <div class="member-role">{m.role}</div>
+        )
+      }
+      {
+        preview ? (
+          <span id="preview-badge" class="member-badge" hidden />
+        ) : (
+          badge && <span class="member-badge">{badge}</span>
         )
       }
       {
@@ -285,6 +294,25 @@ const avatarSrc = stripStorageToken(m?.photoURL ?? "");
     text-overflow: ellipsis;
     max-width: 24ch;
     width: min-content;
+  }
+
+  .member-badge {
+    justify-self: start;
+    width: max-content;
+    max-width: 100%;
+    margin-top: 0.15rem;
+    padding: 0.12rem 0.45rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-family: "Archivo", sans-serif;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .member-links {

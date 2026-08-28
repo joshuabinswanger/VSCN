@@ -13,9 +13,20 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 
+// Keep in sync with validMemberType() in firestore.rules.
+export const MEMBER_TYPES = ["creator", "scientist", "both", "organization"] as const;
+
+export type MemberType = (typeof MEMBER_TYPES)[number];
+
+export function isMemberType(value: unknown): value is MemberType {
+  return typeof value === "string" && (MEMBER_TYPES as readonly string[]).includes(value);
+}
+
 export interface UserDoc {
   displayName: string;
   photoURL: string;
+  // Optional: profiles created before member types existed have no value.
+  memberType?: MemberType;
   role: string;
   bio: string;
   portfolio: string;
@@ -52,6 +63,7 @@ function toPublicProfile(data: Partial<UserDoc>): Partial<PublicProfileDoc> {
   const out: Partial<PublicProfileDoc> = {};
   if (data.displayName !== undefined) out.displayName = data.displayName;
   if (data.photoURL !== undefined) out.photoURL = data.photoURL;
+  if (data.memberType !== undefined) out.memberType = data.memberType;
   if (data.role !== undefined) out.role = data.role;
   if (data.bio !== undefined) out.bio = data.bio;
   if (data.portfolio !== undefined) out.portfolio = data.portfolio;

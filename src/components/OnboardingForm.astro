@@ -2,6 +2,7 @@
 import { useTranslations } from "../i18n/utils";
 import type { Lang } from "../i18n/utils";
 import MemberCard from "./MemberCard.astro";
+import MemberTypeSelector from "./MemberTypeSelector.astro";
 import TagSelector from "./TagSelector.astro";
 import OpenToSelector from "./OpenToSelector.astro";
 
@@ -62,6 +63,7 @@ const prefix = lang === "de" ? "/de" : "";
       <p class="ob-sub">{t("onboarding.step1.sub")}</p>
     </header>
     <div class="ob-fields">
+      <MemberTypeSelector lang={lang} name="ob-member-type" />
       <div class="field">
         <label class="label" for="ob-name">{t("profile.label.name")}</label>
         <input id="ob-name" type="text" class="input" placeholder={t("profile.ph.name")} />
@@ -71,7 +73,9 @@ const prefix = lang === "de" ? "/de" : "";
         <input id="ob-role" type="text" class="input" placeholder={t("profile.ph.role")} />
       </div>
       <div class="field">
-        <label class="label" for="ob-portfolio">{t("profile.label.portfolio")}</label>
+        <label id="ob-portfolio-label" class="label" for="ob-portfolio"
+          >{t("profile.label.portfolio")}</label
+        >
         <div class="input-prefix-wrap">
           <span class="input-prefix">https://</span>
           <input
@@ -540,7 +544,9 @@ const prefix = lang === "de" ? "/de" : "";
     publishCurrentUserProfile,
     upsertOnboardingRequest,
     activatePublicProfile,
+    isMemberType,
   } from "../lib/firestore.ts";
+  import { memberBadgeLabel, memberTypeFieldCopy } from "../lib/memberType.ts";
   import { handleProfileUpdate, triggerRebuild } from "../lib/profile.ts";
   import { ui } from "../i18n/translations.ts";
 
@@ -625,6 +631,7 @@ const prefix = lang === "de" ? "/de" : "";
 
       populatePreviewCard({
         displayName: getInputValue("ob-name").trim(),
+        memberType: memberTypeSelector?.value ?? "",
         role: getInputValue("ob-role").trim(),
         portfolio: getInputValue("ob-portfolio").trim(),
         socialMedia: getInputValue("ob-social").trim(),
@@ -648,6 +655,7 @@ const prefix = lang === "de" ? "/de" : "";
           STORAGE_KEY,
           JSON.stringify({
             step: currentStep,
+            memberType: memberTypeSelector?.value ?? "",
             name: getInputValue("ob-name"),
             role: getInputValue("ob-role"),
             portfolio: getInputValue("ob-portfolio"),
@@ -676,6 +684,7 @@ const prefix = lang === "de" ? "/de" : "";
 
     function readTransientState(): {
       step?: number;
+      memberType?: string;
       name?: string;
       role?: string;
       portfolio?: string;
@@ -702,6 +711,28 @@ const prefix = lang === "de" ? "/de" : "";
         value: string[];
       }
     >("open-to-selector");
+
+    // ── Member type (step 0) ───────────────────────────────────────
+    const memberTypeSelector = document.querySelector<
+      HTMLElement & {
+        value: string;
+      }
+    >("member-type-selector");
+
+    /** Scientists and research groups get lab-facing field wording. */
+    function syncMemberTypeCopy() {
+      const copy = memberTypeFieldCopy(memberTypeSelector?.value ?? "", (key) => s[key] ?? key);
+      const nameEl = document.getElementById("ob-name") as HTMLInputElement | null;
+      const roleEl = document.getElementById("ob-role") as HTMLInputElement | null;
+      const portfolioEl = document.getElementById("ob-portfolio") as HTMLInputElement | null;
+      const portfolioLabel = document.getElementById("ob-portfolio-label");
+      if (nameEl) nameEl.placeholder = copy.namePlaceholder;
+      if (roleEl) roleEl.placeholder = copy.rolePlaceholder;
+      if (portfolioEl) portfolioEl.placeholder = copy.portfolioPlaceholder;
+      if (portfolioLabel) portfolioLabel.textContent = copy.portfolioLabel;
+    }
+
+    memberTypeSelector?.addEventListener("member-type-change", syncMemberTypeCopy);
 
     // ── Tags (delegated to the <tag-selector> custom element) ─────
     const tagSelector = document.querySelector<
@@ -752,9 +783,12 @@ const prefix = lang === "de" ? "/de" : "";
         const portfolioVal = getInputValue("ob-portfolio").trim();
         const socialVal = getInputValue("ob-social").trim();
         const phoneVal = getInputValue("ob-phone").trim();
+        const memberTypeVal = memberTypeSelector?.value ?? "";
 
         await handleProfileUpdate(user, {
           displayName: nameVal,
+          // Omit rather than write "" — the field is absent until chosen.
+          ...(isMemberType(memberTypeVal) ? { memberType: memberTypeVal } : {}),
           role: roleVal,
           portfolio: portfolioVal,
           socialMedia: socialVal,
@@ -825,6 +859,7 @@ const prefix = lang === "de" ? "/de" : "";
 
     function populatePreviewCard(opts: {
       displayName: string;
+      memberType: string;
       role: string;
       portfolio: string;
       socialMedia: string;
@@ -833,6 +868,7 @@ const prefix = lang === "de" ? "/de" : "";
       avatarObjectUrl: string | null;
     }) {
       const previewName = document.getElementById("preview-name");
+      const previewBadge = document.getElementById("preview-badge") as HTMLElement | null;
       const previewRole = document.getElementById("preview-role") as HTMLElement | null;
       const previewLinks = document.getElementById("preview-links") as HTMLElement | null;
       const previewPortfolio = document.getElementById(
@@ -859,6 +895,12 @@ const prefix = lang === "de" ? "/de" : "";
         } else {
           previewRole.hidden = true;
         }
+      }
+
+      if (previewBadge) {
+        const badge = memberBadgeLabel(opts.memberType, (key) => s[key] ?? key);
+        previewBadge.textContent = badge;
+        previewBadge.hidden = !badge;
       }
 
       if (previewPortfolio) {
@@ -989,6 +1031,11 @@ const prefix = lang === "de" ? "/de" : "";
         const wantsToContributeEl = document.getElementById("ob-wants-to-contribute") as HTMLInputElement | null;
         if (wantsToContributeEl) wantsToContributeEl.checked = data.wantsToContribute ?? false;
 
+        if (memberTypeSelector) {
+          memberTypeSelector.value = data.memberType ?? "";
+          syncMemberTypeCopy();
+        }
+
         if (openToSelector && Array.isArray(data.openTo)) {
           openToSelector.value = data.openTo.filter(Boolean);
         }
@@ -1015,6 +1062,10 @@ const prefix = lang === "de" ? "/de" : "";
         setIfPresent("ob-phone", restoreState.phone);
         setIfPresent("ob-bio", restoreState.bio);
         setIfPresent("ob-platform-request", restoreState.platformRequest);
+        if (memberTypeSelector && restoreState.memberType) {
+          memberTypeSelector.value = restoreState.memberType;
+          syncMemberTypeCopy();
+        }
         if (openToSelector && Array.isArray(restoreState.openTo)) {
           openToSelector.value = restoreState.openTo;
         }

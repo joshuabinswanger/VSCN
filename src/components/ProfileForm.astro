@@ -1,5 +1,6 @@
 ---
 import MemberCard from "./MemberCard.astro";
+import MemberTypeSelector from "./MemberTypeSelector.astro";
 import OpenToSelector from "./OpenToSelector.astro";
 import TagSelector from "./TagSelector.astro";
 import { useTranslations } from "../i18n/utils";
@@ -27,6 +28,8 @@ const t = useTranslations(lang);
     <p id="upload-status" class="upload-status" style="display:none;"></p>
   </div>
 
+  <MemberTypeSelector lang={lang} />
+
   <div class="field">
     <label class="label" for="name">{t("profile.label.name")}</label>
     <input id="name" type="text" class="input" placeholder={t("profile.ph.name")} />
@@ -45,7 +48,9 @@ const t = useTranslations(lang);
   </div>
 
   <div class="field">
-    <label class="label" for="portfolio">{t("profile.label.portfolio")}</label>
+    <label id="portfolio-label" class="label" for="portfolio"
+      >{t("profile.label.portfolio")}</label
+    >
     <div class="input-prefix-wrap">
       <span class="input-prefix">https://</span>
       <input
@@ -568,6 +573,8 @@ const t = useTranslations(lang);
   import { getUser, deleteUserData, getPublicProfileActive, setProfileActive } from "../lib/firestore.ts";
   import { validateAvatar, resizeAvatar, normaliseUrl } from "../lib/validation.ts";
   import { handleProfileUpdate, triggerRebuild } from "../lib/profile.ts";
+  import { isMemberType } from "../lib/firestore.ts";
+  import { memberBadgeLabel, memberTypeFieldCopy } from "../lib/memberType.ts";
   import { ui } from "../i18n/translations.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
@@ -691,6 +698,12 @@ const t = useTranslations(lang);
         value: string[];
       }
     >("open-to-selector");
+    const memberTypeSelector = document.querySelector<
+      HTMLElement & {
+        value: string;
+      }
+    >("member-type-selector");
+    const portfolioLabel = document.getElementById("portfolio-label");
 
     let currentPhotoURL = "";
     let resizedAvatarBlob: Blob | null = null;
@@ -727,7 +740,30 @@ const t = useTranslations(lang);
         s["profile.preview.defaultName"],
         s["member.showBio"]
       );
+      syncBadgePreview();
     }
+
+    function syncBadgePreview() {
+      const previewBadge = document.getElementById("preview-badge");
+      if (!previewBadge) return;
+      const badge = memberBadgeLabel(memberTypeSelector?.value ?? "", (key) => s[key] ?? key);
+      previewBadge.textContent = badge;
+      previewBadge.hidden = !badge;
+    }
+
+    /** Scientists and research groups get lab-facing field wording. */
+    function syncMemberTypeCopy() {
+      const copy = memberTypeFieldCopy(memberTypeSelector?.value ?? "", (key) => s[key] ?? key);
+      nameInput.placeholder = copy.namePlaceholder;
+      roleInput.placeholder = copy.rolePlaceholder;
+      portfolioInput.placeholder = copy.portfolioPlaceholder;
+      if (portfolioLabel) portfolioLabel.textContent = copy.portfolioLabel;
+    }
+
+    memberTypeSelector?.addEventListener("member-type-change", () => {
+      syncMemberTypeCopy();
+      syncBadgePreview();
+    });
 
     nameInput.addEventListener("input", syncPreview);
     roleInput.addEventListener("input", syncPreview);
@@ -794,6 +830,10 @@ const t = useTranslations(lang);
       bioInput.value = data.bio ?? "";
       portfolioInput.value = data.portfolio ?? "";
       socialMediaInput.value = data.socialMedia ?? "";
+      if (memberTypeSelector) {
+        memberTypeSelector.value = data.memberType ?? "";
+        syncMemberTypeCopy();
+      }
       if (openToSelector) {
         openToSelector.value = Array.isArray(data.openTo) ? data.openTo.filter(Boolean) : [];
       }
@@ -822,11 +862,15 @@ const t = useTranslations(lang);
       const user = auth.currentUser;
       if (!user) return;
 
+      const memberType = memberTypeSelector?.value ?? "";
+
       try {
         const { photoURL } = await handleProfileUpdate(
           user,
           {
             displayName: nameInput.value.trim(),
+            // Omit rather than write "" — the field is absent until chosen.
+            ...(isMemberType(memberType) ? { memberType } : {}),
             role: roleInput.value.trim(),
             bio: bioInput.value.trim(),
             portfolio: portfolioInput.value.trim(),

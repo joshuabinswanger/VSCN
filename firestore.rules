@@ -61,14 +61,14 @@ service cloud.firestore {
 }
 
 function validPublicProfile(data) {
-  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'primaryAudiences', 'tags', 'active', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'primaryAudiences', 'tags', 'active', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data);
 }
 
 function validPrivateUser(data, auth) {
-  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'primaryAudiences', 'tags', 'phone', 'email', 'communityGoals', 'wantsToContribute', 'onboardingComplete', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'primaryAudiences', 'tags', 'phone', 'email', 'communityGoals', 'wantsToContribute', 'onboardingComplete', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data)
@@ -84,6 +84,7 @@ function validPublicFields(data) {
     && (!('bio' in data) || (data.bio is string
                              && data.bio.size() <= 500
                              && validBioWordCount(data.bio)))
+    && (!('memberType' in data) || validMemberType(data.memberType))
     && (!('role' in data) || (data.role is string && data.role.size() <= 100))
     && (!('portfolio' in data) || (data.portfolio is string && data.portfolio.size() <= 200))
     && (!('socialMedia' in data) || (data.socialMedia is string && data.socialMedia.size() <= 200))
@@ -96,6 +97,15 @@ function validPublicFields(data) {
         || data.photoURL.matches('https://storage\\.googleapis\\.com/vscn-39508\\.firebasestorage\\.app/.*'))
     && (!('createdAt' in data) || data.createdAt is timestamp)
     && (!('updatedAt' in data) || data.updatedAt is timestamp);
+}
+
+// Keep in sync with MEMBER_TYPES in src/lib/firestore.ts.
+function validMemberType(value) {
+  return value is string
+    && (value == 'creator'
+        || value == 'scientist'
+        || value == 'both'
+        || value == 'organization');
 }
 
 function validPrimaryAudiences(value) {
