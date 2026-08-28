@@ -68,13 +68,14 @@ function validPublicProfile(data) {
 }
 
 function validPrivateUser(data, auth) {
-  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'primaryAudiences', 'tags', 'phone', 'email', 'communityGoals', 'onboardingComplete', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'role', 'bio', 'portfolio', 'socialMedia', 'openTo', 'primaryAudiences', 'tags', 'phone', 'email', 'communityGoals', 'wantsToContribute', 'onboardingComplete', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data)
     && (!('phone' in data) || (data.phone is string && data.phone.size() <= 40))
     && (!('email' in data) || data.email == auth.token.email)
     && (!('communityGoals' in data) || data.communityGoals is list)
+    && (!('wantsToContribute' in data) || data.wantsToContribute is bool)
     && (!('onboardingComplete' in data) || data.onboardingComplete is bool);
 }
 
