@@ -1,0 +1,453 @@
+---
+import type { MemberView } from "../lib/memberView.ts";
+import { stripStorageToken } from "../lib/memberView.ts";
+import { normaliseUrl } from "../lib/validation.ts";
+import { socialLinks } from "../lib/links.ts";
+import downArrowUrl from "../assets/downarrow.svg";
+import { useTranslations } from "../i18n/utils.ts";
+import type { Lang } from "../i18n/utils.ts";
+
+// The live site's community card, back from the dead (deleted when the
+// image-led directory graduated; recovered from main for the /members index
+// page). Two deliberate departures from the original: it renders a
+// MemberView instead of a raw PublicProfileDoc — same producer as every
+// other member surface, so the card and the profile page cannot disagree —
+// and the preview mode is gone, because the profile editor grew its own
+// renderer (ProfileViewPreview) in the meantime.
+//
+// Since the revival the card also grew tags and websites: the original's
+// truncated "portfolio | social" pair became full-width rows of tag pills and
+// named links (via the same socialLinks() cleaner as the profile page), so
+// the index actually indexes what members do and where to find them.
+//
+// The colour values are the live site's, kept verbatim so the port is
+// pixel-faithful — tokenising them is a separate decision from reviving them.
+
+interface Props {
+  member: MemberView;
+  lang?: Lang;
+}
+
+const { member: m, lang = "en" } = Astro.props;
+const t = useTranslations(lang);
+const displayName = m.displayName || "Anonymous";
+const portfolioHref = normaliseUrl(m.portfolio ?? "");
+// Same cleaner the profile page uses, so the card names the same platforms.
+// Entries the cleaner cannot link (bare handles, plain text) are dropped here:
+// the card is a summary, and unlinkable text belongs to the profile page.
+const social = socialLinks(m.socialMedia ?? "").filter((entry) => entry.href);
+// The stored value reads better than the href: "www.quaint.ch/" → "quaint.ch".
+const portfolioLabel = (m.portfolio ?? "")
+  .replace(/^https?:\/\//i, "")
+  .replace(/^www\./i, "")
+  .replace(/\/+$/, "");
+const bioId = `member-bio-${m.id}`;
+const avatarSrc = stripStorageToken(m.photoURL ?? "");
+---
+
+<div class="member-card-wrap">
+  <article class="member-card">
+    <div class="member-avatar-wrap">
+      {
+        avatarSrc ? (
+          <img
+            class="member-avatar"
+            src={avatarSrc}
+            alt={displayName}
+            width="80"
+            height="80"
+            loading="lazy"
+          />
+        ) : (
+          <div class="member-avatar member-avatar--placeholder">
+            {displayName[0]?.toUpperCase() ?? "?"}
+          </div>
+        )
+      }
+    </div>
+
+    <div class="member-info">
+      <div class="member-name">{displayName}</div>
+      {m.role && <div class="member-role">{m.role}</div>}
+    </div>
+
+    {
+      m.tags.length > 0 && (
+        <ul class="member-tags">
+          {m.tags.map((tag) => (
+            <li class="member-tag">{tag}</li>
+          ))}
+        </ul>
+      )
+    }
+
+    {
+      (portfolioHref || social.length > 0) && (
+        <div class="member-links">
+          {portfolioHref && (
+            <a
+              class="member-link"
+              href={portfolioHref}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {portfolioLabel}
+            </a>
+          )}
+          {social.map((entry) => (
+            <a class="member-link" href={entry.href} target="_blank" rel="noopener noreferrer">
+              {entry.label}
+            </a>
+          ))}
+        </div>
+      )
+    }
+
+    {
+      m.bio && (
+        <button
+          class="member-bio-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls={bioId}
+          aria-label={`${t("member.showBio")} ${displayName}`}
+        >
+          <img class="member-bio-arrow" src={downArrowUrl.src} alt="" aria-hidden="true" />
+        </button>
+      )
+    }
+  </article>
+  {
+    m.bio && (
+      <p id={bioId} class="member-bio">
+        {m.bio}
+      </p>
+    )
+  }
+</div>
+
+<style is:global>
+  .member-card {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    grid-template-columns: min-content minmax(0, 1fr) 16px;
+    align-items: center;
+    gap: 5px 25px;
+    padding: 10px 15px;
+    border: 1.5px solid #e8e8e8;
+    border-radius: var(--radius-sm);
+    background: #ffffff;
+    transition:
+      border-color 0.2s,
+      filter 0.2s,
+      border-bottom-right-radius 0.18s ease,
+      border-bottom-left-radius 0.18s ease;
+    text-align: center;
+    align-self: start;
+
+    @media (--bp-desktop) {
+      grid-template-columns: min-content minmax(0, 1fr);
+      padding: 15px 20px;
+      gap: 5px 30px;
+    }
+  }
+
+  .member-card:hover {
+    border-color: var(--color-border);
+  }
+
+  @media (--bp-desktop) {
+    .member-card-wrap:hover .member-card,
+    .member-card-wrap:focus-within .member-card {
+      filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.07));
+    }
+
+    .member-card-wrap:has(.member-bio:not([hidden])):hover .member-card,
+    .member-card-wrap:has(.member-bio:not([hidden])):focus-within .member-card {
+      border-bottom-right-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+  }
+
+  .member-card-wrap {
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+
+  .member-card-wrap [hidden] {
+    display: none !important;
+  }
+
+  .member-avatar-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .member-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid #e5e5e5;
+  }
+
+  .member-avatar--placeholder {
+    background: #f0f0f0;
+    display: flex;
+    font-size: 1.8rem;
+    color: #bbb;
+  }
+
+  .member-info {
+    display: grid;
+    grid-template-rows: min-content min-content;
+    text-align: left;
+    align-self: center;
+    gap: 0.2rem;
+    width: min-content;
+    min-width: 0;
+  }
+
+  .member-name {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--color-dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    width: min-content;
+  }
+
+  .member-role {
+    font-size: 0.78rem;
+    color: var(--color-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 24ch;
+    width: min-content;
+  }
+
+  /* Tags and websites span the card under the avatar/name row. Pill and link
+     values mirror the profile page's meta block (.mprof__val / .mprof__link),
+     so the card and the page read as the same system. */
+  .member-tags {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 5px 0 0 0;
+    padding: 0;
+    list-style: none;
+    text-align: left;
+  }
+
+  .member-tag {
+    font-size: 0.68rem;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 5px 7px;
+    color: var(--color-muted);
+    border: 1px solid var(--color-border);
+    border-radius: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .member-links {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0.8rem;
+    row-gap: 0.25rem;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .member-link {
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--color-dark);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    overflow-wrap: anywhere;
+    min-width: 0;
+    max-width: 100%;
+    transition: color 0.15s;
+  }
+
+  .member-link:hover {
+    color: var(--color-muted);
+  }
+
+  .member-bio-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--color-muted);
+    cursor: pointer;
+    transition:
+      color 0.15s,
+      transform 0.15s;
+  }
+
+  .member-bio-toggle:hover {
+    color: #333;
+  }
+
+  .member-bio-arrow {
+    display: block;
+    width: 12px;
+    height: 12px;
+  }
+
+  .member-card-wrap.is-expanded .member-bio-toggle {
+    transform: rotate(180deg);
+  }
+
+  .member-bio {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    margin: -1.5px 0 0 0;
+    padding: 0 15px 0 20px;
+    border: 1.5px solid #e8e8e8;
+    border-top: 0;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    background: #ffffff;
+    transition:
+      max-height 0.3s ease,
+      opacity 0.2s ease,
+      padding-top 0.2s ease,
+      padding-bottom 0.2s ease;
+    color: #444;
+    font-size: var(--font-size-base);
+    line-height: 1.6;
+    text-align: left;
+  }
+
+  .member-card-wrap.is-expanded .member-card {
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  .member-card-wrap.is-expanded .member-bio:not([hidden]) {
+    max-height: 200px;
+    opacity: 1;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  @media (--bp-desktop) {
+    .member-card-wrap {
+      position: relative;
+      max-width: none;
+      margin: 0;
+    }
+
+    .member-bio-toggle {
+      display: none;
+    }
+
+    /* Desktop: fade + slide from above */
+    .member-bio {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      z-index: 5;
+      overflow: visible;
+      max-height: none;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-6px);
+      transition:
+        opacity 0.18s ease,
+        transform 0.18s ease,
+        visibility 0.18s;
+      box-sizing: border-box;
+      margin: -1.5px 0 0 0;
+      padding: 25px;
+      border: 1.5px solid var(--color-border);
+      border-top: 0;
+      border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+      background: #ffffff;
+    }
+
+    .member-card-wrap:hover .member-bio:not([hidden]),
+    .member-card-wrap:focus-within .member-bio:not([hidden]) {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .member-grid .member-card-wrap:hover {
+      z-index: 10;
+    }
+  }
+</style>
+
+<script>
+  import { ui } from "../i18n/translations.ts";
+
+  const desktopQuery = window.matchMedia("(width >= 1120px)");
+  let hasDesktopQueryListener = false;
+
+  function collapseMobileBioPanels() {
+    document.querySelectorAll(".member-card-wrap.is-expanded").forEach((wrap) => {
+      wrap.classList.remove("is-expanded");
+    });
+    document.querySelectorAll<HTMLButtonElement>(".member-bio-toggle").forEach((button) => {
+      button.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  function getCardLanguage(toggle: HTMLButtonElement): "en" | "de" {
+    const scoped = toggle.closest<HTMLElement>("[data-lang]")?.dataset.lang;
+    const pageLang = document.documentElement.lang;
+    return scoped === "de" || pageLang === "de" ? "de" : "en";
+  }
+
+  function wireBioToggles() {
+    document.querySelectorAll<HTMLButtonElement>(".member-bio-toggle").forEach((toggle) => {
+      if (toggle.dataset.bioToggleWired === "true") return;
+      toggle.dataset.bioToggleWired = "true";
+      toggle.addEventListener("click", () => {
+        const wrap = toggle.closest(".member-card-wrap");
+        if (!wrap) return;
+        const expanded = wrap.classList.toggle("is-expanded");
+        toggle.setAttribute("aria-expanded", String(expanded));
+        const name = wrap.querySelector(".member-name")?.textContent ?? "";
+        const strings = ui[getCardLanguage(toggle)];
+        const label = expanded ? strings["member.hideBio"] : strings["member.showBio"];
+        toggle.setAttribute("aria-label", `${label} ${name}`);
+      });
+    });
+  }
+
+  document.addEventListener("astro:page-load", () => {
+    if (!hasDesktopQueryListener) {
+      desktopQuery.addEventListener("change", (event) => {
+        if (!event.matches) collapseMobileBioPanels();
+      });
+      hasDesktopQueryListener = true;
+    }
+    wireBioToggles();
+  });
+</script>

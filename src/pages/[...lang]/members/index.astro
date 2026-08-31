@@ -1,0 +1,128 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+import MemberCard from "../../../components/MemberCard.astro";
+import { fetchMemberViews } from "../../../lib/membersBuild.ts";
+import { useTranslations } from "../../../i18n/utils";
+import type { Lang } from "../../../i18n/utils";
+export function getStaticPaths() {
+  return [{ params: { lang: undefined } }, { params: { lang: "de" } }];
+}
+
+// The index: every member as the live site's compact card — the directory
+// /community used to be before the image-led gallery replaced it. The gallery
+// celebrates the artwork; this page is where you look a member UP, so it
+// keeps fetchMemberViews' alphabetical order instead of the old page's
+// client-side shuffle — an index you have to scan twice is not an index.
+const { lang = "en" } = Astro.params;
+const currentLang = (lang || "en") as Lang;
+const t = useTranslations(currentLang);
+
+const members = await fetchMemberViews();
+const memberLabel =
+  members.length === 1 ? t("community.member") : t("community.members");
+
+const title = "Index — VSCN";
+const description =
+  currentLang === "de"
+    ? "Alle Mitglieder der VSCN-Community auf einen Blick — Wissenschaftler, Illustratoren, Designer und Wissenschaftskommunikatoren."
+    : "Every VSCN community member at a glance — scientists, illustrators, designers, and science communicators.";
+---
+
+<Layout title={title} description={description} lang={currentLang} wide={true}>
+  <div class="index-wrapper" data-lang={currentLang}>
+    <div class="page-header">
+      <h1 class="page-title">
+        <span class="member-count">
+          {members.length}
+          {memberLabel}
+        </span>
+      </h1>
+    </div>
+
+    <div class="member-grid">
+      {members.length === 0 && <p class="state-msg">{t("community.empty")}</p>}
+      {members.map((m) => <MemberCard member={m} lang={currentLang} />)}
+    </div>
+
+    <div id="index-signup-cta" class="index-signup-cta" style="display:none;">
+      <a href={currentLang === "de" ? "/de/signup" : "/signup"} class="btn-solid"
+        >{t("signup.cta.community")}</a
+      >
+    </div>
+  </div>
+</Layout>
+
+<style>
+  /* Ported from the live site's CommunityGrid shell (main), which this page
+     revives: same 1200px measure, same three-column card grid. */
+  .index-wrapper {
+    padding-bottom: 5rem;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .page-header {
+    margin-bottom: 3rem;
+    padding-top: 3rem;
+  }
+
+  .page-title {
+    display: flex;
+    align-items: baseline;
+    gap: 15px;
+    flex-wrap: wrap;
+    font-family: "Archivo", sans-serif;
+    font-size: clamp(1.6rem, 5vw, 2.4rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-dark);
+  }
+
+  .member-count {
+    font-size: 0.9rem;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--color-muted);
+  }
+
+  .state-msg {
+    color: var(--color-muted);
+    font-size: 0.9rem;
+  }
+
+  .member-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    width: 100%;
+    align-items: start;
+  }
+
+  @media (--bp-desktop) {
+    .member-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 3rem;
+    }
+  }
+
+  .index-signup-cta {
+    padding-top: 5rem;
+    display: flex;
+    justify-content: center;
+  }
+</style>
+
+<script>
+  import { auth } from "../../../lib/firebase.ts";
+  import { onAuthStateChanged } from "firebase/auth";
+
+  document.addEventListener("astro:page-load", () => {
+    const cta = document.getElementById("index-signup-cta");
+    if (cta) {
+      onAuthStateChanged(auth, (user) => {
+        cta.style.display = user ? "none" : "flex";
+      });
+    }
+  });
+</script>
