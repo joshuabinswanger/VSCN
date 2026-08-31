@@ -189,6 +189,13 @@ export const ui: Record<string, Record<string, string>> = {
     "community.card.viewProfile": "View profile:",
     "community.card.prev": "Previous image",
     "community.card.next": "Next image",
+    // The two carousel roledescriptions and the position template are spoken,
+    // never seen. {n} and {total} are filled by the card's client script; a
+    // translation may move them, but must keep both.
+    "community.card.carousel": "carousel",
+    "community.card.image": "image",
+    "community.card.gallery": "gallery",
+    "community.card.imagePosition": "Image {n} of {total}",
     "profile.gallery.nudge":
       "Your card in the directory shows no artwork yet — add images and it becomes an image card.",
     "profile.cardPreview": "Community card preview",
@@ -502,6 +509,10 @@ export const ui: Record<string, Record<string, string>> = {
     "community.card.viewProfile": "Profil ansehen:",
     "community.card.prev": "Vorheriges Bild",
     "community.card.next": "Nächstes Bild",
+    "community.card.carousel": "Karussell",
+    "community.card.image": "Bild",
+    "community.card.gallery": "Galerie",
+    "community.card.imagePosition": "Bild {n} von {total}",
     "profile.gallery.nudge":
       "Deine Karte im Verzeichnis zeigt noch keine Arbeiten — füge Bilder hinzu und sie wird zur Bildkarte.",
     "profile.cardPreview": "Community-Karten-Vorschau",

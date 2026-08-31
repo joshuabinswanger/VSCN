@@ -33,12 +33,20 @@ const works = await Promise.all(
 
 const frame = works[0];
 
+// A single work still gets the track markup — same box, same CSS — but no
+// carousel semantics, no controls and no Embla instance. Calling one picture a
+// carousel would be a lie to a screen reader, and a drag handler on it would
+// only buy a non-passive touchmove for nothing.
+const isCarousel = works.length > 1;
+
 // Deliberately UNDER-sized on mobile (a full-bleed card is really ~92vw): at
 // 55vw no phone DPR ever selects the 1400w variant, only the 800. The page
 // stacks every gallery image of every member into the DOM, and decoded-image
 // memory is what crash-looped iOS Safari ("a problem repeatedly occurred") —
 // an 800 upscaled a hair on a 3x screen is invisible; 60 × 1400 decodes is a
-// dead tab.
+// dead tab. This describes the CARD, not the slide, and must stay that way: a
+// `sizes` rewritten to match the track's slide widths puts the 1400s back on
+// phones and the crash back with them.
 const SIZES = "(max-width: 767px) 55vw, 680px";
 
 // The frame keeps the artwork's TRUE aspect at every ratio — nothing here is
@@ -54,6 +62,14 @@ const profileHref = memberHref(lang, member.slug);
 // from).
 const altFor = (w: (typeof works)[number]) =>
   w.caption?.trim() || `${member.displayName} — ${t("member.workAlt")}`;
+
+// "Image {n} of {total}". Filled here for the per-slide labels and handed to
+// the client as a template too, because the live region rebuilds it at every
+// slide change and the client script has no translations. The placeholders are
+// literal, so a translator may move them within the sentence.
+const positionTemplate = t("community.card.imagePosition");
+const positionFor = (i: number) =>
+  positionTemplate.replace("{n}", String(i + 1)).replace("{total}", String(works.length));
 ---
 
 <article class="ccard" style={`--frame-ar:${frameAspect}`}>
@@ -65,48 +81,77 @@ const altFor = (w: (typeof works)[number]) =>
   </h2>
 
   <div class="ccard__body">
+    {
+      /* The frame IS the Embla viewport. Wrapping it in one would have moved
+        transition:name off the box the member-page morph is keyed to, and
+        broken .ccard's width formula, which reads this element's aspect box.
+        So Embla is handed this node as its root and everything it needs is
+        added INSIDE: a track it may translate, with the click target, the
+        arrows and the dots as siblings of that track, untouched by the
+        motion. */
+    }
     <div
       class="ccard__frame"
       style={`aspect-ratio:${frame.width} / ${frame.height};${frame.color ? `background:${frame.color}` : ""}`}
       transition:name={`mimg-${member.id}`}
       data-carousel
+      data-position-label={isCarousel ? positionTemplate : undefined}
+      role={isCarousel ? "group" : undefined}
+      aria-roledescription={isCarousel ? t("community.card.carousel") : undefined}
+      aria-label={isCarousel ? `${member.displayName} — ${t("community.card.gallery")}` : undefined}
     >
+      <div class="ccard__track">
+        {
+          /* Only the first image carries a real src. The rest of the gallery
+            waits as data-src until the visitor first touches or hovers THIS
+            carousel, or until Embla reports the slide entering the frame (see
+            the script's hydrate) — before that, every member's whole gallery
+            decoded at once, which is what crash-looped iOS Safari. Embla
+            operates on existing DOM and never writes src, so moving the
+            images into a track leaves this defence exactly as it was.
+            Off-screen slides are aria-hidden and the script keeps that in step
+            with the selected index: previously every work's alt text was
+            announced at once, because opacity:0 hides nothing from a screen
+            reader. */
+          works.map((w, i) => (
+            <div
+              class="ccard__slide"
+              role={isCarousel ? "group" : undefined}
+              aria-roledescription={isCarousel ? t("community.card.image") : undefined}
+              aria-label={isCarousel ? positionFor(i) : undefined}
+              aria-hidden={isCarousel && i !== 0 ? "true" : undefined}
+            >
+              <img
+                class="ccard__img"
+                src={i === 0 ? w.rendered.src : undefined}
+                srcset={i === 0 ? w.rendered.srcSet.attribute : undefined}
+                data-src={i === 0 ? undefined : w.rendered.src}
+                data-srcset={i === 0 ? undefined : w.rendered.srcSet.attribute}
+                sizes={SIZES}
+                width={w.width}
+                height={w.height}
+                style={w.color ? `background:${w.color}` : undefined}
+                alt={altFor(w)}
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          ))
+        }
+      </div>
       {
-        /* Only the image on show carries a real src. The rest of the gallery
-          waits as data-src until the visitor first touches or hovers THIS
-          carousel (see the script's hydrate) — before that, every member's
-          whole gallery decoded at once, which is what crash-looped iOS
-          Safari. The carousel needs JS anyway (the arrows are JS), so a
-          no-JS visitor loses nothing they could reach. */
-        works.map((w, i) => (
-          <img
-            class="ccard__img"
-            class:list={{ "ccard__img--active": i === 0 }}
-            src={i === 0 ? w.rendered.src : undefined}
-            srcset={i === 0 ? w.rendered.srcSet.attribute : undefined}
-            data-src={i === 0 ? undefined : w.rendered.src}
-            data-srcset={i === 0 ? undefined : w.rendered.srcSet.attribute}
-            sizes={SIZES}
-            width={w.width}
-            height={w.height}
-            style={w.color ? `background:${w.color}` : undefined}
-            alt={altFor(w)}
-            loading="lazy"
-            decoding="async"
-          />
-        ))
-      }
-      {
-        /* Whole-artwork click target. A sibling of the arrows rather than a
-          wrapper, so no interactive element nests inside another; the arrows
-          sit above it on z-index and keep working. */
+        /* Whole-artwork click target. A sibling of the arrows AND of the track
+          rather than a wrapper, so no interactive element nests inside another
+          and Embla never translates it; the arrows sit above it on z-index and
+          keep working. It is also the carousel's only tab stop, which is what
+          the keydown handler hangs the arrow keys off — see the script. */
       }
       <a
         class="ccard__frame-link"
         href={profileHref}
         aria-label={`${t("community.card.viewProfile")} ${member.displayName}`}></a>
       {
-        works.length > 1 && (
+        isCarousel && (
           <>
             <button
               class="ccard__arrow ccard__arrow--prev"
@@ -124,6 +169,22 @@ const altFor = (w: (typeof works)[number]) =>
             >
               <span aria-hidden="true" />
             </button>
+            {/* Indicators, not controls — aria-hidden, pointer-events:none, no
+                tab stops. A directory page holds a couple of dozen cards;
+                giving each one a focusable dot per work would put dozens of
+                tab stops in front of the member links that are the page's
+                actual journey, to duplicate paging the arrows and the arrow
+                keys already do. The position is spoken instead, by the live
+                region below. */}
+            <div class="ccard__dots" aria-hidden="true">
+              {works.map((_, i) => (
+                <span class="ccard__dot" class:list={{ "ccard__dot--on": i === 0 }} />
+              ))}
+            </div>
+            {/* Empty at render: a live region has to be in the DOM before the
+                change it announces, and "Image 1 of 3" from every card at page
+                load is noise, not information. */}
+            <p class="ccard__live" aria-live="polite" aria-atomic="true" data-carousel-live />
           </>
         )
       }
@@ -176,7 +237,15 @@ const altFor = (w: (typeof works)[number]) =>
     font-size: 1.2rem;
     font-weight: 700;
     letter-spacing: -0.01em;
-    line-height: inherit;
+    /* Explicit, not `inherit`. Nothing up the tree sets a line-height — not
+       body, not .page-wrap — so `inherit` resolved to `normal`, i.e. Archivo's
+       own metrics (~1.25) re-resolved against this element's 1.2rem (15.6px
+       mobile / 18px desktop). At that size the gap between the two lines of a
+       wrapped name is wide enough that the name reads as two entries rather
+       than one. 1.1 closes it to a couple of pixels while still clearing a
+       descender sitting over a capital, which is where a tighter value starts
+       to collide. */
+    line-height: 1.1;
   }
   .ccard__name-link {
     display: block;
@@ -204,26 +273,57 @@ const altFor = (w: (typeof works)[number]) =>
     flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
-    border: 1.5px solid var(--color-border);
+    /* NO BORDER, deliberately. The artwork is its own edge; a grey rule around
+       it read as a box the picture had been placed inside, which is the
+       opposite of the page it sits on.
+       Nothing has to compensate for the loss. This box is content-box —
+       global.css has no universal box-sizing reset — so the 1.5px sat OUTSIDE
+       the aspect-ratio'd content box and made the frame's border box ~3px
+       taller and wider than the ratio alone. Removing it makes .ccard's
+       width formula (--frame-cap × --frame-ar) exact where it used to
+       under-shoot the slot by those 3px, so the only movement is sub-pixel to
+       3px of RECLAIMED space, never a card outgrowing its cell. */
     /* Square corners throughout the card — no --radius-* token here. */
     border-radius: 0;
     /* Dominant colour is painted inline where the member has one; this is the
        fallback ground. */
     background: var(--color-bg);
+    /* Vertical panning stays the browser's; only a horizontal gesture ever
+       reaches Embla's drag. This declaration IS the defence for "a page scroll
+       that starts on a card still scrolls the page": following the finger
+       means a non-passive touchmove, and without this the browser would have
+       to wait on that listener to learn whether the page may move at all. */
+    touch-action: pan-y pinch-zoom;
   }
 
-  .ccard__img {
+  /* The Embla container. Absolutely positioned rather than height:100% so it
+     fills the aspect box exactly the way the stacked images used to, with no
+     percentage height resolving against an aspect-ratio'd parent. Embla
+     translates THIS element and nothing else in the frame, which is why the
+     click target and the arrows can be its siblings and stay put. */
+  .ccard__track {
     position: absolute;
     inset: 0;
+    display: flex;
+  }
+
+  /* One frame-wide slide per work: `flex: 0 0 100%` is what makes a snap a
+     whole image, and min-width:0 stops the image's intrinsic width from
+     inflating the slide past the frame. */
+  .ccard__slide {
+    position: relative;
+    flex: 0 0 100%;
+    min-width: 0;
+  }
+
+  /* Was position:absolute + an opacity crossfade; in a track the image simply
+     fills its slide. Nothing animates the image itself any more — the motion
+     is Embla translating the track under it. */
+  .ccard__img {
+    display: block;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    opacity: 0;
-    transition: opacity 260ms ease;
-  }
-
-  .ccard__img--active {
-    opacity: 1;
   }
 
   .ccard__frame-link {
@@ -267,7 +367,12 @@ const altFor = (w: (typeof works)[number]) =>
       background-color 140ms ease,
       color 140ms ease;
   }
+  /* :focus-within arrived with the keyboard support: the arrow keys are bound
+     to the frame, so a visitor who has tabbed to the click target can page
+     without ever hovering — and had no way to see the controls that prove it
+     until they came up with the focus. */
   .ccard__frame:hover .ccard__arrow,
+  .ccard__frame:focus-within .ccard__arrow,
   .ccard__arrow:focus-visible {
     opacity: 1;
     transform: translate(0, -50%);
@@ -307,6 +412,63 @@ const altFor = (w: (typeof works)[number]) =>
   .ccard__arrow--next {
     right: 0.15rem;
     transform: translate(0.4rem, -50%);
+  }
+
+  /* ── Position indicator ───────────────────────────────── */
+  /* Drawn on a painted plate for the same reason the arrows are: a 4px mark
+     has to survive whatever artwork is behind it, and only a ground reads on
+     both a white sky and a black silhouette. Square-ish corners, --radius-xs
+     at most, no chrome — the same family as the arrows and the disclosure. */
+  .ccard__dots {
+    position: absolute;
+    bottom: 0.4rem;
+    left: 50%;
+    z-index: 1;
+    display: flex;
+    gap: 0.26rem;
+    padding: 0.26rem 0.34rem;
+    border-radius: var(--radius-xs);
+    background: var(--color-bg);
+    /* Quiet at rest, full on hover — the arrows' manners. Unlike the arrows
+       these never go to 0: on touch the arrows are display:none, and the dots
+       are then the only thing on the card saying there is more than one work. */
+    opacity: 0.55;
+    /* Carries its own centring so nothing else has to know its width. */
+    transform: translate(-50%, 0);
+    transition: opacity 180ms ease;
+    /* Never intercepts a drag or the click target underneath — see the markup
+       note on why these are indicators and not buttons. */
+    pointer-events: none;
+  }
+  .ccard__frame:hover .ccard__dots,
+  .ccard__frame:focus-within .ccard__dots {
+    opacity: 1;
+  }
+
+  .ccard__dot {
+    width: 0.34rem;
+    height: 0.34rem;
+    border-radius: var(--radius-xs);
+    background: var(--color-dark);
+    opacity: 0.26;
+    transition: opacity 180ms ease;
+  }
+  .ccard__dot--on {
+    opacity: 1;
+  }
+
+  /* The spoken position. There is no sr-only utility anywhere in this
+     codebase, so the clip technique lives here. */
+  .ccard__live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   /* ── Member caption ───────────────────────────────────── */
@@ -380,12 +542,19 @@ const altFor = (w: (typeof works)[number]) =>
     .ccard__arrow {
       display: none;
     }
+
+    /* There is no hover here to lift them, and with the arrows gone the dots
+       are the only affordance left, so they rest a little brighter. */
+    .ccard__dots {
+      opacity: 0.8;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .ccard__img {
-      transition: none;
-    }
+    /* Slide travel is no longer a CSS transition — the script asks Embla to
+       jump instead of animate under this query, which is the same trade the
+       crossfade used to make by dropping its transition here. What is left in
+       this block is the chrome. */
 
     /* The block still appears, it just does not travel to get there. */
     .ccard__arrow {
@@ -399,17 +568,27 @@ const altFor = (w: (typeof works)[number]) =>
 </style>
 
 <script>
+  import EmblaCarousel from "embla-carousel";
+  import type { EmblaCarouselType } from "embla-carousel";
+
   // Auto-advance state lives at module scope so astro:before-swap can stop
   // every timer and observer from the page being swapped away — an interval
   // that survives a ClientRouter navigation would keep firing against dead
   // nodes forever.
   const autoTimers = new Set<ReturnType<typeof setInterval>>();
   const autoObservers = new Set<IntersectionObserver>();
+  // Embla instances belong in that sweep too, and are the worst of the three:
+  // each holds a ResizeObserver, a MutationObserver, an IntersectionObserver
+  // and non-passive drag listeners. Dropping the reference removes none of
+  // them — only destroy() does.
+  const carousels = new Set<EmblaCarouselType>();
   document.addEventListener("astro:before-swap", () => {
     autoTimers.forEach((t) => clearInterval(t));
     autoTimers.clear();
     autoObservers.forEach((o) => o.disconnect());
     autoObservers.clear();
+    carousels.forEach((c) => c.destroy());
+    carousels.clear();
   });
 
   const MOBILE = window.matchMedia("(max-width: 767px)");
@@ -430,15 +609,15 @@ const altFor = (w: (typeof works)[number]) =>
       if (carousel.dataset.ready) return;
       carousel.dataset.ready = "true";
       const images = Array.from(carousel.querySelectorAll<HTMLImageElement>(".ccard__img"));
-      let current = 0;
 
-      // The build gives only the active image a src; the rest wait as
-      // data-src so a page full of galleries doesn't decode every image of
-      // every member at once (the iOS Safari crash). First contact with a
-      // carousel wakes its whole gallery, so by the time a finger reaches
-      // the arrow the neighbours are already loading.
-      const hydrate = (image: HTMLImageElement) => {
-        if (!image.dataset.src) return;
+      // The build gives only the first image a src; the rest wait as data-src
+      // so a page full of galleries doesn't decode every image of every member
+      // at once (the iOS Safari crash). First contact with a carousel wakes its
+      // whole gallery, so by the time a finger reaches the arrow the neighbours
+      // are already loading. Embla never writes src itself — this stays the
+      // only thing that does.
+      const hydrate = (image: HTMLImageElement | undefined) => {
+        if (!image?.dataset.src) return;
         image.src = image.dataset.src;
         if (image.dataset.srcset) image.srcset = image.dataset.srcset;
         delete image.dataset.src;
@@ -448,94 +627,155 @@ const altFor = (w: (typeof works)[number]) =>
       carousel.addEventListener("pointerenter", hydrateAll, { once: true });
       carousel.addEventListener("touchstart", hydrateAll, { once: true, passive: true });
 
-      const show = (next: number) => {
-        current = (next + images.length) % images.length;
-        // Safety net in case neither wake-up event fired first.
-        hydrate(images[current]);
-        images.forEach((image, index) =>
-          image.classList.toggle("ccard__img--active", index === current)
-        );
+      // One work: the track is there for the layout, but there is nothing to
+      // page, nothing to announce, and no reason to pay for a drag handler.
+      if (images.length < 2) return;
+
+      const slides = Array.from(carousel.querySelectorAll<HTMLElement>(".ccard__slide"));
+      const dots = Array.from(carousel.querySelectorAll<HTMLElement>(".ccard__dot"));
+      const live = carousel.querySelector<HTMLElement>("[data-carousel-live]");
+      const positionLabel = carousel.dataset.positionLabel ?? "";
+
+      const embla = EmblaCarousel(carousel, {
+        // Named rather than left to Embla's "first child" default: the frame
+        // also holds the click target, the arrows and the dots, and which of
+        // them happens to be first is a markup detail nothing should depend on.
+        container: ".ccard__track",
+        slides: ".ccard__slide",
+        // The hand-rolled carousel wrapped with a modulo and the 5s
+        // auto-advance relies on that to keep cycling; loop is the same
+        // behaviour. Embla loops by translating the real slides, not by
+        // cloning, so no image is ever duplicated into the DOM.
+        loop: true,
+        align: "start",
+        // NOT the default 0. slidesInView is an IntersectionObserver, and at
+        // threshold 0 the neighbouring slide counts as in view the instant its
+        // rect touches the frame's — which, at a frame width of 439.94793701px,
+        // it does by 0.00002px of floating-point noise. That silently hydrated
+        // image 2 of every gallery on page load: sixteen extra decodes on the
+        // directory, i.e. exactly the thing the data-src scheme exists to
+        // prevent. 5% of the frame is far above the noise and still means "the
+        // slide has visibly begun to appear".
+        inViewThreshold: 0.05,
+        // Skip the reInit when the element has no box. The index view sets
+        // grid.hidden, which fires the ResizeObserver at width 0, and
+        // re-measuring there would snap the carousel against zero-width
+        // slides. Embla only rewrites its size cache on a real reInit, so the
+        // entry that arrives when the grid comes back matches what was
+        // measured at init and correctly asks for nothing.
+        watchResize: (_api, entries) => entries.every((e) => e.contentRect.width > 0),
+      });
+      carousels.add(embla);
+
+      // Reduced motion: arrive rather than travel. Embla's `jump` argument is
+      // the exact counterpart of the crossfade dropping its transition under
+      // the same query. Read per call, never cached — the OS setting can
+      // change while the page is open.
+      const jump = () => REDUCED.matches;
+
+      // Embla's slidesInView is scoped to the FRAME (its observer root is the
+      // container's parent), so this fires for a slide entering the carousel's
+      // own viewport — the documented lazy-load hook, and the only wake-up
+      // that covers auto-advance and the arrow keys on a card no pointer ever
+      // entered.
+      const hydrateInView = () => embla.slidesInView().forEach((i) => hydrate(images[i]));
+      embla.on("slidesInView", hydrateInView);
+
+      // The live region must not narrate the 5s auto-advance: a phone with
+      // three cards on screen would otherwise talk over itself every few
+      // seconds. The flag is lowered around the tick only, and `select` is
+      // emitted synchronously from scrollNext, so it can never be read by the
+      // wrong change.
+      let announce = true;
+      const sync = () => {
+        const i = embla.selectedScrollSnap();
+        // The safety net the old show() carried: hydrate the target even if
+        // neither the pointer nor the intersection observer got there first.
+        // select fires as the scroll STARTS, so this is still in time.
+        hydrate(images[i]);
+        slides.forEach((slide, n) => {
+          if (n === i) slide.removeAttribute("aria-hidden");
+          else slide.setAttribute("aria-hidden", "true");
+        });
+        dots.forEach((dot, n) => dot.classList.toggle("ccard__dot--on", n === i));
+        if (live && announce) {
+          live.textContent = positionLabel
+            .replace("{n}", String(i + 1))
+            .replace("{total}", String(slides.length));
+        }
       };
+      embla.on("select", sync);
 
-      carousel
-        .querySelector("[data-carousel-prev]")
-        ?.addEventListener("click", () => show(current - 1));
-      carousel
-        .querySelector("[data-carousel-next]")
-        ?.addEventListener("click", () => show(current + 1));
+      // The 5s auto-advance, mobile gallery only (arrows are display:none on
+      // touch, so a multi-work gallery would otherwise be invisible past its
+      // first image). Runs only while THIS card is on screen — an off-screen
+      // carousel advancing would hydrate its whole gallery for nobody, and
+      // decoded-image memory is what crashed iOS Safari. Conditions are
+      // re-checked every tick, so switching views, rotating to desktop, or
+      // backgrounding the tab pauses without bookkeeping. Deliberately NOT
+      // Embla's Autoplay plugin: that plugin has no way to express "only in
+      // the spread view, only on mobile, re-decided on every tick".
+      let timer: ReturnType<typeof setInterval> | null = null;
+      const start = () => {
+        if (timer !== null) return;
+        timer = setInterval(() => {
+          if (!autoAdvanceAllowed()) return;
+          announce = false;
+          embla.scrollNext();
+          announce = true;
+        }, AUTO_ADVANCE_MS);
+        autoTimers.add(timer);
+      };
+      const stop = () => {
+        if (timer === null) return;
+        clearInterval(timer);
+        autoTimers.delete(timer);
+        timer = null;
+      };
+      const restart = () => {
+        stop();
+        start();
+      };
+      const io = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) start();
+        else stop();
+      });
+      io.observe(carousel);
+      autoObservers.add(io);
 
-      if (images.length > 1) {
-        // The 5s auto-advance, mobile gallery only (arrows are display:none
-        // on touch, so a multi-work gallery would otherwise be invisible past
-        // its first image). Runs only while THIS card is on screen — an
-        // off-screen carousel advancing would hydrate its whole gallery for
-        // nobody, and decoded-image memory is what crashed iOS Safari.
-        // Conditions are re-checked every tick, so switching views, rotating
-        // to desktop, or backgrounding the tab pauses without bookkeeping.
-        let timer: ReturnType<typeof setInterval> | null = null;
-        const start = () => {
-          if (timer !== null) return;
-          timer = setInterval(() => {
-            if (autoAdvanceAllowed()) show(current + 1);
-          }, AUTO_ADVANCE_MS);
-          autoTimers.add(timer);
-        };
-        const stop = () => {
-          if (timer === null) return;
-          clearInterval(timer);
-          autoTimers.delete(timer);
-          timer = null;
-        };
-        const restart = () => {
-          stop();
-          start();
-        };
-        const io = new IntersectionObserver(([entry]) => {
-          if (entry.isIntersecting) start();
-          else stop();
-        });
-        io.observe(carousel);
-        autoObservers.add(io);
+      // A fresh 5s from the image the visitor chose — without this the standing
+      // timer can advance again moments after a drag.
+      embla.on("pointerUp", restart);
 
-        // Touch: the artwork itself pages. Horizontal-dominant only, so a
-        // vertical page scroll that happens to start on a card never flips
-        // it. Passive listeners — the page's own panning is never blocked.
-        let startX = 0;
-        let startY = 0;
-        let swiped = false;
-        carousel.addEventListener(
-          "touchstart",
-          (e) => {
-            startX = e.touches[0].clientX;
-            startY = e.touches[0].clientY;
-            swiped = false;
-          },
-          { passive: true }
-        );
-        carousel.addEventListener(
-          "touchend",
-          (e) => {
-            const dx = e.changedTouches[0].clientX - startX;
-            const dy = e.changedTouches[0].clientY - startY;
-            if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-              swiped = true;
-              show(dx < 0 ? current + 1 : current - 1);
-              // A fresh 5s from the image the visitor chose — without this
-              // the standing timer can advance again moments after a swipe.
-              restart();
-            }
-          },
-          { passive: true }
-        );
-        // Belt and braces: a swipe that the browser still promotes to a click
-        // must not also follow the frame link under the finger.
-        carousel.querySelector(".ccard__frame-link")?.addEventListener("click", (e) => {
-          if (swiped) {
-            e.preventDefault();
-            swiped = false;
-          }
-        });
-      }
+      carousel.querySelector("[data-carousel-prev]")?.addEventListener("click", () => {
+        embla.scrollPrev(jump());
+        restart();
+      });
+      carousel.querySelector("[data-carousel-next]")?.addEventListener("click", () => {
+        embla.scrollNext(jump());
+        restart();
+      });
+
+      // Keyboard. Bound to the FRAME, not to the arrows, because the arrows are
+      // display:none under --bp-mobile and a keyboard user on a narrow viewport
+      // could not reach works 2..n at all. The frame always contains exactly one
+      // tab stop — .ccard__frame-link — so this needs no tabindex of its own and
+      // adds no stops to a page already full of them. An arrow key on a link has
+      // no default worth keeping here; this page never scrolls sideways.
+      carousel.addEventListener("keydown", (e) => {
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        e.preventDefault();
+        hydrateAll();
+        if (e.key === "ArrowRight") embla.scrollNext(jump());
+        else embla.scrollPrev(jump());
+        restart();
+      });
+
+      // A drag must not navigate, and nothing here tracks a `swiped` flag any
+      // more: Embla 8 owns that guard itself, with a capture-phase click
+      // listener on the root that preventDefaults once the pointer has
+      // travelled past dragThreshold. (clickAllowed() was the v7 API and is
+      // gone from 8.x — the check moved inside the library.)
     });
   }
 
