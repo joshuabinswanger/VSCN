@@ -40,17 +40,22 @@
   .ccpv__name {
     margin: 0;
     font-size: 1.2rem;
+    /* Explicit, matching .ccard__name / .ctcard__name. Unset it and this
+       resolves to `normal` independently of the real cards, which is how the
+       preview silently drifted before. */
+    line-height: 1.1;
     font-weight: 700;
     letter-spacing: -0.01em;
     color: var(--color-dark);
   }
 
-  /* Artwork frame — mirrors .ccard__frame. Aspect ratio and dominant colour
-     are bound inline per image. */
+  /* Artwork frame — mirrors .ccard__frame: no box, the picture is its own
+     edge. The ground stays: it is the fallback colour under an image that
+     fades in, not a drawn surface. Aspect ratio and dominant colour are
+     bound inline per image. */
   .ccpv__frame {
     position: relative;
     overflow: hidden;
-    border: 1.5px solid var(--color-border);
     border-radius: 0;
     background: var(--color-bg);
   }
@@ -66,29 +71,30 @@
     object-fit: cover;
   }
 
-  /* Typographic frame — mirrors .ctcard__frame: same border and ground as the
-     artwork frame, holding tag lines where the artwork would stand. No
-     --frame-cap here: the preview sits in a form, not a grid slot. */
+  /* Typographic frame — mirrors .ctcard__frame: one hairline where the box's
+     top edge used to be, holding tag lines where the artwork would stand.
+     Inline padding went with the border, which only ever inset tags from a
+     box edge; the vertical padding stays. No --frame-cap here: the preview
+     sits in a form, not a grid slot. */
   .ccpv__tframe {
     box-sizing: border-box;
     overflow: hidden;
-    padding: 0.7rem 0.75rem;
-    border: 1.5px solid var(--color-border);
+    padding: 0.7rem 0;
+    border-top: 1.5px solid var(--color-border);
     border-radius: 0;
-    background: var(--color-bg);
     min-height: 3rem;
   }
   .ccpv__tframe[hidden] {
     display: none;
   }
 
-  /* Nothing to hold — mirrors .ctcard__frame--rule: a hairline, not an empty
-     box. Toggled by renderCardPreview(). */
+  /* Nothing to hold — mirrors .ctcard__frame--rule. Now the SAME drawing as
+     the base rule with nothing standing under the line, rather than a
+     different one: it inherits the hairline and only drops the space. Must
+     stay after .ccpv__tframe in source — equal specificity, later wins.
+     Toggled by renderCardPreview(). */
   .ccpv__tframe--rule {
     padding: 0;
-    border: none;
-    border-top: 1.5px solid var(--color-border);
-    background: none;
     min-height: 0;
     margin-block: 0.35rem 0.15rem;
   }

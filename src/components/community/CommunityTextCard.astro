@@ -121,7 +121,10 @@ const frameIsRule = tagLines.length === 0;
     font-size: 1.2rem;
     font-weight: 700;
     letter-spacing: -0.01em;
-    line-height: inherit;
+    /* Explicit, not `inherit` — see the long note on .ccard__name. Identical
+       here on purpose: the two card types share one name band, and a wrapped
+       name must set the same block whichever face it sits on. */
+    line-height: 1.1;
   }
   .ctcard__name-link {
     display: block;
@@ -137,28 +140,39 @@ const frameIsRule = tagLines.length === 0;
   }
 
   /* ── The rectangle ────────────────────────────────────── */
-  /* Same frame treatment as .ccard__frame — border, ground, square corners —
-     so the two card types read as one family; only the contents differ. */
+  /* No longer a rectangle: .ccard__frame lost its border so artwork sits on
+     the page rather than inside a box, and this frame follows it — the two
+     card types have to read as one family, and a boxed tag panel next to an
+     unboxed picture is a mismatch you notice immediately in the grid.
+     What survives is the TOP HAIRLINE the --rule variant below already used.
+     That is the whole treatment now: a name over a line over the member's
+     tags over a role, like an index entry. Keeping one stroke rather than
+     none is what stops a member with no artwork collapsing into loose text,
+     and it means --rule is no longer a different drawing — just this drawing
+     with nothing standing under the line.
+     The 0.75rem of inline padding went with the border: it existed to inset
+     the tags from a box edge, and with no edge it only pushed them out of
+     line with the name above and the role below. Vertical padding stays, so
+     the content height under --frame-cap is within 1.5px of what it was and
+     the fold still lands between tag lines (see --ctcard-chrome).
+     No ground either: --color-bg on a boxless block is the page's own colour. */
   .ctcard__frame {
     position: relative;
     box-sizing: border-box;
     overflow: hidden;
-    padding: 0.7rem 0.75rem;
-    border: 1.5px solid var(--color-border);
+    padding: 0.7rem 0;
+    border-top: 1.5px solid var(--color-border);
     border-radius: 0;
-    background: var(--color-bg);
     min-height: 3rem;
     max-height: var(--frame-cap);
   }
 
-  /* Nothing to hold: one hairline where the frame's top edge was, and no box.
-     min-height 0 so the card closes up to name + rule + role — the empty
-     3rem box it replaces read as a frame that had failed to load. */
+  /* Nothing to hold: the hairline stays and everything under it goes. It
+     inherits that border from the rule above now, so this variant only has to
+     close the box up — min-height 0 so the card shrinks to name + rule + role.
+     The empty 3rem box this replaced read as a frame that had failed to load. */
   .ctcard__frame--rule {
     padding: 0;
-    border: none;
-    border-top: 1.5px solid var(--color-border);
-    background: none;
     min-height: 0;
     margin-block: 0.35rem 0.15rem;
   }
