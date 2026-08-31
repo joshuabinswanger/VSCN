@@ -1,4 +1,6 @@
 import { updateProfile, type User } from "firebase/auth";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "./firebase.ts";
 import { uploadAvatar, deleteAvatar } from "./storage.ts";
 import { updateUserProfile } from "./firestore.ts";
 import { validateBio } from "./validation.ts";
@@ -59,37 +61,16 @@ export async function handleProfileUpdate(
 }
 
 /**
- * Triggers a GitHub Actions rebuild for the community page.
- * Requires PUBLIC_GITHUB_REBUILD_TOKEN, PUBLIC_GITHUB_OWNER, and PUBLIC_GITHUB_REPO.
+ * Triggers a GitHub Actions rebuild for the community page via the
+ * `requestRebuild` Cloud Function, which verifies the caller's Firebase Auth
+ * token and holds the GitHub token as a server-side secret.
+ * Best-effort: failures are logged, never thrown.
  */
 export async function triggerRebuild() {
-  const env = (import.meta as unknown as { env: Record<string, string> }).env;
-  const ghToken = env.PUBLIC_GITHUB_REBUILD_TOKEN;
-  const ghOwner = env.PUBLIC_GITHUB_OWNER;
-  const ghRepo = env.PUBLIC_GITHUB_REPO;
-
-  if (ghToken && ghOwner && ghRepo) {
-    try {
-      const res = await fetch(
-        `https://api.github.com/repos/${ghOwner}/${ghRepo}/actions/workflows/firebase-hosting-merge.yml/dispatches`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${ghToken}`,
-            Accept: "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-          },
-          body: JSON.stringify({ ref: "main" }),
-        }
-      );
-      if (!res.ok) {
-        const body = await res.text();
-        console.error(`Rebuild trigger failed: ${res.status}`, body);
-      }
-    } catch (rebuildErr) {
-      console.error("Rebuild trigger error:", rebuildErr);
-    }
-  } else {
-    console.warn("Rebuild skipped: missing environment variables");
+  try {
+    const requestRebuild = httpsCallable(functions, "requestRebuild");
+    await requestRebuild();
+  } catch (rebuildErr) {
+    console.error("Rebuild trigger error:", rebuildErr);
   }
 }
