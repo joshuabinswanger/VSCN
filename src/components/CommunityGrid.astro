@@ -510,11 +510,19 @@ const indexMembers = [...members].sort((a, b) =>
        it off the side of the page. */
     left: 0;
     width: 16rem;
-    max-height: 19rem;
+    /* The list IS the panel's content, so this cap is what decides how many
+       tags read at a glance before scrolling. It hangs off a bar that is
+       sticky near the top of the viewport, so the vh half can't reach the
+       fold in practice; the rem half stops the panel drawing itself as a
+       full-height column on a tall screen. */
+    max-height: min(60vh, 34rem);
     overflow-y: auto;
     background: var(--color-bg);
     border: 1px solid var(--color-dark);
-    padding: 0.7rem 0.7rem 0.4rem;
+    /* No top padding of its own: the gap above the search field belongs TO
+       the field, so the field can stick flush to the scrollport edge with no
+       strip for the options to show through (see .tag-filter__search). */
+    padding: 0 0.7rem 0.4rem;
     scrollbar-width: thin;
     scrollbar-color: var(--color-border) transparent;
   }
@@ -527,12 +535,19 @@ const indexMembers = [...members].sort((a, b) =>
     display: block;
     width: 100%;
     box-sizing: border-box;
+    /* Holds its place while a long list scrolls under it. The panel's top
+       padding lives HERE instead, so the field's own box reaches the
+       scrollport edge and the sticky band paints over every option passing
+       behind it — with the type sitting exactly where it did before. */
+    position: sticky;
+    top: 0;
+    z-index: 1;
     margin-bottom: 0.5rem;
-    padding: 0 0 0.25rem;
+    padding: 0.7rem 0 0.25rem;
     border: none;
     border-bottom: 1px solid var(--color-border);
     border-radius: 0;
-    background: none;
+    background: var(--color-bg);
     font: inherit;
     font-size: 0.85rem;
     color: var(--color-dark);
