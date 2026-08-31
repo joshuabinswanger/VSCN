@@ -280,8 +280,11 @@ const indexMembers = [...members].sort((a, b) =>
   </div>
 
   {
-    /* The index: every member as one ledger row — ordinal, name, role, type —
-      alphabetical by name. Hidden until the selector asks for it; the deal
+    /* The index: every member as one ledger row — "Name, Role" on the left and
+      their field on the right — alphabetical by name. (Was four ranged-left
+      columns; the ordinal and the member-type badge are gone, and the role
+      joined the name it describes on 2026-08-31 at Josh's ask.) Hidden until
+      the selector asks for it; the deal
       never touches it, so switching in and out is free. Rows link to the
       member's profile page, which makes this the one view where every member
       is reachable without hunting the drawing. Search lives in the masthead
@@ -301,13 +304,31 @@ const indexMembers = [...members].sort((a, b) =>
             <li class="cindex__row" data-tags={tagsAttr(m)}>
               <div class="cindex__line">
                 <a class="cindex__link" href={memberHref(lang, m.slug)}>
-                  <span class="cindex__name">{m.displayName || m.slug}</span>
-                  <span class="cindex__role">{m.role}</span>
-                  {/* The field, from the member's own tags — the ledger's third
-                      column, and what the ordinal was wasting space on. The
-                      member-type badge gave up its column to this: it renders
-                      empty for any profile without a type, which is all of them
-                      today.
+                  {/* NAME AND ROLE ARE ONE UNIT — "Jane Doe, Illustrator" —
+                      not two columns. The role used to sit in its own track a
+                      column and a half away from the person it described,
+                      which read as a table of unrelated facts; beside the name
+                      it reads as the line a directory would actually print.
+                      The wrapper is what makes that possible: a grid cell
+                      holds one item, so the two spans need a box of their own
+                      before the field can keep a column to itself.
+
+                      Rendered only when there IS a role. The comma lives in
+                      .cindex__role's ::before, so an absent role takes its
+                      separator with it — no stray punctuation, no empty flex
+                      item, at any breakpoint. */}
+                  <span class="cindex__who">
+                    <span class="cindex__name">{m.displayName || m.slug}</span>
+                    {/* `role` arrives already trimmed from memberView, so a
+                        truthiness test is the whole emptiness check. */}
+                    {m.role && <span class="cindex__role">{m.role}</span>}
+                  </span>
+                  {/* The field, from the member's own tags — the ledger's
+                      second and last column now that the role has moved in
+                      beside the name, and what the ordinal was wasting space
+                      on. The member-type badge gave up its column to this: it
+                      renders empty for any profile without a type, which is
+                      all of them today.
 
                       Capped at INDEX_FIELD_TAGS: several members carry seven
                       tags, and CSS truncation would cut one mid-word. Trimming
@@ -856,17 +877,25 @@ const indexMembers = [...members].sort((a, b) =>
 
   .cindex__link {
     display: grid;
-    /* Room for the disclosure toggle, which is lifted to the row's right
-       edge. On the link, not the row: row padding would inset the open
-       panel as well. */
-    padding-right: 2rem;
-    /* Name · role · field. Three real columns of content now that the
-       ordinal is gone — the field takes the widest of them, since a member
-       can carry several tags. */
-    grid-template-columns: minmax(10rem, 1fr) minmax(0, 1fr) minmax(0, 1.3fr);
+    /* WHO · FIELD. Two columns, not three: the role moved inside the first one
+       and sits beside the name (see .cindex__who). The ledger reads with two
+       anchored edges — the person on the left, their field on the right — the
+       way an index prints, rather than as three ranged-left tracks with the
+       role stranded in the middle of them. The name side takes the larger
+       share because it now carries two pieces of type. */
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
     align-items: baseline;
     gap: 1.5rem;
-    padding: 0.85rem 0.25rem;
+    /* The 2rem right inset is room for the disclosure toggle, which is lifted
+       to the row's right edge. On the link, not the row: row padding would
+       inset the open panel as well. It used to be a `padding-right: 2rem`
+       declared ABOVE the `padding` shorthand, which silently reset it to
+       0.25rem — dead since it was written, and harmless only because the
+       field was ranged left and never reached that edge. Ranged right it
+       ran straight under the chevron (measured: field ending 26px past the
+       toggle's left edge), so the reserve is folded into the shorthand
+       where nothing can quietly undo it. */
+    padding: 0.85rem 2rem 0.85rem 0.25rem;
     text-decoration: none;
     color: inherit;
     transition: background-color 0.15s;
@@ -875,6 +904,24 @@ const indexMembers = [...members].sort((a, b) =>
   .cindex__link:hover,
   .cindex__link:focus-visible {
     background-color: color-mix(in srgb, var(--color-dark) 4%, transparent);
+  }
+
+  /* The name and its role as ONE unit. Flex, not plain inline flow, for one
+     reason: flex drops the whitespace-only text node between the two spans, so
+     the separator can be generated entirely inside .cindex__role and vanish
+     with it. column-gap is 0 for the same reason — the space after the comma
+     is part of that generated content, so nothing is left behind when there is
+     no role to separate.
+     Wrapping is allowed: a long name plus a long role drops the role onto its
+     own line under the name rather than pushing into the field's column, which
+     is also exactly the stack the mobile block wants. */
+  .cindex__who {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0;
+    row-gap: 0.15rem;
+    min-width: 0;
   }
 
   .cindex__name {
@@ -888,20 +935,41 @@ const indexMembers = [...members].sort((a, b) =>
     text-underline-offset: 0.35em;
   }
 
+  /* Beside the name, in the name's own box — the same muted voice it had as a
+     column, so the eye still reads one bold name and one quiet qualifier. No
+     ellipsis machinery any more: an inline flex item cannot truncate, and a
+     role that does not fit should wrap under the name rather than lose its
+     ending. */
   .cindex__role {
     font-size: 0.85rem;
     color: var(--color-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
-  /* The field. Same voice as the role — a second muted column, not a badge:
-     these are the member's own tags, sentence-shaped, so uppercasing them
-     would read as a label rather than as content. */
+  /* The separator, generated rather than typed, so it can only ever exist when
+     a role does. The frontmatter already omits the span for an empty role;
+     this is the second half of that guarantee — there is no comma anywhere in
+     the markup to be orphaned. NBSP, not a plain space: a leading space at the
+     start of an inline box collapses away. */
+  .cindex__role::before {
+    content: ",\00a0";
+  }
+
+  /* Belt and braces for a role element that is present but empty — display:none
+     takes its ::before comma with it. Not mobile-only any more: with the role
+     inside the name's box a stray separator would show at every breakpoint. */
+  .cindex__role:empty {
+    display: none;
+  }
+
+  /* The field. Same voice as the role — muted, not a badge: these are the
+     member's own tags, sentence-shaped, so uppercasing them would read as a
+     label rather than as content. Ranged RIGHT, which is what makes the row a
+     ledger line: the name holds the left edge, the field the right, and the
+     variable-width middle is air instead of a ragged second margin. */
   .cindex__field {
     font-size: 0.85rem;
     color: var(--color-muted);
+    text-align: right;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -913,19 +981,22 @@ const indexMembers = [...members].sort((a, b) =>
       padding: 1.5rem 0 6rem;
     }
 
-    /* Stacked lines instead of three columns: name, the role (title) under
-       it, then the field. An empty role must not leave a phantom gap in the
-       stack — on desktop the span has to stay for column alignment. */
+    /* Stacked lines instead of two columns: the name line — WITH its role,
+       which now travels with the name instead of being dropped. Mobile used to
+       hide the role because it could not afford a third column for it; beside
+       the name it costs no column at all, and a directory row that says only
+       "Jane Doe" tells a phone reader strictly less than the desktop does for
+       no saving. It wraps under the name when the measure runs out, which is
+       the stack the old rule was building by hand. */
     .cindex__link {
       grid-template-columns: 1fr;
       gap: 0.2rem;
     }
 
-    .cindex__role:empty {
-      display: none;
-    }
-
+    /* One column: ranging the field right would strand it under a left-aligned
+       name rather than pair with it. */
     .cindex__field {
+      text-align: left;
       white-space: normal;
     }
   }
