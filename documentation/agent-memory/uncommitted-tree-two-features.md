@@ -3,50 +3,53 @@
 
 ---
 name: uncommitted-tree-two-features
-description: "Three days of uncommitted work on feature/user-content-backend holds two distinct features — member projects and the spread gallery — and unlike 3fcc0ba they ARE separable into two commits"
+description: "RESOLVED 2026-08-31: the four-day dirty tree on feature/user-content-backend was split into six commits, so the 3fcc0ba failure did not repeat — but all 35 commits on the branch are still unpushed and the prod rules deploy still blocks profile Saves"
 metadata:
   type: project
 ---
 
-As of 2026-08-27, `feature/user-content-backend` has **21 modified files, ~1900 insertions,
-and two untracked source files**, with the **last commit on 2026-08-24** (`0c985b3`). Three
-days of work has never been committed.
+**Resolved on 2026-08-31.** The dirty tree that had been growing on
+`feature/user-content-backend` since 2026-08-24 (`0c985b3`) — 26 modified files, ~4,350
+insertions, eight untracked source files — was committed as **six topical commits** rather
+than one. The `3fcc0ba` failure did not repeat.
 
-Two distinct features are sitting in that one dirty tree:
+The split, in order (later commits depend on earlier ones):
 
-- **Member projects** — `src/lib/projects.ts` (untracked), the `projects` array on the
-  profile doc, `description` + `projectId` on gallery items, `validProjects()` in
-  `firestore.rules`, the editor UI in `ProfileForm.astro` (+119 project-touching lines), the
-  profile page credit line, and 27 new i18n keys.
-- **The spread gallery** — `src/lib/communityLayout.ts` (untracked), the rewritten
-  `CommunityGrid.astro` (+159 layout lines), `Layout.astro`, the community cards,
-  `global.css`, and the `--grid-max` widening to 2000px.
+1. `chore:` untrack `.firebase/hosting.ZGlzdA.cache` and ignore `.firebase/`.
+2. `feat(functions):` the GitHub rebuild token leaves the browser — `functions/`,
+   `firebase.json`, the deploy workflow, `profile.ts`, `firebase.ts`.
+3. `feat(profile):` projects, visual needs, science-side fields — `firestore.rules`, the
+   editor, the preview, `firestore.ts`, `gallery.ts`, `memberType.ts`, `memberView.ts`,
+   `members/[slug].astro`, new `projects.ts` + `VisualNeedsSelector.astro` +
+   `seed-visual-needs.mjs`.
+4. `feat(community):` the slot layout, three views, and the iOS `<details>` workaround —
+   `CommunityGrid.astro`, new `communityLayout.ts`, `community/*`, `global.css`.
+5. `feat(header):` the brand ticker letter-overwrite hover — `Layout.astro` alone.
+6. `docs:` the WebKit crash record and the agent-memory mirrors.
 
-**They are separable, and that is the point of writing this down.** Measured per file, the
-two touch almost disjoint sets: the only file scoring in both buckets is `Layout.astro`, and
-its single "project" hit is the English word in a comment, not the feature. `translations.ts`
-is projects-only. `community.astro` is a one-line comment edit.
+**What made it splittable, and the technique worth reusing:** the two features touched
+almost disjoint file sets. The one genuinely mixed file was `translations.ts`, whose 15
+hunks divided cleanly by key prefix — `community.*` to commit 4, `profile.*`/`member.*` to
+commit 3. `git apply --cached` on a hunk subset **fails** here (dropping early hunks
+invalidates the later hunks' new-side line numbers). What works: reconstruct the wanted
+intermediate file from `git show HEAD:<path>` plus the chosen hunks in a script, write it,
+`git add`, then restore the full working copy from a saved backup. The staged/unstaged split
+is then exactly the feature boundary.
 
-- Projects commit: `firestore.rules`, `ProfileForm.astro`, `ProfileViewPreview.astro`,
-  `OnboardingForm.astro`, `translations.ts`, `firestore.ts`, `gallery.ts`, `memberView.ts`,
-  `profilePreview.ts`, `profileView.ts`, `members/[slug].astro`,
-  `proto/profile-preview.astro`, plus new `src/lib/projects.ts`.
-- Gallery commit: `CommunityGrid.astro`, `Layout.astro`, `community/*`, `community.astro`,
-  `global.css`, plus new `src/lib/communityLayout.ts`.
+Verified after the split: `npm run lint` at the standing 8-warning / 0-error baseline, and
+`npm run build` green at 66 pages. **Intermediate commits were not individually built** —
+only the final tree was.
 
-**Why it matters:** this repo has run this exact failure before. `CLAUDE.md` records that two
-features once sat interleaved in one dirty tree for two months and could no longer be split —
-that history is permanently the single commit `3fcc0ba`, build-verified only and never
-reviewed ([[member-curation-stage1]]). The window where this tree is still splittable is open
-now and closes as the two features grow into the same files.
+**Still open, and both matter more than the commits did:**
 
-**How to apply:** do not offer to "commit everything" as one change. Split along the two
-lists above. Josh gates his own commits and pushes, so propose, do not run it unasked.
+- **Nothing is pushed.** `feature/user-content-backend` has no upstream and sits 35 commits
+  ahead of `origin/dev`. Josh gates his own pushes — propose, do not run it unasked.
+- **The manual PROD rules deploy still blocks the projects half.** Until it lands, every
+  profile Save writes `projects` and is rejected whole by `hasOnly`, silently taking
+  unrelated edits with it — see [[user-content-backend-status]] and
+  [[firestore-rules-hasonly-gotcha]].
+- The old GitHub rebuild token was in the public client bundle and **must be revoked** —
+  see [[rebuild-dispatcher-cloud-function]].
 
-Blocking prerequisite that travels with the projects half: the **manual PROD rules deploy**.
-Until it lands, every profile Save writes `projects` and is rejected whole by `hasOnly`,
-silently taking unrelated edits with it — see [[user-content-backend-status]] and
-[[firestore-rules-hasonly-gotcha]].
-
-Also untracked and deliberate: `documentation/agent-memory/*.md`, the repo mirrors of these
-notes. Convention is to leave them untracked unless asked to commit them.
+The repo mirrors of these notes (`documentation/agent-memory/*.md`) are **now tracked**, and
+`CLAUDE.md` was updated to say so. An edit to either copy belongs in both.
