@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WebKit ::details-content repro</title>
+<style>
+  body { font: 16px/1.6 -apple-system, system-ui, sans-serif; margin: 1.25rem; max-width: 34rem; }
+  li { margin: .7rem 0; }
+  code { background: #eee; padding: 0 .2em; }
+</style>
+</head><body>
+<h1>WebKit <code>::details-content</code> repro</h1>
+<p>Each page is one <code>&lt;details&gt;</code> with <code>display: contents</code>.
+The only difference between them is the <code>overflow</code> value on
+<code>::details-content</code>. No JS, no images.</p>
+<p><b>Test:</b> open each on the phone. A page that fails does not render at all &mdash;
+you get &ldquo;Safari cannot open the page&rdquo; or a blank tab, not a broken layout.</p>
+<ol>
+  <li><a href="/t/wk-hidden"><code>overflow: hidden</code></a> &mdash; expected to FAIL</li>
+  <li><a href="/t/wk-auto"><code>overflow: auto</code></a> &mdash; expected to FAIL</li>
+  <li><a href="/t/wk-clip"><code>overflow: clip</code></a> &mdash; expected to load (the shipped fix)</li>
+</ol>
+<p>If 1 and 2 fail and 3 loads, the bug reproduces on this browser.</p>
+</body></html>
