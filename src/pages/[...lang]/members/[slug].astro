@@ -54,6 +54,11 @@ const works = await Promise.all(
 );
 
 const social = socialLinks(member.socialMedia);
+
+// One line for where and in what: "Zurich, Switzerland · DE, EN".
+const where = [member.location, member.languages.map((c) => c.toUpperCase()).join(", ")]
+  .filter(Boolean)
+  .join(" · ");
 const communityHref = currentLang === "de" ? "/de/community" : "/community";
 
 const description = member.caption
@@ -76,24 +81,50 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
     <a class="mprof__back" href={communityHref}>&#8592; {t("member.backToCommunity")}</a>
 
     <header class="mprof__head">
-      <h1 class="mprof__name" transition:name={`mname-${member.id}`}>{member.displayName}</h1>
-      {member.role && <p class="mprof__role">{member.role}</p>}
-      {
-        member.openTo.length > 0 && (
-          <p class="mprof__open">
-            {t("member.openTo")} {member.openTo.join(", ")}
-          </p>
-        )
-      }
+      {member.photoURL && (
+        <img
+          class="mprof__avatar"
+          src={member.photoURL}
+          width="144"
+          height="144"
+          alt={`${member.displayName} — profile picture`}
+          style={`background-color: ${member.photoColor ?? "var(--color-border)"}`}
+        />
+      )}
+      <div class="mprof__head-copy">
+        <h1 class="mprof__name" transition:name={`mname-${member.id}`}>{member.displayName}</h1>
+        {member.role && <p class="mprof__role">{member.role}</p>}
+        {member.affiliation && <p class="mprof__affiliation">{member.affiliation}</p>}
+        {where && <p class="mprof__where">{where}</p>}
+        {
+          member.openTo.length > 0 && (
+            <p class="mprof__open">
+              {t("member.openTo")} {member.openTo.join(", ")}
+            </p>
+          )
+        }
+      </div>
     </header>
 
     {member.bio && <p class="mprof__bio">{member.bio}</p>}
 
     <div class="mprof__meta">
       {
+        member.visualNeeds.length > 0 && (
+          <div class="mprof__row">
+            <h2 class="mprof__key">{t("member.needs")}</h2>
+            <ul class="mprof__vals">
+              {member.visualNeeds.map((need) => (
+                <li class="mprof__val">{need}</li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+
+      {
         member.tags.length > 0 && (
           <div class="mprof__row">
-            <h2 class="mprof__key">{t("member.tags")}</h2>
             <ul class="mprof__vals">
               {member.tags.map((tag) => (
                 <li class="mprof__val">{tag}</li>
@@ -106,7 +137,6 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
       {
         (member.portfolio || social.length > 0) && (
           <div class="mprof__row">
-            <h2 class="mprof__key">{t("member.elsewhere")}</h2>
             <ul class="mprof__vals mprof__vals--links">
               {member.portfolio && (
                 <li>
@@ -140,12 +170,40 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
           </div>
         )
       }
+
+      {/* Its own row rather than a `mprof__vals` list: a project carries a
+          description under its link, which the pill/link list has no room
+          for. Projects stand on their own here — one may well have no image
+          anywhere on the page. */}
+      {
+        member.projects.length > 0 && (
+          <div class="mprof__row">
+            <h2 class="mprof__key">{t("member.projects")}</h2>
+            <ul class="mprof__projects">
+              {member.projects.map((project) => (
+                <li class="mprof__project">
+                  <a
+                    class="mprof__link"
+                    href={href(project.url)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {project.title}
+                  </a>
+                  {project.description && (
+                    <p class="mprof__project-desc">{project.description}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
     </div>
 
     {
       works.length > 0 && (
         <div class="mprof__works">
-          <h2 class="mprof__key mprof__works-key">{t("member.work")}</h2>
           {/* Each work is a link to the original, which is what PhotoSwipe
               binds to — and what makes the image openable with scripting off
               rather than being inert. */}
@@ -172,7 +230,25 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
                   style={`background-color: ${w.color ?? "var(--color-border)"}`}
                 />
               </a>
-              {w.caption?.trim() && <figcaption class="mprof__caption">{w.caption}</figcaption>}
+              {(w.caption?.trim() || w.description || w.project) && (
+                <figcaption class="mprof__caption">
+                  {w.caption?.trim() && <span class="mprof__caption-line">{w.caption}</span>}
+                  {w.description && <span class="mprof__desc">{w.description}</span>}
+                  {w.project && (
+                    <span class="mprof__credit">
+                      {t("member.partOf")}{" "}
+                      <a
+                        class="mprof__credit-link"
+                        href={href(w.project.url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {w.project.title}
+                      </a>
+                    </span>
+                  )}
+                </figcaption>
+              )}
             </figure>
           ))}
         </div>
@@ -203,7 +279,20 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
 
   /* ── Identity ─────────────────────────────────────────── */
   .mprof__head {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 1.25rem;
     margin-top: 2.5rem;
+  }
+
+  .mprof__avatar {
+    display: block;
+    width: clamp(5rem, 14vw, 9rem);
+    height: clamp(5rem, 14vw, 9rem);
+    border: 1.5px solid var(--color-border);
+    border-radius: 50%;
+    object-fit: cover;
   }
 
   /* The card's name band grown to page scale — same face, same tightness, so
@@ -225,6 +314,24 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
     font-weight: 600;
     line-height: 1.35;
     color: var(--color-dark);
+  }
+
+  /* Institution sits with the title block, but a step quieter than the
+     role: it identifies, it is not the headline. */
+  .mprof__affiliation {
+    margin: 0.25rem 0 0;
+    max-width: 36rem;
+    font-size: 0.9rem;
+    line-height: 1.35;
+    color: var(--color-dark);
+  }
+
+  .mprof__where {
+    margin: 0.25rem 0 0;
+    max-width: 36rem;
+    font-size: 0.85rem;
+    line-height: 1.35;
+    color: var(--color-muted);
   }
 
   /* A dot plus the words, never a bare coloured pill: the site has no accent
@@ -306,9 +413,13 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
     overflow-wrap: anywhere;
   }
 
+  /* One line, wrapping only when it must — same treatment as the card's
+     disclosure panel (.pdisc__vals--links), which links.ts requires this to
+     agree with. Inherits the base row direction. */
   .mprof__vals--links {
-    flex-direction: column;
-    gap: 0.35rem;
+    column-gap: 1.1rem;
+    row-gap: 0.35rem;
+    align-items: baseline;
   }
 
   .mprof__link {
@@ -355,10 +466,68 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
     height: auto;
   }
 
+  /* ── Projects ─────────────────────────────────────────── */
+  .mprof__projects {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .mprof__project {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+  }
+
+  .mprof__project-desc {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--color-muted);
+    max-width: 52ch;
+  }
+
+  /* ── Captions ─────────────────────────────────────────── */
+  /* One block under the image holding up to three things: the caption line,
+     the longer description, and the project credit. A column rather than
+     three siblings so the gaps stay the caption's business, not the
+     gallery's. */
   .mprof__caption {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
     margin: 0.7rem 0 0;
     font-size: 0.78rem;
     line-height: 1.45;
+    color: var(--color-muted);
+  }
+
+  .mprof__caption-line {
+    color: var(--color-dark);
+  }
+
+  .mprof__desc {
+    max-width: 62ch;
+    white-space: pre-line;
+  }
+
+  .mprof__credit {
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .mprof__credit-link {
+    color: var(--color-dark);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .mprof__credit-link:hover {
     color: var(--color-muted);
   }
 

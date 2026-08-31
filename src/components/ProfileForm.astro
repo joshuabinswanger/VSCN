@@ -3,7 +3,9 @@ import CommunityCardPreview from "./community/CommunityCardPreview.astro";
 import MemberTypeSelector from "./MemberTypeSelector.astro";
 import ProfileViewPreview from "./ProfileViewPreview.astro";
 import OpenToSelector from "./OpenToSelector.astro";
+import VisualNeedsSelector from "./VisualNeedsSelector.astro";
 import TagSelector from "./TagSelector.astro";
+import { LANGUAGES } from "../lib/firestore.ts";
 import { useTranslations } from "../i18n/utils";
 import type { Lang } from "../i18n/utils";
 
@@ -16,232 +18,10 @@ const t = useTranslations(lang);
 
 <div id="loading" class="loading-state">{t("profile.loading")}</div>
 
-<form id="profile-form" class="profile-form" data-lang={lang}>
-  {/* Edit / Preview on one page. Preview needs no save and no rebuild, which
-      matters because the real profile page is a build-time snapshot: saving
-      alone would not show the member their own change for minutes. */}
-  <div class="view-toggle" role="group" id="view-toggle">
-    <button type="button" class="view-toggle__btn is-active" data-mode="edit" aria-pressed="true">
-      {t("profile.mode.edit")}
-    </button>
-    <button type="button" class="view-toggle__btn" data-mode="preview" aria-pressed="false">
-      {t("profile.mode.preview")}
-    </button>
-  </div>
-
-  <div class="avatar-wrap">
-    <div class="avatar-image">
-      <img id="avatar-preview" src="" alt="" class="avatar-img" />
-      <div id="avatar-placeholder" class="avatar-placeholder">?</div>
-    </div>
-    <label class="btn-outline choose-img" for="avatar">
-      {t("profile.chooseImage")}
-      <input
-        id="avatar"
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/avif"
-        style="display:none;"
-      />
-    </label>
-    <p id="upload-status" class="upload-status" style="display:none;"></p>
-  </div>
-
-  <MemberTypeSelector lang={lang} />
-
-  <div class="field">
-    <label class="label" for="name">{t("profile.label.name")}</label>
-    <input id="name" type="text" class="input" placeholder={t("profile.ph.name")} />
-  </div>
-
-  <div class="field">
-    <label class="label" for="role">{t("profile.label.role")}</label>
-    <input id="role" type="text" class="input" placeholder={t("profile.ph.role")} />
-    <p class="field-note">{t("profile.note.role")}</p>
-  </div>
-
-  <div class="field">
-    <label class="label" for="bio">{t("profile.label.bio")}</label>
-    <textarea id="bio" rows="4" class="input textarea" placeholder={t("profile.ph.bio")}></textarea>
-    <p class="field-note">{t("profile.note.bio")}</p>
-  </div>
-
-  <div class="field">
-    <label id="portfolio-label" class="label" for="portfolio"
-      >{t("profile.label.portfolio")}</label
-    >
-    <div class="input-prefix-wrap">
-      <span class="input-prefix">https://</span>
-      <input
-        id="portfolio"
-        type="text"
-        class="input input-prefixed"
-        placeholder={t("profile.ph.portfolio")}
-      />
-    </div>
-  </div>
-
-  <div class="field">
-    <label class="label" for="social-media">{t("profile.label.social")}</label>
-    <div class="input-prefix-wrap">
-      <span class="input-prefix">https://</span>
-      <input
-        id="social-media"
-        type="text"
-        class="input input-prefixed"
-        placeholder={t("profile.ph.social")}
-      />
-    </div>
-    <p class="field-note">{t("profile.note.social")}</p>
-  </div>
-
-  <div class="field">
-    <label class="checkbox-label" for="profile-active">
-      <input id="profile-active" type="checkbox" />
-      <span>{t("profile.active.label")}</span>
-    </label>
-    <p class="field-note">{t("profile.active.note")}</p>
-  </div>
-
-  <div class="field">
-    <label class="checkbox-label" for="wants-to-contribute">
-      <input id="wants-to-contribute" type="checkbox" />
-      <span>{t("profile.wantsToContribute")}</span>
-    </label>
-    <p class="field-note">{t("profile.wantsToContribute.note")}</p>
-  </div>
-
-  <OpenToSelector lang={lang} />
-
-  <fieldset class="target-audience-field">
-    <legend class="label">{t("profile.primaryAudience.legend")}</legend>
-    <div class="target-audience-options">
-      <label class="target-audience-option">
-        <input type="checkbox" name="primary-audience" value="science" />
-        <span>{t("profile.primaryAudience.science")}</span>
-      </label>
-      <label class="target-audience-option">
-        <input type="checkbox" name="primary-audience" value="public" />
-        <span>{t("profile.primaryAudience.public")}</span>
-      </label>
-      <label class="target-audience-option">
-        <input type="checkbox" name="primary-audience" value="policy-makers" />
-        <span>{t("profile.primaryAudience.policyMakers")}</span>
-      </label>
-      <label class="target-audience-option">
-        <input type="checkbox" name="primary-audience" value="education" />
-        <span>{t("profile.primaryAudience.education")}</span>
-      </label>
-    </div>
-  </fieldset>
-
-  <div class="field">
-    <label class="label" for="tag-input">{t("profile.label.tags")}</label>
-    <TagSelector lang={lang} maxTags={7} inputId="tag-input" />
-  </div>
-
-  <div class="field">
-    <p class="label">{t("profile.label.gallery")}</p>
-    <div id="gallery-editor" class="gallery-editor"></div>
-    <label class="btn-outline choose-img" for="gallery-files">
-      {t("profile.gallery.add")}
-      <input
-        id="gallery-files"
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/avif"
-        multiple
-        style="display:none;"
-      />
-    </label>
-    <p id="gallery-status" class="field-note" style="display:none;"></p>
-    <p class="field-note">{t("profile.note.gallery")}</p>
-    {/* The directory is image-led: a member without a gallery holds a
-        typographic card. Saying so here is the standing mechanism that fills
-        the directory — hidden the moment the first image lands. */}
-    <p id="gallery-nudge" class="field-note gallery-nudge" hidden>{t("profile.gallery.nudge")}</p>
-  </div>
-
-  <div class="field">
-    <label class="label" for="phone">{t("profile.label.phone")}</label>
-    <input id="phone" type="tel" class="input" placeholder="+41 79 123 45 67" autocomplete="tel" />
-    <p class="field-note">
-      {t("profile.note.phone")}
-    </p>
-  </div>
-
-  {/* Only rendered in preview mode. Both representations sit here together so
-      they are comparable, and so the form itself stays a form.
-
-      The profile page comes first: it is the artefact the member is actually
-      building. The directory card is the smaller, secondary view of the same
-      data — the image card's face, bound by renderCardPreview(), which is
-      what /community renders since the directory switched over. */}
-  <div class="preview-section">
-    <div class="preview-block">
-      <p class="label">{t("profile.view.heading")}</p>
-      <p class="field-note preview-note">{t("profile.view.note")}</p>
-      <ProfileViewPreview lang={lang} />
-    </div>
-
-    <div class="preview-block">
-      <p class="label">{t("profile.view.directoryHeading")}</p>
-      <CommunityCardPreview />
-    </div>
-  </div>
-
-  <div class="form-footer">
-    <p id="save-msg" class="msg-ok" style="display:none;">
-      {t("profile.saveMsg")}
-    </p>
-    <p id="save-error" class="msg-err" style="display:none;"></p>
-    <div class="footer-actions">
-      <button id="btn-logout" type="button" class="btn-outline">{t("profile.logout")}</button>
-      <button type="submit" class="btn-solid profile-save-button">{t("profile.save")}</button>
-    </div>
-  </div>
-
-  <div class="danger-zone">
-    <div id="delete-idle">
-      <button type="button" id="btn-delete-start" class="btn-danger-link"
-        >{t("profile.delete.idle")}</button
-      >
-    </div>
-
-    <div id="delete-confirm" style="display:none;">
-      <p class="danger-text">
-        {t("profile.delete.text")}
-      </p>
-      <div class="danger-actions">
-        <button type="button" id="btn-delete-cancel" class="btn-link"
-          >{t("profile.delete.cancel")}</button
-        >
-        <button type="button" id="btn-delete-confirm" class="btn-danger"
-          >{t("profile.delete.confirm")}</button
-        >
-      </div>
-    </div>
-
-    <div id="delete-reauth" style="display:none;">
-      <p class="danger-text">{t("profile.reauth.text")}</p>
-      <input
-        id="reauth-password"
-        type="password"
-        class="input"
-        placeholder="••••••••"
-        autocomplete="current-password"
-      />
-      <p id="reauth-error" class="msg-err" style="display:none;"></p>
-      <div class="danger-actions">
-        <button type="button" id="btn-reauth-cancel" class="btn-link"
-          >{t("profile.reauth.cancel")}</button
-        >
-        <button type="button" id="btn-reauth-confirm" class="btn-danger"
-          >{t("profile.reauth.confirm")}</button
-        >
-      </div>
-    </div>
-  </div>
-</form>
-
+{
+  /* Above the form, not inside a section: an unverified address matters on
+    every tab. */
+}
 <div id="verify-banner" class="verify-banner" style="display:none;">
   <p class="verify-banner-text">
     {t("profile.verifyBanner")}
@@ -253,6 +33,311 @@ const t = useTranslations(lang);
     {t("profile.verifySent")}
   </p>
 </div>
+
+<form id="profile-form" class="profile-form" data-lang={lang}>
+  {
+    /* One form, four sections. A tab switch only toggles visibility, so the
+      single Save still collects every field. Preview is the last tab rather
+      than a separate mode: it needs no save and no rebuild, which matters
+      because the real profile page is a build-time snapshot — saving alone
+      would not show the member their own change for minutes. */
+  }
+  <div class="section-tabs" role="group" id="section-tabs">
+    <button type="button" class="section-tab is-active" data-section="profile" aria-pressed="true">
+      {t("profile.tab.profile")}
+    </button>
+    <button type="button" class="section-tab" data-section="work" aria-pressed="false">
+      {t("profile.tab.work")}
+    </button>
+    <button type="button" class="section-tab" data-section="account" aria-pressed="false">
+      {t("profile.tab.account")}
+    </button>
+    <button type="button" class="section-tab" data-section="preview" aria-pressed="false">
+      {t("profile.tab.preview")}
+    </button>
+  </div>
+
+  <div class="form-section is-active" data-section="profile">
+    <div class="avatar-wrap">
+      <div class="avatar-image">
+        <img id="avatar-preview" src="" alt="" class="avatar-img" />
+        <div id="avatar-placeholder" class="avatar-placeholder">?</div>
+      </div>
+      <label class="btn-outline choose-img" for="avatar">
+        {t("profile.chooseImage")}
+        <input
+          id="avatar"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/avif"
+          style="display:none;"
+        />
+      </label>
+      <p id="upload-status" class="upload-status" style="display:none;"></p>
+    </div>
+
+    <MemberTypeSelector lang={lang} />
+
+    <div class="field">
+      <label class="label" for="name">{t("profile.label.name")}</label>
+      <input id="name" type="text" class="input" placeholder={t("profile.ph.name")} />
+    </div>
+
+    <div class="field">
+      <label class="label" for="role">{t("profile.label.role")}</label>
+      <input id="role" type="text" class="input" placeholder={t("profile.ph.role")} />
+      <p class="field-note">{t("profile.note.role")}</p>
+    </div>
+
+    <div class="field">
+      <label class="label" for="affiliation">{t("profile.label.affiliation")}</label>
+      <input
+        id="affiliation"
+        type="text"
+        class="input"
+        placeholder={t("profile.ph.affiliation")}
+      />
+    </div>
+
+    <div class="field">
+      <label class="label" for="location">{t("profile.label.location")}</label>
+      <input id="location" type="text" class="input" placeholder={t("profile.ph.location")} />
+    </div>
+
+    <fieldset class="target-audience-field">
+      <legend class="label">{t("profile.label.languages")}</legend>
+      <div class="target-audience-options">
+        {
+          LANGUAGES.map((code) => (
+            <label class="target-audience-option">
+              <input type="checkbox" name="language" value={code} />
+              <span>{t(`profile.lang.${code}`)}</span>
+            </label>
+          ))
+        }
+      </div>
+      <p class="field-note">{t("profile.note.languages")}</p>
+    </fieldset>
+
+    <div class="field">
+      <label class="label" for="bio">{t("profile.label.bio")}</label>
+      <textarea id="bio" rows="4" class="input textarea" placeholder={t("profile.ph.bio")}
+      ></textarea>
+      <p class="field-note">{t("profile.note.bio")}</p>
+    </div>
+
+    <div class="field">
+      <label id="portfolio-label" class="label" for="portfolio"
+        >{t("profile.label.portfolio")}</label
+      >
+      <div class="input-prefix-wrap">
+        <span class="input-prefix">https://</span>
+        <input
+          id="portfolio"
+          type="text"
+          class="input input-prefixed"
+          placeholder={t("profile.ph.portfolio")}
+        />
+      </div>
+    </div>
+
+    <div class="field">
+      <label id="social-label" class="label" for="social-media"
+        >{t("profile.label.social")}</label
+      >
+      <div class="input-prefix-wrap">
+        <span class="input-prefix">https://</span>
+        <input
+          id="social-media"
+          type="text"
+          class="input input-prefixed"
+          placeholder={t("profile.ph.social")}
+        />
+      </div>
+      <p class="field-note">{t("profile.note.social")}</p>
+    </div>
+
+    <OpenToSelector lang={lang} />
+
+    <VisualNeedsSelector lang={lang} />
+
+    <fieldset class="target-audience-field">
+      <legend class="label">{t("profile.primaryAudience.legend")}</legend>
+      <div class="target-audience-options">
+        <label class="target-audience-option">
+          <input type="checkbox" name="primary-audience" value="science" />
+          <span>{t("profile.primaryAudience.science")}</span>
+        </label>
+        <label class="target-audience-option">
+          <input type="checkbox" name="primary-audience" value="public" />
+          <span>{t("profile.primaryAudience.public")}</span>
+        </label>
+        <label class="target-audience-option">
+          <input type="checkbox" name="primary-audience" value="policy-makers" />
+          <span>{t("profile.primaryAudience.policyMakers")}</span>
+        </label>
+        <label class="target-audience-option">
+          <input type="checkbox" name="primary-audience" value="education" />
+          <span>{t("profile.primaryAudience.education")}</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <div class="field">
+      <label class="label" for="tag-input">{t("profile.label.tags")}</label>
+      <TagSelector lang={lang} maxTags={7} inputId="tag-input" />
+    </div>
+  </div>
+
+  <div class="form-section" data-section="work">
+    {
+      /* Before the gallery on purpose: an image can only be tagged to a project
+      that already exists, so the field that creates them comes first. */
+    }
+    <div class="field">
+      <p id="projects-label" class="label">{t("profile.label.projects")}</p>
+      <div id="projects-editor" class="projects-editor"></div>
+      <button type="button" id="projects-add" class="btn-outline choose-img">
+        {t("profile.projects.add")}
+      </button>
+      <p id="projects-status" class="field-note" style="display:none;"></p>
+      <p class="field-note">{t("profile.note.projects")}</p>
+    </div>
+
+    <div class="field">
+      <p class="label">{t("profile.label.gallery")}</p>
+      <div id="gallery-editor" class="gallery-editor"></div>
+      <label class="btn-outline choose-img" for="gallery-files">
+        {t("profile.gallery.add")}
+        <input
+          id="gallery-files"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/avif"
+          multiple
+          style="display:none;"
+        />
+      </label>
+      <p id="gallery-status" class="field-note" style="display:none;"></p>
+      <p class="field-note">{t("profile.note.gallery")}</p>
+      {
+        /* The directory is image-led: a member without a gallery holds a
+        typographic card. Saying so here is the standing mechanism that fills
+        the directory — hidden the moment the first image lands. */
+      }
+      <p id="gallery-nudge" class="field-note gallery-nudge" hidden>{t("profile.gallery.nudge")}</p>
+    </div>
+  </div>
+
+  <div class="form-section" data-section="account">
+    <div class="field">
+      <label class="checkbox-label" for="profile-active">
+        <input id="profile-active" type="checkbox" />
+        <span>{t("profile.active.label")}</span>
+      </label>
+      <p class="field-note">{t("profile.active.note")}</p>
+    </div>
+
+    <div class="field">
+      <label class="checkbox-label" for="wants-to-contribute">
+        <input id="wants-to-contribute" type="checkbox" />
+        <span>{t("profile.wantsToContribute")}</span>
+      </label>
+      <p class="field-note">{t("profile.wantsToContribute.note")}</p>
+    </div>
+
+    <div class="field">
+      <label class="label" for="phone">{t("profile.label.phone")}</label>
+      <input
+        id="phone"
+        type="tel"
+        class="input"
+        placeholder="+41 79 123 45 67"
+        autocomplete="tel"
+      />
+      <p class="field-note">
+        {t("profile.note.phone")}
+      </p>
+    </div>
+
+    <button id="btn-logout" type="button" class="btn-outline logout-button">
+      {t("profile.logout")}
+    </button>
+
+    <div class="danger-zone">
+      <div id="delete-idle">
+        <button type="button" id="btn-delete-start" class="btn-danger-link"
+          >{t("profile.delete.idle")}</button
+        >
+      </div>
+
+      <div id="delete-confirm" style="display:none;">
+        <p class="danger-text">
+          {t("profile.delete.text")}
+        </p>
+        <div class="danger-actions">
+          <button type="button" id="btn-delete-cancel" class="btn-link"
+            >{t("profile.delete.cancel")}</button
+          >
+          <button type="button" id="btn-delete-confirm" class="btn-danger"
+            >{t("profile.delete.confirm")}</button
+          >
+        </div>
+      </div>
+
+      <div id="delete-reauth" style="display:none;">
+        <p class="danger-text">{t("profile.reauth.text")}</p>
+        <input
+          id="reauth-password"
+          type="password"
+          class="input"
+          placeholder="••••••••"
+          autocomplete="current-password"
+        />
+        <p id="reauth-error" class="msg-err" style="display:none;"></p>
+        <div class="danger-actions">
+          <button type="button" id="btn-reauth-cancel" class="btn-link"
+            >{t("profile.reauth.cancel")}</button
+          >
+          <button type="button" id="btn-reauth-confirm" class="btn-danger"
+            >{t("profile.reauth.confirm")}</button
+          >
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section" data-section="preview">
+    {
+      /* The Preview tab. Both representations sit here together so
+      they are comparable, and so the form itself stays a form.
+
+      The profile page comes first: it is the artefact the member is actually
+      building. The directory card is the smaller, secondary view of the same
+      data — the image card's face, bound by renderCardPreview(), which is
+      what /community renders since the directory switched over. */
+    }
+    <div class="preview-section">
+      <div class="preview-block">
+        <p class="label">{t("profile.view.heading")}</p>
+        <p class="field-note preview-note">{t("profile.view.note")}</p>
+        <ProfileViewPreview lang={lang} />
+      </div>
+
+      <div class="preview-block">
+        <p class="label">{t("profile.view.directoryHeading")}</p>
+        <CommunityCardPreview />
+      </div>
+    </div>
+  </div>
+
+  {/* Floating Save: reachable from every editing tab, hidden on Preview. */}
+  <div class="form-footer">
+    <p id="save-msg" class="msg-ok" style="display:none;">
+      {t("profile.saveMsg")}
+    </p>
+    <p id="save-error" class="msg-err" style="display:none;"></p>
+    <button type="submit" class="btn-solid profile-save-button">{t("profile.save")}</button>
+  </div>
+</form>
 
 <style>
   .loading-state {
@@ -318,7 +403,9 @@ const t = useTranslations(lang);
     margin: clamp(2rem, 4vw, 4rem) auto;
     padding: 0 15px;
     box-sizing: border-box;
-    overflow: hidden;
+    /* clip, not hidden: hidden makes the form a scroll container, and the
+       sticky footer would stick to that instead of the page. */
+    overflow-x: clip;
 
     @media (--bp-desktop) {
       padding: 0;
@@ -328,6 +415,16 @@ const t = useTranslations(lang);
 
   .profile-form.is-loaded {
     display: grid;
+  }
+
+  /* display: contents keeps every field a direct grid item of the form, so
+     the section wrappers add tab navigation without changing the layout. */
+  .form-section {
+    display: none;
+  }
+
+  .form-section.is-active {
+    display: contents;
   }
 
   .avatar-wrap {
@@ -374,24 +471,6 @@ const t = useTranslations(lang);
     width: fit-content;
   }
 
-  .form-title {
-    font-size: 1.4rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: var(--color-dark);
-  }
-  .form-sub {
-    font-size: 0.85rem;
-    color: var(--color-muted);
-    margin-top: 0.2rem;
-  }
-
-  .divider {
-    border: none;
-    border-top: 1px solid #eee;
-    margin: 0;
-  }
-
   .field-note {
     margin: 0;
     font-size: 0.78rem;
@@ -431,15 +510,42 @@ const t = useTranslations(lang);
     border-color: transparent;
   }
 
+  /* Was a grid of bare 90px thumbs. Each image now carries a caption, a
+     description and a project, which no square that small can hold — so an
+     entry is a row: thumb on the left, its words on the right. */
   .gallery-editor {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-    gap: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
     margin-bottom: 0.5rem;
   }
 
   .gallery-editor:empty {
     display: none;
+  }
+
+  .gallery-item {
+    display: grid;
+    grid-template-columns: 110px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+  }
+
+  .gallery-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  /* Compact by design: these sit three-deep inside a field that already has
+     its own label, so full-size inputs would read as the form restarting. */
+  .gallery-fields .input {
+    font-size: 0.85rem;
+  }
+
+  .gallery-fields .textarea {
+    min-height: 56px;
   }
 
   .gallery-thumb {
@@ -479,63 +585,119 @@ const t = useTranslations(lang);
     background: var(--color-error);
   }
 
-  /* ── Edit / Preview switch ────────────────────────────── */
-  .view-toggle {
-    display: inline-flex;
-    align-self: start;
-    border: 1.5px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
+  @media (--bp-mobile) {
+    .gallery-item {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .gallery-thumb {
+      max-width: 140px;
+    }
   }
 
-  .view-toggle__btn {
-    padding: 0.5rem 1.1rem;
+  /* ── Projects ─────────────────────────────────────────── */
+  .projects-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 0.5rem;
+  }
+
+  .projects-editor:empty {
+    display: none;
+  }
+
+  /* A bordered block per project, because a bare stack of inputs gives no
+     clue where one project ends and the next begins. */
+  .project-row {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 42px 12px 12px;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    min-width: 0;
+  }
+
+  .project-row .input {
+    font-size: 0.85rem;
+  }
+
+  .project-row .textarea {
+    min-height: 56px;
+  }
+
+  .project-row-remove {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    color: var(--color-muted);
+    border: 1.5px solid var(--color-border);
+    border-radius: 50%;
+    font-size: 0.7rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .project-row-remove:hover {
+    color: #fff;
+    background: var(--color-error);
+    border-color: var(--color-error);
+  }
+
+  /* ── Section tabs ─────────────────────────────────────── */
+  /* Text tabs on a hairline, in the same uppercase voice as .label — the
+     boxed segmented control read as one more form control among many. */
+  .section-tabs {
+    display: flex;
+    gap: 1.75rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .section-tab {
+    padding: 0 0 0.6rem;
+    margin-bottom: -1px;
     background: none;
     border: none;
+    border-bottom: 2px solid transparent;
     font: inherit;
     font-size: 0.78rem;
     font-weight: 600;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     color: var(--color-muted);
     cursor: pointer;
     transition:
-      background 0.15s,
-      color 0.15s;
+      color 0.15s,
+      border-color 0.15s;
   }
 
-  .view-toggle__btn + .view-toggle__btn {
-    border-left: 1.5px solid var(--color-border);
-  }
-
-  .view-toggle__btn:hover {
+  .section-tab:hover {
     color: var(--color-dark);
   }
 
-  .view-toggle__btn.is-active {
-    background: var(--color-dark);
-    color: #fff;
+  .section-tab.is-active {
+    color: var(--color-dark);
+    border-bottom-color: var(--color-dark);
   }
 
-  /* Preview mode hides the fields but keeps the switch, the previews and the
-     footer, so the member can save without switching back. Selecting by
-     exclusion rather than wrapping every field in a container: the form's
-     children are already top-level blocks, and wrapping them would mean
-     restructuring 200 lines of markup for a visibility change. */
-  .profile-form .preview-section {
-    display: none;
-  }
-
-  .profile-form.is-previewing > *:not(.view-toggle):not(.preview-section):not(.form-footer) {
-    display: none;
-  }
-
-  .profile-form.is-previewing .preview-section {
-    display: flex;
-    flex-direction: column;
-    gap: 4rem;
+  @media (--bp-mobile) {
+    .section-tabs {
+      justify-content: space-between;
+      gap: 1rem;
+    }
   }
 
   .preview-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4rem;
     padding-top: 0.5rem;
     padding-bottom: 3rem;
   }
@@ -550,24 +712,56 @@ const t = useTranslations(lang);
     margin-bottom: 1.25rem;
   }
 
+  /* Floats above the bottom of .page-wrap (the page's real scroll container),
+     so Save is reachable from every editing tab without scrolling; at the end
+     of the form it settles into the flow. No bar behind it — just the button,
+     so the container must not eat clicks on the content it hovers over. */
   .form-footer {
-    padding-top: 25px;
+    position: sticky;
+    /* 0, not a lift: .page-wrap's own 80px bottom padding already keeps the
+       pinned button floating well clear of the pane edge. */
+    bottom: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    pointer-events: none;
   }
 
-  .footer-actions {
-    display: grid;
-    gap: 15px;
-    grid-template-columns: auto auto;
-    justify-content: space-between;
+  .form-footer > * {
+    pointer-events: auto;
+  }
+
+  /* Preview needs no Save: nothing on that tab can be edited. */
+  .profile-form.is-previewing .form-footer {
+    display: none;
+  }
+
+  /* The save/error message floats next to the button, so it carries its own
+     surface to stay legible over whatever it happens to hover above. */
+  .form-footer .msg-ok,
+  .form-footer .msg-err {
+    margin: 0;
+    padding: 0.45rem 0.9rem;
+    background: var(--color-bg);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   }
 
   .profile-save-button {
-    margin-left: auto;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  }
+
+  .logout-button {
+    align-self: start;
   }
 
   .danger-zone {
     padding-top: 2rem;
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid var(--color-border);
   }
 
   .danger-text {
@@ -714,20 +908,6 @@ const t = useTranslations(lang);
     .upload-status {
       grid-column: 1 / -1;
     }
-
-    .footer-actions {
-      grid-template-columns: 1fr;
-      justify-content: stretch;
-    }
-
-    .profile-save-button {
-      width: 100%;
-      margin-left: 0;
-    }
-
-    .footer-actions .btn-outline {
-      width: 100%;
-    }
   }
 </style>
 
@@ -741,26 +921,41 @@ const t = useTranslations(lang);
   } from "firebase/auth";
   import { requireAuth } from "../lib/auth.ts";
   import { deleteAvatar } from "../lib/storage.ts";
-  import { getUser, deleteUserData, getPublicProfileActive, setProfileActive } from "../lib/firestore.ts";
+  import {
+    getUser,
+    deleteUserData,
+    getPublicProfileActive,
+    setProfileActive,
+  } from "../lib/firestore.ts";
   import { validateAvatar, resizeAvatar } from "../lib/validation.ts";
   import { handleProfileUpdate, triggerRebuild } from "../lib/profile.ts";
-  import { isMemberType } from "../lib/firestore.ts";
-  import { memberTypeFieldCopy } from "../lib/memberType.ts";
+  import { isMemberType, MEMBER_TYPES } from "../lib/firestore.ts";
+  import { memberTypeFieldCopy, needsVisuals } from "../lib/memberType.ts";
   import {
     MAX_GALLERY_IMAGES,
+    MAX_GALLERY_CAPTION,
+    MAX_GALLERY_DESCRIPTION,
     validateGalleryFile,
     compressGalleryImage,
     uploadGalleryImage,
     deleteGalleryImages,
     type GalleryItem,
   } from "../lib/gallery.ts";
+  import {
+    MAX_PROJECTS,
+    MAX_PROJECT_TITLE,
+    MAX_PROJECT_URL,
+    MAX_PROJECT_DESCRIPTION,
+    newProjectId,
+    normalizeProjects,
+    type ProjectItem,
+  } from "../lib/projects.ts";
   import { updateUserProfile } from "../lib/firestore.ts";
   import { openImageEditor } from "../lib/imageEditor.ts";
   import { renderCardPreview, renderProfilePreview } from "../lib/profilePreview.ts";
   import { ui } from "../i18n/translations.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
-
 
   document.addEventListener("astro:page-load", () => {
     const loadingEl = document.getElementById("loading");
@@ -775,6 +970,12 @@ const t = useTranslations(lang);
       apply: s["profile.edit.apply"],
       cancel: s["profile.edit.cancel"],
     };
+    // The translated member-type labels the directory card's typographic face
+    // falls back to when a member has no tags — same strings the real card
+    // resolves at build time.
+    const memberTypeLabels = Object.fromEntries(
+      MEMBER_TYPES.map((type) => [type, s[`profile.memberType.${type}`]])
+    );
 
     const nameInput = document.getElementById("name") as HTMLInputElement;
     const roleInput = document.getElementById("role") as HTMLInputElement;
@@ -815,29 +1016,230 @@ const t = useTranslations(lang);
       }
     >("member-type-selector");
     const portfolioLabel = document.getElementById("portfolio-label");
-
-    // The profile-page preview shell and the Edit/Preview switch.
-    const profileViewRoot = document.querySelector<HTMLElement>(".ppv");
-    const viewToggleButtons = Array.from(
-      document.querySelectorAll<HTMLButtonElement>("#view-toggle .view-toggle__btn")
+    const socialLabel = document.getElementById("social-label");
+    const projectsLabel = document.getElementById("projects-label");
+    const affiliationInput = document.getElementById("affiliation") as HTMLInputElement;
+    const locationInput = document.getElementById("location") as HTMLInputElement;
+    const languageInputs = Array.from(
+      document.querySelectorAll<HTMLInputElement>('input[name="language"]')
     );
+    const visualNeedsSelector = document.querySelector<
+      HTMLElement & {
+        value: string[];
+      }
+    >("visual-needs-selector");
+
+    function getSelectedLanguages() {
+      // Emitted in LANGUAGES order, not click order, so the stored list is
+      // stable and the rules' unrolled enum check sees a predictable shape.
+      return languageInputs.filter((input) => input.checked).map((input) => input.value);
+    }
+
+    function setSelectedLanguages(value: unknown) {
+      const selected = Array.isArray(value) ? value.filter(Boolean).map(String) : [];
+      languageInputs.forEach((input) => {
+        input.checked = selected.includes(input.value);
+      });
+    }
+
+    // The profile-page preview shell and the section tabs.
+    const profileViewRoot = document.querySelector<HTMLElement>(".ppv");
+    const sectionTabs = Array.from(
+      document.querySelectorAll<HTMLButtonElement>("#section-tabs .section-tab")
+    );
+    const formSections = Array.from(form.querySelectorAll<HTMLElement>(".form-section"));
 
     let resizedAvatarBlob: Blob | null = null;
     let avatarColor = "";
     let gallery: GalleryItem[] = [];
+    let projects: ProjectItem[] = [];
 
     const galleryInput = document.getElementById("gallery-files") as HTMLInputElement;
     const galleryEditor = document.getElementById("gallery-editor")!;
     const galleryStatus = document.getElementById("gallery-status")!;
+    const projectsEditor = document.getElementById("projects-editor")!;
+    const projectsStatus = document.getElementById("projects-status")!;
+    const projectsAdd = document.getElementById("projects-add") as HTMLButtonElement;
 
     function setGalleryStatus(text: string) {
       galleryStatus.textContent = text;
       galleryStatus.style.display = text ? "block" : "none";
     }
 
+    function setProjectsStatus(text: string) {
+      projectsStatus.textContent = text;
+      projectsStatus.style.display = text ? "block" : "none";
+    }
+
+    /**
+     * These controls have no visible label — the field's own label covers the
+     * group, and a per-row caption would triple the form's text. The name goes
+     * on the control itself, as this file already does for the remove buttons,
+     * so it is announced without being drawn.
+     */
+    function named<T extends HTMLElement>(control: T, label: string): T {
+      control.setAttribute("aria-label", label);
+      return control;
+    }
+
+    // ── Projects ──────────────────────────────────────────
+    // Rows are re-read from the DOM on every keystroke rather than
+    // re-rendered: rebuilding the list would blow away the caret of whoever
+    // is typing in it.
+    function renderProjects() {
+      projectsEditor.replaceChildren(
+        ...projects.map((project, index) => {
+          const row = document.createElement("div");
+          row.className = "project-row";
+
+          const title = document.createElement("input");
+          title.type = "text";
+          title.className = "input";
+          title.value = project.title;
+          title.maxLength = MAX_PROJECT_TITLE;
+          title.placeholder = s["profile.projects.title"];
+          title.addEventListener("input", () => {
+            projects[index].title = title.value;
+            onProjectsEdited();
+          });
+
+          const url = document.createElement("input");
+          url.type = "url";
+          url.className = "input";
+          url.value = project.url;
+          url.maxLength = MAX_PROJECT_URL;
+          url.placeholder = s["profile.projects.url"];
+          url.addEventListener("input", () => {
+            projects[index].url = url.value;
+            onProjectsEdited();
+          });
+
+          const description = document.createElement("textarea");
+          description.className = "input textarea";
+          description.rows = 2;
+          description.value = project.description ?? "";
+          description.maxLength = MAX_PROJECT_DESCRIPTION;
+          description.placeholder = s["profile.projects.description"];
+          description.addEventListener("input", () => {
+            projects[index].description = description.value;
+            onProjectsEdited();
+          });
+
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "project-row-remove";
+          remove.textContent = "✕";
+          remove.setAttribute("aria-label", s["profile.projects.remove"]);
+          remove.addEventListener("click", () => removeProject(index));
+
+          row.append(
+            named(title, s["profile.projects.title"]),
+            named(url, s["profile.projects.url"]),
+            named(description, s["profile.projects.description"]),
+            remove
+          );
+          return row;
+        })
+      );
+
+      projectsAdd.disabled = projects.length >= MAX_PROJECTS;
+      // A row that is missing its title or its link will not be stored, and
+      // saying so while it is being typed is kinder than dropping it silently
+      // on save.
+      const incomplete = projects.some((p) => !p.title.trim() || !p.url.trim());
+      setProjectsStatus(incomplete ? s["profile.projects.incomplete"] : "");
+    }
+
+    /**
+     * A project edit reaches the gallery too: the per-image project selects
+     * are labelled with project titles, so a renamed project has to relabel
+     * them. Only the selects are rebuilt, never the project rows themselves.
+     */
+    function onProjectsEdited() {
+      renderGalleryProjectSelects();
+      const incomplete = projects.some((p) => !p.title.trim() || !p.url.trim());
+      setProjectsStatus(incomplete ? s["profile.projects.incomplete"] : "");
+      projectsAdd.disabled = projects.length >= MAX_PROJECTS;
+      syncPreview();
+    }
+
+    function addProject() {
+      if (projects.length >= MAX_PROJECTS) {
+        setProjectsStatus(s["profile.projects.full"]);
+        return;
+      }
+      projects.push({ id: newProjectId(), title: "", url: "", description: "" });
+      renderProjects();
+      syncPreview();
+      projectsEditor.querySelector<HTMLElement>(".project-row:last-of-type .input")?.focus();
+    }
+
+    /**
+     * Removing a project also clears the tag from every image that pointed at
+     * it. Firestore rules cannot check that a projectId still resolves, so
+     * this is the write half of that guarantee — without it the member would
+     * be left with images silently tagged to nothing.
+     */
+    function removeProject(index: number) {
+      const [removed] = projects.splice(index, 1);
+      if (removed) {
+        for (const item of gallery) {
+          if (item.projectId === removed.id) delete item.projectId;
+        }
+      }
+      renderProjects();
+      renderGallery();
+    }
+
+    projectsAdd.addEventListener("click", addProject);
+
+    /**
+     * Options for one image's project select: every project that would
+     * actually survive a save, plus the "no project" choice.
+     *
+     * Rebuilt on its own (rather than by re-rendering the gallery) so that
+     * renaming a project relabels the selects without disturbing the caption
+     * or description someone is mid-sentence in.
+     */
+    function fillProjectSelect(select: HTMLSelectElement, selectedId: string | undefined) {
+      const none = document.createElement("option");
+      none.value = "";
+      none.textContent = s["profile.gallery.projectNone"];
+      const options = projects
+        .filter((p) => p.title.trim() && p.url.trim())
+        .map((p) => {
+          const option = document.createElement("option");
+          option.value = p.id;
+          option.textContent = p.title.trim();
+          return option;
+        });
+      select.replaceChildren(none, ...options);
+      // An id whose project has since been emptied out has no option to
+      // select; falling back to "" keeps the control honest about what is
+      // going to be saved.
+      select.value = options.some((o) => o.value === selectedId) ? (selectedId ?? "") : "";
+    }
+
+    function renderGalleryProjectSelects() {
+      galleryEditor
+        .querySelectorAll<HTMLSelectElement>("[data-gallery-project]")
+        .forEach((select) => {
+          const index = Number(select.dataset.galleryProject);
+          const item = gallery[index];
+          if (!item) return;
+          fillProjectSelect(select, item.projectId);
+          // fillProjectSelect may have had to drop the tag; keep the stored
+          // item in step with what the control now shows.
+          if (!select.value) delete item.projectId;
+        });
+    }
+
     function renderGallery() {
       galleryEditor.replaceChildren(
         ...gallery.map((item, index) => {
+          const row = document.createElement("div");
+          row.className = "gallery-item";
+
           const wrap = document.createElement("div");
           wrap.className = "gallery-thumb";
           const img = document.createElement("img");
@@ -851,7 +1253,50 @@ const t = useTranslations(lang);
           remove.setAttribute("aria-label", s["profile.gallery.remove"]);
           remove.addEventListener("click", () => removeGalleryImage(index));
           wrap.append(img, remove);
-          return wrap;
+
+          const fields = document.createElement("div");
+          fields.className = "gallery-fields";
+
+          const caption = document.createElement("input");
+          caption.type = "text";
+          caption.className = "input";
+          caption.value = item.caption ?? "";
+          caption.maxLength = MAX_GALLERY_CAPTION;
+          caption.placeholder = s["profile.gallery.caption"];
+          caption.addEventListener("input", () => {
+            gallery[index].caption = caption.value;
+            syncPreview();
+          });
+
+          const description = document.createElement("textarea");
+          description.className = "input textarea";
+          description.rows = 3;
+          description.value = item.description ?? "";
+          description.maxLength = MAX_GALLERY_DESCRIPTION;
+          description.placeholder = s["profile.gallery.description"];
+          description.addEventListener("input", () => {
+            gallery[index].description = description.value;
+            syncPreview();
+          });
+
+          const project = document.createElement("select");
+          project.className = "input";
+          project.dataset.galleryProject = String(index);
+          fillProjectSelect(project, item.projectId);
+          project.addEventListener("change", () => {
+            if (project.value) gallery[index].projectId = project.value;
+            else delete gallery[index].projectId;
+            syncPreview();
+          });
+
+          fields.append(
+            named(caption, s["profile.gallery.caption"]),
+            named(description, s["profile.gallery.description"]),
+            named(project, s["profile.gallery.project"])
+          );
+
+          row.append(wrap, fields);
+          return row;
         })
       );
       // The image-led directory renders a typographic card for an empty
@@ -865,10 +1310,25 @@ const t = useTranslations(lang);
       syncPreview();
     }
 
+    /**
+     * Uploads and removals persist immediately, because they own files in
+     * Storage — the Firestore array is what says which of those files still
+     * belong to the member.
+     *
+     * `projects` rides along so the stored pair is never inconsistent: an
+     * image tagged to a project that Firestore has not heard of yet would
+     * render as no credit at all. Typed text (captions, descriptions,
+     * half-filled project rows) is NOT pushed by itself — that waits for
+     * Save, since writing on every keystroke is not what a form is.
+     */
     async function persistGallery() {
       const user = auth.currentUser;
       if (!user) return;
-      await updateUserProfile(user.uid, { gallery, updatedAt: new Date() });
+      await updateUserProfile(user.uid, {
+        gallery,
+        projects: normalizeProjects(projects),
+        updatedAt: new Date(),
+      });
     }
 
     async function removeGalleryImage(index: number) {
@@ -951,6 +1411,7 @@ const t = useTranslations(lang);
       if (cardRoot) {
         renderCardPreview(cardRoot, currentViewModel(), {
           defaultName: s["profile.preview.defaultName"],
+          memberTypeLabels,
         });
       }
       syncProfileView();
@@ -958,21 +1419,38 @@ const t = useTranslations(lang);
 
     /** Live form state as the one view model every preview consumes. */
     function currentViewModel() {
+      // Same resolution the build-time producer does (memberView.works): the
+      // renderers are handed a project, never an id to look up.
+      const storable = normalizeProjects(projects);
+      const byId = new Map(storable.map((p) => [p.id, p]));
       return {
         displayName: nameInput.value.trim(),
         role: roleInput.value.trim(),
+        memberType: memberTypeSelector?.value ?? "",
         bio: bioInput.value.trim(),
         tags: tagSelector?.value ?? [],
         openTo: openToSelector?.value ?? [],
+        affiliation: affiliationInput.value.trim(),
+        location: locationInput.value.trim(),
+        languages: getSelectedLanguages(),
+        visualNeeds: needsVisuals(memberTypeSelector?.value ?? "")
+          ? (visualNeedsSelector?.value ?? [])
+          : [],
         portfolio: portfolioInput.value.trim(),
         socialMedia: socialMediaInput.value.trim(),
-        works: gallery.map((g) => ({
-          url: g.url,
-          width: g.width,
-          height: g.height,
-          caption: g.caption,
-          color: g.color,
-        })),
+        projects: storable,
+        works: gallery.map((g) => {
+          const project = g.projectId ? byId.get(g.projectId) : undefined;
+          return {
+            url: g.url,
+            width: g.width,
+            height: g.height,
+            caption: g.caption,
+            color: g.color,
+            description: (g.description ?? "").trim() || undefined,
+            ...(project ? { project: { title: project.title, url: project.url } } : {}),
+          };
+        }),
       };
     }
 
@@ -983,55 +1461,69 @@ const t = useTranslations(lang);
      */
     function syncProfileView() {
       if (!profileViewRoot || !form.classList.contains("is-previewing")) return;
-      renderProfilePreview(
-        profileViewRoot,
-        currentViewModel(),
-        {
-          defaultName: s["profile.view.defaultName"],
-          tags: s["profile.view.tags"],
-          elsewhere: s["profile.view.elsewhere"],
-          openTo: s["profile.view.openTo"],
-          noWorks: s["profile.view.noWorks"],
-        }
-      );
+      renderProfilePreview(profileViewRoot, currentViewModel(), {
+        defaultName: s["profile.view.defaultName"],
+        tags: s["profile.view.tags"],
+        elsewhere: s["profile.view.elsewhere"],
+        openTo: s["profile.view.openTo"],
+        noWorks: s["profile.view.noWorks"],
+        projects: s["profile.view.projects"],
+        needs: s["profile.view.needs"],
+        partOf: s["profile.view.partOf"],
+      });
     }
 
-    function setMode(mode: "edit" | "preview") {
-      form.classList.toggle("is-previewing", mode === "preview");
-      viewToggleButtons.forEach((btn) => {
-        const active = btn.dataset.mode === mode;
+    function setSection(section: string) {
+      formSections.forEach((el) => {
+        el.classList.toggle("is-active", el.dataset.section === section);
+      });
+      sectionTabs.forEach((btn) => {
+        const active = btn.dataset.section === section;
         btn.classList.toggle("is-active", active);
         btn.setAttribute("aria-pressed", String(active));
       });
-      // Render on entry, not on every keystroke behind the scenes — see
-      // syncProfileView's early return.
-      if (mode === "preview") syncProfileView();
+      // The preview renders on tab entry, not on every keystroke behind the
+      // scenes — syncProfileView's early return keys off this class.
+      form.classList.toggle("is-previewing", section === "preview");
+      if (section === "preview") syncProfileView();
     }
 
     /** Scientists and research groups get lab-facing field wording. */
     function syncMemberTypeCopy() {
-      const copy = memberTypeFieldCopy(memberTypeSelector?.value ?? "", (key) => s[key] ?? key);
+      const type = memberTypeSelector?.value ?? "";
+      const copy = memberTypeFieldCopy(type, (key) => s[key] ?? key);
       nameInput.placeholder = copy.namePlaceholder;
       roleInput.placeholder = copy.rolePlaceholder;
       portfolioInput.placeholder = copy.portfolioPlaceholder;
       if (portfolioLabel) portfolioLabel.textContent = copy.portfolioLabel;
+      affiliationInput.placeholder = copy.affiliationPlaceholder;
+      socialMediaInput.placeholder = copy.socialPlaceholder;
+      if (socialLabel) socialLabel.textContent = copy.socialLabel;
+      if (projectsLabel) projectsLabel.textContent = copy.projectsLabel;
+      // A creator makes visuals rather than needing them, so the question
+      // is hidden for them — and its stored value is dropped on save, so a
+      // member who switches type cannot leave orphaned needs behind.
+      if (visualNeedsSelector) visualNeedsSelector.hidden = !needsVisuals(type);
     }
 
     memberTypeSelector?.addEventListener("member-type-change", () => {
       syncMemberTypeCopy();
+      // The member type is the typographic card face's tag-line fallback.
+      syncPreview();
     });
 
-    viewToggleButtons.forEach((btn) => {
+    sectionTabs.forEach((btn) => {
       btn.addEventListener("click", () => {
-        setMode(btn.dataset.mode === "preview" ? "preview" : "edit");
+        setSection(btn.dataset.section ?? "profile");
       });
     });
 
-    // Tags and openTo reach only the profile view, not the directory card, so
-    // they sync that alone. <tag-selector> dispatches a bubbling `change`;
-    // <open-to-selector> has no event of its own, but the native `change` from
-    // its checkboxes bubbles to the form just the same.
-    tagSelector?.addEventListener("change", syncProfileView);
+    // Tags fill the directory card's typographic face as well as the profile
+    // view, so they sync both; openTo reaches only the profile view.
+    // <tag-selector> dispatches a bubbling `change`; <open-to-selector> has no
+    // event of its own, but the native `change` from its checkboxes bubbles to
+    // the form just the same.
+    tagSelector?.addEventListener("change", syncPreview);
     openToSelector?.addEventListener("change", syncProfileView);
 
     nameInput.addEventListener("input", syncPreview);
@@ -1039,6 +1531,10 @@ const t = useTranslations(lang);
     bioInput.addEventListener("input", syncPreview);
     portfolioInput.addEventListener("input", syncPreview);
     socialMediaInput.addEventListener("input", syncPreview);
+    affiliationInput.addEventListener("input", syncProfileView);
+    locationInput.addEventListener("input", syncProfileView);
+    languageInputs.forEach((input) => input.addEventListener("change", syncProfileView));
+    visualNeedsSelector?.addEventListener("visual-needs-change", syncProfileView);
 
     avatarInput.addEventListener("change", async () => {
       const file = avatarInput.files?.[0];
@@ -1101,6 +1597,14 @@ const t = useTranslations(lang);
       bioInput.value = data.bio ?? "";
       portfolioInput.value = data.portfolio ?? "";
       socialMediaInput.value = data.socialMedia ?? "";
+      affiliationInput.value = data.affiliation ?? "";
+      locationInput.value = data.location ?? "";
+      setSelectedLanguages(data.languages ?? []);
+      if (visualNeedsSelector) {
+        visualNeedsSelector.value = Array.isArray(data.visualNeeds)
+          ? data.visualNeeds.filter(Boolean)
+          : [];
+      }
       if (memberTypeSelector) {
         memberTypeSelector.value = data.memberType ?? "";
         syncMemberTypeCopy();
@@ -1113,6 +1617,10 @@ const t = useTranslations(lang);
       }
       setSelectedPrimaryAudiences(data.primaryAudiences ?? []);
       gallery = Array.isArray(data.gallery) ? data.gallery.slice(0, MAX_GALLERY_IMAGES) : [];
+      // Projects before the gallery: the per-image selects are built from this
+      // list, so an empty one would render every tagged image as untagged.
+      projects = normalizeProjects(data.projects);
+      renderProjects();
       renderGallery();
       phoneInput.value = data.phone ?? "";
       wantsToContributeInput.checked = data.wantsToContribute ?? false;
@@ -1149,9 +1657,21 @@ const t = useTranslations(lang);
             bio: bioInput.value.trim(),
             portfolio: portfolioInput.value.trim(),
             socialMedia: socialMediaInput.value.trim(),
+            affiliation: affiliationInput.value.trim(),
+            location: locationInput.value.trim(),
+            languages: getSelectedLanguages(),
+            // Cleared for creators: the question is hidden for them, so keeping
+            // a previous answer would publish something they cannot see or edit.
+            visualNeeds: needsVisuals(memberType) ? (visualNeedsSelector?.value ?? []) : [],
             openTo: openToSelector?.value ?? [],
             primaryAudiences: getSelectedPrimaryAudiences(),
             tags: tagSelector?.value ?? [],
+            // The gallery persists on its own when images are added or
+            // removed, but the words attached to them — captions,
+            // descriptions, project tags — are typed, and typed text belongs
+            // to the Save button like every other field here.
+            gallery,
+            projects: normalizeProjects(projects),
             wantsToContribute: wantsToContributeInput.checked,
             phone: phoneInput.value.trim(),
             email: user.email!,

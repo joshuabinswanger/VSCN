@@ -551,6 +551,7 @@ const prefix = lang === "de" ? "/de" : "";
     upsertOnboardingRequest,
     activatePublicProfile,
     isMemberType,
+    MEMBER_TYPES,
   } from "../lib/firestore.ts";
   import { memberTypeFieldCopy } from "../lib/memberType.ts";
   import { handleProfileUpdate, triggerRebuild } from "../lib/profile.ts";
@@ -570,6 +571,12 @@ const prefix = lang === "de" ? "/de" : "";
     const lang = (wrap.dataset.lang ?? "en") as keyof typeof ui;
     const s = ui[lang] ?? ui.en;
     const prefix = lang === "de" ? "/de" : "";
+    // The translated member-type labels the directory card's typographic face
+    // falls back to when a member has no tags — same strings the real card
+    // resolves at build time.
+    const memberTypeLabels = Object.fromEntries(
+      MEMBER_TYPES.map((type) => [type, s[`profile.memberType.${type}`]])
+    );
 
     const loadingEl = document.getElementById("ob-loading");
     const errorEl = document.getElementById("ob-error")!;
@@ -878,22 +885,25 @@ const prefix = lang === "de" ? "/de" : "";
       const root = document.querySelector<HTMLElement>("[data-ccpv-root]");
       if (!root) return;
       // A brand-new member has no gallery yet, so the face bound here is the
-      // typographic card's — exactly what /community renders until they
-      // upload. The avatar fields still arrive in opts but the directory card
-      // does not show an avatar; the gallery is the card's image source.
+      // typographic card's — the framed rectangle of their tags (falling back
+      // to member type, then role), exactly what /community renders until
+      // they upload. The avatar fields still arrive in opts but the directory
+      // card does not show an avatar; the gallery is the card's image source.
       renderCardPreview(
         root,
         {
           displayName: opts.displayName,
           role: opts.role,
+          memberType: opts.memberType,
           bio: opts.bio,
-          tags: [],
+          tags: tagSelector?.value ?? [],
           openTo: [],
           portfolio: opts.portfolio,
           socialMedia: opts.socialMedia,
           works: [],
+          projects: [],
         },
-        { defaultName: s["profile.preview.defaultName"] }
+        { defaultName: s["profile.preview.defaultName"], memberTypeLabels }
       );
     }
 

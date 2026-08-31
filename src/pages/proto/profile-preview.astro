@@ -1,9 +1,13 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import ProfileViewPreview from "../../components/ProfileViewPreview.astro";
+import CommunityCardPreview from "../../components/community/CommunityCardPreview.astro";
 import { fetchMemberViews } from "../../lib/membersBuild.ts";
+import { MEMBER_TYPES } from "../../lib/firestore.ts";
+import { ui } from "../../i18n/translations.ts";
 
-// Harness for the profile-page preview that ProfileForm shows in preview mode.
+// Harness for the previews ProfileForm shows in preview mode: the profile-page
+// preview and the directory card's face (renderCardPreview).
 //
 // It exists because /profile is behind auth and its form only renders for a
 // signed-in user, so the preview cannot be seen — by a reviewer or by me —
@@ -23,12 +27,18 @@ const cases = members.map((m) => ({
   view: {
     displayName: m.displayName,
     role: m.role,
+    memberType: m.memberType,
     bio: m.bio,
+    affiliation: m.affiliation,
+    location: m.location,
+    languages: m.languages,
+    visualNeeds: m.visualNeeds,
     tags: m.tags,
     openTo: m.openTo,
     portfolio: m.portfolio,
     socialMedia: m.socialMedia,
     works: m.works,
+    projects: m.projects,
   },
 }));
 
@@ -38,6 +48,18 @@ const labels = {
   elsewhere: "Elsewhere",
   openTo: "Open to",
   noWorks: "No images yet. Add work in the gallery field and it will appear here.",
+  projects: "Projects",
+  needs: "Looking for",
+  partOf: "Part of",
+};
+
+// English member-type labels for the directory card's typographic face —
+// the harness is English-only, like its other labels.
+const cardLabels = {
+  defaultName: labels.defaultName,
+  memberTypeLabels: Object.fromEntries(
+    MEMBER_TYPES.map((type) => [type, ui.en[`profile.memberType.${type}`]])
+  ),
 };
 ---
 
@@ -54,46 +76,57 @@ const labels = {
     <div class="harness__stage">
       <ProfileViewPreview />
     </div>
+
+    <div class="harness__stage harness__stage--card">
+      <p class="harness__label">Directory card</p>
+      <CommunityCardPreview />
+    </div>
   </div>
 
-  <script is:inline define:vars={{ cases, labels }}>
+  <script is:inline define:vars={{ cases, labels, cardLabels }}>
     window.__previewCases = cases;
     window.__previewLabels = labels;
+    window.__previewCardLabels = cardLabels;
   </script>
 
   <script>
-    import { renderProfilePreview } from "../../lib/profilePreview.ts";
+    import { renderCardPreview, renderProfilePreview } from "../../lib/profilePreview.ts";
 
     function initHarness() {
       const root = document.querySelector(".ppv");
+      const cardRoot = document.querySelector("[data-ccpv-root]");
       const select = document.getElementById("case");
       const blank = document.getElementById("blank");
       if (!(root instanceof HTMLElement) || !(select instanceof HTMLSelectElement)) return;
 
       const cases = window.__previewCases ?? [];
       const labels = window.__previewLabels;
+      const cardLabels = window.__previewCardLabels;
+
+      const drawBoth = (view) => {
+        renderProfilePreview(root, view, labels);
+        if (cardRoot instanceof HTMLElement) renderCardPreview(cardRoot, view, cardLabels);
+      };
 
       const draw = (id) => {
         const found = cases.find((c) => c.id === id);
-        if (found) renderProfilePreview(root, found.view, labels);
+        if (found) drawBoth(found.view);
       };
 
       select.addEventListener("change", () => draw(select.value));
       blank?.addEventListener("click", () => {
-        renderProfilePreview(
-          root,
-          {
-            displayName: "",
-            role: "",
-            bio: "",
-            tags: [],
-            openTo: [],
-            portfolio: "",
-            socialMedia: "",
-            works: [],
-          },
-          labels,
-        );
+        drawBoth({
+          displayName: "",
+          role: "",
+          memberType: "",
+          bio: "",
+          tags: [],
+          openTo: [],
+          portfolio: "",
+          socialMedia: "",
+          works: [],
+          projects: [],
+        });
       });
 
       draw(select.value);
@@ -139,5 +172,14 @@ const labels = {
 
   .harness__stage {
     padding-top: 3rem;
+  }
+
+  .harness__stage--card {
+    margin-top: 3rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .harness__stage--card .harness__label {
+    margin: 0 0 1.5rem;
   }
 </style>

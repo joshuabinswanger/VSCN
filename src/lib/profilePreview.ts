@@ -25,6 +25,11 @@ export interface ProfilePreviewLabels {
   openTo: string;
   /** Shown instead of artwork when the gallery is empty. */
   noWorks: string;
+  projects: string;
+  /** Key for the visual-needs row, e.g. "Looking for". */
+  needs: string;
+  /** Prefix for an image's project credit, e.g. "Part of". */
+  partOf: string;
 }
 
 export function renderProfilePreview(
@@ -55,6 +60,17 @@ export function renderProfilePreview(
   if (role) role.textContent = vm.role;
   show(role, Boolean(vm.role));
 
+  const affiliation = part("affiliation");
+  if (affiliation) affiliation.textContent = vm.affiliation;
+  show(affiliation, Boolean(vm.affiliation));
+
+  // Location and languages read as one line: "Zurich, Switzerland · DE, EN".
+  const where = part("where");
+  const languageLabels = vm.languages.map((code) => code.toUpperCase());
+  const whereText = [vm.location, languageLabels.join(", ")].filter(Boolean).join(" · ");
+  if (where) where.textContent = whereText;
+  show(where, Boolean(whereText));
+
   const open = part("open");
   if (open) open.textContent = `${labels.openTo} ${vm.openTo.join(", ")}`;
   show(open, vm.openTo.length > 0);
@@ -74,6 +90,18 @@ export function renderProfilePreview(
     tags.replaceChildren(...items.filter((n): n is HTMLElement => n !== null));
   }
   show(part("tags-row"), vm.tags.length > 0);
+
+  // ── Looking for ───────────────────────────────────────────
+  const needs = part("needs");
+  if (needs) {
+    const items = vm.visualNeeds.map((need) => {
+      const li = clone("val");
+      if (li) li.textContent = need;
+      return li;
+    });
+    needs.replaceChildren(...items.filter((n): n is HTMLElement => n !== null));
+  }
+  show(part("needs-row"), vm.visualNeeds.length > 0);
 
   // ── Elsewhere ─────────────────────────────────────────────
   // `portfolio` is a plain URL field; `socialMedia` is free text that may hold
@@ -118,6 +146,30 @@ export function renderProfilePreview(
   }
   show(part("links-row"), Boolean(portfolio) || social.length > 0);
 
+  // ── Projects ──────────────────────────────────────────────
+  // Only rows that would survive normalizeProjects() are shown, so the
+  // preview never promises a half-typed project that Firestore will drop.
+  const projects = vm.projects.filter((p) => p.title.trim() && p.url.trim());
+  const projectList = part("projects");
+  if (projectList) {
+    const items = projects.map((project) => {
+      const li = clone("project");
+      const a = li?.querySelector("a");
+      const desc = li?.querySelector<HTMLElement>(".ppv__project-desc");
+      if (!li || !a) return null;
+      a.href = href(project.url.trim());
+      a.textContent = project.title.trim();
+      const text = project.description?.trim() ?? "";
+      if (desc) {
+        desc.textContent = text;
+        desc.hidden = !text;
+      }
+      return li;
+    });
+    projectList.replaceChildren(...items.filter((n): n is HTMLElement => n !== null));
+  }
+  show(part("projects-row"), projects.length > 0);
+
   // ── Work ──────────────────────────────────────────────────
   const empty = part("works-empty");
   if (empty) empty.textContent = labels.noWorks;
@@ -130,13 +182,47 @@ export function renderProfilePreview(
         const figure = clone("work");
         const img = figure?.querySelector("img");
         if (!figure || !img) return null;
+        const workPart = (name: string) =>
+          figure.querySelector<HTMLElement>(`[data-ppv-work="${name}"]`);
+
         img.src = w.url;
         img.width = w.width;
         img.height = w.height;
         // A caption is real alt text; without one the image is decorative and
-        // an empty alt is the correct, honest value.
+        // an empty alt is the correct, honest value. The description is
+        // deliberately NOT used here — a paragraph read before every image is
+        // worse for a screen reader than no caption at all.
         img.alt = w.caption?.trim() ?? "";
-        if (w.color) figure.style.background = w.color;
+        const frame = figure.querySelector<HTMLElement>(".ppv__frame");
+        if (w.color && frame) frame.style.background = w.color;
+
+        const captionText = w.caption?.trim() ?? "";
+        const descText = w.description?.trim() ?? "";
+        const project = w.project;
+
+        const caption = workPart("caption");
+        if (caption) {
+          caption.textContent = captionText;
+          caption.hidden = !captionText;
+        }
+
+        const desc = workPart("desc");
+        if (desc) {
+          desc.textContent = descText;
+          desc.hidden = !descText;
+        }
+
+        const credit = workPart("credit");
+        const creditLabel = workPart("credit-label");
+        const creditLink = workPart("credit-link");
+        if (creditLabel) creditLabel.textContent = labels.partOf;
+        if (creditLink instanceof HTMLAnchorElement && project) {
+          creditLink.href = href(project.url);
+          creditLink.textContent = project.title;
+        }
+        if (credit) credit.hidden = !project;
+
+        show(workPart("caption-block"), Boolean(captionText || descText || project));
         return figure;
       })
       .filter((n): n is HTMLElement => n !== null);
@@ -151,27 +237,48 @@ export function renderProfilePreview(
  * Fills the CommunityCardPreview shell — the directory card's face — from the
  * same ProfileViewModel. Image face when the gallery has a first item,
  * typographic face otherwise, which is exactly the rule the real grid applies
- * (getCardTier: artwork → image card).
+ * (`hasArtwork`: artwork → image card).
+ *
+ * The typographic face mirrors CommunityTextCard: a framed rectangle of tag
+ * lines, falling back tags → member-type label. The role is NOT part of that
+ * chain — it always prints in the caption row, and a frame with nothing to
+ * hold becomes a rule (see that component for why).
+ * `memberTypeLabels` carries the translated `profile.memberType.*` strings the
+ * real card gets from useTranslations() at build time.
  */
 export function renderCardPreview(
   root: HTMLElement,
   vm: ProfileViewModel,
-  labels: { defaultName: string },
+  labels: { defaultName: string; memberTypeLabels?: Record<string, string> },
 ): void {
   const part = (name: string) => root.querySelector<HTMLElement>(`[data-ccpv="${name}"]`);
 
   const name = part("name");
   if (name) name.textContent = vm.displayName.trim() || labels.defaultName;
 
-  const role = part("role");
-  if (role) {
-    role.textContent = vm.role;
-    role.hidden = !vm.role.trim();
-  }
-
   const frame = part("frame");
   const img = part("img") as HTMLImageElement | null;
+  const tframe = part("tframe");
   const work = vm.works[0];
+
+  // Same chain as CommunityTextCard's tagLines: tags, else the member-type
+  // label, else nothing — the role is not a rung on it.
+  const typeLabel = vm.memberType
+    ? (labels.memberTypeLabels?.[vm.memberType] ?? vm.memberType)
+    : "";
+  const role = vm.role.trim();
+  const tagLines = vm.tags.length > 0 ? vm.tags : typeLabel ? [typeLabel] : [];
+  // A typographic face with nothing for its frame: the real card draws a rule
+  // there instead of an empty box, so the shell has to as well.
+  const frameIsRule = !work && tagLines.length === 0;
+
+  // The role prints in the caption on every face, always.
+  const caption = part("role");
+  if (caption) {
+    caption.textContent = role;
+    caption.hidden = !role;
+  }
+
   if (frame && img) {
     if (work) {
       frame.hidden = false;
@@ -185,6 +292,23 @@ export function renderCardPreview(
     } else {
       frame.hidden = true;
       img.removeAttribute("src");
+    }
+  }
+
+  if (tframe) {
+    tframe.hidden = Boolean(work);
+    tframe.classList.toggle("ccpv__tframe--rule", frameIsRule);
+    const tags = part("tags");
+    const tpl = root.querySelector<HTMLTemplateElement>('[data-ccpv-tpl="tag"]');
+    if (tags && tpl) {
+      // Cloned from the template so each <li> carries the component's
+      // data-astro-cid-* attribute — see renderProfilePreview's header note.
+      const items = (work ? [] : tagLines).map((line) => {
+        const node = tpl.content.firstElementChild?.cloneNode(true);
+        if (node instanceof HTMLElement) node.textContent = line;
+        return node instanceof HTMLElement ? node : null;
+      });
+      tags.replaceChildren(...items.filter((n): n is HTMLElement => n !== null));
     }
   }
 }

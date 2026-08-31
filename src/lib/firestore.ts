@@ -1,5 +1,6 @@
 import { db } from "./firebase.ts";
 import type { GalleryItem } from "./gallery.ts";
+import type { ProjectItem } from "./projects.ts";
 import {
   collection,
   doc,
@@ -13,6 +14,11 @@ import {
   query,
   serverTimestamp,
 } from "firebase/firestore";
+
+// Keep in sync with validLanguages() in firestore.rules.
+export const LANGUAGES = ["de", "en", "fr", "it"] as const;
+
+export type LanguageCode = (typeof LANGUAGES)[number];
 
 // Keep in sync with validMemberType() in firestore.rules.
 export const MEMBER_TYPES = ["creator", "scientist", "both", "organization"] as const;
@@ -38,9 +44,22 @@ export interface UserDoc {
   primaryAudiences: string[];
   tags: string[];
   gallery: GalleryItem[];
+  /** Optional: profiles created before projects existed have no value. */
+  projects?: ProjectItem[];
+  /** Institution, lab, studio or company. Public. */
+  affiliation?: string;
+  /** Free text, e.g. "Zurich, Switzerland". Public. */
+  location?: string;
+  /** Working languages, values from LANGUAGES. Public. */
+  languages?: string[];
+  /**
+   * What this member needs visuals for: ids from the seeded `visualNeeds`
+   * collection plus any custom entries. Only asked of science-side members,
+   * since a creator makes visuals rather than needing them. Public.
+   */
+  visualNeeds?: string[];
   phone: string;
   email: string;
-  communityGoals?: string[];
   wantsToContribute?: boolean;
   onboardingComplete?: boolean;
   createdAt?: Date;
@@ -77,6 +96,11 @@ function toPublicProfile(data: Partial<UserDoc>): Partial<PublicProfileDoc> {
   if (data.primaryAudiences !== undefined) out.primaryAudiences = data.primaryAudiences;
   if (data.tags !== undefined) out.tags = data.tags;
   if (data.gallery !== undefined) out.gallery = data.gallery;
+  if (data.projects !== undefined) out.projects = data.projects;
+  if (data.affiliation !== undefined) out.affiliation = data.affiliation;
+  if (data.location !== undefined) out.location = data.location;
+  if (data.languages !== undefined) out.languages = data.languages;
+  if (data.visualNeeds !== undefined) out.visualNeeds = data.visualNeeds;
   if (data.createdAt) out.createdAt = data.createdAt;
   if (data.updatedAt) out.updatedAt = data.updatedAt;
   return out;
@@ -208,6 +232,17 @@ export interface OpenToDoc {
   label_de: string;
   active: boolean;
   order: number;
+}
+
+/**
+ * The seeded `visualNeeds` registry. Same document shape as `openTo`, so it
+ * reuses OpenToDoc rather than cloning an identical interface.
+ */
+export async function getVisualNeedsOptions(): Promise<OpenToDoc[]> {
+  const snap = await getDocs(query(collection(db, "visualNeeds"), orderBy("order")));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as Omit<OpenToDoc, "id">) }))
+    .filter((opt) => opt.active !== false);
 }
 
 export async function getOpenToOptions(): Promise<OpenToDoc[]> {

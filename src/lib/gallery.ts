@@ -6,17 +6,37 @@ import { decodeImage, toWebpBlob, dominantColor, rejectionMessage } from "./imag
 // Keep in sync with validGallery() in firestore.rules.
 export const MAX_GALLERY_IMAGES = 8;
 export const MAX_GALLERY_CAPTION = 140;
+export const MAX_GALLERY_DESCRIPTION = 600;
 
 const MAX_EDGE = 2000;
 const MAX_RAW_BYTES = 25 * 1024 * 1024;
 
 export interface GalleryItem {
   url: string;
+  /**
+   * One line. Doubles as the image's alt text and the directory card's
+   * accessible name, which is why it stays short — a paragraph read aloud
+   * before every other image is worse than no caption at all.
+   */
   caption: string;
   width: number;
   height: number;
   /** Dominant color (#rrggbb), shown while the image loads. Optional: pre-existing items have none. */
   color?: string;
+  /**
+   * The long text: what the image is, how it was made, who it was for. Shown
+   * only under the image on the member's profile page, never as alt text.
+   */
+  description?: string;
+  /**
+   * Optional tag into one of the member's own projects (ProjectItem.id).
+   *
+   * Nothing enforces that the id still resolves — Firestore rules cannot check
+   * one field of a document against a list in another. Deleting a project
+   * clears this in the editor, and the read path drops an id it cannot resolve,
+   * so a stale tag renders as no credit rather than as a broken link.
+   */
+  projectId?: string;
 }
 
 export interface CompressedImage {
