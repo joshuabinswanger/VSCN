@@ -1,0 +1,351 @@
+/* ── Lightbox chrome ──────────────────────────────────────────────────────
+   PhotoSwipe stays the engine — zoom, gestures, focus trapping and the mobile
+   behaviour are all its own and untouched here. This file only replaces what
+   it LOOKS like: the near-black ground and the rounded icon buttons become the
+   site's light ground, hairline rules and small letterspaced type.
+
+   WHY A FILE AND NOT A <style> BLOCK
+   The lightbox mounts on document.body, outside the component that opened it,
+   so an Astro-scoped block (which stamps a data-astro-cid attribute on the
+   markup it ships) can never reach it. `.image-editor` in global.css is the
+   existing precedent for a JS-appended overlay styled globally.
+
+   HOW THESE OVERRIDES WIN
+   Two things, neither of them !important:
+
+   1. Order. This file is imported immediately AFTER `photoswipe/style.css` in
+      the member page's client script, so it lands after the package sheet.
+   2. Specificity, so the result does not DEPEND on that order surviving a
+      bundler. Every rule is scoped to `.pswp--vscn` — a class put on the
+      lightbox root by the `mainClass` option. PhotoSwipe's own rules top out
+      at three classes (`.pswp--click-to-zoom.pswp--zoom-allowed .pswp__img`)
+      and are almost all one or two, so `.pswp--vscn` + the target class beats
+      each rule it replaces on its own.
+
+   The two `!important`s in the package sheet — `.pswp__hidden` and the top
+   bar's `pointer-events` — are load-bearing PhotoSwipe behaviour and are
+   deliberately left alone. Nothing here needs to outrank them. */
+
+/* Ground, icon and placeholder colours are all driven by PhotoSwipe's own
+   custom properties, so any control NOT restyled below still reads on a light
+   ground instead of turning into white-on-white. Declared with the root class
+   doubled (`.pswp.pswp--vscn`) purely so the block outranks the package's own
+   `.pswp { … }` variable block whatever order the two land in. */
+.pswp.pswp--vscn {
+  --pswp-bg: var(--color-bg);
+  --pswp-placeholder-bg: var(--color-border);
+  --pswp-icon-color: var(--color-dark);
+  /* The stock icons are drawn as a light shape over a dark "shadow" outline so
+     they survive any background. On a fixed light ground that outline is just
+     dirt, so the secondary colour and the stroke both go away. */
+  --pswp-icon-color-secondary: transparent;
+  --pswp-icon-stroke-color: transparent;
+  --pswp-icon-stroke-width: 0;
+  --pswp-preloader-color: var(--color-border);
+  --pswp-preloader-color-secondary: var(--color-dark);
+  --pswp-error-text-color: var(--color-muted);
+  font-family: "Archivo", sans-serif;
+  color: var(--color-dark);
+}
+
+/* The site's paper grain, so the lightbox ground is the same surface as the
+   page it covers. The page-wide grain (body::before) sits at z-index 9999 and
+   the lightbox root at 100000, so the overlay cannot reach in — this puts it
+   back. Confined to the flat ground on purpose: `.pswp__bg` already makes its
+   own stacking context (transform + will-change), so the multiply blends with
+   the ground colour only and never touches the artwork. Static rather than
+   animated: the page's version is decoration that reduced motion switches off,
+   and there is nothing to gain by re-importing that trade here. */
+.pswp--vscn .pswp__bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("../assets/noise-transparent-2.png");
+  background-repeat: repeat;
+  background-size: 180px 180px;
+  mix-blend-mode: multiply;
+  opacity: 0.7;
+}
+
+/* ── Top bar ──────────────────────────────────────────────────────────────
+   A real band with a hairline under it, like the page's own header, rather
+   than icons floating over the artwork. The `padding`/`paddingFn` option in
+   the page script reserves the height, so the image never runs under it and
+   the rule always has clean air beneath. */
+.pswp--vscn .pswp__top-bar {
+  height: 3.5rem;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0 1.5rem;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* ── Counter ──────────────────────────────────────────────────────────────
+   Set in the page's small-caps meta face — the one .mprof__back and
+   .mprof__key use — not PhotoSwipe's shadowed 14px label. */
+.pswp--vscn .pswp__counter {
+  height: auto;
+  margin: 0;
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  text-shadow: none;
+  opacity: 1;
+}
+
+/* ── Buttons, shared ──────────────────────────────────────────────────────
+   Undoes the 50x60 icon box. Every button below is still PhotoSwipe's own
+   button doing PhotoSwipe's own job — only the box and the glyph change. */
+.pswp--vscn .pswp__button {
+  display: grid;
+  place-items: center;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  opacity: 1;
+  color: var(--color-dark);
+  transition:
+    color 140ms ease,
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+.pswp--vscn .pswp__button:hover,
+.pswp--vscn .pswp__button:active,
+.pswp--vscn .pswp__button:focus {
+  opacity: 1;
+}
+/* The site's focus ring (see .btn-primary in global.css). */
+.pswp--vscn .pswp__button:focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: 2px;
+}
+
+/* ── Close ────────────────────────────────────────────────────────────────
+   Typographic, not a glyph in a circle: the localized word under a hairline,
+   in exactly the treatment .mprof__back uses at the top of the profile page —
+   muted, going dark on hover. The word itself is injected by the page script
+   (PhotoSwipe's `closeSVG` option takes any HTML) so it can be translated. */
+.pswp--vscn .pswp__button--close {
+  margin-right: 0;
+  margin-left: 0.25rem;
+}
+.pswp--vscn .pswp__vscn-word {
+  display: block;
+  padding-bottom: 2px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+  transition:
+    color 140ms ease,
+    border-color 140ms ease;
+}
+.pswp--vscn .pswp__button--close:hover .pswp__vscn-word,
+.pswp--vscn .pswp__button--close:focus-visible .pswp__vscn-word {
+  color: var(--color-dark);
+  border-bottom-color: var(--color-dark);
+}
+
+/* ── Zoom ─────────────────────────────────────────────────────────────────
+   KEPT, not hidden. Pinch and click-to-zoom cover pointer and touch, but this
+   button is the only zoom a keyboard reaches, so removing it would remove
+   function rather than decoration. Redrawn as two hairlines: a plus, losing
+   its upright to become a minus once zoomed in — which is the same state
+   change the stock magnifier icon makes. */
+.pswp--vscn .pswp__button--zoom {
+  padding: 0.35rem;
+  color: var(--color-muted);
+}
+.pswp--vscn .pswp__button--zoom:hover,
+.pswp--vscn .pswp__button--zoom:focus-visible {
+  color: var(--color-dark);
+}
+.pswp--vscn .pswp__vscn-zoom {
+  position: relative;
+  display: block;
+  width: 0.75rem;
+  height: 0.75rem;
+}
+.pswp--vscn .pswp__vscn-zoom::before,
+.pswp--vscn .pswp__vscn-zoom::after {
+  content: "";
+  position: absolute;
+  background: currentColor;
+}
+.pswp--vscn .pswp__vscn-zoom::before {
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 1.5px;
+  margin-top: -0.75px;
+}
+.pswp--vscn .pswp__vscn-zoom::after {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1.5px;
+  margin-left: -0.75px;
+  transition: opacity 140ms ease;
+}
+.pswp--vscn.pswp--zoomed-in .pswp__vscn-zoom::after {
+  opacity: 0;
+}
+
+/* ── Arrows ───────────────────────────────────────────────────────────────
+   The same control as .ccard__arrow on the community card, on purpose: same
+   2.4x1.8rem block, same --radius-xs corner, same light ground carrying a
+   dark stroked chevron, same inversion on hover. The chevron is the card's
+   drawing reproduced exactly — two borders on a box turned 45deg — so the two
+   places you page through images on this site are one design.
+
+   Unlike the card these do not fade in on hover: there is no frame to hover,
+   so they simply stand. On the light ground the block is invisible and only
+   the chevron reads, which is the card's own logic (the block exists to carry
+   the stroke over artwork, and disappears where it is not needed). */
+.pswp--vscn .pswp__button--arrow {
+  width: 2.4rem;
+  height: 1.8rem;
+  margin-top: -0.9rem;
+  padding: 0;
+  border-radius: var(--radius-xs);
+  background: var(--color-bg);
+  color: var(--color-dark);
+}
+.pswp--vscn .pswp__button--arrow--prev {
+  right: auto;
+  left: 0.6rem;
+}
+.pswp--vscn .pswp__button--arrow--next {
+  right: 0.6rem;
+  left: auto;
+}
+.pswp--vscn .pswp__button--arrow:hover,
+.pswp--vscn .pswp__button--arrow:focus-visible {
+  background: var(--color-dark);
+  color: var(--color-bg);
+}
+.pswp--vscn .pswp__vscn-chevron {
+  display: block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-top: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+}
+.pswp--vscn .pswp__button--arrow--prev .pswp__vscn-chevron {
+  transform: translate(0.06rem, 0) rotate(-135deg);
+}
+.pswp--vscn .pswp__button--arrow--next .pswp__vscn-chevron {
+  transform: translate(-0.06rem, 0) rotate(45deg);
+}
+
+/* ── Loading indicator ────────────────────────────────────────────────────
+   Left as PhotoSwipe's spinner — it reports state, it is not chrome — but
+   shrunk out of its 50x60 slot so it sits on the bar's baseline with the
+   counter. Its rotation stays under reduced motion: it is the only signal
+   that a large original is still arriving. */
+.pswp--vscn .pswp__preloader {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-right: auto;
+}
+.pswp--vscn .pswp__preloader .pswp__icn {
+  position: relative;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Caption ──────────────────────────────────────────────────────────────
+   PhotoSwipe 5 ships no caption at all, so this is a UI element registered in
+   the page script and filled from the trigger link's data attributes. Set in
+   the same two faces as .mprof__caption / .mprof__credit under the image on
+   the page, so the lightbox says the same thing in the same voice.
+
+   A band across the foot rather than an overlay on the artwork, with the
+   bottom padding option reserving its height. */
+.pswp--vscn .pswp__vscn-caption {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.95rem 1.5rem 1.2rem;
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+}
+/* A work with neither caption nor credit gets no empty band. */
+.pswp--vscn .pswp__vscn-caption.is-empty {
+  display: none;
+}
+/* Clamped because the band's height is reserved as a fixed padding: a caption
+   long enough to run to a third line would grow up over the artwork instead of
+   pushing it. Two lines is well past what the one-line captions this field
+   holds actually need. */
+.pswp--vscn .pswp__vscn-caption-line {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  max-width: 62ch;
+  overflow: hidden;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--color-dark);
+}
+.pswp--vscn .pswp__vscn-caption-meta {
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* ── Error ────────────────────────────────────────────────────────────────
+   Inherits --pswp-error-text-color from the block at the top; only the type
+   needs bringing into the page's scale. */
+.pswp--vscn .pswp__error-msg {
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+/* ── Mobile ───────────────────────────────────────────────────────────────
+   The bars tighten with the reduced padding the script hands the same
+   breakpoint. Arrows need no rule: PhotoSwipe already hides them until a
+   mouse is seen, which is the card's behaviour on mobile too. */
+@media (--bp-mobile) {
+  .pswp--vscn .pswp__top-bar {
+    height: 2.75rem;
+    padding: 0 1rem;
+  }
+  .pswp--vscn .pswp__vscn-caption {
+    padding: 0.8rem 1rem 1rem;
+  }
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────────────
+   The site's convention is to drop transitions and leave the thing in its
+   final state (global.css, CommunityImageCard, Layout). The open/close and
+   zoom animations are JS-driven, so the page script switches those off at the
+   options level; what is left to do here is the CSS. Root class doubled again
+   so the hide-on-close rule outranks the package's own `.pswp .pswp__…`
+   two-class selector by more than source order. */
+@media (prefers-reduced-motion: reduce) {
+  .pswp--vscn .pswp__button,
+  .pswp--vscn .pswp__vscn-word,
+  .pswp--vscn .pswp__vscn-zoom::after {
+    transition: none;
+  }
+  .pswp.pswp--vscn .pswp__hide-on-close {
+    transition: none;
+  }
+}

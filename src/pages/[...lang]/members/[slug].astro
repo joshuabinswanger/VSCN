@@ -50,8 +50,32 @@ const works = await Promise.all(
       widths: [600, 1000, 1600],
       format: "webp",
     }),
+    // What the lightbox says under the image. Resolved here rather than in the
+    // client script because it is translated, and the script is a module that
+    // cannot take `define:vars`; it travels on the trigger link instead.
+    //
+    // The whose-and-what-of-it line, not a repeat of the caption: full screen,
+    // the page's own name heading is covered, so the member's name is the one
+    // thing the view has lost. The project follows it where there is one.
+    pswpMeta: [
+      member.displayName,
+      w.project ? `${t("member.partOf")} ${w.project.title}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · "),
   })),
 );
+
+// The lightbox's own labels. One attribute rather than five, for the same
+// reason as pswpMeta above: the client script is a module, so `define:vars` is
+// not available to it and the strings have to arrive through the DOM.
+const lightboxStrings = JSON.stringify({
+  close: t("member.lightbox.close"),
+  zoom: t("member.lightbox.zoom"),
+  prev: t("member.lightbox.prev"),
+  next: t("member.lightbox.next"),
+  error: t("member.lightbox.error"),
+});
 
 const social = socialLinks(member.socialMedia);
 
@@ -203,7 +227,7 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
 
     {
       works.length > 0 && (
-        <div class="mprof__works">
+        <div class="mprof__works" data-pswp-i18n={lightboxStrings}>
           {/* Each work is a link to the original, which is what PhotoSwipe
               binds to — and what makes the image openable with scripting off
               rather than being inert. */}
@@ -216,6 +240,8 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
                 rel="noreferrer"
                 data-pswp-width={w.width}
                 data-pswp-height={w.height}
+                data-pswp-caption={w.caption?.trim() || undefined}
+                data-pswp-meta={w.pswpMeta || undefined}
               >
                 <img
                   class="mprof__img"
@@ -548,6 +574,39 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
 <script>
   import PhotoSwipeLightbox from "photoswipe/lightbox";
   import "photoswipe/style.css";
+  // Immediately after the package sheet, never before: this is the chrome that
+  // replaces it. The overrides are also written to win on specificity alone
+  // (see the header of lightbox.css), so the order here states the intent
+  // rather than carrying it.
+  import "../../../styles/lightbox.css";
+
+  interface LightboxStrings {
+    close: string;
+    zoom: string;
+    prev: string;
+    next: string;
+    error: string;
+  }
+
+  // English is the fallback, matching useTranslations() — a missing or
+  // malformed attribute costs the translation, never the lightbox.
+  const FALLBACK: LightboxStrings = {
+    close: "Close",
+    zoom: "Zoom",
+    prev: "Previous image",
+    next: "Next image",
+    error: "The image cannot be loaded",
+  };
+
+  // These options take raw HTML, which is how the stock SVG icons get replaced
+  // with markup this site can style. Everything injected here is either a
+  // static string or an escaped translation.
+  const esc = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  // Two borders on a box turned 45deg — the drawing .ccard__arrow uses on the
+  // community card, reproduced so both pagers on the site are one control.
+  const CHEVRON = '<span class="pswp__vscn-chevron" aria-hidden="true"></span>';
 
   // Rebuilt per navigation rather than once: ClientRouter swaps the document,
   // so a lightbox bound to the previous page's nodes would be holding dead
@@ -557,13 +616,107 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
   document.addEventListener("astro:page-load", () => {
     lightbox?.destroy();
     lightbox = null;
-    if (!document.querySelector(".mprof__works")) return;
+    const gallery = document.querySelector<HTMLElement>(".mprof__works");
+    if (!gallery) return;
+
+    let strings = FALLBACK;
+    try {
+      strings = { ...FALLBACK, ...JSON.parse(gallery.dataset.pswpI18n || "{}") };
+    } catch {
+      /* keep the fallback */
+    }
+
+    // The site drops transitions and leaves the thing in its final state
+    // rather than substituting a gentler animation. PhotoSwipe drives its
+    // open, close and zoom from JS, so they have to be switched off here; the
+    // CSS half lives in lightbox.css.
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     lightbox = new PhotoSwipeLightbox({
       gallery: ".mprof__works",
       children: ".mprof__work-link",
       pswpModule: () => import("photoswipe"),
+
+      // ── Chrome. Nothing below changes behaviour. ──
+      // The hook every rule in lightbox.css hangs off.
+      mainClass: "pswp--vscn",
+      // Solid: the ground is the page's own paper, not a veil over it. Drag to
+      // dismiss still fades it, which is what makes the gesture legible.
+      bgOpacity: 1,
+      // Reserves the top bar and the caption band so the artwork sits between
+      // them instead of running under them — which is what lets both carry a
+      // real hairline rule. Kept in step with the mobile block in lightbox.css.
+      paddingFn: (viewportSize) =>
+        viewportSize.x <= 767
+          ? { top: 44, bottom: 84, left: 12, right: 12 }
+          : { top: 56, bottom: 104, left: 32, right: 32 },
+      closeSVG: `<span class="pswp__vscn-word">${esc(strings.close)}</span>`,
+      arrowPrevSVG: CHEVRON,
+      arrowNextSVG: CHEVRON,
+      zoomSVG: '<span class="pswp__vscn-zoom" aria-hidden="true"></span>',
+      // The glyphs above are all aria-hidden, so these are what a screen
+      // reader gets; PhotoSwipe writes each to both `title` and `aria-label`.
+      closeTitle: strings.close,
+      zoomTitle: strings.zoom,
+      arrowPrevTitle: strings.prev,
+      arrowNextTitle: strings.next,
+      errorMsg: strings.error,
+
+      // Spread rather than a ternary per key: PhotoSwipe merges options over
+      // its defaults, so writing `undefined` into one of these would erase the
+      // default instead of keeping it.
+      ...(reduced
+        ? {
+            showHideAnimationType: "none" as const,
+            showAnimationDuration: 0,
+            hideAnimationDuration: 0,
+            zoomAnimationDuration: false as const,
+          }
+        : {}),
     });
+
+    // PhotoSwipe 5 has no caption of its own; this is the documented way to
+    // add one. Text comes off the trigger link, so the lightbox and the page
+    // under it cannot say different things about the same image.
+    lightbox.on("uiRegister", () => {
+      lightbox?.pswp?.ui?.registerElement({
+        name: "vscn-caption",
+        className: "pswp__vscn-caption",
+        appendTo: "root",
+        // After the top bar's elements, before nothing — it is the only thing
+        // at the foot.
+        order: 9,
+        onInit: (el, pswp) => {
+          const render = () => {
+            const trigger = pswp.currSlide?.data.element as HTMLElement | undefined;
+            const caption = trigger?.dataset.pswpCaption?.trim() || "";
+            const meta = trigger?.dataset.pswpMeta?.trim() || "";
+
+            // textContent, not innerHTML: this is member-authored text.
+            el.replaceChildren();
+            if (caption) {
+              const line = document.createElement("span");
+              line.className = "pswp__vscn-caption-line";
+              line.textContent = caption;
+              el.append(line);
+            }
+            if (meta) {
+              const credit = document.createElement("span");
+              credit.className = "pswp__vscn-caption-meta";
+              credit.textContent = meta;
+              el.append(credit);
+            }
+            // A class rather than `hidden`, which the element's own
+            // `display: flex` would outrank.
+            el.classList.toggle("is-empty", !caption && !meta);
+          };
+
+          pswp.on("change", render);
+          render();
+        },
+      });
+    });
+
     lightbox.init();
   });
 
