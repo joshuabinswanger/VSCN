@@ -46,6 +46,18 @@ const BRAND_REPEATS = 4;
 const BRAND_RESTING_TEXT = BRAND_LETTERS.map((l) => l.head)
   .join("")
   .repeat(BRAND_REPEATS);
+// One slot per glyph position of the resting title, then a run of spill slots.
+// Hovering a slot writes its tail OVER the slots that follow it, so the line
+// rewrites itself in place instead of growing and shoving its neighbours
+// sideways. A hover near the right end has fewer letters left to overwrite
+// than its tail is long, so the word runs on into the spill slots — their
+// resting glyph is empty (head ""), which measures zero wide until a word
+// reaches them.
+const BRAND_SPILL_COUNT = Math.max(...BRAND_LETTERS.map((l) => l.tail.length));
+const BRAND_SLOTS = [
+  ...Array.from({ length: BRAND_REPEATS }, () => BRAND_LETTERS).flat(),
+  ...Array.from({ length: BRAND_SPILL_COUNT }, () => ({ head: "", tail: "" })),
+];
 ---
 
 <!doctype html>
@@ -75,18 +87,27 @@ const BRAND_RESTING_TEXT = BRAND_LETTERS.map((l) => l.head)
   </head>
   <body class:list={[{ "content-wide": contentWide }]}>
     <div class="brand-ticker" transition:persist>
-      <a id="brand-home-link" href={lang === "de" ? "/de" : "/"} class="brand-link">
+      <a
+        id="brand-home-link"
+        href={lang === "de" ? "/de" : "/"}
+        class="brand-link"
+        aria-label="Visual Science Communication Network"
+      >
         <span
           class="brand-name"
           id="brand-name"
           data-resting-text={BRAND_RESTING_TEXT}
-          aria-label="Visual Science Communication Network"
-          >{Array.from({ length: BRAND_REPEATS }).map(() => (
-            <span class="brand-vscn">{BRAND_LETTERS.map(({ head, tail }) => (
-              <span class="brand-letter">{head}<span class="brand-tail"><span aria-hidden="true">{tail}</span></span></span>
-            ))}</span>
-          ))}</span
+          aria-hidden="true"
         >
+          {
+            BRAND_SLOTS.map(({ head, tail }) => (
+              <span class="brand-slot" data-brand-tail={tail}>
+                <span class="brand-slot__rest">{head}</span>
+                <span class="brand-slot__over" />
+              </span>
+            ))
+          }
+        </span>
       </a>
     </div>
     <PageLoader />
@@ -119,7 +140,7 @@ const BRAND_RESTING_TEXT = BRAND_LETTERS.map((l) => l.head)
        this padding when it measures. */
     max-width: var(--shell-max);
     margin: auto;
-    /* overflow: visible so an expanding brand letter can push its neighbours
+    /* overflow: visible so a word overwriting near the right end can run on
        into the empty space next to the 900px shell instead of being clipped
        at the shell edge. body { overflow: hidden } in global.css catches any
        horizontal spill at the viewport edge, so we can't grow a scrollbar. */
@@ -148,56 +169,130 @@ const BRAND_RESTING_TEXT = BRAND_LETTERS.map((l) => l.head)
     letter-spacing: 0;
     color: var(--color-dark);
     white-space: nowrap;
-    /* No overflow clip here — the ticker used to clip, but we now let the
-       hover expansion overflow the 900px shell. */
+    /* No overflow clip here — a word overwriting near the right end is allowed
+       to run past the 900px shell. */
     overflow: visible;
-    /* transform is driven by JS: on hover of a .brand-letter we translate
-       the whole line left by half its tail width, so growth splits equally
-       left and right of the hovered letter. Matched to the tail's own
-       0.78s ease-out so everything moves in lock-step. */
-    transition: transform 0.78s ease-out;
-    will-change: transform;
   }
 
-  /* Interactive brand letters — each capital hides a word tail (V→isual,
-     S→cience, C→ommunication, N→etwork) that grows in on hover.
-     The tail uses the inline-grid 0fr↔1fr trick so the width animates to
-     the actual content width, not an arbitrary max. Trailing letters push
-     right into the empty space beside the 900px shell.
+  /* One slot per glyph position, holding the resting VSCN letter and the word
+     letter that overwrites it. Exactly one of the two is ever open, the other
+     clipped to zero width, so hovering V swaps the letters that follow it for
+     "isual" in place — the line rewrites itself rather than growing and
+     shoving its neighbours sideways.
 
-     Motion matches the LandingHero `hero-fade-up` style: ease-out, opacity
-     fade combined with a 20px translateY rise. */
-  .brand-tail {
+     The slot is a GRID so the whitespace between its two children generates no
+     boxes; formatted markup would otherwise put a real space between the two
+     halves of one glyph. */
+  .brand-slot {
     display: inline-grid;
-    grid-template-columns: 0fr;
-    vertical-align: baseline;
-    transition: grid-template-columns 0.78s ease-out;
+    /* Both letters sit in the same cell, stacked and left-aligned, each at its
+       own natural width. The cell's width is the thing JS animates, so neither
+       letter is ever narrowed while it is turning. */
+    justify-items: start;
+    /* A beat is half a flip. The cell resizes on the second beat only, as the
+       incoming letter drops in: on the first beat it has to stay the outgoing
+       letter's width, or that letter would squeeze as it tips away. */
+    --brand-flap-beat: 0.25s;
+    --brand-flap-early: var(--brand-slot-delay, 0s);
+    --brand-flap-late: calc(var(--brand-slot-delay, 0s) + var(--brand-flap-beat));
+    transition-property: width;
+    transition-duration: var(--brand-flap-beat);
+    transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+    transition-delay: var(--brand-flap-late);
+    /* Every slot is one line of the same font and line-height, so aligning
+       tops keeps the glyphs level without depending on how a grid box with
+       overflow: hidden items synthesises its baseline. */
+    vertical-align: top;
+    /* The same shallow vanishing point GsapTextHeadline flips its words
+       against, so a header letter and a hero letter turn through the same
+       depth. Per slot, not per line: each letter flips about itself. */
+    perspective: 12ch;
   }
 
-  .brand-tail > span {
-    min-width: 0;
-    overflow: hidden;
-    opacity: 0;
-    transform: translateY(20px);
-    transition:
-      opacity 0.78s ease-out,
-      transform 0.78s ease-out;
+  /* A slot showing a word letter must not be a hover target of its own —
+     otherwise dragging the pointer along "isual" would fire S→cience halfway
+     through and the two words would fight over the line. */
+  .brand-slot--over {
+    pointer-events: none;
   }
 
-  .brand-letter:hover .brand-tail {
-    grid-template-columns: 1fr;
+  /* The cell's width is a measured px value rather than the inline-grid
+     0fr↔1fr collapse used elsewhere in this project because a transition
+     cannot interpolate from `auto`, and every glyph a slot may show is a
+     different width — so the target has to be a number JS knows.
+
+     The letters turn like the flaps on a split-flap board, on the power3.inOut
+     curve GsapTextHeadline turns its words with. The two turns do not overlap:
+     the outgoing letter tips all the way away on the first beat, and only then
+     does the incoming letter start dropping in, both the same way round so the
+     pair reads as one continuous fall. The per-slot delay set by JS sends that
+     flip across the line, left to right.
+
+     Opacity never fades: it switches in zero time at the changeover, when both
+     letters are edge-on and invisible anyway, so a letter stays solid ink the
+     whole way down. */
+  .brand-slot__rest,
+  .brand-slot__over {
+    /* Stacked, so the cell holds one letter's worth of space no matter which
+       of the two is showing. */
+    grid-area: 1 / 1;
+    /* Each letter turns about its own centre rather than travelling, so the
+       motion stays inside its line box: nothing needs clipping and no glyph
+       sweeps down across the nav. */
+    transform-origin: 50% 50%;
+    backface-visibility: hidden;
+    transition-property: opacity, transform;
+    transition-duration: 0s, var(--brand-flap-beat);
+    transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
   }
 
-  .brand-letter:hover .brand-tail > span {
+  /* Resting. Read these as the destination of the flip home: the word letter
+     is the one tipping away, so it turns on the first beat and the resting
+     letter drops in after it on the second. */
+  .brand-slot__rest {
     opacity: 1;
-    transform: translateY(0);
+    transform: rotateX(0deg);
+    transition-delay: var(--brand-flap-late), var(--brand-flap-late);
+  }
+
+  .brand-slot__over {
+    opacity: 0;
+    transform: rotateX(-90deg);
+    transition-delay: var(--brand-flap-late), var(--brand-flap-early);
+  }
+
+  /* Overwritten. The resting letter tips away on the first beat, the word
+     letter drops in on the second. */
+  .brand-slot--over .brand-slot__rest {
+    opacity: 0;
+    transform: rotateX(90deg);
+    transition-delay: var(--brand-flap-late), var(--brand-flap-early);
+  }
+
+  .brand-slot--over .brand-slot__over {
+    opacity: 1;
+    transform: rotateX(0deg);
+    transition-delay: var(--brand-flap-late), var(--brand-flap-late);
+  }
+
+  /* Re-measuring after a resize rewrites every resting width. Without this the
+     new values would animate, so the title would visibly lag the window. */
+  .brand-name--measuring .brand-slot,
+  .brand-name--measuring .brand-slot__rest,
+  .brand-name--measuring .brand-slot__over {
+    transition: none;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .brand-tail,
-    .brand-tail > span {
+    .brand-slot,
+    .brand-slot__rest,
+    .brand-slot__over {
       transition: none;
-      transform: none;
+    }
+
+    .brand-slot__rest,
+    .brand-slot__over {
+      transform: none !important;
     }
   }
 </style>
@@ -224,12 +319,9 @@ const BRAND_RESTING_TEXT = BRAND_LETTERS.map((l) => l.head)
     // padding and the last glyph is clipped.
     const cs = getComputedStyle(ticker);
     const available = ticker.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-    // Measure with a text-only mirror rather than the live .brand-name.
-    // The live tree contains expandable letter tails whose inline-grid 0fr
-    // columns still contribute their content's max-content to a `width: max-content`
-    // measurement — so measuring the real element would size against the FULLY
-    // EXPANDED "VisualScienceCommunicationNetwork" and shrink the resting title
-    // to almost nothing. The mirror carries only the resting glyphs.
+    // Measure with a text-only mirror rather than the live .brand-name, whose
+    // width depends on the pixel widths JS has written onto every glyph —
+    // measuring it would feed the fit its own previous output.
     const restingText = el.dataset.restingText ?? "";
     if (!restingText) return;
     const mirror = document.createElement("span");
@@ -249,59 +341,192 @@ const BRAND_RESTING_TEXT = BRAND_LETTERS.map((l) => l.head)
     }
   }
 
-  function refreshBrandTailShifts() {
-    const el = document.getElementById("brand-name") as HTMLElement | null;
-    if (!el) return;
-    // Reuse one hidden mirror inside .brand-name so it inherits font size/family.
+  // Seconds of delay added per slot, so the word flips itself across the line
+  // rather than every letter turning at once.
+  const BRAND_STAGGER_S = 0.025;
+  // One letter's whole flip — both beats of --brand-flap-beat in the CSS above.
+  // Kept in step with it by hand: JS needs the number to know when a word has
+  // finished leaving the line.
+  const BRAND_FLIP_S = 0.5;
+
+  // Advance width of every glyph the title can show, at the current font size.
+  let brandGlyphWidths = new Map<string, number>();
+  let brandSlots: HTMLElement[] = [];
+  let activeBrandOrigin: HTMLElement | null = null;
+  // Two words must never be turning at the same time. This is the moment the
+  // word currently leaving the line will have finished doing so.
+  let brandRetractEndsAt = 0;
+  let brandRetractTimer: ReturnType<typeof setTimeout> | null = null;
+  let pendingBrandOrigin: number | null = null;
+
+  // Measure every resting letter and every letter any word can write, then
+  // pin the resting widths. Must run after fitBrandName has settled the font
+  // size, and again whenever that size changes.
+  function measureBrandGlyphs(brandName: HTMLElement) {
     const mirror = document.createElement("span");
     mirror.style.cssText =
-      "position:absolute;visibility:hidden;pointer-events:none;white-space:nowrap;left:0;top:0";
-    el.appendChild(mirror);
+      "position:absolute;visibility:hidden;pointer-events:none;white-space:pre;left:0;top:0";
+    brandName.appendChild(mirror);
+
     const widths = new Map<string, number>();
-    el.querySelectorAll<HTMLElement>(".brand-tail > span").forEach((inner) => {
-      const text = inner.textContent ?? "";
-      if (!widths.has(text)) {
-        mirror.textContent = text;
-        widths.set(text, mirror.getBoundingClientRect().width);
+    const widthOf = (char: string) => {
+      let w = widths.get(char);
+      if (w === undefined) {
+        mirror.textContent = char;
+        w = mirror.getBoundingClientRect().width;
+        widths.set(char, w);
       }
+      return w;
+    };
+
+    const slots = Array.from(brandName.querySelectorAll<HTMLElement>(".brand-slot"));
+    slots.forEach((slot) => {
+      const head = slot.querySelector<HTMLElement>(".brand-slot__rest")?.textContent ?? "";
+      slot.dataset.brandRestWidth = String(head ? widthOf(head) : 0);
+      // Any word can land on any slot, so the map needs every tail's letters,
+      // not just this slot's.
+      Array.from(slot.dataset.brandTail ?? "").forEach(widthOf);
     });
+
     mirror.remove();
-    el.querySelectorAll<HTMLElement>(".brand-letter").forEach((letter) => {
-      const inner = letter.querySelector<HTMLElement>(".brand-tail > span");
-      const text = inner?.textContent ?? "";
-      const w = widths.get(text) ?? 0;
-      letter.dataset.brandShift = String(w / 2);
+    brandGlyphWidths = widths;
+
+    brandName.classList.add("brand-name--measuring");
+    slots.forEach((slot) => {
+      if (slot.classList.contains("brand-slot--over")) return;
+      restBrandSlot(slot);
     });
+    // Flush the un-transitioned widths before motion is allowed back on.
+    void brandName.offsetWidth;
+    brandName.classList.remove("brand-name--measuring");
+    // Those widths snapped rather than animating, so nothing is in flight and
+    // the next hover must not be made to wait for a retraction that is over.
+    brandRetractEndsAt = 0;
   }
 
-  function attachBrandHoverShift() {
+  // Back to the resting VSCN letter. The width lives on the slot, not on the
+  // two letters — they stay at their natural size so neither is squeezed mid-turn.
+  function restBrandSlot(slot: HTMLElement) {
+    slot.classList.remove("brand-slot--over");
+    slot.style.width = `${slot.dataset.brandRestWidth ?? 0}px`;
+  }
+
+  // Show one letter of a word in place of the resting letter.
+  function overwriteBrandSlot(slot: HTMLElement, char: string) {
+    const over = slot.querySelector<HTMLElement>(".brand-slot__over");
+    if (over) over.textContent = char;
+    slot.style.width = `${brandGlyphWidths.get(char) ?? 0}px`;
+    slot.classList.add("brand-slot--over");
+  }
+
+  // Send whatever word is showing back to VSCN, and record when that will be
+  // done. The slots keep their per-slot delays, so the word unwinds left to
+  // right exactly as it arrived — which is why the last letter to leave, not
+  // the first, decides when the line is still again.
+  function clearBrandOverwrite() {
+    const brandName = document.getElementById("brand-name");
+    const showing = brandName?.querySelectorAll<HTMLElement>(".brand-slot--over");
+    if (showing?.length) {
+      const lastLetterEnds = BRAND_FLIP_S + (showing.length - 1) * BRAND_STAGGER_S;
+      brandRetractEndsAt = performance.now() + lastLetterEnds * 1000;
+      showing.forEach(restBrandSlot);
+    }
+    activeBrandOrigin = null;
+  }
+
+  function cancelPendingBrandOverwrite() {
+    pendingBrandOrigin = null;
+    if (brandRetractTimer !== null) {
+      clearTimeout(brandRetractTimer);
+      brandRetractTimer = null;
+    }
+  }
+
+  function runPendingBrandOverwrite() {
+    brandRetractTimer = null;
+    const next = pendingBrandOrigin;
+    pendingBrandOrigin = null;
+    if (next !== null) applyBrandOverwrite(brandSlots, next);
+  }
+
+  // Hovering a letter. If another word is still on the line, or still on its
+  // way off it, this one waits its turn instead of flipping over the top of
+  // it — sliding along the title queues words, it never overlays them. Only
+  // the letter the pointer ended on gets spelled; anything crossed on the way
+  // is replaced as the pending target, so a fast sweep costs one word, not one
+  // per letter.
+  function requestBrandOverwrite(originIndex: number) {
+    const slot = brandSlots[originIndex];
+    // Spill slots carry no tail, so they are never an origin.
+    if (!slot?.dataset.brandTail) return;
+    if (slot === activeBrandOrigin) return;
+
+    clearBrandOverwrite();
+    cancelPendingBrandOverwrite();
+    const wait = brandRetractEndsAt - performance.now();
+    if (wait <= 0) {
+      applyBrandOverwrite(brandSlots, originIndex);
+      return;
+    }
+    pendingBrandOrigin = originIndex;
+    brandRetractTimer = setTimeout(runPendingBrandOverwrite, wait);
+  }
+
+  function leaveBrandName() {
+    clearBrandOverwrite();
+    cancelPendingBrandOverwrite();
+  }
+
+  // Write the hovered letter's tail over the slots that follow it.
+  function applyBrandOverwrite(slots: HTMLElement[], originIndex: number) {
+    const tail = slots[originIndex]?.dataset.brandTail ?? "";
+    if (!tail) return;
+    for (let i = 0; i < tail.length; i += 1) {
+      const slot = slots[originIndex + 1 + i];
+      // Out of slots entirely — can't happen while BRAND_SPILL_COUNT is the
+      // longest tail, but a shorter pool should truncate, not throw.
+      if (!slot) break;
+      slot.style.setProperty("--brand-slot-delay", `${(i * BRAND_STAGGER_S).toFixed(3)}s`);
+      overwriteBrandSlot(slot, tail[i]);
+    }
+    activeBrandOrigin = slots[originIndex];
+  }
+
+  function attachBrandOverwrite() {
     const brandName = document.getElementById("brand-name") as HTMLElement | null;
     if (!brandName) return;
     // .brand-ticker has transition:persist, so this DOM survives navigations —
     // guard against re-binding listeners on every astro:page-load.
     if (brandName.dataset.hoverAttached === "1") return;
     brandName.dataset.hoverAttached = "1";
-    brandName.querySelectorAll<HTMLElement>(".brand-letter").forEach((letter) => {
-      letter.addEventListener("pointerenter", () => {
-        const shift = letter.dataset.brandShift ?? "0";
-        brandName.style.transform = `translateX(-${shift}px)`;
-      });
-      letter.addEventListener("pointerleave", () => {
-        brandName.style.transform = "";
-      });
+
+    brandSlots = Array.from(brandName.querySelectorAll<HTMLElement>(".brand-slot"));
+    brandSlots.forEach((slot, index) => {
+      slot.addEventListener("pointerenter", () => requestBrandOverwrite(index));
     });
+
+    // Cleared on leaving the whole line, not the individual slot: the letters a
+    // word has written over are pointer-events: none, so sliding the pointer
+    // along the word leaves the origin slot without meaning to end the hover.
+    brandName.addEventListener("pointerleave", leaveBrandName);
+  }
+
+  function refreshBrandName() {
+    const brandName = document.getElementById("brand-name") as HTMLElement | null;
+    if (!brandName) return;
+    fitBrandName();
+    measureBrandGlyphs(brandName);
   }
 
   function initBrandFit() {
     brandResizeObserver?.disconnect();
     const ticker = document.querySelector<HTMLElement>(".brand-ticker");
     if (!ticker) return;
-    fitBrandName();
-    refreshBrandTailShifts();
-    attachBrandHoverShift();
+    refreshBrandName();
+    attachBrandOverwrite();
     brandResizeObserver = new ResizeObserver(() => {
-      fitBrandName();
-      refreshBrandTailShifts();
+      leaveBrandName();
+      refreshBrandName();
     });
     brandResizeObserver.observe(ticker);
   }
