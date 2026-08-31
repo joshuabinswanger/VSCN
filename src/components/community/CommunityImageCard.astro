@@ -80,6 +80,28 @@ const positionFor = (i: number) =>
     </a>
   </h2>
 
+  {
+    /* Indicators, not controls — aria-hidden, pointer-events:none, no tab
+      stops. A directory page holds a couple of dozen cards; giving each one a
+      focusable dot per work would put dozens of tab stops in front of the
+      member links that are the page's actual journey, to duplicate paging the
+      arrows and the arrow keys already do. The position is spoken instead, by
+      the live region inside the frame.
+      ABOVE the artwork and hard right, not on it: a row of the card's own
+      chrome between the name and the picture, opposite the name so the two
+      share one line. Nothing has to survive the image
+      behind it any more, so the plate is gone and the marks can be tiny. */
+  }
+  {
+    isCarousel && (
+      <div class="ccard__dots" aria-hidden="true">
+        {works.map((_, i) => (
+          <span class="ccard__dot" class:list={{ "ccard__dot--on": i === 0 }} />
+        ))}
+      </div>
+    )
+  }
+
   <div class="ccard__body">
     {
       /* The frame IS the Embla viewport. Wrapping it in one would have moved
@@ -169,18 +191,6 @@ const positionFor = (i: number) =>
             >
               <span aria-hidden="true" />
             </button>
-            {/* Indicators, not controls — aria-hidden, pointer-events:none, no
-                tab stops. A directory page holds a couple of dozen cards;
-                giving each one a focusable dot per work would put dozens of
-                tab stops in front of the member links that are the page's
-                actual journey, to duplicate paging the arrows and the arrow
-                keys already do. The position is spoken instead, by the live
-                region below. */}
-            <div class="ccard__dots" aria-hidden="true">
-              {works.map((_, i) => (
-                <span class="ccard__dot" class:list={{ "ccard__dot--on": i === 0 }} />
-              ))}
-            </div>
             {/* Empty at render: a live region has to be in the DOM before the
                 change it announces, and "Image 1 of 3" from every card at page
                 load is noise, not information. */}
@@ -206,9 +216,10 @@ const positionFor = (i: number) =>
     gap: 0.3rem;
     /* Everything above and below the frame — the name line, the caption row and
        the gaps around them. Measured at 63–78px across the seeded directory;
-       rounded UP on purpose, because under-estimating it lets the card exceed
+       plus the dots row that now sits under
+       the frame; rounded UP on purpose, because under-estimating it lets the card exceed
        its slot while over-estimating only leaves a little more air. */
-    --ccard-chrome: 5.4rem;
+    --ccard-chrome: 6rem;
     /* How tall the frame may be. --slot-rows and --cgrid-row come from the
        grid cell this card was dealt into; absent them (the editor preview, the
        profile page) the fallback is large enough to be no cap at all, which is
@@ -337,21 +348,18 @@ const positionFor = (i: number) =>
     z-index: 1;
     display: grid;
     place-items: center;
-    /* Wider than tall on purpose: these sit on the artwork's left and
-       right edges, and a wide target is both easier to hit and reads as
-       an edge control. Since the block is now painted, that width is also
-       honest — the hit area is the thing you can see. */
+    /* The box is HIT AREA ONLY — nothing paints it. Wider than tall because
+       these sit on the artwork's left and right edges, and a wide target is
+       easier to hit; the visible control is the chevron alone. */
     width: 2.4rem;
     height: 1.8rem;
     padding: 0;
     border: 0;
-    border-radius: var(--radius-xs);
-    /* THE BLOCK IS THE CONTRAST. A 2px stroke has to survive whatever
-       artwork is behind it; this used to be a drop-shadow glow around the
-       glyph, which haloed. A solid ground does the same job cleanly: on
-       dark artwork the block carries the chevron, and on light artwork the
-       block disappears into it while the dark chevron still reads. */
-    background: var(--color-bg);
+    /* No ground. The chevron is the whole control, so its contrast is now
+       the stroke's own: it reads on light artwork and can be lost on a dark
+       or busy passage. A decided trade for the clean face — the arrow keys
+       and the swipe page the same gallery either way. */
+    background: none;
     color: var(--color-dark);
     opacity: 0;
     cursor: pointer;
@@ -361,11 +369,14 @@ const positionFor = (i: number) =>
        on the substitution to carry a transition is a subtlety this file
        does not need. Each state names its own transform. */
     transform: translate(0, -50%);
+    /* THIS IS THE HIDE. A transition on the base state is what plays on the
+       way back to it, so these timings are the ones that run when the pointer
+       leaves — a third shorter than the appear below, so the chevron clears
+       the artwork promptly instead of lingering over it. The appear keeps its
+       own, longer timings on the shown state. */
     transition:
-      opacity 180ms ease,
-      transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
-      background-color 140ms ease,
-      color 140ms ease;
+      opacity 120ms ease,
+      transform 147ms cubic-bezier(0.22, 0.61, 0.36, 1);
   }
   /* :focus-within arrived with the keyboard support: the arrow keys are bound
      to the frame, so a visitor who has tabbed to the click target can page
@@ -374,15 +385,18 @@ const positionFor = (i: number) =>
   .ccard__frame:hover .ccard__arrow,
   .ccard__frame:focus-within .ccard__arrow,
   .ccard__arrow:focus-visible {
-    opacity: 1;
+    opacity: 0.75;
     transform: translate(0, -50%);
+    /* The appear, unchanged: it may take its time coming out of the edge. */
+    transition:
+      opacity 180ms ease,
+      transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
   }
-  /* Inverts on its own hover — block goes dark, chevron goes light — so
-     the active side is unmistakable without moving anything. */
+  /* With no block to invert, the active side states itself by coming to full
+     strength while the other stays held back. */
   .ccard__arrow:hover,
   .ccard__arrow:focus-visible {
-    background: var(--color-dark);
-    color: var(--color-bg);
+    opacity: 1;
   }
   /* A stroked chevron rather than a filled triangle — two borders on a box
      turned 45deg. Same drawing as the disclosure toggle in MemberDetailPanel,
@@ -415,42 +429,30 @@ const positionFor = (i: number) =>
   }
 
   /* ── Position indicator ───────────────────────────────── */
-  /* Drawn on a painted plate for the same reason the arrows are: a 4px mark
-     has to survive whatever artwork is behind it, and only a ground reads on
-     both a white sky and a black silhouette. Square-ish corners, --radius-xs
-     at most, no chrome — the same family as the arrows and the disclosure. */
+  /* A row of the card's chrome, sitting above the artwork at its right
+     edge — not a plate over the picture. Off the image there is no arbitrary
+     ground to survive, so the plate is gone and the marks shrink to
+     the smallest size that still reads as a count. */
   .ccard__dots {
-    position: absolute;
-    bottom: 0.4rem;
-    left: 50%;
-    z-index: 1;
     display: flex;
-    gap: 0.26rem;
-    padding: 0.26rem 0.34rem;
-    border-radius: var(--radius-xs);
-    background: var(--color-bg);
-    /* Quiet at rest, full on hover — the arrows' manners. Unlike the arrows
-       these never go to 0: on touch the arrows are display:none, and the dots
-       are then the only thing on the card saying there is more than one work. */
-    opacity: 0.55;
-    /* Carries its own centring so nothing else has to know its width. */
-    transform: translate(-50%, 0);
-    transition: opacity 180ms ease;
-    /* Never intercepts a drag or the click target underneath — see the markup
-       note on why these are indicators and not buttons. */
+    /* Hard right, on the artwork's own right edge: the name holds the left of
+       this line, so the count sits where nothing else does. */
+    justify-content: flex-end;
+    gap: 0.18rem;
+    /* Pulled up into the card's 0.3rem row gap: the count belongs to the name
+       line it shares, and the space that gap left under the title read as a
+       break between the two. The image comes up with it. */
+    margin-top: -0.2rem;
+    /* Indicators, never controls — see the markup note. */
     pointer-events: none;
-  }
-  .ccard__frame:hover .ccard__dots,
-  .ccard__frame:focus-within .ccard__dots {
-    opacity: 1;
   }
 
   .ccard__dot {
-    width: 0.34rem;
-    height: 0.34rem;
-    border-radius: var(--radius-xs);
+    width: 0.18rem;
+    height: 0.18rem;
+    border-radius: 50%;
     background: var(--color-dark);
-    opacity: 0.26;
+    opacity: 0.22;
     transition: opacity 180ms ease;
   }
   .ccard__dot--on {
@@ -542,12 +544,6 @@ const positionFor = (i: number) =>
     .ccard__arrow {
       display: none;
     }
-
-    /* There is no hover here to lift them, and with the arrows gone the dots
-       are the only affordance left, so they rest a little brighter. */
-    .ccard__dots {
-      opacity: 0.8;
-    }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -556,13 +552,10 @@ const positionFor = (i: number) =>
        crossfade used to make by dropping its transition here. What is left in
        this block is the chrome. */
 
-    /* The block still appears, it just does not travel to get there. */
+    /* The chevron still appears, it just does not travel to get there. */
     .ccard__arrow {
       transform: translate(0, -50%);
-      transition:
-        opacity 180ms ease,
-        background-color 140ms ease,
-        color 140ms ease;
+      transition: opacity 120ms ease;
     }
   }
 </style>
@@ -632,7 +625,10 @@ const positionFor = (i: number) =>
       if (images.length < 2) return;
 
       const slides = Array.from(carousel.querySelectorAll<HTMLElement>(".ccard__slide"));
-      const dots = Array.from(carousel.querySelectorAll<HTMLElement>(".ccard__dot"));
+      // The dots sit ABOVE the frame now, so they are no longer descendants of
+      // the node Embla was handed — they are queried from the card.
+      const card = carousel.closest<HTMLElement>(".ccard") ?? carousel;
+      const dots = Array.from(card.querySelectorAll<HTMLElement>(".ccard__dot"));
       const live = carousel.querySelector<HTMLElement>("[data-carousel-live]");
       const positionLabel = carousel.dataset.positionLabel ?? "";
 
