@@ -9,6 +9,14 @@
 // columns, `rowStart`/`rowSpan` are rhythm units (`--cgrid-row` — see
 // CommunityGrid.astro for the current value). A pattern of slots repeats down the page until its members run out.
 //
+// TWO KINDS OF LAYOUT LIVE HERE, and the rest of this header describes only
+// the first: DRAWN tables (the spread, the shelved strip's index), whose
+// geometry a person authored, and the GENERATED wall (`layOutWall`), whose
+// geometry is a measurement of the window. Both emit the same `Slot`, so the
+// deal, the DOM re-sort and the motion layer cannot tell them apart — but
+// nothing about the 24 columns, the rhythm unit or the validation below
+// applies to the wall. Its own contract is written above the function.
+//
 // Gutters are part of the drawing, not a CSS value. A column nothing occupies
 // IS the gutter, so the air between two cards can differ down the page.
 //
@@ -65,10 +73,13 @@ export interface Pattern {
    *  lane against lane and the ladder's step never breaks. In the Affinity
    *  document this is the artboard height (1 row = 30px). */
   tileRows: number;
-  /** Slots that share a `rowStart` are ROWS, on purpose — the grid view is
-   *  built from them. Setting this skips the no-shared-rowStart check (rule 1)
-   *  for the pattern; every other rule still applies, including the overlap
-   *  checks, so two slots in a row must still keep to their own columns. */
+  /** Slots that share a `rowStart` are ROWS, on purpose. Setting this skips the
+   *  no-shared-rowStart check (rule 1) for the pattern; every other rule still
+   *  applies, including the overlap checks, so two slots in a row must still
+   *  keep to their own columns.
+   *  NO PATTERN SETS THIS TODAY — the drawn grid wall was its only user, and
+   *  the wall is generated now. Kept because a row-aligned drawing is a
+   *  legitimate thing to author and the check has to know to stand down. */
   alignedRows?: boolean;
 }
 
@@ -152,68 +163,65 @@ export const TEXT_TILE: Pattern = {
   ],
 };
 
-// THE OTHER gallery: the wall. Rows of four and rows of three, alternating,
-// every card in a row starting on the same rowStart — the one thing the
-// spread's tables forbid is this drawing's whole idea (`alignedRows`). Cards
-// sit at the top of their slot (top:0, out of flow), so a row's upper edge is
-// dead flat and the raggedness all falls to the bottom, where the next flat
-// edge resets it.
+// THE OTHER gallery: the wall — NOT a drawn table. Everything above this line
+// is authored as rectangles on the 24-column grid; the wall is generated from a
+// measurement instead, because that is what "a fixed card width, and as many of
+// them as the window fits" means. The 24 columns played no part in it any more
+// once the card stopped being a fraction of the measure.
 //
-// ONE WIDTH, MUCH AIR (2026-08-28 review: "more white space… all the cards
-// have the same width"). Every slot is 4 columns (~333px) — the earlier
-// per-row width wobble is gone on purpose, so the wall reads as a calm,
-// even catalogue against the spread's editorial swagger. The whitespace is
-// drawn, not left over: 2-column gutters (~167px) between neighbours, and
-// the 3-rows centre themselves with 4-column margins, brick-staggered
-// against the 4-rows above and below.
+// WHAT IS FIXED AND WHAT MOVES (2026-08-31, Josh's fourth round on this view):
+// the card is 200px wide at every window width, the gutter between two cards is
+// 100px, and the two edges keep at least half a card of air. What varies is the
+// COUNT — 4 cards at 1440, 6 at 1920, 9 at 2560, and no ceiling, where the drawn
+// table was locked to five-and-four and bought pure whitespace above a 2160px
+// viewport (the old --grid-max cap). Those three numbers live in CSS, on
+// `.cgrid[data-pattern="grid"]` in CommunityGrid.astro; the script reads them
+// back and hands the count in here.
 //
-// Shrunk twice at the 2026-08-28 review ("smaller cards less vertical white
-// space"): span 4 → 3 (~250px at the full measure), and the slots cut to the
-// data rather than the design ceiling — rowSpan 19's frame cap (~346px) just
-// clears the tallest seeded artwork (1.33× width ≈ 333px), so today every
-// card still renders one width, but the old 1.5× guarantee is gone: a future
-// taller upload will narrow instead of deepening every row for its sake.
-// Cutting the slot is also most of the vertical tightening — the slack under
-// a median (square) card is now ~96px where the 26-row slots left ~170.
+// THE BRICK SURVIVES. Rows alternate N and N−1 cards, the short rows stepped
+// half a pitch right, which is the five-and-four wall generalised to any N —
+// the same drawing, no longer pinned to one screen width. Odd `rowStart` is a
+// flush row, even is an offset one, and that parity is the whole contract with
+// the CSS: the script sets the half-step from it. A one-card wall takes no
+// step, because there is nothing for the only card in a row to be offset
+// against.
 //
-// The drawn gap between rows is 0 rows (2026-08-28: "3 rows less gap in
-// grid view", from the 3 rows it had). Sums: pitch 19 rows (~428px), down
-// from 22. tileRows carries the same cut twice — once for the gap inside
-// the tile and once for the seam to the next copy of it — so the wall keeps
-// one rhythm all the way down instead of hiccupping every second band.
+// A ROW HERE IS A GRID ROW, not 19 rhythm units. `--cgrid-row` and the rowSpans
+// it counts are the drawn tables' unit and mean nothing to the wall, so every
+// slot is one row tall and the air between rows is an honest `row-gap`. What
+// the cards are bounded by instead is stated directly in the wall's CSS: a
+// frame may be 1.5× the card's width, i.e. 300px, and a taller upload narrows
+// rather than deepening its row.
 //
-// With no drawn gap the air between rows is entirely the SLACK INSIDE a
-// slot: a card sits at the top of its rowSpan and the remainder is
-// whitespace below it (~96px under a median square card). The consequence
-// is that the air is no longer uniform — the taller the artwork, the closer
-// it comes to the row beneath, and a card that fills its slot has almost
-// none. Restore a row or two here if that reads too tight.
-// The gallery→index seam still collapses to its own 8.
-//
-// The 3-rows sit one 5-column stride right of the 4-rows, each card directly
-// under a gutter of the row above — proper brickwork. That costs symmetry a
-// half column (margins 6 left / 5 right; a 3×3-card row can't centre on 24
-// columns), which reads as the drawn wobble the rest of the page trades in.
-const GRID_TILE: Pattern = {
-  name: "grid",
-  tileRows: 38,
-  alignedRows: true,
-  slots: [
-    { colStart: 4, colSpan: 3, rowStart: 1, rowSpan: 19 },
-    { colStart: 9, colSpan: 3, rowStart: 1, rowSpan: 19 },
-    { colStart: 14, colSpan: 3, rowStart: 1, rowSpan: 19 },
-    { colStart: 19, colSpan: 3, rowStart: 1, rowSpan: 19 },
-    { colStart: 7, colSpan: 3, rowStart: 20, rowSpan: 19 },
-    { colStart: 12, colSpan: 3, rowStart: 20, rowSpan: 19 },
-    { colStart: 17, colSpan: 3, rowStart: 20, rowSpan: 19 },
-  ],
-};
+// NOT VALIDATED, unlike the tables above, and it needs no validating: one card
+// per track and one row per row cannot overlap, cannot leave the grid, and
+// cannot come out of emission order. The rules exist to catch a human drawing
+// two rectangles on top of each other.
+export function layOutWall(count: number, cols: number): Slot[] {
+  const wide = Math.max(1, Math.floor(cols));
+  // The half step has to come out of the row's width or it would hang the last
+  // card off the right edge — so an offset row holds one card fewer, and the
+  // wall's two rows sit symmetrically inside the same measure.
+  const narrow = Math.max(1, wide - 1);
+  const out: Slot[] = [];
+  for (let i = 0, row = 1; i < count; row++) {
+    const perRow = row % 2 === 1 ? wide : narrow;
+    for (let k = 0; k < perRow && i < count; k++, i++) {
+      out.push({ colStart: k + 1, colSpan: 1, rowStart: row, rowSpan: 1 });
+    }
+  }
+  return out;
+}
 
+/** The two galleries the selector offers. Names of VIEWS, not of tables — only
+ *  `spread` still has one (see GALLERY_PATTERNS). */
 export type GalleryPatternName = "spread" | "grid";
 
-export const GALLERY_PATTERNS: Record<GalleryPatternName, Pattern> = {
+/** The DRAWN galleries. Only one is left: the wall generates its placement at
+ *  runtime (`layOutWall` above) and has no table to keep here. The record
+ *  stays a record because the strip may yet come back to it. */
+export const GALLERY_PATTERNS: { spread: Pattern } = {
   spread: SPREAD_TILE,
-  grid: GRID_TILE,
 };
 
 // ── The strip (shelved) ─────────────────────────────────────────────────────

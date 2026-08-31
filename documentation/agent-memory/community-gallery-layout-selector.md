@@ -120,6 +120,26 @@ three-beat FLOW parallax:
   the NEW Gallery/Grid toggle (2026-08-28, parallel session) is a different, live control
   that re-deals and fires `community:layout-changed` so the motion layer rebuilds.
 
+- **THE WALL IS NO LONGER DRAWN (2026-08-31, fourth "less white space" round)**: the grid
+  view stopped being a slot table and became a MEASUREMENT. `GRID_TILE` is deleted;
+  `layOutWall(count, cols)` generates the placement, the brick survives as N / N−1
+  alternating rows (odd `rowStart` flush, even offset half a pitch via `left`, which
+  neither eats a fixed track nor fights GSAP's transform), and the card is a FIXED 200px
+  at every width. The three knobs live in CSS on `.cgrid[data-pattern="grid"]`
+  (`--wall-card` 200, `--wall-gap` 40, `--wall-edge` 100, literal px so JS can parse
+  them) and the script reads them back with getComputedStyle — one source of the drawing.
+  Counts measured: 4 at 1280, 5 at 1440, 7 at 1920, 9 at 2560, 13 at 3440. The wall also
+  BREAKS OUT of the page measure: `body.wall-bleed` (set per view by applyLayout) lifts
+  `body.content-wide main`'s `min(94vw, 2030px)` cap, so `--grid-max` binds the spread
+  only. A resize can now change the drawing, so the behaviour script re-deals when the
+  count actually moves and fires `community:layout-changed`. Rows are real grid rows here,
+  so the vertical air is a `row-gap` (0.75 × gutter) instead of a reserve inside each
+  cell, and the wall's parallax is damped to 0.35 via `flowScale` (130px of travel is most
+  of a 200px card). NOTE: the two `<script>` blocks in CommunityGrid.astro are SEPARATE
+  ES modules — the motion layer cannot call `applyLayout`; cross-script work goes through
+  `community:layout-changed`. Getting that wrong fails silently (esbuild treats the
+  unknown identifier as a global, the ReferenceError lands inside a setTimeout).
+
 **Why:** Josh compared all three and chose the spread as the direction; the others were
 noise for the member review.
 

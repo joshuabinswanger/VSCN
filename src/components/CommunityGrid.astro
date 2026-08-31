@@ -94,7 +94,7 @@ const tagsAttr = (m: MemberView) => {
 //
 // TWO GALLERIES, ONE SELECTOR: the two-lane editorial spread (the default,
 // rendered by the server and re-dealt on every load) and the aligned-rows
-// grid wall (4-3-4-3 per row), switched by the Gallery/Grid toggle in the
+// grid wall (5-4-5-4 per row), switched by the Gallery/Grid toggle in the
 // header, which re-deals the same cells into the other slot table and syncs
 // ?pattern= so a view survives a reload. The earlier stagger drawing is
 // scrapped; the horizontal strip is SHELVED, not shipped — no UI reaches it,
@@ -612,6 +612,19 @@ const indexMembers = [...members].sort((a, b) =>
        Paired with body.content-wide main's cap in global.css, which is this
        plus main's 15px gutters. Raise one and the other stops matching. */
     --grid-max: 2000px;
+    /* ONE COLUMN, AS A LENGTH. The same number --grid-max talks about, but
+       usable in arithmetic: the grid is min(100%, --grid-max) wide and 100% is
+       main's content box, which body.content-wide caps at min(94vw, 2030px)
+       and pads by two 15px gutters. So a column is min(94vw - 30px,
+       --grid-max) over 24 — verified exact at 1440 (55.15px) and at 2400,
+       where the cap binds (83.33px).
+       This makes it the third member of the pairing above: the 94vw and the
+       30px are global.css's, restated here because the grid wall needs to
+       express a VERTICAL gap in the same unit its horizontal gaps are drawn
+       in. Change main's cap and this changes with it. (No percentage is used
+       — a % inside a custom property resolves against whichever property
+       consumes it, which for a gap or a padding is the wrong axis.) */
+    --cgrid-col: calc(min(94vw - 30px, var(--grid-max)) / 24);
     display: grid;
     grid-template-columns: repeat(24, minmax(0, 1fr));
     /* No gap: gutters are columns the table leaves empty, so they can vary
@@ -681,6 +694,176 @@ const indexMembers = [...members].sort((a, b) =>
   @media (--bp-desktop) {
     :global(.cgrid__cell > .ctcard) {
       max-width: 28rem;
+    }
+  }
+
+  /* ── The grid wall ────────────────────────────────────── */
+  /* THE WALL IS NOT DRAWN, IT IS MEASURED. The spread places cards in a
+     24-column table where a card's width is a FRACTION of the measure; the
+     wall places them in tracks of a FIXED width and fits as many as the window
+     has room for. Same cells, same deal, a different question asked of the
+     window — and the fourth round of "less white space in grid view"
+     (2026-08-31), the one the drawn table could not answer:
+
+       Under the table a card was 3 of 24 columns, so it grew with the viewport
+       up to --grid-max (2000px) and then stopped — and every pixel past a
+       ~2160px window became margin. Five cards on a 3440 screen with a third
+       of the glass unused. Under fixed tracks that screen fits eleven, and the
+       answer to a wider window is always more members, never more air.
+
+     THE THREE KNOBS ARE HERE AND NOWHERE ELSE. --wall-card, --wall-gap and
+     --wall-edge are read back by the client script (getComputedStyle on this
+     rule) to work out how many tracks fit, so this rule is the single source
+     of the drawing: change a number here and the script re-counts. They are
+     literal px on purpose — a calc() comes back to JS as an unresolved token
+     stream, not a number.
+       card 200px — the fixed width, at every viewport
+       gap   80px — the FLOOR on the air between two cards, not the air itself
+       edge 100px — half a card, the air at the window's two edges
+
+     THE ROWS SPREAD TO BOTH EDGES, and the gutters take the leftover. This
+     reverses the round before it, at Josh's ask ("they should always spread to
+     the edge so there is a big enough gap between them, the gap needs to be at
+     least double"): the wall had been centring N fixed tracks at a fixed 40px
+     gutter and letting the remainder pile up at the two edges, which put cards
+     a fifth of their own width apart inside a page with margins to spare. Now
+     the count is taken against the FLOOR — as many cards as fit at 80px or
+     better — and the gutter that actually renders is whatever divides the rest
+     of the measure between them. It can only ever be wider than the floor, and
+     the first and last card in a row always sit on the wall's two edges.
+
+     The script resolves it and writes it back as --wall-gap, which is the one
+     number the tracks and the brick's half step are both drawn from. Measured
+     in the browser: 3 cards at 1280 (gutter at its 160 ceiling), 4 at 1440
+     (127), 6 at 1920 (92), 8 at 2560, 11 at 3440 — the count steps, the gutter
+     breathes between the steps, and the row sits on both edges at every width
+     but the capped one.
+
+     THE BRICK SURVIVES, generalised: rows alternate N and N−1 cards with the
+     short rows stepped half a pitch right, which is the old five-and-four no
+     longer pinned to one screen width. layOutWall emits the parity (odd
+     rowStart flush, even offset) and the script turns it into the `left`
+     below — see communityLayout.ts for why the offset row is a card shorter.
+
+     THE LEFTOVER GOES TO THE EDGES, never into the gutters. Fixed tracks plus
+     justify-content:center means one gutter looks like every other gutter at
+     every window width, and the edges — already at least half a card — absorb
+     whatever does not divide. Distributing it instead (space-between) would
+     give the gutter a different size on every screen, which is the one thing a
+     fixed-width wall cannot afford.
+
+     WHAT THIS COSTS. The geometry now depends on the window, so a resize can
+     change the drawing: the script re-deals when the track count actually
+     moves and fires community:layout-changed, the same recovery the view
+     toggle uses. And the wall no longer sits inside the page's measure —
+     body.wall-bleed, set by the script for this view alone, lifts main's cap
+     so the tracks can reach the window. The page's chrome keeps its own
+     narrower measure; that break-out is the one global.css already documents
+     for wide content.
+
+     WHAT CAN STILL MOVE IT, and why the motion layer survives. A row sizes to
+     its own tallest card, so content can resize a row after the motion layer
+     has measured it. An image cannot — the frame carries an inline
+     aspect-ratio and the <img> its intrinsic size, so a card's height is known
+     before a byte of artwork lands. A late font can, and that is the case the
+     layer already handles by refreshing every ScrollTrigger on
+     document.fonts.ready. The disclosure, the other thing that grows a card,
+     is display:none on this pattern.
+
+     Desktop only: the mobile block below replaces the wall with a two-column
+     multicol flow that owns its own gaps, and none of these knobs exist
+     there. */
+  @media (--bp-desktop) {
+    .cgrid[data-pattern="grid"] {
+      --wall-card: 200px;
+      --wall-gap-min: 80px;
+      /* AND A CEILING, because a spread with only a floor has one bad width.
+         Just under a step the row is a card short and the whole of that card's
+         room goes into two or three gutters: 3 cards 210px apart at a 1280
+         window, a gutter wider than the card, which reads as three strays
+         rather than a wall. Past this the leftover goes back to the edges and
+         the row stops touching them — the one case where it cannot both
+         spread and stay a wall, and the wall wins. Twice the floor: the band
+         where it bites is roughly 1200–1300, and nowhere else. */
+      --wall-gap-max: 160px;
+      --wall-edge: 100px;
+      /* The gutter the row actually uses. Declared as the floor so the rule
+         stands on its own, and overwritten inline by the script with the
+         width that spreads the row across the measure — always ≥ the floor.
+         Everything downstream (the tracks' gap, the brick's step) reads this
+         one, so the drawing follows the window without any of them knowing. */
+      --wall-gap: var(--wall-gap-min);
+      /* CSS-only, so a calc is fine here: the brick's step is half of this. */
+      --wall-pitch: calc(var(--wall-card) + var(--wall-gap));
+
+      /* Out of the page's measure and out of the spread's 24 fluid columns: N
+         fixed tracks, centred. --wall-cols is written by the script; the
+         fallback is what a script-failed page renders, and 4 is the count at
+         1440. */
+      width: auto;
+      max-width: none;
+      grid-template-columns: repeat(var(--wall-cols, 4), var(--wall-card));
+      justify-content: center;
+      column-gap: var(--wall-gap);
+      /* Three quarters of the gutter's FLOOR — deliberately the floor and not
+         the resolved gutter, which stretches: tying the vertical rhythm to it
+         would make the page taller on exactly the widths where the horizontal
+         air is already generous, and the wall's whole subject is how much
+         vertical air it spends. 60px, the same at every width. A REAL row-gap:
+         a row of the wall is one grid row here, where the drawn table made it
+         19 placement rows and forced the gap to be reserved inside each cell.
+         THREE QUARTERS, NOT THE WHOLE GUTTER (the round before this one,
+         "even a bit less"): meshed at exactly the gutter the two axes still
+         never read equal, because the card's own caption block sits inside the
+         vertical interval and the horizontal one holds nothing. It is also the
+         floor the parallax sets: a row can close on the one below it as it
+         travels, and 30px absorbs that with the wall's damped amplitude (see
+         flowScale, which scales it to a third of the spread's). */
+      row-gap: calc(0.75 * var(--wall-gap-min));
+      /* The row is its content's height: the tallest card in it, and nothing
+         enforcing a floor under it. */
+      grid-auto-rows: minmax(0, auto);
+      /* The 18rem tail is the SPREAD's — its cards are out of flow, so its
+         last beat needs drawn whitespace under it where every earlier beat
+         borrows the next one's. The wall's cards are in flow and its last row
+         already carries the row-gap, which left that tail as ~288px of nothing
+         between the final row and the signup CTA. 6rem still leaves the
+         scale-on-approach tween room to finish on the last row: it ends at
+         `top 60%`, so it needs 40vh of document below that row's top, and the
+         row's own height plus the CTA and the footer clear it with room
+         over. */
+      padding-block: 4rem 6rem;
+    }
+
+    /* Back into flow, so a card's height reaches the tracks at all. The
+       absolute rule above exists to keep content out of the SPREAD's drawn
+       geometry; here the geometry is asking to be told. Auto margins survive
+       from that rule and still centre a card narrower than its track. */
+    :global(.cgrid[data-pattern="grid"] .cgrid__cell > .ccard),
+    :global(.cgrid[data-pattern="grid"] .cgrid__cell > .ctcard) {
+      position: static;
+      margin-inline: auto;
+    }
+
+    .cgrid[data-pattern="grid"] .cgrid__cell {
+      /* The brick's half step, on the offset rows only — the script writes
+         --row-offset from the row parity, and writes 0 where there is only one
+         track to step in. `left`, not a margin and not a transform: a margin
+         would eat into a fixed-width track and shrink the card inside it, and
+         GSAP owns the transform on every cell (the parallax). The cells are
+         already position:relative, for the ?grid labels. */
+      left: var(--row-offset, 0px);
+      /* The row-gap carries the vertical air now. */
+      padding-bottom: 0;
+      /* The frame cap, stated directly instead of in rhythm units.
+         CommunityImageCard computes --frame-cap as --slot-rows × --cgrid-row
+         minus the card's chrome (5.4rem, mirrored here), and the wall's slots
+         are one row tall, so shadowing the row unit on the CELL sets the cap
+         to 1.5 × the card width: 300px at a 200px card, at every window width,
+         where the drawn version drifted between 1.38× and 2.1×. Nothing seeded
+         reaches it, so no card narrows today; what it bounds is how deep one
+         tall upload may make its row. */
+      --cgrid-row: calc((1.5 * var(--wall-card) + 5.4rem) / var(--slot-rows, 1));
     }
   }
 
@@ -1131,6 +1314,7 @@ const indexMembers = [...members].sort((a, b) =>
     STRIP_SLOT_ROWS,
     layOutSlots,
     layOutStripIndex,
+    layOutWall,
     type GalleryPatternName,
     type Slot,
   } from "../lib/communityLayout.ts";
@@ -1177,12 +1361,72 @@ const indexMembers = [...members].sort((a, b) =>
     // The card reads this to bound its frame — a deal that moved the
     // geometry without it would leave a card capped to its old slot.
     cell.style.setProperty("--slot-rows", String(s.rowSpan));
+    // The wall's brick step belongs to the wall. Cleared here so a cell that
+    // was in an offset row cannot carry the step into the spread — where it
+    // would be inert (only the wall's rule reads it) but a lie in the DOM —
+    // and the wall re-writes it straight after this call.
+    cell.style.removeProperty("--row-offset");
     // Kept in step with the placement so the ?grid labels stay truthful after
     // a deal, and so the row sort below reads the row the cell actually has.
     cell.dataset.row = String(s.rowStart);
     cell.dataset.span = String(s.rowSpan);
     cell.dataset.col = `${s.colStart}-${s.colStart + s.colSpan - 1}`;
   }
+
+  /** The wall's two measurements: how many fixed-width cards the window fits,
+   *  and the gutter that spreads them from edge to edge once they are in.
+   *
+   *  The knobs live in ONE place — the .cgrid[data-pattern="grid"] rule — and
+   *  this reads them back rather than restating them, so the drawing has a
+   *  single source. --wall-gap-min is a FLOOR: it decides the count, and the
+   *  gutter that comes back is whatever divides the rest of the measure, which
+   *  is what makes a row reach both edges at any width.
+   *
+   *  Returns zeros when the knobs are absent, which is mobile: there the wall
+   *  is a two-column multicol flow that owns its own geometry and none of this
+   *  applies. Callers pass the 0 count straight to layOutWall, whose floor of
+   *  one card per row is the harmless placement mobile then ignores.
+   *
+   *  Reads clientWidth, so the grid must already be visible and already carry
+   *  data-pattern="grid" (and the body its bleed class) when this is called —
+   *  otherwise it measures against the wrong width. */
+  function wallMetrics(grid: HTMLElement): { cols: number; gap: number } {
+    const cs = getComputedStyle(grid);
+    const px = (name: string) => parseFloat(cs.getPropertyValue(name));
+    const card = px("--wall-card");
+    const min = px("--wall-gap-min");
+    const max = px("--wall-gap-max");
+    const edge = px("--wall-edge");
+    if (!card || Number.isNaN(min) || Number.isNaN(edge)) return { cols: 0, gap: 0 };
+    // n cards and n−1 gutters at the floor have to fit inside the measure less
+    // both edges: n × (card + min) − min ≤ available. At least one, however
+    // narrow the window.
+    const available = grid.clientWidth - 2 * edge;
+    const cols = Math.max(1, Math.floor((available + min) / (card + min)));
+    // Then spread: everything the cards did not use goes into the gutters, so
+    // the first and last card sit on the edges. A lone card has no gutter to
+    // widen and keeps the floor. The max() is belt and braces — the count was
+    // taken at the floor, so the division cannot come back under it.
+    const spread = cols > 1 ? Math.max(min, (available - cols * card) / (cols - 1)) : min;
+    // The ceiling hands the surplus back to the edges (the tracks are centred,
+    // so nothing else has to know) at the one width where spreading would draw
+    // a gutter wider than a card.
+    return { cols, gap: Number.isNaN(max) ? spread : Math.min(spread, max) };
+  }
+
+  /** Writes the measurements onto the grid for the CSS to draw from, and hands
+   *  back the count the deal needs. */
+  function writeWallMetrics(grid: HTMLElement): number {
+    const { cols, gap } = wallMetrics(grid);
+    grid.style.setProperty("--wall-cols", String(Math.max(1, cols)));
+    grid.style.setProperty("--wall-gap", `${gap}px`);
+    return cols;
+  }
+
+  /** The count the wall was last dealt at. A resize that fits the same number
+   *  of cards must not re-deal — it would reshuffle the wall under the reader
+   *  for nothing. */
+  let wallCols = 0;
 
   /** Reading order for the DOM re-sort: down the page, then across it. The
    *  column tiebreak only matters in aligned-rows patterns (grid), where a
@@ -1280,6 +1524,13 @@ const indexMembers = [...members].sort((a, b) =>
     // return so it is always truthful about what is on screen.
     grid.dataset.pattern = mode;
 
+    // The wall measures the WINDOW; every other view sits inside the page's
+    // measure. This releases main's cap for the wall alone (see global.css),
+    // and it has to happen before anything measures — a count taken against
+    // the capped measure comes out short, and on a wide screen by several
+    // cards. Cleared for every other mode by the same call.
+    document.body.classList.toggle("wall-bleed", mode === "grid");
+
     // The grid wall hides the disclosures in CSS; close them here too, or
     // a panel left open in the spread is still open on the way back.
     if (mode !== "spread") {
@@ -1361,8 +1612,21 @@ const indexMembers = [...members].sort((a, b) =>
       // reads in. A tag card is shorter than most artwork, and the wall's
       // design already absorbs that: tops align on the row's flat edge and
       // the raggedness all falls to the bottom.
-      const all = layOutSlots(GALLERY_PATTERNS.grid, matching.length, 0);
-      [...orderedGallery, ...textCells].forEach((cell, i) => writeSlot(cell, all[i]));
+      // Generated, not drawn: as many fixed-width tracks as the window fits
+      // (see the wall block in the styles above). The count goes onto the grid
+      // for the CSS to build its tracks from, and is remembered so a resize
+      // can tell a real change from a wobble.
+      wallCols = writeWallMetrics(grid);
+      const all = layOutWall(matching.length, wallCols);
+      [...orderedGallery, ...textCells].forEach((cell, i) => {
+        writeSlot(cell, all[i]);
+        // The brick: even rows are the offset ones (layOutWall's parity), and
+        // a one-track wall has nothing to step against — the only card in a
+        // row would simply hang off the right edge.
+        if (wallCols >= 2 && all[i].rowStart % 2 === 0) {
+          cell.style.setProperty("--row-offset", "calc(var(--wall-pitch) / 2)");
+        }
+      });
       if (strip) strip.hidden = true;
       cells.sort(domOrder).forEach((cell) => grid.appendChild(cell));
       reflectFilterState(grid, mode);
@@ -1502,6 +1766,64 @@ const indexMembers = [...members].sort((a, b) =>
       });
     }
   });
+
+  // ────────────────────────────────────────────────────────────────────────
+  // The wall follows the window.
+  // The one view whose drawing is a MEASUREMENT: its track count is however
+  // many fixed-width cards the window fits, so resizing can change the
+  // drawing itself — no other view here can say that. Module scope, not inside
+  // astro:page-load, so a page swap cannot stack a second listener; the
+  // handler looks the grid up each time and does nothing when the wall is not
+  // the view on screen.
+  //
+  // Re-deal ONLY when the count actually moves. A drag across a few hundred
+  // pixels that fits the same number of cards must leave the wall alone, or
+  // the page would reshuffle under the reader for nothing — hence reshuffle
+  // false as well, so the members hold their places. The rebuild the motion
+  // layer needs (every trigger position is measured against the old
+  // placement) is the same event a view switch fires.
+  // ────────────────────────────────────────────────────────────────────────
+  function liveWall(): HTMLElement | null {
+    const grid = document.getElementById("member-grid");
+    if (!grid || grid.dataset.pattern !== "grid" || grid.hidden) return null;
+    return grid;
+  }
+
+  function redealWall(): void {
+    const grid = liveWall();
+    if (!grid) return;
+    if (wallMetrics(grid).cols === wallCols) return;
+    applyLayout(grid, "grid", false);
+    document.dispatchEvent(new Event("community:layout-changed"));
+  }
+
+  // TWO SPEEDS, because the window changes two different things. The GUTTER is
+  // continuous — every pixel of width redistributes it — so it has to follow
+  // the drag, and it costs two custom properties. The COUNT is a step, and
+  // stepping it means re-placing every cell and re-measuring the whole motion
+  // layer, so that waits for the drag to settle and only runs when the count
+  // has actually moved.
+  let wallFrame = 0;
+  let wallResizeTimer = 0;
+  window.addEventListener("resize", () => {
+    cancelAnimationFrame(wallFrame);
+    wallFrame = requestAnimationFrame(() => {
+      const grid = liveWall();
+      if (grid) writeWallMetrics(grid);
+    });
+    clearTimeout(wallResizeTimer);
+    wallResizeTimer = window.setTimeout(redealWall, 180);
+  });
+
+  // Crossing INTO desktop is the one case the count comparison cannot catch on
+  // its own: on the phone the wall's knobs do not exist (its rule is
+  // desktop-only), so the count that was stored is a mobile reading of a
+  // layout mobile never used. Force the deal rather than compare.
+  window.matchMedia("(min-width: 768px)").addEventListener("change", (e) => {
+    if (!e.matches) return;
+    wallCols = 0;
+    redealWall();
+  });
 </script>
 
 <script>
@@ -1540,7 +1862,19 @@ const indexMembers = [...members].sort((a, b) =>
    *  ladder still steps 3 rows: a full amplitude there would stack one card
    *  onto the next, so the strip keeps the old 0.3 fraction. */
   function flowScale(cell: HTMLElement, mode: string | undefined): number {
-    return mode === "strip" && cell.querySelector(".ctcard") ? 0.3 : 1;
+    if (mode === "strip") return cell.querySelector(".ctcard") ? 0.3 : 1;
+    // The amplitudes above were drawn for the spread, where a beat has
+    // hundreds of pixels of drawn whitespace under it and a card is 500px
+    // wide. On the wall a 130px travel is most of a 200px card sliding past
+    // its neighbours, which reads as slosh rather than depth — and it eats
+    // into a 30px row gap. Two rows never quite collide even undamped (they
+    // cross their triggers 0.28 apart, so the worst a row can close on the one
+    // below is ~21px of the 30), but a third of the amplitude turns that into
+    // ~7px and makes the motion proportionate to the card carrying it.
+    // Scaling is the whole change — the per-row deal above is untouched, so a
+    // row still moves as one flat edge.
+    if (mode === "grid") return 0.35;
+    return 1;
   }
 
   // Loose type: gsap's global namespace types are not reliably in scope
@@ -1718,7 +2052,10 @@ const indexMembers = [...members].sort((a, b) =>
     build();
   });
 
-  // Crossing the breakpoint on resize starts or stops the whole layer.
+  // Crossing the breakpoint on resize starts or stops the whole layer. The
+  // wall's own re-deal on that crossing lives in the behaviour layer (a
+  // separate module — nothing here can call applyLayout) and arrives as a
+  // community:layout-changed, handled above.
   window.matchMedia(DESKTOP).addEventListener("change", () => {
     teardown();
     build();

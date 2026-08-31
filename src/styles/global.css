@@ -166,6 +166,18 @@ main.is-wide {
        short of it. Move the two together. */
     max-width: min(94vw, 2030px);
   }
+
+  /* THE GRID WALL MEASURES THE WINDOW. Every other view on /community is drawn
+     against a measure and wants the cap above; the wall lays cards in tracks
+     of a fixed width and fits as many as there is room for, so a cap on the
+     page would only turn a wider window into wider margins — the exact defect
+     it was built to answer. The class is set and cleared by the view selector
+     (CommunityGrid's applyLayout), so it is on the body for that one view.
+     No padding of its own: main's 15px gutters stay, and the wall keeps half
+     a card of air at each edge from its own --wall-edge. */
+  body.content-wide.wall-bleed main {
+    max-width: none;
+  }
 }
 
 /* ── Links — kill browser default blue/purple ── */
