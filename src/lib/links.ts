@@ -76,17 +76,69 @@ function cleanOne(raw: string): SocialLink | null {
   return { href: `https://${host.toLowerCase()}${path}`, label: raw };
 }
 
+// ---------------------------------------------------------------------------
+// The stored shape
+//
+// `socialMedia` is ONE comma-joined string on the member document, and stays
+// one. The editor now offers a row per link, but a repeatable control does not
+// require a repeatable field: splitting on save would strand every profile
+// stored before today behind a migration, and the public directory is a
+// build-time snapshot, so old and new documents are rendered side by side by
+// pages nobody rebuilds on demand. Keeping the single string means there is
+// only ever one shape in the wild — the editor's rows are a view of it, the
+// same way socialLinks() has always been a view of it for the renderers.
+//
+// splitSocial/joinSocial are that view, named here rather than in the editor so
+// the parse the form uses and the parse the renderers use cannot diverge.
+// ---------------------------------------------------------------------------
+
+/**
+ * How many link rows the editor offers. The real gate is MAX_SOCIAL_MEDIA
+ * below — this only stops the list growing past what anyone reads.
+ */
+export const MAX_SOCIAL_LINKS = 6;
+
+/** Keep in sync with the `socialMedia` size check in firestore.rules. */
+export const MAX_SOCIAL_MEDIA = 500;
+
+/**
+ * The entries inside a stored `socialMedia` value, in stored order.
+ *
+ * Forgiving on purpose: a comma is the separator, so a value pasted as
+ * "@me, linkedin.com/in/me" comes back as two entries rather than one broken
+ * one. Blanks are dropped — an empty editor row is not a link.
+ */
+export function splitSocial(raw: string): string[] {
+  return raw
+    .split(",")
+    .map((part) => part.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+}
+
+/**
+ * Editor rows back into the one stored value. Runs every entry through
+ * splitSocial first, so a row someone pasted a comma-joined pair into stores as
+ * two entries instead of surviving as a row that would split on next load
+ * anyway. Exact duplicates are dropped: two rows holding the same URL render as
+ * the same link twice, which is never what was meant.
+ */
+export function joinSocial(values: string[]): string {
+  const out: string[] = [];
+  for (const value of values) {
+    for (const entry of splitSocial(value)) {
+      if (!out.includes(entry)) out.push(entry);
+    }
+  }
+  return out.join(", ");
+}
+
 /**
  * Shape a raw `socialMedia` value into displayable entries. Comma-joined
  * values become one entry each; entries with a null `href` render as plain
  * text. An empty input yields an empty array.
  */
 export function socialLinks(raw: string): SocialLink[] {
-  return raw
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .map((part) => cleanOne(part) ?? { href: null, label: part });
+  return splitSocial(raw).map((part) => cleanOne(part) ?? { href: null, label: part });
 }
 
 /**

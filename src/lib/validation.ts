@@ -1,4 +1,5 @@
 import { decodeImage, toWebpBlob, dominantColor, rejectionMessage } from "./image.ts";
+import { MAX_SOCIAL_MEDIA } from "./links.ts";
 const MAX_AVATAR_BYTES = 10 * 1024 * 1024; // 10 MB — raw upload limit before client-side resize
 // Keep this in sync with validBioWordCount() in firestore.rules.
 export const MAX_BIO_WORDS = 35;
@@ -46,6 +47,26 @@ export function validateBio(value: string): { ok: boolean; error?: string } {
   const words = countWords(value);
   if (words > MAX_BIO_WORDS) {
     return { ok: false, error: `About you must be ${MAX_BIO_WORDS} words or fewer.` };
+  }
+  return { ok: true };
+}
+
+/**
+ * The one hard limit on social links, and it is a length, not a count: the
+ * whole list is stored as a single field that firestore.rules caps at
+ * MAX_SOCIAL_MEDIA characters. Without this the save comes back as an opaque
+ * permission error, which says nothing about which field is too long.
+ *
+ * Deliberately NOT a check on link shape. links.ts accepts bare handles and
+ * scheme-less domains on purpose, and rejecting them here would contradict the
+ * renderer that is perfectly happy to display them.
+ */
+export function validateSocialMedia(value: string): { ok: boolean; error?: string } {
+  if (value.length > MAX_SOCIAL_MEDIA) {
+    return {
+      ok: false,
+      error: `Your social links are too long — keep them to ${MAX_SOCIAL_MEDIA} characters in total.`,
+    };
   }
   return { ok: true };
 }

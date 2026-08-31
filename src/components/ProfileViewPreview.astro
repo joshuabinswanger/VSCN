@@ -18,74 +18,144 @@ const { lang = "en" } = Astro.props;
 const t = useTranslations(lang);
 ---
 
-<section class="ppv">
-  <header class="ppv__head">
-    <h3 class="ppv__name" data-ppv="name"></h3>
-    <p class="ppv__role" data-ppv="role" hidden></p>
-    <p class="ppv__role" data-ppv="affiliation" hidden></p>
-    <p class="ppv__where" data-ppv="where" hidden></p>
-    <p class="ppv__open" data-ppv="open" hidden></p>
-  </header>
+{
+  /* The threshold. Everything below the rule is the visitor's rendering, and
+     nothing above it is — before this, the preview ran flush against the
+     editor's own fields and there was no line to say where one stopped.
 
-  <p class="ppv__bio" data-ppv="bio" hidden></p>
+     A hairline, a micro-label and white space; no grey panel. The sheet is
+     plain white against the page's warm #fcfbfa ground, which is what makes it
+     read as a separate surface without a fill to say so. */
+}
+<div class="ppv-stage">
+  <p class="ppv-stage__threshold">
+    <span class="ppv-stage__badge">{t("profile.view.threshold")}</span>
+  </p>
+  <p class="ppv-stage__note">{t("profile.view.note")}</p>
 
-  <div class="ppv__meta">
-    <div class="ppv__row" data-ppv="tags-row" hidden>
-      <span class="ppv__key">{t("profile.view.tags")}</span>
-      <ul class="ppv__vals" data-ppv="tags"></ul>
-    </div>
+  <div class="ppv-sheet">
+    <section class="ppv">
+      <header class="ppv__head">
+        <h3 class="ppv__name" data-ppv="name"></h3>
+        <p class="ppv__role" data-ppv="role" hidden></p>
+        <p class="ppv__role" data-ppv="affiliation" hidden></p>
+        <p class="ppv__where" data-ppv="where" hidden></p>
+        <p class="ppv__open" data-ppv="open" hidden></p>
+      </header>
 
-    <div class="ppv__row" data-ppv="needs-row" hidden>
-      <span class="ppv__key">{t("profile.view.needs")}</span>
-      <ul class="ppv__vals" data-ppv="needs"></ul>
-    </div>
+      <p class="ppv__bio" data-ppv="bio" hidden></p>
 
-    <div class="ppv__row" data-ppv="links-row" hidden>
-      <span class="ppv__key">{t("profile.view.elsewhere")}</span>
-      <ul class="ppv__vals ppv__vals--links" data-ppv="links"></ul>
-    </div>
+      <div class="ppv__meta">
+        <div class="ppv__row" data-ppv="tags-row" hidden>
+          <span class="ppv__key">{t("profile.view.tags")}</span>
+          <ul class="ppv__vals" data-ppv="tags"></ul>
+        </div>
 
-    <div class="ppv__row" data-ppv="projects-row" hidden>
-      <span class="ppv__key">{t("profile.view.projects")}</span>
-      <ul class="ppv__projects" data-ppv="projects"></ul>
-    </div>
+        <div class="ppv__row" data-ppv="needs-row" hidden>
+          <span class="ppv__key">{t("profile.view.needs")}</span>
+          <ul class="ppv__vals" data-ppv="needs"></ul>
+        </div>
+
+        <div class="ppv__row" data-ppv="links-row" hidden>
+          <span class="ppv__key">{t("profile.view.elsewhere")}</span>
+          <ul class="ppv__vals ppv__vals--links" data-ppv="links"></ul>
+        </div>
+
+        <div class="ppv__row" data-ppv="projects-row" hidden>
+          <span class="ppv__key">{t("profile.view.projects")}</span>
+          <ul class="ppv__projects" data-ppv="projects"></ul>
+        </div>
+      </div>
+
+      <div class="ppv__works" data-ppv="works" hidden></div>
+      <p class="ppv__empty" data-ppv="works-empty" hidden></p>
+
+      {/* Cloned by the renderer. Rendered here rather than built in JS so the
+          clones inherit Astro's scope attribute and match the styles below. */}
+      <template data-ppv-tpl="val"><li class="ppv__val"></li></template>
+      <template data-ppv-tpl="link"
+        ><li><a class="ppv__link" target="_blank" rel="noopener noreferrer"></a></li></template
+      >
+      <template data-ppv-tpl="project"
+        ><li class="ppv__project">
+          <a class="ppv__link" target="_blank" rel="noopener noreferrer"></a>
+          <p class="ppv__project-desc" hidden></p>
+        </li></template
+      >
+      {/* The frame is an inner div, not the figure, so the caption block sits
+          OUTSIDE the border — same relationship the real page has, where the
+          border belongs to the lightbox link and the figcaption follows it. */}
+      <template data-ppv-tpl="work"
+        ><figure class="ppv__work">
+          <div class="ppv__frame"><img class="ppv__img" alt="" decoding="async" /></div>
+          <figcaption class="ppv__caption" data-ppv-work="caption-block" hidden>
+            <span class="ppv__caption-line" data-ppv-work="caption" hidden></span>
+            <span class="ppv__desc" data-ppv-work="desc" hidden></span>
+            <span class="ppv__credit" data-ppv-work="credit" hidden
+              ><span data-ppv-work="credit-label"></span>
+              <a class="ppv__credit-link" data-ppv-work="credit-link" target="_blank" rel="noopener noreferrer"
+              ></a></span
+            >
+          </figcaption>
+        </figure></template
+      >
+    </section>
   </div>
-
-  <div class="ppv__works" data-ppv="works" hidden></div>
-  <p class="ppv__empty" data-ppv="works-empty" hidden></p>
-
-  {/* Cloned by the renderer. Rendered here rather than built in JS so the
-      clones inherit Astro's scope attribute and match the styles below. */}
-  <template data-ppv-tpl="val"><li class="ppv__val"></li></template>
-  <template data-ppv-tpl="link"
-    ><li><a class="ppv__link" target="_blank" rel="noopener noreferrer"></a></li></template
-  >
-  <template data-ppv-tpl="project"
-    ><li class="ppv__project">
-      <a class="ppv__link" target="_blank" rel="noopener noreferrer"></a>
-      <p class="ppv__project-desc" hidden></p>
-    </li></template
-  >
-  {/* The frame is an inner div, not the figure, so the caption block sits
-      OUTSIDE the border — same relationship the real page has, where the
-      border belongs to the lightbox link and the figcaption follows it. */}
-  <template data-ppv-tpl="work"
-    ><figure class="ppv__work">
-      <div class="ppv__frame"><img class="ppv__img" alt="" decoding="async" /></div>
-      <figcaption class="ppv__caption" data-ppv-work="caption-block" hidden>
-        <span class="ppv__caption-line" data-ppv-work="caption" hidden></span>
-        <span class="ppv__desc" data-ppv-work="desc" hidden></span>
-        <span class="ppv__credit" data-ppv-work="credit" hidden
-          ><span data-ppv-work="credit-label"></span>
-          <a class="ppv__credit-link" data-ppv-work="credit-link" target="_blank" rel="noopener noreferrer"
-          ></a></span
-        >
-      </figcaption>
-    </figure></template
-  >
-</section>
+</div>
 
 <style>
+  /* ── Stage: where the editor stops and the visitor view starts ── */
+  .ppv-stage {
+    font-family: "Archivo", sans-serif;
+  }
+
+  /* Label, then a rule to the right edge — the same typographic voice as the
+     .ppv__key rows inside, so the threshold belongs to the page rather than
+     announcing itself as a widget. */
+  .ppv-stage__threshold {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    margin: 0;
+  }
+
+  .ppv-stage__threshold::after {
+    content: "";
+    flex: 1 1 auto;
+    height: 1px;
+    background: var(--color-border);
+  }
+
+  .ppv-stage__badge {
+    flex: 0 0 auto;
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .ppv-stage__note {
+    margin: 0.75rem 0 0;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--color-muted);
+    max-width: 46ch;
+  }
+
+  /* The page-like containment: a sheet of white with a hairline round it and
+     real margin inside. The padding is the breathing room — the preview used
+     to start at the editor's own left edge, which is exactly why it read as
+     more form rather than as a page. */
+  .ppv-sheet {
+    margin-top: 1.75rem;
+    padding: clamp(1.25rem, 5vw, 3rem);
+    background: #fff;
+    border: 1px solid var(--color-border);
+    /* Square, like every other frame on the site. */
+    border-radius: 0;
+  }
+
   .ppv {
     font-family: "Archivo", sans-serif;
   }

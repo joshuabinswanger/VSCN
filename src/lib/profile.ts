@@ -3,7 +3,7 @@ import { httpsCallable } from "firebase/functions";
 import { functions } from "./firebase.ts";
 import { uploadAvatar, deleteAvatar } from "./storage.ts";
 import { updateUserProfile } from "./firestore.ts";
-import { validateBio } from "./validation.ts";
+import { validateBio, validateSocialMedia } from "./validation.ts";
 import type { UserDoc } from "./firestore.ts";
 
 export interface ProfileUpdateOptions extends Partial<UserDoc> {
@@ -18,11 +18,20 @@ export async function handleProfileUpdate(
   const { resizedAvatarBlob, ...data } = options;
   let photoURL = data.photoURL ?? user.photoURL ?? "";
 
-  // 1. Validation (Bio)
+  // 1. Validation (Bio, social links)
   if (data.bio !== undefined) {
     const bioResult = validateBio(data.bio);
     if (!bioResult.ok) {
       throw new Error(bioResult.error);
+    }
+  }
+  // The social rows are joined into one stored field, so the length that
+  // matters is the joined one — and firestore.rules caps it. Checked here so
+  // an over-long list fails with a sentence rather than a permission error.
+  if (data.socialMedia !== undefined) {
+    const socialResult = validateSocialMedia(data.socialMedia);
+    if (!socialResult.ok) {
+      throw new Error(socialResult.error);
     }
   }
 

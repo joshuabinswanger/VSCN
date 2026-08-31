@@ -140,20 +140,37 @@ const t = useTranslations(lang);
       </div>
     </div>
 
+    {
+      /* One row per link, not one box for all of them. The STORED shape is
+      unchanged — the rows are joined back into the single comma-separated
+      `socialMedia` string by joinSocial() — so old profiles, the build-time
+      directory snapshot and firestore.rules all keep working untouched. A <p>
+      rather than a <label>: there is no single control left to point at, the
+      same reason #projects-label is a <p>. */
+    }
     <div class="field">
-      <label id="social-label" class="label" for="social-media"
-        >{t("profile.label.social")}</label
-      >
-      <div class="input-prefix-wrap">
-        <span class="input-prefix">https://</span>
-        <input
-          id="social-media"
-          type="text"
-          class="input input-prefixed"
-          placeholder={t("profile.ph.social")}
-        />
-      </div>
+      <p id="social-label" class="label">{t("profile.label.social")}</p>
+      <div id="social-editor" class="social-editor"></div>
+      <button type="button" id="social-add" class="btn-outline choose-img">
+        {t("profile.social.add")}
+      </button>
+      <p id="social-status" class="field-note" style="display:none;"></p>
       <p class="field-note">{t("profile.note.social")}</p>
+      {
+        /* Cloned by renderSocial(). Rendered here rather than built in JS so
+        each clone carries Astro's data-astro-cid-* attribute and matches the
+        scoped rules below — a node built with document.createElement() would
+        match none of them. */
+      }
+      <template data-social-tpl="row">
+        <div class="social-row">
+          <div class="input-prefix-wrap">
+            <span class="input-prefix">https://</span>
+            <input type="text" class="input input-prefixed" data-social-input />
+          </div>
+          <button type="button" class="social-row-remove" data-social-remove>✕</button>
+        </div>
+      </template>
     </div>
 
     <OpenToSelector lang={lang} />
@@ -201,6 +218,21 @@ const t = useTranslations(lang);
       </button>
       <p id="projects-status" class="field-note" style="display:none;"></p>
       <p class="field-note">{t("profile.note.projects")}</p>
+      {
+        /* Cloned by renderProjects(). Astro scopes this component's CSS by
+        appending data-astro-cid-* to EVERY compound selector, so a row built
+        with document.createElement() matches `.project-row[data-astro-cid-…]`
+        never — which is exactly why these rows used to render with no border
+        at all. A clone of a rendered template already carries the attribute. */
+      }
+      <template data-projects-tpl="row">
+        <div class="project-row">
+          <input type="text" class="input" data-project-field="title" />
+          <input type="url" class="input" data-project-field="url" />
+          <textarea class="input textarea" rows="2" data-project-field="description"></textarea>
+          <button type="button" class="project-row-remove" data-project-remove>✕</button>
+        </div>
+      </template>
     </div>
 
     <div class="field">
@@ -224,6 +256,25 @@ const t = useTranslations(lang);
         the directory — hidden the moment the first image lands. */
       }
       <p id="gallery-nudge" class="field-note gallery-nudge" hidden>{t("profile.gallery.nudge")}</p>
+      {
+        /* Cloned by renderGallery(), for the same reason as the projects
+        template above: .gallery-item, .gallery-thumb and .gallery-thumb-remove
+        are scoped rules, so createElement() rows got none of them — the thumbs
+        rendered at their natural size with an untreated remove button. */
+      }
+      <template data-gallery-tpl="item">
+        <div class="gallery-item">
+          <div class="gallery-thumb">
+            <img alt="" loading="lazy" data-gallery-img />
+            <button type="button" class="gallery-thumb-remove" data-gallery-remove>✕</button>
+          </div>
+          <div class="gallery-fields">
+            <input type="text" class="input" data-gallery-field="caption" />
+            <textarea class="input textarea" rows="3" data-gallery-field="description"></textarea>
+            <select class="input" data-gallery-project></select>
+          </div>
+        </div>
+      </template>
     </div>
   </div>
 
@@ -318,7 +369,11 @@ const t = useTranslations(lang);
     <div class="preview-section">
       <div class="preview-block">
         <p class="label">{t("profile.view.heading")}</p>
-        <p class="field-note preview-note">{t("profile.view.note")}</p>
+        {
+          /* The note that used to sit here has moved inside ProfileViewPreview,
+          where it belongs to the threshold it explains — and where the no-auth
+          harness at /proto/profile-preview shows it too. */
+        }
         <ProfileViewPreview lang={lang} />
       </div>
 
@@ -510,6 +565,58 @@ const t = useTranslations(lang);
     border-color: transparent;
   }
 
+  /* ── Social links ─────────────────────────────────────── */
+  /* A stack of the same prefixed input the single field used, each with its
+     own remove control. No border around a row and no per-row label: a link is
+     one value, so the bordered block the projects editor needs would be a box
+     drawn around a single input. */
+  .social-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 0.75rem;
+  }
+
+  .social-editor:empty {
+    display: none;
+  }
+
+  .social-row {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .social-row .input-prefix-wrap {
+    flex: 1 1 auto;
+  }
+
+  /* Same outline circle as .project-row-remove, but in the flow rather than
+     pinned to a corner — there is no block here for it to sit in. */
+  .social-row-remove {
+    flex: 0 0 auto;
+    align-self: center;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    color: var(--color-muted);
+    border: 1.5px solid var(--color-border);
+    border-radius: 50%;
+    font-size: 0.7rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .social-row-remove:hover {
+    color: #fff;
+    background: var(--color-error);
+    border-color: var(--color-error);
+  }
+
   /* Was a grid of bare 90px thumbs. Each image now carries a caption, a
      description and a project, which no square that small can hold — so an
      entry is a row: thumb on the left, its words on the right. */
@@ -694,22 +801,21 @@ const t = useTranslations(lang);
     }
   }
 
+  /* The preview tab is the one place in this form where air is the point: the
+     two renderings have to read as things being LOOKED at, not fields being
+     filled in. Hence the room above the first threshold and the long gap
+     between the profile sheet and the directory card. */
   .preview-section {
     display: flex;
     flex-direction: column;
-    gap: 4rem;
-    padding-top: 0.5rem;
-    padding-bottom: 3rem;
+    gap: 6rem;
+    padding-top: 2rem;
+    padding-bottom: 5rem;
   }
 
   .preview-section .label {
     display: block;
-    margin-bottom: 0.75rem;
-  }
-
-  .preview-note {
-    margin-top: -0.4rem;
-    margin-bottom: 1.25rem;
+    margin-bottom: 1.5rem;
   }
 
   /* Floats above the bottom of .page-wrap (the page's real scroll container),
@@ -953,6 +1059,12 @@ const t = useTranslations(lang);
   import { updateUserProfile } from "../lib/firestore.ts";
   import { openImageEditor } from "../lib/imageEditor.ts";
   import { renderCardPreview, renderProfilePreview } from "../lib/profilePreview.ts";
+  import {
+    splitSocial,
+    joinSocial,
+    MAX_SOCIAL_LINKS,
+    MAX_SOCIAL_MEDIA,
+  } from "../lib/links.ts";
   import { ui } from "../i18n/translations.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
@@ -985,7 +1097,10 @@ const t = useTranslations(lang);
     ) as HTMLInputElement;
     const bioInput = document.getElementById("bio") as HTMLTextAreaElement;
     const portfolioInput = document.getElementById("portfolio") as HTMLInputElement;
-    const socialMediaInput = document.getElementById("social-media") as HTMLInputElement;
+    const socialEditor = document.getElementById("social-editor")!;
+    const socialAdd = document.getElementById("social-add") as HTMLButtonElement;
+    const socialStatus = document.getElementById("social-status")!;
+    const socialRowTpl = document.querySelector<HTMLTemplateElement>('[data-social-tpl="row"]');
     const phoneInput = document.getElementById("phone") as HTMLInputElement;
     const primaryAudienceInputs = Array.from(
       document.querySelectorAll<HTMLInputElement>('input[name="primary-audience"]')
@@ -1060,6 +1175,11 @@ const t = useTranslations(lang);
     const projectsEditor = document.getElementById("projects-editor")!;
     const projectsStatus = document.getElementById("projects-status")!;
     const projectsAdd = document.getElementById("projects-add") as HTMLButtonElement;
+    // Row shells for the two list editors. Cloned rather than built: see the
+    // comment on each <template> above — Astro's scope attribute is on the
+    // selectors, so a createElement() row matches none of the scoped rules.
+    const projectRowTpl = document.querySelector<HTMLTemplateElement>('[data-projects-tpl="row"]');
+    const galleryItemTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="item"]');
 
     function setGalleryStatus(text: string) {
       galleryStatus.textContent = text;
@@ -1082,64 +1202,159 @@ const t = useTranslations(lang);
       return control;
     }
 
+    // ── Social links ──────────────────────────────────────
+    // One row per link on screen; ONE comma-joined string in Firestore. The
+    // stored shape is deliberately unchanged: every profile saved before today
+    // holds that string, and the public directory is a build-time snapshot, so
+    // a second shape would have to be understood by pages that will not be
+    // rebuilt for it. splitSocial()/joinSocial() in links.ts are the whole
+    // translation, and the same links.ts cleaner shapes them for display.
+    //
+    // Order is row order, and it survives: new rows append, removing one
+    // splices, and joinSocial() preserves what it is given.
+    let socialValues: string[] = [""];
+    let socialPlaceholder = s["profile.ph.social"];
+
+    function setSocialStatus(text: string) {
+      socialStatus.textContent = text;
+      socialStatus.style.display = text ? "block" : "none";
+    }
+
+    /** The single stored value the rows add up to. */
+    function socialStored(): string {
+      return joinSocial(socialValues);
+    }
+
+    function refreshSocialStatus() {
+      socialAdd.disabled = socialValues.length >= MAX_SOCIAL_LINKS;
+      // Length, not count, is the real limit — firestore.rules caps the joined
+      // field at MAX_SOCIAL_MEDIA and rejects the WHOLE write over it, so the
+      // member has to hear about it here rather than as a permission error.
+      if (socialStored().length > MAX_SOCIAL_MEDIA) {
+        setSocialStatus(s["profile.social.tooLong"]);
+      } else if (socialValues.length >= MAX_SOCIAL_LINKS) {
+        setSocialStatus(s["profile.social.full"]);
+      } else {
+        setSocialStatus("");
+      }
+    }
+
+    /**
+     * Full rebuild of the rows. Called on load, add and remove only — never
+     * while typing, which would take the caret with it. Keystrokes write
+     * straight into socialValues[index], the way the projects editor does.
+     */
+    function renderSocial() {
+      if (!socialRowTpl) return;
+      socialEditor.replaceChildren(
+        ...socialValues.map((value, index) => {
+          const row = socialRowTpl.content.firstElementChild?.cloneNode(true);
+          if (!(row instanceof HTMLElement)) return null;
+          const input = row.querySelector<HTMLInputElement>("[data-social-input]");
+          const remove = row.querySelector<HTMLButtonElement>("[data-social-remove]");
+          if (!input || !remove) return null;
+
+          input.value = value;
+          input.placeholder = socialPlaceholder;
+          // Rows share one field label, so the position is what tells them
+          // apart to anyone who cannot see the stack.
+          named(input, `${socialLabel?.textContent ?? ""} ${index + 1}`.trim());
+          input.addEventListener("input", () => {
+            socialValues[index] = input.value;
+            refreshSocialStatus();
+            syncPreview();
+          });
+
+          remove.setAttribute("aria-label", s["profile.social.remove"]);
+          remove.addEventListener("click", () => removeSocialRow(index));
+          return row;
+        })
+          .filter((n): n is HTMLElement => n !== null)
+      );
+      refreshSocialStatus();
+    }
+
+    function setSocialValues(values: string[]) {
+      // Always at least one row: this field was a text box until today, and an
+      // empty stack with only a button reads as a missing field rather than an
+      // empty one. The blank row costs nothing — joinSocial() drops it.
+      socialValues = values.length > 0 ? values : [""];
+      renderSocial();
+    }
+
+    function addSocialRow() {
+      if (socialValues.length >= MAX_SOCIAL_LINKS) {
+        setSocialStatus(s["profile.social.full"]);
+        return;
+      }
+      socialValues.push("");
+      renderSocial();
+      socialEditor
+        .querySelector<HTMLInputElement>(".social-row:last-of-type [data-social-input]")
+        ?.focus();
+    }
+
+    /** Removing the only row empties it rather than leaving no field at all. */
+    function removeSocialRow(index: number) {
+      if (socialValues.length <= 1) socialValues = [""];
+      else socialValues.splice(index, 1);
+      renderSocial();
+      syncPreview();
+    }
+
+    socialAdd.addEventListener("click", addSocialRow);
+
     // ── Projects ──────────────────────────────────────────
     // Rows are re-read from the DOM on every keystroke rather than
     // re-rendered: rebuilding the list would blow away the caret of whoever
     // is typing in it.
     function renderProjects() {
+      if (!projectRowTpl) return;
       projectsEditor.replaceChildren(
-        ...projects.map((project, index) => {
-          const row = document.createElement("div");
-          row.className = "project-row";
+        ...projects
+          .map((project, index) => {
+            const row = projectRowTpl.content.firstElementChild?.cloneNode(true);
+            if (!(row instanceof HTMLElement)) return null;
+            const field = <T extends HTMLElement>(name: string) =>
+              row.querySelector<T>(`[data-project-field="${name}"]`);
+            const title = field<HTMLInputElement>("title");
+            const url = field<HTMLInputElement>("url");
+            const description = field<HTMLTextAreaElement>("description");
+            const remove = row.querySelector<HTMLButtonElement>("[data-project-remove]");
+            if (!title || !url || !description || !remove) return null;
 
-          const title = document.createElement("input");
-          title.type = "text";
-          title.className = "input";
-          title.value = project.title;
-          title.maxLength = MAX_PROJECT_TITLE;
-          title.placeholder = s["profile.projects.title"];
-          title.addEventListener("input", () => {
-            projects[index].title = title.value;
-            onProjectsEdited();
-          });
+            title.value = project.title;
+            title.maxLength = MAX_PROJECT_TITLE;
+            title.placeholder = s["profile.projects.title"];
+            named(title, s["profile.projects.title"]);
+            title.addEventListener("input", () => {
+              projects[index].title = title.value;
+              onProjectsEdited();
+            });
 
-          const url = document.createElement("input");
-          url.type = "url";
-          url.className = "input";
-          url.value = project.url;
-          url.maxLength = MAX_PROJECT_URL;
-          url.placeholder = s["profile.projects.url"];
-          url.addEventListener("input", () => {
-            projects[index].url = url.value;
-            onProjectsEdited();
-          });
+            url.value = project.url;
+            url.maxLength = MAX_PROJECT_URL;
+            url.placeholder = s["profile.projects.url"];
+            named(url, s["profile.projects.url"]);
+            url.addEventListener("input", () => {
+              projects[index].url = url.value;
+              onProjectsEdited();
+            });
 
-          const description = document.createElement("textarea");
-          description.className = "input textarea";
-          description.rows = 2;
-          description.value = project.description ?? "";
-          description.maxLength = MAX_PROJECT_DESCRIPTION;
-          description.placeholder = s["profile.projects.description"];
-          description.addEventListener("input", () => {
-            projects[index].description = description.value;
-            onProjectsEdited();
-          });
+            description.value = project.description ?? "";
+            description.maxLength = MAX_PROJECT_DESCRIPTION;
+            description.placeholder = s["profile.projects.description"];
+            named(description, s["profile.projects.description"]);
+            description.addEventListener("input", () => {
+              projects[index].description = description.value;
+              onProjectsEdited();
+            });
 
-          const remove = document.createElement("button");
-          remove.type = "button";
-          remove.className = "project-row-remove";
-          remove.textContent = "✕";
-          remove.setAttribute("aria-label", s["profile.projects.remove"]);
-          remove.addEventListener("click", () => removeProject(index));
-
-          row.append(
-            named(title, s["profile.projects.title"]),
-            named(url, s["profile.projects.url"]),
-            named(description, s["profile.projects.description"]),
-            remove
-          );
-          return row;
-        })
+            remove.setAttribute("aria-label", s["profile.projects.remove"]);
+            remove.addEventListener("click", () => removeProject(index));
+            return row;
+          })
+          .filter((n): n is HTMLElement => n !== null)
       );
 
       projectsAdd.disabled = projects.length >= MAX_PROJECTS;
@@ -1235,69 +1450,58 @@ const t = useTranslations(lang);
     }
 
     function renderGallery() {
+      if (!galleryItemTpl) return;
       galleryEditor.replaceChildren(
-        ...gallery.map((item, index) => {
-          const row = document.createElement("div");
-          row.className = "gallery-item";
+        ...gallery
+          .map((item, index) => {
+            const row = galleryItemTpl.content.firstElementChild?.cloneNode(true);
+            if (!(row instanceof HTMLElement)) return null;
+            const field = <T extends HTMLElement>(name: string) =>
+              row.querySelector<T>(`[data-gallery-field="${name}"]`);
+            const img = row.querySelector<HTMLImageElement>("[data-gallery-img]");
+            const remove = row.querySelector<HTMLButtonElement>("[data-gallery-remove]");
+            const caption = field<HTMLInputElement>("caption");
+            const description = field<HTMLTextAreaElement>("description");
+            const project = row.querySelector<HTMLSelectElement>("[data-gallery-project]");
+            if (!img || !remove || !caption || !description || !project) return null;
 
-          const wrap = document.createElement("div");
-          wrap.className = "gallery-thumb";
-          const img = document.createElement("img");
-          img.src = item.url;
-          img.alt = "";
-          img.loading = "lazy";
-          const remove = document.createElement("button");
-          remove.type = "button";
-          remove.className = "gallery-thumb-remove";
-          remove.textContent = "✕";
-          remove.setAttribute("aria-label", s["profile.gallery.remove"]);
-          remove.addEventListener("click", () => removeGalleryImage(index));
-          wrap.append(img, remove);
+            img.src = item.url;
+            remove.setAttribute("aria-label", s["profile.gallery.remove"]);
+            remove.addEventListener("click", () => removeGalleryImage(index));
 
-          const fields = document.createElement("div");
-          fields.className = "gallery-fields";
+            caption.value = item.caption ?? "";
+            caption.maxLength = MAX_GALLERY_CAPTION;
+            caption.placeholder = s["profile.gallery.caption"];
+            named(caption, s["profile.gallery.caption"]);
+            caption.addEventListener("input", () => {
+              gallery[index].caption = caption.value;
+              syncPreview();
+            });
 
-          const caption = document.createElement("input");
-          caption.type = "text";
-          caption.className = "input";
-          caption.value = item.caption ?? "";
-          caption.maxLength = MAX_GALLERY_CAPTION;
-          caption.placeholder = s["profile.gallery.caption"];
-          caption.addEventListener("input", () => {
-            gallery[index].caption = caption.value;
-            syncPreview();
-          });
+            description.value = item.description ?? "";
+            description.maxLength = MAX_GALLERY_DESCRIPTION;
+            description.placeholder = s["profile.gallery.description"];
+            named(description, s["profile.gallery.description"]);
+            description.addEventListener("input", () => {
+              gallery[index].description = description.value;
+              syncPreview();
+            });
 
-          const description = document.createElement("textarea");
-          description.className = "input textarea";
-          description.rows = 3;
-          description.value = item.description ?? "";
-          description.maxLength = MAX_GALLERY_DESCRIPTION;
-          description.placeholder = s["profile.gallery.description"];
-          description.addEventListener("input", () => {
-            gallery[index].description = description.value;
-            syncPreview();
-          });
+            // The index rides on the element: renderGalleryProjectSelects()
+            // reads it back to relabel one select without touching the caption
+            // someone is mid-sentence in.
+            project.dataset.galleryProject = String(index);
+            fillProjectSelect(project, item.projectId);
+            named(project, s["profile.gallery.project"]);
+            project.addEventListener("change", () => {
+              if (project.value) gallery[index].projectId = project.value;
+              else delete gallery[index].projectId;
+              syncPreview();
+            });
 
-          const project = document.createElement("select");
-          project.className = "input";
-          project.dataset.galleryProject = String(index);
-          fillProjectSelect(project, item.projectId);
-          project.addEventListener("change", () => {
-            if (project.value) gallery[index].projectId = project.value;
-            else delete gallery[index].projectId;
-            syncPreview();
-          });
-
-          fields.append(
-            named(caption, s["profile.gallery.caption"]),
-            named(description, s["profile.gallery.description"]),
-            named(project, s["profile.gallery.project"])
-          );
-
-          row.append(wrap, fields);
-          return row;
-        })
+            return row;
+          })
+          .filter((n): n is HTMLElement => n !== null)
       );
       // The image-led directory renders a typographic card for an empty
       // gallery; the nudge says so, and disappears with the first image.
@@ -1437,7 +1641,7 @@ const t = useTranslations(lang);
           ? (visualNeedsSelector?.value ?? [])
           : [],
         portfolio: portfolioInput.value.trim(),
-        socialMedia: socialMediaInput.value.trim(),
+        socialMedia: socialStored(),
         projects: storable,
         works: gallery.map((g) => {
           const project = g.projectId ? byId.get(g.projectId) : undefined;
@@ -1497,8 +1701,14 @@ const t = useTranslations(lang);
       portfolioInput.placeholder = copy.portfolioPlaceholder;
       if (portfolioLabel) portfolioLabel.textContent = copy.portfolioLabel;
       affiliationInput.placeholder = copy.affiliationPlaceholder;
-      socialMediaInput.placeholder = copy.socialPlaceholder;
+      socialPlaceholder = copy.socialPlaceholder;
       if (socialLabel) socialLabel.textContent = copy.socialLabel;
+      // Reach into the live rows rather than re-rendering them: a member can
+      // change their type with a half-typed link on screen.
+      socialEditor.querySelectorAll<HTMLInputElement>("[data-social-input]").forEach((input, i) => {
+        input.placeholder = socialPlaceholder;
+        input.setAttribute("aria-label", `${copy.socialLabel} ${i + 1}`);
+      });
       if (projectsLabel) projectsLabel.textContent = copy.projectsLabel;
       // A creator makes visuals rather than needing them, so the question
       // is hidden for them — and its stored value is dropped on save, so a
@@ -1530,7 +1740,6 @@ const t = useTranslations(lang);
     roleInput.addEventListener("input", syncPreview);
     bioInput.addEventListener("input", syncPreview);
     portfolioInput.addEventListener("input", syncPreview);
-    socialMediaInput.addEventListener("input", syncPreview);
     affiliationInput.addEventListener("input", syncProfileView);
     locationInput.addEventListener("input", syncProfileView);
     languageInputs.forEach((input) => input.addEventListener("change", syncProfileView));
@@ -1596,7 +1805,9 @@ const t = useTranslations(lang);
       roleInput.value = data.role ?? "";
       bioInput.value = data.bio ?? "";
       portfolioInput.value = data.portfolio ?? "";
-      socialMediaInput.value = data.socialMedia ?? "";
+      // The stored string IS the row list — an old single-value profile simply
+      // arrives as one row, with nothing to migrate.
+      setSocialValues(splitSocial(data.socialMedia ?? ""));
       affiliationInput.value = data.affiliation ?? "";
       locationInput.value = data.location ?? "";
       setSelectedLanguages(data.languages ?? []);
@@ -1656,7 +1867,7 @@ const t = useTranslations(lang);
             role: roleInput.value.trim(),
             bio: bioInput.value.trim(),
             portfolio: portfolioInput.value.trim(),
-            socialMedia: socialMediaInput.value.trim(),
+            socialMedia: socialStored(),
             affiliation: affiliationInput.value.trim(),
             location: locationInput.value.trim(),
             languages: getSelectedLanguages(),
