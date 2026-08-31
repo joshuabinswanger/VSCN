@@ -19,9 +19,9 @@ const prefix = lang === "de" ? "/de" : "";
 <div id="onboarding-wrap" class="onboarding-wrap" data-lang={lang} style="display:none;">
   <div id="ob-progress" class="ob-progress">
     <div class="ob-progress-bar">
-      <div id="ob-progress-fill" class="ob-progress-fill" style="width:25%"></div>
+      <div id="ob-progress-fill" class="ob-progress-fill" style="width:20%"></div>
     </div>
-    <span id="ob-progress-text" class="ob-progress-text">1 / 4</span>
+    <span id="ob-progress-text" class="ob-progress-text">1 / 5</span>
   </div>
 
   <p id="ob-error" class="msg-err" style="display:none;"></p>
@@ -210,12 +210,49 @@ const prefix = lang === "de" ? "/de" : "";
     </div>
     <div class="ob-footer ob-footer--with-skip">
       <button id="ob-skip-4" type="button" class="btn-link">{t("onboarding.nav.skip")}</button>
+      <button id="ob-next-4" type="button" class="btn-solid">{t("onboarding.nav.next")}</button>
+    </div>
+  </div>
+
+  {
+    /* Step 5: Show your work. The directory is image-led — a member with no
+    gallery holds a typographic tag card — so this is the step that decides
+    which face they get. It is also the step most likely to be empty: a
+    research group signing up has nothing to upload and must not be made to
+    feel the flow broke. Hence a full-width skip that reads as an answer,
+    not an escape. */
+  }
+  <div class="onboarding-step" data-step="5" style="display:none;">
+    <header class="ob-header">
+      <h1 class="ob-title">{t("onboarding.step5.title")}</h1>
+      <p class="ob-sub">{t("onboarding.step5.sub")}</p>
+    </header>
+    <div class="ob-fields">
+      <div class="field">
+        <div id="ob-gallery-grid" class="ob-gallery-grid"></div>
+        <label class="btn-outline ob-gallery-add" for="ob-gallery-input">
+          {t("profile.gallery.add")}
+          <input
+            id="ob-gallery-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif"
+            multiple
+            style="display:none;"
+          />
+        </label>
+        <p id="ob-gallery-status" class="ob-upload-status" style="display:none;"></p>
+        <p class="field-note">{t("onboarding.step5.note")}</p>
+        <p class="field-note">{t("onboarding.step5.later")}</p>
+      </div>
+    </div>
+    <div class="ob-footer ob-footer--with-skip">
+      <button id="ob-skip-5" type="button" class="btn-link">{t("onboarding.step5.skip")}</button>
       <button id="ob-finish" type="button" class="btn-solid">{t("onboarding.nav.finish")}</button>
     </div>
   </div>
 
-  <!-- Step 5: Done -->
-  <div class="onboarding-step ob-done" data-step="5" style="display:none;">
+  <!-- Step 6: Done -->
+  <div class="onboarding-step ob-done" data-step="6" style="display:none;">
     <header class="ob-header ob-done-header">
       <h1 class="ob-title">{t("onboarding.done.title")}</h1>
       <p class="ob-sub">{t("onboarding.done.sub")}</p>
@@ -463,6 +500,69 @@ const prefix = lang === "de" ? "/de" : "";
     margin-top: 0.4rem;
   }
 
+  /* Gallery (step 5) — thumbnails only. The profile editor is where an image
+     gets a caption, a description and a project; asking for any of that here
+     would turn one question into four. */
+  .ob-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+    gap: 10px;
+    margin-bottom: 1rem;
+  }
+
+  .ob-gallery-grid:empty {
+    display: none;
+  }
+
+  /* `.field` is a flex column, so a bare label stretches edge to edge and
+     reads as a drop zone rather than a button. */
+  .ob-gallery-add {
+    align-self: flex-start;
+  }
+
+  /* The thumbs are built by the script, so they never carry Astro's scope
+     attribute and a plainly-scoped `.ob-gallery-thumb` would compile to a
+     selector that matches nothing. `:global()` under the container — which IS
+     in the template and does carry the attribute — is what keeps these rules
+     scoped to this component without depending on the attribute. */
+  .ob-gallery-grid :global(.ob-gallery-thumb) {
+    position: relative;
+    aspect-ratio: 1;
+  }
+
+  .ob-gallery-grid :global(.ob-gallery-thumb img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--color-border);
+    box-sizing: border-box;
+  }
+
+  .ob-gallery-grid :global(.ob-gallery-thumb-remove) {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .ob-gallery-grid :global(.ob-gallery-thumb-remove:hover) {
+    background: var(--color-error);
+  }
+
   /* Reuse ProfileForm field/tag styles */
   .input-prefix-wrap {
     display: flex;
@@ -556,9 +656,29 @@ const prefix = lang === "de" ? "/de" : "";
   import { memberTypeFieldCopy } from "../lib/memberType.ts";
   import { handleProfileUpdate, triggerRebuild } from "../lib/profile.ts";
   import { renderCardPreview } from "../lib/profilePreview.ts";
+  // The one gallery upload path in the codebase, the same four calls the
+  // profile editor composes: validate → compress to WebP → upload to Storage
+  // → write the array to Firestore. Nothing here re-implements any of it.
+  import {
+    MAX_GALLERY_IMAGES,
+    validateGalleryFile,
+    compressGalleryImage,
+    uploadGalleryImage,
+    deleteGalleryImages,
+    type GalleryItem,
+  } from "../lib/gallery.ts";
   import { ui } from "../i18n/translations.ts";
 
   const STORAGE_KEY = "vscn:onboarding:state";
+
+  /**
+   * The bridge (2) is an interstitial, not a question — it asks nothing and is
+   * deliberately absent from `realSteps` so it cannot inflate the count. The
+   * gallery (5) IS a question, optional in the same way tags (3) and bio (4)
+   * already are, so it is counted like them.
+   */
+  const STEP_GALLERY = 5;
+  const STEP_DONE = 6;
 
   let unsubscribeAuth: (() => void) | null = null;
   let prevNavLangHandler: ((e: Event) => void) | null = null;
@@ -592,12 +712,16 @@ const prefix = lang === "de" ? "/de" : "";
       const progressEl = document.getElementById("ob-progress");
       const progressText = document.getElementById("ob-progress-text");
       const progressFill = document.getElementById("ob-progress-fill");
-      const realSteps = [0, 1, 3, 4];
+      const realSteps = [0, 1, 3, 4, STEP_GALLERY];
       const idx = realSteps.indexOf(n);
-      const hideProgress = n === -1 || n === 2 || n === 5;
+      const hideProgress = n === -1 || n === 2 || n === STEP_DONE;
       if (progressEl) progressEl.style.display = hideProgress ? "none" : "";
-      if (progressText && idx >= 0) progressText.textContent = `${idx + 1} / 4`;
-      if (progressFill && idx >= 0) progressFill.style.width = `${(idx + 1) * 25}%`;
+      if (progressText && idx >= 0) {
+        progressText.textContent = `${idx + 1} / ${realSteps.length}`;
+      }
+      if (progressFill && idx >= 0) {
+        progressFill.style.width = `${((idx + 1) / realSteps.length) * 100}%`;
+      }
       errorEl.style.display = "none";
     }
 
@@ -653,7 +777,7 @@ const prefix = lang === "de" ? "/de" : "";
         photoURL: opts.photoURL ?? user.photoURL ?? "",
         avatarObjectUrl: opts.avatarObjectUrl ?? null,
       });
-      setStep(5);
+      setStep(STEP_DONE);
       await triggerRebuild();
     }
 
@@ -663,7 +787,7 @@ const prefix = lang === "de" ? "/de" : "";
     }
 
     function saveTransientState() {
-      if (currentStep === 5) return;
+      if (currentStep === STEP_DONE) return;
       try {
         sessionStorage.setItem(
           STORAGE_KEY,
@@ -787,6 +911,129 @@ const prefix = lang === "de" ? "/de" : "";
       }
     });
 
+    // ── Gallery (step 5) ───────────────────────────────────────────
+    // Uploads persist the moment they land, exactly as the profile editor
+    // does, because they own files in Storage and the Firestore array is what
+    // says which of those files still belong to the member. The consequence
+    // that matters here: Finish never has an upload left to do, so a failed
+    // upload can never hold the member short of the Done step.
+    let gallery: GalleryItem[] = [];
+    let uploadsInFlight = 0;
+
+    const galleryInput = document.getElementById("ob-gallery-input") as HTMLInputElement | null;
+    const galleryGrid = document.getElementById("ob-gallery-grid");
+    const galleryStatus = document.getElementById("ob-gallery-status");
+
+    function setGalleryStatus(text: string) {
+      if (!galleryStatus) return;
+      galleryStatus.textContent = text;
+      galleryStatus.style.display = text ? "block" : "none";
+    }
+
+    /** Finish and Skip stay honest while bytes are still moving. */
+    function setGalleryBusy(busy: boolean) {
+      const finish = document.getElementById("ob-finish") as HTMLButtonElement | null;
+      const skip = document.getElementById("ob-skip-5") as HTMLButtonElement | null;
+      if (finish) finish.disabled = busy;
+      if (skip) skip.disabled = busy;
+    }
+
+    function renderGallery() {
+      if (!galleryGrid) return;
+      galleryGrid.replaceChildren(
+        ...gallery.map((item, index) => {
+          const wrap = document.createElement("div");
+          wrap.className = "ob-gallery-thumb";
+          const img = document.createElement("img");
+          img.src = item.url;
+          img.alt = "";
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "ob-gallery-thumb-remove";
+          remove.textContent = "×";
+          remove.setAttribute("aria-label", s["profile.gallery.remove"]);
+          remove.addEventListener("click", () => removeGalleryImage(index));
+          wrap.append(img, remove);
+          return wrap;
+        })
+      );
+      const input = document.getElementById("ob-gallery-input") as HTMLInputElement | null;
+      const label = input?.closest("label") as HTMLElement | null;
+      if (label) label.style.display = gallery.length >= MAX_GALLERY_IMAGES ? "none" : "";
+    }
+
+    async function persistGallery() {
+      const user = auth.currentUser;
+      if (!user) return;
+      await updateUserProfile(user.uid, { gallery, updatedAt: new Date() });
+    }
+
+    async function removeGalleryImage(index: number) {
+      const [removed] = gallery.splice(index, 1);
+      renderGallery();
+      try {
+        await persistGallery();
+        if (removed) await deleteGalleryImages([removed.url]);
+        setGalleryStatus("");
+      } catch {
+        setGalleryStatus(s["profile.gallery.error"]);
+      }
+    }
+
+    galleryInput?.addEventListener("change", async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      const files = Array.from(galleryInput.files ?? []);
+      galleryInput.value = "";
+      if (files.length === 0) return;
+
+      uploadsInFlight += 1;
+      setGalleryBusy(true);
+      let uploaded = false;
+      let failed = false;
+      try {
+        for (const file of files) {
+          if (gallery.length >= MAX_GALLERY_IMAGES) {
+            setGalleryStatus(s["profile.gallery.full"]);
+            break;
+          }
+          const validation = validateGalleryFile(file);
+          if (!validation.ok) {
+            setGalleryStatus(validation.error!);
+            failed = true;
+            continue;
+          }
+          try {
+            setGalleryStatus(s["profile.upload.processing"]);
+            const { blob, width, height, color } = await compressGalleryImage(file);
+            const url = await uploadGalleryImage(user.uid, blob, (pct) => {
+              setGalleryStatus(`${s["profile.upload.uploading"]} ${pct}%`);
+            });
+            // One image failing is one image failing: the loop keeps going and
+            // everything already uploaded stays.
+            gallery.push({ url, caption: "", width, height, color });
+            uploaded = true;
+            renderGallery();
+          } catch {
+            setGalleryStatus(s["profile.gallery.error"]);
+            failed = true;
+          }
+        }
+
+        if (uploaded) {
+          try {
+            await persistGallery();
+            if (!failed) setGalleryStatus(s["profile.upload.complete"]);
+          } catch {
+            setGalleryStatus(s["profile.gallery.error"]);
+          }
+        }
+      } finally {
+        uploadsInFlight -= 1;
+        if (uploadsInFlight === 0) setGalleryBusy(false);
+      }
+    });
+
     // ── Navigation buttons ─────────────────────────────────────────
     document.getElementById("ob-next-0")?.addEventListener("click", async () => {
       const user = auth.currentUser;
@@ -870,7 +1117,11 @@ const prefix = lang === "de" ? "/de" : "";
       }
     });
 
-    document.getElementById("ob-skip-3")?.addEventListener("click", () => finishToPreview({}));
+    // Skip means "not this one", not "not the rest of them" — otherwise
+    // skipping tags would silently swallow the bio and the gallery too, and
+    // the step that fills the directory with images would be the one almost
+    // nobody is ever shown. The bridge (2) remains the single early exit.
+    document.getElementById("ob-skip-3")?.addEventListener("click", () => setStep(4));
 
     function populatePreviewCard(opts: {
       displayName: string;
@@ -884,11 +1135,12 @@ const prefix = lang === "de" ? "/de" : "";
     }) {
       const root = document.querySelector<HTMLElement>("[data-ccpv-root]");
       if (!root) return;
-      // A brand-new member has no gallery yet, so the face bound here is the
-      // typographic card's — the framed rectangle of their tags (falling back
-      // to member type, then role), exactly what /community renders until
-      // they upload. The avatar fields still arrive in opts but the directory
-      // card does not show an avatar; the gallery is the card's image source.
+      // Which face the card gets is decided by the gallery step: an image
+      // card when something was uploaded, otherwise the typographic card —
+      // the framed rectangle of their tags, falling back to member type, then
+      // role. Either way it is what /community will render. The avatar fields
+      // still arrive in opts but the directory card does not show an avatar;
+      // the gallery is the card's only image source.
       renderCardPreview(
         root,
         {
@@ -900,17 +1152,30 @@ const prefix = lang === "de" ? "/de" : "";
           openTo: [],
           portfolio: opts.portfolio,
           socialMedia: opts.socialMedia,
-          works: [],
+          works: gallery.map((g) => ({
+            url: g.url,
+            width: g.width,
+            height: g.height,
+            caption: g.caption,
+            color: g.color,
+          })),
           projects: [],
         },
         { defaultName: s["profile.preview.defaultName"], memberTypeLabels }
       );
     }
 
-    document.getElementById("ob-finish")?.addEventListener("click", async () => {
+    // Bio and avatar are saved on the way out of step 4, but the Done card is
+    // only painted at the end of step 5, so what they produced has to survive
+    // the trip.
+    let pendingBio = "";
+    let pendingPhotoURL: string | undefined;
+    let pendingAvatarObjectUrl: string | null = null;
+
+    document.getElementById("ob-next-4")?.addEventListener("click", async () => {
       const user = auth.currentUser;
       if (!user) return;
-      setBtnState("ob-finish", true, s["onboarding.nav.finish"]);
+      setBtnState("ob-next-4", true, s["onboarding.nav.next"]);
       setError("");
       try {
         const bioVal = getInputValue("ob-bio").trim();
@@ -932,14 +1197,32 @@ const prefix = lang === "de" ? "/de" : "";
           }
         );
 
-        await finishToPreview({ bio: bioVal, photoURL, avatarObjectUrl });
+        pendingBio = bioVal;
+        pendingPhotoURL = photoURL;
+        pendingAvatarObjectUrl = avatarObjectUrl;
+        setBtnState("ob-next-4", false, s["onboarding.nav.next"]);
+        setStep(STEP_GALLERY);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : s["onboarding.error.save"]);
-        setBtnState("ob-finish", false, s["onboarding.nav.finish"]);
+        setBtnState("ob-next-4", false, s["onboarding.nav.next"]);
       }
     });
 
-    document.getElementById("ob-skip-4")?.addEventListener("click", () => finishToPreview({}));
+    document.getElementById("ob-skip-4")?.addEventListener("click", () => setStep(STEP_GALLERY));
+
+    function finishFromGallery() {
+      finishToPreview({
+        bio: pendingBio,
+        photoURL: pendingPhotoURL,
+        avatarObjectUrl: pendingAvatarObjectUrl,
+      });
+    }
+
+    // Both buttons end the same way. Whatever the gallery step did or failed
+    // to do is already settled in Storage and Firestore by the time either is
+    // pressed, so neither can be blocked by it.
+    document.getElementById("ob-finish")?.addEventListener("click", finishFromGallery);
+    document.getElementById("ob-skip-5")?.addEventListener("click", finishFromGallery);
 
     // ── Verify banner ──────────────────────────────────────────────
     const verifyBanner = document.getElementById("ob-verify-banner")!;
@@ -986,6 +1269,14 @@ const prefix = lang === "de" ? "/de" : "";
 
         const savedTags = Array.isArray(data.tags) ? data.tags.filter(Boolean).slice(0, 7) : [];
         if (tagSelector) tagSelector.value = savedTags;
+
+        // Each image is in Firestore the moment it lands, so re-reading the
+        // user doc is the whole restore — no transient copy to keep in step,
+        // and a language switch mid-gallery keeps the thumbnails.
+        gallery = Array.isArray(data.gallery)
+          ? data.gallery.filter(Boolean).slice(0, MAX_GALLERY_IMAGES)
+          : [];
+        renderGallery();
       } catch {
         // Permission denied or network error — show form with empty fields
       }
@@ -1029,7 +1320,7 @@ const prefix = lang === "de" ? "/de" : "";
           tagSelector.inputValue = restoreState.tagInput;
         }
 
-        if (typeof restoreState.step === "number" && restoreState.step !== 5) {
+        if (typeof restoreState.step === "number" && restoreState.step !== STEP_DONE) {
           restoredStep = restoreState.step;
         }
         clearTransientState();

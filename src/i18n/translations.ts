@@ -286,6 +286,13 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.tags.group.other": "Other",
     "onboarding.step4.title": "Bio & photo",
     "onboarding.step4.sub": "A short bio and photo help your profile stand out.",
+    "onboarding.step5.title": "Show your work",
+    "onboarding.step5.sub": "Add a few images and they become your card in the member directory.",
+    "onboarding.step5.note":
+      "Up to 8 images, JPG, PNG or WebP. Captions, descriptions and project credits come later, in your profile.",
+    "onboarding.step5.later":
+      "Nothing to show yet is a normal answer — your card carries your tags instead, and you can add images any time.",
+    "onboarding.step5.skip": "Nothing to show yet",
     "onboarding.nav.next": "Next",
     "onboarding.nav.finish": "Finish",
     "onboarding.nav.skip": "Skip for now",
@@ -612,6 +619,14 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.tags.group.other": "Sonstige",
     "onboarding.step4.title": "Bio & Foto",
     "onboarding.step4.sub": "Eine kurze Bio und ein Foto lassen dein Profil hervorstechen.",
+    "onboarding.step5.title": "Zeig deine Arbeit",
+    "onboarding.step5.sub":
+      "Ein paar Bilder genügen — sie werden zu deiner Karte im Mitgliederverzeichnis.",
+    "onboarding.step5.note":
+      "Bis zu 8 Bilder, JPG, PNG oder WebP. Bildtitel, Beschreibungen und Projektangaben kommen später, in deinem Profil.",
+    "onboarding.step5.later":
+      "Noch nichts zu zeigen ist eine ganz normale Antwort — deine Karte trägt dann deine Tags, und Bilder kannst du jederzeit nachreichen.",
+    "onboarding.step5.skip": "Noch nichts zu zeigen",
     "onboarding.nav.next": "Weiter",
     "onboarding.nav.finish": "Fertigstellen",
     "onboarding.nav.skip": "Überspringen",
@@ -631,7 +646,8 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.auth.password": "Passwort",
     "onboarding.auth.cta": "Konto erstellen",
     "onboarding.auth.passwordConfirm": "Passwort bestätigen",
-    "onboarding.auth.error.invalid": "Ungültige E-Mail oder falsches Passwort. Bitte erneut versuchen.",
+    "onboarding.auth.error.invalid":
+      "Ungültige E-Mail oder falsches Passwort. Bitte erneut versuchen.",
     "onboarding.auth.error.weak": "Das Passwort muss mindestens 6 Zeichen haben.",
     "onboarding.auth.error.mismatch": "Die Passwörter stimmen nicht überein.",
 
