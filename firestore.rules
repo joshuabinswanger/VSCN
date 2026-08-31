@@ -30,9 +30,13 @@ service cloud.firestore {
       // Public directory data only. Never store phone numbers or emails here.
       allow read: if true;
 
+      // Verification is demanded at the moment the profile would become
+      // PUBLIC, which is the moment it could carry someone else's address.
+      // A member holding an explicit `active: false` draft may write freely.
       allow create, update: if request.auth != null
                             && request.auth.uid == uid
-                            && validPublicProfile(request.resource.data);
+                            && validPublicProfile(request.resource.data)
+                            && canPublish(request.resource.data, request.auth);
 
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
@@ -66,6 +70,22 @@ service cloud.firestore {
   }
 }
 
+// Publishing gate. Writes are evaluated against the MERGED document, so a
+// `merge: true` write that leaves `active` alone still sees its stored value
+// here — a member cannot dodge the check by omitting the field on an update.
+//
+// The default MUST be true, and that is not a stylistic choice. Both readers
+// publish on `active !== false` (membersBuild.ts and getMembers in
+// firestore.ts), so a document with NO `active` key is PUBLISHED. Defaulting
+// to false here would have meant an unverified member could skip the gate
+// simply by never writing the field — which is what every client does today,
+// so the gate would have been bypassed by default rather than by attack.
+// Absent means public; only an explicit `active: false` is a draft.
+function canPublish(data, auth) {
+  return data.get('active', true) != true
+      || auth.token.email_verified == true;
+}
+
 function validPublicProfile(data) {
   let allowedKeys = ['displayName', 'photoURL', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'projects', 'active', 'createdAt', 'updatedAt'];
 
@@ -92,7 +112,12 @@ function validPublicFields(data) {
     && (!('memberType' in data) || validMemberType(data.memberType))
     && (!('role' in data) || (data.role is string && data.role.size() <= 100))
     && (!('portfolio' in data) || (data.portfolio is string && data.portfolio.size() <= 200))
-    && (!('socialMedia' in data) || (data.socialMedia is string && data.socialMedia.size() <= 200))
+    // 500, not 200: the editor now offers six link rows, and six real URLs
+    // (a LinkedIn vanity path alone runs ~55 chars) overrun 200 long before
+    // the sixth. The field is still ONE comma-joined string — the rows are a
+    // view of it — so this cap is what actually bounds the list. Its client
+    // mirror is MAX_SOCIAL_MEDIA in src/lib/links.ts; change them together.
+    && (!('socialMedia' in data) || (data.socialMedia is string && data.socialMedia.size() <= 500))
     && (!('affiliation' in data) || (data.affiliation is string && data.affiliation.size() <= 150))
     && (!('location' in data) || (data.location is string && data.location.size() <= 100))
     && (!('languages' in data) || validLanguages(data.languages))

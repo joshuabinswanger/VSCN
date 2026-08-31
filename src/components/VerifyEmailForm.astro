@@ -121,6 +121,7 @@ const t = useTranslations(lang);
 
 <script>
   import { auth } from "../lib/firebase.ts";
+  import { activatePublicProfileIfExists } from "../lib/firestore.ts";
   import { onAuthStateChanged, sendEmailVerification, signOut } from "firebase/auth";
   import { ui } from "../i18n/translations.ts";
 
@@ -150,6 +151,11 @@ const t = useTranslations(lang);
         return;
       }
       if (user.emailVerified) {
+        // Verifying is what publishes a member: every save made while
+        // unverified wrote `active: false` (see publishPublicProfile), so the
+        // draft would stay invisible for ever without this flip. Guarded
+        // against creating a doc for someone who has not onboarded yet.
+        await activatePublicProfileIfExists(user.uid).catch(() => {});
         window.location.href = `${prefix}/profile`;
         return;
       }
@@ -160,6 +166,7 @@ const t = useTranslations(lang);
     async function continueIfVerified(user: import("firebase/auth").User) {
       await user.reload();
       if (user.emailVerified) {
+        await activatePublicProfileIfExists(user.uid).catch(() => {});
         window.location.href = `${prefix}/onboarding`;
         return;
       }

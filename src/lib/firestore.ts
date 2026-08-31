@@ -1,4 +1,4 @@
-import { db } from "./firebase.ts";
+import { auth, db } from "./firebase.ts";
 import type { GalleryItem } from "./gallery.ts";
 import type { ProjectItem } from "./projects.ts";
 import {
@@ -129,11 +129,35 @@ export async function publishPublicProfile(uid: string, data: Partial<UserDoc>):
     ...toPublicProfile(data),
     primaryAudience: deleteField(),
   };
+  // An unverified member saves a DRAFT, always — written explicitly, never
+  // left absent. Both readers publish on `active !== false` (getMembers below,
+  // and membersBuild.ts), so a missing `active` means PUBLISHED, not hidden;
+  // omitting it here would put an unverified profile straight into the public
+  // directory. canPublish() in firestore.rules enforces the same rule from the
+  // other side and would reject this write outright without the explicit flag.
+  // Verifying flips it back — see activatePublicProfile.
+  if (auth.currentUser && !auth.currentUser.emailVerified) {
+    publicData.active = false;
+  }
   await setDoc(ref, publicData, { merge: true });
 }
 
 export async function activatePublicProfile(uid: string): Promise<void> {
   await setDoc(doc(db, "publicProfiles", uid), { active: true }, { merge: true });
+}
+
+/**
+ * Publish a member who has just verified their email — but only if they
+ * already have a profile. Verification can happen before onboarding writes
+ * anything, and a bare `setDoc(..., { merge: true })` would CREATE the
+ * document holding nothing but `active: true`. The directory publishes on
+ * `active !== false`, so that would seed a nameless, artwork-less member into
+ * the public build. The existence check is the whole point of this function.
+ */
+export async function activatePublicProfileIfExists(uid: string): Promise<void> {
+  const ref = doc(db, "publicProfiles", uid);
+  if (!(await getDoc(ref)).exists()) return;
+  await setDoc(ref, { active: true }, { merge: true });
 }
 
 export async function setProfileActive(uid: string, active: boolean): Promise<void> {
