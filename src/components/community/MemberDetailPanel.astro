@@ -6,9 +6,13 @@ import { useTranslations, type Lang } from "../../i18n/utils.ts";
 interface Props {
   member: MemberViewBase;
   lang: Lang;
+  /** Render the disclosure even when hasDetail() says no — for a caller
+   *  slotting its own lead content (the index rows slot the member's
+   *  profile picture, which is content worth a toggle by itself). */
+  forceShow?: boolean;
 }
 
-const { member, lang } = Astro.props;
+const { member, lang, forceShow = false } = Astro.props;
 const t = useTranslations(lang);
 
 // Native <details> on purpose. ClientRouter is active site-wide, so any script
@@ -24,36 +28,35 @@ const tags = member.tags;
 
 // Nothing to disclose — a profile that is name + role only. Rendering an
 // empty toggle would promise content that isn't there.
-const show = hasDetail(member);
+const show = forceShow || hasDetail(member);
 ---
 
 {
   show && (
     <details class="pdisc">
-      <summary class="pdisc__toggle" aria-label={`${t("community.card.expand")} ${member.displayName}`}></summary>
+      <summary
+        class="pdisc__toggle"
+        aria-label={`${t("community.card.expand")} ${member.displayName}`}
+      />
 
       <div class="pdisc__body">
         <div class="pdisc__body-inner">
+          {/* The caller's lead content — the index slots the member's
+              profile picture here. Empty for the card usages. */}
+          <slot name="lead" />
           {bio && <p class="pdisc__bio">{bio}</p>}
-
-          {tags.length > 0 && (
-            <div class="pdisc__row">
-              <span class="pdisc__key">{t("member.tags")}</span>
-              <ul class="pdisc__vals">
-                {tags.map((tag) => (
-                  <li class="pdisc__val">{tag}</li>
-                ))}
-              </ul>
-            </div>
-          )}
 
           {(portfolio || social.length > 0) && (
             <div class="pdisc__row">
-              <span class="pdisc__key">{t("member.elsewhere")}</span>
               <ul class="pdisc__vals pdisc__vals--links">
                 {portfolio && (
                   <li>
-                    <a class="pdisc__link" href={href(portfolio)} target="_blank" rel="noopener noreferrer">
+                    <a
+                      class="pdisc__link"
+                      href={href(portfolio)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       {portfolio}
                     </a>
                   </li>
@@ -61,16 +64,32 @@ const show = hasDetail(member);
                 {social.map((s) =>
                   s.href ? (
                     <li>
-                      <a class="pdisc__link" href={s.href} target="_blank" rel="noopener noreferrer">
+                      <a
+                        class="pdisc__link"
+                        href={s.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
                         {s.label}
                       </a>
                     </li>
                   ) : (
                     <li class="pdisc__val">{s.label}</li>
-                  ),
+                  )
                 )}
               </ul>
             </div>
+          )}
+
+          {/* Last, and unlabelled: the chips are self-evidently tags, so the
+              "TAGS" key was naming the obvious and competing with the links
+              above it for the same small space. */}
+          {tags.length > 0 && (
+            <ul class="pdisc__vals pdisc__vals--tags">
+              {tags.map((tag) => (
+                <li class="pdisc__val">{tag}</li>
+              ))}
+            </ul>
           )}
         </div>
       </div>
@@ -84,8 +103,8 @@ const show = hasDetail(member);
   }
 
   .pdisc__toggle {
-    /* Kill the native marker in both engines; the chevron is drawn below so it
-       can sit on the correct side and use the type scale. */
+    /* Kill the native marker in both engines; the chevron is drawn below so
+       the disclosure matches the image carousel controls. */
     list-style: none;
     cursor: pointer;
     display: flex;
@@ -103,55 +122,108 @@ const show = hasDetail(member);
     content: "";
   }
 
+  /* A stroked chevron, not a filled triangle: two borders on a rotated box.
+     Same drawing as the carousel arrows, so the two controls on one card read
+     as one family. */
   .pdisc__toggle::after {
     content: "";
-    width: 0.45rem;
-    height: 0.45rem;
+    width: 0.36rem;
+    height: 0.36rem;
+    margin-bottom: 0.1rem;
     border-right: 1.5px solid currentColor;
     border-bottom: 1.5px solid currentColor;
-    transform: rotate(45deg) translateY(-0.12rem);
+    transform: rotate(45deg);
     transition: transform 320ms ease;
   }
+  /* 225, not 180: the closed state is already rotated, so the open state has to
+     carry that 45 with it or the chevron lands on its side. */
   .pdisc[open] .pdisc__toggle::after {
-    transform: rotate(225deg) translate(-0.08rem, -0.08rem);
+    transform: rotate(225deg);
   }
 
   .pdisc__toggle:focus-visible {
     color: var(--color-dark);
   }
 
+  /* Stays in flow, and it is the CARD that is out of it — the grid gives each
+     card an absolutely positioned box inside its slot, so this can grow the
+     card as much as it likes without any of it reaching the layout. Trying to
+     solve that here instead was a dead end worth recording: absolutely
+     positioning this body puts ::details-content between it and its containing
+     block, and that pseudo-element's own `overflow: hidden` clips the panel to
+     a zero-height rectangle. It renders nowhere, while getBoundingClientRect
+     keeps reporting a size for it. */
   .pdisc__body {
-    margin-top: 0.55rem;
+    /* No margin of its own — the caption grid's row gap is already the whole
+       distance to the name band above, so the panel reads as that member's
+       own continuation rather than as a separate block. */
+    margin-top: 0;
+    display: flex;
+    flex-direction: column;
+    /* The open panel paints over whatever the grid put beneath this card (the
+       cell rises to z-index 3 for exactly that), so it needs a ground of its
+       own — over artwork the bare text was unreadable. Translucent rather than
+       opaque, with the blur doing the separating, so the card underneath still
+       reads as being there. No border: the blurred ground alone does the
+       separating, so the panel doesn't add a second frame to the card. */
+    padding: 0.3rem 0.6rem 0.6rem;
+    background: color-mix(in srgb, var(--color-bg) 74%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    backdrop-filter: blur(14px) saturate(1.4);
+    border: none;
+    /* Square corners, like the frame above it. */
+    border-radius: 0;
+  }
+
+  /* The open/close animation, RESTORED 2026-08-31 once the bisect showed what
+     is actually unsafe. Styling ::details-content is fine. What made
+     /community/ unopenable on iPhone was styling it while `.pdisc` was
+     display:contents, and specifically giving the pseudo an overflow that makes
+     it a SCROLL CONTAINER. Isolated in standalone 900-byte pages: with
+     display:contents, `overflow: hidden` and `overflow: auto` both kill the
+     page; `overflow: clip` does not, nor do content-visibility, block-size or
+     grid-column, and nor does overflow on an ordinary child div. Give the
+     <details> a real box and every one of them is safe.
+     So: `.pdisc` keeps its box (see the caption-row rules in the two cards and
+     in CommunityGrid's .cindex__line -- do NOT put display:contents back), and
+     this uses `clip` rather than `hidden` so the rule survives even if someone
+     reintroduces one. No grid-column: `.pdisc` spans its row by itself now,
+     which is what the old pseudo-as-grid-item was faking.
+     @supports so an engine without the pseudo shows an instant panel rather
+     than a broken one. */
+  @supports selector(::details-content) {
+    .pdisc {
+      interpolate-size: allow-keywords;
+    }
+
+    .pdisc::details-content {
+      block-size: 0;
+      overflow: clip;
+      content-visibility: hidden;
+      transition:
+        block-size 320ms ease,
+        content-visibility 320ms allow-discrete;
+    }
+
+    .pdisc[open]::details-content {
+      block-size: auto;
+      content-visibility: visible;
+    }
+  }
+
+  .pdisc__body-inner {
+    min-height: 0;
+    /* The row rhythm lives HERE, not on .pdisc__body — this wrapper is the
+       rows' actual parent, so a gap up there never reaches between them and
+       the tags sat flush under the links. */
     display: flex;
     flex-direction: column;
     gap: 0.85rem;
   }
 
-  /* Animate the native details content while keeping the rule attached to the
-     full disclosure, so it moves down as the profile opens. */
-  .pdisc {
-    interpolate-size: allow-keywords;
-  }
-  .pdisc::details-content {
-    block-size: 0;
-    content-visibility: hidden;
-    overflow: hidden;
-    transition:
-      block-size 320ms ease,
-      content-visibility 320ms allow-discrete;
-  }
-  .pdisc[open]::details-content {
-    block-size: auto;
-    content-visibility: visible;
-  }
-
-  .pdisc__body-inner {
-    min-height: 0;
-  }
-
   .pdisc__bio {
     margin: 0;
-    font-size: 0.74rem;
+    font-size: 0.8rem;
     font-weight: 400;
     line-height: 1.45;
     color: var(--color-dark);
@@ -164,7 +236,7 @@ const show = hasDetail(member);
   }
 
   .pdisc__key {
-    font-size: 0.58rem;
+    font-size: 0.62rem;
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -181,7 +253,7 @@ const show = hasDetail(member);
   }
 
   .pdisc__val {
-    font-size: 0.62rem;
+    font-size: 0.68rem;
     font-weight: 500;
     line-height: 1.25;
     letter-spacing: 0.03em;
@@ -196,13 +268,30 @@ const show = hasDetail(member);
     overflow-wrap: anywhere;
   }
 
+  /* Quieter than the other values — they sit under the links as an index,
+     not as another thing to read. */
+  .pdisc__vals--tags .pdisc__val {
+    font-size: 0.6rem;
+    letter-spacing: 0.04em;
+    padding: 3px 4px;
+  }
+  .pdisc__vals--tags {
+    margin-bottom: 0.75rem;
+  }
+
+  /* Website and socials sit on ONE line, wrapping only when they run out of
+     room — they are short labels ("instagram", "LinkedIn") plus one domain,
+     so a column spent a card's worth of height on three words. Inherits the
+     base row direction; the wide column gap is what keeps two adjacent
+     underlined links from reading as one. */
   .pdisc__vals--links {
-    flex-direction: column;
-    gap: 0.3rem;
+    column-gap: 0.9rem;
+    row-gap: 0.3rem;
+    align-items: baseline;
   }
 
   .pdisc__link {
-    font-size: 0.7rem;
+    font-size: 0.76rem;
     font-weight: 500;
     line-height: 1.3;
     color: var(--color-dark);

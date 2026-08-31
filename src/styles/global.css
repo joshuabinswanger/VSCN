@@ -161,7 +161,10 @@ main.is-wide {
    grid does not have to spare. */
 @media (--bp-desktop) {
   body.content-wide main {
-    max-width: min(94vw, 1600px);
+    /* 2030 = CommunityGrid's 2000px --grid-max plus main's two 15px gutters,
+       so the grid can actually reach its own cap instead of stopping 30px
+       short of it. Move the two together. */
+    max-width: min(94vw, 2030px);
   }
 }
 

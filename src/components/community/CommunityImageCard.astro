@@ -16,7 +16,8 @@ const t = useTranslations(lang);
 // Gallery images are Firebase Storage remote URLs; getImage optimises them at
 // build time (remotePatterns in astro.config.mjs). Originals are client-side
 // compressed to max 2000px WebP already — these are the sizes the card lays
-// out. 800 covers the ~480px card at 2x DPR.
+// out. The widest slot is 8 of the grid's 24 columns — ~667px at --grid-max —
+// so 1400 is what covers the biggest card at 2x DPR, and 800 the common ones.
 const works = await Promise.all(
   member.works.map(async (w) => ({
     ...w,
@@ -24,13 +25,21 @@ const works = await Promise.all(
       src: w.url,
       width: w.width,
       height: w.height,
-      widths: [400, 800],
+      widths: [400, 800, 1400],
       format: "webp",
     }),
   }))
 );
 
 const frame = works[0];
+
+// Deliberately UNDER-sized on mobile (a full-bleed card is really ~92vw): at
+// 55vw no phone DPR ever selects the 1400w variant, only the 800. The page
+// stacks every gallery image of every member into the DOM, and decoded-image
+// memory is what crash-looped iOS Safari ("a problem repeatedly occurred") —
+// an 800 upscaled a hair on a 3x screen is invisible; 60 × 1400 decodes is a
+// dead tab.
+const SIZES = "(max-width: 767px) 55vw, 680px";
 
 // The frame keeps the artwork's TRUE aspect at every ratio — nothing here is
 // cropped or letterboxed. Tall artwork is bounded by getting narrower instead,
@@ -63,13 +72,21 @@ const altFor = (w: (typeof works)[number]) =>
       data-carousel
     >
       {
+        /* Only the image on show carries a real src. The rest of the gallery
+          waits as data-src until the visitor first touches or hovers THIS
+          carousel (see the script's hydrate) — before that, every member's
+          whole gallery decoded at once, which is what crash-looped iOS
+          Safari. The carousel needs JS anyway (the arrows are JS), so a
+          no-JS visitor loses nothing they could reach. */
         works.map((w, i) => (
           <img
             class="ccard__img"
             class:list={{ "ccard__img--active": i === 0 }}
-            src={w.rendered.src}
-            srcset={w.rendered.srcSet.attribute}
-            sizes="(max-width: 767px) 50vw, 480px"
+            src={i === 0 ? w.rendered.src : undefined}
+            srcset={i === 0 ? w.rendered.srcSet.attribute : undefined}
+            data-src={i === 0 ? undefined : w.rendered.src}
+            data-srcset={i === 0 ? undefined : w.rendered.srcSet.attribute}
+            sizes={SIZES}
             width={w.width}
             height={w.height}
             style={w.color ? `background:${w.color}` : undefined}
@@ -79,14 +96,15 @@ const altFor = (w: (typeof works)[number]) =>
           />
         ))
       }
-      {/* Whole-artwork click target. A sibling of the arrows rather than a
+      {
+        /* Whole-artwork click target. A sibling of the arrows rather than a
           wrapper, so no interactive element nests inside another; the arrows
-          sit above it on z-index and keep working. */}
+          sit above it on z-index and keep working. */
+      }
       <a
         class="ccard__frame-link"
         href={profileHref}
-        aria-label={`${t("community.card.viewProfile")} ${member.displayName}`}
-      ></a>
+        aria-label={`${t("community.card.viewProfile")} ${member.displayName}`}></a>
       {
         works.length > 1 && (
           <>
@@ -96,7 +114,7 @@ const altFor = (w: (typeof works)[number]) =>
               data-carousel-prev
               aria-label={t("community.card.prev")}
             >
-              <span aria-hidden="true">&#8592;</span>
+              <span aria-hidden="true" />
             </button>
             <button
               class="ccard__arrow ccard__arrow--next"
@@ -104,7 +122,7 @@ const altFor = (w: (typeof works)[number]) =>
               data-carousel-next
               aria-label={t("community.card.next")}
             >
-              <span aria-hidden="true">&#8594;</span>
+              <span aria-hidden="true" />
             </button>
           </>
         )
@@ -219,31 +237,76 @@ const altFor = (w: (typeof works)[number]) =>
     z-index: 1;
     display: grid;
     place-items: center;
-    width: 1.1rem;
-    height: 1.1rem;
+    /* Wider than tall on purpose: these sit on the artwork's left and
+       right edges, and a wide target is both easier to hit and reads as
+       an edge control. Since the block is now painted, that width is also
+       honest — the hit area is the thing you can see. */
+    width: 2.4rem;
+    height: 1.8rem;
     padding: 0;
     border: 0;
-    border-radius: 0;
-    background: transparent;
+    border-radius: var(--radius-xs);
+    /* THE BLOCK IS THE CONTRAST. A 2px stroke has to survive whatever
+       artwork is behind it; this used to be a drop-shadow glow around the
+       glyph, which haloed. A solid ground does the same job cleanly: on
+       dark artwork the block carries the chevron, and on light artwork the
+       block disappears into it while the dark chevron still reads. */
+    background: var(--color-bg);
     color: var(--color-dark);
     opacity: 0;
     cursor: pointer;
-    transform: translateY(-50%);
-    transition: opacity 180ms ease;
+    /* Slides out of the card's edge as it fades in. Written as a plain
+       transform per side rather than a var the two directions share: an
+       unregistered custom property is not itself animatable, and relying
+       on the substitution to carry a transition is a subtlety this file
+       does not need. Each state names its own transform. */
+    transform: translate(0, -50%);
+    transition:
+      opacity 180ms ease,
+      transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
+      background-color 140ms ease,
+      color 140ms ease;
   }
   .ccard__frame:hover .ccard__arrow,
   .ccard__arrow:focus-visible {
     opacity: 1;
+    transform: translate(0, -50%);
   }
+  /* Inverts on its own hover — block goes dark, chevron goes light — so
+     the active side is unmistakable without moving anything. */
   .ccard__arrow:hover,
   .ccard__arrow:focus-visible {
-    color: var(--color-muted);
+    background: var(--color-dark);
+    color: var(--color-bg);
   }
+  /* A stroked chevron rather than a filled triangle — two borders on a box
+     turned 45deg. Same drawing as the disclosure toggle in MemberDetailPanel,
+     so both controls on a card read as one family. */
+  .ccard__arrow span {
+    display: block;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-top: 2px solid currentColor;
+    border-right: 2px solid currentColor;
+  }
+  .ccard__arrow--prev span {
+    transform: translate(0.06rem, 0) rotate(-135deg);
+  }
+  .ccard__arrow--next span {
+    transform: translate(-0.06rem, 0) rotate(45deg);
+  }
+  /* Measured to the button box, not the chevron: the box grew by 1.3rem,
+     so the inset shrinks to leave the glyph about where it sat before. */
+  /* The resting offset: tucked toward its own edge, so the block appears
+     to come out of the card rather than fade in on the spot. Overridden
+     by the :hover/:focus rule above, which is later and more specific. */
   .ccard__arrow--prev {
-    left: 0.75rem;
+    left: 0.15rem;
+    transform: translate(-0.4rem, -50%);
   }
   .ccard__arrow--next {
-    right: 0.75rem;
+    right: 0.15rem;
+    transform: translate(0.4rem, -50%);
   }
 
   /* ── Member caption ───────────────────────────────────── */
@@ -255,25 +318,37 @@ const altFor = (w: (typeof works)[number]) =>
     font-family: "Archivo", sans-serif;
   }
 
+  /* A plain block, not a grid, and .pdisc keeps a REAL box -- see the note in
+     MemberDetailPanel for why display:contents here was unopenable on iPhone.
+     The panel is full-width simply by being in flow (it still grows the card,
+     which is what the desktop slot wants and what pushes rows on mobile), and
+     the toggle is lifted to the row's right edge instead of placed in a
+     column. */
   .ccard__caption-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: baseline;
-    gap: 0.35rem;
+    position: relative;
   }
 
   .ccard__caption-row :global(.pdisc) {
-    display: contents;
+    display: block;
+  }
+
+  /* The toggle's space is reserved on the ROLE's line, not on the row: row
+     padding would inset the open panel too, and a panel stopping short of
+     the card's right edge is exactly what the old pseudo-element grid item
+     existed to prevent. */
+  .ccard__caption-row .ccard__role {
+    padding-right: 1.35rem;
   }
 
   .ccard__caption-row :global(.pdisc__toggle) {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .ccard__caption-row :global(.pdisc__body) {
-    grid-column: 1 / -1;
-    grid-row: 2;
+    position: absolute;
+    /* On the role's first line: the same offset as .ccard__role's margin-top, in
+       a box the height of that line so the chevron centres in it. The grid
+       this replaces did the same job with align-items: baseline. */
+    top: 0.15rem;
+    right: 0;
+    height: calc(0.78rem * 1.3);
+    align-items: center;
   }
 
   .ccard__role {
@@ -287,24 +362,23 @@ const altFor = (w: (typeof works)[number]) =>
 
   /* ── Mobile ───────────────────────────────────────────── */
   @media (--bp-mobile) {
+    /* The width formula narrows the card to fit a DESKTOP slot's height —
+       but --slot-rows still arrives from the desktop deal on a phone, where
+       the cell's height is simply the card's own. Full width of whatever
+       beat the mobile pattern dealt (see CommunityGrid's --bp-mobile block). */
+    .ccard {
+      width: 100%;
+    }
+
     .ccard__body {
       display: block;
     }
 
-    /* No hover on touch: arrows stay visible, and bigger. */
+    /* No paging chrome on touch — a decided trade: the artwork keeps a clean
+       face, paging is the swipe for whoever finds it, and in the gallery
+       view the carousel advances itself every 5s anyway. */
     .ccard__arrow {
-      width: 3rem;
-      height: 3rem;
-      opacity: 1;
-      color: var(--color-dark);
-    }
-
-    .ccard__arrow--prev {
-      left: 0.5rem;
-    }
-
-    .ccard__arrow--next {
-      right: 0.5rem;
+      display: none;
     }
   }
 
@@ -312,10 +386,45 @@ const altFor = (w: (typeof works)[number]) =>
     .ccard__img {
       transition: none;
     }
+
+    /* The block still appears, it just does not travel to get there. */
+    .ccard__arrow {
+      transform: translate(0, -50%);
+      transition:
+        opacity 180ms ease,
+        background-color 140ms ease,
+        color 140ms ease;
+    }
   }
 </style>
 
 <script>
+  // Auto-advance state lives at module scope so astro:before-swap can stop
+  // every timer and observer from the page being swapped away — an interval
+  // that survives a ClientRouter navigation would keep firing against dead
+  // nodes forever.
+  const autoTimers = new Set<ReturnType<typeof setInterval>>();
+  const autoObservers = new Set<IntersectionObserver>();
+  document.addEventListener("astro:before-swap", () => {
+    autoTimers.forEach((t) => clearInterval(t));
+    autoTimers.clear();
+    autoObservers.forEach((o) => o.disconnect());
+    autoObservers.clear();
+  });
+
+  const MOBILE = window.matchMedia("(max-width: 767px)");
+  const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const AUTO_ADVANCE_MS = 5000;
+
+  /** Mobile gallery view only: the wall and the ledger hold still, desktop
+   *  has the hover arrows. The default (server-rendered) state carries no
+   *  data-pattern and IS the gallery. */
+  function autoAdvanceAllowed(): boolean {
+    if (!MOBILE.matches || REDUCED.matches || document.hidden) return false;
+    const grid = document.getElementById("member-grid");
+    return !grid?.dataset.pattern || grid.dataset.pattern === "spread";
+  }
+
   function initCarousels() {
     document.querySelectorAll<HTMLElement>("[data-carousel]").forEach((carousel) => {
       if (carousel.dataset.ready) return;
@@ -323,15 +432,110 @@ const altFor = (w: (typeof works)[number]) =>
       const images = Array.from(carousel.querySelectorAll<HTMLImageElement>(".ccard__img"));
       let current = 0;
 
+      // The build gives only the active image a src; the rest wait as
+      // data-src so a page full of galleries doesn't decode every image of
+      // every member at once (the iOS Safari crash). First contact with a
+      // carousel wakes its whole gallery, so by the time a finger reaches
+      // the arrow the neighbours are already loading.
+      const hydrate = (image: HTMLImageElement) => {
+        if (!image.dataset.src) return;
+        image.src = image.dataset.src;
+        if (image.dataset.srcset) image.srcset = image.dataset.srcset;
+        delete image.dataset.src;
+        delete image.dataset.srcset;
+      };
+      const hydrateAll = () => images.forEach(hydrate);
+      carousel.addEventListener("pointerenter", hydrateAll, { once: true });
+      carousel.addEventListener("touchstart", hydrateAll, { once: true, passive: true });
+
       const show = (next: number) => {
         current = (next + images.length) % images.length;
+        // Safety net in case neither wake-up event fired first.
+        hydrate(images[current]);
         images.forEach((image, index) =>
-          image.classList.toggle("ccard__img--active", index === current),
+          image.classList.toggle("ccard__img--active", index === current)
         );
       };
 
-      carousel.querySelector("[data-carousel-prev]")?.addEventListener("click", () => show(current - 1));
-      carousel.querySelector("[data-carousel-next]")?.addEventListener("click", () => show(current + 1));
+      carousel
+        .querySelector("[data-carousel-prev]")
+        ?.addEventListener("click", () => show(current - 1));
+      carousel
+        .querySelector("[data-carousel-next]")
+        ?.addEventListener("click", () => show(current + 1));
+
+      if (images.length > 1) {
+        // The 5s auto-advance, mobile gallery only (arrows are display:none
+        // on touch, so a multi-work gallery would otherwise be invisible past
+        // its first image). Runs only while THIS card is on screen — an
+        // off-screen carousel advancing would hydrate its whole gallery for
+        // nobody, and decoded-image memory is what crashed iOS Safari.
+        // Conditions are re-checked every tick, so switching views, rotating
+        // to desktop, or backgrounding the tab pauses without bookkeeping.
+        let timer: ReturnType<typeof setInterval> | null = null;
+        const start = () => {
+          if (timer !== null) return;
+          timer = setInterval(() => {
+            if (autoAdvanceAllowed()) show(current + 1);
+          }, AUTO_ADVANCE_MS);
+          autoTimers.add(timer);
+        };
+        const stop = () => {
+          if (timer === null) return;
+          clearInterval(timer);
+          autoTimers.delete(timer);
+          timer = null;
+        };
+        const restart = () => {
+          stop();
+          start();
+        };
+        const io = new IntersectionObserver(([entry]) => {
+          if (entry.isIntersecting) start();
+          else stop();
+        });
+        io.observe(carousel);
+        autoObservers.add(io);
+
+        // Touch: the artwork itself pages. Horizontal-dominant only, so a
+        // vertical page scroll that happens to start on a card never flips
+        // it. Passive listeners — the page's own panning is never blocked.
+        let startX = 0;
+        let startY = 0;
+        let swiped = false;
+        carousel.addEventListener(
+          "touchstart",
+          (e) => {
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+            swiped = false;
+          },
+          { passive: true }
+        );
+        carousel.addEventListener(
+          "touchend",
+          (e) => {
+            const dx = e.changedTouches[0].clientX - startX;
+            const dy = e.changedTouches[0].clientY - startY;
+            if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+              swiped = true;
+              show(dx < 0 ? current + 1 : current - 1);
+              // A fresh 5s from the image the visitor chose — without this
+              // the standing timer can advance again moments after a swipe.
+              restart();
+            }
+          },
+          { passive: true }
+        );
+        // Belt and braces: a swipe that the browser still promotes to a click
+        // must not also follow the frame link under the finger.
+        carousel.querySelector(".ccard__frame-link")?.addEventListener("click", (e) => {
+          if (swiped) {
+            e.preventDefault();
+            swiped = false;
+          }
+        });
+      }
     });
   }
 

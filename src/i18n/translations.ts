@@ -35,9 +35,15 @@ export const ui: Record<string, Record<string, string>> = {
     "info.contact": "Contact",
 
     // CommunityGrid
+    "community.title": "Community",
     "community.member": "member",
     "community.members": "members",
     "community.empty": "No members yet.",
+    "community.view.label": "View",
+    "community.view.gallery": "Gallery",
+    "community.view.grid": "Grid",
+    "community.view.index": "Index",
+    "community.index.search": "Search name, role, tags…",
     "community.filter.type": "Who",
     "community.filter.looking": "Looking for",
     "community.filter.all": "All",
@@ -47,6 +53,9 @@ export const ui: Record<string, Record<string, string>> = {
     "community.filter.offering": "Offering services",
     "community.filter.seeking": "Looking for services",
     "community.filter.none": "No members match this filter.",
+    "community.filter.tags": "Tags",
+    "community.filter.tags.all": "All tags",
+    "community.filter.tags.search": "Search tags…",
 
     // MemberCard
     "member.showBio": "Show bio for",
@@ -335,9 +344,15 @@ export const ui: Record<string, Record<string, string>> = {
     "info.contact": "Kontakt",
 
     // CommunityGrid
+    "community.title": "Community",
     "community.member": "Mitglied",
     "community.members": "Mitglieder",
     "community.empty": "Noch keine Mitglieder.",
+    "community.view.label": "Ansicht",
+    "community.view.gallery": "Galerie",
+    "community.view.grid": "Raster",
+    "community.view.index": "Index",
+    "community.index.search": "Name, Rolle, Tags suchen…",
     "community.filter.type": "Wer",
     "community.filter.looking": "Auf der Suche nach",
     "community.filter.all": "Alle",
@@ -347,6 +362,9 @@ export const ui: Record<string, Record<string, string>> = {
     "community.filter.offering": "Bietet Dienste an",
     "community.filter.seeking": "Sucht Dienste",
     "community.filter.none": "Keine Mitglieder entsprechen diesem Filter.",
+    "community.filter.tags": "Tags",
+    "community.filter.tags.all": "Alle Tags",
+    "community.filter.tags.search": "Tags suchen…",
 
     // MemberCard
     "member.showBio": "Bio anzeigen für",
