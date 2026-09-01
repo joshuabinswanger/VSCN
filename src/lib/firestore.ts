@@ -1,6 +1,5 @@
 import { auth, db } from "./firebase.ts";
 import type { GalleryItem } from "./gallery.ts";
-import type { ProjectItem } from "./projects.ts";
 import {
   collection,
   doc,
@@ -44,8 +43,6 @@ export interface UserDoc {
   primaryAudiences: string[];
   tags: string[];
   gallery: GalleryItem[];
-  /** Optional: profiles created before projects existed have no value. */
-  projects?: ProjectItem[];
   /** Institution, lab, studio or company. Public. */
   affiliation?: string;
   /** Free text, e.g. "Zurich, Switzerland". Public. */
@@ -78,8 +75,21 @@ export interface OnboardingRequestDoc {
   updatedAt?: Date | FieldValue;
 }
 
-type LegacyAudienceCleanup = {
+/**
+ * Fields this codebase no longer has, deleted on every write.
+ *
+ * `primaryAudience` is the singular ancestor of `primaryAudiences`.
+ * `projects` is the withdrawn projects feature (2026-09-01) — and deleting it
+ * is not tidiness: firestore.rules dropped 'projects' from allowedKeys, and
+ * `hasOnly` rejects a whole write over one unlisted key, so any client still
+ * sending the field would fail silently and completely. deleteField() merges
+ * to an ABSENT key, which is what passes.
+ *
+ * Both are safe to send to a document that never had them.
+ */
+type LegacyFieldCleanup = {
   primaryAudience?: FieldValue;
+  projects?: FieldValue;
 };
 
 function toPublicProfile(data: Partial<UserDoc>): Partial<PublicProfileDoc> {
@@ -96,7 +106,6 @@ function toPublicProfile(data: Partial<UserDoc>): Partial<PublicProfileDoc> {
   if (data.primaryAudiences !== undefined) out.primaryAudiences = data.primaryAudiences;
   if (data.tags !== undefined) out.tags = data.tags;
   if (data.gallery !== undefined) out.gallery = data.gallery;
-  if (data.projects !== undefined) out.projects = data.projects;
   if (data.affiliation !== undefined) out.affiliation = data.affiliation;
   if (data.location !== undefined) out.location = data.location;
   if (data.languages !== undefined) out.languages = data.languages;
@@ -118,16 +127,21 @@ export async function createUser(uid: string, data: Partial<UserDoc>): Promise<v
 export async function updateUser(uid: string, data: Partial<UserDoc>): Promise<void> {
   await setDoc(
     doc(db, "users", uid),
-    { ...data, primaryAudience: deleteField() } as Partial<UserDoc> & LegacyAudienceCleanup,
+    {
+      ...data,
+      primaryAudience: deleteField(),
+      projects: deleteField(),
+    } as Partial<UserDoc> & LegacyFieldCleanup,
     { merge: true }
   );
 }
 
 export async function publishPublicProfile(uid: string, data: Partial<UserDoc>): Promise<void> {
   const ref = doc(db, "publicProfiles", uid);
-  const publicData: Partial<PublicProfileDoc> & LegacyAudienceCleanup = {
+  const publicData: Partial<PublicProfileDoc> & LegacyFieldCleanup = {
     ...toPublicProfile(data),
     primaryAudience: deleteField(),
+    projects: deleteField(),
   };
   // An unverified member saves a DRAFT, always — written explicitly, never
   // left absent. Both readers publish on `active !== false` (getMembers below,

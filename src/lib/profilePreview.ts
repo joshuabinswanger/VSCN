@@ -25,11 +25,8 @@ export interface ProfilePreviewLabels {
   openTo: string;
   /** Shown instead of artwork when the gallery is empty. */
   noWorks: string;
-  projects: string;
   /** Key for the visual-needs row, e.g. "Looking for". */
   needs: string;
-  /** Prefix for an image's project credit, e.g. "Part of". */
-  partOf: string;
 }
 
 export function renderProfilePreview(
@@ -146,30 +143,6 @@ export function renderProfilePreview(
   }
   show(part("links-row"), Boolean(portfolio) || social.length > 0);
 
-  // ── Projects ──────────────────────────────────────────────
-  // Only rows that would survive normalizeProjects() are shown, so the
-  // preview never promises a half-typed project that Firestore will drop.
-  const projects = vm.projects.filter((p) => p.title.trim() && p.url.trim());
-  const projectList = part("projects");
-  if (projectList) {
-    const items = projects.map((project) => {
-      const li = clone("project");
-      const a = li?.querySelector("a");
-      const desc = li?.querySelector<HTMLElement>(".ppv__project-desc");
-      if (!li || !a) return null;
-      a.href = href(project.url.trim());
-      a.textContent = project.title.trim();
-      const text = project.description?.trim() ?? "";
-      if (desc) {
-        desc.textContent = text;
-        desc.hidden = !text;
-      }
-      return li;
-    });
-    projectList.replaceChildren(...items.filter((n): n is HTMLElement => n !== null));
-  }
-  show(part("projects-row"), projects.length > 0);
-
   // ── Work ──────────────────────────────────────────────────
   const empty = part("works-empty");
   if (empty) empty.textContent = labels.noWorks;
@@ -198,7 +171,6 @@ export function renderProfilePreview(
 
         const captionText = w.caption?.trim() ?? "";
         const descText = w.description?.trim() ?? "";
-        const project = w.project;
 
         const caption = workPart("caption");
         if (caption) {
@@ -212,17 +184,7 @@ export function renderProfilePreview(
           desc.hidden = !descText;
         }
 
-        const credit = workPart("credit");
-        const creditLabel = workPart("credit-label");
-        const creditLink = workPart("credit-link");
-        if (creditLabel) creditLabel.textContent = labels.partOf;
-        if (creditLink instanceof HTMLAnchorElement && project) {
-          creditLink.href = href(project.url);
-          creditLink.textContent = project.title;
-        }
-        if (credit) credit.hidden = !project;
-
-        show(workPart("caption-block"), Boolean(captionText || descText || project));
+        show(workPart("caption-block"), Boolean(captionText || descText));
         return figure;
       })
       .filter((n): n is HTMLElement => n !== null);

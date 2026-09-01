@@ -38,7 +38,6 @@ export interface MemberTypeFieldCopy {
   affiliationPlaceholder: string;
   socialLabel: string;
   socialPlaceholder: string;
-  projectsLabel: string;
 }
 
 /**
@@ -71,9 +70,5 @@ export function memberTypeFieldCopy(type: string, t: Lookup): MemberTypeFieldCop
     socialPlaceholder: usesLabWording
       ? t("profile.ph.social.science")
       : t("profile.ph.social"),
-    // Title and url already fit a paper; only the heading was wrong.
-    projectsLabel: usesLabWording
-      ? t("profile.label.projects.science")
-      : t("profile.label.projects"),
   };
 }

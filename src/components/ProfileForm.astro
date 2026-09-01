@@ -145,8 +145,7 @@ const t = useTranslations(lang);
       unchanged — the rows are joined back into the single comma-separated
       `socialMedia` string by joinSocial() — so old profiles, the build-time
       directory snapshot and firestore.rules all keep working untouched. A <p>
-      rather than a <label>: there is no single control left to point at, the
-      same reason #projects-label is a <p>. */
+      rather than a <label>: there is no single control left to point at. */
     }
     <div class="field">
       <p id="social-label" class="label">{t("profile.label.social")}</p>
@@ -206,35 +205,6 @@ const t = useTranslations(lang);
   </div>
 
   <div class="form-section" data-section="work">
-    {
-      /* Before the gallery on purpose: an image can only be tagged to a project
-      that already exists, so the field that creates them comes first. */
-    }
-    <div class="field">
-      <p id="projects-label" class="label">{t("profile.label.projects")}</p>
-      <div id="projects-editor" class="projects-editor"></div>
-      <button type="button" id="projects-add" class="btn-outline choose-img">
-        {t("profile.projects.add")}
-      </button>
-      <p id="projects-status" class="field-note" style="display:none;"></p>
-      <p class="field-note">{t("profile.note.projects")}</p>
-      {
-        /* Cloned by renderProjects(). Astro scopes this component's CSS by
-        appending data-astro-cid-* to EVERY compound selector, so a row built
-        with document.createElement() matches `.project-row[data-astro-cid-…]`
-        never — which is exactly why these rows used to render with no border
-        at all. A clone of a rendered template already carries the attribute. */
-      }
-      <template data-projects-tpl="row">
-        <div class="project-row">
-          <input type="text" class="input" data-project-field="title" />
-          <input type="url" class="input" data-project-field="url" />
-          <textarea class="input textarea" rows="2" data-project-field="description"></textarea>
-          <button type="button" class="project-row-remove" data-project-remove>✕</button>
-        </div>
-      </template>
-    </div>
-
     <div class="field">
       <p class="label">{t("profile.label.gallery")}</p>
       <div id="gallery-editor" class="gallery-editor"></div>
@@ -257,8 +227,8 @@ const t = useTranslations(lang);
       }
       <p id="gallery-nudge" class="field-note gallery-nudge" hidden>{t("profile.gallery.nudge")}</p>
       {
-        /* Cloned by renderGallery(), for the same reason as the projects
-        template above: .gallery-item, .gallery-thumb and .gallery-thumb-remove
+        /* Cloned by renderGallery(). Astro scopes this component's CSS by
+        appending data-astro-cid-* to EVERY compound selector, so .gallery-item, .gallery-thumb and .gallery-thumb-remove
         are scoped rules, so createElement() rows got none of them — the thumbs
         rendered at their natural size with an untreated remove button. */
       }
@@ -271,7 +241,6 @@ const t = useTranslations(lang);
           <div class="gallery-fields">
             <input type="text" class="input" data-gallery-field="caption" />
             <textarea class="input textarea" rows="3" data-gallery-field="description"></textarea>
-            <select class="input" data-gallery-project></select>
           </div>
         </div>
       </template>
@@ -568,8 +537,7 @@ const t = useTranslations(lang);
   /* ── Social links ─────────────────────────────────────── */
   /* A stack of the same prefixed input the single field used, each with its
      own remove control. No border around a row and no per-row label: a link is
-     one value, so the bordered block the projects editor needs would be a box
-     drawn around a single input. */
+     one value, so a bordered block would be a box drawn around a single input. */
   .social-editor {
     display: flex;
     flex-direction: column;
@@ -592,8 +560,8 @@ const t = useTranslations(lang);
     flex: 1 1 auto;
   }
 
-  /* Same outline circle as .project-row-remove, but in the flow rather than
-     pinned to a corner — there is no block here for it to sit in. */
+  /* An outline circle, in the flow rather than pinned to a corner — there is
+     no block here for it to sit in. */
   .social-row-remove {
     flex: 0 0 auto;
     align-self: center;
@@ -617,8 +585,8 @@ const t = useTranslations(lang);
     border-color: var(--color-error);
   }
 
-  /* Was a grid of bare 90px thumbs. Each image now carries a caption, a
-     description and a project, which no square that small can hold — so an
+  /* Was a grid of bare 90px thumbs. Each image now carries a caption and a
+     description, which no square that small can hold — so an
      entry is a row: thumb on the left, its words on the right. */
   .gallery-editor {
     display: flex;
@@ -699,63 +667,6 @@ const t = useTranslations(lang);
     .gallery-thumb {
       max-width: 140px;
     }
-  }
-
-  /* ── Projects ─────────────────────────────────────────── */
-  .projects-editor {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    margin-bottom: 0.5rem;
-  }
-
-  .projects-editor:empty {
-    display: none;
-  }
-
-  /* A bordered block per project, because a bare stack of inputs gives no
-     clue where one project ends and the next begins. */
-  .project-row {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px 42px 12px 12px;
-    border: 1.5px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    min-width: 0;
-  }
-
-  .project-row .input {
-    font-size: 0.85rem;
-  }
-
-  .project-row .textarea {
-    min-height: 56px;
-  }
-
-  .project-row-remove {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 22px;
-    height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    color: var(--color-muted);
-    border: 1.5px solid var(--color-border);
-    border-radius: 50%;
-    font-size: 0.7rem;
-    line-height: 1;
-    cursor: pointer;
-  }
-
-  .project-row-remove:hover {
-    color: #fff;
-    background: var(--color-error);
-    border-color: var(--color-error);
   }
 
   /* ── Section tabs ─────────────────────────────────────── */
@@ -1045,17 +956,9 @@ const t = useTranslations(lang);
     compressGalleryImage,
     uploadGalleryImage,
     deleteGalleryImages,
+    sanitizeGalleryItems,
     type GalleryItem,
   } from "../lib/gallery.ts";
-  import {
-    MAX_PROJECTS,
-    MAX_PROJECT_TITLE,
-    MAX_PROJECT_URL,
-    MAX_PROJECT_DESCRIPTION,
-    newProjectId,
-    normalizeProjects,
-    type ProjectItem,
-  } from "../lib/projects.ts";
   import { updateUserProfile } from "../lib/firestore.ts";
   import { openImageEditor } from "../lib/imageEditor.ts";
   import { renderCardPreview, renderProfilePreview } from "../lib/profilePreview.ts";
@@ -1132,7 +1035,6 @@ const t = useTranslations(lang);
     >("member-type-selector");
     const portfolioLabel = document.getElementById("portfolio-label");
     const socialLabel = document.getElementById("social-label");
-    const projectsLabel = document.getElementById("projects-label");
     const affiliationInput = document.getElementById("affiliation") as HTMLInputElement;
     const locationInput = document.getElementById("location") as HTMLInputElement;
     const languageInputs = Array.from(
@@ -1167,28 +1069,18 @@ const t = useTranslations(lang);
     let resizedAvatarBlob: Blob | null = null;
     let avatarColor = "";
     let gallery: GalleryItem[] = [];
-    let projects: ProjectItem[] = [];
 
     const galleryInput = document.getElementById("gallery-files") as HTMLInputElement;
     const galleryEditor = document.getElementById("gallery-editor")!;
     const galleryStatus = document.getElementById("gallery-status")!;
-    const projectsEditor = document.getElementById("projects-editor")!;
-    const projectsStatus = document.getElementById("projects-status")!;
-    const projectsAdd = document.getElementById("projects-add") as HTMLButtonElement;
     // Row shells for the two list editors. Cloned rather than built: see the
     // comment on each <template> above — Astro's scope attribute is on the
     // selectors, so a createElement() row matches none of the scoped rules.
-    const projectRowTpl = document.querySelector<HTMLTemplateElement>('[data-projects-tpl="row"]');
     const galleryItemTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="item"]');
 
     function setGalleryStatus(text: string) {
       galleryStatus.textContent = text;
       galleryStatus.style.display = text ? "block" : "none";
-    }
-
-    function setProjectsStatus(text: string) {
-      projectsStatus.textContent = text;
-      projectsStatus.style.display = text ? "block" : "none";
     }
 
     /**
@@ -1242,7 +1134,7 @@ const t = useTranslations(lang);
     /**
      * Full rebuild of the rows. Called on load, add and remove only — never
      * while typing, which would take the caret with it. Keystrokes write
-     * straight into socialValues[index], the way the projects editor does.
+     * straight into socialValues[index].
      */
     function renderSocial() {
       if (!socialRowTpl) return;
@@ -1304,151 +1196,6 @@ const t = useTranslations(lang);
 
     socialAdd.addEventListener("click", addSocialRow);
 
-    // ── Projects ──────────────────────────────────────────
-    // Rows are re-read from the DOM on every keystroke rather than
-    // re-rendered: rebuilding the list would blow away the caret of whoever
-    // is typing in it.
-    function renderProjects() {
-      if (!projectRowTpl) return;
-      projectsEditor.replaceChildren(
-        ...projects
-          .map((project, index) => {
-            const row = projectRowTpl.content.firstElementChild?.cloneNode(true);
-            if (!(row instanceof HTMLElement)) return null;
-            const field = <T extends HTMLElement>(name: string) =>
-              row.querySelector<T>(`[data-project-field="${name}"]`);
-            const title = field<HTMLInputElement>("title");
-            const url = field<HTMLInputElement>("url");
-            const description = field<HTMLTextAreaElement>("description");
-            const remove = row.querySelector<HTMLButtonElement>("[data-project-remove]");
-            if (!title || !url || !description || !remove) return null;
-
-            title.value = project.title;
-            title.maxLength = MAX_PROJECT_TITLE;
-            title.placeholder = s["profile.projects.title"];
-            named(title, s["profile.projects.title"]);
-            title.addEventListener("input", () => {
-              projects[index].title = title.value;
-              onProjectsEdited();
-            });
-
-            url.value = project.url;
-            url.maxLength = MAX_PROJECT_URL;
-            url.placeholder = s["profile.projects.url"];
-            named(url, s["profile.projects.url"]);
-            url.addEventListener("input", () => {
-              projects[index].url = url.value;
-              onProjectsEdited();
-            });
-
-            description.value = project.description ?? "";
-            description.maxLength = MAX_PROJECT_DESCRIPTION;
-            description.placeholder = s["profile.projects.description"];
-            named(description, s["profile.projects.description"]);
-            description.addEventListener("input", () => {
-              projects[index].description = description.value;
-              onProjectsEdited();
-            });
-
-            remove.setAttribute("aria-label", s["profile.projects.remove"]);
-            remove.addEventListener("click", () => removeProject(index));
-            return row;
-          })
-          .filter((n): n is HTMLElement => n !== null)
-      );
-
-      projectsAdd.disabled = projects.length >= MAX_PROJECTS;
-      // A row that is missing its title or its link will not be stored, and
-      // saying so while it is being typed is kinder than dropping it silently
-      // on save.
-      const incomplete = projects.some((p) => !p.title.trim() || !p.url.trim());
-      setProjectsStatus(incomplete ? s["profile.projects.incomplete"] : "");
-    }
-
-    /**
-     * A project edit reaches the gallery too: the per-image project selects
-     * are labelled with project titles, so a renamed project has to relabel
-     * them. Only the selects are rebuilt, never the project rows themselves.
-     */
-    function onProjectsEdited() {
-      renderGalleryProjectSelects();
-      const incomplete = projects.some((p) => !p.title.trim() || !p.url.trim());
-      setProjectsStatus(incomplete ? s["profile.projects.incomplete"] : "");
-      projectsAdd.disabled = projects.length >= MAX_PROJECTS;
-      syncPreview();
-    }
-
-    function addProject() {
-      if (projects.length >= MAX_PROJECTS) {
-        setProjectsStatus(s["profile.projects.full"]);
-        return;
-      }
-      projects.push({ id: newProjectId(), title: "", url: "", description: "" });
-      renderProjects();
-      syncPreview();
-      projectsEditor.querySelector<HTMLElement>(".project-row:last-of-type .input")?.focus();
-    }
-
-    /**
-     * Removing a project also clears the tag from every image that pointed at
-     * it. Firestore rules cannot check that a projectId still resolves, so
-     * this is the write half of that guarantee — without it the member would
-     * be left with images silently tagged to nothing.
-     */
-    function removeProject(index: number) {
-      const [removed] = projects.splice(index, 1);
-      if (removed) {
-        for (const item of gallery) {
-          if (item.projectId === removed.id) delete item.projectId;
-        }
-      }
-      renderProjects();
-      renderGallery();
-    }
-
-    projectsAdd.addEventListener("click", addProject);
-
-    /**
-     * Options for one image's project select: every project that would
-     * actually survive a save, plus the "no project" choice.
-     *
-     * Rebuilt on its own (rather than by re-rendering the gallery) so that
-     * renaming a project relabels the selects without disturbing the caption
-     * or description someone is mid-sentence in.
-     */
-    function fillProjectSelect(select: HTMLSelectElement, selectedId: string | undefined) {
-      const none = document.createElement("option");
-      none.value = "";
-      none.textContent = s["profile.gallery.projectNone"];
-      const options = projects
-        .filter((p) => p.title.trim() && p.url.trim())
-        .map((p) => {
-          const option = document.createElement("option");
-          option.value = p.id;
-          option.textContent = p.title.trim();
-          return option;
-        });
-      select.replaceChildren(none, ...options);
-      // An id whose project has since been emptied out has no option to
-      // select; falling back to "" keeps the control honest about what is
-      // going to be saved.
-      select.value = options.some((o) => o.value === selectedId) ? (selectedId ?? "") : "";
-    }
-
-    function renderGalleryProjectSelects() {
-      galleryEditor
-        .querySelectorAll<HTMLSelectElement>("[data-gallery-project]")
-        .forEach((select) => {
-          const index = Number(select.dataset.galleryProject);
-          const item = gallery[index];
-          if (!item) return;
-          fillProjectSelect(select, item.projectId);
-          // fillProjectSelect may have had to drop the tag; keep the stored
-          // item in step with what the control now shows.
-          if (!select.value) delete item.projectId;
-        });
-    }
-
     function renderGallery() {
       if (!galleryItemTpl) return;
       galleryEditor.replaceChildren(
@@ -1462,8 +1209,7 @@ const t = useTranslations(lang);
             const remove = row.querySelector<HTMLButtonElement>("[data-gallery-remove]");
             const caption = field<HTMLInputElement>("caption");
             const description = field<HTMLTextAreaElement>("description");
-            const project = row.querySelector<HTMLSelectElement>("[data-gallery-project]");
-            if (!img || !remove || !caption || !description || !project) return null;
+            if (!img || !remove || !caption || !description) return null;
 
             img.src = item.url;
             remove.setAttribute("aria-label", s["profile.gallery.remove"]);
@@ -1487,18 +1233,6 @@ const t = useTranslations(lang);
               syncPreview();
             });
 
-            // The index rides on the element: renderGalleryProjectSelects()
-            // reads it back to relabel one select without touching the caption
-            // someone is mid-sentence in.
-            project.dataset.galleryProject = String(index);
-            fillProjectSelect(project, item.projectId);
-            named(project, s["profile.gallery.project"]);
-            project.addEventListener("change", () => {
-              if (project.value) gallery[index].projectId = project.value;
-              else delete gallery[index].projectId;
-              syncPreview();
-            });
-
             return row;
           })
           .filter((n): n is HTMLElement => n !== null)
@@ -1519,18 +1253,14 @@ const t = useTranslations(lang);
      * Storage — the Firestore array is what says which of those files still
      * belong to the member.
      *
-     * `projects` rides along so the stored pair is never inconsistent: an
-     * image tagged to a project that Firestore has not heard of yet would
-     * render as no credit at all. Typed text (captions, descriptions,
-     * half-filled project rows) is NOT pushed by itself — that waits for
-     * Save, since writing on every keystroke is not what a form is.
+     * Typed text (captions, descriptions) is NOT pushed by itself — that waits
+     * for Save, since writing on every keystroke is not what a form is.
      */
     async function persistGallery() {
       const user = auth.currentUser;
       if (!user) return;
       await updateUserProfile(user.uid, {
         gallery,
-        projects: normalizeProjects(projects),
         updatedAt: new Date(),
       });
     }
@@ -1623,10 +1353,6 @@ const t = useTranslations(lang);
 
     /** Live form state as the one view model every preview consumes. */
     function currentViewModel() {
-      // Same resolution the build-time producer does (memberView.works): the
-      // renderers are handed a project, never an id to look up.
-      const storable = normalizeProjects(projects);
-      const byId = new Map(storable.map((p) => [p.id, p]));
       return {
         displayName: nameInput.value.trim(),
         role: roleInput.value.trim(),
@@ -1642,9 +1368,7 @@ const t = useTranslations(lang);
           : [],
         portfolio: portfolioInput.value.trim(),
         socialMedia: socialStored(),
-        projects: storable,
         works: gallery.map((g) => {
-          const project = g.projectId ? byId.get(g.projectId) : undefined;
           return {
             url: g.url,
             width: g.width,
@@ -1652,7 +1376,6 @@ const t = useTranslations(lang);
             caption: g.caption,
             color: g.color,
             description: (g.description ?? "").trim() || undefined,
-            ...(project ? { project: { title: project.title, url: project.url } } : {}),
           };
         }),
       };
@@ -1671,9 +1394,7 @@ const t = useTranslations(lang);
         elsewhere: s["profile.view.elsewhere"],
         openTo: s["profile.view.openTo"],
         noWorks: s["profile.view.noWorks"],
-        projects: s["profile.view.projects"],
         needs: s["profile.view.needs"],
-        partOf: s["profile.view.partOf"],
       });
     }
 
@@ -1709,7 +1430,6 @@ const t = useTranslations(lang);
         input.placeholder = socialPlaceholder;
         input.setAttribute("aria-label", `${copy.socialLabel} ${i + 1}`);
       });
-      if (projectsLabel) projectsLabel.textContent = copy.projectsLabel;
       // A creator makes visuals rather than needing them, so the question
       // is hidden for them — and its stored value is dropped on save, so a
       // member who switches type cannot leave orphaned needs behind.
@@ -1827,11 +1547,12 @@ const t = useTranslations(lang);
         tagSelector.value = Array.isArray(data.tags) ? data.tags.filter(Boolean).slice(0, 7) : [];
       }
       setSelectedPrimaryAudiences(data.primaryAudiences ?? []);
-      gallery = Array.isArray(data.gallery) ? data.gallery.slice(0, MAX_GALLERY_IMAGES) : [];
-      // Projects before the gallery: the per-image selects are built from this
-      // list, so an empty one would render every tagged image as untagged.
-      projects = normalizeProjects(data.projects);
-      renderProjects();
+      // sanitizeGalleryItems, not a plain slice: a member whose images were
+      // tagged to a project before the feature was withdrawn still has
+      // `projectId` in Firestore, and writing that key back is now rejected
+      // outright by validGalleryItem's hasOnly — which would have failed EVERY
+      // save this member attempted, silently. Stripping on load is the fix.
+      gallery = sanitizeGalleryItems(data.gallery).slice(0, MAX_GALLERY_IMAGES);
       renderGallery();
       phoneInput.value = data.phone ?? "";
       wantsToContributeInput.checked = data.wantsToContribute ?? false;
@@ -1878,11 +1599,10 @@ const t = useTranslations(lang);
             primaryAudiences: getSelectedPrimaryAudiences(),
             tags: tagSelector?.value ?? [],
             // The gallery persists on its own when images are added or
-            // removed, but the words attached to them — captions,
-            // descriptions, project tags — are typed, and typed text belongs
-            // to the Save button like every other field here.
+            // removed, but the words attached to them — captions and
+            // descriptions — are typed, and typed text belongs to the Save
+            // button like every other field here.
             gallery,
-            projects: normalizeProjects(projects),
             wantsToContribute: wantsToContributeInput.checked,
             phone: phoneInput.value.trim(),
             email: user.email!,

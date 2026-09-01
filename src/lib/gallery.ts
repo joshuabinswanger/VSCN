@@ -28,15 +28,40 @@ export interface GalleryItem {
    * only under the image on the member's profile page, never as alt text.
    */
   description?: string;
-  /**
-   * Optional tag into one of the member's own projects (ProjectItem.id).
-   *
-   * Nothing enforces that the id still resolves — Firestore rules cannot check
-   * one field of a document against a list in another. Deleting a project
-   * clears this in the editor, and the read path drops an id it cannot resolve,
-   * so a stale tag renders as no credit rather than as a broken link.
-   */
-  projectId?: string;
+}
+
+/**
+ * Drops keys no longer in GalleryItem from a stored array.
+ *
+ * Exists for exactly one withdrawn field: `projectId`, the tag into a member's
+ * projects, removed with the feature on 2026-09-01. firestore.rules now
+ * rejects a gallery item carrying an unlisted key (validGalleryItem's
+ * `hasOnly`), so a member whose images were tagged before the withdrawal could
+ * not save AT ALL — not the gallery, not their name, nothing — because the
+ * editor loads the stored array and writes it back whole. Stripping on the way
+ * IN is what makes that save legal, and it also means the stale tags leave
+ * Firestore on the member's next save rather than lingering forever.
+ *
+ * Whitelist rather than a `delete projectId`: the next field this happens to
+ * needs no second function, and a shape the rules will accept is the actual
+ * requirement — not the absence of one particular ghost.
+ */
+export function sanitizeGalleryItems(value: unknown): GalleryItem[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((raw): raw is Record<string, unknown> => Boolean(raw) && typeof raw === "object")
+    .map((raw) => {
+      const item: GalleryItem = {
+        url: String(raw.url ?? ""),
+        caption: typeof raw.caption === "string" ? raw.caption : "",
+        width: Number(raw.width ?? 0),
+        height: Number(raw.height ?? 0),
+      };
+      if (typeof raw.color === "string") item.color = raw.color;
+      if (typeof raw.description === "string" && raw.description) item.description = raw.description;
+      return item;
+    })
+    .filter((item) => item.url && item.width > 0 && item.height > 0);
 }
 
 export interface CompressedImage {

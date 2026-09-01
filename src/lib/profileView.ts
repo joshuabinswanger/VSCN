@@ -8,18 +8,6 @@
 // editor preview the real thing — the public page is a static build-time
 // snapshot, so a member cannot see their own edits there until a rebuild runs.
 
-import type { ProjectItem } from "./projects.ts";
-
-/**
- * The project an image is credited to, already resolved to what the credit line
- * renders. Only title and url: the producers look the id up once, so no
- * renderer has to hold the projects list to draw an image.
- */
-export interface WorkProject {
-  title: string;
-  url: string;
-}
-
 export interface ProfileWork {
   url: string;
   width: number;
@@ -30,8 +18,6 @@ export interface ProfileWork {
   color?: string;
   /** The long text under the image on the profile page. Never used as alt text. */
   description?: string;
-  /** Resolved from the stored `projectId`. Absent when untagged OR unresolvable. */
-  project?: WorkProject;
 }
 
 export interface ProfileViewModel {
@@ -59,9 +45,4 @@ export interface ProfileViewModel {
   socialMedia: string;
   /** The member's gallery, in order. Empty is a normal state, not an error. */
   works: ProfileWork[];
-  /**
-   * The member's projects, in their own order. Independent of `works`: a
-   * project with no image is a normal, complete thing to have.
-   */
-  projects: ProjectItem[];
 }

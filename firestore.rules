@@ -87,14 +87,14 @@ function canPublish(data, auth) {
 }
 
 function validPublicProfile(data) {
-  let allowedKeys = ['displayName', 'photoURL', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'projects', 'active', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'active', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data);
 }
 
 function validPrivateUser(data, auth) {
-  let allowedKeys = ['displayName', 'photoURL', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'projects', 'phone', 'email', 'wantsToContribute', 'onboardingComplete', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'phone', 'email', 'wantsToContribute', 'onboardingComplete', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data)
@@ -126,7 +126,16 @@ function validPublicFields(data) {
     && (!('primaryAudiences' in data) || validPrimaryAudiences(data.primaryAudiences))
     && (!('tags' in data) || (data.tags is list && data.tags.size() <= 7))
     && (!('gallery' in data) || validGallery(data.gallery))
-    && (!('projects' in data) || validProjects(data.projects))
+    // NO `projects` CHECK, AND NO 'projects' IN allowedKeys ABOVE — the
+    // feature was withdrawn (2026-09-01, Josh: "drop projects for now"), so a
+    // write that still carries the field is now REJECTED rather than
+    // validated. That is deliberate: it is what stops a stale client from
+    // quietly re-seeding a field nothing reads. Clients send
+    // `projects: deleteField()` instead, which merges to an ABSENT key and so
+    // passes hasOnly — the same trick the legacy `primaryAudience` cleanup
+    // uses (see updateUser in src/lib/firestore.ts). Documents written before
+    // the withdrawal keep their stored `projects` until their owner next
+    // saves; nothing reads it in the meantime.
     && (!('active' in data) || data.active is bool)
     && (!('photoColor' in data) || (data.photoColor is string && data.photoColor.matches('#[0-9a-f]{6}')))
     && (!('photoURL' in data) || data.photoURL == '' || validStorageUrl(data.photoURL))
@@ -163,56 +172,18 @@ function validGallery(value) {
 
 function validGalleryItem(item) {
   return item is map
-    && item.keys().hasOnly(['url', 'caption', 'description', 'projectId', 'width', 'height', 'color'])
+    // 'projectId' IS GONE from this list, so a gallery array whose items still
+    // carry the tag is rejected outright. The editor strips it on load
+    // (sanitizeGalleryItems in src/lib/gallery.ts) precisely so that a member
+    // whose images were tagged before the withdrawal can still save.
+    && item.keys().hasOnly(['url', 'caption', 'description', 'width', 'height', 'color'])
     && (!('color' in item) || (item.color is string && item.color.matches('#[0-9a-f]{6}')))
     && item.url is string
     && validStorageUrl(item.url)
     && (!('caption' in item) || (item.caption is string && item.caption.size() <= 140))
     && (!('description' in item) || (item.description is string && item.description.size() <= 600))
-    // Only the SHAPE of the tag is checked. Rules cannot verify that the id
-    // still names one of this document's projects — that would mean comparing
-    // one field against a list in another — so a dangling tag is a legal
-    // write, and the read path is what drops it.
-    && (!('projectId' in item) || validProjectId(item.projectId))
     && item.width is int && item.width > 0 && item.width <= 10000
     && item.height is int && item.height > 0 && item.height <= 10000;
-}
-
-// Keep MAX_PROJECTS in src/lib/projects.ts in sync with the size cap and the
-// unrolled item checks below (rules cannot loop over lists).
-function validProjects(value) {
-  return value is list
-    && value.size() <= 12
-    && (value.size() < 1 || validProjectItem(value[0]))
-    && (value.size() < 2 || validProjectItem(value[1]))
-    && (value.size() < 3 || validProjectItem(value[2]))
-    && (value.size() < 4 || validProjectItem(value[3]))
-    && (value.size() < 5 || validProjectItem(value[4]))
-    && (value.size() < 6 || validProjectItem(value[5]))
-    && (value.size() < 7 || validProjectItem(value[6]))
-    && (value.size() < 8 || validProjectItem(value[7]))
-    && (value.size() < 9 || validProjectItem(value[8]))
-    && (value.size() < 10 || validProjectItem(value[9]))
-    && (value.size() < 11 || validProjectItem(value[10]))
-    && (value.size() < 12 || validProjectItem(value[11]));
-}
-
-// A project is a title AND a link: both are required, because a title with no
-// URL is not a project and a URL with no title has no label to render. The URL
-// itself is only length-checked, exactly as `portfolio` is — this ruleset has
-// never claimed to validate arbitrary web addresses.
-function validProjectItem(item) {
-  return item is map
-    && item.keys().hasOnly(['id', 'title', 'url', 'description'])
-    && validProjectId(item.id)
-    && item.title is string && item.title.size() > 0 && item.title.size() <= 100
-    && item.url is string && item.url.size() > 0 && item.url.size() <= 200
-    && (!('description' in item) || (item.description is string && item.description.size() <= 300));
-}
-
-// Keep in sync with newProjectId() and ID_PATTERN in src/lib/projects.ts.
-function validProjectId(value) {
-  return value is string && value.matches('[a-z0-9-]{4,32}');
 }
 
 // Keep in sync with LANGUAGES in src/lib/firestore.ts.

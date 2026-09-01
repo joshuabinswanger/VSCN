@@ -61,10 +61,6 @@ const t = useTranslations(lang);
           <ul class="ppv__vals ppv__vals--links" data-ppv="links"></ul>
         </div>
 
-        <div class="ppv__row" data-ppv="projects-row" hidden>
-          <span class="ppv__key">{t("profile.view.projects")}</span>
-          <ul class="ppv__projects" data-ppv="projects"></ul>
-        </div>
       </div>
 
       <div class="ppv__works" data-ppv="works" hidden></div>
@@ -76,12 +72,6 @@ const t = useTranslations(lang);
       <template data-ppv-tpl="link"
         ><li><a class="ppv__link" target="_blank" rel="noopener noreferrer"></a></li></template
       >
-      <template data-ppv-tpl="project"
-        ><li class="ppv__project">
-          <a class="ppv__link" target="_blank" rel="noopener noreferrer"></a>
-          <p class="ppv__project-desc" hidden></p>
-        </li></template
-      >
       {/* The frame is an inner div, not the figure, so the caption block sits
           OUTSIDE the border — same relationship the real page has, where the
           border belongs to the lightbox link and the figcaption follows it. */}
@@ -91,11 +81,6 @@ const t = useTranslations(lang);
           <figcaption class="ppv__caption" data-ppv-work="caption-block" hidden>
             <span class="ppv__caption-line" data-ppv-work="caption" hidden></span>
             <span class="ppv__desc" data-ppv-work="desc" hidden></span>
-            <span class="ppv__credit" data-ppv-work="credit" hidden
-              ><span data-ppv-work="credit-label"></span>
-              <a class="ppv__credit-link" data-ppv-work="credit-link" target="_blank" rel="noopener noreferrer"
-              ></a></span
-            >
           </figcaption>
         </figure></template
       >
@@ -294,31 +279,6 @@ const t = useTranslations(lang);
     color: var(--color-muted);
   }
 
-  /* ── Projects ─────────────────────────────────────────── */
-  .ppv__projects {
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .ppv__project {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-    min-width: 0;
-  }
-
-  .ppv__project-desc {
-    margin: 0;
-    font-size: 0.78rem;
-    line-height: 1.45;
-    color: var(--color-muted);
-    max-width: 52ch;
-  }
-
   /* ── Work ─────────────────────────────────────────────── */
   .ppv__works {
     display: flex;
@@ -361,22 +321,6 @@ const t = useTranslations(lang);
   .ppv__desc {
     max-width: 62ch;
     white-space: pre-line;
-  }
-
-  .ppv__credit {
-    font-size: 0.58rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .ppv__credit-link {
-    color: var(--color-dark);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-  .ppv__credit-link:hover {
-    color: var(--color-muted);
   }
 
   /* The honest empty state. Every member has an empty gallery today, so this

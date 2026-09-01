@@ -56,13 +56,9 @@ const works = await Promise.all(
     //
     // The whose-and-what-of-it line, not a repeat of the caption: full screen,
     // the page's own name heading is covered, so the member's name is the one
-    // thing the view has lost. The project follows it where there is one.
-    pswpMeta: [
-      member.displayName,
-      w.project ? `${t("member.partOf")} ${w.project.title}` : null,
-    ]
-      .filter(Boolean)
-      .join(" · "),
+    // thing the view has lost. It is just the name now — the project credit
+    // that used to follow it went with the projects feature (2026-09-01).
+    pswpMeta: member.displayName,
   })),
 );
 
@@ -195,34 +191,6 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
         )
       }
 
-      {/* Its own row rather than a `mprof__vals` list: a project carries a
-          description under its link, which the pill/link list has no room
-          for. Projects stand on their own here — one may well have no image
-          anywhere on the page. */}
-      {
-        member.projects.length > 0 && (
-          <div class="mprof__row">
-            <h2 class="mprof__key">{t("member.projects")}</h2>
-            <ul class="mprof__projects">
-              {member.projects.map((project) => (
-                <li class="mprof__project">
-                  <a
-                    class="mprof__link"
-                    href={href(project.url)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {project.title}
-                  </a>
-                  {project.description && (
-                    <p class="mprof__project-desc">{project.description}</p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )
-      }
     </div>
 
     {
@@ -241,6 +209,7 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
                 data-pswp-width={w.width}
                 data-pswp-height={w.height}
                 data-pswp-caption={w.caption?.trim() || undefined}
+                data-pswp-description={w.description || undefined}
                 data-pswp-meta={w.pswpMeta || undefined}
               >
                 <img
@@ -256,23 +225,10 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
                   style={`background-color: ${w.color ?? "var(--color-border)"}`}
                 />
               </a>
-              {(w.caption?.trim() || w.description || w.project) && (
+              {(w.caption?.trim() || w.description) && (
                 <figcaption class="mprof__caption">
                   {w.caption?.trim() && <span class="mprof__caption-line">{w.caption}</span>}
                   {w.description && <span class="mprof__desc">{w.description}</span>}
-                  {w.project && (
-                    <span class="mprof__credit">
-                      {t("member.partOf")}{" "}
-                      <a
-                        class="mprof__credit-link"
-                        href={href(w.project.url)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {w.project.title}
-                      </a>
-                    </span>
-                  )}
                 </figcaption>
               )}
             </figure>
@@ -492,36 +448,10 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
     height: auto;
   }
 
-  /* ── Projects ─────────────────────────────────────────── */
-  .mprof__projects {
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .mprof__project {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-    min-width: 0;
-  }
-
-  .mprof__project-desc {
-    margin: 0;
-    font-size: 0.78rem;
-    line-height: 1.45;
-    color: var(--color-muted);
-    max-width: 52ch;
-  }
-
   /* ── Captions ─────────────────────────────────────────── */
-  /* One block under the image holding up to three things: the caption line,
-     the longer description, and the project credit. A column rather than
-     three siblings so the gaps stay the caption's business, not the
-     gallery's. */
+  /* One block under the image holding the caption line and the longer
+     description. A column rather than two siblings so the gaps stay the
+     caption's business, not the gallery's. */
   .mprof__caption {
     display: flex;
     flex-direction: column;
@@ -539,22 +469,6 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
   .mprof__desc {
     max-width: 62ch;
     white-space: pre-line;
-  }
-
-  .mprof__credit {
-    font-size: 0.58rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .mprof__credit-link {
-    color: var(--color-dark);
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-  .mprof__credit-link:hover {
-    color: var(--color-muted);
   }
 
   @media (--bp-mobile) {
@@ -646,10 +560,14 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
       // Reserves the top bar and the caption band so the artwork sits between
       // them instead of running under them — which is what lets both carry a
       // real hairline rule. Kept in step with the mobile block in lightbox.css.
+      // The bottom figures GREW with the description line (2026-09-01) and are
+      // the band's max-height in lightbox.css — that pair is the whole reason a
+      // long description scrolls rather than overlapping the picture. Change
+      // them together.
       paddingFn: (viewportSize) =>
         viewportSize.x <= 767
-          ? { top: 44, bottom: 84, left: 12, right: 12 }
-          : { top: 56, bottom: 104, left: 32, right: 32 },
+          ? { top: 44, bottom: 116, left: 12, right: 12 }
+          : { top: 56, bottom: 140, left: 32, right: 32 },
       closeSVG: `<span class="pswp__vscn-word">${esc(strings.close)}</span>`,
       arrowPrevSVG: CHEVRON,
       arrowNextSVG: CHEVRON,
@@ -690,6 +608,15 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
           const render = () => {
             const trigger = pswp.currSlide?.data.element as HTMLElement | undefined;
             const caption = trigger?.dataset.pswpCaption?.trim() || "";
+            // THE LONG TEXT, in the lightbox as of 2026-09-01 (Josh: "add it
+            // to lightbox"). It used to live only under the image on the
+            // member's page, which meant the one view where the artwork is
+            // big enough to warrant an explanation was the one view without
+            // one. Unlike the caption it is NOT clamped: the band is a scroll
+            // container capped at the padding the artwork reserves (see
+            // lightbox.css), so a paragraph scrolls inside the band instead of
+            // being cut off or growing up over the picture.
+            const description = trigger?.dataset.pswpDescription?.trim() || "";
             const meta = trigger?.dataset.pswpMeta?.trim() || "";
 
             // textContent, not innerHTML: this is member-authored text.
@@ -700,6 +627,12 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
               line.textContent = caption;
               el.append(line);
             }
+            if (description) {
+              const desc = document.createElement("span");
+              desc.className = "pswp__vscn-caption-desc";
+              desc.textContent = description;
+              el.append(desc);
+            }
             if (meta) {
               const credit = document.createElement("span");
               credit.className = "pswp__vscn-caption-meta";
@@ -708,7 +641,10 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
             }
             // A class rather than `hidden`, which the element's own
             // `display: flex` would outrank.
-            el.classList.toggle("is-empty", !caption && !meta);
+            el.classList.toggle("is-empty", !caption && !description && !meta);
+            // The band scrolls; a slide change has to start it at the top or
+            // the next caption opens mid-paragraph.
+            el.scrollTop = 0;
           };
 
           pswp.on("change", render);

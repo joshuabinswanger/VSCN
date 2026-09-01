@@ -53,6 +53,10 @@ export const ui: Record<string, Record<string, string>> = {
     "community.filter.offering": "Offering services",
     "community.filter.seeking": "Looking for services",
     "community.filter.none": "No members match this filter.",
+    // The GRID's version of the line above. The wall is a wall of works, so a
+    // tag whose only members have no artwork empties it while those members
+    // do match the filter — saying "no members" there would be untrue.
+    "community.filter.none.works": "No artwork matches this filter.",
     "community.filter.tags": "Tags",
     "community.filter.tags.all": "All tags",
     "community.filter.tags.search": "Search tags…",
@@ -187,15 +191,21 @@ export const ui: Record<string, Record<string, string>> = {
     "member.elsewhere": "Elsewhere",
     "member.work": "Work",
     "member.workAlt": "work sample",
-    "member.projects": "Projects",
-    "member.partOf": "Part of",
     "member.lightbox.close": "Close",
     "member.lightbox.zoom": "Zoom",
     "member.lightbox.prev": "Previous image",
     "member.lightbox.next": "Next image",
     "member.lightbox.error": "This image could not be loaded.",
     "community.card.expand": "Expand profile:",
+    // Two forms of the same idea, and they are not interchangeable. The
+    // colon-suffixed one is an ARIA-LABEL PREFIX — "View profile: Jane Doe" —
+    // and reads as nonsense if it is ever printed. `.text` is the visible
+    // control on the image card's caption row.
     "community.card.viewProfile": "View profile:",
+    "community.card.viewProfile.text": "View profile",
+    // Aria-label prefix for the artwork itself, which as of 2026-09-01 opens
+    // the lightbox rather than the profile.
+    "community.card.openImage": "Open image:",
     "community.card.prev": "Previous image",
     "community.card.next": "Next image",
     // The two carousel roledescriptions and the position template are spoken,
@@ -221,8 +231,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.view.openTo": "Open to",
     "profile.view.needs": "Looking for",
     "profile.view.noWorks": "No images yet. Add work in the gallery field and it will appear here.",
-    "profile.view.projects": "Projects",
-    "profile.view.partOf": "Part of",
     "profile.view.defaultName": "Your name",
     "profile.saveMsg": "Changes saved. Your community card will update within a few minutes.",
     "profile.logout": "Log Out",
@@ -254,19 +262,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.caption": "Caption",
     "profile.gallery.captionNote": "One line. Also read aloud as the image description.",
     "profile.gallery.description": "About this image",
-    "profile.gallery.project": "Project",
-    "profile.gallery.projectNone": "No project",
-    "profile.label.projects": "Projects",
-    "profile.label.projects.science": "Publications & projects",
-    "profile.note.projects":
-      "Work you want people to find, with a link to it. Up to 12 — a project needs no images.",
-    "profile.projects.add": "Add project",
-    "profile.projects.full": "You can add up to 12 projects.",
-    "profile.projects.remove": "Remove project",
-    "profile.projects.title": "Title",
-    "profile.projects.url": "Link",
-    "profile.projects.description": "Description (optional)",
-    "profile.projects.incomplete": "A project needs both a title and a link to be saved.",
     "profile.tag.error": "Tags must be unique, 1–50 characters, and no more than 7 tags.",
     "profile.delete.deleting": "Deleting…",
     "profile.reauth.confirming": "Confirming…",
@@ -294,7 +289,7 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.step5.title": "Show your work",
     "onboarding.step5.sub": "Add a few images and they become your card in the member directory.",
     "onboarding.step5.note":
-      "Up to 8 images, JPG, PNG or WebP. Captions, descriptions and project credits come later, in your profile.",
+      "Up to 8 images, JPG, PNG or WebP. Captions and descriptions come later, in your profile.",
     "onboarding.step5.later":
       "Nothing to show yet is a normal answer — your card carries your tags instead, and you can add images any time.",
     "onboarding.step5.skip": "Nothing to show yet",
@@ -385,6 +380,7 @@ export const ui: Record<string, Record<string, string>> = {
     "community.filter.offering": "Bietet Dienste an",
     "community.filter.seeking": "Sucht Dienste",
     "community.filter.none": "Keine Mitglieder entsprechen diesem Filter.",
+    "community.filter.none.works": "Keine Arbeiten entsprechen diesem Filter.",
     "community.filter.tags": "Tags",
     "community.filter.tags.all": "Alle Tags",
     "community.filter.tags.search": "Tags suchen…",
@@ -523,8 +519,6 @@ export const ui: Record<string, Record<string, string>> = {
     "member.elsewhere": "Weitere Links",
     "member.work": "Arbeiten",
     "member.workAlt": "Arbeitsbeispiel",
-    "member.projects": "Projekte",
-    "member.partOf": "Teil von",
     "member.lightbox.close": "Schliessen",
     "member.lightbox.zoom": "Zoomen",
     "member.lightbox.prev": "Vorheriges Bild",
@@ -532,6 +526,8 @@ export const ui: Record<string, Record<string, string>> = {
     "member.lightbox.error": "Dieses Bild konnte nicht geladen werden.",
     "community.card.expand": "Profil aufklappen:",
     "community.card.viewProfile": "Profil ansehen:",
+    "community.card.viewProfile.text": "Profil ansehen",
+    "community.card.openImage": "Bild öffnen:",
     "community.card.prev": "Vorheriges Bild",
     "community.card.next": "Nächstes Bild",
     "community.card.carousel": "Karussell",
@@ -556,8 +552,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.view.needs": "Sucht",
     "profile.view.noWorks":
       "Noch keine Bilder. Füge Arbeiten im Galerie-Feld hinzu, dann erscheinen sie hier.",
-    "profile.view.projects": "Projekte",
-    "profile.view.partOf": "Teil von",
     "profile.view.defaultName": "Dein Name",
     "profile.saveMsg":
       "Änderungen gespeichert. Deine Community-Karte wird innerhalb weniger Minuten aktualisiert.",
@@ -590,19 +584,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.caption": "Bildtitel",
     "profile.gallery.captionNote": "Eine Zeile. Wird auch als Bildbeschreibung vorgelesen.",
     "profile.gallery.description": "Über dieses Bild",
-    "profile.gallery.project": "Projekt",
-    "profile.gallery.projectNone": "Kein Projekt",
-    "profile.label.projects": "Projekte",
-    "profile.label.projects.science": "Publikationen & Projekte",
-    "profile.note.projects":
-      "Arbeiten, die man finden soll, mit Link dazu. Bis zu 12 — ein Projekt braucht keine Bilder.",
-    "profile.projects.add": "Projekt hinzufügen",
-    "profile.projects.full": "Du kannst bis zu 12 Projekte anlegen.",
-    "profile.projects.remove": "Projekt entfernen",
-    "profile.projects.title": "Titel",
-    "profile.projects.url": "Link",
-    "profile.projects.description": "Beschreibung (optional)",
-    "profile.projects.incomplete": "Ein Projekt braucht Titel und Link, um gespeichert zu werden.",
     "profile.tag.error": "Tags müssen eindeutig sein, 1–50 Zeichen, und maximal 7 Tags.",
     "profile.delete.deleting": "Wird gelöscht…",
     "profile.reauth.confirming": "Wird bestätigt…",
@@ -633,7 +614,7 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.step5.sub":
       "Ein paar Bilder genügen — sie werden zu deiner Karte im Mitgliederverzeichnis.",
     "onboarding.step5.note":
-      "Bis zu 8 Bilder, JPG, PNG oder WebP. Bildtitel, Beschreibungen und Projektangaben kommen später, in deinem Profil.",
+      "Bis zu 8 Bilder, JPG, PNG oder WebP. Bildtitel und Beschreibungen kommen später, in deinem Profil.",
     "onboarding.step5.later":
       "Noch nichts zu zeigen ist eine ganz normale Antwort — deine Karte trägt dann deine Tags, und Bilder kannst du jederzeit nachreichen.",
     "onboarding.step5.skip": "Noch nichts zu zeigen",

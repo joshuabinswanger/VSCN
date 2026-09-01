@@ -7,7 +7,6 @@
 // renderer, so the preview cannot drift from what a visitor gets.
 
 import type { PublicProfileDoc } from "./firestore.ts";
-import { normalizeProjects, type ProjectItem } from "./projects.ts";
 import type { ProfileViewModel, ProfileWork } from "./profileView.ts";
 
 export interface MemberViewBase extends ProfileViewModel {
@@ -149,16 +148,11 @@ export function stripStorageToken(url: string): string {
  * Token stripping happens here, so every consumer of a MemberView gets
  * render-ready URLs and no page has to remember to do it.
  */
-function works(doc: PublicProfileDoc, projects: ProjectItem[]): ProfileWork[] {
-  const byId = new Map(projects.map((p) => [p.id, p]));
+function works(doc: PublicProfileDoc): ProfileWork[] {
   const gallery = Array.isArray(doc.gallery) ? doc.gallery : [];
   return gallery
     .filter((g) => g?.url && g.width > 0 && g.height > 0)
     .map((g) => {
-      // An id that no longer names a project resolves to nothing. That is the
-      // read half of the integrity rule Firestore cannot enforce: the tag is
-      // dropped here rather than rendered as a credit with no link behind it.
-      const project = g.projectId ? byId.get(g.projectId) : undefined;
       return {
         url: stripStorageToken(g.url),
         width: g.width,
@@ -166,16 +160,12 @@ function works(doc: PublicProfileDoc, projects: ProjectItem[]): ProfileWork[] {
         caption: g.caption,
         color: g.color,
         description: (g.description ?? "").trim() || undefined,
-        ...(project ? { project: { title: project.title, url: project.url } } : {}),
       };
     });
 }
 
 export function toMemberViewBase(uid: string, doc: PublicProfileDoc): MemberViewBase {
   const bio = (doc.bio ?? "").trim();
-  // Normalised here rather than trusted as stored: these documents predate
-  // projects, and the seeding scripts write them directly.
-  const projects = normalizeProjects(doc.projects);
   return {
     id: uid,
     displayName: (doc.displayName ?? "").trim(),
@@ -193,8 +183,7 @@ export function toMemberViewBase(uid: string, doc: PublicProfileDoc): MemberView
     portfolio: (doc.portfolio ?? "").trim(),
     socialMedia: (doc.socialMedia ?? "").trim(),
     memberType: doc.memberType ?? "",
-    works: works(doc, projects),
-    projects,
+    works: works(doc),
   };
 }
 
@@ -233,6 +222,9 @@ export function completeness(m: MemberViewBase): number {
     m.memberType,
     m.tags.length > 0,
     m.openTo.length > 0,
-    m.projects.length > 0,
+    // Was nine points; projects were withdrawn (2026-09-01) and took the ninth
+    // with them. Only the RANKING matters — the index section sorts on this and
+    // nothing compares the number to a threshold — so losing a point costs
+    // nothing but the ceiling.
   ].filter(Boolean).length;
 }
