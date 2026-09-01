@@ -26,6 +26,8 @@ const cases = members.map((m) => ({
   label: `${m.displayName}${m.works.length === 0 ? " — no artwork" : ""}`,
   view: {
     displayName: m.displayName,
+    photoURL: m.photoURL,
+    photoColor: m.photoColor,
     role: m.role,
     memberType: m.memberType,
     bio: m.bio,
@@ -41,13 +43,12 @@ const cases = members.map((m) => ({
   },
 }));
 
+// The page's own words where the shell prints the page's markup — see the
+// note beside renderProfilePreview's call in ProfileForm.
 const labels = {
   defaultName: "Your name",
-  tags: "Tags",
-  elsewhere: "Elsewhere",
-  openTo: "Open to",
+  openTo: ui.en["member.openTo"],
   noWorks: "No images yet. Add work in the gallery field and it will appear here.",
-  needs: "Looking for",
 };
 
 // English member-type labels for the directory card's typographic face —
@@ -90,7 +91,7 @@ const cardLabels = {
     import { renderCardPreview, renderProfilePreview } from "../../lib/profilePreview.ts";
 
     function initHarness() {
-      const root = document.querySelector(".ppv");
+      const root = document.querySelector("[data-ppv-root]");
       const cardRoot = document.querySelector("[data-ccpv-root]");
       const select = document.getElementById("case");
       const blank = document.getElementById("blank");
@@ -114,6 +115,7 @@ const cardLabels = {
       blank?.addEventListener("click", () => {
         drawBoth({
           displayName: "",
+          photoURL: "",
           role: "",
           memberType: "",
           bio: "",

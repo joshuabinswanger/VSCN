@@ -1060,7 +1060,11 @@ const t = useTranslations(lang);
     }
 
     // The profile-page preview shell and the section tabs.
-    const profileViewRoot = document.querySelector<HTMLElement>(".ppv");
+    // Addressed by a data attribute, not by a class: the shell's classes are
+    // now the profile page's own (.mprof*), shared with the real page, and a
+    // hook that doubles as a style selector is exactly how the two drifted
+    // apart before.
+    const profileViewRoot = document.querySelector<HTMLElement>("[data-ppv-root]");
     const sectionTabs = Array.from(
       document.querySelectorAll<HTMLButtonElement>("#section-tabs .section-tab")
     );
@@ -1355,6 +1359,13 @@ const t = useTranslations(lang);
     function currentViewModel() {
       return {
         displayName: nameInput.value.trim(),
+        // The avatar the member is looking at right now — a saved photoURL, or
+        // the object URL of a crop they have not saved yet. `has-image` is the
+        // one flag that knows the difference between "no picture" and "a
+        // picture that failed to load"; reading .src alone would put a broken
+        // portrait into the preview.
+        photoURL: avatarWrap.classList.contains("has-image") ? avatarImg.src : "",
+        photoColor: avatarColor || undefined,
         role: roleInput.value.trim(),
         memberType: memberTypeSelector?.value ?? "",
         bio: bioInput.value.trim(),
@@ -1388,13 +1399,14 @@ const t = useTranslations(lang);
      */
     function syncProfileView() {
       if (!profileViewRoot || !form.classList.contains("is-previewing")) return;
+      // `member.openTo`, not `profile.view.openTo`: the shell renders the
+      // page's markup, so the words in it have to be the page's words. The two
+      // keys read identically today, and that is precisely the kind of
+      // agreement that survives only while someone remembers to maintain it.
       renderProfilePreview(profileViewRoot, currentViewModel(), {
         defaultName: s["profile.view.defaultName"],
-        tags: s["profile.view.tags"],
-        elsewhere: s["profile.view.elsewhere"],
-        openTo: s["profile.view.openTo"],
+        openTo: s["member.openTo"],
         noWorks: s["profile.view.noWorks"],
-        needs: s["profile.view.needs"],
       });
     }
 

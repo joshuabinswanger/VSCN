@@ -19,14 +19,10 @@ import type { ProfileViewModel } from "./profileView.ts";
 export interface ProfilePreviewLabels {
   /** Shown in place of the name before the member has typed one. */
   defaultName: string;
-  tags: string;
-  elsewhere: string;
-  /** Prefix for the availability line, e.g. "Open to". */
+  /** Prefix for the availability line — the page's own `member.openTo`. */
   openTo: string;
-  /** Shown instead of artwork when the gallery is empty. */
+  /** Shown instead of artwork when the gallery is empty. Editor-only text. */
   noWorks: string;
-  /** Key for the visual-needs row, e.g. "Looking for". */
-  needs: string;
 }
 
 export function renderProfilePreview(
@@ -50,6 +46,24 @@ export function renderProfilePreview(
   };
 
   // ── Identity ──────────────────────────────────────────────
+  // THE PROFILE PICTURE. Absent from this preview until 2026-09-01, which was
+  // the single most visible way it disagreed with the page: the real header is
+  // a two-column grid whose first column is the portrait, so a member with one
+  // was shown a layout they will never get. The colour behind it is the page's
+  // fallback exactly — an avatar that has not decoded yet must not be a hole.
+  const avatar = part("avatar") as HTMLImageElement | null;
+  if (avatar) {
+    const photo = vm.photoURL?.trim() ?? "";
+    if (photo) {
+      if (avatar.src !== photo) avatar.src = photo;
+      avatar.alt = `${vm.displayName || labels.defaultName} — profile picture`;
+      avatar.style.backgroundColor = vm.photoColor ?? "var(--color-border)";
+    } else {
+      avatar.removeAttribute("src");
+    }
+    show(avatar, Boolean(photo));
+  }
+
   const name = part("name");
   if (name) name.textContent = vm.displayName || labels.defaultName;
 
@@ -166,8 +180,10 @@ export function renderProfilePreview(
         // deliberately NOT used here — a paragraph read before every image is
         // worse for a screen reader than no caption at all.
         img.alt = w.caption?.trim() ?? "";
-        const frame = figure.querySelector<HTMLElement>(".ppv__frame");
-        if (w.color && frame) frame.style.background = w.color;
+        // Painted on the image, not on the frame around it — the page writes
+        // this inline on <img> too, so a slow upload shows the same colour
+        // block in both places.
+        img.style.backgroundColor = w.color ?? "var(--color-border)";
 
         const captionText = w.caption?.trim() ?? "";
         const descText = w.description?.trim() ?? "";
