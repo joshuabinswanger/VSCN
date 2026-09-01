@@ -75,7 +75,6 @@ import "../styles/global.css";
     color: var(--color-dark);
   }
 
-
   .nav-link--active::after {
     transform: scaleX(1);
   }
@@ -119,6 +118,43 @@ import "../styles/global.css";
 
   .lang-toggle:hover :global(.lang-tgt) {
     color: var(--color-dark);
+  }
+
+  /* On mobile the navbar is the top edge of the page — the giant title rides
+     up out of the way on scroll (see Layout.astro) and leaves the links
+     standing alone up there.
+     THEY SIT CLOSER TO THE EDGE THAN THE CONTENT DOES (2026-09-01, Josh:
+     "less border gap for the info and login on mobile"). Two failed extremes
+     bracket this number. At 0 the row ran hard against the viewport and
+     "LOGIN" fell off the right edge at 375px, because a link ranged against
+     the screen has nothing left to give. At 15px — the content edge that
+     .brand-name and <main> both hold (see --shell-max in CLAUDE.md) — INFO and
+     LOGIN read as two more items in the column of cards rather than as the
+     frame around them. 8px keeps the outermost letters clear of the edge while
+     letting the row sit outside the content measure, which is what makes it
+     read as chrome. Desktop keeps the shared measure, where 5px plus the
+     links' own 10px lands on the content edge. */
+  @media (--bp-mobile) {
+    .nav-links {
+      padding: 0 8px;
+    }
+
+    .nav-link {
+      /* Tighter to the title above it — on a phone the two read as one block,
+         so the 10px the desktop row uses to breathe just looks like a gap. */
+      padding: 5px 0 7px;
+      font-size: 0.9rem;
+    }
+
+    .nav-link::after {
+      left: 0;
+      right: 0;
+      bottom: 4px;
+    }
+
+    .nav-right-group {
+      gap: 0.5rem;
+    }
   }
 </style>
 
