@@ -244,18 +244,24 @@ const frameIsRule = tagLines.length === 0;
      the card's right edge is exactly what the old pseudo-element grid item
      existed to prevent. */
   .ctcard__caption-row .ctcard__role {
-    padding-right: 1.35rem;
+    /* Wider than the chevron by design — it is the reserve for the chevron's
+       HIT AREA, which is 2rem square (below), not for the 0.36rem mark that
+       gets painted in the middle of it. */
+    padding-right: 1.9rem;
   }
 
+  /* A REAL TARGET, NOT A MARK (2026-09-01, Josh: "dropdown arrow needs a
+     bigger hitbox"). Same change, same numbers, same reasoning as the image
+     card's — this card is a member's card too, and the chevron is the only way
+     into its detail. See CommunityImageCard for the full note. */
   .ctcard__caption-row :global(.pdisc__toggle) {
     position: absolute;
-    /* On the role's first line: the same offset as .ctcard__role's margin-top, in
-       a box the height of that line so the chevron centres in it. The grid
-       this replaces did the same job with align-items: baseline. */
-    top: 0.15rem;
+    top: calc(0.15rem + (0.78rem * 1.3 - 2rem) / 2);
     right: 0;
-    height: calc(0.78rem * 1.3);
+    width: 2rem;
+    height: 2rem;
     align-items: center;
+    justify-content: center;
   }
 
   .ctcard__role {

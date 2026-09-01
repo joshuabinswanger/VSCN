@@ -291,12 +291,23 @@ const avatarSrc = stripStorageToken(m.photoURL ?? "");
     color: var(--color-muted);
   }
 
+  /* A REAL TARGET, NOT A MARK (2026-09-01, Josh: "dropdown arrow needs a
+     bigger hitbox"). The button was 16 × 24px around a 12px glyph, and on a
+     phone it is the ONLY way to read a member's bio — the desktop hover that
+     replaces it is display:none there. It grows to 40px square and gives the
+     size straight back in negative margin, so its FOOTPRINT is still the
+     16 × 24 the card's third grid track was measured for: the row does not
+     move, the target triples.
+     The negative margin also lets the box overlap the card's 10px/15px padding
+     and reach its actual corner, which is where a thumb aims. */
   .member-bio-toggle {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 16px;
-    height: 24px;
+    box-sizing: border-box;
+    width: 40px;
+    height: 40px;
+    margin: -8px -12px;
     padding: 0;
     border: none;
     background: transparent;

@@ -57,6 +57,24 @@ const frameAspect = frame.width / frame.height;
 
 const profileHref = memberHref(lang, member.slug);
 
+// WHAT THE LIGHTBOX GETS, one entry per work. The card's click target is a
+// single link over the frame, so it can only describe ONE image at a time —
+// these ride on the slides instead, and the client script copies the selected
+// slide's set onto the link whenever the carousel moves (see `syncTrigger` in
+// the script). Server-rendered from slide 0, which is what makes the trigger
+// correct before any script runs.
+//
+// The meta line is the member's name and nothing else, exactly as the wall's
+// tile resolves it (CommunityWorkCard): full screen, the card's own name
+// heading is covered, so the name is the one thing the view has lost.
+const pswpFor = (w: (typeof works)[number]) => ({
+  width: String(w.width),
+  height: String(w.height),
+  caption: w.caption?.trim() || "",
+  description: w.description || "",
+  meta: member.displayName,
+});
+
 // Alt: the member's own caption when they wrote one, a translated fallback
 // otherwise — never "" (a named debt of the prototype this card graduated
 // from).
@@ -142,6 +160,11 @@ const positionFor = (i: number) =>
               aria-roledescription={isCarousel ? t("community.card.image") : undefined}
               aria-label={isCarousel ? positionFor(i) : undefined}
               aria-hidden={isCarousel && i !== 0 ? "true" : undefined}
+              data-work-url={w.url}
+              data-work-width={pswpFor(w).width}
+              data-work-height={pswpFor(w).height}
+              data-work-caption={pswpFor(w).caption || undefined}
+              data-work-description={pswpFor(w).description || undefined}
             >
               <img
                 class="ccard__img"
@@ -166,12 +189,41 @@ const positionFor = (i: number) =>
           rather than a wrapper, so no interactive element nests inside another
           and Embla never translates it; the arrows sit above it on z-index and
           keep working. It is also the carousel's only tab stop, which is what
-          the keydown handler hangs the arrow keys off — see the script. */
+          the keydown handler hangs the arrow keys off — see the script.
+
+          IT OPENS THE PICTURE, NOT THE PROFILE (2026-09-01, Josh: "on click
+          directly lightbox"). Clicking an image to be taken somewhere else is
+          the one thing a wall of artwork should not do — the picture is what
+          was clicked, so the picture is what opens. The profile did not lose
+          its way in: the name above the frame is still a link to it, and the
+          disclosure below ends with an explicit "View profile" control (see
+          the .ccard__profile block). That pairing — image opens image, a named
+          button goes to the person — is the same one the ledger rows use.
+
+          The href is the ORIGINAL upload, which is both what PhotoSwipe binds
+          to and what keeps the link meaningful with scripting off. The
+          data-pswp-* set describes THE SELECTED SLIDE and is rewritten by the
+          script on every carousel move; it is rendered from slide 0 so it is
+          already right before any script runs.
+
+          NO `img` INSIDE IT, unlike the wall's tile: this link is a sibling of
+          the track, because wrapping the track would put the anchor around the
+          arrows and around Embla's container. PhotoSwipe therefore finds no
+          thumbnail to grow out of on its own — the lightbox script hands it
+          the selected slide's image with a `thumbEl` filter, matching on the
+          href this card copies here (see CommunityGrid). */
       }
       <a
         class="ccard__frame-link"
-        href={profileHref}
-        aria-label={`${t("community.card.viewProfile")} ${member.displayName}`}></a>
+        href={frame.url}
+        target="_blank"
+        rel="noreferrer"
+        data-pswp-width={pswpFor(frame).width}
+        data-pswp-height={pswpFor(frame).height}
+        data-pswp-caption={pswpFor(frame).caption || undefined}
+        data-pswp-description={pswpFor(frame).description || undefined}
+        data-pswp-meta={pswpFor(frame).meta}
+        aria-label={`${t("community.card.openImage")} ${member.displayName}`}></a>
       {
         isCarousel && (
           <>
@@ -203,8 +255,43 @@ const positionFor = (i: number) =>
 
   <div class="ccard__caption">
     <div class="ccard__caption-row">
-      <span class="ccard__role">{member.role}</span>
-      <MemberDetailPanel member={member} lang={lang} />
+      {
+        /* Role and profile link on ONE line, in a box of their own. The
+          disclosure has to stay a direct child of .ccard__caption-row — its
+          panel is full-width by being in flow there, and its toggle is
+          absolutely positioned to that row's right edge — so the two things
+          that DO share a line get wrapped instead of the row becoming a flex
+          container. */
+      }
+      <div class="ccard__meta-line">
+        <span class="ccard__role">{member.role}</span>
+      </div>
+      {
+        /* THE NAMED WAY TO THE PERSON (2026-09-01, Josh: "add 'view profile'
+          button to image cards"). It exists because the frame stopped going
+          there: the artwork now opens the artwork, so the journey to a
+          member's page needs a control that says where it goes. The name
+          above the frame is still a link, but a name is not an affordance —
+          a visitor has no way to know it is clickable before pointing at it,
+          and on a touch screen not even then.
+
+          IT LIVES IN THE DROPDOWN, LAST (2026-09-01, Josh: "view profile
+          should be in the dropdown content, maybe after text"). On the
+          caption row it sat beside the chevron and read as a second control
+          of the same rank, on every one of sixteen cards at once; inside the
+          panel it is the one thing to do after the bio, the links and the
+          tags — which is the order a visitor actually arrives at it in.
+
+          `forceShow` is what keeps that honest: a member with no bio, no
+          links and no tags has nothing to disclose, and without it the
+          disclosure — and with it the only named route to their page — would
+          simply not render. A LINK, not a button, because it goes somewhere. */
+      }
+      <MemberDetailPanel member={member} lang={lang} forceShow>
+        <a slot="footer" class="ccard__profile" href={profileHref}>
+          {t("community.card.viewProfile.text")}
+        </a>
+      </MemberDetailPanel>
     </div>
   </div>
 </article>
@@ -340,6 +427,10 @@ const positionFor = (i: number) =>
   .ccard__frame-link {
     position: absolute;
     inset: 0;
+    /* Says "this opens" — the same word the wall's tile uses for the same
+       gesture, and the reason it changed: this link used to go to the profile,
+       where a pointer cursor was the honest cue. */
+    cursor: zoom-in;
   }
 
   .ccard__arrow {
@@ -496,23 +587,78 @@ const positionFor = (i: number) =>
     display: block;
   }
 
-  /* The toggle's space is reserved on the ROLE's line, not on the row: row
+  /* The toggle's space is reserved on the ROLE'S LINE, not on the row: row
      padding would inset the open panel too, and a panel stopping short of
      the card's right edge is exactly what the old pseudo-element grid item
-     existed to prevent. */
-  .ccard__caption-row .ccard__role {
-    padding-right: 1.35rem;
+     existed to prevent. It sits on the wrapper now rather than on the role,
+     because the role no longer holds that line alone. */
+  .ccard__caption-row .ccard__meta-line {
+    /* Wider than the chevron by design — it is the reserve for the chevron's
+       HIT AREA, which is 2rem square (below), not for the 0.36rem mark that
+       gets painted in the middle of it. */
+    padding-right: 1.9rem;
   }
 
+  /* The role reads left and the chevron sits in the reserve above it. Still a
+     wrapping flex row although only the role is left in it: a long role must
+     be free to take the line rather than be truncated, and this card's height
+     is already free to grow (it is what the disclosure does). */
+  .ccard__meta-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.15rem 0.8rem;
+    min-width: 0;
+  }
+
+  /* THE NAMED WAY TO THE PROFILE. Underlined at rest, unlike every other link
+     on this card: it is a control rather than a piece of prose, and the one
+     thing on the card whose whole job is to be findable. Muted so it does not
+     outrank the member's name above the frame, which is the same destination
+     and still the card's title. */
+  .ccard__profile {
+    /* Its own line at the foot of the panel. `block` rather than an inline
+       run so the underline stops at the words and the control still owns a
+       row of its own — it is the last thing in the dropdown and should read
+       as the step after the text, not as a trailing link inside it. */
+    display: block;
+    width: fit-content;
+    margin-top: 0.6rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    color: var(--color-muted);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
+    transition: color 0.15s;
+  }
+
+  .ccard__profile:hover,
+  .ccard__profile:focus-visible {
+    color: var(--color-dark);
+  }
+
+  /* A REAL TARGET, NOT A MARK (2026-09-01, Josh: "dropdown arrow needs a
+     bigger hitbox"). The chevron is 0.36rem of drawn border; the box it used to
+     live in was 1rem by one line of 0.78rem type — roughly 16 × 15px, which is
+     under half the 44px a touch target is meant to be in every direction, and
+     it was the ONLY way to open a card's detail. So the box grows to 2rem
+     square while the mark stays exactly where it was: centred, on the role's
+     first line. Nothing about the card's height changes — the toggle is out of
+     flow, and the reserve above is a padding, not a track. */
   .ccard__caption-row :global(.pdisc__toggle) {
     position: absolute;
-    /* On the role's first line: the same offset as .ccard__role's margin-top, in
-       a box the height of that line so the chevron centres in it. The grid
-       this replaces did the same job with align-items: baseline. */
-    top: 0.15rem;
+    /* Was `top: 0.15rem` — the role's own margin-top — with the box the height
+       of one line. The box is taller now, so the offset is pulled up by half
+       the difference to keep the mark on that same line. */
+    top: calc(0.15rem + (0.78rem * 1.3 - 2rem) / 2);
     right: 0;
-    height: calc(0.78rem * 1.3);
+    width: 2rem;
+    height: 2rem;
     align-items: center;
+    justify-content: center;
   }
 
   .ccard__role {
@@ -625,6 +771,37 @@ const positionFor = (i: number) =>
       if (images.length < 2) return;
 
       const slides = Array.from(carousel.querySelectorAll<HTMLElement>(".ccard__slide"));
+
+      // ── THE LIGHTBOX TRIGGER FOLLOWS THE CAROUSEL ─────────
+      // One link covers the frame, so it can only describe one image — and the
+      // one it must describe is whichever the visitor is looking at. Each slide
+      // carries its own data-work-* set (rendered in the frontmatter); this
+      // copies the selected slide's onto the link, which is what PhotoSwipe
+      // reads when the click lands. Without it, clicking slide 3 of a gallery
+      // opened slide 1 — the server-rendered default — every time.
+      //
+      // Written as attributes rather than kept in a JS variable because the
+      // lightbox is a SEPARATE script (CommunityGrid) that re-queries the DOM
+      // at click time; the DOM is the only thing the two share.
+      const frameLink = carousel.querySelector<HTMLAnchorElement>(".ccard__frame-link");
+      const syncTrigger = (index: number) => {
+        const slide = slides[index];
+        if (!frameLink || !slide) return;
+        const url = slide.dataset.workUrl;
+        if (url) frameLink.href = url;
+        // Absent caption/description mean the attribute must GO, not be set to
+        // "": PhotoSwipe's caption band tests the trimmed value, but a stale
+        // attribute from the previous slide would survive a `?? ""` write.
+        const copy = (from: string, to: string) => {
+          const value = slide.dataset[from];
+          if (value) frameLink.setAttribute(to, value);
+          else frameLink.removeAttribute(to);
+        };
+        copy("workWidth", "data-pswp-width");
+        copy("workHeight", "data-pswp-height");
+        copy("workCaption", "data-pswp-caption");
+        copy("workDescription", "data-pswp-description");
+      };
       // The dots sit ABOVE the frame now, so they are no longer descendants of
       // the node Embla was handed — they are queried from the card.
       const card = carousel.closest<HTMLElement>(".ccard") ?? carousel;
@@ -685,6 +862,7 @@ const positionFor = (i: number) =>
       let announce = true;
       const sync = () => {
         const i = embla.selectedScrollSnap();
+        syncTrigger(i);
         // The safety net the old show() carried: hydrate the target even if
         // neither the pointer nor the intersection observer got there first.
         // select fires as the scroll STARTS, so this is still in time.

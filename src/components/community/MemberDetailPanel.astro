@@ -29,15 +29,35 @@ const tags = member.tags;
 // Nothing to disclose — a profile that is name + role only. Rendering an
 // empty toggle would promise content that isn't there.
 const show = forceShow || hasDetail(member);
+
+// THE WHOLE LINE AS THE TOGGLE (2026-09-01, Josh: "in index clicking on the
+// profile expands it"). A caller may slot the row it wants to be clickable
+// into the <summary> itself, instead of getting a bare chevron beside its own
+// markup. The ledger rows do this; the cards do not, and still get the chevron
+// alone.
+//
+// It has to be the <summary> and not a click handler on a sibling: the native
+// element already carries the keyboard activation, the expanded/collapsed
+// state and the announcement, and this component's whole premise is that a
+// disclosure needs no script (see the note above). A JS toggle here would need
+// an astro:page-load / astro:before-swap pair and would leak `open` state
+// across ClientRouter navigations if it got that wrong.
+const hasSummary = Astro.slots.has("summary");
 ---
 
 {
-  show && (
-    <details class="pdisc">
+  show ? (
+    <details class="pdisc" class:list={{ "pdisc--line": hasSummary }}>
+      {/* No aria-label in line mode: the summary names ITSELF there — its
+          content is the member's name and field, which is a better label than
+          any sentence written here, and an aria-label would silence all of
+          it. */}
       <summary
         class="pdisc__toggle"
-        aria-label={`${t("community.card.expand")} ${member.displayName}`}
-      />
+        aria-label={hasSummary ? undefined : `${t("community.card.expand")} ${member.displayName}`}
+      >
+        {hasSummary && <slot name="summary" />}
+      </summary>
 
       <div class="pdisc__body">
         <div class="pdisc__body-inner">
@@ -91,9 +111,33 @@ const show = forceShow || hasDetail(member);
               ))}
             </ul>
           )}
+
+          {/* THE CALLER'S CLOSING CONTROL — the image card's "View profile"
+              (2026-09-01, Josh: "view profile should be in the dropdown
+              content, maybe after text"). Last on purpose: everything above
+              is what the panel had to SAY about the member, and the way to
+              their page is what you want once you have read it. Empty for the
+              ledger rows, which keep their control up in the summary line. */}
+          <slot name="footer" />
         </div>
       </div>
     </details>
+  ) : (
+    hasSummary && (
+      /* NOTHING TO DISCLOSE, but the line still has to be printed. Before the
+         summary slot existed this component rendered nothing at all in that
+         case, which was correct when all it owned was a chevron — now it owns
+         the caller's row, and returning nothing would delete the member from
+         the ledger. So: the same box and the same line, minus the control.
+         `.pdisc__toggle` is reused rather than restyled so the row's geometry
+         is identical whether or not a member has a bio; only the chevron and
+         the cursor are dropped. */
+      <div class="pdisc pdisc--line pdisc--static">
+        <div class="pdisc__toggle">
+          <slot name="summary" />
+        </div>
+      </div>
+    )
   )
 }
 
@@ -120,6 +164,26 @@ const show = forceShow || hasDetail(member);
   }
   .pdisc__toggle::marker {
     content: "";
+  }
+
+  /* ── LINE MODE ─────────────────────────────────────────
+     The summary holds a whole slotted row rather than just the chevron, so it
+     stops being a 1rem box the caller positions and becomes a full-width one
+     the caller lays out (the ledger makes it a grid — see .cindex__line in
+     CommunityGrid). Only the box changes here; the chevron drawing below is
+     shared, and lands as the last item of whatever layout the caller sets. */
+  .pdisc--line > .pdisc__toggle {
+    width: auto;
+    flex: initial;
+    justify-content: initial;
+  }
+
+  /* The un-clickable twin: no control, so no pointer and no chevron. */
+  .pdisc--static > .pdisc__toggle {
+    cursor: default;
+  }
+  .pdisc--static > .pdisc__toggle::after {
+    content: none;
   }
 
   /* A stroked chevron, not a filled triangle: two borders on a rotated box.

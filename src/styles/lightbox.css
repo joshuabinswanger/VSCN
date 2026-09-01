@@ -283,8 +283,20 @@
   padding: 0.95rem 1.5rem 1.2rem;
   background: var(--color-bg);
   border-top: 1px solid var(--color-border);
+  /* THE BAND IS A SCROLL CONTAINER, capped at exactly the space paddingFn
+     reserves for it (140px desktop / 116px mobile — the numbers live in the
+     page scripts and this pair is their mirror; change them together). An
+     image's description runs to 600 characters, and before the cap a long one
+     grew the absolutely-positioned band upward over the artwork it was
+     describing. Scrolling keeps the whole text reachable AND keeps the
+     picture's bottom edge where the reserve promised it would be. */
+  max-height: 140px;
+  overflow-y: auto;
+  /* A wheel gesture that reaches the end of the description must not then
+     start dragging the lightbox itself. */
+  overscroll-behavior: contain;
 }
-/* A work with neither caption nor credit gets no empty band. */
+/* A work with no caption, description or credit gets no empty band. */
 .pswp--vscn .pswp__vscn-caption.is-empty {
   display: none;
 }
@@ -301,6 +313,17 @@
   font-size: 0.78rem;
   line-height: 1.45;
   color: var(--color-dark);
+}
+/* The long text. Unclamped, unlike the caption above it — the band scrolls, so
+   there is nothing to protect the layout from. `pre-line` because a member who
+   wrote paragraphs meant them, and it is the same treatment .mprof__desc gives
+   the identical string on the member's own page. */
+.pswp--vscn .pswp__vscn-caption-desc {
+  max-width: 62ch;
+  white-space: pre-line;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--color-muted);
 }
 .pswp--vscn .pswp__vscn-caption-meta {
   font-size: 0.58rem;
@@ -329,6 +352,8 @@
   }
   .pswp--vscn .pswp__vscn-caption {
     padding: 0.8rem 1rem 1rem;
+    /* Mirrors paddingFn's mobile bottom reserve — see the desktop rule. */
+    max-height: 116px;
   }
 }
 
