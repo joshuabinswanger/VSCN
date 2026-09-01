@@ -1,7 +1,7 @@
 ﻿> Mirror of `~/.claude/projects/D--SynoDrive-VSCN/memory/community-gallery-layout-selector.md` — readable by any Claude instance without access to Josh's user profile.
 ---
 name: community-gallery-layout-selector
-description: "/community gallery: the two-lane Supera spread (interlocked 2026-08-28) plus a grid wall (now one tile PER WORK — project over author, image opens the lightbox, name goes to the profile) AND a typographic index ledger behind a Gallery/Grid/Index toggle; parallax is simple amp-cycled linear drift; tag cards take normal slots, always last, width-capped; strip shelved behind ?pattern=strip"
+description: "/community gallery: the two-lane Supera spread (interlocked 2026-08-28) plus a grid wall (now one tile PER WORK — project name printed, author on hover, artwork-less members not shown; the image opens the lightbox) AND a typographic index ledger behind a Gallery/Grid/Index toggle; parallax is simple amp-cycled linear drift; tag cards take normal slots, always last, width-capped; strip shelved behind ?pattern=strip"
 metadata: 
   node_type: memory
   type: project
@@ -193,6 +193,40 @@ three-beat FLOW parallax:
   both of those and would overwrite it silently, desktop-only. Name link is undecorated
   at rest, underlined on hover/focus (48 underlined names would out-shout the pictures);
   the image link takes `cursor: zoom-in`.
+
+- **THE WALL'S FINAL ANATOMY (2026-09-01, after two misread rounds in the same session)**:
+  "remove the names from the grid, it should just be images" meant REMOVE THE EMPTY CARDS —
+  the all-text tag cards of members with no artwork — not remove the captions. The captions
+  came off and went back on; the tag cards are the thing that is gone.
+  WHAT THE WALL IS NOW: only `data-slot="work"` cells (`wantsText = mode !== "grid"` in
+  applyLayout hides the text cells there). Members without artwork keep their full treatment
+  in the SPREAD and are all in the Index — nobody is dropped from the directory, only from
+  one view of the work. Side effect worth knowing: the tag `microbiology` now empties the
+  wall (its one member has no gallery) while those members DO match the filter, so
+  `#filter-empty` carries two strings — `data-rest` / `data-works`
+  (`community.filter.none.works`, both locales) — and `reflectFilterState` picks by mode.
+  THE TILE: frame, then the PROJECT TITLE printed (0.9rem/700/black, in flow), and the
+  AUTHOR revealed on hover (0.75rem/500/`--color-muted`). The author is
+  `position: absolute; top:100%` on `.cwork__caption` — OUT OF FLOW so revealing it can
+  never resize a tile, and on a wall a row is as tall as its tallest tile so a resize would
+  move every neighbour. `pointer-events: none` at rest (an opacity-0 link a few px under
+  every picture is a click trap) and `auto` on reveal; opacity NOT `visibility:hidden`,
+  which would drop it from the tab order and make `:focus-within` unreachable.
+  THE ANCHOR IS `.cwork__caption`, NOT `.cwork` — CommunityGrid writes `position` on the
+  card root in both views (absolute in the spread's drawn geometry, static back in flow on
+  the wall), so a `position: relative` up there is overwritten by the view. Cost an
+  hour if you forget it.
+  ONE HOVER STATE, keyed on `.cwork:hover` / `:focus-within`: the image scales 1.045 and the
+  author fades in (250ms, half the image's 500ms) together. Still on the IMAGE, never on
+  `.cwork` or the cell — GSAP owns those transforms.
+  `--cwork-chrome: 2.2rem` (two title lines' worth; the author reserves nothing), mirrored
+  in the wall's `[data-slot="work"]` `--cgrid-row` override.
+  ON TOUCH THERE IS NO HOVER: the tile's author line never comes up on a phone, and the
+  LIGHTBOX's caption band is the naming that always works.
+  **STILL THE OPEN DATA PROBLEM: 0 of 48 seeded works has a project or a caption**, so the
+  dev wall today is bare pictures with a name on hover. The title line is omitted rather
+  than filled with "Untitled" 48 times; it fills itself in as members tag gallery images to
+  projects in the profile editor.
 
 **Why:** Josh compared all three and chose the spread as the direction; the others were
 noise for the member review.
