@@ -4,6 +4,7 @@ import { GALLERY_PATTERNS, STRIP_ROWS, layOutSlots } from "../lib/communityLayou
 import { memberHref } from "../lib/links.ts";
 import CommunityImageCard from "./community/CommunityImageCard.astro";
 import CommunityTextCard from "./community/CommunityTextCard.astro";
+import CommunityWorkCard from "./community/CommunityWorkCard.astro";
 import MemberDetailPanel from "./community/MemberDetailPanel.astro";
 import { useTranslations } from "../i18n/utils.ts";
 import type { Lang } from "../i18n/utils.ts";
@@ -93,10 +94,14 @@ const tagsAttr = (m: MemberView) => {
 // gallery — it survives only as the shelved strip mode's index ladder.
 //
 // TWO GALLERIES, ONE SELECTOR: the two-lane editorial spread (the default,
-// rendered by the server and re-dealt on every load) and the aligned-rows
-// grid wall (5-4-5-4 per row), switched by the Gallery/Grid toggle in the
-// header, which re-deals the same cells into the other slot table and syncs
-// ?pattern= so a view survives a reload. The earlier stagger drawing is
+// rendered by the server and re-dealt on every load) and the brick grid wall,
+// switched by the Gallery/Grid toggle in the header, which syncs ?pattern= so
+// a view survives a reload. The two no longer share cells: the spread deals
+// MEMBER cards (name, gallery, role) and the wall deals one tile per WORK —
+// a single image and NOTHING ELSE, no caption and no carousel — so the toggle
+// swaps which set of cells is on screen as well as which drawing they are
+// dealt into. Pressing a tile opens the lightbox, which is also the only place
+// the wall names anyone. The earlier stagger drawing is
 // scrapped; the horizontal strip is SHELVED, not shipped — no UI reaches it,
 // but ?pattern=strip still rebuilds the page into it for design review (see
 // communityLayout.ts). No-JS visitors get the spread and nothing else; mobile
@@ -129,6 +134,28 @@ const ordered = [...imageMembers, ...textMembers];
 // load) and tilePattern repeats it in row order across tiles.
 const cells = slots.map((slot, i) => ({ slot, member: ordered[i] }));
 
+// ── The wall's own cells ──────────────────────────────────────────────────
+//
+// THE GRID IS NO LONGER THE SPREAD RE-DEALT. It used to be: one cell per
+// member, moved from one slot table into the other by the selector, carrying
+// the member card and its carousel with it. Now the two views are dealt from
+// DIFFERENT CELLS — the spread deals members, the wall deals WORKS. A member
+// with six images is one card in the spread and six tiles on the wall, which
+// is why the wall is several times taller than it was and why nothing on it
+// pages any more: a carousel exists to fit a gallery into one slot, and the
+// wall gives every image a slot of its own.
+//
+// Both sets are server-rendered into the same grid and the deal hides the one
+// that is not on screen (see applyLayout). That is what keeps the switch free
+// and the no-JS page honest: hidden cells are display:none, so a browser never
+// loads the wall's images until the wall is asked for.
+//
+// The members WITHOUT artwork are unchanged — the same tag cards, closing the
+// wall in completeness order, shared with the spread rather than duplicated.
+const workCells = imageMembers.flatMap((member) =>
+  member.works.map((work, i) => ({ member, work, key: `${member.id}-${i}` }))
+);
+
 /** Tags the index's field column shows before it stops. Three fits the
  *  column at the shell measure without truncation on any current member. */
 const INDEX_FIELD_TAGS = 3;
@@ -137,6 +164,19 @@ const INDEX_FIELD_TAGS = 3;
 // the two galleries it is not a deal into slots — it is rendered here, whole,
 // and the selector simply swaps it in for the grid. Server-rendered so the
 // rows carry the scoped-style attribute and the list costs no client work.
+// The lightbox's own labels, shared with the member page's gallery — one
+// attribute rather than five because the script that reads them is a module
+// and cannot take `define:vars`, so the strings have to arrive through the DOM.
+// Same keys the profile page uses: there is one lightbox on this site and it
+// should not speak differently depending on where it was opened from.
+const lightboxStrings = JSON.stringify({
+  close: t("member.lightbox.close"),
+  zoom: t("member.lightbox.zoom"),
+  prev: t("member.lightbox.prev"),
+  next: t("member.lightbox.next"),
+  error: t("member.lightbox.error"),
+});
+
 const indexMembers = [...members].sort((a, b) =>
   (a.displayName || a.slug).localeCompare(b.displayName || b.slug)
 );
@@ -241,7 +281,7 @@ const indexMembers = [...members].sort((a, b) =>
   }
   <p id="filter-empty" class="state-msg filter-empty" hidden>{t("community.filter.none")}</p>
 
-  <div id="member-grid" class="cgrid">
+  <div id="member-grid" class="cgrid" data-pswp-i18n={lightboxStrings}>
     {members.length === 0 && <p class="state-msg">{t("community.empty")}</p>}
     {
       /* The SHELVED strip layout's home (?pattern=strip — no UI reaches it): a
@@ -274,6 +314,31 @@ const indexMembers = [...members].sort((a, b) =>
                `TWO SECTIONS` above. */
             <CommunityTextCard member={member} lang={lang} />
           )}
+        </div>
+      ))
+    }
+
+    {
+      /* THE WALL'S TILES, one per artwork. Rendered hidden and carrying no
+        placement: the spread is the default and the no-JS view, and the deal
+        writes --gc/--gr onto these only when the grid is asked for. `hidden`
+        is doing real work here beyond tidiness — it is display:none (see
+        .cgrid__cell[hidden]), so none of these images is fetched or decoded
+        while the spread is on screen.
+        data-tags is the MEMBER's, so the tag filter narrows the wall by the
+        person behind the work, exactly as it narrows the spread. */
+      workCells.map(({ member, work, key }, i) => (
+        <div
+          class="cgrid__cell"
+          data-slot="work"
+          data-rank={i}
+          data-tags={tagsAttr(member)}
+          data-work={key}
+          data-row="0"
+          data-col="0-0"
+          hidden
+        >
+          <CommunityWorkCard member={member} work={work} lang={lang} />
         </div>
       ))
     }
@@ -687,6 +752,7 @@ const indexMembers = [...members].sort((a, b) =>
   /* Out of flow, so the card's height is its own business. Written global
      because the card roots belong to other components. */
   :global(.cgrid__cell > .ccard),
+  :global(.cgrid__cell > .cwork),
   :global(.cgrid__cell > .ctcard) {
     position: absolute;
     top: 0;
@@ -716,8 +782,10 @@ const indexMembers = [...members].sort((a, b) =>
   /* THE WALL IS NOT DRAWN, IT IS MEASURED. The spread places cards in a
      24-column table where a card's width is a FRACTION of the measure; the
      wall places them in tracks of a FIXED width and fits as many as the window
-     has room for. Same cells, same deal, a different question asked of the
-     window — and the fourth round of "less white space in grid view"
+     has room for. DIFFERENT CELLS since the wall became a wall of works rather
+     than of members (see the wall's cells in the frontmatter) — a different
+     question asked of the window, and the fourth round of "less white space in
+     grid view"
      (2026-08-31), the one the drawn table could not answer:
 
        Under the table a card was 3 of 24 columns, so it grew with the viewport
@@ -828,9 +896,12 @@ const indexMembers = [...members].sort((a, b) =>
          a row of the wall is one grid row here, where the drawn table made it
          19 placement rows and forced the gap to be reserved inside each cell.
          THREE QUARTERS, NOT THE WHOLE GUTTER (the round before this one,
-         "even a bit less"): meshed at exactly the gutter the two axes still
-         never read equal, because the card's own caption block sits inside the
-         vertical interval and the horizontal one holds nothing. It is also the
+         "even a bit less"): meshed at exactly the gutter the two axes did not
+         read equal, because a card's caption block sat inside the vertical
+         interval and the horizontal one holds nothing. THE WORK TILES HAVE NO
+         CAPTION any more, so on those rows this 60px is the whole of the air —
+         which is why the wall reads tighter vertically than it did, and the
+         number is left where the earlier "less white space" rounds put it. It is also the
          floor the parallax sets: a row can close on the one below it as it
          travels, and 30px absorbs that with the wall's damped amplitude (see
          flowScale, which scales it to a third of the spread's). */
@@ -855,6 +926,7 @@ const indexMembers = [...members].sort((a, b) =>
        geometry; here the geometry is asking to be told. Auto margins survive
        from that rule and still centre a card narrower than its track. */
     :global(.cgrid[data-pattern="grid"] .cgrid__cell > .ccard),
+    :global(.cgrid[data-pattern="grid"] .cgrid__cell > .cwork),
     :global(.cgrid[data-pattern="grid"] .cgrid__cell > .ctcard) {
       position: static;
       margin-inline: auto;
@@ -879,6 +951,17 @@ const indexMembers = [...members].sort((a, b) =>
          reaches it, so no card narrows today; what it bounds is how deep one
          tall upload may make its row. */
       --cgrid-row: calc((1.5 * var(--wall-card) + 5.4rem) / var(--slot-rows, 1));
+    }
+
+    /* Same cap, NO CHROME TERM. The line above bakes in the member card's
+       5.4rem of name-and-caption; a work tile is all frame — it carries no
+       words at all — so its whole slot is the picture's and the cap is exactly
+       1.5 × the card width, 300px at a 200px card. Stated separately rather
+       than made a variable, because the two cards' anatomies are genuinely
+       different numbers and a shared one would hide that. The extra
+       specificity wins wherever this sits in the file. */
+    .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
+      --cgrid-row: calc(1.5 * var(--wall-card) / var(--slot-rows, 1));
     }
   }
 
@@ -1282,6 +1365,7 @@ const indexMembers = [...members].sort((a, b) =>
        rows ARE the cards, so the absolute rule above would leave every cell
        zero-height with the cards piled at the top. */
     :global(.cgrid__cell > .ccard),
+    :global(.cgrid__cell > .cwork),
     :global(.cgrid__cell > .ctcard) {
       position: static;
       margin-inline: auto;
@@ -1531,7 +1615,10 @@ const indexMembers = [...members].sort((a, b) =>
   // hold their relative positions while the visitor types instead of
   // leapfrogging on every input. Kept over ALL artwork cells; a narrowed
   // deal takes the survivors in this order.
-  let artworkOrder: HTMLElement[] = [];
+  //
+  // Keyed by which artwork cells the view is made of — "image" for the
+  // spread's member cards, "work" for the wall's per-artwork tiles.
+  const artworkOrder: Record<string, HTMLElement[]> = {};
 
   function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
     // The motion layer reads this to key its parallax — per row in the
@@ -1569,13 +1656,20 @@ const indexMembers = [...members].sort((a, b) =>
 
     const strip = grid.querySelector<HTMLElement>(".cgrid__strip");
     const cells = Array.from(grid.querySelectorAll<HTMLElement>(".cgrid__cell"));
+    // WHICH ARTWORK CELLS THIS VIEW IS MADE OF. The wall deals one tile per
+    // WORK; every other view deals one card per MEMBER. Both sets are in the
+    // DOM, and the one this view is not built from is hidden outright — which
+    // is also why switching costs nothing and why the wall's images are not
+    // fetched until the wall is on screen.
+    const artKind = mode === "grid" ? "work" : "image";
     // The filter narrows the DEAL, not the drawing: non-matching cells leave
     // the grid entirely (display:none) and the survivors are dealt into the
     // pattern's leading slots, so the page always reads as designed. Hiding
     // in place would leave the drawn slots standing empty — the exact failure
     // the old comment on .cgrid__cell[hidden] warned about.
     cells.forEach((cell) => {
-      cell.hidden = !memberMatches(cell);
+      const inView = cell.dataset.slot === artKind || cell.dataset.slot === "text";
+      cell.hidden = !inView || !memberMatches(cell);
     });
     const matching = cells.filter((cell) => !cell.hidden);
     // With nothing to deal the grid itself steps aside — its padding would
@@ -1587,11 +1681,15 @@ const indexMembers = [...members].sort((a, b) =>
       reflectFilterState(grid, mode);
       return;
     }
-    const galleryCells = matching.filter((cell) => cell.dataset.slot === "image");
-    if (reshuffle || artworkOrder.length === 0) {
-      artworkOrder = shuffled(cells.filter((cell) => cell.dataset.slot === "image"));
+    const galleryCells = matching.filter((cell) => cell.dataset.slot === artKind);
+    // One standing order PER SET, not one shared: the wall's tiles and the
+    // spread's cards are different cells, so a single list would be emptied of
+    // everything the current view can use on every switch — and the point of
+    // keeping it is that narrowing by tag must not reshuffle what is on screen.
+    if (reshuffle || !artworkOrder[artKind]?.length) {
+      artworkOrder[artKind] = shuffled(cells.filter((cell) => cell.dataset.slot === artKind));
     }
-    const orderedGallery = artworkOrder.filter((cell) => galleryCells.includes(cell));
+    const orderedGallery = artworkOrder[artKind].filter((cell) => galleryCells.includes(cell));
     // The completeness order comes from data-rank, stamped at build — NOT
     // from document order. Today's deals happen to preserve it for text
     // cells, but that is an accident of the current branches; the rank is
@@ -1620,8 +1718,8 @@ const indexMembers = [...members].sort((a, b) =>
     }
 
     if (mode === "grid") {
-      // The wall deals every member into the same slots — no index section —
-      // but the members without artwork CLOSE the wall rather than mixing
+      // The wall deals every WORK into its own slot — no index section — but
+      // the members without artwork CLOSE the wall rather than mixing
       // into it: shuffled artwork first, then the tag cards in their
       // build-time completeness order, the same order the spread's index
       // reads in. A tag card is shorter than most artwork, and the wall's
@@ -1952,8 +2050,14 @@ const indexMembers = [...members].sort((a, b) =>
         //    strip scrolls on its own axis, and a scroll-linked transform
         //    would fight the hover growth that layout owns.
         gsap.utils
-          .toArray<HTMLElement>(".ccard, .ctcard")
-          .filter((card) => !card.closest(".cgrid__strip"))
+          .toArray<HTMLElement>(".ccard, .cwork, .ctcard")
+          // The view the deal did NOT build is still in the DOM, hidden — the
+          // spread's member cards while the wall is up, and the wall's tiles
+          // otherwise. A trigger measured against a display:none box is
+          // meaningless, and there are now more of those than of the real
+          // ones. The switch fires community:layout-changed, which rebuilds
+          // this layer, so nothing is missed by skipping them.
+          .filter((card) => !card.closest(".cgrid__strip, .cgrid__cell[hidden]"))
           .forEach((card) => {
             gsap.fromTo(
               card,
@@ -1993,7 +2097,7 @@ const indexMembers = [...members].sort((a, b) =>
         //    while the scale drives the card inside it, so the two
         //    transforms cannot fight over one element's property.
         const cells = gsap.utils
-          .toArray<HTMLElement>(".cgrid__cell")
+          .toArray<HTMLElement>(".cgrid__cell:not([hidden])")
           .filter((cell) => !cell.closest(".cgrid__strip"));
         // In the aligned-rows grid, the amplitude is dealt per ROW, not per
         // cell: a row's cards share a rowStart because the drawing says they
@@ -2074,5 +2178,162 @@ const indexMembers = [...members].sort((a, b) =>
   window.matchMedia(DESKTOP).addEventListener("change", () => {
     teardown();
     build();
+  });
+</script>
+
+<script>
+  import PhotoSwipeLightbox from "photoswipe/lightbox";
+  import "photoswipe/style.css";
+  // Immediately after the package sheet, never before: this is the chrome that
+  // replaces it. Same pair, same order, as the member profile page.
+  import "../styles/lightbox.css";
+
+  // ────────────────────────────────────────────────────────────────────────
+  // THE WALL'S LIGHTBOX — a third module, alongside the deal and the motion
+  // layer, and independent of both (the three <script> blocks in this file are
+  // SEPARATE ES modules; nothing here can call applyLayout).
+  //
+  // WHY THE WALL AND NOT THE SPREAD. On a tile the picture and the person are
+  // two different destinations: pressing the artwork opens the artwork, and
+  // the author's name — the only other thing the tile says — goes to the
+  // profile. The spread's member cards are unchanged: there the name sits
+  // above the frame, the frame pages a whole gallery, and the card as a whole
+  // still means "this member".
+  //
+  // NOTHING RE-INITIALISES THIS ON A DEAL, deliberately. The click listener
+  // binds to #member-grid, which survives every deal (cells are moved inside
+  // it, never replaced), and PhotoSwipe resolves `children` at CLICK time —
+  // so a filtered wall, a re-shuffled wall and a wall that has just come back
+  // from the spread all open the right slide without this module hearing about
+  // any of it. That is also why the selector carries `:not([hidden])`: the
+  // spread's member cards and the tags filter's rejects are in the DOM, and
+  // without it a wall showing fifteen tiles would page through forty-eight.
+  // ────────────────────────────────────────────────────────────────────────
+
+  interface LightboxStrings {
+    close: string;
+    zoom: string;
+    prev: string;
+    next: string;
+    error: string;
+  }
+
+  // English is the fallback, matching useTranslations() — a missing or
+  // malformed attribute costs the translation, never the lightbox.
+  const FALLBACK: LightboxStrings = {
+    close: "Close",
+    zoom: "Zoom",
+    prev: "Previous image",
+    next: "Next image",
+    error: "The image cannot be loaded",
+  };
+
+  const esc = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  // Two borders on a box turned 45deg — the drawing the card arrows use, so
+  // every pager on the site is one control.
+  const CHEVRON = '<span class="pswp__vscn-chevron" aria-hidden="true"></span>';
+
+  // Rebuilt per navigation: ClientRouter swaps the document, so a lightbox
+  // bound to the previous page's grid would be holding a dead element.
+  let lightbox: PhotoSwipeLightbox | null = null;
+
+  document.addEventListener("astro:page-load", () => {
+    lightbox?.destroy();
+    lightbox = null;
+    const grid = document.getElementById("member-grid");
+    if (!grid || !grid.querySelector(".cwork__link")) return;
+
+    let strings = FALLBACK;
+    try {
+      strings = { ...FALLBACK, ...JSON.parse(grid.dataset.pswpI18n || "{}") };
+    } catch {
+      /* keep the fallback */
+    }
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    lightbox = new PhotoSwipeLightbox({
+      gallery: "#member-grid",
+      children: ".cgrid__cell:not([hidden]) .cwork__link",
+      pswpModule: () => import("photoswipe"),
+
+      // ── Chrome. Identical to the member page's, on purpose — nothing below
+      //    changes behaviour, and the two galleries must not look like two
+      //    different lightboxes. See lightbox.css for the CSS half.
+      mainClass: "pswp--vscn",
+      bgOpacity: 1,
+      paddingFn: (viewportSize) =>
+        viewportSize.x <= 767
+          ? { top: 44, bottom: 84, left: 12, right: 12 }
+          : { top: 56, bottom: 104, left: 32, right: 32 },
+      closeSVG: `<span class="pswp__vscn-word">${esc(strings.close)}</span>`,
+      arrowPrevSVG: CHEVRON,
+      arrowNextSVG: CHEVRON,
+      zoomSVG: '<span class="pswp__vscn-zoom" aria-hidden="true"></span>',
+      closeTitle: strings.close,
+      zoomTitle: strings.zoom,
+      arrowPrevTitle: strings.prev,
+      arrowNextTitle: strings.next,
+      errorMsg: strings.error,
+
+      // Spread rather than a ternary per key: PhotoSwipe merges options over
+      // its defaults, so writing `undefined` into one of these would erase the
+      // default instead of keeping it.
+      ...(reduced
+        ? {
+            showHideAnimationType: "none" as const,
+            showAnimationDuration: 0,
+            hideAnimationDuration: 0,
+            zoomAnimationDuration: false as const,
+          }
+        : {}),
+    });
+
+    // PhotoSwipe 5 has no caption of its own; this is the documented way to
+    // add one. Text comes off the trigger link, so the lightbox and the tile
+    // under it cannot say different things about the same image.
+    lightbox.on("uiRegister", () => {
+      lightbox?.pswp?.ui?.registerElement({
+        name: "vscn-caption",
+        className: "pswp__vscn-caption",
+        appendTo: "root",
+        order: 9,
+        onInit: (el, pswp) => {
+          const render = () => {
+            const trigger = pswp.currSlide?.data.element as HTMLElement | undefined;
+            const caption = trigger?.dataset.pswpCaption?.trim() || "";
+            const meta = trigger?.dataset.pswpMeta?.trim() || "";
+
+            // textContent, not innerHTML: this is member-authored text.
+            el.replaceChildren();
+            if (caption) {
+              const line = document.createElement("span");
+              line.className = "pswp__vscn-caption-line";
+              line.textContent = caption;
+              el.append(line);
+            }
+            if (meta) {
+              const credit = document.createElement("span");
+              credit.className = "pswp__vscn-caption-meta";
+              credit.textContent = meta;
+              el.append(credit);
+            }
+            el.classList.toggle("is-empty", !caption && !meta);
+          };
+
+          pswp.on("change", render);
+          render();
+        },
+      });
+    });
+
+    lightbox.init();
+  });
+
+  document.addEventListener("astro:before-swap", () => {
+    lightbox?.destroy();
+    lightbox = null;
   });
 </script>

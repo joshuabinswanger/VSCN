@@ -1,0 +1,221 @@
+---
+import { getImage } from "astro:assets";
+import type { MemberView } from "../../lib/memberView.ts";
+import type { ProfileWork } from "../../lib/profileView.ts";
+import { useTranslations, type Lang } from "../../i18n/utils.ts";
+
+// THE GRID WALL'S TILE, and the wall's whole subject: ONE artwork, and nothing
+// else. Not a member card — the wall is not a directory of people that happens
+// to show pictures, it is a wall of work, so a member with six images stands in
+// it six times and the wall is as long as the directory's gallery.
+//
+// NO WORDS ON THE TILE (2026-09-01, Josh: "it should just be images"). The
+// project title and the author's name both had a turn under the frame and both
+// came off: on a wall, a caption under every picture is a second grid of text
+// competing with the first, and the pictures are the reason to be here. The
+// names are not lost — they are on the LIGHTBOX's caption band (pswpMeta below),
+// which is where a visitor who wants to know whose work this is has already
+// asked the question. The way to a profile is the Gallery view and the Index,
+// both of which name everyone; the wall itself no longer links to one.
+//
+// WHY IT IS NOT CommunityImageCard WITH THE CAROUSEL OFF. That card is a
+// member's card: a name above the frame, a role and a disclosure panel below,
+// and a track that pages a whole gallery inside one slot. This is a picture.
+// Sharing one component would have meant a second anatomy behind a flag; the
+// spread still renders the member card unchanged, and this file owns the wall.
+
+interface Props {
+  member: MemberView;
+  work: ProfileWork;
+  lang: Lang;
+}
+
+const { member, work, lang } = Astro.props;
+const t = useTranslations(lang);
+
+// Optimised at build time, like the member card's gallery (remotePatterns in
+// astro.config.mjs). NARROWER VARIANTS THAN THE MEMBER CARD'S, because this
+// tile is never wider than a wall track: 200px desktop, half a phone minus the
+// multicol gutter on mobile. 400 covers both at 2× and 800 at 4×, and there is
+// no 1400 to accidentally select — every image in the directory is in the DOM
+// on this view, and decoded-image memory is what crash-looped iOS Safari
+// before (see CommunityImageCard's SIZES note).
+const rendered = await getImage({
+  src: work.url,
+  width: work.width,
+  height: work.height,
+  widths: [400, 800],
+  format: "webp",
+});
+
+const SIZES = "(max-width: 767px) 45vw, 200px";
+
+// The frame keeps the artwork's true aspect — nothing is cropped. Tall work is
+// bounded by getting NARROWER instead, the same contract as the member card:
+// --frame-cap comes from the slot, and this ratio turns it into a width.
+const frameAspect = work.width / work.height;
+
+// Never "": the member's caption when they wrote one, a translated fallback
+// otherwise. Same rule as the member card — and on this tile it matters more
+// than it did, because with the caption gone the alt text is the ONLY thing
+// that says whose picture this is to anyone not looking at it.
+const alt = work.caption?.trim() || `${member.displayName} — ${t("member.workAlt")}`;
+
+// What the LIGHTBOX says under the image, in exactly the form the member page's
+// gallery says it (see [slug].astro, which resolves the same two lines): the
+// caption is the work's own, and the meta line is the whose-and-what-of-it.
+// THIS IS NOW THE ONLY PLACE THE WALL NAMES ANYONE, which is the trade the
+// caption-less tile makes — the name is one press away rather than always on.
+// Resolved here because it is translated and the client script that renders it
+// is a module, which cannot take define:vars; it travels on the trigger link.
+const pswpMeta = [
+  member.displayName,
+  work.project ? `${t("member.partOf")} ${work.project.title}` : null,
+]
+  .filter(Boolean)
+  .join(" · ");
+---
+
+<article class="cwork" style={`--frame-ar:${frameAspect}`}>
+  <div
+    class="cwork__frame"
+    style={`aspect-ratio:${work.width} / ${work.height};${work.color ? `background:${work.color}` : ""}`}
+  >
+    {
+      /* THE IMAGE OPENS THE IMAGE, and it is the tile's only interactive
+        element. The link's href is the ORIGINAL upload and PhotoSwipe binds to
+        it (see the lightbox script in CommunityGrid.astro), so with scripting
+        off the link still resolves to the picture instead of being inert. The
+        data-pswp-* attributes are what the lightbox reads: the real dimensions
+        so it can size and zoom from the thumbnail, and the two caption lines.
+        IT WRAPS THE IMAGE rather than sitting over it as an inset overlay,
+        which is not cosmetic: PhotoSwipe finds the thumbnail to zoom out of by
+        looking for an `img` INSIDE the element it was given, and an overlay
+        sibling would leave it with nothing to animate from. */
+    }
+    <a
+      class="cwork__link"
+      href={work.url}
+      target="_blank"
+      rel="noreferrer"
+      data-pswp-width={work.width}
+      data-pswp-height={work.height}
+      data-pswp-caption={work.caption?.trim() || undefined}
+      data-pswp-meta={pswpMeta || undefined}
+    >
+      {
+        /* No aria-label on the link: the image's alt names it, which is the
+          member page's pattern for the same trigger. An aria-label here would
+          silence the alt and make every tile announce the same sentence. */
+      }
+      <img
+        class="cwork__img"
+        src={rendered.src}
+        srcset={rendered.srcSet.attribute}
+        sizes={SIZES}
+        width={work.width}
+        height={work.height}
+        style={work.color ? `background:${work.color}` : undefined}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+      />
+    </a>
+  </div>
+</article>
+
+<style>
+  /* The tile is the frame's box and nothing more. It survives as its own
+     element rather than collapsing into the frame because it is what the grid
+     places, what GSAP scales, and what carries the width formula below. */
+  .cwork {
+    display: block;
+    /* How tall the frame may be, out of the slot the grid dealt. NO CHROME
+       TERM any more — with the caption gone the tile is all frame, so the
+       slot's whole height is the picture's (the wall states the matching
+       number on the cell; see CommunityGrid's wall block). Absent a slot
+       (nothing renders this outside the wall today) the fallback is no cap. */
+    --frame-cap: calc(var(--slot-rows, 999) * var(--cgrid-row, 2rem));
+    /* Tall artwork narrows instead of deepening its row: normally this is the
+       full track width, and where the artwork is tall enough that filling the
+       width would overrun the slot it is instead the width that makes the
+       frame exactly as tall as the slot allows. Same formula as the member
+       card. */
+    width: min(100%, calc(var(--frame-cap) * var(--frame-ar, 1)));
+    /* Pivot for the GSAP scale-on-approach in CommunityGrid, which drives this
+       element. Top edge, not centre — the ScrollTrigger is keyed to the tile's
+       top and a centre origin would shift it with every height change. */
+    transform-origin: 50% 0%;
+  }
+
+  .cwork__frame {
+    position: relative;
+    overflow: hidden;
+    /* Square corners and no border, like every frame on this page: the artwork
+       is its own edge. */
+    border-radius: 0;
+    /* Fallback ground under the dominant colour painted inline. */
+    background: var(--color-bg);
+  }
+
+  /* The link IS the frame's content, so it has to fill it — the aspect box is
+     on the frame, and a shrink-to-fit inline anchor would leave the image
+     smaller than the rectangle the wall drew. */
+  .cwork__link {
+    display: block;
+    width: 100%;
+    height: 100%;
+    /* Says "this opens" before the pointer arrives at a control, because there
+       is no control: the whole picture is the trigger — and now the whole tile
+       is the picture, so this is the tile's only affordance. */
+    cursor: zoom-in;
+  }
+
+  .cwork__img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* ── THE HOVER ─────────────────────────────────────────
+       The artwork pushes slightly toward the reader inside a frame that does
+       not move: the frame is overflow:hidden and keeps the wall's flat row
+       edges, so the growth is felt as the image filling its own rectangle
+       rather than as a tile changing size. Nothing about the row's geometry
+       can shift. It also carries more weight than it did — with no caption to
+       point at, this is the only thing that answers a pointer.
+       ON THE IMAGE, NEVER ON .cwork OR THE CELL — GSAP owns the transform on
+       both of those (the scale-on-approach and the parallax) and would
+       overwrite anything written here, silently, and only on desktop where the
+       motion layer is built. This is the one element in the tile whose
+       transform belongs to CSS.
+       The curve and the 500ms are the card arrows' family (see
+       CommunityImageCard's chevrons); slower than a control because a picture
+       settling should be felt, not noticed. The transition sits on the RESTING
+       state, so the same timing plays on the way back out. */
+    transition: transform 500ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /* :focus-within as well as :hover — the frame is a link, so a visitor
+     arriving by keyboard gets the same acknowledgement a pointer does, and it
+     is the only focus feedback the tile has. */
+  .cwork__frame:hover .cwork__img,
+  .cwork__frame:focus-within .cwork__img {
+    transform: scale(1.045);
+  }
+
+  /* The site drops motion rather than substituting a gentler version of it:
+     the hover still says "this is live", it simply arrives. */
+  @media (prefers-reduced-motion: reduce) {
+    .cwork__img {
+      transition: none;
+    }
+  }
+
+  @media (--bp-mobile) {
+    /* --slot-rows still arrives from the desktop deal on a phone, where the
+       tile's height is simply its own. Full width of the multicol column. */
+    .cwork {
+      width: 100%;
+    }
+  }
+</style>
