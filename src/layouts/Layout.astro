@@ -150,6 +150,23 @@ const BRAND_SLOTS = [
     padding: 0 15px;
   }
 
+  /* MOBILE: THE TITLE IS A BANNER, NOT A FIXTURE. On a phone the giant VSCN
+     line costs a fifth of the viewport, so it rides up out of the way as
+     .page-wrap scrolls and hands that height to the content, leaving the
+     navbar pinned at the top edge. --brand-hide is written by the scroll
+     handler in the script below. margin-top does the whole job in one
+     property: the ticker moves up by exactly the footprint it gives up, so
+     .page-wrap (flex: 1) grows into the space with no gap in between. */
+  @media (--bp-mobile) {
+    .brand-ticker {
+      margin-top: calc(-1 * var(--brand-hide, 0px));
+      /* Flush to the screen edges, like the navbar under it — on a phone the
+         measure's 15px content edge only makes the title smaller. fitBrandName
+         reads the padding off the element, so the fit follows on its own. */
+      padding-inline: 0;
+    }
+  }
+
   .brand-link {
     display: block;
     height: 100%;
@@ -531,6 +548,153 @@ const BRAND_SLOTS = [
     brandResizeObserver.observe(ticker);
   }
 
+  // ── Mobile: ride the title up out of the way on scroll ──
+  // Matches --bp-mobile in global.css; custom media aliases don't reach JS, so
+  // the number is duplicated here and the two move together.
+  const BRAND_HIDE_MQ = "(max-width: 767px)";
+  let brandScroller: HTMLElement | null = null;
+  let brandHideFrame = 0;
+
+  function applyBrandHide() {
+    brandHideFrame = 0;
+    const ticker = document.querySelector<HTMLElement>(".brand-ticker");
+    if (!ticker) return;
+    if (!brandScroller || !window.matchMedia(BRAND_HIDE_MQ).matches) {
+      ticker.style.removeProperty("--brand-hide");
+      return;
+    }
+    // offsetHeight is the border box, which the negative margin never touches —
+    // so the clamp stays put instead of chasing its own output.
+    const hidden = Math.max(0, Math.min(brandScroller.scrollTop, ticker.offsetHeight));
+    ticker.style.setProperty("--brand-hide", `${hidden}px`);
+  }
+
+  function onBrandHideScroll() {
+    // Piggybacked on the one scroll listener the page already has, throttled
+    // separately — see saveScroll.
+    saveScroll();
+    if (brandHideFrame) return;
+    brandHideFrame = requestAnimationFrame(applyBrandHide);
+  }
+
+  // .page-wrap is replaced on every navigation (only the ticker is persisted),
+  // so the listener has to be moved to the new scroller each time.
+  function initBrandScrollHide() {
+    brandScroller?.removeEventListener("scroll", onBrandHideScroll);
+    brandScroller = document.querySelector<HTMLElement>(".page-wrap");
+    brandScroller?.addEventListener("scroll", onBrandHideScroll, { passive: true });
+    applyBrandHide();
+  }
+
+  // ── Back and forward have to land where you left ──────────
+  // ClientRouter restores scroll by writing to the WINDOW, and on this site the
+  // window does not scroll: body is `overflow: hidden` and .page-wrap is the
+  // scrollport (see the layout note at the top of this file). So its
+  // restoration is a no-op, and every Back landed at the top of the page it
+  // returned to — most visibly coming back from a member's page to the point in
+  // the community directory you had scrolled to. (2026-09-01, Josh: "back
+  // navigation dors not work getting back from profiles"; the other half of
+  // that report was ClientRouter's history state being overwritten — see
+  // syncURL in CommunityGrid.)
+  //
+  // KEYED BY ClientRouter'S OWN HISTORY INDEX, and stored in sessionStorage
+  // rather than in the history entry itself. Two reasons, both practical:
+  // writing scroll into history.state on every scroll frame would hit Safari's
+  // replaceState rate limit, and reading the index at save time and at restore
+  // time makes this independent of WHERE in the transition lifecycle each
+  // happens — a forward navigation gets a fresh index and so finds nothing
+  // saved, which is exactly the "start at the top" behaviour a new page wants.
+  const SCROLL_KEY = "vscn:scroll:";
+  // Saving on every scroll frame is pointless; a quarter second of granularity
+  // is finer than a reader can notice they lost.
+  const SCROLL_SAVE_MS = 250;
+  // ~1s of trying, in 50ms steps — long enough for the directory's deal and the
+  // motion layer's first measure, short enough that a page which genuinely
+  // cannot reach the offset any more (a member deleted, a filter in the URL)
+  // gives up before the reader notices anything twitching.
+  const SCROLL_RESTORE_TRIES = 20;
+  const SCROLL_RESTORE_STEP_MS = 50;
+  let lastScrollSave = 0;
+  // THE ENTRY WE ARE ACTUALLY ON, tracked rather than read from history.state
+  // at save time. On a Back the browser has already swapped history.state to
+  // the DESTINATION before Astro starts the transition, so a save keyed off
+  // history.state during that transition writes the page-being-left's offset
+  // under the destination's key — obliterating the very value about to be
+  // restored. (Observed: leave /community at 1400, press Back, and the stored
+  // 1400 became the member page's 0 a moment before the restore read it.)
+  // Updated on page-load, which is the one moment both the DOM and the entry
+  // are settled.
+  let currentIndex: number | null = null;
+
+  function scrollKeyFor(index: number | null): string | null {
+    return typeof index === "number" ? SCROLL_KEY + index : null;
+  }
+
+  function saveScroll(force = false) {
+    if (!brandScroller) return;
+    const now = performance.now();
+    if (!force && now - lastScrollSave < SCROLL_SAVE_MS) return;
+    lastScrollSave = now;
+    const key = scrollKeyFor(currentIndex);
+    if (!key) return;
+    try {
+      sessionStorage.setItem(key, String(brandScroller.scrollTop));
+    } catch {
+      /* A private-mode quota refusal costs the restore, never the page. */
+    }
+  }
+
+  function restoreScroll() {
+    // Reads the entry we have just ARRIVED on, which is why currentIndex is
+    // refreshed from history.state immediately before this is called.
+    const key = scrollKeyFor(currentIndex);
+    const scroller = document.querySelector<HTMLElement>(".page-wrap");
+    if (!key || !scroller) return;
+    let saved: string | null;
+    try {
+      saved = sessionStorage.getItem(key);
+    } catch {
+      // A private-mode refusal costs the restore, never the page.
+      return;
+    }
+    if (saved === null) return;
+    const top = Number(saved);
+    if (!Number.isFinite(top) || top <= 0) return;
+    // UNTIL IT HOLDS, not once. An offset assigned to a scroller shorter than
+    // the offset is silently CLAMPED, and this runs at astro:page-load, when
+    // the page is still growing: the community directory deals its cards in its
+    // own page-load handler (whose order relative to this one is a bundling
+    // detail, not a guarantee) and the motion layer measures asynchronously
+    // after that. A single assignment, or even two a frame apart, lands on the
+    // short document and quietly becomes 0 — which is exactly what it did.
+    //
+    // Bounded, and it stops the moment it succeeds. It also stops if the
+    // scroller is found somewhere that is neither the target nor the top,
+    // because that means something else — most likely the reader — has taken
+    // over, and fighting them would be worse than not restoring at all.
+    let tries = 0;
+    const apply = () => {
+      const at = scroller.scrollTop;
+      const arrived = Math.abs(at - top) <= 1;
+      if (!arrived && at > 1) return;
+      scroller.scrollTop = top;
+      applyBrandHide();
+      if (Math.abs(scroller.scrollTop - top) > 1 && tries++ < SCROLL_RESTORE_TRIES) {
+        setTimeout(apply, SCROLL_RESTORE_STEP_MS);
+      }
+    };
+    apply();
+  }
+
+  window.matchMedia(BRAND_HIDE_MQ).addEventListener("change", applyBrandHide);
+
+  // The last chance to record where the page being left was scrolled to: the
+  // throttle above can have skipped the final frames of a scroll that ended in
+  // a click. The entry index has not changed yet at this point for a forward
+  // navigation, so this writes against the OUTGOING entry, which is the one
+  // that has to remember.
+  document.addEventListener("astro:before-preparation", () => saveScroll(true));
+
   document.addEventListener("astro:before-swap", (event) => {
     const swapEvent = event as unknown as { newDocument?: Document };
     const newLang = swapEvent.newDocument?.documentElement?.lang === "de" ? "de" : "en";
@@ -542,6 +706,14 @@ const BRAND_SLOTS = [
     const lang = document.documentElement.lang === "de" ? "de" : "en";
     updateBrandHomeLink(lang);
     initBrandFit();
+    initBrandScrollHide();
+    // Adopt the arrived-at entry BEFORE restoring, and leave it adopted: every
+    // save until the next navigation belongs to this entry. See currentIndex.
+    currentIndex = (history.state as { index?: number } | null)?.index ?? null;
+    // After initBrandScrollHide, which is what points brandScroller at the new
+    // .page-wrap — restoring before that would set an offset on the document
+    // that was just thrown away.
+    restoreScroll();
     // On client-side navigation there's no loader, so start animations immediately
     if (!document.getElementById("page-loader")) {
       document.body.classList.add("page-loaded");

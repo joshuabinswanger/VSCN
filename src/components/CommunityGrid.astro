@@ -84,10 +84,11 @@ const tagsAttr = (m: MemberView) => {
 // translate the Affinity document in Design/community-grid (see its README);
 // redraw there rather than editing numbers.
 //
-// ONE SECTION, ONE PRECEDENCE. Since the tag-card restyle, the members
-// without artwork get THE SAME TREATMENT as everyone else — ordinary slots
-// in whichever drawing is active, full-size, full motion — with one rule
-// kept from the old two-section page: they always come LAST. Artwork is
+// ONE SECTION, ONE PRECEDENCE — IN THE SPREAD. Since the tag-card restyle,
+// the members without artwork get THE SAME TREATMENT as everyone else there —
+// ordinary slots in the drawing, full-size, full motion — with one rule kept
+// from the old two-section page: they always come LAST. The WALL no longer
+// shows them at all (it is a wall of works; see wantsText in applyLayout). Artwork is
 // shuffled through the leading slots on every deal; the tag cards close the
 // page in their build-time completeness order (restored from data-rank),
 // which a shuffle would throw away. `TEXT_TILE` no longer appears in either
@@ -279,7 +280,23 @@ const indexMembers = [...members].sort((a, b) =>
     /* Sits ABOVE the grid so it lands right under the chips that caused it —
       below, it would trail 18rem of the empty grid's breathing room. */
   }
-  <p id="filter-empty" class="state-msg filter-empty" hidden>{t("community.filter.none")}</p>
+  {
+    /* TWO WORDINGS, ONE ELEMENT. The galleries and the ledger are lists of
+      MEMBERS; the wall is a list of WORKS and does not show the artwork-less
+      members at all, so a tag whose only members have no gallery empties the
+      wall while those members genuinely match the filter. Both strings ride on
+      the element and reflectFilterState picks — same `data-` carrier the tags
+      trigger uses for its resting label. */
+  }
+  <p
+    id="filter-empty"
+    class="state-msg filter-empty"
+    data-rest={t("community.filter.none")}
+    data-works={t("community.filter.none.works")}
+    hidden
+  >
+    {t("community.filter.none")}
+  </p>
 
   <div id="member-grid" class="cgrid" data-pswp-i18n={lightboxStrings}>
     {members.length === 0 && <p class="state-msg">{t("community.empty")}</p>}
@@ -368,46 +385,74 @@ const indexMembers = [...members].sort((a, b) =>
           return (
             <li class="cindex__row" data-tags={tagsAttr(m)}>
               <div class="cindex__line">
-                <a class="cindex__link" href={memberHref(lang, m.slug)}>
-                  {/* NAME AND ROLE ARE ONE UNIT — "Jane Doe, Illustrator" —
-                      not two columns. The role used to sit in its own track a
-                      column and a half away from the person it described,
-                      which read as a table of unrelated facts; beside the name
-                      it reads as the line a directory would actually print.
-                      The wrapper is what makes that possible: a grid cell
-                      holds one item, so the two spans need a box of their own
-                      before the field can keep a column to itself.
-
-                      Rendered only when there IS a role. The comma lives in
-                      .cindex__role's ::before, so an absent role takes its
-                      separator with it — no stray punctuation, no empty flex
-                      item, at any breakpoint. */}
-                  <span class="cindex__who">
-                    <span class="cindex__name">{m.displayName || m.slug}</span>
-                    {/* `role` arrives already trimmed from memberView, so a
-                        truthiness test is the whole emptiness check. */}
-                    {m.role && <span class="cindex__role">{m.role}</span>}
-                  </span>
-                  {/* The field, from the member's own tags — the ledger's
-                      second and last column now that the role has moved in
-                      beside the name, and what the ordinal was wasting space
-                      on. The member-type badge gave up its column to this: it
-                      renders empty for any profile without a type, which is
-                      all of them today.
-
-                      Capped at INDEX_FIELD_TAGS: several members carry seven
-                      tags, and CSS truncation would cut one mid-word. Trimming
-                      by whole tags means every row ends on a readable one — the
-                      full set is on the member's own page. */}
-                  <span class="cindex__field" title={m.tags.join(" · ")}>
-                    {m.tags.slice(0, INDEX_FIELD_TAGS).join(" · ")}
-                  </span>
-                </a>
-                {/* The same disclosure the cards carry — bio, links, tags —
-                    with the profile picture slotted in as its lead. forceShow
-                    keeps the toggle for members whose only content IS the
-                    picture; a name-and-role-only profile still gets none. */}
+                {/* THE LINE IS THE TOGGLE (2026-09-01, Josh: "in index
+                    clicking on the profile expands it"). It used to be a link
+                    to the member's page, with a chevron at the far right as
+                    the only way to see anything in place — a 1rem target for a
+                    whole row of content, and the entire row's click going
+                    somewhere else. Now the row opens the row, and the page has
+                    a named link inside it (.cindex__profile). Same pairing as
+                    the image cards: clicking a thing expands or opens THAT
+                    thing, and travel is always a control that says where it
+                    goes.
+                    A real <summary> rather than a click handler, which is what
+                    keeps the keyboard activation and the expanded/collapsed
+                    announcement for free — see the summary slot in
+                    MemberDetailPanel. */}
                 <MemberDetailPanel member={m} lang={lang} forceShow={Boolean(avatarSrc)}>
+                  <Fragment slot="summary">
+                    {/* NAME AND ROLE ARE ONE UNIT — "Jane Doe, Illustrator" —
+                        not two columns. The role used to sit in its own track a
+                        column and a half away from the person it described,
+                        which read as a table of unrelated facts; beside the
+                        name it reads as the line a directory would actually
+                        print. The wrapper is what makes that possible: a grid
+                        cell holds one item, so the two spans need a box of
+                        their own before the field can keep a column to itself.
+
+                        Rendered only when there IS a role. The comma lives in
+                        .cindex__role's ::before, so an absent role takes its
+                        separator with it — no stray punctuation, no empty flex
+                        item, at any breakpoint. */}
+                    <span class="cindex__who">
+                      <span class="cindex__name">{m.displayName || m.slug}</span>
+                      {/* `role` arrives already trimmed from memberView, so a
+                          truthiness test is the whole emptiness check. */}
+                      {m.role && <span class="cindex__role">{m.role}</span>}
+                    </span>
+                    {/* The field, from the member's own tags — the ledger's
+                        second column now that the role has moved in beside the
+                        name, and what the ordinal was wasting space on. The
+                        member-type badge gave up its column to this: it renders
+                        empty for any profile without a type, which is all of
+                        them today.
+
+                        Capped at INDEX_FIELD_TAGS: several members carry seven
+                        tags, and CSS truncation would cut one mid-word.
+                        Trimming by whole tags means every row ends on a
+                        readable one — the full set is on the member's own
+                        page. */}
+                    <span class="cindex__field" title={m.tags.join(" · ")}>
+                      {m.tags.slice(0, INDEX_FIELD_TAGS).join(" · ")}
+                    </span>
+                    {/* THE NAMED WAY TO THE PAGE. Inside the summary on
+                        purpose: it belongs between the field and the chevron,
+                        and the chevron is the summary's own ::after — a
+                        sibling of <details> could only be absolutely
+                        positioned over the row, which would fight the grid the
+                        row is laid out with.
+                        A click here activates the summary as well, and that is
+                        harmless: the navigation wins and the row this toggled
+                        is discarded with the page. */}
+                    <a class="cindex__profile" href={memberHref(lang, m.slug)}>
+                      {t("community.card.viewProfile.text")}
+                    </a>
+                  </Fragment>
+                  {/* The dropdown's lead: the profile picture. A member with
+                      neither picture nor bio gets the STATIC line instead of a
+                      disclosure (see MemberDetailPanel) — which is what keeps
+                      them in the ledger at all, now that the line itself lives
+                      inside the component. */}
                   {avatarSrc && (
                     <img
                       slot="lead"
@@ -483,16 +528,6 @@ const indexMembers = [...members].sort((a, b) =>
     text-underline-offset: 0.35em;
   }
 
-  @media (--bp-mobile) {
-    /* Touch targets: the hit area grows around the type without moving it —
-       padding out, the same distance back in margin. */
-    .view-toggle__btn,
-    .filter-word {
-      padding: 0.55rem 0.4rem;
-      margin: -0.55rem -0.4rem;
-    }
-  }
-
   /* ── The bar ──────────────────────────────────────────── */
   /* Sticky at top:0 of .page-wrap's scrollport = flush under the brand
      ticker, which lives outside the scroll container. The outer strip spans
@@ -503,25 +538,46 @@ const indexMembers = [...members].sort((a, b) =>
      raises its cell to 3). */
   .community-bar {
     position: sticky;
-    /* The nav is sticky too (Navbar.astro: top 0, z-index 10), so the bar
-       docks UNDER it, never over it. Its height is deterministic: one line of
-       --font-size-base at line-height 1 plus the links' 10px paddings — this
-       calc IS that height. If the nav's type size or padding ever changes,
-       change this with it or the bar will overlap the links. */
-    top: calc(var(--font-size-base) + 20px);
+    /* ── IT DOCKS 6px INTO THE NAV, ON PURPOSE ──────────
+       (2026-09-01, Josh: "no gap between commujity kinks and filters".)
+       The nav's box is one line of --font-size-base at line-height 1 plus the
+       links' 10px paddings, and the bar used to dock at exactly that height —
+       flush under the nav's BOX, which put 12px of dead air under the nav's
+       TEXT: 10px of the links' own bottom padding plus this bar's 2px top
+       padding. Two header lines with a gap between them read as two things.
+       So the dock moves 6px up, into space the nav only pads with, and the
+       inner drops its top padding (below) — about 8px closed, leaving ~4px.
+       WHY 6 AND NOT 8. The bar paints --color-bg and outranks the nav on
+       z-index, so whatever it docks over, it hides. The active link's
+       underline sits at `bottom: 8px` in a 1.5px band — 8 to 9.5px up from the
+       nav's bottom edge — so docking 8px up would land exactly on it and
+       subpixel rounding would eat it. 6px leaves the underline 2px of
+       clearance. If Navbar's padding or that offset changes, this changes with
+       it, and so does the mobile figure below.
+       The nav is still ABOVE the bar in every sense that matters: it is
+       sticky at top 0 and the bar never reaches its text. */
+    top: calc(var(--font-size-base) + 14px);
     z-index: 20;
     background: var(--color-bg);
-    /* No margin above: the bar STARTS at its docked position, flush under
-       the nav, and never travels — resting and stuck are the same place. */
+    /* BOTH HALVES OF THE 6px, and it takes both. `top` governs only where a
+       sticky element STOPS once it is stuck; at rest the bar sits in normal
+       flow, directly after the nav, and no `top` in the world moves it there.
+       That is why the old contract — "resting and stuck are the same place" —
+       held: the offset happened to equal the nav's height. This margin is what
+       actually lifts the resting position, and the calc above keeps the stuck
+       position in agreement with it. Change one and you must change the other,
+       or the bar jumps by the difference the moment it docks. */
+    margin-top: -6px;
   }
 
   .community-bar__in {
     max-width: var(--shell-max);
     margin-inline: auto;
     box-sizing: border-box;
-    /* Tight to the nav above: the nav links carry their own 10px padding, so
-       anything more here reads as a gap rather than one continuous header. */
-    padding: 0.15rem 15px 0.6rem;
+    /* NO TOP PADDING. The 0.15rem that used to be here was the last 2px of the
+       gap the dock offset above closes; with the bar riding into the nav's
+       padding there is nothing left for it to breathe away from. */
+    padding: 0 15px 0.6rem;
     /* Two occupants pushed to the shell's two edges: tags holds the left,
        the view switcher the right. Nothing centres any more, so this is a
        flex row rather than the three-track grid it used to need — and on
@@ -532,6 +588,38 @@ const indexMembers = [...members].sort((a, b) =>
     align-items: baseline;
     gap: 0.6rem 1.75rem;
     font-size: 0.85rem;
+  }
+
+  @media (--bp-mobile) {
+    .community-bar {
+      /* The mobile nav is shorter than the desktop one: 0.9rem of type at
+         line-height 1 plus its 5px/7px paddings (Navbar.astro's --bp-mobile
+         block). Same contract as the calc above — if that block's size or
+         padding changes, change this with it or the bar overlaps the links.
+         NO 6px OFFSET HERE: the mobile nav pads its bottom by 7px, not 10, and
+         its underline sits at `bottom: 4px`, so there is only ~2px of dead
+         space to reclaim and 4px of underline to protect. The two lines are
+         already one block at this width. */
+      top: calc(0.9 * var(--font-size-base) + 12px);
+      /* Out through <main>'s 15px gutter so the bar reaches the screen edges
+         like the nav and the title above it — and so the background it paints
+         covers the full width it is docking across. */
+      margin-inline: -15px;
+    }
+
+    .community-bar__in {
+      /* THE GUTTER IS BACK, and only the reason for dropping it has changed:
+         it was dropped to join a nav row that ran to the screen edges, and that
+         nav now holds the 15px content edge (see Navbar's --bp-mobile block,
+         2026-09-01). Flush controls under an inset nav is the misalignment the
+         old rule was trying to avoid, pointing the other way.
+         The OUTER strip keeps its full-bleed negative margin — it paints the
+         background the sticky bar docks across, and that has to reach the
+         screen edges whatever the controls inside it do.
+         Top padding still 0: the nav's own padding is all the separation the
+         two lines need. */
+      padding: 0 15px 0.35rem;
+    }
   }
 
   .filter-word {
@@ -554,6 +642,20 @@ const indexMembers = [...members].sort((a, b) =>
     color: var(--color-dark);
     text-decoration: underline;
     text-underline-offset: 0.35em;
+  }
+
+  @media (--bp-mobile) {
+    /* Touch targets: the hit area grows around the type without moving it —
+       padding out, the same distance back in margin. Must sit BELOW
+       `.filter-word { padding: 0 }` above: it used to live further up the
+       file, where that rule cancelled the padding and left the trigger with
+       the negative margin only — a 15px-tall tap target sitting 0.4rem left of
+       where it belonged, which the old 15px gutter hid. */
+    .view-toggle__btn,
+    .filter-word {
+      padding: 0.55rem 0.4rem;
+      margin: -0.55rem -0.4rem;
+    }
   }
 
   /* ── The tags dropdown ────────────────────────────────── */
@@ -953,15 +1055,15 @@ const indexMembers = [...members].sort((a, b) =>
       --cgrid-row: calc((1.5 * var(--wall-card) + 5.4rem) / var(--slot-rows, 1));
     }
 
-    /* Same cap, NO CHROME TERM. The line above bakes in the member card's
-       5.4rem of name-and-caption; a work tile is all frame — it carries no
-       words at all — so its whole slot is the picture's and the cap is exactly
-       1.5 × the card width, 300px at a 200px card. Stated separately rather
-       than made a variable, because the two cards' anatomies are genuinely
-       different numbers and a shared one would hide that. The extra
-       specificity wins wherever this sits in the file. */
+    /* Same cap, the work tile's own chrome. The line above bakes in the member
+       card's 5.4rem of name-and-caption; a work tile carries one project title
+       under its frame and declares 2.2rem for it (--cwork-chrome in
+       CommunityWorkCard) — its author line is out of flow and takes no room.
+       Stated separately rather than made a variable, because the two cards'
+       anatomies are genuinely different numbers and a shared one would hide
+       that. The extra specificity wins wherever this sits in the file. */
     .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
-      --cgrid-row: calc(1.5 * var(--wall-card) / var(--slot-rows, 1));
+      --cgrid-row: calc((1.5 * var(--wall-card) + 2.2rem) / var(--slot-rows, 1));
     }
   }
 
@@ -1084,10 +1186,9 @@ const indexMembers = [...members].sort((a, b) =>
     border-bottom: 1px solid var(--color-border);
   }
 
-  /* Row line: the profile link fills the measure and the disclosure toggle is
-     lifted to the right edge. NOT a grid with a display:contents <details> --
-     that made the page unopenable on an iPhone (see MemberDetailPanel). The
-     open panel is full-width because .pdisc is an ordinary block in flow. */
+  /* Row line. NOT a grid with a display:contents <details> -- that made the
+     page unopenable on an iPhone (see MemberDetailPanel). The open panel is
+     full-width because .pdisc is an ordinary block in flow. */
   .cindex__line {
     position: relative;
   }
@@ -1096,14 +1197,52 @@ const indexMembers = [...members].sort((a, b) =>
     display: block;
   }
 
+  /* ── THE ROW IS THE SUMMARY ────────────────────────────
+     What used to be .cindex__link's rules, moved onto the disclosure's own
+     summary (2026-09-01) — the whole ledger line is the toggle now, so the
+     line's geometry has to belong to the element that is clickable. The
+     chevron is that summary's ::after and therefore the LAST grid item, which
+     is what gives it a track of its own at the right end.
+
+     WHO · FIELD · PROFILE · chevron. Two flexible tracks, not three: the role
+     moved inside the first one and sits beside the name (see .cindex__who).
+     The ledger reads with two anchored edges — the person on the left, their
+     field on the right — the way an index prints. The name side takes the
+     larger share because it carries two pieces of type. */
   .cindex__line :global(.pdisc__toggle) {
-    position: absolute;
-    top: 0;
-    right: 0;
-    align-items: center;
-    /* The chevron is tiny; the hit area is the whole right end of the row. */
-    padding: 0.85rem 0.5rem;
-    box-sizing: content-box;
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) auto 1rem;
+    align-items: baseline;
+    gap: 0 1.5rem;
+    /* No 2rem right reserve any more: the chevron has a real track, so nothing
+       has to be kept clear of it by hand. This was a live bug for a while —
+       see the note in git history about a padding-right silently reset by a
+       later shorthand. */
+    padding: 0.85rem 0.25rem;
+    box-sizing: border-box;
+    transition: background-color 0.15s;
+  }
+
+  .cindex__line :global(.pdisc__toggle:hover),
+  .cindex__line :global(.pdisc__toggle:focus-visible) {
+    background-color: color-mix(in srgb, var(--color-dark) 4%, transparent);
+  }
+
+  /* The chevron sits on the row's own centre line rather than on the type's
+     baseline: at 0.36rem it is a mark, not a letter, and a baseline-aligned
+     mark in a 1rem track reads as having slipped. */
+  .cindex__line :global(.pdisc__toggle::after) {
+    align-self: center;
+    justify-self: end;
+  }
+
+  /* The un-clickable twin keeps the geometry and loses the response — a row
+     with nothing to disclose must not offer a hover state that leads nowhere.
+     Specificity: this pair is (0,4,0)-ish against the hover rule's (0,4,0)
+     plus Astro's scope attribute on both, so source order decides and this
+     block has to stay BELOW the hover rules above. */
+  .cindex__line :global(.pdisc--static .pdisc__toggle:hover) {
+    background-color: transparent;
   }
 
   /* The dropdown's lead: the member's profile picture, in the same square
@@ -1156,35 +1295,27 @@ const indexMembers = [...members].sort((a, b) =>
     margin-top: 0.35rem;
   }
 
-  .cindex__link {
-    display: grid;
-    /* WHO · FIELD. Two columns, not three: the role moved inside the first one
-       and sits beside the name (see .cindex__who). The ledger reads with two
-       anchored edges — the person on the left, their field on the right — the
-       way an index prints, rather than as three ranged-left tracks with the
-       role stranded in the middle of them. The name side takes the larger
-       share because it now carries two pieces of type. */
-    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-    align-items: baseline;
-    gap: 1.5rem;
-    /* The 2rem right inset is room for the disclosure toggle, which is lifted
-       to the row's right edge. On the link, not the row: row padding would
-       inset the open panel as well. It used to be a `padding-right: 2rem`
-       declared ABOVE the `padding` shorthand, which silently reset it to
-       0.25rem — dead since it was written, and harmless only because the
-       field was ranged left and never reached that edge. Ranged right it
-       ran straight under the chevron (measured: field ending 26px past the
-       toggle's left edge), so the reserve is folded into the shorthand
-       where nothing can quietly undo it. */
-    padding: 0.85rem 2rem 0.85rem 0.25rem;
-    text-decoration: none;
-    color: inherit;
-    transition: background-color 0.15s;
+  /* THE NAMED WAY TO THE MEMBER'S PAGE, third track of the row. Underlined at
+     rest — it is the one control on the line whose job is to be findable, and
+     the row it sits in now expands instead of travelling, so nothing else
+     announces that the page exists. Muted so it does not outrank the name at
+     the other end of the same line. Sized and voiced exactly like the image
+     card's .ccard__profile, because it is the same control. */
+  .cindex__profile {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    color: var(--color-muted);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
+    transition: color 0.15s;
   }
 
-  .cindex__link:hover,
-  .cindex__link:focus-visible {
-    background-color: color-mix(in srgb, var(--color-dark) 4%, transparent);
+  .cindex__profile:hover,
+  .cindex__profile:focus-visible {
+    color: var(--color-dark);
   }
 
   /* The name and its role as ONE unit. Flex, not plain inline flow, for one
@@ -1211,7 +1342,7 @@ const indexMembers = [...members].sort((a, b) =>
     color: var(--color-dark);
   }
 
-  .cindex__link:hover .cindex__name {
+  .cindex__line :global(.pdisc__toggle:hover) .cindex__name {
     text-decoration: underline;
     text-underline-offset: 0.35em;
   }
@@ -1269,9 +1400,26 @@ const indexMembers = [...members].sort((a, b) =>
        "Jane Doe" tells a phone reader strictly less than the desktop does for
        no saving. It wraps under the name when the measure runs out, which is
        the stack the old rule was building by hand. */
-    .cindex__link {
+    /* One column, and the chevron leaves the grid for the corner it used to
+       hold: four tracks on a phone would give the name about eight characters.
+       The row is still the toggle — it is only laid out as a stack. */
+    .cindex__line :global(.pdisc__toggle) {
       grid-template-columns: 1fr;
       gap: 0.2rem;
+      padding-right: 2rem;
+    }
+
+    .cindex__line :global(.pdisc__toggle::after) {
+      position: absolute;
+      top: 1.15rem;
+      right: 0.5rem;
+      align-self: start;
+    }
+
+    /* Its own line under the field rather than a squeezed third column. */
+    .cindex__profile {
+      justify-self: start;
+      margin-top: 0.15rem;
     }
 
     /* One column: ranging the field right would strand it under a left-aligned
@@ -1445,13 +1593,103 @@ const indexMembers = [...members].sort((a, b) =>
   type LayoutMode = GalleryPatternName | "strip" | "index";
   const MODES: LayoutMode[] = ["spread", "grid", "strip", "index"];
 
+  // ── THE DEAL HAS TO SURVIVE A BACK ────────────────────
+  // The shuffle used to draw straight from Math.random(), so returning to this
+  // page from a member's profile re-dealt every card. With the scroll position
+  // now restored (see Layout.astro) that was worse than before, not better: you
+  // came back to the right OFFSET of a completely different page. (2026-09-01,
+  // Josh: "back navigation dors not work getting back from profiles" — landing
+  // among strangers is not getting back.)
+  //
+  // So the shuffle is seeded, and the seed is stored against ClientRouter's
+  // history index — the same key Layout.astro files the scroll offset under.
+  // A history traversal finds the seed the entry was dealt with and reproduces
+  // that exact page; a fresh visit finds none and mints one. Changing the view
+  // mints one too, deliberately: "the view toggle deals fresh" is the standing
+  // behaviour, and the entry's remembered seed becomes the new one so a later
+  // Back returns to the arrangement actually left behind.
+  const DEAL_KEY = "vscn:deal:";
+
+  function dealKey(): string | null {
+    const index = (history.state as { index?: number } | null)?.index;
+    return typeof index === "number" ? DEAL_KEY + index : null;
+  }
+
+  /** mulberry32 — 32 bits of state, good enough to shuffle 48 cards with. */
+  function rngFrom(seed: number): () => number {
+    let a = seed >>> 0;
+    return () => {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function storeSeed(seed: number): number {
+    const key = dealKey();
+    if (key) {
+      try {
+        sessionStorage.setItem(key, String(seed));
+      } catch {
+        /* Private mode: the deal is simply random again. Not worth a branch. */
+      }
+    }
+    return seed;
+  }
+
+  /** The seed this history entry was last dealt with, or a new one. */
+  function rememberedSeed(): number {
+    const key = dealKey();
+    if (key) {
+      try {
+        const saved = Number(sessionStorage.getItem(key));
+        if (Number.isFinite(saved) && saved !== 0) return saved;
+      } catch {
+        /* fall through to a fresh seed */
+      }
+    }
+    return storeSeed(freshSeed());
+  }
+
+  /** Never 0 — mulberry32 is fine with it, but it is the falsy value the
+   *  lookup above uses to mean "nothing stored". */
+  function freshSeed(): number {
+    return (Math.floor(Math.random() * 0xffffffff) || 1) >>> 0;
+  }
+
+  let dealSeed = 0;
+
   function shuffled<T>(items: T[]): T[] {
+    const random = rngFrom(dealSeed || (dealSeed = freshSeed()));
     const out = [...items];
     for (let i = out.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(random() * (i + 1));
       [out[i], out[j]] = [out[j], out[i]];
     }
     return out;
+  }
+
+  /**
+   * Rewrite the URL for a view or filter choice WITHOUT touching the history
+   * state object.
+   *
+   * THIS IS NOT A STYLE PREFERENCE. Both call sites used to pass `null` as the
+   * state, and `history.replaceState(null, …)` does not mean "leave the state
+   * alone" — it OVERWRITES it with null. ClientRouter keeps its own bookkeeping
+   * there (`{index, scrollX, scrollY}`) and its popstate handler needs it to
+   * decide what to swap; with null it bails out. The visible symptom was:
+   * choose a view or a tag, open a member, press Back — the URL returned to
+   * /community and THE MEMBER'S PAGE STAYED ON SCREEN. (2026-09-01, Josh:
+   * "back navigation dors not work getting back from profiles".) Every view
+   * switch on the page armed it, which is why it looked intermittent.
+   *
+   * A view switch is still not a navigation, so this is still replaceState —
+   * only now it preserves what it found.
+   */
+  function syncURL(url: URL) {
+    history.replaceState(history.state, "", url);
   }
 
   function writeSlot(cell: HTMLElement, s: Slot) {
@@ -1589,7 +1827,12 @@ const indexMembers = [...members].sort((a, b) =>
         ? applyIndexFilter()
         : grid.querySelectorAll<HTMLElement>(".cgrid__cell:not([hidden])").length;
     const emptyEl = document.getElementById("filter-empty");
-    if (emptyEl) emptyEl.hidden = visible > 0;
+    if (emptyEl) {
+      emptyEl.hidden = visible > 0;
+      const wall = mode === "grid";
+      emptyEl.textContent =
+        (wall ? emptyEl.dataset.works : emptyEl.dataset.rest) ?? emptyEl.textContent;
+    }
   }
 
   /** The tags trigger and its options: the trigger shows the active tag's
@@ -1662,13 +1905,21 @@ const indexMembers = [...members].sort((a, b) =>
     // is also why switching costs nothing and why the wall's images are not
     // fetched until the wall is on screen.
     const artKind = mode === "grid" ? "work" : "image";
+    // THE WALL IS ARTWORK ONLY (2026-09-01, Josh: "remove the empty cards").
+    // Members with nothing to show used to close it with their all-text tag
+    // cards — the one thing on a wall of pictures that was not a picture, and
+    // at the end, where a row of text slabs read as the wall having run out of
+    // material. They keep their full treatment in the SPREAD, which is the view
+    // that is about people, and they are all reachable in the Index. Nobody is
+    // dropped from the directory; they are dropped from one view of the work.
+    const wantsText = mode !== "grid";
     // The filter narrows the DEAL, not the drawing: non-matching cells leave
     // the grid entirely (display:none) and the survivors are dealt into the
     // pattern's leading slots, so the page always reads as designed. Hiding
     // in place would leave the drawn slots standing empty — the exact failure
     // the old comment on .cgrid__cell[hidden] warned about.
     cells.forEach((cell) => {
-      const inView = cell.dataset.slot === artKind || cell.dataset.slot === "text";
+      const inView = cell.dataset.slot === artKind || (wantsText && cell.dataset.slot === "text");
       cell.hidden = !inView || !memberMatches(cell);
     });
     const matching = cells.filter((cell) => !cell.hidden);
@@ -1686,16 +1937,25 @@ const indexMembers = [...members].sort((a, b) =>
     // spread's cards are different cells, so a single list would be emptied of
     // everything the current view can use on every switch — and the point of
     // keeping it is that narrowing by tag must not reshuffle what is on screen.
-    if (reshuffle || !artworkOrder[artKind]?.length) {
-      artworkOrder[artKind] = shuffled(cells.filter((cell) => cell.dataset.slot === artKind));
-    }
-    const orderedGallery = artworkOrder[artKind].filter((cell) => galleryCells.includes(cell));
     // The completeness order comes from data-rank, stamped at build — NOT
     // from document order. Today's deals happen to preserve it for text
     // cells, but that is an accident of the current branches; the rank is
     // the contract.
     const byRank = (a: HTMLElement, b: HTMLElement) =>
       Number(a.dataset.rank) - Number(b.dataset.rank);
+    if (reshuffle || !artworkOrder[artKind]?.length) {
+      // SORTED BY RANK BEFORE SHUFFLING, which is not tidiness: a deal
+      // re-sorts the cells in the DOM afterwards (see the header — reading
+      // order has to run down the page), so `cells` arrives in the PREVIOUS
+      // deal's order. A seeded shuffle over a varying input is not
+      // reproducible, and reproducing the deal is the whole point of the seed
+      // (see rememberedSeed). Rank is the one order that is the same on a
+      // freshly swapped document and on one that has been dealt twice.
+      artworkOrder[artKind] = shuffled(
+        cells.filter((cell) => cell.dataset.slot === artKind).sort(byRank)
+      );
+    }
+    const orderedGallery = artworkOrder[artKind].filter((cell) => galleryCells.includes(cell));
     const textCells = matching.filter((cell) => cell.dataset.slot === "text").sort(byRank);
 
     if (mode === "strip" && strip) {
@@ -1718,13 +1978,10 @@ const indexMembers = [...members].sort((a, b) =>
     }
 
     if (mode === "grid") {
-      // The wall deals every WORK into its own slot — no index section — but
-      // the members without artwork CLOSE the wall rather than mixing
-      // into it: shuffled artwork first, then the tag cards in their
-      // build-time completeness order, the same order the spread's index
-      // reads in. A tag card is shorter than most artwork, and the wall's
-      // design already absorbs that: tops align on the row's flat edge and
-      // the raggedness all falls to the bottom.
+      // The wall deals every WORK into its own slot, and nothing else — the
+      // artwork-less members are not in this view at all (see wantsText
+      // above), so `textCells` is empty here by construction and the spread
+      // below it is what keeps the two branches written the same way.
       // Generated, not drawn: as many fixed-width tracks as the window fits
       // (see the wall block in the styles above). The count goes onto the grid
       // for the CSS to build its tracks from, and is remembered so a resize
@@ -1783,6 +2040,10 @@ const indexMembers = [...members].sort((a, b) =>
       }
       reflectTagUI();
 
+      // Before the first deal: a Back onto this entry reproduces the page it
+      // was left showing, a fresh arrival gets a new one. See rememberedSeed.
+      dealSeed = rememberedSeed();
+
       const mode = modeFromURL();
       applyLayout(grid, mode);
       reflectMode(mode);
@@ -1791,20 +2052,24 @@ const indexMembers = [...members].sort((a, b) =>
       }
 
       // The view selector. Switching re-deals the same cells into the other
-      // slot table, mirrors the choice into ?pattern= (replaceState — a view
-      // switch is not a navigation) so reload and share keep it, and tells
+      // slot table, mirrors the choice into ?pattern= (via syncURL — a view
+      // switch is not a navigation, but it must not eat ClientRouter's history
+      // state either; see syncURL) so reload and share keep it, and tells
       // the motion layer to rebuild: every ScrollTrigger position measured
       // against the old layout is stale the moment the deal moves the cells.
       document.querySelectorAll<HTMLButtonElement>(".view-toggle__btn").forEach((btn) => {
         btn.addEventListener("click", () => {
           const next = btn.dataset.mode as LayoutMode;
           if (grid.dataset.pattern === next) return;
+          // A fresh deal, remembered against this entry — so Back later returns
+          // to the view AND the arrangement the visitor actually left.
+          dealSeed = storeSeed(freshSeed());
           applyLayout(grid, next);
           reflectMode(next);
           const url = new URL(window.location.href);
           if (next === "spread") url.searchParams.delete("pattern");
           else url.searchParams.set("pattern", next);
-          history.replaceState(null, "", url);
+          syncURL(url);
           document.dispatchEvent(new Event("community:layout-changed"));
         });
       });
@@ -1847,7 +2112,7 @@ const indexMembers = [...members].sort((a, b) =>
           const url = new URL(window.location.href);
           if (tagFilter) url.searchParams.set("tag", tagFilter);
           else url.searchParams.delete("tag");
-          history.replaceState(null, "", url);
+          syncURL(url);
           document.dispatchEvent(new Event("community:layout-changed"));
         });
       });
@@ -2235,6 +2500,20 @@ const indexMembers = [...members].sort((a, b) =>
   // every pager on the site is one control.
   const CHEVRON = '<span class="pswp__vscn-chevron" aria-hidden="true"></span>';
 
+  // BOTH VIEWS' TRIGGERS, in one selector. The wall's tile wraps its own
+  // image (.cwork__link); the gallery's card puts a bare link over its
+  // carousel (.ccard__frame-link) and rewrites its data-pswp-* set as the
+  // carousel moves. Only one of the two is ever unhidden — the deal hides the
+  // member cells for the wall and the work cells for the gallery — so the
+  // union never pages through both at once, and `:not([hidden])` keeps the
+  // filter's rejects out of the count as well.
+  //
+  // THE GALLERY'S TRIGGER WAS MISSING HERE until 2026-09-01, which is what
+  // "the lightbox is broken in Gallery" was: PhotoSwipe swallows the click on
+  // a gallery it owns even when the selector matches nothing, so pressing an
+  // image did not open the lightbox AND did not follow the link either.
+  const TRIGGERS = ".cgrid__cell:not([hidden]) .cwork__link, .cgrid__cell:not([hidden]) .ccard__frame-link";
+
   // Rebuilt per navigation: ClientRouter swaps the document, so a lightbox
   // bound to the previous page's grid would be holding a dead element.
   let lightbox: PhotoSwipeLightbox | null = null;
@@ -2243,7 +2522,7 @@ const indexMembers = [...members].sort((a, b) =>
     lightbox?.destroy();
     lightbox = null;
     const grid = document.getElementById("member-grid");
-    if (!grid || !grid.querySelector(".cwork__link")) return;
+    if (!grid || !grid.querySelector(TRIGGERS)) return;
 
     let strings = FALLBACK;
     try {
@@ -2256,7 +2535,7 @@ const indexMembers = [...members].sort((a, b) =>
 
     lightbox = new PhotoSwipeLightbox({
       gallery: "#member-grid",
-      children: ".cgrid__cell:not([hidden]) .cwork__link",
+      children: TRIGGERS,
       pswpModule: () => import("photoswipe"),
 
       // ── Chrome. Identical to the member page's, on purpose — nothing below
@@ -2264,10 +2543,14 @@ const indexMembers = [...members].sort((a, b) =>
       //    different lightboxes. See lightbox.css for the CSS half.
       mainClass: "pswp--vscn",
       bgOpacity: 1,
+      // The bottom figures GREW with the description line (2026-09-01) and are
+      // the band's max-height in lightbox.css — that pair is the whole reason a
+      // long description scrolls rather than overlapping the picture. Change
+      // them together.
       paddingFn: (viewportSize) =>
         viewportSize.x <= 767
-          ? { top: 44, bottom: 84, left: 12, right: 12 }
-          : { top: 56, bottom: 104, left: 32, right: 32 },
+          ? { top: 44, bottom: 116, left: 12, right: 12 }
+          : { top: 56, bottom: 140, left: 32, right: 32 },
       closeSVG: `<span class="pswp__vscn-word">${esc(strings.close)}</span>`,
       arrowPrevSVG: CHEVRON,
       arrowNextSVG: CHEVRON,
@@ -2291,6 +2574,36 @@ const indexMembers = [...members].sort((a, b) =>
         : {}),
     });
 
+    // ── THE GALLERY CARD'S ZOOM-OUT TARGET ────────────────────────────────
+    // PhotoSwipe finds the thumbnail it grows out of by looking for an `img`
+    // INSIDE the trigger. The wall's tile wraps its image, so it needs
+    // nothing; the gallery card's link is a bare overlay next to the carousel
+    // track, so without help it has nothing to animate from and opens with a
+    // flat fade — one gesture, two different openings. These two filters hand
+    // it the slide the visitor is actually looking at, which is the one whose
+    // work URL the carousel copied onto the link (see CommunityImageCard's
+    // syncTrigger). Matching on that URL rather than on an index keeps this
+    // module ignorant of Embla, exactly like the rest of the pair's contract.
+    lightbox.addFilter("thumbEl", (thumbEl, itemData) => {
+      const trigger = itemData.element as HTMLElement | undefined;
+      if (thumbEl || !trigger?.classList.contains("ccard__frame-link")) return thumbEl;
+      const frame = trigger.parentElement;
+      const href = trigger.getAttribute("href");
+      const slide =
+        frame?.querySelector<HTMLElement>(`.ccard__slide[data-work-url="${CSS.escape(href || "")}"]`) ??
+        frame?.querySelector<HTMLElement>(".ccard__slide");
+      return slide?.querySelector<HTMLImageElement>(".ccard__img") ?? thumbEl;
+    });
+
+    // The card's frame is a fixed shape and the image fills it with
+    // object-fit: cover, so the thumbnail on screen is a CROP of the picture
+    // the lightbox shows. Saying so is what makes the zoom start from the
+    // visible crop instead of from a letterboxed ghost of the full frame.
+    lightbox.addFilter("domItemData", (itemData, element) => {
+      if (element.classList.contains("ccard__frame-link")) itemData.thumbCropped = true;
+      return itemData;
+    });
+
     // PhotoSwipe 5 has no caption of its own; this is the documented way to
     // add one. Text comes off the trigger link, so the lightbox and the tile
     // under it cannot say different things about the same image.
@@ -2304,6 +2617,15 @@ const indexMembers = [...members].sort((a, b) =>
           const render = () => {
             const trigger = pswp.currSlide?.data.element as HTMLElement | undefined;
             const caption = trigger?.dataset.pswpCaption?.trim() || "";
+            // THE LONG TEXT, in the lightbox as of 2026-09-01 (Josh: "add it
+            // to lightbox"). It used to live only under the image on the
+            // member's page, which meant the one view where the artwork is
+            // big enough to warrant an explanation was the one view without
+            // one. Unlike the caption it is NOT clamped: the band is a scroll
+            // container capped at the padding the artwork reserves (see
+            // lightbox.css), so a paragraph scrolls inside the band instead of
+            // being cut off or growing up over the picture.
+            const description = trigger?.dataset.pswpDescription?.trim() || "";
             const meta = trigger?.dataset.pswpMeta?.trim() || "";
 
             // textContent, not innerHTML: this is member-authored text.
@@ -2314,13 +2636,22 @@ const indexMembers = [...members].sort((a, b) =>
               line.textContent = caption;
               el.append(line);
             }
+            if (description) {
+              const desc = document.createElement("span");
+              desc.className = "pswp__vscn-caption-desc";
+              desc.textContent = description;
+              el.append(desc);
+            }
             if (meta) {
               const credit = document.createElement("span");
               credit.className = "pswp__vscn-caption-meta";
               credit.textContent = meta;
               el.append(credit);
             }
-            el.classList.toggle("is-empty", !caption && !meta);
+            el.classList.toggle("is-empty", !caption && !description && !meta);
+            // The band scrolls; a slide change has to start it at the top or
+            // the next caption opens mid-paragraph.
+            el.scrollTop = 0;
           };
 
           pswp.on("change", render);
