@@ -2,3 +2,5 @@
 // the module named for its concern.
 export { requestRebuild } from "./rebuild";
 export { requestAccountDeletion, cancelAccountDeletion, syncEmail } from "./accounts";
+export { purgeExpiredAccounts, sweepImages, reconcileEmails } from "./maintenance";
+export { onAuthUserDeleted } from "./authTriggers";
