@@ -48,7 +48,10 @@ function authSummary(u: UserRecord) {
  */
 async function resolveUid(query: string): Promise<string | null> {
   const q = query.trim();
-  if (!q) return null;
+  // A slash can never be an email, uid, slug or imageId, and db.doc() throws
+  // on a path with the wrong number of segments — fall through to the
+  // displayName search instead.
+  if (!q || q.includes("/")) return null;
   if (q.includes("@")) {
     try {
       return (await adminAuth.getUserByEmail(q)).uid;
