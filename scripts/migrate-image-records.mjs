@@ -208,14 +208,32 @@ async function migrate() {
 }
 
 async function cleanupLegacyObjects() {
-  const pubs = await db.collection("publicProfiles").get();
+  const [users, pubs] = await Promise.all([db.collection("users").get(), db.collection("publicProfiles").get()]);
+  console.log(`snapshot → ${snapshot(users, pubs)}\n`);
+
   const unmigrated = pubs.docs.flatMap((d) =>
     (Array.isArray(d.data().gallery) ? d.data().gallery : []).filter((g) => !g.imageId).map(() => d.id)
   );
   if (unmigrated.length) {
     console.error(`Refusing: ${unmigrated.length} gallery item(s) still lack an imageId (${[...new Set(unmigrated)].join(", ")}).`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
+
+  const unmigratedAvatars = pubs.docs
+    .filter((d) => {
+      const { photoURL, photoImageId } = d.data();
+      if (!photoURL || photoImageId) return false;
+      // Only an avatar whose bytes live in THIS bucket's legacy folder is at risk.
+      return photoURL.includes(bucketName) && (storagePathFromUrl(photoURL) ?? "").startsWith("avatars/");
+    })
+    .map((d) => d.id);
+  if (unmigratedAvatars.length) {
+    console.error(`Refusing: ${unmigratedAvatars.length} avatar(s) in this bucket still lack a photoImageId (${unmigratedAvatars.join(", ")}).`);
+    process.exitCode = 1;
+    return;
+  }
+
   for (const prefix of LEGACY_PREFIXES) {
     const [files] = await bucket.getFiles({ prefix });
     console.log(`${prefix}: ${files.length} object(s)`);
