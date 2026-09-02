@@ -5,3 +5,11 @@ export { requestAccountDeletion, cancelAccountDeletion, syncEmail } from "./acco
 export { purgeExpiredAccounts, sweepImages, reconcileEmails } from "./maintenance";
 export { onAuthUserDeleted } from "./authTriggers";
 export { onPublicProfileWritten } from "./slugs";
+export {
+  adminLookupMember,
+  adminListQueues,
+  adminPurgeAccount,
+  adminRestoreAccount,
+  adminSetMemberEmail,
+  adminSetProfileActive,
+} from "./adminOps";
