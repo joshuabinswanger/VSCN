@@ -2,7 +2,26 @@ import { test, before, after, beforeEach } from "node:test";
 import { setupEnv, assertFails, assertSucceeds, OWNER, OTHER, verified } from "./helpers.mjs";
 
 let env;
-before(async () => { env = await setupEnv(); });
+before(async () => {
+  env = await setupEnv();
+  // The Storage emulator can answer requests before its ruleset is loaded
+  // ("Permission denied because no Storage ruleset is currently loaded"),
+  // which fails the first uploads spuriously. Poll a legitimate owner upload
+  // until the rules engine answers it, then clear the bucket.
+  const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
+  const probe = `users/${OWNER}/gallery/00000000-0000-4000-8000-000000000000.webp`;
+  let ready = false;
+  for (let attempt = 0; attempt < 20 && !ready; attempt += 1) {
+    try {
+      await s.ref(probe).put(new Uint8Array(16), { contentType: "image/webp" });
+      ready = true;
+    } catch {
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
+  if (!ready) throw new Error("Storage emulator never loaded its ruleset (20 attempts).");
+  await env.clearStorage();
+});
 after(async () => { await env.cleanup(); });
 beforeEach(async () => { await env.clearStorage(); });
 
@@ -45,8 +64,10 @@ test("storage: public read, owner cannot delete (sweeper does)", async () => {
   await assertFails(s.ref(`users/${OWNER}/gallery/${ID}.webp`).delete());
 });
 
-test("storage: legacy paths are read-only", async () => {
+test("storage: legacy paths are denied entirely (catch-all)", async () => {
   const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
   await assertFails(s.ref(`galleries/${OWNER}/123-abc.webp`).put(webp(64), { contentType: "image/webp" }));
   await assertFails(s.ref(`avatars/${OWNER}-123.webp`).put(webp(64), { contentType: "image/webp" }));
+  await assertFails(s.ref(`galleries/${OWNER}/123-abc.webp`).getDownloadURL());
+  await assertFails(s.ref(`avatars/${OWNER}-123.webp`).getDownloadURL());
 });

@@ -3,16 +3,6 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    match /avatars/{filename} {
-      // Legacy layout, read-only until --cleanup-legacy has run (Task 20).
-      allow read: if true;
-    }
-
-    match /galleries/{uid}/{filename} {
-      // Legacy layout, read-only until --cleanup-legacy has run (Task 20).
-      allow read: if true;
-    }
-
     match /users/{uid}/{kind}/{filename} {
       // One prefix per account: users/{uid}/ holds every byte a member owns,
       // so a purge is a single prefix delete. The filename is the image

@@ -2,6 +2,7 @@
 
 Date: 2026-08-23
 Status: approved design, not yet implemented
+Superseded in part (2026-09): §1 storage layout and the URL-based deletion model are replaced by documentation/20260902-firebase-entity-restructuring-design.md. §2–§3 (formats, pipeline) still stand.
 
 ## Context
 

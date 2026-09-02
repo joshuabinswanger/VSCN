@@ -1,8 +1,8 @@
 > Mirrors the per-project memory file `~/.claude/projects/D--SynoDrive-VSCN/memory/firebase-entity-restructuring.md` so any Claude instance can read it without access to Josh's user profile.
 
-# Firebase entity restructuring — approved design, not implemented
+# Firebase entity restructuring — DEV COMPLETE, prod pending
 
-Approved on 2026-09-02, design at `documentation/20260902-firebase-entity-restructuring-design.md`, **no code written yet**. Josh's ask: everything linked by ids so an account can be purged, searched and re-emailed by a function.
+Approved on 2026-09-02, design at `documentation/20260902-firebase-entity-restructuring-design.md`, **DEV COMPLETE 2026-09 — prod pending Josh's go**. Josh's ask: everything linked by ids so an account can be purged, searched and re-emailed by a function.
 
 The load-bearing decisions, none of which are visible from the code:
 
@@ -14,4 +14,17 @@ The load-bearing decisions, none of which are visible from the code:
 
 **Why:** the four operations Josh needs (purge, email change, member lookup, image queries) were all impossible because images had no identity — they existed only as URL strings inside an array, and deletion worked by parsing a download URL back into a storage path.
 
-**How to apply:** treat the design doc as the contract; the next step is the implementation plan. Do not start with the client — rollout order is deliberately rules-first (accepting both array shapes), then functions, then dev migration, then prod, then client, then rules tightening. An old client keeps working until the tightening step, and that window is the only rollback. Watch [[firestore-rules-hasonly-gotcha]]: three new collections multiply that trap.
+**How to apply:** treat the design doc as the contract; the plan is executed on dev; follow the prod runbook below. Do not start with the client — rollout order is deliberately rules-first (accepting both array shapes), then functions, then dev migration, then prod, then client, then rules tightening. An old client keeps working until the tightening step, and that window is the only rollback. Watch [[firestore-rules-hasonly-gotcha]]: three new collections multiply that trap.
+
+**Dev status:** the dev project (`vscn-dev-f4b60`) is fully cleaned up and verified. Legacy `avatars/` and `galleries/{uid}/` Storage objects are deleted (50 gallery objects removed 2026-09; 0 avatars, since dev's 13 unmigrated avatar URLs pointed at the *prod* bucket, so the in-bucket guard never fired). `storage.rules` has no legacy matches left (catch-all denies them) and the final ruleset is deployed to dev. `npm run test:rules` is 32/32 — the suite needed a storage-emulator warm-up added to `tests/rules/storage.test.mjs`'s `before` hook (the Storage emulator can answer requests before its ruleset finishes loading, which spuriously failed the first uploads; the hook now polls a real owner upload until the rules engine is ready before any test runs). `node scripts/check-integrity.mjs -P dev` reports exactly 19 problems, all `has no Auth user` (pre-existing curated/seed profiles with no Auth account — expected, not a regression) and nothing else — in particular no `object ... has no image record` lines, confirming the legacy cleanup left no orphans. Task 20 (legacy cleanup, docs, memory — dev half) is committed; see `documentation/20260902-firebase-entity-restructuring-plan/task-20-report.md` for the commit SHA and the full Step 7 gate output.
+
+**Prod runbook (not yet run — Josh's go required):**
+1. The prod rules currently deployed predate this whole restructuring. Deploying Task-19's tightened rules (commit `7726b79`, `firestore.rules` + `storage.rules`) straight to prod is **not safe** — prod data hasn't been migrated yet, so the tightened rules would reject old-shape writes. Instead, first deploy functions (`npx -y firebase-tools@latest deploy -P default --only functions`) and the *window* rules — `firestore.rules` from commit `06289c3` and `storage.rules` from commit `456daf9` (the state that accepts both old and new shapes). Simplest way: check out those two files at commit `456daf9` into a temp dir and deploy from there.
+2. Migrate prod data: `node --experimental-strip-types scripts/migrate-image-records.mjs -P prod` (dry run, read it), then `--write`; then `node --experimental-strip-types scripts/backfill-provenance.mjs -P prod --write`; then `node scripts/check-integrity.mjs -P prod` and confirm 0 problems.
+3. Merge the branch (`feature/firebase-entity-restructuring` → `dev` → `main` per the repo's branch flow) and let the merge workflow deploy the new client to prod.
+4. Deploy the tightened rules from `7726b79`: `npx -y firebase-tools@latest deploy -P default --only firestore:rules,storage`. Note this `storage.rules` still has legacy paths as **read-only**, not yet removed.
+5. Run the legacy cleanup against prod: `node --experimental-strip-types scripts/migrate-image-records.mjs -P prod --write --cleanup-legacy`.
+6. Deploy the final `storage.rules` (no legacy matches, the version now on `dev`): `npx -y firebase-tools@latest deploy -P default --only storage`.
+7. `node scripts/check-integrity.mjs -P prod` — confirm 0 problems.
+
+**Open items regardless of prod timing:** grant the admin claim (`node scripts/set-admin.mjs -P <proj> <email>`); do a signed-in dev pass of upload / remove / avatar / delete-cancel / email-change / `/admin` console before trusting any of this in prod.

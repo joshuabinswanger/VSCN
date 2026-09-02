@@ -11,9 +11,10 @@ npm run preview      # serve dist/
 npm run lint         # eslint src
 npm run format       # prettier --write src
 npm run deploy:dev   # build in development mode + firebase deploy -P dev --only hosting
+npm run test:rules   # firestore.rules + storage.rules against the emulator (needs Java)
 ```
 
-There is **no test framework** in this repo, and none should be added casually. Verification is `npm run lint`, `npm run build`, and browser inspection.
+There is **no test framework** for src/ and none should be added casually. The ONE exception is `tests/rules/` — rules tests on the emulator via `@firebase/rules-unit-testing` + `node --test`, because a rules mistake fails silently (see the hasOnly trap below) and nothing else catches it. Verification is `npm run lint`, `npm run build`, and browser inspection.
 
 `npm run lint` has a **standing baseline of 8 warnings / 0 errors**: an unused `t` in seven page frontmatters, and one `no-explicit-any` in `firebase.ts`. Treat only *errors* as yours. If you have time, zeroing this baseline is a real improvement — a warning currently means nothing because there are always warnings.
 
@@ -42,6 +43,10 @@ The same Firestore data is reached two completely different ways, and confusing 
 **The `hasOnly` trap:** the rules validate with `data.keys().hasOnly(allowedKeys)`. A field missing from that list causes the **entire write to be rejected**, and the failure surfaces nowhere useful — no error naming the field, in the client or the console. If a write silently stops working after you add a field, this is why.
 
 Member types are a closed set: `MEMBER_TYPES = ["creator", "scientist", "both", "organization"]`.
+
+**Images are records.** `images/{imageId}` is the source of truth for every avatar and gallery image (`ownerUid`, `kind`, `storagePath`, status). The `gallery` array on both profile docs is a display projection carrying each item's `imageId`; `photoImageId` points at the avatar's record. Uploads go record → bytes → `live` (`src/lib/images.ts`), which is what makes a Storage object without a record impossible; removal MARKS the record (`pendingDeletion`) and the `sweepImages` function deletes bytes and record together. Storage layout is `users/{uid}/{avatar|gallery}/{imageId}.webp` — one prefix per account. Never parse a download URL back into a path; derive URLs from `storagePath`.
+
+**Lifecycle is server-side.** `users.status`, `purgeAfter`, `deletionRequestedAt` and `email` are written only by Cloud Functions (`functions/src/`); rules keep them in the client allowlist purely so merged writes pass `hasOnly`, and pin them unchanged. Account deletion is `requestAccountDeletion` (30-day grace, `active: false` hides the member immediately, `purgeExpiredAccounts` finishes it). Slugs live in `slugs/`, owned by `onPublicProfileWritten`; the build reads them and must never write them. The `admin` custom claim (`scripts/set-admin.mjs`) gates `/admin` and the `admin*` callables; admins read through rules and write only through callables, logged to `adminActions`. Design: `documentation/20260902-firebase-entity-restructuring-design.md`.
 
 ### Routing and i18n
 
