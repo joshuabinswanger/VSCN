@@ -31,25 +31,28 @@ export async function setImagesStatus(refs: DocumentReference[], status: ImageSt
  * Soft delete. Hides the member (publicProfiles.active = false — the one flag
  * the directory already filters on), marks the private doc, parks every live
  * image, and opens a deletions/{uid} job. Deletes NO bytes: the grace period
- * exists so a cancel can restore everything from the job record.
+ * exists so a cancel can restore everything from the job record. The image
+ * flips are part of the same transaction as the job/profile/user writes, so a
+ * failure leaves nothing half-parked — either everything commits or nothing
+ * does.
  */
 export async function scheduleDeletion(
   uid: string,
   requestedBy: DeletionRequester,
   purgeAfter: Timestamp
 ): Promise<DeletionJob> {
-  const liveImages = await imageRefsFor(uid, "live");
-  const imageIds = liveImages.map((d) => d.id);
-
   const job = await db.runTransaction(async (tx) => {
-    const [user, pub, existing] = await Promise.all([
+    const [user, pub, existing, imagesSnap] = await Promise.all([
       tx.get(db.doc(`users/${uid}`)),
       tx.get(db.doc(`publicProfiles/${uid}`)),
       tx.get(db.doc(`deletions/${uid}`)),
+      tx.get(db.collection("images").where("ownerUid", "==", uid)),
     ]);
     if (existing.exists && existing.data()?.completedAt == null) {
       throw new HttpsError("already-exists", "Deletion already scheduled.");
     }
+    const liveImages = imagesSnap.docs.filter((d) => d.data().status === "live");
+    const imageIds = liveImages.map((d) => d.id);
     const job: DeletionJob = {
       uid,
       requestedBy,
@@ -72,16 +75,23 @@ export async function scheduleDeletion(
         purgeAfter,
       });
     }
+    for (const d of liveImages) {
+      tx.update(d.ref, { status: "pendingDeletion", updatedAt: FieldValue.serverTimestamp() });
+    }
     return job;
   });
 
-  await setImagesStatus(liveImages.map((d) => d.ref), "pendingDeletion");
   return job;
 }
 
-/** Reverses scheduleDeletion from the job record. Throws if nothing is pending. */
+/**
+ * Reverses scheduleDeletion from the job record. Throws if nothing is
+ * pending. The image flips happen inside the same transaction as the
+ * job/profile/user writes, after all reads (Firestore transactions require
+ * every read before any write) — so a failure leaves nothing half-restored.
+ */
 export async function cancelDeletion(uid: string): Promise<void> {
-  const job = await db.runTransaction(async (tx) => {
+  await db.runTransaction(async (tx) => {
     const [jobSnap, user, pub] = await Promise.all([
       tx.get(db.doc(`deletions/${uid}`)),
       tx.get(db.doc(`users/${uid}`)),
@@ -91,6 +101,9 @@ export async function cancelDeletion(uid: string): Promise<void> {
       throw new HttpsError("not-found", "No pending deletion.");
     }
     const job = jobSnap.data() as DeletionJob;
+    const imageRefs = job.imageIds.map((id) => db.doc(`images/${id}`));
+    const imageSnaps = imageRefs.length ? await tx.getAll(...imageRefs) : [];
+
     if (pub.exists) tx.update(pub.ref, { active: job.activeBefore });
     if (user.exists) {
       tx.update(user.ref, {
@@ -100,8 +113,10 @@ export async function cancelDeletion(uid: string): Promise<void> {
       });
     }
     tx.delete(jobSnap.ref);
-    return job;
+    // A recorded image that no longer exists (swept or purged) is skipped,
+    // not an error.
+    for (const s of imageSnaps) {
+      if (s.exists) tx.update(s.ref, { status: "live", updatedAt: FieldValue.serverTimestamp() });
+    }
   });
-
-  await setImagesStatus(job.imageIds.map((id) => db.doc(`images/${id}`)), "live");
 }
