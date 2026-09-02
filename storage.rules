@@ -27,9 +27,19 @@ service firebase.storage {
 
       // Only the owner can upload into their own gallery folder.
       // The image count is enforced via the gallery array in firestore.rules.
+      //
+      // THE CEILING MOVES WITH MAX_EDGE (2026-09-02). It was 2 MB, sized for
+      // the 2000px WebP the client used to produce; compressGalleryImage() now
+      // caps the longest edge at 4000px, which is four times the pixels and
+      // lands photographic work in the 2-4 MB range. Left at 2 MB, every upload
+      // of a decent-sized artwork would have been rejected HERE, and a Storage
+      // rule rejection surfaces as an opaque permission error that says nothing
+      // about size — the same class of silent failure as the hasOnly trap in
+      // firestore.rules. 8 MB has headroom over the worst 4K WebP without
+      // becoming a place to park originals.
       allow write: if request.auth != null
                    && request.auth.uid == uid
-                   && request.resource.size <= 2 * 1024 * 1024
+                   && request.resource.size <= 8 * 1024 * 1024
                    && request.resource.contentType == 'image/webp';
 
       allow delete: if request.auth != null && request.auth.uid == uid;

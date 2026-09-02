@@ -414,10 +414,11 @@ a:hover {
   background: var(--color-bg);
   padding: 1rem;
 }
+/* No pointer affordance and no touch-action override any more: the canvas is a
+   preview, not a control, since cropping was dropped (2026-09-02). A crosshair
+   over an image nothing can be drawn on is a promise the editor cannot keep. */
 .image-editor canvas {
   max-width: 100%;
-  touch-action: none;
-  cursor: crosshair;
 }
 .image-editor-actions {
   display: flex;
