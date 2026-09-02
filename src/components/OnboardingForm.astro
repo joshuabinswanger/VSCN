@@ -644,7 +644,6 @@ const prefix = lang === "de" ? "/de" : "";
   import { validateAvatar, resizeAvatar } from "../lib/validation.ts";
   import {
     getUser,
-    createUser,
     updateUser,
     updateUserProfile,
     publishCurrentUserProfile,
@@ -656,6 +655,8 @@ const prefix = lang === "de" ? "/de" : "";
   import { memberTypeFieldCopy } from "../lib/memberType.ts";
   import { handleProfileUpdate, triggerRebuild } from "../lib/profile.ts";
   import { renderCardPreview } from "../lib/profilePreview.ts";
+  import { markImageForDeletion } from "../lib/images.ts";
+  import { syncEmail } from "../lib/account.ts";
   // The one gallery upload path in the codebase, the same four calls the
   // profile editor composes: validate → compress to WebP → upload to Storage
   // → write the array to Firestore. Nothing here re-implements any of it.
@@ -664,7 +665,6 @@ const prefix = lang === "de" ? "/de" : "";
     validateGalleryFile,
     compressGalleryImage,
     uploadGalleryImage,
-    deleteGalleryImages,
     type GalleryItem,
   } from "../lib/gallery.ts";
   import { ui } from "../i18n/translations.ts";
@@ -973,7 +973,7 @@ const prefix = lang === "de" ? "/de" : "";
       renderGallery();
       try {
         await persistGallery();
-        if (removed) await deleteGalleryImages([removed.url]);
+        if (removed) await markImageForDeletion(removed.imageId);
         setGalleryStatus("");
       } catch {
         setGalleryStatus(s["profile.gallery.error"]);
@@ -1005,13 +1005,13 @@ const prefix = lang === "de" ? "/de" : "";
           }
           try {
             setGalleryStatus(s["profile.upload.processing"]);
-            const { blob, width, height, color } = await compressGalleryImage(file);
-            const url = await uploadGalleryImage(user.uid, blob, (pct) => {
+            const compressed = await compressGalleryImage(file);
+            const item = await uploadGalleryImage(user.uid, compressed, (pct) => {
               setGalleryStatus(`${s["profile.upload.uploading"]} ${pct}%`);
             });
             // One image failing is one image failing: the loop keeps going and
             // everything already uploaded stays.
-            gallery.push({ url, caption: "", width, height, color });
+            gallery.push(item);
             uploaded = true;
             renderGallery();
           } catch {
@@ -1055,7 +1055,6 @@ const prefix = lang === "de" ? "/de" : "";
           portfolio: portfolioVal,
           socialMedia: socialVal,
           phone: phoneVal,
-          email: user.email!,
         });
       } finally {
         setBtnState("ob-next-0", false, s["onboarding.nav.next"]);
@@ -1078,7 +1077,6 @@ const prefix = lang === "de" ? "/de" : "";
           await upsertOnboardingRequest(user.uid, {
             message: platformRequest,
             lang: lang === "de" ? "de" : "en",
-            email: user.email ?? undefined,
             displayName: getInputValue("ob-name").trim() || user.displayName || undefined,
           }).catch((err) => {
             console.warn("[onboarding] Request save skipped:", err);
@@ -1418,7 +1416,10 @@ const prefix = lang === "de" ? "/de" : "";
         }
         const user = userCredential.user;
         if (isNewUser) {
-          await createUser(user.uid, { email: user.email! }).catch(() => {});
+          // users/{uid}.email is server-written: the callable reads the address
+          // off the caller's own token and merge-creates the doc. The client
+          // cannot write the field itself — firestore.rules pins it.
+          await syncEmail().catch(() => {});
           await sendEmailVerification(user).catch(() => {});
         }
         await onUserAuthenticated(user);

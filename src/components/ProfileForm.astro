@@ -36,6 +36,17 @@ const t = useTranslations(lang);
 
 <form id="profile-form" class="profile-form" data-lang={lang}>
   {
+    /* Shown on every tab while a deletion is pending: the way back out of it
+      must not be hidden behind the tab that scheduled it. */
+  }
+  <div id="deletion-banner" class="deletion-banner" style="display:none;" role="status">
+    <p id="deletion-banner-text"></p>
+    <button type="button" id="btn-keep-account" class="btn-solid"
+      >{t("profile.delete.keep")}</button
+    >
+  </div>
+
+  {
     /* One form, four sections. A tab switch only toggles visibility, so the
       single Save still collects every field. Preview is the last tab rather
       than a separate mode: it needs no save and no rebuild, which matters
@@ -282,6 +293,24 @@ const t = useTranslations(lang);
       {t("profile.logout")}
     </button>
 
+    {
+      /* Auth owns the change: the confirmation link goes to the NEW address
+        and the swap happens only when it is clicked. users/{uid}.email is a
+        server-written mirror that catches up on the next load. */
+    }
+    <div class="account-block">
+      <h3 class="label">{t("profile.email.title")}</h3>
+      <label class="label" for="email-new">{t("profile.email.new")}</label>
+      <input id="email-new" type="email" class="input" autocomplete="email" />
+      <label class="label" for="email-password">{t("profile.reauth.text")}</label>
+      <input id="email-password" type="password" class="input" autocomplete="current-password" />
+      <p id="email-msg" class="msg-ok" style="display:none;"></p>
+      <p id="email-error" class="msg-err" style="display:none;"></p>
+      <button type="button" id="btn-email-change" class="btn-solid"
+        >{t("profile.email.submit")}</button
+      >
+    </div>
+
     <div class="danger-zone">
       <div id="delete-idle">
         <button type="button" id="btn-delete-start" class="btn-danger-link"
@@ -289,21 +318,14 @@ const t = useTranslations(lang);
         >
       </div>
 
-      <div id="delete-confirm" style="display:none;">
-        <p class="danger-text">
-          {t("profile.delete.text")}
-        </p>
-        <div class="danger-actions">
-          <button type="button" id="btn-delete-cancel" class="btn-link"
-            >{t("profile.delete.cancel")}</button
-          >
-          <button type="button" id="btn-delete-confirm" class="btn-danger"
-            >{t("profile.delete.confirm")}</button
-          >
-        </div>
-      </div>
-
+      {
+        /* One step, not two: the password prompt IS the confirmation, because
+          requestAccountDeletion refuses a token whose auth_time is older than
+          five minutes. A separate "are you sure" screen in front of it would
+          add a click and no safety. */
+      }
       <div id="delete-reauth" style="display:none;">
+        <p class="danger-text">{t("profile.delete.text")}</p>
         <p class="danger-text">{t("profile.reauth.text")}</p>
         <input
           id="reauth-password"
@@ -318,9 +340,13 @@ const t = useTranslations(lang);
             >{t("profile.reauth.cancel")}</button
           >
           <button type="button" id="btn-reauth-confirm" class="btn-danger"
-            >{t("profile.reauth.confirm")}</button
+            >{t("profile.delete.confirm")}</button
           >
         </div>
+      </div>
+
+      <div id="delete-scheduled" style="display:none;">
+        <p id="delete-scheduled-text" class="danger-text"></p>
       </div>
     </div>
   </div>
@@ -776,6 +802,25 @@ const t = useTranslations(lang);
     align-self: start;
   }
 
+  .deletion-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--color-dark);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+  }
+
+  .account-block {
+    display: grid;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+  }
+
   .danger-zone {
     padding-top: 2rem;
     border-top: 1px solid var(--color-border);
@@ -935,15 +980,16 @@ const t = useTranslations(lang);
     reauthenticateWithCredential,
     EmailAuthProvider,
     sendEmailVerification,
+    verifyBeforeUpdateEmail,
   } from "firebase/auth";
   import { requireAuth } from "../lib/auth.ts";
-  import { deleteAvatar } from "../lib/storage.ts";
+  import { getUser, getPublicProfileActive, setProfileActive } from "../lib/firestore.ts";
+  import { markImageForDeletion } from "../lib/images.ts";
   import {
-    getUser,
-    deleteUserData,
-    getPublicProfileActive,
-    setProfileActive,
-  } from "../lib/firestore.ts";
+    cancelAccountDeletion,
+    ensureEmailSynced,
+    requestAccountDeletion,
+  } from "../lib/account.ts";
   import { validateAvatar, resizeAvatar } from "../lib/validation.ts";
   import { handleProfileUpdate, triggerRebuild } from "../lib/profile.ts";
   import { isMemberType, MEMBER_TYPES } from "../lib/firestore.ts";
@@ -955,7 +1001,7 @@ const t = useTranslations(lang);
     validateGalleryFile,
     compressGalleryImage,
     uploadGalleryImage,
-    deleteGalleryImages,
+    syncGalleryText,
     sanitizeGalleryItems,
     type GalleryItem,
   } from "../lib/gallery.ts";
@@ -1073,6 +1119,17 @@ const t = useTranslations(lang);
     let resizedAvatarBlob: Blob | null = null;
     let avatarColor = "";
     let gallery: GalleryItem[] = [];
+    // The images/ record behind the current avatar. Passed to
+    // handleProfileUpdate so the replaced record can be marked for deletion
+    // once the new photoURL has landed in Firestore.
+    let currentPhotoImageId = "";
+
+    const fmtDate = (iso: string) =>
+      new Date(iso).toLocaleDateString(lang === "de" ? "de-CH" : "en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
 
     const galleryInput = document.getElementById("gallery-files") as HTMLInputElement;
     const galleryEditor = document.getElementById("gallery-editor")!;
@@ -1274,7 +1331,7 @@ const t = useTranslations(lang);
       renderGallery();
       try {
         await persistGallery();
-        if (removed) await deleteGalleryImages([removed.url]);
+        if (removed) await markImageForDeletion(removed.imageId);
         setGalleryStatus("");
       } catch {
         setGalleryStatus(s["profile.gallery.error"]);
@@ -1302,11 +1359,11 @@ const t = useTranslations(lang);
         try {
           const edited = await openImageEditor(file, editorLabels);
           setGalleryStatus(s["profile.upload.processing"]);
-          const { blob, width, height, color } = await compressGalleryImage(edited ?? file);
-          const url = await uploadGalleryImage(user.uid, blob, (pct) => {
+          const compressed = await compressGalleryImage(edited ?? file);
+          const item = await uploadGalleryImage(user.uid, compressed, (pct) => {
             setGalleryStatus(`${s["profile.upload.uploading"]} ${pct}%`);
           });
-          gallery.push({ url, caption: "", width, height, color });
+          gallery.push(item);
           uploaded = true;
           renderGallery();
         } catch {
@@ -1533,6 +1590,15 @@ const t = useTranslations(lang);
 
       const data = await getUser(user.uid);
 
+      currentPhotoImageId = data.photoImageId ?? "";
+      await ensureEmailSynced(user, data.email);
+      if (data.status === "pendingDeletion" && data.purgeAfter) {
+        // getUser() hands back raw Firestore data, so at runtime this is a
+        // Timestamp even though UserDoc types it as Date.
+        const purgeAfter = data.purgeAfter as unknown as { toDate(): Date };
+        showDeletionBanner(purgeAfter.toDate().toISOString());
+      }
+
       nameInput.value = data.displayName ?? user.displayName ?? "";
       roleInput.value = data.role ?? "";
       bioInput.value = data.bio ?? "";
@@ -1591,7 +1657,7 @@ const t = useTranslations(lang);
       const memberType = memberTypeSelector?.value ?? "";
 
       try {
-        await handleProfileUpdate(
+        const saved = await handleProfileUpdate(
           user,
           {
             displayName: nameInput.value.trim(),
@@ -1617,8 +1683,8 @@ const t = useTranslations(lang);
             gallery,
             wantsToContribute: wantsToContributeInput.checked,
             phone: phoneInput.value.trim(),
-            email: user.email!,
             resizedAvatarBlob,
+            previousPhotoImageId: currentPhotoImageId,
             ...(resizedAvatarBlob && avatarColor ? { photoColor: avatarColor } : {}),
           },
           (pct) => {
@@ -1626,6 +1692,11 @@ const t = useTranslations(lang);
             uploadStatus.style.display = "block";
           }
         );
+
+        if (saved.photoImageId) currentPhotoImageId = saved.photoImageId;
+        // The array carries the text for the static build; the records carry
+        // it for everything else. Best-effort by design — see syncGalleryText.
+        await syncGalleryText(gallery);
 
         if (resizedAvatarBlob) {
           uploadStatus.textContent = s["profile.upload.complete"];
@@ -1641,57 +1712,45 @@ const t = useTranslations(lang);
     });
 
     // ── Delete account ──────────────────────────────────────────────
+    // Soft delete through requestAccountDeletion: the function hides the
+    // member and opens a 30-day job; nothing is destroyed here. The password
+    // prompt is not optional — the callable checks auth_time server-side.
     const deleteIdle = document.getElementById("delete-idle")!;
-    const deleteConfirm = document.getElementById("delete-confirm")!;
     const deleteReauth = document.getElementById("delete-reauth")!;
+    const deleteScheduled = document.getElementById("delete-scheduled")!;
+    const deleteScheduledText = document.getElementById("delete-scheduled-text")!;
     const reauthInput = document.getElementById("reauth-password") as HTMLInputElement;
     const reauthError = document.getElementById("reauth-error")!;
+    const banner = document.getElementById("deletion-banner")!;
+    const bannerText = document.getElementById("deletion-banner-text")!;
+    const keepBtn = document.getElementById("btn-keep-account") as HTMLButtonElement;
 
-    function showDeleteView(view: "idle" | "confirm" | "reauth") {
+    function showDeleteView(view: "idle" | "reauth" | "scheduled") {
       deleteIdle.style.display = view === "idle" ? "block" : "none";
-      deleteConfirm.style.display = view === "confirm" ? "block" : "none";
       deleteReauth.style.display = view === "reauth" ? "block" : "none";
+      deleteScheduled.style.display = view === "scheduled" ? "block" : "none";
     }
 
-    async function performDelete() {
+    function showDeletionBanner(purgeAfterIso: string) {
+      bannerText.textContent = s["profile.delete.banner"].replace("{date}", fmtDate(purgeAfterIso));
+      banner.style.display = "flex";
+      deleteScheduledText.textContent = s["profile.delete.scheduled"].replace(
+        "{date}",
+        fmtDate(purgeAfterIso)
+      );
+      showDeleteView("scheduled");
+    }
+
+    async function reauthenticate(password: string) {
       const user = auth.currentUser;
-      if (!user) return;
-      const photoURL = user.photoURL ?? "";
-      await deleteUserData(user.uid);
-      await deleteAvatar(photoURL);
-      await deleteGalleryImages(gallery.map((item) => item.url));
-      await user.delete();
-      window.location.href = prefix || "/";
+      if (!user || !user.email) throw new Error("not signed in");
+      await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password));
+      return user;
     }
 
-    document.getElementById("btn-delete-start")!.addEventListener("click", () => {
-      showDeleteView("confirm");
-    });
-
-    document.getElementById("btn-delete-cancel")!.addEventListener("click", () => {
-      showDeleteView("idle");
-    });
-
-    document.getElementById("btn-delete-confirm")!.addEventListener("click", async () => {
-      const btn = document.getElementById("btn-delete-confirm") as HTMLButtonElement;
-      btn.disabled = true;
-      btn.textContent = s["profile.delete.deleting"];
-      try {
-        await performDelete();
-      } catch (err: unknown) {
-        const code =
-          typeof err === "object" && err !== null && "code" in err
-            ? String((err as { code: unknown }).code)
-            : "";
-        if (code === "auth/requires-recent-login") {
-          showDeleteView("reauth");
-        } else {
-          btn.disabled = false;
-          btn.textContent = s["profile.delete.confirm"];
-        }
-      }
-    });
-
+    document
+      .getElementById("btn-delete-start")!
+      .addEventListener("click", () => showDeleteView("reauth"));
     document.getElementById("btn-reauth-cancel")!.addEventListener("click", () => {
       reauthInput.value = "";
       reauthError.style.display = "none";
@@ -1699,21 +1758,74 @@ const t = useTranslations(lang);
     });
 
     document.getElementById("btn-reauth-confirm")!.addEventListener("click", async () => {
-      const user = auth.currentUser;
-      if (!user || !user.email) return;
       const btn = document.getElementById("btn-reauth-confirm") as HTMLButtonElement;
       btn.disabled = true;
       btn.textContent = s["profile.reauth.confirming"];
       reauthError.style.display = "none";
       try {
-        const credential = EmailAuthProvider.credential(user.email, reauthInput.value);
-        await reauthenticateWithCredential(user, credential);
-        await performDelete();
+        await reauthenticate(reauthInput.value);
       } catch {
         reauthError.textContent = s["profile.reauth.error"];
         reauthError.style.display = "block";
         btn.disabled = false;
-        btn.textContent = s["profile.reauth.confirm"];
+        btn.textContent = s["profile.delete.confirm"];
+        return;
+      }
+      try {
+        const { purgeAfter } = await requestAccountDeletion();
+        reauthInput.value = "";
+        showDeletionBanner(purgeAfter);
+      } catch {
+        reauthError.textContent = s["profile.delete.error"];
+        reauthError.style.display = "block";
+      } finally {
+        btn.disabled = false;
+        btn.textContent = s["profile.delete.confirm"];
+      }
+    });
+
+    keepBtn.addEventListener("click", async () => {
+      keepBtn.disabled = true;
+      keepBtn.textContent = s["profile.delete.keeping"];
+      try {
+        await cancelAccountDeletion();
+        window.location.reload();
+      } catch {
+        keepBtn.disabled = false;
+        keepBtn.textContent = s["profile.delete.keep"];
+      }
+    });
+
+    // ── Change email ────────────────────────────────────────────────
+    // Auth does the safe part: the link goes to the NEW address and the swap
+    // happens only when it is clicked. The Firestore mirror follows on the
+    // next load through ensureEmailSynced.
+    const emailNew = document.getElementById("email-new") as HTMLInputElement;
+    const emailPassword = document.getElementById("email-password") as HTMLInputElement;
+    const emailMsg = document.getElementById("email-msg")!;
+    const emailError = document.getElementById("email-error")!;
+    const emailBtn = document.getElementById("btn-email-change") as HTMLButtonElement;
+
+    emailBtn.addEventListener("click", async () => {
+      const next = emailNew.value.trim();
+      emailMsg.style.display = "none";
+      emailError.style.display = "none";
+      if (!next.includes("@")) return;
+      emailBtn.disabled = true;
+      emailBtn.textContent = s["profile.email.sending"];
+      try {
+        const user = await reauthenticate(emailPassword.value);
+        await verifyBeforeUpdateEmail(user, next);
+        emailMsg.textContent = s["profile.email.sent"].replace("{email}", next);
+        emailMsg.style.display = "block";
+        emailNew.value = "";
+        emailPassword.value = "";
+      } catch {
+        emailError.textContent = s["profile.email.error"];
+        emailError.style.display = "block";
+      } finally {
+        emailBtn.disabled = false;
+        emailBtn.textContent = s["profile.email.submit"];
       }
     });
   });
