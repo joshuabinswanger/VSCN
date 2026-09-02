@@ -28,7 +28,8 @@ export default defineConfig({
         !page.includes('/profile') &&
         !page.includes('/verify-email') &&
         !page.includes('/auth/') &&
-        !page.includes('/signup'),
+        !page.includes('/signup') &&
+        !page.includes('/admin'),
     }),
   ],
   fonts: [

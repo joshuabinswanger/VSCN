@@ -1,0 +1,221 @@
+<section class="admin" id="admin">
+  <p id="admin-gate" class="admin__gate">Checking access…</p>
+
+  <div id="admin-app" hidden>
+    <form id="admin-search" class="admin__search" autocomplete="off">
+      <input id="admin-query" class="input" type="search" placeholder="email · uid · slug · imageId · name" />
+      <button type="submit" class="btn-solid">Look up</button>
+      <button type="button" id="admin-queues-btn" class="btn-ghost">Queues</button>
+    </form>
+    <p id="admin-status" class="admin__status" role="status"></p>
+    <div id="admin-results"></div>
+    <div id="admin-detail"></div>
+    <div id="admin-queues"></div>
+  </div>
+</section>
+
+<style>
+  .admin { display: grid; gap: 1.25rem; }
+  .admin__gate { color: var(--color-muted); }
+  .admin__search { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .admin__search .input { flex: 1 1 20rem; }
+  .admin__status { min-height: 1.25rem; color: var(--color-muted); }
+  .admin :global(.card) {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    display: grid;
+    gap: 0.5rem;
+  }
+  .admin :global(h2) { font-size: 1.1rem; margin: 0; }
+  .admin :global(h3) { font-size: 0.9rem; margin: 0.5rem 0 0; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .admin :global(dl) { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0; }
+  .admin :global(dt) { color: var(--color-muted); }
+  .admin :global(dd) { margin: 0; overflow-wrap: anywhere; }
+  .admin :global(.actions) { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .admin :global(.thumbs) { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; }
+  .admin :global(.thumb img) { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-xs); background: var(--color-border); }
+  .admin :global(.thumb small) { display: block; color: var(--color-muted); overflow-wrap: anywhere; }
+  .admin :global(.tag) { display: inline-block; padding: 0 0.4rem; border: 1px solid var(--color-border); border-radius: var(--radius-xs); font-size: 0.8rem; }
+  .admin :global(.tag--warn) { border-color: var(--color-dark); }
+  .admin :global(.row) { display: flex; justify-content: space-between; gap: 1rem; padding: 0.35rem 0; border-bottom: 1px solid var(--color-border); }
+  .admin :global(.row button) { white-space: nowrap; }
+</style>
+
+<script>
+  import { onAuthStateChanged } from "firebase/auth";
+  import { auth } from "../../lib/firebase.ts";
+  import {
+    listQueues, lookupMember, purgeAccount, restoreAccount, setMemberEmail, setProfileActive,
+    type AdminImage, type MemberGraph, type Queues,
+  } from "../../lib/adminApi.ts";
+
+  // Tiny DOM builder so member-entered strings go through textContent, never innerHTML.
+  type Child = Node | string | null | undefined | false;
+  function el<K extends keyof HTMLElementTagNameMap>(
+    tag: K, attrs: Record<string, string> = {}, ...children: Child[]
+  ): HTMLElementTagNameMap[K] {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+    for (const c of children) if (c) node.append(typeof c === "string" ? document.createTextNode(c) : c);
+    return node;
+  }
+  const dl = (rows: [string, unknown][]) =>
+    el("dl", {}, ...rows.flatMap(([k, v]) => [el("dt", {}, k), el("dd", {}, v == null || v === "" ? "—" : String(v))]));
+  const fmt = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString("en-GB") : "—");
+
+  document.addEventListener("astro:page-load", () => {
+    const gate = document.getElementById("admin-gate");
+    const app = document.getElementById("admin-app") as HTMLElement | null;
+    if (!gate || !app) return; // not on /admin
+
+    const status = document.getElementById("admin-status")!;
+    const results = document.getElementById("admin-results")!;
+    const detail = document.getElementById("admin-detail")!;
+    const queues = document.getElementById("admin-queues")!;
+    const query = document.getElementById("admin-query") as HTMLInputElement;
+
+    const say = (msg: string) => { status.textContent = msg; };
+    const busy = async <T,>(label: string, work: () => Promise<T>): Promise<T | undefined> => {
+      say(label);
+      try { const out = await work(); say(""); return out; }
+      catch (err) { say(err instanceof Error ? err.message : String(err)); return undefined; }
+    };
+
+    onAuthStateChanged(auth, async (user) => {
+      const claims = user ? (await user.getIdTokenResult()).claims : {};
+      if (claims.admin !== true) {
+        gate.textContent = user ? "This account is not an admin." : "Sign in with an admin account.";
+        app.hidden = true;
+        return;
+      }
+      gate.hidden = true;
+      app.hidden = false;
+    });
+
+    async function show(uid: string) {
+      const res = await busy("Loading…", () => lookupMember({ query: uid }));
+      if (res?.graph) renderGraph(res.graph);
+    }
+
+    document.getElementById("admin-search")!.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      results.replaceChildren();
+      detail.replaceChildren();
+      queues.replaceChildren();
+      const q = query.value.trim();
+      if (!q) return;
+      const res = await busy("Searching…", () => lookupMember({ query: q }));
+      if (!res) return;
+      if (res.graph) return renderGraph(res.graph);
+      if (res.matches.length === 0) return say("Nothing matches.");
+      results.replaceChildren(
+        el("div", { class: "card" }, el("h2", {}, `${res.matches.length} name match(es)`),
+          ...res.matches.map((m) => {
+            const btn = el("button", { type: "button", class: "btn-link" }, m.uid);
+            btn.addEventListener("click", () => show(m.uid));
+            return el("div", { class: "row" }, el("span", {}, `${m.displayName}${m.active ? "" : " (hidden)"}`), btn);
+          })),
+      );
+    });
+
+    function thumb(img: AdminImage) {
+      const url = `https://firebasestorage.googleapis.com/v0/b/${auth.app.options.storageBucket}/o/${encodeURIComponent(img.storagePath)}?alt=media`;
+      return el("figure", { class: "thumb" },
+        el("img", { src: url, alt: img.caption ?? "", loading: "lazy" }),
+        el("small", {}, `${img.kind} · ${img.status}${img.origin === "curated" ? " · curated" : ""}`),
+        el("small", {}, img.imageId),
+      );
+    }
+
+    function renderGraph(g: MemberGraph) {
+      results.replaceChildren();
+      queues.replaceChildren();
+      const pub = g.publicProfile ?? {};
+      const usr = g.user ?? {};
+      const active = pub.active !== false && g.publicProfile !== null;
+      const pending = g.deletion && !g.deletion.completedAt;
+
+      const action = (label: string, cls: string, run: () => Promise<unknown>, confirmText?: string) => {
+        const b = el("button", { type: "button", class: cls }, label);
+        b.addEventListener("click", async () => {
+          if (confirmText && !window.confirm(confirmText)) return;
+          const ok = await busy(`${label}…`, run);
+          if (ok !== undefined) await show(g.uid);
+        });
+        return b;
+      };
+
+      const actions = el("div", { class: "actions" },
+        g.publicProfile && action(active ? "Hide profile" : "Show profile", "btn-ghost",
+          () => setProfileActive({ uid: g.uid, active: !active })),
+        g.auth && action("Set email", "btn-ghost", async () => {
+          const email = window.prompt("New email address for this member:", g.auth?.email ?? "");
+          if (!email) throw new Error("Cancelled.");
+          return setMemberEmail({ uid: g.uid, email });
+        }),
+        !pending && action("Schedule deletion (30 days)", "btn-ghost",
+          () => purgeAccount({ uid: g.uid }), `Schedule deletion of ${g.uid}? The member can still cancel for 30 days.`),
+        pending && action("Restore", "btn-solid", () => restoreAccount({ uid: g.uid })),
+        action("Purge now", "btn-ghost", () => purgeAccount({ uid: g.uid, immediate: true }),
+          `PERMANENTLY delete ${g.uid} — every document, file and the Auth user. Type OK to continue.`),
+      );
+
+      detail.replaceChildren(
+        el("div", { class: "card" },
+          el("h2", {}, String(pub.displayName ?? usr.displayName ?? g.uid)),
+          el("div", {},
+            el("span", { class: `tag${active ? "" : " tag--warn"}` }, active ? "public" : "hidden"),
+            " ",
+            pending ? el("span", { class: "tag tag--warn" }, `deletion ${fmt(g.deletion!.purgeAfter)}`) : null,
+          ),
+          el("h3", {}, "Identity"),
+          dl([
+            ["uid", g.uid],
+            ["auth email", g.auth?.email], ["verified", g.auth ? String(g.auth.emailVerified) : "no Auth user"],
+            ["mirror email", usr.email], ["phone", usr.phone],
+            ["created", fmt(g.auth?.createdAt)], ["last sign-in", fmt(g.auth?.lastSignInAt)],
+            ["status", usr.status ?? (g.user ? "active" : "profile only")],
+            ["slugs", g.slugs.map((s) => `${s.slug}${s.current ? "" : " (retired)"}`).join(", ")],
+          ]),
+          el("h3", {}, "Actions"), actions,
+          el("h3", {}, `Images (${g.images.length})`),
+          el("div", { class: "thumbs" }, ...g.images.map(thumb)),
+          g.onboardingRequest && el("h3", {}, "Onboarding request"),
+          g.onboardingRequest && el("p", {}, String(g.onboardingRequest.message ?? "")),
+          g.deletion && el("h3", {}, "Deletion job"),
+          g.deletion && dl([
+            ["requested", `${fmt(g.deletion.requestedAt)} by ${g.deletion.requestedBy}`],
+            ["purge after", fmt(g.deletion.purgeAfter)],
+            ["steps", Object.entries(g.deletion.steps).filter(([, v]) => v).map(([k]) => k).join(", ") || "none yet"],
+            ["completed", fmt(g.deletion.completedAt)], ["last error", g.deletion.lastError],
+          ]),
+        ),
+      );
+    }
+
+    document.getElementById("admin-queues-btn")!.addEventListener("click", async () => {
+      results.replaceChildren();
+      detail.replaceChildren();
+      const q = await busy("Loading queues…", () => listQueues());
+      if (q) renderQueues(q);
+    });
+
+    function renderQueues(q: Queues) {
+      const link = (uid: string) => { const b = el("button", { type: "button", class: "btn-link" }, uid); b.addEventListener("click", () => show(uid)); return b; };
+      queues.replaceChildren(
+        el("div", { class: "card" },
+          el("h2", {}, `Pending deletions (${q.pendingDeletions.length})`),
+          ...q.pendingDeletions.map((j) => el("div", { class: "row" },
+            el("span", {}, `purge after ${fmt(j.purgeAfter)} · by ${j.requestedBy}${j.lastError ? ` · ERROR ${j.lastError}` : ""}`), link(j.uid))),
+          el("h2", {}, `Stale uploads (${q.staleUploads.length})`),
+          ...q.staleUploads.map((i) => el("div", { class: "row" },
+            el("span", {}, `${i.imageId} · ${fmt(i.createdAt)}`), link(i.ownerUid))),
+          el("h2", {}, `Email mismatches (${q.emailMismatches.length})`),
+          ...q.emailMismatches.map((m) => el("div", { class: "row" },
+            el("span", {}, `mirror ${m.storedEmail ?? "—"} ≠ auth ${m.authEmail}`), link(m.uid))),
+        ),
+      );
+    }
+  });
+</script>
