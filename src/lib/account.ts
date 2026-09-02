@@ -2,6 +2,13 @@ import { httpsCallable } from "firebase/functions";
 import type { User } from "firebase/auth";
 import { functions } from "./firebase.ts";
 
+/**
+ * Opens the deletion grace period. PRECONDITION: the callable re-checks the
+ * token's `auth_time` server-side and requires it to be within 5 minutes, so
+ * the caller must run `reauthenticateWithCredential` immediately before this
+ * call. Without that, it throws `failed-precondition` — a stale session cannot
+ * schedule the destruction of an account.
+ */
 export async function requestAccountDeletion(): Promise<{ purgeAfter: string }> {
   const fn = httpsCallable<void, { purgeAfter: string }>(functions, "requestAccountDeletion");
   return (await fn()).data;

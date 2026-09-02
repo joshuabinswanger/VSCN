@@ -123,11 +123,21 @@ export async function uploadGalleryImage(
  * Pushes typed text onto the records. Called from Save, alongside the array
  * write — the array carries the same text for the static build, but the
  * record is what an admin or a future feature reads.
+ *
+ * The records are a SECONDARY projection, so a failure here must never fail
+ * the Save: the array write is the primary and may already have landed, and
+ * one stale imageId — a record swept between load and Save, or one that is not
+ * this caller's — would take the whole Save down with Promise.all. Each
+ * rejection is warned with its imageId and otherwise swallowed.
  */
 export async function syncGalleryText(gallery: GalleryItem[]): Promise<void> {
-  await Promise.all(
-    gallery
-      .filter((item) => item.imageId)
-      .map((item) => updateImageText(item.imageId, { caption: item.caption, description: item.description })),
+  const items = gallery.filter((item) => item.imageId);
+  const results = await Promise.allSettled(
+    items.map((item) => updateImageText(item.imageId, { caption: item.caption, description: item.description })),
   );
+  results.forEach((result, i) => {
+    if (result.status === "rejected") {
+      console.warn(`[gallery] text sync skipped for image ${items[i].imageId}:`, result.reason);
+    }
+  });
 }

@@ -1,6 +1,6 @@
 import { blobDimensions, publicStorageUrl, uploadImage, type UploadedImage } from "./images.ts";
 
-// Kept as an export here because older importers reach it through this module.
+// Re-exported so the URL builder is reachable from the module named for Storage; images.ts owns it.
 export { publicStorageUrl };
 
 /**

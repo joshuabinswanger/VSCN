@@ -7,9 +7,16 @@ import { updateUserProfile } from "./firestore.ts";
 import { validateBio, validateSocialMedia } from "./validation.ts";
 import type { UserDoc } from "./firestore.ts";
 
-// `email` is excluded on purpose: users/{uid}.email is a server-written mirror
-// of Auth (syncEmail) and firestore.rules rejects a client write to it.
-export interface ProfileUpdateOptions extends Omit<Partial<UserDoc>, "email"> {
+// Every field excluded here is server-written, and firestore.rules pins all of
+// them: `email` is a mirror of Auth maintained by syncEmail, and the lifecycle
+// trio (`status`, `deletionRequestedAt`, `purgeAfter`) is written only by the
+// account-deletion Cloud Functions. They are excluded from the options type
+// rather than merely ignored because `{ ...data }` below flows straight into
+// updateUser's merge write — one of them arriving from a caller would trip
+// serverFieldsUntouched and reject the WHOLE profile save as a bare permission
+// error, with nothing naming the field that did it.
+export interface ProfileUpdateOptions
+  extends Omit<Partial<UserDoc>, "email" | "status" | "deletionRequestedAt" | "purgeAfter"> {
   resizedAvatarBlob?: Blob | null;
   /** The record behind the avatar being replaced; marked pendingDeletion once the save has landed. */
   previousPhotoImageId?: string;
