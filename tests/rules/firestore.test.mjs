@@ -102,6 +102,19 @@ test("images: ownerUid, kind, storagePath, origin and createdAt are immutable", 
   await assertFails(db.doc("images/img-1").update({ createdAt: new Date(0) }));
 });
 
+test("images: identity pins hold even when the change is self-consistent", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  // ownerUid + storagePath changed together: validImage's derived path check passes; only the ownerUid pin can refuse this.
+  await assertFails(db.doc("images/img-1").update({
+    ownerUid: OTHER, storagePath: `users/${OTHER}/gallery/img-1.webp`,
+  }));
+  // kind + storagePath changed together: same reasoning for the kind pin.
+  await assertFails(db.doc("images/img-1").update({
+    kind: "avatar", storagePath: `users/${OWNER}/avatar/img-1.webp`,
+  }));
+});
+
 test("images: another member cannot update, nobody can delete", async () => {
   await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
   const other = env.authenticatedContext(OTHER, verified(OTHER)).firestore();
