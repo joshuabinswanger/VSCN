@@ -44,3 +44,9 @@ test("storage: public read, owner cannot delete (sweeper does)", async () => {
   await assertSucceeds(anon.ref(`users/${OWNER}/gallery/${ID}.webp`).getDownloadURL());
   await assertFails(s.ref(`users/${OWNER}/gallery/${ID}.webp`).delete());
 });
+
+test("storage: legacy paths are read-only", async () => {
+  const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
+  await assertFails(s.ref(`galleries/${OWNER}/123-abc.webp`).put(webp(64), { contentType: "image/webp" }));
+  await assertFails(s.ref(`avatars/${OWNER}-123.webp`).put(webp(64), { contentType: "image/webp" }));
+});

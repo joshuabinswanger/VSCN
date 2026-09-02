@@ -38,7 +38,8 @@ service cloud.firestore {
                             && validPublicProfile(request.resource.data)
                             && canPublish(request.resource.data, request.auth);
 
-      allow delete: if request.auth != null && request.auth.uid == uid;
+      // purgeAccount (Admin SDK) is the only path that removes an account.
+      allow delete: if false;
     }
 
     match /users/{uid} {
@@ -46,16 +47,15 @@ service cloud.firestore {
       allow read: if isOwner(uid) || isAdmin();
 
       allow create: if isOwner(uid)
-                    && validPrivateUser(request.resource.data, request.auth)
+                    && validPrivateUser(request.resource.data)
                     && serverFieldsAbsent(request.resource.data);
 
       allow update: if isOwner(uid)
-                    && validPrivateUser(request.resource.data, request.auth)
+                    && validPrivateUser(request.resource.data)
                     && serverFieldsUntouched(request.resource.data, resource.data);
 
-      // ROLLOUT WINDOW: the shipped client still deletes its own docs on
-      // account deletion. Flips to `false` once the callable has replaced it.
-      allow delete: if isOwner(uid);
+      // purgeAccount (Admin SDK) is the only path that removes an account.
+      allow delete: if false;
     }
 
     match /onboardingRequests/{uid} {
@@ -149,13 +149,12 @@ function validPublicProfile(data) {
     && validPublicFields(data);
 }
 
-function validPrivateUser(data, auth) {
+function validPrivateUser(data) {
   let allowedKeys = ['displayName', 'photoURL', 'photoImageId', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'phone', 'email', 'wantsToContribute', 'onboardingComplete', 'status', 'deletionRequestedAt', 'purgeAfter', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data)
     && (!('phone' in data) || (data.phone is string && data.phone.size() <= 40))
-    && (!('email' in data) || data.email == auth.token.email)
     && (!('wantsToContribute' in data) || data.wantsToContribute is bool)
     && (!('onboardingComplete' in data) || data.onboardingComplete is bool);
 }
@@ -239,8 +238,7 @@ function validGalleryItem(item) {
     && validStorageUrl(item.url)
     && (!('caption' in item) || (item.caption is string && item.caption.size() <= 140))
     && (!('description' in item) || (item.description is string && item.description.size() <= 600))
-    // imageId optional during the rollout window; required from Task 19 on.
-    && (!('imageId' in item) || (item.imageId is string && item.imageId.size() <= 40))
+    && item.imageId is string && item.imageId.size() > 0 && item.imageId.size() <= 40
     && item.width is int && item.width > 0 && item.width <= 10000
     && item.height is int && item.height > 0 && item.height <= 10000;
 }
@@ -287,7 +285,7 @@ function validPrimaryAudienceValue(value) {
 }
 
 function validOnboardingRequest(data, auth) {
-  let allowedKeys = ['userId', 'message', 'lang', 'email', 'displayName', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['userId', 'message', 'lang', 'displayName', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && data.userId == auth.uid
@@ -296,7 +294,6 @@ function validOnboardingRequest(data, auth) {
     && data.message.size() <= 1000
     && data.lang is string
     && (data.lang == 'en' || data.lang == 'de')
-    && (!('email' in data) || data.email == auth.token.email)
     && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100))
     && (!('createdAt' in data) || data.createdAt is timestamp)
     && (!('updatedAt' in data) || data.updatedAt is timestamp);
@@ -351,14 +348,18 @@ function isOwner(uid) {
 // sit in the client allowlist purely because hasOnly() sees the MERGED
 // document — a member's ordinary save would otherwise be rejected the moment
 // a function had stamped `status` on their doc. Pinned unchanged instead.
+// `email` is the same story: syncEmail (Cloud Function) mirrors it from the
+// auth token, so a client is never the one writing it.
 function serverFieldsAbsent(data) {
   return !('status' in data)
       && !('deletionRequestedAt' in data)
-      && !('purgeAfter' in data);
+      && !('purgeAfter' in data)
+      && !('email' in data);
 }
 
 function serverFieldsUntouched(data, existing) {
   return data.get('status', null) == existing.get('status', null)
       && data.get('deletionRequestedAt', null) == existing.get('deletionRequestedAt', null)
-      && data.get('purgeAfter', null) == existing.get('purgeAfter', null);
+      && data.get('purgeAfter', null) == existing.get('purgeAfter', null)
+      && data.get('email', null) == existing.get('email', null);
 }

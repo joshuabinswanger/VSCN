@@ -156,16 +156,37 @@ test("users/publicProfiles: photoImageId is an accepted string field", async () 
   }));
 });
 
-test("publicProfiles: gallery items may carry imageId (both shapes accepted)", async () => {
+test("publicProfiles: every gallery item must carry an imageId", async () => {
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
   const url = "https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/x.webp?alt=media";
   await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
     displayName: "Test Member",
-    gallery: [
-      { url, caption: "", width: 10, height: 10 },
-      { imageId: "img-1", url, caption: "", width: 10, height: 10, color: "#000000" },
-    ],
+    gallery: [{ imageId: "img-1", url, caption: "", width: 10, height: 10 }],
   }));
+  await assertFails(db.doc(`publicProfiles/${OWNER}`).set({
+    displayName: "Test Member",
+    gallery: [{ url, caption: "", width: 10, height: 10 }],
+  }));
+  await assertFails(db.doc(`publicProfiles/${OWNER}`).set({
+    displayName: "Test Member",
+    gallery: [{ imageId: "", url, caption: "", width: 10, height: 10 }],
+  }));
+});
+
+test("users: email is server-written — absent on create, unchanged on update", async () => {
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertFails(db.doc(`users/${OWNER}`).set({ ...minimalUser(OWNER), email: `${OWNER}@example.test` }));
+  await seed(env, `users/${OWNER}`, { ...minimalUser(OWNER), email: "stored@example.test" });
+  await assertSucceeds(db.doc(`users/${OWNER}`).set({ bio: "still fine" }, { merge: true }));
+  await assertFails(db.doc(`users/${OWNER}`).update({ email: "other@example.test" }));
+});
+
+test("users/publicProfiles: owners cannot delete their own docs (purge does)", async () => {
+  await seed(env, `users/${OWNER}`, minimalUser(OWNER));
+  await seed(env, `publicProfiles/${OWNER}`, { displayName: "Test Member" });
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertFails(db.doc(`users/${OWNER}`).delete());
+  await assertFails(db.doc(`publicProfiles/${OWNER}`).delete());
 });
 
 test("slugs: public read, no client write", async () => {

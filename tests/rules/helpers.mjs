@@ -63,7 +63,6 @@ export function minimalUser(uid) {
     tags: [],
     gallery: [],
     phone: "",
-    email: `${uid}@example.test`,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
