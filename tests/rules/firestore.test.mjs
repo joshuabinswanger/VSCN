@@ -1,7 +1,7 @@
 import { test, before, after, beforeEach } from "node:test";
 import {
   setupEnv, seed, assertFails, assertSucceeds,
-  OWNER, OTHER, ADMIN, verified, minimalUser,
+  OWNER, OTHER, ADMIN, verified, unverified, slot, minimalUser,
 } from "./helpers.mjs";
 
 let env;
@@ -121,6 +121,56 @@ test("images: another member cannot update, nobody can delete", async () => {
   await assertFails(other.doc("images/img-1").update({ caption: "mine now" }));
   const owner = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
   await assertFails(owner.doc("images/img-1").delete());
+});
+
+// The unverified cap. Rules cannot count documents, so "one image" is spelled
+// as "one id": an unverified account may only ever create images/{uid}-{kind}.
+test("images: an unverified member may create their slot record", async () => {
+  const db = env.authenticatedContext(OWNER, unverified(OWNER)).firestore();
+  const id = slot(OWNER, "gallery");
+  await assertSucceeds(db.doc(`images/${id}`).set(imageDoc(OWNER, id)));
+});
+
+test("images: an unverified member cannot create any other id", async () => {
+  const db = env.authenticatedContext(OWNER, unverified(OWNER)).firestore();
+  await assertFails(db.doc("images/img-1").set(imageDoc(OWNER, "img-1")));
+  await assertFails(db.doc(`images/${slot(OTHER, "gallery")}`).set(
+    imageDoc(OWNER, slot(OTHER, "gallery"))));
+  // A second slot-shaped id is still a second id.
+  await assertFails(db.doc(`images/${slot(OWNER, "gallery")}-2`).set(
+    imageDoc(OWNER, `${slot(OWNER, "gallery")}-2`)));
+});
+
+test("images: an unverified slot id must name its own kind", async () => {
+  const db = env.authenticatedContext(OWNER, unverified(OWNER)).firestore();
+  const id = slot(OWNER, "gallery");
+  // Self-consistent — storagePath matches the doc id and the kind — and still
+  // rejected, because the avatar slot is not called `{uid}-gallery`. Without
+  // this, one id would buy an object under each kind.
+  await assertFails(db.doc(`images/${id}`).set(imageDoc(OWNER, id, {
+    kind: "avatar", storagePath: `users/${OWNER}/avatar/${id}.webp`,
+  })));
+});
+
+test("images: unverified gets one avatar AND one gallery slot, and may replace them", async () => {
+  const db = env.authenticatedContext(OWNER, unverified(OWNER)).firestore();
+  const g = slot(OWNER, "gallery");
+  const a = slot(OWNER, "avatar");
+  await assertSucceeds(db.doc(`images/${g}`).set(imageDoc(OWNER, g)));
+  await assertSucceeds(db.doc(`images/${a}`).set(imageDoc(OWNER, a, {
+    kind: "avatar", storagePath: `users/${OWNER}/avatar/${a}.webp`,
+  })));
+  // Replacing the picture is an UPDATE of the same record — the cap bounds how
+  // many images exist, not how many times one is changed.
+  await assertSucceeds(db.doc(`images/${g}`).update({
+    width: 640, height: 480, status: "live", updatedAt: new Date(),
+  }));
+});
+
+test("images: a verified member is not confined to the slot", async () => {
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").set(imageDoc(OWNER, "img-1")));
+  await assertSucceeds(db.doc("images/img-2").set(imageDoc(OWNER, "img-2")));
 });
 
 test("images: an unlisted key is rejected (hasOnly)", async () => {

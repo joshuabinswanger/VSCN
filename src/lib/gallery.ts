@@ -3,6 +3,24 @@ import { decodeImage, toWebpBlob, dominantColor, rejectionMessage } from "./imag
 
 // Keep in sync with validGallery() in firestore.rules.
 export const MAX_GALLERY_IMAGES = 8;
+
+/**
+ * What an account may hold BEFORE its email is verified (2026-09-02, Josh:
+ * "make it so you can only upload 1 image until verified").
+ *
+ * This constant is the polite half of the cap: it is what lets the editor say
+ * "verify your email" instead of letting a member pick a file, watch it
+ * compress, and collect an opaque permission error. The enforcing half is in
+ * the rulesets, where an unverified account can only address one image id per
+ * kind at all (see slotImageId in src/lib/images.ts) — so a client that
+ * ignored this number would still not get a second image.
+ */
+export const MAX_UNVERIFIED_GALLERY_IMAGES = 1;
+
+/** How many gallery images this member may hold right now. */
+export function galleryLimit(user: { emailVerified: boolean } | null | undefined): number {
+  return user?.emailVerified ? MAX_GALLERY_IMAGES : MAX_UNVERIFIED_GALLERY_IMAGES;
+}
 export const MAX_GALLERY_CAPTION = 140;
 export const MAX_GALLERY_DESCRIPTION = 600;
 

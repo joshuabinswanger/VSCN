@@ -263,6 +263,8 @@ export const ui: Record<string, Record<string, string>> = {
       "Up to 8 images. They appear on your member card after the next site update.",
     "profile.gallery.add": "Add images",
     "profile.gallery.full": "Gallery is full (8 images max).",
+    "profile.gallery.verifyForMore":
+      "Verify your email to add more images. Check your inbox for the link.",
     "profile.gallery.error": "Could not upload image. Please try again.",
     "profile.gallery.remove": "Remove image",
     "profile.gallery.caption": "Caption",
@@ -589,6 +591,8 @@ export const ui: Record<string, Record<string, string>> = {
       "Bis zu 8 Bilder. Sie erscheinen nach dem nächsten Site-Update auf deiner Mitgliedskarte.",
     "profile.gallery.add": "Bilder hinzufügen",
     "profile.gallery.full": "Galerie ist voll (max. 8 Bilder).",
+    "profile.gallery.verifyForMore":
+      "Bestätige deine E-Mail, um weitere Bilder hinzuzufügen. Der Link ist in deinem Posteingang.",
     "profile.gallery.error": "Bild konnte nicht hochgeladen werden. Bitte erneut versuchen.",
     "profile.gallery.remove": "Bild entfernen",
     "profile.gallery.caption": "Bildtitel",

@@ -1006,6 +1006,7 @@ const t = useTranslations(lang);
   import { memberTypeFieldCopy, needsVisuals } from "../lib/memberType.ts";
   import {
     MAX_GALLERY_IMAGES,
+    galleryLimit,
     MAX_GALLERY_CAPTION,
     MAX_GALLERY_DESCRIPTION,
     validateGalleryFile,
@@ -1372,8 +1373,15 @@ const t = useTranslations(lang);
 
       let uploaded = false;
       for (const file of files) {
-        if (gallery.length >= MAX_GALLERY_IMAGES) {
-          setGalleryStatus(s["profile.gallery.full"]);
+        // Two different ceilings wear the same shape here: the real one, and
+        // the one an unverified account sits under until it clicks the link.
+        // They need different words — "gallery is full" is a lie to someone
+        // holding one image, and the whole point of the cap is the nudge.
+        const limit = galleryLimit(user);
+        if (gallery.length >= limit) {
+          setGalleryStatus(
+            limit < MAX_GALLERY_IMAGES ? s["profile.gallery.verifyForMore"] : s["profile.gallery.full"],
+          );
           break;
         }
         const validation = validateGalleryFile(file);

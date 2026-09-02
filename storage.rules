@@ -9,10 +9,25 @@ service firebase.storage {
       // record's id (images/{imageId}), written to Firestore BEFORE the bytes.
       allow read: if true;
 
+      // AN UNVERIFIED ACCOUNT GETS ONE OBJECT PER KIND, and it is always the
+      // same one: `{uid}-{kind}.webp`. The cap is not a count — Storage rules
+      // cannot count, and cannot read Firestore either, so this door is the
+      // only thing bounding what a fresh unverified sign-up can put in the
+      // bucket. It is a namespace of size one instead: re-uploading overwrites
+      // the slot, so "replace my picture" keeps working while "upload a
+      // hundred" is simply unaddressable. The matching record-side cap is in
+      // firestore.rules under images/{imageId}; keep the two names identical.
+      //
+      // The slot stays legal for VERIFIED members too, deliberately. The
+      // client picks the id from `user.emailVerified`, which is read off a
+      // locally cached user record and lags the token — a member who verified
+      // a moment ago would otherwise get an opaque permission error.
       allow write: if request.auth != null
                    && request.auth.uid == uid
                    && (kind == 'avatar' || kind == 'gallery')
-                   && filename.matches('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.webp')
+                   && (filename == uid + '-' + kind + '.webp'
+                       || (request.auth.token.email_verified == true
+                           && filename.matches('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.webp')))
                    && request.resource.contentType == 'image/webp'
                    && ((kind == 'avatar' && request.resource.size <= 2 * 1024 * 1024)
                        || (kind == 'gallery' && request.resource.size <= 8 * 1024 * 1024));

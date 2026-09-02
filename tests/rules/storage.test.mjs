@@ -1,5 +1,7 @@
 import { test, before, after, beforeEach } from "node:test";
-import { setupEnv, assertFails, assertSucceeds, OWNER, OTHER, verified } from "./helpers.mjs";
+import {
+  setupEnv, assertFails, assertSucceeds, OWNER, OTHER, verified, unverified, slot,
+} from "./helpers.mjs";
 
 let env;
 before(async () => {
@@ -62,6 +64,38 @@ test("storage: public read, owner cannot delete (sweeper does)", async () => {
   const anon = env.unauthenticatedContext().storage();
   await assertSucceeds(anon.ref(`users/${OWNER}/gallery/${ID}.webp`).getDownloadURL());
   await assertFails(s.ref(`users/${OWNER}/gallery/${ID}.webp`).delete());
+});
+
+// The byte-side half of the unverified cap. Storage rules cannot read
+// Firestore, so this door is the only thing bounding an unverified sign-up.
+test("storage: an unverified member may write their slot object, per kind", async () => {
+  const s = env.authenticatedContext(OWNER, unverified(OWNER)).storage();
+  const g = `users/${OWNER}/gallery/${slot(OWNER, "gallery")}.webp`;
+  await assertSucceeds(s.ref(g).put(webp(1024), { contentType: "image/webp" }));
+  await assertSucceeds(s.ref(`users/${OWNER}/avatar/${slot(OWNER, "avatar")}.webp`)
+    .put(webp(1024), { contentType: "image/webp" }));
+  // Replacing overwrites the same object — that is what makes the cap livable.
+  await assertSucceeds(s.ref(g).put(webp(2048), { contentType: "image/webp" }));
+});
+
+test("storage: an unverified member cannot write any other filename", async () => {
+  const s = env.authenticatedContext(OWNER, unverified(OWNER)).storage();
+  await assertFails(s.ref(`users/${OWNER}/gallery/${ID}.webp`)
+    .put(webp(1024), { contentType: "image/webp" }));
+  // The slot name is per kind: the gallery slot is not a second avatar.
+  await assertFails(s.ref(`users/${OWNER}/avatar/${slot(OWNER, "gallery")}.webp`)
+    .put(webp(1024), { contentType: "image/webp" }));
+  // And it is per uid, so it cannot be borrowed.
+  await assertFails(s.ref(`users/${OWNER}/gallery/${slot(OTHER, "gallery")}.webp`)
+    .put(webp(1024), { contentType: "image/webp" }));
+});
+
+test("storage: the slot stays writable after verification", async () => {
+  // The client reads emailVerified off a cached user record, so it can still
+  // address the slot for a while after the link is clicked. That must work.
+  const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
+  await assertSucceeds(s.ref(`users/${OWNER}/gallery/${slot(OWNER, "gallery")}.webp`)
+    .put(webp(1024), { contentType: "image/webp" }));
 });
 
 test("storage: legacy paths are denied entirely (catch-all)", async () => {

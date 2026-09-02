@@ -662,6 +662,7 @@ const prefix = lang === "de" ? "/de" : "";
   // → write the array to Firestore. Nothing here re-implements any of it.
   import {
     MAX_GALLERY_IMAGES,
+    galleryLimit,
     validateGalleryFile,
     compressGalleryImage,
     uploadGalleryImage,
@@ -979,7 +980,10 @@ const prefix = lang === "de" ? "/de" : "";
       );
       const input = document.getElementById("ob-gallery-input") as HTMLInputElement | null;
       const label = input?.closest("label") as HTMLElement | null;
-      if (label) label.style.display = gallery.length >= MAX_GALLERY_IMAGES ? "none" : "";
+      // Onboarding hides the control at the ceiling rather than explaining it;
+      // for an unverified member that ceiling is one image, and the status line
+      // above already carries the reason from the last attempt.
+      if (label) label.style.display = gallery.length >= galleryLimit(auth.currentUser) ? "none" : "";
     }
 
     async function persistGallery() {
@@ -1013,8 +1017,11 @@ const prefix = lang === "de" ? "/de" : "";
       let failed = false;
       try {
         for (const file of files) {
-          if (gallery.length >= MAX_GALLERY_IMAGES) {
-            setGalleryStatus(s["profile.gallery.full"]);
+          const limit = galleryLimit(user);
+          if (gallery.length >= limit) {
+            setGalleryStatus(
+              limit < MAX_GALLERY_IMAGES ? s["profile.gallery.verifyForMore"] : s["profile.gallery.full"],
+            );
             break;
           }
           const validation = validateGalleryFile(file);

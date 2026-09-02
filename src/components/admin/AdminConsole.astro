@@ -83,7 +83,15 @@
     };
 
     onAuthStateChanged(auth, async (user) => {
-      const claims = user ? (await user.getIdTokenResult()).claims : {};
+      // The `admin` claim rides on the ID token, and Firebase serves a CACHED
+      // one for up to an hour — so a claim granted by scripts/set-admin.mjs
+      // after this browser last signed in is simply not in it, and the gate
+      // says "not an admin" to someone who is. Never believe that answer on a
+      // cached token: force one refresh before showing the refusal. The cost
+      // is a single extra token fetch for a non-admin who opens /admin, which
+      // is noindex and linked from nowhere.
+      let claims = user ? (await user.getIdTokenResult()).claims : {};
+      if (user && claims.admin !== true) claims = (await user.getIdTokenResult(true)).claims;
       if (claims.admin !== true) {
         gate.textContent = user ? "This account is not an admin." : "Sign in with an admin account.";
         gate.hidden = false;

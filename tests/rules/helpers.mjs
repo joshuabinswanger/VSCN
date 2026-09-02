@@ -26,6 +26,16 @@ export function verified(uid, extra = {}) {
   return { email: `${uid}@example.test`, email_verified: true, ...extra };
 }
 
+/** Token claims for a member who signed up but never clicked the link. */
+export function unverified(uid, extra = {}) {
+  return { email: `${uid}@example.test`, email_verified: false, ...extra };
+}
+
+/** The one image id an unverified account may address, per kind. */
+export function slot(uid, kind) {
+  return `${uid}-${kind}`;
+}
+
 export async function setupEnv() {
   return initializeTestEnvironment({
     projectId: PROJECT_ID,
