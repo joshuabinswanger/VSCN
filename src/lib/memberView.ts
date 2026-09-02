@@ -25,7 +25,8 @@ export interface MemberViewBase extends ProfileViewModel {
  * A member with its URL slug resolved. Separate from MemberViewBase because a
  * slug cannot be derived from one profile alone — deduplication needs to see
  * the whole collection — so the type makes it impossible to hold a
- * "MemberView" that never went through assignSlugs().
+ * "MemberView" that never went through resolveSlugs() — which assignSlugs()
+ * is now just the empty-table case of.
  */
 export interface MemberView extends MemberViewBase {
   /** URL segment. From slugs/ when a row exists, else derived. See resolveSlugs(). */

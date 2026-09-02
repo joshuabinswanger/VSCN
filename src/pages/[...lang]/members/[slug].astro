@@ -26,6 +26,11 @@ import "../../../styles/profile.css";
 export async function getStaticPaths() {
   const [members, aliases] = await Promise.all([fetchMemberViews(), fetchSlugAliases()]);
   const byUid = new Map(members.map((m) => [m.id, m]));
+  // A retired slug that some member now resolves to (a rowless member's
+  // derived fallback, or a re-claim) must not become an alias too — Astro
+  // fails the build on duplicate params. Dropping the alias is the right
+  // degradation for a page that only ever redirects.
+  const takenSlugs = new Set(members.map((m) => m.slug));
   const langs = [undefined, "de"] as const;
   return [
     ...members.flatMap((member) =>
@@ -33,7 +38,7 @@ export async function getStaticPaths() {
     ),
     ...aliases.flatMap(({ slug, uid }) => {
       const member = byUid.get(uid);
-      if (!member || member.slug === slug) return [];
+      if (!member || takenSlugs.has(slug)) return [];
       return langs.map((lang) => ({
         params: { lang, slug },
         props: { member, aliasOf: memberHref(lang ?? "en", member.slug) },
