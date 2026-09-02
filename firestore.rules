@@ -43,25 +43,50 @@ service cloud.firestore {
 
     match /users/{uid} {
       // Private owner profile data. Contains email and phone.
-      allow read: if request.auth != null && request.auth.uid == uid;
+      allow read: if isOwner(uid) || isAdmin();
 
-      allow create, update: if request.auth != null
-                            && request.auth.uid == uid
-                            && validPrivateUser(request.resource.data, request.auth);
+      allow create: if isOwner(uid)
+                    && validPrivateUser(request.resource.data, request.auth)
+                    && serverFieldsAbsent(request.resource.data);
 
-      allow delete: if request.auth != null && request.auth.uid == uid;
+      allow update: if isOwner(uid)
+                    && validPrivateUser(request.resource.data, request.auth)
+                    && serverFieldsUntouched(request.resource.data, resource.data);
+
+      // ROLLOUT WINDOW: the shipped client still deletes its own docs on
+      // account deletion. Flips to `false` once the callable has replaced it.
+      allow delete: if isOwner(uid);
     }
 
     match /onboardingRequests/{uid} {
       // Private onboarding feedback. Users can only access their own request.
-      allow get: if request.auth != null && request.auth.uid == uid;
-      allow list: if false;
+      allow get: if isOwner(uid) || isAdmin();
+      allow list: if isAdmin();
 
       allow create, update: if request.auth != null
                             && request.auth.uid == uid
                             && validOnboardingRequest(request.resource.data, request.auth);
 
       allow delete: if false;
+    }
+
+    match /slugs/{slug} {
+      // uid behind a public URL segment. Owned by the onPublicProfileWritten
+      // function; the build reads it, nothing in a browser writes it.
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /deletions/{uid} {
+      // The purge job. Admin-visible for the queues screen; server-written.
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /adminActions/{id} {
+      // Audit log of privileged mutations. Appended by callables only.
+      allow read: if isAdmin();
+      allow write: if false;
     }
 
     match /images/{imageId} {
@@ -118,14 +143,14 @@ function canPublish(data, auth) {
 }
 
 function validPublicProfile(data) {
-  let allowedKeys = ['displayName', 'photoURL', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'active', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'photoImageId', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'active', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data);
 }
 
 function validPrivateUser(data, auth) {
-  let allowedKeys = ['displayName', 'photoURL', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'phone', 'email', 'wantsToContribute', 'onboardingComplete', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'photoImageId', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'phone', 'email', 'wantsToContribute', 'onboardingComplete', 'status', 'deletionRequestedAt', 'purgeAfter', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data)
@@ -170,6 +195,7 @@ function validPublicFields(data) {
     && (!('active' in data) || data.active is bool)
     && (!('photoColor' in data) || (data.photoColor is string && data.photoColor.matches('#[0-9a-f]{6}')))
     && (!('photoURL' in data) || data.photoURL == '' || validStorageUrl(data.photoURL))
+    && (!('photoImageId' in data) || (data.photoImageId is string && data.photoImageId.size() <= 40))
     && (!('createdAt' in data) || data.createdAt is timestamp)
     && (!('updatedAt' in data) || data.updatedAt is timestamp);
 }
@@ -207,12 +233,14 @@ function validGalleryItem(item) {
     // carry the tag is rejected outright. The editor strips it on load
     // (sanitizeGalleryItems in src/lib/gallery.ts) precisely so that a member
     // whose images were tagged before the withdrawal can still save.
-    && item.keys().hasOnly(['url', 'caption', 'description', 'width', 'height', 'color'])
+    && item.keys().hasOnly(['imageId', 'url', 'caption', 'description', 'width', 'height', 'color'])
     && (!('color' in item) || (item.color is string && item.color.matches('#[0-9a-f]{6}')))
     && item.url is string
     && validStorageUrl(item.url)
     && (!('caption' in item) || (item.caption is string && item.caption.size() <= 140))
     && (!('description' in item) || (item.description is string && item.description.size() <= 600))
+    // imageId optional during the rollout window; required from Task 19 on.
+    && (!('imageId' in item) || (item.imageId is string && item.imageId.size() <= 40))
     && item.width is int && item.width > 0 && item.width <= 10000
     && item.height is int && item.height > 0 && item.height <= 10000;
 }
@@ -309,4 +337,28 @@ function validTag(data) {
     && (!('active' in data) || data.active is bool)
     && (!('group' in data) || data.group is string)
     && (!('updatedAt' in data) || data.updatedAt is timestamp);
+}
+
+function isAdmin() {
+  return request.auth != null && request.auth.token.admin == true;
+}
+
+function isOwner(uid) {
+  return request.auth != null && request.auth.uid == uid;
+}
+
+// Lifecycle fields on users/{uid} are written ONLY by Cloud Functions. They
+// sit in the client allowlist purely because hasOnly() sees the MERGED
+// document — a member's ordinary save would otherwise be rejected the moment
+// a function had stamped `status` on their doc. Pinned unchanged instead.
+function serverFieldsAbsent(data) {
+  return !('status' in data)
+      && !('deletionRequestedAt' in data)
+      && !('purgeAfter' in data);
+}
+
+function serverFieldsUntouched(data, existing) {
+  return data.get('status', null) == existing.get('status', null)
+      && data.get('deletionRequestedAt', null) == existing.get('deletionRequestedAt', null)
+      && data.get('purgeAfter', null) == existing.get('purgeAfter', null);
 }

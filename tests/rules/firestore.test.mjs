@@ -1,7 +1,7 @@
 import { test, before, after, beforeEach } from "node:test";
 import {
   setupEnv, seed, assertFails, assertSucceeds,
-  OWNER, OTHER, verified, minimalUser,
+  OWNER, OTHER, ADMIN, verified, minimalUser,
 } from "./helpers.mjs";
 
 let env;
@@ -126,4 +126,82 @@ test("images: another member cannot update, nobody can delete", async () => {
 test("images: an unlisted key is rejected (hasOnly)", async () => {
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
   await assertFails(db.doc("images/img-1").set(imageDoc(OWNER, "img-1", { projectId: "p" })));
+});
+
+test("users: an owner update leaves server-owned fields alone and passes", async () => {
+  await seed(env, `users/${OWNER}`, {
+    ...minimalUser(OWNER), status: "active", purgeAfter: null,
+  });
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  // Merge write that does not mention status: the MERGED doc still carries it.
+  await assertSucceeds(db.doc(`users/${OWNER}`).set({ bio: "New bio." }, { merge: true }));
+});
+
+test("users: client cannot set or change status / deletion fields", async () => {
+  await seed(env, `users/${OWNER}`, { ...minimalUser(OWNER), status: "active" });
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertFails(db.doc(`users/${OWNER}`).update({ status: "pendingDeletion" }));
+  await assertFails(db.doc(`users/${OWNER}`).update({ purgeAfter: new Date() }));
+  await assertFails(db.doc(`users/${OWNER}`).update({ deletionRequestedAt: new Date() }));
+  // And not on create either.
+  const fresh = env.authenticatedContext(OTHER, verified(OTHER)).firestore();
+  await assertFails(fresh.doc(`users/${OTHER}`).set({ ...minimalUser(OTHER), status: "active" }));
+});
+
+test("users/publicProfiles: photoImageId is an accepted string field", async () => {
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc(`users/${OWNER}`).set({ ...minimalUser(OWNER), photoImageId: "img-a" }));
+  await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
+    displayName: "Test Member", photoURL: "", photoImageId: "img-a", gallery: [],
+  }));
+});
+
+test("publicProfiles: gallery items may carry imageId (both shapes accepted)", async () => {
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  const url = "https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/x.webp?alt=media";
+  await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
+    displayName: "Test Member",
+    gallery: [
+      { url, caption: "", width: 10, height: 10 },
+      { imageId: "img-1", url, caption: "", width: 10, height: 10, color: "#000000" },
+    ],
+  }));
+});
+
+test("slugs: public read, no client write", async () => {
+  await seed(env, "slugs/test-member", { uid: OWNER, current: true, createdAt: new Date() });
+  const anon = env.unauthenticatedContext().firestore();
+  await assertSucceeds(anon.doc("slugs/test-member").get());
+  const owner = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertFails(owner.doc("slugs/mine").set({ uid: OWNER, current: true, createdAt: new Date() }));
+});
+
+test("deletions/adminActions: admin reads, nobody writes, members cannot read", async () => {
+  await seed(env, `deletions/${OWNER}`, { uid: OWNER, completedAt: null });
+  await seed(env, "adminActions/a1", { actorUid: ADMIN, action: "x", targetUid: OWNER });
+  const admin = env.authenticatedContext(ADMIN, verified(ADMIN, { admin: true })).firestore();
+  await assertSucceeds(admin.doc(`deletions/${OWNER}`).get());
+  await assertSucceeds(admin.collection("adminActions").get());
+  await assertFails(admin.doc(`deletions/${OWNER}`).update({ completedAt: new Date() }));
+  await assertFails(admin.collection("adminActions").add({ actorUid: ADMIN }));
+  const owner = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertFails(owner.doc(`deletions/${OWNER}`).get());
+  await assertFails(owner.collection("adminActions").get());
+});
+
+test("admin: reads every users doc but cannot write one", async () => {
+  await seed(env, `users/${OWNER}`, minimalUser(OWNER));
+  const admin = env.authenticatedContext(ADMIN, verified(ADMIN, { admin: true })).firestore();
+  await assertSucceeds(admin.doc(`users/${OWNER}`).get());
+  await assertSucceeds(admin.collection("users").get());
+  await assertFails(admin.doc(`users/${OWNER}`).update({ bio: "admin was here" }));
+});
+
+test("onboardingRequests: admin can list, member cannot", async () => {
+  await seed(env, `onboardingRequests/${OWNER}`, { userId: OWNER, message: "hi", lang: "en" });
+  const admin = env.authenticatedContext(ADMIN, verified(ADMIN, { admin: true })).firestore();
+  await assertSucceeds(admin.collection("onboardingRequests").get());
+  const owner = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertFails(owner.collection("onboardingRequests").get());
+  await assertSucceeds(owner.doc(`onboardingRequests/${OWNER}`).get());
 });
