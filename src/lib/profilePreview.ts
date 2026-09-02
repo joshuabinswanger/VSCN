@@ -14,6 +14,10 @@
 // The link-shaping rules are imported from links.ts; there is deliberately no
 // second copy of them here.
 import { href, socialLinks } from "./links.ts";
+// The card preview drives the DIRECTORY CARD'S OWN carousel now, not a still
+// picture that looks like one -- see renderCardPreview below and the header of
+// src/lib/communityCarousel.ts.
+import { destroyCarousel, initCarousels } from "./communityCarousel.ts";
 import type { ProfileViewModel } from "./profileView.ts";
 
 export interface ProfilePreviewLabels {
@@ -212,81 +216,244 @@ export function renderProfilePreview(
 }
 
 /**
- * Fills the CommunityCardPreview shell — the directory card's face — from the
- * same ProfileViewModel. Image face when the gallery has a first item,
+ * Labels renderCardPreview() needs that the shell cannot carry itself. The
+ * card gets these from useTranslations() at build time; the preview is filled
+ * in the browser, so they have to arrive as values.
+ *
+ * The carousel ones are optional and default to nothing: a missing label costs
+ * an aria attribute, never the paging.
+ */
+export interface CardPreviewLabels {
+  /** Shown in place of the name before the member has typed one. */
+  defaultName: string;
+  /** The translated `profile.memberType.*` strings, for the typographic face. */
+  memberTypeLabels?: Record<string, string>;
+  /** `community.card.carousel` — the frame's aria-roledescription. */
+  carousel?: string;
+  /** `community.card.image` — each slide's aria-roledescription. */
+  image?: string;
+  /** `community.card.gallery` — completes the frame's accessible name. */
+  gallery?: string;
+  /** `community.card.imagePosition`, with {n} and {total} placeholders. */
+  imagePosition?: string;
+  /** `community.card.prev` / `community.card.next` — the arrows' labels. */
+  prev?: string;
+  next?: string;
+  /** `member.workAlt` — the alt-text fallback for an uncaptioned image. */
+  workAlt?: string;
+}
+
+/** "Image 2 of 3" from the translated template. Empty when there is none. */
+function position(template: string | undefined, index: number, total: number): string {
+  if (!template) return "";
+  return template.replace("{n}", String(index + 1)).replace("{total}", String(total));
+}
+
+/**
+ * Fills the CommunityCardPreview shell — the directory card, from the same
+ * ProfileViewModel. Image face when the gallery has anything in it,
  * typographic face otherwise, which is exactly the rule the real grid applies
  * (`hasArtwork`: artwork → image card).
+ *
+ * THE CAROUSEL IS THE REAL ONE (2026-09-02, Josh: "carousel shouls be the same
+ * elemnt in preview as well"). The shell is the card's own markup now (see
+ * CommunityCardPreview) and the paging is the card's own module, so this
+ * function's job on the image face is to build the track's slides and hand the
+ * frame to initCarousels(). It used to bind ONE image into a frame of its own
+ * design, which is why a member with six pictures was previewing a card that
+ * could only ever show the first.
  *
  * The typographic face mirrors CommunityTextCard: a framed rectangle of tag
  * lines, falling back tags → member-type label. The role is NOT part of that
  * chain — it always prints in the caption row, and a frame with nothing to
  * hold becomes a rule (see that component for why).
- * `memberTypeLabels` carries the translated `profile.memberType.*` strings the
- * real card gets from useTranslations() at build time.
  */
 export function renderCardPreview(
   root: HTMLElement,
   vm: ProfileViewModel,
-  labels: { defaultName: string; memberTypeLabels?: Record<string, string> },
+  labels: CardPreviewLabels,
 ): void {
   const part = (name: string) => root.querySelector<HTMLElement>(`[data-ccpv="${name}"]`);
+  const clone = (name: string): HTMLElement | null => {
+    const tpl = root.querySelector<HTMLTemplateElement>(`[data-ccpv-tpl="${name}"]`);
+    const node = tpl?.content.firstElementChild?.cloneNode(true);
+    return node instanceof HTMLElement ? node : null;
+  };
+  const show = (el: HTMLElement | null, visible: boolean) => {
+    if (el) el.hidden = !visible;
+  };
+  /** Sets an attribute, or removes it when there is no value — a stale aria
+   *  label left over from a previous render is worse than none. */
+  const attr = (el: Element | null, name: string, value: string) => {
+    if (!el) return;
+    if (value) el.setAttribute(name, value);
+    else el.removeAttribute(name);
+  };
 
-  const name = part("name");
-  if (name) name.textContent = vm.displayName.trim() || labels.defaultName;
+  const displayName = vm.displayName.trim() || labels.defaultName;
+  const nameEl = part("name");
+  if (nameEl) nameEl.textContent = displayName;
 
-  const frame = part("frame");
-  const img = part("img") as HTMLImageElement | null;
-  const tframe = part("tframe");
-  const work = vm.works[0];
+  // Same filter the profile-page preview applies: a gallery item mid-upload has
+  // no dimensions yet, and a slide with no aspect is a collapsed frame.
+  const works = vm.works.filter((w) => w.url && w.width > 0 && w.height > 0);
+  const first = works[0];
+  const isCarousel = works.length > 1;
 
   // Same chain as CommunityTextCard's tagLines: tags, else the member-type
   // label, else nothing — the role is not a rung on it.
   const typeLabel = vm.memberType
     ? (labels.memberTypeLabels?.[vm.memberType] ?? vm.memberType)
     : "";
-  const role = vm.role.trim();
   const tagLines = vm.tags.length > 0 ? vm.tags : typeLabel ? [typeLabel] : [];
   // A typographic face with nothing for its frame: the real card draws a rule
   // there instead of an empty box, so the shell has to as well.
-  const frameIsRule = !work && tagLines.length === 0;
+  const frameIsRule = !first && tagLines.length === 0;
 
   // The role prints in the caption on every face, always.
-  const caption = part("role");
-  if (caption) {
-    caption.textContent = role;
-    caption.hidden = !role;
-  }
+  const role = vm.role.trim();
+  const roleEl = part("role");
+  if (roleEl) roleEl.textContent = role;
+  show(roleEl, Boolean(role));
 
-  if (frame && img) {
-    if (work) {
-      frame.hidden = false;
-      frame.style.aspectRatio = `${work.width} / ${work.height}`;
-      frame.style.background = work.color ?? "";
-      // Raw Storage URL on purpose: the preview runs in the browser, where
-      // the build-time optimiser does not exist. The real card serves
-      // getImage() output.
-      if (img.src !== work.url) img.src = work.url;
-      img.alt = work.caption?.trim() || "";
+  // ── The image face ────────────────────────────────────────
+  const frame = part("frame");
+  const track = part("track");
+  show(part("body"), Boolean(first));
+
+  if (frame && track) {
+    if (first) {
+      // The card's width formula reads this off the root; without it tall
+      // artwork fills the preview's measure instead of narrowing to fit.
+      root.style.setProperty("--frame-ar", String(first.width / first.height));
+      frame.style.aspectRatio = `${first.width} / ${first.height}`;
+      frame.style.background = first.color ?? "";
+
+      // ONLY WHEN THE GALLERY ITSELF CHANGED. renderCardPreview runs on every
+      // keystroke in the form — the name, the role, a tag — and rebuilding the
+      // track each time would destroy the Embla instance, throw the member
+      // back to image 1 and re-decode every picture while they type. The
+      // signature covers the images AND the text bound into them, so a caption
+      // edit still lands.
+      const signature = works
+        .map((w) => `${w.url}|${w.width}x${w.height}|${w.caption ?? ""}|${w.description ?? ""}`)
+        .join("~");
+      if (frame.dataset.ccpvSignature !== signature) {
+        frame.dataset.ccpvSignature = signature;
+        // Release the previous carousel before its slides go: dropping the
+        // nodes leaves Embla's observers and its 5s timer alive against
+        // detached elements (see destroyCarousel).
+        destroyCarousel(frame);
+
+        const slides = works
+          .map((w, i) => {
+            const slide = clone("slide");
+            const img = slide?.querySelector("img");
+            if (!slide || !img) return null;
+
+            // A REAL src on every slide, not the card's data-src scheme: this
+            // runs in the browser where the build-time optimiser does not
+            // exist, and one member's gallery is eight images at most. The
+            // card serves getImage() output and defers the rest.
+            img.src = w.url;
+            img.width = w.width;
+            img.height = w.height;
+            // The card's rule exactly: the member's caption when they wrote
+            // one, a translated fallback otherwise — never "".
+            img.alt = w.caption?.trim() || `${displayName} — ${labels.workAlt ?? ""}`.trim();
+            if (w.color) img.style.background = w.color;
+
+            // What communityCarousel.ts copies onto the frame's trigger as the
+            // carousel moves. The preview's trigger is href-less so the URL is
+            // ignored there; the rest is written anyway, which keeps the shell
+            // speaking the card's whole contract rather than a convenient half.
+            slide.dataset.workUrl = w.url;
+            slide.dataset.workWidth = String(w.width);
+            slide.dataset.workHeight = String(w.height);
+            if (w.caption?.trim()) slide.dataset.workCaption = w.caption.trim();
+            if (w.description) slide.dataset.workDescription = w.description;
+
+            // A single picture is not a carousel: no group semantics, no
+            // position label. Calling one image a carousel would be a lie to a
+            // screen reader — the card's own reasoning, and its own markup.
+            if (isCarousel) {
+              slide.setAttribute("role", "group");
+              attr(slide, "aria-roledescription", labels.image ?? "");
+              attr(slide, "aria-label", position(labels.imagePosition, i, works.length));
+              if (i !== 0) slide.setAttribute("aria-hidden", "true");
+            }
+            return slide;
+          })
+          .filter((n): n is HTMLElement => n !== null);
+        track.replaceChildren(...slides);
+
+        // The dots live on the CARD, above the frame — one per work, and none
+        // at all for a gallery of one.
+        const dots = part("dots");
+        if (dots) {
+          const marks = (isCarousel ? works : [])
+            .map((_, i) => {
+              const dot = clone("dot");
+              if (dot && i === 0) dot.classList.add("ccard__dot--on");
+              return dot;
+            })
+            .filter((n): n is HTMLElement => n !== null);
+          dots.replaceChildren(...marks);
+        }
+        show(dots, isCarousel);
+
+        if (isCarousel) {
+          frame.setAttribute("role", "group");
+          attr(frame, "aria-roledescription", labels.carousel ?? "");
+          attr(frame, "aria-label", labels.gallery ? `${displayName} — ${labels.gallery}` : "");
+          // Read by the module to rebuild the live region on every move.
+          attr(frame, "data-position-label", labels.imagePosition ?? "");
+        } else {
+          frame.removeAttribute("role");
+          frame.removeAttribute("aria-roledescription");
+          frame.removeAttribute("aria-label");
+          frame.removeAttribute("data-position-label");
+        }
+
+        const prev = part("prev");
+        const next = part("next");
+        attr(prev, "aria-label", labels.prev ?? "");
+        attr(next, "aria-label", labels.next ?? "");
+        show(prev, isCarousel);
+        show(next, isCarousel);
+
+        // Scoped to this root, so a page holding more than one preview wires
+        // only the one that changed. A no-op for a gallery of one — which is
+        // what the card does with a single work too.
+        initCarousels(root);
+      }
     } else {
-      frame.hidden = true;
-      img.removeAttribute("src");
+      // No artwork: the slides go, and the carousel with them. An eight-image
+      // track left behind a hidden body would keep its timer and its observers
+      // running over pictures nobody can see.
+      destroyCarousel(frame);
+      delete frame.dataset.ccpvSignature;
+      track.replaceChildren();
+      root.style.removeProperty("--frame-ar");
+      show(part("dots"), false);
     }
   }
 
+  // ── The typographic face ──────────────────────────────────
+  const tframe = part("tframe");
   if (tframe) {
-    tframe.hidden = Boolean(work);
+    tframe.hidden = Boolean(first);
     tframe.classList.toggle("ccpv__tframe--rule", frameIsRule);
     const tags = part("tags");
-    const tpl = root.querySelector<HTMLTemplateElement>('[data-ccpv-tpl="tag"]');
-    if (tags && tpl) {
-      // Cloned from the template so each <li> carries the component's
-      // data-astro-cid-* attribute — see renderProfilePreview's header note.
-      const items = (work ? [] : tagLines).map((line) => {
-        const node = tpl.content.firstElementChild?.cloneNode(true);
-        if (node instanceof HTMLElement) node.textContent = line;
-        return node instanceof HTMLElement ? node : null;
-      });
-      tags.replaceChildren(...items.filter((n): n is HTMLElement => n !== null));
+    if (tags) {
+      const items = (first ? [] : tagLines)
+        .map((line) => {
+          const node = clone("tag");
+          if (node) node.textContent = line;
+          return node;
+        })
+        .filter((n): n is HTMLElement => n !== null);
+      tags.replaceChildren(...items);
     }
   }
 }

@@ -1,12 +1,22 @@
 import { decodeImage, toWebpBlob, dominantColor, rejectionMessage } from "./image.ts";
 import { MAX_SOCIAL_MEDIA } from "./links.ts";
-const MAX_AVATAR_BYTES = 10 * 1024 * 1024; // 10 MB — raw upload limit before client-side resize
+/**
+ * Raw upload limit, BEFORE the client-side resize — raised from 10 MB
+ * (2026-09-02, Josh: "raise file size limit"). Nothing this size is stored:
+ * resizeAvatar() re-encodes every portrait to a 512px square WebP, which lands
+ * in the tens of kilobytes. Same reasoning as MAX_RAW_BYTES in gallery.ts, at
+ * half the figure — an avatar is a photograph of a person, not a print master,
+ * so there is no 4K-export case to leave room for.
+ */
+const MAX_AVATAR_BYTES = 25 * 1024 * 1024;
+const MAX_AVATAR_MB = Math.round(MAX_AVATAR_BYTES / (1024 * 1024));
 // Keep this in sync with validBioWordCount() in firestore.rules.
 export const MAX_BIO_WORDS = 35;
 
 export function validateAvatar(file: File): { ok: boolean; error?: string } {
   if (file.size > MAX_AVATAR_BYTES) {
-    return { ok: false, error: "Image must be under 10 MB." };
+    // Derived, not typed: a literal here outlived the last change to the limit.
+    return { ok: false, error: `Image must be under ${MAX_AVATAR_MB} MB.` };
   }
   const rejection = rejectionMessage(file);
   if (rejection) return { ok: false, error: rejection };

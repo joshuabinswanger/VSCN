@@ -1,0 +1,443 @@
+/* THE DIRECTORY CARD'S SURFACE — shared, on purpose.
+ *
+ * These rules were a scoped <style> inside CommunityImageCard.astro, and the
+ * profile editor's card preview carried a second set (`.ccpv__*`) that tried
+ * to look like them: a name band, one static image in a frame, a role line.
+ * It could not carry the one thing the card actually DOES — page a member's
+ * gallery — so a member with six images was shown a card with one
+ * (2026-09-02, Josh: "carousel shouls be the same elemnt in preview as well").
+ *
+ * One stylesheet, two consumers, is what makes that impossible to repeat, and
+ * it is the mechanism src/styles/profile.css already uses for the member page:
+ *   - src/components/community/CommunityImageCard.astro — the card /community
+ *     builds from Firestore at build time
+ *   - src/components/community/CommunityCardPreview.astro — the same anatomy
+ *     as an empty shell, filled in the browser from live form state
+ *     (renderCardPreview in src/lib/profilePreview.ts), and driven by the same
+ *     Embla wiring (src/lib/communityCarousel.ts)
+ *
+ * A plain .css file rather than an Astro <style>: scoped styles stamp a
+ * per-component attribute onto every selector, so two components importing one
+ * scoped block would still get two different rules. Custom media (--bp-mobile)
+ * resolves through postcss-global-data — see postcss.config.mjs.
+ *
+ * WHAT STAYED SCOPED IN THE CARD, and why it must: the two rules that reach
+ * into MemberDetailPanel (`.ccard__caption-row .pdisc*`). Moved here they
+ * would drop Astro's scope attribute and land at the same specificity as that
+ * component's OWN `.pdisc__toggle` rule, leaving which one wins to source
+ * order between two stylesheets — see the specificity note in CLAUDE.md. The
+ * preview renders no disclosure, so it needs neither.
+ */
+
+.ccard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  /* Everything above and below the frame — the name line, the caption row and
+     the gaps around them. Measured at 63–78px across the seeded directory;
+     plus the dots row that now sits under
+     the frame; rounded UP on purpose, because under-estimating it lets the card exceed
+     its slot while over-estimating only leaves a little more air. */
+  --ccard-chrome: 6rem;
+  /* How tall the frame may be. --slot-rows and --cgrid-row come from the
+     grid cell this card was dealt into; absent them (the editor preview, the
+     profile page) the fallback is large enough to be no cap at all, which is
+     the old behaviour exactly. */
+  --frame-cap: calc(var(--slot-rows, 999) * var(--cgrid-row, 2rem) - var(--ccard-chrome));
+  /* The whole card narrows with its artwork, not just the frame. Putting
+     this on the frame alone left a 115px image under a 440px name and
+     caption row, which reads as a broken card rather than a narrow one.
+     Normally this is the full slot width; where the artwork is tall enough
+     that filling the width would overrun the slot, it is instead the width
+     that makes the frame exactly as tall as the slot allows. */
+  width: min(100%, calc(var(--frame-cap) * var(--frame-ar, 1)));
+  /* Pivot for the GSAP scale in CommunityGrid. Declared here so the effect
+     is identical whoever drives the transform. Anchored at the top edge, not
+     centre: the ScrollTrigger is keyed to the card's top, and a centre
+     origin recomputes with every height change — opening the disclosure
+     grows the card and, at any scale short of 1, visibly shifts its top on
+     screen. A top origin keeps that edge fixed however tall the card gets. */
+  transform-origin: 50% 0%;
+}
+
+/* ── Name ─────────────────────────────────────────────── */
+.ccard__name {
+  margin: 0;
+  /* The heading is semantic; its size is the card's, not a heading scale. */
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  /* Explicit, not `inherit`. Nothing up the tree sets a line-height — not
+     body, not .page-wrap — so `inherit` resolved to `normal`, i.e. Archivo's
+     own metrics (~1.25) re-resolved against this element's 1.2rem (15.6px
+     mobile / 18px desktop). At that size the gap between the two lines of a
+     wrapped name is wide enough that the name reads as two entries rather
+     than one. 1.1 closes it to a couple of pixels while still clearing a
+     descender sitting over a capital, which is where a tighter value starts
+     to collide. */
+  line-height: 1.1;
+}
+.ccard__name-link {
+  display: block;
+  font-family: "Archivo", sans-serif;
+  color: var(--color-dark);
+  text-decoration: none;
+}
+.ccard__name-link:hover,
+.ccard__name-link:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+}
+
+/* ── Artwork frame ────────────────────────────────────── */
+.ccard__body {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+}
+
+.ccard__frame {
+  position: relative;
+  /* Fills the card, which is itself already the right width — see .ccard. */
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  /* NO BORDER, deliberately. The artwork is its own edge; a grey rule around
+     it read as a box the picture had been placed inside, which is the
+     opposite of the page it sits on.
+     Nothing has to compensate for the loss. This box is content-box —
+     global.css has no universal box-sizing reset — so the 1.5px sat OUTSIDE
+     the aspect-ratio'd content box and made the frame's border box ~3px
+     taller and wider than the ratio alone. Removing it makes .ccard's
+     width formula (--frame-cap × --frame-ar) exact where it used to
+     under-shoot the slot by those 3px, so the only movement is sub-pixel to
+     3px of RECLAIMED space, never a card outgrowing its cell. */
+  /* Square corners throughout the card — no --radius-* token here. */
+  border-radius: 0;
+  /* Dominant colour is painted inline where the member has one; this is the
+     fallback ground. */
+  background: var(--color-bg);
+  /* Vertical panning stays the browser's; only a horizontal gesture ever
+     reaches Embla's drag. This declaration IS the defence for "a page scroll
+     that starts on a card still scrolls the page": following the finger
+     means a non-passive touchmove, and without this the browser would have
+     to wait on that listener to learn whether the page may move at all. */
+  touch-action: pan-y pinch-zoom;
+}
+
+/* The Embla container. Absolutely positioned rather than height:100% so it
+   fills the aspect box exactly the way the stacked images used to, with no
+   percentage height resolving against an aspect-ratio'd parent. Embla
+   translates THIS element and nothing else in the frame, which is why the
+   click target and the arrows can be its siblings and stay put. */
+.ccard__track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+
+/* One frame-wide slide per work: `flex: 0 0 100%` is what makes a snap a
+   whole image, and min-width:0 stops the image's intrinsic width from
+   inflating the slide past the frame. */
+.ccard__slide {
+  position: relative;
+  flex: 0 0 100%;
+  min-width: 0;
+}
+
+/* Was position:absolute + an opacity crossfade; in a track the image simply
+   fills its slide. Nothing animates the image itself any more — the motion
+   is Embla translating the track under it. */
+.ccard__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ccard__frame-link {
+  position: absolute;
+  inset: 0;
+  /* Says "this opens" — the same word the wall's tile uses for the same
+     gesture, and the reason it changed: this link used to go to the profile,
+     where a pointer cursor was the honest cue. */
+  cursor: zoom-in;
+}
+
+.ccard__arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  /* The box is HIT AREA ONLY — nothing paints it. Wider than tall because
+     these sit on the artwork's left and right edges, and a wide target is
+     easier to hit; the visible control is the chevron alone. */
+  width: 2.4rem;
+  height: 1.8rem;
+  padding: 0;
+  border: 0;
+  /* No ground. The chevron is the whole control, so its contrast is now
+     the stroke's own: it reads on light artwork and can be lost on a dark
+     or busy passage. A decided trade for the clean face — the arrow keys
+     and the swipe page the same gallery either way. */
+  background: none;
+  color: var(--color-dark);
+  opacity: 0;
+  cursor: pointer;
+  /* Slides out of the card's edge as it fades in. Written as a plain
+     transform per side rather than a var the two directions share: an
+     unregistered custom property is not itself animatable, and relying
+     on the substitution to carry a transition is a subtlety this file
+     does not need. Each state names its own transform. */
+  transform: translate(0, -50%);
+  /* THIS IS THE HIDE. A transition on the base state is what plays on the
+     way back to it, so these timings are the ones that run when the pointer
+     leaves — a third shorter than the appear below, so the chevron clears
+     the artwork promptly instead of lingering over it. The appear keeps its
+     own, longer timings on the shown state. */
+  transition:
+    opacity 120ms ease,
+    transform 147ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+/* :focus-within arrived with the keyboard support: the arrow keys are bound
+   to the frame, so a visitor who has tabbed to the click target can page
+   without ever hovering — and had no way to see the controls that prove it
+   until they came up with the focus. */
+.ccard__frame:hover .ccard__arrow,
+.ccard__frame:focus-within .ccard__arrow,
+.ccard__arrow:focus-visible {
+  opacity: 0.75;
+  transform: translate(0, -50%);
+  /* The appear, unchanged: it may take its time coming out of the edge. */
+  transition:
+    opacity 180ms ease,
+    transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+/* With no block to invert, the active side states itself by coming to full
+   strength while the other stays held back. */
+.ccard__arrow:hover,
+.ccard__arrow:focus-visible {
+  opacity: 1;
+}
+/* A stroked chevron rather than a filled triangle — two borders on a box
+   turned 45deg. Same drawing as the disclosure toggle in MemberDetailPanel,
+   so both controls on a card read as one family. */
+.ccard__arrow span {
+  display: block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-top: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+}
+.ccard__arrow--prev span {
+  transform: translate(0.06rem, 0) rotate(-135deg);
+}
+.ccard__arrow--next span {
+  transform: translate(-0.06rem, 0) rotate(45deg);
+}
+/* Measured to the button box, not the chevron: the box grew by 1.3rem,
+   so the inset shrinks to leave the glyph about where it sat before. */
+/* The resting offset: tucked toward its own edge, so the block appears
+   to come out of the card rather than fade in on the spot. Overridden
+   by the :hover/:focus rule above, which is later and more specific. */
+.ccard__arrow--prev {
+  left: 0.15rem;
+  transform: translate(-0.4rem, -50%);
+}
+.ccard__arrow--next {
+  right: 0.15rem;
+  transform: translate(0.4rem, -50%);
+}
+
+/* ── Position indicator ───────────────────────────────── */
+/* A row of the card's chrome, sitting above the artwork at its right
+   edge — not a plate over the picture. Off the image there is no arbitrary
+   ground to survive, so the plate is gone and the marks shrink to
+   the smallest size that still reads as a count. */
+.ccard__dots {
+  display: flex;
+  /* Hard right, on the artwork's own right edge: the name holds the left of
+     this line, so the count sits where nothing else does. */
+  justify-content: flex-end;
+  gap: 0.18rem;
+  /* Pulled up into the card's 0.3rem row gap: the count belongs to the name
+     line it shares, and the space that gap left under the title read as a
+     break between the two. The image comes up with it. */
+  margin-top: -0.2rem;
+  /* Indicators, never controls — see the markup note. */
+  pointer-events: none;
+}
+
+.ccard__dot {
+  width: 0.18rem;
+  height: 0.18rem;
+  border-radius: 50%;
+  background: var(--color-dark);
+  opacity: 0.22;
+  transition: opacity 180ms ease;
+}
+.ccard__dot--on {
+  opacity: 1;
+}
+
+/* The spoken position. There is no sr-only utility anywhere in this
+   codebase, so the clip technique lives here. */
+.ccard__live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── Member caption ───────────────────────────────────── */
+.ccard__caption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.15rem;
+  font-family: "Archivo", sans-serif;
+}
+
+/* A plain block, not a grid, and .pdisc keeps a REAL box -- see the note in
+   MemberDetailPanel for why display:contents here was unopenable on iPhone.
+   The panel is full-width simply by being in flow (it still grows the card,
+   which is what the desktop slot wants and what pushes rows on mobile), and
+   the toggle is lifted to the row's right edge instead of placed in a
+   column. */
+.ccard__caption-row {
+  position: relative;
+}
+
+/* The toggle's space is reserved on the ROLE'S LINE, not on the row: row
+   padding would inset the open panel too, and a panel stopping short of
+   the card's right edge is exactly what the old pseudo-element grid item
+   existed to prevent. It sits on the wrapper now rather than on the role,
+   because the role no longer holds that line alone. */
+.ccard__caption-row .ccard__meta-line {
+  /* Wider than the chevron by design — it is the reserve for the chevron's
+     HIT AREA, which is 2rem square (below), not for the 0.36rem mark that
+     gets painted in the middle of it. */
+  padding-right: 1.9rem;
+}
+
+/* The role reads left and the chevron sits in the reserve above it. Still a
+   wrapping flex row although only the role is left in it: a long role must
+   be free to take the line rather than be truncated, and this card's height
+   is already free to grow (it is what the disclosure does). */
+.ccard__meta-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.8rem;
+  min-width: 0;
+}
+
+/* THE NAMED WAY TO THE PROFILE. Underlined at rest, unlike every other link
+   on this card: it is a control rather than a piece of prose, and the one
+   thing on the card whose whole job is to be findable. Muted so it does not
+   outrank the member's name above the frame, which is the same destination
+   and still the card's title. */
+.ccard__profile {
+  /* Its own line at the foot of the panel. `block` rather than an inline
+     run so the underline stops at the words and the control still owns a
+     row of its own — it is the last thing in the dropdown and should read
+     as the step after the text, not as a trailing link inside it. */
+  display: block;
+  width: fit-content;
+  margin-top: 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--color-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+  transition: color 0.15s;
+}
+
+.ccard__profile:hover,
+.ccard__profile:focus-visible {
+  color: var(--color-dark);
+}
+
+.ccard__role {
+  min-width: 0;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-dark);
+}
+
+/* ── Mobile ───────────────────────────────────────────── */
+@media (--bp-mobile) {
+  /* The width formula narrows the card to fit a DESKTOP slot's height —
+     but --slot-rows still arrives from the desktop deal on a phone, where
+     the cell's height is simply the card's own. Full width of whatever
+     beat the mobile pattern dealt (see CommunityGrid's --bp-mobile block). */
+  .ccard {
+    width: 100%;
+  }
+
+  .ccard__body {
+    display: block;
+  }
+
+  /* No paging chrome on touch — a decided trade: the artwork keeps a clean
+     face, paging is the swipe for whoever finds it, and in the gallery
+     view the carousel advances itself every 5s anyway. */
+  .ccard__arrow {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Slide travel is no longer a CSS transition — the script asks Embla to
+     jump instead of animate under this query, which is the same trade the
+     crossfade used to make by dropping its transition here. What is left in
+     this block is the chrome. */
+
+  /* The chevron still appears, it just does not travel to get there. */
+  .ccard__arrow {
+    transform: translate(0, -50%);
+    transition: opacity 120ms ease;
+  }
+}
+
+/* ── The editor's preview ─────────────────────────────────
+   Two affordances the card offers and the preview cannot honour, plus the
+   `[hidden]` fix any FILLED shell needs. Everything else about the preview is
+   the card, unmodified — that is the point of the file.
+
+   The name is a <span> here, not the card's <a>, and the frame's click target
+   has no href: a live control that walked the member out of an unsaved form
+   would be a trap, exactly as on the profile-page preview (see the back link
+   in ProfileViewPreview). Both still carry the card's classes so they sit
+   where the card puts them, which is why the hover and the zoom cursor have to
+   be taken back off here — an underline and a zoom-in pointer on something
+   inert is the card promising what the preview cannot do. */
+.ccard--preview .ccard__name-link:hover,
+.ccard--preview .ccard__name-link:focus-visible {
+  text-decoration: none;
+}
+
+.ccard--preview .ccard__frame-link {
+  cursor: default;
+}
+
+/* The card is RENDERED — with one work it simply omits the arrows, the dots
+   and the live region. The shell is FILLED, so it hides them instead, and the
+   UA's `display: none` for [hidden] loses to any author `display`: the arrows
+   are `display: grid` and the dots `display: flex`. This is the same fix
+   .mprof--preview needs in profile.css, for the same reason. */
+.ccard--preview [hidden] {
+  display: none;
+}

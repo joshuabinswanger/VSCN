@@ -7,9 +7,20 @@ export interface EditorLabels {
 }
 
 /**
- * Modal crop/rotate editor. Rotation in 90° steps; crop by dragging on the canvas.
- * Resolves an edited PNG blob, or null on cancel / no changes. Lossless: WebP
- * compression happens in the existing pipeline afterwards.
+ * Modal rotate editor. Rotation in 90° steps; resolves an edited PNG blob, or
+ * null on cancel / no changes. Lossless: WebP compression happens in the
+ * existing pipeline afterwards.
+ *
+ * CROPPING IS GONE (2026-09-02, Josh: "drop cropping"). Dragging a rectangle
+ * on the canvas used to cut the image down before upload, and it was the wrong
+ * tool in the wrong place: every surface on this site frames artwork at its
+ * TRUE aspect and narrows tall work rather than cutting it (see .ccard__frame
+ * and .cwork__frame), so a crop here was the one thing in the pipeline that
+ * could throw away picture — irreversibly, since only the cropped result is
+ * uploaded. Members crop in the tool they made the work in.
+ *
+ * Rotation stays because it fixes an image rather than editing it: a portrait
+ * that arrives on its side has nothing to do with how it was composed.
  */
 export async function openImageEditor(file: File, labels: EditorLabels): Promise<Blob | null> {
   const bitmap = await decodeImage(file);
@@ -28,11 +39,11 @@ export async function openImageEditor(file: File, labels: EditorLabels): Promise
   const canvas = dialog.querySelector("canvas")!;
   const ctx = canvas.getContext("2d")!;
   let quarterTurns = 0; // 0..3
-  // Crop rect in canvas coordinates; null = full image
-  let crop: { x: number; y: number; w: number; h: number } | null = null;
 
   const MAX_VIEW = 640;
 
+  // Preview only — the canvas is scaled to fit the dialog, and `apply` renders
+  // the turn again at full resolution below.
   function draw() {
     const rotated = quarterTurns % 2 === 1;
     const iw = rotated ? bitmap.height : bitmap.width;
@@ -51,39 +62,7 @@ export async function openImageEditor(file: File, labels: EditorLabels): Promise
       bitmap.height * scale,
     );
     ctx.restore();
-    if (crop) {
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = 2;
-      ctx.setLineDash([6, 4]);
-      ctx.strokeRect(crop.x, crop.y, crop.w, crop.h);
-      ctx.setLineDash([]);
-    }
   }
-
-  let dragStart: { x: number; y: number } | null = null;
-  canvas.addEventListener("pointerdown", (e) => {
-    const r = canvas.getBoundingClientRect();
-    dragStart = { x: e.clientX - r.left, y: e.clientY - r.top };
-    canvas.setPointerCapture(e.pointerId);
-  });
-  canvas.addEventListener("pointermove", (e) => {
-    if (!dragStart) return;
-    const r = canvas.getBoundingClientRect();
-    const x = Math.max(0, Math.min(canvas.width, e.clientX - r.left));
-    const y = Math.max(0, Math.min(canvas.height, e.clientY - r.top));
-    crop = {
-      x: Math.min(dragStart.x, x),
-      y: Math.min(dragStart.y, y),
-      w: Math.abs(x - dragStart.x),
-      h: Math.abs(y - dragStart.y),
-    };
-    draw();
-  });
-  canvas.addEventListener("pointerup", () => {
-    if (crop && (crop.w < 10 || crop.h < 10)) crop = null; // treat tiny drags as clicks
-    dragStart = null;
-    draw();
-  });
 
   draw();
   dialog.showModal();
@@ -99,12 +78,13 @@ export async function openImageEditor(file: File, labels: EditorLabels): Promise
     dialog.querySelector('[data-act="cancel"]')!.addEventListener("click", () => finish(null));
     dialog.querySelector('[data-act="rotate"]')!.addEventListener("click", () => {
       quarterTurns = (quarterTurns + 1) % 4;
-      crop = null; // crop coordinates are meaningless after rotation
       draw();
     });
     dialog.querySelector('[data-act="apply"]')!.addEventListener("click", () => {
-      if (quarterTurns === 0 && !crop) return finish(null); // nothing changed
-      // Render full-resolution: rotate onto an offscreen canvas, then cut the crop.
+      if (quarterTurns === 0) return finish(null); // nothing changed
+      // Render full-resolution: the preview canvas is a scaled view, so the
+      // turn is applied again to the original bitmap rather than read back off
+      // the canvas the member was looking at.
       const rotated = quarterTurns % 2 === 1;
       const full = document.createElement("canvas");
       full.width = rotated ? bitmap.height : bitmap.width;
@@ -113,28 +93,7 @@ export async function openImageEditor(file: File, labels: EditorLabels): Promise
       fctx.translate(full.width / 2, full.height / 2);
       fctx.rotate((quarterTurns * Math.PI) / 2);
       fctx.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
-      let out = full;
-      if (crop) {
-        const k = full.width / canvas.width; // canvas → full-res scale factor
-        const cut = document.createElement("canvas");
-        cut.width = Math.round(crop.w * k);
-        cut.height = Math.round(crop.h * k);
-        cut
-          .getContext("2d")!
-          .drawImage(
-            full,
-            Math.round(crop.x * k),
-            Math.round(crop.y * k),
-            cut.width,
-            cut.height,
-            0,
-            0,
-            cut.width,
-            cut.height,
-          );
-        out = cut;
-      }
-      out.toBlob((b) => finish(b), "image/png");
+      full.toBlob((b) => finish(b), "image/png");
     });
   });
 }

@@ -1,81 +1,151 @@
 ---
 // Client-bindable shell of the directory card, for the profile editor and the
-// onboarding "done" step. The real cards (CommunityImageCard/CommunityTextCard)
-// are build-time components fed by Firestore; this shell is bound from live
-// form state by renderCardPreview() in src/lib/profilePreview.ts — same
-// pattern as ProfileViewPreview: the component owns the design, a function
-// binds values, so the preview cannot drift from the real rendering.
+// onboarding "done" step. The real card (CommunityImageCard) is a build-time
+// component fed by Firestore; this shell is bound from live form state by
+// renderCardPreview() in src/lib/profilePreview.ts — same pattern as
+// ProfileViewPreview: the component owns the design, a function binds values,
+// so the preview cannot drift from the real rendering.
 //
-// It shows the card's FACE: name band, artwork frame (first gallery image)
-// when there is one, role line. With no artwork it shows the typographic
-// card's face — the same framed rectangle holding the member's tags stacked
-// vertically, falling back to their member-type label, and collapsing to a
-// rule when there is neither — which is exactly what /community renders for
-// that member, so the honesty is the point. The role always sits on its own
-// line below, never inside the frame.
+// IT IS THE CARD'S OWN MARKUP NOW, CAROUSEL INCLUDED (2026-09-02, Josh:
+// "carousel shouls be the same elemnt in preview as well"). It used to be a
+// `.ccpv__*` design of its own — a name band, ONE image in a frame, a role
+// line — which meant a member with six gallery images was shown a card that
+// could hold one, and the thing the card actually does in the directory was
+// the one thing the preview could not show. Every element below carries the
+// same `ccard__*` class the real card gives it, in the same order and nesting;
+// the rules come from the one stylesheet both import
+// (src/styles/communityCard.css) and the paging comes from the one module both
+// call (src/lib/communityCarousel.ts).
+//
+// What is still the preview's own, and has to be:
+//   - `.ccard--preview`, which takes back two affordances the shell cannot
+//     honour: the name's hover underline and the frame's zoom-in cursor. Both
+//     are inert here (see below), and both are described in that stylesheet's
+//     foot rather than here, because they are rules about the card.
+//   - the TYPOGRAPHIC face (`.ccpv__tframe`), still a mirror of
+//     CommunityTextCard rather than that component's own markup. It is the
+//     no-artwork case: a framed rectangle of tag lines with nothing to page,
+//     so it has no carousel to get wrong. Sharing that component's rules the
+//     same way is the obvious next step and was not part of this one.
+//   - the arrows, dots and live region are RENDERED ALWAYS and hidden when
+//     there is nothing to page. The real card omits them from the markup
+//     because it knows the gallery at build time; a shell that is refilled on
+//     every gallery change has to keep the boxes and toggle them.
+//
+// Empty on the server, filled on the client: the editor is behind auth and the
+// member's data never reaches the build, so there is nothing to render here
+// until the form has loaded.
+import "../../styles/communityCard.css";
 ---
 
-<div class="ccpv" data-ccpv-root>
-  <p class="ccpv__name" data-ccpv="name"></p>
-  <div class="ccpv__frame" data-ccpv="frame" hidden>
-    <img class="ccpv__img" data-ccpv="img" alt="" />
+<article class="ccard ccard--preview" data-ccpv-root>
+  {
+    /* An <h2> like the card's, and a <span> where the card has an <a>: the
+       card's name links to the member's page, and a live control that walked
+       the member out of an unsaved form would be a trap — the same call the
+       profile-page preview makes for its back link. */
+  }
+  <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
+
+  {
+    /* Indicators, not controls — aria-hidden, pointer-events:none, no tab
+       stops. One <span> per work, built by the renderer from the same
+       template mechanism the tags use. */
+  }
+  <div class="ccard__dots" data-ccpv="dots" aria-hidden="true" hidden></div>
+
+  <div class="ccard__body" data-ccpv="body" hidden>
+    {
+      /* The frame IS the Embla viewport, exactly as on the card: the module
+         is handed this node and everything it needs is INSIDE — a track it
+         may translate, with the click target, the arrows and the live region
+         as siblings of that track, untouched by the motion. The aspect ratio
+         and the dominant colour are bound inline per image, and
+         `data-position-label` carries the translated "Image {n} of {total}"
+         the live region is rebuilt from. */
+    }
+    <div class="ccard__frame" data-ccpv="frame" data-carousel>
+      <div class="ccard__track" data-ccpv="track"></div>
+      {
+        /* The whole-artwork click target, and DELIBERATELY href-less. On the
+           card this opens the lightbox; there is no lightbox in the editor,
+           and a link to the raw Storage file would take the member out of
+           their unsaved form. It stays in the markup because it is what makes
+           the frame's box the same box — and communityCarousel.ts checks for
+           the attribute before writing a slide's URL into it, so the inert
+           trigger stays inert as the carousel moves. */
+      }
+      <a class="ccard__frame-link" aria-hidden="true"></a>
+      <button
+        class="ccard__arrow ccard__arrow--prev"
+        type="button"
+        data-carousel-prev
+        data-ccpv="prev"
+        hidden
+      >
+        <span aria-hidden="true"></span>
+      </button>
+      <button
+        class="ccard__arrow ccard__arrow--next"
+        type="button"
+        data-carousel-next
+        data-ccpv="next"
+        hidden
+      >
+        <span aria-hidden="true"></span>
+      </button>
+      {/* Empty at render: a live region has to be in the DOM before the change
+          it announces. */}
+      <p class="ccard__live" aria-live="polite" aria-atomic="true" data-carousel-live></p>
+    </div>
   </div>
+
+  {
+    /* The typographic face — mirrors .ctcard__frame: one hairline where the
+       box's top edge used to be, holding tag lines where the artwork would
+       stand. Shown only when the member has no gallery at all, which is
+       exactly the rule /community applies (`hasArtwork`). */
+  }
   <div class="ccpv__tframe" data-ccpv="tframe" hidden>
     <ul class="ccpv__tags" data-ccpv="tags"></ul>
   </div>
-  <p class="ccpv__role" data-ccpv="role" hidden></p>
+
+  <div class="ccard__caption">
+    <div class="ccard__caption-row">
+      {
+        /* The role, on its own line below the frame on every face — the card
+           prints it there whether or not there is artwork. No disclosure
+           beside it: the panel is the card's bio, links and tags, which the
+           profile-page preview above already shows in full. */
+      }
+      <div class="ccard__meta-line">
+        <span class="ccard__role" data-ccpv="role" hidden></span>
+      </div>
+    </div>
+  </div>
+
+  {
+    /* Cloned by the renderer. A template's content is inert, so cloning is the
+       cheapest way to keep the shape of a slide in markup instead of in string
+       concatenation — and the clone carries this component's scope attribute,
+       which a node built in JS would not (see renderProfilePreview's header).
+       The slide's data-work-* set is what communityCarousel.ts reads; it is
+       filled per image so the shell speaks the card's own contract. */
+  }
+  <template data-ccpv-tpl="slide"
+    ><div class="ccard__slide"><img class="ccard__img" alt="" decoding="async" /></div></template
+  >
+  <template data-ccpv-tpl="dot"><span class="ccard__dot"></span></template>
   <template data-ccpv-tpl="tag"><li class="ccpv__tag"></li></template>
-</div>
+</article>
 
 <style>
-  .ccpv {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    max-width: 22rem;
-    font-family: "Archivo", sans-serif;
-  }
-
-  /* Name band — mirrors .ccard__name / .ctcard__name. */
-  .ccpv__name {
-    margin: 0;
-    font-size: 1.2rem;
-    /* Explicit, matching .ccard__name / .ctcard__name. Unset it and this
-       resolves to `normal` independently of the real cards, which is how the
-       preview silently drifted before. */
-    line-height: 1.1;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    color: var(--color-dark);
-  }
-
-  /* Artwork frame — mirrors .ccard__frame: no box, the picture is its own
-     edge. The ground stays: it is the fallback colour under an image that
-     fades in, not a drawn surface. Aspect ratio and dominant colour are
-     bound inline per image. */
-  .ccpv__frame {
-    position: relative;
-    overflow: hidden;
-    border-radius: 0;
-    background: var(--color-bg);
-  }
-  .ccpv__frame[hidden] {
-    display: none;
-  }
-
-  .ccpv__img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  /* Typographic frame — mirrors .ctcard__frame: one hairline where the box's
-     top edge used to be, holding tag lines where the artwork would stand.
-     Inline padding went with the border, which only ever inset tags from a
-     box edge; the vertical padding stays. No --frame-cap here: the preview
-     sits in a form, not a grid slot. */
+  /* ── The typographic face ──────────────────────────────
+     The only design left in this component, and only because it is the
+     no-artwork case (see the header). Mirrors .ctcard__frame: inline padding
+     went with the border, which only ever inset tags from a box edge; the
+     vertical padding stays. No --frame-cap here — the preview sits in a form,
+     not a grid slot. */
   .ccpv__tframe {
     box-sizing: border-box;
     overflow: hidden;
@@ -84,15 +154,12 @@
     border-radius: 0;
     min-height: 3rem;
   }
-  .ccpv__tframe[hidden] {
-    display: none;
-  }
 
-  /* Nothing to hold — mirrors .ctcard__frame--rule. Now the SAME drawing as
-     the base rule with nothing standing under the line, rather than a
-     different one: it inherits the hairline and only drops the space. Must
-     stay after .ccpv__tframe in source — equal specificity, later wins.
-     Toggled by renderCardPreview(). */
+  /* Nothing to hold — mirrors .ctcard__frame--rule. The SAME drawing as the
+     base rule with nothing standing under the line, rather than a different
+     one: it inherits the hairline and only drops the space. Must stay after
+     .ccpv__tframe in source — equal specificity, later wins. Toggled by
+     renderCardPreview(). */
   .ccpv__tframe--rule {
     padding: 0;
     min-height: 0;
@@ -121,15 +188,12 @@
     overflow-wrap: anywhere;
   }
 
-  .ccpv__role {
-    min-width: 0;
-    margin: 0.15rem 0 0;
-    font-size: 0.78rem;
-    font-weight: 600;
-    line-height: 1.3;
-    color: var(--color-dark);
-  }
-  .ccpv__role[hidden] {
-    display: none;
+  /* The card in the directory is as wide as the slot it was dealt; in a form
+     there is no slot, and a card at the full width of the editor's measure
+     reads as a banner rather than as a card. This is the preview's frame
+     around the card, not a change to the card — .ccard's own width formula
+     (min(100%, …)) resolves against it untouched. */
+  .ccard--preview {
+    max-width: 22rem;
   }
 </style>

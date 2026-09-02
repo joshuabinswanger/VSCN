@@ -6,8 +6,33 @@ export const MAX_GALLERY_IMAGES = 8;
 export const MAX_GALLERY_CAPTION = 140;
 export const MAX_GALLERY_DESCRIPTION = 600;
 
-const MAX_EDGE = 2000;
-const MAX_RAW_BYTES = 25 * 1024 * 1024;
+/**
+ * THE LONGEST EDGE OF A STORED IMAGE — 4K (2026-09-02, Josh: "cap max res at
+ * 4k"). Was 2000, which was below the resolution of the artwork members
+ * actually upload: a 4000px master downscaled to 2000 lost detail that the
+ * lightbox, which serves the stored file at full screen, is exactly where you
+ * would notice.
+ *
+ * IT IS A CAP ON PIXELS, AND THEREFORE ON BYTES. Four times the pixel count is
+ * roughly four times the WebP, and `storage.rules` rejects an oversized upload
+ * with an opaque permission error — see MAX_STORED_BYTES there, which was
+ * raised with this and has to stay above whatever this produces.
+ */
+const MAX_EDGE = 4000;
+
+/**
+ * The raw upload ceiling, BEFORE the re-encode above — raised from 25 MB
+ * (2026-09-02, Josh: "raise file size limit (images get optimized anyways)").
+ * It is not a storage limit: nothing this size is ever stored, because
+ * compressGalleryImage() re-encodes every file to a 4K WebP first. It is a
+ * decode limit, and the reason there is still a number here at all: an
+ * arbitrarily large bitmap is decoded in the browser, and decoded-image memory
+ * is what crash-loops iOS Safari (see the SIZES notes in the community cards).
+ * 50 MB clears any camera JPEG and any reasonable PNG export while keeping a
+ * 200 MB scan from taking the tab down with it.
+ */
+const MAX_RAW_BYTES = 50 * 1024 * 1024;
+const MAX_RAW_MB = Math.round(MAX_RAW_BYTES / (1024 * 1024));
 
 export interface GalleryItem {
   /** The images/{imageId} record this item projects. The record is the truth; this array is display order. */
@@ -74,7 +99,9 @@ export interface CompressedImage {
 
 export function validateGalleryFile(file: File): { ok: boolean; error?: string } {
   if (file.size > MAX_RAW_BYTES) {
-    return { ok: false, error: "Image must be under 25 MB." };
+    // Derived from the constant, never typed twice: the old copy said "25 MB"
+    // as a literal and would have gone on saying it after the limit moved.
+    return { ok: false, error: `Image must be under ${MAX_RAW_MB} MB.` };
   }
   const rejection = rejectionMessage(file);
   if (rejection) return { ok: false, error: rejection };

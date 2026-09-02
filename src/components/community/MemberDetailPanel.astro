@@ -112,12 +112,15 @@ const hasSummary = Astro.slots.has("summary");
             </ul>
           )}
 
-          {/* THE CALLER'S CLOSING CONTROL — the image card's "View profile"
-              (2026-09-01, Josh: "view profile should be in the dropdown
-              content, maybe after text"). Last on purpose: everything above
-              is what the panel had to SAY about the member, and the way to
-              their page is what you want once you have read it. Empty for the
-              ledger rows, which keep their control up in the summary line. */}
+          {/* THE CALLER'S CLOSING CONTROL — "View profile", from the image
+              card (2026-09-01, Josh: "view profile should be in the dropdown
+              content, maybe after text") and now from the ledger rows too
+              (2026-09-02, "index view profile in the dropdown content"), so
+              every disclosure on the site ends the same way. Last on purpose:
+              everything above is what the panel had to SAY about the member,
+              and the way to their page is what you want once you have read it.
+              A ledger row with nothing to disclose has no panel to put it in
+              and keeps its link on the line — see CommunityGrid. */}
           <slot name="footer" />
         </div>
       </div>

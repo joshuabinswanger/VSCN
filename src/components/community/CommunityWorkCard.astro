@@ -263,12 +263,22 @@ const pswpMeta = member.displayName;
        the wall), so a `position: relative` up there would be overwritten by
        the view. The caption box is nobody else's business.
        It also puts the line in the right place for free — `top: 100%` of this
-       box is under the title where there is one, and 0.4rem under the frame
-       where there is not. */
+       box is under the title where there is one, and this padding under the
+       frame where there is not. */
     position: relative;
     /* The block holds the title in flow and the author out of it, so it is a
-       plain box with a top gap and nothing to lay out. */
-    padding-top: 0.4rem;
+       plain box with a top gap and nothing to lay out.
+       TIGHT TO THE PICTURE (2026-09-02, Josh: "grid gap of name to image
+       less"). It was 0.4rem, which is the gap between two paragraphs — and
+       these words are not a paragraph after the artwork, they are its label,
+       so the distance has to read as attachment rather than as separation.
+       0.15rem still keeps the type off the frame's edge, which is the only
+       thing the gap was ever needed for.
+       --cwork-chrome above deliberately does NOT come down by the same
+       0.25rem: it is the height the WALL reserves for this block (the figure
+       is stated twice — see CommunityGrid's --cgrid-row), and over-reserving
+       costs a little air while under-reserving costs the drawing. */
+    padding-top: 0.15rem;
     font-family: "Archivo", sans-serif;
   }
 
@@ -375,14 +385,16 @@ const pswpMeta = member.displayName;
       pointer-events: auto;
       /* Nothing left to fade. */
       transition: none;
-      /* Off the frame's edge by the same step the title uses, and only when
-         there is no title above it to provide the gap. */
-      padding-top: 0.15rem;
+      /* NOTHING OF ITS OWN where there is no title: the caption box's own top
+         gap is already the whole distance to the frame, and on a phone the
+         name is the only line there is — so a second step here was the phone
+         paying twice for one gap (2026-09-02, "grid gap of name to image
+         less"). */
+      padding-top: 0;
     }
 
-    /* The hover pair above resolves to the same values on a phone; stating
-       them is only redundant, not harmful — except for `transition`, which
-       the resting rule has already switched off. */
+    /* Under a title, though, the two lines do need parting — the caption's gap
+       is spent above the title, not between them. */
     .cwork__title + .cwork__author {
       padding-top: 0.1rem;
     }

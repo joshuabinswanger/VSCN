@@ -1,5 +1,11 @@
 ---
-import { completeness, hasArtwork, stripStorageToken, type MemberView } from "../lib/memberView.ts";
+import {
+  completeness,
+  hasArtwork,
+  hasDetail,
+  stripStorageToken,
+  type MemberView,
+} from "../lib/memberView.ts";
 import { GALLERY_PATTERNS, STRIP_ROWS, layOutSlots } from "../lib/communityLayout.ts";
 import { memberHref } from "../lib/links.ts";
 import CommunityImageCard from "./community/CommunityImageCard.astro";
@@ -156,10 +162,6 @@ const cells = slots.map((slot, i) => ({ slot, member: ordered[i] }));
 const workCells = imageMembers.flatMap((member) =>
   member.works.map((work, i) => ({ member, work, key: `${member.id}-${i}` }))
 );
-
-/** Tags the index's field column shows before it stops. Three fits the
- *  column at the shell measure without truncation on any current member. */
-const INDEX_FIELD_TAGS = 3;
 
 // The third view: a typographic ledger of every member, alphabetical. Unlike
 // the two galleries it is not a deal into slots — it is rendered here, whole,
@@ -362,14 +364,14 @@ const indexMembers = [...members].sort((a, b) =>
   </div>
 
   {
-    /* The index: every member as one ledger row — "Name, Role" on the left and
-      their field on the right — alphabetical by name. (Was four ranged-left
-      columns; the ordinal and the member-type badge are gone, and the role
-      joined the name it describes on 2026-08-31 at Josh's ask.) Hidden until
-      the selector asks for it; the deal
-      never touches it, so switching in and out is free. Rows link to the
-      member's profile page, which makes this the one view where every member
-      is reachable without hunting the drawing. Search lives in the masthead
+    /* The index: every member as one ledger row — "Name, Role" and a chevron,
+      alphabetical by name. (Was four ranged-left columns; the ordinal and the
+      member-type badge went first, the role joined the name it describes on
+      2026-08-31, and the TAG COLUMN went on 2026-09-02 — see the note in the
+      summary.) Hidden until the selector asks for it; the deal
+      never touches it, so switching in and out is free. Every row's dropdown
+      ends in a link to the member's page, which makes this the one view where
+      every member is reachable without hunting the drawing. Search lives in the masthead
       band above, shared by all three views — the ledger just hides rows. */
   }
   <div id="member-index" class="cindex-wrap" hidden>
@@ -382,6 +384,26 @@ const indexMembers = [...members].sort((a, b) =>
           // MemberCard: the stored URL, token stripped, no build pipeline
           // (avatars are small).
           const avatarSrc = stripStorageToken(m.photoURL ?? "");
+          // WHERE THE "VIEW PROFILE" CONTROL GOES, and it depends on whether
+          // this row is a disclosure at all. It belongs in the DROPDOWN
+          // (2026-09-02, Josh: "index view profile in the dropdown content") —
+          // same placement the image cards already give it, and the same
+          // reason: the panel is what the row had to say about the member, and
+          // the way to their page is what you want once you have read it. In
+          // the summary it was a second control competing with the row's own
+          // click, on every row, whether or not anyone was looking at it.
+          // But a member with neither a picture nor anything to disclose gets
+          // the STATIC line instead of a disclosure (see MemberDetailPanel) —
+          // no panel, so no footer, so their link has to stay on the line or
+          // they become the one member in the ledger with no route to their
+          // page. This mirrors that component's own `show` test; if it changes,
+          // this changes with it.
+          const isDisclosure = Boolean(avatarSrc) || hasDetail(m);
+          const profileLink = (
+            <a class="cindex__profile" href={memberHref(lang, m.slug)}>
+              {t("community.card.viewProfile.text")}
+            </a>
+          );
           return (
             <li class="cindex__row" data-tags={tagsAttr(m)}>
               <div class="cindex__line">
@@ -406,9 +428,10 @@ const indexMembers = [...members].sort((a, b) =>
                         column and a half away from the person it described,
                         which read as a table of unrelated facts; beside the
                         name it reads as the line a directory would actually
-                        print. The wrapper is what makes that possible: a grid
-                        cell holds one item, so the two spans need a box of
-                        their own before the field can keep a column to itself.
+                        print. The wrapper outlived the tag column it was
+                        introduced for: it is now what lets a long role wrap
+                        under the name instead of pushing the chevron off the
+                        end of the row.
 
                         Rendered only when there IS a role. The comma lives in
                         .cindex__role's ::before, so an absent role takes its
@@ -420,33 +443,18 @@ const indexMembers = [...members].sort((a, b) =>
                           truthiness test is the whole emptiness check. */}
                       {m.role && <span class="cindex__role">{m.role}</span>}
                     </span>
-                    {/* The field, from the member's own tags — the ledger's
-                        second column now that the role has moved in beside the
-                        name, and what the ordinal was wasting space on. The
-                        member-type badge gave up its column to this: it renders
-                        empty for any profile without a type, which is all of
-                        them today.
-
-                        Capped at INDEX_FIELD_TAGS: several members carry seven
-                        tags, and CSS truncation would cut one mid-word.
-                        Trimming by whole tags means every row ends on a
-                        readable one — the full set is on the member's own
-                        page. */}
-                    <span class="cindex__field" title={m.tags.join(" · ")}>
-                      {m.tags.slice(0, INDEX_FIELD_TAGS).join(" · ")}
-                    </span>
-                    {/* THE NAMED WAY TO THE PAGE. Inside the summary on
-                        purpose: it belongs between the field and the chevron,
-                        and the chevron is the summary's own ::after — a
-                        sibling of <details> could only be absolutely
-                        positioned over the row, which would fight the grid the
-                        row is laid out with.
-                        A click here activates the summary as well, and that is
-                        harmless: the navigation wins and the row this toggled
-                        is discarded with the page. */}
-                    <a class="cindex__profile" href={memberHref(lang, m.slug)}>
-                      {t("community.card.viewProfile.text")}
-                    </a>
+                    {/* NO TAG COLUMN. The member's tags used to print here,
+                        ranged right, as the ledger's second column — gone on
+                        2026-09-02 (Josh: "tags index right after name should
+                        disappear"). Three uppercase-free fragments of a
+                        member's own vocabulary, truncated to fit, said less
+                        about them than the name already does, and repeated a
+                        list the dropdown prints in full a few pixels below.
+                        The line is now the person and nothing else. Nothing
+                        was lost with it: the full set is in the panel
+                        (.pdisc__vals--tags), and the tag FILTER never read
+                        this — it reads data-tags on the row. */}
+                    {!isDisclosure && profileLink}
                   </Fragment>
                   {/* The dropdown's lead: the profile picture. A member with
                       neither picture nor bio gets the STATIC line instead of a
@@ -465,6 +473,7 @@ const indexMembers = [...members].sort((a, b) =>
                       decoding="async"
                     />
                   )}
+                  {isDisclosure && <Fragment slot="footer">{profileLink}</Fragment>}
                 </MemberDetailPanel>
               </div>
             </li>
@@ -596,11 +605,28 @@ const indexMembers = [...members].sort((a, b) =>
          line-height 1 plus its 5px/7px paddings (Navbar.astro's --bp-mobile
          block). Same contract as the calc above — if that block's size or
          padding changes, change this with it or the bar overlaps the links.
-         NO 6px OFFSET HERE: the mobile nav pads its bottom by 7px, not 10, and
-         its underline sits at `bottom: 4px`, so there is only ~2px of dead
-         space to reclaim and 4px of underline to protect. The two lines are
-         already one block at this width. */
-      top: calc(0.9 * var(--font-size-base) + 12px);
+
+         ── IT OVERLAPS BY 2px RATHER THAN MEETING THE NAV EXACTLY ──
+         (2026-09-02, Josh: "gap between info community login and filters
+         should be 0px so i dont see images scroll behind it", on a phone.)
+         The figure used to be the nav's full height, which made the two boxes
+         share an edge to the subpixel: nav bottom and bar top landed on the
+         same fractional CSS pixel, and on a fractional-DPR screen — every
+         iPhone — a shared edge rounds to a one-device-pixel HAIRLINE that
+         neither box paints. Artwork scrolling under the header shows through
+         it as a moving line. An overlap cannot round to a gap; a shared edge
+         can, and did.
+         2px is also every pixel there is to take: the nav pads its bottom by 7
+         and its active underline sits at `bottom: 4px` in a 1.5px band, so
+         anything past 2px starts painting over the underline that says which
+         page you are on. Desktop takes 6px for the same reason at that scale
+         (see the calc above), and both figures move if Navbar's padding or
+         that offset does. */
+      top: calc(0.9 * var(--font-size-base) + 10px);
+      /* Both halves, exactly as on the desktop rule: `top` governs the docked
+         position, this governs the resting one, and they have to agree or the
+         bar jumps 2px the moment it sticks. */
+      margin-top: -2px;
       /* Out through <main>'s 15px gutter so the bar reaches the screen edges
          like the nav and the title above it — and so the background it paints
          covers the full width it is docking across. */
@@ -1201,23 +1227,26 @@ const indexMembers = [...members].sort((a, b) =>
      What used to be .cindex__link's rules, moved onto the disclosure's own
      summary (2026-09-01) — the whole ledger line is the toggle now, so the
      line's geometry has to belong to the element that is clickable. The
-     chevron is that summary's ::after and therefore the LAST grid item, which
-     is what gives it a track of its own at the right end.
+     chevron is that summary's ::after and therefore its last child.
 
-     WHO · FIELD · PROFILE · chevron. Two flexible tracks, not three: the role
-     moved inside the first one and sits beside the name (see .cindex__who).
-     The ledger reads with two anchored edges — the person on the left, their
-     field on the right — the way an index prints. The name side takes the
-     larger share because it carries two pieces of type. */
+     WHO · chevron, AND NOT A GRID ANY MORE (2026-09-02). It was four tracks
+     for who · field · profile · chevron; the tag field is gone and the profile
+     link moved into the dropdown, which leaves two items — and a fixed track
+     list is the wrong tool for two, because the ONE row that still prints a
+     profile link on the line (a member with nothing to disclose, see the
+     summary's note) then has three. On a grid that row would have had to
+     place its link by hand, and every disclosure row would have paid a
+     1.5rem gap for an empty track it could not collapse. Flex only puts gaps
+     between items that exist, so both shapes lay out correctly with no
+     per-row placement.
+     `display: flex` is not restated: .pdisc__toggle is already flex in line
+     mode (see MemberDetailPanel) — the grid was the override, so removing it
+     restores the component's own box. */
   .cindex__line :global(.pdisc__toggle) {
-    display: grid;
-    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) auto 1rem;
-    align-items: baseline;
     gap: 0 1.5rem;
-    /* No 2rem right reserve any more: the chevron has a real track, so nothing
-       has to be kept clear of it by hand. This was a live bug for a while —
-       see the note in git history about a padding-right silently reset by a
-       later shorthand. */
+    /* No 2rem right reserve: the chevron is the last flex item and nothing
+       runs under it. This was a live bug for a while — see the note in git
+       history about a padding-right silently reset by a later shorthand. */
     padding: 0.85rem 0.25rem;
     box-sizing: border-box;
     transition: background-color 0.15s;
@@ -1230,10 +1259,11 @@ const indexMembers = [...members].sort((a, b) =>
 
   /* The chevron sits on the row's own centre line rather than on the type's
      baseline: at 0.36rem it is a mark, not a letter, and a baseline-aligned
-     mark in a 1rem track reads as having slipped. */
+     mark at the end of the row reads as having slipped. `flex: 0 0 auto` so
+     the row's flexible first item cannot squeeze it. */
   .cindex__line :global(.pdisc__toggle::after) {
     align-self: center;
-    justify-self: end;
+    flex: 0 0 auto;
   }
 
   /* The un-clickable twin keeps the geometry and loses the response — a row
@@ -1295,12 +1325,13 @@ const indexMembers = [...members].sort((a, b) =>
     margin-top: 0.35rem;
   }
 
-  /* THE NAMED WAY TO THE MEMBER'S PAGE, third track of the row. Underlined at
-     rest — it is the one control on the line whose job is to be findable, and
-     the row it sits in now expands instead of travelling, so nothing else
-     announces that the page exists. Muted so it does not outrank the name at
-     the other end of the same line. Sized and voiced exactly like the image
-     card's .ccard__profile, because it is the same control. */
+  /* THE NAMED WAY TO THE MEMBER'S PAGE — at the foot of the open dropdown,
+     and on the line itself only for a row that has no dropdown (2026-09-02;
+     see the summary's note). Underlined at rest: it is the one control whose
+     job is to be findable, and the row it belongs to expands instead of
+     travelling, so nothing else announces that the page exists. Muted so it
+     does not outrank the name. Sized and voiced exactly like the image card's
+     .ccard__profile, because it is the same control in the same place. */
   .cindex__profile {
     font-size: 0.7rem;
     font-weight: 600;
@@ -1318,6 +1349,17 @@ const indexMembers = [...members].sort((a, b) =>
     color: var(--color-dark);
   }
 
+  /* In the panel it is the last line and it is its OWN line: the avatar rows
+     lay the body out as a two-column grid (picture left, words right), and a
+     link auto-placed into that would land in the picture's column. Full width
+     and ranged left puts it under everything the panel said, which is where
+     MemberDetailPanel's footer slot is meant to read from. `justify-self` so a
+     stretched grid item does not make the whole row clickable. */
+  .cindex__line :global(.pdisc__body-inner) .cindex__profile {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
   /* The name and its role as ONE unit. Flex, not plain inline flow, for one
      reason: flex drops the whitespace-only text node between the two spans, so
      the separator can be generated entirely inside .cindex__role and vanish
@@ -1328,6 +1370,10 @@ const indexMembers = [...members].sort((a, b) =>
      own line under the name rather than pushing into the field's column, which
      is also exactly the stack the mobile block wants. */
   .cindex__who {
+    /* Takes every pixel the chevron does not — this is what holds the chevron
+       against the row's right edge now that there is no track to pin it to
+       (see the summary's flex note above). */
+    flex: 1 1 auto;
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
@@ -1373,20 +1419,6 @@ const indexMembers = [...members].sort((a, b) =>
     display: none;
   }
 
-  /* The field. Same voice as the role — muted, not a badge: these are the
-     member's own tags, sentence-shaped, so uppercasing them would read as a
-     label rather than as content. Ranged RIGHT, which is what makes the row a
-     ledger line: the name holds the left edge, the field the right, and the
-     variable-width middle is air instead of a ragged second margin. */
-  .cindex__field {
-    font-size: 0.85rem;
-    color: var(--color-muted);
-    text-align: right;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
   @media (--bp-mobile) {
     /* Desktop's air is a desktop measure. */
     .cindex-wrap {
@@ -1404,7 +1436,8 @@ const indexMembers = [...members].sort((a, b) =>
        hold: four tracks on a phone would give the name about eight characters.
        The row is still the toggle — it is only laid out as a stack. */
     .cindex__line :global(.pdisc__toggle) {
-      grid-template-columns: 1fr;
+      flex-direction: column;
+      align-items: flex-start;
       gap: 0.2rem;
       padding-right: 2rem;
     }
@@ -1416,17 +1449,10 @@ const indexMembers = [...members].sort((a, b) =>
       align-self: start;
     }
 
-    /* Its own line under the field rather than a squeezed third column. */
+    /* Its own line rather than a squeezed item beside the name — this only
+       ever renders on the line for a member with no dropdown. */
     .cindex__profile {
-      justify-self: start;
       margin-top: 0.15rem;
-    }
-
-    /* One column: ranging the field right would strand it under a left-aligned
-       name rather than pair with it. */
-    .cindex__field {
-      text-align: left;
-      white-space: normal;
     }
   }
 

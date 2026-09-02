@@ -58,9 +58,11 @@ const { lang = "en" } = Astro.params;
 const currentLang = (lang || "en") as Lang;
 const t = useTranslations(currentLang);
 
-// Gallery originals are already client-side compressed to max 2000px WebP; this
-// generates the responsive sizes the page actually lays out. The lightbox still
-// opens the original.
+// Gallery originals are already client-side compressed to a 4K-capped WebP (see
+// MAX_EDGE in gallery.ts, raised from 2000px on 2026-09-02); this generates the
+// responsive sizes the page actually lays out. The lightbox still opens the
+// stored file, which is what the bigger cap is FOR — full screen is the one
+// view where 2000px was visibly short.
 const works = await Promise.all(
   member.works.map(async (w) => ({
     ...w,
