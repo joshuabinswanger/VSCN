@@ -1,6 +1,6 @@
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { logger } from "firebase-functions/v2";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, type DocumentSnapshot } from "firebase-admin/firestore";
 import { db } from "./admin";
 
 // COPY of slugifyName() in src/lib/memberView.ts — functions is a separate TS
@@ -36,10 +36,14 @@ export async function claimSlug(uid: string, displayName: string): Promise<strin
     const mine = await tx.get(db.collection("slugs").where("uid", "==", uid));
     let candidate = base;
     let n = 1;
+    let claimed: DocumentSnapshot | undefined;  // the snapshot of the candidate that won
     // All reads happen before any write, as the Admin SDK transaction requires.
     for (;;) {
       const snap = await tx.get(db.doc(`slugs/${candidate}`));
-      if (!snap.exists || snap.data()?.uid === uid) break;
+      if (!snap.exists || snap.data()?.uid === uid) {
+        claimed = snap;
+        break;
+      }
       n += 1;
       candidate = `${base}-${n}`;
     }
@@ -48,7 +52,13 @@ export async function claimSlug(uid: string, displayName: string): Promise<strin
     }
     tx.set(
       db.doc(`slugs/${candidate}`),
-      { uid, current: true, createdAt: FieldValue.serverTimestamp() },
+      {
+        uid,
+        current: true,
+        // Creation time, not last-claimed time: a member re-claiming their
+        // own slug (A → B → A) must not rewrite history.
+        ...(claimed!.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
+      },
       { merge: true }
     );
     return candidate;
