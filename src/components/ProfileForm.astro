@@ -1592,6 +1592,7 @@ const t = useTranslations(lang);
 
       currentPhotoImageId = data.photoImageId ?? "";
       await ensureEmailSynced(user, data.email);
+      // Safe to call here: showDeletionBanner and the consts it closes over are declared below, but the auth callback cannot run before this astro:page-load body has finished.
       if (data.status === "pendingDeletion" && data.purgeAfter) {
         // getUser() hands back raw Firestore data, so at runtime this is a
         // Timestamp even though UserDoc types it as Date.
