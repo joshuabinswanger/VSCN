@@ -12,9 +12,10 @@
  *   - src/pages/[...lang]/members/[slug].astro — the page a visitor gets
  *   - src/components/ProfileViewPreview.astro — the same markup as an empty
  *     shell, filled in the browser from live form state (profilePreview.ts)
- * The preview owns nothing here beyond the `--preview` modifier at the foot,
- * which only drops the page's own outer padding — inside its sheet the page's
- * top and bottom margins are the editor's whitespace, not the page's.
+ * The preview owns nothing here that changes the page's drawing. The
+ * `--preview` modifier at the foot is now only the `[hidden]` fix a FILLED
+ * shell needs; the padding override it used to carry went with the sheet it
+ * was compensating for (2026-09-02 — see that component's header).
  *
  * A plain .css file rather than an Astro <style>: scoped styles stamp a
  * per-component attribute onto every selector, so two components importing
@@ -267,12 +268,14 @@
 }
 
 /* ── The editor's preview ─────────────────────────────────
-   The page's outer padding is its own placement on the site; inside the
-   preview sheet the sheet's padding is already doing that job, and 10rem of
-   air under the last image reads as a broken layout rather than as a page. */
-.mprof--preview {
-  padding-block: 0;
-}
+   NO PADDING OVERRIDE HERE ANY MORE. It used to zero `padding-block: 3rem
+   10rem`, which was right while the preview lived inside a padded white sheet
+   doing the same job. The sheet is gone (2026-09-02, Josh: "make the preview be
+   exactly the profile page seperated only by horizontal bars"), and with it the
+   reason: the page's own padding is its own placement, the member is being
+   shown the page's placement, and the rules above and below it are where the
+   editor stops. So the modifier is down to the one thing a FILLED shell
+   genuinely needs that a RENDERED page does not. */
 
 /* The preview is FILLED, not rendered: where the real page simply omits a row
    the member has nothing for, the shell hides it with the `hidden` attribute.

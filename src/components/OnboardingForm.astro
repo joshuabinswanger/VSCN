@@ -691,12 +691,27 @@ const prefix = lang === "de" ? "/de" : "";
     const lang = (wrap.dataset.lang ?? "en") as keyof typeof ui;
     const s = ui[lang] ?? ui.en;
     const prefix = lang === "de" ? "/de" : "";
-    // The translated member-type labels the directory card's typographic face
-    // falls back to when a member has no tags — same strings the real card
-    // resolves at build time.
-    const memberTypeLabels = Object.fromEntries(
-      MEMBER_TYPES.map((type) => [type, s[`profile.memberType.${type}`]])
-    );
+    // EVERYTHING THE DIRECTORY CARD SAYS THAT ITS MARKUP CANNOT CARRY. The
+    // real card resolves these with useTranslations() at build time; the Done
+    // step's card is filled in the browser, so they arrive as values. Most are
+    // the CAROUSEL's — the preview renders the card's own paging element as of
+    // 2026-09-02, and someone finishing onboarding with three uploads gets a
+    // card that pages, so it needs the names that make paging usable. Same set
+    // ProfileForm assembles.
+    const cardPreviewLabels = {
+      defaultName: s["profile.preview.defaultName"],
+      // The typographic face's fallback when a member has no tags.
+      memberTypeLabels: Object.fromEntries(
+        MEMBER_TYPES.map((type) => [type, s[`profile.memberType.${type}`]])
+      ),
+      carousel: s["community.card.carousel"],
+      image: s["community.card.image"],
+      gallery: s["community.card.gallery"],
+      imagePosition: s["community.card.imagePosition"],
+      prev: s["community.card.prev"],
+      next: s["community.card.next"],
+      workAlt: s["member.workAlt"],
+    };
 
     const loadingEl = document.getElementById("ob-loading");
     const errorEl = document.getElementById("ob-error")!;
@@ -1160,7 +1175,7 @@ const prefix = lang === "de" ? "/de" : "";
             color: g.color,
           })),
         },
-        { defaultName: s["profile.preview.defaultName"], memberTypeLabels }
+        cardPreviewLabels
       );
     }
 

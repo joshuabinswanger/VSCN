@@ -332,24 +332,24 @@ const t = useTranslations(lang);
 
       The profile page comes first: it is the artefact the member is actually
       building. The directory card is the smaller, secondary view of the same
-      data — the image card's face, bound by renderCardPreview(), which is
-      what /community renders since the directory switched over. */
+      data — the image card itself, carousel and all, bound by
+      renderCardPreview(), which is what /community renders since the directory
+      switched over.
+
+      NOTHING BETWEEN THEM BUT A RULE (2026-09-02, Josh: "make the preview be
+      exactly the profile page seperated only by horizontal bars"). The two
+      "YOUR PROFILE PAGE" / "YOUR DIRECTORY CARD" headings are gone with the
+      preview's sheet and note. They were the editor naming its own contents
+      over renderings that name themselves — a page with the member's name at
+      the top of it, and a card with their name on it — and a label above a
+      preview is one more thing between the member and the thing they are
+      looking at. ProfileViewPreview draws the rule above and below itself;
+      this section closes the last one under the card. */
     }
     <div class="preview-section">
-      <div class="preview-block">
-        <p class="label">{t("profile.view.heading")}</p>
-        {
-          /* The note that used to sit here has moved inside ProfileViewPreview,
-          where it belongs to the threshold it explains — and where the no-auth
-          harness at /proto/profile-preview shows it too. */
-        }
-        <ProfileViewPreview lang={lang} />
-      </div>
-
-      <div class="preview-block">
-        <p class="label">{t("profile.view.directoryHeading")}</p>
-        <CommunityCardPreview />
-      </div>
+      <ProfileViewPreview lang={lang} />
+      <CommunityCardPreview />
+      <hr class="preview-rule" />
     </div>
   </div>
 
@@ -714,19 +714,29 @@ const t = useTranslations(lang);
 
   /* The preview tab is the one place in this form where air is the point: the
      two renderings have to read as things being LOOKED at, not fields being
-     filled in. Hence the room above the first threshold and the long gap
-     between the profile sheet and the directory card. */
+     filled in.
+     THE GAP IS SMALL NOW, AND THE RULES DO THE PARTING (2026-09-02). It was
+     6rem, sized to separate two labelled blocks; the labels are gone and each
+     rendering is bounded by a hairline, so 6rem on top of that just opened a
+     hole between a page and the line that closes it. The profile page brings
+     its own 3rem/10rem of internal air (profile.css), which is the whole point
+     of showing it unmodified. */
   .preview-section {
     display: flex;
     flex-direction: column;
-    gap: 6rem;
+    gap: 2.5rem;
     padding-top: 2rem;
     padding-bottom: 5rem;
   }
 
-  .preview-section .label {
-    display: block;
-    margin-bottom: 1.5rem;
+  /* The closing line under the directory card — same hairline
+     ProfileViewPreview draws above and below the page, so the tab reads as one
+     stack of rendered things rather than a page in a frame and a loose card. */
+  .preview-rule {
+    height: 0;
+    margin: 0;
+    border: 0;
+    border-top: 1px solid var(--color-border);
   }
 
   /* Floats above the bottom of .page-wrap (the page's real scroll container),
@@ -985,12 +995,27 @@ const t = useTranslations(lang);
       apply: s["profile.edit.apply"],
       cancel: s["profile.edit.cancel"],
     };
-    // The translated member-type labels the directory card's typographic face
-    // falls back to when a member has no tags — same strings the real card
-    // resolves at build time.
-    const memberTypeLabels = Object.fromEntries(
-      MEMBER_TYPES.map((type) => [type, s[`profile.memberType.${type}`]])
-    );
+    // EVERYTHING THE DIRECTORY CARD SAYS THAT ITS MARKUP CANNOT CARRY. The
+    // real card resolves these with useTranslations() at build time; the
+    // preview is filled in the browser from live form state, so the strings
+    // have to arrive as values. Most of them are the CAROUSEL's — the preview
+    // renders the card's own paging element as of 2026-09-02, and a carousel
+    // with no accessible name, no position label and unlabelled arrows would
+    // be the same element minus everything that makes it usable.
+    const cardPreviewLabels = {
+      defaultName: s["profile.preview.defaultName"],
+      // The typographic face's fallback when a member has no tags.
+      memberTypeLabels: Object.fromEntries(
+        MEMBER_TYPES.map((type) => [type, s[`profile.memberType.${type}`]])
+      ),
+      carousel: s["community.card.carousel"],
+      image: s["community.card.image"],
+      gallery: s["community.card.gallery"],
+      imagePosition: s["community.card.imagePosition"],
+      prev: s["community.card.prev"],
+      next: s["community.card.next"],
+      workAlt: s["member.workAlt"],
+    };
 
     const nameInput = document.getElementById("name") as HTMLInputElement;
     const roleInput = document.getElementById("role") as HTMLInputElement;
@@ -1347,10 +1372,7 @@ const t = useTranslations(lang);
     function syncPreview() {
       const cardRoot = document.querySelector<HTMLElement>("[data-ccpv-root]");
       if (cardRoot) {
-        renderCardPreview(cardRoot, currentViewModel(), {
-          defaultName: s["profile.preview.defaultName"],
-          memberTypeLabels,
-        });
+        renderCardPreview(cardRoot, currentViewModel(), cardPreviewLabels);
       }
       syncProfileView();
     }
@@ -1360,7 +1382,7 @@ const t = useTranslations(lang);
       return {
         displayName: nameInput.value.trim(),
         // The avatar the member is looking at right now — a saved photoURL, or
-        // the object URL of a crop they have not saved yet. `has-image` is the
+        // the object URL of a picture they have not saved yet. `has-image` is the
         // one flag that knows the difference between "no picture" and "a
         // picture that failed to load"; reading .src alone would put a broken
         // portrait into the preview.

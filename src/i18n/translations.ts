@@ -222,10 +222,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.tab.work": "Work",
     "profile.tab.account": "Account",
     "profile.tab.preview": "Preview",
-    "profile.view.heading": "Your profile page",
-    "profile.view.note": "How your profile looks to visitors. Unsaved changes are included.",
-    "profile.view.threshold": "Visitor view",
-    "profile.view.directoryHeading": "In the directory",
     "profile.view.noWorks": "No images yet. Add work in the gallery field and it will appear here.",
     "profile.view.defaultName": "Your name",
     "profile.saveMsg": "Changes saved. Your community card will update within a few minutes.",
@@ -537,11 +533,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.tab.work": "Arbeiten",
     "profile.tab.account": "Konto",
     "profile.tab.preview": "Vorschau",
-    "profile.view.heading": "Deine Profilseite",
-    "profile.view.note":
-      "So sehen Besucher dein Profil. Nicht gespeicherte Änderungen sind enthalten.",
-    "profile.view.threshold": "Besucheransicht",
-    "profile.view.directoryHeading": "Im Verzeichnis",
     "profile.view.noWorks":
       "Noch keine Bilder. Füge Arbeiten im Galerie-Feld hinzu, dann erscheinen sie hier.",
     "profile.view.defaultName": "Dein Name",

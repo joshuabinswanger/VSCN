@@ -51,13 +51,22 @@ const labels = {
   noWorks: "No images yet. Add work in the gallery field and it will appear here.",
 };
 
-// English member-type labels for the directory card's typographic face —
-// the harness is English-only, like its other labels.
+// Everything the directory card says that its markup cannot carry — the
+// typographic face's member-type fallback, and the carousel's accessible
+// names. English-only, like the harness's other labels. Same set ProfileForm
+// assembles; see the note there.
 const cardLabels = {
   defaultName: labels.defaultName,
   memberTypeLabels: Object.fromEntries(
     MEMBER_TYPES.map((type) => [type, ui.en[`profile.memberType.${type}`]])
   ),
+  carousel: ui.en["community.card.carousel"],
+  image: ui.en["community.card.image"],
+  gallery: ui.en["community.card.gallery"],
+  imagePosition: ui.en["community.card.imagePosition"],
+  prev: ui.en["community.card.prev"],
+  next: ui.en["community.card.next"],
+  workAlt: ui.en["member.workAlt"],
 };
 ---
 
@@ -76,7 +85,6 @@ const cardLabels = {
     </div>
 
     <div class="harness__stage harness__stage--card">
-      <p class="harness__label">Directory card</p>
       <CommunityCardPreview />
     </div>
   </div>
@@ -172,12 +180,9 @@ const cardLabels = {
     padding-top: 3rem;
   }
 
+  /* No rule of its own: the profile preview closes with one (see
+     ProfileViewPreview), so a second here would double it. */
   .harness__stage--card {
-    margin-top: 3rem;
-    border-top: 1px solid var(--color-border);
-  }
-
-  .harness__stage--card .harness__label {
-    margin: 0 0 1.5rem;
+    margin-top: 1rem;
   }
 </style>
