@@ -64,6 +64,37 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /images/{imageId} {
+      // Every image is a record here FIRST, then bytes, then `live` — so a
+      // Storage object can never exist without a document pointing at it.
+      // Public read: these are the public artworks; nothing private lives here.
+      allow read: if true;
+
+      // A client always creates in the `uploading` state and as its own work.
+      // `curated` and `provenance` are written only by scripts (Admin SDK).
+      allow create: if request.auth != null
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.status == 'uploading'
+                    && request.resource.data.origin == 'member'
+                    && !('provenance' in request.resource.data)
+                    && validImage(request.resource.data, imageId);
+
+      // Identity fields are pinned. The owner may move status forward, edit
+      // caption/description, and bump updatedAt — nothing else.
+      allow update: if request.auth != null
+                    && resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.ownerUid == resource.data.ownerUid
+                    && request.resource.data.kind == resource.data.kind
+                    && request.resource.data.storagePath == resource.data.storagePath
+                    && request.resource.data.origin == resource.data.origin
+                    && request.resource.data.get('provenance', null) == resource.data.get('provenance', null)
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && validImage(request.resource.data, imageId);
+
+      // Clients MARK (status: pendingDeletion); only the sweeper deletes.
+      allow delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
@@ -246,6 +277,27 @@ function validOnboardingRequest(data, auth) {
 function validBioWordCount(bio) {
   // Keep this regex in sync with MAX_BIO_WORDS in src/lib/validation.ts.
   return bio.size() == 0 || bio.matches('^\\s*\\S+(\\s+\\S+){0,34}\\s*$');
+}
+
+// Keep in sync with ImageDoc in functions/src/types.ts and src/lib/images.ts.
+// The storagePath check binds the record to exactly one object: the document
+// id IS the filename, and the owner IS the folder.
+function validImage(data, imageId) {
+  return data.keys().hasOnly(['ownerUid', 'kind', 'storagePath', 'width', 'height', 'color',
+                              'caption', 'description', 'origin', 'provenance', 'status',
+                              'createdAt', 'updatedAt'])
+    && data.ownerUid is string
+    && (data.kind == 'avatar' || data.kind == 'gallery')
+    && data.storagePath == 'users/' + data.ownerUid + '/' + data.kind + '/' + imageId + '.webp'
+    && data.width is int && data.width > 0 && data.width <= 10000
+    && data.height is int && data.height > 0 && data.height <= 10000
+    && (!('color' in data) || (data.color is string && data.color.matches('#[0-9a-f]{6}')))
+    && (!('caption' in data) || (data.caption is string && data.caption.size() <= 140))
+    && (!('description' in data) || (data.description is string && data.description.size() <= 600))
+    && (data.origin == 'member' || data.origin == 'curated')
+    && (data.status == 'uploading' || data.status == 'live' || data.status == 'pendingDeletion')
+    && data.createdAt is timestamp
+    && data.updatedAt is timestamp;
 }
 
 function validTag(data) {
