@@ -28,7 +28,7 @@ export interface MemberViewBase extends ProfileViewModel {
  * "MemberView" that never went through assignSlugs().
  */
 export interface MemberView extends MemberViewBase {
-  /** URL segment, derived from displayName. See assignSlugs(). */
+  /** URL segment. From slugs/ when a row exists, else derived. See resolveSlugs(). */
   slug: string;
 }
 
@@ -61,31 +61,27 @@ export function slugifyName(name: string): string {
 }
 
 /**
- * Resolves one slug per member, appending `-2`, `-3`, … to collisions.
- *
- * The slug is DERIVED from displayName on every build and never stored, which
- * is what makes it follow a rename automatically. The cost of that choice is
- * real and deliberate: renaming changes a member's URL, and the old one 404s.
- * There are no redirects.
- *
- * Assignment runs in uid order, not display order, so which of two identically
- * named members keeps the unsuffixed slug stays the same between builds — uid
- * is stable, display order is not. The returned array keeps the caller's
- * original ordering.
+ * One slug per member. The `table` is slugs/ from Firestore (uid → current
+ * slug), owned by the onPublicProfileWritten function; a member with a row
+ * gets exactly that slug. A member with no row yet (inactive at migration,
+ * never saved since) falls back to the derived form, deduplicated against
+ * everything already taken. Fallback runs in uid order so it is stable
+ * between builds.
  */
-export function assignSlugs(members: MemberViewBase[]): MemberView[] {
-  const inUidOrder = [...members].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  const used = new Set<string>();
+export function resolveSlugs(members: MemberViewBase[], table: Map<string, string>): MemberView[] {
+  const used = new Set(table.values());
   const resolved = new Map<string, string>();
+  const inUidOrder = [...members].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
   for (const member of inUidOrder) {
-    // A nameless profile has nothing readable to build from; the uid at least
-    // gives it a working, unique URL instead of colliding on "".
+    const stored = table.get(member.id);
+    if (stored) {
+      resolved.set(member.id, stored);
+      continue;
+    }
     const base = slugifyName(member.displayName) || member.id.toLowerCase();
     let candidate = base;
     let n = 1;
-    // Guards both cases: two members sharing a name, and a member whose real
-    // name happens to slugify onto an already-suffixed slug.
     while (used.has(candidate)) {
       n += 1;
       candidate = `${base}-${n}`;
@@ -95,6 +91,15 @@ export function assignSlugs(members: MemberViewBase[]): MemberView[] {
   }
 
   return members.map((member) => ({ ...member, slug: resolved.get(member.id) as string }));
+}
+
+/**
+ * The no-table case: every slug derived. This is what the migration used to
+ * SEED slugs/, so that the stored table started out identical to the URLs
+ * the site had been serving — nobody's link moved.
+ */
+export function assignSlugs(members: MemberViewBase[]): MemberView[] {
+  return resolveSlugs(members, new Map());
 }
 
 /**

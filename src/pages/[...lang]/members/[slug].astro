@@ -1,9 +1,9 @@
 ---
 import { getImage } from "astro:assets";
 import Layout from "../../../layouts/Layout.astro";
-import { fetchMemberViews } from "../../../lib/membersBuild.ts";
+import { fetchMemberViews, fetchSlugAliases } from "../../../lib/membersBuild.ts";
 import type { MemberView } from "../../../lib/memberView.ts";
-import { href, socialLinks } from "../../../lib/links.ts";
+import { href, memberHref, socialLinks } from "../../../lib/links.ts";
 import { useTranslations } from "../../../i18n/utils";
 import type { Lang } from "../../../i18n/utils";
 // THIS PAGE'S SURFACE, in a file of its own so the profile editor's preview
@@ -12,32 +12,43 @@ import type { Lang } from "../../../i18n/utils";
 // whole mechanism, because a scoped block cannot be shared.
 import "../../../styles/profile.css";
 
-// One page per member per locale: `/members/<slug>` and `/de/members/<slug>`,
-// where the slug comes from the display name ("daniel-roettele").
-//
-// The slug is derived on every build rather than stored, so it follows a
-// rename — with the accepted consequence that the old URL 404s, since nothing
-// records what it used to be.
+// One page per member per locale: `/members/<slug>` and `/de/members/<slug>`.
+// The slug comes from slugs/ (owned by the onPublicProfileWritten function),
+// so a rename claims a new one and RETIRES the old — and the old still
+// resolves: a retired slug renders the same page with its canonical pointing
+// at the current URL and a meta refresh, which is what static hosting has
+// instead of a 301.
 //
 // Deliberately NOT under /profile: astro.config.mjs filters the sitemap with
 // `!page.includes("/profile")` to keep the private editor out of it, and member
 // pages under that prefix would be caught by the same test and silently
 // dropped — the opposite of what a public profile wants.
 export async function getStaticPaths() {
-  const members = await fetchMemberViews();
-  return members.flatMap((member) =>
-    [undefined, "de"].map((lang) => ({
-      params: { lang, slug: member.slug },
-      props: { member },
-    })),
-  );
+  const [members, aliases] = await Promise.all([fetchMemberViews(), fetchSlugAliases()]);
+  const byUid = new Map(members.map((m) => [m.id, m]));
+  const langs = [undefined, "de"] as const;
+  return [
+    ...members.flatMap((member) =>
+      langs.map((lang) => ({ params: { lang, slug: member.slug }, props: { member } })),
+    ),
+    ...aliases.flatMap(({ slug, uid }) => {
+      const member = byUid.get(uid);
+      if (!member || member.slug === slug) return [];
+      return langs.map((lang) => ({
+        params: { lang, slug },
+        props: { member, aliasOf: memberHref(lang ?? "en", member.slug) },
+      }));
+    }),
+  ];
 }
 
 interface Props {
   member: MemberView;
+  /** Set on alias pages: the current URL of this member. */
+  aliasOf?: string;
 }
 
-const { member } = Astro.props;
+const { member, aliasOf } = Astro.props;
 const { lang = "en" } = Astro.params;
 const currentLang = (lang || "en") as Lang;
 const t = useTranslations(currentLang);
@@ -101,6 +112,8 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
   description={description}
   lang={currentLang}
   ogImage={ogImage}
+  noindex={Boolean(aliasOf)}
+  redirectTo={aliasOf}
 >
   <article class="mprof">
     <a class="mprof__back" href={communityHref}>&#8592; {t("member.backToCommunity")}</a>

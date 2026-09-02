@@ -11,7 +11,57 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import type { PublicProfileDoc } from "./firestore.ts";
-import { assignSlugs, toMemberViewBase, type MemberView } from "./memberView.ts";
+import { resolveSlugs, toMemberViewBase, type MemberView } from "./memberView.ts";
+
+interface Directory {
+  members: MemberView[];
+  /** Retired slugs still pointing at an active member: `/members/<slug>` aliases to their current page. */
+  aliases: { slug: string; uid: string }[];
+}
+
+// Several pages call into this during one build; one fetch serves them all.
+let directoryPromise: Promise<Directory> | null = null;
+
+async function fetchDirectory(): Promise<Directory> {
+  try {
+    const serviceAccountJson = import.meta.env.FIREBASE_SERVICE_ACCOUNT;
+    if (!serviceAccountJson) throw new Error("FIREBASE_SERVICE_ACCOUNT env var not set");
+
+    const app =
+      getApps().length === 0
+        ? initializeApp({ credential: cert(JSON.parse(serviceAccountJson)) })
+        : getApps()[0];
+    const db = getFirestore(app);
+
+    const [profiles, slugRows] = await Promise.all([
+      db.collection("publicProfiles").orderBy("displayName").get(),
+      db.collection("slugs").get(),
+    ]);
+
+    // The build READS slugs/ and never writes it: this code runs in CI with a
+    // service account, and a build that wrote back would have every PR
+    // preview mutating live data. onPublicProfileWritten owns the table.
+    const current = new Map<string, string>();
+    const retired: { slug: string; uid: string }[] = [];
+    for (const row of slugRows.docs) {
+      const { uid, current: isCurrent } = row.data() as { uid: string; current?: boolean };
+      if (isCurrent) current.set(uid, row.id);
+      else retired.push({ slug: row.id, uid });
+    }
+
+    const members = resolveSlugs(
+      profiles.docs
+        .filter((d) => d.data().active !== false)
+        .map((d) => toMemberViewBase(d.id, d.data() as PublicProfileDoc)),
+      current,
+    );
+    const activeUids = new Set(members.map((m) => m.id));
+    return { members, aliases: retired.filter((a) => activeUids.has(a.uid)) };
+  } catch (err) {
+    console.error("[members] Failed to fetch members:", err);
+    return { members: [], aliases: [] };
+  }
+}
 
 /**
  * Every active member, ordered by display name, as render-ready view models.
@@ -24,26 +74,11 @@ import { assignSlugs, toMemberViewBase, type MemberView } from "./memberView.ts"
  * FIREBASE_SERVICE_ACCOUNT before hunting for a data bug.
  */
 export async function fetchMemberViews(): Promise<MemberView[]> {
-  try {
-    const serviceAccountJson = import.meta.env.FIREBASE_SERVICE_ACCOUNT;
-    if (!serviceAccountJson) throw new Error("FIREBASE_SERVICE_ACCOUNT env var not set");
+  directoryPromise ??= fetchDirectory();
+  return (await directoryPromise).members;
+}
 
-    const app =
-      getApps().length === 0
-        ? initializeApp({ credential: cert(JSON.parse(serviceAccountJson)) })
-        : getApps()[0];
-
-    const snap = await getFirestore(app).collection("publicProfiles").orderBy("displayName").get();
-
-    // Slugs are assigned across the whole set, because deduplication has to see
-    // every name at once.
-    return assignSlugs(
-      snap.docs
-        .filter((d) => d.data().active !== false)
-        .map((d) => toMemberViewBase(d.id, d.data() as PublicProfileDoc)),
-    );
-  } catch (err) {
-    console.error("[members] Failed to fetch members:", err);
-    return [];
-  }
+export async function fetchSlugAliases(): Promise<{ slug: string; uid: string }[]> {
+  directoryPromise ??= fetchDirectory();
+  return (await directoryPromise).aliases;
 }

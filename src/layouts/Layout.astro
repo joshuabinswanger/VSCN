@@ -16,6 +16,11 @@ interface Props {
   contentWide?: boolean;
   /** Absolute URL overriding the default OG image — e.g. a member's first work. */
   ogImage?: string;
+  /**
+   * Alias pages: canonical points here and a meta refresh sends the visitor
+   * on. Static hosting has no 301, so this is the honest equivalent.
+   */
+  redirectTo?: string;
 }
 
 const {
@@ -27,13 +32,14 @@ const {
   wide = false,
   contentWide = false,
   ogImage,
+  redirectTo,
 } = Astro.props;
 
 const DEFAULT_DESCRIPTION =
   "VSCN — Visual Science Communication Network — brings together illustrators, scientists, designers, and storytellers dedicated to making knowledge visible.";
 
 const metaDescription = description ?? DEFAULT_DESCRIPTION;
-const canonicalUrl = new URL(Astro.url.pathname, Astro.site).href;
+const canonicalUrl = new URL(redirectTo ?? Astro.url.pathname, Astro.site).href;
 const ogImageUrl = ogImage ?? new URL(ogImageAsset.src, Astro.site).href;
 
 const BRAND_LETTERS = [
@@ -69,6 +75,7 @@ const BRAND_SLOTS = [
     <title>{title}</title>
     <meta name="description" content={metaDescription} />
     {noindex && <meta name="robots" content="noindex, nofollow" />}
+    {redirectTo && <meta http-equiv="refresh" content={`0;url=${redirectTo}`} />}
     <link rel="canonical" href={canonicalUrl} />
 
     <meta property="og:type" content="website" />
