@@ -210,6 +210,7 @@ const t = useTranslations(lang);
   } from "firebase/auth";
   import { friendlyError } from "../lib/auth.ts";
   import { createUser } from "../lib/firestore.ts";
+  import { syncEmail } from "../lib/account.ts";
   import { ui } from "../i18n/translations.ts";
 
   let isLogin = false;
@@ -365,10 +366,11 @@ const t = useTranslations(lang);
           window.location.href = `${prefix}/profile`;
         } else {
           const { user } = await createUserWithEmailAndPassword(auth, email, password);
-          await createUser(user.uid, {
-            email: user.email!,
-            createdAt: new Date(),
-          });
+          await createUser(user.uid, { createdAt: new Date() });
+          // users/{uid}.email is server-written: the callable reads the address
+          // off the caller's own token and merge-creates the mirror. The client
+          // cannot write the field itself — firestore.rules pins it.
+          await syncEmail().catch(() => {});
           await sendEmailVerification(user);
           setStatus(s["auth.status.redirecting"]);
           window.location.href = `${prefix}/onboarding`;
