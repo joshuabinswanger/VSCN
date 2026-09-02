@@ -1,22 +1,28 @@
 import { updateProfile, type User } from "firebase/auth";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "./firebase.ts";
-import { uploadAvatar, deleteAvatar } from "./storage.ts";
+import { uploadAvatar } from "./storage.ts";
+import { markImageForDeletion } from "./images.ts";
 import { updateUserProfile } from "./firestore.ts";
 import { validateBio, validateSocialMedia } from "./validation.ts";
 import type { UserDoc } from "./firestore.ts";
 
-export interface ProfileUpdateOptions extends Partial<UserDoc> {
+// `email` is excluded on purpose: users/{uid}.email is a server-written mirror
+// of Auth (syncEmail) and firestore.rules rejects a client write to it.
+export interface ProfileUpdateOptions extends Omit<Partial<UserDoc>, "email"> {
   resizedAvatarBlob?: Blob | null;
+  /** The record behind the avatar being replaced; marked pendingDeletion once the save has landed. */
+  previousPhotoImageId?: string;
 }
 
 export async function handleProfileUpdate(
   user: User,
   options: ProfileUpdateOptions,
   onProgress?: (pct: number) => void
-): Promise<{ photoURL: string }> {
-  const { resizedAvatarBlob, ...data } = options;
+): Promise<{ photoURL: string; photoImageId?: string }> {
+  const { resizedAvatarBlob, previousPhotoImageId, ...data } = options;
   let photoURL = data.photoURL ?? user.photoURL ?? "";
+  let photoImageId = data.photoImageId;
 
   // 1. Validation (Bio, social links)
   if (data.bio !== undefined) {
@@ -35,38 +41,36 @@ export async function handleProfileUpdate(
     }
   }
 
-  // 2. Avatar Upload
-  let oldPhotoURL = "";
+  // 2. Avatar upload — record first, bytes second (images.ts).
   if (resizedAvatarBlob) {
-    oldPhotoURL = user.photoURL ?? "";
-    photoURL = await uploadAvatar(user.uid, resizedAvatarBlob, onProgress);
-
-    // Update Firebase Auth profile
+    const uploaded = await uploadAvatar(user.uid, resizedAvatarBlob, data.photoColor, onProgress);
+    photoURL = uploaded.url;
+    photoImageId = uploaded.imageId;
     await updateProfile(user, { photoURL });
-    // Force refresh token to include new photoURL in claims if needed
     await user.getIdToken(true);
   }
 
-  // 3. Firestore Sync
-  // Ensure we have essential fields if they are missing but we are updating the profile
+  // 3. Firestore sync
   const profileData: Partial<UserDoc> = {
     ...data,
     photoURL,
+    ...(photoImageId ? { photoImageId } : {}),
     updatedAt: new Date(),
   };
 
-  // If we're updating the name, sync it to Firebase Auth too
   if (data.displayName && data.displayName !== user.displayName) {
     await updateProfile(user, { displayName: data.displayName });
   }
 
   await updateUserProfile(user.uid, profileData);
 
-  // Best-effort cleanup of the replaced avatar, only after Firestore (the source
-  // of truth) holds the new URL. Works for legacy `{uid}.{ext}` names too.
-  if (oldPhotoURL && oldPhotoURL !== photoURL) await deleteAvatar(oldPhotoURL);
+  // The replaced avatar's record is marked only after Firestore holds the new
+  // one: the source of truth moves first, then the old bytes become sweepable.
+  if (resizedAvatarBlob && previousPhotoImageId && previousPhotoImageId !== photoImageId) {
+    await markImageForDeletion(previousPhotoImageId).catch(() => {});
+  }
 
-  return { photoURL };
+  return { photoURL, photoImageId };
 }
 
 /**

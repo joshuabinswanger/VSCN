@@ -1,0 +1,32 @@
+import { httpsCallable } from "firebase/functions";
+import type { User } from "firebase/auth";
+import { functions } from "./firebase.ts";
+
+export async function requestAccountDeletion(): Promise<{ purgeAfter: string }> {
+  const fn = httpsCallable<void, { purgeAfter: string }>(functions, "requestAccountDeletion");
+  return (await fn()).data;
+}
+
+export async function cancelAccountDeletion(): Promise<void> {
+  await httpsCallable(functions, "cancelAccountDeletion")();
+}
+
+export async function syncEmail(): Promise<string> {
+  const fn = httpsCallable<void, { email: string }>(functions, "syncEmail");
+  return (await fn()).data.email;
+}
+
+/**
+ * users/{uid}.email is a server-written mirror of Auth. Call after sign-up
+ * and whenever the token's address differs from the stored one — which is
+ * what happens after verifyBeforeUpdateEmail completes on the next sign-in.
+ * Best-effort: reconcileEmails sweeps nightly for anything missed here.
+ */
+export async function ensureEmailSynced(user: User, storedEmail: string | undefined): Promise<void> {
+  if (!user.email || user.email === storedEmail) return;
+  try {
+    await syncEmail();
+  } catch (err) {
+    console.warn("[account] email sync skipped:", err);
+  }
+}

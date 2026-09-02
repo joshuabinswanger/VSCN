@@ -1,6 +1,4 @@
-import { storage } from "./firebase.ts";
-import { ref, uploadBytesResumable } from "firebase/storage";
-import { deleteStorageFile, publicStorageUrl } from "./storage.ts";
+import { uploadImage, updateImageText } from "./images.ts";
 import { decodeImage, toWebpBlob, dominantColor, rejectionMessage } from "./image.ts";
 
 // Keep in sync with validGallery() in firestore.rules.
@@ -12,6 +10,8 @@ const MAX_EDGE = 2000;
 const MAX_RAW_BYTES = 25 * 1024 * 1024;
 
 export interface GalleryItem {
+  /** The images/{imageId} record this item projects. The record is the truth; this array is display order. */
+  imageId: string;
   url: string;
   /**
    * One line. Doubles as the image's alt text and the directory card's
@@ -31,7 +31,7 @@ export interface GalleryItem {
 }
 
 /**
- * Drops keys no longer in GalleryItem from a stored array.
+ * Drops keys no longer in GalleryItem from a stored array, and normalises the ones that are.
  *
  * Exists for exactly one withdrawn field: `projectId`, the tag into a member's
  * projects, removed with the feature on 2026-09-01. firestore.rules now
@@ -52,6 +52,7 @@ export function sanitizeGalleryItems(value: unknown): GalleryItem[] {
     .filter((raw): raw is Record<string, unknown> => Boolean(raw) && typeof raw === "object")
     .map((raw) => {
       const item: GalleryItem = {
+        imageId: String(raw.imageId ?? ""),
         url: String(raw.url ?? ""),
         caption: typeof raw.caption === "string" ? raw.caption : "",
         width: Number(raw.width ?? 0),
@@ -102,30 +103,31 @@ export async function compressGalleryImage(file: File | Blob): Promise<Compresse
   return { blob, width, height, color };
 }
 
-export function uploadGalleryImage(
+/** Uploads through the record-first pipeline and returns the array item to append. */
+export async function uploadGalleryImage(
   uid: string,
-  blob: Blob,
+  image: CompressedImage,
   onProgress: (pct: number) => void = () => {},
-): Promise<string> {
-  const storagePath = `galleries/${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
-  const storageRef = ref(storage, storagePath);
-  return new Promise((resolve, reject) => {
-    const task = uploadBytesResumable(storageRef, blob, {
-      contentType: "image/webp",
-      cacheControl: "public, max-age=31536000, immutable",
-    });
-    task.on(
-      "state_changed",
-      (snap) => {
-        onProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100));
-      },
-      reject,
-      () => resolve(publicStorageUrl(storagePath)),
-    );
-  });
+): Promise<GalleryItem> {
+  const { imageId, url } = await uploadImage(
+    uid,
+    "gallery",
+    image.blob,
+    { width: image.width, height: image.height, color: image.color },
+    onProgress,
+  );
+  return { imageId, url, caption: "", width: image.width, height: image.height, color: image.color };
 }
 
-/** Best-effort removal of gallery files in Storage (the Firestore array is the source of truth). */
-export async function deleteGalleryImages(urls: string[]): Promise<void> {
-  await Promise.all(urls.map((url) => deleteStorageFile(url)));
+/**
+ * Pushes typed text onto the records. Called from Save, alongside the array
+ * write — the array carries the same text for the static build, but the
+ * record is what an admin or a future feature reads.
+ */
+export async function syncGalleryText(gallery: GalleryItem[]): Promise<void> {
+  await Promise.all(
+    gallery
+      .filter((item) => item.imageId)
+      .map((item) => updateImageText(item.imageId, { caption: item.caption, description: item.description })),
+  );
 }

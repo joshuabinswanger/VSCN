@@ -3,7 +3,6 @@ import type { GalleryItem } from "./gallery.ts";
 import {
   collection,
   doc,
-  deleteDoc,
   deleteField,
   type FieldValue,
   getDoc,
@@ -33,6 +32,8 @@ export interface UserDoc {
   photoURL: string;
   /** Dominant color of the avatar (#rrggbb), shown while it loads. */
   photoColor?: string;
+  /** The images/{imageId} record behind photoURL. Absent on profiles with no avatar. */
+  photoImageId?: string;
   // Optional: profiles created before member types existed have no value.
   memberType?: MemberType;
   role: string;
@@ -59,17 +60,27 @@ export interface UserDoc {
   email: string;
   wantsToContribute?: boolean;
   onboardingComplete?: boolean;
+  /**
+   * Server-written lifecycle. "pendingDeletion" means a deletion request is in
+   * its grace period; purgeAfter is when purgeExpiredAccounts will act. Clients
+   * read these and never write them — firestore.rules pins them.
+   */
+  status?: "active" | "pendingDeletion";
+  deletionRequestedAt?: Date;
+  purgeAfter?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-export type PublicProfileDoc = Omit<UserDoc, "phone" | "email"> & { active?: boolean };
+export type PublicProfileDoc = Omit<
+  UserDoc,
+  "phone" | "email" | "status" | "deletionRequestedAt" | "purgeAfter"
+> & { active?: boolean };
 
 export interface OnboardingRequestDoc {
   userId: string;
   message: string;
   lang: "en" | "de";
-  email?: string;
   displayName?: string;
   createdAt?: Date | FieldValue;
   updatedAt?: Date | FieldValue;
@@ -97,6 +108,7 @@ function toPublicProfile(data: Partial<UserDoc>): Partial<PublicProfileDoc> {
   if (data.displayName !== undefined) out.displayName = data.displayName;
   if (data.photoURL !== undefined) out.photoURL = data.photoURL;
   if (data.photoColor !== undefined) out.photoColor = data.photoColor;
+  if (data.photoImageId !== undefined) out.photoImageId = data.photoImageId;
   if (data.memberType !== undefined) out.memberType = data.memberType;
   if (data.role !== undefined) out.role = data.role;
   if (data.bio !== undefined) out.bio = data.bio;
@@ -199,7 +211,6 @@ export async function upsertOnboardingRequest(
     lang: data.lang,
     updatedAt: serverTimestamp(),
   };
-  if (data.email) payload.email = data.email;
   if (data.displayName) payload.displayName = data.displayName;
   if (!existing.exists()) {
     payload.createdAt = serverTimestamp();
@@ -213,10 +224,6 @@ export async function publishCurrentUserProfile(uid: string): Promise<void> {
     ...data,
     updatedAt: new Date(),
   });
-}
-
-export async function deleteUserData(uid: string): Promise<void> {
-  await Promise.all([deleteDoc(doc(db, "users", uid)), deleteDoc(doc(db, "publicProfiles", uid))]);
 }
 
 export async function getMembers(): Promise<(PublicProfileDoc & { uid: string })[]> {
