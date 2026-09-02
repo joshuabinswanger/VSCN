@@ -35,6 +35,24 @@ service firebase.storage {
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
 
+    match /users/{uid}/{kind}/{filename} {
+      // One prefix per account: users/{uid}/ holds every byte a member owns,
+      // so a purge is a single prefix delete. The filename is the image
+      // record's id (images/{imageId}), written to Firestore BEFORE the bytes.
+      allow read: if true;
+
+      allow write: if request.auth != null
+                   && request.auth.uid == uid
+                   && (kind == 'avatar' || kind == 'gallery')
+                   && filename.matches('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.webp')
+                   && request.resource.contentType == 'image/webp'
+                   && ((kind == 'avatar' && request.resource.size <= 2 * 1024 * 1024)
+                       || (kind == 'gallery' && request.resource.size <= 8 * 1024 * 1024));
+
+      // Members mark the record; sweepImages / purgeAccount delete the bytes.
+      allow delete: if false;
+    }
+
     // Reject everything else
     match /{allPaths=**} {
       allow read, write: if false;
