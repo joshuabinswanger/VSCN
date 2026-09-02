@@ -34,6 +34,8 @@ export interface LookupResult {
 export interface Queues {
   pendingDeletions: DeletionJobView[];
   staleUploads: AdminImage[];
+  /** `live` records no profile points at — the one orphan class no sweeper takes. */
+  unreferencedLive: AdminImage[];
   emailMismatches: { uid: string; storedEmail: string | null; authEmail: string }[];
 }
 

@@ -1,6 +1,8 @@
 // Shared bootstrap for the admin scripts. `-P dev|prod` picks the env file
-// (.env.development / .env) exactly as cleanup-orphaned-storage.mjs did; the
-// older scripts each carry their own copy of this and are left alone.
+// (.env.development / .env) as cleanup-orphaned-storage.mjs did — except that
+// -P is MANDATORY here: there is no default project, because a forgotten flag
+// on a script that deletes objects must not resolve to prod. The older scripts
+// each carry their own copy of this and are left alone.
 import { initializeApp, cert, deleteApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
@@ -28,9 +30,15 @@ function parseEnvFile(filePath) {
 
 export function parseArgs(argv = process.argv.slice(2)) {
   const flags = new Set(argv.filter((a) => a.startsWith("--")));
-  let project = "prod";
   const pIdx = argv.findIndex((a) => a === "-P" || a === "--project");
-  if (pIdx !== -1) project = argv[pIdx + 1] ?? "";
+  // Deliberately NO default. These scripts delete objects and rewrite
+  // documents; every other guard here is fail-closed, and a forgotten -P used
+  // to mean prod. Naming the project is now the price of running one.
+  if (pIdx === -1) {
+    console.error("Missing -P: pass -P dev or -P prod (there is no default project).");
+    process.exit(1);
+  }
+  const project = argv[pIdx + 1] ?? "";
   if (project !== "prod" && project !== "dev") {
     console.error(`Unknown project "${project}" — use -P prod or -P dev.`);
     process.exit(1);

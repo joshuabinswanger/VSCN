@@ -887,6 +887,11 @@ const prefix = lang === "de" ? "/de" : "";
     const uploadStatus = document.getElementById("ob-upload-status") as HTMLElement;
     let resizedAvatarBlob: Blob | null = null;
     let avatarColor = "";
+    // The record behind the avatar currently stored, exactly as ProfileForm
+    // tracks it. Without it, replacing the avatar twice inside one onboarding
+    // left the first record `live` forever — an image nothing references and
+    // no sweeper takes.
+    let currentPhotoImageId = "";
 
     avatarInput?.addEventListener("change", async () => {
       const file = avatarInput.files?.[0];
@@ -1181,11 +1186,12 @@ const prefix = lang === "de" ? "/de" : "";
           avatarObjectUrl = URL.createObjectURL(resizedAvatarBlob);
         }
 
-        const { photoURL } = await handleProfileUpdate(
+        const { photoURL, photoImageId } = await handleProfileUpdate(
           user,
           {
             bio: bioVal,
             resizedAvatarBlob,
+            previousPhotoImageId: currentPhotoImageId,
             ...(resizedAvatarBlob && avatarColor ? { photoColor: avatarColor } : {}),
           },
           (pct) => {
@@ -1194,6 +1200,7 @@ const prefix = lang === "de" ? "/de" : "";
           }
         );
 
+        if (photoImageId) currentPhotoImageId = photoImageId;
         pendingBio = bioVal;
         pendingPhotoURL = photoURL;
         pendingAvatarObjectUrl = avatarObjectUrl;
@@ -1234,6 +1241,8 @@ const prefix = lang === "de" ? "/de" : "";
           window.location.href = `${prefix}/community`;
           return;
         }
+
+        currentPhotoImageId = data.photoImageId ?? "";
 
         // Pre-fill existing data
         const nameEl = document.getElementById("ob-name") as HTMLInputElement;

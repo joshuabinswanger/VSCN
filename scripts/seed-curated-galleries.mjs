@@ -1,9 +1,14 @@
 // Seeds member galleries from the curated portfolio picks, so the image-led
 // directory has real content before members have uploaded anything themselves.
-// Uploads the prepped 1200px WebPs (scripts/assets/curated-galleries/img/,
-// manifest.json beside them) to galleries/{uid}/ in Storage and writes the
-// `gallery` array — the exact shape uploadGalleryImage() + compressGalleryImage()
-// in src/lib/gallery.ts produce: { url, caption, width, height, color }.
+//
+// RECORD-FIRST, like every other image path since the entity restructuring:
+// each prepped 1200px WebP (scripts/assets/curated-galleries/img/,
+// manifest.json beside them) gets a fresh `imageId`, is uploaded to
+// `users/{uid}/gallery/{imageId}.webp` with the owner metadata storage.rules
+// expects, and gets an `images/{imageId}` record — `origin: "curated"` and
+// `provenance.source` written straight in, so backfill-provenance.mjs is not
+// needed for anything seeded by this script. The array item is the projection:
+// { imageId, url, caption, width, height, color }.
 //
 // The gallery is written to BOTH publicProfiles/{uid} and users/{uid} (when the
 // users doc exists): the profile editor loads from `users` and republishes the
@@ -17,37 +22,26 @@
 // artists' titles, and inventing captions for someone else's work is worse than
 // none. Members add their own in the editor.
 //
-// Usage:
-//   node scripts/seed-curated-galleries.mjs                 # dry run against dev
-//   node scripts/seed-curated-galleries.mjs --write         # seed dev
+// Usage (there is no default project — -P is mandatory):
+//   node scripts/seed-curated-galleries.mjs -P dev            # dry run
+//   node scripts/seed-curated-galleries.mjs -P dev --write    # seed dev
 //   node scripts/seed-curated-galleries.mjs -P prod --write --only jasmin,quaint
 //     (prod seeding is for launch, per member green light — hence --only)
 
-import { initializeApp, cert, deleteApp } from "firebase-admin/app";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { getStorage } from "firebase-admin/storage";
-import { resolve, dirname, join, basename } from "path";
-import { fileURLToPath } from "url";
-import fs from "fs";
+import { randomUUID } from "node:crypto";
+import { join, basename } from "node:path";
+import fs from "node:fs";
 import sharp from "sharp";
+import { FieldValue } from "firebase-admin/firestore";
+import { initAdminApp, parseArgs, ROOT } from "./lib/admin-app.mjs";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const ROOT = resolve(__dirname, "..");
-
-// --- CLI (same shape as cleanup-orphaned-storage.mjs) -------------------
+// --- CLI -----------------------------------------------------------------
 
 const args = process.argv.slice(2);
-const doWrite = args.includes("--write");
-let project = "dev";
-const pIdx = args.findIndex((a) => a === "-P" || a === "--project");
-if (pIdx !== -1) project = args[pIdx + 1] ?? "";
-if (project !== "prod" && project !== "dev") {
-  console.error(`Unknown project "${project}" — use -P prod or -P dev.`);
-  process.exit(1);
-}
+const { project, flags } = parseArgs(args);
+const doWrite = flags.has("--write");
 const onlyIdx = args.findIndex((a) => a === "--only");
 const only = onlyIdx !== -1 ? new Set((args[onlyIdx + 1] ?? "").split(",")) : null;
-const envFile = project === "dev" ? "../.env.development" : "../.env";
 
 if (project === "prod" && doWrite && !only) {
   console.error(
@@ -56,36 +50,9 @@ if (project === "prod" && doWrite && !only) {
   process.exit(1);
 }
 
-// --- Credentials ---------------------------------------------------------
+const { db, bucket, projectId, bucketName, close } = initAdminApp(project);
 
-function parseEnvFile(filePath) {
-  const content = fs.readFileSync(filePath, "utf-8");
-  const match = content.match(/^FIREBASE_SERVICE_ACCOUNT=(.*)$/m);
-  if (!match) return null;
-  let val = match[1].trim();
-  if (val.startsWith("'") && val.endsWith("'")) {
-    val = val.slice(1, -1);
-  } else if (val.startsWith('"') && val.endsWith('"')) {
-    val = JSON.parse(val);
-  }
-  const obj = JSON.parse(val);
-  if (obj.private_key) {
-    obj.private_key = obj.private_key.replace(/\\n/g, "\n");
-  }
-  return obj;
-}
-
-const credential = parseEnvFile(resolve(__dirname, envFile));
-if (!credential) {
-  throw new Error(`Missing or invalid FIREBASE_SERVICE_ACCOUNT in ${envFile.replace("../", "")}`);
-}
-
-const bucketName = `${credential.project_id}.firebasestorage.app`;
-const app = initializeApp({ credential: cert(credential), storageBucket: bucketName });
-const db = getFirestore(app);
-const bucket = getStorage(app).bucket();
-
-console.log(`Project: ${credential.project_id}   Bucket: ${bucketName}`);
+console.log(`Project: ${projectId}   Bucket: ${bucketName}`);
 console.log(doWrite ? "WRITE mode" : "Dry run (pass --write to apply)");
 
 // --- Curated images -------------------------------------------------------
@@ -109,9 +76,15 @@ const SLUGS = {
 // old public path prefix, mapped onto the asset folder below.
 const ASSETS = join(ROOT, "scripts/assets/curated-galleries");
 const manifest = JSON.parse(fs.readFileSync(join(ASSETS, "manifest.json"), "utf-8"));
+const CACHE = "public, max-age=31536000, immutable";
 
 function localPathFor(src) {
   return join(ASSETS, "img", src.replace("/proto/img/real/", ""));
+}
+
+/** Where the file came from, in the same form backfill-provenance.mjs records. */
+function provenanceSource(src) {
+  return src.replace("/proto/img/real/", "curated-galleries/img/");
 }
 
 function publicStorageUrl(storagePath) {
@@ -131,76 +104,94 @@ async function dominantColor(filePath) {
 
 // --- Seed ------------------------------------------------------------------
 
-const profiles = await db.collection("publicProfiles").get();
-const bySlug = new Map();
-for (const doc of profiles.docs) {
-  const slug = SLUGS[(doc.data().displayName || "").trim()];
-  if (slug) bySlug.set(slug, doc);
-}
-
-let seeded = 0;
-let skipped = 0;
-for (const [slug, images] of Object.entries(manifest)) {
-  if (only && !only.has(slug)) continue;
-  if (images.length === 0) continue;
-
-  const doc = bySlug.get(slug);
-  if (!doc) {
-    console.log(`MISSING  ${slug} — no publicProfiles doc in ${credential.project_id}`);
-    continue;
-  }
-  const existing = doc.data().gallery;
-  if (Array.isArray(existing) && existing.length > 0) {
-    console.log(`skip     ${slug} — already has ${existing.length} gallery item(s)`);
-    skipped++;
-    continue;
+try {
+  const profiles = await db.collection("publicProfiles").get();
+  const bySlug = new Map();
+  for (const doc of profiles.docs) {
+    const slug = SLUGS[(doc.data().displayName || "").trim()];
+    if (slug) bySlug.set(slug, doc);
   }
 
-  const gallery = [];
-  for (const img of images) {
-    const localPath = localPathFor(img.src);
-    if (!fs.existsSync(localPath)) throw new Error(`File missing on disk: ${localPath}`);
-    const color = await dominantColor(localPath);
-    // Same naming scheme as uploadGalleryImage() in src/lib/gallery.ts.
-    const storagePath = `galleries/${doc.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
-    if (doWrite) {
-      await bucket.upload(localPath, {
-        destination: storagePath,
-        metadata: {
-          contentType: "image/webp",
-          cacheControl: "public, max-age=31536000, immutable",
-        },
+  let seeded = 0;
+  let skipped = 0;
+  for (const [slug, images] of Object.entries(manifest)) {
+    if (only && !only.has(slug)) continue;
+    if (images.length === 0) continue;
+
+    const doc = bySlug.get(slug);
+    if (!doc) {
+      console.log(`MISSING  ${slug} — no publicProfiles doc in ${projectId}`);
+      continue;
+    }
+    const existing = doc.data().gallery;
+    if (Array.isArray(existing) && existing.length > 0) {
+      console.log(`skip     ${slug} — already has ${existing.length} gallery item(s)`);
+      skipped++;
+      continue;
+    }
+    const uid = doc.id;
+
+    const gallery = [];
+    for (const img of images) {
+      const localPath = localPathFor(img.src);
+      if (!fs.existsSync(localPath)) throw new Error(`File missing on disk: ${localPath}`);
+      const color = await dominantColor(localPath);
+      // The record id IS the filename and the owner IS the folder — the same
+      // contract validImage() in firestore.rules checks for a browser upload.
+      const imageId = randomUUID();
+      const storagePath = `users/${uid}/gallery/${imageId}.webp`;
+      if (doWrite) {
+        await bucket.upload(localPath, {
+          destination: storagePath,
+          metadata: {
+            contentType: "image/webp",
+            cacheControl: CACHE,
+            // The object knows its owner even when found outside its path.
+            metadata: { ownerUid: uid, imageId },
+          },
+        });
+        await db.doc(`images/${imageId}`).set({
+          ownerUid: uid,
+          kind: "gallery",
+          storagePath,
+          width: img.width,
+          height: img.height,
+          color,
+          origin: "curated",
+          provenance: { source: provenanceSource(img.src) },
+          status: "live",
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      }
+      gallery.push({
+        imageId,
+        url: publicStorageUrl(storagePath),
+        caption: "",
+        width: img.width,
+        height: img.height,
+        color,
       });
+      console.log(`  ${basename(img.src)}  ${img.width}x${img.height}  ${color}  → ${imageId}`);
     }
-    gallery.push({
-      url: publicStorageUrl(storagePath),
-      caption: "",
-      width: img.width,
-      height: img.height,
-      color,
-    });
-    console.log(`  ${basename(img.src)}  ${img.width}x${img.height}  ${color}`);
+
+    if (doWrite) {
+      await db.collection("publicProfiles").doc(uid).update({ gallery, updatedAt: FieldValue.serverTimestamp() });
+      const userRef = db.collection("users").doc(uid);
+      if ((await userRef.get()).exists) {
+        await userRef.update({ gallery, updatedAt: FieldValue.serverTimestamp() });
+      } else {
+        console.log(`  (no users/${uid} doc — publicProfiles only)`);
+      }
+    }
+    console.log(`${doWrite ? "SEEDED" : "would seed"}  ${slug}  (${gallery.length} images)`);
+    seeded++;
   }
 
-  if (doWrite) {
-    await db
-      .collection("publicProfiles")
-      .doc(doc.id)
-      .update({ gallery, updatedAt: FieldValue.serverTimestamp() });
-    const userRef = db.collection("users").doc(doc.id);
-    if ((await userRef.get()).exists) {
-      await userRef.update({ gallery, updatedAt: FieldValue.serverTimestamp() });
-    } else {
-      console.log(`  (no users/${doc.id} doc — publicProfiles only)`);
-    }
-  }
-  console.log(`${doWrite ? "SEEDED" : "would seed"}  ${slug}  (${gallery.length} images)`);
-  seeded++;
+  console.log(
+    `\n${seeded} member(s) ${doWrite ? "seeded" : "to seed"}, ${skipped} skipped (already have galleries).`,
+  );
+  if (!doWrite) console.log("Nothing written.");
+} finally {
+  await close();
 }
-
-console.log(
-  `\n${seeded} member(s) ${doWrite ? "seeded" : "to seed"}, ${skipped} skipped (already have galleries).`,
-);
-if (!doWrite) console.log("Nothing written.");
-
-await deleteApp(app);

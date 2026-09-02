@@ -23,7 +23,7 @@ import { assignSlugs, toMemberViewBase } from "../src/lib/memberView.ts";
 const { project, flags } = parseArgs();
 const write = flags.has("--write");
 const cleanupLegacy = flags.has("--cleanup-legacy");
-const { db, bucket, projectId, bucketName, close } = initAdminApp(project);
+const { db, bucket, adminAuth, projectId, bucketName, close } = initAdminApp(project);
 
 const CACHE = "public, max-age=31536000, immutable";
 const LEGACY_PREFIXES = ["avatars/", "galleries/"];
@@ -54,6 +54,23 @@ function imageIdFromNewPath(uid, kind, url) {
   const path = storagePathFromUrl(url);
   const m = path && path.match(new RegExp(`^users/${uid}/${kind}/([0-9a-f-]{36})\\.webp$`));
   return m && url.includes(bucketName) ? m[1] : null;
+}
+
+/**
+ * Firebase Auth holds a THIRD copy of photoURL that nothing else here updates.
+ * Leaving it stale is what let the old client write the legacy (deleted)
+ * avatar URL back over the migrated one on the member's next Save. A
+ * profile-only (curated) identity has no Auth user — nothing to sync there.
+ */
+async function setAuthPhotoURL(uid, url) {
+  if (!write || !url) return;
+  try {
+    await adminAuth.updateUser(uid, { photoURL: url });
+  } catch (err) {
+    if (err?.code !== "auth/user-not-found") {
+      console.log(`  ! ${uid} auth photoURL: ${err?.message ?? err}`);
+    }
+  }
 }
 
 function snapshot(users, pubs) {
@@ -137,6 +154,7 @@ async function migrate() {
   const userById = new Map(users.docs.map((d) => [d.id, d]));
   let migrated = 0;
   let recoveredCount = 0;
+  let repaired = 0;
   let failed = 0;
 
   for (const pub of pubs.docs) {
@@ -200,11 +218,40 @@ async function migrate() {
       }
     }
 
-    const pubUpdate = { gallery: newGallery, ...(avatar ? { photoURL: avatar.url, photoImageId: avatar.imageId } : {}) };
+    // REPAIR: photoImageId is set but photoURL no longer matches the record's
+    // storagePath — the pre-fix client wrote Auth's stale photoURL back over
+    // the migrated one, breaking the avatar everywhere. The RECORD is the
+    // truth; both docs (and Auth) are rewritten from it.
+    let repairedUrl = null;
+    if (!avatar && pubData.photoImageId) {
+      const recSnap = await db.doc(`images/${pubData.photoImageId}`).get();
+      const recPath = recSnap.exists ? recSnap.data().storagePath : null;
+      if (!recPath) {
+        failed += 1;
+        console.log(`  ! ${uid} avatar: photoImageId ${pubData.photoImageId} has no record`);
+      } else {
+        const want = publicStorageUrl(recPath);
+        if (pubData.photoURL !== want || (userDoc && userData.photoURL !== want)) {
+          repairedUrl = want;
+          repaired += 1;
+          console.log(
+            `  ${write ? "repaired" : "would repair"} photoURL for ${uid} from images/${pubData.photoImageId}`
+          );
+        }
+      }
+    }
+
+    const photoUpdate = avatar
+      ? { photoURL: avatar.url, photoImageId: avatar.imageId }
+      : repairedUrl
+        ? { photoURL: repairedUrl }
+        : {};
+    const pubUpdate = { gallery: newGallery, ...photoUpdate };
     const userUpdate = { ...pubUpdate, status: "active" };
     if (write) {
       await pub.ref.update(pubUpdate);
       if (userDoc) await userDoc.ref.update(userUpdate);
+      await setAuthPhotoURL(uid, avatar?.url ?? repairedUrl);
     }
     console.log(
       `  ${write ? "migrated" : "would migrate"} ${uid} (${pubData.displayName ?? "?"}, ${origin}): ` +
@@ -231,20 +278,61 @@ async function migrate() {
   // set (active members only), so no URL a visitor holds changes. Inactive
   // members get a row from onPublicProfileWritten on their next save; until
   // then the build falls back to deriving one (resolveSlugs, Task 16).
+  //
+  // Idempotent against the LIVE trigger: onPublicProfileWritten owns this
+  // table and is deployed before the migration runs, so a member who renamed
+  // in between already has a trigger-claimed row. Read the whole table first,
+  // then: never add a second `current: true` row for a uid that has one (the
+  // build would pick whichever the iteration order surfaced last, so the URL
+  // would flip between builds), never overwrite a row another uid owns, and
+  // never rewrite `createdAt` on a row that already exists.
+  const slugRows = await db.collection("slugs").get();
+  const rowBySlug = new Map(slugRows.docs.map((d) => [d.id, d.data()]));
+  const uidsWithCurrentRow = new Set(
+    slugRows.docs.filter((d) => d.data().current === true).map((d) => d.data().uid)
+  );
   const members = assignSlugs(
     pubs.docs.filter((d) => d.data().active !== false).map((d) => toMemberViewBase(d.id, d.data()))
   );
+  let slugsSeeded = 0;
   for (const m of members) {
-    if (write) {
-      await db.doc(`slugs/${m.slug}`).set(
-        { uid: m.id, current: true, createdAt: FieldValue.serverTimestamp() },
-        { merge: true }
-      );
+    if (uidsWithCurrentRow.has(m.id)) {
+      console.log(`  slug ${m.slug} → ${m.id} — uid already has a current row, skipped`);
+      continue;
     }
-    console.log(`  slug ${m.slug} → ${m.id}`);
+    const existing = rowBySlug.get(m.slug);
+    if (existing && existing.uid !== m.id) {
+      console.log(`  ! slug ${m.slug} already owned by ${existing.uid} — skipped`);
+      continue;
+    }
+    if (write) {
+      try {
+        if (existing) {
+          // Same uid, not current: reclaim it without touching createdAt.
+          await db.doc(`slugs/${m.slug}`).update({ uid: m.id, current: true });
+        } else {
+          // create(), not set(): if the trigger claimed this row between the
+          // read above and now, fail loudly rather than clobber it.
+          await db.doc(`slugs/${m.slug}`).create({
+            uid: m.id,
+            current: true,
+            createdAt: FieldValue.serverTimestamp(),
+          });
+        }
+      } catch (err) {
+        console.log(`  ! slug ${m.slug} → ${m.id}: ${err?.message ?? err} — skipped`);
+        continue;
+      }
+    }
+    slugsSeeded += 1;
+    console.log(`  ${write ? "seeded" : "would seed"} slug ${m.slug} → ${m.id}`);
   }
+  console.log(`  ${slugsSeeded} slug row(s) ${write ? "seeded" : "to seed"} of ${members.length} member(s).`);
 
-  console.log(`\n${write ? "Migrated" : "Would migrate"} ${migrated} image(s), ${recoveredCount} recovered, ${failed} failed.`);
+  console.log(
+    `\n${write ? "Migrated" : "Would migrate"} ${migrated} image(s), ${recoveredCount} recovered, ` +
+      `${repaired} photoURL ${write ? "repaired" : "to repair"}, ${failed} failed.`
+  );
   if (failed) process.exitCode = 1;
 }
 

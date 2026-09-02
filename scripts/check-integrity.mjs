@@ -3,19 +3,31 @@
 //   node scripts/check-integrity.mjs -P dev
 //
 // Checks: every gallery item → a live image record owned by that profile;
-// every record → an object at its storagePath; every object under users/ → a
-// record; every users/{uid}.email → the Auth user's email. Members inside a
-// deletion grace period are skipped for the status check (their images are
-// pendingDeletion on purpose) and reported as notes.
+// every avatar's photoURL still equal to the URL derived from its record's
+// storagePath (the C1 drift, invisible everywhere else); every record → an
+// object at its storagePath; every object under users/ → a record; every
+// `live` record referenced by some profile; every users/{uid}.email → the Auth
+// user's email. Members inside a deletion grace period are skipped for the
+// status check (their images are pendingDeletion on purpose) and reported as
+// notes.
 import { initAdminApp, parseArgs } from "./lib/admin-app.mjs";
 
 const { project } = parseArgs();
-const { db, bucket, adminAuth, projectId, close } = initAdminApp(project);
+const { db, bucket, adminAuth, projectId, bucketName, close } = initAdminApp(project);
+
+/** A `live` record nothing points at is only suspicious once its upload cannot still be in flight. */
+const UNREFERENCED_GRACE_HOURS = 6;
 
 const problems = [];
 const notes = [];
 const problem = (msg) => { problems.push(msg); console.log(`  ! ${msg}`); };
 const note = (msg) => { notes.push(msg); console.log(`  ~ ${msg}`); };
+
+function publicStorageUrl(storagePath) {
+  // Mirrors publicStorageUrl() in src/lib/storage.ts and the copy in
+  // migrate-image-records.mjs — the URL a client would derive from the record.
+  return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(storagePath)}?alt=media`;
+}
 
 try {
   console.log(`Integrity check — ${projectId}\n`);
@@ -44,10 +56,28 @@ try {
         problem(`images/${item.imageId} is ${rec.status} but listed on publicProfiles/${doc.id}`);
       }
     });
-    if (data.photoImageId && !imageById.has(data.photoImageId)) {
-      problem(`publicProfiles/${doc.id}.photoImageId → images/${data.photoImageId} missing`);
-    }
   }
+
+  // The avatar is the one image whose URL lives in a plain field rather than
+  // in an array item, and nothing else in this file would notice it drifting
+  // away from its record — which is exactly what the pre-fix client did on
+  // every Save (it wrote Firebase Auth's stale photoURL back over the
+  // migrated one). The record is the truth; the field must agree with it.
+  console.log("Avatars — photoURL ↔ photoImageId");
+  const checkAvatar = (collection, doc) => {
+    const data = doc.data();
+    if (!data.photoImageId) return;
+    const rec = imageById.get(data.photoImageId);
+    if (!rec) return problem(`${collection}/${doc.id}.photoImageId → images/${data.photoImageId} missing`);
+    if (rec.ownerUid !== doc.id) {
+      problem(`images/${data.photoImageId} owned by ${rec.ownerUid}, used as the ${collection}/${doc.id} avatar`);
+    }
+    if (data.photoURL !== publicStorageUrl(rec.storagePath)) {
+      problem(`${collection}/${doc.id} photoURL drifted from photoImageId (holds "${data.photoURL || "(empty)"}")`);
+    }
+  };
+  for (const doc of pubs.docs) checkAvatar("publicProfiles", doc);
+  for (const doc of users.docs) checkAvatar("users", doc);
 
   console.log("Image records ↔ objects");
   const [files] = await bucket.getFiles({ prefix: "users/" });
@@ -60,6 +90,32 @@ try {
   const recordPaths = new Set([...imageById.values()].map((r) => r.storagePath));
   for (const name of objectNames) {
     if (!recordPaths.has(name)) problem(`object ${name} has no image record`);
+  }
+
+  // The other half of the orphan story. The upload order makes bytes without a
+  // record impossible, but a record that reached `live` and then never made it
+  // into a gallery array or onto photoImageId (rules rejected the profile
+  // write, the tab closed, an avatar was replaced twice in one onboarding) is
+  // permanent — no sweeper takes those. Reported, never swept automatically:
+  // deciding a member's image is unwanted is not a script's call.
+  console.log("Unreferenced live records");
+  const referenced = new Set();
+  for (const snap of [pubs, users]) {
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      if (data.photoImageId) referenced.add(data.photoImageId);
+      for (const item of Array.isArray(data.gallery) ? data.gallery : []) {
+        if (item?.imageId) referenced.add(item.imageId);
+      }
+    }
+  }
+  const unreferencedCutoff = Date.now() - UNREFERENCED_GRACE_HOURS * 3_600_000;
+  for (const [id, rec] of imageById) {
+    if (rec.status !== "live" || referenced.has(id)) continue;
+    const line = `images/${id} is live but no profile references it (${rec.kind}, owner ${rec.ownerUid})`;
+    const createdMs = rec.createdAt?.toMillis?.() ?? 0;
+    if (createdMs < unreferencedCutoff) problem(line);
+    else note(`${line} — under ${UNREFERENCED_GRACE_HOURS}h old, an upload may still be in flight`);
   }
 
   console.log("Email mirrors ↔ Auth");

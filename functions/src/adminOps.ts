@@ -126,15 +126,40 @@ export const adminLookupMember = onCall(async (req) => {
 export const adminListQueues = onCall(async (req) => {
   requireAdmin(req);
   const cutoff = Date.now() - STALE_UPLOAD_HOURS * 3_600_000;
-  const [open, uploading, emailMismatches] = await Promise.all([
+  const [open, uploading, live, pubs, users, emailMismatches] = await Promise.all([
     db.collection("deletions").where("completedAt", "==", null).get(),
     db.collection("images").where("status", "==", "uploading").get(),
+    db.collection("images").where("status", "==", "live").get(),
+    db.collection("publicProfiles").get(),
+    db.collection("users").get(),
     findEmailMismatches(),
   ]);
+
+  // The orphan the upload inversion does NOT prevent: a record that reached
+  // `live` and then never made it into a gallery array or onto photoImageId
+  // (the profile write was rejected, the tab closed, an avatar was replaced
+  // twice in one onboarding). No sweeper takes these — shown here so a human
+  // decides, because declaring a member's image unwanted is not automatic.
+  const referenced = new Set<string>();
+  for (const snap of [pubs, users]) {
+    for (const d of snap.docs) {
+      const data = d.data();
+      if (typeof data.photoImageId === "string" && data.photoImageId) referenced.add(data.photoImageId);
+      const gallery = Array.isArray(data.gallery) ? data.gallery : [];
+      for (const item of gallery) {
+        const id = (item as { imageId?: unknown } | null)?.imageId;
+        if (typeof id === "string" && id) referenced.add(id);
+      }
+    }
+  }
+
   return plain({
     pendingDeletions: open.docs.map((d) => d.data()),
     staleUploads: uploading.docs
       .filter((d) => (d.data().createdAt as Timestamp).toMillis() < cutoff)
+      .map((d) => ({ imageId: d.id, ...d.data() })),
+    unreferencedLive: live.docs
+      .filter((d) => !referenced.has(d.id) && (d.data().createdAt as Timestamp).toMillis() < cutoff)
       .map((d) => ({ imageId: d.id, ...d.data() })),
     emailMismatches,
   });

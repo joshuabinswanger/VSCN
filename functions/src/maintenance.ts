@@ -5,13 +5,21 @@ import { bucket, db } from "./admin";
 import { STALE_UPLOAD_HOURS } from "./constants";
 import { findEmailMismatches } from "./emails";
 import { purgeAccount } from "./purge";
+import { dispatchRebuild, githubRebuildToken } from "./rebuild";
 import type { DeletionJob } from "./types";
 
 const ZURICH = "Europe/Zurich";
 
-/** Open jobs whose grace period has ended. One failure does not stop the rest. */
+/**
+ * Open jobs whose grace period has ended. One failure does not stop the rest.
+ *
+ * A rebuild is dispatched when anything was actually purged: a member-requested
+ * deletion already rebuilt at request time (`active: false`), but an
+ * admin-scheduled one, or a member who re-ticked "visible" during the grace
+ * period, is still on the static site the moment the documents disappear.
+ */
 export const purgeExpiredAccounts = onSchedule(
-  { schedule: "every day 03:00", timeZone: ZURICH },
+  { schedule: "every day 03:00", timeZone: ZURICH, secrets: [githubRebuildToken] },
   async () => {
     const open = await db.collection("deletions").where("completedAt", "==", null).get();
     const now = Timestamp.now().toMillis();
@@ -26,6 +34,8 @@ export const purgeExpiredAccounts = onSchedule(
         logger.error("Purge failed", { uid: job.uid, err: String(err) });
       }
     }
+    // Once, at the end — one dispatch covers every account purged in this run.
+    if (purged > 0) await dispatchRebuild();
     logger.info("purgeExpiredAccounts", { open: open.size, purged });
   }
 );

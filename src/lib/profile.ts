@@ -26,10 +26,23 @@ export async function handleProfileUpdate(
   user: User,
   options: ProfileUpdateOptions,
   onProgress?: (pct: number) => void
-): Promise<{ photoURL: string; photoImageId?: string }> {
-  const { resizedAvatarBlob, previousPhotoImageId, ...data } = options;
-  let photoURL = data.photoURL ?? user.photoURL ?? "";
-  let photoImageId = data.photoImageId;
+): Promise<{ photoURL?: string; photoImageId?: string }> {
+  const {
+    resizedAvatarBlob,
+    previousPhotoImageId,
+    photoURL: passedPhotoURL,
+    photoImageId: passedPhotoImageId,
+    ...data
+  } = options;
+  // Deliberately NOT `?? user.photoURL`. Firebase Auth's photoURL is a copy
+  // the migration never rewrote, so a Save with no new avatar used to write
+  // the legacy (now deleted) object's URL back over the migrated one while
+  // photoImageId kept pointing at the new record — the member's avatar
+  // vanished from the site, the editor and /admin with nothing logged. When no
+  // avatar was uploaded here and the caller passed none, BOTH fields stay out
+  // of the merge write and Firestore keeps the values it already holds.
+  let photoURL = passedPhotoURL;
+  let photoImageId = passedPhotoImageId;
 
   // 1. Validation (Bio, social links)
   if (data.bio !== undefined) {
@@ -60,8 +73,8 @@ export async function handleProfileUpdate(
   // 3. Firestore sync
   const profileData: Partial<UserDoc> = {
     ...data,
-    photoURL,
-    ...(photoImageId ? { photoImageId } : {}),
+    ...(photoURL !== undefined ? { photoURL } : {}),
+    ...(photoImageId !== undefined ? { photoImageId } : {}),
     updatedAt: new Date(),
   };
 

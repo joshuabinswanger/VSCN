@@ -1,7 +1,7 @@
 # Firebase entity restructuring: linked identities, images as records, account lifecycle
 
 Date: 2026-09-02
-Status: approved design, not yet implemented
+Status: implemented on dev 2026-09; prod pending (see agent-memory/firebase-entity-restructuring.md)
 
 ## Context
 
