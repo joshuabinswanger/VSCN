@@ -49,6 +49,13 @@ function publicStorageUrl(storagePath) {
   return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(storagePath)}?alt=media`;
 }
 
+/** imageId when `url` already points at this bucket's users/{uid}/{kind}/<uuid>.webp; else null. */
+function imageIdFromNewPath(uid, kind, url) {
+  const path = storagePathFromUrl(url);
+  const m = path && path.match(new RegExp(`^users/${uid}/${kind}/([0-9a-f-]{36})\\.webp$`));
+  return m && url.includes(bucketName) ? m[1] : null;
+}
+
 function snapshot(users, pubs) {
   const dir = resolve(ROOT, "scripts/snapshots");
   fs.mkdirSync(dir, { recursive: true });
@@ -129,6 +136,7 @@ async function migrate() {
   console.log(`snapshot → ${snapshot(users, pubs)}\n`);
   const userById = new Map(users.docs.map((d) => [d.id, d]));
   let migrated = 0;
+  let recoveredCount = 0;
   let failed = 0;
 
   for (const pub of pubs.docs) {
@@ -145,6 +153,19 @@ async function migrate() {
     const newGallery = [];
     for (const item of gallery) {
       if (item.imageId) { newGallery.push(item); continue; }
+      // Already migrated once, then re-saved by a client that dropped imageId:
+      // the url still points at the new path, so recover the id instead of
+      // copying the object a second time.
+      const recovered = imageIdFromNewPath(uid, "gallery", item.url);
+      if (recovered) {
+        if (write && !(await db.doc(`images/${recovered}`).get()).exists) {
+          await db.doc(`images/${recovered}`).set(record(uid, "gallery", `users/${uid}/gallery/${recovered}.webp`, { ...item, origin }));
+        }
+        newGallery.push({ ...item, imageId: recovered });
+        recoveredCount += 1;
+        console.log(`  ${write ? "recovered" : "would recover"} imageId ${recovered} for ${uid}`);
+        continue;
+      }
       const r = await migrateGalleryItem(uid, item, origin);
       if (r.error) { failed += 1; console.log(`  ! ${uid} gallery: ${r.error}`); newGallery.push(item); continue; }
       migrated += 1;
@@ -154,9 +175,29 @@ async function migrate() {
     let avatar = null;
     const photoURL = pubData.photoURL || userData.photoURL || "";
     if (photoURL && !pubData.photoImageId) {
-      const r = await migrateAvatar(uid, photoURL, origin);
-      if (r.error) { failed += 1; console.log(`  ! ${uid} avatar: ${r.error}`); }
-      else { migrated += 1; avatar = r; }
+      // Same recovery as gallery items: the photoURL may already live at the
+      // new users/{uid}/avatar/<uuid>.webp path if a client re-saved the
+      // profile after migration and dropped photoImageId.
+      const recoveredAvatar = imageIdFromNewPath(uid, "avatar", photoURL);
+      if (recoveredAvatar) {
+        if (write) {
+          const ref = db.doc(`images/${recoveredAvatar}`);
+          const existing = await ref.get();
+          if (!existing.exists) {
+            const storagePath = `users/${uid}/avatar/${recoveredAvatar}.webp`;
+            const [buf] = await bucket.file(storagePath).download();
+            const meta = await sharp(buf).metadata();
+            await ref.set(record(uid, "avatar", storagePath, { width: meta.width, height: meta.height, origin }));
+          }
+        }
+        avatar = { imageId: recoveredAvatar, url: photoURL };
+        recoveredCount += 1;
+        console.log(`  ${write ? "recovered" : "would recover"} imageId ${recoveredAvatar} for ${uid} avatar`);
+      } else {
+        const r = await migrateAvatar(uid, photoURL, origin);
+        if (r.error) { failed += 1; console.log(`  ! ${uid} avatar: ${r.error}`); }
+        else { migrated += 1; avatar = r; }
+      }
     }
 
     const pubUpdate = { gallery: newGallery, ...(avatar ? { photoURL: avatar.url, photoImageId: avatar.imageId } : {}) };
@@ -203,7 +244,7 @@ async function migrate() {
     console.log(`  slug ${m.slug} → ${m.id}`);
   }
 
-  console.log(`\n${write ? "Migrated" : "Would migrate"} ${migrated} image(s), ${failed} failed.`);
+  console.log(`\n${write ? "Migrated" : "Would migrate"} ${migrated} image(s), ${recoveredCount} recovered, ${failed} failed.`);
   if (failed) process.exitCode = 1;
 }
 
