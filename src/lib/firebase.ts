@@ -27,7 +27,13 @@ if (typeof window !== "undefined" && recaptchaSiteKey) {
   // Setting this flag makes Firebase generate a debug token (printed to the console).
   // Register that token in Firebase Console → App Check → your app → Manage debug tokens.
   if (import.meta.env.DEV) {
-    (globalThis as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    // Typed rather than cast through `any` (2026-09-03): the flag is a real
+    // property Firebase reads off the global, so declaring it is both honest
+    // and the last `no-explicit-any` in src — which is what lets a NEW warning
+    // in this repo mean something. `unknown` would not do: the assignment
+    // needs the property to exist on the target type.
+    (globalThis as typeof globalThis & { FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean })
+      .FIREBASE_APPCHECK_DEBUG_TOKEN = true;
   }
 
   try {
