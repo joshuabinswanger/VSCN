@@ -2476,6 +2476,23 @@ const t = useTranslations(lang);
         await setProfileActive(user.uid, activeInput.checked);
         await triggerRebuild();
         saveMsg.style.display = "block";
+
+        // A GALLERY ERROR MUST NOT OUTLIVE THE SAVE THAT SETTLED IT.
+        //
+        // The gallery line is written by the upload queue, which fails on its
+        // own schedule and has no idea a Save has since happened. So a member
+        // who hit a refused array write and then saved successfully was shown
+        // "Your sign-in expired. Sign in again, then try once more." directly
+        // above a green "Changes saved." — the editor contradicting itself, and
+        // the wrong half is the one that sounds urgent.
+        //
+        // Cleared through the cap-note bookkeeping rather than around it:
+        // zeroing galleryCapNote first is what lets updateGalleryControls take
+        // the line back, so a gallery that really is full says so again instead
+        // of falling silent.
+        setGalleryStatus("");
+        galleryCapNote = "";
+        updateGalleryControls();
       } catch (err: unknown) {
         saveError.textContent = err instanceof Error ? err.message : s["profile.save.error"];
         saveError.style.display = "block";
