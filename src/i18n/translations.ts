@@ -111,7 +111,8 @@ export const ui: Record<string, Record<string, string>> = {
 
     // ProfileForm
     "profile.loading": "Loading profile…",
-    "profile.verifyBanner": "Please verify your email to secure your account.",
+    "profile.verifyBanner":
+      "Please verify your email to secure your account — if it hasn't arrived, check your spam folder. Until then you can add only one image.",
     "profile.verifyResend": "Resend email",
     "profile.verifySent": "Email sent — check your inbox.",
     "profile.chooseImage": "Choose image",
@@ -251,9 +252,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.reauth.cancel": "Cancel",
     "profile.reauth.confirm": "Confirm delete",
     "profile.preview.defaultName": "Your name",
-    "profile.edit.rotate": "Rotate",
-    "profile.edit.apply": "Apply",
-    "profile.edit.cancel": "Cancel",
     "profile.upload.processing": "Processing…",
     "profile.upload.uploading": "Uploading…",
     "profile.upload.selected": "Selected: ",
@@ -299,6 +297,8 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.step5.sub": "Add a few images and they become your card in the member directory.",
     "onboarding.step5.note":
       "Up to 8 images, JPG, PNG or WebP. Captions and descriptions come later, in your profile.",
+    "onboarding.step5.noteUnverified":
+      "One image for now, JPG, PNG or WebP — up to 8 once your email is verified. Captions and descriptions come later, in your profile.",
     "onboarding.step5.later":
       "Nothing to show yet is a normal answer — your card carries your tags instead, and you can add images any time.",
     "onboarding.step5.skip": "Nothing to show yet",
@@ -447,7 +447,8 @@ export const ui: Record<string, Record<string, string>> = {
 
     // ProfileForm
     "profile.loading": "Profil wird geladen…",
-    "profile.verifyBanner": "Bitte bestätige deine E-Mail, um dein Konto zu sichern.",
+    "profile.verifyBanner":
+      "Bitte bestätige deine E-Mail, um dein Konto zu sichern — ist sie nicht angekommen, sieh in deinem Spam-Ordner nach. Bis dahin kannst du nur ein Bild hochladen.",
     "profile.verifyResend": "E-Mail erneut senden",
     "profile.verifySent": "E-Mail gesendet — Posteingang prüfen.",
     "profile.chooseImage": "Bild auswählen",
@@ -581,9 +582,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.reauth.cancel": "Abbrechen",
     "profile.reauth.confirm": "Löschen bestätigen",
     "profile.preview.defaultName": "Dein Name",
-    "profile.edit.rotate": "Drehen",
-    "profile.edit.apply": "Übernehmen",
-    "profile.edit.cancel": "Abbrechen",
     "profile.upload.processing": "Wird verarbeitet…",
     "profile.upload.uploading": "Wird hochgeladen…",
     "profile.upload.selected": "Ausgewählt: ",
@@ -632,6 +630,8 @@ export const ui: Record<string, Record<string, string>> = {
       "Ein paar Bilder genügen — sie werden zu deiner Karte im Mitgliederverzeichnis.",
     "onboarding.step5.note":
       "Bis zu 8 Bilder, JPG, PNG oder WebP. Bildtitel und Beschreibungen kommen später, in deinem Profil.",
+    "onboarding.step5.noteUnverified":
+      "Zunächst ein Bild, JPG, PNG oder WebP — bis zu 8, sobald deine E-Mail bestätigt ist. Bildtitel und Beschreibungen kommen später, in deinem Profil.",
     "onboarding.step5.later":
       "Noch nichts zu zeigen ist eine ganz normale Antwort — deine Karte trägt dann deine Tags, und Bilder kannst du jederzeit nachreichen.",
     "onboarding.step5.skip": "Noch nichts zu zeigen",

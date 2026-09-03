@@ -241,7 +241,22 @@ const prefix = lang === "de" ? "/de" : "";
           />
         </label>
         <p id="ob-gallery-status" class="ob-upload-status" style="display:none;"></p>
-        <p class="field-note">{t("onboarding.step5.note")}</p>
+        <!--
+          Two notes, one shown. An unverified account holds exactly one gallery
+          image (MAX_UNVERIFIED_GALLERY_IMAGES in lib/gallery.ts), so "Up to 8"
+          was a lie at the moment it was read — 2026-09-03. Auth state is
+          client-only in a static build, so both are rendered and the verify
+          block in the script below swaps them. The verified note is the
+          server default deliberately: #onboarding-wrap stays display:none
+          until onUserAuthenticated has run (and the anonymous path can only
+          reach step -1), so nothing can flash either way — and defaulting to
+          verified keeps the swap a single block that mirrors the banner
+          (act for unverified, nothing to undo for verified).
+        -->
+        <p id="ob-gallery-note" class="field-note">{t("onboarding.step5.note")}</p>
+        <p id="ob-gallery-note-unverified" class="field-note" style="display:none;">
+          {t("onboarding.step5.noteUnverified")}
+        </p>
         <p class="field-note">{t("onboarding.step5.later")}</p>
       </div>
     </div>
@@ -641,6 +656,7 @@ const prefix = lang === "de" ? "/de" : "";
     sendEmailVerification,
     type User,
   } from "firebase/auth";
+  import { returnTo } from "../lib/authEmail.ts";
   import { hasVerifiedClaim } from "../lib/auth.ts";
   import { validateAvatar, resizeAvatar } from "../lib/validation.ts";
   import {
@@ -1255,6 +1271,9 @@ const prefix = lang === "de" ? "/de" : "";
     const verifyBanner = document.getElementById("ob-verify-banner")!;
     const btnResend = document.getElementById("ob-resend-verify") as HTMLButtonElement;
     const verifySent = document.getElementById("ob-verify-sent")!;
+    // Step-5 notes, swapped alongside the banner — see the markup comment.
+    const galleryNote = document.getElementById("ob-gallery-note")!;
+    const galleryNoteUnverified = document.getElementById("ob-gallery-note-unverified")!;
 
     // ── Auth guard ─────────────────────────────────────────────────
     async function onUserAuthenticated(user: User) {
@@ -1380,13 +1399,17 @@ const prefix = lang === "de" ? "/de" : "";
 
       if (!user.emailVerified) {
         verifyBanner.style.display = "block";
+        // The gallery cap is one image until verification; say so before the
+        // member picks a second file rather than after (2026-09-03).
+        galleryNote.style.display = "none";
+        galleryNoteUnverified.style.display = "";
         let cooldown = false;
         btnResend?.addEventListener("click", async () => {
           if (cooldown) return;
           cooldown = true;
           btnResend.disabled = true;
           try {
-            await sendEmailVerification(user);
+            await sendEmailVerification(user, returnTo(lang, "/onboarding"));
             verifySent.style.display = "block";
           } catch {
             // ignore
@@ -1458,7 +1481,7 @@ const prefix = lang === "de" ? "/de" : "";
           // off the caller's own token and merge-creates the doc. The client
           // cannot write the field itself — firestore.rules pins it.
           await syncEmail().catch(() => {});
-          await sendEmailVerification(user).catch(() => {});
+          await sendEmailVerification(user, returnTo(lang, "/onboarding")).catch(() => {});
         }
         await onUserAuthenticated(user);
       } catch (err: unknown) {
