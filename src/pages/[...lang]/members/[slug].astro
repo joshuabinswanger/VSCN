@@ -3,7 +3,13 @@ import { getImage } from "astro:assets";
 import Layout from "../../../layouts/Layout.astro";
 import { fetchMemberViews, fetchSlugAliases } from "../../../lib/membersBuild.ts";
 import type { MemberView } from "../../../lib/memberView.ts";
-import { communityTagHref, href, memberHref, socialLinks } from "../../../lib/links.ts";
+import {
+  communityTagHref,
+  href,
+  hostLabel,
+  memberHref,
+  socialLinks,
+} from "../../../lib/links.ts";
 import { useTranslations } from "../../../i18n/utils";
 import type { Lang } from "../../../i18n/utils";
 // THIS PAGE'S SURFACE, in a file of its own so the profile editor's preview
@@ -267,10 +273,21 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
                   style={`background-color: ${w.color ?? "var(--color-border)"}`}
                 />
               </a>
-              {(w.caption?.trim() || w.description) && (
+              {(w.caption?.trim() || w.description || w.link) && (
                 <figcaption class="mprof__caption">
                   {w.caption?.trim() && <span class="mprof__caption-line">{w.caption}</span>}
                   {w.description && <span class="mprof__desc">{w.description}</span>}
+                  {/* Where the image lives in the world. In the caption and not
+                      on the image, because the image's own anchor is the
+                      lightbox trigger — wrapping that in an outbound link would
+                      take the reader off the page every time they tried to look
+                      closer. The host IS the link text: "nature.com" says where
+                      you are going, in any language. */}
+                  {w.link && (
+                    <a class="mprof__link" href={w.link} target="_blank" rel="noopener noreferrer">
+                      {hostLabel(w.link)}
+                    </a>
+                  )}
                 </figcaption>
               )}
             </figure>

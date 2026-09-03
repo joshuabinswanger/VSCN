@@ -270,6 +270,10 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.captionNote": "One line. Also read aloud as the image description.",
     "profile.gallery.descriptionShort": "In one sentence (shown in the lightbox)",
     "profile.gallery.description": "About this image (shown on your profile page)",
+    // Stored without a scheme, like Portfolio: the input carries a fixed
+    // https:// prefix, so the placeholder must not repeat one.
+    "profile.gallery.link": "Where this image appeared",
+    "profile.gallery.link.ph": "nature.com/articles/… (optional)",
     "profile.tag.error": "Tags must be unique, 1–50 characters, and no more than 7 tags.",
     "profile.reauth.confirming": "Confirming…",
     "profile.reauth.error": "Incorrect password. Please try again.",
@@ -600,6 +604,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.captionNote": "Eine Zeile. Wird auch als Bildbeschreibung vorgelesen.",
     "profile.gallery.descriptionShort": "In einem Satz (erscheint in der Lightbox)",
     "profile.gallery.description": "Über dieses Bild (erscheint auf deiner Profilseite)",
+    "profile.gallery.link": "Wo dieses Bild erschienen ist",
+    "profile.gallery.link.ph": "nature.com/articles/… (optional)",
     "profile.tag.error": "Tags müssen eindeutig sein, 1–50 Zeichen, und maximal 7 Tags.",
     "profile.reauth.confirming": "Wird bestätigt…",
     "profile.reauth.error": "Falsches Passwort. Bitte erneut versuchen.",

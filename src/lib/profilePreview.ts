@@ -13,7 +13,7 @@
 //
 // The link-shaping rules are imported from links.ts; there is deliberately no
 // second copy of them here.
-import { href, socialLinks } from "./links.ts";
+import { href, hostLabel, socialLinks } from "./links.ts";
 // The card preview drives the DIRECTORY CARD'S OWN carousel now, not a still
 // picture that looks like one -- see renderCardPreview below and the header of
 // src/lib/communityCarousel.ts.
@@ -173,8 +173,8 @@ export function renderProfilePreview(
         const figure = clone("work");
         const img = figure?.querySelector("img");
         if (!figure || !img) return null;
-        const workPart = (name: string) =>
-          figure.querySelector<HTMLElement>(`[data-ppv-work="${name}"]`);
+        const workPart = <T extends HTMLElement = HTMLElement>(name: string) =>
+          figure.querySelector<T>(`[data-ppv-work="${name}"]`);
 
         img.src = w.url;
         img.width = w.width;
@@ -204,7 +204,20 @@ export function renderProfilePreview(
           desc.hidden = !descText;
         }
 
-        show(workPart("caption-block"), Boolean(captionText || descText));
+        // `w.link` arrives already scheme-prefixed and already filtered for
+        // linkability — by workLink() in links.ts, which BOTH producers of this
+        // view model call: works() in memberView.ts at build time, and the
+        // editor's own mapping as the member types. The two build the model
+        // separately, so a shared rule is the only thing keeping the preview
+        // honest about what a visitor will get.
+        const link = workPart<HTMLAnchorElement>("link");
+        if (link) {
+          link.textContent = w.link ? hostLabel(w.link) : "";
+          link.href = w.link ?? "";
+          link.hidden = !w.link;
+        }
+
+        show(workPart("caption-block"), Boolean(captionText || descText || w.link));
         return figure;
       })
       .filter((n): n is HTMLElement => n !== null);

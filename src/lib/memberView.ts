@@ -8,6 +8,7 @@
 
 import type { PublicProfileDoc } from "./firestore.ts";
 import type { ProfileViewModel, ProfileWork } from "./profileView.ts";
+import { workLink } from "./links.ts";
 
 export interface MemberViewBase extends ProfileViewModel {
   /** The profile's uid. Stable, but not what appears in the URL. */
@@ -167,6 +168,7 @@ function works(doc: PublicProfileDoc): ProfileWork[] {
         color: g.color,
         description: (g.description ?? "").trim() || undefined,
         descriptionShort: (g.descriptionShort ?? "").trim() || undefined,
+        link: workLink(g.link),
       };
     });
 }

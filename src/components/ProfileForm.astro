@@ -264,6 +264,16 @@ const t = useTranslations(lang);
             }
             <textarea class="input textarea" rows="2" data-gallery-field="descriptionShort"></textarea>
             <textarea class="input textarea" rows="3" data-gallery-field="description"></textarea>
+            {
+              /* WHERE THIS IMAGE APPEARED. Same fixed-prefix treatment as
+                Portfolio and the social rows, because the value is stored the
+                same way: without a scheme. A bare text input would collect a
+                mix of "nature.com/…" and "https://nature.com/…" in one field. */
+            }
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">https://</span>
+              <input type="text" class="input input-prefixed" data-gallery-field="link" />
+            </div>
           </div>
         </div>
       </template>
@@ -685,6 +695,13 @@ const t = useTranslations(lang);
     min-height: 56px;
   }
 
+  /* The fixed `https://` belongs to the field it sits against, so it takes the
+     row's compact size too. Without this it keeps the form's full type size and
+     reads a size larger than the value beside it. */
+  .gallery-fields .input-prefix {
+    font-size: 0.85rem;
+  }
+
   .gallery-thumb {
     position: relative;
     aspect-ratio: 1;
@@ -1047,6 +1064,7 @@ const t = useTranslations(lang);
     MAX_GALLERY_CAPTION,
     MAX_GALLERY_DESCRIPTION,
     MAX_GALLERY_DESCRIPTION_SHORT,
+    MAX_GALLERY_LINK,
     validateGalleryFile,
     compressGalleryImage,
     uploadGalleryImage,
@@ -1059,6 +1077,7 @@ const t = useTranslations(lang);
   import {
     splitSocial,
     joinSocial,
+    workLink,
     MAX_SOCIAL_LINKS,
     MAX_SOCIAL_MEDIA,
   } from "../lib/links.ts";
@@ -1329,7 +1348,9 @@ const t = useTranslations(lang);
             const caption = field<HTMLInputElement>("caption");
             const description = field<HTMLTextAreaElement>("description");
             const descriptionShort = field<HTMLTextAreaElement>("descriptionShort");
+            const link = field<HTMLInputElement>("link");
             if (!img || !remove || !caption || !description || !descriptionShort) return null;
+            if (!link) return null;
 
             img.src = item.url;
             remove.setAttribute("aria-label", s["profile.gallery.remove"]);
@@ -1359,6 +1380,21 @@ const t = useTranslations(lang);
             named(description, s["profile.gallery.description"]);
             description.addEventListener("input", () => {
               gallery[index].description = description.value;
+              syncPreview();
+            });
+
+            link.value = item.link ?? "";
+            link.maxLength = MAX_GALLERY_LINK;
+            link.placeholder = s["profile.gallery.link.ph"];
+            named(link, s["profile.gallery.link"]);
+            link.addEventListener("input", () => {
+              // Deleted rather than stored empty, because firestore.rules only
+              // permits the keys it knows and an empty string is not a link —
+              // the same reason `projectId` was deleted rather than blanked
+              // when its select was cleared.
+              const value = link.value.trim();
+              if (value) gallery[index].link = value;
+              else delete gallery[index].link;
               syncPreview();
             });
 
@@ -1516,6 +1552,11 @@ const t = useTranslations(lang);
             color: g.color,
             description: (g.description ?? "").trim() || undefined,
             descriptionShort: (g.descriptionShort ?? "").trim() || undefined,
+            // Same rule the built page applies — works() in memberView.ts calls
+            // this too — so the Preview tab shows a link exactly when a visitor
+            // would get one, including showing none for a value that is not
+            // link-shaped yet, mid-typing.
+            link: workLink(g.link),
           };
         }),
       };

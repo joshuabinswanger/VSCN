@@ -247,7 +247,7 @@ function validGalleryItem(item) {
     // carry the tag is rejected outright. The editor strips it on load
     // (sanitizeGalleryItems in src/lib/gallery.ts) precisely so that a member
     // whose images were tagged before the withdrawal can still save.
-    && item.keys().hasOnly(['imageId', 'url', 'caption', 'description', 'descriptionShort', 'width', 'height', 'color'])
+    && item.keys().hasOnly(['imageId', 'url', 'caption', 'description', 'descriptionShort', 'link', 'width', 'height', 'color'])
     && (!('color' in item) || (item.color is string && item.color.matches('#[0-9a-f]{6}')))
     && item.url is string
     && validStorageUrl(item.url)
@@ -255,6 +255,12 @@ function validGalleryItem(item) {
     && (!('description' in item) || (item.description is string && item.description.size() <= 600))
     // Keep in sync with MAX_GALLERY_DESCRIPTION_SHORT in src/lib/gallery.ts.
     && (!('descriptionShort' in item) || (item.descriptionShort is string && item.descriptionShort.size() <= 240))
+    // WHERE THE IMAGE APPEARED. Only LENGTH is checked, deliberately: the value
+    // is stored without a scheme (like `portfolio`), members type whatever they
+    // type, and the READ path is what decides whether a value is linkable — see
+    // workLink() in src/lib/links.ts. Mirror of MAX_GALLERY_LINK in
+    // src/lib/gallery.ts.
+    && (!('link' in item) || (item.link is string && item.link.size() <= 200))
     && item.imageId is string && item.imageId.size() > 0 && item.imageId.size() <= 40
     && item.width is int && item.width > 0 && item.width <= 10000
     && item.height is int && item.height > 0 && item.height <= 10000;

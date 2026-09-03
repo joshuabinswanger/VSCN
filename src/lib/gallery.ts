@@ -25,6 +25,12 @@ export const MAX_GALLERY_CAPTION = 140;
 export const MAX_GALLERY_DESCRIPTION = 600;
 
 /**
+ * THE PER-IMAGE LINK'S CEILING. Matches `portfolio` in firestore.rules,
+ * because it holds the same kind of value: one URL, stored without its scheme.
+ */
+export const MAX_GALLERY_LINK = 200;
+
+/**
  * THE SHORT DESCRIPTION'S CEILING (2026-09-03, Josh: "image descriptions
  * should have a long and short version: one for portfolio the rest for
  * lightbox and other places").
@@ -97,6 +103,19 @@ export interface GalleryItem {
    * machine-truncated paragraph is not a summary).
    */
   descriptionShort?: string;
+  /**
+   * Where this image lives in the world: the paper it illustrates, the campaign
+   * it ran in, the shop that sells the print. This is the useful half of what
+   * the withdrawn `projects` feature carried — a link, without a second list to
+   * maintain and without a dropdown that could point at a project that is gone.
+   *
+   * Stored WITHOUT a scheme ("nature.com/articles/…"), matching `portfolio` —
+   * the editor shows a fixed `https://` prefix rather than asking anyone to
+   * type one, and href() in links.ts puts it back for rendering. A value that
+   * cannot be a URL at all is dropped by the read path rather than rendered as
+   * a dead link; see workLink() in links.ts and works() in memberView.ts.
+   */
+  link?: string;
 }
 
 /**
@@ -131,6 +150,7 @@ export function sanitizeGalleryItems(value: unknown): GalleryItem[] {
       if (typeof raw.description === "string" && raw.description) item.description = raw.description;
       if (typeof raw.descriptionShort === "string" && raw.descriptionShort)
         item.descriptionShort = raw.descriptionShort;
+      if (typeof raw.link === "string" && raw.link) item.link = raw.link;
       return item;
     })
     .filter((item) => item.url && item.width > 0 && item.height > 0);

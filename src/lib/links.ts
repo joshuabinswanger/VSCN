@@ -12,6 +12,42 @@ export function href(raw: string): string {
   return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 }
 
+/**
+ * The bare host of an absolute URL, `www.` dropped — visible text for a link
+ * that has no label of its own.
+ *
+ * Used for the gallery's per-image link, where "nature.com" tells a reader more
+ * about where they are going than any translated phrase would, and needs no
+ * translation to do it.
+ */
+export function hostLabel(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./i, "");
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Turns a stored per-image gallery link into an href, or drops it.
+ *
+ * firestore.rules checks only the LENGTH of `link` — rules cannot parse a URL —
+ * so the decision about whether a value is linkable is made here, once, and
+ * every renderer inherits it: the built member page, and the editor's own live
+ * preview, which builds its view model separately and would otherwise disagree
+ * with the page it is previewing.
+ *
+ * The dot test is the whole rule. A value with no dot is a note to self, not a
+ * host, and rendering it as an anchor produces a link that goes nowhere — the
+ * same failure the withdrawn `projectId` produced once its project was gone,
+ * and the same answer as then: render no link rather than a broken one.
+ */
+export function workLink(raw: string | undefined): string | undefined {
+  const value = (raw ?? "").trim();
+  if (!value || !/\./.test(value) || /\s/.test(value)) return undefined;
+  return href(value);
+}
+
 // ---------------------------------------------------------------------------
 // Social link cleaner
 //

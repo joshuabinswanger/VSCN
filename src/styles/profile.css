@@ -283,6 +283,15 @@
   white-space: pre-line;
 }
 
+/* The per-image "where this appeared" link reuses .mprof__link wholesale — it
+   should look like every other link on the page. The one thing the shared rule
+   cannot give it: the caption is a flex COLUMN, so an anchor stretches to the
+   full width and its underline reads as a rule across the page.
+   One rule, both consumers — the page and the editor's preview. */
+.mprof__caption .mprof__link {
+  align-self: start;
+}
+
 @media (--bp-mobile) {
   .mprof {
     padding-block: 2rem 6rem;

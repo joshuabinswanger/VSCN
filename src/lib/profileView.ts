@@ -29,6 +29,13 @@ export interface ProfileWork {
    * one gets no short line rather than a cut-off one.
    */
   descriptionShort?: string;
+  /**
+   * Absolute href for "where this image lives" — already scheme-prefixed and
+   * already filtered for linkability by workLink() in links.ts, so a renderer
+   * can link it without checking anything. Absent when the member wrote
+   * nothing, or wrote something that is not link-shaped.
+   */
+  link?: string;
 }
 
 export interface ProfileViewModel {
