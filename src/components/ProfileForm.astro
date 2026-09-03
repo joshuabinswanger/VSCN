@@ -379,11 +379,21 @@ const t = useTranslations(lang);
     </div>
 
     {
+      /* SIGNING OUT LEADS THE TAB (2026-09-03, Josh: "log Out should be more
+        prominent"). It was the second of two identical grey ghosts, below a
+        link most members are not allowed to follow — so the one action
+        everybody comes here for looked like the afterthought. */
+    }
+    <button id="btn-logout" type="button" class="btn-logout-strong">
+      {t("profile.logout")}
+    </button>
+
+    {
       /* THE WAY INTO /admin (2026-09-03, Josh: "i cant see the admin console
         ... cant it be on the normal profile page?"). Nothing on the site
         linked to it, so reaching the console meant knowing to type the URL.
         It lives on the Account tab because that is where the things about the
-        ACCOUNT rather than the profile already are — the logout beside it,
+        ACCOUNT rather than the profile already are — the logout above it,
         the danger zone below.
 
         Not locale-prefixed: /admin is a single page outside src/pages/[...lang]
@@ -395,33 +405,50 @@ const t = useTranslations(lang);
         and a claim granted by set-admin.mjs after the browser last signed in
         is not in it. Without that refresh this link would stay invisible to a
         brand-new admin for an hour, which is the same bug the console's own
-        gate had. A non-admin never sees it — and it is a link, not a
-        permission: /admin and every admin callable gate themselves. */
+        gate had. A non-admin never sees it — see the `[hidden]` rule in the
+        styles below for why that sentence was false until 2026-09-03. It is a
+        link, not a permission: /admin and every admin callable gate
+        themselves. */
     }
-    <a id="admin-link" class="btn-outline logout-button" href="/admin" hidden>
+    <a id="admin-link" class="btn-outline account-quiet" href="/admin" hidden>
       {t("profile.adminConsole")}
     </a>
-
-    <button id="btn-logout" type="button" class="btn-outline logout-button">
-      {t("profile.logout")}
-    </button>
 
     {
       /* Auth owns the change: the confirmation link goes to the NEW address
         and the swap happens only when it is clicked. users/{uid}.email is a
-        server-written mirror that catches up on the next load. */
+        server-written mirror that catches up on the next load.
+
+        BEHIND ITS OWN TRIGGER (2026-09-03, Josh: "email change behind
+        seperate mask"). Standing open, an empty "new email address" beside an
+        empty password box reads as a field the Account tab is asking you to
+        fill in — and it sat directly under the phone number, which IS one.
+        Changing an email is a deliberate errand; it should take a deliberate
+        click to start. */
     }
     <div class="account-block">
-      <h3 class="label">{t("profile.email.title")}</h3>
-      <label class="label" for="email-new">{t("profile.email.new")}</label>
-      <input id="email-new" type="email" class="input" autocomplete="email" />
-      <label class="label" for="email-password">{t("profile.reauth.text")}</label>
-      <input id="email-password" type="password" class="input" autocomplete="current-password" />
-      <p id="email-msg" class="msg-ok" style="display:none;"></p>
-      <p id="email-error" class="msg-err" style="display:none;"></p>
-      <button type="button" id="btn-email-change" class="btn-solid"
-        >{t("profile.email.submit")}</button
-      >
+      <div id="email-idle">
+        <button type="button" id="btn-email-start" class="btn-link"
+          >{t("profile.email.title")}</button
+        >
+      </div>
+
+      <div id="email-form" class="account-disclosure" hidden>
+        <label class="label" for="email-new">{t("profile.email.new")}</label>
+        <input id="email-new" type="email" class="input" autocomplete="email" />
+        <label class="label" for="email-password">{t("profile.reauth.text")}</label>
+        <input id="email-password" type="password" class="input" autocomplete="current-password" />
+        <p id="email-msg" class="msg-ok" style="display:none;"></p>
+        <p id="email-error" class="msg-err" style="display:none;"></p>
+        <div class="account-actions">
+          <button type="button" id="btn-email-cancel" class="btn-link"
+            >{t("profile.reauth.cancel")}</button
+          >
+          <button type="button" id="btn-email-change" class="btn-solid"
+            >{t("profile.email.submit")}</button
+          >
+        </div>
+      </div>
     </div>
 
     <div class="danger-zone">
@@ -1069,8 +1096,74 @@ const t = useTranslations(lang);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
   }
 
-  .logout-button {
+  /*
+   * `hidden` ALONE DOES NOT HIDE ANYTHING HERE, and that is not a detail.
+   *
+   * The UA sheet's `[hidden] { display: none }` loses to ANY author rule that
+   * sets `display` — and `.btn-outline` sets `display: inline-flex`. So the
+   * admin link carried the attribute, was never un-hidden by the claim check,
+   * and was on screen for every signed-in member anyway (2026-09-03, Josh:
+   * "Admin console only shows up for people with permission"). Harmless in
+   * itself — /admin gates itself — but it advertised a door nobody could open.
+   *
+   * The same silence was defeating the upload queue's row controls, which is
+   * where it actually cost something: `.gallery-thumb-remove` and
+   * `.gallery-tools` both set `display: flex`, so every row showed its Cancel
+   * AND its Retry/Dismiss pair at once, on rows that had nothing to retry.
+   * (VisualNeedsSelector already knew — it ships its own
+   * `visual-needs-selector[hidden]` rule for exactly this reason.)
+   *
+   * Astro's scope attribute lifts this to (0,2,0) and `!important` settles the
+   * ties with the component's own classes, so from here `hidden` means hidden.
+   * Same trap, same fix as `.ccard--preview [hidden]` in communityCard.css.
+   */
+  [hidden] {
+    display: none !important;
+  }
+
+  /*
+   * Signing out is what a member opens this tab to DO, so it looks like it:
+   * full-strength ink and border instead of the muted ghost it used to share
+   * with the admin link. It stays an outline — the filled black is Save's, and
+   * two black buttons on one screen is two primary actions.
+   */
+  .btn-logout-strong {
     align-self: start;
+    padding: 0.75rem 1.75rem;
+    background: var(--color-bg);
+    color: var(--color-dark);
+    border: 1.5px solid var(--color-dark);
+    border-radius: var(--radius-sm);
+    font-family: "Archivo", sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .btn-logout-strong:hover {
+    background: var(--color-dark);
+    color: var(--color-bg);
+  }
+
+  /* A door to somewhere else rather than an account action, so it keeps the
+     quiet outline and sits below the thing this tab is for. */
+  .account-quiet {
+    align-self: start;
+  }
+
+  .account-disclosure {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .account-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.25rem;
   }
 
   .deletion-banner {
@@ -2483,6 +2576,28 @@ const t = useTranslations(lang);
     const emailMsg = document.getElementById("email-msg")!;
     const emailError = document.getElementById("email-error")!;
     const emailBtn = document.getElementById("btn-email-change") as HTMLButtonElement;
+    const emailIdle = document.getElementById("email-idle")!;
+    const emailForm = document.getElementById("email-form")!;
+
+    function showEmailForm(open: boolean) {
+      emailIdle.hidden = open;
+      emailForm.hidden = !open;
+    }
+
+    document.getElementById("btn-email-start")!.addEventListener("click", () => {
+      showEmailForm(true);
+      emailNew.focus();
+    });
+
+    // Cancel empties the password too. Leaving a typed credential in a field
+    // that is merely display:none is not a thing to do casually.
+    document.getElementById("btn-email-cancel")!.addEventListener("click", () => {
+      emailNew.value = "";
+      emailPassword.value = "";
+      emailMsg.style.display = "none";
+      emailError.style.display = "none";
+      showEmailForm(false);
+    });
 
     emailBtn.addEventListener("click", async () => {
       const next = emailNew.value.trim();
