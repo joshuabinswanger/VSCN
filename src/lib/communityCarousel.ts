@@ -97,10 +97,15 @@ function inMobileGallery(): boolean {
  * them are on screen at once; every one of them used to be running its own 5s
  * timer, so a reader looking at one card had two more changing in the corner of
  * their eye. Now only the card the reader is actually on advances: the one whose
- * centre is NEAREST THE MIDDLE OF THE VIEWPORT, which is the same definition of
- * "most prominent" the opacity focus uses (the cgrid-cell-focus keyframes in
- * CommunityGrid.astro). If the two ever disagree, the faded cards would be the
- * moving ones — so they have to keep meaning the same thing.
+ * centre is NEAREST THE MIDDLE OF THE VIEWPORT.
+ *
+ * This is the STRICTER of the page's two ideas of prominence, and deliberately
+ * so (2026-09-04). The opacity fade next door — cgrid-cell-in/cgrid-cell-out in
+ * CommunityGrid.astro — leaves every card between the middle of the screen and
+ * the filter bar at full strength, which can be more than one. This picks
+ * exactly one of those to move. What must never happen is the reverse, a card
+ * moving while it is faded, and "nearest the middle" cannot produce it: the
+ * card nearest the middle is always inside the lit stretch.
  *
  * NEAREST, not "inside a band": a band leaves gaps where nothing qualifies (two
  * tall cards meeting) and overlaps where two do (short cards), and both read as

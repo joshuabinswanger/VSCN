@@ -70,3 +70,43 @@ Note you cannot see either of these in the Browser pane — see
 [[browser-pane-frozen-timeline]]. `getAnimations()` reports the ViewTimeline attached
 with `progress: null`, and CSS transitions read as pinned at their start value even when
 `:hover` matches. Verify the wiring, not the picture.
+
+**2026-09-04: the fade-in stayed, the fade-out moved to the bar.** Josh, first: "the fade
+in the gallery view should only start to happen once the top of the image touches the filter
+bar" — then, correcting a version that had dropped the arrival ramp with it: "until they
+reach the middle they should be faded out. i liked the fade in so far it should have just
+changed the fade out". The shape now is: dim on the way in, full strength around the middle
+of the screen, HELD for the whole time the card is below the filter bar, given up only as it
+slides under the bar.
+
+**It takes two animations, because the two ramps want different clocks.**
+- IN — `cgrid-cell-in`, plain `view()`, `cover 0% cover 35%`, fill `backwards`. Unchanged
+  from the version Josh liked. It can only ever be a FIT: `cover` is linear in scroll
+  distance (card height + scrollport), not in the screen position of an edge, so 35% means
+  "top edge near the middle" only for this page's real card sizes.
+- OUT — `cgrid-cell-out`, `view(block var(--cgrid-fade-inset) 0px)`, `exit`, fill `both`.
+  The inset shrinks the timeline's scrollport from the top by the bar's height, which makes
+  `exit` mean "leaving UNDER THE BAR". Exact for every card height, nothing fitted.
+  `--cgrid-fade-inset` is measured once per page-load (and on a ResizeObserver of the bar)
+  as `parseFloat(getComputedStyle(bar).top) + bar.offsetHeight` — 40.8px on a 375x812
+  phone — because `top` is the DOCKED offset whether or not the bar is docked yet.
+
+**The fill modes are the handover and they are load-bearing.** Both animate `opacity`, so
+the later one in the list wins wherever it contributes. `cgrid-cell-in` is listed SECOND
+with `backwards`: it fills the before phase, drives the arrival, then stops contributing at
+the end of its range, and `cgrid-cell-out` (first, `both`) is left holding opacity 1 until
+the bar. Give the in-ramp `both` instead and every card pins at 1 forever and the fade-out
+never shows. The ranges cannot overlap here — in ends ~400px of scroll, out starts ~771px
+(scrollport less bar) — but a card taller than the scrollport would close that gap.
+
+**Accepted consequence:** more than one card is fully opaque, because every card between the
+middle and the bar is. `focusedCarousel()` in `communityCarousel.ts` still moves the ONE
+nearest the scrollport centre and is now the STRICTER of the two, which is the safe
+direction — a faded card can never be the moving one.
+
+**Correction to [[browser-pane-frozen-timeline]] for THIS mechanism:** a real
+`computer{action:"scroll"}` gesture DOES drive scroll-driven animations in the pane and
+commits the values — I read 0.35 below the fold, ~0.5 arriving, 1.00 mid-column, 0.99
+falling at the bar, 0.35 above it. What does not work is setting `scrollTop`/`scrollTo`
+from `javascript_tool`: the scroll position moves, layout updates, and the animation's
+`currentTime` stays at whatever the last real gesture left it.

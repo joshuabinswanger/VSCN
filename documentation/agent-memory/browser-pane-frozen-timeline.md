@@ -38,3 +38,14 @@ the right elements) and by checking the geometry the motion is keyed to (availab
 below the last row vs. the trigger's end), never by scrolling and reading values back.
 
 **How to apply:** check `document.hidden` / `document.timeline.currentTime` before diagnosing any animation. To verify layout in that pane, inject `transition: none !important` for the elements involved, force a reflow (`void el.offsetWidth`), and assert on **end states** — geometry, computed widths, class-driven values. Accept that motion smoothness and resize-driven re-fits cannot be verified there, and say so instead of implying they were. See also [[header-letter-overwrite-animation]] and the 0×0-viewport note in the repo's CLAUDE.md "Tooling notes".
+
+**2026-09-04, a way through it for scroll-driven animations.** Fronting the tab
+(`tabs_select`) unfreezes enough to matter, and then a real `computer{action:"scroll"}`
+gesture drives `animation-timeline: view()` and commits the values — `getComputedStyle`
+reads the real opacity afterwards. What still lies is `scrollTop = n` / `scrollTo()` from
+`javascript_tool`: the page scrolls and layout updates, but the timeline's `currentTime`
+stays where the last real gesture left it, so every reading is the previous position's.
+That combination — correct rects, stale opacities — is the exact shape of a code bug, and
+it is not one. Scroll with the mouse. (Also: `requestAnimationFrame` never resolves while
+the pane is hidden, so an rAF-based wait hangs the tool for its full timeout;
+`setTimeout` returns.) See [[community-mobile-pattern]] for the mechanism this was found on.
