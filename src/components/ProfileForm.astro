@@ -1028,6 +1028,7 @@ const t = useTranslations(lang);
     sendEmailVerification,
     verifyBeforeUpdateEmail,
   } from "firebase/auth";
+  import { returnTo } from "../lib/authEmail.ts";
   import { requireAuth } from "../lib/auth.ts";
   import { getUser, getPublicProfileActive, setProfileActive } from "../lib/firestore.ts";
   import { markImageForDeletion } from "../lib/images.ts";
@@ -1054,7 +1055,6 @@ const t = useTranslations(lang);
     type GalleryItem,
   } from "../lib/gallery.ts";
   import { updateUserProfile } from "../lib/firestore.ts";
-  import { openImageEditor } from "../lib/imageEditor.ts";
   import { renderCardPreview, renderProfilePreview } from "../lib/profilePreview.ts";
   import {
     splitSocial,
@@ -1074,11 +1074,6 @@ const t = useTranslations(lang);
     const lang = (form.dataset.lang ?? "en") as keyof typeof ui;
     const s = ui[lang] ?? ui.en;
     const prefix = lang === "de" ? "/de" : "";
-    const editorLabels = {
-      rotate: s["profile.edit.rotate"],
-      apply: s["profile.edit.apply"],
-      cancel: s["profile.edit.cancel"],
-    };
     // EVERYTHING THE DIRECTORY CARD SAYS THAT ITS MARKUP CANNOT CARRY. The
     // real card resolves these with useTranslations() at build time; the
     // preview is filled in the browser from live form state, so the strings
@@ -1437,9 +1432,8 @@ const t = useTranslations(lang);
           continue;
         }
         try {
-          const edited = await openImageEditor(file, editorLabels);
           setGalleryStatus(s["profile.upload.processing"]);
-          const compressed = await compressGalleryImage(edited ?? file);
+          const compressed = await compressGalleryImage(file);
           const item = await uploadGalleryImage(user.uid, compressed, (pct) => {
             setGalleryStatus(`${s["profile.upload.uploading"]} ${pct}%`);
           });
@@ -1628,9 +1622,7 @@ const t = useTranslations(lang);
       uploadStatus.textContent = s["profile.upload.processing"];
       uploadStatus.style.display = "block";
       try {
-        const edited = await openImageEditor(file, editorLabels);
-        const source = edited ? new File([edited], "edited.png", { type: "image/png" }) : file;
-        ({ blob: resizedAvatarBlob, color: avatarColor } = await resizeAvatar(source));
+        ({ blob: resizedAvatarBlob, color: avatarColor } = await resizeAvatar(file));
         const previewUrl = URL.createObjectURL(resizedAvatarBlob);
         showPreview(previewUrl);
         uploadStatus.textContent = `${s["profile.upload.selected"]}${file.name}`;
@@ -1672,7 +1664,7 @@ const t = useTranslations(lang);
           resendCooldown = true;
           btnResendVerify.disabled = true;
           try {
-            await sendEmailVerification(user);
+            await sendEmailVerification(user, returnTo(lang, "/profile"));
             verifyBannerSent.style.display = "block";
           } catch {
             // silently fail — user can try again after cooldown
@@ -1912,7 +1904,7 @@ const t = useTranslations(lang);
       emailBtn.textContent = s["profile.email.sending"];
       try {
         const user = await reauthenticate(emailPassword.value);
-        await verifyBeforeUpdateEmail(user, next);
+        await verifyBeforeUpdateEmail(user, next, returnTo(lang, "/profile"));
         emailMsg.textContent = s["profile.email.sent"].replace("{email}", next);
         emailMsg.style.display = "block";
         emailNew.value = "";

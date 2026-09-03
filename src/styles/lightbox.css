@@ -7,8 +7,8 @@
    WHY A FILE AND NOT A <style> BLOCK
    The lightbox mounts on document.body, outside the component that opened it,
    so an Astro-scoped block (which stamps a data-astro-cid attribute on the
-   markup it ships) can never reach it. `.image-editor` in global.css is the
-   existing precedent for a JS-appended overlay styled globally.
+   markup it ships) can never reach it. A global stylesheet is the only thing
+   that can style an overlay JavaScript appends to the body.
 
    HOW THESE OVERRIDES WIN
    Two things, neither of them !important:
