@@ -301,6 +301,30 @@ const t = useTranslations(lang);
       </p>
     </div>
 
+    {
+      /* THE WAY INTO /admin (2026-09-03, Josh: "i cant see the admin console
+        ... cant it be on the normal profile page?"). Nothing on the site
+        linked to it, so reaching the console meant knowing to type the URL.
+        It lives on the Account tab because that is where the things about the
+        ACCOUNT rather than the profile already are — the logout beside it,
+        the danger zone below.
+
+        Not locale-prefixed: /admin is a single page outside src/pages/[...lang]
+        (there is no /de/admin), so a `${prefix}` here would 404 in German.
+
+        `hidden` until the claim is confirmed, and the claim is read the same
+        way the console itself reads it (see AdminConsole): a forced token
+        refresh, because Firebase serves a CACHED ID token for up to an hour
+        and a claim granted by set-admin.mjs after the browser last signed in
+        is not in it. Without that refresh this link would stay invisible to a
+        brand-new admin for an hour, which is the same bug the console's own
+        gate had. A non-admin never sees it — and it is a link, not a
+        permission: /admin and every admin callable gate themselves. */
+    }
+    <a id="admin-link" class="btn-outline logout-button" href="/admin" hidden>
+      {t("profile.adminConsole")}
+    </a>
+
     <button id="btn-logout" type="button" class="btn-outline logout-button">
       {t("profile.logout")}
     </button>
@@ -1618,6 +1642,24 @@ const t = useTranslations(lang);
 
     unsubscribeAuth?.();
     unsubscribeAuth = requireAuth(async (user) => {
+      // The admin link, shown only to an admin. Two reads, exactly as the
+      // console's own gate does it: the cached token first (free, right for
+      // every established admin), then ONE forced refresh before concluding
+      // "not an admin" — a claim granted since this browser last signed in is
+      // not in the cached token for up to an hour.
+      void (async () => {
+        const adminLink = document.getElementById("admin-link");
+        if (!adminLink) return;
+        try {
+          let claims = (await user.getIdTokenResult()).claims;
+          if (claims.admin !== true) claims = (await user.getIdTokenResult(true)).claims;
+          if (claims.admin === true) adminLink.hidden = false;
+        } catch {
+          // Offline or a token that will not refresh: leave it hidden. The
+          // console is still reachable by URL and gates itself.
+        }
+      })();
+
       const verifyBanner = document.getElementById("verify-banner")!;
       const btnResendVerify = document.getElementById("btn-resend-verify") as HTMLButtonElement;
       const verifyBannerSent = document.getElementById("verify-banner-sent")!;

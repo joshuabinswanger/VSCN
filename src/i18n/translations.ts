@@ -225,6 +225,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.view.noWorks": "No images yet. Add work in the gallery field and it will appear here.",
     "profile.view.defaultName": "Your name",
     "profile.saveMsg": "Changes saved. Your community card will update within a few minutes.",
+    "profile.adminConsole": "Admin console",
     "profile.logout": "Log Out",
     "profile.save": "Save Changes",
     "profile.delete.idle": "Delete account",
@@ -554,6 +555,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.view.defaultName": "Dein Name",
     "profile.saveMsg":
       "Änderungen gespeichert. Deine Community-Karte wird innerhalb weniger Minuten aktualisiert.",
+    "profile.adminConsole": "Admin-Konsole",
     "profile.logout": "Abmelden",
     "profile.save": "Änderungen speichern",
     "profile.delete.idle": "Konto löschen",
