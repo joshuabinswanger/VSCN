@@ -16,6 +16,13 @@ the `email_verified` claim — and then ask whether the write is simply too big.
 array LENGTH, not by content: if a copy of a known-good element fails in slot 3, it is the
 budget. `return item is map;` in place of the real check is the one-line confirmation.
 
+**MEASURE AGAINST A MAXIMAL PROFILE, NOT A REALISTIC ONE.** The first fix was verified
+against a fixture with three tags and two audiences, called 8/8, and was wrong: a member
+with every list full still got FOUR. The member whose profile is most complete loses the
+most images. What closed it was flattening the last two unrolled list validators —
+`validLanguages` and `validPrimaryAudiences` — to `hasOnly` on the list, one expression
+instead of one function call per element.
+
 **The private doc is the tighter of the two.** `users/{uid}` carries three more fields than
 `publicProfiles/{uid}` and paid for them out of the same budget, so it refused an eighth
 image the public doc had just accepted — and `updateUserProfile` writes both. Anything added

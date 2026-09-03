@@ -295,19 +295,26 @@ function validGalleryItem(item) {
 
 
 // Keep in sync with LANGUAGES in src/lib/firestore.ts.
+// FLATTENED, NOT UNROLLED — and that is a budget decision, not a style one.
+//
+// The per-element form (four `validLanguageCode(value[n])` calls behind four
+// `value.size() < n` guards) costs one function call per element, and a
+// filled-in profile spends the same budget the gallery needs. With this
+// function and validPrimaryAudiences written out that way, a member whose
+// lists are full could save FOUR images out of eight — see the comment on
+// validGalleryItem, and documentation/20260903-gallery-rules-budget.md.
+//
+// `hasOnly` on a LIST asks the same question in one expression: every element
+// is one of these. It does not notice duplicates, which the unrolled form did
+// not either — the size cap is what bounds the list, and the client writes it
+// from a fixed set of checkboxes.
+//
+// Keep in sync with LANGUAGES in src/lib/firestore.ts.
 function validLanguages(value) {
-  return value is list
-    && value.size() <= 4
-    && (value.size() < 1 || validLanguageCode(value[0]))
-    && (value.size() < 2 || validLanguageCode(value[1]))
-    && (value.size() < 3 || validLanguageCode(value[2]))
-    && (value.size() < 4 || validLanguageCode(value[3]));
+  return value is list && value.size() <= 4 && value.hasOnly(['de', 'en', 'fr', 'it']);
 }
 
-function validLanguageCode(value) {
-  return value is string
-    && (value == 'de' || value == 'en' || value == 'fr' || value == 'it');
-}
+
 
 // Keep in sync with MEMBER_TYPES in src/lib/firestore.ts.
 function validMemberType(value) {
@@ -318,22 +325,13 @@ function validMemberType(value) {
         || value == 'organization');
 }
 
+// Flattened for the same reason as validLanguages above.
 function validPrimaryAudiences(value) {
-  return value is list
-    && value.size() <= 4
-    && (value.size() < 1 || validPrimaryAudienceValue(value[0]))
-    && (value.size() < 2 || validPrimaryAudienceValue(value[1]))
-    && (value.size() < 3 || validPrimaryAudienceValue(value[2]))
-    && (value.size() < 4 || validPrimaryAudienceValue(value[3]));
+  return value is list && value.size() <= 4
+    && value.hasOnly(['science', 'public', 'policy-makers', 'education']);
 }
 
-function validPrimaryAudienceValue(value) {
-  return value is string
-    && (value == 'science'
-        || value == 'public'
-        || value == 'policy-makers'
-        || value == 'education');
-}
+
 
 function validOnboardingRequest(data, auth) {
   let allowedKeys = ['userId', 'message', 'lang', 'displayName', 'createdAt', 'updatedAt'];

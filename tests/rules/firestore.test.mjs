@@ -302,41 +302,57 @@ test("publicProfiles: a gallery item may say where the image appeared", async ()
   }));
 });
 
-test("publicProfiles: a FULL profile saves a FULL gallery", async () => {
-  // THE TEST THAT WAS MISSING, and the reason five uploads went missing on dev
-  // (2026-09-03). Rules evaluation has a budget; validGallery spends it eight
-  // times; and every existing gallery test wrote a ONE-item array on a profile
-  // holding almost nothing, so the budget was never approached. In production
-  // shape — a filled-in profile, items carrying caption, both descriptions and
-  // a link — the thorough validGalleryItem allowed exactly one image and
-  // refused the second with a bare `permission-denied`.
+test("users + publicProfiles: a MAXIMAL profile saves a FULL gallery", async () => {
+  // THE TEST THAT WAS MISSING, twice over.
   //
-  // So this fixture is deliberately maximal, and it must stay that way: a
-  // slimmer one passes while the real thing fails, which is precisely the hole
-  // it exists to close. If this test starts failing, validGalleryItem (or one
-  // of its neighbours in validPublicFields) has grown, and something must come
-  // back out — see the comment on validGalleryItem in firestore.rules.
+  // Rules evaluation has a budget; validGallery spends it eight times; and a
+  // fixture that is merely "realistic" understates it. The first version of
+  // this test used a profile with three tags and two audiences, passed 8/8, and
+  // was WRONG: the same rules gave a member with full lists four images. So
+  // every list here sits at its cap and every string at its ceiling, because
+  // the only number worth asserting is the one that holds for the member who
+  // filled everything in.
+  //
+  // Both documents, because updateUserProfile writes both and users/{uid}
+  // carries three fields more — it runs out first, and it is the one a member
+  // actually hits.
+  //
+  // If this starts failing, something in validPublicFields, validPrivateUser or
+  // validGalleryItem has grown, and something else must come out. There is no
+  // warning in production: a member simply loses an image, with a bare
+  // permission error. See documentation/20260903-gallery-rules-budget.md.
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
-  const url = (n) => `https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/img-${n}.webp?alt=media`;
+  const url = (n) => `https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/users%2F${OWNER}%2Fgallery%2F${n}.webp?alt=media`;
   const item = (n) => ({
-    imageId: `img-${n}`, url: url(n), caption: "A caption",
-    description: "A longer description of the piece.", descriptionShort: "One sentence.",
-    link: "https://onlinelibrary.wiley.com/doi/10.1111/gcb.70195",
-    width: 1200, height: 1380, color: "#e7dccc",
+    imageId: `img-${n}`, url: url(n), caption: "x".repeat(140),
+    description: "x".repeat(600), descriptionShort: "x".repeat(240),
+    link: "x".repeat(200), width: 2400, height: 1800, color: "#e8c4b4",
   });
+  const gallery = Array.from({ length: 8 }, (_, i) => item(i));
 
-  await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
-    displayName: "A Member With A Long Enough Name",
-    photoURL: url("avatar"), photoImageId: "avatar", photoColor: "#ffffff",
-    memberType: "both", role: "Researcher and illustrator",
-    bio: "A bio of a realistic length, several clauses long.",
-    portfolio: "example.com", socialMedia: "example.com/a, example.com/b",
-    affiliation: "Some institute", location: "Zurich",
-    languages: ["de", "en"], visualNeeds: ["a", "b"], openTo: ["a", "b"],
-    primaryAudiences: ["science", "public"], tags: ["a", "b", "c"],
+  const publicMax = {
+    displayName: "x".repeat(100),
+    photoURL: url("avatar"), photoImageId: "x".repeat(40), photoColor: "#ffffff",
+    memberType: "both", role: "x".repeat(100),
+    // 35 words is validBioWordCount's ceiling; long words take it to 500 chars.
+    bio: Array.from({ length: 35 }, () => "wordwordword").join(" "),
+    portfolio: "x".repeat(200), socialMedia: "x".repeat(500),
+    affiliation: "x".repeat(150), location: "x".repeat(100),
+    languages: ["de", "en", "fr", "it"],
+    visualNeeds: ["a", "b", "c", "d", "e", "f", "g", "h"],
+    openTo: ["a", "b", "c", "d", "e"],
+    primaryAudiences: ["science", "public", "policy-makers", "education"],
+    tags: ["a", "b", "c", "d", "e", "f", "g"],
     active: false,
-    gallery: Array.from({ length: 8 }, (_, i) => item(i)),
-  }));
+    gallery,
+  };
+  // `active` is public-only — it is not in validPrivateUser's allowlist, and
+  // leaving it here would reject the private write for the wrong reason.
+  const { active, ...rest } = publicMax;
+  const privateMax = { ...rest, phone: "x".repeat(40), wantsToContribute: true, onboardingComplete: true };
+
+  await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set(publicMax));
+  await assertSucceeds(db.doc(`users/${OWNER}`).set(privateMax));
 });
 
 test("users: email is server-written — absent on create, unchanged on update", async () => {

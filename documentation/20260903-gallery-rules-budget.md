@@ -79,27 +79,52 @@ request could put junk in their own card.
 
 ### The private document is the real cap
 
-With that in place, `publicProfiles/{uid}` took all eight and `users/{uid}` still refused the
-eighth — measured live on dev, not in the emulator. The private document carries three more
-fields (`phone`, `wantsToContribute`, `onboardingComplete`) and was paying for them out of
-the same budget, and `updateUserProfile` writes **both**, so the tighter of the two is what a
-member experiences. Rewriting those three clauses in the `data.get(key, default)` form bought
-back the eighth image:
+`publicProfiles/{uid}` took all eight while `users/{uid}` still refused the eighth. The
+private document carries three more fields (`phone`, `wantsToContribute`,
+`onboardingComplete`) and was paying for them out of the same budget, and
+`updateUserProfile` writes **both**, so the tighter of the two is what a member
+experiences. Those three clauses moved to the `data.get(key, default)` form.
+
+### And then the measurement turned out to be flattering
+
+That looked like 8/8 and was not. The fixture it was measured against had three tags and
+two audiences; the member it was measured FOR had seven tags and four audiences. Against a
+profile with every list at its cap:
 
 ```
-before   7 / 8  users        8 / 8  publicProfiles
-after    8 / 8  users        8 / 8  publicProfiles
+users 4 / 8    publicProfiles 5 / 8     with everything above already in place
 ```
 
-Verified against the live dev project as the real member, with the four refusals — off-site
-url, unlisted key, over-long link, over-long phone — still refusing.
+Four. The member whose profile is most complete is the one who loses the most images, which
+is exactly backwards, and the editor reports it as "Your sign-in expired."
 
-Anything added to `validPublicFields` or `validPrivateUser` from here comes out of the
-gallery's allowance. There is no warning; a member simply loses an image.
+The remaining cost was in the two list validators that were still **unrolled**:
+`validLanguages` and `validPrimaryAudiences` each spent one function call per element behind
+a `size()` guard. `hasOnly` on a list asks the same question — every element is one of these
+— in a single expression:
 
-`tests/rules/firestore.test.mjs` now carries **"publicProfiles: a FULL profile saves a FULL
-gallery"**, whose fixture is deliberately maximal. A slimmer fixture passes while the real
-thing fails, which is the hole it exists to close.
+```
+value is list && value.size() <= 4 && value.hasOnly(['de', 'en', 'fr', 'it'])
+```
+
+It does not notice duplicates. Neither did the unrolled form; the size cap is what bounds
+the list, and the client writes it from a fixed set of checkboxes. `validLanguageCode` and
+`validPrimaryAudienceValue` are gone with it.
+
+```
+users 8 / 8    publicProfiles 8 / 8     at the maximum
+```
+
+Verified end to end through the editor in a real signed-in session on dev: eight images
+uploaded and saved to both documents, a reorder persisted, three removals persisted and
+marked their records `pendingDeletion`.
+
+Anything added to `validPublicFields`, `validPrivateUser` or `validGalleryItem` from here
+comes out of the gallery's allowance. There is no warning; a member simply loses an image.
+
+`tests/rules/firestore.test.mjs` carries **"users + publicProfiles: a MAXIMAL profile saves
+a FULL gallery"**. Its fixture is at every cap on purpose, and the lesson of this section is
+that it must stay there: a merely realistic fixture passed while real members failed.
 
 ## The real fix, not done here
 
