@@ -29,7 +29,7 @@ export interface MemberGraph {
 }
 export interface LookupResult {
   graph: MemberGraph | null;
-  matches: { uid: string; displayName: string; active: boolean }[];
+  matches: { uid: string; displayName: string; slug: string; active: boolean }[];
 }
 export interface Queues {
   pendingDeletions: DeletionJobView[];
@@ -42,7 +42,30 @@ export interface Queues {
 const call = <Req, Res>(name: string) => async (data: Req): Promise<Res> =>
   (await httpsCallable<Req, Res>(functions, name)(data)).data;
 
+/** One row per member for the console's list view — see adminListMembers. */
+export interface MemberRow {
+  uid: string;
+  displayName: string;
+  slug: string;
+  role: string;
+  memberType: string;
+  email: string | null;
+  emailVerified: boolean | null;
+  hasAuth: boolean;
+  hasPublicProfile: boolean;
+  active: boolean;
+  status: string;
+  pendingDeletion: boolean;
+  /** Items in the member's gallery ARRAY — what their page will show. */
+  galleryCount: number;
+  /** images/{id} records they own. A disagreement with galleryCount is a signal. */
+  imageRecords: number;
+  hasAvatar: boolean;
+  createdAt: string | null;
+}
+
 export const lookupMember = call<{ query: string }, LookupResult>("adminLookupMember");
+export const listMembers = call<void, { members: MemberRow[] }>("adminListMembers");
 export const listQueues = call<void, Queues>("adminListQueues");
 export const purgeAccount = call<{ uid: string; immediate?: boolean }, { ok: true; purgeAfter: string }>("adminPurgeAccount");
 export const restoreAccount = call<{ uid: string }, { ok: true }>("adminRestoreAccount");
