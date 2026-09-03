@@ -666,6 +666,7 @@ const prefix = lang === "de" ? "/de" : "";
     publishCurrentUserProfile,
     upsertOnboardingRequest,
     activatePublicProfile,
+    activatePublicProfileIfExists,
     isMemberType,
     MEMBER_TYPES,
   } from "../lib/firestore.ts";
@@ -794,6 +795,24 @@ const prefix = lang === "de" ? "/de" : "";
       } catch {
         // non-critical
       }
+
+      // FINISHING ONBOARDING PUBLISHES YOU (2026-09-04, Josh: "it should
+      // become active when verifying and when going through the sign up flow.
+      // it should be an active task to untick it").
+      //
+      // Not redundant with the activatePublicProfile on the step-2 buttons:
+      // the call above is publishPublicProfile, which writes `active: false`
+      // whenever the account is unverified — so the last act of onboarding was
+      // to un-publish a member who had just been activated four steps earlier.
+      // This puts the flag back, after the write that clears it rather than
+      // before.
+      //
+      // For an unverified member the rules refuse it (canPublish), which is
+      // correct and is why it is swallowed: verification is what publishes
+      // them, through /verify-email or the action page. Being visible is the
+      // default from here; hiding is the Active checkbox on the Account tab,
+      // which is a deliberate act.
+      await activatePublicProfileIfExists(user.uid).catch(() => {});
 
       try {
         await updateUser(user.uid, { onboardingComplete: true });
