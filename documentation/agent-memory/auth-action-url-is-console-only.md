@@ -2,57 +2,67 @@
      Claude instance can read it without access to the user profile. Edit both copies. -->
 ---
 name: auth-action-url-is-console-only
-description: "Dev's auth emails point at Firebase's generic page, and the admin API refuses to move them — EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED, not an IAM problem"
+description: "Dev CANNOT have a custom auth action URL — the console's own save gets the same 400 the API does; the workaround is to redeem the oobCode against the site directly"
 metadata:
   node_type: memory
   type: project
 ---
 
-**2026-09-03.** Password reset on dev "works" but the link lands on Firebase's own
-generic handler, `https://vscn-dev-f4b60.firebaseapp.com/__/auth/action`, so the site's
-`/auth/action` page is **never exercised on dev**. Prod is correct
-(`https://vscn.ch/auth/action`). The field is `notification.sendEmail.callbackUri` in
-project config.
+**2026-09-03.** Password reset on dev works, but the link lands on Firebase's generic
+handler, `https://vscn-dev-f4b60.firebaseapp.com/__/auth/action`, so the site's own
+`/auth/action` page is never reached from an email. Prod is correct
+(`https://vscn.ch/auth/action`). The field is `notification.sendEmail.callbackUri`.
 
-**Two dead ends, both of which cost time:**
+**This is not fixable on dev.** Three routes tried, all closed:
 
-1. **`ActionCodeSettings` cannot do it.** `ActionCodeSettings.url` is the *continue*
-   URL — appended to the link as `continueUrl`. It does not move the action handler.
-   Verified against the firebase-js-sdk docs after I claimed the opposite.
-2. **The Identity Toolkit admin API refuses it.** `PATCH
-   /admin/v2/projects/<p>/config?updateMask=notification.sendEmail.callbackUri` returns
-   `400 EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED`. This is **not** IAM: the dev service account
-   already holds `roles/firebaseauth.admin` (checked with `gcloud projects
-   get-iam-policy`). Google blocks email-template writes on these projects over that API
-   regardless of permission, and the error string is undocumented anywhere public.
+1. **`ActionCodeSettings` cannot do it.** `.url` is the *continue* URL, appended as
+   `continueUrl`. It does not move the action handler.
+2. **The admin API refuses it:** `400 EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED`. Not IAM — the
+   dev service account holds `roles/firebaseauth.admin`.
+3. **The Firebase console refuses it too.** Watching the network while saving the
+   console's "Action URL" dialog shows it issuing the *identical* request —
+   `PATCH .../v2/projects/vscn-dev-f4b60/config?updateMask=notification.sendEmail.callbackUri`
+   — and getting the same **400**. The dialog just closes and silently reverts. So the
+   restriction is per-project and route-independent; there is no UI that can do what the
+   API cannot.
 
-**The only route is the Firebase console:** Authentication → Templates → any template →
-pencil → "customize action URL". It is **one per-project setting shared by every
-template**, so doing it from one template covers reset, verify and change-email at once.
+Cause unconfirmed and undocumented. Prod was created 2026-04-20 and has a custom URL;
+dev 2026-05-26 and cannot get one — consistent with a Google-side lockdown landing
+between those dates, but that is inference, not fact. Note the implication for prod:
+its value is already set, so it works, but **changing** it there may be equally locked.
 
-**How to apply:** `scripts/set-auth-action-url.mjs -P dev|prod` is the reader — bare run
-reports current vs. expected, `--dump` prints the whole notification block. Reach for it
-when an auth email lands somewhere unexpected, and don't re-litigate the write path.
-The related open gap: **no auth email on either project carries a `continueUrl`**, so a
-member who finishes a reset has no route back into the site. That one *is* fixable in
-code, via `ActionCodeSettings`, and is not done.
+**The workaround, which makes the custom page fully testable on dev:** the `oobCode` in a
+generated link does not care which page redeems it.
+`set-auth-action-url.mjs -P dev --link <email>` prints both the real link and the same
+code re-pointed at the site. Verified 2026-09-03: that URL renders "Set a new password"
+on `vscn-dev-f4b60.web.app/auth/action`. Generating a link sends no email.
 
-**2026-09-03, the consequence that made this more than a parity item.** The
-console-only handler is what turned a latent client bug into a dev-only broken
-upload. `/auth/action` is the ONE place in the app that pairs `user.reload()`
-with `getIdToken(true)`; because dev's emails never reach it, nothing on dev
-ever refreshed the ID token after verification. A verified member's cached
-account record said `emailVerified: true` while their token still said
+**How to apply:** don't spend time on the config field for dev — it is closed. Use
+`--link` to exercise the page, and `--dump` to inspect the notification block. Still open
+and *fixable in code*: **no auth email on either project carries a `continueUrl`**, so a
+member who finishes a reset has no route back into the site.
+
+**2026-09-03, the consequence — this is what the closed door actually cost.**
+Because dev's emails can never reach the site's `/auth/action`, and that page is
+the ONE place in the app that pairs `user.reload()` with `getIdToken(true)`,
+nothing on dev ever refreshed the ID token after verification. That turned a
+latent client bug into a broken feature: a verified member's cached account
+record said `emailVerified: true` while their token still said
 `email_verified: false` for up to an hour, so `uploadImage` took the verified
 path (a uuid image id) that neither ruleset would accept from that token, and
-`activatePublicProfileIfExists` had its `active: true` flip rejected and
-swallowed — leaving verified members as invisible drafts. Fixed in code
-(`hasVerifiedClaim` in `src/lib/auth.ts`, now the single source of truth for
-every write gate), so the app no longer depends on which handler ran. Moving
-dev's `callbackUri` in the console is still worth doing for parity, but it is
-no longer the thing standing between a member and an upload.
+`activatePublicProfileIfExists` had its `active: true` flip rejected and then
+swallowed by its own `.catch` — leaving verified members as invisible drafts.
+Evidence at the time: the account's only image records were slot ids while Auth
+reported `emailVerified: true`, and `lastRefreshAt` had not moved since sign-in.
+
+**So the code fix is not a convenience, it is the only available route.** Fixed
+by `hasVerifiedClaim` in `src/lib/auth.ts` (commit `9f72838`), now the single
+source of truth for every gate that decides what to WRITE. Do not write another
+gate that reads `user.emailVerified` to decide a write — dev will keep
+exercising the "no handler ever ran" path forever, so the client can never
+depend on one having run.
 
 Related: [[dev-vs-prod-firestore-divergence]].
 
-Related: [[prod-release-order]] — prod's handler is already right, so this is a
-dev-parity item, not a release gate.
+Related: [[prod-release-order]] — prod's handler is already right, so this is dev-parity
+only, not a release gate.
