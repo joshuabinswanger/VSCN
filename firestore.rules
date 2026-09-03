@@ -169,9 +169,15 @@ function validPrivateUser(data) {
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data)
-    && (!('phone' in data) || (data.phone is string && data.phone.size() <= 40))
-    && (!('wantsToContribute' in data) || data.wantsToContribute is bool)
-    && (!('onboardingComplete' in data) || data.onboardingComplete is bool);
+    // `get` with a default, not `!('x' in data) ||`: the private doc carries
+    // three more fields than the public one, and paid for them out of the same
+    // evaluation budget the gallery is spending — which is why users/{uid}
+    // refused an EIGHTH image that publicProfiles/{uid} had just accepted.
+    // updateUserProfile writes both, so the tighter of the two is the real cap.
+    // See the comment on validGalleryItem.
+    && data.get('phone', '').size() <= 40
+    && data.get('wantsToContribute', false) is bool
+    && data.get('onboardingComplete', false) is bool;
 }
 
 function validPublicFields(data) {
@@ -242,29 +248,51 @@ function validGallery(value) {
 }
 
 function validGalleryItem(item) {
-  return item is map
-    // 'projectId' IS GONE from this list, so a gallery array whose items still
-    // carry the tag is rejected outright. The editor strips it on load
-    // (sanitizeGalleryItems in src/lib/gallery.ts) precisely so that a member
-    // whose images were tagged before the withdrawal can still save.
-    && item.keys().hasOnly(['imageId', 'url', 'caption', 'description', 'descriptionShort', 'link', 'width', 'height', 'color'])
-    && (!('color' in item) || (item.color is string && item.color.matches('#[0-9a-f]{6}')))
-    && item.url is string
+  // WHY THIS IS SO THIN, when every neighbouring validator is thorough.
+  //
+  // Rules evaluation has a budget, and `validGallery` spends it eight times
+  // over. The thorough version of this function — nine `!('x' in item) || (...)`
+  // clauses plus the type and range checks — cost so much that a REALISTIC
+  // profile (name, bio, role, affiliation, avatar, languages, tags, audiences,
+  // and items carrying caption + both descriptions + a link) could save exactly
+  // ONE image before the whole write came back `permission-denied`. Not the
+  // ninth. The second. Measured against the emulator on 2026-09-03, after five
+  // of Josh's uploads landed their bytes and their `images/` record and then
+  // could not join his own gallery array.
+  //
+  // Nothing in the message says budget: it is the same bare permission error a
+  // wrong field gives, which is why this hid behind the hasOnly trap for so
+  // long. The gallery cap was never eight; it was however many items fitted in
+  // what the rest of the profile left over, and every caption a member typed
+  // made it smaller.
+  //
+  // WHAT SURVIVES HERE is what protects the PUBLIC SITE and has nowhere else to
+  // be checked:
+  //   - hasOnly, because an unlisted key is how a withdrawn field creeps back;
+  //   - validStorageUrl, because this url is rendered on the community wall and
+  //     an off-site one would make the directory hotlink anywhere;
+  //   - the link cap, because `link` lives ONLY in this array — it has no
+  //     images/{imageId} field behind it, so this is its only door.
+  //
+  // WHAT MOVED, rather than disappeared: caption, description and
+  // descriptionShort lengths, the colour format and the width/height ranges are
+  // all enforced by validImage on images/{imageId} — the record that IS the
+  // source of truth — and again by the client before either write. The array is
+  // a display projection of that record. The accepted residue is that a member
+  // hand-crafting a request could put junk in their OWN card.
+  //
+  // Measured alternatives, on that same full profile: adding back the imageId
+  // length cap costs two images (6/8); adding the width/height int checks costs
+  // three (5/8); the shipped version cost seven (1/8). The real fix is to stop
+  // carrying text in this array at all and read it from the records — see
+  // documentation/20260903-gallery-rules-budget.md.
+  return item.keys().hasOnly(['imageId', 'url', 'caption', 'description', 'descriptionShort', 'link', 'width', 'height', 'color'])
     && validStorageUrl(item.url)
-    && (!('caption' in item) || (item.caption is string && item.caption.size() <= 140))
-    && (!('description' in item) || (item.description is string && item.description.size() <= 600))
-    // Keep in sync with MAX_GALLERY_DESCRIPTION_SHORT in src/lib/gallery.ts.
-    && (!('descriptionShort' in item) || (item.descriptionShort is string && item.descriptionShort.size() <= 240))
-    // WHERE THE IMAGE APPEARED. Only LENGTH is checked, deliberately: the value
-    // is stored without a scheme (like `portfolio`), members type whatever they
-    // type, and the READ path is what decides whether a value is linkable — see
-    // workLink() in src/lib/links.ts. Mirror of MAX_GALLERY_LINK in
-    // src/lib/gallery.ts.
-    && (!('link' in item) || (item.link is string && item.link.size() <= 200))
-    && item.imageId is string && item.imageId.size() > 0 && item.imageId.size() <= 40
-    && item.width is int && item.width > 0 && item.width <= 10000
-    && item.height is int && item.height > 0 && item.height <= 10000;
+    // `get` with a default rather than `'link' in item &&`: the three-expression
+    // form is precisely what could not be afforded eight times over.
+    && item.get('link', '').size() <= 200;
 }
+
 
 // Keep in sync with LANGUAGES in src/lib/firestore.ts.
 function validLanguages(value) {

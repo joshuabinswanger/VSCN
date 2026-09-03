@@ -213,42 +213,129 @@ test("users/publicProfiles: photoImageId is an accepted string field", async () 
   }));
 });
 
-test("publicProfiles: every gallery item must carry an imageId", async () => {
+test("publicProfiles: the array check is the key list, the bucket and the link", async () => {
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
   const url = "https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/x.webp?alt=media";
-  await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
-    displayName: "Test Member",
-    gallery: [{ imageId: "img-1", url, caption: "", width: 10, height: 10 }],
-  }));
-  await assertFails(db.doc(`publicProfiles/${OWNER}`).set({
-    displayName: "Test Member",
-    gallery: [{ url, caption: "", width: 10, height: 10 }],
-  }));
-  await assertFails(db.doc(`publicProfiles/${OWNER}`).set({
-    displayName: "Test Member",
-    gallery: [{ imageId: "", url, caption: "", width: 10, height: 10 }],
-  }));
+  const save = (gallery) => db.doc(`publicProfiles/${OWNER}`).set({ displayName: "Test Member", gallery });
+
+  await assertSucceeds(save([{ imageId: "img-1", url, caption: "", width: 10, height: 10 }]));
+
+  // AN UNLISTED KEY still takes the whole write down. This is the one check
+  // that cannot move anywhere else: it is what stops a withdrawn field
+  // (`projectId`, once) creeping back in through a stale client.
+  await assertFails(save([{ imageId: "img-1", url, descriptionLong: "nope", width: 10, height: 10 }]));
+
+  // THE BUCKET, because this url is what the community wall renders. An
+  // off-site one would turn the directory into a hotlink to anywhere.
+  await assertFails(save([{ imageId: "img-1", url: "https://evil.example.com/x.webp", width: 10, height: 10 }]));
+  await assertFails(save([{ imageId: "img-1", width: 10, height: 10 }]));
+
+  // What the array NO LONGER judges, because validGalleryItem could not afford
+  // to judge it eight times over: imageId, the text lengths, the colour and the
+  // dimensions. Every one of them is enforced on images/{imageId} instead —
+  // see the `images:` tests above — and by the client before either write. A
+  // profile whose array disagrees with its records renders from the records.
+  await assertSucceeds(save([{ url, caption: "", width: 10, height: 10 }]));
 });
 
-test("publicProfiles: a gallery item carries a long AND a short description", async () => {
+test("publicProfiles: both descriptions ride along in the array, uncapped there", async () => {
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
   const url = "https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/x.webp?alt=media";
   const item = (extra) => ({ imageId: "img-1", url, caption: "", width: 10, height: 10, ...extra });
-  // Both keys are in validGalleryItem's hasOnly list, so both may travel in
-  // the array the editor writes back whole.
+  const save = (gallery) => db.doc(`publicProfiles/${OWNER}`).set({ displayName: "Test Member", gallery });
+
+  // Both keys are in validGalleryItem's hasOnly list, so both travel in the
+  // array the editor writes back whole.
+  await assertSucceeds(save([item({ description: "x".repeat(600), descriptionShort: "x".repeat(240) })]));
+
+  // Their CEILINGS are enforced on images/{imageId} (see "images: owner edits
+  // caption and both descriptions") and in the client, not here. Asserting the
+  // over-long value SUCCEEDS is deliberate: it is the price of eight images,
+  // written down where someone tightening this rule will trip over it.
+  await assertSucceeds(save([item({ descriptionShort: "x".repeat(241) })]));
+
+  // The key list is still the key list.
+  await assertFails(save([item({ descriptionLong: "nope" })]));
+});
+
+test("publicProfiles: a gallery item may say where the image appeared", async () => {
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  const url = "https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/x.webp?alt=media";
+  const item = (extra) => ({ imageId: "img-1", url, caption: "", width: 10, height: 10, ...extra });
+
+  // THE SHAPE THE EDITOR ACTUALLY WRITES, all four text fields at once. The
+  // gallery is one field of one write, so a single unlisted key inside it
+  // rejects the entire profile save with a message that names nothing — which
+  // is precisely what `link` did between landing in the client and landing in
+  // a deployed ruleset.
   await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
     displayName: "Test Member",
-    gallery: [item({ description: "x".repeat(600), descriptionShort: "x".repeat(240) })],
+    gallery: [item({
+      caption: "A short one",
+      descriptionShort: "A bit longer.",
+      description: "The paragraph that only the profile page shows.",
+      link: "https://onlinelibrary.wiley.com/doi/10.1111/gcb.70195",
+    })],
+  }));
+
+  // An emptied box is still a string: the editor writes back what it holds.
+  await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
+    displayName: "Test Member", gallery: [item({ link: "" })],
+  }));
+
+  // Only LENGTH is judged here. Whether a value is linkable is the read path's
+  // question (workLink in src/lib/links.ts), so nonsense saves and simply does
+  // not render — a rule that rejected it would fail the save over a typo.
+  await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
+    displayName: "Test Member", gallery: [item({ link: "not a url at all" })],
+  }));
+
+  // Mirror of MAX_GALLERY_LINK. The client caps the input; this is the door.
+  await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
+    displayName: "Test Member", gallery: [item({ link: "x".repeat(200) })],
   }));
   await assertFails(db.doc(`publicProfiles/${OWNER}`).set({
-    displayName: "Test Member",
-    gallery: [item({ descriptionShort: "x".repeat(241) })],
+    displayName: "Test Member", gallery: [item({ link: "x".repeat(201) })],
   }));
-  // An unlisted key still takes the whole write down — the hasOnly gotcha the
-  // withdrawn `projectId` taught us, and the reason this test exists at all.
   await assertFails(db.doc(`publicProfiles/${OWNER}`).set({
-    displayName: "Test Member",
-    gallery: [item({ descriptionLong: "nope" })],
+    displayName: "Test Member", gallery: [item({ link: 12 })],
+  }));
+});
+
+test("publicProfiles: a FULL profile saves a FULL gallery", async () => {
+  // THE TEST THAT WAS MISSING, and the reason five uploads went missing on dev
+  // (2026-09-03). Rules evaluation has a budget; validGallery spends it eight
+  // times; and every existing gallery test wrote a ONE-item array on a profile
+  // holding almost nothing, so the budget was never approached. In production
+  // shape — a filled-in profile, items carrying caption, both descriptions and
+  // a link — the thorough validGalleryItem allowed exactly one image and
+  // refused the second with a bare `permission-denied`.
+  //
+  // So this fixture is deliberately maximal, and it must stay that way: a
+  // slimmer one passes while the real thing fails, which is precisely the hole
+  // it exists to close. If this test starts failing, validGalleryItem (or one
+  // of its neighbours in validPublicFields) has grown, and something must come
+  // back out — see the comment on validGalleryItem in firestore.rules.
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  const url = (n) => `https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/img-${n}.webp?alt=media`;
+  const item = (n) => ({
+    imageId: `img-${n}`, url: url(n), caption: "A caption",
+    description: "A longer description of the piece.", descriptionShort: "One sentence.",
+    link: "https://onlinelibrary.wiley.com/doi/10.1111/gcb.70195",
+    width: 1200, height: 1380, color: "#e7dccc",
+  });
+
+  await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
+    displayName: "A Member With A Long Enough Name",
+    photoURL: url("avatar"), photoImageId: "avatar", photoColor: "#ffffff",
+    memberType: "both", role: "Researcher and illustrator",
+    bio: "A bio of a realistic length, several clauses long.",
+    portfolio: "example.com", socialMedia: "example.com/a, example.com/b",
+    affiliation: "Some institute", location: "Zurich",
+    languages: ["de", "en"], visualNeeds: ["a", "b"], openTo: ["a", "b"],
+    primaryAudiences: ["science", "public"], tags: ["a", "b", "c"],
+    active: false,
+    gallery: Array.from({ length: 8 }, (_, i) => item(i)),
   }));
 });
 
