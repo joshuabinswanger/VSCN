@@ -124,6 +124,7 @@ const t = useTranslations(lang);
   import { activatePublicProfileIfExists } from "../lib/firestore.ts";
   import { hasVerifiedClaim } from "../lib/auth.ts";
   import { onAuthStateChanged, sendEmailVerification, signOut } from "firebase/auth";
+  import { returnTo } from "../lib/authEmail.ts";
   import { ui } from "../i18n/translations.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
@@ -209,7 +210,7 @@ const t = useTranslations(lang);
       btnResend.disabled = true;
       resendMsg.style.display = "none";
       try {
-        await sendEmailVerification(currentUser);
+        await sendEmailVerification(currentUser, returnTo(lang, "/profile"));
         resendMsg.style.display = "block";
       } catch {
         statusMsg.textContent = s["verify.error.resend"];

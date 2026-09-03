@@ -131,6 +131,7 @@ const title = currentLang === "de" ? "Konto" : "Account";
     verifyPasswordResetCode,
   } from "firebase/auth";
   import { publishCurrentUserProfile } from "../../../lib/firestore.ts";
+  import { continueTarget } from "../../../lib/authEmail.ts";
 
   const params = new URLSearchParams(window.location.search);
   const mode = params.get("mode");
@@ -148,10 +149,21 @@ const title = currentLang === "de" ? "Konto" : "Account";
     if (el) el.style.display = "block";
   }
 
-  function showSuccess(title: string, sub: string, href = "/signup") {
+  // The Continue button's destination, in priority order:
+  //
+  //   1. `continueUrl` off the link, when the send site named one. That is the
+  //      only party that knows where the member actually was — verification
+  //      sent from onboarding wants onboarding back, the same email resent
+  //      from the profile editor wants the editor.
+  //   2. The per-mode fallback below, for links minted before send sites
+  //      carried settings (2026-09-03) and for anything Firebase generates
+  //      itself. `fallback` is locale-LESS and gets the prefix here;
+  //      continueTarget() is already a full same-origin path, so it does not.
+  function showSuccess(title: string, sub: string, fallback: string) {
     document.getElementById("success-title")!.textContent = title;
     document.getElementById("success-sub")!.textContent = sub;
-    (document.getElementById("success-link") as HTMLAnchorElement).href = prefix + href;
+    (document.getElementById("success-link") as HTMLAnchorElement).href =
+      continueTarget() ?? prefix + fallback;
     showView("view-success");
   }
 
@@ -218,7 +230,7 @@ const title = currentLang === "de" ? "Konto" : "Account";
               lang === "de"
                 ? "Sie können sich jetzt mit Ihrem neuen Passwort anmelden."
                 : "You can now sign in with your new password.",
-              "/signup",
+              "/login",
             );
           } catch {
             errorEl.textContent = lang === "de" 
@@ -241,7 +253,7 @@ const title = currentLang === "de" ? "Konto" : "Account";
           lang === "de"
             ? "Ihre ursprüngliche E-Mail-Adresse wurde wiederhergestellt. Bitte melden Sie sich erneut an."
             : "Your original email address has been restored. Please sign in again.",
-          "/signup",
+          "/login",
         );
       } catch {
         showView("view-error");

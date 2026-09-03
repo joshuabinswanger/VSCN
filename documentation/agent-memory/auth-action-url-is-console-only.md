@@ -38,9 +38,7 @@ code re-pointed at the site. Verified 2026-09-03: that URL renders "Set a new pa
 on `vscn-dev-f4b60.web.app/auth/action`. Generating a link sends no email.
 
 **How to apply:** don't spend time on the config field for dev — it is closed. Use
-`--link` to exercise the page, and `--dump` to inspect the notification block. Still open
-and *fixable in code*: **no auth email on either project carries a `continueUrl`**, so a
-member who finishes a reset has no route back into the site.
+`--link` to exercise the page, and `--dump` to inspect the notification block.
 
 **2026-09-03, the consequence — this is what the closed door actually cost.**
 Because dev's emails can never reach the site's `/auth/action`, and that page is
@@ -66,3 +64,30 @@ Related: [[dev-vs-prod-firestore-divergence]].
 
 Related: [[prod-release-order]] — prod's handler is already right, so this is dev-parity
 only, not a release gate.
+
+## The `continueUrl` half — FIXED 2026-09-03
+
+Every send site now passes `ActionCodeSettings` naming its own return
+destination, via `returnTo(lang, path)` in `src/lib/authEmail.ts`, and
+`/auth/action` honours the incoming `continueUrl` (`continueTarget()`,
+same-origin enforced — the value arrives through an email client, so an
+off-site one would make the success button an open redirect).
+
+This matters most **on dev**, where the config above is locked: dev's emails go
+to Firebase's own page, and a `continueUrl` is the only thing that can put a
+way back to the site on it.
+
+**The bug found underneath it:** `/auth/action`'s hard-coded post-reset and
+post-recover destination was `/signup`, and `/signup` is a **301 to
+/onboarding**. So a member who had just reset their password, reading "You can
+now sign in", was sent into the signup flow. Both now go to `/login`.
+
+Verified on the dev server against real oobCodes: a same-origin `continueUrl`
+came through as the Continue href, and an off-origin one
+(`https://evil.example.com/steal`) was rejected and fell back to `/login`.
+
+**Two traps met while testing:** `generatePasswordResetLink` **invalidates the
+user's previous codes**, so minting several up front leaves only the last one
+working — mint one, use it, mint the next. And both browser tools strip the
+query string on some navigations, which presents as the expired-link view;
+`location.search` is the thing to check before believing a failure.
