@@ -1,6 +1,7 @@
 <!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/storage-rules-cap-tracks-max-edge.md — kept in the repo so any
      Claude instance can read it without access to the user profile. Edit both copies. -->
 
+
 ---
 name: storage-rules-cap-tracks-max-edge
 description: "The 4K client cap needs an 8 MB Storage door; dev's restructured rules already grant it, and a rejection when they disagree never mentions size"
@@ -39,3 +40,5 @@ path layout. That happened to `vscn-dev-f4b60` mid-session and had to be re-depl
 dev's tip. `npx firebase deploy … --non-interactive` works fine here and takes several
 minutes; it needs no `--quiet`-style flag the way `gcloud secrets` does
 ([[rebuild-dispatcher-cloud-function]]).
+
+**Release ordering:** this note holds one gate of three that ride on a single prod deploy — see [[prod-release-order]] before sequencing anything.

@@ -16,7 +16,9 @@ npm run test:rules   # firestore.rules + storage.rules against the emulator (nee
 
 There is **no test framework** for src/ and none should be added casually. The ONE exception is `tests/rules/` — rules tests on the emulator via `@firebase/rules-unit-testing` + `node --test`, because a rules mistake fails silently (see the hasOnly trap below) and nothing else catches it. Verification is `npm run lint`, `npm run build`, and browser inspection.
 
-`npm run lint` has a **standing baseline of 8 warnings / 0 errors**: an unused `t` in seven page frontmatters, and one `no-explicit-any` in `firebase.ts`. Treat only *errors* as yours. If you have time, zeroing this baseline is a real improvement — a warning currently means nothing because there are always warnings.
+`npm run lint` is **clean — 0 warnings, 0 errors** (zeroed 2026-09-03: the unused `t` in seven page frontmatters and the one `no-explicit-any` in `firebase.ts`). So **any** warning you see is yours, and that is the point of having zeroed it. Do not let a new one settle in as a baseline.
+
+`npm run format` is a **trap, not a check**: `npx prettier --check src` currently flags nearly every file, so running the documented command rewrites the repo and buries whatever you were doing in an unreviewable diff. Leave it alone unless you are deliberately doing the one mechanical reformat commit — that decision is Josh's and has not been made.
 
 `npm run build` is the strongest available gate: it type-checks and renders all 20 pages.
 
@@ -30,6 +32,8 @@ The same Firestore data is reached two completely different ways, and confusing 
 - **Build time, in Node** — `firebase-admin` is imported *directly inside* [src/pages/[...lang]/community.astro](src/pages/[...lang]/community.astro), using the `FIREBASE_SERVICE_ACCOUNT` env var, to fetch the member list.
 
 **Consequence:** the public community directory is a **static snapshot**. A user editing their profile sees nothing change on the public page until the site is rebuilt — the README notes that profile updates fire GitHub Action dispatches to trigger that rebuild. Any feature that shows member data publicly inherits this staleness and must decide whether to accept it or hydrate client-side.
+
+**Which snapshot am I looking at:** every page stamps its build into `<head>` — `curl -s https://<host>/community | grep 'name="build-'` gives the commit and the build time, with a `-dirty` suffix when the build came from an edited tree (`src/lib/buildInfo.ts`). Reach for it before diagnosing missing or wrong member data on a deployed site; a stale snapshot and a data bug look identical otherwise.
 
 **Failure mode to know:** `community.astro` wraps its admin fetch in `try/catch` and logs to the console, so a missing or invalid `FIREBASE_SERVICE_ACCOUNT` produces an **empty member grid, not an error**. "No members" and "no credentials" look identical. This bites hardest in a fresh git worktree, because `.env*` is gitignored and does not come along.
 

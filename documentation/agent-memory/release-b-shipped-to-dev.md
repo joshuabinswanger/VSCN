@@ -1,4 +1,6 @@
 <!-- Mirrors ~/.claude/projects/D--SynoDrive-VSCN/memory/release-b-shipped-to-dev.md — readable by any Claude instance without user-profile access. -->
+
+
 ---
 name: release-b-shipped-to-dev
 description: "The image-led directory is BUILT and live on dev hosting with 16 seeded galleries; prototype deleted; rules deployed to dev; what remains is Josh's authenticated pass, the member review email, and one combined prod release"
@@ -9,7 +11,10 @@ metadata:
 As of 2026-08-24 (afternoon), phases 0–2 of the release plan
 (`documentation/20260824-next-release-plan.md`) are done on
 `feature/user-content-backend` (~19 commits ahead of `dev`, everything
-committed, still unpushed — Josh gates pushes):
+committed, still unpushed — Josh gates pushes). ⚠ The clean-tree part of that
+stopped being true after 2026-08-24: the branch has carried three days of
+uncommitted work since, holding two further features — see
+[[uncommitted-tree-two-features]].
 
 - **The directory swap is implemented and live on dev hosting**:
   https://vscn-dev-f4b60.web.app/community serves the image-led multicol grid
@@ -50,3 +55,5 @@ the new directory.
 
 Related: [[user-content-backend-status]], [[image-cards-need-content]],
 [[dev-vs-prod-firestore-divergence]], [[member-profile-pages-live]].
+
+**Release ordering:** this note holds one gate of three that ride on a single prod deploy — see [[prod-release-order]] before sequencing anything.

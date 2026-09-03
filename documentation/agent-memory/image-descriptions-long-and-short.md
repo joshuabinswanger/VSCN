@@ -1,4 +1,5 @@
-> Mirror of the `~/.claude/projects/D--SynoDrive-VSCN/memory/image-descriptions-long-and-short.md` memory file, kept in the repo so any Claude instance can read it without access to the user profile. Keep both copies in sync.
+<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/image-descriptions-long-and-short.md — kept in the repo so any
+     Claude instance can read it without access to the user profile. Edit both copies. -->
 
 ---
 name: image-descriptions-long-and-short
@@ -41,3 +42,5 @@ round, or before showing dev to the members in the review email.
 
 Related: [[image-cards-need-content]], [[vscn-gallery-tech-stack]],
 [[profile-editor-preview-mode]], [[dev-vs-prod-firestore-divergence]]
+
+**Release ordering:** this note holds one gate of three that ride on a single prod deploy — see [[prod-release-order]] before sequencing anything.

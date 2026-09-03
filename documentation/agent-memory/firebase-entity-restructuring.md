@@ -1,6 +1,15 @@
-> Mirrors the per-project memory file `~/.claude/projects/D--SynoDrive-VSCN/memory/firebase-entity-restructuring.md` so any Claude instance can read it without access to Josh's user profile.
+<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/firebase-entity-restructuring.md — kept in the repo so any
+     Claude instance can read it without access to the user profile. Edit both copies. -->
 
-# Firebase entity restructuring — DEV COMPLETE, prod pending
+---
+name: firebase-entity-restructuring
+description: DEV COMPLETE 2026-09 — prod pending Josh's go; images are records, soft-delete lifecycle live, /admin behind the admin claim; the five decisions the code won't show you
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: 84089297-2a1e-4bcf-8e4b-ca4faef528e6
+  modified: 2026-09-02T19:34:13.379Z
+---
 
 Approved on 2026-09-02, design at `documentation/20260902-firebase-entity-restructuring-design.md`, **DEV COMPLETE 2026-09 — prod pending Josh's go**. Josh's ask: everything linked by ids so an account can be purged, searched and re-emailed by a function.
 
@@ -43,3 +52,5 @@ The load-bearing decisions, none of which are visible from the code:
 8. `node scripts/set-admin.mjs -P prod <email>` — the `admin` claim is currently granted **nowhere**, dev included, so `/admin` and every `admin*` callable are unreachable until this runs. Sign out and back in afterwards; claims only ride a fresh ID token.
 
 **Open items regardless of prod timing:** grant the admin claim on dev too (`node scripts/set-admin.mjs -P dev <email>`); do a signed-in dev pass of upload / remove / avatar replace / delete-cancel / email-change / `/admin` console before trusting any of this in prod — **no human or agent has driven a single signed-in flow on the new client yet**, and the C1 avatar-save case is the one to do first.
+
+**Release ordering:** this note holds one gate of three that ride on a single prod deploy — see [[prod-release-order]] before sequencing anything.
