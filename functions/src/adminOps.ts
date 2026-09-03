@@ -54,13 +54,20 @@ async function resolveUid(query: string): Promise<string | null> {
   if (!q || q.includes("/")) return null;
   if (q.includes("@")) {
     try {
-      return (await adminAuth.getUserByEmail(q)).uid;
+      // Lowercased: Auth stores the address it was given, and getUserByEmail
+      // does not case-fold for us, so "Josh@Example.com" found nobody.
+      return (await adminAuth.getUserByEmail(q.toLowerCase())).uid;
     } catch {
       return null;
     }
   }
+  // A SLUG IS ALWAYS LOWERCASE (it is derived from displayName), so a query
+  // typed the way the name reads — "Daniel-Roettele" — was a slug with the
+  // wrong case and resolved to nothing. uid and imageId stay case-SENSITIVE:
+  // they are opaque ids, and folding them would be inventing matches.
+  const slugKey = q.toLowerCase();
   const [slug, image, pub, user] = await Promise.all([
-    db.doc(`slugs/${q}`).get(),
+    db.doc(`slugs/${slugKey}`).get(),
     db.doc(`images/${q}`).get(),
     db.doc(`publicProfiles/${q}`).get(),
     db.doc(`users/${q}`).get(),
@@ -76,20 +83,65 @@ async function resolveUid(query: string): Promise<string | null> {
 }
 
 /** Prefix match on displayName — the only substring search Firestore offers. */
-async function nameMatches(fragment: string) {
-  const snap = await db
-    .collection("publicProfiles")
-    .orderBy("displayName")
-    .startAt(fragment)
-    .endAt(`${fragment}\uf8ff`)
-    .limit(20)
-    .get();
-  return snap.docs.map((d) => ({
-    uid: d.id,
-    displayName: String(d.data().displayName ?? ""),
-    active: d.data().active !== false,
-  }));
+/**
+ * uid → its CURRENT slug. There is no `slug` field on a profile: slugs are
+ * their own collection keyed BY the slug (`slugs/{slug} -> { uid, current }`),
+ * owned by onPublicProfileWritten, with retired slugs kept as aliases. Both
+ * callers below wanted to show and search one, and both read a
+ * `publicProfiles.slug` that has never existed — so the column was blank and
+ * the slug half of the search matched nothing.
+ */
+async function currentSlugByUid(): Promise<Map<string, string>> {
+  const snap = await db.collection("slugs").where("current", "==", true).get();
+  const byUid = new Map<string, string>();
+  for (const d of snap.docs) {
+    const uid = String(d.data().uid ?? "");
+    if (uid) byUid.set(uid, d.id);
+  }
+  return byUid;
 }
+
+/**
+ * Name search, in memory and CASE-INSENSITIVE (2026-09-03, Josh: "make search
+ * not be case sensitive in the admin console").
+ *
+ * It was a Firestore prefix range, and that failed an admin twice over.
+ * Firestore orders strings by BYTE, so "josh" could never reach "Joshua":
+ * lowercase j is 0x6A, uppercase J is 0x4A, and the range therefore starts
+ * after every capitalised name in the collection. And a prefix range only ever
+ * matches the START of the field, so "binswanger" never found "Joshua
+ * Binswanger" whatever the case.
+ *
+ * A full scan with a substring test fixes both, and the cost is already paid
+ * next door: adminListQueues reads every publicProfile and every user on every
+ * call. The directory is a couple of dozen members. When that stops being
+ * true the answer is a stored lowercased field to range over, not a cleverer
+ * query on this one.
+ */
+async function nameMatches(fragment: string) {
+  const needle = fragment.trim().toLowerCase();
+  if (!needle) return [];
+  const [snap, slugByUid] = await Promise.all([
+    db.collection("publicProfiles").get(),
+    currentSlugByUid(),
+  ]);
+  return snap.docs
+    .map((d) => ({
+      uid: d.id,
+      displayName: String(d.data().displayName ?? ""),
+      slug: slugByUid.get(d.id) ?? "",
+      active: d.data().active !== false,
+    }))
+    .filter(
+      (m) =>
+        m.displayName.toLowerCase().includes(needle) ||
+        m.slug.toLowerCase().includes(needle) ||
+        m.uid.toLowerCase() === needle
+    )
+    .sort((a, b) => a.displayName.localeCompare(b.displayName))
+    .slice(0, 50);
+}
+
 
 /** Everything attached to one identity, in one response. */
 export async function memberGraph(uid: string) {
@@ -121,6 +173,88 @@ export const adminLookupMember = onCall(async (req) => {
   const uid = await resolveUid(query);
   if (uid) return { graph: await memberGraph(uid), matches: [] };
   return { graph: null, matches: await nameMatches(query) };
+});
+
+/**
+ * EVERY MEMBER AS ONE ROW — the console's front door (2026-09-03, Josh: "maek
+ * a list view with filter instead of one big search bar").
+ *
+ * A search box can only answer a question you already know how to ask. An
+ * admin arriving at this console usually does not: they want to see who is
+ * there, who is hidden, who is mid-deletion, who has no Auth user. So the
+ * console opens on the list and filters it in the browser — which is also what
+ * makes the filter case-insensitive and instant, with no round trip per
+ * keystroke.
+ *
+ * Rows are deliberately THIN. Everything here is what you filter or scan on;
+ * the full graph stays behind adminLookupMember, one member at a time. The one
+ * apparent luxury is the two image numbers, and they earn it: `galleryCount`
+ * is what the member's page will show (the array), `imageRecords` is what
+ * actually exists (the records). A row where those disagree is the exact shape
+ * of a half-finished upload or a rejected profile write, visible without
+ * opening anything.
+ *
+ * Auth is fetched in ONE batched call rather than per member: getUsers takes
+ * 100 identifiers at a time, and a member with no Auth user (every curated
+ * seed profile) simply comes back missing — which is itself a column here.
+ */
+export const adminListMembers = onCall(async (req) => {
+  requireAdmin(req);
+  const [pubs, users, images, deletions, slugByUid] = await Promise.all([
+    db.collection("publicProfiles").get(),
+    db.collection("users").get(),
+    db.collection("images").get(),
+    db.collection("deletions").where("completedAt", "==", null).get(),
+    currentSlugByUid(),
+  ]);
+
+  const userById = new Map(users.docs.map((d) => [d.id, d.data()]));
+  const pendingUids = new Set(deletions.docs.map((d) => d.id));
+  const records = new Map<string, number>();
+  for (const d of images.docs) {
+    const owner = String(d.data().ownerUid ?? "");
+    if (owner) records.set(owner, (records.get(owner) ?? 0) + 1);
+  }
+
+  // Union of both profile docs: a profile-only identity has no users doc, and
+  // a users doc can outlive its public profile. Either alone would hide a
+  // member from the one view meant to show all of them.
+  const uids = [...new Set([...pubs.docs.map((d) => d.id), ...users.docs.map((d) => d.id)])];
+
+  const authByUid = new Map<string, UserRecord>();
+  for (let i = 0; i < uids.length; i += 100) {
+    const { users: found } = await adminAuth.getUsers(uids.slice(i, i + 100).map((uid) => ({ uid })));
+    for (const u of found) authByUid.set(u.uid, u);
+  }
+
+  const pubById = new Map(pubs.docs.map((d) => [d.id, d.data()]));
+  const rows = uids.map((uid) => {
+    const pub = pubById.get(uid);
+    const usr = userById.get(uid);
+    const auth = authByUid.get(uid);
+    const gallery = Array.isArray(pub?.gallery) ? pub.gallery : [];
+    return {
+      uid,
+      displayName: String(pub?.displayName ?? usr?.displayName ?? ""),
+      slug: slugByUid.get(uid) ?? "",
+      role: String(pub?.role ?? usr?.role ?? ""),
+      memberType: String(pub?.memberType ?? usr?.memberType ?? ""),
+      email: auth?.email ?? (typeof usr?.email === "string" ? usr.email : null),
+      emailVerified: auth ? auth.emailVerified : null,
+      hasAuth: Boolean(auth),
+      hasPublicProfile: Boolean(pub),
+      active: pub ? pub.active !== false : false,
+      status: String(usr?.status ?? (usr ? "active" : "profile only")),
+      pendingDeletion: pendingUids.has(uid),
+      galleryCount: gallery.length,
+      imageRecords: records.get(uid) ?? 0,
+      hasAvatar: Boolean(pub?.photoImageId ?? usr?.photoImageId),
+      createdAt: auth?.metadata.creationTime ?? null,
+    };
+  });
+
+  rows.sort((a, b) => (a.displayName || a.uid).localeCompare(b.displayName || b.uid));
+  return plain({ members: rows });
 });
 
 export const adminListQueues = onCall(async (req) => {

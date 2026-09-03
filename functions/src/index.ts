@@ -7,6 +7,7 @@ export { onAuthUserDeleted } from "./authTriggers";
 export { onPublicProfileWritten } from "./slugs";
 export {
   adminLookupMember,
+  adminListMembers,
   adminListQueues,
   adminPurgeAccount,
   adminRestoreAccount,
