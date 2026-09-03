@@ -641,6 +641,7 @@ const prefix = lang === "de" ? "/de" : "";
     sendEmailVerification,
     type User,
   } from "firebase/auth";
+  import { hasVerifiedClaim } from "../lib/auth.ts";
   import { validateAvatar, resizeAvatar } from "../lib/validation.ts";
   import {
     getUser,
@@ -1258,6 +1259,12 @@ const prefix = lang === "de" ? "/de" : "";
     // ── Auth guard ─────────────────────────────────────────────────
     async function onUserAuthenticated(user: User) {
       try {
+        // Settle "am I verified" against the TOKEN before anything reads it.
+        // This page picks a gallery cap and an image id from verification
+        // state, and both are judged by the rulesets against the token, not
+        // against the cached account record. The two disagree for up to an
+        // hour after the link is clicked. See hasVerifiedClaim.
+        await hasVerifiedClaim(user);
         const data = await getUser(user.uid);
         if (data.onboardingComplete) {
           window.location.href = `${prefix}/community`;

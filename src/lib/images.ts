@@ -1,6 +1,7 @@
 import { deleteField, doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytesResumable } from "firebase/storage";
 import { auth, db, storage } from "./firebase.ts";
+import { hasVerifiedClaim } from "./auth.ts";
 
 // Keep in sync with validImage() in firestore.rules and functions/src/types.ts.
 export type ImageKind = "avatar" | "gallery";
@@ -67,11 +68,23 @@ export async function uploadImage(
   onProgress: (pct: number) => void = () => {},
 ): Promise<UploadedImage> {
   // An unverified account has one id per kind and reuses it; a verified one
-  // gets a fresh record every time. `emailVerified` comes off the locally
-  // cached user and can lag a just-clicked verification link, so both rulesets
-  // keep accepting the slot after verification — being wrong here costs a
-  // needlessly reused slot, never a permission error.
-  const usesSlot = auth.currentUser?.emailVerified !== true;
+  // gets a fresh record every time.
+  //
+  // THE CLAIM, NOT THE RECORD. This read used to be
+  // `auth.currentUser?.emailVerified`, which is the cached account record —
+  // and the record flips to true on the first page load after verification
+  // while the ID TOKEN, the only thing the rulesets can read, keeps saying
+  // false until it expires (~1h). In that window the record sent us down this
+  // branch's verified side, so we minted a uuid id that neither ruleset would
+  // accept from an unverified token, and the create failed with a bare
+  // `permission-denied`. Asking for the claim resolves the disagreement (see
+  // hasVerifiedClaim) instead of guessing which side of it we are on.
+  //
+  // Erring towards the slot is still the safe direction: both rulesets accept
+  // the slot from a verified member too, deliberately, so a stale `false` here
+  // costs a reused slot rather than a failed upload.
+  const current = auth.currentUser;
+  const usesSlot = current ? !(await hasVerifiedClaim(current)) : true;
   const imageId = usesSlot ? slotImageId(uid, kind) : crypto.randomUUID();
   const storagePath = imageStoragePath(uid, kind, imageId);
   const recordRef = doc(db, "images", imageId);

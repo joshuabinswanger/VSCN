@@ -18,10 +18,14 @@ service firebase.storage {
       // hundred" is simply unaddressable. The matching record-side cap is in
       // firestore.rules under images/{imageId}; keep the two names identical.
       //
-      // The slot stays legal for VERIFIED members too, deliberately. The
-      // client picks the id from `user.emailVerified`, which is read off a
-      // locally cached user record and lags the token — a member who verified
-      // a moment ago would otherwise get an opaque permission error.
+      // The slot stays legal for VERIFIED members too, deliberately: it is the
+      // safety net under the client's choice of id. That choice is made from
+      // the ID TOKEN's claim (hasVerifiedClaim in src/lib/auth.ts) precisely
+      // so it agrees with this rule — but a client that cannot refresh its
+      // token (offline, or a refresh that fails) falls back to the cached
+      // account record, and the record runs AHEAD of the token for up to an
+      // hour after the link is clicked. This clause is what makes that
+      // fallback a reused slot rather than an opaque permission error.
       allow write: if request.auth != null
                    && request.auth.uid == uid
                    && (kind == 'avatar' || kind == 'gallery')
