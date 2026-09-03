@@ -2,7 +2,9 @@
 //
 //   node scripts/check-integrity.mjs -P dev
 //
-// Checks: every gallery item → a live image record owned by that profile;
+// Checks: every gallery item → a live image record owned by that profile, and
+// its caption/description text agreeing with that record and with the private
+// copy;
 // every avatar's photoURL still equal to the URL derived from its record's
 // storagePath (the C1 drift, invisible everywhere else); every record → an
 // object at its storagePath; every object under users/ → a record; every
@@ -54,6 +56,59 @@ try {
       if (rec.ownerUid !== doc.id) problem(`images/${item.imageId} owned by ${rec.ownerUid}, listed on ${doc.id}`);
       if (rec.status !== "live" && !inGrace.has(doc.id)) {
         problem(`images/${item.imageId} is ${rec.status} but listed on publicProfiles/${doc.id}`);
+      }
+      // THE TEXT IS A PROJECTION TOO, and until 2026-09-03 nothing checked it.
+      // The record is the truth and the arrays are copies of it (see
+      // updateImageText in src/lib/images.ts); a copy that disagrees is a page
+      // saying something the record denies. It is not hypothetical: the
+      // description seeder writes the record and then BOTH arrays, and a run
+      // that dies between them leaves exactly this state — which is how 22 of
+      // 51 works came to render no long text on dev while the seeder itself
+      // reported nothing left to do. Same reasoning as the avatar check below:
+      // the field must agree with its record.
+      for (const field of ["caption", "description", "descriptionShort"]) {
+        const onItem = (item[field] ?? "").trim();
+        const onRecord = (rec[field] ?? "").trim();
+        if (onItem !== onRecord) {
+          problem(
+            `publicProfiles/${doc.id}.gallery[${i}].${field} disagrees with images/${item.imageId}` +
+              ` (item ${onItem ? `"${onItem.slice(0, 40)}"` : "(empty)"},` +
+              ` record ${onRecord ? `"${onRecord.slice(0, 40)}"` : "(empty)"})`
+          );
+        }
+      }
+    });
+  }
+
+  // THE PRIVATE COPY HAS TO MATCH THE PUBLIC ONE, and this is the check that
+  // protects a documented failure mode rather than a theoretical one: a Save
+  // republishes publicProfiles FROM users (toPublicProfile), so anything
+  // written to the public array alone is silently reverted the next time the
+  // member touches their profile. A tool that wrote only the public copy would
+  // look like it worked for exactly as long as nobody edited anything.
+  console.log("Gallery arrays — users ↔ publicProfiles");
+  const usersById = new Map(users.docs.map((d) => [d.id, d.data()]));
+  for (const doc of pubs.docs) {
+    const priv = usersById.get(doc.id);
+    if (!priv) continue; // profile-only identity; already noted above
+    const pubGallery = Array.isArray(doc.data().gallery) ? doc.data().gallery : [];
+    const privGallery = Array.isArray(priv.gallery) ? priv.gallery : [];
+    if (pubGallery.length !== privGallery.length) {
+      problem(
+        `${doc.id} gallery length differs: users has ${privGallery.length}, publicProfiles has ${pubGallery.length}`
+      );
+      continue;
+    }
+    pubGallery.forEach((item, i) => {
+      const other = privGallery[i] ?? {};
+      if (item.imageId !== other.imageId) {
+        problem(`${doc.id}.gallery[${i}] is images/${item.imageId} publicly and images/${other.imageId} privately`);
+        return;
+      }
+      for (const field of ["caption", "description", "descriptionShort"]) {
+        if ((item[field] ?? "").trim() !== (other[field] ?? "").trim()) {
+          problem(`${doc.id}.gallery[${i}].${field} differs between users and publicProfiles`);
+        }
       }
     });
   }
