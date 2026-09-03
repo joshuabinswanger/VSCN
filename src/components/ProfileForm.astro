@@ -218,19 +218,50 @@ const t = useTranslations(lang);
   <div class="form-section" data-section="work">
     <div class="field">
       <p class="label">{t("profile.label.gallery")}</p>
-      <div id="gallery-editor" class="gallery-editor"></div>
-      <label class="btn-outline choose-img" for="gallery-files">
-        {t("profile.gallery.add")}
-        <input
-          id="gallery-files"
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/avif"
-          multiple
-          style="display:none;"
-        />
-      </label>
+      {
+        /* The drop target is this wrapper, not the list: an empty gallery has a
+        list of zero height, so a member with no images yet — the one most
+        likely to be dragging a folder of work at the screen — would have had
+        nothing to drag onto. Wrapping the Add button in it too means the whole
+        block is the target, which is also what it looks like. */
+      }
+      <div id="gallery-drop" class="gallery-drop">
+        <div id="gallery-editor" class="gallery-editor"></div>
+        {
+          /* Pending uploads live in their own list BELOW the committed images,
+          because that is where a finished upload lands — a row does not jump
+          when it completes, it just stops being a queue row. */
+        }
+        {
+          /* NOT aria-live. The obvious choice here is wrong: the state text
+          inside carries a percentage that updates several times a second per
+          upload, and a polite live region would read all of it aloud, three
+          uploads at a time. Progress is exposed as a progressbar instead —
+          available on demand, silent until asked — and only a FAILURE is
+          announced, by paintTaskRow promoting that one row to role="alert". */
+        }
+        <div id="gallery-queue" class="gallery-queue"></div>
+        <label class="btn-outline choose-img" for="gallery-files">
+          {t("profile.gallery.add")}
+          <input
+            id="gallery-files"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif"
+            multiple
+            style="display:none;"
+          />
+        </label>
+        <span class="gallery-drop-hint" aria-hidden="true">{t("profile.gallery.drop")}</span>
+      </div>
       <p id="gallery-status" class="field-note" style="display:none;"></p>
       <p class="field-note">{t("profile.note.gallery")}</p>
+      {
+        /* Order is not a preference, it is the card's geometry: works[0]'s
+        width/height become the aspect box in CommunityImageCard. Nothing used
+        to say so, so members had no way to know the first image was doing
+        anything at all. */
+      }
+      <p class="field-note">{t("profile.gallery.coverNote")}</p>
       {
         /* The directory is image-led: a member without a gallery holds a
         typographic card. Saying so here is the standing mechanism that fills
@@ -247,6 +278,7 @@ const t = useTranslations(lang);
         <div class="gallery-item">
           <div class="gallery-thumb">
             <img alt="" loading="lazy" data-gallery-img />
+            <span class="gallery-cover" data-gallery-cover hidden></span>
             <button type="button" class="gallery-thumb-remove" data-gallery-remove>✕</button>
           </div>
           <div class="gallery-fields">
@@ -273,6 +305,41 @@ const t = useTranslations(lang);
             <div class="input-prefix-wrap">
               <span class="input-prefix">https://</span>
               <input type="text" class="input input-prefixed" data-gallery-field="link" />
+            </div>
+            <div class="gallery-tools">
+              <button type="button" class="gallery-tool" data-gallery-move="up">↑</button>
+              <button type="button" class="gallery-tool" data-gallery-move="down">↓</button>
+            </div>
+          </div>
+        </div>
+      </template>
+      {
+        /* One pending upload, cloned by renderQueue(). Deliberately the same
+        .gallery-item geometry as a committed row: the thumb is in the same
+        place at the same size, so a completed upload reads as the row settling
+        rather than as one row vanishing and a different one appearing. */
+      }
+      <template data-gallery-tpl="task">
+        <div class="gallery-item gallery-task">
+          <div class="gallery-thumb">
+            <img alt="" data-task-img />
+            <button type="button" class="gallery-thumb-remove" data-task-cancel>✕</button>
+          </div>
+          <div class="gallery-fields">
+            <p class="gallery-task-name" data-task-name></p>
+            <div
+              class="gallery-bar"
+              data-task-track
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
+              <span data-task-bar></span>
+            </div>
+            <p class="gallery-task-state" data-task-state></p>
+            <div class="gallery-tools" data-task-tools hidden>
+              <button type="button" class="gallery-tool" data-task-retry></button>
+              <button type="button" class="gallery-tool" data-task-dismiss></button>
             </div>
           </div>
         </div>
@@ -739,6 +806,147 @@ const t = useTranslations(lang);
     background: var(--color-error);
   }
 
+  /* The drop target. No border of its own until something is being dragged
+     over it — a permanently outlined box in the middle of a form reads as a
+     disabled field, and this one is only special for the two seconds a drag
+     lasts. */
+  .gallery-drop {
+    position: relative;
+    border: 1.5px dashed transparent;
+    border-radius: var(--radius-sm);
+    padding: 4px;
+    margin: -4px -4px 0.5rem;
+    transition: border-color 0.15s ease;
+  }
+
+  .gallery-drop.is-dragging {
+    border-color: var(--color-dark);
+  }
+
+  /* Only ever seen mid-drag, so it costs nothing at rest and does not compete
+     with the Add button for the same job. */
+  .gallery-drop-hint {
+    display: none;
+    margin-left: 10px;
+    font-size: 0.85rem;
+    color: var(--color-muted);
+  }
+
+  .gallery-drop.is-dragging .gallery-drop-hint {
+    display: inline;
+  }
+
+  /* The cap is a fact about the gallery, not an error, so the button says so by
+     going quiet rather than by the form growing a message. */
+  .gallery-drop .choose-img[aria-disabled="true"] {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .gallery-queue {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .gallery-queue:not(:empty) {
+    margin-top: 14px;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Held apart from a committed row on purpose: this image is not in the
+     gallery yet, and an identical-looking row would claim it was. */
+  .gallery-task .gallery-thumb img {
+    opacity: 0.55;
+  }
+
+  .gallery-task-name {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--color-dark);
+    overflow-wrap: anywhere;
+  }
+
+  .gallery-task-state {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--color-muted);
+  }
+
+  .gallery-task.has-error .gallery-task-state {
+    color: var(--color-error);
+  }
+
+  .gallery-bar {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-border);
+    overflow: hidden;
+  }
+
+  .gallery-bar span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--color-dark);
+    transition: width 0.2s ease;
+  }
+
+  /* Progress is meaningless for a file that failed and for one still waiting
+     its turn, and an empty track sitting under the name looks like a stall. */
+  .gallery-task.has-error .gallery-bar,
+  .gallery-task.is-waiting .gallery-bar {
+    display: none;
+  }
+
+  .gallery-tools {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .gallery-tool {
+    min-width: 26px;
+    height: 26px;
+    padding: 0 8px;
+    background: none;
+    color: var(--color-muted);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .gallery-tool:hover:not(:disabled) {
+    color: var(--color-dark);
+    border-color: var(--color-dark);
+  }
+
+  /* The first and last rows keep their buttons rather than losing them: a
+     control that disappears at the edge of a list makes the list jump, and the
+     disabled state already says the same thing without moving anything. */
+  .gallery-tool:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  /* Names what the first image already IS. Not a control — pressing it would
+     imply the others could be chosen, and they are chosen by being moved. */
+  .gallery-cover {
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    padding: 2px 6px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    font-size: 0.65rem;
+    line-height: 1.4;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
   @media (--bp-mobile) {
     .gallery-item {
       grid-template-columns: minmax(0, 1fr);
@@ -1065,14 +1273,17 @@ const t = useTranslations(lang);
     MAX_GALLERY_DESCRIPTION,
     MAX_GALLERY_DESCRIPTION_SHORT,
     MAX_GALLERY_LINK,
-    validateGalleryFile,
     galleryErrorCode,
-    compressGalleryImage,
-    uploadGalleryImage,
     syncGalleryText,
     sanitizeGalleryItems,
     type GalleryItem,
   } from "../lib/gallery.ts";
+  import {
+    createGalleryQueue,
+    galleryErrorKey,
+    isRetryable,
+    type GalleryTask,
+  } from "../lib/galleryQueue.ts";
   import { updateUserProfile } from "../lib/firestore.ts";
   import { renderCardPreview, renderProfilePreview } from "../lib/profilePreview.ts";
   import {
@@ -1211,11 +1422,15 @@ const t = useTranslations(lang);
 
     const galleryInput = document.getElementById("gallery-files") as HTMLInputElement;
     const galleryEditor = document.getElementById("gallery-editor")!;
+    const galleryQueueEl = document.getElementById("gallery-queue")!;
+    const galleryDrop = document.getElementById("gallery-drop")!;
+    const galleryAdd = galleryDrop.querySelector<HTMLLabelElement>(".choose-img")!;
     const galleryStatus = document.getElementById("gallery-status")!;
     // Row shells for the two list editors. Cloned rather than built: see the
     // comment on each <template> above — Astro's scope attribute is on the
     // selectors, so a createElement() row matches none of the scoped rules.
     const galleryItemTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="item"]');
+    const galleryTaskTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="task"]');
 
     function setGalleryStatus(text: string) {
       galleryStatus.textContent = text;
@@ -1335,8 +1550,51 @@ const t = useTranslations(lang);
 
     socialAdd.addEventListener("click", addSocialRow);
 
-    function renderGallery() {
+    /**
+     * The upload queue. Everything that used to happen inside the file-input
+     * change handler — validate, compress, upload, one at a time, behind a
+     * single shared status line — now happens here, as a list of tasks that
+     * each carry their own state. See src/lib/galleryQueue.ts for why that is
+     * the shape.
+     */
+    const galleryQueue = createGalleryQueue({
+      // Read late, never captured: a queue can outlive a session.
+      uid: () => auth.currentUser?.uid ?? null,
+      // The member's OWN ceiling, not the absolute one: an unverified account
+      // holds a single image, and a queue that let it pick eight would collect
+      // seven permission errors on the member's behalf.
+      capacity: () => galleryLimit(auth.currentUser) - gallery.length,
+      onChange: renderQueue,
+      onUploaded: (item) => void onGalleryUploaded(item),
+    });
+
+    /**
+     * Renders the committed gallery.
+     *
+     * `focusHint` puts focus back on a reorder button after the list has been
+     * rebuilt. Without it, pressing ↓ moves the row, wipes the DOM node the
+     * keyboard was on, and drops focus to the document — so moving an image
+     * two places would take a mouse and a fresh click each time.
+     */
+    function renderGallery(focusHint?: { index: number; tool: "up" | "down" }) {
       if (!galleryItemTpl) return;
+      const last = gallery.length - 1;
+      // Where the caret was, so it can be put back. replaceChildren() destroys
+      // the node it was in, and uploads now COMPLETE WHILE YOU TYPE — that is
+      // the point of the queue — so a member writing a caption for image two
+      // would have the field yanked out from under them each time one of the
+      // other five landed. The old serial flow rendered rarely enough to get
+      // away with this; concurrency does not.
+      const typing = document.activeElement;
+      const typingIn =
+        typing instanceof HTMLInputElement || typing instanceof HTMLTextAreaElement
+          ? {
+              index: typing.closest<HTMLElement>("[data-gallery-index]")?.dataset.galleryIndex,
+              field: typing.dataset.galleryField,
+              start: typing.selectionStart,
+              end: typing.selectionEnd,
+            }
+          : null;
       galleryEditor.replaceChildren(
         ...gallery
           .map((item, index) => {
@@ -1350,8 +1608,17 @@ const t = useTranslations(lang);
             const description = field<HTMLTextAreaElement>("description");
             const descriptionShort = field<HTMLTextAreaElement>("descriptionShort");
             const link = field<HTMLInputElement>("link");
+            const cover = row.querySelector<HTMLElement>("[data-gallery-cover]");
+            const up = row.querySelector<HTMLButtonElement>('[data-gallery-move="up"]');
+            const down = row.querySelector<HTMLButtonElement>('[data-gallery-move="down"]');
             if (!img || !remove || !caption || !description || !descriptionShort) return null;
-            if (!link) return null;
+            if (!link || !cover || !up || !down) return null;
+
+            // The one thing on screen that admits the order means something:
+            // CommunityImageCard takes works[0]'s width/height as the aspect
+            // box of the whole card, so this image decides its silhouette.
+            cover.hidden = index !== 0;
+            cover.textContent = s["profile.gallery.cover"];
 
             img.src = item.url;
             remove.setAttribute("aria-label", s["profile.gallery.remove"]);
@@ -1399,6 +1666,20 @@ const t = useTranslations(lang);
               syncPreview();
             });
 
+            // Buttons, not dragging. HTML5 drag-and-drop between rows needs a
+            // keyboard path and a touch path built alongside it before it is
+            // usable by everyone; two buttons ARE that path for every input
+            // device, and they are what the drop zone above cannot give.
+            up.disabled = index === 0;
+            down.disabled = index === last;
+            named(up, s["profile.gallery.moveUp"]);
+            named(down, s["profile.gallery.moveDown"]);
+            up.addEventListener("click", () => void moveGalleryImage(index, index - 1));
+            down.addEventListener("click", () => void moveGalleryImage(index, index + 1));
+
+            // Read back by the focus hint below; the rows are otherwise
+            // anonymous once they are in the DOM.
+            row.dataset.galleryIndex = String(index);
             return row;
           })
           .filter((n): n is HTMLElement => n !== null)
@@ -1407,6 +1688,36 @@ const t = useTranslations(lang);
       // gallery; the nudge says so, and disappears with the first image.
       const nudge = document.getElementById("gallery-nudge");
       if (nudge) nudge.hidden = gallery.length > 0;
+      updateGalleryControls();
+      if (focusHint) {
+        const moved = galleryEditor.querySelector<HTMLElement>(
+          `[data-gallery-index="${focusHint.index}"]`,
+        );
+        // The button that did the moving may itself be disabled now — an image
+        // moved to the top has no "up" left. Falling back to its opposite keeps
+        // focus inside the row that moved rather than losing it to the page.
+        const preferred = moved?.querySelector<HTMLButtonElement>(
+          `[data-gallery-move="${focusHint.tool}"]`,
+        );
+        const fallback = moved?.querySelector<HTMLButtonElement>(
+          `[data-gallery-move="${focusHint.tool === "up" ? "down" : "up"}"]`,
+        );
+        (preferred && !preferred.disabled ? preferred : fallback)?.focus();
+      } else if (typingIn?.index && typingIn.field) {
+        // Restored by index, which is stable for the case that matters: an
+        // upload completing APPENDS, so the rows already on screen keep their
+        // positions. A reorder takes the branch above instead, and a removal
+        // was a button press rather than a caret.
+        const back = galleryEditor.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+          `[data-gallery-index="${typingIn.index}"] [data-gallery-field="${typingIn.field}"]`,
+        );
+        if (back) {
+          back.focus();
+          if (typingIn.start !== null && typingIn.end !== null) {
+            back.setSelectionRange(typingIn.start, typingIn.end);
+          }
+        }
+      }
       // The gallery IS the profile page's content AND the card's artwork, so
       // every add, removal and reorder has to reach both previews. This is
       // the one place the gallery re-renders, which makes it the one place
@@ -1415,9 +1726,148 @@ const t = useTranslations(lang);
     }
 
     /**
-     * Uploads and removals persist immediately, because they own files in
-     * Storage — the Firestore array is what says which of those files still
-     * belong to the member.
+     * The cap, stated by the control instead of by an error message.
+     *
+     * The limit used to be enforced halfway through a batch: pick ten files,
+     * watch as many as fitted upload, then read "Gallery is full" while the
+     * rest were silently abandoned. Counting queued-but-unfinished uploads as
+     * occupied means the button is already unavailable before that can happen.
+     *
+     * Two ceilings wear the same shape here — the real one, and the one an
+     * unverified account sits under until it clicks the link — so the note
+     * beside the disabled button has to say WHICH, or "gallery is full" is a
+     * lie to somebody holding one image.
+     */
+    let galleryCapNote = "";
+
+    function updateGalleryControls() {
+      const limit = galleryLimit(auth.currentUser);
+      const full = gallery.length + galleryQueue.pendingCount() >= limit;
+      galleryAdd.setAttribute("aria-disabled", String(full));
+      galleryInput.disabled = full;
+
+      const capNote = full
+        ? limit < MAX_GALLERY_IMAGES
+          ? s["profile.gallery.verifyForMore"]
+          : s["profile.gallery.full"]
+        : "";
+      if (capNote !== galleryCapNote) {
+        // The line is taken over only when it is free or still showing this
+        // function's own last note. A per-file error from the queue is more
+        // specific than the cap and outranks it; and clearing on the way back
+        // down is what stops "gallery is full" standing over a gallery that a
+        // removal has just made room in.
+        if (!galleryStatus.textContent || galleryStatus.textContent === galleryCapNote) {
+          setGalleryStatus(capNote);
+        }
+        galleryCapNote = capNote;
+      }
+    }
+
+    /**
+     * Live rows for the queue, keyed by task id.
+     *
+     * Reconciled rather than re-rendered: a progress event arrives several
+     * times a second per upload, and replaceChildren() on every one of them
+     * would rebuild rows under the member's pointer and re-run the image decode
+     * for each thumbnail.
+     */
+    const galleryTaskRows = new Map<string, HTMLElement>();
+
+    function renderQueue() {
+      if (!galleryTaskTpl) return;
+      const tasks = galleryQueue.tasks();
+      const live = new Set(tasks.map((task) => task.id));
+      for (const [id, row] of galleryTaskRows) {
+        if (live.has(id)) continue;
+        row.remove();
+        galleryTaskRows.delete(id);
+      }
+      for (const task of tasks) {
+        let row = galleryTaskRows.get(task.id);
+        if (!row) {
+          const clone = galleryTaskTpl.content.firstElementChild?.cloneNode(true);
+          if (!(clone instanceof HTMLElement)) continue;
+          row = clone;
+          galleryTaskRows.set(task.id, row);
+          galleryQueueEl.appendChild(row);
+          buildTaskRow(row, task);
+        }
+        paintTaskRow(row, task);
+      }
+      updateGalleryControls();
+    }
+
+    /** The parts of a queue row that never change: its thumbnail and its buttons. */
+    function buildTaskRow(row: HTMLElement, task: GalleryTask) {
+      const img = row.querySelector<HTMLImageElement>("[data-task-img]");
+      const name = row.querySelector<HTMLElement>("[data-task-name]");
+      const cancel = row.querySelector<HTMLButtonElement>("[data-task-cancel]");
+      const retry = row.querySelector<HTMLButtonElement>("[data-task-retry]");
+      const dismiss = row.querySelector<HTMLButtonElement>("[data-task-dismiss]");
+      // The local bytes, so the image is on screen before the upload starts.
+      // This is the whole of the optimistic UI: the member sees what they
+      // picked and where it will sit, immediately.
+      if (img) img.src = task.thumbUrl;
+      if (name) name.textContent = task.name;
+      if (cancel) {
+        named(cancel, s["profile.gallery.cancel"]);
+        cancel.addEventListener("click", () => galleryQueue.cancel(task.id));
+      }
+      if (retry) {
+        retry.textContent = s["profile.gallery.retry"];
+        retry.addEventListener("click", () => galleryQueue.retry(task.id));
+      }
+      if (dismiss) {
+        dismiss.textContent = s["profile.gallery.dismiss"];
+        dismiss.addEventListener("click", () => galleryQueue.dismiss(task.id));
+      }
+    }
+
+    /** The parts that change: state wording, the bar, and which buttons apply. */
+    function paintTaskRow(row: HTMLElement, task: GalleryTask) {
+      const bar = row.querySelector<HTMLElement>("[data-task-bar]");
+      const track = row.querySelector<HTMLElement>("[data-task-track]");
+      const state = row.querySelector<HTMLElement>("[data-task-state]");
+      const tools = row.querySelector<HTMLElement>("[data-task-tools]");
+      const cancel = row.querySelector<HTMLButtonElement>("[data-task-cancel]");
+      const retry = row.querySelector<HTMLButtonElement>("[data-task-retry]");
+      const failed = task.state === "error";
+
+      row.classList.toggle("has-error", failed);
+      row.classList.toggle("is-waiting", task.state === "queued" || task.state === "preparing");
+      if (bar) bar.style.width = `${task.state === "uploading" ? task.progress : 0}%`;
+      // On the track, not read aloud as it changes: a progressbar is polled by
+      // the screen reader when the member asks for it.
+      if (track) track.setAttribute("aria-valuenow", String(task.progress));
+      if (state) {
+        // A failure is the one thing worth interrupting for, and it is the one
+        // thing that stops changing once it has happened.
+        state.setAttribute("role", failed ? "alert" : "presentation");
+        // Per file, in words, in the member's language. "Uploading 40%" on a
+        // shared line could never say WHICH of six files was at 40%.
+        state.textContent = failed
+          ? s[galleryErrorKey(task.error ?? "unknown")]
+          : task.state === "uploading"
+            ? `${s["profile.upload.uploading"]} ${task.progress}%`
+            : task.state === "preparing"
+              ? s["profile.gallery.preparing"]
+              : s["profile.gallery.queued"];
+      }
+      // Cancel belongs to work in progress; Retry and Dismiss belong to work
+      // that stopped. Showing all three at once would offer to cancel a file
+      // that already failed.
+      if (cancel) cancel.hidden = failed;
+      if (tools) tools.hidden = !failed;
+      // Retry is only offered where trying again could actually differ. An SVG
+      // will still be an SVG; a dropped connection may well be back.
+      if (retry) retry.hidden = !failed || !isRetryable(task.error ?? "unknown");
+    }
+
+    /**
+     * Uploads, removals and reorders persist immediately, because they own
+     * files in Storage — the Firestore array is what says which of those files
+     * still belong to the member.
      *
      * Typed text (captions, descriptions) is NOT pushed by itself — that waits
      * for Save, since writing on every keystroke is not what a form is.
@@ -1431,70 +1881,162 @@ const t = useTranslations(lang);
       });
     }
 
+    let galleryWrite: Promise<boolean> | null = null;
+    let galleryWriteAgain = false;
+
+    /**
+     * Writes the array now, and folds callers that arrive mid-write into one
+     * further pass afterwards.
+     *
+     * This is what closes the orphan window. The old flow persisted ONCE at the
+     * end of the batch, so a member who closed the tab after four of six
+     * uploads left four images whose records said `live` but which the
+     * member's own gallery array never mentioned. Writing per completion
+     * removes that window; coalescing keeps six completions from becoming six
+     * overlapping writes racing each other to be last.
+     *
+     * A caller that arrives mid-write gets the IN-FLIGHT promise rather than an
+     * early answer, and that matters: `gallery` is one shared array, so the
+     * extra pass this caller just requested carries its change too, and the
+     * promise it is waiting on does not resolve until that pass is done. An
+     * early `false` would have been the orphan bug wearing different clothes —
+     * the caller would skip its deletion mark for a write that in fact
+     * succeeded, leaving the record `live` and unreferenced for good.
+     *
+     * Returns whether the array is safely stored, which callers that go on to
+     * RETIRE an image must check: marking a record for deletion while the
+     * stored array still points at it is how a gallery gets a permanent broken
+     * image.
+     */
+    function persistGalleryNow(): Promise<boolean> {
+      if (galleryWrite) {
+        galleryWriteAgain = true;
+        return galleryWrite;
+      }
+      galleryWrite = (async () => {
+        try {
+          do {
+            galleryWriteAgain = false;
+            await persistGallery();
+          } while (galleryWriteAgain);
+          setGalleryStatus("");
+          return true;
+        } catch (error) {
+          setGalleryStatus(s[galleryErrorKey(galleryErrorCode(error))]);
+          return false;
+        } finally {
+          galleryWrite = null;
+        }
+      })();
+      return galleryWrite;
+    }
+
+    /** One image finished uploading: it joins the gallery and the array is stored. */
+    async function onGalleryUploaded(item: GalleryItem) {
+      gallery.push(item);
+      renderGallery();
+      await persistGalleryNow();
+    }
+
     async function removeGalleryImage(index: number) {
       const [removed] = gallery.splice(index, 1);
       renderGallery();
-      try {
-        await persistGallery();
-        if (removed) await markImageForDeletion(removed.imageId);
-        setGalleryStatus("");
-      } catch {
-        setGalleryStatus(s["profile.gallery.error"]);
+      // The record is marked only once Firestore has stopped pointing at it.
+      if ((await persistGalleryNow()) && removed) {
+        await markImageForDeletion(removed.imageId);
       }
     }
 
-    galleryInput.addEventListener("change", async () => {
-      const user = auth.currentUser;
-      if (!user) return;
-      const files = Array.from(galleryInput.files ?? []);
-      galleryInput.value = "";
+    /**
+     * Moves one image, and stores the new order straight away.
+     *
+     * Order is not a preference the member might still be deciding — it decides
+     * which image is the card's cover, so leaving it until Save would leave the
+     * editor and the directory disagreeing about the card.
+     */
+    async function moveGalleryImage(from: number, to: number) {
+      if (to < 0 || to >= gallery.length) return;
+      const [moved] = gallery.splice(from, 1);
+      gallery.splice(to, 0, moved);
+      renderGallery({ index: to, tool: to < from ? "up" : "down" });
+      await persistGalleryNow();
+    }
+
+    /**
+     * The one way files enter the queue, from the picker or from a drop.
+     *
+     * Rejections are reported per file and named per cause, all at once for the
+     * whole selection — the old loop overwrote one shared line per file, so a
+     * six-file batch ended showing only whatever happened to the last one.
+     */
+    function addGalleryFiles(files: File[]) {
       if (files.length === 0) return;
-
-      let uploaded = false;
-      for (const file of files) {
-        // Two different ceilings wear the same shape here: the real one, and
-        // the one an unverified account sits under until it clicks the link.
-        // They need different words — "gallery is full" is a lie to someone
-        // holding one image, and the whole point of the cap is the nudge.
-        const limit = galleryLimit(user);
-        if (gallery.length >= limit) {
-          setGalleryStatus(
-            limit < MAX_GALLERY_IMAGES ? s["profile.gallery.verifyForMore"] : s["profile.gallery.full"],
-          );
-          break;
-        }
-        // A code, not a sentence: validateGalleryFile knows what is wrong and
-        // this side knows which language the member reads in.
-        const rejected = validateGalleryFile(file);
-        if (rejected) {
-          setGalleryStatus(s[`profile.gallery.err.${rejected}`]);
-          continue;
-        }
-        try {
-          setGalleryStatus(s["profile.upload.processing"]);
-          const compressed = await compressGalleryImage(file);
-          const item = await uploadGalleryImage(user.uid, compressed, (pct) => {
-            setGalleryStatus(`${s["profile.upload.uploading"]} ${pct}%`);
-          });
-          gallery.push(item);
-          uploaded = true;
-          renderGallery();
-        } catch (err) {
-          // Named, because the causes call for different actions: an expired
-          // sign-in and a file that will never fit are both permanent, and
-          // "please try again" was wrong advice for both.
-          setGalleryStatus(s[`profile.gallery.err.${galleryErrorCode(err)}`]);
-        }
+      const limit = galleryLimit(auth.currentUser);
+      const outcome = galleryQueue.add(files);
+      const problems = outcome.rejected.map(
+        (rejection) => `${rejection.name}: ${s[galleryErrorKey(rejection.code)]}`,
+      );
+      if (outcome.overflow > 0) {
+        // The member's OWN ceiling in the sentence: an unverified account is
+        // told it fits one, and told separately why.
+        problems.push(
+          s["profile.gallery.overflow"]
+            .replace("{n}", String(limit))
+            .replace("{m}", String(outcome.overflow)),
+        );
+        if (limit < MAX_GALLERY_IMAGES) problems.push(s["profile.gallery.verifyForMore"]);
       }
+      setGalleryStatus(problems.join(" · "));
+    }
 
-      if (uploaded) {
-        try {
-          await persistGallery();
-          setGalleryStatus(s["profile.upload.complete"]);
-        } catch {
-          setGalleryStatus(s["profile.gallery.error"]);
-        }
-      }
+    galleryInput.addEventListener("change", () => {
+      const files = Array.from(galleryInput.files ?? []);
+      // Cleared straight away: without this, picking the same file again after
+      // a failure fires no change event at all.
+      galleryInput.value = "";
+      addGalleryFiles(files);
+    });
+
+    /**
+     * Drag-and-drop onto the gallery block.
+     *
+     * The depth counter is not incidental: dragenter and dragleave fire for
+     * every descendant the pointer crosses, so a plain dragleave handler
+     * un-highlights the zone the instant the cursor passes over a thumbnail
+     * INSIDE it. Counting entries and exits is what makes the highlight track
+     * the zone rather than its children.
+     */
+    let galleryDragDepth = 0;
+
+    function galleryDragHasFiles(event: DragEvent) {
+      return Boolean(event.dataTransfer?.types.includes("Files"));
+    }
+
+    galleryDrop.addEventListener("dragenter", (event) => {
+      if (!galleryDragHasFiles(event)) return;
+      event.preventDefault();
+      galleryDragDepth += 1;
+      galleryDrop.classList.add("is-dragging");
+    });
+
+    galleryDrop.addEventListener("dragover", (event) => {
+      if (!galleryDragHasFiles(event)) return;
+      // Without preventDefault the browser treats the drop as navigation and
+      // opens the image file over the top of the form.
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    });
+
+    galleryDrop.addEventListener("dragleave", () => {
+      galleryDragDepth = Math.max(0, galleryDragDepth - 1);
+      if (galleryDragDepth === 0) galleryDrop.classList.remove("is-dragging");
+    });
+
+    galleryDrop.addEventListener("drop", (event) => {
+      event.preventDefault();
+      galleryDragDepth = 0;
+      galleryDrop.classList.remove("is-dragging");
+      addGalleryFiles(Array.from(event.dataTransfer?.files ?? []));
     });
 
     function getSelectedPrimaryAudiences() {

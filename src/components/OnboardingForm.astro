@@ -1053,8 +1053,9 @@ const prefix = lang === "de" ? "/de" : "";
           try {
             setGalleryStatus(s["profile.upload.processing"]);
             const compressed = await compressGalleryImage(file);
-            const item = await uploadGalleryImage(user.uid, compressed, (pct) => {
-              setGalleryStatus(`${s["profile.upload.uploading"]} ${pct}%`);
+            const item = await uploadGalleryImage(user.uid, compressed, {
+              onProgress: (pct) =>
+                setGalleryStatus(`${s["profile.upload.uploading"]} ${pct}%`),
             });
             // One image failing is one image failing: the loop keeps going and
             // everything already uploaded stays.

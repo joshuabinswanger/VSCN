@@ -347,18 +347,28 @@ export async function compressGalleryImage(file: File | Blob): Promise<Compresse
   }
 }
 
+export interface UploadOptions {
+  onProgress?: (pct: number) => void;
+  /**
+   * Handed the transfer's cancel function as soon as the bytes start moving,
+   * so a per-image Cancel button in the queue has something to call.
+   */
+  onCancellable?: (cancel: () => void) => void;
+}
+
 /** Uploads through the record-first pipeline and returns the array item to append. */
 export async function uploadGalleryImage(
   uid: string,
   image: CompressedImage,
-  onProgress: (pct: number) => void = () => {},
+  options: UploadOptions = {},
 ): Promise<GalleryItem> {
   const { imageId, url } = await uploadImage(
     uid,
     "gallery",
     image.blob,
     { width: image.width, height: image.height, color: image.color },
-    onProgress,
+    options.onProgress,
+    options.onCancellable,
   );
   return { imageId, url, caption: "", width: image.width, height: image.height, color: image.color };
 }

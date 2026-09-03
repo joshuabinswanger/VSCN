@@ -66,6 +66,16 @@ export async function uploadImage(
   blob: Blob,
   dims: ImageDimensions,
   onProgress: (pct: number) => void = () => {},
+  /**
+   * Handed the transfer's cancel function the moment the bytes start moving,
+   * so a per-image Cancel button has something to call. uploadBytesResumable
+   * has always supported this; until the upload queue arrived nothing asked.
+   *
+   * Cancelling leaves the images/ record in `uploading`, which is exactly what
+   * a tab closed mid-upload leaves — sweepImages finds it by query and clears
+   * record and bytes together. So there is nothing to unwind here.
+   */
+  onCancellable: (cancel: () => void) => void = () => {},
 ): Promise<UploadedImage> {
   // An unverified account has one id per kind and reuses it; a verified one
   // gets a fresh record every time.
@@ -131,6 +141,7 @@ export async function uploadImage(
       // The object knows its owner even when found outside its path.
       customMetadata: { ownerUid: uid, imageId },
     });
+    onCancellable(() => task.cancel());
     task.on(
       "state_changed",
       (snap) => onProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
