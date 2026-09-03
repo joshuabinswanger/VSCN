@@ -1059,14 +1059,14 @@ const indexMembers = [...members].sort((a, b) =>
     }
 
     /* Same cap, the work tile's own chrome. The line above bakes in the member
-       card's 5.4rem of name-and-caption; a work tile carries one project title
-       under its frame and declares 2.2rem for it (--cwork-chrome in
-       CommunityWorkCard) — its author line is out of flow and takes no room.
-       Stated separately rather than made a variable, because the two cards'
-       anatomies are genuinely different numbers and a shared one would hide
-       that. The extra specificity wins wherever this sits in the file. */
+       card's 5.4rem of name-and-caption; a work tile carries a project title
+       AND an author line under its frame, both in flow, and declares 3.3rem
+       for the pair (--cwork-chrome in CommunityWorkCard). Stated separately
+       rather than made a variable, because the two cards' anatomies are
+       genuinely different numbers and a shared one would hide that. The extra
+       specificity wins wherever this sits in the file. */
     .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
-      --cgrid-row: calc((1.5 * var(--wall-card) + 2.2rem) / var(--slot-rows, 1));
+      --cgrid-row: calc((1.5 * var(--wall-card) + 3.3rem) / var(--slot-rows, 1));
     }
   }
 
@@ -1144,19 +1144,6 @@ const indexMembers = [...members].sort((a, b) =>
      later cell paint straight over the open panel. Written global because the
      `details` it tests for belongs to another component. */
   :global(.cgrid__cell:has(details[open])) {
-    z-index: 3;
-  }
-
-  /* THE SAME PROBLEM FOR THE WALL'S AUTHOR LINE (2026-09-03, Josh: "in grid
-     view when clicking on a person go into their profile"). A tile's author
-     name is revealed on hover and positioned OUT OF FLOW under the picture, so
-     like an open panel it paints outside the box the drawing gave the cell —
-     and every cell carries a GSAP transform, hence its own stacking context,
-     so a later cell painted straight over the name and swallowed the click.
-     `:hover`, not a `:has()` on some state, because the reveal IS the hover.
-     Above the neighbours (3) but below the sticky bar (20). */
-  .cgrid[data-pattern="grid"] .cgrid__cell:hover,
-  .cgrid[data-pattern="grid"] .cgrid__cell:focus-within {
     z-index: 3;
   }
 
@@ -1546,11 +1533,13 @@ const indexMembers = [...members].sort((a, b) =>
      THIS IS THE WHOLE MECHANISM — no JS, no observers, no scroll handler. One
      scroll-driven animation per cell over its own `view()` timeline, so the
      browser interpolates each card's opacity from its position in the
-     scrollport: the midpoint of the timeline IS the card centred, which is
-     exactly the "most prominent" the brief asks for. It also subsumes the
-     enter-fade this replaces (a card used to fade in over `entry 0%..55%` and
-     then stay put) — the ramp up from the bottom edge is the same gesture,
-     it simply now has a ramp back down at the top edge to match.
+     scrollport. The plateau sits slightly before dead-centre — full opacity
+     while the card's top edge is between the screen's 50% mark and its top
+     20% mark — which is close enough to "centred" to still read as the
+     "most prominent" the brief asks for. It also subsumes the enter-fade
+     this replaces (a card used to fade in over `entry 0%..55%` and then stay
+     put) — the ramp up from the bottom edge is the same gesture, it simply
+     now has a ramp back down at the top edge to match.
 
      Gallery only: the grid wall is a reference view and stays still.
      Browsers without scroll-driven animations get every card at full opacity,
@@ -1576,14 +1565,26 @@ const indexMembers = [...members].sort((a, b) =>
   }
 
   /* @keyframes are global in Astro (see CLAUDE.md) — hence the prefix.
-     The plateau across the middle is deliberate: without it only a card
-     momentarily dead-centre is ever fully opaque, and the focus would visibly
-     dim while a reader stopped to look at it. 38%..62% is roughly "centred
-     enough", and it is wide enough that a short card and a tall one both get a
-     resting beat at full strength.
-     The translate is the old enter-fade's, kept because a card that only
-     brightens reads as a light being turned up rather than as a card
-     arriving — and mirrored on the way out so the gesture is symmetrical. */
+     (2026-09-03, Josh: opacity only, no motion, and stronger — full opacity
+     only while the card's TOP edge is between the screen's 50% mark and its
+     top 20% mark.)
+
+     Opacity-only now: the translateY this used to carry read as "the card
+     arriving/leaving" rather than a pure fade, and made the effect feel
+     softer than intended. Motion is gone; only the fade remains.
+
+     The plateau is keyed to the card's own top edge, not to the abstract
+     0%..100% of the animation-range, and that distinction matters: `cover`'s
+     0%..100% is linear in the SCROLL DISTANCE the whole card travels (its own
+     height plus the viewport's), not in the screen position of either edge —
+     a short card and a tall one reach "top edge at 50% down the screen" at
+     different fractions of their own cover range. 35%/55% below is a fit
+     against this page's real mobile cards (measured ~353px average against
+     an 812px viewport, spread ~236-502px): close enough that the plateau
+     lands inside the 50%..20% window for most cards, at the cost of drifting
+     a little for the shortest and tallest ones. Getting it exact per-card
+     would need a scroll handler measuring live height, which is the
+     complexity this mechanism exists to avoid. */
   @keyframes cgrid-cell-focus {
     /* 0.35 rather than the ~0.3 the reference reads at: that page is white on
        black, where a dimmed thing recedes into the ground, and this one is dark
@@ -1592,16 +1593,13 @@ const indexMembers = [...members].sort((a, b) =>
        that the card beside the focus is still a picture. */
     0% {
       opacity: 0.35;
-      transform: translateY(16px);
     }
-    38%,
-    62% {
+    35%,
+    55% {
       opacity: 1;
-      transform: translateY(0);
     }
     100% {
       opacity: 0.35;
-      transform: translateY(-16px);
     }
   }
 

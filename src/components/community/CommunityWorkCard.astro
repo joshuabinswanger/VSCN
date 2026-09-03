@@ -10,25 +10,19 @@ import { useTranslations, type Lang } from "../../i18n/utils.ts";
 // to show pictures, it is a wall of work, so a member with six images stands in
 // it six times and the wall is as long as the directory's gallery.
 //
-// TWO KINDS OF WORD, AND THEY BEHAVE DIFFERENTLY (2026-09-01, Josh: "we need
-// the project names and on hover the author names"):
-//   THE CAPTION is printed. It names the thing in the picture, so it is part
-//   of the picture's label and belongs on the page at rest.
-//   THE AUTHOR is revealed — ON DESKTOP ONLY. A credit under all 48 tiles is a
-//   second grid of text competing with the first at three columns, and the
-//   pictures are the reason to be here, so there the name waits for the pointer
-//   (or the keyboard) to ask for it.
-// The author line is therefore OUT OF FLOW on desktop: it reserves no height,
-// so revealing it cannot move a row, and at rest it is `pointer-events: none`
-// so an invisible link never sits under a stray click. Focus still reaches it,
-// which is what keeps the profile reachable without a mouse.
+// TWO KINDS OF WORD, both printed at rest, on every breakpoint (2026-09-03,
+// Josh: "add the name to the images in grid view in desktop" — always
+// visible, matching the phone). THE CAPTION names the thing in the picture;
+// THE AUTHOR credits it. Both are IN FLOW: the tile reserves room for its
+// label the same way on desktop and mobile now, and CommunityGrid's
+// --cgrid-row for a work cell reserves that room to match (see --cwork-chrome
+// below).
 //
-// ON A PHONE THE NAME IS SIMPLY PRINTED (2026-09-01, Josh: "grid should contain
-// name also in mobile"). A touch screen has no hover to reveal anything with,
-// so the reveal made the mobile wall anonymous; and the crowding argument does
-// not transfer to two columns of one screenful. The --bp-mobile block at the
-// foot puts it back in flow — see the note there for why in-flow is the load-
-// bearing half of that change.
+// This replaces an earlier hover-reveal (2026-09-01, Josh: "we need the
+// project names and on hover the author names") that kept the author out of
+// flow on desktop so a wall of 48 credits would not compete with the pictures
+// at rest. That trade reversed two days later: the name is worth more than
+// the air it costs.
 //
 // WHY IT IS NOT CommunityImageCard WITH THE CAROUSEL OFF. That card is a
 // member's card: a name above the frame, a role and a disclosure panel below,
@@ -182,14 +176,14 @@ const pswpMeta = member.displayName;
      places, what GSAP scales, and what carries the width formula below. */
   .cwork {
     display: block;
-    /* Everything under the frame that takes up room: the caption's top gap and
-       one line of project title. TWO lines' worth, rounded up, because a long
-       title wraps and the frame cap must not then let the tile outgrow its
-       slot — over-reserving costs a little air, under-reserving costs the
-       drawing. The AUTHOR is not in this number: it is out of flow and
-       reserves nothing, which is the whole point of it. The wall states the
-       matching figure on the cell (see CommunityGrid's wall block). */
-    --cwork-chrome: 2.2rem;
+    /* Everything under the frame that takes up room: the caption's top gap,
+       TWO lines' worth of title (rounded up, because a long title wraps and
+       the frame cap must not then let the tile outgrow its slot), the
+       author's own top gap, and one line of author. Both the title and the
+       author are IN FLOW now, so both count — over-reserving costs a little
+       air, under-reserving costs the drawing. The wall states the matching
+       figure on the cell (see CommunityGrid's wall block). */
+    --cwork-chrome: 3.3rem;
     /* How tall the frame may be, out of the slot the grid dealt. Absent a slot
        (nothing renders this outside the wall today) the fallback is no cap. */
     --frame-cap: calc(var(--slot-rows, 999) * var(--cgrid-row, 2rem) - var(--cwork-chrome));
@@ -252,13 +246,8 @@ const pswpMeta = member.displayName;
     transition: transform 500ms cubic-bezier(0.22, 0.61, 0.36, 1);
   }
 
-  /* ONE HOVER STATE FOR THE WHOLE TILE, keyed on .cwork rather than on the
-     frame: the picture grows and the author appears together, so the tile reads
-     as one object answering the pointer instead of two things reacting to two
-     different boxes. :focus-within joins it because both of the tile's links
-     are keyboard-reachable and a visitor arriving that way gets the same
-     acknowledgement — it is also what makes the hidden author line focusable in
-     practice (see .cwork__author). */
+  /* The picture pushes toward the reader on approach — the tile's only
+     hover/focus response now that the author line is always on. */
   .cwork:hover .cwork__img,
   .cwork:focus-within .cwork__img {
     transform: scale(1.045);
@@ -266,16 +255,7 @@ const pswpMeta = member.displayName;
 
   /* ── The label ────────────────────────────────────────── */
   .cwork__caption {
-    /* ANCHOR FOR THE AUTHOR LINE, and it has to be this element rather than
-       .cwork: CommunityGrid writes `position` on the card root in both of its
-       states (absolute in the spread's drawn geometry, static back in flow on
-       the wall), so a `position: relative` up there would be overwritten by
-       the view. The caption box is nobody else's business.
-       It also puts the line in the right place for free — `top: 100%` of this
-       box is under the title where there is one, and this padding under the
-       frame where there is not. */
-    position: relative;
-    /* The block holds the title in flow and the author out of it, so it is a
+    /* The block holds the title and the author, both in flow, so it is a
        plain box with a top gap and nothing to lay out.
        TIGHT TO THE PICTURE (2026-09-02, Josh: "grid gap of name to image
        less"). It was 0.4rem, which is the gap between two paragraphs — and
@@ -304,23 +284,16 @@ const pswpMeta = member.displayName;
     color: var(--color-dark);
   }
 
-  /* THE AUTHOR, revealed. Absolutely positioned so it reserves NO height —
-     appearing must never resize a tile, because on this wall a row is as tall
-     as its tallest tile and every neighbour would move with it. It sits
-     directly under whatever the caption holds: with a title, under the title's
-     last line; without one, under the frame.
-     `pointer-events: none` at rest is the safety, not the styling: an
-     opacity-0 link is still a click target, and an invisible link a few pixels
-     under every picture is exactly the trap a wall of pictures does not need.
-     It comes back with the reveal. Keyboard focus is unaffected by
-     pointer-events, so tabbing to the name still shows it — which is why this
-     is opacity and not `visibility: hidden`, a value that would take the link
-     out of the tab order and make :focus-within unreachable. */
+  /* THE AUTHOR, printed — in flow like the caption above it, on every
+     breakpoint (2026-09-03, Josh: "add the name to the images in grid view in
+     desktop"). Used to be a desktop-only hover reveal, out of flow so
+     appearing could never resize a tile; that traded the name's visibility
+     for a quieter wall, and the trade reversed two days after it was made.
+     The mobile treatment (2026-09-01, "grid should contain name also in
+     mobile") is now the only treatment: --cwork-chrome above reserves this
+     line's height on every card, so a row is never surprised by it. */
   .cwork__author {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
+    display: block;
     overflow: hidden;
     /* One line, truncated: the name is a credit, not a paragraph, and a
        wrapped one would reach into the row below. */
@@ -330,53 +303,22 @@ const pswpMeta = member.displayName;
     color: var(--color-muted);
     text-overflow: ellipsis;
     white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    /* Half the picture's timing: the name should arrive under a settled image,
-       not race it. Same curve, so the two read as one gesture. */
-    transition: opacity 250ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    /* NOTHING OF ITS OWN where there is no title: the caption box's own top
+       gap is already the whole distance to the frame, and where the author is
+       the only line there is, a second step here would pay twice for one gap
+       (2026-09-02, "grid gap of name to image less"). */
+    padding-top: 0;
   }
 
-  .cwork:hover .cwork__author,
-  .cwork:focus-within .cwork__author {
-    opacity: 1;
-    pointer-events: auto;
+  /* Under a title, though, the two lines do need parting — the caption's gap
+     is spent above the title, not between them. */
+  .cwork__title + .cwork__author {
+    padding-top: 0.1rem;
   }
 
-  /* ── THE HOVER BRIDGE, AND IT IS THE WHOLE REASON THE NAME WAS
-     UNCLICKABLE ─────────────────────────────────────────
-     (2026-09-03, Josh: "in grid view when clicking on a person go into their
-     profile".)
-
-     `.cwork__author` is anchored at `top: 100%` of the caption box, which puts
-     it BELOW `.cwork`'s own bottom edge — outside the element whose `:hover`
-     revealed it. So reaching for the name cancelled the hover that had drawn
-     it: the line faded and went `pointer-events: none` in the same movement
-     that was travelling towards it, and there was no pointer path from the
-     picture to the name that kept it alive. The name has been a link since the
-     tile was written and it was, in practice, unreachable with a mouse.
-     (Not with a keyboard — `:focus-within` above always worked — and not on a
-     phone, where the --bp-mobile block prints the line in flow.)
-
-     This is the standard fix for a revealed element that lives outside its
-     trigger: the revealed thing keeps ITSELF revealed. The pointer crosses out
-     of `.cwork` directly onto `.cwork__author` — they share an edge — and this
-     rule takes over in the same frame, so the line stays up and stays
-     clickable until the pointer leaves it too.
-
-     Note what is NOT relaxed: at rest the line is still `pointer-events: none`,
-     so there is no invisible link sitting under every picture waiting for a
-     stray click. It can only become a target by being hovered, and hovering it
-     is what makes it visible. */
-  .cwork__author:hover {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  /* Undecorated at rest — the line has only just appeared, and underlining it
-     on arrival would make the reveal shout. Underlined when it is the thing
-     being pointed at or focused, at the member card's offset and thickness so
-     every name on the site behaves alike. */
+  /* Undecorated at rest, underlined when it is the thing being pointed at or
+     focused, at the member card's offset and thickness so every name on the
+     site behaves alike. */
   .cwork__author-link {
     color: inherit;
     text-decoration: none;
@@ -391,8 +333,7 @@ const pswpMeta = member.displayName;
   /* The site drops motion rather than substituting a gentler version of it:
      the hover still says "this is live", it simply arrives. */
   @media (prefers-reduced-motion: reduce) {
-    .cwork__img,
-    .cwork__author {
+    .cwork__img {
       transition: none;
     }
   }
@@ -402,40 +343,6 @@ const pswpMeta = member.displayName;
        tile's height is simply its own. Full width of the multicol column. */
     .cwork {
       width: 100%;
-    }
-
-    /* ── THE AUTHOR IS PRINTED HERE, NOT REVEALED ──────────
-       (2026-09-01, Josh: "grid should contain name also in mobile".)
-       The reveal-on-hover above is a DESKTOP behaviour that happens to be
-       written unconditionally, and on a touch screen there is no hover to
-       trigger it — so the phone got a wall of anonymous pictures. Every
-       argument for hiding the name was about desktop too: 48 credits are a
-       second grid of text competing with the first at three columns, but a
-       phone shows two columns of one screenful, and there the name is simply
-       the tile's label.
-       BACK IN FLOW, which is the part that matters beyond visibility: out of
-       flow it overlapped the next row's artwork instead of sitting under its
-       own picture, and being permanently visible is exactly what makes that
-       overlap permanent. In flow it reserves its own line and the multicol
-       column grows by it. */
-    .cwork__author {
-      position: static;
-      opacity: 1;
-      pointer-events: auto;
-      /* Nothing left to fade. */
-      transition: none;
-      /* NOTHING OF ITS OWN where there is no title: the caption box's own top
-         gap is already the whole distance to the frame, and on a phone the
-         name is the only line there is — so a second step here was the phone
-         paying twice for one gap (2026-09-02, "grid gap of name to image
-         less"). */
-      padding-top: 0;
-    }
-
-    /* Under a title, though, the two lines do need parting — the caption's gap
-       is spent above the title, not between them. */
-    .cwork__title + .cwork__author {
-      padding-top: 0.1rem;
     }
   }
 </style>
