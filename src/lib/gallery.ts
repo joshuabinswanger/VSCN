@@ -65,17 +65,24 @@ export const MAX_GALLERY_DESCRIPTION_SHORT = 240;
 const MAX_EDGE = 4000;
 
 /**
- * The raw upload ceiling, BEFORE the re-encode above — raised from 25 MB
- * (2026-09-02, Josh: "raise file size limit (images get optimized anyways)").
- * It is not a storage limit: nothing this size is ever stored, because
- * compressGalleryImage() re-encodes every file to a 4K WebP first. It is a
- * decode limit, and the reason there is still a number here at all: an
- * arbitrarily large bitmap is decoded in the browser, and decoded-image memory
- * is what crash-loops iOS Safari (see the SIZES notes in the community cards).
- * 50 MB clears any camera JPEG and any reasonable PNG export while keeping a
- * 200 MB scan from taking the tab down with it.
+ * The raw upload ceiling, BEFORE the re-encode above.
+ *
+ * It is NOT a storage limit — nothing this size is ever stored, because
+ * compressGalleryImage() re-encodes every file to a 4K WebP first, and a 17 MB
+ * source measured 0.42 MB by the time it left the browser. It is a DECODE
+ * limit, and that is the whole reason a number survives here: the bitmap is
+ * decoded in the page before any of that happens, and decoded-image memory is
+ * what crash-loops iOS Safari (see the SIZES notes in the community cards). A
+ * 25 MB JPEG can expand past a gigabyte of RGBA, and the tab dies with no error
+ * anywhere — which the member reads as an upload that simply did nothing.
+ *
+ * Raised to 50 MB on 2026-09-02 (Josh: "raise file size limit (images get
+ * optimized anyways)") and brought back to 25 on 2026-09-03, once a 17 MB file
+ * had gone through and made the decode cost concrete. The optimisation is real;
+ * it just happens AFTER the expensive part. 25 MB still clears any camera JPEG
+ * and any reasonable PNG export.
  */
-const MAX_RAW_BYTES = 50 * 1024 * 1024;
+const MAX_RAW_BYTES = 25 * 1024 * 1024;
 
 /**
  * THE CEILING THE RE-ENCODE MUST ACTUALLY HIT, and the reason the ladders

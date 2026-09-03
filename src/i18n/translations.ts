@@ -270,7 +270,7 @@ export const ui: Record<string, Record<string, string>> = {
     // expired session and a file that will never fit do not improve on a
     // second attempt — so it survives only as the fallback for a failure that
     // is not an upload at all (a Firestore write on remove, say).
-    "profile.gallery.err.tooBig": "Over 50 MB. Export a smaller file.",
+    "profile.gallery.err.tooBig": "Over 25 MB. Export a smaller file.",
     "profile.gallery.err.svg": "SVGs can't be uploaded. Export as PNG or JPEG.",
     "profile.gallery.err.heic": "HEIC photos can't be read. Export as JPEG.",
     "profile.gallery.err.type": "Only JPEG, PNG, WebP or AVIF images can be used.",
@@ -630,7 +630,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.verifyForMore":
       "Bestätige deine E-Mail, um weitere Bilder hinzuzufügen. Der Link ist in deinem Posteingang.",
     "profile.gallery.error": "Bild konnte nicht hochgeladen werden. Bitte erneut versuchen.",
-    "profile.gallery.err.tooBig": "Über 50 MB. Bitte kleiner exportieren.",
+    "profile.gallery.err.tooBig": "Über 25 MB. Bitte kleiner exportieren.",
     "profile.gallery.err.svg":
       "SVGs können nicht hochgeladen werden. Als PNG oder JPEG exportieren.",
     "profile.gallery.err.heic": "HEIC-Fotos können nicht gelesen werden. Als JPEG exportieren.",
