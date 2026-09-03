@@ -163,6 +163,14 @@ export function memberHref(lang: string, slug: string): string {
  * NO ?pattern=, deliberately: the absent parameter IS the gallery, which is
  * what "opens gallery with tag filter applied" asks for — a tag pressed while
  * the ledger is on screen takes you to the pictures, not to a narrower ledger.
+ * That stays true of every chip printed OFF the directory, which is what this
+ * function is for: a member's own profile page has no view to preserve.
+ *
+ * On /community itself the chips are rewritten after render to keep a PICTURE
+ * view — grid stays on the wall, the ledger still goes to the spread — because
+ * there they sat next to a tags dropdown that preserves ?pattern= and read as
+ * a different control doing the same job. See the rewrite in CommunityGrid's
+ * page-load handler; this remains the one place the URL is BUILT.
  *
  * The key is lowercased because tag identity is case-insensitive (members type
  * their own casing) and the dropdown's `data-tag` keys are lowercase — a link
