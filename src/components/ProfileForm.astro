@@ -525,7 +525,9 @@ const t = useTranslations(lang);
       {t("profile.saveMsg")}
     </p>
     <p id="save-error" class="msg-err" style="display:none;"></p>
-    <button type="submit" class="btn-solid profile-save-button">{t("profile.save")}</button>
+    <button id="save-button" type="submit" class="btn-solid profile-save-button"
+      >{t("profile.save")}</button
+    >
   </div>
 </form>
 
@@ -1097,6 +1099,51 @@ const t = useTranslations(lang);
   }
 
   /*
+   * SAVING HAS TO LOOK LIKE SAVING.
+   *
+   * The button did nothing at all while a save was in flight, and a save is not
+   * one round trip: both profile documents, then the image records, then the
+   * active flag, then the rebuild dispatch. On anything slower than an office
+   * connection the member pressed a button that then sat there unchanged for
+   * several seconds, which reads as "nothing happened" and gets pressed again.
+   *
+   * It stays BLACK rather than taking .btn-solid:disabled's grey. Grey says
+   * "you cannot press this" — true, and not the news. The news is that it is
+   * working, and the ring is what says so.
+   */
+  .profile-save-button.is-saving:disabled {
+    background: var(--color-dark);
+    cursor: progress;
+  }
+
+  .profile-save-button.is-saving::before {
+    content: "";
+    width: 0.9em;
+    height: 0.9em;
+    margin-right: 0.6em;
+    border: 2px solid rgb(255 255 255 / 0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    /* Named for this component on purpose: @keyframes are GLOBAL in Astro, so
+       a bare `spin` would collide with the next one anybody writes. */
+    animation: profile-save-spin 0.7s linear infinite;
+  }
+
+  @keyframes profile-save-spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  /* Slowed rather than stopped: this is a progress indicator, and a frozen one
+     would take back the very thing it was added to say. */
+  @media (prefers-reduced-motion: reduce) {
+    .profile-save-button.is-saving::before {
+      animation-duration: 2.4s;
+    }
+  }
+
+  /*
    * `hidden` ALONE DOES NOT HIDE ANYTHING HERE, and that is not a detail.
    *
    * The UA sheet's `[hidden] { display: none }` loses to ANY author rule that
@@ -1441,6 +1488,14 @@ const t = useTranslations(lang);
     const uploadStatus = document.getElementById("upload-status")!;
     const saveMsg = document.getElementById("save-msg")!;
     const saveError = document.getElementById("save-error")!;
+    const saveButton = document.getElementById("save-button") as HTMLButtonElement;
+
+    /** Disabled AND visibly working — see .profile-save-button.is-saving. */
+    function setSaving(on: boolean) {
+      saveButton.disabled = on;
+      saveButton.classList.toggle("is-saving", on);
+      saveButton.textContent = on ? s["profile.save.saving"] : s["profile.save"];
+    }
 
     const avatarWrap = avatarImg.closest<HTMLElement>(".avatar-wrap")!;
 
@@ -2426,6 +2481,7 @@ const t = useTranslations(lang);
       if (!user) return;
 
       const memberType = memberTypeSelector?.value ?? "";
+      setSaving(true);
 
       try {
         const saved = await handleProfileUpdate(
@@ -2496,6 +2552,8 @@ const t = useTranslations(lang);
       } catch (err: unknown) {
         saveError.textContent = err instanceof Error ? err.message : s["profile.save.error"];
         saveError.style.display = "block";
+      } finally {
+        setSaving(false);
       }
     });
 
