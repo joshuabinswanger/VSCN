@@ -251,6 +251,18 @@ const t = useTranslations(lang);
           </div>
           <div class="gallery-fields">
             <input type="text" class="input" data-gallery-field="caption" />
+            {
+              /* THE SHORT LINE, second — between the title and the essay,
+                which is the order of how far each one travels (2026-09-03,
+                Josh: "image descriptions should have a long and short
+                version"). The caption names the picture and goes everywhere;
+                this one sentence goes everywhere the picture is shown among
+                other pictures — the lightbox above all; the long text below
+                stays on the member's own page. Two rows, not one line: 240
+                characters is a sentence that wraps, and a single-line input
+                would hide its own end. */
+            }
+            <textarea class="input textarea" rows="2" data-gallery-field="descriptionShort"></textarea>
             <textarea class="input textarea" rows="3" data-gallery-field="description"></textarea>
           </div>
         </div>
@@ -1009,6 +1021,7 @@ const t = useTranslations(lang);
     galleryLimit,
     MAX_GALLERY_CAPTION,
     MAX_GALLERY_DESCRIPTION,
+    MAX_GALLERY_DESCRIPTION_SHORT,
     validateGalleryFile,
     compressGalleryImage,
     uploadGalleryImage,
@@ -1296,7 +1309,8 @@ const t = useTranslations(lang);
             const remove = row.querySelector<HTMLButtonElement>("[data-gallery-remove]");
             const caption = field<HTMLInputElement>("caption");
             const description = field<HTMLTextAreaElement>("description");
-            if (!img || !remove || !caption || !description) return null;
+            const descriptionShort = field<HTMLTextAreaElement>("descriptionShort");
+            if (!img || !remove || !caption || !description || !descriptionShort) return null;
 
             img.src = item.url;
             remove.setAttribute("aria-label", s["profile.gallery.remove"]);
@@ -1308,6 +1322,15 @@ const t = useTranslations(lang);
             named(caption, s["profile.gallery.caption"]);
             caption.addEventListener("input", () => {
               gallery[index].caption = caption.value;
+              syncPreview();
+            });
+
+            descriptionShort.value = item.descriptionShort ?? "";
+            descriptionShort.maxLength = MAX_GALLERY_DESCRIPTION_SHORT;
+            descriptionShort.placeholder = s["profile.gallery.descriptionShort"];
+            named(descriptionShort, s["profile.gallery.descriptionShort"]);
+            descriptionShort.addEventListener("input", () => {
+              gallery[index].descriptionShort = descriptionShort.value;
               syncPreview();
             });
 
@@ -1474,6 +1497,7 @@ const t = useTranslations(lang);
             caption: g.caption,
             color: g.color,
             description: (g.description ?? "").trim() || undefined,
+            descriptionShort: (g.descriptionShort ?? "").trim() || undefined,
           };
         }),
       };

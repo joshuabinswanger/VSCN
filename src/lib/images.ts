@@ -142,11 +142,15 @@ export async function markImageForDeletion(imageId: string): Promise<void> {
 /** Captions and descriptions live on the record; the gallery array is a projection. */
 export async function updateImageText(
   imageId: string,
-  text: { caption: string; description?: string },
+  text: { caption: string; description?: string; descriptionShort?: string },
 ): Promise<void> {
   await updateDoc(doc(db, "images", imageId), {
     caption: text.caption,
     description: text.description ? text.description : deleteField(),
+    // deleteField() rather than "" for the same reason as the long text: the
+    // rulesets allow the key to be absent, and an empty string would make
+    // every consumer test for emptiness instead of for presence.
+    descriptionShort: text.descriptionShort ? text.descriptionShort : deleteField(),
     updatedAt: serverTimestamp(),
   });
 }

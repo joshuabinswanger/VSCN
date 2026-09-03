@@ -326,11 +326,41 @@
   color: var(--color-muted);
 }
 .pswp--vscn .pswp__vscn-caption-meta {
+  /* Shrink-wrapped so the link is only as wide as the name — a stretched flex
+     item would put a clickable band across the whole width of the band. */
+  align-self: flex-start;
   font-size: 0.58rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-muted);
+}
+
+/* THE CREDIT AS THE WAY TO THE MEMBER'S PAGE (2026-09-03) — see the caption
+   renderer in CommunityGrid.astro for why the name itself is the control. It is
+   an <a> only when the trigger carried a profile href, so this styles the
+   openable case and leaves the member page's own gallery, where the credit is
+   just a credit, exactly as it was.
+   UNDERLINED AT REST, unlike the tile's author line: this is the band's one
+   control and the picture in front of it is competing for every bit of
+   attention, so it has to look like a link before the pointer arrives — the
+   same reasoning as .cindex__profile in the ledger. */
+.pswp--vscn a.pswp__vscn-caption-meta {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+  transition: color 0.15s;
+}
+
+.pswp--vscn a.pswp__vscn-caption-meta:hover,
+.pswp--vscn a.pswp__vscn-caption-meta:focus-visible {
+  color: var(--color-dark);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pswp--vscn a.pswp__vscn-caption-meta {
+    transition: none;
+  }
 }
 
 /* ── Error ────────────────────────────────────────────────────────────────

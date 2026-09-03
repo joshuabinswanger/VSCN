@@ -166,6 +166,7 @@ function works(doc: PublicProfileDoc): ProfileWork[] {
         caption: g.caption,
         color: g.color,
         description: (g.description ?? "").trim() || undefined,
+        descriptionShort: (g.descriptionShort ?? "").trim() || undefined,
       };
     });
 }

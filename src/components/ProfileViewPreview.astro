@@ -114,6 +114,16 @@ const t = useTranslations(lang);
          is inert, so cloning it is the cheapest way to keep the shape of a
          list item in markup instead of in string concatenation. */
     }
+    {
+      /* A PLAIN CHIP, and on the real page a tag is now a LINK into the
+         filtered directory (.mprof__tag, 2026-09-03). The divergence is
+         deliberate and is the one kind this preview allows: the editor's job
+         is to show the member what their page will look like, and a control
+         that navigates out of a form full of unsaved edits is the one thing it
+         must not offer. The chip's drawing is identical either way — the link
+         adds only a pointer and a hover — so nothing about the page's
+         appearance is being misreported here. */
+    }
     <template data-ppv-tpl="val"><li class="mprof__val"></li></template>
     <template data-ppv-tpl="link"
       ><li><a class="mprof__link" target="_blank" rel="noopener noreferrer"></a></li></template

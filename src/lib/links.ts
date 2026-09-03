@@ -149,3 +149,27 @@ export function socialLinks(raw: string): SocialLink[] {
 export function memberHref(lang: string, slug: string): string {
   return lang === "de" ? `/de/members/${slug}` : `/members/${slug}`;
 }
+
+/**
+ * The directory, optionally narrowed to one tag (2026-09-03, Josh: "clicking
+ * on tags opens gallery with tag filter applied").
+ *
+ * A tag printed on a member — in a disclosure panel, on their profile page —
+ * is now a way INTO the directory rather than a fact about them, and this is
+ * the one place the URL is built. `?tag=` is the same parameter the tags
+ * dropdown syncs, and CommunityGrid reads it on page load, so a link from a
+ * profile page and a pick from the dropdown land on a byte-identical URL.
+ *
+ * NO ?pattern=, deliberately: the absent parameter IS the gallery, which is
+ * what "opens gallery with tag filter applied" asks for — a tag pressed while
+ * the ledger is on screen takes you to the pictures, not to a narrower ledger.
+ *
+ * The key is lowercased because tag identity is case-insensitive (members type
+ * their own casing) and the dropdown's `data-tag` keys are lowercase — a link
+ * carrying "Illustration" would find no option and silently clear the filter.
+ */
+export function communityTagHref(lang: string, tag: string): string {
+  const base = lang === "de" ? "/de/community" : "/community";
+  const key = tag.trim().toLowerCase();
+  return key ? `${base}?tag=${encodeURIComponent(key)}` : base;
+}

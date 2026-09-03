@@ -1,6 +1,6 @@
 ---
 import { hasDetail, type MemberViewBase } from "../../lib/memberView.ts";
-import { href, socialLinks } from "../../lib/links.ts";
+import { communityTagHref, href, socialLinks } from "../../lib/links.ts";
 import { useTranslations, type Lang } from "../../i18n/utils.ts";
 
 interface Props {
@@ -103,11 +103,27 @@ const hasSummary = Astro.slots.has("summary");
 
           {/* Last, and unlabelled: the chips are self-evidently tags, so the
               "TAGS" key was naming the obvious and competing with the links
-              above it for the same small space. */}
+              above it for the same small space.
+
+              EVERY CHIP IS A WAY INTO THE DIRECTORY (2026-09-03, Josh:
+              "clicking on tags opens gallery with tag filter applied"). They
+              were inert text — the member's own vocabulary printed as a fact
+              about them — while the same words in the bar's dropdown narrowed
+              the whole page. A chip is the more natural place to press: it is
+              in front of you, attached to the person who made the work that
+              made you curious. A LINK, not a button, for the reason the "View
+              profile" control below is one: it goes somewhere, so it has to be
+              copyable, openable in a new tab and reachable with scripting off.
+              The href is built in one place (communityTagHref) and lands on
+              the identical URL the dropdown syncs. */}
           {tags.length > 0 && (
             <ul class="pdisc__vals pdisc__vals--tags">
               {tags.map((tag) => (
-                <li class="pdisc__val">{tag}</li>
+                <li>
+                  <a class="pdisc__val pdisc__tag" href={communityTagHref(lang, tag)}>
+                    {tag}
+                  </a>
+                </li>
               ))}
             </ul>
           )}
@@ -341,6 +357,36 @@ const hasSummary = Astro.slots.has("summary");
     font-size: 0.6rem;
     letter-spacing: 0.04em;
     padding: 3px 4px;
+  }
+
+  /* THE CHIP AS A CONTROL. It keeps the chip's drawing exactly — the border and
+     the small uppercase voice are what make a tag legible as a tag — and gains
+     only what says it can be pressed: the pointer, and the border and type
+     coming up to the page's ink on hover. No underline: these are boxed words
+     in a row, and a rule under each one would read as a list of links rather
+     than as a set of tags.
+     `display: block` so the whole chip is the target, not just the glyphs — the
+     padding is the chip, and a 3px band around the text is not a hitbox. */
+  .pdisc__tag {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+      color 0.15s,
+      border-color 0.15s;
+  }
+
+  .pdisc__tag:hover,
+  .pdisc__tag:focus-visible {
+    color: var(--color-dark);
+    border-color: var(--color-dark);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pdisc__tag {
+      transition: none;
+    }
   }
   .pdisc__vals--tags {
     margin-bottom: 0.75rem;

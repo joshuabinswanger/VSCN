@@ -84,11 +84,18 @@ test("images: owner flips uploading → live → pendingDeletion", async () => {
   await assertSucceeds(db.doc("images/img-1").update({ status: "pendingDeletion", updatedAt: new Date() }));
 });
 
-test("images: owner edits caption and description", async () => {
+test("images: owner edits caption and both descriptions", async () => {
   await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
   await assertSucceeds(db.doc("images/img-1").update({
-    caption: "A cell", description: "Made for a paper.", updatedAt: new Date(),
+    caption: "A cell", description: "Made for a paper.",
+    descriptionShort: "A cell, drawn for a paper.", updatedAt: new Date(),
+  }));
+  // The short line has its own ceiling — MAX_GALLERY_DESCRIPTION_SHORT in
+  // src/lib/gallery.ts. A long text pasted into it is the mistake this
+  // catches, and it must fail rather than silently sit in the band.
+  await assertFails(db.doc("images/img-1").update({
+    descriptionShort: "x".repeat(241), updatedAt: new Date(),
   }));
 });
 
@@ -220,6 +227,28 @@ test("publicProfiles: every gallery item must carry an imageId", async () => {
   await assertFails(db.doc(`publicProfiles/${OWNER}`).set({
     displayName: "Test Member",
     gallery: [{ imageId: "", url, caption: "", width: 10, height: 10 }],
+  }));
+});
+
+test("publicProfiles: a gallery item carries a long AND a short description", async () => {
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  const url = "https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/x.webp?alt=media";
+  const item = (extra) => ({ imageId: "img-1", url, caption: "", width: 10, height: 10, ...extra });
+  // Both keys are in validGalleryItem's hasOnly list, so both may travel in
+  // the array the editor writes back whole.
+  await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
+    displayName: "Test Member",
+    gallery: [item({ description: "x".repeat(600), descriptionShort: "x".repeat(240) })],
+  }));
+  await assertFails(db.doc(`publicProfiles/${OWNER}`).set({
+    displayName: "Test Member",
+    gallery: [item({ descriptionShort: "x".repeat(241) })],
+  }));
+  // An unlisted key still takes the whole write down — the hasOnly gotcha the
+  // withdrawn `projectId` taught us, and the reason this test exists at all.
+  await assertFails(db.doc(`publicProfiles/${OWNER}`).set({
+    displayName: "Test Member",
+    gallery: [item({ descriptionLong: "nope" })],
   }));
 });
 

@@ -86,12 +86,20 @@ const alt = work.caption?.trim() || `${member.displayName} — ${t("member.workA
 
 // What the LIGHTBOX says under the image, in exactly the form the member page's
 // gallery says it (see [slug].astro, which resolves the same lines): the caption
-// is the work's own, the DESCRIPTION is its long text — new to the band on
-// 2026-09-01, and the reason the wall's pictures can now explain themselves at
-// full size — and the meta line is the whose-of-it.
+// is the work's own, the DESCRIPTION is its SHORT text — a description joined
+// the band on 2026-09-01, and since 2026-09-03 it is the one-sentence version;
+// the long one belongs to the member's portfolio page — and the meta line is
+// the whose-of-it.
 // The meta line is also the naming that survives where hover does not: on a
 // touch screen the tile's own author line never comes up, and this band always
 // does.
+//
+// AND IT IS NOW THE WAY TO THE PERSON (2026-09-03, Josh: "in lightbox a way to
+// get to the profile of a person"). The lightbox covers the whole screen, so
+// while it is open every route the page had — the tile's author line, the
+// card's name heading, the "View profile" control in a disclosure — is behind
+// it. The band already named the member; `data-pswp-profile` is what lets the
+// caption renderer make that name a link instead of a dead end.
 const pswpMeta = member.displayName;
 ---
 
@@ -120,8 +128,9 @@ const pswpMeta = member.displayName;
       data-pswp-width={work.width}
       data-pswp-height={work.height}
       data-pswp-caption={work.caption?.trim() || undefined}
-      data-pswp-description={work.description || undefined}
+      data-pswp-description={work.descriptionShort || undefined}
       data-pswp-meta={pswpMeta || undefined}
+      data-pswp-profile={profileHref}
     >
       {
         /* No aria-label on the link: the image's alt names it, which is the
@@ -330,6 +339,36 @@ const pswpMeta = member.displayName;
 
   .cwork:hover .cwork__author,
   .cwork:focus-within .cwork__author {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ── THE HOVER BRIDGE, AND IT IS THE WHOLE REASON THE NAME WAS
+     UNCLICKABLE ─────────────────────────────────────────
+     (2026-09-03, Josh: "in grid view when clicking on a person go into their
+     profile".)
+
+     `.cwork__author` is anchored at `top: 100%` of the caption box, which puts
+     it BELOW `.cwork`'s own bottom edge — outside the element whose `:hover`
+     revealed it. So reaching for the name cancelled the hover that had drawn
+     it: the line faded and went `pointer-events: none` in the same movement
+     that was travelling towards it, and there was no pointer path from the
+     picture to the name that kept it alive. The name has been a link since the
+     tile was written and it was, in practice, unreachable with a mouse.
+     (Not with a keyboard — `:focus-within` above always worked — and not on a
+     phone, where the --bp-mobile block prints the line in flow.)
+
+     This is the standard fix for a revealed element that lives outside its
+     trigger: the revealed thing keeps ITSELF revealed. The pointer crosses out
+     of `.cwork` directly onto `.cwork__author` — they share an edge — and this
+     rule takes over in the same frame, so the line stays up and stays
+     clickable until the pointer leaves it too.
+
+     Note what is NOT relaxed: at rest the line is still `pointer-events: none`,
+     so there is no invisible link sitting under every picture waiting for a
+     stray click. It can only become a target by being hovered, and hovering it
+     is what makes it visible. */
+  .cwork__author:hover {
     opacity: 1;
     pointer-events: auto;
   }

@@ -3,7 +3,7 @@ import { getImage } from "astro:assets";
 import Layout from "../../../layouts/Layout.astro";
 import { fetchMemberViews, fetchSlugAliases } from "../../../lib/membersBuild.ts";
 import type { MemberView } from "../../../lib/memberView.ts";
-import { href, memberHref, socialLinks } from "../../../lib/links.ts";
+import { communityTagHref, href, memberHref, socialLinks } from "../../../lib/links.ts";
 import { useTranslations } from "../../../i18n/utils";
 import type { Lang } from "../../../i18n/utils";
 // THIS PAGE'S SURFACE, in a file of its own so the profile editor's preview
@@ -170,9 +170,18 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
       {
         member.tags.length > 0 && (
           <div class="mprof__row">
+            {/* THE TAGS ARE THE WAY BACK OUT (2026-09-03, Josh: "clicking on
+                tags opens gallery with tag filter applied"). Same change as the
+                directory's disclosure chips, and it matters more here: this
+                page is the end of a journey, and a tag on it is the one thing
+                that says "there are others like this". */}
             <ul class="mprof__vals">
               {member.tags.map((tag) => (
-                <li class="mprof__val">{tag}</li>
+                <li>
+                  <a class="mprof__val mprof__tag" href={communityTagHref(lang, tag)}>
+                    {tag}
+                  </a>
+                </li>
               ))}
             </ul>
           </div>
@@ -234,7 +243,15 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
                 data-pswp-width={w.width}
                 data-pswp-height={w.height}
                 data-pswp-caption={w.caption?.trim() || undefined}
-                data-pswp-description={w.description || undefined}
+                {/* THE SHORT LINE IN THE LIGHTBOX, THE LONG ONE ON THE PAGE
+                    (2026-09-03, Josh: "image descriptions should have a long
+                    and short version: one for portfolio the rest for lightbox
+                    and other places"). This page IS the portfolio, so the
+                    figcaption below prints `description` in full — and the
+                    lightbox opened FROM it gets the same one sentence it gets
+                    everywhere else, so the band reads identically wherever the
+                    picture was pressed. */}
+                data-pswp-description={w.descriptionShort || undefined}
                 data-pswp-meta={w.pswpMeta || undefined}
               >
                 <img
@@ -388,14 +405,17 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
           const render = () => {
             const trigger = pswp.currSlide?.data.element as HTMLElement | undefined;
             const caption = trigger?.dataset.pswpCaption?.trim() || "";
-            // THE LONG TEXT, in the lightbox as of 2026-09-01 (Josh: "add it
-            // to lightbox"). It used to live only under the image on the
-            // member's page, which meant the one view where the artwork is
-            // big enough to warrant an explanation was the one view without
-            // one. Unlike the caption it is NOT clamped: the band is a scroll
-            // container capped at the padding the artwork reserves (see
-            // lightbox.css), so a paragraph scrolls inside the band instead of
-            // being cut off or growing up over the picture.
+            // THE SHORT DESCRIPTION. A description arrived in the band on
+            // 2026-09-01 (Josh: "add it to lightbox") because the one view
+            // where the artwork is big enough to warrant an explanation was
+            // the one view without one; it was the member's LONG text until
+            // 2026-09-03, when the two split (Josh: "one for portfolio the
+            // rest for lightbox and other places") and the long one stayed on
+            // the member's own page. Unlike the caption it is still NOT
+            // clamped: the band is a scroll container capped at the padding
+            // the artwork reserves (see lightbox.css), so a sentence that
+            // wraps to three lines scrolls inside the band rather than being
+            // cut off or growing up over the picture.
             const description = trigger?.dataset.pswpDescription?.trim() || "";
             const meta = trigger?.dataset.pswpMeta?.trim() || "";
 
@@ -413,9 +433,18 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
               desc.textContent = description;
               el.append(desc);
             }
+            // THE SAME RENDERER AS THE DIRECTORY'S (see CommunityGrid.astro,
+            // where the reasoning lives): the credit becomes a LINK to the
+            // member's page when the trigger carries one. On THIS page it never
+            // does — you are already on the person's page, so there is nowhere
+            // to go — and the branch renders the plain span it always did. Kept
+            // in step anyway, because there is one lightbox on this site and it
+            // must not speak differently depending on where it was opened from.
+            const profile = trigger?.dataset.pswpProfile?.trim() || "";
             if (meta) {
-              const credit = document.createElement("span");
+              const credit = document.createElement(profile ? "a" : "span");
               credit.className = "pswp__vscn-caption-meta";
+              if (credit instanceof HTMLAnchorElement) credit.href = profile;
               credit.textContent = meta;
               el.append(credit);
             }

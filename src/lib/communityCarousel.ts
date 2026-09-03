@@ -83,10 +83,69 @@ const AUTO_ADVANCE_MS = 5000;
  *  data-pattern and IS the gallery — which is also what the editor's preview
  *  gets, since there is no #member-grid there at all. Deliberate: the preview
  *  shows what the member's card will do, and on a phone it advances. */
-function autoAdvanceAllowed(): boolean {
+function inMobileGallery(): boolean {
   if (!MOBILE.matches || REDUCED.matches || document.hidden) return false;
   const grid = document.getElementById("member-grid");
   return !grid?.dataset.pattern || grid.dataset.pattern === "spread";
+}
+
+/**
+ * THE ONE CAROUSEL THAT MAY ADVANCE, or null when none may.
+ *
+ * (2026-09-03, Josh: "highlight only one carousel at a time in gallery mode".)
+ * The mobile gallery is a single column of full-width cards and two or three of
+ * them are on screen at once; every one of them used to be running its own 5s
+ * timer, so a reader looking at one card had two more changing in the corner of
+ * their eye. Now only the card the reader is actually on advances: the one whose
+ * centre is NEAREST THE MIDDLE OF THE VIEWPORT, which is the same definition of
+ * "most prominent" the opacity focus uses (the cgrid-cell-focus keyframes in
+ * CommunityGrid.astro). If the two ever disagree, the faded cards would be the
+ * moving ones — so they have to keep meaning the same thing.
+ *
+ * NEAREST, not "inside a band": a band leaves gaps where nothing qualifies (two
+ * tall cards meeting) and overlaps where two do (short cards), and both read as
+ * the page forgetting to move. Nearest always names exactly one.
+ *
+ * Measured here rather than tracked by an observer because it is only ever
+ * asked at a 5s tick, once per live carousel — a dozen getBoundingClientRects
+ * every five seconds, against an IntersectionObserver's worth of bookkeeping
+ * for the same answer.
+ */
+function focusedCarousel(): HTMLElement | null {
+  if (!inMobileGallery()) return null;
+  // THE SCROLLPORT, NOT THE WINDOW — .page-wrap is what scrolls on this site
+  // (body is overflow:hidden; see Layout.astro), and it is also the box
+  // `view()` measures the opacity focus against, because it is the cells'
+  // nearest scroll container. Measuring the window instead would put this
+  // centre a ticker's height above that one, and the moving card would be the
+  // one just below the bright card. The window is the fallback for the
+  // editor's preview, which has no .page-wrap.
+  const scroller = document.querySelector<HTMLElement>(".page-wrap");
+  const port = scroller
+    ? scroller.getBoundingClientRect()
+    : new DOMRect(0, 0, window.innerWidth, window.innerHeight);
+  const middle = port.top + port.height / 2;
+  let best: HTMLElement | null = null;
+  let bestDistance = Infinity;
+  // EVERY carousel frame in the document, not just the ones with an Embla
+  // instance. A gallery of one gets no instance (there is nothing to page) but
+  // it is still a card on screen, and skipping it here would let the nearest
+  // MULTI-image card advance while a single-image card held the middle — the
+  // faded card moving and the bright one still, which is the exact thing this
+  // is for.
+  for (const node of document.querySelectorAll<HTMLElement>("[data-carousel]")) {
+    const box = node.getBoundingClientRect();
+    // Outside the scrollport entirely: not a candidate however close its centre
+    // projects. (A `display: none` card measures 0×0 at the origin, which would
+    // otherwise look like a near miss.)
+    if (box.height === 0 || box.bottom <= port.top || box.top >= port.bottom) continue;
+    const distance = Math.abs((box.top + box.bottom) / 2 - middle);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = node;
+    }
+  }
+  return best;
 }
 
 /**
@@ -247,17 +306,24 @@ export function initCarousels(root: ParentNode = document): void {
 
     // The 5s auto-advance, mobile gallery only (arrows are display:none on
     // touch, so a multi-work gallery would otherwise be invisible past its
-    // first image). Runs only while THIS card is on screen — an off-screen
-    // carousel advancing would hydrate its whole gallery for nobody, and
-    // decoded-image memory is what crashed iOS Safari. Conditions are
-    // re-checked every tick, so switching views, rotating to desktop, or
-    // backgrounding the tab pauses without bookkeeping. Deliberately NOT
-    // Embla's Autoplay plugin: that plugin has no way to express "only in
-    // the spread view, only on mobile, re-decided on every tick".
+    // first image), and only for the ONE card the reader is on — see
+    // focusedCarousel. The IntersectionObserver below still gates the timer's
+    // existence: an off-screen carousel advancing would hydrate its whole
+    // gallery for nobody, and decoded-image memory is what crashed iOS Safari.
+    // (Both gates are needed. The observer is what stops a timer existing at
+    // all for a card nobody can see; the centre test is what stops the two or
+    // three cards that ARE visible from all moving at once.) Deliberately NOT
+    // Embla's Autoplay plugin: that plugin has no way to express "only in the
+    // spread view, only on mobile, only the centred card, re-decided on every
+    // tick".
     const start = () => {
       if (handle.timer !== null) return;
       handle.timer = setInterval(() => {
-        if (!autoAdvanceAllowed()) return;
+        // Re-decided every tick, so scrolling, switching views, rotating to
+        // desktop or backgrounding the tab all take effect with no bookkeeping
+        // — and the card that has just scrolled into the middle picks up the
+        // advancing from the one that has left it.
+        if (focusedCarousel() !== carousel) return;
         announce = false;
         embla.scrollNext();
         announce = true;

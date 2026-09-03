@@ -4,6 +4,21 @@ import { memberHref } from "../../lib/links.ts";
 import { useTranslations, type Lang } from "../../i18n/utils.ts";
 import MemberDetailPanel from "./MemberDetailPanel.astro";
 
+// ── NOTHING RENDERS THIS TODAY (2026-09-03) ──────────────────────────────
+// Josh: "remove memebrs from gallery that dont have images". The grid wall
+// dropped these cards on 2026-09-01 and the editorial spread followed on
+// 2026-09-03, so neither gallery deals a card for a member with an empty
+// gallery any more — those members are rows in the directory's INDEX view and
+// nowhere else on that page. The file is kept rather than deleted because it is
+// a finished design that works, and the question it answers ("what does a
+// member with nothing to show look like in a gallery of pictures?") is one that
+// can be asked again. To bring it back, deal a second cell kind in
+// CommunityGrid.astro — see the `data-slot` note there for what that used to
+// look like. Its own styles are scoped to it, so it costs nothing while unused;
+// the profile editor's card preview mirrors this drawing in markup of its own
+// (CommunityCardPreview.astro) and does NOT import this file, so the editor is
+// unaffected either way.
+//
 // The typographic variant: a member without artwork holds the same anatomy as
 // CommunityImageCard — name band, framed rectangle, caption row — instead of
 // being demoted to a bare name. The rectangle holds what this member DOES

@@ -178,6 +178,35 @@
   overflow-wrap: anywhere;
 }
 
+/* THE TAG CHIP AS A CONTROL — the pair of .pdisc__tag in MemberDetailPanel,
+   drawn the same way and for the same reasons: the chip keeps its whole
+   appearance and gains only the pointer and an ink-coloured hover, because a
+   row of boxed words with a rule under each would read as a list of links
+   rather than as a set of tags. `display: block` so the padding is the target.
+   Filed here rather than beside .pdisc__tag because this sheet is what the
+   member page and the editor's page preview share. */
+.mprof__tag {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.mprof__tag:hover,
+.mprof__tag:focus-visible {
+  color: var(--color-dark);
+  border-color: var(--color-dark);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mprof__tag {
+    transition: none;
+  }
+}
+
 /* One line, wrapping only when it must — same treatment as the card's
      disclosure panel (.pdisc__vals--links), which links.ts requires this to
      agree with. Inherits the base row direction. */

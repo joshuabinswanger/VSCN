@@ -14,7 +14,10 @@ export interface ImageDoc {
   height: number;
   color?: string;
   caption?: string;
+  /** The long text. The member's own portfolio page, and nowhere else. */
   description?: string;
+  /** One sentence of the same, for the lightbox and the directory's cards. */
+  descriptionShort?: string;
   origin: ImageOrigin;
   provenance?: { source?: string; credit?: string; license?: string; note?: string };
   status: ImageStatus;

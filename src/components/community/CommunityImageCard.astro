@@ -73,12 +73,19 @@ const profileHref = memberHref(lang, member.slug);
 //
 // The meta line is the member's name and nothing else, exactly as the wall's
 // tile resolves it (CommunityWorkCard): full screen, the card's own name
-// heading is covered, so the name is the one thing the view has lost.
+// heading is covered, so the name is the one thing the view has lost — and
+// since 2026-09-03 it is a LINK to their page while the lightbox is open, which
+// is the only route out of a full-screen picture to the person who made it.
+// `data-pswp-profile` (written on the trigger below, not per slide — every
+// slide in this card belongs to the same member) is what carries it.
 const pswpFor = (w: (typeof works)[number]) => ({
   width: String(w.width),
   height: String(w.height),
   caption: w.caption?.trim() || "",
-  description: w.description || "",
+  // THE SHORT ONE. The long text belongs to the member's own page (see
+  // profileView.ts); the band under the lightbox is one of the "other
+  // places" that gets the sentence.
+  description: w.descriptionShort || "",
   meta: member.displayName,
 });
 
@@ -230,6 +237,7 @@ const positionFor = (i: number) =>
         data-pswp-caption={pswpFor(frame).caption || undefined}
         data-pswp-description={pswpFor(frame).description || undefined}
         data-pswp-meta={pswpFor(frame).meta}
+        data-pswp-profile={profileHref}
         aria-label={`${t("community.card.openImage")} ${member.displayName}`}></a>
       {
         isCarousel && (

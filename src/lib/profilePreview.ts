@@ -336,7 +336,10 @@ export function renderCardPreview(
       // signature covers the images AND the text bound into them, so a caption
       // edit still lands.
       const signature = works
-        .map((w) => `${w.url}|${w.width}x${w.height}|${w.caption ?? ""}|${w.description ?? ""}`)
+        .map(
+          (w) =>
+            `${w.url}|${w.width}x${w.height}|${w.caption ?? ""}|${w.descriptionShort ?? ""}`
+        )
         .join("~");
       if (frame.dataset.ccpvSignature !== signature) {
         frame.dataset.ccpvSignature = signature;
@@ -371,7 +374,10 @@ export function renderCardPreview(
             slide.dataset.workWidth = String(w.width);
             slide.dataset.workHeight = String(w.height);
             if (w.caption?.trim()) slide.dataset.workCaption = w.caption.trim();
-            if (w.description) slide.dataset.workDescription = w.description;
+            // THE SHORT LINE, matching the card: the slide dataset is what a
+            // real card copies onto its lightbox trigger, and the lightbox
+            // gets the sentence, not the essay (see profileView.ts).
+            if (w.descriptionShort) slide.dataset.workDescription = w.descriptionShort;
 
             // A single picture is not a carousel: no group semantics, no
             // position label. Calling one image a carousel would be a lie to a

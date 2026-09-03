@@ -247,12 +247,14 @@ function validGalleryItem(item) {
     // carry the tag is rejected outright. The editor strips it on load
     // (sanitizeGalleryItems in src/lib/gallery.ts) precisely so that a member
     // whose images were tagged before the withdrawal can still save.
-    && item.keys().hasOnly(['imageId', 'url', 'caption', 'description', 'width', 'height', 'color'])
+    && item.keys().hasOnly(['imageId', 'url', 'caption', 'description', 'descriptionShort', 'width', 'height', 'color'])
     && (!('color' in item) || (item.color is string && item.color.matches('#[0-9a-f]{6}')))
     && item.url is string
     && validStorageUrl(item.url)
     && (!('caption' in item) || (item.caption is string && item.caption.size() <= 140))
     && (!('description' in item) || (item.description is string && item.description.size() <= 600))
+    // Keep in sync with MAX_GALLERY_DESCRIPTION_SHORT in src/lib/gallery.ts.
+    && (!('descriptionShort' in item) || (item.descriptionShort is string && item.descriptionShort.size() <= 240))
     && item.imageId is string && item.imageId.size() > 0 && item.imageId.size() <= 40
     && item.width is int && item.width > 0 && item.width <= 10000
     && item.height is int && item.height > 0 && item.height <= 10000;
@@ -324,8 +326,8 @@ function validBioWordCount(bio) {
 // id IS the filename, and the owner IS the folder.
 function validImage(data, imageId) {
   return data.keys().hasOnly(['ownerUid', 'kind', 'storagePath', 'width', 'height', 'color',
-                              'caption', 'description', 'origin', 'provenance', 'status',
-                              'createdAt', 'updatedAt'])
+                              'caption', 'description', 'descriptionShort', 'origin',
+                              'provenance', 'status', 'createdAt', 'updatedAt'])
     && data.ownerUid is string
     && (data.kind == 'avatar' || data.kind == 'gallery')
     && data.storagePath == 'users/' + data.ownerUid + '/' + data.kind + '/' + imageId + '.webp'
@@ -334,6 +336,7 @@ function validImage(data, imageId) {
     && (!('color' in data) || (data.color is string && data.color.matches('#[0-9a-f]{6}')))
     && (!('caption' in data) || (data.caption is string && data.caption.size() <= 140))
     && (!('description' in data) || (data.description is string && data.description.size() <= 600))
+    && (!('descriptionShort' in data) || (data.descriptionShort is string && data.descriptionShort.size() <= 240))
     && (data.origin == 'member' || data.origin == 'curated')
     && (data.status == 'uploading' || data.status == 'live' || data.status == 'pendingDeletion')
     && data.createdAt is timestamp

@@ -16,8 +16,19 @@ export interface ProfileWork {
   caption?: string;
   /** Dominant colour (#rrggbb), painted behind the image while it loads. */
   color?: string;
-  /** The long text under the image on the profile page. Never used as alt text. */
+  /**
+   * The long text under the image on the profile page — THERE AND NOWHERE
+   * ELSE (2026-09-03). Never used as alt text.
+   */
   description?: string;
+  /**
+   * One sentence of the same thing, for every OTHER surface: the lightbox's
+   * caption band, wherever it is opened from, and any future place that shows
+   * an image among other images. Never derived from `description` — a
+   * truncated paragraph is not a summary, so a member who wrote only the long
+   * one gets no short line rather than a cut-off one.
+   */
+  descriptionShort?: string;
 }
 
 export interface ProfileViewModel {

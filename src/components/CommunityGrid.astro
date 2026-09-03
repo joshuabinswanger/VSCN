@@ -1,15 +1,8 @@
 ---
-import {
-  completeness,
-  hasArtwork,
-  hasDetail,
-  stripStorageToken,
-  type MemberView,
-} from "../lib/memberView.ts";
+import { hasArtwork, stripStorageToken, type MemberView } from "../lib/memberView.ts";
 import { GALLERY_PATTERNS, STRIP_ROWS, layOutSlots } from "../lib/communityLayout.ts";
 import { memberHref } from "../lib/links.ts";
 import CommunityImageCard from "./community/CommunityImageCard.astro";
-import CommunityTextCard from "./community/CommunityTextCard.astro";
 import CommunityWorkCard from "./community/CommunityWorkCard.astro";
 import MemberDetailPanel from "./community/MemberDetailPanel.astro";
 import { useTranslations } from "../i18n/utils.ts";
@@ -90,15 +83,22 @@ const tagsAttr = (m: MemberView) => {
 // translate the Affinity document in Design/community-grid (see its README);
 // redraw there rather than editing numbers.
 //
-// ONE SECTION, ONE PRECEDENCE — IN THE SPREAD. Since the tag-card restyle,
-// the members without artwork get THE SAME TREATMENT as everyone else there —
-// ordinary slots in the drawing, full-size, full motion — with one rule kept
-// from the old two-section page: they always come LAST. The WALL no longer
-// shows them at all (it is a wall of works; see wantsText in applyLayout). Artwork is
-// shuffled through the leading slots on every deal; the tag cards close the
-// page in their build-time completeness order (restored from data-rank),
-// which a shuffle would throw away. `TEXT_TILE` no longer appears in either
-// gallery — it survives only as the shelved strip mode's index ladder.
+// NOBODY WITHOUT ARTWORK IS IN EITHER GALLERY (2026-09-03, Josh: "remove
+// memebrs from gallery that dont have images"). The wall dropped them on
+// 2026-09-01 for being the one thing on a wall of pictures that was not a
+// picture; the spread has now followed, and for the same reason — a gallery is
+// a place to look at work, and a card that is a rectangle of the member's own
+// tags is a directory row promoted into a picture frame. Both galleries are
+// therefore ARTWORK AND NOTHING ELSE, which also means the deal has one kind
+// of cell to place instead of two, and the "text cards always come last" rule
+// that shaped the old spread is gone with the cards.
+//
+// NOBODY IS DROPPED FROM THE DIRECTORY. Every member — gallery or no gallery —
+// is a row in the INDEX, which is the view that is about people and the one
+// place the whole membership is reachable. CommunityTextCard.astro is left in
+// the tree, unrendered: it is a finished piece of design that nothing asks for
+// today. `TEXT_TILE` in communityLayout.ts is likewise now unused by both
+// galleries.
 //
 // TWO GALLERIES, ONE SELECTOR: the two-lane editorial spread (the default,
 // rendered by the server and re-dealt on every load) and the brick grid wall,
@@ -118,22 +118,15 @@ const tagsAttr = (m: MemberView) => {
 // hidden on touch), Grid is the stacked two-column wall. Both are keyed off
 // data-pattern in the --bp-mobile block below.
 
-// Artwork first, then everyone else — the order the slots come back in, and
-// the order the cards are dealt into them. `hasArtwork` is the whole test.
-//
-// The tag cards are ORDERED, not dealt: descending completeness, so the names
-// with role, bio, links behind them surface first and the bare ones sink to
-// the bottom. Ties break alphabetically to keep builds deterministic. The
-// client re-deal respects this by shuffling the artwork only.
+// WHO IS IN THE SPREAD: the members with artwork, and only them. `hasArtwork`
+// is the whole test, and it is now the same test the wall uses — see the
+// header. Members with an empty gallery are rendered by the INDEX below and
+// nowhere else on this page.
 const imageMembers = members.filter(hasArtwork);
-const textMembers = members
-  .filter((m) => !hasArtwork(m))
-  .sort((a, b) => completeness(b) - completeness(a) || a.displayName.localeCompare(b.displayName));
-// Everyone into the spread's own slots — no index section. textCards: 0
-// because TEXT_TILE plays no part here any more; the tag cards simply
-// continue the pattern where the artwork ran out.
-const slots = layOutSlots(GALLERY_PATTERNS.spread, imageMembers.length + textMembers.length, 0);
-const ordered = [...imageMembers, ...textMembers];
+// textCards: 0 — TEXT_TILE plays no part in this pattern; it survives only as
+// the shelved strip mode's index ladder.
+const slots = layOutSlots(GALLERY_PATTERNS.spread, imageMembers.length, 0);
+const ordered = imageMembers;
 
 // Deal in row order, so the server-rendered DOM already reads top to bottom
 // for anyone without JS. Pairing member i with slot i is only correct because
@@ -283,12 +276,16 @@ const indexMembers = [...members].sort((a, b) =>
       below, it would trail 18rem of the empty grid's breathing room. */
   }
   {
-    /* TWO WORDINGS, ONE ELEMENT. The galleries and the ledger are lists of
-      MEMBERS; the wall is a list of WORKS and does not show the artwork-less
-      members at all, so a tag whose only members have no gallery empties the
-      wall while those members genuinely match the filter. Both strings ride on
-      the element and reflectFilterState picks — same `data-` carrier the tags
-      trigger uses for its resting label. */
+    /* TWO WORDINGS, ONE ELEMENT — and the line between them MOVED on
+      2026-09-03 with the artwork-only galleries. It used to separate the wall
+      (works) from everything else (members). Now BOTH galleries show artwork
+      and only artwork, so a tag whose matching members have empty galleries
+      empties them both while those members genuinely match — which is the
+      thing the wording has to be honest about. The ledger is the one view
+      that is a list of members, so it keeps the member wording, and it always
+      has rows where the galleries have none. Both strings ride on the element
+      and reflectFilterState picks — same `data-` carrier the tags trigger
+      uses for its resting label. */
   }
   <p
     id="filter-empty"
@@ -316,7 +313,7 @@ const indexMembers = [...members].sort((a, b) =>
       cells.map(({ slot, member }, i) => (
         <div
           class="cgrid__cell"
-          data-slot={hasArtwork(member) ? "image" : "text"}
+          data-slot="image"
           data-rank={i}
           data-tags={tagsAttr(member)}
           data-row={slot.rowStart}
@@ -324,15 +321,7 @@ const indexMembers = [...members].sort((a, b) =>
           data-col={`${slot.colStart}-${slot.colStart + slot.colSpan - 1}`}
           style={`--gc:${slot.colStart} / span ${slot.colSpan};--gr:${slot.rowStart} / span ${slot.rowSpan};--slot-rows:${slot.rowSpan}`}
         >
-          {hasArtwork(member) ? (
-            <CommunityImageCard member={member} lang={lang} />
-          ) : (
-            /* No artwork to show: the framed tag card. In the spread these
-               members are laid into the compact index below the gallery; in
-               the grid wall they take ordinary wall slots at its end — see
-               `TWO SECTIONS` above. */
-            <CommunityTextCard member={member} lang={lang} />
-          )}
+          <CommunityImageCard member={member} lang={lang} />
         </div>
       ))
     }
@@ -384,21 +373,25 @@ const indexMembers = [...members].sort((a, b) =>
           // MemberCard: the stored URL, token stripped, no build pipeline
           // (avatars are small).
           const avatarSrc = stripStorageToken(m.photoURL ?? "");
-          // WHERE THE "VIEW PROFILE" CONTROL GOES, and it depends on whether
-          // this row is a disclosure at all. It belongs in the DROPDOWN
-          // (2026-09-02, Josh: "index view profile in the dropdown content") —
-          // same placement the image cards already give it, and the same
+          // WHERE THE "VIEW PROFILE" CONTROL GOES: in the DROPDOWN, on every
+          // row, without exception (2026-09-02, Josh: "index view profile in
+          // the dropdown content"; 2026-09-03, "when there is no added
+          // information the view profile in index shows even when not
+          // openend"). Same placement the image cards give it, and the same
           // reason: the panel is what the row had to say about the member, and
-          // the way to their page is what you want once you have read it. In
-          // the summary it was a second control competing with the row's own
-          // click, on every row, whether or not anyone was looking at it.
-          // But a member with neither a picture nor anything to disclose gets
-          // the STATIC line instead of a disclosure (see MemberDetailPanel) —
-          // no panel, so no footer, so their link has to stay on the line or
-          // they become the one member in the ledger with no route to their
-          // page. This mirrors that component's own `show` test; if it changes,
-          // this changes with it.
-          const isDisclosure = Boolean(avatarSrc) || hasDetail(m);
+          // the way to their page is what you want once you have read it.
+          //
+          // EVERY ROW IS A DISCLOSURE, which is the 2026-09-03 half. A member
+          // with neither a picture nor anything to disclose used to get a
+          // STATIC line with the link printed ON it — no panel meant no footer
+          // to put it in, and dropping it would have left them the one member
+          // in the ledger with no route to their page. But that made the
+          // bare rows the loud ones: a control sitting open on the line,
+          // permanently, on exactly the members who had least to say, while
+          // the full profiles kept theirs folded away. So `forceShow` is
+          // unconditional now and the link is always in the footer. The panel
+          // of a bare member holds one thing — the way to their page — which
+          // is honest: it is all there is to disclose.
           const profileLink = (
             <a class="cindex__profile" href={memberHref(lang, m.slug)}>
               {t("community.card.viewProfile.text")}
@@ -421,7 +414,7 @@ const indexMembers = [...members].sort((a, b) =>
                     keeps the keyboard activation and the expanded/collapsed
                     announcement for free — see the summary slot in
                     MemberDetailPanel. */}
-                <MemberDetailPanel member={m} lang={lang} forceShow={Boolean(avatarSrc)}>
+                <MemberDetailPanel member={m} lang={lang} forceShow>
                   <Fragment slot="summary">
                     {/* NAME AND ROLE ARE ONE UNIT — "Jane Doe, Illustrator" —
                         not two columns. The role used to sit in its own track a
@@ -454,13 +447,11 @@ const indexMembers = [...members].sort((a, b) =>
                         was lost with it: the full set is in the panel
                         (.pdisc__vals--tags), and the tag FILTER never read
                         this — it reads data-tags on the row. */}
-                    {!isDisclosure && profileLink}
                   </Fragment>
-                  {/* The dropdown's lead: the profile picture. A member with
-                      neither picture nor bio gets the STATIC line instead of a
-                      disclosure (see MemberDetailPanel) — which is what keeps
-                      them in the ledger at all, now that the line itself lives
-                      inside the component. */}
+                  {/* The dropdown's lead: the profile picture, where there is
+                      one. Nothing else is conditional any more — every row is a
+                      disclosure (see the note above), so the panel always
+                      exists to hold whatever the member has. */}
                   {avatarSrc && (
                     <img
                       slot="lead"
@@ -473,7 +464,7 @@ const indexMembers = [...members].sort((a, b) =>
                       decoding="async"
                     />
                   )}
-                  {isDisclosure && <Fragment slot="footer">{profileLink}</Fragment>}
+                  <Fragment slot="footer">{profileLink}</Fragment>
                 </MemberDetailPanel>
               </div>
             </li>
@@ -880,8 +871,7 @@ const indexMembers = [...members].sort((a, b) =>
   /* Out of flow, so the card's height is its own business. Written global
      because the card roots belong to other components. */
   :global(.cgrid__cell > .ccard),
-  :global(.cgrid__cell > .cwork),
-  :global(.cgrid__cell > .ctcard) {
+  :global(.cgrid__cell > .cwork) {
     position: absolute;
     top: 0;
     /* Bounded on BOTH inline edges so a card narrower than its slot centres in
@@ -892,18 +882,6 @@ const indexMembers = [...members].sort((a, b) =>
        overwrite anything written here. */
     inset-inline: 0;
     margin-inline: auto;
-  }
-
-  /* A tag card takes a full slot in the deal — same treatment as artwork —
-     but not a full lane on the eye: an all-text rectangle at artwork width
-     read as a slab. Capped here and centred by the auto margins above, the
-     same way a portrait narrower than its slot sits. Desktop-only: the slot
-     drawings are desktop drawings, and mobile's two columns are already
-     narrower than this cap. */
-  @media (--bp-desktop) {
-    :global(.cgrid__cell > .ctcard) {
-      max-width: 28rem;
-    }
   }
 
   /* ── The grid wall ────────────────────────────────────── */
@@ -1054,8 +1032,7 @@ const indexMembers = [...members].sort((a, b) =>
        geometry; here the geometry is asking to be told. Auto margins survive
        from that rule and still centre a card narrower than its track. */
     :global(.cgrid[data-pattern="grid"] .cgrid__cell > .ccard),
-    :global(.cgrid[data-pattern="grid"] .cgrid__cell > .cwork),
-    :global(.cgrid[data-pattern="grid"] .cgrid__cell > .ctcard) {
+    :global(.cgrid[data-pattern="grid"] .cgrid__cell > .cwork) {
       position: static;
       margin-inline: auto;
     }
@@ -1167,6 +1144,19 @@ const indexMembers = [...members].sort((a, b) =>
      later cell paint straight over the open panel. Written global because the
      `details` it tests for belongs to another component. */
   :global(.cgrid__cell:has(details[open])) {
+    z-index: 3;
+  }
+
+  /* THE SAME PROBLEM FOR THE WALL'S AUTHOR LINE (2026-09-03, Josh: "in grid
+     view when clicking on a person go into their profile"). A tile's author
+     name is revealed on hover and positioned OUT OF FLOW under the picture, so
+     like an open panel it paints outside the box the drawing gave the cell —
+     and every cell carries a GSAP transform, hence its own stacking context,
+     so a later cell painted straight over the name and swallowed the click.
+     `:hover`, not a `:has()` on some state, because the reveal IS the hover.
+     Above the neighbours (3) but below the sticky bar (20). */
+  .cgrid[data-pattern="grid"] .cgrid__cell:hover,
+  .cgrid[data-pattern="grid"] .cgrid__cell:focus-within {
     z-index: 3;
   }
 
@@ -1326,8 +1316,8 @@ const indexMembers = [...members].sort((a, b) =>
   }
 
   /* THE NAMED WAY TO THE MEMBER'S PAGE — at the foot of the open dropdown,
-     and on the line itself only for a row that has no dropdown (2026-09-02;
-     see the summary's note). Underlined at rest: it is the one control whose
+     and nowhere else since 2026-09-03, when every row became a disclosure (see
+     the row's note). Underlined at rest: it is the one control whose
      job is to be findable, and the row it belongs to expands instead of
      travelling, so nothing else announces that the page exists. Muted so it
      does not outrank the name. Sized and voiced exactly like the image card's
@@ -1448,12 +1438,6 @@ const indexMembers = [...members].sort((a, b) =>
       right: 0.5rem;
       align-self: start;
     }
-
-    /* Its own line rather than a squeezed item beside the name — this only
-       ever renders on the line for a member with no dropdown. */
-    .cindex__profile {
-      margin-top: 0.15rem;
-    }
   }
 
   /* ?grid — the drawing aid, for tuning the slot table against the real page
@@ -1539,36 +1523,85 @@ const indexMembers = [...members].sort((a, b) =>
        rows ARE the cards, so the absolute rule above would leave every cell
        zero-height with the cards piled at the top. */
     :global(.cgrid__cell > .ccard),
-    :global(.cgrid__cell > .cwork),
-    :global(.cgrid__cell > .ctcard) {
+    :global(.cgrid__cell > .cwork) {
       position: static;
       margin-inline: auto;
     }
   }
 
-  /* The gallery's fade: cards enter softly as they scroll into the
-     scrollport (.page-wrap — the nearest scroll container, see
-     Layout.astro), the mobile stand-in for the desktop GSAP layer at zero
-     bytes of JS. Gallery only — the grid wall is a reference view and stays
-     still. Browsers without scroll-driven animations simply skip it, which
-     is the finished no-motion state. */
+  /* ── ONE CARD AT A TIME, ON THE PHONE ─────────────────
+     (2026-09-03, Josh: "highlight only one carousel at a time in gallery
+     mode … the most prominent card (in the middle of the screen) is fully
+     opaque the others are a bit faded", xk.studio/work as the reference.)
+
+     The mobile gallery is a single column of full-width cards, so scrolling it
+     is really paging through one member at a time — but every card in the
+     scrollport was drawn at full strength, which meant two or three half-cards
+     at the edges competing with the one the reader is actually looking at, and
+     three carousels quietly advancing at once. Now the column has a FOCUS: the
+     card crossing the middle of the screen is at full opacity and its
+     neighbours fade back. The eye is told where to look, and the page reads as
+     one thing at a time rather than as a stack.
+
+     THIS IS THE WHOLE MECHANISM — no JS, no observers, no scroll handler. One
+     scroll-driven animation per cell over its own `view()` timeline, so the
+     browser interpolates each card's opacity from its position in the
+     scrollport: the midpoint of the timeline IS the card centred, which is
+     exactly the "most prominent" the brief asks for. It also subsumes the
+     enter-fade this replaces (a card used to fade in over `entry 0%..55%` and
+     then stay put) — the ramp up from the bottom edge is the same gesture,
+     it simply now has a ramp back down at the top edge to match.
+
+     Gallery only: the grid wall is a reference view and stays still.
+     Browsers without scroll-driven animations get every card at full opacity,
+     which is the finished no-motion state and what the page did before.
+
+     The 5s auto-advance follows the same focus, decided in JS because it is a
+     timer rather than a paint — see autoAdvanceAllowed in
+     src/lib/communityCarousel.ts, which picks the one card nearest the centre.
+     The two have to agree about what "prominent" means, and both mean centred. */
   @media (--bp-mobile) and (prefers-reduced-motion: no-preference) {
     @supports (animation-timeline: view()) {
       .cgrid:not([data-pattern="grid"]) .cgrid__cell {
         /* Shorthand first: `animation` resets animation-timeline, so the
            timeline must be declared after it. */
-        animation: cgrid-cell-enter both;
+        animation: cgrid-cell-focus both;
         animation-timeline: view();
-        animation-range: entry 0% entry 55%;
+        /* The card's WHOLE crossing, edge to edge — `entry`, the old range,
+           ends the moment the card is fully in view and could never describe
+           it leaving again. */
+        animation-range: cover 0% cover 100%;
       }
     }
   }
 
-  /* @keyframes are global in Astro (see CLAUDE.md) — hence the prefix. */
-  @keyframes cgrid-cell-enter {
-    from {
-      opacity: 0;
+  /* @keyframes are global in Astro (see CLAUDE.md) — hence the prefix.
+     The plateau across the middle is deliberate: without it only a card
+     momentarily dead-centre is ever fully opaque, and the focus would visibly
+     dim while a reader stopped to look at it. 38%..62% is roughly "centred
+     enough", and it is wide enough that a short card and a tall one both get a
+     resting beat at full strength.
+     The translate is the old enter-fade's, kept because a card that only
+     brightens reads as a light being turned up rather than as a card
+     arriving — and mirrored on the way out so the gesture is symmetrical. */
+  @keyframes cgrid-cell-focus {
+    /* 0.35 rather than the ~0.3 the reference reads at: that page is white on
+       black, where a dimmed thing recedes into the ground, and this one is dark
+       on off-white, where the same figure washes a photograph out instead of
+       pushing it back. Far enough to be unmistakably secondary, near enough
+       that the card beside the focus is still a picture. */
+    0% {
+      opacity: 0.35;
       transform: translateY(16px);
+    }
+    38%,
+    62% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    100% {
+      opacity: 0.35;
+      transform: translateY(-16px);
     }
   }
 
@@ -1582,11 +1615,11 @@ const indexMembers = [...members].sort((a, b) =>
 <script>
   import { auth } from "../lib/firebase.ts";
   import { onAuthStateChanged } from "firebase/auth";
+  import { navigate } from "astro:transitions/client";
   import {
     GALLERY_PATTERNS,
     STRIP_SLOT_ROWS,
     layOutSlots,
-    layOutStripIndex,
     layOutWall,
     type GalleryPatternName,
     type Slot,
@@ -1697,25 +1730,43 @@ const indexMembers = [...members].sort((a, b) =>
     return out;
   }
 
-  /**
-   * Rewrite the URL for a view or filter choice WITHOUT touching the history
-   * state object.
-   *
-   * THIS IS NOT A STYLE PREFERENCE. Both call sites used to pass `null` as the
-   * state, and `history.replaceState(null, …)` does not mean "leave the state
-   * alone" — it OVERWRITES it with null. ClientRouter keeps its own bookkeeping
-   * there (`{index, scrollX, scrollY}`) and its popstate handler needs it to
-   * decide what to swap; with null it bails out. The visible symptom was:
-   * choose a view or a tag, open a member, press Back — the URL returned to
-   * /community and THE MEMBER'S PAGE STAYED ON SCREEN. (2026-09-01, Josh:
-   * "back navigation dors not work getting back from profiles".) Every view
-   * switch on the page armed it, which is why it looked intermittent.
-   *
-   * A view switch is still not a navigation, so this is still replaceState —
-   * only now it preserves what it found.
-   */
-  function syncURL(url: URL) {
-    history.replaceState(history.state, "", url);
+  // ── THE VIEW IS A NAVIGATION ──────────────────────────
+  // (2026-09-03, Josh: "back button in browser shoud work to switch. etween
+  // patterns and from profile".)
+  //
+  // Choosing a view or a tag used to REPLACE the current history entry, which
+  // is why Back could not step between views: there was only ever one entry
+  // for /community however many views you had looked at. It went through
+  // replaceState rather than pushState because a view switch "is not a
+  // navigation" — the two cell sets are both in the DOM and the deal only
+  // hides one, so switching cost nothing and re-rendering the page for it felt
+  // wasteful.
+  //
+  // WHY IT CANNOT BE A HAND-ROLLED pushState EITHER. ClientRouter keeps its
+  // bookkeeping in history.state (`{index, scrollX, scrollY}`) and its popstate
+  // handler returns immediately on a null state. Pushing our own null-state
+  // entry therefore breaks the OTHER Back: leave for a member's page, press
+  // Back, and the pop lands on an entry ClientRouter refuses to handle — the
+  // URL returns to /community and THE MEMBER'S PAGE STAYS ON SCREEN. That is
+  // the exact bug 2026-09-01 fixed by getting rid of `replaceState(null)`, and
+  // faking the state shape by hand only moves it (the index would collide with
+  // the next real navigation's).
+  //
+  // So the view goes through Astro's own navigate(): a real entry, ClientRouter's
+  // own bookkeeping, Back and Forward working in both directions and from a
+  // profile, and ?pattern= / ?tag= as the single source of truth — the
+  // astro:page-load handler below already rebuilds the page from them, which is
+  // what makes a reload, a shared link and a history traversal all land on the
+  // same page. It costs a document swap of a static page.
+  //
+  // IT ALSO SETTLES "Scroll to top when changing views": a forward navigation
+  // gets a history index with no stored scroll offset, so Layout.astro's
+  // restore finds nothing and the swapped-in .page-wrap starts at the top. The
+  // deal is right for free too — the seed is filed against the history index
+  // (see rememberedSeed), so a new entry deals fresh and a Back reproduces the
+  // arrangement that entry was left showing.
+  function goTo(url: URL) {
+    navigate(url.pathname + url.search);
   }
 
   function writeSlot(cell: HTMLElement, s: Slot) {
@@ -1855,9 +1906,10 @@ const indexMembers = [...members].sort((a, b) =>
     const emptyEl = document.getElementById("filter-empty");
     if (emptyEl) {
       emptyEl.hidden = visible > 0;
-      const wall = mode === "grid";
+      // Both galleries are artwork; only the ledger lists members.
+      const gallery = mode !== "index";
       emptyEl.textContent =
-        (wall ? emptyEl.dataset.works : emptyEl.dataset.rest) ?? emptyEl.textContent;
+        (gallery ? emptyEl.dataset.works : emptyEl.dataset.rest) ?? emptyEl.textContent;
     }
   }
 
@@ -1931,22 +1983,19 @@ const indexMembers = [...members].sort((a, b) =>
     // is also why switching costs nothing and why the wall's images are not
     // fetched until the wall is on screen.
     const artKind = mode === "grid" ? "work" : "image";
-    // THE WALL IS ARTWORK ONLY (2026-09-01, Josh: "remove the empty cards").
-    // Members with nothing to show used to close it with their all-text tag
-    // cards — the one thing on a wall of pictures that was not a picture, and
-    // at the end, where a row of text slabs read as the wall having run out of
-    // material. They keep their full treatment in the SPREAD, which is the view
-    // that is about people, and they are all reachable in the Index. Nobody is
-    // dropped from the directory; they are dropped from one view of the work.
-    const wantsText = mode !== "grid";
+    // BOTH GALLERIES ARE ARTWORK ONLY. The wall stopped showing the
+    // artwork-less members on 2026-09-01 ("remove the empty cards"); the
+    // spread followed on 2026-09-03 ("remove memebrs from gallery that dont
+    // have images"), so there is no longer a view here that deals a second
+    // kind of cell — `artKind` is the whole membership test. Everyone without
+    // a gallery is a row in the Index; see the header.
     // The filter narrows the DEAL, not the drawing: non-matching cells leave
     // the grid entirely (display:none) and the survivors are dealt into the
     // pattern's leading slots, so the page always reads as designed. Hiding
     // in place would leave the drawn slots standing empty — the exact failure
     // the old comment on .cgrid__cell[hidden] warned about.
     cells.forEach((cell) => {
-      const inView = cell.dataset.slot === artKind || (wantsText && cell.dataset.slot === "text");
-      cell.hidden = !inView || !memberMatches(cell);
+      cell.hidden = cell.dataset.slot !== artKind || !memberMatches(cell);
     });
     const matching = cells.filter((cell) => !cell.hidden);
     // With nothing to deal the grid itself steps aside — its padding would
@@ -1958,15 +2007,13 @@ const indexMembers = [...members].sort((a, b) =>
       reflectFilterState(grid, mode);
       return;
     }
-    const galleryCells = matching.filter((cell) => cell.dataset.slot === artKind);
+    // Every surviving cell is artwork of this view's kind — there is no second
+    // kind any more (see the header) — so `matching` IS the gallery.
+    //
     // One standing order PER SET, not one shared: the wall's tiles and the
     // spread's cards are different cells, so a single list would be emptied of
     // everything the current view can use on every switch — and the point of
     // keeping it is that narrowing by tag must not reshuffle what is on screen.
-    // The completeness order comes from data-rank, stamped at build — NOT
-    // from document order. Today's deals happen to preserve it for text
-    // cells, but that is an accident of the current branches; the rank is
-    // the contract.
     const byRank = (a: HTMLElement, b: HTMLElement) =>
       Number(a.dataset.rank) - Number(b.dataset.rank);
     if (reshuffle || !artworkOrder[artKind]?.length) {
@@ -1981,8 +2028,7 @@ const indexMembers = [...members].sort((a, b) =>
         cells.filter((cell) => cell.dataset.slot === artKind).sort(byRank)
       );
     }
-    const orderedGallery = artworkOrder[artKind].filter((cell) => galleryCells.includes(cell));
-    const textCells = matching.filter((cell) => cell.dataset.slot === "text").sort(byRank);
+    const orderedGallery = artworkOrder[artKind].filter((cell) => matching.includes(cell));
 
     if (mode === "strip" && strip) {
       orderedGallery.forEach((cell) => {
@@ -1996,25 +2042,21 @@ const indexMembers = [...members].sort((a, b) =>
         strip.appendChild(cell);
       });
       strip.hidden = false;
-      const indexSlots = layOutStripIndex(textCells.length);
-      textCells.forEach((cell, i) => writeSlot(cell, indexSlots[i]));
-      textCells.sort(domOrder).forEach((cell) => grid.appendChild(cell));
+      // The index ladder that used to run under the strip is gone with the tag
+      // cards it laid out — layOutStripIndex has no callers left.
       reflectFilterState(grid, mode);
       return;
     }
 
     if (mode === "grid") {
-      // The wall deals every WORK into its own slot, and nothing else — the
-      // artwork-less members are not in this view at all (see wantsText
-      // above), so `textCells` is empty here by construction and the spread
-      // below it is what keeps the two branches written the same way.
+      // The wall deals every WORK into its own slot, and nothing else.
       // Generated, not drawn: as many fixed-width tracks as the window fits
       // (see the wall block in the styles above). The count goes onto the grid
       // for the CSS to build its tracks from, and is remembered so a resize
       // can tell a real change from a wobble.
       wallCols = writeWallMetrics(grid);
       const all = layOutWall(matching.length, wallCols);
-      [...orderedGallery, ...textCells].forEach((cell, i) => {
+      orderedGallery.forEach((cell, i) => {
         writeSlot(cell, all[i]);
         // The brick: even rows are the offset ones (layOutWall's parity), and
         // a one-track wall has nothing to step against — the only card in a
@@ -2029,11 +2071,10 @@ const indexMembers = [...members].sort((a, b) =>
       return;
     }
 
-    // The spread deals exactly like the wall now: one run of slots for
-    // everyone, shuffled artwork leading, the tag cards closing the page in
-    // completeness order — same treatment, always last.
+    // The spread deals exactly like the wall: one run of slots, filled with
+    // the shuffled artwork and nothing else.
     const all = layOutSlots(GALLERY_PATTERNS.spread, matching.length, 0);
-    [...orderedGallery, ...textCells].forEach((cell, i) => writeSlot(cell, all[i]));
+    orderedGallery.forEach((cell, i) => writeSlot(cell, all[i]));
     if (strip) strip.hidden = true;
     cells.sort(domOrder).forEach((cell) => grid.appendChild(cell));
     reflectFilterState(grid, mode);
@@ -2077,36 +2118,35 @@ const indexMembers = [...members].sort((a, b) =>
         grid.classList.add("cgrid--debug");
       }
 
-      // The view selector. Switching re-deals the same cells into the other
-      // slot table, mirrors the choice into ?pattern= (via syncURL — a view
-      // switch is not a navigation, but it must not eat ClientRouter's history
-      // state either; see syncURL) so reload and share keep it, and tells
-      // the motion layer to rebuild: every ScrollTrigger position measured
-      // against the old layout is stale the moment the deal moves the cells.
+      // The view selector. Each choice is a NAVIGATION to the same page with a
+      // different ?pattern= — see goTo above for why it is not a local re-deal
+      // any more. Everything else follows from the URL: the handler below runs
+      // again on the swapped-in document, deals the view, presses the right
+      // button and rebuilds the motion layer.
       document.querySelectorAll<HTMLButtonElement>(".view-toggle__btn").forEach((btn) => {
         btn.addEventListener("click", () => {
           const next = btn.dataset.mode as LayoutMode;
           if (grid.dataset.pattern === next) return;
-          // A fresh deal, remembered against this entry — so Back later returns
-          // to the view AND the arrangement the visitor actually left.
-          dealSeed = storeSeed(freshSeed());
-          applyLayout(grid, next);
-          reflectMode(next);
           const url = new URL(window.location.href);
           if (next === "spread") url.searchParams.delete("pattern");
           else url.searchParams.set("pattern", next);
-          syncURL(url);
-          document.dispatchEvent(new Event("community:layout-changed"));
+          goTo(url);
         });
       });
 
       // The tags dropdown: the trigger flips the panel; typing in the panel
-      // narrows its LIST (local, no deal); picking an option filters the
-      // page — re-deal with reshuffle:false so survivors hold their places,
-      // ?tag= synced, and the same rebuild a view switch fires. (In index
-      // mode the event still fires; the motion layer's build() sees the
-      // hidden grid and declines, which is the cheap path.) Re-picking the
-      // active tag (or "All tags") clears.
+      // narrows its LIST (local, no deal); picking an option NAVIGATES to the
+      // same page with ?tag= set, exactly like the view selector — so a
+      // narrowed page is a history entry you can leave and come back to, and
+      // a tag link from anywhere else on the site (the disclosure panels' tag
+      // chips) lands on the identical URL. Re-picking the active tag (or "All
+      // tags") clears it.
+      //
+      // The re-deal that used to happen here — reshuffle:false, so survivors
+      // held their positions while the visitor narrowed — is gone with it: a
+      // navigation deals fresh. That is the price of the tag being a real
+      // place, and the page scrolls to the top with it, so nothing the
+      // standing order was protecting is on screen to be disturbed.
       const tagBtn = document.getElementById("tag-filter-btn");
       const tagPanel = document.getElementById("tag-filter-panel");
       const tagSearch = document.getElementById("tag-filter-search") as HTMLInputElement | null;
@@ -2130,16 +2170,13 @@ const indexMembers = [...members].sort((a, b) =>
 
       document.querySelectorAll<HTMLButtonElement>(".tag-filter__option").forEach((opt) => {
         opt.addEventListener("click", () => {
-          const next = opt.dataset.tag ?? "";
-          tagFilter = next === tagFilter ? "" : next;
-          reflectTagUI();
+          const picked = opt.dataset.tag ?? "";
+          const next = picked === tagFilter ? "" : picked;
           closeTagPanel();
-          applyLayout(grid, (grid.dataset.pattern as LayoutMode) || "spread", false);
           const url = new URL(window.location.href);
-          if (tagFilter) url.searchParams.set("tag", tagFilter);
+          if (next) url.searchParams.set("tag", next);
           else url.searchParams.delete("tag");
-          syncURL(url);
-          document.dispatchEvent(new Event("community:layout-changed"));
+          goTo(url);
         });
       });
 
@@ -2261,12 +2298,11 @@ const indexMembers = [...members].sort((a, b) =>
   // no amount of it can push a card out of its lane.
   const AMPS = [70, 130, 100];
 
-  /** Tag cards get the same treatment as artwork — full amplitude in both
-   *  galleries. The one exception is the shelved strip mode, whose TEXT_TILE
-   *  ladder still steps 3 rows: a full amplitude there would stack one card
-   *  onto the next, so the strip keeps the old 0.3 fraction. */
-  function flowScale(cell: HTMLElement, mode: string | undefined): number {
-    if (mode === "strip") return cell.querySelector(".ctcard") ? 0.3 : 1;
+  /** Full amplitude everywhere but the wall. (There used to be a tag-card
+   *  exception for the shelved strip mode's index ladder; both galleries are
+   *  artwork only since 2026-09-03, so there is no second kind of card left to
+   *  damp.) */
+  function flowScale(_cell: HTMLElement, mode: string | undefined): number {
     // The amplitudes above were drawn for the spread, where a beat has
     // hundreds of pixels of drawn whitespace under it and a card is 500px
     // wide. On the wall a 130px travel is most of a 200px card sliding past
@@ -2341,7 +2377,7 @@ const indexMembers = [...members].sort((a, b) =>
         //    strip scrolls on its own axis, and a scroll-linked transform
         //    would fight the hover growth that layout owns.
         gsap.utils
-          .toArray<HTMLElement>(".ccard, .cwork, .ctcard")
+          .toArray<HTMLElement>(".ccard, .cwork")
           // The view the deal did NOT build is still in the DOM, hidden — the
           // spread's member cards while the wall is up, and the wall's tiles
           // otherwise. A trigger measured against a display:none box is
@@ -2643,14 +2679,17 @@ const indexMembers = [...members].sort((a, b) =>
           const render = () => {
             const trigger = pswp.currSlide?.data.element as HTMLElement | undefined;
             const caption = trigger?.dataset.pswpCaption?.trim() || "";
-            // THE LONG TEXT, in the lightbox as of 2026-09-01 (Josh: "add it
-            // to lightbox"). It used to live only under the image on the
-            // member's page, which meant the one view where the artwork is
-            // big enough to warrant an explanation was the one view without
-            // one. Unlike the caption it is NOT clamped: the band is a scroll
-            // container capped at the padding the artwork reserves (see
-            // lightbox.css), so a paragraph scrolls inside the band instead of
-            // being cut off or growing up over the picture.
+            // THE SHORT DESCRIPTION. A description arrived in the band on
+            // 2026-09-01 (Josh: "add it to lightbox") because the one view
+            // where the artwork is big enough to warrant an explanation was
+            // the one view without one; it was the member's LONG text until
+            // 2026-09-03, when the two split (Josh: "one for portfolio the
+            // rest for lightbox and other places") and the long one stayed on
+            // the member's own page. Unlike the caption it is still NOT
+            // clamped: the band is a scroll container capped at the padding
+            // the artwork reserves (see lightbox.css), so a sentence that
+            // wraps to three lines scrolls inside the band rather than being
+            // cut off or growing up over the picture.
             const description = trigger?.dataset.pswpDescription?.trim() || "";
             const meta = trigger?.dataset.pswpMeta?.trim() || "";
 
@@ -2668,9 +2707,30 @@ const indexMembers = [...members].sort((a, b) =>
               desc.textContent = description;
               el.append(desc);
             }
+            // ── THE CREDIT IS THE WAY OUT ─────────────────────────
+            // (2026-09-03, Josh: "in lightbox a way to get to the profile of a
+            // person".) The lightbox is the whole screen, so every route the
+            // page offered to a member — the tile's author line, the card's
+            // name heading, the "View profile" control in a disclosure — is
+            // underneath it. The band was already naming them; it just had no
+            // way of being followed.
+            //
+            // The NAME becomes the link, rather than a "View profile" control
+            // being added beside it: the credit is the only thing in the band
+            // that is about the person, so making it the control keeps the band
+            // three lines about one picture instead of four with an errand at
+            // the end. A plain <a>, so ClientRouter picks the navigation up and
+            // the lightbox is destroyed by its own astro:before-swap handler —
+            // nothing here has to close anything.
+            //
+            // Falls back to a plain span when the trigger carries no profile
+            // href: the member page's own gallery uses this same renderer, and
+            // there the person whose page you are on is not somewhere to go.
+            const profile = trigger?.dataset.pswpProfile?.trim() || "";
             if (meta) {
-              const credit = document.createElement("span");
+              const credit = document.createElement(profile ? "a" : "span");
               credit.className = "pswp__vscn-caption-meta";
+              if (credit instanceof HTMLAnchorElement) credit.href = profile;
               credit.textContent = meta;
               el.append(credit);
             }

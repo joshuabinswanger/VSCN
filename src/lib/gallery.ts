@@ -25,6 +25,20 @@ export const MAX_GALLERY_CAPTION = 140;
 export const MAX_GALLERY_DESCRIPTION = 600;
 
 /**
+ * THE SHORT DESCRIPTION'S CEILING (2026-09-03, Josh: "image descriptions
+ * should have a long and short version: one for portfolio the rest for
+ * lightbox and other places").
+ *
+ * One sentence, not a paragraph: this is the line that rides along with the
+ * image everywhere the image is NOT the whole page — the lightbox band, the
+ * directory's cards and tiles. The long `description` stays behind on the
+ * member's own portfolio page, which is the one place there is room to read
+ * it. 240 is about two lines at the lightbox band's measure, which is the
+ * space the band can give a description without scrolling.
+ */
+export const MAX_GALLERY_DESCRIPTION_SHORT = 240;
+
+/**
  * THE LONGEST EDGE OF A STORED IMAGE — 4K (2026-09-02, Josh: "cap max res at
  * 4k"). Was 2000, which was below the resolution of the artwork members
  * actually upload: a 4000px master downscaled to 2000 lost detail that the
@@ -69,8 +83,20 @@ export interface GalleryItem {
   /**
    * The long text: what the image is, how it was made, who it was for. Shown
    * only under the image on the member's profile page, never as alt text.
+   *
+   * PORTFOLIO ONLY, since 2026-09-03. It used to travel to the lightbox as
+   * well, which is why the lightbox band had to become a scroll container;
+   * `descriptionShort` is what goes there now.
    */
   description?: string;
+  /**
+   * One sentence of the same thing, for everywhere that is not the member's
+   * own page: the lightbox band, and anything else that shows an image
+   * alongside other images. Optional and independent — a member may write
+   * either, both or neither, and nothing derives one from the other (a
+   * machine-truncated paragraph is not a summary).
+   */
+  descriptionShort?: string;
 }
 
 /**
@@ -103,6 +129,8 @@ export function sanitizeGalleryItems(value: unknown): GalleryItem[] {
       };
       if (typeof raw.color === "string") item.color = raw.color;
       if (typeof raw.description === "string" && raw.description) item.description = raw.description;
+      if (typeof raw.descriptionShort === "string" && raw.descriptionShort)
+        item.descriptionShort = raw.descriptionShort;
       return item;
     })
     .filter((item) => item.url && item.width > 0 && item.height > 0);
@@ -178,7 +206,13 @@ export async function uploadGalleryImage(
 export async function syncGalleryText(gallery: GalleryItem[]): Promise<void> {
   const items = gallery.filter((item) => item.imageId);
   const results = await Promise.allSettled(
-    items.map((item) => updateImageText(item.imageId, { caption: item.caption, description: item.description })),
+    items.map((item) =>
+      updateImageText(item.imageId, {
+        caption: item.caption,
+        description: item.description,
+        descriptionShort: item.descriptionShort,
+      }),
+    ),
   );
   results.forEach((result, i) => {
     if (result.status === "rejected") {
