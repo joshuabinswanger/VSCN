@@ -1,4 +1,5 @@
-﻿> Mirror of `~/.claude/projects/D--SynoDrive-VSCN/memory/community-gallery-layout-selector.md` — readable by any Claude instance without access to Josh's user profile.
+> Mirror of the `~/.claude/projects/D--SynoDrive-VSCN/memory/community-gallery-layout-selector.md` memory file, kept in the repo so any Claude instance can read it without access to the user profile. Keep both copies in sync.
+
 ---
 name: community-gallery-layout-selector
 description: "/community gallery: the two-lane Supera spread (interlocked 2026-08-28) plus a grid wall (now one tile PER WORK — project name printed, author on hover, artwork-less members not shown; the image opens the lightbox) AND a typographic index ledger behind a Gallery/Grid/Index toggle; parallax is simple amp-cycled linear drift; tag cards take normal slots, always last, width-capped; strip shelved behind ?pattern=strip"
@@ -237,3 +238,11 @@ noise for the member review.
 - The hover growth / transitions read as broken in the hidden Browser pane
   ([[browser-pane-frozen-timeline]]); GSAP scrub also freezes there (rAF paused) — verify
   motion by checking inline transforms exist, not by watching them move.
+
+**2026-09-03: BOTH galleries are artwork only.** Josh: "remove memebrs from gallery that
+dont have images". The wall dropped the tag cards on 2026-09-01; the spread has now
+followed, so the deal has exactly one kind of cell and `CommunityTextCard.astro` is in
+the tree unrendered (its header says so). Members with an empty gallery are rows in the
+INDEX and nowhere else on the page — which is also why the empty-state message now uses
+the "no artwork" wording for both galleries and the "no members" wording only for the
+ledger.

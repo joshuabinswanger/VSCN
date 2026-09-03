@@ -41,4 +41,27 @@ revealing it on hover, because a touch screen has no hover
 ([[community-mobile-pattern]]), and the disclosure chevrons grew from ~16×15px marks to
 2rem hit areas.
 
-Related: [[community-back-navigation-traps]], [[projects-feature-withdrawn]]
+**2026-09-03 finished the other half of the rule: every picture now has a route to the
+person.** The rule made images open images, which left the member reachable only from
+surfaces the picture could cover. Three fixes, all the same idea:
+- **The lightbox credit is a link.** `data-pswp-profile` on the trigger; the caption
+  renderer builds an `<a>` instead of a `<span>` when it is present. The member page's
+  own gallery passes none, so there the credit stays a credit — both copies of the
+  renderer carry the branch so they cannot drift.
+- **The wall tile's author name was, in practice, unclickable with a mouse.** It is
+  positioned `top: 100%` of the caption box, i.e. OUTSIDE `.cwork`, so reaching for it
+  cancelled the `.cwork:hover` that revealed it. Fixed with a hover bridge —
+  `.cwork__author:hover` keeps itself up — plus a `z-index` on the hovered cell, because
+  every cell has a GSAP transform and therefore its own stacking context. Keyboard and
+  mobile were always fine, which is why it went unnoticed.
+- **Tags are links into the filtered directory** (`communityTagHref` in `links.ts`,
+  `/community?tag=<lowercased>`), in both the disclosure panels and the profile page.
+  The editor's page preview keeps INERT chips on purpose — a control that navigates out
+  of an unsaved form is the one divergence that preview allows.
+
+Also: every ledger row is a disclosure now (`forceShow` unconditional). The static-line
+fallback made the bare members the loud ones — a "View profile" sitting permanently open
+on exactly the rows with least to say.
+
+Related: [[community-back-navigation-traps]], [[projects-feature-withdrawn]],
+[[image-descriptions-long-and-short]]
