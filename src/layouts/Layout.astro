@@ -3,6 +3,7 @@ import { ClientRouter } from "astro:transitions";
 import Navbar from "../components/Navbar.astro";
 import PageLoader from "../components/PageLoader.astro";
 import favicon from "../assets/favicon.png";
+import { BUILD_COMMIT, BUILD_TIME } from "../lib/buildInfo.ts";
 import ogImageAsset from "../assets/OG_Image.png";
 import "../styles/global.css";
 
@@ -89,6 +90,20 @@ const BRAND_SLOTS = [
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={metaDescription} />
     <meta name="twitter:image" content={ogImageUrl} />
+
+    {
+      /* WHICH BUILD THIS IS (2026-09-03). Every page on this site is a
+        build-time snapshot of Firestore, so "is what I am looking at current?"
+        is a question anyone reviewing the deployed site has to be able to
+        answer — and it used to take counting sitemap entries and asking the
+        Hosting API for a release time. Now:
+          curl -s https://…/community | grep 'name="build-'
+        Not `noindex`-gated and not stripped in production on purpose: the
+        whole value is that it is there on the page a reviewer actually opens.
+        See src/lib/buildInfo.ts for what the values can be. */
+    }
+    <meta name="build-commit" content={BUILD_COMMIT} />
+    <meta name="build-time" content={BUILD_TIME} />
 
     <ClientRouter />
   </head>
