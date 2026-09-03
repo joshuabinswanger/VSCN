@@ -2,23 +2,36 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions/v2";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { db } from "./admin";
-import { GRACE_DAYS } from "./constants";
 import { cancelDeletion, scheduleDeletion } from "./lifecycle";
+import { purgeAccount } from "./purge";
 import { dispatchRebuild, githubRebuildToken } from "./rebuild";
 import { requireRecentLogin, requireUser } from "./util";
 
 /**
- * Member-facing soft delete. The client reauthenticates first; auth_time is
- * how the server knows it did. Nothing is destroyed here — see lifecycle.ts.
+ * Member-facing delete. Immediate, and there is no way back from it.
+ *
+ * (2026-09-04, Josh: "scheduled deletion is unnecessary. just make it delete
+ * accounts straight away".) The 30-day grace period is gone from THIS path —
+ * an admin can still schedule one through adminOps, which is why
+ * cancelDeletion, purgeExpiredAccounts and the banner all stay.
+ *
+ * The job record is still opened first, and that is not ceremony:
+ * purgeAccount reads it to know which images and files belong to the account,
+ * and its `steps` are what make the purge resumable when one stage fails
+ * halfway. `purgeAfter` is NOW rather than now + GRACE_DAYS, so a job that
+ * does fail is already due and purgeExpiredAccounts finishes it on its next
+ * pass instead of waiting a month.
+ *
+ * The client reauthenticates first; auth_time is how the server knows it did.
  */
 export const requestAccountDeletion = onCall({ secrets: [githubRebuildToken] }, async (req) => {
   const uid = requireUser(req);
   requireRecentLogin(req);
-  const purgeAfter = Timestamp.fromMillis(Date.now() + GRACE_DAYS * 86_400_000);
-  await scheduleDeletion(uid, "member", purgeAfter);
+  await scheduleDeletion(uid, "member", Timestamp.now());
+  await purgeAccount(uid);
   await dispatchRebuild();
-  logger.info("Account deletion scheduled", { uid, purgeAfter: purgeAfter.toDate().toISOString() });
-  return { purgeAfter: purgeAfter.toDate().toISOString() };
+  logger.info("Account deleted", { uid });
+  return { deleted: true };
 });
 
 export const cancelAccountDeletion = onCall({ secrets: [githubRebuildToken] }, async (req) => {

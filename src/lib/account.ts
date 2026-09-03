@@ -9,8 +9,8 @@ import { functions } from "./firebase.ts";
  * call. Without that, it throws `failed-precondition` — a stale session cannot
  * schedule the destruction of an account.
  */
-export async function requestAccountDeletion(): Promise<{ purgeAfter: string }> {
-  const fn = httpsCallable<void, { purgeAfter: string }>(functions, "requestAccountDeletion");
+export async function requestAccountDeletion(): Promise<{ deleted: boolean }> {
+  const fn = httpsCallable<void, { deleted: boolean }>(functions, "requestAccountDeletion");
   return (await fn()).data;
 }
 

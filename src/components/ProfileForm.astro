@@ -2558,9 +2558,17 @@ const t = useTranslations(lang);
     });
 
     // ── Delete account ──────────────────────────────────────────────
-    // Soft delete through requestAccountDeletion: the function hides the
-    // member and opens a 30-day job; nothing is destroyed here. The password
-    // prompt is not optional — the callable checks auth_time server-side.
+    // Delete through requestAccountDeletion, which destroys the account
+    // outright — documents, files and the Auth user (2026-09-04, Josh:
+    // "scheduled deletion is unnecessary. just make it delete accounts
+    // straight away"). The password prompt is not optional and is now the
+    // ONLY thing between a stray click and an irreversible one: the callable
+    // checks auth_time server-side, so it cannot be skipped from here.
+    //
+    // showDeletionBanner and the "Keep my account" button below are NOT dead
+    // code — an admin can still schedule a dated deletion through adminOps,
+    // and a member whose account is in that state still needs to see it and
+    // still needs a way out.
     const deleteIdle = document.getElementById("delete-idle")!;
     const deleteReauth = document.getElementById("delete-reauth")!;
     const deleteScheduled = document.getElementById("delete-scheduled")!;
@@ -2618,9 +2626,16 @@ const t = useTranslations(lang);
         return;
       }
       try {
-        const { purgeAfter } = await requestAccountDeletion();
+        await requestAccountDeletion();
         reauthInput.value = "";
-        showDeletionBanner(purgeAfter);
+        // The account is GONE by the time this resolves — documents, files and
+        // the Auth user. So there is no profile left to render and no session
+        // left to render it with: signing out and leaving is the only honest
+        // next screen, and `replace` keeps Back from returning to an editor
+        // whose every field would now fail to load.
+        await signOut(auth).catch(() => {});
+        window.location.replace(prefix + "/");
+        return;
       } catch {
         reauthError.textContent = s["profile.delete.error"];
         reauthError.style.display = "block";
