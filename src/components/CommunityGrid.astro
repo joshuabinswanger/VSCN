@@ -1516,88 +1516,102 @@ const indexMembers = [...members].sort((a, b) =>
     }
   }
 
-  /* ── ONE CARD AT A TIME, ON THE PHONE ─────────────────
+  /* ── WHAT YOU HAVE PASSED RECEDES ─────────────────────
      (2026-09-03, Josh: "highlight only one carousel at a time in gallery
-     mode … the most prominent card (in the middle of the screen) is fully
-     opaque the others are a bit faded", xk.studio/work as the reference.)
+     mode … the most prominent card is fully opaque the others are a bit
+     faded", xk.studio/work as the reference. 2026-09-04, Josh: "the fade …
+     should only start to happen once the top of the image touches the filter
+     bar" — which is what the range below now says, and it moves the effect
+     from "centred card wins" to "the card you have not passed yet wins". See
+     the keyframes for the consequence.)
 
      The mobile gallery is a single column of full-width cards, so scrolling it
      is really paging through one member at a time — but every card in the
-     scrollport was drawn at full strength, which meant two or three half-cards
-     at the edges competing with the one the reader is actually looking at, and
-     three carousels quietly advancing at once. Now the column has a FOCUS: the
-     card crossing the middle of the screen is at full opacity and its
-     neighbours fade back. The eye is told where to look, and the page reads as
-     one thing at a time rather than as a stack.
+     scrollport was drawn at full strength, which meant half-cards at the edges
+     competing with the one the reader is actually looking at, and three
+     carousels quietly advancing at once. Now the column has a direction: a
+     card holds full opacity for as long as it is below the filter bar and
+     gives it up as it slides under it.
 
-     THIS IS THE WHOLE MECHANISM — no JS, no observers, no scroll handler. One
+     THIS IS THE WHOLE MECHANISM — no observers, no scroll handler. One
      scroll-driven animation per cell over its own `view()` timeline, so the
      browser interpolates each card's opacity from its position in the
-     scrollport. The plateau sits slightly before dead-centre — full opacity
-     while the card's top edge is between the screen's 50% mark and its top
-     20% mark — which is close enough to "centred" to still read as the
-     "most prominent" the brief asks for. It also subsumes the enter-fade
-     this replaces (a card used to fade in over `entry 0%..55%` and then stay
-     put) — the ramp up from the bottom edge is the same gesture, it simply
-     now has a ramp back down at the top edge to match.
-
-     Gallery only: the grid wall is a reference view and stays still.
-     Browsers without scroll-driven animations get every card at full opacity,
-     which is the finished no-motion state and what the page did before.
-
-     The 5s auto-advance follows the same focus, decided in JS because it is a
-     timer rather than a paint — see autoAdvanceAllowed in
-     src/lib/communityCarousel.ts, which picks the one card nearest the centre.
-     The two have to agree about what "prominent" means, and both mean centred. */
+     scrollport. The only JS is a single measurement of where the docked filter
+     bar's bottom edge sits (--cgrid-fade-inset), taken on load and when the
+     bar resizes — never while scrolling. */
   @media (--bp-mobile) and (prefers-reduced-motion: no-preference) {
     @supports (animation-timeline: view()) {
       .cgrid:not([data-pattern="grid"]) .cgrid__cell {
         /* Shorthand first: `animation` resets animation-timeline, so the
            timeline must be declared after it. */
         animation: cgrid-cell-focus both;
-        animation-timeline: view();
-        /* The card's WHOLE crossing, edge to edge — `entry`, the old range,
-           ends the moment the card is fully in view and could never describe
-           it leaving again. */
-        animation-range: cover 0% cover 100%;
+        /* THE INSET IS THE FILTER BAR. `view()`'s inset shrinks the scrollport
+           the timeline is measured against, so moving its start edge down to
+           the docked bar's bottom makes every range name below mean "against
+           the bar" rather than "against the top of the scrollport" — which is
+           what the bar is, visually: the top of the page. Measured into
+           --cgrid-fade-inset by the page-load handler, because the bar's
+           height is type metrics and its dock offset is a calc that has
+           already had to be restated twice; the fallback is a plausible phone
+           value for the frame before the measurement lands. */
+        animation-timeline: view(block var(--cgrid-fade-inset, 40px) 0px);
+        /* `exit` — the card's departure UNDER THE BAR, and nothing else. 0% is
+           its top edge meeting the bar's bottom, 100% its own bottom edge
+           passing the same line. Everything before that is outside the range
+           and `both` holds the 0% keyframe there, which is how a card below
+           the bar stays at full strength. */
+        animation-range: exit 0% exit 100%;
       }
     }
   }
 
   /* @keyframes are global in Astro (see CLAUDE.md) — hence the prefix.
-     (2026-09-03, Josh: opacity only, no motion, and stronger — full opacity
-     only while the card's TOP edge is between the screen's 50% mark and its
-     top 20% mark.)
+     (2026-09-04, Josh: "the fade in the gallery view should only start to
+     happen once the top of the image touches the filter bar".)
 
-     Opacity-only now: the translateY this used to carry read as "the card
+     Opacity-only: the translateY this used to carry read as "the card
      arriving/leaving" rather than a pure fade, and made the effect feel
      softer than intended. Motion is gone; only the fade remains.
 
-     The plateau is keyed to the card's own top edge, not to the abstract
-     0%..100% of the animation-range, and that distinction matters: `cover`'s
-     0%..100% is linear in the SCROLL DISTANCE the whole card travels (its own
-     height plus the viewport's), not in the screen position of either edge —
-     a short card and a tall one reach "top edge at 50% down the screen" at
-     different fractions of their own cover range. 35%/55% below is a fit
-     against this page's real mobile cards (measured ~353px average against
-     an 812px viewport, spread ~236-502px): close enough that the plateau
-     lands inside the 50%..20% window for most cards, at the cost of drifting
-     a little for the shortest and tallest ones. Getting it exact per-card
-     would need a scroll handler measuring live height, which is the
-     complexity this mechanism exists to avoid. */
+     ── WHY THIS IS TWO STOPS AND NOT FOUR ────────────────
+     It used to be a plateau — dim, up to full around the middle of the screen,
+     dim again — fitted to percentages of the `cover` range. That fit could
+     only ever be approximate: `cover`'s 0%..100% is linear in the SCROLL
+     DISTANCE the whole card travels (its own height plus the scrollport's),
+     not in the screen position of either edge, so "top edge halfway down the
+     screen" lands at a different percentage for a 236px card than for a 502px
+     one. The plateau drifted for the shortest and tallest cards, and a card
+     was already dimmed on the way IN — faded while it was still the thing the
+     reader was scrolling towards.
+     Keying the fade to `exit` against an inset scrollport (above) removes both
+     problems at once, because the range NAME now carries the geometry the
+     percentages were trying to approximate: 0% is the card's top edge at the
+     bar whatever the card's height, so the ramp needs no fitting and the
+     approach is not dimmed at all. A card is at full strength for the whole
+     time it is below the bar, and gives up its strength only as it slides
+     under it.
+
+     CONSEQUENCE, AND IT IS DELIBERATE: more than one card can now be fully
+     opaque — every card below the bar is. The single centred focus this
+     replaces is gone; what is left says "read downwards, what you have passed
+     recedes". The 5s auto-advance still picks the ONE card nearest the middle
+     of the scrollport (src/lib/communityCarousel.ts) and no longer agrees with
+     the paint about which card is prominent — it is now the stricter of the
+     two, choosing one card out of the several the fade leaves lit, which is
+     still a card the reader is looking at.
+
+     Gallery only: the grid wall is a reference view and stays still. Browsers
+     without scroll-driven animations get every card at full opacity, which is
+     the finished no-motion state and what the page did before. */
   @keyframes cgrid-cell-focus {
-    /* 0.35 rather than the ~0.3 the reference reads at: that page is white on
-       black, where a dimmed thing recedes into the ground, and this one is dark
-       on off-white, where the same figure washes a photograph out instead of
-       pushing it back. Far enough to be unmistakably secondary, near enough
-       that the card beside the focus is still a picture. */
     0% {
-      opacity: 0.35;
-    }
-    35%,
-    55% {
       opacity: 1;
     }
+    /* 0.35 rather than the ~0.3 the xk.studio reference reads at: that page is
+       white on black, where a dimmed thing recedes into the ground, and this
+       one is dark on off-white, where the same figure washes a photograph out
+       instead of pushing it back. Far enough to be unmistakably secondary,
+       near enough that the card above the one in hand is still a picture. */
     100% {
       opacity: 0.35;
     }
@@ -2186,7 +2200,19 @@ const indexMembers = [...members].sort((a, b) =>
         const opening = tagPanel.hidden;
         tagPanel.hidden = !opening;
         tagBtn.setAttribute("aria-expanded", String(opening));
-        if (opening) tagSearch?.focus();
+        // ── THE PANEL DOES NOT SUMMON A KEYBOARD ──────────────
+        // (2026-09-04, Josh: "search field should not trigger a keyboard
+        // directly".) Focusing on open is right where the keyboard is already
+        // on the desk and the caret is just a saved click. On a phone it costs
+        // the visitor the thing they opened the panel for: the software
+        // keyboard rises over the tag LIST, so a control whose main job is
+        // browsing every tag opens showing almost none of them, and typing
+        // becomes the only way to use it. Tapping the field still focuses it,
+        // so nothing is taken away — the keyboard is now asked for rather than
+        // assumed.
+        if (opening && matchMedia("(hover: hover) and (pointer: fine)").matches) {
+          tagSearch?.focus();
+        }
       });
 
       tagSearch?.addEventListener("input", () => {
