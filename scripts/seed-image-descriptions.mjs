@@ -117,7 +117,15 @@ function textFor(imageId, index) {
   const h = hash(imageId || String(index));
   return {
     descriptionShort: SHORT[h % SHORT.length],
-    description: LONG[(h >> 8) % LONG.length],
+    // >>> AND NOT >>. `hash` returns an unsigned 32-bit value, so any hash with
+    // the high bit set is a NEGATIVE int32 under the signed shift — and a
+    // negative modulo stays negative in JS, so `LONG[-3]` was `undefined`.
+    // Every such image silently got NO long text: the caller reads the falsy
+    // value as "delete this key", the item then matches what is already stored,
+    // and the run reports nothing to change. That was 21 of 50 images on dev,
+    // and it looked like the tool had converged. `descriptionShort` above was
+    // never affected because it indexes with `h` itself, which is unsigned.
+    description: LONG[(h >>> 8) % LONG.length],
   };
 }
 
