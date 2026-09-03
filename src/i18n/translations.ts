@@ -265,6 +265,22 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.verifyForMore":
       "Verify your email to add more images. Check your inbox for the link.",
     "profile.gallery.error": "Could not upload image. Please try again.",
+    // ONE MESSAGE PER CAUSE (see GalleryErrorCode in src/lib/gallery.ts). The
+    // single "please try again" above was wrong advice for most of them — an
+    // expired session and a file that will never fit do not improve on a
+    // second attempt — so it survives only as the fallback for a failure that
+    // is not an upload at all (a Firestore write on remove, say).
+    "profile.gallery.err.tooBig": "Over 50 MB. Export a smaller file.",
+    "profile.gallery.err.svg": "SVGs can't be uploaded. Export as PNG or JPEG.",
+    "profile.gallery.err.heic": "HEIC photos can't be read. Export as JPEG.",
+    "profile.gallery.err.type": "Only JPEG, PNG, WebP or AVIF images can be used.",
+    "profile.gallery.err.decode": "This image couldn't be read. Try a JPEG or PNG export.",
+    "profile.gallery.err.tooLarge": "Too detailed to fit the size limit. Try a tighter crop.",
+    "profile.gallery.err.denied": "Your sign-in expired. Sign in again, then try once more.",
+    "profile.gallery.err.network": "Connection lost.",
+    "profile.gallery.err.quota": "Storage is full. Please contact VSCN.",
+    "profile.gallery.err.cancelled": "Cancelled.",
+    "profile.gallery.err.unknown": "Something went wrong.",
     "profile.gallery.remove": "Remove image",
     "profile.gallery.caption": "Caption",
     "profile.gallery.captionNote": "One line. Also read aloud as the image description.",
@@ -599,6 +615,20 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.verifyForMore":
       "Bestätige deine E-Mail, um weitere Bilder hinzuzufügen. Der Link ist in deinem Posteingang.",
     "profile.gallery.error": "Bild konnte nicht hochgeladen werden. Bitte erneut versuchen.",
+    "profile.gallery.err.tooBig": "Über 50 MB. Bitte kleiner exportieren.",
+    "profile.gallery.err.svg":
+      "SVGs können nicht hochgeladen werden. Als PNG oder JPEG exportieren.",
+    "profile.gallery.err.heic": "HEIC-Fotos können nicht gelesen werden. Als JPEG exportieren.",
+    "profile.gallery.err.type": "Nur JPEG, PNG, WebP oder AVIF sind möglich.",
+    "profile.gallery.err.decode":
+      "Dieses Bild konnte nicht gelesen werden. Als JPEG oder PNG exportieren.",
+    "profile.gallery.err.tooLarge": "Zu detailreich für das Grössenlimit. Enger zuschneiden.",
+    "profile.gallery.err.denied":
+      "Deine Anmeldung ist abgelaufen. Neu anmelden, dann erneut versuchen.",
+    "profile.gallery.err.network": "Verbindung unterbrochen.",
+    "profile.gallery.err.quota": "Der Speicher ist voll. Bitte VSCN kontaktieren.",
+    "profile.gallery.err.cancelled": "Abgebrochen.",
+    "profile.gallery.err.unknown": "Etwas ist schiefgelaufen.",
     "profile.gallery.remove": "Bild entfernen",
     "profile.gallery.caption": "Bildtitel",
     "profile.gallery.captionNote": "Eine Zeile. Wird auch als Bildbeschreibung vorgelesen.",

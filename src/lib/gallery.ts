@@ -1,5 +1,11 @@
 import { uploadImage, updateImageText } from "./images.ts";
-import { decodeImage, toWebpBlob, dominantColor, rejectionMessage } from "./image.ts";
+import {
+  decodeImage,
+  toWebpBlob,
+  dominantColor,
+  rejectionCode,
+  WEBP_QUALITY,
+} from "./image.ts";
 
 // Keep in sync with validGallery() in firestore.rules.
 export const MAX_GALLERY_IMAGES = 8;
@@ -70,7 +76,33 @@ const MAX_EDGE = 4000;
  * 200 MB scan from taking the tab down with it.
  */
 const MAX_RAW_BYTES = 50 * 1024 * 1024;
-const MAX_RAW_MB = Math.round(MAX_RAW_BYTES / (1024 * 1024));
+
+/**
+ * THE CEILING THE RE-ENCODE MUST ACTUALLY HIT, and the reason the ladders
+ * below exist.
+ *
+ * `storage.rules` refuses a gallery object over 8 MB. Compression bounded
+ * DIMENSIONS, not BYTES — a noisy 4000px image encodes well past that at
+ * WEBP_QUALITY — and the refusal arrives as `storage/unauthorized`, the SAME
+ * code an expired session gives. So the editor could not tell "this file will
+ * never fit" from "sign in again", and answered both with "please try again"
+ * forever. Guaranteeing the size here is what makes `unauthorized` mean one
+ * thing by the time galleryErrorCode() sees it.
+ *
+ * Under the rules door rather than level with it: the door is on the stored
+ * object, and a client that lands exactly on the number has no room for the
+ * difference between what it measured and what it sent.
+ */
+const MAX_UPLOAD_BYTES = 7_800_000;
+
+/**
+ * How the re-encode gives ground, in order: quality first at full size,
+ * because a 4K master at q0.62 is worth more than a 2400px one at q0.82 —
+ * the lightbox serves the stored file at full screen. Size only once quality
+ * has run out.
+ */
+const QUALITY_LADDER = [WEBP_QUALITY, 0.72, 0.62];
+const EDGE_LADDER = [MAX_EDGE, 3000, 2400, 2000, 1600];
 
 export interface GalleryItem {
   /** The images/{imageId} record this item projects. The record is the truth; this array is display order. */
@@ -163,37 +195,156 @@ export interface CompressedImage {
   color: string;
 }
 
-export function validateGalleryFile(file: File): { ok: boolean; error?: string } {
-  if (file.size > MAX_RAW_BYTES) {
-    // Derived from the constant, never typed twice: the old copy said "25 MB"
-    // as a literal and would have gone on saying it after the limit moved.
-    return { ok: false, error: `Image must be under ${MAX_RAW_MB} MB.` };
+/**
+ * THE DISTINCT WAYS ONE IMAGE CAN FAIL TO REACH THE GALLERY.
+ *
+ * This type exists because the editor used to answer every one of them with
+ * the same sentence — "Could not upload image. Please try again." — which is
+ * useless for most of them and actively misleading for two: a session that has
+ * expired and a file that will never fit do not improve on the next attempt.
+ * The UI maps each code to its own message, and decides FROM THE CODE ALONE
+ * whether offering Retry is honest.
+ */
+export type GalleryErrorCode =
+  /** Bigger than MAX_RAW_BYTES before anything was even decoded. */
+  | "tooBig"
+  /** An SVG. Refused rather than rasterized — raw SVG serving is an XSS vector. */
+  | "svg"
+  /** HEIC/HEIF, which canvas cannot decode. */
+  | "heic"
+  /** Some other type outside ALLOWED_INPUT_TYPES. */
+  | "type"
+  /** The bytes are not an image this browser can decode: corrupt, or an exotic variant. */
+  | "decode"
+  /** Re-encoded every way the ladders allow and still over MAX_UPLOAD_BYTES. */
+  | "tooLarge"
+  /** Storage or the rules said no: the sign-in expired, or the object was refused. */
+  | "denied"
+  /** The connection went away mid-transfer. The one code that is purely worth retrying. */
+  | "network"
+  /** The project's Storage bucket is out of room. Nothing the member can do about it. */
+  | "quota"
+  /** The member pressed Cancel. Not a failure, but carried here so one path handles every ending. */
+  | "cancelled"
+  | "unknown";
+
+export class GalleryError extends Error {
+  constructor(readonly code: GalleryErrorCode) {
+    super(code);
+    this.name = "GalleryError";
   }
-  const rejection = rejectionMessage(file);
-  if (rejection) return { ok: false, error: rejection };
-  return { ok: true };
 }
 
 /**
- * Resizes to MAX_EDGE on the longest side (never upscales) and re-encodes
- * as WebP. Canvas re-encoding also strips EXIF metadata (GPS etc.);
- * decodeImage bakes in the correct rotation first.
+ * Reduces anything thrown by the pipeline to one GalleryErrorCode.
+ *
+ * Firebase reports Storage failures as an object carrying a `code` string, and
+ * the mapping is not one-to-one in the direction you would guess: a size
+ * rejection by the rules and an expired token BOTH arrive as
+ * `storage/unauthorized`. That ambiguity is precisely why compressGalleryImage
+ * guarantees the size before anything is uploaded — by the time this function
+ * sees `unauthorized`, the session is the only explanation left.
+ *
+ * Firestore codes travel through here too: the record-first pipeline writes an
+ * images/{imageId} row BEFORE the bytes move, so a ruleset that refuses the
+ * record fails with `permission-denied` rather than with anything
+ * storage-shaped.
+ */
+export function galleryErrorCode(error: unknown): GalleryErrorCode {
+  if (error instanceof GalleryError) return error.code;
+  const code =
+    typeof error === "object" && error !== null ? String(Reflect.get(error, "code") ?? "") : "";
+  switch (code) {
+    case "storage/canceled":
+      return "cancelled";
+    case "storage/unauthorized":
+    case "storage/unauthenticated":
+    case "permission-denied":
+    case "unauthenticated":
+      return "denied";
+    case "storage/quota-exceeded":
+    case "resource-exhausted":
+      return "quota";
+    case "storage/retry-limit-exceeded":
+    case "unavailable":
+      return "network";
+    // `storage/unknown` is what a dropped connection surfaces as, and a dropped
+    // connection is by far the likeliest unknown in a browser upload — so it
+    // leans network rather than into the shrug.
+    case "storage/unknown":
+      return "network";
+    default:
+      return "unknown";
+  }
+}
+
+/**
+ * The checks that can be made from the File alone, before a byte is decoded.
+ *
+ * Returns a code rather than a sentence: the caller knows which language the
+ * member is reading in, and this module does not. That is the whole change
+ * from the old `{ ok, error }` shape, whose English strings were shown
+ * verbatim to German members.
+ */
+export function validateGalleryFile(file: File): GalleryErrorCode | null {
+  if (file.size > MAX_RAW_BYTES) return "tooBig";
+  return rejectionCode(file);
+}
+
+/** Longest edge scaled down to `edge`; never upscales. */
+function scaledSize(bitmap: ImageBitmap, edge: number): { width: number; height: number } {
+  const scale = Math.min(1, edge / Math.max(bitmap.width, bitmap.height));
+  return { width: Math.round(bitmap.width * scale), height: Math.round(bitmap.height * scale) };
+}
+
+/**
+ * Resizes to at most MAX_EDGE on the longest side (never upscales) and
+ * re-encodes as WebP, STEPPING DOWN quality and then size until the result
+ * fits under MAX_UPLOAD_BYTES. Canvas re-encoding also strips EXIF metadata
+ * (GPS etc.); decodeImage bakes in the correct rotation first.
+ *
+ * Throws GalleryError — "decode" for bytes that are not a readable image,
+ * "tooLarge" for an image the whole ladder cannot fit. Both name something the
+ * member can act on, which is the entire reason they are codes and not one
+ * generic failure.
  */
 export async function compressGalleryImage(file: File | Blob): Promise<CompressedImage> {
-  const bitmap = await decodeImage(file);
-  const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
-  const width = Math.round(bitmap.width * scale);
-  const height = Math.round(bitmap.height * scale);
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await decodeImage(file);
+  } catch {
+    // decodeImage throws a ready-made English sentence, shared with the avatar
+    // path. Recast it as a code so the gallery picks its own localized wording
+    // instead of surfacing a library's English at a German member.
+    throw new GalleryError("decode");
+  }
 
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
+  try {
+    let lastSize = "";
+    for (const edge of EDGE_LADDER) {
+      const { width, height } = scaledSize(bitmap, edge);
+      // A source already smaller than the previous rung scales to the same
+      // pixels twice, and re-encoding it would burn time producing bytes we
+      // have already rejected.
+      const size = `${width}x${height}`;
+      if (size === lastSize) break;
+      lastSize = size;
 
-  const color = dominantColor(canvas);
-  const blob = await toWebpBlob(canvas);
-  return { blob, width, height, color };
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d")!.drawImage(bitmap, 0, 0, width, height);
+      const color = dominantColor(canvas);
+
+      for (const quality of QUALITY_LADDER) {
+        const blob = await toWebpBlob(canvas, quality);
+        if (blob.size <= MAX_UPLOAD_BYTES) return { blob, width, height, color };
+      }
+    }
+    throw new GalleryError("tooLarge");
+  } finally {
+    bitmap.close();
+  }
 }
 
 /** Uploads through the record-first pipeline and returns the array item to append. */

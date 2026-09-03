@@ -1066,6 +1066,7 @@ const t = useTranslations(lang);
     MAX_GALLERY_DESCRIPTION_SHORT,
     MAX_GALLERY_LINK,
     validateGalleryFile,
+    galleryErrorCode,
     compressGalleryImage,
     uploadGalleryImage,
     syncGalleryText,
@@ -1462,9 +1463,11 @@ const t = useTranslations(lang);
           );
           break;
         }
-        const validation = validateGalleryFile(file);
-        if (!validation.ok) {
-          setGalleryStatus(validation.error!);
+        // A code, not a sentence: validateGalleryFile knows what is wrong and
+        // this side knows which language the member reads in.
+        const rejected = validateGalleryFile(file);
+        if (rejected) {
+          setGalleryStatus(s[`profile.gallery.err.${rejected}`]);
           continue;
         }
         try {
@@ -1476,8 +1479,11 @@ const t = useTranslations(lang);
           gallery.push(item);
           uploaded = true;
           renderGallery();
-        } catch {
-          setGalleryStatus(s["profile.gallery.error"]);
+        } catch (err) {
+          // Named, because the causes call for different actions: an expired
+          // sign-in and a file that will never fit are both permanent, and
+          // "please try again" was wrong advice for both.
+          setGalleryStatus(s[`profile.gallery.err.${galleryErrorCode(err)}`]);
         }
       }
 
