@@ -1,6 +1,6 @@
 import { logger } from "firebase-functions/v2";
 import { FieldValue } from "firebase-admin/firestore";
-import { adminAuth, bucket, db } from "./admin";
+import { adminAuth, db, getBucket } from "./admin";
 import { imageRefsFor } from "./lifecycle";
 import type { DeletionJob } from "./types";
 import { deleteRefs } from "./util";
@@ -30,6 +30,7 @@ export async function purgeAccount(uid: string): Promise<void> {
   try {
     if (!done.imagesDeleted) {
       const images = await imageRefsFor(uid);
+      const bucket = getBucket();
       for (const d of images) {
         await bucket.file(d.data().storagePath as string).delete({ ignoreNotFound: true });
       }
@@ -39,7 +40,7 @@ export async function purgeAccount(uid: string): Promise<void> {
     if (!done.filesDeleted) {
       // Belt to the records' braces: anything under the prefix the records
       // did not know about (a legacy object, an interrupted upload).
-      await bucket.deleteFiles({ prefix: `users/${uid}/` });
+      await getBucket().deleteFiles({ prefix: `users/${uid}/` });
       await tick("filesDeleted");
     }
     if (!done.docsDeleted) {

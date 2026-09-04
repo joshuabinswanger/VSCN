@@ -1,7 +1,7 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { logger } from "firebase-functions/v2";
 import { Timestamp } from "firebase-admin/firestore";
-import { bucket, db } from "./admin";
+import { db, getBucket } from "./admin";
 import { STALE_UPLOAD_HOURS } from "./constants";
 import { findEmailMismatches } from "./emails";
 import { purgeAccount } from "./purge";
@@ -61,6 +61,7 @@ export const sweepImages = onSchedule(
       ...pending.docs.filter((d) => !inGrace.has(d.data().ownerUid as string)),
       ...uploading.docs.filter((d) => (d.data().createdAt as Timestamp).toMillis() < cutoff),
     ];
+    const bucket = getBucket();
     for (const d of targets) {
       await bucket.file(d.data().storagePath as string).delete({ ignoreNotFound: true });
       await d.ref.delete();
