@@ -21,10 +21,15 @@ a delete button whose copy promises immediate and permanent while the backend sc
 and "Keep my account" all stay. An admin can still schedule a dated deletion through
 adminOps, and a member in that state needs to see it and needs a way out.
 
-**OPEN QUESTION Josh has not answered.** The password prompt is now the only thing between a
-stray click and an irreversible one. The single-step design was justified in the code as "a
-second confirmation adds a click and no safety" — that reasoning rested on the 30 days. A
-typed confirmation (the word DELETE, or their own email) was offered and not yet decided.
+**The last gate is the address, not the password (2026-09-04, `d71cf5b`).** Josh: "a typed
+confirmation would be good!" The delete panel now asks you to type the account's own email
+address before the confirm button will enable, then still asks for the password. The
+single-step design was justified in the code as "a second confirmation adds a click and no
+safety" — that reasoning rested on the 30 days and died with them. The address rather than
+the word DELETE because the form is bilingual: a magic word needs translating, and switching
+language mid-form would invalidate what you had just typed. Case and surrounding whitespace
+are forgiven; the match is re-checked inside the click handler rather than trusted to the
+button's `disabled` attribute.
 
 See [[prod-release-order]] — this is a fourth thing riding on that one deploy, and it is not
 in the runbook.
