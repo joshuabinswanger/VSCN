@@ -166,15 +166,22 @@ export async function markImageForDeletion(imageId: string): Promise<void> {
 /** Captions and descriptions live on the record; the gallery array is a projection. */
 export async function updateImageText(
   imageId: string,
-  text: { caption: string; description?: string; descriptionShort?: string },
+  text: { caption: string; description?: string },
 ): Promise<void> {
   await updateDoc(doc(db, "images", imageId), {
     caption: text.caption,
+    // deleteField() rather than "": the rulesets allow the key to be absent,
+    // and an empty string would make every consumer test for emptiness
+    // instead of for presence.
     description: text.description ? text.description : deleteField(),
-    // deleteField() rather than "" for the same reason as the long text: the
-    // rulesets allow the key to be absent, and an empty string would make
-    // every consumer test for emptiness instead of for presence.
-    descriptionShort: text.descriptionShort ? text.descriptionShort : deleteField(),
+    // THE RETIRED FIELD, SWEPT (2026-09-04 — see GalleryItem.description for
+    // why the short description is gone). Unconditional, and the only mention
+    // of the name left in the app: records written during its one-day life
+    // still carry a value nothing reads, and the alternative to clearing it
+    // here is leaving that text in Firestore forever. firestore.rules still
+    // permits the key, so this needs no rules deploy and would keep working
+    // even if the allowance were dropped, since absence is what it produces.
+    descriptionShort: deleteField(),
     updatedAt: serverTimestamp(),
   });
 }

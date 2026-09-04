@@ -37,20 +37,6 @@ export const MAX_GALLERY_DESCRIPTION = 600;
 export const MAX_GALLERY_LINK = 200;
 
 /**
- * THE SHORT DESCRIPTION'S CEILING (2026-09-03, Josh: "image descriptions
- * should have a long and short version: one for portfolio the rest for
- * lightbox and other places").
- *
- * One sentence, not a paragraph: this is the line that rides along with the
- * image everywhere the image is NOT the whole page — the lightbox band, the
- * directory's cards and tiles. The long `description` stays behind on the
- * member's own portfolio page, which is the one place there is room to read
- * it. 240 is about two lines at the lightbox band's measure, which is the
- * space the band can give a description without scrolling.
- */
-export const MAX_GALLERY_DESCRIPTION_SHORT = 240;
-
-/**
  * THE LONGEST EDGE OF A STORED IMAGE — 4K (2026-09-02, Josh: "cap max res at
  * 4k"). Was 2000, which was below the resolution of the artwork members
  * actually upload: a 4000px master downscaled to 2000 lost detail that the
@@ -126,22 +112,23 @@ export interface GalleryItem {
   /** Dominant color (#rrggbb), shown while the image loads. Optional: pre-existing items have none. */
   color?: string;
   /**
-   * The long text: what the image is, how it was made, who it was for. Shown
-   * only under the image on the member's profile page, never as alt text.
+   * The long text: what the image is, how it was made, who it was for. Never
+   * alt text — the caption is what gets read aloud.
    *
-   * PORTFOLIO ONLY, since 2026-09-03. It used to travel to the lightbox as
-   * well, which is why the lightbox band had to become a scroll container;
-   * `descriptionShort` is what goes there now.
+   * THE ONLY DESCRIPTION (2026-09-04, Josh: "we only need one description
+   * field for the image"). For one day, 2026-09-03 to 2026-09-04, this was
+   * portfolio-only and a second 240-character `descriptionShort` carried a
+   * summary to the lightbox and the directory. Two fields asked every member
+   * to write the same thing twice and to guess which surface each version
+   * would land on, and almost nobody filled in both. The short field is gone;
+   * this one travels everywhere again.
+   *
+   * Old `descriptionShort` values are deliberately NOT merged into this field:
+   * doing so would overwrite a member's long text with their one-line summary
+   * in exactly the cases where both exist. They are cleared instead, on the
+   * owning member's next save — see the sweep in updateImageText.
    */
   description?: string;
-  /**
-   * One sentence of the same thing, for everywhere that is not the member's
-   * own page: the lightbox band, and anything else that shows an image
-   * alongside other images. Optional and independent — a member may write
-   * either, both or neither, and nothing derives one from the other (a
-   * machine-truncated paragraph is not a summary).
-   */
-  descriptionShort?: string;
   /**
    * Where this image lives in the world: the paper it illustrates, the campaign
    * it ran in, the shop that sells the print. This is the useful half of what
@@ -187,8 +174,6 @@ export function sanitizeGalleryItems(value: unknown): GalleryItem[] {
       };
       if (typeof raw.color === "string") item.color = raw.color;
       if (typeof raw.description === "string" && raw.description) item.description = raw.description;
-      if (typeof raw.descriptionShort === "string" && raw.descriptionShort)
-        item.descriptionShort = raw.descriptionShort;
       if (typeof raw.link === "string" && raw.link) item.link = raw.link;
       return item;
     })
@@ -398,7 +383,6 @@ export async function syncGalleryText(gallery: GalleryItem[]): Promise<void> {
       updateImageText(item.imageId, {
         caption: item.caption,
         description: item.description,
-        descriptionShort: item.descriptionShort,
       }),
     ),
   );

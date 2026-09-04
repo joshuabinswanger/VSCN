@@ -197,6 +197,9 @@ export const ui: Record<string, Record<string, string>> = {
     "member.lightbox.prev": "Previous image",
     "member.lightbox.next": "Next image",
     "member.lightbox.error": "This image could not be loaded.",
+    // The link's accessible name. Its visible text is the URL with the
+    // scheme stripped, which names a destination but not what it IS.
+    "member.lightbox.link": "Where this image appeared",
     "community.card.expand": "Expand profile:",
     // Two forms of the same idea, and they are not interchangeable. The
     // colon-suffixed one is an ARIA-LABEL PREFIX — "View profile: Jane Doe" —
@@ -301,10 +304,20 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.queued": "Waiting…",
     "profile.gallery.preparing": "Preparing…",
     "profile.gallery.overflow": "Only {n} images fit — {m} not added.",
+    // The label, which is also the field's accessible name — so it stays a
+    // label and the EXAMPLE lives in .ph beside it, exactly as the link field
+    // below splits the two. Writing the example into this key would have a
+    // screen reader announce one specific zebrafish before every caption box.
     "profile.gallery.caption": "Caption",
-    "profile.gallery.captionNote": "One line. Also read aloud as the image description.",
-    "profile.gallery.descriptionShort": "In one sentence (shown in the lightbox)",
-    "profile.gallery.description": "About this image (shown on your profile page)",
+    // A REAL ONE (2026-09-04, Josh: "only caption (make a good example)"). It
+    // said "One line. Also read aloud as the image description." — a
+    // specification of a caption rather than a caption, which left members
+    // typing "Illustration" and "My work". Showing the kind of sentence that
+    // works teaches the field in a way describing it cannot: a subject, and
+    // the thing about it worth knowing.
+    "profile.gallery.caption.ph": "Zebrafish retina in cross-section, confocal",
+    "profile.gallery.captionNote": "One line. Also read aloud to people who can't see the image.",
+    "profile.gallery.description": "About this image — how it was made, who it was for, what it shows",
     // Stored without a scheme, like Portfolio: the input carries a fixed
     // https:// prefix, so the placeholder must not repeat one.
     "profile.gallery.link": "Where this image appeared",
@@ -577,6 +590,7 @@ export const ui: Record<string, Record<string, string>> = {
     "member.lightbox.prev": "Vorheriges Bild",
     "member.lightbox.next": "Nächstes Bild",
     "member.lightbox.error": "Dieses Bild konnte nicht geladen werden.",
+    "member.lightbox.link": "Wo dieses Bild erschienen ist",
     "community.card.expand": "Profil aufklappen:",
     "community.card.viewProfile": "Profil ansehen:",
     "community.card.viewProfile.text": "Profil ansehen",
@@ -671,9 +685,11 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.preparing": "Wird vorbereitet…",
     "profile.gallery.overflow": "Es passen nur {n} Bilder — {m} nicht hinzugefügt.",
     "profile.gallery.caption": "Bildtitel",
-    "profile.gallery.captionNote": "Eine Zeile. Wird auch als Bildbeschreibung vorgelesen.",
-    "profile.gallery.descriptionShort": "In einem Satz (erscheint in der Lightbox)",
-    "profile.gallery.description": "Über dieses Bild (erscheint auf deiner Profilseite)",
+    "profile.gallery.caption.ph": "Zebrafisch-Netzhaut im Querschnitt, konfokal",
+    "profile.gallery.captionNote":
+      "Eine Zeile. Wird auch Menschen vorgelesen, die das Bild nicht sehen können.",
+    "profile.gallery.description":
+      "Über dieses Bild — wie es entstand, für wen, was es zeigt",
     "profile.gallery.link": "Wo dieses Bild erschienen ist",
     "profile.gallery.link.ph": "nature.com/articles/… (optional)",
     "profile.tag.error": "Tags müssen eindeutig sein, 1–50 Zeichen, und maximal 7 Tags.",

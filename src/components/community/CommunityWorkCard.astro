@@ -98,6 +98,24 @@ const pswpMeta = member.displayName;
 ---
 
 <article class="cwork" style={`--frame-ar:${frameAspect}`}>
+  {
+    /* ── THE THING THAT GROWS ──────────────────────────────────────────
+      (2026-09-04, Josh: "treat the name as part of the image in grid so they
+      both scale in the animation together".) The hover scale used to sit on
+      the img alone, which made the picture and its label two objects: the
+      artwork pushed forward and the name it belongs to stayed exactly where it
+      was, at exactly the size it was. One tile, two behaviours.
+
+      A wrapper rather than .cwork itself, and this is the whole reason it
+      exists: GSAP owns the transform on .cwork and on the cell above it (the
+      scale-on-approach and the parallax) and would overwrite a CSS transform
+      there silently, and only on desktop where the motion layer is built. So
+      the wall keeps .cwork to animate and this box is the tile's own. It is a
+      plain block with no width of its own — .cwork still carries the width
+      formula and the slot still measures the frame, so nothing about the
+      drawing moved. */
+  }
+  <div class="cwork__grow">
   <div
     class="cwork__frame"
     style={`aspect-ratio:${work.width} / ${work.height};${work.color ? `background:${work.color}` : ""}`}
@@ -112,7 +130,20 @@ const pswpMeta = member.displayName;
         IT WRAPS THE IMAGE rather than sitting over it as an inset overlay,
         which is not cosmetic: PhotoSwipe finds the thumbnail to zoom out of by
         looking for an `img` INSIDE the element it was given, and an overlay
-        sibling would leave it with nothing to animate from. */
+        sibling would leave it with nothing to animate from.
+
+        ── data-pswp-link ──
+        WHERE THIS IMAGE APPEARED, IN THE LIGHTBOX (2026-09-04, from Josh's
+        sketch: "DESC (WITH LINKS)"). The field has existed since the projects
+        feature was withdrawn and its only surface was the member's own page,
+        so a picture opened from the directory lost the paper it illustrates.
+        Already absolute and already filtered for linkability by workLink() —
+        see works() in memberView.ts.
+
+        The note is up here rather than beside the attribute because a braced
+        JSX comment placed INSIDE an attribute list is parsed as TSX by astro
+        check and reported as an unterminated string literal. That is what the
+        pre-existing error at members/[slug].astro's own trigger is. */
     }
     <a
       class="cwork__link"
@@ -122,7 +153,8 @@ const pswpMeta = member.displayName;
       data-pswp-width={work.width}
       data-pswp-height={work.height}
       data-pswp-caption={work.caption?.trim() || undefined}
-      data-pswp-description={work.descriptionShort || undefined}
+      data-pswp-description={work.description || undefined}
+      data-pswp-link={work.link || undefined}
       data-pswp-meta={pswpMeta || undefined}
       data-pswp-profile={profileHref}
     >
@@ -168,6 +200,7 @@ const pswpMeta = member.displayName;
       ><a class="cwork__author-link" href={profileHref}>{member.displayName}</a></span
     >
   </div>
+  </div>
 </article>
 
 <style>
@@ -201,11 +234,23 @@ const pswpMeta = member.displayName;
 
   .cwork__frame {
     position: relative;
-    overflow: hidden;
+    /* NO overflow DECLARATION, deliberately, and it is not a leftover.
+       It was `hidden`, with a comment arguing the clip WAS the hover effect —
+       the picture filling a rectangle that never moves. Josh removed that
+       reading on 2026-09-04 ("make the hover animation not be restricted to
+       the frame"), and the growth then moved off the img and onto .cwork__grow
+       the same day, which means the img now fills its own scaled frame exactly
+       and has nothing left to overflow. A clip here would therefore do nothing
+       today AND silently re-cage the effect for whoever next scales the image
+       instead of the box. What the frame still owns is the SPACE: the aspect
+       box is here and the wall measured its row from it. */
     /* Square corners and no border, like every frame on this page: the artwork
        is its own edge. */
     border-radius: 0;
-    /* Fallback ground under the dominant colour painted inline. */
+    /* Fallback ground under the dominant colour painted inline. It scales with
+       the frame now, so a transparent PNG carries its ground out over its
+       neighbours — which is right: the tile grows as one object, ground
+       included, rather than as a picture sliding out of a fixed swatch. */
     background: var(--color-bg);
   }
 
@@ -227,30 +272,63 @@ const pswpMeta = member.displayName;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    /* ── THE HOVER ─────────────────────────────────────────
-       The artwork pushes slightly toward the reader inside a frame that does
-       not move: the frame is overflow:hidden and keeps the wall's flat row
-       edges, so the growth is felt as the image filling its own rectangle
-       rather than as a tile changing size. Nothing about the row's geometry
-       can shift. It also carries more weight than it did — with no caption to
-       point at, this is the only thing that answers a pointer.
-       ON THE IMAGE, NEVER ON .cwork OR THE CELL — GSAP owns the transform on
-       both of those (the scale-on-approach and the parallax) and would
-       overwrite anything written here, silently, and only on desktop where the
-       motion layer is built. This is the one element in the tile whose
-       transform belongs to CSS.
-       The curve and the 500ms are the card arrows' family (see
-       CommunityImageCard's chevrons); slower than a control because a picture
-       settling should be felt, not noticed. The transition sits on the RESTING
-       state, so the same timing plays on the way back out. */
+    /* NO TRANSFORM AND NO TRANSITION. The hover growth lived here from
+       2026-09-04 morning until the afternoon of the same day; it is on
+       .cwork__grow now, so that the label grows with the picture instead of
+       watching it grow. Anything written here again would scale the artwork
+       INSIDE a frame that is already scaling, which compounds. */
+  }
+
+  /* ── THE HOVER ─────────────────────────────────────────
+     The tile pushes toward the reader: the artwork and the name under it, one
+     object, growing together. Two things make that safe to do in CSS here —
+     the wrapper's transform is nobody else's (see the markup for why it is not
+     .cwork), and a transform does not touch layout, so the frame's box, the
+     caption's box and the row the wall drew them into are all exactly where
+     they were at every point in the transition.
+
+     1.10, up from the 1.045 it started the day at: the smaller figure was
+     chosen against a frame that CROPPED the growth, where anything larger only
+     threw more of the picture away. Nothing crops it now and it has to be
+     seen from across the wall, not just under the pointer.
+
+     IT GROWS UP AND SIDEWAYS, NEVER DOWN. The origin is the bottom edge —
+     which is the bottom of the AUTHOR LINE now, not of the picture. Growing
+     down would push the name over the top of the row beneath it, and the one
+     alignment the wall cannot lose is the line every tile's label sits on. So
+     the label holds its baseline, the picture above it does the travelling,
+     and the three free edges pass over the neighbours, which is what
+     unclipping the frame was for.
+
+     The curve and the 500ms are the card arrows' family (see
+     CommunityImageCard's chevrons); slower than a control because a picture
+     settling should be felt, not noticed. The transition sits on the RESTING
+     state, so the same timing plays on the way back out. */
+  .cwork__grow {
+    display: block;
+    transform-origin: 50% 100%;
     transition: transform 500ms cubic-bezier(0.22, 0.61, 0.36, 1);
   }
 
-  /* The picture pushes toward the reader on approach — the tile's only
-     hover/focus response now that the author line is always on. */
-  .cwork:hover .cwork__img,
-  .cwork:focus-within .cwork__img {
-    transform: scale(1.045);
+  .cwork:hover .cwork__grow,
+  .cwork:focus-within .cwork__grow {
+    transform: scale(1.1);
+  }
+
+  /* IN FRONT, for as long as the pointer is on it. Without this the wall's
+     source order decides which artwork wins where two spill into each other,
+     so a tile could grow UNDER its neighbour — the one arrangement that reads
+     as a bug rather than as an effect.
+     On .cwork rather than the cell: the cells are position:relative with an
+     auto z-index, so they create no stacking context of their own and the
+     tiles order against each other directly inside the grid. It has to be a
+     hover/focus rule and not a blanket value, because a permanently raised
+     tile would sit over its neighbours' captions at rest.
+     GSAP owns the transform on this element (see the note on .cwork__img), but
+     not its z-index, so there is nothing here to be overwritten. */
+  .cwork:hover,
+  .cwork:focus-within {
+    z-index: 5;
   }
 
   /* ── The label ────────────────────────────────────────── */
@@ -333,7 +411,7 @@ const pswpMeta = member.displayName;
   /* The site drops motion rather than substituting a gentler version of it:
      the hover still says "this is live", it simply arrives. */
   @media (prefers-reduced-motion: reduce) {
-    .cwork__img {
+    .cwork__grow {
       transition: none;
     }
   }

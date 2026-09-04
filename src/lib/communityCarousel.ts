@@ -225,6 +225,7 @@ export function initCarousels(root: ParentNode = document): void {
       copy("workHeight", "data-pswp-height");
       copy("workCaption", "data-pswp-caption");
       copy("workDescription", "data-pswp-description");
+      copy("workLink", "data-pswp-link");
     };
     // The dots sit ABOVE the frame, so they are not descendants of the node
     // Embla was handed — they are queried from the card.
