@@ -275,11 +275,27 @@ const prefix = lang === "de" ? "/de" : "";
           verified keeps the swap a single block that mirrors the banner
           (act for unverified, nothing to undo for verified).
         -->
-        <p id="ob-gallery-note" class="field-note">{t("onboarding.step5.note")}</p>
-        <p id="ob-gallery-note-unverified" class="field-note" style="display:none;">
-          {t("onboarding.step5.noteUnverified")}
-        </p>
-        <p class="field-note">{t("onboarding.step5.later")}</p>
+        {
+          /* THREE NOTES BECAME TWO, AND ONE OF THEM CHANGES (2026-09-04, Josh:
+            "here it should be clearer in the communication").
+
+            The step used to say the same thing in three registers at once: a
+            note that named the one-image limit, a second note telling you that
+            having nothing to show is fine — still on screen after you had
+            already uploaded something — and the verify banner at the foot of
+            the page repeating the limit a third time in different words. A
+            member reading all three has to work out that they are one fact.
+
+            So the limit is now ONE line that says what is true right now, the
+            formats and the captions-come-later promise are their own quiet
+            line, and the "nothing to show yet" reassurance leaves the moment
+            it stops being the question being asked. The banner no longer
+            mentions images at all — the limit belongs next to the uploader,
+            not in a strip about email. */
+        }
+        <p id="ob-gallery-limit" class="field-note">{t("onboarding.step5.note")}</p>
+        <p class="field-note">{t("onboarding.step5.formats")}</p>
+        <p id="ob-gallery-later" class="field-note">{t("onboarding.step5.later")}</p>
       </div>
     </div>
     <div class="ob-footer ob-footer--with-skip">
@@ -1195,8 +1211,38 @@ const prefix = lang === "de" ? "/de" : "";
       if (skip) skip.disabled = busy;
     }
 
+    /**
+     * Verified until the auth guard says otherwise — the same default the
+     * banner takes, so nothing flashes the pessimistic copy on the way in.
+     */
+    let galleryVerified = true;
+
+    /**
+     * The limit line says what is true NOW, and the reassurance leaves once it
+     * has been answered.
+     *
+     * Three states rather than two, because "one image for now" and "that was
+     * your one image" are different sentences to be reading: the first is a
+     * budget, the second is a reason the Add button just disappeared.
+     */
+    function updateGalleryNotes() {
+      const limit = document.getElementById("ob-gallery-limit");
+      const later = document.getElementById("ob-gallery-later");
+      if (limit) {
+        limit.textContent = galleryVerified
+          ? s["onboarding.step5.note"]
+          : gallery.length > 0
+            ? s["onboarding.step5.noteUnverifiedFull"]
+            : s["onboarding.step5.noteUnverified"];
+      }
+      // "Nothing to show yet is a normal answer" is an answer to a question
+      // the member has already answered once an image is on screen.
+      if (later) later.hidden = gallery.length > 0;
+    }
+
     function renderGallery() {
       if (!galleryGrid) return;
+      updateGalleryNotes();
       galleryGrid.replaceChildren(
         ...gallery.map((item, index) => {
           const wrap = document.createElement("div");
@@ -1496,9 +1542,7 @@ const prefix = lang === "de" ? "/de" : "";
     const verifyBanner = document.getElementById("ob-verify-banner")!;
     const btnResend = document.getElementById("ob-resend-verify") as HTMLButtonElement;
     const verifySent = document.getElementById("ob-verify-sent")!;
-    // Step-5 notes, swapped alongside the banner — see the markup comment.
-    const galleryNote = document.getElementById("ob-gallery-note")!;
-    const galleryNoteUnverified = document.getElementById("ob-gallery-note-unverified")!;
+
 
     // ── Auth guard ─────────────────────────────────────────────────
     async function onUserAuthenticated(user: User) {
@@ -1625,8 +1669,8 @@ const prefix = lang === "de" ? "/de" : "";
         verifyBanner.style.display = "block";
         // The gallery cap is one image until verification; say so before the
         // member picks a second file rather than after (2026-09-03).
-        galleryNote.style.display = "none";
-        galleryNoteUnverified.style.display = "";
+        galleryVerified = false;
+        updateGalleryNotes();
         let cooldown = false;
         btnResend?.addEventListener("click", async () => {
           if (cooldown) return;

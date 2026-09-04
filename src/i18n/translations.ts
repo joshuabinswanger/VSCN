@@ -112,7 +112,7 @@ export const ui: Record<string, Record<string, string>> = {
     // ProfileForm
     "profile.loading": "Loading profile…",
     "profile.verifyBanner":
-      "Please verify your email to secure your account — if it hasn't arrived, check your spam folder. Until then you can add only one image.",
+      "Please verify your email to secure your account — if it hasn't arrived, check your spam folder.",
     "profile.verifyResend": "Resend email",
     "profile.verifySent": "Email sent — check your inbox.",
     "profile.chooseImage": "Choose image",
@@ -260,6 +260,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.label.gallery": "Gallery",
     "profile.note.gallery":
       "Up to 8 images. They appear on your member card after the next site update.",
+    "profile.note.galleryUnverified":
+      "One image until your email is verified — then up to 8. They appear on your member card after the next site update.",
     "profile.gallery.add": "Add images",
     "profile.gallery.full": "Gallery is full (8 images max).",
     "profile.gallery.verifyForMore":
@@ -331,10 +333,13 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.step4.sub": "A short bio and photo help your profile stand out.",
     "onboarding.step5.title": "Show your work",
     "onboarding.step5.sub": "Add a few images and they become your card in the member directory.",
-    "onboarding.step5.note":
-      "Up to 8 images, JPG, PNG or WebP. Captions and descriptions come later, in your profile.",
+    "onboarding.step5.note": "Up to 8 images.",
     "onboarding.step5.noteUnverified":
-      "One image for now, JPG, PNG or WebP — up to 8 once your email is verified. Captions and descriptions come later, in your profile.",
+      "One image for now — up to 8 once your email is verified.",
+    "onboarding.step5.noteUnverifiedFull":
+      "That is your one image until your email is verified. You can add the rest from your profile afterwards.",
+    "onboarding.step5.formats":
+      "JPG, PNG or WebP. Captions and descriptions come later, in your profile.",
     "onboarding.step5.later":
       "Nothing to show yet is a normal answer — your card carries your tags instead, and you can add images any time.",
     "onboarding.step5.skip": "Nothing to show yet",
@@ -484,7 +489,7 @@ export const ui: Record<string, Record<string, string>> = {
     // ProfileForm
     "profile.loading": "Profil wird geladen…",
     "profile.verifyBanner":
-      "Bitte bestätige deine E-Mail, um dein Konto zu sichern — ist sie nicht angekommen, sieh in deinem Spam-Ordner nach. Bis dahin kannst du nur ein Bild hochladen.",
+      "Bitte bestätige deine E-Mail, um dein Konto zu sichern — ist sie nicht angekommen, sieh in deinem Spam-Ordner nach.",
     "profile.verifyResend": "E-Mail erneut senden",
     "profile.verifySent": "E-Mail gesendet — Posteingang prüfen.",
     "profile.chooseImage": "Bild auswählen",
@@ -626,6 +631,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.label.gallery": "Galerie",
     "profile.note.gallery":
       "Bis zu 8 Bilder. Sie erscheinen nach dem nächsten Site-Update auf deiner Mitgliedskarte.",
+    "profile.note.galleryUnverified":
+      "Ein Bild, bis deine E-Mail bestätigt ist — danach bis zu 8. Sie erscheinen nach der nächsten Aktualisierung auf deiner Mitgliederkarte.",
     "profile.gallery.add": "Bilder hinzufügen",
     "profile.gallery.full": "Galerie ist voll (max. 8 Bilder).",
     "profile.gallery.verifyForMore":
@@ -693,10 +700,13 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.step5.title": "Zeig deine Arbeit",
     "onboarding.step5.sub":
       "Ein paar Bilder genügen — sie werden zu deiner Karte im Mitgliederverzeichnis.",
-    "onboarding.step5.note":
-      "Bis zu 8 Bilder, JPG, PNG oder WebP. Bildtitel und Beschreibungen kommen später, in deinem Profil.",
+    "onboarding.step5.note": "Bis zu 8 Bilder.",
     "onboarding.step5.noteUnverified":
-      "Zunächst ein Bild, JPG, PNG oder WebP — bis zu 8, sobald deine E-Mail bestätigt ist. Bildtitel und Beschreibungen kommen später, in deinem Profil.",
+      "Vorerst ein Bild — bis zu 8, sobald deine E-Mail bestätigt ist.",
+    "onboarding.step5.noteUnverifiedFull":
+      "Das ist dein eines Bild, bis deine E-Mail bestätigt ist. Die übrigen kannst du danach im Profil ergänzen.",
+    "onboarding.step5.formats":
+      "JPG, PNG oder WebP. Bildtexte und Beschreibungen kommen später, in deinem Profil.",
     "onboarding.step5.later":
       "Noch nichts zu zeigen ist eine ganz normale Antwort — deine Karte trägt dann deine Tags, und Bilder kannst du jederzeit nachreichen.",
     "onboarding.step5.skip": "Noch nichts zu zeigen",

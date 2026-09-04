@@ -254,7 +254,18 @@ const t = useTranslations(lang);
         <span class="gallery-drop-hint" aria-hidden="true">{t("profile.gallery.drop")}</span>
       </div>
       <p id="gallery-status" class="field-note" style="display:none;"></p>
-      <p class="field-note">{t("profile.note.gallery")}</p>
+      {
+        /* Two notes, one shown. The verify banner used to carry "until then
+          you can add only one image" and no longer does — a strip about email
+          is the wrong place for the gallery's ceiling, and it left this line
+          saying "up to 8" to a member who could upload exactly one. The limit
+          belongs next to the uploader. Defaults to the verified copy so the
+          swap, like the banner's, is a single act with nothing to undo. */
+      }
+      <p id="gallery-note" class="field-note">{t("profile.note.gallery")}</p>
+      <p id="gallery-note-unverified" class="field-note" hidden>
+        {t("profile.note.galleryUnverified")}
+      </p>
       {
         /* Order is not a preference, it is the card's geometry: works[0]'s
         width/height become the aspect box in CommunityImageCard. Nothing used
@@ -2395,6 +2406,8 @@ const t = useTranslations(lang);
 
       if (!user.emailVerified) {
         verifyBanner.style.display = "block";
+        document.getElementById("gallery-note")!.hidden = true;
+        document.getElementById("gallery-note-unverified")!.hidden = false;
         let resendCooldown = false;
         btnResendVerify.addEventListener("click", async () => {
           if (resendCooldown) return;
