@@ -240,6 +240,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.delete.keep": "Keep my account",
     "profile.delete.keeping": "Restoring…",
     "profile.delete.error": "The account could not be deleted. Please try again.",
+    "profile.delete.typePrompt": "To confirm, type this account's email address:",
+    "profile.delete.typeMismatch": "That is not the address on this account.",
     "profile.email.title": "Change email address",
     "profile.email.new": "New email address",
     "profile.email.submit": "Send confirmation link",
@@ -611,6 +613,9 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.delete.keep": "Konto behalten",
     "profile.delete.keeping": "Wird wiederhergestellt…",
     "profile.delete.error": "Das Konto konnte nicht gelöscht werden. Bitte erneut versuchen.",
+    "profile.delete.typePrompt":
+      "Gib zur Bestätigung die E-Mail-Adresse dieses Kontos ein:",
+    "profile.delete.typeMismatch": "Das ist nicht die Adresse dieses Kontos.",
     "profile.email.title": "E-Mail-Adresse ändern",
     "profile.email.new": "Neue E-Mail-Adresse",
     "profile.email.submit": "Bestätigungslink senden",

@@ -470,14 +470,48 @@ const t = useTranslations(lang);
       </div>
 
       {
-        /* One step, not two: the password prompt IS the confirmation, because
-          requestAccountDeletion refuses a token whose auth_time is older than
-          five minutes. A separate "are you sure" screen in front of it would
-          add a click and no safety. */
+        /* TWO THINGS TO GET WRONG, ON PURPOSE (2026-09-04, Josh: "a typed
+          confirmation would be good!").
+
+          The one-step design used to be justified right here: the password
+          prompt WAS the confirmation, because requestAccountDeletion refuses a
+          token whose auth_time is older than five minutes, so an "are you
+          sure" screen in front of it added a click and no safety. That
+          reasoning rested on the 30-day grace period. The grace period is gone
+          — the callable now destroys documents, files and the Auth user before
+          it returns — and the argument went with it.
+
+          A password is the one string a member types on this site often enough
+          to type without reading it, and a password manager will fill it
+          unasked. The address is the opposite: nothing autofills it into a
+          bare text field, and it names WHICH account is about to go, which a
+          password never does.
+
+          The address rather than the word DELETE because this form is
+          bilingual. A magic word needs translating, and a member who switches
+          language halfway through would find the word they had just typed no
+          longer matches. An address means the same thing in both. */
       }
       <div id="delete-reauth" style="display:none;">
         <p class="danger-text">{t("profile.delete.text")}</p>
-        <p class="danger-text">{t("profile.reauth.text")}</p>
+
+        <label class="danger-label" for="delete-confirm-email"
+          >{t("profile.delete.typePrompt")}</label
+        >
+        <p id="delete-confirm-target" class="danger-target"></p>
+        <input
+          id="delete-confirm-email"
+          type="text"
+          class="input"
+          autocomplete="off"
+          autocapitalize="none"
+          autocorrect="off"
+          spellcheck="false"
+          inputmode="email"
+        />
+        <p id="delete-confirm-error" class="msg-err" style="display:none;"></p>
+
+        <p class="danger-text danger-text-spaced">{t("profile.reauth.text")}</p>
         <input
           id="reauth-password"
           type="password"
@@ -490,7 +524,7 @@ const t = useTranslations(lang);
           <button type="button" id="btn-reauth-cancel" class="btn-link"
             >{t("profile.reauth.cancel")}</button
           >
-          <button type="button" id="btn-reauth-confirm" class="btn-danger"
+          <button type="button" id="btn-reauth-confirm" class="btn-danger" disabled
             >{t("profile.delete.confirm")}</button
           >
         </div>
@@ -1253,6 +1287,33 @@ const t = useTranslations(lang);
     color: var(--color-muted);
     margin: 0 0 1rem;
     line-height: 1.5;
+  }
+
+  .danger-label {
+    display: block;
+    font-size: 0.88rem;
+    color: var(--color-muted);
+    margin: 0 0 0.35rem;
+  }
+
+  /* The address is quoted back so it can be read off rather than recalled.
+    Set apart from the prose around it and selectable, because getting it
+    exactly right is the whole point and copying it is a legitimate way to. */
+  .danger-target {
+    display: inline-block;
+    max-width: 100%;
+    padding: 0.3rem 0.55rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--color-dark);
+    margin: 0 0 0.5rem;
+    word-break: break-all;
+  }
+
+  .danger-text-spaced {
+    margin-top: 1.5rem;
   }
 
   .danger-actions {
@@ -2574,9 +2635,12 @@ const t = useTranslations(lang);
     // Delete through requestAccountDeletion, which destroys the account
     // outright — documents, files and the Auth user (2026-09-04, Josh:
     // "scheduled deletion is unnecessary. just make it delete accounts
-    // straight away"). The password prompt is not optional and is now the
-    // ONLY thing between a stray click and an irreversible one: the callable
-    // checks auth_time server-side, so it cannot be skipped from here.
+    // straight away"). Two things now stand between a stray click and an
+    // irreversible one: the account's own email address, typed out, and the
+    // password. Neither is optional — the callable checks auth_time
+    // server-side, so the password cannot be skipped from here, and the
+    // address is checked again at click time rather than trusted to the
+    // button's disabled attribute.
     //
     // showDeletionBanner and the "Keep my account" button below are NOT dead
     // code — an admin can still schedule a dated deletion through adminOps,
@@ -2588,6 +2652,10 @@ const t = useTranslations(lang);
     const deleteScheduledText = document.getElementById("delete-scheduled-text")!;
     const reauthInput = document.getElementById("reauth-password") as HTMLInputElement;
     const reauthError = document.getElementById("reauth-error")!;
+    const confirmEmail = document.getElementById("delete-confirm-email") as HTMLInputElement;
+    const confirmTarget = document.getElementById("delete-confirm-target")!;
+    const confirmError = document.getElementById("delete-confirm-error")!;
+    const confirmBtn = document.getElementById("btn-reauth-confirm") as HTMLButtonElement;
     const banner = document.getElementById("deletion-banner")!;
     const bannerText = document.getElementById("deletion-banner-text")!;
     const keepBtn = document.getElementById("btn-keep-account") as HTMLButtonElement;
@@ -2608,6 +2676,46 @@ const t = useTranslations(lang);
       showDeleteView("scheduled");
     }
 
+    /**
+     * The address the member has to reproduce. Read at the moment the view
+     * opens rather than once at load, because changing your email and then
+     * deleting your account in the same sitting is a perfectly ordinary thing
+     * to do, and the stale address would be unreproducible.
+     */
+    function deleteTargetEmail() {
+      return (auth.currentUser?.email ?? "").trim().toLowerCase();
+    }
+
+    /**
+     * Case and surrounding space are forgiven; nothing else is. Addresses are
+     * case-insensitive in practice, and a member who copies theirs out of a
+     * mail client will bring whitespace with it — neither is the mistake this
+     * gate exists to catch.
+     */
+    function deleteConfirmMatches() {
+      const target = deleteTargetEmail();
+      return target !== "" && confirmEmail.value.trim().toLowerCase() === target;
+    }
+
+    /**
+     * The button is the gate. The message appears only once there is something
+     * wrong to say — a red line under an empty field is scolding someone for
+     * not having typed yet.
+     */
+    function updateDeleteGate(busy = false) {
+      const ok = deleteConfirmMatches();
+      confirmBtn.disabled = busy || !ok;
+      const typed = confirmEmail.value.trim() !== "";
+      if (!ok && typed) {
+        confirmError.textContent = s["profile.delete.typeMismatch"];
+        confirmError.style.display = "block";
+      } else {
+        confirmError.style.display = "none";
+      }
+    }
+
+    confirmEmail.addEventListener("input", () => updateDeleteGate());
+
     async function reauthenticate(password: string) {
       const user = auth.currentUser;
       if (!user || !user.email) throw new Error("not signed in");
@@ -2615,18 +2723,32 @@ const t = useTranslations(lang);
       return user;
     }
 
-    document
-      .getElementById("btn-delete-start")!
-      .addEventListener("click", () => showDeleteView("reauth"));
+    document.getElementById("btn-delete-start")!.addEventListener("click", () => {
+      confirmTarget.textContent = auth.currentUser?.email ?? "";
+      confirmEmail.value = "";
+      updateDeleteGate();
+      showDeleteView("reauth");
+    });
     document.getElementById("btn-reauth-cancel")!.addEventListener("click", () => {
+      // Leave nothing loaded behind the Cancel: reopening the panel should
+      // cost the same two deliberate acts it cost the first time.
       reauthInput.value = "";
+      confirmEmail.value = "";
       reauthError.style.display = "none";
+      updateDeleteGate();
       showDeleteView("idle");
     });
 
-    document.getElementById("btn-reauth-confirm")!.addEventListener("click", async () => {
-      const btn = document.getElementById("btn-reauth-confirm") as HTMLButtonElement;
-      btn.disabled = true;
+    confirmBtn.addEventListener("click", async () => {
+      // The disabled button is the gate a member sees; this is the gate. A
+      // stale click landing after the field was edited, or the attribute going
+      // missing, must not be the difference between an account and no account.
+      if (!deleteConfirmMatches()) {
+        updateDeleteGate();
+        return;
+      }
+      const btn = confirmBtn;
+      updateDeleteGate(true);
       btn.textContent = s["profile.reauth.confirming"];
       reauthError.style.display = "none";
       try {
@@ -2634,7 +2756,7 @@ const t = useTranslations(lang);
       } catch {
         reauthError.textContent = s["profile.reauth.error"];
         reauthError.style.display = "block";
-        btn.disabled = false;
+        updateDeleteGate();
         btn.textContent = s["profile.delete.confirm"];
         return;
       }
@@ -2653,7 +2775,7 @@ const t = useTranslations(lang);
         reauthError.textContent = s["profile.delete.error"];
         reauthError.style.display = "block";
       } finally {
-        btn.disabled = false;
+        updateDeleteGate();
         btn.textContent = s["profile.delete.confirm"];
       }
     });
