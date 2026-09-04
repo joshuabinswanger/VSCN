@@ -1,0 +1,367 @@
+---
+import { getImage } from "astro:assets";
+import type { MemberView } from "../../lib/memberView.ts";
+import { memberHref } from "../../lib/links.ts";
+import { useTranslations, type Lang } from "../../i18n/utils.ts";
+import MemberDetailPanel from "./MemberDetailPanel.astro";
+// THIS CARD'S SURFACE, in a file of its own so the profile editor's preview
+// can render the identical card — carousel included — instead of a still
+// picture that looks like one. See the header of communityCard.css; moving
+// the rules out of a scoped <style> is the whole mechanism, because a scoped
+// block cannot be shared.
+import "../../styles/communityCard.css";
+
+interface Props {
+  member: MemberView;
+  lang: Lang;
+}
+
+const { member, lang } = Astro.props;
+const t = useTranslations(lang);
+
+// Gallery images are Firebase Storage remote URLs; getImage optimises them at
+// build time (remotePatterns in astro.config.mjs). Originals are client-side
+// compressed to a 4K-capped WebP already (MAX_EDGE in gallery.ts) — these are
+// the sizes the card lays out. The widest slot is 8 of the grid's 24 columns —
+// ~667px at --grid-max — so 1400 is what covers the biggest card at 2x DPR,
+// and 800 the common ones.
+const works = await Promise.all(
+  member.works.map(async (w) => ({
+    ...w,
+    rendered: await getImage({
+      src: w.url,
+      width: w.width,
+      height: w.height,
+      widths: [400, 800, 1400],
+      format: "webp",
+    }),
+  }))
+);
+
+const frame = works[0];
+
+// A single work still gets the track markup — same box, same CSS — but no
+// carousel semantics, no controls and no Embla instance. Calling one picture a
+// carousel would be a lie to a screen reader, and a drag handler on it would
+// only buy a non-passive touchmove for nothing.
+const isCarousel = works.length > 1;
+
+// Deliberately UNDER-sized on mobile (a full-bleed card is really ~92vw): at
+// 55vw no phone DPR ever selects the 1400w variant, only the 800. The page
+// stacks every gallery image of every member into the DOM, and decoded-image
+// memory is what crash-looped iOS Safari ("a problem repeatedly occurred") —
+// an 800 upscaled a hair on a 3x screen is invisible; 60 × 1400 decodes is a
+// dead tab. This describes the CARD, not the slide, and must stay that way: a
+// `sizes` rewritten to match the track's slide widths puts the 1400s back on
+// phones and the crash back with them.
+const SIZES = "(max-width: 767px) 55vw, 680px";
+
+// The frame keeps the artwork's TRUE aspect at every ratio — nothing here is
+// cropped or letterboxed. Tall artwork is bounded by getting narrower instead,
+// which the stylesheet does with --frame-ar and the slot height the grid hands
+// down; see .ccard__frame. This ratio is the input to that.
+const frameAspect = frame.width / frame.height;
+
+const profileHref = memberHref(lang, member.slug);
+
+// WHAT THE LIGHTBOX GETS, one entry per work. The card's click target is a
+// single link over the frame, so it can only describe ONE image at a time —
+// these ride on the slides instead, and the client script copies the selected
+// slide's set onto the link whenever the carousel moves (see `syncTrigger` in
+// the script). Server-rendered from slide 0, which is what makes the trigger
+// correct before any script runs.
+//
+// The meta line is the member's name and nothing else, exactly as the wall's
+// tile resolves it (CommunityWorkCard): full screen, the card's own name
+// heading is covered, so the name is the one thing the view has lost — and
+// since 2026-09-03 it is a LINK to their page while the lightbox is open, which
+// is the only route out of a full-screen picture to the person who made it.
+// `data-pswp-profile` (written on the trigger below, not per slide — every
+// slide in this card belongs to the same member) is what carries it.
+const pswpFor = (w: (typeof works)[number]) => ({
+  width: String(w.width),
+  height: String(w.height),
+  caption: w.caption?.trim() || "",
+  // THE SHORT ONE. The long text belongs to the member's own page (see
+  // profileView.ts); the band under the lightbox is one of the "other
+  // places" that gets the sentence.
+  description: w.descriptionShort || "",
+  meta: member.displayName,
+});
+
+// Alt: the member's own caption when they wrote one, a translated fallback
+// otherwise — never "" (a named debt of the prototype this card graduated
+// from).
+const altFor = (w: (typeof works)[number]) =>
+  w.caption?.trim() || `${member.displayName} — ${t("member.workAlt")}`;
+
+// "Image {n} of {total}". Filled here for the per-slide labels and handed to
+// the client as a template too, because the live region rebuilds it at every
+// slide change and the client script has no translations. The placeholders are
+// literal, so a translator may move them within the sentence.
+const positionTemplate = t("community.card.imagePosition");
+const positionFor = (i: number) =>
+  positionTemplate.replace("{n}", String(i + 1)).replace("{total}", String(works.length));
+---
+
+<article class="ccard" style={`--frame-ar:${frameAspect}`}>
+  {/* h2, not a <p>: the directory's outline is h1 (member count) → h2 (member). */}
+  <h2 class="ccard__name">
+    <a class="ccard__name-link" href={profileHref} transition:name={`mname-${member.id}`}>
+      {member.displayName}
+    </a>
+  </h2>
+
+  {
+    /* Indicators, not controls — aria-hidden, pointer-events:none, no tab
+      stops. A directory page holds a couple of dozen cards; giving each one a
+      focusable dot per work would put dozens of tab stops in front of the
+      member links that are the page's actual journey, to duplicate paging the
+      arrows and the arrow keys already do. The position is spoken instead, by
+      the live region inside the frame.
+      ABOVE the artwork and hard right, not on it: a row of the card's own
+      chrome between the name and the picture, opposite the name so the two
+      share one line. Nothing has to survive the image
+      behind it any more, so the plate is gone and the marks can be tiny. */
+  }
+  {
+    isCarousel && (
+      <div class="ccard__dots" aria-hidden="true">
+        {works.map((_, i) => (
+          <span class="ccard__dot" class:list={{ "ccard__dot--on": i === 0 }} />
+        ))}
+      </div>
+    )
+  }
+
+  <div class="ccard__body">
+    {
+      /* The frame IS the Embla viewport. Wrapping it in one would have moved
+        transition:name off the box the member-page morph is keyed to, and
+        broken .ccard's width formula, which reads this element's aspect box.
+        So Embla is handed this node as its root and everything it needs is
+        added INSIDE: a track it may translate, with the click target, the
+        arrows and the dots as siblings of that track, untouched by the
+        motion. */
+    }
+    <div
+      class="ccard__frame"
+      style={`aspect-ratio:${frame.width} / ${frame.height};${frame.color ? `background:${frame.color}` : ""}`}
+      transition:name={`mimg-${member.id}`}
+      data-carousel
+      data-position-label={isCarousel ? positionTemplate : undefined}
+      role={isCarousel ? "group" : undefined}
+      aria-roledescription={isCarousel ? t("community.card.carousel") : undefined}
+      aria-label={isCarousel ? `${member.displayName} — ${t("community.card.gallery")}` : undefined}
+    >
+      <div class="ccard__track">
+        {
+          /* Only the first image carries a real src. The rest of the gallery
+            waits as data-src until the visitor first touches or hovers THIS
+            carousel, or until Embla reports the slide entering the frame (see
+            the script's hydrate) — before that, every member's whole gallery
+            decoded at once, which is what crash-looped iOS Safari. Embla
+            operates on existing DOM and never writes src, so moving the
+            images into a track leaves this defence exactly as it was.
+            Off-screen slides are aria-hidden and the script keeps that in step
+            with the selected index: previously every work's alt text was
+            announced at once, because opacity:0 hides nothing from a screen
+            reader. */
+          works.map((w, i) => (
+            <div
+              class="ccard__slide"
+              role={isCarousel ? "group" : undefined}
+              aria-roledescription={isCarousel ? t("community.card.image") : undefined}
+              aria-label={isCarousel ? positionFor(i) : undefined}
+              aria-hidden={isCarousel && i !== 0 ? "true" : undefined}
+              data-work-url={w.url}
+              data-work-width={pswpFor(w).width}
+              data-work-height={pswpFor(w).height}
+              data-work-caption={pswpFor(w).caption || undefined}
+              data-work-description={pswpFor(w).description || undefined}
+            >
+              <img
+                class="ccard__img"
+                src={i === 0 ? w.rendered.src : undefined}
+                srcset={i === 0 ? w.rendered.srcSet.attribute : undefined}
+                data-src={i === 0 ? undefined : w.rendered.src}
+                data-srcset={i === 0 ? undefined : w.rendered.srcSet.attribute}
+                sizes={SIZES}
+                width={w.width}
+                height={w.height}
+                style={w.color ? `background:${w.color}` : undefined}
+                alt={altFor(w)}
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          ))
+        }
+      </div>
+      {
+        /* Whole-artwork click target. A sibling of the arrows AND of the track
+          rather than a wrapper, so no interactive element nests inside another
+          and Embla never translates it; the arrows sit above it on z-index and
+          keep working. It is also the carousel's only tab stop, which is what
+          the keydown handler hangs the arrow keys off — see the script.
+
+          IT OPENS THE PICTURE, NOT THE PROFILE (2026-09-01, Josh: "on click
+          directly lightbox"). Clicking an image to be taken somewhere else is
+          the one thing a wall of artwork should not do — the picture is what
+          was clicked, so the picture is what opens. The profile did not lose
+          its way in: the name above the frame is still a link to it, and the
+          disclosure below ends with an explicit "View profile" control (see
+          the .ccard__profile block). That pairing — image opens image, a named
+          button goes to the person — is the same one the ledger rows use.
+
+          The href is the ORIGINAL upload, which is both what PhotoSwipe binds
+          to and what keeps the link meaningful with scripting off. The
+          data-pswp-* set describes THE SELECTED SLIDE and is rewritten by the
+          script on every carousel move; it is rendered from slide 0 so it is
+          already right before any script runs.
+
+          NO `img` INSIDE IT, unlike the wall's tile: this link is a sibling of
+          the track, because wrapping the track would put the anchor around the
+          arrows and around Embla's container. PhotoSwipe therefore finds no
+          thumbnail to grow out of on its own — the lightbox script hands it
+          the selected slide's image with a `thumbEl` filter, matching on the
+          href this card copies here (see CommunityGrid). */
+      }
+      <a
+        class="ccard__frame-link"
+        href={frame.url}
+        target="_blank"
+        rel="noreferrer"
+        data-pswp-width={pswpFor(frame).width}
+        data-pswp-height={pswpFor(frame).height}
+        data-pswp-caption={pswpFor(frame).caption || undefined}
+        data-pswp-description={pswpFor(frame).description || undefined}
+        data-pswp-meta={pswpFor(frame).meta}
+        data-pswp-profile={profileHref}
+        aria-label={`${t("community.card.openImage")} ${member.displayName}`}></a>
+      {
+        isCarousel && (
+          <>
+            <button
+              class="ccard__arrow ccard__arrow--prev"
+              type="button"
+              data-carousel-prev
+              aria-label={t("community.card.prev")}
+            >
+              <span aria-hidden="true" />
+            </button>
+            <button
+              class="ccard__arrow ccard__arrow--next"
+              type="button"
+              data-carousel-next
+              aria-label={t("community.card.next")}
+            >
+              <span aria-hidden="true" />
+            </button>
+            {/* Empty at render: a live region has to be in the DOM before the
+                change it announces, and "Image 1 of 3" from every card at page
+                load is noise, not information. */}
+            <p class="ccard__live" aria-live="polite" aria-atomic="true" data-carousel-live />
+          </>
+        )
+      }
+    </div>
+  </div>
+
+  <div class="ccard__caption">
+    <div class="ccard__caption-row">
+      {
+        /* Role and profile link on ONE line, in a box of their own. The
+          disclosure has to stay a direct child of .ccard__caption-row — its
+          panel is full-width by being in flow there, and its toggle is
+          absolutely positioned to that row's right edge — so the two things
+          that DO share a line get wrapped instead of the row becoming a flex
+          container. */
+      }
+      <div class="ccard__meta-line">
+        <span class="ccard__role">{member.role}</span>
+      </div>
+      {
+        /* THE NAMED WAY TO THE PERSON (2026-09-01, Josh: "add 'view profile'
+          button to image cards"). It exists because the frame stopped going
+          there: the artwork now opens the artwork, so the journey to a
+          member's page needs a control that says where it goes. The name
+          above the frame is still a link, but a name is not an affordance —
+          a visitor has no way to know it is clickable before pointing at it,
+          and on a touch screen not even then.
+
+          IT LIVES IN THE DROPDOWN, LAST (2026-09-01, Josh: "view profile
+          should be in the dropdown content, maybe after text"). On the
+          caption row it sat beside the chevron and read as a second control
+          of the same rank, on every one of sixteen cards at once; inside the
+          panel it is the one thing to do after the bio, the links and the
+          tags — which is the order a visitor actually arrives at it in.
+
+          `forceShow` is what keeps that honest: a member with no bio, no
+          links and no tags has nothing to disclose, and without it the
+          disclosure — and with it the only named route to their page — would
+          simply not render. A LINK, not a button, because it goes somewhere. */
+      }
+      <MemberDetailPanel member={member} lang={lang} forceShow>
+        <a slot="footer" class="ccard__profile" href={profileHref}>
+          {t("community.card.viewProfile.text")}
+        </a>
+      </MemberDetailPanel>
+    </div>
+  </div>
+</article>
+
+<style>
+  /* ── THE ONLY RULES STILL SCOPED TO THIS CARD ──────────
+     Everything that draws the card lives in src/styles/communityCard.css,
+     imported above and shared with the editor's preview — see that file's
+     header for the whole reasoning. What is left here is the pair that reaches
+     into ANOTHER component's classes (MemberDetailPanel's `.pdisc*`), and it
+     has to stay scoped: in a plain stylesheet these selectors lose Astro's
+     scope attribute and tie with that component's own `.pdisc__toggle` rule on
+     specificity, which would leave the winner to source order between two
+     sheets. Scoped, they are (0,3,0)-plus-attribute and win outright.
+     The preview renders no disclosure, so it needs none of this. */
+
+  /* A plain block, not a grid, and .pdisc keeps a REAL box -- see the note in
+     MemberDetailPanel for why display:contents here was unopenable on iPhone.
+     The panel is full-width simply by being in flow (it still grows the card,
+     which is what the desktop slot wants and what pushes rows on mobile), and
+     the toggle is lifted to the row's right edge instead of placed in a
+     column. */
+  .ccard__caption-row :global(.pdisc) {
+    display: block;
+  }
+
+  /* A REAL TARGET, NOT A MARK (2026-09-01, Josh: "dropdown arrow needs a
+     bigger hitbox"). The chevron is 0.36rem of drawn border; the box it used to
+     live in was 1rem by one line of 0.78rem type — roughly 16 × 15px, which is
+     under half the 44px a touch target is meant to be in every direction, and
+     it was the ONLY way to open a card's detail. So the box grows to 2rem
+     square while the mark stays exactly where it was: centred, on the role's
+     first line. Nothing about the card's height changes — the toggle is out of
+     flow, and the reserve above is a padding, not a track. */
+  .ccard__caption-row :global(.pdisc__toggle) {
+    position: absolute;
+    /* Was `top: 0.15rem` — the role's own margin-top — with the box the height
+       of one line. The box is taller now, so the offset is pulled up by half
+       the difference to keep the mark on that same line. */
+    top: calc(0.15rem + (0.78rem * 1.3 - 2rem) / 2);
+    right: 0;
+    width: 2rem;
+    height: 2rem;
+    align-items: center;
+    justify-content: center;
+  }
+</style>
+
+<script>
+  // The wiring lives in src/lib/communityCarousel.ts, shared with the profile
+  // editor's card preview — see that file's header. This card's job is only to
+  // start it: the markup contract is above, the behaviour is there, and the
+  // navigation sweep registers itself inside the module.
+  import { initCarousels } from "../../lib/communityCarousel.ts";
+
+  document.addEventListener("astro:page-load", () => initCarousels());
+  initCarousels();
+</script>

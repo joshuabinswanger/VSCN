@@ -1,48 +1,44 @@
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_AVATAR_BYTES = 10 * 1024 * 1024; // 10 MB — raw upload limit before client-side resize
+import { decodeImage, toWebpBlob, dominantColor, rejectionMessage } from "./image.ts";
+import { MAX_SOCIAL_MEDIA } from "./links.ts";
+/**
+ * Raw upload limit, BEFORE the client-side resize — raised from 10 MB
+ * (2026-09-02, Josh: "raise file size limit"). Nothing this size is stored:
+ * resizeAvatar() re-encodes every portrait to a 512px square WebP, which lands
+ * in the tens of kilobytes. Same reasoning as MAX_RAW_BYTES in gallery.ts, at
+ * half the figure — an avatar is a photograph of a person, not a print master,
+ * so there is no 4K-export case to leave room for.
+ */
+const MAX_AVATAR_BYTES = 25 * 1024 * 1024;
+const MAX_AVATAR_MB = Math.round(MAX_AVATAR_BYTES / (1024 * 1024));
 // Keep this in sync with validBioWordCount() in firestore.rules.
 export const MAX_BIO_WORDS = 35;
 
 export function validateAvatar(file: File): { ok: boolean; error?: string } {
   if (file.size > MAX_AVATAR_BYTES) {
-    return { ok: false, error: "Image must be under 10 MB." };
+    // Derived, not typed: a literal here outlived the last change to the limit.
+    return { ok: false, error: `Image must be under ${MAX_AVATAR_MB} MB.` };
   }
-  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-    return { ok: false, error: "Only JPEG, PNG, or WebP images are allowed." };
-  }
+  const rejection = rejectionMessage(file);
+  if (rejection) return { ok: false, error: rejection };
   return { ok: true };
 }
 
-export function resizeAvatar(file: File, size = 512): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const canvas = document.createElement("canvas");
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext("2d")!;
-      // Cover crop: scale so the image fills the square, centered
-      const scale = Math.max(size / img.width, size / img.height);
-      const w = img.width * scale;
-      const h = img.height * scale;
-      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
-      canvas.toBlob(
-        (blob) => {
-          if (blob) resolve(blob);
-          else reject(new Error("Canvas export failed"));
-        },
-        "image/jpeg",
-        0.92,
-      );
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Image load failed"));
-    };
-    img.src = url;
-  });
+export async function resizeAvatar(
+  file: File,
+  size = 512,
+): Promise<{ blob: Blob; color: string }> {
+  const bitmap = await decodeImage(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  // Cover crop: scale so the image fills the square, centered
+  const scale = Math.max(size / bitmap.width, size / bitmap.height);
+  const w = bitmap.width * scale;
+  const h = bitmap.height * scale;
+  ctx.drawImage(bitmap, (size - w) / 2, (size - h) / 2, w, h);
+  bitmap.close();
+  return { blob: await toWebpBlob(canvas), color: dominantColor(canvas) };
 }
 
 export function normaliseUrl(raw: string): string {
@@ -61,6 +57,26 @@ export function validateBio(value: string): { ok: boolean; error?: string } {
   const words = countWords(value);
   if (words > MAX_BIO_WORDS) {
     return { ok: false, error: `About you must be ${MAX_BIO_WORDS} words or fewer.` };
+  }
+  return { ok: true };
+}
+
+/**
+ * The one hard limit on social links, and it is a length, not a count: the
+ * whole list is stored as a single field that firestore.rules caps at
+ * MAX_SOCIAL_MEDIA characters. Without this the save comes back as an opaque
+ * permission error, which says nothing about which field is too long.
+ *
+ * Deliberately NOT a check on link shape. links.ts accepts bare handles and
+ * scheme-less domains on purpose, and rejecting them here would contradict the
+ * renderer that is perfectly happy to display them.
+ */
+export function validateSocialMedia(value: string): { ok: boolean; error?: string } {
+  if (value.length > MAX_SOCIAL_MEDIA) {
+    return {
+      ok: false,
+      error: `Your social links are too long — keep them to ${MAX_SOCIAL_MEDIA} characters in total.`,
+    };
   }
   return { ok: true };
 }

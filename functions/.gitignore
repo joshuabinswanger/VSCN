@@ -1,6 +1,10 @@
 node_modules/
 lib/
 *.log
+# The repo root ignores `.env` at any depth, so this has to be re-included
+# here or a fresh clone deploys the function with no owner/repo at all.
+!.env
+
 # functions/.env holds only non-secret params (owner/repo) and is committed.
 # Secrets go through Cloud Secret Manager (functions:secrets:set), never here.
 .env.local

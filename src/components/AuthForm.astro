@@ -208,8 +208,10 @@ const t = useTranslations(lang);
     sendEmailVerification,
     sendPasswordResetEmail,
   } from "firebase/auth";
+  import { returnTo } from "../lib/authEmail.ts";
   import { friendlyError } from "../lib/auth.ts";
   import { createUser } from "../lib/firestore.ts";
+  import { syncEmail } from "../lib/account.ts";
   import { ui } from "../i18n/translations.ts";
 
   let isLogin = false;
@@ -329,7 +331,7 @@ const t = useTranslations(lang);
       forgotSubmit.textContent = s["auth.reset.sending"];
 
       try {
-        await sendPasswordResetEmail(auth, email);
+        await sendPasswordResetEmail(auth, email, returnTo(lang, "/login"));
         forgotSuccess.style.display = "block";
         forgotSubmit.textContent = s["auth.reset.sent"];
       } catch {
@@ -365,11 +367,12 @@ const t = useTranslations(lang);
           window.location.href = `${prefix}/profile`;
         } else {
           const { user } = await createUserWithEmailAndPassword(auth, email, password);
-          await createUser(user.uid, {
-            email: user.email!,
-            createdAt: new Date(),
-          });
-          await sendEmailVerification(user);
+          await createUser(user.uid, { createdAt: new Date() });
+          // users/{uid}.email is server-written: the callable reads the address
+          // off the caller's own token and merge-creates the mirror. The client
+          // cannot write the field itself — firestore.rules pins it.
+          await syncEmail().catch(() => {});
+          await sendEmailVerification(user, returnTo(lang, "/onboarding"));
           setStatus(s["auth.status.redirecting"]);
           window.location.href = `${prefix}/onboarding`;
         }

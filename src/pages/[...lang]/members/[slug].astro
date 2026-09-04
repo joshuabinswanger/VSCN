@@ -1,0 +1,489 @@
+---
+import { getImage } from "astro:assets";
+import Layout from "../../../layouts/Layout.astro";
+import { fetchMemberViews, fetchSlugAliases } from "../../../lib/membersBuild.ts";
+import type { MemberView } from "../../../lib/memberView.ts";
+import {
+  communityTagHref,
+  href,
+  hostLabel,
+  memberHref,
+  socialLinks,
+} from "../../../lib/links.ts";
+import { useTranslations } from "../../../i18n/utils";
+import type { Lang } from "../../../i18n/utils";
+// THIS PAGE'S SURFACE, in a file of its own so the profile editor's preview
+// can render the identical composition instead of an imitation of it. See the
+// header of profile.css — moving these rules out of a scoped <style> is the
+// whole mechanism, because a scoped block cannot be shared.
+import "../../../styles/profile.css";
+
+// One page per member per locale: `/members/<slug>` and `/de/members/<slug>`.
+// The slug comes from slugs/ (owned by the onPublicProfileWritten function),
+// so a rename claims a new one and RETIRES the old — and the old still
+// resolves: a retired slug renders the same page with its canonical pointing
+// at the current URL and a meta refresh, which is what static hosting has
+// instead of a 301.
+//
+// Deliberately NOT under /profile: astro.config.mjs filters the sitemap with
+// `!page.includes("/profile")` to keep the private editor out of it, and member
+// pages under that prefix would be caught by the same test and silently
+// dropped — the opposite of what a public profile wants.
+export async function getStaticPaths() {
+  const [members, aliases] = await Promise.all([fetchMemberViews(), fetchSlugAliases()]);
+  const byUid = new Map(members.map((m) => [m.id, m]));
+  // A retired slug that some member now resolves to (a rowless member's
+  // derived fallback, or a re-claim) must not become an alias too — Astro
+  // fails the build on duplicate params. Dropping the alias is the right
+  // degradation for a page that only ever redirects.
+  const takenSlugs = new Set(members.map((m) => m.slug));
+  const langs = [undefined, "de"] as const;
+  return [
+    ...members.flatMap((member) =>
+      langs.map((lang) => ({ params: { lang, slug: member.slug }, props: { member } })),
+    ),
+    ...aliases.flatMap(({ slug, uid }) => {
+      const member = byUid.get(uid);
+      if (!member || takenSlugs.has(slug)) return [];
+      return langs.map((lang) => ({
+        params: { lang, slug },
+        props: { member, aliasOf: memberHref(lang ?? "en", member.slug) },
+      }));
+    }),
+  ];
+}
+
+interface Props {
+  member: MemberView;
+  /** Set on alias pages: the current URL of this member. */
+  aliasOf?: string;
+}
+
+const { member, aliasOf } = Astro.props;
+const { lang = "en" } = Astro.params;
+const currentLang = (lang || "en") as Lang;
+const t = useTranslations(currentLang);
+
+// Gallery originals are already client-side compressed to a 4K-capped WebP (see
+// MAX_EDGE in gallery.ts, raised from 2000px on 2026-09-02); this generates the
+// responsive sizes the page actually lays out. The lightbox still opens the
+// stored file, which is what the bigger cap is FOR — full screen is the one
+// view where 2000px was visibly short.
+const works = await Promise.all(
+  member.works.map(async (w) => ({
+    ...w,
+    rendered: await getImage({
+      src: w.url,
+      width: w.width,
+      height: w.height,
+      widths: [600, 1000, 1600],
+      format: "webp",
+    }),
+    // What the lightbox says under the image. Resolved here rather than in the
+    // client script because it is translated, and the script is a module that
+    // cannot take `define:vars`; it travels on the trigger link instead.
+    //
+    // The whose-and-what-of-it line, not a repeat of the caption: full screen,
+    // the page's own name heading is covered, so the member's name is the one
+    // thing the view has lost. It is just the name now — the project credit
+    // that used to follow it went with the projects feature (2026-09-01).
+    pswpMeta: member.displayName,
+  })),
+);
+
+// The lightbox's own labels. One attribute rather than five, for the same
+// reason as pswpMeta above: the client script is a module, so `define:vars` is
+// not available to it and the strings have to arrive through the DOM.
+const lightboxStrings = JSON.stringify({
+  close: t("member.lightbox.close"),
+  zoom: t("member.lightbox.zoom"),
+  prev: t("member.lightbox.prev"),
+  next: t("member.lightbox.next"),
+  error: t("member.lightbox.error"),
+});
+
+const social = socialLinks(member.socialMedia);
+
+// One line for where and in what: "Zurich, Switzerland · DE, EN".
+const where = [member.location, member.languages.map((c) => c.toUpperCase()).join(", ")]
+  .filter(Boolean)
+  .join(" · ");
+const communityHref = currentLang === "de" ? "/de/community" : "/community";
+
+const description = member.caption
+  ? `${member.displayName} — ${member.role}. ${member.caption}`
+  : `${member.displayName} — ${member.role}. VSCN.`;
+
+// A member's share card shows their own first work, not the generic site
+// image. getImage already produced the responsive set; the widest source is
+// the one link previews want.
+const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href : undefined;
+---
+
+<Layout
+  title={`${member.displayName} — VSCN`}
+  description={description}
+  lang={currentLang}
+  ogImage={ogImage}
+  noindex={Boolean(aliasOf)}
+  redirectTo={aliasOf}
+>
+  <article class="mprof">
+    <a class="mprof__back" href={communityHref}>&#8592; {t("member.backToCommunity")}</a>
+
+    <header class="mprof__head">
+      {member.photoURL && (
+        <img
+          class="mprof__avatar"
+          src={member.photoURL}
+          width="144"
+          height="144"
+          alt={`${member.displayName} — profile picture`}
+          style={`background-color: ${member.photoColor ?? "var(--color-border)"}`}
+        />
+      )}
+      <div class="mprof__head-copy">
+        <h1 class="mprof__name" transition:name={`mname-${member.id}`}>{member.displayName}</h1>
+        {member.role && <p class="mprof__role">{member.role}</p>}
+        {member.affiliation && <p class="mprof__affiliation">{member.affiliation}</p>}
+        {where && <p class="mprof__where">{where}</p>}
+        {
+          member.openTo.length > 0 && (
+            <p class="mprof__open">
+              {t("member.openTo")} {member.openTo.join(", ")}
+            </p>
+          )
+        }
+      </div>
+    </header>
+
+    {member.bio && <p class="mprof__bio">{member.bio}</p>}
+
+    <div class="mprof__meta">
+      {
+        member.visualNeeds.length > 0 && (
+          <div class="mprof__row">
+            <h2 class="mprof__key">{t("member.needs")}</h2>
+            <ul class="mprof__vals">
+              {member.visualNeeds.map((need) => (
+                <li class="mprof__val">{need}</li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+
+      {
+        member.tags.length > 0 && (
+          <div class="mprof__row">
+            {/* THE TAGS ARE THE WAY BACK OUT (2026-09-03, Josh: "clicking on
+                tags opens gallery with tag filter applied"). Same change as the
+                directory's disclosure chips, and it matters more here: this
+                page is the end of a journey, and a tag on it is the one thing
+                that says "there are others like this". */}
+            <ul class="mprof__vals">
+              {member.tags.map((tag) => (
+                <li>
+                  <a class="mprof__val mprof__tag" href={communityTagHref(lang, tag)}>
+                    {tag}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+
+      {
+        (member.portfolio || social.length > 0) && (
+          <div class="mprof__row">
+            <ul class="mprof__vals mprof__vals--links">
+              {member.portfolio && (
+                <li>
+                  <a
+                    class="mprof__link"
+                    href={href(member.portfolio)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {member.portfolio}
+                  </a>
+                </li>
+              )}
+              {social.map((entry) =>
+                entry.href ? (
+                  <li>
+                    <a
+                      class="mprof__link"
+                      href={entry.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {entry.label}
+                    </a>
+                  </li>
+                ) : (
+                  <li class="mprof__val">{entry.label}</li>
+                ),
+              )}
+            </ul>
+          </div>
+        )
+      }
+
+    </div>
+
+    {
+      works.length > 0 && (
+        <div class="mprof__works" data-pswp-i18n={lightboxStrings}>
+          {/* Each work is a link to the original, which is what PhotoSwipe
+              binds to — and what makes the image openable with scripting off
+              rather than being inert. */}
+          {works.map((w, i) => (
+            <figure class="mprof__work" transition:name={i === 0 ? `mimg-${member.id}` : undefined}>
+              <a
+                class="mprof__work-link"
+                href={w.url}
+                target="_blank"
+                rel="noreferrer"
+                data-pswp-width={w.width}
+                data-pswp-height={w.height}
+                data-pswp-caption={w.caption?.trim() || undefined}
+                {/* THE SHORT LINE IN THE LIGHTBOX, THE LONG ONE ON THE PAGE
+                    (2026-09-03, Josh: "image descriptions should have a long
+                    and short version: one for portfolio the rest for lightbox
+                    and other places"). This page IS the portfolio, so the
+                    figcaption below prints `description` in full — and the
+                    lightbox opened FROM it gets the same one sentence it gets
+                    everywhere else, so the band reads identically wherever the
+                    picture was pressed. */}
+                data-pswp-description={w.descriptionShort || undefined}
+                data-pswp-meta={w.pswpMeta || undefined}
+              >
+                <img
+                  class="mprof__img"
+                  src={w.rendered.src}
+                  srcset={w.rendered.srcSet.attribute}
+                  sizes="(min-width: 768px) min(94vw, 900px), 94vw"
+                  width={w.width}
+                  height={w.height}
+                  loading={i === 0 ? "eager" : "lazy"}
+                  decoding="async"
+                  alt={w.caption?.trim() || `${member.displayName} — ${t("member.workAlt")}`}
+                  style={`background-color: ${w.color ?? "var(--color-border)"}`}
+                />
+              </a>
+              {(w.caption?.trim() || w.description || w.link) && (
+                <figcaption class="mprof__caption">
+                  {w.caption?.trim() && <span class="mprof__caption-line">{w.caption}</span>}
+                  {w.description && <span class="mprof__desc">{w.description}</span>}
+                  {/* Where the image lives in the world. In the caption and not
+                      on the image, because the image's own anchor is the
+                      lightbox trigger — wrapping that in an outbound link would
+                      take the reader off the page every time they tried to look
+                      closer. The host IS the link text: "nature.com" says where
+                      you are going, in any language. */}
+                  {w.link && (
+                    <a class="mprof__link" href={w.link} target="_blank" rel="noopener noreferrer">
+                      {hostLabel(w.link)}
+                    </a>
+                  )}
+                </figcaption>
+              )}
+            </figure>
+          ))}
+        </div>
+      )
+    }
+  </article>
+</Layout>
+
+
+<script>
+  import PhotoSwipeLightbox from "photoswipe/lightbox";
+  import "photoswipe/style.css";
+  // Immediately after the package sheet, never before: this is the chrome that
+  // replaces it. The overrides are also written to win on specificity alone
+  // (see the header of lightbox.css), so the order here states the intent
+  // rather than carrying it.
+  import "../../../styles/lightbox.css";
+
+  interface LightboxStrings {
+    close: string;
+    zoom: string;
+    prev: string;
+    next: string;
+    error: string;
+  }
+
+  // English is the fallback, matching useTranslations() — a missing or
+  // malformed attribute costs the translation, never the lightbox.
+  const FALLBACK: LightboxStrings = {
+    close: "Close",
+    zoom: "Zoom",
+    prev: "Previous image",
+    next: "Next image",
+    error: "The image cannot be loaded",
+  };
+
+  // These options take raw HTML, which is how the stock SVG icons get replaced
+  // with markup this site can style. Everything injected here is either a
+  // static string or an escaped translation.
+  const esc = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  // Two borders on a box turned 45deg — the drawing .ccard__arrow uses on the
+  // community card, reproduced so both pagers on the site are one control.
+  const CHEVRON = '<span class="pswp__vscn-chevron" aria-hidden="true"></span>';
+
+  // Rebuilt per navigation rather than once: ClientRouter swaps the document,
+  // so a lightbox bound to the previous page's nodes would be holding dead
+  // elements. MemberCard is the existing precedent for this pair.
+  let lightbox: PhotoSwipeLightbox | null = null;
+
+  document.addEventListener("astro:page-load", () => {
+    lightbox?.destroy();
+    lightbox = null;
+    const gallery = document.querySelector<HTMLElement>(".mprof__works");
+    if (!gallery) return;
+
+    let strings = FALLBACK;
+    try {
+      strings = { ...FALLBACK, ...JSON.parse(gallery.dataset.pswpI18n || "{}") };
+    } catch {
+      /* keep the fallback */
+    }
+
+    // The site drops transitions and leaves the thing in its final state
+    // rather than substituting a gentler animation. PhotoSwipe drives its
+    // open, close and zoom from JS, so they have to be switched off here; the
+    // CSS half lives in lightbox.css.
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    lightbox = new PhotoSwipeLightbox({
+      gallery: ".mprof__works",
+      children: ".mprof__work-link",
+      pswpModule: () => import("photoswipe"),
+
+      // ── Chrome. Nothing below changes behaviour. ──
+      // The hook every rule in lightbox.css hangs off.
+      mainClass: "pswp--vscn",
+      // Solid: the ground is the page's own paper, not a veil over it. Drag to
+      // dismiss still fades it, which is what makes the gesture legible.
+      bgOpacity: 1,
+      // Reserves the top bar and the caption band so the artwork sits between
+      // them instead of running under them — which is what lets both carry a
+      // real hairline rule. Kept in step with the mobile block in lightbox.css.
+      // The bottom figures GREW with the description line (2026-09-01) and are
+      // the band's max-height in lightbox.css — that pair is the whole reason a
+      // long description scrolls rather than overlapping the picture. Change
+      // them together.
+      paddingFn: (viewportSize) =>
+        viewportSize.x <= 767
+          ? { top: 44, bottom: 116, left: 12, right: 12 }
+          : { top: 56, bottom: 140, left: 32, right: 32 },
+      closeSVG: `<span class="pswp__vscn-word">${esc(strings.close)}</span>`,
+      arrowPrevSVG: CHEVRON,
+      arrowNextSVG: CHEVRON,
+      zoomSVG: '<span class="pswp__vscn-zoom" aria-hidden="true"></span>',
+      // The glyphs above are all aria-hidden, so these are what a screen
+      // reader gets; PhotoSwipe writes each to both `title` and `aria-label`.
+      closeTitle: strings.close,
+      zoomTitle: strings.zoom,
+      arrowPrevTitle: strings.prev,
+      arrowNextTitle: strings.next,
+      errorMsg: strings.error,
+
+      // Spread rather than a ternary per key: PhotoSwipe merges options over
+      // its defaults, so writing `undefined` into one of these would erase the
+      // default instead of keeping it.
+      ...(reduced
+        ? {
+            showHideAnimationType: "none" as const,
+            showAnimationDuration: 0,
+            hideAnimationDuration: 0,
+            zoomAnimationDuration: false as const,
+          }
+        : {}),
+    });
+
+    // PhotoSwipe 5 has no caption of its own; this is the documented way to
+    // add one. Text comes off the trigger link, so the lightbox and the page
+    // under it cannot say different things about the same image.
+    lightbox.on("uiRegister", () => {
+      lightbox?.pswp?.ui?.registerElement({
+        name: "vscn-caption",
+        className: "pswp__vscn-caption",
+        appendTo: "root",
+        // After the top bar's elements, before nothing — it is the only thing
+        // at the foot.
+        order: 9,
+        onInit: (el, pswp) => {
+          const render = () => {
+            const trigger = pswp.currSlide?.data.element as HTMLElement | undefined;
+            const caption = trigger?.dataset.pswpCaption?.trim() || "";
+            // THE SHORT DESCRIPTION. A description arrived in the band on
+            // 2026-09-01 (Josh: "add it to lightbox") because the one view
+            // where the artwork is big enough to warrant an explanation was
+            // the one view without one; it was the member's LONG text until
+            // 2026-09-03, when the two split (Josh: "one for portfolio the
+            // rest for lightbox and other places") and the long one stayed on
+            // the member's own page. Unlike the caption it is still NOT
+            // clamped: the band is a scroll container capped at the padding
+            // the artwork reserves (see lightbox.css), so a sentence that
+            // wraps to three lines scrolls inside the band rather than being
+            // cut off or growing up over the picture.
+            const description = trigger?.dataset.pswpDescription?.trim() || "";
+            const meta = trigger?.dataset.pswpMeta?.trim() || "";
+
+            // textContent, not innerHTML: this is member-authored text.
+            el.replaceChildren();
+            if (caption) {
+              const line = document.createElement("span");
+              line.className = "pswp__vscn-caption-line";
+              line.textContent = caption;
+              el.append(line);
+            }
+            if (description) {
+              const desc = document.createElement("span");
+              desc.className = "pswp__vscn-caption-desc";
+              desc.textContent = description;
+              el.append(desc);
+            }
+            // THE SAME RENDERER AS THE DIRECTORY'S (see CommunityGrid.astro,
+            // where the reasoning lives): the credit becomes a LINK to the
+            // member's page when the trigger carries one. On THIS page it never
+            // does — you are already on the person's page, so there is nowhere
+            // to go — and the branch renders the plain span it always did. Kept
+            // in step anyway, because there is one lightbox on this site and it
+            // must not speak differently depending on where it was opened from.
+            const profile = trigger?.dataset.pswpProfile?.trim() || "";
+            if (meta) {
+              const credit = document.createElement(profile ? "a" : "span");
+              credit.className = "pswp__vscn-caption-meta";
+              if (credit instanceof HTMLAnchorElement) credit.href = profile;
+              credit.textContent = meta;
+              el.append(credit);
+            }
+            // A class rather than `hidden`, which the element's own
+            // `display: flex` would outrank.
+            el.classList.toggle("is-empty", !caption && !description && !meta);
+            // The band scrolls; a slide change has to start it at the top or
+            // the next caption opens mid-paragraph.
+            el.scrollTop = 0;
+          };
+
+          pswp.on("change", render);
+          render();
+        },
+      });
+    });
+
+    lightbox.init();
+  });
+
+  document.addEventListener("astro:before-swap", () => {
+    lightbox?.destroy();
+    lightbox = null;
+  });
+</script>

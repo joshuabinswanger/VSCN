@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Q4 pseudo: overflow only</title>
+<style>
+    .row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: baseline;
+    }
+    .row .pdisc { display: contents; }
+    .pdisc::details-content {
+      overflow: hidden;
+    }
+    .pdisc__toggle { list-style: none; cursor: pointer; }
+    .pdisc__toggle::-webkit-details-marker { display: none; }
+</style>
+</head><body>
+<h1>Q4 pseudo: overflow only</h1>
+<p>row: display:grid &middot; details display:contents: <b>YES</b> &middot; pseudo: <b>overflow: hidden;</b></p>
+  <div class="row">
+    <span class="role">Member role text</span>
+    <details class="pdisc">
+      <summary class="pdisc__toggle"></summary>
+      <div class="body">Bio paragraph for the member.</div>
+    </details>
+  </div>
+</body></html>

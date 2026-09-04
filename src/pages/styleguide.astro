@@ -1,0 +1,568 @@
+---
+import Layout from "../layouts/Layout.astro";
+import globalCss from "../styles/global.css?raw";
+
+interface Token {
+  name: string;
+  value: string;
+}
+
+// Tokens are parsed out of global.css at build time rather than restated here,
+// so this page can never drift from the real source of truth.
+const rootBlocks = [...globalCss.matchAll(/:root\s*\{([\s\S]*?)\}/g)].map((m) => m[1] ?? "");
+
+function parseTokens(block: string): Token[] {
+  return [...block.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map((m) => ({
+    name: m[1] ?? "",
+    value: (m[2] ?? "").trim(),
+  }));
+}
+
+const baseTokens = parseTokens(rootBlocks[0] ?? "");
+const responsiveOverrides = rootBlocks.slice(1).flatMap(parseTokens);
+const overridden = new Map(responsiveOverrides.map((t) => [t.name, t.value]));
+
+const colorTokens = baseTokens.filter((t) => t.name.startsWith("--color-"));
+const radiusTokens = baseTokens.filter((t) => t.name.startsWith("--radius-"));
+const scalarTokens = baseTokens.filter(
+  (t) => !t.name.startsWith("--color-") && !t.name.startsWith("--radius-"),
+);
+
+const breakpoints = [...globalCss.matchAll(/@custom-media\s+(--[\w-]+)\s+([^;]+);/g)].map((m) => ({
+  name: m[1] ?? "",
+  value: (m[2] ?? "").trim(),
+}));
+
+// Font sizes literally in use across src/. Deliberately not presented as a
+// token scale — listing them makes the duplication and gaps visible.
+const fontSizesInUse = [
+  { size: "0.82rem", where: ".label, .upload-status, .msg-ok, .msg-err" },
+  { size: "0.83rem", where: ".tag-suggestion-chip" },
+  { size: "0.85rem", where: ".btn-ghost" },
+  { size: "0.88rem", where: ".file-btn, .btn-link, .tag-chip" },
+  { size: "0.95rem", where: ".input, .btn-save, .btn-solid, .btn-outline" },
+  { size: "var(--font-size-base)", where: ".nav-link, .btn-primary, .lang-toggle" },
+  { size: "8rem", where: ".brand-name (auto-fitted at runtime)" },
+];
+
+const weightsInUse = [400, 600, 700, 800];
+
+const radiusUsage: Record<string, string> = {
+  "--radius-xs": "declared but unused — .ob-progress-bar/-fill hardcode 2px instead",
+  "--radius-sm": "23 usages — inputs, all buttons, cards, chips, banners, thumbs",
+  "--radius-md": "declared but unused",
+  "--radius-lg": "declared but unused",
+  "--radius-xl": "3 usages — .ob-card (≥560px), VerifyEmailForm, auth/action",
+};
+---
+
+<Layout title="Styleguide — VSCN" description="Internal design system reference." noindex wide>
+  <div class="sg">
+    <header class="sg-head">
+      <h1 class="sg-h1">Styleguide</h1>
+      <p class="sg-lede">
+        Live reference for the VSCN design system. Tokens are parsed from
+        <code>src/styles/global.css</code> at build time — edit that file and this page follows.
+        Rendered inside the real <code>Layout</code>, so fonts, the noise overlay and the scroll
+        container all behave exactly as they do in production.
+      </p>
+    </header>
+
+    <!-- ── Colors ── -->
+    <section class="sg-section">
+      <h2 class="sg-h2">Colors</h2>
+      <div class="sg-swatches">
+        {
+          colorTokens.map((token) => (
+            <div class="sg-swatch">
+              <div class="sg-swatch-chip" style={`background: var(${token.name});`}></div>
+              <code class="sg-token-name">{token.name}</code>
+              <span class="sg-token-value">{token.value}</span>
+            </div>
+          ))
+        }
+      </div>
+      <p class="sg-note">
+        <strong>Not tokenized:</strong> <code>#fff</code>/<code>white</code>, and the greys
+        <code>#111</code> <code>#333</code> <code>#666</code> <code>#999</code> <code>#aaa</code>
+        <code>#bbb</code> <code>#ccc</code> <code>#ddd</code> <code>#e8e8e8</code>
+        <code>#eee</code> <code>#f4f4f4</code> <code>#f5f5f5</code> are used directly in
+        <code>global.css</code> and component styles. Amber banner colors
+        (<code>#fffbeb</code> <code>#f59e0b</code> <code>#fde68a</code>) are also inline.
+      </p>
+    </section>
+
+    <!-- ── Radius ── -->
+    <section class="sg-section">
+      <h2 class="sg-h2">Radius</h2>
+      <div class="sg-radii">
+        {
+          radiusTokens.map((token) => (
+            <div class="sg-radius">
+              <div class="sg-radius-box" style={`border-radius: var(${token.name});`}>
+                {token.value}
+              </div>
+              <code class="sg-token-name">{token.name}</code>
+              <span class="sg-token-usage">{radiusUsage[token.name] ?? ""}</span>
+            </div>
+          ))
+        }
+      </div>
+      <p class="sg-note">
+        Also in the codebase but outside the scale: <code>50%</code> (6 circular elements —
+        avatars, loader dots, thumb remove button), <code>999px</code> (2 full pills in
+        <code>OpenToSelector</code>), and explicit <code>0</code> on
+        <code>.input-prefixed</code>.
+      </p>
+    </section>
+
+    <!-- ── Scalar tokens ── -->
+    <section class="sg-section">
+      <h2 class="sg-h2">Other tokens</h2>
+      <table class="sg-table">
+        <thead>
+          <tr><th>Token</th><th>Base</th><th>Desktop override</th></tr>
+        </thead>
+        <tbody>
+          {
+            scalarTokens.map((token) => (
+              <tr>
+                <td><code>{token.name}</code></td>
+                <td>{token.value}</td>
+                <td>{overridden.get(token.name) ?? "—"}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── Breakpoints ── -->
+    <section class="sg-section">
+      <h2 class="sg-h2">Breakpoints</h2>
+      <table class="sg-table">
+        <thead>
+          <tr><th>Custom media</th><th>Query</th></tr>
+        </thead>
+        <tbody>
+          {
+            breakpoints.map((bp) => (
+              <tr>
+                <td><code>{bp.name}</code></td>
+                <td><code>{bp.value}</code></td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+      <p class="sg-note">
+        Resolved by <code>postcss-custom-media</code> + <code>@csstools/postcss-global-data</code>,
+        so these aliases work inside component <code>&lt;style&gt;</code> blocks too. Components
+        additionally use raw queries such as <code>(min-width: 560px)</code> for
+        <code>.ob-card</code>.
+      </p>
+    </section>
+
+    <!-- ── Typography ── -->
+    <section class="sg-section">
+      <h2 class="sg-h2">Typography</h2>
+      <p class="sg-sub">Archivo variable, self-hosted, weight axis 100–900.</p>
+
+      <h3 class="sg-h3">Weights in use</h3>
+      <div class="sg-weights">
+        {
+          weightsInUse.map((w) => (
+            <div class="sg-weight" style={`font-weight: ${w};`}>
+              <span class="sg-weight-num">{w}</span>
+              <span>Visual Science Communication Network</span>
+            </div>
+          ))
+        }
+      </div>
+
+      <h3 class="sg-h3">Sizes in use</h3>
+      <div class="sg-sizes">
+        {
+          fontSizesInUse.map((f) => (
+            <div class="sg-size">
+              <span class="sg-size-sample" style={`font-size: ${f.size};`}>
+                Making knowledge visible
+              </span>
+              <code class="sg-token-name">{f.size}</code>
+              <span class="sg-token-usage">{f.where}</span>
+            </div>
+          ))
+        }
+      </div>
+      <p class="sg-note">
+        There is no type scale token set — only <code>--font-size-base</code>. Everything else is a
+        literal <code>rem</code> value declared per component.
+      </p>
+    </section>
+
+    <!-- ── Buttons ── -->
+    <section class="sg-section">
+      <h2 class="sg-h2">Buttons</h2>
+      <p class="sg-sub">
+        All variants defined in <code>global.css</code>, shown in default and disabled states.
+      </p>
+
+      <div class="sg-row-label">.btn-solid / .btn-save</div>
+      <div class="sg-specimens">
+        <button class="btn-solid" type="button">Save changes</button>
+        <button class="btn-solid" type="button" disabled>Disabled</button>
+      </div>
+
+      <div class="sg-row-label">.btn-outline / .btn-logout</div>
+      <div class="sg-specimens">
+        <button class="btn-outline" type="button">Log out</button>
+        <button class="btn-outline" type="button" disabled>Disabled</button>
+      </div>
+
+      <div class="sg-row-label">.btn-ghost</div>
+      <div class="sg-specimens">
+        <a class="btn-ghost" href="#buttons">Learn more</a>
+      </div>
+
+      <div class="sg-row-label">.btn-link</div>
+      <div class="sg-specimens">
+        <button class="btn-link" type="button">Resend email</button>
+        <button class="btn-link" type="button" disabled>Disabled</button>
+      </div>
+
+      <div class="sg-row-label">.file-btn</div>
+      <div class="sg-specimens">
+        <span class="file-btn">Choose file</span>
+        <span class="upload-status">No file selected</span>
+      </div>
+
+      <div class="sg-row-label sg-row-label--warn">.btn-primary — unused, and broken</div>
+      <div class="sg-specimens sg-specimens--warn">
+        <button class="btn-primary" type="button">Invisible label</button>
+        <button class="btn-primary" type="button" disabled>Disabled (has bg)</button>
+      </div>
+      <p class="sg-note sg-note--warn">
+        <code>.btn-primary</code> sets <code>color: #fff</code> with no
+        <code>background</code> in its base rule — only <code>:hover</code> and
+        <code>:disabled</code> define one. White text on the page background renders invisible
+        until hovered. It is referenced nowhere in <code>src/</code>, so this is latent dead code:
+        either give it a background or delete it.
+      </p>
+    </section>
+
+    <!-- ── Form primitives ── -->
+    <section class="sg-section">
+      <h2 class="sg-h2">Form primitives</h2>
+      <div class="sg-form">
+        <div class="field">
+          <label class="label" for="sg-name">Display name</label>
+          <input class="input" id="sg-name" type="text" value="Ada Lovelace" />
+        </div>
+        <div class="field">
+          <label class="label" for="sg-empty">Empty + placeholder</label>
+          <input class="input" id="sg-empty" type="text" placeholder="you@example.com" />
+        </div>
+        <div class="field">
+          <label class="label" for="sg-bio">Bio</label>
+          <textarea class="input textarea" id="sg-bio" rows="3"
+            >Illustrator working at the intersection of science and design.</textarea
+          >
+        </div>
+      </div>
+      <p class="sg-note">
+        Focus one of the fields to check the <code>:focus</code> (<code>#111</code> border) and
+        <code>:focus-visible</code> (2px border + offset outline) treatments — note the 0.5px
+        border-width jump between them, which shifts layout slightly on keyboard focus.
+      </p>
+    </section>
+
+    <!-- ── Feedback ── -->
+    <section class="sg-section">
+      <h2 class="sg-h2">Feedback messages</h2>
+      <div class="sg-specimens sg-specimens--stack">
+        <p class="msg-ok">Profile updated successfully.</p>
+        <p class="msg-err">That email address is already in use.</p>
+      </div>
+    </section>
+
+    <!-- ── Notes ── -->
+    <section class="sg-section">
+      <h2 class="sg-h2">Open items</h2>
+      <ul class="sg-list">
+        <li>
+          <code>.btn-primary</code> is dead code with a missing background — delete or fix.
+        </li>
+        <li>
+          <code>--radius-md</code> and <code>--radius-lg</code> are declared but never used;
+          <code>--radius-xs</code> is unused while <code>.ob-progress-bar</code> and
+          <code>.ob-progress-fill</code> hardcode its exact value (<code>2px</code>).
+        </li>
+        <li>
+          Two chip components disagree: <code>.tag-chip</code> uses
+          <code>--radius-sm</code> while <code>.openTo-chip</code> uses <code>999px</code>.
+        </li>
+        <li>
+          <code>--color-dark</code> is <code>#000000</code>, but bare <code>black</code> is also
+          used — two names for one value.
+        </li>
+        <li>
+          No tokens exist for spacing, font weight, border width, z-index or transition duration.
+          Current z-indexes: <code>nav 10</code>, <code>.lang-toggle 20</code>,
+          <code>body::before 9999</code>.
+        </li>
+        <li>
+          <code>Layout.astro</code> viewport meta lacks <code>viewport-fit=cover</code>, so
+          <code>env(safe-area-inset-*)</code> resolves to <code>0</code> — relevant if any
+          bottom-fixed UI is added (<code>.lang-toggle</code> already sits at
+          <code>bottom: 20px</code>).
+        </li>
+      </ul>
+    </section>
+  </div>
+</Layout>
+
+<style>
+  .sg {
+    padding: 2rem 0 4rem;
+  }
+
+  .sg-head {
+    margin-bottom: 3.5rem;
+  }
+
+  .sg-h1 {
+    margin: 0 0 0.75rem;
+    font-size: 2.25rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .sg-lede {
+    max-width: 62ch;
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #444;
+  }
+
+  .sg-section {
+    padding-top: 2.5rem;
+    margin-bottom: 2.5rem;
+    border-top: 1.5px solid var(--color-border);
+  }
+
+  .sg-h2 {
+    margin: 0 0 0.35rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .sg-h3 {
+    margin: 2rem 0 0.9rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .sg-sub {
+    margin: 0 0 1.5rem;
+    font-size: 0.88rem;
+    color: var(--color-muted);
+  }
+
+  /* ── Colors ── */
+  .sg-swatches {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .sg-swatch-chip {
+    height: 72px;
+    margin-bottom: 0.6rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  /* ── Radius ── */
+  .sg-radii {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .sg-radius-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 72px;
+    margin-bottom: 0.6rem;
+    background: #fff;
+    border: 1.5px solid var(--color-dark);
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  /* ── Shared token meta ── */
+  .sg-token-name {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--color-dark);
+  }
+
+  .sg-token-value {
+    display: block;
+    margin-top: 0.15rem;
+    font-size: 0.82rem;
+    color: var(--color-muted);
+  }
+
+  .sg-token-usage {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--color-muted);
+  }
+
+  /* ── Tables ── */
+  .sg-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+
+  .sg-table th {
+    padding: 0.5rem 0.75rem 0.5rem 0;
+    border-bottom: 1.5px solid var(--color-border);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    text-align: left;
+    color: var(--color-muted);
+  }
+
+  .sg-table td {
+    padding: 0.6rem 0.75rem 0.6rem 0;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: top;
+  }
+
+  /* ── Typography ── */
+  .sg-weights {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .sg-weight {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    font-size: 1.15rem;
+  }
+
+  .sg-weight-num {
+    flex: 0 0 3rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-muted);
+  }
+
+  .sg-sizes {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+  }
+
+  .sg-size-sample {
+    display: block;
+    margin-bottom: 0.2rem;
+    line-height: 1.2;
+  }
+
+  /* ── Specimens ── */
+  .sg-row-label {
+    margin: 1.75rem 0 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--color-muted);
+  }
+
+  .sg-row-label--warn {
+    color: var(--color-error);
+  }
+
+  .sg-specimens {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .sg-specimens--stack {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+
+  .sg-specimens--warn {
+    padding: 1rem;
+    border: 1.5px dashed var(--color-error);
+    border-radius: var(--radius-sm);
+  }
+
+  /* ── Forms ── */
+  .sg-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    max-width: 460px;
+  }
+
+  /* ── Notes ── */
+  .sg-note {
+    max-width: 72ch;
+    margin: 1.25rem 0 0;
+    font-size: 0.82rem;
+    line-height: 1.65;
+    color: #555;
+  }
+
+  .sg-note--warn {
+    color: var(--color-error);
+  }
+
+  .sg-list {
+    max-width: 72ch;
+    margin: 0;
+    padding-left: 1.15rem;
+    font-size: 0.85rem;
+    line-height: 1.7;
+    color: #444;
+  }
+
+  .sg-list li {
+    margin-bottom: 0.5rem;
+  }
+
+  .sg code {
+    padding: 0.1em 0.35em;
+    background: #f2f1f0;
+    border-radius: var(--radius-xs);
+    font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+    font-size: 0.92em;
+  }
+
+  .sg-token-name code,
+  .sg-table code {
+    background: none;
+    padding: 0;
+  }
+</style>

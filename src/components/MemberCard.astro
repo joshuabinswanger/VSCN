@@ -1,64 +1,55 @@
 ---
-import type { PublicProfileDoc } from "../lib/firestore.ts";
+import type { MemberView } from "../lib/memberView.ts";
+import { stripStorageToken } from "../lib/memberView.ts";
 import { normaliseUrl } from "../lib/validation.ts";
-import { memberBadgeLabel } from "../lib/memberType.ts";
+import { socialLinks } from "../lib/links.ts";
 import downArrowUrl from "../assets/downarrow.svg";
 import { useTranslations } from "../i18n/utils.ts";
 import type { Lang } from "../i18n/utils.ts";
 
-function stripStorageToken(url: string): string {
-  if (!url) return url;
-  try {
-    const u = new URL(url);
-    if (u.hostname === "firebasestorage.googleapis.com") {
-      u.searchParams.delete("token");
-      return u.toString();
-    }
-  } catch {
-    // not a valid URL — return as-is
-  }
-  return url;
-}
+// The live site's community card, back from the dead (deleted when the
+// image-led directory graduated; recovered from main for the /members index
+// page). Two deliberate departures from the original: it renders a
+// MemberView instead of a raw PublicProfileDoc — same producer as every
+// other member surface, so the card and the profile page cannot disagree —
+// and the preview mode is gone, because the profile editor grew its own
+// renderer (ProfileViewPreview) in the meantime.
+//
+// Since the revival the card also grew tags and websites: the original's
+// truncated "portfolio | social" pair became full-width rows of tag pills and
+// named links (via the same socialLinks() cleaner as the profile page), so
+// the index actually indexes what members do and where to find them.
+//
+// The colour values are the live site's, kept verbatim so the port is
+// pixel-faithful — tokenising them is a separate decision from reviving them.
 
 interface Props {
-  member?: PublicProfileDoc & { uid: string };
-  preview?: boolean;
+  member: MemberView;
   lang?: Lang;
 }
 
-const { member: m, preview = false, lang = "en" } = Astro.props;
+const { member: m, lang = "en" } = Astro.props;
 const t = useTranslations(lang);
-const displayName = m?.displayName || "Anonymous";
-const portfolioHref = normaliseUrl(m?.portfolio ?? "");
-const socialHref = normaliseUrl(m?.socialMedia ?? "");
-const bioId = preview ? "preview-bio" : m ? `member-bio-${m.uid}` : undefined;
-const avatarSrc = stripStorageToken(m?.photoURL ?? "");
-const badge = memberBadgeLabel(m?.memberType ?? "", t);
+const displayName = m.displayName || "Anonymous";
+const portfolioHref = normaliseUrl(m.portfolio ?? "");
+// Same cleaner the profile page uses, so the card names the same platforms.
+// Entries the cleaner cannot link (bare handles, plain text) are dropped here:
+// the card is a summary, and unlinkable text belongs to the profile page.
+const social = socialLinks(m.socialMedia ?? "").filter((entry) => entry.href);
+// The stored value reads better than the href: "www.quaint.ch/" → "quaint.ch".
+const portfolioLabel = (m.portfolio ?? "")
+  .replace(/^https?:\/\//i, "")
+  .replace(/^www\./i, "")
+  .replace(/\/+$/, "");
+const bioId = `member-bio-${m.id}`;
+const avatarSrc = stripStorageToken(m.photoURL ?? "");
 ---
 
-<div class:list={["member-card-wrap", preview && "member-card-wrap--preview"]}>
-  <article
-    id={preview ? "preview-card" : undefined}
-    class:list={["member-card", preview && "member-card--preview"]}
-  >
+<div class="member-card-wrap">
+  <article class="member-card">
     <div class="member-avatar-wrap">
       {
-        preview ? (
-          <>
-            <img
-              id="preview-avatar-img"
-              class="member-avatar"
-              src=""
-              alt=""
-              width="80"
-              height="80"
-              hidden
-            />
-            <div id="preview-avatar-ph" class="member-avatar member-avatar--placeholder">
-              ?
-            </div>
-          </>
-        ) : avatarSrc ? (
+        avatarSrc ? (
           <img
             class="member-avatar"
             src={avatarSrc}
@@ -76,94 +67,50 @@ const badge = memberBadgeLabel(m?.memberType ?? "", t);
     </div>
 
     <div class="member-info">
-      <div id={preview ? "preview-name" : undefined} class="member-name">{displayName}</div>
-      {
-        preview ? (
-          <div id="preview-role" class="member-role" hidden />
-        ) : (
-          m?.role && <div class="member-role">{m.role}</div>
-        )
-      }
-      {
-        preview ? (
-          <span id="preview-badge" class="member-badge" hidden />
-        ) : (
-          badge && <span class="member-badge">{badge}</span>
-        )
-      }
-      {
-        preview ? (
-          <div id="preview-links" class="member-links" hidden>
-            <a
-              id="preview-portfolio"
-              class="member-portfolio"
-              href="#"
-              target="_blank"
-              rel="noopener noreferrer"
-              hidden
-            />
-            <span id="preview-links-sep" class="member-links-sep" aria-hidden="true" hidden>
-              |
-            </span>
-            <a
-              id="preview-social"
-              class="member-social"
-              href="#"
-              target="_blank"
-              rel="noopener noreferrer"
-              hidden
-            >
-              social
-            </a>
-          </div>
-        ) : (
-          (portfolioHref || socialHref) && (
-            <div class="member-links">
-              {portfolioHref && (
-                <a
-                  class="member-portfolio"
-                  href={portfolioHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {(() => {
-                    const p = (m?.portfolio ?? "").replace(/^www\./i, "");
-                    const limit = socialHref ? 13 : 17;
-                    return p.length > limit ? "portfolio" : p;
-                  })()}
-                </a>
-              )}
-              {portfolioHref && socialHref && (
-                <span class="member-links-sep" aria-hidden="true">
-                  |
-                </span>
-              )}
-              {socialHref && (
-                <a
-                  class="member-social"
-                  href={socialHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  social
-                </a>
-              )}
-            </div>
-          )
-        )
-      }
+      <div class="member-name">{displayName}</div>
+      {m.role && <div class="member-role">{m.role}</div>}
     </div>
 
     {
-      (preview || m?.bio) && (
+      m.tags.length > 0 && (
+        <ul class="member-tags">
+          {m.tags.map((tag) => (
+            <li class="member-tag">{tag}</li>
+          ))}
+        </ul>
+      )
+    }
+
+    {
+      (portfolioHref || social.length > 0) && (
+        <div class="member-links">
+          {portfolioHref && (
+            <a
+              class="member-link"
+              href={portfolioHref}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {portfolioLabel}
+            </a>
+          )}
+          {social.map((entry) => (
+            <a class="member-link" href={entry.href} target="_blank" rel="noopener noreferrer">
+              {entry.label}
+            </a>
+          ))}
+        </div>
+      )
+    }
+
+    {
+      m.bio && (
         <button
-          id={preview ? "preview-bio-toggle" : undefined}
           class="member-bio-toggle"
           type="button"
           aria-expanded="false"
           aria-controls={bioId}
           aria-label={`${t("member.showBio")} ${displayName}`}
-          hidden={preview}
         >
           <img class="member-bio-arrow" src={downArrowUrl.src} alt="" aria-hidden="true" />
         </button>
@@ -171,9 +118,9 @@ const badge = memberBadgeLabel(m?.memberType ?? "", t);
     }
   </article>
   {
-    (preview || m?.bio) && (
-      <p id={bioId} class="member-bio" hidden={preview}>
-        {m?.bio}
+    m.bio && (
+      <p id={bioId} class="member-bio">
+        {m.bio}
       </p>
     )
   }
@@ -211,7 +158,7 @@ const badge = memberBadgeLabel(m?.memberType ?? "", t);
     border-color: var(--color-border);
   }
 
-  @media (--bp-desktop), (--bp-desktop-wide) {
+  @media (--bp-desktop) {
     .member-card-wrap:hover .member-card,
     .member-card-wrap:focus-within .member-card {
       filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.07));
@@ -228,10 +175,6 @@ const badge = memberBadgeLabel(m?.memberType ?? "", t);
     width: 100%;
     max-width: 360px;
     margin: 0 auto;
-  }
-
-  .member-card-wrap--preview {
-    max-width: 360px;
   }
 
   .member-card-wrap [hidden] {
@@ -263,7 +206,7 @@ const badge = memberBadgeLabel(m?.memberType ?? "", t);
 
   .member-info {
     display: grid;
-    grid-template-rows: min-content min-content min-content;
+    grid-template-rows: min-content min-content;
     text-align: left;
     align-self: center;
     gap: 0.2rem;
@@ -271,10 +214,6 @@ const badge = memberBadgeLabel(m?.memberType ?? "", t);
     min-width: 0;
   }
 
-  @media (--bp-desktop) {
-    .member-info {
-    }
-  }
   .member-name {
     font-weight: 700;
     font-size: 1rem;
@@ -296,63 +235,79 @@ const badge = memberBadgeLabel(m?.memberType ?? "", t);
     width: min-content;
   }
 
-  .member-badge {
-    justify-self: start;
-    width: max-content;
-    max-width: 100%;
-    margin-top: 0.15rem;
-    padding: 0.12rem 0.45rem;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
-    font-family: "Archivo", sans-serif;
-    font-size: 0.6rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
+  /* Tags and websites span the card under the avatar/name row. Pill and link
+     values mirror the profile page's meta block (.mprof__val / .mprof__link),
+     so the card and the page read as the same system. */
+  .member-tags {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 5px 0 0 0;
+    padding: 0;
+    list-style: none;
+    text-align: left;
+  }
+
+  .member-tag {
+    font-size: 0.68rem;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: 0.03em;
     text-transform: uppercase;
+    padding: 5px 7px;
     color: var(--color-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    border: 1px solid var(--color-border);
+    border-radius: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .member-links {
+    grid-column: 1 / -1;
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
-    flex-wrap: nowrap;
-    gap: 0.35rem;
-    margin-top: 0.4rem;
+    column-gap: 0.8rem;
+    row-gap: 0.25rem;
     min-width: 0;
-    width: max-content;
+    text-align: left;
   }
 
-  .member-links-sep {
-    color: #ccc;
+  .member-link {
     font-size: 0.78rem;
-    flex-shrink: 0;
-  }
-
-  .member-portfolio,
-  .member-social {
-    color: black;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--color-dark);
     text-decoration: underline;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    text-underline-offset: 2px;
+    overflow-wrap: anywhere;
+    min-width: 0;
     max-width: 100%;
     transition: color 0.15s;
   }
 
-  .member-portfolio:hover,
-  .member-social:hover {
-    color: #000;
+  .member-link:hover {
+    color: var(--color-muted);
   }
 
+  /* A REAL TARGET, NOT A MARK (2026-09-01, Josh: "dropdown arrow needs a
+     bigger hitbox"). The button was 16 × 24px around a 12px glyph, and on a
+     phone it is the ONLY way to read a member's bio — the desktop hover that
+     replaces it is display:none there. It grows to 40px square and gives the
+     size straight back in negative margin, so its FOOTPRINT is still the
+     16 × 24 the card's third grid track was measured for: the row does not
+     move, the target triples.
+     The negative margin also lets the box overlap the card's 10px/15px padding
+     and reach its actual corner, which is where a thumb aims. */
   .member-bio-toggle {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 16px;
-    height: 24px;
+    box-sizing: border-box;
+    width: 40px;
+    height: 40px;
+    margin: -8px -12px;
     padding: 0;
     border: none;
     background: transparent;
@@ -410,15 +365,11 @@ const badge = memberBadgeLabel(m?.memberType ?? "", t);
     padding-bottom: 8px;
   }
 
-  @media (--bp-desktop), (--bp-desktop-wide) {
+  @media (--bp-desktop) {
     .member-card-wrap {
       position: relative;
       max-width: none;
       margin: 0;
-    }
-
-    .member-card-wrap--preview {
-      max-width: 360px;
     }
 
     .member-bio-toggle {

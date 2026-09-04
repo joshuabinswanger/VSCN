@@ -121,7 +121,10 @@ const t = useTranslations(lang);
 
 <script>
   import { auth } from "../lib/firebase.ts";
+  import { activatePublicProfileIfExists } from "../lib/firestore.ts";
+  import { hasVerifiedClaim } from "../lib/auth.ts";
   import { onAuthStateChanged, sendEmailVerification, signOut } from "firebase/auth";
+  import { returnTo } from "../lib/authEmail.ts";
   import { ui } from "../i18n/translations.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
@@ -150,6 +153,19 @@ const t = useTranslations(lang);
         return;
       }
       if (user.emailVerified) {
+        // Verifying is what publishes a member: every save made while
+        // unverified wrote `active: false` (see publishPublicProfile), so the
+        // draft would stay invisible for ever without this flip. Guarded
+        // against creating a doc for someone who has not onboarded yet.
+        //
+        // THE TOKEN HAS TO CATCH UP FIRST. canPublish() in firestore.rules
+        // will only accept `active: true` from a token whose `email_verified`
+        // is true, and clicking the link does not refresh the token — so this
+        // flip was being REJECTED and then swallowed by the .catch below,
+        // leaving verified members sitting as drafts, invisible in the
+        // directory with nothing logged anywhere.
+        await hasVerifiedClaim(user);
+        await activatePublicProfileIfExists(user.uid).catch(() => {});
         window.location.href = `${prefix}/profile`;
         return;
       }
@@ -160,6 +176,11 @@ const t = useTranslations(lang);
     async function continueIfVerified(user: import("firebase/auth").User) {
       await user.reload();
       if (user.emailVerified) {
+        // reload() refreshes the account RECORD; it does not mint a new token.
+        // Same reason as above, and the same reason /auth/action pairs its
+        // reload() with a getIdToken(true).
+        await hasVerifiedClaim(user);
+        await activatePublicProfileIfExists(user.uid).catch(() => {});
         window.location.href = `${prefix}/onboarding`;
         return;
       }
@@ -189,7 +210,7 @@ const t = useTranslations(lang);
       btnResend.disabled = true;
       resendMsg.style.display = "none";
       try {
-        await sendEmailVerification(currentUser);
+        await sendEmailVerification(currentUser, returnTo(lang, "/profile"));
         resendMsg.style.display = "block";
       } catch {
         statusMsg.textContent = s["verify.error.resend"];

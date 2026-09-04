@@ -3,6 +3,10 @@ dist/
 # generated types
 .astro/
 
+# firebase deploy caches (hashes of the last uploaded dist/, regenerated on
+# every deploy — noise in every diff and useless to anyone else)
+.firebase/
+
 # dependencies
 node_modules/
 
@@ -12,12 +16,14 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# firebase emulator debug logs (npm run test:rules regenerates these)
+firestore-debug.log
+storage-debug.log
+ui-debug.log
+
 
 # environment variables
 .env
-# functions/.env holds only non-secret deploy params (owner/repo) and is committed;
-# the GitHub token lives in Secret Manager, never in a file.
-!functions/.env
 .env.production
 .env.development
 
@@ -26,3 +32,9 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# pre-migration dumps written by scripts/migrate-image-records.mjs
+scripts/snapshots/
+
+# Serena MCP indexes and project cache — tooling state, not project source.
+.serena/

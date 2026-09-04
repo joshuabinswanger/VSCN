@@ -15,13 +15,21 @@ export default defineConfig({
       prefixDefaultLocale: false,
     },
   },
+  image: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
+      { protocol: 'https', hostname: 'storage.googleapis.com' },
+    ],
+  },
   integrations: [
     sitemap({
       filter: (page) =>
+        !page.includes('/proto') &&
         !page.includes('/profile') &&
         !page.includes('/verify-email') &&
         !page.includes('/auth/') &&
-        !page.includes('/signup'),
+        !page.includes('/signup') &&
+        !page.includes('/admin'),
     }),
   ],
   fonts: [

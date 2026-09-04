@@ -1,0 +1,173 @@
+---
+// The member's public profile page, rendered as an empty shell that
+// renderProfilePreview() (src/lib/profilePreview.ts) fills from live form
+// state.
+//
+// IT IS THE PAGE'S OWN MARKUP, NOT A LOOKALIKE (2026-09-01, Josh: "profile
+// preview should actually show the profile page 1 to 1, atm it is not accurate
+// at all"). Every element below carries the same `mprof__*` class the real
+// page gives it, in the same order and nesting, and the rules come from the
+// one stylesheet both import — src/styles/profile.css, which is why those
+// rules left the page's scoped <style> block.
+//
+// AND IT IS NOW THE PAGE ALONE (2026-09-02, Josh: "preview atilll wrong. make
+// the preview be exactly the profile page seperated only by horizontal bars").
+// Three things went, all of them editor chrome that had grown around the
+// rendering and was being read as part of it:
+//   - THE SHEET: a white panel with a hairline border and clamp(1.25rem, 5vw,
+//     3rem) of padding. A page inside a bordered box is a screenshot of a
+//     page, not a page — and its padding was displacing the page's own
+//     measure, so nothing inside lined up where the member will actually see
+//     it.
+//   - THE NOTE explaining what a preview is, and the "AS VISITORS SEE IT"
+//     badge naming it. Two lines of the editor talking about the page, printed
+//     directly above the page.
+//   - THE `--preview` PADDING OVERRIDE, which zeroed `padding-block: 3rem
+//     10rem`. That padding is the page's own placement, and the point of this
+//     component is that the page's placement is what gets shown.
+// What is left is a rule above and a rule below. They are the only thing that
+// is not the page, and all that is needed: a thematic break is exactly what
+// the boundary between the form and the rendering IS.
+//
+// `.mprof__empty`, the "no images yet" note, stays — it is the one editor-only
+// element with nothing to say once the member has artwork. The real page
+// renders no gallery section at all when a member has none, and in the editor
+// an absent section and an empty one look identical while only one of them is
+// worth acting on.
+//
+// Empty on the server, filled on the client: the editor is behind auth and the
+// member's data never reaches the build, so there is nothing to render here
+// until the form has loaded.
+import { useTranslations } from "../i18n/utils";
+import type { Lang } from "../i18n/utils";
+import "../styles/profile.css";
+
+interface Props {
+  lang?: Lang;
+}
+const { lang = "en" } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<div class="ppv-stage">
+  <hr class="ppv-rule" />
+
+  <article class="mprof mprof--preview" data-ppv-root>
+    {
+      /* The page's back link, printed and inert. A <span> rather than the
+         page's <a>: it is here so the composition is complete, and a live
+         control that walks the member out of an unsaved form would be a
+         trap. Same class, so it sits exactly where the page puts it. */
+    }
+    <span class="mprof__back">&#8592; {t("member.backToCommunity")}</span>
+
+    <header class="mprof__head">
+      {
+        /* Hidden until the member has a picture, which is also how the grid
+           above it behaves on the real page: with no <img> the copy block
+           takes the first column by auto-placement, so the head reads the
+           same either way. */
+      }
+      <img class="mprof__avatar" data-ppv="avatar" alt="" width="144" height="144" hidden />
+      <div class="mprof__head-copy">
+        {/* An <h1> like the page's — the sheet is a rendering of a page, and
+            a heading demoted for being inside an editor would be a different
+            document. */}
+        <h1 class="mprof__name" data-ppv="name"></h1>
+        <p class="mprof__role" data-ppv="role" hidden></p>
+        <p class="mprof__affiliation" data-ppv="affiliation" hidden></p>
+        <p class="mprof__where" data-ppv="where" hidden></p>
+        <p class="mprof__open" data-ppv="open" hidden></p>
+      </div>
+    </header>
+
+    <p class="mprof__bio" data-ppv="bio" hidden></p>
+
+    {
+      /* THE THREE META ROWS, IN THE PAGE'S ORDER — needs, then tags, then
+         links — and with the page's labelling: only the needs row prints a
+         key. Tags and links are self-evident as chips and as links, and the
+         real page says so by omitting the heading; the old shell printed
+         "TAGS" and "ELSEWHERE" over both. */
+    }
+    <div class="mprof__meta">
+      <div class="mprof__row" data-ppv="needs-row" hidden>
+        <h2 class="mprof__key">{t("member.needs")}</h2>
+        <ul class="mprof__vals" data-ppv="needs"></ul>
+      </div>
+
+      <div class="mprof__row" data-ppv="tags-row" hidden>
+        <ul class="mprof__vals" data-ppv="tags"></ul>
+      </div>
+
+      <div class="mprof__row" data-ppv="links-row" hidden>
+        <ul class="mprof__vals mprof__vals--links" data-ppv="links"></ul>
+      </div>
+    </div>
+
+    <div class="mprof__works" data-ppv="works" hidden></div>
+    <p class="mprof__empty" data-ppv="works-empty" hidden></p>
+
+    {
+      /* Cloned by the renderer. Rendered here rather than built in JS for
+         one reason that has outlived the scoped styles: a template's content
+         is inert, so cloning it is the cheapest way to keep the shape of a
+         list item in markup instead of in string concatenation. */
+    }
+    {
+      /* A PLAIN CHIP, and on the real page a tag is now a LINK into the
+         filtered directory (.mprof__tag, 2026-09-03). The divergence is
+         deliberate and is the one kind this preview allows: the editor's job
+         is to show the member what their page will look like, and a control
+         that navigates out of a form full of unsaved edits is the one thing it
+         must not offer. The chip's drawing is identical either way — the link
+         adds only a pointer and a hover — so nothing about the page's
+         appearance is being misreported here. */
+    }
+    <template data-ppv-tpl="val"><li class="mprof__val"></li></template>
+    <template data-ppv-tpl="link"
+      ><li><a class="mprof__link" target="_blank" rel="noopener noreferrer"></a></li></template
+    >
+    {
+      /* The border belongs to the link, not to the figure — exactly as on
+         the page, where .mprof__work-link is the framed element and the
+         figcaption follows it outside the frame. No href: the page's link
+         opens the lightbox, and there is none here. */
+    }
+    <template data-ppv-tpl="work"
+      ><figure class="mprof__work">
+        <a class="mprof__work-link"><img class="mprof__img" alt="" decoding="async" /></a>
+        <figcaption class="mprof__caption" data-ppv-work="caption-block" hidden>
+          <span class="mprof__caption-line" data-ppv-work="caption" hidden></span>
+          <span class="mprof__desc" data-ppv-work="desc" hidden></span>
+          {/* Where the image appeared. A real anchor carrying the page's own
+              .mprof__link — both consumers share one stylesheet, so there is
+              nothing left to mirror by hand, which is the point. */}
+          <a class="mprof__link" data-ppv-work="link" target="_blank" rel="noopener noreferrer" hidden></a>
+        </figcaption>
+      </figure></template
+    >
+  </article>
+
+  <hr class="ppv-rule" />
+</div>
+
+<style>
+  /* Everything in this block is the boundary and nothing else. The page itself
+     is styled by src/styles/profile.css, shared with the real page — nothing
+     here may describe it. */
+  .ppv-stage {
+    font-family: "Archivo", sans-serif;
+  }
+
+  /* The rule the whole thing now hangs on: one hairline in the border token,
+     square and full width, with no margin of its own. The page's own
+     padding-block is the air on either side of it — adding more here would be
+     the sheet's padding coming back under another name. */
+  .ppv-rule {
+    height: 0;
+    margin: 0;
+    border: 0;
+    border-top: 1px solid var(--color-border);
+  }
+</style>

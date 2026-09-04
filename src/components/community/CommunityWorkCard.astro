@@ -1,0 +1,348 @@
+---
+import { getImage } from "astro:assets";
+import type { MemberView } from "../../lib/memberView.ts";
+import type { ProfileWork } from "../../lib/profileView.ts";
+import { memberHref } from "../../lib/links.ts";
+import { useTranslations, type Lang } from "../../i18n/utils.ts";
+
+// THE GRID WALL'S TILE, and the wall's whole subject: ONE artwork, and nothing
+// else. Not a member card — the wall is not a directory of people that happens
+// to show pictures, it is a wall of work, so a member with six images stands in
+// it six times and the wall is as long as the directory's gallery.
+//
+// TWO KINDS OF WORD, both printed at rest, on every breakpoint (2026-09-03,
+// Josh: "add the name to the images in grid view in desktop" — always
+// visible, matching the phone). THE CAPTION names the thing in the picture;
+// THE AUTHOR credits it. Both are IN FLOW: the tile reserves room for its
+// label the same way on desktop and mobile now, and CommunityGrid's
+// --cgrid-row for a work cell reserves that room to match (see --cwork-chrome
+// below).
+//
+// This replaces an earlier hover-reveal (2026-09-01, Josh: "we need the
+// project names and on hover the author names") that kept the author out of
+// flow on desktop so a wall of 48 credits would not compete with the pictures
+// at rest. That trade reversed two days later: the name is worth more than
+// the air it costs.
+//
+// WHY IT IS NOT CommunityImageCard WITH THE CAROUSEL OFF. That card is a
+// member's card: a name above the frame, a role and a disclosure panel below,
+// and a track that pages a whole gallery inside one slot. This is a picture.
+// Sharing one component would have meant a second anatomy behind a flag; the
+// spread still renders the member card unchanged, and this file owns the wall.
+
+interface Props {
+  member: MemberView;
+  work: ProfileWork;
+  lang: Lang;
+}
+
+const { member, work, lang } = Astro.props;
+const t = useTranslations(lang);
+
+// Optimised at build time, like the member card's gallery (remotePatterns in
+// astro.config.mjs). NARROWER VARIANTS THAN THE MEMBER CARD'S, because this
+// tile is never wider than a wall track: 200px desktop, half a phone minus the
+// multicol gutter on mobile. 400 covers both at 2× and 800 at 4×, and there is
+// no 1400 to accidentally select — every image in the directory is in the DOM
+// on this view, and decoded-image memory is what crash-looped iOS Safari
+// before (see CommunityImageCard's SIZES note).
+const rendered = await getImage({
+  src: work.url,
+  width: work.width,
+  height: work.height,
+  widths: [400, 800],
+  format: "webp",
+});
+
+const SIZES = "(max-width: 767px) 45vw, 200px";
+
+// The frame keeps the artwork's true aspect — nothing is cropped. Tall work is
+// bounded by getting NARROWER instead, the same contract as the member card:
+// --frame-cap comes from the slot, and this ratio turns it into a width.
+const frameAspect = work.width / work.height;
+
+const profileHref = memberHref(lang, member.slug);
+
+// THE TITLE is the image's own caption, and now the only thing it can be — the
+// tagged project's title used to take precedence, and went with the projects
+// feature (2026-09-01). Optional, and today NOTHING SEEDED HAS ONE: the curated
+// galleries were imported with empty captions on purpose. So the line is
+// OMITTED rather than filled with "Untitled" 48 times, which is why the dev
+// wall still reads as bare pictures with a name on hover; it fills itself in as
+// members caption their gallery images in the profile editor.
+const title = work.caption?.trim() || "";
+
+// Never "": the member's caption when they wrote one, a translated fallback
+// otherwise. Same rule as the member card — and on this tile it matters more
+// than it did: the tile carries no heading, so the alt text is what names the
+// picture, and its fallback is the one place the author is always spoken.
+const alt = work.caption?.trim() || `${member.displayName} — ${t("member.workAlt")}`;
+
+// What the LIGHTBOX says under the image, in exactly the form the member page's
+// gallery says it (see [slug].astro, which resolves the same lines): the caption
+// is the work's own, the DESCRIPTION is its SHORT text — a description joined
+// the band on 2026-09-01, and since 2026-09-03 it is the one-sentence version;
+// the long one belongs to the member's portfolio page — and the meta line is
+// the whose-of-it.
+// The meta line is also the naming that survives where hover does not: on a
+// touch screen the tile's own author line never comes up, and this band always
+// does.
+//
+// AND IT IS NOW THE WAY TO THE PERSON (2026-09-03, Josh: "in lightbox a way to
+// get to the profile of a person"). The lightbox covers the whole screen, so
+// while it is open every route the page had — the tile's author line, the
+// card's name heading, the "View profile" control in a disclosure — is behind
+// it. The band already named the member; `data-pswp-profile` is what lets the
+// caption renderer make that name a link instead of a dead end.
+const pswpMeta = member.displayName;
+---
+
+<article class="cwork" style={`--frame-ar:${frameAspect}`}>
+  <div
+    class="cwork__frame"
+    style={`aspect-ratio:${work.width} / ${work.height};${work.color ? `background:${work.color}` : ""}`}
+  >
+    {
+      /* THE IMAGE OPENS THE IMAGE, and it is the tile's only interactive
+        element. The link's href is the ORIGINAL upload and PhotoSwipe binds to
+        it (see the lightbox script in CommunityGrid.astro), so with scripting
+        off the link still resolves to the picture instead of being inert. The
+        data-pswp-* attributes are what the lightbox reads: the real dimensions
+        so it can size and zoom from the thumbnail, and the two caption lines.
+        IT WRAPS THE IMAGE rather than sitting over it as an inset overlay,
+        which is not cosmetic: PhotoSwipe finds the thumbnail to zoom out of by
+        looking for an `img` INSIDE the element it was given, and an overlay
+        sibling would leave it with nothing to animate from. */
+    }
+    <a
+      class="cwork__link"
+      href={work.url}
+      target="_blank"
+      rel="noreferrer"
+      data-pswp-width={work.width}
+      data-pswp-height={work.height}
+      data-pswp-caption={work.caption?.trim() || undefined}
+      data-pswp-description={work.descriptionShort || undefined}
+      data-pswp-meta={pswpMeta || undefined}
+      data-pswp-profile={profileHref}
+    >
+      {
+        /* No aria-label on the link: the image's alt names it, which is the
+          member page's pattern for the same trigger. An aria-label here would
+          silence the alt and make every tile announce the same sentence. */
+      }
+      <img
+        class="cwork__img"
+        src={rendered.src}
+        srcset={rendered.srcSet.attribute}
+        sizes={SIZES}
+        width={work.width}
+        height={work.height}
+        style={work.color ? `background:${work.color}` : undefined}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+      />
+    </a>
+  </div>
+
+  {
+    /* THE LABEL. Not a heading: with the author hidden at rest, a tile whose
+      project is untitled would contribute an EMPTY h2 to the page outline, and
+      a heading that says nothing is worse than no heading. The picture's alt
+      text is what names a tile to a screen reader; this block is the label
+      beside it. */
+  }
+  <div class="cwork__caption">
+    {title && <span class="cwork__title">{title}</span>}
+    {
+      /* THE AUTHOR, out of flow — see the header. It is positioned under
+        whatever the caption holds (the title, or the frame itself where there
+        is no title), reserves nothing, and cannot move the row it is in.
+        The anchor is written tight against its text on purpose: Astro keeps
+        the indentation around an expression as a real space, and a leading one
+        shifts the name a few pixels off the artwork's left edge — the one
+        alignment a line under a picture has to hold. */
+    }
+    <span class="cwork__author"
+      ><a class="cwork__author-link" href={profileHref}>{member.displayName}</a></span
+    >
+  </div>
+</article>
+
+<style>
+  /* The tile is the frame's box and nothing more. It survives as its own
+     element rather than collapsing into the frame because it is what the grid
+     places, what GSAP scales, and what carries the width formula below. */
+  .cwork {
+    display: block;
+    /* Everything under the frame that takes up room: the caption's top gap,
+       TWO lines' worth of title (rounded up, because a long title wraps and
+       the frame cap must not then let the tile outgrow its slot), the
+       author's own top gap, and one line of author. Both the title and the
+       author are IN FLOW now, so both count — over-reserving costs a little
+       air, under-reserving costs the drawing. The wall states the matching
+       figure on the cell (see CommunityGrid's wall block). */
+    --cwork-chrome: 3.3rem;
+    /* How tall the frame may be, out of the slot the grid dealt. Absent a slot
+       (nothing renders this outside the wall today) the fallback is no cap. */
+    --frame-cap: calc(var(--slot-rows, 999) * var(--cgrid-row, 2rem) - var(--cwork-chrome));
+    /* Tall artwork narrows instead of deepening its row: normally this is the
+       full track width, and where the artwork is tall enough that filling the
+       width would overrun the slot it is instead the width that makes the
+       frame exactly as tall as the slot allows. Same formula as the member
+       card. */
+    width: min(100%, calc(var(--frame-cap) * var(--frame-ar, 1)));
+    /* Pivot for the GSAP scale-on-approach in CommunityGrid, which drives this
+       element. Top edge, not centre — the ScrollTrigger is keyed to the tile's
+       top and a centre origin would shift it with every height change. */
+    transform-origin: 50% 0%;
+  }
+
+  .cwork__frame {
+    position: relative;
+    overflow: hidden;
+    /* Square corners and no border, like every frame on this page: the artwork
+       is its own edge. */
+    border-radius: 0;
+    /* Fallback ground under the dominant colour painted inline. */
+    background: var(--color-bg);
+  }
+
+  /* The link IS the frame's content, so it has to fill it — the aspect box is
+     on the frame, and a shrink-to-fit inline anchor would leave the image
+     smaller than the rectangle the wall drew. */
+  .cwork__link {
+    display: block;
+    width: 100%;
+    height: 100%;
+    /* Says "this opens" before the pointer arrives at a control, because there
+       is no control: the whole picture is the trigger — and now the whole tile
+       is the picture, so this is the tile's only affordance. */
+    cursor: zoom-in;
+  }
+
+  .cwork__img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* ── THE HOVER ─────────────────────────────────────────
+       The artwork pushes slightly toward the reader inside a frame that does
+       not move: the frame is overflow:hidden and keeps the wall's flat row
+       edges, so the growth is felt as the image filling its own rectangle
+       rather than as a tile changing size. Nothing about the row's geometry
+       can shift. It also carries more weight than it did — with no caption to
+       point at, this is the only thing that answers a pointer.
+       ON THE IMAGE, NEVER ON .cwork OR THE CELL — GSAP owns the transform on
+       both of those (the scale-on-approach and the parallax) and would
+       overwrite anything written here, silently, and only on desktop where the
+       motion layer is built. This is the one element in the tile whose
+       transform belongs to CSS.
+       The curve and the 500ms are the card arrows' family (see
+       CommunityImageCard's chevrons); slower than a control because a picture
+       settling should be felt, not noticed. The transition sits on the RESTING
+       state, so the same timing plays on the way back out. */
+    transition: transform 500ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /* The picture pushes toward the reader on approach — the tile's only
+     hover/focus response now that the author line is always on. */
+  .cwork:hover .cwork__img,
+  .cwork:focus-within .cwork__img {
+    transform: scale(1.045);
+  }
+
+  /* ── The label ────────────────────────────────────────── */
+  .cwork__caption {
+    /* The block holds the title and the author, both in flow, so it is a
+       plain box with a top gap and nothing to lay out.
+       TIGHT TO THE PICTURE (2026-09-02, Josh: "grid gap of name to image
+       less"). It was 0.4rem, which is the gap between two paragraphs — and
+       these words are not a paragraph after the artwork, they are its label,
+       so the distance has to read as attachment rather than as separation.
+       0.15rem still keeps the type off the frame's edge, which is the only
+       thing the gap was ever needed for.
+       --cwork-chrome above deliberately does NOT come down by the same
+       0.25rem: it is the height the WALL reserves for this block (the figure
+       is stated twice — see CommunityGrid's --cgrid-row), and over-reserving
+       costs a little air while under-reserving costs the drawing. */
+    padding-top: 0.15rem;
+    font-family: "Archivo", sans-serif;
+  }
+
+  /* THE CAPTION, printed. Black, bold and a touch tighter — at a 200px measure
+     a label has to commit or it reads as a caption's afterthought. Wraps
+     freely: a long title over two lines is still the tile's first words, and
+     --cwork-chrome above is sized for that second line. */
+  .cwork__title {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    color: var(--color-dark);
+  }
+
+  /* THE AUTHOR, printed — in flow like the caption above it, on every
+     breakpoint (2026-09-03, Josh: "add the name to the images in grid view in
+     desktop"). Used to be a desktop-only hover reveal, out of flow so
+     appearing could never resize a tile; that traded the name's visibility
+     for a quieter wall, and the trade reversed two days after it was made.
+     The mobile treatment (2026-09-01, "grid should contain name also in
+     mobile") is now the only treatment: --cwork-chrome above reserves this
+     line's height on every card, so a row is never surprised by it. */
+  .cwork__author {
+    display: block;
+    overflow: hidden;
+    /* One line, truncated: the name is a credit, not a paragraph, and a
+       wrapped one would reach into the row below. */
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--color-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    /* NOTHING OF ITS OWN where there is no title: the caption box's own top
+       gap is already the whole distance to the frame, and where the author is
+       the only line there is, a second step here would pay twice for one gap
+       (2026-09-02, "grid gap of name to image less"). */
+    padding-top: 0;
+  }
+
+  /* Under a title, though, the two lines do need parting — the caption's gap
+     is spent above the title, not between them. */
+  .cwork__title + .cwork__author {
+    padding-top: 0.1rem;
+  }
+
+  /* Undecorated at rest, underlined when it is the thing being pointed at or
+     focused, at the member card's offset and thickness so every name on the
+     site behaves alike. */
+  .cwork__author-link {
+    color: inherit;
+    text-decoration: none;
+  }
+  .cwork__author-link:hover,
+  .cwork__author-link:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
+  }
+
+  /* The site drops motion rather than substituting a gentler version of it:
+     the hover still says "this is live", it simply arrives. */
+  @media (prefers-reduced-motion: reduce) {
+    .cwork__img {
+      transition: none;
+    }
+  }
+
+  @media (--bp-mobile) {
+    /* --slot-rows still arrives from the desktop deal on a phone, where the
+       tile's height is simply its own. Full width of the multicol column. */
+    .cwork {
+      width: 100%;
+    }
+  }
+</style>

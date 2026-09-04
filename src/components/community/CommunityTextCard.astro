@@ -1,0 +1,290 @@
+---
+import { hasDetail, type MemberView } from "../../lib/memberView.ts";
+import { memberHref } from "../../lib/links.ts";
+import { useTranslations, type Lang } from "../../i18n/utils.ts";
+import MemberDetailPanel from "./MemberDetailPanel.astro";
+
+// ── NOTHING RENDERS THIS TODAY (2026-09-03) ──────────────────────────────
+// Josh: "remove memebrs from gallery that dont have images". The grid wall
+// dropped these cards on 2026-09-01 and the editorial spread followed on
+// 2026-09-03, so neither gallery deals a card for a member with an empty
+// gallery any more — those members are rows in the directory's INDEX view and
+// nowhere else on that page. The file is kept rather than deleted because it is
+// a finished design that works, and the question it answers ("what does a
+// member with nothing to show look like in a gallery of pictures?") is one that
+// can be asked again. To bring it back, deal a second cell kind in
+// CommunityGrid.astro — see the `data-slot` note there for what that used to
+// look like. Its own styles are scoped to it, so it costs nothing while unused;
+// the profile editor's card preview mirrors this drawing in markup of its own
+// (CommunityCardPreview.astro) and does NOT import this file, so the editor is
+// unaffected either way.
+//
+// The typographic variant: a member without artwork holds the same anatomy as
+// CommunityImageCard — name band, framed rectangle, caption row — instead of
+// being demoted to a bare name. The rectangle holds what this member DOES
+// have: their tags, stacked vertically, standing where the artwork would.
+// The card upgrades to CommunityImageCard by itself the moment the member
+// uploads a gallery, because the grid picks per member on works.length.
+
+interface Props {
+  member: MemberView;
+  lang: Lang;
+}
+
+const { member, lang } = Astro.props;
+const t = useTranslations(lang);
+const profileHref = memberHref(lang, member.slug);
+
+// Tags are the rectangle's face; a member who set none gets their member-type
+// label there instead.
+//
+// The ROLE NEVER COMES HERE. It used to, as a last fallback so that no card
+// rendered an empty box — but that put a job title in a frame styled for
+// keywords (uppercase, letter-spaced, one line per entry), and it moved the
+// role off the bottom of the card for the three members who have no tags
+// while their neighbours kept theirs there. Two places, two voices, decided
+// by whether a member happened to fill in tags. The role now prints once, in
+// the caption, in its own voice, on every card.
+const tagLines =
+  member.tags.length > 0
+    ? member.tags
+    : member.memberType
+      ? [t(`profile.memberType.${member.memberType}`)]
+      : [];
+
+// With nothing to stand where the artwork would, the frame becomes a rule
+// rather than an empty bordered box: the card stays a framed member of the
+// family (a name over a horizontal line over a role, like an index entry)
+// instead of being demoted to a bare name.
+const frameIsRule = tagLines.length === 0;
+---
+
+<article class="ctcard">
+  <h2 class="ctcard__name">
+    <a class="ctcard__name-link" href={profileHref} transition:name={`mname-${member.id}`}>
+      {member.displayName}
+    </a>
+  </h2>
+
+  <div class:list={["ctcard__frame", frameIsRule && "ctcard__frame--rule"]}>
+    {
+      tagLines.length > 0 && (
+        <ul class="ctcard__tags">
+          {tagLines.map((tag) => (
+            <li class="ctcard__tag">{tag}</li>
+          ))}
+        </ul>
+      )
+    }
+    {/* No whole-frame link on a rule: a 1px-tall click target is a trap
+        rather than an affordance, and the name above it already goes to the
+        same page — one fewer duplicate tab stop, too. */}
+    {
+      !frameIsRule && (
+        <a
+          class="ctcard__frame-link"
+          href={profileHref}
+          aria-label={`${t("community.card.viewProfile")} ${member.displayName}`}
+        />
+      )
+    }
+  </div>
+
+  {
+    (member.role || hasDetail(member)) && (
+      <div class="ctcard__caption">
+        <div class="ctcard__caption-row">
+          <span class="ctcard__role">{member.role}</span>
+          <MemberDetailPanel member={member} lang={lang} />
+        </div>
+      </div>
+    )
+  }
+</article>
+
+<style>
+  .ctcard {
+    /* Absolutely positioned by the grid (see CommunityGrid), which means no
+       flow to inherit a width from. */
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    /* Everything above and below the frame — the name line, the caption row
+       and the gaps around them. Rounded up for a wrapped two-line role, same
+       policy as the image card's --ccard-chrome: over-estimating only leaves
+       a little more air. Tuned so the cap in a 10-row slot lands BETWEEN tag
+       lines (5 whole tags), not through one — a clipped sliver of text reads
+       as a bug where a clean cut reads as a fold. */
+    --ctcard-chrome: 7.6rem;
+    /* How tall the frame may grow before it is clipped. --slot-rows and
+       --cgrid-row come from the grid cell this card was dealt into; absent
+       them the fallback is large enough to be no cap at all. The index slot
+       is 10 rows, and its ladder steps every 5 — a frame that outgrew the
+       slot would climb into the next card. Tags past the fold are not lost:
+       the disclosure panel lists them all. */
+    --frame-cap: calc(var(--slot-rows, 999) * var(--cgrid-row, 1.5rem) - var(--ctcard-chrome));
+    /* Matches CommunityImageCard so the GSAP scale in CommunityGrid pivots
+       identically whichever card type a slot holds — see that file for why
+       the origin is top, not centre. */
+    transform-origin: 50% 0%;
+  }
+
+  /* Name band — identical to the image card's, on purpose. */
+  .ctcard__name {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    /* Explicit, not `inherit` — see the long note on .ccard__name. Identical
+       here on purpose: the two card types share one name band, and a wrapped
+       name must set the same block whichever face it sits on. */
+    line-height: 1.1;
+  }
+  .ctcard__name-link {
+    display: block;
+    font-family: "Archivo", sans-serif;
+    color: var(--color-dark);
+    text-decoration: none;
+  }
+  .ctcard__name-link:hover,
+  .ctcard__name-link:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
+  }
+
+  /* ── The rectangle ────────────────────────────────────── */
+  /* No longer a rectangle: .ccard__frame lost its border so artwork sits on
+     the page rather than inside a box, and this frame follows it — the two
+     card types have to read as one family, and a boxed tag panel next to an
+     unboxed picture is a mismatch you notice immediately in the grid.
+     What survives is the TOP HAIRLINE the --rule variant below already used.
+     That is the whole treatment now: a name over a line over the member's
+     tags over a role, like an index entry. Keeping one stroke rather than
+     none is what stops a member with no artwork collapsing into loose text,
+     and it means --rule is no longer a different drawing — just this drawing
+     with nothing standing under the line.
+     The 0.75rem of inline padding went with the border: it existed to inset
+     the tags from a box edge, and with no edge it only pushed them out of
+     line with the name above and the role below. Vertical padding stays, so
+     the content height under --frame-cap is within 1.5px of what it was and
+     the fold still lands between tag lines (see --ctcard-chrome).
+     No ground either: --color-bg on a boxless block is the page's own colour. */
+  .ctcard__frame {
+    position: relative;
+    box-sizing: border-box;
+    overflow: hidden;
+    padding: 0.7rem 0;
+    border-top: 1.5px solid var(--color-border);
+    border-radius: 0;
+    min-height: 3rem;
+    max-height: var(--frame-cap);
+  }
+
+  /* Nothing to hold: the hairline stays and everything under it goes. It
+     inherits that border from the rule above now, so this variant only has to
+     close the box up — min-height 0 so the card shrinks to name + rule + role.
+     The empty 3rem box this replaced read as a frame that had failed to load. */
+  .ctcard__frame--rule {
+    padding: 0;
+    min-height: 0;
+    margin-block: 0.35rem 0.15rem;
+  }
+
+  .ctcard__tags {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+    font-family: "Archivo", sans-serif;
+  }
+
+  /* The tag voice from MemberDetailPanel's chips, without the chip border —
+     a frame full of bordered boxes read as a form, not a card face. */
+  .ctcard__tag {
+    font-size: 0.68rem;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* Whole-rectangle click target, like the image card's frame link. */
+  .ctcard__frame-link {
+    position: absolute;
+    inset: 0;
+  }
+
+  @media (--bp-mobile) {
+    /* The cap is sized from the desktop slot this cell was dealt into, which
+       means nothing in the phone's own pattern — uncapped, the frame simply
+       holds all the tags and the cell grows around it. */
+    .ctcard__frame {
+      max-height: none;
+    }
+  }
+
+  /* ── Member caption — identical to the image card's ───── */
+  .ctcard__caption {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding-top: 0.15rem;
+    font-family: "Archivo", sans-serif;
+  }
+
+  /* A plain block, not a grid, and .pdisc keeps a REAL box -- see the note in
+     MemberDetailPanel for why display:contents here was unopenable on iPhone.
+     The panel is full-width simply by being in flow (it still grows the card,
+     which is what the desktop slot wants and what pushes rows on mobile), and
+     the toggle is lifted to the row's right edge instead of placed in a
+     column. */
+  .ctcard__caption-row {
+    position: relative;
+  }
+
+  .ctcard__caption-row :global(.pdisc) {
+    display: block;
+  }
+
+  /* The toggle's space is reserved on the ROLE's line, not on the row: row
+     padding would inset the open panel too, and a panel stopping short of
+     the card's right edge is exactly what the old pseudo-element grid item
+     existed to prevent. */
+  .ctcard__caption-row .ctcard__role {
+    /* Wider than the chevron by design — it is the reserve for the chevron's
+       HIT AREA, which is 2rem square (below), not for the 0.36rem mark that
+       gets painted in the middle of it. */
+    padding-right: 1.9rem;
+  }
+
+  /* A REAL TARGET, NOT A MARK (2026-09-01, Josh: "dropdown arrow needs a
+     bigger hitbox"). Same change, same numbers, same reasoning as the image
+     card's — this card is a member's card too, and the chevron is the only way
+     into its detail. See CommunityImageCard for the full note. */
+  .ctcard__caption-row :global(.pdisc__toggle) {
+    position: absolute;
+    top: calc(0.15rem + (0.78rem * 1.3 - 2rem) / 2);
+    right: 0;
+    width: 2rem;
+    height: 2rem;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ctcard__role {
+    min-width: 0;
+    margin-top: 0.15rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--color-dark);
+  }
+</style>

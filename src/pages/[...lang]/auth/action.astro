@@ -1,6 +1,5 @@
 ---
 import Layout from "../../../layouts/Layout.astro";
-import { useTranslations } from "../../../i18n/utils";
 import type { Lang } from "../../../i18n/utils";
 
 export function getStaticPaths() {
@@ -12,7 +11,6 @@ export function getStaticPaths() {
 
 const { lang = "en" } = Astro.params;
 const currentLang = (lang || "en") as Lang;
-const t = useTranslations(currentLang);
 
 const title = currentLang === "de" ? "Konto" : "Account";
 ---
@@ -132,7 +130,11 @@ const title = currentLang === "de" ? "Konto" : "Account";
     confirmPasswordReset,
     verifyPasswordResetCode,
   } from "firebase/auth";
-  import { publishCurrentUserProfile } from "../../../lib/firestore.ts";
+  import {
+    activatePublicProfileIfExists,
+    publishCurrentUserProfile,
+  } from "../../../lib/firestore.ts";
+  import { continueTarget } from "../../../lib/authEmail.ts";
 
   const params = new URLSearchParams(window.location.search);
   const mode = params.get("mode");
@@ -150,38 +152,97 @@ const title = currentLang === "de" ? "Konto" : "Account";
     if (el) el.style.display = "block";
   }
 
-  function showSuccess(title: string, sub: string, href = "/signup") {
+  // The Continue button's destination, in priority order:
+  //
+  //   1. `continueUrl` off the link, when the send site named one. That is the
+  //      only party that knows where the member actually was — verification
+  //      sent from onboarding wants onboarding back, the same email resent
+  //      from the profile editor wants the editor.
+  //   2. The per-mode fallback below, for links minted before send sites
+  //      carried settings (2026-09-03) and for anything Firebase generates
+  //      itself. `fallback` is locale-LESS and gets the prefix here;
+  //      continueTarget() is already a full same-origin path, so it does not.
+  function showSuccess(title: string, sub: string, fallback: string) {
     document.getElementById("success-title")!.textContent = title;
     document.getElementById("success-sub")!.textContent = sub;
-    (document.getElementById("success-link") as HTMLAnchorElement).href = prefix + href;
+    (document.getElementById("success-link") as HTMLAnchorElement).href =
+      continueTarget() ?? prefix + fallback;
     showView("view-success");
   }
 
+  /**
+   * ONE RUN PER PAGE.
+   *
+   * `astro:page-load` fires on the first load as well as on every client-side
+   * navigation, and this listener is never removed. A second firing would call
+   * applyActionCode again with a code the first firing has already spent, and
+   * the member would watch a successful verification turn into "the link has
+   * already been used".
+   */
+  let handled = false;
+
   document.addEventListener("astro:page-load", async () => {
+    if (handled) return;
+    handled = true;
+
     if (!oobCode) {
       showView("view-error");
       return;
     }
 
     if (mode === "verifyEmail") {
+      // A VERIFICATION LINK IS OFTEN SPENT BEFORE THE MEMBER EVER CLICKS IT.
+      // Corporate mail filters, spam scanners and link-preview fetchers follow
+      // every URL in an email, and the first fetch consumes the oobCode. What
+      // the member then sees is a used code and an address that is already
+      // verified — and the old code showed them "your request has expired or
+      // the link has already been used" over a verification that had worked
+      // (2026-09-04, Josh, on a fresh signup whose account came out verified).
+      //
+      // So the question is not "was the code good" but "is this address
+      // verified now". The code is only one way of getting there.
+      let applied = true;
       try {
         await applyActionCode(auth, oobCode);
-        const user = auth.currentUser;
-        if (user) {
-          await user.reload();
-          await user.getIdToken(true);
-          await publishCurrentUserProfile(user.uid);
-        }
-        showSuccess(
-          lang === "de" ? "E-Mail verifiziert!" : "Email verified!",
-          lang === "de" 
-            ? "Ihr Konto ist jetzt aktiv. Weiter zur Community." 
-            : "Your account is now active. Continue to the community.",
-          "/community",
-        );
       } catch {
-        showView("view-error");
+        applied = false;
       }
+
+      const user = auth.currentUser;
+      // reload() refreshes the account RECORD, which is what carries the answer
+      // when the code was spent somewhere else.
+      if (user) await user.reload().catch(() => {});
+
+      // Nobody signed in and a code that will not apply: there is no way to
+      // tell a spent link from a bad one, so say so.
+      if (!applied && !user?.emailVerified) {
+        showView("view-error");
+        return;
+      }
+
+      if (user) {
+        // The TOKEN, not just the record — every rule that gates on
+        // verification reads the claim. See hasVerifiedClaim in lib/auth.ts.
+        await user.getIdToken(true).catch(() => {});
+        // Best-effort, both of them: the address IS verified by this point, and
+        // a profile write that fails must not tell the member their link
+        // expired. activatePublicProfileIfExists matches what the waiting page
+        // at /verify-email already does, so a member who clicks the link and a
+        // member who sits on that page do not end up in different states — the
+        // draft flag publishPublicProfile set while they were unverified gets
+        // lifted either way. It creates nothing: someone who verifies before
+        // finishing onboarding has no public profile to activate yet.
+        await publishCurrentUserProfile(user.uid).catch(() => {});
+        await activatePublicProfileIfExists(user.uid).catch(() => {});
+      }
+
+      showSuccess(
+        lang === "de" ? "E-Mail verifiziert!" : "Email verified!",
+        lang === "de"
+          ? "Ihr Konto ist jetzt aktiv. Weiter zur Community."
+          : "Your account is now active. Continue to the community.",
+        "/community",
+      );
 
     } else if (mode === "resetPassword") {
       try {
@@ -220,7 +281,7 @@ const title = currentLang === "de" ? "Konto" : "Account";
               lang === "de"
                 ? "Sie können sich jetzt mit Ihrem neuen Passwort anmelden."
                 : "You can now sign in with your new password.",
-              "/signup",
+              "/login",
             );
           } catch {
             errorEl.textContent = lang === "de" 
@@ -243,7 +304,7 @@ const title = currentLang === "de" ? "Konto" : "Account";
           lang === "de"
             ? "Ihre ursprüngliche E-Mail-Adresse wurde wiederhergestellt. Bitte melden Sie sich erneut an."
             : "Your original email address has been restored. Please sign in again.",
-          "/signup",
+          "/login",
         );
       } catch {
         showView("view-error");

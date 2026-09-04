@@ -1,0 +1,419 @@
+---
+import { hasDetail, type MemberViewBase } from "../../lib/memberView.ts";
+import { communityTagHref, href, socialLinks } from "../../lib/links.ts";
+import { useTranslations, type Lang } from "../../i18n/utils.ts";
+
+interface Props {
+  member: MemberViewBase;
+  lang: Lang;
+  /** Render the disclosure even when hasDetail() says no — for a caller
+   *  slotting its own lead content (the index rows slot the member's
+   *  profile picture, which is content worth a toggle by itself). */
+  forceShow?: boolean;
+}
+
+const { member, lang, forceShow = false } = Astro.props;
+const t = useTranslations(lang);
+
+// Native <details> on purpose. ClientRouter is active site-wide, so any script
+// here would need an astro:page-load / astro:before-swap pair and would leak
+// state across navigations if it got that wrong. A disclosure element needs
+// none of that, and comes with keyboard and screen-reader behaviour already
+// correct.
+
+const bio = member.bio.trim();
+const portfolio = member.portfolio.trim();
+const social = socialLinks(member.socialMedia.trim());
+const tags = member.tags;
+
+// Nothing to disclose — a profile that is name + role only. Rendering an
+// empty toggle would promise content that isn't there.
+const show = forceShow || hasDetail(member);
+
+// THE WHOLE LINE AS THE TOGGLE (2026-09-01, Josh: "in index clicking on the
+// profile expands it"). A caller may slot the row it wants to be clickable
+// into the <summary> itself, instead of getting a bare chevron beside its own
+// markup. The ledger rows do this; the cards do not, and still get the chevron
+// alone.
+//
+// It has to be the <summary> and not a click handler on a sibling: the native
+// element already carries the keyboard activation, the expanded/collapsed
+// state and the announcement, and this component's whole premise is that a
+// disclosure needs no script (see the note above). A JS toggle here would need
+// an astro:page-load / astro:before-swap pair and would leak `open` state
+// across ClientRouter navigations if it got that wrong.
+const hasSummary = Astro.slots.has("summary");
+---
+
+{
+  show ? (
+    <details class="pdisc" class:list={{ "pdisc--line": hasSummary }}>
+      {/* No aria-label in line mode: the summary names ITSELF there — its
+          content is the member's name and field, which is a better label than
+          any sentence written here, and an aria-label would silence all of
+          it. */}
+      <summary
+        class="pdisc__toggle"
+        aria-label={hasSummary ? undefined : `${t("community.card.expand")} ${member.displayName}`}
+      >
+        {hasSummary && <slot name="summary" />}
+      </summary>
+
+      <div class="pdisc__body">
+        <div class="pdisc__body-inner">
+          {/* The caller's lead content — the index slots the member's
+              profile picture here. Empty for the card usages. */}
+          <slot name="lead" />
+          {bio && <p class="pdisc__bio">{bio}</p>}
+
+          {(portfolio || social.length > 0) && (
+            <div class="pdisc__row">
+              <ul class="pdisc__vals pdisc__vals--links">
+                {portfolio && (
+                  <li>
+                    <a
+                      class="pdisc__link"
+                      href={href(portfolio)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {portfolio}
+                    </a>
+                  </li>
+                )}
+                {social.map((s) =>
+                  s.href ? (
+                    <li>
+                      <a
+                        class="pdisc__link"
+                        href={s.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {s.label}
+                      </a>
+                    </li>
+                  ) : (
+                    <li class="pdisc__val">{s.label}</li>
+                  )
+                )}
+              </ul>
+            </div>
+          )}
+
+          {/* Last, and unlabelled: the chips are self-evidently tags, so the
+              "TAGS" key was naming the obvious and competing with the links
+              above it for the same small space.
+
+              EVERY CHIP IS A WAY INTO THE DIRECTORY (2026-09-03, Josh:
+              "clicking on tags opens gallery with tag filter applied"). They
+              were inert text — the member's own vocabulary printed as a fact
+              about them — while the same words in the bar's dropdown narrowed
+              the whole page. A chip is the more natural place to press: it is
+              in front of you, attached to the person who made the work that
+              made you curious. A LINK, not a button, for the reason the "View
+              profile" control below is one: it goes somewhere, so it has to be
+              copyable, openable in a new tab and reachable with scripting off.
+              The href is built in one place (communityTagHref) and lands on
+              the identical URL the dropdown syncs. */}
+          {tags.length > 0 && (
+            <ul class="pdisc__vals pdisc__vals--tags">
+              {tags.map((tag) => (
+                <li>
+                  <a class="pdisc__val pdisc__tag" href={communityTagHref(lang, tag)}>
+                    {tag}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* THE CALLER'S CLOSING CONTROL — "View profile", from the image
+              card (2026-09-01, Josh: "view profile should be in the dropdown
+              content, maybe after text") and now from the ledger rows too
+              (2026-09-02, "index view profile in the dropdown content"), so
+              every disclosure on the site ends the same way. Last on purpose:
+              everything above is what the panel had to SAY about the member,
+              and the way to their page is what you want once you have read it.
+              A ledger row with nothing to disclose has no panel to put it in
+              and keeps its link on the line — see CommunityGrid. */}
+          <slot name="footer" />
+        </div>
+      </div>
+    </details>
+  ) : (
+    hasSummary && (
+      /* NOTHING TO DISCLOSE, but the line still has to be printed. Before the
+         summary slot existed this component rendered nothing at all in that
+         case, which was correct when all it owned was a chevron — now it owns
+         the caller's row, and returning nothing would delete the member from
+         the ledger. So: the same box and the same line, minus the control.
+         `.pdisc__toggle` is reused rather than restyled so the row's geometry
+         is identical whether or not a member has a bio; only the chevron and
+         the cursor are dropped. */
+      <div class="pdisc pdisc--line pdisc--static">
+        <div class="pdisc__toggle">
+          <slot name="summary" />
+        </div>
+      </div>
+    )
+  )
+}
+
+<style>
+  .pdisc {
+    font-family: "Archivo", sans-serif;
+  }
+
+  .pdisc__toggle {
+    /* Kill the native marker in both engines; the chevron is drawn below so
+       the disclosure matches the image carousel controls. */
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: baseline;
+    width: 1rem;
+    flex: 0 0 1rem;
+    justify-content: center;
+    padding: 0;
+    color: var(--color-muted);
+  }
+  .pdisc__toggle::-webkit-details-marker {
+    display: none;
+  }
+  .pdisc__toggle::marker {
+    content: "";
+  }
+
+  /* ── LINE MODE ─────────────────────────────────────────
+     The summary holds a whole slotted row rather than just the chevron, so it
+     stops being a 1rem box the caller positions and becomes a full-width one
+     the caller lays out (the ledger makes it a grid — see .cindex__line in
+     CommunityGrid). Only the box changes here; the chevron drawing below is
+     shared, and lands as the last item of whatever layout the caller sets. */
+  .pdisc--line > .pdisc__toggle {
+    width: auto;
+    flex: initial;
+    justify-content: initial;
+  }
+
+  /* The un-clickable twin: no control, so no pointer and no chevron. */
+  .pdisc--static > .pdisc__toggle {
+    cursor: default;
+  }
+  .pdisc--static > .pdisc__toggle::after {
+    content: none;
+  }
+
+  /* A stroked chevron, not a filled triangle: two borders on a rotated box.
+     Same drawing as the carousel arrows, so the two controls on one card read
+     as one family. */
+  .pdisc__toggle::after {
+    content: "";
+    width: 0.36rem;
+    height: 0.36rem;
+    margin-bottom: 0.1rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg);
+    transition: transform 320ms ease;
+  }
+  /* 225, not 180: the closed state is already rotated, so the open state has to
+     carry that 45 with it or the chevron lands on its side. */
+  .pdisc[open] .pdisc__toggle::after {
+    transform: rotate(225deg);
+  }
+
+  .pdisc__toggle:focus-visible {
+    color: var(--color-dark);
+  }
+
+  /* Stays in flow, and it is the CARD that is out of it — the grid gives each
+     card an absolutely positioned box inside its slot, so this can grow the
+     card as much as it likes without any of it reaching the layout. Trying to
+     solve that here instead was a dead end worth recording: absolutely
+     positioning this body puts ::details-content between it and its containing
+     block, and that pseudo-element's own `overflow: hidden` clips the panel to
+     a zero-height rectangle. It renders nowhere, while getBoundingClientRect
+     keeps reporting a size for it. */
+  .pdisc__body {
+    /* No margin of its own — the caption grid's row gap is already the whole
+       distance to the name band above, so the panel reads as that member's
+       own continuation rather than as a separate block. */
+    margin-top: 0;
+    display: flex;
+    flex-direction: column;
+    /* The open panel paints over whatever the grid put beneath this card (the
+       cell rises to z-index 3 for exactly that), so it needs a ground of its
+       own — over artwork the bare text was unreadable. Translucent rather than
+       opaque, with the blur doing the separating, so the card underneath still
+       reads as being there. No border: the blurred ground alone does the
+       separating, so the panel doesn't add a second frame to the card. */
+    padding: 0.3rem 0.6rem 0.6rem;
+    background: color-mix(in srgb, var(--color-bg) 74%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    backdrop-filter: blur(14px) saturate(1.4);
+    border: none;
+    /* Square corners, like the frame above it. */
+    border-radius: 0;
+  }
+
+  /* The open/close animation, RESTORED 2026-08-31 once the bisect showed what
+     is actually unsafe. Styling ::details-content is fine. What made
+     /community/ unopenable on iPhone was styling it while `.pdisc` was
+     display:contents, and specifically giving the pseudo an overflow that makes
+     it a SCROLL CONTAINER. Isolated in standalone 900-byte pages: with
+     display:contents, `overflow: hidden` and `overflow: auto` both kill the
+     page; `overflow: clip` does not, nor do content-visibility, block-size or
+     grid-column, and nor does overflow on an ordinary child div. Give the
+     <details> a real box and every one of them is safe.
+     So: `.pdisc` keeps its box (see the caption-row rules in the two cards and
+     in CommunityGrid's .cindex__line -- do NOT put display:contents back), and
+     this uses `clip` rather than `hidden` so the rule survives even if someone
+     reintroduces one. No grid-column: `.pdisc` spans its row by itself now,
+     which is what the old pseudo-as-grid-item was faking.
+     @supports so an engine without the pseudo shows an instant panel rather
+     than a broken one. */
+  @supports selector(::details-content) {
+    .pdisc {
+      interpolate-size: allow-keywords;
+    }
+
+    .pdisc::details-content {
+      block-size: 0;
+      overflow: clip;
+      content-visibility: hidden;
+      transition:
+        block-size 320ms ease,
+        content-visibility 320ms allow-discrete;
+    }
+
+    .pdisc[open]::details-content {
+      block-size: auto;
+      content-visibility: visible;
+    }
+  }
+
+  .pdisc__body-inner {
+    min-height: 0;
+    /* The row rhythm lives HERE, not on .pdisc__body — this wrapper is the
+       rows' actual parent, so a gap up there never reaches between them and
+       the tags sat flush under the links. */
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .pdisc__bio {
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 400;
+    line-height: 1.45;
+    color: var(--color-dark);
+  }
+
+  .pdisc__row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .pdisc__key {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .pdisc__vals {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pdisc__val {
+    font-size: 0.68rem;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 4px 5px;
+    color: var(--color-muted);
+    border: 1px solid var(--color-border);
+    /* `socialMedia` is free text and one real value is a comma-joined handle
+       plus a full LinkedIn URL. Without this it overruns the card's lane on
+       mobile, since there is no space in the URL to break at. */
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  /* Quieter than the other values — they sit under the links as an index,
+     not as another thing to read. */
+  .pdisc__vals--tags .pdisc__val {
+    font-size: 0.6rem;
+    letter-spacing: 0.04em;
+    padding: 3px 4px;
+  }
+
+  /* THE CHIP AS A CONTROL. It keeps the chip's drawing exactly — the border and
+     the small uppercase voice are what make a tag legible as a tag — and gains
+     only what says it can be pressed: the pointer, and the border and type
+     coming up to the page's ink on hover. No underline: these are boxed words
+     in a row, and a rule under each one would read as a list of links rather
+     than as a set of tags.
+     `display: block` so the whole chip is the target, not just the glyphs — the
+     padding is the chip, and a 3px band around the text is not a hitbox. */
+  .pdisc__tag {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+      color 0.15s,
+      border-color 0.15s;
+  }
+
+  .pdisc__tag:hover,
+  .pdisc__tag:focus-visible {
+    color: var(--color-dark);
+    border-color: var(--color-dark);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pdisc__tag {
+      transition: none;
+    }
+  }
+  .pdisc__vals--tags {
+    margin-bottom: 0.75rem;
+  }
+
+  /* Website and socials sit on ONE line, wrapping only when they run out of
+     room — they are short labels ("instagram", "LinkedIn") plus one domain,
+     so a column spent a card's worth of height on three words. Inherits the
+     base row direction; the wide column gap is what keeps two adjacent
+     underlined links from reading as one. */
+  .pdisc__vals--links {
+    column-gap: 0.9rem;
+    row-gap: 0.3rem;
+    align-items: baseline;
+  }
+
+  .pdisc__link {
+    font-size: 0.76rem;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--color-dark);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    /* Long URLs must not widen the card's lane. */
+    overflow-wrap: anywhere;
+  }
+  .pdisc__link:hover {
+    color: var(--color-muted);
+  }
+</style>

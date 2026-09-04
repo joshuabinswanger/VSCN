@@ -1,7 +1,7 @@
 ---
 import { useTranslations } from "../i18n/utils";
 import type { Lang } from "../i18n/utils";
-import MemberCard from "./MemberCard.astro";
+import CommunityCardPreview from "./community/CommunityCardPreview.astro";
 import MemberTypeSelector from "./MemberTypeSelector.astro";
 import TagSelector from "./TagSelector.astro";
 import OpenToSelector from "./OpenToSelector.astro";
@@ -19,9 +19,9 @@ const prefix = lang === "de" ? "/de" : "";
 <div id="onboarding-wrap" class="onboarding-wrap" data-lang={lang} style="display:none;">
   <div id="ob-progress" class="ob-progress">
     <div class="ob-progress-bar">
-      <div id="ob-progress-fill" class="ob-progress-fill" style="width:25%"></div>
+      <div id="ob-progress-fill" class="ob-progress-fill" style="width:20%"></div>
     </div>
-    <span id="ob-progress-text" class="ob-progress-text">1 / 4</span>
+    <span id="ob-progress-text" class="ob-progress-text">1 / 5</span>
   </div>
 
   <p id="ob-error" class="msg-err" style="display:none;"></p>
@@ -86,18 +86,40 @@ const prefix = lang === "de" ? "/de" : "";
           />
         </div>
       </div>
+      {
+        /* One row per link, the same control the profile editor grew on
+        2026-09-04 — a member who signs up with a LinkedIn and an Instagram had
+        no way to say so here, and the editor they would have to go to
+        afterwards is a page they have not seen yet. The STORED shape is
+        unchanged: the rows are joined back into the single comma-separated
+        `socialMedia` string by joinSocial(), so firestore.rules, the
+        build-time directory snapshot and every profile stored before today
+        keep working untouched. A <p> rather than a <label>: there is no single
+        control left to point at. */
+      }
       <div class="field">
-        <label class="label" for="ob-social">{t("profile.label.social")}</label>
-        <div class="input-prefix-wrap">
-          <span class="input-prefix">https://</span>
-          <input
-            id="ob-social"
-            type="text"
-            class="input input-prefixed"
-            placeholder={t("profile.ph.social")}
-          />
-        </div>
+        <p id="ob-social-label" class="label">{t("profile.label.social")}</p>
+        <div id="ob-social-editor" class="social-editor"></div>
+        <button type="button" id="ob-social-add" class="btn-outline social-add">
+          {t("profile.social.add")}
+        </button>
+        <p id="ob-social-status" class="field-note" style="display:none;"></p>
         <p class="field-note">{t("profile.note.social")}</p>
+        {
+          /* Cloned by renderSocial(). Rendered here rather than built in JS so
+          each clone carries Astro's data-astro-cid-* attribute and matches the
+          scoped rules below — a node built with document.createElement() would
+          match none of them. */
+        }
+        <template data-ob-social-tpl="row">
+          <div class="social-row">
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">https://</span>
+              <input type="text" class="input input-prefixed" data-social-input />
+            </div>
+            <button type="button" class="social-row-remove" data-social-remove>✕</button>
+          </div>
+        </template>
       </div>
       <div class="field">
         <label class="label" for="ob-phone">{t("profile.label.phone")}</label>
@@ -128,6 +150,7 @@ const prefix = lang === "de" ? "/de" : "";
           <input id="ob-wants-to-contribute" type="checkbox" />
           <span>{t("profile.wantsToContribute")}</span>
         </label>
+        <p class="field-note">{t("profile.wantsToContribute.note")}</p>
       </div>
       <div class="field">
         <OpenToSelector lang={lang} />
@@ -190,7 +213,12 @@ const prefix = lang === "de" ? "/de" : "";
         <div>
           <label class="btn-outline" for="ob-avatar-input">
             {t("profile.chooseImage")}
-            <input id="ob-avatar-input" type="file" accept="image/*" style="display:none;" />
+            <input
+              id="ob-avatar-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/avif"
+              style="display:none;"
+            />
           </label>
           <p id="ob-upload-status" class="ob-upload-status" style="display:none;"></p>
         </div>
@@ -204,18 +232,86 @@ const prefix = lang === "de" ? "/de" : "";
     </div>
     <div class="ob-footer ob-footer--with-skip">
       <button id="ob-skip-4" type="button" class="btn-link">{t("onboarding.nav.skip")}</button>
+      <button id="ob-next-4" type="button" class="btn-solid">{t("onboarding.nav.next")}</button>
+    </div>
+  </div>
+
+  {
+    /* Step 5: Show your work. The directory is image-led — a member with no
+    gallery holds a typographic tag card — so this is the step that decides
+    which face they get. It is also the step most likely to be empty: a
+    research group signing up has nothing to upload and must not be made to
+    feel the flow broke. Hence a full-width skip that reads as an answer,
+    not an escape. */
+  }
+  <div class="onboarding-step" data-step="5" style="display:none;">
+    <header class="ob-header">
+      <h1 class="ob-title">{t("onboarding.step5.title")}</h1>
+      <p class="ob-sub">{t("onboarding.step5.sub")}</p>
+    </header>
+    <div class="ob-fields">
+      <div class="field">
+        <div id="ob-gallery-grid" class="ob-gallery-grid"></div>
+        <label class="btn-outline ob-gallery-add" for="ob-gallery-input">
+          {t("profile.gallery.add")}
+          <input
+            id="ob-gallery-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif"
+            multiple
+            style="display:none;"
+          />
+        </label>
+        <p id="ob-gallery-status" class="ob-upload-status" style="display:none;"></p>
+        <!--
+          Two notes, one shown. An unverified account holds exactly one gallery
+          image (MAX_UNVERIFIED_GALLERY_IMAGES in lib/gallery.ts), so "Up to 8"
+          was a lie at the moment it was read — 2026-09-03. Auth state is
+          client-only in a static build, so both are rendered and the verify
+          block in the script below swaps them. The verified note is the
+          server default deliberately: #onboarding-wrap stays display:none
+          until onUserAuthenticated has run (and the anonymous path can only
+          reach step -1), so nothing can flash either way — and defaulting to
+          verified keeps the swap a single block that mirrors the banner
+          (act for unverified, nothing to undo for verified).
+        -->
+        {
+          /* THREE NOTES BECAME TWO, AND ONE OF THEM CHANGES (2026-09-04, Josh:
+            "here it should be clearer in the communication").
+
+            The step used to say the same thing in three registers at once: a
+            note that named the one-image limit, a second note telling you that
+            having nothing to show is fine — still on screen after you had
+            already uploaded something — and the verify banner at the foot of
+            the page repeating the limit a third time in different words. A
+            member reading all three has to work out that they are one fact.
+
+            So the limit is now ONE line that says what is true right now, the
+            formats and the captions-come-later promise are their own quiet
+            line, and the "nothing to show yet" reassurance leaves the moment
+            it stops being the question being asked. The banner no longer
+            mentions images at all — the limit belongs next to the uploader,
+            not in a strip about email. */
+        }
+        <p id="ob-gallery-limit" class="field-note">{t("onboarding.step5.note")}</p>
+        <p class="field-note">{t("onboarding.step5.formats")}</p>
+        <p id="ob-gallery-later" class="field-note">{t("onboarding.step5.later")}</p>
+      </div>
+    </div>
+    <div class="ob-footer ob-footer--with-skip">
+      <button id="ob-skip-5" type="button" class="btn-link">{t("onboarding.step5.skip")}</button>
       <button id="ob-finish" type="button" class="btn-solid">{t("onboarding.nav.finish")}</button>
     </div>
   </div>
 
-  <!-- Step 5: Done -->
-  <div class="onboarding-step ob-done" data-step="5" style="display:none;">
+  <!-- Step 6: Done -->
+  <div class="onboarding-step ob-done" data-step="6" style="display:none;">
     <header class="ob-header ob-done-header">
       <h1 class="ob-title">{t("onboarding.done.title")}</h1>
       <p class="ob-sub">{t("onboarding.done.sub")}</p>
     </header>
     <div class="ob-done-card">
-      <MemberCard preview lang={lang} />
+      <CommunityCardPreview />
     </div>
     <p class="ob-done-disclaimer">{t("onboarding.done.disclaimer")}</p>
     <div class="ob-footer ob-footer--done">
@@ -457,6 +553,69 @@ const prefix = lang === "de" ? "/de" : "";
     margin-top: 0.4rem;
   }
 
+  /* Gallery (step 5) — thumbnails only. The profile editor is where an image
+     gets a caption, a description and a project; asking for any of that here
+     would turn one question into four. */
+  .ob-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+    gap: 10px;
+    margin-bottom: 1rem;
+  }
+
+  .ob-gallery-grid:empty {
+    display: none;
+  }
+
+  /* `.field` is a flex column, so a bare label stretches edge to edge and
+     reads as a drop zone rather than a button. */
+  .ob-gallery-add {
+    align-self: flex-start;
+  }
+
+  /* The thumbs are built by the script, so they never carry Astro's scope
+     attribute and a plainly-scoped `.ob-gallery-thumb` would compile to a
+     selector that matches nothing. `:global()` under the container — which IS
+     in the template and does carry the attribute — is what keeps these rules
+     scoped to this component without depending on the attribute. */
+  .ob-gallery-grid :global(.ob-gallery-thumb) {
+    position: relative;
+    aspect-ratio: 1;
+  }
+
+  .ob-gallery-grid :global(.ob-gallery-thumb img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--color-border);
+    box-sizing: border-box;
+  }
+
+  .ob-gallery-grid :global(.ob-gallery-thumb-remove) {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .ob-gallery-grid :global(.ob-gallery-thumb-remove:hover) {
+    background: var(--color-error);
+  }
+
   /* Reuse ProfileForm field/tag styles */
   .input-prefix-wrap {
     display: flex;
@@ -490,6 +649,63 @@ const prefix = lang === "de" ? "/de" : "";
 
   .input-prefixed:focus {
     border-color: transparent;
+  }
+
+  /* ── Social links ─────────────────────────────────────── */
+  /* The profile editor's rules, kept in step by hand like everything else
+     under "Reuse ProfileForm field/tag styles" above — a stack of the same
+     prefixed input, each with its own remove control. No border around a row
+     and no per-row label: a link is one value, so a bordered block would be a
+     box drawn around a single input. */
+  .social-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 0.75rem;
+  }
+
+  .social-editor:empty {
+    display: none;
+  }
+
+  .social-row {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .social-row .input-prefix-wrap {
+    flex: 1 1 auto;
+  }
+
+  .social-add {
+    width: fit-content;
+  }
+
+  /* An outline circle, in the flow rather than pinned to a corner — there is
+     no block here for it to sit in. */
+  .social-row-remove {
+    flex: 0 0 auto;
+    align-self: center;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    color: var(--color-muted);
+    border: 1.5px solid var(--color-border);
+    border-radius: 50%;
+    font-size: 0.7rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .social-row-remove:hover {
+    color: #fff;
+    background: var(--color-error);
+    border-color: var(--color-error);
   }
 
   /* Done step (step 5) */
@@ -535,22 +751,58 @@ const prefix = lang === "de" ? "/de" : "";
     sendEmailVerification,
     type User,
   } from "firebase/auth";
-  import { validateAvatar, resizeAvatar, normaliseUrl } from "../lib/validation.ts";
+  import { returnTo } from "../lib/authEmail.ts";
+  import { hasVerifiedClaim } from "../lib/auth.ts";
+  import { validateAvatar, resizeAvatar } from "../lib/validation.ts";
   import {
     getUser,
-    createUser,
     updateUser,
     updateUserProfile,
     publishCurrentUserProfile,
     upsertOnboardingRequest,
     activatePublicProfile,
+    activatePublicProfileIfExists,
     isMemberType,
+    MEMBER_TYPES,
   } from "../lib/firestore.ts";
-  import { memberBadgeLabel, memberTypeFieldCopy } from "../lib/memberType.ts";
+  import { memberTypeFieldCopy } from "../lib/memberType.ts";
+  // The one parse of `socialMedia` in the codebase — shared with the profile
+  // editor and with every renderer, so a link typed here and the same link
+  // typed there cannot come out as different entries.
+  import {
+    splitSocial,
+    joinSocial,
+    MAX_SOCIAL_LINKS,
+    MAX_SOCIAL_MEDIA,
+  } from "../lib/links.ts";
   import { handleProfileUpdate, triggerRebuild } from "../lib/profile.ts";
+  import { renderCardPreview } from "../lib/profilePreview.ts";
+  import { markImageForDeletion } from "../lib/images.ts";
+  import { syncEmail } from "../lib/account.ts";
+  // The one gallery upload path in the codebase, the same four calls the
+  // profile editor composes: validate → compress to WebP → upload to Storage
+  // → write the array to Firestore. Nothing here re-implements any of it.
+  import {
+    MAX_GALLERY_IMAGES,
+    galleryLimit,
+    validateGalleryFile,
+    galleryErrorCode,
+    compressGalleryImage,
+    uploadGalleryImage,
+    type GalleryItem,
+  } from "../lib/gallery.ts";
   import { ui } from "../i18n/translations.ts";
 
   const STORAGE_KEY = "vscn:onboarding:state";
+
+  /**
+   * The bridge (2) is an interstitial, not a question — it asks nothing and is
+   * deliberately absent from `realSteps` so it cannot inflate the count. The
+   * gallery (5) IS a question, optional in the same way tags (3) and bio (4)
+   * already are, so it is counted like them.
+   */
+  const STEP_GALLERY = 5;
+  const STEP_DONE = 6;
 
   let unsubscribeAuth: (() => void) | null = null;
   let prevNavLangHandler: ((e: Event) => void) | null = null;
@@ -563,6 +815,27 @@ const prefix = lang === "de" ? "/de" : "";
     const lang = (wrap.dataset.lang ?? "en") as keyof typeof ui;
     const s = ui[lang] ?? ui.en;
     const prefix = lang === "de" ? "/de" : "";
+    // EVERYTHING THE DIRECTORY CARD SAYS THAT ITS MARKUP CANNOT CARRY. The
+    // real card resolves these with useTranslations() at build time; the Done
+    // step's card is filled in the browser, so they arrive as values. Most are
+    // the CAROUSEL's — the preview renders the card's own paging element as of
+    // 2026-09-02, and someone finishing onboarding with three uploads gets a
+    // card that pages, so it needs the names that make paging usable. Same set
+    // ProfileForm assembles.
+    const cardPreviewLabels = {
+      defaultName: s["profile.preview.defaultName"],
+      // The typographic face's fallback when a member has no tags.
+      memberTypeLabels: Object.fromEntries(
+        MEMBER_TYPES.map((type) => [type, s[`profile.memberType.${type}`]])
+      ),
+      carousel: s["community.card.carousel"],
+      image: s["community.card.image"],
+      gallery: s["community.card.gallery"],
+      imagePosition: s["community.card.imagePosition"],
+      prev: s["community.card.prev"],
+      next: s["community.card.next"],
+      workAlt: s["member.workAlt"],
+    };
 
     const loadingEl = document.getElementById("ob-loading");
     const errorEl = document.getElementById("ob-error")!;
@@ -578,12 +851,16 @@ const prefix = lang === "de" ? "/de" : "";
       const progressEl = document.getElementById("ob-progress");
       const progressText = document.getElementById("ob-progress-text");
       const progressFill = document.getElementById("ob-progress-fill");
-      const realSteps = [0, 1, 3, 4];
+      const realSteps = [0, 1, 3, 4, STEP_GALLERY];
       const idx = realSteps.indexOf(n);
-      const hideProgress = n === -1 || n === 2 || n === 5;
+      const hideProgress = n === -1 || n === 2 || n === STEP_DONE;
       if (progressEl) progressEl.style.display = hideProgress ? "none" : "";
-      if (progressText && idx >= 0) progressText.textContent = `${idx + 1} / 4`;
-      if (progressFill && idx >= 0) progressFill.style.width = `${(idx + 1) * 25}%`;
+      if (progressText && idx >= 0) {
+        progressText.textContent = `${idx + 1} / ${realSteps.length}`;
+      }
+      if (progressFill && idx >= 0) {
+        progressFill.style.width = `${((idx + 1) / realSteps.length) * 100}%`;
+      }
       errorEl.style.display = "none";
     }
 
@@ -623,6 +900,24 @@ const prefix = lang === "de" ? "/de" : "";
         // non-critical
       }
 
+      // FINISHING ONBOARDING PUBLISHES YOU (2026-09-04, Josh: "it should
+      // become active when verifying and when going through the sign up flow.
+      // it should be an active task to untick it").
+      //
+      // Not redundant with the activatePublicProfile on the step-2 buttons:
+      // the call above is publishPublicProfile, which writes `active: false`
+      // whenever the account is unverified — so the last act of onboarding was
+      // to un-publish a member who had just been activated four steps earlier.
+      // This puts the flag back, after the write that clears it rather than
+      // before.
+      //
+      // For an unverified member the rules refuse it (canPublish), which is
+      // correct and is why it is swallowed: verification is what publishes
+      // them, through /verify-email or the action page. Being visible is the
+      // default from here; hiding is the Active checkbox on the Account tab,
+      // which is a deliberate act.
+      await activatePublicProfileIfExists(user.uid).catch(() => {});
+
       try {
         await updateUser(user.uid, { onboardingComplete: true });
       } catch {
@@ -634,12 +929,12 @@ const prefix = lang === "de" ? "/de" : "";
         memberType: memberTypeSelector?.value ?? "",
         role: getInputValue("ob-role").trim(),
         portfolio: getInputValue("ob-portfolio").trim(),
-        socialMedia: getInputValue("ob-social").trim(),
+        socialMedia: socialStored(),
         bio: opts.bio ?? "",
         photoURL: opts.photoURL ?? user.photoURL ?? "",
         avatarObjectUrl: opts.avatarObjectUrl ?? null,
       });
-      setStep(5);
+      setStep(STEP_DONE);
       await triggerRebuild();
     }
 
@@ -649,7 +944,7 @@ const prefix = lang === "de" ? "/de" : "";
     }
 
     function saveTransientState() {
-      if (currentStep === 5) return;
+      if (currentStep === STEP_DONE) return;
       try {
         sessionStorage.setItem(
           STORAGE_KEY,
@@ -659,7 +954,7 @@ const prefix = lang === "de" ? "/de" : "";
             name: getInputValue("ob-name"),
             role: getInputValue("ob-role"),
             portfolio: getInputValue("ob-portfolio"),
-            social: getInputValue("ob-social"),
+            social: socialStored(),
             phone: getInputValue("ob-phone"),
             bio: getInputValue("ob-bio"),
             platformRequest: getInputValue("ob-platform-request"),
@@ -734,6 +1029,117 @@ const prefix = lang === "de" ? "/de" : "";
 
     memberTypeSelector?.addEventListener("member-type-change", syncMemberTypeCopy);
 
+    // ── Social links (step 0) ──────────────────────────────────────
+    // One row per link on screen; ONE comma-joined string in Firestore, which
+    // is the shape every reader of the field already understands — the rules,
+    // the build-time directory snapshot, and every profile stored before the
+    // rows existed. splitSocial()/joinSocial() in links.ts are the whole
+    // translation and are SHARED with the profile editor, so the two cannot
+    // disagree about what a row is or what order they store in.
+    const socialEditor = document.getElementById("ob-social-editor");
+    const socialAdd = document.getElementById("ob-social-add") as HTMLButtonElement | null;
+    const socialStatus = document.getElementById("ob-social-status");
+    const socialLabel = document.getElementById("ob-social-label");
+    const socialRowTpl = document.querySelector<HTMLTemplateElement>('[data-ob-social-tpl="row"]');
+    let socialValues: string[] = [""];
+
+    function setSocialStatus(text: string) {
+      if (!socialStatus) return;
+      socialStatus.textContent = text;
+      socialStatus.style.display = text ? "block" : "none";
+    }
+
+    /** The single stored value the rows add up to. */
+    function socialStored(): string {
+      return joinSocial(socialValues);
+    }
+
+    function refreshSocialStatus() {
+      if (socialAdd) socialAdd.disabled = socialValues.length >= MAX_SOCIAL_LINKS;
+      // Length, not count, is the real limit — firestore.rules caps the joined
+      // field at MAX_SOCIAL_MEDIA and rejects the WHOLE write over it, so the
+      // member has to hear about it here rather than as a bare permission
+      // error on the way out of the step.
+      if (socialStored().length > MAX_SOCIAL_MEDIA) {
+        setSocialStatus(s["profile.social.tooLong"]);
+      } else if (socialValues.length >= MAX_SOCIAL_LINKS) {
+        setSocialStatus(s["profile.social.full"]);
+      } else {
+        setSocialStatus("");
+      }
+    }
+
+    /**
+     * Full rebuild of the rows. Called on load, add and remove only — never
+     * while typing, which would take the caret with it. Keystrokes write
+     * straight into socialValues[index].
+     */
+    function renderSocial() {
+      if (!socialEditor || !socialRowTpl) return;
+      socialEditor.replaceChildren(
+        ...socialValues
+          .map((value, index) => {
+            const row = socialRowTpl.content.firstElementChild?.cloneNode(true);
+            if (!(row instanceof HTMLElement)) return null;
+            const input = row.querySelector<HTMLInputElement>("[data-social-input]");
+            const remove = row.querySelector<HTMLButtonElement>("[data-social-remove]");
+            if (!input || !remove) return null;
+
+            input.value = value;
+            input.placeholder = s["profile.ph.social"];
+            // Rows share one field label, so the position is what tells them
+            // apart to anyone who cannot see the stack.
+            input.setAttribute(
+              "aria-label",
+              `${socialLabel?.textContent ?? ""} ${index + 1}`.trim()
+            );
+            input.addEventListener("input", () => {
+              socialValues[index] = input.value;
+              refreshSocialStatus();
+            });
+
+            remove.setAttribute("aria-label", s["profile.social.remove"]);
+            remove.addEventListener("click", () => removeSocialRow(index));
+            return row;
+          })
+          .filter((n): n is HTMLElement => n !== null)
+      );
+      refreshSocialStatus();
+    }
+
+    function setSocialValues(values: string[]) {
+      // Always at least one row: an empty stack with only a button reads as a
+      // missing field rather than an empty one, and this is a sign-up form
+      // where a field that looks absent is a question nobody answers. The
+      // blank row costs nothing — joinSocial() drops it.
+      socialValues = values.length > 0 ? values : [""];
+      renderSocial();
+    }
+
+    function addSocialRow() {
+      if (socialValues.length >= MAX_SOCIAL_LINKS) {
+        setSocialStatus(s["profile.social.full"]);
+        return;
+      }
+      socialValues.push("");
+      renderSocial();
+      socialEditor
+        ?.querySelector<HTMLInputElement>(".social-row:last-of-type [data-social-input]")
+        ?.focus();
+    }
+
+    /** Removing the only row empties it rather than leaving no field at all. */
+    function removeSocialRow(index: number) {
+      if (socialValues.length <= 1) socialValues = [""];
+      else socialValues.splice(index, 1);
+      renderSocial();
+    }
+
+    socialAdd?.addEventListener("click", addSocialRow);
+    // The one empty row the field opens with. Anything stored or drafted
+    // replaces it when the step is filled in below.
+    setSocialValues([]);
+
     // ── Tags (delegated to the <tag-selector> custom element) ─────
     const tagSelector = document.querySelector<
       HTMLElement & {
@@ -748,6 +1154,12 @@ const prefix = lang === "de" ? "/de" : "";
     const avatarWrap = document.getElementById("ob-avatar-wrap") as HTMLElement;
     const uploadStatus = document.getElementById("ob-upload-status") as HTMLElement;
     let resizedAvatarBlob: Blob | null = null;
+    let avatarColor = "";
+    // The record behind the avatar currently stored, exactly as ProfileForm
+    // tracks it. Without it, replacing the avatar twice inside one onboarding
+    // left the first record `live` forever — an image nothing references and
+    // no sweeper takes.
+    let currentPhotoImageId = "";
 
     avatarInput?.addEventListener("change", async () => {
       const file = avatarInput.files?.[0];
@@ -761,7 +1173,7 @@ const prefix = lang === "de" ? "/de" : "";
       uploadStatus.textContent = s["profile.upload.processing"];
       uploadStatus.style.display = "block";
       try {
-        resizedAvatarBlob = await resizeAvatar(file);
+        ({ blob: resizedAvatarBlob, color: avatarColor } = await resizeAvatar(file));
         const url = URL.createObjectURL(resizedAvatarBlob);
         avatarImg.src = url;
         avatarWrap.classList.add("has-image");
@@ -769,6 +1181,171 @@ const prefix = lang === "de" ? "/de" : "";
       } catch {
         uploadStatus.textContent = s["profile.upload.error"];
         resizedAvatarBlob = null;
+      }
+    });
+
+    // ── Gallery (step 5) ───────────────────────────────────────────
+    // Uploads persist the moment they land, exactly as the profile editor
+    // does, because they own files in Storage and the Firestore array is what
+    // says which of those files still belong to the member. The consequence
+    // that matters here: Finish never has an upload left to do, so a failed
+    // upload can never hold the member short of the Done step.
+    let gallery: GalleryItem[] = [];
+    let uploadsInFlight = 0;
+
+    const galleryInput = document.getElementById("ob-gallery-input") as HTMLInputElement | null;
+    const galleryGrid = document.getElementById("ob-gallery-grid");
+    const galleryStatus = document.getElementById("ob-gallery-status");
+
+    function setGalleryStatus(text: string) {
+      if (!galleryStatus) return;
+      galleryStatus.textContent = text;
+      galleryStatus.style.display = text ? "block" : "none";
+    }
+
+    /** Finish and Skip stay honest while bytes are still moving. */
+    function setGalleryBusy(busy: boolean) {
+      const finish = document.getElementById("ob-finish") as HTMLButtonElement | null;
+      const skip = document.getElementById("ob-skip-5") as HTMLButtonElement | null;
+      if (finish) finish.disabled = busy;
+      if (skip) skip.disabled = busy;
+    }
+
+    /**
+     * Verified until the auth guard says otherwise — the same default the
+     * banner takes, so nothing flashes the pessimistic copy on the way in.
+     */
+    let galleryVerified = true;
+
+    /**
+     * The limit line says what is true NOW, and the reassurance leaves once it
+     * has been answered.
+     *
+     * Three states rather than two, because "one image for now" and "that was
+     * your one image" are different sentences to be reading: the first is a
+     * budget, the second is a reason the Add button just disappeared.
+     */
+    function updateGalleryNotes() {
+      const limit = document.getElementById("ob-gallery-limit");
+      const later = document.getElementById("ob-gallery-later");
+      if (limit) {
+        limit.textContent = galleryVerified
+          ? s["onboarding.step5.note"]
+          : gallery.length > 0
+            ? s["onboarding.step5.noteUnverifiedFull"]
+            : s["onboarding.step5.noteUnverified"];
+      }
+      // "Nothing to show yet is a normal answer" is an answer to a question
+      // the member has already answered once an image is on screen.
+      if (later) later.hidden = gallery.length > 0;
+    }
+
+    function renderGallery() {
+      if (!galleryGrid) return;
+      updateGalleryNotes();
+      galleryGrid.replaceChildren(
+        ...gallery.map((item, index) => {
+          const wrap = document.createElement("div");
+          wrap.className = "ob-gallery-thumb";
+          const img = document.createElement("img");
+          img.src = item.url;
+          img.alt = "";
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "ob-gallery-thumb-remove";
+          remove.textContent = "×";
+          remove.setAttribute("aria-label", s["profile.gallery.remove"]);
+          remove.addEventListener("click", () => removeGalleryImage(index));
+          wrap.append(img, remove);
+          return wrap;
+        })
+      );
+      const input = document.getElementById("ob-gallery-input") as HTMLInputElement | null;
+      const label = input?.closest("label") as HTMLElement | null;
+      // Onboarding hides the control at the ceiling rather than explaining it;
+      // for an unverified member that ceiling is one image, and the status line
+      // above already carries the reason from the last attempt.
+      if (label) label.style.display = gallery.length >= galleryLimit(auth.currentUser) ? "none" : "";
+    }
+
+    async function persistGallery() {
+      const user = auth.currentUser;
+      if (!user) return;
+      await updateUserProfile(user.uid, { gallery, updatedAt: new Date() });
+    }
+
+    async function removeGalleryImage(index: number) {
+      const [removed] = gallery.splice(index, 1);
+      renderGallery();
+      try {
+        await persistGallery();
+        if (removed) await markImageForDeletion(removed.imageId);
+        setGalleryStatus("");
+      } catch {
+        setGalleryStatus(s["profile.gallery.error"]);
+      }
+    }
+
+    galleryInput?.addEventListener("change", async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      const files = Array.from(galleryInput.files ?? []);
+      galleryInput.value = "";
+      if (files.length === 0) return;
+
+      uploadsInFlight += 1;
+      setGalleryBusy(true);
+      let uploaded = false;
+      let failed = false;
+      try {
+        for (const file of files) {
+          const limit = galleryLimit(user);
+          if (gallery.length >= limit) {
+            setGalleryStatus(
+              limit < MAX_GALLERY_IMAGES ? s["profile.gallery.verifyForMore"] : s["profile.gallery.full"],
+            );
+            break;
+          }
+          // A code, not a sentence: validateGalleryFile knows what is wrong
+          // and this side knows which language the member reads in.
+          const rejected = validateGalleryFile(file);
+          if (rejected) {
+            setGalleryStatus(s[`profile.gallery.err.${rejected}`]);
+            failed = true;
+            continue;
+          }
+          try {
+            setGalleryStatus(s["profile.upload.processing"]);
+            const compressed = await compressGalleryImage(file);
+            const item = await uploadGalleryImage(user.uid, compressed, {
+              onProgress: (pct) =>
+                setGalleryStatus(`${s["profile.upload.uploading"]} ${pct}%`),
+            });
+            // One image failing is one image failing: the loop keeps going and
+            // everything already uploaded stays.
+            gallery.push(item);
+            uploaded = true;
+            renderGallery();
+          } catch (err) {
+            // Named, because the causes call for different actions: an expired
+            // sign-in and a file that will never fit are both permanent, and
+            // "please try again" was wrong advice for both.
+            setGalleryStatus(s[`profile.gallery.err.${galleryErrorCode(err)}`]);
+            failed = true;
+          }
+        }
+
+        if (uploaded) {
+          try {
+            await persistGallery();
+            if (!failed) setGalleryStatus(s["profile.upload.complete"]);
+          } catch {
+            setGalleryStatus(s["profile.gallery.error"]);
+          }
+        }
+      } finally {
+        uploadsInFlight -= 1;
+        if (uploadsInFlight === 0) setGalleryBusy(false);
       }
     });
 
@@ -781,7 +1358,7 @@ const prefix = lang === "de" ? "/de" : "";
         const nameVal = getInputValue("ob-name").trim();
         const roleVal = getInputValue("ob-role").trim();
         const portfolioVal = getInputValue("ob-portfolio").trim();
-        const socialVal = getInputValue("ob-social").trim();
+        const socialVal = socialStored();
         const phoneVal = getInputValue("ob-phone").trim();
         const memberTypeVal = memberTypeSelector?.value ?? "";
 
@@ -793,7 +1370,6 @@ const prefix = lang === "de" ? "/de" : "";
           portfolio: portfolioVal,
           socialMedia: socialVal,
           phone: phoneVal,
-          email: user.email!,
         });
       } finally {
         setBtnState("ob-next-0", false, s["onboarding.nav.next"]);
@@ -816,7 +1392,6 @@ const prefix = lang === "de" ? "/de" : "";
           await upsertOnboardingRequest(user.uid, {
             message: platformRequest,
             lang: lang === "de" ? "de" : "en",
-            email: user.email ?? undefined,
             displayName: getInputValue("ob-name").trim() || user.displayName || undefined,
           }).catch((err) => {
             console.warn("[onboarding] Request save skipped:", err);
@@ -855,7 +1430,11 @@ const prefix = lang === "de" ? "/de" : "";
       }
     });
 
-    document.getElementById("ob-skip-3")?.addEventListener("click", () => finishToPreview({}));
+    // Skip means "not this one", not "not the rest of them" — otherwise
+    // skipping tags would silently swallow the bio and the gallery too, and
+    // the step that fills the directory with images would be the one almost
+    // nobody is ever shown. The bridge (2) remains the single early exit.
+    document.getElementById("ob-skip-3")?.addEventListener("click", () => setStep(4));
 
     function populatePreviewCard(opts: {
       displayName: string;
@@ -867,107 +1446,48 @@ const prefix = lang === "de" ? "/de" : "";
       photoURL: string;
       avatarObjectUrl: string | null;
     }) {
-      const previewName = document.getElementById("preview-name");
-      const previewBadge = document.getElementById("preview-badge") as HTMLElement | null;
-      const previewRole = document.getElementById("preview-role") as HTMLElement | null;
-      const previewLinks = document.getElementById("preview-links") as HTMLElement | null;
-      const previewPortfolio = document.getElementById(
-        "preview-portfolio"
-      ) as HTMLAnchorElement | null;
-      const previewLinksSep = document.getElementById("preview-links-sep") as HTMLElement | null;
-      const previewSocial = document.getElementById("preview-social") as HTMLAnchorElement | null;
-      const previewBio = document.getElementById("preview-bio") as HTMLElement | null;
-      const previewBioToggle = document.getElementById(
-        "preview-bio-toggle"
-      ) as HTMLButtonElement | null;
-      const previewAvatarImg = document.getElementById(
-        "preview-avatar-img"
-      ) as HTMLImageElement | null;
-      const previewAvatarPh = document.getElementById("preview-avatar-ph") as HTMLElement | null;
-
-      const displayName = opts.displayName || "Anonymous";
-      if (previewName) previewName.textContent = displayName;
-
-      if (previewRole) {
-        if (opts.role) {
-          previewRole.textContent = opts.role;
-          previewRole.hidden = false;
-        } else {
-          previewRole.hidden = true;
-        }
-      }
-
-      if (previewBadge) {
-        const badge = memberBadgeLabel(opts.memberType, (key) => s[key] ?? key);
-        previewBadge.textContent = badge;
-        previewBadge.hidden = !badge;
-      }
-
-      if (previewPortfolio) {
-        const href = normaliseUrl(opts.portfolio);
-        if (href) {
-          previewPortfolio.href = href;
-          previewPortfolio.textContent = opts.portfolio;
-          previewPortfolio.hidden = false;
-        } else {
-          previewPortfolio.hidden = true;
-        }
-      }
-
-      const socialHref = normaliseUrl(opts.socialMedia);
-      if (previewSocial) {
-        if (socialHref) {
-          previewSocial.href = socialHref;
-          previewSocial.hidden = false;
-        } else {
-          previewSocial.hidden = true;
-        }
-      }
-      if (previewLinksSep) previewLinksSep.hidden = !normaliseUrl(opts.portfolio) || !socialHref;
-      if (previewLinks) previewLinks.hidden = !normaliseUrl(opts.portfolio) && !socialHref;
-
-      if (previewBio) {
-        if (opts.bio) {
-          previewBio.textContent = opts.bio;
-          previewBio.hidden = false;
-          if (previewBioToggle) {
-            previewBioToggle.hidden = false;
-            previewBioToggle.setAttribute("aria-label", `${s["member.showBio"]} ${displayName}`);
-          }
-        } else {
-          previewBio.hidden = true;
-          if (previewBioToggle) {
-            previewBioToggle.hidden = true;
-            previewBioToggle.closest(".member-card-wrap")?.classList.remove("is-expanded");
-            previewBioToggle.setAttribute("aria-expanded", "false");
-          }
-        }
-      }
-
-      const imgSrc = opts.avatarObjectUrl || opts.photoURL || "";
-      if (previewAvatarImg && previewAvatarPh) {
-        if (imgSrc) {
-          previewAvatarImg.src = imgSrc;
-          previewAvatarImg.alt = displayName;
-          previewAvatarImg.hidden = false;
-          previewAvatarPh.hidden = true;
-          previewAvatarImg.onerror = () => {
-            previewAvatarImg.hidden = true;
-            previewAvatarPh.hidden = false;
-            previewAvatarPh.textContent = displayName[0]?.toUpperCase() ?? "?";
-          };
-        } else {
-          previewAvatarImg.hidden = true;
-          previewAvatarPh.hidden = false;
-          previewAvatarPh.textContent = displayName[0]?.toUpperCase() ?? "?";
-        }
-      }
+      const root = document.querySelector<HTMLElement>("[data-ccpv-root]");
+      if (!root) return;
+      // Which face the card gets is decided by the gallery step: an image
+      // card when something was uploaded, otherwise the typographic card —
+      // the framed rectangle of their tags, falling back to member type, then
+      // role. Either way it is what /community will render. The avatar fields
+      // still arrive in opts but the directory card does not show an avatar;
+      // the gallery is the card's only image source.
+      renderCardPreview(
+        root,
+        {
+          displayName: opts.displayName,
+          role: opts.role,
+          memberType: opts.memberType,
+          bio: opts.bio,
+          tags: tagSelector?.value ?? [],
+          openTo: [],
+          portfolio: opts.portfolio,
+          socialMedia: opts.socialMedia,
+          works: gallery.map((g) => ({
+            url: g.url,
+            width: g.width,
+            height: g.height,
+            caption: g.caption,
+            color: g.color,
+          })),
+        },
+        cardPreviewLabels
+      );
     }
 
-    document.getElementById("ob-finish")?.addEventListener("click", async () => {
+    // Bio and avatar are saved on the way out of step 4, but the Done card is
+    // only painted at the end of step 5, so what they produced has to survive
+    // the trip.
+    let pendingBio = "";
+    let pendingPhotoURL: string | undefined;
+    let pendingAvatarObjectUrl: string | null = null;
+
+    document.getElementById("ob-next-4")?.addEventListener("click", async () => {
       const user = auth.currentUser;
       if (!user) return;
-      setBtnState("ob-finish", true, s["onboarding.nav.finish"]);
+      setBtnState("ob-next-4", true, s["onboarding.nav.next"]);
       setError("");
       try {
         const bioVal = getInputValue("ob-bio").trim();
@@ -976,11 +1496,13 @@ const prefix = lang === "de" ? "/de" : "";
           avatarObjectUrl = URL.createObjectURL(resizedAvatarBlob);
         }
 
-        const { photoURL } = await handleProfileUpdate(
+        const { photoURL, photoImageId } = await handleProfileUpdate(
           user,
           {
             bio: bioVal,
             resizedAvatarBlob,
+            previousPhotoImageId: currentPhotoImageId,
+            ...(resizedAvatarBlob && avatarColor ? { photoColor: avatarColor } : {}),
           },
           (pct) => {
             uploadStatus.textContent = `${s["profile.upload.uploading"]} ${pct}%`;
@@ -988,34 +1510,61 @@ const prefix = lang === "de" ? "/de" : "";
           }
         );
 
-        await finishToPreview({ bio: bioVal, photoURL, avatarObjectUrl });
+        if (photoImageId) currentPhotoImageId = photoImageId;
+        pendingBio = bioVal;
+        pendingPhotoURL = photoURL;
+        pendingAvatarObjectUrl = avatarObjectUrl;
+        setBtnState("ob-next-4", false, s["onboarding.nav.next"]);
+        setStep(STEP_GALLERY);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : s["onboarding.error.save"]);
-        setBtnState("ob-finish", false, s["onboarding.nav.finish"]);
+        setBtnState("ob-next-4", false, s["onboarding.nav.next"]);
       }
     });
 
-    document.getElementById("ob-skip-4")?.addEventListener("click", () => finishToPreview({}));
+    document.getElementById("ob-skip-4")?.addEventListener("click", () => setStep(STEP_GALLERY));
+
+    function finishFromGallery() {
+      finishToPreview({
+        bio: pendingBio,
+        photoURL: pendingPhotoURL,
+        avatarObjectUrl: pendingAvatarObjectUrl,
+      });
+    }
+
+    // Both buttons end the same way. Whatever the gallery step did or failed
+    // to do is already settled in Storage and Firestore by the time either is
+    // pressed, so neither can be blocked by it.
+    document.getElementById("ob-finish")?.addEventListener("click", finishFromGallery);
+    document.getElementById("ob-skip-5")?.addEventListener("click", finishFromGallery);
 
     // ── Verify banner ──────────────────────────────────────────────
     const verifyBanner = document.getElementById("ob-verify-banner")!;
     const btnResend = document.getElementById("ob-resend-verify") as HTMLButtonElement;
     const verifySent = document.getElementById("ob-verify-sent")!;
 
+
     // ── Auth guard ─────────────────────────────────────────────────
     async function onUserAuthenticated(user: User) {
       try {
+        // Settle "am I verified" against the TOKEN before anything reads it.
+        // This page picks a gallery cap and an image id from verification
+        // state, and both are judged by the rulesets against the token, not
+        // against the cached account record. The two disagree for up to an
+        // hour after the link is clicked. See hasVerifiedClaim.
+        await hasVerifiedClaim(user);
         const data = await getUser(user.uid);
         if (data.onboardingComplete) {
           window.location.href = `${prefix}/community`;
           return;
         }
 
+        currentPhotoImageId = data.photoImageId ?? "";
+
         // Pre-fill existing data
         const nameEl = document.getElementById("ob-name") as HTMLInputElement;
         const roleEl = document.getElementById("ob-role") as HTMLInputElement;
         const portfolioEl = document.getElementById("ob-portfolio") as HTMLInputElement;
-        const socialEl = document.getElementById("ob-social") as HTMLInputElement;
         const phoneEl = document.getElementById("ob-phone") as HTMLInputElement;
         const bioEl = document.getElementById("ob-bio") as HTMLTextAreaElement;
         const requestEl = document.getElementById("ob-platform-request") as HTMLTextAreaElement;
@@ -1023,7 +1572,7 @@ const prefix = lang === "de" ? "/de" : "";
         nameEl.value = data.displayName ?? user.displayName ?? "";
         roleEl.value = data.role ?? "";
         portfolioEl.value = data.portfolio ?? "";
-        socialEl.value = data.socialMedia ?? "";
+        setSocialValues(splitSocial(data.socialMedia ?? ""));
         phoneEl.value = data.phone ?? "";
         if (bioEl) bioEl.value = data.bio ?? "";
         if (requestEl) requestEl.value = "";
@@ -1042,6 +1591,14 @@ const prefix = lang === "de" ? "/de" : "";
 
         const savedTags = Array.isArray(data.tags) ? data.tags.filter(Boolean).slice(0, 7) : [];
         if (tagSelector) tagSelector.value = savedTags;
+
+        // Each image is in Firestore the moment it lands, so re-reading the
+        // user doc is the whole restore — no transient copy to keep in step,
+        // and a language switch mid-gallery keeps the thumbnails.
+        gallery = Array.isArray(data.gallery)
+          ? data.gallery.filter(Boolean).slice(0, MAX_GALLERY_IMAGES)
+          : [];
+        renderGallery();
       } catch {
         // Permission denied or network error — show form with empty fields
       }
@@ -1058,7 +1615,7 @@ const prefix = lang === "de" ? "/de" : "";
         setIfPresent("ob-name", restoreState.name);
         setIfPresent("ob-role", restoreState.role);
         setIfPresent("ob-portfolio", restoreState.portfolio);
-        setIfPresent("ob-social", restoreState.social);
+        if (restoreState.social != null) setSocialValues(splitSocial(restoreState.social));
         setIfPresent("ob-phone", restoreState.phone);
         setIfPresent("ob-bio", restoreState.bio);
         setIfPresent("ob-platform-request", restoreState.platformRequest);
@@ -1085,7 +1642,7 @@ const prefix = lang === "de" ? "/de" : "";
           tagSelector.inputValue = restoreState.tagInput;
         }
 
-        if (typeof restoreState.step === "number" && restoreState.step !== 5) {
+        if (typeof restoreState.step === "number" && restoreState.step !== STEP_DONE) {
           restoredStep = restoreState.step;
         }
         clearTransientState();
@@ -1110,13 +1667,17 @@ const prefix = lang === "de" ? "/de" : "";
 
       if (!user.emailVerified) {
         verifyBanner.style.display = "block";
+        // The gallery cap is one image until verification; say so before the
+        // member picks a second file rather than after (2026-09-03).
+        galleryVerified = false;
+        updateGalleryNotes();
         let cooldown = false;
         btnResend?.addEventListener("click", async () => {
           if (cooldown) return;
           cooldown = true;
           btnResend.disabled = true;
           try {
-            await sendEmailVerification(user);
+            await sendEmailVerification(user, returnTo(lang, "/onboarding"));
             verifySent.style.display = "block";
           } catch {
             // ignore
@@ -1184,8 +1745,11 @@ const prefix = lang === "de" ? "/de" : "";
         }
         const user = userCredential.user;
         if (isNewUser) {
-          await createUser(user.uid, { email: user.email! }).catch(() => {});
-          await sendEmailVerification(user).catch(() => {});
+          // users/{uid}.email is server-written: the callable reads the address
+          // off the caller's own token and merge-creates the doc. The client
+          // cannot write the field itself — firestore.rules pins it.
+          await syncEmail().catch(() => {});
+          await sendEmailVerification(user, returnTo(lang, "/onboarding")).catch(() => {});
         }
         await onUserAuthenticated(user);
       } catch (err: unknown) {

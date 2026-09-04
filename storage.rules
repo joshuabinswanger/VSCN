@@ -3,20 +3,41 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    match /avatars/{filename} {
-      // Anyone can read avatars (needed to display them in the community page)
+    match /users/{uid}/{kind}/{filename} {
+      // One prefix per account: users/{uid}/ holds every byte a member owns,
+      // so a purge is a single prefix delete. The filename is the image
+      // record's id (images/{imageId}), written to Firestore BEFORE the bytes.
       allow read: if true;
 
-      // Only authenticated users can write their own avatar.
-      // The filename must be {uid}.{ext} — enforced by matching the uid segment
+      // AN UNVERIFIED ACCOUNT GETS ONE OBJECT PER KIND, and it is always the
+      // same one: `{uid}-{kind}.webp`. The cap is not a count — Storage rules
+      // cannot count, and cannot read Firestore either, so this door is the
+      // only thing bounding what a fresh unverified sign-up can put in the
+      // bucket. It is a namespace of size one instead: re-uploading overwrites
+      // the slot, so "replace my picture" keeps working while "upload a
+      // hundred" is simply unaddressable. The matching record-side cap is in
+      // firestore.rules under images/{imageId}; keep the two names identical.
+      //
+      // The slot stays legal for VERIFIED members too, deliberately: it is the
+      // safety net under the client's choice of id. That choice is made from
+      // the ID TOKEN's claim (hasVerifiedClaim in src/lib/auth.ts) precisely
+      // so it agrees with this rule — but a client that cannot refresh its
+      // token (offline, or a refresh that fails) falls back to the cached
+      // account record, and the record runs AHEAD of the token for up to an
+      // hour after the link is clicked. This clause is what makes that
+      // fallback a reused slot rather than an opaque permission error.
       allow write: if request.auth != null
-                   && filename.matches(request.auth.uid + '\\.[a-zA-Z]+')
-                   && request.resource.size <= 2 * 1024 * 1024
-                   && request.resource.contentType.matches('image/(jpeg|png|webp)');
+                   && request.auth.uid == uid
+                   && (kind == 'avatar' || kind == 'gallery')
+                   && (filename == uid + '-' + kind + '.webp'
+                       || (request.auth.token.email_verified == true
+                           && filename.matches('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.webp')))
+                   && request.resource.contentType == 'image/webp'
+                   && ((kind == 'avatar' && request.resource.size <= 2 * 1024 * 1024)
+                       || (kind == 'gallery' && request.resource.size <= 8 * 1024 * 1024));
 
-      // Only the owner can delete their own avatar
-      allow delete: if request.auth != null
-                    && filename.matches(request.auth.uid + '\\.[a-zA-Z]+');
+      // Members mark the record; sweepImages / purgeAccount delete the bytes.
+      allow delete: if false;
     }
 
     // Reject everything else

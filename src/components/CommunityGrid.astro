@@ -1,92 +1,1645 @@
 ---
-import type { PublicProfileDoc } from "../lib/firestore.ts";
-import MemberCard from "./MemberCard.astro";
+import { hasArtwork, stripStorageToken, type MemberView } from "../lib/memberView.ts";
+import { GALLERY_PATTERNS, STRIP_ROWS, layOutSlots } from "../lib/communityLayout.ts";
+import { memberHref } from "../lib/links.ts";
+import CommunityImageCard from "./community/CommunityImageCard.astro";
+import CommunityWorkCard from "./community/CommunityWorkCard.astro";
+import MemberDetailPanel from "./community/MemberDetailPanel.astro";
 import { useTranslations } from "../i18n/utils.ts";
 import type { Lang } from "../i18n/utils.ts";
 
+// The image-led directory: the prototype's visual language (irregular card
+// widths and offsets, scroll-linked growth, image/typographic card split)
+// carrying the production page's behaviour (member count, shuffle, empty
+// state, signed-out CTA).
+//
+// The type/openTo filter rows are deliberately absent — the design doc's
+// option (c), taken on purpose while the directory is small enough to read
+// whole. Their markup, styles and wiring are preserved on the branch
+// `feat/community-filters` and are meant to come back once narrowing the
+// list is worth a control.
+//
+// LAYOUT IS DRAWN, NOT DERIVED. The grid below is a hand-authored table of
+// slots and cards are dealt into it at random, which replaces the multicol
+// layout the design doc chose (conflict 1) and everything that had grown on
+// top of it: per-tier width/offset variants, a runtime pass that ranked the
+// column leaders, and a sweep that measured every card and nudged the ones
+// that started level. All of that existed to approximate a designed page at
+// runtime. Now the page IS designed, and the properties it was chasing —
+// nothing starts at the same height, the top row steps down — are things you
+// can read off the table instead of enforce in JS.
+
 interface Props {
-  members: (PublicProfileDoc & { uid: string })[];
+  members: MemberView[];
   lang?: Lang;
-  debugInfo?: string;
 }
 
-const { members, lang = 'en', debugInfo } = Astro.props;
+const { members, lang = "en" } = Astro.props;
 const t = useTranslations(lang);
-const memberLabel = members.length === 1 ? t('community.member') : t('community.members');
+
+// THE BAR. Every control the page has lives on one sticky line at the
+// header's 900px measure: the tags dropdown and the view switcher. Chosen by
+// elimination over one long review day: pill chips died ("app chrome"), a
+// static band died ("sits awkwardly"), the free search field, the openTo
+// words and the member count all died ("remove…") — TAGS is the one filter
+// the page keeps, and the panel's own narrowing field is the search that
+// remains. The openTo and member-TYPE machinery live on in
+// feat/community-filters.
+//
+// Filtering re-deals the survivors into the pattern's leading slots (see
+// applyLayout): on the drawn grid a hidden cell leaves its slot EMPTY rather
+// than repacking, so hiding in place is never an option.
+//
+// Every distinct tag with its member count, alphabetical — the dropdown's
+// list. Identity is case-insensitive (member-typed tags vary in casing); the
+// first spelling seen is the one displayed.
+const tagIndex = new Map<string, { label: string; count: number }>();
+for (const m of members) {
+  for (const raw of m.tags) {
+    const label = raw.trim();
+    if (!label) continue;
+    const key = label.toLowerCase();
+    const entry = tagIndex.get(key);
+    if (entry) entry.count += 1;
+    else tagIndex.set(key, { label, count: 1 });
+  }
+}
+const allTags = [...tagIndex.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+
+// Pipe-delimited lowercase tag keys, same encoding as data-open-to, so the
+// dropdown can match a whole tag even when another tag contains it.
+const tagsAttr = (m: MemberView) => {
+  const keys = [...new Set(m.tags.map((raw) => raw.trim().toLowerCase()).filter(Boolean))];
+  return keys.length ? `|${keys.join("|")}|` : "";
+};
+
+// ── The hand-authored grid ────────────────────────────────────────────────
+//
+// A 24-column placement grid with NO column gap; every slot is a rectangle in
+// a repeating drawn tile. The slot tables, the maths that deals them and the
+// build-failing validation all live in src/lib/communityLayout.ts — shared
+// with the client script below, which re-runs the same layout when the
+// pattern selector switches. The tables are DRAWN, not derived: they
+// translate the Affinity document in Design/community-grid (see its README);
+// redraw there rather than editing numbers.
+//
+// NOBODY WITHOUT ARTWORK IS IN EITHER GALLERY (2026-09-03, Josh: "remove
+// memebrs from gallery that dont have images"). The wall dropped them on
+// 2026-09-01 for being the one thing on a wall of pictures that was not a
+// picture; the spread has now followed, and for the same reason — a gallery is
+// a place to look at work, and a card that is a rectangle of the member's own
+// tags is a directory row promoted into a picture frame. Both galleries are
+// therefore ARTWORK AND NOTHING ELSE, which also means the deal has one kind
+// of cell to place instead of two, and the "text cards always come last" rule
+// that shaped the old spread is gone with the cards.
+//
+// NOBODY IS DROPPED FROM THE DIRECTORY. Every member — gallery or no gallery —
+// is a row in the INDEX, which is the view that is about people and the one
+// place the whole membership is reachable. CommunityTextCard.astro is left in
+// the tree, unrendered: it is a finished piece of design that nothing asks for
+// today. `TEXT_TILE` in communityLayout.ts is likewise now unused by both
+// galleries.
+//
+// TWO GALLERIES, ONE SELECTOR: the two-lane editorial spread (the default,
+// rendered by the server and re-dealt on every load) and the brick grid wall,
+// switched by the Gallery/Grid toggle in the header, which syncs ?pattern= so
+// a view survives a reload. The two no longer share cells: the spread deals
+// MEMBER cards (name, gallery, role) and the wall deals one tile per WORK —
+// a single image and NOTHING ELSE, no caption and no carousel — so the toggle
+// swaps which set of cells is on screen as well as which drawing they are
+// dealt into. Pressing a tile opens the lightbox, which is also the only place
+// the wall names anyone. The earlier stagger drawing is
+// scrapped; the horizontal strip is SHELVED, not shipped — no UI reaches it,
+// but ?pattern=strip still rebuilds the page into it for design review (see
+// communityLayout.ts). No-JS visitors get the spread and nothing else; mobile
+// keeps the full selector and re-lays whichever deal is active into its own
+// two drawings: Gallery is a single column of full-width cards that fade in
+// on scroll (with the carousels auto-advancing every 5s — the arrows are
+// hidden on touch), Grid is the stacked two-column wall. Both are keyed off
+// data-pattern in the --bp-mobile block below.
+
+// WHO IS IN THE SPREAD: the members with artwork, and only them. `hasArtwork`
+// is the whole test, and it is now the same test the wall uses — see the
+// header. Members with an empty gallery are rendered by the INDEX below and
+// nowhere else on this page.
+const imageMembers = members.filter(hasArtwork);
+// textCards: 0 — TEXT_TILE plays no part in this pattern; it survives only as
+// the shelved strip mode's index ladder.
+const slots = layOutSlots(GALLERY_PATTERNS.spread, imageMembers.length, 0);
+const ordered = imageMembers;
+
+// Deal in row order, so the server-rendered DOM already reads top to bottom
+// for anyone without JS. Pairing member i with slot i is only correct because
+// the pattern is authored in ascending rowStart (rule 4, checked at module
+// load) and tilePattern repeats it in row order across tiles.
+const cells = slots.map((slot, i) => ({ slot, member: ordered[i] }));
+
+// ── The wall's own cells ──────────────────────────────────────────────────
+//
+// THE GRID IS NO LONGER THE SPREAD RE-DEALT. It used to be: one cell per
+// member, moved from one slot table into the other by the selector, carrying
+// the member card and its carousel with it. Now the two views are dealt from
+// DIFFERENT CELLS — the spread deals members, the wall deals WORKS. A member
+// with six images is one card in the spread and six tiles on the wall, which
+// is why the wall is several times taller than it was and why nothing on it
+// pages any more: a carousel exists to fit a gallery into one slot, and the
+// wall gives every image a slot of its own.
+//
+// Both sets are server-rendered into the same grid and the deal hides the one
+// that is not on screen (see applyLayout). That is what keeps the switch free
+// and the no-JS page honest: hidden cells are display:none, so a browser never
+// loads the wall's images until the wall is asked for.
+//
+// The members WITHOUT artwork are unchanged — the same tag cards, closing the
+// wall in completeness order, shared with the spread rather than duplicated.
+const workCells = imageMembers.flatMap((member) =>
+  member.works.map((work, i) => ({ member, work, key: `${member.id}-${i}` }))
+);
+
+// The third view: a typographic ledger of every member, alphabetical. Unlike
+// the two galleries it is not a deal into slots — it is rendered here, whole,
+// and the selector simply swaps it in for the grid. Server-rendered so the
+// rows carry the scoped-style attribute and the list costs no client work.
+// The lightbox's own labels, shared with the member page's gallery — one
+// attribute rather than five because the script that reads them is a module
+// and cannot take `define:vars`, so the strings have to arrive through the DOM.
+// Same keys the profile page uses: there is one lightbox on this site and it
+// should not speak differently depending on where it was opened from.
+const lightboxStrings = JSON.stringify({
+  close: t("member.lightbox.close"),
+  zoom: t("member.lightbox.zoom"),
+  prev: t("member.lightbox.prev"),
+  next: t("member.lightbox.next"),
+  error: t("member.lightbox.error"),
+});
+
+const indexMembers = [...members].sort((a, b) =>
+  (a.displayName || a.slug).localeCompare(b.displayName || b.slug)
+);
 ---
 
 <div class="community-wrapper" data-lang={lang}>
-  <div class="page-header">
-    <h1 class="page-title">
-      <span class="member-count">
-        {members.length} {memberLabel}
-      </span>
-    </h1>
+  {
+    /* Visually hidden, not removed: the page keeps an h1 for the outline and
+      screen readers (member names are h2s), but the bar is the page's first
+      visible element — the brand ticker above it is title enough. */
+  }
+  <h1 class="sr-title">{t("community.title")}</h1>
+
+  {
+    /* THE BAR: sticky at the top of .page-wrap's scrollport, which is flush
+      under the brand ticker (the ticker lives OUTSIDE the scroll container —
+      see Layout.astro). The outer strip spans the wide main and paints
+      --color-bg so artwork vanishes under it cleanly; the inner line and its
+      rule hold the header's 900px shell measure, mirroring the ticker's own
+      box (max-width + 15px inline padding), so the bar's edges align with the
+      title above it. Without JS every control renders and does nothing —
+      harmless rather than broken, and a no-JS visitor gets the full spread. */
+  }
+  <div class="community-bar">
+    <div class="community-bar__in">
+      {
+        /* The tags dropdown: browse every tag or type inside it to narrow the
+          list, pick one to filter. Single-select — "All tags" (or re-picking
+          the active tag) clears. The trigger is a filter-word like its
+          neighbours; the panel is the one boxed element the bar owns, and it
+          floats, so it never disturbs the line. */
+      }
+      <div class="tag-filter">
+        <button
+          type="button"
+          id="tag-filter-btn"
+          class="filter-word"
+          aria-expanded="false"
+          aria-controls="tag-filter-panel"
+        >
+          <span id="tag-filter-label" data-rest={t("community.filter.tags")}>
+            {t("community.filter.tags")}
+          </span>
+          <span class="tag-filter__caret" aria-hidden="true">▾</span>
+        </button>
+        <div id="tag-filter-panel" class="tag-filter__panel" hidden>
+          <input
+            id="tag-filter-search"
+            class="tag-filter__search"
+            type="search"
+            placeholder={t("community.filter.tags.search")}
+            aria-label={t("community.filter.tags.search")}
+            autocomplete="off"
+          />
+          <ul class="tag-filter__list">
+            <li>
+              <button type="button" class="tag-filter__option" data-tag="">
+                {t("community.filter.tags.all")}
+              </button>
+            </li>
+            {
+              allTags.map(([key, { label, count }]) => (
+                <li>
+                  <button
+                    type="button"
+                    class="tag-filter__option"
+                    data-tag={key}
+                    data-label={label}
+                    aria-pressed="false"
+                  >
+                    <span>{label}</span>
+                    <span class="tag-filter__count">{count}</span>
+                  </button>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </div>
+      {
+        /* All three views on every width: on mobile Gallery is a single
+          fading column, Grid the stacked two-column wall — see the
+          --bp-mobile block on .cgrid. */
+      }
+      <div class="view-toggle" role="group" aria-label={t("community.view.label")}>
+        <button type="button" class="view-toggle__btn" data-mode="spread" aria-pressed="true">
+          {t("community.view.gallery")}
+        </button>
+        <button type="button" class="view-toggle__btn" data-mode="grid" aria-pressed="false">
+          {t("community.view.grid")}
+        </button>
+        <button type="button" class="view-toggle__btn" data-mode="index" aria-pressed="false">
+          {t("community.view.index")}
+        </button>
+      </div>
+    </div>
   </div>
 
-  <div id="member-grid" class="member-grid">
-    {members.length === 0 && <p class="state-msg">{t('community.empty')}</p>}
-    {members.map((m) => <MemberCard member={m} lang={lang} />)}
+  {
+    /* Sits ABOVE the grid so it lands right under the chips that caused it —
+      below, it would trail 18rem of the empty grid's breathing room. */
+  }
+  {
+    /* TWO WORDINGS, ONE ELEMENT — and the line between them MOVED on
+      2026-09-03 with the artwork-only galleries. It used to separate the wall
+      (works) from everything else (members). Now BOTH galleries show artwork
+      and only artwork, so a tag whose matching members have empty galleries
+      empties them both while those members genuinely match — which is the
+      thing the wording has to be honest about. The ledger is the one view
+      that is a list of members, so it keeps the member wording, and it always
+      has rows where the galleries have none. Both strings ride on the element
+      and reflectFilterState picks — same `data-` carrier the tags trigger
+      uses for its resting label. */
+  }
+  <p
+    id="filter-empty"
+    class="state-msg filter-empty"
+    data-rest={t("community.filter.none")}
+    data-works={t("community.filter.none.works")}
+    hidden
+  >
+    {t("community.filter.none")}
+  </p>
+
+  <div id="member-grid" class="cgrid" data-pswp-i18n={lightboxStrings}>
+    {members.length === 0 && <p class="state-msg">{t("community.empty")}</p>}
+    {
+      /* The SHELVED strip layout's home (?pattern=strip — no UI reaches it): a
+        full-width flex row the client script moves the image cells into.
+        Rendered here (empty, hidden) rather than created in JS so it carries
+        the scoped-style attribute. Its row span has to agree with the index
+        offset the script computes, so both come from STRIP_ROWS in
+        communityLayout.ts. */
+    }
+    <div class="cgrid__strip" hidden style={`--gc:1 / span 24;--gr:1 / span ${STRIP_ROWS}`}></div>
+
+    {
+      cells.map(({ slot, member }, i) => (
+        <div
+          class="cgrid__cell"
+          data-slot="image"
+          data-rank={i}
+          data-tags={tagsAttr(member)}
+          data-row={slot.rowStart}
+          data-span={slot.rowSpan}
+          data-col={`${slot.colStart}-${slot.colStart + slot.colSpan - 1}`}
+          style={`--gc:${slot.colStart} / span ${slot.colSpan};--gr:${slot.rowStart} / span ${slot.rowSpan};--slot-rows:${slot.rowSpan}`}
+        >
+          <CommunityImageCard member={member} lang={lang} />
+        </div>
+      ))
+    }
+
+    {
+      /* THE WALL'S TILES, one per artwork. Rendered hidden and carrying no
+        placement: the spread is the default and the no-JS view, and the deal
+        writes --gc/--gr onto these only when the grid is asked for. `hidden`
+        is doing real work here beyond tidiness — it is display:none (see
+        .cgrid__cell[hidden]), so none of these images is fetched or decoded
+        while the spread is on screen.
+        data-tags is the MEMBER's, so the tag filter narrows the wall by the
+        person behind the work, exactly as it narrows the spread. */
+      workCells.map(({ member, work, key }, i) => (
+        <div
+          class="cgrid__cell"
+          data-slot="work"
+          data-rank={i}
+          data-tags={tagsAttr(member)}
+          data-work={key}
+          data-row="0"
+          data-col="0-0"
+          hidden
+        >
+          <CommunityWorkCard member={member} work={work} lang={lang} />
+        </div>
+      ))
+    }
+  </div>
+
+  {
+    /* The index: every member as one ledger row — "Name, Role" and a chevron,
+      alphabetical by name. (Was four ranged-left columns; the ordinal and the
+      member-type badge went first, the role joined the name it describes on
+      2026-08-31, and the TAG COLUMN went on 2026-09-02 — see the note in the
+      summary.) Hidden until the selector asks for it; the deal
+      never touches it, so switching in and out is free. Every row's dropdown
+      ends in a link to the member's page, which makes this the one view where
+      every member is reachable without hunting the drawing. Search lives in the masthead
+      band above, shared by all three views — the ledger just hides rows. */
+  }
+  <div id="member-index" class="cindex-wrap" hidden>
+    <ol class="cindex">
+      {
+        indexMembers.map((m) => {
+          // The disclosure's lead image is the PROFILE picture, not the
+          // artwork — the galleries already show the work; the ledger's
+          // dropdown is about the person. Same avatar treatment as
+          // MemberCard: the stored URL, token stripped, no build pipeline
+          // (avatars are small).
+          const avatarSrc = stripStorageToken(m.photoURL ?? "");
+          // WHERE THE "VIEW PROFILE" CONTROL GOES: in the DROPDOWN, on every
+          // row, without exception (2026-09-02, Josh: "index view profile in
+          // the dropdown content"; 2026-09-03, "when there is no added
+          // information the view profile in index shows even when not
+          // openend"). Same placement the image cards give it, and the same
+          // reason: the panel is what the row had to say about the member, and
+          // the way to their page is what you want once you have read it.
+          //
+          // EVERY ROW IS A DISCLOSURE, which is the 2026-09-03 half. A member
+          // with neither a picture nor anything to disclose used to get a
+          // STATIC line with the link printed ON it — no panel meant no footer
+          // to put it in, and dropping it would have left them the one member
+          // in the ledger with no route to their page. But that made the
+          // bare rows the loud ones: a control sitting open on the line,
+          // permanently, on exactly the members who had least to say, while
+          // the full profiles kept theirs folded away. So `forceShow` is
+          // unconditional now and the link is always in the footer. The panel
+          // of a bare member holds one thing — the way to their page — which
+          // is honest: it is all there is to disclose.
+          const profileLink = (
+            <a class="cindex__profile" href={memberHref(lang, m.slug)}>
+              {t("community.card.viewProfile.text")}
+            </a>
+          );
+          return (
+            <li class="cindex__row" data-tags={tagsAttr(m)}>
+              <div class="cindex__line">
+                {/* THE LINE IS THE TOGGLE (2026-09-01, Josh: "in index
+                    clicking on the profile expands it"). It used to be a link
+                    to the member's page, with a chevron at the far right as
+                    the only way to see anything in place — a 1rem target for a
+                    whole row of content, and the entire row's click going
+                    somewhere else. Now the row opens the row, and the page has
+                    a named link inside it (.cindex__profile). Same pairing as
+                    the image cards: clicking a thing expands or opens THAT
+                    thing, and travel is always a control that says where it
+                    goes.
+                    A real <summary> rather than a click handler, which is what
+                    keeps the keyboard activation and the expanded/collapsed
+                    announcement for free — see the summary slot in
+                    MemberDetailPanel. */}
+                <MemberDetailPanel member={m} lang={lang} forceShow>
+                  <Fragment slot="summary">
+                    {/* NAME AND ROLE ARE ONE UNIT — "Jane Doe, Illustrator" —
+                        not two columns. The role used to sit in its own track a
+                        column and a half away from the person it described,
+                        which read as a table of unrelated facts; beside the
+                        name it reads as the line a directory would actually
+                        print. The wrapper outlived the tag column it was
+                        introduced for: it is now what lets a long role wrap
+                        under the name instead of pushing the chevron off the
+                        end of the row.
+
+                        Rendered only when there IS a role. The comma lives in
+                        .cindex__role's ::before, so an absent role takes its
+                        separator with it — no stray punctuation, no empty flex
+                        item, at any breakpoint. */}
+                    <span class="cindex__who">
+                      <span class="cindex__name">{m.displayName || m.slug}</span>
+                      {/* `role` arrives already trimmed from memberView, so a
+                          truthiness test is the whole emptiness check. */}
+                      {m.role && <span class="cindex__role">{m.role}</span>}
+                    </span>
+                    {/* NO TAG COLUMN. The member's tags used to print here,
+                        ranged right, as the ledger's second column — gone on
+                        2026-09-02 (Josh: "tags index right after name should
+                        disappear"). Three uppercase-free fragments of a
+                        member's own vocabulary, truncated to fit, said less
+                        about them than the name already does, and repeated a
+                        list the dropdown prints in full a few pixels below.
+                        The line is now the person and nothing else. Nothing
+                        was lost with it: the full set is in the panel
+                        (.pdisc__vals--tags), and the tag FILTER never read
+                        this — it reads data-tags on the row. */}
+                  </Fragment>
+                  {/* The dropdown's lead: the profile picture, where there is
+                      one. Nothing else is conditional any more — every row is a
+                      disclosure (see the note above), so the panel always
+                      exists to hold whatever the member has. */}
+                  {avatarSrc && (
+                    <img
+                      slot="lead"
+                      class="cindex__avatar"
+                      src={avatarSrc}
+                      alt={m.displayName || m.slug}
+                      width="72"
+                      height="72"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  )}
+                  <Fragment slot="footer">{profileLink}</Fragment>
+                </MemberDetailPanel>
+              </div>
+            </li>
+          );
+        })
+      }
+    </ol>
   </div>
 
   <div id="community-signup-cta" class="community-signup-cta" style="display:none;">
-    <a href={lang === 'de' ? '/de/signup' : '/signup'} class="btn-solid">{t('signup.cta.community')}</a>
+    <a href={lang === "de" ? "/de/signup" : "/signup"} class="btn-solid"
+      >{t("signup.cta.community")}</a
+    >
   </div>
 </div>
 
 <style>
   .community-wrapper {
-    padding-bottom: 5rem;
     width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-  .page-header {
-    margin-bottom: 3rem;
+    padding-bottom: 5rem;
   }
 
-  .page-title {
-    display: flex;
-    align-items: baseline;
-    gap: 15px;
-    flex-wrap: wrap;
-    font-family: "Archivo", sans-serif;
-    font-size: clamp(1.6rem, 5vw, 2.4rem);
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: var(--color-dark);
-  }
-
-  .member-count {
-    font-size: 0.9rem;
-    font-weight: 400;
-    letter-spacing: 0;
-    color: #bbb;
+  .sr-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .state-msg {
-    color: #999;
+    color: var(--color-muted);
     font-size: 0.9rem;
   }
 
-  .member-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 2rem;
-    width: 100%;
-    align-items: start;
+  /* ── The view selector ────────────────────────────────── */
+  .view-toggle {
+    display: flex;
+    gap: 1.2rem;
   }
 
-  @media (--bp-desktop) {
-    .member-grid {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 3rem;
-    }
+  .view-toggle__btn {
+    border: none;
+    background: none;
+    padding: 0;
+    font: inherit;
+    color: var(--color-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.15s;
+  }
+
+  .view-toggle__btn:hover {
+    color: var(--color-dark);
+  }
+
+  .view-toggle__btn[aria-pressed="true"] {
+    color: var(--color-dark);
+    text-decoration: underline;
+    text-underline-offset: 0.35em;
+  }
+
+  /* ── The bar ──────────────────────────────────────────── */
+  /* Sticky at top:0 of .page-wrap's scrollport = flush under the brand
+     ticker, which lives outside the scroll container. The outer strip spans
+     the wide main and paints the page background, so cards vanish under it
+     instead of colliding with its 900px content; the rule and the controls
+     hold the shell measure and align with the title's edges. z-index clears
+     the cells' own stacking contexts (GSAP transforms; an open disclosure
+     raises its cell to 3). */
+  .community-bar {
+    position: sticky;
+    /* ── IT DOCKS 6px INTO THE NAV, ON PURPOSE ──────────
+       (2026-09-01, Josh: "no gap between commujity kinks and filters".)
+       The nav's box is one line of --font-size-base at line-height 1 plus the
+       links' 10px paddings, and the bar used to dock at exactly that height —
+       flush under the nav's BOX, which put 12px of dead air under the nav's
+       TEXT: 10px of the links' own bottom padding plus this bar's 2px top
+       padding. Two header lines with a gap between them read as two things.
+       So the dock moves 6px up, into space the nav only pads with, and the
+       inner drops its top padding (below) — about 8px closed, leaving ~4px.
+       WHY 6 AND NOT 8. The bar paints --color-bg and outranks the nav on
+       z-index, so whatever it docks over, it hides. The active link's
+       underline sits at `bottom: 8px` in a 1.5px band — 8 to 9.5px up from the
+       nav's bottom edge — so docking 8px up would land exactly on it and
+       subpixel rounding would eat it. 6px leaves the underline 2px of
+       clearance. If Navbar's padding or that offset changes, this changes with
+       it, and so does the mobile figure below.
+       The nav is still ABOVE the bar in every sense that matters: it is
+       sticky at top 0 and the bar never reaches its text. */
+    top: calc(var(--font-size-base) + 14px);
+    z-index: 20;
+    background: var(--color-bg);
+    /* BOTH HALVES OF THE 6px, and it takes both. `top` governs only where a
+       sticky element STOPS once it is stuck; at rest the bar sits in normal
+       flow, directly after the nav, and no `top` in the world moves it there.
+       That is why the old contract — "resting and stuck are the same place" —
+       held: the offset happened to equal the nav's height. This margin is what
+       actually lifts the resting position, and the calc above keeps the stuck
+       position in agreement with it. Change one and you must change the other,
+       or the bar jumps by the difference the moment it docks. */
+    margin-top: -6px;
+  }
+
+  .community-bar__in {
+    max-width: var(--shell-max);
+    margin-inline: auto;
+    box-sizing: border-box;
+    /* NO TOP PADDING. The 0.15rem that used to be here was the last 2px of the
+       gap the dock offset above closes; with the bar riding into the nav's
+       padding there is nothing left for it to breathe away from. */
+    padding: 0 15px 0.6rem;
+    /* Two occupants pushed to the shell's two edges: tags holds the left,
+       the view switcher the right. Nothing centres any more, so this is a
+       flex row rather than the three-track grid it used to need — and on
+       mobile, where the view switcher is display:none, the lone tags
+       trigger simply keeps the left edge. */
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.6rem 1.75rem;
+    font-size: 0.85rem;
   }
 
   @media (--bp-mobile) {
-    .member-grid {
-      gap: 2rem;
+    .community-bar {
+      /* The mobile nav is shorter than the desktop one: 0.9rem of type at
+         line-height 1 plus its 5px/7px paddings (Navbar.astro's --bp-mobile
+         block). Same contract as the calc above — if that block's size or
+         padding changes, change this with it or the bar overlaps the links.
+
+         ── IT OVERLAPS BY 2px RATHER THAN MEETING THE NAV EXACTLY ──
+         (2026-09-02, Josh: "gap between info community login and filters
+         should be 0px so i dont see images scroll behind it", on a phone.)
+         The figure used to be the nav's full height, which made the two boxes
+         share an edge to the subpixel: nav bottom and bar top landed on the
+         same fractional CSS pixel, and on a fractional-DPR screen — every
+         iPhone — a shared edge rounds to a one-device-pixel HAIRLINE that
+         neither box paints. Artwork scrolling under the header shows through
+         it as a moving line. An overlap cannot round to a gap; a shared edge
+         can, and did.
+         2px is also every pixel there is to take: the nav pads its bottom by 7
+         and its active underline sits at `bottom: 4px` in a 1.5px band, so
+         anything past 2px starts painting over the underline that says which
+         page you are on. Desktop takes 6px for the same reason at that scale
+         (see the calc above), and both figures move if Navbar's padding or
+         that offset does. */
+      top: calc(0.9 * var(--font-size-base) + 10px);
+      /* Both halves, exactly as on the desktop rule: `top` governs the docked
+         position, this governs the resting one, and they have to agree or the
+         bar jumps 2px the moment it sticks. */
+      margin-top: -2px;
+      /* Out through <main>'s 15px gutter so the bar reaches the screen edges
+         like the nav and the title above it — and so the background it paints
+         covers the full width it is docking across. */
+      margin-inline: -15px;
+    }
+
+    .community-bar__in {
+      /* THE GUTTER IS BACK, and only the reason for dropping it has changed:
+         it was dropped to join a nav row that ran to the screen edges, and that
+         nav now holds the 15px content edge (see Navbar's --bp-mobile block,
+         2026-09-01). Flush controls under an inset nav is the misalignment the
+         old rule was trying to avoid, pointing the other way.
+         The OUTER strip keeps its full-bleed negative margin — it paints the
+         background the sticky bar docks across, and that has to reach the
+         screen edges whatever the controls inside it do.
+         Top padding still 0: the nav's own padding is all the separation the
+         two lines need. */
+      padding: 0 15px 0.35rem;
+    }
+  }
+
+  .filter-word {
+    border: none;
+    background: none;
+    padding: 0;
+    font: inherit;
+    color: var(--color-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.15s;
+  }
+
+  .filter-word:hover {
+    color: var(--color-dark);
+  }
+
+  .filter-word[aria-pressed="true"],
+  .filter-word--set {
+    color: var(--color-dark);
+    text-decoration: underline;
+    text-underline-offset: 0.35em;
+  }
+
+  @media (--bp-mobile) {
+    /* Touch targets: the hit area grows around the type without moving it —
+       padding out, the same distance back in margin. Must sit BELOW
+       `.filter-word { padding: 0 }` above: it used to live further up the
+       file, where that rule cancelled the padding and left the trigger with
+       the negative margin only — a 15px-tall tap target sitting 0.4rem left of
+       where it belonged, which the old 15px gutter hid. */
+    .view-toggle__btn,
+    .filter-word {
+      padding: 0.55rem 0.4rem;
+      margin: -0.55rem -0.4rem;
+    }
+  }
+
+  /* ── The tags dropdown ────────────────────────────────── */
+  .tag-filter {
+    position: relative;
+  }
+
+  .tag-filter__caret {
+    font-size: 0.6em;
+  }
+
+  /* The one boxed element the bar owns. Floats below the trigger, above the
+     grid — inside the bar's stacking context, so no z fight with the cells. */
+  .tag-filter__panel {
+    position: absolute;
+    top: calc(100% + 0.6rem);
+    /* Hangs from the trigger's left edge, which is now the shell's left
+       edge: centring a 16rem panel on a trigger that far left would hang
+       it off the side of the page. */
+    left: 0;
+    width: 16rem;
+    /* The list IS the panel's content, so this cap is what decides how many
+       tags read at a glance before scrolling. It hangs off a bar that is
+       sticky near the top of the viewport, so the vh half can't reach the
+       fold in practice; the rem half stops the panel drawing itself as a
+       full-height column on a tall screen. */
+    max-height: min(60vh, 34rem);
+    overflow-y: auto;
+    background: var(--color-bg);
+    border: 1px solid var(--color-dark);
+    /* No top padding of its own: the gap above the search field belongs TO
+       the field, so the field can stick flush to the scrollport edge with no
+       strip for the options to show through (see .tag-filter__search). */
+    padding: 0 0.7rem 0.4rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+
+  .tag-filter__panel[hidden] {
+    display: none;
+  }
+
+  .tag-filter__search {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    /* Holds its place while a long list scrolls under it. The panel's top
+       padding lives HERE instead, so the field's own box reaches the
+       scrollport edge and the sticky band paints over every option passing
+       behind it — with the type sitting exactly where it did before. */
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    margin-bottom: 0.5rem;
+    padding: 0.7rem 0 0.25rem;
+    border: none;
+    border-bottom: 1px solid var(--color-border);
+    border-radius: 0;
+    background: var(--color-bg);
+    font: inherit;
+    font-size: 0.85rem;
+    color: var(--color-dark);
+  }
+
+  .tag-filter__search::placeholder {
+    color: var(--color-muted);
+  }
+
+  .tag-filter__search:focus {
+    outline: none;
+    border-bottom-color: var(--color-dark);
+  }
+
+  @media (--bp-mobile) {
+    /* 16px is iOS Safari's threshold: any smaller and focusing the field
+       zooms the whole page, which reads as the layout jumping. */
+    .tag-filter__search {
+      font-size: 16px;
+    }
+  }
+
+  .tag-filter__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .tag-filter__option {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    width: 100%;
+    border: none;
+    background: none;
+    padding: 0.3rem 0.25rem;
+    font: inherit;
+    font-size: 0.85rem;
+    text-align: left;
+    color: var(--color-dark);
+    cursor: pointer;
+  }
+
+  .tag-filter__option:hover,
+  .tag-filter__option:focus-visible {
+    background-color: color-mix(in srgb, var(--color-dark) 5%, transparent);
+  }
+
+  .tag-filter__option[aria-pressed="true"] {
+    text-decoration: underline;
+    text-underline-offset: 0.35em;
+  }
+
+  .tag-filter__count {
+    font-size: 0.7rem;
+    color: var(--color-muted);
+  }
+
+  .filter-empty {
+    padding-block: 2rem;
+  }
+
+  /* ── The grid ─────────────────────────────────────────── */
+  .cgrid {
+    /* One rhythm unit. Every `rowStart` and `rowSpan` in the slot table counts in
+       these, so this is the single knob that scales the page's whole vertical
+       breathing without touching the drawing. Was 2rem; tightened to 1.5rem
+       over two review rounds — the drawn whitespace read as too much air
+       between cards. */
+    --cgrid-row: 1.5rem;
+    /* Ceiling on the grid, and so on a column: ~83px wherever the viewport
+       allows it, which is what makes a colSpan read as a fixed width and keeps
+       the artwork from growing without limit on a wide screen. Past this the
+       shell buys whitespace rather than bigger images — the job --card-max
+       used to do per card, done once here instead.
+       Paired with body.content-wide main's cap in global.css, which is this
+       plus main's 15px gutters. Raise one and the other stops matching. */
+    --grid-max: 2000px;
+    /* ONE COLUMN, AS A LENGTH. The same number --grid-max talks about, but
+       usable in arithmetic: the grid is min(100%, --grid-max) wide and 100% is
+       main's content box, which body.content-wide caps at min(94vw, 2030px)
+       and pads by two 15px gutters. So a column is min(94vw - 30px,
+       --grid-max) over 24 — verified exact at 1440 (55.15px) and at 2400,
+       where the cap binds (83.33px).
+       This makes it the third member of the pairing above: the 94vw and the
+       30px are global.css's, restated here because the grid wall needs to
+       express a VERTICAL gap in the same unit its horizontal gaps are drawn
+       in. Change main's cap and this changes with it. (No percentage is used
+       — a % inside a custom property resolves against whichever property
+       consumes it, which for a gap or a padding is the wrong axis.) */
+    --cgrid-col: calc(min(94vw - 30px, var(--grid-max)) / 24);
+    display: grid;
+    grid-template-columns: repeat(24, minmax(0, 1fr));
+    /* No gap: gutters are columns the table leaves empty, so they can vary
+       down the page. See the slot table's rule 4. */
+    column-gap: 0;
+    width: min(100%, var(--grid-max));
+    /* Once <main> is wider than the cap — above a ~2160px viewport, where
+       94vw minus main's padding clears 2000px — the leftover has to be split,
+       or the whole drawing sits flush left and reads as off-centre against a
+       header that is centred. The whitespace the cap buys belongs on both
+       sides. */
+    margin-inline: auto;
+    /* minmax, not a flat --cgrid-row: a card taller than the rows its slot
+       reserved has to be able to push the rows below it apart. On a fixed
+       track it would overflow its slot and overlap the next card instead.
+       This is the one way content moves anything — the table is authoritative
+       otherwise, and content can only ever add space, never collide. */
+    grid-auto-rows: minmax(var(--cgrid-row), auto);
+    padding-block: 4rem 18rem;
+  }
+
+  .cgrid__cell {
+    min-width: 0;
+    /* The slot IS the placement: a column range and a row range, nothing else.
+       Width used to be a fraction of a lane plus an offset within it, which is
+       what three fixed lanes forced — a span says it directly. */
+    grid-column: var(--gc);
+    grid-row: var(--gr);
+    /* The cell fills the rows its slot reserved, and the card inside is taken
+       OUT OF FLOW (below). Together those two make the drawing unconditional:
+       with nothing in flow anywhere, every row stays at --cgrid-row, so the
+       grid's geometry is exactly the table and nothing a card does — opening
+       its disclosure, a late font, an image taller than expected — can feed
+       back into it. The card simply overflows into the whitespace its slot
+       already reserved.
+
+       This replaces `grid-auto-rows: minmax(row, auto)` as the safety valve.
+       That valve worked by letting a card push every row beneath it apart,
+       which is the failure it was supposed to prevent. */
+    align-self: stretch;
+    /* Anchor for the debug label below; harmless otherwise. */
+    position: relative;
+  }
+
+  /* Out of flow, so the card's height is its own business. Written global
+     because the card roots belong to other components. */
+  :global(.cgrid__cell > .ccard),
+  :global(.cgrid__cell > .cwork) {
+    position: absolute;
+    top: 0;
+    /* Bounded on BOTH inline edges so a card narrower than its slot centres in
+       it rather than hanging off the left edge — the image card narrows with
+       tall artwork (see .ccard width), and left-aligned it read as a card that
+       had failed to fill its column. Auto margins, not a transform: GSAP owns
+       the transform on these elements (the scale-on-approach) and would
+       overwrite anything written here. */
+    inset-inline: 0;
+    margin-inline: auto;
+  }
+
+  /* ── The grid wall ────────────────────────────────────── */
+  /* THE WALL IS NOT DRAWN, IT IS MEASURED. The spread places cards in a
+     24-column table where a card's width is a FRACTION of the measure; the
+     wall places them in tracks of a FIXED width and fits as many as the window
+     has room for. DIFFERENT CELLS since the wall became a wall of works rather
+     than of members (see the wall's cells in the frontmatter) — a different
+     question asked of the window, and the fourth round of "less white space in
+     grid view"
+     (2026-08-31), the one the drawn table could not answer:
+
+       Under the table a card was 3 of 24 columns, so it grew with the viewport
+       up to --grid-max (2000px) and then stopped — and every pixel past a
+       ~2160px window became margin. Five cards on a 3440 screen with a third
+       of the glass unused. Under fixed tracks that screen fits eleven, and the
+       answer to a wider window is always more members, never more air.
+
+     THE THREE KNOBS ARE HERE AND NOWHERE ELSE. --wall-card, --wall-gap and
+     --wall-edge are read back by the client script (getComputedStyle on this
+     rule) to work out how many tracks fit, so this rule is the single source
+     of the drawing: change a number here and the script re-counts. They are
+     literal px on purpose — a calc() comes back to JS as an unresolved token
+     stream, not a number.
+       card 200px — the fixed width, at every viewport
+       gap   80px — the FLOOR on the air between two cards, not the air itself
+       edge 100px — half a card, the air at the window's two edges
+
+     THE ROWS SPREAD TO BOTH EDGES, and the gutters take the leftover. This
+     reverses the round before it, at Josh's ask ("they should always spread to
+     the edge so there is a big enough gap between them, the gap needs to be at
+     least double"): the wall had been centring N fixed tracks at a fixed 40px
+     gutter and letting the remainder pile up at the two edges, which put cards
+     a fifth of their own width apart inside a page with margins to spare. Now
+     the count is taken against the FLOOR — as many cards as fit at 80px or
+     better — and the gutter that actually renders is whatever divides the rest
+     of the measure between them. It can only ever be wider than the floor, and
+     the first and last card in a row always sit on the wall's two edges.
+
+     The script resolves it and writes it back as --wall-gap, which is the one
+     number the tracks and the brick's half step are both drawn from. Measured
+     in the browser: 3 cards at 1280 (gutter at its 160 ceiling), 4 at 1440
+     (127), 6 at 1920 (92), 8 at 2560, 11 at 3440 — the count steps, the gutter
+     breathes between the steps, and the row sits on both edges at every width
+     but the capped one.
+
+     THE BRICK SURVIVES, generalised: rows alternate N and N−1 cards with the
+     short rows stepped half a pitch right, which is the old five-and-four no
+     longer pinned to one screen width. layOutWall emits the parity (odd
+     rowStart flush, even offset) and the script turns it into the `left`
+     below — see communityLayout.ts for why the offset row is a card shorter.
+
+     THE LEFTOVER GOES TO THE EDGES, never into the gutters. Fixed tracks plus
+     justify-content:center means one gutter looks like every other gutter at
+     every window width, and the edges — already at least half a card — absorb
+     whatever does not divide. Distributing it instead (space-between) would
+     give the gutter a different size on every screen, which is the one thing a
+     fixed-width wall cannot afford.
+
+     WHAT THIS COSTS. The geometry now depends on the window, so a resize can
+     change the drawing: the script re-deals when the track count actually
+     moves and fires community:layout-changed, the same recovery the view
+     toggle uses. And the wall no longer sits inside the page's measure —
+     body.wall-bleed, set by the script for this view alone, lifts main's cap
+     so the tracks can reach the window. The page's chrome keeps its own
+     narrower measure; that break-out is the one global.css already documents
+     for wide content.
+
+     WHAT CAN STILL MOVE IT, and why the motion layer survives. A row sizes to
+     its own tallest card, so content can resize a row after the motion layer
+     has measured it. An image cannot — the frame carries an inline
+     aspect-ratio and the <img> its intrinsic size, so a card's height is known
+     before a byte of artwork lands. A late font can, and that is the case the
+     layer already handles by refreshing every ScrollTrigger on
+     document.fonts.ready. The disclosure, the other thing that grows a card,
+     is display:none on this pattern.
+
+     Desktop only: the mobile block below replaces the wall with a two-column
+     multicol flow that owns its own gaps, and none of these knobs exist
+     there. */
+  @media (--bp-desktop) {
+    .cgrid[data-pattern="grid"] {
+      --wall-card: 200px;
+      --wall-gap-min: 80px;
+      /* AND A CEILING, because a spread with only a floor has one bad width.
+         Just under a step the row is a card short and the whole of that card's
+         room goes into two or three gutters: 3 cards 210px apart at a 1280
+         window, a gutter wider than the card, which reads as three strays
+         rather than a wall. Past this the leftover goes back to the edges and
+         the row stops touching them — the one case where it cannot both
+         spread and stay a wall, and the wall wins. Twice the floor: the band
+         where it bites is roughly 1200–1300, and nowhere else. */
+      --wall-gap-max: 160px;
+      --wall-edge: 100px;
+      /* The gutter the row actually uses. Declared as the floor so the rule
+         stands on its own, and overwritten inline by the script with the
+         width that spreads the row across the measure — always ≥ the floor.
+         Everything downstream (the tracks' gap, the brick's step) reads this
+         one, so the drawing follows the window without any of them knowing. */
+      --wall-gap: var(--wall-gap-min);
+      /* CSS-only, so a calc is fine here: the brick's step is half of this. */
+      --wall-pitch: calc(var(--wall-card) + var(--wall-gap));
+
+      /* Out of the page's measure and out of the spread's 24 fluid columns: N
+         fixed tracks, centred. --wall-cols is written by the script; the
+         fallback is what a script-failed page renders, and 4 is the count at
+         1440. */
+      width: auto;
+      max-width: none;
+      grid-template-columns: repeat(var(--wall-cols, 4), var(--wall-card));
+      justify-content: center;
+      column-gap: var(--wall-gap);
+      /* Three quarters of the gutter's FLOOR — deliberately the floor and not
+         the resolved gutter, which stretches: tying the vertical rhythm to it
+         would make the page taller on exactly the widths where the horizontal
+         air is already generous, and the wall's whole subject is how much
+         vertical air it spends. 60px, the same at every width. A REAL row-gap:
+         a row of the wall is one grid row here, where the drawn table made it
+         19 placement rows and forced the gap to be reserved inside each cell.
+         THREE QUARTERS, NOT THE WHOLE GUTTER (the round before this one,
+         "even a bit less"): meshed at exactly the gutter the two axes did not
+         read equal, because a card's caption block sat inside the vertical
+         interval and the horizontal one holds nothing. THE WORK TILES HAVE NO
+         CAPTION any more, so on those rows this 60px is the whole of the air —
+         which is why the wall reads tighter vertically than it did, and the
+         number is left where the earlier "less white space" rounds put it. It is also the
+         floor the parallax sets: a row can close on the one below it as it
+         travels, and 30px absorbs that with the wall's damped amplitude (see
+         flowScale, which scales it to a third of the spread's). */
+      row-gap: calc(0.75 * var(--wall-gap-min));
+      /* The row is its content's height: the tallest card in it, and nothing
+         enforcing a floor under it. */
+      grid-auto-rows: minmax(0, auto);
+      /* The 18rem tail is the SPREAD's — its cards are out of flow, so its
+         last beat needs drawn whitespace under it where every earlier beat
+         borrows the next one's. The wall's cards are in flow and its last row
+         already carries the row-gap, which left that tail as ~288px of nothing
+         between the final row and the signup CTA. 6rem still leaves the
+         scale-on-approach tween room to finish on the last row: it ends at
+         `top 60%`, so it needs 40vh of document below that row's top, and the
+         row's own height plus the CTA and the footer clear it with room
+         over. */
+      padding-block: 4rem 6rem;
+    }
+
+    /* Back into flow, so a card's height reaches the tracks at all. The
+       absolute rule above exists to keep content out of the SPREAD's drawn
+       geometry; here the geometry is asking to be told. Auto margins survive
+       from that rule and still centre a card narrower than its track. */
+    :global(.cgrid[data-pattern="grid"] .cgrid__cell > .ccard),
+    :global(.cgrid[data-pattern="grid"] .cgrid__cell > .cwork) {
+      position: static;
+      margin-inline: auto;
+    }
+
+    .cgrid[data-pattern="grid"] .cgrid__cell {
+      /* The brick's half step, on the offset rows only — the script writes
+         --row-offset from the row parity, and writes 0 where there is only one
+         track to step in. `left`, not a margin and not a transform: a margin
+         would eat into a fixed-width track and shrink the card inside it, and
+         GSAP owns the transform on every cell (the parallax). The cells are
+         already position:relative, for the ?grid labels. */
+      left: var(--row-offset, 0px);
+      /* The row-gap carries the vertical air now. */
+      padding-bottom: 0;
+      /* The frame cap, stated directly instead of in rhythm units.
+         CommunityImageCard computes --frame-cap as --slot-rows × --cgrid-row
+         minus the card's chrome (5.4rem, mirrored here), and the wall's slots
+         are one row tall, so shadowing the row unit on the CELL sets the cap
+         to 1.5 × the card width: 300px at a 200px card, at every window width,
+         where the drawn version drifted between 1.38× and 2.1×. Nothing seeded
+         reaches it, so no card narrows today; what it bounds is how deep one
+         tall upload may make its row. */
+      --cgrid-row: calc((1.5 * var(--wall-card) + 5.4rem) / var(--slot-rows, 1));
+    }
+
+    /* Same cap, the work tile's own chrome. The line above bakes in the member
+       card's 5.4rem of name-and-caption; a work tile carries a project title
+       AND an author line under its frame, both in flow, and declares 3.3rem
+       for the pair (--cwork-chrome in CommunityWorkCard). Stated separately
+       rather than made a variable, because the two cards' anatomies are
+       genuinely different numbers and a shared one would hide that. The extra
+       specificity wins wherever this sits in the file. */
+    .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
+      --cgrid-row: calc((1.5 * var(--wall-card) + 3.3rem) / var(--slot-rows, 1));
+    }
+  }
+
+  /* ── The strip ────────────────────────────────────────── */
+  /* The horizontal gallery: one grid item spanning all 24 columns and
+     STRIP_ROWS rows (the --gc/--gr inline on it, same convention as a cell),
+     scrolling on its own axis. The cells inside it are flex items again —
+     the grid placement props they carry go inert, which is what makes moving
+     them in and out of here cheap. */
+  .cgrid__strip {
+    grid-column: var(--gc);
+    grid-row: var(--gr);
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-inline: 0.25rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+
+  /* display:flex above would beat the [hidden] presentational hint. */
+  .cgrid__strip[hidden] {
+    display: none;
+  }
+
+  @media (--bp-desktop) {
+    /* A thumbnail at rest, the focus size on hover — the width transition is
+       the whole effect: the card inside follows its cell's width (see .ccard
+       in CommunityImageCard), the frame keeps its true aspect, and the flex
+       row pushes the neighbours aside. :focus-within grows a card the
+       keyboard is in, so the enlargement is not mouse-only. */
+    .cgrid__strip .cgrid__cell {
+      flex: none;
+      width: var(--strip-thumb, 13rem);
+      align-self: center;
+      transition: width 380ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+
+    .cgrid__strip .cgrid__cell:hover,
+    .cgrid__strip .cgrid__cell:focus-within {
+      width: var(--strip-focus, 28rem);
+    }
+  }
+
+  /* Back into flow: the band centres each card on the strip's midline, and a
+     portrait narrowed by --slot-rows still needs centring in its grown cell —
+     auto margins on a static block do both jobs the absolute rule above was
+     doing. */
+  :global(.cgrid__strip .cgrid__cell > .ccard) {
+    position: static;
+    margin-inline: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cgrid__strip .cgrid__cell {
+      transition: none;
+    }
+  }
+
+  /* The grid wall reads as a wall — aligned rows of equal cells — and a
+     card growing a disclosure panel out of one of them breaks that row.
+     The gallery spread keeps it. Written global because the `details`
+     belongs to another component (MemberDetailPanel). The open state is
+     also cleared on the way in (see applyLayout), so returning to the
+     spread does not reveal a panel left open before the switch. */
+  :global(.cgrid[data-pattern="grid"] .pdisc) {
+    display: none;
+  }
+
+  /* An open disclosure paints over whatever is beneath it, so the cell
+     holding it has to rise above its neighbours — every cell carries a GSAP
+     transform and therefore its own stacking context, which otherwise lets a
+     later cell paint straight over the open panel. Written global because the
+     `details` it tests for belongs to another component. */
+  :global(.cgrid__cell:has(details[open])) {
+    z-index: 3;
+  }
+
+  /* Nothing hides a cell today. Kept because the filters are coming back, and
+     on a grid a hidden cell leaves its slot empty rather than repacking —
+     worth knowing before wiring them to this layout. */
+  .cgrid__cell[hidden] {
+    display: none;
+  }
+
+  /* The index view swaps the whole grid out; display:grid above (and
+     display:block on mobile) would beat the [hidden] presentational hint,
+     same story as the strip. */
+  .cgrid[hidden] {
+    display: none;
+  }
+
+  /* ── The index ────────────────────────────────────────── */
+  /* A ledger, not a drawing: thin rules between rows, a fixed reading measure
+     centred in the wide shell. The one view whose geometry is the browser's
+     business, so it needs no slot table, no deal, no motion. */
+  .cindex-wrap {
+    margin: 0 auto;
+    padding: 4rem 0 10rem;
+    max-width: 72rem;
+  }
+
+  .cindex-wrap[hidden] {
+    display: none;
+  }
+
+  .cindex {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .cindex__row {
+    border-top: 1px solid var(--color-border);
+  }
+
+  .cindex__row:last-child {
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  /* Row line. NOT a grid with a display:contents <details> -- that made the
+     page unopenable on an iPhone (see MemberDetailPanel). The open panel is
+     full-width because .pdisc is an ordinary block in flow. */
+  .cindex__line {
+    position: relative;
+  }
+
+  .cindex__line :global(.pdisc) {
+    display: block;
+  }
+
+  /* ── THE ROW IS THE SUMMARY ────────────────────────────
+     What used to be .cindex__link's rules, moved onto the disclosure's own
+     summary (2026-09-01) — the whole ledger line is the toggle now, so the
+     line's geometry has to belong to the element that is clickable. The
+     chevron is that summary's ::after and therefore its last child.
+
+     WHO · chevron, AND NOT A GRID ANY MORE (2026-09-02). It was four tracks
+     for who · field · profile · chevron; the tag field is gone and the profile
+     link moved into the dropdown, which leaves two items — and a fixed track
+     list is the wrong tool for two, because the ONE row that still prints a
+     profile link on the line (a member with nothing to disclose, see the
+     summary's note) then has three. On a grid that row would have had to
+     place its link by hand, and every disclosure row would have paid a
+     1.5rem gap for an empty track it could not collapse. Flex only puts gaps
+     between items that exist, so both shapes lay out correctly with no
+     per-row placement.
+     `display: flex` is not restated: .pdisc__toggle is already flex in line
+     mode (see MemberDetailPanel) — the grid was the override, so removing it
+     restores the component's own box. */
+  .cindex__line :global(.pdisc__toggle) {
+    gap: 0 1.5rem;
+    /* No 2rem right reserve: the chevron is the last flex item and nothing
+       runs under it. This was a live bug for a while — see the note in git
+       history about a padding-right silently reset by a later shorthand. */
+    padding: 0.85rem 0.25rem;
+    box-sizing: border-box;
+    transition: background-color 0.15s;
+  }
+
+  .cindex__line :global(.pdisc__toggle:hover),
+  .cindex__line :global(.pdisc__toggle:focus-visible) {
+    background-color: color-mix(in srgb, var(--color-dark) 4%, transparent);
+  }
+
+  /* The chevron sits on the row's own centre line rather than on the type's
+     baseline: at 0.36rem it is a mark, not a letter, and a baseline-aligned
+     mark at the end of the row reads as having slipped. `flex: 0 0 auto` so
+     the row's flexible first item cannot squeeze it. */
+  .cindex__line :global(.pdisc__toggle::after) {
+    align-self: center;
+    flex: 0 0 auto;
+  }
+
+  /* The un-clickable twin keeps the geometry and loses the response — a row
+     with nothing to disclose must not offer a hover state that leads nowhere.
+     Specificity: this pair is (0,4,0)-ish against the hover rule's (0,4,0)
+     plus Astro's scope attribute on both, so source order decides and this
+     block has to stay BELOW the hover rules above. */
+  .cindex__line :global(.pdisc--static .pdisc__toggle:hover) {
+    background-color: transparent;
+  }
+
+  /* The dropdown's lead: the member's profile picture, in the same square
+     frame voice as every other image on the page. */
+  .cindex__avatar {
+    display: block;
+    width: 5rem;
+    height: 5rem;
+    object-fit: cover;
+    border: 1.5px solid var(--color-border);
+    background: var(--color-bg);
+  }
+
+  /* The open panel reads as a profile fragment, not a full-measure spread:
+     capped to a reading width, breathing room above and below, and — when
+     there is a picture — the picture LEFT, the words RIGHT, the tag chips
+     running across the bottom. Scoped here so the cards' panels keep their
+     own compact stack; the :has() guard keeps avatar-less rows on the plain
+     column, where an empty picture column would only indent the text. */
+  .cindex__line :global(.pdisc__body) {
+    padding: 1rem 0.25rem 1.4rem;
+  }
+
+  .cindex__line :global(.pdisc__body-inner) {
+    max-width: 44rem;
+    gap: 1rem;
+  }
+
+  .cindex__line :global(.pdisc__body-inner:has(> .cindex__avatar)) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 1.5rem;
+    row-gap: 1rem;
+    align-items: start;
+  }
+
+  .cindex__line .cindex__avatar {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  /* grid-column is inert in the no-avatar rows, which stay a flex column. */
+  .cindex__line :global(.pdisc__bio),
+  .cindex__line :global(.pdisc__row) {
+    grid-column: 2;
+  }
+
+  .cindex__line :global(.pdisc__vals--tags) {
+    grid-column: 1 / -1;
+    margin-top: 0.35rem;
+  }
+
+  /* THE NAMED WAY TO THE MEMBER'S PAGE — at the foot of the open dropdown,
+     and nowhere else since 2026-09-03, when every row became a disclosure (see
+     the row's note). Underlined at rest: it is the one control whose
+     job is to be findable, and the row it belongs to expands instead of
+     travelling, so nothing else announces that the page exists. Muted so it
+     does not outrank the name. Sized and voiced exactly like the image card's
+     .ccard__profile, because it is the same control in the same place. */
+  .cindex__profile {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    color: var(--color-muted);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
+    transition: color 0.15s;
+  }
+
+  .cindex__profile:hover,
+  .cindex__profile:focus-visible {
+    color: var(--color-dark);
+  }
+
+  /* In the panel it is the last line and it is its OWN line: the avatar rows
+     lay the body out as a two-column grid (picture left, words right), and a
+     link auto-placed into that would land in the picture's column. Full width
+     and ranged left puts it under everything the panel said, which is where
+     MemberDetailPanel's footer slot is meant to read from. `justify-self` so a
+     stretched grid item does not make the whole row clickable. */
+  .cindex__line :global(.pdisc__body-inner) .cindex__profile {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  /* The name and its role as ONE unit. Flex, not plain inline flow, for one
+     reason: flex drops the whitespace-only text node between the two spans, so
+     the separator can be generated entirely inside .cindex__role and vanish
+     with it. column-gap is 0 for the same reason — the space after the comma
+     is part of that generated content, so nothing is left behind when there is
+     no role to separate.
+     Wrapping is allowed: a long name plus a long role drops the role onto its
+     own line under the name rather than pushing into the field's column, which
+     is also exactly the stack the mobile block wants. */
+  .cindex__who {
+    /* Takes every pixel the chevron does not — this is what holds the chevron
+       against the row's right edge now that there is no track to pin it to
+       (see the summary's flex note above). */
+    flex: 1 1 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 0;
+    row-gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .cindex__name {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--color-dark);
+  }
+
+  .cindex__line :global(.pdisc__toggle:hover) .cindex__name {
+    text-decoration: underline;
+    text-underline-offset: 0.35em;
+  }
+
+  /* Beside the name, in the name's own box — the same muted voice it had as a
+     column, so the eye still reads one bold name and one quiet qualifier. No
+     ellipsis machinery any more: an inline flex item cannot truncate, and a
+     role that does not fit should wrap under the name rather than lose its
+     ending. */
+  .cindex__role {
+    font-size: 0.85rem;
+    color: var(--color-muted);
+  }
+
+  /* The separator, generated rather than typed, so it can only ever exist when
+     a role does. The frontmatter already omits the span for an empty role;
+     this is the second half of that guarantee — there is no comma anywhere in
+     the markup to be orphaned. NBSP, not a plain space: a leading space at the
+     start of an inline box collapses away. */
+  .cindex__role::before {
+    content: ",\00a0";
+  }
+
+  /* Belt and braces for a role element that is present but empty — display:none
+     takes its ::before comma with it. Not mobile-only any more: with the role
+     inside the name's box a stray separator would show at every breakpoint. */
+  .cindex__role:empty {
+    display: none;
+  }
+
+  @media (--bp-mobile) {
+    /* Desktop's air is a desktop measure. */
+    .cindex-wrap {
+      padding: 1.5rem 0 6rem;
+    }
+
+    /* Stacked lines instead of two columns: the name line — WITH its role,
+       which now travels with the name instead of being dropped. Mobile used to
+       hide the role because it could not afford a third column for it; beside
+       the name it costs no column at all, and a directory row that says only
+       "Jane Doe" tells a phone reader strictly less than the desktop does for
+       no saving. It wraps under the name when the measure runs out, which is
+       the stack the old rule was building by hand. */
+    /* One column, and the chevron leaves the grid for the corner it used to
+       hold: four tracks on a phone would give the name about eight characters.
+       The row is still the toggle — it is only laid out as a stack. */
+    .cindex__line :global(.pdisc__toggle) {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.2rem;
+      padding-right: 2rem;
+    }
+
+    .cindex__line :global(.pdisc__toggle::after) {
+      position: absolute;
+      top: 1.15rem;
+      right: 0.5rem;
+      align-self: start;
+    }
+  }
+
+  /* ?grid — the drawing aid, for tuning the slot table against the real page
+     instead of by arithmetic. Two rectangles per slot:
+
+       The grey outline is the slot exactly as the table reserved it. It needs
+       no debug-only trickery to be that: the cell fills its rows in production
+       too, because the card inside it is out of flow.
+
+       There is no second box any more. It marked a 2:3 ceiling that no longer
+       exists: a card is now bounded by its own slot (--slot-rows, read by
+       CommunityImageCard), so nothing can outgrow the grey box and there is
+       nothing to warn about. */
+  .cgrid--debug .cgrid__cell {
+    outline: 1px dashed color-mix(in srgb, var(--color-dark) 30%, transparent);
+  }
+
+  .cgrid--debug .cgrid__cell::after {
+    content: attr(data-slot) " r" attr(data-row) "+" attr(data-span) " c" attr(data-col);
+    position: absolute;
+    /* Sits clear of the slot outline it labels — close enough to read as its
+       caption, far enough that the two lines never look like one edge. */
+    top: -2.6rem;
+    left: 0;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    pointer-events: none;
+  }
+
+  @media (--bp-mobile) {
+    /* If the strip was active on desktop and the viewport crossed the
+       breakpoint, dissolve the wrapper so its cells become ordinary grid
+       items again. Still display:none while hidden — the [hidden] rule above
+       outranks this on specificity. */
+    .cgrid__strip {
+      display: contents;
+    }
+
+    .cgrid {
+      /* The slot table is a desktop drawing — a phone has no room for it.
+         Mobile draws the two views its own way, keyed off the same
+         data-pattern the deal stamps: Gallery (the default, and the no-JS
+         state, which carries no data-pattern at all) is a single column of
+         full-width artwork; Grid is the stacked two-column wall. */
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      row-gap: 4.5rem;
+      align-items: start;
+      width: auto;
+      padding-block: 1.5rem 7rem;
+    }
+
+    /* Grid view: a continuous two-lane masonry flow (the cosmos.so look) —
+       multicol packs each card directly under the one before it at one tight
+       uniform gap, so varied card heights never leave row-aligned holes.
+       :not([hidden]) keeps this from tying with the `.cgrid[hidden]`
+       display:none above, which an emptied filter depends on. */
+    .cgrid[data-pattern="grid"]:not([hidden]) {
+      display: block;
+      columns: 2;
+      column-gap: 1.1rem;
+    }
+
+    .cgrid[data-pattern="grid"] .cgrid__cell {
+      break-inside: avoid;
+      margin-bottom: 1.1rem;
+    }
+
+    .cgrid__cell {
+      /* Declared here rather than left to the inline style, and that works
+         because the inline style sets --gc/--gr, not grid-column/grid-row:
+         these are the real properties, so a stylesheet rule can still win. */
+      grid-column: auto;
+      grid-row: auto;
+      align-self: start;
+    }
+
+    /* Back into flow. The desktop grid takes the card out of flow because
+       its rows are DRAWN and nothing may feed back into them; the phone's
+       rows ARE the cards, so the absolute rule above would leave every cell
+       zero-height with the cards piled at the top. */
+    :global(.cgrid__cell > .ccard),
+    :global(.cgrid__cell > .cwork) {
+      position: static;
+      margin-inline: auto;
+    }
+  }
+
+  /* ── ARRIVE BRIGHT, LEAVE DIM ───────────────────
+     (2026-09-03, Josh: "highlight only one carousel at a time in gallery
+     mode … the most prominent card is fully opaque the others are a bit
+     faded", xk.studio/work as the reference. 2026-09-04, Josh: "the fade …
+     should only start to happen once the top of the image touches the filter
+     bar", then — the correction that produced the shape below — "until they
+     reach the middle they should be faded out. i liked the fade in so far it
+     should have just changed the fade out".)
+
+     The mobile gallery is a single column of full-width cards, so scrolling it
+     is really paging through one member at a time — but every card in the
+     scrollport was drawn at full strength, which meant half-cards at the edges
+     competing with the one the reader is actually looking at, and three
+     carousels quietly advancing at once. So a card is dim on the way in,
+     reaches full strength around the middle of the screen, HOLDS it for the
+     whole time it is below the filter bar, and gives it up only as it slides
+     under the bar.
+
+     ── WHY THAT IS TWO ANIMATIONS AND NOT ONE ───────
+     Because the two ramps want different clocks, and one keyframe list can
+     only have one.
+     The way IN was always fitted to percentages of `cover`, and can only be
+     fitted: `cover`'s 0%..100% is linear in the SCROLL DISTANCE the whole card
+     travels (its own height plus the scrollport's), not in the screen position
+     of either edge, so "top edge halfway down the screen" falls at a different
+     percentage for a 236px card than for a 502px one. 35% is that fit against
+     this page's real cards (~353px average, spread ~236–502px, against an
+     812px viewport) and it is the fit Josh accepted, so it is kept EXACTLY as
+     it was — this is the ramp that was already liked.
+     The way OUT cannot be fitted, because "touching the filter bar" is a
+     specific line on the screen and a percentage of `cover` is not. It gets
+     its own timeline whose scrollport is INSET from the top by the bar's
+     height, which makes the `exit` range mean "leaving under the bar" rather
+     than "leaving at the top of the scrollport" — exact for every card height,
+     nothing fitted.
+
+     ── HOW THEY HAND OVER: THE FILL MODES ───────────
+     Both animate `opacity`, so the later one in the list wins wherever it
+     contributes at all — and `cgrid-cell-in` is listed second with fill
+     `backwards`, which is the whole trick. `backwards` fills the BEFORE phase
+     only, so the in-ramp holds 0.35 under a card that has not entered yet,
+     drives the ramp while it is entering, and then STOPS CONTRIBUTING at the
+     end of its range. From that moment `cgrid-cell-out` — listed first, fill
+     `both` — is the only animation left, holding its own 0% keyframe (opacity
+     1) until the card reaches the bar. Give the in-ramp `both` instead and it
+     would pin every card at 1 forever and the fade-out would never be seen.
+     The two ranges cannot overlap on this page: the in-ramp ends around 400px
+     of scroll for every card size above, the out-ramp starts at ~771px (the
+     scrollport height less the bar). A card taller than the scrollport would
+     close that gap, and there is none — the tallest is ~502px.
+
+     THE ONLY JS is a single measurement of where the docked filter bar's
+     bottom edge sits (--cgrid-fade-inset), taken on load and when the bar
+     resizes — never while scrolling. No observers, no scroll handler.
+
+     Gallery only: the grid wall is a reference view and stays still. Browsers
+     without scroll-driven animations get every card at full opacity, which is
+     the finished no-motion state and what the page did before.
+
+     The 5s auto-advance follows the same idea of prominence, decided in JS
+     because it is a timer rather than a paint — `focusedCarousel()` in
+     src/lib/communityCarousel.ts picks the one card nearest the middle of the
+     scrollport. It is the stricter of the two: the fade leaves every card
+     between the middle and the bar lit, and the timer moves exactly one of
+     them. */
+  @media (--bp-mobile) and (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .cgrid:not([data-pattern="grid"]) .cgrid__cell {
+        /* Shorthand first: `animation` resets animation-timeline, so the
+           timelines must be declared after it. Order is load-bearing — see
+           the fill-mode note above. */
+        animation:
+          cgrid-cell-out both,
+          cgrid-cell-in backwards;
+        /* THE INSET IS THE FILTER BAR. `view()`'s inset shrinks the scrollport
+           the timeline is measured against, so moving the out-ramp's start
+           edge down to the docked bar's bottom makes `exit` mean "against the
+           bar" rather than "against the top of the scrollport" — which is what
+           the bar is, visually: the top of the page. Measured into
+           --cgrid-fade-inset by the page-load handler, because the bar's
+           height is type metrics and its dock offset is a calc that has
+           already had to be restated twice; the fallback is a plausible phone
+           value for the frame before the measurement lands.
+           The in-ramp keeps the plain, un-inset `view()` it always had. */
+        animation-timeline:
+          view(block var(--cgrid-fade-inset, 40px) 0px),
+          view();
+        /* `exit` — the card's departure UNDER THE BAR, and nothing else: 0% is
+           its top edge meeting the bar's bottom, 100% its own bottom edge
+           passing the same line. Against `cover 0% 35%`, which is the arrival,
+           unchanged. */
+        animation-range:
+          exit 0% exit 100%,
+          cover 0% cover 35%;
+      }
+    }
+  }
+
+  /* @keyframes are global in Astro (see CLAUDE.md) — hence the prefix.
+
+     Opacity-only, both ways: the translateY these used to carry read as "the
+     card arriving/leaving" rather than a pure fade, and made the effect feel
+     softer than intended. Motion is gone; only the fade remains.
+
+     0.35 rather than the ~0.3 the xk.studio reference reads at: that page is
+     white on black, where a dimmed thing recedes into the ground, and this one
+     is dark on off-white, where the same figure washes a photograph out
+     instead of pushing it back. Far enough to be unmistakably secondary, near
+     enough that the card either side of the one in hand is still a picture. */
+  @keyframes cgrid-cell-in {
+    0% {
+      opacity: 0.35;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes cgrid-cell-out {
+    0% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0.35;
     }
   }
 
@@ -100,16 +1653,664 @@ const memberLabel = members.length === 1 ? t('community.member') : t('community.
 <script>
   import { auth } from "../lib/firebase.ts";
   import { onAuthStateChanged } from "firebase/auth";
+  import { navigate } from "astro:transitions/client";
+  import {
+    GALLERY_PATTERNS,
+    STRIP_SLOT_ROWS,
+    layOutSlots,
+    layOutWall,
+    type GalleryPatternName,
+    type Slot,
+  } from "../lib/communityLayout.ts";
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Behaviour layer: the deal and the signed-out CTA.
+  // Runs synchronously on astro:page-load, BEFORE the async motion layer
+  // below measures anything — a deal after ScrollTrigger creation would leave
+  // every trigger keyed to a stale position.
+  // ────────────────────────────────────────────────────────────────────────
+
+  /**
+   * The grid is drawn at build time; this decides who stands where in it.
+   * The layout is recomputed from the same module the frontmatter used.
+   * SPREAD and WALL deal identically: every member into the pattern's own
+   * slots, shuffled artwork leading, the tag cards closing the page in
+   * their build-time completeness order (restored from data-rank), which a
+   * shuffle would throw away — same treatment, always last.
+   *
+   * `strip` — the shelved horizontal layout, reachable only by typing
+   * ?pattern=strip — is the exception with no slot table: the image cells
+   * move into the .cgrid__strip flex row instead, and only the index is
+   * laid out.
+   *
+   * Rewriting geometry decouples DOM order from what you see, so the DOM is
+   * re-sorted into row order afterwards and reading order still runs down
+   * the page (appendChild also moves cells back OUT of the strip wrapper).
+   */
+  type LayoutMode = GalleryPatternName | "strip" | "index";
+  const MODES: LayoutMode[] = ["spread", "grid", "strip", "index"];
+
+  // ── THE DEAL HAS TO SURVIVE A BACK ────────────────────
+  // The shuffle used to draw straight from Math.random(), so returning to this
+  // page from a member's profile re-dealt every card. With the scroll position
+  // now restored (see Layout.astro) that was worse than before, not better: you
+  // came back to the right OFFSET of a completely different page. (2026-09-01,
+  // Josh: "back navigation dors not work getting back from profiles" — landing
+  // among strangers is not getting back.)
+  //
+  // So the shuffle is seeded, and the seed is stored against ClientRouter's
+  // history index — the same key Layout.astro files the scroll offset under.
+  // A history traversal finds the seed the entry was dealt with and reproduces
+  // that exact page; a fresh visit finds none and mints one. Changing the view
+  // mints one too, deliberately: "the view toggle deals fresh" is the standing
+  // behaviour, and the entry's remembered seed becomes the new one so a later
+  // Back returns to the arrangement actually left behind.
+  const DEAL_KEY = "vscn:deal:";
+
+  function dealKey(): string | null {
+    const index = (history.state as { index?: number } | null)?.index;
+    return typeof index === "number" ? DEAL_KEY + index : null;
+  }
+
+  /** mulberry32 — 32 bits of state, good enough to shuffle 48 cards with. */
+  function rngFrom(seed: number): () => number {
+    let a = seed >>> 0;
+    return () => {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function storeSeed(seed: number): number {
+    const key = dealKey();
+    if (key) {
+      try {
+        sessionStorage.setItem(key, String(seed));
+      } catch {
+        /* Private mode: the deal is simply random again. Not worth a branch. */
+      }
+    }
+    return seed;
+  }
+
+  /** The seed this history entry was last dealt with, or a new one. */
+  function rememberedSeed(): number {
+    const key = dealKey();
+    if (key) {
+      try {
+        const saved = Number(sessionStorage.getItem(key));
+        if (Number.isFinite(saved) && saved !== 0) return saved;
+      } catch {
+        /* fall through to a fresh seed */
+      }
+    }
+    return storeSeed(freshSeed());
+  }
+
+  /** Never 0 — mulberry32 is fine with it, but it is the falsy value the
+   *  lookup above uses to mean "nothing stored". */
+  function freshSeed(): number {
+    return (Math.floor(Math.random() * 0xffffffff) || 1) >>> 0;
+  }
+
+  let dealSeed = 0;
+
+  function shuffled<T>(items: T[]): T[] {
+    const random = rngFrom(dealSeed || (dealSeed = freshSeed()));
+    const out = [...items];
+    for (let i = out.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [out[i], out[j]] = [out[j], out[i]];
+    }
+    return out;
+  }
+
+  // ── THE VIEW IS A NAVIGATION ──────────────────────────
+  // (2026-09-03, Josh: "back button in browser shoud work to switch. etween
+  // patterns and from profile".)
+  //
+  // Choosing a view or a tag used to REPLACE the current history entry, which
+  // is why Back could not step between views: there was only ever one entry
+  // for /community however many views you had looked at. It went through
+  // replaceState rather than pushState because a view switch "is not a
+  // navigation" — the two cell sets are both in the DOM and the deal only
+  // hides one, so switching cost nothing and re-rendering the page for it felt
+  // wasteful.
+  //
+  // WHY IT CANNOT BE A HAND-ROLLED pushState EITHER. ClientRouter keeps its
+  // bookkeeping in history.state (`{index, scrollX, scrollY}`) and its popstate
+  // handler returns immediately on a null state. Pushing our own null-state
+  // entry therefore breaks the OTHER Back: leave for a member's page, press
+  // Back, and the pop lands on an entry ClientRouter refuses to handle — the
+  // URL returns to /community and THE MEMBER'S PAGE STAYS ON SCREEN. That is
+  // the exact bug 2026-09-01 fixed by getting rid of `replaceState(null)`, and
+  // faking the state shape by hand only moves it (the index would collide with
+  // the next real navigation's).
+  //
+  // So the view goes through Astro's own navigate(): a real entry, ClientRouter's
+  // own bookkeeping, Back and Forward working in both directions and from a
+  // profile, and ?pattern= / ?tag= as the single source of truth — the
+  // astro:page-load handler below already rebuilds the page from them, which is
+  // what makes a reload, a shared link and a history traversal all land on the
+  // same page. It costs a document swap of a static page.
+  //
+  // IT ALSO SETTLES "Scroll to top when changing views": a forward navigation
+  // gets a history index with no stored scroll offset, so Layout.astro's
+  // restore finds nothing and the swapped-in .page-wrap starts at the top. The
+  // deal is right for free too — the seed is filed against the history index
+  // (see rememberedSeed), so a new entry deals fresh and a Back reproduces the
+  // arrangement that entry was left showing.
+  function goTo(url: URL) {
+    navigate(url.pathname + url.search);
+  }
+
+  function writeSlot(cell: HTMLElement, s: Slot) {
+    cell.style.setProperty("--gc", `${s.colStart} / span ${s.colSpan}`);
+    cell.style.setProperty("--gr", `${s.rowStart} / span ${s.rowSpan}`);
+    // The card reads this to bound its frame — a deal that moved the
+    // geometry without it would leave a card capped to its old slot.
+    cell.style.setProperty("--slot-rows", String(s.rowSpan));
+    // The wall's brick step belongs to the wall. Cleared here so a cell that
+    // was in an offset row cannot carry the step into the spread — where it
+    // would be inert (only the wall's rule reads it) but a lie in the DOM —
+    // and the wall re-writes it straight after this call.
+    cell.style.removeProperty("--row-offset");
+    // Kept in step with the placement so the ?grid labels stay truthful after
+    // a deal, and so the row sort below reads the row the cell actually has.
+    cell.dataset.row = String(s.rowStart);
+    cell.dataset.span = String(s.rowSpan);
+    cell.dataset.col = `${s.colStart}-${s.colStart + s.colSpan - 1}`;
+  }
+
+  /** The wall's two measurements: how many fixed-width cards the window fits,
+   *  and the gutter that spreads them from edge to edge once they are in.
+   *
+   *  The knobs live in ONE place — the .cgrid[data-pattern="grid"] rule — and
+   *  this reads them back rather than restating them, so the drawing has a
+   *  single source. --wall-gap-min is a FLOOR: it decides the count, and the
+   *  gutter that comes back is whatever divides the rest of the measure, which
+   *  is what makes a row reach both edges at any width.
+   *
+   *  Returns zeros when the knobs are absent, which is mobile: there the wall
+   *  is a two-column multicol flow that owns its own geometry and none of this
+   *  applies. Callers pass the 0 count straight to layOutWall, whose floor of
+   *  one card per row is the harmless placement mobile then ignores.
+   *
+   *  Reads clientWidth, so the grid must already be visible and already carry
+   *  data-pattern="grid" (and the body its bleed class) when this is called —
+   *  otherwise it measures against the wrong width. */
+  function wallMetrics(grid: HTMLElement): { cols: number; gap: number } {
+    const cs = getComputedStyle(grid);
+    const px = (name: string) => parseFloat(cs.getPropertyValue(name));
+    const card = px("--wall-card");
+    const min = px("--wall-gap-min");
+    const max = px("--wall-gap-max");
+    const edge = px("--wall-edge");
+    if (!card || Number.isNaN(min) || Number.isNaN(edge)) return { cols: 0, gap: 0 };
+    // n cards and n−1 gutters at the floor have to fit inside the measure less
+    // both edges: n × (card + min) − min ≤ available. At least one, however
+    // narrow the window.
+    const available = grid.clientWidth - 2 * edge;
+    const cols = Math.max(1, Math.floor((available + min) / (card + min)));
+    // Then spread: everything the cards did not use goes into the gutters, so
+    // the first and last card sit on the edges. A lone card has no gutter to
+    // widen and keeps the floor. The max() is belt and braces — the count was
+    // taken at the floor, so the division cannot come back under it.
+    const spread = cols > 1 ? Math.max(min, (available - cols * card) / (cols - 1)) : min;
+    // The ceiling hands the surplus back to the edges (the tracks are centred,
+    // so nothing else has to know) at the one width where spreading would draw
+    // a gutter wider than a card.
+    return { cols, gap: Number.isNaN(max) ? spread : Math.min(spread, max) };
+  }
+
+  /** Writes the measurements onto the grid for the CSS to draw from, and hands
+   *  back the count the deal needs. */
+  function writeWallMetrics(grid: HTMLElement): number {
+    const { cols, gap } = wallMetrics(grid);
+    grid.style.setProperty("--wall-cols", String(Math.max(1, cols)));
+    grid.style.setProperty("--wall-gap", `${gap}px`);
+    return cols;
+  }
+
+  /** The count the wall was last dealt at. A resize that fits the same number
+   *  of cards must not re-deal — it would reshuffle the wall under the reader
+   *  for nothing. */
+  let wallCols = 0;
+
+  /** Reading order for the DOM re-sort: down the page, then across it. The
+   *  column tiebreak only matters in aligned-rows patterns (grid), where a
+   *  whole row shares a rowStart and a stable sort alone would leave the
+   *  shuffled deal's order — visually left-to-right, read in random order. */
+  function domOrder(a: HTMLElement, b: HTMLElement): number {
+    const col = (cell: HTMLElement) => Number((cell.dataset.col ?? "").split("-")[0]) || 0;
+    return Number(a.dataset.row) - Number(b.dataset.row) || col(a) - col(b);
+  }
+
+  // ── The bar's state ───────────────────────────────────────────────────────
+  // One selected tag, shared by every view: the galleries re-deal the
+  // survivors, the index hides rows. Mirrors into ?tag= so a narrowed view
+  // survives reload and travels as a link. Module state, RESET on every
+  // astro:page-load — the module survives swaps, the choice should not.
+  let tagFilter = "";
+
+  /** One rule for a grid cell and an index row alike — both carry the same
+   *  build-stamped pipe-delimited data-tags. */
+  function memberMatches(el: HTMLElement): boolean {
+    return !tagFilter || (el.dataset.tags ?? "").includes(`|${tagFilter}|`);
+  }
+
+  /** Close the tags panel wherever it is. Queries the live DOM rather than
+   *  closing over it, so the module-level listeners below survive
+   *  ClientRouter swaps without stacking or holding dead nodes. */
+  function closeTagPanel() {
+    const panel = document.getElementById("tag-filter-panel");
+    if (panel && !panel.hidden) {
+      panel.hidden = true;
+      document.getElementById("tag-filter-btn")?.setAttribute("aria-expanded", "false");
+    }
+  }
+
+  // Module scope, installed ONCE per session — not inside astro:page-load,
+  // where document-level listeners would stack one copy per navigation.
+  document.addEventListener("click", (e) => {
+    const panel = document.getElementById("tag-filter-panel");
+    if (!panel || panel.hidden) return;
+    if (!(e.target instanceof Element) || !e.target.closest(".tag-filter")) closeTagPanel();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeTagPanel();
+  });
+
+  /** The ledger's pass. Returns the visible count. */
+  function applyIndexFilter(): number {
+    let visible = 0;
+    document.querySelectorAll<HTMLElement>(".cindex__row").forEach((row) => {
+      const show = memberMatches(row);
+      row.hidden = !show;
+      if (show) visible += 1;
+    });
+    return visible;
+  }
+
+  /** The empty-state, for whatever view is on screen. */
+  function reflectFilterState(grid: HTMLElement, mode: LayoutMode) {
+    const visible =
+      mode === "index"
+        ? applyIndexFilter()
+        : grid.querySelectorAll<HTMLElement>(".cgrid__cell:not([hidden])").length;
+    const emptyEl = document.getElementById("filter-empty");
+    if (emptyEl) {
+      emptyEl.hidden = visible > 0;
+      // Both galleries are artwork; only the ledger lists members.
+      const gallery = mode !== "index";
+      emptyEl.textContent =
+        (gallery ? emptyEl.dataset.works : emptyEl.dataset.rest) ?? emptyEl.textContent;
+    }
+  }
+
+  /** The tags trigger and its options: the trigger shows the active tag's
+   *  label (or its resting text), the active option is underlined. */
+  function reflectTagUI() {
+    let activeLabel = "";
+    document
+      .querySelectorAll<HTMLButtonElement>(".tag-filter__option[data-label]")
+      .forEach((opt) => {
+        const active = Boolean(tagFilter) && opt.dataset.tag === tagFilter;
+        opt.setAttribute("aria-pressed", String(active));
+        if (active) activeLabel = opt.dataset.label ?? "";
+      });
+    const label = document.getElementById("tag-filter-label");
+    if (label) label.textContent = activeLabel || (label.dataset.rest ?? "");
+    document
+      .getElementById("tag-filter-btn")
+      ?.classList.toggle("filter-word--set", Boolean(tagFilter));
+  }
+
+  // One shuffle per VIEW, not per keystroke: page load and the view toggle
+  // deal fresh, but narrowing keeps the standing order so surviving cards
+  // hold their relative positions while the visitor types instead of
+  // leapfrogging on every input. Kept over ALL artwork cells; a narrowed
+  // deal takes the survivors in this order.
+  //
+  // Keyed by which artwork cells the view is made of — "image" for the
+  // spread's member cards, "work" for the wall's per-artwork tiles.
+  const artworkOrder: Record<string, HTMLElement[]> = {};
+
+  function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
+    // The motion layer reads this to key its parallax — per row in the
+    // aligned-rows grid, per cell in the spread. Stamped before any early
+    // return so it is always truthful about what is on screen.
+    grid.dataset.pattern = mode;
+
+    // The wall measures the WINDOW; every other view sits inside the page's
+    // measure. This releases main's cap for the wall alone (see global.css),
+    // and it has to happen before anything measures — a count taken against
+    // the capped measure comes out short, and on a wide screen by several
+    // cards. Cleared for every other mode by the same call.
+    document.body.classList.toggle("wall-bleed", mode === "grid");
+
+    // The grid wall hides the disclosures in CSS; close them here too, or
+    // a panel left open in the spread is still open on the way back.
+    if (mode !== "spread") {
+      grid.querySelectorAll<HTMLDetailsElement>("details[open]").forEach((d) => {
+        d.open = false;
+      });
+    }
+
+    // The index is not a deal: the server rendered the whole ledger, so the
+    // selector only swaps which of the two siblings is visible. The grid keeps
+    // whatever slots its cells already hold — switching back re-deals anyway.
+    const index = document.getElementById("member-index");
+    if (index) index.hidden = mode !== "index";
+    if (mode === "index") {
+      grid.hidden = true;
+      const stripEl = grid.querySelector<HTMLElement>(".cgrid__strip");
+      if (stripEl) stripEl.hidden = true;
+      reflectFilterState(grid, mode);
+      return;
+    }
+
+    const strip = grid.querySelector<HTMLElement>(".cgrid__strip");
+    const cells = Array.from(grid.querySelectorAll<HTMLElement>(".cgrid__cell"));
+    // WHICH ARTWORK CELLS THIS VIEW IS MADE OF. The wall deals one tile per
+    // WORK; every other view deals one card per MEMBER. Both sets are in the
+    // DOM, and the one this view is not built from is hidden outright — which
+    // is also why switching costs nothing and why the wall's images are not
+    // fetched until the wall is on screen.
+    const artKind = mode === "grid" ? "work" : "image";
+    // BOTH GALLERIES ARE ARTWORK ONLY. The wall stopped showing the
+    // artwork-less members on 2026-09-01 ("remove the empty cards"); the
+    // spread followed on 2026-09-03 ("remove memebrs from gallery that dont
+    // have images"), so there is no longer a view here that deals a second
+    // kind of cell — `artKind` is the whole membership test. Everyone without
+    // a gallery is a row in the Index; see the header.
+    // The filter narrows the DEAL, not the drawing: non-matching cells leave
+    // the grid entirely (display:none) and the survivors are dealt into the
+    // pattern's leading slots, so the page always reads as designed. Hiding
+    // in place would leave the drawn slots standing empty — the exact failure
+    // the old comment on .cgrid__cell[hidden] warned about.
+    cells.forEach((cell) => {
+      cell.hidden = cell.dataset.slot !== artKind || !memberMatches(cell);
+    });
+    const matching = cells.filter((cell) => !cell.hidden);
+    // With nothing to deal the grid itself steps aside — its padding would
+    // otherwise hold the page open under the empty-state message — and the
+    // slot math is never asked to lay out zero cards.
+    grid.hidden = matching.length === 0;
+    if (matching.length === 0) {
+      if (strip) strip.hidden = true;
+      reflectFilterState(grid, mode);
+      return;
+    }
+    // Every surviving cell is artwork of this view's kind — there is no second
+    // kind any more (see the header) — so `matching` IS the gallery.
+    //
+    // One standing order PER SET, not one shared: the wall's tiles and the
+    // spread's cards are different cells, so a single list would be emptied of
+    // everything the current view can use on every switch — and the point of
+    // keeping it is that narrowing by tag must not reshuffle what is on screen.
+    const byRank = (a: HTMLElement, b: HTMLElement) =>
+      Number(a.dataset.rank) - Number(b.dataset.rank);
+    if (reshuffle || !artworkOrder[artKind]?.length) {
+      // SORTED BY RANK BEFORE SHUFFLING, which is not tidiness: a deal
+      // re-sorts the cells in the DOM afterwards (see the header — reading
+      // order has to run down the page), so `cells` arrives in the PREVIOUS
+      // deal's order. A seeded shuffle over a varying input is not
+      // reproducible, and reproducing the deal is the whole point of the seed
+      // (see rememberedSeed). Rank is the one order that is the same on a
+      // freshly swapped document and on one that has been dealt twice.
+      artworkOrder[artKind] = shuffled(
+        cells.filter((cell) => cell.dataset.slot === artKind).sort(byRank)
+      );
+    }
+    const orderedGallery = artworkOrder[artKind].filter((cell) => matching.includes(cell));
+
+    if (mode === "strip" && strip) {
+      orderedGallery.forEach((cell) => {
+        // Grid placement goes inert inside the flex row, but the frame cap
+        // does not — without it a portrait would grow to its slotless 999.
+        cell.style.setProperty("--slot-rows", String(STRIP_SLOT_ROWS));
+        // The old rectangle is gone; a stale ?grid label would lie about it.
+        cell.dataset.row = "0";
+        cell.dataset.span = "";
+        cell.dataset.col = "";
+        strip.appendChild(cell);
+      });
+      strip.hidden = false;
+      // The index ladder that used to run under the strip is gone with the tag
+      // cards it laid out — layOutStripIndex has no callers left.
+      reflectFilterState(grid, mode);
+      return;
+    }
+
+    if (mode === "grid") {
+      // The wall deals every WORK into its own slot, and nothing else.
+      // Generated, not drawn: as many fixed-width tracks as the window fits
+      // (see the wall block in the styles above). The count goes onto the grid
+      // for the CSS to build its tracks from, and is remembered so a resize
+      // can tell a real change from a wobble.
+      wallCols = writeWallMetrics(grid);
+      const all = layOutWall(matching.length, wallCols);
+      orderedGallery.forEach((cell, i) => {
+        writeSlot(cell, all[i]);
+        // The brick: even rows are the offset ones (layOutWall's parity), and
+        // a one-track wall has nothing to step against — the only card in a
+        // row would simply hang off the right edge.
+        if (wallCols >= 2 && all[i].rowStart % 2 === 0) {
+          cell.style.setProperty("--row-offset", "calc(var(--wall-pitch) / 2)");
+        }
+      });
+      if (strip) strip.hidden = true;
+      cells.sort(domOrder).forEach((cell) => grid.appendChild(cell));
+      reflectFilterState(grid, mode);
+      return;
+    }
+
+    // The spread deals exactly like the wall: one run of slots, filled with
+    // the shuffled artwork and nothing else.
+    const all = layOutSlots(GALLERY_PATTERNS.spread, matching.length, 0);
+    orderedGallery.forEach((cell, i) => writeSlot(cell, all[i]));
+    if (strip) strip.hidden = true;
+    cells.sort(domOrder).forEach((cell) => grid.appendChild(cell));
+    reflectFilterState(grid, mode);
+  }
+
+  function modeFromURL(): LayoutMode {
+    const p = new URLSearchParams(window.location.search).get("pattern");
+    return (MODES as string[]).includes(p ?? "") ? (p as LayoutMode) : "spread";
+  }
+
+  /** The Gallery/Grid selector's pressed state. In strip mode (URL-only,
+   *  no UI) neither button is pressed, which is the honest rendering. */
+  function reflectMode(mode: LayoutMode) {
+    document.querySelectorAll<HTMLButtonElement>(".view-toggle__btn").forEach((btn) => {
+      btn.setAttribute("aria-pressed", String(btn.dataset.mode === mode));
+    });
+  }
+
+  // Module scope so a page swap replaces the watch instead of stacking a
+  // second one on a bar the first is still holding.
+  let fadeInsetObserver: ResizeObserver | null = null;
 
   document.addEventListener("astro:page-load", () => {
     const grid = document.getElementById("member-grid");
     if (grid) {
-      const cards = [...grid.children];
-      for (let i = cards.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        grid.appendChild(cards[j]);
-        cards.splice(j, 1);
+      // The tag comes back from the URL the same way the pattern does — but
+      // only if an actual option offers the value. Reset first: the module
+      // outlives page swaps, the previous visit's choice must not.
+      tagFilter = "";
+      const params = new URLSearchParams(window.location.search);
+      const tag = params.get("tag");
+      if (tag && document.querySelector(`.tag-filter__option[data-tag="${CSS.escape(tag)}"]`)) {
+        tagFilter = tag;
       }
+      reflectTagUI();
+
+      // Before the first deal: a Back onto this entry reproduces the page it
+      // was left showing, a fresh arrival gets a new one. See rememberedSeed.
+      dealSeed = rememberedSeed();
+
+      const mode = modeFromURL();
+      applyLayout(grid, mode);
+      reflectMode(mode);
+
+      // ── A TAG CHIP KEEPS THE PICTURE VIEW YOU ARE IN ──────
+      // (2026-09-03.) communityTagHref() builds every chip's href WITHOUT a
+      // ?pattern=, which is right everywhere the link is printed off this page
+      // — a member's own profile has no view to keep. On /community it left
+      // the chips disagreeing with the dropdown directly above them: picking
+      // "Animation" from the dropdown preserves ?pattern= (it builds its URL
+      // from window.location), while a chip in an open panel silently moved a
+      // reader off the wall and into the spread.
+      //
+      // The rule that satisfies both halves of Josh's ask ("clicking on tags
+      // opens gallery with tag filter applied", and NOT "a narrower ledger"):
+      // a chip goes to PICTURES, and keeps the picture view it was pressed in.
+      // The wall is pictures, so grid → grid. The ledger is not, so index →
+      // the spread, exactly as before.
+      //
+      // The href is REWRITTEN rather than intercepted on click, so the status
+      // bar, middle-click and open-in-new-tab all agree with what a left click
+      // does. Re-run on every page-load because a view switch is a navigation
+      // that swaps this document (see goTo).
+      // Edited as TEXT, not round-tripped through URL/URLSearchParams. That
+      // rewrites `%20` to `+` in a multi-word tag, which decodes to the same
+      // filter but is a different string — a second URL, a second history
+      // entry and a second cache key for one place, and it would have silently
+      // changed every chip on the page including the ones this rule leaves
+      // alone. Splitting on the suffix first makes the pass idempotent, since
+      // it runs again on every swapped-in document.
+      document.querySelectorAll<HTMLAnchorElement>("a.pdisc__tag").forEach((chip) => {
+        const base = (chip.getAttribute("href") ?? "").split("&pattern=")[0];
+        const keep = mode === "grid" && base.includes("?");
+        chip.setAttribute("href", keep ? `${base}&pattern=grid` : base);
+      });
+      if (new URLSearchParams(window.location.search).has("grid")) {
+        grid.classList.add("cgrid--debug");
+      }
+
+      // The view selector. Each choice is a NAVIGATION to the same page with a
+      // different ?pattern= — see goTo above for why it is not a local re-deal
+      // any more. Everything else follows from the URL: the handler below runs
+      // again on the swapped-in document, deals the view, presses the right
+      // button and rebuilds the motion layer.
+      document.querySelectorAll<HTMLButtonElement>(".view-toggle__btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const next = btn.dataset.mode as LayoutMode;
+          if (grid.dataset.pattern === next) return;
+          const url = new URL(window.location.href);
+          if (next === "spread") url.searchParams.delete("pattern");
+          else url.searchParams.set("pattern", next);
+          goTo(url);
+        });
+      });
+
+      // ── WHERE THE GALLERY FADE BEGINS ─────────────────────
+      // The mobile gallery's fade runs over `exit` against a scrollport inset
+      // by this many pixels, so the number IS the docked filter bar's bottom
+      // edge — see the cgrid-cell-out block in the stylesheet. It is read
+      // rather than recomputed because the two halves are a calc that has
+      // already had to be restated twice (`top`) and a line box of type
+      // (`offsetHeight`), and a third copy of either would be a third thing to
+      // keep in step.
+      //
+      // `top` is the DOCKED offset whether or not the bar is docked right now,
+      // which is what makes this safe to take at load with the page scrolled
+      // to the top. Once per page-load and once per bar resize — the font-size
+      // token steps at the breakpoint and the controls can wrap — and never on
+      // scroll: this is a constant the compositor then animates against.
+      const fadeBar = document.querySelector<HTMLElement>(".community-bar");
+      if (fadeBar) {
+        const measureFadeInset = () => {
+          const dock = parseFloat(getComputedStyle(fadeBar).top);
+          if (!Number.isFinite(dock)) return;
+          grid.style.setProperty("--cgrid-fade-inset", `${dock + fadeBar.offsetHeight}px`);
+        };
+        measureFadeInset();
+        fadeInsetObserver?.disconnect();
+        fadeInsetObserver = new ResizeObserver(measureFadeInset);
+        fadeInsetObserver.observe(fadeBar);
+      }
+
+      // The tags dropdown: the trigger flips the panel; typing in the panel
+      // narrows its LIST (local, no deal); picking an option NAVIGATES to the
+      // same page with ?tag= set, exactly like the view selector — so a
+      // narrowed page is a history entry you can leave and come back to, and
+      // a tag link from anywhere else on the site (the disclosure panels' tag
+      // chips) lands on the identical URL. Re-picking the active tag (or "All
+      // tags") clears it.
+      //
+      // The re-deal that used to happen here — reshuffle:false, so survivors
+      // held their positions while the visitor narrowed — is gone with it: a
+      // navigation deals fresh. That is the price of the tag being a real
+      // place, and the page scrolls to the top with it, so nothing the
+      // standing order was protecting is on screen to be disturbed.
+      const tagBtn = document.getElementById("tag-filter-btn");
+      const tagPanel = document.getElementById("tag-filter-panel");
+      const tagSearch = document.getElementById("tag-filter-search") as HTMLInputElement | null;
+
+      tagBtn?.addEventListener("click", () => {
+        if (!tagPanel) return;
+        const opening = tagPanel.hidden;
+        tagPanel.hidden = !opening;
+        tagBtn.setAttribute("aria-expanded", String(opening));
+        // ── THE PANEL DOES NOT SUMMON A KEYBOARD ──────────────
+        // (2026-09-04, Josh: "search field should not trigger a keyboard
+        // directly".) Focusing on open is right where the keyboard is already
+        // on the desk and the caret is just a saved click. On a phone it costs
+        // the visitor the thing they opened the panel for: the software
+        // keyboard rises over the tag LIST, so a control whose main job is
+        // browsing every tag opens showing almost none of them, and typing
+        // becomes the only way to use it. Tapping the field still focuses it,
+        // so nothing is taken away — the keyboard is now asked for rather than
+        // assumed.
+        if (opening && matchMedia("(hover: hover) and (pointer: fine)").matches) {
+          tagSearch?.focus();
+        }
+      });
+
+      tagSearch?.addEventListener("input", () => {
+        const needle = tagSearch.value.trim().toLowerCase();
+        tagPanel?.querySelectorAll<HTMLElement>(".tag-filter__list li").forEach((li) => {
+          const key = li.querySelector<HTMLElement>(".tag-filter__option")?.dataset.tag ?? "";
+          // The "All tags" row (empty key) always stays reachable.
+          li.hidden = Boolean(needle) && Boolean(key) && !key.includes(needle);
+        });
+      });
+
+      document.querySelectorAll<HTMLButtonElement>(".tag-filter__option").forEach((opt) => {
+        opt.addEventListener("click", () => {
+          const picked = opt.dataset.tag ?? "";
+          const next = picked === tagFilter ? "" : picked;
+          closeTagPanel();
+          const url = new URL(window.location.href);
+          if (next) url.searchParams.set("tag", next);
+          else url.searchParams.delete("tag");
+          goTo(url);
+        });
+      });
+
+      // The page scrolls in .page-wrap, so a mouse wheel over the strip would
+      // scroll the PAGE past it. Translate the dominant vertical delta to the
+      // strip's own axis — but only while it can still move that way, so the
+      // page takes over at either end instead of the strip trapping the wheel.
+      const strip = grid.querySelector<HTMLElement>(".cgrid__strip");
+      strip?.addEventListener(
+        "wheel",
+        (e) => {
+          if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+          const canRight = strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 1;
+          const canLeft = strip.scrollLeft > 0;
+          if ((e.deltaY > 0 && canRight) || (e.deltaY < 0 && canLeft)) {
+            e.preventDefault();
+            strip.scrollLeft += e.deltaY;
+          }
+        },
+        { passive: false }
+      );
     }
 
     const cta = document.getElementById("community-signup-cta");
@@ -118,5 +2319,551 @@ const memberLabel = members.length === 1 ? t('community.member') : t('community.
         cta.style.display = user ? "none" : "flex";
       });
     }
+  });
+
+  // ────────────────────────────────────────────────────────────────────────
+  // The wall follows the window.
+  // The one view whose drawing is a MEASUREMENT: its track count is however
+  // many fixed-width cards the window fits, so resizing can change the
+  // drawing itself — no other view here can say that. Module scope, not inside
+  // astro:page-load, so a page swap cannot stack a second listener; the
+  // handler looks the grid up each time and does nothing when the wall is not
+  // the view on screen.
+  //
+  // Re-deal ONLY when the count actually moves. A drag across a few hundred
+  // pixels that fits the same number of cards must leave the wall alone, or
+  // the page would reshuffle under the reader for nothing — hence reshuffle
+  // false as well, so the members hold their places. The rebuild the motion
+  // layer needs (every trigger position is measured against the old
+  // placement) is the same event a view switch fires.
+  // ────────────────────────────────────────────────────────────────────────
+  function liveWall(): HTMLElement | null {
+    const grid = document.getElementById("member-grid");
+    if (!grid || grid.dataset.pattern !== "grid" || grid.hidden) return null;
+    return grid;
+  }
+
+  function redealWall(): void {
+    const grid = liveWall();
+    if (!grid) return;
+    if (wallMetrics(grid).cols === wallCols) return;
+    applyLayout(grid, "grid", false);
+    document.dispatchEvent(new Event("community:layout-changed"));
+  }
+
+  // TWO SPEEDS, because the window changes two different things. The GUTTER is
+  // continuous — every pixel of width redistributes it — so it has to follow
+  // the drag, and it costs two custom properties. The COUNT is a step, and
+  // stepping it means re-placing every cell and re-measuring the whole motion
+  // layer, so that waits for the drag to settle and only runs when the count
+  // has actually moved.
+  let wallFrame = 0;
+  let wallResizeTimer = 0;
+  window.addEventListener("resize", () => {
+    cancelAnimationFrame(wallFrame);
+    wallFrame = requestAnimationFrame(() => {
+      const grid = liveWall();
+      if (grid) writeWallMetrics(grid);
+    });
+    clearTimeout(wallResizeTimer);
+    wallResizeTimer = window.setTimeout(redealWall, 180);
+  });
+
+  // Crossing INTO desktop is the one case the count comparison cannot catch on
+  // its own: on the phone the wall's knobs do not exist (its rule is
+  // desktop-only), so the count that was stored is a mobile reading of a
+  // layout mobile never used. Force the deal rather than compare.
+  window.matchMedia("(min-width: 768px)").addEventListener("change", (e) => {
+    if (!e.matches) return;
+    wallCols = 0;
+    redealWall();
+  });
+</script>
+
+<script>
+  // ────────────────────────────────────────────────────────────────────────
+  // Motion layer: desktop-only scroll effects, two jobs.
+  //   1. Cards scale up as they rise toward the top of the scrollport.
+  //   2. The parallax: every card drifts linearly from +amp below its slot
+  //      to -amp above it across its own viewport crossing — a constant
+  //      scroll-speed offset, nothing more. Every card runs the SAME motion
+  //      law (a lane-keyed version read as the columns misbehaving
+  //      differently, not as depth); the depth comes from amplitude alone,
+  //      cycling through three values in row order — a cycle of 3 over 2
+  //      alternating lanes, so depth never lines up with a lane.
+  //      Transform-only, so it cannot disturb the placement the slot table
+  //      fixed.
+  // Width is checked BEFORE the import, so mobile downloads no GSAP at all
+  // (~44 KB gzip). This page is the only importer of gsap in production —
+  // a deliberate, recorded cost (design doc, conflict 3).
+  // ────────────────────────────────────────────────────────────────────────
+  const DESKTOP = "(min-width: 768px)";
+  const REDUCED = "(prefers-reduced-motion: reduce)";
+
+  // The parallax amplitudes, in px of vertical offset from the slot: a card
+  // starts +amp below it entering the scrollport and exits -amp above it, so
+  // amp sets the card's constant speed relative to the page. Three depths,
+  // dealt in row order; all well under the spread's same-lane spacing (~35
+  // rows), and scroll progress only ever pulls a card AWAY from the one
+  // beneath it (the lower card always trails, so it always sits deeper), so
+  // even the deepest neighbours cannot collide. The interlocked opposite
+  // lane can't either: it never shares columns. Drift is vertical only, so
+  // no amount of it can push a card out of its lane.
+  const AMPS = [70, 130, 100];
+
+  /** Full amplitude everywhere but the wall. (There used to be a tag-card
+   *  exception for the shelved strip mode's index ladder; both galleries are
+   *  artwork only since 2026-09-03, so there is no second kind of card left to
+   *  damp.) */
+  function flowScale(_cell: HTMLElement, mode: string | undefined): number {
+    // The amplitudes above were drawn for the spread, where a beat has
+    // hundreds of pixels of drawn whitespace under it and a card is 500px
+    // wide. On the wall a 130px travel is most of a 200px card sliding past
+    // its neighbours, which reads as slosh rather than depth — and it eats
+    // into a 30px row gap. Two rows never quite collide even undamped (they
+    // cross their triggers 0.28 apart, so the worst a row can close on the one
+    // below is ~21px of the 30), but a third of the amplitude turns that into
+    // ~7px and makes the motion proportionate to the card carrying it.
+    // Scaling is the whole change — the per-row deal above is untouched, so a
+    // row still moves as one flat edge.
+    if (mode === "grid") return 0.35;
+    return 1;
+  }
+
+  // Loose type: gsap's global namespace types are not reliably in scope
+  // inside a scoped Astro script, and revert() is all we need off it.
+  let mm: { revert: () => void } | null = null;
+
+  // Re-entry guard for the async gap. `mm` alone is not a mutex: it is read
+  // before the dynamic import but only assigned after it, so two overlapping
+  // build() calls would both pass the `if (mm)` check and the second would
+  // orphan the first context's ScrollTriggers. `building` closes that window
+  // synchronously, and `epoch` — bumped by every teardown — lets a build that
+  // was in flight when a teardown happened detect that its DOM is stale and
+  // abandon itself instead of assigning a context over dead nodes.
+  let building = false;
+  let epoch = 0;
+
+  async function build() {
+    if (building || mm) return;
+    if (!document.querySelector(".cgrid")) return;
+    // The index view hides the grid entirely: every cell is display:none, so
+    // triggers would be measured against nothing. The selector's
+    // layout-changed event rebuilds when a gallery comes back.
+    if (document.getElementById("member-grid")?.hidden) return;
+    if (!window.matchMedia(DESKTOP).matches) return;
+    if (window.matchMedia(REDUCED).matches) return;
+
+    building = true;
+    const startedIn = epoch;
+
+    // Everything from the import onward can reject — a hashed chunk 404ing
+    // after a redeploy while ClientRouter keeps the session alive, a flaky
+    // network. Without recovery, a rejection would leave `building` latched
+    // true with `mm` null: a silently dead motion layer until a full reload.
+    try {
+      const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
+        import("gsap"),
+        import("gsap/ScrollTrigger"),
+      ]);
+
+      // A teardown ran while the import was in flight: this build's DOM is
+      // gone, and teardown already reset `building` so a fresh build for the
+      // new page can proceed. Abandon without touching either flag.
+      if (epoch !== startedIn) return;
+
+      gsap.registerPlugin(ScrollTrigger);
+
+      // The scroll container is .page-wrap, never the window — body is
+      // overflow:hidden (see Layout.astro).
+      const scroller = ".page-wrap";
+
+      mm = gsap.matchMedia();
+      // Tweens and ScrollTriggers created inside a matchMedia context are
+      // reverted and killed automatically on revert().
+      mm.add(DESKTOP, () => {
+        // 1. Grow on approach: starts when the card's top enters at the
+        //    bottom of the scrollport, completes at 38% from the top, so
+        //    cards are already full size in the upper region. scrub ties
+        //    progress to scroll position instead of elapsed time.
+        //    Cards inside the horizontal strip are skipped in both jobs: the
+        //    strip scrolls on its own axis, and a scroll-linked transform
+        //    would fight the hover growth that layout owns.
+        gsap.utils
+          .toArray<HTMLElement>(".ccard, .cwork")
+          // The view the deal did NOT build is still in the DOM, hidden — the
+          // spread's member cards while the wall is up, and the wall's tiles
+          // otherwise. A trigger measured against a display:none box is
+          // meaningless, and there are now more of those than of the real
+          // ones. The switch fires community:layout-changed, which rebuilds
+          // this layer, so nothing is missed by skipping them.
+          .filter((card) => !card.closest(".cgrid__strip, .cgrid__cell[hidden]"))
+          .forEach((card) => {
+            gsap.fromTo(
+              card,
+              { scale: 0.72, opacity: 0.2 },
+              {
+                scale: 1,
+                opacity: 1,
+                ease: "none",
+                scrollTrigger: {
+                  scroller,
+                  trigger: card,
+                  start: "top bottom",
+                  // Done while the card is still in the lower half — a card
+                  // must be at scale 1 before mid-screen, where the eye rests
+                  // on it, or the image is still resampling mid-scale there
+                  // (part of a "the images vibrate" report).
+                  end: "top 60%",
+                  // The other part of that report: scrub:true maps every
+                  // discrete wheel step straight onto the transform, so motion
+                  // arrives as ticks. The 0.5s catch-up turns the steps into a
+                  // continuous glide.
+                  scrub: 0.5,
+                },
+              }
+            );
+          });
+
+        // 2. The parallax: one linear tween per cell, +amp to -amp, scrubbed
+        //    across the cell's own viewport crossing (a page-long trigger
+        //    dilutes any amplitude to invisibility — learned the hard way).
+        //    ease:none, because a constant offset in scroll terms IS the
+        //    effect: the cell simply travels at a slightly different speed
+        //    than the page, and neighbours at different amplitudes separate
+        //    — that separation is the depth. The cells are in row order
+        //    after the deal's DOM re-sort, so cycling AMPS by index deals
+        //    the depths down the page, never along a lane. Drives the CELL
+        //    while the scale drives the card inside it, so the two
+        //    transforms cannot fight over one element's property.
+        const cells = gsap.utils
+          .toArray<HTMLElement>(".cgrid__cell:not([hidden])")
+          .filter((cell) => !cell.closest(".cgrid__strip"));
+        // In the aligned-rows grid, the amplitude is dealt per ROW, not per
+        // cell: a row's cards share a rowStart because the drawing says they
+        // start level, and per-cell depths would shear that flat edge apart
+        // the moment the page moves. Depth still alternates — row to row
+        // instead of card to card. The spread keeps the per-cell deal.
+        const grid = document.getElementById("member-grid");
+        const perRow = grid?.dataset.pattern === "grid";
+        const rowOf = (cell: HTMLElement) => Number(cell.dataset.row) || 0;
+        const rows = [...new Set(cells.map(rowOf))].sort((a, b) => a - b);
+        cells.forEach((cell, i) => {
+          const beat = perRow ? rows.indexOf(rowOf(cell)) : i;
+          const amp = AMPS[beat % AMPS.length] * flowScale(cell, grid?.dataset.pattern);
+          gsap.fromTo(
+            cell,
+            { y: amp },
+            {
+              y: -amp,
+              ease: "none",
+              scrollTrigger: {
+                scroller,
+                trigger: cell,
+                start: "top bottom",
+                end: "bottom top",
+                // Smoothed for the same reason as the scale tween above:
+                // raw scrub turns wheel steps into visible ticking.
+                scrub: 0.5,
+              },
+            }
+          );
+        });
+      });
+
+      // Archivo is self-hosted; if it lands after first paint, card heights
+      // change, rows that were sized to fit a card resize with them, and every
+      // measured trigger position is stale. Epoch-guarded so a refresh queued
+      // by a page that has since been swapped away cannot fire against dead
+      // nodes.
+      document.fonts?.ready.then(() => {
+        if (epoch === startedIn) ScrollTrigger.refresh();
+      });
+
+      building = false;
+    } catch (err) {
+      // Release the latch only if this build still owns it — after a
+      // teardown, `building` belongs to whatever comes next.
+      if (epoch === startedIn) building = false;
+      // Swallow rather than re-throw: the page is fully usable without the
+      // motion layer, and the next astro:page-load retries cleanly.
+      console.error("[community-grid] scroll motion layer failed to build:", err);
+    }
+  }
+
+  function teardown() {
+    // Bumping the epoch marks any in-flight build as stale; clearing
+    // `building` here is what lets the next page's build start immediately.
+    epoch++;
+    mm?.revert();
+    mm = null;
+    building = false;
+  }
+
+  document.addEventListener("astro:page-load", build);
+  document.addEventListener("astro:before-swap", teardown);
+
+  // The view selector re-dealt the cells: every measured trigger position is
+  // stale, and the parallax keying (per row vs per cell) may have changed
+  // with the pattern. Same recovery as a page swap — tear down and rebuild.
+  document.addEventListener("community:layout-changed", () => {
+    teardown();
+    build();
+  });
+
+  // Crossing the breakpoint on resize starts or stops the whole layer. The
+  // wall's own re-deal on that crossing lives in the behaviour layer (a
+  // separate module — nothing here can call applyLayout) and arrives as a
+  // community:layout-changed, handled above.
+  window.matchMedia(DESKTOP).addEventListener("change", () => {
+    teardown();
+    build();
+  });
+</script>
+
+<script>
+  import PhotoSwipeLightbox from "photoswipe/lightbox";
+  import "photoswipe/style.css";
+  // Immediately after the package sheet, never before: this is the chrome that
+  // replaces it. Same pair, same order, as the member profile page.
+  import "../styles/lightbox.css";
+
+  // ────────────────────────────────────────────────────────────────────────
+  // THE WALL'S LIGHTBOX — a third module, alongside the deal and the motion
+  // layer, and independent of both (the three <script> blocks in this file are
+  // SEPARATE ES modules; nothing here can call applyLayout).
+  //
+  // WHY THE WALL AND NOT THE SPREAD. On a tile the picture and the person are
+  // two different destinations: pressing the artwork opens the artwork, and
+  // the author's name — the only other thing the tile says — goes to the
+  // profile. The spread's member cards are unchanged: there the name sits
+  // above the frame, the frame pages a whole gallery, and the card as a whole
+  // still means "this member".
+  //
+  // NOTHING RE-INITIALISES THIS ON A DEAL, deliberately. The click listener
+  // binds to #member-grid, which survives every deal (cells are moved inside
+  // it, never replaced), and PhotoSwipe resolves `children` at CLICK time —
+  // so a filtered wall, a re-shuffled wall and a wall that has just come back
+  // from the spread all open the right slide without this module hearing about
+  // any of it. That is also why the selector carries `:not([hidden])`: the
+  // spread's member cards and the tags filter's rejects are in the DOM, and
+  // without it a wall showing fifteen tiles would page through forty-eight.
+  // ────────────────────────────────────────────────────────────────────────
+
+  interface LightboxStrings {
+    close: string;
+    zoom: string;
+    prev: string;
+    next: string;
+    error: string;
+  }
+
+  // English is the fallback, matching useTranslations() — a missing or
+  // malformed attribute costs the translation, never the lightbox.
+  const FALLBACK: LightboxStrings = {
+    close: "Close",
+    zoom: "Zoom",
+    prev: "Previous image",
+    next: "Next image",
+    error: "The image cannot be loaded",
+  };
+
+  const esc = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  // Two borders on a box turned 45deg — the drawing the card arrows use, so
+  // every pager on the site is one control.
+  const CHEVRON = '<span class="pswp__vscn-chevron" aria-hidden="true"></span>';
+
+  // BOTH VIEWS' TRIGGERS, in one selector. The wall's tile wraps its own
+  // image (.cwork__link); the gallery's card puts a bare link over its
+  // carousel (.ccard__frame-link) and rewrites its data-pswp-* set as the
+  // carousel moves. Only one of the two is ever unhidden — the deal hides the
+  // member cells for the wall and the work cells for the gallery — so the
+  // union never pages through both at once, and `:not([hidden])` keeps the
+  // filter's rejects out of the count as well.
+  //
+  // THE GALLERY'S TRIGGER WAS MISSING HERE until 2026-09-01, which is what
+  // "the lightbox is broken in Gallery" was: PhotoSwipe swallows the click on
+  // a gallery it owns even when the selector matches nothing, so pressing an
+  // image did not open the lightbox AND did not follow the link either.
+  const TRIGGERS = ".cgrid__cell:not([hidden]) .cwork__link, .cgrid__cell:not([hidden]) .ccard__frame-link";
+
+  // Rebuilt per navigation: ClientRouter swaps the document, so a lightbox
+  // bound to the previous page's grid would be holding a dead element.
+  let lightbox: PhotoSwipeLightbox | null = null;
+
+  document.addEventListener("astro:page-load", () => {
+    lightbox?.destroy();
+    lightbox = null;
+    const grid = document.getElementById("member-grid");
+    if (!grid || !grid.querySelector(TRIGGERS)) return;
+
+    let strings = FALLBACK;
+    try {
+      strings = { ...FALLBACK, ...JSON.parse(grid.dataset.pswpI18n || "{}") };
+    } catch {
+      /* keep the fallback */
+    }
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    lightbox = new PhotoSwipeLightbox({
+      gallery: "#member-grid",
+      children: TRIGGERS,
+      pswpModule: () => import("photoswipe"),
+
+      // ── Chrome. Identical to the member page's, on purpose — nothing below
+      //    changes behaviour, and the two galleries must not look like two
+      //    different lightboxes. See lightbox.css for the CSS half.
+      mainClass: "pswp--vscn",
+      bgOpacity: 1,
+      // The bottom figures GREW with the description line (2026-09-01) and are
+      // the band's max-height in lightbox.css — that pair is the whole reason a
+      // long description scrolls rather than overlapping the picture. Change
+      // them together.
+      paddingFn: (viewportSize) =>
+        viewportSize.x <= 767
+          ? { top: 44, bottom: 116, left: 12, right: 12 }
+          : { top: 56, bottom: 140, left: 32, right: 32 },
+      closeSVG: `<span class="pswp__vscn-word">${esc(strings.close)}</span>`,
+      arrowPrevSVG: CHEVRON,
+      arrowNextSVG: CHEVRON,
+      zoomSVG: '<span class="pswp__vscn-zoom" aria-hidden="true"></span>',
+      closeTitle: strings.close,
+      zoomTitle: strings.zoom,
+      arrowPrevTitle: strings.prev,
+      arrowNextTitle: strings.next,
+      errorMsg: strings.error,
+
+      // Spread rather than a ternary per key: PhotoSwipe merges options over
+      // its defaults, so writing `undefined` into one of these would erase the
+      // default instead of keeping it.
+      ...(reduced
+        ? {
+            showHideAnimationType: "none" as const,
+            showAnimationDuration: 0,
+            hideAnimationDuration: 0,
+            zoomAnimationDuration: false as const,
+          }
+        : {}),
+    });
+
+    // ── THE GALLERY CARD'S ZOOM-OUT TARGET ────────────────────────────────
+    // PhotoSwipe finds the thumbnail it grows out of by looking for an `img`
+    // INSIDE the trigger. The wall's tile wraps its image, so it needs
+    // nothing; the gallery card's link is a bare overlay next to the carousel
+    // track, so without help it has nothing to animate from and opens with a
+    // flat fade — one gesture, two different openings. These two filters hand
+    // it the slide the visitor is actually looking at, which is the one whose
+    // work URL the carousel copied onto the link (see CommunityImageCard's
+    // syncTrigger). Matching on that URL rather than on an index keeps this
+    // module ignorant of Embla, exactly like the rest of the pair's contract.
+    lightbox.addFilter("thumbEl", (thumbEl, itemData) => {
+      const trigger = itemData.element as HTMLElement | undefined;
+      if (thumbEl || !trigger?.classList.contains("ccard__frame-link")) return thumbEl;
+      const frame = trigger.parentElement;
+      const href = trigger.getAttribute("href");
+      const slide =
+        frame?.querySelector<HTMLElement>(`.ccard__slide[data-work-url="${CSS.escape(href || "")}"]`) ??
+        frame?.querySelector<HTMLElement>(".ccard__slide");
+      return slide?.querySelector<HTMLImageElement>(".ccard__img") ?? thumbEl;
+    });
+
+    // The card's frame is a fixed shape and the image fills it with
+    // object-fit: cover, so the thumbnail on screen is a CROP of the picture
+    // the lightbox shows. Saying so is what makes the zoom start from the
+    // visible crop instead of from a letterboxed ghost of the full frame.
+    lightbox.addFilter("domItemData", (itemData, element) => {
+      if (element.classList.contains("ccard__frame-link")) itemData.thumbCropped = true;
+      return itemData;
+    });
+
+    // PhotoSwipe 5 has no caption of its own; this is the documented way to
+    // add one. Text comes off the trigger link, so the lightbox and the tile
+    // under it cannot say different things about the same image.
+    lightbox.on("uiRegister", () => {
+      lightbox?.pswp?.ui?.registerElement({
+        name: "vscn-caption",
+        className: "pswp__vscn-caption",
+        appendTo: "root",
+        order: 9,
+        onInit: (el, pswp) => {
+          const render = () => {
+            const trigger = pswp.currSlide?.data.element as HTMLElement | undefined;
+            const caption = trigger?.dataset.pswpCaption?.trim() || "";
+            // THE SHORT DESCRIPTION. A description arrived in the band on
+            // 2026-09-01 (Josh: "add it to lightbox") because the one view
+            // where the artwork is big enough to warrant an explanation was
+            // the one view without one; it was the member's LONG text until
+            // 2026-09-03, when the two split (Josh: "one for portfolio the
+            // rest for lightbox and other places") and the long one stayed on
+            // the member's own page. Unlike the caption it is still NOT
+            // clamped: the band is a scroll container capped at the padding
+            // the artwork reserves (see lightbox.css), so a sentence that
+            // wraps to three lines scrolls inside the band rather than being
+            // cut off or growing up over the picture.
+            const description = trigger?.dataset.pswpDescription?.trim() || "";
+            const meta = trigger?.dataset.pswpMeta?.trim() || "";
+
+            // textContent, not innerHTML: this is member-authored text.
+            el.replaceChildren();
+            if (caption) {
+              const line = document.createElement("span");
+              line.className = "pswp__vscn-caption-line";
+              line.textContent = caption;
+              el.append(line);
+            }
+            if (description) {
+              const desc = document.createElement("span");
+              desc.className = "pswp__vscn-caption-desc";
+              desc.textContent = description;
+              el.append(desc);
+            }
+            // ── THE CREDIT IS THE WAY OUT ─────────────────────────
+            // (2026-09-03, Josh: "in lightbox a way to get to the profile of a
+            // person".) The lightbox is the whole screen, so every route the
+            // page offered to a member — the tile's author line, the card's
+            // name heading, the "View profile" control in a disclosure — is
+            // underneath it. The band was already naming them; it just had no
+            // way of being followed.
+            //
+            // The NAME becomes the link, rather than a "View profile" control
+            // being added beside it: the credit is the only thing in the band
+            // that is about the person, so making it the control keeps the band
+            // three lines about one picture instead of four with an errand at
+            // the end. A plain <a>, so ClientRouter picks the navigation up and
+            // the lightbox is destroyed by its own astro:before-swap handler —
+            // nothing here has to close anything.
+            //
+            // Falls back to a plain span when the trigger carries no profile
+            // href: the member page's own gallery uses this same renderer, and
+            // there the person whose page you are on is not somewhere to go.
+            const profile = trigger?.dataset.pswpProfile?.trim() || "";
+            if (meta) {
+              const credit = document.createElement(profile ? "a" : "span");
+              credit.className = "pswp__vscn-caption-meta";
+              if (credit instanceof HTMLAnchorElement) credit.href = profile;
+              credit.textContent = meta;
+              el.append(credit);
+            }
+            el.classList.toggle("is-empty", !caption && !description && !meta);
+            // The band scrolls; a slide change has to start it at the top or
+            // the next caption opens mid-paragraph.
+            el.scrollTop = 0;
+          };
+
+          pswp.on("change", render);
+          render();
+        },
+      });
+    });
+
+    lightbox.init();
+  });
+
+  document.addEventListener("astro:before-swap", () => {
+    lightbox?.destroy();
+    lightbox = null;
   });
 </script>

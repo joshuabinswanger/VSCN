@@ -17,7 +17,7 @@
 /* ── Design tokens ── */
 :root {
   font-family: "Archivo", sans-serif;
-  --font-size-base: 13px;
+  --font-size-base: 12px;
   --color-dark: #000000;
   --color-bg: #fcfbfa;
   --color-border: #e0e0e0;
@@ -29,6 +29,10 @@
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 16px;
+  /* The page's shared measure. The brand ticker, the navbar and <main> all
+     size to it, which is what keeps the giant VSCN title, the nav links and
+     the content on the same two vertical edges. */
+  --shell-max: 900px;
 }
 
 /* Media query aliases available in global CSS and Astro component styles. */
@@ -38,7 +42,7 @@
 
 @media (--bp-desktop) {
   :root {
-    --font-size-base: 15px;
+    --font-size-base: 14px;
   }
 }
 
@@ -132,7 +136,7 @@ body::before {
 }
 
 main {
-  max-width: 900px;
+  max-width: var(--shell-max);
   margin: 0 auto;
   padding: 0 15px;
   box-sizing: border-box;
@@ -140,6 +144,40 @@ main {
 
 main.is-wide {
   max-width: 1200px;
+}
+
+/* Opt-in wide CONTENT (`contentWide` on Layout) — deliberately NOT a wide
+   shell. It widens <main> only and leaves --shell-max alone, so the header
+   keeps its 900px measure and the giant VSCN title renders at exactly the size
+   it does everywhere else on the site. Widening --shell-max instead was tried
+   and rejected: the title tracks the measure, so a wide shell made it 120–149px
+   against production's ~73px. The consequence to accept is that wide content
+   starts outside the header's left edge rather than under it — and the narrower
+   this cap gets, the smaller that offset, so it is worth revisiting here rather
+   than in the header if the break-out ever reads badly.
+
+   Desktop only. On mobile <main> is already the full viewport, so a vw cap here
+   would only pull the page in from both edges and cost width the two-up card
+   grid does not have to spare. */
+@media (--bp-desktop) {
+  body.content-wide main {
+    /* 2030 = CommunityGrid's 2000px --grid-max plus main's two 15px gutters,
+       so the grid can actually reach its own cap instead of stopping 30px
+       short of it. Move the two together. */
+    max-width: min(94vw, 2030px);
+  }
+
+  /* THE GRID WALL MEASURES THE WINDOW. Every other view on /community is drawn
+     against a measure and wants the cap above; the wall lays cards in tracks
+     of a fixed width and fits as many as there is room for, so a cap on the
+     page would only turn a wider window into wider margins — the exact defect
+     it was built to answer. The class is set and cleared by the view selector
+     (CommunityGrid's applyLayout), so it is on the body for that one view.
+     No padding of its own: main's 15px gutters stay, and the wall keeps half
+     a card of air at each edge from its own --wall-edge. */
+  body.content-wide.wall-bleed main {
+    max-width: none;
+  }
 }
 
 /* ── Links — kill browser default blue/purple ── */

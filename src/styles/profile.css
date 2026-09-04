@@ -1,0 +1,345 @@
+/* THE MEMBER PROFILE PAGE'S SURFACE — shared, on purpose.
+ *
+ * These rules used to be a scoped <style> inside members/[slug].astro, and the
+ * profile editor's preview carried a second set (`.ppv__*`) that tried to look
+ * like them. It drifted, badly: the avatar was missing, the meta rows ran in a
+ * different order with headings the page does not print, the links stacked
+ * where the page wraps them, and every size and margin was a near miss
+ * (2026-09-01, Josh: "profile preview should actually show the profile page
+ * 1 to 1, atm it is not accurate at all").
+ *
+ * One stylesheet, two consumers, is what makes that impossible to repeat:
+ *   - src/pages/[...lang]/members/[slug].astro — the page a visitor gets
+ *   - src/components/ProfileViewPreview.astro — the same markup as an empty
+ *     shell, filled in the browser from live form state (profilePreview.ts)
+ * The preview owns nothing here that changes the page's drawing. The
+ * `--preview` modifier at the foot is now only the `[hidden]` fix a FILLED
+ * shell needs; the padding override it used to carry went with the sheet it
+ * was compensating for (2026-09-02 — see that component's header).
+ *
+ * A plain .css file rather than an Astro <style>: scoped styles stamp a
+ * per-component attribute onto every selector, so two components importing
+ * one scoped block would still get two different rules. Custom media
+ * (--bp-mobile) resolves through postcss-global-data — see postcss.config.mjs.
+ */
+
+.mprof {
+  font-family: "Archivo", sans-serif;
+  padding-block: 3rem 10rem;
+}
+
+.mprof__back {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--color-muted);
+}
+.mprof__back:hover,
+.mprof__back:focus-visible {
+  color: var(--color-dark);
+}
+
+/* ── Identity ─────────────────────────────────────────── */
+.mprof__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 1.25rem;
+  margin-top: 2.5rem;
+}
+
+.mprof__avatar {
+  display: block;
+  width: clamp(5rem, 14vw, 9rem);
+  height: clamp(5rem, 14vw, 9rem);
+  border: 1.5px solid var(--color-border);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* The card's name band grown to page scale — same face, same tightness, so
+     arriving from a card reads as the same object opening up. */
+.mprof__name {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 3.2rem);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  color: var(--color-dark);
+  overflow-wrap: anywhere;
+}
+
+.mprof__role {
+  margin: 0.7rem 0 0;
+  max-width: 36rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--color-dark);
+}
+
+/* Institution sits with the title block, but a step quieter than the
+     role: it identifies, it is not the headline. */
+.mprof__affiliation {
+  margin: 0.25rem 0 0;
+  max-width: 36rem;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: var(--color-dark);
+}
+
+.mprof__where {
+  margin: 0.25rem 0 0;
+  max-width: 36rem;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  color: var(--color-muted);
+}
+
+/* A dot plus the words, never a bare coloured pill: the site has no accent
+     colour, and a dot alone carries no meaning to anyone who cannot see it. */
+.mprof__open {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.55rem 0 0;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.mprof__open::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  background: var(--color-dark);
+  border-radius: 50%;
+}
+
+.mprof__bio {
+  margin: 2.2rem 0 0;
+  max-width: 38rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--color-dark);
+  white-space: pre-line;
+}
+
+/* ── Meta ─────────────────────────────────────────────── */
+.mprof__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  margin-top: 2.4rem;
+}
+
+.mprof__row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+/* A real heading, so the page has an outline rather than styled spans. */
+.mprof__key {
+  margin: 0;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.mprof__vals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mprof__val {
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 5px 7px;
+  color: var(--color-muted);
+  border: 1px solid var(--color-border);
+  /* Square corners throughout, as on the cards. */
+  border-radius: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* THE TAG CHIP AS A CONTROL — the pair of .pdisc__tag in MemberDetailPanel,
+   drawn the same way and for the same reasons: the chip keeps its whole
+   appearance and gains only the pointer and an ink-coloured hover, because a
+   row of boxed words with a rule under each would read as a list of links
+   rather than as a set of tags. `display: block` so the padding is the target.
+   Filed here rather than beside .pdisc__tag because this sheet is what the
+   member page and the editor's page preview share. */
+.mprof__tag {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.mprof__tag:hover,
+.mprof__tag:focus-visible {
+  color: var(--color-dark);
+  border-color: var(--color-dark);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mprof__tag {
+    transition: none;
+  }
+}
+
+/* One line, wrapping only when it must — same treatment as the card's
+     disclosure panel (.pdisc__vals--links), which links.ts requires this to
+     agree with. Inherits the base row direction. */
+.mprof__vals--links {
+  column-gap: 1.1rem;
+  row-gap: 0.35rem;
+  align-items: baseline;
+}
+
+.mprof__link {
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--color-dark);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+.mprof__link:hover {
+  color: var(--color-muted);
+}
+
+/* ── Work ─────────────────────────────────────────────── */
+.mprof__works {
+  display: flex;
+  flex-direction: column;
+  gap: 4rem;
+  margin-top: 4.5rem;
+}
+
+.mprof__works-key {
+  margin-bottom: -2rem;
+}
+
+.mprof__work {
+  margin: 0;
+}
+
+.mprof__work-link {
+  display: block;
+  border: 1.5px solid var(--color-border);
+  border-radius: 0;
+  background: var(--color-bg);
+  overflow: hidden;
+  cursor: zoom-in;
+}
+
+.mprof__img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ── Captions ─────────────────────────────────────────── */
+/* One block under the image holding the caption line and the longer
+     description. A column rather than two siblings so the gaps stay the
+     caption's business, not the gallery's. */
+.mprof__caption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0.7rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--color-muted);
+}
+
+.mprof__caption-line {
+  color: var(--color-dark);
+}
+
+.mprof__desc {
+  max-width: 62ch;
+  white-space: pre-line;
+}
+
+/* The per-image "where this appeared" link reuses .mprof__link wholesale — it
+   should look like every other link on the page. The one thing the shared rule
+   cannot give it: the caption is a flex COLUMN, so an anchor stretches to the
+   full width and its underline reads as a rule across the page.
+   One rule, both consumers — the page and the editor's preview. */
+.mprof__caption .mprof__link {
+  align-self: start;
+}
+
+@media (--bp-mobile) {
+  .mprof {
+    padding-block: 2rem 6rem;
+  }
+  .mprof__works {
+    gap: 2.5rem;
+    margin-top: 3rem;
+  }
+  .mprof__works-key {
+    margin-bottom: -1.25rem;
+  }
+}
+
+/* ── The editor's preview ─────────────────────────────────
+   NO PADDING OVERRIDE HERE ANY MORE. It used to zero `padding-block: 3rem
+   10rem`, which was right while the preview lived inside a padded white sheet
+   doing the same job. The sheet is gone (2026-09-02, Josh: "make the preview be
+   exactly the profile page seperated only by horizontal bars"), and with it the
+   reason: the page's own padding is its own placement, the member is being
+   shown the page's placement, and the rules above and below it are where the
+   editor stops. So the modifier is down to the one thing a FILLED shell
+   genuinely needs that a RENDERED page does not. */
+
+/* The preview is FILLED, not rendered: where the real page simply omits a row
+   the member has nothing for, the shell hides it with the `hidden` attribute.
+   The UA stylesheet implements that as `display: none`, and ANY author
+   `display` beats it — several parts here are flex — so an empty "Looking for"
+   would otherwise render as a stray heading over nothing. */
+.mprof--preview [hidden] {
+  display: none;
+}
+
+/* Nothing to preview yet. The real page renders no gallery at all in this
+   case; the editor has to say so, because an absent section and an empty one
+   look identical and only one of them is worth acting on. Dashed, so it reads
+   as a note about the page rather than as part of it. */
+.mprof__empty {
+  margin: 4.5rem 0 0;
+  padding: 2rem 1.25rem;
+  border: 1.5px dashed var(--color-border);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--color-muted);
+}
+
+@media (--bp-mobile) {
+  .mprof__empty {
+    margin-top: 3rem;
+  }
+}

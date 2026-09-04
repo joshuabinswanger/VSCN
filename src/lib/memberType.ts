@@ -19,11 +19,25 @@ export function memberBadgeLabel(type: string, t: Lookup): string {
   return BADGED_TYPES.has(type) ? t(`member.badge.${type}`) : "";
 }
 
+/** Types that need visuals rather than make them. */
+const SCIENCE_SIDE = new Set(["scientist", "both", "organization"]);
+
+/**
+ * Whether to ask this member what they need visuals for. A creator makes
+ * them, so the question is only put to the science side.
+ */
+export function needsVisuals(type: string): boolean {
+  return SCIENCE_SIDE.has(type);
+}
+
 export interface MemberTypeFieldCopy {
   namePlaceholder: string;
   rolePlaceholder: string;
   portfolioLabel: string;
   portfolioPlaceholder: string;
+  affiliationPlaceholder: string;
+  socialLabel: string;
+  socialPlaceholder: string;
 }
 
 /**
@@ -48,5 +62,13 @@ export function memberTypeFieldCopy(type: string, t: Lookup): MemberTypeFieldCop
     portfolioPlaceholder: usesLabWording
       ? t("profile.ph.portfolio.science")
       : t("profile.ph.portfolio"),
+    affiliationPlaceholder: usesLabWording
+      ? t("profile.ph.affiliation.science")
+      : t("profile.ph.affiliation"),
+    // A researcher's identifier is an ORCID, and it has nowhere else to go.
+    socialLabel: usesLabWording ? t("profile.label.social.science") : t("profile.label.social"),
+    socialPlaceholder: usesLabWording
+      ? t("profile.ph.social.science")
+      : t("profile.ph.social"),
   };
 }

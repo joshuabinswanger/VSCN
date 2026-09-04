@@ -1,8 +1,11 @@
 ---
-import MemberCard from "./MemberCard.astro";
+import CommunityCardPreview from "./community/CommunityCardPreview.astro";
 import MemberTypeSelector from "./MemberTypeSelector.astro";
+import ProfileViewPreview from "./ProfileViewPreview.astro";
 import OpenToSelector from "./OpenToSelector.astro";
+import VisualNeedsSelector from "./VisualNeedsSelector.astro";
 import TagSelector from "./TagSelector.astro";
+import { LANGUAGES } from "../lib/firestore.ts";
 import { useTranslations } from "../i18n/utils";
 import type { Lang } from "../i18n/utils";
 
@@ -15,171 +18,10 @@ const t = useTranslations(lang);
 
 <div id="loading" class="loading-state">{t("profile.loading")}</div>
 
-<form id="profile-form" class="profile-form" data-lang={lang}>
-  <div class="avatar-wrap">
-    <div class="avatar-image">
-      <img id="avatar-preview" src="" alt="" class="avatar-img" />
-      <div id="avatar-placeholder" class="avatar-placeholder">?</div>
-    </div>
-    <label class="btn-outline choose-img" for="avatar">
-      {t("profile.chooseImage")}
-      <input id="avatar" type="file" accept="image/*" style="display:none;" />
-    </label>
-    <p id="upload-status" class="upload-status" style="display:none;"></p>
-  </div>
-
-  <MemberTypeSelector lang={lang} />
-
-  <div class="field">
-    <label class="label" for="name">{t("profile.label.name")}</label>
-    <input id="name" type="text" class="input" placeholder={t("profile.ph.name")} />
-  </div>
-
-  <div class="field">
-    <label class="label" for="role">{t("profile.label.role")}</label>
-    <input id="role" type="text" class="input" placeholder={t("profile.ph.role")} />
-    <p class="field-note">{t("profile.note.role")}</p>
-  </div>
-
-  <div class="field">
-    <label class="label" for="bio">{t("profile.label.bio")}</label>
-    <textarea id="bio" rows="4" class="input textarea" placeholder={t("profile.ph.bio")}></textarea>
-    <p class="field-note">{t("profile.note.bio")}</p>
-  </div>
-
-  <div class="field">
-    <label id="portfolio-label" class="label" for="portfolio"
-      >{t("profile.label.portfolio")}</label
-    >
-    <div class="input-prefix-wrap">
-      <span class="input-prefix">https://</span>
-      <input
-        id="portfolio"
-        type="text"
-        class="input input-prefixed"
-        placeholder={t("profile.ph.portfolio")}
-      />
-    </div>
-  </div>
-
-  <div class="field">
-    <label class="label" for="social-media">{t("profile.label.social")}</label>
-    <div class="input-prefix-wrap">
-      <span class="input-prefix">https://</span>
-      <input
-        id="social-media"
-        type="text"
-        class="input input-prefixed"
-        placeholder={t("profile.ph.social")}
-      />
-    </div>
-    <p class="field-note">{t("profile.note.social")}</p>
-  </div>
-
-  <div class="field">
-    <label class="checkbox-label" for="profile-active">
-      <input id="profile-active" type="checkbox" />
-      <span>{t("profile.active.label")}</span>
-    </label>
-    <p class="field-note">{t("profile.active.note")}</p>
-  </div>
-
-  <OpenToSelector lang={lang} />
-
-  <fieldset class="target-audience-field">
-    <legend class="label">{t("profile.primaryAudience.legend")}</legend>
-    <div class="target-audience-options">
-      <label class="target-audience-option">
-        <input type="checkbox" name="primary-audience" value="science" />
-        <span>{t("profile.primaryAudience.science")}</span>
-      </label>
-      <label class="target-audience-option">
-        <input type="checkbox" name="primary-audience" value="public" />
-        <span>{t("profile.primaryAudience.public")}</span>
-      </label>
-      <label class="target-audience-option">
-        <input type="checkbox" name="primary-audience" value="policy-makers" />
-        <span>{t("profile.primaryAudience.policyMakers")}</span>
-      </label>
-      <label class="target-audience-option">
-        <input type="checkbox" name="primary-audience" value="education" />
-        <span>{t("profile.primaryAudience.education")}</span>
-      </label>
-    </div>
-  </fieldset>
-
-  <div class="field">
-    <label class="label" for="tag-input">{t("profile.label.tags")}</label>
-    <TagSelector lang={lang} maxTags={7} inputId="tag-input" />
-  </div>
-
-  <div class="field">
-    <label class="label" for="phone">{t("profile.label.phone")}</label>
-    <input id="phone" type="tel" class="input" placeholder="+41 79 123 45 67" autocomplete="tel" />
-    <p class="field-note">
-      {t("profile.note.phone")}
-    </p>
-  </div>
-
-  <div class="preview-section">
-    <p class="label">{t("profile.cardPreview")}</p>
-    <MemberCard preview lang={lang} />
-  </div>
-
-  <div class="form-footer">
-    <p id="save-msg" class="msg-ok" style="display:none;">
-      {t("profile.saveMsg")}
-    </p>
-    <p id="save-error" class="msg-err" style="display:none;"></p>
-    <div class="footer-actions">
-      <button id="btn-logout" type="button" class="btn-outline">{t("profile.logout")}</button>
-      <button type="submit" class="btn-solid profile-save-button">{t("profile.save")}</button>
-    </div>
-  </div>
-
-  <div class="danger-zone">
-    <div id="delete-idle">
-      <button type="button" id="btn-delete-start" class="btn-danger-link"
-        >{t("profile.delete.idle")}</button
-      >
-    </div>
-
-    <div id="delete-confirm" style="display:none;">
-      <p class="danger-text">
-        {t("profile.delete.text")}
-      </p>
-      <div class="danger-actions">
-        <button type="button" id="btn-delete-cancel" class="btn-link"
-          >{t("profile.delete.cancel")}</button
-        >
-        <button type="button" id="btn-delete-confirm" class="btn-danger"
-          >{t("profile.delete.confirm")}</button
-        >
-      </div>
-    </div>
-
-    <div id="delete-reauth" style="display:none;">
-      <p class="danger-text">{t("profile.reauth.text")}</p>
-      <input
-        id="reauth-password"
-        type="password"
-        class="input"
-        placeholder="••••••••"
-        autocomplete="current-password"
-      />
-      <p id="reauth-error" class="msg-err" style="display:none;"></p>
-      <div class="danger-actions">
-        <button type="button" id="btn-reauth-cancel" class="btn-link"
-          >{t("profile.reauth.cancel")}</button
-        >
-        <button type="button" id="btn-reauth-confirm" class="btn-danger"
-          >{t("profile.reauth.confirm")}</button
-        >
-      </div>
-    </div>
-  </div>
-</form>
-
+{
+  /* Above the form, not inside a section: an unverified address matters on
+    every tab. */
+}
 <div id="verify-banner" class="verify-banner" style="display:none;">
   <p class="verify-banner-text">
     {t("profile.verifyBanner")}
@@ -191,6 +33,548 @@ const t = useTranslations(lang);
     {t("profile.verifySent")}
   </p>
 </div>
+
+<form id="profile-form" class="profile-form" data-lang={lang}>
+  {
+    /* Shown on every tab while a deletion is pending: the way back out of it
+      must not be hidden behind the tab that scheduled it. */
+  }
+  <div id="deletion-banner" class="deletion-banner" style="display:none;" role="status">
+    <p id="deletion-banner-text"></p>
+    <button type="button" id="btn-keep-account" class="btn-solid"
+      >{t("profile.delete.keep")}</button
+    >
+  </div>
+
+  {
+    /* One form, four sections. A tab switch only toggles visibility, so the
+      single Save still collects every field. Preview is the last tab rather
+      than a separate mode: it needs no save and no rebuild, which matters
+      because the real profile page is a build-time snapshot — saving alone
+      would not show the member their own change for minutes. */
+  }
+  <div class="section-tabs" role="group" id="section-tabs">
+    <button type="button" class="section-tab is-active" data-section="profile" aria-pressed="true">
+      {t("profile.tab.profile")}
+    </button>
+    <button type="button" class="section-tab" data-section="work" aria-pressed="false">
+      {t("profile.tab.work")}
+    </button>
+    <button type="button" class="section-tab" data-section="account" aria-pressed="false">
+      {t("profile.tab.account")}
+    </button>
+    <button type="button" class="section-tab" data-section="preview" aria-pressed="false">
+      {t("profile.tab.preview")}
+    </button>
+  </div>
+
+  <div class="form-section is-active" data-section="profile">
+    <div class="avatar-wrap">
+      <div class="avatar-image">
+        <img id="avatar-preview" src="" alt="" class="avatar-img" />
+        <div id="avatar-placeholder" class="avatar-placeholder">?</div>
+      </div>
+      <label class="btn-outline choose-img" for="avatar">
+        {t("profile.chooseImage")}
+        <input
+          id="avatar"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/avif"
+          style="display:none;"
+        />
+      </label>
+      <p id="upload-status" class="upload-status" style="display:none;"></p>
+    </div>
+
+    <MemberTypeSelector lang={lang} />
+
+    <div class="field">
+      <label class="label" for="name">{t("profile.label.name")}</label>
+      <input id="name" type="text" class="input" placeholder={t("profile.ph.name")} />
+    </div>
+
+    <div class="field">
+      <label class="label" for="role">{t("profile.label.role")}</label>
+      <input id="role" type="text" class="input" placeholder={t("profile.ph.role")} />
+      <p class="field-note">{t("profile.note.role")}</p>
+    </div>
+
+    <div class="field">
+      <label class="label" for="affiliation">{t("profile.label.affiliation")}</label>
+      <input
+        id="affiliation"
+        type="text"
+        class="input"
+        placeholder={t("profile.ph.affiliation")}
+      />
+    </div>
+
+    <div class="field">
+      <label class="label" for="location">{t("profile.label.location")}</label>
+      <input id="location" type="text" class="input" placeholder={t("profile.ph.location")} />
+    </div>
+
+    <fieldset class="target-audience-field">
+      <legend class="label">{t("profile.label.languages")}</legend>
+      <div class="target-audience-options">
+        {
+          LANGUAGES.map((code) => (
+            <label class="target-audience-option">
+              <input type="checkbox" name="language" value={code} />
+              <span>{t(`profile.lang.${code}`)}</span>
+            </label>
+          ))
+        }
+      </div>
+      <p class="field-note">{t("profile.note.languages")}</p>
+    </fieldset>
+
+    <div class="field">
+      <label class="label" for="bio">{t("profile.label.bio")}</label>
+      <textarea id="bio" rows="4" class="input textarea" placeholder={t("profile.ph.bio")}
+      ></textarea>
+      <p class="field-note">{t("profile.note.bio")}</p>
+    </div>
+
+    <div class="field">
+      <label id="portfolio-label" class="label" for="portfolio"
+        >{t("profile.label.portfolio")}</label
+      >
+      <div class="input-prefix-wrap">
+        <span class="input-prefix">https://</span>
+        <input
+          id="portfolio"
+          type="text"
+          class="input input-prefixed"
+          placeholder={t("profile.ph.portfolio")}
+        />
+      </div>
+    </div>
+
+    {
+      /* One row per link, not one box for all of them. The STORED shape is
+      unchanged — the rows are joined back into the single comma-separated
+      `socialMedia` string by joinSocial() — so old profiles, the build-time
+      directory snapshot and firestore.rules all keep working untouched. A <p>
+      rather than a <label>: there is no single control left to point at. */
+    }
+    <div class="field">
+      <p id="social-label" class="label">{t("profile.label.social")}</p>
+      <div id="social-editor" class="social-editor"></div>
+      <button type="button" id="social-add" class="btn-outline choose-img">
+        {t("profile.social.add")}
+      </button>
+      <p id="social-status" class="field-note" style="display:none;"></p>
+      <p class="field-note">{t("profile.note.social")}</p>
+      {
+        /* Cloned by renderSocial(). Rendered here rather than built in JS so
+        each clone carries Astro's data-astro-cid-* attribute and matches the
+        scoped rules below — a node built with document.createElement() would
+        match none of them. */
+      }
+      <template data-social-tpl="row">
+        <div class="social-row">
+          <div class="input-prefix-wrap">
+            <span class="input-prefix">https://</span>
+            <input type="text" class="input input-prefixed" data-social-input />
+          </div>
+          <button type="button" class="social-row-remove" data-social-remove>✕</button>
+        </div>
+      </template>
+    </div>
+
+    <OpenToSelector lang={lang} />
+
+    <VisualNeedsSelector lang={lang} />
+
+    <fieldset class="target-audience-field">
+      <legend class="label">{t("profile.primaryAudience.legend")}</legend>
+      <div class="target-audience-options">
+        <label class="target-audience-option">
+          <input type="checkbox" name="primary-audience" value="science" />
+          <span>{t("profile.primaryAudience.science")}</span>
+        </label>
+        <label class="target-audience-option">
+          <input type="checkbox" name="primary-audience" value="public" />
+          <span>{t("profile.primaryAudience.public")}</span>
+        </label>
+        <label class="target-audience-option">
+          <input type="checkbox" name="primary-audience" value="policy-makers" />
+          <span>{t("profile.primaryAudience.policyMakers")}</span>
+        </label>
+        <label class="target-audience-option">
+          <input type="checkbox" name="primary-audience" value="education" />
+          <span>{t("profile.primaryAudience.education")}</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <div class="field">
+      <label class="label" for="tag-input">{t("profile.label.tags")}</label>
+      <TagSelector lang={lang} maxTags={7} inputId="tag-input" />
+    </div>
+  </div>
+
+  <div class="form-section" data-section="work">
+    <div class="field">
+      <p class="label">{t("profile.label.gallery")}</p>
+      {
+        /* The drop target is this wrapper, not the list: an empty gallery has a
+        list of zero height, so a member with no images yet — the one most
+        likely to be dragging a folder of work at the screen — would have had
+        nothing to drag onto. Wrapping the Add button in it too means the whole
+        block is the target, which is also what it looks like. */
+      }
+      <div id="gallery-drop" class="gallery-drop">
+        <div id="gallery-editor" class="gallery-editor"></div>
+        {
+          /* Pending uploads live in their own list BELOW the committed images,
+          because that is where a finished upload lands — a row does not jump
+          when it completes, it just stops being a queue row. */
+        }
+        {
+          /* NOT aria-live. The obvious choice here is wrong: the state text
+          inside carries a percentage that updates several times a second per
+          upload, and a polite live region would read all of it aloud, three
+          uploads at a time. Progress is exposed as a progressbar instead —
+          available on demand, silent until asked — and only a FAILURE is
+          announced, by paintTaskRow promoting that one row to role="alert". */
+        }
+        <div id="gallery-queue" class="gallery-queue"></div>
+        <label class="btn-outline choose-img" for="gallery-files">
+          {t("profile.gallery.add")}
+          <input
+            id="gallery-files"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif"
+            multiple
+            style="display:none;"
+          />
+        </label>
+        <span class="gallery-drop-hint" aria-hidden="true">{t("profile.gallery.drop")}</span>
+      </div>
+      <p id="gallery-status" class="field-note" style="display:none;"></p>
+      {
+        /* Two notes, one shown. The verify banner used to carry "until then
+          you can add only one image" and no longer does — a strip about email
+          is the wrong place for the gallery's ceiling, and it left this line
+          saying "up to 8" to a member who could upload exactly one. The limit
+          belongs next to the uploader. Defaults to the verified copy so the
+          swap, like the banner's, is a single act with nothing to undo. */
+      }
+      <p id="gallery-note" class="field-note">{t("profile.note.gallery")}</p>
+      <p id="gallery-note-unverified" class="field-note" hidden>
+        {t("profile.note.galleryUnverified")}
+      </p>
+      {
+        /* Order is not a preference, it is the card's geometry: works[0]'s
+        width/height become the aspect box in CommunityImageCard. Nothing used
+        to say so, so members had no way to know the first image was doing
+        anything at all. */
+      }
+      <p class="field-note">{t("profile.gallery.coverNote")}</p>
+      {
+        /* The directory is image-led: a member without a gallery holds a
+        typographic card. Saying so here is the standing mechanism that fills
+        the directory — hidden the moment the first image lands. */
+      }
+      <p id="gallery-nudge" class="field-note gallery-nudge" hidden>{t("profile.gallery.nudge")}</p>
+      {
+        /* Cloned by renderGallery(). Astro scopes this component's CSS by
+        appending data-astro-cid-* to EVERY compound selector, so .gallery-item, .gallery-thumb and .gallery-thumb-remove
+        are scoped rules, so createElement() rows got none of them — the thumbs
+        rendered at their natural size with an untreated remove button. */
+      }
+      <template data-gallery-tpl="item">
+        <div class="gallery-item">
+          <div class="gallery-thumb">
+            <img alt="" loading="lazy" data-gallery-img />
+            <span class="gallery-cover" data-gallery-cover hidden></span>
+            <button type="button" class="gallery-thumb-remove" data-gallery-remove>✕</button>
+          </div>
+          <div class="gallery-fields">
+            <input type="text" class="input" data-gallery-field="caption" />
+            {
+              /* THE SHORT LINE, second — between the title and the essay,
+                which is the order of how far each one travels (2026-09-03,
+                Josh: "image descriptions should have a long and short
+                version"). The caption names the picture and goes everywhere;
+                this one sentence goes everywhere the picture is shown among
+                other pictures — the lightbox above all; the long text below
+                stays on the member's own page. Two rows, not one line: 240
+                characters is a sentence that wraps, and a single-line input
+                would hide its own end. */
+            }
+            <textarea class="input textarea" rows="2" data-gallery-field="descriptionShort"></textarea>
+            <textarea class="input textarea" rows="3" data-gallery-field="description"></textarea>
+            {
+              /* WHERE THIS IMAGE APPEARED. Same fixed-prefix treatment as
+                Portfolio and the social rows, because the value is stored the
+                same way: without a scheme. A bare text input would collect a
+                mix of "nature.com/…" and "https://nature.com/…" in one field. */
+            }
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">https://</span>
+              <input type="text" class="input input-prefixed" data-gallery-field="link" />
+            </div>
+            <div class="gallery-tools">
+              <button type="button" class="gallery-tool" data-gallery-move="up">↑</button>
+              <button type="button" class="gallery-tool" data-gallery-move="down">↓</button>
+            </div>
+          </div>
+        </div>
+      </template>
+      {
+        /* One pending upload, cloned by renderQueue(). Deliberately the same
+        .gallery-item geometry as a committed row: the thumb is in the same
+        place at the same size, so a completed upload reads as the row settling
+        rather than as one row vanishing and a different one appearing. */
+      }
+      <template data-gallery-tpl="task">
+        <div class="gallery-item gallery-task">
+          <div class="gallery-thumb">
+            <img alt="" data-task-img />
+            <button type="button" class="gallery-thumb-remove" data-task-cancel>✕</button>
+          </div>
+          <div class="gallery-fields">
+            <p class="gallery-task-name" data-task-name></p>
+            <div
+              class="gallery-bar"
+              data-task-track
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
+              <span data-task-bar></span>
+            </div>
+            <p class="gallery-task-state" data-task-state></p>
+            <div class="gallery-tools" data-task-tools hidden>
+              <button type="button" class="gallery-tool" data-task-retry></button>
+              <button type="button" class="gallery-tool" data-task-dismiss></button>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <div class="form-section" data-section="account">
+    <div class="field">
+      <label class="checkbox-label" for="profile-active">
+        <input id="profile-active" type="checkbox" />
+        <span>{t("profile.active.label")}</span>
+      </label>
+      <p class="field-note">{t("profile.active.note")}</p>
+    </div>
+
+    <div class="field">
+      <label class="checkbox-label" for="wants-to-contribute">
+        <input id="wants-to-contribute" type="checkbox" />
+        <span>{t("profile.wantsToContribute")}</span>
+      </label>
+      <p class="field-note">{t("profile.wantsToContribute.note")}</p>
+    </div>
+
+    <div class="field">
+      <label class="label" for="phone">{t("profile.label.phone")}</label>
+      <input
+        id="phone"
+        type="tel"
+        class="input"
+        placeholder="+41 79 123 45 67"
+        autocomplete="tel"
+      />
+      <p class="field-note">
+        {t("profile.note.phone")}
+      </p>
+    </div>
+
+    {
+      /* SIGNING OUT LEADS THE TAB (2026-09-03, Josh: "log Out should be more
+        prominent"). It was the second of two identical grey ghosts, below a
+        link most members are not allowed to follow — so the one action
+        everybody comes here for looked like the afterthought. */
+    }
+    <button id="btn-logout" type="button" class="btn-logout-strong">
+      {t("profile.logout")}
+    </button>
+
+    {
+      /* THE WAY INTO /admin (2026-09-03, Josh: "i cant see the admin console
+        ... cant it be on the normal profile page?"). Nothing on the site
+        linked to it, so reaching the console meant knowing to type the URL.
+        It lives on the Account tab because that is where the things about the
+        ACCOUNT rather than the profile already are — the logout above it,
+        the danger zone below.
+
+        Not locale-prefixed: /admin is a single page outside src/pages/[...lang]
+        (there is no /de/admin), so a `${prefix}` here would 404 in German.
+
+        `hidden` until the claim is confirmed, and the claim is read the same
+        way the console itself reads it (see AdminConsole): a forced token
+        refresh, because Firebase serves a CACHED ID token for up to an hour
+        and a claim granted by set-admin.mjs after the browser last signed in
+        is not in it. Without that refresh this link would stay invisible to a
+        brand-new admin for an hour, which is the same bug the console's own
+        gate had. A non-admin never sees it — see the `[hidden]` rule in the
+        styles below for why that sentence was false until 2026-09-03. It is a
+        link, not a permission: /admin and every admin callable gate
+        themselves. */
+    }
+    <a id="admin-link" class="btn-outline account-quiet" href="/admin" hidden>
+      {t("profile.adminConsole")}
+    </a>
+
+    {
+      /* Auth owns the change: the confirmation link goes to the NEW address
+        and the swap happens only when it is clicked. users/{uid}.email is a
+        server-written mirror that catches up on the next load.
+
+        BEHIND ITS OWN TRIGGER (2026-09-03, Josh: "email change behind
+        seperate mask"). Standing open, an empty "new email address" beside an
+        empty password box reads as a field the Account tab is asking you to
+        fill in — and it sat directly under the phone number, which IS one.
+        Changing an email is a deliberate errand; it should take a deliberate
+        click to start. */
+    }
+    <div class="account-block">
+      <div id="email-idle">
+        <button type="button" id="btn-email-start" class="btn-link"
+          >{t("profile.email.title")}</button
+        >
+      </div>
+
+      <div id="email-form" class="account-disclosure" hidden>
+        <label class="label" for="email-new">{t("profile.email.new")}</label>
+        <input id="email-new" type="email" class="input" autocomplete="email" />
+        <label class="label" for="email-password">{t("profile.reauth.text")}</label>
+        <input id="email-password" type="password" class="input" autocomplete="current-password" />
+        <p id="email-msg" class="msg-ok" style="display:none;"></p>
+        <p id="email-error" class="msg-err" style="display:none;"></p>
+        <div class="account-actions">
+          <button type="button" id="btn-email-cancel" class="btn-link"
+            >{t("profile.reauth.cancel")}</button
+          >
+          <button type="button" id="btn-email-change" class="btn-solid"
+            >{t("profile.email.submit")}</button
+          >
+        </div>
+      </div>
+    </div>
+
+    <div class="danger-zone">
+      <div id="delete-idle">
+        <button type="button" id="btn-delete-start" class="btn-danger-link"
+          >{t("profile.delete.idle")}</button
+        >
+      </div>
+
+      {
+        /* TWO THINGS TO GET WRONG, ON PURPOSE (2026-09-04, Josh: "a typed
+          confirmation would be good!").
+
+          The one-step design used to be justified right here: the password
+          prompt WAS the confirmation, because requestAccountDeletion refuses a
+          token whose auth_time is older than five minutes, so an "are you
+          sure" screen in front of it added a click and no safety. That
+          reasoning rested on the 30-day grace period. The grace period is gone
+          — the callable now destroys documents, files and the Auth user before
+          it returns — and the argument went with it.
+
+          A password is the one string a member types on this site often enough
+          to type without reading it, and a password manager will fill it
+          unasked. The address is the opposite: nothing autofills it into a
+          bare text field, and it names WHICH account is about to go, which a
+          password never does.
+
+          The address rather than the word DELETE because this form is
+          bilingual. A magic word needs translating, and a member who switches
+          language halfway through would find the word they had just typed no
+          longer matches. An address means the same thing in both. */
+      }
+      <div id="delete-reauth" style="display:none;">
+        <p class="danger-text">{t("profile.delete.text")}</p>
+
+        <label class="danger-label" for="delete-confirm-email"
+          >{t("profile.delete.typePrompt")}</label
+        >
+        <p id="delete-confirm-target" class="danger-target"></p>
+        <input
+          id="delete-confirm-email"
+          type="text"
+          class="input"
+          autocomplete="off"
+          autocapitalize="none"
+          autocorrect="off"
+          spellcheck="false"
+          inputmode="email"
+        />
+        <p id="delete-confirm-error" class="msg-err" style="display:none;"></p>
+
+        <p class="danger-text danger-text-spaced">{t("profile.reauth.text")}</p>
+        <input
+          id="reauth-password"
+          type="password"
+          class="input"
+          placeholder="••••••••"
+          autocomplete="current-password"
+        />
+        <p id="reauth-error" class="msg-err" style="display:none;"></p>
+        <div class="danger-actions">
+          <button type="button" id="btn-reauth-cancel" class="btn-link"
+            >{t("profile.reauth.cancel")}</button
+          >
+          <button type="button" id="btn-reauth-confirm" class="btn-danger" disabled
+            >{t("profile.delete.confirm")}</button
+          >
+        </div>
+      </div>
+
+      <div id="delete-scheduled" style="display:none;">
+        <p id="delete-scheduled-text" class="danger-text"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section" data-section="preview">
+    {
+      /* The Preview tab. Both representations sit here together so
+      they are comparable, and so the form itself stays a form.
+
+      The profile page comes first: it is the artefact the member is actually
+      building. The directory card is the smaller, secondary view of the same
+      data — the image card itself, carousel and all, bound by
+      renderCardPreview(), which is what /community renders since the directory
+      switched over.
+
+      NOTHING BETWEEN THEM BUT A RULE (2026-09-02, Josh: "make the preview be
+      exactly the profile page seperated only by horizontal bars"). The two
+      "YOUR PROFILE PAGE" / "YOUR DIRECTORY CARD" headings are gone with the
+      preview's sheet and note. They were the editor naming its own contents
+      over renderings that name themselves — a page with the member's name at
+      the top of it, and a card with their name on it — and a label above a
+      preview is one more thing between the member and the thing they are
+      looking at. ProfileViewPreview draws the rule above and below itself;
+      this section closes the last one under the card. */
+    }
+    <div class="preview-section">
+      <ProfileViewPreview lang={lang} />
+      <CommunityCardPreview />
+      <hr class="preview-rule" />
+    </div>
+  </div>
+
+  {/* Floating Save: reachable from every editing tab, hidden on Preview. */}
+  <div class="form-footer">
+    <p id="save-msg" class="msg-ok" style="display:none;">
+      {t("profile.saveMsg")}
+    </p>
+    <p id="save-error" class="msg-err" style="display:none;"></p>
+    <button id="save-button" type="submit" class="btn-solid profile-save-button"
+      >{t("profile.save")}</button
+    >
+  </div>
+</form>
 
 <style>
   .loading-state {
@@ -256,7 +640,9 @@ const t = useTranslations(lang);
     margin: clamp(2rem, 4vw, 4rem) auto;
     padding: 0 15px;
     box-sizing: border-box;
-    overflow: hidden;
+    /* clip, not hidden: hidden makes the form a scroll container, and the
+       sticky footer would stick to that instead of the page. */
+    overflow-x: clip;
 
     @media (--bp-desktop) {
       padding: 0;
@@ -266,6 +652,16 @@ const t = useTranslations(lang);
 
   .profile-form.is-loaded {
     display: grid;
+  }
+
+  /* display: contents keeps every field a direct grid item of the form, so
+     the section wrappers add tab navigation without changing the layout. */
+  .form-section {
+    display: none;
+  }
+
+  .form-section.is-active {
+    display: contents;
   }
 
   .avatar-wrap {
@@ -312,24 +708,6 @@ const t = useTranslations(lang);
     width: fit-content;
   }
 
-  .form-title {
-    font-size: 1.4rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: var(--color-dark);
-  }
-  .form-sub {
-    font-size: 0.85rem;
-    color: var(--color-muted);
-    margin-top: 0.2rem;
-  }
-
-  .divider {
-    border: none;
-    border-top: 1px solid #eee;
-    margin: 0;
-  }
-
   .field-note {
     margin: 0;
     font-size: 0.78rem;
@@ -369,34 +747,539 @@ const t = useTranslations(lang);
     border-color: transparent;
   }
 
-  .preview-section {
-    padding-top: 0.5rem;
-    padding-bottom: 7rem;
-  }
-
-  .preview-section .label {
-    display: block;
+  /* ── Social links ─────────────────────────────────────── */
+  /* A stack of the same prefixed input the single field used, each with its
+     own remove control. No border around a row and no per-row label: a link is
+     one value, so a bordered block would be a box drawn around a single input. */
+  .social-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
     margin-bottom: 0.75rem;
   }
 
-  .form-footer {
-    padding-top: 25px;
+  .social-editor:empty {
+    display: none;
   }
 
-  .footer-actions {
+  .social-row {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .social-row .input-prefix-wrap {
+    flex: 1 1 auto;
+  }
+
+  /* An outline circle, in the flow rather than pinned to a corner — there is
+     no block here for it to sit in. */
+  .social-row-remove {
+    flex: 0 0 auto;
+    align-self: center;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    color: var(--color-muted);
+    border: 1.5px solid var(--color-border);
+    border-radius: 50%;
+    font-size: 0.7rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .social-row-remove:hover {
+    color: #fff;
+    background: var(--color-error);
+    border-color: var(--color-error);
+  }
+
+  /* Was a grid of bare 90px thumbs. Each image now carries a caption and a
+     description, which no square that small can hold — so an
+     entry is a row: thumb on the left, its words on the right. */
+  .gallery-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 0.5rem;
+  }
+
+  .gallery-editor:empty {
+    display: none;
+  }
+
+  .gallery-item {
     display: grid;
-    gap: 15px;
-    grid-template-columns: auto auto;
-    justify-content: space-between;
+    grid-template-columns: 110px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+  }
+
+  .gallery-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  /* Compact by design: these sit three-deep inside a field that already has
+     its own label, so full-size inputs would read as the form restarting. */
+  .gallery-fields .input {
+    font-size: 0.85rem;
+  }
+
+  .gallery-fields .textarea {
+    min-height: 56px;
+  }
+
+  /* The fixed `https://` belongs to the field it sits against, so it takes the
+     row's compact size too. Without this it keeps the form's full type size and
+     reads a size larger than the value beside it. */
+  .gallery-fields .input-prefix {
+    font-size: 0.85rem;
+  }
+
+  .gallery-thumb {
+    position: relative;
+    aspect-ratio: 1;
+  }
+
+  .gallery-thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--color-border);
+    box-sizing: border-box;
+  }
+
+  .gallery-thumb-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .gallery-thumb-remove:hover {
+    background: var(--color-error);
+  }
+
+  /* The drop target. No border of its own until something is being dragged
+     over it — a permanently outlined box in the middle of a form reads as a
+     disabled field, and this one is only special for the two seconds a drag
+     lasts. */
+  .gallery-drop {
+    position: relative;
+    border: 1.5px dashed transparent;
+    border-radius: var(--radius-sm);
+    padding: 4px;
+    margin: -4px -4px 0.5rem;
+    transition: border-color 0.15s ease;
+  }
+
+  .gallery-drop.is-dragging {
+    border-color: var(--color-dark);
+  }
+
+  /* Only ever seen mid-drag, so it costs nothing at rest and does not compete
+     with the Add button for the same job. */
+  .gallery-drop-hint {
+    display: none;
+    margin-left: 10px;
+    font-size: 0.85rem;
+    color: var(--color-muted);
+  }
+
+  .gallery-drop.is-dragging .gallery-drop-hint {
+    display: inline;
+  }
+
+  /* The cap is a fact about the gallery, not an error, so the button says so by
+     going quiet rather than by the form growing a message. */
+  .gallery-drop .choose-img[aria-disabled="true"] {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .gallery-queue {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .gallery-queue:not(:empty) {
+    margin-top: 14px;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Held apart from a committed row on purpose: this image is not in the
+     gallery yet, and an identical-looking row would claim it was. */
+  .gallery-task .gallery-thumb img {
+    opacity: 0.55;
+  }
+
+  .gallery-task-name {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--color-dark);
+    overflow-wrap: anywhere;
+  }
+
+  .gallery-task-state {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--color-muted);
+  }
+
+  .gallery-task.has-error .gallery-task-state {
+    color: var(--color-error);
+  }
+
+  .gallery-bar {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-border);
+    overflow: hidden;
+  }
+
+  .gallery-bar span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--color-dark);
+    transition: width 0.2s ease;
+  }
+
+  /* Progress is meaningless for a file that failed and for one still waiting
+     its turn, and an empty track sitting under the name looks like a stall. */
+  .gallery-task.has-error .gallery-bar,
+  .gallery-task.is-waiting .gallery-bar {
+    display: none;
+  }
+
+  .gallery-tools {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .gallery-tool {
+    min-width: 26px;
+    height: 26px;
+    padding: 0 8px;
+    background: none;
+    color: var(--color-muted);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .gallery-tool:hover:not(:disabled) {
+    color: var(--color-dark);
+    border-color: var(--color-dark);
+  }
+
+  /* The first and last rows keep their buttons rather than losing them: a
+     control that disappears at the edge of a list makes the list jump, and the
+     disabled state already says the same thing without moving anything. */
+  .gallery-tool:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  /* Names what the first image already IS. Not a control — pressing it would
+     imply the others could be chosen, and they are chosen by being moved. */
+  .gallery-cover {
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    padding: 2px 6px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    font-size: 0.65rem;
+    line-height: 1.4;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  @media (--bp-mobile) {
+    .gallery-item {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .gallery-thumb {
+      max-width: 140px;
+    }
+  }
+
+  /* ── Section tabs ─────────────────────────────────────── */
+  /* Text tabs on a hairline, in the same uppercase voice as .label — the
+     boxed segmented control read as one more form control among many. */
+  .section-tabs {
+    display: flex;
+    gap: 1.75rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .section-tab {
+    padding: 0 0 0.6rem;
+    margin-bottom: -1px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    cursor: pointer;
+    transition:
+      color 0.15s,
+      border-color 0.15s;
+  }
+
+  .section-tab:hover {
+    color: var(--color-dark);
+  }
+
+  .section-tab.is-active {
+    color: var(--color-dark);
+    border-bottom-color: var(--color-dark);
+  }
+
+  @media (--bp-mobile) {
+    .section-tabs {
+      justify-content: space-between;
+      gap: 1rem;
+    }
+  }
+
+  /* The preview tab is the one place in this form where air is the point: the
+     two renderings have to read as things being LOOKED at, not fields being
+     filled in.
+     THE GAP IS SMALL NOW, AND THE RULES DO THE PARTING (2026-09-02). It was
+     6rem, sized to separate two labelled blocks; the labels are gone and each
+     rendering is bounded by a hairline, so 6rem on top of that just opened a
+     hole between a page and the line that closes it. The profile page brings
+     its own 3rem/10rem of internal air (profile.css), which is the whole point
+     of showing it unmodified. */
+  .preview-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    padding-top: 2rem;
+    padding-bottom: 5rem;
+  }
+
+  /* The closing line under the directory card — same hairline
+     ProfileViewPreview draws above and below the page, so the tab reads as one
+     stack of rendered things rather than a page in a frame and a loose card. */
+  .preview-rule {
+    height: 0;
+    margin: 0;
+    border: 0;
+    border-top: 1px solid var(--color-border);
+  }
+
+  /* Floats above the bottom of .page-wrap (the page's real scroll container),
+     so Save is reachable from every editing tab without scrolling; at the end
+     of the form it settles into the flow. No bar behind it — just the button,
+     so the container must not eat clicks on the content it hovers over. */
+  .form-footer {
+    position: sticky;
+    /* 0, not a lift: .page-wrap's own 80px bottom padding already keeps the
+       pinned button floating well clear of the pane edge. */
+    bottom: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    pointer-events: none;
+  }
+
+  .form-footer > * {
+    pointer-events: auto;
+  }
+
+  /* Preview needs no Save: nothing on that tab can be edited. */
+  .profile-form.is-previewing .form-footer {
+    display: none;
+  }
+
+  /* The save/error message floats next to the button, so it carries its own
+     surface to stay legible over whatever it happens to hover above. */
+  .form-footer .msg-ok,
+  .form-footer .msg-err {
+    margin: 0;
+    padding: 0.45rem 0.9rem;
+    background: var(--color-bg);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   }
 
   .profile-save-button {
-    margin-left: auto;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  }
+
+  /*
+   * SAVING HAS TO LOOK LIKE SAVING.
+   *
+   * The button did nothing at all while a save was in flight, and a save is not
+   * one round trip: both profile documents, then the image records, then the
+   * active flag, then the rebuild dispatch. On anything slower than an office
+   * connection the member pressed a button that then sat there unchanged for
+   * several seconds, which reads as "nothing happened" and gets pressed again.
+   *
+   * It stays BLACK rather than taking .btn-solid:disabled's grey. Grey says
+   * "you cannot press this" — true, and not the news. The news is that it is
+   * working, and the ring is what says so.
+   */
+  .profile-save-button.is-saving:disabled {
+    background: var(--color-dark);
+    cursor: progress;
+  }
+
+  .profile-save-button.is-saving::before {
+    content: "";
+    width: 0.9em;
+    height: 0.9em;
+    margin-right: 0.6em;
+    border: 2px solid rgb(255 255 255 / 0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    /* Named for this component on purpose: @keyframes are GLOBAL in Astro, so
+       a bare `spin` would collide with the next one anybody writes. */
+    animation: profile-save-spin 0.7s linear infinite;
+  }
+
+  @keyframes profile-save-spin {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  /* Slowed rather than stopped: this is a progress indicator, and a frozen one
+     would take back the very thing it was added to say. */
+  @media (prefers-reduced-motion: reduce) {
+    .profile-save-button.is-saving::before {
+      animation-duration: 2.4s;
+    }
+  }
+
+  /*
+   * `hidden` ALONE DOES NOT HIDE ANYTHING HERE, and that is not a detail.
+   *
+   * The UA sheet's `[hidden] { display: none }` loses to ANY author rule that
+   * sets `display` — and `.btn-outline` sets `display: inline-flex`. So the
+   * admin link carried the attribute, was never un-hidden by the claim check,
+   * and was on screen for every signed-in member anyway (2026-09-03, Josh:
+   * "Admin console only shows up for people with permission"). Harmless in
+   * itself — /admin gates itself — but it advertised a door nobody could open.
+   *
+   * The same silence was defeating the upload queue's row controls, which is
+   * where it actually cost something: `.gallery-thumb-remove` and
+   * `.gallery-tools` both set `display: flex`, so every row showed its Cancel
+   * AND its Retry/Dismiss pair at once, on rows that had nothing to retry.
+   * (VisualNeedsSelector already knew — it ships its own
+   * `visual-needs-selector[hidden]` rule for exactly this reason.)
+   *
+   * Astro's scope attribute lifts this to (0,2,0) and `!important` settles the
+   * ties with the component's own classes, so from here `hidden` means hidden.
+   * Same trap, same fix as `.ccard--preview [hidden]` in communityCard.css.
+   */
+  [hidden] {
+    display: none !important;
+  }
+
+  /*
+   * Signing out is what a member opens this tab to DO, so it looks like it:
+   * full-strength ink and border instead of the muted ghost it used to share
+   * with the admin link. It stays an outline — the filled black is Save's, and
+   * two black buttons on one screen is two primary actions.
+   */
+  .btn-logout-strong {
+    align-self: start;
+    padding: 0.75rem 1.75rem;
+    background: var(--color-bg);
+    color: var(--color-dark);
+    border: 1.5px solid var(--color-dark);
+    border-radius: var(--radius-sm);
+    font-family: "Archivo", sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .btn-logout-strong:hover {
+    background: var(--color-dark);
+    color: var(--color-bg);
+  }
+
+  /* A door to somewhere else rather than an account action, so it keeps the
+     quiet outline and sits below the thing this tab is for. */
+  .account-quiet {
+    align-self: start;
+  }
+
+  .account-disclosure {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .account-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.25rem;
+  }
+
+  .deletion-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--color-dark);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+  }
+
+  .account-block {
+    display: grid;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
   }
 
   .danger-zone {
     padding-top: 2rem;
-    border-top: 1px solid #f0f0f0;
+    border-top: 1px solid var(--color-border);
   }
 
   .danger-text {
@@ -404,6 +1287,33 @@ const t = useTranslations(lang);
     color: var(--color-muted);
     margin: 0 0 1rem;
     line-height: 1.5;
+  }
+
+  .danger-label {
+    display: block;
+    font-size: 0.88rem;
+    color: var(--color-muted);
+    margin: 0 0 0.35rem;
+  }
+
+  /* The address is quoted back so it can be read off rather than recalled.
+    Set apart from the prose around it and selectable, because getting it
+    exactly right is the whole point and copying it is a legitimate way to. */
+  .danger-target {
+    display: inline-block;
+    max-width: 100%;
+    padding: 0.3rem 0.55rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--color-dark);
+    margin: 0 0 0.5rem;
+    word-break: break-all;
+  }
+
+  .danger-text-spaced {
+    margin-top: 1.5rem;
   }
 
   .danger-actions {
@@ -543,20 +1453,6 @@ const t = useTranslations(lang);
     .upload-status {
       grid-column: 1 / -1;
     }
-
-    .footer-actions {
-      grid-template-columns: 1fr;
-      justify-content: stretch;
-    }
-
-    .profile-save-button {
-      width: 100%;
-      margin-left: 0;
-    }
-
-    .footer-actions .btn-outline {
-      width: 100%;
-    }
   }
 </style>
 
@@ -567,97 +1463,51 @@ const t = useTranslations(lang);
     reauthenticateWithCredential,
     EmailAuthProvider,
     sendEmailVerification,
+    verifyBeforeUpdateEmail,
   } from "firebase/auth";
+  import { returnTo } from "../lib/authEmail.ts";
   import { requireAuth } from "../lib/auth.ts";
-  import { deleteAvatar } from "../lib/storage.ts";
-  import { getUser, deleteUserData, getPublicProfileActive, setProfileActive } from "../lib/firestore.ts";
-  import { validateAvatar, resizeAvatar, normaliseUrl } from "../lib/validation.ts";
+  import { getUser, getPublicProfileActive, setProfileActive } from "../lib/firestore.ts";
+  import { markImageForDeletion } from "../lib/images.ts";
+  import {
+    cancelAccountDeletion,
+    ensureEmailSynced,
+    requestAccountDeletion,
+  } from "../lib/account.ts";
+  import { validateAvatar, resizeAvatar } from "../lib/validation.ts";
   import { handleProfileUpdate, triggerRebuild } from "../lib/profile.ts";
-  import { isMemberType } from "../lib/firestore.ts";
-  import { memberBadgeLabel, memberTypeFieldCopy } from "../lib/memberType.ts";
+  import { isMemberType, MEMBER_TYPES } from "../lib/firestore.ts";
+  import { memberTypeFieldCopy, needsVisuals } from "../lib/memberType.ts";
+  import {
+    MAX_GALLERY_IMAGES,
+    galleryLimit,
+    MAX_GALLERY_CAPTION,
+    MAX_GALLERY_DESCRIPTION,
+    MAX_GALLERY_DESCRIPTION_SHORT,
+    MAX_GALLERY_LINK,
+    galleryErrorCode,
+    syncGalleryText,
+    sanitizeGalleryItems,
+    type GalleryItem,
+  } from "../lib/gallery.ts";
+  import {
+    createGalleryQueue,
+    galleryErrorKey,
+    isRetryable,
+    type GalleryTask,
+  } from "../lib/galleryQueue.ts";
+  import { updateUserProfile } from "../lib/firestore.ts";
+  import { renderCardPreview, renderProfilePreview } from "../lib/profilePreview.ts";
+  import {
+    splitSocial,
+    joinSocial,
+    workLink,
+    MAX_SOCIAL_LINKS,
+    MAX_SOCIAL_MEDIA,
+  } from "../lib/links.ts";
   import { ui } from "../i18n/translations.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
-
-  function updatePreview(
-    name: string,
-    role: string,
-    bio: string,
-    portfolio: string,
-    socialMedia: string,
-    photoURL: string,
-    defaultName = "Your name",
-    showBioLabel = "Show bio for"
-  ) {
-    const previewName = document.getElementById("preview-name")!;
-    const previewRole = document.getElementById("preview-role") as HTMLElement;
-    const previewLinks = document.getElementById("preview-links") as HTMLElement;
-    const previewPortfolio = document.getElementById("preview-portfolio") as HTMLAnchorElement;
-    const previewLinksSep = document.getElementById("preview-links-sep") as HTMLElement;
-    const previewSocial = document.getElementById("preview-social") as HTMLAnchorElement;
-    const previewBio = document.getElementById("preview-bio") as HTMLElement;
-    const previewBioToggle = document.getElementById("preview-bio-toggle") as HTMLButtonElement;
-    const previewAvatarImg = document.getElementById("preview-avatar-img") as HTMLImageElement;
-    const previewAvatarPh = document.getElementById("preview-avatar-ph") as HTMLElement;
-
-    const displayName = name || defaultName;
-    previewName.textContent = displayName;
-
-    if (role) {
-      previewRole.textContent = role;
-      previewRole.hidden = false;
-    } else {
-      previewRole.hidden = true;
-    }
-
-    const href = normaliseUrl(portfolio);
-    if (href) {
-      previewPortfolio.href = href;
-      previewPortfolio.textContent = portfolio;
-      previewPortfolio.hidden = false;
-    } else {
-      previewPortfolio.hidden = true;
-    }
-
-    const socialHref = normaliseUrl(socialMedia);
-    if (socialHref) {
-      previewSocial.href = socialHref;
-      previewSocial.hidden = false;
-    } else {
-      previewSocial.hidden = true;
-    }
-
-    previewLinksSep.hidden = !href || !socialHref;
-    previewLinks.hidden = !href && !socialHref;
-
-    if (bio) {
-      previewBio.textContent = bio;
-      previewBio.hidden = false;
-      previewBioToggle.hidden = false;
-      previewBioToggle.setAttribute("aria-label", `${showBioLabel} ${displayName}`);
-    } else {
-      previewBio.hidden = true;
-      previewBioToggle.hidden = true;
-      previewBioToggle.closest(".member-card-wrap")?.classList.remove("is-expanded");
-      previewBioToggle.setAttribute("aria-expanded", "false");
-    }
-
-    if (photoURL) {
-      previewAvatarImg.src = photoURL;
-      previewAvatarImg.alt = displayName;
-      previewAvatarImg.hidden = false;
-      previewAvatarPh.hidden = true;
-      previewAvatarImg.onerror = () => {
-        previewAvatarImg.hidden = true;
-        previewAvatarPh.hidden = false;
-        previewAvatarPh.textContent = displayName[0]?.toUpperCase() ?? "?";
-      };
-    } else {
-      previewAvatarImg.hidden = true;
-      previewAvatarPh.hidden = false;
-      previewAvatarPh.textContent = displayName[0]?.toUpperCase() ?? "?";
-    }
-  }
 
   document.addEventListener("astro:page-load", () => {
     const loadingEl = document.getElementById("loading");
@@ -667,13 +1517,40 @@ const t = useTranslations(lang);
     const lang = (form.dataset.lang ?? "en") as keyof typeof ui;
     const s = ui[lang] ?? ui.en;
     const prefix = lang === "de" ? "/de" : "";
+    // EVERYTHING THE DIRECTORY CARD SAYS THAT ITS MARKUP CANNOT CARRY. The
+    // real card resolves these with useTranslations() at build time; the
+    // preview is filled in the browser from live form state, so the strings
+    // have to arrive as values. Most of them are the CAROUSEL's — the preview
+    // renders the card's own paging element as of 2026-09-02, and a carousel
+    // with no accessible name, no position label and unlabelled arrows would
+    // be the same element minus everything that makes it usable.
+    const cardPreviewLabels = {
+      defaultName: s["profile.preview.defaultName"],
+      // The typographic face's fallback when a member has no tags.
+      memberTypeLabels: Object.fromEntries(
+        MEMBER_TYPES.map((type) => [type, s[`profile.memberType.${type}`]])
+      ),
+      carousel: s["community.card.carousel"],
+      image: s["community.card.image"],
+      gallery: s["community.card.gallery"],
+      imagePosition: s["community.card.imagePosition"],
+      prev: s["community.card.prev"],
+      next: s["community.card.next"],
+      workAlt: s["member.workAlt"],
+    };
 
     const nameInput = document.getElementById("name") as HTMLInputElement;
     const roleInput = document.getElementById("role") as HTMLInputElement;
     const activeInput = document.getElementById("profile-active") as HTMLInputElement;
+    const wantsToContributeInput = document.getElementById(
+      "wants-to-contribute"
+    ) as HTMLInputElement;
     const bioInput = document.getElementById("bio") as HTMLTextAreaElement;
     const portfolioInput = document.getElementById("portfolio") as HTMLInputElement;
-    const socialMediaInput = document.getElementById("social-media") as HTMLInputElement;
+    const socialEditor = document.getElementById("social-editor")!;
+    const socialAdd = document.getElementById("social-add") as HTMLButtonElement;
+    const socialStatus = document.getElementById("social-status")!;
+    const socialRowTpl = document.querySelector<HTMLTemplateElement>('[data-social-tpl="row"]');
     const phoneInput = document.getElementById("phone") as HTMLInputElement;
     const primaryAudienceInputs = Array.from(
       document.querySelectorAll<HTMLInputElement>('input[name="primary-audience"]')
@@ -683,6 +1560,14 @@ const t = useTranslations(lang);
     const uploadStatus = document.getElementById("upload-status")!;
     const saveMsg = document.getElementById("save-msg")!;
     const saveError = document.getElementById("save-error")!;
+    const saveButton = document.getElementById("save-button") as HTMLButtonElement;
+
+    /** Disabled AND visibly working — see .profile-save-button.is-saving. */
+    function setSaving(on: boolean) {
+      saveButton.disabled = on;
+      saveButton.classList.toggle("is-saving", on);
+      saveButton.textContent = on ? s["profile.save.saving"] : s["profile.save"];
+    }
 
     const avatarWrap = avatarImg.closest<HTMLElement>(".avatar-wrap")!;
 
@@ -704,9 +1589,675 @@ const t = useTranslations(lang);
       }
     >("member-type-selector");
     const portfolioLabel = document.getElementById("portfolio-label");
+    const socialLabel = document.getElementById("social-label");
+    const affiliationInput = document.getElementById("affiliation") as HTMLInputElement;
+    const locationInput = document.getElementById("location") as HTMLInputElement;
+    const languageInputs = Array.from(
+      document.querySelectorAll<HTMLInputElement>('input[name="language"]')
+    );
+    const visualNeedsSelector = document.querySelector<
+      HTMLElement & {
+        value: string[];
+      }
+    >("visual-needs-selector");
 
-    let currentPhotoURL = "";
+    function getSelectedLanguages() {
+      // Emitted in LANGUAGES order, not click order, so the stored list is
+      // stable and the rules' unrolled enum check sees a predictable shape.
+      return languageInputs.filter((input) => input.checked).map((input) => input.value);
+    }
+
+    function setSelectedLanguages(value: unknown) {
+      const selected = Array.isArray(value) ? value.filter(Boolean).map(String) : [];
+      languageInputs.forEach((input) => {
+        input.checked = selected.includes(input.value);
+      });
+    }
+
+    // The profile-page preview shell and the section tabs.
+    // Addressed by a data attribute, not by a class: the shell's classes are
+    // now the profile page's own (.mprof*), shared with the real page, and a
+    // hook that doubles as a style selector is exactly how the two drifted
+    // apart before.
+    const profileViewRoot = document.querySelector<HTMLElement>("[data-ppv-root]");
+    const sectionTabs = Array.from(
+      document.querySelectorAll<HTMLButtonElement>("#section-tabs .section-tab")
+    );
+    const formSections = Array.from(form.querySelectorAll<HTMLElement>(".form-section"));
+
     let resizedAvatarBlob: Blob | null = null;
+    let avatarColor = "";
+    let gallery: GalleryItem[] = [];
+    // The images/ record behind the current avatar. Passed to
+    // handleProfileUpdate so the replaced record can be marked for deletion
+    // once the new photoURL has landed in Firestore.
+    let currentPhotoImageId = "";
+
+    const fmtDate = (iso: string) =>
+      new Date(iso).toLocaleDateString(lang === "de" ? "de-CH" : "en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+
+    const galleryInput = document.getElementById("gallery-files") as HTMLInputElement;
+    const galleryEditor = document.getElementById("gallery-editor")!;
+    const galleryQueueEl = document.getElementById("gallery-queue")!;
+    const galleryDrop = document.getElementById("gallery-drop")!;
+    const galleryAdd = galleryDrop.querySelector<HTMLLabelElement>(".choose-img")!;
+    const galleryStatus = document.getElementById("gallery-status")!;
+    // Row shells for the two list editors. Cloned rather than built: see the
+    // comment on each <template> above — Astro's scope attribute is on the
+    // selectors, so a createElement() row matches none of the scoped rules.
+    const galleryItemTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="item"]');
+    const galleryTaskTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="task"]');
+
+    function setGalleryStatus(text: string) {
+      galleryStatus.textContent = text;
+      galleryStatus.style.display = text ? "block" : "none";
+    }
+
+    /**
+     * These controls have no visible label — the field's own label covers the
+     * group, and a per-row caption would triple the form's text. The name goes
+     * on the control itself, as this file already does for the remove buttons,
+     * so it is announced without being drawn.
+     */
+    function named<T extends HTMLElement>(control: T, label: string): T {
+      control.setAttribute("aria-label", label);
+      return control;
+    }
+
+    // ── Social links ──────────────────────────────────────
+    // One row per link on screen; ONE comma-joined string in Firestore. The
+    // stored shape is deliberately unchanged: every profile saved before today
+    // holds that string, and the public directory is a build-time snapshot, so
+    // a second shape would have to be understood by pages that will not be
+    // rebuilt for it. splitSocial()/joinSocial() in links.ts are the whole
+    // translation, and the same links.ts cleaner shapes them for display.
+    //
+    // Order is row order, and it survives: new rows append, removing one
+    // splices, and joinSocial() preserves what it is given.
+    let socialValues: string[] = [""];
+    let socialPlaceholder = s["profile.ph.social"];
+
+    function setSocialStatus(text: string) {
+      socialStatus.textContent = text;
+      socialStatus.style.display = text ? "block" : "none";
+    }
+
+    /** The single stored value the rows add up to. */
+    function socialStored(): string {
+      return joinSocial(socialValues);
+    }
+
+    function refreshSocialStatus() {
+      socialAdd.disabled = socialValues.length >= MAX_SOCIAL_LINKS;
+      // Length, not count, is the real limit — firestore.rules caps the joined
+      // field at MAX_SOCIAL_MEDIA and rejects the WHOLE write over it, so the
+      // member has to hear about it here rather than as a permission error.
+      if (socialStored().length > MAX_SOCIAL_MEDIA) {
+        setSocialStatus(s["profile.social.tooLong"]);
+      } else if (socialValues.length >= MAX_SOCIAL_LINKS) {
+        setSocialStatus(s["profile.social.full"]);
+      } else {
+        setSocialStatus("");
+      }
+    }
+
+    /**
+     * Full rebuild of the rows. Called on load, add and remove only — never
+     * while typing, which would take the caret with it. Keystrokes write
+     * straight into socialValues[index].
+     */
+    function renderSocial() {
+      if (!socialRowTpl) return;
+      socialEditor.replaceChildren(
+        ...socialValues.map((value, index) => {
+          const row = socialRowTpl.content.firstElementChild?.cloneNode(true);
+          if (!(row instanceof HTMLElement)) return null;
+          const input = row.querySelector<HTMLInputElement>("[data-social-input]");
+          const remove = row.querySelector<HTMLButtonElement>("[data-social-remove]");
+          if (!input || !remove) return null;
+
+          input.value = value;
+          input.placeholder = socialPlaceholder;
+          // Rows share one field label, so the position is what tells them
+          // apart to anyone who cannot see the stack.
+          named(input, `${socialLabel?.textContent ?? ""} ${index + 1}`.trim());
+          input.addEventListener("input", () => {
+            socialValues[index] = input.value;
+            refreshSocialStatus();
+            syncPreview();
+          });
+
+          remove.setAttribute("aria-label", s["profile.social.remove"]);
+          remove.addEventListener("click", () => removeSocialRow(index));
+          return row;
+        })
+          .filter((n): n is HTMLElement => n !== null)
+      );
+      refreshSocialStatus();
+    }
+
+    function setSocialValues(values: string[]) {
+      // Always at least one row: this field was a text box until today, and an
+      // empty stack with only a button reads as a missing field rather than an
+      // empty one. The blank row costs nothing — joinSocial() drops it.
+      socialValues = values.length > 0 ? values : [""];
+      renderSocial();
+    }
+
+    function addSocialRow() {
+      if (socialValues.length >= MAX_SOCIAL_LINKS) {
+        setSocialStatus(s["profile.social.full"]);
+        return;
+      }
+      socialValues.push("");
+      renderSocial();
+      socialEditor
+        .querySelector<HTMLInputElement>(".social-row:last-of-type [data-social-input]")
+        ?.focus();
+    }
+
+    /** Removing the only row empties it rather than leaving no field at all. */
+    function removeSocialRow(index: number) {
+      if (socialValues.length <= 1) socialValues = [""];
+      else socialValues.splice(index, 1);
+      renderSocial();
+      syncPreview();
+    }
+
+    socialAdd.addEventListener("click", addSocialRow);
+
+    /**
+     * The upload queue. Everything that used to happen inside the file-input
+     * change handler — validate, compress, upload, one at a time, behind a
+     * single shared status line — now happens here, as a list of tasks that
+     * each carry their own state. See src/lib/galleryQueue.ts for why that is
+     * the shape.
+     */
+    const galleryQueue = createGalleryQueue({
+      // Read late, never captured: a queue can outlive a session.
+      uid: () => auth.currentUser?.uid ?? null,
+      // The member's OWN ceiling, not the absolute one: an unverified account
+      // holds a single image, and a queue that let it pick eight would collect
+      // seven permission errors on the member's behalf.
+      capacity: () => galleryLimit(auth.currentUser) - gallery.length,
+      onChange: renderQueue,
+      onUploaded: (item) => void onGalleryUploaded(item),
+    });
+
+    /**
+     * Renders the committed gallery.
+     *
+     * `focusHint` puts focus back on a reorder button after the list has been
+     * rebuilt. Without it, pressing ↓ moves the row, wipes the DOM node the
+     * keyboard was on, and drops focus to the document — so moving an image
+     * two places would take a mouse and a fresh click each time.
+     */
+    function renderGallery(focusHint?: { index: number; tool: "up" | "down" }) {
+      if (!galleryItemTpl) return;
+      const last = gallery.length - 1;
+      // Where the caret was, so it can be put back. replaceChildren() destroys
+      // the node it was in, and uploads now COMPLETE WHILE YOU TYPE — that is
+      // the point of the queue — so a member writing a caption for image two
+      // would have the field yanked out from under them each time one of the
+      // other five landed. The old serial flow rendered rarely enough to get
+      // away with this; concurrency does not.
+      const typing = document.activeElement;
+      const typingIn =
+        typing instanceof HTMLInputElement || typing instanceof HTMLTextAreaElement
+          ? {
+              index: typing.closest<HTMLElement>("[data-gallery-index]")?.dataset.galleryIndex,
+              field: typing.dataset.galleryField,
+              start: typing.selectionStart,
+              end: typing.selectionEnd,
+            }
+          : null;
+      galleryEditor.replaceChildren(
+        ...gallery
+          .map((item, index) => {
+            const row = galleryItemTpl.content.firstElementChild?.cloneNode(true);
+            if (!(row instanceof HTMLElement)) return null;
+            const field = <T extends HTMLElement>(name: string) =>
+              row.querySelector<T>(`[data-gallery-field="${name}"]`);
+            const img = row.querySelector<HTMLImageElement>("[data-gallery-img]");
+            const remove = row.querySelector<HTMLButtonElement>("[data-gallery-remove]");
+            const caption = field<HTMLInputElement>("caption");
+            const description = field<HTMLTextAreaElement>("description");
+            const descriptionShort = field<HTMLTextAreaElement>("descriptionShort");
+            const link = field<HTMLInputElement>("link");
+            const cover = row.querySelector<HTMLElement>("[data-gallery-cover]");
+            const up = row.querySelector<HTMLButtonElement>('[data-gallery-move="up"]');
+            const down = row.querySelector<HTMLButtonElement>('[data-gallery-move="down"]');
+            if (!img || !remove || !caption || !description || !descriptionShort) return null;
+            if (!link || !cover || !up || !down) return null;
+
+            // The one thing on screen that admits the order means something:
+            // CommunityImageCard takes works[0]'s width/height as the aspect
+            // box of the whole card, so this image decides its silhouette.
+            cover.hidden = index !== 0;
+            cover.textContent = s["profile.gallery.cover"];
+
+            img.src = item.url;
+            remove.setAttribute("aria-label", s["profile.gallery.remove"]);
+            remove.addEventListener("click", () => removeGalleryImage(index));
+
+            caption.value = item.caption ?? "";
+            caption.maxLength = MAX_GALLERY_CAPTION;
+            caption.placeholder = s["profile.gallery.caption"];
+            named(caption, s["profile.gallery.caption"]);
+            caption.addEventListener("input", () => {
+              gallery[index].caption = caption.value;
+              syncPreview();
+            });
+
+            descriptionShort.value = item.descriptionShort ?? "";
+            descriptionShort.maxLength = MAX_GALLERY_DESCRIPTION_SHORT;
+            descriptionShort.placeholder = s["profile.gallery.descriptionShort"];
+            named(descriptionShort, s["profile.gallery.descriptionShort"]);
+            descriptionShort.addEventListener("input", () => {
+              gallery[index].descriptionShort = descriptionShort.value;
+              syncPreview();
+            });
+
+            description.value = item.description ?? "";
+            description.maxLength = MAX_GALLERY_DESCRIPTION;
+            description.placeholder = s["profile.gallery.description"];
+            named(description, s["profile.gallery.description"]);
+            description.addEventListener("input", () => {
+              gallery[index].description = description.value;
+              syncPreview();
+            });
+
+            link.value = item.link ?? "";
+            link.maxLength = MAX_GALLERY_LINK;
+            link.placeholder = s["profile.gallery.link.ph"];
+            named(link, s["profile.gallery.link"]);
+            link.addEventListener("input", () => {
+              // Deleted rather than stored empty, because firestore.rules only
+              // permits the keys it knows and an empty string is not a link —
+              // the same reason `projectId` was deleted rather than blanked
+              // when its select was cleared.
+              const value = link.value.trim();
+              if (value) gallery[index].link = value;
+              else delete gallery[index].link;
+              syncPreview();
+            });
+
+            // Buttons, not dragging. HTML5 drag-and-drop between rows needs a
+            // keyboard path and a touch path built alongside it before it is
+            // usable by everyone; two buttons ARE that path for every input
+            // device, and they are what the drop zone above cannot give.
+            up.disabled = index === 0;
+            down.disabled = index === last;
+            named(up, s["profile.gallery.moveUp"]);
+            named(down, s["profile.gallery.moveDown"]);
+            up.addEventListener("click", () => void moveGalleryImage(index, index - 1));
+            down.addEventListener("click", () => void moveGalleryImage(index, index + 1));
+
+            // Read back by the focus hint below; the rows are otherwise
+            // anonymous once they are in the DOM.
+            row.dataset.galleryIndex = String(index);
+            return row;
+          })
+          .filter((n): n is HTMLElement => n !== null)
+      );
+      // The image-led directory renders a typographic card for an empty
+      // gallery; the nudge says so, and disappears with the first image.
+      const nudge = document.getElementById("gallery-nudge");
+      if (nudge) nudge.hidden = gallery.length > 0;
+      updateGalleryControls();
+      if (focusHint) {
+        const moved = galleryEditor.querySelector<HTMLElement>(
+          `[data-gallery-index="${focusHint.index}"]`,
+        );
+        // The button that did the moving may itself be disabled now — an image
+        // moved to the top has no "up" left. Falling back to its opposite keeps
+        // focus inside the row that moved rather than losing it to the page.
+        const preferred = moved?.querySelector<HTMLButtonElement>(
+          `[data-gallery-move="${focusHint.tool}"]`,
+        );
+        const fallback = moved?.querySelector<HTMLButtonElement>(
+          `[data-gallery-move="${focusHint.tool === "up" ? "down" : "up"}"]`,
+        );
+        (preferred && !preferred.disabled ? preferred : fallback)?.focus();
+      } else if (typingIn?.index && typingIn.field) {
+        // Restored by index, which is stable for the case that matters: an
+        // upload completing APPENDS, so the rows already on screen keep their
+        // positions. A reorder takes the branch above instead, and a removal
+        // was a button press rather than a caret.
+        const back = galleryEditor.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+          `[data-gallery-index="${typingIn.index}"] [data-gallery-field="${typingIn.field}"]`,
+        );
+        if (back) {
+          back.focus();
+          if (typingIn.start !== null && typingIn.end !== null) {
+            back.setSelectionRange(typingIn.start, typingIn.end);
+          }
+        }
+      }
+      // The gallery IS the profile page's content AND the card's artwork, so
+      // every add, removal and reorder has to reach both previews. This is
+      // the one place the gallery re-renders, which makes it the one place
+      // that needs to say so.
+      syncPreview();
+    }
+
+    /**
+     * The cap, stated by the control instead of by an error message.
+     *
+     * The limit used to be enforced halfway through a batch: pick ten files,
+     * watch as many as fitted upload, then read "Gallery is full" while the
+     * rest were silently abandoned. Counting queued-but-unfinished uploads as
+     * occupied means the button is already unavailable before that can happen.
+     *
+     * Two ceilings wear the same shape here — the real one, and the one an
+     * unverified account sits under until it clicks the link — so the note
+     * beside the disabled button has to say WHICH, or "gallery is full" is a
+     * lie to somebody holding one image.
+     */
+    let galleryCapNote = "";
+
+    function updateGalleryControls() {
+      const limit = galleryLimit(auth.currentUser);
+      const full = gallery.length + galleryQueue.pendingCount() >= limit;
+      galleryAdd.setAttribute("aria-disabled", String(full));
+      galleryInput.disabled = full;
+
+      const capNote = full
+        ? limit < MAX_GALLERY_IMAGES
+          ? s["profile.gallery.verifyForMore"]
+          : s["profile.gallery.full"]
+        : "";
+      if (capNote !== galleryCapNote) {
+        // The line is taken over only when it is free or still showing this
+        // function's own last note. A per-file error from the queue is more
+        // specific than the cap and outranks it; and clearing on the way back
+        // down is what stops "gallery is full" standing over a gallery that a
+        // removal has just made room in.
+        if (!galleryStatus.textContent || galleryStatus.textContent === galleryCapNote) {
+          setGalleryStatus(capNote);
+        }
+        galleryCapNote = capNote;
+      }
+    }
+
+    /**
+     * Live rows for the queue, keyed by task id.
+     *
+     * Reconciled rather than re-rendered: a progress event arrives several
+     * times a second per upload, and replaceChildren() on every one of them
+     * would rebuild rows under the member's pointer and re-run the image decode
+     * for each thumbnail.
+     */
+    const galleryTaskRows = new Map<string, HTMLElement>();
+
+    function renderQueue() {
+      if (!galleryTaskTpl) return;
+      const tasks = galleryQueue.tasks();
+      const live = new Set(tasks.map((task) => task.id));
+      for (const [id, row] of galleryTaskRows) {
+        if (live.has(id)) continue;
+        row.remove();
+        galleryTaskRows.delete(id);
+      }
+      for (const task of tasks) {
+        let row = galleryTaskRows.get(task.id);
+        if (!row) {
+          const clone = galleryTaskTpl.content.firstElementChild?.cloneNode(true);
+          if (!(clone instanceof HTMLElement)) continue;
+          row = clone;
+          galleryTaskRows.set(task.id, row);
+          galleryQueueEl.appendChild(row);
+          buildTaskRow(row, task);
+        }
+        paintTaskRow(row, task);
+      }
+      updateGalleryControls();
+    }
+
+    /** The parts of a queue row that never change: its thumbnail and its buttons. */
+    function buildTaskRow(row: HTMLElement, task: GalleryTask) {
+      const img = row.querySelector<HTMLImageElement>("[data-task-img]");
+      const name = row.querySelector<HTMLElement>("[data-task-name]");
+      const cancel = row.querySelector<HTMLButtonElement>("[data-task-cancel]");
+      const retry = row.querySelector<HTMLButtonElement>("[data-task-retry]");
+      const dismiss = row.querySelector<HTMLButtonElement>("[data-task-dismiss]");
+      // The local bytes, so the image is on screen before the upload starts.
+      // This is the whole of the optimistic UI: the member sees what they
+      // picked and where it will sit, immediately.
+      if (img) img.src = task.thumbUrl;
+      if (name) name.textContent = task.name;
+      if (cancel) {
+        named(cancel, s["profile.gallery.cancel"]);
+        cancel.addEventListener("click", () => galleryQueue.cancel(task.id));
+      }
+      if (retry) {
+        retry.textContent = s["profile.gallery.retry"];
+        retry.addEventListener("click", () => galleryQueue.retry(task.id));
+      }
+      if (dismiss) {
+        dismiss.textContent = s["profile.gallery.dismiss"];
+        dismiss.addEventListener("click", () => galleryQueue.dismiss(task.id));
+      }
+    }
+
+    /** The parts that change: state wording, the bar, and which buttons apply. */
+    function paintTaskRow(row: HTMLElement, task: GalleryTask) {
+      const bar = row.querySelector<HTMLElement>("[data-task-bar]");
+      const track = row.querySelector<HTMLElement>("[data-task-track]");
+      const state = row.querySelector<HTMLElement>("[data-task-state]");
+      const tools = row.querySelector<HTMLElement>("[data-task-tools]");
+      const cancel = row.querySelector<HTMLButtonElement>("[data-task-cancel]");
+      const retry = row.querySelector<HTMLButtonElement>("[data-task-retry]");
+      const failed = task.state === "error";
+
+      row.classList.toggle("has-error", failed);
+      row.classList.toggle("is-waiting", task.state === "queued" || task.state === "preparing");
+      if (bar) bar.style.width = `${task.state === "uploading" ? task.progress : 0}%`;
+      // On the track, not read aloud as it changes: a progressbar is polled by
+      // the screen reader when the member asks for it.
+      if (track) track.setAttribute("aria-valuenow", String(task.progress));
+      if (state) {
+        // A failure is the one thing worth interrupting for, and it is the one
+        // thing that stops changing once it has happened.
+        state.setAttribute("role", failed ? "alert" : "presentation");
+        // Per file, in words, in the member's language. "Uploading 40%" on a
+        // shared line could never say WHICH of six files was at 40%.
+        state.textContent = failed
+          ? s[galleryErrorKey(task.error ?? "unknown")]
+          : task.state === "uploading"
+            ? `${s["profile.upload.uploading"]} ${task.progress}%`
+            : task.state === "preparing"
+              ? s["profile.gallery.preparing"]
+              : s["profile.gallery.queued"];
+      }
+      // Cancel belongs to work in progress; Retry and Dismiss belong to work
+      // that stopped. Showing all three at once would offer to cancel a file
+      // that already failed.
+      if (cancel) cancel.hidden = failed;
+      if (tools) tools.hidden = !failed;
+      // Retry is only offered where trying again could actually differ. An SVG
+      // will still be an SVG; a dropped connection may well be back.
+      if (retry) retry.hidden = !failed || !isRetryable(task.error ?? "unknown");
+    }
+
+    /**
+     * Uploads, removals and reorders persist immediately, because they own
+     * files in Storage — the Firestore array is what says which of those files
+     * still belong to the member.
+     *
+     * Typed text (captions, descriptions) is NOT pushed by itself — that waits
+     * for Save, since writing on every keystroke is not what a form is.
+     */
+    async function persistGallery() {
+      const user = auth.currentUser;
+      if (!user) return;
+      await updateUserProfile(user.uid, {
+        gallery,
+        updatedAt: new Date(),
+      });
+    }
+
+    let galleryWrite: Promise<boolean> | null = null;
+    let galleryWriteAgain = false;
+
+    /**
+     * Writes the array now, and folds callers that arrive mid-write into one
+     * further pass afterwards.
+     *
+     * This is what closes the orphan window. The old flow persisted ONCE at the
+     * end of the batch, so a member who closed the tab after four of six
+     * uploads left four images whose records said `live` but which the
+     * member's own gallery array never mentioned. Writing per completion
+     * removes that window; coalescing keeps six completions from becoming six
+     * overlapping writes racing each other to be last.
+     *
+     * A caller that arrives mid-write gets the IN-FLIGHT promise rather than an
+     * early answer, and that matters: `gallery` is one shared array, so the
+     * extra pass this caller just requested carries its change too, and the
+     * promise it is waiting on does not resolve until that pass is done. An
+     * early `false` would have been the orphan bug wearing different clothes —
+     * the caller would skip its deletion mark for a write that in fact
+     * succeeded, leaving the record `live` and unreferenced for good.
+     *
+     * Returns whether the array is safely stored, which callers that go on to
+     * RETIRE an image must check: marking a record for deletion while the
+     * stored array still points at it is how a gallery gets a permanent broken
+     * image.
+     */
+    function persistGalleryNow(): Promise<boolean> {
+      if (galleryWrite) {
+        galleryWriteAgain = true;
+        return galleryWrite;
+      }
+      galleryWrite = (async () => {
+        try {
+          do {
+            galleryWriteAgain = false;
+            await persistGallery();
+          } while (galleryWriteAgain);
+          setGalleryStatus("");
+          return true;
+        } catch (error) {
+          setGalleryStatus(s[galleryErrorKey(galleryErrorCode(error))]);
+          return false;
+        } finally {
+          galleryWrite = null;
+        }
+      })();
+      return galleryWrite;
+    }
+
+    /** One image finished uploading: it joins the gallery and the array is stored. */
+    async function onGalleryUploaded(item: GalleryItem) {
+      gallery.push(item);
+      renderGallery();
+      await persistGalleryNow();
+    }
+
+    async function removeGalleryImage(index: number) {
+      const [removed] = gallery.splice(index, 1);
+      renderGallery();
+      // The record is marked only once Firestore has stopped pointing at it.
+      if ((await persistGalleryNow()) && removed) {
+        await markImageForDeletion(removed.imageId);
+      }
+    }
+
+    /**
+     * Moves one image, and stores the new order straight away.
+     *
+     * Order is not a preference the member might still be deciding — it decides
+     * which image is the card's cover, so leaving it until Save would leave the
+     * editor and the directory disagreeing about the card.
+     */
+    async function moveGalleryImage(from: number, to: number) {
+      if (to < 0 || to >= gallery.length) return;
+      const [moved] = gallery.splice(from, 1);
+      gallery.splice(to, 0, moved);
+      renderGallery({ index: to, tool: to < from ? "up" : "down" });
+      await persistGalleryNow();
+    }
+
+    /**
+     * The one way files enter the queue, from the picker or from a drop.
+     *
+     * Rejections are reported per file and named per cause, all at once for the
+     * whole selection — the old loop overwrote one shared line per file, so a
+     * six-file batch ended showing only whatever happened to the last one.
+     */
+    function addGalleryFiles(files: File[]) {
+      if (files.length === 0) return;
+      const limit = galleryLimit(auth.currentUser);
+      const outcome = galleryQueue.add(files);
+      const problems = outcome.rejected.map(
+        (rejection) => `${rejection.name}: ${s[galleryErrorKey(rejection.code)]}`,
+      );
+      if (outcome.overflow > 0) {
+        // The member's OWN ceiling in the sentence: an unverified account is
+        // told it fits one, and told separately why.
+        problems.push(
+          s["profile.gallery.overflow"]
+            .replace("{n}", String(limit))
+            .replace("{m}", String(outcome.overflow)),
+        );
+        if (limit < MAX_GALLERY_IMAGES) problems.push(s["profile.gallery.verifyForMore"]);
+      }
+      setGalleryStatus(problems.join(" · "));
+    }
+
+    galleryInput.addEventListener("change", () => {
+      const files = Array.from(galleryInput.files ?? []);
+      // Cleared straight away: without this, picking the same file again after
+      // a failure fires no change event at all.
+      galleryInput.value = "";
+      addGalleryFiles(files);
+    });
+
+    /**
+     * Drag-and-drop onto the gallery block.
+     *
+     * The depth counter is not incidental: dragenter and dragleave fire for
+     * every descendant the pointer crosses, so a plain dragleave handler
+     * un-highlights the zone the instant the cursor passes over a thumbnail
+     * INSIDE it. Counting entries and exits is what makes the highlight track
+     * the zone rather than its children.
+     */
+    let galleryDragDepth = 0;
+
+    function galleryDragHasFiles(event: DragEvent) {
+      return Boolean(event.dataTransfer?.types.includes("Files"));
+    }
+
+    galleryDrop.addEventListener("dragenter", (event) => {
+      if (!galleryDragHasFiles(event)) return;
+      event.preventDefault();
+      galleryDragDepth += 1;
+      galleryDrop.classList.add("is-dragging");
+    });
+
+    galleryDrop.addEventListener("dragover", (event) => {
+      if (!galleryDragHasFiles(event)) return;
+      // Without preventDefault the browser treats the drop as navigation and
+      // opens the image file over the top of the form.
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    });
+
+    galleryDrop.addEventListener("dragleave", () => {
+      galleryDragDepth = Math.max(0, galleryDragDepth - 1);
+      if (galleryDragDepth === 0) galleryDrop.classList.remove("is-dragging");
+    });
+
+    galleryDrop.addEventListener("drop", (event) => {
+      event.preventDefault();
+      galleryDragDepth = 0;
+      galleryDrop.classList.remove("is-dragging");
+      addGalleryFiles(Array.from(event.dataTransfer?.files ?? []));
+    });
 
     function getSelectedPrimaryAudiences() {
       return primaryAudienceInputs.filter((input) => input.checked).map((input) => input.value);
@@ -720,7 +2271,6 @@ const t = useTranslations(lang);
     }
 
     function showPreview(url: string) {
-      currentPhotoURL = url;
       avatarImg.src = url;
       avatarWrap.classList.toggle("has-image", !!url);
       avatarImg.onerror = () => {
@@ -730,46 +2280,140 @@ const t = useTranslations(lang);
     }
 
     function syncPreview() {
-      updatePreview(
-        nameInput.value.trim(),
-        roleInput.value.trim(),
-        bioInput.value.trim(),
-        portfolioInput.value.trim(),
-        socialMediaInput.value.trim(),
-        currentPhotoURL,
-        s["profile.preview.defaultName"],
-        s["member.showBio"]
-      );
-      syncBadgePreview();
+      const cardRoot = document.querySelector<HTMLElement>("[data-ccpv-root]");
+      if (cardRoot) {
+        renderCardPreview(cardRoot, currentViewModel(), cardPreviewLabels);
+      }
+      syncProfileView();
     }
 
-    function syncBadgePreview() {
-      const previewBadge = document.getElementById("preview-badge");
-      if (!previewBadge) return;
-      const badge = memberBadgeLabel(memberTypeSelector?.value ?? "", (key) => s[key] ?? key);
-      previewBadge.textContent = badge;
-      previewBadge.hidden = !badge;
+    /** Live form state as the one view model every preview consumes. */
+    function currentViewModel() {
+      return {
+        displayName: nameInput.value.trim(),
+        // The avatar the member is looking at right now — a saved photoURL, or
+        // the object URL of a picture they have not saved yet. `has-image` is the
+        // one flag that knows the difference between "no picture" and "a
+        // picture that failed to load"; reading .src alone would put a broken
+        // portrait into the preview.
+        photoURL: avatarWrap.classList.contains("has-image") ? avatarImg.src : "",
+        photoColor: avatarColor || undefined,
+        role: roleInput.value.trim(),
+        memberType: memberTypeSelector?.value ?? "",
+        bio: bioInput.value.trim(),
+        tags: tagSelector?.value ?? [],
+        openTo: openToSelector?.value ?? [],
+        affiliation: affiliationInput.value.trim(),
+        location: locationInput.value.trim(),
+        languages: getSelectedLanguages(),
+        visualNeeds: needsVisuals(memberTypeSelector?.value ?? "")
+          ? (visualNeedsSelector?.value ?? [])
+          : [],
+        portfolio: portfolioInput.value.trim(),
+        socialMedia: socialStored(),
+        works: gallery.map((g) => {
+          return {
+            url: g.url,
+            width: g.width,
+            height: g.height,
+            caption: g.caption,
+            color: g.color,
+            description: (g.description ?? "").trim() || undefined,
+            descriptionShort: (g.descriptionShort ?? "").trim() || undefined,
+            // Same rule the built page applies — works() in memberView.ts calls
+            // this too — so the Preview tab shows a link exactly when a visitor
+            // would get one, including showing none for a value that is not
+            // link-shaped yet, mid-typing.
+            link: workLink(g.link),
+          };
+        }),
+      };
+    }
+
+    /**
+     * The profile-page preview. Skipped entirely while the form is in edit
+     * mode — it is off-screen there, so re-rendering it on every keystroke
+     * would be work nobody can see.
+     */
+    function syncProfileView() {
+      if (!profileViewRoot || !form.classList.contains("is-previewing")) return;
+      // `member.openTo`, not `profile.view.openTo`: the shell renders the
+      // page's markup, so the words in it have to be the page's words. The two
+      // keys read identically today, and that is precisely the kind of
+      // agreement that survives only while someone remembers to maintain it.
+      renderProfilePreview(profileViewRoot, currentViewModel(), {
+        defaultName: s["profile.view.defaultName"],
+        openTo: s["member.openTo"],
+        noWorks: s["profile.view.noWorks"],
+      });
+    }
+
+    function setSection(section: string) {
+      formSections.forEach((el) => {
+        el.classList.toggle("is-active", el.dataset.section === section);
+      });
+      sectionTabs.forEach((btn) => {
+        const active = btn.dataset.section === section;
+        btn.classList.toggle("is-active", active);
+        btn.setAttribute("aria-pressed", String(active));
+      });
+      // The preview renders on tab entry, not on every keystroke behind the
+      // scenes — syncProfileView's early return keys off this class.
+      form.classList.toggle("is-previewing", section === "preview");
+      if (section === "preview") syncProfileView();
     }
 
     /** Scientists and research groups get lab-facing field wording. */
     function syncMemberTypeCopy() {
-      const copy = memberTypeFieldCopy(memberTypeSelector?.value ?? "", (key) => s[key] ?? key);
+      const type = memberTypeSelector?.value ?? "";
+      const copy = memberTypeFieldCopy(type, (key) => s[key] ?? key);
       nameInput.placeholder = copy.namePlaceholder;
       roleInput.placeholder = copy.rolePlaceholder;
       portfolioInput.placeholder = copy.portfolioPlaceholder;
       if (portfolioLabel) portfolioLabel.textContent = copy.portfolioLabel;
+      affiliationInput.placeholder = copy.affiliationPlaceholder;
+      socialPlaceholder = copy.socialPlaceholder;
+      if (socialLabel) socialLabel.textContent = copy.socialLabel;
+      // Reach into the live rows rather than re-rendering them: a member can
+      // change their type with a half-typed link on screen.
+      socialEditor.querySelectorAll<HTMLInputElement>("[data-social-input]").forEach((input, i) => {
+        input.placeholder = socialPlaceholder;
+        input.setAttribute("aria-label", `${copy.socialLabel} ${i + 1}`);
+      });
+      // A creator makes visuals rather than needing them, so the question
+      // is hidden for them — and its stored value is dropped on save, so a
+      // member who switches type cannot leave orphaned needs behind.
+      if (visualNeedsSelector) visualNeedsSelector.hidden = !needsVisuals(type);
     }
 
     memberTypeSelector?.addEventListener("member-type-change", () => {
       syncMemberTypeCopy();
-      syncBadgePreview();
+      // The member type is the typographic card face's tag-line fallback.
+      syncPreview();
     });
+
+    sectionTabs.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setSection(btn.dataset.section ?? "profile");
+      });
+    });
+
+    // Tags fill the directory card's typographic face as well as the profile
+    // view, so they sync both; openTo reaches only the profile view.
+    // <tag-selector> dispatches a bubbling `change`; <open-to-selector> has no
+    // event of its own, but the native `change` from its checkboxes bubbles to
+    // the form just the same.
+    tagSelector?.addEventListener("change", syncPreview);
+    openToSelector?.addEventListener("change", syncProfileView);
 
     nameInput.addEventListener("input", syncPreview);
     roleInput.addEventListener("input", syncPreview);
     bioInput.addEventListener("input", syncPreview);
     portfolioInput.addEventListener("input", syncPreview);
-    socialMediaInput.addEventListener("input", syncPreview);
+    affiliationInput.addEventListener("input", syncProfileView);
+    locationInput.addEventListener("input", syncProfileView);
+    languageInputs.forEach((input) => input.addEventListener("change", syncProfileView));
+    visualNeedsSelector?.addEventListener("visual-needs-change", syncProfileView);
 
     avatarInput.addEventListener("change", async () => {
       const file = avatarInput.files?.[0];
@@ -787,7 +2431,7 @@ const t = useTranslations(lang);
       uploadStatus.textContent = s["profile.upload.processing"];
       uploadStatus.style.display = "block";
       try {
-        resizedAvatarBlob = await resizeAvatar(file);
+        ({ blob: resizedAvatarBlob, color: avatarColor } = await resizeAvatar(file));
         const previewUrl = URL.createObjectURL(resizedAvatarBlob);
         showPreview(previewUrl);
         uploadStatus.textContent = `${s["profile.upload.selected"]}${file.name}`;
@@ -799,19 +2443,39 @@ const t = useTranslations(lang);
 
     unsubscribeAuth?.();
     unsubscribeAuth = requireAuth(async (user) => {
+      // The admin link, shown only to an admin. Two reads, exactly as the
+      // console's own gate does it: the cached token first (free, right for
+      // every established admin), then ONE forced refresh before concluding
+      // "not an admin" — a claim granted since this browser last signed in is
+      // not in the cached token for up to an hour.
+      void (async () => {
+        const adminLink = document.getElementById("admin-link");
+        if (!adminLink) return;
+        try {
+          let claims = (await user.getIdTokenResult()).claims;
+          if (claims.admin !== true) claims = (await user.getIdTokenResult(true)).claims;
+          if (claims.admin === true) adminLink.hidden = false;
+        } catch {
+          // Offline or a token that will not refresh: leave it hidden. The
+          // console is still reachable by URL and gates itself.
+        }
+      })();
+
       const verifyBanner = document.getElementById("verify-banner")!;
       const btnResendVerify = document.getElementById("btn-resend-verify") as HTMLButtonElement;
       const verifyBannerSent = document.getElementById("verify-banner-sent")!;
 
       if (!user.emailVerified) {
         verifyBanner.style.display = "block";
+        document.getElementById("gallery-note")!.hidden = true;
+        document.getElementById("gallery-note-unverified")!.hidden = false;
         let resendCooldown = false;
         btnResendVerify.addEventListener("click", async () => {
           if (resendCooldown) return;
           resendCooldown = true;
           btnResendVerify.disabled = true;
           try {
-            await sendEmailVerification(user);
+            await sendEmailVerification(user, returnTo(lang, "/profile"));
             verifyBannerSent.style.display = "block";
           } catch {
             // silently fail — user can try again after cooldown
@@ -825,11 +2489,31 @@ const t = useTranslations(lang);
 
       const data = await getUser(user.uid);
 
+      currentPhotoImageId = data.photoImageId ?? "";
+      await ensureEmailSynced(user, data.email);
+      // Safe to call here: showDeletionBanner and the consts it closes over are declared below, but the auth callback cannot run before this astro:page-load body has finished.
+      if (data.status === "pendingDeletion" && data.purgeAfter) {
+        // getUser() hands back raw Firestore data, so at runtime this is a
+        // Timestamp even though UserDoc types it as Date.
+        const purgeAfter = data.purgeAfter as unknown as { toDate(): Date };
+        showDeletionBanner(purgeAfter.toDate().toISOString());
+      }
+
       nameInput.value = data.displayName ?? user.displayName ?? "";
       roleInput.value = data.role ?? "";
       bioInput.value = data.bio ?? "";
       portfolioInput.value = data.portfolio ?? "";
-      socialMediaInput.value = data.socialMedia ?? "";
+      // The stored string IS the row list — an old single-value profile simply
+      // arrives as one row, with nothing to migrate.
+      setSocialValues(splitSocial(data.socialMedia ?? ""));
+      affiliationInput.value = data.affiliation ?? "";
+      locationInput.value = data.location ?? "";
+      setSelectedLanguages(data.languages ?? []);
+      if (visualNeedsSelector) {
+        visualNeedsSelector.value = Array.isArray(data.visualNeeds)
+          ? data.visualNeeds.filter(Boolean)
+          : [];
+      }
       if (memberTypeSelector) {
         memberTypeSelector.value = data.memberType ?? "";
         syncMemberTypeCopy();
@@ -841,7 +2525,15 @@ const t = useTranslations(lang);
         tagSelector.value = Array.isArray(data.tags) ? data.tags.filter(Boolean).slice(0, 7) : [];
       }
       setSelectedPrimaryAudiences(data.primaryAudiences ?? []);
+      // sanitizeGalleryItems, not a plain slice: a member whose images were
+      // tagged to a project before the feature was withdrawn still has
+      // `projectId` in Firestore, and writing that key back is now rejected
+      // outright by validGalleryItem's hasOnly — which would have failed EVERY
+      // save this member attempted, silently. Stripping on load is the fix.
+      gallery = sanitizeGalleryItems(data.gallery).slice(0, MAX_GALLERY_IMAGES);
+      renderGallery();
       phoneInput.value = data.phone ?? "";
+      wantsToContributeInput.checked = data.wantsToContribute ?? false;
       activeInput.checked = await getPublicProfileActive(user.uid);
       showPreview(data.photoURL ?? user.photoURL ?? "");
 
@@ -863,9 +2555,10 @@ const t = useTranslations(lang);
       if (!user) return;
 
       const memberType = memberTypeSelector?.value ?? "";
+      setSaving(true);
 
       try {
-        const { photoURL } = await handleProfileUpdate(
+        const saved = await handleProfileUpdate(
           user,
           {
             displayName: nameInput.value.trim(),
@@ -874,13 +2567,26 @@ const t = useTranslations(lang);
             role: roleInput.value.trim(),
             bio: bioInput.value.trim(),
             portfolio: portfolioInput.value.trim(),
-            socialMedia: socialMediaInput.value.trim(),
+            socialMedia: socialStored(),
+            affiliation: affiliationInput.value.trim(),
+            location: locationInput.value.trim(),
+            languages: getSelectedLanguages(),
+            // Cleared for creators: the question is hidden for them, so keeping
+            // a previous answer would publish something they cannot see or edit.
+            visualNeeds: needsVisuals(memberType) ? (visualNeedsSelector?.value ?? []) : [],
             openTo: openToSelector?.value ?? [],
             primaryAudiences: getSelectedPrimaryAudiences(),
             tags: tagSelector?.value ?? [],
+            // The gallery persists on its own when images are added or
+            // removed, but the words attached to them — captions and
+            // descriptions — are typed, and typed text belongs to the Save
+            // button like every other field here.
+            gallery,
+            wantsToContribute: wantsToContributeInput.checked,
             phone: phoneInput.value.trim(),
-            email: user.email!,
             resizedAvatarBlob,
+            previousPhotoImageId: currentPhotoImageId,
+            ...(resizedAvatarBlob && avatarColor ? { photoColor: avatarColor } : {}),
           },
           (pct) => {
             uploadStatus.textContent = `${s["profile.upload.uploading"]} ${pct}%`;
@@ -888,93 +2594,256 @@ const t = useTranslations(lang);
           }
         );
 
+        if (saved.photoImageId) currentPhotoImageId = saved.photoImageId;
+        // The array carries the text for the static build; the records carry
+        // it for everything else. Best-effort by design — see syncGalleryText.
+        await syncGalleryText(gallery);
+
         if (resizedAvatarBlob) {
           uploadStatus.textContent = s["profile.upload.complete"];
-          currentPhotoURL = photoURL;
         }
 
         await setProfileActive(user.uid, activeInput.checked);
         await triggerRebuild();
         saveMsg.style.display = "block";
+
+        // A GALLERY ERROR MUST NOT OUTLIVE THE SAVE THAT SETTLED IT.
+        //
+        // The gallery line is written by the upload queue, which fails on its
+        // own schedule and has no idea a Save has since happened. So a member
+        // who hit a refused array write and then saved successfully was shown
+        // "Your sign-in expired. Sign in again, then try once more." directly
+        // above a green "Changes saved." — the editor contradicting itself, and
+        // the wrong half is the one that sounds urgent.
+        //
+        // Cleared through the cap-note bookkeeping rather than around it:
+        // zeroing galleryCapNote first is what lets updateGalleryControls take
+        // the line back, so a gallery that really is full says so again instead
+        // of falling silent.
+        setGalleryStatus("");
+        galleryCapNote = "";
+        updateGalleryControls();
       } catch (err: unknown) {
         saveError.textContent = err instanceof Error ? err.message : s["profile.save.error"];
         saveError.style.display = "block";
+      } finally {
+        setSaving(false);
       }
     });
 
     // ── Delete account ──────────────────────────────────────────────
+    // Delete through requestAccountDeletion, which destroys the account
+    // outright — documents, files and the Auth user (2026-09-04, Josh:
+    // "scheduled deletion is unnecessary. just make it delete accounts
+    // straight away"). Two things now stand between a stray click and an
+    // irreversible one: the account's own email address, typed out, and the
+    // password. Neither is optional — the callable checks auth_time
+    // server-side, so the password cannot be skipped from here, and the
+    // address is checked again at click time rather than trusted to the
+    // button's disabled attribute.
+    //
+    // showDeletionBanner and the "Keep my account" button below are NOT dead
+    // code — an admin can still schedule a dated deletion through adminOps,
+    // and a member whose account is in that state still needs to see it and
+    // still needs a way out.
     const deleteIdle = document.getElementById("delete-idle")!;
-    const deleteConfirm = document.getElementById("delete-confirm")!;
     const deleteReauth = document.getElementById("delete-reauth")!;
+    const deleteScheduled = document.getElementById("delete-scheduled")!;
+    const deleteScheduledText = document.getElementById("delete-scheduled-text")!;
     const reauthInput = document.getElementById("reauth-password") as HTMLInputElement;
     const reauthError = document.getElementById("reauth-error")!;
+    const confirmEmail = document.getElementById("delete-confirm-email") as HTMLInputElement;
+    const confirmTarget = document.getElementById("delete-confirm-target")!;
+    const confirmError = document.getElementById("delete-confirm-error")!;
+    const confirmBtn = document.getElementById("btn-reauth-confirm") as HTMLButtonElement;
+    const banner = document.getElementById("deletion-banner")!;
+    const bannerText = document.getElementById("deletion-banner-text")!;
+    const keepBtn = document.getElementById("btn-keep-account") as HTMLButtonElement;
 
-    function showDeleteView(view: "idle" | "confirm" | "reauth") {
+    function showDeleteView(view: "idle" | "reauth" | "scheduled") {
       deleteIdle.style.display = view === "idle" ? "block" : "none";
-      deleteConfirm.style.display = view === "confirm" ? "block" : "none";
       deleteReauth.style.display = view === "reauth" ? "block" : "none";
+      deleteScheduled.style.display = view === "scheduled" ? "block" : "none";
     }
 
-    async function performDelete() {
+    function showDeletionBanner(purgeAfterIso: string) {
+      bannerText.textContent = s["profile.delete.banner"].replace("{date}", fmtDate(purgeAfterIso));
+      banner.style.display = "flex";
+      deleteScheduledText.textContent = s["profile.delete.scheduled"].replace(
+        "{date}",
+        fmtDate(purgeAfterIso)
+      );
+      showDeleteView("scheduled");
+    }
+
+    /**
+     * The address the member has to reproduce. Read at the moment the view
+     * opens rather than once at load, because changing your email and then
+     * deleting your account in the same sitting is a perfectly ordinary thing
+     * to do, and the stale address would be unreproducible.
+     */
+    function deleteTargetEmail() {
+      return (auth.currentUser?.email ?? "").trim().toLowerCase();
+    }
+
+    /**
+     * Case and surrounding space are forgiven; nothing else is. Addresses are
+     * case-insensitive in practice, and a member who copies theirs out of a
+     * mail client will bring whitespace with it — neither is the mistake this
+     * gate exists to catch.
+     */
+    function deleteConfirmMatches() {
+      const target = deleteTargetEmail();
+      return target !== "" && confirmEmail.value.trim().toLowerCase() === target;
+    }
+
+    /**
+     * The button is the gate. The message appears only once there is something
+     * wrong to say — a red line under an empty field is scolding someone for
+     * not having typed yet.
+     */
+    function updateDeleteGate(busy = false) {
+      const ok = deleteConfirmMatches();
+      confirmBtn.disabled = busy || !ok;
+      const typed = confirmEmail.value.trim() !== "";
+      if (!ok && typed) {
+        confirmError.textContent = s["profile.delete.typeMismatch"];
+        confirmError.style.display = "block";
+      } else {
+        confirmError.style.display = "none";
+      }
+    }
+
+    confirmEmail.addEventListener("input", () => updateDeleteGate());
+
+    async function reauthenticate(password: string) {
       const user = auth.currentUser;
-      if (!user) return;
-      const photoURL = user.photoURL ?? "";
-      await deleteUserData(user.uid);
-      await deleteAvatar(photoURL);
-      await user.delete();
-      window.location.href = prefix || "/";
+      if (!user || !user.email) throw new Error("not signed in");
+      await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password));
+      return user;
     }
 
     document.getElementById("btn-delete-start")!.addEventListener("click", () => {
-      showDeleteView("confirm");
+      confirmTarget.textContent = auth.currentUser?.email ?? "";
+      confirmEmail.value = "";
+      updateDeleteGate();
+      showDeleteView("reauth");
     });
-
-    document.getElementById("btn-delete-cancel")!.addEventListener("click", () => {
-      showDeleteView("idle");
-    });
-
-    document.getElementById("btn-delete-confirm")!.addEventListener("click", async () => {
-      const btn = document.getElementById("btn-delete-confirm") as HTMLButtonElement;
-      btn.disabled = true;
-      btn.textContent = s["profile.delete.deleting"];
-      try {
-        await performDelete();
-      } catch (err: unknown) {
-        const code =
-          typeof err === "object" && err !== null && "code" in err
-            ? String((err as { code: unknown }).code)
-            : "";
-        if (code === "auth/requires-recent-login") {
-          showDeleteView("reauth");
-        } else {
-          btn.disabled = false;
-          btn.textContent = s["profile.delete.confirm"];
-        }
-      }
-    });
-
     document.getElementById("btn-reauth-cancel")!.addEventListener("click", () => {
+      // Leave nothing loaded behind the Cancel: reopening the panel should
+      // cost the same two deliberate acts it cost the first time.
       reauthInput.value = "";
+      confirmEmail.value = "";
       reauthError.style.display = "none";
+      updateDeleteGate();
       showDeleteView("idle");
     });
 
-    document.getElementById("btn-reauth-confirm")!.addEventListener("click", async () => {
-      const user = auth.currentUser;
-      if (!user || !user.email) return;
-      const btn = document.getElementById("btn-reauth-confirm") as HTMLButtonElement;
-      btn.disabled = true;
+    confirmBtn.addEventListener("click", async () => {
+      // The disabled button is the gate a member sees; this is the gate. A
+      // stale click landing after the field was edited, or the attribute going
+      // missing, must not be the difference between an account and no account.
+      if (!deleteConfirmMatches()) {
+        updateDeleteGate();
+        return;
+      }
+      const btn = confirmBtn;
+      updateDeleteGate(true);
       btn.textContent = s["profile.reauth.confirming"];
       reauthError.style.display = "none";
       try {
-        const credential = EmailAuthProvider.credential(user.email, reauthInput.value);
-        await reauthenticateWithCredential(user, credential);
-        await performDelete();
+        await reauthenticate(reauthInput.value);
       } catch {
         reauthError.textContent = s["profile.reauth.error"];
         reauthError.style.display = "block";
-        btn.disabled = false;
-        btn.textContent = s["profile.reauth.confirm"];
+        updateDeleteGate();
+        btn.textContent = s["profile.delete.confirm"];
+        return;
+      }
+      try {
+        await requestAccountDeletion();
+        reauthInput.value = "";
+        // The account is GONE by the time this resolves — documents, files and
+        // the Auth user. So there is no profile left to render and no session
+        // left to render it with: signing out and leaving is the only honest
+        // next screen, and `replace` keeps Back from returning to an editor
+        // whose every field would now fail to load.
+        await signOut(auth).catch(() => {});
+        window.location.replace(prefix + "/");
+        return;
+      } catch {
+        reauthError.textContent = s["profile.delete.error"];
+        reauthError.style.display = "block";
+      } finally {
+        updateDeleteGate();
+        btn.textContent = s["profile.delete.confirm"];
+      }
+    });
+
+    keepBtn.addEventListener("click", async () => {
+      keepBtn.disabled = true;
+      keepBtn.textContent = s["profile.delete.keeping"];
+      try {
+        await cancelAccountDeletion();
+        window.location.reload();
+      } catch {
+        keepBtn.disabled = false;
+        keepBtn.textContent = s["profile.delete.keep"];
+      }
+    });
+
+    // ── Change email ────────────────────────────────────────────────
+    // Auth does the safe part: the link goes to the NEW address and the swap
+    // happens only when it is clicked. The Firestore mirror follows on the
+    // next load through ensureEmailSynced.
+    const emailNew = document.getElementById("email-new") as HTMLInputElement;
+    const emailPassword = document.getElementById("email-password") as HTMLInputElement;
+    const emailMsg = document.getElementById("email-msg")!;
+    const emailError = document.getElementById("email-error")!;
+    const emailBtn = document.getElementById("btn-email-change") as HTMLButtonElement;
+    const emailIdle = document.getElementById("email-idle")!;
+    const emailForm = document.getElementById("email-form")!;
+
+    function showEmailForm(open: boolean) {
+      emailIdle.hidden = open;
+      emailForm.hidden = !open;
+    }
+
+    document.getElementById("btn-email-start")!.addEventListener("click", () => {
+      showEmailForm(true);
+      emailNew.focus();
+    });
+
+    // Cancel empties the password too. Leaving a typed credential in a field
+    // that is merely display:none is not a thing to do casually.
+    document.getElementById("btn-email-cancel")!.addEventListener("click", () => {
+      emailNew.value = "";
+      emailPassword.value = "";
+      emailMsg.style.display = "none";
+      emailError.style.display = "none";
+      showEmailForm(false);
+    });
+
+    emailBtn.addEventListener("click", async () => {
+      const next = emailNew.value.trim();
+      emailMsg.style.display = "none";
+      emailError.style.display = "none";
+      if (!next.includes("@")) return;
+      emailBtn.disabled = true;
+      emailBtn.textContent = s["profile.email.sending"];
+      try {
+        const user = await reauthenticate(emailPassword.value);
+        await verifyBeforeUpdateEmail(user, next, returnTo(lang, "/profile"));
+        emailMsg.textContent = s["profile.email.sent"].replace("{email}", next);
+        emailMsg.style.display = "block";
+        emailNew.value = "";
+        emailPassword.value = "";
+      } catch {
+        emailError.textContent = s["profile.email.error"];
+        emailError.style.display = "block";
+      } finally {
+        emailBtn.disabled = false;
+        emailBtn.textContent = s["profile.email.submit"];
       }
     });
   });

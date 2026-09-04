@@ -1,0 +1,278 @@
+---
+import { useTranslations } from "../i18n/utils";
+import type { Lang } from "../i18n/utils";
+
+// "What do you need visuals for?" — the science side's counterpart to
+// OpenToSelector, and the field that turns a member type into matchmaking
+// data: an illustrator can see the deliverable, not just "seeking services".
+//
+// Options come from the seeded `visualNeeds` Firestore collection (see
+// scripts/seed-visual-needs.mjs) so they can be reworded without a deploy,
+// which is why the chips are built by the client rather than the server.
+// Modelled closely on OpenToSelector and kept separate rather than
+// generalised, so a change to one cannot regress the other.
+interface Props {
+  lang?: Lang;
+}
+
+const { lang = "en" } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<visual-needs-selector class="field visual-needs-selector" data-lang={lang} hidden>
+  <label class="label">{t("profile.visualNeeds.legend")}</label>
+  <div id="visualNeeds-chips" class="visualNeeds-chips"></div>
+  <div id="visualNeeds-custom-list" class="visualNeeds-custom-list"></div>
+  <div class="visualNeeds-input-row">
+    <input
+      id="visualNeeds-input"
+      type="text"
+      class="input"
+      placeholder={t("profile.visualNeeds.custom.ph")}
+    />
+    <button type="button" class="visualNeeds-add-btn" aria-label={t("profile.visualNeeds.add")}
+      >+</button
+    >
+  </div>
+  <p class="field-note">{t("profile.visualNeeds.note")}</p>
+</visual-needs-selector>
+
+<style is:global>
+  visual-needs-selector {
+    display: flex;
+  }
+
+  visual-needs-selector[hidden] {
+    display: none;
+  }
+
+  visual-needs-selector.visual-needs-selector .visualNeeds-chips,
+  visual-needs-selector.visual-needs-selector .visualNeeds-custom-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  visual-needs-selector.visual-needs-selector .visualNeeds-custom-list:empty {
+    display: none;
+  }
+
+  visual-needs-selector.visual-needs-selector .visualNeeds-chip {
+    font-family: inherit;
+    font-size: 0.88rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--color-border);
+    background: #fff;
+    color: #555;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      border-color 0.15s,
+      color 0.15s;
+  }
+
+  visual-needs-selector.visual-needs-selector .visualNeeds-chip:hover {
+    border-color: #999;
+    color: #333;
+  }
+
+  visual-needs-selector.visual-needs-selector button.visualNeeds-chip.visualNeeds-chip--selected {
+    background: var(--color-dark);
+    border-color: var(--color-dark);
+    color: #fff;
+  }
+
+  visual-needs-selector.visual-needs-selector button.visualNeeds-custom-chip {
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    border: 1.5px solid var(--color-dark);
+    background: var(--color-dark);
+    color: #fff;
+    font-size: 0.88rem;
+    cursor: pointer;
+  }
+
+  visual-needs-selector.visual-needs-selector button.visualNeeds-custom-chip span {
+    color: inherit;
+    opacity: 0.65;
+  }
+
+  visual-needs-selector.visual-needs-selector .visualNeeds-input-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  visual-needs-selector.visual-needs-selector .visualNeeds-input-row .input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  visual-needs-selector.visual-needs-selector .visualNeeds-add-btn {
+    flex-shrink: 0;
+    padding: 0 1rem;
+    background: var(--color-dark);
+    color: #fff;
+    border: 1.5px solid var(--color-dark);
+    border-radius: var(--radius-sm);
+    font-size: 1.3rem;
+    font-weight: 300;
+    line-height: 1;
+    cursor: pointer;
+  }
+</style>
+
+<script>
+  import { getVisualNeedsOptions } from "../lib/firestore.ts";
+  import type { OpenToDoc } from "../lib/firestore.ts";
+
+  /** Matches the visualNeeds size cap in firestore.rules. */
+  const MAX_NEEDS = 8;
+
+  class VisualNeedsSelectorElement extends HTMLElement {
+    private presets: OpenToDoc[] = [];
+    private selected = new Set<string>();
+    private custom: string[] = [];
+    private initialized = false;
+    private lang: "en" | "de" = "en";
+    /** A value set before the options arrived, replayed once they do. */
+    private pending: string[] | null = null;
+
+    async connectedCallback() {
+      if (this.initialized) return;
+      this.initialized = true;
+      this.lang = this.dataset.lang === "de" ? "de" : "en";
+
+      const input = this.querySelector<HTMLInputElement>("#visualNeeds-input");
+
+      const submit = () => {
+        if (!input) return;
+        const value = input.value.trim();
+        if (
+          !value ||
+          this.total() >= MAX_NEEDS ||
+          this.custom.includes(value) ||
+          this.presets.some((opt) => opt.id === value.toLowerCase())
+        ) {
+          return;
+        }
+        this.custom = [...this.custom, value];
+        input.value = "";
+        this.renderCustom();
+        input.focus();
+      };
+
+      input?.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        submit();
+      });
+      this.querySelector<HTMLButtonElement>(".visualNeeds-add-btn")?.addEventListener(
+        "click",
+        submit
+      );
+
+      try {
+        this.presets = await getVisualNeedsOptions();
+        this.renderPresets();
+        // A value assigned while loading could not tell a preset from a custom.
+        if (this.pending) {
+          const items = this.pending;
+          this.pending = null;
+          this.value = items;
+        }
+      } catch (err) {
+        console.warn("[visual-needs-selector] Failed to load options:", err);
+      }
+    }
+
+    private total(): number {
+      return this.selected.size + this.custom.length;
+    }
+
+    get value(): string[] {
+      return [...this.selected, ...this.custom];
+    }
+
+    set value(items: string[]) {
+      const unique = [...new Set((items ?? []).filter(Boolean))];
+      if (this.presets.length === 0) {
+        this.pending = unique;
+        return;
+      }
+      this.selected.clear();
+      this.custom = [];
+      const presetIds = new Set(this.presets.map((opt) => opt.id));
+      unique.slice(0, MAX_NEEDS).forEach((item) => {
+        if (presetIds.has(item)) this.selected.add(item);
+        else this.custom.push(item);
+      });
+      this.syncPresets();
+      this.renderCustom();
+    }
+
+    private renderPresets() {
+      const container = this.querySelector("#visualNeeds-chips");
+      if (!container) return;
+      container.replaceChildren(
+        ...this.presets.map((opt) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "visualNeeds-chip";
+          btn.dataset.need = opt.id;
+          btn.setAttribute("aria-pressed", "false");
+          btn.textContent = this.lang === "de" ? opt.label_de : opt.label_en;
+          btn.addEventListener("click", () => {
+            if (this.selected.has(opt.id)) this.selected.delete(opt.id);
+            else if (this.total() < MAX_NEEDS) this.selected.add(opt.id);
+            this.syncPresets();
+          });
+          return btn;
+        })
+      );
+      this.syncPresets();
+    }
+
+    private syncPresets() {
+      this.querySelectorAll<HTMLElement>("[data-need]").forEach((el) => {
+        const isOn = !!el.dataset.need && this.selected.has(el.dataset.need);
+        el.classList.toggle("visualNeeds-chip--selected", isOn);
+        el.setAttribute("aria-pressed", String(isOn));
+      });
+      this.dispatchEvent(new CustomEvent("visual-needs-change", { bubbles: true }));
+    }
+
+    private renderCustom() {
+      const list = this.querySelector("#visualNeeds-custom-list");
+      if (!list) return;
+      list.replaceChildren(
+        ...this.custom.map((item) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "visualNeeds-custom-chip";
+          btn.textContent = item;
+          const remove = document.createElement("span");
+          remove.setAttribute("aria-hidden", "true");
+          remove.textContent = "×";
+          btn.appendChild(remove);
+          btn.addEventListener("click", () => {
+            this.custom = this.custom.filter((value) => value !== item);
+            this.renderCustom();
+          });
+          return btn;
+        })
+      );
+      this.dispatchEvent(new CustomEvent("visual-needs-change", { bubbles: true }));
+    }
+  }
+
+  if (!customElements.get("visual-needs-selector")) {
+    customElements.define("visual-needs-selector", VisualNeedsSelectorElement);
+  }
+</script>

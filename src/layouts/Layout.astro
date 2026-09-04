@@ -3,6 +3,7 @@ import { ClientRouter } from "astro:transitions";
 import Navbar from "../components/Navbar.astro";
 import PageLoader from "../components/PageLoader.astro";
 import favicon from "../assets/favicon.png";
+import { BUILD_COMMIT, BUILD_TIME } from "../lib/buildInfo.ts";
 import ogImageAsset from "../assets/OG_Image.png";
 import "../styles/global.css";
 
@@ -13,6 +14,14 @@ interface Props {
   fullscreen?: boolean;
   lang?: string;
   wide?: boolean;
+  contentWide?: boolean;
+  /** Absolute URL overriding the default OG image — e.g. a member's first work. */
+  ogImage?: string;
+  /**
+   * Alias pages: canonical points here and a meta refresh sends the visitor
+   * on. Static hosting has no 301, so this is the honest equivalent.
+   */
+  redirectTo?: string;
 }
 
 const {
@@ -22,14 +31,40 @@ const {
   fullscreen = false,
   lang = "en",
   wide = false,
+  contentWide = false,
+  ogImage,
+  redirectTo,
 } = Astro.props;
 
 const DEFAULT_DESCRIPTION =
   "VSCN — Visual Science Communication Network — brings together illustrators, scientists, designers, and storytellers dedicated to making knowledge visible.";
 
 const metaDescription = description ?? DEFAULT_DESCRIPTION;
-const canonicalUrl = new URL(Astro.url.pathname, Astro.site).href;
-const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
+const canonicalUrl = new URL(redirectTo ?? Astro.url.pathname, Astro.site).href;
+const ogImageUrl = ogImage ?? new URL(ogImageAsset.src, Astro.site).href;
+
+const BRAND_LETTERS = [
+  { head: "V", tail: "isual" },
+  { head: "S", tail: "cience" },
+  { head: "C", tail: "ommunication" },
+  { head: "N", tail: "etwork" },
+];
+const BRAND_REPEATS = 4;
+const BRAND_RESTING_TEXT = BRAND_LETTERS.map((l) => l.head)
+  .join("")
+  .repeat(BRAND_REPEATS);
+// One slot per glyph position of the resting title, then a run of spill slots.
+// Hovering a slot writes its tail OVER the slots that follow it, so the line
+// rewrites itself in place instead of growing and shoving its neighbours
+// sideways. A hover near the right end has fewer letters left to overwrite
+// than its tail is long, so the word runs on into the spill slots — their
+// resting glyph is empty (head ""), which measures zero wide until a word
+// reaches them.
+const BRAND_SPILL_COUNT = Math.max(...BRAND_LETTERS.map((l) => l.tail.length));
+const BRAND_SLOTS = [
+  ...Array.from({ length: BRAND_REPEATS }, () => BRAND_LETTERS).flat(),
+  ...Array.from({ length: BRAND_SPILL_COUNT }, () => ({ head: "", tail: "" })),
+];
 ---
 
 <!doctype html>
@@ -41,6 +76,7 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
     <title>{title}</title>
     <meta name="description" content={metaDescription} />
     {noindex && <meta name="robots" content="noindex, nofollow" />}
+    {redirectTo && <meta http-equiv="refresh" content={`0;url=${redirectTo}`} />}
     <link rel="canonical" href={canonicalUrl} />
 
     <meta property="og:type" content="website" />
@@ -55,14 +91,45 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
     <meta name="twitter:description" content={metaDescription} />
     <meta name="twitter:image" content={ogImageUrl} />
 
+    {
+      /* WHICH BUILD THIS IS (2026-09-03). Every page on this site is a
+        build-time snapshot of Firestore, so "is what I am looking at current?"
+        is a question anyone reviewing the deployed site has to be able to
+        answer — and it used to take counting sitemap entries and asking the
+        Hosting API for a release time. Now:
+          curl -s https://…/community | grep 'name="build-'
+        Not `noindex`-gated and not stripped in production on purpose: the
+        whole value is that it is there on the page a reviewer actually opens.
+        See src/lib/buildInfo.ts for what the values can be. */
+    }
+    <meta name="build-commit" content={BUILD_COMMIT} />
+    <meta name="build-time" content={BUILD_TIME} />
+
     <ClientRouter />
   </head>
-  <body>
+  <body class:list={[{ "content-wide": contentWide }]}>
     <div class="brand-ticker" transition:persist>
-      <a id="brand-home-link" href={lang === "de" ? "/de" : "/"} class="brand-link">
-        <span class="brand-name" id="brand-name" aria-label="Visual Science Communication Network"
-          >VSCNVSCNVSCNVSCN</span
+      <a
+        id="brand-home-link"
+        href={lang === "de" ? "/de" : "/"}
+        class="brand-link"
+        aria-label="Visual Science Communication Network"
+      >
+        <span
+          class="brand-name"
+          id="brand-name"
+          data-resting-text={BRAND_RESTING_TEXT}
+          aria-hidden="true"
         >
+          {
+            BRAND_SLOTS.map(({ head, tail }) => (
+              <span class="brand-slot" data-brand-tail={tail}>
+                <span class="brand-slot__rest">{head}</span>
+                <span class="brand-slot__over" />
+              </span>
+            ))
+          }
+        </span>
       </a>
     </div>
     <PageLoader />
@@ -89,12 +156,37 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
   .brand-ticker {
     display: block;
     width: 100%;
-    max-width: 900px;
+    /* Shared with <main> and the navbar — see --shell-max in global.css. The
+       15px inline padding matches main's, so the title's first glyph lands on
+       the content edge rather than 15px outside it. fitBrandName subtracts
+       this padding when it measures. */
+    max-width: var(--shell-max);
     margin: auto;
-    overflow: hidden;
+    /* overflow: visible so a word overwriting near the right end can run on
+       into the empty space next to the 900px shell instead of being clipped
+       at the shell edge. body { overflow: hidden } in global.css catches any
+       horizontal spill at the viewport edge, so we can't grow a scrollbar. */
+    overflow: visible;
     flex-shrink: 0;
     box-sizing: border-box;
-    padding: 0px;
+    padding: 0 15px;
+  }
+
+  /* MOBILE: THE TITLE IS A BANNER, NOT A FIXTURE. On a phone the giant VSCN
+     line costs a fifth of the viewport, so it rides up out of the way as
+     .page-wrap scrolls and hands that height to the content, leaving the
+     navbar pinned at the top edge. --brand-hide is written by the scroll
+     handler in the script below. margin-top does the whole job in one
+     property: the ticker moves up by exactly the footprint it gives up, so
+     .page-wrap (flex: 1) grows into the space with no gap in between. */
+  @media (--bp-mobile) {
+    .brand-ticker {
+      margin-top: calc(-1 * var(--brand-hide, 0px));
+      /* Flush to the screen edges, like the navbar under it — on a phone the
+         measure's 15px content edge only makes the title smaller. fitBrandName
+         reads the padding off the element, so the fit follows on its own. */
+      padding-inline: 0;
+    }
   }
 
   .brand-link {
@@ -116,7 +208,131 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
     letter-spacing: 0;
     color: var(--color-dark);
     white-space: nowrap;
-    overflow: hidden;
+    /* No overflow clip here — a word overwriting near the right end is allowed
+       to run past the 900px shell. */
+    overflow: visible;
+  }
+
+  /* One slot per glyph position, holding the resting VSCN letter and the word
+     letter that overwrites it. Exactly one of the two is ever open, the other
+     clipped to zero width, so hovering V swaps the letters that follow it for
+     "isual" in place — the line rewrites itself rather than growing and
+     shoving its neighbours sideways.
+
+     The slot is a GRID so the whitespace between its two children generates no
+     boxes; formatted markup would otherwise put a real space between the two
+     halves of one glyph. */
+  .brand-slot {
+    display: inline-grid;
+    /* Both letters sit in the same cell, stacked and left-aligned, each at its
+       own natural width. The cell's width is the thing JS animates, so neither
+       letter is ever narrowed while it is turning. */
+    justify-items: start;
+    /* A beat is half a flip. The cell resizes on the second beat only, as the
+       incoming letter drops in: on the first beat it has to stay the outgoing
+       letter's width, or that letter would squeeze as it tips away. */
+    --brand-flap-beat: 0.25s;
+    --brand-flap-early: var(--brand-slot-delay, 0s);
+    --brand-flap-late: calc(var(--brand-slot-delay, 0s) + var(--brand-flap-beat));
+    transition-property: width;
+    transition-duration: var(--brand-flap-beat);
+    transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+    transition-delay: var(--brand-flap-late);
+    /* Every slot is one line of the same font and line-height, so aligning
+       tops keeps the glyphs level without depending on how a grid box with
+       overflow: hidden items synthesises its baseline. */
+    vertical-align: top;
+    /* The same shallow vanishing point GsapTextHeadline flips its words
+       against, so a header letter and a hero letter turn through the same
+       depth. Per slot, not per line: each letter flips about itself. */
+    perspective: 12ch;
+  }
+
+  /* A slot showing a word letter must not be a hover target of its own —
+     otherwise dragging the pointer along "isual" would fire S→cience halfway
+     through and the two words would fight over the line. */
+  .brand-slot--over {
+    pointer-events: none;
+  }
+
+  /* The cell's width is a measured px value rather than the inline-grid
+     0fr↔1fr collapse used elsewhere in this project because a transition
+     cannot interpolate from `auto`, and every glyph a slot may show is a
+     different width — so the target has to be a number JS knows.
+
+     The letters turn like the flaps on a split-flap board, on the power3.inOut
+     curve GsapTextHeadline turns its words with. The two turns do not overlap:
+     the outgoing letter tips all the way away on the first beat, and only then
+     does the incoming letter start dropping in, both the same way round so the
+     pair reads as one continuous fall. The per-slot delay set by JS sends that
+     flip across the line, left to right.
+
+     Opacity never fades: it switches in zero time at the changeover, when both
+     letters are edge-on and invisible anyway, so a letter stays solid ink the
+     whole way down. */
+  .brand-slot__rest,
+  .brand-slot__over {
+    /* Stacked, so the cell holds one letter's worth of space no matter which
+       of the two is showing. */
+    grid-area: 1 / 1;
+    /* Each letter turns about its own centre rather than travelling, so the
+       motion stays inside its line box: nothing needs clipping and no glyph
+       sweeps down across the nav. */
+    transform-origin: 50% 50%;
+    backface-visibility: hidden;
+    transition-property: opacity, transform;
+    transition-duration: 0s, var(--brand-flap-beat);
+    transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+
+  /* Resting. Read these as the destination of the flip home: the word letter
+     is the one tipping away, so it turns on the first beat and the resting
+     letter drops in after it on the second. */
+  .brand-slot__rest {
+    opacity: 1;
+    transform: rotateX(0deg);
+    transition-delay: var(--brand-flap-late), var(--brand-flap-late);
+  }
+
+  .brand-slot__over {
+    opacity: 0;
+    transform: rotateX(-90deg);
+    transition-delay: var(--brand-flap-late), var(--brand-flap-early);
+  }
+
+  /* Overwritten. The resting letter tips away on the first beat, the word
+     letter drops in on the second. */
+  .brand-slot--over .brand-slot__rest {
+    opacity: 0;
+    transform: rotateX(90deg);
+    transition-delay: var(--brand-flap-late), var(--brand-flap-early);
+  }
+
+  .brand-slot--over .brand-slot__over {
+    opacity: 1;
+    transform: rotateX(0deg);
+    transition-delay: var(--brand-flap-late), var(--brand-flap-late);
+  }
+
+  /* Re-measuring after a resize rewrites every resting width. Without this the
+     new values would animate, so the title would visibly lag the window. */
+  .brand-name--measuring .brand-slot,
+  .brand-name--measuring .brand-slot__rest,
+  .brand-name--measuring .brand-slot__over {
+    transition: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .brand-slot,
+    .brand-slot__rest,
+    .brand-slot__over {
+      transition: none;
+    }
+
+    .brand-slot__rest,
+    .brand-slot__over {
+      transform: none !important;
+    }
   }
 </style>
 
@@ -137,22 +353,369 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
     el.style.fontSize = "8rem";
     const ticker = el.closest<HTMLElement>(".brand-ticker");
     if (!ticker) return;
-    const available = ticker.clientWidth;
-    const textWidth = el.scrollWidth;
+    // clientWidth includes the ticker's inline padding; the text can only use
+    // the content box, so subtract it or the title overflows by exactly the
+    // padding and the last glyph is clipped.
+    const cs = getComputedStyle(ticker);
+    const available = ticker.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    // Measure with a text-only mirror rather than the live .brand-name, whose
+    // width depends on the pixel widths JS has written onto every glyph —
+    // measuring it would feed the fit its own previous output.
+    const restingText = el.dataset.restingText ?? "";
+    if (!restingText) return;
+    const mirror = document.createElement("span");
+    mirror.textContent = restingText;
+    mirror.style.cssText =
+      "position:absolute;visibility:hidden;pointer-events:none;white-space:nowrap;left:0;top:0";
+    el.appendChild(mirror);
+    const textWidth = mirror.getBoundingClientRect().width;
+    mirror.remove();
     if (available > 0 && textWidth > 0) {
       const current = parseFloat(getComputedStyle(el).fontSize);
-      el.style.fontSize = `${(current * available) / textWidth}px`;
+      // 8rem is a CEILING, not a starting point: this fit shrinks the title to
+      // the measure and never grows it past its design size. At the 900px
+      // measure the shrink always runs, so the title fills the header exactly —
+      // that is the production look, and the reason no page widens --shell-max.
+      el.style.fontSize = `${Math.min(current, (current * available) / textWidth)}px`;
     }
+  }
+
+  // Seconds of delay added per slot, so the word flips itself across the line
+  // rather than every letter turning at once.
+  const BRAND_STAGGER_S = 0.025;
+  // One letter's whole flip — both beats of --brand-flap-beat in the CSS above.
+  // Kept in step with it by hand: JS needs the number to know when a word has
+  // finished leaving the line.
+  const BRAND_FLIP_S = 0.5;
+
+  // Advance width of every glyph the title can show, at the current font size.
+  let brandGlyphWidths = new Map<string, number>();
+  let brandSlots: HTMLElement[] = [];
+  let activeBrandOrigin: HTMLElement | null = null;
+  // Two words must never be turning at the same time. This is the moment the
+  // word currently leaving the line will have finished doing so.
+  let brandRetractEndsAt = 0;
+  let brandRetractTimer: ReturnType<typeof setTimeout> | null = null;
+  let pendingBrandOrigin: number | null = null;
+
+  // Measure every resting letter and every letter any word can write, then
+  // pin the resting widths. Must run after fitBrandName has settled the font
+  // size, and again whenever that size changes.
+  function measureBrandGlyphs(brandName: HTMLElement) {
+    const mirror = document.createElement("span");
+    mirror.style.cssText =
+      "position:absolute;visibility:hidden;pointer-events:none;white-space:pre;left:0;top:0";
+    brandName.appendChild(mirror);
+
+    const widths = new Map<string, number>();
+    const widthOf = (char: string) => {
+      let w = widths.get(char);
+      if (w === undefined) {
+        mirror.textContent = char;
+        w = mirror.getBoundingClientRect().width;
+        widths.set(char, w);
+      }
+      return w;
+    };
+
+    const slots = Array.from(brandName.querySelectorAll<HTMLElement>(".brand-slot"));
+    slots.forEach((slot) => {
+      const head = slot.querySelector<HTMLElement>(".brand-slot__rest")?.textContent ?? "";
+      slot.dataset.brandRestWidth = String(head ? widthOf(head) : 0);
+      // Any word can land on any slot, so the map needs every tail's letters,
+      // not just this slot's.
+      Array.from(slot.dataset.brandTail ?? "").forEach(widthOf);
+    });
+
+    mirror.remove();
+    brandGlyphWidths = widths;
+
+    brandName.classList.add("brand-name--measuring");
+    slots.forEach((slot) => {
+      if (slot.classList.contains("brand-slot--over")) return;
+      restBrandSlot(slot);
+    });
+    // Flush the un-transitioned widths before motion is allowed back on.
+    void brandName.offsetWidth;
+    brandName.classList.remove("brand-name--measuring");
+    // Those widths snapped rather than animating, so nothing is in flight and
+    // the next hover must not be made to wait for a retraction that is over.
+    brandRetractEndsAt = 0;
+  }
+
+  // Back to the resting VSCN letter. The width lives on the slot, not on the
+  // two letters — they stay at their natural size so neither is squeezed mid-turn.
+  function restBrandSlot(slot: HTMLElement) {
+    slot.classList.remove("brand-slot--over");
+    slot.style.width = `${slot.dataset.brandRestWidth ?? 0}px`;
+  }
+
+  // Show one letter of a word in place of the resting letter.
+  function overwriteBrandSlot(slot: HTMLElement, char: string) {
+    const over = slot.querySelector<HTMLElement>(".brand-slot__over");
+    if (over) over.textContent = char;
+    slot.style.width = `${brandGlyphWidths.get(char) ?? 0}px`;
+    slot.classList.add("brand-slot--over");
+  }
+
+  // Send whatever word is showing back to VSCN, and record when that will be
+  // done. The slots keep their per-slot delays, so the word unwinds left to
+  // right exactly as it arrived — which is why the last letter to leave, not
+  // the first, decides when the line is still again.
+  function clearBrandOverwrite() {
+    const brandName = document.getElementById("brand-name");
+    const showing = brandName?.querySelectorAll<HTMLElement>(".brand-slot--over");
+    if (showing?.length) {
+      const lastLetterEnds = BRAND_FLIP_S + (showing.length - 1) * BRAND_STAGGER_S;
+      brandRetractEndsAt = performance.now() + lastLetterEnds * 1000;
+      showing.forEach(restBrandSlot);
+    }
+    activeBrandOrigin = null;
+  }
+
+  function cancelPendingBrandOverwrite() {
+    pendingBrandOrigin = null;
+    if (brandRetractTimer !== null) {
+      clearTimeout(brandRetractTimer);
+      brandRetractTimer = null;
+    }
+  }
+
+  function runPendingBrandOverwrite() {
+    brandRetractTimer = null;
+    const next = pendingBrandOrigin;
+    pendingBrandOrigin = null;
+    if (next !== null) applyBrandOverwrite(brandSlots, next);
+  }
+
+  // Hovering a letter. If another word is still on the line, or still on its
+  // way off it, this one waits its turn instead of flipping over the top of
+  // it — sliding along the title queues words, it never overlays them. Only
+  // the letter the pointer ended on gets spelled; anything crossed on the way
+  // is replaced as the pending target, so a fast sweep costs one word, not one
+  // per letter.
+  function requestBrandOverwrite(originIndex: number) {
+    const slot = brandSlots[originIndex];
+    // Spill slots carry no tail, so they are never an origin.
+    if (!slot?.dataset.brandTail) return;
+    if (slot === activeBrandOrigin) return;
+
+    clearBrandOverwrite();
+    cancelPendingBrandOverwrite();
+    const wait = brandRetractEndsAt - performance.now();
+    if (wait <= 0) {
+      applyBrandOverwrite(brandSlots, originIndex);
+      return;
+    }
+    pendingBrandOrigin = originIndex;
+    brandRetractTimer = setTimeout(runPendingBrandOverwrite, wait);
+  }
+
+  function leaveBrandName() {
+    clearBrandOverwrite();
+    cancelPendingBrandOverwrite();
+  }
+
+  // Write the hovered letter's tail over the slots that follow it.
+  function applyBrandOverwrite(slots: HTMLElement[], originIndex: number) {
+    const tail = slots[originIndex]?.dataset.brandTail ?? "";
+    if (!tail) return;
+    for (let i = 0; i < tail.length; i += 1) {
+      const slot = slots[originIndex + 1 + i];
+      // Out of slots entirely — can't happen while BRAND_SPILL_COUNT is the
+      // longest tail, but a shorter pool should truncate, not throw.
+      if (!slot) break;
+      slot.style.setProperty("--brand-slot-delay", `${(i * BRAND_STAGGER_S).toFixed(3)}s`);
+      overwriteBrandSlot(slot, tail[i]);
+    }
+    activeBrandOrigin = slots[originIndex];
+  }
+
+  function attachBrandOverwrite() {
+    const brandName = document.getElementById("brand-name") as HTMLElement | null;
+    if (!brandName) return;
+    // .brand-ticker has transition:persist, so this DOM survives navigations —
+    // guard against re-binding listeners on every astro:page-load.
+    if (brandName.dataset.hoverAttached === "1") return;
+    brandName.dataset.hoverAttached = "1";
+
+    brandSlots = Array.from(brandName.querySelectorAll<HTMLElement>(".brand-slot"));
+    brandSlots.forEach((slot, index) => {
+      slot.addEventListener("pointerenter", () => requestBrandOverwrite(index));
+    });
+
+    // Cleared on leaving the whole line, not the individual slot: the letters a
+    // word has written over are pointer-events: none, so sliding the pointer
+    // along the word leaves the origin slot without meaning to end the hover.
+    brandName.addEventListener("pointerleave", leaveBrandName);
+  }
+
+  function refreshBrandName() {
+    const brandName = document.getElementById("brand-name") as HTMLElement | null;
+    if (!brandName) return;
+    fitBrandName();
+    measureBrandGlyphs(brandName);
   }
 
   function initBrandFit() {
     brandResizeObserver?.disconnect();
     const ticker = document.querySelector<HTMLElement>(".brand-ticker");
     if (!ticker) return;
-    fitBrandName();
-    brandResizeObserver = new ResizeObserver(fitBrandName);
+    refreshBrandName();
+    attachBrandOverwrite();
+    brandResizeObserver = new ResizeObserver(() => {
+      leaveBrandName();
+      refreshBrandName();
+    });
     brandResizeObserver.observe(ticker);
   }
+
+  // ── Mobile: ride the title up out of the way on scroll ──
+  // Matches --bp-mobile in global.css; custom media aliases don't reach JS, so
+  // the number is duplicated here and the two move together.
+  const BRAND_HIDE_MQ = "(max-width: 767px)";
+  let brandScroller: HTMLElement | null = null;
+  let brandHideFrame = 0;
+
+  function applyBrandHide() {
+    brandHideFrame = 0;
+    const ticker = document.querySelector<HTMLElement>(".brand-ticker");
+    if (!ticker) return;
+    if (!brandScroller || !window.matchMedia(BRAND_HIDE_MQ).matches) {
+      ticker.style.removeProperty("--brand-hide");
+      return;
+    }
+    // offsetHeight is the border box, which the negative margin never touches —
+    // so the clamp stays put instead of chasing its own output.
+    const hidden = Math.max(0, Math.min(brandScroller.scrollTop, ticker.offsetHeight));
+    ticker.style.setProperty("--brand-hide", `${hidden}px`);
+  }
+
+  function onBrandHideScroll() {
+    // Piggybacked on the one scroll listener the page already has, throttled
+    // separately — see saveScroll.
+    saveScroll();
+    if (brandHideFrame) return;
+    brandHideFrame = requestAnimationFrame(applyBrandHide);
+  }
+
+  // .page-wrap is replaced on every navigation (only the ticker is persisted),
+  // so the listener has to be moved to the new scroller each time.
+  function initBrandScrollHide() {
+    brandScroller?.removeEventListener("scroll", onBrandHideScroll);
+    brandScroller = document.querySelector<HTMLElement>(".page-wrap");
+    brandScroller?.addEventListener("scroll", onBrandHideScroll, { passive: true });
+    applyBrandHide();
+  }
+
+  // ── Back and forward have to land where you left ──────────
+  // ClientRouter restores scroll by writing to the WINDOW, and on this site the
+  // window does not scroll: body is `overflow: hidden` and .page-wrap is the
+  // scrollport (see the layout note at the top of this file). So its
+  // restoration is a no-op, and every Back landed at the top of the page it
+  // returned to — most visibly coming back from a member's page to the point in
+  // the community directory you had scrolled to. (2026-09-01, Josh: "back
+  // navigation dors not work getting back from profiles"; the other half of
+  // that report was ClientRouter's history state being overwritten — see
+  // syncURL in CommunityGrid.)
+  //
+  // KEYED BY ClientRouter'S OWN HISTORY INDEX, and stored in sessionStorage
+  // rather than in the history entry itself. Two reasons, both practical:
+  // writing scroll into history.state on every scroll frame would hit Safari's
+  // replaceState rate limit, and reading the index at save time and at restore
+  // time makes this independent of WHERE in the transition lifecycle each
+  // happens — a forward navigation gets a fresh index and so finds nothing
+  // saved, which is exactly the "start at the top" behaviour a new page wants.
+  const SCROLL_KEY = "vscn:scroll:";
+  // Saving on every scroll frame is pointless; a quarter second of granularity
+  // is finer than a reader can notice they lost.
+  const SCROLL_SAVE_MS = 250;
+  // ~1s of trying, in 50ms steps — long enough for the directory's deal and the
+  // motion layer's first measure, short enough that a page which genuinely
+  // cannot reach the offset any more (a member deleted, a filter in the URL)
+  // gives up before the reader notices anything twitching.
+  const SCROLL_RESTORE_TRIES = 20;
+  const SCROLL_RESTORE_STEP_MS = 50;
+  let lastScrollSave = 0;
+  // THE ENTRY WE ARE ACTUALLY ON, tracked rather than read from history.state
+  // at save time. On a Back the browser has already swapped history.state to
+  // the DESTINATION before Astro starts the transition, so a save keyed off
+  // history.state during that transition writes the page-being-left's offset
+  // under the destination's key — obliterating the very value about to be
+  // restored. (Observed: leave /community at 1400, press Back, and the stored
+  // 1400 became the member page's 0 a moment before the restore read it.)
+  // Updated on page-load, which is the one moment both the DOM and the entry
+  // are settled.
+  let currentIndex: number | null = null;
+
+  function scrollKeyFor(index: number | null): string | null {
+    return typeof index === "number" ? SCROLL_KEY + index : null;
+  }
+
+  function saveScroll(force = false) {
+    if (!brandScroller) return;
+    const now = performance.now();
+    if (!force && now - lastScrollSave < SCROLL_SAVE_MS) return;
+    lastScrollSave = now;
+    const key = scrollKeyFor(currentIndex);
+    if (!key) return;
+    try {
+      sessionStorage.setItem(key, String(brandScroller.scrollTop));
+    } catch {
+      /* A private-mode quota refusal costs the restore, never the page. */
+    }
+  }
+
+  function restoreScroll() {
+    // Reads the entry we have just ARRIVED on, which is why currentIndex is
+    // refreshed from history.state immediately before this is called.
+    const key = scrollKeyFor(currentIndex);
+    const scroller = document.querySelector<HTMLElement>(".page-wrap");
+    if (!key || !scroller) return;
+    let saved: string | null;
+    try {
+      saved = sessionStorage.getItem(key);
+    } catch {
+      // A private-mode refusal costs the restore, never the page.
+      return;
+    }
+    if (saved === null) return;
+    const top = Number(saved);
+    if (!Number.isFinite(top) || top <= 0) return;
+    // UNTIL IT HOLDS, not once. An offset assigned to a scroller shorter than
+    // the offset is silently CLAMPED, and this runs at astro:page-load, when
+    // the page is still growing: the community directory deals its cards in its
+    // own page-load handler (whose order relative to this one is a bundling
+    // detail, not a guarantee) and the motion layer measures asynchronously
+    // after that. A single assignment, or even two a frame apart, lands on the
+    // short document and quietly becomes 0 — which is exactly what it did.
+    //
+    // Bounded, and it stops the moment it succeeds. It also stops if the
+    // scroller is found somewhere that is neither the target nor the top,
+    // because that means something else — most likely the reader — has taken
+    // over, and fighting them would be worse than not restoring at all.
+    let tries = 0;
+    const apply = () => {
+      const at = scroller.scrollTop;
+      const arrived = Math.abs(at - top) <= 1;
+      if (!arrived && at > 1) return;
+      scroller.scrollTop = top;
+      applyBrandHide();
+      if (Math.abs(scroller.scrollTop - top) > 1 && tries++ < SCROLL_RESTORE_TRIES) {
+        setTimeout(apply, SCROLL_RESTORE_STEP_MS);
+      }
+    };
+    apply();
+  }
+
+  window.matchMedia(BRAND_HIDE_MQ).addEventListener("change", applyBrandHide);
+
+  // The last chance to record where the page being left was scrolled to: the
+  // throttle above can have skipped the final frames of a scroll that ended in
+  // a click. The entry index has not changed yet at this point for a forward
+  // navigation, so this writes against the OUTGOING entry, which is the one
+  // that has to remember.
+  document.addEventListener("astro:before-preparation", () => saveScroll(true));
 
   document.addEventListener("astro:before-swap", (event) => {
     const swapEvent = event as unknown as { newDocument?: Document };
@@ -165,6 +728,14 @@ const ogImageUrl = new URL(ogImageAsset.src, Astro.site).href;
     const lang = document.documentElement.lang === "de" ? "de" : "en";
     updateBrandHomeLink(lang);
     initBrandFit();
+    initBrandScrollHide();
+    // Adopt the arrived-at entry BEFORE restoring, and leave it adopted: every
+    // save until the next navigation belongs to this entry. See currentIndex.
+    currentIndex = (history.state as { index?: number } | null)?.index ?? null;
+    // After initBrandScrollHide, which is what points brandScroller at the new
+    // .page-wrap — restoring before that would set an offset on the document
+    // that was just thrown away.
+    restoreScroll();
     // On client-side navigation there's no loader, so start animations immediately
     if (!document.getElementById("page-loader")) {
       document.body.classList.add("page-loaded");

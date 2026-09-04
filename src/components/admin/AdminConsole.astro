@@ -1,0 +1,532 @@
+<section class="admin" id="admin">
+  <p id="admin-gate" class="admin__gate">Checking access…</p>
+
+  <div id="admin-app" hidden>
+    {
+      /* THE CONSOLE OPENS ON A LIST, NOT ON A SEARCH BOX (2026-09-03, Josh:
+        "maek a list view with filter instead of one big search bar"). A search
+        box can only answer a question you already know how to ask; an admin
+        arriving here usually wants to see who is there — who is hidden, who is
+        mid-deletion, who has no Auth user. So every member is a row and this
+        field NARROWS them, in the browser, on every keystroke.
+
+        It is still the way to reach a thing by id: an imageId or a uid that
+        matches no row falls through to adminLookupMember, so nothing the old
+        box could do was lost. That fallback is why this is not a <form> with a
+        submit button any more — the common case must not need Enter. */
+    }
+    <div class="admin__bar">
+      <input
+        id="admin-filter"
+        class="input"
+        type="search"
+        autocomplete="off"
+        placeholder="filter by name, slug, role, email or uid — or paste an imageId"
+      />
+      <select id="admin-scope" class="input admin__scope" aria-label="Narrow the list">
+        <option value="all">Everyone</option>
+        <option value="public">Public</option>
+        <option value="hidden">Hidden</option>
+        <option value="pending">Pending deletion</option>
+        <option value="noauth">No Auth user</option>
+        <option value="mismatch">Image count mismatch</option>
+        <option value="unverified">Unverified email</option>
+      </select>
+      <button type="button" id="admin-queues-btn" class="btn-ghost">Queues</button>
+      <button type="button" id="admin-reload" class="btn-ghost">Reload</button>
+    </div>
+    <p id="admin-status" class="admin__status" role="status"></p>
+    <div id="admin-list"></div>
+    <div id="admin-results"></div>
+    <div id="admin-detail"></div>
+    <div id="admin-queues"></div>
+  </div>
+</section>
+
+<style>
+  .admin { display: grid; gap: 1.25rem; }
+  .admin__gate { color: var(--color-muted); }
+  .admin__bar { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .admin__bar .input { flex: 1 1 20rem; }
+  .admin__scope { flex: 0 1 14rem; }
+  .admin__status { min-height: 1.25rem; color: var(--color-muted); }
+  .admin :global(.card) {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    display: grid;
+    gap: 0.5rem;
+  }
+  .admin :global(h2) { font-size: 1.1rem; margin: 0; }
+  .admin :global(h3) { font-size: 0.9rem; margin: 0.5rem 0 0; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .admin :global(dl) { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0; }
+  .admin :global(dt) { color: var(--color-muted); }
+  .admin :global(dd) { margin: 0; overflow-wrap: anywhere; }
+  .admin :global(.actions) { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .admin :global(.thumbs) { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; }
+  .admin :global(.thumb img) { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-xs); background: var(--color-border); }
+  .admin :global(.thumb small) { display: block; color: var(--color-muted); overflow-wrap: anywhere; }
+  .admin :global(.tag) { display: inline-block; padding: 0 0.4rem; border: 1px solid var(--color-border); border-radius: var(--radius-xs); font-size: 0.8rem; }
+  .admin :global(.tag--warn) { border-color: var(--color-dark); }
+  .admin :global(.row) { display: flex; justify-content: space-between; gap: 1rem; padding: 0.35rem 0; border-bottom: 1px solid var(--color-border); }
+  .admin :global(.row button) { white-space: nowrap; }
+
+  /* ── The list ──────────────────────────────────────────
+     A real table, because these are records with the same fields and the eye
+     needs the columns to line up to scan them. It scrolls inside its own box
+     rather than widening the page — the same rule the rest of the site follows
+     for wide content. */
+  .admin :global(.tablewrap) { overflow-x: auto; }
+  .admin :global(table) { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .admin :global(th) {
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.68rem;
+    padding: 0 0.6rem 0.4rem 0;
+    white-space: nowrap;
+  }
+  .admin :global(td) { padding: 0.4rem 0.6rem 0.4rem 0; border-top: 1px solid var(--color-border); vertical-align: top; }
+  .admin :global(td.num) { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  /* The name cell is the row's own link into the member. A button styled as a
+     link rather than an <a>: the destination is a hash this script owns. */
+  .admin :global(.namebtn) {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    font-weight: 600;
+    color: var(--color-dark);
+    text-align: left;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .admin :global(.namebtn:hover) { color: var(--color-muted); }
+  .admin :global(.muted) { color: var(--color-muted); }
+  .admin :global(.crumbs) { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: baseline; font-size: 0.8rem; }
+  .admin :global(.btn-link) {
+    background: none; border: 0; padding: 0; font: inherit; color: var(--color-dark);
+    cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+  }
+</style>
+
+<script>
+  import { onAuthStateChanged } from "firebase/auth";
+  import { auth } from "../../lib/firebase.ts";
+  import {
+    listMembers, listQueues, lookupMember, purgeAccount, restoreAccount, setMemberEmail,
+    setProfileActive,
+    type AdminImage, type MemberGraph, type MemberRow, type Queues,
+  } from "../../lib/adminApi.ts";
+
+  // Tiny DOM builder so member-entered strings go through textContent, never innerHTML.
+  type Child = Node | string | null | undefined | false;
+  function el<K extends keyof HTMLElementTagNameMap>(
+    tag: K, attrs: Record<string, string> = {}, ...children: Child[]
+  ): HTMLElementTagNameMap[K] {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+    for (const c of children) if (c) node.append(typeof c === "string" ? document.createTextNode(c) : c);
+    return node;
+  }
+  const dl = (rows: [string, unknown][]) =>
+    el("dl", {}, ...rows.flatMap(([k, v]) => [el("dt", {}, k), el("dd", {}, v == null || v === "" ? "—" : String(v))]));
+  const fmt = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString("en-GB") : "—");
+
+  document.addEventListener("astro:page-load", () => {
+    const gate = document.getElementById("admin-gate");
+    const app = document.getElementById("admin-app") as HTMLElement | null;
+    if (!gate || !app) return; // not on /admin
+
+    const status = document.getElementById("admin-status")!;
+    const list = document.getElementById("admin-list")!;
+    const results = document.getElementById("admin-results")!;
+    const detail = document.getElementById("admin-detail")!;
+    const queues = document.getElementById("admin-queues")!;
+    const filter = document.getElementById("admin-filter") as HTMLInputElement;
+    const scope = document.getElementById("admin-scope") as HTMLSelectElement;
+
+    const say = (msg: string) => { status.textContent = msg; };
+    const busy = async <T,>(label: string, work: () => Promise<T>): Promise<T | undefined> => {
+      say(label);
+      try { const out = await work(); say(""); return out; }
+      catch (err) { say(err instanceof Error ? err.message : String(err)); return undefined; }
+    };
+
+    // The loaded roster, held so the filter costs no round trip per keystroke.
+    let members: MemberRow[] = [];
+    // Images seen while rendering a member, so an #image/<id> link can be
+    // answered from what is already loaded instead of re-fetching the graph.
+    const imageCache = new Map<string, AdminImage>();
+
+    onAuthStateChanged(auth, async (user) => {
+      // The `admin` claim rides on the ID token, and Firebase serves a CACHED
+      // one for up to an hour — so a claim granted by scripts/set-admin.mjs
+      // after this browser last signed in is simply not in it, and the gate
+      // says "not an admin" to someone who is. Never believe that answer on a
+      // cached token: force one refresh before showing the refusal. The cost
+      // is a single extra token fetch for a non-admin who opens /admin, which
+      // is noindex and linked from nowhere.
+      let claims = user ? (await user.getIdTokenResult()).claims : {};
+      if (user && claims.admin !== true) claims = (await user.getIdTokenResult(true)).claims;
+      if (claims.admin !== true) {
+        gate.textContent = user ? "This account is not an admin." : "Sign in with an admin account.";
+        gate.hidden = false;
+        app.hidden = true;
+        return;
+      }
+      gate.hidden = true;
+      app.hidden = false;
+      await loadList();
+      route();
+    });
+
+    async function loadList() {
+      const res = await busy("Loading members…", () => listMembers());
+      if (!res) return;
+      members = res.members;
+      renderList();
+    }
+
+    // ── Navigation ────────────────────────────────────────
+    // EVERY VIEW IS A HASH, so the browser's Back button works and a member or
+    // an image can be pasted to a colleague. The console is one page fed by
+    // callables; without this, "jump to the owner" would be a dead end you
+    // could only leave by starting again.
+    function go(hash: string) {
+      if (location.hash === hash) route();
+      else location.hash = hash;
+    }
+    window.addEventListener("hashchange", route);
+
+    function route() {
+      const h = decodeURIComponent(location.hash.replace(/^#/, ""));
+      const [kind, arg] = [h.slice(0, h.indexOf("/")) || h, h.slice(h.indexOf("/") + 1)];
+      if (kind === "uid" && arg) return void showMember(arg);
+      if (kind === "image" && arg) return void showImage(arg);
+      if (kind === "queues") return void showQueues();
+      // Anything else — including no hash at all — is the list.
+      detail.replaceChildren();
+      results.replaceChildren();
+      queues.replaceChildren();
+      list.hidden = false;
+    }
+
+    /** Hide the list while a single record is on screen, with a way back. */
+    function crumbs(...extra: Child[]) {
+      const back = el("button", { type: "button", class: "btn-link" }, "← All members");
+      back.addEventListener("click", () => go("#list"));
+      return el("div", { class: "crumbs" }, back, ...extra);
+    }
+
+    // ── The list ──────────────────────────────────────────
+    function matches(m: MemberRow, needle: string): boolean {
+      if (!needle) return true;
+      // Case-insensitive across every column worth typing. The uid and slug are
+      // included so pasting one narrows to that member instead of falling
+      // through to a lookup.
+      return [m.displayName, m.slug, m.role, m.memberType, m.email ?? "", m.uid, m.status]
+        .some((f) => f.toLowerCase().includes(needle));
+    }
+
+    function inScope(m: MemberRow): boolean {
+      switch (scope.value) {
+        case "public": return m.active;
+        case "hidden": return !m.active;
+        case "pending": return m.pendingDeletion;
+        case "noauth": return !m.hasAuth;
+        // The signal the two image numbers exist for: the array a member's page
+        // renders and the records that actually exist, disagreeing.
+        case "mismatch": return m.galleryCount !== m.imageRecords - (m.hasAvatar ? 1 : 0);
+        case "unverified": return m.hasAuth && m.emailVerified === false;
+        default: return true;
+      }
+    }
+
+    function renderList() {
+      const needle = filter.value.trim().toLowerCase();
+      const shown = members.filter((m) => matches(m, needle) && inScope(m));
+
+      const head = el("tr", {},
+        ...["Name", "Slug", "Email", "Status", "Gallery", "Records", "uid"].map((h) => el("th", {}, h)));
+
+      const rows = shown.map((m) => {
+        const name = el("button", { type: "button", class: "namebtn" }, m.displayName || "(no name)");
+        name.addEventListener("click", () => go(`#uid/${encodeURIComponent(m.uid)}`));
+
+        const flags: Child[] = [];
+        if (!m.active) flags.push(el("span", { class: "tag tag--warn" }, "hidden"));
+        if (m.pendingDeletion) flags.push(el("span", { class: "tag tag--warn" }, "deleting"));
+        if (!m.hasAuth) flags.push(el("span", { class: "tag" }, "no auth"));
+        if (m.hasAuth && m.emailVerified === false) flags.push(el("span", { class: "tag" }, "unverified"));
+
+        // The slug is the one field that points OUT of the console: it is the
+        // member's real public page, which is usually what an admin wants to
+        // check next. Absent (or hidden) members get plain text — a link to a
+        // 404 is worse than none.
+        const slugCell = m.slug && m.active
+          ? el("a", { href: `/members/${m.slug}`, target: "_blank", rel: "noreferrer" }, m.slug)
+          : el("span", { class: "muted" }, m.slug || "—");
+
+        return el("tr", {},
+          el("td", {}, name, ...(flags.length ? [document.createTextNode(" "), ...flags] : [])),
+          el("td", {}, slugCell),
+          el("td", { class: "muted" }, m.email ?? "—"),
+          el("td", { class: "muted" }, m.status),
+          el("td", { class: "num" }, String(m.galleryCount)),
+          el("td", { class: "num" }, String(m.imageRecords)),
+          el("td", { class: "muted" }, m.uid),
+        );
+      });
+
+      const card = el("div", { class: "card" },
+        el("h2", {}, `${shown.length} of ${members.length} member(s)`),
+        shown.length
+          ? el("div", { class: "tablewrap" }, el("table", {}, el("thead", {}, head), el("tbody", {}, ...rows)))
+          : el("p", { class: "muted" }, "No member matches."),
+        // THE OLD SEARCH BOX'S ONE IRREPLACEABLE TRICK: resolving an id that is
+        // not a member — an imageId, a retired slug, an Auth uid with no
+        // profile. Offered only when the list has nothing, so it never competes
+        // with the filter in the common case.
+        !shown.length && needle
+          ? lookupOffer(filter.value.trim())
+          : null,
+      );
+      list.replaceChildren(card);
+      list.hidden = false;
+    }
+
+    function lookupOffer(q: string) {
+      const btn = el("button", { type: "button", class: "btn-ghost" }, `Look "${q}" up as an id`);
+      btn.addEventListener("click", async () => {
+        const res = await busy("Looking up…", () => lookupMember({ query: q }));
+        if (!res) return;
+        if (res.graph) return go(`#uid/${encodeURIComponent(res.graph.uid)}`);
+        if (res.matches.length) {
+          results.replaceChildren(
+            el("div", { class: "card" }, el("h2", {}, `${res.matches.length} name match(es)`),
+              ...res.matches.map((m) => {
+                const b = el("button", { type: "button", class: "btn-link" }, m.uid);
+                b.addEventListener("click", () => go(`#uid/${encodeURIComponent(m.uid)}`));
+                return el("div", { class: "row" },
+                  el("span", {}, `${m.displayName}${m.active ? "" : " (hidden)"}`), b);
+              })),
+          );
+          return;
+        }
+        say("Nothing matches that id.");
+      });
+      return el("p", {}, btn);
+    }
+
+    filter.addEventListener("input", () => { if (!list.hidden) renderList(); else { go("#list"); renderList(); } });
+    scope.addEventListener("change", () => { go("#list"); renderList(); });
+    document.getElementById("admin-reload")!.addEventListener("click", () => void loadList());
+
+    // ── One member ────────────────────────────────────────
+    async function showMember(uid: string) {
+      const res = await busy("Loading…", () => lookupMember({ query: uid }));
+      if (!res) return;
+      if (res.graph) return renderGraph(res.graph);
+      detail.replaceChildren();
+      queues.replaceChildren();
+      say("No member with that id any more.");
+    }
+
+    /** The thumb is a LINK now (2026-09-03, Josh: "make it possible to jump
+     *  from profile to images via links"). It was a figure you could look at
+     *  and nothing else; the imageId was on screen purely to be copied into
+     *  the search box by hand. */
+    function thumb(img: AdminImage) {
+      imageCache.set(img.imageId, img);
+      const btn = el("button", { type: "button", class: "btn-link" },
+        el("img", { src: fileUrl(img.storagePath), alt: img.caption ?? "", loading: "lazy" }));
+      btn.addEventListener("click", () => go(`#image/${encodeURIComponent(img.imageId)}`));
+      return el("figure", { class: "thumb" },
+        btn,
+        el("small", {}, `${img.kind} · ${img.status}${img.origin === "curated" ? " · curated" : ""}`),
+        el("small", {}, img.imageId),
+      );
+    }
+
+    const fileUrl = (storagePath: string) =>
+      `https://firebasestorage.googleapis.com/v0/b/${auth.app.options.storageBucket}/o/${encodeURIComponent(storagePath)}?alt=media`;
+
+    async function showImage(imageId: string) {
+      let img = imageCache.get(imageId);
+      if (!img) {
+        // Arrived by pasted link rather than through a member: the lookup
+        // resolves an imageId to its OWNER, whose graph carries the record.
+        const res = await busy("Loading image…", () => lookupMember({ query: imageId }));
+        if (!res?.graph) { say("No image record with that id."); return; }
+        for (const i of res.graph.images) imageCache.set(i.imageId, i);
+        img = imageCache.get(imageId);
+        if (!img) { say("That id resolved to a member but not to an image record."); return; }
+      }
+      const owner = members.find((m) => m.uid === img!.ownerUid);
+      const ownerBtn = el("button", { type: "button", class: "btn-link" },
+        owner?.displayName || img.ownerUid);
+      ownerBtn.addEventListener("click", () => go(`#uid/${encodeURIComponent(img!.ownerUid)}`));
+
+      list.hidden = true;
+      results.replaceChildren();
+      queues.replaceChildren();
+      detail.replaceChildren(
+        el("div", { class: "card" },
+          crumbs(el("span", { class: "muted" }, "·"), ownerBtn),
+          el("h2", {}, `${img.kind} · ${img.status}`),
+          el("img", { src: fileUrl(img.storagePath), alt: img.caption ?? "", loading: "lazy",
+            style: "max-width:min(100%,32rem);height:auto;border-radius:var(--radius-xs)" }),
+          el("h3", {}, "Record"),
+          dl([
+            ["imageId", img.imageId],
+            ["owner", img.ownerUid],
+            ["kind", img.kind], ["status", img.status], ["origin", img.origin],
+            ["dimensions", `${img.width} × ${img.height}`],
+            ["colour", img.color],
+            ["caption", img.caption], ["description", img.description],
+            ["storagePath", img.storagePath],
+            ["created", fmt(img.createdAt)],
+          ]),
+          el("p", {}, el("a", { href: fileUrl(img.storagePath), target: "_blank", rel: "noreferrer" }, "Open the file")),
+        ),
+      );
+    }
+
+    function renderGraph(g: MemberGraph) {
+      results.replaceChildren();
+      queues.replaceChildren();
+      list.hidden = true;
+      for (const i of g.images) imageCache.set(i.imageId, i);
+      const pub = g.publicProfile ?? {};
+      const usr = g.user ?? {};
+      const active = pub.active !== false && g.publicProfile !== null;
+      const pending = g.deletion && !g.deletion.completedAt;
+
+      const action = (label: string, cls: string, run: () => Promise<unknown>, confirmText?: string) => {
+        const b = el("button", { type: "button", class: cls }, label);
+        b.addEventListener("click", async () => {
+          if (confirmText && !window.confirm(confirmText)) return;
+          const ok = await busy(`${label}…`, run);
+          // The roster's flags (hidden, deleting) are now stale — reload it so
+          // the list agrees with what just happened.
+          if (ok !== undefined) { await loadList(); await showMember(g.uid); }
+        });
+        return b;
+      };
+
+      const actions = el("div", { class: "actions" },
+        g.publicProfile && action(active ? "Hide profile" : "Show profile", "btn-ghost",
+          () => setProfileActive({ uid: g.uid, active: !active })),
+        g.auth && action("Set email", "btn-ghost", async () => {
+          const email = window.prompt("New email address for this member:", g.auth?.email ?? "");
+          if (!email) throw new Error("Cancelled.");
+          return setMemberEmail({ uid: g.uid, email });
+        }),
+        !pending && action("Schedule deletion (30 days)", "btn-ghost",
+          () => purgeAccount({ uid: g.uid }), `Schedule deletion of ${g.uid}? The member can still cancel for 30 days.`),
+        pending && action("Restore", "btn-solid", () => restoreAccount({ uid: g.uid })),
+        action("Purge now", "btn-ghost", () => purgeAccount({ uid: g.uid, immediate: true }),
+          `PERMANENTLY delete ${g.uid} — every document, file and the Auth user. This cannot be undone.`),
+      );
+
+      // The slugs row links OUT to the real pages, current one included: the
+      // usual next question about a member is what a visitor actually sees.
+      const slugLinks = g.slugs.length
+        ? el("dd", {}, ...g.slugs.flatMap((s, i) => [
+            i ? document.createTextNode(", ") : null,
+            el("a", { href: `/members/${s.slug}`, target: "_blank", rel: "noreferrer" },
+              `${s.slug}${s.current ? "" : " (retired)"}`),
+          ] as Child[]))
+        : el("dd", {}, "—");
+
+      detail.replaceChildren(
+        el("div", { class: "card" },
+          crumbs(),
+          el("h2", {}, String(pub.displayName ?? usr.displayName ?? g.uid)),
+          el("div", {},
+            el("span", { class: `tag${active ? "" : " tag--warn"}` }, active ? "public" : "hidden"),
+            " ",
+            pending ? el("span", { class: "tag tag--warn" }, `deletion ${fmt(g.deletion!.purgeAfter)}`) : null,
+          ),
+          el("h3", {}, "Identity"),
+          dl([
+            ["uid", g.uid],
+            ["auth email", g.auth?.email], ["verified", g.auth ? String(g.auth.emailVerified) : "no Auth user"],
+            ["mirror email", usr.email], ["phone", usr.phone],
+            ["created", fmt(g.auth?.createdAt)], ["last sign-in", fmt(g.auth?.lastSignInAt)],
+            ["status", usr.status ?? (g.user ? "active" : "profile only")],
+          ]),
+          // Rendered outside dl() because it holds real anchors, and dl()
+          // deliberately stringifies everything it is given.
+          el("dl", {}, el("dt", {}, "slugs"), slugLinks),
+          el("h3", {}, "Actions"), actions,
+          el("h3", {}, `Images (${g.images.length}) — click one to open its record`),
+          el("div", { class: "thumbs" }, ...g.images.map(thumb)),
+          g.onboardingRequest && el("h3", {}, "Onboarding request"),
+          g.onboardingRequest && el("p", {}, String(g.onboardingRequest.message ?? "")),
+          g.deletion && el("h3", {}, "Deletion job"),
+          g.deletion && dl([
+            ["requested", `${fmt(g.deletion.requestedAt)} by ${g.deletion.requestedBy}`],
+            ["purge after", fmt(g.deletion.purgeAfter)],
+            ["steps", Object.entries(g.deletion.steps).filter(([, v]) => v).map(([k]) => k).join(", ") || "none yet"],
+            ["completed", fmt(g.deletion.completedAt)], ["last error", g.deletion.lastError],
+          ]),
+        ),
+      );
+    }
+
+    // ── Queues ────────────────────────────────────────────
+    document.getElementById("admin-queues-btn")!.addEventListener("click", () => go("#queues"));
+
+    async function showQueues() {
+      results.replaceChildren();
+      detail.replaceChildren();
+      const q = await busy("Loading queues…", () => listQueues());
+      if (q) renderQueues(q);
+    }
+
+    function renderQueues(q: Queues) {
+      list.hidden = true;
+      // Two kinds of jump from a queue row now: the member it belongs to, and —
+      // where the row IS an image record — that record itself.
+      const memberLink = (uid: string) => {
+        const known = members.find((m) => m.uid === uid);
+        const b = el("button", { type: "button", class: "btn-link" }, known?.displayName || uid);
+        b.addEventListener("click", () => go(`#uid/${encodeURIComponent(uid)}`));
+        return b;
+      };
+      const imageLink = (imageId: string) => {
+        const b = el("button", { type: "button", class: "btn-link" }, imageId);
+        b.addEventListener("click", () => go(`#image/${encodeURIComponent(imageId)}`));
+        return b;
+      };
+      const imageRow = (i: AdminImage, note: string) => {
+        imageCache.set(i.imageId, i);
+        return el("div", { class: "row" },
+          el("span", {}, imageLink(i.imageId), document.createTextNode(` · ${note}`)),
+          memberLink(i.ownerUid));
+      };
+
+      queues.replaceChildren(
+        el("div", { class: "card" },
+          crumbs(),
+          el("h2", {}, `Pending deletions (${q.pendingDeletions.length})`),
+          ...q.pendingDeletions.map((j) => el("div", { class: "row" },
+            el("span", {}, `purge after ${fmt(j.purgeAfter)} · by ${j.requestedBy}${j.lastError ? ` · ERROR ${j.lastError}` : ""}`),
+            memberLink(j.uid))),
+          el("h2", {}, `Stale uploads (${q.staleUploads.length})`),
+          ...q.staleUploads.map((i) => imageRow(i, fmt(i.createdAt))),
+          el("h2", {}, `Unreferenced live records (${q.unreferencedLive.length})`),
+          ...q.unreferencedLive.map((i) => imageRow(i, `${i.kind} · ${fmt(i.createdAt)}`)),
+          el("h2", {}, `Email mismatches (${q.emailMismatches.length})`),
+          ...q.emailMismatches.map((m) => el("div", { class: "row" },
+            el("span", {}, `mirror ${m.storedEmail ?? "—"} ≠ auth ${m.authEmail}`), memberLink(m.uid))),
+        ),
+      );
+    }
+  });
+</script>

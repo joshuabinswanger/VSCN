@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>overflow: auto</title>
+<style>
+  body { font: 16px/1.5 -apple-system, system-ui, sans-serif; margin: 1.25rem; }
+  .verdict { padding: .6rem .8rem; border: 2px solid; border-radius: .4rem; margin: 1rem 0; }
+  .ok { border-color: #1a7f37; }
+  .bad { border-color: #b3261e; }
+  code { background: #eee; padding: 0 .2em; }
+  .row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: baseline;
+  }
+  .row .pdisc { display: contents; }
+  .pdisc::details-content { overflow: auto; }
+  .pdisc__toggle { list-style: none; cursor: pointer; }
+  .pdisc__toggle::-webkit-details-marker { display: none; }
+</style>
+</head><body>
+<h1>overflow: auto</h1>
+<p><code>&lt;details&gt;</code> is <code>display: contents</code> &middot;
+its <code>::details-content</code> has <code>overflow: auto</code></p>
+<div class="verdict bad">If you are reading this, the page LOADED &mdash; no bug on this browser.</div>
+<div class="row">
+  <span class="role">Member role text</span>
+  <details class="pdisc">
+    <summary class="pdisc__toggle">&#9662; toggle</summary>
+    <div class="body">Bio paragraph for the member.</div>
+  </details>
+</div>
+<p style="margin-top:2rem"><a href="/t/wk">&larr; back to the index</a></p>
+</body></html>

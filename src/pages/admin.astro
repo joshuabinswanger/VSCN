@@ -1,0 +1,12 @@
+---
+import Layout from "../layouts/Layout.astro";
+import AdminConsole from "../components/admin/AdminConsole.astro";
+
+// A tool, not content: no locale prefix, English only, noindex, out of the
+// sitemap (astro.config.mjs). Statically built but data-free — everything on
+// it comes from admin callables at runtime, behind the `admin` custom claim.
+---
+
+<Layout title="Admin — VSCN" noindex wide>
+  <AdminConsole />
+</Layout>
