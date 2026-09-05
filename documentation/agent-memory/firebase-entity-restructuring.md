@@ -3,7 +3,7 @@
 
 ---
 name: firebase-entity-restructuring
-description: DEV COMPLETE 2026-09 — prod pending Josh's go; images are records, soft-delete lifecycle live, /admin behind the admin claim; the five decisions the code won't show you
+description: DEV COMPLETE 2026-09 — SHIPPED TO PROD 2026-09-04 (steps 1-7; step 8 set-admin outstanding); images are records, soft-delete lifecycle live, /admin behind the admin claim; the five decisions the code won't show you, and the two places the runbook was wrong
 metadata: 
   node_type: memory
   type: project
@@ -33,7 +33,42 @@ The load-bearing decisions, none of which are visible from the code:
 
 **The `/admin` gate was fixed at the same time.** It called `getIdTokenResult()` and believed the answer, but Firebase serves a CACHED ID token for up to an hour — so a claim granted by `scripts/set-admin.mjs` after the browser last signed in is not in it, and the console told an admin they were not one. It now forces one refresh before showing the refusal. Note `joshua.binswanger@gmail.com` on dev has `emailVerified: false`, so that account is itself under the upload cap; the admin claim and email verification are unrelated gates.
 
-**Prod runbook (not yet run — Josh's go required):**
+**PROD RELEASE RAN 2026-09-04 — steps 1–7 complete.** Only step 8 (`set-admin.mjs -P prod`) was
+outstanding at the end of the session, because the harness classifier blocked it. What actually
+happened, including two places this runbook was WRONG:
+
+- **Step 1's functions deploy failed** with `Cannot determine backend specification. Timeout after
+  10000`. Root cause was not the environment: `functions/src/admin.ts` called
+  `getStorage(app).bucket()` at MODULE SCOPE, which needs `FIREBASE_CONFIG` in the environment. The
+  deployed runtime always has it; the CLI's discovery pass — which only requires the module to list
+  triggers — does not, so the import threw and firebase-tools reported the crash as a generic
+  timeout naming nothing. Fixed in `5d34ee0` by deferring it to `getBucket()`. **Any new
+  module-scope call into a Firebase service in `functions/src/` can reintroduce this**, and the
+  error message will not tell you where.
+- **Step 4 was STALE and following it would have regressed prod.** It pins commit `7726b79`
+  (2026-09-02), but dev gained the rules evaluation-budget fixes after that (`9bcd386`, `6345573` —
+  see [[rules-evaluation-budget]]). Deploying the pinned SHA would have put prod on a pre-fix
+  ruleset where a save can be refused for being too expensive to judge. **Steps 4 and 6 were
+  collapsed into one deploy of HEAD's rules** (what dev runs at 40/40) after verifying the
+  intermediate legacy-readable state bought nothing: the live site referenced ZERO legacy paths
+  (`avatars%2F`/`galleries%2F` both 0), and step 5's cleanup goes through the Admin SDK, which
+  bypasses rules entirely. **The general lesson: a runbook that pins a SHA goes stale silently —
+  diff the pin against HEAD before deploying it.**
+- The window between steps 2 and 3½ was clean: the re-migration reported `0 image(s), 0 recovered,
+  0 photoURL repaired, 0 failed`, so the parked known-limitation (an avatar re-uploaded by the OLD
+  client during the window) never fired and **no member needs to re-upload an avatar**.
+- Step 5 swept 21 legacy `avatars/` objects (more than the 14 migrated — the rest were orphans and
+  duplicate `.jpg`/`.png` pairs for the same uid) and 0 `galleries/` objects. Live avatars verified
+  200 afterwards under the tightened rules.
+- `backfill-provenance` marked 0 curated: every member's gallery is empty, so the manifest had
+  nothing to attach to. Expected, given the release deliberately carried no gallery content.
+- **The integrity gate never reached literal 0.** It sits at exactly 1 problem —
+  `users/z3IedZOQ6zR5Hnqvxq4T0sw76sy2 has no Auth user`, the member named "Test" — which is the
+  same benign class already known from dev (a profile created straight in Firestore, no Auth
+  account). Josh accepted it rather than cleaning it up. **So "0 problems" is NOT this project's
+  passing condition on prod; "1, and it is Test" is.**
+
+**Prod runbook (ran 2026-09-04; steps 4 and 6 were collapsed — read the deviations above first):**
 1. The prod rules currently deployed predate this whole restructuring. Deploying Task-19's tightened rules (commit `7726b79`) straight to prod is **not safe** — prod data hasn't been migrated yet, so the tightened rules would reject old-shape writes. Deploy the *window* rules first (the state that accepts both old and new shapes), from the worktree itself rather than a temp dir — `firebase deploy` needs `firebase.json` + `.firebaserc` beside the rules, so checking the two files out somewhere else does not work:
    ```
    git checkout 456daf9 -- firestore.rules storage.rules
