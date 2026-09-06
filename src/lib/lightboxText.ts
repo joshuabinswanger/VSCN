@@ -30,8 +30,16 @@
  * So nothing here is pinned to the viewport. Every block is positioned off the
  * picture's own rendered rectangle, read out of PhotoSwipe's slide geometry
  * (`pan` and `currZoomLevel`) on every event that can move it. The artist sits
- * on the picture's top-left corner; the text goes under a landscape image, and
- * beside a portrait one, where the empty paper already was.
+ * on the picture's top-left corner; the text goes under the picture, at the
+ * picture's own width.
+ *
+ * UNDER EVERY SHAPE, since 2026-09-06 (Josh: "put the text always below the
+ * images"). From 09-04 to 09-06 a portrait picture got a column to its right
+ * instead, where the empty paper was. That put the words in a different place
+ * for each shape, and paging from a landscape to a portrait moved the eye from
+ * under the picture to beside it — two layouts, read as two, on what is one
+ * gallery. One arrangement now; what changes per shape is only how much room
+ * is reserved under the picture, see lightboxPadding.
  *
  * The cost of this is real and worth naming: the position is JS, so it has to
  * be recomputed on `change`, `resize`, `initialZoomPan` and `zoomPanUpdate`,
@@ -54,37 +62,47 @@ const MOBILE_MAX = 767;
  */
 const GAP = 14;
 
-/** How wide the column beside a portrait image may get, in px. */
-const COLUMN_MAX = 340;
-
 /**
  * THE SPACE THE WORDS NEED, RESERVED — the other half of the placement above.
  *
  * PhotoSwipe fits the image inside the viewport MINUS this padding, so these
  * numbers are what stops the artwork from growing over its own caption. They
  * are per-slide, which is the whole trick: `paddingFn` is handed the item's
- * data, so a portrait image reserves its space on the RIGHT and a landscape
- * one at the BOTTOM, and each shape is given back the space the other one
- * needed.
+ * data, so the reserve can follow the SHAPE of the picture even though the
+ * words now go in the same place for every shape.
  *
- * `top` clears the top bar (3.5rem = 56px in lightbox.css) AND the artist line
- * that now sits between the bar and the picture. Raise the bar's height and
- * this has to follow, or the name lands under the hairline.
+ * `top` used to clear a 3.5rem top BAR and then the artist line under it. The
+ * bar lost its band on 2026-09-06 (Josh: "lose the top bar in lightbox"): the
+ * controls are all still there, in a row at the top right, but on the bare
+ * paper with no background and no hairline. What `top` clears now is that
+ * row's own height — a wide picture must not run under the close word — and
+ * the artist line above the picture's left edge fits inside the same height,
+ * on the far side of the screen from the controls. 56 is the row (2.75rem)
+ * plus air; 44 on a phone (2.25rem). Raise the row in lightbox.css and this
+ * has to follow.
  *
- * The figures are measured, not guessed. A worst-case block — a 140-character
- * caption, a 600-character description and a long link — renders 88px tall at
- * a wide landscape measure (~1336px), 119px at 800px, and 227px in the 340px
- * portrait column. Landscape's 176 covers the narrowest image the ratio test
- * still calls landscape (~570px wide, ~150px of text) with room to spare;
- * portrait's column has the picture's full height beside it, so 227 is never
- * the binding constraint and its bottom reserve drops to 48.
+ * The bottom figures are measured, not guessed. A worst-case block — a
+ * 140-character caption, a 600-character description and a long link —
+ * renders 88px tall at a wide landscape measure (~1336px), 119px at 800px, and
+ * 227px at 340px; roughly 85,000 ÷ measure, because the words are set at the
+ * PICTURE's width and a narrower picture wraps them taller.
  *
- * 192 rather than 176, which is where this started: a near-square image fits
- * a ~630px measure, the narrowest a landscape gets, and 176 leaves 146px of
- * usable height there against ~150 of text — four pixels short, which the
- * browser duly showed as a faded last line on a caption+description+link
- * block. The lesson is that the binding case is the NARROWEST landscape, not
- * the widest, because the reserve is one number for both.
+ * 192 for a LANDSCAPE, where the reserve has stood since 09-04: a near-square
+ * image fits a ~630px measure, the narrowest a landscape gets, and 176 left
+ * 146px of usable height there against ~150 of text — four pixels short,
+ * which the browser duly showed as a faded last line. The lesson, still true,
+ * is that the binding case is the NARROWEST measure, never the widest.
+ *
+ * 256 for a PORTRAIT, new on 2026-09-06 with the words moving under it. An
+ * upright picture is bound by the window's HEIGHT, so it comes out narrow — a
+ * 2:3 image in a 900px window with these reserves is ~390px wide — and a 390px
+ * measure wraps the worst case to ~220px. The right-hand column it used to
+ * have never met this, because it had the picture's whole height beside it;
+ * under the picture the reserve has to buy that height itself. 256 covers 2:3
+ * with the gaps. A 1:2 picture (~290px wide, ~290px of text) still overruns and
+ * falls to the scroll-and-fade in lightbox.css, which is what that last resort
+ * is for: reserving for 1:2 everywhere would take 90px off every landscape
+ * picture to serve the rarest shape.
  *
  * MOBILE IS THE ONE THAT CAN OVERRUN, knowingly: 351px of measure needs 227px
  * for that worst case and gets 150, because 227px of an 812px phone screen is
@@ -94,18 +112,19 @@ const COLUMN_MAX = 340;
  */
 export function lightboxPadding(viewportSize: Point, itemData: SlideData) {
   const mobile = viewportSize.x <= MOBILE_MAX;
-  const portrait = !mobile && isPortrait(itemData.width, itemData.height);
-  if (mobile) return { top: 72, bottom: 150, left: 12, right: 12 };
-  // A portrait image gives its bottom back and takes a column on the right.
-  if (portrait) return { top: 92, bottom: 48, left: 32, right: 32 + COLUMN_MAX };
-  return { top: 92, bottom: 192, left: 32, right: 32 };
+  if (mobile) return { top: 44, bottom: 150, left: 12, right: 12 };
+  // Under the picture on every shape; an upright one needs more room there,
+  // because it comes out narrower and its words wrap taller.
+  const bottom = isPortrait(itemData.width, itemData.height) ? 256 : 192;
+  return { top: 56, bottom, left: 32, right: 32 };
 }
 
 /**
- * Taller than wide, with a deliberate margin: a 1.05:1 image is square to the
- * eye, and putting a text column beside one leaves the picture looking pushed
- * off-centre for a shape that gained nothing from the move. Only a decisively
- * upright picture buys the column.
+ * Taller than wide, with a deliberate margin. This used to choose the
+ * ARRANGEMENT (a column beside the picture, 09-04 to 09-06) and now chooses
+ * the RESERVE under it: a 1.05:1 image is square to the eye and comes out
+ * nearly as wide as a landscape, so it wraps its words about as tall; only a
+ * decisively upright picture is narrow enough to need the deeper reserve.
  */
 function isPortrait(width: number | undefined, height: number | undefined): boolean {
   if (!width || !height) return false;
@@ -310,30 +329,18 @@ function attachPlacement(pswp: PhotoSwipe): void {
     credit.style.top = `${Math.round(y - GAP)}px`;
 
     const viewport = pswp.viewportSize;
-    const beside = viewport.x > MOBILE_MAX && isPortrait(slide.width, slide.height);
-    if (beside) {
-      // The column: starts at the picture's right edge, runs to the window's
-      // margin, capped. Top-aligned with the picture rather than centred on
-      // it — a caption that starts level with the top of the artwork reads as
-      // a label for it; one floating at its middle reads as a pull quote.
-      const left = x + w + GAP;
-      credit.style.width = "";
-      text.style.left = `${Math.round(left)}px`;
-      text.style.top = `${Math.round(y)}px`;
-      text.style.width = `${Math.round(Math.min(COLUMN_MAX, viewport.x - left - 32))}px`;
-      // Bounded so a long description cannot run past the foot of the window.
-      text.style.maxHeight = `${Math.round(viewport.y - y - 32)}px`;
-      markClipped(text);
-    } else {
-      // Under the picture, at the picture's own measure: the artwork sets the
-      // column width, which is what makes the words look placed rather than
-      // laid over the window.
-      text.style.left = `${Math.round(x)}px`;
-      text.style.top = `${Math.round(y + h + GAP)}px`;
-      text.style.width = `${Math.round(w)}px`;
-      text.style.maxHeight = `${Math.round(viewport.y - (y + h + GAP) - 16)}px`;
-      markClipped(text);
-    }
+    // Under the picture, at the picture's own measure, on every shape: the
+    // artwork sets the column width, which is what makes the words look placed
+    // rather than laid over the window. A portrait picture got a column to its
+    // right instead from 09-04 to 09-06 — see the header and lightboxPadding
+    // for why that went, and what the reserve does about the narrower measure.
+    // Bounded so a long description cannot run past the foot of the window;
+    // past that it scrolls, and markClipped shows the fade that says so.
+    text.style.left = `${Math.round(x)}px`;
+    text.style.top = `${Math.round(y + h + GAP)}px`;
+    text.style.width = `${Math.round(w)}px`;
+    text.style.maxHeight = `${Math.round(viewport.y - (y + h + GAP) - 16)}px`;
+    markClipped(text);
   };
 
   // Every event that can move the picture. `change` for a new slide,

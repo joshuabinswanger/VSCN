@@ -33,7 +33,14 @@
    `.pswp { … }` variable block whatever order the two land in. */
 .pswp.pswp--vscn {
   --pswp-bg: var(--color-bg);
-  --pswp-placeholder-bg: var(--color-border);
+  /* TRANSPARENT, NOT GREY (2026-09-06, Josh: "lose the grey frame"). PhotoSwipe
+     paints a div at the incoming picture's exact box, in this colour, until
+     the picture has decoded — so paging to the next image showed a
+     frame-shaped grey rectangle first, and on a slow connection it stood there
+     as a box the artwork then appeared inside. The ground is already the
+     paper; a second, greyer paper adds nothing but the box. Loading is still
+     reported — the preloader in the top row does that, not the placeholder. */
+  --pswp-placeholder-bg: transparent;
   --pswp-icon-color: var(--color-dark);
   /* The stock icons are drawn as a light shape over a dark "shadow" outline so
      they survive any background. On a fixed light ground that outline is just
@@ -68,18 +75,30 @@
   opacity: 0.7;
 }
 
-/* ── Top bar ──────────────────────────────────────────────────────────────
-   A real band with a hairline under it, like the page's own header, rather
-   than icons floating over the artwork. The `padding`/`paddingFn` option in
-   the page script reserves the height, so the image never runs under it and
-   the rule always has clean air beneath. */
+/* ── Top row ──────────────────────────────────────────────────────────────
+   NOT A BAND ANY MORE (2026-09-06, Josh: "lose the top bar in lightbox"). It
+   was a real band with a hairline under it, like the page's own header, and
+   it was the last piece of window furniture left once the caption band went
+   on 09-04 — doing to the picture from above what that band did from below,
+   which is draw a room around it. The controls stay, every one: the close
+   word, the zoom, the counter, the preloader. They are function, not chrome,
+   and the zoom is the only one a keyboard can reach. What goes is the ground
+   and the rule. The row is transparent on the paper and pulled in to the
+   height of its own controls, and lightboxPadding's `top` clears exactly that
+   height — so a wide picture never runs under the close word, and the
+   controls never have to hold their own over artwork.
+   ONE CLUSTER, TOP RIGHT. The counter used to sit at the far left, with the
+   preloader's auto margin pushing the buttons away from it. The artist line
+   now lives above the picture's top-left corner, inside this same height, so
+   the left has to be empty; everything gathers on the right. The preloader
+   rule below is the other half of that. */
 .pswp--vscn .pswp__top-bar {
-  height: 3.5rem;
+  height: 2.75rem;
   align-items: center;
   gap: 0.9rem;
   padding: 0 1.5rem;
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border);
+  background: transparent;
+  border-bottom: 0;
 }
 
 /* ── Counter ──────────────────────────────────────────────────────────────
@@ -248,13 +267,18 @@
 
 /* ── Loading indicator ────────────────────────────────────────────────────
    Left as PhotoSwipe's spinner — it reports state, it is not chrome — but
-   shrunk out of its 50x60 slot so it sits on the bar's baseline with the
+   shrunk out of its 50x60 slot so it sits on the row's centre line with the
    counter. Its rotation stays under reduced motion: it is the only signal
-   that a large original is still arriving. */
+   that a large original is still arriving — and since 2026-09-06 the only one
+   at all, the placeholder box having gone transparent (see the variables).
+   NO AUTO MARGIN. PhotoSwipe's own sheet gives this `margin-right: auto`,
+   which is what held the counter (before it in the row) against the LEFT
+   edge and pushed the buttons right. The left belongs to the artist line now,
+   so the counter and the spinner join the buttons on the right. */
 .pswp--vscn .pswp__preloader {
   width: 1.1rem;
   height: 1.1rem;
-  margin-right: auto;
+  margin-right: 0;
 }
 .pswp--vscn .pswp__preloader .pswp__icn {
   position: relative;
@@ -325,10 +349,12 @@
   color: var(--color-dark);
 }
 
-/* THE CAPTION, THE DESCRIPTION AND THE LINK — under a landscape image, beside
-   a portrait one. Which of the two it is, and how wide, is the script's call;
-   this is a plain column either way, which is what makes the two arrangements
-   one piece of design rather than two. */
+/* THE CAPTION, THE DESCRIPTION AND THE LINK — under the picture, at the
+   picture's own width, whatever its shape. Where and how wide is the script's
+   call; this is a plain column. (From 09-04 to 09-06 a portrait picture got a
+   column beside it instead — one design in two arrangements — until Josh asked
+   for the words "always below the images". One arrangement now; the deeper
+   reserve a narrow upright picture needs lives in lightboxPadding.) */
 .pswp--vscn .pswp__vscn-text {
   position: absolute;
   display: flex;
@@ -433,18 +459,18 @@
 }
 
 /* ── Mobile ───────────────────────────────────────────────────────────────
-   The top bar tightens with the reduced padding the script hands the same
-   breakpoint. Arrows need no rule: PhotoSwipe already hides them until a
-   mouse is seen, which is the card's behaviour on mobile too. */
+   The top row tightens with the reduced padding the script hands the same
+   breakpoint (lightboxPadding's mobile `top` clears this height). Arrows need
+   no rule: PhotoSwipe already hides them until a mouse is seen, which is the
+   card's behaviour on mobile too. */
 @media (--bp-mobile) {
   .pswp--vscn .pswp__top-bar {
-    height: 2.75rem;
+    height: 2.25rem;
     padding: 0 1rem;
   }
-  /* One arrangement on a phone: the words are always under the picture (a
-     column beside a portrait image on a 375px screen is two words wide), so
-     there is nothing here to switch — only the type, brought down a step for
-     the narrower measure. */
+  /* The words are under the picture here as everywhere now, so there is
+     nothing to switch — only the type, brought down a step for the narrower
+     measure. */
   .pswp--vscn .pswp__vscn-text-caption,
   .pswp--vscn .pswp__vscn-text-desc {
     font-size: 0.74rem;

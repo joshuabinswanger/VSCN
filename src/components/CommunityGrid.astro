@@ -2729,9 +2729,9 @@ const indexMembers = [...members].sort((a, b) =>
       mainClass: "pswp--vscn",
       bgOpacity: 1,
       // PER SLIDE, and shared with the member page — see lightboxPadding in
-      // lightboxText.ts, which is also where the reasoning lives. A portrait
-      // image reserves its space to the RIGHT of the artwork and a landscape
-      // one below it, because that is where each shape's caption goes.
+      // lightboxText.ts, which is also where the reasoning lives. The words go
+      // under the picture on every shape (2026-09-06); an upright image only
+      // reserves more room below, because it comes out narrower.
       paddingFn: lightboxPadding,
       closeSVG: `<span class="pswp__vscn-word">${esc(strings.close)}</span>`,
       arrowPrevSVG: CHEVRON,
