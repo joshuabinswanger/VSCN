@@ -1,6 +1,11 @@
 ---
 import { hasArtwork, stripStorageToken, type MemberView } from "../lib/memberView.ts";
-import { GALLERY_PATTERNS, STRIP_ROWS, layOutSlots } from "../lib/communityLayout.ts";
+import {
+  DEFAULT_VIEW,
+  GALLERY_PATTERNS,
+  STRIP_ROWS,
+  layOutSlots,
+} from "../lib/communityLayout.ts";
 import { memberHref } from "../lib/links.ts";
 import CommunityImageCard from "./community/CommunityImageCard.astro";
 import CommunityWorkCard from "./community/CommunityWorkCard.astro";
@@ -100,8 +105,8 @@ const tagsAttr = (m: MemberView) => {
 // today. `TEXT_TILE` in communityLayout.ts is likewise now unused by both
 // galleries.
 //
-// TWO GALLERIES, ONE SELECTOR: the two-lane editorial spread (the default,
-// rendered by the server and re-dealt on every load) and the brick grid wall,
+// TWO GALLERIES, ONE SELECTOR: the two-lane editorial spread (the first view
+// the selector offers, re-dealt on every load) and the brick grid wall,
 // switched by the Gallery/Grid toggle in the header, which syncs ?pattern= so
 // a view survives a reload. The two no longer share cells: the spread deals
 // MEMBER cards (name, gallery, role) and the wall deals one tile per WORK —
@@ -111,7 +116,13 @@ const tagsAttr = (m: MemberView) => {
 // the wall names anyone. The earlier stagger drawing is
 // scrapped; the horizontal strip is SHELVED, not shipped — no UI reaches it,
 // but ?pattern=strip still rebuilds the page into it for design review (see
-// communityLayout.ts). No-JS visitors get the spread and nothing else; mobile
+// communityLayout.ts).
+//
+// WHICH VIEW A BARE /community OPENS ON is DEFAULT_VIEW in communityLayout.ts,
+// not the spread by birthright — it is the ledger for now, because the
+// galleries are near-empty until members register and fill them. That constant
+// is also what the server renders visible and what a no-JS visitor is left
+// with, so the three cannot drift apart. Mobile
 // keeps the full selector and re-lays whichever deal is active into its own
 // two drawings: Gallery is a single column of full-width cards that fade in
 // on scroll (with the carousels auto-advancing every 5s — the arrows are
@@ -259,13 +270,23 @@ const indexMembers = [...members].sort((a, b) =>
           --bp-mobile block on .cgrid. */
       }
       <div class="view-toggle" role="group" aria-label={t("community.view.label")}>
-        <button type="button" class="view-toggle__btn" data-mode="spread" aria-pressed="true">
+        <button
+          type="button"
+          class="view-toggle__btn"
+          data-mode="spread"
+          aria-pressed={DEFAULT_VIEW === "spread" ? "true" : "false"}
+        >
           {t("community.view.gallery")}
         </button>
         <button type="button" class="view-toggle__btn" data-mode="grid" aria-pressed="false">
           {t("community.view.grid")}
         </button>
-        <button type="button" class="view-toggle__btn" data-mode="index" aria-pressed="false">
+        <button
+          type="button"
+          class="view-toggle__btn"
+          data-mode="index"
+          aria-pressed={DEFAULT_VIEW === "index" ? "true" : "false"}
+        >
           {t("community.view.index")}
         </button>
       </div>
@@ -298,7 +319,20 @@ const indexMembers = [...members].sort((a, b) =>
     {t("community.filter.none")}
   </p>
 
-  <div id="member-grid" class="cgrid" data-pswp-i18n={lightboxStrings}>
+  {
+    /* WHICH OF THE TWO IS RENDERED VISIBLE is the default view, not a
+      constant — both are in the document either way and the selector only
+      swaps them (see applyLayout). Server-rendering the wrong one would show
+      the reader a gallery for one frame before the script hid it, and would
+      start fetching artwork nobody asked for; it is also the whole no-JS
+      experience, which has to be the default view like everyone else's. */
+  }
+  <div
+    id="member-grid"
+    class="cgrid"
+    data-pswp-i18n={lightboxStrings}
+    hidden={DEFAULT_VIEW !== "spread" && DEFAULT_VIEW !== "grid"}
+  >
     {members.length === 0 && <p class="state-msg">{t("community.empty")}</p>}
     {
       /* The SHELVED strip layout's home (?pattern=strip — no UI reaches it): a
@@ -329,11 +363,10 @@ const indexMembers = [...members].sort((a, b) =>
 
     {
       /* THE WALL'S TILES, one per artwork. Rendered hidden and carrying no
-        placement: the spread is the default and the no-JS view, and the deal
-        writes --gc/--gr onto these only when the grid is asked for. `hidden`
-        is doing real work here beyond tidiness — it is display:none (see
-        .cgrid__cell[hidden]), so none of these images is fetched or decoded
-        while the spread is on screen.
+        placement: the deal writes --gc/--gr onto these only when the wall is
+        asked for. `hidden` is doing real work here beyond tidiness — it is
+        display:none (see .cgrid__cell[hidden]), so none of these images is
+        fetched or decoded while any other view is on screen.
         data-tags is the MEMBER's, so the tag filter narrows the wall by the
         person behind the work, exactly as it narrows the spread. */
       workCells.map(({ member, work, key }, i) => (
@@ -364,7 +397,7 @@ const indexMembers = [...members].sort((a, b) =>
       every member is reachable without hunting the drawing. Search lives in the masthead
       band above, shared by all three views — the ledger just hides rows. */
   }
-  <div id="member-index" class="cindex-wrap" hidden>
+  <div id="member-index" class="cindex-wrap" hidden={DEFAULT_VIEW !== "index"}>
     <ol class="cindex">
       {
         indexMembers.map((m) => {
@@ -1661,12 +1694,14 @@ const indexMembers = [...members].sort((a, b) =>
   import { onAuthStateChanged } from "firebase/auth";
   import { navigate } from "astro:transitions/client";
   import {
+    DEFAULT_VIEW,
     GALLERY_PATTERNS,
     STRIP_SLOT_ROWS,
+    TAG_CHIP_VIEW,
     layOutSlots,
     layOutWall,
-    type GalleryPatternName,
     type Slot,
+    type ViewName,
   } from "../lib/communityLayout.ts";
 
   // ────────────────────────────────────────────────────────────────────────
@@ -1693,7 +1728,7 @@ const indexMembers = [...members].sort((a, b) =>
    * re-sorted into row order afterwards and reading order still runs down
    * the page (appendChild also moves cells back OUT of the strip wrapper).
    */
-  type LayoutMode = GalleryPatternName | "strip" | "index";
+  type LayoutMode = ViewName;
   const MODES: LayoutMode[] = ["spread", "grid", "strip", "index"];
 
   // ── THE DEAL HAS TO SURVIVE A BACK ────────────────────
@@ -2126,7 +2161,7 @@ const indexMembers = [...members].sort((a, b) =>
 
   function modeFromURL(): LayoutMode {
     const p = new URLSearchParams(window.location.search).get("pattern");
-    return (MODES as string[]).includes(p ?? "") ? (p as LayoutMode) : "spread";
+    return (MODES as string[]).includes(p ?? "") ? (p as LayoutMode) : DEFAULT_VIEW;
   }
 
   /** The Gallery/Grid selector's pressed state. In strip mode (URL-only,
@@ -2164,9 +2199,9 @@ const indexMembers = [...members].sort((a, b) =>
       reflectMode(mode);
 
       // ── A TAG CHIP KEEPS THE PICTURE VIEW YOU ARE IN ──────
-      // (2026-09-03.) communityTagHref() builds every chip's href WITHOUT a
-      // ?pattern=, which is right everywhere the link is printed off this page
-      // — a member's own profile has no view to keep. On /community it left
+      // (2026-09-03.) communityTagHref() sends every chip to the GALLERY,
+      // which is right everywhere the link is printed off this page — a
+      // member's own profile has no view to keep. On /community that left
       // the chips disagreeing with the dropdown directly above them: picking
       // "Animation" from the dropdown preserves ?pattern= (it builds its URL
       // from window.location), while a chip in an open panel silently moved a
@@ -2177,6 +2212,11 @@ const indexMembers = [...members].sort((a, b) =>
       // a chip goes to PICTURES, and keeps the picture view it was pressed in.
       // The wall is pictures, so grid → grid. The ledger is not, so index →
       // the spread, exactly as before.
+      //
+      // THE GALLERY IS NAMED NOW, not implied by an absent parameter — the
+      // bare URL is the ledger while DEFAULT_VIEW says so, and a chip that
+      // dropped ?pattern= would land the reader on the very ledger this rule
+      // exists to take them off. So every chip carries an explicit view.
       //
       // The href is REWRITTEN rather than intercepted on click, so the status
       // bar, middle-click and open-in-new-tab all agree with what a left click
@@ -2190,9 +2230,12 @@ const indexMembers = [...members].sort((a, b) =>
       // alone. Splitting on the suffix first makes the pass idempotent, since
       // it runs again on every swapped-in document.
       document.querySelectorAll<HTMLAnchorElement>("a.pdisc__tag").forEach((chip) => {
-        const base = (chip.getAttribute("href") ?? "").split("&pattern=")[0];
-        const keep = mode === "grid" && base.includes("?");
-        chip.setAttribute("href", keep ? `${base}&pattern=grid` : base);
+        // Split on EITHER separator: communityTagHref emits "?tag=…&pattern="
+        // for a real tag and "?pattern=" for the tagless case, and a pass that
+        // only knew the "&" form would append a second pattern to the latter.
+        const base = (chip.getAttribute("href") ?? "").split(/[?&]pattern=/)[0];
+        const view = mode === "grid" ? "grid" : TAG_CHIP_VIEW;
+        chip.setAttribute("href", `${base}${base.includes("?") ? "&" : "?"}pattern=${view}`);
       });
       if (new URLSearchParams(window.location.search).has("grid")) {
         grid.classList.add("cgrid--debug");
@@ -2208,7 +2251,11 @@ const indexMembers = [...members].sort((a, b) =>
           const next = btn.dataset.mode as LayoutMode;
           if (grid.dataset.pattern === next) return;
           const url = new URL(window.location.href);
-          if (next === "spread") url.searchParams.delete("pattern");
+          // The DEFAULT view is the bare URL; every other view is named.
+          // Keyed off the constant rather than off "spread", so moving the
+          // default moves the canonical URL with it and the page never has
+          // two addresses for the same view.
+          if (next === DEFAULT_VIEW) url.searchParams.delete("pattern");
           else url.searchParams.set("pattern", next);
           goTo(url);
         });

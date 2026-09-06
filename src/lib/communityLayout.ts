@@ -374,3 +374,28 @@ export function layOutSlots(gallery: Pattern, imageCards: number, textCards: num
 export function layOutStripIndex(textCards: number): Slot[] {
   return tilePattern(TEXT_TILE, textCards, STRIP_ROWS + MAX_EMPTY_ROWS);
 }
+
+// ── Which view /community opens on ──────────────────────────────────────────
+// TEMPORARY, and the reason is content, not design: until members register and
+// fill their galleries the picture views open on a near-empty page, while the
+// ledger is complete from the first member. So the bare URL is the INDEX for
+// now and the gallery is reached by name (?pattern=spread).
+//
+// Everything else about the page is unchanged — the gallery is still the view
+// a tag chip takes you to, and it is still the view the selector shows first.
+// Flipping this one constant back to "spread" restores the old default in
+// every place that reads it: the server-rendered markup, the pressed button,
+// the URL the selector writes, and the chip rewrite.
+//
+// Both the frontmatter and the client script import it, so the no-JS render
+// and the dealt page cannot disagree about what the bare URL means.
+/** Every view the selector and the URL know about. Widened past the two
+ *  galleries so a comparison against the default is a real question and not a
+ *  type error — which is the point of putting the default in a constant. */
+export type ViewName = GalleryPatternName | "strip" | "index";
+
+/** The view a bare `/community` (no `?pattern=`) resolves to. */
+export const DEFAULT_VIEW: ViewName = "index";
+
+/** The gallery a tag chip goes to — the picture view, whatever the default is. */
+export const TAG_CHIP_VIEW: GalleryPatternName = "spread";

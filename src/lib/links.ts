@@ -3,6 +3,8 @@
 // panel and the profile page must treat them identically — so the rules live
 // here rather than twice.
 
+import { TAG_CHIP_VIEW } from "./communityLayout.ts";
+
 /**
  * Real `portfolio` values are stored without a scheme ("quaint.ch",
  * "www.ikonaut.ch"), so they need one to be a usable href. Anything that
@@ -196,11 +198,14 @@ export function memberHref(lang: string, slug: string): string {
  * dropdown syncs, and CommunityGrid reads it on page load, so a link from a
  * profile page and a pick from the dropdown land on a byte-identical URL.
  *
- * NO ?pattern=, deliberately: the absent parameter IS the gallery, which is
- * what "opens gallery with tag filter applied" asks for — a tag pressed while
- * the ledger is on screen takes you to the pictures, not to a narrower ledger.
- * That stays true of every chip printed OFF the directory, which is what this
- * function is for: a member's own profile page has no view to preserve.
+ * ?pattern=spread, EXPLICITLY — it used to be the absent parameter, because the
+ * absent parameter WAS the gallery. It is not any more: the bare URL opens the
+ * ledger while members are still registering (see DEFAULT_VIEW). The rule the
+ * link exists to keep is unchanged — "opens gallery with tag filter applied", a
+ * tag pressed while the ledger is on screen takes you to the pictures, not to a
+ * narrower ledger — so the gallery is now named instead of implied. That stays
+ * true of every chip printed OFF the directory, which is what this function is
+ * for: a member's own profile page has no view to preserve.
  *
  * On /community itself the chips are rewritten after render to keep a PICTURE
  * view — grid stays on the wall, the ledger still goes to the spread — because
@@ -215,5 +220,6 @@ export function memberHref(lang: string, slug: string): string {
 export function communityTagHref(lang: string, tag: string): string {
   const base = lang === "de" ? "/de/community" : "/community";
   const key = tag.trim().toLowerCase();
-  return key ? `${base}?tag=${encodeURIComponent(key)}` : base;
+  const tagParam = key ? `tag=${encodeURIComponent(key)}&` : "";
+  return `${base}?${tagParam}pattern=${TAG_CHIP_VIEW}`;
 }
