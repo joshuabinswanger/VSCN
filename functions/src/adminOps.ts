@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import type { UserRecord } from "firebase-admin/auth";
-import { adminAuth, bucket, db } from "./admin";
+import { adminAuth, db, getBucket } from "./admin";
 import { GRACE_DAYS, STALE_UPLOAD_HOURS } from "./constants";
 import { findEmailMismatches } from "./emails";
 import { cancelDeletion, scheduleDeletion } from "./lifecycle";
@@ -439,7 +439,11 @@ export const adminDeleteImage = onCall({ secrets: [githubRebuildToken] }, async 
     removedFrom.push(path);
   }
 
-  if (storagePath) await bucket.file(storagePath).delete({ ignoreNotFound: true });
+  // getBucket() rather than a module-scope constant: the default bucket needs
+  // FIREBASE_CONFIG, which the CLI's trigger-discovery pass does not supply.
+  // See the comment on getBucket in ./admin — evaluating it at import time made
+  // firebase-tools report a generic discovery timeout instead of the real error.
+  if (storagePath) await getBucket().file(storagePath).delete({ ignoreNotFound: true });
   await ref.delete();
 
   await audit(actor, "deleteImage", ownerUid, {
