@@ -10,6 +10,12 @@ export interface AdminImage {
   imageId: string; ownerUid: string; kind: "avatar" | "gallery"; storagePath: string;
   width: number; height: number; color?: string; caption?: string; description?: string;
   origin: "member" | "curated"; status: "uploading" | "live" | "pendingDeletion"; createdAt: string;
+  /**
+   * Is a profile document actually pointing at this? NOT the same question as
+   * `status: "live"`, which only says the upload finished — the gap between
+   * the two is what the unreferencedLive queue is made of.
+   */
+  referenced: boolean;
 }
 export interface DeletionJobView {
   uid: string; requestedBy: string; requestedAt: string; purgeAfter: string; activeBefore: boolean;
@@ -71,3 +77,7 @@ export const purgeAccount = call<{ uid: string; immediate?: boolean }, { ok: tru
 export const restoreAccount = call<{ uid: string }, { ok: true }>("adminRestoreAccount");
 export const setMemberEmail = call<{ uid: string; email: string }, { ok: true }>("adminSetMemberEmail");
 export const setProfileActive = call<{ uid: string; active: boolean }, { ok: true }>("adminSetProfileActive");
+export const deleteImage = call<
+  { imageId: string },
+  { ok: true; ownerUid: string; removedFrom: string[]; wasReferenced: boolean }
+>("adminDeleteImage");

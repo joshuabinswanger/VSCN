@@ -1,6 +1,11 @@
 ---
 import { hasArtwork, stripStorageToken, type MemberView } from "../lib/memberView.ts";
-import { GALLERY_PATTERNS, STRIP_ROWS, layOutSlots } from "../lib/communityLayout.ts";
+import {
+  DEFAULT_VIEW,
+  GALLERY_PATTERNS,
+  STRIP_ROWS,
+  layOutSlots,
+} from "../lib/communityLayout.ts";
 import { memberHref } from "../lib/links.ts";
 import CommunityImageCard from "./community/CommunityImageCard.astro";
 import CommunityWorkCard from "./community/CommunityWorkCard.astro";
@@ -100,8 +105,8 @@ const tagsAttr = (m: MemberView) => {
 // today. `TEXT_TILE` in communityLayout.ts is likewise now unused by both
 // galleries.
 //
-// TWO GALLERIES, ONE SELECTOR: the two-lane editorial spread (the default,
-// rendered by the server and re-dealt on every load) and the brick grid wall,
+// TWO GALLERIES, ONE SELECTOR: the two-lane editorial spread (the first view
+// the selector offers, re-dealt on every load) and the brick grid wall,
 // switched by the Gallery/Grid toggle in the header, which syncs ?pattern= so
 // a view survives a reload. The two no longer share cells: the spread deals
 // MEMBER cards (name, gallery, role) and the wall deals one tile per WORK —
@@ -111,7 +116,13 @@ const tagsAttr = (m: MemberView) => {
 // the wall names anyone. The earlier stagger drawing is
 // scrapped; the horizontal strip is SHELVED, not shipped — no UI reaches it,
 // but ?pattern=strip still rebuilds the page into it for design review (see
-// communityLayout.ts). No-JS visitors get the spread and nothing else; mobile
+// communityLayout.ts).
+//
+// WHICH VIEW A BARE /community OPENS ON is DEFAULT_VIEW in communityLayout.ts,
+// not the spread by birthright — it is the ledger for now, because the
+// galleries are near-empty until members register and fill them. That constant
+// is also what the server renders visible and what a no-JS visitor is left
+// with, so the three cannot drift apart. Mobile
 // keeps the full selector and re-lays whichever deal is active into its own
 // two drawings: Gallery is a single column of full-width cards that fade in
 // on scroll (with the carousels auto-advancing every 5s — the arrows are
@@ -171,6 +182,7 @@ const lightboxStrings = JSON.stringify({
   prev: t("member.lightbox.prev"),
   next: t("member.lightbox.next"),
   error: t("member.lightbox.error"),
+  linkTitle: t("member.lightbox.link"),
 });
 
 const indexMembers = [...members].sort((a, b) =>
@@ -258,13 +270,23 @@ const indexMembers = [...members].sort((a, b) =>
           --bp-mobile block on .cgrid. */
       }
       <div class="view-toggle" role="group" aria-label={t("community.view.label")}>
-        <button type="button" class="view-toggle__btn" data-mode="spread" aria-pressed="true">
+        <button
+          type="button"
+          class="view-toggle__btn"
+          data-mode="spread"
+          aria-pressed={DEFAULT_VIEW === "spread" ? "true" : "false"}
+        >
           {t("community.view.gallery")}
         </button>
         <button type="button" class="view-toggle__btn" data-mode="grid" aria-pressed="false">
           {t("community.view.grid")}
         </button>
-        <button type="button" class="view-toggle__btn" data-mode="index" aria-pressed="false">
+        <button
+          type="button"
+          class="view-toggle__btn"
+          data-mode="index"
+          aria-pressed={DEFAULT_VIEW === "index" ? "true" : "false"}
+        >
           {t("community.view.index")}
         </button>
       </div>
@@ -297,7 +319,20 @@ const indexMembers = [...members].sort((a, b) =>
     {t("community.filter.none")}
   </p>
 
-  <div id="member-grid" class="cgrid" data-pswp-i18n={lightboxStrings}>
+  {
+    /* WHICH OF THE TWO IS RENDERED VISIBLE is the default view, not a
+      constant — both are in the document either way and the selector only
+      swaps them (see applyLayout). Server-rendering the wrong one would show
+      the reader a gallery for one frame before the script hid it, and would
+      start fetching artwork nobody asked for; it is also the whole no-JS
+      experience, which has to be the default view like everyone else's. */
+  }
+  <div
+    id="member-grid"
+    class="cgrid"
+    data-pswp-i18n={lightboxStrings}
+    hidden={DEFAULT_VIEW !== "spread" && DEFAULT_VIEW !== "grid"}
+  >
     {members.length === 0 && <p class="state-msg">{t("community.empty")}</p>}
     {
       /* The SHELVED strip layout's home (?pattern=strip — no UI reaches it): a
@@ -328,11 +363,10 @@ const indexMembers = [...members].sort((a, b) =>
 
     {
       /* THE WALL'S TILES, one per artwork. Rendered hidden and carrying no
-        placement: the spread is the default and the no-JS view, and the deal
-        writes --gc/--gr onto these only when the grid is asked for. `hidden`
-        is doing real work here beyond tidiness — it is display:none (see
-        .cgrid__cell[hidden]), so none of these images is fetched or decoded
-        while the spread is on screen.
+        placement: the deal writes --gc/--gr onto these only when the wall is
+        asked for. `hidden` is doing real work here beyond tidiness — it is
+        display:none (see .cgrid__cell[hidden]), so none of these images is
+        fetched or decoded while any other view is on screen.
         data-tags is the MEMBER's, so the tag filter narrows the wall by the
         person behind the work, exactly as it narrows the spread. */
       workCells.map(({ member, work, key }, i) => (
@@ -363,7 +397,7 @@ const indexMembers = [...members].sort((a, b) =>
       every member is reachable without hunting the drawing. Search lives in the masthead
       band above, shared by all three views — the ledger just hides rows. */
   }
-  <div id="member-index" class="cindex-wrap" hidden>
+  <div id="member-index" class="cindex-wrap" hidden={DEFAULT_VIEW !== "index"}>
     <ol class="cindex">
       {
         indexMembers.map((m) => {
@@ -1059,14 +1093,19 @@ const indexMembers = [...members].sort((a, b) =>
     }
 
     /* Same cap, the work tile's own chrome. The line above bakes in the member
-       card's 5.4rem of name-and-caption; a work tile carries a project title
-       AND an author line under its frame, both in flow, and declares 3.3rem
-       for the pair (--cwork-chrome in CommunityWorkCard). Stated separately
-       rather than made a variable, because the two cards' anatomies are
-       genuinely different numbers and a shared one would hide that. The extra
-       specificity wins wherever this sits in the file. */
+       card's 5.4rem of name-and-caption; a work tile now carries ONLY an author
+       line under its frame and declares 1.2rem for it (--cwork-chrome in
+       CommunityWorkCard) — it was 3.3rem while the tile also printed the
+       image's caption as a title, which it stopped doing on 2026-09-06.
+       Stated separately rather than made a variable, because the two cards'
+       anatomies are genuinely different numbers and a shared one would hide
+       that. THE PRICE of stating it twice is that this line and --cwork-chrome
+       have to be changed together; the tile reserves its own room from the
+       variable, the row takes its height from here, and a mismatch shows up as
+       tiles rattling inside rows that are the wrong depth rather than as an
+       error. The extra specificity wins wherever this sits in the file. */
     .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
-      --cgrid-row: calc((1.5 * var(--wall-card) + 3.3rem) / var(--slot-rows, 1));
+      --cgrid-row: calc((1.5 * var(--wall-card) + 1.2rem) / var(--slot-rows, 1));
     }
   }
 
@@ -1655,12 +1694,14 @@ const indexMembers = [...members].sort((a, b) =>
   import { onAuthStateChanged } from "firebase/auth";
   import { navigate } from "astro:transitions/client";
   import {
+    DEFAULT_VIEW,
     GALLERY_PATTERNS,
     STRIP_SLOT_ROWS,
+    TAG_CHIP_VIEW,
     layOutSlots,
     layOutWall,
-    type GalleryPatternName,
     type Slot,
+    type ViewName,
   } from "../lib/communityLayout.ts";
 
   // ────────────────────────────────────────────────────────────────────────
@@ -1687,7 +1728,7 @@ const indexMembers = [...members].sort((a, b) =>
    * re-sorted into row order afterwards and reading order still runs down
    * the page (appendChild also moves cells back OUT of the strip wrapper).
    */
-  type LayoutMode = GalleryPatternName | "strip" | "index";
+  type LayoutMode = ViewName;
   const MODES: LayoutMode[] = ["spread", "grid", "strip", "index"];
 
   // ── THE DEAL HAS TO SURVIVE A BACK ────────────────────
@@ -2120,7 +2161,7 @@ const indexMembers = [...members].sort((a, b) =>
 
   function modeFromURL(): LayoutMode {
     const p = new URLSearchParams(window.location.search).get("pattern");
-    return (MODES as string[]).includes(p ?? "") ? (p as LayoutMode) : "spread";
+    return (MODES as string[]).includes(p ?? "") ? (p as LayoutMode) : DEFAULT_VIEW;
   }
 
   /** The Gallery/Grid selector's pressed state. In strip mode (URL-only,
@@ -2158,9 +2199,9 @@ const indexMembers = [...members].sort((a, b) =>
       reflectMode(mode);
 
       // ── A TAG CHIP KEEPS THE PICTURE VIEW YOU ARE IN ──────
-      // (2026-09-03.) communityTagHref() builds every chip's href WITHOUT a
-      // ?pattern=, which is right everywhere the link is printed off this page
-      // — a member's own profile has no view to keep. On /community it left
+      // (2026-09-03.) communityTagHref() sends every chip to the GALLERY,
+      // which is right everywhere the link is printed off this page — a
+      // member's own profile has no view to keep. On /community that left
       // the chips disagreeing with the dropdown directly above them: picking
       // "Animation" from the dropdown preserves ?pattern= (it builds its URL
       // from window.location), while a chip in an open panel silently moved a
@@ -2171,6 +2212,11 @@ const indexMembers = [...members].sort((a, b) =>
       // a chip goes to PICTURES, and keeps the picture view it was pressed in.
       // The wall is pictures, so grid → grid. The ledger is not, so index →
       // the spread, exactly as before.
+      //
+      // THE GALLERY IS NAMED NOW, not implied by an absent parameter — the
+      // bare URL is the ledger while DEFAULT_VIEW says so, and a chip that
+      // dropped ?pattern= would land the reader on the very ledger this rule
+      // exists to take them off. So every chip carries an explicit view.
       //
       // The href is REWRITTEN rather than intercepted on click, so the status
       // bar, middle-click and open-in-new-tab all agree with what a left click
@@ -2184,9 +2230,12 @@ const indexMembers = [...members].sort((a, b) =>
       // alone. Splitting on the suffix first makes the pass idempotent, since
       // it runs again on every swapped-in document.
       document.querySelectorAll<HTMLAnchorElement>("a.pdisc__tag").forEach((chip) => {
-        const base = (chip.getAttribute("href") ?? "").split("&pattern=")[0];
-        const keep = mode === "grid" && base.includes("?");
-        chip.setAttribute("href", keep ? `${base}&pattern=grid` : base);
+        // Split on EITHER separator: communityTagHref emits "?tag=…&pattern="
+        // for a real tag and "?pattern=" for the tagless case, and a pass that
+        // only knew the "&" form would append a second pattern to the latter.
+        const base = (chip.getAttribute("href") ?? "").split(/[?&]pattern=/)[0];
+        const view = mode === "grid" ? "grid" : TAG_CHIP_VIEW;
+        chip.setAttribute("href", `${base}${base.includes("?") ? "&" : "?"}pattern=${view}`);
       });
       if (new URLSearchParams(window.location.search).has("grid")) {
         grid.classList.add("cgrid--debug");
@@ -2202,7 +2251,11 @@ const indexMembers = [...members].sort((a, b) =>
           const next = btn.dataset.mode as LayoutMode;
           if (grid.dataset.pattern === next) return;
           const url = new URL(window.location.href);
-          if (next === "spread") url.searchParams.delete("pattern");
+          // The DEFAULT view is the bare URL; every other view is named.
+          // Keyed off the constant rather than off "spread", so moving the
+          // default moves the canonical URL with it and the page never has
+          // two addresses for the same view.
+          if (next === DEFAULT_VIEW) url.searchParams.delete("pattern");
           else url.searchParams.set("pattern", next);
           goTo(url);
         });
@@ -2623,6 +2676,7 @@ const indexMembers = [...members].sort((a, b) =>
 
 <script>
   import PhotoSwipeLightbox from "photoswipe/lightbox";
+  import { lightboxPadding, registerLightboxText } from "../lib/lightboxText.ts";
   import "photoswipe/style.css";
   // Immediately after the package sheet, never before: this is the chrome that
   // replaces it. Same pair, same order, as the member profile page.
@@ -2656,6 +2710,8 @@ const indexMembers = [...members].sort((a, b) =>
     prev: string;
     next: string;
     error: string;
+    /** Accessible name for the per-image "where this appeared" link. */
+    linkTitle: string;
   }
 
   // English is the fallback, matching useTranslations() — a missing or
@@ -2666,6 +2722,7 @@ const indexMembers = [...members].sort((a, b) =>
     prev: "Previous image",
     next: "Next image",
     error: "The image cannot be loaded",
+    linkTitle: "Where this image appeared",
   };
 
   const esc = (s: string) =>
@@ -2718,14 +2775,11 @@ const indexMembers = [...members].sort((a, b) =>
       //    different lightboxes. See lightbox.css for the CSS half.
       mainClass: "pswp--vscn",
       bgOpacity: 1,
-      // The bottom figures GREW with the description line (2026-09-01) and are
-      // the band's max-height in lightbox.css — that pair is the whole reason a
-      // long description scrolls rather than overlapping the picture. Change
-      // them together.
-      paddingFn: (viewportSize) =>
-        viewportSize.x <= 767
-          ? { top: 44, bottom: 116, left: 12, right: 12 }
-          : { top: 56, bottom: 140, left: 32, right: 32 },
+      // PER SLIDE, and shared with the member page — see lightboxPadding in
+      // lightboxText.ts, which is also where the reasoning lives. The words go
+      // under the picture on every shape (2026-09-06); an upright image only
+      // reserves more room below, because it comes out narrower.
+      paddingFn: lightboxPadding,
       closeSVG: `<span class="pswp__vscn-word">${esc(strings.close)}</span>`,
       arrowPrevSVG: CHEVRON,
       arrowNextSVG: CHEVRON,
@@ -2779,85 +2833,11 @@ const indexMembers = [...members].sort((a, b) =>
       return itemData;
     });
 
-    // PhotoSwipe 5 has no caption of its own; this is the documented way to
-    // add one. Text comes off the trigger link, so the lightbox and the tile
-    // under it cannot say different things about the same image.
-    lightbox.on("uiRegister", () => {
-      lightbox?.pswp?.ui?.registerElement({
-        name: "vscn-caption",
-        className: "pswp__vscn-caption",
-        appendTo: "root",
-        order: 9,
-        onInit: (el, pswp) => {
-          const render = () => {
-            const trigger = pswp.currSlide?.data.element as HTMLElement | undefined;
-            const caption = trigger?.dataset.pswpCaption?.trim() || "";
-            // THE SHORT DESCRIPTION. A description arrived in the band on
-            // 2026-09-01 (Josh: "add it to lightbox") because the one view
-            // where the artwork is big enough to warrant an explanation was
-            // the one view without one; it was the member's LONG text until
-            // 2026-09-03, when the two split (Josh: "one for portfolio the
-            // rest for lightbox and other places") and the long one stayed on
-            // the member's own page. Unlike the caption it is still NOT
-            // clamped: the band is a scroll container capped at the padding
-            // the artwork reserves (see lightbox.css), so a sentence that
-            // wraps to three lines scrolls inside the band rather than being
-            // cut off or growing up over the picture.
-            const description = trigger?.dataset.pswpDescription?.trim() || "";
-            const meta = trigger?.dataset.pswpMeta?.trim() || "";
-
-            // textContent, not innerHTML: this is member-authored text.
-            el.replaceChildren();
-            if (caption) {
-              const line = document.createElement("span");
-              line.className = "pswp__vscn-caption-line";
-              line.textContent = caption;
-              el.append(line);
-            }
-            if (description) {
-              const desc = document.createElement("span");
-              desc.className = "pswp__vscn-caption-desc";
-              desc.textContent = description;
-              el.append(desc);
-            }
-            // ── THE CREDIT IS THE WAY OUT ─────────────────────────
-            // (2026-09-03, Josh: "in lightbox a way to get to the profile of a
-            // person".) The lightbox is the whole screen, so every route the
-            // page offered to a member — the tile's author line, the card's
-            // name heading, the "View profile" control in a disclosure — is
-            // underneath it. The band was already naming them; it just had no
-            // way of being followed.
-            //
-            // The NAME becomes the link, rather than a "View profile" control
-            // being added beside it: the credit is the only thing in the band
-            // that is about the person, so making it the control keeps the band
-            // three lines about one picture instead of four with an errand at
-            // the end. A plain <a>, so ClientRouter picks the navigation up and
-            // the lightbox is destroyed by its own astro:before-swap handler —
-            // nothing here has to close anything.
-            //
-            // Falls back to a plain span when the trigger carries no profile
-            // href: the member page's own gallery uses this same renderer, and
-            // there the person whose page you are on is not somewhere to go.
-            const profile = trigger?.dataset.pswpProfile?.trim() || "";
-            if (meta) {
-              const credit = document.createElement(profile ? "a" : "span");
-              credit.className = "pswp__vscn-caption-meta";
-              if (credit instanceof HTMLAnchorElement) credit.href = profile;
-              credit.textContent = meta;
-              el.append(credit);
-            }
-            el.classList.toggle("is-empty", !caption && !description && !meta);
-            // The band scrolls; a slide change has to start it at the top or
-            // the next caption opens mid-paragraph.
-            el.scrollTop = 0;
-          };
-
-          pswp.on("change", render);
-          render();
-        },
-      });
-    });
+    // The artist line, the caption, the description and the link — all of it
+    // in one shared module, because there is ONE lightbox on this site and it
+    // must not speak differently depending on which gallery opened it. Both
+    // galleries carried their own copy of this renderer until 2026-09-04.
+    registerLightboxText(lightbox, { linkTitle: strings.linkTitle });
 
     lightbox.init();
   });

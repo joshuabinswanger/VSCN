@@ -21,7 +21,20 @@ plausible.
 
 **How to apply:** never `npm run build && firebase deploy -P dev` by hand — it
 deploys an artwork-less dev site. Use `npm run deploy:dev`. To verify a dev
-build before deploying, count the cards:
-`grep -c 'class="ccard"' dist/community/index.html` should be 16, not 0.
+build before deploying, count the IMAGES, not the cards:
+
+```
+grep -o '<img' dist/community/index.html | wc -l      # 100 on dev, 0 is the failure
+```
+
+**The card-count guard this note used to give was wrong and cried wolf**
+(2026-09-06). It said `grep -c 'class="ccard"'` "should be 16" — but `grep -c`
+counts matching LINES, and two cards share a line, so a perfectly good build
+reports **14**; counting occurrences with `-o` gives **15**, not 16 either.
+Verified identical on the local build and on the live deployed site, so 15/14 is
+the baseline, not a regression. The failure mode this guard exists for is
+`hasArtwork` false for everyone, which zeroes the `<img>` count outright — so
+count that instead, and compare against the live site rather than a number
+written down months ago.
 
 Related: [[dev-vs-prod-firestore-divergence]], [[image-cards-need-content]].

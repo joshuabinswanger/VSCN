@@ -155,6 +155,16 @@ import "../styles/global.css";
     .nav-right-group {
       gap: 0.5rem;
     }
+
+    /* Mirrored to the left on mobile, where the right corner is where a thumb
+       rests. `right: auto` is load-bearing, not tidying: position:fixed
+       blockifies the anchor, so leaving both offsets set stretches the box the
+       full width and its hit area swallows taps across the whole bottom strip
+       at z-index 20 — while the text still looks correctly placed. */
+    .lang-toggle {
+      left: 30px;
+      right: auto;
+    }
   }
 </style>
 

@@ -1,26 +1,53 @@
-// Fills the seeded galleries' two description fields, so the surfaces that show
-// them can be judged with something in them.
+// Fills the seeded galleries' CAPTION and DESCRIPTION, so the surfaces that
+// show them can be judged with something in them.
 //
 // WHY THIS EXISTS. 2026-09-03 split an image's description in two — a LONG text
 // for the member's own portfolio page and a SHORT one sentence for the lightbox
-// band and everywhere else (see MAX_GALLERY_DESCRIPTION_SHORT in
-// src/lib/gallery.ts). Both fields are empty across the whole of dev: the
-// curated galleries were imported with no text at all, on purpose. So the one
-// thing the change is about — a band with two different lengths of text in it,
-// on a picture, at full screen — could not be looked at.
+// band. Both fields were empty across the whole of dev: the curated galleries
+// were imported with no text at all, on purpose. So the one thing the change
+// was about — a band with text in it, on a picture, at full screen — could not
+// be looked at.
+//
+// 2026-09-06 EXTENDED THIS TO THE CAPTION, and retired the short field.
+//
+//   THE CAPTION, because it was the remaining hole. All 47 seeded images on dev
+//   carried an EMPTY caption, so `data-pswp-caption` appeared exactly zero
+//   times across every member page: the description half of "we only need
+//   captions and a description" could be judged on dev and the caption half
+//   could not be seen at all.
+//
+//   `descriptionShort` IS RETIRED — one description per image now (see
+//   GalleryItem in src/lib/gallery.ts; MAX_GALLERY_DESCRIPTION_SHORT is gone).
+//   This script no longer WRITES it, but still RECOGNISES and REMOVES it, in
+//   both modes. That asymmetry is the point: 44 images on dev are still holding
+//   a short placeholder this script put there, and a build that stopped
+//   recognising the string would have stranded it in the database for good.
+//   FILL now clears it as it goes, so there is no separate cleanup run.
 //
 // THE TEXT IS PLACEHOLDER AND SAYS SO. seed-curated-galleries.mjs refuses to
 // invent captions for other people's work, and it is right: the filenames are
-// curation slugs, not the artists' titles, and writing a description for
-// someone else's picture is putting words in their mouth. Nothing here claims
-// anything about any image. Every line begins by naming itself as a stand-in
-// and then runs on to a realistic LENGTH, which is the only property the layout
-// actually needs — the point is to see a two-line summary in the lightbox band
-// and a four-sentence paragraph under a portfolio image, not to read them.
+// curation slugs, not the artists' titles, and writing a caption for someone
+// else's picture is putting words in their mouth. Nothing here claims anything
+// about any image. Every line begins by naming itself as a stand-in and then
+// runs on to a realistic LENGTH, which is the only property the layout actually
+// needs — the point is to see a title-length line on a card and a paragraph
+// under a portfolio image, not to read them.
 //
-// Four length bands are dealt round-robin by a hash of the imageId, so the
-// deal is stable across runs and one member's gallery gets a spread of lengths
-// rather than four copies of one.
+// A CONSEQUENCE WORTH KNOWING: the caption doubles as the image's ALT TEXT and
+// the directory card's accessible name. While this text is seeded, dev's alt
+// text is placeholder too — dev is not the place to judge screen-reader output.
+//
+// CAPTIONS COME IN TWO LANGUAGES, picked per work rather than per member. A
+// caption is ONE non-localised string shown in both locales, so a German title
+// appears on the English pages and the other way round — the real limitation of
+// the field, and invisible if every placeholder is in one language. The
+// language follows the work's own title (ENGLISH_TITLED below), traced through
+// the `images/{imageId}` record's `provenance.source`, because the gallery
+// array itself carries a random uuid and a storage url and no filename at all.
+//
+// Length bands are dealt round-robin by a hash of the imageId, so the deal is
+// stable across runs and one member's gallery gets a spread of lengths rather
+// than three copies of one.
 //
 //   --clear removes exactly what this wrote and nothing else: it only touches
 //   items whose stored text is one of the strings below. Placeholder content
@@ -36,8 +63,9 @@
 // public copy would be wiped by the member's next save, which republishes from
 // `users`.
 //
-// Members' own text is NEVER overwritten: an item that already has either field
-// set to something that is not one of these placeholders is left alone.
+// Members' own text is NEVER overwritten: an item that already has any of the
+// three fields set to something that is not one of these placeholders is left
+// alone.
 //
 // Usage (there is no default project — -P is mandatory):
 //   node scripts/seed-image-descriptions.mjs -P dev            # dry run
@@ -74,10 +102,64 @@ console.log(doWrite ? "WRITE mode" : "Dry run (pass --write to apply)");
 // the database. Add a new band instead, and clear with the old build first.
 
 /**
- * The SHORT line — the lightbox band, the directory's other surfaces. Capped at
- * 240 characters (MAX_GALLERY_DESCRIPTION_SHORT); these run from about a third
- * of that to just under it, so the band is seen holding one line, two, and the
- * three that are its practical ceiling.
+ * The CAPTION — one line, on the directory card, the lightbox and the member's
+ * page. Capped at 140 (MAX_GALLERY_CAPTION, enforced by `validImage` on the
+ * record and by the client). A real caption is often just a title, so the
+ * shortest band is title-length and the longest sits near the ceiling: the
+ * range the layout has to survive is a two-word title next to a line that
+ * wraps.
+ *
+ * Deliberately says nothing about any picture — see the header. The wording
+ * differs between the two languages rather than being a translation of one
+ * string, because two members writing their own titles would not match either.
+ */
+const CAPTIONS_EN = [
+  "Placeholder caption, not a title.",
+  "Placeholder caption, standing in for the artist's own title.",
+  "Placeholder caption, standing in for the title the artist would give this image and the subject it names.",
+  "Placeholder caption standing in for the artist's own title, run out to about the length a card and a lightbox can hold.",
+];
+
+const CAPTIONS_DE = [
+  "Platzhalter, kein echter Bildtitel.",
+  "Platzhalter-Bildtitel, anstelle des echten Titels dieses Bildes.",
+  "Platzhalter-Bildtitel: er steht anstelle des Titels, der zu diesem Bild gehört, und nennt nichts über den Inhalt.",
+  "Platzhalter-Bildtitel, anstelle des echten Titels, ausgeschrieben auf etwa die Länge, die Karte und Lightbox tragen.",
+];
+
+/**
+ * The works whose own title is in ENGLISH; everything else gets German.
+ *
+ * EXPLICIT RATHER THAN DERIVED, exactly as the `SLUGS` map in
+ * seed-curated-galleries.mjs is explicit — "which language is this title in" is
+ * a judgement per file, not something a rule reads off a slug. A Latin binomial
+ * (`03-rhinanthus`, `01-catocala-fulminea`) is neither, and falls to German on
+ * purpose: a real caption around a Latin name would be in the member's own
+ * language.
+ *
+ * Keys are the path under `curated-galleries/img/`, which is what
+ * `provenance.source` stores. German is the default, so a newly curated image
+ * lands German without being listed — flip one entry to move one work.
+ */
+const ENGLISH_TITLED = new Set([
+  "gregor-forster/01-abc-under-the-sea.webp",
+  "janina-hess/02-srf-we-myself-why.webp",
+  "janina-hess/03-nikin-together-for-nature.webp",
+  "joshua-binswanger/01-xylopedia-ct-oak.webp",
+  "joshua-binswanger/03-phenological-shift.webp",
+  "quaint/01-metatarsophalangeal-joint.webp",
+  "quaint/02-bio-oss-collagen.webp",
+  "quaint/03-geo-engineering.webp",
+  "selina-bachmann/01-snowdrop-galanthus.webp",
+  "wong-chi-lui/02-botanicals.webp",
+]);
+
+/**
+ * RETIRED, AND KEPT ANYWAY. Nothing writes these any more (see the header), but
+ * 44 images on dev are still holding one, and `--clear` can only remove a
+ * string it can still recognise. Deleting this array would strand them.
+ *
+ * Was: the short line for the lightbox band, capped at 240.
  */
 const SHORT = [
   "Placeholder summary standing in for the artist's own sentence about this image.",
@@ -97,8 +179,26 @@ const LONG = [
   "Placeholder description, standing in for the artist's own account of this image.\n\nA real one would open with the subject and the commission, and say plainly what is in the picture. It would go on to the making: reference material, technique, the decisions the brief's constraints forced and the ones that were free. It would say where the image ran, and at what size, because that changes what can be in it.\n\nAnd it would end with the reader — who this was drawn for, and what they needed to see in it.",
 ];
 
+const KNOWN_CAPTIONS = new Set([...CAPTIONS_EN, ...CAPTIONS_DE]);
 const KNOWN_SHORT = new Set(SHORT);
 const KNOWN_LONG = new Set(LONG);
+
+/**
+ * Which language this work's own title is in.
+ *
+ * Costs one read per image (47 on dev), in dry runs too, because the gallery
+ * array is no help: `seed-curated-galleries.mjs` gives every item a
+ * `randomUUID()` and a storage url, and keeps the curation filename only on the
+ * record, under `provenance.source`. No provenance — a member's own later
+ * upload, three of them on dev — falls to German with everything else.
+ */
+async function langFor(imageId) {
+  if (!imageId) return "de";
+  const snap = await db.doc(`images/${imageId}`).get();
+  const source = snap.exists ? snap.data()?.provenance?.source : undefined;
+  if (!source) return "de";
+  return ENGLISH_TITLED.has(source.replace(/^curated-galleries\/img\//, "")) ? "en" : "de";
+}
 
 // Cheap, stable, and good enough to spread 48 ids over 4 buckets. Two
 // independent offsets so an image does not always get the matching pair — a
@@ -113,18 +213,22 @@ function hash(text) {
   return h >>> 0;
 }
 
-function textFor(imageId, index) {
+function textFor(imageId, index, lang) {
   const h = hash(imageId || String(index));
+  const captions = lang === "en" ? CAPTIONS_EN : CAPTIONS_DE;
   return {
-    descriptionShort: SHORT[h % SHORT.length],
+    // Indexes with `h` itself, which is unsigned — see the note below for why
+    // that matters, and never change this to a signed shift.
+    caption: captions[h % captions.length],
     // >>> AND NOT >>. `hash` returns an unsigned 32-bit value, so any hash with
     // the high bit set is a NEGATIVE int32 under the signed shift — and a
     // negative modulo stays negative in JS, so `LONG[-3]` was `undefined`.
     // Every such image silently got NO long text: the caller reads the falsy
     // value as "delete this key", the item then matches what is already stored,
     // and the run reports nothing to change. That was 21 of 50 images on dev,
-    // and it looked like the tool had converged. `descriptionShort` above was
-    // never affected because it indexes with `h` itself, which is unsigned.
+    // and it looked like the tool had converged. The field that used to sit
+    // above this one was never affected, because it indexed with `h` itself —
+    // which is why `caption` does the same.
     description: LONG[(h >>> 8) % LONG.length],
   };
 }
@@ -132,11 +236,21 @@ function textFor(imageId, index) {
 /**
  * Whether this item is ours to write on: empty, or already holding a string
  * this script put there. Anything else is a member's own writing.
+ *
+ * ALL THREE fields have to pass, including the retired one. A member who typed
+ * their own caption and left the description empty still owns the item, and a
+ * member's title is the last thing that should be overwritten by a stand-in
+ * for it.
  */
 function isOurs(item) {
+  const caption = (item.caption ?? "").trim();
   const short = (item.descriptionShort ?? "").trim();
   const long = (item.description ?? "").trim();
-  return (!short || KNOWN_SHORT.has(short)) && (!long || KNOWN_LONG.has(long));
+  return (
+    (!caption || KNOWN_CAPTIONS.has(caption)) &&
+    (!short || KNOWN_SHORT.has(short)) &&
+    (!long || KNOWN_LONG.has(long))
+  );
 }
 
 // --- Seed ------------------------------------------------------------------
@@ -155,24 +269,42 @@ try {
     if (!Array.isArray(gallery) || gallery.length === 0) continue;
 
     let touched = 0;
-    const next = gallery.map((item, i) => {
+    const next = [];
+    // A for loop, not `.map()`: the caption's language comes from a Firestore
+    // read (`langFor`), and an async callback in `.map()` would have handed the
+    // gallery array a row of promises.
+    for (let i = 0; i < gallery.length; i++) {
+      const item = gallery[i];
       if (!isOurs(item)) {
         skippedImages++;
-        return item;
+        next.push(item);
+        continue;
       }
       const copy = { ...item };
-      const wanted = doClear ? { descriptionShort: "", description: "" } : textFor(item.imageId, i);
+      const wanted = doClear
+        ? { caption: "", description: "" }
+        : textFor(item.imageId, i, await langFor(item.imageId));
+      const key = (o) => `${o.caption ?? ""}|${o.description ?? ""}|${o.descriptionShort ?? ""}`;
+      const before = key(copy);
+      // CAPTION IS THE EXCEPTION to the rule below, in the array only: the
+      // gallery seeder writes `caption: ""` on every item it creates, and
+      // GalleryItem types it as a required string. Clearing to "" — not
+      // deleting the key — is what puts an item back exactly as
+      // seed-curated-galleries.mjs left it. The RECORD never had a caption at
+      // all, so there the key is deleted; see the write below.
+      copy.caption = wanted.caption ?? "";
       // A key set to "" must be REMOVED, not stored empty: both rulesets allow
       // the key to be absent and every consumer tests for presence, so an empty
       // string would be a third state nothing reads.
-      const before = `${copy.descriptionShort ?? ""}|${copy.description ?? ""}`;
-      if (wanted.descriptionShort) copy.descriptionShort = wanted.descriptionShort;
-      else delete copy.descriptionShort;
       if (wanted.description) copy.description = wanted.description;
       else delete copy.description;
-      if (`${copy.descriptionShort ?? ""}|${copy.description ?? ""}` !== before) touched++;
-      return copy;
-    });
+      // The retired field, removed in BOTH modes and never written. It is in
+      // `before` so that taking it off an image counts as a change on its own —
+      // that is what makes FILL clean up after the old build.
+      delete copy.descriptionShort;
+      if (key(copy) !== before) touched++;
+      next.push(copy);
+    }
 
     if (touched === 0) {
       console.log(`skip     ${name} — nothing to change`);
@@ -188,8 +320,13 @@ try {
         if (!item.imageId) continue;
         await db.doc(`images/${item.imageId}`).set(
           {
-            descriptionShort: item.descriptionShort ?? FieldValue.delete(),
+            // DELETED when empty, unlike the array's "" — the gallery seeder
+            // never put a caption on the record, so absent is what "before"
+            // looks like here.
+            caption: item.caption || FieldValue.delete(),
             description: item.description ?? FieldValue.delete(),
+            // Retired: taken off the record too, in both modes.
+            descriptionShort: FieldValue.delete(),
             updatedAt: FieldValue.serverTimestamp(),
           },
           { merge: true },

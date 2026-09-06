@@ -10,13 +10,17 @@ import { useTranslations, type Lang } from "../../i18n/utils.ts";
 // to show pictures, it is a wall of work, so a member with six images stands in
 // it six times and the wall is as long as the directory's gallery.
 //
-// TWO KINDS OF WORD, both printed at rest, on every breakpoint (2026-09-03,
-// Josh: "add the name to the images in grid view in desktop" — always
-// visible, matching the phone). THE CAPTION names the thing in the picture;
-// THE AUTHOR credits it. Both are IN FLOW: the tile reserves room for its
-// label the same way on desktop and mobile now, and CommunityGrid's
-// --cgrid-row for a work cell reserves that room to match (see --cwork-chrome
-// below).
+// ONE KIND OF WORD under the frame: THE AUTHOR, credited, printed at rest on
+// every breakpoint (2026-09-03, Josh: "add the name to the images in grid view
+// in desktop" — always visible, matching the phone). It is IN FLOW, so the tile
+// reserves room for its label the same way on desktop and mobile, and
+// CommunityGrid's --cgrid-row for a work cell reserves that room to match (see
+// --cwork-chrome below).
+//
+// The picture's own CAPTION used to be printed here too, as a title above the
+// credit, and is not any more (2026-09-06, Josh: "grid without title") — it
+// reads at full length in the lightbox and serves as the image's alt text. See
+// the note where the title used to be resolved, below.
 //
 // This replaces an earlier hover-reveal (2026-09-01, Josh: "we need the
 // project names and on hover the author names") that kept the author out of
@@ -63,14 +67,21 @@ const frameAspect = work.width / work.height;
 
 const profileHref = memberHref(lang, member.slug);
 
-// THE TITLE is the image's own caption, and now the only thing it can be — the
-// tagged project's title used to take precedence, and went with the projects
-// feature (2026-09-01). Optional, and today NOTHING SEEDED HAS ONE: the curated
-// galleries were imported with empty captions on purpose. So the line is
-// OMITTED rather than filled with "Untitled" 48 times, which is why the dev
-// wall still reads as bare pictures with a name on hover; it fills itself in as
-// members caption their gallery images in the profile editor.
-const title = work.caption?.trim() || "";
+// THE TITLE IS NOT PRINTED ON THIS TILE (2026-09-06, Josh: "grid without
+// title"). It used to be the image's own caption, rendered when the caption
+// held anything — and for as long as every seeded caption was empty, that line
+// never appeared, so the wall was pictures with a name under them and the
+// reservation for the title was invisible cost.
+//
+// Seeding captions onto dev is what showed what the line actually does at this
+// size: a caption runs to a couple of lines at a 200px measure, printed bold
+// and black, so every tile became a paragraph with a thumbnail attached and the
+// wall read as text. The artwork is the thing the wall is for.
+//
+// NOTHING IS LOST, because the caption was never only here: it is the picture's
+// `alt` (below), and the lightbox band prints it above the description on open.
+// Restoring the line means putting the span back in the label block AND raising
+// --cwork-chrome in both places it is stated — see the note on that variable.
 
 // Never "": the member's caption when they wrote one, a translated fallback
 // otherwise. Same rule as the member card — and on this tile it matters more
@@ -98,6 +109,24 @@ const pswpMeta = member.displayName;
 ---
 
 <article class="cwork" style={`--frame-ar:${frameAspect}`}>
+  {
+    /* ── THE THING THAT GROWS ──────────────────────────────────────────
+      (2026-09-04, Josh: "treat the name as part of the image in grid so they
+      both scale in the animation together".) The hover scale used to sit on
+      the img alone, which made the picture and its label two objects: the
+      artwork pushed forward and the name it belongs to stayed exactly where it
+      was, at exactly the size it was. One tile, two behaviours.
+
+      A wrapper rather than .cwork itself, and this is the whole reason it
+      exists: GSAP owns the transform on .cwork and on the cell above it (the
+      scale-on-approach and the parallax) and would overwrite a CSS transform
+      there silently, and only on desktop where the motion layer is built. So
+      the wall keeps .cwork to animate and this box is the tile's own. It is a
+      plain block with no width of its own — .cwork still carries the width
+      formula and the slot still measures the frame, so nothing about the
+      drawing moved. */
+  }
+  <div class="cwork__grow">
   <div
     class="cwork__frame"
     style={`aspect-ratio:${work.width} / ${work.height};${work.color ? `background:${work.color}` : ""}`}
@@ -112,7 +141,20 @@ const pswpMeta = member.displayName;
         IT WRAPS THE IMAGE rather than sitting over it as an inset overlay,
         which is not cosmetic: PhotoSwipe finds the thumbnail to zoom out of by
         looking for an `img` INSIDE the element it was given, and an overlay
-        sibling would leave it with nothing to animate from. */
+        sibling would leave it with nothing to animate from.
+
+        ── data-pswp-link ──
+        WHERE THIS IMAGE APPEARED, IN THE LIGHTBOX (2026-09-04, from Josh's
+        sketch: "DESC (WITH LINKS)"). The field has existed since the projects
+        feature was withdrawn and its only surface was the member's own page,
+        so a picture opened from the directory lost the paper it illustrates.
+        Already absolute and already filtered for linkability by workLink() —
+        see works() in memberView.ts.
+
+        The note is up here rather than beside the attribute because a braced
+        JSX comment placed INSIDE an attribute list is parsed as TSX by astro
+        check and reported as an unterminated string literal. That is what the
+        pre-existing error at members/[slug].astro's own trigger is. */
     }
     <a
       class="cwork__link"
@@ -122,7 +164,8 @@ const pswpMeta = member.displayName;
       data-pswp-width={work.width}
       data-pswp-height={work.height}
       data-pswp-caption={work.caption?.trim() || undefined}
-      data-pswp-description={work.descriptionShort || undefined}
+      data-pswp-description={work.description || undefined}
+      data-pswp-link={work.link || undefined}
       data-pswp-meta={pswpMeta || undefined}
       data-pswp-profile={profileHref}
     >
@@ -147,18 +190,16 @@ const pswpMeta = member.displayName;
   </div>
 
   {
-    /* THE LABEL. Not a heading: with the author hidden at rest, a tile whose
-      project is untitled would contribute an EMPTY h2 to the page outline, and
-      a heading that says nothing is worse than no heading. The picture's alt
-      text is what names a tile to a screen reader; this block is the label
-      beside it. */
+    /* THE LABEL. Not a heading: this block holds a credit, not a name for the
+      picture, and a heading that says whose it is rather than what it is would
+      put the wrong thing in the page outline. The picture's alt text — its own
+      caption — is what names a tile to a screen reader; this block is the
+      label beside it. */
   }
   <div class="cwork__caption">
-    {title && <span class="cwork__title">{title}</span>}
     {
-      /* THE AUTHOR, out of flow — see the header. It is positioned under
-        whatever the caption holds (the title, or the frame itself where there
-        is no title), reserves nothing, and cannot move the row it is in.
+      /* THE AUTHOR, in flow — see the header — and now the only line in here,
+        so it sits directly under the frame.
         The anchor is written tight against its text on purpose: Astro keeps
         the indentation around an expression as a real space, and a leading one
         shifts the name a few pixels off the artwork's left edge — the one
@@ -168,6 +209,7 @@ const pswpMeta = member.displayName;
       ><a class="cwork__author-link" href={profileHref}>{member.displayName}</a></span
     >
   </div>
+  </div>
 </article>
 
 <style>
@@ -176,14 +218,16 @@ const pswpMeta = member.displayName;
      places, what GSAP scales, and what carries the width formula below. */
   .cwork {
     display: block;
-    /* Everything under the frame that takes up room: the caption's top gap,
-       TWO lines' worth of title (rounded up, because a long title wraps and
-       the frame cap must not then let the tile outgrow its slot), the
-       author's own top gap, and one line of author. Both the title and the
-       author are IN FLOW now, so both count — over-reserving costs a little
-       air, under-reserving costs the drawing. The wall states the matching
-       figure on the cell (see CommunityGrid's wall block). */
-    --cwork-chrome: 3.3rem;
+    /* Everything under the frame that takes up room. Since the title stopped
+       being printed (2026-09-06) that is only the caption box's top gap
+       (0.15rem) and one line of author (0.75rem × 1.3), rounded up: 1.2rem,
+       down from the 3.3rem that also carried two lines' worth of title and the
+       gap between them. Over-reserving costs a little air, under-reserving
+       costs the drawing, so the rounding goes up.
+       STATED TWICE — the wall repeats the figure on the cell (see
+       CommunityGrid's wall block) and the two must move together, or the rows
+       keep the old height and the tiles rattle inside them. */
+    --cwork-chrome: 1.2rem;
     /* How tall the frame may be, out of the slot the grid dealt. Absent a slot
        (nothing renders this outside the wall today) the fallback is no cap. */
     --frame-cap: calc(var(--slot-rows, 999) * var(--cgrid-row, 2rem) - var(--cwork-chrome));
@@ -201,11 +245,23 @@ const pswpMeta = member.displayName;
 
   .cwork__frame {
     position: relative;
-    overflow: hidden;
+    /* NO overflow DECLARATION, deliberately, and it is not a leftover.
+       It was `hidden`, with a comment arguing the clip WAS the hover effect —
+       the picture filling a rectangle that never moves. Josh removed that
+       reading on 2026-09-04 ("make the hover animation not be restricted to
+       the frame"), and the growth then moved off the img and onto .cwork__grow
+       the same day, which means the img now fills its own scaled frame exactly
+       and has nothing left to overflow. A clip here would therefore do nothing
+       today AND silently re-cage the effect for whoever next scales the image
+       instead of the box. What the frame still owns is the SPACE: the aspect
+       box is here and the wall measured its row from it. */
     /* Square corners and no border, like every frame on this page: the artwork
        is its own edge. */
     border-radius: 0;
-    /* Fallback ground under the dominant colour painted inline. */
+    /* Fallback ground under the dominant colour painted inline. It scales with
+       the frame now, so a transparent PNG carries its ground out over its
+       neighbours — which is right: the tile grows as one object, ground
+       included, rather than as a picture sliding out of a fixed swatch. */
     background: var(--color-bg);
   }
 
@@ -227,64 +283,80 @@ const pswpMeta = member.displayName;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    /* ── THE HOVER ─────────────────────────────────────────
-       The artwork pushes slightly toward the reader inside a frame that does
-       not move: the frame is overflow:hidden and keeps the wall's flat row
-       edges, so the growth is felt as the image filling its own rectangle
-       rather than as a tile changing size. Nothing about the row's geometry
-       can shift. It also carries more weight than it did — with no caption to
-       point at, this is the only thing that answers a pointer.
-       ON THE IMAGE, NEVER ON .cwork OR THE CELL — GSAP owns the transform on
-       both of those (the scale-on-approach and the parallax) and would
-       overwrite anything written here, silently, and only on desktop where the
-       motion layer is built. This is the one element in the tile whose
-       transform belongs to CSS.
-       The curve and the 500ms are the card arrows' family (see
-       CommunityImageCard's chevrons); slower than a control because a picture
-       settling should be felt, not noticed. The transition sits on the RESTING
-       state, so the same timing plays on the way back out. */
+    /* NO TRANSFORM AND NO TRANSITION. The hover growth lived here from
+       2026-09-04 morning until the afternoon of the same day; it is on
+       .cwork__grow now, so that the label grows with the picture instead of
+       watching it grow. Anything written here again would scale the artwork
+       INSIDE a frame that is already scaling, which compounds. */
+  }
+
+  /* ── THE HOVER ─────────────────────────────────────────
+     The tile pushes toward the reader: the artwork and the name under it, one
+     object, growing together. Two things make that safe to do in CSS here —
+     the wrapper's transform is nobody else's (see the markup for why it is not
+     .cwork), and a transform does not touch layout, so the frame's box, the
+     caption's box and the row the wall drew them into are all exactly where
+     they were at every point in the transition.
+
+     1.10, up from the 1.045 it started the day at: the smaller figure was
+     chosen against a frame that CROPPED the growth, where anything larger only
+     threw more of the picture away. Nothing crops it now and it has to be
+     seen from across the wall, not just under the pointer.
+
+     IT GROWS UP AND SIDEWAYS, NEVER DOWN. The origin is the bottom edge —
+     which is the bottom of the AUTHOR LINE now, not of the picture. Growing
+     down would push the name over the top of the row beneath it, and the one
+     alignment the wall cannot lose is the line every tile's label sits on. So
+     the label holds its baseline, the picture above it does the travelling,
+     and the three free edges pass over the neighbours, which is what
+     unclipping the frame was for.
+
+     The curve and the 500ms are the card arrows' family (see
+     CommunityImageCard's chevrons); slower than a control because a picture
+     settling should be felt, not noticed. The transition sits on the RESTING
+     state, so the same timing plays on the way back out. */
+  .cwork__grow {
+    display: block;
+    transform-origin: 50% 100%;
     transition: transform 500ms cubic-bezier(0.22, 0.61, 0.36, 1);
   }
 
-  /* The picture pushes toward the reader on approach — the tile's only
-     hover/focus response now that the author line is always on. */
-  .cwork:hover .cwork__img,
-  .cwork:focus-within .cwork__img {
-    transform: scale(1.045);
+  .cwork:hover .cwork__grow,
+  .cwork:focus-within .cwork__grow {
+    transform: scale(1.1);
+  }
+
+  /* IN FRONT, for as long as the pointer is on it. Without this the wall's
+     source order decides which artwork wins where two spill into each other,
+     so a tile could grow UNDER its neighbour — the one arrangement that reads
+     as a bug rather than as an effect.
+     On .cwork rather than the cell: the cells are position:relative with an
+     auto z-index, so they create no stacking context of their own and the
+     tiles order against each other directly inside the grid. It has to be a
+     hover/focus rule and not a blanket value, because a permanently raised
+     tile would sit over its neighbours' captions at rest.
+     GSAP owns the transform on this element (see the note on .cwork__img), but
+     not its z-index, so there is nothing here to be overwritten. */
+  .cwork:hover,
+  .cwork:focus-within {
+    z-index: 5;
   }
 
   /* ── The label ────────────────────────────────────────── */
   .cwork__caption {
-    /* The block holds the title and the author, both in flow, so it is a
-       plain box with a top gap and nothing to lay out.
+    /* The block holds the author line and nothing else now, so it is a plain
+       box with a top gap and nothing to lay out.
        TIGHT TO THE PICTURE (2026-09-02, Josh: "grid gap of name to image
        less"). It was 0.4rem, which is the gap between two paragraphs — and
        these words are not a paragraph after the artwork, they are its label,
        so the distance has to read as attachment rather than as separation.
        0.15rem still keeps the type off the frame's edge, which is the only
-       thing the gap was ever needed for.
-       --cwork-chrome above deliberately does NOT come down by the same
-       0.25rem: it is the height the WALL reserves for this block (the figure
-       is stated twice — see CommunityGrid's --cgrid-row), and over-reserving
-       costs a little air while under-reserving costs the drawing. */
+       thing the gap was ever needed for. */
     padding-top: 0.15rem;
     font-family: "Archivo", sans-serif;
   }
 
-  /* THE CAPTION, printed. Black, bold and a touch tighter — at a 200px measure
-     a label has to commit or it reads as a caption's afterthought. Wraps
-     freely: a long title over two lines is still the tile's first words, and
-     --cwork-chrome above is sized for that second line. */
-  .cwork__title {
-    display: block;
-    font-size: 0.9rem;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    line-height: 1.15;
-    color: var(--color-dark);
-  }
-
-  /* THE AUTHOR, printed — in flow like the caption above it, on every
+  /* THE AUTHOR, printed — in flow, on every
      breakpoint (2026-09-03, Josh: "add the name to the images in grid view in
      desktop"). Used to be a desktop-only hover reveal, out of flow so
      appearing could never resize a tile; that traded the name's visibility
@@ -303,17 +375,11 @@ const pswpMeta = member.displayName;
     color: var(--color-muted);
     text-overflow: ellipsis;
     white-space: nowrap;
-    /* NOTHING OF ITS OWN where there is no title: the caption box's own top
-       gap is already the whole distance to the frame, and where the author is
-       the only line there is, a second step here would pay twice for one gap
-       (2026-09-02, "grid gap of name to image less"). */
+    /* NOTHING OF ITS OWN: the caption box's own top gap is already the whole
+       distance to the frame, and now that the author is the only line there
+       is, a second step here would pay twice for one gap (2026-09-02, "grid
+       gap of name to image less"). */
     padding-top: 0;
-  }
-
-  /* Under a title, though, the two lines do need parting — the caption's gap
-     is spent above the title, not between them. */
-  .cwork__title + .cwork__author {
-    padding-top: 0.1rem;
   }
 
   /* Undecorated at rest, underlined when it is the thing being pointed at or
@@ -333,7 +399,7 @@ const pswpMeta = member.displayName;
   /* The site drops motion rather than substituting a gentler version of it:
      the hover still says "this is live", it simply arrives. */
   @media (prefers-reduced-motion: reduce) {
-    .cwork__img {
+    .cwork__grow {
       transition: none;
     }
   }

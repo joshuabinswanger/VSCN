@@ -11,7 +11,30 @@ metadata:
   modified: 2026-09-03T08:56:57.855Z
 ---
 
-**Written 2026-09-03.** Dev has accumulated **three independent things** that all
+**RESOLVED 2026-09-04 — the release ran; this note is now the record of how, not a plan.**
+Josh's scoping decision dissolved two of the three gates before they could bite: he chose to port
+**the data structure only, with no dev content of any kind** ("no image no nothing... so then users
+can log in and upload it themselves"). That means:
+
+- **Gate #1 (the restructuring) SHIPPED** — see [[firebase-entity-restructuring]] for what actually
+  happened, including the two places its runbook was wrong.
+- **Gate #2 (the review email) never applied.** It existed so members could green-light their
+  *seeded* galleries appearing publicly. Nothing was seeded, so there was nothing to approve —
+  prod galleries are at zero by design and fill up only as members upload their own.
+- **Gate #3 (placeholder descriptions) never applied.** Dev's text could only have reached prod by
+  promoting dev data, which did not happen. The `seed-image-descriptions.mjs --clear` step was
+  therefore not needed either.
+
+**The lesson worth keeping:** the trap this note was written about — "#1's step 3 ships #2 and #3
+with it" — was real about CODE but not about CONTENT. The merge did ship the image-led directory
+and the description split as code; it shipped no galleries or descriptions, because those live in
+Firestore per project and no script carried them across. **Separating "what the deploy ships" from
+"what the data holds" is what made a three-gate release into a one-gate one.** Ask that question
+first next time.
+
+---
+
+**Written 2026-09-03 (superseded above, kept for the reasoning).** Dev has accumulated **three independent things** that all
 reach prod through one deploy, each with its own gate, and the gates were
 recorded in three different notes — which is how a step gets missed:
 
