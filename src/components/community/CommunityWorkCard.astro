@@ -10,13 +10,17 @@ import { useTranslations, type Lang } from "../../i18n/utils.ts";
 // to show pictures, it is a wall of work, so a member with six images stands in
 // it six times and the wall is as long as the directory's gallery.
 //
-// TWO KINDS OF WORD, both printed at rest, on every breakpoint (2026-09-03,
-// Josh: "add the name to the images in grid view in desktop" — always
-// visible, matching the phone). THE CAPTION names the thing in the picture;
-// THE AUTHOR credits it. Both are IN FLOW: the tile reserves room for its
-// label the same way on desktop and mobile now, and CommunityGrid's
-// --cgrid-row for a work cell reserves that room to match (see --cwork-chrome
-// below).
+// ONE KIND OF WORD under the frame: THE AUTHOR, credited, printed at rest on
+// every breakpoint (2026-09-03, Josh: "add the name to the images in grid view
+// in desktop" — always visible, matching the phone). It is IN FLOW, so the tile
+// reserves room for its label the same way on desktop and mobile, and
+// CommunityGrid's --cgrid-row for a work cell reserves that room to match (see
+// --cwork-chrome below).
+//
+// The picture's own CAPTION used to be printed here too, as a title above the
+// credit, and is not any more (2026-09-06, Josh: "grid without title") — it
+// reads at full length in the lightbox and serves as the image's alt text. See
+// the note where the title used to be resolved, below.
 //
 // This replaces an earlier hover-reveal (2026-09-01, Josh: "we need the
 // project names and on hover the author names") that kept the author out of
@@ -63,14 +67,21 @@ const frameAspect = work.width / work.height;
 
 const profileHref = memberHref(lang, member.slug);
 
-// THE TITLE is the image's own caption, and now the only thing it can be — the
-// tagged project's title used to take precedence, and went with the projects
-// feature (2026-09-01). Optional, and today NOTHING SEEDED HAS ONE: the curated
-// galleries were imported with empty captions on purpose. So the line is
-// OMITTED rather than filled with "Untitled" 48 times, which is why the dev
-// wall still reads as bare pictures with a name on hover; it fills itself in as
-// members caption their gallery images in the profile editor.
-const title = work.caption?.trim() || "";
+// THE TITLE IS NOT PRINTED ON THIS TILE (2026-09-06, Josh: "grid without
+// title"). It used to be the image's own caption, rendered when the caption
+// held anything — and for as long as every seeded caption was empty, that line
+// never appeared, so the wall was pictures with a name under them and the
+// reservation for the title was invisible cost.
+//
+// Seeding captions onto dev is what showed what the line actually does at this
+// size: a caption runs to a couple of lines at a 200px measure, printed bold
+// and black, so every tile became a paragraph with a thumbnail attached and the
+// wall read as text. The artwork is the thing the wall is for.
+//
+// NOTHING IS LOST, because the caption was never only here: it is the picture's
+// `alt` (below), and the lightbox band prints it above the description on open.
+// Restoring the line means putting the span back in the label block AND raising
+// --cwork-chrome in both places it is stated — see the note on that variable.
 
 // Never "": the member's caption when they wrote one, a translated fallback
 // otherwise. Same rule as the member card — and on this tile it matters more
@@ -179,18 +190,16 @@ const pswpMeta = member.displayName;
   </div>
 
   {
-    /* THE LABEL. Not a heading: with the author hidden at rest, a tile whose
-      project is untitled would contribute an EMPTY h2 to the page outline, and
-      a heading that says nothing is worse than no heading. The picture's alt
-      text is what names a tile to a screen reader; this block is the label
-      beside it. */
+    /* THE LABEL. Not a heading: this block holds a credit, not a name for the
+      picture, and a heading that says whose it is rather than what it is would
+      put the wrong thing in the page outline. The picture's alt text — its own
+      caption — is what names a tile to a screen reader; this block is the
+      label beside it. */
   }
   <div class="cwork__caption">
-    {title && <span class="cwork__title">{title}</span>}
     {
-      /* THE AUTHOR, out of flow — see the header. It is positioned under
-        whatever the caption holds (the title, or the frame itself where there
-        is no title), reserves nothing, and cannot move the row it is in.
+      /* THE AUTHOR, in flow — see the header — and now the only line in here,
+        so it sits directly under the frame.
         The anchor is written tight against its text on purpose: Astro keeps
         the indentation around an expression as a real space, and a leading one
         shifts the name a few pixels off the artwork's left edge — the one
@@ -209,14 +218,16 @@ const pswpMeta = member.displayName;
      places, what GSAP scales, and what carries the width formula below. */
   .cwork {
     display: block;
-    /* Everything under the frame that takes up room: the caption's top gap,
-       TWO lines' worth of title (rounded up, because a long title wraps and
-       the frame cap must not then let the tile outgrow its slot), the
-       author's own top gap, and one line of author. Both the title and the
-       author are IN FLOW now, so both count — over-reserving costs a little
-       air, under-reserving costs the drawing. The wall states the matching
-       figure on the cell (see CommunityGrid's wall block). */
-    --cwork-chrome: 3.3rem;
+    /* Everything under the frame that takes up room. Since the title stopped
+       being printed (2026-09-06) that is only the caption box's top gap
+       (0.15rem) and one line of author (0.75rem × 1.3), rounded up: 1.2rem,
+       down from the 3.3rem that also carried two lines' worth of title and the
+       gap between them. Over-reserving costs a little air, under-reserving
+       costs the drawing, so the rounding goes up.
+       STATED TWICE — the wall repeats the figure on the cell (see
+       CommunityGrid's wall block) and the two must move together, or the rows
+       keep the old height and the tiles rattle inside them. */
+    --cwork-chrome: 1.2rem;
     /* How tall the frame may be, out of the slot the grid dealt. Absent a slot
        (nothing renders this outside the wall today) the fallback is no cap. */
     --frame-cap: calc(var(--slot-rows, 999) * var(--cgrid-row, 2rem) - var(--cwork-chrome));
@@ -333,36 +344,19 @@ const pswpMeta = member.displayName;
 
   /* ── The label ────────────────────────────────────────── */
   .cwork__caption {
-    /* The block holds the title and the author, both in flow, so it is a
-       plain box with a top gap and nothing to lay out.
+    /* The block holds the author line and nothing else now, so it is a plain
+       box with a top gap and nothing to lay out.
        TIGHT TO THE PICTURE (2026-09-02, Josh: "grid gap of name to image
        less"). It was 0.4rem, which is the gap between two paragraphs — and
        these words are not a paragraph after the artwork, they are its label,
        so the distance has to read as attachment rather than as separation.
        0.15rem still keeps the type off the frame's edge, which is the only
-       thing the gap was ever needed for.
-       --cwork-chrome above deliberately does NOT come down by the same
-       0.25rem: it is the height the WALL reserves for this block (the figure
-       is stated twice — see CommunityGrid's --cgrid-row), and over-reserving
-       costs a little air while under-reserving costs the drawing. */
+       thing the gap was ever needed for. */
     padding-top: 0.15rem;
     font-family: "Archivo", sans-serif;
   }
 
-  /* THE CAPTION, printed. Black, bold and a touch tighter — at a 200px measure
-     a label has to commit or it reads as a caption's afterthought. Wraps
-     freely: a long title over two lines is still the tile's first words, and
-     --cwork-chrome above is sized for that second line. */
-  .cwork__title {
-    display: block;
-    font-size: 0.9rem;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    line-height: 1.15;
-    color: var(--color-dark);
-  }
-
-  /* THE AUTHOR, printed — in flow like the caption above it, on every
+  /* THE AUTHOR, printed — in flow, on every
      breakpoint (2026-09-03, Josh: "add the name to the images in grid view in
      desktop"). Used to be a desktop-only hover reveal, out of flow so
      appearing could never resize a tile; that traded the name's visibility
@@ -381,17 +375,11 @@ const pswpMeta = member.displayName;
     color: var(--color-muted);
     text-overflow: ellipsis;
     white-space: nowrap;
-    /* NOTHING OF ITS OWN where there is no title: the caption box's own top
-       gap is already the whole distance to the frame, and where the author is
-       the only line there is, a second step here would pay twice for one gap
-       (2026-09-02, "grid gap of name to image less"). */
+    /* NOTHING OF ITS OWN: the caption box's own top gap is already the whole
+       distance to the frame, and now that the author is the only line there
+       is, a second step here would pay twice for one gap (2026-09-02, "grid
+       gap of name to image less"). */
     padding-top: 0;
-  }
-
-  /* Under a title, though, the two lines do need parting — the caption's gap
-     is spent above the title, not between them. */
-  .cwork__title + .cwork__author {
-    padding-top: 0.1rem;
   }
 
   /* Undecorated at rest, underlined when it is the thing being pointed at or

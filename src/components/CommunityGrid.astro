@@ -1060,14 +1060,19 @@ const indexMembers = [...members].sort((a, b) =>
     }
 
     /* Same cap, the work tile's own chrome. The line above bakes in the member
-       card's 5.4rem of name-and-caption; a work tile carries a project title
-       AND an author line under its frame, both in flow, and declares 3.3rem
-       for the pair (--cwork-chrome in CommunityWorkCard). Stated separately
-       rather than made a variable, because the two cards' anatomies are
-       genuinely different numbers and a shared one would hide that. The extra
-       specificity wins wherever this sits in the file. */
+       card's 5.4rem of name-and-caption; a work tile now carries ONLY an author
+       line under its frame and declares 1.2rem for it (--cwork-chrome in
+       CommunityWorkCard) — it was 3.3rem while the tile also printed the
+       image's caption as a title, which it stopped doing on 2026-09-06.
+       Stated separately rather than made a variable, because the two cards'
+       anatomies are genuinely different numbers and a shared one would hide
+       that. THE PRICE of stating it twice is that this line and --cwork-chrome
+       have to be changed together; the tile reserves its own room from the
+       variable, the row takes its height from here, and a mismatch shows up as
+       tiles rattling inside rows that are the wrong depth rather than as an
+       error. The extra specificity wins wherever this sits in the file. */
     .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
-      --cgrid-row: calc((1.5 * var(--wall-card) + 3.3rem) / var(--slot-rows, 1));
+      --cgrid-row: calc((1.5 * var(--wall-card) + 1.2rem) / var(--slot-rows, 1));
     }
   }
 
