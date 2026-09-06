@@ -82,10 +82,15 @@ const pswpFor = (w: (typeof works)[number]) => ({
   width: String(w.width),
   height: String(w.height),
   caption: w.caption?.trim() || "",
-  // THE SHORT ONE. The long text belongs to the member's own page (see
-  // profileView.ts); the band under the lightbox is one of the "other
-  // places" that gets the sentence.
-  description: w.descriptionShort || "",
+  // THE DESCRIPTION — the only one there is, since 2026-09-04 (see
+  // GalleryItem.description in gallery.ts). What this feeds is the lightbox,
+  // which has room for it: the card itself never prints it.
+  description: w.description || "",
+  // Where the image appeared — already absolute and already filtered for
+  // linkability by workLink(). Per slide, unlike `meta` and the profile
+  // href below: every image in this card is the same member's, but each
+  // one appeared somewhere of its own.
+  link: w.link || "",
   meta: member.displayName,
 });
 
@@ -179,6 +184,7 @@ const positionFor = (i: number) =>
               data-work-height={pswpFor(w).height}
               data-work-caption={pswpFor(w).caption || undefined}
               data-work-description={pswpFor(w).description || undefined}
+              data-work-link={pswpFor(w).link || undefined}
             >
               <img
                 class="ccard__img"
@@ -236,6 +242,7 @@ const positionFor = (i: number) =>
         data-pswp-height={pswpFor(frame).height}
         data-pswp-caption={pswpFor(frame).caption || undefined}
         data-pswp-description={pswpFor(frame).description || undefined}
+        data-pswp-link={pswpFor(frame).link || undefined}
         data-pswp-meta={pswpFor(frame).meta}
         data-pswp-profile={profileHref}
         aria-label={`${t("community.card.openImage")} ${member.displayName}`}></a>

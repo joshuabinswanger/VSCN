@@ -1,7 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import type { UserRecord } from "firebase-admin/auth";
-import { adminAuth, db } from "./admin";
+import { adminAuth, bucket, db } from "./admin";
 import { GRACE_DAYS, STALE_UPLOAD_HOURS } from "./constants";
 import { findEmailMismatches } from "./emails";
 import { cancelDeletion, scheduleDeletion } from "./lifecycle";
@@ -154,12 +154,29 @@ export async function memberGraph(uid: string) {
     db.doc(`deletions/${uid}`).get(),
     db.collection("slugs").where("uid", "==", uid).get(),
   ]);
+  // WHICH OF THESE IS ACTUALLY ON THE PAGE. The console asks a different
+  // question before deleting a picture that is live on a member's profile
+  // than before clearing an orphan, and it cannot tell the two apart from the
+  // record alone — `live` describes the upload finishing, not the profile
+  // pointing at it. Computed here rather than in the browser because the same
+  // two documents are already open, and because a console that got this wrong
+  // would mislabel a moderation act as housekeeping.
+  const referenced = new Set<string>();
+  for (const doc of [user, pub]) {
+    const data = doc.data() ?? {};
+    if (typeof data.photoImageId === "string" && data.photoImageId) referenced.add(data.photoImageId);
+    for (const item of Array.isArray(data.gallery) ? data.gallery : []) {
+      const id = (item as { imageId?: unknown } | null)?.imageId;
+      if (typeof id === "string" && id) referenced.add(id);
+    }
+  }
+
   return plain({
     uid,
     auth: authUser ? authSummary(authUser) : null,
     user: user.exists ? user.data() : null,
     publicProfile: pub.exists ? pub.data() : null,
-    images: images.docs.map((d) => ({ imageId: d.id, ...d.data() })),
+    images: images.docs.map((d) => ({ imageId: d.id, referenced: referenced.has(d.id), ...d.data() })),
     onboardingRequest: onboarding.exists ? onboarding.data() : null,
     deletion: deletion.exists ? deletion.data() : null,
     slugs: slugs.docs.map((d) => ({ slug: d.id, current: d.data().current === true })),
@@ -289,12 +306,15 @@ export const adminListQueues = onCall(async (req) => {
 
   return plain({
     pendingDeletions: open.docs.map((d) => d.data()),
+    // `referenced: false` on both lists is not a guess: an upload that never
+    // finished cannot be in a gallery array, and the second list is defined by
+    // the filter directly above it.
     staleUploads: uploading.docs
       .filter((d) => (d.data().createdAt as Timestamp).toMillis() < cutoff)
-      .map((d) => ({ imageId: d.id, ...d.data() })),
+      .map((d) => ({ imageId: d.id, referenced: false, ...d.data() })),
     unreferencedLive: live.docs
       .filter((d) => !referenced.has(d.id) && (d.data().createdAt as Timestamp).toMillis() < cutoff)
-      .map((d) => ({ imageId: d.id, ...d.data() })),
+      .map((d) => ({ imageId: d.id, referenced: false, ...d.data() })),
     emailMismatches,
   });
 });
@@ -344,6 +364,97 @@ export const adminSetMemberEmail = onCall(async (req) => {
   if ((await userRef.get()).exists) await userRef.update({ email });
   await audit(actor, "setMemberEmail", uid, { before: before.email ?? null, after: email });
   return { ok: true };
+});
+
+/**
+ * DELETE ONE IMAGE — housekeeping and moderation through the same door
+ * (2026-09-04, Josh: "moderation and housekeeping").
+ *
+ * The console already showed every image and listed two queues of dead ones,
+ * including the class adminListQueues describes as the orphan no sweeper
+ * takes. You could look at them and do nothing. This is the doing.
+ *
+ * THE FIVE PLACES AN IMAGE LIVES. Deleting the record is the part that looks
+ * like the job and is the smallest part of it: the bytes are in Storage, the
+ * record is in `images`, and the reference is on BOTH profile documents —
+ * inside `gallery` for a gallery image, on the three photo fields for an
+ * avatar. Miss the public one and the member's page keeps rendering a URL
+ * whose file is gone.
+ *
+ * ORDER IS CHOSEN FOR THE FAILURE, not the success. References come off
+ * first, then the bytes, then the record. Both halves can fail; only one
+ * ordering fails safely. This way a crash leaves a `live` record nothing
+ * points at — which is exactly the queue on the other page, already visible,
+ * already deletable by this function. The reverse leaves a profile pointing at
+ * a file that no longer exists: a broken picture on a public page, with the
+ * record that would have named it already gone.
+ *
+ * The avatar's three fields go together or not at all. `photoURL` without
+ * `photoImageId` is a URL nothing can ever clean up, because the sweepers and
+ * this function both find images by id.
+ *
+ * WHAT THIS DOES NOT DO is decide. `unreferencedLive` is a queue rather than a
+ * cron job because declaring a member's image unwanted is not automatic; that
+ * reasoning survives here. The callable does not ask whether the image was
+ * referenced or how old it is — an admin looked at it and pressed a button,
+ * and the audit entry records which of the two cases it was.
+ */
+export const adminDeleteImage = onCall({ secrets: [githubRebuildToken] }, async (req) => {
+  const actor = requireAdmin(req);
+  const imageId = String((req.data as { imageId?: unknown })?.imageId ?? "").trim();
+  if (!imageId) throw new HttpsError("invalid-argument", "imageId is required");
+
+  const ref = db.doc(`images/${imageId}`);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError("not-found", "No image record with that id.");
+  const rec = snap.data() ?? {};
+  const ownerUid = String(rec.ownerUid ?? "");
+  const kind = String(rec.kind ?? "");
+  const storagePath = String(rec.storagePath ?? "");
+
+  // Both profile docs, because they disagree about who may read them and
+  // agree about nothing else. A member with no users doc (a curated seed) or
+  // no public profile simply has one fewer place to clean.
+  const removedFrom: string[] = [];
+  for (const path of ownerUid ? [`users/${ownerUid}`, `publicProfiles/${ownerUid}`] : []) {
+    const docRef = db.doc(path);
+    const doc = await docRef.get();
+    if (!doc.exists) continue;
+    const data = doc.data() ?? {};
+    const update: Record<string, unknown> = {};
+
+    const gallery = Array.isArray(data.gallery) ? data.gallery : [];
+    const kept = gallery.filter((item) => (item as { imageId?: unknown } | null)?.imageId !== imageId);
+    if (kept.length !== gallery.length) update.gallery = kept;
+
+    if (data.photoImageId === imageId) {
+      update.photoImageId = FieldValue.delete();
+      update.photoURL = FieldValue.delete();
+      update.photoColor = FieldValue.delete();
+    }
+
+    if (Object.keys(update).length === 0) continue;
+    update.updatedAt = FieldValue.serverTimestamp();
+    await docRef.update(update);
+    removedFrom.push(path);
+  }
+
+  if (storagePath) await bucket.file(storagePath).delete({ ignoreNotFound: true });
+  await ref.delete();
+
+  await audit(actor, "deleteImage", ownerUid, {
+    imageId,
+    kind,
+    storagePath,
+    removedFrom,
+    // The one bit worth being able to grep the audit log for: whether this was
+    // clearing an orphan or taking a picture off somebody's live page.
+    wasReferenced: removedFrom.length > 0,
+  });
+  // The member page is prerendered; without this the picture stays up until
+  // something else happens to trigger a build.
+  await dispatchRebuild();
+  return { ok: true, ownerUid, removedFrom, wasReferenced: removedFrom.length > 0 };
 });
 
 export const adminSetProfileActive = onCall({ secrets: [githubRebuildToken] }, async (req) => {

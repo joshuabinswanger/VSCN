@@ -351,7 +351,7 @@ export function renderCardPreview(
       const signature = works
         .map(
           (w) =>
-            `${w.url}|${w.width}x${w.height}|${w.caption ?? ""}|${w.descriptionShort ?? ""}`
+            `${w.url}|${w.width}x${w.height}|${w.caption ?? ""}|${w.description ?? ""}`
         )
         .join("~");
       if (frame.dataset.ccpvSignature !== signature) {
@@ -387,10 +387,11 @@ export function renderCardPreview(
             slide.dataset.workWidth = String(w.width);
             slide.dataset.workHeight = String(w.height);
             if (w.caption?.trim()) slide.dataset.workCaption = w.caption.trim();
-            // THE SHORT LINE, matching the card: the slide dataset is what a
-            // real card copies onto its lightbox trigger, and the lightbox
-            // gets the sentence, not the essay (see profileView.ts).
-            if (w.descriptionShort) slide.dataset.workDescription = w.descriptionShort;
+            // The description, matching the card: the slide dataset is what a
+            // real card copies onto its lightbox trigger, and since 2026-09-04
+            // there is one description to copy (see profileView.ts).
+            if (w.description) slide.dataset.workDescription = w.description;
+            if (w.link) slide.dataset.workLink = w.link;
 
             // A single picture is not a carousel: no group semantics, no
             // position label. Calling one image a carousel would be a lie to a

@@ -6,6 +6,7 @@ export { purgeExpiredAccounts, sweepImages, reconcileEmails } from "./maintenanc
 export { onAuthUserDeleted } from "./authTriggers";
 export { onPublicProfileWritten } from "./slugs";
 export {
+  adminDeleteImage,
   adminLookupMember,
   adminListMembers,
   adminListQueues,

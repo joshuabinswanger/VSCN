@@ -70,6 +70,10 @@
   .admin :global(.tag--warn) { border-color: var(--color-dark); }
   .admin :global(.row) { display: flex; justify-content: space-between; gap: 1rem; padding: 0.35rem 0; border-bottom: 1px solid var(--color-border); }
   .admin :global(.row button) { white-space: nowrap; }
+  /* The right-hand end of a queue row is now two controls, not one: the
+     delete and the jump to the owner. Kept on one line and hard against the
+     edge so the rows stay a scannable column of ids on the left. */
+  .admin :global(.row-actions) { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
 
   /* ── The list ──────────────────────────────────────────
      A real table, because these are records with the same fields and the eye
@@ -117,8 +121,8 @@
   import { onAuthStateChanged } from "firebase/auth";
   import { auth } from "../../lib/firebase.ts";
   import {
-    listMembers, listQueues, lookupMember, purgeAccount, restoreAccount, setMemberEmail,
-    setProfileActive,
+    deleteImage, listMembers, listQueues, lookupMember, purgeAccount, restoreAccount,
+    setMemberEmail, setProfileActive,
     type AdminImage, type MemberGraph, type MemberRow, type Queues,
   } from "../../lib/adminApi.ts";
 
@@ -161,6 +165,43 @@
     // Images seen while rendering a member, so an #image/<id> link can be
     // answered from what is already loaded instead of re-fetching the graph.
     const imageCache = new Map<string, AdminImage>();
+
+    /**
+     * THE DELETE CONTROL, built once and used from both places that can reach
+     * an image (2026-09-04, Josh: "moderation and housekeeping").
+     *
+     * The two cases share a callable and must not share a sentence. Clearing
+     * an orphan changes nothing anybody can see; taking a referenced picture
+     * off a profile changes a stranger's page without telling them, and the
+     * only moment that difference can be shown is the moment before the
+     * click. So the confirmation names the owner and says which of the two
+     * this is — read off the record's `referenced` flag, which the server
+     * computes from the profile documents rather than from `status`.
+     *
+     * `after` is passed in because the right next screen differs: an image
+     * opened on its own has no page left to be on once it is gone, while a
+     * queue simply gets shorter.
+     */
+    function deleteImageButton(img: AdminImage, after: () => Promise<void>) {
+      const owner = members.find((m) => m.uid === img.ownerUid);
+      const who = owner?.displayName || img.ownerUid;
+      const b = el("button", { type: "button", class: "btn-ghost" }, "Delete image");
+      b.addEventListener("click", async () => {
+        const question = img.referenced
+          ? `Delete this ${img.kind}? It is on ${who}'s live page and will disappear from it. ` +
+            `The file and the record are destroyed. This cannot be undone.`
+          : `Delete this ${img.kind}? Nothing points at it — ${who}'s page will not change. ` +
+            `The file and the record are destroyed. This cannot be undone.`;
+        if (!window.confirm(question)) return;
+        const res = await busy("Deleting image…", () => deleteImage({ imageId: img.imageId }));
+        if (res === undefined) return;
+        imageCache.delete(img.imageId);
+        // The roster counts images per member and is now wrong by one.
+        await loadList();
+        await after();
+      });
+      return b;
+    }
 
     onAuthStateChanged(auth, async (user) => {
       // The `admin` claim rides on the ID token, and Firebase serves a CACHED
@@ -385,6 +426,7 @@
             ["imageId", img.imageId],
             ["owner", img.ownerUid],
             ["kind", img.kind], ["status", img.status], ["origin", img.origin],
+            ["on the page", img.referenced ? "yes — referenced by the profile" : "no — nothing points at it"],
             ["dimensions", `${img.width} × ${img.height}`],
             ["colour", img.color],
             ["caption", img.caption], ["description", img.description],
@@ -392,6 +434,13 @@
             ["created", fmt(img.createdAt)],
           ]),
           el("p", {}, el("a", { href: fileUrl(img.storagePath), target: "_blank", rel: "noreferrer" }, "Open the file")),
+          el("h3", {}, "Actions"),
+          el("div", { class: "actions" },
+            // Back to the owner afterwards: this view is a record that no
+            // longer exists, and re-rendering it would ask the server for it
+            // again and be told it is gone.
+            deleteImageButton(img, async () => go(`#uid/${encodeURIComponent(img!.ownerUid)}`)),
+          ),
         ),
       );
     }
@@ -508,7 +557,13 @@
         imageCache.set(i.imageId, i);
         return el("div", { class: "row" },
           el("span", {}, imageLink(i.imageId), document.createTextNode(` · ${note}`)),
-          memberLink(i.ownerUid));
+          el("span", { class: "row-actions" },
+            // Straight from the queue, because that is where you are when you
+            // decide a queue should be shorter. Reloading the queues rather
+            // than splicing the row: the counts in the headings are part of
+            // what the page is for.
+            deleteImageButton(i, showQueues),
+            memberLink(i.ownerUid)));
       };
 
       queues.replaceChildren(

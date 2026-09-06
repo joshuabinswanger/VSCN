@@ -295,17 +295,18 @@ const t = useTranslations(lang);
           <div class="gallery-fields">
             <input type="text" class="input" data-gallery-field="caption" />
             {
-              /* THE SHORT LINE, second — between the title and the essay,
-                which is the order of how far each one travels (2026-09-03,
-                Josh: "image descriptions should have a long and short
-                version"). The caption names the picture and goes everywhere;
-                this one sentence goes everywhere the picture is shown among
-                other pictures — the lightbox above all; the long text below
-                stays on the member's own page. Two rows, not one line: 240
-                characters is a sentence that wraps, and a single-line input
-                would hide its own end. */
+              /* TWO TEXTS PER IMAGE, NOT THREE (2026-09-04, Josh: "we only
+                need one description field for the image"). A 240-character
+                short version sat here for a day, between the caption and this
+                one, on the theory that the lightbox wanted a summary and the
+                portfolio page wanted the essay. In the editor it read as being
+                asked to write the same thing twice at two lengths, with no way
+                to tell which surface would show which — so it mostly went
+                unfilled, and the lightbox showed nothing where the member had
+                plainly written something. The caption names the picture and is
+                what screen readers say; this describes it, and now goes
+                wherever there is room for it. */
             }
-            <textarea class="input textarea" rows="2" data-gallery-field="descriptionShort"></textarea>
             <textarea class="input textarea" rows="3" data-gallery-field="description"></textarea>
             {
               /* WHERE THIS IMAGE APPEARED. Same fixed-prefix treatment as
@@ -359,6 +360,36 @@ const t = useTranslations(lang);
   </div>
 
   <div class="form-section" data-section="account">
+    {
+      /* THE WAY INTO /admin, AT THE TOP OF THE TAB (2026-09-04, Josh: "at top
+        or seperate tab"). It arrived on 2026-09-03 (Josh: "i cant see the
+        admin console ... cant it be on the normal profile page?") wedged
+        between the logout and the danger zone, which is where the ACCOUNT
+        things are — but it is not an account thing. It is a door out of this
+        page entirely, and buried among the account's own controls it read as
+        one more of them. A separate tab would be the other answer; a tab
+        holding one link, for one person, is more furniture than the link
+        earns, so it leads the tab instead.
+
+        Not locale-prefixed: /admin is a single page outside src/pages/[...lang]
+        (there is no /de/admin), so a `${prefix}` here would 404 in German.
+
+        `hidden` until the claim is confirmed, and the claim is read the same
+        way the console itself reads it (see AdminConsole): a forced token
+        refresh, because Firebase serves a CACHED ID token for up to an hour
+        and a claim granted by set-admin.mjs after the browser last signed in
+        is not in it. Without that refresh this link would stay invisible to a
+        brand-new admin for an hour, which is the same bug the console's own
+        gate had. A non-admin never sees it — see the `[hidden]` rule in the
+        styles below for why that sentence was false until 2026-09-03. It is a
+        link, not a permission: /admin and every admin callable gate
+        themselves. Which is also why leading the tab costs nothing: for
+        everyone who is not an admin there is nothing here at all. */
+    }
+    <a id="admin-link" class="btn-outline account-quiet" href="/admin" hidden>
+      {t("profile.adminConsole")}
+    </a>
+
     <div class="field">
       <label class="checkbox-label" for="profile-active">
         <input id="profile-active" type="checkbox" />
@@ -390,41 +421,17 @@ const t = useTranslations(lang);
     </div>
 
     {
-      /* SIGNING OUT LEADS THE TAB (2026-09-03, Josh: "log Out should be more
-        prominent"). It was the second of two identical grey ghosts, below a
-        link most members are not allowed to follow — so the one action
-        everybody comes here for looked like the afterthought. */
+      /* ── THE TWO DOORS ────────────────────────────────────────────────
+        Change email address and Delete account, as a pair. They are the same
+        kind of thing — a quiet link that opens a form asking you to prove who
+        you are before an irreversible change to your account — and since
+        2026-09-04 they are drawn the same way, so they have to be SPACED the
+        same way too. Left as two independent blocks they sat 2rem apart, far
+        enough that the second read as a lone control at the bottom of the tab
+        rather than as the twin of the one above it. The group carries the 2rem
+        now; inside it the gap is a line. */
     }
-    <button id="btn-logout" type="button" class="btn-logout-strong">
-      {t("profile.logout")}
-    </button>
-
-    {
-      /* THE WAY INTO /admin (2026-09-03, Josh: "i cant see the admin console
-        ... cant it be on the normal profile page?"). Nothing on the site
-        linked to it, so reaching the console meant knowing to type the URL.
-        It lives on the Account tab because that is where the things about the
-        ACCOUNT rather than the profile already are — the logout above it,
-        the danger zone below.
-
-        Not locale-prefixed: /admin is a single page outside src/pages/[...lang]
-        (there is no /de/admin), so a `${prefix}` here would 404 in German.
-
-        `hidden` until the claim is confirmed, and the claim is read the same
-        way the console itself reads it (see AdminConsole): a forced token
-        refresh, because Firebase serves a CACHED ID token for up to an hour
-        and a claim granted by set-admin.mjs after the browser last signed in
-        is not in it. Without that refresh this link would stay invisible to a
-        brand-new admin for an hour, which is the same bug the console's own
-        gate had. A non-admin never sees it — see the `[hidden]` rule in the
-        styles below for why that sentence was false until 2026-09-03. It is a
-        link, not a permission: /admin and every admin callable gate
-        themselves. */
-    }
-    <a id="admin-link" class="btn-outline account-quiet" href="/admin" hidden>
-      {t("profile.adminConsole")}
-    </a>
-
+    <div class="account-doors">
     {
       /* Auth owns the change: the confirmation link goes to the NEW address
         and the swap happens only when it is clicked. users/{uid}.email is a
@@ -462,9 +469,32 @@ const t = useTranslations(lang);
       </div>
     </div>
 
-    <div class="danger-zone">
+    {
+      /* THE SAME WEIGHT AS "CHANGE EMAIL ADDRESS", AND DIRECTLY UNDER IT
+        (2026-09-04, Josh: "here in the same weight the delete Account"). It
+        was a pale red link under a 2rem rule in its own "danger zone", which
+        is the received wisdom for a destructive control and was wrong here for
+        two reasons.
+
+        The rule and the red made a whole region out of one link, so the tab
+        ended in a warning rather than in a control — and a member who has to
+        delete their account (the last thing anybody wants to do while being
+        talked out of it) had to cross a boundary drawn to discourage them.
+
+        And it is the SAME KIND OF THING as the email change: two doors that
+        open a form asking you to prove who you are before an irreversible
+        change to your account. Drawing them differently claimed a distinction
+        that does not survive the click.
+
+        The red survives where it is worth something — on the confirm button
+        inside the opened form, where there is something to confirm. What
+        guards this door is not its colour: the form behind it asks for the
+        account's own address AND its password, and requestAccountDeletion
+        refuses a token older than five minutes. */
+    }
+    <div class="account-block">
       <div id="delete-idle">
-        <button type="button" id="btn-delete-start" class="btn-danger-link"
+        <button type="button" id="btn-delete-start" class="btn-link"
           >{t("profile.delete.idle")}</button
         >
       </div>
@@ -534,6 +564,26 @@ const t = useTranslations(lang);
         <p id="delete-scheduled-text" class="danger-text"></p>
       </div>
     </div>
+    </div>
+
+    {
+      /* LAST (2026-09-04, Josh: "bottom"). It led the tab from 2026-09-03,
+        when it was promoted out of a pair of grey ghosts on the grounds that
+        signing out is what a member opens this tab to DO. That was true of the
+        tab as it stood — the only other things on it were a link most members
+        cannot follow and a danger zone. It is not true of the tab now: the
+        settings above are things a member came to CHANGE, and a button that
+        ends the session, sitting above them, is a trapdoor in front of the
+        work. Bottom of the tab is where you reach it after doing what you came
+        for, which is also when you want it.
+
+        It keeps the full-strength outline it was given, so the demotion is in
+        the position only. Still an outline and not filled black: that is
+        Save's, and two black buttons on one screen is two primary actions. */
+    }
+    <button id="btn-logout" type="button" class="btn-logout-strong">
+      {t("profile.logout")}
+    </button>
   </div>
 
   <div class="form-section" data-section="preview">
@@ -1214,10 +1264,13 @@ const t = useTranslations(lang);
   }
 
   /*
-   * Signing out is what a member opens this tab to DO, so it looks like it:
-   * full-strength ink and border instead of the muted ghost it used to share
+   * Full-strength ink and border instead of the muted ghost it used to share
    * with the admin link. It stays an outline — the filled black is Save's, and
    * two black buttons on one screen is two primary actions.
+   *
+   * The weight is all that survives of 2026-09-03's promotion: the button was
+   * also moved to the head of the tab then and moved back to its foot on
+   * 2026-09-04. See the markup for why the two decisions are not in conflict.
    */
   .btn-logout-strong {
     align-self: start;
@@ -1241,9 +1294,12 @@ const t = useTranslations(lang);
   }
 
   /* A door to somewhere else rather than an account action, so it keeps the
-     quiet outline and sits below the thing this tab is for. */
+     quiet outline even though it now leads the tab — see the markup. Shrunk to
+     its own width, or a grid item would stretch it across the column and make
+     the quietest thing on the tab the widest. */
   .account-quiet {
     align-self: start;
+    margin-bottom: 2rem;
   }
 
   .account-disclosure {
@@ -1271,15 +1327,18 @@ const t = useTranslations(lang);
     background: var(--color-bg);
   }
 
-  .account-block {
+  /* The pair — see the markup. `display: contents` is deliberately NOT used:
+     the two blocks have to be siblings in a box that can carry a gap, and the
+     tab is a grid whose gap is sized for fields, not for two adjacent links. */
+  .account-doors {
     display: grid;
-    gap: 0.5rem;
+    gap: 0.6rem;
     margin-bottom: 2rem;
   }
 
-  .danger-zone {
-    padding-top: 2rem;
-    border-top: 1px solid var(--color-border);
+  .account-block {
+    display: grid;
+    gap: 0.5rem;
   }
 
   .danger-text {
@@ -1316,41 +1375,41 @@ const t = useTranslations(lang);
     margin-top: 1.5rem;
   }
 
+  /* SMALLER, AND ON ONE LINE WITH THE CANCEL LINK (2026-09-04, Josh: "smaller
+     aligned"). The pair used to be a 1.5rem-apart Cancel and a button padded
+     like a primary action, which made the red the largest object on the tab —
+     shouting at a member who has already typed their own address out to be
+     let through. It is the same shape as .account-actions above it now (the
+     email change's Cancel/Save pair), which is the point: the two forms do the
+     same kind of work and should not look like different rooms.
+     Centre, not baseline: the button's own padding is what sets its height,
+     and a baseline would hang the bare link off the button's text rather than
+     lining the two controls up. */
   .danger-actions {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
+    gap: 1rem;
+    margin-top: 0.25rem;
   }
 
-  .btn-danger-link {
-    background: none;
-    border: none;
-    padding: 0;
-    font: inherit;
-    font-size: 0.88rem;
-    color: #bbb;
-    cursor: pointer;
-    border-bottom: 1px solid transparent;
-    transition:
-      color 0.15s,
-      border-color 0.15s;
-  }
-
-  .btn-danger-link:hover {
-    color: var(--color-error);
-    border-bottom-color: var(--color-error);
-  }
-
+  /* The red, kept exactly where it is worth something: on the one control
+     that actually destroys the account. What shrank is its SIZE, not its
+     colour — see .danger-actions. Deliberately SMALLER than the email form's
+     .btn-solid confirm rather than its equal (31px tall against 38, measured):
+     the two forms are twins as far as the doors that open them (see
+     .account-doors), but a member who has already typed their own address into
+     a box does not need the button that follows to be the biggest object on
+     the screen. */
   .btn-danger {
     display: inline-flex;
     align-items: center;
-    padding: 0.6rem 1.25rem;
+    padding: 0.45rem 1rem;
     background: var(--color-error);
     color: #fff;
     border: none;
     border-radius: var(--radius-sm);
     font: inherit;
-    font-size: 0.88rem;
+    font-size: 0.8rem;
     font-weight: 700;
     cursor: pointer;
     transition: background 0.2s;
@@ -1483,7 +1542,6 @@ const t = useTranslations(lang);
     galleryLimit,
     MAX_GALLERY_CAPTION,
     MAX_GALLERY_DESCRIPTION,
-    MAX_GALLERY_DESCRIPTION_SHORT,
     MAX_GALLERY_LINK,
     galleryErrorCode,
     syncGalleryText,
@@ -1826,12 +1884,11 @@ const t = useTranslations(lang);
             const remove = row.querySelector<HTMLButtonElement>("[data-gallery-remove]");
             const caption = field<HTMLInputElement>("caption");
             const description = field<HTMLTextAreaElement>("description");
-            const descriptionShort = field<HTMLTextAreaElement>("descriptionShort");
             const link = field<HTMLInputElement>("link");
             const cover = row.querySelector<HTMLElement>("[data-gallery-cover]");
             const up = row.querySelector<HTMLButtonElement>('[data-gallery-move="up"]');
             const down = row.querySelector<HTMLButtonElement>('[data-gallery-move="down"]');
-            if (!img || !remove || !caption || !description || !descriptionShort) return null;
+            if (!img || !remove || !caption || !description) return null;
             if (!link || !cover || !up || !down) return null;
 
             // The one thing on screen that admits the order means something:
@@ -1846,19 +1903,10 @@ const t = useTranslations(lang);
 
             caption.value = item.caption ?? "";
             caption.maxLength = MAX_GALLERY_CAPTION;
-            caption.placeholder = s["profile.gallery.caption"];
+            caption.placeholder = s["profile.gallery.caption.ph"];
             named(caption, s["profile.gallery.caption"]);
             caption.addEventListener("input", () => {
               gallery[index].caption = caption.value;
-              syncPreview();
-            });
-
-            descriptionShort.value = item.descriptionShort ?? "";
-            descriptionShort.maxLength = MAX_GALLERY_DESCRIPTION_SHORT;
-            descriptionShort.placeholder = s["profile.gallery.descriptionShort"];
-            named(descriptionShort, s["profile.gallery.descriptionShort"]);
-            descriptionShort.addEventListener("input", () => {
-              gallery[index].descriptionShort = descriptionShort.value;
               syncPreview();
             });
 
@@ -2319,7 +2367,6 @@ const t = useTranslations(lang);
             caption: g.caption,
             color: g.color,
             description: (g.description ?? "").trim() || undefined,
-            descriptionShort: (g.descriptionShort ?? "").trim() || undefined,
             // Same rule the built page applies — works() in memberView.ts calls
             // this too — so the Preview tab shows a link exactly when a visitor
             // would get one, including showing none for a value that is not

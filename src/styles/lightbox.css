@@ -264,103 +264,164 @@
   height: 100%;
 }
 
-/* ── Caption ──────────────────────────────────────────────────────────────
-   PhotoSwipe 5 ships no caption at all, so this is a UI element registered in
-   the page script and filled from the trigger link's data attributes. Set in
+/* ── The words ───────────────────────────────────────────────────────
+   PhotoSwipe 5 ships no caption, so these are UI elements registered by
+   lightboxText.ts and filled from the trigger link's data attributes. Set in
    the same two faces as .mprof__caption / .mprof__credit under the image on
    the page, so the lightbox says the same thing in the same voice.
 
-   A band across the foot rather than an overlay on the artwork, with the
-   bottom padding option reserving its height. */
-.pswp--vscn .pswp__vscn-caption {
+   ── NOT A BAND ── (2026-09-04, Josh: "lose the bars".)
+   Until today this was one full-width strip pinned to the foot of the screen,
+   with its own background and a hairline along its top, and its height was a
+   fixed reserve it had to scroll inside. That is furniture: it made the words
+   belong to the window rather than to the artwork, and beside a portrait image
+   it ran a paragraph across the bottom of the screen while two columns of
+   empty paper sat either side of the picture being described.
+
+   Now every block is glued to the picture's own rectangle, and the LEFT/TOP/
+   WIDTH of each are written as inline styles by lightboxText.ts on every event
+   that can move the image. Nothing here may set those three properties, or it
+   will fight the script and win on the wrong frames. What lives here is
+   everything else: the type, the gaps, the lift, and the hide-on-zoom. */
+
+/* THE ARTIST, ON THE PICTURE'S TOP-LEFT CORNER. The script writes left/top at
+   the image's top-left; this lifts the line clear of that edge, so its own
+   height never has to be measured in JS. */
+.pswp--vscn .pswp__vscn-credit {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  padding: 0.95rem 1.5rem 1.2rem;
-  background: var(--color-bg);
-  border-top: 1px solid var(--color-border);
-  /* THE BAND IS A SCROLL CONTAINER, capped at exactly the space paddingFn
-     reserves for it (140px desktop / 116px mobile — the numbers live in the
-     page scripts and this pair is their mirror; change them together). An
-     image's description runs to 600 characters, and before the cap a long one
-     grew the absolutely-positioned band upward over the artwork it was
-     describing. Scrolling keeps the whole text reachable AND keeps the
-     picture's bottom edge where the reserve promised it would be. */
-  max-height: 140px;
-  overflow-y: auto;
-  /* A wheel gesture that reaches the end of the description must not then
-     start dragging the lightbox itself. */
-  overscroll-behavior: contain;
+  transform: translateY(-100%);
+  /* Wider than the name only if the name is long; never a clickable strip
+     across the window. */
+  max-width: 60ch;
 }
-/* A work with no caption, description or credit gets no empty band. */
-.pswp--vscn .pswp__vscn-caption.is-empty {
+.pswp--vscn .pswp__vscn-credit.is-empty {
   display: none;
 }
-/* Clamped because the band's height is reserved as a fixed padding: a caption
-   long enough to run to a third line would grow up over the artwork instead of
-   pushing it. Two lines is well past what the one-line captions this field
-   holds actually need. */
-.pswp--vscn .pswp__vscn-caption-line {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  max-width: 62ch;
-  overflow: hidden;
-  font-size: 0.78rem;
-  line-height: 1.45;
-  color: var(--color-dark);
-}
-/* The long text. Unclamped, unlike the caption above it — the band scrolls, so
-   there is nothing to protect the layout from. `pre-line` because a member who
-   wrote paragraphs meant them, and it is the same treatment .mprof__desc gives
-   the identical string on the member's own page. */
-.pswp--vscn .pswp__vscn-caption-desc {
-  max-width: 62ch;
-  white-space: pre-line;
-  font-size: 0.78rem;
-  line-height: 1.45;
-  color: var(--color-muted);
-}
-.pswp--vscn .pswp__vscn-caption-meta {
-  /* Shrink-wrapped so the link is only as wide as the name — a stretched flex
-     item would put a clickable band across the whole width of the band. */
-  align-self: flex-start;
+.pswp--vscn .pswp__vscn-credit-name {
   font-size: 0.58rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-muted);
+  text-decoration: none;
 }
-
-/* THE CREDIT AS THE WAY TO THE MEMBER'S PAGE (2026-09-03) — see the caption
-   renderer in CommunityGrid.astro for why the name itself is the control. It is
-   an <a> only when the trigger carried a profile href, so this styles the
-   openable case and leaves the member page's own gallery, where the credit is
-   just a credit, exactly as it was.
-   UNDERLINED AT REST, unlike the tile's author line: this is the band's one
-   control and the picture in front of it is competing for every bit of
-   attention, so it has to look like a link before the pointer arrives — the
-   same reasoning as .cindex__profile in the ledger. */
-.pswp--vscn a.pswp__vscn-caption-meta {
+/* THE CREDIT AS THE WAY TO THE MEMBER'S PAGE (2026-09-03) — see the renderer
+   in lightboxText.ts for why the name itself is the control. It is an <a> only
+   when the trigger carried a profile href, so this styles the openable case
+   and leaves the member page's own gallery, where the credit is just a credit,
+   exactly as it was.
+   UNDERLINED AT REST, unlike a tile's author line: this is the one control in
+   the words and the picture beside it is competing for every bit of attention,
+   so it has to look like a link before the pointer arrives — the same
+   reasoning as .cindex__profile in the ledger. */
+.pswp--vscn a.pswp__vscn-credit-name {
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 1.5px;
   transition: color 0.15s;
 }
-
-.pswp--vscn a.pswp__vscn-caption-meta:hover,
-.pswp--vscn a.pswp__vscn-caption-meta:focus-visible {
+.pswp--vscn a.pswp__vscn-credit-name:hover,
+.pswp--vscn a.pswp__vscn-credit-name:focus-visible {
   color: var(--color-dark);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pswp--vscn a.pswp__vscn-caption-meta {
-    transition: none;
-  }
+/* THE CAPTION, THE DESCRIPTION AND THE LINK — under a landscape image, beside
+   a portrait one. Which of the two it is, and how wide, is the script's call;
+   this is a plain column either way, which is what makes the two arrangements
+   one piece of design rather than two. */
+.pswp--vscn .pswp__vscn-text {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  /* A LAST RESORT, not the layout. paddingFn reserves enough room for a
+     600-character description at every arrangement's measure except the
+     phone's, where the reserve is deliberately smaller than the worst case
+     (see lightboxPadding). It is here so that an overrun costs the end of a
+     paragraph rather than a caption printed over the artwork. max-height is
+     written inline by the script, from the room actually left below or beside
+     the picture. */
+  overflow-y: auto;
+  /* A wheel gesture that reaches the end must not then start dragging the
+     lightbox itself. */
+  overscroll-behavior: contain;
+  /* NO SCROLLBAR CHROME. Chromium paints a classic track with arrows for an
+     overflow:auto box on Windows even at rest, and it landed as a 15px gutter
+     of grey furniture down the right edge of the description — in the one
+     layout on this site whose entire point was getting rid of furniture
+     (caught in the browser; nothing about the CSS predicts it). The bar is
+     hidden, not the scrolling: wheel, touch, and keyboard all still work. What
+     replaces it as the affordance is the fade below, which appears only when
+     there is actually something past the edge. */
+  scrollbar-width: none;
+}
+.pswp--vscn .pswp__vscn-text::-webkit-scrollbar {
+  display: none;
+}
+/* THE ONLY SIGN THAT THERE IS MORE. The script sets this class when the block's
+   content is taller than the room it was given; at every other time the mask
+   is absent and the text has a hard bottom edge like any other paragraph. A
+   gradient rather than an arrow or a "more" control: this is a paragraph that
+   continues, and the reader's own scroll is the way to continue it. */
+.pswp--vscn .pswp__vscn-text.is-clipped {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 1.6rem), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 1.6rem), transparent);
+}
+/* A work with no caption, description or link gets no empty block. */
+.pswp--vscn .pswp__vscn-text.is-empty {
+  display: none;
+}
+/* UNCLAMPED, unlike the band's caption line, which was held to two lines
+   because the band's height was a fixed reserve a third line would have grown
+   through. There is no band and the block scrolls, so there is nothing left to
+   protect the layout from. */
+.pswp--vscn .pswp__vscn-text-caption {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--color-dark);
+}
+/* `pre-line` because a member who wrote paragraphs meant them, and it is the
+   same treatment .mprof__desc gives the identical string on the member's own
+   page. */
+.pswp--vscn .pswp__vscn-text-desc {
+  white-space: pre-line;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--color-muted);
+}
+/* WHERE THE IMAGE APPEARED. Shrink-wrapped, so the link is only as wide as the
+   URL — a stretched flex item would put a clickable band across the whole
+   column. Set in the credit's small-caps face rather than the description's,
+   because it is a piece of provenance and not part of the prose; the wrap rule
+   lets a long path break inside a narrow column instead of widening it. */
+.pswp--vscn .pswp__vscn-text-link {
+  align-self: flex-start;
+  max-width: 100%;
+  margin-top: 0.15rem;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+  overflow-wrap: anywhere;
+  transition: color 0.15s;
+}
+.pswp--vscn .pswp__vscn-text-link:hover,
+.pswp--vscn .pswp__vscn-text-link:focus-visible {
+  color: var(--color-dark);
+}
+
+/* ZOOMED IN: THE WORDS GO. They are glued to the picture's rect, and a zoomed
+   picture's rect is mostly outside the window — following it would drag the
+   caption off-screen and the artist line under the top bar. The script sets
+   this class on the root; hiding is done here so the two halves of the
+   decision are not split across a stylesheet and a style attribute. */
+.pswp--vscn.pswp--vscn-zoomed-words .pswp__vscn-credit,
+.pswp--vscn.pswp--vscn-zoomed-words .pswp__vscn-text {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* ── Error ────────────────────────────────────────────────────────────────
@@ -372,7 +433,7 @@
 }
 
 /* ── Mobile ───────────────────────────────────────────────────────────────
-   The bars tighten with the reduced padding the script hands the same
+   The top bar tightens with the reduced padding the script hands the same
    breakpoint. Arrows need no rule: PhotoSwipe already hides them until a
    mouse is seen, which is the card's behaviour on mobile too. */
 @media (--bp-mobile) {
@@ -380,10 +441,13 @@
     height: 2.75rem;
     padding: 0 1rem;
   }
-  .pswp--vscn .pswp__vscn-caption {
-    padding: 0.8rem 1rem 1rem;
-    /* Mirrors paddingFn's mobile bottom reserve — see the desktop rule. */
-    max-height: 116px;
+  /* One arrangement on a phone: the words are always under the picture (a
+     column beside a portrait image on a 375px screen is two words wide), so
+     there is nothing here to switch — only the type, brought down a step for
+     the narrower measure. */
+  .pswp--vscn .pswp__vscn-text-caption,
+  .pswp--vscn .pswp__vscn-text-desc {
+    font-size: 0.74rem;
   }
 }
 
