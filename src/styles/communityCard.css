@@ -103,6 +103,25 @@
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
+  /* ONE PIXEL IN FROM EACH SIDE, on top of the overflow clip (2026-09-06,
+     Josh: "in the member carousel sometimes you see the next image's pixels
+     as a vertical bar"). The frame is never a whole number of pixels wide —
+     439.94793701px is a real measurement, see communityCarousel.ts — and
+     Embla moves the track by whole multiples of that width, so the seam
+     between two slides always lands on a FRACTION of a pixel. The compositor
+     resolves that by blending: the frame's edge column shows a mix of this
+     picture's last column and the next picture's first, which reads as a
+     thin bar of the wrong image standing at the edge. It comes and goes with
+     the fractional part, which is why it is "sometimes".
+     `overflow: hidden` cannot help — its clip edge is that same fractional
+     coordinate. Insetting the visible area by a full CSS pixel puts the seam's
+     whole blend band outside it at ANY device-pixel ratio: 1px is at least one
+     device pixel, and Windows scaling at 1.25 or 1.5 is exactly where rounding
+     the frame's WIDTH to CSS pixels would not have been enough. The picture is
+     object-fit: cover, so the pixel it loses at each side was never
+     load-bearing, and the arrows and dots sit well inside it. Top and bottom
+     are not inset: there is no seam there. */
+  clip-path: inset(0 1px);
   /* NO BORDER, deliberately. The artwork is its own edge; a grey rule around
      it read as a box the picture had been placed inside, which is the
      opposite of the page it sits on.
