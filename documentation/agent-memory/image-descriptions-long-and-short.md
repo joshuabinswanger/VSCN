@@ -3,7 +3,7 @@
 
 ---
 name: image-descriptions-long-and-short
-description: "REVERSED after one day — a gallery image carries ONE description again (plus its caption); `descriptionShort` is retired and swept on save, and the seeded dev placeholder text still must not reach prod"
+description: "REVERSED after one day, then STRANDED for two: one description per image was committed 2026-09-04 but only reached dev on 2026-09-06 (377d2db). Prod still serves the two-field editor."
 metadata: 
   node_type: memory
   type: project
@@ -76,3 +76,22 @@ Related: [[barless-lightbox-geometry]] (where the description is now drawn),
 [[profile-editor-preview-mode]], [[dev-vs-prod-firestore-divergence]]
 
 **Release ordering:** this note holds one gate of three that ride on a single prod deploy — see [[prod-release-order]] before sequencing anything.
+
+## Written 09-04, landed 09-06 — and the note above described the branch, not the sites
+
+This note has read as a statement of fact since 2026-09-04, but the commit it describes
+(`7c1a7e7`) sat unmerged on `claude/design-notes-20260904` until 2026-09-06. **Dev and
+prod both kept serving the two-field editor the whole time**, which is what Josh saw and
+reported: "there are still long and short descriptions". Nothing in the note said which
+branch it was true of.
+
+**Where it stands now.** Merged to `dev` as `377d2db` and deployed — hosting and
+functions both, verified on the live dev site: `/profile` ships exactly three gallery
+fields (`caption`, `description`, `link`) and `/members/<slug>` hands the lightbox the
+long `description`. **Prod is untouched** and still on `main` (`4f3febd`), so the split is
+still live there.
+
+**How to apply:** when a note records a design decision, say whether it is on a branch, on
+dev, or on prod. "Where it stands now" meant three different things at once here. See
+[[stale-branches-superseded]] for the branch that stranded it and
+[[conflict-free-merge-semantic-break]] for what the merge then broke.

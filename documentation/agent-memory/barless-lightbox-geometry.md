@@ -3,7 +3,7 @@
 
 ---
 name: barless-lightbox-geometry
-description: "The lightbox's words are positioned from JS off the picture's rect, so paddingFn and the placement function are one contract that breaks together"
+description: "The lightbox's words are positioned from JS off the picture's rect, so paddingFn and the placement function are one contract that breaks together; since 09-06 the words are always UNDER the picture and the top row has no band\"
 metadata: 
   node_type: memory
   type: project
@@ -15,8 +15,23 @@ Since 2026-09-04 the lightbox has no caption band. The artist, caption,
 description and link are absolutely positioned from `pan` / `currZoomLevel` off
 the picture's rendered rectangle by `attachPlacement()` in
 `src/lib/lightboxText.ts`, and `lightboxPadding()` in the same file reserves the
-space they land in — bottom for a landscape image, a right-hand column for a
-portrait one, decided per slide because `paddingFn` receives the item's data.
+space they land in — UNDER the picture for every shape since 2026-09-06 (Josh: "put the text
+always below the images"); from 09-04 to 09-06 a portrait picture got a
+right-hand column instead. `paddingFn` still receives the item's data and now
+uses it only to size the reserve: 192px under a landscape, 256px under a
+portrait, because an upright picture is height-bound, comes out narrow, and
+wraps its words taller (~85,000 ÷ measure px for the worst-case block).
+
+THE TOP ROW HAS NO BAND EITHER (2026-09-06, Josh: "lose the top bar in
+lightbox"). The controls all survive — close word, zoom, counter, preloader —
+but on the bare paper, gathered in ONE cluster at the top right (the
+preloader's `margin-right: auto` from PhotoSwipe's sheet is zeroed, which is
+what used to hold the counter at the left). The artist line lives above the
+picture's top-left corner inside that same height, so the left must stay
+empty. `top` in `lightboxPadding` clears the row: 56 desktop / 44 phone, down
+from 92 / 72. And `--pswp-placeholder-bg` is `transparent` (Josh: "lose the
+grey frame"): PhotoSwipe painted a `--color-border` div at the incoming
+picture's box until it decoded, which read as a grey frame on every page.
 
 **Why:** a band made the words belong to the window rather than the artwork, and
 beside a portrait image it ran a paragraph across the bottom of the screen with
