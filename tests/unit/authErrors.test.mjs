@@ -61,6 +61,21 @@ test("permission-denied never tells the member to try again", () => {
   assert.doesNotMatch(friendlyError("permission-denied", de), /erneut|nochmal/i);
 });
 
+test("email-already-in-use points at logging in, not at trying again", () => {
+  // The wizard reports this code only after its own recovery sign-in has
+  // failed on credentials, i.e. the address is taken and the typed password is
+  // not its password. Retrying is guaranteed to fail the same way, so the
+  // message has to name the account and the way back into it.
+  const en_ = friendlyError("auth/email-already-in-use", en);
+  const de_ = friendlyError("auth/email-already-in-use", de);
+  assert.doesNotMatch(en_, /try again/i);
+  assert.doesNotMatch(de_, /erneut|nochmal/i);
+  assert.match(en_, /log in/i);
+  assert.match(en_, /reset/i);
+  assert.match(de_, /anmelden|melde dich/i);
+  assert.match(de_, /zurücksetzen/i);
+});
+
 test("every mapped code has a string in BOTH locales", () => {
   // A key present in en and missing in de renders as undefined on /de.
   for (const code of mappedCodes()) {

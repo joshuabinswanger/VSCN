@@ -1760,6 +1760,11 @@ const prefix = lang === "de" ? "/de" : "";
       setBtnState("ob-next-auth", true, s["onboarding.nav.next"]);
       setError("");
 
+      // Set when account creation hits an address that already exists, so a
+      // credential failure from the sign-in below can be reported as the
+      // collision it is. Declared out here to outlive the inner catch.
+      let emailWasTaken = false;
+
       try {
         let userCredential;
         let isNewUser = false;
@@ -1768,6 +1773,11 @@ const prefix = lang === "de" ? "/de" : "";
           isNewUser = true;
         } catch (createErr: unknown) {
           if ((createErr as { code?: string }).code === "auth/email-already-in-use") {
+            // Signing in with the password just typed lets a member who
+            // abandoned onboarding resume it through the Join button without
+            // ever being told they already have an account. That silence is
+            // deliberate; the collision is only news if the password differs.
+            emailWasTaken = true;
             userCredential = await signInWithEmailAndPassword(auth, email, password);
           } else {
             throw createErr;
@@ -1791,6 +1801,12 @@ const prefix = lang === "de" ? "/de" : "";
         let msg: string;
         if (code === "auth/weak-password") msg = s["onboarding.auth.error.weak"];
         else if (code === "auth/invalid-email") msg = s["auth.error.enterEmail"];
+        // A credential failure that FOLLOWS a collision is not a typo in a new
+        // password: the address belongs to an existing account and this is not
+        // its password. "Invalid email or password. Please try again." is
+        // baffling on a form where the member is inventing one, and the retry
+        // it advises fails identically.
+        else if (emailWasTaken && isCredentialError(code)) msg = s["auth.error.code.emailInUse"];
         else if (isCredentialError(code)) msg = s["onboarding.auth.error.invalid"];
         // Everything else used to be reported as a wrong password — a blocked
         // network, a permission-denied, an operation-not-allowed all looked

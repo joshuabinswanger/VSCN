@@ -93,7 +93,7 @@ export const ui: Record<string, Record<string, string>> = {
     // listed here falls back to auth.error.generic with the raw Firebase code
     // appended, which is what a member can paste into an email to us.
     "auth.error.code.emailInUse":
-      "An account with this email already exists. Try logging in instead.",
+      "An account with this email already exists. Log in instead, and reset your password there if you have forgotten it.",
     "auth.error.code.invalidEmail": "Please enter a valid email address.",
     "auth.error.code.weakPassword": "Password must be at least 6 characters.",
     "auth.error.code.invalidCredential": "Invalid email or password.",
@@ -534,7 +534,7 @@ export const ui: Record<string, Record<string, string>> = {
     // Siehe die englischen Schlüssel: nicht gelistete Codes fallen auf
     // auth.error.generic zurück, mit dem Firebase-Code im Text.
     "auth.error.code.emailInUse":
-      "Es gibt bereits ein Konto mit dieser E-Mail-Adresse. Melde dich stattdessen an.",
+      "Es gibt bereits ein Konto mit dieser E-Mail-Adresse. Melde dich stattdessen an; dort kannst du auch dein Passwort zurücksetzen.",
     "auth.error.code.invalidEmail": "Bitte gib eine gültige E-Mail-Adresse ein.",
     "auth.error.code.weakPassword": "Das Passwort muss mindestens 6 Zeichen haben.",
     "auth.error.code.invalidCredential": "E-Mail oder Passwort ist falsch.",
