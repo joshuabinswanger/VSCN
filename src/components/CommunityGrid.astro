@@ -55,18 +55,37 @@ const t = useTranslations(lang);
 // applyLayout): on the drawn grid a hidden cell leaves its slot EMPTY rather
 // than repacking, so hiding in place is never an option.
 //
-// Every distinct tag with its member count, alphabetical — the dropdown's
-// list. Identity is case-insensitive (member-typed tags vary in casing); the
-// first spelling seen is the one displayed.
-const tagIndex = new Map<string, { label: string; count: number }>();
+// Every distinct tag, alphabetical — the dropdown's list. Identity is
+// case-insensitive (member-typed tags vary in casing); the first spelling seen
+// is the one displayed.
+//
+// TWO COUNTS PER TAG, because the page has two kinds of view (2026-09-07,
+// Josh: "tags stale because you can select them for artists, but there are no
+// images in the grid or gallery"). Since 2026-09-03 both galleries show
+// artwork and nothing else, so a tag carried only by members with empty
+// galleries matches nothing there — offering it made the dropdown a list of
+// options that emptied the view. `members` is who carries the tag, which is
+// what the INDEX filters by; `works` is how many of THOSE have artwork, which
+// is what the GALLERIES can actually show. Both ride on the option as data
+// attributes and the client picks by view (reflectTagOptions below): a
+// gallery hides the options whose works count is zero and prints that count,
+// the ledger offers every tag and prints the member count. The artwork test is
+// hasArtwork — the same one that decides who is dealt into the spread and the
+// wall — so the count cannot disagree with the deal.
+const tagIndex = new Map<string, { label: string; members: number; works: number }>();
 for (const m of members) {
+  const withArtwork = hasArtwork(m);
   for (const raw of m.tags) {
     const label = raw.trim();
     if (!label) continue;
     const key = label.toLowerCase();
     const entry = tagIndex.get(key);
-    if (entry) entry.count += 1;
-    else tagIndex.set(key, { label, count: 1 });
+    if (entry) {
+      entry.members += 1;
+      if (withArtwork) entry.works += 1;
+    } else {
+      tagIndex.set(key, { label, members: 1, works: withArtwork ? 1 : 0 });
+    }
   }
 }
 const allTags = [...tagIndex.entries()].sort((a, b) => a[0].localeCompare(b[0]));
@@ -246,17 +265,27 @@ const indexMembers = [...members].sort((a, b) =>
               </button>
             </li>
             {
-              allTags.map(([key, { label, count }]) => (
-                <li>
+              /* Rendered for the DEFAULT view — which options it offers and
+                which count they print — for the same reason the default view
+                is the one server-rendered visible: it is what a no-JS visitor
+                keeps and what the first frame shows. reflectTagOptions
+                re-derives both from the data attributes for whichever view
+                the URL asks for. */
+              allTags.map(([key, { label, members, works }]) => (
+                <li hidden={DEFAULT_VIEW !== "index" && works === 0}>
                   <button
                     type="button"
                     class="tag-filter__option"
                     data-tag={key}
                     data-label={label}
+                    data-count-members={members}
+                    data-count-works={works}
                     aria-pressed="false"
                   >
                     <span>{label}</span>
-                    <span class="tag-filter__count">{count}</span>
+                    <span class="tag-filter__count">
+                      {DEFAULT_VIEW === "index" ? members : works}
+                    </span>
                   </button>
                 </li>
               ))
@@ -303,11 +332,19 @@ const indexMembers = [...members].sort((a, b) =>
       (works) from everything else (members). Now BOTH galleries show artwork
       and only artwork, so a tag whose matching members have empty galleries
       empties them both while those members genuinely match — which is the
-      thing the wording has to be honest about. The ledger is the one view
-      that is a list of members, so it keeps the member wording, and it always
-      has rows where the galleries have none. Both strings ride on the element
-      and reflectFilterState picks — same `data-` carrier the tags trigger
-      uses for its resting label. */
+      thing the wording has to be honest about. Since 2026-09-07 the dropdown
+      no longer OFFERS such a tag while a gallery is on screen (see the
+      tagIndex note in the frontmatter; Josh: "tags stale because you can
+      select them for artists, but there are no images in the grid or
+      gallery"), and switching from the ledger into a gallery drops one that
+      was picked there. So on this page the works wording is reached only by
+      a DEEP LINK — ?tag= typed in, or carried in on a ledger row's tag chip —
+      and it stays for that case, because the link is honest about what was
+      asked for and an empty view with the reason printed is the right answer
+      to it. The ledger is the one view that is a list of members, so it keeps
+      the member wording, and it always has rows where the galleries have
+      none. Both strings ride on the element and reflectFilterState picks —
+      same `data-` carrier the tags trigger uses for its resting label. */
   }
   <p
     id="filter-empty"
@@ -1992,9 +2029,55 @@ const indexMembers = [...members].sort((a, b) =>
     }
   }
 
-  /** The tags trigger and its options: the trigger shows the active tag's
-   *  label (or its resting text), the active option is underlined. */
-  function reflectTagUI() {
+  /** Whether a gallery has anything to show for a tag — build-stamped on the
+   *  option as data-count-works (see the tagIndex note in the frontmatter).
+   *  False for a tag no option offers, which is the same answer to the caller:
+   *  nothing to show. */
+  function tagHasWorks(tag: string): boolean {
+    const opt = document.querySelector<HTMLElement>(
+      `.tag-filter__option[data-tag="${CSS.escape(tag)}"]`
+    );
+    return Number(opt?.dataset.countWorks ?? 0) > 0;
+  }
+
+  /** The panel's LIST for the view on screen — which options it offers and
+   *  which count each prints — folded together with the search field's
+   *  narrowing, so a row's `hidden` has ONE writer and neither pass can undo
+   *  the other (typing cannot bring a gallery's workless tags back; clearing
+   *  the field cannot lose them from the ledger).
+   *
+   *  (2026-09-07, Josh: "tags stale because you can select them for artists,
+   *  but there are no images in the grid or gallery".) The galleries are
+   *  artwork only since 2026-09-03, so there an option whose members all have
+   *  empty galleries is not offered — picking it could only empty the view —
+   *  and the count printed is the members WITH artwork. The ledger lists
+   *  everyone, so it offers every tag with its member count. "All tags" (the
+   *  empty key) is always offered. Counts are read from the data attributes
+   *  rather than re-counted from the cells, so the list is right before any
+   *  deal and the same in every view of one build. */
+  function reflectTagOptions(mode: LayoutMode) {
+    const gallery = mode !== "index";
+    const search = document.getElementById("tag-filter-search") as HTMLInputElement | null;
+    const needle = search?.value.trim().toLowerCase() ?? "";
+    document.querySelectorAll<HTMLElement>(".tag-filter__list li").forEach((li) => {
+      const opt = li.querySelector<HTMLElement>(".tag-filter__option");
+      if (!opt) return;
+      const key = opt.dataset.tag ?? "";
+      const works = Number(opt.dataset.countWorks ?? 0);
+      const members = Number(opt.dataset.countMembers ?? 0);
+      const count = opt.querySelector<HTMLElement>(".tag-filter__count");
+      if (count) count.textContent = String(gallery ? works : members);
+      const workless = gallery && Boolean(key) && works === 0;
+      const missed = Boolean(needle) && Boolean(key) && !key.includes(needle);
+      li.hidden = workless || missed;
+    });
+  }
+
+  /** The tags trigger and its options: the list is the view's (above), the
+   *  trigger shows the active tag's label (or its resting text), the active
+   *  option is underlined. */
+  function reflectTagUI(mode: LayoutMode) {
+    reflectTagOptions(mode);
     let activeLabel = "";
     document
       .querySelectorAll<HTMLButtonElement>(".tag-filter__option[data-label]")
@@ -2188,13 +2271,14 @@ const indexMembers = [...members].sort((a, b) =>
       if (tag && document.querySelector(`.tag-filter__option[data-tag="${CSS.escape(tag)}"]`)) {
         tagFilter = tag;
       }
-      reflectTagUI();
+      // The view first: the dropdown's list depends on it (reflectTagOptions).
+      const mode = modeFromURL();
+      reflectTagUI(mode);
 
       // Before the first deal: a Back onto this entry reproduces the page it
       // was left showing, a fresh arrival gets a new one. See rememberedSeed.
       dealSeed = rememberedSeed();
 
-      const mode = modeFromURL();
       applyLayout(grid, mode);
       reflectMode(mode);
 
@@ -2257,6 +2341,21 @@ const indexMembers = [...members].sort((a, b) =>
           // two addresses for the same view.
           if (next === DEFAULT_VIEW) url.searchParams.delete("pattern");
           else url.searchParams.set("pattern", next);
+          // ── A WORKLESS TAG DOES NOT FOLLOW YOU INTO A GALLERY ──
+          // (2026-09-07, Josh: "tags stale because you can select them for
+          // artists, but there are no images in the grid or gallery".) The
+          // ledger offers every tag; a gallery offers only the ones with
+          // artwork behind them (reflectTagOptions). A tag picked in the
+          // ledger that no gallery can show is dropped from the URL on the
+          // way over, so the reader lands on the full wall — not on an empty
+          // one whose filter is missing from the very dropdown they would
+          // open to clear it. Only the URL is edited: the navigation re-reads
+          // it, and tagFilter and the trigger follow from there. A DEEP LINK
+          // with such a tag still gets the honest empty state — nothing was
+          // chosen on this page for it to undo.
+          if (next !== "index" && tagFilter && !tagHasWorks(tagFilter)) {
+            url.searchParams.delete("tag");
+          }
           goTo(url);
         });
       });
@@ -2325,14 +2424,9 @@ const indexMembers = [...members].sort((a, b) =>
         }
       });
 
-      tagSearch?.addEventListener("input", () => {
-        const needle = tagSearch.value.trim().toLowerCase();
-        tagPanel?.querySelectorAll<HTMLElement>(".tag-filter__list li").forEach((li) => {
-          const key = li.querySelector<HTMLElement>(".tag-filter__option")?.dataset.tag ?? "";
-          // The "All tags" row (empty key) always stays reachable.
-          li.hidden = Boolean(needle) && Boolean(key) && !key.includes(needle);
-        });
-      });
+      // Narrowing is the same pass that picks the view's options, so the two
+      // rules cannot fight over a row — see reflectTagOptions.
+      tagSearch?.addEventListener("input", () => reflectTagOptions(mode));
 
       document.querySelectorAll<HTMLButtonElement>(".tag-filter__option").forEach((opt) => {
         opt.addEventListener("click", () => {
