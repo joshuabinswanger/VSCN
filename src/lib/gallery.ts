@@ -2,7 +2,6 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { uploadImage, updateImageText } from "./images.ts";
 import { db, storage } from "./firebase.ts";
 import { orderedGalleryItems, type GalleryRecord } from "./galleryRecords.ts";
-export { galleryIds } from "./galleryRecords.ts";
 import {
   decodeImage,
   toWebpBlob,
@@ -10,6 +9,7 @@ import {
   rejectionCode,
   WEBP_QUALITY,
 } from "./image.ts";
+export { galleryIds } from "./galleryRecords.ts";
 
 /** The bucket the client SDK is configured for — the same one publicStorageUrl() in images.ts reads. */
 function storageBucket(): string {

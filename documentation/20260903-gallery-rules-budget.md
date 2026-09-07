@@ -144,3 +144,10 @@ Ask in this order: is the key in **both** allowlists (`validPublicProfile` and
 `validPrivateUser`) and in `toPublicProfile`? Is the deployed ruleset the one in the repo?
 Is the token's `email_verified` claim true? And then — is the write simply **too big to
 judge**? The last one is invisible: the error is identical to all the others.
+
+## Closed — 2026-09-07
+
+The "real fix" above shipped as `feat/works-on-the-record`: the array is a list of image
+ids and `validGallery` checks eight short strings; every word lives on `images/{imageId}`
+and is judged once by `validImage`. Design and release order in
+`documentation/20260907-works-on-the-record-design.md`.

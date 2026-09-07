@@ -14,16 +14,18 @@ const rec = (imageId, extra = {}) => ({
 });
 
 test("works come from the records, in the list's order", () => {
-  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["b", "a"] }, [
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["b", "a", "c"] }, [
     rec("a", { caption: "A", description: "Long A", descriptionDe: "Lang A", link: "nature.com/x" }),
     rec("b", { color: "#112233" }),
+    rec("c", { link: "not a link" }),
   ], BUCKET);
-  assert.equal(m.works.length, 2);
+  assert.equal(m.works.length, 3);
   assert.equal(m.works[0].url, `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/users%2F${UID}%2Fgallery%2Fb.webp?alt=media`);
   assert.equal(m.works[0].color, "#112233");
   assert.equal(m.works[1].caption, "A");
   assert.equal(m.works[1].descriptionDe, "Lang A");
   assert.equal(m.works[1].link, "https://nature.com/x");
+  assert.equal(m.works[2].link, undefined);
 });
 
 test("a member with ids but no live records has no artwork", () => {

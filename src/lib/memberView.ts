@@ -177,6 +177,10 @@ export function toMemberViewBase(
   uid: string,
   doc: PublicProfileDoc,
   records: readonly GalleryRecord[] = [],
+  // No bucket is not a supported combination — works() would derive broken
+  // URLs. The default exists only so the 2-argument call in
+  // scripts/migrate-image-records.mjs (a historical script that never reads
+  // `works`) keeps compiling.
   bucket = "",
 ): MemberViewBase {
   const bio = (doc.bio ?? "").trim();

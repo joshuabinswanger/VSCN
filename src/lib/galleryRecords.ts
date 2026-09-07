@@ -85,6 +85,8 @@ export function orderedGalleryItems(
     const imageId = typeof element === "string" ? element : str(legacy?.imageId);
     if (!imageId || seen.has(imageId)) continue;
     const rec = byId.get(imageId);
+    // Preserves the old works() filter — a zero width or height would collapse the
+    // card's frame. Defensive: validImage already forbids a zero on write.
     if (!rec || !(rec.width > 0) || !(rec.height > 0)) continue;
     seen.add(imageId);
     const item: GalleryItem = {
