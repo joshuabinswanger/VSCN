@@ -1673,8 +1673,9 @@ const t = useTranslations(lang);
     MAX_GALLERY_DESCRIPTION,
     MAX_GALLERY_LINK,
     galleryErrorCode,
-    syncGalleryText,
-    sanitizeGalleryItems,
+    saveGalleryRecords,
+    loadGallery,
+    galleryIds,
     type GalleryItem,
   } from "../lib/gallery.ts";
   import {
@@ -2330,14 +2331,14 @@ const t = useTranslations(lang);
      * files in Storage — the Firestore array is what says which of those files
      * still belong to the member.
      *
-     * Typed text (captions, descriptions) is NOT pushed by itself — that waits
-     * for Save, since writing on every keystroke is not what a form is.
+     * Only the ids go: since 2026-09-07 the array is the order and nothing
+     * else. Typed text belongs to Save, which writes it onto the records.
      */
     async function persistGallery() {
       const user = auth.currentUser;
       if (!user) return;
       await updateUserProfile(user.uid, {
-        gallery,
+        gallery: galleryIds(gallery),
         updatedAt: new Date(),
       });
     }
@@ -2770,12 +2771,12 @@ const t = useTranslations(lang);
         tagSelector.value = Array.isArray(data.tags) ? data.tags.filter(Boolean).slice(0, 7) : [];
       }
       setSelectedPrimaryAudiences(data.primaryAudiences ?? []);
-      // sanitizeGalleryItems, not a plain slice: a member whose images were
-      // tagged to a project before the feature was withdrawn still has
-      // `projectId` in Firestore, and writing that key back is now rejected
-      // outright by validGalleryItem's hasOnly — which would have failed EVERY
-      // save this member attempted, silently. Stripping on load is the fix.
-      gallery = sanitizeGalleryItems(data.gallery).slice(0, MAX_GALLERY_IMAGES);
+      // The id list joined to this member's own live records — one query, then
+      // the pure join in galleryRecords.ts. Since 2026-09-07 the stored array
+      // is ids only; the words come from the records. (Until today this was
+      // sanitizeGalleryItems(), stripping withdrawn keys out of stored objects;
+      // there are no objects in the array to strip now.)
+      gallery = await loadGallery(user.uid, data.gallery);
       renderGallery();
       phoneInput.value = data.phone ?? "";
       wantsToContributeInput.checked = data.wantsToContribute ?? false;
@@ -2803,6 +2804,27 @@ const t = useTranslations(lang);
       setSaving(true);
 
       try {
+        // THE RECORDS FIRST, AND HARD (2026-09-07). Until today this ran after
+        // the profile write as best-effort — a failed record write was a
+        // console.warn under a green "Changes saved", tolerable only because
+        // the array carried the same text. The array carries nothing now: a
+        // refused record write is a caption gone. So it runs first, and a
+        // failure is THE Save error, naming the image by its position.
+        const recordFailures = await saveGalleryRecords(gallery);
+        if (recordFailures.length > 0) {
+          recordFailures.forEach((f) =>
+            console.warn(`[gallery] record ${f.imageId} not saved:`, f.error)
+          );
+          throw new Error(
+            [
+              ...recordFailures.map((f) =>
+                s["profile.gallery.saveFailed"].replace("{n}", String(f.index + 1))
+              ),
+              s["profile.gallery.saveFailed.tail"],
+            ].join(" ")
+          );
+        }
+
         const saved = await handleProfileUpdate(
           user,
           {
@@ -2822,11 +2844,9 @@ const t = useTranslations(lang);
             openTo: openToSelector?.value ?? [],
             primaryAudiences: getSelectedPrimaryAudiences(),
             tags: tagSelector?.value ?? [],
-            // The gallery persists on its own when images are added or
-            // removed, but the words attached to them — captions and
-            // descriptions — are typed, and typed text belongs to the Save
-            // button like every other field here.
-            gallery,
+            // The ids, in order. The words typed for each image are written
+            // onto the records ABOVE, before this call — see saveGalleryRecords.
+            gallery: galleryIds(gallery),
             wantsToContribute: wantsToContributeInput.checked,
             phone: phoneInput.value.trim(),
             resizedAvatarBlob,
@@ -2840,9 +2860,6 @@ const t = useTranslations(lang);
         );
 
         if (saved.photoImageId) currentPhotoImageId = saved.photoImageId;
-        // The array carries the text for the static build; the records carry
-        // it for everything else. Best-effort by design — see syncGalleryText.
-        await syncGalleryText(gallery);
 
         if (resizedAvatarBlob) {
           uploadStatus.textContent = s["profile.upload.complete"];

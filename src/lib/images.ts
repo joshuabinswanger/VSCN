@@ -163,10 +163,13 @@ export async function markImageForDeletion(imageId: string): Promise<void> {
   });
 }
 
-/** Captions and descriptions live on the record; the gallery array is a projection. */
+/**
+ * Everything a member types about a picture: captions, descriptions and, since
+ * 2026-09-07, the link — the record is the ONLY place any of it lives.
+ */
 export async function updateImageText(
   imageId: string,
-  text: { caption: string; captionDe?: string; description?: string; descriptionDe?: string },
+  text: { caption: string; captionDe?: string; description?: string; descriptionDe?: string; link?: string },
 ): Promise<void> {
   await updateDoc(doc(db, "images", imageId), {
     caption: text.caption,
@@ -176,6 +179,7 @@ export async function updateImageText(
     captionDe: text.captionDe ? text.captionDe : deleteField(),
     description: text.description ? text.description : deleteField(),
     descriptionDe: text.descriptionDe ? text.descriptionDe : deleteField(),
+    link: text.link ? text.link : deleteField(),
     // THE RETIRED FIELD, SWEPT (2026-09-04 — see GalleryItem.description for
     // why the short description is gone). Unconditional, and the only mention
     // of the name left in the app: records written during its one-day life

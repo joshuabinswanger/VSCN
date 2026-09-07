@@ -207,6 +207,15 @@ test("images: an unlisted key is rejected (hasOnly)", async () => {
   await assertFails(db.doc("images/img-1").set(imageDoc(OWNER, "img-1", { projectId: "p" })));
 });
 
+test("images: the record carries where the image appeared", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({ link: "onlinelibrary.wiley.com/doi/10.1111/gcb.70195", updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ link: "x".repeat(200), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ link: "x".repeat(201), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ link: 42, updatedAt: new Date() }));
+});
+
 test("users: an owner update leaves server-owned fields alone and passes", async () => {
   await seed(env, `users/${OWNER}`, {
     ...minimalUser(OWNER), status: "active", purgeAfter: null,
@@ -235,164 +244,68 @@ test("users/publicProfiles: photoImageId is an accepted string field", async () 
   }));
 });
 
-test("publicProfiles: the array check is the key list, the bucket and the link", async () => {
+test("publicProfiles: the gallery is a list of image ids, and nothing else", async () => {
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
-  const url = "https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/x.webp?alt=media";
   const save = (gallery) => db.doc(`publicProfiles/${OWNER}`).set({ displayName: "Test Member", gallery });
 
-  await assertSucceeds(save([{ imageId: "img-1", url, caption: "", width: 10, height: 10 }]));
+  await assertSucceeds(save([]));
+  await assertSucceeds(save(["img-1"]));
+  await assertSucceeds(save(["img-1", "img-2", "img-3", "img-4", "img-5", "img-6", "img-7", "img-8"]));
+  await assertSucceeds(save([`${OWNER}-gallery`]));
+  await assertSucceeds(save([crypto.randomUUID()]));
 
-  // AN UNLISTED KEY still takes the whole write down. This is the one check
-  // that cannot move anywhere else: it is what stops a withdrawn field
-  // (`projectId`, once) creeping back in through a stale client.
-  await assertFails(save([{ imageId: "img-1", url, descriptionLong: "nope", width: 10, height: 10 }]));
-
-  // THE BUCKET, because this url is what the community wall renders. An
-  // off-site one would turn the directory into a hotlink to anywhere.
-  await assertFails(save([{ imageId: "img-1", url: "https://evil.example.com/x.webp", width: 10, height: 10 }]));
-  await assertFails(save([{ imageId: "img-1", width: 10, height: 10 }]));
-
-  // What the array NO LONGER judges, because validGalleryItem could not afford
-  // to judge it eight times over: imageId, the text lengths, the colour and the
-  // dimensions. Every one of them is enforced on images/{imageId} instead —
-  // see the `images:` tests above — and by the client before either write. A
-  // profile whose array disagrees with its records renders from the records.
-  await assertSucceeds(save([{ url, caption: "", width: 10, height: 10 }]));
-});
-
-test("publicProfiles: all text fields ride along in the array, uncapped there", async () => {
-  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  // A ninth is refused: the cap is the list's own size.
+  await assertFails(save(["1", "2", "3", "4", "5", "6", "7", "8", "9"]));
+  // THE OLD SHAPE is refused outright (2026-09-07 — the record is the work,
+  // documentation/20260907-works-on-the-record-design.md). A stale tab that
+  // still writes objects fails safe rather than re-growing the array.
   const url = "https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/x.webp?alt=media";
-  const item = (extra) => ({ imageId: "img-1", url, caption: "", width: 10, height: 10, ...extra });
-  const save = (gallery) => db.doc(`publicProfiles/${OWNER}`).set({ displayName: "Test Member", gallery });
-
-  // Every key here is in validGalleryItem's hasOnly list, so all of them
-  // travel in the array the editor writes back whole. captionDe and
-  // descriptionDe joined 2026-09-04 (Josh: "english and german image
-  // descriptions", then "caption also in german") the same way description
-  // and the retired descriptionShort did: a name only, no length clause — see
-  // the comment on validGalleryItem in firestore.rules.
-  await assertSucceeds(
-    save([item({
-      captionDe: "x".repeat(140),
-      description: "x".repeat(600), descriptionDe: "x".repeat(600), descriptionShort: "x".repeat(240),
-    })]),
-  );
-
-  // Their CEILINGS are enforced on images/{imageId} (see "images: owner edits
-  // caption and both descriptions", "images: descriptionDe shares
-  // description's 600-char cap", "images: captionDe shares caption's
-  // 140-char cap") and in the client, not here. Asserting the over-long value
-  // SUCCEEDS is deliberate: it is the price of eight images, written down
-  // where someone tightening this rule will trip over it.
-  await assertSucceeds(save([item({ descriptionShort: "x".repeat(241) })]));
-  await assertSucceeds(save([item({ descriptionDe: "x".repeat(601) })]));
-  await assertSucceeds(save([item({ captionDe: "x".repeat(141) })]));
-
-  // The key list is still the key list.
-  await assertFails(save([item({ descriptionLong: "nope" })]));
+  await assertFails(save([{ imageId: "img-1", url, caption: "", width: 10, height: 10 }]));
+  await assertFails(save([""]));
+  await assertFails(save(["x".repeat(65)]));
+  await assertFails(save([42]));
 });
 
-test("publicProfiles: a gallery item may say where the image appeared", async () => {
+test("publicProfiles: eight ids save on a FULL profile", async () => {
+  // The whole reason for the shape change: validGalleryItem could not be
+  // afforded eight times on a realistic profile (see
+  // documentation/20260903-gallery-rules-budget.md). Eight ids must fit next
+  // to every other field the editor writes — every field below sits at its
+  // cap, because a merely "realistic" fixture (short photoURL, empty
+  // primaryAudiences) understates the budget the real save is judged against.
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
-  const url = "https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/x.webp?alt=media";
-  const item = (extra) => ({ imageId: "img-1", url, caption: "", width: 10, height: 10, ...extra });
-
-  // THE SHAPE THE EDITOR ACTUALLY WRITES, all six text fields at once. The
-  // gallery is one field of one write, so a single unlisted key inside it
-  // rejects the entire profile save with a message that names nothing — which
-  // is precisely what `link` did between landing in the client and landing in
-  // a deployed ruleset.
+  const photoURL = "https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/x.webp?alt=media";
+  const primaryAudiences = ["science", "public", "policy-makers", "education"];
   await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
-    displayName: "Test Member",
-    gallery: [item({
-      caption: "A short one",
-      captionDe: "Eine kurze Version",
-      descriptionShort: "A bit longer.",
-      description: "The paragraph that only the profile page shows.",
-      descriptionDe: "Der Absatz, den nur die Profilseite zeigt.",
-      link: "https://onlinelibrary.wiley.com/doi/10.1111/gcb.70195",
-    })],
-  }));
-
-  // An emptied box is still a string: the editor writes back what it holds.
-  await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
-    displayName: "Test Member", gallery: [item({ link: "" })],
-  }));
-
-  // Only LENGTH is judged here. Whether a value is linkable is the read path's
-  // question (workLink in src/lib/links.ts), so nonsense saves and simply does
-  // not render — a rule that rejected it would fail the save over a typo.
-  await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
-    displayName: "Test Member", gallery: [item({ link: "not a url at all" })],
-  }));
-
-  // Mirror of MAX_GALLERY_LINK. The client caps the input; this is the door.
-  await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
-    displayName: "Test Member", gallery: [item({ link: "x".repeat(200) })],
-  }));
-  await assertFails(db.doc(`publicProfiles/${OWNER}`).set({
-    displayName: "Test Member", gallery: [item({ link: "x".repeat(201) })],
-  }));
-  await assertFails(db.doc(`publicProfiles/${OWNER}`).set({
-    displayName: "Test Member", gallery: [item({ link: 12 })],
-  }));
-});
-
-test("users + publicProfiles: a MAXIMAL profile saves a FULL gallery", async () => {
-  // THE TEST THAT WAS MISSING, twice over.
-  //
-  // Rules evaluation has a budget; validGallery spends it eight times; and a
-  // fixture that is merely "realistic" understates it. The first version of
-  // this test used a profile with three tags and two audiences, passed 8/8, and
-  // was WRONG: the same rules gave a member with full lists four images. So
-  // every list here sits at its cap and every string at its ceiling, because
-  // the only number worth asserting is the one that holds for the member who
-  // filled everything in.
-  //
-  // Both documents, because updateUserProfile writes both and users/{uid}
-  // carries three fields more — it runs out first, and it is the one a member
-  // actually hits.
-  //
-  // If this starts failing, something in validPublicFields, validPrivateUser or
-  // validGalleryItem has grown, and something else must come out. There is no
-  // warning in production: a member simply loses an image, with a bare
-  // permission error. See documentation/20260903-gallery-rules-budget.md.
-  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
-  const url = (n) => `https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/users%2F${OWNER}%2Fgallery%2F${n}.webp?alt=media`;
-  // descriptionDe and captionDe joined this fixture 2026-09-04 — the whole
-  // point of this test is that it must NOT understate what a filled-in
-  // gallery costs.
-  const item = (n) => ({
-    imageId: `img-${n}`, url: url(n), caption: "x".repeat(140), captionDe: "x".repeat(140),
-    description: "x".repeat(600), descriptionDe: "x".repeat(600), descriptionShort: "x".repeat(240),
-    link: "x".repeat(200), width: 2400, height: 1800, color: "#e8c4b4",
-  });
-  const gallery = Array.from({ length: 8 }, (_, i) => item(i));
-
-  const publicMax = {
-    displayName: "x".repeat(100),
-    photoURL: url("avatar"), photoImageId: "x".repeat(40), photoColor: "#ffffff",
-    memberType: "both", role: "x".repeat(100),
-    // 35 words is validBioWordCount's ceiling; long words take it to 500 chars.
-    bio: Array.from({ length: 35 }, () => "wordwordword").join(" "),
+    displayName: "x".repeat(100), photoURL, photoImageId: "img-a", photoColor: "#123456",
+    memberType: "creator", role: "x".repeat(100),
+    bio: Array.from({ length: 35 }, () => "word").join(" "),
     portfolio: "x".repeat(200), socialMedia: "x".repeat(500),
     affiliation: "x".repeat(150), location: "x".repeat(100),
-    languages: ["de", "en", "fr", "it"],
-    visualNeeds: ["a", "b", "c", "d", "e", "f", "g", "h"],
-    openTo: ["a", "b", "c", "d", "e"],
-    primaryAudiences: ["science", "public", "policy-makers", "education"],
-    tags: ["a", "b", "c", "d", "e", "f", "g"],
-    active: false,
-    gallery,
-  };
-  // `active` is public-only — it is not in validPrivateUser's allowlist, and
-  // leaving it here would reject the private write for the wrong reason.
-  const { active, ...rest } = publicMax;
-  const privateMax = { ...rest, phone: "x".repeat(40), wantsToContribute: true, onboardingComplete: true };
+    languages: ["de", "en", "fr", "it"], visualNeeds: ["a", "b", "c", "d", "e", "f", "g", "h"],
+    openTo: ["a", "b", "c", "d", "e"], primaryAudiences, tags: ["a", "b", "c", "d", "e", "f", "g"],
+    gallery: Array.from({ length: 8 }, () => crypto.randomUUID()),
+    active: true,
+  }));
+  await assertSucceeds(db.doc(`users/${OWNER}`).set({
+    ...minimalUser(OWNER),
+    displayName: "x".repeat(100), photoURL, role: "x".repeat(100),
+    bio: Array.from({ length: 35 }, () => "word").join(" "),
+    portfolio: "x".repeat(200), socialMedia: "x".repeat(500),
+    affiliation: "x".repeat(150), location: "x".repeat(100),
+    languages: ["de", "en", "fr", "it"], visualNeeds: ["a", "b", "c", "d", "e", "f", "g", "h"],
+    openTo: ["a", "b", "c", "d", "e"], primaryAudiences, tags: ["a", "b", "c", "d", "e", "f", "g"],
+    gallery: Array.from({ length: 8 }, () => crypto.randomUUID()),
+    phone: "x".repeat(40), wantsToContribute: true, onboardingComplete: true,
+  }));
+});
 
-  await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set(publicMax));
-  await assertSucceeds(db.doc(`users/${OWNER}`).set(privateMax));
+test("publicProfiles: another member's image id is accepted by rules — the READER drops it", async () => {
+  // Rules cannot look up eight records per save. orderedGalleryItems() in
+  // src/lib/galleryRecords.ts requires ownerUid == uid, so a foreign id is
+  // never rendered. Written down here so nobody "fixes" the rule.
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({ displayName: "Test Member", gallery: ["someone-elses-id"] }));
 });
 
 test("users: email is server-written — absent on create, unchanged on update", async () => {

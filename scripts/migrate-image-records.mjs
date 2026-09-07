@@ -1,3 +1,4 @@
+// Dead on the id-list gallery shape since 2026-09-07 (documentation/20260907-works-on-the-record-design.md); reads objects, fails closed, kept as history.
 // ONE-TIME migration to image records. Idempotent: items that already carry
 // an imageId are left alone, so a partial run can be re-run.
 //

@@ -1,5 +1,4 @@
 import { auth, db } from "./firebase.ts";
-import type { GalleryItem } from "./gallery.ts";
 import {
   collection,
   doc,
@@ -43,7 +42,12 @@ export interface UserDoc {
   openTo: string[];
   primaryAudiences: string[];
   tags: string[];
-  gallery: GalleryItem[];
+  /**
+   * Image ids in display order — and nothing else, since 2026-09-07. The
+   * records behind them (images/{imageId}) hold every word and every pixel
+   * dimension; see src/lib/galleryRecords.ts. Was GalleryItem[] before.
+   */
+  gallery: string[];
   /** Institution, lab, studio or company. Public. */
   affiliation?: string;
   /** Free text, e.g. "Zurich, Switzerland". Public. */

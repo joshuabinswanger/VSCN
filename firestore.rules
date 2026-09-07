@@ -174,7 +174,7 @@ function validPrivateUser(data) {
     // evaluation budget the gallery is spending — which is why users/{uid}
     // refused an EIGHTH image that publicProfiles/{uid} had just accepted.
     // updateUserProfile writes both, so the tighter of the two is the real cap.
-    // See the comment on validGalleryItem.
+    // See the comment on validGallery.
     && data.get('phone', '').size() <= 40
     && data.get('wantsToContribute', false) is bool
     && data.get('onboardingComplete', false) is bool;
@@ -232,73 +232,38 @@ function validStorageUrl(url) {
       || url.matches('https://storage\\.googleapis\\.com/vscn-dev-f4b60\\.firebasestorage\\.app/.*');
 }
 
+// THE ARRAY IS THE ORDER, AND NOTHING ELSE (2026-09-07, Josh: "B looks
+// cleaner, implement it" — documentation/20260907-works-on-the-record-design.md).
+// Every word a member writes about a picture lives on images/{imageId}, where
+// validImage judges it once per write. Until today this array carried a copy
+// of that text and a per-item validator that ran eight times per save, which
+// is how a realistic profile came to save ONE image out of eight —
+// documentation/20260903-gallery-rules-budget.md. A list of short strings
+// costs nothing to judge eight times.
+//
+// A foreign id (another member's image) passes here on purpose: rules cannot
+// read eight records per save. The readers require ownerUid == uid and drop
+// it — see orderedGalleryItems() in src/lib/galleryRecords.ts.
+//
 // Keep MAX_GALLERY_IMAGES in src/lib/gallery.ts in sync with the size cap
-// and the unrolled item checks below (rules cannot loop over lists).
+// (rules cannot loop over lists, hence the unrolled element checks).
 function validGallery(value) {
   return value is list
     && value.size() <= 8
-    && (value.size() < 1 || validGalleryItem(value[0]))
-    && (value.size() < 2 || validGalleryItem(value[1]))
-    && (value.size() < 3 || validGalleryItem(value[2]))
-    && (value.size() < 4 || validGalleryItem(value[3]))
-    && (value.size() < 5 || validGalleryItem(value[4]))
-    && (value.size() < 6 || validGalleryItem(value[5]))
-    && (value.size() < 7 || validGalleryItem(value[6]))
-    && (value.size() < 8 || validGalleryItem(value[7]));
+    && (value.size() < 1 || validGalleryId(value[0]))
+    && (value.size() < 2 || validGalleryId(value[1]))
+    && (value.size() < 3 || validGalleryId(value[2]))
+    && (value.size() < 4 || validGalleryId(value[3]))
+    && (value.size() < 5 || validGalleryId(value[4]))
+    && (value.size() < 6 || validGalleryId(value[5]))
+    && (value.size() < 7 || validGalleryId(value[6]))
+    && (value.size() < 8 || validGalleryId(value[7]));
 }
 
-function validGalleryItem(item) {
-  // WHY THIS IS SO THIN, when every neighbouring validator is thorough.
-  //
-  // Rules evaluation has a budget, and `validGallery` spends it eight times
-  // over. The thorough version of this function — nine `!('x' in item) || (...)`
-  // clauses plus the type and range checks — cost so much that a REALISTIC
-  // profile (name, bio, role, affiliation, avatar, languages, tags, audiences,
-  // and items carrying caption + both descriptions + a link) could save exactly
-  // ONE image before the whole write came back `permission-denied`. Not the
-  // ninth. The second. Measured against the emulator on 2026-09-03, after five
-  // of Josh's uploads landed their bytes and their `images/` record and then
-  // could not join his own gallery array.
-  //
-  // Nothing in the message says budget: it is the same bare permission error a
-  // wrong field gives, which is why this hid behind the hasOnly trap for so
-  // long. The gallery cap was never eight; it was however many items fitted in
-  // what the rest of the profile left over, and every caption a member typed
-  // made it smaller.
-  //
-  // WHAT SURVIVES HERE is what protects the PUBLIC SITE and has nowhere else to
-  // be checked:
-  //   - hasOnly, because an unlisted key is how a withdrawn field creeps back;
-  //   - validStorageUrl, because this url is rendered on the community wall and
-  //     an off-site one would make the directory hotlink anywhere;
-  //   - the link cap, because `link` lives ONLY in this array — it has no
-  //     images/{imageId} field behind it, so this is its only door.
-  //
-  // WHAT MOVED, rather than disappeared: caption, description and
-  // descriptionShort lengths, the colour format and the width/height ranges are
-  // all enforced by validImage on images/{imageId} — the record that IS the
-  // source of truth — and again by the client before either write. The array is
-  // a display projection of that record. The accepted residue is that a member
-  // hand-crafting a request could put junk in their OWN card.
-  //
-  // Measured alternatives, on that same full profile: adding back the imageId
-  // length cap costs two images (6/8); adding the width/height int checks costs
-  // three (5/8); the shipped version cost seven (1/8). The real fix is to stop
-  // carrying text in this array at all and read it from the records — see
-  // documentation/20260903-gallery-rules-budget.md.
-  // 'descriptionDe' and 'captionDe' (2026-09-04, Josh: "english and german
-  // image descriptions", then "caption also in german") join the allowlist
-  // the same way 'description' and the retired 'descriptionShort' did: a name
-  // only, no type or size clause. More strings in hasOnly's fixed list is not
-  // the cost that blew the budget above — that was per-field
-  // `!('x' in item) || (...)` clauses run once per gallery item; the length
-  // cap for each of these lives on validImage below, which runs once per
-  // image write, not up to eight times per save.
-  return item.keys().hasOnly(['imageId', 'url', 'caption', 'captionDe', 'description', 'descriptionDe', 'descriptionShort', 'link', 'width', 'height', 'color'])
-    && validStorageUrl(item.url)
-    // `get` with a default rather than `'link' in item &&`: the three-expression
-    // form is precisely what could not be afforded eight times over.
-    && item.get('link', '').size() <= 200;
+// A uuid is 36 characters; an unverified member's slot id `{uid}-gallery` is
+// the uid (28) plus 8. 64 leaves room and still refuses a pasted URL.
+function validGalleryId(id) {
+  return id is string && id.size() > 0 && id.size() <= 64;
 }
 
 
@@ -310,7 +275,7 @@ function validGalleryItem(item) {
 // filled-in profile spends the same budget the gallery needs. With this
 // function and validPrimaryAudiences written out that way, a member whose
 // lists are full could save FOUR images out of eight — see the comment on
-// validGalleryItem, and documentation/20260903-gallery-rules-budget.md.
+// validGallery, and documentation/20260903-gallery-rules-budget.md.
 //
 // `hasOnly` on a LIST asks the same question in one expression: every element
 // is one of these. It does not notice duplicates, which the unrolled form did
@@ -361,12 +326,13 @@ function validBioWordCount(bio) {
   return bio.size() == 0 || bio.matches('^\\s*\\S+(\\s+\\S+){0,34}\\s*$');
 }
 
-// Keep in sync with ImageDoc in functions/src/types.ts and src/lib/images.ts.
+// Keep in sync with ImageDoc in functions/src/types.ts, src/lib/images.ts and
+// src/lib/galleryRecords.ts.
 // The storagePath check binds the record to exactly one object: the document
 // id IS the filename, and the owner IS the folder.
 function validImage(data, imageId) {
   return data.keys().hasOnly(['ownerUid', 'kind', 'storagePath', 'width', 'height', 'color',
-                              'caption', 'captionDe', 'description', 'descriptionDe', 'descriptionShort', 'origin',
+                              'caption', 'captionDe', 'description', 'descriptionDe', 'link', 'descriptionShort', 'origin',
                               'provenance', 'status', 'createdAt', 'updatedAt'])
     && data.ownerUid is string
     && (data.kind == 'avatar' || data.kind == 'gallery')
@@ -379,10 +345,16 @@ function validImage(data, imageId) {
     && (!('captionDe' in data) || (data.captionDe is string && data.captionDe.size() <= 140))
     && (!('description' in data) || (data.description is string && data.description.size() <= 600))
     // The German counterpart, same cap as 'description' — this runs once per
-    // image write (validImage, not validGalleryItem), so a second 600-char
+    // image write (validImage, not eight times over), so a second 600-char
     // check here is not the budget mistake documentation/20260903-gallery-
     // rules-budget.md describes.
     && (!('descriptionDe' in data) || (data.descriptionDe is string && data.descriptionDe.size() <= 600))
+    // WHERE THE IMAGE APPEARED, moved here from the gallery array on
+    // 2026-09-07. Same cap as `portfolio`, because it holds the same kind of
+    // value: one URL stored without its scheme. Only LENGTH is judged; whether
+    // it is linkable is the read path's question (workLink in
+    // src/lib/links.ts) — a rule that rejected a typo would fail the save.
+    && (!('link' in data) || (data.link is string && data.link.size() <= 200))
     && (!('descriptionShort' in data) || (data.descriptionShort is string && data.descriptionShort.size() <= 240))
     && (data.origin == 'member' || data.origin == 'curated')
     && (data.status == 'uploading' || data.status == 'live' || data.status == 'pendingDeletion')

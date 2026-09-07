@@ -43,29 +43,31 @@
 // the field, and invisible if every placeholder is in one language. The
 // language follows the work's own title (ENGLISH_TITLED below), traced through
 // the `images/{imageId}` record's `provenance.source`, because the gallery
-// array itself carries a random uuid and a storage url and no filename at all.
+// array itself carries nothing but a random uuid and no filename at all.
 //
 // Length bands are dealt round-robin by a hash of the imageId, so the deal is
 // stable across runs and one member's gallery gets a spread of lengths rather
 // than three copies of one.
 //
 //   --clear removes exactly what this wrote and nothing else: it only touches
-//   items whose stored text is one of the strings below. Placeholder content
+//   records whose stored text is one of the strings below. Placeholder content
 //   that cannot be taken out again is worse than none, and this is the half
 //   that makes seeding it safe.
 //
 // DEV ONLY, and the refusal is not a formality: this text would be a lie on a
 // member's public page under their name.
 //
-// It writes to the SAME THREE PLACES the gallery seeder does — the
-// `images/{imageId}` record (the truth), and the gallery array on both
-// `publicProfiles/{uid}` and `users/{uid}` (the projections). Seeding only the
-// public copy would be wiped by the member's next save, which republishes from
-// `users`.
+// It writes THE RECORD AND NOTHING ELSE. Since 2026-09-07 the `gallery` array
+// on both profile docs is a list of image ids carrying no text at all
+// (documentation/20260907-works-on-the-record-design.md), so `images/{imageId}`
+// is the only place this text can live. The old hazard this paragraph used to
+// warn about — seeding the public copy alone, which the member's next save
+// would republish away from `users` — went away with the projection itself.
 //
-// Members' own text is NEVER overwritten: an item that already has any of the
+// Members' own text is NEVER overwritten: a RECORD that already has any of the
 // three fields set to something that is not one of these placeholders is left
-// alone.
+// alone. It judges only the three fields it writes, so a member's `captionDe`,
+// `descriptionDe` or `link` is neither read nor touched here.
 //
 // Usage (there is no default project — -P is mandatory):
 //   node scripts/seed-image-descriptions.mjs -P dev            # dry run
@@ -234,11 +236,11 @@ function textFor(imageId, index, lang) {
 }
 
 /**
- * Whether this item is ours to write on: empty, or already holding a string
+ * Whether this RECORD is ours to write on: empty, or already holding a string
  * this script put there. Anything else is a member's own writing.
  *
  * ALL THREE fields have to pass, including the retired one. A member who typed
- * their own caption and left the description empty still owns the item, and a
+ * their own caption and left the description empty still owns the work, and a
  * member's title is the last thing that should be overwritten by a stand-in
  * for it.
  */
@@ -269,41 +271,34 @@ try {
     if (!Array.isArray(gallery) || gallery.length === 0) continue;
 
     let touched = 0;
-    const next = [];
-    // A for loop, not `.map()`: the caption's language comes from a Firestore
-    // read (`langFor`), and an async callback in `.map()` would have handed the
-    // gallery array a row of promises.
+    const patches = []; // [imageId, fields]
+    // A for loop, not `.map()`: the body awaits twice — the record read and
+    // `langFor` — and an async callback in `.map()` would collect promises
+    // instead of doing the work.
     for (let i = 0; i < gallery.length; i++) {
-      const item = gallery[i];
-      if (!isOurs(item)) {
+      const imageId = typeof gallery[i] === "string" ? gallery[i] : gallery[i]?.imageId;
+      if (!imageId) continue;
+      // The RECORD is the only copy since 2026-09-07 (the array is ids) — so
+      // the seed reads it, judges ownership of the text on it, and writes it.
+      const snap = await db.doc(`images/${imageId}`).get();
+      const rec = snap.exists ? snap.data() : null;
+      if (!rec || !isOurs(rec)) {
         skippedImages++;
-        next.push(item);
         continue;
       }
-      const copy = { ...item };
-      const wanted = doClear
-        ? { caption: "", description: "" }
-        : textFor(item.imageId, i, await langFor(item.imageId));
+      const wanted = doClear ? { caption: "", description: "" } : textFor(imageId, i, await langFor(imageId));
       const key = (o) => `${o.caption ?? ""}|${o.description ?? ""}|${o.descriptionShort ?? ""}`;
-      const before = key(copy);
-      // CAPTION IS THE EXCEPTION to the rule below, in the array only: the
-      // gallery seeder writes `caption: ""` on every item it creates, and
-      // GalleryItem types it as a required string. Clearing to "" — not
-      // deleting the key — is what puts an item back exactly as
-      // seed-curated-galleries.mjs left it. The RECORD never had a caption at
-      // all, so there the key is deleted; see the write below.
-      copy.caption = wanted.caption ?? "";
-      // A key set to "" must be REMOVED, not stored empty: both rulesets allow
-      // the key to be absent and every consumer tests for presence, so an empty
-      // string would be a third state nothing reads.
-      if (wanted.description) copy.description = wanted.description;
-      else delete copy.description;
-      // The retired field, removed in BOTH modes and never written. It is in
-      // `before` so that taking it off an image counts as a change on its own —
-      // that is what makes FILL clean up after the old build.
-      delete copy.descriptionShort;
-      if (key(copy) !== before) touched++;
-      next.push(copy);
+      const next = { caption: wanted.caption || undefined, description: wanted.description || undefined };
+      if (key(next) !== key(rec)) {
+        touched++;
+        patches.push([imageId, {
+          // DELETED when empty: absent is what a seeded record looks like.
+          caption: next.caption ?? FieldValue.delete(),
+          description: next.description ?? FieldValue.delete(),
+          descriptionShort: FieldValue.delete(),
+          updatedAt: FieldValue.serverTimestamp(),
+        }]);
+      }
     }
 
     if (touched === 0) {
@@ -312,32 +307,8 @@ try {
     }
 
     if (doWrite) {
-      // The RECORDS first — they are the truth, and the arrays are projections
-      // of them. A run that died between the two would leave the records right
-      // and the pages stale, which the next run repairs; the other order would
-      // leave the pages saying something the records deny.
-      for (const item of next) {
-        if (!item.imageId) continue;
-        await db.doc(`images/${item.imageId}`).set(
-          {
-            // DELETED when empty, unlike the array's "" — the gallery seeder
-            // never put a caption on the record, so absent is what "before"
-            // looks like here.
-            caption: item.caption || FieldValue.delete(),
-            description: item.description ?? FieldValue.delete(),
-            // Retired: taken off the record too, in both modes.
-            descriptionShort: FieldValue.delete(),
-            updatedAt: FieldValue.serverTimestamp(),
-          },
-          { merge: true },
-        );
-      }
-      await doc.ref.update({ gallery: next, updatedAt: FieldValue.serverTimestamp() });
-      const userRef = db.collection("users").doc(uid);
-      if ((await userRef.get()).exists) {
-        await userRef.update({ gallery: next, updatedAt: FieldValue.serverTimestamp() });
-      } else {
-        console.log(`  (no users/${uid} doc — publicProfiles only)`);
+      for (const [imageId, fields] of patches) {
+        await db.doc(`images/${imageId}`).set(fields, { merge: true });
       }
     }
 
