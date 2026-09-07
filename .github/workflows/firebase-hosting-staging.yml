@@ -1,6 +1,24 @@
 name: Deploy to Firebase Hosting Staging
+# Staging follows dev. The push trigger was removed on 2026-05-26 (3e8e2fc),
+# when dev was a scratch branch that every half-finished push would have
+# redeployed under whoever was looking at staging. Restored 2026-09-07 (Josh:
+# "wouldn't it make sense to have autodeploy on for dev?"): dev is now reached
+# only through PRs merged on GitHub, so a push IS a reviewed merge; the
+# requestRebuild function already dispatches this workflow on every staging
+# profile save, so staging rebuilt itself on data changes but lagged on code
+# changes until someone remembered to deploy — which is what happened with #5.
+# workflow_dispatch stays for requestRebuild and for a deliberate rebuild.
 on:
+  push:
+    branches:
+      - dev
   workflow_dispatch:
+# One staging deploy at a time, newest wins. A merge landing while a
+# profile-save rebuild is in flight cancels it, which loses nothing: the build
+# reads Firestore at build time, so the newer run carries the newer data too.
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: true
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
