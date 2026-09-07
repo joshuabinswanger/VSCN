@@ -270,27 +270,31 @@ test("publicProfiles: eight ids save on a FULL profile", async () => {
   // The whole reason for the shape change: validGalleryItem could not be
   // afforded eight times on a realistic profile (see
   // documentation/20260903-gallery-rules-budget.md). Eight ids must fit next
-  // to every other field the editor writes.
+  // to every other field the editor writes — every field below sits at its
+  // cap, because a merely "realistic" fixture (short photoURL, empty
+  // primaryAudiences) understates the budget the real save is judged against.
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  const photoURL = "https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/x.webp?alt=media";
+  const primaryAudiences = ["science", "public", "policy-makers", "education"];
   await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
-    displayName: "x".repeat(100), photoURL: "", photoImageId: "img-a", photoColor: "#123456",
+    displayName: "x".repeat(100), photoURL, photoImageId: "img-a", photoColor: "#123456",
     memberType: "creator", role: "x".repeat(100),
     bio: Array.from({ length: 35 }, () => "word").join(" "),
     portfolio: "x".repeat(200), socialMedia: "x".repeat(500),
     affiliation: "x".repeat(150), location: "x".repeat(100),
     languages: ["de", "en", "fr", "it"], visualNeeds: ["a", "b", "c", "d", "e", "f", "g", "h"],
-    openTo: ["a", "b", "c", "d", "e"], primaryAudiences: [], tags: ["a", "b", "c", "d", "e", "f", "g"],
+    openTo: ["a", "b", "c", "d", "e"], primaryAudiences, tags: ["a", "b", "c", "d", "e", "f", "g"],
     gallery: Array.from({ length: 8 }, () => crypto.randomUUID()),
     active: true,
   }));
   await assertSucceeds(db.doc(`users/${OWNER}`).set({
     ...minimalUser(OWNER),
-    displayName: "x".repeat(100), role: "x".repeat(100),
+    displayName: "x".repeat(100), photoURL, role: "x".repeat(100),
     bio: Array.from({ length: 35 }, () => "word").join(" "),
     portfolio: "x".repeat(200), socialMedia: "x".repeat(500),
     affiliation: "x".repeat(150), location: "x".repeat(100),
     languages: ["de", "en", "fr", "it"], visualNeeds: ["a", "b", "c", "d", "e", "f", "g", "h"],
-    openTo: ["a", "b", "c", "d", "e"], tags: ["a", "b", "c", "d", "e", "f", "g"],
+    openTo: ["a", "b", "c", "d", "e"], primaryAudiences, tags: ["a", "b", "c", "d", "e", "f", "g"],
     gallery: Array.from({ length: 8 }, () => crypto.randomUUID()),
     phone: "x".repeat(40), wantsToContribute: true, onboardingComplete: true,
   }));
