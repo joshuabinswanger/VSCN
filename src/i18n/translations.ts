@@ -100,6 +100,8 @@ export const ui: Record<string, Record<string, string>> = {
     "auth.error.code.tooManyRequests": "Too many attempts. Please wait and try again.",
     "auth.error.code.network":
       "Could not reach the server. Check your internet connection, and any ad blocker or VPN.",
+    "auth.error.code.appCheck":
+      "A security check could not run in your browser. If you use an ad blocker, a privacy extension or a VPN, allow this site and reload the page.",
     "auth.error.code.operationNotAllowed":
       "Sign-up is temporarily unavailable. This is on our end. Please contact us at info@vscn.ch.",
     "auth.error.code.userDisabled":
@@ -542,6 +544,8 @@ export const ui: Record<string, Record<string, string>> = {
       "Zu viele Versuche. Bitte warte einen Moment und versuche es dann erneut.",
     "auth.error.code.network":
       "Der Server ist nicht erreichbar. Überprüfe deine Internetverbindung sowie Adblocker und VPN.",
+    "auth.error.code.appCheck":
+      "Eine Sicherheitsprüfung konnte in deinem Browser nicht ausgeführt werden. Wenn du einen Adblocker, eine Datenschutz-Erweiterung oder ein VPN nutzt, erlaube diese Seite und lade sie neu.",
     "auth.error.code.operationNotAllowed":
       "Die Registrierung ist derzeit nicht verfügbar. Das liegt an uns. Bitte kontaktiere uns unter info@vscn.ch.",
     "auth.error.code.userDisabled":
