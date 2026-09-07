@@ -298,6 +298,12 @@ export const ui: Record<string, Record<string, string>> = {
       "The first image is your cover: its proportions set the shape of your card in the directory.",
     "profile.gallery.moveUp": "Move image earlier",
     "profile.gallery.moveDown": "Move image later",
+    // Visible text on the switch stays the bare "EN"/"DE" — two-letter codes
+    // any member of a bilingual site already reads without translation, and
+    // there is no room in the compact gallery row for the full word twice.
+    // These are the buttons' accessible names only.
+    "profile.gallery.lang.en": "Show the English caption and description fields",
+    "profile.gallery.lang.de": "Show the German caption and description fields",
     "profile.gallery.cancel": "Cancel upload",
     "profile.gallery.retry": "Retry",
     "profile.gallery.dismiss": "Dismiss",
@@ -309,15 +315,45 @@ export const ui: Record<string, Record<string, string>> = {
     // below splits the two. Writing the example into this key would have a
     // screen reader announce one specific zebrafish before every caption box.
     "profile.gallery.caption": "Caption",
-    // A REAL ONE (2026-09-04, Josh: "only caption (make a good example)"). It
-    // said "One line. Also read aloud as the image description." — a
-    // specification of a caption rather than a caption, which left members
-    // typing "Illustration" and "My work". Showing the kind of sentence that
-    // works teaches the field in a way describing it cannot: a subject, and
-    // the thing about it worth knowing.
-    "profile.gallery.caption.ph": "Zebrafish retina in cross-section, confocal",
+    // A REAL ONE (2026-09-04, Josh: "only caption (make a good example)"),
+    // labelled as one (2026-09-04, Josh: "the example inside the text box
+    // should be labeled as such") — a member's own first attempt could sit in
+    // this same box, and a bare sentence with nothing marking it as sample
+    // text reads as one. It said "One line. Also read aloud as the image
+    // description." before that — a specification of a caption rather than a
+    // caption, which left members typing "Illustration" and "My work".
+    // Showing the kind of sentence that works teaches the field in a way
+    // describing it cannot: a subject, and the thing about it worth knowing.
+    "profile.gallery.caption.ph": "Example: Zebrafish retina in cross-section, confocal",
     "profile.gallery.captionNote": "One line. Also read aloud to people who can't see the image.",
+    // The accessible name for the German field below, not its placeholder —
+    // see .de.ph for that. Names the field itself so a screen reader tabbing
+    // in announces what it is, the same job "Caption" above does.
+    "profile.gallery.caption.de": "Caption (German)",
+    // The example carries its OWN caption.de.ph rather than reusing the one
+    // above (2026-09-04, "make the explanations better"): the sentence has to
+    // exist in German to demonstrate a German caption, and swapping only the
+    // "Example:" word in front of an English sentence would show a member the
+    // wrong language example for the field they are looking at.
+    "profile.gallery.caption.de.ph": "Example: Zebrafisch-Netzhaut im Querschnitt, konfokal",
+    // Rewritten (2026-09-04) to say what happens rather than point at a
+    // neighbouring field — the EN/DE switch above means the two are never
+    // both on screen at once, so "the line above" no longer names anything.
+    "profile.gallery.caption.deNote":
+      "Optional. German visitors hear this read aloud in place of the caption; until it's filled in, they hear the English one instead.",
     "profile.gallery.description": "About this image — how it was made, who it was for, what it shows",
+    "profile.gallery.description.de": "Description (German)",
+    // Longer than the German caption's example on purpose (2026-09-04, Josh:
+    // "example for lng image description should be longer") — this field
+    // holds up to 600 characters and reads as the paragraph on the profile
+    // page, so a one-clause placeholder undersold what actually belongs
+    // here. Two sentences: what it is and how it was made, then who it was
+    // for and what it shows — the same "how/who/what" GalleryItem.description
+    // itself asks for in gallery.ts.
+    "profile.gallery.description.de.ph":
+      "Example: Angefertigt für eine Publikation über Immunzellen im Zebrafisch-Embryo, aus konfokalen Mikroskopieaufnahmen rekonstruiert. Die Illustration zeigt, wie Fresszellen durch das Gewebe wandern, um Krankheitserreger aufzuspüren.",
+    "profile.gallery.description.deNote":
+      "Optional. German visitors read this in place of the description; until it's filled in, they read the English one instead.",
     // Stored without a scheme, like Portfolio: the input carries a fixed
     // https:// prefix, so the placeholder must not repeat one.
     "profile.gallery.link": "Where this image appeared",
@@ -678,6 +714,8 @@ export const ui: Record<string, Record<string, string>> = {
       "Das erste Bild ist dein Titelbild: seine Proportionen bestimmen die Form deiner Karte im Verzeichnis.",
     "profile.gallery.moveUp": "Bild nach vorne",
     "profile.gallery.moveDown": "Bild nach hinten",
+    "profile.gallery.lang.en": "Englische Felder für Bildtitel und Beschreibung anzeigen",
+    "profile.gallery.lang.de": "Deutsche Felder für Bildtitel und Beschreibung anzeigen",
     "profile.gallery.cancel": "Upload abbrechen",
     "profile.gallery.retry": "Erneut versuchen",
     "profile.gallery.dismiss": "Verwerfen",
@@ -685,11 +723,20 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.preparing": "Wird vorbereitet…",
     "profile.gallery.overflow": "Es passen nur {n} Bilder — {m} nicht hinzugefügt.",
     "profile.gallery.caption": "Bildtitel",
-    "profile.gallery.caption.ph": "Zebrafisch-Netzhaut im Querschnitt, konfokal",
+    "profile.gallery.caption.ph": "Beispiel: Zebrafisch-Netzhaut im Querschnitt, konfokal",
     "profile.gallery.captionNote":
       "Eine Zeile. Wird auch Menschen vorgelesen, die das Bild nicht sehen können.",
+    "profile.gallery.caption.de": "Bildtitel (Deutsch)",
+    "profile.gallery.caption.de.ph": "Beispiel: Zebrafisch-Netzhaut im Querschnitt, konfokal",
+    "profile.gallery.caption.deNote":
+      "Optional. Wird deutschen Besucher:innen anstelle des Bildtitels vorgelesen; bis er ausgefüllt ist, hören sie den englischen.",
     "profile.gallery.description":
       "Über dieses Bild — wie es entstand, für wen, was es zeigt",
+    "profile.gallery.description.de": "Beschreibung (Deutsch)",
+    "profile.gallery.description.de.ph":
+      "Beispiel: Angefertigt für eine Publikation über Immunzellen im Zebrafisch-Embryo, aus konfokalen Mikroskopieaufnahmen rekonstruiert. Die Illustration zeigt, wie Fresszellen durch das Gewebe wandern, um Krankheitserreger aufzuspüren.",
+    "profile.gallery.description.deNote":
+      "Optional. Wird deutschen Besucher:innen anstelle der Beschreibung gezeigt; bis sie ausgefüllt ist, lesen sie die englische.",
     "profile.gallery.link": "Wo dieses Bild erschienen ist",
     "profile.gallery.link.ph": "nature.com/articles/… (optional)",
     "profile.tag.error": "Tags müssen eindeutig sein, 1–50 Zeichen, und maximal 7 Tags.",

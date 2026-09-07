@@ -2,6 +2,7 @@
 import Layout from "../../layouts/Layout.astro";
 import CommunityGrid from "../../components/CommunityGrid.astro";
 import { fetchMemberViews } from "../../lib/membersBuild.ts";
+import { workCaption, workDescription } from "../../lib/links.ts";
 import type { Lang } from "../../i18n/utils";
 export function getStaticPaths() {
   return [{ params: { lang: undefined } }, { params: { lang: "de" } }];
@@ -14,7 +15,20 @@ const currentLang = (lang || "en") as Lang;
 // never disagree about a member. fetchMemberViews() returns [] and logs when
 // credentials are missing — "no members" and "no credentials" look identical
 // here, by long-standing (documented) design.
-const members = await fetchMemberViews();
+//
+// Each work's caption and description are picked for THIS page's locale here,
+// once — fetchMemberViews() is lang-agnostic (one build, reused by both
+// /community and /de/community), so the German fields would otherwise reach
+// the grid and its lightbox unresolved. See workCaption()/workDescription()
+// in links.ts.
+const members = (await fetchMemberViews()).map((m) => ({
+  ...m,
+  works: m.works.map((w) => ({
+    ...w,
+    caption: workCaption(w, currentLang),
+    description: workDescription(w, currentLang),
+  })),
+}));
 
 const title = "Community — VSCN";
 const description =

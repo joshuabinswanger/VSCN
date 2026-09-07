@@ -166,14 +166,16 @@ export async function markImageForDeletion(imageId: string): Promise<void> {
 /** Captions and descriptions live on the record; the gallery array is a projection. */
 export async function updateImageText(
   imageId: string,
-  text: { caption: string; description?: string },
+  text: { caption: string; captionDe?: string; description?: string; descriptionDe?: string },
 ): Promise<void> {
   await updateDoc(doc(db, "images", imageId), {
     caption: text.caption,
     // deleteField() rather than "": the rulesets allow the key to be absent,
     // and an empty string would make every consumer test for emptiness
     // instead of for presence.
+    captionDe: text.captionDe ? text.captionDe : deleteField(),
     description: text.description ? text.description : deleteField(),
+    descriptionDe: text.descriptionDe ? text.descriptionDe : deleteField(),
     // THE RETIRED FIELD, SWEPT (2026-09-04 — see GalleryItem.description for
     // why the short description is gone). Unconditional, and the only mention
     // of the name left in the app: records written during its one-day life

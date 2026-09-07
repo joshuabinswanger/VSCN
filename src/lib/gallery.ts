@@ -107,6 +107,15 @@ export interface GalleryItem {
    * before every other image is worse than no caption at all.
    */
   caption: string;
+  /**
+   * THE GERMAN CAPTION, OPTIONAL (2026-09-04, Josh: "caption also in german
+   * no?" — the same day, right after descriptionDe). `caption` above is read
+   * aloud as alt text, so it needs the same per-locale treatment description
+   * got: a screen reader on the German page should speak German, not the
+   * English line a member happened to write first. Same fallback as
+   * descriptionDe — blank means the field above, not silence.
+   */
+  captionDe?: string;
   width: number;
   height: number;
   /** Dominant color (#rrggbb), shown while the image loads. Optional: pre-existing items have none. */
@@ -129,6 +138,18 @@ export interface GalleryItem {
    * owning member's next save — see the sweep in updateImageText.
    */
   description?: string;
+  /**
+   * THE GERMAN TEXT, OPTIONAL (2026-09-04, Josh: "english and german image
+   * descriptions"). `description` above is the default — shown on the English
+   * site always, and on the German site too until this field has something in
+   * it, the same fallback `useTranslations()` already applies to every UI
+   * string (`ui[lang][key] ?? ui.en[key]`). Kept separate from `description`
+   * rather than the field itself becoming a `{en, de}` object: existing
+   * profiles already have plain-string `description` values, and a shape
+   * change would need a migration this field's own history (see `description`
+   * above) argues against risking twice in one week.
+   */
+  descriptionDe?: string;
   /**
    * Where this image lives in the world: the paper it illustrates, the campaign
    * it ran in, the shop that sells the print. This is the useful half of what
@@ -173,7 +194,10 @@ export function sanitizeGalleryItems(value: unknown): GalleryItem[] {
         height: Number(raw.height ?? 0),
       };
       if (typeof raw.color === "string") item.color = raw.color;
+      if (typeof raw.captionDe === "string" && raw.captionDe) item.captionDe = raw.captionDe;
       if (typeof raw.description === "string" && raw.description) item.description = raw.description;
+      if (typeof raw.descriptionDe === "string" && raw.descriptionDe)
+        item.descriptionDe = raw.descriptionDe;
       if (typeof raw.link === "string" && raw.link) item.link = raw.link;
       return item;
     })
@@ -382,7 +406,9 @@ export async function syncGalleryText(gallery: GalleryItem[]): Promise<void> {
     items.map((item) =>
       updateImageText(item.imageId, {
         caption: item.caption,
+        captionDe: item.captionDe,
         description: item.description,
+        descriptionDe: item.descriptionDe,
       }),
     ),
   );

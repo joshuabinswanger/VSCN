@@ -99,6 +99,28 @@ test("images: owner edits caption and both descriptions", async () => {
   }));
 });
 
+test("images: descriptionDe shares description's 600-char cap", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({
+    descriptionDe: "x".repeat(600), updatedAt: new Date(),
+  }));
+  await assertFails(db.doc("images/img-1").update({
+    descriptionDe: "x".repeat(601), updatedAt: new Date(),
+  }));
+});
+
+test("images: captionDe shares caption's 140-char cap", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({
+    captionDe: "x".repeat(140), updatedAt: new Date(),
+  }));
+  await assertFails(db.doc("images/img-1").update({
+    captionDe: "x".repeat(141), updatedAt: new Date(),
+  }));
+});
+
 test("images: ownerUid, kind, storagePath, origin and createdAt are immutable", async () => {
   await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
@@ -238,21 +260,34 @@ test("publicProfiles: the array check is the key list, the bucket and the link",
   await assertSucceeds(save([{ url, caption: "", width: 10, height: 10 }]));
 });
 
-test("publicProfiles: both descriptions ride along in the array, uncapped there", async () => {
+test("publicProfiles: all text fields ride along in the array, uncapped there", async () => {
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
   const url = "https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/x.webp?alt=media";
   const item = (extra) => ({ imageId: "img-1", url, caption: "", width: 10, height: 10, ...extra });
   const save = (gallery) => db.doc(`publicProfiles/${OWNER}`).set({ displayName: "Test Member", gallery });
 
-  // Both keys are in validGalleryItem's hasOnly list, so both travel in the
-  // array the editor writes back whole.
-  await assertSucceeds(save([item({ description: "x".repeat(600), descriptionShort: "x".repeat(240) })]));
+  // Every key here is in validGalleryItem's hasOnly list, so all of them
+  // travel in the array the editor writes back whole. captionDe and
+  // descriptionDe joined 2026-09-04 (Josh: "english and german image
+  // descriptions", then "caption also in german") the same way description
+  // and the retired descriptionShort did: a name only, no length clause — see
+  // the comment on validGalleryItem in firestore.rules.
+  await assertSucceeds(
+    save([item({
+      captionDe: "x".repeat(140),
+      description: "x".repeat(600), descriptionDe: "x".repeat(600), descriptionShort: "x".repeat(240),
+    })]),
+  );
 
   // Their CEILINGS are enforced on images/{imageId} (see "images: owner edits
-  // caption and both descriptions") and in the client, not here. Asserting the
-  // over-long value SUCCEEDS is deliberate: it is the price of eight images,
-  // written down where someone tightening this rule will trip over it.
+  // caption and both descriptions", "images: descriptionDe shares
+  // description's 600-char cap", "images: captionDe shares caption's
+  // 140-char cap") and in the client, not here. Asserting the over-long value
+  // SUCCEEDS is deliberate: it is the price of eight images, written down
+  // where someone tightening this rule will trip over it.
   await assertSucceeds(save([item({ descriptionShort: "x".repeat(241) })]));
+  await assertSucceeds(save([item({ descriptionDe: "x".repeat(601) })]));
+  await assertSucceeds(save([item({ captionDe: "x".repeat(141) })]));
 
   // The key list is still the key list.
   await assertFails(save([item({ descriptionLong: "nope" })]));
@@ -263,7 +298,7 @@ test("publicProfiles: a gallery item may say where the image appeared", async ()
   const url = "https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/x.webp?alt=media";
   const item = (extra) => ({ imageId: "img-1", url, caption: "", width: 10, height: 10, ...extra });
 
-  // THE SHAPE THE EDITOR ACTUALLY WRITES, all four text fields at once. The
+  // THE SHAPE THE EDITOR ACTUALLY WRITES, all six text fields at once. The
   // gallery is one field of one write, so a single unlisted key inside it
   // rejects the entire profile save with a message that names nothing — which
   // is precisely what `link` did between landing in the client and landing in
@@ -272,8 +307,10 @@ test("publicProfiles: a gallery item may say where the image appeared", async ()
     displayName: "Test Member",
     gallery: [item({
       caption: "A short one",
+      captionDe: "Eine kurze Version",
       descriptionShort: "A bit longer.",
       description: "The paragraph that only the profile page shows.",
+      descriptionDe: "Der Absatz, den nur die Profilseite zeigt.",
       link: "https://onlinelibrary.wiley.com/doi/10.1111/gcb.70195",
     })],
   }));
@@ -323,9 +360,12 @@ test("users + publicProfiles: a MAXIMAL profile saves a FULL gallery", async () 
   // permission error. See documentation/20260903-gallery-rules-budget.md.
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
   const url = (n) => `https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/users%2F${OWNER}%2Fgallery%2F${n}.webp?alt=media`;
+  // descriptionDe and captionDe joined this fixture 2026-09-04 — the whole
+  // point of this test is that it must NOT understate what a filled-in
+  // gallery costs.
   const item = (n) => ({
-    imageId: `img-${n}`, url: url(n), caption: "x".repeat(140),
-    description: "x".repeat(600), descriptionShort: "x".repeat(240),
+    imageId: `img-${n}`, url: url(n), caption: "x".repeat(140), captionDe: "x".repeat(140),
+    description: "x".repeat(600), descriptionDe: "x".repeat(600), descriptionShort: "x".repeat(240),
     link: "x".repeat(200), width: 2400, height: 1800, color: "#e8c4b4",
   });
   const gallery = Array.from({ length: 8 }, (_, i) => item(i));

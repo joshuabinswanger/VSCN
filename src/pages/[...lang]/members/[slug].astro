@@ -9,6 +9,8 @@ import {
   hostLabel,
   memberHref,
   socialLinks,
+  workCaption,
+  workDescription,
 } from "../../../lib/links.ts";
 import { useTranslations } from "../../../i18n/utils";
 import type { Lang } from "../../../i18n/utils";
@@ -72,6 +74,15 @@ const t = useTranslations(currentLang);
 const works = await Promise.all(
   member.works.map(async (w) => ({
     ...w,
+    // Picked for this page's locale — member.works is built once and shared
+    // with the /de page for the same member (see toMemberViewBase's
+    // callers), so the raw caption/description pairs are only resolved here,
+    // where currentLang is known. See workCaption()/workDescription() in
+    // links.ts. w.caption is what the <img alt> and the lightbox trigger's
+    // data-pswp-caption both read below, so this is also what a German
+    // screen reader speaks for this image.
+    caption: workCaption(w, currentLang),
+    description: workDescription(w, currentLang),
     rendered: await getImage({
       src: w.url,
       width: w.width,

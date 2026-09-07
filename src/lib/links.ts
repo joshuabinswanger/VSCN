@@ -4,6 +4,44 @@
 // here rather than twice.
 
 import { TAG_CHIP_VIEW } from "./communityLayout.ts";
+import type { Lang } from "../i18n/utils";
+
+/**
+ * The rule behind workCaption() and workDescription() below: the German
+ * field when a German page has one, the default (English) field everywhere
+ * else — the same `ui[lang] ?? ui.en` fallback `useTranslations()` applies to
+ * every button and label on the site, extended for the first time to a
+ * MEMBER's own words (2026-09-04, Josh: "english and german image
+ * descriptions", then "caption also in german"). Optional rather than
+ * mandatory on purpose: a second field that had to be filled in twice is
+ * exactly what got a member's gallery description retired down to one field
+ * the day before — see GalleryItem.description in gallery.ts.
+ *
+ * Resolved here, once, rather than left to each renderer: every producer of a
+ * ProfileWork (memberView.ts at build time, the editor's live preview) reads
+ * the raw pair off the stored gallery item and must agree on which one a
+ * given locale sees.
+ */
+function pickLocaleText(en: string | undefined, de: string | undefined, lang: Lang): string | undefined {
+  if (lang === "de") {
+    const deText = (de ?? "").trim();
+    if (deText) return deText;
+  }
+  return (en ?? "").trim() || undefined;
+}
+
+/** Which per-image caption — read aloud as the image's alt text — a locale shows. See pickLocaleText(). */
+export function workCaption(item: { caption?: string; captionDe?: string }, lang: Lang): string | undefined {
+  return pickLocaleText(item.caption, item.captionDe, lang);
+}
+
+/** Which per-image description text a locale shows. See pickLocaleText(). */
+export function workDescription(
+  item: { description?: string; descriptionDe?: string },
+  lang: Lang,
+): string | undefined {
+  return pickLocaleText(item.description, item.descriptionDe, lang);
+}
 
 /**
  * Real `portfolio` values are stored without a scheme ("quaint.ch",

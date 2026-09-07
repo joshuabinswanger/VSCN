@@ -165,8 +165,17 @@ function works(doc: PublicProfileDoc): ProfileWork[] {
         width: g.width,
         height: g.height,
         caption: g.caption,
+        // Raw, unresolved — same reason descriptionDe below is raw:
+        // workCaption() in links.ts picks a locale once each page's lang is
+        // known, which this shared base cannot do for itself.
+        captionDe: (g.captionDe ?? "").trim() || undefined,
         color: g.color,
         description: (g.description ?? "").trim() || undefined,
+        // Raw, unresolved — this base is built once and shared by both the
+        // English and German pages (see toMemberViewBase's callers), so it
+        // cannot pick a locale itself. workDescription() in links.ts does
+        // that, once each page's lang is known.
+        descriptionDe: (g.descriptionDe ?? "").trim() || undefined,
         link: workLink(g.link),
       };
     });
