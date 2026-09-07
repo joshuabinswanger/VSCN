@@ -5,7 +5,7 @@
 // the code appended, which is the part a member can paste into an email.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { friendlyError, isCredentialError, errorParts, RECAPTCHA_BLOCKED } from "../../src/lib/authErrors.ts";
+import { friendlyError, isCredentialError, errorParts, SECURITY_CHECK_BLOCKED } from "../../src/lib/authErrors.ts";
 import { ui } from "../../src/i18n/translations.ts";
 
 const en = ui.en;
@@ -165,15 +165,15 @@ test("errorParts reads the code and the SDK's customData.message off whatever wa
   assert.deepEqual(errorParts("string"), { code: "", detail: "" });
 });
 
-test("the reCAPTCHA-blocked pre-flight has its own sentence in both locales", () => {
-  // Not an SDK code: firebase.ts raises it when the reCAPTCHA script tag fires
-  // its error event, so the forms can refuse BEFORE the 30 s hang. It names
-  // the hosts an IT department must allow, because the members most likely to
-  // hit it sit on institutional networks.
+test("the security-check-blocked pre-flight has its own sentence in both locales", () => {
+  // Not an SDK code: appCheckTurnstile.ts raises it when the Turnstile script
+  // tag fires its error event, so the forms can refuse BEFORE the 30 s hang.
+  // It names the check and the host an IT department must allow, because the
+  // members most likely to hit it sit on institutional networks.
   for (const [name, table] of [["en", en], ["de", de]]) {
-    const msg = friendlyError(RECAPTCHA_BLOCKED, table);
-    assert.equal(msg, table["auth.error.code.recaptchaBlocked"], `unmapped on ${name}`);
-    assert.match(msg, /reCAPTCHA/, `${name} does not name reCAPTCHA`);
+    const msg = friendlyError(SECURITY_CHECK_BLOCKED, table);
+    assert.equal(msg, table["auth.error.code.securityCheckBlocked"], `unmapped on ${name}`);
+    assert.match(msg, /Turnstile/, `${name} does not name Turnstile`);
   }
 });
 
@@ -183,8 +183,8 @@ test("the network-ish sentences all tell an institutional member what to ask IT 
   // that failure needs allowed, so the ticket to IT writes itself.
   const cases = [
     ["auth.error.code.network", /identitytoolkit\.googleapis\.com/],
-    ["auth.error.code.appCheck", /firebaseappcheck\.googleapis\.com/],
-    ["auth.error.code.recaptchaBlocked", /www\.google\.com\/recaptcha/],
+    ["auth.error.code.appCheck", /challenges\.cloudflare\.com/],
+    ["auth.error.code.securityCheckBlocked", /challenges\.cloudflare\.com/],
   ];
   for (const [key, host] of cases) {
     for (const [name, table] of [["en", en], ["de", de]]) {
@@ -209,6 +209,6 @@ function mappedCodes() {
     "auth/firebase-app-check-token-is-invalid.",
     "auth/firebase-app-check-token-is-invalid",
     "permission-denied",
-    RECAPTCHA_BLOCKED,
+    SECURITY_CHECK_BLOCKED,
   ];
 }

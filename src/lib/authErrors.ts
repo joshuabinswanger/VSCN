@@ -12,8 +12,8 @@
  * sentence a member can act on. Everything else is a configuration fault that
  * no wording can help with, and those are better served by the raw code.
  */
-/** Pseudo-code for "the reCAPTCHA script never loaded", raised on our side. */
-export const RECAPTCHA_BLOCKED = "vscn/recaptcha-blocked";
+/** Pseudo-code for "the security-check script never loaded", raised on our side. */
+export const SECURITY_CHECK_BLOCKED = "vscn/security-check-blocked";
 
 const ERROR_KEYS: Record<string, string> = {
   "auth/email-already-in-use":  "auth.error.code.emailInUse",
@@ -37,11 +37,12 @@ const ERROR_KEYS: Record<string, string> = {
   // code string, not punctuation we added. Both spellings are mapped because
   // that derivation is not a documented contract.
   //
-  // It means the reCAPTCHA Enterprise script never ran. In practice that is a
-  // blocker, a privacy extension or a locked-down network on the member's
-  // side, which they CAN fix - so it earns a sentence. It is also what every
-  // Hosting PREVIEW channel does, because preview domains are not on the
-  // reCAPTCHA key's allow-list; auth cannot be tested on a preview at all.
+  // It means the request carried no usable App Check token: the Turnstile
+  // challenge or the mint call failed (see appCheckTurnstile.ts). In practice
+  // that is a blocker, a privacy extension or a locked-down network on the
+  // member's side, which they CAN fix - so it earns a sentence. It is also
+  // what every Hosting PREVIEW channel does, because preview domains are not
+  // on the Turnstile widget's hostname list; auth cannot be tested on a preview.
   "auth/firebase-app-check-token-is-invalid.": "auth.error.code.appCheck",
   "auth/firebase-app-check-token-is-invalid":  "auth.error.code.appCheck",
   // NOT an Auth code — Firestore's. It reaches the same catch because the
@@ -49,12 +50,12 @@ const ERROR_KEYS: Record<string, string> = {
   // denial surfaces in the auth form. Its message must not say "try again":
   // the retry runs the same denied read.
   "permission-denied":          "auth.error.code.permissionDenied",
-  // OURS, not the SDK's. firebase.ts raises it when the reCAPTCHA Enterprise
-  // script tag fires its error event, and the forms refuse to call Auth at all.
-  // Without it a blocked script costs the member a 30 s wait and then the
-  // NETWORK sentence (see friendlyError below), because the SDK's loader
-  // registers onload but no onerror and Auth times out waiting for App Check.
-  [RECAPTCHA_BLOCKED]:          "auth.error.code.recaptchaBlocked",
+  // OURS, not the SDK's. appCheckTurnstile.ts raises it when the Cloudflare
+  // Turnstile script tag fires its error event, and the forms refuse to call
+  // Auth at all. Learned in the reCAPTCHA era: a blocked attestation script
+  // otherwise costs the member a 30 s wait and then the NETWORK sentence (see
+  // friendlyError below), because Auth times out waiting for App Check.
+  [SECURITY_CHECK_BLOCKED]:     "auth.error.code.securityCheckBlocked",
 };
 
 /**
