@@ -7,12 +7,13 @@
 // `users/{uid}/gallery/{imageId}.webp` with the owner metadata storage.rules
 // expects, and gets an `images/{imageId}` record — `origin: "curated"` and
 // `provenance.source` written straight in, so backfill-provenance.mjs is not
-// needed for anything seeded by this script. The array item is the projection:
-// { imageId, url, caption, width, height, color }.
+// needed for anything seeded by this script. The array element is JUST THE ID
+// (2026-09-07, documentation/20260907-works-on-the-record-design.md): geometry,
+// colour and text all live on the record, and the array carries only the order.
 //
-// The gallery is written to BOTH publicProfiles/{uid} and users/{uid} (when the
+// The id LIST is written to BOTH publicProfiles/{uid} and users/{uid} (when the
 // users doc exists): the profile editor loads from `users` and republishes the
-// projection on save, so seeding only publicProfiles would be silently wiped by
+// list on save, so seeding only publicProfiles would be silently wiped by
 // the member's next profile save.
 //
 // Members whose gallery is already non-empty are SKIPPED — never clobber
@@ -87,11 +88,6 @@ function provenanceSource(src) {
   return src.replace("/proto/img/real/", "curated-galleries/img/");
 }
 
-function publicStorageUrl(storagePath) {
-  // Mirrors publicStorageUrl() in src/lib/storage.ts.
-  return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(storagePath)}?alt=media`;
-}
-
 /** Average color via a 1x1 downscale — mirrors dominantColor() in src/lib/image.ts. */
 async function dominantColor(filePath) {
   const { data } = await sharp(filePath)
@@ -164,14 +160,9 @@ try {
           updatedAt: FieldValue.serverTimestamp(),
         });
       }
-      gallery.push({
-        imageId,
-        url: publicStorageUrl(storagePath),
-        caption: "",
-        width: img.width,
-        height: img.height,
-        color,
-      });
+      // Ids only (2026-09-07): geometry, colour and text live on the record
+      // written above. See documentation/20260907-works-on-the-record-design.md.
+      gallery.push(imageId);
       console.log(`  ${basename(img.src)}  ${img.width}x${img.height}  ${color}  → ${imageId}`);
     }
 
