@@ -2816,9 +2816,12 @@ const t = useTranslations(lang);
             console.warn(`[gallery] record ${f.imageId} not saved:`, f.error)
           );
           throw new Error(
-            recordFailures
-              .map((f) => s["profile.gallery.saveFailed"].replace("{n}", String(f.index + 1)))
-              .join(" ")
+            [
+              ...recordFailures.map((f) =>
+                s["profile.gallery.saveFailed"].replace("{n}", String(f.index + 1))
+              ),
+              s["profile.gallery.saveFailed.tail"],
+            ].join(" ")
           );
         }
 

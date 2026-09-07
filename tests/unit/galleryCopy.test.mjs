@@ -11,4 +11,11 @@ for (const lang of ["en", "de"]) {
     assert.equal(typeof s, "string");
     assert.ok(s.includes("{n}"), `${lang} string must carry {n}`);
   });
+
+  test(`${lang}: profile.gallery.saveFailed.tail says the profile was not saved, once`, () => {
+    const s = ui[lang]["profile.gallery.saveFailed.tail"];
+    assert.equal(typeof s, "string");
+    assert.ok(s.length > 0, `${lang} tail string must be non-empty`);
+    assert.ok(!s.includes("{n}"), `${lang} tail string must not carry {n}`);
+  });
 }

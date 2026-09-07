@@ -292,8 +292,12 @@ export const ui: Record<string, Record<string, string>> = {
     // Since 2026-09-07 the words about a picture live on its image record, so a
     // refused record write loses a caption outright — it is a Save error, not a
     // console warning, and it names the picture by its position in the gallery.
-    "profile.gallery.saveFailed":
-      "The text for image {n} could not be saved. Nothing was saved — please try again.",
+    // saveGalleryRecords uses allSettled, so the OTHER images' records may
+    // already have landed — only the profile write was skipped. The tail says
+    // what was NOT saved (the profile), not "nothing".
+    "profile.gallery.saveFailed": "The text for image {n} could not be saved.",
+    "profile.gallery.saveFailed.tail":
+      "Your profile was not saved — please try again.",
     // ONE MESSAGE PER CAUSE (see GalleryErrorCode in src/lib/gallery.ts). The
     // single "please try again" above was wrong advice for most of them — an
     // expired session and a file that will never fit do not improve on a
@@ -732,8 +736,9 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.verifyForMore":
       "Bestätige deine E-Mail, um weitere Bilder hinzuzufügen. Der Link ist in deinem Posteingang.",
     "profile.gallery.error": "Bild konnte nicht hochgeladen werden. Bitte erneut versuchen.",
-    "profile.gallery.saveFailed":
-      "Der Text zu Bild {n} konnte nicht gespeichert werden. Es wurde nichts gespeichert – bitte erneut versuchen.",
+    "profile.gallery.saveFailed": "Der Text zu Bild {n} konnte nicht gespeichert werden.",
+    "profile.gallery.saveFailed.tail":
+      "Das Profil wurde nicht gespeichert – bitte erneut versuchen.",
     "profile.gallery.err.tooBig": "Über 25 MB. Bitte kleiner exportieren.",
     "profile.gallery.err.svg":
       "SVGs können nicht hochgeladen werden. Als PNG oder JPEG exportieren.",

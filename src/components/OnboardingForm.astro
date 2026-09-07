@@ -1634,7 +1634,10 @@ const prefix = lang === "de" ? "/de" : "";
         gallery = await loadGallery(user.uid, data.gallery);
         renderGallery();
       } catch {
-        // Permission denied or network error — show form with empty fields
+        // Permission denied or network error — show form with empty fields.
+        // Since 2026-09-07 this also swallows a refused `images` query, which
+        // restores an empty gallery rather than the member's thumbnails;
+        // narrow, and the next upload or reload repairs it.
       }
 
       // Restore transient state (e.g. after a language switch)
