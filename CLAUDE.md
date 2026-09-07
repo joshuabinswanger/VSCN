@@ -12,6 +12,7 @@ npm run lint         # eslint src
 npm run format       # prettier --write src
 npm run deploy:dev   # build in development mode + firebase deploy -P dev --only hosting
 npm run test:rules   # firestore.rules + storage.rules against the emulator (needs Java)
+npm run worktree -- <branch> [--from <base>]   # a usable worktree: env copied, node_modules junctioned
 ```
 
 There is **no test framework** for src/ and none should be added casually. The ONE exception is `tests/rules/` — rules tests on the emulator via `@firebase/rules-unit-testing` + `node --test`, because a rules mistake fails silently (see the hasOnly trap below) and nothing else catches it. Verification is `npm run lint`, `npm run build`, and browser inspection.
@@ -123,7 +124,29 @@ App Check uses reCAPTCHA Enterprise. In dev, `firebase.ts` sets `FIREBASE_APPCHE
 
 Three GitHub Actions in `.github/workflows/` handle Firebase Hosting: merge, pull-request preview, and staging. Auto-deploy on push to `dev` was deliberately disabled (commit `3e8e2fc`) — dev deploys are manual via `npm run deploy:dev`.
 
-Branches: `main` is production, `dev` is integration. Work on a feature branch. Two features once sat interleaved in one dirty working tree for two months and could no longer be split into separate commits — hence `3fcc0ba`, which had to land both at once.
+Branches: `main` is production, `dev` is integration. Two features once sat interleaved in one dirty working tree for two months and could no longer be split into separate commits — hence `3fcc0ba`, which had to land both at once.
+
+### The flow
+
+```bash
+npm run worktree -- feat/thing     # own checkout, off dev
+# work, commit, push
+gh pr create --draft --base dev
+# open the preview URL the bot comments, then merge on GitHub
+git worktree remove ../wt-feat-thing
+```
+
+**Never `git switch` in `repo/`.** Several Claude sessions share that one checkout, and changing its HEAD or its files under another session yields commits on the wrong branch and half-built `dist/` output that still reports success (`documentation/agent-memory/concurrent-session-stash-hazard.md`). A worktree is the isolation; `npm run worktree` exists because a bare `git worktree add` produces a *broken* one — `.env` is gitignored, so the new checkout has no `FIREBASE_SERVICE_ACCOUNT`, and `community.astro` swallows that into a community page with zero members without failing the build.
+
+**A PR now buys something it did not before.** PR previews were dead from 2026-05-03 to 2026-09-07 (a secret rename that missed this one workflow); proven working again by PR #2, run `34098880706`. Every PR — any base — gets a real deployed URL built against **prod** data, which is the only way to look at a change on a real host before it lands. Two traps: the page's `build-commit` stamp is the ephemeral `refs/pull/N/merge` SHA and matches no commit in the repo (`git ls-remote origin 'refs/pull/N/*'` maps it back), and sign-in may fail on a preview domain because preview channels are not auto-added to Auth's authorized domains — a console setting, not a regression.
+
+### Releasing to main
+
+The last three releases were built with `git commit-tree` (tree from `dev`, single parent `main`) to avoid checking out the shared tree. It ships correctly and it **photocopies history**: as of 2026-09-07 `main` and `dev` had byte-identical trees (`5a1107a`) while git reported them 177 and 9 commits apart. Nothing in this repo's history is trustworthy as a result — `git cherry`, `git branch -vv` and ahead/behind counts all report shipped work as outstanding, which is why every branch audit here has had to be done by reading features instead.
+
+**Prefer a PR from `dev` into `main`, merged on GitHub.** It needs no local checkout, so the shared-tree problem never arises; `firebase-hosting-merge.yml` triggers on `push: branches: [main]` and a PR merge *is* that push, so production deploys exactly as it does now; and the release PR gets its own preview of the precise tree about to go live. The first such merge also repairs the split history, and costs nothing while the trees are already identical (GitHub shows it as many commits, zero changed files).
+
+**Rules go first.** If the release ships a frontend that writes a new field, deploy `firestore.rules` **before or with** it — the `hasOnly` trap rejects the whole write, silently, and a member's save just stops working.
 
 ## Conventions
 
