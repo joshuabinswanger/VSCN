@@ -13,6 +13,7 @@ npm run format       # prettier --write src
 npm run deploy:dev   # build in development mode + firebase deploy -P dev --only hosting
 npm run test:rules   # firestore.rules + storage.rules against the emulator (needs Java)
 npm run worktree -- <branch> [--from <base>]   # a usable worktree: env copied, node_modules junctioned
+npm run worktree -- <branch> --remove          # tear it down, junction and husk included
 ```
 
 There is **no test framework** for src/ and none should be added casually. The ONE exception is `tests/rules/` — rules tests on the emulator via `@firebase/rules-unit-testing` + `node --test`, because a rules mistake fails silently (see the hasOnly trap below) and nothing else catches it. Verification is `npm run lint`, `npm run build`, and browser inspection.
@@ -133,10 +134,12 @@ npm run worktree -- feat/thing     # own checkout, off dev
 # work, commit, push
 gh pr create --draft --base dev
 # open the preview URL the bot comments, then merge on GitHub
-git worktree remove ../wt-feat-thing
+npm run worktree -- feat/thing --remove   # NOT git worktree remove: see below
 ```
 
-**Never `git switch` in `repo/`.** Several Claude sessions share that one checkout, and changing its HEAD or its files under another session yields commits on the wrong branch and half-built `dist/` output that still reports success (`documentation/agent-memory/concurrent-session-stash-hazard.md`). A worktree is the isolation; `npm run worktree` exists because a bare `git worktree add` produces a *broken* one — `.env` is gitignored, so the new checkout has no `FIREBASE_SERVICE_ACCOUNT`, and `community.astro` swallows that into a community page with zero members without failing the build.
+**Never `git switch` in `repo/`.** Several Claude sessions share that one checkout, and changing its HEAD or its files under another session yields commits on the wrong branch and half-built `dist/` output that still reports success (`documentation/agent-memory/concurrent-session-stash-hazard.md`). **Tear one down with `--remove`, not `git worktree remove`.** The bare git command only half-cleans: it deletes the tracked files and deregisters the worktree, then stops at the `node_modules` junction it did not create. The directory survives its own removal as a husk holding one dead link, and because git no longer lists it, `git worktree list` cannot show you the mess — seven had accumulated beside `repo/` by 2026-09-07. `--remove` drops the junction explicitly before deleting anything, refuses when git reports uncommitted work, refuses when an unregistered directory still holds files (it may be a pruned worktree with unpushed commits), and never touches the branch.
+
+A worktree is the isolation; `npm run worktree` exists because a bare `git worktree add` produces a *broken* one — `.env` is gitignored, so the new checkout has no `FIREBASE_SERVICE_ACCOUNT`, and `community.astro` swallows that into a community page with zero members without failing the build.
 
 **A PR now buys something it did not before.** PR previews were dead from 2026-05-03 to 2026-09-07 (a secret rename that missed this one workflow); proven working again by PR #2, run `34098880706`. Every PR — any base — gets a real deployed URL built against **prod** data, which is the only way to look at a change on a real host before it lands. Two traps: the page's `build-commit` stamp is the ephemeral `refs/pull/N/merge` SHA and matches no commit in the repo (`git ls-remote origin 'refs/pull/N/*'` maps it back), and sign-in may fail on a preview domain because preview channels are not auto-added to Auth's authorized domains — a console setting, not a regression.
 
