@@ -122,7 +122,7 @@ App Check uses reCAPTCHA Enterprise. In dev, `firebase.ts` sets `FIREBASE_APPCHE
 
 ## Deployment
 
-Three GitHub Actions in `.github/workflows/` handle Firebase Hosting: merge, pull-request preview, and staging. Auto-deploy on push to `dev` was deliberately disabled (commit `3e8e2fc`) — dev deploys are manual via `npm run deploy:dev`.
+Three GitHub Actions in `.github/workflows/` handle Firebase Hosting: merge, pull-request preview, and staging. **Staging follows `dev`**: a push to `dev` (which, under the flow below, is a PR merge) deploys the dev host, restored on 2026-09-07 after being manual-only since `3e8e2fc` (`documentation/20260526-dev-environment-and-staging-setup.md` has the history). One deploy runs at a time and the newest cancels an older one. `npm run deploy:dev` remains the way to put an *unmerged* tree on staging.
 
 Branches: `main` is production, `dev` is integration. Two features once sat interleaved in one dirty working tree for two months and could no longer be split into separate commits — hence `3fcc0ba`, which had to land both at once.
 
