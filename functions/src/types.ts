@@ -1,6 +1,7 @@
 import type { Timestamp } from "firebase-admin/firestore";
 
-// Keep in sync with validImage() in firestore.rules and src/lib/images.ts.
+// Keep in sync with validImage() in firestore.rules, src/lib/images.ts, and
+// src/lib/galleryRecords.ts.
 export type ImageKind = "avatar" | "gallery";
 export type ImageStatus = "uploading" | "live" | "pendingDeletion";
 export type ImageOrigin = "member" | "curated";
@@ -18,6 +19,8 @@ export interface ImageDoc {
   description?: string;
   /** One sentence of the same, for the lightbox and the directory's cards. */
   descriptionShort?: string;
+  /** Where the image appeared, scheme-less (2026-09-07: moved here from the gallery array). ≤ 200. */
+  link?: string;
   origin: ImageOrigin;
   provenance?: { source?: string; credit?: string; license?: string; note?: string };
   status: ImageStatus;
