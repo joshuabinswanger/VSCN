@@ -68,10 +68,18 @@ const t = useTranslations(lang);
 // what the INDEX filters by; `works` is how many of THOSE have artwork, which
 // is what the GALLERIES can actually show. Both ride on the option as data
 // attributes and the client picks by view (reflectTagOptions below): a
-// gallery hides the options whose works count is zero and prints that count,
-// the ledger offers every tag and prints the member count. The artwork test is
-// hasArtwork — the same one that decides who is dealt into the spread and the
-// wall — so the count cannot disagree with the deal.
+// gallery hides the options whose works count is zero, the ledger offers every
+// tag. The artwork test is hasArtwork — the same one that decides who is dealt
+// into the spread and the wall — so the count cannot disagree with the deal.
+//
+// NEITHER COUNT IS PRINTED. The first cut put the view's count behind each tag
+// (members in the ledger, members with artwork in the galleries) and it
+// confused more than it told: the same tag read "5" in one view and "4" in the
+// next, and on production — two members with artwork — most tags would have
+// read "1" (2026-09-07, Josh: "the number displayed is confusing. for now dont
+// put a number behind the tags"). The counts stay on the option because the
+// hiding needs them; "for now" means a count may come back once the galleries
+// are full enough for one to say something.
 const tagIndex = new Map<string, { label: string; members: number; works: number }>();
 for (const m of members) {
   const withArtwork = hasArtwork(m);
@@ -265,12 +273,12 @@ const indexMembers = [...members].sort((a, b) =>
               </button>
             </li>
             {
-              /* Rendered for the DEFAULT view — which options it offers and
-                which count they print — for the same reason the default view
-                is the one server-rendered visible: it is what a no-JS visitor
-                keeps and what the first frame shows. reflectTagOptions
-                re-derives both from the data attributes for whichever view
-                the URL asks for. */
+              /* Which options are offered is rendered for the DEFAULT view,
+                for the same reason the default view is the one server-rendered
+                visible: it is what a no-JS visitor keeps and what the first
+                frame shows. reflectTagOptions re-derives it from the data
+                attributes for whichever view the URL asks for. No count is
+                printed behind the label — see the tagIndex note above. */
               allTags.map(([key, { label, members, works }]) => (
                 <li hidden={DEFAULT_VIEW !== "index" && works === 0}>
                   <button
@@ -283,9 +291,6 @@ const indexMembers = [...members].sort((a, b) =>
                     aria-pressed="false"
                   >
                     <span>{label}</span>
-                    <span class="tag-filter__count">
-                      {DEFAULT_VIEW === "index" ? members : works}
-                    </span>
                   </button>
                 </li>
               ))
@@ -855,11 +860,6 @@ const indexMembers = [...members].sort((a, b) =>
   .tag-filter__option[aria-pressed="true"] {
     text-decoration: underline;
     text-underline-offset: 0.35em;
-  }
-
-  .tag-filter__count {
-    font-size: 0.7rem;
-    color: var(--color-muted);
   }
 
   .filter-empty {
@@ -2040,21 +2040,22 @@ const indexMembers = [...members].sort((a, b) =>
     return Number(opt?.dataset.countWorks ?? 0) > 0;
   }
 
-  /** The panel's LIST for the view on screen — which options it offers and
-   *  which count each prints — folded together with the search field's
-   *  narrowing, so a row's `hidden` has ONE writer and neither pass can undo
-   *  the other (typing cannot bring a gallery's workless tags back; clearing
-   *  the field cannot lose them from the ledger).
+  /** The panel's LIST for the view on screen — which options it offers —
+   *  folded together with the search field's narrowing, so a row's `hidden`
+   *  has ONE writer and neither pass can undo the other (typing cannot bring a
+   *  gallery's workless tags back; clearing the field cannot lose them from
+   *  the ledger).
    *
    *  (2026-09-07, Josh: "tags stale because you can select them for artists,
    *  but there are no images in the grid or gallery".) The galleries are
    *  artwork only since 2026-09-03, so there an option whose members all have
-   *  empty galleries is not offered — picking it could only empty the view —
-   *  and the count printed is the members WITH artwork. The ledger lists
-   *  everyone, so it offers every tag with its member count. "All tags" (the
-   *  empty key) is always offered. Counts are read from the data attributes
-   *  rather than re-counted from the cells, so the list is right before any
-   *  deal and the same in every view of one build. */
+   *  empty galleries is not offered — picking it could only empty the view.
+   *  The ledger lists everyone, so it offers every tag. "All tags" (the empty
+   *  key) is always offered. The decision reads the build-stamped
+   *  data-count-works rather than re-counting the cells, so the list is right
+   *  before any deal and the same in every view of one build. Nothing is
+   *  printed behind a label — see the tagIndex note in the frontmatter for why
+   *  the count came off. */
   function reflectTagOptions(mode: LayoutMode) {
     const gallery = mode !== "index";
     const search = document.getElementById("tag-filter-search") as HTMLInputElement | null;
@@ -2064,9 +2065,6 @@ const indexMembers = [...members].sort((a, b) =>
       if (!opt) return;
       const key = opt.dataset.tag ?? "";
       const works = Number(opt.dataset.countWorks ?? 0);
-      const members = Number(opt.dataset.countMembers ?? 0);
-      const count = opt.querySelector<HTMLElement>(".tag-filter__count");
-      if (count) count.textContent = String(gallery ? works : members);
       const workless = gallery && Boolean(key) && works === 0;
       const missed = Boolean(needle) && Boolean(key) && !key.includes(needle);
       li.hidden = workless || missed;
