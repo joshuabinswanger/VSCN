@@ -8,7 +8,8 @@ export interface AuthSummary {
 }
 export interface AdminImage {
   imageId: string; ownerUid: string; kind: "avatar" | "gallery"; storagePath: string;
-  width: number; height: number; color?: string; caption?: string; description?: string;
+  width: number; height: number; color?: string; caption?: string; captionDe?: string; description?: string;
+  descriptionDe?: string;
   origin: "member" | "curated"; status: "uploading" | "live" | "pendingDeletion"; createdAt: string;
   /**
    * Is a profile document actually pointing at this? NOT the same question as

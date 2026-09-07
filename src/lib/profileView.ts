@@ -14,6 +14,13 @@ export interface ProfileWork {
   height: number;
   /** Optional per-image caption, used as the image's alt text when present. */
   caption?: string;
+  /**
+   * The German caption, RAW — not yet picked for a locale, same reason
+   * `descriptionDe` below is raw: this shape is built once per member and
+   * read by both English and German pages. workCaption() in links.ts picks
+   * the one a given locale's alt text actually uses.
+   */
+  captionDe?: string;
   /** Dominant colour (#rrggbb), painted behind the image while it loads. */
   color?: string;
   /**
@@ -26,6 +33,14 @@ export interface ProfileWork {
    * is gone.
    */
   description?: string;
+  /**
+   * The German text, RAW — not yet picked for a locale. Carried alongside
+   * `description` rather than resolved into it here, because this shape is
+   * built once per member and read by both English and German pages;
+   * workDescription() in links.ts is what turns the two into the one string
+   * a given locale actually shows, at the point each renderer knows its lang.
+   */
+  descriptionDe?: string;
   /**
    * Absolute href for "where this image lives" — already scheme-prefixed and
    * already filtered for linkability by workLink() in links.ts, so a renderer

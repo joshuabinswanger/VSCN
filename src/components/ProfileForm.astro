@@ -293,21 +293,78 @@ const t = useTranslations(lang);
             <button type="button" class="gallery-thumb-remove" data-gallery-remove>✕</button>
           </div>
           <div class="gallery-fields">
-            <input type="text" class="input" data-gallery-field="caption" />
             {
-              /* TWO TEXTS PER IMAGE, NOT THREE (2026-09-04, Josh: "we only
-                need one description field for the image"). A 240-character
-                short version sat here for a day, between the caption and this
-                one, on the theory that the lightbox wanted a summary and the
-                portfolio page wanted the essay. In the editor it read as being
-                asked to write the same thing twice at two lengths, with no way
-                to tell which surface would show which — so it mostly went
-                unfilled, and the lightbox showed nothing where the member had
-                plainly written something. The caption names the picture and is
-                what screen readers say; this describes it, and now goes
-                wherever there is room for it. */
+              /* THE EN/DE SWITCH (2026-09-04, Josh: "make it into a modal
+                switch"). Caption and description used to carry their German
+                twins stacked directly underneath — four text controls in a
+                row already narrowed for a compact gallery item, two of them
+                asking to be left blank most of the time. This toggles between
+                two PANES instead, English and German, so only one language's
+                pair is ever on screen: the switch is the one small addition,
+                not two more full-height fields.
+
+                Text buttons, not a checkbox-styled switch: "modal" here means
+                a mode switch, and a two-way mode is exactly what
+                .section-tab above already draws for the four form tabs — this
+                reuses that same on/off-by-position language at gallery-row
+                scale, which a member has already learned by the time they
+                reach this field. */
             }
-            <textarea class="input textarea" rows="3" data-gallery-field="description"></textarea>
+            <div class="gallery-lang-switch" role="group">
+              <button
+                type="button"
+                class="gallery-lang-btn is-active"
+                data-gallery-lang-btn="en"
+              >EN</button>
+              <button type="button" class="gallery-lang-btn" data-gallery-lang-btn="de"
+              >DE</button>
+            </div>
+
+            <div class="gallery-lang-pane" data-gallery-lang-pane="en">
+              <input type="text" class="input" data-gallery-field="caption" />
+              {
+                /* TWO TEXTS PER IMAGE, NOT THREE (2026-09-04, Josh: "we only
+                  need one description field for the image"). A 240-character
+                  short version sat here for a day, between the caption and
+                  this one, on the theory that the lightbox wanted a summary
+                  and the portfolio page wanted the essay. In the editor it
+                  read as being asked to write the same thing twice at two
+                  lengths, with no way to tell which surface would show which
+                  — so it mostly went unfilled, and the lightbox showed
+                  nothing where the member had plainly written something. The
+                  caption names the picture and is what screen readers say;
+                  this describes it, and now goes wherever there is room for
+                  it.
+
+                  Still true a day later: the DE pane below is a second
+                  caption and description, but on the LANGUAGE axis, not the
+                  length one — see the switch above. This pane stays the
+                  single English pair of record. */
+              }
+              <textarea class="input textarea" rows="3" data-gallery-field="description"
+              ></textarea>
+            </div>
+
+            {
+              /* THE GERMAN PANE, OPTIONAL (2026-09-04: "english and german
+                image descriptions", then "caption also in german" and "make
+                it into a modal switch"). Both fields default to empty — see
+                GalleryItem.captionDe / descriptionDe in gallery.ts for the
+                fallback that makes that safe to leave blank: the German site
+                reads the English pane above until these are filled in, the
+                same way `useTranslations()` falls back to English for every
+                button and label on the site. The two field-notes below say so
+                out loud, because a switch that reveals two empty boxes does
+                not say "leaving these blank is fine" on its own. */
+            }
+            <div class="gallery-lang-pane" data-gallery-lang-pane="de" hidden>
+              <input type="text" class="input" data-gallery-field="captionDe" />
+              <p class="field-note gallery-caption-de-note"></p>
+              <textarea class="input textarea" rows="3" data-gallery-field="descriptionDe"
+              ></textarea>
+              <p class="field-note gallery-desc-de-note"></p>
+            </div>
+
             {
               /* WHERE THIS IMAGE APPEARED. Same fixed-prefix treatment as
                 Portfolio and the social rows, because the value is stored the
@@ -876,6 +933,63 @@ const t = useTranslations(lang);
     min-width: 0;
   }
 
+  /* THE MODAL SWITCH — see the markup comment. A two-segment toggle at
+     .gallery-tool's own scale (same border weight, radius, muted resting
+     colour), because it is one more small control among the move buttons
+     below it, not a second set of tabs competing with .section-tab above the
+     whole form. Filled dark for the active half rather than an underline —
+     .section-tab's language reads right at tab width; at two letters wide an
+     underline would be nearly invisible, where a fill reads at a glance. */
+  .gallery-lang-switch {
+    display: flex;
+    width: fit-content;
+  }
+
+  .gallery-lang-btn {
+    padding: 3px 10px;
+    background: none;
+    border: 1.5px solid var(--color-border);
+    color: var(--color-muted);
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      color 0.15s,
+      border-color 0.15s;
+  }
+
+  .gallery-lang-btn + .gallery-lang-btn {
+    border-left: none;
+  }
+
+  .gallery-lang-btn:first-child {
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  }
+
+  .gallery-lang-btn:last-child {
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  .gallery-lang-btn:hover:not(.is-active) {
+    color: var(--color-dark);
+    border-color: var(--color-dark);
+  }
+
+  .gallery-lang-btn.is-active {
+    background: var(--color-dark);
+    color: var(--color-bg);
+    border-color: var(--color-dark);
+  }
+
+  .gallery-lang-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
   /* Compact by design: these sit three-deep inside a field that already has
      its own label, so full-size inputs would read as the form restarting. */
   .gallery-fields .input {
@@ -1150,14 +1264,21 @@ const t = useTranslations(lang);
     border-top: 1px solid var(--color-border);
   }
 
-  /* Floats above the bottom of .page-wrap (the page's real scroll container),
-     so Save is reachable from every editing tab without scrolling; at the end
-     of the form it settles into the flow. No bar behind it — just the button,
-     so the container must not eat clicks on the content it hovers over. */
+  /* Pinned to the viewport bottom on every tab, not just once scrolled to it.
+     `sticky` used to sit here instead, which only floats once the page's own
+     scroll carries the footer's flow position down to the bottom edge — on a
+     short tab (Account, a thin gallery) that position is partway up the
+     screen, so Save read as reachable "eventually" rather than always
+     (2026-09-04, Josh: "save changes at bottom always"). `fixed` costs the
+     footer its place in .profile-form's centered column, so it re-states that
+     column's own width/padding here instead of inheriting it — see
+     .profile-form above for the pairing this must stay identical to. No bar
+     behind it — just the button, so the container must not eat clicks on the
+     content it hovers over. */
   .form-footer {
-    position: sticky;
-    /* 0, not a lift: .page-wrap's own 80px bottom padding already keeps the
-       pinned button floating well clear of the pane edge. */
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
     bottom: 0;
     z-index: 5;
     display: flex;
@@ -1166,6 +1287,14 @@ const t = useTranslations(lang);
     flex-wrap: wrap;
     gap: 0.75rem;
     pointer-events: none;
+    width: 100%;
+    max-width: 560px;
+    box-sizing: border-box;
+    padding: 0 15px 1.25rem;
+
+    @media (--bp-desktop) {
+      padding: 0 0 1.25rem;
+    }
   }
 
   .form-footer > * {
@@ -1560,6 +1689,8 @@ const t = useTranslations(lang);
     splitSocial,
     joinSocial,
     workLink,
+    workCaption,
+    workDescription,
     MAX_SOCIAL_LINKS,
     MAX_SOCIAL_MEDIA,
   } from "../lib/links.ts";
@@ -1686,6 +1817,11 @@ const t = useTranslations(lang);
     let resizedAvatarBlob: Blob | null = null;
     let avatarColor = "";
     let gallery: GalleryItem[] = [];
+    // Which of a gallery item's EN/DE panes is open — UI-only, never saved,
+    // and kept outside renderGallery() so it survives the re-renders that
+    // function does on every add/remove/reorder. Keyed by imageId; see the
+    // switch wiring in renderGallery() for why index would not do.
+    const galleryLangUI = new Map<string, "en" | "de">();
     // The images/ record behind the current avatar. Passed to
     // handleProfileUpdate so the replaced record can be marked for deletion
     // once the new photoURL has landed in Firestore.
@@ -1883,13 +2019,25 @@ const t = useTranslations(lang);
             const img = row.querySelector<HTMLImageElement>("[data-gallery-img]");
             const remove = row.querySelector<HTMLButtonElement>("[data-gallery-remove]");
             const caption = field<HTMLInputElement>("caption");
+            const captionDe = field<HTMLInputElement>("captionDe");
+            const captionDeNote = row.querySelector<HTMLElement>(".gallery-caption-de-note");
             const description = field<HTMLTextAreaElement>("description");
+            const descriptionDe = field<HTMLTextAreaElement>("descriptionDe");
+            const descriptionDeNote = row.querySelector<HTMLElement>(".gallery-desc-de-note");
             const link = field<HTMLInputElement>("link");
             const cover = row.querySelector<HTMLElement>("[data-gallery-cover]");
             const up = row.querySelector<HTMLButtonElement>('[data-gallery-move="up"]');
             const down = row.querySelector<HTMLButtonElement>('[data-gallery-move="down"]');
+            const langBtns = Array.from(
+              row.querySelectorAll<HTMLButtonElement>("[data-gallery-lang-btn]"),
+            );
+            const langPaneEn = row.querySelector<HTMLElement>('[data-gallery-lang-pane="en"]');
+            const langPaneDe = row.querySelector<HTMLElement>('[data-gallery-lang-pane="de"]');
             if (!img || !remove || !caption || !description) return null;
+            if (!captionDe || !captionDeNote) return null;
+            if (!descriptionDe || !descriptionDeNote) return null;
             if (!link || !cover || !up || !down) return null;
+            if (langBtns.length !== 2 || !langPaneEn || !langPaneDe) return null;
 
             // The one thing on screen that admits the order means something:
             // CommunityImageCard takes works[0]'s width/height as the aspect
@@ -1910,6 +2058,16 @@ const t = useTranslations(lang);
               syncPreview();
             });
 
+            captionDe.value = item.captionDe ?? "";
+            captionDe.maxLength = MAX_GALLERY_CAPTION;
+            captionDe.placeholder = s["profile.gallery.caption.de.ph"];
+            named(captionDe, s["profile.gallery.caption.de"]);
+            captionDe.addEventListener("input", () => {
+              gallery[index].captionDe = captionDe.value;
+              syncPreview();
+            });
+            captionDeNote.textContent = s["profile.gallery.caption.deNote"];
+
             description.value = item.description ?? "";
             description.maxLength = MAX_GALLERY_DESCRIPTION;
             description.placeholder = s["profile.gallery.description"];
@@ -1918,6 +2076,41 @@ const t = useTranslations(lang);
               gallery[index].description = description.value;
               syncPreview();
             });
+
+            descriptionDe.value = item.descriptionDe ?? "";
+            descriptionDe.maxLength = MAX_GALLERY_DESCRIPTION;
+            descriptionDe.placeholder = s["profile.gallery.description.de.ph"];
+            named(descriptionDe, s["profile.gallery.description.de"]);
+            descriptionDe.addEventListener("input", () => {
+              gallery[index].descriptionDe = descriptionDe.value;
+              syncPreview();
+            });
+            descriptionDeNote.textContent = s["profile.gallery.description.deNote"];
+
+            // THE MODAL SWITCH (2026-09-04, Josh: "make it into a modal
+            // switch"). State lives OUTSIDE this render function, keyed by
+            // imageId rather than index — renderGallery() rebuilds every row
+            // from scratch on any add/remove/reorder, and an index-keyed map
+            // would hand a reordered row someone else's open pane. imageId is
+            // assigned before this item can even appear in `gallery` (see
+            // uploadGalleryImage in gallery.ts), so it is stable for exactly
+            // as long as the row is.
+            const setGalleryLang = (lang: "en" | "de") => {
+              galleryLangUI.set(item.imageId, lang);
+              langBtns.forEach((btn) => {
+                const active = btn.dataset.galleryLangBtn === lang;
+                btn.classList.toggle("is-active", active);
+                btn.setAttribute("aria-pressed", String(active));
+              });
+              langPaneEn.hidden = lang !== "en";
+              langPaneDe.hidden = lang !== "de";
+            };
+            langBtns.forEach((btn) => {
+              const btnLang = btn.dataset.galleryLangBtn === "de" ? "de" : "en";
+              named(btn, s[`profile.gallery.lang.${btnLang}`]);
+              btn.addEventListener("click", () => setGalleryLang(btnLang));
+            });
+            setGalleryLang(galleryLangUI.get(item.imageId) ?? "en");
 
             link.value = item.link ?? "";
             link.maxLength = MAX_GALLERY_LINK;
@@ -2364,9 +2557,14 @@ const t = useTranslations(lang);
             url: g.url,
             width: g.width,
             height: g.height,
-            caption: g.caption,
+            // Both resolved for the tab's OWN locale, same as the built page
+            // picks them for its own — see workCaption()/workDescription() in
+            // links.ts. A member previewing the German tab sees exactly what
+            // a German visitor would: the German field if they wrote one, the
+            // field above otherwise.
+            caption: workCaption(g, lang),
             color: g.color,
-            description: (g.description ?? "").trim() || undefined,
+            description: workDescription(g, lang),
             // Same rule the built page applies — works() in memberView.ts calls
             // this too — so the Preview tab shows a link exactly when a visitor
             // would get one, including showing none for a value that is not
