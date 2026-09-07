@@ -1636,8 +1636,10 @@ const prefix = lang === "de" ? "/de" : "";
       } catch {
         // Permission denied or network error — show form with empty fields.
         // Since 2026-09-07 this also swallows a refused `images` query, which
-        // restores an empty gallery rather than the member's thumbnails;
-        // narrow, and the next upload or reload repairs it.
+        // restores an empty gallery rather than the member's thumbnails. Only a
+        // RELOAD repairs that: an upload in this state would shorten the stored
+        // list, because `persistGallery` writes the in-memory ids over it and
+        // the earlier records would be left orphaned, listed by nothing.
       }
 
       // Restore transient state (e.g. after a language switch)

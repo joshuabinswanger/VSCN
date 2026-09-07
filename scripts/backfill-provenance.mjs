@@ -1,3 +1,4 @@
+// Dead on the id-list gallery shape since 2026-09-07 (documentation/20260907-works-on-the-record-design.md); reads objects, fails closed, kept as history.
 // Marks the seeded curated galleries after migrate-image-records has run.
 //
 //   node --experimental-strip-types scripts/backfill-provenance.mjs -P dev [--write]

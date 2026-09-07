@@ -80,9 +80,11 @@ A work is on the site when its id is in the owner's list **and** its record is `
   items (`url = publicStorageUrl(storagePath)`), orders by the id list, drops ids with no
   live record. Replaces `sanitizeGalleryItems` as the load path. Tolerates an old-shape
   element by taking its `imageId`, and takes `link` and the four texts from that element
-  when the record lacks them — so a member who saves before the migration script has run
-  carries their words forward instead of losing them. This tolerance is removed after both
-  environments are migrated.
+  when the record lacks them — so a member who **saves** before the migration script has
+  run carries their words forward instead of losing them. Only a Save does that: the words
+  reach memory on load, and an array write on its own (`persistGalleryNow` — upload, remove,
+  reorder) sends ids and no text. This tolerance is removed after both environments are
+  migrated.
 - `galleryIds(items)` → `string[]` is what every array write sends.
 - `updateImageText` gains `link` (deleteField when blank). It is no longer best-effort:
   `syncGalleryText` becomes `saveGalleryRecords(items)` which runs `Promise.allSettled`, and
@@ -147,9 +149,13 @@ A work is on the site when its id is in the owner's list **and** its record is `
 1. Deploy **rules, client and functions together** from the merged branch. Readers (build,
    editor load, admin ops) understand both shapes; writers write ids. From here a stale tab
    that saves the old shape is refused with `permission-denied` — fail-safe; a reload fixes
-   it. A member who opens the new editor before step 2 self-migrates on their next array
-   write, words included (see `loadGallery`).
-2. Run `migrate-gallery-to-ids.mjs --write` for everyone who has not. Run
+   it. There is **no self-migration on an array write**: `loadGallery` carries an
+   array-only element's words into the tab's MEMORY, but `persistGalleryNow` (upload,
+   remove, reorder) writes ids only — only a **Save** writes those words onto the records.
+2. Run `migrate-gallery-to-ids.mjs --write` for everyone who has not — **immediately after
+   the deploy, before anyone opens `/profile`**. An array write before a Save in that window
+   stores the id list while the array-only words are still waiting unsaved in the member's
+   tab, so the array copy the migration reads its words from is already gone. Run
    `check-integrity.mjs`.
 3. Rebuild the site. Verify the community wall, a member page, the editor round trip
    (upload, caption, link, reorder, remove, Save) and the Preview tab.
@@ -210,3 +216,7 @@ changing. Merge that fix first, then build step 2 on it.
 - Editor round trip on dev as a signed-in member, including a forced record failure
   (rules denial via a too-long link) that must surface as a Save error, not "Saved".
 - `check-integrity.mjs` clean on dev after migration, and on prod after its migration.
+- The editor round trip on dev — upload, caption, link, reorder, remove, Save, and a forced
+  201-character link that must surface as a Save error rather than "Saved" — is a
+  **post-merge gate**: it needs the dev rules deploy first, so it cannot be run from an
+  unmerged worktree.

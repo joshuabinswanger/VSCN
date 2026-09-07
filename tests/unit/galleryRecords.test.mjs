@@ -34,6 +34,10 @@ test("galleryIds is the items' ids in order", () => {
   assert.deepEqual(galleryIds([{ imageId: "b" }, { imageId: "a" }]), ["b", "a"]);
 });
 
+test("galleryIds drops an item with no id — never a blank element in the stored list", () => {
+  assert.deepEqual(galleryIds([{ imageId: "a" }, { imageId: "" }]), ["a"]);
+});
+
 test("the id list decides the order; the record decides everything else", () => {
   const items = orderedGalleryItems(UID, ["b", "a"], [record("a", { caption: "A" }), record("b", { caption: "B", link: "x.org/1" })], BUCKET);
   assert.deepEqual(items.map((i) => i.imageId), ["b", "a"]);
@@ -48,6 +52,11 @@ test("the id list decides the order; the record decides everything else", () => 
 test("an id with no live record is dropped, not rendered broken", () => {
   const items = orderedGalleryItems(UID, ["gone", "a", "dead"], [record("a"), record("dead", { status: "pendingDeletion" })], BUCKET);
   assert.deepEqual(items.map((i) => i.imageId), ["a"]);
+});
+
+test("a zero dimension is not renderable — the card's frame would collapse", () => {
+  assert.deepEqual(orderedGalleryItems(UID, ["a"], [record("a", { width: 0 })], BUCKET), []);
+  assert.deepEqual(orderedGalleryItems(UID, ["a"], [record("a", { height: 0 })], BUCKET), []);
 });
 
 test("another member's record is dropped even when listed", () => {
