@@ -4,7 +4,8 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getFunctions } from "firebase/functions";
 import { getAnalytics, isSupported } from "firebase/analytics";
-import { initializeAppCheck, ReCaptchaEnterpriseProvider, type AppCheck } from "firebase/app-check";
+import { initializeAppCheck, type AppCheck } from "firebase/app-check";
+import { turnstileProvider } from "./appCheckTurnstile.ts";
 
 const firebaseConfig = {
   apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
@@ -19,26 +20,26 @@ const firebaseConfig = {
 // Avoid re-initializing on hot reload
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
-const recaptchaSiteKey = import.meta.env.PUBLIC_FIREBASE_RECAPTCHA_SITE_KEY;
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY;
 
+// App Check, attested by Cloudflare Turnstile through a custom provider — the
+// why and the how live in src/lib/appCheckTurnstile.ts and in
+// documentation/20260907-turnstile-app-check-provider.md. In one line: prod
+// ENFORCES App Check on Auth and Firestore, and institutional networks (ETH,
+// UZH, the SLF that reported it) block Google reCAPTCHA, so with reCAPTCHA as
+// the attestation nobody there could sign in.
+//
+// No site key → no App Check on the page, as before. The dev project carries
+// Cloudflare's published always-pass TEST key, so the whole pipeline (script,
+// challenge, mint function, token on the Auth request) is exercised locally
+// and on the staging site. The old FIREBASE_APPCHECK_DEBUG_TOKEN flag is gone
+// with reCAPTCHA: it made the SDK bypass the provider on localhost, which is a
+// polite way of never testing it.
 let appCheckInstance: AppCheck | null = null;
-if (typeof window !== "undefined" && recaptchaSiteKey) {
-  // In dev, App Check needs a debug token for localhost.
-  // Setting this flag makes Firebase generate a debug token (printed to the console).
-  // Register that token in Firebase Console → App Check → your app → Manage debug tokens.
-  if (import.meta.env.DEV) {
-    // Typed rather than cast through `any` (2026-09-03): the flag is a real
-    // property Firebase reads off the global, so declaring it is both honest
-    // and the last `no-explicit-any` in src — which is what lets a NEW warning
-    // in this repo mean something. `unknown` would not do: the assignment
-    // needs the property to exist on the target type.
-    (globalThis as typeof globalThis & { FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean })
-      .FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-  }
-
+if (typeof window !== "undefined" && turnstileSiteKey) {
   try {
     appCheckInstance = initializeAppCheck(app, {
-      provider: new ReCaptchaEnterpriseProvider(recaptchaSiteKey),
+      provider: turnstileProvider(turnstileSiteKey, firebaseConfig.projectId),
       isTokenAutoRefreshEnabled: true,
     });
   } catch (err) {
@@ -47,6 +48,12 @@ if (typeof window !== "undefined" && recaptchaSiteKey) {
 }
 
 export const appCheck = appCheckInstance;
+
+// True once the Turnstile script has failed to load on this page. The forms
+// ask before calling Auth and show auth.error.code.securityCheckBlocked, so a
+// blocked script is reported in milliseconds rather than after Auth's 30 s
+// timeout blames the internet connection (the reCAPTCHA-era failure mode).
+export { isSecurityCheckBlocked } from "./appCheckTurnstile.ts";
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);

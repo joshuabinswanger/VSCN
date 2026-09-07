@@ -5,7 +5,7 @@ import { getAuth } from "firebase-admin/auth";
 
 // One app for the whole codebase. Inside Cloud Functions, initializeApp() with
 // no arguments picks up the project from the runtime.
-const app = getApps()[0] ?? initializeApp();
+export const app = getApps()[0] ?? initializeApp();
 
 export const db = getFirestore(app);
 export const adminAuth = getAuth(app);

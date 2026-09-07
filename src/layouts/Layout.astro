@@ -133,6 +133,10 @@ const BRAND_SLOTS = [
       </a>
     </div>
     <PageLoader />
+    <!-- Where App Check's Cloudflare Turnstile widget lives (src/lib/appCheckTurnstile.ts).
+         Empty and invisible unless Cloudflare decides a visitor must click; persisted so the
+         view-transition router does not throw the widget away between pages. -->
+    <div id="turnstile-slot" class="turnstile-slot" transition:persist></div>
     <div class="page-wrap">
       <Navbar />
       {
