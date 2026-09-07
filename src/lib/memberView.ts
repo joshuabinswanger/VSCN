@@ -9,6 +9,7 @@
 import type { PublicProfileDoc } from "./firestore.ts";
 import type { ProfileViewModel, ProfileWork } from "./profileView.ts";
 import { workLink } from "./links.ts";
+import { orderedGalleryItems, type GalleryRecord } from "./galleryRecords.ts";
 
 export interface MemberViewBase extends ProfileViewModel {
   /** The profile's uid. Stable, but not what appears in the URL. */
@@ -148,40 +149,36 @@ export function stripStorageToken(url: string): string {
 }
 
 /**
- * Gallery items that are safe to lay out. Width and height must be real
- * numbers, because the card's frame takes its aspect ratio from the first
- * image — a zero would collapse the frame to nothing.
- *
- * Token stripping happens here, so every consumer of a MemberView gets
- * render-ready URLs and no page has to remember to do it.
+ * The member's works, from their image RECORDS (2026-09-07 — the record is the
+ * work, documentation/20260907-works-on-the-record-design.md). The stored
+ * array is the order; orderedGalleryItems() joins it to the records, requires
+ * the owner to match and the record to be live, and derives the URL from the
+ * storage path — tokenless, as stripStorageToken() always made it. This
+ * function only maps that onto ProfileWork.
  */
-function works(doc: PublicProfileDoc): ProfileWork[] {
-  const gallery = Array.isArray(doc.gallery) ? doc.gallery : [];
-  return gallery
-    .filter((g) => g?.url && g.width > 0 && g.height > 0)
-    .map((g) => {
-      return {
-        url: stripStorageToken(g.url),
-        width: g.width,
-        height: g.height,
-        caption: g.caption,
-        // Raw, unresolved — same reason descriptionDe below is raw:
-        // workCaption() in links.ts picks a locale once each page's lang is
-        // known, which this shared base cannot do for itself.
-        captionDe: (g.captionDe ?? "").trim() || undefined,
-        color: g.color,
-        description: (g.description ?? "").trim() || undefined,
-        // Raw, unresolved — this base is built once and shared by both the
-        // English and German pages (see toMemberViewBase's callers), so it
-        // cannot pick a locale itself. workDescription() in links.ts does
-        // that, once each page's lang is known.
-        descriptionDe: (g.descriptionDe ?? "").trim() || undefined,
-        link: workLink(g.link),
-      };
-    });
+function works(uid: string, doc: PublicProfileDoc, records: readonly GalleryRecord[], bucket: string): ProfileWork[] {
+  return orderedGalleryItems(uid, doc.gallery, records, bucket).map((g) => ({
+    url: g.url,
+    width: g.width,
+    height: g.height,
+    caption: g.caption,
+    // Raw, unresolved — workCaption() / workDescription() in links.ts pick a
+    // locale once each page's lang is known; this base is built once and
+    // shared by the English and German pages.
+    captionDe: g.captionDe,
+    color: g.color,
+    description: g.description,
+    descriptionDe: g.descriptionDe,
+    link: workLink(g.link),
+  }));
 }
 
-export function toMemberViewBase(uid: string, doc: PublicProfileDoc): MemberViewBase {
+export function toMemberViewBase(
+  uid: string,
+  doc: PublicProfileDoc,
+  records: readonly GalleryRecord[] = [],
+  bucket = "",
+): MemberViewBase {
   const bio = (doc.bio ?? "").trim();
   return {
     id: uid,
@@ -200,7 +197,7 @@ export function toMemberViewBase(uid: string, doc: PublicProfileDoc): MemberView
     portfolio: (doc.portfolio ?? "").trim(),
     socialMedia: (doc.socialMedia ?? "").trim(),
     memberType: doc.memberType ?? "",
-    works: works(doc),
+    works: works(uid, doc, records, bucket),
   };
 }
 
