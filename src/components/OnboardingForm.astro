@@ -1763,7 +1763,7 @@ const prefix = lang === "de" ? "/de" : "";
         // network, a permission-denied, an operation-not-allowed all looked
         // like a typo. Show the generic sentence with the code attached so the
         // member can report exactly what failed.
-        else msg = friendlyError(code, s["auth.error.generic"]);
+        else msg = friendlyError(code, s);
         setError(msg);
         setBtnState("ob-next-auth", false, s["onboarding.nav.next"]);
       }
