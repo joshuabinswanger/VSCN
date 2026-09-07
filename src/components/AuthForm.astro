@@ -199,7 +199,7 @@ const t = useTranslations(lang);
 </style>
 
 <script>
-  import { auth, isRecaptchaBlocked } from "../lib/firebase.ts";
+  import { auth, isSecurityCheckBlocked } from "../lib/firebase.ts";
   import {
     onAuthStateChanged,
     signInWithEmailAndPassword,
@@ -207,7 +207,7 @@ const t = useTranslations(lang);
   } from "firebase/auth";
   // returnTo is still needed: the password-reset mail carries a continue URL.
   import { returnTo } from "../lib/authEmail.ts";
-  import { friendlyError, errorParts, RECAPTCHA_BLOCKED } from "../lib/authErrors.ts";
+  import { friendlyError, errorParts, SECURITY_CHECK_BLOCKED } from "../lib/authErrors.ts";
   import { ui } from "../i18n/translations.ts";
 
   let isSubmitting = false;
@@ -330,12 +330,12 @@ const t = useTranslations(lang);
       const email = (document.getElementById("email") as HTMLInputElement).value;
       const password = (document.getElementById("password") as HTMLInputElement).value;
 
-      // Pre-flight: if the reCAPTCHA script never loaded, the Auth call below
+      // Pre-flight: if the Turnstile script never loaded, the Auth call below
       // would hang for 30 s and then blame the internet connection (see
-      // firebase.ts). Say what is actually wrong, now.
-      if (isRecaptchaBlocked()) {
+      // appCheckTurnstile.ts). Say what is actually wrong, now.
+      if (isSecurityCheckBlocked()) {
         setSubmitState(false);
-        errorEl.textContent = friendlyError(RECAPTCHA_BLOCKED, s);
+        errorEl.textContent = friendlyError(SECURITY_CHECK_BLOCKED, s);
         errorEl.style.display = "block";
         return;
       }

@@ -116,10 +116,10 @@ Remote images (Firebase Storage) are optimised at build time with `getImage` fro
 
 `.env`, `.env.development` and `.env.production` are **gitignored** — see [.env.example](.env.example). Two kinds of variable:
 
-- `PUBLIC_FIREBASE_*` — client SDK config, plus `PUBLIC_FIREBASE_RECAPTCHA_SITE_KEY` for App Check.
+- `PUBLIC_FIREBASE_*` — client SDK config, plus `PUBLIC_TURNSTILE_SITE_KEY` for App Check.
 - `FIREBASE_SERVICE_ACCOUNT` — a JSON service account read at **build time** by `community.astro`.
 
-App Check uses reCAPTCHA Enterprise. In dev, `firebase.ts` sets `FIREBASE_APPCHECK_DEBUG_TOKEN = true`, which prints a debug token to the browser console; register it in Firebase Console → App Check → Manage debug tokens or authenticated calls fail locally.
+App Check is attested by **Cloudflare Turnstile** through a custom provider (`src/lib/appCheckTurnstile.ts` → `functions/src/appCheck.ts`, reached same-origin at `/api/app-check`), not by Google reCAPTCHA — institutional networks block reCAPTCHA and prod enforces App Check on Auth and Firestore, so with reCAPTCHA nobody at the SLF could sign in (`documentation/20260907-turnstile-app-check-provider.md`). Prod builds MUST carry the site key or every sign-in fails. Dev and localhost run on Cloudflare's published always-pass test key `1x00000000000000000000AA` (in `.env.development` and the staging workflow) against the dev function, whose `TURNSTILE_SECRET_KEY` is the matching test secret; there is no debug-token flow any more.
 
 ## Deployment
 

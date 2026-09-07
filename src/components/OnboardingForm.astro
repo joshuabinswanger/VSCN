@@ -771,7 +771,7 @@ const prefix = lang === "de" ? "/de" : "";
 </style>
 
 <script>
-  import { auth, isRecaptchaBlocked } from "../lib/firebase.ts";
+  import { auth, isSecurityCheckBlocked } from "../lib/firebase.ts";
   import {
     onAuthStateChanged,
     createUserWithEmailAndPassword,
@@ -781,7 +781,7 @@ const prefix = lang === "de" ? "/de" : "";
   } from "firebase/auth";
   import { returnTo } from "../lib/authEmail.ts";
   import { hasVerifiedClaim } from "../lib/auth.ts";
-  import { friendlyError, isCredentialError, errorParts, RECAPTCHA_BLOCKED } from "../lib/authErrors.ts";
+  import { friendlyError, isCredentialError, errorParts, SECURITY_CHECK_BLOCKED } from "../lib/authErrors.ts";
   import { validateAvatar, resizeAvatar } from "../lib/validation.ts";
   import {
     createUser,
@@ -1756,10 +1756,10 @@ const prefix = lang === "de" ? "/de" : "";
       if (!email) { setError(s["auth.error.enterEmail"]); return; }
       if (!password) { setError(s["onboarding.auth.error.weak"]); return; }
       if (password !== confirm) { setError(s["onboarding.auth.error.mismatch"]); return; }
-      // Pre-flight: a reCAPTCHA script that never loaded would make the Auth
+      // Pre-flight: a Turnstile script that never loaded would make the Auth
       // call below hang for 30 s and then blame the internet connection (see
-      // firebase.ts). Say what is actually wrong, now.
-      if (isRecaptchaBlocked()) { setError(friendlyError(RECAPTCHA_BLOCKED, s)); return; }
+      // appCheckTurnstile.ts). Say what is actually wrong, now.
+      if (isSecurityCheckBlocked()) { setError(friendlyError(SECURITY_CHECK_BLOCKED, s)); return; }
 
       setBtnState("ob-next-auth", true, s["onboarding.nav.next"]);
       setError("");

@@ -17,6 +17,13 @@
   "hosting": {
     "public": "dist",
     "cleanUrls": true,
+    "rewrites": [
+      {
+        "//": "The App Check mint endpoint, same-origin. The page swaps a Cloudflare Turnstile token for an App Check token here (src/lib/appCheckTurnstile.ts → functions/src/appCheck.ts). Same-origin on purpose: institutional web filters block Google hosts by category, and this keeps cloudfunctions.net out of the login path. Deploy the function BEFORE the hosting config that points at it.",
+        "source": "/api/app-check",
+        "function": { "functionId": "mintAppCheckToken", "region": "us-central1" }
+      }
+    ],
     "headers": [
       {
         "//": "THE PAGES MUST NOT BE CACHED BY THE BROWSER. Firebase's default is max-age=3600, and with cleanUrls every route is an index.html, so after a deploy a browser kept showing the PREVIOUS build for up to an hour (2026-09-03: a freshly deployed page was missing its own build stamp in the browser while curl saw it, which is a full hour of testing a build that is not there). must-revalidate rather than no-store: the ETag still saves the bytes when nothing changed, it just stops the browser answering from its own cache without asking. The pattern is `**` and NOT `**/*.html`, which was the first attempt and matched nothing that matters: header rules are tested against the REQUEST path, and with cleanUrls every route arrives extension-less (`/community`), so only a literal .html hit would have matched. The immutable rule below is listed AFTER this one on purpose — it has to win for the hashed assets `**` also catches.",
