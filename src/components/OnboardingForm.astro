@@ -819,6 +819,8 @@ const prefix = lang === "de" ? "/de" : "";
     galleryErrorCode,
     compressGalleryImage,
     uploadGalleryImage,
+    loadGallery,
+    galleryIds,
     type GalleryItem,
   } from "../lib/gallery.ts";
   import { ui } from "../i18n/translations.ts";
@@ -1301,7 +1303,8 @@ const prefix = lang === "de" ? "/de" : "";
     async function persistGallery() {
       const user = auth.currentUser;
       if (!user) return;
-      await updateUserProfile(user.uid, { gallery, updatedAt: new Date() });
+      // The ids are the array; since 2026-09-07 the words live on the records.
+      await updateUserProfile(user.uid, { gallery: galleryIds(gallery), updatedAt: new Date() });
     }
 
     async function removeGalleryImage(index: number) {
@@ -1622,12 +1625,13 @@ const prefix = lang === "de" ? "/de" : "";
         const savedTags = Array.isArray(data.tags) ? data.tags.filter(Boolean).slice(0, 7) : [];
         if (tagSelector) tagSelector.value = savedTags;
 
-        // Each image is in Firestore the moment it lands, so re-reading the
-        // user doc is the whole restore — no transient copy to keep in step,
-        // and a language switch mid-gallery keeps the thumbnails.
-        gallery = Array.isArray(data.gallery)
-          ? data.gallery.filter(Boolean).slice(0, MAX_GALLERY_IMAGES)
-          : [];
+        // Each image is in Firestore the moment it lands, so re-reading is the
+        // whole restore — no transient copy to keep in step, and a language
+        // switch mid-gallery keeps the thumbnails.
+        //
+        // Ids only in the stored array since 2026-09-07 — the thumbnails come
+        // from the records, one query, same join the editor uses.
+        gallery = await loadGallery(user.uid, data.gallery);
         renderGallery();
       } catch {
         // Permission denied or network error — show form with empty fields
