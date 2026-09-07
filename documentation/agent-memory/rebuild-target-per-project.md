@@ -33,9 +33,10 @@ because the fix only existed in a Claude worktree. Before any functions deploy, 
   `$env:FUNCTIONS_DISCOVERY_TIMEOUT = "120"` and retry. The var is in SECONDS.
 - There is no `prod` Firebase alias. `.firebaserc` defines `default: vscn-39508` and
   `dev`. `-P prod` errors out.
-- The staging workflow does NOT auto-deploy on push to `dev` — deliberately disabled in
-  commit `3e8e2fc`. Staging deploys only via `workflow_dispatch` (which is what
-  `requestRebuild` does) or by hand with `npm run deploy:dev`.
+- The staging workflow auto-deploys on push to `dev` again since 2026-09-07 (it was
+  manual-only from `3e8e2fc`, 2026-05-26). `workflow_dispatch` stays — it is what
+  `requestRebuild` uses — and a `concurrency` group lets the newest run cancel an older
+  one. `npm run deploy:dev` is still how an UNMERGED tree reaches staging.
 - Secrets are pinned by VERSION, not `latest`. After `functions:secrets:set` you MUST
   redeploy or the function keeps reading the old version.
 

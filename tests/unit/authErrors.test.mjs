@@ -44,6 +44,7 @@ test("the four codes worth a sentence of their own all have one", () => {
     "auth/network-request-failed",
     "auth/operation-not-allowed",
     "auth/user-disabled",
+    "auth/firebase-app-check-token-is-invalid.",
     "permission-denied",
   ]) {
     for (const [name, table] of [["en", en], ["de", de]]) {
@@ -59,6 +60,49 @@ test("permission-denied never tells the member to try again", () => {
   // Retrying re-runs the same denied read, so "try again" is a lie.
   assert.doesNotMatch(friendlyError("permission-denied", en), /try again/i);
   assert.doesNotMatch(friendlyError("permission-denied", de), /erneut|nochmal/i);
+});
+
+test("email-already-in-use points at logging in, not at trying again", () => {
+  // The wizard reports this code only after its own recovery sign-in has
+  // failed on credentials, i.e. the address is taken and the typed password is
+  // not its password. Retrying is guaranteed to fail the same way, so the
+  // message has to name the account and the way back into it.
+  const en_ = friendlyError("auth/email-already-in-use", en);
+  const de_ = friendlyError("auth/email-already-in-use", de);
+  assert.doesNotMatch(en_, /try again/i);
+  assert.doesNotMatch(de_, /erneut|nochmal/i);
+  assert.match(en_, /log in/i);
+  assert.match(en_, /reset/i);
+  assert.match(de_, /anmelden|melde dich/i);
+  assert.match(de_, /zurücksetzen/i);
+});
+
+test("the app-check code is mapped WITH its trailing dot", () => {
+  // The SDK builds this code from the server's own sentence, "Firebase App
+  // Check token is invalid.", so the period is part of the code. Mapping only
+  // the tidy-looking spelling leaves the real one falling through to the
+  // generic sentence, which is exactly how it was first seen in the wild.
+  const dotted = "auth/firebase-app-check-token-is-invalid.";
+  for (const [name, table] of [["en", en], ["de", de]]) {
+    const msg = friendlyError(dotted, table);
+    assert.equal(msg, table["auth.error.code.appCheck"], `unmapped on ${name}`);
+    assert.doesNotMatch(msg, /\(/, `${name} still falls back to the raw code`);
+  }
+  // The dot-less spelling is mapped too, so a future SDK that tidies the code
+  // up does not silently regress the message.
+  assert.equal(
+    friendlyError("auth/firebase-app-check-token-is-invalid", en),
+    en["auth.error.code.appCheck"]
+  );
+});
+
+test("the app-check message names something the member can change", () => {
+  // Unlike operation-not-allowed, this one is usually fixable on their side,
+  // so a message that only apologises would waste the one chance to say so.
+  assert.match(en["auth.error.code.appCheck"], /ad blocker|extension|VPN/i);
+  assert.match(en["auth.error.code.appCheck"], /reload/i);
+  assert.match(de["auth.error.code.appCheck"], /Adblocker|Erweiterung|VPN/i);
+  assert.match(de["auth.error.code.appCheck"], /neu/i);
 });
 
 test("every mapped code has a string in BOTH locales", () => {
@@ -92,6 +136,8 @@ function mappedCodes() {
     "auth/network-request-failed",
     "auth/operation-not-allowed",
     "auth/user-disabled",
+    "auth/firebase-app-check-token-is-invalid.",
+    "auth/firebase-app-check-token-is-invalid",
     "permission-denied",
   ];
 }

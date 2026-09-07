@@ -28,6 +28,19 @@ const ERROR_KEYS: Record<string, string> = {
   // the member can do, but telling them so beats letting them retry forever.
   "auth/operation-not-allowed": "auth.error.code.operationNotAllowed",
   "auth/user-disabled":         "auth.error.code.userDisabled",
+  // App Check could not mint a token, so Auth refused the call. Note the
+  // TRAILING DOT: the SDK derives this code from the server's own sentence
+  // ("Firebase App Check token is invalid."), so the period is part of the
+  // code string, not punctuation we added. Both spellings are mapped because
+  // that derivation is not a documented contract.
+  //
+  // It means the reCAPTCHA Enterprise script never ran. In practice that is a
+  // blocker, a privacy extension or a locked-down network on the member's
+  // side, which they CAN fix - so it earns a sentence. It is also what every
+  // Hosting PREVIEW channel does, because preview domains are not on the
+  // reCAPTCHA key's allow-list; auth cannot be tested on a preview at all.
+  "auth/firebase-app-check-token-is-invalid.": "auth.error.code.appCheck",
+  "auth/firebase-app-check-token-is-invalid":  "auth.error.code.appCheck",
   // NOT an Auth code — Firestore's. It reaches the same catch because the
   // sign-up path reads the profile inside the same try block, so a rules
   // denial surfaces in the auth form. Its message must not say "try again":

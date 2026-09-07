@@ -60,10 +60,21 @@ Run this whenever you want the dev database to mirror the latest production stat
 
 ```yaml
 on:
-  workflow_dispatch: # manual trigger only
+  push:
+    branches: [dev]
+  workflow_dispatch:
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: true
 ```
 
-The `push` trigger was intentionally removed. Deploys only happen when you explicitly run `npm run deploy:dev` or trigger the workflow manually via the GitHub Actions UI. Pushing to `dev` will **not** auto-deploy.
+**History.** The `push` trigger was removed on 2026-05-26 (commit `3e8e2fc`), when `dev` was a scratch branch: every half-finished push would have redeployed staging under whoever was reviewing it, so deploys were manual — `npm run deploy:dev` or a workflow dispatch.
+
+**Restored 2026-09-07** (Josh: "wouldn't it make sense to have autodeploy on for dev?"). Three things had changed since May. `dev` is now reached only through PRs merged on GitHub, so a push to it is a reviewed merge, not a scratch commit. The `requestRebuild` Cloud Function already dispatches this same workflow on every staging profile save, so staging rebuilt itself on data changes while lagging on code changes. And the lag bit: PR #5 merged at 13:09 and staging kept serving the old build until a hand-dispatched run at 13:13 — a stale snapshot that looks exactly like a data bug (see the build stamp in CLAUDE.md).
+
+`workflow_dispatch` stays, for `requestRebuild` and for deliberate rebuilds. The `concurrency` group keeps one staging deploy in flight and lets the newest cancel an older one; a cancelled profile-save rebuild loses nothing because the build reads Firestore at build time, so the newer run carries the newer data too.
+
+`npm run deploy:dev` still works and is still the way to put an **unmerged** tree on staging.
 
 ### Build environment
 

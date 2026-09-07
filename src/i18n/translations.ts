@@ -93,13 +93,15 @@ export const ui: Record<string, Record<string, string>> = {
     // listed here falls back to auth.error.generic with the raw Firebase code
     // appended, which is what a member can paste into an email to us.
     "auth.error.code.emailInUse":
-      "An account with this email already exists. Try logging in instead.",
+      "An account with this email already exists. Log in instead, and reset your password there if you have forgotten it.",
     "auth.error.code.invalidEmail": "Please enter a valid email address.",
     "auth.error.code.weakPassword": "Password must be at least 6 characters.",
     "auth.error.code.invalidCredential": "Invalid email or password.",
     "auth.error.code.tooManyRequests": "Too many attempts. Please wait and try again.",
     "auth.error.code.network":
       "Could not reach the server. Check your internet connection, and any ad blocker or VPN.",
+    "auth.error.code.appCheck":
+      "A security check could not run in your browser. If you use an ad blocker, a privacy extension or a VPN, allow this site and reload the page.",
     "auth.error.code.operationNotAllowed":
       "Sign-up is temporarily unavailable. This is on our end. Please contact us at info@vscn.ch.",
     "auth.error.code.userDisabled":
@@ -534,7 +536,7 @@ export const ui: Record<string, Record<string, string>> = {
     // Siehe die englischen Schlüssel: nicht gelistete Codes fallen auf
     // auth.error.generic zurück, mit dem Firebase-Code im Text.
     "auth.error.code.emailInUse":
-      "Es gibt bereits ein Konto mit dieser E-Mail-Adresse. Melde dich stattdessen an.",
+      "Es gibt bereits ein Konto mit dieser E-Mail-Adresse. Melde dich stattdessen an; dort kannst du auch dein Passwort zurücksetzen.",
     "auth.error.code.invalidEmail": "Bitte gib eine gültige E-Mail-Adresse ein.",
     "auth.error.code.weakPassword": "Das Passwort muss mindestens 6 Zeichen haben.",
     "auth.error.code.invalidCredential": "E-Mail oder Passwort ist falsch.",
@@ -542,6 +544,8 @@ export const ui: Record<string, Record<string, string>> = {
       "Zu viele Versuche. Bitte warte einen Moment und versuche es dann erneut.",
     "auth.error.code.network":
       "Der Server ist nicht erreichbar. Überprüfe deine Internetverbindung sowie Adblocker und VPN.",
+    "auth.error.code.appCheck":
+      "Eine Sicherheitsprüfung konnte in deinem Browser nicht ausgeführt werden. Wenn du einen Adblocker, eine Datenschutz-Erweiterung oder ein VPN nutzt, erlaube diese Seite und lade sie neu.",
     "auth.error.code.operationNotAllowed":
       "Die Registrierung ist derzeit nicht verfügbar. Das liegt an uns. Bitte kontaktiere uns unter info@vscn.ch.",
     "auth.error.code.userDisabled":
