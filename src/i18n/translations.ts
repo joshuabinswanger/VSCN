@@ -99,9 +99,11 @@ export const ui: Record<string, Record<string, string>> = {
     "auth.error.code.invalidCredential": "Invalid email or password.",
     "auth.error.code.tooManyRequests": "Too many attempts. Please wait and try again.",
     "auth.error.code.network":
-      "Could not reach the server. Check your internet connection, and any ad blocker or VPN.",
+      "Could not reach the login server. Check your internet connection, and any ad blocker or VPN. On an institutional network (ETH, UZH, another university, a hospital or a company) Google's login service is often blocked by the IT department: ask them to allow identitytoolkit.googleapis.com, or try again from another network.",
     "auth.error.code.appCheck":
-      "A security check could not run in your browser. If you use an ad blocker, a privacy extension or a VPN, allow this site and reload the page.",
+      "A security check could not run in your browser. If you use an ad blocker, a privacy extension or a VPN, allow this site and reload the page. On an institutional network (ETH, UZH, another university, a hospital or a company) ask your IT department to allow firebaseappcheck.googleapis.com.",
+    "auth.error.code.recaptchaBlocked":
+      "Google reCAPTCHA, the security check this site uses for logging in, could not load. If you use an ad blocker or a privacy extension, allow this site and reload the page. On an institutional network (ETH, UZH, another university, a hospital or a company) it is often blocked by the IT department: ask them to allow www.google.com/recaptcha and www.gstatic.com/recaptcha, or try again from another network.",
     "auth.error.code.operationNotAllowed":
       "Sign-up is temporarily unavailable. This is on our end. Please contact us at info@vscn.ch.",
     "auth.error.code.userDisabled":
@@ -543,9 +545,11 @@ export const ui: Record<string, Record<string, string>> = {
     "auth.error.code.tooManyRequests":
       "Zu viele Versuche. Bitte warte einen Moment und versuche es dann erneut.",
     "auth.error.code.network":
-      "Der Server ist nicht erreichbar. Überprüfe deine Internetverbindung sowie Adblocker und VPN.",
+      "Der Anmeldeserver ist nicht erreichbar. Überprüfe deine Internetverbindung sowie Adblocker und VPN. In Netzwerken von Institutionen (ETH, UZH, andere Hochschulen, Spitäler oder Firmen) ist der Google-Anmeldedienst oft von der IT gesperrt: Bitte sie, identitytoolkit.googleapis.com freizugeben, oder versuche es über ein anderes Netzwerk.",
     "auth.error.code.appCheck":
-      "Eine Sicherheitsprüfung konnte in deinem Browser nicht ausgeführt werden. Wenn du einen Adblocker, eine Datenschutz-Erweiterung oder ein VPN nutzt, erlaube diese Seite und lade sie neu.",
+      "Eine Sicherheitsprüfung konnte in deinem Browser nicht ausgeführt werden. Wenn du einen Adblocker, eine Datenschutz-Erweiterung oder ein VPN nutzt, erlaube diese Seite und lade sie neu. In Netzwerken von Institutionen (ETH, UZH, andere Hochschulen, Spitäler oder Firmen) bitte deine IT, firebaseappcheck.googleapis.com freizugeben.",
+    "auth.error.code.recaptchaBlocked":
+      "Google reCAPTCHA, die Sicherheitsprüfung dieser Seite für die Anmeldung, konnte nicht geladen werden. Wenn du einen Adblocker oder eine Datenschutz-Erweiterung nutzt, erlaube diese Seite und lade sie neu. In Netzwerken von Institutionen (ETH, UZH, andere Hochschulen, Spitäler oder Firmen) ist sie oft von der IT gesperrt: Bitte sie, www.google.com/recaptcha und www.gstatic.com/recaptcha freizugeben, oder versuche es über ein anderes Netzwerk.",
     "auth.error.code.operationNotAllowed":
       "Die Registrierung ist derzeit nicht verfügbar. Das liegt an uns. Bitte kontaktiere uns unter info@vscn.ch.",
     "auth.error.code.userDisabled":

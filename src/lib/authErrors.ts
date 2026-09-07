@@ -12,6 +12,9 @@
  * sentence a member can act on. Everything else is a configuration fault that
  * no wording can help with, and those are better served by the raw code.
  */
+/** Pseudo-code for "the reCAPTCHA script never loaded", raised on our side. */
+export const RECAPTCHA_BLOCKED = "vscn/recaptcha-blocked";
+
 const ERROR_KEYS: Record<string, string> = {
   "auth/email-already-in-use":  "auth.error.code.emailInUse",
   "auth/invalid-email":         "auth.error.code.invalidEmail",
@@ -46,6 +49,12 @@ const ERROR_KEYS: Record<string, string> = {
   // denial surfaces in the auth form. Its message must not say "try again":
   // the retry runs the same denied read.
   "permission-denied":          "auth.error.code.permissionDenied",
+  // OURS, not the SDK's. firebase.ts raises it when the reCAPTCHA Enterprise
+  // script tag fires its error event, and the forms refuse to call Auth at all.
+  // Without it a blocked script costs the member a 30 s wait and then the
+  // NETWORK sentence (see friendlyError below), because the SDK's loader
+  // registers onload but no onerror and Auth times out waiting for App Check.
+  [RECAPTCHA_BLOCKED]:          "auth.error.code.recaptchaBlocked",
 };
 
 /**
@@ -56,12 +65,40 @@ const ERROR_KEYS: Record<string, string> = {
  * WITH THE CODE APPENDED — because a bare "Something went wrong" is
  * unreportable. A member who sees "(auth/internal-error)" can paste that to
  * us and the cause is known without asking them to open DevTools.
+ *
+ * `detail` is the SDK's own note on what went wrong (errorParts pulls it off
+ * the thrown error). It rides along in the suffix for unmapped codes, and for
+ * ONE mapped code: auth/network-request-failed. Reproduced 2026-09-07 against
+ * prod, that code has two faces that the sentence alone cannot tell apart —
+ * a blocked identitytoolkit.googleapis.com fails in 0.2 s with the detail
+ * "TypeError: Failed to fetch", while a blocked reCAPTCHA script hangs App
+ * Check and fails after 30 s with no detail at all. Which face it is decides
+ * which host an IT department has to allow, so the member's screenshot has
+ * to carry it.
  */
-export function friendlyError(code: string, strings: Record<string, string>): string {
+export function friendlyError(code: string, strings: Record<string, string>, detail = ""): string {
   const generic = strings["auth.error.generic"];
   if (!code) return generic;
   const key = ERROR_KEYS[code];
-  return key ? strings[key] : `${generic} (${code})`;
+  const suffix = detail ? `${code}: ${detail}` : code;
+  if (!key) return `${generic} (${suffix})`;
+  if (code === "auth/network-request-failed") return `${strings[key]} (${suffix})`;
+  return strings[key];
+}
+
+/**
+ * The two things worth reading off whatever the SDK threw: its code, and its
+ * `customData.message`, which is where FirebaseError keeps the underlying
+ * cause (for a failed fetch, the browser's own TypeError text). Anything that
+ * is not shaped like that yields empty strings, and friendlyError turns an
+ * empty code into the bare generic sentence.
+ */
+export function errorParts(err: unknown): { code: string; detail: string } {
+  if (typeof err !== "object" || err === null) return { code: "", detail: "" };
+  const e = err as { code?: unknown; customData?: { message?: unknown } };
+  const code = typeof e.code === "string" ? e.code : "";
+  const detail = typeof e.customData?.message === "string" ? e.customData.message : "";
+  return { code, detail };
 }
 
 // The codes that mean "the email/password pair was wrong" — the one family a
