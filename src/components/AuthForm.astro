@@ -382,8 +382,11 @@ const t = useTranslations(lang);
           typeof err === "object" && err !== null && "code" in err
             ? String((err as { code: unknown }).code)
             : "";
+        // The code stays in the message: friendlyError appends it when it has
+        // no specific sentence for it, so the member can report exactly what
+        // failed instead of "something went wrong".
         errorEl.textContent = code
-          ? friendlyError(code)
+          ? friendlyError(code, s["auth.error.generic"])
           : s["auth.error.generic"];
         errorEl.style.display = "block";
       }
