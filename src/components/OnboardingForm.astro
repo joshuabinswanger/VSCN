@@ -771,7 +771,7 @@ const prefix = lang === "de" ? "/de" : "";
 </style>
 
 <script>
-  import { auth } from "../lib/firebase.ts";
+  import { auth, isSecurityCheckBlocked } from "../lib/firebase.ts";
   import {
     onAuthStateChanged,
     createUserWithEmailAndPassword,
@@ -781,7 +781,7 @@ const prefix = lang === "de" ? "/de" : "";
   } from "firebase/auth";
   import { returnTo } from "../lib/authEmail.ts";
   import { hasVerifiedClaim } from "../lib/auth.ts";
-  import { friendlyError, isCredentialError } from "../lib/authErrors.ts";
+  import { friendlyError, isCredentialError, errorParts, SECURITY_CHECK_BLOCKED } from "../lib/authErrors.ts";
   import { validateAvatar, resizeAvatar } from "../lib/validation.ts";
   import {
     createUser,
@@ -1756,6 +1756,10 @@ const prefix = lang === "de" ? "/de" : "";
       if (!email) { setError(s["auth.error.enterEmail"]); return; }
       if (!password) { setError(s["onboarding.auth.error.weak"]); return; }
       if (password !== confirm) { setError(s["onboarding.auth.error.mismatch"]); return; }
+      // Pre-flight: a Turnstile script that never loaded would make the Auth
+      // call below hang for 30 s and then blame the internet connection (see
+      // appCheckTurnstile.ts). Say what is actually wrong, now.
+      if (isSecurityCheckBlocked()) { setError(friendlyError(SECURITY_CHECK_BLOCKED, s)); return; }
 
       setBtnState("ob-next-auth", true, s["onboarding.nav.next"]);
       setError("");
@@ -1797,7 +1801,7 @@ const prefix = lang === "de" ? "/de" : "";
         }
         await onUserAuthenticated(user);
       } catch (err: unknown) {
-        const code = (err as { code?: string }).code ?? "";
+        const { code, detail } = errorParts(err);
         let msg: string;
         if (code === "auth/weak-password") msg = s["onboarding.auth.error.weak"];
         else if (code === "auth/invalid-email") msg = s["auth.error.enterEmail"];
@@ -1811,8 +1815,10 @@ const prefix = lang === "de" ? "/de" : "";
         // Everything else used to be reported as a wrong password — a blocked
         // network, a permission-denied, an operation-not-allowed all looked
         // like a typo. Show the generic sentence with the code attached so the
-        // member can report exactly what failed.
-        else msg = friendlyError(code, s);
+        // member can report exactly what failed. The detail rides along for
+        // the network code, where it tells a blocked auth host from a hung
+        // security check.
+        else msg = friendlyError(code, s, detail);
         setError(msg);
         setBtnState("ob-next-auth", false, s["onboarding.nav.next"]);
       }

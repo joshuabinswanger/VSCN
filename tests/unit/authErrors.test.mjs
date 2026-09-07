@@ -5,7 +5,7 @@
 // the code appended, which is the part a member can paste into an email.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { friendlyError, isCredentialError } from "../../src/lib/authErrors.ts";
+import { friendlyError, isCredentialError, errorParts, SECURITY_CHECK_BLOCKED } from "../../src/lib/authErrors.ts";
 import { ui } from "../../src/i18n/translations.ts";
 
 const en = ui.en;
@@ -20,8 +20,9 @@ test("a mapped code resolves through the locale table", () => {
 
 test("a mapped code is German on the German table", () => {
   const msg = friendlyError("auth/network-request-failed", de);
-  assert.equal(msg, de["auth.error.code.network"]);
-  assert.notEqual(msg, en["auth.error.code.network"]);
+  // startsWith: the network sentence carries the code suffix (see below).
+  assert.ok(msg.startsWith(de["auth.error.code.network"]));
+  assert.ok(!msg.startsWith(en["auth.error.code.network"]));
 });
 
 test("an unmapped code appends itself to the locale's generic sentence", () => {
@@ -49,7 +50,9 @@ test("the four codes worth a sentence of their own all have one", () => {
   ]) {
     for (const [name, table] of [["en", en], ["de", de]]) {
       const msg = friendlyError(code, table);
-      assert.doesNotMatch(msg, /\(/, `${code} still falls back on ${name}`);
+      // "Did not fall back to the generic sentence" — the network sentence now
+      // legitimately carries parentheses (the institution note, the code suffix).
+      assert.ok(!msg.startsWith(table["auth.error.generic"]), `${code} still falls back on ${name}`);
       assert.ok(msg.length > 0, `${code} is empty on ${name}`);
     }
   }
@@ -86,7 +89,7 @@ test("the app-check code is mapped WITH its trailing dot", () => {
   for (const [name, table] of [["en", en], ["de", de]]) {
     const msg = friendlyError(dotted, table);
     assert.equal(msg, table["auth.error.code.appCheck"], `unmapped on ${name}`);
-    assert.doesNotMatch(msg, /\(/, `${name} still falls back to the raw code`);
+    assert.ok(!msg.startsWith(table["auth.error.generic"]), `${name} still falls back to the raw code`);
   }
   // The dot-less spelling is mapped too, so a future SDK that tidies the code
   // up does not silently regress the message.
@@ -124,6 +127,73 @@ test("only the wrong-email-or-password family counts as a credential error", () 
   assert.equal(isCredentialError(""), false);
 });
 
+test("the network code carries the SDK's detail, because the detail IS the diagnosis", () => {
+  // Reproduced 2026-09-07 against prod: a blocked identitytoolkit host fails in
+  // 0.2 s with customData.message "TypeError: Failed to fetch"; a blocked
+  // reCAPTCHA script hangs App Check and fails after 30 s with NO detail. Same
+  // code, same sentence, two different hosts for an IT department to allow.
+  // The sentence alone could not tell them apart; the suffix can.
+  const withDetail = friendlyError("auth/network-request-failed", en, "TypeError: Failed to fetch");
+  assert.ok(withDetail.startsWith(en["auth.error.code.network"]));
+  assert.match(withDetail, /\(auth\/network-request-failed: TypeError: Failed to fetch\)$/);
+  const without = friendlyError("auth/network-request-failed", en);
+  assert.match(without, /\(auth\/network-request-failed\)$/);
+});
+
+test("other mapped codes do not grow a suffix", () => {
+  assert.equal(
+    friendlyError("auth/invalid-credential", en, "some detail"),
+    en["auth.error.code.invalidCredential"]
+  );
+});
+
+test("an unmapped code carries the detail too", () => {
+  assert.equal(
+    friendlyError("auth/internal-error", en, "boom"),
+    `${en["auth.error.generic"]} (auth/internal-error: boom)`
+  );
+});
+
+test("errorParts reads the code and the SDK's customData.message off whatever was thrown", () => {
+  assert.deepEqual(
+    errorParts({ code: "auth/network-request-failed", customData: { message: "TypeError: Failed to fetch" } }),
+    { code: "auth/network-request-failed", detail: "TypeError: Failed to fetch" }
+  );
+  assert.deepEqual(errorParts({ code: "auth/user-disabled" }), { code: "auth/user-disabled", detail: "" });
+  assert.deepEqual(errorParts(new Error("plain")), { code: "", detail: "" });
+  assert.deepEqual(errorParts(undefined), { code: "", detail: "" });
+  assert.deepEqual(errorParts("string"), { code: "", detail: "" });
+});
+
+test("the security-check-blocked pre-flight has its own sentence in both locales", () => {
+  // Not an SDK code: appCheckTurnstile.ts raises it when the Turnstile script
+  // tag fires its error event, so the forms can refuse BEFORE the 30 s hang.
+  // It names the check and the host an IT department must allow, because the
+  // members most likely to hit it sit on institutional networks.
+  for (const [name, table] of [["en", en], ["de", de]]) {
+    const msg = friendlyError(SECURITY_CHECK_BLOCKED, table);
+    assert.equal(msg, table["auth.error.code.securityCheckBlocked"], `unmapped on ${name}`);
+    assert.match(msg, /Turnstile/, `${name} does not name Turnstile`);
+  }
+});
+
+test("the network-ish sentences all tell an institutional member what to ask IT for", () => {
+  // Most members are expected to sit at ETH, UZH or another institution whose
+  // web filter blocks Google APIs by category. Each message names the one host
+  // that failure needs allowed, so the ticket to IT writes itself.
+  const cases = [
+    ["auth.error.code.network", /identitytoolkit\.googleapis\.com/],
+    ["auth.error.code.appCheck", /challenges\.cloudflare\.com/],
+    ["auth.error.code.securityCheckBlocked", /challenges\.cloudflare\.com/],
+  ];
+  for (const [key, host] of cases) {
+    for (const [name, table] of [["en", en], ["de", de]]) {
+      assert.match(table[key], /ETH/, `${key} on ${name} does not mention institutions`);
+      assert.match(table[key], host, `${key} on ${name} does not name its host`);
+    }
+  }
+});
+
 function mappedCodes() {
   return [
     "auth/email-already-in-use",
@@ -139,5 +209,6 @@ function mappedCodes() {
     "auth/firebase-app-check-token-is-invalid.",
     "auth/firebase-app-check-token-is-invalid",
     "permission-denied",
+    SECURITY_CHECK_BLOCKED,
   ];
 }

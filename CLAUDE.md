@@ -13,6 +13,7 @@ npm run format       # prettier --write src
 npm run deploy:dev   # build in development mode + firebase deploy -P dev --only hosting
 npm run test:rules   # firestore.rules + storage.rules against the emulator (needs Java)
 npm run worktree -- <branch> [--from <base>]   # a usable worktree: env copied, node_modules junctioned
+npm run worktree -- <branch> --remove          # tear it down, junction and husk included
 ```
 
 There is **no test framework** for src/ and none should be added casually. The ONE exception is `tests/rules/` — rules tests on the emulator via `@firebase/rules-unit-testing` + `node --test`, because a rules mistake fails silently (see the hasOnly trap below) and nothing else catches it. Verification is `npm run lint`, `npm run build`, and browser inspection.
@@ -115,10 +116,10 @@ Remote images (Firebase Storage) are optimised at build time with `getImage` fro
 
 `.env`, `.env.development` and `.env.production` are **gitignored** — see [.env.example](.env.example). Two kinds of variable:
 
-- `PUBLIC_FIREBASE_*` — client SDK config, plus `PUBLIC_FIREBASE_RECAPTCHA_SITE_KEY` for App Check.
+- `PUBLIC_FIREBASE_*` — client SDK config, plus `PUBLIC_TURNSTILE_SITE_KEY` for App Check.
 - `FIREBASE_SERVICE_ACCOUNT` — a JSON service account read at **build time** by `community.astro`.
 
-App Check uses reCAPTCHA Enterprise. In dev, `firebase.ts` sets `FIREBASE_APPCHECK_DEBUG_TOKEN = true`, which prints a debug token to the browser console; register it in Firebase Console → App Check → Manage debug tokens or authenticated calls fail locally.
+App Check is attested by **Cloudflare Turnstile** through a custom provider (`src/lib/appCheckTurnstile.ts` → `functions/src/appCheck.ts`, reached same-origin at `/api/app-check`), not by Google reCAPTCHA — institutional networks block reCAPTCHA and prod enforces App Check on Auth and Firestore, so with reCAPTCHA nobody at the SLF could sign in (`documentation/20260907-turnstile-app-check-provider.md`). Prod builds MUST carry the site key or every sign-in fails. Dev and localhost run on Cloudflare's published always-pass test key `1x00000000000000000000AA` (in `.env.development` and the staging workflow) against the dev function, whose `TURNSTILE_SECRET_KEY` is the matching test secret; there is no debug-token flow any more.
 
 ## Deployment
 
@@ -133,18 +134,24 @@ npm run worktree -- feat/thing     # own checkout, off dev
 # work, commit, push
 gh pr create --draft --base dev
 # open the preview URL the bot comments, then merge on GitHub
-git worktree remove ../wt-feat-thing
+npm run worktree -- feat/thing --remove   # NOT git worktree remove: see below
 ```
 
-**Never `git switch` in `repo/`.** Several Claude sessions share that one checkout, and changing its HEAD or its files under another session yields commits on the wrong branch and half-built `dist/` output that still reports success (`documentation/agent-memory/concurrent-session-stash-hazard.md`). A worktree is the isolation; `npm run worktree` exists because a bare `git worktree add` produces a *broken* one — `.env` is gitignored, so the new checkout has no `FIREBASE_SERVICE_ACCOUNT`, and `community.astro` swallows that into a community page with zero members without failing the build.
+**Never `git switch` in `repo/`.** Several Claude sessions share that one checkout, and changing its HEAD or its files under another session yields commits on the wrong branch and half-built `dist/` output that still reports success (`documentation/agent-memory/concurrent-session-stash-hazard.md`). **Tear one down with `--remove`, not `git worktree remove`.** The bare git command only half-cleans: it deletes the tracked files and deregisters the worktree, then stops at the `node_modules` junction it did not create. The directory survives its own removal as a husk holding one dead link, and because git no longer lists it, `git worktree list` cannot show you the mess — seven had accumulated beside `repo/` by 2026-09-07. `--remove` drops the junction explicitly before deleting anything, refuses when git reports uncommitted work, refuses when an unregistered directory still holds files (it may be a pruned worktree with unpushed commits), and never touches the branch.
+
+A worktree is the isolation; `npm run worktree` exists because a bare `git worktree add` produces a *broken* one — `.env` is gitignored, so the new checkout has no `FIREBASE_SERVICE_ACCOUNT`, and `community.astro` swallows that into a community page with zero members without failing the build.
 
 **A PR now buys something it did not before.** PR previews were dead from 2026-05-03 to 2026-09-07 (a secret rename that missed this one workflow); proven working again by PR #2, run `34098880706`. Every PR — any base — gets a real deployed URL built against **prod** data, which is the only way to look at a change on a real host before it lands. Two traps: the page's `build-commit` stamp is the ephemeral `refs/pull/N/merge` SHA and matches no commit in the repo (`git ls-remote origin 'refs/pull/N/*'` maps it back), and sign-in may fail on a preview domain because preview channels are not auto-added to Auth's authorized domains — a console setting, not a regression.
 
 ### Releasing to main
 
-The last three releases were built with `git commit-tree` (tree from `dev`, single parent `main`) to avoid checking out the shared tree. It ships correctly and it **photocopies history**: as of 2026-09-07 `main` and `dev` had byte-identical trees (`5a1107a`) while git reported them 177 and 9 commits apart. Nothing in this repo's history is trustworthy as a result — `git cherry`, `git branch -vv` and ahead/behind counts all report shipped work as outstanding, which is why every branch audit here has had to be done by reading features instead.
+**Release by opening a PR from `dev` into `main` and merging it on GitHub.** It needs no local checkout, so the shared-tree problem never arises; `firebase-hosting-merge.yml` triggers on `push: branches: [main]` and a PR merge *is* that push, so production deploys exactly as it always has; and the release PR gets its own preview of the precise tree about to go live. Since `8840ffa` the merge base of `main` and `dev` is main's own tip, so that PR is an ordinary one with an honest diff.
 
-**Prefer a PR from `dev` into `main`, merged on GitHub.** It needs no local checkout, so the shared-tree problem never arises; `firebase-hosting-merge.yml` triggers on `push: branches: [main]` and a PR merge *is* that push, so production deploys exactly as it does now; and the release PR gets its own preview of the precise tree about to go live. The first such merge also repairs the split history, and costs nothing while the trees are already identical (GitHub shows it as many commits, zero changed files).
+**Never build a release with `git commit-tree` again.** The three releases before 2026-09-07 were made that way (tree from `dev`, single parent `main`) to avoid checking out the shared tree. It ships correctly and it **photocopies history**: the tree lands on `main` carrying no ancestry, so git goes on believing the branches diverged wherever they last genuinely met. `8840ffa` gave them a real common ancestor again; one more `commit-tree` release would re-break exactly that.
+
+**History is trustworthy from `3066ebf` forward, and still lies about anything older.** `git cherry`, `git branch -vv` and ahead/behind counts now mean what they say for post-`3066ebf` work — before that point they report shipped work as outstanding, which is why every branch audit in this repo up to 2026-09-07 had to be done by reading features instead of by reading git.
+
+**What the broken ancestry actually cost, in case it recurs.** During the auth release the merge base of `main` and `dev` was `272e5729`, ancient, so a dev → main PR three-way merged from that bogus base and reported **conflicts in five files** while `git diff main dev` showed only the release's eleven files of real change. GitHub refuses to build a preview for a CONFLICTING PR, so the release stood blocked by an artefact rather than by any real conflict. The fix was `git merge -s ours origin/main` on `dev`, which keeps dev's tree byte for byte and records `main` as a second parent; prove it safe the same way it was proven then — compare the tree hash before and after (identical, `c09cc1f5`) and confirm `main` holds nothing `dev` lacks. The release then merged as an ordinary pull request, `e3c8cf9`, and production deployed normally (`documentation/agent-memory/release-history-repaired.md`).
 
 **Rules go first.** If the release ships a frontend that writes a new field, deploy `firestore.rules` **before or with** it — the `hasOnly` trap rejects the whole write, silently, and a member's save just stops working.
 
