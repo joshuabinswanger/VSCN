@@ -1,4 +1,8 @@
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { uploadImage, updateImageText } from "./images.ts";
+import { db, storage } from "./firebase.ts";
+import { orderedGalleryItems, type GalleryRecord } from "./galleryRecords.ts";
+export { galleryIds } from "./galleryRecords.ts";
 import {
   decodeImage,
   toWebpBlob,
@@ -6,6 +10,11 @@ import {
   rejectionCode,
   WEBP_QUALITY,
 } from "./image.ts";
+
+/** The bucket the client SDK is configured for — the same one publicStorageUrl() in images.ts reads. */
+function storageBucket(): string {
+  return storage.app.options.storageBucket ?? "";
+}
 
 // Keep in sync with validGallery() in firestore.rules.
 export const MAX_GALLERY_IMAGES = 8;
@@ -98,7 +107,7 @@ const QUALITY_LADDER = [WEBP_QUALITY, 0.72, 0.62];
 const EDGE_LADDER = [MAX_EDGE, 3000, 2400, 2000, 1600];
 
 export interface GalleryItem {
-  /** The images/{imageId} record this item projects. The record is the truth; this array is display order. */
+  /** The images/{imageId} record this item edits. Since 2026-09-07 the stored array holds only these ids; every other field here is read FROM the record — see galleryRecords.ts. */
   imageId: string;
   url: string;
   /**
@@ -158,50 +167,36 @@ export interface GalleryItem {
    *
    * Stored WITHOUT a scheme ("nature.com/articles/…"), matching `portfolio` —
    * the editor shows a fixed `https://` prefix rather than asking anyone to
-   * type one, and href() in links.ts puts it back for rendering. A value that
-   * cannot be a URL at all is dropped by the read path rather than rendered as
-   * a dead link; see workLink() in links.ts and works() in memberView.ts.
+   * type one, and href() in links.ts puts it back for rendering. Lives on the
+   * record since 2026-09-07; capped by validImage at 200.
    */
   link?: string;
 }
 
 /**
- * Drops keys no longer in GalleryItem from a stored array, and normalises the ones that are.
+ * The member's gallery as the editor edits it: the profile's id list joined to
+ * the member's own live records (2026-09-07 — the record is the work,
+ * documentation/20260907-works-on-the-record-design.md). One query, then the
+ * pure join in galleryRecords.ts. An id whose record is gone is dropped here
+ * and leaves Firestore on the next array write.
  *
- * Exists for exactly one withdrawn field: `projectId`, the tag into a member's
- * projects, removed with the feature on 2026-09-01. firestore.rules now
- * rejects a gallery item carrying an unlisted key (validGalleryItem's
- * `hasOnly`), so a member whose images were tagged before the withdrawal could
- * not save AT ALL — not the gallery, not their name, nothing — because the
- * editor loads the stored array and writes it back whole. Stripping on the way
- * IN is what makes that save legal, and it also means the stale tags leave
- * Firestore on the member's next save rather than lingering forever.
- *
- * Whitelist rather than a `delete projectId`: the next field this happens to
- * needs no second function, and a shape the rules will accept is the actual
- * requirement — not the absence of one particular ghost.
+ * Replaces sanitizeGalleryItems(), which stripped withdrawn keys out of a
+ * stored array of objects — there are no objects in the array to strip now.
  */
-export function sanitizeGalleryItems(value: unknown): GalleryItem[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((raw): raw is Record<string, unknown> => Boolean(raw) && typeof raw === "object")
-    .map((raw) => {
-      const item: GalleryItem = {
-        imageId: String(raw.imageId ?? ""),
-        url: String(raw.url ?? ""),
-        caption: typeof raw.caption === "string" ? raw.caption : "",
-        width: Number(raw.width ?? 0),
-        height: Number(raw.height ?? 0),
-      };
-      if (typeof raw.color === "string") item.color = raw.color;
-      if (typeof raw.captionDe === "string" && raw.captionDe) item.captionDe = raw.captionDe;
-      if (typeof raw.description === "string" && raw.description) item.description = raw.description;
-      if (typeof raw.descriptionDe === "string" && raw.descriptionDe)
-        item.descriptionDe = raw.descriptionDe;
-      if (typeof raw.link === "string" && raw.link) item.link = raw.link;
-      return item;
-    })
-    .filter((item) => item.url && item.width > 0 && item.height > 0);
+export async function loadGallery(uid: string, stored: unknown): Promise<GalleryItem[]> {
+  const snap = await getDocs(
+    query(
+      collection(db, "images"),
+      where("ownerUid", "==", uid),
+      where("kind", "==", "gallery"),
+      where("status", "==", "live"),
+    ),
+  );
+  const records: GalleryRecord[] = snap.docs.map((d) => ({
+    imageId: d.id,
+    ...(d.data() as Omit<GalleryRecord, "imageId">),
+  }));
+  return orderedGalleryItems(uid, stored, records, storageBucket()).slice(0, MAX_GALLERY_IMAGES);
 }
 
 export interface CompressedImage {
@@ -389,19 +384,24 @@ export async function uploadGalleryImage(
   return { imageId, url, caption: "", width: image.width, height: image.height, color: image.color };
 }
 
+export interface GalleryRecordFailure {
+  imageId: string;
+  /** Position in the gallery, 0-based — the editor says "image 2", not an id. */
+  index: number;
+  error: unknown;
+}
+
 /**
- * Pushes typed text onto the records. Called from Save, alongside the array
- * write — the array carries the same text for the static build, but the
- * record is what an admin or a future feature reads.
+ * Writes every image's words onto its record and REPORTS what failed.
  *
- * The records are a SECONDARY projection, so a failure here must never fail
- * the Save: the array write is the primary and may already have landed, and
- * one stale imageId — a record swept between load and Save, or one that is not
- * this caller's — would take the whole Save down with Promise.all. Each
- * rejection is warned with its imageId and otherwise swallowed.
+ * Until 2026-09-07 this was syncGalleryText(): best-effort, a console.warn per
+ * failure, because the array carried the same text and the page rendered from
+ * the array. The array carries nothing now, so a refused record write is the
+ * member's caption GONE — and Save must say so rather than print "Changes
+ * saved". allSettled, not all: one bad record (swept between load and Save,
+ * or not this caller's) must not stop the other seven from landing.
  */
-export async function syncGalleryText(gallery: GalleryItem[]): Promise<void> {
-  const items = gallery.filter((item) => item.imageId);
+export async function saveGalleryRecords(items: readonly GalleryItem[]): Promise<GalleryRecordFailure[]> {
   const results = await Promise.allSettled(
     items.map((item) =>
       updateImageText(item.imageId, {
@@ -409,12 +409,15 @@ export async function syncGalleryText(gallery: GalleryItem[]): Promise<void> {
         captionDe: item.captionDe,
         description: item.description,
         descriptionDe: item.descriptionDe,
+        link: item.link,
       }),
     ),
   );
-  results.forEach((result, i) => {
+  const failures: GalleryRecordFailure[] = [];
+  results.forEach((result, index) => {
     if (result.status === "rejected") {
-      console.warn(`[gallery] text sync skipped for image ${items[i].imageId}:`, result.reason);
+      failures.push({ imageId: items[index].imageId, index, error: result.reason });
     }
   });
+  return failures;
 }
