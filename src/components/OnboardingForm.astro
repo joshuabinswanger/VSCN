@@ -54,6 +54,10 @@ const prefix = lang === "de" ? "/de" : "";
         <button id="ob-next-auth" type="button" class="btn-solid">{t("onboarding.nav.next")}</button>
       </div>
     </div>
+    <p class="ob-have-account">
+      {t("onboarding.auth.haveAccount")}
+      <a href={`${prefix}/login`}>{t("onboarding.auth.cta.login")}</a>
+    </p>
   </div>
 
   <!-- Step 0: About you -->
@@ -480,6 +484,30 @@ const prefix = lang === "de" ? "/de" : "";
     padding-top: 2rem;
   }
 
+  /* The way across to /login from the signup step. Sits outside
+     #ob-auth-form so it is there whether the fields are revealed or not:
+     a returning member arriving on a "Join our community" CTA needs it
+     before they have typed anything. Matches .auth-sub / .toggle-link on
+     the login page, which is the other half of the same pair. */
+  .ob-have-account {
+    font-size: 0.88rem;
+    color: var(--color-muted);
+    margin-top: 1.25rem;
+    margin-bottom: 0;
+  }
+
+  .ob-have-account a {
+    color: var(--color-dark);
+    font-weight: 600;
+    text-decoration: none;
+    border-bottom: 1px solid #ccc;
+    transition: border-color 0.15s;
+  }
+
+  .ob-have-account a:hover {
+    border-color: var(--color-dark);
+  }
+
   /* Bridge step */
   .ob-bridge {
     text-align: center;
@@ -753,8 +781,10 @@ const prefix = lang === "de" ? "/de" : "";
   } from "firebase/auth";
   import { returnTo } from "../lib/authEmail.ts";
   import { hasVerifiedClaim } from "../lib/auth.ts";
+  import { friendlyError, isCredentialError } from "../lib/authErrors.ts";
   import { validateAvatar, resizeAvatar } from "../lib/validation.ts";
   import {
+    createUser,
     getUser,
     updateUser,
     updateUserProfile,
@@ -1745,6 +1775,10 @@ const prefix = lang === "de" ? "/de" : "";
         }
         const user = userCredential.user;
         if (isNewUser) {
+          // Was written only by AuthForm's signup branch, so accounts made
+          // through the wizard had no createdAt at all. That branch is gone;
+          // this is now the only door, and it writes the field.
+          await createUser(user.uid, { createdAt: new Date() }).catch(() => {});
           // users/{uid}.email is server-written: the callable reads the address
           // off the caller's own token and merge-creates the doc. The client
           // cannot write the field itself — firestore.rules pins it.
@@ -1753,10 +1787,16 @@ const prefix = lang === "de" ? "/de" : "";
         }
         await onUserAuthenticated(user);
       } catch (err: unknown) {
-        const code = (err as { code?: string }).code;
-        let msg = s["onboarding.auth.error.invalid"];
+        const code = (err as { code?: string }).code ?? "";
+        let msg: string;
         if (code === "auth/weak-password") msg = s["onboarding.auth.error.weak"];
         else if (code === "auth/invalid-email") msg = s["auth.error.enterEmail"];
+        else if (isCredentialError(code)) msg = s["onboarding.auth.error.invalid"];
+        // Everything else used to be reported as a wrong password — a blocked
+        // network, a permission-denied, an operation-not-allowed all looked
+        // like a typo. Show the generic sentence with the code attached so the
+        // member can report exactly what failed.
+        else msg = friendlyError(code, s);
         setError(msg);
         setBtnState("ob-next-auth", false, s["onboarding.nav.next"]);
       }

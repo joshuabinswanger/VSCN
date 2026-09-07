@@ -4,16 +4,15 @@ import type { Lang } from "../i18n/utils.ts";
 
 interface Props {
   lang?: Lang;
-  initialMode?: 'login' | 'signup';
 }
 
-const { lang = 'en', initialMode = 'signup' } = Astro.props;
+const { lang = 'en' } = Astro.props;
 const t = useTranslations(lang);
 ---
 
-<div class="auth-wrap" data-lang={lang} data-initial-mode={initialMode}>
+<div class="auth-wrap" data-lang={lang}>
   <header class="auth-header">
-    <h1 id="auth-title" class="auth-title">{t('auth.title.signup')}</h1>
+    <h1 id="auth-title" class="auth-title">{t('auth.title.login')}</h1>
   </header>
 
   <form id="auth-form" class="auth-form">
@@ -32,7 +31,7 @@ const t = useTranslations(lang);
     <div class="field">
       <div class="field-label-row">
         <label class="label" for="password">Password</label>
-        <button type="button" id="forgot-link" class="btn-link forgot-btn" style="display:none;"
+        <button type="button" id="forgot-link" class="btn-link forgot-btn"
           >{t('auth.forgot')}</button
         >
       </div>
@@ -50,10 +49,10 @@ const t = useTranslations(lang);
 
     <div class="auth-footer">
       <p class="auth-sub already-have">
-        {t('auth.alreadyHave')}
-        <a href="#" id="toggle-link" class="toggle-link">{t('auth.toggle.toLogin')}</a>
+        {t('auth.noAccount')}
+        <a href={lang === 'de' ? '/de/signup' : '/signup'} class="toggle-link">{t('auth.cta.signup')}</a>
       </p>
-      <button id="submit-btn" type="submit" class="btn-solid auth-submit-button">{t('auth.submit.signup')}</button>
+      <button id="submit-btn" type="submit" class="btn-solid auth-submit-button">{t('auth.submit.login')}</button>
     </div>
   </form>
 
@@ -202,19 +201,15 @@ const t = useTranslations(lang);
 <script>
   import { auth } from "../lib/firebase.ts";
   import {
-    createUserWithEmailAndPassword,
     onAuthStateChanged,
     signInWithEmailAndPassword,
-    sendEmailVerification,
     sendPasswordResetEmail,
   } from "firebase/auth";
+  // returnTo is still needed: the password-reset mail carries a continue URL.
   import { returnTo } from "../lib/authEmail.ts";
   import { friendlyError } from "../lib/auth.ts";
-  import { createUser } from "../lib/firestore.ts";
-  import { syncEmail } from "../lib/account.ts";
   import { ui } from "../i18n/translations.ts";
 
-  let isLogin = false;
   let isSubmitting = false;
   let unsubscribeAuth: (() => void) | null = null;
 
@@ -227,7 +222,6 @@ const t = useTranslations(lang);
     const prefix = lang === "de" ? "/de" : "";
     const s = ui[lang];
 
-    const toggleLink = document.getElementById("toggle-link")!;
     const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
     const authTitle = document.getElementById("auth-title")!;
     const authSub = document.querySelector<HTMLElement>(".auth-sub")!;
@@ -268,20 +262,6 @@ const t = useTranslations(lang);
       authSub.style.display = "";
     }
 
-    function updateView() {
-      if (!isSubmitting) {
-        submitBtn.disabled = false;
-        submitBtn.textContent = isLogin ? s["auth.submit.login"] : s["auth.submit.signup"];
-      }
-      toggleLink.textContent = isLogin ? s["auth.toggle.toSignup"] : s["auth.toggle.toLogin"];
-      authTitle.textContent = isLogin ? s["auth.title.login"] : s["auth.title.signup"];
-      forgotLink.style.display = isLogin ? "inline" : "none";
-      
-      const alreadyHaveEl = document.querySelector('.already-have') as HTMLElement;
-      if (alreadyHaveEl) {
-        alreadyHaveEl.firstChild!.textContent = isLogin ? (s["auth.noAccount"] || "Don't have an account? ") : (s["auth.alreadyHave"] || "Already have one? ");
-      }
-    }
 
     function setStatus(message = "") {
       statusEl.textContent = message;
@@ -293,21 +273,19 @@ const t = useTranslations(lang);
       form.setAttribute("aria-busy", submitting ? "true" : "false");
       submitBtn.disabled = submitting;
       if (submitting) {
-        submitBtn.textContent = isLogin
-          ? s["auth.submit.loginLoading"]
-          : s["auth.submit.signupLoading"];
-        setStatus(isLogin ? s["auth.status.login"] : s["auth.status.signup"]);
+        submitBtn.textContent = s["auth.submit.loginLoading"];
+        setStatus(s["auth.status.login"]);
       } else {
-        submitBtn.textContent = isLogin ? s["auth.submit.login"] : s["auth.submit.signup"];
+        submitBtn.textContent = s["auth.submit.login"];
         setStatus();
       }
     }
 
     // Reset state on each page load
-    isLogin = (wrap as HTMLElement).dataset.initialMode === 'login';
     isSubmitting = false;
     form.setAttribute("aria-busy", "false");
-    updateView();
+    submitBtn.disabled = false;
+    submitBtn.textContent = s["auth.submit.login"];
     forgotSection.style.display = "none";
     form.style.display = "grid";
     authSub.style.display = "";
@@ -342,14 +320,6 @@ const t = useTranslations(lang);
       }
     });
 
-    toggleLink.addEventListener("click", (e) => {
-      e.preventDefault();
-      isLogin = !isLogin;
-      updateView();
-      errorEl.style.display = "none";
-      setStatus();
-    });
-
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       if (isSubmitting) return;
@@ -361,29 +331,23 @@ const t = useTranslations(lang);
       const password = (document.getElementById("password") as HTMLInputElement).value;
 
       try {
-        if (isLogin) {
-          await signInWithEmailAndPassword(auth, email, password);
-          setStatus(s["auth.status.redirecting"]);
-          window.location.href = `${prefix}/profile`;
-        } else {
-          const { user } = await createUserWithEmailAndPassword(auth, email, password);
-          await createUser(user.uid, { createdAt: new Date() });
-          // users/{uid}.email is server-written: the callable reads the address
-          // off the caller's own token and merge-creates the mirror. The client
-          // cannot write the field itself — firestore.rules pins it.
-          await syncEmail().catch(() => {});
-          await sendEmailVerification(user, returnTo(lang, "/onboarding"));
-          setStatus(s["auth.status.redirecting"]);
-          window.location.href = `${prefix}/onboarding`;
-        }
+        // Log in only. Account creation lives in the onboarding wizard's first
+        // step, which is where /signup lands — this form used to carry a
+        // second, independent copy of it behind a mode toggle.
+        await signInWithEmailAndPassword(auth, email, password);
+        setStatus(s["auth.status.redirecting"]);
+        window.location.href = `${prefix}/profile`;
       } catch (err: unknown) {
         setSubmitState(false);
         const code =
           typeof err === "object" && err !== null && "code" in err
             ? String((err as { code: unknown }).code)
             : "";
+        // The code stays in the message: friendlyError appends it when it has
+        // no specific sentence for it, so the member can report exactly what
+        // failed instead of "something went wrong".
         errorEl.textContent = code
-          ? friendlyError(code)
+          ? friendlyError(code, s)
           : s["auth.error.generic"];
         errorEl.style.display = "block";
       }
