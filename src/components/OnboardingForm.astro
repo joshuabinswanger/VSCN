@@ -210,6 +210,12 @@ const prefix = lang === "de" ? "/de" : "";
       <div class="field" id="ob-member-tags-field">
         <label class="label" for="ob-tag-input">{t("profile.label.tags")}</label>
         <TagSelector lang={lang} maxTags={7} inputId="ob-tag-input" />
+        {
+          /* The cap, stated by the field that sets it — TagSelector stopped
+            asserting a number it cannot know (see the note in its markup).
+            Here it is the only word on the subject, so it stays. */
+        }
+        <p class="field-note">{t("profile.note.tags")}</p>
       </div>
     </div>
     <div class="ob-footer ob-footer--with-skip">
@@ -406,25 +412,23 @@ const prefix = lang === "de" ? "/de" : "";
   <div class="onboarding-step" data-step="6" style="display:none;">
     <header class="ob-header">
       <h1 class="ob-title">{t("verify.title")}</h1>
+      {
+        /* THE SPAM LINE IS PART OF THE OPENING SENTENCE (2026-09-08, Josh:
+          "put the Spam notice in the first sentence"). It stood as its own
+          quiet note further down, under the button — which is where a member
+          looks only after the link has failed to arrive, and by then they
+          have already decided the mail is missing. Where the address is named
+          is where "and if it is not there, look in spam" belongs. */
+      }
       <p class="ob-sub">
         {t("verify.sub")} <strong id="ob-verify-email"></strong>{t("verify.sub.suffix")}
+        {t("verify.spam")}
       </p>
     </header>
     <div class="ob-fields">
       <div class="ob-verify-actions">
         <button id="ob-verify-check" type="button" class="btn-solid">{t("verify.cta")}</button>
         <p id="ob-verify-status" class="msg-err" style="display:none;"></p>
-        {
-          /* CHECK THE SPAM FOLDER, SAID BEFORE IT IS NEEDED (2026-09-08, Josh:
-            "add a remark to check spam in the email verification step"). The
-            advice existed already — inside verify.resend.msg, which only
-            appears AFTER the member has clicked Resend, so the one person who
-            needed it (mail delivered, filed as junk) had to resend an email
-            they already had in order to be told where to look. It is a
-            standing line now, and Resend stays for the case where nothing
-            arrived at all. */
-        }
-        <p class="field-note">{t("verify.spam")}</p>
         <p class="ob-verify-resend">
           <span>{t("verify.resend.label")}</span>
           <button id="ob-verify-resend" type="button" class="btn-link">{t("verify.resend.btn")}</button>
@@ -498,17 +502,16 @@ const prefix = lang === "de" ? "/de" : "";
   </div>
 </div>
 
-<div id="ob-verify-banner" class="verify-banner" style="display:none;">
-  <p class="verify-banner-text">
-    {t("profile.verifyBanner")}
-    <button id="ob-resend-verify" type="button" class="btn-resend-verify"
-      >{t("profile.verifyResend")}</button
-    >
-  </p>
-  <p id="ob-verify-sent" class="verify-banner-sent" style="display:none;">
-    {t("profile.verifySent")}
-  </p>
-</div>
+{
+  /* THE VERIFY BANNER IS GONE FROM THE WIZARD (2026-09-08, Josh: "the verify
+    your email box should only appear once in the profile view not during
+    onboarding"). The amber strip rode along under every step, asking for
+    something the wizard now has a whole step for — so an unverified member
+    was told twice on the way to that step and, on the step itself, would have
+    read the same sentence above the screen making the same request. /profile
+    keeps its copy, where it is the only thing that can ask. Resending lives
+    on the verify step and on /verify-email. */
+}
 
 <style>
   .ob-loading {
@@ -524,27 +527,9 @@ const prefix = lang === "de" ? "/de" : "";
     color: var(--color-muted);
   }
 
-  .verify-banner {
-    width: 100%;
-    max-width: 560px;
-    margin: 0 auto clamp(1.5rem, 3vw, 2.5rem);
-    padding: 0.75rem 1rem;
-    background: #fffbeb;
-    border: 1.5px solid #f59e0b;
-    border-radius: var(--radius-sm);
-    box-sizing: border-box;
-  }
-
-  .verify-banner-text {
-    margin: 0;
-    font-size: 0.88rem;
-    color: #92400e;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
+  /* The amber banner's own rules went with it; what survives is the quiet
+     link inside it, because the visibility step's way back to verification
+     wears the same face (see .ob-notice .btn-resend-verify below). */
   .btn-resend-verify {
     background: none;
     border: none;
@@ -560,12 +545,6 @@ const prefix = lang === "de" ? "/de" : "";
 
   .btn-resend-verify:hover {
     color: #78350f;
-  }
-
-  .verify-banner-sent {
-    margin: 0.4rem 0 0;
-    font-size: 0.82rem;
-    color: #65a30d;
   }
 
   /* THE WIZARD SITS FLAT ON THE PAGE (2026-09-08, Josh: "restyle onboarding
@@ -1140,17 +1119,11 @@ const prefix = lang === "de" ? "/de" : "";
     const errorEl = document.getElementById("ob-error")!;
 
     let currentStep = 0;
-    // What the auth guard learned about the account, read by setStep (the
-    // step count and the banner) and by the closing steps (what may be
-    // written). The record's flag, for showing; the token's claim is settled
-    // separately, by hasVerifiedClaim, before anything writes on it.
+    // What the auth guard learned about the account, read by setStep (which
+    // steps there are) and by the closing steps (what may be written). The
+    // record's flag, for showing; the token's claim is settled separately, by
+    // hasVerifiedClaim, before anything writes on it.
     let emailVerified = false;
-    let showVerifyBanner = false;
-
-    // ── Verify banner ──────────────────────────────────────────────
-    const verifyBanner = document.getElementById("ob-verify-banner")!;
-    const btnResend = document.getElementById("ob-resend-verify") as HTMLButtonElement;
-    const verifySent = document.getElementById("ob-verify-sent")!;
 
     // ── Helpers ───────────────────────────────────────────────────
     function setStep(n: number) {
@@ -1173,9 +1146,6 @@ const prefix = lang === "de" ? "/de" : "";
           .replace("{n}", String(idx + 1))
           .replace("{total}", String(realSteps.length));
       }
-      // The banner says "verify your email" on every step but the one whose
-      // whole subject that is — there it would be the same sentence twice.
-      verifyBanner.style.display = showVerifyBanner && n !== STEP_VERIFY ? "block" : "none";
       if (progressFill && idx >= 0) {
         progressFill.style.width = `${((idx + 1) / realSteps.length) * 100}%`;
       }
@@ -1980,7 +1950,6 @@ const prefix = lang === "de" ? "/de" : "";
       if (!user.emailVerified) return false;
       await hasVerifiedClaim(user);
       emailVerified = true;
-      showVerifyBanner = false;
       galleryVerified = true;
       updateGalleryNotes();
       syncVisibilityStep();
@@ -2205,28 +2174,14 @@ const prefix = lang === "de" ? "/de" : "";
       if (verifyEmailEl) verifyEmailEl.textContent = user.email ?? "";
       syncVisibilityStep();
       if (!user.emailVerified) {
-        // Shown by setStep, which knows which step is on screen.
-        showVerifyBanner = true;
         // The gallery cap is one image until verification; say so before the
         // member picks a second file rather than after (2026-09-03).
+        //
+        // The banner that used to be wired up here is gone (see the note where
+        // it stood), and with it this block's resend — the verify step owns
+        // that now, cooldown included.
         galleryVerified = false;
         updateGalleryNotes();
-        let cooldown = false;
-        btnResend?.addEventListener("click", async () => {
-          if (cooldown) return;
-          cooldown = true;
-          btnResend.disabled = true;
-          try {
-            await sendEmailVerification(user, returnTo(lang, "/onboarding"));
-            verifySent.style.display = "block";
-          } catch {
-            // ignore
-          }
-          setTimeout(() => {
-            cooldown = false;
-            btnResend.disabled = false;
-          }, 30000);
-        });
       }
 
       if (loadingEl) loadingEl.style.display = "none";

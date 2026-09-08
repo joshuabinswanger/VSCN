@@ -230,6 +230,14 @@ const t = useTranslations(lang);
     <div class="field" id="member-tags-field">
       <label class="label" for="tag-input">{t("profile.label.tags")}</label>
       <TagSelector lang={lang} maxTags={7} inputId="tag-input" />
+      {
+        /* The cap, stated by the field that sets it rather than by the
+          component — which printed "Up to 7 tags." whatever `maxTags` said,
+          and was therefore wrong on every gallery row (2026-09-08). Nothing
+          else here mentions the limit, so the sentence moves rather than
+          goes. */
+      }
+      <p class="field-note">{t("profile.note.tags")}</p>
     </div>
   </div>
 
