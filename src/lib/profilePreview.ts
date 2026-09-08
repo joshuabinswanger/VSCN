@@ -385,14 +385,14 @@ export function renderCardPreview(
             // ignored there; the rest is written anyway, which keeps the shell
             // speaking the card's whole contract rather than a convenient half.
             slide.dataset.workUrl = w.url;
-            slide.dataset.workWidth = String(w.width);
-            slide.dataset.workHeight = String(w.height);
-            if (w.caption?.trim()) slide.dataset.workCaption = w.caption.trim();
+            slide.dataset.pswpWidth = String(w.width);
+            slide.dataset.pswpHeight = String(w.height);
+            if (w.caption?.trim()) slide.dataset.pswpCaption = w.caption.trim();
             // The description, matching the card: the slide dataset is what a
             // real card copies onto its lightbox trigger, and since 2026-09-04
             // there is one description to copy (see profileView.ts).
-            if (w.description) slide.dataset.workDescription = w.description;
-            if (w.link) slide.dataset.workLink = w.link;
+            if (w.description) slide.dataset.pswpDescription = w.description;
+            if (w.link) slide.dataset.pswpLink = w.link;
 
             // A single picture is not a carousel: no group semantics, no
             // position label. Calling one image a carousel would be a lie to a

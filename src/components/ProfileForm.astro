@@ -1309,6 +1309,21 @@ const t = useTranslations(lang);
     padding-bottom: 5rem;
   }
 
+  /* FULL WIDTH ON A PHONE, LIKE THE PAGE (2026-09-08, Josh: "preview gallery
+     on mobile should be full width as the gallery"). The real page sits
+     straight in <main>, whose 15px gutters are the only inset it has. The
+     preview sits inside .profile-form, which adds its own 15px on mobile for
+     the sake of the form fields — so the rendering was inset twice, and every
+     picture came out 30px narrower than the member will actually see it. The
+     negative margin hands those 15px back; .profile-form's overflow-x: clip
+     clips at the padding edge, which is exactly where this reaches. Desktop
+     needs nothing: .profile-form drops its padding there. */
+  @media (--bp-mobile) {
+    .preview-section {
+      margin-inline: -15px;
+    }
+  }
+
   /* The closing line under the directory card — same hairline
      ProfileViewPreview draws above and below the page, so the tab reads as one
      stack of rendered things rather than a page in a frame and a loose card. */

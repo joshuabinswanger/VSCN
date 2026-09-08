@@ -195,10 +195,12 @@ export function initCarousels(root: ParentNode = document): void {
     // ── THE LIGHTBOX TRIGGER FOLLOWS THE CAROUSEL ─────────
     // One link covers the frame, so it can only describe one image — and the
     // one it must describe is whichever the visitor is looking at. Each slide
-    // carries its own data-work-* set (rendered in the frontmatter); this
-    // copies the selected slide's onto the link, which is what PhotoSwipe
-    // reads when the click lands. Without it, clicking slide 3 of a gallery
-    // opened slide 1 — the server-rendered default — every time.
+    // carries its own data-pswp-* set plus data-work-url (rendered in the
+    // frontmatter); this copies the selected slide's onto the link. Since
+    // 2026-09-08 the lightbox (CommunityGrid) opens from THE SLIDES, all of
+    // them, and only uses the link's href to know which one to start on —
+    // so the href is the part that matters here, and the copied attributes
+    // are a mirror that keeps the trigger describing what it points at.
     //
     // Written as attributes rather than kept in a JS variable because the
     // lightbox is a SEPARATE script (CommunityGrid) that re-queries the DOM
@@ -221,11 +223,11 @@ export function initCarousels(root: ParentNode = document): void {
         if (value) frameLink.setAttribute(to, value);
         else frameLink.removeAttribute(to);
       };
-      copy("workWidth", "data-pswp-width");
-      copy("workHeight", "data-pswp-height");
-      copy("workCaption", "data-pswp-caption");
-      copy("workDescription", "data-pswp-description");
-      copy("workLink", "data-pswp-link");
+      copy("pswpWidth", "data-pswp-width");
+      copy("pswpHeight", "data-pswp-height");
+      copy("pswpCaption", "data-pswp-caption");
+      copy("pswpDescription", "data-pswp-description");
+      copy("pswpLink", "data-pswp-link");
     };
     // The dots sit ABOVE the frame, so they are not descendants of the node
     // Embla was handed — they are queried from the card.
@@ -309,6 +311,18 @@ export function initCarousels(root: ParentNode = document): void {
       }
     };
     embla.on("select", sync);
+
+    // THE CAROUSEL FOLLOWS THE LIGHTBOX. When the lightbox (a separate module,
+    // CommunityGrid) pages through this card's images, it dispatches this on
+    // the slide now showing; the card underneath turns to the same picture,
+    // so closing zooms back out onto the image the visitor was looking at
+    // rather than onto the one they opened. A jump, not a travel: the card is
+    // behind a full-screen picture while this happens, so there is nothing to
+    // animate for.
+    carousel.addEventListener("vscn:carousel-show", (e) => {
+      const i = slides.indexOf(e.target as HTMLElement);
+      if (i >= 0 && i !== embla.selectedScrollSnap()) embla.scrollTo(i, true);
+    });
 
     // The 5s auto-advance, mobile gallery only (arrows are display:none on
     // touch, so a multi-work gallery would otherwise be invisible past its
