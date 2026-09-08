@@ -203,4 +203,21 @@ import "../../styles/communityCard.css";
   .ccard--preview {
     max-width: 22rem;
   }
+
+  /* NOT ON A PHONE (2026-09-08, Josh: "the gallery card preview is still not
+     full width"). The reasoning above is a DESKTOP reasoning: there, the
+     editor's measure is much wider than any slot the directory would deal, so
+     an uncapped card really would read as a banner. On a phone the directory
+     deals exactly one card per row and `.ccard` takes `width: 100%` of it
+     (see the --bp-mobile block in communityCard.css), so the cap is no longer
+     standing in for a slot — it is inventing a narrower one than the member
+     will ever see, and 22rem lands at 264px against the 345px their real card
+     gets. The cap is the whole difference: the doubled gutter fixed earlier
+     the same day got the CONTAINER to the right width, and this is what lets
+     the card fill it. */
+  @media (--bp-mobile) {
+    .ccard--preview {
+      max-width: none;
+    }
+  }
 </style>
