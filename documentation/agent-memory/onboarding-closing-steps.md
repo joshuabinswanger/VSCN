@@ -1,7 +1,7 @@
 <!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/onboarding-closing-steps.md — keep both copies in sync. -->
 ---
 name: onboarding-closing-steps
-description: "The wizard's closing work, in two parts: feat/onboarding-visibility is MERGED INTO DEV at f5ae60f (verify + visibility steps, bridge no longer publishes, flat wizard, phone wall cap); the follow-up feat/onboarding-first-image is PUSHED BUT NOT MERGED at 7102ef3 (spam line, the cover image's caption/description/tags in the wizard). The signed-in path is unwalked for both"
+description: "The wizard's closing work, BOTH PARTS MERGED AND LIVE ON DEV at 0cce488: verify + visibility steps close the wizard, the bridge no longer publishes, the wizard is flat, the phone wall caps tall tiles, and the first upload gets its title, description and tags. Not on prod; the signed-in path is unwalked"
 metadata: 
   node_type: memory
   type: project
@@ -19,11 +19,14 @@ with `npm run worktree -- feat/onboarding-visibility --remove`. Design note
 the one consequence he was asked about: the bridge no longer writes `active: true`, so an
 abandoned wizard stays hidden. Not yet on prod.
 
-**Follow-up, pushed and NOT merged (2026-09-08):** branch `feat/onboarding-first-image`,
-commit `7102ef3`, off `dev` at `1b1dcf9`, pushed to origin, awaiting Josh's word to merge.
-Two more notes: "add a remark to check spam in the email verification step and already expose
-the image title and description and tags for the first image upload". Lint and build clean,
-both locales checked at 1280 and 375. Same design note, its "Follow-up, same day" section.
+**Follow-up, also merged (2026-09-08):** `feat/onboarding-first-image` (`7102ef3` + the mirror
+commit) merged into `dev` at `0cce488`, staging deployed and verified live on
+`vscn-dev-f4b60.web.app` in both locales. Two more notes: "add a remark to check spam in the
+email verification step and already expose the image title and description and tags for the
+first image upload". Same design note, its "Follow-up, same day" section. Both feature branches
+are now merged; the worktree `D:\SynoDrive\VSCN\wt-feat-works-on-the-record` still holds
+`feat/onboarding-first-image` and can go:
+`npm run worktree -- feat/onboarding-first-image --remove`.
 
 **Why:** five terse notes ("disclaimer when inactive, step in onboarding, very tall images
 should get a max height in grid view, restyle onboarding, white boxes are obsolete");
@@ -53,8 +56,9 @@ images were on the PHONE.
   must stay for the gallery view, whose cells have no row unit.
 - Not exercised signed in (agent cannot create accounts): the live path through steps 6–7 and
   the `/profile` hidden banner. Josh's auth pass should walk an unverified account through.
-- Next: merge `feat/onboarding-first-image` into `dev` (same detached-worktree route), then
-  Josh walks an unverified account through steps 6–7 AND the first upload on the dev host, then
-  a dev → main release PR carries it to prod with everything else waiting on dev.
+- Next: Josh walks an unverified account through steps 6–7 AND the first upload on the dev
+  host — the only unproven parts are the record write for the cover's words and the `/profile`
+  hidden banner, both needing an account. Then a dev → main release PR carries it to prod with
+  everything else waiting on dev.
 - Related: [[signup-is-the-wizards-first-step]], [[profile-editor-preview-mode]],
   [[community-mobile-pattern]].
