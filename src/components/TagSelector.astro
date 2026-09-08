@@ -5,10 +5,17 @@ import type { Lang } from "../i18n/utils";
 interface Props {
   lang?: Lang;
   maxTags?: number;
+  /**
+   * Only for a selector that has a visible <label for>. Since 2026-09-08 the
+   * profile editor clones one selector per gallery row, so a default id here
+   * would be stamped onto every row — and a duplicate id is worse than none:
+   * `for` and getElementById both silently pick the first. Leave it unset and
+   * Astro omits the attribute.
+   */
   inputId?: string;
 }
 
-const { lang = "en", maxTags = 7, inputId = "tag-selector-input" } = Astro.props;
+const { lang = "en", maxTags = 7, inputId } = Astro.props;
 const t = useTranslations(lang);
 ---
 
@@ -276,6 +283,25 @@ const t = useTranslations(lang);
     return value.trim().replace(/^#+/, "").replace(/\s+/g, " ");
   }
 
+  // ONE read of the registry per page, shared by every selector on it. Until
+  // 2026-09-08 a page held exactly one selector, so each instance reading the
+  // whole `tags` collection for itself cost nothing extra; now the profile
+  // editor clones one per gallery row AND rebuilds every row on each upload,
+  // reorder and remove (renderGallery in ProfileForm.astro), which made that
+  // "one read per instance" into one read per row per edit. The promise is
+  // module state, so it also outlives ClientRouter navigations — the registry
+  // is curated and slow-moving, and a tag this member creates is pushed onto
+  // the shared array below, so every selector on the page sees it at once.
+  // A failed read is forgotten, so the next selector to connect retries.
+  let registryPromise: Promise<TagDoc[]> | null = null;
+  function loadRegistryOnce(): Promise<TagDoc[]> {
+    registryPromise ??= getTags().catch((err) => {
+      registryPromise = null;
+      throw err;
+    });
+    return registryPromise;
+  }
+
   class TagSelectorElement extends HTMLElement {
     private _tags: string[] = [];
     private registryTags: TagDoc[] = [];
@@ -353,7 +379,7 @@ const t = useTranslations(lang);
 
     private async loadRegistry() {
       try {
-        this.registryTags = await getTags();
+        this.registryTags = await loadRegistryOnce();
         this.renderSuggestions(this.inputEl.value);
       } catch (err) {
         console.warn("[tag-selector] Failed to load tag registry", err);
