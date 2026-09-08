@@ -48,6 +48,14 @@ export interface ProfileWork {
    * nothing, or wrote something that is not link-shaped.
    */
   link?: string;
+  /**
+   * What is IN the picture, not who made it — the community wall filters by
+   * this, the spread and index still filter by the member's own `tags`
+   * (2026-09-07/08, step 2 of documentation/20260907-works-on-the-record-design.md).
+   * Always an array, never absent, so a renderer can read it without a
+   * fallback — the same shape the member's own `tags` field already has.
+   */
+  tags: string[];
 }
 
 export interface ProfileViewModel {

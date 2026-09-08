@@ -29,6 +29,7 @@ export interface GalleryRecord {
   description?: string;
   descriptionDe?: string;
   link?: string;
+  tags?: string[];
 }
 
 /**
@@ -105,6 +106,7 @@ export function orderedGalleryItems(
     if (description) item.description = description;
     if (descriptionDe) item.descriptionDe = descriptionDe;
     if (link) item.link = link;
+    if (Array.isArray(rec.tags) && rec.tags.length) item.tags = rec.tags;
     items.push(item);
   }
   return items;

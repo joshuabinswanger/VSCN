@@ -28,6 +28,18 @@ test("works come from the records, in the list's order", () => {
   assert.equal(m.works[2].link, undefined);
 });
 
+test("a work carries its own tags", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a"] }, [
+    rec("a", { tags: ["Botany", "Ink"] }),
+  ], BUCKET);
+  assert.deepEqual(m.works[0].tags, ["Botany", "Ink"]);
+});
+
+test("a work with no tags on its record has an empty list, not undefined", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a"] }, [rec("a")], BUCKET);
+  assert.deepEqual(m.works[0].tags, []);
+});
+
 test("a member with ids but no live records has no artwork", () => {
   const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a"] }, [], BUCKET);
   assert.deepEqual(m.works, []);

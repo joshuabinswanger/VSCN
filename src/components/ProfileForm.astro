@@ -209,7 +209,7 @@ const t = useTranslations(lang);
       </div>
     </fieldset>
 
-    <div class="field">
+    <div class="field" id="member-tags-field">
       <label class="label" for="tag-input">{t("profile.label.tags")}</label>
       <TagSelector lang={lang} maxTags={7} inputId="tag-input" />
     </div>
@@ -375,6 +375,19 @@ const t = useTranslations(lang);
               <span class="input-prefix">https://</span>
               <input type="text" class="input input-prefixed" data-gallery-field="link" />
             </div>
+            {
+              /* WHAT IS IN THE PICTURE, not who made it — the community wall
+                filters by this (2026-09-08, step 2 of
+                documentation/20260907-works-on-the-record-design.md). Same
+                element and registry as the member's own tags above, capped
+                lower: a picture is tagged with what it shows, not with
+                everything the member could say about themselves. Wired in
+                renderGallery() like every other field here, via `.value` and
+                a `change` listener — never by id, since this template is
+                cloned once per image and a duplicate id would be meaningless
+                to query by anyway. */
+            }
+            <TagSelector lang={lang} maxTags={5} />
             <div class="gallery-tools">
               <button type="button" class="gallery-tool" data-gallery-move="up">↑</button>
               <button type="button" class="gallery-tool" data-gallery-move="down">↓</button>
@@ -1761,13 +1774,16 @@ const t = useTranslations(lang);
 
     const avatarWrap = avatarImg.closest<HTMLElement>(".avatar-wrap")!;
 
-    // Tag selection is handled by the <tag-selector> custom element.
+    // Tag selection is handled by the <tag-selector> custom element. Scoped to
+    // #member-tags-field: since 2026-09-08 every gallery row carries its own
+    // <tag-selector> too (see renderGallery), and an unscoped query would
+    // match whichever one happens to render first in DOM order.
     const tagSelector = document.querySelector<
       HTMLElement & {
         value: string[];
         inputValue: string;
       }
-    >("tag-selector");
+    >("#member-tags-field tag-selector");
     const openToSelector = document.querySelector<
       HTMLElement & {
         value: string[];
@@ -2034,10 +2050,13 @@ const t = useTranslations(lang);
             );
             const langPaneEn = row.querySelector<HTMLElement>('[data-gallery-lang-pane="en"]');
             const langPaneDe = row.querySelector<HTMLElement>('[data-gallery-lang-pane="de"]');
+            const tagsSelector = row.querySelector<HTMLElement & { value: string[] }>(
+              "tag-selector",
+            );
             if (!img || !remove || !caption || !description) return null;
             if (!captionDe || !captionDeNote) return null;
             if (!descriptionDe || !descriptionDeNote) return null;
-            if (!link || !cover || !up || !down) return null;
+            if (!link || !cover || !up || !down || !tagsSelector) return null;
             if (langBtns.length !== 2 || !langPaneEn || !langPaneDe) return null;
 
             // The one thing on screen that admits the order means something:
@@ -2125,6 +2144,17 @@ const t = useTranslations(lang);
               const value = link.value.trim();
               if (value) gallery[index].link = value;
               else delete gallery[index].link;
+              syncPreview();
+            });
+
+            tagsSelector.value = item.tags ?? [];
+            named(tagsSelector, s["profile.label.tags"]);
+            tagsSelector.addEventListener("change", () => {
+              // Same "deleted rather than stored empty" rule as link above —
+              // gallery[index] is what saveGalleryRecords() reads at Save.
+              const tags = tagsSelector.value;
+              if (tags.length) gallery[index].tags = tags;
+              else delete gallery[index].tags;
               syncPreview();
             });
 
@@ -2571,6 +2601,7 @@ const t = useTranslations(lang);
             // would get one, including showing none for a value that is not
             // link-shaped yet, mid-typing.
             link: workLink(g.link),
+            tags: g.tags ?? [],
           };
         }),
       };

@@ -72,27 +72,43 @@ const t = useTranslations(lang);
 // tag. The artwork test is hasArtwork — the same one that decides who is dealt
 // into the spread and the wall — so the count cannot disagree with the deal.
 //
-// NEITHER COUNT IS PRINTED. The first cut put the view's count behind each tag
-// (members in the ledger, members with artwork in the galleries) and it
-// confused more than it told: the same tag read "5" in one view and "4" in the
-// next, and on production — two members with artwork — most tags would have
-// read "1" (2026-09-07, Josh: "the number displayed is confusing. for now dont
-// put a number behind the tags"). The counts stay on the option because the
-// hiding needs them; "for now" means a count may come back once the galleries
-// are full enough for one to say something.
-const tagIndex = new Map<string, { label: string; members: number; works: number }>();
+// NEITHER OF THOSE TWO IS PRINTED. The first cut put the view's count behind
+// each tag (members in the ledger, members with artwork in the galleries) and
+// it confused more than it told: the same tag read "5" in one view and "4" in
+// the next, and on production — two members with artwork — most tags would
+// have read "1" (2026-09-07, Josh: "the number displayed is confusing. for
+// now dont put a number behind the tags"). The counts stay on the option
+// because the hiding needs them; "for now" means a count may come back once
+// the galleries are full enough for one to say something.
+//
+// A THIRD COUNT, for a THIRD kind of "carries the tag" (2026-09-08, step 2 of
+// documentation/20260907-works-on-the-record-design.md): `worksByTag` is how
+// many WORKS are themselves tagged, which is what the WALL can actually show
+// — since 2026-09-08 the wall's tiles filter by the picture's own tags, not
+// the member's (see workTagsAttr below), so `works` (members-with-artwork
+// carrying a MEMBER tag) is the wrong test for it. `allTags` is the union of
+// both vocabularies: a tag nobody put on their own profile but did put on a
+// picture must still be offered, or the one dropdown could not reach
+// everything the wall can filter by.
+const tagIndex = new Map<string, { label: string; members: number; works: number; worksByTag: number }>();
+const bump = (label: string, field: "members" | "works" | "worksByTag") => {
+  const key = label.toLowerCase();
+  const entry = tagIndex.get(key);
+  if (entry) entry[field] += 1;
+  else tagIndex.set(key, { label, members: 0, works: 0, worksByTag: 0, [field]: 1 });
+};
 for (const m of members) {
   const withArtwork = hasArtwork(m);
   for (const raw of m.tags) {
     const label = raw.trim();
     if (!label) continue;
-    const key = label.toLowerCase();
-    const entry = tagIndex.get(key);
-    if (entry) {
-      entry.members += 1;
-      if (withArtwork) entry.works += 1;
-    } else {
-      tagIndex.set(key, { label, members: 1, works: withArtwork ? 1 : 0 });
+    bump(label, "members");
+    if (withArtwork) bump(label, "works");
+  }
+  for (const w of m.works) {
+    for (const raw of w.tags) {
+      const label = raw.trim();
+      if (label) bump(label, "worksByTag");
     }
   }
 }
@@ -102,6 +118,14 @@ const allTags = [...tagIndex.entries()].sort((a, b) => a[0].localeCompare(b[0]))
 // dropdown can match a whole tag even when another tag contains it.
 const tagsAttr = (m: MemberView) => {
   const keys = [...new Set(m.tags.map((raw) => raw.trim().toLowerCase()).filter(Boolean))];
+  return keys.length ? `|${keys.join("|")}|` : "";
+};
+
+// THE WALL'S OWN VERSION OF tagsAttr — what is IN the picture, not who made
+// it (2026-09-08). Only the wall's tiles use this; the spread's cards and the
+// ledger's rows keep tagsAttr(member) above, unchanged.
+const workTagsAttr = (w: MemberView["works"][number]) => {
+  const keys = [...new Set(w.tags.map((raw) => raw.trim().toLowerCase()).filter(Boolean))];
   return keys.length ? `|${keys.join("|")}|` : "";
 };
 
@@ -277,10 +301,17 @@ const indexMembers = [...members].sort((a, b) =>
                 for the same reason the default view is the one server-rendered
                 visible: it is what a no-JS visitor keeps and what the first
                 frame shows. reflectTagOptions re-derives it from the data
-                attributes for whichever view the URL asks for. No count is
-                printed behind the label — see the tagIndex note above. */
-              allTags.map(([key, { label, members, works }]) => (
-                <li hidden={DEFAULT_VIEW !== "index" && works === 0}>
+                attributes for whichever view the URL asks for — Grid reads
+                data-count-works-by-tag, Spread/strip read data-count-works,
+                the ledger hides nothing. No count is printed behind the
+                label — see the tagIndex note above. */
+              allTags.map(([key, { label, members, works, worksByTag }]) => (
+                <li
+                  hidden={
+                    DEFAULT_VIEW !== "index" &&
+                    (DEFAULT_VIEW === "grid" ? worksByTag : works) === 0
+                  }
+                >
                   <button
                     type="button"
                     class="tag-filter__option"
@@ -288,6 +319,7 @@ const indexMembers = [...members].sort((a, b) =>
                     data-label={label}
                     data-count-members={members}
                     data-count-works={works}
+                    data-count-works-by-tag={worksByTag}
                     aria-pressed="false"
                   >
                     <span>{label}</span>
@@ -409,14 +441,18 @@ const indexMembers = [...members].sort((a, b) =>
         asked for. `hidden` is doing real work here beyond tidiness — it is
         display:none (see .cgrid__cell[hidden]), so none of these images is
         fetched or decoded while any other view is on screen.
-        data-tags is the MEMBER's, so the tag filter narrows the wall by the
-        person behind the work, exactly as it narrows the spread. */
+        data-tags is the WORK's OWN, since 2026-09-08 (step 2 of
+        documentation/20260907-works-on-the-record-design.md) — the wall
+        narrows by what is IN the picture, not by the person behind it, which
+        is why it needed its own count (worksByTag) and its own attribute
+        helper (workTagsAttr) alongside the member ones the spread still
+        uses. */
       workCells.map(({ member, work, key }, i) => (
         <div
           class="cgrid__cell"
           data-slot="work"
           data-rank={i}
-          data-tags={tagsAttr(member)}
+          data-tags={workTagsAttr(work)}
           data-work={key}
           data-row="0"
           data-col="0-0"
@@ -2029,15 +2065,18 @@ const indexMembers = [...members].sort((a, b) =>
     }
   }
 
-  /** Whether a gallery has anything to show for a tag — build-stamped on the
-   *  option as data-count-works (see the tagIndex note in the frontmatter).
-   *  False for a tag no option offers, which is the same answer to the caller:
-   *  nothing to show. */
-  function tagHasWorks(tag: string): boolean {
+  /** Whether a gallery VIEW has anything to show for a tag — build-stamped on
+   *  the option as data-count-works (Spread/strip: a member-with-artwork
+   *  carries the tag) or data-count-works-by-tag (Grid, since 2026-09-08: the
+   *  wall filters by the picture's OWN tags — see the tagIndex note in the
+   *  frontmatter). False for a tag no option offers, which is the same answer
+   *  to the caller: nothing to show. */
+  function tagHasWorks(tag: string, mode: LayoutMode): boolean {
     const opt = document.querySelector<HTMLElement>(
       `.tag-filter__option[data-tag="${CSS.escape(tag)}"]`
     );
-    return Number(opt?.dataset.countWorks ?? 0) > 0;
+    const count = mode === "grid" ? opt?.dataset.countWorksByTag : opt?.dataset.countWorks;
+    return Number(count ?? 0) > 0;
   }
 
   /** The panel's LIST for the view on screen — which options it offers —
@@ -2051,20 +2090,22 @@ const indexMembers = [...members].sort((a, b) =>
    *  artwork only since 2026-09-03, so there an option whose members all have
    *  empty galleries is not offered — picking it could only empty the view.
    *  The ledger lists everyone, so it offers every tag. "All tags" (the empty
-   *  key) is always offered. The decision reads the build-stamped
-   *  data-count-works rather than re-counting the cells, so the list is right
-   *  before any deal and the same in every view of one build. Nothing is
-   *  printed behind a label — see the tagIndex note in the frontmatter for why
-   *  the count came off. */
+   *  key) is always offered. The decision reads a build-stamped count rather
+   *  than re-counting the cells, so the list is right before any deal and the
+   *  same in every view of one build — Grid reads data-count-works-by-tag
+   *  (the picture's own tags, since 2026-09-08), Spread/strip keep reading
+   *  data-count-works (2026-09-07). Nothing is printed behind a label — see
+   *  the tagIndex note in the frontmatter for why the count came off. */
   function reflectTagOptions(mode: LayoutMode) {
     const gallery = mode !== "index";
+    const countKey = mode === "grid" ? "countWorksByTag" : "countWorks";
     const search = document.getElementById("tag-filter-search") as HTMLInputElement | null;
     const needle = search?.value.trim().toLowerCase() ?? "";
     document.querySelectorAll<HTMLElement>(".tag-filter__list li").forEach((li) => {
       const opt = li.querySelector<HTMLElement>(".tag-filter__option");
       if (!opt) return;
       const key = opt.dataset.tag ?? "";
-      const works = Number(opt.dataset.countWorks ?? 0);
+      const works = Number(opt.dataset[countKey] ?? 0);
       const workless = gallery && Boolean(key) && works === 0;
       const missed = Boolean(needle) && Boolean(key) && !key.includes(needle);
       li.hidden = workless || missed;
@@ -2351,7 +2392,7 @@ const indexMembers = [...members].sort((a, b) =>
           // it, and tagFilter and the trigger follow from there. A DEEP LINK
           // with such a tag still gets the honest empty state — nothing was
           // chosen on this page for it to undo.
-          if (next !== "index" && tagFilter && !tagHasWorks(tagFilter)) {
+          if (next !== "index" && tagFilter && !tagHasWorks(tagFilter, next)) {
             url.searchParams.delete("tag");
           }
           goTo(url);
