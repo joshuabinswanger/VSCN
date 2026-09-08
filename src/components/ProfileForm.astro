@@ -137,7 +137,7 @@ const t = useTranslations(lang);
       <div class="target-audience-options">
         {
           LANGUAGES.map((code) => (
-            <label class="target-audience-option">
+            <label class="optchip target-audience-option">
               <input type="checkbox" name="language" value={code} />
               <span>{t(`profile.lang.${code}`)}</span>
             </label>
@@ -208,19 +208,19 @@ const t = useTranslations(lang);
     <fieldset class="target-audience-field">
       <legend class="label">{t("profile.primaryAudience.legend")}</legend>
       <div class="target-audience-options">
-        <label class="target-audience-option">
+        <label class="optchip target-audience-option">
           <input type="checkbox" name="primary-audience" value="science" />
           <span>{t("profile.primaryAudience.science")}</span>
         </label>
-        <label class="target-audience-option">
+        <label class="optchip target-audience-option">
           <input type="checkbox" name="primary-audience" value="public" />
           <span>{t("profile.primaryAudience.public")}</span>
         </label>
-        <label class="target-audience-option">
+        <label class="optchip target-audience-option">
           <input type="checkbox" name="primary-audience" value="policy-makers" />
           <span>{t("profile.primaryAudience.policyMakers")}</span>
         </label>
-        <label class="target-audience-option">
+        <label class="optchip target-audience-option">
           <input type="checkbox" name="primary-audience" value="education" />
           <span>{t("profile.primaryAudience.education")}</span>
         </label>
@@ -876,12 +876,6 @@ const t = useTranslations(lang);
     width: fit-content;
   }
 
-  .field-note {
-    margin: 0;
-    font-size: 0.78rem;
-    line-height: 1.5;
-    color: var(--color-muted);
-  }
 
   .input-prefix-wrap {
     display: flex;
@@ -1659,40 +1653,12 @@ const t = useTranslations(lang);
     gap: 0.6rem;
   }
 
-  .target-audience-option {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.55rem 0.75rem;
-    border: 1.5px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: #fff;
-    color: #333;
-    font-size: 0.9rem;
-    line-height: 1.2;
-    cursor: pointer;
-    transition:
-      border-color 0.15s,
-      background 0.15s;
-  }
-
-  .target-audience-option:hover {
-    border-color: #999;
-    background: #f5f5f5;
-  }
-
-  .target-audience-option:has(input:checked) {
-    border-color: var(--color-dark);
-    background: var(--color-dark);
-    color: #fff;
-  }
-
-  .target-audience-option input {
-    width: 14px;
-    height: 14px;
-    accent-color: var(--color-dark);
-    cursor: pointer;
-  }
+  /* Languages and Primary audience are `.optchip` (global.css) like every other
+     multi-select on this form. They used to be the only two that drew a real
+     checkbox inside the chip; the fill says "selected" for the other three, so
+     it says it here too and all five finally match. The input itself is still
+     in the DOM and still focusable — `.optchip` clips it rather than hiding
+     it — so the keyboard and screen readers are unaffected. */
 
   @media (max-width: 520px) {
     .avatar-wrap {

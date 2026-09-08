@@ -75,7 +75,7 @@ const avatarSrc = stripStorageToken(m.photoURL ?? "");
       m.tags.length > 0 && (
         <ul class="member-tags">
           {m.tags.map((tag) => (
-            <li class="member-tag">{tag}</li>
+            <li class="member-tag tagchip">{tag}</li>
           ))}
         </ul>
       )
@@ -249,16 +249,11 @@ const avatarSrc = stripStorageToken(m.photoURL ?? "");
     text-align: left;
   }
 
+  /* The drawing is `.tagchip` in global.css, shared with the tags on the
+     member page, in the card panel and in the profile editor (2026-09-08,
+     Josh: "use this style for the tags across all pages"). Only what is true
+     of a tag inside THIS card is left here. */
   .member-tag {
-    font-size: 0.68rem;
-    font-weight: 500;
-    line-height: 1.25;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-    padding: 5px 7px;
-    color: var(--color-muted);
-    border: 1px solid var(--color-border);
-    border-radius: 0;
     min-width: 0;
     overflow-wrap: anywhere;
   }

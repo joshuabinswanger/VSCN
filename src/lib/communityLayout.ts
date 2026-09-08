@@ -144,8 +144,8 @@ const SPREAD_TILE: Pattern = {
 // A 5-column slot is ~417px. The 10-row `rowSpan` is sized for what the
 // typographic card became on 2026-08-28 — name band, framed tag rectangle,
 // role row, the image card's anatomy at index scale — where the old 6-row
-// tile fit only a name and a role: the frame cap CommunityTextCard derives
-// from it (10 rows − chrome ≈ 110px) holds 5 whole stacked tags, and the
+// tile fit only a name and a role: the frame cap the typographic card derived
+// from it (10 rows − chrome ≈ 110px) held 5 whole stacked tags, and the
 // row a wrapped role adds still clears the pitch. The step is a uniform 5 rows, so
 // the ladder ticks evenly. The drawing overhangs the 10-row stride —
 // deliberately: consecutive copies interleave lane against lane, which is
@@ -154,6 +154,13 @@ const SPREAD_TILE: Pattern = {
 //
 // Authored in code, like the spread's 08-28 redraw — not yet mirrored to the
 // Affinity document, whose index artboard still shows the 6-row name ladder.
+//
+// The card those measurements were taken from was deleted on 2026-09-08 (see
+// CommunityGrid.astro), so the 10 rows are now history rather than a live
+// contract: nothing renders into this tile at all today. It is kept because
+// live code still names it — layOutSlots tiles it with a count of 0, and the
+// validator below checks it — and because the ladder is the drawing to come
+// back to if a no-artwork cell is ever dealt again.
 export const TEXT_TILE: Pattern = {
   name: "text",
   tileRows: 10,

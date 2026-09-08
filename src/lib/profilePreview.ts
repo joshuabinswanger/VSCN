@@ -276,10 +276,11 @@ function position(template: string | undefined, index: number, total: number): s
  * design, which is why a member with six pictures was previewing a card that
  * could only ever show the first.
  *
- * The typographic face mirrors CommunityTextCard: a framed rectangle of tag
- * lines, falling back tags → member-type label. The role is NOT part of that
- * chain — it always prints in the caption row, and a frame with nothing to
- * hold becomes a rule (see that component for why).
+ * The typographic face came from CommunityTextCard, deleted 2026-09-08 once
+ * neither gallery dealt it: a framed rectangle of tag lines, falling back
+ * tags → member-type label. The role is NOT part of that chain — it always
+ * prints in the caption row, and a frame with nothing to hold becomes a rule
+ * (CommunityCardPreview.astro's style block now carries the reasoning).
  */
 export function renderCardPreview(
   root: HTMLElement,
@@ -313,8 +314,8 @@ export function renderCardPreview(
   const first = works[0];
   const isCarousel = works.length > 1;
 
-  // Same chain as CommunityTextCard's tagLines: tags, else the member-type
-  // label, else nothing — the role is not a rung on it.
+  // The chain CommunityTextCard's tagLines used, and now the only copy of it:
+  // tags, else the member-type label, else nothing — the role is not a rung.
   const typeLabel = vm.memberType
     ? (labels.memberTypeLabels?.[vm.memberType] ?? vm.memberType)
     : "";
