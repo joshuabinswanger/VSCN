@@ -171,6 +171,13 @@ export interface GalleryItem {
    * record since 2026-09-07; capped by validImage at 200.
    */
   link?: string;
+  /**
+   * Up to 5 labels from the same curated registry member tags draw from
+   * (2026-09-07, step 2 of documentation/20260907-works-on-the-record-design.md:
+   * the wall filters by what is IN the picture, not who made it). Lives on
+   * the record, same as every other word here.
+   */
+  tags?: string[];
 }
 
 /**
@@ -410,6 +417,7 @@ export async function saveGalleryRecords(items: readonly GalleryItem[]): Promise
         description: item.description,
         descriptionDe: item.descriptionDe,
         link: item.link,
+        tags: item.tags,
       }),
     ),
   );

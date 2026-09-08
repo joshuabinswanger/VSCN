@@ -170,6 +170,7 @@ function works(uid: string, doc: PublicProfileDoc, records: readonly GalleryReco
     description: g.description,
     descriptionDe: g.descriptionDe,
     link: workLink(g.link),
+    tags: g.tags ?? [],
   }));
 }
 

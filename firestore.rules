@@ -332,7 +332,7 @@ function validBioWordCount(bio) {
 // id IS the filename, and the owner IS the folder.
 function validImage(data, imageId) {
   return data.keys().hasOnly(['ownerUid', 'kind', 'storagePath', 'width', 'height', 'color',
-                              'caption', 'captionDe', 'description', 'descriptionDe', 'link', 'descriptionShort', 'origin',
+                              'caption', 'captionDe', 'description', 'descriptionDe', 'link', 'tags', 'descriptionShort', 'origin',
                               'provenance', 'status', 'createdAt', 'updatedAt'])
     && data.ownerUid is string
     && (data.kind == 'avatar' || data.kind == 'gallery')
@@ -355,11 +355,33 @@ function validImage(data, imageId) {
     // it is linkable is the read path's question (workLink in
     // src/lib/links.ts) — a rule that rejected a typo would fail the save.
     && (!('link' in data) || (data.link is string && data.link.size() <= 200))
+    // WHAT IS IN THE PICTURE, not who made it (2026-09-08, step 2 of
+    // documentation/20260907-works-on-the-record-design.md). One write per
+    // image, so — unlike validGallery's per-element unroll, forced by an
+    // 8x-per-save budget — a plain size cap plus per-element checks costs
+    // nothing extra here.
+    && (!('tags' in data) || validImageTags(data.tags))
     && (!('descriptionShort' in data) || (data.descriptionShort is string && data.descriptionShort.size() <= 240))
     && (data.origin == 'member' || data.origin == 'curated')
     && (data.status == 'uploading' || data.status == 'live' || data.status == 'pendingDeletion')
     && data.createdAt is timestamp
     && data.updatedAt is timestamp;
+}
+
+// Same cap as validTag's label below — a tag on an image is the same kind of
+// value as a tag on a profile, just not registered here (getOrCreateTag does
+// that, exactly as the profile tag-selector does).
+function validImageTags(value) {
+  return value is list && value.size() <= 5
+    && (value.size() < 1 || validImageTag(value[0]))
+    && (value.size() < 2 || validImageTag(value[1]))
+    && (value.size() < 3 || validImageTag(value[2]))
+    && (value.size() < 4 || validImageTag(value[3]))
+    && (value.size() < 5 || validImageTag(value[4]));
+}
+
+function validImageTag(v) {
+  return v is string && v.size() > 0 && v.size() <= 50;
 }
 
 function validTag(data) {

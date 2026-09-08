@@ -87,6 +87,16 @@ test("MIGRATION WINDOW: an old-shape element is read by its imageId, and its wor
   assert.equal(item.width, 1200); // geometry is always the record's
 });
 
+test("tags ride the join from the record", () => {
+  const [item] = orderedGalleryItems(UID, ["a"], [record("a", { tags: ["Botany", "Ink"] })], BUCKET);
+  assert.deepEqual(item.tags, ["Botany", "Ink"]);
+});
+
+test("no tags on the record is absent on the item, not an empty list", () => {
+  const [item] = orderedGalleryItems(UID, ["a"], [record("a")], BUCKET);
+  assert.equal("tags" in item, false);
+});
+
 test("garbage in the list is ignored", () => {
   assert.deepEqual(orderedGalleryItems(UID, [null, 42, {}, ""], [record("a")], BUCKET), []);
   assert.deepEqual(orderedGalleryItems(UID, "not a list", [record("a")], BUCKET), []);

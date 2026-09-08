@@ -216,6 +216,17 @@ test("images: the record carries where the image appeared", async () => {
   await assertFails(db.doc("images/img-1").update({ link: 42, updatedAt: new Date() }));
 });
 
+test("images: what is in the picture — up to 5 tags from the registry's own alphabet", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({ tags: ["Botany", "Ink", "Field notes", "d", "e"], updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ tags: ["a", "b", "c", "d", "e", "f"], updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ tags: ["x".repeat(51)], updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ tags: ["x".repeat(50)], updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ tags: [42], updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ tags: "Botany", updatedAt: new Date() }));
+});
+
 test("users: an owner update leaves server-owned fields alone and passes", async () => {
   await seed(env, `users/${OWNER}`, {
     ...minimalUser(OWNER), status: "active", purgeAfter: null,
