@@ -53,10 +53,17 @@ localhost: site key `1x00000000000000000000AA` (always passes, visible), secret
 - Renders one widget into `#turnstile-slot`, a fixed, `transition:persist` element in
   `Layout.astro`, with `execution: "execute"`, `appearance: "interaction-only"`,
   `action: "app-check"`. Nothing is visible unless Cloudflare decides to ask.
-- `CustomProvider.getToken()`: wait for the script (bounded by a 20 s deadline, so a
-  tarpitted script cannot reproduce the 30 s hang), `turnstile.execute`, take the
+- `CustomProvider.getToken()`: wait for the script, `turnstile.execute`, take the
   token from the callback, POST it to the mint endpoint, return
-  `{ token, expireTimeMillis }`. Any failure rejects, which the App Check SDK turns into
+  `{ token, expireTimeMillis }`. The three steps share ONE 24 s budget
+  (`src/lib/appCheckTiming.ts`), because Auth awaits the App Check token inside its
+  own 30 s request timeout. Per-step deadlines (20 s script, 25 s challenge, unbounded
+  mint) were the first version; on 2026-09-08 a login from Chrome on iOS outlived
+  Auth's clock — mobile Turnstile challenges in this configuration take 15-25 s — and
+  was reported as "could not reach the login server". Since then the login and
+  sign-up forms also call `warmUpAppCheck()` when they appear, so the challenge runs
+  while the member types, and a token that arrives after its attempt's clock ran out
+  (a late checkbox click) is kept as a spare for the next attempt. Any failure rejects, which the App Check SDK turns into
   a dummy token, which Auth refuses with `auth/firebase-app-check-token-is-invalid.`,
   which the forms already word.
 - **Never** call the mint endpoint through `httpsCallable`: the Functions SDK asks App

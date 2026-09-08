@@ -199,7 +199,7 @@ const t = useTranslations(lang);
 </style>
 
 <script>
-  import { auth, isSecurityCheckBlocked } from "../lib/firebase.ts";
+  import { auth, isSecurityCheckBlocked, warmUpAppCheck } from "../lib/firebase.ts";
   import {
     onAuthStateChanged,
     signInWithEmailAndPassword,
@@ -216,6 +216,11 @@ const t = useTranslations(lang);
   document.addEventListener("astro:page-load", () => {
     const form = document.getElementById("auth-form") as HTMLFormElement;
     if (!form) return;
+
+    // Start the App Check attestation while the member types, so the login
+    // click does not spend Auth's 30 s clock on a slow mobile Turnstile
+    // challenge (see firebase.ts).
+    warmUpAppCheck();
 
     const wrap = document.querySelector<HTMLElement>(".auth-wrap[data-lang]");
     const lang = (wrap?.dataset.lang ?? "en") as "en" | "de";
