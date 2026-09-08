@@ -163,7 +163,13 @@
   list-style: none;
 }
 
-.mprof__val {
+/* `:not(.tagchip)` because TAGS LEFT THIS DRAWING (2026-09-08, Josh: "use this
+   style for the tags across all pages", then "tags only"). A tag now wears
+   `.tagchip` from global.css — rounded, 0.72rem — and the chips beside it here,
+   visual needs and links, deliberately keep the square 0.68rem voice. Excluding
+   them here rather than fighting it with specificity in `.tagchip` keeps one
+   drawing per class and no ordering dependency between the two sheets. */
+.mprof__val:not(.tagchip) {
   font-size: 0.68rem;
   font-weight: 500;
   line-height: 1.25;
@@ -172,7 +178,7 @@
   padding: 5px 7px;
   color: var(--color-muted);
   border: 1px solid var(--color-border);
-  /* Square corners throughout, as on the cards. */
+  /* Square corners, as on the cards — tags excepted, see above. */
   border-radius: 0;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -182,12 +188,14 @@
    drawn the same way and for the same reasons: the chip keeps its whole
    appearance and gains only the pointer and an ink-coloured hover, because a
    row of boxed words with a rule under each would read as a list of links
-   rather than as a set of tags. `display: block` so the padding is the target.
+   rather than as a set of tags.
+   The chip's APPEARANCE now comes from `.tagchip` in global.css, which is also
+   inline-flex, so this rule no longer sets display or colour — leaving them
+   here would have made the result depend on which of the two stylesheets the
+   bundler emitted last. What is left is only what turns a chip into a link.
    Filed here rather than beside .pdisc__tag because this sheet is what the
    member page and the editor's page preview share. */
 .mprof__tag {
-  display: block;
-  color: inherit;
   text-decoration: none;
   cursor: pointer;
   transition:

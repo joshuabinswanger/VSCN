@@ -22,11 +22,15 @@
 //     honour: the name's hover underline and the frame's zoom-in cursor. Both
 //     are inert here (see below), and both are described in that stylesheet's
 //     foot rather than here, because they are rules about the card.
-//   - the TYPOGRAPHIC face (`.ccpv__tframe`), still a mirror of
-//     CommunityTextCard rather than that component's own markup. It is the
-//     no-artwork case: a framed rectangle of tag lines with nothing to page,
-//     so it has no carousel to get wrong. Sharing that component's rules the
-//     same way is the obvious next step and was not part of this one.
+//   - the TYPOGRAPHIC face (`.ccpv__tframe`). It began as a mirror of
+//     CommunityTextCard, the gallery's no-artwork card; that component was
+//     deleted on 2026-09-08 once neither gallery dealt it any more, so this
+//     is now the ONLY copy of that drawing and there is nothing left to share
+//     rules with. It is the no-artwork case: a framed rectangle of tag lines
+//     with nothing to page, so it has no carousel to get wrong. OPEN: the
+//     public galleries no longer render a card for a member with an empty
+//     gallery at all, so what this face previews is a card that page will not
+//     show — whether the editor should say that instead is undecided.
 //   - the arrows, dots and live region are RENDERED ALWAYS and hidden when
 //     there is nothing to page. The real card omits them from the markup
 //     because it knows the gallery at build time; a shell that is refilled on
@@ -101,7 +105,8 @@ import "../../styles/communityCard.css";
   </div>
 
   {
-    /* The typographic face — mirrors .ctcard__frame: one hairline where the
+    /* The typographic face — inherited from the deleted CommunityTextCard's
+       .ctcard__frame: one hairline where the
        box's top edge used to be, holding tag lines where the artwork would
        stand. Shown only when the member has no gallery at all, which is
        exactly the rule /community applies (`hasArtwork`). */
@@ -142,8 +147,9 @@ import "../../styles/communityCard.css";
 <style>
   /* ── The typographic face ──────────────────────────────
      The only design left in this component, and only because it is the
-     no-artwork case (see the header). Mirrors .ctcard__frame: inline padding
-     went with the border, which only ever inset tags from a box edge; the
+     no-artwork case (see the header). Carried over from the deleted
+     CommunityTextCard's .ctcard__frame, and now the only copy of it: inline
+     padding went with the border, which only ever inset tags from a box edge; the
      vertical padding stays. No --frame-cap here — the preview sits in a form,
      not a grid slot. */
   .ccpv__tframe {
@@ -155,7 +161,7 @@ import "../../styles/communityCard.css";
     min-height: 3rem;
   }
 
-  /* Nothing to hold — mirrors .ctcard__frame--rule. The SAME drawing as the
+  /* Nothing to hold — was .ctcard__frame--rule. The SAME drawing as the
      base rule with nothing standing under the line, rather than a different
      one: it inherits the hairline and only drops the space. Must stay after
      .ccpv__tframe in source — equal specificity, later wins. Toggled by
@@ -176,7 +182,8 @@ import "../../styles/communityCard.css";
     gap: 0.35rem;
   }
 
-  /* The tag voice — mirrors .ctcard__tag. */
+  /* The tag voice — was .ctcard__tag; before that, MemberDetailPanel's chips
+     without the chip border. */
   .ccpv__tag {
     font-size: 0.68rem;
     font-weight: 500;

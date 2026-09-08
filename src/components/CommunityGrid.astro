@@ -151,10 +151,15 @@ const workTagsAttr = (w: MemberView["works"][number]) => {
 //
 // NOBODY IS DROPPED FROM THE DIRECTORY. Every member — gallery or no gallery —
 // is a row in the INDEX, which is the view that is about people and the one
-// place the whole membership is reachable. CommunityTextCard.astro is left in
-// the tree, unrendered: it is a finished piece of design that nothing asks for
-// today. `TEXT_TILE` in communityLayout.ts is likewise now unused by both
-// galleries.
+// place the whole membership is reachable. CommunityTextCard.astro — the
+// typographic card those members used to be dealt — was DELETED on 2026-09-08:
+// it was a finished piece of design, but nothing had asked for it since the
+// spread went artwork-only and an unrendered component is a claim about the
+// page that is not true. To bring that cell kind back, deal a second kind here
+// (see the `data-slot` note below) and rebuild the card; git history has the
+// original. `TEXT_TILE` in communityLayout.ts is likewise now unused by both
+// galleries, but it SURVIVES because live code still names it: `layOutSlots`
+// tiles it (with a count of 0) and the module-load validator checks it.
 //
 // TWO GALLERIES, ONE SELECTOR: the two-lane editorial spread (the first view
 // the selector offers, re-dealt on every load) and the brick grid wall,

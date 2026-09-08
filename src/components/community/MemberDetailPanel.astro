@@ -120,7 +120,7 @@ const hasSummary = Astro.slots.has("summary");
             <ul class="pdisc__vals pdisc__vals--tags">
               {tags.map((tag) => (
                 <li>
-                  <a class="pdisc__val pdisc__tag" href={communityTagHref(lang, tag)}>
+                  <a class="pdisc__val pdisc__tag tagchip" href={communityTagHref(lang, tag)}>
                     {tag}
                   </a>
                 </li>
@@ -335,7 +335,12 @@ const hasSummary = Astro.slots.has("summary");
     list-style: none;
   }
 
-  .pdisc__val {
+  /* `:not(.tagchip)` because TAGS LEFT THIS DRAWING (2026-09-08). A tag in
+     this panel now wears `.tagchip` from global.css — rounded, 0.72rem, the
+     same chip the profile editor offers — while the values beside it keep the
+     square voice. Excluded here rather than out-specified there, so each class
+     owns one drawing and neither sheet has to load after the other. */
+  .pdisc__val:not(.tagchip) {
     font-size: 0.68rem;
     font-weight: 500;
     line-height: 1.25;
@@ -351,25 +356,16 @@ const hasSummary = Astro.slots.has("summary");
     overflow-wrap: anywhere;
   }
 
-  /* Quieter than the other values — they sit under the links as an index,
-     not as another thing to read. */
-  .pdisc__vals--tags .pdisc__val {
-    font-size: 0.6rem;
-    letter-spacing: 0.04em;
-    padding: 3px 4px;
-  }
-
   /* THE CHIP AS A CONTROL. It keeps the chip's drawing exactly — the border and
      the small uppercase voice are what make a tag legible as a tag — and gains
      only what says it can be pressed: the pointer, and the border and type
      coming up to the page's ink on hover. No underline: these are boxed words
      in a row, and a rule under each one would read as a list of links rather
      than as a set of tags.
-     `display: block` so the whole chip is the target, not just the glyphs — the
-     padding is the chip, and a 3px band around the text is not a hitbox. */
+     The chip is inline-flex and muted via `.tagchip`, so this rule sets neither
+     — restating them would make the outcome depend on stylesheet order. What is
+     left is only what turns a chip into a link. */
   .pdisc__tag {
-    display: block;
-    color: inherit;
     text-decoration: none;
     cursor: pointer;
     transition:
