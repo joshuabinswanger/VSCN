@@ -433,6 +433,19 @@ export const ui: Record<string, Record<string, string>> = {
       "Note: Your profile may take a moment to appear in the public community feed. You can edit it any time on your profile page.",
     "onboarding.done.edit": "Edit profile",
     "onboarding.done.goCommunity": "Go to community",
+    "onboarding.done.disclaimer.unverified":
+      "Your profile is hidden until you verify your email — the link is in your inbox. Once verified, you appear in the directory automatically.",
+    "onboarding.done.disclaimer.hidden":
+      "Your profile is hidden from the community directory. You can show it any time on the Account tab of your profile.",
+    "onboarding.progress": "Step {n} of {total}",
+    "onboarding.verify.later": "Verify later",
+    "onboarding.visibility.title": "Your visibility",
+    "onboarding.visibility.sub":
+      "Decide whether your profile is listed in the community directory. You can change this any time on the Account tab of your profile.",
+    "onboarding.visibility.label": "Show my profile in the community directory",
+    "onboarding.visibility.locked":
+      "Your profile stays hidden until your email is verified. Once it is, you appear in the directory automatically.",
+    "onboarding.visibility.backToVerify": "Back to verification",
 
     // Onboarding auth step
     "onboarding.auth.title": "Create your account",
@@ -450,6 +463,9 @@ export const ui: Record<string, Record<string, string>> = {
     // Profile active toggle
     "profile.active.label": "Active",
     "profile.active.note": "Should your community card be visible?",
+    "profile.hiddenBanner": "Your profile is hidden from the community directory.",
+    "profile.hiddenBanner.cta": "Change on the Account tab",
+    "profile.verifyBanner.hidden": "Until then your profile is hidden from the directory.",
 
     // Signup CTA
     "signup.cta.info": "Join our community",
@@ -839,6 +855,19 @@ export const ui: Record<string, Record<string, string>> = {
       "Hinweis: Es kann einen Moment dauern, bis dein Profil im öffentlichen Community-Feed erscheint. Du kannst es jederzeit auf deiner Profilseite bearbeiten.",
     "onboarding.done.edit": "Profil bearbeiten",
     "onboarding.done.goCommunity": "Zur Community",
+    "onboarding.done.disclaimer.unverified":
+      "Dein Profil bleibt verborgen, bis du deine E-Mail bestätigt hast — der Link liegt in deinem Posteingang. Danach erscheinst du automatisch im Verzeichnis.",
+    "onboarding.done.disclaimer.hidden":
+      "Dein Profil ist im Community-Verzeichnis nicht sichtbar. Du kannst es jederzeit im Konto-Tab deines Profils einblenden.",
+    "onboarding.progress": "Schritt {n} von {total}",
+    "onboarding.verify.later": "Später bestätigen",
+    "onboarding.visibility.title": "Deine Sichtbarkeit",
+    "onboarding.visibility.sub":
+      "Entscheide, ob dein Profil im Community-Verzeichnis erscheint. Du kannst das jederzeit im Konto-Tab deines Profils ändern.",
+    "onboarding.visibility.label": "Mein Profil im Community-Verzeichnis zeigen",
+    "onboarding.visibility.locked":
+      "Dein Profil bleibt verborgen, bis deine E-Mail bestätigt ist. Danach erscheinst du automatisch im Verzeichnis.",
+    "onboarding.visibility.backToVerify": "Zurück zur Bestätigung",
 
     // Onboarding auth step
     "onboarding.auth.title": "Konto erstellen",
@@ -857,6 +886,9 @@ export const ui: Record<string, Record<string, string>> = {
     // Profile active toggle
     "profile.active.label": "Aktiv",
     "profile.active.note": "Soll deine Community-Karte sichtbar sein?",
+    "profile.hiddenBanner": "Dein Profil ist im Community-Verzeichnis nicht sichtbar.",
+    "profile.hiddenBanner.cta": "Im Konto-Tab ändern",
+    "profile.verifyBanner.hidden": "Bis dahin ist dein Profil im Verzeichnis nicht sichtbar.",
 
     // Signup CTA
     "signup.cta.info": "Werde Teil unserer Community",
