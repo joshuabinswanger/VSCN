@@ -1,7 +1,7 @@
 <!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/onboarding-closing-steps.md — keep both copies in sync. -->
 ---
 name: onboarding-closing-steps
-description: "The wizard's closing work, BOTH PARTS MERGED AND LIVE ON DEV at 0cce488: verify + visibility steps close the wizard, the bridge no longer publishes, the wizard is flat, the phone wall caps tall tiles, and the first upload gets its title, description and tags. Not on prod; the signed-in path is unwalked"
+description: "The wizard's closing work, ALL THREE ROUNDS MERGED AND LIVE ON DEV at 7abce98: verify + visibility steps close the wizard, the bridge no longer publishes, the first upload gets its title/description/tags, the amber verify banner is /profile-only, and the tag cap is stated by the field not the component. Not on prod; the signed-in path is unwalked"
 metadata: 
   node_type: memory
   type: project
@@ -23,10 +23,14 @@ abandoned wizard stays hidden. Not yet on prod.
 commit) merged into `dev` at `0cce488`, staging deployed and verified live on
 `vscn-dev-f4b60.web.app` in both locales. Two more notes: "add a remark to check spam in the
 email verification step and already expose the image title and description and tags for the
-first image upload". Same design note, its "Follow-up, same day" section. Both feature branches
-are now merged; the worktree `D:\SynoDrive\VSCN\wt-feat-works-on-the-record` still holds
-`feat/onboarding-first-image` and can go:
-`npm run worktree -- feat/onboarding-first-image --remove`.
+first image upload". Same design note, its "Follow-up, same day" section. All three branches are merged; the worktree
+`D:\SynoDrive\VSCN\wt-feat-works-on-the-record` still holds `fix/onboarding-verify-copy` and can
+go: `npm run worktree -- fix/onboarding-verify-copy --remove`.
+
+**Third round, merged (2026-09-08):** `fix/onboarding-verify-copy` → `dev` at `7abce98`, from
+Josh's pass over the deployed host: "the verify your email box should only appear once in the
+profile view not during onboarding … it still says Up to 7 in the tag selector, drop it … Put
+the Spam notice in the first sentence". Same design note, its "Second follow-up" section.
 
 **Why:** five terse notes ("disclaimer when inactive, step in onboarding, very tall images
 should get a max height in grid view, restyle onboarding, white boxes are obsolete");
@@ -40,6 +44,16 @@ images were on the PHONE.
   is not counted for it. Anything that adds a step must touch `realSteps` there.
 - Onboarding writes the active flag in ONE place: Finish on step 7, via `setProfileActive`,
   and only for a verified account. Do not put `activatePublicProfile` back on the bridge.
+- ONE place asks for verification: `/profile`'s amber banner. The wizard's copy of it is gone
+  — markup, styles, resend handler, the `showVerifyBanner` flag — because the wizard has a
+  verify STEP now. Do not reintroduce it. `.btn-resend-verify` survives in the wizard's
+  stylesheet only because the visibility step's "back to verification" button wears it.
+- `TagSelector` states NO cap. It used to print "Up to 7 tags." as a literal while `maxTags` is
+  a prop, so per-image selectors (5) asserted the wrong number. The note lives in the field
+  that sets the cap: `#ob-member-tags-field` and `#member-tags-field`. A new selector with a
+  different cap must bring its own sentence.
+- The spam advice belongs in the paragraph that names the address, on both verify screens, and
+  `verify.resend.msg` must NOT repeat it.
 - The cover image's words are written ON BLUR through `saveGalleryRecords([gallery[0]])`, the
   editor's own writer. Anything new on that step should follow the same rule: this step
   persists as it goes, and Finish must stay a step the gallery cannot fail on behalf of.
