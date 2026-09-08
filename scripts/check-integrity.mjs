@@ -2,9 +2,8 @@
 //
 //   node scripts/check-integrity.mjs -P dev
 //
-// Checks: every gallery item → a live image record owned by that profile, and
-// its caption/description text agreeing with that record and with the private
-// copy;
+// Checks: every gallery id → a live gallery record owned by that profile; the
+// private and public id lists equal;
 // every avatar's photoURL still equal to the URL derived from its record's
 // storagePath (the C1 drift, invisible everywhere else); every record → an
 // object at its storagePath; every object under users/ → a record; every
@@ -43,74 +42,48 @@ try {
   const userIds = new Set(users.docs.map((d) => d.id));
   const inGrace = new Set(openJobs.docs.map((d) => d.id));
 
-  console.log("Gallery arrays ↔ image records");
+  // THE ARRAY IS A LIST OF IDS since 2026-09-07 (documentation/20260907-works-
+  // on-the-record-design.md). There is no text on it to compare any more; what
+  // can go wrong is an id pointing nowhere, at someone else's record, or at a
+  // record that is not live — and an element that is still an object, which
+  // means scripts/migrate-gallery-to-ids.mjs has not run here.
+  console.log("Gallery ids ↔ image records");
+  const idsOf = (data) =>
+    (Array.isArray(data.gallery) ? data.gallery : []).map((e) => (typeof e === "string" ? e : e?.imageId));
   for (const doc of pubs.docs) {
     const data = doc.data();
     if (!userIds.has(doc.id)) note(`publicProfiles/${doc.id} has no users doc (profile-only identity)`);
     if (inGrace.has(doc.id)) note(`publicProfiles/${doc.id} is in a deletion grace period`);
     const gallery = Array.isArray(data.gallery) ? data.gallery : [];
-    gallery.forEach((item, i) => {
-      if (!item?.imageId) return problem(`publicProfiles/${doc.id}.gallery[${i}] has no imageId`);
-      const rec = imageById.get(item.imageId);
-      if (!rec) return problem(`publicProfiles/${doc.id}.gallery[${i}] → images/${item.imageId} missing`);
-      if (rec.ownerUid !== doc.id) problem(`images/${item.imageId} owned by ${rec.ownerUid}, listed on ${doc.id}`);
-      if (rec.status !== "live" && !inGrace.has(doc.id)) {
-        problem(`images/${item.imageId} is ${rec.status} but listed on publicProfiles/${doc.id}`);
+    gallery.forEach((element, i) => {
+      if (typeof element !== "string") {
+        problem(`publicProfiles/${doc.id}.gallery[${i}] is not an id — not migrated (run migrate-gallery-to-ids.mjs)`);
       }
-      // THE TEXT IS A PROJECTION TOO, and until 2026-09-03 nothing checked it.
-      // The record is the truth and the arrays are copies of it (see
-      // updateImageText in src/lib/images.ts); a copy that disagrees is a page
-      // saying something the record denies. It is not hypothetical: the
-      // description seeder writes the record and then BOTH arrays, and a run
-      // that dies between them leaves exactly this state — which is how 22 of
-      // 51 works came to render no long text on dev while the seeder itself
-      // reported nothing left to do. Same reasoning as the avatar check below:
-      // the field must agree with its record.
-      for (const field of ["caption", "description", "descriptionShort"]) {
-        const onItem = (item[field] ?? "").trim();
-        const onRecord = (rec[field] ?? "").trim();
-        if (onItem !== onRecord) {
-          problem(
-            `publicProfiles/${doc.id}.gallery[${i}].${field} disagrees with images/${item.imageId}` +
-              ` (item ${onItem ? `"${onItem.slice(0, 40)}"` : "(empty)"},` +
-              ` record ${onRecord ? `"${onRecord.slice(0, 40)}"` : "(empty)"})`
-          );
-        }
+      const id = typeof element === "string" ? element : element?.imageId;
+      if (!id) return problem(`publicProfiles/${doc.id}.gallery[${i}] has no imageId`);
+      const rec = imageById.get(id);
+      if (!rec) return problem(`publicProfiles/${doc.id}.gallery[${i}] → images/${id} missing`);
+      if (rec.ownerUid !== doc.id) problem(`images/${id} owned by ${rec.ownerUid}, listed on ${doc.id}`);
+      if (rec.kind !== "gallery") problem(`images/${id} is an ${rec.kind}, listed as a work on ${doc.id}`);
+      if (rec.status !== "live" && !inGrace.has(doc.id)) {
+        problem(`images/${id} is ${rec.status} but listed on publicProfiles/${doc.id}`);
       }
     });
   }
 
-  // THE PRIVATE COPY HAS TO MATCH THE PUBLIC ONE, and this is the check that
-  // protects a documented failure mode rather than a theoretical one: a Save
-  // republishes publicProfiles FROM users (toPublicProfile), so anything
-  // written to the public array alone is silently reverted the next time the
-  // member touches their profile. A tool that wrote only the public copy would
-  // look like it worked for exactly as long as nobody edited anything.
-  console.log("Gallery arrays — users ↔ publicProfiles");
+  // THE PRIVATE COPY HAS TO MATCH THE PUBLIC ONE: a Save republishes
+  // publicProfiles FROM users (toPublicProfile), so anything written to the
+  // public list alone is reverted the next time the member touches anything.
+  console.log("Gallery ids — users ↔ publicProfiles");
   const usersById = new Map(users.docs.map((d) => [d.id, d.data()]));
   for (const doc of pubs.docs) {
     const priv = usersById.get(doc.id);
     if (!priv) continue; // profile-only identity; already noted above
-    const pubGallery = Array.isArray(doc.data().gallery) ? doc.data().gallery : [];
-    const privGallery = Array.isArray(priv.gallery) ? priv.gallery : [];
-    if (pubGallery.length !== privGallery.length) {
-      problem(
-        `${doc.id} gallery length differs: users has ${privGallery.length}, publicProfiles has ${pubGallery.length}`
-      );
-      continue;
+    const pubIds = idsOf(doc.data());
+    const privIds = idsOf(priv);
+    if (pubIds.join("\n") !== privIds.join("\n")) {
+      problem(`${doc.id} gallery differs: users [${privIds.join(", ")}], publicProfiles [${pubIds.join(", ")}]`);
     }
-    pubGallery.forEach((item, i) => {
-      const other = privGallery[i] ?? {};
-      if (item.imageId !== other.imageId) {
-        problem(`${doc.id}.gallery[${i}] is images/${item.imageId} publicly and images/${other.imageId} privately`);
-        return;
-      }
-      for (const field of ["caption", "description", "descriptionShort"]) {
-        if ((item[field] ?? "").trim() !== (other[field] ?? "").trim()) {
-          problem(`${doc.id}.gallery[${i}].${field} differs between users and publicProfiles`);
-        }
-      }
-    });
   }
 
   // The avatar is the one image whose URL lives in a plain field rather than
@@ -159,9 +132,7 @@ try {
     for (const doc of snap.docs) {
       const data = doc.data();
       if (data.photoImageId) referenced.add(data.photoImageId);
-      for (const item of Array.isArray(data.gallery) ? data.gallery : []) {
-        if (item?.imageId) referenced.add(item.imageId);
-      }
+      for (const id of idsOf(data)) if (id) referenced.add(id);
     }
   }
   const unreferencedCutoff = Date.now() - UNREFERENCED_GRACE_HOURS * 3_600_000;

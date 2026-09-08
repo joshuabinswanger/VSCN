@@ -7,7 +7,7 @@ import { findEmailMismatches } from "./emails";
 import { cancelDeletion, scheduleDeletion } from "./lifecycle";
 import { purgeAccount } from "./purge";
 import { dispatchRebuild, githubRebuildToken } from "./rebuild";
-import { plain, requireAdmin } from "./util";
+import { galleryImageIds, plain, requireAdmin } from "./util";
 
 async function audit(
   actorUid: string,
@@ -165,10 +165,7 @@ export async function memberGraph(uid: string) {
   for (const doc of [user, pub]) {
     const data = doc.data() ?? {};
     if (typeof data.photoImageId === "string" && data.photoImageId) referenced.add(data.photoImageId);
-    for (const item of Array.isArray(data.gallery) ? data.gallery : []) {
-      const id = (item as { imageId?: unknown } | null)?.imageId;
-      if (typeof id === "string" && id) referenced.add(id);
-    }
+    for (const id of galleryImageIds(data)) referenced.add(id);
   }
 
   return plain({
@@ -249,7 +246,7 @@ export const adminListMembers = onCall(async (req) => {
     const pub = pubById.get(uid);
     const usr = userById.get(uid);
     const auth = authByUid.get(uid);
-    const gallery = Array.isArray(pub?.gallery) ? pub.gallery : [];
+    const galleryCount = galleryImageIds(pub).length;
     return {
       uid,
       displayName: String(pub?.displayName ?? usr?.displayName ?? ""),
@@ -263,7 +260,7 @@ export const adminListMembers = onCall(async (req) => {
       active: pub ? pub.active !== false : false,
       status: String(usr?.status ?? (usr ? "active" : "profile only")),
       pendingDeletion: pendingUids.has(uid),
-      galleryCount: gallery.length,
+      galleryCount,
       imageRecords: records.get(uid) ?? 0,
       hasAvatar: Boolean(pub?.photoImageId ?? usr?.photoImageId),
       createdAt: auth?.metadata.creationTime ?? null,
@@ -296,11 +293,7 @@ export const adminListQueues = onCall(async (req) => {
     for (const d of snap.docs) {
       const data = d.data();
       if (typeof data.photoImageId === "string" && data.photoImageId) referenced.add(data.photoImageId);
-      const gallery = Array.isArray(data.gallery) ? data.gallery : [];
-      for (const item of gallery) {
-        const id = (item as { imageId?: unknown } | null)?.imageId;
-        if (typeof id === "string" && id) referenced.add(id);
-      }
+      for (const id of galleryImageIds(data)) referenced.add(id);
     }
   }
 
@@ -423,9 +416,11 @@ export const adminDeleteImage = onCall({ secrets: [githubRebuildToken] }, async 
     const data = doc.data() ?? {};
     const update: Record<string, unknown> = {};
 
-    const gallery = Array.isArray(data.gallery) ? data.gallery : [];
-    const kept = gallery.filter((item) => (item as { imageId?: unknown } | null)?.imageId !== imageId);
-    if (kept.length !== gallery.length) update.gallery = kept;
+    // Written back as ids whatever shape was stored: the Admin SDK is not
+    // bound by validGallery, and ids are the shape every reader wants.
+    const ids = galleryImageIds(data);
+    const kept = ids.filter((id) => id !== imageId);
+    if (kept.length !== ids.length) update.gallery = kept;
 
     if (data.photoImageId === imageId) {
       update.photoImageId = FieldValue.delete();

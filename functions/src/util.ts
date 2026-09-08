@@ -46,3 +46,22 @@ export function plain(value: unknown): unknown {
   }
   return value;
 }
+
+/**
+ * The image ids a profile's gallery lists. Strings since 2026-09-07 (the record
+ * is the work — documentation/20260907-works-on-the-record-design.md); objects
+ * with an imageId before. Both shapes are read until every environment has run
+ * scripts/migrate-gallery-to-ids.mjs — then the object branch goes.
+ */
+export function galleryImageIds(data: Record<string, unknown> | undefined): string[] {
+  const gallery = Array.isArray(data?.gallery) ? data.gallery : [];
+  const ids: string[] = [];
+  for (const element of gallery) {
+    const id =
+      typeof element === "string"
+        ? element
+        : (element as { imageId?: unknown } | null)?.imageId;
+    if (typeof id === "string" && id) ids.push(id);
+  }
+  return ids;
+}

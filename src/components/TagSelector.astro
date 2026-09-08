@@ -5,10 +5,17 @@ import type { Lang } from "../i18n/utils";
 interface Props {
   lang?: Lang;
   maxTags?: number;
+  /**
+   * Only for a selector that has a visible <label for>. Since 2026-09-08 the
+   * profile editor clones one selector per gallery row, so a default id here
+   * would be stamped onto every row — and a duplicate id is worse than none:
+   * `for` and getElementById both silently pick the first. Leave it unset and
+   * Astro omits the attribute.
+   */
   inputId?: string;
 }
 
-const { lang = "en", maxTags = 7, inputId = "tag-selector-input" } = Astro.props;
+const { lang = "en", maxTags = 7, inputId } = Astro.props;
 const t = useTranslations(lang);
 ---
 
@@ -40,7 +47,7 @@ const t = useTranslations(lang);
       <div class="tag-suggestion-list" data-tag-group="other"></div>
     </details>
   </div>
-  <div class="ts-input-row">
+  <div class="addrow ts-input-row">
     <input
       id={inputId}
       type="text"
@@ -49,47 +56,23 @@ const t = useTranslations(lang);
       maxlength="50"
       autocomplete="off"
     />
-    <button type="button" class="ts-add-btn" aria-label={t("profile.tag.add")}>+</button>
+    <button type="button" class="addbtn ts-add-btn" aria-label={t("profile.tag.add")}>+</button>
   </div>
-  <p class="field-note">{t("profile.note.tags")}</p>
+  {
+    /* NO CAP NOTE HERE ANY MORE (2026-09-08, Josh: "there is also a mistake
+      where it still says Up to 7 in the tag selector, drop it, as there is an
+      explanation underneath it"). The component printed "Up to 7 tags." as a
+      literal, while `maxTags` is a prop — so the per-image selectors, capped
+      at 5, stated a limit that was simply wrong, directly above a note saying
+      5. A component cannot say how many of itself are allowed; the field that
+      places it can, and the two member-tag fields do. */
+  }
   <p class="ts-error msg-err" hidden></p>
 </tag-selector>
 
 <style is:global>
   tag-selector {
     display: block;
-  }
-
-  tag-selector .ts-input-row {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 0.9rem;
-  }
-
-  tag-selector .ts-input {
-    flex: 1;
-    min-width: 0;
-  }
-
-  tag-selector .ts-add-btn {
-    flex-shrink: 0;
-    padding: 0 1rem;
-    background: #111;
-    color: #fff;
-    border: 1.5px solid #111;
-    border-radius: var(--radius-sm);
-    font-size: 1.3rem;
-    font-weight: 300;
-    line-height: 1;
-    cursor: pointer;
-    transition:
-      background 0.15s,
-      border-color 0.15s;
-  }
-
-  tag-selector .ts-add-btn:hover {
-    background: #333;
-    border-color: #333;
   }
 
   tag-selector .ts-error {
@@ -110,110 +93,80 @@ const t = useTranslations(lang);
     margin-bottom: 0.5rem;
   }
 
-  tag-selector .tag-chip {
-    font-family: "Archivo", sans-serif;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.4rem 0.7rem;
-    border-radius: var(--radius-sm);
-    border: 1.5px solid #111;
-    background: #111;
-    color: #fff;
-    font-size: 0.83rem;
-    font-weight: 400;
-    line-height: 1.25;
-    cursor: pointer;
-    transition:
-      background 0.15s,
-      border-color 0.15s;
-  }
+  /* Shape, size, border and fill come from `.optchip` (the drawing shared by
+     every multi-select control in this form) and `.tagchip` (the drawing shared
+     by every tag on the site, public pages included), both in global.css. Do
+     not restate them here; what is left below is only what is true of tag chips
+     in this editor alone. */
 
-  tag-selector .tag-chip:hover {
-    background: #333;
-    border-color: #333;
-    color: #fff;
-  }
-
+  /* A picked tag is an .optchip--on that also carries a remove control, so the
+     × needs its own size: at the chip's 0.72rem it reads as a speck rather
+     than something to press.
+     THE NUDGE IS MEASURED, NOT EYEBALLED. Centring the span's BOX leaves the
+     glyph off — `×` is drawn on the maths axis, which is not where the ink
+     centre of a row of capitals sits, and the two also occupy line boxes of
+     different heights. Comparing the two ink centres in Archivo put the × one
+     pixel low at this size; -0.084em of the span's own type is that pixel,
+     expressed so it holds at any size. Re-measure if the chip's type changes. */
   tag-selector .tag-chip span {
     color: inherit;
     opacity: 0.65;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     line-height: 1;
+    letter-spacing: 0;
+    transform: translateY(-0.084em);
   }
 
-  tag-selector .tag-suggestion-chip {
-    font-family: "Archivo", sans-serif;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.45rem 0.6rem;
-    min-height: 2.2rem;
-    border-radius: var(--radius-sm);
-    border: 1.5px solid var(--color-border);
-    color: var(--color-muted);
-    background: #fff;
-    font-size: 0.83rem;
-    font-weight: 400;
-    line-height: 1.25;
-    text-align: center;
-    cursor: pointer;
-    transition:
-      background 0.15s,
-      border-color 0.15s,
-      color 0.15s;
-  }
-
-  tag-selector .tag-suggestion-chip:hover {
-    border-color: #999;
-    color: #333;
-    background: #f5f5f5;
-  }
-
+  /* The heading rows are NOT on the white — the box belongs to the tags. It is
+     drawn on .tag-suggestion-list below, so DISCIPLINES / TOPICS / OTHER stay
+     on the page and only the chips an open group reveals sit on a field. */
   tag-selector .tag-groups {
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 1.1rem;
     margin-top: 0.9rem;
   }
 
+  /* NO BOX OF ITS OWN. The heading and its rule are the whole frame for a
+     group; the groups are told apart by the space between them, inside the
+     panel they share. */
   tag-selector .tag-group {
-    border: 1.5px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: #fff;
-    overflow: hidden;
+    background: transparent;
   }
 
   tag-selector .tag-group-summary {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.55rem 0.8rem;
+    padding: 0 0 0.45rem;
+    border-bottom: 1px solid var(--color-border);
     cursor: pointer;
     list-style: none;
     user-select: none;
-    transition: background 0.15s;
+    transition: color 0.15s;
   }
 
   tag-selector .tag-group-summary::-webkit-details-marker {
     display: none;
   }
 
-  tag-selector .tag-group-summary:hover {
-    background: #fafafa;
-  }
-
-  tag-selector .tag-group-title {
-    font-size: 0.78rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+  tag-selector .tag-group-summary:hover .tag-group-title {
     color: var(--color-dark);
   }
 
-  tag-selector .tag-group-count {
-    font-size: 0.78rem;
+  tag-selector .tag-group-title {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
     color: var(--color-muted);
+    transition: color 0.15s;
+  }
+
+  tag-selector .tag-group-count {
+    font-size: 0.68rem;
+    color: var(--color-muted);
+    opacity: 0.6;
     font-variant-numeric: tabular-nums;
   }
 
@@ -223,10 +176,10 @@ const t = useTranslations(lang);
 
   tag-selector .tag-group-chevron {
     margin-left: auto;
-    width: 8px;
-    height: 8px;
-    border-right: 1.5px solid var(--color-muted);
-    border-bottom: 1.5px solid var(--color-muted);
+    width: 7px;
+    height: 7px;
+    border-right: 1px solid var(--color-muted);
+    border-bottom: 1px solid var(--color-muted);
     transform: rotate(45deg);
     transition: transform 0.15s ease;
     transform-origin: 60% 60%;
@@ -236,31 +189,34 @@ const t = useTranslations(lang);
     transform: rotate(225deg);
   }
 
+  /* Flow, not grid. A fixed three-column grid gave "3D" the same width as
+     "Science Communication" and padded the difference with nothing; wrapping
+     at the words' own width is what makes the list short. No media query is
+     needed for narrow screens — wrapping already is the narrow-screen
+     behaviour. */
+  /* THE WHITE BOX IS HERE, AROUND THE TAGS ONLY. `.input`'s surface exactly —
+     white, 1.5px border, --radius-sm — because this field sits among the
+     form's text inputs and any other white would read as a third kind of
+     field. It is on the list rather than on .tag-groups so the group headings
+     stay on the page: the box is what the chips sit on, not a frame around the
+     whole control. It therefore appears only where an open group has tags to
+     show, which is also the only place it means anything. */
   tag-selector .tag-group .tag-suggestion-list {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.5rem;
-    padding: 0.6rem 0.8rem 0.8rem;
-    border-top: 1.5px solid var(--color-border);
-  }
-
-  tag-selector .tag-group .tag-suggestion-list:empty {
-    padding: 0.6rem 0.8rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 0.55rem;
+    padding: 0.8rem 0.9rem;
+    background: white;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
   }
 
   tag-selector .tag-group .tag-suggestion-list:empty::after {
     content: "—";
-    grid-column: 1 / -1;
-    text-align: center;
     color: var(--color-muted);
     opacity: 0.4;
-    font-size: 0.82rem;
-  }
-
-  @media (max-width: 520px) {
-    tag-selector .tag-group .tag-suggestion-list {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
+    font-size: 0.75rem;
   }
 </style>
 
@@ -274,6 +230,25 @@ const t = useTranslations(lang);
 
   function normalizeTag(value: string): string {
     return value.trim().replace(/^#+/, "").replace(/\s+/g, " ");
+  }
+
+  // ONE read of the registry per page, shared by every selector on it. Until
+  // 2026-09-08 a page held exactly one selector, so each instance reading the
+  // whole `tags` collection for itself cost nothing extra; now the profile
+  // editor clones one per gallery row AND rebuilds every row on each upload,
+  // reorder and remove (renderGallery in ProfileForm.astro), which made that
+  // "one read per instance" into one read per row per edit. The promise is
+  // module state, so it also outlives ClientRouter navigations — the registry
+  // is curated and slow-moving, and a tag this member creates is pushed onto
+  // the shared array below, so every selector on the page sees it at once.
+  // A failed read is forgotten, so the next selector to connect retries.
+  let registryPromise: Promise<TagDoc[]> | null = null;
+  function loadRegistryOnce(): Promise<TagDoc[]> {
+    registryPromise ??= getTags().catch((err) => {
+      registryPromise = null;
+      throw err;
+    });
+    return registryPromise;
   }
 
   class TagSelectorElement extends HTMLElement {
@@ -353,7 +328,7 @@ const t = useTranslations(lang);
 
     private async loadRegistry() {
       try {
-        this.registryTags = await getTags();
+        this.registryTags = await loadRegistryOnce();
         this.renderSuggestions(this.inputEl.value);
       } catch (err) {
         console.warn("[tag-selector] Failed to load tag registry", err);
@@ -370,7 +345,7 @@ const t = useTranslations(lang);
       this._tags.forEach((tag) => {
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.className = "tag-chip";
+        btn.className = "optchip tagchip optchip--on tag-chip";
         btn.dataset.tag = tag;
         btn.textContent = tag;
         const x = document.createElement("span");
@@ -393,7 +368,7 @@ const t = useTranslations(lang);
     private makeSuggestionChip(tag: string): HTMLButtonElement {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "tag-suggestion-chip";
+      btn.className = "optchip tagchip tag-suggestion-chip";
       btn.dataset.tag = tag;
       btn.textContent = tag;
       return btn;

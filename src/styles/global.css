@@ -211,6 +211,64 @@ a:hover {
   text-transform: uppercase;
 }
 
+/* GLOBAL, and it has to be. This rule lived three times over in scoped blocks —
+   ProfileForm, OnboardingForm, MemberTypeSelector — which meant a note printed
+   by a CHILD component (TagSelector's "Up to 7 tags.", VisualNeedsSelector's)
+   matched none of them and rendered at the browser's default paragraph size,
+   larger and darker than every note beside it. One definition, and the notes
+   inside the selectors finally look like notes. */
+.field-note {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+/* THE ADD ROW — a text field and the button that commits it, shared by the
+   three selectors that take a custom value (tags, Open to, Visual needs). The
+   field is the form's `.input` at the small scale these selectors work in, and
+   the button used to be a heavy black block with a 1.3rem "+", which was the
+   loudest thing left in a control made of hairline chips. It is drawn like the
+   chips now — bordered and quiet at rest, filling with ink when pressed, the
+   same "fill means active" language the whole form uses. */
+.addrow {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.addrow .input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 10px;
+  font-size: 0.82rem;
+}
+
+.addbtn {
+  flex-shrink: 0;
+  padding: 0 0.85rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  font-family: "Archivo", sans-serif;
+  font-size: 1.05rem;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.addbtn:hover,
+.addbtn:focus-visible {
+  border-color: var(--color-dark);
+  background: var(--color-dark);
+  color: var(--color-bg);
+}
+
 .input {
   width: 100%;
   max-width: 100%;
@@ -263,6 +321,155 @@ a:hover {
 .upload-status {
   font-size: 0.82rem;
   color: #666;
+}
+
+/* ── The option chip ─────────────────────────────────────────────────────────
+   ONE drawing for every multi-select control in the profile editor and the
+   onboarding wizard: Open to, Visual needs, Languages, Primary audience and
+   Tags. They were three different things before — two of them 999px pills, two
+   of them rounded rectangles carrying a real checkbox, and tags a third size —
+   which made a single form look assembled from three kits.
+
+   A rounded rectangle at --radius-sm is the site's shape, and the fill IS the
+   selected state: no checkbox glyph, because a chip that darkens when you
+   press it already says what it is, and five controls agreeing is worth more
+   than the extra affordance in two of them.
+
+   Add .optchip--on to the element (or let :has(input:checked) do it for a
+   label wrapping a hidden input) — never restate these values locally. Local
+   rules that set size, shape, border or colour here are the bug this block
+   exists to prevent; components keep only their own layout. */
+.optchip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: #555;
+  font-family: "Archivo", sans-serif;
+  font-size: 0.88rem;
+  font-weight: 400;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.optchip:hover {
+  border-color: var(--color-dark);
+  color: var(--color-dark);
+}
+
+.optchip--on,
+.optchip:has(input:checked) {
+  border-color: var(--color-dark);
+  background: var(--color-dark);
+  color: var(--color-bg);
+}
+
+.optchip--on:hover,
+.optchip:has(input:checked):hover {
+  background: #333;
+  border-color: #333;
+}
+
+/* The input stays in the DOM and keeps working — it is what makes the control
+   a checkbox to a screen reader and to the keyboard — it just stops being
+   drawn. Hiding it with display:none would take it out of the tab order, so
+   it is clipped instead, and the chip shows the focus ring on its behalf. */
+.optchip input[type="checkbox"],
+.optchip input[type="radio"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.optchip:has(input:focus-visible),
+.optchip:focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: 2px;
+}
+
+/* TAGS ARE THE ONE DELIBERATE DIFFERENCE. Same shape, same border, same fill,
+   smaller and uppercase — a tag is content that also appears on the public
+   member card, where it is drawn this way, while the other chips are answers
+   to a question on this form and are never seen again. The size is the gallery
+   language switch's (.gallery-lang-btn), which is the editor's own small
+   control.
+   It does NOT take that switch's weight. EN and DE are two glyphs, where a
+   whole tag name in bold uppercase is a bar of ink, and there are up to
+   twenty-five of them in a row. Archivo is variable, so the tag simply keeps
+   .optchip's own 400 and is the lighter for it — which also means weight is
+   one fewer thing that differs between the chips.
+
+   ONE CLASS FOR EVERY TAG ON THE SITE, not just the editor's. A tag is drawn
+   in four places, each of which used to carry its own square 0.68rem version:
+   /members/<slug> (`.mprof__tag`), the community card's disclosure panel
+   (`.pdisc__tag`), the /members index card (`.member-tag`), and the editor's
+   card-face preview (`.ccpv__tag`).
+   The chips BESIDE a tag in those lists — visual needs, links — deliberately
+   keep the square 0.68rem drawing (2026-09-08, Josh: "tags only"), which is
+   why their base rules exclude `.tagchip` rather than being changed. */
+.tagchip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  /* NOT symmetric, and measured. Uppercase type does not fill its line box the
+     way the box implies. Centring it by INK measures out at 2.5px top /
+     3.5px bottom, and that still read high on the page (2026-09-08, Josh:
+     "needs to nudge a bit more to the bottom"), so the type sits a further 1px
+     down from the arithmetic centre — optical, and the eye is the authority
+     here, not the glyph metrics.
+     Because this shifts the whole content box, the × travels with the label and
+     its own measured offset still holds. */
+  padding: 3.5px 8px 2.5px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: "Archivo", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* An unpicked tag carries the PAGE's ground, not the panel's. Every other chip
+   sits directly on the page, where `transparent` already is this colour — but
+   the tag suggestions sit inside the white box, and transparent there let the
+   white through, so the chips read as outlines cut out of the field instead of
+   as objects lying on it.
+   Scoped away from .optchip--on deliberately: at equal specificity this rule
+   comes later in the file, so without the :not() it would overwrite the dark
+   fill of every SELECTED tag.
+   THE COLOUR IS HERE FOR THE SAME REASON, and it is the one that actually bit:
+   with `color` up in .tagchip, a picked tag drew muted grey type on the black
+   fill, because .tagchip is later in this file than .optchip--on. Anything
+   .optchip--on also sets belongs behind this guard, not in .tagchip. */
+.tagchip:not(.optchip--on) {
+  background: var(--color-bg);
+  color: var(--color-muted);
+}
+
+/* A thumb is not 21px tall. Every chip grows its padding where the pointer is
+   coarse; the compact drawing is what a mouse gets. On the public pages the
+   tags are links, so the same reasoning applies there. */
+@media (pointer: coarse) {
+  .tagchip {
+    padding: 6.5px 10px 5.5px;
+  }
 }
 
 /* ── Buttons ── */

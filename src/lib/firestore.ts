@@ -1,5 +1,4 @@
 import { auth, db } from "./firebase.ts";
-import type { GalleryItem } from "./gallery.ts";
 import {
   collection,
   doc,
@@ -43,7 +42,12 @@ export interface UserDoc {
   openTo: string[];
   primaryAudiences: string[];
   tags: string[];
-  gallery: GalleryItem[];
+  /**
+   * Image ids in display order — and nothing else, since 2026-09-07. The
+   * records behind them (images/{imageId}) hold every word and every pixel
+   * dimension; see src/lib/galleryRecords.ts. Was GalleryItem[] before.
+   */
+  gallery: string[];
   /** Institution, lab, studio or company. Public. */
   affiliation?: string;
   /** Free text, e.g. "Zurich, Switzerland". Public. */
@@ -179,11 +183,15 @@ export async function activatePublicProfile(uid: string): Promise<void> {
  * document holding nothing but `active: true`. The directory publishes on
  * `active !== false`, so that would seed a nameless, artwork-less member into
  * the public build. The existence check is the whole point of this function.
+ *
+ * Returns whether a profile was actually activated, so a caller can request
+ * a rebuild only when something just became visible.
  */
-export async function activatePublicProfileIfExists(uid: string): Promise<void> {
+export async function activatePublicProfileIfExists(uid: string): Promise<boolean> {
   const ref = doc(db, "publicProfiles", uid);
-  if (!(await getDoc(ref)).exists()) return;
+  if (!(await getDoc(ref)).exists()) return false;
   await setDoc(ref, { active: true }, { merge: true });
+  return true;
 }
 
 export async function setProfileActive(uid: string, active: boolean): Promise<void> {

@@ -41,4 +41,33 @@ export default defineConfig({
       styles: ["normal", "italic"],
     },
   ],
+  vite: {
+    optimizeDeps: {
+      // Every one of these is reached from an Astro inline <script> — a few by
+      // `await import()`, the rest by a plain `from "…"` inside the script tag.
+      // Vite's cold-start scanner walks neither, so it used to meet them one
+      // page request at a time: each discovery triggers a re-optimize, each
+      // re-optimize bumps the browserHash, and the URLs handed out by the
+      // round before go stale. That churn is what produces a page full of
+      // `504 Outdated Optimize Dep` on gsap and photoswipe — and if the deps
+      // cache is ever rebuilt underneath a running server, the stale hashes
+      // are all that server has left and no reload can recover it.
+      // Naming them here pre-bundles the lot at boot, so there is no discovery
+      // round to go wrong. Add to this list whenever a script imports a new
+      // bare package.
+      include: [
+        'gsap',
+        'gsap/ScrollTrigger',
+        'photoswipe',
+        'photoswipe/lightbox',
+        'embla-carousel',
+        'firebase/app',
+        'firebase/auth',
+        'firebase/firestore',
+        'firebase/storage',
+        'firebase/functions',
+        'firebase/app-check',
+      ],
+    },
+  },
 });

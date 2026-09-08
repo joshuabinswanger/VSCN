@@ -3,9 +3,8 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getFunctions } from "firebase/functions";
-import { getAnalytics, isSupported } from "firebase/analytics";
 import { initializeAppCheck, type AppCheck } from "firebase/app-check";
-import { turnstileProvider } from "./appCheckTurnstile.ts";
+import { turnstileProvider, warmUp } from "./appCheckTurnstile.ts";
 
 const firebaseConfig = {
   apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
@@ -14,7 +13,6 @@ const firebaseConfig = {
   storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.PUBLIC_FIREBASE_APP_ID,
-  measurementId: import.meta.env.PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 // Avoid re-initializing on hot reload
@@ -49,6 +47,18 @@ if (typeof window !== "undefined" && turnstileSiteKey) {
 
 export const appCheck = appCheckInstance;
 
+// Attest now, not at the login click. Auth awaits the App Check token inside
+// its own 30 s request timeout, and on mobile a Turnstile challenge alone can
+// take 15-25 s; started when a login form appears, it overlaps the member's
+// typing and is cached by the time Auth asks (2026-09-08, Chrome on iOS
+// reported "server not reached" — appCheckTurnstile.ts, lessons 2 and 3).
+// Called by the login and sign-up forms only, NOT here: this module runs on
+// every page through the Navbar, and a visitor reading the landing page must
+// not be handed a Turnstile checkbox.
+export function warmUpAppCheck(): void {
+  if (appCheckInstance) warmUp(appCheckInstance);
+}
+
 // True once the Turnstile script has failed to load on this page. The forms
 // ask before calling Auth and show auth.error.code.securityCheckBlocked, so a
 // blocked script is reported in milliseconds rather than after Auth's 30 s
@@ -60,5 +70,10 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
 
-// Analytics only runs in the browser (not during SSR/build)
-export const analytics = isSupported().then((yes) => (yes ? getAnalytics(app) : null));
+// NO ANALYTICS, on purpose (2026-09-08). getAnalytics() used to run here as a
+// side effect of importing this module — which the Navbar does on every page —
+// so gtag.js loaded and two `_ga` cookies were set for every anonymous visitor
+// before any interaction, with no consent and no privacy notice, and the
+// `analytics` export was read nowhere. Under GDPR/ePrivacy that is exactly the
+// case that needs an opt-in banner. Bringing it back means building the
+// consent flow first; the measurement id was removed from the workflows too.

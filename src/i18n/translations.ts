@@ -99,7 +99,7 @@ export const ui: Record<string, Record<string, string>> = {
     "auth.error.code.invalidCredential": "Invalid email or password.",
     "auth.error.code.tooManyRequests": "Too many attempts. Please wait and try again.",
     "auth.error.code.network":
-      "Could not reach the login server. Check your internet connection, and any ad blocker or VPN. On an institutional network (ETH, UZH, another university, a hospital or a company) Google's login service is often blocked by the IT department: ask them to allow identitytoolkit.googleapis.com, or try again from another network.",
+      "Could not reach the login server. Check your internet connection, and any ad blocker or VPN. On an institutional network (ETH, UZH, another university, a hospital or a company) the login server is often blocked by the IT department: ask them to allow identitytoolkit.googleapis.com, the Firebase Authentication service this site uses, or try again from another network.",
     "auth.error.code.appCheck":
       "A security check could not run in your browser. If you use an ad blocker, a privacy extension or a VPN, allow this site and reload the page. On an institutional network (ETH, UZH, another university, a hospital or a company) ask your IT department to allow challenges.cloudflare.com.",
     "auth.error.code.securityCheckBlocked":
@@ -121,9 +121,13 @@ export const ui: Record<string, Record<string, string>> = {
     "verify.checking": "Checking…",
     "verify.notVerified": "Email not verified yet. Check your inbox and click the link.",
     "verify.resend.label": "Didn't get it?",
+    "verify.spam": "Not in your inbox? Check your spam or junk folder.",
     "verify.resend.btn": "Resend email",
-    "verify.resend.msg":
-      "We've sent a link to your email. If you don't see it shortly, please check your spam filter.",
+    // JUST THE CONFIRMATION. It used to end "if you don't see it shortly,
+    // please check your spam filter" — which is now the second half of the
+    // opening sentence on both verify screens (2026-09-08), so a member who
+    // resent was told about the spam folder twice on one screen.
+    "verify.resend.msg": "We've sent a new link to your email.",
     "verify.back": "← Back to sign up",
     "verify.error.generic": "Something went wrong. Please try again.",
     "verify.error.resend": "Could not resend. Please wait a moment and try again.",
@@ -291,6 +295,15 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.verifyForMore":
       "Verify your email to add more images. Check your inbox for the link.",
     "profile.gallery.error": "Could not upload image. Please try again.",
+    // Since 2026-09-07 the words about a picture live on its image record, so a
+    // refused record write loses a caption outright — it is a Save error, not a
+    // console warning, and it names the picture by its position in the gallery.
+    // saveGalleryRecords uses allSettled, so the OTHER images' records may
+    // already have landed — only the profile write was skipped. The tail says
+    // what was NOT saved (the profile), not "nothing".
+    "profile.gallery.saveFailed": "The text for image {n} could not be saved.",
+    "profile.gallery.saveFailed.tail":
+      "Your profile was not saved — please try again.",
     // ONE MESSAGE PER CAUSE (see GalleryErrorCode in src/lib/gallery.ts). The
     // single "please try again" above was wrong advice for most of them — an
     // expired session and a file that will never fit do not improve on a
@@ -360,6 +373,7 @@ export const ui: Record<string, Record<string, string>> = {
     // both on screen at once, so "the line above" no longer names anything.
     "profile.gallery.caption.deNote":
       "Optional. German visitors hear this read aloud in place of the caption; until it's filled in, they hear the English one instead.",
+    "profile.gallery.description.label": "Description",
     "profile.gallery.description": "About this image — how it was made, who it was for, what it shows",
     "profile.gallery.description.de": "Description (German)",
     // Longer than the German caption's example on purpose (2026-09-04, Josh:
@@ -376,6 +390,9 @@ export const ui: Record<string, Record<string, string>> = {
     // Stored without a scheme, like Portfolio: the input carries a fixed
     // https:// prefix, so the placeholder must not repeat one.
     "profile.gallery.link": "Where this image appeared",
+    "profile.gallery.tags": "What's in the picture",
+    "profile.gallery.tagsNote":
+      "Up to 5. The community grid filters by these, so tag what the picture shows, not what you do.",
     "profile.gallery.link.ph": "nature.com/articles/… (optional)",
     "profile.tag.error": "Tags must be unique, 1–50 characters, and no more than 7 tags.",
     "profile.reauth.confirming": "Confirming…",
@@ -408,8 +425,10 @@ export const ui: Record<string, Record<string, string>> = {
       "One image for now — up to 8 once your email is verified.",
     "onboarding.step5.noteUnverifiedFull":
       "That is your one image until your email is verified. You can add the rest from your profile afterwards.",
-    "onboarding.step5.formats":
-      "JPG, PNG or WebP. Captions and descriptions come later, in your profile.",
+    "onboarding.step5.formats": "JPG, PNG or WebP.",
+    "onboarding.step5.cover.title": "Your cover image",
+    "onboarding.step5.cover.note":
+      "The first image is your cover: its proportions set the shape of your card in the directory. Further images, the German versions and the links come later, in your profile.",
     "onboarding.step5.later":
       "Nothing to show yet is a normal answer — your card carries your tags instead, and you can add images any time.",
     "onboarding.step5.skip": "Nothing to show yet",
@@ -424,6 +443,19 @@ export const ui: Record<string, Record<string, string>> = {
       "Note: Your profile may take a moment to appear in the public community feed. You can edit it any time on your profile page.",
     "onboarding.done.edit": "Edit profile",
     "onboarding.done.goCommunity": "Go to community",
+    "onboarding.done.disclaimer.unverified":
+      "Your profile is hidden until you verify your email — the link is in your inbox. Once verified, you appear in the directory automatically.",
+    "onboarding.done.disclaimer.hidden":
+      "Your profile is hidden from the community directory. You can show it any time on the Account tab of your profile.",
+    "onboarding.progress": "Step {n} of {total}",
+    "onboarding.verify.later": "Verify later",
+    "onboarding.visibility.title": "Your visibility",
+    "onboarding.visibility.sub":
+      "Decide whether your profile is listed in the community directory. You can change this any time on the Account tab of your profile.",
+    "onboarding.visibility.label": "Show my profile in the community directory",
+    "onboarding.visibility.locked":
+      "Your profile stays hidden until your email is verified. Once it is, you appear in the directory automatically.",
+    "onboarding.visibility.backToVerify": "Back to verification",
 
     // Onboarding auth step
     "onboarding.auth.title": "Create your account",
@@ -441,6 +473,9 @@ export const ui: Record<string, Record<string, string>> = {
     // Profile active toggle
     "profile.active.label": "Active",
     "profile.active.note": "Should your community card be visible?",
+    "profile.hiddenBanner": "Your profile is hidden from the community directory.",
+    "profile.hiddenBanner.cta": "Change on the Account tab",
+    "profile.verifyBanner.hidden": "Until then your profile is hidden from the directory.",
 
     // Signup CTA
     "signup.cta.info": "Join our community",
@@ -545,7 +580,7 @@ export const ui: Record<string, Record<string, string>> = {
     "auth.error.code.tooManyRequests":
       "Zu viele Versuche. Bitte warte einen Moment und versuche es dann erneut.",
     "auth.error.code.network":
-      "Der Anmeldeserver ist nicht erreichbar. Überprüfe deine Internetverbindung sowie Adblocker und VPN. In Netzwerken von Institutionen (ETH, UZH, andere Hochschulen, Spitäler oder Firmen) ist der Google-Anmeldedienst oft von der IT gesperrt: Bitte sie, identitytoolkit.googleapis.com freizugeben, oder versuche es über ein anderes Netzwerk.",
+      "Der Anmeldeserver ist nicht erreichbar. Überprüfe deine Internetverbindung sowie Adblocker und VPN. In Netzwerken von Institutionen (ETH, UZH, andere Hochschulen, Spitäler oder Firmen) ist der Anmeldeserver oft von der IT gesperrt: Bitte sie, identitytoolkit.googleapis.com freizugeben – den Firebase-Authentication-Dienst, den diese Seite nutzt –, oder versuche es über ein anderes Netzwerk.",
     "auth.error.code.appCheck":
       "Eine Sicherheitsprüfung konnte in deinem Browser nicht ausgeführt werden. Wenn du einen Adblocker, eine Datenschutz-Erweiterung oder ein VPN nutzt, erlaube diese Seite und lade sie neu. In Netzwerken von Institutionen (ETH, UZH, andere Hochschulen, Spitäler oder Firmen) bitte deine IT, challenges.cloudflare.com freizugeben.",
     "auth.error.code.securityCheckBlocked":
@@ -567,9 +602,9 @@ export const ui: Record<string, Record<string, string>> = {
     "verify.notVerified":
       "E-Mail noch nicht bestätigt. Überprüfe deinen Posteingang und klicke auf den Link.",
     "verify.resend.label": "Nicht erhalten?",
+    "verify.spam": "Nicht im Posteingang? Sieh in deinem Spam- oder Junk-Ordner nach.",
     "verify.resend.btn": "E-Mail erneut senden",
-    "verify.resend.msg":
-      "Wir haben einen Link an deine E-Mail gesendet. Falls du ihn nicht siehst, überprüfe bitte deinen Spam-Ordner.",
+    "verify.resend.msg": "Wir haben einen neuen Link an deine E-Mail gesendet.",
     "verify.back": "← Zurück zur Registrierung",
     "verify.error.generic": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
     "verify.error.resend":
@@ -731,6 +766,9 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.verifyForMore":
       "Bestätige deine E-Mail, um weitere Bilder hinzuzufügen. Der Link ist in deinem Posteingang.",
     "profile.gallery.error": "Bild konnte nicht hochgeladen werden. Bitte erneut versuchen.",
+    "profile.gallery.saveFailed": "Der Text zu Bild {n} konnte nicht gespeichert werden.",
+    "profile.gallery.saveFailed.tail":
+      "Das Profil wurde nicht gespeichert – bitte erneut versuchen.",
     "profile.gallery.err.tooBig": "Über 25 MB. Bitte kleiner exportieren.",
     "profile.gallery.err.svg":
       "SVGs können nicht hochgeladen werden. Als PNG oder JPEG exportieren.",
@@ -768,6 +806,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.caption.de.ph": "Beispiel: Zebrafisch-Netzhaut im Querschnitt, konfokal",
     "profile.gallery.caption.deNote":
       "Optional. Wird deutschen Besucher:innen anstelle des Bildtitels vorgelesen; bis er ausgefüllt ist, hören sie den englischen.",
+    "profile.gallery.description.label": "Beschreibung",
     "profile.gallery.description":
       "Über dieses Bild — wie es entstand, für wen, was es zeigt",
     "profile.gallery.description.de": "Beschreibung (Deutsch)",
@@ -776,6 +815,9 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.description.deNote":
       "Optional. Wird deutschen Besucher:innen anstelle der Beschreibung gezeigt; bis sie ausgefüllt ist, lesen sie die englische.",
     "profile.gallery.link": "Wo dieses Bild erschienen ist",
+    "profile.gallery.tags": "Was ist auf dem Bild",
+    "profile.gallery.tagsNote":
+      "Bis zu 5. Das Community-Raster filtert danach, also tagge, was das Bild zeigt, nicht was du machst.",
     "profile.gallery.link.ph": "nature.com/articles/… (optional)",
     "profile.tag.error": "Tags müssen eindeutig sein, 1–50 Zeichen, und maximal 7 Tags.",
     "profile.reauth.confirming": "Wird bestätigt…",
@@ -811,8 +853,10 @@ export const ui: Record<string, Record<string, string>> = {
       "Vorerst ein Bild — bis zu 8, sobald deine E-Mail bestätigt ist.",
     "onboarding.step5.noteUnverifiedFull":
       "Das ist dein eines Bild, bis deine E-Mail bestätigt ist. Die übrigen kannst du danach im Profil ergänzen.",
-    "onboarding.step5.formats":
-      "JPG, PNG oder WebP. Bildtexte und Beschreibungen kommen später, in deinem Profil.",
+    "onboarding.step5.formats": "JPG, PNG oder WebP.",
+    "onboarding.step5.cover.title": "Dein Titelbild",
+    "onboarding.step5.cover.note":
+      "Das erste Bild ist dein Titelbild: seine Proportionen bestimmen die Form deiner Karte im Verzeichnis. Weitere Bilder, die deutschen Fassungen und die Links kommen später, in deinem Profil.",
     "onboarding.step5.later":
       "Noch nichts zu zeigen ist eine ganz normale Antwort — deine Karte trägt dann deine Tags, und Bilder kannst du jederzeit nachreichen.",
     "onboarding.step5.skip": "Noch nichts zu zeigen",
@@ -827,6 +871,19 @@ export const ui: Record<string, Record<string, string>> = {
       "Hinweis: Es kann einen Moment dauern, bis dein Profil im öffentlichen Community-Feed erscheint. Du kannst es jederzeit auf deiner Profilseite bearbeiten.",
     "onboarding.done.edit": "Profil bearbeiten",
     "onboarding.done.goCommunity": "Zur Community",
+    "onboarding.done.disclaimer.unverified":
+      "Dein Profil bleibt verborgen, bis du deine E-Mail bestätigt hast — der Link liegt in deinem Posteingang. Danach erscheinst du automatisch im Verzeichnis.",
+    "onboarding.done.disclaimer.hidden":
+      "Dein Profil ist im Community-Verzeichnis nicht sichtbar. Du kannst es jederzeit im Konto-Tab deines Profils einblenden.",
+    "onboarding.progress": "Schritt {n} von {total}",
+    "onboarding.verify.later": "Später bestätigen",
+    "onboarding.visibility.title": "Deine Sichtbarkeit",
+    "onboarding.visibility.sub":
+      "Entscheide, ob dein Profil im Community-Verzeichnis erscheint. Du kannst das jederzeit im Konto-Tab deines Profils ändern.",
+    "onboarding.visibility.label": "Mein Profil im Community-Verzeichnis zeigen",
+    "onboarding.visibility.locked":
+      "Dein Profil bleibt verborgen, bis deine E-Mail bestätigt ist. Danach erscheinst du automatisch im Verzeichnis.",
+    "onboarding.visibility.backToVerify": "Zurück zur Bestätigung",
 
     // Onboarding auth step
     "onboarding.auth.title": "Konto erstellen",
@@ -845,6 +902,9 @@ export const ui: Record<string, Record<string, string>> = {
     // Profile active toggle
     "profile.active.label": "Aktiv",
     "profile.active.note": "Soll deine Community-Karte sichtbar sein?",
+    "profile.hiddenBanner": "Dein Profil ist im Community-Verzeichnis nicht sichtbar.",
+    "profile.hiddenBanner.cta": "Im Konto-Tab ändern",
+    "profile.verifyBanner.hidden": "Bis dahin ist dein Profil im Verzeichnis nicht sichtbar.",
 
     // Signup CTA
     "signup.cta.info": "Werde Teil unserer Community",

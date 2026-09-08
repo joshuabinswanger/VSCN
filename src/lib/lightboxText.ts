@@ -65,58 +65,69 @@ const GAP = 14;
 /**
  * THE SPACE THE WORDS NEED, RESERVED — the other half of the placement above.
  *
- * PhotoSwipe fits the image inside the viewport MINUS this padding, so these
- * numbers are what stops the artwork from growing over its own caption. They
- * are per-slide, which is the whole trick: `paddingFn` is handed the item's
- * data, so the reserve can follow the SHAPE of the picture even though the
- * words now go in the same place for every shape.
+ * PhotoSwipe fits the image inside the viewport MINUS this padding and then
+ * CENTRES it in what is left, so these two numbers do two jobs at once: their
+ * SUM sets how big the picture comes out, and their DIFFERENCE decides where
+ * it sits. That second job was the bug. The reserve used to be 56 over the
+ * picture and 192 under it, and half of that 136px difference is 68px of lift:
+ * the picture opened 68px above the middle of the window, and what read as
+ * centred was the GROUP — picture and words together, 56px of paper above,
+ * 63px below. Josh, 2026-09-08: "the image only should define the centering of
+ * the content." So top and bottom are now the SAME number.
  *
- * `top` used to clear a 3.5rem top BAR and then the artist line under it. The
- * bar lost its band on 2026-09-06 (Josh: "lose the top bar in lightbox"): the
- * controls are all still there, in a row at the top right, but on the bare
- * paper with no background and no hairline. What `top` clears now is that
- * row's own height — a wide picture must not run under the close word — and
- * the artist line above the picture's left edge fits inside the same height,
- * on the far side of the screen from the controls. 56 is the row (2.75rem)
- * plus air; 44 on a phone (2.25rem). Raise the row in lightbox.css and this
- * has to follow.
+ * THE SUM IS PRESERVED, deliberately: 124 + 124 is the 56 + 192 the old pair
+ * added up to, 156 + 156 the old 56 + 256, 97 + 97 the phone's 44 + 150. The
+ * picture therefore comes out at exactly the size it did before this change
+ * and only moves — the artwork gives up nothing to gain its centre. What pays
+ * instead is the room under it, which is now half the sum rather than all of
+ * the bottom of it: a landscape's words get 124px of it, minus the GAP and a
+ * 16px foot, so ~94px of usable height where they had ~162. A caption with a
+ * description of any length overruns that and falls to the scroll-and-fade in
+ * lightbox.css — routinely, not rarely. That is the accepted price of the
+ * centre; the lever if it ever proves too tight is to raise BOTH numbers
+ * together, which buys height under the picture by taking it off the picture.
  *
- * The bottom figures are measured, not guessed. A worst-case block — a
- * 140-character caption, a 600-character description and a long link —
- * renders 88px tall at a wide landscape measure (~1336px), 119px at 800px, and
- * 227px at 340px; roughly 85,000 ÷ measure, because the words are set at the
- * PICTURE's width and a narrower picture wraps them taller.
+ * `paddingFn` is still handed the item's data, and the reserve still follows
+ * the SHAPE: an upright picture comes out narrow — a 2:3 image in a 900px
+ * window is ~390px wide — and a narrow measure wraps the same words taller,
+ * roughly 85,000 ÷ measure px for a worst-case block (a 140-character caption,
+ * a 600-character description and a long link). 156 against 124 is that
+ * difference, carried over unchanged from the old 256 against 192.
  *
- * 192 for a LANDSCAPE, where the reserve has stood since 09-04: a near-square
- * image fits a ~630px measure, the narrowest a landscape gets, and 176 left
- * 146px of usable height there against ~150 of text — four pixels short,
- * which the browser duly showed as a faded last line. The lesson, still true,
- * is that the binding case is the NARROWEST measure, never the widest.
- *
- * 256 for a PORTRAIT, new on 2026-09-06 with the words moving under it. An
- * upright picture is bound by the window's HEIGHT, so it comes out narrow — a
- * 2:3 image in a 900px window with these reserves is ~390px wide — and a 390px
- * measure wraps the worst case to ~220px. The right-hand column it used to
- * have never met this, because it had the picture's whole height beside it;
- * under the picture the reserve has to buy that height itself. 256 covers 2:3
- * with the gaps. A 1:2 picture (~290px wide, ~290px of text) still overruns and
- * falls to the scroll-and-fade in lightbox.css, which is what that last resort
- * is for: reserving for 1:2 everywhere would take 90px off every landscape
- * picture to serve the rarest shape.
- *
- * MOBILE IS THE ONE THAT CAN OVERRUN, knowingly: 351px of measure needs 227px
- * for that worst case and gets 150, because 227px of an 812px phone screen is
- * a quarter of the display given to text. The block scrolls (see lightbox.css)
- * — and 150 is already more than the 116 the old band reserved, so the case
- * that overruns here overran before as well.
+ * THE TOP IS NO LONGER THE CONTROLS ROW, it merely clears it. The row lost its
+ * band on 2026-09-06 (Josh: "lose the top bar in lightbox") — the close word,
+ * zoom, counter and preloader survive in a cluster at the top right, on bare
+ * paper — and `top` was sized to exactly that row's height, 56 desktop (2.75rem
+ * plus air) and 44 on a phone. Every number here is now comfortably above it,
+ * so the row is a FLOOR rather than the value: nothing in this function may
+ * fall below 56 desktop / 44 phone, or a wide picture runs under the close
+ * word and the artist line above its top-left corner goes with it.
  */
+
+/**
+ * Half of the old top + bottom, per shape, then bumped ~20% — Josh, 2026-09-08
+ * (second pass): "make the image a bit smaller". The symmetry stays exact
+ * (still SAME number top and bottom, still 56/44 as the floor); only the sum
+ * grows, which is the lever the comment above names for buying room under the
+ * picture by taking it off the picture — used here to trim the picture a
+ * little rather than to fit more text.
+ */
+const RESERVE_LANDSCAPE = 150; // was 124 (56 over, 192 under, pre-centring)
+const RESERVE_PORTRAIT = 188; // was 156 (56 over, 256 under, pre-centring)
+const RESERVE_MOBILE = 116; // was 97 (44 over, 150 under, pre-centring)
+
 export function lightboxPadding(viewportSize: Point, itemData: SlideData) {
   const mobile = viewportSize.x <= MOBILE_MAX;
-  if (mobile) return { top: 44, bottom: 150, left: 12, right: 12 };
-  // Under the picture on every shape; an upright one needs more room there,
-  // because it comes out narrower and its words wrap taller.
-  const bottom = isPortrait(itemData.width, itemData.height) ? 256 : 192;
-  return { top: 56, bottom, left: 32, right: 32 };
+  if (mobile) {
+    return { top: RESERVE_MOBILE, bottom: RESERVE_MOBILE, left: 12, right: 12 };
+  }
+  // Equal over and under, so the PICTURE is what sits in the middle of the
+  // window; an upright one reserves more on both sides, because it comes out
+  // narrower and its words wrap taller.
+  const reserve = isPortrait(itemData.width, itemData.height)
+    ? RESERVE_PORTRAIT
+    : RESERVE_LANDSCAPE;
+  return { top: reserve, bottom: reserve, left: 32, right: 32 };
 }
 
 /**

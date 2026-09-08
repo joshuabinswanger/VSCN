@@ -23,14 +23,14 @@ const t = useTranslations(lang);
   <label class="label">{t("profile.visualNeeds.legend")}</label>
   <div id="visualNeeds-chips" class="visualNeeds-chips"></div>
   <div id="visualNeeds-custom-list" class="visualNeeds-custom-list"></div>
-  <div class="visualNeeds-input-row">
+  <div class="addrow visualNeeds-input-row">
     <input
       id="visualNeeds-input"
       type="text"
       class="input"
       placeholder={t("profile.visualNeeds.custom.ph")}
     />
-    <button type="button" class="visualNeeds-add-btn" aria-label={t("profile.visualNeeds.add")}
+    <button type="button" class="addbtn visualNeeds-add-btn" aria-label={t("profile.visualNeeds.add")}
       >+</button
     >
   </div>
@@ -41,11 +41,12 @@ const t = useTranslations(lang);
   visual-needs-selector {
     display: flex;
   }
-
   visual-needs-selector[hidden] {
     display: none;
   }
 
+  /* The chips themselves are `.optchip` in global.css — the drawing shared by
+     every multi-select in this form. Only layout lives here. */
   visual-needs-selector.visual-needs-selector .visualNeeds-chips,
   visual-needs-selector.visual-needs-selector .visualNeeds-custom-list {
     display: flex;
@@ -58,76 +59,11 @@ const t = useTranslations(lang);
     display: none;
   }
 
-  visual-needs-selector.visual-needs-selector .visualNeeds-chip {
-    font-family: inherit;
-    font-size: 0.88rem;
-    padding: 0.45rem 0.9rem;
-    border-radius: 999px;
-    border: 1.5px solid var(--color-border);
-    background: #fff;
-    color: #555;
-    cursor: pointer;
-    transition:
-      background 0.15s,
-      border-color 0.15s,
-      color 0.15s;
-  }
-
-  visual-needs-selector.visual-needs-selector .visualNeeds-chip:hover {
-    border-color: #999;
-    color: #333;
-  }
-
-  visual-needs-selector.visual-needs-selector button.visualNeeds-chip.visualNeeds-chip--selected {
-    background: var(--color-dark);
-    border-color: var(--color-dark);
-    color: #fff;
-  }
-
-  visual-needs-selector.visual-needs-selector button.visualNeeds-custom-chip {
-    font-family: inherit;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.45rem 0.9rem;
-    border-radius: 999px;
-    border: 1.5px solid var(--color-dark);
-    background: var(--color-dark);
-    color: #fff;
-    font-size: 0.88rem;
-    cursor: pointer;
-  }
-
   visual-needs-selector.visual-needs-selector button.visualNeeds-custom-chip span {
     color: inherit;
     opacity: 0.65;
   }
-
-  visual-needs-selector.visual-needs-selector .visualNeeds-input-row {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-  }
-
-  visual-needs-selector.visual-needs-selector .visualNeeds-input-row .input {
-    flex: 1;
-    min-width: 0;
-  }
-
-  visual-needs-selector.visual-needs-selector .visualNeeds-add-btn {
-    flex-shrink: 0;
-    padding: 0 1rem;
-    background: var(--color-dark);
-    color: #fff;
-    border: 1.5px solid var(--color-dark);
-    border-radius: var(--radius-sm);
-    font-size: 1.3rem;
-    font-weight: 300;
-    line-height: 1;
-    cursor: pointer;
-  }
 </style>
-
 <script>
   import { getVisualNeedsOptions } from "../lib/firestore.ts";
   import type { OpenToDoc } from "../lib/firestore.ts";
@@ -224,7 +160,7 @@ const t = useTranslations(lang);
         ...this.presets.map((opt) => {
           const btn = document.createElement("button");
           btn.type = "button";
-          btn.className = "visualNeeds-chip";
+          btn.className = "optchip visualNeeds-chip";
           btn.dataset.need = opt.id;
           btn.setAttribute("aria-pressed", "false");
           btn.textContent = this.lang === "de" ? opt.label_de : opt.label_en;
@@ -242,7 +178,7 @@ const t = useTranslations(lang);
     private syncPresets() {
       this.querySelectorAll<HTMLElement>("[data-need]").forEach((el) => {
         const isOn = !!el.dataset.need && this.selected.has(el.dataset.need);
-        el.classList.toggle("visualNeeds-chip--selected", isOn);
+        el.classList.toggle("optchip--on", isOn);
         el.setAttribute("aria-pressed", String(isOn));
       });
       this.dispatchEvent(new CustomEvent("visual-needs-change", { bubbles: true }));
@@ -255,7 +191,7 @@ const t = useTranslations(lang);
         ...this.custom.map((item) => {
           const btn = document.createElement("button");
           btn.type = "button";
-          btn.className = "visualNeeds-custom-chip";
+          btn.className = "optchip optchip--on visualNeeds-custom-chip";
           btn.textContent = item;
           const remove = document.createElement("span");
           remove.setAttribute("aria-hidden", "true");

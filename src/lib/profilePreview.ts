@@ -276,10 +276,11 @@ function position(template: string | undefined, index: number, total: number): s
  * design, which is why a member with six pictures was previewing a card that
  * could only ever show the first.
  *
- * The typographic face mirrors CommunityTextCard: a framed rectangle of tag
- * lines, falling back tags → member-type label. The role is NOT part of that
- * chain — it always prints in the caption row, and a frame with nothing to
- * hold becomes a rule (see that component for why).
+ * The typographic face came from CommunityTextCard, deleted 2026-09-08 once
+ * neither gallery dealt it: a framed rectangle of tag lines, falling back
+ * tags → member-type label. The role is NOT part of that chain — it always
+ * prints in the caption row, and a frame with nothing to hold becomes a rule
+ * (CommunityCardPreview.astro's style block now carries the reasoning).
  */
 export function renderCardPreview(
   root: HTMLElement,
@@ -313,8 +314,8 @@ export function renderCardPreview(
   const first = works[0];
   const isCarousel = works.length > 1;
 
-  // Same chain as CommunityTextCard's tagLines: tags, else the member-type
-  // label, else nothing — the role is not a rung on it.
+  // The chain CommunityTextCard's tagLines used, and now the only copy of it:
+  // tags, else the member-type label, else nothing — the role is not a rung.
   const typeLabel = vm.memberType
     ? (labels.memberTypeLabels?.[vm.memberType] ?? vm.memberType)
     : "";
@@ -384,14 +385,14 @@ export function renderCardPreview(
             // ignored there; the rest is written anyway, which keeps the shell
             // speaking the card's whole contract rather than a convenient half.
             slide.dataset.workUrl = w.url;
-            slide.dataset.workWidth = String(w.width);
-            slide.dataset.workHeight = String(w.height);
-            if (w.caption?.trim()) slide.dataset.workCaption = w.caption.trim();
+            slide.dataset.pswpWidth = String(w.width);
+            slide.dataset.pswpHeight = String(w.height);
+            if (w.caption?.trim()) slide.dataset.pswpCaption = w.caption.trim();
             // The description, matching the card: the slide dataset is what a
             // real card copies onto its lightbox trigger, and since 2026-09-04
             // there is one description to copy (see profileView.ts).
-            if (w.description) slide.dataset.workDescription = w.description;
-            if (w.link) slide.dataset.workLink = w.link;
+            if (w.description) slide.dataset.pswpDescription = w.description;
+            if (w.link) slide.dataset.pswpLink = w.link;
 
             // A single picture is not a carousel: no group semantics, no
             // position label. Calling one image a carousel would be a lie to a

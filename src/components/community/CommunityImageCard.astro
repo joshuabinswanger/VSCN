@@ -64,20 +64,23 @@ const frameAspect = frame.width / frame.height;
 
 const profileHref = memberHref(lang, member.slug);
 
-// WHAT THE LIGHTBOX GETS, one entry per work. The card's click target is a
-// single link over the frame, so it can only describe ONE image at a time —
-// these ride on the slides instead, and the client script copies the selected
-// slide's set onto the link whenever the carousel moves (see `syncTrigger` in
-// the script). Server-rendered from slide 0, which is what makes the trigger
-// correct before any script runs.
+// WHAT THE LIGHTBOX GETS, one entry per work. EVERY SLIDE IS A LIGHTBOX ITEM
+// (2026-09-08, Josh: "photoswipe should pick all images in the gallery ...
+// not only the currently showing one"): each slide carries the full
+// `data-pswp-*` set the shared text renderer reads (lightboxText.ts), and
+// CommunityGrid's lightbox opens the card's whole carousel from these,
+// starting on the slide the visitor was looking at. The single link over the
+// frame is still the click target and still mirrors the selected slide's set
+// (see `syncTrigger` in communityCarousel.ts) — that keeps its href, and so
+// the no-script fallback, pointing at the picture on screen.
 //
 // The meta line is the member's name and nothing else, exactly as the wall's
 // tile resolves it (CommunityWorkCard): full screen, the card's own name
 // heading is covered, so the name is the one thing the view has lost — and
 // since 2026-09-03 it is a LINK to their page while the lightbox is open, which
 // is the only route out of a full-screen picture to the person who made it.
-// `data-pswp-profile` (written on the trigger below, not per slide — every
-// slide in this card belongs to the same member) is what carries it.
+// `data-pswp-profile` is what carries it — on every slide, because a slide is
+// now a lightbox item in its own right, and on the trigger too.
 const pswpFor = (w: (typeof works)[number]) => ({
   width: String(w.width),
   height: String(w.height),
@@ -180,11 +183,13 @@ const positionFor = (i: number) =>
               aria-label={isCarousel ? positionFor(i) : undefined}
               aria-hidden={isCarousel && i !== 0 ? "true" : undefined}
               data-work-url={w.url}
-              data-work-width={pswpFor(w).width}
-              data-work-height={pswpFor(w).height}
-              data-work-caption={pswpFor(w).caption || undefined}
-              data-work-description={pswpFor(w).description || undefined}
-              data-work-link={pswpFor(w).link || undefined}
+              data-pswp-width={pswpFor(w).width}
+              data-pswp-height={pswpFor(w).height}
+              data-pswp-caption={pswpFor(w).caption || undefined}
+              data-pswp-description={pswpFor(w).description || undefined}
+              data-pswp-link={pswpFor(w).link || undefined}
+              data-pswp-meta={pswpFor(w).meta}
+              data-pswp-profile={profileHref}
             >
               <img
                 class="ccard__img"
@@ -220,18 +225,15 @@ const positionFor = (i: number) =>
           the .ccard__profile block). That pairing — image opens image, a named
           button goes to the person — is the same one the ledger rows use.
 
-          The href is the ORIGINAL upload, which is both what PhotoSwipe binds
-          to and what keeps the link meaningful with scripting off. The
-          data-pswp-* set describes THE SELECTED SLIDE and is rewritten by the
-          script on every carousel move; it is rendered from slide 0 so it is
-          already right before any script runs.
-
-          NO `img` INSIDE IT, unlike the wall's tile: this link is a sibling of
-          the track, because wrapping the track would put the anchor around the
-          arrows and around Embla's container. PhotoSwipe therefore finds no
-          thumbnail to grow out of on its own — the lightbox script hands it
-          the selected slide's image with a `thumbEl` filter, matching on the
-          href this card copies here (see CommunityGrid). */
+          The href is the ORIGINAL upload of THE SELECTED SLIDE, rewritten by
+          the script on every carousel move (rendered from slide 0, so it is
+          right before any script runs). It is what keeps the link meaningful
+          with scripting off, and it is how the lightbox knows which slide to
+          open on: CommunityGrid intercepts the click, gathers every
+          .ccard__slide in this frame as the lightbox's items, and starts on
+          the one whose data-work-url matches this href. The data-pswp-* copy
+          on the link itself is a mirror kept for that contract's readability;
+          the lightbox reads the slides. */
       }
       <a
         class="ccard__frame-link"

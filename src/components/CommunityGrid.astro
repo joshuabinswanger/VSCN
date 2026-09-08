@@ -72,27 +72,43 @@ const t = useTranslations(lang);
 // tag. The artwork test is hasArtwork — the same one that decides who is dealt
 // into the spread and the wall — so the count cannot disagree with the deal.
 //
-// NEITHER COUNT IS PRINTED. The first cut put the view's count behind each tag
-// (members in the ledger, members with artwork in the galleries) and it
-// confused more than it told: the same tag read "5" in one view and "4" in the
-// next, and on production — two members with artwork — most tags would have
-// read "1" (2026-09-07, Josh: "the number displayed is confusing. for now dont
-// put a number behind the tags"). The counts stay on the option because the
-// hiding needs them; "for now" means a count may come back once the galleries
-// are full enough for one to say something.
-const tagIndex = new Map<string, { label: string; members: number; works: number }>();
+// NEITHER OF THOSE TWO IS PRINTED. The first cut put the view's count behind
+// each tag (members in the ledger, members with artwork in the galleries) and
+// it confused more than it told: the same tag read "5" in one view and "4" in
+// the next, and on production — two members with artwork — most tags would
+// have read "1" (2026-09-07, Josh: "the number displayed is confusing. for
+// now dont put a number behind the tags"). The counts stay on the option
+// because the hiding needs them; "for now" means a count may come back once
+// the galleries are full enough for one to say something.
+//
+// A THIRD COUNT, for a THIRD kind of "carries the tag" (2026-09-08, step 2 of
+// documentation/20260907-works-on-the-record-design.md): `worksByTag` is how
+// many WORKS are themselves tagged, which is what the WALL can actually show
+// — since 2026-09-08 the wall's tiles filter by the picture's own tags, not
+// the member's (see workTagsAttr below), so `works` (members-with-artwork
+// carrying a MEMBER tag) is the wrong test for it. `allTags` is the union of
+// both vocabularies: a tag nobody put on their own profile but did put on a
+// picture must still be offered, or the one dropdown could not reach
+// everything the wall can filter by.
+const tagIndex = new Map<string, { label: string; members: number; works: number; worksByTag: number }>();
+const bump = (label: string, field: "members" | "works" | "worksByTag") => {
+  const key = label.toLowerCase();
+  const entry = tagIndex.get(key);
+  if (entry) entry[field] += 1;
+  else tagIndex.set(key, { label, members: 0, works: 0, worksByTag: 0, [field]: 1 });
+};
 for (const m of members) {
   const withArtwork = hasArtwork(m);
   for (const raw of m.tags) {
     const label = raw.trim();
     if (!label) continue;
-    const key = label.toLowerCase();
-    const entry = tagIndex.get(key);
-    if (entry) {
-      entry.members += 1;
-      if (withArtwork) entry.works += 1;
-    } else {
-      tagIndex.set(key, { label, members: 1, works: withArtwork ? 1 : 0 });
+    bump(label, "members");
+    if (withArtwork) bump(label, "works");
+  }
+  for (const w of m.works) {
+    for (const raw of w.tags) {
+      const label = raw.trim();
+      if (label) bump(label, "worksByTag");
     }
   }
 }
@@ -102,6 +118,14 @@ const allTags = [...tagIndex.entries()].sort((a, b) => a[0].localeCompare(b[0]))
 // dropdown can match a whole tag even when another tag contains it.
 const tagsAttr = (m: MemberView) => {
   const keys = [...new Set(m.tags.map((raw) => raw.trim().toLowerCase()).filter(Boolean))];
+  return keys.length ? `|${keys.join("|")}|` : "";
+};
+
+// THE WALL'S OWN VERSION OF tagsAttr — what is IN the picture, not who made
+// it (2026-09-08). Only the wall's tiles use this; the spread's cards and the
+// ledger's rows keep tagsAttr(member) above, unchanged.
+const workTagsAttr = (w: MemberView["works"][number]) => {
+  const keys = [...new Set(w.tags.map((raw) => raw.trim().toLowerCase()).filter(Boolean))];
   return keys.length ? `|${keys.join("|")}|` : "";
 };
 
@@ -127,10 +151,15 @@ const tagsAttr = (m: MemberView) => {
 //
 // NOBODY IS DROPPED FROM THE DIRECTORY. Every member — gallery or no gallery —
 // is a row in the INDEX, which is the view that is about people and the one
-// place the whole membership is reachable. CommunityTextCard.astro is left in
-// the tree, unrendered: it is a finished piece of design that nothing asks for
-// today. `TEXT_TILE` in communityLayout.ts is likewise now unused by both
-// galleries.
+// place the whole membership is reachable. CommunityTextCard.astro — the
+// typographic card those members used to be dealt — was DELETED on 2026-09-08:
+// it was a finished piece of design, but nothing had asked for it since the
+// spread went artwork-only and an unrendered component is a claim about the
+// page that is not true. To bring that cell kind back, deal a second kind here
+// (see the `data-slot` note below) and rebuild the card; git history has the
+// original. `TEXT_TILE` in communityLayout.ts is likewise now unused by both
+// galleries, but it SURVIVES because live code still names it: `layOutSlots`
+// tiles it (with a count of 0) and the module-load validator checks it.
 //
 // TWO GALLERIES, ONE SELECTOR: the two-lane editorial spread (the first view
 // the selector offers, re-dealt on every load) and the brick grid wall,
@@ -277,10 +306,17 @@ const indexMembers = [...members].sort((a, b) =>
                 for the same reason the default view is the one server-rendered
                 visible: it is what a no-JS visitor keeps and what the first
                 frame shows. reflectTagOptions re-derives it from the data
-                attributes for whichever view the URL asks for. No count is
-                printed behind the label — see the tagIndex note above. */
-              allTags.map(([key, { label, members, works }]) => (
-                <li hidden={DEFAULT_VIEW !== "index" && works === 0}>
+                attributes for whichever view the URL asks for — Grid reads
+                data-count-works-by-tag, Spread/strip read data-count-works,
+                the ledger hides nothing. No count is printed behind the
+                label — see the tagIndex note above. */
+              allTags.map(([key, { label, members, works, worksByTag }]) => (
+                <li
+                  hidden={
+                    DEFAULT_VIEW !== "index" &&
+                    (DEFAULT_VIEW === "grid" ? worksByTag : works) === 0
+                  }
+                >
                   <button
                     type="button"
                     class="tag-filter__option"
@@ -288,6 +324,7 @@ const indexMembers = [...members].sort((a, b) =>
                     data-label={label}
                     data-count-members={members}
                     data-count-works={works}
+                    data-count-works-by-tag={worksByTag}
                     aria-pressed="false"
                   >
                     <span>{label}</span>
@@ -409,14 +446,18 @@ const indexMembers = [...members].sort((a, b) =>
         asked for. `hidden` is doing real work here beyond tidiness — it is
         display:none (see .cgrid__cell[hidden]), so none of these images is
         fetched or decoded while any other view is on screen.
-        data-tags is the MEMBER's, so the tag filter narrows the wall by the
-        person behind the work, exactly as it narrows the spread. */
+        data-tags is the WORK's OWN, since 2026-09-08 (step 2 of
+        documentation/20260907-works-on-the-record-design.md) — the wall
+        narrows by what is IN the picture, not by the person behind it, which
+        is why it needed its own count (worksByTag) and its own attribute
+        helper (workTagsAttr) alongside the member ones the spread still
+        uses. */
       workCells.map(({ member, work, key }, i) => (
         <div
           class="cgrid__cell"
           data-slot="work"
           data-rank={i}
-          data-tags={tagsAttr(member)}
+          data-tags={workTagsAttr(work)}
           data-work={key}
           data-row="0"
           data-col="0-0"
@@ -1572,6 +1613,24 @@ const indexMembers = [...members].sort((a, b) =>
       margin-bottom: 1.1rem;
     }
 
+    /* THE DESKTOP CAP, ON THE PHONE'S COLUMNS (2026-09-08, Josh: "very tall
+       images should get a max height in grid view"). The wall above bounds a
+       tile at 1.5 × its width by shadowing --cgrid-row on the cell; down here
+       the multicol had no row unit at all, so CommunityWorkCard's --frame-cap
+       fell through to its no-cap fallback and a 1:3 upload ran the full
+       column width and three columns tall. The cell becomes an inline-size
+       container so the tile can measure it: 100cqw is the column, and the
+       same 1.5 × width + 1.2rem of author line that the desktop rule states.
+       The tile's own width formula (min(100%, cap × aspect)) then narrows
+       tall work, and the static/auto-margin rule below centres it. The deal
+       writes --slot-rows: 1 inline for every wall cell at every breakpoint;
+       the fallback here only agrees with it. */
+    .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
+      container-type: inline-size;
+      --slot-rows: 1;
+      --cgrid-row: calc((1.5 * 100cqw + 1.2rem) / var(--slot-rows, 1));
+    }
+
     .cgrid__cell {
       /* Declared here rather than left to the inline style, and that works
          because the inline style sets --gc/--gr, not grid-column/grid-row:
@@ -2029,15 +2088,18 @@ const indexMembers = [...members].sort((a, b) =>
     }
   }
 
-  /** Whether a gallery has anything to show for a tag — build-stamped on the
-   *  option as data-count-works (see the tagIndex note in the frontmatter).
-   *  False for a tag no option offers, which is the same answer to the caller:
-   *  nothing to show. */
-  function tagHasWorks(tag: string): boolean {
+  /** Whether a gallery VIEW has anything to show for a tag — build-stamped on
+   *  the option as data-count-works (Spread/strip: a member-with-artwork
+   *  carries the tag) or data-count-works-by-tag (Grid, since 2026-09-08: the
+   *  wall filters by the picture's OWN tags — see the tagIndex note in the
+   *  frontmatter). False for a tag no option offers, which is the same answer
+   *  to the caller: nothing to show. */
+  function tagHasWorks(tag: string, mode: LayoutMode): boolean {
     const opt = document.querySelector<HTMLElement>(
       `.tag-filter__option[data-tag="${CSS.escape(tag)}"]`
     );
-    return Number(opt?.dataset.countWorks ?? 0) > 0;
+    const count = mode === "grid" ? opt?.dataset.countWorksByTag : opt?.dataset.countWorks;
+    return Number(count ?? 0) > 0;
   }
 
   /** The panel's LIST for the view on screen — which options it offers —
@@ -2051,20 +2113,22 @@ const indexMembers = [...members].sort((a, b) =>
    *  artwork only since 2026-09-03, so there an option whose members all have
    *  empty galleries is not offered — picking it could only empty the view.
    *  The ledger lists everyone, so it offers every tag. "All tags" (the empty
-   *  key) is always offered. The decision reads the build-stamped
-   *  data-count-works rather than re-counting the cells, so the list is right
-   *  before any deal and the same in every view of one build. Nothing is
-   *  printed behind a label — see the tagIndex note in the frontmatter for why
-   *  the count came off. */
+   *  key) is always offered. The decision reads a build-stamped count rather
+   *  than re-counting the cells, so the list is right before any deal and the
+   *  same in every view of one build — Grid reads data-count-works-by-tag
+   *  (the picture's own tags, since 2026-09-08), Spread/strip keep reading
+   *  data-count-works (2026-09-07). Nothing is printed behind a label — see
+   *  the tagIndex note in the frontmatter for why the count came off. */
   function reflectTagOptions(mode: LayoutMode) {
     const gallery = mode !== "index";
+    const countKey = mode === "grid" ? "countWorksByTag" : "countWorks";
     const search = document.getElementById("tag-filter-search") as HTMLInputElement | null;
     const needle = search?.value.trim().toLowerCase() ?? "";
     document.querySelectorAll<HTMLElement>(".tag-filter__list li").forEach((li) => {
       const opt = li.querySelector<HTMLElement>(".tag-filter__option");
       if (!opt) return;
       const key = opt.dataset.tag ?? "";
-      const works = Number(opt.dataset.countWorks ?? 0);
+      const works = Number(opt.dataset[countKey] ?? 0);
       const workless = gallery && Boolean(key) && works === 0;
       const missed = Boolean(needle) && Boolean(key) && !key.includes(needle);
       li.hidden = workless || missed;
@@ -2351,7 +2415,7 @@ const indexMembers = [...members].sort((a, b) =>
           // it, and tagFilter and the trigger follow from there. A DEEP LINK
           // with such a tag still gets the honest empty state — nothing was
           // chosen on this page for it to undo.
-          if (next !== "index" && tagFilter && !tagHasWorks(tagFilter)) {
+          if (next !== "index" && tagFilter && !tagHasWorks(tagFilter, next)) {
             url.searchParams.delete("tag");
           }
           goTo(url);
@@ -2768,6 +2832,7 @@ const indexMembers = [...members].sort((a, b) =>
 
 <script>
   import PhotoSwipeLightbox from "photoswipe/lightbox";
+  import type { SlideData } from "photoswipe";
   import { lightboxPadding, registerLightboxText } from "../lib/lightboxText.ts";
   import "photoswipe/style.css";
   // Immediately after the package sheet, never before: this is the chrome that
@@ -2824,29 +2889,47 @@ const indexMembers = [...members].sort((a, b) =>
   // every pager on the site is one control.
   const CHEVRON = '<span class="pswp__vscn-chevron" aria-hidden="true"></span>';
 
-  // BOTH VIEWS' TRIGGERS, in one selector. The wall's tile wraps its own
-  // image (.cwork__link); the gallery's card puts a bare link over its
-  // carousel (.ccard__frame-link) and rewrites its data-pswp-* set as the
-  // carousel moves. Only one of the two is ever unhidden — the deal hides the
-  // member cells for the wall and the work cells for the gallery — so the
-  // union never pages through both at once, and `:not([hidden])` keeps the
-  // filter's rejects out of the count as well.
+  // THE WALL'S TRIGGERS. The wall's tile wraps its own image (.cwork__link),
+  // one per work, so PhotoSwipe can page the whole wall straight off the DOM.
+  // `:not([hidden])` keeps the filter's rejects — and the gallery's member
+  // cells, which the deal hides for the wall — out of the count.
+  const WALL_TRIGGERS = ".cgrid__cell:not([hidden]) .cwork__link";
+
+  // THE GALLERY'S TRIGGER is NOT in that list, since 2026-09-08. The card puts
+  // one bare link over its carousel (.ccard__frame-link), and as a PhotoSwipe
+  // child that link was ONE item — the lightbox paged from card to card,
+  // showing each member's currently selected picture and nothing else of
+  // theirs (Josh: "photoswipe should pick all images in the gallery ... not
+  // only the currently showing one"). So the gallery's click is intercepted
+  // below (openCard) and the lightbox is handed the card's SLIDES instead:
+  // every image the carousel holds, opened on the one that was showing.
   //
-  // THE GALLERY'S TRIGGER WAS MISSING HERE until 2026-09-01, which is what
+  // THE GALLERY'S TRIGGER WAS MISSING ENTIRELY until 2026-09-01, which is what
   // "the lightbox is broken in Gallery" was: PhotoSwipe swallows the click on
   // a gallery it owns even when the selector matches nothing, so pressing an
-  // image did not open the lightbox AND did not follow the link either.
-  const TRIGGERS = ".cgrid__cell:not([hidden]) .cwork__link, .cgrid__cell:not([hidden]) .ccard__frame-link";
+  // image did not open the lightbox AND did not follow the link either. The
+  // interceptor is what stands in for it now; if it ever fails to bind, the
+  // link falls through to its href and opens the original in a new tab.
+  const CARD_TRIGGER = ".ccard__frame-link";
 
   // Rebuilt per navigation: ClientRouter swaps the document, so a lightbox
   // bound to the previous page's grid would be holding a dead element.
   let lightbox: PhotoSwipeLightbox | null = null;
+  // The gallery card's click interceptor (see openCard), unbound whenever the
+  // lightbox it feeds is torn down.
+  let cardListener: { grid: HTMLElement; openCard: (e: MouseEvent) => void } | null = null;
 
-  document.addEventListener("astro:page-load", () => {
+  const teardown = () => {
     lightbox?.destroy();
     lightbox = null;
+    cardListener?.grid.removeEventListener("click", cardListener.openCard, true);
+    cardListener = null;
+  };
+
+  document.addEventListener("astro:page-load", () => {
+    teardown();
     const grid = document.getElementById("member-grid");
-    if (!grid || !grid.querySelector(TRIGGERS)) return;
+    if (!grid || !grid.querySelector(`${WALL_TRIGGERS}, ${CARD_TRIGGER}`)) return;
 
     let strings = FALLBACK;
     try {
@@ -2859,7 +2942,7 @@ const indexMembers = [...members].sort((a, b) =>
 
     lightbox = new PhotoSwipeLightbox({
       gallery: "#member-grid",
-      children: TRIGGERS,
+      children: WALL_TRIGGERS,
       pswpModule: () => import("photoswipe"),
 
       // ── Chrome. Identical to the member page's, on purpose — nothing below
@@ -2895,34 +2978,83 @@ const indexMembers = [...members].sort((a, b) =>
         : {}),
     });
 
-    // ── THE GALLERY CARD'S ZOOM-OUT TARGET ────────────────────────────────
-    // PhotoSwipe finds the thumbnail it grows out of by looking for an `img`
-    // INSIDE the trigger. The wall's tile wraps its image, so it needs
-    // nothing; the gallery card's link is a bare overlay next to the carousel
-    // track, so without help it has nothing to animate from and opens with a
-    // flat fade — one gesture, two different openings. These two filters hand
-    // it the slide the visitor is actually looking at, which is the one whose
-    // work URL the carousel copied onto the link (see CommunityImageCard's
-    // syncTrigger). Matching on that URL rather than on an index keeps this
-    // module ignorant of Embla, exactly like the rest of the pair's contract.
-    lightbox.addFilter("thumbEl", (thumbEl, itemData) => {
-      const trigger = itemData.element as HTMLElement | undefined;
-      if (thumbEl || !trigger?.classList.contains("ccard__frame-link")) return thumbEl;
-      const frame = trigger.parentElement;
-      const href = trigger.getAttribute("href");
-      const slide =
-        frame?.querySelector<HTMLElement>(`.ccard__slide[data-work-url="${CSS.escape(href || "")}"]`) ??
-        frame?.querySelector<HTMLElement>(".ccard__slide");
-      return slide?.querySelector<HTMLImageElement>(".ccard__img") ?? thumbEl;
-    });
+    // ── THE GALLERY CARD OPENS AS A WHOLE ─────────────────────────────────
+    // Bound in the CAPTURE phase on the grid, so it runs before PhotoSwipe's
+    // own click listener on the same element and can stop the event reaching
+    // it. What PhotoSwipe would do with the click (nothing — the card's link
+    // is no longer one of its children) is beside the point; what matters is
+    // that the link's default, opening the original in a new tab, is
+    // prevented here and only here.
+    //
+    // The items are the frame's .ccard__slide elements, read into SlideData by
+    // hand rather than handed over as elements: PhotoSwipe's own DOM parser
+    // only reads a slide that contains an <a>, and these deliberately do not
+    // (the one link is a sibling of the track — see the card). Each slide
+    // carries the full data-pswp-* set, and `element` is the slide itself,
+    // which is what makes the two shared renderers just work: lightboxText
+    // reads the text off `data.element.dataset`, and PhotoSwipe finds the
+    // thumbnail to grow out of with `element.querySelector("img")` — the
+    // slide's own picture, cropped to the frame (hence thumbCropped).
+    //
+    // The starting slide is the one whose work URL the carousel copied onto
+    // the link's href (communityCarousel's syncTrigger). Matching on the URL
+    // rather than on an index keeps this module ignorant of Embla, exactly
+    // like the rest of the pair's contract.
+    //
+    // Same escape hatches as PhotoSwipe's own handler: a modified click
+    // (ctrl/cmd/shift/alt, middle button) keeps its browser meaning, and a
+    // click while a lightbox is already open does nothing.
+    const openCard = (e: MouseEvent) => {
+      const trigger = (e.target as Element | null)?.closest<HTMLAnchorElement>(CARD_TRIGGER);
+      if (!trigger || !lightbox) return;
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button === 1) return;
+      if (lightbox.pswp) return;
 
-    // The card's frame is a fixed shape and the image fills it with
-    // object-fit: cover, so the thumbnail on screen is a CROP of the picture
-    // the lightbox shows. Saying so is what makes the zoom start from the
-    // visible crop instead of from a letterboxed ghost of the full frame.
-    lightbox.addFilter("domItemData", (itemData, element) => {
-      if (element.classList.contains("ccard__frame-link")) itemData.thumbCropped = true;
-      return itemData;
+      const frame = trigger.parentElement;
+      const slides = Array.from(frame?.querySelectorAll<HTMLElement>(".ccard__slide") ?? []);
+      if (!slides.length) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const href = trigger.getAttribute("href") ?? "";
+      const start = Math.max(0, slides.findIndex((s) => s.dataset.workUrl === href));
+
+      const items: SlideData[] = slides.map((slide) => {
+        const img = slide.querySelector<HTMLImageElement>(".ccard__img");
+        // A lazy slide's <img> has no src yet (data-src, see the card): no
+        // placeholder then, rather than a broken one.
+        const msrc = img?.currentSrc || img?.src || undefined;
+        return {
+          src: slide.dataset.workUrl,
+          width: Number(slide.dataset.pswpWidth) || 0,
+          height: Number(slide.dataset.pswpHeight) || 0,
+          msrc,
+          alt: img?.alt ?? "",
+          thumbCropped: true,
+          element: slide,
+        };
+      });
+
+      // Keyboard "clicks" arrive with no coordinates; PhotoSwipe reads a null
+      // point as "no zoom origin" and falls back to the thumbnail's bounds.
+      const point = e.clientX || e.clientY ? { x: e.clientX, y: e.clientY } : null;
+      lightbox.loadAndOpen(start, items, point);
+    };
+    grid.addEventListener("click", openCard, true);
+    cardListener = { grid, openCard };
+
+    // THE CARD FOLLOWS. Every time the lightbox lands on one of a card's
+    // slides — opening included — the carousel underneath is told, and turns
+    // to the same picture (communityCarousel listens for this on the
+    // carousel). Closing then zooms out onto the image the visitor was
+    // looking at, not onto the one they opened; and the card is left showing
+    // where they got to.
+    lightbox.on("change", () => {
+      const el = lightbox?.pswp?.currSlide?.data.element;
+      if (el?.classList.contains("ccard__slide")) {
+        el.dispatchEvent(new CustomEvent("vscn:carousel-show", { bubbles: true }));
+      }
     });
 
     // The artist line, the caption, the description and the link — all of it
@@ -2934,8 +3066,5 @@ const indexMembers = [...members].sort((a, b) =>
     lightbox.init();
   });
 
-  document.addEventListener("astro:before-swap", () => {
-    lightbox?.destroy();
-    lightbox = null;
-  });
+  document.addEventListener("astro:before-swap", teardown);
 </script>

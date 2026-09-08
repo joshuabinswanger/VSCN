@@ -17,11 +17,20 @@ const prefix = lang === "de" ? "/de" : "";
 <div id="ob-loading" class="ob-loading">{t("profile.loading")}</div>
 
 <div id="onboarding-wrap" class="onboarding-wrap" data-lang={lang} style="display:none;">
+  {
+    /* EMPTY UNTIL setStep FILLS IT, and that is the honest state rather than a
+      missing one: how many steps there are depends on whether this account
+      still has to verify its email, which is not known until the auth guard
+      has run — and #onboarding-wrap stays display:none until it has, so
+      nothing here is ever seen unfilled. It used to ship "1 / 5" and a 20%
+      bar, which were a different format and the wrong count by the time the
+      closing steps landed (2026-09-08). */
+  }
   <div id="ob-progress" class="ob-progress">
     <div class="ob-progress-bar">
-      <div id="ob-progress-fill" class="ob-progress-fill" style="width:20%"></div>
+      <div id="ob-progress-fill" class="ob-progress-fill" style="width:0"></div>
     </div>
-    <span id="ob-progress-text" class="ob-progress-text">1 / 5</span>
+    <span id="ob-progress-text" class="ob-progress-text"></span>
   </div>
 
   <p id="ob-error" class="msg-err" style="display:none;"></p>
@@ -191,9 +200,22 @@ const prefix = lang === "de" ? "/de" : "";
       <p class="ob-sub">{t("onboarding.step3.sub")}</p>
     </header>
     <div class="ob-fields">
-      <div class="field">
+      {
+        /* Wrapped and identified since the gallery step grew a SECOND
+          selector on 2026-09-08 (the cover image's tags). The script used to
+          reach this one with a bare `tag-selector` query, which means "the
+          first one in the document" — true only by the accident that this
+          step is written above that one. Both are scoped by wrapper now. */
+      }
+      <div class="field" id="ob-member-tags-field">
         <label class="label" for="ob-tag-input">{t("profile.label.tags")}</label>
         <TagSelector lang={lang} maxTags={7} inputId="ob-tag-input" />
+        {
+          /* The cap, stated by the field that sets it — TagSelector stopped
+            asserting a number it cannot know (see the note in its markup).
+            Here it is the only word on the subject, so it stays. */
+        }
+        <p class="field-note">{t("profile.note.tags")}</p>
       </div>
     </div>
     <div class="ob-footer ob-footer--with-skip">
@@ -301,15 +323,163 @@ const prefix = lang === "de" ? "/de" : "";
         <p class="field-note">{t("onboarding.step5.formats")}</p>
         <p id="ob-gallery-later" class="field-note">{t("onboarding.step5.later")}</p>
       </div>
+
+      {
+        /* THE COVER IMAGE'S WORDS, ASKED FOR HERE (2026-09-08, Josh: "already
+          expose the image title and description and tags for the first image
+          upload"). Until today this step took the bytes and nothing else, and
+          the note under it promised that captions "come later, in your
+          profile" — so the picture that becomes the member's card in the
+          directory arrived untitled, undescribed and untagged, and the wall
+          filters by exactly those tags.
+
+          THE FIRST IMAGE ONLY, and that is not a shortcut: an unverified
+          account may hold exactly one gallery image
+          (MAX_UNVERIFIED_GALLERY_IMAGES), so for most members arriving here
+          the first image IS the gallery; the first image is also the card's
+          cover, whose proportions draw the card; and a form per image would
+          make this step the profile editor. Everything else about every
+          image — the German pair, the link, the order — stays in the editor,
+          and the note below says so.
+
+          Hidden until an image exists: there is nothing to name before then.
+          `hidden`, not display:none, so renderGallery owns the one flag. */
+      }
+      <div class="ob-cover" id="ob-cover-fields" hidden>
+        <div class="ob-cover-header">
+          <p class="label">{t("onboarding.step5.cover.title")}</p>
+          <p class="field-note">{t("onboarding.step5.cover.note")}</p>
+        </div>
+        <div class="field">
+          <label class="label" for="ob-img-caption">{t("profile.gallery.caption")}</label>
+          <input
+            id="ob-img-caption"
+            type="text"
+            class="input"
+            placeholder={t("profile.gallery.caption.ph")}
+          />
+          <p class="field-note">{t("profile.gallery.captionNote")}</p>
+        </div>
+        {
+          /* THE LONG PROMPT IS A NOTE, NOT THE LABEL. In the editor "About
+            this image — how it was made, who it was for, what it shows" is an
+            aria-label on an unlabelled row; set as a visible `.label` here it
+            rendered as a shouted uppercase sentence three-quarters the width
+            of the form. So the label names the field and the sentence keeps
+            its job as guidance, in the voice every other note on this step
+            uses. No placeholder, like the editor's. */
+        }
+        <div class="field">
+          <label class="label" for="ob-img-description"
+            >{t("profile.gallery.description.label")}</label
+          >
+          <textarea id="ob-img-description" class="input textarea" rows="3"></textarea>
+          <p class="field-note">{t("profile.gallery.description")}</p>
+        </div>
+        {
+          /* WHAT IS IN THE PICTURE, not who made it. Same element, same
+            curated registry as the member's own tags two steps back, capped
+            at 5 like the editor's per-image selector — and read by the
+            community wall's filter, which is why it is worth asking now
+            rather than leaving the first artwork in the directory
+            untaggable. */
+        }
+        <div class="field" id="ob-image-tags-field">
+          <label class="label" for="ob-img-tags">{t("profile.gallery.tags")}</label>
+          <TagSelector lang={lang} maxTags={5} inputId="ob-img-tags" />
+          <p class="field-note">{t("profile.gallery.tagsNote")}</p>
+        </div>
+      </div>
     </div>
     <div class="ob-footer ob-footer--with-skip">
       <button id="ob-skip-5" type="button" class="btn-link">{t("onboarding.step5.skip")}</button>
+      <button id="ob-next-5" type="button" class="btn-solid">{t("onboarding.nav.next")}</button>
+    </div>
+  </div>
+
+  {
+    /* Step 6: Verify your email (2026-09-08, Josh: "step in onboarding … the
+    verify step"). The same screen as /verify-email, inside the wizard, so a
+    member is asked to open their inbox at the point where the answer matters
+    — the next step can only publish a verified account — rather than by a
+    banner they can read past. Placed after the gallery so the mail has had
+    the whole wizard to arrive. Shown only to an unverified account; a
+    verified one steps straight from the gallery to visibility, and setStep
+    leaves this out of the count for them. "Verify later" is a real exit:
+    the standalone page stays for the emailed link, and the banner above the
+    wizard keeps offering the resend on every other step. */
+  }
+  <div class="onboarding-step" data-step="6" style="display:none;">
+    <header class="ob-header">
+      <h1 class="ob-title">{t("verify.title")}</h1>
+      {
+        /* THE SPAM LINE IS PART OF THE OPENING SENTENCE (2026-09-08, Josh:
+          "put the Spam notice in the first sentence"). It stood as its own
+          quiet note further down, under the button — which is where a member
+          looks only after the link has failed to arrive, and by then they
+          have already decided the mail is missing. Where the address is named
+          is where "and if it is not there, look in spam" belongs. */
+      }
+      <p class="ob-sub">
+        {t("verify.sub")} <strong id="ob-verify-email"></strong>{t("verify.sub.suffix")}
+        {t("verify.spam")}
+      </p>
+    </header>
+    <div class="ob-fields">
+      <div class="ob-verify-actions">
+        <button id="ob-verify-check" type="button" class="btn-solid">{t("verify.cta")}</button>
+        <p id="ob-verify-status" class="msg-err" style="display:none;"></p>
+        <p class="ob-verify-resend">
+          <span>{t("verify.resend.label")}</span>
+          <button id="ob-verify-resend" type="button" class="btn-link">{t("verify.resend.btn")}</button>
+        </p>
+        <p id="ob-verify-resent" class="msg-ok" style="display:none;">{t("verify.resend.msg")}</p>
+      </div>
+    </div>
+    <div class="ob-footer ob-footer--with-skip">
+      <button id="ob-skip-6" type="button" class="btn-link">{t("onboarding.verify.later")}</button>
+      <span></span>
+    </div>
+  </div>
+
+  {
+    /* Step 7: Your visibility (2026-09-08, Josh: "a step where you can set
+    your account active"). The one deliberate act the wizard asks for: being
+    listed. Ticked by default, because being visible is the default and
+    hiding is the choice (2026-09-04, "it should be an active task to untick
+    it") — until today that default was written silently at the bridge and
+    again at Finish, so a member never saw it. An unverified account cannot be
+    published (canPublish in firestore.rules), so for them the box is locked
+    off and the note says so, with the way back to the verification step;
+    verifying is what publishes them, through the emailed link. */
+  }
+  <div class="onboarding-step" data-step="7" style="display:none;">
+    <header class="ob-header">
+      <h1 class="ob-title">{t("onboarding.visibility.title")}</h1>
+      <p class="ob-sub">{t("onboarding.visibility.sub")}</p>
+    </header>
+    <div class="ob-fields">
+      <div class="field">
+        <label class="checkbox-label" for="ob-active">
+          <input id="ob-active" type="checkbox" checked />
+          <span>{t("onboarding.visibility.label")}</span>
+        </label>
+        <p class="field-note">{t("profile.active.note")}</p>
+      </div>
+      <p id="ob-visibility-locked" class="ob-notice" style="display:none;">
+        {t("onboarding.visibility.locked")}
+        <button id="ob-visibility-verify" type="button" class="btn-resend-verify"
+          >{t("onboarding.visibility.backToVerify")}</button
+        >
+      </p>
+    </div>
+    <div class="ob-footer">
       <button id="ob-finish" type="button" class="btn-solid">{t("onboarding.nav.finish")}</button>
     </div>
   </div>
 
-  <!-- Step 6: Done -->
-  <div class="onboarding-step ob-done" data-step="6" style="display:none;">
+  <!-- Step 8: Done -->
+  <div class="onboarding-step ob-done" data-step="8" style="display:none;">
     <header class="ob-header ob-done-header">
       <h1 class="ob-title">{t("onboarding.done.title")}</h1>
       <p class="ob-sub">{t("onboarding.done.sub")}</p>
@@ -317,7 +487,14 @@ const prefix = lang === "de" ? "/de" : "";
     <div class="ob-done-card">
       <CommunityCardPreview />
     </div>
-    <p class="ob-done-disclaimer">{t("onboarding.done.disclaimer")}</p>
+    {
+      /* Filled by finishToPreview from what is actually true of the profile
+        it just wrote: listed, hidden by choice, or hidden until verified. The
+        one sentence it used to carry ("may take a moment to appear") was told
+        to every member, including the ones whose profile was not going to
+        appear at all (2026-09-08, Josh: "disclaimer when inactive"). */
+    }
+    <p id="ob-done-disclaimer" class="ob-notice">{t("onboarding.done.disclaimer")}</p>
     <div class="ob-footer ob-footer--done">
       <a href={`${prefix}/profile`} class="btn-outline">{t("onboarding.done.edit")}</a>
       <a href={`${prefix}/community`} class="btn-solid">{t("onboarding.done.goCommunity")}</a>
@@ -325,17 +502,16 @@ const prefix = lang === "de" ? "/de" : "";
   </div>
 </div>
 
-<div id="ob-verify-banner" class="verify-banner" style="display:none;">
-  <p class="verify-banner-text">
-    {t("profile.verifyBanner")}
-    <button id="ob-resend-verify" type="button" class="btn-resend-verify"
-      >{t("profile.verifyResend")}</button
-    >
-  </p>
-  <p id="ob-verify-sent" class="verify-banner-sent" style="display:none;">
-    {t("profile.verifySent")}
-  </p>
-</div>
+{
+  /* THE VERIFY BANNER IS GONE FROM THE WIZARD (2026-09-08, Josh: "the verify
+    your email box should only appear once in the profile view not during
+    onboarding"). The amber strip rode along under every step, asking for
+    something the wizard now has a whole step for — so an unverified member
+    was told twice on the way to that step and, on the step itself, would have
+    read the same sentence above the screen making the same request. /profile
+    keeps its copy, where it is the only thing that can ask. Resending lives
+    on the verify step and on /verify-email. */
+}
 
 <style>
   .ob-loading {
@@ -344,34 +520,10 @@ const prefix = lang === "de" ? "/de" : "";
     font-size: 0.9rem;
   }
 
-  .field-note {
-    margin-top: 0;
-    font-size: 0.78rem;
-    line-height: 1.5;
-    color: var(--color-muted);
-  }
 
-  .verify-banner {
-    width: 100%;
-    max-width: 500px;
-    margin: 0 auto clamp(1.5rem, 3vw, 2.5rem);
-    padding: 0.75rem 1rem;
-    background: #fffbeb;
-    border: 1.5px solid #f59e0b;
-    border-radius: var(--radius-sm);
-    box-sizing: border-box;
-  }
-
-  .verify-banner-text {
-    margin: 0;
-    font-size: 0.88rem;
-    color: #92400e;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-  }
-
+  /* The amber banner's own rules went with it; what survives is the quiet
+     link inside it, because the visibility step's way back to verification
+     wears the same face (see .ob-notice .btn-resend-verify below). */
   .btn-resend-verify {
     background: none;
     border: none;
@@ -389,51 +541,52 @@ const prefix = lang === "de" ? "/de" : "";
     color: #78350f;
   }
 
-  .verify-banner-sent {
-    margin: 0.4rem 0 0;
-    font-size: 0.82rem;
-    color: #65a30d;
-  }
-
+  /* THE WIZARD SITS FLAT ON THE PAGE (2026-09-08, Josh: "restyle onboarding
+     … white boxes are obsolete"). From 560px up it was a white rounded sheet
+     with its own padding, a card drawn around a form; the profile editor lost
+     the same sheet on 2026-09-02 and this is the form a member meets first,
+     so it now reads as the same page as the one they edit in afterwards:
+     the editor's 560px measure, the page ground, no border. */
   .onboarding-wrap {
     width: 100%;
-    max-width: 500px;
+    max-width: 560px;
     margin: clamp(2rem, 4vw, 4rem) auto;
     padding: 0 15px;
     box-sizing: border-box;
 
-    @media (min-width: 560px) {
-      background: #fff;
-      border: 1.5px solid #ebebeb;
-      border-radius: var(--radius-xl);
-      padding: clamp(2rem, 4vw, 3rem);
+    @media (--bp-desktop) {
+      padding: 0;
     }
   }
 
+  /* Progress in the editor's tab voice — the same uppercase, spaced, muted
+     caption its section tabs use, over a hairline in the border colour with
+     the dark part travelled. It was a 3px grey bar with "1 / 5" beside it. */
   .ob-progress {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
+    flex-direction: column;
+    gap: 0.6rem;
     margin-bottom: 2rem;
   }
 
   .ob-progress-bar {
-    flex: 1;
-    height: 3px;
-    background: #eee;
-    border-radius: 2px;
+    width: 100%;
+    height: 2px;
+    background: var(--color-border);
     overflow: hidden;
   }
 
   .ob-progress-fill {
     height: 100%;
     background: var(--color-dark);
-    border-radius: 2px;
     transition: width 0.4s ease;
   }
 
   .ob-progress-text {
     font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     color: var(--color-muted);
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
@@ -460,10 +613,52 @@ const prefix = lang === "de" ? "/de" : "";
     margin-top: 0;
   }
 
+  /* The editor's rhythm (its form grid runs at 2rem); 3rem was the sheet's
+     air, and without the sheet it read as fields drifting apart. */
   .ob-fields {
     display: flex;
     flex-direction: column;
-    gap: 3rem;
+    gap: 2rem;
+  }
+
+  /* The editor's checkbox row, for the visibility step. */
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.95rem;
+    color: #333;
+    cursor: pointer;
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-dark);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .checkbox-label:has(input:disabled) {
+    color: var(--color-muted);
+    cursor: default;
+  }
+
+  /* The verify step's controls — the standalone page's column, one gap. */
+  .ob-verify-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+  }
+
+  .ob-verify-resend {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--color-muted);
   }
 
   .ob-footer {
@@ -581,9 +776,13 @@ const prefix = lang === "de" ? "/de" : "";
     margin-top: 0.4rem;
   }
 
-  /* Gallery (step 5) — thumbnails only. The profile editor is where an image
-     gets a caption, a description and a project; asking for any of that here
-     would turn one question into four. */
+  /* Gallery (step 5). Thumbnails, and — since 2026-09-08 — the words for the
+     FIRST of them, under .ob-cover below. The note that used to stand here
+     said the editor was the only place an image got a caption, a description
+     and a project; projects are gone, and the cover's three fields are asked
+     for here now, because the cover is the card. What the editor still owns
+     alone: the German pair, the per-image link, the order, and every image
+     after the first. */
   .ob-gallery-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
@@ -642,6 +841,25 @@ const prefix = lang === "de" ? "/de" : "";
 
   .ob-gallery-grid :global(.ob-gallery-thumb-remove:hover) {
     background: var(--color-error);
+  }
+
+  /* The cover image's three fields. A hairline, not a box: this is a second
+     question inside one step, and a panel around it would be the sheet this
+     form just lost. Its own 1.5rem rhythm — tighter than .ob-fields' 2rem,
+     because these three belong to each other more than they belong to the
+     step. */
+  .ob-cover {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .ob-cover-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
   }
 
   /* Reuse ProfileForm field/tag styles */
@@ -747,8 +965,11 @@ const prefix = lang === "de" ? "/de" : "";
     margin-bottom: 1.25rem;
   }
 
-  .ob-done-disclaimer {
-    margin: 0 0 1.5rem;
+  /* One notice, two homes: the Done step's disclaimer and the visibility
+     step's locked note. Amber like the verify banner, because both of them
+     are about the same thing — a profile the directory is not showing. */
+  .ob-notice {
+    margin: 0;
     padding: 0.75rem 1rem;
     background: #fffbeb;
     border: 1.5px solid #fde68a;
@@ -756,6 +977,15 @@ const prefix = lang === "de" ? "/de" : "";
     color: #92400e;
     font-size: 0.85rem;
     line-height: 1.5;
+  }
+
+  .ob-done .ob-notice {
+    margin-bottom: 1.5rem;
+  }
+
+  .ob-notice .btn-resend-verify {
+    font-size: inherit;
+    margin-left: 0.35rem;
   }
 
   .ob-footer--done {
@@ -771,7 +1001,7 @@ const prefix = lang === "de" ? "/de" : "";
 </style>
 
 <script>
-  import { auth, isSecurityCheckBlocked } from "../lib/firebase.ts";
+  import { auth, isSecurityCheckBlocked, warmUpAppCheck } from "../lib/firebase.ts";
   import {
     onAuthStateChanged,
     createUserWithEmailAndPassword,
@@ -790,8 +1020,7 @@ const prefix = lang === "de" ? "/de" : "";
     updateUserProfile,
     publishCurrentUserProfile,
     upsertOnboardingRequest,
-    activatePublicProfile,
-    activatePublicProfileIfExists,
+    setProfileActive,
     isMemberType,
     MEMBER_TYPES,
   } from "../lib/firestore.ts";
@@ -814,11 +1043,19 @@ const prefix = lang === "de" ? "/de" : "";
   // → write the array to Firestore. Nothing here re-implements any of it.
   import {
     MAX_GALLERY_IMAGES,
+    MAX_GALLERY_CAPTION,
+    MAX_GALLERY_DESCRIPTION,
     galleryLimit,
     validateGalleryFile,
     galleryErrorCode,
     compressGalleryImage,
     uploadGalleryImage,
+    loadGallery,
+    galleryIds,
+    // The editor's own record writer, unchanged and uncopied: the cover
+    // image's words go onto images/{imageId} through the same call that
+    // /profile's Save makes for all eight.
+    saveGalleryRecords,
     type GalleryItem,
   } from "../lib/gallery.ts";
   import { ui } from "../i18n/translations.ts";
@@ -832,7 +1069,12 @@ const prefix = lang === "de" ? "/de" : "";
    * already are, so it is counted like them.
    */
   const STEP_GALLERY = 5;
-  const STEP_DONE = 6;
+  // The closing pair (2026-09-08). Verification is a step only for an account
+  // that still needs it — see setStep, which drops it from the count for a
+  // verified one — and visibility is the last question for everyone.
+  const STEP_VERIFY = 6;
+  const STEP_VISIBILITY = 7;
+  const STEP_DONE = 8;
 
   let unsubscribeAuth: (() => void) | null = null;
   let prevNavLangHandler: ((e: Event) => void) | null = null;
@@ -841,6 +1083,11 @@ const prefix = lang === "de" ? "/de" : "";
   document.addEventListener("astro:page-load", () => {
     const wrap = document.getElementById("onboarding-wrap") as HTMLElement | null;
     if (!wrap) return;
+
+    // Start the App Check attestation while the member fills in the first
+    // step, so the sign-up click does not spend Auth's 30 s clock on a slow
+    // mobile Turnstile challenge (see firebase.ts).
+    warmUpAppCheck();
 
     const lang = (wrap.dataset.lang ?? "en") as keyof typeof ui;
     const s = ui[lang] ?? ui.en;
@@ -871,6 +1118,11 @@ const prefix = lang === "de" ? "/de" : "";
     const errorEl = document.getElementById("ob-error")!;
 
     let currentStep = 0;
+    // What the auth guard learned about the account, read by setStep (which
+    // steps there are) and by the closing steps (what may be written). The
+    // record's flag, for showing; the token's claim is settled separately, by
+    // hasVerifiedClaim, before anything writes on it.
+    let emailVerified = false;
 
     // ── Helpers ───────────────────────────────────────────────────
     function setStep(n: number) {
@@ -881,12 +1133,17 @@ const prefix = lang === "de" ? "/de" : "";
       const progressEl = document.getElementById("ob-progress");
       const progressText = document.getElementById("ob-progress-text");
       const progressFill = document.getElementById("ob-progress-fill");
-      const realSteps = [0, 1, 3, 4, STEP_GALLERY];
+      // A verified account is never shown the verify step, so it is not
+      // counted for one — otherwise the bar would promise a screen that never
+      // comes and end at six of seven.
+      const realSteps = [0, 1, 3, 4, STEP_GALLERY, ...(emailVerified ? [] : [STEP_VERIFY]), STEP_VISIBILITY];
       const idx = realSteps.indexOf(n);
       const hideProgress = n === -1 || n === 2 || n === STEP_DONE;
       if (progressEl) progressEl.style.display = hideProgress ? "none" : "";
       if (progressText && idx >= 0) {
-        progressText.textContent = `${idx + 1} / ${realSteps.length}`;
+        progressText.textContent = s["onboarding.progress"]
+          .replace("{n}", String(idx + 1))
+          .replace("{total}", String(realSteps.length));
       }
       if (progressFill && idx >= 0) {
         progressFill.style.width = `${((idx + 1) / realSteps.length) * 100}%`;
@@ -930,23 +1187,39 @@ const prefix = lang === "de" ? "/de" : "";
         // non-critical
       }
 
-      // FINISHING ONBOARDING PUBLISHES YOU (2026-09-04, Josh: "it should
+      // FINISHING ONBOARDING WRITES THE VISIBILITY THE MEMBER CHOSE on the
+      // step before this one (2026-09-08) — until then the flag was set
+      // silently, at the bridge and again here (2026-09-04, Josh: "it should
       // become active when verifying and when going through the sign up flow.
-      // it should be an active task to untick it").
+      // it should be an active task to untick it"; the default is still
+      // ticked, the act is now visible). After publishCurrentUserProfile on
+      // purpose: that write puts `active: false` on an unverified account
+      // and would otherwise undo this one.
       //
-      // Not redundant with the activatePublicProfile on the step-2 buttons:
-      // the call above is publishPublicProfile, which writes `active: false`
-      // whenever the account is unverified — so the last act of onboarding was
-      // to un-publish a member who had just been activated four steps earlier.
-      // This puts the flag back, after the write that clears it rather than
-      // before.
-      //
-      // For an unverified member the rules refuse it (canPublish), which is
-      // correct and is why it is swallowed: verification is what publishes
-      // them, through /verify-email or the action page. Being visible is the
-      // default from here; hiding is the Active checkbox on the Account tab,
-      // which is a deliberate act.
-      await activatePublicProfileIfExists(user.uid).catch(() => {});
+      // Unverified accounts write nothing — the draft is already `false`,
+      // canPublish() in firestore.rules would refuse `true`, and verification
+      // is what publishes them, through the emailed link. The Done step then
+      // says which of the three things is true, from what actually happened
+      // rather than from what was asked for: a refused write is a hidden
+      // profile, whatever the box said.
+      const wantsActive = (document.getElementById("ob-active") as HTMLInputElement | null)?.checked ?? true;
+      let listed = false;
+      if (emailVerified) {
+        try {
+          await setProfileActive(user.uid, wantsActive);
+          listed = wantsActive;
+        } catch {
+          listed = false;
+        }
+      }
+      const disclaimer = document.getElementById("ob-done-disclaimer");
+      if (disclaimer) {
+        disclaimer.textContent = !emailVerified
+          ? s["onboarding.done.disclaimer.unverified"]
+          : listed
+            ? s["onboarding.done.disclaimer"]
+            : s["onboarding.done.disclaimer.hidden"];
+      }
 
       try {
         await updateUser(user.uid, { onboardingComplete: true });
@@ -1171,12 +1444,17 @@ const prefix = lang === "de" ? "/de" : "";
     setSocialValues([]);
 
     // ── Tags (delegated to the <tag-selector> custom element) ─────
+    // SCOPED TO ITS OWN FIELD. There are two selectors in this form since
+    // 2026-09-08 — the member's tags here and the cover image's on the
+    // gallery step — and a bare `tag-selector` query means "the first one in
+    // the document", which is this one only by the order the steps happen to
+    // be written in. The editor's per-image selectors are scoped the same way.
     const tagSelector = document.querySelector<
       HTMLElement & {
         value: string[];
         inputValue: string;
       }
-    >("tag-selector");
+    >("#ob-member-tags-field tag-selector");
 
     // ── Avatar (step 4) ────────────────────────────────────────────
     const avatarInput = document.getElementById("ob-avatar-input") as HTMLInputElement;
@@ -1235,7 +1513,7 @@ const prefix = lang === "de" ? "/de" : "";
 
     /** Finish and Skip stay honest while bytes are still moving. */
     function setGalleryBusy(busy: boolean) {
-      const finish = document.getElementById("ob-finish") as HTMLButtonElement | null;
+      const finish = document.getElementById("ob-next-5") as HTMLButtonElement | null;
       const skip = document.getElementById("ob-skip-5") as HTMLButtonElement | null;
       if (finish) finish.disabled = busy;
       if (skip) skip.disabled = busy;
@@ -1296,12 +1574,108 @@ const prefix = lang === "de" ? "/de" : "";
       // for an unverified member that ceiling is one image, and the status line
       // above already carries the reason from the last attempt.
       if (label) label.style.display = gallery.length >= galleryLimit(auth.currentUser) ? "none" : "";
+      syncCoverFields();
     }
+
+    // ── The cover image's words (step 5) ──────────────────────────
+    const coverFields = document.getElementById("ob-cover-fields");
+    const coverCaption = document.getElementById("ob-img-caption") as HTMLInputElement | null;
+    const coverDescription = document.getElementById("ob-img-description") as HTMLTextAreaElement | null;
+    const coverTags = document.querySelector<HTMLElement & { value: string[] }>(
+      "#ob-image-tags-field tag-selector"
+    );
+    // The rulesets refuse a longer value outright (validImage in
+    // firestore.rules), so the ceiling belongs on the control, where it costs
+    // the member a keystroke that does nothing instead of a refused save they
+    // cannot read. Same numbers, same reason, as the editor's rows.
+    if (coverCaption) coverCaption.maxLength = MAX_GALLERY_CAPTION;
+    if (coverDescription) coverDescription.maxLength = MAX_GALLERY_DESCRIPTION;
+
+    /**
+     * The block mirrors gallery[0] — shown once there is an image to name,
+     * emptied and hidden when there is not.
+     *
+     * The activeElement guard is not decoration: an upload settles
+     * asynchronously and calls renderGallery when it does, so a member typing
+     * a caption while a second image finishes would otherwise have the field
+     * they are in overwritten from the record mid-sentence.
+     */
+    function syncCoverFields() {
+      const item = gallery[0];
+      if (coverFields) coverFields.hidden = !item;
+      if (!item) {
+        if (coverCaption) coverCaption.value = "";
+        if (coverDescription) coverDescription.value = "";
+        if (coverTags) coverTags.value = [];
+        return;
+      }
+      if (coverCaption && document.activeElement !== coverCaption) {
+        coverCaption.value = item.caption ?? "";
+      }
+      if (coverDescription && document.activeElement !== coverDescription) {
+        coverDescription.value = item.description ?? "";
+      }
+      if (coverTags) coverTags.value = item.tags ?? [];
+    }
+
+    /**
+     * WRITTEN ON BLUR, not at Finish. This step already persists every upload
+     * the moment it lands (see the note on `gallery` above), and the words
+     * follow the same rule: nothing the member typed here is waiting on a
+     * later button, and Finish stays a step that cannot fail on the gallery's
+     * behalf. `change` rather than `input` — one write per field left, not one
+     * per keystroke.
+     *
+     * A failure is REPORTED. saveGalleryRecords returns its failures instead
+     * of throwing (the editor's Save turns them into a sentence naming each
+     * image); here there is only ever one record in flight, so the status line
+     * the uploader already owns is where it goes.
+     */
+    async function saveCoverWords() {
+      const item = gallery[0];
+      if (!item) return;
+      const failures = await saveGalleryRecords([item]);
+      if (failures.length > 0) {
+        console.warn(`[onboarding] record ${failures[0].imageId} not saved:`, failures[0].error);
+        setGalleryStatus(s["profile.gallery.error"]);
+      } else {
+        setGalleryStatus("");
+      }
+    }
+
+    coverCaption?.addEventListener("change", () => {
+      const item = gallery[0];
+      if (!item) return;
+      item.caption = coverCaption.value.trim();
+      void saveCoverWords();
+    });
+
+    coverDescription?.addEventListener("change", () => {
+      const item = gallery[0];
+      if (!item) return;
+      item.description = coverDescription.value.trim();
+      void saveCoverWords();
+    });
+
+    // <tag-selector> dispatches a bubbling `change` of its own, so this is the
+    // same event the two text fields use. Absent rather than empty when
+    // nothing is chosen, exactly as the editor does it — updateImageText
+    // deletes the key on the record either way, and keeping the in-memory item
+    // in that shape is what makes the two paths comparable.
+    coverTags?.addEventListener("change", () => {
+      const item = gallery[0];
+      if (!item) return;
+      const tags = coverTags.value;
+      if (tags.length) item.tags = tags;
+      else delete item.tags;
+      void saveCoverWords();
+    });
 
     async function persistGallery() {
       const user = auth.currentUser;
       if (!user) return;
-      await updateUserProfile(user.uid, { gallery, updatedAt: new Date() });
+      // The ids are the array; since 2026-09-07 the words live on the records.
+      await updateUserProfile(user.uid, { gallery: galleryIds(gallery), updatedAt: new Date() });
     }
 
     async function removeGalleryImage(index: number) {
@@ -1433,16 +1807,12 @@ const prefix = lang === "de" ? "/de" : "";
       }
     });
 
-    document.getElementById("ob-continue-2")?.addEventListener("click", async () => {
-      const user = auth.currentUser;
-      if (user) await activatePublicProfile(user.uid).catch(() => {});
-      setStep(3);
-    });
-    document.getElementById("ob-skip-2")?.addEventListener("click", async () => {
-      const user = auth.currentUser;
-      if (user) await activatePublicProfile(user.uid).catch(() => {});
-      finishToPreview({});
-    });
+    // The bridge no longer publishes anyone (2026-09-08). It used to write
+    // `active: true` on both buttons, so a member was in the directory from
+    // here on whatever they did next; now the visibility step asks, and the
+    // early exit goes through it like every other route out.
+    document.getElementById("ob-continue-2")?.addEventListener("click", () => setStep(3));
+    document.getElementById("ob-skip-2")?.addEventListener("click", toClosing);
 
     document.getElementById("ob-next-3")?.addEventListener("click", async () => {
       const user = auth.currentUser;
@@ -1501,6 +1871,7 @@ const prefix = lang === "de" ? "/de" : "";
             height: g.height,
             caption: g.caption,
             color: g.color,
+            tags: g.tags ?? [],
           })),
         },
         cardPreviewLabels
@@ -1554,24 +1925,114 @@ const prefix = lang === "de" ? "/de" : "";
 
     document.getElementById("ob-skip-4")?.addEventListener("click", () => setStep(STEP_GALLERY));
 
-    function finishFromGallery() {
-      finishToPreview({
-        bio: pendingBio,
-        photoURL: pendingPhotoURL,
-        avatarObjectUrl: pendingAvatarObjectUrl,
-      });
+    // Both gallery buttons lead the same way. Whatever the gallery step did or
+    // failed to do is already settled in Storage and Firestore by the time
+    // either is pressed, so neither can be blocked by it.
+    document.getElementById("ob-next-5")?.addEventListener("click", toClosing);
+    document.getElementById("ob-skip-5")?.addEventListener("click", toClosing);
+
+    // ── The closing pair: verify, then visibility ─────────────────
+    /** Into the closing steps from wherever the questions ended. */
+    function toClosing() {
+      setStep(emailVerified ? STEP_VISIBILITY : STEP_VERIFY);
     }
 
-    // Both buttons end the same way. Whatever the gallery step did or failed
-    // to do is already settled in Storage and Firestore by the time either is
-    // pressed, so neither can be blocked by it.
-    document.getElementById("ob-finish")?.addEventListener("click", finishFromGallery);
-    document.getElementById("ob-skip-5")?.addEventListener("click", finishFromGallery);
+    /**
+     * The verification step's one job. reload() refreshes the account RECORD;
+     * it does not mint a token, and the token is all the rulesets read — so
+     * the claim is settled here too, before anything that writes on the
+     * strength of it (the visibility step, the gallery cap). Same pairing as
+     * VerifyEmailForm and /auth/action.
+     */
+    async function continueIfVerified(user: User): Promise<boolean> {
+      await user.reload();
+      if (!user.emailVerified) return false;
+      await hasVerifiedClaim(user);
+      emailVerified = true;
+      galleryVerified = true;
+      updateGalleryNotes();
+      syncVisibilityStep();
+      return true;
+    }
 
-    // ── Verify banner ──────────────────────────────────────────────
-    const verifyBanner = document.getElementById("ob-verify-banner")!;
-    const btnResend = document.getElementById("ob-resend-verify") as HTMLButtonElement;
-    const verifySent = document.getElementById("ob-verify-sent")!;
+    /** The visibility box is only offerable to an account that can be published. */
+    function syncVisibilityStep() {
+      const box = document.getElementById("ob-active") as HTMLInputElement | null;
+      const locked = document.getElementById("ob-visibility-locked");
+      if (box) {
+        box.disabled = !emailVerified;
+        if (!emailVerified) box.checked = false;
+        else if (!box.dataset.touched) box.checked = true;
+      }
+      if (locked) locked.style.display = emailVerified ? "none" : "";
+    }
+    document.getElementById("ob-active")?.addEventListener("change", (e) => {
+      (e.currentTarget as HTMLInputElement).dataset.touched = "1";
+    });
+
+    const verifyCheck = document.getElementById("ob-verify-check") as HTMLButtonElement | null;
+    const verifyStatus = document.getElementById("ob-verify-status");
+    const verifyResend = document.getElementById("ob-verify-resend") as HTMLButtonElement | null;
+    const verifyResent = document.getElementById("ob-verify-resent");
+    verifyCheck?.addEventListener("click", async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      setBtnState("ob-verify-check", true, s["verify.cta"]);
+      if (verifyStatus) verifyStatus.style.display = "none";
+      try {
+        if (await continueIfVerified(user)) {
+          setStep(STEP_VISIBILITY);
+          return;
+        }
+        if (verifyStatus) {
+          verifyStatus.textContent = s["verify.notVerified"];
+          verifyStatus.style.display = "block";
+        }
+      } catch {
+        if (verifyStatus) {
+          verifyStatus.textContent = s["verify.error.generic"];
+          verifyStatus.style.display = "block";
+        }
+      } finally {
+        setBtnState("ob-verify-check", false, s["verify.cta"]);
+      }
+    });
+    let verifyResendCooldown = false;
+    verifyResend?.addEventListener("click", async () => {
+      const user = auth.currentUser;
+      if (!user || verifyResendCooldown) return;
+      verifyResendCooldown = true;
+      verifyResend.disabled = true;
+      if (verifyResent) verifyResent.style.display = "none";
+      try {
+        await sendEmailVerification(user, returnTo(lang, "/onboarding"));
+        if (verifyResent) verifyResent.style.display = "block";
+      } catch {
+        if (verifyStatus) {
+          verifyStatus.textContent = s["verify.error.resend"];
+          verifyStatus.style.display = "block";
+        }
+      }
+      setTimeout(() => {
+        verifyResendCooldown = false;
+        verifyResend.disabled = false;
+      }, 30000);
+    });
+    document.getElementById("ob-skip-6")?.addEventListener("click", () => setStep(STEP_VISIBILITY));
+    document.getElementById("ob-visibility-verify")?.addEventListener("click", () => setStep(STEP_VERIFY));
+
+    document.getElementById("ob-finish")?.addEventListener("click", async () => {
+      setBtnState("ob-finish", true, s["onboarding.nav.finish"]);
+      try {
+        await finishToPreview({
+          bio: pendingBio,
+          photoURL: pendingPhotoURL,
+          avatarObjectUrl: pendingAvatarObjectUrl,
+        });
+      } finally {
+        setBtnState("ob-finish", false, s["onboarding.nav.finish"]);
+      }
+    });
 
 
     // ── Auth guard ─────────────────────────────────────────────────
@@ -1583,6 +2044,9 @@ const prefix = lang === "de" ? "/de" : "";
         // against the cached account record. The two disagree for up to an
         // hour after the link is clicked. See hasVerifiedClaim.
         await hasVerifiedClaim(user);
+        // Known before anything below reads it — the restore block decides a
+        // step from it, and setStep counts steps by it.
+        emailVerified = user.emailVerified;
         const data = await getUser(user.uid);
         if (data.onboardingComplete) {
           window.location.href = `${prefix}/community`;
@@ -1622,15 +2086,21 @@ const prefix = lang === "de" ? "/de" : "";
         const savedTags = Array.isArray(data.tags) ? data.tags.filter(Boolean).slice(0, 7) : [];
         if (tagSelector) tagSelector.value = savedTags;
 
-        // Each image is in Firestore the moment it lands, so re-reading the
-        // user doc is the whole restore — no transient copy to keep in step,
-        // and a language switch mid-gallery keeps the thumbnails.
-        gallery = Array.isArray(data.gallery)
-          ? data.gallery.filter(Boolean).slice(0, MAX_GALLERY_IMAGES)
-          : [];
+        // Each image is in Firestore the moment it lands, so re-reading is the
+        // whole restore — no transient copy to keep in step, and a language
+        // switch mid-gallery keeps the thumbnails.
+        //
+        // Ids only in the stored array since 2026-09-07 — the thumbnails come
+        // from the records, one query, same join the editor uses.
+        gallery = await loadGallery(user.uid, data.gallery);
         renderGallery();
       } catch {
-        // Permission denied or network error — show form with empty fields
+        // Permission denied or network error — show form with empty fields.
+        // Since 2026-09-07 this also swallows a refused `images` query, which
+        // restores an empty gallery rather than the member's thumbnails. Only a
+        // RELOAD repairs that: an upload in this state would shorten the stored
+        // list, because `persistGallery` writes the in-memory ids over it and
+        // the earlier records would be left orphaned, listed by nothing.
       }
 
       // Restore transient state (e.g. after a language switch)
@@ -1675,6 +2145,10 @@ const prefix = lang === "de" ? "/de" : "";
         if (typeof restoreState.step === "number" && restoreState.step !== STEP_DONE) {
           restoredStep = restoreState.step;
         }
+        // Left on the verify step and came back verified (the emailed link,
+        // opened in this tab): the question is answered, so go on to the one
+        // after it rather than ask it again.
+        if (restoredStep === STEP_VERIFY && emailVerified) restoredStep = STEP_VISIBILITY;
         clearTransientState();
       }
 
@@ -1695,28 +2169,18 @@ const prefix = lang === "de" ? "/de" : "";
       prevNavLangHandler = onNavLangClick;
       prevPageHideHandler = onPageHide;
 
+      const verifyEmailEl = document.getElementById("ob-verify-email");
+      if (verifyEmailEl) verifyEmailEl.textContent = user.email ?? "";
+      syncVisibilityStep();
       if (!user.emailVerified) {
-        verifyBanner.style.display = "block";
         // The gallery cap is one image until verification; say so before the
         // member picks a second file rather than after (2026-09-03).
+        //
+        // The banner that used to be wired up here is gone (see the note where
+        // it stood), and with it this block's resend — the verify step owns
+        // that now, cooldown included.
         galleryVerified = false;
         updateGalleryNotes();
-        let cooldown = false;
-        btnResend?.addEventListener("click", async () => {
-          if (cooldown) return;
-          cooldown = true;
-          btnResend.disabled = true;
-          try {
-            await sendEmailVerification(user, returnTo(lang, "/onboarding"));
-            verifySent.style.display = "block";
-          } catch {
-            // ignore
-          }
-          setTimeout(() => {
-            cooldown = false;
-            btnResend.disabled = false;
-          }, 30000);
-        });
       }
 
       if (loadingEl) loadingEl.style.display = "none";

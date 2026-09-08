@@ -34,6 +34,24 @@ const t = useTranslations(lang);
   </p>
 </div>
 
+{
+  /* Hidden by choice (2026-09-08, Josh: "disclaimer when inactive"). Shown
+    when the public profile carries `active: false` on a VERIFIED account —
+    the member unticked it, here or in the wizard — because nothing on this
+    page said so before: the box sat on the third tab, and a member editing
+    their bio on the first had no way to know the directory was not showing
+    any of it. An unverified account gets the amber banner above instead,
+    with the reason in it; two banners saying "hidden" would be one too many.
+    The button is the way to the box, not the box itself — unhiding is the
+    Account tab's deliberate act and stays there. */
+}
+<div id="hidden-banner" class="hidden-banner" style="display:none;">
+  <p class="hidden-banner-text">
+    {t("profile.hiddenBanner")}
+    <button id="btn-hidden-account" type="button" class="btn-link">{t("profile.hiddenBanner.cta")}</button>
+  </p>
+</div>
+
 <form id="profile-form" class="profile-form" data-lang={lang}>
   {
     /* Shown on every tab while a deletion is pending: the way back out of it
@@ -119,7 +137,7 @@ const t = useTranslations(lang);
       <div class="target-audience-options">
         {
           LANGUAGES.map((code) => (
-            <label class="target-audience-option">
+            <label class="optchip target-audience-option">
               <input type="checkbox" name="language" value={code} />
               <span>{t(`profile.lang.${code}`)}</span>
             </label>
@@ -190,28 +208,36 @@ const t = useTranslations(lang);
     <fieldset class="target-audience-field">
       <legend class="label">{t("profile.primaryAudience.legend")}</legend>
       <div class="target-audience-options">
-        <label class="target-audience-option">
+        <label class="optchip target-audience-option">
           <input type="checkbox" name="primary-audience" value="science" />
           <span>{t("profile.primaryAudience.science")}</span>
         </label>
-        <label class="target-audience-option">
+        <label class="optchip target-audience-option">
           <input type="checkbox" name="primary-audience" value="public" />
           <span>{t("profile.primaryAudience.public")}</span>
         </label>
-        <label class="target-audience-option">
+        <label class="optchip target-audience-option">
           <input type="checkbox" name="primary-audience" value="policy-makers" />
           <span>{t("profile.primaryAudience.policyMakers")}</span>
         </label>
-        <label class="target-audience-option">
+        <label class="optchip target-audience-option">
           <input type="checkbox" name="primary-audience" value="education" />
           <span>{t("profile.primaryAudience.education")}</span>
         </label>
       </div>
     </fieldset>
 
-    <div class="field">
+    <div class="field" id="member-tags-field">
       <label class="label" for="tag-input">{t("profile.label.tags")}</label>
       <TagSelector lang={lang} maxTags={7} inputId="tag-input" />
+      {
+        /* The cap, stated by the field that sets it rather than by the
+          component — which printed "Up to 7 tags." whatever `maxTags` said,
+          and was therefore wrong on every gallery row (2026-09-08). Nothing
+          else here mentions the limit, so the sentence moves rather than
+          goes. */
+      }
+      <p class="field-note">{t("profile.note.tags")}</p>
     </div>
   </div>
 
@@ -375,6 +401,19 @@ const t = useTranslations(lang);
               <span class="input-prefix">https://</span>
               <input type="text" class="input input-prefixed" data-gallery-field="link" />
             </div>
+            {
+              /* WHAT IS IN THE PICTURE, not who made it — the community wall
+                filters by this (2026-09-08, step 2 of
+                documentation/20260907-works-on-the-record-design.md). Same
+                element and registry as the member's own tags above, capped
+                lower: a picture is tagged with what it shows, not with
+                everything the member could say about themselves. Wired in
+                renderGallery() like every other field here, via `.value` and
+                a `change` listener — never by id, since this template is
+                cloned once per image and a duplicate id would be meaningless
+                to query by anyway. */
+            }
+            <TagSelector lang={lang} maxTags={5} />
             <div class="gallery-tools">
               <button type="button" class="gallery-tool" data-gallery-move="up">↑</button>
               <button type="button" class="gallery-tool" data-gallery-move="down">↓</button>
@@ -705,6 +744,28 @@ const t = useTranslations(lang);
     }
   }
 
+  /* The quiet sibling of the amber banner: same box, the page's own colours —
+     a hidden profile is a state the member chose, not a problem to fix. */
+  .hidden-banner {
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto clamp(1.5rem, 3vw, 2.5rem);
+    padding: 0.75rem 1rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    box-sizing: border-box;
+  }
+
+  .hidden-banner-text {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--color-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
   .verify-banner-text {
     margin: 0;
     font-size: 0.88rem;
@@ -815,12 +876,6 @@ const t = useTranslations(lang);
     width: fit-content;
   }
 
-  .field-note {
-    margin: 0;
-    font-size: 0.78rem;
-    line-height: 1.5;
-    color: var(--color-muted);
-  }
 
   .input-prefix-wrap {
     display: flex;
@@ -1254,6 +1309,21 @@ const t = useTranslations(lang);
     padding-bottom: 5rem;
   }
 
+  /* FULL WIDTH ON A PHONE, LIKE THE PAGE (2026-09-08, Josh: "preview gallery
+     on mobile should be full width as the gallery"). The real page sits
+     straight in <main>, whose 15px gutters are the only inset it has. The
+     preview sits inside .profile-form, which adds its own 15px on mobile for
+     the sake of the form fields — so the rendering was inset twice, and every
+     picture came out 30px narrower than the member will actually see it. The
+     negative margin hands those 15px back; .profile-form's overflow-x: clip
+     clips at the padding edge, which is exactly where this reaches. Desktop
+     needs nothing: .profile-form drops its padding there. */
+  @media (--bp-mobile) {
+    .preview-section {
+      margin-inline: -15px;
+    }
+  }
+
   /* The closing line under the directory card — same hairline
      ProfileViewPreview draws above and below the page, so the tab reads as one
      stack of rendered things rather than a page in a frame and a loose card. */
@@ -1598,40 +1668,12 @@ const t = useTranslations(lang);
     gap: 0.6rem;
   }
 
-  .target-audience-option {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.55rem 0.75rem;
-    border: 1.5px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: #fff;
-    color: #333;
-    font-size: 0.9rem;
-    line-height: 1.2;
-    cursor: pointer;
-    transition:
-      border-color 0.15s,
-      background 0.15s;
-  }
-
-  .target-audience-option:hover {
-    border-color: #999;
-    background: #f5f5f5;
-  }
-
-  .target-audience-option:has(input:checked) {
-    border-color: var(--color-dark);
-    background: var(--color-dark);
-    color: #fff;
-  }
-
-  .target-audience-option input {
-    width: 14px;
-    height: 14px;
-    accent-color: var(--color-dark);
-    cursor: pointer;
-  }
+  /* Languages and Primary audience are `.optchip` (global.css) like every other
+     multi-select on this form. They used to be the only two that drew a real
+     checkbox inside the chip; the fill says "selected" for the other three, so
+     it says it here too and all five finally match. The input itself is still
+     in the DOM and still focusable — `.optchip` clips it rather than hiding
+     it — so the keyboard and screen readers are unaffected. */
 
   @media (max-width: 520px) {
     .avatar-wrap {
@@ -1673,8 +1715,9 @@ const t = useTranslations(lang);
     MAX_GALLERY_DESCRIPTION,
     MAX_GALLERY_LINK,
     galleryErrorCode,
-    syncGalleryText,
-    sanitizeGalleryItems,
+    saveGalleryRecords,
+    loadGallery,
+    galleryIds,
     type GalleryItem,
   } from "../lib/gallery.ts";
   import {
@@ -1760,13 +1803,16 @@ const t = useTranslations(lang);
 
     const avatarWrap = avatarImg.closest<HTMLElement>(".avatar-wrap")!;
 
-    // Tag selection is handled by the <tag-selector> custom element.
+    // Tag selection is handled by the <tag-selector> custom element. Scoped to
+    // #member-tags-field: since 2026-09-08 every gallery row carries its own
+    // <tag-selector> too (see renderGallery), and an unscoped query would
+    // match whichever one happens to render first in DOM order.
     const tagSelector = document.querySelector<
       HTMLElement & {
         value: string[];
         inputValue: string;
       }
-    >("tag-selector");
+    >("#member-tags-field tag-selector");
     const openToSelector = document.querySelector<
       HTMLElement & {
         value: string[];
@@ -2033,10 +2079,13 @@ const t = useTranslations(lang);
             );
             const langPaneEn = row.querySelector<HTMLElement>('[data-gallery-lang-pane="en"]');
             const langPaneDe = row.querySelector<HTMLElement>('[data-gallery-lang-pane="de"]');
+            const tagsSelector = row.querySelector<HTMLElement & { value: string[] }>(
+              "tag-selector",
+            );
             if (!img || !remove || !caption || !description) return null;
             if (!captionDe || !captionDeNote) return null;
             if (!descriptionDe || !descriptionDeNote) return null;
-            if (!link || !cover || !up || !down) return null;
+            if (!link || !cover || !up || !down || !tagsSelector) return null;
             if (langBtns.length !== 2 || !langPaneEn || !langPaneDe) return null;
 
             // The one thing on screen that admits the order means something:
@@ -2124,6 +2173,17 @@ const t = useTranslations(lang);
               const value = link.value.trim();
               if (value) gallery[index].link = value;
               else delete gallery[index].link;
+              syncPreview();
+            });
+
+            tagsSelector.value = item.tags ?? [];
+            named(tagsSelector, s["profile.label.tags"]);
+            tagsSelector.addEventListener("change", () => {
+              // Same "deleted rather than stored empty" rule as link above —
+              // gallery[index] is what saveGalleryRecords() reads at Save.
+              const tags = tagsSelector.value;
+              if (tags.length) gallery[index].tags = tags;
+              else delete gallery[index].tags;
               syncPreview();
             });
 
@@ -2330,14 +2390,14 @@ const t = useTranslations(lang);
      * files in Storage — the Firestore array is what says which of those files
      * still belong to the member.
      *
-     * Typed text (captions, descriptions) is NOT pushed by itself — that waits
-     * for Save, since writing on every keystroke is not what a form is.
+     * Only the ids go: since 2026-09-07 the array is the order and nothing
+     * else. Typed text belongs to Save, which writes it onto the records.
      */
     async function persistGallery() {
       const user = auth.currentUser;
       if (!user) return;
       await updateUserProfile(user.uid, {
-        gallery,
+        gallery: galleryIds(gallery),
         updatedAt: new Date(),
       });
     }
@@ -2570,6 +2630,7 @@ const t = useTranslations(lang);
             // would get one, including showing none for a value that is not
             // link-shaped yet, mid-typing.
             link: workLink(g.link),
+            tags: g.tags ?? [],
           };
         }),
       };
@@ -2592,6 +2653,20 @@ const t = useTranslations(lang);
         noWorks: s["profile.view.noWorks"],
       });
     }
+
+    /**
+     * The hidden-by-choice banner: a verified account whose public profile is
+     * not listed. Unverified accounts are told by the amber banner instead.
+     * Re-run after every Save so the page agrees with what was just written.
+     */
+    function syncHiddenBanner(verified: boolean, active: boolean) {
+      const banner = document.getElementById("hidden-banner");
+      if (banner) banner.style.display = verified && !active ? "block" : "none";
+    }
+    document.getElementById("btn-hidden-account")?.addEventListener("click", () => {
+      setSection("account");
+      activeInput.focus();
+    });
 
     function setSection(section: string) {
       formSections.forEach((el) => {
@@ -2712,6 +2787,15 @@ const t = useTranslations(lang);
 
       if (!user.emailVerified) {
         verifyBanner.style.display = "block";
+        // The banner used to ask for verification as housekeeping ("to secure
+        // your account"); what it costs the member is the directory, and an
+        // unverified profile is hidden from it however the Active box reads
+        // (canPublish in firestore.rules). Said here, once, in the banner
+        // that already names the fix (2026-09-08).
+        const bannerText = verifyBanner.querySelector(".verify-banner-text");
+        if (bannerText?.firstChild?.nodeType === Node.TEXT_NODE) {
+          bannerText.firstChild.textContent = `${s["profile.verifyBanner"]} ${s["profile.verifyBanner.hidden"]} `;
+        }
         document.getElementById("gallery-note")!.hidden = true;
         document.getElementById("gallery-note-unverified")!.hidden = false;
         let resendCooldown = false;
@@ -2770,16 +2854,17 @@ const t = useTranslations(lang);
         tagSelector.value = Array.isArray(data.tags) ? data.tags.filter(Boolean).slice(0, 7) : [];
       }
       setSelectedPrimaryAudiences(data.primaryAudiences ?? []);
-      // sanitizeGalleryItems, not a plain slice: a member whose images were
-      // tagged to a project before the feature was withdrawn still has
-      // `projectId` in Firestore, and writing that key back is now rejected
-      // outright by validGalleryItem's hasOnly — which would have failed EVERY
-      // save this member attempted, silently. Stripping on load is the fix.
-      gallery = sanitizeGalleryItems(data.gallery).slice(0, MAX_GALLERY_IMAGES);
+      // The id list joined to this member's own live records — one query, then
+      // the pure join in galleryRecords.ts. Since 2026-09-07 the stored array
+      // is ids only; the words come from the records. (Until today this was
+      // sanitizeGalleryItems(), stripping withdrawn keys out of stored objects;
+      // there are no objects in the array to strip now.)
+      gallery = await loadGallery(user.uid, data.gallery);
       renderGallery();
       phoneInput.value = data.phone ?? "";
       wantsToContributeInput.checked = data.wantsToContribute ?? false;
       activeInput.checked = await getPublicProfileActive(user.uid);
+      syncHiddenBanner(user.emailVerified, activeInput.checked);
       showPreview(data.photoURL ?? user.photoURL ?? "");
 
       if (loadingEl) loadingEl.style.display = "none";
@@ -2803,6 +2888,27 @@ const t = useTranslations(lang);
       setSaving(true);
 
       try {
+        // THE RECORDS FIRST, AND HARD (2026-09-07). Until today this ran after
+        // the profile write as best-effort — a failed record write was a
+        // console.warn under a green "Changes saved", tolerable only because
+        // the array carried the same text. The array carries nothing now: a
+        // refused record write is a caption gone. So it runs first, and a
+        // failure is THE Save error, naming the image by its position.
+        const recordFailures = await saveGalleryRecords(gallery);
+        if (recordFailures.length > 0) {
+          recordFailures.forEach((f) =>
+            console.warn(`[gallery] record ${f.imageId} not saved:`, f.error)
+          );
+          throw new Error(
+            [
+              ...recordFailures.map((f) =>
+                s["profile.gallery.saveFailed"].replace("{n}", String(f.index + 1))
+              ),
+              s["profile.gallery.saveFailed.tail"],
+            ].join(" ")
+          );
+        }
+
         const saved = await handleProfileUpdate(
           user,
           {
@@ -2822,11 +2928,9 @@ const t = useTranslations(lang);
             openTo: openToSelector?.value ?? [],
             primaryAudiences: getSelectedPrimaryAudiences(),
             tags: tagSelector?.value ?? [],
-            // The gallery persists on its own when images are added or
-            // removed, but the words attached to them — captions and
-            // descriptions — are typed, and typed text belongs to the Save
-            // button like every other field here.
-            gallery,
+            // The ids, in order. The words typed for each image are written
+            // onto the records ABOVE, before this call — see saveGalleryRecords.
+            gallery: galleryIds(gallery),
             wantsToContribute: wantsToContributeInput.checked,
             phone: phoneInput.value.trim(),
             resizedAvatarBlob,
@@ -2840,15 +2944,13 @@ const t = useTranslations(lang);
         );
 
         if (saved.photoImageId) currentPhotoImageId = saved.photoImageId;
-        // The array carries the text for the static build; the records carry
-        // it for everything else. Best-effort by design — see syncGalleryText.
-        await syncGalleryText(gallery);
 
         if (resizedAvatarBlob) {
           uploadStatus.textContent = s["profile.upload.complete"];
         }
 
         await setProfileActive(user.uid, activeInput.checked);
+        syncHiddenBanner(user.emailVerified, activeInput.checked);
         await triggerRebuild();
         saveMsg.style.display = "block";
 
