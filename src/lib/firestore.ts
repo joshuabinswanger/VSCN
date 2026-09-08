@@ -183,11 +183,15 @@ export async function activatePublicProfile(uid: string): Promise<void> {
  * document holding nothing but `active: true`. The directory publishes on
  * `active !== false`, so that would seed a nameless, artwork-less member into
  * the public build. The existence check is the whole point of this function.
+ *
+ * Returns whether a profile was actually activated, so a caller can request
+ * a rebuild only when something just became visible.
  */
-export async function activatePublicProfileIfExists(uid: string): Promise<void> {
+export async function activatePublicProfileIfExists(uid: string): Promise<boolean> {
   const ref = doc(db, "publicProfiles", uid);
-  if (!(await getDoc(ref)).exists()) return;
+  if (!(await getDoc(ref)).exists()) return false;
   await setDoc(ref, { active: true }, { merge: true });
+  return true;
 }
 
 export async function setProfileActive(uid: string, active: boolean): Promise<void> {

@@ -134,6 +134,7 @@ const title = currentLang === "de" ? "Konto" : "Account";
     activatePublicProfileIfExists,
     publishCurrentUserProfile,
   } from "../../../lib/firestore.ts";
+  import { triggerRebuild } from "../../../lib/profile.ts";
   import { continueTarget } from "../../../lib/authEmail.ts";
 
   const params = new URLSearchParams(window.location.search);
@@ -233,7 +234,9 @@ const title = currentLang === "de" ? "Konto" : "Account";
         // lifted either way. It creates nothing: someone who verifies before
         // finishing onboarding has no public profile to activate yet.
         await publishCurrentUserProfile(user.uid).catch(() => {});
-        await activatePublicProfileIfExists(user.uid).catch(() => {});
+        // …and publishing rebuilds the static directory, as every other publish
+        // path does. VerifyEmailForm.astro has the story of the member this bit.
+        if (await activatePublicProfileIfExists(user.uid).catch(() => false)) await triggerRebuild();
       }
 
       showSuccess(

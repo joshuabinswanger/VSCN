@@ -3,7 +3,6 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getFunctions } from "firebase/functions";
-import { getAnalytics, isSupported } from "firebase/analytics";
 import { initializeAppCheck, type AppCheck } from "firebase/app-check";
 import { turnstileProvider } from "./appCheckTurnstile.ts";
 
@@ -14,7 +13,6 @@ const firebaseConfig = {
   storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.PUBLIC_FIREBASE_APP_ID,
-  measurementId: import.meta.env.PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 // Avoid re-initializing on hot reload
@@ -60,5 +58,10 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
 
-// Analytics only runs in the browser (not during SSR/build)
-export const analytics = isSupported().then((yes) => (yes ? getAnalytics(app) : null));
+// NO ANALYTICS, on purpose (2026-09-08). getAnalytics() used to run here as a
+// side effect of importing this module — which the Navbar does on every page —
+// so gtag.js loaded and two `_ga` cookies were set for every anonymous visitor
+// before any interaction, with no consent and no privacy notice, and the
+// `analytics` export was read nowhere. Under GDPR/ePrivacy that is exactly the
+// case that needs an opt-in banner. Bringing it back means building the
+// consent flow first; the measurement id was removed from the workflows too.
