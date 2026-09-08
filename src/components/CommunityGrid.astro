@@ -1572,6 +1572,24 @@ const indexMembers = [...members].sort((a, b) =>
       margin-bottom: 1.1rem;
     }
 
+    /* THE DESKTOP CAP, ON THE PHONE'S COLUMNS (2026-09-08, Josh: "very tall
+       images should get a max height in grid view"). The wall above bounds a
+       tile at 1.5 × its width by shadowing --cgrid-row on the cell; down here
+       the multicol had no row unit at all, so CommunityWorkCard's --frame-cap
+       fell through to its no-cap fallback and a 1:3 upload ran the full
+       column width and three columns tall. The cell becomes an inline-size
+       container so the tile can measure it: 100cqw is the column, and the
+       same 1.5 × width + 1.2rem of author line that the desktop rule states.
+       The tile's own width formula (min(100%, cap × aspect)) then narrows
+       tall work, and the static/auto-margin rule below centres it. The deal
+       writes --slot-rows: 1 inline for every wall cell at every breakpoint;
+       the fallback here only agrees with it. */
+    .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
+      container-type: inline-size;
+      --slot-rows: 1;
+      --cgrid-row: calc((1.5 * 100cqw + 1.2rem) / var(--slot-rows, 1));
+    }
+
     .cgrid__cell {
       /* Declared here rather than left to the inline style, and that works
          because the inline style sets --gc/--gr, not grid-column/grid-row:

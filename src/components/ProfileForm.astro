@@ -34,6 +34,24 @@ const t = useTranslations(lang);
   </p>
 </div>
 
+{
+  /* Hidden by choice (2026-09-08, Josh: "disclaimer when inactive"). Shown
+    when the public profile carries `active: false` on a VERIFIED account —
+    the member unticked it, here or in the wizard — because nothing on this
+    page said so before: the box sat on the third tab, and a member editing
+    their bio on the first had no way to know the directory was not showing
+    any of it. An unverified account gets the amber banner above instead,
+    with the reason in it; two banners saying "hidden" would be one too many.
+    The button is the way to the box, not the box itself — unhiding is the
+    Account tab's deliberate act and stays there. */
+}
+<div id="hidden-banner" class="hidden-banner" style="display:none;">
+  <p class="hidden-banner-text">
+    {t("profile.hiddenBanner")}
+    <button id="btn-hidden-account" type="button" class="btn-link">{t("profile.hiddenBanner.cta")}</button>
+  </p>
+</div>
+
 <form id="profile-form" class="profile-form" data-lang={lang}>
   {
     /* Shown on every tab while a deletion is pending: the way back out of it
@@ -703,6 +721,28 @@ const t = useTranslations(lang);
     @media (--bp-desktop) {
       padding: 0.75rem 1rem;
     }
+  }
+
+  /* The quiet sibling of the amber banner: same box, the page's own colours —
+     a hidden profile is a state the member chose, not a problem to fix. */
+  .hidden-banner {
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto clamp(1.5rem, 3vw, 2.5rem);
+    padding: 0.75rem 1rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    box-sizing: border-box;
+  }
+
+  .hidden-banner-text {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--color-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
   }
 
   .verify-banner-text {
@@ -2594,6 +2634,20 @@ const t = useTranslations(lang);
       });
     }
 
+    /**
+     * The hidden-by-choice banner: a verified account whose public profile is
+     * not listed. Unverified accounts are told by the amber banner instead.
+     * Re-run after every Save so the page agrees with what was just written.
+     */
+    function syncHiddenBanner(verified: boolean, active: boolean) {
+      const banner = document.getElementById("hidden-banner");
+      if (banner) banner.style.display = verified && !active ? "block" : "none";
+    }
+    document.getElementById("btn-hidden-account")?.addEventListener("click", () => {
+      setSection("account");
+      activeInput.focus();
+    });
+
     function setSection(section: string) {
       formSections.forEach((el) => {
         el.classList.toggle("is-active", el.dataset.section === section);
@@ -2713,6 +2767,15 @@ const t = useTranslations(lang);
 
       if (!user.emailVerified) {
         verifyBanner.style.display = "block";
+        // The banner used to ask for verification as housekeeping ("to secure
+        // your account"); what it costs the member is the directory, and an
+        // unverified profile is hidden from it however the Active box reads
+        // (canPublish in firestore.rules). Said here, once, in the banner
+        // that already names the fix (2026-09-08).
+        const bannerText = verifyBanner.querySelector(".verify-banner-text");
+        if (bannerText?.firstChild?.nodeType === Node.TEXT_NODE) {
+          bannerText.firstChild.textContent = `${s["profile.verifyBanner"]} ${s["profile.verifyBanner.hidden"]} `;
+        }
         document.getElementById("gallery-note")!.hidden = true;
         document.getElementById("gallery-note-unverified")!.hidden = false;
         let resendCooldown = false;
@@ -2781,6 +2844,7 @@ const t = useTranslations(lang);
       phoneInput.value = data.phone ?? "";
       wantsToContributeInput.checked = data.wantsToContribute ?? false;
       activeInput.checked = await getPublicProfileActive(user.uid);
+      syncHiddenBanner(user.emailVerified, activeInput.checked);
       showPreview(data.photoURL ?? user.photoURL ?? "");
 
       if (loadingEl) loadingEl.style.display = "none";
@@ -2866,6 +2930,7 @@ const t = useTranslations(lang);
         }
 
         await setProfileActive(user.uid, activeInput.checked);
+        syncHiddenBanner(user.emailVerified, activeInput.checked);
         await triggerRebuild();
         saveMsg.style.display = "block";
 

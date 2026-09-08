@@ -41,7 +41,7 @@ const t = useTranslations(lang);
 <style>
   .verify-wrap {
     width: 100%;
-    max-width: 500px;
+    max-width: 560px;
     margin: clamp(2rem, 4vw, 4rem) auto;
     padding: 0 15px;
     box-sizing: border-box;
@@ -50,12 +50,13 @@ const t = useTranslations(lang);
     gap: 2rem;
   }
 
-  @media (min-width: 560px) {
+  /* No sheet. It was a white rounded card from 560px up; the profile editor
+     lost its own on 2026-09-02 and this page followed on 2026-09-08 (Josh:
+     "white boxes are obsolete") — the form sits flat on the page ground like
+     every other form on the site. Same measure as the editor. */
+  @media (--bp-desktop) {
     .verify-wrap {
-      background: #fff;
-      border: 1.5px solid #ebebeb;
-      border-radius: var(--radius-xl);
-      padding: clamp(2rem, 4vw, 3rem);
+      padding: 0;
     }
   }
 

@@ -410,5 +410,17 @@ const pswpMeta = member.displayName;
     .cwork {
       width: 100%;
     }
+
+    /* EXCEPT ON THE WALL, where the phone now has a row unit to measure
+       against (2026-09-08, Josh: "very tall images should get a max height
+       in grid view"): CommunityGrid's phone block makes the wall cell an
+       inline-size container and sets --cgrid-row to 1.5 × the column, so the
+       formula above is meaningful again and is restated here to beat the
+       full-width rule. The gallery view keeps the full width — its cells
+       carry --slot-rows from the deal but no row unit, and the formula there
+       would collapse a tile to the 2rem fallback. */
+    :global(.cgrid[data-pattern="grid"] .cgrid__cell) > .cwork {
+      width: min(100%, calc(var(--frame-cap) * var(--frame-ar, 1)));
+    }
   }
 </style>

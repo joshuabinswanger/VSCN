@@ -304,12 +304,84 @@ const prefix = lang === "de" ? "/de" : "";
     </div>
     <div class="ob-footer ob-footer--with-skip">
       <button id="ob-skip-5" type="button" class="btn-link">{t("onboarding.step5.skip")}</button>
+      <button id="ob-next-5" type="button" class="btn-solid">{t("onboarding.nav.next")}</button>
+    </div>
+  </div>
+
+  {
+    /* Step 6: Verify your email (2026-09-08, Josh: "step in onboarding … the
+    verify step"). The same screen as /verify-email, inside the wizard, so a
+    member is asked to open their inbox at the point where the answer matters
+    — the next step can only publish a verified account — rather than by a
+    banner they can read past. Placed after the gallery so the mail has had
+    the whole wizard to arrive. Shown only to an unverified account; a
+    verified one steps straight from the gallery to visibility, and setStep
+    leaves this out of the count for them. "Verify later" is a real exit:
+    the standalone page stays for the emailed link, and the banner above the
+    wizard keeps offering the resend on every other step. */
+  }
+  <div class="onboarding-step" data-step="6" style="display:none;">
+    <header class="ob-header">
+      <h1 class="ob-title">{t("verify.title")}</h1>
+      <p class="ob-sub">
+        {t("verify.sub")} <strong id="ob-verify-email"></strong>{t("verify.sub.suffix")}
+      </p>
+    </header>
+    <div class="ob-fields">
+      <div class="ob-verify-actions">
+        <button id="ob-verify-check" type="button" class="btn-solid">{t("verify.cta")}</button>
+        <p id="ob-verify-status" class="msg-err" style="display:none;"></p>
+        <p class="ob-verify-resend">
+          <span>{t("verify.resend.label")}</span>
+          <button id="ob-verify-resend" type="button" class="btn-link">{t("verify.resend.btn")}</button>
+        </p>
+        <p id="ob-verify-resent" class="msg-ok" style="display:none;">{t("verify.resend.msg")}</p>
+      </div>
+    </div>
+    <div class="ob-footer ob-footer--with-skip">
+      <button id="ob-skip-6" type="button" class="btn-link">{t("onboarding.verify.later")}</button>
+      <span></span>
+    </div>
+  </div>
+
+  {
+    /* Step 7: Your visibility (2026-09-08, Josh: "a step where you can set
+    your account active"). The one deliberate act the wizard asks for: being
+    listed. Ticked by default, because being visible is the default and
+    hiding is the choice (2026-09-04, "it should be an active task to untick
+    it") — until today that default was written silently at the bridge and
+    again at Finish, so a member never saw it. An unverified account cannot be
+    published (canPublish in firestore.rules), so for them the box is locked
+    off and the note says so, with the way back to the verification step;
+    verifying is what publishes them, through the emailed link. */
+  }
+  <div class="onboarding-step" data-step="7" style="display:none;">
+    <header class="ob-header">
+      <h1 class="ob-title">{t("onboarding.visibility.title")}</h1>
+      <p class="ob-sub">{t("onboarding.visibility.sub")}</p>
+    </header>
+    <div class="ob-fields">
+      <div class="field">
+        <label class="checkbox-label" for="ob-active">
+          <input id="ob-active" type="checkbox" checked />
+          <span>{t("onboarding.visibility.label")}</span>
+        </label>
+        <p class="field-note">{t("profile.active.note")}</p>
+      </div>
+      <p id="ob-visibility-locked" class="ob-notice" style="display:none;">
+        {t("onboarding.visibility.locked")}
+        <button id="ob-visibility-verify" type="button" class="btn-resend-verify"
+          >{t("onboarding.visibility.backToVerify")}</button
+        >
+      </p>
+    </div>
+    <div class="ob-footer">
       <button id="ob-finish" type="button" class="btn-solid">{t("onboarding.nav.finish")}</button>
     </div>
   </div>
 
-  <!-- Step 6: Done -->
-  <div class="onboarding-step ob-done" data-step="6" style="display:none;">
+  <!-- Step 8: Done -->
+  <div class="onboarding-step ob-done" data-step="8" style="display:none;">
     <header class="ob-header ob-done-header">
       <h1 class="ob-title">{t("onboarding.done.title")}</h1>
       <p class="ob-sub">{t("onboarding.done.sub")}</p>
@@ -317,7 +389,14 @@ const prefix = lang === "de" ? "/de" : "";
     <div class="ob-done-card">
       <CommunityCardPreview />
     </div>
-    <p class="ob-done-disclaimer">{t("onboarding.done.disclaimer")}</p>
+    {
+      /* Filled by finishToPreview from what is actually true of the profile
+        it just wrote: listed, hidden by choice, or hidden until verified. The
+        one sentence it used to carry ("may take a moment to appear") was told
+        to every member, including the ones whose profile was not going to
+        appear at all (2026-09-08, Josh: "disclaimer when inactive"). */
+    }
+    <p id="ob-done-disclaimer" class="ob-notice">{t("onboarding.done.disclaimer")}</p>
     <div class="ob-footer ob-footer--done">
       <a href={`${prefix}/profile`} class="btn-outline">{t("onboarding.done.edit")}</a>
       <a href={`${prefix}/community`} class="btn-solid">{t("onboarding.done.goCommunity")}</a>
@@ -353,7 +432,7 @@ const prefix = lang === "de" ? "/de" : "";
 
   .verify-banner {
     width: 100%;
-    max-width: 500px;
+    max-width: 560px;
     margin: 0 auto clamp(1.5rem, 3vw, 2.5rem);
     padding: 0.75rem 1rem;
     background: #fffbeb;
@@ -395,45 +474,52 @@ const prefix = lang === "de" ? "/de" : "";
     color: #65a30d;
   }
 
+  /* THE WIZARD SITS FLAT ON THE PAGE (2026-09-08, Josh: "restyle onboarding
+     … white boxes are obsolete"). From 560px up it was a white rounded sheet
+     with its own padding, a card drawn around a form; the profile editor lost
+     the same sheet on 2026-09-02 and this is the form a member meets first,
+     so it now reads as the same page as the one they edit in afterwards:
+     the editor's 560px measure, the page ground, no border. */
   .onboarding-wrap {
     width: 100%;
-    max-width: 500px;
+    max-width: 560px;
     margin: clamp(2rem, 4vw, 4rem) auto;
     padding: 0 15px;
     box-sizing: border-box;
 
-    @media (min-width: 560px) {
-      background: #fff;
-      border: 1.5px solid #ebebeb;
-      border-radius: var(--radius-xl);
-      padding: clamp(2rem, 4vw, 3rem);
+    @media (--bp-desktop) {
+      padding: 0;
     }
   }
 
+  /* Progress in the editor's tab voice — the same uppercase, spaced, muted
+     caption its section tabs use, over a hairline in the border colour with
+     the dark part travelled. It was a 3px grey bar with "1 / 5" beside it. */
   .ob-progress {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
+    flex-direction: column;
+    gap: 0.6rem;
     margin-bottom: 2rem;
   }
 
   .ob-progress-bar {
-    flex: 1;
-    height: 3px;
-    background: #eee;
-    border-radius: 2px;
+    width: 100%;
+    height: 2px;
+    background: var(--color-border);
     overflow: hidden;
   }
 
   .ob-progress-fill {
     height: 100%;
     background: var(--color-dark);
-    border-radius: 2px;
     transition: width 0.4s ease;
   }
 
   .ob-progress-text {
     font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     color: var(--color-muted);
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
@@ -460,10 +546,52 @@ const prefix = lang === "de" ? "/de" : "";
     margin-top: 0;
   }
 
+  /* The editor's rhythm (its form grid runs at 2rem); 3rem was the sheet's
+     air, and without the sheet it read as fields drifting apart. */
   .ob-fields {
     display: flex;
     flex-direction: column;
-    gap: 3rem;
+    gap: 2rem;
+  }
+
+  /* The editor's checkbox row, for the visibility step. */
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.95rem;
+    color: #333;
+    cursor: pointer;
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-dark);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .checkbox-label:has(input:disabled) {
+    color: var(--color-muted);
+    cursor: default;
+  }
+
+  /* The verify step's controls — the standalone page's column, one gap. */
+  .ob-verify-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+  }
+
+  .ob-verify-resend {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--color-muted);
   }
 
   .ob-footer {
@@ -747,8 +875,11 @@ const prefix = lang === "de" ? "/de" : "";
     margin-bottom: 1.25rem;
   }
 
-  .ob-done-disclaimer {
-    margin: 0 0 1.5rem;
+  /* One notice, two homes: the Done step's disclaimer and the visibility
+     step's locked note. Amber like the verify banner, because both of them
+     are about the same thing — a profile the directory is not showing. */
+  .ob-notice {
+    margin: 0;
     padding: 0.75rem 1rem;
     background: #fffbeb;
     border: 1.5px solid #fde68a;
@@ -756,6 +887,15 @@ const prefix = lang === "de" ? "/de" : "";
     color: #92400e;
     font-size: 0.85rem;
     line-height: 1.5;
+  }
+
+  .ob-done .ob-notice {
+    margin-bottom: 1.5rem;
+  }
+
+  .ob-notice .btn-resend-verify {
+    font-size: inherit;
+    margin-left: 0.35rem;
   }
 
   .ob-footer--done {
@@ -790,8 +930,7 @@ const prefix = lang === "de" ? "/de" : "";
     updateUserProfile,
     publishCurrentUserProfile,
     upsertOnboardingRequest,
-    activatePublicProfile,
-    activatePublicProfileIfExists,
+    setProfileActive,
     isMemberType,
     MEMBER_TYPES,
   } from "../lib/firestore.ts";
@@ -834,7 +973,12 @@ const prefix = lang === "de" ? "/de" : "";
    * already are, so it is counted like them.
    */
   const STEP_GALLERY = 5;
-  const STEP_DONE = 6;
+  // The closing pair (2026-09-08). Verification is a step only for an account
+  // that still needs it — see setStep, which drops it from the count for a
+  // verified one — and visibility is the last question for everyone.
+  const STEP_VERIFY = 6;
+  const STEP_VISIBILITY = 7;
+  const STEP_DONE = 8;
 
   let unsubscribeAuth: (() => void) | null = null;
   let prevNavLangHandler: ((e: Event) => void) | null = null;
@@ -873,6 +1017,17 @@ const prefix = lang === "de" ? "/de" : "";
     const errorEl = document.getElementById("ob-error")!;
 
     let currentStep = 0;
+    // What the auth guard learned about the account, read by setStep (the
+    // step count and the banner) and by the closing steps (what may be
+    // written). The record's flag, for showing; the token's claim is settled
+    // separately, by hasVerifiedClaim, before anything writes on it.
+    let emailVerified = false;
+    let showVerifyBanner = false;
+
+    // ── Verify banner ──────────────────────────────────────────────
+    const verifyBanner = document.getElementById("ob-verify-banner")!;
+    const btnResend = document.getElementById("ob-resend-verify") as HTMLButtonElement;
+    const verifySent = document.getElementById("ob-verify-sent")!;
 
     // ── Helpers ───────────────────────────────────────────────────
     function setStep(n: number) {
@@ -883,13 +1038,21 @@ const prefix = lang === "de" ? "/de" : "";
       const progressEl = document.getElementById("ob-progress");
       const progressText = document.getElementById("ob-progress-text");
       const progressFill = document.getElementById("ob-progress-fill");
-      const realSteps = [0, 1, 3, 4, STEP_GALLERY];
+      // A verified account is never shown the verify step, so it is not
+      // counted for one — otherwise the bar would promise a screen that never
+      // comes and end at six of seven.
+      const realSteps = [0, 1, 3, 4, STEP_GALLERY, ...(emailVerified ? [] : [STEP_VERIFY]), STEP_VISIBILITY];
       const idx = realSteps.indexOf(n);
       const hideProgress = n === -1 || n === 2 || n === STEP_DONE;
       if (progressEl) progressEl.style.display = hideProgress ? "none" : "";
       if (progressText && idx >= 0) {
-        progressText.textContent = `${idx + 1} / ${realSteps.length}`;
+        progressText.textContent = s["onboarding.progress"]
+          .replace("{n}", String(idx + 1))
+          .replace("{total}", String(realSteps.length));
       }
+      // The banner says "verify your email" on every step but the one whose
+      // whole subject that is — there it would be the same sentence twice.
+      verifyBanner.style.display = showVerifyBanner && n !== STEP_VERIFY ? "block" : "none";
       if (progressFill && idx >= 0) {
         progressFill.style.width = `${((idx + 1) / realSteps.length) * 100}%`;
       }
@@ -932,23 +1095,39 @@ const prefix = lang === "de" ? "/de" : "";
         // non-critical
       }
 
-      // FINISHING ONBOARDING PUBLISHES YOU (2026-09-04, Josh: "it should
+      // FINISHING ONBOARDING WRITES THE VISIBILITY THE MEMBER CHOSE on the
+      // step before this one (2026-09-08) — until then the flag was set
+      // silently, at the bridge and again here (2026-09-04, Josh: "it should
       // become active when verifying and when going through the sign up flow.
-      // it should be an active task to untick it").
+      // it should be an active task to untick it"; the default is still
+      // ticked, the act is now visible). After publishCurrentUserProfile on
+      // purpose: that write puts `active: false` on an unverified account
+      // and would otherwise undo this one.
       //
-      // Not redundant with the activatePublicProfile on the step-2 buttons:
-      // the call above is publishPublicProfile, which writes `active: false`
-      // whenever the account is unverified — so the last act of onboarding was
-      // to un-publish a member who had just been activated four steps earlier.
-      // This puts the flag back, after the write that clears it rather than
-      // before.
-      //
-      // For an unverified member the rules refuse it (canPublish), which is
-      // correct and is why it is swallowed: verification is what publishes
-      // them, through /verify-email or the action page. Being visible is the
-      // default from here; hiding is the Active checkbox on the Account tab,
-      // which is a deliberate act.
-      await activatePublicProfileIfExists(user.uid).catch(() => {});
+      // Unverified accounts write nothing — the draft is already `false`,
+      // canPublish() in firestore.rules would refuse `true`, and verification
+      // is what publishes them, through the emailed link. The Done step then
+      // says which of the three things is true, from what actually happened
+      // rather than from what was asked for: a refused write is a hidden
+      // profile, whatever the box said.
+      const wantsActive = (document.getElementById("ob-active") as HTMLInputElement | null)?.checked ?? true;
+      let listed = false;
+      if (emailVerified) {
+        try {
+          await setProfileActive(user.uid, wantsActive);
+          listed = wantsActive;
+        } catch {
+          listed = false;
+        }
+      }
+      const disclaimer = document.getElementById("ob-done-disclaimer");
+      if (disclaimer) {
+        disclaimer.textContent = !emailVerified
+          ? s["onboarding.done.disclaimer.unverified"]
+          : listed
+            ? s["onboarding.done.disclaimer"]
+            : s["onboarding.done.disclaimer.hidden"];
+      }
 
       try {
         await updateUser(user.uid, { onboardingComplete: true });
@@ -1237,7 +1416,7 @@ const prefix = lang === "de" ? "/de" : "";
 
     /** Finish and Skip stay honest while bytes are still moving. */
     function setGalleryBusy(busy: boolean) {
-      const finish = document.getElementById("ob-finish") as HTMLButtonElement | null;
+      const finish = document.getElementById("ob-next-5") as HTMLButtonElement | null;
       const skip = document.getElementById("ob-skip-5") as HTMLButtonElement | null;
       if (finish) finish.disabled = busy;
       if (skip) skip.disabled = busy;
@@ -1436,16 +1615,12 @@ const prefix = lang === "de" ? "/de" : "";
       }
     });
 
-    document.getElementById("ob-continue-2")?.addEventListener("click", async () => {
-      const user = auth.currentUser;
-      if (user) await activatePublicProfile(user.uid).catch(() => {});
-      setStep(3);
-    });
-    document.getElementById("ob-skip-2")?.addEventListener("click", async () => {
-      const user = auth.currentUser;
-      if (user) await activatePublicProfile(user.uid).catch(() => {});
-      finishToPreview({});
-    });
+    // The bridge no longer publishes anyone (2026-09-08). It used to write
+    // `active: true` on both buttons, so a member was in the directory from
+    // here on whatever they did next; now the visibility step asks, and the
+    // early exit goes through it like every other route out.
+    document.getElementById("ob-continue-2")?.addEventListener("click", () => setStep(3));
+    document.getElementById("ob-skip-2")?.addEventListener("click", toClosing);
 
     document.getElementById("ob-next-3")?.addEventListener("click", async () => {
       const user = auth.currentUser;
@@ -1557,24 +1732,115 @@ const prefix = lang === "de" ? "/de" : "";
 
     document.getElementById("ob-skip-4")?.addEventListener("click", () => setStep(STEP_GALLERY));
 
-    function finishFromGallery() {
-      finishToPreview({
-        bio: pendingBio,
-        photoURL: pendingPhotoURL,
-        avatarObjectUrl: pendingAvatarObjectUrl,
-      });
+    // Both gallery buttons lead the same way. Whatever the gallery step did or
+    // failed to do is already settled in Storage and Firestore by the time
+    // either is pressed, so neither can be blocked by it.
+    document.getElementById("ob-next-5")?.addEventListener("click", toClosing);
+    document.getElementById("ob-skip-5")?.addEventListener("click", toClosing);
+
+    // ── The closing pair: verify, then visibility ─────────────────
+    /** Into the closing steps from wherever the questions ended. */
+    function toClosing() {
+      setStep(emailVerified ? STEP_VISIBILITY : STEP_VERIFY);
     }
 
-    // Both buttons end the same way. Whatever the gallery step did or failed
-    // to do is already settled in Storage and Firestore by the time either is
-    // pressed, so neither can be blocked by it.
-    document.getElementById("ob-finish")?.addEventListener("click", finishFromGallery);
-    document.getElementById("ob-skip-5")?.addEventListener("click", finishFromGallery);
+    /**
+     * The verification step's one job. reload() refreshes the account RECORD;
+     * it does not mint a token, and the token is all the rulesets read — so
+     * the claim is settled here too, before anything that writes on the
+     * strength of it (the visibility step, the gallery cap). Same pairing as
+     * VerifyEmailForm and /auth/action.
+     */
+    async function continueIfVerified(user: User): Promise<boolean> {
+      await user.reload();
+      if (!user.emailVerified) return false;
+      await hasVerifiedClaim(user);
+      emailVerified = true;
+      showVerifyBanner = false;
+      galleryVerified = true;
+      updateGalleryNotes();
+      syncVisibilityStep();
+      return true;
+    }
 
-    // ── Verify banner ──────────────────────────────────────────────
-    const verifyBanner = document.getElementById("ob-verify-banner")!;
-    const btnResend = document.getElementById("ob-resend-verify") as HTMLButtonElement;
-    const verifySent = document.getElementById("ob-verify-sent")!;
+    /** The visibility box is only offerable to an account that can be published. */
+    function syncVisibilityStep() {
+      const box = document.getElementById("ob-active") as HTMLInputElement | null;
+      const locked = document.getElementById("ob-visibility-locked");
+      if (box) {
+        box.disabled = !emailVerified;
+        if (!emailVerified) box.checked = false;
+        else if (!box.dataset.touched) box.checked = true;
+      }
+      if (locked) locked.style.display = emailVerified ? "none" : "";
+    }
+    document.getElementById("ob-active")?.addEventListener("change", (e) => {
+      (e.currentTarget as HTMLInputElement).dataset.touched = "1";
+    });
+
+    const verifyCheck = document.getElementById("ob-verify-check") as HTMLButtonElement | null;
+    const verifyStatus = document.getElementById("ob-verify-status");
+    const verifyResend = document.getElementById("ob-verify-resend") as HTMLButtonElement | null;
+    const verifyResent = document.getElementById("ob-verify-resent");
+    verifyCheck?.addEventListener("click", async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+      setBtnState("ob-verify-check", true, s["verify.cta"]);
+      if (verifyStatus) verifyStatus.style.display = "none";
+      try {
+        if (await continueIfVerified(user)) {
+          setStep(STEP_VISIBILITY);
+          return;
+        }
+        if (verifyStatus) {
+          verifyStatus.textContent = s["verify.notVerified"];
+          verifyStatus.style.display = "block";
+        }
+      } catch {
+        if (verifyStatus) {
+          verifyStatus.textContent = s["verify.error.generic"];
+          verifyStatus.style.display = "block";
+        }
+      } finally {
+        setBtnState("ob-verify-check", false, s["verify.cta"]);
+      }
+    });
+    let verifyResendCooldown = false;
+    verifyResend?.addEventListener("click", async () => {
+      const user = auth.currentUser;
+      if (!user || verifyResendCooldown) return;
+      verifyResendCooldown = true;
+      verifyResend.disabled = true;
+      if (verifyResent) verifyResent.style.display = "none";
+      try {
+        await sendEmailVerification(user, returnTo(lang, "/onboarding"));
+        if (verifyResent) verifyResent.style.display = "block";
+      } catch {
+        if (verifyStatus) {
+          verifyStatus.textContent = s["verify.error.resend"];
+          verifyStatus.style.display = "block";
+        }
+      }
+      setTimeout(() => {
+        verifyResendCooldown = false;
+        verifyResend.disabled = false;
+      }, 30000);
+    });
+    document.getElementById("ob-skip-6")?.addEventListener("click", () => setStep(STEP_VISIBILITY));
+    document.getElementById("ob-visibility-verify")?.addEventListener("click", () => setStep(STEP_VERIFY));
+
+    document.getElementById("ob-finish")?.addEventListener("click", async () => {
+      setBtnState("ob-finish", true, s["onboarding.nav.finish"]);
+      try {
+        await finishToPreview({
+          bio: pendingBio,
+          photoURL: pendingPhotoURL,
+          avatarObjectUrl: pendingAvatarObjectUrl,
+        });
+      } finally {
+        setBtnState("ob-finish", false, s["onboarding.nav.finish"]);
+      }
+    });
 
 
     // ── Auth guard ─────────────────────────────────────────────────
@@ -1586,6 +1852,9 @@ const prefix = lang === "de" ? "/de" : "";
         // against the cached account record. The two disagree for up to an
         // hour after the link is clicked. See hasVerifiedClaim.
         await hasVerifiedClaim(user);
+        // Known before anything below reads it — the restore block decides a
+        // step from it, and setStep counts steps by it.
+        emailVerified = user.emailVerified;
         const data = await getUser(user.uid);
         if (data.onboardingComplete) {
           window.location.href = `${prefix}/community`;
@@ -1684,6 +1953,10 @@ const prefix = lang === "de" ? "/de" : "";
         if (typeof restoreState.step === "number" && restoreState.step !== STEP_DONE) {
           restoredStep = restoreState.step;
         }
+        // Left on the verify step and came back verified (the emailed link,
+        // opened in this tab): the question is answered, so go on to the one
+        // after it rather than ask it again.
+        if (restoredStep === STEP_VERIFY && emailVerified) restoredStep = STEP_VISIBILITY;
         clearTransientState();
       }
 
@@ -1704,8 +1977,12 @@ const prefix = lang === "de" ? "/de" : "";
       prevNavLangHandler = onNavLangClick;
       prevPageHideHandler = onPageHide;
 
+      const verifyEmailEl = document.getElementById("ob-verify-email");
+      if (verifyEmailEl) verifyEmailEl.textContent = user.email ?? "";
+      syncVisibilityStep();
       if (!user.emailVerified) {
-        verifyBanner.style.display = "block";
+        // Shown by setStep, which knows which step is on screen.
+        showVerifyBanner = true;
         // The gallery cap is one image until verification; say so before the
         // member picks a second file rather than after (2026-09-03).
         galleryVerified = false;
