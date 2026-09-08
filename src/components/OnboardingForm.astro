@@ -17,11 +17,20 @@ const prefix = lang === "de" ? "/de" : "";
 <div id="ob-loading" class="ob-loading">{t("profile.loading")}</div>
 
 <div id="onboarding-wrap" class="onboarding-wrap" data-lang={lang} style="display:none;">
+  {
+    /* EMPTY UNTIL setStep FILLS IT, and that is the honest state rather than a
+      missing one: how many steps there are depends on whether this account
+      still has to verify its email, which is not known until the auth guard
+      has run — and #onboarding-wrap stays display:none until it has, so
+      nothing here is ever seen unfilled. It used to ship "1 / 5" and a 20%
+      bar, which were a different format and the wrong count by the time the
+      closing steps landed (2026-09-08). */
+  }
   <div id="ob-progress" class="ob-progress">
     <div class="ob-progress-bar">
-      <div id="ob-progress-fill" class="ob-progress-fill" style="width:20%"></div>
+      <div id="ob-progress-fill" class="ob-progress-fill" style="width:0"></div>
     </div>
-    <span id="ob-progress-text" class="ob-progress-text">1 / 5</span>
+    <span id="ob-progress-text" class="ob-progress-text"></span>
   </div>
 
   <p id="ob-error" class="msg-err" style="display:none;"></p>
@@ -191,7 +200,14 @@ const prefix = lang === "de" ? "/de" : "";
       <p class="ob-sub">{t("onboarding.step3.sub")}</p>
     </header>
     <div class="ob-fields">
-      <div class="field">
+      {
+        /* Wrapped and identified since the gallery step grew a SECOND
+          selector on 2026-09-08 (the cover image's tags). The script used to
+          reach this one with a bare `tag-selector` query, which means "the
+          first one in the document" — true only by the accident that this
+          step is written above that one. Both are scoped by wrapper now. */
+      }
+      <div class="field" id="ob-member-tags-field">
         <label class="label" for="ob-tag-input">{t("profile.label.tags")}</label>
         <TagSelector lang={lang} maxTags={7} inputId="ob-tag-input" />
       </div>
@@ -301,6 +317,73 @@ const prefix = lang === "de" ? "/de" : "";
         <p class="field-note">{t("onboarding.step5.formats")}</p>
         <p id="ob-gallery-later" class="field-note">{t("onboarding.step5.later")}</p>
       </div>
+
+      {
+        /* THE COVER IMAGE'S WORDS, ASKED FOR HERE (2026-09-08, Josh: "already
+          expose the image title and description and tags for the first image
+          upload"). Until today this step took the bytes and nothing else, and
+          the note under it promised that captions "come later, in your
+          profile" — so the picture that becomes the member's card in the
+          directory arrived untitled, undescribed and untagged, and the wall
+          filters by exactly those tags.
+
+          THE FIRST IMAGE ONLY, and that is not a shortcut: an unverified
+          account may hold exactly one gallery image
+          (MAX_UNVERIFIED_GALLERY_IMAGES), so for most members arriving here
+          the first image IS the gallery; the first image is also the card's
+          cover, whose proportions draw the card; and a form per image would
+          make this step the profile editor. Everything else about every
+          image — the German pair, the link, the order — stays in the editor,
+          and the note below says so.
+
+          Hidden until an image exists: there is nothing to name before then.
+          `hidden`, not display:none, so renderGallery owns the one flag. */
+      }
+      <div class="ob-cover" id="ob-cover-fields" hidden>
+        <div class="ob-cover-header">
+          <p class="label">{t("onboarding.step5.cover.title")}</p>
+          <p class="field-note">{t("onboarding.step5.cover.note")}</p>
+        </div>
+        <div class="field">
+          <label class="label" for="ob-img-caption">{t("profile.gallery.caption")}</label>
+          <input
+            id="ob-img-caption"
+            type="text"
+            class="input"
+            placeholder={t("profile.gallery.caption.ph")}
+          />
+          <p class="field-note">{t("profile.gallery.captionNote")}</p>
+        </div>
+        {
+          /* THE LONG PROMPT IS A NOTE, NOT THE LABEL. In the editor "About
+            this image — how it was made, who it was for, what it shows" is an
+            aria-label on an unlabelled row; set as a visible `.label` here it
+            rendered as a shouted uppercase sentence three-quarters the width
+            of the form. So the label names the field and the sentence keeps
+            its job as guidance, in the voice every other note on this step
+            uses. No placeholder, like the editor's. */
+        }
+        <div class="field">
+          <label class="label" for="ob-img-description"
+            >{t("profile.gallery.description.label")}</label
+          >
+          <textarea id="ob-img-description" class="input textarea" rows="3"></textarea>
+          <p class="field-note">{t("profile.gallery.description")}</p>
+        </div>
+        {
+          /* WHAT IS IN THE PICTURE, not who made it. Same element, same
+            curated registry as the member's own tags two steps back, capped
+            at 5 like the editor's per-image selector — and read by the
+            community wall's filter, which is why it is worth asking now
+            rather than leaving the first artwork in the directory
+            untaggable. */
+        }
+        <div class="field" id="ob-image-tags-field">
+          <label class="label" for="ob-img-tags">{t("profile.gallery.tags")}</label>
+          <TagSelector lang={lang} maxTags={5} inputId="ob-img-tags" />
+          <p class="field-note">{t("profile.gallery.tagsNote")}</p>
+        </div>
+      </div>
     </div>
     <div class="ob-footer ob-footer--with-skip">
       <button id="ob-skip-5" type="button" class="btn-link">{t("onboarding.step5.skip")}</button>
@@ -331,6 +414,17 @@ const prefix = lang === "de" ? "/de" : "";
       <div class="ob-verify-actions">
         <button id="ob-verify-check" type="button" class="btn-solid">{t("verify.cta")}</button>
         <p id="ob-verify-status" class="msg-err" style="display:none;"></p>
+        {
+          /* CHECK THE SPAM FOLDER, SAID BEFORE IT IS NEEDED (2026-09-08, Josh:
+            "add a remark to check spam in the email verification step"). The
+            advice existed already — inside verify.resend.msg, which only
+            appears AFTER the member has clicked Resend, so the one person who
+            needed it (mail delivered, filed as junk) had to resend an email
+            they already had in order to be told where to look. It is a
+            standing line now, and Resend stays for the case where nothing
+            arrived at all. */
+        }
+        <p class="field-note">{t("verify.spam")}</p>
         <p class="ob-verify-resend">
           <span>{t("verify.resend.label")}</span>
           <button id="ob-verify-resend" type="button" class="btn-link">{t("verify.resend.btn")}</button>
@@ -709,9 +803,13 @@ const prefix = lang === "de" ? "/de" : "";
     margin-top: 0.4rem;
   }
 
-  /* Gallery (step 5) — thumbnails only. The profile editor is where an image
-     gets a caption, a description and a project; asking for any of that here
-     would turn one question into four. */
+  /* Gallery (step 5). Thumbnails, and — since 2026-09-08 — the words for the
+     FIRST of them, under .ob-cover below. The note that used to stand here
+     said the editor was the only place an image got a caption, a description
+     and a project; projects are gone, and the cover's three fields are asked
+     for here now, because the cover is the card. What the editor still owns
+     alone: the German pair, the per-image link, the order, and every image
+     after the first. */
   .ob-gallery-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
@@ -770,6 +868,25 @@ const prefix = lang === "de" ? "/de" : "";
 
   .ob-gallery-grid :global(.ob-gallery-thumb-remove:hover) {
     background: var(--color-error);
+  }
+
+  /* The cover image's three fields. A hairline, not a box: this is a second
+     question inside one step, and a panel around it would be the sheet this
+     form just lost. Its own 1.5rem rhythm — tighter than .ob-fields' 2rem,
+     because these three belong to each other more than they belong to the
+     step. */
+  .ob-cover {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .ob-cover-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
   }
 
   /* Reuse ProfileForm field/tag styles */
@@ -953,6 +1070,8 @@ const prefix = lang === "de" ? "/de" : "";
   // → write the array to Firestore. Nothing here re-implements any of it.
   import {
     MAX_GALLERY_IMAGES,
+    MAX_GALLERY_CAPTION,
+    MAX_GALLERY_DESCRIPTION,
     galleryLimit,
     validateGalleryFile,
     galleryErrorCode,
@@ -960,6 +1079,10 @@ const prefix = lang === "de" ? "/de" : "";
     uploadGalleryImage,
     loadGallery,
     galleryIds,
+    // The editor's own record writer, unchanged and uncopied: the cover
+    // image's words go onto images/{imageId} through the same call that
+    // /profile's Save makes for all eight.
+    saveGalleryRecords,
     type GalleryItem,
   } from "../lib/gallery.ts";
   import { ui } from "../i18n/translations.ts";
@@ -1352,12 +1475,17 @@ const prefix = lang === "de" ? "/de" : "";
     setSocialValues([]);
 
     // ── Tags (delegated to the <tag-selector> custom element) ─────
+    // SCOPED TO ITS OWN FIELD. There are two selectors in this form since
+    // 2026-09-08 — the member's tags here and the cover image's on the
+    // gallery step — and a bare `tag-selector` query means "the first one in
+    // the document", which is this one only by the order the steps happen to
+    // be written in. The editor's per-image selectors are scoped the same way.
     const tagSelector = document.querySelector<
       HTMLElement & {
         value: string[];
         inputValue: string;
       }
-    >("tag-selector");
+    >("#ob-member-tags-field tag-selector");
 
     // ── Avatar (step 4) ────────────────────────────────────────────
     const avatarInput = document.getElementById("ob-avatar-input") as HTMLInputElement;
@@ -1477,7 +1605,102 @@ const prefix = lang === "de" ? "/de" : "";
       // for an unverified member that ceiling is one image, and the status line
       // above already carries the reason from the last attempt.
       if (label) label.style.display = gallery.length >= galleryLimit(auth.currentUser) ? "none" : "";
+      syncCoverFields();
     }
+
+    // ── The cover image's words (step 5) ──────────────────────────
+    const coverFields = document.getElementById("ob-cover-fields");
+    const coverCaption = document.getElementById("ob-img-caption") as HTMLInputElement | null;
+    const coverDescription = document.getElementById("ob-img-description") as HTMLTextAreaElement | null;
+    const coverTags = document.querySelector<HTMLElement & { value: string[] }>(
+      "#ob-image-tags-field tag-selector"
+    );
+    // The rulesets refuse a longer value outright (validImage in
+    // firestore.rules), so the ceiling belongs on the control, where it costs
+    // the member a keystroke that does nothing instead of a refused save they
+    // cannot read. Same numbers, same reason, as the editor's rows.
+    if (coverCaption) coverCaption.maxLength = MAX_GALLERY_CAPTION;
+    if (coverDescription) coverDescription.maxLength = MAX_GALLERY_DESCRIPTION;
+
+    /**
+     * The block mirrors gallery[0] — shown once there is an image to name,
+     * emptied and hidden when there is not.
+     *
+     * The activeElement guard is not decoration: an upload settles
+     * asynchronously and calls renderGallery when it does, so a member typing
+     * a caption while a second image finishes would otherwise have the field
+     * they are in overwritten from the record mid-sentence.
+     */
+    function syncCoverFields() {
+      const item = gallery[0];
+      if (coverFields) coverFields.hidden = !item;
+      if (!item) {
+        if (coverCaption) coverCaption.value = "";
+        if (coverDescription) coverDescription.value = "";
+        if (coverTags) coverTags.value = [];
+        return;
+      }
+      if (coverCaption && document.activeElement !== coverCaption) {
+        coverCaption.value = item.caption ?? "";
+      }
+      if (coverDescription && document.activeElement !== coverDescription) {
+        coverDescription.value = item.description ?? "";
+      }
+      if (coverTags) coverTags.value = item.tags ?? [];
+    }
+
+    /**
+     * WRITTEN ON BLUR, not at Finish. This step already persists every upload
+     * the moment it lands (see the note on `gallery` above), and the words
+     * follow the same rule: nothing the member typed here is waiting on a
+     * later button, and Finish stays a step that cannot fail on the gallery's
+     * behalf. `change` rather than `input` — one write per field left, not one
+     * per keystroke.
+     *
+     * A failure is REPORTED. saveGalleryRecords returns its failures instead
+     * of throwing (the editor's Save turns them into a sentence naming each
+     * image); here there is only ever one record in flight, so the status line
+     * the uploader already owns is where it goes.
+     */
+    async function saveCoverWords() {
+      const item = gallery[0];
+      if (!item) return;
+      const failures = await saveGalleryRecords([item]);
+      if (failures.length > 0) {
+        console.warn(`[onboarding] record ${failures[0].imageId} not saved:`, failures[0].error);
+        setGalleryStatus(s["profile.gallery.error"]);
+      } else {
+        setGalleryStatus("");
+      }
+    }
+
+    coverCaption?.addEventListener("change", () => {
+      const item = gallery[0];
+      if (!item) return;
+      item.caption = coverCaption.value.trim();
+      void saveCoverWords();
+    });
+
+    coverDescription?.addEventListener("change", () => {
+      const item = gallery[0];
+      if (!item) return;
+      item.description = coverDescription.value.trim();
+      void saveCoverWords();
+    });
+
+    // <tag-selector> dispatches a bubbling `change` of its own, so this is the
+    // same event the two text fields use. Absent rather than empty when
+    // nothing is chosen, exactly as the editor does it — updateImageText
+    // deletes the key on the record either way, and keeping the in-memory item
+    // in that shape is what makes the two paths comparable.
+    coverTags?.addEventListener("change", () => {
+      const item = gallery[0];
+      if (!item) return;
+      const tags = coverTags.value;
+      if (tags.length) item.tags = tags;
+      else delete item.tags;
+      void saveCoverWords();
+    });
 
     async function persistGallery() {
       const user = auth.currentUser;

@@ -80,3 +80,67 @@ visible, flat wizard, transparent chips, hairline progress. Browser at 375px: th
 **Not exercised signed in:** the real path through steps 6 and 7 against Firebase (account
 creation is off-limits to the agent), and the `/profile` hidden banner. Both are gated by the
 same rules as before; the writes are `setProfileActive`, which the editor already uses.
+
+---
+
+## Follow-up, same day: the spam line and the cover image's words
+
+Two more notes from Josh once the above was on dev: "add a remark to check spam in the email
+verification step and already expose the image title and description and tags for the first
+image upload". Branch `feat/onboarding-first-image`, off `dev` at `1b1dcf9`.
+
+### The spam remark
+
+`verify.spam` — "Not in your inbox? Check your spam or junk folder." — now stands under the
+continue button on the wizard's verify step and on `/verify-email`, one string on both so the
+two screens cannot drift. The advice was not new; it was buried inside `verify.resend.msg`,
+which only appears **after** the member clicks Resend. So the one person who needed it, whose
+mail had arrived and been filed as junk, had to resend an email they already had in order to
+be told where to look.
+
+### The cover image's words, in the wizard
+
+The gallery step took the bytes and nothing else, and promised that captions and descriptions
+"come later, in your profile" — so the picture that becomes the member's card arrived untitled,
+undescribed and untagged, and since step 2 of the works-on-the-record design the community wall
+filters by exactly those image tags.
+
+A block under the thumbnails, hidden until an image exists, edits `gallery[0]`: caption
+(labelled with the editor's own "Caption" plus its read-aloud note), description, and up to
+five image tags from the same curated registry, capped at 5 like the editor's per-image
+selector. `MAX_GALLERY_CAPTION` / `MAX_GALLERY_DESCRIPTION` go on the controls, because the
+rulesets refuse a longer value outright.
+
+**The first image only.** An unverified account may hold exactly one gallery image, so for most
+members arriving here the first image *is* the gallery; it is also the cover, whose proportions
+draw the card; and a form per image would make this step the profile editor. The German pair,
+the per-image link and the order stay in the editor, and the block's note says so.
+
+**Written on blur, through the editor's own writer.** Each field's `change` updates the
+in-memory item and calls `saveGalleryRecords([gallery[0]])` — the same function `/profile`'s
+Save calls for all eight — so nothing here waits on Finish, which stays a step the gallery
+cannot fail on behalf of. A returned failure goes to the status line the uploader already owns.
+Tags are absent rather than empty when nothing is chosen, exactly as the editor does it.
+
+Three smaller things the change forced:
+
+- **Both tag selectors are scoped now.** The member's own selector was reached with a bare
+  `tag-selector` query, which means "the first in the document" — true only by the order the
+  steps happen to be written in. There are two selectors in this form as of today, so each sits
+  in an identified field (`#ob-member-tags-field`, `#ob-image-tags-field`).
+- **The long description prompt became a note.** In the editor it is an aria-label on an
+  unlabelled row; as a visible uppercase `.label` it rendered as a shouted sentence most of the
+  form's width. New string `profile.gallery.description.label` ("Description" / "Beschreibung")
+  names the field, and the long sentence keeps its job as guidance.
+- **The progress placeholder is empty.** It shipped `1 / 5` and a 20% bar — the wrong format
+  and the wrong count since the closing steps landed. How many steps there are is not known
+  until the auth guard has run, and the wizard is `display: none` until it has, so nothing is
+  ever seen unfilled.
+
+`onboarding.step5.formats` loses its promise about captions and is now just the file types.
+
+**Verified:** lint clean, build 71 pages, both locales rendered at 1280px and 375px with the
+block forced visible — 140/600 maxlengths applied, 43 curated tags in both selectors, the image
+one capped at 5 and the member one at 7, a chip click selecting into the image selector, no
+horizontal overflow on the phone. **Not exercised signed in:** the actual record write, since it
+needs an account. It is the editor's own call with one item.
