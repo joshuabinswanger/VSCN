@@ -23,6 +23,13 @@ const t = useTranslations(lang);
 
     <p id="status-msg" class="msg-err" style="display:none;"></p>
 
+    {
+      /* The same standing spam line the wizard's verify step carries — one
+        sentence, one string, so the two screens that ask the same thing
+        cannot drift apart (2026-09-08). */
+    }
+    <p class="verify-spam">{t('verify.spam')}</p>
+
     <div class="resend-row">
       <span class="resend-label">{t('verify.resend.label')}</span>
       <button id="btn-resend" class="btn-link">{t('verify.resend.btn')}</button>
@@ -83,6 +90,13 @@ const t = useTranslations(lang);
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+  }
+
+  .verify-spam {
+    margin: 0;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: var(--color-muted);
   }
 
   .resend-row {

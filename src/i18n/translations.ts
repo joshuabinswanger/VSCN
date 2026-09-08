@@ -121,6 +121,7 @@ export const ui: Record<string, Record<string, string>> = {
     "verify.checking": "Checking…",
     "verify.notVerified": "Email not verified yet. Check your inbox and click the link.",
     "verify.resend.label": "Didn't get it?",
+    "verify.spam": "Not in your inbox? Check your spam or junk folder.",
     "verify.resend.btn": "Resend email",
     "verify.resend.msg":
       "We've sent a link to your email. If you don't see it shortly, please check your spam filter.",
@@ -369,6 +370,7 @@ export const ui: Record<string, Record<string, string>> = {
     // both on screen at once, so "the line above" no longer names anything.
     "profile.gallery.caption.deNote":
       "Optional. German visitors hear this read aloud in place of the caption; until it's filled in, they hear the English one instead.",
+    "profile.gallery.description.label": "Description",
     "profile.gallery.description": "About this image — how it was made, who it was for, what it shows",
     "profile.gallery.description.de": "Description (German)",
     // Longer than the German caption's example on purpose (2026-09-04, Josh:
@@ -385,6 +387,9 @@ export const ui: Record<string, Record<string, string>> = {
     // Stored without a scheme, like Portfolio: the input carries a fixed
     // https:// prefix, so the placeholder must not repeat one.
     "profile.gallery.link": "Where this image appeared",
+    "profile.gallery.tags": "What's in the picture",
+    "profile.gallery.tagsNote":
+      "Up to 5. The community grid filters by these, so tag what the picture shows, not what you do.",
     "profile.gallery.link.ph": "nature.com/articles/… (optional)",
     "profile.tag.error": "Tags must be unique, 1–50 characters, and no more than 7 tags.",
     "profile.reauth.confirming": "Confirming…",
@@ -417,8 +422,10 @@ export const ui: Record<string, Record<string, string>> = {
       "One image for now — up to 8 once your email is verified.",
     "onboarding.step5.noteUnverifiedFull":
       "That is your one image until your email is verified. You can add the rest from your profile afterwards.",
-    "onboarding.step5.formats":
-      "JPG, PNG or WebP. Captions and descriptions come later, in your profile.",
+    "onboarding.step5.formats": "JPG, PNG or WebP.",
+    "onboarding.step5.cover.title": "Your cover image",
+    "onboarding.step5.cover.note":
+      "The first image is your cover: its proportions set the shape of your card in the directory. Further images, the German versions and the links come later, in your profile.",
     "onboarding.step5.later":
       "Nothing to show yet is a normal answer — your card carries your tags instead, and you can add images any time.",
     "onboarding.step5.skip": "Nothing to show yet",
@@ -592,6 +599,7 @@ export const ui: Record<string, Record<string, string>> = {
     "verify.notVerified":
       "E-Mail noch nicht bestätigt. Überprüfe deinen Posteingang und klicke auf den Link.",
     "verify.resend.label": "Nicht erhalten?",
+    "verify.spam": "Nicht im Posteingang? Sieh in deinem Spam- oder Junk-Ordner nach.",
     "verify.resend.btn": "E-Mail erneut senden",
     "verify.resend.msg":
       "Wir haben einen Link an deine E-Mail gesendet. Falls du ihn nicht siehst, überprüfe bitte deinen Spam-Ordner.",
@@ -796,6 +804,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.caption.de.ph": "Beispiel: Zebrafisch-Netzhaut im Querschnitt, konfokal",
     "profile.gallery.caption.deNote":
       "Optional. Wird deutschen Besucher:innen anstelle des Bildtitels vorgelesen; bis er ausgefüllt ist, hören sie den englischen.",
+    "profile.gallery.description.label": "Beschreibung",
     "profile.gallery.description":
       "Über dieses Bild — wie es entstand, für wen, was es zeigt",
     "profile.gallery.description.de": "Beschreibung (Deutsch)",
@@ -804,6 +813,9 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.description.deNote":
       "Optional. Wird deutschen Besucher:innen anstelle der Beschreibung gezeigt; bis sie ausgefüllt ist, lesen sie die englische.",
     "profile.gallery.link": "Wo dieses Bild erschienen ist",
+    "profile.gallery.tags": "Was ist auf dem Bild",
+    "profile.gallery.tagsNote":
+      "Bis zu 5. Das Community-Raster filtert danach, also tagge, was das Bild zeigt, nicht was du machst.",
     "profile.gallery.link.ph": "nature.com/articles/… (optional)",
     "profile.tag.error": "Tags müssen eindeutig sein, 1–50 Zeichen, und maximal 7 Tags.",
     "profile.reauth.confirming": "Wird bestätigt…",
@@ -839,8 +851,10 @@ export const ui: Record<string, Record<string, string>> = {
       "Vorerst ein Bild — bis zu 8, sobald deine E-Mail bestätigt ist.",
     "onboarding.step5.noteUnverifiedFull":
       "Das ist dein eines Bild, bis deine E-Mail bestätigt ist. Die übrigen kannst du danach im Profil ergänzen.",
-    "onboarding.step5.formats":
-      "JPG, PNG oder WebP. Bildtexte und Beschreibungen kommen später, in deinem Profil.",
+    "onboarding.step5.formats": "JPG, PNG oder WebP.",
+    "onboarding.step5.cover.title": "Dein Titelbild",
+    "onboarding.step5.cover.note":
+      "Das erste Bild ist dein Titelbild: seine Proportionen bestimmen die Form deiner Karte im Verzeichnis. Weitere Bilder, die deutschen Fassungen und die Links kommen später, in deinem Profil.",
     "onboarding.step5.later":
       "Noch nichts zu zeigen ist eine ganz normale Antwort — deine Karte trägt dann deine Tags, und Bilder kannst du jederzeit nachreichen.",
     "onboarding.step5.skip": "Noch nichts zu zeigen",
