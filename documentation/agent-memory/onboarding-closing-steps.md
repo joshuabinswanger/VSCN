@@ -1,7 +1,7 @@
 <!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/onboarding-closing-steps.md — keep both copies in sync. -->
 ---
 name: onboarding-closing-steps
-description: "feat/onboarding-visibility is MERGED INTO DEV at f5ae60f (2026-09-08), staging deploys from it: verify + visibility steps close the wizard, the bridge no longer publishes, disclaimers tell the truth, the wizard is flat, the phone wall caps tall tiles; the signed-in path is still unwalked"
+description: "The wizard's closing work, in two parts: feat/onboarding-visibility is MERGED INTO DEV at f5ae60f (verify + visibility steps, bridge no longer publishes, flat wizard, phone wall cap); the follow-up feat/onboarding-first-image is PUSHED BUT NOT MERGED at 7102ef3 (spam line, the cover image's caption/description/tags in the wizard). The signed-in path is unwalked for both"
 metadata: 
   node_type: memory
   type: project
@@ -19,6 +19,12 @@ with `npm run worktree -- feat/onboarding-visibility --remove`. Design note
 the one consequence he was asked about: the bridge no longer writes `active: true`, so an
 abandoned wizard stays hidden. Not yet on prod.
 
+**Follow-up, pushed and NOT merged (2026-09-08):** branch `feat/onboarding-first-image`,
+commit `7102ef3`, off `dev` at `1b1dcf9`, pushed to origin, awaiting Josh's word to merge.
+Two more notes: "add a remark to check spam in the email verification step and already expose
+the image title and description and tags for the first image upload". Lint and build clean,
+both locales checked at 1280 and 375. Same design note, its "Follow-up, same day" section.
+
 **Why:** five terse notes ("disclaimer when inactive, step in onboarding, very tall images
 should get a max height in grid view, restyle onboarding, white boxes are obsolete");
 clarified by AskUserQuestion — the step is TWO steps (verify, then set-active), the white
@@ -31,6 +37,15 @@ images were on the PHONE.
   is not counted for it. Anything that adds a step must touch `realSteps` there.
 - Onboarding writes the active flag in ONE place: Finish on step 7, via `setProfileActive`,
   and only for a verified account. Do not put `activatePublicProfile` back on the bridge.
+- The cover image's words are written ON BLUR through `saveGalleryRecords([gallery[0]])`, the
+  editor's own writer. Anything new on that step should follow the same rule: this step
+  persists as it goes, and Finish must stay a step the gallery cannot fail on behalf of.
+- The wizard now holds TWO `<tag-selector>` elements (member tags, cover-image tags). Query
+  them through `#ob-member-tags-field` / `#ob-image-tags-field` — a bare `tag-selector` query
+  silently means "the first one written in the file".
+- Only `gallery[0]` gets fields in the wizard, on purpose (unverified accounts hold one image;
+  it is the card's cover; a form per image would be the editor). The German pair, the per-image
+  link and the order stay in `/profile`.
 - The phone wall's cap needs BOTH halves: the container + `--cgrid-row` on the cell in
   `CommunityGrid.astro`'s phone block, and the width formula restated for
   `.cgrid[data-pattern="grid"] .cgrid__cell > .cwork` in `CommunityWorkCard.astro`'s mobile
@@ -38,7 +53,8 @@ images were on the PHONE.
   must stay for the gallery view, whose cells have no row unit.
 - Not exercised signed in (agent cannot create accounts): the live path through steps 6–7 and
   the `/profile` hidden banner. Josh's auth pass should walk an unverified account through.
-- Next: Josh walks an unverified account through steps 6–7 on the dev host, then a dev → main
-  release PR carries it to prod with everything else waiting on dev.
+- Next: merge `feat/onboarding-first-image` into `dev` (same detached-worktree route), then
+  Josh walks an unverified account through steps 6–7 AND the first upload on the dev host, then
+  a dev → main release PR carries it to prod with everything else waiting on dev.
 - Related: [[signup-is-the-wizards-first-step]], [[profile-editor-preview-mode]],
   [[community-mobile-pattern]].
