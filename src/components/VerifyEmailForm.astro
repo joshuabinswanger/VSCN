@@ -122,6 +122,7 @@ const t = useTranslations(lang);
 <script>
   import { auth } from "../lib/firebase.ts";
   import { activatePublicProfileIfExists } from "../lib/firestore.ts";
+  import { triggerRebuild } from "../lib/profile.ts";
   import { hasVerifiedClaim } from "../lib/auth.ts";
   import { onAuthStateChanged, sendEmailVerification, signOut } from "firebase/auth";
   import { returnTo } from "../lib/authEmail.ts";
@@ -165,7 +166,13 @@ const t = useTranslations(lang);
         // leaving verified members sitting as drafts, invisible in the
         // directory with nothing logged anywhere.
         await hasVerifiedClaim(user);
-        await activatePublicProfileIfExists(user.uid).catch(() => {});
+        // Verifying PUBLISHES the member — and the directory is a static
+        // snapshot, so publishing has to rebuild it, exactly as finishing
+        // onboarding and saving the profile do. Without this a member who
+        // verified and never came back to finish the wizard sat `active: true`
+        // in Firestore and absent from the site until somebody else saved
+        // (2026-09-08, Michael Zehnder).
+        if (await activatePublicProfileIfExists(user.uid).catch(() => false)) await triggerRebuild();
         window.location.href = `${prefix}/profile`;
         return;
       }
@@ -180,7 +187,8 @@ const t = useTranslations(lang);
         // Same reason as above, and the same reason /auth/action pairs its
         // reload() with a getIdToken(true).
         await hasVerifiedClaim(user);
-        await activatePublicProfileIfExists(user.uid).catch(() => {});
+        // Same as above: publishing rebuilds.
+        if (await activatePublicProfileIfExists(user.uid).catch(() => false)) await triggerRebuild();
         window.location.href = `${prefix}/onboarding`;
         return;
       }
