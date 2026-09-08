@@ -5,7 +5,7 @@ import { getStorage } from "firebase/storage";
 import { getFunctions } from "firebase/functions";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { initializeAppCheck, type AppCheck } from "firebase/app-check";
-import { turnstileProvider } from "./appCheckTurnstile.ts";
+import { turnstileProvider, warmUp } from "./appCheckTurnstile.ts";
 
 const firebaseConfig = {
   apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
@@ -48,6 +48,18 @@ if (typeof window !== "undefined" && turnstileSiteKey) {
 }
 
 export const appCheck = appCheckInstance;
+
+// Attest now, not at the login click. Auth awaits the App Check token inside
+// its own 30 s request timeout, and on mobile a Turnstile challenge alone can
+// take 15-25 s; started when a login form appears, it overlaps the member's
+// typing and is cached by the time Auth asks (2026-09-08, Chrome on iOS
+// reported "server not reached" — appCheckTurnstile.ts, lessons 2 and 3).
+// Called by the login and sign-up forms only, NOT here: this module runs on
+// every page through the Navbar, and a visitor reading the landing page must
+// not be handed a Turnstile checkbox.
+export function warmUpAppCheck(): void {
+  if (appCheckInstance) warmUp(appCheckInstance);
+}
 
 // True once the Turnstile script has failed to load on this page. The forms
 // ask before calling Auth and show auth.error.code.securityCheckBlocked, so a

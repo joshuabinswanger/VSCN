@@ -771,7 +771,7 @@ const prefix = lang === "de" ? "/de" : "";
 </style>
 
 <script>
-  import { auth, isSecurityCheckBlocked } from "../lib/firebase.ts";
+  import { auth, isSecurityCheckBlocked, warmUpAppCheck } from "../lib/firebase.ts";
   import {
     onAuthStateChanged,
     createUserWithEmailAndPassword,
@@ -843,6 +843,11 @@ const prefix = lang === "de" ? "/de" : "";
   document.addEventListener("astro:page-load", () => {
     const wrap = document.getElementById("onboarding-wrap") as HTMLElement | null;
     if (!wrap) return;
+
+    // Start the App Check attestation while the member fills in the first
+    // step, so the sign-up click does not spend Auth's 30 s clock on a slow
+    // mobile Turnstile challenge (see firebase.ts).
+    warmUpAppCheck();
 
     const lang = (wrap.dataset.lang ?? "en") as keyof typeof ui;
     const s = ui[lang] ?? ui.en;
