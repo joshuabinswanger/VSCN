@@ -13,8 +13,11 @@ const t = useTranslations(lang);
 <div class="verify-wrap" data-lang={lang}>
   <header class="verify-header">
     <h1 class="verify-title">{t('verify.title')}</h1>
+    {/* The spam line rides in the opening sentence here too — see the wizard's
+      verify step for why it is not a note further down. */}
     <p class="verify-sub">
       {t('verify.sub')} <strong id="user-email"></strong>{t('verify.sub.suffix')}
+      {t('verify.spam')}
     </p>
   </header>
 
@@ -22,13 +25,6 @@ const t = useTranslations(lang);
     <button id="btn-check" class="btn-solid">{t('verify.cta')}</button>
 
     <p id="status-msg" class="msg-err" style="display:none;"></p>
-
-    {
-      /* The same standing spam line the wizard's verify step carries — one
-        sentence, one string, so the two screens that ask the same thing
-        cannot drift apart (2026-09-08). */
-    }
-    <p class="verify-spam">{t('verify.spam')}</p>
 
     <div class="resend-row">
       <span class="resend-label">{t('verify.resend.label')}</span>
@@ -90,13 +86,6 @@ const t = useTranslations(lang);
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
-  }
-
-  .verify-spam {
-    margin: 0;
-    font-size: 0.82rem;
-    line-height: 1.5;
-    color: var(--color-muted);
   }
 
   .resend-row {

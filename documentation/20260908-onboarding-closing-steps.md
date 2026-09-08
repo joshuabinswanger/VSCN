@@ -144,3 +144,40 @@ block forced visible — 140/600 maxlengths applied, 43 curated tags in both sel
 one capped at 5 and the member one at 7, a chip click selecting into the image selector, no
 horizontal overflow on the phone. **Not exercised signed in:** the actual record write, since it
 needs an account. It is the editor's own call with one item.
+
+---
+
+## Second follow-up: three corrections from the review
+
+Josh, on the deployed dev host: "the verify your email box should only appear once in the
+profile view not during onboarding. there is also a mistake where it still says Up to 7 in the
+tag selector, drop it, as there is an explanation underneath it. Put the Spam notice in the
+first sentence". Branch `fix/onboarding-verify-copy`, off `dev` at `c676859`.
+
+**The amber banner leaves the wizard.** `#ob-verify-banner` and its rules, its resend handler,
+the `showVerifyBanner` flag and the line in `setStep` that placed it are all gone. It rode under
+every step asking for the thing the wizard now has a whole step for, so an unverified member met
+the request twice on the way there. `/profile` keeps its copy, where it is the only thing that
+can ask; the resend lives on the verify step and on `/verify-email`. What survives in the
+wizard's stylesheet is `.btn-resend-verify`, because the visibility step's way back to
+verification wears that same quiet face.
+
+**The tag cap is stated by the field, not by the component.** `TagSelector` printed
+`profile.note.tags` — "Up to 7 tags." — as a literal while `maxTags` is a prop, so every
+per-image selector (capped at 5) asserted a wrong limit, and in the wizard's cover block it sat
+directly above a note saying 5. The note moved out of the component and into the two fields that
+actually set 7: `#ob-member-tags-field` in the wizard and `#member-tags-field` in the editor.
+The editor's gallery rows and the cover block now carry no cap claim beyond their own copy.
+
+**The spam advice is part of the opening sentence.** On both verify screens it now closes the
+paragraph that names the address, instead of standing as a quiet note under the button — which
+is where a member looks only after deciding the mail never came. `verify.resend.msg` lost its
+own copy of the advice with it ("We've sent a new link to your email." / "Wir haben einen neuen
+Link an deine E-Mail gesendet."), since otherwise resending printed the spam sentence a second
+time on the same screen.
+
+**Verified:** lint clean, build 71 pages. In the browser, both locales: the banner is absent
+from the wizard's DOM entirely, the verify step's opening paragraph carries the spam sentence
+and nothing else on that step mentions spam, the member-tags field shows "Up to 7 tags." once,
+and the cover block's tag field shows only its own "Up to 5" note. The built `/profile` page
+still carries its verify banner and exactly one cap note.

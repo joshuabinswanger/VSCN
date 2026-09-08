@@ -58,7 +58,15 @@ const t = useTranslations(lang);
     />
     <button type="button" class="ts-add-btn" aria-label={t("profile.tag.add")}>+</button>
   </div>
-  <p class="field-note">{t("profile.note.tags")}</p>
+  {
+    /* NO CAP NOTE HERE ANY MORE (2026-09-08, Josh: "there is also a mistake
+      where it still says Up to 7 in the tag selector, drop it, as there is an
+      explanation underneath it"). The component printed "Up to 7 tags." as a
+      literal, while `maxTags` is a prop — so the per-image selectors, capped
+      at 5, stated a limit that was simply wrong, directly above a note saying
+      5. A component cannot say how many of itself are allowed; the field that
+      places it can, and the two member-tag fields do. */
+  }
   <p class="ts-error msg-err" hidden></p>
 </tag-selector>
 

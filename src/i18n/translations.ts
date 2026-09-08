@@ -123,8 +123,11 @@ export const ui: Record<string, Record<string, string>> = {
     "verify.resend.label": "Didn't get it?",
     "verify.spam": "Not in your inbox? Check your spam or junk folder.",
     "verify.resend.btn": "Resend email",
-    "verify.resend.msg":
-      "We've sent a link to your email. If you don't see it shortly, please check your spam filter.",
+    // JUST THE CONFIRMATION. It used to end "if you don't see it shortly,
+    // please check your spam filter" — which is now the second half of the
+    // opening sentence on both verify screens (2026-09-08), so a member who
+    // resent was told about the spam folder twice on one screen.
+    "verify.resend.msg": "We've sent a new link to your email.",
     "verify.back": "← Back to sign up",
     "verify.error.generic": "Something went wrong. Please try again.",
     "verify.error.resend": "Could not resend. Please wait a moment and try again.",
@@ -601,8 +604,7 @@ export const ui: Record<string, Record<string, string>> = {
     "verify.resend.label": "Nicht erhalten?",
     "verify.spam": "Nicht im Posteingang? Sieh in deinem Spam- oder Junk-Ordner nach.",
     "verify.resend.btn": "E-Mail erneut senden",
-    "verify.resend.msg":
-      "Wir haben einen Link an deine E-Mail gesendet. Falls du ihn nicht siehst, überprüfe bitte deinen Spam-Ordner.",
+    "verify.resend.msg": "Wir haben einen neuen Link an deine E-Mail gesendet.",
     "verify.back": "← Zurück zur Registrierung",
     "verify.error.generic": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
     "verify.error.resend":
