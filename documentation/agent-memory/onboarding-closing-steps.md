@@ -1,7 +1,7 @@
 <!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/onboarding-closing-steps.md — keep both copies in sync. -->
 ---
 name: onboarding-closing-steps
-description: "feat/onboarding-visibility is BUILT, UNCOMMITTED, in the wt-feat-works-on-the-record worktree: verify + visibility steps close the wizard, the bridge no longer publishes, disclaimers tell the truth, the wizard is flat, the phone wall caps tall tiles"
+description: "feat/onboarding-visibility is MERGED INTO DEV at f5ae60f (2026-09-08), staging deploys from it: verify + visibility steps close the wizard, the bridge no longer publishes, disclaimers tell the truth, the wizard is flat, the phone wall caps tall tiles; the signed-in path is still unwalked"
 metadata: 
   node_type: memory
   type: project
@@ -9,12 +9,15 @@ metadata:
   modified: 2026-09-08T06:34:04.108Z
 ---
 
-**State on 2026-09-08:** branch `feat/onboarding-visibility` off `dev` `38e5814`, checked out
-in `D:\SynoDrive\VSCN\wt-feat-works-on-the-record` (the worktree kept its old name; its old
-branch is merged). Ten files changed, lint clean, build green, **nothing committed** — Josh
-did not ask for a commit. Design note `documentation/20260908-onboarding-closing-steps.md`
-on the branch. Josh approved the design in chat including the one consequence he was asked
-about: the bridge no longer writes `active: true`, so an abandoned wizard stays hidden.
+**State on 2026-09-08:** merged into `dev` at `f5ae60f` (merge of `0ee16f2`, done in a
+throwaway detached worktree per [[merging-into-dev-without-switching]]; `merge-tree` reported no
+conflicts against the image-tags work, lint and build were run on the MERGED tree). The push
+triggers the staging deploy of the dev host. The feature branch is still checked out in
+`D:\SynoDrive\VSCN\wt-feat-works-on-the-record` (the worktree kept its old name) — tear it down
+with `npm run worktree -- feat/onboarding-visibility --remove`. Design note
+`documentation/20260908-onboarding-closing-steps.md`. Josh approved the design in chat including
+the one consequence he was asked about: the bridge no longer writes `active: true`, so an
+abandoned wizard stays hidden. Not yet on prod.
 
 **Why:** five terse notes ("disclaimer when inactive, step in onboarding, very tall images
 should get a max height in grid view, restyle onboarding, white boxes are obsolete");
@@ -35,8 +38,7 @@ images were on the PHONE.
   must stay for the gallery view, whose cells have no row unit.
 - Not exercised signed in (agent cannot create accounts): the live path through steps 6–7 and
   the `/profile` hidden banner. Josh's auth pass should walk an unverified account through.
-- Next: Josh reviews on the dev server (`npx astro dev --port 4323` in the worktree, the
-  pane's `preview_start` ignores worktree launch.json — see
-  [[preview-tool-ignores-worktree-launch-json]]), commits, `gh pr create --draft --base dev`.
+- Next: Josh walks an unverified account through steps 6–7 on the dev host, then a dev → main
+  release PR carries it to prod with everything else waiting on dev.
 - Related: [[signup-is-the-wizards-first-step]], [[profile-editor-preview-mode]],
   [[community-mobile-pattern]].
