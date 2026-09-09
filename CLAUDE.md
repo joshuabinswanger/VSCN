@@ -93,13 +93,15 @@ Breakpoints are **only** these two custom-media aliases, resolved by `@csstools/
 
 ### Layout and scrolling — the non-obvious one
 
-[src/layouts/Layout.astro](src/layouts/Layout.astro) puts `body { overflow: hidden; height: 100dvh }` and makes **`.page-wrap` the scroll container, not the document**. Anything scroll-related must target `.page-wrap`:
+[src/layouts/Layout.astro](src/layouts/Layout.astro) puts `body { overflow: hidden; height: var(--shell-h, 100dvh) }` and makes **`.page-wrap` the scroll container, not the document**. Anything scroll-related must target `.page-wrap`:
 
 - `window.scrollY` and window scroll listeners will not work.
 - GSAP ScrollTrigger must be passed `scroller: ".page-wrap"` explicitly.
 - CSS `animation-timeline: view()` resolves against it as the nearest scrollport.
 
 The large repeating `VSCNVSCNVSCN` band is `.brand-ticker`, rendered *outside* `.page-wrap` with `transition:persist`, so it is fixed above the scrolling region on every page.
+
+**`--shell-h` is the visual viewport's height**, written by an inline head watchdog in `Layout.astro` (2026-09-09). `100dvh` is only the fallback: on iOS it is a promise about the toolbars that the browser does not always keep, and when it broke, the shell ended up mis-sized *and* mis-placed against the visible area — a white band below the fixed viewport, the header hidden behind the URL bar, and no way back because the document cannot scroll (`documentation/agent-memory/grain-overlay-compositing-cost.md`). Three things about that watchdog are load-bearing and were each found by a failing test, not by reasoning: a focused `input`/`textarea`/`select`/`contenteditable` **suspends** the sync, or the on-screen keyboard would collapse the shell on every form; `vv.height` is ignored while `vv.scale !== 1`, because pinch zoom shrinks it without shrinking the page; and it **re-syncs on `astro:after-swap`**, because a view transition takes the inline style on `<html>` with it and the "nothing changed" guard would otherwise treat the loss as a no-op, silently reverting the whole fix after one in-site tap.
 
 ### Astro specifics worth knowing
 

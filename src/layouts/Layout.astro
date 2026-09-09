@@ -73,6 +73,100 @@ const BRAND_SLOTS = [
     <meta charset="utf-8" />
     <link rel="icon" type="image/png" href={favicon.src} />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {/* The paper colour, so the browser's own furniture and any strip of canvas
+        it exposes match the page instead of flashing white. See the shell note
+        at the top of global.css. */}
+    <meta name="theme-color" content="#fcfbfa" />
+
+    {
+      /* THE SHELL WATCHDOG. Inline and in the head on purpose: it has to have
+        written --shell-h before the first paint, or the very load it exists to
+        rescue is the one it misses. See the shell note at the top of
+        global.css for what it is rescuing.
+        `100dvh` is a promise about the toolbars that iOS does not always keep.
+        window.visualViewport is the only thing that knows what is ACTUALLY
+        visible, so the shell is sized from it and re-sized whenever it moves.
+        Two things it must NOT react to, both of which shrink the visual
+        viewport without shrinking the page:
+          - the on-screen keyboard. Collapsing the shell into the keyboard's
+            leftovers on every /login, /profile and /signup field would be a
+            far worse bug than the one being fixed, so a focused editable
+            suspends the sync and the last good height stands.
+          - pinch zoom, where vv.height is a magnification artefact.
+        The scroll nudge is separate and DEBOUNCED, because it must not fight a
+        toolbar animation that is still running: only once the visual viewport
+        has been still for a moment is a non-zero offset a stuck state rather
+        than a gesture in progress. */
+    }
+    <script is:inline>
+      (function () {
+        const vv = window.visualViewport;
+        if (!vv) return;
+        const root = document.documentElement;
+        // -1, not 0. In the head there is no layout yet and vv.height reads 0;
+        // seeded with 0 the "nothing changed" guard below swallowed that first
+        // measurement AND recorded it as synced, and no resize event follows a
+        // first layout — so --shell-h was never written at all. Caught on the
+        // dev server before this went anywhere near a phone.
+        let last = -1;
+        let settleTimer = 0;
+
+        function editing() {
+          const el = document.activeElement;
+          if (!el) return false;
+          const tag = el.tagName;
+          return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+        }
+
+        function sync() {
+          if (vv.scale !== 1 || editing()) return;
+          const h = Math.round(vv.height);
+          // A zero height is "not laid out yet", never a shell to adopt.
+          if (h <= 0 || h === last) return;
+          last = h;
+          root.style.setProperty("--shell-h", h + "px");
+        }
+
+        function settle() {
+          settleTimer = 0;
+          if (vv.scale !== 1) return;
+          // Parked past the page's own end, or above its start: the state from
+          // the bug report. Nothing else can undo it, because a document with
+          // `overflow: hidden` gives the reader nothing to scroll back with.
+          if (vv.offsetTop !== 0 || window.scrollY !== 0) window.scrollTo(0, 0);
+        }
+
+        function onChange() {
+          sync();
+          if (settleTimer) clearTimeout(settleTimer);
+          settleTimer = setTimeout(settle, 300);
+        }
+
+        // A view transition swaps the document and takes the inline style on
+        // <html> with it, so --shell-h is GONE after every in-site navigation —
+        // and `last` still holds the height that was just thrown away, so the
+        // guard in sync() would call it a no-op and the shell would quietly
+        // fall back to the 100dvh this exists to replace. Forget the cached
+        // value, then measure again. (Verified against ClientRouter: without
+        // this, one tap on COMMUNITY undid the fix for the rest of the visit.)
+        function resync() {
+          last = -1;
+          sync();
+        }
+
+        sync();
+        // The head-time measurement above is usually 0; this is the one that
+        // actually lands, and sync() is idempotent so running it twice is free.
+        document.addEventListener("DOMContentLoaded", sync);
+        document.addEventListener("astro:after-swap", resync);
+        document.addEventListener("astro:page-load", resync);
+        vv.addEventListener("resize", onChange);
+        vv.addEventListener("scroll", onChange);
+        window.addEventListener("orientationchange", onChange);
+        // Coming back from the bfcache is a fresh chance to be wrong.
+        window.addEventListener("pageshow", onChange);
+      })();
+    </script>
     <title>{title}</title>
     <meta name="description" content={metaDescription} />
     {noindex && <meta name="robots" content="noindex, nofollow" />}
