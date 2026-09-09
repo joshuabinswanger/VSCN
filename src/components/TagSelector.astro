@@ -137,8 +137,14 @@ const t = useTranslations(lang);
   /* The heading rows are NOT on the white — the box belongs to the tags. It is
      drawn on .tag-suggestion-list below, so DISCIPLINES / TOPICS / OTHER stay
      on the page and only the chips an open group reveals sit on a field. */
+  /* Drawn exactly like the add row's field below it (.addrow .input in
+     global.css): the two are the same kind of thing in the same control, and
+     the filter at .input's full size read as a heavier, different field
+     (2026-09-09, Josh: "make the find bar the same style as the add tag"). */
   tag-selector .ts-filter {
     margin-top: 0.9rem;
+    padding: 4px 10px;
+    font-size: 0.82rem;
   }
 
   tag-selector .tag-groups {
