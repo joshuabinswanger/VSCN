@@ -134,6 +134,8 @@ export const ui: Record<string, Record<string, string>> = {
 
     // ProfileForm
     "profile.loading": "Loading profile…",
+    "profile.loadFailed": "Your profile could not be loaded.",
+    "profile.loadRetry": "Try again",
     "profile.verifyBanner":
       "Please verify your email to secure your account — if it hasn't arrived, check your spam folder.",
     "profile.verifyResend": "Resend email",
@@ -200,6 +202,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.primaryAudience.education": "Education",
     "profile.label.tags": "Tags",
     "profile.ph.tags": "Add a custom tag…",
+    "profile.ph.tagFilter": "Find a tag…",
+    "profile.tag.filterLabel": "Filter the suggested tags",
     "profile.note.tags": "Up to 7 tags.",
     "profile.tag.add": "Add tag",
     "profile.browseTags": "Browse tags",
@@ -612,6 +616,8 @@ export const ui: Record<string, Record<string, string>> = {
 
     // ProfileForm
     "profile.loading": "Profil wird geladen…",
+    "profile.loadFailed": "Dein Profil konnte nicht geladen werden.",
+    "profile.loadRetry": "Erneut versuchen",
     "profile.verifyBanner":
       "Bitte bestätige deine E-Mail, um dein Konto zu sichern — ist sie nicht angekommen, sieh in deinem Spam-Ordner nach.",
     "profile.verifyResend": "E-Mail erneut senden",
@@ -679,6 +685,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.primaryAudience.education": "Bildung",
     "profile.label.tags": "Tags",
     "profile.ph.tags": "Eigenen Tag hinzufügen…",
+    "profile.ph.tagFilter": "Tag finden…",
+    "profile.tag.filterLabel": "Vorgeschlagene Tags filtern",
     "profile.note.tags": "Bis zu 7 Tags.",
     "profile.tag.add": "Tag hinzufügen",
     "profile.browseTags": "Tags durchsuchen",

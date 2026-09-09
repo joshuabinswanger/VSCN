@@ -729,6 +729,14 @@ const t = useTranslations(lang);
     font-size: 0.9rem;
   }
 
+  .loading-state.is-failed {
+    color: var(--color-dark, #111);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.9rem;
+  }
+
   .verify-banner {
     width: 100%;
     max-width: 560px;
@@ -1694,6 +1702,7 @@ const t = useTranslations(lang);
     EmailAuthProvider,
     sendEmailVerification,
     verifyBeforeUpdateEmail,
+    type User,
   } from "firebase/auth";
   import { returnTo } from "../lib/authEmail.ts";
   import { requireAuth } from "../lib/auth.ts";
@@ -2761,8 +2770,160 @@ const t = useTranslations(lang);
       }
     });
 
+    // THE LOAD CAN FAIL, AND SAYS SO (2026-09-09, Josh: "on iPhone my profile
+    // does not load sometimes, I have to press reload"). Until today the chain
+    // below — token check, user document, gallery query, publish flag — ran
+    // with no error handler and no clock, so one rejected or stalled step left
+    // "Loading profile…" on screen for ever. Mobile Safari makes a stall
+    // likely: it suspends the tab when the member switches apps and Firestore's
+    // channel does not always come back, and App Check attestation on a phone
+    // is slow enough that the first read can wait a long time for its token.
+    // Now the whole chain races a timer. Losing shows a sentence and a button;
+    // the button re-runs the chain in place, and if that fails too it reloads
+    // the page, which is the one remedy known to work. Coming back to the tab
+    // after a failure retries once on its own.
+    const LOAD_TIMEOUT_MS = 15000;
+    let loadGeneration = 0;
+    let loadFailures = 0;
+    let loadState: "loading" | "loaded" | "failed" = "loading";
+
+    function markLoaded() {
+      loadState = "loaded";
+      if (loadingEl) loadingEl.style.display = "none";
+      form.classList.add("is-loaded");
+    }
+
+    function showLoadFailed(user: User | null) {
+      loadState = "failed";
+      if (!loadingEl) return;
+      loadingEl.textContent = "";
+      loadingEl.classList.add("is-failed");
+      loadingEl.style.display = "";
+      const text = document.createElement("p");
+      text.textContent = s["profile.loadFailed"];
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn-outline";
+      btn.textContent = s["profile.loadRetry"];
+      btn.addEventListener("click", () => {
+        const current = user ?? auth.currentUser;
+        if (!current || loadFailures >= 2) {
+          window.location.reload();
+          return;
+        }
+        void runLoad(current);
+      });
+      loadingEl.append(text, btn);
+    }
+
+    async function runLoad(user: User) {
+      const generation = ++loadGeneration;
+      loadState = "loading";
+      if (loadingEl) {
+        loadingEl.classList.remove("is-failed");
+        loadingEl.textContent = s["profile.loading"];
+        loadingEl.style.display = "";
+      }
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const clock = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("profile load timed out")), LOAD_TIMEOUT_MS);
+      });
+      const load = loadProfile(user);
+      try {
+        await Promise.race([load, clock]);
+        if (generation === loadGeneration) markLoaded();
+      } catch (err) {
+        if (generation !== loadGeneration) return;
+        loadFailures++;
+        console.warn("[profile] load failed:", err);
+        showLoadFailed(user);
+        // A run that only lost the race may still finish. If it does, and
+        // nothing newer has started, the page is in fact loaded — say so
+        // rather than leaving the retry button over a filled-in form.
+        load.then(
+          () => {
+            if (generation === loadGeneration && loadState === "failed") markLoaded();
+          },
+          () => {},
+        );
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible") return;
+      if (loadState !== "failed") return;
+      const current = auth.currentUser;
+      if (current && loadFailures < 2) void runLoad(current);
+    });
+
+    async function loadProfile(user: User) {
+      const data = await getUser(user.uid);
+
+      currentPhotoImageId = data.photoImageId ?? "";
+      await ensureEmailSynced(user, data.email);
+      // Safe to call here: showDeletionBanner and the consts it closes over are declared below, but the auth callback cannot run before this astro:page-load body has finished.
+      if (data.status === "pendingDeletion" && data.purgeAfter) {
+        // getUser() hands back raw Firestore data, so at runtime this is a
+        // Timestamp even though UserDoc types it as Date.
+        const purgeAfter = data.purgeAfter as unknown as { toDate(): Date };
+        showDeletionBanner(purgeAfter.toDate().toISOString());
+      }
+
+      nameInput.value = data.displayName ?? user.displayName ?? "";
+      roleInput.value = data.role ?? "";
+      bioInput.value = data.bio ?? "";
+      portfolioInput.value = data.portfolio ?? "";
+      // The stored string IS the row list — an old single-value profile simply
+      // arrives as one row, with nothing to migrate.
+      setSocialValues(splitSocial(data.socialMedia ?? ""));
+      affiliationInput.value = data.affiliation ?? "";
+      locationInput.value = data.location ?? "";
+      setSelectedLanguages(data.languages ?? []);
+      if (visualNeedsSelector) {
+        visualNeedsSelector.value = Array.isArray(data.visualNeeds)
+          ? data.visualNeeds.filter(Boolean)
+          : [];
+      }
+      if (memberTypeSelector) {
+        memberTypeSelector.value = data.memberType ?? "";
+        syncMemberTypeCopy();
+      }
+      if (openToSelector) {
+        openToSelector.value = Array.isArray(data.openTo) ? data.openTo.filter(Boolean) : [];
+      }
+      if (tagSelector) {
+        tagSelector.value = Array.isArray(data.tags) ? data.tags.filter(Boolean).slice(0, 7) : [];
+      }
+      setSelectedPrimaryAudiences(data.primaryAudiences ?? []);
+      // The id list joined to this member's own live records — one query, then
+      // the pure join in galleryRecords.ts. Since 2026-09-07 the stored array
+      // is ids only; the words come from the records. (Until today this was
+      // sanitizeGalleryItems(), stripping withdrawn keys out of stored objects;
+      // there are no objects in the array to strip now.)
+      gallery = await loadGallery(user.uid, data.gallery);
+      renderGallery();
+      phoneInput.value = data.phone ?? "";
+      wantsToContributeInput.checked = data.wantsToContribute ?? false;
+      activeInput.checked = await getPublicProfileActive(user.uid);
+      syncHiddenBanner(user.emailVerified, activeInput.checked);
+      showPreview(data.photoURL ?? user.photoURL ?? "");
+    }
+
+    // requireAuth settles the verification claim before calling back, and that
+    // step has no clock of its own: if auth itself never answers, the timer
+    // below shows the same failure, whose button reloads for want of a user.
+    const authWatchdog = setTimeout(() => {
+      if (loadState === "loading" && loadGeneration === 0) {
+        loadFailures = 2;
+        showLoadFailed(null);
+      }
+    }, LOAD_TIMEOUT_MS);
+
     unsubscribeAuth?.();
     unsubscribeAuth = requireAuth(async (user) => {
+      clearTimeout(authWatchdog);
       // The admin link, shown only to an admin. Two reads, exactly as the
       // console's own gate does it: the cached token first (free, right for
       // every established admin), then ONE forced refresh before concluding
@@ -2816,59 +2977,7 @@ const t = useTranslations(lang);
         });
       }
 
-      const data = await getUser(user.uid);
-
-      currentPhotoImageId = data.photoImageId ?? "";
-      await ensureEmailSynced(user, data.email);
-      // Safe to call here: showDeletionBanner and the consts it closes over are declared below, but the auth callback cannot run before this astro:page-load body has finished.
-      if (data.status === "pendingDeletion" && data.purgeAfter) {
-        // getUser() hands back raw Firestore data, so at runtime this is a
-        // Timestamp even though UserDoc types it as Date.
-        const purgeAfter = data.purgeAfter as unknown as { toDate(): Date };
-        showDeletionBanner(purgeAfter.toDate().toISOString());
-      }
-
-      nameInput.value = data.displayName ?? user.displayName ?? "";
-      roleInput.value = data.role ?? "";
-      bioInput.value = data.bio ?? "";
-      portfolioInput.value = data.portfolio ?? "";
-      // The stored string IS the row list — an old single-value profile simply
-      // arrives as one row, with nothing to migrate.
-      setSocialValues(splitSocial(data.socialMedia ?? ""));
-      affiliationInput.value = data.affiliation ?? "";
-      locationInput.value = data.location ?? "";
-      setSelectedLanguages(data.languages ?? []);
-      if (visualNeedsSelector) {
-        visualNeedsSelector.value = Array.isArray(data.visualNeeds)
-          ? data.visualNeeds.filter(Boolean)
-          : [];
-      }
-      if (memberTypeSelector) {
-        memberTypeSelector.value = data.memberType ?? "";
-        syncMemberTypeCopy();
-      }
-      if (openToSelector) {
-        openToSelector.value = Array.isArray(data.openTo) ? data.openTo.filter(Boolean) : [];
-      }
-      if (tagSelector) {
-        tagSelector.value = Array.isArray(data.tags) ? data.tags.filter(Boolean).slice(0, 7) : [];
-      }
-      setSelectedPrimaryAudiences(data.primaryAudiences ?? []);
-      // The id list joined to this member's own live records — one query, then
-      // the pure join in galleryRecords.ts. Since 2026-09-07 the stored array
-      // is ids only; the words come from the records. (Until today this was
-      // sanitizeGalleryItems(), stripping withdrawn keys out of stored objects;
-      // there are no objects in the array to strip now.)
-      gallery = await loadGallery(user.uid, data.gallery);
-      renderGallery();
-      phoneInput.value = data.phone ?? "";
-      wantsToContributeInput.checked = data.wantsToContribute ?? false;
-      activeInput.checked = await getPublicProfileActive(user.uid);
-      syncHiddenBanner(user.emailVerified, activeInput.checked);
-      showPreview(data.photoURL ?? user.photoURL ?? "");
-
-      if (loadingEl) loadingEl.style.display = "none";
-      form.classList.add("is-loaded");
+      await runLoad(user);
     });
 
     document.getElementById("btn-logout")!.addEventListener("click", async () => {

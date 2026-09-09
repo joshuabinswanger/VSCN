@@ -21,6 +21,23 @@ const t = useTranslations(lang);
 
 <tag-selector data-lang={lang} data-max-tags={maxTags}>
   <div class="tag-list ts-selected" aria-live="polite"></div>
+  {
+    /* TWO FIELDS, TWO INTENTS (2026-09-09, Josh: "can it be that the tag
+      creator is actually a search? this is confusing"). Until today one box
+      filtered the groups, inline-autocompleted to a registry tag AND created a
+      new one on Enter — so typing "sci" to add your own tag got you
+      "Scientific illustration" instead. This field only narrows the lists
+      below; nothing is ever created from it. The add row at the bottom only
+      creates. */
+  }
+  <input
+    type="text"
+    class="input ts-filter"
+    placeholder={t("profile.ph.tagFilter")}
+    aria-label={t("profile.tag.filterLabel")}
+    maxlength="50"
+    autocomplete="off"
+  />
   <div class="tag-groups">
     <details class="tag-group" data-group-key="disciplines">
       <summary class="tag-group-summary">
@@ -120,11 +137,21 @@ const t = useTranslations(lang);
   /* The heading rows are NOT on the white — the box belongs to the tags. It is
      drawn on .tag-suggestion-list below, so DISCIPLINES / TOPICS / OTHER stay
      on the page and only the chips an open group reveals sit on a field. */
+  /* Drawn exactly like the add row's field below it (.addrow .input in
+     global.css): the two are the same kind of thing in the same control, and
+     the filter at .input's full size read as a heavier, different field
+     (2026-09-09, Josh: "make the find bar the same style as the add tag"). */
+  tag-selector .ts-filter {
+    margin-top: 0.9rem;
+    padding: 4px 10px;
+    font-size: 0.82rem;
+  }
+
   tag-selector .tag-groups {
     display: flex;
     flex-direction: column;
     gap: 1.1rem;
-    margin-top: 0.9rem;
+    margin-top: 0.75rem;
   }
 
   /* NO BOX OF ITS OWN. The heading and its rule are the whole frame for a
@@ -254,10 +281,13 @@ const t = useTranslations(lang);
   class TagSelectorElement extends HTMLElement {
     private _tags: string[] = [];
     private registryTags: TagDoc[] = [];
-    private autocompleteMatch: string | null = null;
     private maxTags = 7;
+    /** Open state of each group as the member left it, taken when a filter
+     *  starts forcing groups open and put back when the filter empties. */
+    private openBeforeFilter: Map<string, boolean> | null = null;
     private lang: "en" | "de" = "en";
     private inputEl!: HTMLInputElement;
+    private filterEl!: HTMLInputElement;
     private selectedEl!: HTMLElement;
     private errorEl!: HTMLElement;
     private bound = false;
@@ -270,6 +300,7 @@ const t = useTranslations(lang);
       this.lang = (this.dataset.lang === "de" ? "de" : "en") as "en" | "de";
 
       this.inputEl = this.querySelector<HTMLInputElement>(".ts-input")!;
+      this.filterEl = this.querySelector<HTMLInputElement>(".ts-filter")!;
       this.selectedEl = this.querySelector<HTMLElement>(".ts-selected")!;
       this.errorEl = this.querySelector<HTMLElement>(".ts-error")!;
 
@@ -304,10 +335,11 @@ const t = useTranslations(lang);
     }
 
     set inputValue(v: string) {
-      if (this.inputEl) {
-        this.inputEl.value = v;
-        this.renderSuggestions(v);
-      }
+      if (this.inputEl) this.inputEl.value = v;
+    }
+
+    private get filterText(): string {
+      return this.filterEl?.value ?? "";
     }
 
     private emitChange() {
@@ -329,7 +361,7 @@ const t = useTranslations(lang);
     private async loadRegistry() {
       try {
         this.registryTags = await loadRegistryOnce();
-        this.renderSuggestions(this.inputEl.value);
+        this.renderSuggestions(this.filterText);
       } catch (err) {
         console.warn("[tag-selector] Failed to load tag registry", err);
       }
@@ -337,7 +369,7 @@ const t = useTranslations(lang);
 
     private render() {
       this.renderSelected();
-      this.renderSuggestions(this.inputEl?.value ?? "");
+      this.renderSuggestions(this.filterText);
     }
 
     private renderSelected() {
@@ -384,9 +416,24 @@ const t = useTranslations(lang);
         .filter((t) => this.tagMatches(t, filter));
       visible.forEach((tag) => container.appendChild(this.makeSuggestionChip(tag)));
       if (countEl) countEl.textContent = visible.length ? `(${visible.length})` : "";
+      // A filter with results in a closed group would show nothing at all, so
+      // a group opens while its matches exist and closes while they do not.
+      if (filter) {
+        const details = container.closest<HTMLDetailsElement>("details.tag-group");
+        if (details) details.open = visible.length > 0;
+      }
     }
 
     private renderSuggestions(filter = "") {
+      const groupEls = Array.from(this.querySelectorAll<HTMLDetailsElement>("details.tag-group"));
+      if (filter && !this.openBeforeFilter) {
+        this.openBeforeFilter = new Map(groupEls.map((d) => [d.dataset.groupKey ?? "", d.open]));
+      } else if (!filter && this.openBeforeFilter) {
+        groupEls.forEach((d) => {
+          d.open = this.openBeforeFilter!.get(d.dataset.groupKey ?? "") ?? false;
+        });
+        this.openBeforeFilter = null;
+      }
       const groups: Record<GroupKey, string[]> = {
         disciplines: [],
         topics: [],
@@ -407,8 +454,22 @@ const t = useTranslations(lang);
       );
     }
 
-    private async addTag(value: string): Promise<boolean> {
-      const norm = normalizeTag(value);
+    /** The registry's own spelling of a tag, if it already has one. Typing
+     *  "3d" when the registry holds "3D" must pick "3D", not add a twin. */
+    private canonical(norm: string): string {
+      const hit = this.registryTags.find((t) => t.label.toLowerCase() === norm.toLowerCase());
+      return hit ? hit.label : norm;
+    }
+
+    /** All suggestion chips currently on screen, across the three groups. */
+    private visibleSuggestions(): string[] {
+      return Array.from(this.querySelectorAll<HTMLButtonElement>("button.tag-suggestion-chip"))
+        .map((b) => b.dataset.tag ?? "")
+        .filter(Boolean);
+    }
+
+    private addTag(value: string): boolean {
+      const norm = this.canonical(normalizeTag(value));
       if (!norm) return false;
       if (norm.length > 50) {
         this.setError(ui[this.lang]["profile.tag.error"]);
@@ -422,87 +483,83 @@ const t = useTranslations(lang);
         return false;
       }
 
-      // Best-effort registry write — failures (e.g. unverified email) are
-      // OK, the tag still lands on the user's profile via the parent's save.
-      const user = auth.currentUser;
-      if (user) {
-        try {
-          await getOrCreateTag(norm, user.uid);
-          if (!this.registryTags.some((t) => t.label.toLowerCase() === norm.toLowerCase())) {
-            this.registryTags.push({
-              label: norm,
-              active: true,
-              group: "other",
-              createdAt: new Date(),
-              createdBy: user.uid,
-            });
-          }
-        } catch (err) {
-          console.warn("[tag-selector] Registry write skipped:", err);
-        }
-      }
-
+      // THE CHIP APPEARS NOW. Until 2026-09-09 this awaited the registry write
+      // below first, so a tag "took a second to land" — the round trip to
+      // Firestore, plus the App Check token on a phone — and the member was
+      // left wondering whether Enter had done anything. The write was always
+      // best-effort (an unverified address is refused by the rules and the tag
+      // still lands on the profile through the parent's save), so nothing
+      // about it needs to be waited for.
       this._tags = [...this._tags, norm];
       this.setError("");
       this.renderSelected();
-      this.renderSuggestions("");
+      this.renderSuggestions(this.filterText);
       this.emitChange();
+
+      const user = auth.currentUser;
+      const known = this.registryTags.some((t) => t.label.toLowerCase() === norm.toLowerCase());
+      if (user && !known) {
+        this.registryTags.push({
+          label: norm,
+          active: true,
+          group: "other",
+          createdAt: new Date(),
+          createdBy: user.uid,
+        });
+        this.renderSuggestions(this.filterText);
+        getOrCreateTag(norm, user.uid).catch((err) => {
+          console.warn("[tag-selector] Registry write skipped:", err);
+        });
+      }
       return true;
     }
 
     private removeTag(tag: string) {
       this._tags = this._tags.filter((t) => t !== tag);
       this.renderSelected();
-      this.renderSuggestions(this.inputEl.value);
+      this.renderSuggestions(this.filterText);
       this.emitChange();
     }
 
-    private async submitInput() {
-      const val = this.autocompleteMatch ?? this.inputEl.value;
-      this.autocompleteMatch = null;
+    private submitInput() {
+      const val = this.inputEl.value;
       if (!val.trim()) return;
-      if (await this.addTag(val)) {
-        this.inputEl.value = "";
-        this.renderSuggestions("");
-      }
+      if (this.addTag(val)) this.inputEl.value = "";
       this.inputEl.focus();
     }
 
     private attachListeners() {
-      this.inputEl.addEventListener("keydown", async (e) => {
-        if (e.key === "Backspace" || e.key === "Delete") {
-          if (this.autocompleteMatch) {
-            e.preventDefault();
-            const typed = this.inputEl.value.substring(0, this.inputEl.selectionStart ?? 0);
-            this.autocompleteMatch = null;
-            this.inputEl.value = typed;
-            this.renderSuggestions(typed);
-          }
-          return;
-        }
+      // The add row: Enter or + creates. No autocomplete — canonical() picks
+      // the registry's spelling when the typed tag already exists, silently.
+      this.inputEl.addEventListener("keydown", (e) => {
         if (e.key !== "Enter") return;
         e.preventDefault();
-        await this.submitInput();
+        this.submitInput();
       });
 
       const addBtn = this.querySelector<HTMLButtonElement>(".ts-add-btn");
       if (addBtn) {
-        addBtn.addEventListener("click", () => void this.submitInput());
+        addBtn.addEventListener("click", () => this.submitInput());
       }
 
-      this.inputEl.addEventListener("input", () => {
-        const raw = this.inputEl.value;
-        this.renderSuggestions(raw);
-        const match = this.registryTags
-          .map((t) => t.label)
-          .filter((t) => !this.tagIsSelected(t))
-          .find((t) => raw.length > 0 && t.toLowerCase().startsWith(raw.toLowerCase()));
-        if (match && match.length > raw.length) {
-          this.autocompleteMatch = match;
-          this.inputEl.value = match;
-          this.inputEl.setSelectionRange(raw.length, match.length);
-        } else {
-          this.autocompleteMatch = null;
+      // The filter: narrows the groups as you type. Enter picks the one chip
+      // left when the filter has narrowed the lists to a single tag; with more
+      // than one it does nothing, and it never creates.
+      this.filterEl.addEventListener("input", () => {
+        this.renderSuggestions(this.filterEl.value);
+      });
+      this.filterEl.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          this.filterEl.value = "";
+          this.renderSuggestions("");
+          return;
+        }
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        const visible = this.visibleSuggestions();
+        if (visible.length === 1 && this.addTag(visible[0])) {
+          this.filterEl.value = "";
+          this.renderSuggestions("");
         }
       });
 
@@ -514,15 +571,14 @@ const t = useTranslations(lang);
         this.removeTag(btn.dataset.tag);
       });
 
-      this.addEventListener("click", async (e) => {
+      // A picked suggestion leaves the filter as it is: the member may be
+      // picking several from the same narrowed list.
+      this.addEventListener("click", (e) => {
         const btn = (e.target as HTMLElement).closest(
           "button.tag-suggestion-chip"
         ) as HTMLButtonElement | null;
         if (!btn?.dataset.tag) return;
-        if (await this.addTag(btn.dataset.tag)) {
-          this.inputEl.value = "";
-          this.renderSuggestions("");
-        }
+        this.addTag(btn.dataset.tag);
       });
     }
   }
