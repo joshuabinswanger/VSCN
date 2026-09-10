@@ -1,0 +1,153 @@
+---
+// One renderer for the Impressum, the contact page and the privacy policy.
+// The prose comes from src/i18n/legal.ts as sections; the only markup this
+// adds is the mailto link around the contact address (splitOnEmail).
+import type { Lang } from "../i18n/utils.ts";
+import { legal, type LegalPageId } from "../i18n/legal.ts";
+import { legalEntity } from "../data/legalEntity.ts";
+import { splitOnEmail } from "../lib/legalParagraph.ts";
+
+interface Props {
+  page: LegalPageId;
+  lang?: Lang;
+}
+
+const { page, lang = "en" } = Astro.props;
+const content = legal[lang][page];
+const updatedLabel = lang === "de" ? "Stand" : "Last updated";
+const updatedDate = new Date(content.updated).toLocaleDateString(lang === "de" ? "de-CH" : "en-GB", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
+---
+
+<article class="legal-page">
+  <header class="legal-head">
+    <h1 class="legal-title">{content.title}</h1>
+    <p class="legal-updated">{updatedLabel}: <time datetime={content.updated}>{updatedDate}</time></p>
+  </header>
+
+  {
+    content.sections.map((section) => (
+      <section class="legal-section" id={section.id}>
+        {section.heading && <h2 class="legal-heading">{section.heading}</h2>}
+        {section.body.map((block) =>
+          typeof block === "string" ? (
+            <p>
+              {splitOnEmail(block, legalEntity.email).map((seg) =>
+                seg.kind === "email" ? <a href={`mailto:${seg.value}`}>{seg.value}</a> : seg.value
+              )}
+            </p>
+          ) : (
+            <ul class="legal-list">
+              {block.list.map((item) => <li>{item}</li>)}
+            </ul>
+          )
+        )}
+        {section.id === "operator" && legalEntity.addressLines.length > 0 && (
+          <address class="legal-address">
+            {legalEntity.addressLines.map((line) => <span>{line}</span>)}
+          </address>
+        )}
+      </section>
+    ))
+  }
+</article>
+
+<style>
+  /* The same measure and type as InfoPage, so the legal pages read as
+     more of the same site rather than as a bolt-on. */
+  .legal-page {
+    width: 100%;
+    max-width: 1200px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding-top: 2rem;
+    /* Shorter than InfoPage's 8rem: the footer closes these pages, so the
+       breathing room below the last paragraph is its margin, not ours. */
+    padding-bottom: 2rem;
+    margin: 0 auto;
+
+    @media (--bp-desktop) {
+      padding-top: 4rem;
+    }
+  }
+
+  .legal-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .legal-title {
+    font-family: "Archivo", sans-serif;
+    font-size: clamp(1.4rem, 2.2vw, 1.8rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0;
+    color: var(--color-dark);
+  }
+
+  .legal-updated {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--color-muted);
+  }
+
+  .legal-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .legal-heading {
+    font-family: "Archivo", sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-dark);
+    margin: 0;
+  }
+
+  .legal-section p,
+  .legal-list li {
+    font-size: clamp(1rem, 1.2vw, 1.08rem);
+    color: #333;
+    line-height: 1.85;
+    margin: 0;
+  }
+
+  .legal-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding-left: 1.25rem;
+    margin: 0;
+  }
+
+  .legal-section a {
+    color: var(--color-dark);
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+
+  .legal-section a:hover,
+  .legal-section a:focus-visible {
+    opacity: 0.5;
+  }
+
+  .legal-address {
+    display: flex;
+    flex-direction: column;
+    font-style: normal;
+    font-size: clamp(1rem, 1.2vw, 1.08rem);
+    color: #333;
+    line-height: 1.6;
+  }
+</style>

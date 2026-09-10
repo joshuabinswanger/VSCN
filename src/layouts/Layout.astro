@@ -1,9 +1,11 @@
 ---
 import { ClientRouter } from "astro:transitions";
 import Navbar from "../components/Navbar.astro";
+import SiteFooter from "../components/SiteFooter.astro";
 import PageLoader from "../components/PageLoader.astro";
 import favicon from "../assets/favicon.png";
 import { BUILD_COMMIT, BUILD_TIME } from "../lib/buildInfo.ts";
+import type { Lang } from "../i18n/utils.ts";
 import ogImageAsset from "../assets/OG_Image.png";
 import "../styles/global.css";
 
@@ -242,6 +244,9 @@ const BRAND_SLOTS = [
           </main>
         )
       }
+      {/* Inside .page-wrap so it scrolls with the content and sits above the
+          wrap's own bottom padding; the fullscreen hero keeps its edges. */}
+      {!fullscreen && <SiteFooter lang={lang as Lang} />}
     </div>
   </body>
 </html>

@@ -6,6 +6,12 @@ export const ui: Record<string, Record<string, string>> = {
     "nav.login": "LOGIN",
     "nav.profile": "PROFILE",
 
+    // SiteFooter
+    "footer.aria": "Legal",
+    "footer.impressum": "Impressum",
+    "footer.contact": "Contact",
+    "footer.privacy": "Privacy",
+
     // LandingHero
     "hero.statement.connect":
       "The Visual Science Communication Network brings together everyone who gives knowledge a visual form.",
@@ -491,6 +497,12 @@ export const ui: Record<string, Record<string, string>> = {
     "nav.community": "COMMUNITY",
     "nav.login": "ANMELDEN",
     "nav.profile": "PROFIL",
+
+    // SiteFooter
+    "footer.aria": "Rechtliches",
+    "footer.impressum": "Impressum",
+    "footer.contact": "Kontakt",
+    "footer.privacy": "Datenschutz",
 
     // LandingHero
     "hero.statement.connect":
