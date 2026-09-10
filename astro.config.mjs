@@ -23,6 +23,15 @@ export default defineConfig({
   },
   integrations: [
     sitemap({
+      // Emits <xhtml:link rel="alternate" hreflang> pairs for every URL that
+      // exists in both locales (and nothing for one that does not) — the
+      // sitemap half of what Layout.astro's <link rel="alternate"> tags do in
+      // the head. Keys are the URL prefixes, values the hreflang codes; the
+      // <html lang> attribute uses the same two, so they agree.
+      i18n: {
+        defaultLocale: 'en',
+        locales: { en: 'en', de: 'de' },
+      },
       filter: (page) =>
         !page.includes('/proto') &&
         !page.includes('/profile') &&

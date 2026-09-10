@@ -269,7 +269,7 @@ export function registerLightboxText(
             a.className = "pswp__vscn-text-link";
             a.href = link;
             a.target = "_blank";
-            a.rel = "noreferrer";
+            a.rel = "noopener";
             a.title = labels.linkTitle;
             a.textContent = linkLabel(link);
             el.append(a);

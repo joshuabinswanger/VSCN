@@ -167,6 +167,13 @@ const t = useTranslations(lang);
           placeholder={t("profile.ph.portfolio")}
         />
       </div>
+      {
+        /* The one field on this tab that had no note (2026-09-10). Every
+          other field here says what it is for; this one only showed a prefix
+          and a placeholder, and the thing it does — a followed link from
+          vscn.ch to the member's own site — is invisible unless it is said. */
+      }
+      <p class="field-note">{t("profile.note.portfolio")}</p>
     </div>
 
     {
@@ -401,6 +408,13 @@ const t = useTranslations(lang);
               <span class="input-prefix">https://</span>
               <input type="text" class="input input-prefixed" data-gallery-field="link" />
             </div>
+            {
+              /* Static text in the template, unlike the DE notes above, which
+                are filled in JS because they toggle with the pane. This one
+                is the same for every row and every state, so `t()` here is
+                enough — the clone carries it. */
+            }
+            <p class="field-note">{t("profile.gallery.linkNote")}</p>
             {
               /* WHAT IS IN THE PICTURE, not who made it — the community wall
                 filters by this (2026-09-08, step 2 of

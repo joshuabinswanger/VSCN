@@ -180,6 +180,12 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.note.bio": "Maximum 35 words.",
     "profile.label.portfolio": "Portfolio / Website",
     "profile.ph.portfolio": "yoursite.com",
+    // WHY THIS FIELD IS WORTH FILLING IN (2026-09-10). The link is a followed
+    // anchor on the public page and, since the same day, the Person's url in
+    // the page's structured data — a reference to their site that search
+    // engines count. "Followed" is jargon; "search engines follow" is not.
+    "profile.note.portfolio":
+      "Shown on your public page as a link search engines follow. Visits from here appear in your analytics as vscn.ch.",
     "profile.label.portfolio.science": "Website / Lab page",
     "profile.ph.portfolio.science": "lab.university.edu",
     "profile.label.social": "Social Media",
@@ -404,6 +410,11 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.tagsNote":
       "Up to 5. The community grid filters by these, so tag what the picture shows, not what you do.",
     "profile.gallery.link.ph": "nature.com/articles/… (optional)",
+    // The per-image link is the member's chance at a DEEP link: the project
+    // page on their own site, or the paper — a page about this picture, which
+    // counts for more than a second link to their homepage would.
+    "profile.gallery.linkNote":
+      "Optional. The page where this piece lives — your own project page, or the publication. Shown under the image as a link search engines follow.",
     "profile.tag.error": "Tags must be unique, 1–50 characters, and no more than 7 tags.",
     "profile.reauth.confirming": "Confirming…",
     "profile.reauth.error": "Incorrect password. Please try again.",
@@ -669,6 +680,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.note.bio": "Maximal 35 Wörter.",
     "profile.label.portfolio": "Portfolio / Website",
     "profile.ph.portfolio": "deinewebsite.com",
+    "profile.note.portfolio":
+      "Erscheint auf deiner öffentlichen Seite als Link, dem Suchmaschinen folgen. Besuche von hier erscheinen in deiner Statistik als vscn.ch.",
     "profile.label.portfolio.science": "Website / Institutsseite",
     "profile.ph.portfolio.science": "institut.uni.ch",
     "profile.label.social": "Social Media",
@@ -839,6 +852,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.tagsNote":
       "Bis zu 5. Das Community-Raster filtert danach, also tagge, was das Bild zeigt, nicht was du machst.",
     "profile.gallery.link.ph": "nature.com/articles/… (optional)",
+    "profile.gallery.linkNote":
+      "Optional. Die Seite, auf der dieses Bild zu Hause ist – deine eigene Projektseite oder die Publikation. Erscheint unter dem Bild als Link, dem Suchmaschinen folgen.",
     "profile.tag.error": "Tags müssen eindeutig sein, 1–50 Zeichen, und maximal 7 Tags.",
     "profile.reauth.confirming": "Wird bestätigt…",
     "profile.reauth.error": "Falsches Passwort. Bitte erneut versuchen.",
