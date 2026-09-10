@@ -1,0 +1,64 @@
+---
+// The site had no footer until the legal pages needed somewhere to be linked
+// from. Rendered by Layout.astro on every page but the fullscreen landing
+// hero; not persisted across view transitions, so the hrefs are simply the
+// current page's locale — no client script to keep them in step, unlike the
+// navbar's.
+import { useTranslations } from "../i18n/utils.ts";
+import type { Lang } from "../i18n/utils.ts";
+
+interface Props {
+  lang?: Lang;
+}
+
+const { lang = "en" } = Astro.props;
+const t = useTranslations(lang);
+const prefix = lang === "de" ? "/de" : "";
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <nav class="footer-links" aria-label={t("footer.aria")}>
+    <a href={`${prefix}/impressum`}>{t("footer.impressum")}</a>
+    <a href={`${prefix}/contact`}>{t("footer.contact")}</a>
+    <a href={`${prefix}/privacy`}>{t("footer.privacy")}</a>
+  </nav>
+  <span class="footer-copy">© {year} VSCN</span>
+</footer>
+
+<style>
+  .site-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem 1.5rem;
+    /* Same measure as <main>, the navbar and the brand ticker. */
+    max-width: var(--shell-max);
+    margin: 3rem auto 0;
+    box-sizing: border-box;
+    padding: 0 15px;
+    /* The language toggle is fixed to the bottom-right corner; keep the last
+       link out from under it on a narrow screen. */
+    padding-right: 110px;
+    font-family: "Archivo", sans-serif;
+    font-size: 0.8rem;
+    color: var(--color-muted);
+  }
+
+  .footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+  }
+
+  .footer-links a {
+    color: var(--color-muted);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  .footer-links a:hover,
+  .footer-links a:focus-visible {
+    color: var(--color-dark);
+  }
+</style>

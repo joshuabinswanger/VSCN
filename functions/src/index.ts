@@ -4,7 +4,7 @@ export { requestRebuild } from "./rebuild";
 export { mintAppCheckToken } from "./appCheck";
 export { requestAccountDeletion, cancelAccountDeletion, syncEmail } from "./accounts";
 export { purgeExpiredAccounts, sweepImages, reconcileEmails } from "./maintenance";
-export { onAuthUserDeleted } from "./authTriggers";
+export { onAuthUserCreated, onAuthUserDeleted } from "./authTriggers";
 export { onPublicProfileWritten } from "./slugs";
 export {
   adminDeleteImage,

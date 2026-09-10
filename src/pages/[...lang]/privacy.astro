@@ -1,0 +1,18 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import LegalPage from "../../components/LegalPage.astro";
+import { legal } from "../../i18n/legal.ts";
+import type { Lang } from "../../i18n/utils";
+
+export function getStaticPaths() {
+  return [{ params: { lang: undefined } }, { params: { lang: "de" } }];
+}
+
+const { lang = "en" } = Astro.params;
+const currentLang = (lang || "en") as Lang;
+const content = legal[currentLang].privacy;
+---
+
+<Layout title={`${content.title} — VSCN`} description={content.description} lang={currentLang}>
+  <LegalPage page="privacy" lang={currentLang} />
+</Layout>
