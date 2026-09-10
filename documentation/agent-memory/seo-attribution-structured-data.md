@@ -2,7 +2,7 @@
 
 ---
 name: seo-attribution-structured-data
-description: "The \"link every image to its maker's portfolio\" ask was answered with JSON-LD, hreflang and dropping noreferrer, not with outbound links on tiles; built 2026-09-10 on feat/seo-attribution, uncommitted"
+description: The "link every image to its maker's portfolio" ask was answered with JSON-LD, hreflang and dropping noreferrer, not with outbound links on tiles; MERGED TO DEV 2026-09-10 as 808dbd9, not yet on prod
 metadata: 
   node_type: memory
   type: project
@@ -12,7 +12,7 @@ metadata:
 
 Josh asked (2026-09-10) how to link each image back to the member's own portfolio for SEO and
 make members aware of it. Built on branch `feat/seo-attribution` in worktree
-`wt-feat-seo-attribution` (off `origin/dev` at `f8ea711`), NOT committed when the session ended.
+`wt-feat-seo-attribution` (off `origin/dev` at `f8ea711`); committed as `808dbd9` and fast-forwarded onto `origin/dev` the same day. NOT on prod yet; the worktree was removed.
 Design note: `documentation/20260910-seo-attribution.md`.
 
 **What shipped in the tree:** `src/lib/seo.ts` (pure, tested in `tests/unit/seo.test.mjs`):
