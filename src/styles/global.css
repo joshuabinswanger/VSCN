@@ -48,17 +48,49 @@
 
 /* ── Reset ── */
 
+/* THE SHELL, AND THE WHITE BAND IT USED TO LEAVE (2026-09-09, Josh, Chrome on
+   iOS, vscn.ch: "the page block and there is a white bar at the bottom and the
+   header is invisble", roughly one cold open in three, reload the only cure).
+   His screenshot placed the fault: the band began exactly where the FIXED
+   viewport ended — `.lang-toggle` (fixed, bottom: 20px) sat 20px above it and
+   the grain overlay stopped on the same line — while the browser's content area
+   carried on ~90 css px further down. At the same time the navbar, which is
+   sticky at the top of .page-wrap, was nowhere: the shell was also sitting
+   ~45px ABOVE the visible area, with the header behind the URL bar. One fault,
+   both halves — the page's viewport box mis-sized and mis-placed against what
+   was actually on screen — and because the document cannot scroll, no gesture
+   could bring the header back. That is the "page block".
+   Three defences here, and the fourth (the shell watchdog that writes
+   --shell-h) is in Layout.astro:
+     1. `overflow: hidden` stated on html rather than left to propagate up from
+        body, so the document is unscrollable by declaration.
+     2. `overscroll-behavior: none`, so a toolbar-collapse gesture cannot leave
+        the page parked past its own end.
+     3. html carries the paper colour. The band is OUTSIDE the layout viewport,
+        so nothing in the page can paint there — but --color-bg is #fcfbfa, so
+        what made the band read as a stark white BAR rather than as more paper
+        was the grain's absence from it, and a canvas that matches the paper is
+        the difference between a defect and nobody noticing. */
 html {
   font-size: var(--font-size-base);
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--color-bg);
 }
 
 body {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  /* --shell-h is the VISUAL viewport's height, written by the watchdog in
+     Layout.astro on every visual-viewport change. `100dvh` stays as the
+     fallback for browsers without visualViewport, and as the value before the
+     first sync — it is right nearly always, and this whole bug is the "nearly". */
+  height: var(--shell-h, 100dvh);
   color: black;
   background: var(--color-bg);
   overflow: hidden;
+  overscroll-behavior: none;
   margin: 0;
 }
 
@@ -75,13 +107,28 @@ body {
   animation-duration: 420ms;
 }
 
+/* THE PAPER GRAIN — and why its box is the size it is.
+   This overlay only has to be large enough to still cover the viewport at the
+   animation's furthest excursion. `translate()` percentages resolve against
+   the element's OWN size, and page-noise never exceeds 8% on either axis, so
+   at 140% of the viewport the furthest it ever moves is 11.2% of the viewport
+   — a -20% offset leaves margin on every edge at every keyframe.
+   It was 200% at -50%: FOUR viewports of compositing surface where 1.96 does
+   the same job, i.e. 56% of the layer was never on screen at any point in the
+   cycle. That is not free, because mix-blend-mode means the whole thing is a
+   blend group the compositor keeps a backing store for: measured 2026-09-09 at
+   375x812, the old box was 750x1624 css px — 18.6 MB at dpr 2 and 41.8 MB on a
+   dpr 3 phone, for a decoration. Under iOS memory pressure a layer that size
+   is what gets its tiles dropped, and dropped tiles paint white.
+   If the keyframes below ever translate further than 8%, this box has to grow
+   with them or the grain will pull away from an edge. */
 body::before {
   content: "";
   position: fixed;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
+  top: -20%;
+  left: -20%;
+  width: 140%;
+  height: 140%;
   pointer-events: none;
   z-index: 9999;
   opacity: 0.7;
@@ -132,6 +179,15 @@ body::before {
 @media (prefers-reduced-motion: reduce) {
   body::before {
     animation: none;
+    /* Nothing moves any more, so the overlay needs neither room to move in nor
+       a promoted layer — exactly the viewport, and let the compositor forget
+       it. `will-change: transform` on a static element is pure cost: it pinned
+       a backing store the size of the box above for an overlay that never
+       changed, which is the one case where the hint can only lose. */
+    inset: 0;
+    width: auto;
+    height: auto;
+    will-change: auto;
   }
 }
 
