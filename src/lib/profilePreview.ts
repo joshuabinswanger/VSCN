@@ -210,14 +210,19 @@ export function renderProfilePreview(
         // editor's own mapping as the member types. The two build the model
         // separately, so a shared rule is the only thing keeping the preview
         // honest about what a visitor will get.
-        const link = workPart<HTMLAnchorElement>("link");
-        if (link) {
-          link.textContent = w.link ? hostLabel(w.link) : "";
-          link.href = w.link ?? "";
-          link.hidden = !w.link;
-        }
+        const setLink = (part: string, value: string | undefined) => {
+          const a = workPart<HTMLAnchorElement>(part);
+          if (!a) return;
+          a.textContent = value ? hostLabel(value) : "";
+          a.href = value ?? "";
+          a.hidden = !value;
+        };
+        // Own project page first, then where it appeared — the page's order.
+        setLink("site-link", w.siteLink);
+        setLink("link", w.link);
+        show(workPart("links"), Boolean(w.siteLink || w.link));
 
-        show(workPart("caption-block"), Boolean(captionText || descText || w.link));
+        show(workPart("caption-block"), Boolean(captionText || descText || w.link || w.siteLink));
         return figure;
       })
       .filter((n): n is HTMLElement => n !== null);

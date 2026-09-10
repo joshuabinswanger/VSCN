@@ -49,6 +49,12 @@ export interface ProfileWork {
    */
   link?: string;
   /**
+   * Absolute href for the member's OWN page about this piece — their project
+   * page, not the publication. Same treatment as `link`: scheme-prefixed and
+   * filtered by workLink() before it gets here, absent otherwise.
+   */
+  siteLink?: string;
+  /**
    * What is IN the picture, not who made it — the community wall filters by
    * this, the spread and index still filter by the member's own `tags`
    * (2026-09-07/08, step 2 of documentation/20260907-works-on-the-record-design.md).

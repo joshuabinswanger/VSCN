@@ -94,6 +94,8 @@ const pswpFor = (w: (typeof works)[number]) => ({
   // href below: every image in this card is the same member's, but each
   // one appeared somewhere of its own.
   link: w.link || "",
+  // The member's own project page for the piece (2026-09-10) — same treatment.
+  siteLink: w.siteLink || "",
   meta: member.displayName,
 });
 
@@ -188,6 +190,7 @@ const positionFor = (i: number) =>
               data-pswp-caption={pswpFor(w).caption || undefined}
               data-pswp-description={pswpFor(w).description || undefined}
               data-pswp-link={pswpFor(w).link || undefined}
+              data-pswp-site-link={pswpFor(w).siteLink || undefined}
               data-pswp-meta={pswpFor(w).meta}
               data-pswp-profile={profileHref}
             >
@@ -245,6 +248,7 @@ const positionFor = (i: number) =>
         data-pswp-caption={pswpFor(frame).caption || undefined}
         data-pswp-description={pswpFor(frame).description || undefined}
         data-pswp-link={pswpFor(frame).link || undefined}
+        data-pswp-site-link={pswpFor(frame).siteLink || undefined}
         data-pswp-meta={pswpFor(frame).meta}
         data-pswp-profile={profileHref}
         aria-label={`${t("community.card.openImage")} ${member.displayName}`}></a>

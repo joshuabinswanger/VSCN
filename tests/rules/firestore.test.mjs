@@ -216,6 +216,15 @@ test("images: the record carries where the image appeared", async () => {
   await assertFails(db.doc("images/img-1").update({ link: 42, updatedAt: new Date() }));
 });
 
+test("images: the record carries the member's own page for the piece, beside where it appeared", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({ siteLink: "adalovelace.ch/work/zebrafish", link: "nature.com/articles/1", updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ siteLink: "x".repeat(200), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ siteLink: "x".repeat(201), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ siteLink: 42, updatedAt: new Date() }));
+});
+
 test("images: what is in the picture — up to 5 tags from the registry's own alphabet", async () => {
   await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();

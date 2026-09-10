@@ -95,6 +95,7 @@ const works = [
     caption: "Zebrafish retina",
     description: "Confocal, false colour.",
     link: "https://nature.com/articles/1",
+    siteLink: "https://adalovelace.ch/work/zebrafish",
   },
   { url: "https://firebasestorage.googleapis.com/v0/b/x/o/users%2Fu%2Fgallery%2Fb.webp?alt=media", width: 800, height: 1200 },
 ];
@@ -164,12 +165,15 @@ test("memberPageJsonLd: every image names its creator by reference and carries c
   assert.deepEqual(first.creator, { "@id": "https://vscn.ch/members/ada-lovelace/#person" });
   assert.equal(first.creditText, "Ada Lovelace");
   assert.equal(first.copyrightNotice, "© Ada Lovelace");
-  // Where the image appeared is the work's own page in the world.
-  assert.equal(first.mainEntityOfPage, "https://nature.com/articles/1");
-  // The bare second work: no texts, no link, no thumbnail — and no empty keys.
+  // Two links, two roles: the member's own project page is what the image is
+  // the main entity OF; the publication is what it is part of.
+  assert.equal(first.mainEntityOfPage, "https://adalovelace.ch/work/zebrafish");
+  assert.deepEqual(first.isPartOf, { "@type": "WebPage", url: "https://nature.com/articles/1" });
+  // The bare second work: no texts, no links, no thumbnail — and no empty keys.
   assert.equal("name" in second, false);
   assert.equal("description" in second, false);
   assert.equal("mainEntityOfPage" in second, false);
+  assert.equal("isPartOf" in second, false);
   assert.equal("thumbnailUrl" in second, false);
   assert.deepEqual(second.creator, first.creator);
 });

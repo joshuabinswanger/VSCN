@@ -399,21 +399,40 @@ const t = useTranslations(lang);
             </div>
 
             {
-              /* WHERE THIS IMAGE APPEARED. Same fixed-prefix treatment as
-                Portfolio and the social rows, because the value is stored the
+              /* TWO LINKS PER PICTURE, IN THE ORDER THE PAGE PRINTS THEM
+                (2026-09-10, Josh: "the image link should be additional no?").
+                This one is the member's own page about the piece; the one
+                below is where it appeared. Until today a single field was
+                asked to be both, and its note said so — which made a reader
+                unable to tell a portfolio from a publication, and left the
+                structured data unable to either (see imageNode() in
+                src/lib/seo.ts, where the own page is what the image is the
+                main entity OF and the publication is what it is part of).
+
+                A second NAMED field rather than a repeatable list of URLs:
+                a row of bare hosts under a picture says nothing about which
+                is which, and neither field is worth having if the reader
+                cannot tell them apart. Same fixed-prefix treatment as
+                Portfolio and the social rows, because both are stored the
                 same way: without a scheme. A bare text input would collect a
-                mix of "nature.com/…" and "https://nature.com/…" in one field. */
+                mix of "nature.com/…" and "https://nature.com/…" in one
+                field. */
             }
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">https://</span>
+              <input type="text" class="input input-prefixed" data-gallery-field="siteLink" />
+            </div>
+            {
+              /* Static text in the template, unlike the DE notes above, which
+                are filled in JS because they toggle with the pane. These are
+                the same for every row and every state, so `t()` here is
+                enough — the clone carries them. */
+            }
+            <p class="field-note">{t("profile.gallery.siteLinkNote")}</p>
             <div class="input-prefix-wrap">
               <span class="input-prefix">https://</span>
               <input type="text" class="input input-prefixed" data-gallery-field="link" />
             </div>
-            {
-              /* Static text in the template, unlike the DE notes above, which
-                are filled in JS because they toggle with the pane. This one
-                is the same for every row and every state, so `t()` here is
-                enough — the clone carries it. */
-            }
             <p class="field-note">{t("profile.gallery.linkNote")}</p>
             {
               /* WHAT IS IN THE PICTURE, not who made it — the community wall
@@ -2094,6 +2113,7 @@ const t = useTranslations(lang);
             const descriptionDe = field<HTMLTextAreaElement>("descriptionDe");
             const descriptionDeNote = row.querySelector<HTMLElement>(".gallery-desc-de-note");
             const link = field<HTMLInputElement>("link");
+            const siteLink = field<HTMLInputElement>("siteLink");
             const cover = row.querySelector<HTMLElement>("[data-gallery-cover]");
             const up = row.querySelector<HTMLButtonElement>('[data-gallery-move="up"]');
             const down = row.querySelector<HTMLButtonElement>('[data-gallery-move="down"]');
@@ -2108,7 +2128,7 @@ const t = useTranslations(lang);
             if (!img || !remove || !caption || !description) return null;
             if (!captionDe || !captionDeNote) return null;
             if (!descriptionDe || !descriptionDeNote) return null;
-            if (!link || !cover || !up || !down || !tagsSelector) return null;
+            if (!link || !siteLink || !cover || !up || !down || !tagsSelector) return null;
             if (langBtns.length !== 2 || !langPaneEn || !langPaneDe) return null;
 
             // The one thing on screen that admits the order means something:
@@ -2184,20 +2204,31 @@ const t = useTranslations(lang);
             });
             setGalleryLang(galleryLangUI.get(item.imageId) ?? "en");
 
-            link.value = item.link ?? "";
-            link.maxLength = MAX_GALLERY_LINK;
-            link.placeholder = s["profile.gallery.link.ph"];
-            named(link, s["profile.gallery.link"]);
-            link.addEventListener("input", () => {
-              // Deleted rather than stored empty, because firestore.rules only
-              // permits the keys it knows and an empty string is not a link —
-              // the same reason `projectId` was deleted rather than blanked
-              // when its select was cleared.
-              const value = link.value.trim();
-              if (value) gallery[index].link = value;
-              else delete gallery[index].link;
-              syncPreview();
-            });
+            // The two per-image links, wired identically — they differ in
+            // what they MEAN, not in how they are stored (2026-09-10).
+            const wireLink = (
+              input: HTMLInputElement,
+              key: "link" | "siteLink",
+              labelKey: "profile.gallery.link" | "profile.gallery.siteLink",
+              phKey: "profile.gallery.link.ph" | "profile.gallery.siteLink.ph",
+            ) => {
+              input.value = item[key] ?? "";
+              input.maxLength = MAX_GALLERY_LINK;
+              input.placeholder = s[phKey];
+              named(input, s[labelKey]);
+              input.addEventListener("input", () => {
+                // Deleted rather than stored empty, because firestore.rules only
+                // permits the keys it knows and an empty string is not a link —
+                // the same reason `projectId` was deleted rather than blanked
+                // when its select was cleared.
+                const value = input.value.trim();
+                if (value) gallery[index][key] = value;
+                else delete gallery[index][key];
+                syncPreview();
+              });
+            };
+            wireLink(siteLink, "siteLink", "profile.gallery.siteLink", "profile.gallery.siteLink.ph");
+            wireLink(link, "link", "profile.gallery.link", "profile.gallery.link.ph");
 
             tagsSelector.value = item.tags ?? [];
             named(tagsSelector, s["profile.label.tags"]);
@@ -2653,6 +2684,7 @@ const t = useTranslations(lang);
             // would get one, including showing none for a value that is not
             // link-shaped yet, mid-typing.
             link: workLink(g.link),
+            siteLink: workLink(g.siteLink),
             tags: g.tags ?? [],
           };
         }),

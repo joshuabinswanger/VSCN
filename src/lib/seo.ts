@@ -87,8 +87,10 @@ export interface SeoWork {
   height: number;
   caption?: string;
   description?: string;
-  /** Absolute, already filtered by workLink(): where this image appeared. */
+  /** Absolute, already filtered by workLink(): where this image appeared — the publication. */
   link?: string;
+  /** Absolute, already filtered by workLink(): the member's own project page for this piece. */
+  siteLink?: string;
 }
 
 type Node = Record<string, unknown>;
@@ -151,7 +153,13 @@ function imageNode(work: SeoWork, creator: Node, creatorName: string, site: stri
     creator,
     creditText: creatorName,
     copyrightNotice: `© ${creatorName}`,
-    mainEntityOfPage: work.link,
+    // TWO LINKS, TWO ROLES (2026-09-10). The member's own project page is the
+    // page this picture is the main entity OF — the deep link back into their
+    // site, which is the whole point of the exercise. The publication is what
+    // the picture is part of; until the second field existed it sat in
+    // mainEntityOfPage, which was the nearest slot, not the right one.
+    mainEntityOfPage: work.siteLink,
+    isPartOf: work.link ? { "@type": "WebPage", url: work.link } : undefined,
   });
 }
 

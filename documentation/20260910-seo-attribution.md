@@ -28,6 +28,8 @@ the user aware?"
    VSCN page. `sameAs` carries the linkable socials plus the VSCN page. `creditText` and
    `copyrightNotice` are the member's name — what Google Images prints beside a result.
    `mainEntityOfPage` on an image is the work's own `link`, when there is one.
+   **Superseded the same day** — the image carries two links now, and they have different
+   roles: see `documentation/20260910-image-own-site-link.md`.
    - Member page: `ProfilePage` → `mainEntity: Person` (nested, per Google's ProfilePage
      guidance), then the images referencing the person by `@id` (`<pageUrl>#person`).
    - Community page: `CollectionPage` → `hasPart: ImageObject[]`, each creator a compact
@@ -50,6 +52,9 @@ the user aware?"
 7. **The editor says why the fields matter.** A `field-note` under Portfolio (there was
    none) and one under each image's "Where this image appeared", both locales. "Search
    engines follow" rather than "followed link" — the meaning without the jargon.
+   **The per-image note was wrong** and was rewritten the same day: it told members to put
+   their own project page into the field that means "where it appeared", which is what
+   prompted the second field. See `documentation/20260910-image-own-site-link.md`.
 
 ## Not done, on purpose
 

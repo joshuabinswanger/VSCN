@@ -113,6 +113,7 @@ const lightboxStrings = JSON.stringify({
   next: t("member.lightbox.next"),
   error: t("member.lightbox.error"),
   linkTitle: t("member.lightbox.link"),
+  siteLinkTitle: t("member.lightbox.siteLink"),
 });
 
 const social = socialLinks(member.socialMedia);
@@ -146,6 +147,7 @@ const jsonLd = memberPageJsonLd({
     caption: w.caption,
     description: w.description,
     link: w.link,
+    siteLink: w.siteLink,
   })),
   pageUrl,
   site: Astro.site!.href,
@@ -301,6 +303,7 @@ const jsonLd = memberPageJsonLd({
                 {/* The same link the figcaption prints below, so the
                     lightbox is not the one view that drops it. */}
                 data-pswp-link={w.link || undefined}
+                data-pswp-site-link={w.siteLink || undefined}
                 data-pswp-meta={w.pswpMeta || undefined}
               >
                 <img
@@ -316,20 +319,32 @@ const jsonLd = memberPageJsonLd({
                   style={`background-color: ${w.color ?? "var(--color-border)"}`}
                 />
               </a>
-              {(w.caption?.trim() || w.description || w.link) && (
+              {(w.caption?.trim() || w.description || w.link || w.siteLink) && (
                 <figcaption class="mprof__caption">
                   {w.caption?.trim() && <span class="mprof__caption-line">{w.caption}</span>}
                   {w.description && <span class="mprof__desc">{w.description}</span>}
-                  {/* Where the image lives in the world. In the caption and not
-                      on the image, because the image's own anchor is the
-                      lightbox trigger — wrapping that in an outbound link would
-                      take the reader off the page every time they tried to look
-                      closer. The host IS the link text: "nature.com" says where
-                      you are going, in any language. */}
-                  {w.link && (
-                    <a class="mprof__link" href={w.link} target="_blank" rel="noopener">
-                      {hostLabel(w.link)}
-                    </a>
+                  {/* Where the piece lives in the world: the member's own
+                      project page first, then the publication it appeared in
+                      (two links since 2026-09-10, Josh: "the image link should
+                      be additional"). In the caption and not on the image,
+                      because the image's own anchor is the lightbox trigger —
+                      wrapping that in an outbound link would take the reader
+                      off the page every time they tried to look closer. The
+                      host IS the link text: "nature.com" says where you are
+                      going, in any language; the title says what it is. */}
+                  {(w.siteLink || w.link) && (
+                    <span class="mprof__caption-links">
+                      {w.siteLink && (
+                        <a class="mprof__link" href={w.siteLink} target="_blank" rel="noopener" title={t("member.lightbox.siteLink")}>
+                          {hostLabel(w.siteLink)}
+                        </a>
+                      )}
+                      {w.link && (
+                        <a class="mprof__link" href={w.link} target="_blank" rel="noopener" title={t("member.lightbox.link")}>
+                          {hostLabel(w.link)}
+                        </a>
+                      )}
+                    </span>
                   )}
                 </figcaption>
               )}
@@ -360,6 +375,8 @@ const jsonLd = memberPageJsonLd({
     error: string;
     /** Accessible name for the per-image "where this appeared" link. */
     linkTitle: string;
+    /** Accessible name for the member's own-site link on a piece. */
+    siteLinkTitle: string;
   }
 
   // English is the fallback, matching useTranslations() — a missing or
@@ -371,6 +388,7 @@ const jsonLd = memberPageJsonLd({
     next: "Next image",
     error: "The image cannot be loaded",
     linkTitle: "Where this image appeared",
+    siteLinkTitle: "This piece on the maker's own site",
   };
 
   // These options take raw HTML, which is how the stock SVG icons get replaced
@@ -452,7 +470,7 @@ const jsonLd = memberPageJsonLd({
     // in one shared module, because there is ONE lightbox on this site and it
     // must not speak differently depending on which gallery opened it. Both
     // galleries carried their own copy of this renderer until 2026-09-04.
-    registerLightboxText(lightbox, { linkTitle: strings.linkTitle });
+    registerLightboxText(lightbox, { linkTitle: strings.linkTitle, siteLinkTitle: strings.siteLinkTitle });
 
     lightbox.init();
   });
