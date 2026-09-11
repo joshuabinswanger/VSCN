@@ -4,6 +4,13 @@
 // hero; not persisted across view transitions, so the hrefs are simply the
 // current page's locale — no client script to keep them in step, unlike the
 // navbar's.
+//
+// IT IS CHROME, NOT CONTENT (2026-09-10, Josh: "footer should always be at the
+// bottom left on desktop and only appear when fully scrolled down"). Fixed to
+// the bottom-left corner, mirroring the language toggle's bottom-right, so the
+// two read as one bottom bar rather than as two unrelated fixtures. Being out
+// of flow it costs the page no height; .page-wrap's 80px bottom padding is
+// what keeps it off the last line of content.
 import { useTranslations } from "../i18n/utils.ts";
 import type { Lang } from "../i18n/utils.ts";
 
@@ -17,7 +24,7 @@ const prefix = lang === "de" ? "/de" : "";
 const year = new Date().getFullYear();
 ---
 
-<footer class="site-footer">
+<footer class="site-footer" id="site-footer">
   <nav class="footer-links" aria-label={t("footer.aria")}>
     <a href={`${prefix}/impressum`}>{t("footer.impressum")}</a>
     <a href={`${prefix}/contact`}>{t("footer.contact")}</a>
@@ -25,24 +32,61 @@ const year = new Date().getFullYear();
   </nav>
   <span class="footer-copy">© {year} VSCN</span>
 </footer>
+{
+  /* THE END-OF-SCROLL MARK. Empty, zero-height, and the last child of
+     .page-wrap — the footer above it is fixed, so this is what actually ends
+     the flow. The observer in the script watches it against .page-wrap; the
+     wrap's 80px bottom padding sits BELOW it, which is why the footer fades in
+     as you arrive at the end rather than after it. */
+}
+<div class="footer-sentinel" id="footer-sentinel" aria-hidden="true"></div>
 
 <style>
   .site-footer {
+    /* Same corner geometry as .lang-toggle in Navbar.astro, mirrored. Keep the
+       two in step: they are one bar with a hole in the middle. */
+    position: fixed;
+    left: 30px;
+    bottom: 20px;
+    z-index: 20;
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: 0.5rem 1.5rem;
-    /* Same measure as <main>, the navbar and the brand ticker. */
-    max-width: var(--shell-max);
-    margin: 3rem auto 0;
-    box-sizing: border-box;
-    padding: 0 15px;
-    /* The language toggle is fixed to the bottom-right corner; keep the last
-       link out from under it on a narrow screen. */
-    padding-right: 110px;
     font-family: "Archivo", sans-serif;
-    font-size: 0.8rem;
+    /* The toggle's size, not the 0.8rem this had while it was content — at the
+       same bottom offset a smaller face sits visibly off the toggle's line. */
+    font-size: var(--font-size-base);
     color: var(--color-muted);
+
+    /* Hidden until the sentinel says we are at the end. `visibility` is
+       load-bearing next to `opacity`: opacity alone leaves the three links
+       clickable and in the tab order while nothing is on screen. It is
+       transitioned too, so it flips only after the fade has finished. */
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 0.25s ease,
+      visibility 0s linear 0.25s;
+  }
+
+  .site-footer.is-visible {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity 0.25s ease,
+      visibility 0s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .site-footer,
+    .site-footer.is-visible {
+      transition: none;
+    }
+  }
+
+  .footer-sentinel {
+    height: 0;
   }
 
   .footer-links {
@@ -62,3 +106,37 @@ const year = new Date().getFullYear();
     color: var(--color-dark);
   }
 </style>
+
+<script>
+  // Reveal the footer only once the bottom of .page-wrap is reached. An
+  // IntersectionObserver rather than a scroll-driven animation on purpose:
+  // Safari has no animation-timeline, and the Browser pane cannot drive one
+  // either, so a scroll timeline would be both unsupported and unverifiable.
+  //
+  // A page too short to scroll has no bottom to reach, so the observer fires
+  // on load and the links stand from the start — you are already at the end.
+  let observer: IntersectionObserver | null = null;
+
+  function initFooterReveal() {
+    observer?.disconnect();
+    observer = null;
+
+    const footer = document.getElementById("site-footer");
+    const sentinel = document.getElementById("footer-sentinel");
+    // Neither exists on the fullscreen landing page, which renders no footer.
+    if (!footer || !sentinel) return;
+
+    const root = sentinel.closest<HTMLElement>(".page-wrap");
+    if (!root) return;
+
+    observer = new IntersectionObserver(
+      ([entry]) => footer.classList.toggle("is-visible", entry.isIntersecting),
+      { root },
+    );
+    observer.observe(sentinel);
+  }
+
+  // The footer is not transition:persist, so every swap brings a new element
+  // and a new sentinel; the old observer is dropped in initFooterReveal above.
+  document.addEventListener("astro:page-load", initFooterReveal);
+</script>

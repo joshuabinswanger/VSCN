@@ -1375,21 +1375,26 @@ const t = useTranslations(lang);
     border-top: 1px solid var(--color-border);
   }
 
-  /* Pinned to the viewport bottom on every tab, not just once scrolled to it.
-     `sticky` used to sit here instead, which only floats once the page's own
-     scroll carries the footer's flow position down to the bottom edge — on a
-     short tab (Account, a thin gallery) that position is partway up the
-     screen, so Save read as reachable "eventually" rather than always
-     (2026-09-04, Josh: "save changes at bottom always"). `fixed` costs the
-     footer its place in .profile-form's centered column, so it re-states that
-     column's own width/padding here instead of inheriting it — see
-     .profile-form above for the pairing this must stay identical to. No bar
-     behind it — just the button, so the container must not eat clicks on the
-     content it hovers over. */
+  /* A REVERSED STICKY: pinned to the viewport bottom while the tab is longer
+     than the screen, resting at the END OF THE TAB'S OWN CONTENT when it is
+     not (2026-09-10, Josh: "save button should also attach to the bottom of
+     the profile tabs if it is shorter than the viewport"). That is what
+     `sticky` already means, so this is one property rather than a mechanism.
+     It was `fixed` between 2026-09-04 and now — Josh, "save changes at bottom
+     always" — which nailed Save to the viewport bottom on every tab, including
+     short ones (Account, a thin gallery) where it then floated over empty
+     space with the last field far above it. Sticky keeps it in
+     .profile-form's centered column, so unlike `fixed` it needs no copy of
+     that column's width and padding: inheriting them is the point.
+     Consequences of being in flow again, both intended: it unpins at
+     .profile-form's own bottom edge, so at full scroll it comes to rest above
+     the form's bottom margin rather than at the viewport's edge; and while
+     pinned on mobile it shares the bottom line with the site footer, which
+     holds the opposite corner (see SiteFooter.astro).
+     No bar behind it — just the button, so the container must not eat clicks
+     on the content it hovers over. */
   .form-footer {
-    position: fixed;
-    left: 50%;
-    transform: translateX(-50%);
+    position: sticky;
     bottom: 0;
     z-index: 5;
     display: flex;
@@ -1398,13 +1403,19 @@ const t = useTranslations(lang);
     flex-wrap: wrap;
     gap: 0.75rem;
     pointer-events: none;
-    width: 100%;
-    max-width: 560px;
     box-sizing: border-box;
-    padding: 0 15px 1.25rem;
+    padding: 0 0 1.25rem;
 
-    @media (--bp-desktop) {
-      padding: 0 0 1.25rem;
+    /* LOWER ON A PHONE (2026-09-11, Josh: "put save bar lower on mobile").
+       20px of lift is right on a desktop, where there is room below the fold
+       to spare; on a phone it pushed Save up into the last field it was meant
+       to sit under, and put it a clear step above the site footer's own
+       bottom: 20px in the opposite corner — two bottom fixtures on two
+       different lines. 8px drops it under the content and onto roughly the
+       footer's line, which is what makes the bottom edge read as one strip
+       rather than a staircase. */
+    @media (--bp-mobile) {
+      padding-bottom: 0.5rem;
     }
   }
 

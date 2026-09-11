@@ -156,15 +156,16 @@ import "../styles/global.css";
       gap: 0.5rem;
     }
 
-    /* Mirrored to the left on mobile, where the right corner is where a thumb
-       rests. `right: auto` is load-bearing, not tidying: position:fixed
-       blockifies the anchor, so leaving both offsets set stretches the box the
-       full width and its hit area swallows taps across the whole bottom strip
-       at z-index 20 — while the text still looks correctly placed. */
-    .lang-toggle {
-      left: 30px;
-      right: auto;
-    }
+    /* THE TOGGLE STAYS BOTTOM-RIGHT ON MOBILE TOO (2026-09-10). It used to be
+       mirrored to the left here, where a thumb rests, but the site footer now
+       owns that corner on every breakpoint — see SiteFooter.astro. The two
+       cannot share it, and the footer is the one that has to be on the side
+       the eye reads a page's small print from.
+       If it is ever mirrored again, `right: auto` is load-bearing, not
+       tidying: position:fixed blockifies the anchor, so leaving both offsets
+       set stretches the box the full width and its hit area swallows taps
+       across the whole bottom strip at z-index 20 — while the text still looks
+       correctly placed. */
   }
 </style>
 
