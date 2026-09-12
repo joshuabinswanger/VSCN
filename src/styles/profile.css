@@ -291,12 +291,16 @@
   white-space: pre-line;
 }
 
-/* The per-image "where this appeared" link reuses .mprof__link wholesale — it
-   should look like every other link on the page. The one thing the shared rule
-   cannot give it: the caption is a flex COLUMN, so an anchor stretches to the
-   full width and its underline reads as a rule across the page.
+/* The per-image links — the member's own project page, then where the image
+   appeared (two since 2026-09-10) — reuse .mprof__link wholesale: they should
+   look like every other link on the page. They sit on one wrapping row, and
+   the row shrink-wraps: the caption is a flex COLUMN, so a stretched child
+   would make an underline read as a rule across the page.
    One rule, both consumers — the page and the editor's preview. */
-.mprof__caption .mprof__link {
+.mprof__caption-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.1rem;
   align-self: start;
 }
 

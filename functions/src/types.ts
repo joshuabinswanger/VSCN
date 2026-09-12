@@ -21,6 +21,8 @@ export interface ImageDoc {
   descriptionShort?: string;
   /** Where the image appeared, scheme-less (2026-09-07: moved here from the gallery array). ≤ 200. */
   link?: string;
+  /** The member's own project page for this piece, scheme-less (2026-09-10). ≤ 200. Distinct from `link`: where it appeared vs where it lives on their site. */
+  siteLink?: string;
   /** What is in the picture, ≤ 5 (2026-09-08). No function reads this — mirrored for hasOnly parity only. */
   tags?: string[];
   origin: ImageOrigin;

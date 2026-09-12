@@ -29,6 +29,7 @@ export interface GalleryRecord {
   description?: string;
   descriptionDe?: string;
   link?: string;
+  siteLink?: string;
   tags?: string[];
 }
 
@@ -106,6 +107,10 @@ export function orderedGalleryItems(
     if (description) item.description = description;
     if (descriptionDe) item.descriptionDe = descriptionDe;
     if (link) item.link = link;
+    // No legacy fallback: the field was born on the record (2026-09-10), the
+    // array never carried it.
+    const siteLink = str(rec.siteLink);
+    if (siteLink) item.siteLink = siteLink;
     if (Array.isArray(rec.tags) && rec.tags.length) item.tags = rec.tags;
     items.push(item);
   }

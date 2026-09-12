@@ -45,6 +45,9 @@ export const MAX_GALLERY_DESCRIPTION = 600;
  */
 export const MAX_GALLERY_LINK = 200;
 
+/** The own-site link shares the per-image link's ceiling — same kind of value, same rule. */
+export const MAX_GALLERY_SITE_LINK = MAX_GALLERY_LINK;
+
 /**
  * THE LONGEST EDGE OF A STORED IMAGE — 4K (2026-09-02, Josh: "cap max res at
  * 4k"). Was 2000, which was below the resolution of the artwork members
@@ -171,6 +174,18 @@ export interface GalleryItem {
    * record since 2026-09-07; capped by validImage at 200.
    */
   link?: string;
+  /**
+   * THIS PIECE ON THE MEMBER'S OWN SITE (2026-09-10, Josh: "the image link
+   * should be additional no?"). Until then `link` was asked to be both the
+   * publication and the member's own project page, and the editor's note even
+   * said so — but the two are different things to a reader ("nature.com" vs
+   * "adalovelace.ch" under one picture) and to search engines (the piece's own
+   * page is what the image is the main entity OF; the publication is what it
+   * is part of). So: two named fields, not one list of undifferentiated URLs.
+   *
+   * Stored and capped exactly like `link`: scheme-less, ≤ 200, on the record.
+   */
+  siteLink?: string;
   /**
    * Up to 5 labels from the same curated registry member tags draw from
    * (2026-09-07, step 2 of documentation/20260907-works-on-the-record-design.md:
@@ -417,6 +432,7 @@ export async function saveGalleryRecords(items: readonly GalleryItem[]): Promise
         description: item.description,
         descriptionDe: item.descriptionDe,
         link: item.link,
+        siteLink: item.siteLink,
         tags: item.tags,
       }),
     ),

@@ -239,6 +239,7 @@ const lightboxStrings = JSON.stringify({
   next: t("member.lightbox.next"),
   error: t("member.lightbox.error"),
   linkTitle: t("member.lightbox.link"),
+  siteLinkTitle: t("member.lightbox.siteLink"),
 });
 
 const indexMembers = [...members].sort((a, b) =>
@@ -2869,6 +2870,8 @@ const indexMembers = [...members].sort((a, b) =>
     error: string;
     /** Accessible name for the per-image "where this appeared" link. */
     linkTitle: string;
+    /** Accessible name for the member's own-site link on a piece. */
+    siteLinkTitle: string;
   }
 
   // English is the fallback, matching useTranslations() — a missing or
@@ -2880,6 +2883,7 @@ const indexMembers = [...members].sort((a, b) =>
     next: "Next image",
     error: "The image cannot be loaded",
     linkTitle: "Where this image appeared",
+    siteLinkTitle: "This piece on the maker's own site",
   };
 
   const esc = (s: string) =>
@@ -3061,7 +3065,7 @@ const indexMembers = [...members].sort((a, b) =>
     // in one shared module, because there is ONE lightbox on this site and it
     // must not speak differently depending on which gallery opened it. Both
     // galleries carried their own copy of this renderer until 2026-09-04.
-    registerLightboxText(lightbox, { linkTitle: strings.linkTitle });
+    registerLightboxText(lightbox, { linkTitle: strings.linkTitle, siteLinkTitle: strings.siteLinkTitle });
 
     lightbox.init();
   });

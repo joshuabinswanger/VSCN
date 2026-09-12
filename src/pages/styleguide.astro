@@ -308,13 +308,14 @@ const radiusUsage: Record<string, string> = {
         <li>
           No tokens exist for spacing, font weight, border width, z-index or transition duration.
           Current z-indexes: <code>nav 10</code>, <code>.lang-toggle 20</code>,
-          <code>body::before 9999</code>.
+          <code>.site-footer 20</code>, <code>body::before 9999</code>.
         </li>
         <li>
           <code>Layout.astro</code> viewport meta lacks <code>viewport-fit=cover</code>, so
           <code>env(safe-area-inset-*)</code> resolves to <code>0</code> — relevant if any
-          bottom-fixed UI is added (<code>.lang-toggle</code> already sits at
-          <code>bottom: 20px</code>).
+          bottom-fixed UI is added — <code>.lang-toggle</code> (bottom-right) and
+          <code>.site-footer</code> (bottom-left) both already sit at
+          <code>bottom: 20px</code>.
         </li>
       </ul>
     </section>

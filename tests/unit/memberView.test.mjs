@@ -15,9 +15,9 @@ const rec = (imageId, extra = {}) => ({
 
 test("works come from the records, in the list's order", () => {
   const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["b", "a", "c"] }, [
-    rec("a", { caption: "A", description: "Long A", descriptionDe: "Lang A", link: "nature.com/x" }),
+    rec("a", { caption: "A", description: "Long A", descriptionDe: "Lang A", link: "nature.com/x", siteLink: "ada.ch/work/x" }),
     rec("b", { color: "#112233" }),
-    rec("c", { link: "not a link" }),
+    rec("c", { link: "not a link", siteLink: "also not one" }),
   ], BUCKET);
   assert.equal(m.works.length, 3);
   assert.equal(m.works[0].url, `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/users%2F${UID}%2Fgallery%2Fb.webp?alt=media`);
@@ -25,7 +25,9 @@ test("works come from the records, in the list's order", () => {
   assert.equal(m.works[1].caption, "A");
   assert.equal(m.works[1].descriptionDe, "Lang A");
   assert.equal(m.works[1].link, "https://nature.com/x");
+  assert.equal(m.works[1].siteLink, "https://ada.ch/work/x");
   assert.equal(m.works[2].link, undefined);
+  assert.equal(m.works[2].siteLink, undefined);
 });
 
 test("a work carries its own tags", () => {

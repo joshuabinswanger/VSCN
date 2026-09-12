@@ -415,15 +415,23 @@
   line-height: 1.45;
   color: var(--color-muted);
 }
-/* WHERE THE IMAGE APPEARED. Shrink-wrapped, so the link is only as wide as the
-   URL — a stretched flex item would put a clickable band across the whole
-   column. Set in the credit's small-caps face rather than the description's,
-   because it is a piece of provenance and not part of the prose; the wrap rule
-   lets a long path break inside a narrow column instead of widening it. */
-.pswp--vscn .pswp__vscn-text-link {
+/* THE PIECE'S LINKS — the member's own project page, then where it appeared
+   (two since 2026-09-10). One shrink-wrapped row, so the links are only as
+   wide as their URLs — a stretched flex item would put a clickable band across
+   the whole column. Set in the credit's small-caps face rather than the
+   description's, because they are provenance and not part of the prose; the
+   wrap rule lets a long path break inside a narrow column instead of widening
+   it. */
+.pswp--vscn .pswp__vscn-text-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 1rem;
   align-self: flex-start;
   max-width: 100%;
   margin-top: 0.15rem;
+}
+.pswp--vscn .pswp__vscn-text-link {
+  max-width: 100%;
   font-size: 0.58rem;
   font-weight: 600;
   letter-spacing: 0.06em;

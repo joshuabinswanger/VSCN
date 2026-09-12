@@ -149,6 +149,7 @@ interface TriggerText {
   meta: string;
   profile: string;
   link: string;
+  siteLink: string;
 }
 
 function readTrigger(el: HTMLElement | undefined): TriggerText {
@@ -158,6 +159,7 @@ function readTrigger(el: HTMLElement | undefined): TriggerText {
     meta: el?.dataset.pswpMeta?.trim() || "",
     profile: el?.dataset.pswpProfile?.trim() || "",
     link: el?.dataset.pswpLink?.trim() || "",
+    siteLink: el?.dataset.pswpSiteLink?.trim() || "",
   };
 }
 
@@ -174,6 +176,8 @@ function linkLabel(href: string): string {
 export interface LightboxTextLabels {
   /** Accessible name for the "where this appeared" link, e.g. "Where this image appeared". */
   linkTitle: string;
+  /** Accessible name for the member's own-site link, e.g. "This piece on the maker's own site". */
+  siteLinkTitle: string;
 }
 
 /**
@@ -242,7 +246,7 @@ export function registerLightboxText(
       order: 10,
       onInit: (el, pswp) => {
         const render = () => {
-          const { caption, description, link } = readTrigger(
+          const { caption, description, link, siteLink } = readTrigger(
             pswp.currSlide?.data.element as HTMLElement | undefined,
           );
           el.replaceChildren();
@@ -264,17 +268,29 @@ export function registerLightboxText(
           // an image opened from the directory lost the paper it illustrates.
           // Stored without a scheme and rendered with one — the same split
           // href()/workLink() make everywhere else on the site.
-          if (link) {
-            const a = document.createElement("a");
-            a.className = "pswp__vscn-text-link";
-            a.href = link;
-            a.target = "_blank";
-            a.rel = "noreferrer";
-            a.title = labels.linkTitle;
-            a.textContent = linkLabel(link);
-            el.append(a);
+          //
+          // TWO LINKS SINCE 2026-09-10 (Josh: "the image link should be
+          // additional"): the member's own project page first, the
+          // publication second, on one row. Both print as bare hosts — the
+          // `title` is what says which is which, to a hover and to a reader.
+          if (siteLink || link) {
+            const row = document.createElement("span");
+            row.className = "pswp__vscn-text-links";
+            const add = (href: string, title: string) => {
+              const a = document.createElement("a");
+              a.className = "pswp__vscn-text-link";
+              a.href = href;
+              a.target = "_blank";
+              a.rel = "noopener";
+              a.title = title;
+              a.textContent = linkLabel(href);
+              row.append(a);
+            };
+            if (siteLink) add(siteLink, labels.siteLinkTitle);
+            if (link) add(link, labels.linkTitle);
+            el.append(row);
           }
-          el.classList.toggle("is-empty", !caption && !description && !link);
+          el.classList.toggle("is-empty", !caption && !description && !link && !siteLink);
           // The block can scroll; a slide change has to start it at the top or
           // the next description opens mid-paragraph.
           el.scrollTop = 0;

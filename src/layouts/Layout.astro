@@ -7,6 +7,7 @@ import favicon from "../assets/favicon.png";
 import { BUILD_COMMIT, BUILD_TIME } from "../lib/buildInfo.ts";
 import type { Lang } from "../i18n/utils.ts";
 import ogImageAsset from "../assets/OG_Image.png";
+import { alternateLinks, jsonLdScript } from "../lib/seo.ts";
 import "../styles/global.css";
 
 interface Props {
@@ -24,6 +25,14 @@ interface Props {
    * on. Static hosting has no 301, so this is the honest equivalent.
    */
   redirectTo?: string;
+  /** Open Graph object type. A member's page is a `profile`; everything else is the site. */
+  ogType?: "website" | "profile";
+  /**
+   * Structured data for this page, already shaped (see src/lib/seo.ts). The
+   * layout only serialises it — safely, since every string in it is
+   * member-authored.
+   */
+  jsonLd?: unknown;
 }
 
 const {
@@ -36,6 +45,8 @@ const {
   contentWide = false,
   ogImage,
   redirectTo,
+  ogType = "website",
+  jsonLd,
 } = Astro.props;
 
 const DEFAULT_DESCRIPTION =
@@ -44,6 +55,13 @@ const DEFAULT_DESCRIPTION =
 const metaDescription = description ?? DEFAULT_DESCRIPTION;
 const canonicalUrl = new URL(redirectTo ?? Astro.url.pathname, Astro.site).href;
 const ogImageUrl = ogImage ?? new URL(ogImageAsset.src, Astro.site).href;
+// The other language's copy of this page (2026-09-10). Every public page is
+// built twice, /x and /de/x, and until now nothing told a crawler the two were
+// one page in two languages — so they could be read as duplicates, or the
+// wrong one served. Computed from the canonical path so an alias page's
+// alternates point at the current URL, like its canonical does. Not on noindex
+// pages: an alternate of a page that asks not to be indexed is noise.
+const alternates = noindex ? [] : alternateLinks(redirectTo ?? Astro.url.pathname, Astro.site!.href);
 
 const BRAND_LETTERS = [
   { head: "V", tail: "isual" },
@@ -174,8 +192,9 @@ const BRAND_SLOTS = [
     {noindex && <meta name="robots" content="noindex, nofollow" />}
     {redirectTo && <meta http-equiv="refresh" content={`0;url=${redirectTo}`} />}
     <link rel="canonical" href={canonicalUrl} />
+    {alternates.map((a) => <link rel="alternate" hreflang={a.hreflang} href={a.href} />)}
 
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={ogType} />
     <meta property="og:site_name" content="VSCN" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={metaDescription} />
@@ -200,6 +219,14 @@ const BRAND_SLOTS = [
     }
     <meta name="build-commit" content={BUILD_COMMIT} />
     <meta name="build-time" content={BUILD_TIME} />
+
+    {
+      /* set:html because a <script> body is not text content — Astro would
+        entity-escape the quotes. jsonLdScript() is what makes that safe: it
+        writes <, > and & as JSON escapes, so member-authored text cannot
+        close this element. */
+    }
+    {jsonLd && <script type="application/ld+json" set:html={jsonLdScript(jsonLd)} />}
 
     <ClientRouter />
   </head>

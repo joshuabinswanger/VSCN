@@ -149,7 +149,8 @@ const pswpMeta = member.displayName;
         feature was withdrawn and its only surface was the member's own page,
         so a picture opened from the directory lost the paper it illustrates.
         Already absolute and already filtered for linkability by workLink() —
-        see works() in memberView.ts.
+        see works() in memberView.ts. data-pswp-site-link (2026-09-10) is its
+        sibling: the member's own project page for the piece, same treatment.
 
         The note is up here rather than beside the attribute because a braced
         JSX comment placed INSIDE an attribute list is parsed as TSX by astro
@@ -166,6 +167,7 @@ const pswpMeta = member.displayName;
       data-pswp-caption={work.caption?.trim() || undefined}
       data-pswp-description={work.description || undefined}
       data-pswp-link={work.link || undefined}
+      data-pswp-site-link={work.siteLink || undefined}
       data-pswp-meta={pswpMeta || undefined}
       data-pswp-profile={profileHref}
     >

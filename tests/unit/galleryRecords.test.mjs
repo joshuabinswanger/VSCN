@@ -39,14 +39,16 @@ test("galleryIds drops an item with no id — never a blank element in the store
 });
 
 test("the id list decides the order; the record decides everything else", () => {
-  const items = orderedGalleryItems(UID, ["b", "a"], [record("a", { caption: "A" }), record("b", { caption: "B", link: "x.org/1" })], BUCKET);
+  const items = orderedGalleryItems(UID, ["b", "a"], [record("a", { caption: "A" }), record("b", { caption: "B", link: "x.org/1", siteLink: "me.ch/w/1" })], BUCKET);
   assert.deepEqual(items.map((i) => i.imageId), ["b", "a"]);
   assert.equal(items[0].caption, "B");
   assert.equal(items[0].link, "x.org/1");
+  assert.equal(items[0].siteLink, "me.ch/w/1");
   assert.equal(items[0].url, storageUrl(BUCKET, `users/${UID}/gallery/b.webp`));
   assert.equal(items[0].width, 1200);
   assert.equal(items[0].color, "#aabbcc");
   assert.equal(items[1].link, undefined);
+  assert.equal("siteLink" in items[1], false);
 });
 
 test("an id with no live record is dropped, not rendered broken", () => {

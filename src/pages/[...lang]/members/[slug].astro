@@ -12,6 +12,7 @@ import {
   workCaption,
   workDescription,
 } from "../../../lib/links.ts";
+import { memberPageJsonLd, memberTitle } from "../../../lib/seo.ts";
 import { useTranslations } from "../../../i18n/utils";
 import type { Lang } from "../../../i18n/utils";
 // THIS PAGE'S SURFACE, in a file of its own so the profile editor's preview
@@ -112,6 +113,7 @@ const lightboxStrings = JSON.stringify({
   next: t("member.lightbox.next"),
   error: t("member.lightbox.error"),
   linkTitle: t("member.lightbox.link"),
+  siteLinkTitle: t("member.lightbox.siteLink"),
 });
 
 const social = socialLinks(member.socialMedia);
@@ -130,13 +132,36 @@ const description = member.caption
 // image. getImage already produced the responsive set; the widest source is
 // the one link previews want.
 const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href : undefined;
+
+// WHO MADE EVERY PICTURE, for machines (2026-09-10; see src/lib/seo.ts). The
+// canonical URL is the page's own on a member's real page and the CURRENT page
+// on an alias, the same rule the layout applies to <link rel="canonical">.
+const pageUrl = new URL(aliasOf ?? Astro.url.pathname, Astro.site).href;
+const jsonLd = memberPageJsonLd({
+  member,
+  works: works.map((w) => ({
+    url: w.url,
+    thumbnailUrl: w.rendered.src,
+    width: w.width,
+    height: w.height,
+    caption: w.caption,
+    description: w.description,
+    link: w.link,
+    siteLink: w.siteLink,
+  })),
+  pageUrl,
+  site: Astro.site!.href,
+  description,
+});
 ---
 
 <Layout
-  title={`${member.displayName} — VSCN`}
+  title={memberTitle(member)}
   description={description}
   lang={currentLang}
   ogImage={ogImage}
+  ogType="profile"
+  jsonLd={aliasOf ? undefined : jsonLd}
   noindex={Boolean(aliasOf)}
   redirectTo={aliasOf}
 >
@@ -209,6 +234,14 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
       {
         (member.portfolio || social.length > 0) && (
           <div class="mprof__row">
+            {/* THE MEMBER'S OWN LINKS SEND A REFERRER (2026-09-10). These were
+                rel="noopener noreferrer", and noreferrer strips the Referer
+                header — so a member's analytics never showed vscn.ch sending
+                anyone. The referrer is the one proof a member gets that being
+                listed here does something; withholding it was the site being
+                private on their behalf. `noopener` stays (target=_blank). The
+                same change on every surface that links a member's site: the
+                card, the disclosure, the editor preview, the lightbox. */}
             <ul class="mprof__vals mprof__vals--links">
               {member.portfolio && (
                 <li>
@@ -216,7 +249,7 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
                     class="mprof__link"
                     href={href(member.portfolio)}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel="noopener"
                   >
                     {member.portfolio}
                   </a>
@@ -229,7 +262,7 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
                       class="mprof__link"
                       href={entry.href}
                       target="_blank"
-                      rel="noopener noreferrer"
+                      rel="noopener"
                     >
                       {entry.label}
                     </a>
@@ -270,6 +303,7 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
                 {/* The same link the figcaption prints below, so the
                     lightbox is not the one view that drops it. */}
                 data-pswp-link={w.link || undefined}
+                data-pswp-site-link={w.siteLink || undefined}
                 data-pswp-meta={w.pswpMeta || undefined}
               >
                 <img
@@ -285,20 +319,32 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
                   style={`background-color: ${w.color ?? "var(--color-border)"}`}
                 />
               </a>
-              {(w.caption?.trim() || w.description || w.link) && (
+              {(w.caption?.trim() || w.description || w.link || w.siteLink) && (
                 <figcaption class="mprof__caption">
                   {w.caption?.trim() && <span class="mprof__caption-line">{w.caption}</span>}
                   {w.description && <span class="mprof__desc">{w.description}</span>}
-                  {/* Where the image lives in the world. In the caption and not
-                      on the image, because the image's own anchor is the
-                      lightbox trigger — wrapping that in an outbound link would
-                      take the reader off the page every time they tried to look
-                      closer. The host IS the link text: "nature.com" says where
-                      you are going, in any language. */}
-                  {w.link && (
-                    <a class="mprof__link" href={w.link} target="_blank" rel="noopener noreferrer">
-                      {hostLabel(w.link)}
-                    </a>
+                  {/* Where the piece lives in the world: the member's own
+                      project page first, then the publication it appeared in
+                      (two links since 2026-09-10, Josh: "the image link should
+                      be additional"). In the caption and not on the image,
+                      because the image's own anchor is the lightbox trigger —
+                      wrapping that in an outbound link would take the reader
+                      off the page every time they tried to look closer. The
+                      host IS the link text: "nature.com" says where you are
+                      going, in any language; the title says what it is. */}
+                  {(w.siteLink || w.link) && (
+                    <span class="mprof__caption-links">
+                      {w.siteLink && (
+                        <a class="mprof__link" href={w.siteLink} target="_blank" rel="noopener" title={t("member.lightbox.siteLink")}>
+                          {hostLabel(w.siteLink)}
+                        </a>
+                      )}
+                      {w.link && (
+                        <a class="mprof__link" href={w.link} target="_blank" rel="noopener" title={t("member.lightbox.link")}>
+                          {hostLabel(w.link)}
+                        </a>
+                      )}
+                    </span>
                   )}
                 </figcaption>
               )}
@@ -329,6 +375,8 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
     error: string;
     /** Accessible name for the per-image "where this appeared" link. */
     linkTitle: string;
+    /** Accessible name for the member's own-site link on a piece. */
+    siteLinkTitle: string;
   }
 
   // English is the fallback, matching useTranslations() — a missing or
@@ -340,6 +388,7 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
     next: "Next image",
     error: "The image cannot be loaded",
     linkTitle: "Where this image appeared",
+    siteLinkTitle: "This piece on the maker's own site",
   };
 
   // These options take raw HTML, which is how the stock SVG icons get replaced
@@ -421,7 +470,7 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
     // in one shared module, because there is ONE lightbox on this site and it
     // must not speak differently depending on which gallery opened it. Both
     // galleries carried their own copy of this renderer until 2026-09-04.
-    registerLightboxText(lightbox, { linkTitle: strings.linkTitle });
+    registerLightboxText(lightbox, { linkTitle: strings.linkTitle, siteLinkTitle: strings.siteLinkTitle });
 
     lightbox.init();
   });

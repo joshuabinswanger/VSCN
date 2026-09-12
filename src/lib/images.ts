@@ -175,6 +175,7 @@ export async function updateImageText(
     description?: string;
     descriptionDe?: string;
     link?: string;
+    siteLink?: string;
     tags?: string[];
   },
 ): Promise<void> {
@@ -187,6 +188,7 @@ export async function updateImageText(
     description: text.description ? text.description : deleteField(),
     descriptionDe: text.descriptionDe ? text.descriptionDe : deleteField(),
     link: text.link ? text.link : deleteField(),
+    siteLink: text.siteLink ? text.siteLink : deleteField(),
     tags: text.tags && text.tags.length ? text.tags : deleteField(),
     // THE RETIRED FIELD, SWEPT (2026-09-04 — see GalleryItem.description for
     // why the short description is gone). Unconditional, and the only mention

@@ -180,6 +180,12 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.note.bio": "Maximum 35 words.",
     "profile.label.portfolio": "Portfolio / Website",
     "profile.ph.portfolio": "yoursite.com",
+    // WHY THIS FIELD IS WORTH FILLING IN (2026-09-10). The link is a followed
+    // anchor on the public page and, since the same day, the Person's url in
+    // the page's structured data — a reference to their site that search
+    // engines count. "Followed" is jargon; "search engines follow" is not.
+    "profile.note.portfolio":
+      "Shown on your public page as a link search engines follow. Visits from here appear in your analytics as vscn.ch.",
     "profile.label.portfolio.science": "Website / Lab page",
     "profile.ph.portfolio.science": "lab.university.edu",
     "profile.label.social": "Social Media",
@@ -233,6 +239,7 @@ export const ui: Record<string, Record<string, string>> = {
     // The link's accessible name. Its visible text is the URL with the
     // scheme stripped, which names a destination but not what it IS.
     "member.lightbox.link": "Where this image appeared",
+    "member.lightbox.siteLink": "This piece on the maker's own site",
     "community.card.expand": "Expand profile:",
     // Two forms of the same idea, and they are not interchangeable. The
     // colon-suffixed one is an ARIA-LABEL PREFIX — "View profile: Jane Doe" —
@@ -404,6 +411,19 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.tagsNote":
       "Up to 5. The community grid filters by these, so tag what the picture shows, not what you do.",
     "profile.gallery.link.ph": "nature.com/articles/… (optional)",
+    "profile.gallery.linkNote":
+      "Optional. The publication, campaign or shop where this image appeared. Shown under the image as a link search engines follow.",
+    // THE SECOND LINK (2026-09-10, Josh: "the image link should be
+    // additional"). For one day the note above told members to put their own
+    // project page into "Where this image appeared", which made one field mean
+    // two things. This is the member's chance at a DEEP link: a page about this
+    // picture on their own site counts for more than a second link to their
+    // homepage would. The placeholder is their own portfolio host when the
+    // editor knows it (see renderGallery() in ProfileForm.astro).
+    "profile.gallery.siteLink": "This piece on your site",
+    "profile.gallery.siteLink.ph": "yoursite.ch/projects/… (optional)",
+    "profile.gallery.siteLinkNote":
+      "Optional. Your own page about this piece — the strongest link back to your site this directory can give you. Shown under the image as a link search engines follow.",
     "profile.tag.error": "Tags must be unique, 1–50 characters, and no more than 7 tags.",
     "profile.reauth.confirming": "Confirming…",
     "profile.reauth.error": "Incorrect password. Please try again.",
@@ -669,6 +689,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.note.bio": "Maximal 35 Wörter.",
     "profile.label.portfolio": "Portfolio / Website",
     "profile.ph.portfolio": "deinewebsite.com",
+    "profile.note.portfolio":
+      "Erscheint auf deiner öffentlichen Seite als Link, dem Suchmaschinen folgen. Besuche von hier erscheinen in deiner Statistik als vscn.ch.",
     "profile.label.portfolio.science": "Website / Institutsseite",
     "profile.ph.portfolio.science": "institut.uni.ch",
     "profile.label.social": "Social Media",
@@ -720,6 +742,7 @@ export const ui: Record<string, Record<string, string>> = {
     "member.lightbox.next": "Nächstes Bild",
     "member.lightbox.error": "Dieses Bild konnte nicht geladen werden.",
     "member.lightbox.link": "Wo dieses Bild erschienen ist",
+    "member.lightbox.siteLink": "Dieses Werk auf der eigenen Website",
     "community.card.expand": "Profil aufklappen:",
     "community.card.viewProfile": "Profil ansehen:",
     "community.card.viewProfile.text": "Profil ansehen",
@@ -839,6 +862,12 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.tagsNote":
       "Bis zu 5. Das Community-Raster filtert danach, also tagge, was das Bild zeigt, nicht was du machst.",
     "profile.gallery.link.ph": "nature.com/articles/… (optional)",
+    "profile.gallery.linkNote":
+      "Optional. Die Publikation, Kampagne oder der Shop, wo dieses Bild erschienen ist. Erscheint unter dem Bild als Link, dem Suchmaschinen folgen.",
+    "profile.gallery.siteLink": "Dieses Werk auf deiner Website",
+    "profile.gallery.siteLink.ph": "deineseite.ch/projekte/… (optional)",
+    "profile.gallery.siteLinkNote":
+      "Optional. Deine eigene Seite zu diesem Werk – der stärkste Link zurück auf deine Website, den dieses Verzeichnis dir geben kann. Erscheint unter dem Bild als Link, dem Suchmaschinen folgen.",
     "profile.tag.error": "Tags müssen eindeutig sein, 1–50 Zeichen, und maximal 7 Tags.",
     "profile.reauth.confirming": "Wird bestätigt…",
     "profile.reauth.error": "Falsches Passwort. Bitte erneut versuchen.",

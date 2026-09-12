@@ -332,7 +332,7 @@ function validBioWordCount(bio) {
 // id IS the filename, and the owner IS the folder.
 function validImage(data, imageId) {
   return data.keys().hasOnly(['ownerUid', 'kind', 'storagePath', 'width', 'height', 'color',
-                              'caption', 'captionDe', 'description', 'descriptionDe', 'link', 'tags', 'descriptionShort', 'origin',
+                              'caption', 'captionDe', 'description', 'descriptionDe', 'link', 'siteLink', 'tags', 'descriptionShort', 'origin',
                               'provenance', 'status', 'createdAt', 'updatedAt'])
     && data.ownerUid is string
     && (data.kind == 'avatar' || data.kind == 'gallery')
@@ -355,6 +355,13 @@ function validImage(data, imageId) {
     // it is linkable is the read path's question (workLink in
     // src/lib/links.ts) — a rule that rejected a typo would fail the save.
     && (!('link' in data) || (data.link is string && data.link.size() <= 200))
+    // THIS PIECE ON THE MEMBER'S OWN SITE (2026-09-10, Josh: "the image link
+    // should be additional"). A second, separately named link, not a list:
+    // 'link' is where the picture APPEARED, 'siteLink' is the member's own
+    // project page for it, and the two mean different things to a reader and
+    // to the structured data (isPartOf vs mainEntityOfPage in src/lib/seo.ts).
+    // Same shape and cap as 'link'; only LENGTH is judged, for the same reason.
+    && (!('siteLink' in data) || (data.siteLink is string && data.siteLink.size() <= 200))
     // WHAT IS IN THE PICTURE, not who made it (2026-09-08, step 2 of
     // documentation/20260907-works-on-the-record-design.md). One write per
     // image, so — unlike validGallery's per-element unroll, forced by an

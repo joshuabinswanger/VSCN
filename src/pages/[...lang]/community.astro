@@ -3,6 +3,7 @@ import Layout from "../../layouts/Layout.astro";
 import CommunityGrid from "../../components/CommunityGrid.astro";
 import { fetchMemberViews } from "../../lib/membersBuild.ts";
 import { workCaption, workDescription } from "../../lib/links.ts";
+import { communityJsonLd, memberPageUrl } from "../../lib/seo.ts";
 import type { Lang } from "../../i18n/utils";
 export function getStaticPaths() {
   return [{ params: { lang: undefined } }, { params: { lang: "de" } }];
@@ -35,11 +36,35 @@ const description =
   currentLang === "de"
     ? "Entdecken Sie die VSCN-Community — ein wachsendes Verzeichnis von Wissenschaftlern, Illustratoren, Designern und Wissenschaftskommunikatoren."
     : "Browse the VSCN community — a growing directory of scientists, illustrators, designers, and science communicators.";
+
+// Every picture on this page, with its maker (2026-09-10; see src/lib/seo.ts).
+// The wall's tiles link the ORIGINAL on Storage, and that is the contentUrl
+// here too, so the structured data describes the same file the anchor points
+// at. The creator's @id is the member page's Person node, so the two pages
+// agree about who this is.
+const pageUrl = new URL(Astro.url.pathname, Astro.site).href;
+const jsonLd = communityJsonLd({
+  entries: members.map((m) => ({
+    member: { ...m, memberUrl: memberPageUrl(currentLang, m.slug, Astro.site!.href) },
+    works: m.works,
+  })),
+  pageUrl,
+  site: Astro.site!.href,
+  name: title,
+  description,
+});
 ---
 
 {/* contentWide: the irregular multicol grid was designed at the wide measure
     (min(94vw, 2000px)); the 900px header shell stays untouched, and wide
     content starting outside the header's left edge is the accepted trade. */}
-<Layout title={title} description={description} lang={currentLang} wide={true} contentWide={true}>
+<Layout
+  title={title}
+  description={description}
+  lang={currentLang}
+  jsonLd={jsonLd}
+  wide={true}
+  contentWide={true}
+>
   <CommunityGrid members={members} lang={currentLang} />
 </Layout>
