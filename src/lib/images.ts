@@ -1,6 +1,7 @@
 import { deleteField, doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { ref, uploadBytesResumable } from "firebase/storage";
-import { auth, db, storage } from "./firebase.ts";
+import { auth, db, storage, functions } from "./firebase.ts";
+import { httpsCallable } from "firebase/functions";
 import { hasVerifiedClaim } from "./auth.ts";
 
 // Keep in sync with validImage() in firestore.rules and functions/src/types.ts.
@@ -131,6 +132,7 @@ export async function uploadImage(
     });
   }
 
+  await httpsCallable(functions, "authorizeImageUpload")({ imageId });
   await new Promise<void>((resolve, reject) => {
     const task = uploadBytesResumable(ref(storage, storagePath), blob, {
       contentType: "image/webp",

@@ -11,7 +11,8 @@ service firebase.storage {
 
       // AN UNVERIFIED ACCOUNT GETS ONE OBJECT PER KIND, and it is always the
       // same one: `{uid}-{kind}.webp`. The cap is not a count — Storage rules
-      // cannot count, and cannot read Firestore either, so this door is the
+      // cannot count; the server-owned permit below supplies the aggregate cap.
+      // This filename restriction is the
       // only thing bounding what a fresh unverified sign-up can put in the
       // bucket. It is a namespace of size one instead: re-uploading overwrites
       // the slot, so "replace my picture" keeps working while "upload a
@@ -33,11 +34,19 @@ service firebase.storage {
                        || (request.auth.token.email_verified == true
                            && filename.matches('[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\.webp')))
                    && request.resource.contentType == 'image/webp'
+                   && hasUploadPermit(uid, kind, filename)
                    && ((kind == 'avatar' && request.resource.size <= 2 * 1024 * 1024)
                        || (kind == 'gallery' && request.resource.size <= 8 * 1024 * 1024));
 
       // Members mark the record; sweepImages / purgeAccount delete the bytes.
       allow delete: if false;
+    }
+
+    function hasUploadPermit(uid, kind, filename) {
+      let permit = firestore.get(/databases/(default)/documents/uploadPermits/$(filename)).data;
+      return permit.ownerUid == uid && permit.kind == kind
+        && permit.storagePath == 'users/' + uid + '/' + kind + '/' + filename
+        && permit.expiresAt > request.time;
     }
 
     // Reject everything else

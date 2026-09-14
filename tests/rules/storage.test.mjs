@@ -1,6 +1,6 @@
 import { test, before, after, beforeEach } from "node:test";
 import {
-  setupEnv, assertFails, assertSucceeds, OWNER, OTHER, verified, unverified, slot,
+  setupEnv, seed, assertFails, assertSucceeds, OWNER, OTHER, verified, unverified, slot,
 } from "./helpers.mjs";
 
 let env;
@@ -12,6 +12,7 @@ before(async () => {
   // until the rules engine answers it, then clear the bucket.
   const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
   const probe = `users/${OWNER}/gallery/00000000-0000-4000-8000-000000000000.webp`;
+  await permit("gallery", "00000000-0000-4000-8000-000000000000");
   let ready = false;
   for (let attempt = 0; attempt < 20 && !ready; attempt += 1) {
     try {
@@ -25,10 +26,31 @@ before(async () => {
   await env.clearStorage();
 });
 after(async () => { await env.cleanup(); });
-beforeEach(async () => { await env.clearStorage(); });
+beforeEach(async () => {
+  await env.clearStorage();
+  await env.clearFirestore();
+  await permit("gallery", ID);
+  await permit("gallery", slot(OWNER, "gallery"));
+  await permit("avatar", slot(OWNER, "avatar"));
+});
 
 const ID = "3f6c2a1e-1b2c-4d5e-8f90-a1b2c3d4e5f6";
 const webp = (bytes) => new Uint8Array(bytes);
+
+async function permit(kind, id, expiresAt = new Date(Date.now() + 60_000)) {
+  await seed(env, `uploadPermits/${id}.webp`, {
+    ownerUid: OWNER, kind, storagePath: `users/${OWNER}/${kind}/${id}.webp`, expiresAt,
+  });
+}
+
+test("storage: arbitrary, unreserved files and expired permits are rejected", async () => {
+  const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
+  await assertFails(s.ref(`users/${OWNER}/gallery/00000000-0000-4000-8000-000000000001.webp`).put(webp(64), { contentType: "image/webp" }));
+  await permit("gallery", ID, new Date(0));
+  await assertFails(s.ref(`users/${OWNER}/gallery/${ID}.webp`).put(webp(64), { contentType: "image/webp" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertFails(db.doc(`uploadPermits/${ID}.webp`).update({ expiresAt: new Date(Date.now() + 60_000) }));
+});
 
 test("storage: owner uploads a gallery webp under their own prefix", async () => {
   const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
@@ -36,6 +58,7 @@ test("storage: owner uploads a gallery webp under their own prefix", async () =>
 });
 
 test("storage: owner uploads an avatar webp", async () => {
+  await permit("avatar", ID);
   const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
   await assertSucceeds(s.ref(`users/${OWNER}/avatar/${ID}.webp`).put(webp(1024), { contentType: "image/webp" }));
 });
@@ -54,7 +77,9 @@ test("storage: unknown kind, non-uuid name, wrong type are rejected", async () =
 
 test("storage: avatar capped at 2 MB, gallery at 8 MB", async () => {
   const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
+  await permit("avatar", ID);
   await assertFails(s.ref(`users/${OWNER}/avatar/${ID}.webp`).put(webp(2 * 1024 * 1024 + 1), { contentType: "image/webp" }));
+  await permit("gallery", ID);
   await assertFails(s.ref(`users/${OWNER}/gallery/${ID}.webp`).put(webp(8 * 1024 * 1024 + 1), { contentType: "image/webp" }));
 });
 
@@ -67,7 +92,7 @@ test("storage: public read, owner cannot delete (sweeper does)", async () => {
 });
 
 // The byte-side half of the unverified cap. Storage rules cannot read
-// Firestore, so this door is the only thing bounding an unverified sign-up.
+// count; server-owned permits additionally bound stored files for all members.
 test("storage: an unverified member may write their slot object, per kind", async () => {
   const s = env.authenticatedContext(OWNER, unverified(OWNER)).storage();
   const g = `users/${OWNER}/gallery/${slot(OWNER, "gallery")}.webp`;

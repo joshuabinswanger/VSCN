@@ -7,6 +7,8 @@ const { db } = require('../../functions/lib/admin.js');
 const rebuild = require('../../functions/lib/rebuild.js');
 const { queueMemberRebuild, flushMemberRebuilds } = require('../../functions/lib/rebuildQueue.js');
 const { adminSetProfileActive } = require('../../functions/lib/adminOps.js');
+const adminModule = require('../../functions/lib/admin.js');
+const { authorizeImageUpload } = require('../../functions/lib/uploads.js');
 const backendRequire = require('node:module').createRequire(require('node:path').resolve('functions/package.json'));
 const { Timestamp } = backendRequire('firebase-admin/firestore');
 beforeEach(async () => {
@@ -15,6 +17,26 @@ beforeEach(async () => {
   assert.equal(response.ok, true);
 });
 after(async () => { mock.restoreAll(); await db.terminate(); });
+
+test('upload allocation counts existing files and serializes concurrent reservations', async () => {
+  mock.method(adminModule, 'getBucket', () => ({ getFiles: async () => [Array.from({ length: 19 }, (_, i) => ({ name: `users/member/gallery/old-${i}.webp` }))] }));
+  const request = (imageId) => ({ auth: { uid: 'member', token: { email_verified: true } }, data: { imageId } });
+  for (const id of ['one', 'two']) await db.doc(`images/${id}`).set({ ownerUid: 'member', kind: 'gallery', storagePath: `users/member/gallery/${id}.webp` });
+  const results = await Promise.allSettled([authorizeImageUpload.run(request('one')), authorizeImageUpload.run(request('two'))]);
+  assert.equal(results.filter((r) => r.status === 'fulfilled').length, 1);
+  assert.equal(results.find((r) => r.status === 'rejected').reason.code, 'resource-exhausted');
+  assert.equal((await db.collection('uploadPermits').get()).size, 1);
+});
+
+test('upload allocation enforces ownership and hourly limits', async () => {
+  mock.method(adminModule, 'getBucket', () => ({ getFiles: async () => [[]] }));
+  const req = { auth: { uid: 'member', token: { email_verified: true } }, data: { imageId: 'work' } };
+  await db.doc('images/work').set({ ownerUid: 'other', kind: 'gallery', storagePath: 'users/other/gallery/work.webp' });
+  await assert.rejects(authorizeImageUpload.run(req), { code: 'permission-denied' });
+  await db.doc('images/work').set({ ownerUid: 'member', kind: 'gallery', storagePath: 'users/member/gallery/work.webp' });
+  await db.doc('uploadLimits/member').set({ windowStart: Timestamp.now(), count: 40 });
+  await assert.rejects(authorizeImageUpload.run(req), { code: 'resource-exhausted' });
+});
 
 test('admin moderation rejects ordinary users and preserves member drafts on restore', async () => {
   await assert.rejects(adminSetProfileActive.run({ auth: { uid: 'member', token: {} }, data: { uid: 'member', active: true } }), { code: 'permission-denied' });
