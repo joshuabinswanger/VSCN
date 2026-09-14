@@ -1,6 +1,7 @@
 // The deployable surface. One line per exported function; the code lives in
 // the module named for its concern.
 export { requestRebuild } from "./rebuild";
+export { flushMemberRebuilds } from "./rebuildQueue";
 export { mintAppCheckToken } from "./appCheck";
 export { requestAccountDeletion, cancelAccountDeletion, syncEmail } from "./accounts";
 export { purgeExpiredAccounts, sweepImages, reconcileEmails } from "./maintenance";

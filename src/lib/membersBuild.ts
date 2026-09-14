@@ -13,6 +13,7 @@ import { getFirestore } from "firebase-admin/firestore";
 import type { PublicProfileDoc } from "./firestore.ts";
 import { resolveSlugs, toMemberViewBase, type MemberView } from "./memberView.ts";
 import type { GalleryRecord } from "./galleryRecords.ts";
+import { isProfileVisible } from "./profileVisibility.ts";
 
 interface Directory {
   members: MemberView[];
@@ -77,7 +78,7 @@ async function fetchDirectory(): Promise<Directory> {
 
     const members = resolveSlugs(
       profiles.docs
-        .filter((d) => d.data().active !== false)
+        .filter((d) => isProfileVisible(d.data()))
         .map((d) => toMemberViewBase(d.id, d.data() as PublicProfileDoc, recordsByOwner.get(d.id) ?? [], bucket)),
       current,
     );
