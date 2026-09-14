@@ -1,4 +1,7 @@
 import { test, before, after, beforeEach } from "node:test";
+import { deleteField } from "firebase/firestore";
+import assert from "node:assert/strict";
+import { isProfileVisible } from "../../src/lib/profileVisibility.ts";
 import {
   setupEnv, seed, assertFails, assertSucceeds,
   OWNER, OTHER, ADMIN, verified, unverified, slot, minimalUser,
@@ -8,6 +11,53 @@ let env;
 before(async () => { env = await setupEnv(); });
 after(async () => { await env.cleanup(); });
 beforeEach(async () => { await env.clearFirestore(); });
+
+test("tags: members submit bounded tags but only admins change shared taxonomy", async () => {
+  const owner = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  const tag = { label: "Science", active: true, group: "other", createdBy: OWNER, createdAt: new Date() };
+  await assertSucceeds(owner.doc("tags/science").set(tag));
+  await assertFails(owner.doc("tags/forged").set({ ...tag, createdBy: OTHER }));
+  await assertFails(owner.doc("tags/extra").set({ ...tag, extra: "x" }));
+  await assertFails(owner.doc("tags/long").set({ ...tag, group: "x".repeat(51) }));
+  await assertFails(owner.doc("tags/science").update({ active: false }));
+  const other = env.authenticatedContext(OTHER, verified(OTHER)).firestore();
+  await assertFails(other.doc("tags/science").update({ label: "Hijacked" }));
+  const admin = env.authenticatedContext(ADMIN, verified(ADMIN, { admin: true })).firestore();
+  await assertSucceeds(admin.doc("tags/science").update({ label: "Scientific art", active: false }));
+  await assertFails(admin.doc("tags/science").update({ createdBy: ADMIN }));
+});
+
+test("moderation: members cannot seed a moderation flag, including false", async () => {
+  const ref = env.authenticatedContext(OWNER, verified(OWNER)).firestore().doc(`publicProfiles/${OWNER}`);
+  for (const moderationHidden of [true, false, "false", null]) {
+    await assertFails(ref.set({ displayName: "Member", active: true, moderationHidden }));
+  }
+  await assertSucceeds(ref.set({ displayName: "Member", active: true }));
+  await assertFails(ref.update({ moderationHidden: false }));
+});
+
+test("moderation: editing and republishing cannot undo an admin hide", async () => {
+  const path = `publicProfiles/${OWNER}`;
+  await seed(env, path, { displayName: "Member", active: false, moderationHidden: true });
+  const ref = env.authenticatedContext(OWNER, verified(OWNER)).firestore().doc(path);
+  await assertSucceeds(ref.set({ active: true, bio: "Corrected information." }, { merge: true }));
+  assert.equal(isProfileVisible((await ref.get()).data()), false);
+  await assertFails(ref.update({ moderationHidden: false }));
+  await assertFails(ref.update({ moderationHidden: deleteField() }));
+  await assertFails(ref.set({ displayName: "Replacement", active: true }));
+  await assertFails(ref.delete());
+  const other = env.authenticatedContext(OTHER, verified(OTHER)).firestore().doc(path);
+  await assertFails(other.update({ moderationHidden: false }));
+  const admin = env.authenticatedContext(ADMIN, verified(ADMIN, { admin: true })).firestore().doc(path);
+  await assertFails(admin.update({ moderationHidden: false })); // Must use the audited callable.
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().doc(path).update({ moderationHidden: false });
+  });
+  assert.equal(isProfileVisible((await ref.get()).data()), true);
+  await assertFails(ref.update({ moderationHidden: deleteField() }));
+  await assertSucceeds(ref.update({ active: false }));
+  assert.equal(isProfileVisible((await ref.get()).data()), false);
+});
 
 test("users: owner can create their own private doc", async () => {
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
@@ -307,6 +357,11 @@ test("publicProfiles: eight ids save on a FULL profile", async () => {
     gallery: Array.from({ length: 8 }, () => crypto.randomUUID()),
     active: true,
   }));
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().doc(`publicProfiles/${OWNER}`).update({ moderationHidden: true });
+  });
+  // Moderation must not prevent a full profile from being corrected at the rules budget limit.
+  await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).update({ updatedAt: new Date(), active: true }));
   await assertSucceeds(db.doc(`users/${OWNER}`).set({
     ...minimalUser(OWNER),
     displayName: "x".repeat(100), photoURL, role: "x".repeat(100),

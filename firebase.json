@@ -28,7 +28,13 @@
       {
         "//": "THE PAGES MUST NOT BE CACHED BY THE BROWSER. Firebase's default is max-age=3600, and with cleanUrls every route is an index.html, so after a deploy a browser kept showing the PREVIOUS build for up to an hour (2026-09-03: a freshly deployed page was missing its own build stamp in the browser while curl saw it, which is a full hour of testing a build that is not there). must-revalidate rather than no-store: the ETag still saves the bytes when nothing changed, it just stops the browser answering from its own cache without asking. The pattern is `**` and NOT `**/*.html`, which was the first attempt and matched nothing that matters: header rules are tested against the REQUEST path, and with cleanUrls every route arrives extension-less (`/community`), so only a literal .html hit would have matched. The immutable rule below is listed AFTER this one on purpose — it has to win for the hashed assets `**` also catches.",
         "source": "**",
-        "headers": [{ "key": "Cache-Control", "value": "max-age=0, must-revalidate" }]
+        "headers": [
+          { "key": "Cache-Control", "value": "max-age=0, must-revalidate" },
+          { "key": "X-Content-Type-Options", "value": "nosniff" },
+          { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+          { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+          { "key": "Content-Security-Policy", "value": "frame-ancestors 'self'; base-uri 'self'; object-src 'none'" }
+        ]
       },
       {
         "//": "The opposite treatment, and it is safe for the same reason it is necessary: everything Astro emits here carries a content hash in its filename, so a changed file is a different URL and can never be served stale. This is what keeps the pages uncached above from costing anything.",
