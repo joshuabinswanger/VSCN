@@ -2,6 +2,7 @@
 // the module named for its concern.
 export { requestRebuild } from "./rebuild";
 export { flushMemberRebuilds } from "./rebuildQueue";
+export { authorizeImageUpload } from "./uploads";
 export { mintAppCheckToken } from "./appCheck";
 export { requestAccountDeletion, cancelAccountDeletion, syncEmail } from "./accounts";
 export { purgeExpiredAccounts, sweepImages, reconcileEmails } from "./maintenance";

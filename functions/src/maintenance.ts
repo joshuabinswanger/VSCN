@@ -64,6 +64,7 @@ export const sweepImages = onSchedule(
     const bucket = getBucket();
     for (const d of targets) {
       await bucket.file(d.data().storagePath as string).delete({ ignoreNotFound: true });
+      await db.doc(`uploadPermits/${d.id}.webp`).delete();
       await d.ref.delete();
     }
     logger.info("sweepImages", {

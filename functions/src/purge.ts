@@ -45,8 +45,12 @@ export async function purgeAccount(uid: string): Promise<void> {
     }
     if (!done.docsDeleted) {
       const slugs = await db.collection("slugs").where("uid", "==", uid).get();
+      const permits = await db.collection("uploadPermits").where("ownerUid", "==", uid).get();
       await deleteRefs([
         ...slugs.docs.map((d) => d.ref),
+        ...permits.docs.map((d) => d.ref),
+        db.doc(`uploadLimits/${uid}`),
+        db.doc(`rebuildMembers/${uid}`),
         db.doc(`publicProfiles/${uid}`),
         db.doc(`users/${uid}`),
         db.doc(`onboardingRequests/${uid}`),
