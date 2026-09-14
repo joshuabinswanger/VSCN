@@ -59,16 +59,31 @@ export const sweepImages = onSchedule(
     ]);
     const targets = [
       ...pending.docs.filter((d) => !inGrace.has(d.data().ownerUid as string)),
-      ...uploading.docs.filter((d) => (d.data().createdAt as Timestamp).toMillis() < cutoff),
+      // A reusable slot can be years old but was just reopened for upload.
+      ...uploading.docs.filter((d) => (d.data().updatedAt as Timestamp).toMillis() < cutoff),
     ];
     const bucket = getBucket();
     for (const d of targets) {
       await bucket.file(d.data().storagePath as string).delete({ ignoreNotFound: true });
+      await bucket.file(`pending/${d.data().ownerUid}/${d.data().kind}/${d.id}.webp`).delete({ ignoreNotFound: true });
       await db.doc(`uploadPermits/${d.id}.webp`).delete();
       await d.ref.delete();
     }
+    // A client can finish an in-flight write after its permit is consumed.
+    // Such private objects have no uploading record to find, so sweep the
+    // quarantine prefix once they are well beyond the permit lifetime.
+    const [staged] = await bucket.getFiles({ prefix: "pending/" });
+    let orphaned = 0;
+    for (const file of staged) {
+      const created = Date.parse(String(file.metadata.timeCreated ?? ""));
+      if (file.name.match(/^pending\/[^/]+\/(avatar|gallery)\/[^/]+\.webp$/)
+        && Number.isFinite(created) && created < cutoff) {
+        await file.delete({ ignoreNotFound: true });
+        orphaned += 1;
+      }
+    }
     logger.info("sweepImages", {
-      swept: targets.length,
+      swept: targets.length, orphaned,
       skippedInGrace: pending.size - pending.docs.filter((d) => !inGrace.has(d.data().ownerUid as string)).length,
     });
   }

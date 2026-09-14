@@ -22,13 +22,30 @@ concurrency:
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-      - run: npm ci && npm run build
+      - run: npm ci
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: vscn-dev-f4b60
+          workload_identity_provider: projects/640269226461/locations/global/workloadIdentityPools/vscn-site-export/providers/github-vscn
+          service_account: vscn-build-reader@vscn-dev-f4b60.iam.gserviceaccount.com
+          export_environment_variables: false
+      - run: npm run export:site-data development
+        env:
+          PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.DEV_FIREBASE_PROJECT_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
+      - if: always()
+        run: rm -f "${{ steps.auth.outputs.credentials_file_path }}"
+      - run: npm run build:site -- --mode development
         env:
           PUBLIC_FIREBASE_API_KEY: ${{ secrets.DEV_FIREBASE_API_KEY }}
           PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.DEV_FIREBASE_AUTH_DOMAIN }}
@@ -39,7 +56,6 @@ jobs:
           # Cloudflare's published always-pass Turnstile TEST key: public by design,
           # so staging exercises the App Check pipeline without a real widget.
           PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_VSCN_DEV }}
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}

@@ -38,9 +38,10 @@ export async function purgeAccount(uid: string): Promise<void> {
       await tick("imagesDeleted");
     }
     if (!done.filesDeleted) {
-      // Belt to the records' braces: anything under the prefix the records
-      // did not know about (a legacy object, an interrupted upload).
+      // Remove public objects and private interrupted uploads, including any
+      // objects whose image record disappeared before this purge.
       await getBucket().deleteFiles({ prefix: `users/${uid}/` });
+      await getBucket().deleteFiles({ prefix: `pending/${uid}/` });
       await tick("filesDeleted");
     }
     if (!done.docsDeleted) {

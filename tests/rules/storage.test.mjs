@@ -3,26 +3,37 @@ import {
   setupEnv, seed, assertFails, assertSucceeds, OWNER, OTHER, verified, unverified, slot,
 } from "./helpers.mjs";
 
+const ID = "3f6c2a1e-1b2c-4d5e-8f90-a1b2c3d4e5f6";
+const webp = (bytes) => new Uint8Array(bytes);
+const staged = (kind, id) => `pending/${OWNER}/${kind}/${id}.webp`;
+const published = (kind, id) => `users/${OWNER}/${kind}/${id}.webp`;
 let env;
+
+async function permit(kind, id, expiresAt = new Date(Date.now() + 60_000)) {
+  await seed(env, `uploadPermits/${id}.webp`, {
+    imageId: id, ownerUid: OWNER, kind, storagePath: published(kind, id), uploadPath: staged(kind, id), expiresAt,
+  });
+  await seed(env, `images/${id}`, {
+    ownerUid: OWNER, kind, storagePath: published(kind, id), status: "uploading",
+  });
+}
+
 before(async () => {
   env = await setupEnv();
-  // The Storage emulator can answer requests before its ruleset is loaded
-  // ("Permission denied because no Storage ruleset is currently loaded"),
-  // which fails the first uploads spuriously. Poll a legitimate owner upload
-  // until the rules engine answers it, then clear the bucket.
+  // Wait for the Storage emulator rules engine to load before the tests run.
   const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
-  const probe = `users/${OWNER}/gallery/00000000-0000-4000-8000-000000000000.webp`;
-  await permit("gallery", "00000000-0000-4000-8000-000000000000");
+  const id = "00000000-0000-4000-8000-000000000000";
+  await permit("gallery", id);
   let ready = false;
   for (let attempt = 0; attempt < 20 && !ready; attempt += 1) {
     try {
-      await s.ref(probe).put(new Uint8Array(16), { contentType: "image/webp" });
+      await s.ref(staged("gallery", id)).put(webp(16), { contentType: "image/webp" });
       ready = true;
     } catch {
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
   }
-  if (!ready) throw new Error("Storage emulator never loaded its ruleset (20 attempts).");
+  if (!ready) throw new Error("Storage emulator never loaded its ruleset.");
   await env.clearStorage();
 });
 after(async () => { await env.cleanup(); });
@@ -34,96 +45,93 @@ beforeEach(async () => {
   await permit("avatar", slot(OWNER, "avatar"));
 });
 
-const ID = "3f6c2a1e-1b2c-4d5e-8f90-a1b2c3d4e5f6";
-const webp = (bytes) => new Uint8Array(bytes);
-
-async function permit(kind, id, expiresAt = new Date(Date.now() + 60_000)) {
-  await seed(env, `uploadPermits/${id}.webp`, {
-    ownerUid: OWNER, kind, storagePath: `users/${OWNER}/${kind}/${id}.webp`, expiresAt,
-  });
-}
-
-test("storage: arbitrary, unreserved files and expired permits are rejected", async () => {
+test("storage: unreserved and expired uploads are rejected", async () => {
   const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
-  await assertFails(s.ref(`users/${OWNER}/gallery/00000000-0000-4000-8000-000000000001.webp`).put(webp(64), { contentType: "image/webp" }));
+  await assertFails(s.ref(staged("gallery", "00000000-0000-4000-8000-000000000001"))
+    .put(webp(64), { contentType: "image/webp" }));
   await permit("gallery", ID, new Date(0));
-  await assertFails(s.ref(`users/${OWNER}/gallery/${ID}.webp`).put(webp(64), { contentType: "image/webp" }));
+  await assertFails(s.ref(staged("gallery", ID)).put(webp(64), { contentType: "image/webp" }));
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
   await assertFails(db.doc(`uploadPermits/${ID}.webp`).update({ expiresAt: new Date(Date.now() + 60_000) }));
 });
 
-test("storage: owner uploads a gallery webp under their own prefix", async () => {
+test("storage: member upload stays private and cannot write the public path", async () => {
   const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
-  await assertSucceeds(s.ref(`users/${OWNER}/gallery/${ID}.webp`).put(webp(1024), { contentType: "image/webp" }));
-});
-
-test("storage: owner uploads an avatar webp", async () => {
-  await permit("avatar", ID);
-  const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
-  await assertSucceeds(s.ref(`users/${OWNER}/avatar/${ID}.webp`).put(webp(1024), { contentType: "image/webp" }));
-});
-
-test("storage: cannot upload into someone else's prefix", async () => {
-  const s = env.authenticatedContext(OTHER, verified(OTHER)).storage();
-  await assertFails(s.ref(`users/${OWNER}/gallery/${ID}.webp`).put(webp(1024), { contentType: "image/webp" }));
-});
-
-test("storage: unknown kind, non-uuid name, wrong type are rejected", async () => {
-  const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
-  await assertFails(s.ref(`users/${OWNER}/originals/${ID}.webp`).put(webp(1024), { contentType: "image/webp" }));
-  await assertFails(s.ref(`users/${OWNER}/gallery/photo.webp`).put(webp(1024), { contentType: "image/webp" }));
-  await assertFails(s.ref(`users/${OWNER}/gallery/${ID}.webp`).put(webp(1024), { contentType: "image/png" }));
-});
-
-test("storage: avatar capped at 2 MB, gallery at 8 MB", async () => {
-  const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
-  await permit("avatar", ID);
-  await assertFails(s.ref(`users/${OWNER}/avatar/${ID}.webp`).put(webp(2 * 1024 * 1024 + 1), { contentType: "image/webp" }));
-  await permit("gallery", ID);
-  await assertFails(s.ref(`users/${OWNER}/gallery/${ID}.webp`).put(webp(8 * 1024 * 1024 + 1), { contentType: "image/webp" }));
-});
-
-test("storage: public read, owner cannot delete (sweeper does)", async () => {
-  const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
-  await assertSucceeds(s.ref(`users/${OWNER}/gallery/${ID}.webp`).put(webp(64), { contentType: "image/webp" }));
+  await assertSucceeds(s.ref(staged("gallery", ID)).put(webp(1024), { contentType: "image/webp" }));
   const anon = env.unauthenticatedContext().storage();
-  await assertSucceeds(anon.ref(`users/${OWNER}/gallery/${ID}.webp`).getDownloadURL());
-  await assertFails(s.ref(`users/${OWNER}/gallery/${ID}.webp`).delete());
+  await assertFails(anon.ref(staged("gallery", ID)).getDownloadURL());
+  await assertFails(s.ref(published("gallery", ID)).put(webp(1024), { contentType: "image/webp" }));
 });
 
-// The byte-side half of the unverified cap. Storage rules cannot read
-// count; server-owned permits additionally bound stored files for all members.
-test("storage: an unverified member may write their slot object, per kind", async () => {
-  const s = env.authenticatedContext(OWNER, unverified(OWNER)).storage();
-  const g = `users/${OWNER}/gallery/${slot(OWNER, "gallery")}.webp`;
-  await assertSucceeds(s.ref(g).put(webp(1024), { contentType: "image/webp" }));
-  await assertSucceeds(s.ref(`users/${OWNER}/avatar/${slot(OWNER, "avatar")}.webp`)
-    .put(webp(1024), { contentType: "image/webp" }));
-  // Replacing overwrites the same object — that is what makes the cap livable.
-  await assertSucceeds(s.ref(g).put(webp(2048), { contentType: "image/webp" }));
-});
-
-test("storage: an unverified member cannot write any other filename", async () => {
-  const s = env.authenticatedContext(OWNER, unverified(OWNER)).storage();
-  await assertFails(s.ref(`users/${OWNER}/gallery/${ID}.webp`)
-    .put(webp(1024), { contentType: "image/webp" }));
-  // The slot name is per kind: the gallery slot is not a second avatar.
-  await assertFails(s.ref(`users/${OWNER}/avatar/${slot(OWNER, "gallery")}.webp`)
-    .put(webp(1024), { contentType: "image/webp" }));
-  // And it is per uid, so it cannot be borrowed.
-  await assertFails(s.ref(`users/${OWNER}/gallery/${slot(OTHER, "gallery")}.webp`)
-    .put(webp(1024), { contentType: "image/webp" }));
-});
-
-test("storage: the slot stays writable after verification", async () => {
-  // The client reads emailVerified off a cached user record, so it can still
-  // address the slot for a while after the link is clicked. That must work.
+test("storage: a published record cannot be reuploaded even with a permit", async () => {
+  await seed(env, `images/${ID}`, {
+    ownerUid: OWNER, kind: "gallery", storagePath: published("gallery", ID), status: "live",
+  });
   const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
-  await assertSucceeds(s.ref(`users/${OWNER}/gallery/${slot(OWNER, "gallery")}.webp`)
+  await assertFails(s.ref(staged("gallery", ID)).put(webp(64), { contentType: "image/webp" }));
+});
+
+test("storage: avatar uploads remain available in private staging", async () => {
+  await permit("avatar", ID);
+  const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
+  await assertSucceeds(s.ref(staged("avatar", ID)).put(webp(1024), { contentType: "image/webp" }));
+});
+
+test("storage: another member cannot upload to the owner's prefix", async () => {
+  const s = env.authenticatedContext(OTHER, verified(OTHER)).storage();
+  await assertFails(s.ref(staged("gallery", ID)).put(webp(1024), { contentType: "image/webp" }));
+});
+
+test("storage: unknown kind, filename, and MIME type are rejected", async () => {
+  const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
+  await assertFails(s.ref(staged("originals", ID)).put(webp(1024), { contentType: "image/webp" }));
+  await assertFails(s.ref(staged("gallery", "photo")).put(webp(1024), { contentType: "image/webp" }));
+  await assertFails(s.ref(staged("gallery", ID)).put(webp(1024), { contentType: "image/png" }));
+});
+
+test("storage: avatar capped at 2 MB and gallery at 8 MB", async () => {
+  const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
+  await permit("avatar", ID);
+  await assertFails(s.ref(staged("avatar", ID)).put(webp(2 * 1024 * 1024 + 1), { contentType: "image/webp" }));
+  await permit("gallery", ID);
+  await assertFails(s.ref(staged("gallery", ID)).put(webp(8 * 1024 * 1024 + 1), { contentType: "image/webp" }));
+});
+
+test("storage: server-promoted files are public, but members cannot delete them", async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.storage().ref(published("gallery", ID)).put(webp(64), { contentType: "image/webp" });
+  });
+  const anon = env.unauthenticatedContext().storage();
+  await assertSucceeds(anon.ref(published("gallery", ID)).getDownloadURL());
+  const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
+  await assertFails(s.ref(published("gallery", ID)).delete());
+});
+
+test("storage: unverified member may replace one slot per kind", async () => {
+  const s = env.authenticatedContext(OWNER, unverified(OWNER)).storage();
+  const gallery = staged("gallery", slot(OWNER, "gallery"));
+  await assertSucceeds(s.ref(gallery).put(webp(1024), { contentType: "image/webp" }));
+  await assertSucceeds(s.ref(staged("avatar", slot(OWNER, "avatar")))
+    .put(webp(1024), { contentType: "image/webp" }));
+  await assertSucceeds(s.ref(gallery).put(webp(2048), { contentType: "image/webp" }));
+});
+
+test("storage: unverified member cannot use another filename or slot", async () => {
+  const s = env.authenticatedContext(OWNER, unverified(OWNER)).storage();
+  await assertFails(s.ref(staged("gallery", ID)).put(webp(1024), { contentType: "image/webp" }));
+  await assertFails(s.ref(staged("avatar", slot(OWNER, "gallery")))
+    .put(webp(1024), { contentType: "image/webp" }));
+  await assertFails(s.ref(staged("gallery", slot(OTHER, "gallery")))
     .put(webp(1024), { contentType: "image/webp" }));
 });
 
-test("storage: legacy paths are denied entirely (catch-all)", async () => {
+test("storage: a verified member may still use the slot", async () => {
+  const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
+  await assertSucceeds(s.ref(staged("gallery", slot(OWNER, "gallery")))
+    .put(webp(1024), { contentType: "image/webp" }));
+});
+
+test("storage: legacy paths remain denied", async () => {
   const s = env.authenticatedContext(OWNER, verified(OWNER)).storage();
   await assertFails(s.ref(`galleries/${OWNER}/123-abc.webp`).put(webp(64), { contentType: "image/webp" }));
   await assertFails(s.ref(`avatars/${OWNER}-123.webp`).put(webp(64), { contentType: "image/webp" }));

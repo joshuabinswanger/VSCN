@@ -106,37 +106,15 @@ service cloud.firestore {
     }
 
     match /images/{imageId} {
-      // Every image is a record here FIRST, then bytes, then `live` — so a
-      // Storage object can never exist without a document pointing at it.
+      // The upload callable creates the record before bytes arrive and only
+      // the completion callable may mark validated bytes live.
       // Public read: these are the public artworks; nothing private lives here.
       allow read: if true;
 
-      // A client always creates in the `uploading` state and as its own work.
-      // `curated` and `provenance` are written only by scripts (Admin SDK).
-      //
-      // THE LAST CLAUSE IS THE UNVERIFIED CAP (2026-09-02, Josh: "make it so
-      // you can only upload 1 image until verified"). Rules cannot count
-      // documents, so the allowance is a namespace rather than a number: an
-      // unverified member may only ever create the id `{uid}-{kind}`, which is
-      // one avatar record and one gallery record and no more, however many
-      // times they try. A second upload UPDATES that record instead of adding
-      // another, which is why "replace my picture" still works unverified.
-      //
-      // Its byte-side twin is the filename clause in storage.rules, and the
-      // two agree for free: validImage() derives storagePath from the document
-      // id, so the id `{uid}-gallery` can only ever name the object
-      // `users/{uid}/gallery/{uid}-gallery.webp`. Change one, change both.
-      allow create: if request.auth != null
-                    && request.resource.data.ownerUid == request.auth.uid
-                    && request.resource.data.status == 'uploading'
-                    && request.resource.data.origin == 'member'
-                    && !('provenance' in request.resource.data)
-                    && validImage(request.resource.data, imageId)
-                    && (request.auth.token.email_verified == true
-                        || imageId == request.auth.uid + '-' + request.resource.data.kind);
+      allow create: if false;
 
-      // Identity fields are pinned. The owner may move status forward, edit
-      // caption/description, and bump updatedAt — nothing else.
+      // Members can edit text and request deletion. Publication and geometry
+      // are server-owned, including on an unverified account's reusable slot.
       allow update: if request.auth != null
                     && resource.data.ownerUid == request.auth.uid
                     && request.resource.data.ownerUid == resource.data.ownerUid
@@ -145,6 +123,11 @@ service cloud.firestore {
                     && request.resource.data.origin == resource.data.origin
                     && request.resource.data.get('provenance', null) == resource.data.get('provenance', null)
                     && request.resource.data.createdAt == resource.data.createdAt
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                         'caption', 'captionDe', 'description', 'descriptionDe', 'descriptionShort',
+                         'link', 'siteLink', 'tags', 'status', 'updatedAt'])
+                    && (request.resource.data.status == resource.data.status
+                        || (resource.data.status == 'live' && request.resource.data.status == 'pendingDeletion'))
                     && validImage(request.resource.data, imageId);
 
       // Clients MARK (status: pendingDeletion); only the sweeper deletes.

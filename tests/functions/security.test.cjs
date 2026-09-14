@@ -7,8 +7,10 @@ const { db } = require('../../functions/lib/admin.js');
 const rebuild = require('../../functions/lib/rebuild.js');
 const { queueMemberRebuild, flushMemberRebuilds } = require('../../functions/lib/rebuildQueue.js');
 const { adminSetProfileActive } = require('../../functions/lib/adminOps.js');
+const { sweepImages } = require('../../functions/lib/maintenance.js');
 const adminModule = require('../../functions/lib/admin.js');
-const { authorizeImageUpload } = require('../../functions/lib/uploads.js');
+const { authorizeImageUpload, completeImageUpload, webpDimensions } = require('../../functions/lib/uploads.js');
+const sharp = require('sharp');
 const backendRequire = require('node:module').createRequire(require('node:path').resolve('functions/package.json'));
 const { Timestamp } = backendRequire('firebase-admin/firestore');
 beforeEach(async () => {
@@ -20,22 +22,89 @@ after(async () => { mock.restoreAll(); await db.terminate(); });
 
 test('upload allocation counts existing files and serializes concurrent reservations', async () => {
   mock.method(adminModule, 'getBucket', () => ({ getFiles: async () => [Array.from({ length: 19 }, (_, i) => ({ name: `users/member/gallery/old-${i}.webp` }))] }));
-  const request = (imageId) => ({ auth: { uid: 'member', token: { email_verified: true } }, data: { imageId } });
-  for (const id of ['one', 'two']) await db.doc(`images/${id}`).set({ ownerUid: 'member', kind: 'gallery', storagePath: `users/member/gallery/${id}.webp` });
-  const results = await Promise.allSettled([authorizeImageUpload.run(request('one')), authorizeImageUpload.run(request('two'))]);
+  const request = (imageId) => ({ auth: { uid: 'member', token: { email_verified: true } }, data: { imageId, kind: 'gallery', width: 100, height: 100 } });
+  const results = await Promise.allSettled([
+    authorizeImageUpload.run(request('11111111-1111-4111-8111-111111111111')),
+    authorizeImageUpload.run(request('22222222-2222-4222-8222-222222222222')),
+  ]);
   assert.equal(results.filter((r) => r.status === 'fulfilled').length, 1);
   assert.equal(results.find((r) => r.status === 'rejected').reason.code, 'resource-exhausted');
   assert.equal((await db.collection('uploadPermits').get()).size, 1);
+  assert.equal((await db.collection('images').get()).size, 1);
 });
 
 test('upload allocation enforces ownership and hourly limits', async () => {
   mock.method(adminModule, 'getBucket', () => ({ getFiles: async () => [[]] }));
-  const req = { auth: { uid: 'member', token: { email_verified: true } }, data: { imageId: 'work' } };
-  await db.doc('images/work').set({ ownerUid: 'other', kind: 'gallery', storagePath: 'users/other/gallery/work.webp' });
+  const imageId = '33333333-3333-4333-8333-333333333333';
+  const req = { auth: { uid: 'member', token: { email_verified: true } }, data: { imageId, kind: 'gallery', width: 100, height: 100 } };
+  await db.doc(`images/${imageId}`).set({ ownerUid: 'other', kind: 'gallery', storagePath: `users/other/gallery/${imageId}.webp` });
   await assert.rejects(authorizeImageUpload.run(req), { code: 'permission-denied' });
-  await db.doc('images/work').set({ ownerUid: 'member', kind: 'gallery', storagePath: 'users/member/gallery/work.webp' });
+  await db.doc(`images/${imageId}`).delete();
   await db.doc('uploadLimits/member').set({ windowStart: Timestamp.now(), count: 40 });
   await assert.rejects(authorizeImageUpload.run(req), { code: 'resource-exhausted' });
+});
+
+test('server publishes only an uploaded WebP matching its record', async () => {
+  const uid = 'member';
+  const imageId = '44444444-4444-4444-8444-444444444444';
+  const path = `users/${uid}/gallery/${imageId}.webp`;
+  const uploadPath = `pending/${uid}/gallery/${imageId}.webp`;
+  const bytes = await sharp({ create: { width: 2, height: 3, channels: 3, background: '#ffffff' } }).webp().toBuffer();
+  assert.deepEqual(webpDimensions(bytes.subarray(0, 64), bytes.length), { width: 2, height: 3 });
+  await db.doc(`images/${imageId}`).set({ ownerUid: uid, kind: 'gallery', storagePath: path, origin: 'member', status: 'uploading', width: 2, height: 3 });
+  await db.doc(`uploadPermits/${imageId}.webp`).set({ imageId, ownerUid: uid, kind: 'gallery', storagePath: path, uploadPath, expiresAt: Timestamp.fromMillis(Date.now() + 60000) });
+  let copied = false;
+  mock.method(adminModule, 'getBucket', () => ({ file: (name, options) => ({
+    name,
+    getMetadata: async () => [{ contentType: 'image/webp', generation: '123', size: String(bytes.length) }],
+    download: async () => { assert.equal(options?.generation, '123'); return [bytes.subarray(0, 64)]; },
+    copy: async (dest) => { assert.equal(options?.generation, '123'); assert.equal(dest.name, path); copied = true; return []; },
+    delete: async () => {},
+  }) }));
+  await completeImageUpload.run({ auth: { uid, token: { email_verified: true } }, data: { imageId } });
+  assert.equal(copied, true);
+  assert.equal((await db.doc(`images/${imageId}`).get()).data().status, 'live');
+  assert.equal((await db.doc(`uploadPermits/${imageId}.webp`).get()).exists, false);
+});
+
+test('mislabeled bytes and forged dimensions cannot become live', async () => {
+  const uid = 'member';
+  const imageId = '55555555-5555-4555-8555-555555555555';
+  const path = `users/${uid}/gallery/${imageId}.webp`;
+  const uploadPath = `pending/${uid}/gallery/${imageId}.webp`;
+  const bytes = Buffer.from('not a webp image'.repeat(4));
+  assert.equal(webpDimensions(bytes.subarray(0, 64), bytes.length), null);
+  await db.doc(`images/${imageId}`).set({ ownerUid: uid, kind: 'gallery', storagePath: path, origin: 'member', status: 'uploading', width: 2, height: 3 });
+  await db.doc(`uploadPermits/${imageId}.webp`).set({ imageId, ownerUid: uid, kind: 'gallery', storagePath: path, uploadPath, expiresAt: Timestamp.fromMillis(Date.now() + 60000) });
+  mock.method(adminModule, 'getBucket', () => ({ file: () => ({
+    getMetadata: async () => [{ contentType: 'image/webp', generation: '456', size: String(bytes.length) }],
+    download: async () => [bytes.subarray(0, 64)],
+  }) }));
+  await assert.rejects(completeImageUpload.run({ auth: { uid, token: {} }, data: { imageId } }), { code: 'invalid-argument' });
+  assert.equal((await db.doc(`images/${imageId}`).get()).data().status, 'uploading');
+});
+
+test('sweeper retains a recently reopened upload slot', async () => {
+  const imageId = 'member-gallery';
+  const ref = db.doc(`images/${imageId}`);
+  await ref.set({ ownerUid: 'member', kind: 'gallery', storagePath: `users/member/gallery/${imageId}.webp`,
+    status: 'uploading', createdAt: Timestamp.fromMillis(1), updatedAt: Timestamp.now() });
+  mock.method(adminModule, 'getBucket', () => ({
+    file: () => ({ delete: async () => { throw new Error('Recent slot was deleted'); } }),
+    getFiles: async () => [[]],
+  }));
+  await sweepImages.run({});
+  assert.equal((await ref.get()).exists, true);
+});
+
+test('sweeper deletes old orphaned private uploads', async () => {
+  let deleted = false;
+  mock.method(adminModule, 'getBucket', () => ({ getFiles: async () => [[{
+    name: 'pending/member/gallery/orphan.webp', metadata: { timeCreated: new Date(0).toISOString() },
+    delete: async () => { deleted = true; },
+  }]] }));
+  await sweepImages.run({});
+  assert.equal(deleted, true);
 });
 
 test('admin moderation rejects ordinary users and preserves member drafts on restore', async () => {
