@@ -17,8 +17,7 @@ function storageUrl(storagePath) {
 
 async function boundedDownload(url, maxBytes) {
   const response = await fetch(url, { signal: AbortSignal.timeout(20_000) });
-  if (response.status === 404) return null;
-  if (!response.ok || !response.body) throw new Error(`Public image download failed: HTTP ${response.status}`);
+  if (!response.ok || !response.body) return null;
   if (Number(response.headers.get("content-length") ?? 0) > maxBytes) return null;
   const reader = response.body.getReader();
   const chunks = [];
@@ -38,7 +37,12 @@ async function boundedDownload(url, maxBytes) {
 }
 
 async function decodes(url, maxBytes) {
-  const bytes = await boundedDownload(url, maxBytes);
+  let bytes;
+  try {
+    bytes = await boundedDownload(url, maxBytes);
+  } catch {
+    return false;
+  }
   if (!bytes) return false;
   try {
     await sharp(bytes, { limitInputPixels: 100_000_000, failOn: "error" })

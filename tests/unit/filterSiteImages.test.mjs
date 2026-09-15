@@ -28,3 +28,31 @@ test("a corrupt public image cannot stop a site rebuild", async () => {
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("an unavailable public image cannot stop a site rebuild", async () => {
+  const cwd = process.cwd();
+  const fetch = globalThis.fetch;
+  const dir = await mkdtemp(join(tmpdir(), "vscn-image-filter-"));
+  const snapshot = {
+    version: 1, bucket: "example.firebasestorage.app",
+    images: [{ imageId: "work", storagePath: "users/member/gallery/work.webp" }],
+    profiles: [{ id: "member", data: { photoURL: "https://example.invalid/avatar.webp", photoImageId: "avatar" } }],
+  };
+  try {
+    await writeFile(join(dir, ".site-data.json"), JSON.stringify(snapshot));
+    process.chdir(dir);
+    globalThis.fetch = async (url) => {
+      if (String(url).includes("firebasestorage.googleapis.com")) return new Response(null, { status: 403 });
+      throw new TypeError("network unavailable");
+    };
+    await import(`../../scripts/filter-site-images.mjs?test=${Date.now()}-unavailable`);
+    const filtered = JSON.parse(await readFile(join(dir, ".site-data.json"), "utf8"));
+    assert.equal(filtered.images.length, 0);
+    assert.equal(filtered.profiles[0].data.photoURL, undefined);
+    assert.equal(filtered.profiles[0].data.photoImageId, undefined);
+  } finally {
+    process.chdir(cwd);
+    globalThis.fetch = fetch;
+    await rm(dir, { recursive: true, force: true });
+  }
+});
