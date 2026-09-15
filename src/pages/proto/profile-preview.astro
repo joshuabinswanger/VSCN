@@ -98,6 +98,14 @@ const cardLabels = {
   <script>
     import { renderCardPreview, renderProfilePreview } from "../../lib/profilePreview.ts";
 
+    import type { ProfileViewModel } from "../../lib/profileView.ts";
+    declare global {
+      interface Window {
+        __previewCases: { id: string; view: ProfileViewModel }[];
+        __previewLabels: Parameters<typeof renderProfilePreview>[2];
+        __previewCardLabels: Parameters<typeof renderCardPreview>[2];
+      }
+    }
     function initHarness() {
       const root = document.querySelector("[data-ppv-root]");
       const cardRoot = document.querySelector("[data-ccpv-root]");
@@ -109,12 +117,12 @@ const cardLabels = {
       const labels = window.__previewLabels;
       const cardLabels = window.__previewCardLabels;
 
-      const drawBoth = (view) => {
+      const drawBoth = (view: ProfileViewModel) => {
         renderProfilePreview(root, view, labels);
         if (cardRoot instanceof HTMLElement) renderCardPreview(cardRoot, view, cardLabels);
       };
 
-      const draw = (id) => {
+      const draw = (id: string) => {
         const found = cases.find((c) => c.id === id);
         if (found) drawBoth(found.view);
       };
@@ -127,6 +135,10 @@ const cardLabels = {
           role: "",
           memberType: "",
           bio: "",
+          affiliation: "",
+          location: "",
+          languages: [],
+          visualNeeds: [],
           tags: [],
           openTo: [],
           portfolio: "",

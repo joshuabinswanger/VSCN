@@ -31,6 +31,7 @@ export const authorizeImageUpload = onCall({ maxInstances: 3 }, async (req) => {
   const image = imageRequest(req, uid);
   const [files] = await getBucket().getFiles({ prefix: `users/${uid}/`, maxResults: MAX_STORED_OBJECTS + 1, autoPaginate: false });
   await db.runTransaction(async (tx) => {
+    if ((await tx.get(db.doc(`deletions/${uid}`))).exists) throw new HttpsError("failed-precondition", "Account deletion is pending or completed.");
     const lock = db.doc(`uploadLimits/${uid}`);
     const imageRef = db.doc(`images/${image.imageId}`);
     const [state, existing] = await Promise.all([tx.get(lock), tx.get(imageRef)]);
@@ -102,6 +103,7 @@ export const completeImageUpload = onCall({ maxInstances: 3 }, async (req) => {
   if (typeof imageId !== "string" || (imageId !== `${uid}-avatar` && imageId !== `${uid}-gallery` && !UUID.test(imageId))) {
     throw new HttpsError("invalid-argument", "Invalid image id.");
   }
+  if ((await db.doc(`deletions/${uid}`).get()).exists) throw new HttpsError("failed-precondition", "Account deletion is pending or completed.");
   const imageRef = db.doc(`images/${imageId}`);
   const permitRef = db.doc(`uploadPermits/${imageId}.webp`);
   const [image, permit] = await Promise.all([imageRef.get(), permitRef.get()]);
@@ -137,26 +139,36 @@ export const completeImageUpload = onCall({ maxInstances: 3 }, async (req) => {
   }
   // The source generation is pinned. A concurrent overwrite can only cause
   // the copy to fail; it cannot swap different bytes into the public path.
+  let publishedGeneration: string | undefined;
   try {
-    await bucket.file(allocation.uploadPath, { generation: metadata.generation }).copy(bucket.file(data.storagePath), {
+    const [, response] = await bucket.file(allocation.uploadPath, { generation: metadata.generation }).copy(bucket.file(data.storagePath), {
       contentType: "image/webp",
       cacheControl: imageId === `${uid}-${data.kind}` ? "public, max-age=60" : "public, max-age=31536000, immutable",
       metadata: { ownerUid: uid, imageId },
     });
+    publishedGeneration = (response as { resource?: { generation?: string } }).resource?.generation;
   } catch {
     throw new HttpsError("failed-precondition", "Uploaded image changed before validation completed.");
   }
-  await db.runTransaction(async (tx) => {
-    const [currentImage, currentPermit] = await Promise.all([tx.get(imageRef), tx.get(permitRef)]);
-    if (currentImage.data()?.status !== "uploading" || currentPermit.data()?.ownerUid !== uid
-      || currentPermit.data()?.storagePath !== data.storagePath
-      || currentPermit.data()?.uploadPath !== allocation.uploadPath
-      || currentPermit.data()?.expiresAt?.toMillis() <= Date.now()) {
-      throw new HttpsError("failed-precondition", "Upload authorization changed during validation.");
-    }
-    tx.update(imageRef, { status: "live", updatedAt: Timestamp.now() });
-    tx.delete(permitRef);
-  });
+  try {
+    await db.runTransaction(async (tx) => {
+      if ((await tx.get(db.doc(`deletions/${uid}`))).exists) throw new HttpsError("failed-precondition", "Account deletion is pending or completed.");
+      const [currentImage, currentPermit] = await Promise.all([tx.get(imageRef), tx.get(permitRef)]);
+      if (currentImage.data()?.status !== "uploading" || currentPermit.data()?.ownerUid !== uid
+        || currentPermit.data()?.storagePath !== data.storagePath
+        || currentPermit.data()?.uploadPath !== allocation.uploadPath
+        || currentPermit.data()?.expiresAt?.toMillis() <= Date.now()) {
+        throw new HttpsError("failed-precondition", "Upload authorization changed during validation.");
+      }
+      tx.update(imageRef, { status: "live", updatedAt: Timestamp.now() });
+      tx.delete(permitRef);
+    });
+  } catch (error) {
+    // Remove only the generation this call published; preserve any newer upload.
+    if (publishedGeneration) await bucket.file(data.storagePath, { generation: publishedGeneration })
+      .delete({ ignoreNotFound: true });
+    throw error;
+  }
   await file.delete({ ignoreNotFound: true }).catch(() => {});
   return { ok: true };
 });

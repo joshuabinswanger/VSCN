@@ -76,14 +76,14 @@ const t = useTranslations(lang);
     private selected = new Set<string>();
     private custom: string[] = [];
     private initialized = false;
-    private lang: "en" | "de" = "en";
+    private locale: "en" | "de" = "en";
     /** A value set before the options arrived, replayed once they do. */
     private pending: string[] | null = null;
 
     async connectedCallback() {
       if (this.initialized) return;
       this.initialized = true;
-      this.lang = this.dataset.lang === "de" ? "de" : "en";
+      this.locale = this.dataset.lang === "de" ? "de" : "en";
 
       const input = this.querySelector<HTMLInputElement>("#visualNeeds-input");
 
@@ -163,7 +163,7 @@ const t = useTranslations(lang);
           btn.className = "optchip visualNeeds-chip";
           btn.dataset.need = opt.id;
           btn.setAttribute("aria-pressed", "false");
-          btn.textContent = this.lang === "de" ? opt.label_de : opt.label_en;
+          btn.textContent = this.locale === "de" ? opt.label_de : opt.label_en;
           btn.addEventListener("click", () => {
             if (this.selected.has(opt.id)) this.selected.delete(opt.id);
             else if (this.total() < MAX_NEEDS) this.selected.add(opt.id);

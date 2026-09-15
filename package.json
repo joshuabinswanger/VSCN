@@ -17,7 +17,9 @@
     "deploy:dev": "node scripts/export-site-data.mjs development && npm run build:site -- --mode development && npx -y firebase-tools@latest deploy -P dev --only hosting",
     "worktree": "node scripts/new-worktree.mjs",
     "test:unit": "node --test tests/unit/**/*.test.mjs",
-    "test:rules": "npx -y firebase-tools@latest emulators:exec --only firestore,storage --project demo-vscn-rules \"node --test --test-concurrency=1 tests/rules/**/*.test.mjs\""
+    "test:rules": "npm --prefix functions run build && npx -y firebase-tools@latest emulators:exec --config firebase.security-audit.json --only firestore,storage --project demo-vscn-rules \"node --test --test-concurrency=1 tests/rules/**/*.test.mjs tests/functions/*.test.cjs\"",
+    "check": "astro check",
+    "verify": "npm run lint && npm run check && npm run test:unit && npm run test:rules"
   },
   "dependencies": {
     "astro": "^7.3.2",

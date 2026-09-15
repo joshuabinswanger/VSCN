@@ -268,7 +268,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.tab.preview": "Preview",
     "profile.view.noWorks": "No images yet. Add work in the gallery field and it will appear here.",
     "profile.view.defaultName": "Your name",
-    "profile.saveMsg": "Changes saved. Your community card will update within a few minutes.",
+    "profile.saveMsg": "Changes saved. Publication is queued and may take a few minutes.",
     "profile.adminConsole": "Admin console",
     "profile.logout": "Log Out",
     "profile.save": "Save Changes",
@@ -764,7 +764,7 @@ export const ui: Record<string, Record<string, string>> = {
       "Noch keine Bilder. Füge Arbeiten im Galerie-Feld hinzu, dann erscheinen sie hier.",
     "profile.view.defaultName": "Dein Name",
     "profile.saveMsg":
-      "Änderungen gespeichert. Deine Community-Karte wird innerhalb weniger Minuten aktualisiert.",
+      "Änderungen gespeichert. Die Veröffentlichung ist vorgemerkt und kann einige Minuten dauern.",
     "profile.adminConsole": "Admin-Konsole",
     "profile.logout": "Abmelden",
     "profile.save": "Änderungen speichern",

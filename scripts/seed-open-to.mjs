@@ -1,22 +1,8 @@
-import { initializeApp, cert, deleteApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
-import { loadEnvFile } from "node:process";
+import { initAdminApp, parseArgs } from './lib/admin-app.mjs';
+const { project, flags } = parseArgs();
+if (!flags.has('--apply')) { console.log('Dry run: pass -P dev|prod --apply to seed this registry.'); process.exit(0); }
+const { db, close } = initAdminApp(project);
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-loadEnvFile(resolve(__dirname, "../.env"));
-
-const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
-if (!serviceAccountJson) {
-  throw new Error("Missing FIREBASE_SERVICE_ACCOUNT in environment");
-}
-
-const app = initializeApp({
-  credential: cert(JSON.parse(serviceAccountJson.trim())),
-});
-
-const db = getFirestore();
 
 const options = [
   {
@@ -52,9 +38,10 @@ async function seed() {
     }
     console.log("✓ Options seeded successfully!");
   } catch (err) {
+    process.exitCode = 1;
     console.error("Error seeding options:", err);
   } finally {
-    await deleteApp(app);
+    await close();
   }
 }
 

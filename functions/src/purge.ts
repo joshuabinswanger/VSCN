@@ -1,5 +1,7 @@
 import { logger } from "firebase-functions/v2";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { randomUUID } from "node:crypto";
+import { HttpsError } from "firebase-functions/v2/https";
 import { adminAuth, db, getBucket } from "./admin";
 import { imageRefsFor } from "./lifecycle";
 import type { DeletionJob } from "./types";
@@ -16,10 +18,21 @@ type Step = keyof DeletionJob["steps"];
  */
 export async function purgeAccount(uid: string): Promise<void> {
   const jobRef = db.doc(`deletions/${uid}`);
-  const snap = await jobRef.get();
-  if (!snap.exists) throw new Error(`No deletion job for ${uid}`);
-  const job = snap.data() as DeletionJob;
-  if (job.completedAt) return;
+  const leaseOwner = randomUUID();
+  const job = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(jobRef);
+    if (!snap.exists) throw new Error(`No deletion job for ${uid}`);
+    const data = snap.data() as DeletionJob;
+    if (data.completedAt) return null;
+    if ((data.leaseUntil?.toMillis() ?? 0) > Date.now()) {
+      throw new HttpsError("aborted", "Account cleanup is already running.");
+    }
+    // Longer than a function invocation. A crashed worker can be retried, but
+    // restoration remains forbidden permanently once destructive work starts.
+    tx.update(jobRef, { state: "purging", leaseOwner, leaseUntil: Timestamp.fromMillis(Date.now() + 15 * 60_000) });
+    return data;
+  });
+  if (!job) return;
 
   const done = { ...job.steps };
   const tick = async (step: Step) => {
@@ -28,6 +41,8 @@ export async function purgeAccount(uid: string): Promise<void> {
   };
 
   try {
+    try { await adminAuth.updateUser(uid, { disabled: true }); }
+    catch (err) { if ((err as { code?: string }).code !== "auth/user-not-found") throw err; }
     if (!done.imagesDeleted) {
       const images = await imageRefsFor(uid);
       const bucket = getBucket();
@@ -38,8 +53,8 @@ export async function purgeAccount(uid: string): Promise<void> {
       await tick("imagesDeleted");
     }
     if (!done.filesDeleted) {
-      // Remove public objects and private interrupted uploads, including any
-      // objects whose image record disappeared before this purge.
+      // Belt to the records' braces: anything under the prefix the records
+      // did not know about (a legacy object, an interrupted upload).
       await getBucket().deleteFiles({ prefix: `users/${uid}/` });
       await getBucket().deleteFiles({ prefix: `pending/${uid}/` });
       await tick("filesDeleted");
@@ -66,11 +81,12 @@ export async function purgeAccount(uid: string): Promise<void> {
       }
       await tick("authDeleted");
     }
-    await jobRef.update({ completedAt: FieldValue.serverTimestamp(), lastError: null });
+    await jobRef.update({ completedAt: FieldValue.serverTimestamp(), state: "completed", lastError: null,
+      leaseOwner: FieldValue.delete(), leaseUntil: FieldValue.delete() });
     logger.info("Account purged", { uid });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await jobRef.update({ lastError: message });
+    await jobRef.update({ lastError: message, leaseOwner: FieldValue.delete(), leaseUntil: FieldValue.delete() });
     throw err;
   }
 }

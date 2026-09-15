@@ -1,3 +1,5 @@
+import { loadTs } from "../helpers/load-ts.mjs";
+import * as modularFirestore from "firebase/firestore";
 import { test, before, after, beforeEach } from "node:test";
 import { deleteField } from "firebase/firestore";
 import assert from "node:assert/strict";
@@ -436,4 +438,37 @@ test("onboardingRequests: admin can list, member cannot", async () => {
   const owner = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
   await assertFails(owner.collection("onboardingRequests").get());
   await assertSucceeds(owner.doc(`onboardingRequests/${OWNER}`).get());
+});
+
+test('profile batch rolls back both projections when either write is rejected', async () => {
+  await seed(env, `users/${OWNER}`, minimalUser(OWNER));
+  await seed(env, `publicProfiles/${OWNER}`, { displayName: 'Original', active: true });
+  const context = env.authenticatedContext(OWNER, unverified(OWNER));
+  const { updateUserProfile } = loadTs('src/lib/firestore.ts', {
+    './firebase.ts': { auth: { currentUser: { emailVerified: true } }, db: context.firestore()._delegate },
+    './profileVisibility.ts': { isProfileVisible },
+    'firebase/firestore': modularFirestore,
+  });
+  // Stale account metadata: private name is legal but publication is refused.
+  await assertFails(updateUserProfile(OWNER, { displayName: 'Changed' }));
+  assert.equal((await context.firestore().doc(`users/${OWNER}`).get()).data().displayName, 'Test Member');
+  assert.equal((await context.firestore().doc(`publicProfiles/${OWNER}`).get()).data().displayName, 'Original');
+  // Private server field is refused even though the public name/draft is legal.
+  await seed(env, `publicProfiles/${OWNER}`, { displayName: 'Original', active: false });
+  await assertFails(updateUserProfile(OWNER, { displayName: 'Changed', email: 'forged@example.test' }));
+  assert.equal((await context.firestore().doc(`publicProfiles/${OWNER}`).get()).data().displayName, 'Original');
+  await assertSucceeds(updateUserProfile(OWNER, { displayName: 'Changed' }));
+  assert.equal((await context.firestore().doc(`users/${OWNER}`).get()).data().displayName, 'Changed');
+});
+
+test('deletion tombstones block cached-token writes and recreation', async () => {
+  const owner = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await seed(env, `users/${OWNER}`, minimalUser(OWNER));
+  await seed(env, `deletions/${OWNER}`, { state: 'purging', completedAt: null });
+  await assertFails(owner.doc(`users/${OWNER}`).update({ displayName: 'Race' }));
+  await assertFails(owner.doc(`publicProfiles/${OWNER}`).set({ displayName: 'Race', active: true }));
+  await env.withSecurityRulesDisabled(async ctx => { await ctx.firestore().doc(`users/${OWNER}`).delete(); });
+  await assertFails(owner.doc(`users/${OWNER}`).set(minimalUser(OWNER)));
+  await seed(env, `deletions/${OWNER}`, { state: 'completed', completedAt: new Date() });
+  await assertFails(owner.doc(`users/${OWNER}`).set(minimalUser(OWNER)));
 });

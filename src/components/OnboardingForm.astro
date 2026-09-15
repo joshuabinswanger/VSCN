@@ -1861,6 +1861,10 @@ const prefix = lang === "de" ? "/de" : "";
           role: opts.role,
           memberType: opts.memberType,
           bio: opts.bio,
+          affiliation: "",
+          location: "",
+          languages: [],
+          visualNeeds: [],
           tags: tagSelector?.value ?? [],
           openTo: [],
           portfolio: opts.portfolio,
@@ -2184,7 +2188,7 @@ const prefix = lang === "de" ? "/de" : "";
       }
 
       if (loadingEl) loadingEl.style.display = "none";
-      wrap.style.display = "block";
+      if (wrap) wrap.style.display = "block";
       setStep(restoredStep);
     }
 

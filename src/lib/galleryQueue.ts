@@ -97,6 +97,7 @@ export interface GalleryQueue {
   cancel(id: string): void;
   retry(id: string): void;
   dismiss(id: string): void;
+  dispose(): void;
 }
 
 /**
@@ -149,6 +150,7 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
    */
   const cancels = new Map<string, () => void>();
   const abandoned = new Set<string>();
+  let disposed = false;
 
   const prepare = createLimiter(1);
   const transfer = createLimiter(MAX_CONCURRENT_UPLOADS);
@@ -176,7 +178,6 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
     URL.revokeObjectURL(tasks[index].thumbUrl);
     tasks.splice(index, 1);
     cancels.delete(id);
-    abandoned.delete(id);
   }
 
   function fail(task: GalleryTask, code: GalleryErrorCode) {
@@ -184,21 +185,20 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
     task.error = code;
     task.progress = 0;
     cancels.delete(task.id);
-    options.onChange();
+    if (!disposed) options.onChange();
   }
 
   /** Drop a task's row and tell the consumer. The one way a task leaves quietly. */
   function discard(id: string) {
     remove(id);
-    options.onChange();
+    if (!disposed) options.onChange();
   }
 
   async function run(task: GalleryTask, source: Blob) {
     // A cancel between queueing and reaching the front of the line: nothing has
     // been spent, so the row simply goes away.
-    if (abandoned.has(task.id)) return discard(task.id);
-
     try {
+      if (abandoned.has(task.id) || disposed) return discard(task.id);
       const compressed = await prepare(async () => {
         if (abandoned.has(task.id)) return null;
         task.state = "preparing";
@@ -219,10 +219,14 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
         options.onChange();
         return await uploadGalleryImage(uid, compressed, {
           onProgress: (pct) => {
+            if (disposed || abandoned.has(task.id)) return;
             task.progress = pct;
             options.onChange();
           },
-          onCancellable: (cancel) => cancels.set(task.id, cancel),
+          onCancellable: (cancel) => {
+            cancels.set(task.id, cancel);
+            if (abandoned.has(task.id) || disposed) cancel();
+          },
         });
       });
       if (!item || abandoned.has(task.id)) return discard(task.id);
@@ -239,6 +243,9 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
       // It is not one, so it leaves no error row behind.
       if (code === "cancelled" || abandoned.has(task.id)) return discard(task.id);
       fail(task, code);
+    } finally {
+      cancels.delete(task.id);
+      abandoned.delete(task.id);
     }
   }
 
@@ -260,6 +267,7 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
   return {
     add(files) {
       const outcome: AddOutcome = { queued: 0, rejected: [], overflow: 0 };
+      if (disposed) return { ...outcome, overflow: files.length };
       // Capacity is checked BEFORE anything is queued, so the cap is reported
       // once, up front, about the whole selection — rather than discovered
       // partway through a batch that has already spent the member's bandwidth.
@@ -303,7 +311,7 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
 
     retry(id) {
       const task = find(id);
-      if (!task || task.state !== "error") return;
+      if (disposed || !task || task.state !== "error" || options.capacity() <= pendingSlots()) return;
       task.state = "queued";
       task.error = undefined;
       task.progress = 0;
@@ -314,9 +322,20 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
       void fetch(task.thumbUrl)
         .then((response) => response.blob())
         .then((blob) => run(task, blob))
-        .catch(() => fail(task, "unknown"));
+        .catch(() => {
+          if (!abandoned.has(id) && !disposed) fail(task, "unknown");
+          abandoned.delete(id);
+        });
     },
 
     dismiss: discard,
+    dispose() {
+      disposed = true;
+      for (const task of [...tasks]) {
+        abandoned.add(task.id);
+        cancels.get(task.id)?.();
+        remove(task.id);
+      }
+    },
   };
 }

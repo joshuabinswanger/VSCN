@@ -2642,7 +2642,7 @@ const indexMembers = [...members].sort((a, b) =>
 
   // Loose type: gsap's global namespace types are not reliably in scope
   // inside a scoped Astro script, and revert() is all we need off it.
-  let mm: { revert: () => void } | null = null;
+  let mm: gsap.MatchMedia | null = null;
 
   // Re-entry guard for the async gap. `mm` alone is not a mutex: it is read
   // before the dynamic import but only assigned after it, so two overlapping

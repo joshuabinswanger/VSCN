@@ -1799,7 +1799,7 @@ const t = useTranslations(lang);
     const form = document.getElementById("profile-form") as HTMLFormElement;
     if (!form) return;
 
-    const lang = (form.dataset.lang ?? "en") as keyof typeof ui;
+    const lang = form.dataset.lang === "de" ? "de" : "en";
     const s = ui[lang] ?? ui.en;
     const prefix = lang === "de" ? "/de" : "";
     // EVERYTHING THE DIRECTORY CARD SAYS THAT ITS MARKUP CANNOT CARRY. The
@@ -2080,6 +2080,7 @@ const t = useTranslations(lang);
       onChange: renderQueue,
       onUploaded: (item) => void onGalleryUploaded(item),
     });
+    document.addEventListener("astro:before-swap", () => galleryQueue.dispose(), { once: true });
 
     /**
      * Renders the committed gallery.
