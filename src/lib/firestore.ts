@@ -11,6 +11,7 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  writeBatch,
 } from "firebase/firestore";
 
 // Keep in sync with validLanguages() in firestore.rules.
@@ -205,7 +206,13 @@ export async function getPublicProfileActive(uid: string): Promise<boolean> {
 }
 
 export async function updateUserProfile(uid: string, data: Partial<UserDoc>): Promise<void> {
-  await Promise.all([updateUser(uid, data), publishPublicProfile(uid, data)]);
+  const cleanup = { primaryAudience: deleteField(), projects: deleteField() };
+  const publicData = { ...toPublicProfile(data), ...cleanup };
+  if (auth.currentUser && !auth.currentUser.emailVerified) publicData.active = false;
+  const batch = writeBatch(db);
+  batch.set(doc(db, "users", uid), { ...data, ...cleanup }, { merge: true });
+  batch.set(doc(db, "publicProfiles", uid), publicData, { merge: true });
+  await batch.commit();
 }
 
 export async function upsertOnboardingRequest(

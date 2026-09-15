@@ -53,6 +53,8 @@ export function initAdminApp(project) {
   const envFile = project === "dev" ? ".env.development" : ".env";
   const credential = parseEnvFile(resolve(ROOT, envFile));
   if (!credential) throw new Error(`Missing or invalid FIREBASE_SERVICE_ACCOUNT in ${envFile}`);
+  const expected = { dev: 'vscn-dev-f4b60', prod: 'vscn-39508' }[project];
+  if (!expected || credential.project_id !== expected) throw new Error('Credential project does not match the requested target');
   const bucketName = `${credential.project_id}.firebasestorage.app`;
   const app = initializeApp(
     { credential: cert(credential), storageBucket: bucketName },

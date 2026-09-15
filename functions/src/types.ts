@@ -51,6 +51,9 @@ export interface DeletionJob {
   };
   completedAt: Timestamp | null;
   lastError: string | null;
+  state?: "scheduled" | "purging" | "completed";
+  leaseOwner?: string;
+  leaseUntil?: Timestamp;
 }
 
 export interface EmailMismatch {

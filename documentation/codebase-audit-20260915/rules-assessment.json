@@ -1,0 +1,19 @@
+{
+  "score": 4,
+  "summary": "Deletion hardening preserves existing public reads and private owner/admin access. Both create and update paths now consult the server-owned deletion tombstone. Storage checks that tombstone even for previously granted upload permits. Local regression tests cover blocked updates, blocked recreation, and revocation of a permit. This is not a live deployment certification.",
+  "findings": [
+    {
+      "check": "Storage Abuse",
+      "severity": "minor",
+      "issue": "The existing object/authorization quota does not impose an aggregate quota on direct Firestore image-record creation by verified accounts.",
+      "recommendation": "If database-cost abuse becomes material, allocate image records through a bounded server operation and enforce creation through that operation. Preserve the public directory's intentional read model."
+    }
+  ],
+  "checks": {
+    "updateBypass": "Owner and server-field validation remain applied on updates; tombstones block create and update.",
+    "authoritySource": "Deletion jobs and admin claims are server-owned; clients cannot clear the tombstone.",
+    "businessLogic": "Owner/admin reads and public directory queries retain their prior permissions. Cancellation uses a callable and restores only scheduled deletions.",
+    "typeSafety": "Existing validators, allowed keys, lengths, and ownership constraints are retained.",
+    "fieldAndIdentitySecurity": "No permission is inferred from a client-editable profile role."
+  }
+}

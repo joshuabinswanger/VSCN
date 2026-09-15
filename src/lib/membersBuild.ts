@@ -1,5 +1,6 @@
 // BUILD TIME ONLY. The export step writes a sanitized, public-only snapshot
 // before Astro starts, so image optimization never runs with Firebase credentials.
+import { requireBuildEnvironment } from "./buildEnvironment.ts";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { PublicProfileDoc } from "./firestore.ts";
@@ -25,6 +26,7 @@ export interface SiteSnapshot {
 let directoryPromise: Promise<Directory> | null = null;
 
 function fetchDirectory(): Directory {
+  requireBuildEnvironment({ ...import.meta.env, MEMBER_DIRECTORY_SNAPSHOT: ".site-data.json" });
   // Missing or malformed data must fail the build. An empty directory would
   // otherwise silently deploy when the export credential or network fails.
   const snapshot = JSON.parse(readFileSync(resolve(process.cwd(), ".site-data.json"), "utf8")) as SiteSnapshot;

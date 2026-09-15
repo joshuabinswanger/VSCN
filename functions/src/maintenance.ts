@@ -19,7 +19,7 @@ const ZURICH = "Europe/Zurich";
  * period, is still on the static site the moment the documents disappear.
  */
 export const purgeExpiredAccounts = onSchedule(
-  { schedule: "every day 03:00", timeZone: ZURICH, secrets: [githubRebuildToken] },
+  { schedule: "every day 03:00", timeoutSeconds: 540, timeZone: ZURICH, secrets: [githubRebuildToken] },
   async () => {
     const open = await db.collection("deletions").where("completedAt", "==", null).get();
     const now = Timestamp.now().toMillis();

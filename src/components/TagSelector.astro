@@ -285,7 +285,7 @@ const t = useTranslations(lang);
     /** Open state of each group as the member left it, taken when a filter
      *  starts forcing groups open and put back when the filter empties. */
     private openBeforeFilter: Map<string, boolean> | null = null;
-    private lang: "en" | "de" = "en";
+    private locale: "en" | "de" = "en";
     private inputEl!: HTMLInputElement;
     private filterEl!: HTMLInputElement;
     private selectedEl!: HTMLElement;
@@ -297,7 +297,7 @@ const t = useTranslations(lang);
       this.bound = true;
 
       this.maxTags = Number(this.dataset.maxTags ?? 7) || 7;
-      this.lang = (this.dataset.lang === "de" ? "de" : "en") as "en" | "de";
+      this.locale = (this.dataset.lang === "de" ? "de" : "en") as "en" | "de";
 
       this.inputEl = this.querySelector<HTMLInputElement>(".ts-input")!;
       this.filterEl = this.querySelector<HTMLInputElement>(".ts-filter")!;
@@ -472,11 +472,11 @@ const t = useTranslations(lang);
       const norm = this.canonical(normalizeTag(value));
       if (!norm) return false;
       if (norm.length > 50) {
-        this.setError(ui[this.lang]["profile.tag.error"]);
+        this.setError(ui[this.locale]["profile.tag.error"]);
         return false;
       }
       if (this._tags.length >= this.maxTags) {
-        this.setError(ui[this.lang]["profile.tag.error"]);
+        this.setError(ui[this.locale]["profile.tag.error"]);
         return false;
       }
       if (this._tags.some((t) => t.toLowerCase() === norm.toLowerCase())) {
