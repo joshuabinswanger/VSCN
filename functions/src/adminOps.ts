@@ -312,7 +312,7 @@ export const adminListQueues = onCall(async (req) => {
   });
 });
 
-export const adminPurgeAccount = onCall({ secrets: [githubRebuildToken] }, async (req) => {
+export const adminPurgeAccount = onCall({ timeoutSeconds: 540, secrets: [githubRebuildToken] }, async (req) => {
   const actor = requireAdmin(req);
   const uid = requireUidArg(req.data);
   const immediate = (req.data as { immediate?: unknown })?.immediate === true;

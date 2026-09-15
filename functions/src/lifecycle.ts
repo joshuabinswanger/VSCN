@@ -42,11 +42,12 @@ export async function scheduleDeletion(
   purgeAfter: Timestamp
 ): Promise<DeletionJob> {
   const job = await db.runTransaction(async (tx) => {
-    const [user, pub, existing, imagesSnap] = await Promise.all([
+    const [user, pub, existing, imagesSnap, permits] = await Promise.all([
       tx.get(db.doc(`users/${uid}`)),
       tx.get(db.doc(`publicProfiles/${uid}`)),
       tx.get(db.doc(`deletions/${uid}`)),
       tx.get(db.collection("images").where("ownerUid", "==", uid)),
+      tx.get(db.collection("uploadPermits").where("ownerUid", "==", uid)),
     ]);
     if (existing.exists && existing.data()?.completedAt == null) {
       throw new HttpsError("already-exists", "Deletion already scheduled.");
@@ -63,8 +64,10 @@ export async function scheduleDeletion(
       steps: { imagesDeleted: false, filesDeleted: false, docsDeleted: false, authDeleted: false },
       completedAt: null,
       lastError: null,
+      state: "scheduled",
     };
     tx.set(db.doc(`deletions/${uid}`), job);
+    for (const permit of permits.docs) tx.delete(permit.ref);
     if (pub.exists) tx.update(pub.ref, { active: false });
     // Only an existing doc is marked — a profile-only identity (curated seed
     // with no account) must not acquire a users doc through being deleted.
@@ -101,6 +104,9 @@ export async function cancelDeletion(uid: string): Promise<void> {
       throw new HttpsError("not-found", "No pending deletion.");
     }
     const job = jobSnap.data() as DeletionJob;
+    if (job.state === "purging" || Object.values(job.steps).some(Boolean)) {
+      throw new HttpsError("failed-precondition", "Cleanup has started; this account cannot be restored.");
+    }
     const imageRefs = job.imageIds.map((id) => db.doc(`images/${id}`));
     const imageSnaps = imageRefs.length ? await tx.getAll(...imageRefs) : [];
 

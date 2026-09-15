@@ -62,12 +62,12 @@ const t = useTranslations(lang);
     private selectedOpenTo = new Set<string>();
     private customOpenTo: string[] = [];
     private initialized = false;
-    private lang: "en" | "de" = "en";
+    private locale: "en" | "de" = "en";
 
     async connectedCallback() {
       if (this.initialized) return;
       this.initialized = true;
-      this.lang = (this.dataset.lang === "de" ? "de" : "en") as "en" | "de";
+      this.locale = (this.dataset.lang === "de" ? "de" : "en") as "en" | "de";
 
       try {
         this.presetOpenToOptions = await getOpenToOptions();
@@ -138,7 +138,7 @@ const t = useTranslations(lang);
         btn.type = "button";
         btn.className = "optchip openTo-chip";
         btn.dataset.openTo = opt.id;
-        btn.textContent = this.lang === "de" ? opt.label_de : opt.label_en;
+        btn.textContent = this.locale === "de" ? opt.label_de : opt.label_en;
 
         btn.addEventListener("click", () => {
           if (this.selectedOpenTo.has(opt.id)) {

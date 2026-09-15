@@ -58,7 +58,7 @@ export const onAuthUserCreated = functionsV1
  * dispatch, and the secret binding a v1 function needs to reach it.
  */
 export const onAuthUserDeleted = functionsV1
-  .runWith({ secrets: ["GITHUB_REBUILD_TOKEN"] })
+  .runWith({ timeoutSeconds: 540, secrets: ["GITHUB_REBUILD_TOKEN"] })
   .auth.user()
   .onDelete(async (user) => {
     const existing = await db.doc(`deletions/${user.uid}`).get();

@@ -233,7 +233,7 @@ const {
     }
 
     resetWords(words);
-    fitHeadlineToFinalWord(root, finalWord);
+    if (finalWord) fitHeadlineToFinalWord(root, finalWord);
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       gsap.set(words[0], { autoAlpha: 1 });

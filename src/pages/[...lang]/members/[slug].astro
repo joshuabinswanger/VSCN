@@ -62,7 +62,7 @@ interface Props {
   aliasOf?: string;
 }
 
-const { member, aliasOf } = Astro.props;
+const { member, aliasOf } = Astro.props as Props;
 const { lang = "en" } = Astro.params;
 const currentLang = (lang || "en") as Lang;
 const t = useTranslations(currentLang);
@@ -294,14 +294,7 @@ const jsonLd = memberPageJsonLd({
                 data-pswp-width={w.width}
                 data-pswp-height={w.height}
                 data-pswp-caption={w.caption?.trim() || undefined}
-                {/* THE SAME DESCRIPTION THE FIGCAPTION PRINTS. For one day
-                    (2026-09-03 to 2026-09-04) this page showed a long text and
-                    handed the lightbox a separate short one; there is one
-                    field again, so the picture says the same thing whether it
-                    is in the page or filling the screen. */}
                 data-pswp-description={w.description || undefined}
-                {/* The same link the figcaption prints below, so the
-                    lightbox is not the one view that drops it. */}
                 data-pswp-link={w.link || undefined}
                 data-pswp-site-link={w.siteLink || undefined}
                 data-pswp-meta={w.pswpMeta || undefined}

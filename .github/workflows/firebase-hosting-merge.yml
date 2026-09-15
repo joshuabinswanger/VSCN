@@ -11,11 +11,16 @@ concurrency:
   group: production-hosting
   cancel-in-progress: false
 jobs:
-  build_and_deploy:
+  verify:
+    uses: ./.github/workflows/verify.yml
+  export:
+    needs: verify
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
+    outputs:
+      revision: ${{ steps.publication.outputs.revision }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,6 +35,11 @@ jobs:
           workload_identity_provider: projects/365553954084/locations/global/workloadIdentityPools/vscn-site-export/providers/github-vscn
           service_account: vscn-build-reader@vscn-39508.iam.gserviceaccount.com
           export_environment_variables: false
+      - id: publication
+        run: node scripts/publication.mjs begin
+        env:
+          PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.PUBLIC_FIREBASE_PROJECT_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
       - run: npm run export:site-data
         env:
           PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.PUBLIC_FIREBASE_PROJECT_ID }}
@@ -37,6 +47,27 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
       - if: always()
         run: rm -f "${{ steps.auth.outputs.credentials_file_path }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site-data
+          path: .site-data.json
+          include-hidden-files: true
+          retention-days: 1
+  render:
+    needs: export
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: site-data
       - run: npm run build:site
         env:
           PUBLIC_FIREBASE_API_KEY: ${{ secrets.PUBLIC_FIREBASE_API_KEY }}
@@ -46,6 +77,27 @@ jobs:
           PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
           PUBLIC_FIREBASE_APP_ID: ${{ secrets.PUBLIC_FIREBASE_APP_ID }}
           PUBLIC_TURNSTILE_SITE_KEY: ${{ secrets.PUBLIC_TURNSTILE_SITE_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site-dist
+          path: dist
+          retention-days: 1
+  deploy:
+    needs: [export, render]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/download-artifact@v4
+        with:
+          name: site-dist
+          path: dist
       - id: deploy-auth
         uses: google-github-actions/auth@v3
         with:
@@ -55,3 +107,21 @@ jobs:
       - run: npx -y firebase-tools@latest deploy --only hosting --project vscn-39508 --non-interactive
       - if: always()
         run: rm -f "${{ steps.deploy-auth.outputs.credentials_file_path }}"
+      - id: publication-auth
+        if: needs.export.outputs.revision != ''
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/365553954084/locations/global/workloadIdentityPools/vscn-hosting-deploy/providers/github-main
+          service_account: vscn-hosting-deployer@vscn-39508.iam.gserviceaccount.com
+          token_format: id_token
+          id_token_audience: https://us-central1-vscn-39508.cloudfunctions.net/acknowledgeSitePublication
+          create_credentials_file: false
+      - name: Acknowledge published revision
+        if: needs.export.outputs.revision != ''
+        env:
+          PUBLICATION_TOKEN: ${{ steps.publication-auth.outputs.id_token }}
+          PUBLICATION_REVISION: ${{ needs.export.outputs.revision }}
+        run: |
+          curl --fail-with-body --retry 3 -X POST 'https://us-central1-vscn-39508.cloudfunctions.net/acknowledgeSitePublication' \
+            -H "Authorization: Bearer $PUBLICATION_TOKEN" -H 'Content-Type: application/json' \
+            --data "{\"revision\":\"$PUBLICATION_REVISION\"}"

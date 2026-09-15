@@ -24,7 +24,7 @@ import { requireRecentLogin, requireUser } from "./util";
  *
  * The client reauthenticates first; auth_time is how the server knows it did.
  */
-export const requestAccountDeletion = onCall({ secrets: [githubRebuildToken] }, async (req) => {
+export const requestAccountDeletion = onCall({ timeoutSeconds: 540, secrets: [githubRebuildToken] }, async (req) => {
   const uid = requireUser(req);
   requireRecentLogin(req);
   await scheduleDeletion(uid, "member", Timestamp.now());
@@ -52,6 +52,11 @@ export const syncEmail = onCall(async (req) => {
   const uid = requireUser(req);
   const email = req.auth?.token.email;
   if (!email) throw new HttpsError("failed-precondition", "Token carries no email.");
-  await db.doc(`users/${uid}`).set({ email, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  await db.runTransaction(async (tx) => {
+    if ((await tx.get(db.doc(`deletions/${uid}`))).exists) {
+      throw new HttpsError("failed-precondition", "Account deletion is pending or completed.");
+    }
+    tx.set(db.doc(`users/${uid}`), { email, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  });
   return { email };
 });

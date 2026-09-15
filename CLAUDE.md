@@ -168,3 +168,9 @@ The community visual prototype **graduated and was deleted** (2026-08-24): its c
 ## Tooling notes
 
 The in-app browser pane opens with a **0 × 0 viewport** in this environment. Call `resize_window` with explicit dimensions immediately after opening it, or every measurement returns `0` and a perfectly good layout looks broken.
+
+## Audit release verification
+
+Run npm run verify (lint, Astro diagnostics, unit tests, Functions compilation and local emulator tests). Install both root and functions dependencies with npm ci. Hosting workflows require verification and isolate public-data export, image rendering, and deployment on separate runners. The publication queue stays dirty until the private acknowledgeSitePublication endpoint accepts the revision captured before export. Only the Hosting deployer service account has invocation permission.
+
+Account deletion revokes upload permits and blocks new writes. Purging holds a renewable/retryable state with a 15-minute exclusive lease; callers have a 540-second timeout. Cancellation is allowed only before cleanup begins.

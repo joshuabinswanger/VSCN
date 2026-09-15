@@ -58,7 +58,7 @@ test('server publishes only an uploaded WebP matching its record', async () => {
     name,
     getMetadata: async () => [{ contentType: 'image/webp', generation: '123', size: String(bytes.length) }],
     download: async () => { assert.equal(options?.generation, '123'); return [bytes.subarray(0, 64)]; },
-    copy: async (dest) => { assert.equal(options?.generation, '123'); assert.equal(dest.name, path); copied = true; return []; },
+    copy: async (dest) => { assert.equal(options?.generation, '123'); assert.equal(dest.name, path); copied = true; return [{}, { resource: { generation: "456" } }]; },
     delete: async () => {},
   }) }));
   await completeImageUpload.run({ auth: { uid, token: { email_verified: true } }, data: { imageId } });
@@ -130,11 +130,12 @@ test('rebuilds coalesce members and ignore unchanged saves and timestamp-only ch
   const dispatch = mock.method(rebuild, 'dispatchRebuild', async () => true);
   await flushMemberRebuilds.run({});
   assert.equal(dispatch.mock.callCount(), 1);
-  assert.equal((await db.doc('rebuildQueue/site').get()).data().dirtyAt, undefined);
+  assert.ok((await db.doc('rebuildQueue/site').get()).data().dirtyAt);
   await db.doc('publicProfiles/member').update({ updatedAt: Timestamp.now() });
   await queueMemberRebuild('member');
   await flushMemberRebuilds.run({});
   assert.equal(dispatch.mock.callCount(), 1);
+  await db.doc('rebuildQueue/site').update({ leaseUntil: Timestamp.fromMillis(0) });
   await db.doc('images/work').update({ caption: 'Corrected' });
   await queueMemberRebuild('member');
   await flushMemberRebuilds.run({});
@@ -154,4 +155,133 @@ test('failed dispatch and changes arriving during dispatch stay queued', async (
   });
   await flushMemberRebuilds.run({});
   assert.equal((await ref.get()).data().dirtyAt.toMillis(), 2);
+});
+
+test('an unacknowledged deployment retries after lease expiry', async () => {
+  await db.doc('publicProfiles/member').set({ displayName: 'Member' });
+  await queueMemberRebuild('member');
+  const dispatch = mock.method(rebuild, 'dispatchRebuild', async () => true);
+  await flushMemberRebuilds.run({});
+  await flushMemberRebuilds.run({});
+  assert.equal(dispatch.mock.callCount(), 1);
+  await db.doc('rebuildQueue/site').update({ leaseUntil: Timestamp.fromMillis(0) });
+  await flushMemberRebuilds.run({});
+  assert.equal(dispatch.mock.callCount(), 2);
+  assert.ok((await db.doc('rebuildQueue/site').get()).data().revision);
+});
+
+test('only deployment of the current revision clears pending publication', async () => {
+  const { acknowledgePublication } = await import('../../scripts/lib/publication-state.mjs');
+  const { FieldValue } = backendRequire('firebase-admin/firestore');
+  const ref = db.doc('rebuildQueue/site');
+  await ref.set({ revision: 'new', dirtyAt: Timestamp.now(), leaseUntil: Timestamp.now() });
+  assert.equal(await acknowledgePublication(db, 'old', FieldValue), false);
+  assert.ok((await ref.get()).data().dirtyAt);
+  assert.equal(await acknowledgePublication(db, 'new', FieldValue), true);
+  assert.equal((await ref.get()).data().dirtyAt, undefined);
+  assert.equal((await ref.get()).data().publishedRevision, 'new');
+});
+
+test('server profile events publish latest names despite stale delivery, including deletion', async () => {
+  const { onPublicProfileWritten } = require('../../functions/lib/slugs.js');
+  const ref = db.doc('publicProfiles/member');
+  await ref.set({ displayName: 'Newest Name' });
+  const stale = { params: { uid: 'member' }, data: {
+    before: { exists: true, data: () => ({ displayName: 'First Name' }) },
+    after: { exists: true, data: () => ({ displayName: 'Old Name' }) },
+  } };
+  await onPublicProfileWritten.run(stale);
+  await onPublicProfileWritten.run(stale);
+  assert.equal((await db.doc('slugs/newest-name').get()).data().current, true);
+  assert.equal((await db.doc('slugs/old-name').get()).exists, false);
+  const revision = (await db.doc('rebuildQueue/site').get()).data().revision;
+  await ref.delete();
+  await onPublicProfileWritten.run({ ...stale, data: { ...stale.data, after: { exists: false } } });
+  assert.notEqual((await db.doc('rebuildQueue/site').get()).data().revision, revision);
+});
+
+test('purge excludes concurrent workers and cancellation, then resumes after failure', async () => {
+  const { scheduleDeletion, cancelDeletion } = require('../../functions/lib/lifecycle.js');
+  const { purgeAccount } = require('../../functions/lib/purge.js');
+  const { syncEmail } = require('../../functions/lib/accounts.js');
+  await db.doc('users/member').set({ displayName: 'Member' });
+  await db.doc('publicProfiles/member').set({ displayName: 'Member', active: true });
+  await scheduleDeletion('member', 'member', Timestamp.now());
+  let unblock, entered;
+  const gate = new Promise(resolve => { unblock = resolve; });
+  const started = new Promise(resolve => { entered = resolve; });
+  mock.method(adminModule.adminAuth, 'updateUser', async () => ({}));
+  mock.method(adminModule.adminAuth, 'deleteUser', async () => {});
+  mock.method(adminModule, 'getBucket', () => ({
+    deleteFiles: async () => { entered(); await gate; throw new Error('simulated outage'); },
+    getFiles: async () => [[]],
+  }));
+  const running = purgeAccount('member');
+  const rejected = assert.rejects(running, /simulated outage/);
+  await started;
+  await assert.rejects(cancelDeletion('member'), { code: 'failed-precondition' });
+  await assert.rejects(purgeAccount('member'), { code: 'aborted' });
+  await assert.rejects(syncEmail.run({ auth: { uid: 'member', token: { email: 'test@example.test' } } }), { code: 'failed-precondition' });
+  await assert.rejects(authorizeImageUpload.run({ auth: { uid: 'member', token: {} }, data: { imageId: 'member-avatar', kind: 'avatar', width: 10, height: 10 } }), { code: 'failed-precondition' });
+  unblock(); await rejected;
+  assert.equal((await db.doc('deletions/member').get()).data().state, 'purging');
+  await assert.rejects(cancelDeletion('member'), { code: 'failed-precondition' });
+  mock.method(adminModule, 'getBucket', () => ({ deleteFiles: async () => {} }));
+  await purgeAccount('member');
+  assert.equal((await db.doc('users/member').get()).exists, false);
+  assert.equal((await db.doc('deletions/member').get()).data().state, 'completed');
+});
+
+test('a scheduled deletion can be cancelled before cleanup starts', async () => {
+  const { scheduleDeletion, cancelDeletion } = require('../../functions/lib/lifecycle.js');
+  await db.doc('users/member').set({ displayName: 'Member' });
+  await db.doc('publicProfiles/member').set({ displayName: 'Member', active: true });
+  await scheduleDeletion('member', 'admin', Timestamp.now());
+  await cancelDeletion('member');
+  assert.equal((await db.doc('deletions/member').get()).exists, false);
+  assert.equal((await db.doc('publicProfiles/member').get()).data().active, true);
+});
+
+
+test('deletion revokes pending upload permits atomically', async () => {
+  const { scheduleDeletion } = require('../../functions/lib/lifecycle.js');
+  await db.doc('uploadPermits/member-avatar.webp').set({ ownerUid: 'member' });
+  await scheduleDeletion('member', 'member', Timestamp.now());
+  assert.equal((await db.doc('uploadPermits/member-avatar.webp').get()).exists, false);
+});
+
+test('private publication endpoint rejects malformed revisions and ignores stale builds', async () => {
+  const { acknowledgeSitePublication } = require('../../functions/lib/publication.js');
+  const current = '11111111-1111-4111-8111-111111111111';
+  const stale = '22222222-2222-4222-8222-222222222222';
+  const ref = db.doc('rebuildQueue/site');
+  await ref.set({ revision: current, dirtyAt: Timestamp.now() });
+  let status, result;
+  const res = { status: n => { status=n; return res; }, send: () => {}, json: r => { result=r; } };
+  await acknowledgeSitePublication({ method: 'POST', body: { revision: 'bad' } }, res);
+  assert.equal(status, 400);
+  await acknowledgeSitePublication({ method: 'POST', body: { revision: stale } }, res);
+  assert.equal(result.acknowledged, false);
+  assert.ok((await ref.get()).data().dirtyAt);
+  await acknowledgeSitePublication({ method: 'POST', body: { revision: current } }, res);
+  assert.equal(result.acknowledged, true);
+  assert.equal((await ref.get()).data().dirtyAt, undefined);
+});
+
+test('deletion during upload publication removes only the newly copied generation', async () => {
+  const uid='member', imageId='member-avatar';
+  const path='users/member/avatar/member-avatar.webp', uploadPath='pending/member/avatar/member-avatar.webp';
+  const bytes=await sharp({ create: { width: 2, height: 3, channels: 3, background: '#ffffff' } }).webp().toBuffer();
+  await db.doc('images/'+imageId).set({ ownerUid: uid, kind:'avatar', storagePath:path, origin:'member', status:'uploading', width:2, height:3 });
+  await db.doc('uploadPermits/'+imageId+'.webp').set({ imageId,ownerUid:uid,storagePath:path,uploadPath,expiresAt:Timestamp.fromMillis(Date.now()+60000) });
+  let removed=false;
+  mock.method(adminModule,'getBucket',()=>({ file:(name,options)=>({
+    getMetadata:async()=>[{ contentType:'image/webp', generation:'123',size:String(bytes.length) }],
+    download:async()=>[bytes.subarray(0,64)],
+    copy:async()=> { await db.doc('deletions/member').set({state:'purging'}); return [{},{resource:{generation:'456'}}]; },
+    delete:async()=> { assert.equal(name,path);assert.equal(options.generation,'456');removed=true; },
+  }) }));
+  await assert.rejects(completeImageUpload.run({auth:{uid,token:{}},data:{imageId}}),{code:'failed-precondition'});
+  assert.equal(removed,true);
+  assert.equal((await db.doc('images/'+imageId).get()).data().status,'uploading');
 });

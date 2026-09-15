@@ -74,6 +74,13 @@ export async function uploadImage(
    */
   onCancellable: (cancel: () => void) => void = () => {},
 ): Promise<UploadedImage> {
+  let cancelled = false;
+  let cancelTransfer: (() => void) | undefined;
+  onCancellable(() => { cancelled = true; cancelTransfer?.(); });
+  const checkCancelled = () => {
+    if (cancelled) throw Object.assign(new Error("Upload cancelled"), { code: "storage/canceled" });
+  };
+  checkCancelled();
   // An unverified account has one id per kind and reuses it; a verified one
   // gets a fresh record every time.
   //
@@ -92,10 +99,12 @@ export async function uploadImage(
   // costs a reused slot rather than a failed upload.
   const current = auth.currentUser;
   const usesSlot = current ? !(await hasVerifiedClaim(current)) : true;
+  checkCancelled();
   const imageId = usesSlot ? slotImageId(uid, kind) : crypto.randomUUID();
   const storagePath = imageStoragePath(uid, kind, imageId);
   const uploadPath = imageUploadPath(uid, kind, imageId);
   await httpsCallable(functions, "authorizeImageUpload")({ imageId, kind, ...dims });
+  checkCancelled();
   await new Promise<void>((resolve, reject) => {
     const task = uploadBytesResumable(ref(storage, uploadPath), blob, {
       contentType: "image/webp",
@@ -103,7 +112,7 @@ export async function uploadImage(
       // The object knows its owner even when found outside its path.
       customMetadata: { ownerUid: uid, imageId },
     });
-    onCancellable(() => task.cancel());
+    cancelTransfer = () => { task.cancel(); };
     task.on(
       "state_changed",
       (snap) => onProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
@@ -112,6 +121,7 @@ export async function uploadImage(
     );
   });
 
+  checkCancelled();
   await httpsCallable(functions, "completeImageUpload")({ imageId });
   return { imageId, url: publicStorageUrl(storagePath), storagePath };
 }
