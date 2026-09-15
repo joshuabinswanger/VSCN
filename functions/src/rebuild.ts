@@ -35,6 +35,7 @@ export async function dispatchRebuild(): Promise<boolean> {
       `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow}/dispatches`,
       {
         method: "POST",
+        signal: AbortSignal.timeout(15_000),
         headers: {
           Authorization: `Bearer ${githubRebuildToken.value()}`,
           Accept: "application/vnd.github+json",
@@ -57,14 +58,13 @@ export async function dispatchRebuild(): Promise<boolean> {
 
 /**
  * Callable from the client via the Firebase Functions SDK after a profile
- * change; requires a signed-in user. Behaviour unchanged from before the split.
+ * change. Member requests are deduplicated and dispatched by the scheduled queue.
  */
-export const requestRebuild = onCall({ secrets: [githubRebuildToken] }, async (request) => {
+export const requestRebuild = onCall({ maxInstances: 3 }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Sign-in required.");
   }
-  const ok = await dispatchRebuild();
-  if (!ok) throw new HttpsError("internal", "Rebuild dispatch failed.");
-  logger.info("Rebuild requested", { uid: request.auth.uid });
-  return { ok: true };
+  const { queueMemberRebuild } = await import("./rebuildQueue");
+  await queueMemberRebuild(request.auth.uid);
+  return { ok: true, queued: true };
 });

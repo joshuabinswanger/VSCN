@@ -130,7 +130,7 @@ async function nameMatches(fragment: string) {
       uid: d.id,
       displayName: String(d.data().displayName ?? ""),
       slug: slugByUid.get(d.id) ?? "",
-      active: d.data().active !== false,
+      active: d.data().active !== false && d.data().moderationHidden !== true,
     }))
     .filter(
       (m) =>
@@ -257,7 +257,7 @@ export const adminListMembers = onCall(async (req) => {
       emailVerified: auth ? auth.emailVerified : null,
       hasAuth: Boolean(auth),
       hasPublicProfile: Boolean(pub),
-      active: pub ? pub.active !== false : false,
+      active: pub ? pub.active !== false && pub.moderationHidden !== true : false,
       status: String(usr?.status ?? (usr ? "active" : "profile only")),
       pendingDeletion: pendingUids.has(uid),
       galleryCount,
@@ -460,11 +460,18 @@ export const adminSetProfileActive = onCall({ secrets: [githubRebuildToken] }, a
   const actor = requireAdmin(req);
   const uid = requireUidArg(req.data);
   const active = (req.data as { active?: unknown })?.active === true;
+  if (typeof req.data?.active !== "boolean") {
+    throw new HttpsError("invalid-argument", "active must be a boolean");
+  }
   const ref = db.doc(`publicProfiles/${uid}`);
   const snap = await ref.get();
   if (!snap.exists) throw new HttpsError("not-found", "No public profile.");
-  await ref.update({ active });
-  await audit(actor, "setProfileActive", uid, { before: snap.data()?.active !== false, after: active });
+  // Preserve the member's publishing preference, including account-deletion hides.
+  await ref.update({ moderationHidden: !active });
+  await audit(actor, "setProfileActive", uid, {
+    before: snap.data()?.moderationHidden !== true, after: active,
+    field: "moderationHidden",
+  });
   await dispatchRebuild();
   return { ok: true };
 });

@@ -7,9 +7,16 @@ service cloud.firestore {
       // Public tag registry. Readable by everyone.
       allow read: if true;
 
-      allow create, update: if request.auth != null
+      allow create: if request.auth != null
                             && request.auth.token.email_verified == true
+                            && request.resource.data.createdBy == request.auth.uid
+                            && request.resource.data.active == true
                             && validTag(request.resource.data);
+
+      allow update: if isAdmin()
+                    && validTag(request.resource.data)
+                    && request.resource.data.createdBy == resource.data.createdBy
+                    && request.resource.data.createdAt == resource.data.createdAt;
 
       allow delete: if false;
     }
@@ -33,8 +40,17 @@ service cloud.firestore {
       // Verification is demanded at the moment the profile would become
       // PUBLIC, which is the moment it could carry someone else's address.
       // A member holding an explicit `active: false` draft may write freely.
-      allow create, update: if request.auth != null
+      allow create: if request.auth != null
                             && request.auth.uid == uid
+                            && !request.resource.data.keys().hasAny(['moderationHidden'])
+                            && validPublicProfile(request.resource.data)
+                            && canPublish(request.resource.data, request.auth);
+
+      // Only the Admin SDK moderation callable may set or remove this flag.
+      // diff also rejects whole-document replacements that omit a stored flag.
+      allow update: if request.auth != null
+                            && request.auth.uid == uid
+                            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['moderationHidden'])
                             && validPublicProfile(request.resource.data)
                             && canPublish(request.resource.data, request.auth);
 
@@ -90,37 +106,15 @@ service cloud.firestore {
     }
 
     match /images/{imageId} {
-      // Every image is a record here FIRST, then bytes, then `live` — so a
-      // Storage object can never exist without a document pointing at it.
+      // The upload callable creates the record before bytes arrive and only
+      // the completion callable may mark validated bytes live.
       // Public read: these are the public artworks; nothing private lives here.
       allow read: if true;
 
-      // A client always creates in the `uploading` state and as its own work.
-      // `curated` and `provenance` are written only by scripts (Admin SDK).
-      //
-      // THE LAST CLAUSE IS THE UNVERIFIED CAP (2026-09-02, Josh: "make it so
-      // you can only upload 1 image until verified"). Rules cannot count
-      // documents, so the allowance is a namespace rather than a number: an
-      // unverified member may only ever create the id `{uid}-{kind}`, which is
-      // one avatar record and one gallery record and no more, however many
-      // times they try. A second upload UPDATES that record instead of adding
-      // another, which is why "replace my picture" still works unverified.
-      //
-      // Its byte-side twin is the filename clause in storage.rules, and the
-      // two agree for free: validImage() derives storagePath from the document
-      // id, so the id `{uid}-gallery` can only ever name the object
-      // `users/{uid}/gallery/{uid}-gallery.webp`. Change one, change both.
-      allow create: if request.auth != null
-                    && request.resource.data.ownerUid == request.auth.uid
-                    && request.resource.data.status == 'uploading'
-                    && request.resource.data.origin == 'member'
-                    && !('provenance' in request.resource.data)
-                    && validImage(request.resource.data, imageId)
-                    && (request.auth.token.email_verified == true
-                        || imageId == request.auth.uid + '-' + request.resource.data.kind);
+      allow create: if false;
 
-      // Identity fields are pinned. The owner may move status forward, edit
-      // caption/description, and bump updatedAt — nothing else.
+      // Members can edit text and request deletion. Publication and geometry
+      // are server-owned, including on an unverified account's reusable slot.
       allow update: if request.auth != null
                     && resource.data.ownerUid == request.auth.uid
                     && request.resource.data.ownerUid == resource.data.ownerUid
@@ -129,6 +123,11 @@ service cloud.firestore {
                     && request.resource.data.origin == resource.data.origin
                     && request.resource.data.get('provenance', null) == resource.data.get('provenance', null)
                     && request.resource.data.createdAt == resource.data.createdAt
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                         'caption', 'captionDe', 'description', 'descriptionDe', 'descriptionShort',
+                         'link', 'siteLink', 'tags', 'status', 'updatedAt'])
+                    && (request.resource.data.status == resource.data.status
+                        || (resource.data.status == 'live' && request.resource.data.status == 'pendingDeletion'))
                     && validImage(request.resource.data, imageId);
 
       // Clients MARK (status: pendingDeletion); only the sweeper deletes.
@@ -158,9 +157,10 @@ function canPublish(data, auth) {
 }
 
 function validPublicProfile(data) {
-  let allowedKeys = ['displayName', 'photoURL', 'photoImageId', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'active', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'photoImageId', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'active', 'moderationHidden', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
+    && data.get('moderationHidden', false) is bool
     && validPublicFields(data);
 }
 
@@ -392,13 +392,15 @@ function validImageTag(v) {
 }
 
 function validTag(data) {
-  return data.label is string
+  return data.keys().hasOnly(['label', 'active', 'group', 'createdAt', 'createdBy', 'updatedAt'])
+    && data.label is string
     && data.label.size() > 0
     && data.label.size() <= 50
     && data.createdAt is timestamp
     && data.createdBy is string
+    && data.createdBy.size() > 0 && data.createdBy.size() <= 128
     && (!('active' in data) || data.active is bool)
-    && (!('group' in data) || data.group is string)
+    && (!('group' in data) || (data.group is string && data.group.size() <= 50))
     && (!('updatedAt' in data) || data.updatedAt is timestamp);
 }
 

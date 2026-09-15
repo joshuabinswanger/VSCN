@@ -1,110 +1,73 @@
-// BUILD TIME ONLY. Never import this from a client script.
-//
-// It pulls `firebase-admin` and reads FIREBASE_SERVICE_ACCOUNT, so importing it
-// into anything that ships to the browser would both fail to bundle and try to
-// carry a service account to the client. Runtime member reads go through the
-// client SDK in firebase.ts instead.
-//
-// It exists because two pages now need the same member list — the community
-// directory and the per-member profile pages — and duplicating the credential
-// handling means duplicating its failure mode too.
-import { cert, getApps, initializeApp, type ServiceAccount } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+// BUILD TIME ONLY. The export step writes a sanitized, public-only snapshot
+// before Astro starts, so image optimization never runs with Firebase credentials.
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import type { PublicProfileDoc } from "./firestore.ts";
 import { resolveSlugs, toMemberViewBase, type MemberView } from "./memberView.ts";
 import type { GalleryRecord } from "./galleryRecords.ts";
+import { isProfileVisible } from "./profileVisibility.ts";
 
 interface Directory {
   members: MemberView[];
-  /** Retired slugs still pointing at an active member: `/members/<slug>` aliases to their current page. */
   aliases: { slug: string; uid: string }[];
 }
 
-// Several pages call into this during one build; one fetch serves them all.
-let directoryPromise: Promise<Directory> | null = null;
-
-async function fetchDirectory(): Promise<Directory> {
-  try {
-    const serviceAccountJson = import.meta.env.FIREBASE_SERVICE_ACCOUNT;
-    if (!serviceAccountJson) throw new Error("FIREBASE_SERVICE_ACCOUNT env var not set");
-
-    // Named rather than inlined into cert() because the bucket name below comes
-    // out of the same object. The cast is measured, not decorative: cert()
-    // accepts this raw snake_case JSON at runtime — it reads project_id,
-    // client_email and private_key — but its DECLARED type only names the
-    // camelCase ServiceAccount form, so the honest shape has nothing in common
-    // with it and astro check rejects the call without the assertion.
-    const serviceAccount = JSON.parse(serviceAccountJson) as { project_id: string };
-    const app =
-      getApps().length === 0
-        ? initializeApp({ credential: cert(serviceAccount as ServiceAccount) })
-        : getApps()[0];
-    const db = getFirestore(app);
-    // The default bucket's name, the same derivation scripts/lib/admin-app.mjs
-    // uses. Work URLs are derived from records' storagePath against it.
-    const bucket = `${serviceAccount.project_id}.firebasestorage.app`;
-
-    // THE RECORDS, since 2026-09-07 (documentation/20260907-works-on-the-record-
-    // design.md): the profile's gallery is a list of ids, and every word about
-    // a work lives on images/{imageId}. One query for the whole site, grouped by
-    // owner below. Two equality filters ride Firestore's single-field index
-    // merge — no composite index to deploy. Inside this try on purpose: a
-    // failure here is a failure to build the directory, not a site quietly
-    // rendered without artwork.
-    const [profiles, slugRows, imageRows] = await Promise.all([
-      db.collection("publicProfiles").orderBy("displayName").get(),
-      db.collection("slugs").get(),
-      db.collection("images").where("kind", "==", "gallery").where("status", "==", "live").get(),
-    ]);
-    const recordsByOwner = new Map<string, GalleryRecord[]>();
-    for (const d of imageRows.docs) {
-      const rec = { imageId: d.id, ...(d.data() as Omit<GalleryRecord, "imageId">) };
-      const list = recordsByOwner.get(rec.ownerUid) ?? [];
-      list.push(rec);
-      recordsByOwner.set(rec.ownerUid, list);
-    }
-
-    // The build READS slugs/ and never writes it: this code runs in CI with a
-    // service account, and a build that wrote back would have every PR
-    // preview mutating live data. onPublicProfileWritten owns the table.
-    const current = new Map<string, string>();
-    const retired: { slug: string; uid: string }[] = [];
-    for (const row of slugRows.docs) {
-      const { uid, current: isCurrent } = row.data() as { uid: string; current?: boolean };
-      if (isCurrent) current.set(uid, row.id);
-      else retired.push({ slug: row.id, uid });
-    }
-
-    const members = resolveSlugs(
-      profiles.docs
-        .filter((d) => d.data().active !== false)
-        .map((d) => toMemberViewBase(d.id, d.data() as PublicProfileDoc, recordsByOwner.get(d.id) ?? [], bucket)),
-      current,
-    );
-    const activeUids = new Set(members.map((m) => m.id));
-    return { members, aliases: retired.filter((a) => activeUids.has(a.uid)) };
-  } catch (err) {
-    console.error("[members] Failed to fetch members:", err);
-    return { members: [], aliases: [] };
-  }
+export interface SiteSnapshot {
+  version: 1;
+  projectId: string;
+  bucket: string;
+  generatedAt: string;
+  profiles: { id: string; data: PublicProfileDoc }[];
+  slugs: { slug: string; uid: string; current: boolean }[];
+  images: GalleryRecord[];
 }
 
-/**
- * Every active member, ordered by display name, as render-ready view models.
- *
- * Returns an EMPTY ARRAY when credentials are missing or the read fails, and
- * logs. That is deliberate and matches what the community page has always done,
- * but know the consequence: **"no members" and "no credentials" look
- * identical**. It bites hardest in a fresh worktree, because `.env*` is
- * gitignored and does not come along. If the directory renders empty, check for
- * FIREBASE_SERVICE_ACCOUNT before hunting for a data bug.
- */
+let directoryPromise: Promise<Directory> | null = null;
+
+function fetchDirectory(): Directory {
+  // Missing or malformed data must fail the build. An empty directory would
+  // otherwise silently deploy when the export credential or network fails.
+  const snapshot = JSON.parse(readFileSync(resolve(process.cwd(), ".site-data.json"), "utf8")) as SiteSnapshot;
+  if (snapshot.version !== 1 || !Array.isArray(snapshot.profiles)
+    || !Array.isArray(snapshot.slugs) || !Array.isArray(snapshot.images)
+    || typeof snapshot.bucket !== "string" || typeof snapshot.projectId !== "string"
+    || !Number.isFinite(Date.parse(snapshot.generatedAt))
+    || Math.abs(Date.now() - Date.parse(snapshot.generatedAt)) > 60 * 60_000) {
+    throw new Error("Site data export is missing, malformed, or stale.");
+  }
+  const expectedProject = import.meta.env.PUBLIC_FIREBASE_PROJECT_ID;
+  if (expectedProject && snapshot.projectId !== expectedProject) {
+    throw new Error("Site data project does not match the build configuration.");
+  }
+
+  const recordsByOwner = new Map<string, GalleryRecord[]>();
+  for (const rec of snapshot.images) {
+    const list = recordsByOwner.get(rec.ownerUid) ?? [];
+    list.push(rec);
+    recordsByOwner.set(rec.ownerUid, list);
+  }
+  const current = new Map<string, string>();
+  const retired: { slug: string; uid: string }[] = [];
+  for (const row of snapshot.slugs) {
+    if (row.current) current.set(row.uid, row.slug);
+    else retired.push({ slug: row.slug, uid: row.uid });
+  }
+  const members = resolveSlugs(
+    snapshot.profiles
+      .filter((profile) => isProfileVisible(profile.data))
+      .map((profile) => toMemberViewBase(profile.id, profile.data, recordsByOwner.get(profile.id) ?? [], snapshot.bucket)),
+    current,
+  );
+  const activeUids = new Set(members.map((member) => member.id));
+  return { members, aliases: retired.filter((alias) => activeUids.has(alias.uid)) };
+}
+
 export async function fetchMemberViews(): Promise<MemberView[]> {
-  directoryPromise ??= fetchDirectory();
+  directoryPromise ??= Promise.resolve().then(fetchDirectory);
   return (await directoryPromise).members;
 }
 
 export async function fetchSlugAliases(): Promise<{ slug: string; uid: string }[]> {
-  directoryPromise ??= fetchDirectory();
+  directoryPromise ??= Promise.resolve().then(fetchDirectory);
   return (await directoryPromise).aliases;
 }

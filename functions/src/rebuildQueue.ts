@@ -1,0 +1,64 @@
+import { createHash } from "node:crypto";
+import { onSchedule } from "firebase-functions/v2/scheduler";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { db } from "./admin";
+import { dispatchRebuild, githubRebuildToken } from "./rebuild";
+
+/** Ignore bookkeeping timestamps: resaving identical content needs no build. */
+export function rebuildFingerprint(profile: Record<string, unknown>, images: { id: string; data: Record<string, unknown> }[]): string {
+  const content = (data: Record<string, unknown>) => Object.fromEntries(
+    Object.entries(data).filter(([key]) => key !== "updatedAt" && key !== "createdAt").sort(([a], [b]) => a.localeCompare(b)),
+  );
+  return createHash("sha256").update(JSON.stringify([
+    content(profile), images.map((row) => [row.id, content(row.data)]).sort(([a], [b]) => String(a).localeCompare(String(b))),
+  ])).digest("hex");
+}
+
+// Server-only documents (the rules' default deny applies).
+export async function queueMemberRebuild(uid: string): Promise<void> {
+  const stateRef = db.doc(`rebuildMembers/${uid}`);
+  const queueRef = db.doc("rebuildQueue/site");
+  await db.runTransaction(async (tx) => {
+    const state = await tx.get(stateRef);
+    const now = Date.now();
+    const profile = await tx.get(db.doc(`publicProfiles/${uid}`));
+    if (!profile.exists) return;
+    const ids = Array.isArray(profile.data()?.gallery)
+      ? profile.data()!.gallery.filter((id: unknown): id is string => typeof id === "string" && !id.includes("/")).slice(0, 8)
+      : [];
+    const images = ids.length ? await tx.getAll(...ids.map((id: string) => db.doc(`images/${id}`))) : [];
+    const fingerprint = rebuildFingerprint(profile.data()!, images
+      .filter((d) => d.exists)
+      .map((d) => ({ id: d.id, data: d.data() as Record<string, unknown> }))
+      .filter((d) => d.data.ownerUid === uid));
+    tx.set(stateRef, { checkedAt: Timestamp.fromMillis(now), fingerprint });
+    if (fingerprint !== state.data()?.fingerprint) {
+      tx.set(queueRef, { dirtyAt: Timestamp.fromMillis(now) }, { merge: true });
+    }
+  });
+}
+
+/** Coalesce member saves; a lease prevents retries/overlap from dispatching twice. */
+export const flushMemberRebuilds = onSchedule(
+  { schedule: "every 5 minutes", secrets: [githubRebuildToken], maxInstances: 1 },
+  async () => {
+    const ref = db.doc("rebuildQueue/site");
+    const dirtyAt = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const data = snap.data();
+      if (!data?.dirtyAt || (data.leaseUntil?.toMillis() ?? 0) > Date.now()) return null;
+      tx.update(ref, { leaseUntil: Timestamp.fromMillis(Date.now() + 10 * 60_000) });
+      return data.dirtyAt as Timestamp;
+    });
+    if (!dirtyAt) return;
+    const ok = await dispatchRebuild();
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const same = snap.data()?.dirtyAt?.isEqual(dirtyAt);
+      tx.update(ref, {
+        leaseUntil: FieldValue.delete(),
+        ...(ok && same ? { dirtyAt: FieldValue.delete() } : {}),
+      });
+    });
+  },
+);

@@ -1,4 +1,5 @@
 import { auth, db } from "./firebase.ts";
+import { isProfileVisible } from "./profileVisibility.ts";
 import {
   collection,
   doc,
@@ -79,7 +80,7 @@ export interface UserDoc {
 export type PublicProfileDoc = Omit<
   UserDoc,
   "phone" | "email" | "status" | "deletionRequestedAt" | "purgeAfter"
-> & { active?: boolean };
+> & { active?: boolean; moderationHidden?: boolean };
 
 export interface OnboardingRequestDoc {
   userId: string;
@@ -237,7 +238,7 @@ export async function publishCurrentUserProfile(uid: string): Promise<void> {
 export async function getMembers(): Promise<(PublicProfileDoc & { uid: string })[]> {
   const snap = await getDocs(query(collection(db, "publicProfiles"), orderBy("displayName")));
   return snap.docs
-    .filter((d) => d.data().active !== false)
+    .filter((d) => isProfileVisible(d.data()))
     .map((d) => ({ uid: d.id, ...(d.data() as PublicProfileDoc) }));
 }
 
