@@ -17,6 +17,7 @@ const raw = process.env.FIREBASE_SERVICE_ACCOUNT || env.FIREBASE_SERVICE_ACCOUNT
 const credential = raw ? JSON.parse(raw) : null;
 const projectId = credential?.project_id || process.env.GOOGLE_CLOUD_PROJECT || env.PUBLIC_FIREBASE_PROJECT_ID;
 const expected = process.env.PUBLIC_FIREBASE_PROJECT_ID || env.PUBLIC_FIREBASE_PROJECT_ID;
+const bucket = process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || env.PUBLIC_FIREBASE_STORAGE_BUCKET || `${projectId}.firebasestorage.app`;
 if (!projectId || (expected && expected !== projectId)) throw new Error("Export credential does not match the site project.");
 
 const pick = (data, keys) => Object.fromEntries(keys.filter((key) => data[key] !== undefined).map((key) => [key, data[key]]));
@@ -36,7 +37,7 @@ try {
   const visible = new Set(visibleProfiles.map((profile) => profile.id));
   const referenced = new Set(visibleProfiles.flatMap((profile) => Array.isArray(profile.data.gallery) ? profile.data.gallery : []));
   const snapshot = {
-    version: 1, projectId, bucket: `${projectId}.firebasestorage.app`, generatedAt: new Date().toISOString(),
+    version: 1, projectId, bucket, generatedAt: new Date().toISOString(),
     profiles: visibleProfiles,
     slugs: slugs.docs.filter((doc) => visible.has(doc.data().uid))
       .map((doc) => ({ slug: doc.id, uid: doc.data().uid, current: doc.data().current === true })),
