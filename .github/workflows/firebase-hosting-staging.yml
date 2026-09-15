@@ -56,9 +56,12 @@ jobs:
           # Cloudflare's published always-pass Turnstile TEST key: public by design,
           # so staging exercises the App Check pipeline without a real widget.
           PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
-      - uses: FirebaseExtended/action-hosting-deploy@v0
+      - id: deploy-auth
+        uses: google-github-actions/auth@v3
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_VSCN_DEV }}
-          channelId: live
-          projectId: vscn-dev-f4b60
+          project_id: vscn-dev-f4b60
+          workload_identity_provider: projects/640269226461/locations/global/workloadIdentityPools/vscn-hosting-deploy/providers/github-dev
+          service_account: vscn-hosting-deployer@vscn-dev-f4b60.iam.gserviceaccount.com
+      - run: npx -y firebase-tools@latest deploy --only hosting --project vscn-dev-f4b60 --non-interactive
+      - if: always()
+        run: rm -f "${{ steps.deploy-auth.outputs.credentials_file_path }}"
