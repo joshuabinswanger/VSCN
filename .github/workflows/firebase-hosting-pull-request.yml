@@ -60,7 +60,7 @@ jobs:
         run: >-
           npx -y firebase-tools@latest hosting:channel:deploy "pr-${{ github.event.number }}"
           --expires 7d --no-authorized-domains --project vscn-dev-f4b60
-          --config firebase.preview.json --non-interactive --json > firebase-preview.json
+          --config firebase.preview.json --non-interactive --json | tee firebase-preview.json
       - name: Add preview URL to pull request
         uses: actions/github-script@v9
         with:
