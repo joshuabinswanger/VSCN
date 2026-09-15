@@ -453,7 +453,8 @@
       for (const i of g.images) imageCache.set(i.imageId, i);
       const pub = g.publicProfile ?? {};
       const usr = g.user ?? {};
-      const active = pub.active !== false && g.publicProfile !== null;
+      const moderationHidden = pub.moderationHidden === true;
+      const active = pub.active !== false && !moderationHidden && g.publicProfile !== null;
       const pending = g.deletion && !g.deletion.completedAt;
 
       const action = (label: string, cls: string, run: () => Promise<unknown>, confirmText?: string) => {
@@ -469,8 +470,8 @@
       };
 
       const actions = el("div", { class: "actions" },
-        g.publicProfile && action(active ? "Hide profile" : "Show profile", "btn-ghost",
-          () => setProfileActive({ uid: g.uid, active: !active })),
+        g.publicProfile && action(moderationHidden ? "Remove moderation hide" : "Hide profile", "btn-ghost",
+          () => setProfileActive({ uid: g.uid, active: moderationHidden })),
         g.auth && action("Set email", "btn-ghost", async () => {
           const email = window.prompt("New email address for this member:", g.auth?.email ?? "");
           if (!email) throw new Error("Cancelled.");
@@ -498,7 +499,8 @@
           crumbs(),
           el("h2", {}, String(pub.displayName ?? usr.displayName ?? g.uid)),
           el("div", {},
-            el("span", { class: `tag${active ? "" : " tag--warn"}` }, active ? "public" : "hidden"),
+            el("span", { class: `tag${active ? "" : " tag--warn"}` },
+              moderationHidden ? "hidden by administrator" : active ? "public" : "not published by member"),
             " ",
             pending ? el("span", { class: "tag tag--warn" }, `deletion ${fmt(g.deletion!.purgeAfter)}`) : null,
           ),

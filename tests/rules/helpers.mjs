@@ -42,12 +42,12 @@ export async function setupEnv() {
     firestore: {
       rules: readFileSync("firestore.rules", "utf8"),
       host: "127.0.0.1",
-      port: 8080,
+      port: Number(process.env.FIRESTORE_EMULATOR_HOST?.split(":").at(-1) ?? 8080),
     },
     storage: {
       rules: readFileSync("storage.rules", "utf8"),
       host: "127.0.0.1",
-      port: 9199,
+      port: Number(process.env.FIREBASE_STORAGE_EMULATOR_HOST?.split(":").at(-1) ?? 9199),
     },
   });
 }

@@ -1,4 +1,7 @@
 import { test, before, after, beforeEach } from "node:test";
+import { deleteField } from "firebase/firestore";
+import assert from "node:assert/strict";
+import { isProfileVisible } from "../../src/lib/profileVisibility.ts";
 import {
   setupEnv, seed, assertFails, assertSucceeds,
   OWNER, OTHER, ADMIN, verified, unverified, slot, minimalUser,
@@ -8,6 +11,53 @@ let env;
 before(async () => { env = await setupEnv(); });
 after(async () => { await env.cleanup(); });
 beforeEach(async () => { await env.clearFirestore(); });
+
+test("tags: members submit bounded tags but only admins change shared taxonomy", async () => {
+  const owner = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  const tag = { label: "Science", active: true, group: "other", createdBy: OWNER, createdAt: new Date() };
+  await assertSucceeds(owner.doc("tags/science").set(tag));
+  await assertFails(owner.doc("tags/forged").set({ ...tag, createdBy: OTHER }));
+  await assertFails(owner.doc("tags/extra").set({ ...tag, extra: "x" }));
+  await assertFails(owner.doc("tags/long").set({ ...tag, group: "x".repeat(51) }));
+  await assertFails(owner.doc("tags/science").update({ active: false }));
+  const other = env.authenticatedContext(OTHER, verified(OTHER)).firestore();
+  await assertFails(other.doc("tags/science").update({ label: "Hijacked" }));
+  const admin = env.authenticatedContext(ADMIN, verified(ADMIN, { admin: true })).firestore();
+  await assertSucceeds(admin.doc("tags/science").update({ label: "Scientific art", active: false }));
+  await assertFails(admin.doc("tags/science").update({ createdBy: ADMIN }));
+});
+
+test("moderation: members cannot seed a moderation flag, including false", async () => {
+  const ref = env.authenticatedContext(OWNER, verified(OWNER)).firestore().doc(`publicProfiles/${OWNER}`);
+  for (const moderationHidden of [true, false, "false", null]) {
+    await assertFails(ref.set({ displayName: "Member", active: true, moderationHidden }));
+  }
+  await assertSucceeds(ref.set({ displayName: "Member", active: true }));
+  await assertFails(ref.update({ moderationHidden: false }));
+});
+
+test("moderation: editing and republishing cannot undo an admin hide", async () => {
+  const path = `publicProfiles/${OWNER}`;
+  await seed(env, path, { displayName: "Member", active: false, moderationHidden: true });
+  const ref = env.authenticatedContext(OWNER, verified(OWNER)).firestore().doc(path);
+  await assertSucceeds(ref.set({ active: true, bio: "Corrected information." }, { merge: true }));
+  assert.equal(isProfileVisible((await ref.get()).data()), false);
+  await assertFails(ref.update({ moderationHidden: false }));
+  await assertFails(ref.update({ moderationHidden: deleteField() }));
+  await assertFails(ref.set({ displayName: "Replacement", active: true }));
+  await assertFails(ref.delete());
+  const other = env.authenticatedContext(OTHER, verified(OTHER)).firestore().doc(path);
+  await assertFails(other.update({ moderationHidden: false }));
+  const admin = env.authenticatedContext(ADMIN, verified(ADMIN, { admin: true })).firestore().doc(path);
+  await assertFails(admin.update({ moderationHidden: false })); // Must use the audited callable.
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().doc(path).update({ moderationHidden: false });
+  });
+  assert.equal(isProfileVisible((await ref.get()).data()), true);
+  await assertFails(ref.update({ moderationHidden: deleteField() }));
+  await assertSucceeds(ref.update({ active: false }));
+  assert.equal(isProfileVisible((await ref.get()).data()), false);
+});
 
 test("users: owner can create their own private doc", async () => {
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
@@ -47,9 +97,9 @@ test("images: anyone can read", async () => {
   await assertSucceeds(db.doc("images/img-1").get());
 });
 
-test("images: owner creates a record in the uploading state", async () => {
+test("images: only the server can allocate a record", async () => {
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
-  await assertSucceeds(db.doc("images/img-1").set(imageDoc(OWNER, "img-1")));
+  await assertFails(db.doc("images/img-1").set(imageDoc(OWNER, "img-1")));
 });
 
 test("images: create must start as uploading", async () => {
@@ -77,11 +127,14 @@ test("images: client cannot claim curated origin or provenance", async () => {
     imageDoc(OWNER, "img-1", { provenance: { credit: "me" } })));
 });
 
-test("images: owner flips uploading → live → pendingDeletion", async () => {
+test("images: only the server publishes; owner may request deletion", async () => {
   await seed(env, "images/img-1", imageDoc(OWNER, "img-1"));
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
-  await assertSucceeds(db.doc("images/img-1").update({ status: "live", updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ status: "live", updatedAt: new Date() }));
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
   await assertSucceeds(db.doc("images/img-1").update({ status: "pendingDeletion", updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ status: "live", updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ width: 1, updatedAt: new Date() }));
 });
 
 test("images: owner edits caption and both descriptions", async () => {
@@ -152,12 +205,11 @@ test("images: another member cannot update, nobody can delete", async () => {
   await assertFails(owner.doc("images/img-1").delete());
 });
 
-// The unverified cap. Rules cannot count documents, so "one image" is spelled
-// as "one id": an unverified account may only ever create images/{uid}-{kind}.
-test("images: an unverified member may create their slot record", async () => {
+// The callable owns allocation even for an unverified member's reusable slot.
+test("images: an unverified member cannot self-allocate a slot record", async () => {
   const db = env.authenticatedContext(OWNER, unverified(OWNER)).firestore();
   const id = slot(OWNER, "gallery");
-  await assertSucceeds(db.doc(`images/${id}`).set(imageDoc(OWNER, id)));
+  await assertFails(db.doc(`images/${id}`).set(imageDoc(OWNER, id)));
 });
 
 test("images: an unverified member cannot create any other id", async () => {
@@ -181,25 +233,24 @@ test("images: an unverified slot id must name its own kind", async () => {
   })));
 });
 
-test("images: unverified gets one avatar AND one gallery slot, and may replace them", async () => {
+test("images: unverified cannot allocate or replace slot geometry directly", async () => {
   const db = env.authenticatedContext(OWNER, unverified(OWNER)).firestore();
   const g = slot(OWNER, "gallery");
   const a = slot(OWNER, "avatar");
-  await assertSucceeds(db.doc(`images/${g}`).set(imageDoc(OWNER, g)));
-  await assertSucceeds(db.doc(`images/${a}`).set(imageDoc(OWNER, a, {
+  await assertFails(db.doc(`images/${g}`).set(imageDoc(OWNER, g)));
+  await assertFails(db.doc(`images/${a}`).set(imageDoc(OWNER, a, {
     kind: "avatar", storagePath: `users/${OWNER}/avatar/${a}.webp`,
   })));
-  // Replacing the picture is an UPDATE of the same record — the cap bounds how
-  // many images exist, not how many times one is changed.
-  await assertSucceeds(db.doc(`images/${g}`).update({
+  await seed(env, `images/${g}`, imageDoc(OWNER, g, { status: "live" }));
+  await assertFails(db.doc(`images/${g}`).update({
     width: 640, height: 480, status: "live", updatedAt: new Date(),
   }));
 });
 
-test("images: a verified member is not confined to the slot", async () => {
+test("images: verified members also require server allocation", async () => {
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
-  await assertSucceeds(db.doc("images/img-1").set(imageDoc(OWNER, "img-1")));
-  await assertSucceeds(db.doc("images/img-2").set(imageDoc(OWNER, "img-2")));
+  await assertFails(db.doc("images/img-1").set(imageDoc(OWNER, "img-1")));
+  await assertFails(db.doc("images/img-2").set(imageDoc(OWNER, "img-2")));
 });
 
 test("images: an unlisted key is rejected (hasOnly)", async () => {
@@ -307,6 +358,11 @@ test("publicProfiles: eight ids save on a FULL profile", async () => {
     gallery: Array.from({ length: 8 }, () => crypto.randomUUID()),
     active: true,
   }));
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().doc(`publicProfiles/${OWNER}`).update({ moderationHidden: true });
+  });
+  // Moderation must not prevent a full profile from being corrected at the rules budget limit.
+  await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).update({ updatedAt: new Date(), active: true }));
   await assertSucceeds(db.doc(`users/${OWNER}`).set({
     ...minimalUser(OWNER),
     displayName: "x".repeat(100), photoURL, role: "x".repeat(100),
