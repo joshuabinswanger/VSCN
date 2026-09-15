@@ -97,9 +97,9 @@ test("images: anyone can read", async () => {
   await assertSucceeds(db.doc("images/img-1").get());
 });
 
-test("images: owner creates a record in the uploading state", async () => {
+test("images: only the server can allocate a record", async () => {
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
-  await assertSucceeds(db.doc("images/img-1").set(imageDoc(OWNER, "img-1")));
+  await assertFails(db.doc("images/img-1").set(imageDoc(OWNER, "img-1")));
 });
 
 test("images: create must start as uploading", async () => {
@@ -127,11 +127,14 @@ test("images: client cannot claim curated origin or provenance", async () => {
     imageDoc(OWNER, "img-1", { provenance: { credit: "me" } })));
 });
 
-test("images: owner flips uploading → live → pendingDeletion", async () => {
+test("images: only the server publishes; owner may request deletion", async () => {
   await seed(env, "images/img-1", imageDoc(OWNER, "img-1"));
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
-  await assertSucceeds(db.doc("images/img-1").update({ status: "live", updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ status: "live", updatedAt: new Date() }));
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
   await assertSucceeds(db.doc("images/img-1").update({ status: "pendingDeletion", updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ status: "live", updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ width: 1, updatedAt: new Date() }));
 });
 
 test("images: owner edits caption and both descriptions", async () => {
@@ -202,12 +205,11 @@ test("images: another member cannot update, nobody can delete", async () => {
   await assertFails(owner.doc("images/img-1").delete());
 });
 
-// The unverified cap. Rules cannot count documents, so "one image" is spelled
-// as "one id": an unverified account may only ever create images/{uid}-{kind}.
-test("images: an unverified member may create their slot record", async () => {
+// The callable owns allocation even for an unverified member's reusable slot.
+test("images: an unverified member cannot self-allocate a slot record", async () => {
   const db = env.authenticatedContext(OWNER, unverified(OWNER)).firestore();
   const id = slot(OWNER, "gallery");
-  await assertSucceeds(db.doc(`images/${id}`).set(imageDoc(OWNER, id)));
+  await assertFails(db.doc(`images/${id}`).set(imageDoc(OWNER, id)));
 });
 
 test("images: an unverified member cannot create any other id", async () => {
@@ -231,25 +233,24 @@ test("images: an unverified slot id must name its own kind", async () => {
   })));
 });
 
-test("images: unverified gets one avatar AND one gallery slot, and may replace them", async () => {
+test("images: unverified cannot allocate or replace slot geometry directly", async () => {
   const db = env.authenticatedContext(OWNER, unverified(OWNER)).firestore();
   const g = slot(OWNER, "gallery");
   const a = slot(OWNER, "avatar");
-  await assertSucceeds(db.doc(`images/${g}`).set(imageDoc(OWNER, g)));
-  await assertSucceeds(db.doc(`images/${a}`).set(imageDoc(OWNER, a, {
+  await assertFails(db.doc(`images/${g}`).set(imageDoc(OWNER, g)));
+  await assertFails(db.doc(`images/${a}`).set(imageDoc(OWNER, a, {
     kind: "avatar", storagePath: `users/${OWNER}/avatar/${a}.webp`,
   })));
-  // Replacing the picture is an UPDATE of the same record — the cap bounds how
-  // many images exist, not how many times one is changed.
-  await assertSucceeds(db.doc(`images/${g}`).update({
+  await seed(env, `images/${g}`, imageDoc(OWNER, g, { status: "live" }));
+  await assertFails(db.doc(`images/${g}`).update({
     width: 640, height: 480, status: "live", updatedAt: new Date(),
   }));
 });
 
-test("images: a verified member is not confined to the slot", async () => {
+test("images: verified members also require server allocation", async () => {
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
-  await assertSucceeds(db.doc("images/img-1").set(imageDoc(OWNER, "img-1")));
-  await assertSucceeds(db.doc("images/img-2").set(imageDoc(OWNER, "img-2")));
+  await assertFails(db.doc("images/img-1").set(imageDoc(OWNER, "img-1")));
+  await assertFails(db.doc("images/img-2").set(imageDoc(OWNER, "img-2")));
 });
 
 test("images: an unlisted key is rejected (hasOnly)", async () => {

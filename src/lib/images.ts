@@ -1,4 +1,4 @@
-import { deleteField, doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+import { deleteField, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { ref, uploadBytesResumable } from "firebase/storage";
 import { auth, db, storage, functions } from "./firebase.ts";
 import { httpsCallable } from "firebase/functions";
@@ -31,6 +31,10 @@ export function imageStoragePath(uid: string, kind: ImageKind, imageId: string):
   return `users/${uid}/${kind}/${imageId}.webp`;
 }
 
+function imageUploadPath(uid: string, kind: ImageKind, imageId: string): string {
+  return `pending/${uid}/${kind}/${imageId}.webp`;
+}
+
 /**
  * The ONE record id an unverified account may use, per kind.
  *
@@ -52,15 +56,7 @@ export async function blobDimensions(blob: Blob): Promise<{ width: number; heigh
   return dims;
 }
 
-/**
- * Record first, bytes second, `live` third.
- *
- * The order is the whole design: a Storage object can never exist without an
- * images/ document pointing at it, so a tab closed mid-upload leaves a record
- * in `uploading` that sweepImages finds by query — not an unreferenced file
- * that only a bucket crawl could. firestore.rules requires the create to be
- * `uploading`, so this order is enforced, not merely followed.
- */
+/** The callable allocates the record and permit; another callable validates bytes before publishing. */
 export async function uploadImage(
   uid: string,
   kind: ImageKind,
@@ -98,48 +94,12 @@ export async function uploadImage(
   const usesSlot = current ? !(await hasVerifiedClaim(current)) : true;
   const imageId = usesSlot ? slotImageId(uid, kind) : crypto.randomUUID();
   const storagePath = imageStoragePath(uid, kind, imageId);
-  const recordRef = doc(db, "images", imageId);
-
-  const existing = usesSlot ? await getDoc(recordRef) : null;
-  if (existing?.exists()) {
-    // Replacing the slot's image. The identity fields and `createdAt` are
-    // pinned by the update rule, so they are not sent at all; `color` is
-    // cleared rather than left describing the previous picture. A slot the
-    // member had removed comes back to `live` here so sweepImages stops
-    // targeting it — one still in `uploading` is a dead upload and is left
-    // for the sweeper, since the flip at the end of this function revives it
-    // only if the bytes actually arrive.
-    const previous = existing.data() as { status?: ImageStatus };
-    await updateDoc(recordRef, {
-      width: dims.width,
-      height: dims.height,
-      color: dims.color ?? deleteField(),
-      ...(previous.status === "pendingDeletion" ? { status: "live" } : {}),
-      updatedAt: serverTimestamp(),
-    });
-  } else {
-    await setDoc(recordRef, {
-      ownerUid: uid,
-      kind,
-      storagePath,
-      width: dims.width,
-      height: dims.height,
-      ...(dims.color ? { color: dims.color } : {}),
-      origin: "member",
-      status: "uploading",
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-  }
-
-  await httpsCallable(functions, "authorizeImageUpload")({ imageId });
+  const uploadPath = imageUploadPath(uid, kind, imageId);
+  await httpsCallable(functions, "authorizeImageUpload")({ imageId, kind, ...dims });
   await new Promise<void>((resolve, reject) => {
-    const task = uploadBytesResumable(ref(storage, storagePath), blob, {
+    const task = uploadBytesResumable(ref(storage, uploadPath), blob, {
       contentType: "image/webp",
-      // A slot keeps ONE URL across every replacement, so `immutable` would
-      // pin whichever picture landed there first — in the editor, on the card,
-      // everywhere — with no way for the member to see their own change.
-      cacheControl: usesSlot ? "public, max-age=60" : "public, max-age=31536000, immutable",
+      cacheControl: "private, max-age=0",
       // The object knows its owner even when found outside its path.
       customMetadata: { ownerUid: uid, imageId },
     });
@@ -152,7 +112,7 @@ export async function uploadImage(
     );
   });
 
-  await updateDoc(recordRef, { status: "live", updatedAt: serverTimestamp() });
+  await httpsCallable(functions, "completeImageUpload")({ imageId });
   return { imageId, url: publicStorageUrl(storagePath), storagePath };
 }
 
