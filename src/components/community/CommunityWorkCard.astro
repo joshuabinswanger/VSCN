@@ -323,9 +323,13 @@ const pswpMeta = member.displayName;
     transition: transform 500ms cubic-bezier(0.22, 0.61, 0.36, 1);
   }
 
-  .cwork:hover .cwork__grow,
-  .cwork:focus-within .cwork__grow {
-    transform: scale(1.1);
+  /* Touch scrolling can synthesize hover and retain focus. Only enlarge
+     artwork on a desktop with a precise, hover-capable pointer. */
+  @media (--bp-desktop) and (hover: hover) and (pointer: fine) {
+    .cwork:hover .cwork__grow,
+    .cwork:has(:focus-visible) .cwork__grow {
+      transform: scale(1.1);
+    }
   }
 
   /* IN FRONT, for as long as the pointer is on it. Without this the wall's
@@ -339,9 +343,11 @@ const pswpMeta = member.displayName;
      tile would sit over its neighbours' captions at rest.
      GSAP owns the transform on this element (see the note on .cwork__img), but
      not its z-index, so there is nothing here to be overwritten. */
-  .cwork:hover,
-  .cwork:focus-within {
-    z-index: 5;
+  @media (--bp-desktop) and (hover: hover) and (pointer: fine) {
+    .cwork:hover,
+    .cwork:has(:focus-visible) {
+      z-index: 5;
+    }
   }
 
   /* ── The label ────────────────────────────────────────── */

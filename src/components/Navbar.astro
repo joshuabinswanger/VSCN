@@ -17,8 +17,11 @@ import "../styles/global.css";
   <span class="lang-cur">EN</span><span class="lang-sep"> / </span><span class="lang-tgt">DE</span>
 </a>
 
-<style>
-  nav {
+{/* Persisted navigation keeps its DOM across page swaps, including its old
+     scope attributes after a deployment. Stable selectors keep the new page's
+     stylesheet matching those links. */}
+<style is:global>
+  nav[data-astro-transition-persist="navbar"] {
     position: sticky;
     top: 0;
     z-index: 10;
@@ -28,7 +31,7 @@ import "../styles/global.css";
 
   .nav-links {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     padding: 0px 5px;
     width: 100%;
     /* Shared with the brand ticker and <main> — see --shell-max in
@@ -101,22 +104,22 @@ import "../styles/global.css";
     text-decoration: none;
   }
 
-  .lang-toggle :global(.lang-sep) {
+  .lang-toggle .lang-sep {
     color: var(--color-muted);
   }
 
-  .lang-toggle :global(.lang-cur) {
+  .lang-toggle .lang-cur {
     color: var(--color-dark);
     font-weight: 600;
   }
 
-  .lang-toggle :global(.lang-tgt) {
+  .lang-toggle .lang-tgt {
     color: var(--color-muted);
     font-weight: 400;
     transition: color 0.15s;
   }
 
-  .lang-toggle:hover :global(.lang-tgt) {
+  .lang-toggle:hover .lang-tgt {
     color: var(--color-dark);
   }
 
