@@ -36,7 +36,13 @@ const updatedDate = new Date(content.updated).toLocaleDateString(lang === "de" ?
           typeof block === "string" ? (
             <p>
               {splitOnEmail(block, legalEntity.email).map((seg) =>
-                seg.kind === "email" ? <a href={`mailto:${seg.value}`}>{seg.value}</a> : seg.value
+                seg.kind === "email" ? (
+                  <Fragment>
+                    <Fragment set:html="<!--email_off-->" />
+                    <a href={`mailto:${seg.value}`}>{seg.value}</a>
+                    <Fragment set:html="<!--/email_off-->" />
+                  </Fragment>
+                ) : seg.value
               )}
             </p>
           ) : (
