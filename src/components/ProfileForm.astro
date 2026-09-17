@@ -446,7 +446,31 @@ const t = useTranslations(lang);
                 cloned once per image and a duplicate id would be meaningless
                 to query by anyway. */
             }
-            <TagSelector lang={lang} maxTags={5} />
+            {
+              /* FOLDED AWAY, BUT OPEN TO START WITH (2026-09-17, Josh: "make
+                image tags collapsible. default open!"). The selector is the
+                tallest thing in a row — a filter, three groups and an add row
+                — and a member with six images was scrolling past six of them
+                to reach the move buttons. Folding it gives the row back its
+                short shape once the tagging is done, and the count in the
+                summary is what makes a folded row still say what is in the
+                picture.
+
+                Open/closed is remembered OUTSIDE this row, keyed by imageId
+                (galleryTagsOpenUI, same reason as the EN/DE
+                switch above): every row is re-cloned from this template on
+                each upload, remove and reorder, so a fold not held somewhere
+                else would spring back open while the member is still
+                uploading. */
+            }
+            <details class="gallery-tags" open>
+              <summary class="gallery-tags-summary">
+                <span class="gallery-tags-title">{t("profile.gallery.tags")}</span>
+                <span class="gallery-tags-count" data-gallery-tags-count></span>
+                <span class="gallery-tags-chevron" aria-hidden="true"></span>
+              </summary>
+              <TagSelector lang={lang} maxTags={5} />
+            </details>
             <div class="gallery-tools">
               <button type="button" class="gallery-tool" data-gallery-move="up">↑</button>
               <button type="button" class="gallery-tool" data-gallery-move="down">↓</button>
@@ -1233,6 +1257,74 @@ const t = useTranslations(lang);
     display: none;
   }
 
+  /* THE SAME HEADING THE TAG GROUPS INSIDE IT ALREADY WEAR. TagSelector draws
+     DISCIPLINES / TOPICS / OTHER with .tag-group-summary, but those rules are
+     scoped under the `tag-selector` element selector and stop at its boundary,
+     so the fold AROUND the selector has to restate them here — one voice for
+     both levels of fold, rather than a second idiom stacked on the first.
+     No `display: contents` on the <details>: it segfaults iOS WebKit, see
+     documentation/20260831-webkit-details-display-contents-crash.md. */
+  .gallery-tags-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0 0.45rem;
+    border-bottom: 1px solid var(--color-border);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+  }
+
+  .gallery-tags-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .gallery-tags-summary:hover .gallery-tags-title {
+    color: var(--color-dark);
+  }
+
+  .gallery-tags-title {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-muted);
+    transition: color 0.15s;
+  }
+
+  .gallery-tags-count {
+    font-size: 0.68rem;
+    color: var(--color-muted);
+    opacity: 0.6;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .gallery-tags-count:empty {
+    display: none;
+  }
+
+  .gallery-tags-chevron {
+    margin-left: auto;
+    width: 7px;
+    height: 7px;
+    border-right: 1px solid var(--color-muted);
+    border-bottom: 1px solid var(--color-muted);
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+    transform-origin: 60% 60%;
+  }
+
+  .gallery-tags[open] .gallery-tags-chevron {
+    transform: rotate(225deg);
+  }
+
+  /* On the summary rather than on the selector below it: the selector is a
+     child COMPONENT, so this block's scope attribute never lands on it and a
+     `.gallery-tags > tag-selector` rule here would match nothing. */
+  .gallery-tags[open] .gallery-tags-summary {
+    margin-bottom: 0.5rem;
+  }
+
   .gallery-tools {
     display: flex;
     gap: 6px;
@@ -1921,6 +2013,10 @@ const t = useTranslations(lang);
     // function does on every add/remove/reorder. Keyed by imageId; see the
     // switch wiring in renderGallery() for why index would not do.
     const galleryLangUI = new Map<string, "en" | "de">();
+    // Whether a gallery item's tag fold is open — same shape, same reason, same
+    // imageId key as galleryLangUI above (2026-09-17). Unknown means open, so a
+    // row the member has never touched matches the template's `open`.
+    const galleryTagsOpenUI = new Map<string, boolean>();
     // The images/ record behind the current avatar. Passed to
     // handleProfileUpdate so the replaced record can be marked for deletion
     // once the new photoURL has landed in Firestore.
@@ -2137,7 +2233,10 @@ const t = useTranslations(lang);
             const tagsSelector = row.querySelector<HTMLElement & { value: string[] }>(
               "tag-selector",
             );
+            const tagsFold = row.querySelector<HTMLDetailsElement>(".gallery-tags");
+            const tagsCount = row.querySelector<HTMLElement>("[data-gallery-tags-count]");
             if (!img || !remove || !caption || !description) return null;
+            if (!tagsFold || !tagsCount) return null;
             if (!captionDe || !captionDeNote) return null;
             if (!descriptionDe || !descriptionDeNote) return null;
             if (!link || !siteLink || !cover || !up || !down || !tagsSelector) return null;
@@ -2242,7 +2341,19 @@ const t = useTranslations(lang);
             wireLink(siteLink, "siteLink", "profile.gallery.siteLink", "profile.gallery.siteLink.ph");
             wireLink(link, "link", "profile.gallery.link", "profile.gallery.link.ph");
 
+            // What a FOLDED row still says about the picture: with the chips
+            // out of sight the number is the only thing left that answers "did
+            // I tag this one?".
+            const setTagsCount = (tags: string[]) => {
+              tagsCount.textContent = tags.length ? `(${tags.length})` : "";
+            };
+
             tagsSelector.value = item.tags ?? [];
+            setTagsCount(item.tags ?? []);
+            tagsFold.open = galleryTagsOpenUI.get(item.imageId) ?? true;
+            tagsFold.addEventListener("toggle", () => {
+              galleryTagsOpenUI.set(item.imageId, tagsFold.open);
+            });
             named(tagsSelector, s["profile.label.tags"]);
             tagsSelector.addEventListener("change", () => {
               // Same "deleted rather than stored empty" rule as link above —
@@ -2250,6 +2361,7 @@ const t = useTranslations(lang);
               const tags = tagsSelector.value;
               if (tags.length) gallery[index].tags = tags;
               else delete gallery[index].tags;
+              setTagsCount(tags);
               syncPreview();
             });
 
