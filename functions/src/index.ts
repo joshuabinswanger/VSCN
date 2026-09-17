@@ -11,6 +11,7 @@ export { onPublicProfileWritten } from "./slugs";
 export {
   adminDeleteImage,
   adminLookupMember,
+  adminListActions,
   adminListMembers,
   adminListQueues,
   adminPurgeAccount,

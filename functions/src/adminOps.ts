@@ -312,6 +312,91 @@ export const adminListQueues = onCall(async (req) => {
   });
 });
 
+/**
+ * uid → the name worth showing for it, for a page that only ever has uids to
+ * work with (an audit row names an actor and a target, never a person).
+ * `publicProfiles` first because that is the name a member chose to be seen
+ * under; `users` next for an admin action against someone who never finished
+ * onboarding into a public profile; the uid itself when neither doc exists,
+ * because a curated seed or a purged account can still be a row in the log.
+ * Batched with getAll rather than one get() per uid — audit rows are
+ * overwhelmingly one admin acting on one member, so the same couple of uids
+ * repeat across dozens of rows and the dedupe above this call is what keeps
+ * this cheap.
+ */
+async function displayNames(uids: string[]): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  if (uids.length === 0) return names;
+  const pubRefs = uids.map((uid) => db.doc(`publicProfiles/${uid}`));
+  const userRefs = uids.map((uid) => db.doc(`users/${uid}`));
+  const [pubDocs, userDocs] = await Promise.all([db.getAll(...pubRefs), db.getAll(...userRefs)]);
+  uids.forEach((uid, i) => {
+    const pubName = pubDocs[i].exists ? String(pubDocs[i].data()?.displayName ?? "") : "";
+    const userName = userDocs[i].exists ? String(userDocs[i].data()?.displayName ?? "") : "";
+    names.set(uid, pubName || userName || uid);
+  });
+  return names;
+}
+
+/**
+ * READS BACK WHAT `audit()` HAS BEEN WRITING SINCE THIS FILE'S FIRST
+ * PRIVILEGED MUTATION. Every adminOps callable above this one appends to
+ * `adminActions` on every call and nothing has ever read a row of it back —
+ * the collection has been growing write-only, on faith that it would matter
+ * later. It matters the first time an admin needs to know who deleted a
+ * member's image, or what an email address used to be before someone fixed
+ * it; both are already sitting in `detail`, per the shape each call site
+ * chose for itself.
+ */
+export const adminListActions = onCall(async (req) => {
+  requireAdmin(req);
+  const targetUid = String((req.data as { targetUid?: unknown })?.targetUid ?? "").trim();
+  const rawLimit = Number((req.data as { limit?: unknown })?.limit ?? 200);
+  const limit = Math.min(500, Math.max(1, Number.isFinite(rawLimit) ? Math.trunc(rawLimit) : 200));
+
+  // targetUid + orderBy("at") is a composite query Firestore would refuse
+  // without a matching index, and this repo declares none — there is no
+  // firestore.indexes.json at all, so adding one here would mean introducing
+  // the file (and a deploy step) for a single admin-console query. The
+  // collection is a few dozen members' worth of admin actions, not a stream,
+  // so it is cheaper and safer to fetch it ordered and filter in memory than
+  // to stand up index infrastructure this repo has never needed before.
+  const snap = await db
+    .collection("adminActions")
+    .orderBy("at", "desc")
+    .limit(targetUid ? 500 : limit)
+    .get();
+  const docs = targetUid
+    ? snap.docs.filter((d) => String(d.data().targetUid ?? "") === targetUid).slice(0, limit)
+    : snap.docs;
+
+  const uids = new Set<string>();
+  for (const d of docs) {
+    const data = d.data();
+    if (data.actorUid) uids.add(String(data.actorUid));
+    if (data.targetUid) uids.add(String(data.targetUid));
+  }
+  const names = await displayNames([...uids]);
+
+  const actions = docs.map((d) => {
+    const { actorUid, action, targetUid: target, at, ...detail } = d.data();
+    const actor = String(actorUid ?? "");
+    const targetName = String(target ?? "");
+    return {
+      id: d.id,
+      actorUid: actor,
+      actorName: names.get(actor) ?? actor,
+      action: String(action ?? ""),
+      targetUid: targetName,
+      targetName: names.get(targetName) ?? targetName,
+      at,
+      detail,
+    };
+  });
+
+  return plain({ actions });
+});
+
 export const adminPurgeAccount = onCall({ timeoutSeconds: 540, secrets: [githubRebuildToken] }, async (req) => {
   const actor = requireAdmin(req);
   const uid = requireUidArg(req.data);
