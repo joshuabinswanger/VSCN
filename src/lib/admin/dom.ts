@@ -57,12 +57,31 @@ export function dl(rows: [string, unknown][]): HTMLDListElement {
   return out;
 }
 
-/** ISO (or RFC 2822, which Auth's metadata uses) → local date-time, or a dash. */
-export const fmt = (iso: string | null | undefined): string => {
+/**
+ * ISO (or RFC 2822, which Auth's metadata uses) → a local date-time, or a dash.
+ *
+ * The month is a WORD. `toLocaleString("en-GB")` renders 2 May as "02/05/2026",
+ * which every reader of this console has to decode against their own habit
+ * before they can trust it — and the console is read while deciding whether to
+ * purge somebody. Seconds are dropped for the same reason they were never
+ * useful here: nothing in this tool is timed to the second. The exact ISO
+ * string stays reachable — every caller puts it in the element's `title`.
+ */
+const DATE_TIME: Intl.DateTimeFormatOptions = {
+  day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+};
+const DATE_ONLY: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
+
+const format = (iso: string | null | undefined, opts: Intl.DateTimeFormatOptions): string => {
   if (!iso) return "—";
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? String(iso) : d.toLocaleString("en-GB");
+  return Number.isNaN(d.getTime()) ? String(iso) : d.toLocaleString("en-GB", opts);
 };
+
+export const fmt = (iso: string | null | undefined): string => format(iso, DATE_TIME);
+
+/** The same, without the time — for a column where only the day matters. */
+export const fmtDate = (iso: string | null | undefined): string => format(iso, DATE_ONLY);
 
 /**
  * Copy-to-clipboard button. Shows the outcome ON the button for a moment

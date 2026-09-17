@@ -4,7 +4,7 @@
  * module decides their order and shape.
  */
 import type { MemberRow } from "../adminApi.ts";
-import { type Child, copyButton, el, fmt } from "./dom.ts";
+import { type Child, copyButton, el, fmt, fmtDate } from "./dom.ts";
 
 export interface ListDeps {
   go(hash: string): void;
@@ -89,7 +89,11 @@ const COLUMNS: Column[] = [
   {
     id: "createdAt", label: "Created",
     sortKey: (m) => time(m.createdAt),
-    cell: (m) => el("span", { class: "muted nowrap", title: m.createdAt ?? "" }, m.createdAt ? fmt(m.createdAt) : "—"),
+    // The DAY only: a roster is scanned down a column, and the time of day an
+    // account was made has never decided anything here. The full timestamp is
+    // in the title, and the member's own record carries it in full.
+    cell: (m) => el("span", { class: "muted nowrap", title: m.createdAt ? fmt(m.createdAt) : "" },
+      m.createdAt ? fmtDate(m.createdAt) : "—"),
   },
   {
     id: "uid", label: "uid",
@@ -195,7 +199,12 @@ export function createMemberList(host: HTMLElement, deps: ListDeps): MemberList 
 
     const card = el("div", { class: "card" },
       el("div", { class: "card__head" },
-        el("h2", {}, `${shown.length} of ${all.length} member(s)`),
+        // "8 of 8 member(s)" made the reader do arithmetic to learn that
+        // nothing was filtered out. Say the filtered count only when it is
+        // actually a subset.
+        el("h2", {}, shown.length === all.length
+          ? `${all.length} member${all.length === 1 ? "" : "s"}`
+          : `${shown.length} of ${all.length} members`),
         picker,
       ),
       shown.length

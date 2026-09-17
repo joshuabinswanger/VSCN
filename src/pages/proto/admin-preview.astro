@@ -1,0 +1,279 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import AdminConsole from "../../components/admin/AdminConsole.astro";
+
+// Harness for the admin console's three views: the roster table, one member's
+// detail, the image record and the housekeeping queues.
+//
+// It exists for the same reason /proto/profile-preview does. The console is
+// behind the `admin` custom claim, so its pixels cannot be seen — by a
+// reviewer or by me — without an admin credential, and the renderers were
+// shipped in PR #42 having never been looked at by a human. This page feeds
+// the REAL renderers (src/lib/admin/*.ts) and the real stylesheet with
+// synthetic records chosen to hit the awkward cases: a member whose two
+// profile documents disagree, one with no public profile and no Auth user,
+// orphaned images, a scheduled deletion.
+//
+// It is a harness, not a feature: synthetic data only, no admin callable is
+// ever called, noindex, excluded from the sitemap with the rest of /proto.
+// The console component is included for its markup and its styles; its own
+// script gates on auth, finds none, and hides itself — the harness script
+// below re-shows the shell and renders into it.
+---
+
+<Layout title="Admin console harness — VSCN (prototype)" noindex wide>
+  <p class="proto-note">
+    Harness — synthetic records, no admin callable is called. The real
+    renderers and the real stylesheet.
+  </p>
+  <div class="proto-bar">
+    <button type="button" data-view="list">Roster</button>
+    <button type="button" data-view="member">Member (rich)</button>
+    <button type="button" data-view="thin">Member (thin)</button>
+    <button type="button" data-view="image">Image record</button>
+    <button type="button" data-view="queues">Queues</button>
+  </div>
+  <AdminConsole />
+</Layout>
+
+<style>
+  .proto-note {
+    margin: 0 0 0.5rem;
+    color: var(--color-muted);
+    font-size: 0.85rem;
+  }
+  .proto-bar {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px dashed var(--color-border);
+  }
+  .proto-bar button {
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 0.3rem 0.7rem;
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xs);
+    cursor: pointer;
+  }
+  .proto-bar button[aria-pressed="true"] {
+    background: var(--color-dark);
+    color: var(--color-bg);
+    border-color: var(--color-dark);
+  }
+</style>
+
+<script>
+  import type { AdminImage, MemberGraph, MemberRow, Queues } from "../../lib/adminApi.ts";
+  import { el } from "../../lib/admin/dom.ts";
+  import { makeDialogs } from "../../lib/admin/dialog.ts";
+  import { createMemberList } from "../../lib/admin/memberList.ts";
+  import { type DetailDeps, renderImageDetail, renderMemberDetail } from "../../lib/admin/memberDetail.ts";
+  import { renderQueues } from "../../lib/admin/queues.ts";
+
+  // A local stand-in for a stored picture: no network, no Storage bucket, and
+  // it still exercises the thumb/avatar boxes at their real aspect ratios.
+  const swatch = (hue: number) =>
+    `data:image/svg+xml;utf8,${encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="400" height="400" fill="hsl(${hue} 45% 62%)"/><circle cx="200" cy="170" r="90" fill="hsl(${hue} 55% 42%)"/></svg>`,
+    )}`;
+
+  const img = (over: Partial<AdminImage> & { imageId: string }): AdminImage => ({
+    ownerUid: "k3Qw8ZrT2bVnPjXs7LmHcYd1Ae4f", kind: "gallery", storagePath: `images/${over.imageId}.webp`,
+    width: 2000, height: 1400, origin: "member", status: "live", createdAt: "2026-08-14T09:12:00.000Z",
+    referenced: true, ...over,
+  });
+
+  const RICH: MemberGraph = {
+    uid: "k3Qw8ZrT2bVnPjXs7LmHcYd1Ae4f",
+    auth: {
+      uid: "k3Qw8ZrT2bVnPjXs7LmHcYd1Ae4f",
+      email: "r.keller@example.org", emailVerified: true, disabled: false, admin: true,
+      createdAt: "2026-05-02T11:00:00.000Z", lastSignInAt: "2026-09-16T08:41:00.000Z",
+    },
+    user: {
+      displayName: "Regula Keller", memberType: "scientist", role: "Group leader",
+      affiliation: "Institute of Cell Biology, Universität Bern", location: "Bern, CH",
+      bio: "Works on membrane trafficking and has been drawing her own figures since long before it was a job. Interested in the point where a diagram stops explaining and starts decorating.",
+      portfolio: "https://regulakeller.example.org", socialMedia: "https://example.social/@regula",
+      languages: ["de", "en", "fr"], openTo: ["commission", "collaboration"],
+      primaryAudiences: ["researchers", "students"], visualNeeds: ["figures", "3d"],
+      tags: ["cell biology", "membranes", "microscopy"],
+      gallery: ["img_a", "img_b", "img_c"],
+      photoImageId: "img_av", photoColor: "#8a6f4e",
+      email: "r.keller@example.org", phone: "+41 79 000 00 00",
+      correspondenceLanguage: "de", receiveCommunityEmails: true,
+      wantsToContribute: true, onboardingComplete: true, status: "active",
+      createdAt: "2026-05-02T11:00:00.000Z", updatedAt: "2026-09-15T17:22:00.000Z",
+    },
+    publicProfile: {
+      displayName: "Regula Keller", memberType: "scientist", role: "Group leader",
+      affiliation: "Institute of Cell Biology, Universität Bern", location: "Bern, CH",
+      // Deliberately behind the private copy — the disagreement the private
+      // section exists to surface.
+      bio: "Works on membrane trafficking and has been drawing her own figures since long before it was a job.",
+      portfolio: "https://regulakeller.example.org", socialMedia: "https://example.social/@regula",
+      languages: ["de", "en"], openTo: ["commission", "collaboration"],
+      primaryAudiences: ["researchers", "students"], visualNeeds: ["figures", "3d"],
+      tags: ["cell biology", "membranes", "microscopy"],
+      gallery: ["img_a", "img_b", "img_c"],
+      photoImageId: "img_av", photoColor: "#8a6f4e",
+      active: true, moderationHidden: false,
+      createdAt: "2026-05-02T11:00:00.000Z", updatedAt: "2026-09-15T17:22:00.000Z",
+    },
+    images: [
+      img({ imageId: "img_av", kind: "avatar", caption: "portrait" }),
+      img({ imageId: "img_a", caption: "Vesicle budding, plate 1", description: "A long description that runs past the width of the caption line so the thumb caption has something to wrap." }),
+      img({ imageId: "img_b", caption: "Vesicle budding, plate 2" }),
+      img({ imageId: "img_c", caption: "Golgi stack, redrawn", origin: "curated" }),
+      img({ imageId: "img_orph", caption: "", referenced: false, createdAt: "2026-07-02T14:00:00.000Z" }),
+    ],
+    onboardingRequest: {
+      displayName: "Regula Keller", lang: "de", userId: "k3Qw8ZrT2bVnPjXs7LmHcYd1Ae4f",
+      message: "Ich zeichne meine eigenen Abbildungen und würde gerne mit anderen zusammenarbeiten.",
+      createdAt: "2026-05-02T11:04:00.000Z", updatedAt: "2026-05-02T11:04:00.000Z",
+    },
+    deletion: null,
+    slugs: [{ slug: "regula-keller", current: true }, { slug: "r-keller", current: false }],
+  };
+
+  const THIN: MemberGraph = {
+    uid: "9pR2xKvB6nWzQhLt3MdYcJs0Ef5g",
+    auth: null,
+    user: {
+      displayName: "Test", status: "active", onboardingComplete: false,
+      createdAt: "2026-06-11T08:00:00.000Z", updatedAt: "2026-06-11T08:00:00.000Z",
+    },
+    publicProfile: null,
+    images: [img({ imageId: "img_x", ownerUid: "9pR2xKvB6nWzQhLt3MdYcJs0Ef5g", status: "uploading", referenced: false, createdAt: "2026-06-11T08:02:00.000Z" })],
+    onboardingRequest: null,
+    deletion: {
+      uid: "9pR2xKvB6nWzQhLt3MdYcJs0Ef5g", requestedAt: "2026-09-14T10:00:00.000Z", requestedBy: "admin@vscn.ch",
+      purgeAfter: "2026-10-14T10:00:00.000Z", activeBefore: false, imageIds: ["img_x"],
+      steps: { imagesDeleted: true, filesDeleted: true, docsDeleted: false, authDeleted: false },
+      completedAt: null, lastError: "auth: user not found",
+    },
+    slugs: [],
+  };
+
+  const row = (over: Partial<MemberRow> & { uid: string; displayName: string }): MemberRow => ({
+    slug: over.displayName.toLowerCase().replace(/[^a-z]+/g, "-"), role: "Illustrator",
+    memberType: "illustrator",
+    email: `${over.displayName.toLowerCase().replace(/[^a-z]+/g, ".")}@example.org`,
+    emailVerified: true, hasAuth: true,
+    hasPublicProfile: true, active: true, status: "active", pendingDeletion: false,
+    galleryCount: 3, imageRecords: 4, hasAvatar: true, createdAt: "2026-06-01T09:00:00.000Z", ...over,
+  });
+
+  const ROWS: MemberRow[] = [
+    row({ uid: "k3Qw8ZrT2bVnPjXs7LmHcYd1Ae4f", displayName: "Regula Keller", role: "Group leader", memberType: "scientist", slug: "regula-keller" }),
+    row({ uid: "Tq7HsN4mXbZv2RpLd9KcWy6Ja1Ur", displayName: "Marco Brunner" }),
+    row({ uid: "Bc5vQz8LtRm3XnWd7YkPf2Hs4Gja", displayName: "Aline Dubois", active: false, status: "hidden" }),
+    row({ uid: "Zm9KdX3pQw7LvBn5RtYc2Hs8Jf1e", displayName: "Sven Lindqvist", emailVerified: false, galleryCount: 0, imageRecords: 2 }),
+    row({ uid: "9pR2xKvB6nWzQhLt3MdYcJs0Ef5g", displayName: "Test", hasAuth: false, email: null, emailVerified: null, hasPublicProfile: false, active: false, pendingDeletion: true, status: "deleting", galleryCount: 0, imageRecords: 1, hasAvatar: false }),
+    row({ uid: "Nf4Rt7XcZq2VmKp9Lb3WdYs6Hj5a", displayName: "Yuki Tanaka", memberType: "scientist", role: "Postdoc", galleryCount: 8, imageRecords: 9 }),
+    row({ uid: "Ws6Lp2HcXt9RmZv4Nq7Kd3Yb8Jf1", displayName: "Noor Haddad", galleryCount: 1, imageRecords: 5 }),
+    row({ uid: "Hy3Nc8Kt5RqXm2Vp7Ld9Ws4Zb6Jf", displayName: "Piet van Dijk", memberType: "studio", role: "Studio" }),
+  ];
+
+  const QUEUES: Queues = {
+    pendingDeletions: [THIN.deletion!],
+    staleUploads: [img({ imageId: "img_x", ownerUid: "9pR2xKvB6nWzQhLt3MdYcJs0Ef5g", status: "uploading", referenced: false })],
+    unreferencedLive: [img({ imageId: "img_orph", referenced: false })],
+    emailMismatches: [{ uid: "Tq7HsN4mXbZv2RpLd9KcWy6Ja1Ur", storedEmail: "m.brunner.old@example.org", authEmail: "marco.brunner@example.org" }],
+  };
+
+  document.addEventListener("astro:page-load", () => {
+    const bar = document.querySelector<HTMLElement>(".proto-bar");
+    const root = document.getElementById("admin");
+    const app = document.getElementById("admin-app") as HTMLElement | null;
+    const gate = document.getElementById("admin-gate");
+    if (!bar || !root || !app || !gate) return; // not the harness page
+
+    // The console's own script hides the shell when it finds no admin. Keep
+    // it open — asynchronously, because that decision arrives after a token
+    // round trip.
+    const show = () => { gate.hidden = true; app.hidden = false; };
+    show();
+    const keepOpen = setInterval(show, 200);
+    setTimeout(() => clearInterval(keepOpen), 5000);
+
+    const listHost = document.getElementById("admin-list")!;
+    const detail = document.getElementById("admin-detail")!;
+    const queues = document.getElementById("admin-queues")!;
+    const status = document.getElementById("admin-status")!;
+    const dialogs = makeDialogs(root);
+    const imageCache = new Map<string, AdminImage>();
+
+    const say = (msg: string, tone = "info") => {
+      status.textContent = msg;
+      status.className = `admin__status admin__status--${tone}`;
+    };
+    const busy = async <T,>(label: string, work: () => Promise<T>, done?: string) => {
+      say(`${label} (harness — nothing is sent)`);
+      const out = await work().catch(() => undefined);
+      if (done) say(done, "success");
+      return out;
+    };
+    const noop = async () => { say("Harness: mutations are not wired up.", "error"); };
+
+    const deps: DetailDeps = {
+      go: (hash) => { location.hash = hash; render(hash.startsWith("#image") ? "image" : "member"); },
+      say, busy, reload: noop, showMember: async () => render("member"), dialogs,
+      fileUrl: (p) => swatch([...p].reduce((a, c) => a + c.charCodeAt(0), 0) % 360),
+      memberName: (uid) => ROWS.find((r) => r.uid === uid)?.displayName,
+      deleteImageButton: (i) => {
+        const b = el("button", { type: "button", class: "btn-ghost btn-danger" }, "Delete image");
+        b.addEventListener("click", () => void dialogs.confirm({
+          title: "Delete an orphan record",
+          message: `Delete this ${i.kind}? Harness — nothing is deleted.`,
+          confirmLabel: "Delete image", danger: true,
+        }));
+        return b;
+      },
+      crumbs: (...extra) => el("div", { class: "crumbs" },
+        el("button", { type: "button", class: "btn-link" }, "← All members"), ...extra),
+      imageCache,
+    };
+
+    const memberList = createMemberList(listHost, {
+      go: (hash) => { location.hash = hash; render("member"); },
+      lookupOffer: (q) => el("p", {}, `Look "${q}" up as an id`),
+    });
+
+    type View = "list" | "member" | "thin" | "image" | "queues";
+    function render(view: View) {
+      listHost.replaceChildren();
+      listHost.hidden = true;
+      detail.replaceChildren();
+      queues.replaceChildren();
+      for (const b of bar!.querySelectorAll("button")) {
+        b.setAttribute("aria-pressed", String(b.dataset.view === view));
+      }
+      if (view === "list") {
+        listHost.hidden = false;
+        memberList.render(ROWS, ROWS, "");
+      } else if (view === "member") {
+        detail.replaceChildren(renderMemberDetail(RICH, deps));
+      } else if (view === "thin") {
+        detail.replaceChildren(renderMemberDetail(THIN, deps));
+      } else if (view === "image") {
+        detail.replaceChildren(renderImageDetail(RICH.images[1], deps));
+      } else {
+        queues.replaceChildren(renderQueues(QUEUES, {
+          go: deps.go, memberName: deps.memberName, deleteImageButton: deps.deleteImageButton,
+          crumbs: deps.crumbs, imageCache, refresh: async () => render("queues"),
+        }));
+      }
+    }
+
+    bar.addEventListener("click", (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-view]");
+      if (b) render(b.dataset.view as View);
+    });
+    render("list");
+  });
+</script>

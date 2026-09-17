@@ -255,6 +255,19 @@
   .admin :global(.admin-dialog .btn-ghost), .admin :global(.admin-dialog .btn-solid) { padding: 0.5rem 1rem; font-size: 0.85rem; cursor: pointer; }
 
   @media (--bp-mobile) {
+    /* The toolbar used to land as THREE stacked rows on a phone — the filter,
+       then the scope, then a lonely Reload — so a member record began a third
+       of the way down the screen. The filter keeps its own line; the scope and
+       the two buttons share the next one. */
+    .admin__bar { gap: 0.4rem; }
+    /* The SEARCH field alone takes the full line. `.admin__bar .input` would
+       also catch the scope select, which wears the same class — and at (0,2,0)
+       it outranks a bare `.admin__scope`, which is how the select ended up
+       claiming a row of its own and pushing both buttons onto a third. */
+    .admin__bar .input[type="search"] { flex: 1 1 100%; }
+    .admin__bar .admin__scope { flex: 1 1 6rem; min-width: 0; }
+    .admin__bar .btn-ghost { flex: 0 0 auto; padding-inline: 0.7rem; }
+
     .admin :global(dl) { grid-template-columns: 1fr; gap: 0 0; }
     .admin :global(dt) { margin-top: 0.4rem; font-size: 0.75rem; }
     .admin :global(.actions--danger) { margin-left: 0; }
@@ -408,6 +421,45 @@
     }
     window.addEventListener("hashchange", route, { signal });
 
+    // THE PAGE DOES NOT SCROLL — `.page-wrap` does (Layout.astro puts
+    // `overflow: hidden` on body). `window.scrollTo` is a no-op here, and so
+    // is reading `window.scrollY`; every scroll question in this file has to
+    // be asked of that element.
+    const scroller = (): HTMLElement =>
+      (document.querySelector(".page-wrap") as HTMLElement | null) ??
+      (document.scrollingElement as HTMLElement);
+
+    // Where the roster was when a record was opened from it. Twelve rows down
+    // a filtered list, opening a member and pressing Escape used to land the
+    // admin at whatever offset the record happened to leave behind — usually
+    // the bottom of a page they had never seen.
+    let listScroll = 0;
+    const leaveList = () => { if (!list.hidden) listScroll = scroller().scrollTop; };
+
+    /**
+     * Arriving at a record: start at the top of it, and hand the keyboard
+     * over. Focus was left on the row button that has just been hidden, so a
+     * keyboard or screen-reader user was returned to the top of the document
+     * and had to tab back in past the whole toolbar. The heading takes focus
+     * without scrolling — the scroll is the line above, and the two fighting
+     * is what makes a view jump.
+     */
+    function enterRecord() {
+      scroller().scrollTop = 0;
+      const h = detail.querySelector("h2") ?? queues.querySelector("h2");
+      if (!(h instanceof HTMLElement)) return;
+      h.tabIndex = -1;
+      h.focus({ preventScroll: true });
+    }
+
+    // The browser tab and the history entry say WHICH member is open. Every
+    // record looked identical in a tab strip and in the back menu, which is
+    // the one place a console reached entirely by hash needs to be legible.
+    const BASE_TITLE = document.title;
+    const setTitle = (what?: string) => {
+      document.title = what ? `${what} — ${BASE_TITLE}` : BASE_TITLE;
+    };
+
     function route() {
       const h = decodeURIComponent(location.hash.replace(/^#/, ""));
       const [kind, arg] = [h.slice(0, h.indexOf("/")) || h, h.slice(h.indexOf("/") + 1)];
@@ -419,6 +471,8 @@
       results.replaceChildren();
       queues.replaceChildren();
       list.hidden = false;
+      setTitle();
+      scroller().scrollTop = listScroll;
     }
     const onList = () => !/^#(uid|image|queues)\b/.test(location.hash);
 
@@ -507,7 +561,17 @@
 
     filter.addEventListener("input", () => { if (!list.hidden) renderList(); else { go("#list"); renderList(); } });
     scope.addEventListener("change", () => { go("#list"); renderList(); });
-    document.getElementById("admin-reload")!.addEventListener("click", () => void loadList());
+    // RELOAD REFRESHES WHAT IS ON SCREEN, not only the roster behind it.
+    // Standing on a member record and pressing it re-fetched the list nobody
+    // could see and left the record exactly as stale as it was, which reads
+    // as a dead button. Re-routing afterwards re-runs whichever view is
+    // current — and the image cache goes with it, because "reload" is the one
+    // gesture that plainly means stop showing me what you remembered.
+    document.getElementById("admin-reload")!.addEventListener("click", async () => {
+      imageCache.clear();
+      await loadList();
+      route();
+    });
 
     // ── One member ────────────────────────────────────────
     const detailDeps: DetailDeps = {
@@ -515,6 +579,7 @@
     };
 
     async function showMember(uid: string) {
+      leaveList();
       const res = await busy("Loading…", () => lookupMember({ query: uid }));
       if (!res) return;
       if (!res.graph) {
@@ -537,9 +602,14 @@
         for (const d of card.querySelectorAll<HTMLDetailsElement>("details.sec")) d.open = wasOpen.has(d.dataset.sec ?? "");
       }
       detail.replaceChildren(card);
+      setTitle(String(res.graph.publicProfile?.displayName ?? res.graph.user?.displayName ?? uid));
+      // Re-rendering after an action must not throw the admin back to the top
+      // of a record they were reading half way down.
+      if (!sameMember) enterRecord();
     }
 
     async function showImage(imageId: string) {
+      leaveList();
       let img = imageCache.get(imageId);
       if (!img) {
         // Arrived by pasted link rather than through a member: the lookup
@@ -554,6 +624,8 @@
       results.replaceChildren();
       queues.replaceChildren();
       detail.replaceChildren(renderImageDetail(img, detailDeps));
+      setTitle(`${img.kind} ${imageId}`);
+      enterRecord();
     }
 
     // ── Queues ────────────────────────────────────────────
@@ -571,6 +643,7 @@
     }
 
     async function showQueues() {
+      leaveList();
       results.replaceChildren();
       detail.replaceChildren();
       const q = await busy("Loading queues…", () => listQueues());
@@ -580,6 +653,8 @@
       queues.replaceChildren(renderQueues(q, {
         go, memberName, deleteImageButton, crumbs, imageCache, refresh: showQueues,
       }));
+      setTitle("Queues");
+      enterRecord();
     }
   });
 </script>
