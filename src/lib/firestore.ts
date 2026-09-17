@@ -19,6 +19,9 @@ export const LANGUAGES = ["de", "en", "fr", "it"] as const;
 
 export type LanguageCode = (typeof LANGUAGES)[number];
 
+/** Language for member correspondence; unrelated to the public profile's working languages. */
+export type CorrespondenceLanguage = "de" | "en";
+
 // Keep in sync with validMemberType() in firestore.rules.
 export const MEMBER_TYPES = ["creator", "scientist", "both", "organization"] as const;
 
@@ -64,6 +67,10 @@ export interface UserDoc {
   visualNeeds?: string[];
   phone: string;
   email: string;
+  /** Private, opt-in consent for community (non-essential) mail. Absent means no choice yet. */
+  receiveCommunityEmails?: boolean;
+  /** Private preference for community correspondence. Absent and invalid legacy values fall back to German in exports. */
+  correspondenceLanguage?: CorrespondenceLanguage;
   wantsToContribute?: boolean;
   onboardingComplete?: boolean;
   /**
@@ -80,7 +87,13 @@ export interface UserDoc {
 
 export type PublicProfileDoc = Omit<
   UserDoc,
-  "phone" | "email" | "status" | "deletionRequestedAt" | "purgeAfter"
+  "phone"
+  | "email"
+  | "receiveCommunityEmails"
+  | "correspondenceLanguage"
+  | "status"
+  | "deletionRequestedAt"
+  | "purgeAfter"
 > & { active?: boolean; moderationHidden?: boolean };
 
 export interface OnboardingRequestDoc {

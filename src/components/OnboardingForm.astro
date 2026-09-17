@@ -166,6 +166,21 @@ const prefix = lang === "de" ? "/de" : "";
         <p class="field-note">{t("profile.wantsToContribute.note")}</p>
       </div>
       <div class="field">
+        <label class="label" for="ob-correspondence-language">{t("profile.label.correspondenceLanguage")}</label>
+        <select id="ob-correspondence-language" class="input">
+          <option value="de">{t("profile.lang.de")}</option>
+          <option value="en">{t("profile.lang.en")}</option>
+        </select>
+        <p class="field-note">{t("profile.note.correspondenceLanguage")}</p>
+      </div>
+      <div class="field">
+        <label class="checkbox-label" for="ob-receive-community-emails">
+          <input id="ob-receive-community-emails" type="checkbox" />
+          <span>{t("profile.receiveCommunityEmails")}</span>
+        </label>
+        <p class="field-note">{t("profile.receiveCommunityEmails.note")}</p>
+      </div>
+      <div class="field">
         <OpenToSelector lang={lang} />
       </div>
       <div class="field">
@@ -1263,6 +1278,8 @@ const prefix = lang === "de" ? "/de" : "";
             platformRequest: getInputValue("ob-platform-request"),
             openTo: openToSelector?.value ?? [],
             wantsToContribute: (document.getElementById("ob-wants-to-contribute") as HTMLInputElement | null)?.checked ?? false,
+            correspondenceLanguage: (document.getElementById("ob-correspondence-language") as HTMLSelectElement | null)?.value === "en" ? "en" : "de",
+            receiveCommunityEmails: (document.getElementById("ob-receive-community-emails") as HTMLInputElement | null)?.checked ?? false,
             tags: tagSelector?.value ?? [],
             tagInput: tagSelector?.inputValue ?? "",
           })
@@ -1292,6 +1309,8 @@ const prefix = lang === "de" ? "/de" : "";
       platformRequest?: string;
       openTo?: string[];
       wantsToContribute?: boolean;
+      correspondenceLanguage?: "de" | "en";
+      receiveCommunityEmails?: boolean;
       tags?: string[];
       tagInput?: string;
     } | null {
@@ -1785,12 +1804,15 @@ const prefix = lang === "de" ? "/de" : "";
       const user = auth.currentUser;
       if (!user) return;
       setBtnState("ob-next-1", true, s["onboarding.nav.next"]);
+      setError("");
       try {
         const wantsToContributeEl = document.getElementById("ob-wants-to-contribute") as HTMLInputElement | null;
         await updateUser(user.uid, {
           openTo: openToSelector?.value ?? [],
           wantsToContribute: wantsToContributeEl?.checked ?? false,
-        }).catch(() => {});
+          correspondenceLanguage: (document.getElementById("ob-correspondence-language") as HTMLSelectElement | null)?.value === "en" ? "en" : "de",
+          receiveCommunityEmails: (document.getElementById("ob-receive-community-emails") as HTMLInputElement | null)?.checked ?? false,
+        });
         const platformRequest = getInputValue("ob-platform-request").trim();
         if (platformRequest) {
           await upsertOnboardingRequest(user.uid, {
@@ -1801,9 +1823,11 @@ const prefix = lang === "de" ? "/de" : "";
             console.warn("[onboarding] Request save skipped:", err);
           });
         }
+        setStep(2);
+      } catch {
+        setError(s["onboarding.error.save"]);
       } finally {
         setBtnState("ob-next-1", false, s["onboarding.nav.next"]);
-        setStep(2);
       }
     });
 
@@ -2077,6 +2101,10 @@ const prefix = lang === "de" ? "/de" : "";
 
         const wantsToContributeEl = document.getElementById("ob-wants-to-contribute") as HTMLInputElement | null;
         if (wantsToContributeEl) wantsToContributeEl.checked = data.wantsToContribute ?? false;
+        const correspondenceLanguageEl = document.getElementById("ob-correspondence-language") as HTMLSelectElement | null;
+        if (correspondenceLanguageEl) correspondenceLanguageEl.value = data.correspondenceLanguage === "en" ? "en" : "de";
+        const receiveCommunityEmailsEl = document.getElementById("ob-receive-community-emails") as HTMLInputElement | null;
+        if (receiveCommunityEmailsEl) receiveCommunityEmailsEl.checked = data.receiveCommunityEmails === true;
 
         if (memberTypeSelector) {
           memberTypeSelector.value = data.memberType ?? "";
@@ -2134,6 +2162,10 @@ const prefix = lang === "de" ? "/de" : "";
         if (wantsToContributeElRestore && restoreState.wantsToContribute != null) {
           wantsToContributeElRestore.checked = restoreState.wantsToContribute;
         }
+        const correspondenceLanguageElRestore = document.getElementById("ob-correspondence-language") as HTMLSelectElement | null;
+        if (correspondenceLanguageElRestore && restoreState.correspondenceLanguage) correspondenceLanguageElRestore.value = restoreState.correspondenceLanguage;
+        const receiveCommunityEmailsElRestore = document.getElementById("ob-receive-community-emails") as HTMLInputElement | null;
+        if (receiveCommunityEmailsElRestore && restoreState.receiveCommunityEmails != null) receiveCommunityEmailsElRestore.checked = restoreState.receiveCommunityEmails;
         if (tagSelector && Array.isArray(restoreState.tags)) {
           const current = tagSelector.value;
           const merged = [...current];
