@@ -1,0 +1,30 @@
+{
+  "score": 2,
+  "summary": "Private-user ownership and admin claims are protected, but shared-tag authorization, unpublished-data visibility, and moderation-state ownership need correction. Score applies to local Firestore rules, not the complete live infrastructure.",
+  "findings": [
+    {
+      "check": "Field-Level vs. Identity-Level Security",
+      "severity": "major",
+      "issue": "Any verified member can alter or deactivate another member's shared tag and forge creation attribution.",
+      "recommendation": "Bind creation attribution to auth.uid and restrict shared-tag updates to trusted moderators."
+    },
+    {
+      "check": "Storage Abuse and Type Safety",
+      "severity": "minor",
+      "issue": "Tag documents have no allowed-key restriction and some fields have no application size bounds; verified image record creation has no aggregate quota.",
+      "recommendation": "Validate all fields and enforce aggregate creation quotas through trusted allocation."
+    },
+    {
+      "check": "Business Logic vs. Rules",
+      "severity": "moderate",
+      "issue": "Inactive profiles and unpublished image records remain public under the rules; active:false is only a directory filter.",
+      "recommendation": "Separate private drafts from public projections or explicitly define visibility as directory inclusion only."
+    },
+    {
+      "check": "Authority Source",
+      "severity": "major",
+      "issue": "Owners can set active:true after an administrator hides their profile, undermining use of the same field for moderation.",
+      "recommendation": "Use server-owned moderation state distinct from member-controlled visibility."
+    }
+  ]
+}

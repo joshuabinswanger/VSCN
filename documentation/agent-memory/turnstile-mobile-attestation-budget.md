@@ -1,5 +1,16 @@
-> Mirrors the user's memory note `~/.claude/projects/D--SynoDrive-VSCN/memory/turnstile-mobile-attestation-budget.md`; keep both copies in sync.
+Mirrors `~/.claude/projects/D--SynoDrive-VSCN/memory/turnstile-mobile-attestation-budget.md` — any Claude instance can read this copy directly without access to the user's profile.
 
+---
+
+---
+name: turnstile-mobile-attestation-budget
+description: "2026-09-08 iOS Chrome \"server not reached\" = App Check attestation outliving Auth's 30 s clock (mobile Turnstile challenge 15-25 s); LIVE ON DEV as merge ccfd4db (one 24 s budget, page-load warm-up from the two forms, spare late token); VERIFIED on Josh's iPhone (Chrome iOS) on dev; prod release open"
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: 76b111b0-e3d0-4536-9403-067436b8cd57
+  modified: 2026-09-08T07:26:23.316Z
+---
 
 Josh reported on 2026-09-08 that login fails from Chrome on iOS with the "could not reach the login server" sentence, and asked for that sentence to stop naming Google (reCAPTCHA is gone from the login path since [[turnstile-app-check-provider]]).
 
@@ -16,3 +27,11 @@ Josh reported on 2026-09-08 that login fails from Chrome on iOS with the "could 
 **Why:** on prod the same path used to end in the network sentence, which sent members and IT departments after the wrong host.
 
 **How to apply:** the real proof is Josh logging in from his iPhone on the dev site after `npm run deploy:dev` ([[deploy-dev-needs-development-mode]]) — a real click on the checkbox, and whether Cloudflare even asks for one on iOS Chrome. If mobile challenges still take 15-25 s, the next lever is the widget config itself (drop `execute`/`interaction-only`, which the community thread says made it fast, at the cost of a visible widget). Trap of the day: `npx astro dev` from Bash/PowerShell is killed as "Dev server process exited before becoming ready"; run worktree servers via an entry in `D:\SynoDrive\VSCN\.claude\launch.json` (the PARENT folder's, not repo's — [[preview-tool-ignores-worktree-launch-json]]) with `npm --prefix <worktree> run dev`, and the worktree needs its own `node_modules` junction to `repo\node_modules` first.
+
+**Update 2026-09-08, later:** merged into dev as `ccfd4db` (detached-worktree merge, [[merging-into-dev-without-switching]]) and deployed to https://vscn-dev-f4b60.web.app; the live /login bundle carries the budget string and the new network sentence. Prod release still open; the iPhone login on dev is the check before it.
+
+**Verified 2026-09-08 by Josh:** login on the dev site from Chrome on iOS works with the fix ("works"). Prod release is the only open step — an ordinary PR dev → main. The fix worktree is gone; the repo mirror lives in dev at documentation/agent-memory/ and lacks this line.
+
+**SHIPPED TO PROD 2026-09-08 as `ef63f4d`** (PR #17). The iPhone verification was done against
+dev before the release; nobody has re-walked it on prod, though prod and dev now run the same
+attestation code.

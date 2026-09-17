@@ -34,7 +34,7 @@ not why the gap exists.** Note also the grain renders perfectly in the screensho
 dropped tiles, no blank patches — which kills the memory-pressure/compositing theory I had
 been building.
 
-## The fix, ON DEV as of 2026-09-09 (`828d035-dirty`, built 16:44 UTC)
+## The fix — SHIPPED TO PROD 2026-09-10 as `0a2a927` (PR #20; dev was `e8ce145`, PR #19)
 
 `100dvh` is a promise about the toolbars that iOS does not always keep, so the shell is
 sized from `window.visualViewport` instead — `body { height: var(--shell-h, 100dvh) }`, with
@@ -63,11 +63,24 @@ A fourth trap, same shape, in the watchdog's own first run: `last` must seed to 
 swallowed that measurement AND recorded it as synced, and no resize event follows a first
 layout — so `--shell-h` was never written at all.
 
-**UNVERIFIED ON THE DEVICE.** Everything above was proven in Chromium at an emulated 375x812.
-The bug itself is a WebKit failure at ~30% of cold opens, so confirming the fix is
-statistical: ~30 cold opens of https://vscn-dev-f4b60.web.app on the iPhone. The scroll-nudge
-half (debounced `window.scrollTo(0,0)` when `vv.offsetTop` is non-zero) is the least certain
-piece — it may or may not be able to unpark a stuck visual viewport.
+**Josh on the iPhone after the dev deploy: "seems to work, i cant reproduce the error."**
+Encouraging, not conclusive, and that is the standing caveat on this whole entry: the failure
+was ~30% of cold opens, so absence over one sitting is weak evidence. The debounced
+`window.scrollTo(0,0)` nudge is the least certain piece — whether it can unpark a stuck visual
+viewport on iOS was never actually exercised, because nothing ever got stuck once the sizing
+half was in. **If it recurs, the question that splits the outcomes is whether the band is white
+or paper:** white means the gap is genuinely back, paper means it is still opening and the
+`theme-color` is only hiding it.
+
+Released as a clean single-purpose PR — dev was exactly two commits ahead of main, four files,
+no rules and no functions, so the "rules go first" order did not apply. Verified live on
+vscn.ch at build `0a2a927`.
+
+Verified on the merged build `e8ce145` on the dev host: watchdog present in the built HTML,
+and a genuine cold load at 375x812 writes `--shell-h: 812px`. One measuring trap — the
+Browser pane's `resize_window` changes the emulated size WITHOUT firing a visualViewport
+`resize`, so `--shell-h` reads `(unset)` after one and the fix looks inert when it is not.
+Reload at the target size, or dispatch the event by hand.
 
 ## What WAS changed (stands on its own, is not the fix)
 

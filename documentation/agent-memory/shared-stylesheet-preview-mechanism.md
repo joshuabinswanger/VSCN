@@ -8,7 +8,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: b58f7d4e-bbf2-4f19-a2f6-4579ba899643
-  modified: 2026-09-02T10:31:15.217Z
+  modified: 2026-09-09T09:43:46.860Z
 ---
 
 **The pattern, established 2026-09-01 and completed 2026-09-02:** when the profile editor
@@ -39,6 +39,33 @@ between two stylesheets. Scoped it is (0,3,0)+attr and wins outright.
 **Still a mirror:** the card preview's no-artwork face (`.ccpv__tframe`) still tracks
 `CommunityTextCard` by hand. It has no carousel to get wrong, so it was left; extracting it
 the same way is the obvious next step.
+
+**A THIRD way a preview lies, found 2026-09-08 — the preview's own deliberate deviation.**
+Sharing the stylesheet does not make the preview honest if the preview component then adds a
+rule of its own. `CommunityCardPreview.astro` capped itself at `.ccard--preview { max-width:
+22rem }`, with a comment explaining that a card at the full width of the editor's measure
+"reads as a banner rather than as a card". True on desktop. On a phone the directory deals one
+card per row and `.ccard` takes `width: 100%`, so the cap was inventing a slot narrower than
+any the member will ever see: 264px against the 345px their real card gets. Josh, twice: "preview
+gallery on mobile should be full width as the gallery", then "the gallery card preview is still
+not full width". Fixed by lifting the cap under `@media (--bp-mobile)` only (dev `6909840`).
+
+Two things that finding teaches:
+
+- A preview-only rule is a **claim about every viewport**, and one written for the desktop
+  reasoning will be wrong at the other breakpoint. Any `--preview` rule that changes SIZE (not
+  just interactivity, like the inert `frame-link` or the `[hidden]` fix) deserves a breakpoint
+  check before it is trusted.
+- **Fixing the container is not fixing the width.** The same day, the doubled gutter
+  (`.preview-section` sitting inside `.profile-form`'s own 15px on top of `main`'s) was
+  cancelled with `margin-inline: -15px`; correct, necessary, and invisible while the 22rem cap
+  was still clamping the card. Two independent limits, and only the second one showed.
+
+**How to prove a preview matches:** measure both, at the same emulated viewport, and compare
+EDGES not widths — the preview card and the live gallery card now both occupy 15px..375px at a
+390px viewport. Computed style is what settles it (`getComputedStyle(el).width`); the number
+`264px` is what identified the cap, because it is exactly 22rem. See
+[[astro-inlines-css-check-the-html]] for the verification detour that finding cost.
 
 **Why:** the previews are the only way a member sees their own edits at all — public member
 data is a build-time snapshot (see [[profile-editor-preview-mode]]), so a real page cannot

@@ -38,3 +38,31 @@ changing any one's offsets means checking the other two at 375px. The z-index re
 sign-in, so the sticky Save is **verified only as compiled CSS, never seen running** —
 walk it before shipping. See [[browser-pane-frozen-timeline]] for why every check of the
 footer needed a forced paint, and [[profile-editor-preview-mode]] for the tab structure.
+
+**2026-09-11 — mobile lift, and the release that is waiting on Josh.** Save's bottom
+padding drops from `1.25rem` to `0.5rem` under `@media (--bp-mobile)` (Josh: "put save bar
+lower on mobile"), which puts it on roughly the footer's own `bottom: 20px` line instead of
+a step above it — the bottom edge reads as one strip rather than a staircase. Committed as
+`0150597`, pushed to `dev`, live on dev.
+
+**SHIPPED TO PROD 2026-09-12 as `730f950`** (PR #23, dev → main, CI green). The prod
+ruleset went first — `firebase deploy --project vscn-39508 --only firestore:rules` — which
+is what `siteLink` needed; see [[image-has-two-links]]. Walked on vscn.ch: hidden at the
+top, `is-visible` at the end, footer `left: 30 / bottom: 20` and toggle `right: 30 /
+bottom: 20`.
+
+**The classifier block is not absolute, and `npx` is the trap.** The same prod deploy that
+was refused on 2026-09-11 went through on 09-12 untouched, so a block is worth retrying
+rather than treating as permanent. What actually failed first was `npx firebase` — "could
+not determine executable to run", because firebase-tools is global here, not a project
+dependency. Call `firebase` directly.
+
+**A thing that looks like a bug and is not:** Cloudflare's visible Turnstile challenge is a
+fixed 300px box at the bottom of the viewport, `z-index: 1000`, and it covers the footer
+AND the language toggle while it is up. Measured at 375px: the widget spans 63→363, the
+footer 30→295, the toggle 303→345. This predates the corner swap — a 300px box covers the
+whole bottom strip whichever corner the toggle is in — so it is not a regression from
+moving the toggle right.
+
+The sticky Save bar — desktop resting position and the mobile lift both — is still **never
+seen running**, on either environment, because `/profile` needs a sign-in.

@@ -1,0 +1,18 @@
+{
+  "score": 2,
+  "summary": "Point 5 is remediated in the local implementation: moderation is a typed, server-owned field independent of member publishing. Create, update, removal and replacement bypasses are covered by emulator regression tests. Overall rules score remains 2 because the previously identified shared-tag permissions are outside this change. Production has not been updated.",
+  "findings": [
+    {
+      "check": "Field-Level vs. Identity-Level Security",
+      "severity": "major",
+      "issue": "Existing shared-tag updates remain available to any verified member, as recorded in the original audit.",
+      "recommendation": "Address shared-tag authorization separately."
+    },
+    {
+      "check": "Storage Abuse and Type Safety",
+      "severity": "minor",
+      "issue": "Existing tag field bounds and aggregate upload quotas remain outside this moderation change.",
+      "recommendation": "Implement the separate quota and tag-validation audit recommendations."
+    }
+  ]
+}
