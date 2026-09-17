@@ -32,6 +32,19 @@ const rows = snap.docs
       email: data.email ?? "",
       memberType: data.memberType ?? "",
       role: data.role ?? "",
+      // This remains a volunteer-interest report. Preference is shown rather
+      // than filtering people out, so an administrator can distinguish a
+      // missing legacy choice from an explicit refusal before contacting them.
+      communityEmailPreference:
+        data.receiveCommunityEmails === true
+          ? "opted-in"
+          : data.receiveCommunityEmails === false
+            ? "opted-out"
+            : "unknown",
+      correspondenceLanguage:
+        data.correspondenceLanguage === "en" || data.correspondenceLanguage === "de"
+          ? data.correspondenceLanguage
+          : "de",
     };
   });
 
