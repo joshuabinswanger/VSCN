@@ -38,15 +38,67 @@ export interface DetailDeps extends Reporter {
 const goImage = (deps: DetailDeps) => (id: string) => deps.go(`#image/${encodeURIComponent(id)}`);
 const goMember = (deps: DetailDeps, uid: string) => deps.go(`#uid/${encodeURIComponent(uid)}`);
 
-/** A collapsible section. `badge` sits in the summary next to the title (a count, a warning). */
+/**
+ * WHICH SECTIONS ARE OPEN WHEN A MEMBER FIRST APPEARS.
+ *
+ * The console shipped with Public profile and Images shut, and an admin who
+ * opened a member to check their website saw neither the website nor the
+ * pictures — the record looked emptier than the one it was describing. The
+ * sections that hold what the MEMBER put there now open; the ones that hold
+ * plumbing (onboarding, deletion, audit, raw JSON) stay shut until asked for.
+ */
+const OPEN_BY_DEFAULT = new Set(["overview", "identity", "public", "images"]);
+
+const SECTION_STORAGE_KEY = "vscn-admin-open-sections";
+
+/**
+ * …and the admin's own answer outranks that default, on every member they
+ * look at next. Someone auditing raw documents all afternoon should not have
+ * to open the same fold on every record. localStorage can throw — private
+ * mode, blocked storage — so a failure here just means the defaults apply.
+ */
+function loadOpenSections(): Set<string> | null {
+  try {
+    const raw = localStorage.getItem(SECTION_STORAGE_KEY);
+    if (!raw) return null;
+    const arr = JSON.parse(raw) as unknown;
+    return Array.isArray(arr) ? new Set(arr.filter((x): x is string => typeof x === "string")) : null;
+  } catch {
+    return null;
+  }
+}
+
+function rememberOpenSection(key: string, open: boolean): void {
+  try {
+    const set = loadOpenSections() ?? new Set(OPEN_BY_DEFAULT);
+    if (open) set.add(key);
+    else set.delete(key);
+    localStorage.setItem(SECTION_STORAGE_KEY, JSON.stringify([...set]));
+  } catch {
+    /* not persisted; this member's tree still shows what was clicked */
+  }
+}
+
+/**
+ * A collapsible section. `badge` sits in the summary next to the title (a
+ * count, a warning).
+ *
+ * `force` is for a section with something to SAY — two documents that
+ * disagree, a purge that is running. That always opens, whatever the admin
+ * last chose, because a collapsed warning is no warning.
+ */
 function section(
-  key: string, title: string, opts: { open?: boolean; badge?: Child; danger?: boolean } = {}, ...body: Child[]
+  key: string, title: string,
+  opts: { force?: boolean; badge?: Child; danger?: boolean } = {},
+  ...body: Child[]
 ): HTMLDetailsElement {
   const sec = el("details", { class: `sec${opts.danger ? " sec--danger" : ""}`, "data-sec": key },
     el("summary", { class: "sec__sum" }, el("h2", { class: "sec__title" }, title), opts.badge),
     el("div", { class: "sec__body" }, ...body),
   );
-  if (opts.open) sec.open = true;
+  const remembered = loadOpenSections();
+  sec.open = opts.force === true || (remembered ? remembered.has(key) : OPEN_BY_DEFAULT.has(key));
+  sec.addEventListener("toggle", () => rememberOpenSection(key, sec.open));
   return sec;
 }
 
@@ -186,7 +238,7 @@ export function renderMemberDetail(g: MemberGraph, deps: DetailDeps): HTMLElemen
         el("a", { href: `/members/${s.slug}`, target: "_blank", rel: "noreferrer" }, `${s.slug}${s.current ? "" : " (retired)"}`),
       ] as Child[]))
     : el("span", { class: "muted" }, "—");
-  const overview = section("overview", "Overview", { open: true },
+  const overview = section("overview", "Overview", {},
     el("div", { class: "overview" },
       avatarSrc ? el("img", { class: "avatar", src: avatarSrc, alt: "", loading: "lazy" }) : el("div", { class: "avatar avatar--none" }),
       el("div", { class: "overview__main" },
@@ -205,7 +257,7 @@ export function renderMemberDetail(g: MemberGraph, deps: DetailDeps): HTMLElemen
 
   // ── 2. Identity & account ───────────────────────────────
   const a = g.auth;
-  const identity = section("identity", "Identity & account", { open: true },
+  const identity = section("identity", "Identity & account", {},
     el("h3", {}, "Firebase Auth"),
     a
       ? dl([
@@ -250,7 +302,7 @@ export function renderMemberDetail(g: MemberGraph, deps: DetailDeps): HTMLElemen
   const usrCmp = pub && usr ? { differing: cmp.differing, other: pub, side: "private" as const } : undefined;
   const nDiff = cmp.differing.size;
   const privateSec = section("private", "Private profile (users/)", {
-    open: nDiff > 0,
+    force: nDiff > 0,
     badge: nDiff
       ? el("span", { class: "tag tag--diff" }, `${nDiff} field${nDiff === 1 ? "" : "s"} disagree${nDiff === 1 ? "s" : ""} with the public profile`)
       : pub && usr ? el("span", { class: "tag tag--yes" }, "matches public profile") : null,
@@ -309,7 +361,7 @@ export function renderMemberDetail(g: MemberGraph, deps: DetailDeps): HTMLElemen
   // ── 7. Deletion job ─────────────────────────────────────
   const d = g.deletion;
   const deletionSec = section("deletion", "Deletion job", {
-    open: pending,
+    force: pending,
     badge: d ? el("span", { class: `tag${pending ? " tag--warn" : ""}` }, pending ? "in progress" : "completed") : el("span", { class: "muted small" }, "none"),
   },
     d

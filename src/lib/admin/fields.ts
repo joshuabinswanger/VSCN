@@ -18,17 +18,25 @@ export interface FieldSpec {
   kind: FieldKind;
 }
 
-/** Fields `toPublicProfile()` copies — present in BOTH documents and compared. */
+/**
+ * Fields `toPublicProfile()` copies — present in BOTH documents and compared.
+ *
+ * A label is the word the MEMBER'S OWN FORM uses, not only the document key.
+ * `portfolio` is "Portfolio / Website" on /profile, and an admin who went
+ * looking for a member's website in this console found no such row — the
+ * field was there under a name only the schema uses. The document key is
+ * still one hover away: docRows() puts it in the `dt`'s title.
+ */
 export const SHARED_FIELDS: FieldSpec[] = [
   { key: "displayName", label: "display name", kind: "text" },
   { key: "memberType", label: "member type", kind: "text" },
   { key: "role", label: "role", kind: "text" },
   { key: "affiliation", label: "affiliation", kind: "text" },
   { key: "location", label: "location", kind: "text" },
-  { key: "bio", label: "bio", kind: "text" },
-  { key: "portfolio", label: "portfolio", kind: "url" },
+  { key: "bio", label: "bio (about you)", kind: "text" },
+  { key: "portfolio", label: "portfolio / website", kind: "url" },
   { key: "socialMedia", label: "social media", kind: "url" },
-  { key: "languages", label: "languages", kind: "list" },
+  { key: "languages", label: "working languages", kind: "list" },
   { key: "openTo", label: "open to", kind: "list" },
   { key: "primaryAudiences", label: "primary audiences", kind: "list" },
   { key: "visualNeeds", label: "visual needs", kind: "list" },
