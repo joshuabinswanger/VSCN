@@ -1,4 +1,4 @@
-<!-- Mirrors the ~/.claude memory file image-has-two-links.md; keep the two in sync. -->
+> Mirror of the `~/.claude/projects/D--SynoDrive-VSCN/memory/image-has-two-links.md` memory file, kept in the repo so it travels with the code.
 
 ---
 name: image-has-two-links
@@ -30,9 +30,10 @@ other option and loses exactly that — undifferentiated hosts, no roles for the
 data.
 
 **How to apply:**
-- The dev ruleset with `siteLink` was released BEFORE the commit; **prod has not got it**.
-  Deploying this code to prod without `firebase deploy -P prod --only firestore:rules` first
-  makes every gallery save fail silently — see [[firestore-rules-hasonly-gotcha]].
+- **SHIPPED TO PROD 2026-09-12 as `730f950`** (PR #23), and the prod ruleset went FIRST —
+  `firebase deploy --project vscn-39508 --only firestore:rules`. That order was the whole
+  risk: without it every gallery save carrying a `siteLink` fails silently, see
+  [[firestore-rules-hasonly-gotcha]]. Both environments now hold the `siteLink` ruleset.
 - No migration and no legacy array fallback for `siteLink`: it was born on the record, unlike
   `link`, which `orderedGalleryItems()` still reads from the legacy element.
 - If a piece ever needs several publication links, make `link` repeatable — `siteLink` stays
