@@ -46,6 +46,22 @@ export interface Queues {
   emailMismatches: { uid: string; storedEmail: string | null; authEmail: string }[];
 }
 
+/**
+ * One row of `adminActions` — see adminOps.ts. `detail` is whatever the call
+ * site that logged it chose to attach (deleteImage's storagePath, setMemberEmail's
+ * before/after, purgeAccount's purgeAfter, ...), so its shape varies by `action`.
+ */
+export interface AdminAction {
+  id: string;
+  actorUid: string;
+  actorName: string;
+  action: string;
+  targetUid: string;
+  targetName: string;
+  at: string;
+  detail: Record<string, unknown>;
+}
+
 const call = <Req, Res>(name: string) => async (data: Req): Promise<Res> =>
   (await httpsCallable<Req, Res>(functions, name)(data)).data;
 
@@ -72,6 +88,7 @@ export interface MemberRow {
 }
 
 export const lookupMember = call<{ query: string }, LookupResult>("adminLookupMember");
+export const listActions = call<{ targetUid?: string; limit?: number }, { actions: AdminAction[] }>("adminListActions");
 export const listMembers = call<void, { members: MemberRow[] }>("adminListMembers");
 export const listQueues = call<void, Queues>("adminListQueues");
 export const purgeAccount = call<{ uid: string; immediate?: boolean }, { ok: true; purgeAfter: string }>("adminPurgeAccount");

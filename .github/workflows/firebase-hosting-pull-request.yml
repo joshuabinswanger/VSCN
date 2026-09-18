@@ -159,9 +159,25 @@ jobs:
           project_id: vscn-dev-f4b60
           workload_identity_provider: projects/640269226461/locations/global/workloadIdentityPools/vscn-pr-preview/providers/github-pr
           service_account: vscn-pr-preview@vscn-dev-f4b60.iam.gserviceaccount.com
-      - run: >-
-          npx -y firebase-tools@latest hosting:channel:delete "pr-${{ github.event.number }}"
-          --site vscn-dev-f4b60 --project vscn-dev-f4b60
-          --force --non-interactive
+      # A PR merged before its preview finished building has no channel to
+      # delete: the "opened" run is cancelled by the "closed" one, so the
+      # channel was never created, and Firebase answers 404. That is the state
+      # this job exists to reach, so only that answer is forgiven; any other
+      # failure still fails the job. Release PRs from dev are merged within
+      # seconds of opening, which is how #41 turned this job red (2026-09-17).
+      - shell: bash
+        run: |
+          set -o pipefail
+          channel="pr-${{ github.event.number }}"
+          if npx -y firebase-tools@latest hosting:channel:delete "$channel" \
+               --site vscn-dev-f4b60 --project vscn-dev-f4b60 \
+               --force --non-interactive 2>&1 | tee channel-delete.log; then
+            exit 0
+          fi
+          if grep -q "HTTP Error: 404" channel-delete.log; then
+            echo "No preview channel $channel to delete; the preview never built."
+            exit 0
+          fi
+          exit 1
       - if: always()
-        run: rm -f "${{ steps.preview-auth.outputs.credentials_file_path }}"
+        run: rm -f "${{ steps.preview-auth.outputs.credentials_file_path }}" channel-delete.log
