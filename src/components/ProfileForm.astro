@@ -565,6 +565,23 @@ const t = useTranslations(lang);
     </div>
 
     <div class="field">
+      <label class="label" for="correspondence-language">{t("profile.label.correspondenceLanguage")}</label>
+      <select id="correspondence-language" class="input">
+        <option value="de">{t("profile.lang.de")}</option>
+        <option value="en">{t("profile.lang.en")}</option>
+      </select>
+      <p class="field-note">{t("profile.note.correspondenceLanguage")}</p>
+    </div>
+
+    <div class="field">
+      <label class="checkbox-label" for="receive-community-emails">
+        <input id="receive-community-emails" type="checkbox" />
+        <span>{t("profile.receiveCommunityEmails")}</span>
+      </label>
+      <p id="receive-community-emails-note" class="field-note">{t("profile.receiveCommunityEmails.note")}</p>
+    </div>
+
+    <div class="field">
       <label class="label" for="phone">{t("profile.label.phone")}</label>
       <input
         id="phone"
@@ -1927,6 +1944,14 @@ const t = useTranslations(lang);
     const wantsToContributeInput = document.getElementById(
       "wants-to-contribute"
     ) as HTMLInputElement;
+    const correspondenceLanguageInput = document.getElementById("correspondence-language") as HTMLSelectElement;
+    const receiveCommunityEmailsInput = document.getElementById("receive-community-emails") as HTMLInputElement;
+    const receiveCommunityEmailsNote = document.getElementById("receive-community-emails-note")!;
+    let communityEmailPreferenceKnown = false;
+    let communityEmailPreferenceChanged = false;
+    receiveCommunityEmailsInput.addEventListener("change", () => {
+      communityEmailPreferenceChanged = true;
+    });
     const bioInput = document.getElementById("bio") as HTMLTextAreaElement;
     const portfolioInput = document.getElementById("portfolio") as HTMLInputElement;
     const socialEditor = document.getElementById("social-editor")!;
@@ -3081,6 +3106,13 @@ const t = useTranslations(lang);
       renderGallery();
       phoneInput.value = data.phone ?? "";
       wantsToContributeInput.checked = data.wantsToContribute ?? false;
+      correspondenceLanguageInput.value = data.correspondenceLanguage === "en" ? "en" : "de";
+      communityEmailPreferenceKnown = typeof data.receiveCommunityEmails === "boolean";
+      communityEmailPreferenceChanged = false;
+      receiveCommunityEmailsInput.checked = data.receiveCommunityEmails === true;
+      receiveCommunityEmailsNote.textContent = communityEmailPreferenceKnown
+        ? s["profile.receiveCommunityEmails.note"]
+        : s["profile.receiveCommunityEmails.unknown"];
       activeInput.checked = await getPublicProfileActive(user.uid);
       syncHiddenBanner(user.emailVerified, activeInput.checked);
       showPreview(data.photoURL ?? user.photoURL ?? "");
@@ -3172,6 +3204,8 @@ const t = useTranslations(lang);
       setSaving(true);
 
       try {
+        const shouldSaveCommunityEmailPreference =
+          communityEmailPreferenceKnown || communityEmailPreferenceChanged;
         // THE RECORDS FIRST, AND HARD (2026-09-07). Until today this ran after
         // the profile write as best-effort — a failed record write was a
         // console.warn under a green "Changes saved", tolerable only because
@@ -3216,6 +3250,10 @@ const t = useTranslations(lang);
             // onto the records ABOVE, before this call — see saveGalleryRecords.
             gallery: galleryIds(gallery),
             wantsToContribute: wantsToContributeInput.checked,
+            correspondenceLanguage: correspondenceLanguageInput.value === "en" ? "en" : "de",
+            ...(shouldSaveCommunityEmailPreference
+              ? { receiveCommunityEmails: receiveCommunityEmailsInput.checked }
+              : {}),
             phone: phoneInput.value.trim(),
             resizedAvatarBlob,
             previousPhotoImageId: currentPhotoImageId,
@@ -3228,6 +3266,11 @@ const t = useTranslations(lang);
         );
 
         if (saved.photoImageId) currentPhotoImageId = saved.photoImageId;
+        if (shouldSaveCommunityEmailPreference) {
+          communityEmailPreferenceKnown = true;
+          communityEmailPreferenceChanged = false;
+          receiveCommunityEmailsNote.textContent = s["profile.receiveCommunityEmails.note"];
+        }
 
         if (resizedAvatarBlob) {
           uploadStatus.textContent = s["profile.upload.complete"];
