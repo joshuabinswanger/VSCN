@@ -90,6 +90,11 @@
      things. Scoped here, so the public pages keep theirs. Every colour is a
      token or a mix of two. */
   .admin { position: relative; display: grid; gap: 0.75rem; font-size: 0.9rem; line-height: 1.45; --tint: color-mix(in srgb, var(--color-dark) 4%, white); --tint-2: color-mix(in srgb, var(--color-dark) 8%, white); }
+  /* `hidden` must WIN. The UA's `[hidden] { display: none }` loses to any
+     author `display`, and half the console's small parts set one (the pill,
+     the badge, the link-button) — which is how a queue count of 0 stayed on
+     the Queues tab after the script had hidden it. */
+  .admin :global([hidden]) { display: none !important; }
   .admin__gate { color: var(--color-muted); }
 
   /* ── Loading, made visible ─────────────────────────────
