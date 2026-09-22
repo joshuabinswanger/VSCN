@@ -7,6 +7,18 @@ fills in the action. Newest first. How to read a verdict: [release-verification.
 Green entries are one line. The value is the history: slow drift shows up here as a pattern
 rather than as a member's email.
 
+## 2026-09-22 · f21a60f · prod · the release
+Machine: GREEN, exit 0. Six passing, two warnings, both of them the upload outage still inside the lookback:
+         upload pairing 24 authorised / 1 completed since the 2026-09-18 release, and 23 expired permits with
+         23 uploading records left from the morning retries. Neither is new; the pairing clears when the next
+         release moves the window, the residue when sweepImages next passes its six-hour cutoff.
+         Both rulesets were published at 20:10 by the merge workflow itself — prod rules deployed by CI for
+         the first time, ahead of Hosting, and the acknowledgement step closed the release normally.
+         Prod functions were deployed by hand beforehand (30 of 30 current) and the run.invoker grant on
+         acknowledgeSitePublication SURVIVED that deploy, where the same deploy erased it on dev this
+         afternoon — the publication fix doing its job on prod.
+Walk:    pending — the verification member does not exist yet
+Action:  none outstanding on the machine half. PR #60 closed as superseded: this release carried the same fix.
 ## 2026-09-22 · d7e89c2 · dev · CI deploys the security rules now, and it took three tries to get there
 Machine: GREEN — all eight probes, exit 0. Both rulesets were released at 19:58:12 by the staging workflow
          itself, the first automated rules deploy this project has had; probe 4 now covers seven grants.
