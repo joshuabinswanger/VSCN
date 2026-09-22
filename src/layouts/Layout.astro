@@ -69,10 +69,20 @@ const BRAND_LETTERS = [
   { head: "C", tail: "ommunication" },
   { head: "N", tail: "etwork" },
 ];
-const BRAND_REPEATS = 4;
-const BRAND_RESTING_TEXT = BRAND_LETTERS.map((l) => l.head)
-  .join("")
-  .repeat(BRAND_REPEATS);
+// HOW MANY TIMES THE TITLE SAYS VSCN, AND WHY THE TWO NUMBERS DIFFER.
+// The title is fitted to --shell-max (see fitBrandName), so its WIDTH is fixed
+// and the repeat count is the only thing that decides its HEIGHT: more letters
+// across the same measure means a smaller font, which means a shorter header.
+// That is the whole lever. On a MacBook Pro 16 the four-repeat line stood 70px
+// tall and read as oversized (2026-09-22, Josh: "the header should be smaller
+// ... can we make on desktop to have more added vscnvscn so it is longer and
+// less high"), so desktop gets six and the line drops to roughly 49px while
+// still reaching both edges of the measure — the edge-to-edge fit is the
+// design rule here and six repeats keeps it rather than breaking it.
+// Mobile stays at four: there the measure is the phone's width, so six repeats
+// would shrink the title past the point where it reads as a title at all.
+const BRAND_REPEATS_MOBILE = 4;
+const BRAND_REPEATS_DESKTOP = 6;
 // One slot per glyph position of the resting title, then a run of spill slots.
 // Hovering a slot writes its tail OVER the slots that follow it, so the line
 // rewrites itself in place instead of growing and shoving its neighbours
@@ -81,9 +91,19 @@ const BRAND_RESTING_TEXT = BRAND_LETTERS.map((l) => l.head)
 // resting glyph is empty (head ""), which measures zero wide until a word
 // reaches them.
 const BRAND_SPILL_COUNT = Math.max(...BRAND_LETTERS.map((l) => l.tail.length));
+// The markup always carries the DESKTOP pool; the repeats past the mobile
+// count are flagged `wide` and hidden by a media query below. Rendering the
+// larger set and hiding part of it — rather than rendering per breakpoint —
+// keeps this DOM a single server-rendered thing, which matters because
+// .brand-ticker is transition:persist and survives every navigation.
+// The spill slots stay AFTER the hidden ones so they are reachable at both
+// sizes; the JS walks the visible list, so a word overwritten near the right
+// end never disappears into a hidden slot.
 const BRAND_SLOTS = [
-  ...Array.from({ length: BRAND_REPEATS }, () => BRAND_LETTERS).flat(),
-  ...Array.from({ length: BRAND_SPILL_COUNT }, () => ({ head: "", tail: "" })),
+  ...Array.from({ length: BRAND_REPEATS_DESKTOP }, (_, repeat) =>
+    BRAND_LETTERS.map((letter) => ({ ...letter, wide: repeat >= BRAND_REPEATS_MOBILE })),
+  ).flat(),
+  ...Array.from({ length: BRAND_SPILL_COUNT }, () => ({ head: "", tail: "", wide: false })),
 ];
 ---
 
@@ -238,15 +258,13 @@ const BRAND_SLOTS = [
         class="brand-link"
         aria-label="Visual Science Communication Network"
       >
-        <span
-          class="brand-name"
-          id="brand-name"
-          data-resting-text={BRAND_RESTING_TEXT}
-          aria-hidden="true"
-        >
+        <span class="brand-name" id="brand-name" aria-hidden="true">
           {
-            BRAND_SLOTS.map(({ head, tail }) => (
-              <span class="brand-slot" data-brand-tail={tail}>
+            BRAND_SLOTS.map(({ head, tail, wide }) => (
+              <span
+                class:list={["brand-slot", { "brand-slot--wide": wide }]}
+                data-brand-tail={tail}
+              >
                 <span class="brand-slot__rest">{head}</span>
                 <span class="brand-slot__over" />
               </span>
@@ -300,22 +318,40 @@ const BRAND_SLOTS = [
     flex-shrink: 0;
     box-sizing: border-box;
     padding: 0 15px;
+    /* THE TITLE IS A BANNER, NOT A FIXTURE — ON EVERY SIZE. It rides up out of
+       the way as .page-wrap scrolls and hands that height to the content,
+       leaving the navbar pinned at the top edge. --brand-hide is written by the
+       scroll handler in the script below. margin-top does the whole job in one
+       property: the ticker moves up by exactly the footprint it gives up, so
+       .page-wrap (flex: 1) grows into the space with no gap in between.
+       This was mobile-only until 2026-09-22, on the reasoning that only a phone
+       could not spare the height. Desktop was given it too when the laptop
+       screen turned out to be the same argument at a different scale (Josh,
+       MacBook Pro 16: "make the header flip away on scrolling also on
+       desktop") — a 16" panel is wide, not tall. */
+    margin-top: calc(-1 * var(--brand-hide, 0px));
   }
 
-  /* MOBILE: THE TITLE IS A BANNER, NOT A FIXTURE. On a phone the giant VSCN
-     line costs a fifth of the viewport, so it rides up out of the way as
-     .page-wrap scrolls and hands that height to the content, leaving the
-     navbar pinned at the top edge. --brand-hide is written by the scroll
-     handler in the script below. margin-top does the whole job in one
-     property: the ticker moves up by exactly the footprint it gives up, so
-     .page-wrap (flex: 1) grows into the space with no gap in between. */
   @media (--bp-mobile) {
     .brand-ticker {
-      margin-top: calc(-1 * var(--brand-hide, 0px));
       /* Flush to the screen edges, like the navbar under it — on a phone the
          measure's 15px content edge only makes the title smaller. fitBrandName
          reads the padding off the element, so the fit follows on its own. */
       padding-inline: 0;
+    }
+
+    /* The repeats past BRAND_REPEATS_MOBILE exist in the markup at every size
+       and are shown only where the measure is wide enough to carry them. This
+       has to be `display: none` rather than zero width: the JS reads the
+       visible slots back out of the DOM to build both the string it fits and
+       the line it writes words along.
+       BOTH CLASSES ARE NAMED ON PURPOSE. `.brand-slot` sets display:inline-grid
+       and is declared further down this file, so a single-class rule here ties
+       with it on specificity and LOSES on source order — which showed up as a
+       phone rendering all six repeats at 21px while desktop was correct. The
+       0,2,0 selector settles it wherever either rule ends up sitting. */
+    .brand-slot.brand-slot--wide {
+      display: none;
     }
   }
 
@@ -477,6 +513,27 @@ const BRAND_SLOTS = [
 
   let brandResizeObserver: ResizeObserver | null = null;
 
+  // The slots the current breakpoint actually shows. `.brand-slot--wide` is
+  // display:none on mobile (see the style block above), so the title is six
+  // VSCNs wide on desktop and four on a phone — and everything downstream, the
+  // fit and the word-overwrite walk alike, has to count the visible ones only.
+  // offsetParent is the read that asks the layout rather than re-deriving the
+  // media query: a slot inside a display:none rule has none.
+  function visibleBrandSlots(brandName: HTMLElement): HTMLElement[] {
+    return Array.from(brandName.querySelectorAll<HTMLElement>(".brand-slot")).filter(
+      (slot) => slot.offsetParent !== null,
+    );
+  }
+
+  // What the title reads when no word is written over it, at THIS breakpoint.
+  // Read back off the DOM rather than handed down from the frontmatter, which
+  // could only ever state one of the two lengths.
+  function restingBrandText(brandName: HTMLElement): string {
+    return visibleBrandSlots(brandName)
+      .map((slot) => slot.querySelector<HTMLElement>(".brand-slot__rest")?.textContent ?? "")
+      .join("");
+  }
+
   function fitBrandName() {
     const el = document.getElementById("brand-name") as HTMLElement | null;
     if (!el) return;
@@ -491,7 +548,7 @@ const BRAND_SLOTS = [
     // Measure with a text-only mirror rather than the live .brand-name, whose
     // width depends on the pixel widths JS has written onto every glyph —
     // measuring it would feed the fit its own previous output.
-    const restingText = el.dataset.restingText ?? "";
+    const restingText = restingBrandText(el);
     if (!restingText) return;
     const mirror = document.createElement("span");
     mirror.textContent = restingText;
@@ -669,9 +726,15 @@ const BRAND_SLOTS = [
     if (brandName.dataset.hoverAttached === "1") return;
     brandName.dataset.hoverAttached = "1";
 
-    brandSlots = Array.from(brandName.querySelectorAll<HTMLElement>(".brand-slot"));
-    brandSlots.forEach((slot, index) => {
-      slot.addEventListener("pointerenter", () => requestBrandOverwrite(index));
+    brandSlots = visibleBrandSlots(brandName);
+    // Bound to every slot including the hidden ones, because a slot hidden now
+    // is shown after a resize and these listeners are attached exactly once
+    // (the ticker is transition:persist). The index is looked up at event time
+    // against the CURRENT visible list, so it survives the breakpoint moving
+    // under it; a slot that is not on that list resolves to -1, which
+    // requestBrandOverwrite already treats as "no tail here, do nothing".
+    Array.from(brandName.querySelectorAll<HTMLElement>(".brand-slot")).forEach((slot) => {
+      slot.addEventListener("pointerenter", () => requestBrandOverwrite(brandSlots.indexOf(slot)));
     });
 
     // Cleared on leaving the whole line, not the individual slot: the letters a
@@ -685,6 +748,10 @@ const BRAND_SLOTS = [
     if (!brandName) return;
     fitBrandName();
     measureBrandGlyphs(brandName);
+    // Crossing the mobile breakpoint changes which slots exist on the line, and
+    // the walk is index-based — so the list is rebuilt on every refresh, not
+    // just once when the listeners are bound.
+    brandSlots = visibleBrandSlots(brandName);
   }
 
   function initBrandFit() {
@@ -696,14 +763,19 @@ const BRAND_SLOTS = [
     brandResizeObserver = new ResizeObserver(() => {
       leaveBrandName();
       refreshBrandName();
+      // The clamp on --brand-hide is the ticker's own height, and a resize is
+      // exactly when that changes — crossing the mobile breakpoint swaps six
+      // VSCNs for four and the line gets taller. This replaced a listener on
+      // the breakpoint itself, which only caught the crossing and not the
+      // continuous resizes either side of it.
+      applyBrandHide();
     });
     brandResizeObserver.observe(ticker);
   }
 
-  // ── Mobile: ride the title up out of the way on scroll ──
-  // Matches --bp-mobile in global.css; custom media aliases don't reach JS, so
-  // the number is duplicated here and the two move together.
-  const BRAND_HIDE_MQ = "(max-width: 767px)";
+  // ── Ride the title up out of the way on scroll ──
+  // Mobile-only until 2026-09-22; see the --brand-hide note in the style block
+  // above for why desktop was given the same behaviour.
   let brandScroller: HTMLElement | null = null;
   let brandHideFrame = 0;
 
@@ -711,7 +783,7 @@ const BRAND_SLOTS = [
     brandHideFrame = 0;
     const ticker = document.querySelector<HTMLElement>(".brand-ticker");
     if (!ticker) return;
-    if (!brandScroller || !window.matchMedia(BRAND_HIDE_MQ).matches) {
+    if (!brandScroller) {
       ticker.style.removeProperty("--brand-hide");
       return;
     }
@@ -837,8 +909,6 @@ const BRAND_SLOTS = [
     };
     apply();
   }
-
-  window.matchMedia(BRAND_HIDE_MQ).addEventListener("change", applyBrandHide);
 
   // The last chance to record where the page being left was scrolled to: the
   // throttle above can have skipped the final frames of a scroll that ended in
