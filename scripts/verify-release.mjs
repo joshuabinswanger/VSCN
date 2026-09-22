@@ -69,6 +69,8 @@ function grants(projectId, number) {
       why: "the deployer may invoke that one function and nothing else; a project-wide invoker grant would let a leaked deploy credential call every callable" },
     { scope: "project", member: deployer, role: "roles/firebasehosting.admin",
       why: "the merge workflow deploys Hosting as this account" },
+    { scope: "project", member: deployer, role: "roles/firebaserules.admin",
+      why: "since 2026-09-22 the merge and staging workflows deploy firestore.rules and storage.rules before Hosting; without it the release stops at the rules step, and before it existed every ruleset change was a hand deploy someone had to remember" },
     { scope: "project", member: reader, role: "roles/datastore.viewer",
       why: "the export job reads Firestore to build the static site; without it the build renders zero members and still says Complete" },
   ];

@@ -116,6 +116,11 @@ jobs:
           project_id: vscn-dev-f4b60
           workload_identity_provider: projects/640269226461/locations/global/workloadIdentityPools/vscn-hosting-deploy/providers/github-dev
           service_account: vscn-hosting-deployer@vscn-dev-f4b60.iam.gserviceaccount.com
+      # Rules before hosting, for the reasons spelled out in
+      # firebase-hosting-merge.yml. Dev is where a rules change lands first, so
+      # this is the copy that proves the step works.
+      - name: Deploy security rules
+        run: npx -y firebase-tools@latest deploy --only firestore:rules,storage --project vscn-dev-f4b60 --non-interactive
       - run: npx -y firebase-tools@latest deploy --only hosting --project vscn-dev-f4b60 --non-interactive
       - if: always()
         run: rm -f "${{ steps.deploy-auth.outputs.credentials_file_path }}"
