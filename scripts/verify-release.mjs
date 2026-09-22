@@ -71,6 +71,8 @@ function grants(projectId, number) {
       why: "the merge workflow deploys Hosting as this account" },
     { scope: "project", member: deployer, role: "roles/firebaserules.admin",
       why: "since 2026-09-22 the merge and staging workflows deploy firestore.rules and storage.rules before Hosting; without it the release stops at the rules step, and before it existed every ruleset change was a hand deploy someone had to remember" },
+    { scope: "project", member: deployer, role: "roles/firebasestorage.viewer",
+      why: "publishing the STORAGE ruleset first resolves the project's default bucket, which firebaserules.admin does not permit — dev's first automated rules deploy died on exactly that 403. The viewer role is read-only on purpose: firebasestorage.admin carries defaultBucket.create and .delete, which no deploy credential should hold" },
     { scope: "project", member: reader, role: "roles/datastore.viewer",
       why: "the export job reads Firestore to build the static site; without it the build renders zero members and still says Complete" },
   ];
