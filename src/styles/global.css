@@ -40,9 +40,18 @@
 @custom-media --bp-mobile (width <= 767px);
 @custom-media --bp-desktop (767px < width);
 
+/* THE DESKTOP BUMP IS ONE PIXEL, NOT TWO (2026-09-22, Josh, MacBook Pro 16:
+   "everything is a bit big"). Nearly all type on the site is in rem, so this
+   one declaration is the site's whole type scale on desktop — it was 14px,
+   and 13px takes roughly 7% off everything at once rather than leaving a
+   trail of per-component overrides. 12px, which would drop the bump entirely
+   and match mobile, was the other candidate and is too far: the 0.72rem
+   labels would land under 9px. The giant VSCN title does NOT follow this —
+   it is fitted to --shell-max, not to the root size; see BRAND_REPEATS_* in
+   Layout.astro for the lever that sizes it. */
 @media (--bp-desktop) {
   :root {
-    --font-size-base: 14px;
+    --font-size-base: 13px;
   }
 }
 
