@@ -7,6 +7,13 @@ fills in the action. Newest first. How to read a verdict: [release-verification.
 Green entries are one line. The value is the history: slow drift shows up here as a pattern
 rather than as a member's email.
 
+## 2026-09-22 · c85ae17 · dev
+Machine: RED — functions deployed: unchanged from 51da312 below (three not deployed, ten stale); everything else green,
+         including build stamp once the queued deploy landed — the first watched run was cancelled by the workflow's
+         concurrency group, not failed
+Walk:    n/a (dev)
+Action:  pending — same functions deploy as below
+
 ## 2026-09-22 · 51da312 · dev
 Machine: RED — functions deployed: `onImageWentLive`, `sendAdminDigest`, `adminListActions` not deployed;
          `onAuthUserCreated`/`onAuthUserDeleted` and the eight admin callables deployed 2026-09-15, source changed 2026-09-22

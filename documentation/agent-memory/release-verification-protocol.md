@@ -10,7 +10,7 @@ metadata:
   modified: 2026-09-22T14:54:02.045Z
 ---
 
-Built 2026-09-22 on `chore/release-verification` (PR into dev the same day): `scripts/verify-release.mjs`
+Built 2026-09-22, merged to dev as `c85ae17` via PR #53 the same day: `scripts/verify-release.mjs`
 plus the pure half in `scripts/lib/release-checks.mjs` (unit-tested), the protocol in
 `documentation/release-verification.md`, the history in `documentation/release-log.md`. Design:
 `documentation/20260922-release-verification-protocol.md`, whose status block lists where the build
