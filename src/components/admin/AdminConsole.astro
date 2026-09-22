@@ -33,6 +33,7 @@
         <option value="unverified">Unverified email</option>
       </select>
       <button type="button" id="admin-queues-btn" class="btn-ghost">Queues</button>
+      <button type="button" id="admin-rating-btn" class="btn-ghost">Moderation</button>
       <button type="button" id="admin-reload" class="btn-ghost">Reload</button>
     </div>
     {
@@ -50,6 +51,7 @@
     <div id="admin-results"></div>
     <div id="admin-detail"></div>
     <div id="admin-queues"></div>
+    <div id="admin-rating"></div>
   </div>
 </section>
 
@@ -254,6 +256,59 @@
   .admin :global(.admin-dialog__actions) { display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap; }
   .admin :global(.admin-dialog .btn-ghost), .admin :global(.admin-dialog .btn-solid) { padding: 0.5rem 1rem; font-size: 0.85rem; cursor: pointer; }
 
+  /* ── The Moderation stack ──────────────────────────────
+     One picture at a time: the image large on the left, the record beside it,
+     the four sliders under both. Every colour is a token — the checklist's
+     yes/no borrows the status colours the rest of the console uses. */
+  .admin :global(.rate__top) { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+  .admin :global(.rate__img) {
+    flex: 1 1 22rem; min-width: 0; max-width: 34rem; max-height: 60vh;
+    object-fit: contain; align-self: flex-start;
+    border-radius: var(--radius-xs); background: var(--color-border);
+  }
+  .admin :global(.rate__meta) { flex: 1 1 16rem; min-width: 0; display: grid; gap: 0.35rem; align-content: start; }
+  .admin :global(.rate__meta p) { margin: 0; overflow-wrap: anywhere; }
+  .admin :global(.rate__owner) { font-weight: 600; }
+  .admin :global(.rate__caption) { font-size: 1.05rem; }
+  .admin :global(.rate__desc) { font-size: 0.85rem; }
+  .admin :global(.rate__checks) { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.1rem; font-size: 0.8rem; }
+  .admin :global(.rate__check) { display: flex; gap: 0.4rem; align-items: baseline; }
+  .admin :global(.rate__check--yes) { color: var(--color-success); }
+  .admin :global(.rate__check--no) { color: var(--color-muted); }
+  .admin :global(.rate__check-mark) { font-weight: 700; }
+
+  /* Four rows of label · track · number · afterthought, with the hint under
+     the label. A grid so the tracks line up as one column — a slider you
+     cannot compare with the one above it is four unrelated controls. */
+  .admin :global(.rate__sliders) {
+    display: grid; gap: 0.6rem 0; margin-top: 0.75rem;
+    padding-top: 0.75rem; border-top: 1px solid var(--color-border);
+  }
+  .admin :global(.rate__crit) {
+    display: grid; align-items: center; gap: 0 0.75rem;
+    grid-template-columns: minmax(8rem, 14rem) minmax(8rem, 22rem) 1.5rem 1fr;
+  }
+  .admin :global(.rate__crit-label) { font-weight: 600; }
+  .admin :global(.rate__crit-hint) { grid-column: 1; grid-row: 2; }
+  .admin :global(.rate__range) { width: 100%; accent-color: var(--color-dark); }
+  /* Unset is a state, not a value: the track goes quiet until it is chosen. */
+  .admin :global(.rate__range--unset) { accent-color: var(--color-muted); opacity: 0.6; }
+  .admin :global(.rate__val) { font-variant-numeric: tabular-nums; font-weight: 700; text-align: right; }
+  .admin :global(.rate__crit-extra) { display: inline-flex; gap: 0.5rem; align-items: baseline; }
+  .admin :global(.rate__auto) {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-muted);
+    border: 1px solid var(--color-border); border-radius: var(--radius-xs); padding: 0 0.35rem;
+  }
+  .admin :global(.rate__revert) { font-size: 0.8rem; }
+  .admin :global(.rate__score) {
+    display: flex; gap: 0.5rem; align-items: baseline; justify-content: flex-end;
+    margin-top: 0.25rem;
+  }
+  .admin :global(.rate__score-n) { font-size: 1.6rem; font-variant-numeric: tabular-nums; line-height: 1; }
+  /* No number yet, because the admin has not rated all three. Never a guess. */
+  .admin :global(.rate__score-n--pending) { color: var(--color-muted); }
+  .admin :global(.rate__actions) { margin-top: 0.5rem; }
+
   @media (--bp-mobile) {
     /* The toolbar used to land as THREE stacked rows on a phone — the filter,
        then the scope, then a lonely Reload — so a member record began a third
@@ -272,6 +327,13 @@
     .admin :global(dt) { margin-top: 0.4rem; font-size: 0.75rem; }
     .admin :global(.actions--danger) { margin-left: 0; }
     .admin :global(.sec__body) { padding-left: 0.5rem; }
+    /* The four-column slider row cannot survive a phone: the label takes its
+       own line and the track the next, with the number beside it. */
+    .admin :global(.rate__crit) { grid-template-columns: 1fr 1.5rem; }
+    .admin :global(.rate__crit-label) { grid-column: 1 / -1; }
+    .admin :global(.rate__crit-hint) { grid-column: 1 / -1; grid-row: auto; }
+    .admin :global(.rate__crit-extra) { grid-column: 1 / -1; }
+    .admin :global(.rate__img) { max-height: 45vh; }
   }
 </style>
 
@@ -279,7 +341,7 @@
   import { onAuthStateChanged } from "firebase/auth";
   import { auth } from "../../lib/firebase.ts";
   import {
-    deleteImage, listMembers, listQueues, lookupMember,
+    deleteImage, listMembers, listQueues, listRatingQueue, lookupMember, rateImage, setImageHidden,
     type AdminImage, type MemberRow,
   } from "../../lib/adminApi.ts";
   import { type Child, type Tone, el, linkBtn } from "../../lib/admin/dom.ts";
@@ -287,6 +349,7 @@
   import { createMemberList } from "../../lib/admin/memberList.ts";
   import { type DetailDeps, renderImageDetail, renderMemberDetail } from "../../lib/admin/memberDetail.ts";
   import { queueTotal, renderQueues } from "../../lib/admin/queues.ts";
+  import { createRatingPanel, type RatingPanel } from "../../lib/admin/rating.ts";
 
   document.addEventListener("astro:page-load", () => {
     const gate = document.getElementById("admin-gate");
@@ -300,9 +363,11 @@
     const results = document.getElementById("admin-results")!;
     const detail = document.getElementById("admin-detail")!;
     const queues = document.getElementById("admin-queues")!;
+    const rating = document.getElementById("admin-rating")!;
     const filter = document.getElementById("admin-filter") as HTMLInputElement;
     const scope = document.getElementById("admin-scope") as HTMLSelectElement;
     const queuesBtn = document.getElementById("admin-queues-btn") as HTMLButtonElement;
+    const ratingBtn = document.getElementById("admin-rating-btn") as HTMLButtonElement;
 
     // Window/document listeners are torn down on the next view transition;
     // the page-load handler runs again on every arrival and would otherwise
@@ -446,7 +511,7 @@
      */
     function enterRecord() {
       scroller().scrollTop = 0;
-      const h = detail.querySelector("h2") ?? queues.querySelector("h2");
+      const h = detail.querySelector("h2") ?? queues.querySelector("h2") ?? rating.querySelector("h2");
       if (!(h instanceof HTMLElement)) return;
       h.tabIndex = -1;
       h.focus({ preventScroll: true });
@@ -466,15 +531,17 @@
       if (kind === "uid" && arg) return void showMember(arg);
       if (kind === "image" && arg) return void showImage(arg);
       if (kind === "queues") return void showQueues();
+      if (kind === "rating") return void showRating();
       // Anything else — including no hash at all — is the list.
       detail.replaceChildren();
       results.replaceChildren();
       queues.replaceChildren();
+      rating.replaceChildren();
       list.hidden = false;
       setTitle();
       scroller().scrollTop = listScroll;
     }
-    const onList = () => !/^#(uid|image|queues)\b/.test(location.hash);
+    const onList = () => !/^#(uid|image|queues|rating)\b/.test(location.hash);
 
     /** Hide the list while a single record is on screen, with a way back. */
     function crumbs(...extra: Child[]) {
@@ -489,6 +556,15 @@
       if (app.hidden || dialogs.isOpen() || e.ctrlKey || e.metaKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       const typing = !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
+      // The Moderation panel is a keyboard instrument and takes its keys
+      // first — but only while it is the view on screen, and it applies the
+      // SAME text-entry guard (isTextEntry), widened by exactly one case: a
+      // range input is an <input>, and every one of its shortcuts is pressed
+      // with a range focused.
+      if (ratingPanel && !rating.hidden && rating.firstChild && ratingPanel.handleKey(e)) {
+        e.preventDefault();
+        return;
+      }
       if (e.key === "/" && !typing) {
         e.preventDefault();
         filter.focus();
@@ -585,6 +661,7 @@
       if (!res.graph) {
         detail.replaceChildren();
         queues.replaceChildren();
+        rating.replaceChildren();
         say("No member with that id any more.", "error");
         return;
       }
@@ -595,6 +672,7 @@
       const sameMember = detail.querySelector<HTMLElement>(".detail")?.dataset.uid === uid;
       results.replaceChildren();
       queues.replaceChildren();
+      rating.replaceChildren();
       list.hidden = true;
       const card = renderMemberDetail(res.graph, detailDeps);
       card.dataset.uid = uid;
@@ -623,6 +701,7 @@
       list.hidden = true;
       results.replaceChildren();
       queues.replaceChildren();
+      rating.replaceChildren();
       detail.replaceChildren(renderImageDetail(img, detailDeps));
       setTitle(`${img.kind} ${imageId}`);
       enterRecord();
@@ -642,10 +721,38 @@
       catch { /* the badge is a convenience; the Queues view reports its own errors */ }
     }
 
+    // ── Moderation ────────────────────────────────────────
+    // A stack of pictures this admin has not rated. The panel's logic is in
+    // rating.ts; what lives here is the same fetch/route/focus handling every
+    // other view gets. The two privileged verbs are passed IN rather than
+    // imported there, so /proto/admin-preview can drive the same panel with
+    // no credential and no callable.
+    ratingBtn.addEventListener("click", () => go("#rating"));
+    let ratingPanel: RatingPanel | null = null;
+
+    async function showRating() {
+      leaveList();
+      results.replaceChildren();
+      detail.replaceChildren();
+      queues.replaceChildren();
+      const q = await busy("Loading the rating queue…", () => listRatingQueue({ limit: 50 }));
+      if (!q) return;
+      list.hidden = true;
+      ratingPanel ??= createRatingPanel(rating, {
+        say, busy, crumbs, go, fileUrl,
+        rate: rateImage,
+        hide: setImageHidden,
+      });
+      ratingPanel.render(q.items, q.remaining);
+      setTitle("Moderation");
+      enterRecord();
+    }
+
     async function showQueues() {
       leaveList();
       results.replaceChildren();
       detail.replaceChildren();
+      rating.replaceChildren();
       const q = await busy("Loading queues…", () => listQueues());
       if (!q) return;
       setQueueBadge(queueTotal(q));

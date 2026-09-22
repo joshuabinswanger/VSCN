@@ -32,6 +32,7 @@ import AdminConsole from "../../components/admin/AdminConsole.astro";
     <button type="button" data-view="thin">Member (thin)</button>
     <button type="button" data-view="image">Image record</button>
     <button type="button" data-view="queues">Queues</button>
+    <button type="button" data-view="rating">Moderation</button>
   </div>
   <AdminConsole />
 </Layout>
@@ -67,12 +68,16 @@ import AdminConsole from "../../components/admin/AdminConsole.astro";
 </style>
 
 <script>
-  import type { AdminImage, MemberGraph, MemberRow, Queues } from "../../lib/adminApi.ts";
+  import type {
+    AdminImage, MemberGraph, MemberRow, Queues, RateImageRequest, RatingQueueItem, SetImageHiddenRequest,
+  } from "../../lib/adminApi.ts";
   import { el } from "../../lib/admin/dom.ts";
   import { makeDialogs } from "../../lib/admin/dialog.ts";
   import { createMemberList } from "../../lib/admin/memberList.ts";
   import { type DetailDeps, renderImageDetail, renderMemberDetail } from "../../lib/admin/memberDetail.ts";
   import { renderQueues } from "../../lib/admin/queues.ts";
+  import { createRatingPanel, type RatingPanel } from "../../lib/admin/rating.ts";
+  import { completenessChecks, computedCompleteness, imageScore } from "../../lib/imageScore.ts";
 
   // A local stand-in for a stored picture: no network, no Storage bucket, and
   // it still exercises the thumb/avatar boxes at their real aspect ratios.
@@ -186,6 +191,64 @@ import AdminConsole from "../../components/admin/AdminConsole.astro";
     emailMismatches: [{ uid: "Tq7HsN4mXbZv2RpLd9KcWy6Ja1Ur", storedEmail: "m.brunner.old@example.org", authEmail: "marco.brunner@example.org" }],
   };
 
+  /**
+   * The rating stack. NO CASTS, deliberately: these are typed as the callable
+   * really answers, so `npm run check` fails the day adminListRatingQueue's
+   * shape drifts away from what the panel renders. `checks`, `computedCompleteness`
+   * and `score` are produced by the SAME pure module the callable uses rather
+   * than typed in by hand — a fixture with a made-up score would prove the
+   * panel renders a number, not that it renders the right one.
+   */
+  const queueItem = (
+    over: Partial<RatingQueueItem> & { imageId: string; caption?: string },
+  ): RatingQueueItem => {
+    const rec = {
+      caption: over.caption, captionDe: over.captionDe,
+      description: over.description, descriptionDe: over.descriptionDe,
+      tags: over.tags ?? [], link: over.link, siteLink: over.siteLink,
+    };
+    return {
+      ownerUid: "k3Qw8ZrT2bVnPjXs7LmHcYd1Ae4f", ownerName: "Regula Keller", ownerSlug: "regula-keller",
+      storagePath: `users/k3Qw8ZrT2bVnPjXs7LmHcYd1Ae4f/gallery/${over.imageId}.webp`,
+      width: 2000, height: 1400, createdAt: "2026-09-12T10:30:00.000Z",
+      tags: [], raterCount: 0, hidden: false,
+      ...over,
+      checks: completenessChecks(rec),
+      computedCompleteness: computedCompleteness(rec),
+      // The unrated score, unless the fixture is standing in for a picture
+      // other admins have already graded.
+      score: over.score ?? imageScore(rec, null),
+    };
+  };
+
+  const RATING_QUEUE: RatingQueueItem[] = [
+    // Bare: 0/5 completeness, nothing but the picture.
+    queueItem({ imageId: "img_bare" }),
+    // Full: every check passed, so the completeness slider starts at 5.
+    queueItem({
+      imageId: "img_full", caption: "Vesicle budding, plate 1", captionDe: "Vesikelknospung, Tafel 1",
+      description: "Cryo-EM reconstruction of a clathrin coat mid-assembly, redrawn for a review figure.",
+      descriptionDe: "Kryo-EM-Rekonstruktion einer Clathrinhülle, für eine Übersichtsabbildung neu gezeichnet.",
+      tags: ["cell biology", "membranes", "cryo-em"],
+      link: "https://journal.example.org/article/1234",
+      siteLink: "https://regulakeller.example.org/plates/1",
+    }),
+    // Already carries somebody else’s judgement: the panel must say so,
+    // because this admin is joining an average rather than setting a number.
+    queueItem({
+      imageId: "img_rated", caption: "Golgi stack, redrawn",
+      description: "A teaching plate.", tags: ["golgi"],
+      raterCount: 2, score: 61, ownerName: "Marco Brunner", ownerSlug: "marco-brunner",
+      ownerUid: "Tq7HsN4mXbZv2RpLd9KcWy6Ja1Ur",
+    }),
+    // Already off the galleries: the hide control reads "Unhide".
+    queueItem({
+      imageId: "img_hidden", caption: "Lab outing, 2026", tags: ["snapshot"],
+      hidden: true, ownerName: "Sven Lindqvist", ownerSlug: "sven-lindqvist",
+      ownerUid: "Zm9KdX3pQw7LvBn5RtYc2Hs8Jf1e",
+    }),
+  ];
+
   document.addEventListener("astro:page-load", () => {
     const bar = document.querySelector<HTMLElement>(".proto-bar");
     const root = document.getElementById("admin");
@@ -244,12 +307,39 @@ import AdminConsole from "../../components/admin/AdminConsole.astro";
       lookupOffer: (q) => el("p", {}, `Look "${q}" up as an id`),
     });
 
-    type View = "list" | "member" | "thin" | "image" | "queues";
+    const ratingHost = document.getElementById("admin-rating")!;
+    let ratingPanel: RatingPanel | null = null;
+    // The harness answers the two privileged verbs itself. The panel never
+    // learns the difference — same code path, same disabled-until-rated rule,
+    // same "a failed save must not advance" behaviour.
+    const fakeRate = async (req: RateImageRequest) => {
+      const item = RATING_QUEUE.find((i) => i.imageId === req.imageId);
+      const score = item
+        ? imageScore(item, {
+          ratings: {
+            me: {
+              professional: req.professional, knowledge: req.knowledge,
+              aesthetics: req.aesthetics, completeness: req.completeness,
+            },
+          },
+        })
+        : 0;
+      return { ok: true as const, score };
+    };
+    const fakeHide = async (_req: SetImageHiddenRequest) => ({ ok: true as const });
+
+    document.addEventListener("keydown", (e) => {
+      if (!ratingPanel || !ratingHost.firstChild) return;
+      if (ratingPanel.handleKey(e)) e.preventDefault();
+    });
+
+    type View = "list" | "member" | "thin" | "image" | "queues" | "rating";
     function render(view: View) {
       listHost.replaceChildren();
       listHost.hidden = true;
       detail.replaceChildren();
       queues.replaceChildren();
+      ratingHost.replaceChildren();
       for (const b of bar!.querySelectorAll("button")) {
         b.setAttribute("aria-pressed", String(b.dataset.view === view));
       }
@@ -262,6 +352,12 @@ import AdminConsole from "../../components/admin/AdminConsole.astro";
         detail.replaceChildren(renderMemberDetail(THIN, deps));
       } else if (view === "image") {
         detail.replaceChildren(renderImageDetail(RICH.images[1], deps));
+      } else if (view === "rating") {
+        ratingPanel ??= createRatingPanel(ratingHost, {
+          say, busy, crumbs: deps.crumbs, go: deps.go, fileUrl: deps.fileUrl,
+          rate: fakeRate, hide: fakeHide,
+        });
+        ratingPanel.render(RATING_QUEUE, RATING_QUEUE.length);
       } else {
         queues.replaceChildren(renderQueues(QUEUES, {
           go: deps.go, memberName: deps.memberName, deleteImageButton: deps.deleteImageButton,

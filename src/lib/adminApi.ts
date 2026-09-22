@@ -1,5 +1,6 @@
 import { httpsCallable } from "firebase/functions";
 import { functions } from "./firebase.ts";
+import type { CompletenessChecks } from "./imageScore.ts";
 
 // Shapes mirror functions/src/adminOps.ts; Timestamps arrive as ISO strings.
 export interface AuthSummary {
@@ -99,3 +100,36 @@ export const deleteImage = call<
   { imageId: string },
   { ok: true; ownerUid: string; removedFrom: string[]; wasReferenced: boolean }
 >("adminDeleteImage");
+
+/**
+ * One picture waiting for this admin's judgement — adminListRatingQueue in
+ * functions/src/moderation.ts. `checks` and `computedCompleteness` are read
+ * off the record by the SAME pure module the console imports, so the panel
+ * can recompute the score in the browser instead of describing it.
+ *
+ * `raterCount` is a COUNT, never a list: the queue reports how many admins
+ * have rated a picture and deliberately never says which.
+ */
+export interface RatingQueueItem {
+  imageId: string; ownerUid: string; ownerName: string; ownerSlug: string;
+  storagePath: string; width: number; height: number; color?: string;
+  caption?: string; captionDe?: string; description?: string; descriptionDe?: string;
+  tags: string[]; link?: string; siteLink?: string; createdAt: string;
+  checks: CompletenessChecks; computedCompleteness: number;
+  score: number; raterCount: number; hidden: boolean;
+}
+
+/** `completeness: null` is not "missing" — it is the stored instruction "follow the record". */
+export interface RateImageRequest {
+  imageId: string;
+  professional: number;
+  knowledge: number;
+  aesthetics: number;
+  completeness: number | null;
+}
+export interface SetImageHiddenRequest { imageId: string; hidden: boolean }
+
+export const listRatingQueue =
+  call<{ limit?: number }, { items: RatingQueueItem[]; remaining: number }>("adminListRatingQueue");
+export const rateImage = call<RateImageRequest, { ok: true; score: number }>("adminRateImage");
+export const setImageHidden = call<SetImageHiddenRequest, { ok: true }>("adminSetImageHidden");
