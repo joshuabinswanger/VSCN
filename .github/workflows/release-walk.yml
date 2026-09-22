@@ -1,0 +1,53 @@
+name: Release walk
+# The protocol's human walk, walked by Playwright as the verification member.
+# Design: documentation/20260923-release-walk-automation.md. Called by the
+# production merge workflow after the acknowledgement step; workflow_dispatch
+# is for a walk on demand.
+#
+# Three secrets: WALK_MEMBER_EMAIL, WALK_MEMBER_PASSWORD (the verification
+# member's own, not a person's) and WALK_APPCHECK_DEBUG_TOKEN, registered on
+# the prod web app so the App Check SDK skips Turnstile — a challenge built to
+# fail exactly this browser. Enforcement stays on; the rules still apply.
+on:
+  workflow_call:
+    inputs:
+      project:
+        type: string
+        required: true
+      release:
+        type: string
+        required: false
+        default: ""
+  workflow_dispatch:
+    inputs:
+      project:
+        type: choice
+        options: [prod]
+        default: prod
+jobs:
+  walk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Walk the site as the verification member
+        run: npm run walk:release -- --project "${{ inputs.project }}" --release "${{ inputs.release || github.sha }}"
+        env:
+          WALK_MEMBER_EMAIL: ${{ secrets.WALK_MEMBER_EMAIL }}
+          WALK_MEMBER_PASSWORD: ${{ secrets.WALK_MEMBER_PASSWORD }}
+          WALK_APPCHECK_DEBUG_TOKEN: ${{ secrets.WALK_APPCHECK_DEBUG_TOKEN }}
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: walk-artifacts
+          path: walk-artifacts
+          retention-days: 14
+          if-no-files-found: ignore
