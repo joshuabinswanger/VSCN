@@ -41,3 +41,9 @@ scripts/snapshots/
 
 # Serena MCP indexes and project cache — tooling state, not project source.
 .serena/
+
+# Claude Code per-machine permission grants. The tool rewrites this file on every
+# approval and it fills with absolute paths from one developer machine, so it is
+# local state, not project config. .claude/settings.json and launch.json are the
+# shared ones and stay tracked.
+.claude/settings.local.json
