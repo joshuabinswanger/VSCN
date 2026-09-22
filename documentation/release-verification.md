@@ -36,7 +36,7 @@ FAIL  2 functions deployed   16 of 25 exports deployed after their last source c
 | --- | --- | --- |
 | 1 | build stamp | The live origin does not serve the released commit. The deploy did not land, or an intermediary is caching. |
 | 2 | functions deployed | An exported function is missing on the project, or was deployed before its source last changed. The release pipeline deploys hosting only; functions go by hand. |
-| 3 | rules parity | The live Firestore or Storage ruleset differs from the rules file at the released commit. Rules never deployed, or an older branch's rules deployed over newer ones. |
+| 3 | rules parity | The live Firestore or Storage ruleset differs from the rules file at the released commit. Since 2026-09-22 CI deploys rules ahead of Hosting, so a red row means that step failed or was skipped, or someone hand-deployed from another branch. |
 | 4 | IAM grants | A grant in the script's `EXPECTED` table is missing, or a forbidden one is present. Each row names what breaks without it. |
 | 5 | secrets bound | A secret `defineSecret()` names in `functions/src` does not exist, or has no enabled version. |
 | 6 | upload pairing | `authorizeImageUpload` ran three or more times in the window and `completeImageUpload` never did. Uploads are failing for everyone. WARN when fewer than half complete. |
