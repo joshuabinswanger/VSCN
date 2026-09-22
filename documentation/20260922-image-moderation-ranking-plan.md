@@ -1021,6 +1021,17 @@ git commit -m "feat(moderation): the wall and the spread lead with the best work
 - Modify: `src/lib/adminApi.ts`
 - Create: `src/lib/admin/rating.ts`
 - Modify: `src/components/admin/AdminConsole.astro`
+- Modify: `src/pages/proto/admin-preview.astro`
+
+**`/proto/admin-preview.astro` is not optional.** `/admin` needs the `admin`
+custom claim, so that page is the only way the console's views can be looked at
+— and its synthetic records are typed as the real callable shapes **with no
+casts**, deliberately, so `npm run check` fails when a callable's shape drifts
+away from what the console renders. A Moderation view with no synthetic
+`RatingQueueItem[]` there either breaks the typecheck or silently loses that
+guard. Add a fixture of three or four items covering: a bare record (0/5
+completeness), a full record (5/5), one already rated by another admin
+(`raterCount: 1`), and one already hidden.
 
 **Interfaces:**
 - Consumes: the three callables (Task 3); `completenessChecks`, `computedCompleteness`, `imageScore` from `src/lib/imageScore.ts` (Task 1); `publicStorageUrl` from `src/lib/images.ts`.
