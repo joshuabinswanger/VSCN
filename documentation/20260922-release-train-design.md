@@ -170,10 +170,10 @@ grant nowhere written down is how the 2026-09-14 outage happens again.
 `--condition=None` where the policy already holds conditional bindings. Josh runs it; these grants
 are classifier-blocked for Claude.
 
-**Prerequisite that fails the first run if missed:** prod has no `INFOMANIAK_SMTP_PASSWORD`
-secret. `sendAdminDigest` declares it, and a functions deploy refuses a missing secret. Set it
-before the first Tuesday (`functions:secrets:set INFOMANIAK_SMTP_PASSWORD --project vscn-39508`).
-Dev already has it.
+**Prerequisite, DONE 2026-09-22:** `sendAdminDigest` declares `INFOMANIAK_SMTP_PASSWORD`, and a
+functions deploy refuses a missing secret. Josh copied it from dev into prod (version 1, enabled) by
+piping `secrets versions access` into `secrets create`, so the value never appeared on screen. The
+runtime gets `secretAccessor` on it at the first functions deploy.
 
 ## 5. Failure handling
 
