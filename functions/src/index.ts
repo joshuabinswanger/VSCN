@@ -20,4 +20,6 @@ export {
   adminSetProfileActive,
 } from "./adminOps";
 
+export { adminListRatingQueue, adminRateImage, adminSetImageHidden } from "./moderation";
+
 export { acknowledgeSitePublication } from "./publication";
