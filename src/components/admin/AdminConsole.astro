@@ -464,6 +464,21 @@
   .admin :global(.rate__range:hover::-webkit-slider-thumb) { transform: scale(1.12); }
   .admin :global(.rate__range--unset::-webkit-slider-thumb) { background: white; box-shadow: 0 0 0 1px var(--color-muted); }
   .admin :global(.rate__range--unset::-moz-range-thumb) { background: white; box-shadow: 0 0 0 1px var(--color-muted); }
+  /* A yes/no criterion: two seats in one tinted track, the chosen one solid —
+     the same segmented language as the view tabs. Neither seat is lit until
+     the admin answers. */
+  .admin :global(.rate__yn) {
+    grid-area: range; justify-self: start; margin-top: 0.25rem;
+    display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--radius-sm); background: var(--tint-2);
+  }
+  .admin :global(.rate__yn-seat) {
+    border: 0; background: none; padding: 0.25rem 1rem; border-radius: 3px;
+    font: inherit; font-size: 0.8rem; font-weight: 500; color: var(--color-muted); cursor: pointer;
+    transition: background-color 0.12s, color 0.12s;
+  }
+  .admin :global(.rate__yn-seat:hover) { color: var(--color-dark); }
+  .admin :global(.rate__yn-seat[aria-checked="true"]) { background: var(--color-dark); color: var(--color-bg); }
+  .admin :global(.rate__yn-seat:focus-visible) { outline: 2px solid var(--color-dark); outline-offset: 2px; }
   .admin :global(.rate__auto) {
     font-size: 0.66rem; color: var(--color-muted);
     background: var(--tint-2); border-radius: 1em; padding: 0 0.5em; line-height: 1.7;
