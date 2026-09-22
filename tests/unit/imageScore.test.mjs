@@ -72,7 +72,10 @@ test("admins are averaged, and an auto rater still tracks the record", () => {
 
 test("out-of-range input is clamped rather than trusted", () => {
   const wild = { ratings: { a1: { professional: 99, knowledge: -4, aesthetics: 5, completeness: 12 } } };
-  assert.equal(imageScore(FULL, wild), 100);
+  // 99→5, -4→0, 5, 12→5 → 0.35*5 + 0.25*0 + 0.25*5 + 0.15*5 = 3.75 → 75.
+  // The -4 is the point: clamping holds the FLOOR as well as the ceiling, so a
+  // hostile caller cannot lift a criterion by underflowing it.
+  assert.equal(imageScore(FULL, wild), 75);
 });
 
 test("hidden is a separate question from the score", () => {
