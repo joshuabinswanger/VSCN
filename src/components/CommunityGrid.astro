@@ -185,11 +185,51 @@ const workTagsAttr = (w: MemberView["works"][number]) => {
 // hidden on touch), Grid is the stacked two-column wall. Both are keyed off
 // data-pattern in the --bp-mobile block below.
 
+// THE WALL IS EDITED, THE PROFILE IS NOT. Every picture on /community is
+// ordered by the priority admins gave it (documentation/20260922-image-
+// moderation-ranking-design.md); /members/<slug> keeps the order the member
+// arranged. The same pictures therefore appear in two different orders on two
+// different pages, which is deliberate: one surface is ours, the other theirs.
+// Ordered HERE and not in memberView.ts for exactly that reason — this
+// component is the edited surface, and the shared producer must stay neutral.
+const byScore = (a: { score: number }, b: { score: number }) => b.score - a.score;
+
+/**
+ * A member's place in the spread's deal: their best picture.
+ *
+ * `Math.max()` of an empty list is -Infinity, and a member whose every work
+ * moderation hid arrives here with an empty array (community.astro drops
+ * hidden works before the component sees them). -1 rather than -Infinity, and
+ * rather than 0: every real score is 0–100, so -1 sorts such a member BELOW
+ * everyone with something to show, without being a number arithmetic can
+ * propagate into. Which way they sort is nearly academic — hasArtwork() drops
+ * them from both galleries a line later — but the guard is what keeps that
+ * fact a property of hasArtwork rather than of luck.
+ */
+const bestScore = (m: MemberView) =>
+  m.works.length ? Math.max(...m.works.map((w) => w.score)) : -1;
+
+// EACH CARD'S CAROUSEL LEADS WITH THE MEMBER'S BEST. Sorted before the
+// members array is split into the spread's cards and the wall's tiles, so the
+// card, its carousel and the lightbox it opens all read in the same order. A
+// copy per member: `members` is a prop, and the index below wants it untouched.
+const rankedMembers = members.map((m) => ({ ...m, works: [...m.works].sort(byScore) }));
+
 // WHO IS IN THE SPREAD: the members with artwork, and only them. `hasArtwork`
 // is the whole test, and it is now the same test the wall uses — see the
 // header. Members with an empty gallery are rendered by the INDEX below and
 // nowhere else on this page.
-const imageMembers = members.filter(hasArtwork);
+//
+// THE SPREAD'S MEMBER DEAL is ordered by each member's best work. Only the
+// MEMBERS move: `slots` below is authored in ascending rowStart and validated
+// at module load in communityLayout.ts, and pairing member i with slot i
+// relies on that emission order being row order — so the slot table is never
+// reordered, only what is dealt into it. Stable sort, so members whose best
+// work ties keep the producer's alphabetical order and the build is
+// reproducible.
+const imageMembers = rankedMembers
+  .filter(hasArtwork)
+  .sort((a, b) => bestScore(b) - bestScore(a));
 // textCards: 0 — TEXT_TILE plays no part in this pattern; it survives only as
 // the shelved strip mode's index ladder.
 const slots = layOutSlots(GALLERY_PATTERNS.spread, imageMembers.length, 0);
@@ -219,9 +259,17 @@ const cells = slots.map((slot, i) => ({ slot, member: ordered[i] }));
 //
 // The members WITHOUT artwork are unchanged — the same tag cards, closing the
 // wall in completeness order, shared with the spread rather than duplicated.
-const workCells = imageMembers.flatMap((member) =>
-  member.works.map((work, i) => ({ member, work, key: `${member.id}-${i}` }))
-);
+//
+// THE WALL'S TILES ARE ORDERED BY THE PICTURE'S OWN PRIORITY, across members —
+// one flat wall of work, best first, not a wall of members' galleries laid end
+// to end. Sorted AFTER the flatMap, never inside it: within a member the works
+// are already in score order (rankedMembers above), and what this adds is the
+// interleaving between members. The tag dropdown's counts are computed from
+// `members` at the top of this file, not from these cells, so reordering the
+// cells cannot desynchronise a count from what the wall shows.
+const workCells = imageMembers
+  .flatMap((member) => member.works.map((work, i) => ({ member, work, key: `${member.id}-${i}` })))
+  .sort((a, b) => byScore(a.work, b.work));
 
 // The third view: a typographic ledger of every member, alphabetical. Unlike
 // the two galleries it is not a deal into slots — it is rendered here, whole,

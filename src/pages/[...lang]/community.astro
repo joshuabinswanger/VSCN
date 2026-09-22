@@ -22,13 +22,23 @@ const currentLang = (lang || "en") as Lang;
 // /community and /de/community), so the German fields would otherwise reach
 // the grid and its lightbox unresolved. See workCaption()/workDescription()
 // in links.ts.
+//
+// Moderation hid some of these from the edited surfaces. They are still on the
+// member's own page and still in their account — this is the /community wall's
+// guest list, not a deletion. Filtered HERE rather than in fetchMemberViews()
+// so /members/<slug> keeps showing them, which is the whole boundary of the
+// ranking design (documentation/20260922-image-moderation-ranking-design.md).
+// `jsonLd` below is built from this same array, so a hidden work leaves the
+// structured data with it rather than needing a second filter to remember.
 const members = (await fetchMemberViews()).map((m) => ({
   ...m,
-  works: m.works.map((w) => ({
-    ...w,
-    caption: workCaption(w, currentLang),
-    description: workDescription(w, currentLang),
-  })),
+  works: m.works
+    .filter((w) => !w.hidden)
+    .map((w) => ({
+      ...w,
+      caption: workCaption(w, currentLang),
+      description: workDescription(w, currentLang),
+    })),
 }));
 
 const title = "Community — VSCN";
