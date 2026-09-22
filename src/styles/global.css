@@ -33,6 +33,17 @@
      size to it, which is what keeps the giant VSCN title, the nav links and
      the content on the same two vertical edges. */
   --shell-max: 900px;
+  /* THE BOTTOM BAR'S OWN SIZE. The site footer (bottom-left) and the language
+     toggle (bottom-right) are one bar with a hole in the middle — they share a
+     baseline, so they have to share a size or the pair reads as two unrelated
+     fixtures. They used to say var(--font-size-base) separately, which is a
+     rule a future edit can break silently; this token is the rule stated once.
+     DESKTOP ONLY drops below the base size (2026-09-22, Josh: "make impressum
+     etc smaller", reported on a MacBook Pro 16). On a phone the base size is
+     already 12px and this is the smallest print on the page — taking it to
+     10.2px there would be a legibility cost nobody asked for, so mobile keeps
+     the base and the reduction lives in the --bp-desktop block below. */
+  --font-size-chrome: var(--font-size-base);
 }
 
 /* Media query aliases available in global CSS and Astro component styles. */
@@ -52,6 +63,7 @@
 @media (--bp-desktop) {
   :root {
     --font-size-base: 13px;
+    --font-size-chrome: 0.85rem;
   }
 }
 

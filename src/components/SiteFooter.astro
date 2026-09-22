@@ -54,9 +54,10 @@ const year = new Date().getFullYear();
     align-items: baseline;
     gap: 0.5rem 1.5rem;
     font-family: "Archivo", sans-serif;
-    /* The toggle's size, not the 0.8rem this had while it was content — at the
-       same bottom offset a smaller face sits visibly off the toggle's line. */
-    font-size: var(--font-size-base);
+    /* The toggle's size, not a size of its own — at the same bottom offset a
+       face that differs from the toggle's sits visibly off its line. The token
+       is what keeps the two in step; see --font-size-chrome in global.css. */
+    font-size: var(--font-size-chrome);
     color: var(--color-muted);
 
     /* Hidden until the sentinel says we are at the end. `visibility` is
