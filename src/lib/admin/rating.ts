@@ -33,13 +33,24 @@ import { imageScore } from "../imageScore.ts";
 import { type Child, type Reporter, el, fmt, linkBtn } from "./dom.ts";
 
 /** The three an admin judges. Completeness is the fourth and is handled apart. */
-// In weight order — the heaviest first, so the slider the keyboard lands on
+// In weight order — the heaviest first, so the control the keyboard lands on
 // is the one that moves the score most. See WEIGHTS in imageScore.ts.
+//
+// TWO OF THE THREE ARE A YES OR A NO (2026-09-22, Josh: "knowledge and
+// professional should be just on or off"). Whether a picture is professional
+// work, and whether its subject is knowledge communication, are questions
+// with an answer, not a degree — so the console asks them as a pair of
+// buttons. The WIRE CONTRACT IS UNCHANGED: yes is stored as 5 and no as 0 on
+// the same 0–5 scale the callable validates and imageScore() weighs, so an
+// average across admins still means what it did and nothing server-side
+// moved. Only aesthetics keeps its slider.
 const CRITERIA = [
-  { key: "aesthetics", label: "Aesthetics", hint: "Is it good to look at?" },
-  { key: "professional", label: "Professional work", hint: "Is this professional work?" },
-  { key: "knowledge", label: "Knowledge communication", hint: "Is the subject knowledge communication?" },
+  { key: "aesthetics", label: "Aesthetics", hint: "Is it good to look at?", kind: "scale" },
+  { key: "professional", label: "Professional work", hint: "Is this professional work?", kind: "yesno" },
+  { key: "knowledge", label: "Knowledge communication", hint: "Is the subject knowledge communication?", kind: "yesno" },
 ] as const;
+const YES = 5;
+const NO = 0;
 type HumanKey = (typeof CRITERIA)[number]["key"];
 
 /** The five checks, in the order completenessChecks() returns them. */
@@ -187,6 +198,33 @@ export function createRatingPanel(host: HTMLElement, deps: RatingDeps): RatingPa
       el("span", { id: `${id}-hint`, class: "rate__sr" }, hint));
   }
 
+  /**
+   * A yes/no criterion: two seats, neither taken until the admin answers.
+   * Same UNSET discipline as the sliders — an unanswered question keeps Save
+   * disabled and is never sent as either answer.
+   */
+  function yesno(key: string, label: string, hint: string, onChange: (v: number) => void): HTMLElement {
+    const id = `rate-${key}`;
+    const readout = el("output", { class: "rate__val" }, "—");
+    const group = el("div", { class: "rate__yn", role: "radiogroup", "aria-labelledby": `${id}-label`, "aria-describedby": `${id}-hint`, "data-key": key });
+    const seat = (value: number, text: string) => {
+      const b = el("button", { type: "button", role: "radio", "aria-checked": "false", class: "rate__yn-seat", "data-value": String(value) }, text);
+      b.addEventListener("click", () => {
+        for (const s of group.querySelectorAll<HTMLElement>(".rate__yn-seat")) s.setAttribute("aria-checked", String(s === b));
+        readout.textContent = text;
+        onChange(value);
+      });
+      return b;
+    };
+    group.append(seat(NO, "No"), seat(YES, "Yes"));
+    return el("div", { class: "rate__crit rate__crit--yesno" },
+      el("span", { class: "rate__crit-label", id: `${id}-label` }, label),
+      group,
+      readout,
+      el("span", { class: "rate__crit-extra" }),
+      el("span", { id: `${id}-hint`, class: "rate__sr" }, hint));
+  }
+
   function checklist(item: RatingQueueItem): HTMLElement {
     // SHOWN, NOT RATED: it says WHY completeness reads what it does, so an
     // override is an informed disagreement rather than a guess.
@@ -317,10 +355,12 @@ export function createRatingPanel(host: HTMLElement, deps: RatingDeps): RatingPa
         el("div", { class: "card rate__side" },
           meta(item),
           el("div", { class: "rate__sliders" },
-            ...CRITERIA.map((c) => slider(c.key, c.label, c.hint, UNSET, false, (v) => {
-              human[c.key] = v;
-              refresh();
-            })),
+            ...CRITERIA.map((c) => {
+              const set = (v: number) => { human[c.key] = v; refresh(); };
+              return c.kind === "yesno"
+                ? yesno(c.key, c.label, c.hint, set)
+                : slider(c.key, c.label, c.hint, UNSET, false, set);
+            }),
             slider("completeness", "Completeness", "Computed from the record — move it only to disagree.",
               item.computedCompleteness, true, (v) => {
                 completeness = v;
@@ -335,8 +375,8 @@ export function createRatingPanel(host: HTMLElement, deps: RatingDeps): RatingPa
             saveBtn,
             el("div", { class: "rate__actions-row" }, skipBtn, hideBtn),
             el("p", { class: "rate__keys" },
-              kbd("1"), "–", kbd("5"), " rate · ", kbd("Tab"), " next · ", kbd("Enter"), " save · ",
-              kbd("S"), " skip · ", kbd("H"), " hide")))),
+              kbd("1"), "–", kbd("5"), " rate · ", kbd("Y"), "/", kbd("N"), " answer · ", kbd("Tab"), " next · ",
+              kbd("Enter"), " save · ", kbd("S"), " skip · ", kbd("H"), " hide")))),
     ));
     refresh();
     // Straight onto the first slider: the whole view is a keyboard.
@@ -419,6 +459,14 @@ export function createRatingPanel(host: HTMLElement, deps: RatingDeps): RatingPa
       if (/^[0-5]$/.test(event.key) && focused instanceof HTMLInputElement && focused.type === "range") {
         focused.value = event.key;
         focused.dispatchEvent(new Event("input"));
+        return true;
+      }
+      // A yes/no question with a seat focused: Y / N answer it (1 / 0 too, so
+      // the number row works the same way it does on the slider above).
+      const group = focused instanceof HTMLElement ? focused.closest<HTMLElement>(".rate__yn") : null;
+      if (group && /^[yYnN01]$/.test(event.key)) {
+        const yes = /^[yY1]$/.test(event.key);
+        group.querySelector<HTMLElement>(`.rate__yn-seat[data-value="${yes ? YES : NO}"]`)?.click();
         return true;
       }
       if (event.key === "Enter") { void save(); return true; }

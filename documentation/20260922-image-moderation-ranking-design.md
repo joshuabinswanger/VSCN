@@ -28,8 +28,8 @@ follows from them.
 
 Four criteria, each an integer 0–5:
 
-- **professional** — is this professional work
-- **knowledge** — is the subject knowledge communication
+- **professional** — is this professional work. *Asked as yes/no in the console since 2026-09-22 (Josh: "just on or off"); stored as 5 or 0 on the same scale.*
+- **knowledge** — is the subject knowledge communication. *Yes/no likewise.*
 - **aesthetics** — is it good to look at
 - **completeness** — does the record carry its description, links and tags
 
