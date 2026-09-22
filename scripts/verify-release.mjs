@@ -64,7 +64,7 @@ function grants(projectId, number) {
     { scope: "serviceAccount", resource: runtime, member: `serviceAccount:${runtime}`, role: "roles/iam.serviceAccountTokenCreator",
       why: "the functions runtime signs App Check tokens with its own identity (functions/src/appCheck.ts); roles/editor does not include signBlob, so without this login stalls at the Turnstile step" },
     { scope: "runService", resource: "acknowledgesitepublication", member: deployer, role: "roles/run.invoker",
-      why: "the merge workflow's last step POSTs the published revision to acknowledgeSitePublication; without it every release ends red in Actions" },
+      why: "the merge workflow's last step POSTs the published revision to acknowledgeSitePublication; without it every release ends red in Actions. Declared in functions/src/publication.ts since 2026-09-22, so a functions deploy applies it — if this row is red, the project was last deployed from a commit that still said invoker: \"private\", and that deploy revoked it" },
     { scope: "project", member: deployer, role: "roles/run.invoker", forbidden: true,
       why: "the deployer may invoke that one function and nothing else; a project-wide invoker grant would let a leaked deploy credential call every callable" },
     { scope: "project", member: deployer, role: "roles/firebasehosting.admin",
