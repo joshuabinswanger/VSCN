@@ -167,6 +167,12 @@ export function createRatingPanel(host: HTMLElement, deps: RatingDeps): RatingPa
       readout.textContent = v === UNSET ? "—" : String(v);
       input.setAttribute("aria-valuetext", v === UNSET ? "not rated" : String(v));
       input.classList.toggle("rate__range--unset", v === UNSET);
+      // The inked fraction of the track. Written here rather than read by
+      // CSS because no engine exposes a range's progress the same way; an
+      // unset slider inks nothing, whatever its thumb position.
+      const lo = Number(input.min), hi = Number(input.max);
+      const p = v === UNSET ? 0 : ((v - lo) / (hi - lo)) * 100;
+      input.style.setProperty("--p", `${p}%`);
     };
     input.addEventListener("input", () => {
       paint();
@@ -186,12 +192,15 @@ export function createRatingPanel(host: HTMLElement, deps: RatingDeps): RatingPa
   function checklist(item: RatingQueueItem): HTMLElement {
     // SHOWN, NOT RATED: it says WHY completeness reads what it does, so an
     // override is an informed disagreement rather than a guess.
+    // Pills, so all five sit on one line of the side column. The mark says
+    // present/missing to the eye; the words say it to a screen reader.
     return el("ul", { class: "rate__checks" },
       ...CHECK_LABELS.map(({ key, label }) => {
         const ok = item.checks[key];
         return el("li", { class: `rate__check${ok ? " rate__check--yes" : " rate__check--no"}` },
           el("span", { class: "rate__check-mark", "aria-hidden": "true" }, ok ? "✓" : "✗"),
-          `${label}${ok ? "" : " — missing"}`);
+          label,
+          el("span", { class: "rate__sr" }, ok ? " present" : " missing"));
       }));
   }
 
@@ -201,7 +210,6 @@ export function createRatingPanel(host: HTMLElement, deps: RatingDeps): RatingPa
         el("span", { class: "muted small" }, `${label} `),
         el("a", { href, target: "_blank", rel: "noreferrer" }, href)) : null;
     return el("div", { class: "rate__meta" },
-      el("h3", {}, "The record"),
       el("p", { class: "rate__owner" },
         linkBtn(item.ownerName || item.ownerUid, () => deps.go(`#uid/${encodeURIComponent(item.ownerUid)}`)),
         item.ownerSlug ? el("span", { class: "muted small" }, ` · /members/${item.ownerSlug}`) : null),
@@ -210,12 +218,13 @@ export function createRatingPanel(host: HTMLElement, deps: RatingDeps): RatingPa
       item.captionDe || item.descriptionDe
         ? el("p", { class: "muted small" }, `DE: ${item.captionDe ?? "—"} · ${item.descriptionDe ?? "—"}`)
         : null,
-      item.tags.length
-        ? el("p", { class: "chips" }, ...item.tags.map((t) => el("span", { class: "tag" }, t)))
-        : el("p", { class: "muted small" }, "no tags"),
+      el("div", { class: "rate__facts" },
+        item.tags.length
+          ? el("span", { class: "chips" }, ...item.tags.map((t) => el("span", { class: "tag" }, t)))
+          : el("span", { class: "muted small" }, "no tags"),
+        el("span", { class: "muted small" }, `${fmt(item.createdAt)} · ${item.width}×${item.height}`)),
       linkRow("link", item.link),
       linkRow("own page", item.siteLink),
-      el("p", { class: "muted small" }, `uploaded ${fmt(item.createdAt)} · ${item.width}×${item.height}`),
       el("h3", {}, `Completeness ${item.computedCompleteness}/5`),
       checklist(item),
       // An admin joining an average should know they are joining one. The
@@ -286,34 +295,46 @@ export function createRatingPanel(host: HTMLElement, deps: RatingDeps): RatingPa
       item.hidden ? "Unhide from galleries" : "Hide from galleries");
     hideBtn.addEventListener("click", () => void toggleHidden());
 
+    // ONE SCREEN: the picture is a stage on the left, and everything the
+    // admin reads and moves is one column beside it — record, sliders, score,
+    // Save. The sliders used to sit under the picture and began below the
+    // fold of a 16" laptop; see the stylesheet's note on .rate.
+    const kbd = (k: string) => el("kbd", {}, k);
     host.replaceChildren(el("div", { class: "card rate" },
-      deps.crumbs(el("span", { class: "muted" }, "·"),
+      el("div", { class: "rate__head" },
+        el("h2", {}, "Moderation"),
         el("span", { class: "muted small" },
-          `${stack.length} in this pass · ${outstanding} unrated by you`)),
-      el("h2", {}, "Moderation"),
-      el("div", { class: "rate__top" },
-        el("img", {
-          class: "rate__img", src: deps.fileUrl(item.storagePath), alt: item.caption ?? "",
-          loading: "eager", decoding: "async",
-        }),
-        meta(item)),
-      el("div", { class: "rate__sliders" },
-        ...CRITERIA.map((c) => slider(c.key, c.label, c.hint, UNSET, false, (v) => {
-          human[c.key] = v;
-          refresh();
-        })),
-        slider("completeness", "Completeness", "Computed from the record — move it only to disagree.",
-          item.computedCompleteness, true, (v) => {
-            completeness = v;
-            completenessAuto = false;
-            autoTag.hidden = true;
-            revert.hidden = false;
-            refresh();
-          }, [autoTag, revert]),
-        el("div", { class: "rate__score" },
-          el("span", { class: "muted small" }, "score"), scoreNode)),
-      el("div", { class: "actions rate__actions" }, saveBtn, skipBtn, hideBtn,
-        el("span", { class: "muted small" }, "1–5 rate · Tab moves · Enter saves · S skips · H hides")),
+          `${stack.length} in this pass · ${outstanding} unrated by you`),
+        deps.crumbs()),
+      el("div", { class: "rate__body" },
+        el("figure", { class: "rate__stage" },
+          el("img", {
+            class: "rate__img", src: deps.fileUrl(item.storagePath), alt: item.caption ?? "",
+            loading: "eager", decoding: "async",
+          })),
+        el("div", { class: "rate__side" },
+          meta(item),
+          el("div", { class: "rate__sliders" },
+            ...CRITERIA.map((c) => slider(c.key, c.label, c.hint, UNSET, false, (v) => {
+              human[c.key] = v;
+              refresh();
+            })),
+            slider("completeness", "Completeness", "Computed from the record — move it only to disagree.",
+              item.computedCompleteness, true, (v) => {
+                completeness = v;
+                completenessAuto = false;
+                autoTag.hidden = true;
+                revert.hidden = false;
+                refresh();
+              }, [autoTag, revert])),
+          el("div", { class: "rate__score" },
+            el("span", { class: "muted small" }, "score"), scoreNode),
+          el("div", { class: "rate__actions" },
+            saveBtn,
+            el("div", { class: "rate__actions-row" }, skipBtn, hideBtn),
+            el("p", { class: "rate__keys" },
+              kbd("1"), "–", kbd("5"), " rate · ", kbd("Tab"), " next · ", kbd("Enter"), " save · ",
+              kbd("S"), " skip · ", kbd("H"), " hide")))),
     ));
     refresh();
     // Straight onto the first slider: the whole view is a keyboard.
