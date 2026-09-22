@@ -1,5 +1,5 @@
-<!-- Mirrors the ~/.claude memory file `playwright-drives-the-animation-clock.md`; keep both copies in sync. -->
-
+<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/playwright-drives-the-animation-clock.md - kept in the repo so any
+     Claude instance can read it without access to the user profile. Edit both copies. -->
 ---
 name: playwright-drives-the-animation-clock
 description: "Playwright MCP runs a real compositing browser — view() timelines, transitions and the split-flap flip all advance and can be scrubbed frame by frame, which the in-app pane cannot do"
@@ -85,3 +85,29 @@ revoked anyway ([[dev-deploy-is-ci-only]]), so the admin-SDK route may not even 
 
 **Minor drift found in passing:** signed-out `/profile` on dev now lands on `/onboarding`,
 not `/` as [[dev-deploy-is-ci-only]] records.
+
+## Signed-in walking works, but only in the MCP's own profile (2026-09-22)
+
+Josh signed in himself in the Playwright window, which resolved the blocker above. Three
+things learned from it:
+
+- **`storageState` does NOT carry a Firebase session.** It saves cookies and localStorage;
+  Firebase Auth persists in IndexedDB (`firebaseLocalStorageDb`), so a default save comes
+  back with zero cookies and nothing for the site's origin. The `{indexedDB: true}` option
+  would capture it and is **refused by the classifier as Credential Materialization** - it
+  writes a bearer token to disk. Do not retry it.
+- **The MCP browser's persistent profile is the answer instead.** It launches headed with a
+  `--user-data-dir` under `AppData/Local/ms-playwright-mcp/mcp-chrome-<id>`, so a sign-in
+  simply stays there across restarts and no credential is ever materialised.
+- **The window is real and findable.** It had been buried behind other windows the whole
+  session. `Get-Process -Id <pid> | Select MainWindowTitle` names it; a `GetWindowRect` plus
+  `SetForegroundWindow` P/Invoke raises it. The page's own `screen` reading matches the
+  emulated viewport and is NOT a reliable headless tell.
+
+Verified signed-in on dev in that session: `/profile`'s four tabs switch correctly (visible
+field counts 22/18/3/0) with the Preview tab rendering the real member page; the gallery
+uploader (see [[gallery-uploader-reconciled]]); and `/admin`, where all three tabs route
+cleanly to `#list`, `#queues` and `#rating` with no errors over 27 members - **the router bug
+that made Moderation and Queues unreachable in [[image-moderation-ranking]] is fixed on
+current dev.** Josh's own dev profile is `active: false`, so the editor shows a "hidden from
+the community directory" banner.

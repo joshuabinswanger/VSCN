@@ -1,8 +1,8 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/gallery-uploader-reconciled.md — kept in the repo so any
+<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/gallery-uploader-reconciled.md - kept in the repo so any
      Claude instance can read it without access to the user profile. Edit both copies. -->
 ---
 name: gallery-uploader-reconciled
-description: "feat/gallery-uploader is ported onto dev, not merged — a third of it was superseded; the queue is UNVERIFIED signed-in and the link field needs a rules deploy"
+description: "feat/gallery-uploader is ported onto dev, not merged - a third of it was superseded; the queue is VERIFIED signed-in as of 2026-09-22 and the link field's rules are deployed"
 metadata: 
   node_type: memory
   type: project
@@ -26,9 +26,9 @@ they are counting patches, and the patches are gone through by hand. Do not try 
 
 - **`2b265ed` per-image link** — `link` on `GalleryItem`, `workLink()`/`hostLabel()` in
   `links.ts`, rendered in the member page's figcaption and in the editor's live preview.
-  **Needs a firestore.rules deploy to both projects**: `link` joins `validGalleryItem`'s
-  `hasOnly`, and until the ruleset is live, saving an image that carries one is rejected
-  whole — see [[firestore-rules-hasonly-gotcha]].
+  **Rules deploy VERIFIED DONE on both projects (2026-09-07, via the Firebase Rules
+  REST API):** prod's deployed firestore ruleset is byte-identical to the repo and carries
+  `link`; dev's carries it too. Saving an image with a link is safe everywhere.
 - **`338bb5c` the error taxonomy** — `GalleryErrorCode`, `GalleryError`,
   `galleryErrorCode()`, plus a quality-then-size ladder in `compressGalleryImage` that
   makes the 8 MB storage door enforceable from the client. That ladder is load-bearing for
@@ -55,3 +55,26 @@ survive `href()`), but **rows, progress, cancel, retry and reorder are untested 
 real account** — that is what Josh's comprehensive pass is for. The dev server on :4321
 belongs to another session and returns `504 Outdated Optimize Dep` for Firebase modules,
 so this could not be driven from here either.
+
+## The queue is VERIFIED signed-in (2026-09-22)
+
+Walked end to end on dev in the Playwright MCP browser, signed in as Josh's own account
+(see [[playwright-drives-the-animation-clock]] for how the session was obtained). A
+1600x1100 PNG dropped on `#gallery-files`:
+
+- the queue row appears instantly and reads `Uploading... 0%` **for the whole conversion and
+  upload** - the percentage never moves off 0, so a stalled-looking 0% is NORMAL, not a hang.
+  It took ~15 s for a 20 KB PNG. Do not diagnose a stall from the percentage.
+- the bytes go to `pending/{uid}/gallery/{uuid}.webp` first and then to
+  `users/{uid}/gallery/{uuid}.webp`. The `pending/` prefix is the record-first staging step,
+  NOT a divergence from the layout in CLAUDE.md - it looks like one mid-flight.
+- client-side WebP conversion happens as designed.
+
+**The upload commits WITHOUT clicking Save, and so does the removal.** The image survived a
+full reload with the form untouched, and the thumbnail's `.gallery-thumb-remove` took it away
+again across another reload with no Save and no confirm dialog. Only the
+caption/description/link/tag fields need the sticky Save. So an accidental drop is live
+immediately - there is no unsaved-changes safety net on the image itself.
+
+Cleanup after the walk left the gallery at its original three images; the removed record is
+`pendingDeletion` for `sweepImages` to finish.
