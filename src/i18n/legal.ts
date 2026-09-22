@@ -8,7 +8,8 @@
 // Everything about WHO is read from src/data/legalEntity.ts; everything about
 // WHAT the site does with data is written from the code as it stands — the
 // Firebase services in src/lib/firebase.ts, Turnstile in
-// src/lib/appCheckTurnstile.ts, the admin ping in functions/src/notify.ts.
+// src/lib/appCheckTurnstile.ts, the admin ping in functions/src/notify.ts, the
+// info@vscn.ch mailbox in documentation/agent-memory/email-mailbox-migration.md.
 // When one of those changes, the matching section here changes with it.
 import type { Lang } from "./translations.ts";
 import { legalEntity as e } from "../data/legalEntity.ts";
@@ -34,7 +35,7 @@ export interface LegalPageContent {
   sections: LegalSection[];
 }
 
-const UPDATED = "2026-09-10";
+const UPDATED = "2026-09-22";
 
 const en: Record<LegalPageId, LegalPageContent> = {
   impressum: {
@@ -157,6 +158,13 @@ const en: Record<LegalPageId, LegalPageContent> = {
         ],
       },
       {
+        id: "email",
+        heading: "Email between us and you",
+        body: [
+          "Mail sent to and from info@vscn.ch — the address given on the contact page, and the address we write from when we approach members directly — is hosted by Infomaniak Network SA (Geneva, Switzerland). Infomaniak keeps our mailbox on servers in Switzerland and therefore processes the email addresses and the contents of the messages we exchange with you.",
+        ],
+      },
+      {
         id: "profile",
         heading: "Your profile and your works",
         body: [
@@ -189,12 +197,13 @@ const en: Record<LegalPageId, LegalPageContent> = {
           {
             list: [
               "Google LLC (Firebase Hosting, Authentication, Firestore, Cloud Storage, Cloud Functions) — hosting, accounts, database, pictures. Data may be processed on Google servers outside Switzerland, including in the USA.",
-              "Cloudflare, Inc. — bot protection (Turnstile) and the routing of email sent to our domain.",
+              "Cloudflare, Inc. — bot protection (Turnstile).",
               "Brevo (Sendinblue SAS, France) — delivery of the administrative notice when an account is created. Processed in the EU.",
+              "Infomaniak Network SA (Switzerland) — hosting of the info@vscn.ch mailbox: the email addresses and the contents of mail we send to and receive from you. Processed in Switzerland.",
               "GitHub, Inc. — the site is rebuilt on GitHub’s servers whenever a profile changes; no personal data beyond what is already public in the directory passes through that step.",
             ],
           },
-          "Google, Cloudflare and GitHub are US companies certified under the Swiss-U.S. Data Privacy Framework and the EU-U.S. Data Privacy Framework, or process under the EU standard contractual clauses, which the Swiss Federal Council recognises as adequate safeguards; Brevo processes within the EU, whose level of protection Switzerland recognises as adequate. We do not sell data and do not pass it to anyone else, except where the law obliges us to.",
+          "Google, Cloudflare and GitHub are US companies certified under the Swiss-U.S. Data Privacy Framework and the EU-U.S. Data Privacy Framework, or process under the EU standard contractual clauses, which the Swiss Federal Council recognises as adequate safeguards; Brevo processes within the EU, whose level of protection Switzerland recognises as adequate, and Infomaniak processes in Switzerland. We do not sell data and do not pass it to anyone else, except where the law obliges us to.",
         ],
       },
       {
@@ -344,6 +353,13 @@ const de: Record<LegalPageId, LegalPageContent> = {
         ],
       },
       {
+        id: "email",
+        heading: "E-Mails zwischen uns und dir",
+        body: [
+          "E-Mails an und von info@vscn.ch — der Adresse auf der Kontaktseite und der Adresse, von der aus wir Mitglieder direkt anschreiben — werden von der Infomaniak Network SA (Genf, Schweiz) gehostet. Infomaniak führt unser Postfach auf Servern in der Schweiz und bearbeitet damit die E-Mail-Adressen und die Inhalte der Nachrichten, die wir mit dir austauschen.",
+        ],
+      },
+      {
         id: "profile",
         heading: "Dein Profil und deine Arbeiten",
         body: [
@@ -376,12 +392,13 @@ const de: Record<LegalPageId, LegalPageContent> = {
           {
             list: [
               "Google LLC (Firebase Hosting, Authentication, Firestore, Cloud Storage, Cloud Functions) — Hosting, Konten, Datenbank, Bilder. Daten können auf Google-Servern ausserhalb der Schweiz bearbeitet werden, auch in den USA.",
-              "Cloudflare, Inc. — Bot-Schutz (Turnstile) und die Weiterleitung von E-Mails an unsere Domain.",
+              "Cloudflare, Inc. — Bot-Schutz (Turnstile).",
               "Brevo (Sendinblue SAS, Frankreich) — Zustellung der administrativen Mitteilung bei der Erstellung eines Kontos. Bearbeitung in der EU.",
+              "Infomaniak Network SA (Schweiz) — Hosting des Postfachs info@vscn.ch: die E-Mail-Adressen und die Inhalte der Nachrichten, die wir dir schreiben und von dir erhalten. Bearbeitung in der Schweiz.",
               "GitHub, Inc. — die Website wird auf GitHubs Servern neu gebaut, wenn sich ein Profil ändert; dabei fliessen keine Personendaten, die nicht bereits im Verzeichnis öffentlich sind.",
             ],
           },
-          "Google, Cloudflare und GitHub sind US-Unternehmen, die unter dem Swiss-U.S. Data Privacy Framework und dem EU-U.S. Data Privacy Framework zertifiziert sind oder Daten unter den EU-Standardvertragsklauseln bearbeiten, die der Bundesrat als angemessene Garantie anerkennt; Brevo bearbeitet Daten in der EU, deren Schutzniveau die Schweiz als angemessen anerkennt. Wir verkaufen keine Daten und geben sie an niemanden sonst weiter, ausser wo uns das Gesetz dazu verpflichtet.",
+          "Google, Cloudflare und GitHub sind US-Unternehmen, die unter dem Swiss-U.S. Data Privacy Framework und dem EU-U.S. Data Privacy Framework zertifiziert sind oder Daten unter den EU-Standardvertragsklauseln bearbeiten, die der Bundesrat als angemessene Garantie anerkennt; Brevo bearbeitet Daten in der EU, deren Schutzniveau die Schweiz als angemessen anerkennt, und Infomaniak bearbeitet Daten in der Schweiz. Wir verkaufen keine Daten und geben sie an niemanden sonst weiter, ausser wo uns das Gesetz dazu verpflichtet.",
         ],
       },
       {
