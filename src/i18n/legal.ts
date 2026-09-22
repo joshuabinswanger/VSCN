@@ -8,7 +8,7 @@
 // Everything about WHO is read from src/data/legalEntity.ts; everything about
 // WHAT the site does with data is written from the code as it stands — the
 // Firebase services in src/lib/firebase.ts, Turnstile in
-// src/lib/appCheckTurnstile.ts, the admin ping in functions/src/notify.ts, the
+// src/lib/appCheckTurnstile.ts, the admin digest in functions/src/adminDigest.ts, the
 // info@vscn.ch mailbox in documentation/agent-memory/email-mailbox-migration.md.
 // When one of those changes, the matching section here changes with it.
 import type { Lang } from "./translations.ts";
@@ -154,7 +154,7 @@ const en: Record<LegalPageId, LegalPageContent> = {
         heading: "Creating an account",
         body: [
           "If you register, Firebase Authentication (Google) stores your email address and a hashed form of your password, and sends you a verification email. We never see the password itself. Your browser keeps you signed in using its own local storage (not a cookie); signing out clears it.",
-          "When an account is created, an automatic notice with the email address used is sent to the controller so that new registrations can be attended to. That notice is delivered through Brevo (Sendinblue SAS, Paris, France) to a private mailbox of the controller, and is kept only as an ordinary email.",
+          "When an account is created, and when a member publishes an image, an automatic notice is sent to the controller so that new registrations and uploads can be attended to. For a new account it lists the email address used and the profile details entered; it is sent from our Infomaniak mailbox to a private mailbox of the controller and is kept only as an ordinary email.",
         ],
       },
       {
@@ -198,12 +198,11 @@ const en: Record<LegalPageId, LegalPageContent> = {
             list: [
               "Google LLC (Firebase Hosting, Authentication, Firestore, Cloud Storage, Cloud Functions) — hosting, accounts, database, pictures. Data may be processed on Google servers outside Switzerland, including in the USA.",
               "Cloudflare, Inc. — bot protection (Turnstile).",
-              "Brevo (Sendinblue SAS, France) — delivery of the administrative notice when an account is created. Processed in the EU.",
               "Infomaniak Network SA (Switzerland) — hosting of the info@vscn.ch mailbox: the email addresses and the contents of mail we send to and receive from you. Processed in Switzerland.",
               "GitHub, Inc. — the site is rebuilt on GitHub’s servers whenever a profile changes; no personal data beyond what is already public in the directory passes through that step.",
             ],
           },
-          "Google, Cloudflare and GitHub are US companies certified under the Swiss-U.S. Data Privacy Framework and the EU-U.S. Data Privacy Framework, or process under the EU standard contractual clauses, which the Swiss Federal Council recognises as adequate safeguards; Brevo processes within the EU, whose level of protection Switzerland recognises as adequate, and Infomaniak processes in Switzerland. We do not sell data and do not pass it to anyone else, except where the law obliges us to.",
+          "Google, Cloudflare and GitHub are US companies certified under the Swiss-U.S. Data Privacy Framework and the EU-U.S. Data Privacy Framework, or process under the EU standard contractual clauses, which the Swiss Federal Council recognises as adequate safeguards; Infomaniak processes in Switzerland. We do not sell data and do not pass it to anyone else, except where the law obliges us to.",
         ],
       },
       {
@@ -349,7 +348,7 @@ const de: Record<LegalPageId, LegalPageContent> = {
         heading: "Ein Konto erstellen",
         body: [
           "Wenn du dich registrierst, speichert Firebase Authentication (Google) deine E-Mail-Adresse und dein Passwort in gehashter Form und schickt dir eine Bestätigungs-E-Mail. Dein Passwort selbst sehen wir nie. Dein Browser hält dich über seinen eigenen lokalen Speicher angemeldet (kein Cookie); Abmelden löscht ihn.",
-          "Wird ein Konto erstellt, geht eine automatische Mitteilung mit der verwendeten E-Mail-Adresse an den Verantwortlichen, damit neue Registrierungen betreut werden können. Diese Mitteilung wird über Brevo (Sendinblue SAS, Paris, Frankreich) an ein privates Postfach des Verantwortlichen zugestellt und nur als gewöhnliche E-Mail aufbewahrt.",
+          "Wird ein Konto erstellt oder veröffentlicht ein Mitglied ein Bild, geht eine automatische Mitteilung an den Verantwortlichen, damit neue Registrierungen und Uploads betreut werden können. Bei einem neuen Konto nennt sie die verwendete E-Mail-Adresse und die eingegebenen Profilangaben; sie wird aus unserem Infomaniak-Postfach an ein privates Postfach des Verantwortlichen gesendet und nur als gewöhnliche E-Mail aufbewahrt.",
         ],
       },
       {
@@ -393,12 +392,11 @@ const de: Record<LegalPageId, LegalPageContent> = {
             list: [
               "Google LLC (Firebase Hosting, Authentication, Firestore, Cloud Storage, Cloud Functions) — Hosting, Konten, Datenbank, Bilder. Daten können auf Google-Servern ausserhalb der Schweiz bearbeitet werden, auch in den USA.",
               "Cloudflare, Inc. — Bot-Schutz (Turnstile).",
-              "Brevo (Sendinblue SAS, Frankreich) — Zustellung der administrativen Mitteilung bei der Erstellung eines Kontos. Bearbeitung in der EU.",
               "Infomaniak Network SA (Schweiz) — Hosting des Postfachs info@vscn.ch: die E-Mail-Adressen und die Inhalte der Nachrichten, die wir dir schreiben und von dir erhalten. Bearbeitung in der Schweiz.",
               "GitHub, Inc. — die Website wird auf GitHubs Servern neu gebaut, wenn sich ein Profil ändert; dabei fliessen keine Personendaten, die nicht bereits im Verzeichnis öffentlich sind.",
             ],
           },
-          "Google, Cloudflare und GitHub sind US-Unternehmen, die unter dem Swiss-U.S. Data Privacy Framework und dem EU-U.S. Data Privacy Framework zertifiziert sind oder Daten unter den EU-Standardvertragsklauseln bearbeiten, die der Bundesrat als angemessene Garantie anerkennt; Brevo bearbeitet Daten in der EU, deren Schutzniveau die Schweiz als angemessen anerkennt, und Infomaniak bearbeitet Daten in der Schweiz. Wir verkaufen keine Daten und geben sie an niemanden sonst weiter, ausser wo uns das Gesetz dazu verpflichtet.",
+          "Google, Cloudflare und GitHub sind US-Unternehmen, die unter dem Swiss-U.S. Data Privacy Framework und dem EU-U.S. Data Privacy Framework zertifiziert sind oder Daten unter den EU-Standardvertragsklauseln bearbeiten, die der Bundesrat als angemessene Garantie anerkennt; Infomaniak bearbeitet Daten in der Schweiz. Wir verkaufen keine Daten und geben sie an niemanden sonst weiter, ausser wo uns das Gesetz dazu verpflichtet.",
         ],
       },
       {
