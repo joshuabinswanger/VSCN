@@ -2,9 +2,13 @@
   "firestore": {
     "rules": "firestore.rules"
   },
-  "storage": {
-    "rules": "storage.rules"
-  },
+  "storage": [
+    {
+      "//": "A NAMED BUCKET, NOT THE DEFAULT ONE. Written as a single object, this block makes the CLI ask the Firebase Storage API for the project default bucket before it can publish anything, and that endpoint answers 404 to the Hosting deployer however much it is granted. The CLI reports that as Firebase Storage not being set up, on a project that plainly has it. An array with a target skips the lookup entirely (deploy/storage/prepare.js only resolves a default when the config is not an array), which is what lets CI publish storage rules on read-only credentials. The bucket per project lives in .firebaserc, where it is also a written fact rather than something an API has to be asked for.",
+      "target": "default",
+      "rules": "storage.rules"
+    }
+  ],
   "functions": [
     {
       "source": "functions",
