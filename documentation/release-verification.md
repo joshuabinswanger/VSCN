@@ -97,14 +97,16 @@ consequence of its absence, not merely what is present.
 Applying a grant by hand: if the policy already holds conditional bindings, `gcloud` demands a
 condition. These grants are unconditional; pass `--condition=None`.
 
-A functions deploy resets `acknowledgeSitePublication`'s invoker policy to what the code declares,
-and `invoker: "private"` declares nobody. Until the deployer is named in the code, every
-`firebase deploy --only functions` wipes the hosting deployer's `roles/run.invoker` and the next
-release's last step fails with 403. Run the check after every functions deploy; re-grant with:
+A functions deploy rewrites `acknowledgeSitePublication`'s invoker policy from the deploy
+manifest, so whatever the code declares wins over anything granted by hand. Until 2026-09-22 the
+code said `invoker: "private"`, which declares nobody, and every `firebase deploy --only functions`
+silently revoked the hosting deployer, failing the next release's last step with 403.
+[functions/src/publication.ts](../functions/src/publication.ts) now names the deployer, derived from
+the project being deployed to, so the deploy applies the binding itself.
 
-```powershell
-gcloud run services add-iam-policy-binding acknowledgesitepublication --region us-central1 --project <project> --member serviceAccount:vscn-hosting-deployer@<project>.iam.gserviceaccount.com --role roles/run.invoker
-```
+If probe 4 reports that grant missing, do not re-apply it by hand: it means the project was last
+deployed from a commit that still said `private`. Deploy functions from a commit that has the fix
+and the binding comes back.
 
 Deploying functions non-interactively on this machine also needs `FUNCTIONS_DISCOVERY_TIMEOUT=120`,
 dotenv values in `functions/.env` for every `defineString` param (a code default is not enough),
