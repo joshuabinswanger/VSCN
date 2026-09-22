@@ -51,3 +51,33 @@ test("records without a bucket or list still type-check as no works", () => {
   const m = toMemberViewBase(UID, { displayName: "Ada" });
   assert.deepEqual(m.works, []);
 });
+
+// THE PRIORITY REACHES THE WORK. membersBuild attaches the snapshot's
+// moderation row to the RECORD; works() reads it back off the record after
+// orderedGalleryItems() has done the ordering, which is what lets the wall be
+// ranked while /members/<slug> keeps the member's own order.
+test("a work carries its priority and whether moderation hid it", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a", "b"] }, [
+    rec("a", { caption: "a", score: 91, hidden: false }),
+    rec("b", { caption: "b", score: 12, hidden: true }),
+  ], BUCKET);
+  assert.deepEqual(m.works.map((w) => [w.score, w.hidden]), [[91, false], [12, true]]);
+});
+
+test("a record with no moderation row still scores, so nothing sorts as zero", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a"] }, [rec("a")], BUCKET);
+  // 100 * (0.85 * 2.5 + 0.15 * 0) / 5 — neutral on the three human criteria,
+  // its real (empty) completeness on the fourth.
+  assert.equal(m.works[0].score, 43);
+  assert.equal(m.works[0].hidden, false);
+});
+
+test("the fallback score reads the record, so a documented picture edges ahead", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a"] }, [
+    rec("a", {
+      caption: "A", captionDe: "A", description: "B", descriptionDe: "B",
+      tags: ["Botany"], link: "nature.com/x",
+    }),
+  ], BUCKET);
+  assert.equal(m.works[0].score, 58);
+});
