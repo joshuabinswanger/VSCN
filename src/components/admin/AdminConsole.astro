@@ -15,7 +15,23 @@
         box could do was lost. That fallback is why this is not a <form> with a
         submit button any more — the common case must not need Enter. */
     }
+    {
+      /* THE THREE VIEWS ARE TABS, NOT BUTTONS AFTER THE SEARCH BOX (2026-09-22,
+        Josh: "revamp the UI i want a modern ui … everything seems too big").
+        Queues and Moderation used to be two loose ghost buttons wearing the
+        marketing pages' padding, trailing the filter; which view was on
+        screen was never said anywhere. A segmented control names the three
+        places the console can be and marks the one you are in — `route()`
+        writes aria-current on every navigation, so the strip is always true
+        to the hash. The filter keeps its place beside them because it is
+        also the id lookup, which works from any view. */
+    }
     <div class="admin__bar">
+      <nav class="admin__tabs" aria-label="Console views">
+        <button type="button" id="admin-list-btn" class="admin__tab" data-view="list" aria-current="page">Members</button>
+        <button type="button" id="admin-queues-btn" class="admin__tab" data-view="queues">Queues</button>
+        <button type="button" id="admin-rating-btn" class="admin__tab" data-view="rating">Moderation</button>
+      </nav>
       <input
         id="admin-filter"
         class="input"
@@ -32,9 +48,7 @@
         <option value="mismatch">Image count mismatch</option>
         <option value="unverified">Unverified email</option>
       </select>
-      <button type="button" id="admin-queues-btn" class="btn-ghost">Queues</button>
-      <button type="button" id="admin-rating-btn" class="btn-ghost">Moderation</button>
-      <button type="button" id="admin-reload" class="btn-ghost">Reload</button>
+      <button type="button" id="admin-reload" class="btn-ghost admin__reload" title="Reload the list from the server">Reload</button>
     </div>
     {
       /* The status line is ONE node for its whole life: it is the role="status"
@@ -56,43 +70,73 @@
 </section>
 
 <style>
-  .admin { display: grid; gap: 1.25rem; }
+  /* ── The console's own scale ───────────────────────────
+     A TOOL, NOT A PAGE (2026-09-22, Josh on a MacBook Pro 16: "everything
+     seems too big"). The site's type and button sizes are set for reading a
+     member's page; a roster of eighty rows and a rating stack want the density
+     of a desk. So the console runs one notch under the site's base and every
+     control in it is compact — scoped here, so the public pages keep theirs.
+     Every colour is still a token. */
+  .admin { display: grid; gap: 0.75rem; font-size: 0.93rem; line-height: 1.45; }
   .admin__gate { color: var(--color-muted); }
-  .admin__bar { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-  .admin__bar .input { flex: 1 1 20rem; }
-  .admin__scope { flex: 0 1 14rem; }
+
+  /* ── Header row: views · filter · scope · reload ──────── */
+  .admin__bar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+  .admin__bar .input { flex: 1 1 18rem; padding: 0.35rem 0.7rem; font-size: 0.85rem; }
+  .admin__scope { flex: 0 1 12rem; }
+  .admin__reload { flex: 0 0 auto; }
+  /* A segmented control: one hairline box, three seats, the lit one solid.
+     The lit seat is the hash's word for where you are — see setTab(). */
+  .admin__tabs {
+    display: inline-flex; gap: 2px; padding: 2px; flex: 0 0 auto;
+    border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: white;
+  }
+  .admin__tab {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.3rem 0.85rem; border: 0; border-radius: 3px; background: none;
+    font: inherit; font-size: 0.82rem; font-weight: 500; letter-spacing: 0.01em;
+    color: var(--color-muted); cursor: pointer; white-space: nowrap;
+    transition: background-color 0.12s, color 0.12s;
+  }
+  .admin__tab:hover { color: var(--color-dark); }
+  .admin__tab[aria-current] { background: var(--color-dark); color: var(--color-bg); }
+  /* The waiting count rides on the Queues seat and swaps ink when the seat lights. */
+  .admin__tab :global(.badge) { margin-left: 0; }
+  .admin__tab[aria-current] :global(.badge) { background: var(--color-bg); color: var(--color-dark); }
 
   /* ── Status line: three tones, one node ─────────────── */
-  .admin__statusbar { display: flex; align-items: baseline; gap: 0.5rem; min-height: 1.25rem; }
-  .admin__status { margin: 0; color: var(--color-muted); overflow-wrap: anywhere; }
+  .admin__statusbar { display: flex; align-items: baseline; gap: 0.5rem; min-height: 1.2rem; }
+  .admin__status { margin: 0; color: var(--color-muted); overflow-wrap: anywhere; font-size: 0.85rem; }
   .admin__status--success { color: var(--color-success); }
   .admin__status--error { color: var(--color-error); }
   .admin__status-x {
-    background: none; border: 0; padding: 0 0.25rem; font: inherit; font-size: 1.1rem; line-height: 1;
+    background: none; border: 0; padding: 0 0.25rem; font: inherit; font-size: 1.05rem; line-height: 1;
     color: var(--color-muted); cursor: pointer;
   }
   .admin__status-x:hover { color: var(--color-dark); }
 
+  /* ── Cards, headings, definition lists ───────────────── */
   .admin :global(.card) {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
-    padding: 1rem;
+    padding: 0.85rem 1rem;
     display: grid;
     gap: 0.5rem;
+    background: white;
   }
   .admin :global(.card__head) { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
-  .admin :global(h2) { font-size: 1.1rem; margin: 0; }
-  .admin :global(h3) { font-size: 0.9rem; margin: 0.5rem 0 0; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-  .admin :global(dl) { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0; }
+  .admin :global(h2) { font-size: 1rem; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  .admin :global(h3) { font-size: 0.7rem; margin: 0.5rem 0 0; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .admin :global(dl) { display: grid; grid-template-columns: max-content 1fr; gap: 0.2rem 1rem; margin: 0; }
   .admin :global(dt) { color: var(--color-muted); }
   .admin :global(dt.differs) { color: var(--color-error); }
   .admin :global(dd) { margin: 0; overflow-wrap: anywhere; min-width: 0; }
   .admin :global(.actions) { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
-  .admin :global(.thumbs) { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; }
+  .admin :global(.thumbs) { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.6rem; }
   .admin :global(.thumb img) { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-xs); background: var(--color-border); }
   .admin :global(.thumb small) { display: block; color: var(--color-muted); overflow-wrap: anywhere; }
   .admin :global(.thumb) { margin: 0; }
-  .admin :global(.tag) { display: inline-block; padding: 0 0.4rem; border: 1px solid var(--color-border); border-radius: var(--radius-xs); font-size: 0.8rem; }
+  .admin :global(.tag) { display: inline-block; padding: 0 0.4rem; border: 1px solid var(--color-border); border-radius: var(--radius-xs); font-size: 0.75rem; line-height: 1.5; }
   .admin :global(.tag--warn) { border-color: var(--color-dark); }
   .admin :global(.tag--yes) { border-color: var(--color-success); color: var(--color-success); }
   .admin :global(.tag--no) { color: var(--color-muted); }
@@ -102,34 +146,42 @@
   /* A privilege, not a property: solid, so it cannot be skimmed past. */
   .admin :global(.tag--admin) { background: var(--color-dark); color: var(--color-bg); border-color: var(--color-dark); font-weight: 700; letter-spacing: 0.04em; }
   .admin :global(.chips) { display: inline-flex; gap: 0.25rem; flex-wrap: wrap; vertical-align: baseline; }
-  .admin :global(.row) { display: flex; justify-content: space-between; gap: 1rem; padding: 0.35rem 0; border-bottom: 1px solid var(--color-border); }
+  .admin :global(.row) { display: flex; justify-content: space-between; gap: 1rem; padding: 0.3rem 0; border-bottom: 1px solid var(--color-border); }
   .admin :global(.row button) { white-space: nowrap; }
   /* The right-hand end of a queue row is now two controls, not one: the
      delete and the jump to the owner. Kept on one line and hard against the
      edge so the rows stay a scannable column of ids on the left. */
   .admin :global(.row-actions) { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
-  .admin :global(.qhead) { margin-top: 0.75rem; }
+  .admin :global(.qhead) { margin-top: 0.5rem; }
   .admin :global(.qhead h2) { display: flex; gap: 0.5rem; align-items: baseline; }
   .admin :global(.muted) { color: var(--color-muted); }
-  .admin :global(.small) { font-size: 0.8rem; margin: 0; }
+  .admin :global(.small) { font-size: 0.78rem; margin: 0; }
   .admin :global(.error) { color: var(--color-error); }
   .admin :global(.nowrap) { white-space: nowrap; }
-  .admin :global(.crumbs) { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: baseline; font-size: 0.8rem; }
+  .admin :global(.crumbs) { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: baseline; font-size: 0.78rem; }
   .admin :global(.btn-link) {
     background: none; border: 0; padding: 0; font: inherit; color: var(--color-dark);
     cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
   }
   .admin :global(code) { font: inherit; }
   .admin :global(pre.raw) {
-    margin: 0; padding: 0.75rem; font-size: 0.78rem; line-height: 1.4;
+    margin: 0; padding: 0.75rem; font-size: 0.75rem; line-height: 1.4;
     border: 1px solid var(--color-border); border-radius: var(--radius-xs);
     overflow-x: auto; white-space: pre; max-height: 32rem; overflow-y: auto;
   }
   .admin :global(.swatch) { display: inline-flex; align-items: center; gap: 0.35rem; }
   .admin :global(.swatch__dot) { width: 0.9em; height: 0.9em; border-radius: 50%; border: 1px solid var(--color-border); display: inline-block; }
   .admin :global(.gallery-ids) { margin: 0; padding-left: 1.5rem; }
-  .admin :global(.note) { margin: 0; padding: 0.5rem 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-xs); font-size: 0.85rem; }
+  .admin :global(.note) { margin: 0; padding: 0.45rem 0.7rem; border: 1px solid var(--color-border); border-radius: var(--radius-xs); font-size: 0.8rem; }
   .admin :global(.note--diff) { border-color: var(--color-error); }
+
+  /* ── Buttons: the console's, not the site's ───────────
+     The shared .btn-ghost / .btn-solid carry the marketing pages' padding.
+     Inside the console every one of them is compact — a detail row holds five. */
+  .admin :global(.btn-ghost), .admin :global(.btn-solid) {
+    padding: 0.4rem 0.85rem; font-size: 0.8rem; line-height: 1.3; cursor: pointer;
+  }
+  .admin :global(.btn-ghost) { border-width: 1px; }
 
   /* ── Copy affordance ───────────────────────────────────
      Small and quiet, next to any id worth pasting somewhere else. */
@@ -137,7 +189,7 @@
   .admin :global(.copyable__val) { overflow-wrap: anywhere; }
   .admin :global(.copybtn) {
     background: none; border: 1px solid var(--color-border); border-radius: var(--radius-xs);
-    padding: 0 0.35rem; font: inherit; font-size: 0.7rem; color: var(--color-muted); cursor: pointer;
+    padding: 0 0.35rem; font: inherit; font-size: 0.68rem; color: var(--color-muted); cursor: pointer;
     white-space: nowrap; line-height: 1.4;
   }
   .admin :global(.copybtn:hover) { color: var(--color-dark); border-color: var(--color-dark); }
@@ -149,18 +201,18 @@
      rather than widening the page — the same rule the rest of the site follows
      for wide content. */
   .admin :global(.tablewrap) { overflow-x: auto; }
-  .admin :global(table) { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .admin :global(table) { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
   .admin :global(th) {
     text-align: left;
     font-weight: 600;
     color: var(--color-muted);
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    font-size: 0.68rem;
-    padding: 0 0.6rem 0.4rem 0;
+    letter-spacing: 0.06em;
+    font-size: 0.65rem;
+    padding: 0 0.6rem 0.35rem 0;
     white-space: nowrap;
   }
-  .admin :global(td) { padding: 0.4rem 0.6rem 0.4rem 0; border-top: 1px solid var(--color-border); vertical-align: top; }
+  .admin :global(td) { padding: 0.32rem 0.6rem 0.32rem 0; border-top: 1px solid var(--color-border); vertical-align: top; }
   .admin :global(td.num), .admin :global(th.num) { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   /* The header IS the sort control; the active column keeps its arrow dark. */
   .admin :global(.sortbtn) {
@@ -188,7 +240,7 @@
   .admin :global(.namebtn:hover) { color: var(--color-muted); }
   /* Column picker: a <details> with ordinary display values — never
      `display: contents` on details/summary (WebKit bug 320447). */
-  .admin :global(.colpick) { position: relative; font-size: 0.8rem; }
+  .admin :global(.colpick) { position: relative; font-size: 0.78rem; }
   .admin :global(.colpick summary) { list-style: none; cursor: pointer; }
   .admin :global(.colpick summary::-webkit-details-marker) { display: none; }
   .admin :global(.colpick__body) {
@@ -197,51 +249,49 @@
     background: white; border: 1px solid var(--color-border); border-radius: var(--radius-sm);
   }
   .admin :global(.colpick__opt) { display: flex; gap: 0.4rem; align-items: center; white-space: nowrap; cursor: pointer; }
-  /* Count on the Queues button — how much is waiting for a human. */
+  /* Count on the Queues tab — how much is waiting for a human. */
   .admin :global(.badge) {
     display: inline-block; min-width: 1.4em; padding: 0 0.4em; margin-left: 0.4em;
     border-radius: 1em; background: var(--color-dark); color: var(--color-bg);
-    font-size: 0.75rem; font-weight: 700; text-align: center; line-height: 1.5;
+    font-size: 0.68rem; font-weight: 700; text-align: center; line-height: 1.5;
   }
 
   /* ── Member detail: grouped sections ──────────────────
      Every section is a <details> with real boxes — see the WebKit note above;
      no `display: contents` anywhere in here. */
   .admin :global(.detail) { gap: 0.25rem; }
-  .admin :global(.detail__name) { font-size: 1.4rem; margin-bottom: 0.5rem; }
+  .admin :global(.detail__name) { font-size: 1.2rem; margin-bottom: 0.4rem; }
   .admin :global(.sec) { border-top: 1px solid var(--color-border); }
   .admin :global(.sec__sum) {
     display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap;
-    padding: 0.6rem 0; cursor: pointer; list-style: none;
+    padding: 0.5rem 0; cursor: pointer; list-style: none;
   }
   .admin :global(.sec__sum::-webkit-details-marker) { display: none; }
-  .admin :global(.sec__sum::before) { content: "▸"; color: var(--color-muted); font-size: 0.8rem; }
+  .admin :global(.sec__sum::before) { content: "▸"; color: var(--color-muted); font-size: 0.75rem; }
   .admin :global(.sec[open] > .sec__sum::before) { content: "▾"; }
   .admin :global(.sec__sum:hover .sec__title) { color: var(--color-muted); }
-  .admin :global(.sec__title) { font-size: 1rem; margin: 0; }
-  .admin :global(.sec__body) { display: grid; gap: 0.5rem; padding: 0 0 1rem 1.1rem; }
+  .admin :global(.sec__title) { font-size: 0.92rem; margin: 0; }
+  .admin :global(.sec__body) { display: grid; gap: 0.45rem; padding: 0 0 0.85rem 1.1rem; }
   .admin :global(.overview) { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
-  .admin :global(.overview__main) { flex: 1 1 16rem; display: grid; gap: 0.5rem; min-width: 0; }
-  .admin :global(.avatar) { width: 6rem; height: 6rem; object-fit: cover; border-radius: var(--radius-xs); background: var(--color-border); flex: 0 0 auto; }
+  .admin :global(.overview__main) { flex: 1 1 16rem; display: grid; gap: 0.4rem; min-width: 0; }
+  .admin :global(.avatar) { width: 4.5rem; height: 4.5rem; object-fit: cover; border-radius: var(--radius-xs); background: var(--color-border); flex: 0 0 auto; }
   .admin :global(.avatar--none) { border: 1px dashed var(--color-border); background: none; }
 
   /* ── Actions: routine vs Danger ────────────────────────
      Two groups, so "Purge now" stops looking like "Set email". The danger
      group is boxed in the error colour and its buttons wear it too. */
-  .admin :global(.actions-split) { display: flex; gap: 1rem; flex-wrap: wrap; align-items: stretch; margin-bottom: 0.75rem; }
+  .admin :global(.actions-split) { display: flex; gap: 1rem; flex-wrap: wrap; align-items: stretch; margin-bottom: 0.6rem; }
   .admin :global(.actions--danger) {
     border: 1px solid var(--color-error); border-radius: var(--radius-sm);
     padding: 0.4rem 0.6rem; margin-left: auto;
   }
-  .admin :global(.danger__label) { color: var(--color-error); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+  .admin :global(.danger__label) { color: var(--color-error); font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
   .admin :global(.btn-danger.btn-ghost) { border-color: var(--color-error); color: var(--color-error); }
   .admin :global(.btn-danger.btn-solid) { background: var(--color-error); }
   .admin :global(.btn-danger.btn-solid:hover) { background: var(--color-error); opacity: 0.85; }
-  /* The console's buttons are denser than the site's — these rows hold five of them. */
-  .admin :global(.actions .btn-ghost), .admin :global(.actions .btn-solid) { padding: 0.45rem 0.9rem; font-size: 0.82rem; }
 
   /* ── Audit table ───────────────────────────────────────  */
-  .admin :global(table.audit dl) { grid-template-columns: max-content 1fr; gap: 0.1rem 0.6rem; font-size: 0.78rem; }
+  .admin :global(table.audit dl) { grid-template-columns: max-content 1fr; gap: 0.1rem 0.6rem; font-size: 0.75rem; }
 
   /* ── Dialog ────────────────────────────────────────────
      The native <dialog>, in the top layer, styled like a card. */
@@ -251,70 +301,141 @@
   }
   .admin :global(.admin-dialog::backdrop) { background: rgb(0 0 0 / 0.35); }
   .admin :global(.admin-dialog__form) { display: grid; gap: 0.75rem; margin: 0; }
-  .admin :global(.admin-dialog__title) { font-size: 1.1rem; margin: 0; }
+  .admin :global(.admin-dialog__title) { font-size: 1.05rem; margin: 0; }
   .admin :global(.admin-dialog__msg) { margin: 0; overflow-wrap: anywhere; }
   .admin :global(.admin-dialog__actions) { display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap; }
-  .admin :global(.admin-dialog .btn-ghost), .admin :global(.admin-dialog .btn-solid) { padding: 0.5rem 1rem; font-size: 0.85rem; cursor: pointer; }
+  .admin :global(.admin-dialog .btn-ghost), .admin :global(.admin-dialog .btn-solid) { padding: 0.5rem 1rem; font-size: 0.85rem; }
 
-  /* ── The Moderation stack ──────────────────────────────
-     One picture at a time: the image large on the left, the record beside it,
-     the four sliders under both. Every colour is a token — the checklist's
-     yes/no borrows the status colours the rest of the console uses. */
-  .admin :global(.rate__top) { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
-  .admin :global(.rate__img) {
-    flex: 1 1 22rem; min-width: 0; max-width: 34rem; max-height: 60vh;
-    object-fit: contain; align-self: flex-start;
-    border-radius: var(--radius-xs); background: var(--color-border);
+  /* ── The Moderation workstation ────────────────────────
+     ONE SCREEN PER PICTURE (2026-09-22, Josh, MacBook Pro 16: "everything
+     seems too big"). The first cut put the sliders UNDER the picture: on a
+     1117px-tall screen they began at 814px and the buttons ended at 1137px,
+     so every single rating needed a scroll. Now the picture is a stage on the
+     left sized to the viewport, and everything the admin reads and moves —
+     record, sliders, score, Save — is one column on the right, beside it. The
+     stage height is the viewport minus the chrome above and below the card
+     (ticker, nav, header row, status, card head, footer padding); the side
+     column scrolls inside itself if a description is long, so the page never
+     has to. */
+  .admin :global(.rate) { --rate-stage: clamp(18rem, calc(100dvh - 26rem), 56rem); }
+  .admin :global(.rate__head) { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
+  .admin :global(.rate__head h2) { margin-right: auto; }
+  .admin :global(.rate__body) {
+    display: grid; gap: 1rem;
+    grid-template-columns: minmax(0, 1fr) minmax(19rem, 24rem);
+    align-items: start;
   }
-  .admin :global(.rate__meta) { flex: 1 1 16rem; min-width: 0; display: grid; gap: 0.35rem; align-content: start; }
+  .admin :global(.rate__stage) {
+    margin: 0; height: var(--rate-stage); min-width: 0;
+    display: grid; place-items: center;
+    border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+    background: var(--color-bg);
+  }
+  /* The picture FILLS the stage, contained: a small upload is shown large
+     rather than as a stamp in an empty box, and a 4K one is scaled down. */
+  .admin :global(.rate__img) { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .admin :global(.rate__side) {
+    display: grid; gap: 0.6rem; align-content: start; min-width: 0;
+    max-height: var(--rate-stage); overflow-y: auto; padding-right: 0.25rem;
+  }
+
+  /* The record, as a tight block: who, what, then the completeness evidence. */
+  .admin :global(.rate__meta) { display: grid; gap: 0.3rem; min-width: 0; }
   .admin :global(.rate__meta p) { margin: 0; overflow-wrap: anywhere; }
-  .admin :global(.rate__owner) { font-weight: 600; }
-  .admin :global(.rate__caption) { font-size: 1.05rem; }
-  .admin :global(.rate__desc) { font-size: 0.85rem; }
-  .admin :global(.rate__checks) { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.1rem; font-size: 0.8rem; }
-  .admin :global(.rate__check) { display: flex; gap: 0.4rem; align-items: baseline; }
-  .admin :global(.rate__check--yes) { color: var(--color-success); }
+  .admin :global(.rate__owner) { font-weight: 600; font-size: 0.95rem; }
+  .admin :global(.rate__caption) { font-size: 0.9rem; line-height: 1.35; }
+  .admin :global(.rate__desc) { font-size: 0.8rem; color: var(--color-muted); line-height: 1.4; }
+  .admin :global(.rate__meta-row) { font-size: 0.78rem; }
+  .admin :global(.rate__meta-row a) { color: var(--color-dark); overflow-wrap: anywhere; }
+  .admin :global(.rate__facts) { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: baseline; }
+  /* SHOWN, NOT RATED: each check is a pill, so five of them fit on one line. */
+  .admin :global(.rate__checks) { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .admin :global(.rate__check) {
+    display: inline-flex; gap: 0.3rem; align-items: baseline;
+    padding: 0 0.45rem; border: 1px solid var(--color-border); border-radius: 1em;
+    font-size: 0.72rem; line-height: 1.6;
+  }
+  .admin :global(.rate__check--yes) { color: var(--color-success); border-color: var(--color-success); }
   .admin :global(.rate__check--no) { color: var(--color-muted); }
   .admin :global(.rate__check-mark) { font-weight: 700; }
+  .admin :global(.rate__sr) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-  /* Four rows of label · track · number · afterthought, with the hint under
-     the label. A grid so the tracks line up as one column — a slider you
-     cannot compare with the one above it is four unrelated controls. */
+  /* Four criteria, stacked: label and number on one line, the track under
+     them full width, the hint beneath. Stacked rather than tabular because
+     the column is narrow — but the tracks still share one left edge, so a
+     slider can be read against the one above it. */
   .admin :global(.rate__sliders) {
-    display: grid; gap: 0.6rem 0; margin-top: 0.75rem;
-    padding-top: 0.75rem; border-top: 1px solid var(--color-border);
+    display: grid; gap: 0.55rem; padding-top: 0.6rem; border-top: 1px solid var(--color-border);
   }
   .admin :global(.rate__crit) {
-    display: grid; align-items: center; gap: 0 0.75rem;
-    grid-template-columns: minmax(8rem, 14rem) minmax(8rem, 22rem) 1.5rem 1fr;
+    display: grid; align-items: center; gap: 0.15rem 0.5rem;
+    grid-template-columns: 1fr auto auto;
+    grid-template-areas: "label extra val" "range range range" "hint hint hint";
   }
-  .admin :global(.rate__crit-label) { font-weight: 600; }
-  .admin :global(.rate__crit-hint) { grid-column: 1; grid-row: 2; }
-  .admin :global(.rate__range) { width: 100%; accent-color: var(--color-dark); }
-  /* Unset is a state, not a value: the track goes quiet until it is chosen. */
-  .admin :global(.rate__range--unset) { accent-color: var(--color-muted); opacity: 0.6; }
-  .admin :global(.rate__val) { font-variant-numeric: tabular-nums; font-weight: 700; text-align: right; }
-  .admin :global(.rate__crit-extra) { display: inline-flex; gap: 0.5rem; align-items: baseline; }
+  .admin :global(.rate__crit-label) { grid-area: label; font-weight: 600; font-size: 0.85rem; }
+  .admin :global(.rate__crit-extra) { grid-area: extra; display: inline-flex; gap: 0.4rem; align-items: baseline; }
+  .admin :global(.rate__val) { grid-area: val; font-variant-numeric: tabular-nums; font-weight: 700; text-align: right; min-width: 1.2em; font-size: 0.95rem; }
+  .admin :global(.rate__crit-hint) { grid-area: hint; font-size: 0.72rem; line-height: 1.3; }
+  /* The track: a hairline with the chosen fraction inked. `--p` is written by
+     the panel on every input, so the fill follows the thumb in every engine
+     without a progress pseudo-element. Unset is a state, not a value: the
+     ink is gone and the thumb is hollow until a number is chosen. */
+  .admin :global(.rate__range) {
+    grid-area: range; width: 100%; margin: 0.3rem 0; height: 1rem;
+    appearance: none; -webkit-appearance: none; background: none; cursor: pointer;
+    --p: 0%;
+  }
+  .admin :global(.rate__range:focus-visible) { outline: 2px solid var(--color-dark); outline-offset: 4px; border-radius: 2px; }
+  .admin :global(.rate__range::-webkit-slider-runnable-track) {
+    height: 4px; border-radius: 2px;
+    background: linear-gradient(to right, var(--color-dark) var(--p), var(--color-border) var(--p));
+  }
+  .admin :global(.rate__range::-moz-range-track) { height: 4px; border-radius: 2px; background: var(--color-border); }
+  .admin :global(.rate__range::-moz-range-progress) { height: 4px; border-radius: 2px; background: var(--color-dark); }
+  .admin :global(.rate__range::-webkit-slider-thumb) {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px; margin-top: -5px; border-radius: 50%;
+    background: var(--color-dark); border: 2px solid white; box-shadow: 0 0 0 1px var(--color-dark);
+    transition: transform 0.12s;
+  }
+  .admin :global(.rate__range::-moz-range-thumb) {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--color-dark); border: 2px solid white; box-shadow: 0 0 0 1px var(--color-dark);
+  }
+  .admin :global(.rate__range:hover::-webkit-slider-thumb) { transform: scale(1.15); }
+  .admin :global(.rate__range--unset::-webkit-slider-thumb) { background: white; box-shadow: 0 0 0 1px var(--color-muted); }
+  .admin :global(.rate__range--unset::-moz-range-thumb) { background: white; box-shadow: 0 0 0 1px var(--color-muted); }
+  .admin :global(.rate__range--unset::-moz-range-progress) { background: none; }
   .admin :global(.rate__auto) {
-    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-muted);
-    border: 1px solid var(--color-border); border-radius: var(--radius-xs); padding: 0 0.35rem;
+    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-muted);
+    border: 1px solid var(--color-border); border-radius: var(--radius-xs); padding: 0 0.35rem; line-height: 1.6;
   }
-  .admin :global(.rate__revert) { font-size: 0.8rem; }
+  .admin :global(.rate__revert) { font-size: 0.75rem; }
+
+  /* The number this admin's four sliders make, and the one button that
+     commits it. Save is the column's full width: it is the verb of the view. */
   .admin :global(.rate__score) {
-    display: flex; gap: 0.5rem; align-items: baseline; justify-content: flex-end;
-    margin-top: 0.25rem;
+    display: flex; gap: 0.5rem; align-items: baseline; justify-content: space-between;
+    padding-top: 0.6rem; border-top: 1px solid var(--color-border);
   }
-  .admin :global(.rate__score-n) { font-size: 1.6rem; font-variant-numeric: tabular-nums; line-height: 1; }
+  .admin :global(.rate__score-n) { font-size: 1.9rem; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; }
   /* No number yet, because the admin has not rated all three. Never a guess. */
   .admin :global(.rate__score-n--pending) { color: var(--color-muted); }
-  .admin :global(.rate__actions) { margin-top: 0.5rem; }
+  .admin :global(.rate__actions) { display: grid; gap: 0.45rem; }
+  .admin :global(.rate__actions .btn-solid) { width: 100%; align-self: stretch; padding: 0.6rem 1rem; font-size: 0.85rem; }
+  .admin :global(.rate__actions-row) { display: flex; gap: 0.75rem; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
+  .admin :global(.rate__actions-row .btn-ghost) { padding: 0.3rem 0.7rem; font-size: 0.76rem; }
+  .admin :global(.rate__keys) { font-size: 0.7rem; color: var(--color-muted); }
+  .admin :global(.rate__keys kbd) { font: inherit; padding: 0 0.3em; border: 1px solid var(--color-border); border-radius: var(--radius-xs); }
 
   @media (--bp-mobile) {
     /* The toolbar used to land as THREE stacked rows on a phone — the filter,
        then the scope, then a lonely Reload — so a member record began a third
-       of the way down the screen. The filter keeps its own line; the scope and
-       the two buttons share the next one. */
+       of the way down the screen. The tabs take the first line, the filter
+       its own, and the scope and Reload share the last. */
     .admin__bar { gap: 0.4rem; }
+    .admin__tabs { flex: 1 1 100%; }
+    .admin__tab { flex: 1 1 0; justify-content: center; }
     /* The SEARCH field alone takes the full line. `.admin__bar .input` would
        also catch the scope select, which wears the same class — and at (0,2,0)
        it outranks a bare `.admin__scope`, which is how the select ended up
@@ -324,16 +445,16 @@
     .admin__bar .btn-ghost { flex: 0 0 auto; padding-inline: 0.7rem; }
 
     .admin :global(dl) { grid-template-columns: 1fr; gap: 0 0; }
-    .admin :global(dt) { margin-top: 0.4rem; font-size: 0.75rem; }
+    .admin :global(dt) { margin-top: 0.4rem; font-size: 0.72rem; }
     .admin :global(.actions--danger) { margin-left: 0; }
     .admin :global(.sec__body) { padding-left: 0.5rem; }
-    /* The four-column slider row cannot survive a phone: the label takes its
-       own line and the track the next, with the number beside it. */
-    .admin :global(.rate__crit) { grid-template-columns: 1fr 1.5rem; }
-    .admin :global(.rate__crit-label) { grid-column: 1 / -1; }
-    .admin :global(.rate__crit-hint) { grid-column: 1 / -1; grid-row: auto; }
-    .admin :global(.rate__crit-extra) { grid-column: 1 / -1; }
+    /* One column on a phone: the picture, then everything under it. The stage
+       gives up its viewport height so the sliders are reachable with one
+       thumb-scroll, and the side column stops scrolling inside itself. */
+    .admin :global(.rate__body) { grid-template-columns: 1fr; }
+    .admin :global(.rate__stage) { height: auto; max-height: 45vh; }
     .admin :global(.rate__img) { max-height: 45vh; }
+    .admin :global(.rate__side) { max-height: none; overflow: visible; padding-right: 0; }
   }
 </style>
 
@@ -366,8 +487,10 @@
     const rating = document.getElementById("admin-rating")!;
     const filter = document.getElementById("admin-filter") as HTMLInputElement;
     const scope = document.getElementById("admin-scope") as HTMLSelectElement;
+    const listBtn = document.getElementById("admin-list-btn") as HTMLButtonElement;
     const queuesBtn = document.getElementById("admin-queues-btn") as HTMLButtonElement;
     const ratingBtn = document.getElementById("admin-rating-btn") as HTMLButtonElement;
+    const tabs = [listBtn, queuesBtn, ratingBtn];
 
     // Window/document listeners are torn down on the next view transition;
     // the page-load handler runs again on every arrival and would otherwise
@@ -534,6 +657,9 @@
       // list, which is a button that does nothing.
       const cut = h.indexOf("/");
       const [kind, arg] = cut === -1 ? [h, ""] : [h.slice(0, cut), h.slice(cut + 1)];
+      // A member or an image is a record UNDER the roster, so the Members tab
+      // stays lit for both; only the two other views claim a tab of their own.
+      setTab(kind === "queues" || kind === "rating" ? kind : "list");
       if (kind === "uid" && arg) return void showMember(arg);
       if (kind === "image" && arg) return void showImage(arg);
       if (kind === "queues") return void showQueues();
@@ -548,6 +674,14 @@
       scroller().scrollTop = listScroll;
     }
     const onList = () => !/^#(uid|image|queues|rating)\b/.test(location.hash);
+    listBtn.addEventListener("click", () => go("#list"));
+    /** The lit tab is derived from the hash on every route, never toggled by a click. */
+    function setTab(view: string) {
+      for (const t of tabs) {
+        if (t.dataset.view === view) t.setAttribute("aria-current", "page");
+        else t.removeAttribute("aria-current");
+      }
+    }
 
     /** Hide the list while a single record is on screen, with a way back. */
     function crumbs(...extra: Child[]) {
