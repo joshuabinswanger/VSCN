@@ -186,7 +186,9 @@ export function createRatingPanel(host: HTMLElement, deps: RatingDeps): RatingPa
       input,
       readout,
       el("span", { class: "rate__crit-extra" }, extra),
-      el("span", { id: `${id}-hint`, class: "rate__crit-hint muted small" }, hint));
+      // Still the range's description for a screen reader; no longer a line of
+      // print under every track. The label is the question.
+      el("span", { id: `${id}-hint`, class: "rate__sr" }, hint));
   }
 
   function checklist(item: RatingQueueItem): HTMLElement {
@@ -225,8 +227,9 @@ export function createRatingPanel(host: HTMLElement, deps: RatingDeps): RatingPa
         el("span", { class: "muted small" }, `${fmt(item.createdAt)} · ${item.width}×${item.height}`)),
       linkRow("link", item.link),
       linkRow("own page", item.siteLink),
-      el("h3", {}, `Completeness ${item.computedCompleteness}/5`),
-      checklist(item),
+      el("div", { class: "rate__complete" },
+        el("span", { class: "rate__complete-label" }, `Completeness ${item.computedCompleteness}/5`),
+        checklist(item)),
       // An admin joining an average should know they are joining one. The
       // panel's live number is this admin's own rating; the stored score will
       // be the mean of it and the ratings already there.

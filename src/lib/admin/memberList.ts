@@ -34,15 +34,12 @@ const COLUMNS: Column[] = [
   {
     id: "displayName", label: "Name", locked: true,
     sortKey: (m) => lower(m.displayName || m.uid),
+    // The name is ONLY the name. Its flags used to trail it as chips, which
+    // made the one column every eye starts in ragged — see the Status column.
     cell(m, deps) {
       const name = el("button", { type: "button", class: "namebtn" }, m.displayName || "(no name)");
       name.addEventListener("click", () => deps.go(`#uid/${encodeURIComponent(m.uid)}`));
-      const flags: Child[] = [];
-      if (!m.active) flags.push(el("span", { class: "tag tag--warn" }, "hidden"));
-      if (m.pendingDeletion) flags.push(el("span", { class: "tag tag--warn" }, "deleting"));
-      if (!m.hasAuth) flags.push(el("span", { class: "tag" }, "no auth"));
-      if (m.hasAuth && m.emailVerified === false) flags.push(el("span", { class: "tag" }, "unverified"));
-      return [name, ...(flags.length ? [" ", el("span", { class: "chips" }, ...flags)] : [])];
+      return name;
     },
   },
   {
@@ -74,7 +71,7 @@ const COLUMNS: Column[] = [
   {
     id: "status", label: "Status",
     sortKey: (m) => lower(m.status),
-    cell: (m) => el("span", { class: "muted" }, m.status),
+    cell: statusCell,
   },
   {
     id: "galleryCount", label: "Gallery", numeric: true,
@@ -101,6 +98,29 @@ const COLUMNS: Column[] = [
     cell: (m) => el("span", { class: "copyable" }, el("code", { class: "muted" }, m.uid), copyButton(m.uid)),
   },
 ];
+
+/**
+ * EVERYTHING ABOUT A MEMBER'S STANDING IS IN ONE CELL (2026-09-22, Josh:
+ * "fold the no auth and hidden into the status instead of behind the user
+ * name"). The lifecycle word the server sends leads, coloured by what it
+ * means; the conditions that are not a lifecycle — no Auth user, an
+ * unverified address — follow it as quiet pills. `hidden` and `deleting` are
+ * added only when the word itself does not already say so, so a row never
+ * reads "deleting · deleting".
+ */
+function statusCell(m: MemberRow): Child {
+  const word = m.status || (m.active ? "active" : "hidden");
+  const said = lower(word);
+  const tone = m.pendingDeletion ? "danger" : !m.active ? "warn" : "ok";
+  const flags: Child[] = [
+    el("span", { class: `status status--${tone}` }, el("i", { class: "status__dot", "aria-hidden": "true" }), word),
+  ];
+  if (!m.active && !said.startsWith("hidden") && !m.pendingDeletion) flags.push(el("span", { class: "tag" }, "hidden"));
+  if (m.pendingDeletion && !said.startsWith("delet")) flags.push(el("span", { class: "tag tag--warn" }, "deleting"));
+  if (!m.hasAuth) flags.push(el("span", { class: "tag" }, "no auth"));
+  if (m.hasAuth && m.emailVerified === false) flags.push(el("span", { class: "tag" }, "unverified"));
+  return el("span", { class: "chips" }, ...flags);
+}
 
 const STORAGE_KEY = "vscn-admin-hidden-columns";
 
@@ -188,13 +208,13 @@ export function createMemberList(host: HTMLElement, deps: ListDeps): MemberList 
       return el("th", {
         scope: "col",
         "aria-sort": active ? (dir === 1 ? "ascending" : "descending") : "none",
-        ...(c.numeric ? { class: "num" } : {}),
+        class: `col-${c.id}${c.numeric ? " num" : ""}`,
       }, btn);
     }));
 
     const body = rows.map((m) => el("tr", {}, ...cols.map((c) => {
       const content = c.cell(m, deps);
-      return el("td", c.numeric ? { class: "num" } : {}, ...(Array.isArray(content) ? content : [content]));
+      return el("td", { class: `col-${c.id}${c.numeric ? " num" : ""}` }, ...(Array.isArray(content) ? content : [content]));
     })));
 
     const card = el("div", { class: "card" },
