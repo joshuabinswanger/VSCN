@@ -97,6 +97,20 @@ consequence of its absence, not merely what is present.
 Applying a grant by hand: if the policy already holds conditional bindings, `gcloud` demands a
 condition. These grants are unconditional; pass `--condition=None`.
 
+A functions deploy resets `acknowledgeSitePublication`'s invoker policy to what the code declares,
+and `invoker: "private"` declares nobody. Until the deployer is named in the code, every
+`firebase deploy --only functions` wipes the hosting deployer's `roles/run.invoker` and the next
+release's last step fails with 403. Run the check after every functions deploy; re-grant with:
+
+```powershell
+gcloud run services add-iam-policy-binding acknowledgesitepublication --region us-central1 --project <project> --member serviceAccount:vscn-hosting-deployer@<project>.iam.gserviceaccount.com --role roles/run.invoker
+```
+
+Deploying functions non-interactively on this machine also needs `FUNCTIONS_DISCOVERY_TIMEOUT=120`,
+dotenv values in `functions/.env` for every `defineString` param (a code default is not enough),
+and `--force` for any function with a retry policy. `--force` also deletes deployed functions the
+source no longer exports, so read probe 2's ORPHAN rows before using it.
+
 ## Out of scope
 
 Auth templates and the action URL, DNS and the mailbox, the Turnstile dashboard, and Firestore

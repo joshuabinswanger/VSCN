@@ -7,6 +7,19 @@ fills in the action. Newest first. How to read a verdict: [release-verification.
 Green entries are one line. The value is the history: slow drift shows up here as a pattern
 rather than as a member's email.
 
+## 2026-09-22 · 265fd52 · dev · stage 1 of testing the protocol: fix the red, watch it go green
+Machine: RED — functions deployed: GREEN, 30 of 30 after `firebase deploy --only functions -P dev` (the fix for the
+         entries below); IAM grants: `roles/run.invoker` for the hosting deployer on `acknowledgeSitePublication`
+         MISSING — the functions deploy reset the service's invoker policy to the code's `invoker: "private"`, wiping
+         the hand-applied grant; build stamp: transient, dev moved to 265fd52 while the deploy ran
+         Deploy needed three things the docs did not say: `FUNCTIONS_DISCOVERY_TIMEOUT=120`, dotenv values for
+         `SMTP_HOST`/`SMTP_USER` (params with only a code default are refused non-interactively), and `--force`
+         for `onImageWentLive`'s retry policy
+Walk:    n/a (dev)
+Action:  Josh re-grants the invoker on dev (classifier-blocked for Claude); durable fix is to declare the
+         deployer in `functions/src/publication.ts` so the deploy applies the binding itself — prod loses the
+         grant the same way on its next functions deploy
+
 ## 2026-09-22 · c85ae17 · dev
 Machine: RED — functions deployed: unchanged from 51da312 below (three not deployed, ten stale); everything else green,
          including build stamp once the queued deploy landed — the first watched run was cancelled by the workflow's
