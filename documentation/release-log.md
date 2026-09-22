@@ -7,6 +7,24 @@ fills in the action. Newest first. How to read a verdict: [release-verification.
 Green entries are one line. The value is the history: slow drift shows up here as a pattern
 rather than as a member's email.
 
+## 2026-09-22 · d7e89c2 · dev · CI deploys the security rules now, and it took three tries to get there
+Machine: GREEN — all eight probes, exit 0. Both rulesets were released at 19:58:12 by the staging workflow
+         itself, the first automated rules deploy this project has had; probe 4 now covers seven grants.
+Walk:    n/a (dev)
+Action:  none. The release PR carries the same automation to main, so merging it deploys prod rules by itself.
+
+         The three tries are the record worth keeping, and every one of them happened on dev rather than
+         during a release:
+         1. 403 on firebasestorage.defaultBucket.get — roles/firebaserules.admin does not cover resolving
+            the bucket a storage ruleset release is named after. Granted roles/firebasestorage.viewer,
+            read-only on purpose: the admin role can create and delete the default bucket.
+         2. 404 from the same endpoint, which the CLI reports as Firebase Storage not being set up, on a
+            project that plainly has it. As owner the endpoint returns a healthy bucket, so the resource is
+            simply hidden from the deploy credential — a third permission to guess at, with no guarantee.
+         3. Stopped asking instead. firebase.json lists storage as an array with a target and .firebaserc
+            names the bucket per project, because prepare.js only resolves a default when the config is not
+            an array. No lookup, no permission, and the bucket is a written fact rather than an API call.
+
 ## 2026-09-22 · 490b23b · dev · the fix proven: a functions deploy no longer revokes the acknowledger
 Machine: targeted check, not a full run — redeployed `acknowledgeSitePublication` alone from dev's tip and read the
          invoker policy either side. The Hosting deployer's binding was present before and after, where the same
