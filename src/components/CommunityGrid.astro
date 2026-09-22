@@ -192,6 +192,12 @@ const workTagsAttr = (w: MemberView["works"][number]) => {
 // different pages, which is deliberate: one surface is ours, the other theirs.
 // Ordered HERE and not in memberView.ts for exactly that reason — this
 // component is the edited surface, and the shared producer must stay neutral.
+//
+// BOTH NUMBERS ALSO RIDE ONTO THE CELLS as data-score — a work's own on the
+// wall's tiles, its member's best on the spread's cards. The client re-deals
+// on every load and bands that deal by score (shuffledInBands in the script
+// below), so the priority has to be legible from the DOM and not only from
+// the order the server emitted.
 const byScore = (a: { score: number }, b: { score: number }) => b.score - a.score;
 
 /**
@@ -478,6 +484,7 @@ const indexMembers = [...members].sort((a, b) =>
           class="cgrid__cell"
           data-slot="image"
           data-rank={i}
+          data-score={bestScore(member)}
           data-tags={tagsAttr(member)}
           data-row={slot.rowStart}
           data-span={slot.rowSpan}
@@ -506,6 +513,7 @@ const indexMembers = [...members].sort((a, b) =>
           class="cgrid__cell"
           data-slot="work"
           data-rank={i}
+          data-score={work.score}
           data-tags={workTagsAttr(work)}
           data-work={key}
           data-row="0"
@@ -1944,14 +1952,54 @@ const indexMembers = [...members].sort((a, b) =>
 
   let dealSeed = 0;
 
-  function shuffled<T>(items: T[]): T[] {
-    const random = rngFrom(dealSeed || (dealSeed = freshSeed()));
-    const out = [...items];
+  /** Fisher-Yates, in place, drawing from a caller-supplied stream. */
+  function shuffleInto<T>(out: T[], random: () => number): T[] {
     for (let i = out.length - 1; i > 0; i--) {
       const j = Math.floor(random() * (i + 1));
       [out[i], out[j]] = [out[j], out[i]];
     }
     return out;
+  }
+
+  /**
+   * THE DEAL IS RANDOM WITHIN A SCORE, ORDERED BETWEEN SCORES.
+   *
+   * Two things are true at once and a plain shuffle or a plain sort would each
+   * give up one of them. The re-deal exists so the wall feels alive and so no
+   * member permanently owns the top-left — a directory whose first tile is the
+   * same picture every visit is a poster, not a wall. The score exists so
+   * better work surfaces. Banding keeps both: inside a band nobody has a fixed
+   * position, across bands the better work is reliably higher up.
+   *
+   * THE BAND IS AN EXACT EQUAL SCORE, not a bucket width. The score is a 0-100
+   * integer, so equal-score groups are the bands the data already has; a width
+   * would be a second tuning constant with nothing behind the number chosen.
+   *
+   * On the day this ships nothing is rated and every score is 48-55 — a handful
+   * of wide bands — so the wall deals very much as it does today. Nothing
+   * regresses before a single rating exists, and the first ratings tighten it
+   * rather than rearranging it.
+   *
+   * ONE rng for the whole run, not one per band: the stream has to advance
+   * across bands or every band of the same length would be permuted
+   * identically. Seeded exactly as before, so a history entry's remembered
+   * seed still reproduces its deal on Back (see rememberedSeed).
+   */
+  function shuffledInBands(items: HTMLElement[]): HTMLElement[] {
+    const random = rngFrom(dealSeed || (dealSeed = freshSeed()));
+    const bands = new Map<number, HTMLElement[]>();
+    for (const item of items) {
+      // A cell with no readable score bands with the other unscored ones at 0
+      // rather than becoming its own NaN band — Map keys NaN to itself, which
+      // would sort unpredictably against real numbers.
+      const key = Number(item.dataset.score);
+      const band = bands.get(Number.isFinite(key) ? key : 0);
+      if (band) band.push(item);
+      else bands.set(Number.isFinite(key) ? key : 0, [item]);
+    }
+    return [...bands.keys()]
+      .sort((a, b) => b - a)
+      .flatMap((key) => shuffleInto(bands.get(key) as HTMLElement[], random));
   }
 
   // ── THE VIEW IS A NAVIGATION ──────────────────────────
@@ -2297,7 +2345,13 @@ const indexMembers = [...members].sort((a, b) =>
       // reproducible, and reproducing the deal is the whole point of the seed
       // (see rememberedSeed). Rank is the one order that is the same on a
       // freshly swapped document and on one that has been dealt twice.
-      artworkOrder[artKind] = shuffled(
+      // Banded, not flat (see shuffledInBands): the wall's tiles band on the
+      // picture's own score and the spread's cards on their member's best, and
+      // both read those off data-score. byRank still does exactly what its
+      // comment above says — it is what makes the INPUT to the shuffle the
+      // same on a freshly swapped document as on a twice-dealt one, which is
+      // what a reproducible seed needs.
+      artworkOrder[artKind] = shuffledInBands(
         cells.filter((cell) => cell.dataset.slot === artKind).sort(byRank)
       );
     }
