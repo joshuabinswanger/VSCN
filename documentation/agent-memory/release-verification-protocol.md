@@ -2,7 +2,7 @@
 
 ---
 name: release-verification-protocol
-description: "SHIPPED TO PROD 2026-09-22 f21a60f and GREEN there; eight read-only probes over REST with the gcloud user token, run after every merge to dev and main. The human walk has still never been run"
+description: "SHIPPED TO PROD 2026-09-22 f21a60f and GREEN there; eight read-only probes over REST with the gcloud user token, run after every merge to dev and main. The walk is Playwright's since 2026-09-23 (see release-walk-automation); its first CI run waits on two secrets"
 metadata: 
   node_type: memory
   type: project
@@ -31,9 +31,9 @@ are expected to persist briefly and are NOT faults: upload pairing counts the ou
 release moves the window, and the stranded residue clears when `sweepImages` next passes its
 six-hour cutoff.
 
-**Still open:** the verification member (design §7.1) does not exist and the human walk has never
-been run on either environment — Josh creates the account, Claude sets `moderationHidden`. A known
-gap in the check itself: probe 2 compares a function's deploy time against its MODULE's last
+**The walk is automated** (2026-09-23, [[release-walk-automation]]): the verification member exists
+(created by Josh, hidden by Claude) and Playwright walks the six steps from CI after every release
+to main. Its first real run is pending Josh's two GitHub secrets. A known gap in the check itself: probe 2 compares a function's deploy time against its MODULE's last
 commit, so a change to `functions/.env` (a deploy-time param, baked at deploy) leaves every
 function looking current when it is not. Traps from building it: `OPTIONS` preflights share the
 request log with the `POST`s and double the counts; the sweep horizon is 12 h (6 h cutoff + 6 h
