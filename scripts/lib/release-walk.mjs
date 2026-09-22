@@ -57,13 +57,17 @@ export function parseWalkArgs(argv) {
  * through the provider itself and the debug token would only hide that path.
  */
 export function walkCredentials(env, project) {
-  const missing = ["WALK_MEMBER_EMAIL", "WALK_MEMBER_PASSWORD"].filter((name) => !env[name]);
-  if (project === "prod" && !env.WALK_APPCHECK_DEBUG_TOKEN) missing.push("WALK_APPCHECK_DEBUG_TOKEN");
+  // Trimmed: a value piped into `gh secret set` or typed into .env.walk
+  // arrives with a trailing newline more often than not, and an email with a
+  // newline in it is a login that fails for no visible reason.
+  const read = (name) => (typeof env[name] === "string" ? env[name].trim() : "");
+  const missing = ["WALK_MEMBER_EMAIL", "WALK_MEMBER_PASSWORD"].filter((name) => !read(name));
+  if (project === "prod" && !read("WALK_APPCHECK_DEBUG_TOKEN")) missing.push("WALK_APPCHECK_DEBUG_TOKEN");
   if (missing.length) throw new Error(`Missing ${missing.join(", ")} (environment or .env.walk)`);
   return {
-    email: env.WALK_MEMBER_EMAIL,
-    password: env.WALK_MEMBER_PASSWORD,
-    debugToken: project === "prod" ? env.WALK_APPCHECK_DEBUG_TOKEN : null,
+    email: read("WALK_MEMBER_EMAIL"),
+    password: read("WALK_MEMBER_PASSWORD"),
+    debugToken: project === "prod" ? read("WALK_APPCHECK_DEBUG_TOKEN") : null,
   };
 }
 

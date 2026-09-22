@@ -40,6 +40,13 @@ test("prod needs the App Check debug token, dev does not, and every missing name
   assert.deepEqual(dev, { email: "a", password: "b", debugToken: null });
   const prod = walkCredentials({ WALK_MEMBER_EMAIL: "a", WALK_MEMBER_PASSWORD: "b", WALK_APPCHECK_DEBUG_TOKEN: "t" }, "prod");
   assert.equal(prod.debugToken, "t");
+  // gh secret set and .env.walk both tend to hand over a trailing newline
+  const piped = walkCredentials({ WALK_MEMBER_EMAIL: "walk@example.org
+", WALK_MEMBER_PASSWORD: " p 
+", WALK_APPCHECK_DEBUG_TOKEN: "t
+" }, "prod");
+  assert.deepEqual(piped, { email: "walk@example.org", password: "p", debugToken: "t" });
+  assert.throws(() => walkCredentials({ WALK_MEMBER_EMAIL: "a", WALK_MEMBER_PASSWORD: "   " }, "dev"), /Missing WALK_MEMBER_PASSWORD/);
 });
 
 test(".env.walk fills gaps and never overrides the environment", () => {
