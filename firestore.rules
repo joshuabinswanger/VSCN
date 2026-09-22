@@ -143,6 +143,25 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /imageModeration/{imageId} {
+      // WHAT THE DIRECTORY THINKS OF A PICTURE — admin ratings and the
+      // priority they average into. See
+      // documentation/20260922-image-moderation-ranking-design.md.
+      //
+      // Read by admins so the console can show a record it is about to add
+      // to. Written by NOBODY: every rating goes through adminRateImage, so a
+      // member can never touch their own ranking and an admin cannot write a
+      // score the scoring module did not produce.
+      //
+      // DELIBERATELY NOT A FIELD ON images/{imageId}. That document is
+      // member-writable and validImage() guards it with a hasOnly allowlist:
+      // a key that is not on the list fails the member's ENTIRE save, with no
+      // error surfaced anywhere. Keeping ratings in their own collection means
+      // validImage is not edited at all, which the rules tests prove.
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

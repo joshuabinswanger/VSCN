@@ -7,6 +7,7 @@ export { mintAppCheckToken } from "./appCheck";
 export { requestAccountDeletion, cancelAccountDeletion, syncEmail } from "./accounts";
 export { purgeExpiredAccounts, sweepImages, reconcileEmails } from "./maintenance";
 export { onAuthUserCreated, onAuthUserDeleted } from "./authTriggers";
+export { onImageWentLive, sendAdminDigest } from "./adminDigest";
 export { onPublicProfileWritten } from "./slugs";
 export {
   adminDeleteImage,
@@ -19,5 +20,7 @@ export {
   adminSetMemberEmail,
   adminSetProfileActive,
 } from "./adminOps";
+
+export { adminListRatingQueue, adminRateImage, adminSetImageHidden } from "./moderation";
 
 export { acknowledgeSitePublication } from "./publication";

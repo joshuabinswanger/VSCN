@@ -31,6 +31,15 @@ export interface GalleryRecord {
   link?: string;
   siteLink?: string;
   tags?: string[];
+  /**
+   * The priority /community is ordered by, attached to the record by
+   * membersBuild from the snapshot's moderation table. Absent everywhere
+   * except the build — the editor's records do not carry it, which is why it
+   * is optional and why orderedGalleryItems() ignores it entirely.
+   */
+  score?: number;
+  /** Moderation took this off /community. It stays on the member's own page. */
+  hidden?: boolean;
 }
 
 /**

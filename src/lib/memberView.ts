@@ -10,8 +10,31 @@ import type { PublicProfileDoc } from "./firestore.ts";
 import type { ProfileViewModel, ProfileWork } from "./profileView.ts";
 import { workLink } from "./links.ts";
 import { orderedGalleryItems, type GalleryRecord } from "./galleryRecords.ts";
+import { imageScore } from "./imageScore.ts";
+
+/**
+ * A work as the BUILD knows it: everything a renderer needs, plus what
+ * moderation thinks of it.
+ *
+ * Deliberately not two more fields on ProfileWork. That shape has a second
+ * producer — the profile editor's live preview, built from unsaved form state
+ * in the browser (ProfileForm.astro, OnboardingForm.astro) — and the editor
+ * has no moderation data to offer, so making them required there would only
+ * buy two invented zeroes. Narrowing the property on MemberViewBase instead
+ * means the build's works carry the numbers as REQUIRED fields (so
+ * /community can sort on them without a fallback) and the editor's shape is
+ * untouched.
+ */
+export interface RankedWork extends ProfileWork {
+  /** 0–100 priority. See src/lib/imageScore.ts. */
+  score: number;
+  /** Moderation took this off /community. The member's own page still shows it. */
+  hidden: boolean;
+}
 
 export interface MemberViewBase extends ProfileViewModel {
+  /** Narrowed from ProfileWork[]: the build always knows the priority. */
+  works: RankedWork[];
   /** The profile's uid. Stable, but not what appears in the URL. */
   id: string;
   /** Absent on profiles created before member types existed. */
@@ -156,7 +179,13 @@ export function stripStorageToken(url: string): string {
  * storage path — tokenless, as stripStorageToken() always made it. This
  * function only maps that onto ProfileWork.
  */
-function works(uid: string, doc: PublicProfileDoc, records: readonly GalleryRecord[], bucket: string): ProfileWork[] {
+function works(uid: string, doc: PublicProfileDoc, records: readonly GalleryRecord[], bucket: string): RankedWork[] {
+  // The RECORD, not the item: orderedGalleryItems() deliberately knows nothing
+  // about moderation — it is shared with the profile editor and with
+  // /members/<slug>, and the whole boundary of the ranking design is that the
+  // member's own order survives there. So the two moderation fields are read
+  // back off the record here, after the ordering has happened.
+  const byId = new Map(records.map((rec) => [rec.imageId, rec]));
   return orderedGalleryItems(uid, doc.gallery, records, bucket).map((g) => ({
     url: g.url,
     width: g.width,
@@ -172,6 +201,12 @@ function works(uid: string, doc: PublicProfileDoc, records: readonly GalleryReco
     link: workLink(g.link),
     siteLink: workLink(g.siteLink),
     tags: g.tags ?? [],
+    // A record that reached here without a precomputed score — an older
+    // snapshot, or any caller that is not the build — gets its completeness
+    // reading rather than a zero, which would sink it to the bottom of the
+    // wall for a reason nobody chose.
+    score: byId.get(g.imageId)?.score ?? imageScore(byId.get(g.imageId) ?? {}),
+    hidden: byId.get(g.imageId)?.hidden === true,
   }));
 }
 

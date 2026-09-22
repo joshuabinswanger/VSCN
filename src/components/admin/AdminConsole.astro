@@ -1,4 +1,13 @@
-<section class="admin" id="admin">
+<section class="admin admin--busy" id="admin">
+  {
+    /* LOADING IS VISIBLE (2026-09-22, Josh: "make it obvious that the page is
+      loading as the loading usually takes quite long"). Every view waits on a
+      callable, some of them for seconds. While any is in flight the section
+      wears .admin--busy: a sweep runs along the top edge, the status line
+      grows a spinner, and the view that is about to be replaced dims. The
+      class is on from the first byte so the access check is covered too. */
+  }
+  <div class="admin__progress" aria-hidden="true"></div>
   <p id="admin-gate" class="admin__gate">Checking access…</p>
 
   <div id="admin-app" hidden>
@@ -15,7 +24,23 @@
         box could do was lost. That fallback is why this is not a <form> with a
         submit button any more — the common case must not need Enter. */
     }
+    {
+      /* THE THREE VIEWS ARE TABS, NOT BUTTONS AFTER THE SEARCH BOX (2026-09-22,
+        Josh: "revamp the UI i want a modern ui … everything seems too big").
+        Queues and Moderation used to be two loose ghost buttons wearing the
+        marketing pages' padding, trailing the filter; which view was on
+        screen was never said anywhere. A segmented control names the three
+        places the console can be and marks the one you are in — `route()`
+        writes aria-current on every navigation, so the strip is always true
+        to the hash. The filter keeps its place beside them because it is
+        also the id lookup, which works from any view. */
+    }
     <div class="admin__bar">
+      <nav class="admin__tabs" aria-label="Console views">
+        <button type="button" id="admin-list-btn" class="admin__tab" data-view="list" aria-current="page">Members</button>
+        <button type="button" id="admin-queues-btn" class="admin__tab" data-view="queues">Queues</button>
+        <button type="button" id="admin-rating-btn" class="admin__tab" data-view="rating">Moderation</button>
+      </nav>
       <input
         id="admin-filter"
         class="input"
@@ -32,8 +57,7 @@
         <option value="mismatch">Image count mismatch</option>
         <option value="unverified">Unverified email</option>
       </select>
-      <button type="button" id="admin-queues-btn" class="btn-ghost">Queues</button>
-      <button type="button" id="admin-reload" class="btn-ghost">Reload</button>
+      <button type="button" id="admin-reload" class="btn-ghost admin__reload" title="Reload the list from the server">Reload</button>
     </div>
     {
       /* The status line is ONE node for its whole life: it is the role="status"
@@ -50,216 +74,446 @@
     <div id="admin-results"></div>
     <div id="admin-detail"></div>
     <div id="admin-queues"></div>
+    <div id="admin-rating"></div>
   </div>
 </section>
 
 <style>
-  .admin { display: grid; gap: 1.25rem; }
+  /* ── The console's own scale ───────────────────────────
+     A TOOL, NOT A PAGE (2026-09-22, Josh on a MacBook Pro 16: "everything
+     seems too big"; then "the UI element itself should be more modern and
+     simple"). The site's type and button sizes are set for reading a member's
+     page; a roster of eighty rows and a rating stack want the density of a
+     desk. So the console runs one notch under the site's base, every control
+     in it is compact, and the ornament is gone: no underlines, no tracked
+     capitals, one hairline per edge, tints instead of borders on the small
+     things. Scoped here, so the public pages keep theirs. Every colour is a
+     token or a mix of two. */
+  .admin { position: relative; display: grid; gap: 0.75rem; font-size: 0.9rem; line-height: 1.45; --tint: color-mix(in srgb, var(--color-dark) 4%, white); --tint-2: color-mix(in srgb, var(--color-dark) 8%, white); }
+  /* `hidden` must WIN. The UA's `[hidden] { display: none }` loses to any
+     author `display`, and half the console's small parts set one (the pill,
+     the badge, the link-button) — which is how a queue count of 0 stayed on
+     the Queues tab after the script had hidden it. */
+  .admin :global([hidden]) { display: none !important; }
   .admin__gate { color: var(--color-muted); }
-  .admin__bar { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-  .admin__bar .input { flex: 1 1 20rem; }
-  .admin__scope { flex: 0 1 14rem; }
+
+  /* ── Loading, made visible ─────────────────────────────
+     A sweep along the console's top edge, a spinner on the status line, and
+     the outgoing view dimmed — for as long as any callable is in flight. */
+  .admin__progress { position: absolute; left: 0; right: 0; top: -0.6rem; height: 3px; overflow: hidden; border-radius: 2px; pointer-events: none; }
+  .admin__progress::before {
+    content: ""; display: block; height: 100%; width: 28%; border-radius: 2px;
+    background: var(--color-dark); opacity: 0; transform: translateX(-100%);
+  }
+  .admin--busy .admin__progress::before { opacity: 1; animation: admin-progress-sweep 1.1s ease-in-out infinite; }
+  @keyframes admin-progress-sweep { from { transform: translateX(-100%); } to { transform: translateX(400%); } }
+  .admin--busy .admin__status:not(:empty)::before,
+  .admin--busy .admin__gate::before {
+    content: ""; display: inline-block; width: 0.7em; height: 0.7em; margin-right: 0.45em; vertical-align: -0.05em;
+    border-radius: 50%; border: 2px solid var(--color-border); border-top-color: var(--color-dark);
+    animation: admin-spin 0.8s linear infinite;
+  }
+  @keyframes admin-spin { to { transform: rotate(360deg); } }
+  .admin--busy :global(#admin-list), .admin--busy :global(#admin-detail),
+  .admin--busy :global(#admin-queues), .admin--busy :global(#admin-rating) { opacity: 0.5; transition: opacity 0.2s; }
+
+  /* ── Header row: views · filter · scope · reload ──────── */
+  .admin__bar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+  .admin__bar .input {
+    flex: 1 1 18rem; padding: 0.4rem 0.75rem; font-size: 0.85rem;
+    border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: white;
+  }
+  .admin__bar .input:focus-visible { outline: 2px solid var(--color-dark); outline-offset: -1px; }
+  .admin__scope { flex: 0 1 12rem; }
+  .admin__reload { flex: 0 0 auto; }
+  /* A segmented control: one tinted track, three seats, the lit one solid.
+     The lit seat is the hash's word for where you are — see setTab(). */
+  .admin__tabs {
+    display: inline-flex; gap: 2px; padding: 3px; flex: 0 0 auto;
+    border-radius: var(--radius-sm); background: var(--tint-2);
+  }
+  .admin__tab {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.3rem 0.85rem; border: 0; border-radius: 3px; background: none;
+    font: inherit; font-size: 0.82rem; font-weight: 500;
+    color: var(--color-muted); cursor: pointer; white-space: nowrap;
+    transition: background-color 0.12s, color 0.12s;
+  }
+  .admin__tab:hover { color: var(--color-dark); }
+  .admin__tab[aria-current] { background: var(--color-dark); color: var(--color-bg); }
+  .admin__tab :global(.badge) { margin-left: 0; }
+  .admin__tab[aria-current] :global(.badge) { background: var(--color-bg); color: var(--color-dark); }
 
   /* ── Status line: three tones, one node ─────────────── */
-  .admin__statusbar { display: flex; align-items: baseline; gap: 0.5rem; min-height: 1.25rem; }
-  .admin__status { margin: 0; color: var(--color-muted); overflow-wrap: anywhere; }
+  .admin__statusbar { display: flex; align-items: baseline; gap: 0.5rem; min-height: 1.2rem; }
+  .admin__status { margin: 0; color: var(--color-muted); overflow-wrap: anywhere; font-size: 0.85rem; }
   .admin__status--success { color: var(--color-success); }
   .admin__status--error { color: var(--color-error); }
   .admin__status-x {
-    background: none; border: 0; padding: 0 0.25rem; font: inherit; font-size: 1.1rem; line-height: 1;
+    background: none; border: 0; padding: 0 0.25rem; font: inherit; font-size: 1.05rem; line-height: 1;
     color: var(--color-muted); cursor: pointer;
   }
   .admin__status-x:hover { color: var(--color-dark); }
 
+  /* ── Cards, headings, definition lists ───────────────── */
   .admin :global(.card) {
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    padding: 1rem;
+    border-radius: var(--radius-md);
+    padding: 1rem 1.15rem;
     display: grid;
-    gap: 0.5rem;
+    gap: 0.6rem;
+    background: white;
   }
   .admin :global(.card__head) { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
-  .admin :global(h2) { font-size: 1.1rem; margin: 0; }
-  .admin :global(h3) { font-size: 0.9rem; margin: 0.5rem 0 0; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-  .admin :global(dl) { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; margin: 0; }
+  .admin :global(h2) { font-size: 0.95rem; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  .admin :global(h3) { font-size: 0.78rem; margin: 0.4rem 0 0; color: var(--color-muted); font-weight: 500; }
+  .admin :global(dl) { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1.25rem; margin: 0; }
   .admin :global(dt) { color: var(--color-muted); }
   .admin :global(dt.differs) { color: var(--color-error); }
   .admin :global(dd) { margin: 0; overflow-wrap: anywhere; min-width: 0; }
   .admin :global(.actions) { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
-  .admin :global(.thumbs) { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; }
-  .admin :global(.thumb img) { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-xs); background: var(--color-border); }
+  .admin :global(.thumbs) { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.6rem; }
+  .admin :global(.thumb img) { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-sm); background: var(--tint); }
   .admin :global(.thumb small) { display: block; color: var(--color-muted); overflow-wrap: anywhere; }
   .admin :global(.thumb) { margin: 0; }
-  .admin :global(.tag) { display: inline-block; padding: 0 0.4rem; border: 1px solid var(--color-border); border-radius: var(--radius-xs); font-size: 0.8rem; }
-  .admin :global(.tag--warn) { border-color: var(--color-dark); }
-  .admin :global(.tag--yes) { border-color: var(--color-success); color: var(--color-success); }
+  /* Small facts are TINTED PILLS, not boxed: a border on a two-letter word is
+     the loudest thing in a row. Tone is a fill, and a fill is enough. */
+  .admin :global(.tag) {
+    display: inline-block; padding: 0 0.55em; border-radius: 1em;
+    background: var(--tint-2); color: var(--color-dark);
+    font-size: 0.72rem; font-weight: 500; line-height: 1.7; white-space: nowrap;
+  }
+  .admin :global(.tag--warn) { background: var(--color-dark); color: var(--color-bg); }
+  .admin :global(.tag--yes) { background: color-mix(in srgb, var(--color-success) 14%, white); color: var(--color-success); }
   .admin :global(.tag--no) { color: var(--color-muted); }
   /* Disagreement between the two profile documents — the one signal this
      view exists to make visible, so it borrows the error colour. */
-  .admin :global(.tag--diff) { border-color: var(--color-error); color: var(--color-error); font-weight: 600; }
+  .admin :global(.tag--diff) { background: color-mix(in srgb, var(--color-error) 14%, white); color: var(--color-error); font-weight: 600; }
   /* A privilege, not a property: solid, so it cannot be skimmed past. */
-  .admin :global(.tag--admin) { background: var(--color-dark); color: var(--color-bg); border-color: var(--color-dark); font-weight: 700; letter-spacing: 0.04em; }
-  .admin :global(.chips) { display: inline-flex; gap: 0.25rem; flex-wrap: wrap; vertical-align: baseline; }
-  .admin :global(.row) { display: flex; justify-content: space-between; gap: 1rem; padding: 0.35rem 0; border-bottom: 1px solid var(--color-border); }
+  .admin :global(.tag--admin) { background: var(--color-dark); color: var(--color-bg); font-weight: 700; letter-spacing: 0.04em; }
+  .admin :global(.chips) { display: inline-flex; gap: 0.3rem; flex-wrap: wrap; align-items: center; vertical-align: middle; }
+  /* The member's standing: a dot in the colour of what it means, then the word. */
+  .admin :global(.status) { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 500; text-transform: capitalize; white-space: nowrap; }
+  .admin :global(.status__dot) { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--color-muted); flex: 0 0 auto; }
+  .admin :global(.status--ok .status__dot) { background: var(--color-success); }
+  .admin :global(.status--warn .status__dot) { background: var(--color-muted); }
+  .admin :global(.status--danger .status__dot) { background: var(--color-error); }
+  .admin :global(.status--warn), .admin :global(.status--danger) { color: var(--color-dark); }
+  .admin :global(.row) { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: 0.45rem 0; border-top: 1px solid var(--color-border); }
   .admin :global(.row button) { white-space: nowrap; }
-  /* The right-hand end of a queue row is now two controls, not one: the
-     delete and the jump to the owner. Kept on one line and hard against the
-     edge so the rows stay a scannable column of ids on the left. */
   .admin :global(.row-actions) { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
-  .admin :global(.qhead) { margin-top: 0.75rem; }
-  .admin :global(.qhead h2) { display: flex; gap: 0.5rem; align-items: baseline; }
+  .admin :global(.qhead) { margin-top: 0.75rem; display: grid; gap: 0.15rem; }
+  .admin :global(.qhead h2) { display: flex; gap: 0.5rem; align-items: center; }
   .admin :global(.muted) { color: var(--color-muted); }
-  .admin :global(.small) { font-size: 0.8rem; margin: 0; }
+  .admin :global(.small) { font-size: 0.78rem; margin: 0; }
   .admin :global(.error) { color: var(--color-error); }
   .admin :global(.nowrap) { white-space: nowrap; }
   .admin :global(.crumbs) { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: baseline; font-size: 0.8rem; }
+  /* Links do not wear underlines at rest anywhere in the console; they are
+     dark against muted text, and the underline arrives on hover. */
+  .admin :global(a) { color: var(--color-dark); text-decoration: none; }
+  .admin :global(a:hover) { text-decoration: underline; text-underline-offset: 2px; }
   .admin :global(.btn-link) {
     background: none; border: 0; padding: 0; font: inherit; color: var(--color-dark);
-    cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+    cursor: pointer; text-decoration: none;
   }
+  .admin :global(.btn-link:hover) { text-decoration: underline; text-underline-offset: 2px; }
   .admin :global(code) { font: inherit; }
   .admin :global(pre.raw) {
-    margin: 0; padding: 0.75rem; font-size: 0.78rem; line-height: 1.4;
-    border: 1px solid var(--color-border); border-radius: var(--radius-xs);
+    margin: 0; padding: 0.75rem; font-size: 0.75rem; line-height: 1.4;
+    background: var(--tint); border-radius: var(--radius-sm);
     overflow-x: auto; white-space: pre; max-height: 32rem; overflow-y: auto;
   }
   .admin :global(.swatch) { display: inline-flex; align-items: center; gap: 0.35rem; }
   .admin :global(.swatch__dot) { width: 0.9em; height: 0.9em; border-radius: 50%; border: 1px solid var(--color-border); display: inline-block; }
   .admin :global(.gallery-ids) { margin: 0; padding-left: 1.5rem; }
-  .admin :global(.note) { margin: 0; padding: 0.5rem 0.75rem; border: 1px solid var(--color-border); border-radius: var(--radius-xs); font-size: 0.85rem; }
-  .admin :global(.note--diff) { border-color: var(--color-error); }
+  .admin :global(.note) { margin: 0; padding: 0.5rem 0.75rem; background: var(--tint); border-radius: var(--radius-sm); font-size: 0.8rem; }
+  .admin :global(.note--diff) { background: color-mix(in srgb, var(--color-error) 10%, white); color: var(--color-error); }
+
+  /* ── Buttons: the console's, not the site's ───────────
+     The shared .btn-ghost / .btn-solid carry the marketing pages' padding and
+     the ghost's heavy dark border. Inside the console every one of them is
+     compact and the ghost is a hairline that darkens under the pointer. */
+  .admin :global(.btn-ghost), .admin :global(.btn-solid) {
+    padding: 0.4rem 0.85rem; font-size: 0.8rem; line-height: 1.3; cursor: pointer;
+    border-radius: var(--radius-sm);
+  }
+  .admin :global(.btn-ghost) { border: 1px solid var(--color-border); background: white; color: var(--color-dark); }
+  .admin :global(.btn-ghost:hover) { opacity: 1; border-color: var(--color-dark); }
 
   /* ── Copy affordance ───────────────────────────────────
-     Small and quiet, next to any id worth pasting somewhere else. */
-  .admin :global(.copyable) { display: inline-flex; align-items: baseline; gap: 0.4rem; max-width: 100%; }
+     Quiet until the row or the value is under the pointer. */
+  .admin :global(.copyable) { display: inline-flex; align-items: center; gap: 0.4rem; max-width: 100%; }
   .admin :global(.copyable__val) { overflow-wrap: anywhere; }
   .admin :global(.copybtn) {
     background: none; border: 1px solid var(--color-border); border-radius: var(--radius-xs);
-    padding: 0 0.35rem; font: inherit; font-size: 0.7rem; color: var(--color-muted); cursor: pointer;
-    white-space: nowrap; line-height: 1.4;
+    padding: 0 0.35rem; font: inherit; font-size: 0.66rem; color: var(--color-muted); cursor: pointer;
+    white-space: nowrap; line-height: 1.5; opacity: 0.4; transition: opacity 0.12s;
   }
+  .admin :global(tr:hover .copybtn), .admin :global(.copyable:hover .copybtn), .admin :global(.copybtn:focus-visible) { opacity: 1; }
   .admin :global(.copybtn:hover) { color: var(--color-dark); border-color: var(--color-dark); }
-  .admin :global(.copybtn--done) { color: var(--color-success); border-color: var(--color-success); }
+  .admin :global(.copybtn--done) { color: var(--color-success); border-color: var(--color-success); opacity: 1; }
 
   /* ── The list ──────────────────────────────────────────
-     A real table, because these are records with the same fields and the eye
-     needs the columns to line up to scan them. It scrolls inside its own box
-     rather than widening the page — the same rule the rest of the site follows
-     for wide content. */
-  .admin :global(.tablewrap) { overflow-x: auto; }
-  .admin :global(table) { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+     REGULAR COLUMNS (2026-09-22, Josh: "columns are ugly, make them more
+     pleasing and regular"). Every cell is one line — the table scrolls
+     sideways inside its box before any cell is allowed to wrap — and every
+     column but the name packs to its content, so the name takes what is left
+     and the rest line up as even bands. The table bleeds to the card's edges
+     and its rows separate with hairlines; the pointer lights the row. */
+  .admin :global(.tablewrap) { overflow-x: auto; margin: 0 -1.15rem -1rem; }
+  .admin :global(table) { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
   .admin :global(th) {
-    text-align: left;
-    font-weight: 600;
-    color: var(--color-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    font-size: 0.68rem;
-    padding: 0 0.6rem 0.4rem 0;
-    white-space: nowrap;
+    text-align: left; font-weight: 500; color: var(--color-muted); font-size: 0.72rem;
+    padding: 0.35rem 0.75rem 0.5rem; white-space: nowrap; border-bottom: 1px solid var(--color-border);
   }
-  .admin :global(td) { padding: 0.4rem 0.6rem 0.4rem 0; border-top: 1px solid var(--color-border); vertical-align: top; }
-  .admin :global(td.num), .admin :global(th.num) { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .admin :global(td) { padding: 0.5rem 0.75rem; border-top: 1px solid var(--color-border); vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .admin :global(tbody tr:first-child td) { border-top: 0; }
+  .admin :global(tbody tr:hover td) { background: var(--tint); }
+  .admin :global(th:first-child), .admin :global(td:first-child) { padding-left: 1.15rem; }
+  .admin :global(th:last-child), .admin :global(td:last-child) { padding-right: 1.15rem; }
+  .admin :global(td.num), .admin :global(th.num) { text-align: right; font-variant-numeric: tabular-nums; }
+  .admin :global(.col-displayName) { width: 100%; }
+  /* A role is a title, not a paragraph: 24 characters, then an ellipsis —
+     the whole of it is in the cell's title, or drag the column wider. */
+  .admin :global(.col-role) { max-width: 24ch; }
+  .admin :global(.col-role .muted) { display: block; overflow: hidden; text-overflow: ellipsis; }
+  /* The grip: the header's right edge, a hairline while the pointer is near. */
+  .admin :global(th) { position: relative; }
+  .admin :global(.th-grip) { position: absolute; top: 0; bottom: 0; right: 0; width: 8px; cursor: col-resize; touch-action: none; }
+  .admin :global(.th-grip::after) { content: ""; position: absolute; top: 0.3rem; bottom: 0.4rem; right: 0; width: 1px; background: var(--color-border); opacity: 0; transition: opacity 0.12s; }
+  .admin :global(th:hover .th-grip::after), .admin :global(.th-grip:hover::after) { opacity: 1; }
+  .admin :global(.th-grip:hover::after) { background: var(--color-dark); }
+  /* One line per row, always: the standing and its pills never wrap. */
+  .admin :global(.col-status .chips) { flex-wrap: nowrap; }
+  .admin :global(.col-uid code) { display: inline-block; max-width: 9rem; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; font-size: 0.74rem; }
   /* The header IS the sort control; the active column keeps its arrow dark. */
   .admin :global(.sortbtn) {
-    background: none; border: 0; padding: 0; font: inherit; color: inherit; text-transform: inherit;
-    letter-spacing: inherit; cursor: pointer; display: inline-flex; gap: 0.3rem; align-items: baseline;
+    background: none; border: 0; padding: 0; font: inherit; color: inherit;
+    cursor: pointer; display: inline-flex; gap: 0.3rem; align-items: baseline;
   }
   .admin :global(.sortbtn:hover) { color: var(--color-dark); }
-  .admin :global(.sortbtn--on) { color: var(--color-dark); }
-  .admin :global(.sortbtn__dir) { font-size: 0.6rem; opacity: 0.45; }
+  .admin :global(.sortbtn--on) { color: var(--color-dark); font-weight: 600; }
+  .admin :global(.sortbtn__dir) { font-size: 0.6rem; opacity: 0.35; }
   .admin :global(.sortbtn--on .sortbtn__dir) { opacity: 1; }
   /* The name cell is the row's own link into the member. A button styled as a
      link rather than an <a>: the destination is a hash this script owns. */
   .admin :global(.namebtn) {
-    background: none;
-    border: 0;
-    padding: 0;
-    font: inherit;
-    font-weight: 600;
-    color: var(--color-dark);
-    text-align: left;
-    cursor: pointer;
-    text-decoration: underline;
-    text-underline-offset: 2px;
+    background: none; border: 0; padding: 0; font: inherit; font-weight: 600;
+    color: var(--color-dark); text-align: left; cursor: pointer;
   }
-  .admin :global(.namebtn:hover) { color: var(--color-muted); }
+  .admin :global(.namebtn:hover) { text-decoration: underline; text-underline-offset: 2px; }
   /* Column picker: a <details> with ordinary display values — never
      `display: contents` on details/summary (WebKit bug 320447). */
   .admin :global(.colpick) { position: relative; font-size: 0.8rem; }
-  .admin :global(.colpick summary) { list-style: none; cursor: pointer; }
+  .admin :global(.colpick summary) { list-style: none; cursor: pointer; color: var(--color-muted); }
+  .admin :global(.colpick summary:hover) { color: var(--color-dark); }
   .admin :global(.colpick summary::-webkit-details-marker) { display: none; }
   .admin :global(.colpick__body) {
-    position: absolute; right: 0; top: 100%; z-index: 2; margin-top: 0.25rem;
-    display: grid; gap: 0.25rem; padding: 0.5rem 0.75rem; min-width: 10rem;
-    background: white; border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+    position: absolute; right: 0; top: 100%; z-index: 2; margin-top: 0.35rem;
+    display: grid; gap: 0.3rem; padding: 0.6rem 0.8rem; min-width: 10rem;
+    background: white; border: 1px solid var(--color-border); border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--color-dark) 8%, transparent);
   }
   .admin :global(.colpick__opt) { display: flex; gap: 0.4rem; align-items: center; white-space: nowrap; cursor: pointer; }
-  /* Count on the Queues button — how much is waiting for a human. */
+  /* Count on the Queues tab — how much is waiting for a human. */
   .admin :global(.badge) {
     display: inline-block; min-width: 1.4em; padding: 0 0.4em; margin-left: 0.4em;
     border-radius: 1em; background: var(--color-dark); color: var(--color-bg);
-    font-size: 0.75rem; font-weight: 700; text-align: center; line-height: 1.5;
+    font-size: 0.68rem; font-weight: 700; text-align: center; line-height: 1.5;
   }
 
   /* ── Member detail: grouped sections ──────────────────
      Every section is a <details> with real boxes — see the WebKit note above;
      no `display: contents` anywhere in here. */
   .admin :global(.detail) { gap: 0.25rem; }
-  .admin :global(.detail__name) { font-size: 1.4rem; margin-bottom: 0.5rem; }
+  .admin :global(.detail__name) { font-size: 1.2rem; margin-bottom: 0.4rem; }
   .admin :global(.sec) { border-top: 1px solid var(--color-border); }
   .admin :global(.sec__sum) {
     display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap;
-    padding: 0.6rem 0; cursor: pointer; list-style: none;
+    padding: 0.55rem 0; cursor: pointer; list-style: none;
   }
   .admin :global(.sec__sum::-webkit-details-marker) { display: none; }
-  .admin :global(.sec__sum::before) { content: "▸"; color: var(--color-muted); font-size: 0.8rem; }
+  .admin :global(.sec__sum::before) { content: "▸"; color: var(--color-muted); font-size: 0.75rem; }
   .admin :global(.sec[open] > .sec__sum::before) { content: "▾"; }
   .admin :global(.sec__sum:hover .sec__title) { color: var(--color-muted); }
-  .admin :global(.sec__title) { font-size: 1rem; margin: 0; }
-  .admin :global(.sec__body) { display: grid; gap: 0.5rem; padding: 0 0 1rem 1.1rem; }
+  .admin :global(.sec__title) { font-size: 0.9rem; margin: 0; }
+  .admin :global(.sec__body) { display: grid; gap: 0.5rem; padding: 0 0 0.9rem 1.1rem; }
   .admin :global(.overview) { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
-  .admin :global(.overview__main) { flex: 1 1 16rem; display: grid; gap: 0.5rem; min-width: 0; }
-  .admin :global(.avatar) { width: 6rem; height: 6rem; object-fit: cover; border-radius: var(--radius-xs); background: var(--color-border); flex: 0 0 auto; }
+  .admin :global(.overview__main) { flex: 1 1 16rem; display: grid; gap: 0.4rem; min-width: 0; }
+  .admin :global(.avatar) { width: 4.5rem; height: 4.5rem; object-fit: cover; border-radius: var(--radius-sm); background: var(--tint); flex: 0 0 auto; }
   .admin :global(.avatar--none) { border: 1px dashed var(--color-border); background: none; }
 
   /* ── Actions: routine vs Danger ────────────────────────
      Two groups, so "Purge now" stops looking like "Set email". The danger
-     group is boxed in the error colour and its buttons wear it too. */
-  .admin :global(.actions-split) { display: flex; gap: 1rem; flex-wrap: wrap; align-items: stretch; margin-bottom: 0.75rem; }
+     group is tinted in the error colour and its buttons wear it too. */
+  .admin :global(.actions-split) { display: flex; gap: 1rem; flex-wrap: wrap; align-items: stretch; margin-bottom: 0.6rem; }
   .admin :global(.actions--danger) {
-    border: 1px solid var(--color-error); border-radius: var(--radius-sm);
-    padding: 0.4rem 0.6rem; margin-left: auto;
+    background: color-mix(in srgb, var(--color-error) 7%, white); border-radius: var(--radius-sm);
+    padding: 0.45rem 0.6rem; margin-left: auto;
   }
-  .admin :global(.danger__label) { color: var(--color-error); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
-  .admin :global(.btn-danger.btn-ghost) { border-color: var(--color-error); color: var(--color-error); }
+  .admin :global(.danger__label) { color: var(--color-error); font-size: 0.72rem; font-weight: 600; }
+  .admin :global(.btn-danger.btn-ghost) { border-color: color-mix(in srgb, var(--color-error) 40%, white); color: var(--color-error); }
+  .admin :global(.btn-danger.btn-ghost:hover) { border-color: var(--color-error); }
   .admin :global(.btn-danger.btn-solid) { background: var(--color-error); }
   .admin :global(.btn-danger.btn-solid:hover) { background: var(--color-error); opacity: 0.85; }
-  /* The console's buttons are denser than the site's — these rows hold five of them. */
-  .admin :global(.actions .btn-ghost), .admin :global(.actions .btn-solid) { padding: 0.45rem 0.9rem; font-size: 0.82rem; }
 
   /* ── Audit table ───────────────────────────────────────  */
-  .admin :global(table.audit dl) { grid-template-columns: max-content 1fr; gap: 0.1rem 0.6rem; font-size: 0.78rem; }
+  .admin :global(table.audit td) { white-space: normal; vertical-align: top; }
+  .admin :global(table.audit dl) { grid-template-columns: max-content 1fr; gap: 0.1rem 0.6rem; font-size: 0.75rem; }
 
   /* ── Dialog ────────────────────────────────────────────
      The native <dialog>, in the top layer, styled like a card. */
   .admin :global(.admin-dialog) {
-    border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: 1.25rem;
+    border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 1.25rem;
     max-width: min(92vw, 30rem); background: white; color: var(--color-dark);
   }
   .admin :global(.admin-dialog::backdrop) { background: rgb(0 0 0 / 0.35); }
   .admin :global(.admin-dialog__form) { display: grid; gap: 0.75rem; margin: 0; }
-  .admin :global(.admin-dialog__title) { font-size: 1.1rem; margin: 0; }
+  .admin :global(.admin-dialog__title) { font-size: 1.05rem; margin: 0; }
   .admin :global(.admin-dialog__msg) { margin: 0; overflow-wrap: anywhere; }
   .admin :global(.admin-dialog__actions) { display: flex; gap: 0.5rem; justify-content: flex-end; flex-wrap: wrap; }
-  .admin :global(.admin-dialog .btn-ghost), .admin :global(.admin-dialog .btn-solid) { padding: 0.5rem 1rem; font-size: 0.85rem; cursor: pointer; }
+  .admin :global(.admin-dialog .btn-ghost), .admin :global(.admin-dialog .btn-solid) { padding: 0.5rem 1rem; font-size: 0.85rem; }
+
+  /* ── The Moderation workstation ────────────────────────
+     ONE SCREEN PER PICTURE (2026-09-22, Josh, MacBook Pro 16). The picture is
+     a stage on the left sized to the viewport, and everything the admin reads
+     and moves — record, sliders, score, Save — is one column on the right.
+     The stage height is the viewport minus the chrome above and below the
+     card; the side column scrolls inside itself if a description is long, so
+     the page never has to.
+
+     THE PICTURE IS OUT OF FLOW (same day, Josh: "the image overflows! it
+     should scale down!"). As a grid item with `width: 100%; height: 100%` the
+     image's percentage WIDTH resolved through its own aspect ratio during
+     track sizing — a square picture on a 750px stage asked for 750px of width
+     and was drawn across the side column. Absolutely positioned against the
+     stage, its box is the stage's box in every engine, and `contain` does the
+     scaling. */
+  .admin :global(.rate) { --rate-stage: clamp(18rem, calc(100dvh - 26rem), 56rem); display: grid; gap: 0.6rem; }
+  .admin :global(.rate__head) { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; padding: 0 0.25rem; }
+  .admin :global(.rate__head h2) { margin-right: auto; }
+  .admin :global(.rate__body) {
+    display: grid; gap: 1.25rem;
+    grid-template-columns: minmax(0, 1fr) minmax(19rem, 23rem);
+    align-items: start;
+  }
+  /* TWO PANELS. The stage is its own card, pinned to the top of the
+     scroller while the page scrolls; the controls are their own card and are
+     NEVER clipped — no max-height, no inner scrollbar. If the record is long
+     the page scrolls and the picture stays put beside it. */
+  .admin :global(.rate__stage) {
+    position: sticky; top: 0; margin: 0; padding: 0; height: var(--rate-stage); min-width: 0; overflow: hidden;
+    background: var(--tint);
+  }
+  .admin :global(.rate__img) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+  .admin :global(.rate__side) { display: grid; gap: 0.85rem; align-content: start; min-width: 0; }
+
+  /* The record, as a tight block: who, what, then the completeness evidence. */
+  .admin :global(.rate__meta) { display: grid; gap: 0.35rem; min-width: 0; }
+  .admin :global(.rate__meta p) { margin: 0; overflow-wrap: anywhere; }
+  .admin :global(.rate__owner) { font-weight: 600; font-size: 0.95rem; }
+  .admin :global(.rate__caption) { font-size: 0.9rem; line-height: 1.35; }
+  .admin :global(.rate__desc) { font-size: 0.8rem; color: var(--color-muted); line-height: 1.4; }
+  .admin :global(.rate__meta-row) { font-size: 0.78rem; }
+  .admin :global(.rate__meta-row a) { overflow-wrap: anywhere; }
+  .admin :global(.rate__facts) { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+  /* SHOWN, NOT RATED: the five checks as pills on one line after their label. */
+  .admin :global(.rate__complete) { display: flex; gap: 0.35rem; flex-wrap: wrap; align-items: center; margin-top: 0.15rem; }
+  .admin :global(.rate__complete-label) { font-size: 0.78rem; color: var(--color-muted); margin-right: 0.15rem; }
+  .admin :global(.rate__checks) { list-style: none; margin: 0; padding: 0; display: inline-flex; flex-wrap: wrap; gap: 0.3rem; }
+  .admin :global(.rate__check) {
+    display: inline-flex; gap: 0.3rem; align-items: baseline;
+    padding: 0 0.55em; border-radius: 1em; background: var(--tint-2);
+    font-size: 0.72rem; line-height: 1.7; color: var(--color-muted);
+  }
+  .admin :global(.rate__check--yes) { color: var(--color-success); background: color-mix(in srgb, var(--color-success) 14%, white); }
+  .admin :global(.rate__check-mark) { font-weight: 700; }
+  .admin :global(.rate__sr) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  /* Four criteria, stacked: label and number on one line, the track under
+     them full width. The question each slider asks is its accessible
+     description, not a line of print — the label is the question. */
+  .admin :global(.rate__sliders) {
+    display: grid; gap: 0.8rem; padding-top: 0.85rem; border-top: 1px solid var(--color-border);
+  }
+  .admin :global(.rate__crit) {
+    display: grid; align-items: center; gap: 0.1rem 0.5rem;
+    grid-template-columns: 1fr auto auto;
+    grid-template-areas: "label extra val" "range range range";
+  }
+  .admin :global(.rate__crit-label) { grid-area: label; font-weight: 500; font-size: 0.85rem; }
+  .admin :global(.rate__crit-extra) { grid-area: extra; display: inline-flex; gap: 0.4rem; align-items: baseline; }
+  .admin :global(.rate__val) { grid-area: val; font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; min-width: 1.2em; font-size: 0.9rem; }
+  /* The track: one black bar (2026-09-22, Josh: "the bar just being simply
+     black"), no fill fraction. The thumb carries the state: solid black once
+     a number is chosen, hollow while the criterion is still unrated. */
+  .admin :global(.rate__range) {
+    grid-area: range; width: 100%; margin: 0.2rem 0 0; height: 1.1rem;
+    appearance: none; -webkit-appearance: none; background: none; cursor: pointer;
+  }
+  .admin :global(.rate__range:focus-visible) { outline: 2px solid var(--color-dark); outline-offset: 4px; border-radius: 2px; }
+  .admin :global(.rate__range::-webkit-slider-runnable-track) { height: 3px; border-radius: 2px; background: var(--color-dark); }
+  .admin :global(.rate__range::-moz-range-track) { height: 3px; border-radius: 2px; background: var(--color-dark); }
+  .admin :global(.rate__range::-moz-range-progress) { height: 3px; border-radius: 2px; background: var(--color-dark); }
+  .admin :global(.rate__range::-webkit-slider-thumb) {
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 16px; margin-top: -6px; border-radius: 50%;
+    background: var(--color-dark); border: 2px solid white; box-shadow: 0 0 0 1px var(--color-dark);
+    transition: transform 0.12s;
+  }
+  .admin :global(.rate__range::-moz-range-thumb) {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--color-dark); border: 2px solid white; box-shadow: 0 0 0 1px var(--color-dark);
+  }
+  .admin :global(.rate__range:hover::-webkit-slider-thumb) { transform: scale(1.12); }
+  .admin :global(.rate__range--unset::-webkit-slider-thumb) { background: white; box-shadow: 0 0 0 1px var(--color-muted); }
+  .admin :global(.rate__range--unset::-moz-range-thumb) { background: white; box-shadow: 0 0 0 1px var(--color-muted); }
+  /* A yes/no criterion: two seats in one tinted track, the chosen one solid —
+     the same segmented language as the view tabs. Neither seat is lit until
+     the admin answers. */
+  .admin :global(.rate__yn) {
+    grid-area: range; justify-self: start; margin-top: 0.25rem;
+    display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--radius-sm); background: var(--tint-2);
+  }
+  .admin :global(.rate__yn-seat) {
+    border: 0; background: none; padding: 0.25rem 1rem; border-radius: 3px;
+    font: inherit; font-size: 0.8rem; font-weight: 500; color: var(--color-muted); cursor: pointer;
+    transition: background-color 0.12s, color 0.12s;
+  }
+  .admin :global(.rate__yn-seat:hover) { color: var(--color-dark); }
+  .admin :global(.rate__yn-seat[aria-checked="true"]) { background: var(--color-dark); color: var(--color-bg); }
+  .admin :global(.rate__yn-seat:focus-visible) { outline: 2px solid var(--color-dark); outline-offset: 2px; }
+  .admin :global(.rate__auto) {
+    font-size: 0.66rem; color: var(--color-muted);
+    background: var(--tint-2); border-radius: 1em; padding: 0 0.5em; line-height: 1.7;
+  }
+  .admin :global(.rate__revert) { font-size: 0.75rem; }
+
+  /* The number this admin's four sliders make, and the one button that
+     commits it. Save is the column's full width: it is the verb of the view. */
+  .admin :global(.rate__score) {
+    display: flex; gap: 0.5rem; align-items: baseline; justify-content: space-between;
+    padding-top: 0.75rem; border-top: 1px solid var(--color-border);
+  }
+  .admin :global(.rate__score-n) { font-size: 1.9rem; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; }
+  /* No number yet, because the admin has not rated all three. Never a guess. */
+  .admin :global(.rate__score-n--pending) { color: var(--color-muted); }
+  .admin :global(.rate__actions) { display: grid; gap: 0.5rem; }
+  .admin :global(.rate__actions .btn-solid) { width: 100%; align-self: stretch; padding: 0.65rem 1rem; font-size: 0.85rem; }
+  .admin :global(.rate__actions-row) { display: flex; gap: 0.5rem; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
+  .admin :global(.rate__actions-row .btn-ghost) { padding: 0.35rem 0.7rem; font-size: 0.76rem; }
+  .admin :global(.rate__keys) { font-size: 0.7rem; color: var(--color-muted); }
+  .admin :global(.rate__keys kbd) { font: inherit; padding: 0 0.35em; background: var(--tint-2); border-radius: var(--radius-xs); }
 
   @media (--bp-mobile) {
     /* The toolbar used to land as THREE stacked rows on a phone — the filter,
        then the scope, then a lonely Reload — so a member record began a third
-       of the way down the screen. The filter keeps its own line; the scope and
-       the two buttons share the next one. */
+       of the way down the screen. The tabs take the first line, the filter
+       its own, and the scope and Reload share the last. */
     .admin__bar { gap: 0.4rem; }
+    .admin__tabs { flex: 1 1 100%; }
+    .admin__tab { flex: 1 1 0; justify-content: center; }
     /* The SEARCH field alone takes the full line. `.admin__bar .input` would
        also catch the scope select, which wears the same class — and at (0,2,0)
        it outranks a bare `.admin__scope`, which is how the select ended up
@@ -269,9 +523,14 @@
     .admin__bar .btn-ghost { flex: 0 0 auto; padding-inline: 0.7rem; }
 
     .admin :global(dl) { grid-template-columns: 1fr; gap: 0 0; }
-    .admin :global(dt) { margin-top: 0.4rem; font-size: 0.75rem; }
+    .admin :global(dt) { margin-top: 0.4rem; font-size: 0.72rem; }
     .admin :global(.actions--danger) { margin-left: 0; }
     .admin :global(.sec__body) { padding-left: 0.5rem; }
+    /* One column on a phone: the picture, then everything under it. The stage
+       gives up its viewport height so the sliders are reachable with one
+       thumb-scroll, and the side column stops scrolling inside itself. */
+    .admin :global(.rate__body) { grid-template-columns: 1fr; }
+    .admin :global(.rate__stage) { position: relative; height: 45vh; }
   }
 </style>
 
@@ -279,7 +538,7 @@
   import { onAuthStateChanged } from "firebase/auth";
   import { auth } from "../../lib/firebase.ts";
   import {
-    deleteImage, listMembers, listQueues, lookupMember,
+    deleteImage, listMembers, listQueues, listRatingQueue, lookupMember, rateImage, setImageHidden,
     type AdminImage, type MemberRow,
   } from "../../lib/adminApi.ts";
   import { type Child, type Tone, el, linkBtn } from "../../lib/admin/dom.ts";
@@ -287,6 +546,7 @@
   import { createMemberList } from "../../lib/admin/memberList.ts";
   import { type DetailDeps, renderImageDetail, renderMemberDetail } from "../../lib/admin/memberDetail.ts";
   import { queueTotal, renderQueues } from "../../lib/admin/queues.ts";
+  import { createRatingPanel, type RatingPanel } from "../../lib/admin/rating.ts";
 
   document.addEventListener("astro:page-load", () => {
     const gate = document.getElementById("admin-gate");
@@ -300,9 +560,13 @@
     const results = document.getElementById("admin-results")!;
     const detail = document.getElementById("admin-detail")!;
     const queues = document.getElementById("admin-queues")!;
+    const rating = document.getElementById("admin-rating")!;
     const filter = document.getElementById("admin-filter") as HTMLInputElement;
     const scope = document.getElementById("admin-scope") as HTMLSelectElement;
+    const listBtn = document.getElementById("admin-list-btn") as HTMLButtonElement;
     const queuesBtn = document.getElementById("admin-queues-btn") as HTMLButtonElement;
+    const ratingBtn = document.getElementById("admin-rating-btn") as HTMLButtonElement;
+    const tabs = [listBtn, queuesBtn, ratingBtn];
 
     // Window/document listeners are torn down on the next view transition;
     // the page-load handler runs again on every arrival and would otherwise
@@ -322,8 +586,13 @@
       dismiss.hidden = !msg;
     };
     dismiss.addEventListener("click", () => say(""));
+    // Overlapping calls are counted, so the sweep stops when the LAST one
+    // answers, not the first.
+    let inFlight = 0;
     const busy = async <T,>(label: string, work: () => Promise<T>, done?: string): Promise<T | undefined> => {
       say(label);
+      inFlight++;
+      root.classList.add("admin--busy");
       try {
         const out = await work();
         say(done ?? "", done ? "success" : "info");
@@ -332,6 +601,8 @@
         const msg = err instanceof Error ? err.message : String(err);
         say(msg, msg === "Cancelled." ? "info" : "error");
         return undefined;
+      } finally {
+        if (--inFlight === 0) root.classList.remove("admin--busy");
       }
     };
 
@@ -398,6 +669,8 @@
       // is noindex and linked from nowhere.
       let claims = user ? (await user.getIdTokenResult()).claims : {};
       if (user && claims.admin !== true) claims = (await user.getIdTokenResult(true)).claims;
+      // The access check is over; the markup's initial busy state ends here.
+      if (inFlight === 0) root.classList.remove("admin--busy");
       if (claims.admin !== true) {
         gate.textContent = user ? "This account is not an admin." : "Sign in with an admin account.";
         gate.hidden = false;
@@ -419,6 +692,15 @@
       if (location.hash === hash) route();
       else location.hash = hash;
     }
+    // A VIEW THAT ARRIVES LATE IS THROWN AWAY (2026-09-22, Josh: "Queue is
+    // not disappearing on moderation"). Every view waits on a callable, and
+    // the Queues one scans four collections. Click Queues, then Moderation
+    // before it answers: Moderation clears the queues host and renders — and
+    // then the Queues answer lands, rendering its card UNDER the panel and
+    // retitling the tab. Each navigation takes a number; a view that comes
+    // back to find the number has moved on puts nothing on screen.
+    let nav = 0;
+    const stale = (my: number) => my !== nav;
     window.addEventListener("hashchange", route, { signal });
 
     // THE PAGE DOES NOT SCROLL — `.page-wrap` does (Layout.astro puts
@@ -446,7 +728,7 @@
      */
     function enterRecord() {
       scroller().scrollTop = 0;
-      const h = detail.querySelector("h2") ?? queues.querySelector("h2");
+      const h = detail.querySelector("h2") ?? queues.querySelector("h2") ?? rating.querySelector("h2");
       if (!(h instanceof HTMLElement)) return;
       h.tabIndex = -1;
       h.focus({ preventScroll: true });
@@ -462,19 +744,39 @@
 
     function route() {
       const h = decodeURIComponent(location.hash.replace(/^#/, ""));
-      const [kind, arg] = [h.slice(0, h.indexOf("/")) || h, h.slice(h.indexOf("/") + 1)];
-      if (kind === "uid" && arg) return void showMember(arg);
-      if (kind === "image" && arg) return void showImage(arg);
-      if (kind === "queues") return void showQueues();
+      // Split on the FIRST slash, and only if there is one. `slice(0, -1)`
+      // on a hash with no slash returns the kind minus its last letter —
+      // truthy, so an `|| h` fallback never fires — and "queues" arrived here
+      // as "queue". Every slashless view was silently falling through to the
+      // list, which is a button that does nothing.
+      const cut = h.indexOf("/");
+      const [kind, arg] = cut === -1 ? [h, ""] : [h.slice(0, cut), h.slice(cut + 1)];
+      const my = ++nav;
+      // A member or an image is a record UNDER the roster, so the Members tab
+      // stays lit for both; only the two other views claim a tab of their own.
+      setTab(kind === "queues" || kind === "rating" ? kind : "list");
+      if (kind === "uid" && arg) return void showMember(arg, my);
+      if (kind === "image" && arg) return void showImage(arg, my);
+      if (kind === "queues") return void showQueues(my);
+      if (kind === "rating") return void showRating(my);
       // Anything else — including no hash at all — is the list.
       detail.replaceChildren();
       results.replaceChildren();
       queues.replaceChildren();
+      rating.replaceChildren();
       list.hidden = false;
       setTitle();
       scroller().scrollTop = listScroll;
     }
-    const onList = () => !/^#(uid|image|queues)\b/.test(location.hash);
+    const onList = () => !/^#(uid|image|queues|rating)\b/.test(location.hash);
+    listBtn.addEventListener("click", () => go("#list"));
+    /** The lit tab is derived from the hash on every route, never toggled by a click. */
+    function setTab(view: string) {
+      for (const t of tabs) {
+        if (t.dataset.view === view) t.setAttribute("aria-current", "page");
+        else t.removeAttribute("aria-current");
+      }
+    }
 
     /** Hide the list while a single record is on screen, with a way back. */
     function crumbs(...extra: Child[]) {
@@ -489,6 +791,15 @@
       if (app.hidden || dialogs.isOpen() || e.ctrlKey || e.metaKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       const typing = !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
+      // The Moderation panel is a keyboard instrument and takes its keys
+      // first — but only while it is the view on screen, and it applies the
+      // SAME text-entry guard (isTextEntry), widened by exactly one case: a
+      // range input is an <input>, and every one of its shortcuts is pressed
+      // with a range focused.
+      if (ratingPanel && !rating.hidden && rating.firstChild && ratingPanel.handleKey(e)) {
+        e.preventDefault();
+        return;
+      }
       if (e.key === "/" && !typing) {
         e.preventDefault();
         filter.focus();
@@ -578,13 +889,14 @@
       go, say, busy, reload: loadList, showMember, dialogs, fileUrl, memberName, deleteImageButton, crumbs, imageCache,
     };
 
-    async function showMember(uid: string) {
+    async function showMember(uid: string, my = ++nav) {
       leaveList();
       const res = await busy("Loading…", () => lookupMember({ query: uid }));
-      if (!res) return;
+      if (!res || stale(my)) return;
       if (!res.graph) {
         detail.replaceChildren();
         queues.replaceChildren();
+        rating.replaceChildren();
         say("No member with that id any more.", "error");
         return;
       }
@@ -595,6 +907,7 @@
       const sameMember = detail.querySelector<HTMLElement>(".detail")?.dataset.uid === uid;
       results.replaceChildren();
       queues.replaceChildren();
+      rating.replaceChildren();
       list.hidden = true;
       const card = renderMemberDetail(res.graph, detailDeps);
       card.dataset.uid = uid;
@@ -608,13 +921,14 @@
       if (!sameMember) enterRecord();
     }
 
-    async function showImage(imageId: string) {
+    async function showImage(imageId: string, my = ++nav) {
       leaveList();
       let img = imageCache.get(imageId);
       if (!img) {
         // Arrived by pasted link rather than through a member: the lookup
         // resolves an imageId to its OWNER, whose graph carries the record.
         const res = await busy("Loading image…", () => lookupMember({ query: imageId }));
+        if (stale(my)) return;
         if (!res?.graph) { say("No image record with that id.", "error"); return; }
         for (const i of res.graph.images) imageCache.set(i.imageId, i);
         img = imageCache.get(imageId);
@@ -623,6 +937,7 @@
       list.hidden = true;
       results.replaceChildren();
       queues.replaceChildren();
+      rating.replaceChildren();
       detail.replaceChildren(renderImageDetail(img, detailDeps));
       setTitle(`${img.kind} ${imageId}`);
       enterRecord();
@@ -642,12 +957,40 @@
       catch { /* the badge is a convenience; the Queues view reports its own errors */ }
     }
 
-    async function showQueues() {
+    // ── Moderation ────────────────────────────────────────
+    // A stack of pictures this admin has not rated. The panel's logic is in
+    // rating.ts; what lives here is the same fetch/route/focus handling every
+    // other view gets. The two privileged verbs are passed IN rather than
+    // imported there, so /proto/admin-preview can drive the same panel with
+    // no credential and no callable.
+    ratingBtn.addEventListener("click", () => go("#rating"));
+    let ratingPanel: RatingPanel | null = null;
+
+    async function showRating(my = ++nav) {
       leaveList();
       results.replaceChildren();
       detail.replaceChildren();
+      queues.replaceChildren();
+      const q = await busy("Loading the rating queue…", () => listRatingQueue({ limit: 50 }));
+      if (!q || stale(my)) return;
+      list.hidden = true;
+      ratingPanel ??= createRatingPanel(rating, {
+        say, busy, crumbs, go, fileUrl,
+        rate: rateImage,
+        hide: setImageHidden,
+      });
+      ratingPanel.render(q.items, q.remaining);
+      setTitle("Moderation");
+      enterRecord();
+    }
+
+    async function showQueues(my = ++nav) {
+      leaveList();
+      results.replaceChildren();
+      detail.replaceChildren();
+      rating.replaceChildren();
       const q = await busy("Loading queues…", () => listQueues());
-      if (!q) return;
+      if (!q || stale(my)) return;
       setQueueBadge(queueTotal(q));
       list.hidden = true;
       queues.replaceChildren(renderQueues(q, {

@@ -472,3 +472,44 @@ test('deletion tombstones block cached-token writes and recreation', async () =>
   await seed(env, `deletions/${OWNER}`, { state: 'completed', completedAt: new Date() });
   await assertFails(owner.doc(`users/${OWNER}`).set(minimalUser(OWNER)));
 });
+
+// imageModeration — admin ratings and the priority they average into. The
+// collection exists precisely so that images/{id} does not have to grow
+// server-owned fields: validImage() guards that document with a hasOnly
+// allowlist, and a key outside the list fails a member's ENTIRE save with no
+// error surfaced anywhere. See
+// documentation/20260922-image-moderation-ranking-design.md.
+
+test("imageModeration: admins read it, members and visitors do not", async () => {
+  await seed(env, "imageModeration/img-1", { score: 74, hidden: false });
+  const admin = env.authenticatedContext(ADMIN, verified(ADMIN, { admin: true })).firestore();
+  await assertSucceeds(admin.doc("imageModeration/img-1").get());
+  await assertSucceeds(admin.collection("imageModeration").get());
+  const owner = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertFails(owner.doc("imageModeration/img-1").get());
+  const anon = env.unauthenticatedContext().firestore();
+  await assertFails(anon.doc("imageModeration/img-1").get());
+});
+
+test("imageModeration: nobody writes it from a client — not even an admin", async () => {
+  const admin = env.authenticatedContext(ADMIN, verified(ADMIN, { admin: true })).firestore();
+  await assertFails(admin.doc("imageModeration/img-1").set({ score: 100 }));
+  const owner = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertFails(owner.doc("imageModeration/img-1").set({ score: 100 }));
+  // A member rating their own picture is the write this collection exists to
+  // refuse, and an admin forging a score the module never produced is the other.
+  await seed(env, "imageModeration/img-1", { score: 74, hidden: false });
+  await assertFails(admin.doc("imageModeration/img-1").update({ score: 100 }));
+  await assertFails(owner.doc("imageModeration/img-1").update({ hidden: true }));
+  await assertFails(admin.doc("imageModeration/img-1").delete());
+});
+
+test("imageModeration: a member can still save their own image record", async () => {
+  // The regression that matters most: validImage() and the images/{imageId}
+  // block were not touched, so the member write path is exactly as it was.
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const owner = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(owner.doc("images/img-1").update({
+    caption: "a new line", updatedAt: new Date(),
+  }));
+});

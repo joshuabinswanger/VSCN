@@ -105,6 +105,25 @@ jobs:
           project_id: vscn-39508
           workload_identity_provider: projects/365553954084/locations/global/workloadIdentityPools/vscn-hosting-deploy/providers/github-main
           service_account: vscn-hosting-deployer@vscn-39508.iam.gserviceaccount.com
+      # RULES GO BEFORE HOSTING, in the same job and on the same credential.
+      # Until 2026-09-22 nothing deployed rules at all: both workflows were
+      # --only hosting, so every ruleset change was a hand deploy somebody had
+      # to remember. An old branch's rules once silently replaced newer ones that
+      # way, and the storage size cap went with them. The order is the other
+      # half of it: a frontend that writes a new field fails SILENTLY against
+      # rules that predate it, because the hasOnly allowlist rejects the whole
+      # write with no error anywhere. Deploying rules first cannot regress that.
+      #
+      # The deployer needs TWO roles for this, both recorded in the EXPECTED
+      # table in scripts/verify-release.mjs: firebaserules.admin to publish a
+      # ruleset, and firebasestorage.viewer because publishing the STORAGE
+      # ruleset first looks up the project default bucket, which the rules role
+      # does not permit. Read-only on purpose — firebasestorage.admin can create
+      # and delete the default bucket, which no deploy credential should be able
+      # to do. The rules themselves are already tested against the emulator by
+      # the verify job this needs.
+      - name: Deploy security rules
+        run: npx -y firebase-tools@latest deploy --only firestore:rules,storage --project vscn-39508 --non-interactive
       - run: npx -y firebase-tools@latest deploy --only hosting --project vscn-39508 --non-interactive
       - if: always()
         run: rm -f "${{ steps.deploy-auth.outputs.credentials_file_path }}"

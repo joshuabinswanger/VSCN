@@ -34,15 +34,12 @@ const COLUMNS: Column[] = [
   {
     id: "displayName", label: "Name", locked: true,
     sortKey: (m) => lower(m.displayName || m.uid),
+    // The name is ONLY the name. Its flags used to trail it as chips, which
+    // made the one column every eye starts in ragged — see the Status column.
     cell(m, deps) {
       const name = el("button", { type: "button", class: "namebtn" }, m.displayName || "(no name)");
       name.addEventListener("click", () => deps.go(`#uid/${encodeURIComponent(m.uid)}`));
-      const flags: Child[] = [];
-      if (!m.active) flags.push(el("span", { class: "tag tag--warn" }, "hidden"));
-      if (m.pendingDeletion) flags.push(el("span", { class: "tag tag--warn" }, "deleting"));
-      if (!m.hasAuth) flags.push(el("span", { class: "tag" }, "no auth"));
-      if (m.hasAuth && m.emailVerified === false) flags.push(el("span", { class: "tag" }, "unverified"));
-      return [name, ...(flags.length ? [" ", el("span", { class: "chips" }, ...flags)] : [])];
+      return name;
     },
   },
   {
@@ -69,12 +66,14 @@ const COLUMNS: Column[] = [
   {
     id: "role", label: "Role",
     sortKey: (m) => (m.role ? lower(m.role) : null),
-    cell: (m) => el("span", { class: "muted" }, m.role || "—"),
+    // Cut at 24ch by the stylesheet; the whole role is in the title, and the
+    // column can be dragged wider.
+    cell: (m) => el("span", { class: "muted", title: m.role }, m.role || "—"),
   },
   {
     id: "status", label: "Status",
     sortKey: (m) => lower(m.status),
-    cell: (m) => el("span", { class: "muted" }, m.status),
+    cell: statusCell,
   },
   {
     id: "galleryCount", label: "Gallery", numeric: true,
@@ -102,7 +101,60 @@ const COLUMNS: Column[] = [
   },
 ];
 
+/**
+ * EVERYTHING ABOUT A MEMBER'S STANDING IS IN ONE CELL (2026-09-22, Josh:
+ * "fold the no auth and hidden into the status instead of behind the user
+ * name"). The lifecycle word the server sends leads, coloured by what it
+ * means; the conditions that are not a lifecycle — no Auth user, an
+ * unverified address — follow it as quiet pills. `hidden` and `deleting` are
+ * added only when the word itself does not already say so, so a row never
+ * reads "deleting · deleting".
+ */
+function statusCell(m: MemberRow): Child {
+  const word = m.status || (m.active ? "active" : "hidden");
+  const said = lower(word);
+  const tone = m.pendingDeletion ? "danger" : !m.active ? "warn" : "ok";
+  const flags: Child[] = [
+    el("span", { class: `status status--${tone}` }, el("i", { class: "status__dot", "aria-hidden": "true" }), word),
+  ];
+  if (!m.active && !said.startsWith("hidden") && !m.pendingDeletion) flags.push(el("span", { class: "tag" }, "hidden"));
+  if (m.pendingDeletion && !said.startsWith("delet")) flags.push(el("span", { class: "tag tag--warn" }, "deleting"));
+  if (!m.hasAuth) flags.push(el("span", { class: "tag" }, "no auth"));
+  if (m.hasAuth && m.emailVerified === false) flags.push(el("span", { class: "tag" }, "unverified"));
+  return el("span", { class: "chips" }, ...flags);
+}
+
 const STORAGE_KEY = "vscn-admin-hidden-columns";
+const WIDTH_KEY = "vscn-admin-column-widths";
+
+/**
+ * COLUMNS CAN BE DRAGGED (2026-09-22, Josh: "make columns expandable").
+ * Every column packs to its content and long values are cut with an
+ * ellipsis; the edge of a header is a grip that sets that column's width,
+ * kept in localStorage like the hidden set. Double-click a grip to let the
+ * column pack again.
+ */
+function loadWidths(): Map<string, number> {
+  try {
+    const raw = localStorage.getItem(WIDTH_KEY);
+    const obj = raw ? (JSON.parse(raw) as unknown) : {};
+    const out = new Map<string, number>();
+    if (obj && typeof obj === "object") {
+      for (const [k, v] of Object.entries(obj as Record<string, unknown>)) if (typeof v === "number" && v > 0) out.set(k, v);
+    }
+    return out;
+  } catch {
+    return new Map();
+  }
+}
+function saveWidths(widths: Map<string, number>): void {
+  try {
+    localStorage.setItem(WIDTH_KEY, JSON.stringify(Object.fromEntries(widths)));
+  } catch {
+    /* not persisted this time; the in-memory map still applies */
+  }
+}
+const MIN_COL = 56;
 
 /** localStorage can throw (private mode, blocked storage) — every touch is guarded. */
 function loadHidden(): Set<string> {
@@ -136,6 +188,49 @@ export function createMemberList(host: HTMLElement, deps: ListDeps): MemberList 
   let dir: 1 | -1 = 1;
   const hidden = loadHidden();
   for (const c of COLUMNS) if (c.locked) hidden.delete(c.id);
+  const widths = loadWidths();
+  /** A dragged width is an inline size on every cell of the column, header included. */
+  const sized = <T extends HTMLElement>(cell: T, id: string): T => {
+    const w = widths.get(id);
+    const px = w ? `${w}px` : "";
+    cell.style.width = px;
+    cell.style.minWidth = px;
+    cell.style.maxWidth = px;
+    return cell;
+  };
+  const applyWidth = (id: string) => {
+    for (const cell of host.querySelectorAll<HTMLElement>(`.col-${id}`)) sized(cell, id);
+  };
+  function grip(c: Column): HTMLElement {
+    const g = el("span", { class: "th-grip", title: "Drag to resize · double-click to reset" });
+    g.addEventListener("pointerdown", (e) => {
+      const th = g.parentElement;
+      if (!th) return;
+      e.preventDefault();
+      const x0 = e.clientX;
+      const w0 = th.getBoundingClientRect().width;
+      g.setPointerCapture(e.pointerId);
+      const move = (ev: PointerEvent) => {
+        widths.set(c.id, Math.max(MIN_COL, Math.round(w0 + ev.clientX - x0)));
+        applyWidth(c.id);
+      };
+      const up = () => {
+        g.removeEventListener("pointermove", move);
+        g.removeEventListener("pointerup", up);
+        g.removeEventListener("pointercancel", up);
+        saveWidths(widths);
+      };
+      g.addEventListener("pointermove", move);
+      g.addEventListener("pointerup", up);
+      g.addEventListener("pointercancel", up);
+    });
+    g.addEventListener("dblclick", () => {
+      widths.delete(c.id);
+      saveWidths(widths);
+      rerender();
+    });
+    return g;
+  }
 
   let last: { all: MemberRow[]; shown: MemberRow[]; query: string } | null = null;
   const rerender = () => last && render(last.all, last.shown, last.query);
@@ -185,16 +280,16 @@ export function createMemberList(host: HTMLElement, deps: ListDeps): MemberList 
         else { sortBy = c.id; dir = 1; }
         rerender();
       });
-      return el("th", {
+      return sized(el("th", {
         scope: "col",
         "aria-sort": active ? (dir === 1 ? "ascending" : "descending") : "none",
-        ...(c.numeric ? { class: "num" } : {}),
-      }, btn);
+        class: `col-${c.id}${c.numeric ? " num" : ""}`,
+      }, btn, grip(c)), c.id);
     }));
 
     const body = rows.map((m) => el("tr", {}, ...cols.map((c) => {
       const content = c.cell(m, deps);
-      return el("td", c.numeric ? { class: "num" } : {}, ...(Array.isArray(content) ? content : [content]));
+      return sized(el("td", { class: `col-${c.id}${c.numeric ? " num" : ""}` }, ...(Array.isArray(content) ? content : [content])), c.id);
     })));
 
     const card = el("div", { class: "card" },

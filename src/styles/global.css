@@ -33,6 +33,17 @@
      size to it, which is what keeps the giant VSCN title, the nav links and
      the content on the same two vertical edges. */
   --shell-max: 900px;
+  /* THE BOTTOM BAR'S OWN SIZE. The site footer (bottom-left) and the language
+     toggle (bottom-right) are one bar with a hole in the middle — they share a
+     baseline, so they have to share a size or the pair reads as two unrelated
+     fixtures. They used to say var(--font-size-base) separately, which is a
+     rule a future edit can break silently; this token is the rule stated once.
+     DESKTOP ONLY drops below the base size (2026-09-22, Josh: "make impressum
+     etc smaller", reported on a MacBook Pro 16). On a phone the base size is
+     already 12px and this is the smallest print on the page — taking it to
+     10.2px there would be a legibility cost nobody asked for, so mobile keeps
+     the base and the reduction lives in the --bp-desktop block below. */
+  --font-size-chrome: var(--font-size-base);
 }
 
 /* Media query aliases available in global CSS and Astro component styles. */
@@ -40,9 +51,19 @@
 @custom-media --bp-mobile (width <= 767px);
 @custom-media --bp-desktop (767px < width);
 
+/* THE DESKTOP BUMP IS ONE PIXEL, NOT TWO (2026-09-22, Josh, MacBook Pro 16:
+   "everything is a bit big"). Nearly all type on the site is in rem, so this
+   one declaration is the site's whole type scale on desktop — it was 14px,
+   and 13px takes roughly 7% off everything at once rather than leaving a
+   trail of per-component overrides. 12px, which would drop the bump entirely
+   and match mobile, was the other candidate and is too far: the 0.72rem
+   labels would land under 9px. The giant VSCN title does NOT follow this —
+   it is fitted to --shell-max, not to the root size; see BRAND_REPEATS_* in
+   Layout.astro for the lever that sizes it. */
 @media (--bp-desktop) {
   :root {
-    --font-size-base: 14px;
+    --font-size-base: 13px;
+    --font-size-chrome: 0.85rem;
   }
 }
 
