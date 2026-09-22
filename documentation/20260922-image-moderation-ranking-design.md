@@ -251,6 +251,33 @@ In `community.astro`:
 - each **card's carousel** leads with the member's highest-scoring image.
 - the **Gallery spread** deals members ordered by their best image's score.
 
+### The shuffle is banded, not replaced
+
+Found during implementation, and it nearly made the whole feature decorative:
+`applyLayout` in `CommunityGrid.astro` re-deals both galleries with a seeded
+Fisher-Yates on every page load. A server-side sort by score therefore reached
+crawlers, no-JS visitors and the JSON-LD — and nobody else. Every human visitor
+saw a random wall.
+
+The shuffle is deliberate and predates this work: it exists so the wall feels
+alive and so no member permanently owns the top-left corner. Deleting it to
+make room for the score would have traded one good property for another.
+
+**Both deals are therefore banded.** Images with the same score form a band,
+bands are ordered by score descending, and membership is shuffled inside each
+band. Across bands the better work is reliably higher; inside a band nobody has
+a fixed position and the deal is as fresh as it ever was. The member deal is
+banded the same way, on each member's best score.
+
+The band key is the exact score. No bucket width — with an integer 0-100 score
+the equal-score group is the natural band, and a width would be a second tuning
+constant nobody asked for.
+
+On the day this ships every score is between 48 and 58 (completeness alone), so
+there are only a handful of bands and the wall looks essentially as it does
+today. The ordering becomes visible as ratings arrive, which is the correct
+order of events.
+
 ### The consequence, stated plainly
 
 A member's card on /community will show their pictures in a different order
