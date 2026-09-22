@@ -33,10 +33,12 @@ import { imageScore } from "../imageScore.ts";
 import { type Child, type Reporter, el, fmt, linkBtn } from "./dom.ts";
 
 /** The three an admin judges. Completeness is the fourth and is handled apart. */
+// In weight order — the heaviest first, so the slider the keyboard lands on
+// is the one that moves the score most. See WEIGHTS in imageScore.ts.
 const CRITERIA = [
+  { key: "aesthetics", label: "Aesthetics", hint: "Is it good to look at?" },
   { key: "professional", label: "Professional work", hint: "Is this professional work?" },
   { key: "knowledge", label: "Knowledge communication", hint: "Is the subject knowledge communication?" },
-  { key: "aesthetics", label: "Aesthetics", hint: "Is it good to look at?" },
 ] as const;
 type HumanKey = (typeof CRITERIA)[number]["key"];
 
@@ -167,12 +169,6 @@ export function createRatingPanel(host: HTMLElement, deps: RatingDeps): RatingPa
       readout.textContent = v === UNSET ? "—" : String(v);
       input.setAttribute("aria-valuetext", v === UNSET ? "not rated" : String(v));
       input.classList.toggle("rate__range--unset", v === UNSET);
-      // The inked fraction of the track. Written here rather than read by
-      // CSS because no engine exposes a range's progress the same way; an
-      // unset slider inks nothing, whatever its thumb position.
-      const lo = Number(input.min), hi = Number(input.max);
-      const p = v === UNSET ? 0 : ((v - lo) / (hi - lo)) * 100;
-      input.style.setProperty("--p", `${p}%`);
     };
     input.addEventListener("input", () => {
       paint();
@@ -298,24 +294,27 @@ export function createRatingPanel(host: HTMLElement, deps: RatingDeps): RatingPa
       item.hidden ? "Unhide from galleries" : "Hide from galleries");
     hideBtn.addEventListener("click", () => void toggleHidden());
 
-    // ONE SCREEN: the picture is a stage on the left, and everything the
-    // admin reads and moves is one column beside it — record, sliders, score,
-    // Save. The sliders used to sit under the picture and began below the
+    // TWO PANELS (2026-09-22, Josh: "make the panels separate; the panel
+    // with the settings should never be cut off"). The picture is a stage
+    // card on the left sized to the viewport and pinned while the page
+    // scrolls; the controls are their OWN card on the right, as tall as they
+    // need to be — nothing in it is ever clipped. The head line sits above
+    // both. The sliders used to sit under the picture and began below the
     // fold of a 16" laptop; see the stylesheet's note on .rate.
     const kbd = (k: string) => el("kbd", {}, k);
-    host.replaceChildren(el("div", { class: "card rate" },
+    host.replaceChildren(el("div", { class: "rate" },
       el("div", { class: "rate__head" },
         el("h2", {}, "Moderation"),
         el("span", { class: "muted small" },
           `${stack.length} in this pass · ${outstanding} unrated by you`),
         deps.crumbs()),
       el("div", { class: "rate__body" },
-        el("figure", { class: "rate__stage" },
+        el("figure", { class: "card rate__stage" },
           el("img", {
             class: "rate__img", src: deps.fileUrl(item.storagePath), alt: item.caption ?? "",
             loading: "eager", decoding: "async",
           })),
-        el("div", { class: "rate__side" },
+        el("div", { class: "card rate__side" },
           meta(item),
           el("div", { class: "rate__sliders" },
             ...CRITERIA.map((c) => slider(c.key, c.label, c.hint, UNSET, false, (v) => {
@@ -341,7 +340,7 @@ export function createRatingPanel(host: HTMLElement, deps: RatingDeps): RatingPa
     ));
     refresh();
     // Straight onto the first slider: the whole view is a keyboard.
-    ranges.get("professional")?.focus();
+    ranges.get(CRITERIA[0].key)?.focus();
   }
 
   /** Off the head of the stack and on to the next picture. */

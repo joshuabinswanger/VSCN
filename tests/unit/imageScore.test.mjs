@@ -16,7 +16,7 @@ const FULL = {
 
 test("the weights are the ones the design fixed", () => {
   assert.deepEqual(WEIGHTS, {
-    professional: 0.35, knowledge: 0.25, aesthetics: 0.25, completeness: 0.15,
+    aesthetics: 0.35, professional: 0.25, knowledge: 0.25, completeness: 0.15,
   });
 });
 
@@ -72,7 +72,7 @@ test("admins are averaged, and an auto rater still tracks the record", () => {
 
 test("out-of-range input is clamped rather than trusted", () => {
   const wild = { ratings: { a1: { professional: 99, knowledge: -4, aesthetics: 5, completeness: 12 } } };
-  // 99→5, -4→0, 5, 12→5 → 0.35*5 + 0.25*0 + 0.25*5 + 0.15*5 = 3.75 → 75.
+  // 99→5, -4→0, 5, 12→5 → 0.25*5 + 0.25*0 + 0.35*5 + 0.15*5 = 3.75 → 75.
   // The -4 is the point: clamping holds the FLOOR as well as the ceiling, so a
   // hostile caller cannot lift a criterion by underflowing it.
   assert.equal(imageScore(FULL, wild), 75);
