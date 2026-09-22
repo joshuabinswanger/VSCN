@@ -106,8 +106,8 @@ test('one admin rating writes one entry, and the stored score is that map scored
   // number the pure module derives from the stored map are one number.
   assert.equal(result.score, stored.score);
   assert.equal(stored.score, imageScore(await imageDoc('img1'), stored));
-  // 0.35*5 + 0.25*4 + 0.25*3 + 0.15*4 = 4.1 → 82
-  assert.equal(stored.score, 82);
+  // aesthetics leads: 0.35*3 + 0.25*5 + 0.25*4 + 0.15*4 = 3.9 → 78
+  assert.equal(stored.score, 78);
 });
 
 // 5
