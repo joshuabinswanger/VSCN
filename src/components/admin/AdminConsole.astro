@@ -527,7 +527,13 @@
 
     function route() {
       const h = decodeURIComponent(location.hash.replace(/^#/, ""));
-      const [kind, arg] = [h.slice(0, h.indexOf("/")) || h, h.slice(h.indexOf("/") + 1)];
+      // Split on the FIRST slash, and only if there is one. `slice(0, -1)`
+      // on a hash with no slash returns the kind minus its last letter —
+      // truthy, so an `|| h` fallback never fires — and "queues" arrived here
+      // as "queue". Every slashless view was silently falling through to the
+      // list, which is a button that does nothing.
+      const cut = h.indexOf("/");
+      const [kind, arg] = cut === -1 ? [h, ""] : [h.slice(0, cut), h.slice(cut + 1)];
       if (kind === "uid" && arg) return void showMember(arg);
       if (kind === "image" && arg) return void showImage(arg);
       if (kind === "queues") return void showQueues();
