@@ -21,6 +21,14 @@ export interface SiteSnapshot {
   profiles: { id: string; data: PublicProfileDoc }[];
   slugs: { slug: string; uid: string; current: boolean }[];
   images: GalleryRecord[];
+  /**
+   * One row per exported image — every image, not only the rated ones, so the
+   * build never has to decide what a missing row means. The snapshot carries
+   * the CONCLUSION (a number and a flag) and never the ratings map that
+   * produced it: this file is written to disk in CI, and who rated what is
+   * nobody's business outside the console.
+   */
+  moderation: { imageId: string; score: number; hidden: boolean }[];
 }
 
 let directoryPromise: Promise<Directory> | null = null;
@@ -32,6 +40,11 @@ function fetchDirectory(): Directory {
   const snapshot = JSON.parse(readFileSync(resolve(process.cwd(), ".site-data.json"), "utf8")) as SiteSnapshot;
   if (snapshot.version !== 1 || !Array.isArray(snapshot.profiles)
     || !Array.isArray(snapshot.slugs) || !Array.isArray(snapshot.images)
+    // A snapshot with no moderation table came from an exporter that predates
+    // ranking. Accepting it would deploy an unranked site that looks exactly
+    // like a correctly ranked one — the same "no members / no credentials"
+    // ambiguity this validator exists to refuse. Fail loudly instead.
+    || !Array.isArray(snapshot.moderation)
     || typeof snapshot.bucket !== "string" || typeof snapshot.projectId !== "string"
     || !Number.isFinite(Date.parse(snapshot.generatedAt))
     || Math.abs(Date.now() - Date.parse(snapshot.generatedAt)) > 60 * 60_000) {
@@ -42,10 +55,16 @@ function fetchDirectory(): Directory {
     throw new Error("Site data project does not match the build configuration.");
   }
 
+  // The priority rides on the RECORD from here on, because memberView's
+  // works() is the only place that can attach it to a work without touching
+  // orderedGalleryItems() — which /members/<slug> and the profile editor share
+  // and which must keep the member's own order.
+  const modByImage = new Map(snapshot.moderation.map((row) => [row.imageId, row]));
   const recordsByOwner = new Map<string, GalleryRecord[]>();
   for (const rec of snapshot.images) {
+    const mod = modByImage.get(rec.imageId);
     const list = recordsByOwner.get(rec.ownerUid) ?? [];
-    list.push(rec);
+    list.push({ ...rec, score: mod?.score, hidden: mod?.hidden === true });
     recordsByOwner.set(rec.ownerUid, list);
   }
   const current = new Map<string, string>();

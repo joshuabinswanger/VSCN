@@ -9,7 +9,9 @@ import { purgeAccount } from "./purge";
 import { dispatchRebuild, githubRebuildToken } from "./rebuild";
 import { galleryImageIds, plain, requireAdmin } from "./util";
 
-async function audit(
+// Exported since 2026-09-22 so moderation.ts logs through the same row shape
+// rather than growing a second audit writer.
+export async function audit(
   actorUid: string,
   action: string,
   targetUid: string,
