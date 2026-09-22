@@ -100,7 +100,10 @@ import "../styles/global.css";
     right: 30px;
     z-index: 20;
     font-family: "Archivo", sans-serif;
-    font-size: var(--font-size-base);
+    /* Shared with .site-footer, which is the other half of this bar — see
+       --font-size-chrome in global.css. Moving one without the other puts the
+       bottom-left and bottom-right text on visibly different lines. */
+    font-size: var(--font-size-chrome);
     text-decoration: none;
   }
 

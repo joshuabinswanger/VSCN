@@ -61,7 +61,12 @@ const connectAfter =
     justify-items: center;
     align-items: center;
     box-sizing: border-box;
-    padding: clamp(3rem, 6vw, 6rem) 15px clamp(5rem, 9vw, 8rem);
+    /* The caps govern every desktop width — the vw terms only take over below
+       roughly 700px — so they are the desktop hero's whole size, and they came
+       down with the rest of the shell (2026-09-22, Josh: "landing page a bit
+       smaller"). The vw terms are untouched: the phone layout was not what
+       read as too big. */
+    padding: clamp(3rem, 6vw, 4.75rem) 15px clamp(5rem, 9vw, 6.5rem);
   }
 
   .landing-hero__content {
@@ -69,13 +74,13 @@ const connectAfter =
     max-width: 900px;
     margin: 0 auto;
     display: grid;
-    gap: clamp(1.3rem, 3vw, 2.4rem);
+    gap: clamp(1.3rem, 3vw, 2rem);
   }
 
   .landing-hero__statement {
     margin: 0;
     color: var(--color-dark);
-    font-size: clamp(1.2rem, 5vw, 2.8rem);
+    font-size: clamp(1.2rem, 5vw, 2.4rem);
     font-weight: 300;
     line-height: 1.12;
     letter-spacing: 0;
@@ -98,7 +103,7 @@ const connectAfter =
   .landing-hero__join {
     display: flex;
     align-items: flex-start;
-    padding-top: 1.5rem;
+    padding-top: 1.25rem;
     animation: hero-fade-up 0.5s ease-out 0.5s both;
     animation-play-state: paused;
   }
