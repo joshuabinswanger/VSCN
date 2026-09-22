@@ -176,8 +176,10 @@ test("admins are averaged, and an auto rater still tracks the record", () => {
 });
 
 test("out-of-range input is clamped rather than trusted", () => {
+  // 99 -> 5, -4 -> 0, 5 stays, 12 -> 5. Weighted: 1.75 + 0 + 1.25 + 0.75 = 3.75.
+  // Both bounds on purpose: clamping that only caps the top is half a guard.
   const wild = { ratings: { a1: { professional: 99, knowledge: -4, aesthetics: 5, completeness: 12 } } };
-  assert.equal(imageScore(FULL, wild), 100);
+  assert.equal(imageScore(FULL, wild), 75);
 });
 
 test("hidden is a separate question from the score", () => {
