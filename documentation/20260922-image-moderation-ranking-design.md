@@ -36,7 +36,7 @@ Four criteria, each an integer 0–5:
 Each criterion is averaged across the admins who rated it. Then:
 
 ```
-score = round(100 × (0.35·professional + 0.25·knowledge + 0.25·aesthetics + 0.15·completeness) / 5)
+score = round(100 × (0.35·aesthetics + 0.25·professional + 0.25·knowledge + 0.15·completeness) / 5)
 ```
 
 The weights are constants in one module, not scattered literals. Changing the
@@ -137,7 +137,7 @@ export interface CompletenessChecks { caption; description; german; tags; link }
 export function completenessChecks(rec: GalleryRecord): CompletenessChecks
 export function computedCompleteness(rec: GalleryRecord): number   // 0..5
 export function imageScore(rec: GalleryRecord, mod: ModerationDoc | null): number  // 0..100
-export const WEIGHTS = { professional: 0.35, knowledge: 0.25, aesthetics: 0.25, completeness: 0.15 }
+export const WEIGHTS = { aesthetics: 0.35, professional: 0.25, knowledge: 0.25, completeness: 0.15 }
 ```
 
 Imported by the callable, by `scripts/export-site-data.mjs`, and by the

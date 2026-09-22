@@ -54,10 +54,15 @@ export interface ModerationRecord {
   hidden?: boolean;
 }
 
+// AESTHETICS LEADS (2026-09-22, Josh: "the aesthetics should be graded
+// highest"). The galleries are looked at before they are read, so the
+// criterion that decides whether a picture is good to look at carries the
+// most weight; the two about what it is and what it says share the next
+// rank, and the record's completeness is the small tie-breaker it was.
 export const WEIGHTS = {
-  professional: 0.35,
+  aesthetics: 0.35,
+  professional: 0.25,
   knowledge: 0.25,
-  aesthetics: 0.25,
   completeness: 0.15,
 };
 
