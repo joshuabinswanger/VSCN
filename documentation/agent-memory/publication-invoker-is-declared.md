@@ -32,6 +32,6 @@ binding intact — the proof the fix works.
 a commit that still said `private`; deploy functions from a commit that has the fix instead. The
 general lesson is wider than this one function: anything IAM that a deploy can express belongs in
 the code, because what the deploy manifest says beats whatever a console click left behind.
-Merged to dev `490b23b`; the same fix for main is PR #60, **open and unmerged** — merging it is a
-prod release, and it gates prod's overdue functions deploy. Related:
+SHIPPED TO PROD in release `f21a60f` on 2026-09-22, and proven there: prod functions were deployed
+by hand at 19:25 and the binding survived, where the same deploy erased it on dev that afternoon. Related:
 [[release-verification-protocol]], [[rebuild-dispatcher-cloud-function]].
