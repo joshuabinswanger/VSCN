@@ -2,13 +2,15 @@
 
 Josh, 2026-09-22: "we will switch to a release schedule … weekly tuesday. automate the rest."
 
-Today a prod release is three deploys of which the pipeline does one. The merge into `main`
-deploys hosting; `firestore.rules`, `storage.rules` and the functions go by hand, in an order that
-lives in [release-verification.md](release-verification.md) and in agent memory, and the check that
-would catch a forgotten step ([verify-release.mjs](../scripts/verify-release.mjs)) is run by a
-person. PR #48 shipped an admin console whose new callable never reached prod; PR #58 exists because
-a hand-run functions deploy revoked a hand-applied grant. This design makes a release **one merge**,
-makes that merge happen **every Tuesday**, and makes the pipeline **check its own work**.
+Today a prod release is three deploys of which the pipeline does two. Since PRs #64–#66 (the evening
+of 2026-09-22) the merge into `main` deploys `firestore.rules` and `storage.rules` ahead of hosting,
+on the hosting deployer's credential. The functions still go by hand, in an order that lives in
+[release-verification.md](release-verification.md) and in agent memory, and the check that would
+catch a forgotten step ([verify-release.mjs](../scripts/verify-release.mjs)) is run by a person. PR
+#48 shipped an admin console whose new callable never reached prod; PR #58 exists because a hand-run
+functions deploy revoked a hand-applied grant; release `f21a60f` tonight needed a hand functions
+deploy 40 minutes before the merge. This design makes a release **one merge**, makes that merge
+happen **every Tuesday**, and makes the pipeline **check its own work**.
 
 ## Decisions
 
@@ -17,9 +19,9 @@ makes that merge happen **every Tuesday**, and makes the pipeline **check its ow
 | Cadence | Weekly. Monday 07:00 Zurich the release PR opens; Tuesday 07:00 Zurich it merges | A day between opening and merging is the freeze: fixes only, and a place to say stop |
 | Stop mechanism | A `hold` label on the release PR | One click, visible in the PR, no repo setting to remember |
 | Freeze | Convention, enforced by nothing | YAGNI. Dev is still merged into during the freeze if a fix needs it; the PR body is regenerated at merge time |
-| Order inside a release | verify → rules → functions → hosting → drift check → log + tag | Rules before the frontend that writes a new field; functions before the hosting rewrite that points at one; the check last because it checks all of it |
-| Where the pipeline is rehearsed | Every merge into `dev` runs the same rules + functions + hosting + check | Dev is the test bed; a Tuesday release must not be the first time the pipeline meets a new function |
-| Deploy identity | A new `vscn-release-deployer` service account per project, keyless via the existing WIF pool | The hosting deployer stays hosting-only; a leaked release credential is a different blast radius and should be a different account |
+| Order inside a release | verify → functions → export → render → rules → hosting → drift check → log + tag | Functions before the hosting rewrite that points at one; rules immediately before the frontend that writes a new field (as shipped in #64); the check last because it checks all of it |
+| Where the pipeline is rehearsed | Every merge into `dev` runs the same functions + rules + hosting + check | Dev is the test bed; a Tuesday release must not be the first time the pipeline meets a new function |
+| Deploy identity | Hosting and rules stay on `vscn-hosting-deployer` as shipped; a new `vscn-functions-deployer` per project, keyless via the existing WIF pool, deploys functions and runs the check | The functions roles (Run admin, Scheduler, Eventarc, Secret Manager) are a different blast radius from publishing a ruleset, and belong on a different account |
 | Record | The drift check's entry is committed to `release-log.md` on `main`, and the released commit is tagged `release/YYYY-MM-DD` | The log's value is its history; the tag makes rollback a redeploy of a name |
 
 ## 1. The train — `.github/workflows/release-train.yml`
@@ -64,22 +66,21 @@ next Monday's `open` finds nothing to release, or only what came after.
 
 ## 2. The prod deploy becomes the whole release — `firebase-hosting-merge.yml`
 
-Current jobs: `verify → export → render → deploy`. New shape:
+Current jobs: `verify → export → render → deploy`, where `deploy` publishes both rulesets and then
+hosting. New shape:
 
 ```
-verify ─→ rules ─→ functions ─→ export ─→ render ─→ deploy ─→ release-check
+verify ─→ functions ─→ export ─→ render ─→ deploy ─→ release-check
 ```
 
-`export` and `render` are unchanged. `deploy` is unchanged (hosting, then the publication
-acknowledgement). The three new jobs:
-
-**`rules`** — `npx -y firebase-tools@latest deploy --only firestore:rules,storage --project
-vscn-39508 --non-interactive` as `vscn-release-deployer`. Runs first because a client that writes a
-new field before its rule exists is refused, and because a stale ruleset over new functions is the
-outage of 2026-09-14.
+`export`, `render` and `deploy` (rules, hosting, then the publication acknowledgement) are
+unchanged. Functions sit between verify and export: they must be live before the hosting rewrite
+that points at `mintAppCheckToken`, and a callable the new client calls must exist before the client
+does. Running them before the export also means a failed functions deploy stops the release before
+anything else has moved. The two new jobs:
 
 **`functions`** — `FUNCTIONS_DISCOVERY_TIMEOUT=120 npx -y firebase-tools@latest deploy --only
-functions --project vscn-39508 --non-interactive --force`. `--force` is required for the retry
+functions --project vscn-39508 --non-interactive --force` as `vscn-functions-deployer`. `--force` is required for the retry
 policy on `onImageWentLive`, and it also **deletes deployed functions the source no longer
 exports**. That is the intended behaviour of a release: the code is the manifest. The deploy reads
 `functions/.env` and `functions/.env.vscn-39508` for params; every `defineString` must have a
@@ -119,8 +120,8 @@ touch only `documentation/release-log.md` before picking the release. Unit-teste
 
 ## 3. The staging deploy rehearses the same pipeline — `firebase-hosting-staging.yml`
 
-The identical `rules`, `functions` and `release-check` jobs, pointed at `vscn-dev-f4b60`, provider
-`github-dev`, `--project dev`. Differences: the check commits nothing and tags nothing on `dev`
+The identical `functions` and `release-check` jobs, pointed at `vscn-dev-f4b60`, provider
+`github-dev`, `--project dev` (the rules step is already there since #64). Differences: the check commits nothing and tags nothing on `dev`
 (dev's log entries stay a human act, as now — a merge every hour would bury the prod history), and
 the job's `RED` still fails the run, which is the finding the protocol asks for. Cost: a functions
 deploy on every dev merge, roughly five minutes, inside the existing `staging-deploy` concurrency
@@ -131,7 +132,7 @@ never touch a project's rules or functions.
 
 ## 4. Identity and grants — what only Josh can do
 
-Each project gets a service account `vscn-release-deployer@<project>.iam.gserviceaccount.com`,
+Each project gets a service account `vscn-functions-deployer@<project>.iam.gserviceaccount.com`,
 bound to the existing pool exactly as the hosting deployer is:
 
 ```
@@ -152,8 +153,6 @@ Project roles on the account — the intended set, one line per reason:
 | `roles/cloudscheduler.admin` | `onSchedule` functions (`sendAdminDigest`, maintenance, rebuild queue) |
 | `roles/eventarc.admin` | Firestore and Auth v2 triggers are Eventarc triggers |
 | `roles/secretmanager.admin` | binding a secret grants the runtime `secretAccessor` on it; a viewer cannot |
-| `roles/firebaserules.admin` | publish Firestore and Storage rulesets |
-| `roles/firebasestorage.admin` | attach the Storage ruleset to the bucket |
 | `roles/storage.objectAdmin` on `gcf-v2-sources-<number>-us-central1` | upload the function source archive |
 | `roles/cloudbuild.builds.editor`, `roles/artifactregistry.reader` | the function image is built by Cloud Build |
 | `roles/serviceusage.serviceUsageConsumer`, `roles/firebase.viewer` | what `firebase deploy` reads about the project before doing anything |
@@ -168,7 +167,9 @@ grant nowhere written down is how the 2026-09-14 outage happens again.
 
 `scripts/release-iam.ps1` carries every command above for both projects, in PowerShell, with
 `--condition=None` where the policy already holds conditional bindings. Josh runs it; these grants
-are classifier-blocked for Claude.
+are classifier-blocked for Claude. The rules grants already on the hosting deployer
+(`firebaserules.admin`, `firebasestorage.viewer`) are not touched; the storage ruleset names its
+bucket in `firebase.json` since #66 precisely so that no further permission is needed there.
 
 **Prerequisite, DONE 2026-09-22:** `sendAdminDigest` declares `INFOMANIAK_SMTP_PASSWORD`, and a
 functions deploy refuses a missing secret. Josh copied it from dev into prod (version 1, enabled) by
@@ -181,9 +182,9 @@ runtime gets `secretAccessor` on it at the first functions deploy.
 | --- | --- | --- |
 | Monday: verify red on the PR | The PR opens anyway; its checks are red | Fix on dev before Tuesday, or add `hold` |
 | Tuesday: checks red | Not merged; the run is red and comments on the PR | Fix, then rerun `merge` by dispatch or wait a week |
-| Rules deploy fails | Nothing else deploys; prod unchanged | Read the run; rules are validated by `test:rules` in verify, so this is IAM or the API |
-| Functions deploy fails | Rules are already live on prod, hosting is not | The window the protocol already warns about, now minutes not days; rerun the workflow by dispatch once fixed — rules redeploy is idempotent |
-| Hosting deploy fails | Rules and functions live, old site served | Same: dispatch again |
+| Functions deploy fails | Nothing else deploys; prod unchanged | Read the run; the functions compiled and passed the emulator in verify, so this is IAM, a missing secret or a missing param value |
+| Rules deploy fails | Functions are live, rules and hosting are not | New callables on old rules is harmless (functions bypass rules); rerun by dispatch once fixed |
+| Hosting deploy fails | Rules and functions live, old site served | Same: dispatch again; the rules redeploy is idempotent |
 | Release check RED | Everything deployed; run red; no log commit, no tag | Read the probe. Roll back with `firebase hosting:rollback` / redeploy the previous `release/` tag, or fix forward |
 | Log push rejected (main moved) | Tag and log lost, release itself fine | Rare; the job retries once after `git pull --rebase`, then fails visibly |
 
@@ -202,8 +203,9 @@ looks for a button.
 - Workflow syntax: `actionlint` locally before the PR.
 - The first supervised run on **dev**: merge this PR into dev and watch the staging workflow do
   rules → functions → hosting → check. That run is the acceptance test for the IAM list on dev.
-- The first supervised run on **prod**: the coming Tuesday's train, watched live, with the
-  moderation release riding on it (the largest release in weeks, which is the point of watching).
+- The first supervised run on **prod**: the first Tuesday train, 2026-09-29, watched live. The
+  moderation release itself went out by hand tonight as `f21a60f`, so the train's first load is
+  whatever lands on dev this week — smaller, which is fine for a first run.
 - Dry run of the train: `workflow_dispatch` with `job=open` on a Monday after this merges, to see
   the PR and its body before the schedule ever fires.
 
@@ -216,4 +218,5 @@ solved; an hour's drift in winter changes nothing.
 
 ## Status
 
-Design approved in chat 2026-09-22 ("looks good"). Not yet built.
+Design approved in chat 2026-09-22 ("looks good"), revised the same evening after release `f21a60f`
+and PRs #64–#66 landed the rules automation from another session. Not yet built.
