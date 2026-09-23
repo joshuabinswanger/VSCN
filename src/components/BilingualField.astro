@@ -50,8 +50,12 @@ const noteIdDe = `${idDe}-note`;
 
 <div class="field bifield" data-bifield>
   <div class="bifield__head">
-    <label class="label" for={id} data-bifield-label>{label}</label>
-    {tip && <InfoTip lang={lang} for={note ? noteId : noteIdDe} />}
+    {/* 2026-09-23: wrap label and ⓘ together so space-between separates
+        [label + tip] from the language switch, keeping the ⓘ beside its label */}
+    <div class="label-row">
+      <label class="label" for={id} data-bifield-label>{label}</label>
+      {tip && <InfoTip lang={lang} for={note ? noteId : noteIdDe} />}
+    </div>
     <div class="bifield__switch" role="group" aria-label={label}>
       <button
         type="button"
