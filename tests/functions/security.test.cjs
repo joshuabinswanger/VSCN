@@ -142,6 +142,47 @@ test('rebuilds coalesce members and ignore unchanged saves and timestamp-only ch
   assert.equal(dispatch.mock.callCount(), 2);
 });
 
+test('a hidden member changes nothing the site shows: their uploads queue no build, hiding them does', async () => {
+  // The release walk uploads and deletes an image per release as a
+  // moderationHidden member (documentation/20260923-release-walk-automation.md §7).
+  const queue = db.doc('rebuildQueue/site');
+  await db.doc('publicProfiles/walker').set({ active: true, displayName: 'Walker', gallery: [] });
+  await queueMemberRebuild('walker');
+  await queue.delete();
+  await db.doc('publicProfiles/walker').update({ moderationHidden: true });
+  await queueMemberRebuild('walker');
+  assert.ok((await queue.get()).data()?.dirtyAt, 'hiding a visible member queues the build that drops them');
+  await queue.delete();
+  await db.doc('images/walk-img').set({ ownerUid: 'walker', kind: 'gallery', status: 'live', caption: 'Release walk' });
+  await db.doc('publicProfiles/walker').update({ gallery: ['walk-img'] });
+  await queueMemberRebuild('walker');
+  await db.doc('images/walk-img').update({ caption: 'Release walk, edited' });
+  await queueMemberRebuild('walker');
+  await db.doc('publicProfiles/walker').update({ gallery: [] });
+  await queueMemberRebuild('walker');
+  assert.equal((await queue.get()).exists, false, 'a hidden member uploading, captioning and deleting queues nothing');
+  await db.doc('publicProfiles/walker').update({ active: false, moderationHidden: false });
+  await queueMemberRebuild('walker');
+  assert.equal((await queue.get()).exists, false, 'inactive is as absent as hidden, which is what the export does');
+  await db.doc('publicProfiles/walker').update({ active: true });
+  await queueMemberRebuild('walker');
+  assert.ok((await queue.get()).data()?.dirtyAt, 'reactivating queues the build that shows them again');
+});
+
+test('an image going live for a hidden member queues no operator event', async () => {
+  const { onImageWentLive } = require('../../functions/lib/adminDigest.js');
+  await db.doc('publicProfiles/walker').set({ displayName: 'Walker', moderationHidden: true });
+  await db.doc('publicProfiles/member').set({ displayName: 'Member' });
+  const wentLive = (ownerUid) => ({ params: { imageId: `${ownerUid}-img` }, data: {
+    before: { exists: true, data: () => ({ ownerUid, origin: 'member', kind: 'gallery', status: 'uploading' }) },
+    after: { exists: true, data: () => ({ ownerUid, origin: 'member', kind: 'gallery', status: 'live' }) },
+  } });
+  await onImageWentLive.run(wentLive('walker'));
+  await onImageWentLive.run(wentLive('member'));
+  const events = await db.collection('adminEvents').get();
+  assert.deepEqual(events.docs.map((d) => d.data().uid), ['member']);
+});
+
 test('failed dispatch and changes arriving during dispatch stay queued', async () => {
   const ref = db.doc('rebuildQueue/site');
   await ref.set({ dirtyAt: Timestamp.fromMillis(1) });

@@ -24,11 +24,20 @@ export async function queueMemberRebuild(uid: string): Promise<void> {
     const state = await tx.get(stateRef);
     const now = Date.now();
     const profile = await tx.get(db.doc(`publicProfiles/${uid}`));
-    const ids = Array.isArray(profile.data()?.gallery)
-      ? profile.data()!.gallery.filter((id: unknown): id is string => typeof id === "string" && !id.includes("/")).slice(0, 8)
+    // Fingerprint what the SITE would show, not what the document holds. The
+    // export (scripts/export-site-data.mjs) drops profiles that are inactive
+    // or moderationHidden, so for the build they are absent, and they are
+    // fingerprinted as absent here. A hidden member's uploads then change
+    // nothing and queue nothing — the release walk relies on this — while
+    // hiding or deactivating a visible member still changes the fingerprint
+    // and queues the build that drops them.
+    const data = profile.data();
+    const shown = data && data.active !== false && data.moderationHidden !== true ? data : null;
+    const ids = Array.isArray(shown?.gallery)
+      ? shown!.gallery.filter((id: unknown): id is string => typeof id === "string" && !id.includes("/")).slice(0, 8)
       : [];
     const images = ids.length ? await tx.getAll(...ids.map((id: string) => db.doc(`images/${id}`))) : [];
-    const fingerprint = rebuildFingerprint(profile.data() ?? { deleted: true }, images
+    const fingerprint = rebuildFingerprint(shown ?? { deleted: true }, images
       .filter((d) => d.exists)
       .map((d) => ({ id: d.id, data: d.data() as Record<string, unknown> }))
       .filter((d) => d.data.ownerUid === uid));

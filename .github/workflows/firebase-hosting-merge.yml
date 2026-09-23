@@ -145,3 +145,17 @@ jobs:
           curl --fail-with-body --retry 3 -X POST 'https://us-central1-vscn-39508.cloudfunctions.net/acknowledgeSitePublication' \
             -H "Authorization: Bearer $PUBLICATION_TOKEN" -H 'Content-Type: application/json' \
             --data "{\"revision\":\"$PUBLICATION_REVISION\"}"
+  # THE WALK FOLLOWS THE RELEASE — and only the release. Every walk saves the
+  # member's profile, which dirties rebuildQueue/site, and flushMemberRebuilds
+  # then dispatches THIS workflow as workflow_dispatch within five minutes. A
+  # walk that also ran on that dispatch would dirty the queue again: the site
+  # would rebuild itself, and walk itself, every five minutes for ever. Hence
+  # the event gate. Design: documentation/20260923-release-walk-automation.md.
+  walk:
+    needs: deploy
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/release-walk.yml
+    with:
+      project: prod
+      release: ${{ github.sha }}
+    secrets: inherit

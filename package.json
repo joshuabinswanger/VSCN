@@ -20,7 +20,8 @@
     "test:rules": "npm --prefix functions run build && npx -y firebase-tools@latest emulators:exec --config firebase.security-audit.json --only firestore,storage --project demo-vscn-rules \"node --test --test-concurrency=1 tests/rules/**/*.test.mjs tests/functions/*.test.cjs\"",
     "check": "astro check",
     "verify": "npm run lint && npm run check && npm run test:unit && npm run test:rules",
-    "verify:release": "node scripts/verify-release.mjs"
+    "verify:release": "node scripts/verify-release.mjs",
+    "walk:release": "node scripts/walk-release.mjs"
   },
   "dependencies": {
     "astro": "^7.3.2",
@@ -35,6 +36,7 @@
     "@csstools/postcss-global-data": "^4.0.0",
     "@eslint/js": "^10.0.1",
     "@firebase/rules-unit-testing": "^5.0.2",
+    "@playwright/test": "^1.63.0",
     "eslint": "^10.2.1",
     "eslint-plugin-astro": "^1.7.0",
     "firebase-admin": "^14.4.0",

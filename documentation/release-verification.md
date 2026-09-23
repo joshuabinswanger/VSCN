@@ -8,7 +8,7 @@ History of verdicts: [release-log.md](release-log.md).
 
 | Event | What runs | Who |
 | --- | --- | --- |
-| Merge to `main` (prod release) | Machine check, then the human walk | Claude runs the check, Josh walks |
+| Merge to `main` (prod release) | Machine check, then the walk | Claude runs the check; the walk runs from CI as the last job of the merge |
 | Merge to `dev` | Machine check only | Claude, without being asked |
 
 A red dev check is a finding to fix before the same release reaches prod. A red prod check is a
@@ -57,11 +57,11 @@ npm run verify:release -- --project prod --since 2026-09-14T00:00:00Z --until 20
 `--origin <url>` overrides the live origin. Never point it at a PR preview: a preview's stamp is
 the ephemeral `refs/pull/N/merge` SHA.
 
-## The human walk
+## The walk
 
-Three minutes, on prod, after the machine check is green. Signed in as the verification member
-(a real account whose public profile carries `moderationHidden: true`, so it never reaches the
-directory).
+Six steps on prod, as the verification member: a real account whose public profile carries
+`moderationHidden: true`, so it exercises every write path a member has and never reaches the
+directory, the rating queue, the operator digest or a rebuild.
 
 1. Sign in at vscn.ch as the verification member.
 2. Upload one gallery image. It must complete without an error banner.
@@ -71,8 +71,29 @@ directory).
 6. Sign out. Load the home page and one member page anonymously; both must render.
 
 Steps 2 and 3 exercise the callables, the Storage rules, the cross-service IAM, the Firestore
-rules and the profile write path together. If any step fails, stop and report it. Do not fix
-inside the walk; a half-fixed state makes diagnosis harder.
+rules and the profile write path together.
+
+Since 2026-09-23 Playwright walks these steps ([scripts/walk-release.mjs](../scripts/walk-release.mjs),
+design in [20260923-release-walk-automation.md](20260923-release-walk-automation.md)). The
+`walk` job of the production merge workflow runs it after the acknowledgement step, on `push`
+events only, and prints the `Walk:` line for the log entry. From CI it walks
+`https://vscn-39508.web.app`, the same Hosting release, because Cloudflare answers GitHub's
+runners on vscn.ch with a bot challenge. On demand, from a machine Cloudflare lets through:
+
+```powershell
+npm run walk:release -- --project prod
+```
+
+It needs `WALK_MEMBER_EMAIL`, `WALK_MEMBER_PASSWORD` and `WALK_APPCHECK_DEBUG_TOKEN` in the
+environment or in an untracked `.env.walk`. The debug token makes the App Check SDK skip
+Turnstile, a challenge built to fail exactly this browser; enforcement and the rules are
+untouched, and the Turnstile mint function is the one thing the walk does not cover.
+
+A failed step stops the walk. The step's screenshot, the page console and every failed request
+are in `walk-artifacts/` (uploaded with the CI run). Fix or roll back, then re-run; do not fix
+inside the walk. Before uploading, the script removes any image a failed earlier run left on
+the member and says so, so the member never fills to the cap and fails a later walk for the
+wrong reason.
 
 ## The log
 
@@ -83,7 +104,7 @@ paste. Green entries are one line; the value is the history.
 ## 2026-09-22 · 1e033a7 · prod
 Machine: RED — functions deployed: adminListActions not deployed; 8 admin callables stale
          WARN upload pairing: authorize 28 ok of 28 / complete 1 ok of 1
-Walk:    not run (blocked on machine check)
+Walk:    RED — step 2 (upload) failed on vscn.ch for 1e033a7: queue row reported: Upload failed. Try again.
 Action:  functions deployed 2026-09-2x, re-verified green
 ```
 

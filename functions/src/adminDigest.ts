@@ -62,6 +62,12 @@ export const onImageWentLive = onDocumentWritten({ document: "images/{imageId}",
   const after = event.data?.after.data() as Partial<ImageDoc> | undefined;
   if (!after || after.status !== "live" || before?.status === "live") return;
   if (after.origin !== "member" || typeof after.ownerUid !== "string") return;
+  // A hidden member's pictures never reach the site, so they are not the
+  // operator's news either. The release walk uploads and deletes one image
+  // per release as exactly such a member
+  // (documentation/20260923-release-walk-automation.md §7).
+  const owner = await db.doc(`publicProfiles/${after.ownerUid}`).get();
+  if (owner.data()?.moderationHidden === true) return;
   const now = Timestamp.now();
   await db.doc(`adminEvents/image-${event.params.imageId}-${now.toMillis()}`).set({
     kind: "image",
