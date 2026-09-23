@@ -22,8 +22,10 @@ import type { ImageDoc } from "./types";
 /** How long an unfinished signup waits before it is reported as unfinished. */
 export const SIGNUP_REPORT_DELAY_MINUTES = 30;
 /** Ticks a mail may fail before its events are dropped with an error, so a dead mailbox does not queue forever. */
-const MAX_ATTEMPTS = 12;
+export const MAX_ATTEMPTS = 12;
 const BATCH = 100;
+/** The SMTP reply is the finding; a stack trace is not, and a row has to fit on screen. */
+const ERROR_CHARS = 500;
 
 type EventKind = "signup" | "image";
 
@@ -36,6 +38,20 @@ interface AdminEvent {
   attempts: number;
   imageId?: string;
   email?: string | null;
+  /** Why the last tick's mail did not go, so the console can say it (a 535 sat in the logs for a day). */
+  lastError?: string;
+  lastAttemptAt?: Timestamp;
+}
+
+/**
+ * What the admin console's Queues tab shows as "Unsent notices": every event
+ * still waiting, oldest first — the ones not yet due, and the ones a failing
+ * mailbox keeps putting back. Read here rather than in adminOps.ts so the
+ * queue's shape has one owner.
+ */
+export async function listUnsentNotices(): Promise<(AdminEvent & { id: string })[]> {
+  const snap = await db.collection("adminEvents").orderBy("at").limit(BATCH).get();
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as AdminEvent) }));
 }
 
 export async function queueSignup(uid: string, email: string | null | undefined, createdAt: Date): Promise<void> {
@@ -188,12 +204,16 @@ export const sendAdminDigest = onSchedule(
     const msg = adminDigest(reports, projectId);
     if (!msg) return;
 
-    const ok = await deliver(sendToOperator, msg, (detail) => logger.error("Admin digest not sent", { events: due.length, detail }));
+    let failure = "";
+    const ok = await deliver(sendToOperator, msg, (detail) => {
+      failure = detail;
+      logger.error("Admin digest not sent", { events: due.length, detail });
+    });
     const batch = db.batch();
     for (const { id, ev } of due) {
       const ref = db.doc(`adminEvents/${id}`);
       if (ok || ev.attempts + 1 >= MAX_ATTEMPTS) batch.delete(ref);
-      else batch.update(ref, { attempts: FieldValue.increment(1) });
+      else batch.update(ref, { attempts: FieldValue.increment(1), lastError: failure.slice(0, ERROR_CHARS), lastAttemptAt: now });
     }
     await batch.commit();
     if (ok) logger.info("Admin digest sent", { events: due.length, subject: msg.subject });
