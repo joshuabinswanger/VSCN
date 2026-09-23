@@ -11,6 +11,11 @@ metadata:
   modified: 2026-09-14T08:46:16.475Z
 ---
 
+**Update 2026-09-23: the local deploy this warns about no longer exists.** The
+`.env.development` credential was revoked and `npm run deploy:dev` now dies at the
+export; dev deploys only via CI on a push to `dev`, which always had the right key.
+Kept as the record of the `.env` fall-through trap. See [[dev-deploy-is-ci-only]].
+
 `.env.development` was written 2026-05-26 and never updated when App Check moved
 from reCAPTCHA to Cloudflare Turnstile on 2026-09-07. It still carried the dead
 `PUBLIC_FIREBASE_RECAPTCHA_SITE_KEY` and had **no** `PUBLIC_TURNSTILE_SITE_KEY`.
