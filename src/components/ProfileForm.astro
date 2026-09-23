@@ -287,6 +287,15 @@ const t = useTranslations(lang);
         <InfoTip lang={lang} for="note-gallery-cover" />
       </div>
       {
+        /* Order is not a preference, it is the card's geometry: works[0]'s
+        width/height become the aspect box in CommunityImageCard. Nothing used
+        to say so, so members had no way to know the first image was doing
+        anything at all. Placed right under the label its ⓘ opens, not down by
+        the drop zone (2026-09-23, review round 1): every other converted note
+        stays adjacent to its trigger, and this one did not. */
+      }
+      <p id="note-gallery-cover" class="field-note" data-tip hidden>{t("profile.gallery.coverNote")}</p>
+      {
         /* The drop target is this wrapper, not the list: an empty gallery has a
         list of zero height, so a member with no images yet — the one most
         likely to be dragging a folder of work at the screen — would have had
@@ -382,13 +391,6 @@ const t = useTranslations(lang);
       <p id="gallery-note-unverified" class="field-note" hidden>
         {t("profile.note.galleryUnverified")}
       </p>
-      {
-        /* Order is not a preference, it is the card's geometry: works[0]'s
-        width/height become the aspect box in CommunityImageCard. Nothing used
-        to say so, so members had no way to know the first image was doing
-        anything at all. */
-      }
-      <p id="note-gallery-cover" class="field-note" data-tip hidden>{t("profile.gallery.coverNote")}</p>
       {
         /* The directory is image-led: a member without a gallery holds a
         typographic card. Saying so here is the standing mechanism that fills
@@ -1118,7 +1120,8 @@ const t = useTranslations(lang);
 
   /* The gallery link rows' tip sits beside the field, not above it (there is
      no label element here to carry it) — the wrap has to give up the row's
-     free space or the ⓘ crowds the input instead of sitting flush right. */
+     free space or the ⓘ crowds the input instead of sitting flush right
+     (2026-09-23). */
   .label-row > .input-prefix-wrap {
     flex: 1;
   }
@@ -2654,9 +2657,9 @@ const t = useTranslations(lang);
 
             // A template is cloned once per image, so its tips cannot carry
             // ids of their own; each row gets its note ids here and its
-            // buttons are pointed at them. An open tip closes on re-render —
-            // acceptable, since re-renders happen on upload/remove/reorder,
-            // not while typing.
+            // buttons are pointed at them (2026-09-23). An open tip closes on
+            // re-render — acceptable, since re-renders happen on
+            // upload/remove/reorder, not while typing.
             row.querySelectorAll<HTMLElement>("[data-tip-note]").forEach((note) => {
               const key = note.dataset.tipNote ?? "";
               note.id = `gallery-${index}-note-${key}`;
