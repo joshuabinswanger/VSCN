@@ -36,7 +36,7 @@ test("everything else is refused, including forms that are close", () => {
     "https://www.youtube.com/shorts/", "https://www.youtube.com/shorts/dQw4w9WgXcQ/extra",
     "https://youtu.be/", "https://youtu.be/dQw4w9WgXcQ/extra",
     "https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ", "https://evil.example/youtu.be/dQw4w9WgXcQ",
-    "https://user:pass@youtube.com/watch?v=dQw4w9WgXcQ", "https://youtube.com:8443/watch?v=dQw4w9WgXcQ",
+    "https://someone@youtube.com/watch?v=dQw4w9WgXcQ", "https://youtube.com:8443/watch?v=dQw4w9WgXcQ",
     "javascript:alert(1)//youtu.be/dQw4w9WgXcQ", "ftp://youtu.be/dQw4w9WgXcQ",
     "https://vimeo.com/", "https://vimeo.com/channels/staffpicks/22439234", "https://vimeo.com/showcase/123",
     "https://vimeo.com/22439234/NOT-HEX", "https://vimeo.com/abc", "https://player.vimeo.com/video/22439234",
