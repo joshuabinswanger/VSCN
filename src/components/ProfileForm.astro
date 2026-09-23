@@ -1630,10 +1630,17 @@ const t = useTranslations(lang);
      pinned on mobile it shares the bottom line with the site footer, which
      holds the opposite corner (see SiteFooter.astro).
      No bar behind it — just the button, so the container must not eat clicks
-     on the content it hovers over. */
+     on the content it hovers over.
+     THE NEGATIVE BOTTOM (2026-09-23, Josh: "save button at bottom"). A sticky
+     box pins against the scroll container's PADDING edge, not its visible
+     edge, and .page-wrap carries 80px of bottom padding for the fixed site
+     footer — so `bottom: 0` parked Save ~100px up the screen, over the
+     portfolio hint, from the day it became sticky. Nobody saw it: /profile
+     needs a sign-in and this was only ever checked as compiled CSS.
+     Cancelling the padding puts it where every comment here assumed it was. */
   .form-footer {
     position: sticky;
-    bottom: 0;
+    bottom: calc(-1 * var(--page-wrap-pad-bottom, 0px));
     z-index: 5;
     display: flex;
     align-items: center;
@@ -1651,9 +1658,15 @@ const t = useTranslations(lang);
        bottom: 20px in the opposite corner — two bottom fixtures on two
        different lines. 8px drops it under the content and onto roughly the
        footer's line, which is what makes the bottom edge read as one strip
-       rather than a staircase. */
+       rather than a staircase.
+       On that line it also meets the language toggle, which is bottom-right on
+       every breakpoint (Navbar.astro: right 30px, ~42px wide) — at 375px Save
+       ran 204→330 and the toggle 303→345, the button on top of it. The 80px
+       lift above hid that. 3rem of right inset (measured 36px at 375px)
+       ends Save ~9px short of the toggle, so the two share the line instead of stacking. */
     @media (--bp-mobile) {
       padding-bottom: 0.5rem;
+      padding-right: 3rem;
     }
   }
 
