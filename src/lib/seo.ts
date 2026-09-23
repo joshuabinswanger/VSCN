@@ -78,7 +78,7 @@ export interface SeoMember {
   photoURL?: string;
 }
 
-/** One work, with its texts already picked for the page's locale. */
+/** A project the work is part of, with membership and attribution details for SEO. */
 export interface SeoProject {
   id: string;
   name?: string;
@@ -88,6 +88,7 @@ export interface SeoProject {
   affiliations: { name: string; url?: string; personUrl?: string }[];
 }
 
+/** One work, with its texts already picked for the page's locale. */
 export interface SeoWork {
   /** The stored original — what the lightbox opens and the tile's anchor points at. */
   url: string;

@@ -12,7 +12,7 @@ import {
   workDescription,
 } from "../../../lib/links.ts";
 import { memberPageJsonLd, memberPageUrl, memberTitle } from "../../../lib/seo.ts";
-import { groupWorks, projectTitle, projectDescription, affiliationHref, projectSlideData } from "../../../lib/projects.ts";
+import { groupWorks, projectTitle, projectDescription, affiliationHref, projectSlideData, type ProfileProject } from "../../../lib/projects.ts";
 import MemberWork from "../../../components/MemberWork.astro";
 import { useTranslations } from "../../../i18n/utils";
 import type { Lang } from "../../../i18n/utils";
@@ -77,38 +77,43 @@ const t = useTranslations(currentLang);
 // stored file, which is what the bigger cap is FOR — full screen is the one
 // view where 2000px was visibly short.
 const works = await Promise.all(
-  member.works.map(async (w) => ({
-    ...w,
-    // Picked for this page's locale — member.works is built once and shared
-    // with the /de page for the same member (see toMemberViewBase's
-    // callers), so the raw caption/description pairs are only resolved here,
-    // where currentLang is known. See workCaption()/workDescription() in
-    // links.ts. w.caption is what the <img alt> and the lightbox trigger's
-    // data-pswp-caption both read below, so this is also what a German
-    // screen reader speaks for this image.
-    caption: workCaption(w, currentLang),
-    description: workDescription(w, currentLang),
-    rendered: await getImage({
-      src: w.url,
-      width: w.width,
-      height: w.height,
-      widths: [600, 1000, 1600],
-      format: "webp",
-    }),
-    // What the lightbox says under the image. Resolved here rather than in the
-    // client script because it is translated, and the script is a module that
-    // cannot take `define:vars`; it travels on the trigger link instead.
-    //
-    // The whose-and-what-of-it line, not a repeat of the caption: full screen,
-    // the page's own name heading is covered, so the member's name is the one
-    // thing the view has lost. It is just the name now — the project credit
-    // that used to follow it went with the projects feature (2026-09-01, and
-    // is back as its own block below the picture since 2026-09-23).
-    pswpMeta: member.displayName,
-    // The project this work is in, as data-pswp-* strings for the lightbox's
-    // shared renderer — see projectSlideData() in lib/projects.ts.
-    slide: projectSlideData(member.projects?.find((p) => p.id === w.projectId), currentLang),
-  })),
+  member.works.map(async (w) => {
+    const project = member.projects?.find((p) => p.id === w.projectId);
+    return {
+      ...w,
+      // Picked for this page's locale — member.works is built once and shared
+      // with the /de page for the same member (see toMemberViewBase's
+      // callers), so the raw caption/description pairs are only resolved here,
+      // where currentLang is known. See workCaption()/workDescription() in
+      // links.ts. w.caption is what the <img alt> and the lightbox trigger's
+      // data-pswp-caption both read below, so this is also what a German
+      // screen reader speaks for this image.
+      caption: workCaption(w, currentLang),
+      description: workDescription(w, currentLang),
+      rendered: await getImage({
+        src: w.url,
+        width: w.width,
+        height: w.height,
+        widths: [600, 1000, 1600],
+        format: "webp",
+      }),
+      // What the lightbox says under the image. Resolved here rather than in the
+      // client script because it is translated, and the script is a module that
+      // cannot take `define:vars`; it travels on the trigger link instead.
+      //
+      // The whose-and-what-of-it line, not a repeat of the caption: full screen,
+      // the page's own name heading is covered, so the member's name is the one
+      // thing the view has lost. It is just the name now — the project credit
+      // that used to follow it went with the projects feature (2026-09-01, and
+      // is back as its own block below the picture since 2026-09-23).
+      pswpMeta: member.displayName,
+      // The project this work is in, as data-pswp-* strings for the lightbox's
+      // shared renderer — see projectSlideData() in lib/projects.ts.
+      slide: projectSlideData(project, currentLang),
+      // The project this work is in, resolved once above for SEO and lightbox.
+      project,
+    };
+  }),
 );
 
 // PROJECT BLOCKS (2026-09-23): the gallery stays one list in the member's
@@ -152,6 +157,23 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
 // WHO MADE EVERY PICTURE, for machines (2026-09-10; see src/lib/seo.ts). The
 // canonical URL is the page's own on a member's real page and the CURRENT page
 // on an alias, the same rule the layout applies to <link rel="canonical">.
+type ProjectAffiliation = ProfileProject["affiliations"][number];
+
+function seoProject(p: ProfileProject | undefined) {
+  if (!p) return undefined;
+  return {
+    id: p.id,
+    name: projectTitle(p, currentLang),
+    description: projectDescription(p, currentLang),
+    url: p.link,
+    affiliations: p.affiliations.map((a: ProjectAffiliation) =>
+      a.memberSlug
+        ? { name: a.name, personUrl: memberPageUrl(currentLang, a.memberSlug, Astro.site!.href) }
+        : { name: a.name, url: a.href },
+    ),
+  };
+}
+
 const pageUrl = new URL(aliasOf ?? Astro.url.pathname, Astro.site).href;
 const jsonLd = memberPageJsonLd({
   member,
@@ -166,21 +188,7 @@ const jsonLd = memberPageJsonLd({
     siteLink: w.siteLink,
     embed: w.embed,
     addedAt: w.addedAt,
-    project: (() => {
-      const p = member.projects?.find((x) => x.id === w.projectId);
-      if (!p) return undefined;
-      return {
-        id: p.id,
-        name: projectTitle(p, currentLang),
-        description: projectDescription(p, currentLang),
-        url: p.link,
-        affiliations: p.affiliations.map((a) =>
-          a.memberSlug
-            ? { name: a.name, personUrl: memberPageUrl(currentLang, a.memberSlug, Astro.site!.href) }
-            : { name: a.name, url: a.href },
-        ),
-      };
-    })(),
+    project: seoProject(w.project),
   })),
   pageUrl,
   site: Astro.site!.href,
