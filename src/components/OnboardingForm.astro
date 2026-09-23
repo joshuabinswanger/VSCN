@@ -3,6 +3,7 @@ import { useTranslations } from "../i18n/utils";
 import type { Lang } from "../i18n/utils";
 import CommunityCardPreview from "./community/CommunityCardPreview.astro";
 import MemberTypeSelector from "./MemberTypeSelector.astro";
+import BilingualField from "./BilingualField.astro";
 import TagSelector from "./TagSelector.astro";
 import OpenToSelector from "./OpenToSelector.astro";
 
@@ -81,16 +82,17 @@ const prefix = lang === "de" ? "/de" : "";
         <label class="label" for="ob-name">{t("profile.label.name")}</label>
         <input id="ob-name" type="text" class="input" placeholder={t("profile.ph.name")} />
       </div>
-      <div class="field">
-        <label class="label" for="ob-role">{t("profile.label.role")}</label>
-        <input id="ob-role" type="text" class="input" placeholder={t("profile.ph.role")} />
-      </div>
-      {/* The German twin, optional — see the same pair in ProfileForm.astro. */}
-      <div class="field">
-        <label class="label" for="ob-role-de">{t("profile.label.role.de")}</label>
-        <input id="ob-role-de" type="text" class="input" lang="de" placeholder={t("profile.ph.role.de")} />
-        <p class="field-note">{t("profile.note.role.de")}</p>
-      </div>
+      {/* The German twin behind the EN/DE switch — see the same pair in ProfileForm.astro. */}
+      <BilingualField
+        lang={lang}
+        id="ob-role"
+        label={t("profile.label.role")}
+        labelEn={t("profile.label.role.en")}
+        labelDe={t("profile.label.role.de")}
+        placeholder={t("profile.ph.role")}
+        placeholderDe={t("profile.ph.role.de")}
+        noteDe={t("profile.note.role.de")}
+      />
       <div class="field">
         <label id="ob-portfolio-label" class="label" for="ob-portfolio"
           >{t("profile.label.portfolio")}</label
@@ -270,18 +272,18 @@ const prefix = lang === "de" ? "/de" : "";
           <p id="ob-upload-status" class="ob-upload-status" style="display:none;"></p>
         </div>
       </div>
-      <div class="field">
-        <label class="label" for="ob-bio">{t("profile.label.bio")}</label>
-        <textarea id="ob-bio" rows="4" class="input textarea" placeholder={t("profile.ph.bio")}
-        ></textarea>
-        <p class="field-note">{t("profile.note.bio")}</p>
-      </div>
-      <div class="field">
-        <label class="label" for="ob-bio-de">{t("profile.label.bio.de")}</label>
-        <textarea id="ob-bio-de" rows="4" class="input textarea" lang="de" placeholder={t("profile.ph.bio.de")}
-        ></textarea>
-        <p class="field-note">{t("profile.note.bio.de")}</p>
-      </div>
+      <BilingualField
+        lang={lang}
+        id="ob-bio"
+        rows={4}
+        label={t("profile.label.bio")}
+        labelEn={t("profile.label.bio.en")}
+        labelDe={t("profile.label.bio.de")}
+        placeholder={t("profile.ph.bio")}
+        placeholderDe={t("profile.ph.bio.de")}
+        note={t("profile.note.bio")}
+        noteDe={t("profile.note.bio.de")}
+      />
     </div>
     <div class="ob-footer ob-footer--with-skip">
       <button id="ob-skip-4" type="button" class="btn-link">{t("onboarding.nav.skip")}</button>
