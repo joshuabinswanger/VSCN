@@ -42,8 +42,15 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      # FROM CI THE WALK GOES TO THE HOSTING ORIGIN, NOT vscn.ch. vscn.ch is
+      # proxied by Cloudflare, whose bot protection answers a GitHub runner's
+      # datacenter IP with a 403 "Just a moment..." challenge before the site
+      # is reached (first CI walk, 2026-09-23). vscn-39508.web.app is the same
+      # Hosting release, byte for byte, and an authorised Auth domain; every
+      # Firebase call is identical. What this skips is Cloudflare itself, which
+      # does not change per release. A local run still walks vscn.ch.
       - name: Walk the site as the verification member
-        run: npm run walk:release -- --project "${{ inputs.project || 'prod' }}" --release "${{ inputs.release || github.sha }}"
+        run: npm run walk:release -- --project "${{ inputs.project || 'prod' }}" --origin https://vscn-39508.web.app --release "${{ inputs.release || github.sha }}"
         env:
           WALK_MEMBER_EMAIL: ${{ secrets.WALK_MEMBER_EMAIL }}
           WALK_MEMBER_PASSWORD: ${{ secrets.WALK_MEMBER_PASSWORD }}
