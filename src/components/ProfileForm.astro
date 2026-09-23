@@ -1,6 +1,7 @@
 ---
 import CommunityCardPreview from "./community/CommunityCardPreview.astro";
 import MemberTypeSelector from "./MemberTypeSelector.astro";
+import BilingualField from "./BilingualField.astro";
 import ProfileViewPreview from "./ProfileViewPreview.astro";
 import OpenToSelector from "./OpenToSelector.astro";
 import VisualNeedsSelector from "./VisualNeedsSelector.astro";
@@ -111,24 +112,23 @@ const t = useTranslations(lang);
       <input id="name" type="text" class="input" placeholder={t("profile.ph.name")} />
     </div>
 
-    <div class="field">
-      <label class="label" for="role">{t("profile.label.role")}</label>
-      <input id="role" type="text" class="input" placeholder={t("profile.ph.role")} />
-      <p class="field-note">{t("profile.note.role")}</p>
-    </div>
-
     {
       /* THE GERMAN TWIN, OPTIONAL (2026-09-23, member feedback "Alles sollte
-        zweisprachig sein"). Directly under its English field rather than
-        behind the gallery's EN/DE switch: two short fields read as a pair
-        when they are both on screen. Blank is fine in either direction —
-        see profileRole() in src/lib/links.ts for the fallback. */
+        zweisprachig sein"), behind the gallery's EN/DE switch (Josh: "make it
+        the same switch as with the images"). Blank is fine in either
+        direction — see profileRole() in src/lib/links.ts for the fallback. */
     }
-    <div class="field">
-      <label class="label" for="role-de">{t("profile.label.role.de")}</label>
-      <input id="role-de" type="text" class="input" lang="de" placeholder={t("profile.ph.role.de")} />
-      <p class="field-note">{t("profile.note.role.de")}</p>
-    </div>
+    <BilingualField
+      lang={lang}
+      id="role"
+      label={t("profile.label.role")}
+      labelEn={t("profile.label.role.en")}
+      labelDe={t("profile.label.role.de")}
+      placeholder={t("profile.ph.role")}
+      placeholderDe={t("profile.ph.role.de")}
+      note={t("profile.note.role")}
+      noteDe={t("profile.note.role.de")}
+    />
 
     <div class="field">
       <label class="label" for="affiliation">{t("profile.label.affiliation")}</label>
@@ -160,19 +160,18 @@ const t = useTranslations(lang);
       <p class="field-note">{t("profile.note.languages")}</p>
     </fieldset>
 
-    <div class="field">
-      <label class="label" for="bio">{t("profile.label.bio")}</label>
-      <textarea id="bio" rows="4" class="input textarea" placeholder={t("profile.ph.bio")}
-      ></textarea>
-      <p class="field-note">{t("profile.note.bio")}</p>
-    </div>
-
-    <div class="field">
-      <label class="label" for="bio-de">{t("profile.label.bio.de")}</label>
-      <textarea id="bio-de" rows="4" class="input textarea" lang="de" placeholder={t("profile.ph.bio.de")}
-      ></textarea>
-      <p class="field-note">{t("profile.note.bio.de")}</p>
-    </div>
+    <BilingualField
+      lang={lang}
+      id="bio"
+      rows={4}
+      label={t("profile.label.bio")}
+      labelEn={t("profile.label.bio.en")}
+      labelDe={t("profile.label.bio.de")}
+      placeholder={t("profile.ph.bio")}
+      placeholderDe={t("profile.ph.bio.de")}
+      note={t("profile.note.bio")}
+      noteDe={t("profile.note.bio.de")}
+    />
 
     <div class="field">
       <label id="portfolio-label" class="label" for="portfolio"
