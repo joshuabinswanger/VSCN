@@ -53,7 +53,8 @@ export function parseEmbedUrl(input: unknown): EmbedRef | null {
     return null;
   }
   if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-  if (url.username || url.password || url.port) return null;
+  // Anything before an "@" in the authority is userinfo; a video link has none.
+  if (url.port || url.href.slice(url.protocol.length + 2).split("/")[0].includes("@")) return null;
   const host = url.hostname.toLowerCase().replace(/^(www\.|m\.)/, "");
   const segments = url.pathname.split("/").filter(Boolean);
 
