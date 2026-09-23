@@ -656,10 +656,50 @@ const t = useTranslations(lang);
               <InfoTip lang={lang} rowKey="link" />
             </div>
             <p class="field-note" data-tip data-tip-note="link" hidden>{t("profile.project.linkNote")}</p>
+            {
+              /* AFFILIATIONS, like the Social Media rows: repeatable, + Add
+                and ✕ per row. Each row is a name with an optional link OR a
+                credit to a VSCN member (Josh: "no approval needed"); the
+                Name | Member switch is the rows' EN/DE switch at the same
+                scale. Rows are cloned from the template below the block's. */
+            }
+            <div class="gallery-project-affiliations">
+              <p class="gallery-project-sublabel">{t("profile.project.affiliations")}</p>
+              <div class="social-editor" data-affiliations></div>
+              <button type="button" class="btn-outline choose-img gallery-aff-add" data-aff-add>
+                {t("profile.project.affiliations.add")}
+              </button>
+            </div>
           </div>
           <div class="gallery-project-images" data-project-images></div>
         </section>
       </template>
+      <template data-gallery-tpl="affiliation">
+        <div class="social-row gallery-aff-row">
+          <div class="gallery-lang-switch" role="group">
+            <button type="button" class="gallery-lang-btn is-active" data-aff-mode="name">{t("profile.project.affiliation.name")}</button>
+            <button type="button" class="gallery-lang-btn" data-aff-mode="member">{t("profile.project.affiliation.member")}</button>
+          </div>
+          <div class="gallery-aff-fields" data-aff-pane="name">
+            <input type="text" class="input" data-aff-field="name" />
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">https://</span>
+              <input type="text" class="input input-prefixed" data-aff-field="url" />
+            </div>
+          </div>
+          <div class="gallery-aff-fields" data-aff-pane="member" hidden>
+            <input type="text" class="input" data-aff-field="member" list="gallery-member-options" autocomplete="off" />
+            <p class="field-note gallery-aff-nomatch" hidden>{t("profile.project.affiliation.noMatch")}</p>
+          </div>
+          <button type="button" class="social-row-remove" data-aff-remove>✕</button>
+        </div>
+      </template>
+      {
+        /* ONE datalist for every Member-mode input on the page, filled once
+          from publicProfiles on the first Member focus (loadMemberOptions).
+          The chosen member is resolved from the typed name back to a uid. */
+      }
+      <datalist id="gallery-member-options"></datalist>
       {
         /* One ⋯ menu entry, cloned by buildMenu() for rows and headers alike;
           the optional second line carries a consequence ("The images stay in
@@ -1798,6 +1838,63 @@ const t = useTranslations(lang);
     font-size: 0.85rem;
   }
 
+  .gallery-project-sublabel {
+    margin: 4px 0 0;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-muted);
+  }
+
+  .gallery-project-affiliations {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .gallery-project-affiliations .social-editor {
+    margin-bottom: 0;
+  }
+
+  .gallery-aff-add {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+  }
+
+  /* The switch leads, the fields fill, the ✕ trails — and on a narrow
+     screen the fields drop to their own line under the switch. */
+  .gallery-aff-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .gallery-aff-row .gallery-lang-switch {
+    flex: 0 0 auto;
+  }
+
+  .gallery-aff-row .social-row-remove {
+    align-self: flex-start;
+    margin-top: 2px;
+  }
+
+  .gallery-aff-fields {
+    flex: 1 1 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .gallery-aff-fields[hidden] {
+    display: none;
+  }
+
+  .gallery-aff-nomatch {
+    margin: 0;
+    color: var(--color-error);
+  }
+
   /* The block's own rows, at the list's gap. */
   .gallery-project-images {
     display: flex;
@@ -2391,12 +2488,15 @@ const t = useTranslations(lang);
     contiguousOrder,
     editorBlocks,
     inheritedSiteLink,
+    MAX_AFFILIATION_NAME,
+    MAX_AFFILIATION_URL,
+    MAX_AFFILIATIONS,
     MAX_PROJECT_DESCRIPTION,
     MAX_PROJECT_LINK,
     MAX_PROJECT_TITLE,
     type EditorBlock,
   } from "../lib/projects.ts";
-  import { loadProjects, memberSlugs } from "../lib/projectStore.ts";
+  import { loadMemberOptions, loadProjects, memberSlugs, type MemberOption } from "../lib/projectStore.ts";
   import {
     applyBlocks,
     dissolveProject,
@@ -2409,6 +2509,7 @@ const t = useTranslations(lang);
     projectLabel,
     removeFromProject,
     sameIds,
+    type EditorAffiliation,
     type EditorProject,
   } from "../lib/projectEditor.ts";
   import { renderCardPreview, renderProfilePreview } from "../lib/profilePreview.ts";
@@ -2579,6 +2680,27 @@ const t = useTranslations(lang);
     let previewSlugs = new Map<string, string>();
     /** Which EN/DE pane a project block shows — UI-only, keyed by projectId, like galleryLangUI. */
     const projectLangUI = new Map<string, "en" | "de">();
+    // The member type-ahead's options, loaded once on the first Member-mode
+    // focus: every visible member's display name, the way the directory
+    // shows it. A typed name resolves to the first member wearing it.
+    let memberOptions: MemberOption[] | null = null;
+    let memberOptionsLoad: Promise<void> | null = null;
+
+    function ensureMemberOptions(): Promise<void> {
+      if (memberOptions) return Promise.resolve();
+      memberOptionsLoad ??= loadMemberOptions()
+        .then((options) => {
+          memberOptions = options;
+          memberOptionsList.replaceChildren(
+            ...options.map((m) => Object.assign(document.createElement("option"), { value: m.name })),
+          );
+        })
+        .catch(() => {
+          // Next focus tries again; until then the list is simply empty.
+          memberOptionsLoad = null;
+        });
+      return memberOptionsLoad;
+    }
     // Which of a gallery item's EN/DE panes is open — UI-only, never saved,
     // and kept outside renderGallery() so it survives the re-renders that
     // function does on every add/remove/reorder. Keyed by imageId; see the
@@ -2618,6 +2740,8 @@ const t = useTranslations(lang);
     const galleryTaskTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="task"]');
     const galleryProjectTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="project"]');
     const galleryMenuItemTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="menuitem"]');
+    const galleryAffiliationTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="affiliation"]');
+    const memberOptionsList = document.getElementById("gallery-member-options") as HTMLDataListElement;
     const galleryNewProject = document.getElementById("gallery-new-project") as HTMLButtonElement;
     // The video link field (2026-09-23) — see its markup, and the handlers
     // beside the replace picker's below.
@@ -2965,7 +3089,10 @@ const t = useTranslations(lang);
           ? {
               imageId: typing.closest<HTMLElement>("[data-gallery-index]")?.dataset.imageId,
               projectId: typing.closest<HTMLElement>("[data-project-block]")?.dataset.projectId,
-              field: typing.dataset.galleryField ?? typing.dataset.projectField,
+              // An affiliation input is found by its row's position and its
+              // own field name, so the two selectors below can stay literal.
+              affIndex: typing.closest<HTMLElement>("[data-aff-index]")?.dataset.affIndex,
+              field: typing.dataset.galleryField ?? typing.dataset.projectField ?? typing.dataset.affField,
               start: typing.selectionStart,
               end: typing.selectionEnd,
             }
@@ -3292,6 +3419,28 @@ const t = useTranslations(lang);
         wire("descriptionDe", MAX_PROJECT_DESCRIPTION, "profile.project.description.de");
         wire("link", MAX_PROJECT_LINK, "profile.project.link");
 
+        // AFFILIATIONS: rows re-rendered inside the block on add/remove, like
+        // the Social Media editor; a mode switch or typing edits in place.
+        const affList = el.querySelector<HTMLElement>("[data-affiliations]");
+        const affAdd = el.querySelector<HTMLButtonElement>("[data-aff-add]");
+        if (affList && affAdd) {
+          const renderAffiliations = () => {
+            affList.replaceChildren(
+              ...project.affiliations
+                .map((a, k) => buildAffiliationRow(project, k, a, renderAffiliations))
+                .filter((n): n is HTMLElement => n !== null),
+            );
+            affAdd.disabled = project.affiliations.length >= MAX_AFFILIATIONS;
+          };
+          affAdd.addEventListener("click", () => {
+            if (project.affiliations.length >= MAX_AFFILIATIONS) return;
+            project.affiliations.push({ mode: "name", name: "" });
+            renderAffiliations();
+            affList.querySelector<HTMLInputElement>(`[data-aff-index="${project.affiliations.length - 1}"] [data-aff-field="name"]`)?.focus();
+          });
+          renderAffiliations();
+        }
+
         // The block's own tips get their ids here, like the rows' — and
         // BEFORE the rows are appended, so this query cannot reach theirs.
         el.querySelectorAll<HTMLElement>("[data-tip-note]").forEach((note) => {
@@ -3334,7 +3483,9 @@ const t = useTranslations(lang);
         const back = galleryEditor.querySelector<HTMLInputElement | HTMLTextAreaElement>(
           typingIn.imageId
             ? `[data-image-id="${typingIn.imageId}"] [data-gallery-field="${typingIn.field}"]`
-            : `[data-project-id="${typingIn.projectId}"] [data-project-field="${typingIn.field}"]`,
+            : typingIn.affIndex !== undefined
+              ? `[data-project-id="${typingIn.projectId}"] [data-aff-index="${typingIn.affIndex}"] [data-aff-field="${typingIn.field}"]`
+              : `[data-project-id="${typingIn.projectId}"] [data-project-field="${typingIn.field}"]`,
         );
         if (back) {
           back.focus();
@@ -3634,6 +3785,123 @@ const t = useTranslations(lang);
      * which image is the card's cover, so leaving it until Save would leave the
      * editor and the directory disagreeing about the card.
      */
+    /**
+     * One affiliation row. Name mode: a name and an optional link, stored
+     * scheme-less like every link here. Member mode: the type-ahead over the
+     * directory's names; the credit is real only once the typed name IS a
+     * member's (memberUid set), and the note under the field says so while
+     * it is not — affiliationRecords() drops an unmatched Member row rather
+     * than saving a name nobody chose. A new credit's slug is fetched so the
+     * preview can link it at once.
+     */
+    function buildAffiliationRow(
+      project: EditorProject,
+      k: number,
+      a: EditorAffiliation,
+      rerender: () => void,
+    ): HTMLElement | null {
+      const row = galleryAffiliationTpl?.content.firstElementChild?.cloneNode(true);
+      if (!(row instanceof HTMLElement)) return null;
+      row.dataset.affIndex = String(k);
+      const modeBtns = Array.from(row.querySelectorAll<HTMLButtonElement>("[data-aff-mode]"));
+      const paneName = row.querySelector<HTMLElement>('[data-aff-pane="name"]');
+      const paneMember = row.querySelector<HTMLElement>('[data-aff-pane="member"]');
+      const nameInput = row.querySelector<HTMLInputElement>('[data-aff-field="name"]');
+      const urlInput = row.querySelector<HTMLInputElement>('[data-aff-field="url"]');
+      const memberInput = row.querySelector<HTMLInputElement>('[data-aff-field="member"]');
+      const noMatch = row.querySelector<HTMLElement>(".gallery-aff-nomatch");
+      const remove = row.querySelector<HTMLButtonElement>("[data-aff-remove]");
+      if (!paneName || !paneMember || !nameInput || !urlInput || !memberInput || !noMatch || !remove) return null;
+
+      const setMode = (mode: "name" | "member") => {
+        a.mode = mode;
+        // One name, two inputs: the text typed in one mode is the row's
+        // name in the other too, so it travels across the switch.
+        (mode === "member" ? memberInput : nameInput).value = a.name;
+        modeBtns.forEach((btn) => {
+          const active = btn.dataset.affMode === mode;
+          btn.classList.toggle("is-active", active);
+          btn.setAttribute("aria-pressed", String(active));
+        });
+        paneName.hidden = mode !== "name";
+        paneMember.hidden = mode !== "member";
+        if (mode === "member") void ensureMemberOptions().then(resolveMember);
+        syncPreview();
+      };
+      modeBtns.forEach((btn) =>
+        btn.addEventListener("click", () => {
+          const mode = btn.dataset.affMode === "member" ? "member" : "name";
+          if (mode !== a.mode) setMode(mode);
+          (mode === "member" ? memberInput : nameInput).focus();
+        }),
+      );
+
+      nameInput.value = a.name;
+      nameInput.maxLength = MAX_AFFILIATION_NAME;
+      nameInput.placeholder = s["profile.project.affiliation.namePh"];
+      named(nameInput, s["profile.project.affiliation.name"]);
+      nameInput.addEventListener("input", () => {
+        a.name = nameInput.value;
+        syncPreview();
+      });
+
+      urlInput.value = a.url ?? "";
+      urlInput.maxLength = MAX_AFFILIATION_URL;
+      urlInput.placeholder = s["profile.project.link"];
+      named(urlInput, s["profile.project.link"]);
+      urlInput.addEventListener("input", () => {
+        const value = urlInput.value.trim();
+        if (value) a.url = value;
+        else delete a.url;
+        syncPreview();
+      });
+
+      const resolveMember = () => {
+        const typed = memberInput.value.trim();
+        const match = memberOptions?.find((m) => m.name === typed);
+        a.memberUid = match?.uid;
+        memberInput.dataset.uid = match?.uid ?? "";
+        noMatch.hidden = !typed || !memberOptions || Boolean(match);
+        if (match && !previewSlugs.has(match.uid)) {
+          void memberSlugs([match.uid])
+            .then((slugs) => {
+              for (const [uid, slug] of slugs) previewSlugs.set(uid, slug);
+              syncPreview();
+            })
+            .catch(() => {});
+        }
+      };
+      memberInput.value = a.name;
+      memberInput.maxLength = MAX_AFFILIATION_NAME;
+      memberInput.placeholder = s["profile.project.affiliation.memberPh"];
+      named(memberInput, s["profile.project.affiliation.member"]);
+      memberInput.dataset.uid = a.memberUid ?? "";
+      memberInput.addEventListener("focus", () => void ensureMemberOptions().then(resolveMember));
+      memberInput.addEventListener("input", () => {
+        a.name = memberInput.value;
+        resolveMember();
+        syncPreview();
+      });
+
+      remove.setAttribute("aria-label", s["profile.project.affiliation.remove"]);
+      remove.addEventListener("click", () => {
+        project.affiliations.splice(k, 1);
+        rerender();
+        syncPreview();
+      });
+
+      // Mode from state without the side effects of a click (no focus, no
+      // preview sync — the block's render syncs once).
+      modeBtns.forEach((btn) => {
+        const active = btn.dataset.affMode === a.mode;
+        btn.classList.toggle("is-active", active);
+        btn.setAttribute("aria-pressed", String(active));
+      });
+      paneName.hidden = a.mode !== "name";
+      paneMember.hidden = a.mode !== "member";
+      return row;
+    }
+
     /** "+ New project": an empty block at the end, its title ready to type into. Local until an image names it. */
     function newProject() {
       const projectId = crypto.randomUUID();
