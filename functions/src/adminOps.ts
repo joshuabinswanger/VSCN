@@ -149,7 +149,7 @@ async function nameMatches(fragment: string) {
 
 /** Everything attached to one identity, in one response. */
 export async function memberGraph(uid: string) {
-  const [authUser, user, pub, images, onboarding, deletion, slugs] = await Promise.all([
+  const [authUser, user, pub, images, onboarding, deletion, slugs, projects] = await Promise.all([
     adminAuth.getUser(uid).catch(() => null),
     db.doc(`users/${uid}`).get(),
     db.doc(`publicProfiles/${uid}`).get(),
@@ -157,6 +157,7 @@ export async function memberGraph(uid: string) {
     db.doc(`onboardingRequests/${uid}`).get(),
     db.doc(`deletions/${uid}`).get(),
     db.collection("slugs").where("uid", "==", uid).get(),
+    db.collection("projects").where("ownerUid", "==", uid).get(),
   ]);
   // WHICH OF THESE IS ACTUALLY ON THE PAGE. The console asks a different
   // question before deleting a picture that is live on a member's profile
@@ -181,6 +182,7 @@ export async function memberGraph(uid: string) {
     onboardingRequest: onboarding.exists ? onboarding.data() : null,
     deletion: deletion.exists ? deletion.data() : null,
     slugs: slugs.docs.map((d) => ({ slug: d.id, current: d.data().current === true })),
+    projects: projects.docs.map((d) => ({ projectId: d.id, ...d.data() })),
   });
 }
 

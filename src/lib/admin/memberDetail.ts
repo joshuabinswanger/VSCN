@@ -11,8 +11,8 @@
  * 320447 made another page of this site unopenable on iOS.
  */
 import {
-  type AdminAction, type AdminImage, type MemberGraph, listActions, purgeAccount, restoreAccount,
-  setMemberEmail, setProfileActive,
+  type AdminAction, type AdminImage, type AdminProject, type MemberGraph, listActions, purgeAccount,
+  restoreAccount, setMemberEmail, setProfileActive,
 } from "../adminApi.ts";
 import type { Dialogs } from "./dialog.ts";
 import { type Child, type Reporter, copyable, dl, el, fmt, linkBtn } from "./dom.ts";
@@ -349,6 +349,20 @@ export function renderMemberDetail(g: MemberGraph, deps: DetailDeps): HTMLElemen
       : el("p", { class: "muted" }, "No image records."),
   );
 
+  // ── 5b. Projects ────────────────────────────────────────
+  const projectBlock = (p: AdminProject) => {
+    const count = g.images.filter((i) => i.projectId === p.projectId).length;
+    return el("div", { class: "project" },
+      el("h3", {}, typeof p.title === "string" && p.title ? p.title : "Untitled project"),
+      el("p", { class: "muted small" }, p.projectId),
+      ...otherRows(p, Object.keys(p).filter((k) => k !== "projectId"), deps),
+      el("p", { class: "muted small" }, `${count} image${count === 1 ? "" : "s"} in this project`),
+    );
+  };
+  const projectsSec = section("projects", `Projects (${g.projects.length})`, {},
+    g.projects.length ? g.projects.map(projectBlock) : el("p", { class: "muted" }, "No projects."),
+  );
+
   // ── 6. Onboarding request ───────────────────────────────
   const ob = g.onboardingRequest;
   const onboardingSec = section("onboarding", "Onboarding request", {
@@ -412,7 +426,7 @@ export function renderMemberDetail(g: MemberGraph, deps: DetailDeps): HTMLElemen
     deps.crumbs(),
     el("h2", { class: "detail__name" }, name),
     el("div", { class: "actions-split" }, routine, danger),
-    overview, identity, publicSec, privateSec, imagesSec, onboardingSec, deletionSec, auditSec, raw,
+    overview, identity, publicSec, privateSec, imagesSec, projectsSec, onboardingSec, deletionSec, auditSec, raw,
   );
 }
 

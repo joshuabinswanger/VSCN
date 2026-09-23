@@ -69,7 +69,7 @@ import AdminConsole from "../../components/admin/AdminConsole.astro";
 
 <script>
   import type {
-    AdminImage, MemberGraph, MemberRow, Queues, RateImageRequest, RatingQueueItem, SetImageHiddenRequest,
+    AdminImage, AdminProject, MemberGraph, MemberRow, Queues, RateImageRequest, RatingQueueItem, SetImageHiddenRequest,
   } from "../../lib/adminApi.ts";
   import { el } from "../../lib/admin/dom.ts";
   import { makeDialogs } from "../../lib/admin/dialog.ts";
@@ -91,6 +91,24 @@ import AdminConsole from "../../components/admin/AdminConsole.astro";
     width: 2000, height: 1400, origin: "member", status: "live", createdAt: "2026-08-14T09:12:00.000Z",
     referenced: true, ...over,
   });
+
+  const PROJECTS: AdminProject[] = [
+    {
+      projectId: "proj_vesicle",
+      ownerUid: "k3Qw8ZrT2bVnPjXs7LmHcYd1Ae4f",
+      title: "Vesicle budding series",
+      titleDe: "Vesikelknospung-Serie",
+      description: "Three plates tracing one clathrin coat from nucleation to release, drawn for a review.",
+      descriptionDe: "Drei Tafeln, die eine Clathrinhülle von der Nukleation bis zur Freisetzung zeigen.",
+      link: "regulakeller.example.org/vesicle-series",
+      affiliations: [
+        { name: "Institute of Cell Biology, Universität Bern", url: "izb.unibe.ch" },
+        { memberUid: "Tq7HsN4mXbZv2RpLd9KcWy6Ja1Ur", name: "Marco Brunner" },
+      ],
+      createdAt: "2026-08-01T09:00:00.000Z",
+      updatedAt: "2026-09-15T17:22:00.000Z",
+    },
+  ];
 
   const RICH: MemberGraph = {
     uid: "k3Qw8ZrT2bVnPjXs7LmHcYd1Ae4f",
@@ -131,7 +149,7 @@ import AdminConsole from "../../components/admin/AdminConsole.astro";
     },
     images: [
       img({ imageId: "img_av", kind: "avatar", caption: "portrait" }),
-      img({ imageId: "img_a", caption: "Vesicle budding, plate 1", description: "A long description that runs past the width of the caption line so the thumb caption has something to wrap." }),
+      img({ imageId: "img_a", caption: "Vesicle budding, plate 1", description: "A long description that runs past the width of the caption line so the thumb caption has something to wrap.", projectId: "proj_vesicle" }),
       img({ imageId: "img_b", caption: "Vesicle budding, plate 2" }),
       img({ imageId: "img_c", caption: "Golgi stack, redrawn", origin: "curated" }),
       img({ imageId: "img_orph", caption: "", referenced: false, createdAt: "2026-07-02T14:00:00.000Z" }),
@@ -143,6 +161,7 @@ import AdminConsole from "../../components/admin/AdminConsole.astro";
     },
     deletion: null,
     slugs: [{ slug: "regula-keller", current: true }, { slug: "r-keller", current: false }],
+    projects: PROJECTS,
   };
 
   const THIN: MemberGraph = {
@@ -162,6 +181,7 @@ import AdminConsole from "../../components/admin/AdminConsole.astro";
       completedAt: null, lastError: "auth: user not found",
     },
     slugs: [],
+    projects: [],
   };
 
   const row = (over: Partial<MemberRow> & { uid: string; displayName: string }): MemberRow => ({
