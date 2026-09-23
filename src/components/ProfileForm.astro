@@ -672,6 +672,17 @@ const t = useTranslations(lang);
             </div>
           </div>
           <div class="gallery-project-images" data-project-images></div>
+          {
+            /* Uploads straight into this block: the same queue as the general
+              picker, the task carrying the projectId, and the finished image
+              lands after the block's last image (insertUploaded). Its pending
+              row is shown INSIDE the block too (renderQueue homes it here), so
+              nothing appears at the bottom of the list and then jumps. */
+          }
+          <label class="btn-outline choose-img gallery-project-add">
+            {t("profile.project.addImages")}
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple hidden data-project-files />
+          </label>
         </section>
       </template>
       <template data-gallery-tpl="affiliation">
@@ -1857,9 +1868,15 @@ const t = useTranslations(lang);
     margin-bottom: 0;
   }
 
-  .gallery-aff-add {
+  .gallery-aff-add,
+  .gallery-project-add {
     padding: 0.5rem 1rem;
     font-size: 0.8rem;
+  }
+
+  .gallery-project-add[aria-disabled="true"] {
+    opacity: 0.5;
+    pointer-events: none;
   }
 
   /* The switch leads, the fields fill, the ✕ trails — and on a narrow
@@ -2496,11 +2513,20 @@ const t = useTranslations(lang);
     MAX_PROJECT_TITLE,
     type EditorBlock,
   } from "../lib/projects.ts";
-  import { loadMemberOptions, loadProjects, memberSlugs, type MemberOption } from "../lib/projectStore.ts";
+  import {
+    deleteProjects,
+    loadMemberOptions,
+    loadProjects,
+    memberSlugs,
+    saveProjects,
+    type MemberOption,
+  } from "../lib/projectStore.ts";
   import {
     applyBlocks,
     dissolveProject,
     editorAffiliations,
+    emptiedStoredIds,
+    insertUploaded,
     moveImage,
     moveProject,
     moveToProject,
@@ -2509,6 +2535,7 @@ const t = useTranslations(lang);
     projectLabel,
     removeFromProject,
     sameIds,
+    toProjectRecord,
     type EditorAffiliation,
     type EditorProject,
   } from "../lib/projectEditor.ts";
@@ -3451,6 +3478,12 @@ const t = useTranslations(lang);
         });
 
         images.append(...block.indices.map(buildRow).filter((n): n is HTMLElement => n !== null));
+
+        const picker = el.querySelector<HTMLInputElement>("[data-project-files]");
+        picker?.addEventListener("change", () => {
+          addGalleryFiles(Array.from(picker.files ?? []), { projectId: project.projectId });
+          picker.value = "";
+        });
         return el;
       };
       galleryEditor.replaceChildren(
@@ -3459,6 +3492,8 @@ const t = useTranslations(lang);
           .filter((n): n is HTMLElement => n !== null),
       );
       mountSortables();
+      // Pending uploads into a block were unhomed by replaceChildren above.
+      renderQueue();
       // The image-led directory renders a typographic card for an empty
       // gallery; the nudge says so, and disappears with the first image.
       const nudge = document.getElementById("gallery-nudge");
@@ -3521,6 +3556,12 @@ const t = useTranslations(lang);
       const full = gallery.length + galleryQueue.pendingCount() + videoPending >= limit;
       galleryAdd.setAttribute("aria-disabled", String(full));
       galleryInput.disabled = full;
+      // The blocks' own pickers share the cap: an image is an image wherever
+      // it is added.
+      for (const picker of galleryEditor.querySelectorAll<HTMLInputElement>("[data-project-files]")) {
+        picker.disabled = full;
+        picker.closest(".gallery-project-add")?.setAttribute("aria-disabled", String(full));
+      }
       // Here rather than in renderGallery: this runs on every queue change
       // too, and a row's Replace must come back when its upload ends without
       // rebuilding the rows (and the caret) under the member.
@@ -3576,9 +3617,16 @@ const t = useTranslations(lang);
           if (!(clone instanceof HTMLElement)) continue;
           row = clone;
           galleryTaskRows.set(task.id, row);
-          galleryQueueEl.appendChild(row);
           buildTaskRow(row, task);
         }
+        // Where the row lives: inside the block it was added to, if that
+        // block is on screen, else the queue below the list. Re-homed on
+        // every pass because renderGallery() rebuilds the blocks — the row
+        // survives (this map holds it) and is simply appended again.
+        const home =
+          (task.projectId && galleryEditor.querySelector<HTMLElement>(`[data-project-id="${task.projectId}"] [data-project-images]`)) ||
+          galleryQueueEl;
+        if (row.parentElement !== home) home.appendChild(row);
         paintTaskRow(row, task);
       }
       updateGalleryControls();
@@ -3721,9 +3769,13 @@ const t = useTranslations(lang);
       return galleryWrite;
     }
 
-    /** One image finished uploading: it joins the gallery and the array is stored. */
+    /**
+     * One image finished uploading: it joins the gallery and the array is
+     * stored. At the end, or — for an upload into a project — directly after
+     * that project's last image, inside its block (2026-09-23).
+     */
     async function onGalleryUploaded(item: GalleryItem) {
-      gallery.push(item);
+      gallery = insertUploaded(gallery, item);
       renderGallery();
       await persistGalleryNow();
     }
@@ -3952,10 +4004,10 @@ const t = useTranslations(lang);
      * whole selection — the old loop overwrote one shared line per file, so a
      * six-file batch ended showing only whatever happened to the last one.
      */
-    function addGalleryFiles(files: File[]) {
+    function addGalleryFiles(files: File[], target?: { projectId: string }) {
       if (files.length === 0) return;
       const limit = galleryLimit(auth.currentUser);
-      const outcome = galleryQueue.add(files);
+      const outcome = galleryQueue.add(files, target);
       const problems = outcome.rejected.map(
         (rejection) => `${rejection.name}: ${s[galleryErrorKey(rejection.code)]}`,
       );
@@ -4605,6 +4657,27 @@ const t = useTranslations(lang);
         const savedLanguage = preferredLanguageInput.value === "en" ? "en" : "de";
         const shouldSaveCommunityEmailPreference =
           communityEmailPreferenceKnown || communityEmailPreferenceChanged;
+        // PROJECTS FIRST (2026-09-23): an image record must never name a
+        // project that does not exist yet. Then the records (with projectId),
+        // then the profile's order, then the projects no image names any
+        // more. Only projects an image names are written — a block created
+        // and never filled stays local, so Firestore never holds a project
+        // that was empty from birth. A refused project write is THE Save
+        // error, naming the project as its header does.
+        const used = projects.filter((p) => gallery.some((g) => g.projectId === p.projectId));
+        const projectFailures = await saveProjects(user.uid, used.map(toProjectRecord), storedProjectIds);
+        if (projectFailures.length > 0) {
+          projectFailures.forEach((f) => console.warn(`[projects] ${f.projectId} not saved:`, f.error));
+          throw new Error(
+            projectFailures
+              .map((f) =>
+                s["profile.project.saveFailed"].replace("{name}", projectLabel(projects, f.projectId, lang, s["profile.project.untitled"])),
+              )
+              .join(" "),
+          );
+        }
+        for (const p of used) storedProjectIds.add(p.projectId);
+
         // THE RECORDS FIRST, AND HARD (2026-09-07). Until today this ran after
         // the profile write as best-effort — a failed record write was a
         // console.warn under a green "Changes saved", tolerable only because
@@ -4667,6 +4740,22 @@ const t = useTranslations(lang);
         );
 
         if (saved.photoImageId) currentPhotoImageId = saved.photoImageId;
+
+        // Stored projects that no image names any more — dragged empty, or
+        // deleted through the menu. A failed delete does not fail the Save:
+        // an empty project is invisible (the build skips it) and the next
+        // Save tries again; the ids that did go leave every set.
+        const emptied = emptiedStoredIds(gallery, projects, storedProjectIds, deletedProjectIds);
+        const deleteFailures = await deleteProjects(emptied);
+        deleteFailures.forEach((f) => console.warn(`[projects] ${f.projectId} not deleted:`, f.error));
+        for (const id of emptied) {
+          if (deleteFailures.some((f) => f.projectId === id)) continue;
+          storedProjectIds.delete(id);
+          deletedProjectIds.delete(id);
+          projects = projects.filter((p) => p.projectId !== id);
+        }
+        renderGallery();
+
         if (shouldSaveCommunityEmailPreference) {
           communityEmailPreferenceKnown = true;
           communityEmailPreferenceChanged = false;
