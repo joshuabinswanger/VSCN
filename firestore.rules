@@ -403,16 +403,19 @@ function validImage(data, imageId) {
     && data.updatedAt is timestamp;
 }
 
-// Same cap as validTag's label below — a tag on an image is the same kind of
+// Seven, the same count a member may carry (2026-09-23, member feedback:
+// "7 tags allowed"). Same length cap as validTag's label below — a tag on an image is the same kind of
 // value as a tag on a profile, just not registered here (getOrCreateTag does
 // that, exactly as the profile tag-selector does).
 function validImageTags(value) {
-  return value is list && value.size() <= 5
+  return value is list && value.size() <= 7
     && (value.size() < 1 || validImageTag(value[0]))
     && (value.size() < 2 || validImageTag(value[1]))
     && (value.size() < 3 || validImageTag(value[2]))
     && (value.size() < 4 || validImageTag(value[3]))
-    && (value.size() < 5 || validImageTag(value[4]));
+    && (value.size() < 5 || validImageTag(value[4]))
+    && (value.size() < 6 || validImageTag(value[5]))
+    && (value.size() < 7 || validImageTag(value[6]));
 }
 
 function validImageTag(v) {
