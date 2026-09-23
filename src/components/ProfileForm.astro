@@ -586,9 +586,17 @@ const t = useTranslations(lang);
               </summary>
               <TagSelector lang={lang} maxTags={7} />
             </details>
+            {
+              /* THE ⋯ MENU (2026-09-23) replaced the ↑/↓ pair when dragging
+                arrived: it is the keyboard and screen-reader path for every
+                move — up, down, into a project, out of one — with the same
+                focus return the two buttons had. Filled by buildMenu(). */
+            }
             <div class="gallery-tools">
-              <button type="button" class="gallery-tool" data-gallery-move="up">↑</button>
-              <button type="button" class="gallery-tool" data-gallery-move="down">↓</button>
+              <div class="gallery-menu" data-gallery-menu>
+                <button type="button" class="gallery-tool gallery-menu-btn" data-menu-btn aria-haspopup="menu" aria-expanded="false">⋯</button>
+                <div class="gallery-menu-list" role="menu" data-menu-list hidden></div>
+              </div>
               <button type="button" class="gallery-tool" data-gallery-replace></button>
               <button type="button" class="gallery-tool" data-gallery-auto-thumb hidden></button>
             </div>
@@ -614,6 +622,10 @@ const t = useTranslations(lang);
         <section class="gallery-project" data-project-block>
           <header class="gallery-project-head">
             <span class="gallery-project-name" data-project-name></span>
+            <div class="gallery-menu" data-gallery-menu>
+              <button type="button" class="gallery-tool gallery-menu-btn" data-menu-btn aria-haspopup="menu" aria-expanded="false">⋯</button>
+              <div class="gallery-menu-list" role="menu" data-menu-list hidden></div>
+            </div>
           </header>
           <div class="gallery-project-fields">
             <div class="gallery-lang-switch" role="group">
@@ -639,6 +651,18 @@ const t = useTranslations(lang);
           </div>
           <div class="gallery-project-images" data-project-images></div>
         </section>
+      </template>
+      {
+        /* One ⋯ menu entry, cloned by buildMenu() for rows and headers alike;
+          the optional second line carries a consequence ("The images stay in
+          your gallery."). A template for the same reason as the rows: the
+          scoped rules need Astro's attribute on the node. */
+      }
+      <template data-gallery-tpl="menuitem">
+        <button type="button" role="menuitem" class="gallery-menu-item">
+          <span data-menu-label></span>
+          <span class="gallery-menu-sub" data-menu-sub hidden></span>
+        </button>
       </template>
       {
         /* One pending upload, cloned by renderQueue(). Deliberately the same
@@ -1587,6 +1611,79 @@ const t = useTranslations(lang);
     cursor: default;
   }
 
+  /* ── The ⋯ menu (2026-09-23) ─────────────────────────── */
+  /* A small floating list under the button, in the form's own materials:
+     the page's paper, the input hairline, the small radius. Right-aligned
+     under a header's ⋯ (which sits at the frame's right edge), left-aligned
+     under a row's. z-index above the rows so the next row's thumbnail does
+     not paint over it. */
+  .gallery-menu {
+    position: relative;
+  }
+
+  .gallery-menu-btn {
+    font-weight: 700;
+    letter-spacing: 0.1em;
+  }
+
+  .gallery-menu-list {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+    max-width: min(320px, 80vw);
+    padding: 4px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  }
+
+  .gallery-menu-list[hidden] {
+    display: none;
+  }
+
+  .gallery-project-head .gallery-menu-list {
+    left: auto;
+    right: 0;
+  }
+
+  .gallery-menu-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 7px 10px;
+    background: none;
+    border: none;
+    border-radius: var(--radius-xs);
+    font: inherit;
+    font-size: 0.85rem;
+    text-align: left;
+    color: var(--color-dark);
+    cursor: pointer;
+  }
+
+  .gallery-menu-item:hover:not(:disabled),
+  .gallery-menu-item:focus-visible {
+    background: var(--color-border);
+    outline: none;
+  }
+
+  .gallery-menu-item:disabled {
+    color: var(--color-muted);
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  .gallery-menu-sub {
+    font-size: 0.75rem;
+    color: var(--color-muted);
+  }
+
   /* ── Project blocks (2026-09-23) ─────────────────────── */
   /* A frame inside the list, at the row's own gap, so the images inside read
      as the same rows they were outside — only enclosed. Hairline and radius
@@ -2231,10 +2328,15 @@ const t = useTranslations(lang);
   import { loadProjects, memberSlugs } from "../lib/projectStore.ts";
   import {
     applyBlocks,
+    dissolveProject,
     editorAffiliations,
     moveImage,
+    moveProject,
+    moveToProject,
+    orderProjects,
     previewProjects,
     projectLabel,
+    removeFromProject,
     sameIds,
     type EditorProject,
   } from "../lib/projectEditor.ts";
@@ -2444,6 +2546,8 @@ const t = useTranslations(lang);
     const galleryItemTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="item"]');
     const galleryTaskTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="task"]');
     const galleryProjectTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="project"]');
+    const galleryMenuItemTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="menuitem"]');
+    const galleryNewProject = document.getElementById("gallery-new-project") as HTMLButtonElement;
     // The video link field (2026-09-23) — see its markup, and the handlers
     // beside the replace picker's below.
     const galleryVideoUrl = document.getElementById("gallery-video-url") as HTMLInputElement;
@@ -2592,15 +2696,114 @@ const t = useTranslations(lang);
     });
     document.addEventListener("astro:before-swap", () => galleryQueue.dispose(), { once: true });
 
+    // ── The ⋯ menus (2026-09-23) ──────────────────────────
+    // One menu open at a time, page-wide. The list is built per render from
+    // the pure move functions, so an entry is disabled exactly when its move
+    // would change nothing (see moveBlock in projectEditor.ts). Escape and a
+    // click outside close it and put focus back on its ⋯; arrows walk the
+    // enabled entries. A chosen entry runs, and the action's own re-render
+    // returns focus to the ⋯ of the row or header it acted on.
+    interface MenuItem {
+      label: string;
+      sub?: string;
+      disabled?: boolean;
+      run: () => void;
+    }
+    let openMenu: HTMLElement | null = null;
+
+    function closeMenu(refocus: boolean) {
+      if (!openMenu) return;
+      const shell = openMenu;
+      openMenu = null;
+      const button = shell.querySelector<HTMLButtonElement>("[data-menu-btn]");
+      const list = shell.querySelector<HTMLElement>("[data-menu-list]");
+      button?.setAttribute("aria-expanded", "false");
+      if (list) list.hidden = true;
+      if (refocus) button?.focus();
+    }
+
+    function buildMenu(shell: HTMLElement, label: string, items: MenuItem[]) {
+      const button = shell.querySelector<HTMLButtonElement>("[data-menu-btn]");
+      const list = shell.querySelector<HTMLElement>("[data-menu-list]");
+      if (!button || !list || !galleryMenuItemTpl) return;
+      named(button, label);
+      list.setAttribute("aria-label", label);
+      for (const item of items) {
+        const entry = galleryMenuItemTpl.content.firstElementChild?.cloneNode(true);
+        if (!(entry instanceof HTMLButtonElement)) continue;
+        const text = entry.querySelector<HTMLElement>("[data-menu-label]");
+        const sub = entry.querySelector<HTMLElement>("[data-menu-sub]");
+        if (text) text.textContent = item.label;
+        if (sub && item.sub) {
+          sub.textContent = item.sub;
+          sub.hidden = false;
+        }
+        entry.disabled = Boolean(item.disabled);
+        entry.tabIndex = -1;
+        entry.addEventListener("click", () => {
+          closeMenu(false);
+          item.run();
+        });
+        list.append(entry);
+      }
+      const entries = () =>
+        Array.from(list.querySelectorAll<HTMLButtonElement>("[role=menuitem]:not(:disabled)"));
+      button.addEventListener("click", () => {
+        if (openMenu === shell) return closeMenu(true);
+        closeMenu(false);
+        openMenu = shell;
+        button.setAttribute("aria-expanded", "true");
+        list.hidden = false;
+        entries()[0]?.focus();
+      });
+      list.addEventListener("keydown", (event) => {
+        const all = entries();
+        const at = all.indexOf(document.activeElement as HTMLButtonElement);
+        const go = (i: number) => {
+          event.preventDefault();
+          all[(i + all.length) % all.length]?.focus();
+        };
+        if (event.key === "ArrowDown") go(at + 1);
+        else if (event.key === "ArrowUp") go(at - 1);
+        else if (event.key === "Home") go(0);
+        else if (event.key === "End") go(all.length - 1);
+        else if (event.key === "Tab") closeMenu(false);
+      });
+    }
+
+    const onMenuEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && openMenu) {
+        event.preventDefault();
+        closeMenu(true);
+      }
+    };
+    const onMenuOutside = (event: MouseEvent) => {
+      if (openMenu && !(event.target instanceof Node && openMenu.contains(event.target))) closeMenu(false);
+    };
+    document.addEventListener("keydown", onMenuEscape);
+    document.addEventListener("click", onMenuOutside);
+    document.addEventListener(
+      "astro:before-swap",
+      () => {
+        document.removeEventListener("keydown", onMenuEscape);
+        document.removeEventListener("click", onMenuOutside);
+      },
+      { once: true },
+    );
+
+    /** What focus should land on after a re-render: a row's ⋯, a header's ⋯, or a block's field. */
+    type FocusHint = { imageId: string } | { projectId: string; field?: string };
+
     /**
      * Renders the committed gallery.
      *
-     * `focusHint` puts focus back on a reorder button after the list has been
-     * rebuilt. Without it, pressing ↓ moves the row, wipes the DOM node the
-     * keyboard was on, and drops focus to the document — so moving an image
-     * two places would take a mouse and a fresh click each time.
+     * `focusHint` puts focus back on the ⋯ of the row or header a menu action
+     * moved (or into a new block's title). Without it, choosing "Move down"
+     * moves the row, wipes the DOM node the keyboard was on, and drops focus
+     * to the document — so moving an image two places would take a mouse and
+     * a fresh click each time.
      */
-    function renderGallery(focusHint?: { imageId: string; tool: "up" | "down" }) {
+    function renderGallery(focusHint?: FocusHint) {
       if (!galleryItemTpl || !galleryProjectTpl) return;
       // The list's shape: loose rows and project blocks in gallery order, then
       // the projects no image names yet (2026-09-23, editorBlocks in
@@ -2644,8 +2847,7 @@ const t = useTranslations(lang);
             const link = field<HTMLInputElement>("link");
             const siteLink = field<HTMLInputElement>("siteLink");
             const cover = row.querySelector<HTMLElement>("[data-gallery-cover]");
-            const up = row.querySelector<HTMLButtonElement>('[data-gallery-move="up"]');
-            const down = row.querySelector<HTMLButtonElement>('[data-gallery-move="down"]');
+            const menu = row.querySelector<HTMLElement>("[data-gallery-menu]");
             const langBtns = Array.from(
               row.querySelectorAll<HTMLButtonElement>("[data-gallery-lang-btn]"),
             );
@@ -2660,7 +2862,7 @@ const t = useTranslations(lang);
             if (!tagsFold || !tagsCount) return null;
             if (!captionDe || !captionDeNote) return null;
             if (!descriptionDe || !descriptionDeNote) return null;
-            if (!link || !siteLink || !cover || !up || !down || !tagsSelector) return null;
+            if (!link || !siteLink || !cover || !menu || !tagsSelector) return null;
             const replace = row.querySelector<HTMLButtonElement>("[data-gallery-replace]");
             if (!replace) return null;
             if (langBtns.length !== 2 || !langPaneEn || !langPaneDe) return null;
@@ -2788,18 +2990,35 @@ const t = useTranslations(lang);
               syncPreview();
             });
 
-            // Buttons, not dragging. HTML5 drag-and-drop between rows needs a
-            // keyboard path and a touch path built alongside it before it is
-            // usable by everyone; two buttons ARE that path for every input
-            // device, and they are what the drop zone above cannot give.
-            // Within the row's container (2026-09-23): a loose row steps past
-            // the neighbouring block, a row inside a project stays inside it.
-            up.disabled = moveImage(blocks, index, -1) === null;
-            down.disabled = moveImage(blocks, index, 1) === null;
-            named(up, s["profile.gallery.moveUp"]);
-            named(down, s["profile.gallery.moveDown"]);
-            up.addEventListener("click", () => void applyBlockMove(moveImage(blocks, index, -1), { imageId: item.imageId, tool: "up" }));
-            down.addEventListener("click", () => void applyBlockMove(moveImage(blocks, index, 1), { imageId: item.imageId, tool: "down" }));
+            // The keyboard path for every move (2026-09-23; dragging is the
+            // pointer's). Up/down stay within the row's container: a loose
+            // row steps past the neighbouring block, a row inside a project
+            // stays inside it. "Move to project" lists every OTHER project by
+            // the name its header shows; "Remove from project" lands the row
+            // directly below its block.
+            const back: FocusHint = { imageId: item.imageId };
+            const inProject = item.projectId && projects.some((p) => p.projectId === item.projectId);
+            buildMenu(menu, s["profile.project.menu"], [
+              {
+                label: s["profile.gallery.moveUp"],
+                disabled: moveImage(blocks, index, -1) === null,
+                run: () => void applyBlockMove(moveImage(blocks, index, -1), back),
+              },
+              {
+                label: s["profile.gallery.moveDown"],
+                disabled: moveImage(blocks, index, 1) === null,
+                run: () => void applyBlockMove(moveImage(blocks, index, 1), back),
+              },
+              ...projects
+                .filter((p) => p.projectId !== item.projectId)
+                .map((p) => ({
+                  label: `${s["profile.project.moveTo"]}: ${projectLabel(projects, p.projectId, lang, s["profile.project.untitled"])}`,
+                  run: () => void applyBlockMove(moveToProject(blocks, index, p.projectId), back),
+                })),
+              ...(inProject
+                ? [{ label: s["profile.project.removeFrom"], run: () => void applyBlockMove(removeFromProject(blocks, index), back) }]
+                : []),
+            ]);
 
             // New picture, same work: captions, description, links, tags and
             // position all stay. Disabled while one is already on its way —
@@ -2861,15 +3080,34 @@ const t = useTranslations(lang);
         el.dataset.projectId = project.projectId;
         const name = el.querySelector<HTMLElement>("[data-project-name]");
         const images = el.querySelector<HTMLElement>("[data-project-images]");
+        const menu = el.querySelector<HTMLElement>(":scope > .gallery-project-head [data-gallery-menu]");
         const langBtns = Array.from(el.querySelectorAll<HTMLButtonElement>("[data-gallery-lang-btn]"));
         const paneEn = el.querySelector<HTMLElement>('[data-gallery-lang-pane="en"]');
         const paneDe = el.querySelector<HTMLElement>('[data-gallery-lang-pane="de"]');
-        if (!name || !images || langBtns.length !== 2 || !paneEn || !paneDe) return null;
+        if (!name || !images || !menu || langBtns.length !== 2 || !paneEn || !paneDe) return null;
 
         const setName = () => {
           name.textContent = projectLabel(projects, project.projectId, lang, s["profile.project.untitled"]);
         };
         setName();
+
+        // The header's menu: the whole block past its neighbour, or dissolve
+        // it. Deleting through the menu ungroups in place — the images stay,
+        // as the second line says; the document itself goes at Save.
+        const id = project.projectId;
+        buildMenu(menu, s["profile.project.menu"], [
+          {
+            label: s["profile.project.moveUp"],
+            disabled: moveProject(blocks, id, -1) === null,
+            run: () => void applyBlockMove(moveProject(blocks, id, -1), { projectId: id }),
+          },
+          {
+            label: s["profile.project.moveDown"],
+            disabled: moveProject(blocks, id, 1) === null,
+            run: () => void applyBlockMove(moveProject(blocks, id, 1), { projectId: id }),
+          },
+          { label: s["profile.project.delete"], sub: s["profile.project.deleteNote"], run: () => deleteProject(id) },
+        ]);
 
         // Same switch as the rows', keyed by projectId (see galleryLangUI).
         const setProjectLang = (paneLang: "en" | "de") => {
@@ -2937,19 +3175,16 @@ const t = useTranslations(lang);
       if (nudge) nudge.hidden = gallery.length > 0;
       updateGalleryControls();
       if (focusHint) {
-        const moved = galleryEditor.querySelector<HTMLElement>(
-          `[data-image-id="${focusHint.imageId}"]`,
-        );
-        // The button that did the moving may itself be disabled now — an image
-        // moved to the top has no "up" left. Falling back to its opposite keeps
-        // focus inside the row that moved rather than losing it to the page.
-        const preferred = moved?.querySelector<HTMLButtonElement>(
-          `[data-gallery-move="${focusHint.tool}"]`,
-        );
-        const fallback = moved?.querySelector<HTMLButtonElement>(
-          `[data-gallery-move="${focusHint.tool === "up" ? "down" : "up"}"]`,
-        );
-        (preferred && !preferred.disabled ? preferred : fallback)?.focus();
+        // Back onto the ⋯ that was just used — the row's, or the header's
+        // (the header's is the block's FIRST menu; its rows' come later in
+        // the tree) — or into a new block's title.
+        const target =
+          "imageId" in focusHint
+            ? galleryEditor.querySelector<HTMLElement>(`[data-image-id="${focusHint.imageId}"] [data-menu-btn]`)
+            : focusHint.field
+              ? galleryEditor.querySelector<HTMLElement>(`[data-project-id="${focusHint.projectId}"] [data-project-field="${focusHint.field}"]`)
+              : galleryEditor.querySelector<HTMLElement>(`[data-project-id="${focusHint.projectId}"] [data-menu-btn]`);
+        target?.focus();
       } else if (typingIn?.field && (typingIn.imageId || typingIn.projectId)) {
         // Restored by id, stable across everything a re-render can do to
         // positions. A reorder takes the branch above instead, and a removal
@@ -3258,10 +3493,32 @@ const t = useTranslations(lang);
      * which image is the card's cover, so leaving it until Save would leave the
      * editor and the directory disagreeing about the card.
      */
-    async function applyBlockMove(
-      next: EditorBlock[] | null,
-      focusHint?: Parameters<typeof renderGallery>[0],
-    ) {
+    /** "+ New project": an empty block at the end, its title ready to type into. Local until an image names it. */
+    function newProject() {
+      const projectId = crypto.randomUUID();
+      projects.push({ projectId, affiliations: [] });
+      renderGallery({ projectId, field: "title" });
+    }
+    galleryNewProject.addEventListener("click", newProject);
+
+    /**
+     * "Delete project": the block dissolves where it stands and its images stay
+     * as loose rows, so the gallery's order does not change and nothing is
+     * stored now. The document is deleted at Save — `deletedProjectIds` is how
+     * Save still knows about a project no longer in `projects`.
+     */
+    function deleteProject(projectId: string) {
+      const blocks = editorBlocks(gallery, projects);
+      const first = gallery.find((g) => g.projectId === projectId);
+      gallery = applyBlocks(gallery, dissolveProject(blocks, projectId));
+      projects = projects.filter((p) => p.projectId !== projectId);
+      projectLangUI.delete(projectId);
+      if (storedProjectIds.has(projectId)) deletedProjectIds.add(projectId);
+      renderGallery(first ? { imageId: first.imageId } : undefined);
+      if (!first) galleryNewProject.focus();
+    }
+
+    async function applyBlockMove(next: EditorBlock[] | null, focusHint?: FocusHint) {
       // Null is the pure function saying the move changes nothing visible
       // (an edge, or the invisible edge before the empty blocks) — see
       // moveBlock() in projectEditor.ts. The button is disabled then; this
@@ -3269,6 +3526,9 @@ const t = useTranslations(lang);
       if (!next) return;
       const before = gallery;
       gallery = applyBlocks(gallery, next);
+      // The blocks' order is also the `projects` order — the only order an
+      // EMPTY block has, since it anchors to no image.
+      projects = orderProjects(projects, next.flatMap((b) => (b.kind === "project" ? [b.projectId] : [])));
       renderGallery(focusHint);
       // Membership (projectId) follows Save; the ORDER is stored at once, as
       // before. A move that only changed membership — into a project at the
