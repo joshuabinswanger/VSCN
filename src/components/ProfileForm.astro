@@ -504,22 +504,30 @@ const t = useTranslations(lang);
                 mix of "nature.com/…" and "https://nature.com/…" in one
                 field. */
             }
-            <div class="input-prefix-wrap">
-              <span class="input-prefix">https://</span>
-              <input type="text" class="input input-prefixed" data-gallery-field="siteLink" />
+            <div class="label-row">
+              <div class="input-prefix-wrap">
+                <span class="input-prefix">https://</span>
+                <input type="text" class="input input-prefixed" data-gallery-field="siteLink" />
+              </div>
+              <InfoTip lang={lang} rowKey="siteLink" />
             </div>
             {
               /* Static text in the template, unlike the DE notes above, which
                 are filled in JS because they toggle with the pane. These are
                 the same for every row and every state, so `t()` here is
-                enough — the clone carries them. */
+                enough — the clone carries them. Its id is assigned at clone
+                time by renderGallery(), since the template itself is cloned
+                once per image (see the comment there). */
             }
-            <p class="field-note">{t("profile.gallery.siteLinkNote")}</p>
-            <div class="input-prefix-wrap">
-              <span class="input-prefix">https://</span>
-              <input type="text" class="input input-prefixed" data-gallery-field="link" />
+            <p class="field-note" data-tip data-tip-note="siteLink" hidden>{t("profile.gallery.siteLinkNote")}</p>
+            <div class="label-row">
+              <div class="input-prefix-wrap">
+                <span class="input-prefix">https://</span>
+                <input type="text" class="input input-prefixed" data-gallery-field="link" />
+              </div>
+              <InfoTip lang={lang} rowKey="link" />
             </div>
-            <p class="field-note">{t("profile.gallery.linkNote")}</p>
+            <p class="field-note" data-tip data-tip-note="link" hidden>{t("profile.gallery.linkNote")}</p>
             {
               /* WHAT IS IN THE PICTURE, not who made it — the community wall
                 filters by this (2026-09-08, step 2 of
@@ -1106,6 +1114,13 @@ const t = useTranslations(lang);
   }
   .input-prefix-wrap:focus-within {
     border-color: #111;
+  }
+
+  /* The gallery link rows' tip sits beside the field, not above it (there is
+     no label element here to carry it) — the wrap has to give up the row's
+     free space or the ⓘ crowds the input instead of sitting flush right. */
+  .label-row > .input-prefix-wrap {
+    flex: 1;
   }
 
   .input-prefix {
@@ -2636,6 +2651,21 @@ const t = useTranslations(lang);
                 autoThumb.addEventListener("click", () => void restoreGalleryThumbnail(item.imageId, autoThumb));
               }
             }
+
+            // A template is cloned once per image, so its tips cannot carry
+            // ids of their own; each row gets its note ids here and its
+            // buttons are pointed at them. An open tip closes on re-render —
+            // acceptable, since re-renders happen on upload/remove/reorder,
+            // not while typing.
+            row.querySelectorAll<HTMLElement>("[data-tip-note]").forEach((note) => {
+              const key = note.dataset.tipNote ?? "";
+              note.id = `gallery-${index}-note-${key}`;
+              const button = row.querySelector<HTMLButtonElement>(`[data-infotip-for="${key}"]`);
+              button?.setAttribute("aria-controls", note.id);
+              row
+                .querySelector<HTMLElement>(`[data-gallery-field="${key}"]`)
+                ?.setAttribute("aria-describedby", note.id);
+            });
 
             // Read back by the focus hint below; the rows are otherwise
             // anonymous once they are in the DOM.
