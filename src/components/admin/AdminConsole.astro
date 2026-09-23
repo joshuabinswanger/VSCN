@@ -343,6 +343,14 @@
   .admin :global(.overview__main) { flex: 1 1 16rem; display: grid; gap: 0.4rem; min-width: 0; }
   .admin :global(.avatar) { width: 4.5rem; height: 4.5rem; object-fit: cover; border-radius: var(--radius-sm); background: var(--tint); flex: 0 0 auto; }
   .admin :global(.avatar--none) { border: 1px dashed var(--color-border); background: none; }
+  /* One project, as its own light card. Without this, multiple projects in
+     the Projects section read as one undifferentiated run of headings and
+     definition lists — `.sec__body`'s gap alone is not a boundary. */
+  .admin :global(.project) {
+    border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+    padding: 0.65rem 0.85rem; display: grid; gap: 0.3rem;
+  }
+  .admin :global(.project h3:first-child) { margin-top: 0; }
 
   /* ── Actions: routine vs Danger ────────────────────────
      Two groups, so "Purge now" stops looking like "Set email". The danger
