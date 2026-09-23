@@ -7,6 +7,18 @@ fills in the action. Newest first. How to read a verdict: [release-verification.
 Green entries are one line. The value is the history: slow drift shows up here as a pattern
 rather than as a member's email.
 
+## 2026-09-23 · c07fc9a · dev · the release walk merged
+Machine: GREEN after a fix, one warning. First run RED on functions deployed: the four functions the walk
+         PR changed (flushMemberRebuilds, onImageWritten, onImageWentLive, sendAdminDigest) were stale.
+         Deployed those four to dev by name; re-run 30 of 30 current.
+         WARN function errors: 12 × "Admin digest not sent", every one "535 5.7.0 Invalid login or
+         password" from Infomaniak. The operator digest has NEVER delivered on either project: prod shows
+         the same refusal on every tick since its first event at 2026-09-22T22:05Z, dev since 20:03Z.
+         INFOMANIAK_SMTP_PASSWORD holds one enabled version on each, so probe 5 passes; the value is wrong.
+Walk:    n/a (dev)
+Action:  Josh replaces INFOMANIAK_SMTP_PASSWORD on both projects with the password that logs in as
+         info@vscn.ch (Claude does not handle it). Probe 7 is the only thing that saw this.
+
 ## 2026-09-23 · f21a60f · prod · the first walk, by Playwright
 Machine: not re-run; the f21a60f entry below stands
 Walk:    GREEN — all six steps on vscn-39508.web.app as the verification member, CI run 35828595679
