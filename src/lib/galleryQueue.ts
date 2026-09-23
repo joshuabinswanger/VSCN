@@ -32,11 +32,14 @@ import {
  * together, which pipelines naturally — file 2 is being encoded while files 1
  * and 3 are in flight.
  *
- * NO REPLACEMENT LANE. The branch this came from carried a per-row Crop that
- * re-uploaded an existing image, so a task could be a swap rather than an
- * addition. Cropping left the pipeline on 2026-09-02 and the editor that drove
- * it is gone, so every task here is an addition and the capacity arithmetic
- * has one case instead of two.
+ * THE REPLACEMENT LANE (2026-09-23, member feedback: changing a work's
+ * picture meant deleting the work and typing its captions, description, links
+ * and tags all over again). A task can carry `replaces`, the imageId of the
+ * work whose picture it swaps. It goes through the same two lanes, but it
+ * OCCUPIES NO SLOT: the work it lands on is already counted. That is the whole
+ * of the second case in the capacity arithmetic, and pendingSlots() is where
+ * it lives. (A per-row Crop once re-uploaded images through here and left on
+ * 2026-09-02; this is the swap without the cropper.)
  */
 
 const MAX_CONCURRENT_UPLOADS = 3;
@@ -54,6 +57,8 @@ export interface GalleryTask {
    */
   readonly thumbUrl: string;
   state: GalleryTaskState;
+  /** The work this task swaps the picture of. Absent for an addition. */
+  readonly replaces?: string;
   /** 0-100, meaningful only while `state === "uploading"`. */
   progress: number;
   error?: GalleryErrorCode;
@@ -87,10 +92,25 @@ export interface GalleryQueueOptions {
    * addresses an image by.
    */
   onUploaded: (item: GalleryItem) => void;
+  /**
+   * A replacement made it: `item` is the new picture (for the unverified slot
+   * it has the same imageId as `replaced`), and the consumer swaps it into
+   * the work's place.
+   */
+  onReplaced: (item: GalleryItem, replaced: string) => void;
 }
 
 export interface GalleryQueue {
   add(files: File[]): AddOutcome;
+  /**
+   * Queues a new picture for an existing work. Returns why the file was turned
+   * away, or null once it is queued. A work already mid-replacement refuses a
+   * second one ("busy"): two uploads racing to be the same work's picture
+   * would leave whichever finished first as an orphan.
+   */
+  replace(imageId: string, file: File): GalleryErrorCode | "busy" | null;
+  /** Whether a replacement for this work is in flight (a failed one does not count). */
+  replacing(imageId: string): boolean;
   tasks(): GalleryTask[];
   /** Tasks that still intend to occupy a gallery slot (i.e. not failed ones). */
   pendingCount(): number;
@@ -169,7 +189,7 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
    * and a retried row already exists.
    */
   function pendingSlots() {
-    return tasks.filter((task) => task.state !== "error").length;
+    return tasks.filter((task) => task.state !== "error" && !task.replaces).length;
   }
 
   function remove(id: string) {
@@ -218,6 +238,7 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
         task.progress = 0;
         options.onChange();
         return await uploadGalleryImage(uid, compressed, {
+          replaces: task.replaces,
           onProgress: (pct) => {
             if (disposed || abandoned.has(task.id)) return;
             task.progress = pct;
@@ -235,7 +256,8 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
       // rather than leaving a "done" state is what makes the handover look like
       // one row settling into the gallery instead of two rows for one image.
       remove(task.id);
-      options.onUploaded(item);
+      if (task.replaces) options.onReplaced(item, task.replaces);
+      else options.onUploaded(item);
       options.onChange();
     } catch (error) {
       const code = galleryErrorCode(error);
@@ -249,13 +271,14 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
     }
   }
 
-  function enqueue(source: Blob, name: string): GalleryTask {
+  function enqueue(source: Blob, name: string, replaces?: string): GalleryTask {
     const task: GalleryTask = {
       id: nextId(),
       name,
       thumbUrl: URL.createObjectURL(source),
       state: "queued",
       progress: 0,
+      ...(replaces ? { replaces } : {}),
     };
     tasks.push(task);
     // Started immediately and deliberately un-awaited: the limiters, not this
@@ -291,6 +314,21 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
       return outcome;
     },
 
+    replace(imageId, file) {
+      if (disposed) return "cancelled";
+      const rejection = validateGalleryFile(file);
+      if (rejection) return rejection;
+      if (tasks.some((task) => task.replaces === imageId && task.state !== "error")) return "busy";
+      // A failed earlier attempt for the same work is superseded, not kept
+      // beside the new one as a second row asking to be retried.
+      for (const task of tasks.filter((t) => t.replaces === imageId)) remove(task.id);
+      enqueue(file, file.name, imageId);
+      options.onChange();
+      return null;
+    },
+
+    replacing: (imageId) => tasks.some((task) => task.replaces === imageId && task.state !== "error"),
+
     tasks: () => tasks.slice(),
     pendingCount: pendingSlots,
 
@@ -311,7 +349,9 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
 
     retry(id) {
       const task = find(id);
-      if (disposed || !task || task.state !== "error" || options.capacity() <= pendingSlots()) return;
+      if (disposed || !task || task.state !== "error") return;
+      // A replacement needs no free slot — its work already holds one.
+      if (!task.replaces && options.capacity() <= pendingSlots()) return;
       task.state = "queued";
       task.error = undefined;
       task.progress = 0;

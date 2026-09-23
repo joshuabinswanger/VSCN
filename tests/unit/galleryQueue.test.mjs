@@ -15,8 +15,10 @@ function setup(overrides = {}, capacity = () => 8) {
     URL: { createObjectURL: () => 'blob:test', revokeObjectURL() {} },
     fetch: async () => ({ blob: async () => new Blob() }),
   });
-  const queue = createGalleryQueue({ uid: () => 'member', capacity, onChange() {}, onUploaded() { committed++; } });
-  return { queue, counts: () => ({ uploads, committed }) };
+  const replaced = [];
+  const queue = createGalleryQueue({ uid: () => 'member', capacity, onChange() {}, onUploaded() { committed++; },
+    onReplaced(item, id) { replaced.push([item.imageId, id]); } });
+  return { queue, counts: () => ({ uploads, committed }), replaced };
 }
 const files = [{ name: 'one.webp' }, { name: 'two.webp' }];
 
@@ -60,4 +62,48 @@ test('retry does not reclaim a slot now used by another image', async () => {
   assert.equal(task.state, 'error');
   room = 1; queue.retry(task.id); await settle();
   assert.equal(queue.tasks().length, 1);
+});
+
+test('a replacement needs no free slot, tells the upload what it replaces, and lands as a swap', async () => {
+  let seen;
+  const { queue, counts, replaced } = setup({ uploadGalleryImage: async (_uid, _image, options) => {
+    seen = options.replaces; return { imageId: 'new' };
+  } }, () => 0);
+  assert.equal(queue.add(files.slice(0, 1)).overflow, 1);
+  assert.equal(queue.replace('old', files[0]), null);
+  assert.equal(queue.pendingCount(), 0);
+  await settle(); await settle();
+  assert.equal(seen, 'old');
+  assert.deepEqual(replaced, [['new', 'old']]);
+  assert.equal(counts().committed, 0);
+  assert.equal(queue.tasks().length, 0);
+});
+
+test('one work takes one replacement at a time, and a failed one is superseded by the next', async () => {
+  const gate = deferred();
+  let fail = true;
+  const { queue, replaced } = setup({ compressGalleryImage: async () => {
+    if (fail) throw new Error('network'); await gate.promise; return {};
+  } }, () => 0);
+  queue.replace('old', files[0]); await settle();
+  assert.equal(queue.tasks()[0].state, 'error');
+  assert.equal(queue.replacing('old'), false);
+  fail = false;
+  assert.equal(queue.replace('old', files[1]), null);
+  assert.equal(queue.tasks().length, 1);
+  assert.equal(queue.replacing('old'), true);
+  assert.equal(queue.replace('old', files[0]), 'busy');
+  gate.resolve(); await settle(); await settle();
+  assert.equal(replaced.length, 1);
+  assert.equal(queue.replacing('old'), false);
+});
+
+test('a failed replacement retries even when the gallery is full', async () => {
+  let fail = true;
+  const { queue, replaced } = setup({ compressGalleryImage: async () => { if (fail) throw new Error('network'); return {}; } }, () => 0);
+  queue.replace('old', files[0]); await settle();
+  const task = queue.tasks()[0]; assert.equal(task.state, 'error');
+  fail = false; queue.retry(task.id);
+  for (let i = 0; i < 5; i++) await settle();
+  assert.equal(replaced.length, 1);
 });

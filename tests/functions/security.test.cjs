@@ -344,3 +344,69 @@ test('deletion during upload publication removes only the newly copied generatio
   assert.equal(removed,true);
   assert.equal((await db.doc('images/'+imageId).get()).data().status,'uploading');
 });
+
+// REPLACING A WORK'S PICTURE (2026-09-23). The words move to the new record at
+// allocation; the review settles at completion — ratings reset, hidden stays.
+async function publishWith(uid, imageId, extraPermit = {}) {
+  const path = `users/${uid}/gallery/${imageId}.webp`;
+  const bytes = await sharp({ create: { width: 2, height: 3, channels: 3, background: '#ffffff' } }).webp().toBuffer();
+  await db.doc(`images/${imageId}`).set({ ownerUid: uid, kind: 'gallery', storagePath: path, origin: 'member', status: 'uploading', width: 2, height: 3 }, { merge: true });
+  await db.doc(`uploadPermits/${imageId}.webp`).set({ imageId, ownerUid: uid, kind: 'gallery', storagePath: path, uploadPath: `pending/${uid}/gallery/${imageId}.webp`, expiresAt: Timestamp.fromMillis(Date.now() + 60000), ...extraPermit });
+  mock.method(adminModule, 'getBucket', () => ({ file: () => ({
+    getMetadata: async () => [{ contentType: 'image/webp', generation: '123', size: String(bytes.length) }],
+    download: async () => [bytes.subarray(0, 64)],
+    copy: async () => [{}, { resource: { generation: '456' } }],
+    delete: async () => {},
+  }) }));
+  await completeImageUpload.run({ auth: { uid, token: { email_verified: true } }, data: { imageId } });
+}
+
+test('a replacement starts as a new record carrying the work\'s words, and only for the owner\'s live work', async () => {
+  mock.method(adminModule, 'getBucket', () => ({ getFiles: async () => [[]] }));
+  const oldId = '55555555-5555-4555-8555-555555555555';
+  const newId = '66666666-6666-4666-8666-666666666666';
+  const request = (uid, replaces) => ({ auth: { uid, token: { email_verified: true } }, data: { imageId: newId, kind: 'gallery', width: 10, height: 10, replaces } });
+  await db.doc(`images/${oldId}`).set({ ownerUid: 'member', kind: 'gallery', status: 'live', origin: 'member', storagePath: `users/member/gallery/${oldId}.webp`,
+    caption: 'Cell', captionDe: 'Zelle', description: 'Long', link: 'nature.com/x', siteLink: 'me.ch/x', tags: ['biology'], descriptionShort: 'gone' });
+  await assert.rejects(authorizeImageUpload.run(request('intruder', oldId)), { code: 'permission-denied' });
+  await assert.rejects(authorizeImageUpload.run({ ...request('member', oldId), data: { ...request('member', oldId).data, kind: 'avatar' } }), { code: 'invalid-argument' });
+  await authorizeImageUpload.run(request('member', oldId));
+  const created = (await db.doc(`images/${newId}`).get()).data();
+  assert.deepEqual(
+    { caption: created.caption, captionDe: created.captionDe, description: created.description, link: created.link, siteLink: created.siteLink, tags: created.tags },
+    { caption: 'Cell', captionDe: 'Zelle', description: 'Long', link: 'nature.com/x', siteLink: 'me.ch/x', tags: ['biology'] },
+  );
+  assert.equal(created.descriptionShort, undefined);
+  assert.equal(created.status, 'uploading');
+  assert.equal((await db.doc(`uploadPermits/${newId}.webp`).get()).data().replaces, oldId);
+  assert.equal((await db.doc(`images/${oldId}`).get()).data().status, 'live');
+  await db.doc(`images/${oldId}`).update({ status: 'pendingDeletion' });
+  await db.doc(`images/${newId}`).delete();
+  await assert.rejects(authorizeImageUpload.run(request('member', oldId)), { code: 'permission-denied' });
+});
+
+test('a replaced picture loses its ratings but keeps a hide', async () => {
+  const oldId = '77777777-7777-4777-8777-777777777777';
+  const newId = '88888888-8888-4888-8888-888888888888';
+  const hiddenAt = Timestamp.fromMillis(1_700_000_000_000);
+  await db.doc(`imageModeration/${oldId}`).set({ ratings: { admin: { professional: 5, knowledge: 5, aesthetics: 5, completeness: null } }, score: 4.5, hidden: true, hiddenBy: 'admin', hiddenAt });
+  await publishWith('member', newId, { replaces: oldId });
+  const mod = (await db.doc(`imageModeration/${newId}`).get()).data();
+  assert.deepEqual({ hidden: mod.hidden, hiddenBy: mod.hiddenBy, ratings: mod.ratings, score: mod.score }, { hidden: true, hiddenBy: 'admin', ratings: undefined, score: undefined });
+  assert.equal(mod.hiddenAt.toMillis(), hiddenAt.toMillis());
+
+  // An unhidden, rated picture: the replacement gets no record at all, so it
+  // is simply unrated — back in every admin's queue.
+  const plainOld = '99999999-9999-4999-8999-999999999999';
+  const plainNew = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  await db.doc(`imageModeration/${plainOld}`).set({ ratings: { admin: { professional: 1, knowledge: 1, aesthetics: 1, completeness: null } }, score: 1 });
+  await publishWith('member', plainNew, { replaces: plainOld });
+  assert.equal((await db.doc(`imageModeration/${plainNew}`).get()).exists, false);
+
+  // The unverified slot replaces in place: same record, ratings cleared, hide kept.
+  const slot = 'member-gallery';
+  await db.doc(`imageModeration/${slot}`).set({ ratings: { admin: { professional: 3, knowledge: 3, aesthetics: 3, completeness: null } }, score: 3, scoredAt: hiddenAt, hidden: true });
+  await publishWith('member', slot, { replaces: slot });
+  const slotMod = (await db.doc(`imageModeration/${slot}`).get()).data();
+  assert.deepEqual(slotMod, { hidden: true });
+});

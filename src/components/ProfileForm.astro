@@ -284,6 +284,16 @@ const t = useTranslations(lang);
             style="display:none;"
           />
         </label>
+        {
+          /* ONE picker for every row's "Replace image": the row that was
+            pressed is remembered in the script, not in the input. */
+        }
+        <input
+          id="gallery-replace-file"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/avif"
+          style="display:none;"
+        />
         <span class="gallery-drop-hint" aria-hidden="true">{t("profile.gallery.drop")}</span>
       </div>
       <p id="gallery-status" class="field-note" style="display:none;"></p>
@@ -479,6 +489,7 @@ const t = useTranslations(lang);
             <div class="gallery-tools">
               <button type="button" class="gallery-tool" data-gallery-move="up">↑</button>
               <button type="button" class="gallery-tool" data-gallery-move="down">↓</button>
+              <button type="button" class="gallery-tool" data-gallery-replace></button>
             </div>
           </div>
         </div>
@@ -2035,6 +2046,9 @@ const t = useTranslations(lang);
       });
 
     const galleryInput = document.getElementById("gallery-files") as HTMLInputElement;
+    const galleryReplaceInput = document.getElementById("gallery-replace-file") as HTMLInputElement;
+    /** The work whose "Replace image" opened the picker; read once, when a file arrives. */
+    let galleryReplaceTarget: string | null = null;
     const galleryEditor = document.getElementById("gallery-editor")!;
     const galleryQueueEl = document.getElementById("gallery-queue")!;
     const galleryDrop = document.getElementById("gallery-drop")!;
@@ -2180,6 +2194,7 @@ const t = useTranslations(lang);
       capacity: () => galleryLimit(auth.currentUser) - gallery.length,
       onChange: renderQueue,
       onUploaded: (item) => void onGalleryUploaded(item),
+      onReplaced: (item, replaced) => void onGalleryReplaced(item, replaced),
     });
     document.addEventListener("astro:before-swap", () => galleryQueue.dispose(), { once: true });
 
@@ -2245,6 +2260,8 @@ const t = useTranslations(lang);
             if (!captionDe || !captionDeNote) return null;
             if (!descriptionDe || !descriptionDeNote) return null;
             if (!link || !siteLink || !cover || !up || !down || !tagsSelector) return null;
+            const replace = row.querySelector<HTMLButtonElement>("[data-gallery-replace]");
+            if (!replace) return null;
             if (langBtns.length !== 2 || !langPaneEn || !langPaneDe) return null;
 
             // The one thing on screen that admits the order means something:
@@ -2381,6 +2398,16 @@ const t = useTranslations(lang);
             up.addEventListener("click", () => void moveGalleryImage(index, index - 1));
             down.addEventListener("click", () => void moveGalleryImage(index, index + 1));
 
+            // New picture, same work: captions, description, links, tags and
+            // position all stay. Disabled while one is already on its way —
+            // see updateGalleryControls, which the queue repaints through.
+            replace.textContent = s["profile.gallery.replace"];
+            replace.dataset.imageId = item.imageId;
+            replace.addEventListener("click", () => {
+              galleryReplaceTarget = item.imageId;
+              galleryReplaceInput.click();
+            });
+
             // Read back by the focus hint below; the rows are otherwise
             // anonymous once they are in the DOM.
             row.dataset.galleryIndex = String(index);
@@ -2449,6 +2476,12 @@ const t = useTranslations(lang);
       const full = gallery.length + galleryQueue.pendingCount() >= limit;
       galleryAdd.setAttribute("aria-disabled", String(full));
       galleryInput.disabled = full;
+      // Here rather than in renderGallery: this runs on every queue change
+      // too, and a row's Replace must come back when its upload ends without
+      // rebuilding the rows (and the caret) under the member.
+      for (const button of galleryEditor.querySelectorAll<HTMLButtonElement>("[data-gallery-replace]")) {
+        button.disabled = galleryQueue.replacing(button.dataset.imageId ?? "");
+      }
 
       const capNote = full
         ? limit < MAX_GALLERY_IMAGES
@@ -2513,7 +2546,11 @@ const t = useTranslations(lang);
       // This is the whole of the optimistic UI: the member sees what they
       // picked and where it will sit, immediately.
       if (img) img.src = task.thumbUrl;
-      if (name) name.textContent = task.name;
+      if (name) {
+        name.textContent = task.replaces
+          ? s["profile.gallery.replacing"].replace("{name}", task.name)
+          : task.name;
+      }
       if (cancel) {
         named(cancel, s["profile.gallery.cancel"]);
         cancel.addEventListener("click", () => galleryQueue.cancel(task.id));
@@ -2642,8 +2679,46 @@ const t = useTranslations(lang);
       await persistGalleryNow();
     }
 
+    /**
+     * A work's new picture is live: the row keeps everything the member wrote
+     * and takes the new image. Same order as a removal — the array stops
+     * pointing at the old record BEFORE that record is marked, or the gallery
+     * would briefly hold a broken image.
+     */
+    async function onGalleryReplaced(item: GalleryItem, replaced: string) {
+      const index = gallery.findIndex((work) => work.imageId === replaced);
+      if (index === -1) {
+        // The work was removed while its new picture uploaded. Nothing points
+        // at the new record, so it goes now instead of lingering live and
+        // unreferenced. (For the unverified slot this is the same record,
+        // which completion had just brought back to life.)
+        await markImageForDeletion(item.imageId).catch(() => {});
+        return;
+      }
+      const inPlace = item.imageId === replaced;
+      gallery[index] = {
+        ...gallery[index],
+        imageId: item.imageId,
+        // The unverified slot keeps its storage path, so its URL string does
+        // not change and the browser would show the cached old picture. This
+        // tag is for the editor only — only ids are ever stored.
+        url: inPlace ? `${item.url}&v=${Date.now()}` : item.url,
+        width: item.width,
+        height: item.height,
+        color: item.color,
+      };
+      renderGallery();
+      syncPreview();
+      if (inPlace) return;
+      if (await persistGalleryNow()) await markImageForDeletion(replaced).catch(() => {});
+    }
+
     async function removeGalleryImage(index: number) {
       const [removed] = gallery.splice(index, 1);
+      // A new picture on its way to this work has nowhere to land any more.
+      for (const task of galleryQueue.tasks()) {
+        if (removed && task.replaces === removed.imageId) galleryQueue.cancel(task.id);
+      }
       renderGallery();
       // The record is marked only once Firestore has stopped pointing at it.
       if ((await persistGalleryNow()) && removed) {
@@ -2692,6 +2767,22 @@ const t = useTranslations(lang);
       }
       setGalleryStatus(problems.join(" · "));
     }
+
+    galleryReplaceInput.addEventListener("change", () => {
+      const file = galleryReplaceInput.files?.[0];
+      // Cleared for the same reason as the main picker's: the same file
+      // picked twice fires no second change event.
+      galleryReplaceInput.value = "";
+      const target = galleryReplaceTarget;
+      galleryReplaceTarget = null;
+      if (!file || !target) return;
+      const outcome = galleryQueue.replace(target, file);
+      // "busy" cannot come from the button (it is disabled then), so it has
+      // no sentence; everything else is the same per-file wording as an add.
+      if (outcome && outcome !== "busy") {
+        setGalleryStatus(`${file.name}: ${s[galleryErrorKey(outcome)]}`);
+      }
+    });
 
     galleryInput.addEventListener("change", () => {
       const files = Array.from(galleryInput.files ?? []);
