@@ -2,19 +2,25 @@
 import { MEMBER_TYPES } from "../lib/firestore.ts";
 import { useTranslations } from "../i18n/utils";
 import type { Lang } from "../i18n/utils";
+import InfoTip from "./InfoTip.astro";
 
 interface Props {
   lang?: Lang;
   name?: string;
+  /** Hide the note behind an ⓘ, /profile only — the wizard omits this. */
+  tip?: boolean;
 }
 
-const { lang = "en", name = "member-type" } = Astro.props;
+const { lang = "en", name = "member-type", tip = false } = Astro.props;
 const t = useTranslations(lang);
 ---
 
 <member-type-selector class="member-type-selector" data-lang={lang}>
-  <fieldset class="memberType-field">
-    <legend class="label">{t("profile.memberType.legend")}</legend>
+  <fieldset class="memberType-field" aria-describedby="note-member-type">
+    <legend class="label">
+      {t("profile.memberType.legend")}
+      {tip && <InfoTip lang={lang} for="note-member-type" />}
+    </legend>
     <div class="memberType-options">
       {
         MEMBER_TYPES.map((type) => (
@@ -25,7 +31,7 @@ const t = useTranslations(lang);
         ))
       }
     </div>
-    <p class="field-note">{t("profile.memberType.note")}</p>
+    <p id="note-member-type" class="field-note" data-tip={tip || undefined} hidden={tip}>{t("profile.memberType.note")}</p>
   </fieldset>
 </member-type-selector>
 

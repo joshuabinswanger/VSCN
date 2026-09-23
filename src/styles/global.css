@@ -301,6 +301,37 @@ a:hover {
   color: var(--color-muted);
 }
 
+/* A LABEL AND ITS ⓘ on one line (2026-09-23). The tip is a sibling of the
+   <label>, never inside it: a button inside a label is interactive content
+   inside interactive content, and a click on it would also focus the input. */
+.label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.infotip {
+  display: inline-grid;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.infotip[aria-expanded="true"],
+.infotip:hover,
+.infotip:focus-visible {
+  color: var(--color-text);
+  border-color: currentColor;
+}
+
 /* THE ADD ROW — a text field and the button that commits it, shared by the
    three selectors that take a custom value (tags, Open to, Visual needs). The
    field is the form's `.input` at the small scale these selectors work in, and

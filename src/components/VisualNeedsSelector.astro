@@ -1,6 +1,7 @@
 ---
 import { useTranslations } from "../i18n/utils";
 import type { Lang } from "../i18n/utils";
+import InfoTip from "./InfoTip.astro";
 
 // "What do you need visuals for?" — the science side's counterpart to
 // OpenToSelector, and the field that turns a member type into matchmaking
@@ -13,14 +14,19 @@ import type { Lang } from "../i18n/utils";
 // generalised, so a change to one cannot regress the other.
 interface Props {
   lang?: Lang;
+  /** Hide the note behind an ⓘ, /profile only — the wizard omits this. */
+  tip?: boolean;
 }
 
-const { lang = "en" } = Astro.props;
+const { lang = "en", tip = false } = Astro.props;
 const t = useTranslations(lang);
 ---
 
 <visual-needs-selector class="field visual-needs-selector" data-lang={lang} hidden>
-  <label class="label">{t("profile.visualNeeds.legend")}</label>
+  <div class="label-row">
+    <label class="label">{t("profile.visualNeeds.legend")}</label>
+    {tip && <InfoTip lang={lang} for="note-visual-needs" />}
+  </div>
   <div id="visualNeeds-chips" class="visualNeeds-chips"></div>
   <div id="visualNeeds-custom-list" class="visualNeeds-custom-list"></div>
   <div class="addrow visualNeeds-input-row">
@@ -29,12 +35,13 @@ const t = useTranslations(lang);
       type="text"
       class="input"
       placeholder={t("profile.visualNeeds.custom.ph")}
+      aria-describedby="note-visual-needs"
     />
     <button type="button" class="addbtn visualNeeds-add-btn" aria-label={t("profile.visualNeeds.add")}
       >+</button
     >
   </div>
-  <p class="field-note">{t("profile.visualNeeds.note")}</p>
+  <p id="note-visual-needs" class="field-note" data-tip={tip || undefined} hidden={tip}>{t("profile.visualNeeds.note")}</p>
 </visual-needs-selector>
 
 <style is:global>
