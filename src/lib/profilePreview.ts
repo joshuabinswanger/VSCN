@@ -274,7 +274,17 @@ export function renderProfilePreview(
             const href = affiliationHref(a, labels.lang);
             const node = document.createElement(href ? "a" : "span");
             node.textContent = a.name;
-            if (node instanceof HTMLAnchorElement && href) node.href = href;
+            if (node instanceof HTMLAnchorElement && href) {
+              node.href = href;
+              // Same rule the member page applies (see [slug].astro's
+              // affiliationHref map): a member credit stays on-site and
+              // in-tab, so ClientRouter can pick up the navigation; any
+              // other affiliation is external and opens in a new tab.
+              if (!a.memberSlug) {
+                node.target = "_blank";
+                node.rel = "noopener";
+              }
+            }
             withEl.append(node);
           });
         }

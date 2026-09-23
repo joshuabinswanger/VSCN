@@ -311,7 +311,7 @@ const jsonLd = memberPageJsonLd({
                   const title = projectTitle(section.project!, currentLang);
                   const desc = projectDescription(section.project!, currentLang);
                   return (
-                    <>
+                    <div class="mprof__project-head">
                       {title && (
                         <h2 class="mprof__project-title">
                           {section.project!.link ? (
@@ -344,7 +344,7 @@ const jsonLd = memberPageJsonLd({
                           ))}
                         </p>
                       )}
-                    </>
+                    </div>
                   );
                 })()}
                 {section.works.map((w) => (
