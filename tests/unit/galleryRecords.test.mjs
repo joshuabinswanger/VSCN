@@ -104,3 +104,24 @@ test("garbage in the list is ignored", () => {
   assert.deepEqual(orderedGalleryItems(UID, "not a list", [record("a")], BUCKET), []);
   assert.deepEqual(orderedGalleryItems(UID, undefined, [record("a")], BUCKET), []);
 });
+
+test("a video work carries its embed and poster source; the poster is still the url", () => {
+  const embed = { provider: "vimeo", videoId: "22439234", hash: "a1b2c3d4e5" };
+  const [item] = orderedGalleryItems(UID, ["v"], [record("v", {
+    media: "embed", embed, posterSource: "member", createdAt: "2026-09-23T10:00:00.000Z",
+  })], BUCKET);
+  assert.deepEqual(item.embed, embed);
+  assert.equal(item.posterSource, "member");
+  assert.equal(item.addedAt, "2026-09-23T10:00:00.000Z");
+  assert.equal(item.url, storageUrl(BUCKET, `users/${UID}/gallery/v.webp`));
+});
+
+test("a record that claims to be a video without a playable id is shown as the still it is", () => {
+  const items = orderedGalleryItems(UID, ["a", "b", "c"], [
+    record("a", { media: "embed", embed: { provider: "youtube", videoId: "../evil" } }),
+    record("b", { media: "embed" }),
+    record("c", { embed: { provider: "youtube", videoId: "dQw4w9WgXcQ" } }),
+  ], BUCKET);
+  assert.equal(items.length, 3);
+  assert.equal(items.some((item) => "embed" in item || "posterSource" in item), false);
+});

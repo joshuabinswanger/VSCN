@@ -3,6 +3,7 @@ import { getImage } from "astro:assets";
 import type { MemberView } from "../../lib/memberView.ts";
 import type { ProfileWork } from "../../lib/profileView.ts";
 import { memberHref } from "../../lib/links.ts";
+import { embedDataAttrs } from "../../lib/embed.ts";
 import { useTranslations, type Lang } from "../../i18n/utils.ts";
 
 // THE GRID WALL'S TILE, and the wall's whole subject: ONE artwork, and nothing
@@ -170,6 +171,7 @@ const pswpMeta = member.displayName;
       data-pswp-site-link={work.siteLink || undefined}
       data-pswp-meta={pswpMeta || undefined}
       data-pswp-profile={profileHref}
+      {...embedDataAttrs(work.embed)}
     >
       {
         /* No aria-label on the link: the image's alt names it, which is the
@@ -188,6 +190,13 @@ const pswpMeta = member.displayName;
         loading="lazy"
         decoding="async"
       />
+      {
+        /* A VIDEO WORK (2026-09-23): on the wall it is only ever its poster
+          and this mark — never a player, never a request to YouTube. The
+          lightbox plays it on press (lightboxEmbed.ts). Inside the link, so
+          the mark scales with the picture; it takes no pointer events. */
+        work.embed && <span class="vscn-play vscn-play--over" aria-hidden="true" />
+      }
     </a>
   </div>
 

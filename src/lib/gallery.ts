@@ -1,7 +1,9 @@
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { uploadImage, updateImageText } from "./images.ts";
-import { db, storage } from "./firebase.ts";
-import { orderedGalleryItems, type GalleryRecord } from "./galleryRecords.ts";
+import { db, functions, storage } from "./firebase.ts";
+import { orderedGalleryItems, storageUrl, type GalleryRecord } from "./galleryRecords.ts";
+import { httpsCallable } from "firebase/functions";
+import type { EmbedRef } from "./embed.ts";
 import {
   decodeImage,
   toWebpBlob,
@@ -193,6 +195,16 @@ export interface GalleryItem {
    * the record, same as every other word here.
    */
   tags?: string[];
+  /**
+   * A VIDEO WORK (2026-09-23, documentation/20260923-motion-works-design.md):
+   * the YouTube or Vimeo video it plays. `url` above is then the poster. Set
+   * by the server (resolveEmbed), never edited here — Save does not write it.
+   */
+  embed?: EmbedRef;
+  /** Whose poster `url` is: the platform's, or one the member uploaded ("Replace thumbnail"). */
+  posterSource?: "auto" | "member";
+  /** When the work was added (ISO). Build only — the VideoObject's uploadDate. */
+  addedAt?: string;
 }
 
 /**
@@ -447,4 +459,84 @@ export async function saveGalleryRecords(items: readonly GalleryItem[]): Promise
     }
   });
   return failures;
+}
+
+// ── VIDEO LINKS (2026-09-23, release 1 of documentation/20260923-motion-works-design.md) ──
+//
+// A YouTube or Vimeo link is a work like any picture, and it arrives the way a
+// finished upload does: as a live record plus the GalleryItem to append. The
+// server does all of it (resolveEmbed in functions/src/embeds.ts) — it decides
+// what the link means, fetches the poster and stores it — so there is nothing
+// to prepare in the browser and no queue lane to wait in.
+
+/** What resolveEmbed / restoreAutoPoster hand back. Mirrors EmbedWorkResult in functions/src/embeds.ts. */
+interface EmbedWork {
+  imageId: string;
+  storagePath: string;
+  width: number;
+  height: number;
+  color?: string;
+  caption?: string;
+  embed: EmbedRef;
+  posterSource: "auto" | "member";
+}
+
+/**
+ * Why a video link did not become a work, one sentence each
+ * (profile.embed.err.*). The first six are the server's own reasons; the
+ * rest are the same transport failures an upload can meet.
+ */
+export type EmbedErrorCode =
+  | "verify" | "notVideoLink" | "videoNotFound" | "notEmbeddable" | "providerUnavailable" | "noThumbnail"
+  | "full" | "denied" | "network" | "unknown";
+
+const EMBED_REASONS = new Set<EmbedErrorCode>(["verify", "notVideoLink", "videoNotFound", "notEmbeddable", "providerUnavailable", "noThumbnail"]);
+
+export function embedErrorCode(error: unknown): EmbedErrorCode {
+  const details = typeof error === "object" && error !== null ? Reflect.get(error, "details") : undefined;
+  const reason = typeof details === "object" && details !== null ? String(Reflect.get(details, "reason") ?? "") : "";
+  if (EMBED_REASONS.has(reason as EmbedErrorCode)) return reason as EmbedErrorCode;
+  const code = typeof error === "object" && error !== null ? String(Reflect.get(error, "code") ?? "") : "";
+  // The callable SDK prefixes its codes ("functions/resource-exhausted").
+  switch (code.replace(/^functions\//, "")) {
+    case "resource-exhausted":
+      return "full";
+    case "permission-denied":
+    case "unauthenticated":
+      return "denied";
+    case "unavailable":
+    case "deadline-exceeded":
+    case "internal":
+      return "network";
+    default:
+      return "unknown";
+  }
+}
+
+function embedItem(work: EmbedWork): GalleryItem {
+  return {
+    imageId: work.imageId,
+    url: storageUrl(storageBucket(), work.storagePath),
+    caption: work.caption ?? "",
+    width: work.width,
+    height: work.height,
+    ...(work.color ? { color: work.color } : {}),
+    embed: work.embed,
+    posterSource: work.posterSource,
+  };
+}
+
+/** "Add a video link": the server makes the work; this returns it ready to append. */
+export async function addVideoLink(url: string): Promise<GalleryItem> {
+  const result = await httpsCallable<{ url: string }, EmbedWork>(functions, "resolveEmbed")({ url });
+  return embedItem(result.data);
+}
+
+/**
+ * "Use automatic thumbnail": a NEW record with the platform's poster, for the
+ * editor to swap in exactly as it swaps a replaced picture (onGalleryReplaced).
+ */
+export async function restoreAutoThumbnail(imageId: string): Promise<GalleryItem> {
+  const result = await httpsCallable<{ imageId: string }, EmbedWork>(functions, "restoreAutoPoster")({ imageId });
+  return embedItem(result.data);
 }

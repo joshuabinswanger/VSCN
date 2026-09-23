@@ -316,6 +316,33 @@ const t = useTranslations(lang);
         />
         <span class="gallery-drop-hint" aria-hidden="true">{t("profile.gallery.drop")}</span>
       </div>
+      {
+        /* A VIDEO LINK IS A WORK TOO (2026-09-23, release 1 of
+          documentation/20260923-motion-works-design.md). Outside the drop
+          zone, because nothing is dropped here: the member pastes a link, the
+          server turns it into a work with the platform's thumbnail as its
+          poster, and the row lands in the gallery above like a finished
+          upload. A form so Enter submits it; its own status line so a refused
+          link is answered next to the field that was refused. */
+      }
+      <form id="gallery-video" class="gallery-video" novalidate>
+        <label class="gallery-video-label" for="gallery-video-url">{t("profile.embed.label")}</label>
+        <div class="gallery-video-row">
+          <input
+            id="gallery-video-url"
+            class="input"
+            type="url"
+            inputmode="url"
+            autocomplete="off"
+            spellcheck="false"
+            maxlength="500"
+            placeholder={t("profile.embed.ph")}
+          />
+          <button id="gallery-video-add" type="submit" class="btn-outline">{t("profile.embed.add")}</button>
+        </div>
+        <p id="gallery-video-status" class="field-note" role="status" hidden></p>
+        <p class="field-note">{t("profile.embed.note")}</p>
+      </form>
       <p id="gallery-status" class="field-note" style="display:none;"></p>
       {
         /* Two notes, one shown. The verify banner used to carry "until then
@@ -353,6 +380,9 @@ const t = useTranslations(lang);
           <div class="gallery-thumb">
             <img alt="" loading="lazy" data-gallery-img />
             <span class="gallery-cover" data-gallery-cover hidden></span>
+            <span class="gallery-video-badge" data-gallery-video-badge hidden
+              ><span class="vscn-play" aria-hidden="true"></span><span data-gallery-video-name></span></span
+            >
             <button type="button" class="gallery-thumb-remove" data-gallery-remove>✕</button>
           </div>
           <div class="gallery-fields">
@@ -510,6 +540,7 @@ const t = useTranslations(lang);
               <button type="button" class="gallery-tool" data-gallery-move="up">↑</button>
               <button type="button" class="gallery-tool" data-gallery-move="down">↓</button>
               <button type="button" class="gallery-tool" data-gallery-replace></button>
+              <button type="button" class="gallery-tool" data-gallery-auto-thumb hidden></button>
             </div>
           </div>
         </div>
@@ -994,6 +1025,36 @@ const t = useTranslations(lang);
     width: fit-content;
   }
 
+  /* The video link field (2026-09-23): a label, the field and its button on
+     one line, then its status and its note — the gallery's other controls'
+     spacing, one step below the drop zone. */
+  .gallery-video {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-top: 0.9rem;
+  }
+  .gallery-video-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .gallery-video-row {
+    display: flex;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+  .gallery-video-row .input {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .gallery-video-row .btn-outline {
+    flex: none;
+  }
+  .gallery-video-row .btn-outline:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
 
   .input-prefix-wrap {
     display: flex;
@@ -1412,6 +1473,31 @@ const t = useTranslations(lang);
 
   /* Names what the first image already IS. Not a control — pressing it would
      imply the others could be chosen, and they are chosen by being moved. */
+  /* Which rows are videos: the play mark and the platform, top left, in the
+     cover label's dress so the two read as one family of labels. */
+  .gallery-video-badge {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px 2px 2px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    font-size: 0.65rem;
+    line-height: 1.4;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .gallery-video-badge .vscn-play {
+    --play-size: 1.1rem;
+    background: transparent;
+  }
+  .gallery-video-badge[hidden] {
+    display: none;
+  }
   .gallery-cover {
     position: absolute;
     bottom: 4px;
@@ -1894,7 +1980,8 @@ const t = useTranslations(lang);
     type User,
   } from "firebase/auth";
   import { returnTo } from "../lib/authEmail.ts";
-  import { requireAuth } from "../lib/auth.ts";
+  import { hasVerifiedClaim, requireAuth } from "../lib/auth.ts";
+  import { providerName } from "../lib/embed.ts";
   import { getUser, getPublicProfileActive, setProfileActive } from "../lib/firestore.ts";
   import { markImageForDeletion } from "../lib/images.ts";
   import {
@@ -1916,6 +2003,9 @@ const t = useTranslations(lang);
     saveGalleryRecords,
     loadGallery,
     galleryIds,
+    addVideoLink,
+    restoreAutoThumbnail,
+    embedErrorCode,
     type GalleryItem,
   } from "../lib/gallery.ts";
   import {
@@ -2115,6 +2205,16 @@ const t = useTranslations(lang);
     // selectors, so a createElement() row matches none of the scoped rules.
     const galleryItemTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="item"]');
     const galleryTaskTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="task"]');
+    // The video link field (2026-09-23) — see its markup, and the handlers
+    // beside the replace picker's below.
+    const galleryVideoForm = document.getElementById("gallery-video") as HTMLFormElement;
+    const galleryVideoUrl = document.getElementById("gallery-video-url") as HTMLInputElement;
+    const galleryVideoAdd = document.getElementById("gallery-video-add") as HTMLButtonElement;
+    const galleryVideoStatus = document.getElementById("gallery-video-status")!;
+    /** Links being resolved right now. Each holds a gallery place until it lands or fails. */
+    let videoPending = 0;
+    /** Works whose automatic thumbnail is on its way back. */
+    const restoringThumbs = new Set<string>();
 
     function setGalleryStatus(text: string) {
       galleryStatus.textContent = text;
@@ -2247,7 +2347,7 @@ const t = useTranslations(lang);
       // The member's OWN ceiling, not the absolute one: an unverified account
       // holds a single image, and a queue that let it pick eight would collect
       // seven permission errors on the member's behalf.
-      capacity: () => galleryLimit(auth.currentUser) - gallery.length,
+      capacity: () => galleryLimit(auth.currentUser) - gallery.length - videoPending,
       onChange: renderQueue,
       onUploaded: (item) => void onGalleryUploaded(item),
       onReplaced: (item, replaced) => void onGalleryReplaced(item, replaced),
@@ -2464,6 +2564,28 @@ const t = useTranslations(lang);
               galleryReplaceInput.click();
             });
 
+            // A VIDEO WORK (2026-09-23). The picture in this row is its
+            // poster, so "Replace image" means replacing THAT — same queue,
+            // same mechanics, and the server carries the video over to the
+            // new record. Once the poster is the member's own, the
+            // platform's can come back without asking YouTube again.
+            const badge = row.querySelector<HTMLElement>("[data-gallery-video-badge]");
+            const badgeName = row.querySelector<HTMLElement>("[data-gallery-video-name]");
+            const autoThumb = row.querySelector<HTMLButtonElement>("[data-gallery-auto-thumb]");
+            if (item.embed) {
+              replace.textContent = s["profile.embed.replaceThumb"];
+              if (badge && badgeName) {
+                badge.hidden = false;
+                badgeName.textContent = s["profile.embed.badge"].replace("{provider}", providerName(item.embed.provider));
+              }
+              if (autoThumb && item.posterSource === "member") {
+                autoThumb.hidden = false;
+                autoThumb.textContent = s["profile.embed.autoThumb"];
+                autoThumb.dataset.imageId = item.imageId;
+                autoThumb.addEventListener("click", () => void restoreGalleryThumbnail(item.imageId, autoThumb));
+              }
+            }
+
             // Read back by the focus hint below; the rows are otherwise
             // anonymous once they are in the DOM.
             row.dataset.galleryIndex = String(index);
@@ -2529,15 +2651,19 @@ const t = useTranslations(lang);
 
     function updateGalleryControls() {
       const limit = galleryLimit(auth.currentUser);
-      const full = gallery.length + galleryQueue.pendingCount() >= limit;
+      const full = gallery.length + galleryQueue.pendingCount() + videoPending >= limit;
       galleryAdd.setAttribute("aria-disabled", String(full));
       galleryInput.disabled = full;
       // Here rather than in renderGallery: this runs on every queue change
       // too, and a row's Replace must come back when its upload ends without
       // rebuilding the rows (and the caret) under the member.
-      for (const button of galleryEditor.querySelectorAll<HTMLButtonElement>("[data-gallery-replace]")) {
-        button.disabled = galleryQueue.replacing(button.dataset.imageId ?? "");
+      for (const button of galleryEditor.querySelectorAll<HTMLButtonElement>("[data-gallery-replace], [data-gallery-auto-thumb]")) {
+        const id = button.dataset.imageId ?? "";
+        button.disabled = galleryQueue.replacing(id) || restoringThumbs.has(id);
       }
+      // The video field shares the cap: a link is a work.
+      galleryVideoAdd.disabled = full || videoPending > 0;
+      galleryVideoUrl.disabled = full;
 
       const capNote = full
         ? limit < MAX_GALLERY_IMAGES
@@ -2762,6 +2888,9 @@ const t = useTranslations(lang);
         width: item.width,
         height: item.height,
         color: item.color,
+        // A video work's poster: an upload is the member's own, a restore is
+        // the platform's. The embed itself rides on the spread above.
+        ...(gallery[index].embed ? { posterSource: item.posterSource ?? "member" } : {}),
       };
       renderGallery();
       syncPreview();
@@ -2822,6 +2951,61 @@ const t = useTranslations(lang);
         if (limit < MAX_GALLERY_IMAGES) problems.push(s["profile.gallery.verifyForMore"]);
       }
       setGalleryStatus(problems.join(" · "));
+    }
+
+    // ── Video links (2026-09-23) ──────────────────────────
+
+    function setVideoStatus(text: string) {
+      galleryVideoStatus.textContent = text;
+      galleryVideoStatus.hidden = !text;
+    }
+
+    galleryVideoForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const url = galleryVideoUrl.value.trim();
+      if (!url || videoPending > 0) return;
+      if (gallery.length + galleryQueue.pendingCount() >= galleryLimit(auth.currentUser)) {
+        setVideoStatus(s["profile.embed.err.full"]);
+        return;
+      }
+      // Asked of the TOKEN, like every upload (see uploadImage): the server
+      // reads the claim, and a just-verified account's cached record says
+      // true before its token does.
+      if (!auth.currentUser || !(await hasVerifiedClaim(auth.currentUser))) {
+        setVideoStatus(s["profile.embed.err.verify"]);
+        return;
+      }
+      videoPending += 1;
+      setVideoStatus("");
+      galleryVideoAdd.textContent = s["profile.embed.adding"];
+      updateGalleryControls();
+      try {
+        const item = await addVideoLink(url);
+        galleryVideoUrl.value = "";
+        await onGalleryUploaded(item);
+      } catch (error) {
+        setVideoStatus(s[`profile.embed.err.${embedErrorCode(error)}`]);
+      } finally {
+        videoPending -= 1;
+        galleryVideoAdd.textContent = s["profile.embed.add"];
+        updateGalleryControls();
+      }
+    });
+
+    /** "Use automatic thumbnail": the platform's poster comes back as a new record, swapped in like a replacement. */
+    async function restoreGalleryThumbnail(imageId: string, button: HTMLButtonElement) {
+      if (restoringThumbs.has(imageId)) return;
+      restoringThumbs.add(imageId);
+      button.disabled = true;
+      try {
+        const item = await restoreAutoThumbnail(imageId);
+        await onGalleryReplaced(item, imageId);
+      } catch (error) {
+        setGalleryStatus(s[`profile.embed.err.${embedErrorCode(error)}`]);
+      } finally {
+        restoringThumbs.delete(imageId);
+        updateGalleryControls();
+      }
     }
 
     galleryReplaceInput.addEventListener("change", () => {
@@ -2964,6 +3148,7 @@ const t = useTranslations(lang);
             link: workLink(g.link),
             siteLink: workLink(g.siteLink),
             tags: g.tags ?? [],
+            ...(g.embed ? { embed: g.embed } : {}),
           };
         }),
       };
