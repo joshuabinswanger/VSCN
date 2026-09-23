@@ -375,6 +375,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.dismiss": "Dismiss",
     "profile.gallery.queued": "Waiting…",
     "profile.gallery.preparing": "Preparing…",
+    "profile.gallery.replace": "Replace image",
+    "profile.gallery.replacing": "New image for this work: {name}",
     "profile.gallery.overflow": "Only {n} images fit — {m} not added.",
     // The label, which is also the field's accessible name — so it stays a
     // label and the EXAMPLE lives in .ph beside it, exactly as the link field
@@ -870,6 +872,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.dismiss": "Verwerfen",
     "profile.gallery.queued": "Wartet…",
     "profile.gallery.preparing": "Wird vorbereitet…",
+    "profile.gallery.replace": "Bild ersetzen",
+    "profile.gallery.replacing": "Neues Bild für dieses Werk: {name}",
     "profile.gallery.overflow": "Es passen nur {n} Bilder — {m} nicht hinzugefügt.",
     "profile.gallery.caption": "Bildtitel",
     "profile.gallery.caption.ph": "Beispiel: Zebrafisch-Netzhaut im Querschnitt, konfokal",

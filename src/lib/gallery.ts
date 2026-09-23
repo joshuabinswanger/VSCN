@@ -387,6 +387,8 @@ export interface UploadOptions {
    * so a per-image Cancel button in the queue has something to call.
    */
   onCancellable?: (cancel: () => void) => void;
+  /** The work whose picture this upload replaces — see uploadImage in images.ts. */
+  replaces?: string;
 }
 
 /** Uploads through the record-first pipeline and returns the array item to append. */
@@ -402,6 +404,7 @@ export async function uploadGalleryImage(
     { width: image.width, height: image.height, color: image.color },
     options.onProgress,
     options.onCancellable,
+    options.replaces,
   );
   return { imageId, url, caption: "", width: image.width, height: image.height, color: image.color };
 }

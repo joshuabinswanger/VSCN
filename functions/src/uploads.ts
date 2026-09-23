@@ -7,6 +7,26 @@ const MAX_STORED_OBJECTS = 20;
 const MAX_AUTHORIZATIONS_PER_HOUR = 40;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
+/**
+ * THE WORDS A WORK KEEPS WHEN ITS PICTURE IS REPLACED (2026-09-23, member
+ * feedback: replacing an image meant deleting the whole work and typing it
+ * all again). Everything a member writes about a picture lives on its record
+ * (updateImageText in src/lib/images.ts), so a replacement is a NEW record —
+ * a new id, because the id is the filename and a verified member's object is
+ * cached `immutable` for a year — that starts life carrying these.
+ */
+const WORK_TEXT_FIELDS = ["caption", "captionDe", "description", "descriptionDe", "link", "siteLink", "tags"] as const;
+
+/** The record a replacement stands in for. Gallery only: the avatar has its own replace path. */
+function replacementId(value: unknown, kind: string, uid: string): string | null {
+  if (value === undefined || value === null) return null;
+  if (kind !== "gallery" || typeof value !== "string"
+    || (value !== `${uid}-gallery` && !UUID.test(value))) {
+    throw new HttpsError("invalid-argument", "Invalid image to replace.");
+  }
+  return value;
+}
+
 function imageRequest(req: { data: any; auth?: { token: Record<string, unknown> } }, uid: string) {
   const { imageId, kind, width, height, color } = req.data ?? {};
   if (typeof imageId !== "string" || (imageId !== `${uid}-avatar` && imageId !== `${uid}-gallery` && !UUID.test(imageId))
@@ -29,13 +49,27 @@ function imageRequest(req: { data: any; auth?: { token: Record<string, unknown> 
 export const authorizeImageUpload = onCall({ maxInstances: 3 }, async (req) => {
   const uid = requireUser(req);
   const image = imageRequest(req, uid);
+  const replaces = replacementId(req.data?.replaces, image.kind, uid);
   const [files] = await getBucket().getFiles({ prefix: `users/${uid}/`, maxResults: MAX_STORED_OBJECTS + 1, autoPaginate: false });
   await db.runTransaction(async (tx) => {
     if ((await tx.get(db.doc(`deletions/${uid}`))).exists) throw new HttpsError("failed-precondition", "Account deletion is pending or completed.");
     const lock = db.doc(`uploadLimits/${uid}`);
     const imageRef = db.doc(`images/${image.imageId}`);
-    const [state, existing] = await Promise.all([tx.get(lock), tx.get(imageRef)]);
+    const [state, existing, replaced] = await Promise.all([
+      tx.get(lock), tx.get(imageRef), replaces ? tx.get(db.doc(`images/${replaces}`)) : null,
+    ]);
     const previous = existing.data();
+    // Only a work this member can see in their own gallery. `live` rules out
+    // replacing into a record the sweeper is about to take away.
+    const work = replaced?.data();
+    if (replaces && (!work || work.ownerUid !== uid || work.kind !== "gallery" || work.status !== "live")) {
+      throw new HttpsError("permission-denied", "Only a live gallery image of yours can be replaced.");
+    }
+    // The unverified slot replaces IN PLACE (same id, same record), so its
+    // words never move. Any other replacement is a fresh record that inherits them.
+    const inherited = work && replaces !== image.imageId
+      ? Object.fromEntries(WORK_TEXT_FIELDS.filter((key) => work[key] !== undefined).map((key) => [key, work[key]]))
+      : {};
     if (previous && (previous.ownerUid !== uid || previous.kind !== image.kind || previous.storagePath !== image.storagePath
       || previous.origin !== "member" || !image.slot)) {
       throw new HttpsError("permission-denied", "Upload record cannot be replaced.");
@@ -61,11 +95,15 @@ export const authorizeImageUpload = onCall({ maxInstances: 3 }, async (req) => {
         ownerUid: uid, kind: image.kind, storagePath: image.storagePath,
         width: image.width, height: image.height, ...(image.color ? { color: image.color } : {}),
         origin: "member", status: "uploading", createdAt: Timestamp.fromMillis(now), updatedAt: Timestamp.fromMillis(now),
+        ...inherited,
       });
     }
     tx.set(db.doc(`uploadPermits/${image.imageId}.webp`), {
       imageId: image.imageId, ownerUid: uid, kind: image.kind, storagePath: image.storagePath, uploadPath: image.uploadPath,
       expiresAt: Timestamp.fromMillis(now + 30 * 60_000),
+      // Carried to completeImageUpload, which settles the moderation record
+      // only once the new bytes are actually live.
+      ...(replaces ? { replaces } : {}),
     });
   });
   return { ok: true };
@@ -94,6 +132,33 @@ export function webpDimensions(header: Buffer, totalSize: number): { width: numb
     height = 1 + (header[27] | (header[28] << 8) | (header[29] << 16));
   } else return null;
   return width > 0 && width <= 10000 && height > 0 && height <= 10000 ? { width, height } : null;
+}
+
+/**
+ * WHAT A REPLACED PICTURE KEEPS OF ITS REVIEW (2026-09-23, Josh: "reset
+ * ratings, keep hidden"). Moderation is post-hoc — uploads go live and admins
+ * rank or hide them afterwards — so the danger in a replacement is a grade or
+ * a hide judged on bytes that are no longer there:
+ *
+ * - RATINGS RESET. Every admin's rating was of the old picture, so the new one
+ *   arrives with none and lands back in each admin's queue
+ *   (adminListRatingQueue lists what the caller has not rated).
+ * - HIDDEN STAYS. Otherwise replacing would be the way round a hide.
+ *
+ * The old id's own record is left for the sweep to retire with the old image.
+ */
+function settleReplacedModeration(
+  tx: FirebaseFirestore.Transaction, imageId: string, replaces: string, old: FirebaseFirestore.DocumentData,
+): void {
+  if (replaces === imageId) {
+    tx.update(db.doc(`imageModeration/${imageId}`), {
+      ratings: FieldValue.delete(), score: FieldValue.delete(), scoredAt: FieldValue.delete(),
+    });
+  } else if (old.hidden === true) {
+    tx.set(db.doc(`imageModeration/${imageId}`), {
+      hidden: true, hiddenBy: old.hiddenBy ?? null, hiddenAt: old.hiddenAt ?? null,
+    });
+  }
 }
 
 /** Only the server can publish a record after the uploaded object matches its declared dimensions. */
@@ -153,7 +218,10 @@ export const completeImageUpload = onCall({ maxInstances: 3 }, async (req) => {
   try {
     await db.runTransaction(async (tx) => {
       if ((await tx.get(db.doc(`deletions/${uid}`))).exists) throw new HttpsError("failed-precondition", "Account deletion is pending or completed.");
-      const [currentImage, currentPermit] = await Promise.all([tx.get(imageRef), tx.get(permitRef)]);
+      const replaces = typeof allocation.replaces === "string" ? allocation.replaces : null;
+      const [currentImage, currentPermit, oldModeration] = await Promise.all([
+        tx.get(imageRef), tx.get(permitRef), replaces ? tx.get(db.doc(`imageModeration/${replaces}`)) : null,
+      ]);
       if (currentImage.data()?.status !== "uploading" || currentPermit.data()?.ownerUid !== uid
         || currentPermit.data()?.storagePath !== data.storagePath
         || currentPermit.data()?.uploadPath !== allocation.uploadPath
@@ -162,6 +230,7 @@ export const completeImageUpload = onCall({ maxInstances: 3 }, async (req) => {
       }
       tx.update(imageRef, { status: "live", updatedAt: Timestamp.now() });
       tx.delete(permitRef);
+      if (oldModeration?.exists) settleReplacedModeration(tx, imageId, replaces!, oldModeration.data()!);
     });
   } catch (error) {
     // Remove only the generation this call published; preserve any newer upload.
