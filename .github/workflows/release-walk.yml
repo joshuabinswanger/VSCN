@@ -9,6 +9,10 @@ name: Release walk
 # the prod web app so the App Check SDK skips Turnstile — a challenge built to
 # fail exactly this browser. Enforcement stays on; the rules still apply.
 on:
+  # TEMPORARY, remove before merging: the only way to run this on a branch,
+  # because workflow_dispatch is refused until the file exists on main.
+  push:
+    branches: [chore/release-walk]
   workflow_call:
     inputs:
       project:
@@ -39,7 +43,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - name: Walk the site as the verification member
-        run: npm run walk:release -- --project "${{ inputs.project }}" --release "${{ inputs.release || github.sha }}"
+        run: npm run walk:release -- --project "${{ inputs.project || 'prod' }}" --release "${{ inputs.release || github.sha }}"
         env:
           WALK_MEMBER_EMAIL: ${{ secrets.WALK_MEMBER_EMAIL }}
           WALK_MEMBER_PASSWORD: ${{ secrets.WALK_MEMBER_PASSWORD }}
