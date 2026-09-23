@@ -178,6 +178,24 @@ import "../styles/global.css";
 <script>
   import { auth } from "../lib/firebase.ts";
   import { onAuthStateChanged } from "firebase/auth";
+  import { savePreferredLanguage } from "../lib/firestore.ts";
+  import { rememberSessionChoice, type SiteLanguage } from "../lib/siteLanguage.ts";
+
+  // The EN / DE switch is an explicit choice, and nothing may route against it:
+  // it wins for this session, and a signed-in member's stored language follows
+  // it — the same setting /profile labels "Your language". Registered once, at
+  // module level: the toggle is transition:persist, and so is this script.
+  document.addEventListener("click", (event) => {
+    const toggle = (event.target as Element | null)?.closest?.("#nav-lang");
+    if (!toggle) return;
+    const chosen: SiteLanguage = document.documentElement.lang === "de" ? "en" : "de";
+    rememberSessionChoice(chosen);
+    const user = auth.currentUser;
+    if (!user) return;
+    savePreferredLanguage(user.uid, chosen).catch((err) => {
+      console.warn("[nav] Language preference not saved:", err);
+    });
+  });
 
   type Lang = "en" | "de";
 

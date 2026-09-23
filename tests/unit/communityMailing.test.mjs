@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  DEFAULT_CORRESPONDENCE_LANGUAGE,
+  DEFAULT_PREFERRED_LANGUAGE,
   toCommunityMailRecipient,
 } from "../../scripts/lib/community-mailing.mjs";
 
@@ -20,19 +20,19 @@ test("community mailing export uses the stored preference and a German legacy fa
     displayName: "English member",
     email: " en@example.test ",
     receiveCommunityEmails: true,
-    correspondenceLanguage: "en",
+    preferredLanguage: "en",
   }), {
     uid: "en-member",
     displayName: "English member",
     email: "en@example.test",
-    correspondenceLanguage: "en",
+    preferredLanguage: "en",
   });
   assert.equal(toCommunityMailRecipient("legacy-language", {
     email: "legacy@example.test", receiveCommunityEmails: true,
-  }).correspondenceLanguage, DEFAULT_CORRESPONDENCE_LANGUAGE);
+  }).preferredLanguage, DEFAULT_PREFERRED_LANGUAGE);
   assert.equal(toCommunityMailRecipient("invalid-language", {
-    email: "legacy@example.test", receiveCommunityEmails: true, correspondenceLanguage: "fr",
-  }).correspondenceLanguage, "de");
+    email: "legacy@example.test", receiveCommunityEmails: true, preferredLanguage: "fr",
+  }).preferredLanguage, "de");
 });
 
 test("community mailing export refuses opted-in records without an email", () => {

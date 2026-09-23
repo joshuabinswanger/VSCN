@@ -1,5 +1,5 @@
 /** The mail export is fail-closed: only a stored boolean true is consent. */
-export const DEFAULT_CORRESPONDENCE_LANGUAGE = "de";
+export const DEFAULT_PREFERRED_LANGUAGE = "de";
 
 /**
  * Converts a private users/{uid} record into one safe community-mail row.
@@ -13,9 +13,9 @@ export function toCommunityMailRecipient(uid, data = {}) {
     uid,
     displayName: typeof data.displayName === "string" ? data.displayName : "",
     email: data.email.trim(),
-    correspondenceLanguage:
-      data.correspondenceLanguage === "en" || data.correspondenceLanguage === "de"
-        ? data.correspondenceLanguage
-        : DEFAULT_CORRESPONDENCE_LANGUAGE,
+    preferredLanguage:
+      data.preferredLanguage === "en" || data.preferredLanguage === "de"
+        ? data.preferredLanguage
+        : DEFAULT_PREFERRED_LANGUAGE,
   };
 }

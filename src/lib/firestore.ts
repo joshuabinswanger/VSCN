@@ -8,6 +8,7 @@ import {
   getDoc,
   getDocs,
   setDoc,
+  updateDoc,
   orderBy,
   query,
   serverTimestamp,
@@ -19,8 +20,12 @@ export const LANGUAGES = ["de", "en", "fr", "it"] as const;
 
 export type LanguageCode = (typeof LANGUAGES)[number];
 
-/** Language for member correspondence; unrelated to the public profile's working languages. */
-export type CorrespondenceLanguage = "de" | "en";
+/**
+ * The member's own language: the site locale they are routed to on /profile and
+ * after sign-in, and the language VSCN writes to them in. Unrelated to the public
+ * profile's working languages. See src/lib/siteLanguage.ts.
+ */
+export type PreferredLanguage = "de" | "en";
 
 // Keep in sync with validMemberType() in firestore.rules.
 export const MEMBER_TYPES = ["creator", "scientist", "both", "organization"] as const;
@@ -69,8 +74,11 @@ export interface UserDoc {
   email: string;
   /** Private, opt-in consent for community (non-essential) mail. Absent means no choice yet. */
   receiveCommunityEmails?: boolean;
-  /** Private preference for community correspondence. Absent and invalid legacy values fall back to German in exports. */
-  correspondenceLanguage?: CorrespondenceLanguage;
+  /**
+   * Private. Site language AND email language — one setting, see PreferredLanguage.
+   * Absent means never chosen: no redirect happens, and mail exports fall back to German.
+   */
+  preferredLanguage?: PreferredLanguage;
   wantsToContribute?: boolean;
   onboardingComplete?: boolean;
   /**
@@ -90,7 +98,7 @@ export type PublicProfileDoc = Omit<
   "phone"
   | "email"
   | "receiveCommunityEmails"
-  | "correspondenceLanguage"
+  | "preferredLanguage"
   | "status"
   | "deletionRequestedAt"
   | "purgeAfter"
@@ -165,6 +173,16 @@ export async function updateUser(uid: string, data: Partial<UserDoc>): Promise<v
     } as Partial<UserDoc> & LegacyFieldCleanup,
     { merge: true }
   );
+}
+
+/**
+ * The EN / DE switch, when a member is signed in: the one setting follows the
+ * click (see src/lib/siteLanguage.ts). updateDoc rather than updateUser's merge,
+ * so a member with no users doc yet — mid-signup — gets nothing written instead
+ * of a stub record. Private field only, so publicProfiles is not touched.
+ */
+export async function savePreferredLanguage(uid: string, lang: PreferredLanguage): Promise<void> {
+  await updateDoc(doc(db, "users", uid), { preferredLanguage: lang });
 }
 
 export async function publishPublicProfile(uid: string, data: Partial<UserDoc>): Promise<void> {

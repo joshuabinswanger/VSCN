@@ -1,6 +1,6 @@
 // Read-only, consent-aware export for a human-operated community mailing.
 // It sends no email. `receiveCommunityEmails` must be exactly true; a missing
-// legacy value is unknown rather than consent. Correspondence defaults to de.
+// legacy value is unknown rather than consent. Language defaults to de.
 //
 //   node scripts/export-community-mailing.mjs -P dev
 //   node scripts/export-community-mailing.mjs -P prod

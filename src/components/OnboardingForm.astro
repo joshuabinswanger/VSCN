@@ -166,12 +166,12 @@ const prefix = lang === "de" ? "/de" : "";
         <p class="field-note">{t("profile.wantsToContribute.note")}</p>
       </div>
       <div class="field">
-        <label class="label" for="ob-correspondence-language">{t("profile.label.correspondenceLanguage")}</label>
-        <select id="ob-correspondence-language" class="input">
-          <option value="de">{t("profile.lang.de")}</option>
-          <option value="en">{t("profile.lang.en")}</option>
+        <label class="label" for="ob-preferred-language">{t("profile.label.preferredLanguage")}</label>
+        <select id="ob-preferred-language" class="input">
+          <option value="de" selected={lang === "de"}>{t("profile.lang.de")}</option>
+          <option value="en" selected={lang !== "de"}>{t("profile.lang.en")}</option>
         </select>
-        <p class="field-note">{t("profile.note.correspondenceLanguage")}</p>
+        <p class="field-note">{t("profile.note.preferredLanguage")}</p>
       </div>
       <div class="field">
         <label class="checkbox-label" for="ob-receive-community-emails">
@@ -1278,7 +1278,7 @@ const prefix = lang === "de" ? "/de" : "";
             platformRequest: getInputValue("ob-platform-request"),
             openTo: openToSelector?.value ?? [],
             wantsToContribute: (document.getElementById("ob-wants-to-contribute") as HTMLInputElement | null)?.checked ?? false,
-            correspondenceLanguage: (document.getElementById("ob-correspondence-language") as HTMLSelectElement | null)?.value === "en" ? "en" : "de",
+            preferredLanguage: (document.getElementById("ob-preferred-language") as HTMLSelectElement | null)?.value === "en" ? "en" : "de",
             receiveCommunityEmails: (document.getElementById("ob-receive-community-emails") as HTMLInputElement | null)?.checked ?? false,
             tags: tagSelector?.value ?? [],
             tagInput: tagSelector?.inputValue ?? "",
@@ -1309,7 +1309,7 @@ const prefix = lang === "de" ? "/de" : "";
       platformRequest?: string;
       openTo?: string[];
       wantsToContribute?: boolean;
-      correspondenceLanguage?: "de" | "en";
+      preferredLanguage?: "de" | "en";
       receiveCommunityEmails?: boolean;
       tags?: string[];
       tagInput?: string;
@@ -1810,7 +1810,7 @@ const prefix = lang === "de" ? "/de" : "";
         await updateUser(user.uid, {
           openTo: openToSelector?.value ?? [],
           wantsToContribute: wantsToContributeEl?.checked ?? false,
-          correspondenceLanguage: (document.getElementById("ob-correspondence-language") as HTMLSelectElement | null)?.value === "en" ? "en" : "de",
+          preferredLanguage: (document.getElementById("ob-preferred-language") as HTMLSelectElement | null)?.value === "en" ? "en" : "de",
           receiveCommunityEmails: (document.getElementById("ob-receive-community-emails") as HTMLInputElement | null)?.checked ?? false,
         });
         const platformRequest = getInputValue("ob-platform-request").trim();
@@ -2101,8 +2101,9 @@ const prefix = lang === "de" ? "/de" : "";
 
         const wantsToContributeEl = document.getElementById("ob-wants-to-contribute") as HTMLInputElement | null;
         if (wantsToContributeEl) wantsToContributeEl.checked = data.wantsToContribute ?? false;
-        const correspondenceLanguageEl = document.getElementById("ob-correspondence-language") as HTMLSelectElement | null;
-        if (correspondenceLanguageEl) correspondenceLanguageEl.value = data.correspondenceLanguage === "en" ? "en" : "de";
+        const preferredLanguageEl = document.getElementById("ob-preferred-language") as HTMLSelectElement | null;
+        // Never chosen: keep the locale they signed up in, not a blanket German.
+        if (preferredLanguageEl && (data.preferredLanguage === "en" || data.preferredLanguage === "de")) preferredLanguageEl.value = data.preferredLanguage;
         const receiveCommunityEmailsEl = document.getElementById("ob-receive-community-emails") as HTMLInputElement | null;
         if (receiveCommunityEmailsEl) receiveCommunityEmailsEl.checked = data.receiveCommunityEmails === true;
 
@@ -2162,8 +2163,8 @@ const prefix = lang === "de" ? "/de" : "";
         if (wantsToContributeElRestore && restoreState.wantsToContribute != null) {
           wantsToContributeElRestore.checked = restoreState.wantsToContribute;
         }
-        const correspondenceLanguageElRestore = document.getElementById("ob-correspondence-language") as HTMLSelectElement | null;
-        if (correspondenceLanguageElRestore && restoreState.correspondenceLanguage) correspondenceLanguageElRestore.value = restoreState.correspondenceLanguage;
+        const preferredLanguageElRestore = document.getElementById("ob-preferred-language") as HTMLSelectElement | null;
+        if (preferredLanguageElRestore && restoreState.preferredLanguage) preferredLanguageElRestore.value = restoreState.preferredLanguage;
         const receiveCommunityEmailsElRestore = document.getElementById("ob-receive-community-emails") as HTMLInputElement | null;
         if (receiveCommunityEmailsElRestore && restoreState.receiveCommunityEmails != null) receiveCommunityEmailsElRestore.checked = restoreState.receiveCommunityEmails;
         if (tagSelector && Array.isArray(restoreState.tags)) {

@@ -41,9 +41,9 @@ const rows = snap.docs
           : data.receiveCommunityEmails === false
             ? "opted-out"
             : "unknown",
-      correspondenceLanguage:
-        data.correspondenceLanguage === "en" || data.correspondenceLanguage === "de"
-          ? data.correspondenceLanguage
+      preferredLanguage:
+        data.preferredLanguage === "en" || data.preferredLanguage === "de"
+          ? data.preferredLanguage
           : "de",
     };
   });
