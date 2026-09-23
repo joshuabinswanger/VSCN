@@ -189,6 +189,9 @@ export function renderProfilePreview(
         // block in both places.
         img.style.backgroundColor = w.color ?? "var(--color-border)";
 
+        // A video work shows its poster with the play mark, as the page does.
+        show(workPart("play"), Boolean(w.embed));
+
         const captionText = w.caption?.trim() ?? "";
         const descText = w.description?.trim() ?? "";
 

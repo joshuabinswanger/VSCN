@@ -294,6 +294,7 @@ const lightboxStrings = JSON.stringify({
   error: t("member.lightbox.error"),
   linkTitle: t("member.lightbox.link"),
   siteLinkTitle: t("member.lightbox.siteLink"),
+  play: t("member.lightbox.play"),
 });
 
 const indexMembers = [...members].sort((a, b) =>
@@ -2937,6 +2938,7 @@ const indexMembers = [...members].sort((a, b) =>
   import PhotoSwipeLightbox from "photoswipe/lightbox";
   import type { SlideData } from "photoswipe";
   import { lightboxPadding, registerLightboxText } from "../lib/lightboxText.ts";
+  import { registerLightboxEmbeds } from "../lib/lightboxEmbed.ts";
   import "photoswipe/style.css";
   // Immediately after the package sheet, never before: this is the chrome that
   // replaces it. Same pair, same order, as the member profile page.
@@ -2974,6 +2976,8 @@ const indexMembers = [...members].sort((a, b) =>
     linkTitle: string;
     /** Accessible name for the member's own-site link on a piece. */
     siteLinkTitle: string;
+    /** "Play video on {provider}" — the video slide's button. */
+    play: string;
   }
 
   // English is the fallback, matching useTranslations() — a missing or
@@ -2986,6 +2990,7 @@ const indexMembers = [...members].sort((a, b) =>
     error: "The image cannot be loaded",
     linkTitle: "Where this image appeared",
     siteLinkTitle: "This piece on the maker's own site",
+    play: "Play video on {provider}",
   };
 
   const esc = (s: string) =>
@@ -3168,6 +3173,8 @@ const indexMembers = [...members].sort((a, b) =>
     // must not speak differently depending on which gallery opened it. Both
     // galleries carried their own copy of this renderer until 2026-09-04.
     registerLightboxText(lightbox, { linkTitle: strings.linkTitle, siteLinkTitle: strings.siteLinkTitle });
+    // A video work opens as its poster with a play button; see lightboxEmbed.ts.
+    registerLightboxEmbeds(lightbox, { play: strings.play });
 
     lightbox.init();
   });

@@ -298,7 +298,10 @@ const BRAND_SLOTS = [
 
 <style>
   .page-wrap {
-    padding-bottom: 80px;
+    /* Named because a sticky child pins INSIDE this padding: ProfileForm's
+       Save reads it back to cancel it out, and needs to follow any change. */
+    --page-wrap-pad-bottom: 80px;
+    padding-bottom: var(--page-wrap-pad-bottom);
   }
 
   .brand-ticker {

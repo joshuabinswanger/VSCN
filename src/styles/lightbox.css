@@ -502,3 +502,63 @@
     transition: none;
   }
 }
+
+/* ── The video slide (2026-09-23, lightboxEmbed.ts) ──
+   PhotoSwipe sizes this box to the poster's fitted rectangle, the same box an
+   image slide would get, so the words band below lines up exactly as it does
+   for a picture. The poster fills it until play is pressed; then the player's
+   iframe does, and the poster stays underneath as the ground the player
+   letterboxes onto. */
+.pswp--vscn .pswp__vscn-embed {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: var(--color-dark);
+}
+.pswp--vscn .pswp__vscn-embed-poster,
+.pswp--vscn .pswp__vscn-embed-frame {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.pswp--vscn .pswp__vscn-embed-poster {
+  object-fit: cover;
+  user-select: none;
+}
+.pswp--vscn .pswp__vscn-embed-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.pswp--vscn .pswp__vscn-embed-play .vscn-play {
+  --play-size: clamp(3.5rem, 9vmin, 5.5rem);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+.pswp--vscn .pswp__vscn-embed-play:hover .vscn-play,
+.pswp--vscn .pswp__vscn-embed-play:focus-visible .vscn-play {
+  transform: scale(1.08);
+  background: rgba(0, 0, 0, 0.75);
+}
+.pswp--vscn .pswp__vscn-embed-play:focus-visible {
+  outline: 2px solid var(--color-bg);
+  outline-offset: -4px;
+}
+.pswp--vscn .pswp__vscn-embed.is-playing .pswp__vscn-embed-play {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pswp--vscn .pswp__vscn-embed-play .vscn-play {
+    transition: none;
+  }
+}

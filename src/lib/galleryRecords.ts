@@ -13,6 +13,7 @@
 // live and its owner matches" must be written down exactly once. It is also
 // what makes the rule unit-testable without an emulator.
 import type { GalleryItem } from "./gallery.ts";
+import { validEmbed } from "./embed.ts";
 
 /** An images/{imageId} document with its id attached. Mirrors ImageDoc in functions/src/types.ts. */
 export interface GalleryRecord {
@@ -31,6 +32,21 @@ export interface GalleryRecord {
   link?: string;
   siteLink?: string;
   tags?: string[];
+  /**
+   * What the work is — absent means a still (2026-09-23, video links). Written
+   * only by the server; see ImageDoc.media in functions/src/types.ts.
+   */
+  media?: string;
+  /** The video a `media: "embed"` work plays. Read through validEmbed(), never trusted as-is. */
+  embed?: unknown;
+  /** Whose poster is at storagePath: the platform's ("auto") or the member's own. */
+  posterSource?: string;
+  /**
+   * When the work was added, as an ISO string. Only the build's snapshot
+   * carries it (scripts/export-site-data.mjs), for the VideoObject's
+   * uploadDate; the editor's records hold a Timestamp here and never read it.
+   */
+  createdAt?: unknown;
   /**
    * The priority /community is ordered by, attached to the record by
    * membersBuild from the snapshot's moderation table. Absent everywhere
@@ -121,6 +137,15 @@ export function orderedGalleryItems(
     const siteLink = str(rec.siteLink);
     if (siteLink) item.siteLink = siteLink;
     if (Array.isArray(rec.tags) && rec.tags.length) item.tags = rec.tags;
+    // A video work: the picture above is its poster, and this is what plays.
+    // A record claiming to be an embed without a playable id is shown as the
+    // still it then is, rather than as a player that cannot start.
+    const embed = rec.media === "embed" ? validEmbed(rec.embed) : null;
+    if (embed) {
+      item.embed = embed;
+      item.posterSource = rec.posterSource === "member" ? "member" : "auto";
+      if (typeof rec.createdAt === "string") item.addedAt = rec.createdAt;
+    }
     items.push(item);
   }
   return items;

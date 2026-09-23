@@ -9,6 +9,7 @@ import { cancelDeletion, scheduleDeletion } from "./lifecycle";
 import { purgeAccount } from "./purge";
 import { dispatchRebuild, githubRebuildToken } from "./rebuild";
 import { galleryImageIds, plain, requireAdmin } from "./util";
+import { recordObjectPaths } from "./uploads";
 
 // Exported since 2026-09-22 so moderation.ts logs through the same row shape
 // rather than growing a second audit writer.
@@ -536,7 +537,8 @@ export const adminDeleteImage = onCall({ secrets: [githubRebuildToken] }, async 
   // FIREBASE_CONFIG, which the CLI's trigger-discovery pass does not supply.
   // See the comment on getBucket in ./admin — evaluating it at import time made
   // firebase-tools report a generic discovery timeout instead of the real error.
-  if (storagePath) await getBucket().file(storagePath).delete({ ignoreNotFound: true });
+  // The poster and, for a video link, the automatic poster behind it.
+  for (const path of recordObjectPaths(rec)) await getBucket().file(path).delete({ ignoreNotFound: true });
   await ref.delete();
 
   await audit(actor, "deleteImage", ownerUid, {
