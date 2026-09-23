@@ -248,3 +248,43 @@ test("a video work is a VideoObject: poster as thumbnail, player built from the 
   assert.equal(bare.embedUrl, "https://player.vimeo.com/video/22439234?dnt=1&h=a1b2c3d4e5");
   assert.equal("uploadDate" in bare, false);
 });
+
+test("a project is one CreativeWork node; its images point at it beside their publication", () => {
+  const project = {
+    id: "p1", name: "Ribosome", description: "Cryo-EM", url: "https://lab.org/r",
+    affiliations: [{ name: "ETH", url: "https://ethz.ch" }, { name: "Anna", personUrl: "https://vscn.ch/members/anna/" }, { name: "Plain" }],
+  };
+  const graph = memberPageJsonLd({
+    member: { displayName: "Ada", portfolio: "", socialMedia: "" },
+    works: [
+      { url: "https://x/1.webp", width: 10, height: 10, link: "https://nature.com/a", project },
+      { url: "https://x/2.webp", width: 10, height: 10, project },
+      { url: "https://x/3.webp", width: 10, height: 10 },
+    ],
+    pageUrl: "https://vscn.ch/members/ada/",
+    site: SITE,
+    description: "d",
+  })["@graph"];
+  const projects = graph.filter((n) => n["@type"] === "CreativeWork");
+  assert.equal(projects.length, 1);
+  assert.deepEqual(projects[0], {
+    "@type": "CreativeWork",
+    "@id": "https://vscn.ch/members/ada/#project-p1",
+    name: "Ribosome",
+    description: "Cryo-EM",
+    url: "https://lab.org/r",
+    creator: { "@id": "https://vscn.ch/members/ada/#person" },
+    contributor: [
+      { "@type": "Organization", name: "ETH", url: "https://ethz.ch" },
+      { "@type": "Person", "@id": "https://vscn.ch/members/anna/#person", name: "Anna" },
+      { "@type": "Organization", name: "Plain" },
+    ],
+  });
+  const images = graph.filter((n) => n["@type"] === "ImageObject");
+  assert.deepEqual(images[0].isPartOf, [
+    { "@type": "WebPage", url: "https://nature.com/a" },
+    { "@id": "https://vscn.ch/members/ada/#project-p1" },
+  ]);
+  assert.deepEqual(images[1].isPartOf, { "@id": "https://vscn.ch/members/ada/#project-p1" });
+  assert.equal("isPartOf" in images[2], false);
+});

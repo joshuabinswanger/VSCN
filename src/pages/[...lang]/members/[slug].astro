@@ -11,7 +11,7 @@ import {
   workCaption,
   workDescription,
 } from "../../../lib/links.ts";
-import { memberPageJsonLd, memberTitle } from "../../../lib/seo.ts";
+import { memberPageJsonLd, memberPageUrl, memberTitle } from "../../../lib/seo.ts";
 import { groupWorks, projectTitle, projectDescription, affiliationHref, projectSlideData } from "../../../lib/projects.ts";
 import MemberWork from "../../../components/MemberWork.astro";
 import { useTranslations } from "../../../i18n/utils";
@@ -166,6 +166,21 @@ const jsonLd = memberPageJsonLd({
     siteLink: w.siteLink,
     embed: w.embed,
     addedAt: w.addedAt,
+    project: (() => {
+      const p = member.projects?.find((x) => x.id === w.projectId);
+      if (!p) return undefined;
+      return {
+        id: p.id,
+        name: projectTitle(p, currentLang),
+        description: projectDescription(p, currentLang),
+        url: p.link,
+        affiliations: p.affiliations.map((a) =>
+          a.memberSlug
+            ? { name: a.name, personUrl: memberPageUrl(currentLang, a.memberSlug, Astro.site!.href) }
+            : { name: a.name, url: a.href },
+        ),
+      };
+    })(),
   })),
   pageUrl,
   site: Astro.site!.href,
