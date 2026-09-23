@@ -322,11 +322,19 @@ const t = useTranslations(lang);
           zone, because nothing is dropped here: the member pastes a link, the
           server turns it into a work with the platform's thumbnail as its
           poster, and the row lands in the gallery above like a finished
-          upload. A form so Enter submits it; its own status line so a refused
-          link is answered next to the field that was refused. */
+          upload. Its own status line, so a refused link is answered next to
+          the field that was refused.
+
+          NOT A <form>, though it behaves like one (Enter adds the link): this
+          whole editor is already inside #profile-form, and a nested form is
+          not HTML — the parser drops the inner tag and its </form> closes the
+          PROFILE form early, which took Save and every later section out of
+          it and stopped the editor loading at all. The button is type=button
+          and Enter is handled on the field, so neither can submit the
+          profile. */
       }
-      <form id="gallery-video" class="gallery-video" novalidate>
-        <label class="gallery-video-label" for="gallery-video-url">{t("profile.embed.label")}</label>
+      <div id="gallery-video" class="gallery-video" role="group" aria-labelledby="gallery-video-label">
+        <label id="gallery-video-label" class="gallery-video-label" for="gallery-video-url">{t("profile.embed.label")}</label>
         <div class="gallery-video-row">
           <input
             id="gallery-video-url"
@@ -338,11 +346,11 @@ const t = useTranslations(lang);
             maxlength="500"
             placeholder={t("profile.embed.ph")}
           />
-          <button id="gallery-video-add" type="submit" class="btn-outline">{t("profile.embed.add")}</button>
+          <button id="gallery-video-add" type="button" class="btn-outline">{t("profile.embed.add")}</button>
         </div>
         <p id="gallery-video-status" class="field-note" role="status" hidden></p>
         <p class="field-note">{t("profile.embed.note")}</p>
-      </form>
+      </div>
       <p id="gallery-status" class="field-note" style="display:none;"></p>
       {
         /* Two notes, one shown. The verify banner used to carry "until then
@@ -2207,7 +2215,6 @@ const t = useTranslations(lang);
     const galleryTaskTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="task"]');
     // The video link field (2026-09-23) — see its markup, and the handlers
     // beside the replace picker's below.
-    const galleryVideoForm = document.getElementById("gallery-video") as HTMLFormElement;
     const galleryVideoUrl = document.getElementById("gallery-video-url") as HTMLInputElement;
     const galleryVideoAdd = document.getElementById("gallery-video-add") as HTMLButtonElement;
     const galleryVideoStatus = document.getElementById("gallery-video-status")!;
@@ -2960,26 +2967,28 @@ const t = useTranslations(lang);
       galleryVideoStatus.hidden = !text;
     }
 
-    galleryVideoForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
+    async function addGalleryVideo() {
       const url = galleryVideoUrl.value.trim();
       if (!url || videoPending > 0) return;
       if (gallery.length + galleryQueue.pendingCount() >= galleryLimit(auth.currentUser)) {
         setVideoStatus(s["profile.embed.err.full"]);
         return;
       }
-      // Asked of the TOKEN, like every upload (see uploadImage): the server
-      // reads the claim, and a just-verified account's cached record says
-      // true before its token does.
-      if (!auth.currentUser || !(await hasVerifiedClaim(auth.currentUser))) {
-        setVideoStatus(s["profile.embed.err.verify"]);
-        return;
-      }
+      // Counted BEFORE the first await: the claim check below can refresh the
+      // token over the network, and a double press in that gap would
+      // otherwise ask the server for two works.
       videoPending += 1;
       setVideoStatus("");
       galleryVideoAdd.textContent = s["profile.embed.adding"];
       updateGalleryControls();
       try {
+        // Asked of the TOKEN, like every upload (see uploadImage): the server
+        // reads the claim, and a just-verified account's cached record says
+        // true before its token does.
+        if (!auth.currentUser || !(await hasVerifiedClaim(auth.currentUser))) {
+          setVideoStatus(s["profile.embed.err.verify"]);
+          return;
+        }
         const item = await addVideoLink(url);
         galleryVideoUrl.value = "";
         await onGalleryUploaded(item);
@@ -2990,6 +2999,13 @@ const t = useTranslations(lang);
         galleryVideoAdd.textContent = s["profile.embed.add"];
         updateGalleryControls();
       }
+    }
+    galleryVideoAdd.addEventListener("click", () => void addGalleryVideo());
+    galleryVideoUrl.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || event.isComposing) return;
+      // Enter in a text field submits the enclosing form — here, the profile.
+      event.preventDefault();
+      void addGalleryVideo();
     });
 
     /** "Use automatic thumbnail": the platform's poster comes back as a new record, swapped in like a replacement. */

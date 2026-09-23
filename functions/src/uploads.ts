@@ -60,12 +60,12 @@ export async function reserveWork(
   if (deletion.exists) throw new HttpsError("failed-precondition", "Account deletion is pending or completed.");
   const held = works.docs.filter((d) => d.id !== reuses).length;
   if (held + 1 > MAX_STORED_WORKS) {
-    throw new HttpsError("resource-exhausted", "Stored image limit reached. Remove unused images and wait for cleanup before uploading more.");
+    throw new HttpsError("resource-exhausted", "Stored image limit reached. Remove unused images and wait for cleanup before uploading more.", { reason: "storedLimit" });
   }
   const now = Date.now();
   const inWindow = now - (state.data()?.windowStart?.toMillis() ?? 0) < 3_600_000;
   const count = inWindow ? Number(state.data()?.count ?? 0) : 0;
-  if (count >= MAX_AUTHORIZATIONS_PER_HOUR) throw new HttpsError("resource-exhausted", "Too many uploads. Please try again later.");
+  if (count >= MAX_AUTHORIZATIONS_PER_HOUR) throw new HttpsError("resource-exhausted", "Too many uploads. Please try again later.", { reason: "hourlyLimit" });
   return () => tx.set(lock, { windowStart: inWindow ? state.data()!.windowStart : Timestamp.fromMillis(now), count: count + 1 });
 }
 

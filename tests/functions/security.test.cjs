@@ -506,7 +506,8 @@ test('a video link counts against the stored-work cap like any upload', async ()
   for (let i = 0; i < 20; i += 1) {
     await db.doc(`images/held-${i}`).set({ ownerUid: 'member', kind: 'gallery', storagePath: `users/member/gallery/held-${i}.webp`, status: 'live' });
   }
-  await assert.rejects(resolveEmbed.run(verifiedMember({ url: 'youtu.be/dQw4w9WgXcQ' })), { code: 'resource-exhausted' });
+  await assert.rejects(resolveEmbed.run(verifiedMember({ url: 'youtu.be/dQw4w9WgXcQ' })),
+    (e) => e.code === 'resource-exhausted' && e.details.reason === 'storedLimit');
   assert.equal(calls.length, 0);
 });
 
@@ -555,9 +556,11 @@ test('"Use automatic thumbnail" makes a new record from the kept poster, resetti
   assert.equal((await db.doc(`images/${oldId}`).get()).data().status, 'live');
 
   // Nothing to restore on a work whose poster is already the automatic one, or on a still.
-  await assert.rejects(restoreAutoPoster.run(verifiedMember({ imageId: result.imageId })), { code: 'permission-denied' });
+  const notRestorable = (e) => e.code === 'failed-precondition' && e.details.reason === 'notRestorable';
+  await assert.rejects(restoreAutoPoster.run(verifiedMember({ imageId: result.imageId })), notRestorable);
   await db.doc(`images/${oldId}`).set({ ownerUid: 'member', kind: 'gallery', status: 'live', storagePath: `users/member/gallery/${oldId}.webp` });
-  await assert.rejects(restoreAutoPoster.run(verifiedMember({ imageId: oldId })), { code: 'permission-denied' });
+  await assert.rejects(restoreAutoPoster.run(verifiedMember({ imageId: oldId })), notRestorable);
+  await assert.rejects(restoreAutoPoster.run({ auth: { uid: 'intruder', token: { email_verified: true } }, data: { imageId: result.imageId } }), notRestorable);
 });
 
 test('the sweep removes a video work\'s automatic poster with it', async () => {

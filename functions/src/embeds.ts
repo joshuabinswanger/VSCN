@@ -62,7 +62,8 @@ async function fetchOembed(ref: EmbedRef): Promise<OEmbed> {
     refuse("unavailable", "providerUnavailable", "The video platform did not answer.");
   }
   // YouTube: 404 missing or private, 401 embedding switched off.
-  // Vimeo: 404 missing or private, 403 restricted to certain sites.
+  // Vimeo: 404 missing or private, 403 restricted to certain sites — and a
+  // private video answers 403 on some paths, which the sentence allows for.
   if (response.status === 404 || response.status === 400) refuse("not-found", "videoNotFound", "No public video at that link.");
   if (response.status === 401 || response.status === 403) refuse("failed-precondition", "notEmbeddable", "This video cannot be embedded.");
   if (!response.ok) refuse("unavailable", "providerUnavailable", "The video platform did not answer.");
@@ -271,16 +272,16 @@ export const restoreAutoPoster = onCall({ maxInstances: 3, memory: "512MiB" }, a
   const old = (await oldRef.get()).data();
   if (!old || old.ownerUid !== uid || old.kind !== "gallery" || old.status !== "live"
     || old.media !== "embed" || old.posterSource !== "member") {
-    throw new HttpsError("permission-denied", "Only a video work of yours with its own thumbnail can go back to the automatic one.");
+    throw new HttpsError("failed-precondition", "Only a video work of yours with its own thumbnail can go back to the automatic one.", { reason: "notRestorable" });
   }
   let bytes: Buffer;
   try {
     [bytes] = await getBucket().file(autoPosterPath(old.storagePath)).download();
   } catch {
-    throw new HttpsError("failed-precondition", "The automatic thumbnail is no longer available.");
+    throw new HttpsError("failed-precondition", "The automatic thumbnail is no longer available.", { reason: "notRestorable" });
   }
   const dims = webpDimensions(bytes.subarray(0, 64), bytes.length);
-  if (!dims) throw new HttpsError("failed-precondition", "The automatic thumbnail is no longer available.");
+  if (!dims) throw new HttpsError("failed-precondition", "The automatic thumbnail is no longer available.", { reason: "notRestorable" });
   const color = await dominantColor(bytes);
 
   const imageId = randomUUID();
@@ -290,7 +291,7 @@ export const restoreAutoPoster = onCall({ maxInstances: 3, memory: "512MiB" }, a
     const commitAllowance = await reserveWork(tx, uid);
     const current = (await tx.get(oldRef)).data();
     if (!current || current.status !== "live" || current.media !== "embed") {
-      throw new HttpsError("failed-precondition", "The work changed while its thumbnail was being restored.");
+      throw new HttpsError("failed-precondition", "The work changed while its thumbnail was being restored.", { reason: "notRestorable" });
     }
     fields = inheritedFields(current, "auto");
     const now = Timestamp.now();

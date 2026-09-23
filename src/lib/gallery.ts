@@ -488,9 +488,18 @@ interface EmbedWork {
  */
 export type EmbedErrorCode =
   | "verify" | "notVideoLink" | "videoNotFound" | "notEmbeddable" | "providerUnavailable" | "noThumbnail"
+  /** The account holds its 20 works, counting removed ones the sweep has not collected yet. */
+  | "storedLimit"
+  /** 40 new works in an hour. */
+  | "hourlyLimit"
+  /** "Use automatic thumbnail" on a work that no longer has one to go back to. */
+  | "notRestorable"
   | "full" | "denied" | "network" | "unknown";
 
-const EMBED_REASONS = new Set<EmbedErrorCode>(["verify", "notVideoLink", "videoNotFound", "notEmbeddable", "providerUnavailable", "noThumbnail"]);
+const EMBED_REASONS = new Set<EmbedErrorCode>([
+  "verify", "notVideoLink", "videoNotFound", "notEmbeddable", "providerUnavailable", "noThumbnail",
+  "storedLimit", "hourlyLimit", "notRestorable",
+]);
 
 export function embedErrorCode(error: unknown): EmbedErrorCode {
   const details = typeof error === "object" && error !== null ? Reflect.get(error, "details") : undefined;

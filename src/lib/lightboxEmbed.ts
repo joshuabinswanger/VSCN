@@ -108,11 +108,10 @@ export function registerLightboxEmbeds(lightbox: PhotoSwipeLightbox, strings: Li
     for (const box of document.querySelectorAll<HTMLElement>(".pswp__vscn-embed.is-playing")) stopPlayer(box);
   });
 
-  // Swiping across a playing video must not also page the lightbox: the
-  // pointer is over the iframe then, which PhotoSwipe never sees, so this only
-  // guards the play button itself against starting a drag.
-  lightbox.addFilter("preventPointerEvent", (prevent, event) => {
-    const target = event.target as Element | null;
-    return target?.closest?.(".pswp__vscn-embed-play") ? false : prevent;
-  });
+  // A press on play is not also a tap on the slide. PhotoSwipe detects TOUCH taps
+  // itself on pointerup — the click handler's stopPropagation never reaches
+  // it — and would otherwise toggle the controls away as the video starts.
+  const onPlay = (event: Event | undefined) =>
+    Boolean((event?.target as Element | null)?.closest?.(".pswp__vscn-embed-play"));
+  lightbox.on("tapAction", (e) => { if (onPlay(e.originalEvent)) e.preventDefault(); });
 }
