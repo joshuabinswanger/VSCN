@@ -59,6 +59,8 @@ export interface GalleryTask {
   state: GalleryTaskState;
   /** The work this task swaps the picture of. Absent for an addition. */
   readonly replaces?: string;
+  /** The project an addition was dropped into, carried onto the uploaded item (2026-09-23). */
+  readonly projectId?: string;
   /** 0-100, meaningful only while `state === "uploading"`. */
   progress: number;
   error?: GalleryErrorCode;
@@ -101,7 +103,8 @@ export interface GalleryQueueOptions {
 }
 
 export interface GalleryQueue {
-  add(files: File[]): AddOutcome;
+  /** `target` puts every accepted file into that project. */
+  add(files: File[], target?: { projectId: string }): AddOutcome;
   /**
    * Queues a new picture for an existing work. Returns why the file was turned
    * away, or null once it is queued. A work already mid-replacement refuses a
@@ -257,7 +260,7 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
       // one row settling into the gallery instead of two rows for one image.
       remove(task.id);
       if (task.replaces) options.onReplaced(item, task.replaces);
-      else options.onUploaded(item);
+      else options.onUploaded(task.projectId ? { ...item, projectId: task.projectId } : item);
       options.onChange();
     } catch (error) {
       const code = galleryErrorCode(error);
@@ -271,7 +274,7 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
     }
   }
 
-  function enqueue(source: Blob, name: string, replaces?: string): GalleryTask {
+  function enqueue(source: Blob, name: string, replaces?: string, projectId?: string): GalleryTask {
     const task: GalleryTask = {
       id: nextId(),
       name,
@@ -279,6 +282,7 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
       state: "queued",
       progress: 0,
       ...(replaces ? { replaces } : {}),
+      ...(projectId ? { projectId } : {}),
     };
     tasks.push(task);
     // Started immediately and deliberately un-awaited: the limiters, not this
@@ -288,7 +292,7 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
   }
 
   return {
-    add(files) {
+    add(files, target) {
       const outcome: AddOutcome = { queued: 0, rejected: [], overflow: 0 };
       if (disposed) return { ...outcome, overflow: files.length };
       // Capacity is checked BEFORE anything is queued, so the cap is reported
@@ -308,7 +312,7 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
         }
         room -= 1;
         outcome.queued += 1;
-        enqueue(file, file.name);
+        enqueue(file, file.name, undefined, target?.projectId);
       }
       if (outcome.queued > 0) options.onChange();
       return outcome;

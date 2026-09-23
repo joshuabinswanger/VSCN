@@ -116,6 +116,12 @@ test("a video work carries its embed and poster source; the poster is still the 
   assert.equal(item.url, storageUrl(BUCKET, `users/${UID}/gallery/v.webp`));
 });
 
+test("the record's projectId rides onto the item; absent stays absent", () => {
+  const items = orderedGalleryItems(UID, ["a", "b"], [record("a", { projectId: "p1" }), record("b")], BUCKET);
+  assert.equal(items[0].projectId, "p1");
+  assert.equal("projectId" in items[1], false);
+});
+
 test("a record that claims to be a video without a playable id is shown as the still it is", () => {
   const items = orderedGalleryItems(UID, ["a", "b", "c"], [
     record("a", { media: "embed", embed: { provider: "youtube", videoId: "../evil" } }),

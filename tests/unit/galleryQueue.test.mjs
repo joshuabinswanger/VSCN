@@ -107,3 +107,27 @@ test('a failed replacement retries even when the gallery is full', async () => {
   for (let i = 0; i < 5; i++) await settle();
   assert.equal(replaced.length, 1);
 });
+
+test('an upload aimed at a project arrives carrying that project', async () => {
+  const uploaded = [];
+  const gallery = {
+    validateGalleryFile: () => null,
+    compressGalleryImage: async () => ({}),
+    uploadGalleryImage: async () => ({ imageId: 'test' }),
+    galleryErrorCode: () => 'network', GalleryError: Error,
+  };
+  const { createGalleryQueue } = loadTs('src/lib/galleryQueue.ts', { './gallery.ts': gallery }, {
+    URL: { createObjectURL: () => 'blob:test', revokeObjectURL() {} },
+    fetch: async () => ({ blob: async () => new Blob() }),
+  });
+  const queue = createGalleryQueue({
+    uid: () => 'member', capacity: () => 8, onChange() {},
+    onUploaded(item) { uploaded.push(item); }, onReplaced() {},
+  });
+  queue.add(files.slice(0, 1), { projectId: 'p1' });
+  queue.add(files.slice(1, 2));
+  await settle(); await settle();
+  assert.equal(uploaded.length, 2);
+  assert.equal(uploaded[0].projectId, 'p1');
+  assert.equal('projectId' in uploaded[1], false);
+});

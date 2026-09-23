@@ -32,6 +32,8 @@ export interface GalleryRecord {
   link?: string;
   siteLink?: string;
   tags?: string[];
+  /** The member's project this work belongs to, if any (2026-09-23). Ownership is judged by ownProjects() in projects.ts. */
+  projectId?: string;
   /**
    * What the work is — absent means a still (2026-09-23, video links). Written
    * only by the server; see ImageDoc.media in functions/src/types.ts.
@@ -137,6 +139,8 @@ export function orderedGalleryItems(
     const siteLink = str(rec.siteLink);
     if (siteLink) item.siteLink = siteLink;
     if (Array.isArray(rec.tags) && rec.tags.length) item.tags = rec.tags;
+    const projectId = str(rec.projectId);
+    if (projectId) item.projectId = projectId;
     // A video work: the picture above is its poster, and this is what plays.
     // A record claiming to be an embed without a playable id is shown as the
     // still it then is, rather than as a player that cannot start.

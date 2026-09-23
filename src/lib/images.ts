@@ -157,6 +157,7 @@ export async function updateImageText(
     link?: string;
     siteLink?: string;
     tags?: string[];
+    projectId?: string;
   },
 ): Promise<void> {
   await updateDoc(doc(db, "images", imageId), {
@@ -170,6 +171,7 @@ export async function updateImageText(
     link: text.link ? text.link : deleteField(),
     siteLink: text.siteLink ? text.siteLink : deleteField(),
     tags: text.tags && text.tags.length ? text.tags : deleteField(),
+    projectId: text.projectId ? text.projectId : deleteField(),
     // THE RETIRED FIELD, SWEPT (2026-09-04 — see GalleryItem.description for
     // why the short description is gone). Unconditional, and the only mention
     // of the name left in the app: records written during its one-day life
