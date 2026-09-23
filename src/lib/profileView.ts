@@ -9,6 +9,7 @@
 // snapshot, so a member cannot see their own edits there until a rebuild runs.
 
 import type { EmbedRef } from "./embed.ts";
+import type { ProfileProject } from "./projects.ts";
 
 export interface ProfileWork {
   url: string;
@@ -72,6 +73,8 @@ export interface ProfileWork {
   embed?: EmbedRef;
   /** When a video work was added (ISO), for the VideoObject's uploadDate. */
   addedAt?: string;
+  /** The member's own project this work is in, when it is one the view model also carries in `projects`. */
+  projectId?: string;
 }
 
 export interface ProfileViewModel {
@@ -108,4 +111,10 @@ export interface ProfileViewModel {
   socialMedia: string;
   /** The member's gallery, in order. Empty is a normal state, not an error. */
   works: ProfileWork[];
+  /**
+   * The member's projects that hold at least one of `works` (2026-09-23).
+   * Optional so producers that know nothing of projects (the signup wizard's
+   * preview) need not invent an empty list; renderers treat absent as none.
+   */
+  projects?: ProfileProject[];
 }

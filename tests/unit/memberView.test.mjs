@@ -114,3 +114,31 @@ test("localizeMember falls back to whichever language was written", () => {
   assert.equal(localizeMember(none, "de").role, "");
   assert.equal(localizeMember(none, "de").bio, "");
 });
+
+// PROJECTS (2026-09-23): works() attaches the member's own project id, and the
+// project's link fills an empty siteLink — inheritedSiteLink() in
+// projects.ts. toMemberViewBase's fifth argument is the snapshot's project
+// records for this owner; ownProjects() filters to the member's own before
+// works() ever sees them, so someone else's projectId on a record is ignored.
+test("works carry their own project; the project's link fills an empty siteLink", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a", "b", "c"] }, [
+    rec("a", { projectId: "p" }),
+    rec("b", { projectId: "p", siteLink: "ada.ch/work/b" }),
+    rec("c", { projectId: "theirs" }),
+  ], BUCKET, [
+    { projectId: "p", ownerUid: UID, title: "P", link: "lab.org/p" },
+    { projectId: "theirs", ownerUid: "someone-else", title: "Not yours" },
+    { projectId: "empty", ownerUid: UID, title: "No works" },
+  ]);
+  assert.equal(m.works[0].projectId, "p");
+  assert.equal(m.works[0].siteLink, "https://lab.org/p");
+  assert.equal(m.works[1].siteLink, "https://ada.ch/work/b");
+  assert.equal("projectId" in m.works[2], false);
+  assert.deepEqual(m.projects.map((p) => p.id), ["p"]);
+});
+
+test("no project records means no projects and unchanged works", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a"] }, [rec("a")], BUCKET);
+  assert.deepEqual(m.projects, []);
+  assert.equal("projectId" in m.works[0], false);
+});
