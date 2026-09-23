@@ -76,7 +76,9 @@ rules and the profile write path together.
 Since 2026-09-23 Playwright walks these steps ([scripts/walk-release.mjs](../scripts/walk-release.mjs),
 design in [20260923-release-walk-automation.md](20260923-release-walk-automation.md)). The
 `walk` job of the production merge workflow runs it after the acknowledgement step, on `push`
-events only, and prints the `Walk:` line for the log entry. On demand:
+events only, and prints the `Walk:` line for the log entry. From CI it walks
+`https://vscn-39508.web.app`, the same Hosting release, because Cloudflare answers GitHub's
+runners on vscn.ch with a bot challenge. On demand, from a machine Cloudflare lets through:
 
 ```powershell
 npm run walk:release -- --project prod

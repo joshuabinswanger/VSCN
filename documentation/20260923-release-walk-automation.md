@@ -1,6 +1,7 @@
 # Release walk automation
 
-**Status:** approved in chat 2026-09-23, built the same day. Companion to
+**Status:** approved in chat 2026-09-23, built the same day; first CI walk GREEN on prod the same
+morning (run 35828595679). Companion to
 [20260922-release-verification-protocol.md](20260922-release-verification-protocol.md), whose
 §6 defines the human walk this automates. Operating notes live in
 [release-verification.md](release-verification.md); verdicts in [release-log.md](release-log.md).
@@ -103,6 +104,13 @@ would dirty the queue again and the site would rebuild itself, and walk itself, 
 minutes for ever. (§7 removes the dirtying for hidden members, but the gate stays: the walk
 should follow a release, not a rebuild.)
 
+**From CI the walk goes to `https://vscn-39508.web.app`, not vscn.ch.** vscn.ch is proxied by
+Cloudflare, and its bot protection answered the first CI walk (2026-09-23) with a 403 "Just a
+moment..." challenge before the site was reached: GitHub's runners are datacenter IPs. The
+Hosting origin serves the same release byte for byte, is an authorised Auth domain, and every
+Firebase call from it is identical. What CI skips is the Cloudflare proxy itself, which does not
+change per release; a local run still walks vscn.ch.
+
 Failure artefacts upload with the run. A red walk is a red workflow. The protocol already says
 what that means: a release incident, fix or roll back, and do not fix from inside the walk.
 
@@ -129,7 +137,7 @@ release costs Josh one digest mail and one redundant prod rebuild. Neither break
 | `moderationHidden: true` on `publicProfiles/<uid>` | Claude, Firestore REST | 2026-09-22 22:07Z |
 | Debug token registered on the prod web app (`release walk (CI)`) | Claude, App Check REST | 2026-09-23 |
 | GitHub secret `WALK_MEMBER_PASSWORD` | Josh, `gh secret set` | 2026-09-22 |
-| GitHub secrets `WALK_MEMBER_EMAIL`, `WALK_APPCHECK_DEBUG_TOKEN` | Josh (secret writes are classifier-blocked for Claude) | pending |
+| GitHub secrets `WALK_MEMBER_EMAIL`, `WALK_APPCHECK_DEBUG_TOKEN` | Josh (secret writes are classifier-blocked for Claude) | 2026-09-23 |
 
 The debug token is a bypass credential for App Check on prod: it lets a holder skip Turnstile,
 not the security rules. Rotate it by deleting the entry in the console (App Check → Apps →
@@ -141,6 +149,7 @@ Manage debug tokens) and registering a new one.
 - A walk on dev. Nothing prevents it (dev's Turnstile always passes, so no debug token is
   needed), but it needs its own member and its own secret, and it was not asked for.
 - Signup coverage (§2).
+- The Cloudflare proxy in front of vscn.ch, from CI (§6).
 - The member page in step 6 is a build-time snapshot. The walk asserts that it renders, not
   that it shows this run's image; the member is hidden, so it never would.
 - The probe-2 gap in the machine check (deploy-time params in `functions/.env`) is unchanged.

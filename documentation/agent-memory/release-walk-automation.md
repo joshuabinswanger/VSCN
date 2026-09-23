@@ -2,7 +2,7 @@
 
 ---
 name: release-walk-automation
-description: "BUILT 2026-09-23 on branch chore/release-walk (PR to dev): Playwright walks the protocol's six steps on prod as a standing hidden member after every release; Turnstile bypassed with an App Check debug token; first CI walk waits on two GitHub secrets Josh must set"
+description: "PROVEN 2026-09-23: first CI walk GREEN on prod, all six steps, ~30 s. Playwright walks as a standing hidden member after every release to main; Turnstile skipped via a registered App Check debug token; CI must walk vscn-39508.web.app because Cloudflare challenges GitHub runners on vscn.ch"
 metadata:
   node_type: memory
   type: project
@@ -26,6 +26,12 @@ password" from identitytoolkit, not an App Check refusal, and the SDK logged the
 The token is registered on the prod web app as "release walk (CI)" and sits in
 `C:\Users\Josh\.vscn\walk-appcheck-debug-token.txt`; GitHub secret writes are classifier-blocked
 for Claude, so Josh pushes it into `WALK_APPCHECK_DEBUG_TOKEN` himself.
+
+**Cloudflare trap:** vscn.ch is Cloudflare-proxied and its bot protection answers GitHub's
+datacenter IPs with a 403 "Just a moment..." page before the site is reached (first CI walk). CI
+therefore passes `--origin https://vscn-39508.web.app` — same Hosting release, authorised Auth
+domain. Local runs still walk vscn.ch. First GREEN: run 35828595679; member left clean (galleries
+empty, image record `pendingDeletion`). Secrets all set by Josh 2026-09-23.
 
 **How to apply:** the `push`-only gate is load-bearing — a walk dirties `rebuildQueue/site` and
 `flushMemberRebuilds` dispatches the merge workflow as `workflow_dispatch`; a walk on that run

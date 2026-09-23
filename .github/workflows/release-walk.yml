@@ -9,10 +9,6 @@ name: Release walk
 # the prod web app so the App Check SDK skips Turnstile — a challenge built to
 # fail exactly this browser. Enforcement stays on; the rules still apply.
 on:
-  # TEMPORARY, remove before merging: the only way to run this on a branch,
-  # because workflow_dispatch is refused until the file exists on main.
-  push:
-    branches: [chore/release-walk]
   workflow_call:
     inputs:
       project:
