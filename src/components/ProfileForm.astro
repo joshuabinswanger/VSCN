@@ -1,5 +1,6 @@
 ---
 import CommunityCardPreview from "./community/CommunityCardPreview.astro";
+import InfoTip from "./InfoTip.astro";
 import MemberTypeSelector from "./MemberTypeSelector.astro";
 import BilingualField from "./BilingualField.astro";
 import ProfileViewPreview from "./ProfileViewPreview.astro";
@@ -105,7 +106,7 @@ const t = useTranslations(lang);
       <p id="upload-status" class="upload-status" style="display:none;"></p>
     </div>
 
-    <MemberTypeSelector lang={lang} />
+    <MemberTypeSelector lang={lang} tip />
 
     <div class="field">
       <label class="label" for="name">{t("profile.label.name")}</label>
@@ -128,6 +129,7 @@ const t = useTranslations(lang);
       placeholderDe={t("profile.ph.role.de")}
       note={t("profile.note.role")}
       noteDe={t("profile.note.role.de")}
+      tip
     />
 
     <div class="field">
@@ -145,8 +147,8 @@ const t = useTranslations(lang);
       <input id="location" type="text" class="input" placeholder={t("profile.ph.location")} />
     </div>
 
-    <fieldset class="target-audience-field">
-      <legend class="label">{t("profile.label.languages")}</legend>
+    <fieldset class="target-audience-field" aria-describedby="note-languages">
+      <legend class="label">{t("profile.label.languages")} <InfoTip lang={lang} for="note-languages" /></legend>
       <div class="target-audience-options">
         {
           LANGUAGES.map((code) => (
@@ -157,7 +159,7 @@ const t = useTranslations(lang);
           ))
         }
       </div>
-      <p class="field-note">{t("profile.note.languages")}</p>
+      <p id="note-languages" class="field-note" data-tip hidden>{t("profile.note.languages")}</p>
     </fieldset>
 
     <BilingualField
@@ -171,12 +173,16 @@ const t = useTranslations(lang);
       placeholderDe={t("profile.ph.bio.de")}
       note={t("profile.note.bio")}
       noteDe={t("profile.note.bio.de")}
+      tip
     />
 
     <div class="field">
-      <label id="portfolio-label" class="label" for="portfolio"
-        >{t("profile.label.portfolio")}</label
-      >
+      <div class="label-row">
+        <label id="portfolio-label" class="label" for="portfolio"
+          >{t("profile.label.portfolio")}</label
+        >
+        <InfoTip lang={lang} for="note-portfolio" />
+      </div>
       <div class="input-prefix-wrap">
         <span class="input-prefix">https://</span>
         <input
@@ -184,6 +190,7 @@ const t = useTranslations(lang);
           type="text"
           class="input input-prefixed"
           placeholder={t("profile.ph.portfolio")}
+          aria-describedby="note-portfolio"
         />
       </div>
       {
@@ -192,7 +199,7 @@ const t = useTranslations(lang);
           and a placeholder, and the thing it does — a followed link from
           vscn.ch to the member's own site — is invisible unless it is said. */
       }
-      <p class="field-note">{t("profile.note.portfolio")}</p>
+      <p id="note-portfolio" class="field-note" data-tip hidden>{t("profile.note.portfolio")}</p>
     </div>
 
     {
@@ -203,13 +210,16 @@ const t = useTranslations(lang);
       rather than a <label>: there is no single control left to point at. */
     }
     <div class="field">
-      <p id="social-label" class="label">{t("profile.label.social")}</p>
-      <div id="social-editor" class="social-editor"></div>
+      <div class="label-row">
+        <p id="social-label" class="label">{t("profile.label.social")}</p>
+        <InfoTip lang={lang} for="note-social" />
+      </div>
+      <div id="social-editor" class="social-editor" aria-describedby="note-social"></div>
       <button type="button" id="social-add" class="btn-outline choose-img">
         {t("profile.social.add")}
       </button>
       <p id="social-status" class="field-note" style="display:none;"></p>
-      <p class="field-note">{t("profile.note.social")}</p>
+      <p id="note-social" class="field-note" data-tip hidden>{t("profile.note.social")}</p>
       {
         /* Cloned by renderSocial(). Rendered here rather than built in JS so
         each clone carries Astro's data-astro-cid-* attribute and matches the
@@ -229,7 +239,7 @@ const t = useTranslations(lang);
 
     <OpenToSelector lang={lang} />
 
-    <VisualNeedsSelector lang={lang} />
+    <VisualNeedsSelector lang={lang} tip />
 
     <fieldset class="target-audience-field">
       <legend class="label">{t("profile.primaryAudience.legend")}</legend>
@@ -253,8 +263,11 @@ const t = useTranslations(lang);
       </div>
     </fieldset>
 
-    <div class="field" id="member-tags-field">
-      <label class="label" for="tag-input">{t("profile.label.tags")}</label>
+    <div class="field" id="member-tags-field" aria-describedby="note-tags">
+      <div class="label-row">
+        <label class="label" for="tag-input">{t("profile.label.tags")}</label>
+        <InfoTip lang={lang} for="note-tags" />
+      </div>
       <TagSelector lang={lang} maxTags={7} inputId="tag-input" />
       {
         /* The cap, stated by the field that sets it rather than by the
@@ -263,13 +276,25 @@ const t = useTranslations(lang);
           else here mentions the limit, so the sentence moves rather than
           goes. */
       }
-      <p class="field-note">{t("profile.note.tags")}</p>
+      <p id="note-tags" class="field-note" data-tip hidden>{t("profile.note.tags")}</p>
     </div>
   </div>
 
   <div class="form-section" data-section="work">
     <div class="field">
-      <p class="label">{t("profile.label.gallery")}</p>
+      <div class="label-row">
+        <p class="label">{t("profile.label.gallery")}</p>
+        <InfoTip lang={lang} for="note-gallery-cover" />
+      </div>
+      {
+        /* Order is not a preference, it is the card's geometry: works[0]'s
+        width/height become the aspect box in CommunityImageCard. Nothing used
+        to say so, so members had no way to know the first image was doing
+        anything at all. Placed right under the label its ⓘ opens, not down by
+        the drop zone (2026-09-23, review round 1): every other converted note
+        stays adjacent to its trigger, and this one did not. */
+      }
+      <p id="note-gallery-cover" class="field-note" data-tip hidden>{t("profile.gallery.coverNote")}</p>
       {
         /* The drop target is this wrapper, not the list: an empty gallery has a
         list of zero height, so a member with no images yet — the one most
@@ -332,8 +357,11 @@ const t = useTranslations(lang);
           and Enter is handled on the field, so neither can submit the
           profile. */
       }
-      <div id="gallery-video" class="gallery-video" role="group" aria-labelledby="gallery-video-label">
-        <label id="gallery-video-label" class="gallery-video-label" for="gallery-video-url">{t("profile.embed.label")}</label>
+      <div id="gallery-video" class="gallery-video" role="group" aria-labelledby="gallery-video-label" aria-describedby="note-gallery-video">
+        <div class="label-row">
+          <label id="gallery-video-label" class="gallery-video-label" for="gallery-video-url">{t("profile.embed.label")}</label>
+          <InfoTip lang={lang} for="note-gallery-video" />
+        </div>
         <div class="gallery-video-row">
           <input
             id="gallery-video-url"
@@ -348,7 +376,7 @@ const t = useTranslations(lang);
           <button id="gallery-video-add" type="button" class="btn-outline">{t("profile.embed.add")}</button>
         </div>
         <p id="gallery-video-status" class="field-note" role="status" hidden></p>
-        <p class="field-note">{t("profile.embed.note")}</p>
+        <p id="note-gallery-video" class="field-note" data-tip hidden>{t("profile.embed.note")}</p>
       </div>
       <p id="gallery-status" class="field-note" style="display:none;"></p>
       {
@@ -363,13 +391,6 @@ const t = useTranslations(lang);
       <p id="gallery-note-unverified" class="field-note" hidden>
         {t("profile.note.galleryUnverified")}
       </p>
-      {
-        /* Order is not a preference, it is the card's geometry: works[0]'s
-        width/height become the aspect box in CommunityImageCard. Nothing used
-        to say so, so members had no way to know the first image was doing
-        anything at all. */
-      }
-      <p class="field-note">{t("profile.gallery.coverNote")}</p>
       {
         /* The directory is image-led: a member without a gallery holds a
         typographic card. Saying so here is the standing mechanism that fills
@@ -485,22 +506,30 @@ const t = useTranslations(lang);
                 mix of "nature.com/…" and "https://nature.com/…" in one
                 field. */
             }
-            <div class="input-prefix-wrap">
-              <span class="input-prefix">https://</span>
-              <input type="text" class="input input-prefixed" data-gallery-field="siteLink" />
+            <div class="label-row">
+              <div class="input-prefix-wrap">
+                <span class="input-prefix">https://</span>
+                <input type="text" class="input input-prefixed" data-gallery-field="siteLink" />
+              </div>
+              <InfoTip lang={lang} rowKey="siteLink" />
             </div>
             {
               /* Static text in the template, unlike the DE notes above, which
                 are filled in JS because they toggle with the pane. These are
                 the same for every row and every state, so `t()` here is
-                enough — the clone carries them. */
+                enough — the clone carries them. Its id is assigned at clone
+                time by renderGallery(), since the template itself is cloned
+                once per image (see the comment there). */
             }
-            <p class="field-note">{t("profile.gallery.siteLinkNote")}</p>
-            <div class="input-prefix-wrap">
-              <span class="input-prefix">https://</span>
-              <input type="text" class="input input-prefixed" data-gallery-field="link" />
+            <p class="field-note" data-tip data-tip-note="siteLink" hidden>{t("profile.gallery.siteLinkNote")}</p>
+            <div class="label-row">
+              <div class="input-prefix-wrap">
+                <span class="input-prefix">https://</span>
+                <input type="text" class="input input-prefixed" data-gallery-field="link" />
+              </div>
+              <InfoTip lang={lang} rowKey="link" />
             </div>
-            <p class="field-note">{t("profile.gallery.linkNote")}</p>
+            <p class="field-note" data-tip data-tip-note="link" hidden>{t("profile.gallery.linkNote")}</p>
             {
               /* WHAT IS IN THE PICTURE, not who made it — the community wall
                 filters by this (2026-09-08, step 2 of
@@ -618,28 +647,37 @@ const t = useTranslations(lang);
     </a>
 
     <div class="field">
-      <label class="checkbox-label" for="profile-active">
-        <input id="profile-active" type="checkbox" />
-        <span>{t("profile.active.label")}</span>
-      </label>
-      <p class="field-note">{t("profile.active.note")}</p>
+      <div class="label-row">
+        <label class="checkbox-label" for="profile-active">
+          <input id="profile-active" type="checkbox" aria-describedby="note-active" />
+          <span>{t("profile.active.label")}</span>
+        </label>
+        <InfoTip lang={lang} for="note-active" />
+      </div>
+      <p id="note-active" class="field-note" data-tip hidden>{t("profile.active.note")}</p>
     </div>
 
     <div class="field">
-      <label class="checkbox-label" for="wants-to-contribute">
-        <input id="wants-to-contribute" type="checkbox" />
-        <span>{t("profile.wantsToContribute")}</span>
-      </label>
-      <p class="field-note">{t("profile.wantsToContribute.note")}</p>
+      <div class="label-row">
+        <label class="checkbox-label" for="wants-to-contribute">
+          <input id="wants-to-contribute" type="checkbox" aria-describedby="note-contribute" />
+          <span>{t("profile.wantsToContribute")}</span>
+        </label>
+        <InfoTip lang={lang} for="note-contribute" />
+      </div>
+      <p id="note-contribute" class="field-note" data-tip hidden>{t("profile.wantsToContribute.note")}</p>
     </div>
 
     <div class="field">
-      <label class="label" for="preferred-language">{t("profile.label.preferredLanguage")}</label>
-      <select id="preferred-language" class="input">
+      <div class="label-row">
+        <label class="label" for="preferred-language">{t("profile.label.preferredLanguage")}</label>
+        <InfoTip lang={lang} for="note-preferred-language" />
+      </div>
+      <select id="preferred-language" class="input" aria-describedby="note-preferred-language">
         <option value="de" selected={lang === "de"}>{t("profile.lang.de")}</option>
         <option value="en" selected={lang !== "de"}>{t("profile.lang.en")}</option>
       </select>
-      <p class="field-note">{t("profile.note.preferredLanguage")}</p>
+      <p id="note-preferred-language" class="field-note" data-tip hidden>{t("profile.note.preferredLanguage")}</p>
     </div>
 
     <div class="field">
@@ -651,15 +689,19 @@ const t = useTranslations(lang);
     </div>
 
     <div class="field">
-      <label class="label" for="phone">{t("profile.label.phone")}</label>
+      <div class="label-row">
+        <label class="label" for="phone">{t("profile.label.phone")}</label>
+        <InfoTip lang={lang} for="note-phone" />
+      </div>
       <input
         id="phone"
         type="tel"
         class="input"
         placeholder="+41 79 123 45 67"
         autocomplete="tel"
+        aria-describedby="note-phone"
       />
-      <p class="field-note">
+      <p id="note-phone" class="field-note" data-tip hidden>
         {t("profile.note.phone")}
       </p>
     </div>
@@ -1074,6 +1116,14 @@ const t = useTranslations(lang);
   }
   .input-prefix-wrap:focus-within {
     border-color: #111;
+  }
+
+  /* The gallery link rows' tip sits beside the field, not above it (there is
+     no label element here to carry it) — the wrap has to give up the row's
+     free space or the ⓘ crowds the input instead of sitting flush right
+     (2026-09-23). */
+  .label-row > .input-prefix-wrap {
+    flex: 1;
   }
 
   .input-prefix {
@@ -2604,6 +2654,21 @@ const t = useTranslations(lang);
                 autoThumb.addEventListener("click", () => void restoreGalleryThumbnail(item.imageId, autoThumb));
               }
             }
+
+            // A template is cloned once per image, so its tips cannot carry
+            // ids of their own; each row gets its note ids here and its
+            // buttons are pointed at them (2026-09-23). An open tip closes on
+            // re-render — acceptable, since re-renders happen on
+            // upload/remove/reorder, not while typing.
+            row.querySelectorAll<HTMLElement>("[data-tip-note]").forEach((note) => {
+              const key = note.dataset.tipNote ?? "";
+              note.id = `gallery-${index}-note-${key}`;
+              const button = row.querySelector<HTMLButtonElement>(`[data-infotip-for="${key}"]`);
+              button?.setAttribute("aria-controls", note.id);
+              row
+                .querySelector<HTMLElement>(`[data-gallery-field="${key}"]`)
+                ?.setAttribute("aria-describedby", note.id);
+            });
 
             // Read back by the focus hint below; the rows are otherwise
             // anonymous once they are in the DOM.

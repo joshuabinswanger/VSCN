@@ -1,0 +1,50 @@
+---
+// THE ⓘ BESIDE A LABEL (2026-09-23, Josh: "all the tips etc. are things that
+// are hidden behind an information icon"). Only the button lives here. The
+// hint stays the field's own <p class="field-note"> — same place, same text,
+// now `hidden` with `data-tip` — so the field's aria-describedby still points
+// at it and a screen reader announces it whether or not it is open.
+//
+// Click/tap, never hover: hover is not a phone gesture. /profile only; the
+// signup wizard keeps its notes written out (Josh: "sign up should be more
+// written out").
+import { useTranslations, type Lang } from "../i18n/utils";
+
+interface Props {
+  lang: Lang;
+  /** id of the note this button opens. Omit only inside a cloned template. */
+  for?: string;
+  /** In a cloned template: which note in the same row, resolved by renderGallery(). */
+  rowKey?: string;
+}
+
+const { lang, for: noteId, rowKey } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<button
+  type="button"
+  class="infotip"
+  data-infotip
+  data-infotip-for={rowKey}
+  aria-controls={noteId}
+  aria-expanded="false"
+  aria-label={t("profile.info.toggle")}
+>ⓘ</button>
+
+<script>
+  // ONE delegated listener for every tip on the page, including the ones in
+  // gallery rows that are re-cloned on every upload — binding per button
+  // would lose them on each re-render.
+  function onClick(event: Event) {
+    const button = (event.target as Element | null)?.closest<HTMLButtonElement>("[data-infotip]");
+    if (!button) return;
+    const id = button.getAttribute("aria-controls");
+    const note = id ? document.getElementById(id) : null;
+    if (!note) return;
+    const open = button.getAttribute("aria-expanded") !== "true";
+    button.setAttribute("aria-expanded", String(open));
+    note.hidden = !open;
+  }
+  document.addEventListener("click", onClick);
+</script>

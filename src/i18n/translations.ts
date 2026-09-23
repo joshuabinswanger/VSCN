@@ -208,6 +208,7 @@ export const ui: Record<string, Record<string, string>> = {
     // engines count. "Followed" is jargon; "search engines follow" is not.
     "profile.note.portfolio":
       "Shown on your public page as a link search engines follow. Visits from here appear in your analytics as vscn.ch.",
+    "profile.info.toggle": "More about this field",
     "profile.label.portfolio.science": "Website / Lab page",
     "profile.ph.portfolio.science": "lab.university.edu",
     "profile.label.social": "Social Media",
@@ -787,6 +788,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.ph.portfolio": "deinewebsite.com",
     "profile.note.portfolio":
       "Erscheint auf deiner öffentlichen Seite als Link, dem Suchmaschinen folgen. Besuche von hier erscheinen in deiner Statistik als vscn.ch.",
+    "profile.info.toggle": "Mehr zu diesem Feld",
     "profile.label.portfolio.science": "Website / Institutsseite",
     "profile.ph.portfolio.science": "institut.uni.ch",
     "profile.label.social": "Social Media",

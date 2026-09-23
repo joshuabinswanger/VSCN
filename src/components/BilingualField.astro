@@ -8,6 +8,7 @@
 // The German side is optional in either direction — see profileRole() /
 // profileBio() in src/lib/links.ts for the fallback the notes describe.
 import { useTranslations, type Lang } from "../i18n/utils";
+import InfoTip from "./InfoTip.astro";
 
 interface Props {
   lang: Lang;
@@ -24,17 +25,37 @@ interface Props {
   noteDe: string;
   /** A textarea of this many rows; absent means a one-line input. */
   rows?: number;
+  /** Hide both notes behind an ⓘ, /profile only — the wizard omits this. */
+  tip?: boolean;
 }
 
-const { lang, id, label, labelEn, labelDe, placeholder, placeholderDe, note, noteDe, rows } =
-  Astro.props;
+const {
+  lang,
+  id,
+  label,
+  labelEn,
+  labelDe,
+  placeholder,
+  placeholderDe,
+  note,
+  noteDe,
+  rows,
+  tip = false,
+} = Astro.props;
 const t = useTranslations(lang);
 const idDe = `${id}-de`;
+const noteId = `${id}-note`;
+const noteIdDe = `${idDe}-note`;
 ---
 
 <div class="field bifield" data-bifield>
   <div class="bifield__head">
-    <label class="label" for={id} data-bifield-label>{label}</label>
+    {/* 2026-09-23: wrap label and ⓘ together so space-between separates
+        [label + tip] from the language switch, keeping the ⓘ beside its label */}
+    <div class="label-row">
+      <label class="label" for={id} data-bifield-label>{label}</label>
+      {tip && <InfoTip lang={lang} for={note ? noteId : noteIdDe} />}
+    </div>
     <div class="bifield__switch" role="group" aria-label={label}>
       <button
         type="button"
@@ -58,23 +79,23 @@ const idDe = `${id}-de`;
   <div class="bifield__pane" data-bifield-pane="en">
     {
       rows ? (
-        <textarea id={id} rows={rows} class="input textarea" aria-label={labelEn} placeholder={placeholder} />
+        <textarea id={id} rows={rows} class="input textarea" aria-label={labelEn} placeholder={placeholder} aria-describedby={note ? noteId : undefined} />
       ) : (
-        <input id={id} type="text" class="input" aria-label={labelEn} placeholder={placeholder} />
+        <input id={id} type="text" class="input" aria-label={labelEn} placeholder={placeholder} aria-describedby={note ? noteId : undefined} />
       )
     }
-    {note && <p class="field-note">{note}</p>}
+    {note && <p id={noteId} class="field-note" data-tip={tip || undefined} hidden={tip}>{note}</p>}
   </div>
 
   <div class="bifield__pane" data-bifield-pane="de" hidden>
     {
       rows ? (
-        <textarea id={idDe} rows={rows} class="input textarea" lang="de" aria-label={labelDe} placeholder={placeholderDe} />
+        <textarea id={idDe} rows={rows} class="input textarea" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteIdDe} />
       ) : (
-        <input id={idDe} type="text" class="input" lang="de" aria-label={labelDe} placeholder={placeholderDe} />
+        <input id={idDe} type="text" class="input" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteIdDe} />
       )
     }
-    <p class="field-note">{noteDe}</p>
+    <p id={noteIdDe} class="field-note" data-tip={tip || undefined} hidden={tip}>{noteDe}</p>
   </div>
 </div>
 
@@ -164,5 +185,19 @@ const idDe = `${id}-de`;
     // The visible label names whichever control is showing.
     const label = root.querySelector<HTMLLabelElement>("[data-bifield-label]");
     if (label && btn.dataset.for) label.htmlFor = btn.dataset.for;
+
+    // The tip follows the pane too: a DE note opened while the EN pane shows
+    // is not reachable, so aria-controls and the open state move with it.
+    const tipBtn = root.querySelector<HTMLButtonElement>("[data-infotip]");
+    const activeNote = root.querySelector<HTMLElement>(
+      `[data-bifield-pane="${lang}"] .field-note[data-tip]`
+    );
+    if (tipBtn && activeNote) {
+      const open = tipBtn.getAttribute("aria-expanded") === "true";
+      tipBtn.setAttribute("aria-controls", activeNote.id);
+      root.querySelectorAll<HTMLElement>(".field-note[data-tip]").forEach((n) => {
+        n.hidden = !open || n.id !== activeNote.id;
+      });
+    }
   });
 </script>
