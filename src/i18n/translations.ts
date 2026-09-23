@@ -409,7 +409,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.link": "Where this image appeared",
     "profile.gallery.tags": "What's in the picture",
     "profile.gallery.tagsNote":
-      "Up to 5. The community grid filters by these, so tag what the picture shows, not what you do.",
+      "Up to 7. The community grid filters by these, so tag what the picture shows, not what you do.",
     "profile.gallery.link.ph": "nature.com/articles/… (optional)",
     "profile.gallery.linkNote":
       "Optional. The publication, campaign or shop where this image appeared. Shown under the image as a link search engines follow.",
@@ -860,7 +860,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.link": "Wo dieses Bild erschienen ist",
     "profile.gallery.tags": "Was ist auf dem Bild",
     "profile.gallery.tagsNote":
-      "Bis zu 5. Das Community-Raster filtert danach, also tagge, was das Bild zeigt, nicht was du machst.",
+      "Bis zu 7. Das Community-Raster filtert danach, also tagge, was das Bild zeigt, nicht was du machst.",
     "profile.gallery.link.ph": "nature.com/articles/… (optional)",
     "profile.gallery.linkNote":
       "Optional. Die Publikation, Kampagne oder der Shop, wo dieses Bild erschienen ist. Erscheint unter dem Bild als Link, dem Suchmaschinen folgen.",
