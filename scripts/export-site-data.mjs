@@ -25,7 +25,7 @@ const bucket = process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || env.PUBLIC_FIREBASE
 if (!projectId || (expected && expected !== projectId)) throw new Error("Export credential does not match the site project.");
 
 const pick = (data, keys) => Object.fromEntries(keys.filter((key) => data[key] !== undefined).map((key) => [key, data[key]]));
-const profileKeys = ["displayName", "photoURL", "photoImageId", "photoColor", "memberType", "role", "bio", "portfolio", "socialMedia", "affiliation", "location", "languages", "visualNeeds", "openTo", "primaryAudiences", "tags", "gallery", "active", "moderationHidden"];
+const profileKeys = ["displayName", "photoURL", "photoImageId", "photoColor", "memberType", "role", "roleDe", "bio", "bioDe", "portfolio", "socialMedia", "affiliation", "location", "languages", "visualNeeds", "openTo", "primaryAudiences", "tags", "gallery", "active", "moderationHidden"];
 const imageKeys = ["ownerUid", "kind", "storagePath", "width", "height", "color", "caption", "captionDe", "description", "descriptionDe", "descriptionShort", "link", "siteLink", "tags", "status", "origin", "provenance"];
 const app = initializeApp({ credential: credential ? cert(credential) : applicationDefault(), projectId }, `site-export-${Date.now()}`);
 try {

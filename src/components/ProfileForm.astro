@@ -117,6 +117,19 @@ const t = useTranslations(lang);
       <p class="field-note">{t("profile.note.role")}</p>
     </div>
 
+    {
+      /* THE GERMAN TWIN, OPTIONAL (2026-09-23, member feedback "Alles sollte
+        zweisprachig sein"). Directly under its English field rather than
+        behind the gallery's EN/DE switch: two short fields read as a pair
+        when they are both on screen. Blank is fine in either direction —
+        see profileRole() in src/lib/links.ts for the fallback. */
+    }
+    <div class="field">
+      <label class="label" for="role-de">{t("profile.label.role.de")}</label>
+      <input id="role-de" type="text" class="input" lang="de" placeholder={t("profile.ph.role.de")} />
+      <p class="field-note">{t("profile.note.role.de")}</p>
+    </div>
+
     <div class="field">
       <label class="label" for="affiliation">{t("profile.label.affiliation")}</label>
       <input
@@ -152,6 +165,13 @@ const t = useTranslations(lang);
       <textarea id="bio" rows="4" class="input textarea" placeholder={t("profile.ph.bio")}
       ></textarea>
       <p class="field-note">{t("profile.note.bio")}</p>
+    </div>
+
+    <div class="field">
+      <label class="label" for="bio-de">{t("profile.label.bio.de")}</label>
+      <textarea id="bio-de" rows="4" class="input textarea" lang="de" placeholder={t("profile.ph.bio.de")}
+      ></textarea>
+      <p class="field-note">{t("profile.note.bio.de")}</p>
     </div>
 
     <div class="field">
@@ -1883,6 +1903,8 @@ const t = useTranslations(lang);
     joinSocial,
     workLink,
     workCaption,
+    profileRole,
+    profileBio,
     workDescription,
     MAX_SOCIAL_LINKS,
     MAX_SOCIAL_MEDIA,
@@ -1923,11 +1945,13 @@ const t = useTranslations(lang);
 
     const nameInput = document.getElementById("name") as HTMLInputElement;
     const roleInput = document.getElementById("role") as HTMLInputElement;
+    const roleDeInput = document.getElementById("role-de") as HTMLInputElement;
     const activeInput = document.getElementById("profile-active") as HTMLInputElement;
     const wantsToContributeInput = document.getElementById(
       "wants-to-contribute"
     ) as HTMLInputElement;
     const bioInput = document.getElementById("bio") as HTMLTextAreaElement;
+    const bioDeInput = document.getElementById("bio-de") as HTMLTextAreaElement;
     const portfolioInput = document.getElementById("portfolio") as HTMLInputElement;
     const socialEditor = document.getElementById("social-editor")!;
     const socialAdd = document.getElementById("social-add") as HTMLButtonElement;
@@ -2782,9 +2806,11 @@ const t = useTranslations(lang);
         // portrait into the preview.
         photoURL: avatarWrap.classList.contains("has-image") ? avatarImg.src : "",
         photoColor: avatarColor || undefined,
-        role: roleInput.value.trim(),
+        // For the tab's own locale, as localizeMember() does for the built
+        // pages — a member previewing /de/profile sees the German pair.
+        role: profileRole({ role: roleInput.value, roleDe: roleDeInput.value }, lang),
         memberType: memberTypeSelector?.value ?? "",
-        bio: bioInput.value.trim(),
+        bio: profileBio({ bio: bioInput.value, bioDe: bioDeInput.value }, lang),
         tags: tagSelector?.value ?? [],
         openTo: openToSelector?.value ?? [],
         affiliation: affiliationInput.value.trim(),
@@ -2912,7 +2938,9 @@ const t = useTranslations(lang);
 
     nameInput.addEventListener("input", syncPreview);
     roleInput.addEventListener("input", syncPreview);
+    roleDeInput.addEventListener("input", syncPreview);
     bioInput.addEventListener("input", syncPreview);
+    bioDeInput.addEventListener("input", syncPreview);
     portfolioInput.addEventListener("input", syncPreview);
     affiliationInput.addEventListener("input", syncProfileView);
     locationInput.addEventListener("input", syncProfileView);
@@ -3048,7 +3076,9 @@ const t = useTranslations(lang);
 
       nameInput.value = data.displayName ?? user.displayName ?? "";
       roleInput.value = data.role ?? "";
+      roleDeInput.value = data.roleDe ?? "";
       bioInput.value = data.bio ?? "";
+      bioDeInput.value = data.bioDe ?? "";
       portfolioInput.value = data.portfolio ?? "";
       // The stored string IS the row list — an old single-value profile simply
       // arrives as one row, with nothing to migrate.
@@ -3200,7 +3230,9 @@ const t = useTranslations(lang);
             // Omit rather than write "" — the field is absent until chosen.
             ...(isMemberType(memberType) ? { memberType } : {}),
             role: roleInput.value.trim(),
+            roleDe: roleDeInput.value.trim(),
             bio: bioInput.value.trim(),
+            bioDe: bioDeInput.value.trim(),
             portfolio: portfolioInput.value.trim(),
             socialMedia: socialStored(),
             affiliation: affiliationInput.value.trim(),

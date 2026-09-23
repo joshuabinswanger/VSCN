@@ -85,6 +85,12 @@ const prefix = lang === "de" ? "/de" : "";
         <label class="label" for="ob-role">{t("profile.label.role")}</label>
         <input id="ob-role" type="text" class="input" placeholder={t("profile.ph.role")} />
       </div>
+      {/* The German twin, optional — see the same pair in ProfileForm.astro. */}
+      <div class="field">
+        <label class="label" for="ob-role-de">{t("profile.label.role.de")}</label>
+        <input id="ob-role-de" type="text" class="input" lang="de" placeholder={t("profile.ph.role.de")} />
+        <p class="field-note">{t("profile.note.role.de")}</p>
+      </div>
       <div class="field">
         <label id="ob-portfolio-label" class="label" for="ob-portfolio"
           >{t("profile.label.portfolio")}</label
@@ -254,6 +260,12 @@ const prefix = lang === "de" ? "/de" : "";
         <textarea id="ob-bio" rows="4" class="input textarea" placeholder={t("profile.ph.bio")}
         ></textarea>
         <p class="field-note">{t("profile.note.bio")}</p>
+      </div>
+      <div class="field">
+        <label class="label" for="ob-bio-de">{t("profile.label.bio.de")}</label>
+        <textarea id="ob-bio-de" rows="4" class="input textarea" lang="de" placeholder={t("profile.ph.bio.de")}
+        ></textarea>
+        <p class="field-note">{t("profile.note.bio.de")}</p>
       </div>
     </div>
     <div class="ob-footer ob-footer--with-skip">
@@ -1031,6 +1043,8 @@ const prefix = lang === "de" ? "/de" : "";
   import {
     splitSocial,
     joinSocial,
+    profileBio,
+    profileRole,
     MAX_SOCIAL_LINKS,
     MAX_SOCIAL_MEDIA,
   } from "../lib/links.ts";
@@ -1230,10 +1244,11 @@ const prefix = lang === "de" ? "/de" : "";
       populatePreviewCard({
         displayName: getInputValue("ob-name").trim(),
         memberType: memberTypeSelector?.value ?? "",
-        role: getInputValue("ob-role").trim(),
+        // Picked for the wizard's own locale, as the built pages will pick it.
+        role: profileRole({ role: getInputValue("ob-role"), roleDe: getInputValue("ob-role-de") }, lang === "de" ? "de" : "en"),
         portfolio: getInputValue("ob-portfolio").trim(),
         socialMedia: socialStored(),
-        bio: opts.bio ?? "",
+        bio: profileBio({ bio: opts.bio ?? "", bioDe: getInputValue("ob-bio-de") }, lang === "de" ? "de" : "en"),
         photoURL: opts.photoURL ?? user.photoURL ?? "",
         avatarObjectUrl: opts.avatarObjectUrl ?? null,
       });
@@ -1256,10 +1271,12 @@ const prefix = lang === "de" ? "/de" : "";
             memberType: memberTypeSelector?.value ?? "",
             name: getInputValue("ob-name"),
             role: getInputValue("ob-role"),
+            roleDe: getInputValue("ob-role-de"),
             portfolio: getInputValue("ob-portfolio"),
             social: socialStored(),
             phone: getInputValue("ob-phone"),
             bio: getInputValue("ob-bio"),
+            bioDe: getInputValue("ob-bio-de"),
             platformRequest: getInputValue("ob-platform-request"),
             openTo: openToSelector?.value ?? [],
             wantsToContribute: (document.getElementById("ob-wants-to-contribute") as HTMLInputElement | null)?.checked ?? false,
@@ -1285,10 +1302,12 @@ const prefix = lang === "de" ? "/de" : "";
       memberType?: string;
       name?: string;
       role?: string;
+      roleDe?: string;
       portfolio?: string;
       social?: string;
       phone?: string;
       bio?: string;
+      bioDe?: string;
       platformRequest?: string;
       openTo?: string[];
       wantsToContribute?: boolean;
@@ -1761,6 +1780,7 @@ const prefix = lang === "de" ? "/de" : "";
       try {
         const nameVal = getInputValue("ob-name").trim();
         const roleVal = getInputValue("ob-role").trim();
+        const roleDeVal = getInputValue("ob-role-de").trim();
         const portfolioVal = getInputValue("ob-portfolio").trim();
         const socialVal = socialStored();
         const phoneVal = getInputValue("ob-phone").trim();
@@ -1771,6 +1791,7 @@ const prefix = lang === "de" ? "/de" : "";
           // Omit rather than write "" — the field is absent until chosen.
           ...(isMemberType(memberTypeVal) ? { memberType: memberTypeVal } : {}),
           role: roleVal,
+          roleDe: roleDeVal,
           portfolio: portfolioVal,
           socialMedia: socialVal,
           phone: phoneVal,
@@ -1896,6 +1917,7 @@ const prefix = lang === "de" ? "/de" : "";
       setError("");
       try {
         const bioVal = getInputValue("ob-bio").trim();
+        const bioDeVal = getInputValue("ob-bio-de").trim();
         let avatarObjectUrl: string | null = null;
         if (resizedAvatarBlob) {
           avatarObjectUrl = URL.createObjectURL(resizedAvatarBlob);
@@ -1905,6 +1927,7 @@ const prefix = lang === "de" ? "/de" : "";
           user,
           {
             bio: bioVal,
+            bioDe: bioDeVal,
             resizedAvatarBlob,
             previousPhotoImageId: currentPhotoImageId,
             ...(resizedAvatarBlob && avatarColor ? { photoColor: avatarColor } : {}),
@@ -2069,10 +2092,14 @@ const prefix = lang === "de" ? "/de" : "";
 
         nameEl.value = data.displayName ?? user.displayName ?? "";
         roleEl.value = data.role ?? "";
+        const roleDeEl = document.getElementById("ob-role-de") as HTMLInputElement | null;
+        if (roleDeEl) roleDeEl.value = data.roleDe ?? "";
         portfolioEl.value = data.portfolio ?? "";
         setSocialValues(splitSocial(data.socialMedia ?? ""));
         phoneEl.value = data.phone ?? "";
         if (bioEl) bioEl.value = data.bio ?? "";
+        const bioDeEl = document.getElementById("ob-bio-de") as HTMLTextAreaElement | null;
+        if (bioDeEl) bioDeEl.value = data.bioDe ?? "";
         if (requestEl) requestEl.value = "";
 
         const wantsToContributeEl = document.getElementById("ob-wants-to-contribute") as HTMLInputElement | null;
@@ -2118,10 +2145,12 @@ const prefix = lang === "de" ? "/de" : "";
         };
         setIfPresent("ob-name", restoreState.name);
         setIfPresent("ob-role", restoreState.role);
+        setIfPresent("ob-role-de", restoreState.roleDe);
         setIfPresent("ob-portfolio", restoreState.portfolio);
         if (restoreState.social != null) setSocialValues(splitSocial(restoreState.social));
         setIfPresent("ob-phone", restoreState.phone);
         setIfPresent("ob-bio", restoreState.bio);
+        setIfPresent("ob-bio-de", restoreState.bioDe);
         setIfPresent("ob-platform-request", restoreState.platformRequest);
         if (memberTypeSelector && restoreState.memberType) {
           memberTypeSelector.value = restoreState.memberType;

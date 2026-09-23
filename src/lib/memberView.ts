@@ -8,7 +8,8 @@
 
 import type { PublicProfileDoc } from "./firestore.ts";
 import type { ProfileViewModel, ProfileWork } from "./profileView.ts";
-import { workLink } from "./links.ts";
+import { profileBio, profileRole, workLink } from "./links.ts";
+import type { Lang } from "../i18n/utils";
 import { orderedGalleryItems, type GalleryRecord } from "./galleryRecords.ts";
 import { imageScore } from "./imageScore.ts";
 
@@ -228,6 +229,9 @@ export function toMemberViewBase(
     photoColor: doc.photoColor,
     role: (doc.role ?? "").trim(),
     bio,
+    // Raw, like the works' captionDe — localizeMember() picks per page.
+    roleDe: (doc.roleDe ?? "").trim() || undefined,
+    bioDe: (doc.bioDe ?? "").trim() || undefined,
     caption: caption(bio),
     affiliation: (doc.affiliation ?? "").trim(),
     location: (doc.location ?? "").trim(),
@@ -240,6 +244,19 @@ export function toMemberViewBase(
     memberType: doc.memberType ?? "",
     works: works(uid, doc, records, bucket),
   };
+}
+
+/**
+ * The member as ONE locale's pages show them: `role`, `bio` and the card's
+ * `caption` picked for `lang` (German when written, English otherwise), so
+ * every card, index row, profile page and JSON-LD node downstream reads the
+ * plain fields and none of them has to know a second language exists. Called
+ * by each page right after fetchMemberViews(), whose result is shared by the
+ * English and German builds and so stays raw.
+ */
+export function localizeMember<T extends MemberViewBase>(m: T, lang: Lang): T {
+  const bio = profileBio(m, lang);
+  return { ...m, role: profileRole(m, lang), bio, caption: caption(bio) };
 }
 
 /**

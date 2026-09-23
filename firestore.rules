@@ -185,7 +185,7 @@ function canPublish(data, auth) {
 }
 
 function validPublicProfile(data) {
-  let allowedKeys = ['displayName', 'photoURL', 'photoImageId', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'active', 'moderationHidden', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'photoImageId', 'photoColor', 'memberType', 'role', 'roleDe', 'bio', 'bioDe', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'active', 'moderationHidden', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && data.get('moderationHidden', false) is bool
@@ -193,7 +193,7 @@ function validPublicProfile(data) {
 }
 
 function validPrivateUser(data) {
-  let allowedKeys = ['displayName', 'photoURL', 'photoImageId', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'phone', 'email', 'wantsToContribute', 'onboardingComplete', 'status', 'deletionRequestedAt', 'purgeAfter', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'photoImageId', 'photoColor', 'memberType', 'role', 'roleDe', 'bio', 'bioDe', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'phone', 'email', 'wantsToContribute', 'onboardingComplete', 'status', 'deletionRequestedAt', 'purgeAfter', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data)
@@ -215,6 +215,14 @@ function validPublicFields(data) {
                              && validBioWordCount(data.bio)))
     && (!('memberType' in data) || validMemberType(data.memberType))
     && (!('role' in data) || (data.role is string && data.role.size() <= 100))
+    // The German role and bio (2026-09-23): optional, same caps as the English
+    // pair. `get` with a default rather than `!('x' in data) ||` — this
+    // function is shared with users/{uid}, the tighter evaluation budget of
+    // the two (see validPrivateUser). An absent key reads as '' and passes.
+    && data.get('roleDe', '') is string && data.get('roleDe', '').size() <= 100
+    && data.get('bioDe', '') is string
+    && data.get('bioDe', '').size() <= 500
+    && validBioWordCount(data.get('bioDe', ''))
     && (!('portfolio' in data) || (data.portfolio is string && data.portfolio.size() <= 200))
     // 500, not 200: the editor now offers six link rows, and six real URLs
     // (a LinkedIn vanity path alone runs ~55 chars) overrun 200 long before

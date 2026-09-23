@@ -351,8 +351,9 @@ test("publicProfiles: eight ids save on a FULL profile", async () => {
   const primaryAudiences = ["science", "public", "policy-makers", "education"];
   await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
     displayName: "x".repeat(100), photoURL, photoImageId: "img-a", photoColor: "#123456",
-    memberType: "creator", role: "x".repeat(100),
+    memberType: "creator", role: "x".repeat(100), roleDe: "x".repeat(100),
     bio: Array.from({ length: 35 }, () => "word").join(" "),
+    bioDe: Array.from({ length: 35 }, () => "Wort").join(" "),
     portfolio: "x".repeat(200), socialMedia: "x".repeat(500),
     affiliation: "x".repeat(150), location: "x".repeat(100),
     languages: ["de", "en", "fr", "it"], visualNeeds: ["a", "b", "c", "d", "e", "f", "g", "h"],
@@ -367,8 +368,9 @@ test("publicProfiles: eight ids save on a FULL profile", async () => {
   await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).update({ updatedAt: new Date(), active: true }));
   await assertSucceeds(db.doc(`users/${OWNER}`).set({
     ...minimalUser(OWNER),
-    displayName: "x".repeat(100), photoURL, role: "x".repeat(100),
+    displayName: "x".repeat(100), photoURL, role: "x".repeat(100), roleDe: "x".repeat(100),
     bio: Array.from({ length: 35 }, () => "word").join(" "),
+    bioDe: Array.from({ length: 35 }, () => "Wort").join(" "),
     portfolio: "x".repeat(200), socialMedia: "x".repeat(500),
     affiliation: "x".repeat(150), location: "x".repeat(100),
     languages: ["de", "en", "fr", "it"], visualNeeds: ["a", "b", "c", "d", "e", "f", "g", "h"],
@@ -376,6 +378,24 @@ test("publicProfiles: eight ids save on a FULL profile", async () => {
     gallery: Array.from({ length: 8 }, () => crypto.randomUUID()),
     phone: "x".repeat(40), wantsToContribute: true, onboardingComplete: true,
   }));
+});
+
+test("roleDe/bioDe: optional, and held to the English pair's caps on both docs", async () => {
+  // An unlisted key would reject the WHOLE save through hasOnly, so the first
+  // assertion is the one that matters: a German pair saves at all.
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await seed(env, `users/${OWNER}`, minimalUser(OWNER));
+  const tooManyWords = Array.from({ length: 36 }, () => "Wort").join(" ");
+  for (const path of [`publicProfiles/${OWNER}`, `users/${OWNER}`]) {
+    const ref = db.doc(path);
+    await assertSucceeds(ref.set({ displayName: "Test Member", roleDe: "Illustratorin", bioDe: "Zeichnet Dinge." }, { merge: true }));
+    await assertSucceeds(ref.set({ roleDe: "", bioDe: "" }, { merge: true }));
+    await assertFails(ref.set({ roleDe: "x".repeat(101) }, { merge: true }));
+    await assertFails(ref.set({ bioDe: tooManyWords }, { merge: true }));
+    await assertFails(ref.set({ bioDe: "x".repeat(501) }, { merge: true }));
+    await assertFails(ref.set({ roleDe: 7 }, { merge: true }));
+    await assertFails(ref.set({ bioDe: ["not", "a", "string"] }, { merge: true }));
+  }
 });
 
 test("publicProfiles: another member's image id is accepted by rules — the READER drops it", async () => {
