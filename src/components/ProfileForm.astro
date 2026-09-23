@@ -419,6 +419,13 @@ const t = useTranslations(lang);
       }
       <template data-gallery-tpl="item">
         <div class="gallery-item">
+          {
+            /* THE GRIP (2026-09-23, Josh: "make image moving be by dragging").
+              SortableJS starts a drag from this handle only, so the inputs in
+              the row keep their own mouse and touch behaviour. Not a tab stop
+              and hidden from the tree: the ⋯ menu is the keyboard's path. */
+          }
+          <button type="button" class="gallery-grip" data-drag-handle aria-hidden="true" tabindex="-1">⠿</button>
           <div class="gallery-thumb">
             <img alt="" loading="lazy" data-gallery-img />
             <span class="gallery-cover" data-gallery-cover hidden></span>
@@ -621,6 +628,7 @@ const t = useTranslations(lang);
       <template data-gallery-tpl="project">
         <section class="gallery-project" data-project-block>
           <header class="gallery-project-head">
+            <button type="button" class="gallery-grip" data-drag-handle aria-hidden="true" tabindex="-1">⠿</button>
             <span class="gallery-project-name" data-project-name></span>
             <div class="gallery-menu" data-gallery-menu>
               <button type="button" class="gallery-tool gallery-menu-btn" data-menu-btn aria-haspopup="menu" aria-expanded="false">⋯</button>
@@ -1295,9 +1303,59 @@ const t = useTranslations(lang);
 
   .gallery-item {
     display: grid;
-    grid-template-columns: 110px minmax(0, 1fr);
+    /* Grip, thumb, words (2026-09-23: the first column is the drag handle). */
+    grid-template-columns: 18px 110px minmax(0, 1fr);
     gap: 12px;
     align-items: start;
+  }
+
+  /* ── Dragging (2026-09-23) ───────────────────────────── */
+  /* touch-action: none on the HANDLE only, so the page still scrolls from
+     everywhere else in the row; a short press on the grip starts the drag
+     (SortableJS delayOnTouchOnly). Muted at rest, dark in hand. */
+  .gallery-grip {
+    width: 18px;
+    height: 26px;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--color-muted);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .gallery-grip:hover {
+    color: var(--color-dark);
+  }
+
+  .gallery-project-head .gallery-grip {
+    flex: 0 0 auto;
+  }
+
+  /* The three SortableJS states. The ghost is the hole the item left (a
+     faint dashed frame where it will land); the chosen item is the one in
+     hand; the fallback drag copy keeps the paper behind it. Cloned template
+     nodes, so the scoped attribute is on them and these rules apply. */
+  .sortable-ghost {
+    opacity: 0.35;
+    outline: 1.5px dashed var(--color-muted);
+    outline-offset: 4px;
+    border-radius: var(--radius-sm);
+  }
+
+  .sortable-chosen .gallery-grip {
+    color: var(--color-dark);
+    cursor: grabbing;
+  }
+
+  .sortable-drag {
+    background: var(--color-bg);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    border-radius: var(--radius-sm);
   }
 
   .gallery-fields {
@@ -1747,8 +1805,12 @@ const t = useTranslations(lang);
     gap: 14px;
   }
 
+  /* An empty block must still be somewhere to drop: a dashed target the
+     height of a grip, in place of the rows it does not have yet. */
   .gallery-project-images:empty {
-    display: none;
+    min-height: 44px;
+    border: 1.5px dashed var(--color-border);
+    border-radius: var(--radius-sm);
   }
 
   /* "+ New project" beside "Add images", the hint's ⓘ between them. */
@@ -1802,10 +1864,18 @@ const t = useTranslations(lang);
 
   @media (--bp-mobile) {
     .gallery-item {
-      grid-template-columns: minmax(0, 1fr);
+      grid-template-columns: 18px minmax(0, 1fr);
+    }
+    /* The words drop under the thumb, in the second column — the grip keeps
+       the first for the whole row. */
+    .gallery-fields {
+      grid-column: 2;
     }
     .gallery-thumb {
       max-width: 140px;
+    }
+    .gallery-project {
+      padding: 10px;
     }
   }
 
@@ -2316,6 +2386,7 @@ const t = useTranslations(lang);
     type GalleryTask,
   } from "../lib/galleryQueue.ts";
   import { updateUserProfile } from "../lib/firestore.ts";
+  import Sortable from "sortablejs";
   import {
     contiguousOrder,
     editorBlocks,
@@ -2794,6 +2865,75 @@ const t = useTranslations(lang);
     /** What focus should land on after a re-render: a row's ⋯, a header's ⋯, or a block's field. */
     type FocusHint = { imageId: string } | { projectId: string; field?: string };
 
+    // ── Dragging (2026-09-23, Josh: "make image moving be by dragging") ──
+    // SortableJS over the one outer list and each block's image list, all in
+    // one group: a row moves between the loose list and any block, a header
+    // drags its whole block, and a block can never be dropped inside a block.
+    // Instances are rebuilt after every render (the rows are new nodes) and
+    // torn down with the page — they hold document-level listeners.
+    let sortables: Sortable[] = [];
+
+    function destroySortables() {
+      for (const instance of sortables) instance.destroy();
+      sortables = [];
+    }
+    document.addEventListener("astro:before-swap", destroySortables, { once: true });
+
+    function mountSortables() {
+      destroySortables();
+      const common: Sortable.Options = {
+        handle: "[data-drag-handle]",
+        // Rows and blocks only — a pending upload's row (see renderQueue) is
+        // not a thing that can be placed yet.
+        draggable: "[data-gallery-index], [data-project-block]",
+        animation: 150,
+        // Touch: a short press on the grip starts the drag, so a scroll that
+        // begins on it is still a scroll.
+        delay: 180,
+        delayOnTouchOnly: true,
+        fallbackOnBody: true,
+        swapThreshold: 0.65,
+        ghostClass: "sortable-ghost",
+        chosenClass: "sortable-chosen",
+        dragClass: "sortable-drag",
+        onEnd: onDragEnd,
+      };
+      sortables.push(Sortable.create(galleryEditor, { ...common, group: { name: "gallery", pull: true, put: true } }));
+      for (const list of galleryEditor.querySelectorAll<HTMLElement>("[data-project-images]")) {
+        sortables.push(
+          Sortable.create(list, {
+            ...common,
+            group: { name: "gallery", pull: true, put: (_to, _from, dragged) => !dragged.matches("[data-project-block]") },
+          }),
+        );
+      }
+    }
+
+    /**
+     * The DOM is the truth for one moment: read the list back as blocks and
+     * let applyBlockMove make it state — order stored at once, membership at
+     * Save, like the menu's moves. Deferred a tick so SortableJS finishes its
+     * own bookkeeping on the nodes before the re-render replaces them.
+     */
+    function onDragEnd() {
+      const next: EditorBlock[] = [];
+      for (const child of Array.from(galleryEditor.children)) {
+        if (!(child instanceof HTMLElement)) continue;
+        if (child.matches("[data-project-block]") && child.dataset.projectId) {
+          next.push({
+            kind: "project",
+            projectId: child.dataset.projectId,
+            indices: Array.from(child.querySelectorAll<HTMLElement>("[data-project-images] > [data-gallery-index]")).map((row) =>
+              Number(row.dataset.galleryIndex),
+            ),
+          });
+        } else if (child.dataset.galleryIndex !== undefined) {
+          next.push({ kind: "image", index: Number(child.dataset.galleryIndex) });
+        }
+      }
+      queueMicrotask(() => void applyBlockMove(next));
+    }
+
     /**
      * Renders the committed gallery.
      *
@@ -3169,6 +3309,7 @@ const t = useTranslations(lang);
           .map((block) => (block.kind === "image" ? buildRow(block.index) : buildBlock(block)))
           .filter((n): n is HTMLElement => n !== null),
       );
+      mountSortables();
       // The image-led directory renders a typographic card for an empty
       // gallery; the nudge says so, and disappears with the first image.
       const nudge = document.getElementById("gallery-nudge");
