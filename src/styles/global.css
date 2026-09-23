@@ -702,3 +702,44 @@ a:hover {
 .turnstile-slot:empty {
   display: none;
 }
+
+/* ── The play mark (2026-09-23, video works) ──
+   One drawing for every place a video work appears without playing: the wall
+   tile, the gallery card, the member page, the editor row and the lightbox's
+   play button. A triangle in a disc, drawn in CSS so it inherits currentColor
+   and needs no asset. GLOBAL, not scoped, because five components draw it and
+   a scoped copy in each would be five marks. */
+.vscn-play {
+  --play-size: 2.6rem;
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: var(--play-size);
+  height: var(--play-size);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--color-bg);
+  vertical-align: middle;
+}
+.vscn-play::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 54%;
+  transform: translate(-50%, -50%);
+  border-style: solid;
+  border-width: calc(var(--play-size) * 0.2) 0 calc(var(--play-size) * 0.2) calc(var(--play-size) * 0.32);
+  border-color: transparent transparent transparent currentColor;
+}
+/* Over a poster that is not playing here: centred, and out of the pointer's
+   way so the click still lands on the link beneath it. */
+.vscn-play--over {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.vscn-play[hidden] {
+  display: none;
+}

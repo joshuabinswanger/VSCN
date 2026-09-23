@@ -36,6 +36,8 @@ export interface LegalPageContent {
 }
 
 const UPDATED = "2026-09-22";
+// The privacy page moved on its own: embedded videos (2026-09-23).
+const PRIVACY_UPDATED = "2026-09-23";
 
 const en: Record<LegalPageId, LegalPageContent> = {
   impressum: {
@@ -124,7 +126,7 @@ const en: Record<LegalPageId, LegalPageContent> = {
   privacy: {
     title: "Privacy policy",
     description: "What personal data vscn.ch processes, why, where it goes, and what you can do about it.",
-    updated: UPDATED,
+    updated: PRIVACY_UPDATED,
     sections: [
       {
         id: "controller",
@@ -180,6 +182,14 @@ const en: Record<LegalPageId, LegalPageContent> = {
           "The following is private — visible only to you and to the site’s administrator: your email address, your phone number if you give one, your onboarding answers, and whether you would like to help with the network.",
           "Pictures are stored in Firebase Cloud Storage (Google). Each has a fixed web address, so anyone who has the address can view it even without opening the site; the address is not guessable. Pictures you remove are deleted from storage by an automatic sweep shortly after.",
           "Search engines index the directory. Your profile page may therefore appear in search results under your name for as long as it is public.",
+        ],
+      },
+      {
+        id: "videos",
+        heading: "Embedded videos (YouTube, Vimeo)",
+        body: [
+          "Members can show a video from YouTube or Vimeo among their works. On the directory and on member pages such a work appears only as a still picture that we store ourselves; while you are just looking, your browser does not contact YouTube or Vimeo at all. When a member adds a video link, our server asks the platform once for the video’s title and thumbnail; that request carries no data about visitors.",
+          "Only when you press play is the platform’s video player loaded into the page. From that moment your browser connects to YouTube (Google Ireland Limited / Google LLC) or to Vimeo (Vimeo.com, Inc.), which receive technical data such as your IP address, information about your browser and the page the video is on, and may set cookies or similar identifiers on your device under their own privacy policies. We use YouTube’s privacy-enhanced mode (youtube-nocookie.com) and Vimeo’s “do not track” setting to reduce this, but we cannot switch it off. When you leave the video, the player is removed from the page. If you do not want this, do not press play; the work’s description and links remain available without it.",
         ],
       },
       {
@@ -318,7 +328,7 @@ const de: Record<LegalPageId, LegalPageContent> = {
   privacy: {
     title: "Datenschutzerklärung",
     description: "Welche Personendaten vscn.ch bearbeitet, wozu, wohin sie gehen und was du dagegen tun kannst.",
-    updated: UPDATED,
+    updated: PRIVACY_UPDATED,
     sections: [
       {
         id: "controller",
@@ -374,6 +384,14 @@ const de: Record<LegalPageId, LegalPageContent> = {
           "Folgendes ist privat — nur für dich und die Administration der Website sichtbar: deine E-Mail-Adresse, deine Telefonnummer, falls du eine angibst, deine Antworten aus der Einrichtung und ob du beim Netzwerk mithelfen möchtest.",
           "Bilder liegen in Firebase Cloud Storage (Google). Jedes hat eine feste Webadresse; wer die Adresse kennt, kann das Bild auch ohne die Website ansehen. Die Adresse ist nicht erratbar. Bilder, die du entfernst, werden kurz darauf von einem automatischen Durchlauf aus dem Speicher gelöscht.",
           "Suchmaschinen indexieren das Verzeichnis. Deine Profilseite kann darum unter deinem Namen in Suchergebnissen erscheinen, solange sie öffentlich ist.",
+        ],
+      },
+      {
+        id: "videos",
+        heading: "Eingebettete Videos (YouTube, Vimeo)",
+        body: [
+          "Mitglieder können unter ihren Arbeiten ein Video von YouTube oder Vimeo zeigen. Im Verzeichnis und auf den Mitgliederseiten erscheint eine solche Arbeit nur als Standbild, das wir selbst speichern; solange du nur schaust, nimmt dein Browser keinerlei Verbindung zu YouTube oder Vimeo auf. Wenn ein Mitglied einen Video-Link hinzufügt, fragt unser Server die Plattform einmal nach Titel und Vorschaubild des Videos; diese Anfrage enthält keine Daten über Besucherinnen und Besucher.",
+          "Erst wenn du auf Play drückst, wird der Videoplayer der Plattform in die Seite geladen. Ab diesem Moment verbindet sich dein Browser mit YouTube (Google Ireland Limited / Google LLC) oder mit Vimeo (Vimeo.com, Inc.); diese erhalten technische Daten wie deine IP-Adresse, Angaben zu deinem Browser und die Seite, auf der das Video steht, und können nach ihren eigenen Datenschutzbestimmungen Cookies oder ähnliche Kennungen auf deinem Gerät setzen. Wir nutzen den erweiterten Datenschutzmodus von YouTube (youtube-nocookie.com) und die «Do not track»-Einstellung von Vimeo, um das zu verringern, abschalten können wir es nicht. Verlässt du das Video, wird der Player wieder aus der Seite entfernt. Wenn du das nicht möchtest, drücke nicht auf Play; Beschreibung und Links der Arbeit bleiben auch ohne das Video zugänglich.",
         ],
       },
       {

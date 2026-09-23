@@ -2,6 +2,7 @@
 import { getImage } from "astro:assets";
 import type { MemberView } from "../../lib/memberView.ts";
 import { memberHref } from "../../lib/links.ts";
+import { embedDataAttrs } from "../../lib/embed.ts";
 import { useTranslations, type Lang } from "../../i18n/utils.ts";
 import MemberDetailPanel from "./MemberDetailPanel.astro";
 // THIS CARD'S SURFACE, in a file of its own so the profile editor's preview
@@ -193,6 +194,7 @@ const positionFor = (i: number) =>
               data-pswp-site-link={pswpFor(w).siteLink || undefined}
               data-pswp-meta={pswpFor(w).meta}
               data-pswp-profile={profileHref}
+              {...embedDataAttrs(w.embed)}
             >
               <img
                 class="ccard__img"
@@ -208,6 +210,7 @@ const positionFor = (i: number) =>
                 loading="lazy"
                 decoding="async"
               />
+              {w.embed && <span class="vscn-play vscn-play--over" aria-hidden="true" />}
             </div>
           ))
         }

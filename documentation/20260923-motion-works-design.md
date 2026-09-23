@@ -7,8 +7,11 @@ hochladen könnte."* Josh: *"if we create videos and GIFs, I want to make it
 efficient"*, and later *"i want to also have the option for people to upload a
 thumbnail themselves."*
 
-This design is **written, not built**. Its decisions were made in conversation
-on 2026-09-23. The questions still open for Josh are listed at the end.
+This design was written on 2026-09-23 and its decisions made in conversation
+that day. **Release 1 (embeds + member thumbnails) was built the same day**
+(branch `feat/motion-embeds`); see "Release 1 as built" at the end for where the
+build departed from the text above. Release 2 (loops, GIFs) is not built. The
+questions still open for Josh are listed at the end.
 
 ## What was decided
 
@@ -127,6 +130,12 @@ would make 32 and be refused. The cap has to count **works** (records) rather
 than files, or the three extra files of a loop must not count. Counting records
 is the cleaner fix and keeps the cap meaning what it was meant to mean.
 
+**Done in release 1**, not left for loops: `MAX_STORED_WORKS = 20` now counts
+`images/` records (`reserveWork` in `functions/src/uploads.ts`), because an
+embed already owns two objects and a member with eight video works swapping a
+couple of thumbnails would have hit a file cap that eight stills never came
+near.
+
 ## Embeds: YouTube and Vimeo
 
 1. The member pastes a link into a new "Add a video link" field in the gallery
@@ -167,6 +176,15 @@ The thumbnail is served from our own Storage.
     the replace-image task decides for replaced stills applies here too.
 - `posterSource` becomes `"member"`. Removing the thumbnail copies
   `{id}.auto.webp` back as a new version and sets `posterSource: "auto"`.
+- **As settled by the replace-image task (PR #76) and built on:** there is no
+  version suffix. A replaced picture is a **new record with a new id** that
+  inherits the work's words, because the id IS the filename; the
+  `storagePath == …/{imageId}.webp` binding stays exactly as it is in both
+  rulesets. For a video work the new record also inherits `media`/`embed`, and
+  `completeImageUpload` copies `{old}.auto.webp` to `{new}.auto.webp`. "Use
+  automatic thumbnail" is the same move in the other direction
+  (`restoreAutoPoster`). **Moderation:** ratings reset, a hide carries over —
+  Josh's decision for replaced stills, applied unchanged.
 
 ## Playback
 
@@ -284,5 +302,38 @@ new callable does not ride along with a hosting release
    export can exceed that; members would export H.264 or GIF first.
 5. **Do motion works share the eight-work gallery cap?** Proposed: yes, a work
    is a work.
-6. **Do YouTube Shorts and unlisted Vimeo count?** Proposed: yes to both. Both
-   are handled in `resolveEmbed`.
+6. ~~**Do YouTube Shorts and unlisted Vimeo count?**~~ **Decided 2026-09-23:**
+   yes to both — `youtube.com/shorts/{id}` and `vimeo.com/{id}/{hash}` are
+   accepted by `resolveEmbed`. **Instagram Reels are out:** Meta's oEmbed needs
+   an app token that has passed Meta's app review, which is more machinery than
+   one more provider is worth now.
+
+## Release 1 as built (2026-09-23)
+
+Where the build had to choose something the text above did not say:
+
+- **Posters come at the video's own aspect ratio.** YouTube's oEmbed answers
+  with `hqdefault` (480×360, letterboxed) and `maxresdefault` is always 16:9 —
+  a Short arrives as an upright picture in a wide frame, padded either with
+  black or with a *blurred copy of itself*, which no trim can find. The
+  undocumented `i.ytimg.com/vi/{id}/oar2.jpg` is the thumbnail at the
+  original aspect (1080×1920 for a Short, 1920×1080 for a film), so it is
+  tried first; `maxresdefault` and `hqdefault` follow, with black bars trimmed.
+  Vimeo's thumbnail URL ends in a size its CDN re-renders, so `_1920` is asked
+  for. Thumbnails are fetched only from `i.ytimg.com` / `i.vimeocdn.com`, with
+  redirects refused.
+- **The oEmbed title pre-fills the caption** of the new work (≤ 140).
+- **Unverified accounts cannot add video links.** Their one slot is for their
+  one picture, and a video work is always a fresh uuid record.
+- **`uploadDate` in the VideoObject is when the work was added to VSCN**, from
+  the record's `createdAt` (exported by `scripts/export-site-data.mjs`), because
+  YouTube's oEmbed does not say when the video was published.
+- **The player is `youtube-nocookie.com/embed/{id}` / `player.vimeo.com/video/{id}?dnt=1`,**
+  built from the stored id with `autoplay=1` added (the iframe only exists
+  after a press). The iframe keeps the origin as referrer: YouTube refuses to
+  play an embed that arrives with none.
+- **Deploying:** `resolveEmbed` and `restoreAutoPoster` are new callables and
+  the upload pair changed; CI ships rules + hosting only. Deploy them by hand
+  before (or with) the hosting release. On this machine the CLI's 10-second
+  functions discovery times out: prefix the deploy with
+  `FUNCTIONS_DISCOVERY_TIMEOUT=60`.

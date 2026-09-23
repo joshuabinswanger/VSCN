@@ -8,6 +8,8 @@
 // editor preview the real thing — the public page is a static build-time
 // snapshot, so a member cannot see their own edits there until a rebuild runs.
 
+import type { EmbedRef } from "./embed.ts";
+
 export interface ProfileWork {
   url: string;
   width: number;
@@ -62,6 +64,14 @@ export interface ProfileWork {
    * fallback — the same shape the member's own `tags` field already has.
    */
   tags: string[];
+  /**
+   * The video this work plays; `url` is then its poster (2026-09-23). Every
+   * surface that cannot play shows the poster and a play mark, and the
+   * lightbox plays it — see lightboxEmbed.ts.
+   */
+  embed?: EmbedRef;
+  /** When a video work was added (ISO), for the VideoObject's uploadDate. */
+  addedAt?: string;
 }
 
 export interface ProfileViewModel {

@@ -13,6 +13,7 @@ import {
   workDescription,
 } from "../../../lib/links.ts";
 import { memberPageJsonLd, memberTitle } from "../../../lib/seo.ts";
+import { embedDataAttrs } from "../../../lib/embed.ts";
 import { useTranslations } from "../../../i18n/utils";
 import type { Lang } from "../../../i18n/utils";
 // THIS PAGE'S SURFACE, in a file of its own so the profile editor's preview
@@ -117,6 +118,7 @@ const lightboxStrings = JSON.stringify({
   error: t("member.lightbox.error"),
   linkTitle: t("member.lightbox.link"),
   siteLinkTitle: t("member.lightbox.siteLink"),
+  play: t("member.lightbox.play"),
 });
 
 const social = socialLinks(member.socialMedia);
@@ -151,6 +153,8 @@ const jsonLd = memberPageJsonLd({
     description: w.description,
     link: w.link,
     siteLink: w.siteLink,
+    embed: w.embed,
+    addedAt: w.addedAt,
   })),
   pageUrl,
   site: Astro.site!.href,
@@ -301,6 +305,7 @@ const jsonLd = memberPageJsonLd({
                 data-pswp-link={w.link || undefined}
                 data-pswp-site-link={w.siteLink || undefined}
                 data-pswp-meta={w.pswpMeta || undefined}
+                {...embedDataAttrs(w.embed)}
               >
                 <img
                   class="mprof__img"
@@ -314,6 +319,7 @@ const jsonLd = memberPageJsonLd({
                   alt={w.caption?.trim() || `${member.displayName} — ${t("member.workAlt")}`}
                   style={`background-color: ${w.color ?? "var(--color-border)"}`}
                 />
+                {w.embed && <span class="vscn-play vscn-play--over" aria-hidden="true" />}
               </a>
               {(w.caption?.trim() || w.description || w.link || w.siteLink) && (
                 <figcaption class="mprof__caption">
@@ -356,6 +362,7 @@ const jsonLd = memberPageJsonLd({
 <script>
   import PhotoSwipeLightbox from "photoswipe/lightbox";
   import { lightboxPadding, registerLightboxText } from "../../../lib/lightboxText.ts";
+  import { registerLightboxEmbeds } from "../../../lib/lightboxEmbed.ts";
   import "photoswipe/style.css";
   // Immediately after the package sheet, never before: this is the chrome that
   // replaces it. The overrides are also written to win on specificity alone
@@ -373,6 +380,8 @@ const jsonLd = memberPageJsonLd({
     linkTitle: string;
     /** Accessible name for the member's own-site link on a piece. */
     siteLinkTitle: string;
+    /** "Play video on {provider}" — the video slide's button. */
+    play: string;
   }
 
   // English is the fallback, matching useTranslations() — a missing or
@@ -385,6 +394,7 @@ const jsonLd = memberPageJsonLd({
     error: "The image cannot be loaded",
     linkTitle: "Where this image appeared",
     siteLinkTitle: "This piece on the maker's own site",
+    play: "Play video on {provider}",
   };
 
   // These options take raw HTML, which is how the stock SVG icons get replaced
@@ -467,6 +477,8 @@ const jsonLd = memberPageJsonLd({
     // must not speak differently depending on which gallery opened it. Both
     // galleries carried their own copy of this renderer until 2026-09-04.
     registerLightboxText(lightbox, { linkTitle: strings.linkTitle, siteLinkTitle: strings.siteLinkTitle });
+    // A video work opens as its poster with a play button; see lightboxEmbed.ts.
+    registerLightboxEmbeds(lightbox, { play: strings.play });
 
     lightbox.init();
   });

@@ -199,6 +199,67 @@ test("images: identity pins hold even when the change is self-consistent", async
   }));
 });
 
+// VIDEO WORKS (2026-09-23, release 1 of documentation/20260923-motion-works-design.md).
+// media / embed / posterSource are server-written: a member's caption save must
+// carry them through untouched (the MERGED record is what hasOnly judges, so
+// leaving them off the list would have silently refused every save on a video
+// work), and must never be able to change them.
+const EMBED = { provider: "youtube", videoId: "dQw4w9WgXcQ" };
+const embedDoc = (overrides = {}) =>
+  imageDoc(OWNER, "img-1", { status: "live", media: "embed", embed: EMBED, posterSource: "auto", ...overrides });
+
+test("images: a video work takes a caption save and a removal like any picture", async () => {
+  await seed(env, "images/img-1", embedDoc());
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({
+    caption: "Cell division", captionDe: "Zellteilung", tags: ["biology"], updatedAt: new Date(),
+  }));
+  await assertSucceeds(db.doc("images/img-1").update({ status: "pendingDeletion", updatedAt: new Date() }));
+});
+
+test("images: a Vimeo work with an unlisted hash is valid on save", async () => {
+  await seed(env, "images/img-1", embedDoc({ embed: { provider: "vimeo", videoId: "22439234", hash: "a1b2c3d4e5" }, posterSource: "member" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({ caption: "The Mountain", updatedAt: new Date() }));
+});
+
+test("images: the client can never change media, embed or posterSource", async () => {
+  await seed(env, "images/img-1", embedDoc());
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertFails(db.doc("images/img-1").update({ media: "still", updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ embed: { provider: "youtube", videoId: "jNQXAC9IVRw" }, updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ "embed.videoId": "jNQXAC9IVRw", updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ posterSource: "member", updatedAt: new Date() }));
+});
+
+test("images: a still cannot be turned into a video by the client", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertFails(db.doc("images/img-1").update({ media: "embed", embed: EMBED, updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ posterSource: "auto", updatedAt: new Date() }));
+});
+
+test("images: a malformed embed makes the record unsaveable, so the server cannot store one either unnoticed", async () => {
+  // Seeded bad records stand in for a server bug: validImage judges the whole
+  // record on every member save, so a bad embed fails loudly at the first one.
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  for (const embed of [
+    { provider: "youtube", videoId: "short" },
+    { provider: "youtube", videoId: "dQw4w9WgXcQ", hash: "abcdef" },
+    { provider: "vimeo", videoId: "12ab" },
+    { provider: "vimeo", videoId: "22439234", hash: "NOT-HEX" },
+    { provider: "dailymotion", videoId: "x7tgad0" },
+    { provider: "youtube", videoId: "dQw4w9WgXcQ", url: "https://evil.example/" },
+  ]) {
+    await seed(env, "images/img-1", embedDoc({ embed }));
+    await assertFails(db.doc("images/img-1").update({ caption: "x", updatedAt: new Date() }));
+  }
+  await seed(env, "images/img-1", embedDoc({ media: "gif" }));
+  await assertFails(db.doc("images/img-1").update({ caption: "x", updatedAt: new Date() }));
+  await seed(env, "images/img-1", embedDoc({ posterSource: "platform" }));
+  await assertFails(db.doc("images/img-1").update({ caption: "x", updatedAt: new Date() }));
+});
+
 test("images: another member cannot update, nobody can delete", async () => {
   await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
   const other = env.authenticatedContext(OTHER, verified(OTHER)).firestore();

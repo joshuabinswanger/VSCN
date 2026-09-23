@@ -26,6 +26,18 @@ export interface ImageDoc {
   /** What is in the picture, ≤ 5 (2026-09-08). No function reads this — mirrored for hasOnly parity only. */
   tags?: string[];
   origin: ImageOrigin;
+  /**
+   * What the work IS (2026-09-23, documentation/20260923-motion-works-design.md).
+   * Absent means "still", so every record written before it is valid unchanged.
+   * The WebP at storagePath is the poster of a video work — anything that knows
+   * only stills keeps working by showing it. Server-written: rules let a client
+   * keep these three on a caption save and never change them.
+   */
+  media?: "still" | "loop" | "embed";
+  /** The video an embed plays. The id, never the URL — the player URL is always rebuilt from it. */
+  embed?: { provider: "youtube" | "vimeo"; videoId: string; hash?: string };
+  /** Whose poster sits at storagePath; the platform's is kept at `{id}.auto.webp` either way. */
+  posterSource?: "auto" | "member";
   provenance?: { source?: string; credit?: string; license?: string; note?: string };
   status: ImageStatus;
   createdAt: Timestamp;

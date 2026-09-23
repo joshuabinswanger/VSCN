@@ -6,6 +6,7 @@ import { adminAuth, db, getBucket } from "./admin";
 import { imageRefsFor } from "./lifecycle";
 import type { DeletionJob } from "./types";
 import { deleteRefs } from "./util";
+import { recordObjectPaths } from "./uploads";
 
 type Step = keyof DeletionJob["steps"];
 
@@ -47,7 +48,7 @@ export async function purgeAccount(uid: string): Promise<void> {
       const images = await imageRefsFor(uid);
       const bucket = getBucket();
       for (const d of images) {
-        await bucket.file(d.data().storagePath as string).delete({ ignoreNotFound: true });
+        for (const path of recordObjectPaths(d.data())) await bucket.file(path).delete({ ignoreNotFound: true });
       }
       await deleteRefs(images.map((d) => d.ref));
       await tick("imagesDeleted");

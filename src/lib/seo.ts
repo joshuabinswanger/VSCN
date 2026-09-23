@@ -12,6 +12,7 @@
 // Everything in this file is a pure function over view models, so the shapes
 // are pinned by tests/unit/seo.test.mjs rather than by reading built HTML.
 import { href, memberHref, socialLinks } from "./links.ts";
+import { embedPageUrl, type EmbedRef } from "./embed.ts";
 
 /**
  * A member page's canonical absolute URL. memberHref() gives the site-relative
@@ -91,6 +92,10 @@ export interface SeoWork {
   link?: string;
   /** Absolute, already filtered by workLink(): the member's own project page for this piece. */
   siteLink?: string;
+  /** A video work (2026-09-23): `url` is then its poster, and the node is a VideoObject. */
+  embed?: EmbedRef;
+  /** When the video work was added to VSCN (ISO) — its uploadDate here. */
+  addedAt?: string;
 }
 
 type Node = Record<string, unknown>;
@@ -142,6 +147,7 @@ function personNode(member: SeoMember, memberUrl: string): Node {
  * it is on every surface of the site.
  */
 function imageNode(work: SeoWork, creator: Node, creatorName: string, site: string): Node {
+  if (work.embed) return videoNode(work, work.embed, creator, creatorName);
   return compact({
     "@type": "ImageObject",
     contentUrl: work.url,
@@ -158,6 +164,38 @@ function imageNode(work: SeoWork, creator: Node, creatorName: string, site: stri
     // site, which is the whole point of the exercise. The publication is what
     // the picture is part of; until the second field existed it sat in
     // mainEntityOfPage, which was the nearest slot, not the right one.
+    mainEntityOfPage: work.siteLink,
+    isPartOf: work.link ? { "@type": "WebPage", url: work.link } : undefined,
+  });
+}
+
+/**
+ * A VIDEO WORK (2026-09-23, documentation/20260923-motion-works-design.md).
+ * Search engines show video results from a VideoObject, and its three
+ * required properties are all here: the name (the caption, or the maker's
+ * name when there is none — a VideoObject without a name is dropped), the
+ * poster as thumbnailUrl (our own copy on Storage, the thing the tile shows)
+ * and the uploadDate. `embedUrl` is the privacy-reduced player, built from the
+ * stored id like the lightbox's — never the link the member pasted. There is
+ * no contentUrl: we host no video, only its poster. The creator and credit
+ * are the picture's, so the attribution rule carries over unchanged.
+ *
+ * uploadDate is when the work was added to VSCN, not when the platform got
+ * it: oEmbed does not say for YouTube, and the date is ours to state.
+ */
+function videoNode(work: SeoWork, embed: EmbedRef, creator: Node, creatorName: string): Node {
+  return compact({
+    "@type": "VideoObject",
+    name: work.caption?.trim() || creatorName,
+    description: work.description?.trim(),
+    thumbnailUrl: work.url,
+    uploadDate: work.addedAt,
+    embedUrl: embedPageUrl(embed),
+    width: work.width,
+    height: work.height,
+    creator,
+    creditText: creatorName,
+    copyrightNotice: `© ${creatorName}`,
     mainEntityOfPage: work.siteLink,
     isPartOf: work.link ? { "@type": "WebPage", url: work.link } : undefined,
   });
