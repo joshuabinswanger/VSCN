@@ -193,7 +193,7 @@ function validPublicProfile(data) {
 }
 
 function validPrivateUser(data) {
-  let allowedKeys = ['displayName', 'photoURL', 'photoImageId', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'phone', 'email', 'wantsToContribute', 'onboardingComplete', 'status', 'deletionRequestedAt', 'purgeAfter', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'photoImageId', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'phone', 'email', 'receiveCommunityEmails', 'preferredLanguage', 'wantsToContribute', 'onboardingComplete', 'status', 'deletionRequestedAt', 'purgeAfter', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data)
@@ -205,7 +205,23 @@ function validPrivateUser(data) {
     // See the comment on validGallery.
     && data.get('phone', '').size() <= 40
     && data.get('wantsToContribute', false) is bool
-    && data.get('onboardingComplete', false) is bool;
+    && data.get('onboardingComplete', false) is bool
+    // `get` with a default here too, and for the reason the comment above
+    // gives: the `!('x' in data) ||` form these two arrived in costs more of
+    // the same evaluation budget the gallery is spending, and this function is
+    // the tighter of the two caps. Absent is the common case for both.
+    && data.get('receiveCommunityEmails', false) is bool
+    && validPreferredLanguage(data.get('preferredLanguage', 'de'));
+}
+
+/**
+ * The member's preferred language: the site locale they are routed to and the
+ * language VSCN writes to them in. Private only: it is how we address a member,
+ * not a working language they advertise — `languages` is that, and
+ * validLanguages() governs it on the public projection.
+ */
+function validPreferredLanguage(value) {
+  return value is string && (value == 'de' || value == 'en');
 }
 
 function validPublicFields(data) {

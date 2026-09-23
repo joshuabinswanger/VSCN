@@ -565,6 +565,23 @@ const t = useTranslations(lang);
     </div>
 
     <div class="field">
+      <label class="label" for="preferred-language">{t("profile.label.preferredLanguage")}</label>
+      <select id="preferred-language" class="input">
+        <option value="de" selected={lang === "de"}>{t("profile.lang.de")}</option>
+        <option value="en" selected={lang !== "de"}>{t("profile.lang.en")}</option>
+      </select>
+      <p class="field-note">{t("profile.note.preferredLanguage")}</p>
+    </div>
+
+    <div class="field">
+      <label class="checkbox-label" for="receive-community-emails">
+        <input id="receive-community-emails" type="checkbox" />
+        <span>{t("profile.receiveCommunityEmails")}</span>
+      </label>
+      <p id="receive-community-emails-note" class="field-note">{t("profile.receiveCommunityEmails.note")}</p>
+    </div>
+
+    <div class="field">
       <label class="label" for="phone">{t("profile.label.phone")}</label>
       <input
         id="phone"
@@ -1888,6 +1905,13 @@ const t = useTranslations(lang);
     MAX_SOCIAL_MEDIA,
   } from "../lib/links.ts";
   import { ui } from "../i18n/translations.ts";
+  import {
+    isSiteLanguage,
+    localePath,
+    preferredLocaleTarget,
+    readSessionChoice,
+    rememberSessionChoice,
+  } from "../lib/siteLanguage.ts";
 
   let unsubscribeAuth: (() => void) | null = null;
 
@@ -1927,6 +1951,14 @@ const t = useTranslations(lang);
     const wantsToContributeInput = document.getElementById(
       "wants-to-contribute"
     ) as HTMLInputElement;
+    const preferredLanguageInput = document.getElementById("preferred-language") as HTMLSelectElement;
+    const receiveCommunityEmailsInput = document.getElementById("receive-community-emails") as HTMLInputElement;
+    const receiveCommunityEmailsNote = document.getElementById("receive-community-emails-note")!;
+    let communityEmailPreferenceKnown = false;
+    let communityEmailPreferenceChanged = false;
+    receiveCommunityEmailsInput.addEventListener("change", () => {
+      communityEmailPreferenceChanged = true;
+    });
     const bioInput = document.getElementById("bio") as HTMLTextAreaElement;
     const portfolioInput = document.getElementById("portfolio") as HTMLInputElement;
     const socialEditor = document.getElementById("social-editor")!;
@@ -3036,6 +3068,17 @@ const t = useTranslations(lang);
     async function loadProfile(user: User) {
       const data = await getUser(user.uid);
 
+      // Sign-in lands here, so this is where a member's stored language takes
+      // them to their locale — unless they switched EN / DE on this visit,
+      // which wins (src/lib/siteLanguage.ts has the full set of limits).
+      const localeTarget = preferredLocaleTarget(
+        data.preferredLanguage, lang, window.location.pathname, readSessionChoice()
+      );
+      if (localeTarget) {
+        window.location.replace(localeTarget + window.location.search + window.location.hash);
+        return;
+      }
+
       currentPhotoImageId = data.photoImageId ?? "";
       await ensureEmailSynced(user, data.email);
       // Safe to call here: showDeletionBanner and the consts it closes over are declared below, but the auth callback cannot run before this astro:page-load body has finished.
@@ -3081,6 +3124,14 @@ const t = useTranslations(lang);
       renderGallery();
       phoneInput.value = data.phone ?? "";
       wantsToContributeInput.checked = data.wantsToContribute ?? false;
+      // Never chosen: offer the locale they are reading in, not a blanket German.
+      preferredLanguageInput.value = isSiteLanguage(data.preferredLanguage) ? data.preferredLanguage : lang;
+      communityEmailPreferenceKnown = typeof data.receiveCommunityEmails === "boolean";
+      communityEmailPreferenceChanged = false;
+      receiveCommunityEmailsInput.checked = data.receiveCommunityEmails === true;
+      receiveCommunityEmailsNote.textContent = communityEmailPreferenceKnown
+        ? s["profile.receiveCommunityEmails.note"]
+        : s["profile.receiveCommunityEmails.unknown"];
       activeInput.checked = await getPublicProfileActive(user.uid);
       syncHiddenBanner(user.emailVerified, activeInput.checked);
       showPreview(data.photoURL ?? user.photoURL ?? "");
@@ -3172,6 +3223,9 @@ const t = useTranslations(lang);
       setSaving(true);
 
       try {
+        const savedLanguage = preferredLanguageInput.value === "en" ? "en" : "de";
+        const shouldSaveCommunityEmailPreference =
+          communityEmailPreferenceKnown || communityEmailPreferenceChanged;
         // THE RECORDS FIRST, AND HARD (2026-09-07). Until today this ran after
         // the profile write as best-effort — a failed record write was a
         // console.warn under a green "Changes saved", tolerable only because
@@ -3216,6 +3270,10 @@ const t = useTranslations(lang);
             // onto the records ABOVE, before this call — see saveGalleryRecords.
             gallery: galleryIds(gallery),
             wantsToContribute: wantsToContributeInput.checked,
+            preferredLanguage: savedLanguage,
+            ...(shouldSaveCommunityEmailPreference
+              ? { receiveCommunityEmails: receiveCommunityEmailsInput.checked }
+              : {}),
             phone: phoneInput.value.trim(),
             resizedAvatarBlob,
             previousPhotoImageId: currentPhotoImageId,
@@ -3228,6 +3286,11 @@ const t = useTranslations(lang);
         );
 
         if (saved.photoImageId) currentPhotoImageId = saved.photoImageId;
+        if (shouldSaveCommunityEmailPreference) {
+          communityEmailPreferenceKnown = true;
+          communityEmailPreferenceChanged = false;
+          receiveCommunityEmailsNote.textContent = s["profile.receiveCommunityEmails.note"];
+        }
 
         if (resizedAvatarBlob) {
           uploadStatus.textContent = s["profile.upload.complete"];
@@ -3254,6 +3317,13 @@ const t = useTranslations(lang);
         setGalleryStatus("");
         galleryCapNote = "";
         updateGalleryControls();
+
+        // Choosing a language here is as explicit as the EN / DE switch, so the
+        // site follows it now rather than at the next sign-in.
+        if (savedLanguage !== lang) {
+          rememberSessionChoice(savedLanguage);
+          window.location.replace(localePath(window.location.pathname, savedLanguage));
+        }
       } catch (err: unknown) {
         saveError.textContent = err instanceof Error ? err.message : s["profile.save.error"];
         saveError.style.display = "block";

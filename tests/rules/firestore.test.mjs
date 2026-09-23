@@ -554,3 +554,62 @@ test("imageModeration: a member can still save their own image record", async ()
     caption: "a new line", updatedAt: new Date(),
   }));
 });
+
+test("profile sync keeps communication preferences out of the public projection", async () => {
+  await seed(env, `users/${OWNER}`, minimalUser(OWNER));
+  const context = env.authenticatedContext(OWNER, verified(OWNER));
+  const { updateUserProfile } = loadTs('src/lib/firestore.ts', {
+    './firebase.ts': { auth: { currentUser: { emailVerified: true } }, db: context.firestore()._delegate },
+    './profileVisibility.ts': { isProfileVisible },
+    'firebase/firestore': modularFirestore,
+  });
+
+  await assertSucceeds(updateUserProfile(OWNER, {
+    receiveCommunityEmails: true,
+    preferredLanguage: "en",
+  }));
+  const privateData = (await context.firestore().doc(`users/${OWNER}`).get()).data();
+  const publicData = (await context.firestore().doc(`publicProfiles/${OWNER}`).get()).data();
+  assert.equal(privateData.receiveCommunityEmails, true);
+  assert.equal(privateData.preferredLanguage, "en");
+  assert.equal(publicData.receiveCommunityEmails, undefined);
+  assert.equal(publicData.preferredLanguage, undefined);
+});
+
+test("communication preferences are private, typed, and preserve an unknown legacy choice", async () => {
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  // Historic documents legitimately omit both fields: omission is not consent.
+  await assertSucceeds(db.doc(`users/${OWNER}`).set(minimalUser(OWNER)));
+  await assertSucceeds(db.doc(`users/${OWNER}`).update({
+    receiveCommunityEmails: true,
+    preferredLanguage: "en",
+  }));
+  await assertFails(db.doc(`users/${OWNER}`).update({ receiveCommunityEmails: "true" }));
+  await assertFails(db.doc(`users/${OWNER}`).update({ preferredLanguage: "fr" }));
+
+  const publicProfile = db.doc(`publicProfiles/${OWNER}`);
+  await assertFails(publicProfile.set({ displayName: "Test Member", receiveCommunityEmails: true }));
+  await assertFails(publicProfile.set({ displayName: "Test Member", preferredLanguage: "en" }));
+});
+
+test("communication preferences validate private creates and public updates", async () => {
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  const privateProfile = db.doc(`users/${OWNER}`);
+  for (const invalid of [
+    { receiveCommunityEmails: "true" },
+    { receiveCommunityEmails: null },
+    { preferredLanguage: "fr" },
+    { preferredLanguage: null },
+  ]) {
+    await assertFails(privateProfile.set({ ...minimalUser(OWNER), ...invalid }));
+  }
+  await assertSucceeds(privateProfile.set({
+    ...minimalUser(OWNER), receiveCommunityEmails: false, preferredLanguage: "de",
+  }));
+  await assertFails(privateProfile.update({ receiveCommunityEmails: null }));
+  await assertFails(privateProfile.update({ preferredLanguage: null }));
+  const publicProfile = db.doc(`publicProfiles/${OWNER}`);
+  await assertSucceeds(publicProfile.set({ displayName: "Test Member" }));
+  await assertFails(publicProfile.update({ receiveCommunityEmails: false }));
+  await assertFails(publicProfile.update({ preferredLanguage: "de" }));
+});

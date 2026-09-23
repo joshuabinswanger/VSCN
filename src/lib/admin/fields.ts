@@ -59,7 +59,7 @@ export const PUBLIC_ONLY_FIELDS: FieldSpec[] = [
 export const PRIVATE_ONLY_FIELDS: FieldSpec[] = [
   { key: "email", label: "mirror email", kind: "text" },
   { key: "phone", label: "phone", kind: "text" },
-  { key: "correspondenceLanguage", label: "correspondence language", kind: "text" },
+  { key: "preferredLanguage", label: "preferred language", kind: "text" },
   { key: "receiveCommunityEmails", label: "community emails", kind: "bool" },
   { key: "wantsToContribute", label: "wants to contribute", kind: "bool" },
   { key: "onboardingComplete", label: "onboarding complete", kind: "bool" },
