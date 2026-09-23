@@ -248,6 +248,7 @@ export function renderMemberDetail(g: MemberGraph, deps: DetailDeps): HTMLElemen
           ["slugs", slugLinks],
           ["member type", renderValue(any.memberType, "text")],
           ["role", renderValue(any.role, "text")],
+          ["role (de)", renderValue(any.roleDe, "text")],
           ["affiliation", renderValue(any.affiliation, "text")],
           ["location", renderValue(any.location, "text")],
         ]),

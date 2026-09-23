@@ -2,6 +2,7 @@
 import Layout from "../../../layouts/Layout.astro";
 import MemberCard from "../../../components/MemberCard.astro";
 import { fetchMemberViews } from "../../../lib/membersBuild.ts";
+import { localizeMember } from "../../../lib/memberView.ts";
 import { useTranslations } from "../../../i18n/utils";
 import type { Lang } from "../../../i18n/utils";
 export function getStaticPaths() {
@@ -17,7 +18,7 @@ const { lang = "en" } = Astro.params;
 const currentLang = (lang || "en") as Lang;
 const t = useTranslations(currentLang);
 
-const members = await fetchMemberViews();
+const members = (await fetchMemberViews()).map((m) => localizeMember(m, currentLang));
 const memberLabel =
   members.length === 1 ? t("community.member") : t("community.members");
 

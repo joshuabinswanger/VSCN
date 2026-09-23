@@ -47,6 +47,15 @@ export interface UserDoc {
   memberType?: MemberType;
   role: string;
   bio: string;
+  /**
+   * German role and bio, OPTIONAL — the `captionDe` / `descriptionDe` rule
+   * extended to the profile (2026-09-23, member feedback "Alles sollte
+   * zweisprachig sein"). `role` and `bio` stay the fields of record; German
+   * pages read these when filled and fall back to them otherwise — see
+   * pickLocaleText() in links.ts. Absent on every profile saved before then.
+   */
+  roleDe?: string;
+  bioDe?: string;
   portfolio: string;
   socialMedia: string;
   openTo: string[];
@@ -139,6 +148,8 @@ function toPublicProfile(data: Partial<UserDoc>): Partial<PublicProfileDoc> {
   if (data.memberType !== undefined) out.memberType = data.memberType;
   if (data.role !== undefined) out.role = data.role;
   if (data.bio !== undefined) out.bio = data.bio;
+  if (data.roleDe !== undefined) out.roleDe = data.roleDe;
+  if (data.bioDe !== undefined) out.bioDe = data.bioDe;
   if (data.portfolio !== undefined) out.portfolio = data.portfolio;
   if (data.socialMedia !== undefined) out.socialMedia = data.socialMedia;
   if (data.openTo !== undefined) out.openTo = data.openTo;

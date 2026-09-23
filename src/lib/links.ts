@@ -44,6 +44,29 @@ export function workDescription(
 }
 
 /**
+ * Which role and bio a locale shows (2026-09-23, "Alles sollte zweisprachig
+ * sein"). The pickLocaleText() rule with ONE difference: it falls back in
+ * BOTH directions. A gallery's English pane is the one always on screen, so
+ * an image cannot end up with German words only; the profile's two fields sit
+ * side by side as equals, and a member who fills in only the German one must
+ * not vanish from the English pages. Returns "" rather than undefined because
+ * ProfileViewModel types both as plain strings.
+ */
+function pickEitherText(en: string | undefined, de: string | undefined, lang: Lang): string {
+  const enText = (en ?? "").trim();
+  const deText = (de ?? "").trim();
+  return lang === "de" ? deText || enText : enText || deText;
+}
+
+export function profileRole(p: { role?: string; roleDe?: string }, lang: Lang): string {
+  return pickEitherText(p.role, p.roleDe, lang);
+}
+
+export function profileBio(p: { bio?: string; bioDe?: string }, lang: Lang): string {
+  return pickEitherText(p.bio, p.bioDe, lang);
+}
+
+/**
  * Real `portfolio` values are stored without a scheme ("quaint.ch",
  * "www.ikonaut.ch"), so they need one to be a usable href. Anything that
  * already has a scheme is left exactly as stored.

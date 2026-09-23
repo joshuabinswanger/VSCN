@@ -4,7 +4,7 @@
 // filtered for linkability by workLink().
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { toMemberViewBase } from "../../src/lib/memberView.ts";
+import { localizeMember, toMemberViewBase } from "../../src/lib/memberView.ts";
 
 const UID = "owner-uid-000001";
 const BUCKET = "vscn-dev-f4b60.firebasestorage.app";
@@ -80,4 +80,37 @@ test("the fallback score reads the record, so a documented picture edges ahead",
     }),
   ], BUCKET);
   assert.equal(m.works[0].score, 58);
+});
+
+// The German role and bio (2026-09-23): carried raw by the shared base, picked
+// per page by localizeMember(), with a fallback in BOTH directions.
+test("localizeMember picks the German role and bio on German pages, and the caption follows", () => {
+  const m = toMemberViewBase(UID, {
+    displayName: "Ada", role: "Illustrator", roleDe: " Illustratorin ",
+    bio: "Draws cells. Also engines.", bioDe: "Zeichnet Zellen. Auch Motoren.",
+  });
+  assert.equal(m.roleDe, "Illustratorin");
+  const de = localizeMember(m, "de");
+  assert.equal(de.role, "Illustratorin");
+  assert.equal(de.bio, "Zeichnet Zellen. Auch Motoren.");
+  assert.equal(de.caption, "Zeichnet Zellen.");
+  const en = localizeMember(m, "en");
+  assert.equal(en.role, "Illustrator");
+  assert.equal(en.bio, "Draws cells. Also engines.");
+  assert.equal(en.caption, "Draws cells.");
+  // The shared base is not mutated — the other locale's page reads it too.
+  assert.equal(m.role, "Illustrator");
+});
+
+test("localizeMember falls back to whichever language was written", () => {
+  const enOnly = toMemberViewBase(UID, { displayName: "Ada", role: "Illustrator", bio: "Draws cells." });
+  assert.equal(enOnly.roleDe, undefined);
+  assert.equal(localizeMember(enOnly, "de").role, "Illustrator");
+  assert.equal(localizeMember(enOnly, "de").bio, "Draws cells.");
+  const deOnly = toMemberViewBase(UID, { displayName: "Ada", role: "", roleDe: "Illustratorin", bio: "  ", bioDe: "Zeichnet Zellen." });
+  assert.equal(localizeMember(deOnly, "en").role, "Illustratorin");
+  assert.equal(localizeMember(deOnly, "en").bio, "Zeichnet Zellen.");
+  const none = toMemberViewBase(UID, { displayName: "Ada" });
+  assert.equal(localizeMember(none, "de").role, "");
+  assert.equal(localizeMember(none, "de").bio, "");
 });

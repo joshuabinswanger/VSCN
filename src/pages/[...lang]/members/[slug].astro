@@ -2,7 +2,7 @@
 import { getImage } from "astro:assets";
 import Layout from "../../../layouts/Layout.astro";
 import { fetchMemberViews, fetchSlugAliases } from "../../../lib/membersBuild.ts";
-import type { MemberView } from "../../../lib/memberView.ts";
+import { localizeMember, type MemberView } from "../../../lib/memberView.ts";
 import {
   communityTagHref,
   href,
@@ -62,9 +62,12 @@ interface Props {
   aliasOf?: string;
 }
 
-const { member, aliasOf } = Astro.props as Props;
+const { member: sharedMember, aliasOf } = Astro.props as Props;
 const { lang = "en" } = Astro.params;
 const currentLang = (lang || "en") as Lang;
+// The props are shared with the other locale's page for the same member, so
+// role, bio and caption are picked for this one here — see localizeMember().
+const member = localizeMember(sharedMember, currentLang);
 const t = useTranslations(currentLang);
 
 // Gallery originals are already client-side compressed to a 4K-capped WebP (see

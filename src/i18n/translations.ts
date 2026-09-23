@@ -156,7 +156,15 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.label.name": "Display Name",
     "profile.ph.name": "Your name",
     "profile.ph.name.organization": "Name of your group or institution",
-    "profile.label.role": "Role",
+    // "(English)" since the German twin below exists (2026-09-23, "Alles
+    // sollte zweisprachig sein") — the pair has to read as a pair.
+    "profile.label.role": "Role (English)",
+    "profile.label.role.de": "Role (German)",
+    // In German whatever the UI language, like profile.gallery.caption.de.ph:
+    // the example has to be in the language the field asks for.
+    "profile.ph.role.de": "z.B. Wissenschaftsillustrator:in, Forscher:in, Datenjournalist:in…",
+    "profile.note.role.de":
+      "Optional. German pages show this in place of the English role; until it's filled in, they show the English one.",
     "profile.ph.role": "e.g. Science Illustrator, Researcher, Data Journalist…",
     "profile.ph.role.science": "e.g. Neuroscientist, PhD Student, Lab Head…",
     "profile.ph.role.organization": "e.g. Research Group, Institute, Museum…",
@@ -180,9 +188,13 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.wantsToContribute": "I'd like to help build this community",
     "profile.wantsToContribute.note":
       "VSCN is still in its early stages. Tick this and we'll reach out about ways to get involved.",
-    "profile.label.bio": "About you",
+    "profile.label.bio": "About you (English)",
     "profile.ph.bio": "A short description of your work, interests, or background…",
     "profile.note.bio": "Maximum 35 words.",
+    "profile.label.bio.de": "About you (German)",
+    "profile.ph.bio.de": "Eine kurze Beschreibung deiner Arbeit, Interessen oder deines Hintergrunds…",
+    "profile.note.bio.de":
+      "Optional, maximum 35 words. German pages show this in place of the English text; until it's filled in, they show the English one.",
     "profile.label.portfolio": "Portfolio / Website",
     "profile.ph.portfolio": "yoursite.com",
     // WHY THIS FIELD IS WORTH FILLING IN (2026-09-10). The link is a followed
@@ -670,7 +682,11 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.label.name": "Anzeigename",
     "profile.ph.name": "Dein Name",
     "profile.ph.name.organization": "Name deiner Gruppe oder Institution",
-    "profile.label.role": "Rolle",
+    "profile.label.role": "Rolle (Englisch)",
+    "profile.label.role.de": "Rolle (Deutsch)",
+    "profile.ph.role.de": "z.B. Wissenschaftsillustrator:in, Forscher:in, Datenjournalist:in…",
+    "profile.note.role.de":
+      "Optional. Deutsche Seiten zeigen diese statt der englischen Rolle; solange das Feld leer ist, erscheint die englische.",
     "profile.ph.role": "z.B. Wissenschaftsillustrator:in, Forscher:in, Datenjournalist:in…",
     "profile.ph.role.science": "z.B. Neurowissenschaftler:in, Doktorand:in, Institutsleitung…",
     "profile.ph.role.organization": "z.B. Forschungsgruppe, Institut, Museum…",
@@ -694,9 +710,13 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.wantsToContribute": "Ich möchte helfen, diese Community aufzubauen",
     "profile.wantsToContribute.note":
       "VSCN steht noch am Anfang. Setze hier ein Häkchen und wir melden uns mit Möglichkeiten, dich einzubringen.",
-    "profile.label.bio": "Über dich",
+    "profile.label.bio": "Über dich (Englisch)",
     "profile.ph.bio": "Eine kurze Beschreibung deiner Arbeit, Interessen oder deines Hintergrunds…",
     "profile.note.bio": "Maximal 35 Wörter.",
+    "profile.label.bio.de": "Über dich (Deutsch)",
+    "profile.ph.bio.de": "Eine kurze Beschreibung deiner Arbeit, Interessen oder deines Hintergrunds…",
+    "profile.note.bio.de":
+      "Optional, maximal 35 Wörter. Deutsche Seiten zeigen diesen Text statt des englischen; solange das Feld leer ist, erscheint der englische.",
     "profile.label.portfolio": "Portfolio / Website",
     "profile.ph.portfolio": "deinewebsite.com",
     "profile.note.portfolio":

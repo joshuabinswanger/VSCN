@@ -51,6 +51,12 @@ export async function handleProfileUpdate(
       throw new Error(bioResult.error);
     }
   }
+  if (data.bioDe !== undefined) {
+    const bioDeResult = validateBio(data.bioDe, "About you (German)");
+    if (!bioDeResult.ok) {
+      throw new Error(bioDeResult.error);
+    }
+  }
   // The social rows are joined into one stored field, so the length that
   // matters is the joined one — and firestore.rules caps it. Checked here so
   // an over-long list fails with a sentence rather than a permission error.

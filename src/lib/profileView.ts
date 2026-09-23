@@ -75,6 +75,15 @@ export interface ProfileViewModel {
    */
   memberType?: string;
   bio: string;
+  /**
+   * The German role and bio, RAW — the `captionDe` treatment for the same
+   * reason: the build makes this shape once per member for both locales.
+   * localizeMember() in memberView.ts resolves them into `role` / `bio` at
+   * the page, where the lang is known; the editor resolves them itself.
+   * Every renderer reads `role` / `bio` only.
+   */
+  roleDe?: string;
+  bioDe?: string;
   /** Institution, lab, studio or company. Empty when unset. */
   affiliation: string;
   /** Free text, e.g. "Zurich, Switzerland". Empty when unset. */
