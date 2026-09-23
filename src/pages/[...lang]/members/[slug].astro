@@ -6,14 +6,14 @@ import { localizeMember, type MemberView } from "../../../lib/memberView.ts";
 import {
   communityTagHref,
   href,
-  hostLabel,
   memberHref,
   socialLinks,
   workCaption,
   workDescription,
 } from "../../../lib/links.ts";
 import { memberPageJsonLd, memberTitle } from "../../../lib/seo.ts";
-import { embedDataAttrs } from "../../../lib/embed.ts";
+import { groupWorks, projectTitle, projectDescription, affiliationHref, projectSlideData } from "../../../lib/projects.ts";
+import MemberWork from "../../../components/MemberWork.astro";
 import { useTranslations } from "../../../i18n/utils";
 import type { Lang } from "../../../i18n/utils";
 // THIS PAGE'S SURFACE, in a file of its own so the profile editor's preview
@@ -102,10 +102,19 @@ const works = await Promise.all(
     // The whose-and-what-of-it line, not a repeat of the caption: full screen,
     // the page's own name heading is covered, so the member's name is the one
     // thing the view has lost. It is just the name now — the project credit
-    // that used to follow it went with the projects feature (2026-09-01).
+    // that used to follow it went with the projects feature (2026-09-01, and
+    // is back as its own block below the picture since 2026-09-23).
     pswpMeta: member.displayName,
+    // The project this work is in, as data-pswp-* strings for the lightbox's
+    // shared renderer — see projectSlideData() in lib/projects.ts.
+    slide: projectSlideData(member.projects?.find((p) => p.id === w.projectId), currentLang),
   })),
 );
+
+// PROJECT BLOCKS (2026-09-23): the gallery stays one list in the member's
+// order; a project's images sit together under its heading, loose works in
+// between. groupWorks() is the same cut the editor preview makes.
+const sections = groupWorks(works, member.projects ?? []);
 
 // The lightbox's own labels. One attribute rather than five, for the same
 // reason as pswpMeta above: the client script is a module, so `define:vars` is
@@ -119,6 +128,8 @@ const lightboxStrings = JSON.stringify({
   linkTitle: t("member.lightbox.link"),
   siteLinkTitle: t("member.lightbox.siteLink"),
   play: t("member.lightbox.play"),
+  partOf: t("member.project.partOf"),
+  with: t("member.project.with"),
 });
 
 const social = socialLinks(member.socialMedia);
@@ -290,68 +301,78 @@ const jsonLd = memberPageJsonLd({
         <div class="mprof__works" data-pswp-i18n={lightboxStrings}>
           {/* Each work is a link to the original, which is what PhotoSwipe
               binds to — and what makes the image openable with scripting off
-              rather than being inert. */}
-          {works.map((w, i) => (
-            <figure class="mprof__work" transition:name={i === 0 ? `mimg-${member.id}` : undefined}>
-              <a
-                class="mprof__work-link"
-                href={w.url}
-                target="_blank"
-                rel="noreferrer"
-                data-pswp-width={w.width}
-                data-pswp-height={w.height}
-                data-pswp-caption={w.caption?.trim() || undefined}
-                data-pswp-description={w.description || undefined}
-                data-pswp-link={w.link || undefined}
-                data-pswp-site-link={w.siteLink || undefined}
-                data-pswp-meta={w.pswpMeta || undefined}
-                {...embedDataAttrs(w.embed)}
-              >
-                <img
-                  class="mprof__img"
-                  src={w.rendered.src}
-                  srcset={w.rendered.srcSet.attribute}
-                  sizes="(min-width: 768px) min(94vw, 900px), 94vw"
-                  width={w.width}
-                  height={w.height}
-                  loading={i === 0 ? "eager" : "lazy"}
-                  decoding="async"
-                  alt={w.caption?.trim() || `${member.displayName} — ${t("member.workAlt")}`}
-                  style={`background-color: ${w.color ?? "var(--color-border)"}`}
+              rather than being inert. The gallery is still one list in the
+              member's own order (works.indexOf below); a project only draws a
+              heading and a rule around the run of its own works within it. */}
+          {sections.map((section) =>
+            section.project ? (
+              <section class="mprof__project">
+                {(() => {
+                  const title = projectTitle(section.project!, currentLang);
+                  const desc = projectDescription(section.project!, currentLang);
+                  return (
+                    <>
+                      {title && (
+                        <h2 class="mprof__project-title">
+                          {section.project!.link ? (
+                            <a href={section.project!.link} target="_blank" rel="noopener">
+                              {title}
+                            </a>
+                          ) : (
+                            title
+                          )}
+                        </h2>
+                      )}
+                      {desc && <p class="mprof__project-desc">{desc}</p>}
+                      {section.project!.affiliations.length > 0 && (
+                        <p class="mprof__project-with">
+                          {t("member.project.with")}{" "}
+                          {section.project!.affiliations.map((a, k) => (
+                            <>
+                              {k > 0 && " · "}
+                              {affiliationHref(a, currentLang) ? (
+                                <a
+                                  href={affiliationHref(a, currentLang)}
+                                  {...(a.memberSlug ? {} : { target: "_blank", rel: "noopener" })}
+                                >
+                                  {a.name}
+                                </a>
+                              ) : (
+                                <span>{a.name}</span>
+                              )}
+                            </>
+                          ))}
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
+                {section.works.map((w) => (
+                  <MemberWork
+                    work={w}
+                    index={works.indexOf(w)}
+                    memberId={member.id}
+                    displayName={member.displayName}
+                    workAlt={t("member.workAlt")}
+                    linkTitle={t("member.lightbox.link")}
+                    siteLinkTitle={t("member.lightbox.siteLink")}
+                  />
+                ))}
+              </section>
+            ) : (
+              section.works.map((w) => (
+                <MemberWork
+                  work={w}
+                  index={works.indexOf(w)}
+                  memberId={member.id}
+                  displayName={member.displayName}
+                  workAlt={t("member.workAlt")}
+                  linkTitle={t("member.lightbox.link")}
+                  siteLinkTitle={t("member.lightbox.siteLink")}
                 />
-                {w.embed && <span class="vscn-play vscn-play--over" aria-hidden="true" />}
-              </a>
-              {(w.caption?.trim() || w.description || w.link || w.siteLink) && (
-                <figcaption class="mprof__caption">
-                  {w.caption?.trim() && <span class="mprof__caption-line">{w.caption}</span>}
-                  {w.description && <span class="mprof__desc">{w.description}</span>}
-                  {/* Where the piece lives in the world: the member's own
-                      project page first, then the publication it appeared in
-                      (two links since 2026-09-10, Josh: "the image link should
-                      be additional"). In the caption and not on the image,
-                      because the image's own anchor is the lightbox trigger —
-                      wrapping that in an outbound link would take the reader
-                      off the page every time they tried to look closer. The
-                      host IS the link text: "nature.com" says where you are
-                      going, in any language; the title says what it is. */}
-                  {(w.siteLink || w.link) && (
-                    <span class="mprof__caption-links">
-                      {w.siteLink && (
-                        <a class="mprof__link" href={w.siteLink} target="_blank" rel="noopener" title={t("member.lightbox.siteLink")}>
-                          {hostLabel(w.siteLink)}
-                        </a>
-                      )}
-                      {w.link && (
-                        <a class="mprof__link" href={w.link} target="_blank" rel="noopener" title={t("member.lightbox.link")}>
-                          {hostLabel(w.link)}
-                        </a>
-                      )}
-                    </span>
-                  )}
-                </figcaption>
-              )}
-            </figure>
-          ))}
+              ))
+            ),
+          )}
         </div>
       )
     }
@@ -382,6 +403,10 @@ const jsonLd = memberPageJsonLd({
     siteLinkTitle: string;
     /** "Play video on {provider}" — the video slide's button. */
     play: string;
+    /** "Part of", before a project's title. */
+    partOf: string;
+    /** "With", before a project's affiliations. */
+    with: string;
   }
 
   // English is the fallback, matching useTranslations() — a missing or
@@ -395,6 +420,8 @@ const jsonLd = memberPageJsonLd({
     linkTitle: "Where this image appeared",
     siteLinkTitle: "This piece on the maker's own site",
     play: "Play video on {provider}",
+    partOf: "Part of",
+    with: "With",
   };
 
   // These options take raw HTML, which is how the stock SVG icons get replaced
@@ -476,7 +503,12 @@ const jsonLd = memberPageJsonLd({
     // in one shared module, because there is ONE lightbox on this site and it
     // must not speak differently depending on which gallery opened it. Both
     // galleries carried their own copy of this renderer until 2026-09-04.
-    registerLightboxText(lightbox, { linkTitle: strings.linkTitle, siteLinkTitle: strings.siteLinkTitle });
+    registerLightboxText(lightbox, {
+      linkTitle: strings.linkTitle,
+      siteLinkTitle: strings.siteLinkTitle,
+      partOf: strings.partOf,
+      with: strings.with,
+    });
     // A video work opens as its poster with a play button; see lightboxEmbed.ts.
     registerLightboxEmbeds(lightbox, { play: strings.play });
 

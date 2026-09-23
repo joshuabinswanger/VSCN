@@ -1,0 +1,104 @@
+---
+// ONE WORK'S FIGURE on the member page — extracted from [slug].astro
+// (2026-09-23) so the page can loop over project SECTIONS (a run of loose
+// works, or a project's works under its heading) without Astro's rule against
+// local components inside a page file. Moved verbatim, embed handling
+// included: a video work (2026-09-23, "motion embeds") spreads
+// embedDataAttrs(w.embed) on the trigger and shows a play badge over its
+// poster, exactly as before this file existed.
+import type { EmbedRef } from "../lib/embed.ts";
+import { embedDataAttrs } from "../lib/embed.ts";
+import { hostLabel } from "../lib/links.ts";
+
+interface WorkProps {
+  url: string;
+  width: number;
+  height: number;
+  caption?: string;
+  description?: string;
+  link?: string;
+  siteLink?: string;
+  pswpMeta?: string;
+  embed?: EmbedRef;
+  color?: string;
+  rendered: { src: string; srcSet: { attribute: string } };
+  /** THE PROJECT THIS WORK IS IN, as data-pswp-* strings — see projectSlideData() in lib/projects.ts. */
+  slide: { project?: string; projectLink?: string; affiliations?: string };
+}
+
+interface Props {
+  work: WorkProps;
+  /** This work's position in the member's own (unsectioned) works list — drives transition:name and eager/lazy loading. */
+  index: number;
+  memberId: string;
+  displayName: string;
+  /** t("member.workAlt") — the alt-text fallback for an uncaptioned image. */
+  workAlt: string;
+  /** t("member.lightbox.link") — accessible name / title for the "where this appeared" link. */
+  linkTitle: string;
+  /** t("member.lightbox.siteLink") — accessible name / title for the member's own-site link. */
+  siteLinkTitle: string;
+}
+
+const { work: w, index: i, memberId, displayName, workAlt, linkTitle, siteLinkTitle } = Astro.props as Props;
+---
+
+<figure class="mprof__work" transition:name={i === 0 ? `mimg-${memberId}` : undefined}>
+  <a
+    class="mprof__work-link"
+    href={w.url}
+    target="_blank"
+    rel="noreferrer"
+    data-pswp-width={w.width}
+    data-pswp-height={w.height}
+    data-pswp-caption={w.caption?.trim() || undefined}
+    data-pswp-description={w.description || undefined}
+    data-pswp-link={w.link || undefined}
+    data-pswp-site-link={w.siteLink || undefined}
+    data-pswp-meta={w.pswpMeta || undefined}
+    data-pswp-project={w.slide.project}
+    data-pswp-project-link={w.slide.projectLink}
+    data-pswp-affiliations={w.slide.affiliations}
+    {...embedDataAttrs(w.embed)}
+  >
+    <img
+      class="mprof__img"
+      src={w.rendered.src}
+      srcset={w.rendered.srcSet.attribute}
+      sizes="(min-width: 768px) min(94vw, 900px), 94vw"
+      width={w.width}
+      height={w.height}
+      loading={i === 0 ? "eager" : "lazy"}
+      decoding="async"
+      alt={w.caption?.trim() || `${displayName} — ${workAlt}`}
+      style={`background-color: ${w.color ?? "var(--color-border)"}`}
+    />
+    {w.embed && <span class="vscn-play vscn-play--over" aria-hidden="true" />}
+  </a>
+  {(w.caption?.trim() || w.description || w.link || w.siteLink) && (
+    <figcaption class="mprof__caption">
+      {w.caption?.trim() && <span class="mprof__caption-line">{w.caption}</span>}
+      {w.description && <span class="mprof__desc">{w.description}</span>}
+      {/* Where the piece lives in the world: the member's own project page
+          first, then the publication it appeared in (two links since
+          2026-09-10). In the caption and not on the image, because the
+          image's own anchor is the lightbox trigger — wrapping that in an
+          outbound link would take the reader off the page every time they
+          tried to look closer. The host IS the link text. */}
+      {(w.siteLink || w.link) && (
+        <span class="mprof__caption-links">
+          {w.siteLink && (
+            <a class="mprof__link" href={w.siteLink} target="_blank" rel="noopener" title={siteLinkTitle}>
+              {hostLabel(w.siteLink)}
+            </a>
+          )}
+          {w.link && (
+            <a class="mprof__link" href={w.link} target="_blank" rel="noopener" title={linkTitle}>
+              {hostLabel(w.link)}
+            </a>
+          )}
+        </span>
+      )}
+    </figcaption>
+  )}
+</figure>

@@ -263,6 +263,12 @@ export const ui: Record<string, Record<string, string>> = {
     "member.lightbox.link": "Where this image appeared",
     "member.lightbox.siteLink": "This piece on the maker's own site",
     "member.lightbox.play": "Play video on {provider}",
+    // The project block's heading prefix ("Part of {title}") and its
+    // affiliations line ("With {name} · {name}") — both on the member page,
+    // the editor preview and the lightbox, so a project reads the same on
+    // every surface (2026-09-23, documentation/20260923-projects-design.md).
+    "member.project.partOf": "Part of",
+    "member.project.with": "With",
     "community.card.expand": "Expand profile:",
     // Two forms of the same idea, and they are not interchangeable. The
     // colon-suffixed one is an ARIA-LABEL PREFIX — "View profile: Jane Doe" —
@@ -807,6 +813,8 @@ export const ui: Record<string, Record<string, string>> = {
     "member.lightbox.link": "Wo dieses Bild erschienen ist",
     "member.lightbox.siteLink": "Dieses Werk auf der eigenen Website",
     "member.lightbox.play": "Video auf {provider} abspielen",
+    "member.project.partOf": "Teil von",
+    "member.project.with": "Mit",
     "community.card.expand": "Profil aufklappen:",
     "community.card.viewProfile": "Profil ansehen:",
     "community.card.viewProfile.text": "Profil ansehen",

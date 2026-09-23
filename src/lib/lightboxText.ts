@@ -150,6 +150,22 @@ interface TriggerText {
   profile: string;
   link: string;
   siteLink: string;
+  project: string;
+  projectLink: string;
+  affiliations: { name: string; href?: string }[];
+}
+
+/** The trigger's affiliations, tolerant of a missing or malformed attribute — a bad value shows nothing, never throws in a slide change. */
+function parseAffiliations(raw: string | undefined): { name: string; href?: string }[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((a): a is { name: string; href?: string } => typeof a?.name === "string" && a.name.trim() !== "")
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 function readTrigger(el: HTMLElement | undefined): TriggerText {
@@ -160,6 +176,9 @@ function readTrigger(el: HTMLElement | undefined): TriggerText {
     profile: el?.dataset.pswpProfile?.trim() || "",
     link: el?.dataset.pswpLink?.trim() || "",
     siteLink: el?.dataset.pswpSiteLink?.trim() || "",
+    project: el?.dataset.pswpProject?.trim() || "",
+    projectLink: el?.dataset.pswpProjectLink?.trim() || "",
+    affiliations: parseAffiliations(el?.dataset.pswpAffiliations),
   };
 }
 
@@ -178,6 +197,10 @@ export interface LightboxTextLabels {
   linkTitle: string;
   /** Accessible name for the member's own-site link, e.g. "This piece on the maker's own site". */
   siteLinkTitle: string;
+  /** "Part of", before a project's title. */
+  partOf: string;
+  /** "With", before a project's affiliations. */
+  with: string;
 }
 
 /**
@@ -246,7 +269,7 @@ export function registerLightboxText(
       order: 10,
       onInit: (el, pswp) => {
         const render = () => {
-          const { caption, description, link, siteLink } = readTrigger(
+          const { caption, description, link, siteLink, project, projectLink, affiliations } = readTrigger(
             pswp.currSlide?.data.element as HTMLElement | undefined,
           );
           el.replaceChildren();
@@ -290,7 +313,42 @@ export function registerLightboxText(
             if (link) add(link, labels.linkTitle);
             el.append(row);
           }
-          el.classList.toggle("is-empty", !caption && !description && !link && !siteLink);
+          // THE PROJECT THIS PICTURE IS PART OF (2026-09-23,
+          // documentation/20260923-projects-design.md): its title, linked
+          // when the project has a link, then who it was made with. Member
+          // text, so textContent throughout.
+          if (project) {
+            const line = document.createElement("span");
+            line.className = "pswp__vscn-text-project";
+            line.append(`${labels.partOf} `);
+            const name = document.createElement(projectLink ? "a" : "span");
+            name.textContent = project;
+            if (name instanceof HTMLAnchorElement) {
+              name.href = projectLink;
+              name.target = "_blank";
+              name.rel = "noopener";
+            }
+            line.append(name);
+            el.append(line);
+          }
+          if (affiliations.length) {
+            const line = document.createElement("span");
+            line.className = "pswp__vscn-text-affiliations";
+            line.append(`${labels.with} `);
+            affiliations.forEach((a, i) => {
+              if (i > 0) line.append(" · ");
+              const node = document.createElement(a.href ? "a" : "span");
+              node.textContent = a.name;
+              if (node instanceof HTMLAnchorElement && a.href) {
+                node.href = a.href;
+                // A member credit is on-site (ClientRouter picks it up); an external one opens a tab.
+                if (/^https?:/i.test(a.href)) { node.target = "_blank"; node.rel = "noopener"; }
+              }
+              line.append(node);
+            });
+            el.append(line);
+          }
+          el.classList.toggle("is-empty", !caption && !description && !link && !siteLink && !project && !affiliations.length);
           // The block can scroll; a slide change has to start it at the top or
           // the next description opens mid-paragraph.
           el.scrollTop = 0;

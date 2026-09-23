@@ -295,6 +295,8 @@ const lightboxStrings = JSON.stringify({
   linkTitle: t("member.lightbox.link"),
   siteLinkTitle: t("member.lightbox.siteLink"),
   play: t("member.lightbox.play"),
+  partOf: t("member.project.partOf"),
+  with: t("member.project.with"),
 });
 
 const indexMembers = [...members].sort((a, b) =>
@@ -2978,6 +2980,10 @@ const indexMembers = [...members].sort((a, b) =>
     siteLinkTitle: string;
     /** "Play video on {provider}" — the video slide's button. */
     play: string;
+    /** "Part of", before a project's title. */
+    partOf: string;
+    /** "With", before a project's affiliations. */
+    with: string;
   }
 
   // English is the fallback, matching useTranslations() — a missing or
@@ -2991,6 +2997,8 @@ const indexMembers = [...members].sort((a, b) =>
     linkTitle: "Where this image appeared",
     siteLinkTitle: "This piece on the maker's own site",
     play: "Play video on {provider}",
+    partOf: "Part of",
+    with: "With",
   };
 
   const esc = (s: string) =>
@@ -3172,7 +3180,12 @@ const indexMembers = [...members].sort((a, b) =>
     // in one shared module, because there is ONE lightbox on this site and it
     // must not speak differently depending on which gallery opened it. Both
     // galleries carried their own copy of this renderer until 2026-09-04.
-    registerLightboxText(lightbox, { linkTitle: strings.linkTitle, siteLinkTitle: strings.siteLinkTitle });
+    registerLightboxText(lightbox, {
+      linkTitle: strings.linkTitle,
+      siteLinkTitle: strings.siteLinkTitle,
+      partOf: strings.partOf,
+      with: strings.with,
+    });
     // A video work opens as its poster with a play button; see lightboxEmbed.ts.
     registerLightboxEmbeds(lightbox, { play: strings.play });
 

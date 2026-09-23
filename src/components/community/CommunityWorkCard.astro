@@ -4,6 +4,7 @@ import type { MemberView } from "../../lib/memberView.ts";
 import type { ProfileWork } from "../../lib/profileView.ts";
 import { memberHref } from "../../lib/links.ts";
 import { embedDataAttrs } from "../../lib/embed.ts";
+import { projectSlideData } from "../../lib/projects.ts";
 import { useTranslations, type Lang } from "../../i18n/utils.ts";
 
 // THE GRID WALL'S TILE, and the wall's whole subject: ONE artwork, and nothing
@@ -107,6 +108,10 @@ const alt = work.caption?.trim() || `${member.displayName} — ${t("member.workA
 // it. The band already named the member; `data-pswp-profile` is what lets the
 // caption renderer make that name a link instead of a dead end.
 const pswpMeta = member.displayName;
+
+// THE PROJECT THIS WORK IS IN (2026-09-23) — the lightbox's "Part of …" line
+// and its affiliations, same data every other trigger on the site carries.
+const pswpProject = projectSlideData(member.projects?.find((p) => p.id === work.projectId), lang);
 ---
 
 <article class="cwork" style={`--frame-ar:${frameAspect}`}>
@@ -171,6 +176,9 @@ const pswpMeta = member.displayName;
       data-pswp-site-link={work.siteLink || undefined}
       data-pswp-meta={pswpMeta || undefined}
       data-pswp-profile={profileHref}
+      data-pswp-project={pswpProject.project}
+      data-pswp-project-link={pswpProject.projectLink}
+      data-pswp-affiliations={pswpProject.affiliations}
       {...embedDataAttrs(work.embed)}
     >
       {
