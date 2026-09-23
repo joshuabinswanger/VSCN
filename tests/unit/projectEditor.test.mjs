@@ -21,6 +21,8 @@ import {
   removeFromProject,
   sameIds,
   toProjectRecord,
+  memberUidFor,
+  writtenProjectIds,
 } from "../../src/lib/projectEditor.ts";
 
 const img = (imageId, projectId) => (projectId ? { imageId, projectId } : { imageId });
@@ -168,4 +170,33 @@ test("sameIds compares order by imageId", () => {
   assert.equal(sameIds(gallery, [...gallery]), true);
   assert.equal(sameIds(gallery, [...gallery].reverse()), false);
   assert.equal(sameIds(gallery, gallery.slice(1)), false);
+});
+
+// ── Fix round 1 (review) ──────────────────────────────────
+
+test("insertUploaded: an upload into a project that no longer exists arrives loose", () => {
+  const known = [P("p")];
+  assert.deepEqual(ids(insertUploaded(gallery, img("n", "gone"), known)), [...ids(gallery), "n"]);
+  assert.deepEqual(ids(insertUploaded(gallery, img("n", "p"), known)), ["a", "b:p", "c:p", "n:p", "d", "e:q"]);
+  assert.equal("projectId" in insertUploaded([], img("n", "gone"), known)[0], false);
+});
+
+test("writtenProjectIds: the projects a partly failed saveProjects did write", () => {
+  const used = [P("a"), P("b"), P("c")];
+  assert.deepEqual(writtenProjectIds(used, [{ projectId: "b", error: 1 }]), ["a", "c"]);
+  assert.deepEqual(writtenProjectIds(used, []), ["a", "b", "c"]);
+});
+
+test("memberUidFor: a credit keeps its member while the text is the name it was stored with", () => {
+  const options = [{ uid: "u-anna-2", name: "Anna Meier" }, { uid: "u-bob", name: "Bob" }];
+  // Stored credit to a member who has since hidden their profile: not in the options, still kept.
+  assert.equal(memberUidFor("Anna Meier", options, { name: "Anna Meier", memberUid: "u-anna-1" }), "u-anna-1");
+  // Options not loaded yet: the stored credit is untouched.
+  assert.equal(memberUidFor("Anna Meier", null, { name: "Anna Meier", memberUid: "u-anna-1" }), "u-anna-1");
+  // Typing something else resolves afresh — against the list, or to nothing.
+  assert.equal(memberUidFor("Bob", options, { name: "Anna Meier", memberUid: "u-anna-1" }), "u-bob");
+  assert.equal(memberUidFor("Nobody", options, { name: "Anna Meier", memberUid: "u-anna-1" }), undefined);
+  // A fresh row matches by exact name; nothing loaded means nothing matched.
+  assert.equal(memberUidFor("Bob", options, { name: "Bob" }), "u-bob");
+  assert.equal(memberUidFor("Bob", null, { name: "Bob" }), undefined);
 });

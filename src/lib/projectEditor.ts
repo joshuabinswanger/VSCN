@@ -165,11 +165,57 @@ export function dissolveProject(blocks: readonly EditorBlock[], projectId: strin
  * end otherwise, as uploads always did. A project's first image goes to the
  * end too — the empty block waits there, and that is where it fills.
  */
-export function insertUploaded<T extends { projectId?: string }>(gallery: readonly T[], item: T): T[] {
+export function insertUploaded<T extends { projectId?: string }>(
+  gallery: readonly T[],
+  item: T,
+  projects?: readonly { projectId: string }[],
+): T[] {
+  // The block it was dropped into may be gone by the time the bytes land —
+  // deleted through the menu, or by a Save's delete step. The item then
+  // arrives loose; keeping the id would write a dangling projectId onto the
+  // record at every later Save (review, fix round 1).
+  if (item.projectId && projects && !projects.some((p) => p.projectId === item.projectId)) {
+    const loose = { ...item };
+    delete loose.projectId;
+    item = loose;
+  }
   const out = gallery.slice();
   const last = item.projectId ? gallery.map((g) => g.projectId).lastIndexOf(item.projectId) : -1;
   out.splice(last === -1 ? out.length : last + 1, 0, item);
   return out;
+}
+
+/**
+ * The ids a partly refused saveProjects() DID write. allSettled means A can
+ * be created while B is refused; if only the failure were remembered, the
+ * next Save would treat A as new again — setDoc with a fresh createdAt on
+ * an existing document, which the rules pin — and A would be refused on
+ * every Save until reload (review, fix round 1).
+ */
+export function writtenProjectIds(
+  used: readonly { projectId: string }[],
+  failures: readonly { projectId: string }[],
+): string[] {
+  const failed = new Set(failures.map((f) => f.projectId));
+  return used.map((p) => p.projectId).filter((id) => !failed.has(id));
+}
+
+/**
+ * Which member a credit row names. While the text is still the name the
+ * credit was stored or matched with, the existing member is KEPT — a
+ * member who has since hidden their profile is not in the options any more,
+ * and a namesake would otherwise take over the credit on a mere focus
+ * (review, fix round 1). New text resolves afresh against the options, to
+ * the first member wearing exactly that name, or to nobody.
+ */
+export function memberUidFor(
+  typed: string,
+  options: readonly { uid: string; name: string }[] | null,
+  current: { name: string; memberUid?: string },
+): string | undefined {
+  const text = typed.trim();
+  if (current.memberUid && text === current.name.trim()) return current.memberUid;
+  return options?.find((m) => m.name === text)?.uid;
 }
 
 /**

@@ -731,6 +731,13 @@ const t = useTranslations(lang);
       }
       <template data-gallery-tpl="task">
         <div class="gallery-item gallery-task">
+          {
+            /* An inert stand-in for the grip column (2026-09-23): the row
+              shares .gallery-item's three-column grid, and without a first
+              child the thumb would land in the 18px grip column. A pending
+              upload is not a thing that can be placed yet, so no handle. */
+          }
+          <span class="gallery-grip-spacer" aria-hidden="true"></span>
           <div class="gallery-thumb">
             <img alt="" data-task-img />
             <button type="button" class="gallery-thumb-remove" data-task-cancel>✕</button>
@@ -1381,6 +1388,11 @@ const t = useTranslations(lang);
 
   .gallery-grip:hover {
     color: var(--color-dark);
+  }
+
+  .gallery-grip-spacer {
+    width: 18px;
+    height: 26px;
   }
 
   .gallery-project-head .gallery-grip {
@@ -2527,6 +2539,7 @@ const t = useTranslations(lang);
     editorAffiliations,
     emptiedStoredIds,
     insertUploaded,
+    memberUidFor,
     moveImage,
     moveProject,
     moveToProject,
@@ -2536,6 +2549,7 @@ const t = useTranslations(lang);
     removeFromProject,
     sameIds,
     toProjectRecord,
+    writtenProjectIds,
     type EditorAffiliation,
     type EditorProject,
   } from "../lib/projectEditor.ts";
@@ -3096,6 +3110,19 @@ const t = useTranslations(lang);
      */
     function renderGallery(focusHint?: FocusHint) {
       if (!galleryItemTpl || !galleryProjectTpl) return;
+      // A menu open while something else re-renders (an upload landing) is
+      // about to lose its node, and focus with it. Close it first and, unless
+      // the caller says where focus goes, put it back on that menu's ⋯.
+      if (openMenu) {
+        const row = openMenu.closest<HTMLElement>("[data-gallery-index]");
+        const block = openMenu.closest<HTMLElement>("[data-project-block]");
+        focusHint ??= row?.dataset.imageId
+          ? { imageId: row.dataset.imageId }
+          : block?.dataset.projectId
+            ? { projectId: block.dataset.projectId }
+            : undefined;
+        closeMenu(false);
+      }
       // The list's shape: loose rows and project blocks in gallery order, then
       // the projects no image names yet (2026-09-23, editorBlocks in
       // projects.ts). Every move below is a pure function over this list.
@@ -3365,6 +3392,8 @@ const t = useTranslations(lang);
             // the rows are otherwise anonymous once they are in the DOM.
             row.dataset.galleryIndex = String(index);
             row.dataset.imageId = item.imageId;
+            const grip = row.querySelector<HTMLButtonElement>("[data-drag-handle]");
+            if (grip) grip.title = s["profile.project.drag"];
             return row;
       };
       const buildBlock = (block: Extract<EditorBlock, { kind: "project" }>): HTMLElement | null => {
@@ -3372,6 +3401,8 @@ const t = useTranslations(lang);
         const el = galleryProjectTpl.content.firstElementChild?.cloneNode(true);
         if (!project || !(el instanceof HTMLElement)) return null;
         el.dataset.projectId = project.projectId;
+        const headGrip = el.querySelector<HTMLButtonElement>(":scope > .gallery-project-head [data-drag-handle]");
+        if (headGrip) headGrip.title = s["profile.project.drag"];
         const name = el.querySelector<HTMLElement>("[data-project-name]");
         const images = el.querySelector<HTMLElement>("[data-project-images]");
         const menu = el.querySelector<HTMLElement>(":scope > .gallery-project-head [data-gallery-menu]");
@@ -3775,7 +3806,9 @@ const t = useTranslations(lang);
      * that project's last image, inside its block (2026-09-23).
      */
     async function onGalleryUploaded(item: GalleryItem) {
-      gallery = insertUploaded(gallery, item);
+      // `projects` passed so an upload into a block deleted meanwhile arrives
+      // loose instead of carrying a dangling projectId onto its record.
+      gallery = insertUploaded(gallery, item, projects);
       renderGallery();
       await persistGalleryNow();
     }
@@ -3877,6 +3910,8 @@ const t = useTranslations(lang);
         });
         paneName.hidden = mode !== "name";
         paneMember.hidden = mode !== "member";
+        // A row switched to Member with a name typed in Name mode may already
+        // spell a member; a row that has its member keeps it (memberUidFor).
         if (mode === "member") void ensureMemberOptions().then(resolveMember);
         syncPreview();
       };
@@ -3908,16 +3943,24 @@ const t = useTranslations(lang);
         syncPreview();
       });
 
+      // Resolve on TYPING only. A focus or a mode switch re-paints the note
+      // from state and touches no credit: memberUidFor() keeps the stored
+      // member while the text is still the stored name, so a credit to a
+      // member who has since hidden their profile stays (plain text on the
+      // page), and a namesake cannot take it over on a focus.
+      const paintMember = () => {
+        memberInput.dataset.uid = a.memberUid ?? "";
+        noMatch.hidden = !memberInput.value.trim() || !memberOptions || Boolean(a.memberUid);
+      };
       const resolveMember = () => {
-        const typed = memberInput.value.trim();
-        const match = memberOptions?.find((m) => m.name === typed);
-        a.memberUid = match?.uid;
-        memberInput.dataset.uid = match?.uid ?? "";
-        noMatch.hidden = !typed || !memberOptions || Boolean(match);
-        if (match && !previewSlugs.has(match.uid)) {
-          void memberSlugs([match.uid])
+        const uid = memberUidFor(memberInput.value, memberOptions, a);
+        a.name = memberInput.value;
+        a.memberUid = uid;
+        paintMember();
+        if (uid && !previewSlugs.has(uid)) {
+          void memberSlugs([uid])
             .then((slugs) => {
-              for (const [uid, slug] of slugs) previewSlugs.set(uid, slug);
+              for (const [id, slug] of slugs) previewSlugs.set(id, slug);
               syncPreview();
             })
             .catch(() => {});
@@ -3927,10 +3970,9 @@ const t = useTranslations(lang);
       memberInput.maxLength = MAX_AFFILIATION_NAME;
       memberInput.placeholder = s["profile.project.affiliation.memberPh"];
       named(memberInput, s["profile.project.affiliation.member"]);
-      memberInput.dataset.uid = a.memberUid ?? "";
-      memberInput.addEventListener("focus", () => void ensureMemberOptions().then(resolveMember));
+      paintMember();
+      memberInput.addEventListener("focus", () => void ensureMemberOptions().then(paintMember));
       memberInput.addEventListener("input", () => {
-        a.name = memberInput.value;
         resolveMember();
         syncPreview();
       });
@@ -4666,6 +4708,12 @@ const t = useTranslations(lang);
         // error, naming the project as its header does.
         const used = projects.filter((p) => gallery.some((g) => g.projectId === p.projectId));
         const projectFailures = await saveProjects(user.uid, used.map(toProjectRecord), storedProjectIds);
+        // The ones that DID go are stored now, failure or not: allSettled
+        // means A can be created while B is refused, and forgetting A would
+        // have the next Save create it again — a fresh createdAt on an
+        // existing document, which the rules pin, so A would be refused on
+        // every Save until reload.
+        for (const id of writtenProjectIds(used, projectFailures)) storedProjectIds.add(id);
         if (projectFailures.length > 0) {
           projectFailures.forEach((f) => console.warn(`[projects] ${f.projectId} not saved:`, f.error));
           throw new Error(
@@ -4676,7 +4724,6 @@ const t = useTranslations(lang);
               .join(" "),
           );
         }
-        for (const p of used) storedProjectIds.add(p.projectId);
 
         // THE RECORDS FIRST, AND HARD (2026-09-07). Until today this ran after
         // the profile write as best-effort — a failed record write was a
