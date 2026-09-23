@@ -10,6 +10,7 @@ const { adminSetProfileActive } = require('../../functions/lib/adminOps.js');
 const { sweepImages } = require('../../functions/lib/maintenance.js');
 const adminModule = require('../../functions/lib/admin.js');
 const { authorizeImageUpload, completeImageUpload, webpDimensions } = require('../../functions/lib/uploads.js');
+const { resolveEmbed, restoreAutoPoster } = require('../../functions/lib/embeds.js');
 const sharp = require('sharp');
 const backendRequire = require('node:module').createRequire(require('node:path').resolve('functions/package.json'));
 const { Timestamp } = backendRequire('firebase-admin/firestore');
@@ -20,8 +21,13 @@ beforeEach(async () => {
 });
 after(async () => { mock.restoreAll(); await db.terminate(); });
 
-test('upload allocation counts existing files and serializes concurrent reservations', async () => {
-  mock.method(adminModule, 'getBucket', () => ({ getFiles: async () => [Array.from({ length: 19 }, (_, i) => ({ name: `users/member/gallery/old-${i}.webp` }))] }));
+test('upload allocation counts stored works and serializes concurrent reservations', async () => {
+  // Records, not files, since video links (2026-09-23): one work may own a
+  // poster and an automatic poster, and the cap is about works.
+  for (let i = 0; i < 19; i += 1) {
+    await db.doc(`images/old-${i}`).set({ ownerUid: 'member', kind: 'gallery', storagePath: `users/member/gallery/old-${i}.webp`, status: i % 2 ? 'live' : 'pendingDeletion' });
+  }
+  await db.doc('images/someone-else').set({ ownerUid: 'other', kind: 'gallery', storagePath: 'users/other/gallery/someone-else.webp', status: 'live' });
   const request = (imageId) => ({ auth: { uid: 'member', token: { email_verified: true } }, data: { imageId, kind: 'gallery', width: 100, height: 100 } });
   const results = await Promise.allSettled([
     authorizeImageUpload.run(request('11111111-1111-4111-8111-111111111111')),
@@ -30,7 +36,7 @@ test('upload allocation counts existing files and serializes concurrent reservat
   assert.equal(results.filter((r) => r.status === 'fulfilled').length, 1);
   assert.equal(results.find((r) => r.status === 'rejected').reason.code, 'resource-exhausted');
   assert.equal((await db.collection('uploadPermits').get()).size, 1);
-  assert.equal((await db.collection('images').get()).size, 1);
+  assert.equal((await db.collection('images').where('ownerUid', '==', 'member').get()).size, 20);
 });
 
 test('upload allocation enforces ownership and hourly limits', async () => {
@@ -409,4 +415,160 @@ test('a replaced picture loses its ratings but keeps a hide', async () => {
   await publishWith('member', slot, { replaces: slot });
   const slotMod = (await db.doc(`imageModeration/${slot}`).get()).data();
   assert.deepEqual(slotMod, { hidden: true });
+});
+
+
+// VIDEO LINKS (2026-09-23, release 1 of documentation/20260923-motion-works-design.md).
+// Storage is an in-memory map and the platforms are a stubbed fetch, so what
+// is pinned here is what the callables WRITE, not what YouTube answers.
+function memoryBucket(objects = new Map()) {
+  const file = (name) => ({
+    name,
+    save: async (bytes, options) => { objects.set(name, { bytes: Buffer.from(bytes), options }); },
+    download: async () => { if (!objects.has(name)) throw Object.assign(new Error('missing'), { code: 404 }); return [objects.get(name).bytes]; },
+    copy: async (dest) => { if (!objects.has(name)) throw new Error('missing'); objects.set(dest.name, { ...objects.get(name) }); return [{}, { resource: { generation: '1' } }]; },
+    getMetadata: async () => [{ contentType: 'image/webp', generation: '123', size: String(objects.get(name)?.bytes.length ?? 0) }],
+    delete: async () => { objects.delete(name); },
+  });
+  return { objects, bucket: { file, getFiles: async () => [[]] } };
+}
+
+function stubPlatforms({ oembedStatus = 200, title = 'Mitosis, animated', thumbnail } = {}) {
+  const calls = [];
+  mock.method(globalThis, 'fetch', async (url) => {
+    calls.push(String(url));
+    if (String(url).includes('/oembed')) {
+      return new Response(JSON.stringify({ title, thumbnail_url: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg' }), { status: oembedStatus });
+    }
+    if (String(url).startsWith('https://i.ytimg.com/')) return new Response(thumbnail, { status: 200 });
+    return new Response('', { status: 404 });
+  });
+  return calls;
+}
+
+const verifiedMember = (data) => ({ auth: { uid: 'member', token: { email_verified: true } }, data });
+
+test('a video link becomes a live work whose poster is stored twice, never the URL', async () => {
+  const { objects, bucket } = memoryBucket();
+  mock.method(adminModule, 'getBucket', () => bucket);
+  const thumbnail = await sharp({ create: { width: 640, height: 360, channels: 3, background: '#336699' } }).jpeg().toBuffer();
+  const calls = stubPlatforms({ thumbnail });
+  const result = await resolveEmbed.run(verifiedMember({ url: 'https://youtu.be/dQw4w9WgXcQ?si=tracking' }));
+  assert.deepEqual(result.embed, { provider: 'youtube', videoId: 'dQw4w9WgXcQ' });
+  assert.equal(result.caption, 'Mitosis, animated');
+  const rec = (await db.doc(`images/${result.imageId}`).get()).data();
+  assert.equal(rec.status, 'live');
+  assert.equal(rec.media, 'embed');
+  assert.equal(rec.posterSource, 'auto');
+  assert.deepEqual(rec.embed, { provider: 'youtube', videoId: 'dQw4w9WgXcQ' });
+  assert.equal(JSON.stringify(rec).includes('si=tracking'), false);
+  assert.deepEqual({ w: rec.width, h: rec.height }, { w: 640, h: 360 });
+  assert.match(rec.color, /^#[0-9a-f]{6}$/);
+  const path = `users/member/gallery/${result.imageId}.webp`;
+  assert.equal(rec.storagePath, path);
+  assert.deepEqual([...objects.keys()].sort(), [path.replace('.webp', '.auto.webp'), path].sort());
+  assert.equal(objects.get(path).options.metadata.cacheControl, 'public, max-age=31536000, immutable');
+  // Only the two platforms were ever contacted, and only fixed endpoints on them.
+  assert.equal(calls.every((u) => u.startsWith('https://www.youtube.com/oembed?') || u.startsWith('https://i.ytimg.com/vi/dQw4w9WgXcQ/')), true);
+});
+
+test('a refused link is refused before anything is fetched or stored', async () => {
+  const { objects, bucket } = memoryBucket();
+  mock.method(adminModule, 'getBucket', () => bucket);
+  const calls = stubPlatforms({ thumbnail: Buffer.alloc(0) });
+  for (const url of ['https://example.com/watch?v=dQw4w9WgXcQ', 'instagram.com/reel/Cx1', 'https://www.youtube.com/embed/dQw4w9WgXcQ', 42]) {
+    await assert.rejects(resolveEmbed.run(verifiedMember({ url })), (e) => e.code === 'invalid-argument' && e.details.reason === 'notVideoLink');
+  }
+  await assert.rejects(resolveEmbed.run({ auth: { uid: 'member', token: { email_verified: false } }, data: { url: 'youtu.be/dQw4w9WgXcQ' } }),
+    (e) => e.code === 'permission-denied' && e.details.reason === 'verify');
+  assert.equal(calls.length, 0);
+  assert.equal(objects.size, 0);
+  assert.equal((await db.collection('images').get()).size, 0);
+});
+
+test('a missing or non-embeddable video leaves nothing behind', async () => {
+  const { objects, bucket } = memoryBucket();
+  mock.method(adminModule, 'getBucket', () => bucket);
+  for (const [status, reason] of [[404, 'videoNotFound'], [401, 'notEmbeddable'], [500, 'providerUnavailable']]) {
+    mock.restoreAll();
+    mock.method(adminModule, 'getBucket', () => bucket);
+    stubPlatforms({ oembedStatus: status, thumbnail: Buffer.alloc(0) });
+    await assert.rejects(resolveEmbed.run(verifiedMember({ url: 'youtu.be/dQw4w9WgXcQ' })), (e) => e.details?.reason === reason);
+  }
+  assert.equal(objects.size, 0);
+  assert.equal((await db.collection('images').get()).size, 0);
+});
+
+test('a video link counts against the stored-work cap like any upload', async () => {
+  const { bucket } = memoryBucket();
+  mock.method(adminModule, 'getBucket', () => bucket);
+  const calls = stubPlatforms({ thumbnail: Buffer.alloc(0) });
+  for (let i = 0; i < 20; i += 1) {
+    await db.doc(`images/held-${i}`).set({ ownerUid: 'member', kind: 'gallery', storagePath: `users/member/gallery/held-${i}.webp`, status: 'live' });
+  }
+  await assert.rejects(resolveEmbed.run(verifiedMember({ url: 'youtu.be/dQw4w9WgXcQ' })), { code: 'resource-exhausted' });
+  assert.equal(calls.length, 0);
+});
+
+test('a member thumbnail on a video keeps the video, and carries the automatic poster to the new id', async () => {
+  const oldId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  const newId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  const embed = { provider: 'vimeo', videoId: '22439234', hash: 'a1b2c3d4e5' };
+  const { objects, bucket } = memoryBucket();
+  mock.method(adminModule, 'getBucket', () => bucket);
+  await db.doc(`images/${oldId}`).set({ ownerUid: 'member', kind: 'gallery', status: 'live', origin: 'member', storagePath: `users/member/gallery/${oldId}.webp`,
+    caption: 'The Mountain', media: 'embed', embed, posterSource: 'auto' });
+  await authorizeImageUpload.run(verifiedMember({ imageId: newId, kind: 'gallery', width: 2, height: 3, replaces: oldId }));
+  const allocated = (await db.doc(`images/${newId}`).get()).data();
+  assert.deepEqual({ media: allocated.media, embed: allocated.embed, posterSource: allocated.posterSource, caption: allocated.caption },
+    { media: 'embed', embed, posterSource: 'member', caption: 'The Mountain' });
+
+  const bytes = await sharp({ create: { width: 2, height: 3, channels: 3, background: '#ffffff' } }).webp().toBuffer();
+  objects.set(`pending/member/gallery/${newId}.webp`, { bytes });
+  objects.set(`users/member/gallery/${oldId}.auto.webp`, { bytes: Buffer.from('auto-poster') });
+  await completeImageUpload.run(verifiedMember({ imageId: newId }));
+  assert.equal((await db.doc(`images/${newId}`).get()).data().status, 'live');
+  assert.equal(objects.get(`users/member/gallery/${newId}.auto.webp`).bytes.toString(), 'auto-poster');
+  assert.equal(objects.has(`users/member/gallery/${newId}.webp`), true);
+});
+
+test('"Use automatic thumbnail" makes a new record from the kept poster, resetting ratings and keeping a hide', async () => {
+  const oldId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  const embed = { provider: 'youtube', videoId: 'dQw4w9WgXcQ' };
+  const auto = await sharp({ create: { width: 320, height: 180, channels: 3, background: '#224466' } }).webp().toBuffer();
+  const { objects, bucket } = memoryBucket(new Map([[`users/member/gallery/${oldId}.auto.webp`, { bytes: auto }]]));
+  mock.method(adminModule, 'getBucket', () => bucket);
+  await db.doc(`images/${oldId}`).set({ ownerUid: 'member', kind: 'gallery', status: 'live', origin: 'member', storagePath: `users/member/gallery/${oldId}.webp`,
+    caption: 'Mine', tags: ['biology'], media: 'embed', embed, posterSource: 'member', width: 10, height: 10 });
+  await db.doc(`imageModeration/${oldId}`).set({ ratings: { admin: { professional: 5, knowledge: 5, aesthetics: 5, completeness: null } }, score: 5, hidden: true, hiddenBy: 'admin' });
+
+  const result = await restoreAutoPoster.run(verifiedMember({ imageId: oldId }));
+  assert.notEqual(result.imageId, oldId);
+  const rec = (await db.doc(`images/${result.imageId}`).get()).data();
+  assert.deepEqual({ status: rec.status, media: rec.media, embed: rec.embed, posterSource: rec.posterSource, caption: rec.caption, tags: rec.tags, w: rec.width, h: rec.height },
+    { status: 'live', media: 'embed', embed, posterSource: 'auto', caption: 'Mine', tags: ['biology'], w: 320, h: 180 });
+  assert.equal(objects.get(`users/member/gallery/${result.imageId}.webp`).bytes.equals(auto), true);
+  assert.equal(objects.get(`users/member/gallery/${result.imageId}.auto.webp`).bytes.equals(auto), true);
+  const mod = (await db.doc(`imageModeration/${result.imageId}`).get()).data();
+  assert.deepEqual({ hidden: mod.hidden, ratings: mod.ratings }, { hidden: true, ratings: undefined });
+  // The old record is the editor's to retire (it swaps the id, then marks it).
+  assert.equal((await db.doc(`images/${oldId}`).get()).data().status, 'live');
+
+  // Nothing to restore on a work whose poster is already the automatic one, or on a still.
+  await assert.rejects(restoreAutoPoster.run(verifiedMember({ imageId: result.imageId })), { code: 'permission-denied' });
+  await db.doc(`images/${oldId}`).set({ ownerUid: 'member', kind: 'gallery', status: 'live', storagePath: `users/member/gallery/${oldId}.webp` });
+  await assert.rejects(restoreAutoPoster.run(verifiedMember({ imageId: oldId })), { code: 'permission-denied' });
+});
+
+test('the sweep removes a video work\'s automatic poster with it', async () => {
+  const id = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+  const { objects, bucket } = memoryBucket(new Map([
+    [`users/member/gallery/${id}.webp`, { bytes: Buffer.from('p') }],
+    [`users/member/gallery/${id}.auto.webp`, { bytes: Buffer.from('a') }],
+  ]));
+  mock.method(adminModule, 'getBucket', () => bucket);
+  await db.doc(`images/${id}`).set({ ownerUid: 'member', kind: 'gallery', status: 'pendingDeletion', storagePath: `users/member/gallery/${id}.webp`, media: 'embed' });
+  await sweepImages.run({});
+  assert.equal(objects.size, 0);
+  assert.equal((await db.doc(`images/${id}`).get()).exists, false);
 });

@@ -132,6 +132,13 @@ service cloud.firestore {
                     && request.resource.data.origin == resource.data.origin
                     && request.resource.data.get('provenance', null) == resource.data.get('provenance', null)
                     && request.resource.data.createdAt == resource.data.createdAt
+                    // WHAT KIND OF WORK IT IS (2026-09-23, video links): kept on
+                    // every caption save, changed by nobody but the server. The
+                    // diff below already refuses a change; these say so out loud,
+                    // the same way the pins above do for ownerUid and storagePath.
+                    && request.resource.data.get('media', null) == resource.data.get('media', null)
+                    && request.resource.data.get('embed', null) == resource.data.get('embed', null)
+                    && request.resource.data.get('posterSource', null) == resource.data.get('posterSource', null)
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                          'caption', 'captionDe', 'description', 'descriptionDe', 'descriptionShort',
                          'link', 'siteLink', 'tags', 'status', 'updatedAt'])
@@ -385,7 +392,7 @@ function validBioWordCount(bio) {
 function validImage(data, imageId) {
   return data.keys().hasOnly(['ownerUid', 'kind', 'storagePath', 'width', 'height', 'color',
                               'caption', 'captionDe', 'description', 'descriptionDe', 'link', 'siteLink', 'tags', 'descriptionShort', 'origin',
-                              'provenance', 'status', 'createdAt', 'updatedAt'])
+                              'provenance', 'media', 'embed', 'posterSource', 'status', 'createdAt', 'updatedAt'])
     && data.ownerUid is string
     && (data.kind == 'avatar' || data.kind == 'gallery')
     && data.storagePath == 'users/' + data.ownerUid + '/' + data.kind + '/' + imageId + '.webp'
@@ -422,9 +429,31 @@ function validImage(data, imageId) {
     && (!('tags' in data) || validImageTags(data.tags))
     && (!('descriptionShort' in data) || (data.descriptionShort is string && data.descriptionShort.size() <= 240))
     && (data.origin == 'member' || data.origin == 'curated')
+    // A VIDEO WORK IS STILL AN IMAGE RECORD (2026-09-23,
+    // documentation/20260923-motion-works-design.md): the WebP at storagePath
+    // is its poster. These three are server-written and pinned on update
+    // above — they are on the hasOnly list only because it judges the MERGED
+    // record, and without them a member could not caption their own video.
+    // Absent `media` means a still, so every older record passes unchanged.
+    && (!('media' in data) || data.media == 'still' || data.media == 'loop' || data.media == 'embed')
+    && (!('embed' in data) || validEmbed(data.embed))
+    && (!('posterSource' in data) || data.posterSource == 'auto' || data.posterSource == 'member')
     && (data.status == 'uploading' || data.status == 'live' || data.status == 'pendingDeletion')
     && data.createdAt is timestamp
     && data.updatedAt is timestamp;
+}
+
+// The video an embed plays: a provider and an id, never a URL — the player
+// URL is rebuilt from these (src/lib/embed.ts). Keep the patterns in sync with
+// functions/src/embedUrl.ts.
+function validEmbed(value) {
+  return value is map
+    && value.keys().hasOnly(['provider', 'videoId', 'hash'])
+    && ((value.get('provider', '') == 'youtube' && value.get('videoId', '') is string
+         && value.videoId.matches('^[A-Za-z0-9_-]{11}$') && !('hash' in value))
+        || (value.get('provider', '') == 'vimeo' && value.get('videoId', '') is string
+            && value.videoId.matches('^[0-9]{1,12}$')
+            && (!('hash' in value) || (value.hash is string && value.hash.matches('^[0-9a-f]{6,20}$')))));
 }
 
 // Seven, the same count a member may carry (2026-09-23, member feedback:

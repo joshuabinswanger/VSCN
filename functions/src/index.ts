@@ -3,6 +3,7 @@
 export { requestRebuild } from "./rebuild";
 export { flushMemberRebuilds, onImageWritten } from "./rebuildQueue";
 export { authorizeImageUpload, completeImageUpload } from "./uploads";
+export { resolveEmbed, restoreAutoPoster } from "./embeds";
 export { mintAppCheckToken } from "./appCheck";
 export { requestAccountDeletion, cancelAccountDeletion, syncEmail } from "./accounts";
 export { purgeExpiredAccounts, sweepImages, reconcileEmails } from "./maintenance";

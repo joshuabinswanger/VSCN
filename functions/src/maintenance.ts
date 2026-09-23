@@ -7,6 +7,7 @@ import { findEmailMismatches } from "./emails";
 import { purgeAccount } from "./purge";
 import { dispatchRebuild, githubRebuildToken } from "./rebuild";
 import type { DeletionJob } from "./types";
+import { recordObjectPaths } from "./uploads";
 
 const ZURICH = "Europe/Zurich";
 
@@ -64,7 +65,7 @@ export const sweepImages = onSchedule(
     ];
     const bucket = getBucket();
     for (const d of targets) {
-      await bucket.file(d.data().storagePath as string).delete({ ignoreNotFound: true });
+      for (const path of recordObjectPaths(d.data())) await bucket.file(path).delete({ ignoreNotFound: true });
       await bucket.file(`pending/${d.data().ownerUid}/${d.data().kind}/${d.id}.webp`).delete({ ignoreNotFound: true });
       await db.doc(`uploadPermits/${d.id}.webp`).delete();
       await d.ref.delete();
