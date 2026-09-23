@@ -278,15 +278,58 @@ test("images: the record carries the member's own page for the piece, beside whe
   await assertFails(db.doc("images/img-1").update({ siteLink: 42, updatedAt: new Date() }));
 });
 
-test("images: what is in the picture — up to 5 tags from the registry's own alphabet", async () => {
+test("images: what is in the picture — up to 7 tags from the registry's own alphabet", async () => {
   await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
-  await assertSucceeds(db.doc("images/img-1").update({ tags: ["Botany", "Ink", "Field notes", "d", "e"], updatedAt: new Date() }));
-  await assertFails(db.doc("images/img-1").update({ tags: ["a", "b", "c", "d", "e", "f"], updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ tags: ["Botany", "Ink", "Field notes", "d", "e", "f", "g"], updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ tags: ["a", "b", "c", "d", "e", "f", "g", "h"], updatedAt: new Date() }));
   await assertFails(db.doc("images/img-1").update({ tags: ["x".repeat(51)], updatedAt: new Date() }));
   await assertSucceeds(db.doc("images/img-1").update({ tags: ["x".repeat(50)], updatedAt: new Date() }));
   await assertFails(db.doc("images/img-1").update({ tags: [42], updatedAt: new Date() }));
   await assertFails(db.doc("images/img-1").update({ tags: "Botany", updatedAt: new Date() }));
+});
+
+test("images: a FULL gallery saves — eight maximal records, seven tags each, then both profile docs", async () => {
+  // The per-image cap went 5 -> 7 on 2026-09-23. The records are judged one
+  // write each (saveGalleryRecords in src/lib/gallery.ts: eight parallel
+  // updateDoc calls), and the profile docs in one batch after them
+  // (updateUserProfile) — so this mirrors the real Save, every field at cap.
+  const ids = Array.from({ length: 8 }, (_, i) => `img-${i + 1}`);
+  for (const id of ids) await seed(env, `images/${id}`, imageDoc(OWNER, id, { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  const tags = Array.from({ length: 7 }, (_, i) => `${i}`.padEnd(50, "x"));
+  await Promise.all(ids.map((id) => assertSucceeds(db.doc(`images/${id}`).update({
+    caption: "x".repeat(140), captionDe: "x".repeat(140),
+    description: "x".repeat(600), descriptionDe: "x".repeat(600),
+    link: "x".repeat(200), siteLink: "x".repeat(200),
+    tags, updatedAt: new Date(),
+  }))));
+
+  const photoURL = "https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/x.webp?alt=media";
+  const profile = {
+    displayName: "x".repeat(100), photoURL, role: "x".repeat(100), roleDe: "x".repeat(100),
+    bio: Array.from({ length: 35 }, () => "word").join(" "),
+    bioDe: Array.from({ length: 35 }, () => "Wort").join(" "),
+    portfolio: "x".repeat(200), socialMedia: "x".repeat(500),
+    affiliation: "x".repeat(150), location: "x".repeat(100),
+    languages: ["de", "en", "fr", "it"], visualNeeds: ["a", "b", "c", "d", "e", "f", "g", "h"],
+    openTo: ["a", "b", "c", "d", "e"], primaryAudiences: ["science", "public", "policy-makers", "education"],
+    tags: ["a", "b", "c", "d", "e", "f", "g"],
+    gallery: ids,
+  };
+  const batch = db.batch();
+  batch.set(db.doc(`users/${OWNER}`), {
+    ...minimalUser(OWNER), ...profile,
+    phone: "x".repeat(40), wantsToContribute: true, onboardingComplete: true,
+    receiveCommunityEmails: true, preferredLanguage: "en",
+  }, { merge: true });
+  batch.set(db.doc(`publicProfiles/${OWNER}`), {
+    ...profile, photoImageId: "img-a", photoColor: "#123456", memberType: "creator", active: true,
+  }, { merge: true });
+  await assertSucceeds(batch.commit());
+
+  // And the eighth tag is still the one refused.
+  await assertFails(db.doc("images/img-8").update({ tags: [...tags, "h"], updatedAt: new Date() }));
 });
 
 test("users: an owner update leaves server-owned fields alone and passes", async () => {
@@ -377,6 +420,7 @@ test("publicProfiles: eight ids save on a FULL profile", async () => {
     openTo: ["a", "b", "c", "d", "e"], primaryAudiences, tags: ["a", "b", "c", "d", "e", "f", "g"],
     gallery: Array.from({ length: 8 }, () => crypto.randomUUID()),
     phone: "x".repeat(40), wantsToContribute: true, onboardingComplete: true,
+    receiveCommunityEmails: true, preferredLanguage: "en",
   }));
 });
 
@@ -532,4 +576,63 @@ test("imageModeration: a member can still save their own image record", async ()
   await assertSucceeds(owner.doc("images/img-1").update({
     caption: "a new line", updatedAt: new Date(),
   }));
+});
+
+test("profile sync keeps communication preferences out of the public projection", async () => {
+  await seed(env, `users/${OWNER}`, minimalUser(OWNER));
+  const context = env.authenticatedContext(OWNER, verified(OWNER));
+  const { updateUserProfile } = loadTs('src/lib/firestore.ts', {
+    './firebase.ts': { auth: { currentUser: { emailVerified: true } }, db: context.firestore()._delegate },
+    './profileVisibility.ts': { isProfileVisible },
+    'firebase/firestore': modularFirestore,
+  });
+
+  await assertSucceeds(updateUserProfile(OWNER, {
+    receiveCommunityEmails: true,
+    preferredLanguage: "en",
+  }));
+  const privateData = (await context.firestore().doc(`users/${OWNER}`).get()).data();
+  const publicData = (await context.firestore().doc(`publicProfiles/${OWNER}`).get()).data();
+  assert.equal(privateData.receiveCommunityEmails, true);
+  assert.equal(privateData.preferredLanguage, "en");
+  assert.equal(publicData.receiveCommunityEmails, undefined);
+  assert.equal(publicData.preferredLanguage, undefined);
+});
+
+test("communication preferences are private, typed, and preserve an unknown legacy choice", async () => {
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  // Historic documents legitimately omit both fields: omission is not consent.
+  await assertSucceeds(db.doc(`users/${OWNER}`).set(minimalUser(OWNER)));
+  await assertSucceeds(db.doc(`users/${OWNER}`).update({
+    receiveCommunityEmails: true,
+    preferredLanguage: "en",
+  }));
+  await assertFails(db.doc(`users/${OWNER}`).update({ receiveCommunityEmails: "true" }));
+  await assertFails(db.doc(`users/${OWNER}`).update({ preferredLanguage: "fr" }));
+
+  const publicProfile = db.doc(`publicProfiles/${OWNER}`);
+  await assertFails(publicProfile.set({ displayName: "Test Member", receiveCommunityEmails: true }));
+  await assertFails(publicProfile.set({ displayName: "Test Member", preferredLanguage: "en" }));
+});
+
+test("communication preferences validate private creates and public updates", async () => {
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  const privateProfile = db.doc(`users/${OWNER}`);
+  for (const invalid of [
+    { receiveCommunityEmails: "true" },
+    { receiveCommunityEmails: null },
+    { preferredLanguage: "fr" },
+    { preferredLanguage: null },
+  ]) {
+    await assertFails(privateProfile.set({ ...minimalUser(OWNER), ...invalid }));
+  }
+  await assertSucceeds(privateProfile.set({
+    ...minimalUser(OWNER), receiveCommunityEmails: false, preferredLanguage: "de",
+  }));
+  await assertFails(privateProfile.update({ receiveCommunityEmails: null }));
+  await assertFails(privateProfile.update({ preferredLanguage: null }));
+  const publicProfile = db.doc(`publicProfiles/${OWNER}`);
+  await assertSucceeds(publicProfile.set({ displayName: "Test Member" }));
+  await assertFails(publicProfile.update({ receiveCommunityEmails: false }));
+  await assertFails(publicProfile.update({ preferredLanguage: "de" }));
 });

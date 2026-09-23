@@ -172,6 +172,21 @@ const prefix = lang === "de" ? "/de" : "";
         <p class="field-note">{t("profile.wantsToContribute.note")}</p>
       </div>
       <div class="field">
+        <label class="label" for="ob-preferred-language">{t("profile.label.preferredLanguage")}</label>
+        <select id="ob-preferred-language" class="input">
+          <option value="de" selected={lang === "de"}>{t("profile.lang.de")}</option>
+          <option value="en" selected={lang !== "de"}>{t("profile.lang.en")}</option>
+        </select>
+        <p class="field-note">{t("profile.note.preferredLanguage")}</p>
+      </div>
+      <div class="field">
+        <label class="checkbox-label" for="ob-receive-community-emails">
+          <input id="ob-receive-community-emails" type="checkbox" />
+          <span>{t("profile.receiveCommunityEmails")}</span>
+        </label>
+        <p class="field-note">{t("profile.receiveCommunityEmails.note")}</p>
+      </div>
+      <div class="field">
         <OpenToSelector lang={lang} />
       </div>
       <div class="field">
@@ -398,7 +413,7 @@ const prefix = lang === "de" ? "/de" : "";
         }
         <div class="field" id="ob-image-tags-field">
           <label class="label" for="ob-img-tags">{t("profile.gallery.tags")}</label>
-          <TagSelector lang={lang} maxTags={5} inputId="ob-img-tags" />
+          <TagSelector lang={lang} maxTags={7} inputId="ob-img-tags" />
           <p class="field-note">{t("profile.gallery.tagsNote")}</p>
         </div>
       </div>
@@ -1280,6 +1295,8 @@ const prefix = lang === "de" ? "/de" : "";
             platformRequest: getInputValue("ob-platform-request"),
             openTo: openToSelector?.value ?? [],
             wantsToContribute: (document.getElementById("ob-wants-to-contribute") as HTMLInputElement | null)?.checked ?? false,
+            preferredLanguage: (document.getElementById("ob-preferred-language") as HTMLSelectElement | null)?.value === "en" ? "en" : "de",
+            receiveCommunityEmails: (document.getElementById("ob-receive-community-emails") as HTMLInputElement | null)?.checked ?? false,
             tags: tagSelector?.value ?? [],
             tagInput: tagSelector?.inputValue ?? "",
           })
@@ -1311,6 +1328,8 @@ const prefix = lang === "de" ? "/de" : "";
       platformRequest?: string;
       openTo?: string[];
       wantsToContribute?: boolean;
+      preferredLanguage?: "de" | "en";
+      receiveCommunityEmails?: boolean;
       tags?: string[];
       tagInput?: string;
     } | null {
@@ -1806,12 +1825,15 @@ const prefix = lang === "de" ? "/de" : "";
       const user = auth.currentUser;
       if (!user) return;
       setBtnState("ob-next-1", true, s["onboarding.nav.next"]);
+      setError("");
       try {
         const wantsToContributeEl = document.getElementById("ob-wants-to-contribute") as HTMLInputElement | null;
         await updateUser(user.uid, {
           openTo: openToSelector?.value ?? [],
           wantsToContribute: wantsToContributeEl?.checked ?? false,
-        }).catch(() => {});
+          preferredLanguage: (document.getElementById("ob-preferred-language") as HTMLSelectElement | null)?.value === "en" ? "en" : "de",
+          receiveCommunityEmails: (document.getElementById("ob-receive-community-emails") as HTMLInputElement | null)?.checked ?? false,
+        });
         const platformRequest = getInputValue("ob-platform-request").trim();
         if (platformRequest) {
           await upsertOnboardingRequest(user.uid, {
@@ -1822,9 +1844,11 @@ const prefix = lang === "de" ? "/de" : "";
             console.warn("[onboarding] Request save skipped:", err);
           });
         }
+        setStep(2);
+      } catch {
+        setError(s["onboarding.error.save"]);
       } finally {
         setBtnState("ob-next-1", false, s["onboarding.nav.next"]);
-        setStep(2);
       }
     });
 
@@ -2104,6 +2128,11 @@ const prefix = lang === "de" ? "/de" : "";
 
         const wantsToContributeEl = document.getElementById("ob-wants-to-contribute") as HTMLInputElement | null;
         if (wantsToContributeEl) wantsToContributeEl.checked = data.wantsToContribute ?? false;
+        const preferredLanguageEl = document.getElementById("ob-preferred-language") as HTMLSelectElement | null;
+        // Never chosen: keep the locale they signed up in, not a blanket German.
+        if (preferredLanguageEl && (data.preferredLanguage === "en" || data.preferredLanguage === "de")) preferredLanguageEl.value = data.preferredLanguage;
+        const receiveCommunityEmailsEl = document.getElementById("ob-receive-community-emails") as HTMLInputElement | null;
+        if (receiveCommunityEmailsEl) receiveCommunityEmailsEl.checked = data.receiveCommunityEmails === true;
 
         if (memberTypeSelector) {
           memberTypeSelector.value = data.memberType ?? "";
@@ -2163,6 +2192,10 @@ const prefix = lang === "de" ? "/de" : "";
         if (wantsToContributeElRestore && restoreState.wantsToContribute != null) {
           wantsToContributeElRestore.checked = restoreState.wantsToContribute;
         }
+        const preferredLanguageElRestore = document.getElementById("ob-preferred-language") as HTMLSelectElement | null;
+        if (preferredLanguageElRestore && restoreState.preferredLanguage) preferredLanguageElRestore.value = restoreState.preferredLanguage;
+        const receiveCommunityEmailsElRestore = document.getElementById("ob-receive-community-emails") as HTMLInputElement | null;
+        if (receiveCommunityEmailsElRestore && restoreState.receiveCommunityEmails != null) receiveCommunityEmailsElRestore.checked = restoreState.receiveCommunityEmails;
         if (tagSelector && Array.isArray(restoreState.tags)) {
           const current = tagSelector.value;
           const merged = [...current];

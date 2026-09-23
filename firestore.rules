@@ -193,7 +193,7 @@ function validPublicProfile(data) {
 }
 
 function validPrivateUser(data) {
-  let allowedKeys = ['displayName', 'photoURL', 'photoImageId', 'photoColor', 'memberType', 'role', 'roleDe', 'bio', 'bioDe', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'phone', 'email', 'wantsToContribute', 'onboardingComplete', 'status', 'deletionRequestedAt', 'purgeAfter', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'photoImageId', 'photoColor', 'memberType', 'role', 'roleDe', 'bio', 'bioDe', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'phone', 'email', 'receiveCommunityEmails', 'preferredLanguage', 'wantsToContribute', 'onboardingComplete', 'status', 'deletionRequestedAt', 'purgeAfter', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data)
@@ -205,7 +205,23 @@ function validPrivateUser(data) {
     // See the comment on validGallery.
     && data.get('phone', '').size() <= 40
     && data.get('wantsToContribute', false) is bool
-    && data.get('onboardingComplete', false) is bool;
+    && data.get('onboardingComplete', false) is bool
+    // `get` with a default here too, and for the reason the comment above
+    // gives: the `!('x' in data) ||` form these two arrived in costs more of
+    // the same evaluation budget the gallery is spending, and this function is
+    // the tighter of the two caps. Absent is the common case for both.
+    && data.get('receiveCommunityEmails', false) is bool
+    && validPreferredLanguage(data.get('preferredLanguage', 'de'));
+}
+
+/**
+ * The member's preferred language: the site locale they are routed to and the
+ * language VSCN writes to them in. Private only: it is how we address a member,
+ * not a working language they advertise — `languages` is that, and
+ * validLanguages() governs it on the public projection.
+ */
+function validPreferredLanguage(value) {
+  return value is string && (value == 'de' || value == 'en');
 }
 
 function validPublicFields(data) {
@@ -411,16 +427,19 @@ function validImage(data, imageId) {
     && data.updatedAt is timestamp;
 }
 
-// Same cap as validTag's label below — a tag on an image is the same kind of
+// Seven, the same count a member may carry (2026-09-23, member feedback:
+// "7 tags allowed"). Same length cap as validTag's label below — a tag on an image is the same kind of
 // value as a tag on a profile, just not registered here (getOrCreateTag does
 // that, exactly as the profile tag-selector does).
 function validImageTags(value) {
-  return value is list && value.size() <= 5
+  return value is list && value.size() <= 7
     && (value.size() < 1 || validImageTag(value[0]))
     && (value.size() < 2 || validImageTag(value[1]))
     && (value.size() < 3 || validImageTag(value[2]))
     && (value.size() < 4 || validImageTag(value[3]))
-    && (value.size() < 5 || validImageTag(value[4]));
+    && (value.size() < 5 || validImageTag(value[4]))
+    && (value.size() < 6 || validImageTag(value[5]))
+    && (value.size() < 7 || validImageTag(value[6]));
 }
 
 function validImageTag(v) {
