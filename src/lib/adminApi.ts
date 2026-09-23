@@ -45,6 +45,19 @@ export interface Queues {
   /** `live` records no profile points at — the one orphan class no sweeper takes. */
   unreferencedLive: AdminImage[];
   emailMismatches: { uid: string; storedEmail: string | null; authEmail: string }[];
+  /** adminEvents/ — the operator notices the digest has not mailed yet, oldest first. */
+  unsentNotices: UnsentNotice[];
+  /** Failed ticks after which the digest drops a notice (MAX_ATTEMPTS in adminDigest.ts). */
+  noticeMaxAttempts: number;
+}
+export interface UnsentNotice {
+  id: string; kind: "signup" | "image"; uid: string; imageId: string | null; email: string | null;
+  at: string;
+  /** Earliest tick that may send it: a signup waits for the wizard or half an hour. */
+  dueAt: string;
+  /** Failed sends so far. 0 = simply not sent yet. */
+  attempts: number;
+  lastError: string | null; lastAttemptAt: string | null;
 }
 
 /**

@@ -2,6 +2,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import type { UserRecord } from "firebase-admin/auth";
 import { adminAuth, db, getBucket } from "./admin";
+import { listUnsentNotices, MAX_ATTEMPTS as NOTICE_MAX_ATTEMPTS } from "./adminDigest";
 import { GRACE_DAYS, STALE_UPLOAD_HOURS } from "./constants";
 import { findEmailMismatches } from "./emails";
 import { cancelDeletion, scheduleDeletion } from "./lifecycle";
@@ -276,13 +277,14 @@ export const adminListMembers = onCall(async (req) => {
 export const adminListQueues = onCall(async (req) => {
   requireAdmin(req);
   const cutoff = Date.now() - STALE_UPLOAD_HOURS * 3_600_000;
-  const [open, uploading, live, pubs, users, emailMismatches] = await Promise.all([
+  const [open, uploading, live, pubs, users, emailMismatches, notices] = await Promise.all([
     db.collection("deletions").where("completedAt", "==", null).get(),
     db.collection("images").where("status", "==", "uploading").get(),
     db.collection("images").where("status", "==", "live").get(),
     db.collection("publicProfiles").get(),
     db.collection("users").get(),
     findEmailMismatches(),
+    listUnsentNotices(),
   ]);
 
   // The orphan the upload inversion does NOT prevent: a record that reached
@@ -311,6 +313,15 @@ export const adminListQueues = onCall(async (req) => {
       .filter((d) => !referenced.has(d.id) && (d.data().createdAt as Timestamp).toMillis() < cutoff)
       .map((d) => ({ imageId: d.id, referenced: false, ...d.data() })),
     emailMismatches,
+    // The operator's mail queue (adminDigest.ts). Not a decision like the
+    // four above, but a notice that keeps failing is news nothing else
+    // carries: the digest cannot mail you that the digest cannot mail you.
+    unsentNotices: notices.map((n) => ({
+      id: n.id, kind: n.kind, uid: n.uid, imageId: n.imageId ?? null, email: n.email ?? null,
+      at: n.at, dueAt: n.dueAt, attempts: n.attempts ?? 0,
+      lastError: n.lastError ?? null, lastAttemptAt: n.lastAttemptAt ?? null,
+    })),
+    noticeMaxAttempts: NOTICE_MAX_ATTEMPTS,
   });
 });
 

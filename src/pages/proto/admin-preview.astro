@@ -189,6 +189,19 @@ import AdminConsole from "../../components/admin/AdminConsole.astro";
     staleUploads: [img({ imageId: "img_x", ownerUid: "9pR2xKvB6nWzQhLt3MdYcJs0Ef5g", status: "uploading", referenced: false })],
     unreferencedLive: [img({ imageId: "img_orph", referenced: false })],
     emailMismatches: [{ uid: "Tq7HsN4mXbZv2RpLd9KcWy6Ja1Ur", storedEmail: "m.brunner.old@example.org", authEmail: "marco.brunner@example.org" }],
+    // One of each state the row can be in: refused by the mailbox, waiting
+    // for the wizard's half hour, and simply due.
+    unsentNotices: [
+      { id: "image-img_orph-1", kind: "image", uid: "k3Qw8ZrT2bVnPjXs7LmHcYd1Ae4f", imageId: "img_orph", email: null,
+        at: "2026-09-23T07:28:28.000Z", dueAt: "2026-09-23T07:28:28.000Z", attempts: 3,
+        lastError: "Mail not sent: Error: Invalid login: 535 5.7.0 Invalid login", lastAttemptAt: "2026-09-23T07:55:00.000Z" },
+      { id: "signup-Tq7HsN4mXbZv2RpLd9KcWy6Ja1Ur", kind: "signup", uid: "Tq7HsN4mXbZv2RpLd9KcWy6Ja1Ur", imageId: null,
+        email: "marco.brunner@example.org", at: "2026-09-23T07:40:00.000Z", dueAt: "2099-01-01T00:00:00.000Z", attempts: 0,
+        lastError: null, lastAttemptAt: null },
+      { id: "image-img_x-2", kind: "image", uid: "9pR2xKvB6nWzQhLt3MdYcJs0Ef5g", imageId: "img_x", email: null,
+        at: "2026-09-23T07:41:00.000Z", dueAt: "2026-09-23T07:41:00.000Z", attempts: 0, lastError: null, lastAttemptAt: null },
+    ],
+    noticeMaxAttempts: 12,
   };
 
   /**

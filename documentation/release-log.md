@@ -7,6 +7,15 @@ fills in the action. Newest first. How to read a verdict: [release-verification.
 Green entries are one line. The value is the history: slow drift shows up here as a pattern
 rather than as a member's email.
 
+## 2026-09-23 · f21a60f · prod · the digest delivers
+Machine: not re-run; sendAdminDigest alone redeployed by Josh at 07:39Z, now bound to
+         INFOMANIAK_SMTP_PASSWORD@3 (written from the DPAPI credential file, no trailing newline).
+Walk:    n/a (functions only)
+Action:  none. 07:45:07Z "Admin digest sent", the first delivery on prod, carrying a member's 07:28
+         upload. The new version alone had changed nothing: the 07:35 tick still ran on @1 and failed,
+         because Functions pin the secret version at deploy. Dev binds @2 since 07:28Z and waits for a
+         real event to prove it.
+
 ## 2026-09-23 · c07fc9a · dev · the release walk merged
 Machine: GREEN after a fix, one warning. First run RED on functions deployed: the four functions the walk
          PR changed (flushMemberRebuilds, onImageWritten, onImageWentLive, sendAdminDigest) were stale.

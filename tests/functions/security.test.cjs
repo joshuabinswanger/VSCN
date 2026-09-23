@@ -183,6 +183,24 @@ test('an image going live for a hidden member queues no operator event', async (
   assert.deepEqual(events.docs.map((d) => d.data().uid), ['member']);
 });
 
+test('a refused digest keeps its notices with the reason, and a sent one clears them', async () => {
+  const digest = require('../../functions/lib/adminDigest.js');
+  const mail = require('../../functions/lib/mail.js');
+  await db.doc('publicProfiles/member').set({ displayName: 'Member' });
+  await db.doc('adminEvents/image-gone-1').set({ kind: 'image', uid: 'member', imageId: 'gone', at: Timestamp.now(), dueAt: Timestamp.now(), attempts: 0 });
+  mock.method(mail, 'sendToOperator', async () => { throw new Error('Invalid login: 535 5.7.0 Invalid login'); });
+  await digest.sendAdminDigest.run({});
+  const [notice] = await digest.listUnsentNotices();
+  assert.equal(notice.id, 'image-gone-1');
+  assert.equal(notice.attempts, 1);
+  assert.match(notice.lastError, /535 5\.7\.0 Invalid login/, 'the SMTP reply reaches the console, not only the log');
+  assert.ok(notice.lastAttemptAt);
+  mock.restoreAll();
+  mock.method(mail, 'sendToOperator', async () => {});
+  await digest.sendAdminDigest.run({});
+  assert.deepEqual(await digest.listUnsentNotices(), []);
+});
+
 test('failed dispatch and changes arriving during dispatch stay queued', async () => {
   const ref = db.doc('rebuildQueue/site');
   await ref.set({ dirtyAt: Timestamp.fromMillis(1) });
