@@ -318,16 +318,30 @@ const t = useTranslations(lang);
           announced, by paintTaskRow promoting that one row to role="alert". */
         }
         <div id="gallery-queue" class="gallery-queue"></div>
-        <label class="btn-outline choose-img" for="gallery-files">
-          {t("profile.gallery.add")}
-          <input
-            id="gallery-files"
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif"
-            multiple
-            style="display:none;"
-          />
-        </label>
+        {
+          /* PROJECTS (2026-09-23, documentation/20260923-projects-design.md):
+          an optional grouping of the images above. "+ New project" adds an
+          empty block at the end of the list; its hint sits behind the ⓘ like
+          every other note on this page. The general "Add images" keeps adding
+          LOOSE images at the end — each block carries its own picker. */
+        }
+        <div class="gallery-actions">
+          <button type="button" id="gallery-new-project" class="btn-outline choose-img">
+            {t("profile.project.new")}
+          </button>
+          <InfoTip lang={lang} for="note-projects" />
+          <label id="gallery-add" class="btn-outline choose-img" for="gallery-files">
+            {t("profile.gallery.add")}
+            <input
+              id="gallery-files"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/avif"
+              multiple
+              style="display:none;"
+            />
+          </label>
+        </div>
+        <p id="note-projects" class="field-note" data-tip hidden>{t("profile.project.note")}</p>
         {
           /* ONE picker for every row's "Replace image": the row that was
             pressed is remembered in the script, not in the input. */
@@ -580,6 +594,51 @@ const t = useTranslations(lang);
             </div>
           </div>
         </div>
+      </template>
+      {
+        /* A PROJECT BLOCK (2026-09-23), cloned by renderGallery() once per
+          project. Josh: "the project should encapsulate the images, so it
+          still keeps this linear look … everything keeps together" — so the
+          block is a frame INSIDE the one gallery list, holding its own image
+          rows in [data-project-images], and the list stays linear: loose rows
+          and blocks in one order, the gallery array's order.
+
+          Title and Description reuse the image row's EN/DE switch and panes
+          rather than BilingualField: that component keys on fixed ids, and
+          this template is cloned per project. The Link is the project's own
+          page; images inside the block without a site link of their own
+          inherit it (inheritedSiteLink in projects.ts), which is what the
+          note behind the ⓘ says. */
+      }
+      <template data-gallery-tpl="project">
+        <section class="gallery-project" data-project-block>
+          <header class="gallery-project-head">
+            <span class="gallery-project-name" data-project-name></span>
+          </header>
+          <div class="gallery-project-fields">
+            <div class="gallery-lang-switch" role="group">
+              <button type="button" class="gallery-lang-btn is-active" data-gallery-lang-btn="en">EN</button>
+              <button type="button" class="gallery-lang-btn" data-gallery-lang-btn="de">DE</button>
+            </div>
+            <div class="gallery-lang-pane" data-gallery-lang-pane="en">
+              <input type="text" class="input" data-project-field="title" />
+              <textarea class="input textarea" rows="2" data-project-field="description"></textarea>
+            </div>
+            <div class="gallery-lang-pane" data-gallery-lang-pane="de" hidden>
+              <input type="text" class="input" data-project-field="titleDe" />
+              <textarea class="input textarea" rows="2" data-project-field="descriptionDe"></textarea>
+            </div>
+            <div class="label-row">
+              <div class="input-prefix-wrap">
+                <span class="input-prefix">https://</span>
+                <input type="text" class="input input-prefixed" data-project-field="link" />
+              </div>
+              <InfoTip lang={lang} rowKey="link" />
+            </div>
+            <p class="field-note" data-tip data-tip-note="link" hidden>{t("profile.project.linkNote")}</p>
+          </div>
+          <div class="gallery-project-images" data-project-images></div>
+        </section>
       </template>
       {
         /* One pending upload, cloned by renderQueue(). Deliberately the same
@@ -1528,6 +1587,81 @@ const t = useTranslations(lang);
     cursor: default;
   }
 
+  /* ── Project blocks (2026-09-23) ─────────────────────── */
+  /* A frame inside the list, at the row's own gap, so the images inside read
+     as the same rows they were outside — only enclosed. Hairline and radius
+     from the inputs, not a card: this is a grouping in a form, not content. */
+  .gallery-project {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .gallery-project-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  /* The label voice (uppercase, tracked) so the header reads as a heading
+     over its rows and not as one more input. */
+  .gallery-project-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-dark);
+  }
+
+  .gallery-project-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .gallery-project-fields .input {
+    font-size: 0.85rem;
+    padding: 7px 10px;
+  }
+
+  .gallery-project-fields .textarea {
+    resize: vertical;
+    min-height: 2.6rem;
+  }
+
+  .gallery-project-fields .input-prefix {
+    font-size: 0.85rem;
+  }
+
+  /* The block's own rows, at the list's gap. */
+  .gallery-project-images {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .gallery-project-images:empty {
+    display: none;
+  }
+
+  /* "+ New project" beside "Add images", the hint's ⓘ between them. */
+  .gallery-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+  }
+
   /* Names what the first image already IS. Not a control — pressing it would
      imply the others could be chosen, and they are chosen by being moved. */
   /* Which rows are videos: the play mark and the platform, top left, in the
@@ -2085,6 +2219,25 @@ const t = useTranslations(lang);
     type GalleryTask,
   } from "../lib/galleryQueue.ts";
   import { updateUserProfile } from "../lib/firestore.ts";
+  import {
+    contiguousOrder,
+    editorBlocks,
+    inheritedSiteLink,
+    MAX_PROJECT_DESCRIPTION,
+    MAX_PROJECT_LINK,
+    MAX_PROJECT_TITLE,
+    type EditorBlock,
+  } from "../lib/projects.ts";
+  import { loadProjects, memberSlugs } from "../lib/projectStore.ts";
+  import {
+    applyBlocks,
+    editorAffiliations,
+    moveImage,
+    previewProjects,
+    projectLabel,
+    sameIds,
+    type EditorProject,
+  } from "../lib/projectEditor.ts";
   import { renderCardPreview, renderProfilePreview } from "../lib/profilePreview.ts";
   import {
     splitSocial,
@@ -2240,6 +2393,19 @@ const t = useTranslations(lang);
     let resizedAvatarBlob: Blob | null = null;
     let avatarColor = "";
     let gallery: GalleryItem[] = [];
+    // PROJECTS (2026-09-23): the member's project blocks, in load order then
+    // creation order. `storedProjectIds` is what Firestore held at load or at
+    // the last Save — the create-vs-update line for saveProjects(), and the
+    // reason a block created and never filled can be dropped without a
+    // delete. `deletedProjectIds` remembers blocks removed through the menu,
+    // which are gone from `projects` by the time Save asks what to delete.
+    // `previewSlugs` is uid → current slug for the preview's member credits.
+    let projects: EditorProject[] = [];
+    let storedProjectIds = new Set<string>();
+    const deletedProjectIds = new Set<string>();
+    let previewSlugs = new Map<string, string>();
+    /** Which EN/DE pane a project block shows — UI-only, keyed by projectId, like galleryLangUI. */
+    const projectLangUI = new Map<string, "en" | "de">();
     // Which of a gallery item's EN/DE panes is open — UI-only, never saved,
     // and kept outside renderGallery() so it survives the re-renders that
     // function does on every add/remove/reorder. Keyed by imageId; see the
@@ -2268,13 +2434,16 @@ const t = useTranslations(lang);
     const galleryEditor = document.getElementById("gallery-editor")!;
     const galleryQueueEl = document.getElementById("gallery-queue")!;
     const galleryDrop = document.getElementById("gallery-drop")!;
-    const galleryAdd = galleryDrop.querySelector<HTMLLabelElement>(".choose-img")!;
+    // By id since 2026-09-23: project blocks inside the list carry their own
+    // .choose-img pickers, and the first match in the drop zone is one of those.
+    const galleryAdd = document.getElementById("gallery-add") as HTMLLabelElement;
     const galleryStatus = document.getElementById("gallery-status")!;
     // Row shells for the two list editors. Cloned rather than built: see the
     // comment on each <template> above — Astro's scope attribute is on the
     // selectors, so a createElement() row matches none of the scoped rules.
     const galleryItemTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="item"]');
     const galleryTaskTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="task"]');
+    const galleryProjectTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="project"]');
     // The video link field (2026-09-23) — see its markup, and the handlers
     // beside the replace picker's below.
     const galleryVideoUrl = document.getElementById("gallery-video-url") as HTMLInputElement;
@@ -2431,28 +2600,35 @@ const t = useTranslations(lang);
      * keyboard was on, and drops focus to the document — so moving an image
      * two places would take a mouse and a fresh click each time.
      */
-    function renderGallery(focusHint?: { index: number; tool: "up" | "down" }) {
-      if (!galleryItemTpl) return;
-      const last = gallery.length - 1;
+    function renderGallery(focusHint?: { imageId: string; tool: "up" | "down" }) {
+      if (!galleryItemTpl || !galleryProjectTpl) return;
+      // The list's shape: loose rows and project blocks in gallery order, then
+      // the projects no image names yet (2026-09-23, editorBlocks in
+      // projects.ts). Every move below is a pure function over this list.
+      const blocks = editorBlocks(gallery, projects);
       // Where the caret was, so it can be put back. replaceChildren() destroys
       // the node it was in, and uploads now COMPLETE WHILE YOU TYPE — that is
       // the point of the queue — so a member writing a caption for image two
       // would have the field yanked out from under them each time one of the
       // other five landed. The old serial flow rendered rarely enough to get
       // away with this; concurrency does not.
+      //
+      // Keyed by imageId / projectId, not by position (2026-09-23): an upload
+      // into a project lands INSIDE its block, so rows below it shift, and a
+      // position would put the caret back into a neighbour's caption.
       const typing = document.activeElement;
       const typingIn =
         typing instanceof HTMLInputElement || typing instanceof HTMLTextAreaElement
           ? {
-              index: typing.closest<HTMLElement>("[data-gallery-index]")?.dataset.galleryIndex,
-              field: typing.dataset.galleryField,
+              imageId: typing.closest<HTMLElement>("[data-gallery-index]")?.dataset.imageId,
+              projectId: typing.closest<HTMLElement>("[data-project-block]")?.dataset.projectId,
+              field: typing.dataset.galleryField ?? typing.dataset.projectField,
               start: typing.selectionStart,
               end: typing.selectionEnd,
             }
           : null;
-      galleryEditor.replaceChildren(
-        ...gallery
-          .map((item, index) => {
+      const buildRow = (index: number): HTMLElement | null => {
+            const item = gallery[index];
             const row = galleryItemTpl.content.firstElementChild?.cloneNode(true);
             if (!(row instanceof HTMLElement)) return null;
             const field = <T extends HTMLElement>(name: string) =>
@@ -2616,12 +2792,14 @@ const t = useTranslations(lang);
             // keyboard path and a touch path built alongside it before it is
             // usable by everyone; two buttons ARE that path for every input
             // device, and they are what the drop zone above cannot give.
-            up.disabled = index === 0;
-            down.disabled = index === last;
+            // Within the row's container (2026-09-23): a loose row steps past
+            // the neighbouring block, a row inside a project stays inside it.
+            up.disabled = moveImage(blocks, index, -1) === null;
+            down.disabled = moveImage(blocks, index, 1) === null;
             named(up, s["profile.gallery.moveUp"]);
             named(down, s["profile.gallery.moveDown"]);
-            up.addEventListener("click", () => void moveGalleryImage(index, index - 1));
-            down.addEventListener("click", () => void moveGalleryImage(index, index + 1));
+            up.addEventListener("click", () => void applyBlockMove(moveImage(blocks, index, -1), { imageId: item.imageId, tool: "up" }));
+            down.addEventListener("click", () => void applyBlockMove(moveImage(blocks, index, 1), { imageId: item.imageId, tool: "down" }));
 
             // New picture, same work: captions, description, links, tags and
             // position all stay. Disabled while one is already on its way —
@@ -2670,12 +2848,88 @@ const t = useTranslations(lang);
                 ?.setAttribute("aria-describedby", note.id);
             });
 
-            // Read back by the focus hint below; the rows are otherwise
-            // anonymous once they are in the DOM.
+            // Read back by the focus hint below and by the drag read-back;
+            // the rows are otherwise anonymous once they are in the DOM.
             row.dataset.galleryIndex = String(index);
+            row.dataset.imageId = item.imageId;
             return row;
-          })
-          .filter((n): n is HTMLElement => n !== null)
+      };
+      const buildBlock = (block: Extract<EditorBlock, { kind: "project" }>): HTMLElement | null => {
+        const project = projects.find((p) => p.projectId === block.projectId);
+        const el = galleryProjectTpl.content.firstElementChild?.cloneNode(true);
+        if (!project || !(el instanceof HTMLElement)) return null;
+        el.dataset.projectId = project.projectId;
+        const name = el.querySelector<HTMLElement>("[data-project-name]");
+        const images = el.querySelector<HTMLElement>("[data-project-images]");
+        const langBtns = Array.from(el.querySelectorAll<HTMLButtonElement>("[data-gallery-lang-btn]"));
+        const paneEn = el.querySelector<HTMLElement>('[data-gallery-lang-pane="en"]');
+        const paneDe = el.querySelector<HTMLElement>('[data-gallery-lang-pane="de"]');
+        if (!name || !images || langBtns.length !== 2 || !paneEn || !paneDe) return null;
+
+        const setName = () => {
+          name.textContent = projectLabel(projects, project.projectId, lang, s["profile.project.untitled"]);
+        };
+        setName();
+
+        // Same switch as the rows', keyed by projectId (see galleryLangUI).
+        const setProjectLang = (paneLang: "en" | "de") => {
+          projectLangUI.set(project.projectId, paneLang);
+          langBtns.forEach((btn) => {
+            const active = btn.dataset.galleryLangBtn === paneLang;
+            btn.classList.toggle("is-active", active);
+            btn.setAttribute("aria-pressed", String(active));
+          });
+          paneEn.hidden = paneLang !== "en";
+          paneDe.hidden = paneLang !== "de";
+        };
+        langBtns.forEach((btn) => {
+          const btnLang = btn.dataset.galleryLangBtn === "de" ? "de" : "en";
+          named(btn, s[`profile.gallery.lang.${btnLang}`]);
+          btn.addEventListener("click", () => setProjectLang(btnLang));
+        });
+        setProjectLang(projectLangUI.get(project.projectId) ?? "en");
+
+        // Field wiring follows the rows': `.value` from state, `input` writes
+        // back into `projects` and reaches the preview. The header re-reads
+        // the title as it is typed, so the block is named while it is named.
+        type TextKey = "title" | "titleDe" | "description" | "descriptionDe" | "link";
+        const wire = (key: TextKey, max: number, labelKey: string) => {
+          const input = el.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-project-field="${key}"]`);
+          if (!input) return;
+          input.value = project[key] ?? "";
+          input.maxLength = max;
+          input.placeholder = s[labelKey];
+          named(input, s[labelKey]);
+          input.addEventListener("input", () => {
+            const value = input.value;
+            if (value.trim()) project[key] = value;
+            else delete project[key];
+            if (key === "title" || key === "titleDe") setName();
+            syncPreview();
+          });
+        };
+        wire("title", MAX_PROJECT_TITLE, "profile.project.title.en");
+        wire("titleDe", MAX_PROJECT_TITLE, "profile.project.title.de");
+        wire("description", MAX_PROJECT_DESCRIPTION, "profile.project.description.en");
+        wire("descriptionDe", MAX_PROJECT_DESCRIPTION, "profile.project.description.de");
+        wire("link", MAX_PROJECT_LINK, "profile.project.link");
+
+        // The block's own tips get their ids here, like the rows' — and
+        // BEFORE the rows are appended, so this query cannot reach theirs.
+        el.querySelectorAll<HTMLElement>("[data-tip-note]").forEach((note) => {
+          const key = note.dataset.tipNote ?? "";
+          note.id = `project-${project.projectId}-note-${key}`;
+          el.querySelector<HTMLButtonElement>(`[data-infotip-for="${key}"]`)?.setAttribute("aria-controls", note.id);
+          el.querySelector<HTMLElement>(`[data-project-field="${key}"]`)?.setAttribute("aria-describedby", note.id);
+        });
+
+        images.append(...block.indices.map(buildRow).filter((n): n is HTMLElement => n !== null));
+        return el;
+      };
+      galleryEditor.replaceChildren(
+        ...blocks
+          .map((block) => (block.kind === "image" ? buildRow(block.index) : buildBlock(block)))
+          .filter((n): n is HTMLElement => n !== null),
       );
       // The image-led directory renders a typographic card for an empty
       // gallery; the nudge says so, and disappears with the first image.
@@ -2684,7 +2938,7 @@ const t = useTranslations(lang);
       updateGalleryControls();
       if (focusHint) {
         const moved = galleryEditor.querySelector<HTMLElement>(
-          `[data-gallery-index="${focusHint.index}"]`,
+          `[data-image-id="${focusHint.imageId}"]`,
         );
         // The button that did the moving may itself be disabled now — an image
         // moved to the top has no "up" left. Falling back to its opposite keeps
@@ -2696,13 +2950,15 @@ const t = useTranslations(lang);
           `[data-gallery-move="${focusHint.tool === "up" ? "down" : "up"}"]`,
         );
         (preferred && !preferred.disabled ? preferred : fallback)?.focus();
-      } else if (typingIn?.index && typingIn.field) {
-        // Restored by index, which is stable for the case that matters: an
-        // upload completing APPENDS, so the rows already on screen keep their
+      } else if (typingIn?.field && (typingIn.imageId || typingIn.projectId)) {
+        // Restored by id, stable across everything a re-render can do to
         // positions. A reorder takes the branch above instead, and a removal
-        // was a button press rather than a caret.
+        // was a button press rather than a caret. A row's field first: a row
+        // inside a block matches both ids, and its own is the nearer.
         const back = galleryEditor.querySelector<HTMLInputElement | HTMLTextAreaElement>(
-          `[data-gallery-index="${typingIn.index}"] [data-gallery-field="${typingIn.field}"]`,
+          typingIn.imageId
+            ? `[data-image-id="${typingIn.imageId}"] [data-gallery-field="${typingIn.field}"]`
+            : `[data-project-id="${typingIn.projectId}"] [data-project-field="${typingIn.field}"]`,
         );
         if (back) {
           back.focus();
@@ -3002,12 +3258,22 @@ const t = useTranslations(lang);
      * which image is the card's cover, so leaving it until Save would leave the
      * editor and the directory disagreeing about the card.
      */
-    async function moveGalleryImage(from: number, to: number) {
-      if (to < 0 || to >= gallery.length) return;
-      const [moved] = gallery.splice(from, 1);
-      gallery.splice(to, 0, moved);
-      renderGallery({ index: to, tool: to < from ? "up" : "down" });
-      await persistGalleryNow();
+    async function applyBlockMove(
+      next: EditorBlock[] | null,
+      focusHint?: Parameters<typeof renderGallery>[0],
+    ) {
+      // Null is the pure function saying the move changes nothing visible
+      // (an edge, or the invisible edge before the empty blocks) — see
+      // moveBlock() in projectEditor.ts. The button is disabled then; this
+      // guards the keyboard path that reaches a stale handler anyway.
+      if (!next) return;
+      const before = gallery;
+      gallery = applyBlocks(gallery, next);
+      renderGallery(focusHint);
+      // Membership (projectId) follows Save; the ORDER is stored at once, as
+      // before. A move that only changed membership — into a project at the
+      // same place — has nothing to store yet.
+      if (!sameIds(before, gallery)) await persistGalleryNow();
     }
 
     /**
@@ -3197,6 +3463,8 @@ const t = useTranslations(lang);
 
     /** Live form state as the one view model every preview consumes. */
     function currentViewModel() {
+      const viewProjects = previewProjects(auth.currentUser?.uid ?? "", projects, gallery, previewSlugs);
+      const viewProjectById = new Map(viewProjects.map((p) => [p.id, p]));
       return {
         displayName: nameInput.value.trim(),
         // The avatar the member is looking at right now — a saved photoURL, or
@@ -3221,7 +3489,12 @@ const t = useTranslations(lang);
           : [],
         portfolio: portfolioInput.value.trim(),
         socialMedia: socialStored(),
+        // The projects an image names, credits resolved to the slugs known
+        // (2026-09-23) — the build skips an empty project, so the preview
+        // must show none for it either.
+        projects: viewProjects,
         works: gallery.map((g) => {
+          const project = g.projectId ? viewProjectById.get(g.projectId) : undefined;
           return {
             url: g.url,
             width: g.width,
@@ -3239,9 +3512,12 @@ const t = useTranslations(lang);
             // would get one, including showing none for a value that is not
             // link-shaped yet, mid-typing.
             link: workLink(g.link),
-            siteLink: workLink(g.siteLink),
+            // The project's link fills an empty siteLink slot, the image's own
+            // wins — the same rule works() in memberView.ts applies.
+            siteLink: inheritedSiteLink(workLink(g.siteLink), project),
             tags: g.tags ?? [],
             ...(g.embed ? { embed: g.embed } : {}),
+            ...(project ? { projectId: project.id } : {}),
           };
         }),
       };
@@ -3522,7 +3798,40 @@ const t = useTranslations(lang);
       // sanitizeGalleryItems(), stripping withdrawn keys out of stored objects;
       // there are no objects in the array to strip now.)
       gallery = await loadGallery(user.uid, data.gallery);
+      // PROJECTS (2026-09-23): the member's project documents, then the
+      // gallery made contiguous per stored project — a Save that failed
+      // halfway can leave a project's ids apart, and the block must still be
+      // one block. If that changed the order, it is stored once, now.
+      const records = await loadProjects(user.uid);
+      projects = records.map((r) => ({
+        projectId: r.projectId,
+        ...(r.title ? { title: r.title } : {}),
+        ...(r.titleDe ? { titleDe: r.titleDe } : {}),
+        ...(r.description ? { description: r.description } : {}),
+        ...(r.descriptionDe ? { descriptionDe: r.descriptionDe } : {}),
+        ...(r.link ? { link: r.link } : {}),
+        affiliations: editorAffiliations(r.affiliations),
+      }));
+      storedProjectIds = new Set(records.map((r) => r.projectId));
+      deletedProjectIds.clear();
+      const contiguous = contiguousOrder(gallery, (g) =>
+        g.projectId && storedProjectIds.has(g.projectId) ? g.projectId : undefined,
+      );
+      const reordered = !sameIds(gallery, contiguous);
+      gallery = contiguous;
       renderGallery();
+      if (reordered) void persistGalleryNow();
+      // Slugs for the preview's member credits; a failure only means the
+      // credits preview as plain text until the next load.
+      const creditUids = projects.flatMap((p) => p.affiliations.flatMap((a) => (a.memberUid ? [a.memberUid] : [])));
+      if (creditUids.length) {
+        void memberSlugs(creditUids)
+          .then((slugs) => {
+            previewSlugs = slugs;
+            syncPreview();
+          })
+          .catch(() => {});
+      } else previewSlugs = new Map();
       phoneInput.value = data.phone ?? "";
       wantsToContributeInput.checked = data.wantsToContribute ?? false;
       // Never chosen: offer the locale they are reading in, not a blanket German.
