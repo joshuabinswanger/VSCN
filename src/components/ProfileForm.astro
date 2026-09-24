@@ -2663,7 +2663,13 @@ const t = useTranslations(lang);
     type EditorAffiliation,
     type EditorProject,
   } from "../lib/projectEditor.ts";
-  import { renderCardPreview, renderProfilePreview } from "../lib/profilePreview.ts";
+  import { bindPreviewLightbox, renderCardPreview, renderProfilePreview } from "../lib/profilePreview.ts";
+  import { lightboxStringsFrom } from "../lib/lightbox.ts";
+  import type { Lang } from "../i18n/utils";
+  import "photoswipe/style.css";
+  // Immediately after the package sheet, never before: this is the chrome that
+  // replaces it — the same pair, in the same order, as the member page.
+  import "../styles/lightbox.css";
   import {
     splitSocial,
     joinSocial,
@@ -2714,6 +2720,7 @@ const t = useTranslations(lang);
       prev: s["community.card.prev"],
       next: s["community.card.next"],
       workAlt: s["member.workAlt"],
+      lang: lang as Lang,
     };
 
     const nameInput = document.getElementById("name") as HTMLInputElement;
@@ -2810,6 +2817,17 @@ const t = useTranslations(lang);
     // hook that doubles as a style selector is exactly how the two drifted
     // apart before.
     const profileViewRoot = document.querySelector<HTMLElement>("[data-ppv-root]");
+    // The Preview tab's pictures open the site's lightbox, as they do on the
+    // page and the card they preview. Bound once per page load; the renderers
+    // replace the pictures under it (see bindPreviewLightbox).
+    const unbindPreviewLightbox = bindPreviewLightbox(
+      {
+        works: profileViewRoot?.querySelector<HTMLElement>('[data-ppv="works"]'),
+        card: document.querySelector<HTMLElement>("[data-ccpv-root]"),
+      },
+      lightboxStringsFrom(s),
+    );
+    document.addEventListener("astro:before-swap", unbindPreviewLightbox, { once: true });
     const sectionTabs = Array.from(
       document.querySelectorAll<HTMLButtonElement>("#section-tabs .section-tab")
     );

@@ -71,13 +71,15 @@ import "../../styles/communityCard.css";
     <div class="ccard__frame" data-ccpv="frame" data-carousel>
       <div class="ccard__track" data-ccpv="track"></div>
       {
-        /* The whole-artwork click target, and DELIBERATELY href-less. On the
-           card this opens the lightbox; there is no lightbox in the editor,
-           and a link to the raw Storage file would take the member out of
-           their unsaved form. It stays in the markup because it is what makes
-           the frame's box the same box — and communityCarousel.ts checks for
-           the attribute before writing a slide's URL into it, so the inert
-           trigger stays inert as the carousel moves. */
+        /* The whole-artwork click target, and DELIBERATELY href-less. It
+           opens the lightbox exactly as the card's does (bindCardOpener in
+           lib/lightbox.ts, bound by bindPreviewLightbox since 2026-09-24),
+           reading every slide of the frame and starting on the one showing.
+           No href because a link to the raw Storage file would take the
+           member out of their unsaved form if the lightbox ever failed to
+           bind — and communityCarousel.ts checks for the attribute before
+           writing a slide's URL into it, so it stays href-less as the
+           carousel moves. */
       }
       <a class="ccard__frame-link" aria-hidden="true"></a>
       <button

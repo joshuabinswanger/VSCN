@@ -2937,10 +2937,10 @@ const indexMembers = [...members].sort((a, b) =>
 </script>
 
 <script>
-  import PhotoSwipeLightbox from "photoswipe/lightbox";
-  import type { SlideData } from "photoswipe";
-  import { lightboxPadding, registerLightboxText } from "../lib/lightboxText.ts";
-  import { registerLightboxEmbeds } from "../lib/lightboxEmbed.ts";
+  import type PhotoSwipeLightbox from "photoswipe/lightbox";
+  // The options, the words, the video slides and the card's whole-gallery
+  // opener: one lightbox for the whole site, defined once in lib/lightbox.ts.
+  import { CARD_TRIGGER, bindCardOpener, createLightbox, parseLightboxStrings } from "../lib/lightbox.ts";
   import "photoswipe/style.css";
   // Immediately after the package sheet, never before: this is the chrome that
   // replaces it. Same pair, same order, as the member profile page.
@@ -2968,46 +2968,6 @@ const indexMembers = [...members].sort((a, b) =>
   // without it a wall showing fifteen tiles would page through forty-eight.
   // ────────────────────────────────────────────────────────────────────────
 
-  interface LightboxStrings {
-    close: string;
-    zoom: string;
-    prev: string;
-    next: string;
-    error: string;
-    /** Accessible name for the per-image "where this appeared" link. */
-    linkTitle: string;
-    /** Accessible name for the member's own-site link on a piece. */
-    siteLinkTitle: string;
-    /** "Play video on {provider}" — the video slide's button. */
-    play: string;
-    /** "Part of", before a project's title. */
-    partOf: string;
-    /** "With", before a project's affiliations. */
-    with: string;
-  }
-
-  // English is the fallback, matching useTranslations() — a missing or
-  // malformed attribute costs the translation, never the lightbox.
-  const FALLBACK: LightboxStrings = {
-    close: "Close",
-    zoom: "Zoom",
-    prev: "Previous image",
-    next: "Next image",
-    error: "The image cannot be loaded",
-    linkTitle: "Where this image appeared",
-    siteLinkTitle: "This piece on the maker's own site",
-    play: "Play video on {provider}",
-    partOf: "Part of",
-    with: "With",
-  };
-
-  const esc = (s: string) =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
-  // Two borders on a box turned 45deg — the drawing the card arrows use, so
-  // every pager on the site is one control.
-  const CHEVRON = '<span class="pswp__vscn-chevron" aria-hidden="true"></span>';
-
   // THE WALL'S TRIGGERS. The wall's tile wraps its own image (.cwork__link),
   // one per work, so PhotoSwipe can page the whole wall straight off the DOM.
   // `:not([hidden])` keeps the filter's rejects — and the gallery's member
@@ -3029,20 +2989,21 @@ const indexMembers = [...members].sort((a, b) =>
   // image did not open the lightbox AND did not follow the link either. The
   // interceptor is what stands in for it now; if it ever fails to bind, the
   // link falls through to its href and opens the original in a new tab.
-  const CARD_TRIGGER = ".ccard__frame-link";
+  // CARD_TRIGGER and the interceptor itself now live in lib/lightbox.ts
+  // (bindCardOpener), shared with the profile editor's preview card.
 
   // Rebuilt per navigation: ClientRouter swaps the document, so a lightbox
   // bound to the previous page's grid would be holding a dead element.
   let lightbox: PhotoSwipeLightbox | null = null;
-  // The gallery card's click interceptor (see openCard), unbound whenever the
-  // lightbox it feeds is torn down.
-  let cardListener: { grid: HTMLElement; openCard: (e: MouseEvent) => void } | null = null;
+  // The gallery card's click interceptor (see bindCardOpener), unbound whenever
+  // the lightbox is.
+  let unbindCard: (() => void) | null = null;
 
   const teardown = () => {
     lightbox?.destroy();
     lightbox = null;
-    cardListener?.grid.removeEventListener("click", cardListener.openCard, true);
-    cardListener = null;
+    unbindCard?.();
+    unbindCard = null;
   };
 
   document.addEventListener("astro:page-load", () => {
@@ -3050,145 +3011,15 @@ const indexMembers = [...members].sort((a, b) =>
     const grid = document.getElementById("member-grid");
     if (!grid || !grid.querySelector(`${WALL_TRIGGERS}, ${CARD_TRIGGER}`)) return;
 
-    let strings = FALLBACK;
-    try {
-      strings = { ...FALLBACK, ...JSON.parse(grid.dataset.pswpI18n || "{}") };
-    } catch {
-      /* keep the fallback */
-    }
-
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    lightbox = new PhotoSwipeLightbox({
+    // Chrome identical to the member page's, on purpose — it is the same
+    // function — so the two galleries never look like two different lightboxes.
+    lightbox = createLightbox(parseLightboxStrings(grid.dataset.pswpI18n), {
       gallery: "#member-grid",
       children: WALL_TRIGGERS,
-      pswpModule: () => import("photoswipe"),
-
-      // ── Chrome. Identical to the member page's, on purpose — nothing below
-      //    changes behaviour, and the two galleries must not look like two
-      //    different lightboxes. See lightbox.css for the CSS half.
-      mainClass: "pswp--vscn",
-      bgOpacity: 1,
-      // PER SLIDE, and shared with the member page — see lightboxPadding in
-      // lightboxText.ts, which is also where the reasoning lives. The words go
-      // under the picture on every shape (2026-09-06); an upright image only
-      // reserves more room below, because it comes out narrower.
-      paddingFn: lightboxPadding,
-      closeSVG: `<span class="pswp__vscn-word">${esc(strings.close)}</span>`,
-      arrowPrevSVG: CHEVRON,
-      arrowNextSVG: CHEVRON,
-      zoomSVG: '<span class="pswp__vscn-zoom" aria-hidden="true"></span>',
-      closeTitle: strings.close,
-      zoomTitle: strings.zoom,
-      arrowPrevTitle: strings.prev,
-      arrowNextTitle: strings.next,
-      errorMsg: strings.error,
-
-      // Spread rather than a ternary per key: PhotoSwipe merges options over
-      // its defaults, so writing `undefined` into one of these would erase the
-      // default instead of keeping it.
-      ...(reduced
-        ? {
-            showHideAnimationType: "none" as const,
-            showAnimationDuration: 0,
-            hideAnimationDuration: 0,
-            zoomAnimationDuration: false as const,
-          }
-        : {}),
     });
-
-    // ── THE GALLERY CARD OPENS AS A WHOLE ─────────────────────────────────
-    // Bound in the CAPTURE phase on the grid, so it runs before PhotoSwipe's
-    // own click listener on the same element and can stop the event reaching
-    // it. What PhotoSwipe would do with the click (nothing — the card's link
-    // is no longer one of its children) is beside the point; what matters is
-    // that the link's default, opening the original in a new tab, is
-    // prevented here and only here.
-    //
-    // The items are the frame's .ccard__slide elements, read into SlideData by
-    // hand rather than handed over as elements: PhotoSwipe's own DOM parser
-    // only reads a slide that contains an <a>, and these deliberately do not
-    // (the one link is a sibling of the track — see the card). Each slide
-    // carries the full data-pswp-* set, and `element` is the slide itself,
-    // which is what makes the two shared renderers just work: lightboxText
-    // reads the text off `data.element.dataset`, and PhotoSwipe finds the
-    // thumbnail to grow out of with `element.querySelector("img")` — the
-    // slide's own picture, cropped to the frame (hence thumbCropped).
-    //
-    // The starting slide is the one whose work URL the carousel copied onto
-    // the link's href (communityCarousel's syncTrigger). Matching on the URL
-    // rather than on an index keeps this module ignorant of Embla, exactly
-    // like the rest of the pair's contract.
-    //
-    // Same escape hatches as PhotoSwipe's own handler: a modified click
-    // (ctrl/cmd/shift/alt, middle button) keeps its browser meaning, and a
-    // click while a lightbox is already open does nothing.
-    const openCard = (e: MouseEvent) => {
-      const trigger = (e.target as Element | null)?.closest<HTMLAnchorElement>(CARD_TRIGGER);
-      if (!trigger || !lightbox) return;
-      if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button === 1) return;
-      if (lightbox.pswp) return;
-
-      const frame = trigger.parentElement;
-      const slides = Array.from(frame?.querySelectorAll<HTMLElement>(".ccard__slide") ?? []);
-      if (!slides.length) return;
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      const href = trigger.getAttribute("href") ?? "";
-      const start = Math.max(0, slides.findIndex((s) => s.dataset.workUrl === href));
-
-      const items: SlideData[] = slides.map((slide) => {
-        const img = slide.querySelector<HTMLImageElement>(".ccard__img");
-        // A lazy slide's <img> has no src yet (data-src, see the card): no
-        // placeholder then, rather than a broken one.
-        const msrc = img?.currentSrc || img?.src || undefined;
-        return {
-          src: slide.dataset.workUrl,
-          width: Number(slide.dataset.pswpWidth) || 0,
-          height: Number(slide.dataset.pswpHeight) || 0,
-          msrc,
-          alt: img?.alt ?? "",
-          thumbCropped: true,
-          element: slide,
-        };
-      });
-
-      // Keyboard "clicks" arrive with no coordinates; PhotoSwipe reads a null
-      // point as "no zoom origin" and falls back to the thumbnail's bounds.
-      const point = e.clientX || e.clientY ? { x: e.clientX, y: e.clientY } : null;
-      lightbox.loadAndOpen(start, items, point);
-    };
-    grid.addEventListener("click", openCard, true);
-    cardListener = { grid, openCard };
-
-    // THE CARD FOLLOWS. Every time the lightbox lands on one of a card's
-    // slides — opening included — the carousel underneath is told, and turns
-    // to the same picture (communityCarousel listens for this on the
-    // carousel). Closing then zooms out onto the image the visitor was
-    // looking at, not onto the one they opened; and the card is left showing
-    // where they got to.
-    lightbox.on("change", () => {
-      const el = lightbox?.pswp?.currSlide?.data.element;
-      if (el?.classList.contains("ccard__slide")) {
-        el.dispatchEvent(new CustomEvent("vscn:carousel-show", { bubbles: true }));
-      }
-    });
-
-    // The artist line, the caption, the description and the link — all of it
-    // in one shared module, because there is ONE lightbox on this site and it
-    // must not speak differently depending on which gallery opened it. Both
-    // galleries carried their own copy of this renderer until 2026-09-04.
-    registerLightboxText(lightbox, {
-      linkTitle: strings.linkTitle,
-      siteLinkTitle: strings.siteLinkTitle,
-      partOf: strings.partOf,
-      with: strings.with,
-    });
-    // A video work opens as its poster with a play button; see lightboxEmbed.ts.
-    registerLightboxEmbeds(lightbox, { play: strings.play });
-
+    // THE GALLERY CARD OPENS AS A WHOLE — every slide of the card, starting on
+    // the one showing; the reasoning is on bindCardOpener.
+    unbindCard = bindCardOpener(grid, lightbox);
     lightbox.init();
   });
 

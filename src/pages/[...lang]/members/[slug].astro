@@ -404,58 +404,17 @@ const jsonLd = memberPageJsonLd({
 
 
 <script>
-  import PhotoSwipeLightbox from "photoswipe/lightbox";
-  import { lightboxPadding, registerLightboxText } from "../../../lib/lightboxText.ts";
-  import { registerLightboxEmbeds } from "../../../lib/lightboxEmbed.ts";
+  import type PhotoSwipeLightbox from "photoswipe/lightbox";
+  // The options, the words and the video slides: one lightbox for the whole
+  // site, defined once in lib/lightbox.ts (the grid and the editor's preview
+  // build theirs from the same function).
+  import { createLightbox, parseLightboxStrings } from "../../../lib/lightbox.ts";
   import "photoswipe/style.css";
   // Immediately after the package sheet, never before: this is the chrome that
   // replaces it. The overrides are also written to win on specificity alone
   // (see the header of lightbox.css), so the order here states the intent
   // rather than carrying it.
   import "../../../styles/lightbox.css";
-
-  interface LightboxStrings {
-    close: string;
-    zoom: string;
-    prev: string;
-    next: string;
-    error: string;
-    /** Accessible name for the per-image "where this appeared" link. */
-    linkTitle: string;
-    /** Accessible name for the member's own-site link on a piece. */
-    siteLinkTitle: string;
-    /** "Play video on {provider}" — the video slide's button. */
-    play: string;
-    /** "Part of", before a project's title. */
-    partOf: string;
-    /** "With", before a project's affiliations. */
-    with: string;
-  }
-
-  // English is the fallback, matching useTranslations() — a missing or
-  // malformed attribute costs the translation, never the lightbox.
-  const FALLBACK: LightboxStrings = {
-    close: "Close",
-    zoom: "Zoom",
-    prev: "Previous image",
-    next: "Next image",
-    error: "The image cannot be loaded",
-    linkTitle: "Where this image appeared",
-    siteLinkTitle: "This piece on the maker's own site",
-    play: "Play video on {provider}",
-    partOf: "Part of",
-    with: "With",
-  };
-
-  // These options take raw HTML, which is how the stock SVG icons get replaced
-  // with markup this site can style. Everything injected here is either a
-  // static string or an escaped translation.
-  const esc = (s: string) =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
-  // Two borders on a box turned 45deg — the drawing .ccard__arrow uses on the
-  // community card, reproduced so both pagers on the site are one control.
-  const CHEVRON = '<span class="pswp__vscn-chevron" aria-hidden="true"></span>';
 
   // Rebuilt per navigation rather than once: ClientRouter swaps the document,
   // so a lightbox bound to the previous page's nodes would be holding dead
@@ -468,73 +427,10 @@ const jsonLd = memberPageJsonLd({
     const gallery = document.querySelector<HTMLElement>(".mprof__works");
     if (!gallery) return;
 
-    let strings = FALLBACK;
-    try {
-      strings = { ...FALLBACK, ...JSON.parse(gallery.dataset.pswpI18n || "{}") };
-    } catch {
-      /* keep the fallback */
-    }
-
-    // The site drops transitions and leaves the thing in its final state
-    // rather than substituting a gentler animation. PhotoSwipe drives its
-    // open, close and zoom from JS, so they have to be switched off here; the
-    // CSS half lives in lightbox.css.
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    lightbox = new PhotoSwipeLightbox({
+    lightbox = createLightbox(parseLightboxStrings(gallery.dataset.pswpI18n), {
       gallery: ".mprof__works",
       children: ".mprof__work-link",
-      pswpModule: () => import("photoswipe"),
-
-      // ── Chrome. Nothing below changes behaviour. ──
-      // The hook every rule in lightbox.css hangs off.
-      mainClass: "pswp--vscn",
-      // Solid: the ground is the page's own paper, not a veil over it. Drag to
-      // dismiss still fades it, which is what makes the gesture legible.
-      bgOpacity: 1,
-      // PER SLIDE, and shared with the member page — see lightboxPadding in
-      // lightboxText.ts, which is also where the reasoning lives. The words go
-      // under the picture on every shape (2026-09-06); an upright image only
-      // reserves more room below, because it comes out narrower.
-      paddingFn: lightboxPadding,
-      closeSVG: `<span class="pswp__vscn-word">${esc(strings.close)}</span>`,
-      arrowPrevSVG: CHEVRON,
-      arrowNextSVG: CHEVRON,
-      zoomSVG: '<span class="pswp__vscn-zoom" aria-hidden="true"></span>',
-      // The glyphs above are all aria-hidden, so these are what a screen
-      // reader gets; PhotoSwipe writes each to both `title` and `aria-label`.
-      closeTitle: strings.close,
-      zoomTitle: strings.zoom,
-      arrowPrevTitle: strings.prev,
-      arrowNextTitle: strings.next,
-      errorMsg: strings.error,
-
-      // Spread rather than a ternary per key: PhotoSwipe merges options over
-      // its defaults, so writing `undefined` into one of these would erase the
-      // default instead of keeping it.
-      ...(reduced
-        ? {
-            showHideAnimationType: "none" as const,
-            showAnimationDuration: 0,
-            hideAnimationDuration: 0,
-            zoomAnimationDuration: false as const,
-          }
-        : {}),
     });
-
-    // The artist line, the caption, the description and the link — all of it
-    // in one shared module, because there is ONE lightbox on this site and it
-    // must not speak differently depending on which gallery opened it. Both
-    // galleries carried their own copy of this renderer until 2026-09-04.
-    registerLightboxText(lightbox, {
-      linkTitle: strings.linkTitle,
-      siteLinkTitle: strings.siteLinkTitle,
-      partOf: strings.partOf,
-      with: strings.with,
-    });
-    // A video work opens as its poster with a play button; see lightboxEmbed.ts.
-    registerLightboxEmbeds(lightbox, { play: strings.play });
-
     lightbox.init();
   });
 
