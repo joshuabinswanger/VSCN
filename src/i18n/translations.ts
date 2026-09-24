@@ -209,6 +209,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.note.portfolio":
       "Shown on your public page as a link search engines follow. Visits from here appear in your analytics as vscn.ch.",
     "profile.info.toggle": "More about this field",
+    // Beside a field title inside an image row or a project block (2026-09-24).
+    "profile.optional": "optional",
     "profile.label.portfolio.science": "Website / Lab page",
     "profile.ph.portfolio.science": "lab.university.edu",
     "profile.label.social": "Social Media",
@@ -445,6 +447,12 @@ export const ui: Record<string, Record<string, string>> = {
       "Optional. German visitors hear this read aloud in place of the caption; until it's filled in, they hear the English one instead.",
     "profile.gallery.description.label": "Description",
     "profile.gallery.description": "About this image — how it was made, who it was for, what it shows",
+    // Behind the Description field's i on /profile (2026-09-24). The
+    // placeholder below is an example now, since the field has a visible title.
+    "profile.gallery.descriptionNote":
+      "Shown in the lightbox and on your page wherever there's room: how it was made, who it was for, what it shows.",
+    "profile.gallery.description.ph":
+      "Example: Made for a paper on immune cells in the zebrafish embryo, reconstructed from confocal microscopy. It shows how scavenger cells move through the tissue to track down pathogens.",
     "profile.gallery.description.de": "Description (German)",
     // Longer than the German caption's example on purpose (2026-09-04, Josh:
     // "example for lng image description should be longer") — this field
@@ -459,11 +467,11 @@ export const ui: Record<string, Record<string, string>> = {
       "Optional. German visitors read this in place of the description; until it's filled in, they read the English one instead.",
     // Stored without a scheme, like Portfolio: the input carries a fixed
     // https:// prefix, so the placeholder must not repeat one.
-    "profile.gallery.link": "Where this image appeared",
+    "profile.gallery.link": "Where it was published",
     "profile.gallery.tags": "What's in the picture",
     "profile.gallery.tagsNote":
       "Up to 7. The community grid filters by these, so tag what the picture shows, not what you do.",
-    "profile.gallery.link.ph": "nature.com/articles/… (optional)",
+    "profile.gallery.link.ph": "nature.com/articles/…",
     "profile.gallery.linkNote":
       "Optional. The publication, campaign or shop where this image appeared. Shown under the image as a link search engines follow.",
     // THE SECOND LINK (2026-09-10, Josh: "the image link should be
@@ -473,18 +481,25 @@ export const ui: Record<string, Record<string, string>> = {
     // picture on their own site counts for more than a second link to their
     // homepage would. The placeholder is their own portfolio host when the
     // editor knows it (see renderGallery() in ProfileForm.astro).
-    "profile.gallery.siteLink": "This piece on your site",
-    "profile.gallery.siteLink.ph": "yoursite.ch/projects/… (optional)",
+    "profile.gallery.siteLink": "Link to your page about it",
+    "profile.gallery.siteLink.ph": "yoursite.ch/projects/…",
     "profile.gallery.siteLinkNote":
       "Optional. Your own page about this piece — the strongest link back to your site this directory can give you. Shown under the image as a link search engines follow.",
     "profile.project.new": "New project",
     "profile.project.untitled": "Project {n}",
-    "profile.project.title": "Title",
-    "profile.project.title.en": "Title (English)",
-    "profile.project.title.de": "Title (German)",
-    "profile.project.description": "Description",
-    "profile.project.description.en": "Description (English)",
-    "profile.project.description.de": "Description (German)",
+    // The visible titles of a project block's fields (2026-09-24); the .ph
+    // keys are the examples inside them.
+    "profile.project.title.label": "Project title",
+    "profile.project.title.ph": "Example: Immune cells in the zebrafish embryo",
+    "profile.project.title.de": "Project title (German)",
+    "profile.project.title.de.ph": "Example: Immunzellen im Zebrafisch-Embryo",
+    "profile.project.description.label": "Project description",
+    "profile.project.description.ph": "What the project was, who it was for, and your part in it",
+    "profile.project.description.de": "Project description (German)",
+    "profile.project.description.de.ph": "Worum es ging, für wen, und was dein Teil war",
+    "profile.project.website": "Project website",
+    "profile.project.website.ph": "example.org/project/…",
+    // An affiliation's link field, not the project's own (that is .website).
     "profile.project.link": "Link",
     "profile.project.linkNote": "Where the project lives, e.g. a lab page or a paper. Images without their own site link use this one.",
     "profile.project.affiliations": "Affiliations",
@@ -792,6 +807,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.note.portfolio":
       "Erscheint auf deiner öffentlichen Seite als Link, dem Suchmaschinen folgen. Besuche von hier erscheinen in deiner Statistik als vscn.ch.",
     "profile.info.toggle": "Mehr zu diesem Feld",
+    "profile.optional": "optional",
     "profile.label.portfolio.science": "Website / Institutsseite",
     "profile.ph.portfolio.science": "institut.uni.ch",
     "profile.label.social": "Social Media",
@@ -979,30 +995,38 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.description.label": "Beschreibung",
     "profile.gallery.description":
       "Über dieses Bild — wie es entstand, für wen, was es zeigt",
+    "profile.gallery.descriptionNote":
+      "Erscheint in der Grossansicht und auf deiner Seite, wo Platz ist: wie es entstand, für wen, was es zeigt.",
+    "profile.gallery.description.ph":
+      "Beispiel: Angefertigt für eine Publikation über Immunzellen im Zebrafisch-Embryo, aus konfokalen Mikroskopieaufnahmen rekonstruiert. Die Illustration zeigt, wie Fresszellen durch das Gewebe wandern, um Krankheitserreger aufzuspüren.",
     "profile.gallery.description.de": "Beschreibung (Deutsch)",
     "profile.gallery.description.de.ph":
       "Beispiel: Angefertigt für eine Publikation über Immunzellen im Zebrafisch-Embryo, aus konfokalen Mikroskopieaufnahmen rekonstruiert. Die Illustration zeigt, wie Fresszellen durch das Gewebe wandern, um Krankheitserreger aufzuspüren.",
     "profile.gallery.description.deNote":
       "Optional. Wird deutschen Besucher:innen anstelle der Beschreibung gezeigt; bis sie ausgefüllt ist, lesen sie die englische.",
-    "profile.gallery.link": "Wo dieses Bild erschienen ist",
+    "profile.gallery.link": "Wo es veröffentlicht wurde",
     "profile.gallery.tags": "Was ist auf dem Bild",
     "profile.gallery.tagsNote":
       "Bis zu 7. Das Community-Raster filtert danach, also tagge, was das Bild zeigt, nicht was du machst.",
-    "profile.gallery.link.ph": "nature.com/articles/… (optional)",
+    "profile.gallery.link.ph": "nature.com/articles/…",
     "profile.gallery.linkNote":
       "Optional. Die Publikation, Kampagne oder der Shop, wo dieses Bild erschienen ist. Erscheint unter dem Bild als Link, dem Suchmaschinen folgen.",
-    "profile.gallery.siteLink": "Dieses Werk auf deiner Website",
-    "profile.gallery.siteLink.ph": "deineseite.ch/projekte/… (optional)",
+    "profile.gallery.siteLink": "Link zu deiner Seite darüber",
+    "profile.gallery.siteLink.ph": "deineseite.ch/projekte/…",
     "profile.gallery.siteLinkNote":
       "Optional. Deine eigene Seite zu diesem Werk – der stärkste Link zurück auf deine Website, den dieses Verzeichnis dir geben kann. Erscheint unter dem Bild als Link, dem Suchmaschinen folgen.",
     "profile.project.new": "Neues Projekt",
     "profile.project.untitled": "Projekt {n}",
-    "profile.project.title": "Titel",
-    "profile.project.title.en": "Titel (Englisch)",
-    "profile.project.title.de": "Titel (Deutsch)",
-    "profile.project.description": "Beschreibung",
-    "profile.project.description.en": "Beschreibung (Englisch)",
-    "profile.project.description.de": "Beschreibung (Deutsch)",
+    "profile.project.title.label": "Projekttitel",
+    "profile.project.title.ph": "Beispiel: Immunzellen im Zebrafisch-Embryo",
+    "profile.project.title.de": "Projekttitel (Deutsch)",
+    "profile.project.title.de.ph": "Beispiel: Immunzellen im Zebrafisch-Embryo",
+    "profile.project.description.label": "Projektbeschreibung",
+    "profile.project.description.ph": "Worum es ging, für wen, und was dein Teil war",
+    "profile.project.description.de": "Projektbeschreibung (Deutsch)",
+    "profile.project.description.de.ph": "Worum es ging, für wen, und was dein Teil war",
+    "profile.project.website": "Projektwebsite",
+    "profile.project.website.ph": "beispiel.ch/projekt/…",
     "profile.project.link": "Link",
     "profile.project.linkNote": "Wo das Projekt zu finden ist, z. B. eine Laborseite oder ein Paper. Bilder ohne eigenen Website-Link verwenden diesen.",
     "profile.project.affiliations": "Beteiligte",

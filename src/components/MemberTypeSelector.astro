@@ -21,6 +21,7 @@ const t = useTranslations(lang);
       {t("profile.memberType.legend")}
       {tip && <InfoTip lang={lang} for="note-member-type" />}
     </legend>
+    {tip && <p id="note-member-type" class="field-note" data-tip hidden>{t("profile.memberType.note")}</p>}
     <div class="memberType-options">
       {
         MEMBER_TYPES.map((type) => (
@@ -31,7 +32,7 @@ const t = useTranslations(lang);
         ))
       }
     </div>
-    <p id="note-member-type" class="field-note" data-tip={tip || undefined} hidden={tip}>{t("profile.memberType.note")}</p>
+    {!tip && <p id="note-member-type" class="field-note">{t("profile.memberType.note")}</p>}
   </fieldset>
 </member-type-selector>
 
