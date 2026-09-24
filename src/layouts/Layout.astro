@@ -278,7 +278,7 @@ const BRAND_SLOTS = [
          Empty and invisible unless Cloudflare decides a visitor must click; persisted so the
          view-transition router does not throw the widget away between pages. -->
     <div id="turnstile-slot" class="turnstile-slot" transition:persist></div>
-    <div class="page-wrap">
+    <div class:list={["page-wrap", { "has-footer": !fullscreen }]}>
       <Navbar />
       {
         fullscreen ? (
@@ -302,6 +302,25 @@ const BRAND_SLOTS = [
        Save reads it back to cancel it out, and needs to follow any change. */
     --page-wrap-pad-bottom: 80px;
     padding-bottom: var(--page-wrap-pad-bottom);
+  }
+
+  /* The 80px is room for FIXED chrome to sit in at the end of the scroll — the
+     desktop footer and the language toggle. On a phone neither floats any more
+     wherever there is a footer (the footer is in the flow and carries the
+     switch, see SiteFooter.astro), so the padding would only be blank paper
+     under the last link. The landing hero has no footer and keeps its fixed
+     toggle, so it keeps the 80px. */
+  @media (--bp-mobile) {
+    .page-wrap.has-footer {
+      --page-wrap-pad-bottom: 30px;
+    }
+
+    /* The fixed EN / DE toggle (Navbar.astro) gives way to the footer's copy
+       on a phone — see the note there. Here because this is the component
+       that knows the page has a footer. */
+    .page-wrap.has-footer :global(.lang-toggle) {
+      display: none;
+    }
   }
 
   .brand-ticker {

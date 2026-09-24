@@ -2223,9 +2223,14 @@ const prefix = lang === "de" ? "/de" : "";
       // Save state before navigating away (e.g. clicking the lang toggle).
       // Re-binding is safe because nav-lang is `transition:persist`-ed across
       // navigations, so remove any previous handler first.
+      // #footer-lang is the phone's copy of the switch (SiteFooter.astro). It
+      // is re-rendered with every page, so a fresh one needs binding each time
+      // and a stale one leaves with its page.
       const navLang = document.getElementById("nav-lang");
+      const footerLang = document.getElementById("footer-lang");
       if (prevNavLangHandler) {
         navLang?.removeEventListener("click", prevNavLangHandler, { capture: true });
+        footerLang?.removeEventListener("click", prevNavLangHandler, { capture: true });
       }
       if (prevPageHideHandler) {
         window.removeEventListener("pagehide", prevPageHideHandler);
@@ -2233,6 +2238,7 @@ const prefix = lang === "de" ? "/de" : "";
       const onNavLangClick = () => saveTransientState();
       const onPageHide = () => saveTransientState();
       navLang?.addEventListener("click", onNavLangClick, { capture: true });
+      footerLang?.addEventListener("click", onNavLangClick, { capture: true });
       window.addEventListener("pagehide", onPageHide);
       prevNavLangHandler = onNavLangClick;
       prevPageHideHandler = onPageHide;
