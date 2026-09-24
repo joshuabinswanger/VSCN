@@ -181,7 +181,6 @@ const t = useTranslations(lang);
         <label id="portfolio-label" class="label" for="portfolio"
           >{t("profile.label.portfolio")}</label
         >
-        <InfoTip lang={lang} for="note-portfolio" />
       </div>
       {
         /* The one field on this tab that had no note (2026-09-10). Every
@@ -199,6 +198,7 @@ const t = useTranslations(lang);
           placeholder={t("profile.ph.portfolio")}
           aria-describedby="note-portfolio"
         />
+        <InfoTip lang={lang} for="note-portfolio" />
       </div>
     </div>
 
@@ -484,10 +484,12 @@ const t = useTranslations(lang);
             <div class="gallery-lang-pane" data-gallery-lang-pane="en">
               <div class="label-row">
                 <label class="row-label" data-row-label="caption">{t("profile.gallery.caption")}</label>
-                <InfoTip lang={lang} rowKey="caption" />
               </div>
               <p class="field-note" data-tip data-tip-note="caption" hidden>{t("profile.gallery.captionNote")}</p>
-              <input type="text" class="input" data-gallery-field="caption" />
+              <div class="infotip-field">
+                <input type="text" class="input" data-gallery-field="caption" />
+                <InfoTip lang={lang} rowKey="caption" />
+              </div>
               {
                 /* TWO TEXTS PER IMAGE, NOT THREE (2026-09-04, Josh: "we only
                   need one description field for the image"). A 240-character
@@ -510,11 +512,12 @@ const t = useTranslations(lang);
               <div class="label-row">
                 <label class="row-label" data-row-label="description">{t("profile.gallery.description.label")}</label>
                 <span class="row-optional">{t("profile.optional")}</span>
-                <InfoTip lang={lang} rowKey="description" />
               </div>
               <p class="field-note" data-tip data-tip-note="description" hidden>{t("profile.gallery.descriptionNote")}</p>
-              <textarea class="input textarea" rows="3" data-gallery-field="description"
-              ></textarea>
+              <div class="infotip-field">
+                <textarea class="input textarea" rows="3" data-gallery-field="description"></textarea>
+                <InfoTip lang={lang} rowKey="description" />
+              </div>
             </div>
 
             {
@@ -533,18 +536,21 @@ const t = useTranslations(lang);
               <div class="label-row">
                 <label class="row-label" data-row-label="captionDe">{t("profile.gallery.caption.de")}</label>
                 <span class="row-optional">{t("profile.optional")}</span>
-                <InfoTip lang={lang} rowKey="captionDe" />
               </div>
               <p class="field-note" data-tip data-tip-note="captionDe" hidden>{t("profile.gallery.caption.deNote")}</p>
-              <input type="text" class="input" data-gallery-field="captionDe" />
+              <div class="infotip-field">
+                <input type="text" class="input" data-gallery-field="captionDe" />
+                <InfoTip lang={lang} rowKey="captionDe" />
+              </div>
               <div class="label-row">
                 <label class="row-label" data-row-label="descriptionDe">{t("profile.gallery.description.de")}</label>
                 <span class="row-optional">{t("profile.optional")}</span>
-                <InfoTip lang={lang} rowKey="descriptionDe" />
               </div>
               <p class="field-note" data-tip data-tip-note="descriptionDe" hidden>{t("profile.gallery.description.deNote")}</p>
-              <textarea class="input textarea" rows="3" data-gallery-field="descriptionDe"
-              ></textarea>
+              <div class="infotip-field">
+                <textarea class="input textarea" rows="3" data-gallery-field="descriptionDe"></textarea>
+                <InfoTip lang={lang} rowKey="descriptionDe" />
+              </div>
             </div>
 
             {
@@ -577,22 +583,22 @@ const t = useTranslations(lang);
             <div class="label-row">
               <label class="row-label" data-row-label="siteLink">{t("profile.gallery.siteLink")}</label>
               <span class="row-optional">{t("profile.optional")}</span>
-              <InfoTip lang={lang} rowKey="siteLink" />
             </div>
             <p class="field-note" data-tip data-tip-note="siteLink" hidden>{t("profile.gallery.siteLinkNote")}</p>
             <div class="input-prefix-wrap">
               <span class="input-prefix">https://</span>
               <input type="text" class="input input-prefixed" data-gallery-field="siteLink" />
+              <InfoTip lang={lang} rowKey="siteLink" />
             </div>
             <div class="label-row">
               <label class="row-label" data-row-label="link">{t("profile.gallery.link")}</label>
               <span class="row-optional">{t("profile.optional")}</span>
-              <InfoTip lang={lang} rowKey="link" />
             </div>
             <p class="field-note" data-tip data-tip-note="link" hidden>{t("profile.gallery.linkNote")}</p>
             <div class="input-prefix-wrap">
               <span class="input-prefix">https://</span>
               <input type="text" class="input input-prefixed" data-gallery-field="link" />
+              <InfoTip lang={lang} rowKey="link" />
             </div>
             {
               /* WHAT IS IN THE PICTURE, not who made it — the community wall
@@ -707,12 +713,12 @@ const t = useTranslations(lang);
             <div class="label-row">
               <label class="row-label" data-row-label="link">{t("profile.project.website")}</label>
               <span class="row-optional">{t("profile.optional")}</span>
-              <InfoTip lang={lang} rowKey="link" />
             </div>
             <p class="field-note" data-tip data-tip-note="link" hidden>{t("profile.project.linkNote")}</p>
             <div class="input-prefix-wrap">
               <span class="input-prefix">https://</span>
               <input type="text" class="input input-prefixed" data-project-field="link" />
+              <InfoTip lang={lang} rowKey="link" />
             </div>
             {
               /* AFFILIATIONS, like the Social Media rows: repeatable, + Add
@@ -909,19 +915,21 @@ const t = useTranslations(lang);
     <div class="field">
       <div class="label-row">
         <label class="label" for="phone">{t("profile.label.phone")}</label>
-        <InfoTip lang={lang} for="note-phone" />
       </div>
       <p id="note-phone" class="field-note" data-tip hidden>
         {t("profile.note.phone")}
       </p>
-      <input
-        id="phone"
-        type="tel"
-        class="input"
-        placeholder="+41 79 123 45 67"
-        autocomplete="tel"
-        aria-describedby="note-phone"
-      />
+      <div class="infotip-field">
+        <input
+          id="phone"
+          type="tel"
+          class="input"
+          placeholder="+41 79 123 45 67"
+          autocomplete="tel"
+          aria-describedby="note-phone"
+        />
+        <InfoTip lang={lang} for="note-phone" />
+      </div>
     </div>
 
     {

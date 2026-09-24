@@ -11,6 +11,9 @@
 //
 // Two ways in: focusing a text field opens its tip, and the i opens it for any
 // field, including the chip groups and checkboxes that have nothing to type in.
+// A text field wears its i inside, at its right edge (2026-09-24, Josh: "the i
+// should be in the text fields not next to the title"); the others keep theirs
+// beside the title.
 // One open at a time; leaving the field, Esc, a click anywhere else, or the i
 // again closes it. The note keeps its id and stays in the field's
 // aria-describedby, so a screen reader hears it whether or not the box is open.
@@ -84,6 +87,14 @@ export function placeInfoTip(note: HTMLElement): void {
   note.style.left = `${Math.round(a.left - origin.left)}px`;
   note.style.top = `${Math.round(a.bottom - origin.top + GAP)}px`;
   note.style.width = `${Math.round(a.width)}px`;
+  // The caret points at the i — at the field's right edge when the i sits in
+  // the field, under the title when it sits beside one.
+  const button = buttonOf(note);
+  if (button) {
+    const b = button.getBoundingClientRect();
+    const x = Math.min(Math.max(b.left + b.width / 2 - a.left, 9), a.width - 9);
+    note.style.setProperty("--infotip-caret", `${Math.round(x)}px`);
+  }
   note.style.animation = "";
 }
 
