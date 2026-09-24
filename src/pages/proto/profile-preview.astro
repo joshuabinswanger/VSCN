@@ -69,6 +69,7 @@ const cardLabels = {
   prev: ui.en["community.card.prev"],
   next: ui.en["community.card.next"],
   workAlt: ui.en["member.workAlt"],
+  lang: "en" as const,
 };
 ---
 
@@ -98,7 +99,10 @@ const cardLabels = {
   </script>
 
   <script>
-    import { renderCardPreview, renderProfilePreview } from "../../lib/profilePreview.ts";
+    import { bindPreviewLightbox, renderCardPreview, renderProfilePreview } from "../../lib/profilePreview.ts";
+    import { LIGHTBOX_FALLBACK } from "../../lib/lightbox.ts";
+    import "photoswipe/style.css";
+    import "../../styles/lightbox.css";
 
     import type { ProfileViewModel } from "../../lib/profileView.ts";
     declare global {
@@ -128,6 +132,16 @@ const cardLabels = {
         const found = cases.find((c) => c.id === id);
         if (found) drawBoth(found.view);
       };
+
+      // The editor binds this once per page load; so does the harness.
+      const unbind = bindPreviewLightbox(
+        {
+          works: root.querySelector<HTMLElement>('[data-ppv="works"]'),
+          card: cardRoot instanceof HTMLElement ? cardRoot : null,
+        },
+        LIGHTBOX_FALLBACK,
+      );
+      document.addEventListener("astro:before-swap", unbind, { once: true });
 
       select.addEventListener("change", () => draw(select.value));
       blank?.addEventListener("click", () => {

@@ -211,9 +211,9 @@ export function initCarousels(root: ParentNode = document): void {
       if (!frameLink || !slide) return;
       const url = slide.dataset.workUrl;
       // Only where the link already goes somewhere. The preview's trigger is
-      // deliberately href-less — there is no lightbox in the editor — and
-      // writing one in would turn an inert element into something that looks
-      // like a control and navigates out of an unsaved form.
+      // deliberately href-less — its lightbox opens from the slides
+      // (bindCardOpener), and an href written in would navigate out of an
+      // unsaved form whenever that handler is not there to stop it.
       if (url && frameLink.hasAttribute("href")) frameLink.href = url;
       // Absent caption/description mean the attribute must GO, not be set to
       // "": PhotoSwipe's caption band tests the trimmed value, but a stale

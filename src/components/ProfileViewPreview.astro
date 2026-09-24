@@ -131,12 +131,16 @@ const t = useTranslations(lang);
     {
       /* The border belongs to the link, not to the figure — exactly as on
          the page, where .mprof__work-link is the framed element and the
-         figcaption follows it outside the frame. No href: the page's link
-         opens the lightbox, and there is none here. */
+         figcaption follows it outside the frame. It is the lightbox trigger
+         here too since 2026-09-24: the renderer writes the href and the
+         data-pswp-* set, and bindPreviewLightbox (profilePreview.ts) opens
+         it. target="_blank" so that, if the lightbox ever failed to bind,
+         the click would open the original in a new tab rather than leave a
+         form full of unsaved edits. */
     }
     <template data-ppv-tpl="work"
       ><figure class="mprof__work">
-        <a class="mprof__work-link"><img class="mprof__img" alt="" decoding="async" /><span class="vscn-play vscn-play--over" data-ppv-work="play" aria-hidden="true" hidden></span></a>
+        <a class="mprof__work-link" target="_blank" rel="noreferrer"><img class="mprof__img" alt="" decoding="async" /><span class="vscn-play vscn-play--over" data-ppv-work="play" aria-hidden="true" hidden></span></a>
         <figcaption class="mprof__caption" data-ppv-work="caption-block" hidden>
           <span class="mprof__caption-line" data-ppv-work="caption" hidden></span>
           <span class="mprof__desc" data-ppv-work="desc" hidden></span>

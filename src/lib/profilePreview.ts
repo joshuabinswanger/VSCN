@@ -19,8 +19,83 @@ import { href, hostLabel, socialLinks } from "./links.ts";
 // src/lib/communityCarousel.ts.
 import { destroyCarousel, initCarousels } from "./communityCarousel.ts";
 import type { ProfileViewModel } from "./profileView.ts";
-import { groupWorks, projectTitle, projectDescription, affiliationHref } from "./projects.ts";
+import { groupWorks, projectTitle, projectDescription, affiliationHref, projectSlideData } from "./projects.ts";
+import type { ProfileProject } from "./projects.ts";
+import { embedDataAttrs } from "./embed.ts";
+import { CARD_TRIGGER, bindCardOpener, createLightbox, type LightboxStrings } from "./lightbox.ts";
 import type { Lang } from "../i18n/utils";
+
+type PreviewWork = ProfileViewModel["works"][number];
+
+/**
+ * Writes a work's data-pswp-* set onto `el` — the SAME attributes the member
+ * page puts on its work link (MemberWork.astro) and the card on its slide
+ * (CommunityImageCard.astro), because the one lightbox reads nothing else
+ * (lightboxText.ts's readTrigger, lightboxEmbed.ts's embedFromDataset).
+ *
+ * No `data-pswp-profile`, on purpose: in the lightbox the artist line links to
+ * the member's page, and in the editor that link would navigate out of a form
+ * full of unsaved edits — the one thing the preview must never offer. The
+ * credit prints as plain text instead, which lightboxText already does for a
+ * trigger without a profile href.
+ */
+function writeSlideData(
+  el: HTMLElement,
+  w: PreviewWork,
+  meta: string,
+  project: ProfileProject | undefined,
+  lang: Lang | undefined,
+): void {
+  const d = el.dataset;
+  d.pswpWidth = String(w.width);
+  d.pswpHeight = String(w.height);
+  const set = (key: string, value: string | undefined) => {
+    if (value) d[key] = value;
+    else delete d[key];
+  };
+  set("pswpCaption", w.caption?.trim());
+  set("pswpDescription", w.description);
+  set("pswpLink", w.link);
+  set("pswpSiteLink", w.siteLink);
+  set("pswpMeta", meta);
+  const slide = lang ? projectSlideData(project, lang) : {};
+  set("pswpProject", slide.project);
+  set("pswpProjectLink", slide.projectLink);
+  set("pswpAffiliations", slide.affiliations);
+  for (const [name, value] of Object.entries(embedDataAttrs(w.embed))) el.setAttribute(name, value);
+}
+
+/**
+ * THE PREVIEW OPENS THE REAL LIGHTBOX (2026-09-24, Josh: "the photoswipe does
+ * not work in the preview"). Until then the editor bound none: the page's work
+ * links and the card's frame link were href-less shells, so pressing a picture
+ * in the Preview tab did nothing at all.
+ *
+ * Bind ONCE, not per render: `works` is the preview's persistent
+ * `[data-ppv="works"]` container, whose children renderProfilePreview replaces
+ * on every tab entry — PhotoSwipe resolves `children` at click time, so the
+ * new figures are picked up without rebinding. The card's opener likewise
+ * reads the frame's slides at click time.
+ *
+ * Returns the teardown (destroys the lightbox and unbinds the card).
+ */
+export function bindPreviewLightbox(
+  roots: { works?: HTMLElement | null; card?: HTMLElement | null },
+  strings: LightboxStrings,
+): () => void {
+  const lightbox = createLightbox(
+    strings,
+    roots.works ? { gallery: roots.works, children: ".mprof__work-link" } : undefined,
+  );
+  const unbindCard = roots.card?.querySelector(CARD_TRIGGER)
+    ? bindCardOpener(roots.card, lightbox)
+    : () => {};
+  lightbox.init();
+  return () => {
+    unbindCard();
+    lightbox.destroy();
+  };
+}
 
 export interface ProfilePreviewLabels {
   /** Shown in place of the name before the member has typed one. */
@@ -173,10 +248,21 @@ export function renderProfilePreview(
 
   const works = part("works");
   if (works) {
-    const figureFor = (w: ProfileViewModel["works"][number]): HTMLElement | null => {
+    const meta = vm.displayName.trim() || labels.defaultName;
+    const figureFor = (w: PreviewWork, project?: ProfileProject): HTMLElement | null => {
       const figure = clone("work");
       const img = figure?.querySelector("img");
       if (!figure || !img) return null;
+
+      // THE LIGHTBOX TRIGGER, as on the page: the link goes to the original
+      // and carries the data-pswp-* set PhotoSwipe opens from. It opens in a
+      // new tab (the template's target) should the lightbox ever fail to
+      // bind, so even the fallback never leaves the unsaved form.
+      const trigger = figure.querySelector<HTMLAnchorElement>(".mprof__work-link");
+      if (trigger) {
+        trigger.href = w.url;
+        writeSlideData(trigger, w, meta, project, labels.lang);
+      }
       const workPart = <T extends HTMLElement = HTMLElement>(name: string) =>
         figure.querySelector<T>(`[data-ppv-work="${name}"]`);
 
@@ -238,7 +324,9 @@ export function renderProfilePreview(
     // in between — groupWorks() is the same cut the member page makes.
     const sections = groupWorks(vm.works.filter((w) => w.url && w.width > 0 && w.height > 0), vm.projects ?? []);
     const nodes = sections.flatMap((section) => {
-      const figures = section.works.map(figureFor).filter((n): n is HTMLElement => n !== null);
+      const figures = section.works
+        .map((w) => figureFor(w, section.project))
+        .filter((n): n is HTMLElement => n !== null);
       if (!section.project) return figures;
       const block = clone("project");
       if (!block) return figures;
@@ -326,6 +414,8 @@ export interface CardPreviewLabels {
   next?: string;
   /** `member.workAlt` — the alt-text fallback for an uncaptioned image. */
   workAlt?: string;
+  /** The editor's tab locale, for the lightbox's project line (projectSlideData). Without it the line is left out. */
+  lang?: Lang;
 }
 
 /** "Image 2 of 3" from the translated template. Empty when there is none. */
@@ -421,10 +511,13 @@ export function renderCardPreview(
       // back to image 1 and re-decode every picture while they type. The
       // signature covers the images AND the text bound into them, so a caption
       // edit still lands.
+      // The project a work is in, for the lightbox's "Part of" line.
+      const projectOf = (w: PreviewWork) =>
+        w.projectId ? vm.projects?.find((p) => p.id === w.projectId) : undefined;
       const signature = works
         .map(
           (w) =>
-            `${w.url}|${w.width}x${w.height}|${w.caption ?? ""}|${w.description ?? ""}`
+            `${w.url}|${w.width}x${w.height}|${w.caption ?? ""}|${w.description ?? ""}|${w.link ?? ""}|${w.siteLink ?? ""}|${w.embed ? `${w.embed.provider}:${w.embed.videoId}` : ""}|${JSON.stringify(labels.lang ? projectSlideData(projectOf(w), labels.lang) : {})}`
         )
         .join("~");
       if (frame.dataset.ccpvSignature !== signature) {
@@ -452,19 +545,13 @@ export function renderCardPreview(
             img.alt = w.caption?.trim() || `${displayName} — ${labels.workAlt ?? ""}`.trim();
             if (w.color) img.style.background = w.color;
 
-            // What communityCarousel.ts copies onto the frame's trigger as the
-            // carousel moves. The preview's trigger is href-less so the URL is
-            // ignored there; the rest is written anyway, which keeps the shell
-            // speaking the card's whole contract rather than a convenient half.
+            // The card's whole slide contract. communityCarousel.ts copies it
+            // onto the frame's trigger as the carousel moves (the preview's
+            // trigger is href-less, so the URL is ignored there), and the
+            // lightbox opens from the slides themselves (bindCardOpener),
+            // exactly as it does on /community.
             slide.dataset.workUrl = w.url;
-            slide.dataset.pswpWidth = String(w.width);
-            slide.dataset.pswpHeight = String(w.height);
-            if (w.caption?.trim()) slide.dataset.pswpCaption = w.caption.trim();
-            // The description, matching the card: the slide dataset is what a
-            // real card copies onto its lightbox trigger, and since 2026-09-04
-            // there is one description to copy (see profileView.ts).
-            if (w.description) slide.dataset.pswpDescription = w.description;
-            if (w.link) slide.dataset.pswpLink = w.link;
+            writeSlideData(slide, w, displayName, projectOf(w), labels.lang);
 
             // A single picture is not a carousel: no group semantics, no
             // position label. Calling one image a carousel would be a lie to a
@@ -520,6 +607,11 @@ export function renderCardPreview(
         // what the card does with a single work too.
         initCarousels(root);
       }
+      // The artist line follows the name on EVERY render, outside the
+      // signature: typing a name must not rebuild the carousel (see above).
+      track.querySelectorAll<HTMLElement>(".ccard__slide").forEach((slide) => {
+        slide.dataset.pswpMeta = displayName;
+      });
     } else {
       // No artwork: the slides go, and the carousel with them. An eight-image
       // track left behind a hidden body would keep its timer and its observers

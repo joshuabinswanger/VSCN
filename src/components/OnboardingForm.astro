@@ -1066,7 +1066,11 @@ const prefix = lang === "de" ? "/de" : "";
     MAX_SOCIAL_MEDIA,
   } from "../lib/links.ts";
   import { handleProfileUpdate, triggerRebuild } from "../lib/profile.ts";
-  import { renderCardPreview } from "../lib/profilePreview.ts";
+  import { bindPreviewLightbox, renderCardPreview } from "../lib/profilePreview.ts";
+  import { lightboxStringsFrom } from "../lib/lightbox.ts";
+  import "photoswipe/style.css";
+  // Immediately after the package sheet: the chrome that replaces it.
+  import "../styles/lightbox.css";
   import { markImageForDeletion } from "../lib/images.ts";
   import { syncEmail } from "../lib/account.ts";
   // The one gallery upload path in the codebase, the same four calls the
@@ -1144,6 +1148,14 @@ const prefix = lang === "de" ? "/de" : "";
       next: s["community.card.next"],
       workAlt: s["member.workAlt"],
     };
+
+    // The Done step's card opens the site's lightbox, as the card it previews
+    // does on /community — whole gallery, starting on the slide showing.
+    const unbindPreviewLightbox = bindPreviewLightbox(
+      { card: document.querySelector<HTMLElement>("[data-ccpv-root]") },
+      lightboxStringsFrom(s),
+    );
+    document.addEventListener("astro:before-swap", unbindPreviewLightbox, { once: true });
 
     const loadingEl = document.getElementById("ob-loading");
     const errorEl = document.getElementById("ob-error")!;
