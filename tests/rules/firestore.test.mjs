@@ -4,6 +4,7 @@ import { test, before, after, beforeEach } from "node:test";
 import { deleteField } from "firebase/firestore";
 import assert from "node:assert/strict";
 import { isProfileVisible } from "../../src/lib/profileVisibility.ts";
+import * as projectsModule from "../../src/lib/projects.ts";
 import {
   setupEnv, seed, assertFails, assertSucceeds,
   OWNER, OTHER, ADMIN, verified, unverified, slot, minimalUser,
@@ -737,6 +738,44 @@ test("projects: caps hold — title, description, link, affiliation count and ea
   await assertFails(up({ affiliations: [{ name: "Org", role: "partner" }] }));
   await assertFails(up({ affiliations: "ETH" }));
   await assertFails(up({ unknownField: true }));
+});
+
+test("projects: the exact payloads saveProjects() sends pass the rules — create, full update, emptied update", async () => {
+  // The REAL src/lib/projectStore.ts, only its Firebase handle swapped for the
+  // emulator's: create = ownerUid + projectFields() + createdAt/updatedAt as
+  // serverTimestamp(); update = every EDITABLE key present or deleteField(),
+  // plus updatedAt. A key added to EDITABLE and projectFields() but not to
+  // validProject() fails here instead of silently failing a member's Save.
+  const context = env.authenticatedContext(OWNER, verified(OWNER));
+  const { saveProjects, EDITABLE } = loadTs("src/lib/projectStore.ts", {
+    "./firebase.ts": { db: context.firestore()._delegate },
+    "./projects.ts": projectsModule,
+    "./profileVisibility.ts": { isProfileVisible },
+    "firebase/firestore": modularFirestore,
+  });
+  const full = {
+    projectId: "p1",
+    title: " Cryo-EM of the ribosome ", titleDe: "Kryo-EM des Ribosoms",
+    description: "x".repeat(700), descriptionDe: "y".repeat(600),
+    link: "https://lab.example.org/ribosome",
+    affiliations: [{ name: "ETH Zürich", url: "https://ethz.ch" }, { name: "Lab" }, { memberUid: OTHER, name: "Anna Meier" }],
+  };
+  // The fixture must exercise every key an update writes, or a new key would
+  // only ever be sent as deleteField() here and never reach hasOnly.
+  assert.deepEqual(Object.keys(projectsModule.projectFields(full)).sort(), [...EDITABLE].sort());
+  const empty = { projectId: "p2" };
+  assert.deepEqual(projectsModule.projectFields(empty), {});
+
+  assert.deepEqual(await saveProjects(OWNER, [full, empty], new Set()), [], "create, all fields and none");
+  const stored = new Set(["p1", "p2"]);
+  assert.deepEqual(await saveProjects(OWNER, [full, empty], stored), [], "update, all fields and none");
+  assert.deepEqual(await saveProjects(OWNER, [{ ...empty, projectId: "p1" }, { ...full, projectId: "p2" }], stored), [],
+    "update that empties every field, and one that fills every field");
+  const p1 = (await context.firestore().doc("projects/p1").get()).data();
+  assert.deepEqual(Object.keys(p1).sort(), ["createdAt", "ownerUid", "updatedAt"]);
+  const p2 = (await context.firestore().doc("projects/p2").get()).data();
+  assert.equal(p2.link, "lab.example.org/ribosome");
+  assert.equal(p2.description.length, 600);
 });
 
 test("projects: another member can neither read, create for, edit nor delete my project", async () => {

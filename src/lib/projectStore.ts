@@ -9,7 +9,12 @@ import { db } from "./firebase.ts";
 import { projectFields, type ProjectFields, type ProjectRecord } from "./projects.ts";
 import { isProfileVisible } from "./profileVisibility.ts";
 
-const EDITABLE = ["title", "titleDe", "description", "descriptionDe", "link", "affiliations"] as const;
+/**
+ * Every key an update sets or deletes. Exported for the rules test, which runs
+ * saveProjects() itself against the emulator: a key added here (and to
+ * projectFields) but not to validProject() in firestore.rules fails CI there.
+ */
+export const EDITABLE = ["title", "titleDe", "description", "descriptionDe", "link", "affiliations"] as const;
 
 export async function loadProjects(uid: string): Promise<ProjectRecord[]> {
   const snap = await getDocs(query(collection(db, "projects"), where("ownerUid", "==", uid)));
