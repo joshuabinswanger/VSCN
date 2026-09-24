@@ -148,6 +148,28 @@ test('rebuilds coalesce members and ignore unchanged saves and timestamp-only ch
   assert.equal(dispatch.mock.callCount(), 2);
 });
 
+test('a project-only Save queues the member, a timestamp-only project resave does not', async () => {
+  // The export ships every project of a visible member (projectKeys in
+  // scripts/export-site-data.mjs), so the fingerprint must see them: a Save
+  // that only retitles a project changes no profile field and no image record.
+  const queue = db.doc('rebuildQueue/site');
+  await db.doc('publicProfiles/member').set({ active: true, displayName: 'Member', gallery: ['work'] });
+  await db.doc('images/work').set({ ownerUid: 'member', caption: 'Cell', projectId: 'p1' });
+  await db.doc('projects/p1').set({ ownerUid: 'member', title: 'Atlas', createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+  await db.doc('projects/theirs').set({ ownerUid: 'other', title: 'Not hers' });
+  await queueMemberRebuild('member');
+  await queue.delete();
+  await db.doc('projects/p1').update({ updatedAt: Timestamp.now() });
+  await queueMemberRebuild('member');
+  assert.equal((await queue.get()).exists, false, 'a resave with only a new updatedAt changes nothing the site shows');
+  await db.doc('projects/theirs').update({ title: 'Still not hers' });
+  await queueMemberRebuild('member');
+  assert.equal((await queue.get()).exists, false, 'someone else\'s project is not this member\'s fingerprint');
+  await db.doc('projects/p1').update({ title: 'Atlas of cells', updatedAt: Timestamp.now() });
+  await queueMemberRebuild('member');
+  assert.ok((await queue.get()).data()?.dirtyAt, 'retitling a project queues the build that publishes it');
+});
+
 test('a hidden member changes nothing the site shows: their uploads queue no build, hiding them does', async () => {
   // The release walk uploads and deletes an image per release as a
   // moderationHidden member (documentation/20260923-release-walk-automation.md §7).
