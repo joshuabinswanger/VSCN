@@ -126,17 +126,28 @@ function closeAll(except?: HTMLElement | null): void {
   });
 }
 
-let installed = false;
+declare global {
+  interface Window {
+    __vscnInfoTips?: boolean;
+  }
+}
 
 /**
  * ONE set of document listeners for every tip on the page, including the ones
  * in gallery rows that are re-cloned on every upload — binding per button
- * would lose them on each re-render. Idempotent: the component's script runs
- * once per page load, but ClientRouter keeps the document.
+ * would lose them on each re-render.
+ *
+ * The guard lives on window, not in this module (2026-09-24, Josh: "the i does
+ * not expand anything"). Astro INLINES this small script into the page, once
+ * per component that renders an i — eight copies on /profile, each its own
+ * module with its own flag. Every copy installed a click handler, so one click
+ * toggled the box eight times and it ended where it started. Opening on focus
+ * survived only because opening twice is still open. ClientRouter keeps the
+ * window, so the guard also holds across navigations.
  */
 export function installInfoTips(): void {
-  if (installed) return;
-  installed = true;
+  if (window.__vscnInfoTips) return;
+  window.__vscnInfoTips = true;
 
   // Pressing the i, or inside the box, must not take focus out of the field:
   // otherwise the field's focusout closes the box a moment before the click
