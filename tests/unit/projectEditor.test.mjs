@@ -22,6 +22,8 @@ import {
   sameIds,
   toProjectRecord,
   memberUidFor,
+  projectsToDelete,
+  withoutDanglingProjects,
   writtenProjectIds,
 } from "../../src/lib/projectEditor.ts";
 
@@ -199,4 +201,25 @@ test("memberUidFor: a credit keeps its member while the text is the name it was 
   // A fresh row matches by exact name; nothing loaded means nothing matched.
   assert.equal(memberUidFor("Bob", options, { name: "Bob" }), "u-bob");
   assert.equal(memberUidFor("Bob", null, { name: "Bob" }), undefined);
+});
+
+// ── Final review (2026-09-24) ─────────────────────────────
+
+test("withoutDanglingProjects: an item naming no stored project loses the id, so Save stops writing it back", () => {
+  const loaded = [img("a", "p"), img("b", "gone"), img("c")];
+  const out = withoutDanglingProjects(loaded, new Set(["p"]));
+  assert.deepEqual(ids(out), ["a:p", "b", "c"]);
+  assert.equal("projectId" in out[1], false);
+  // Nothing dangling: the same items, untouched.
+  assert.deepEqual(withoutDanglingProjects([img("a", "p")], new Set(["p"])), [img("a", "p")]);
+  // The input is not mutated — gallery items are shared with the rows.
+  assert.equal(loaded[1].projectId, "gone");
+});
+
+test("projectsToDelete: decided when Save starts, minus any project an image names again by the delete step", () => {
+  // Emptied at start: r and q. During the awaits the member drags an image into q.
+  const now = [img("a", "p"), img("b", "q")];
+  assert.deepEqual(projectsToDelete(["r", "q"], now), ["r"]);
+  // A project emptied DURING the Save is not a candidate: it was not empty when Save read the gallery.
+  assert.deepEqual(projectsToDelete([], [img("a")]), []);
 });

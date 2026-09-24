@@ -2554,9 +2554,11 @@ const t = useTranslations(lang);
     orderProjects,
     previewProjects,
     projectLabel,
+    projectsToDelete,
     removeFromProject,
     sameIds,
     toProjectRecord,
+    withoutDanglingProjects,
     writtenProjectIds,
     type EditorAffiliation,
     type EditorProject,
@@ -4587,9 +4589,10 @@ const t = useTranslations(lang);
       }));
       storedProjectIds = new Set(records.map((r) => r.projectId));
       deletedProjectIds.clear();
-      const contiguous = contiguousOrder(gallery, (g) =>
-        g.projectId && storedProjectIds.has(g.projectId) ? g.projectId : undefined,
-      );
+      // An id naming no stored project goes now, or saveGalleryRecords()
+      // would write it back onto the record at every Save.
+      gallery = withoutDanglingProjects(gallery, storedProjectIds);
+      const contiguous = contiguousOrder(gallery, (g) => g.projectId);
       const reordered = !sameIds(gallery, contiguous);
       gallery = contiguous;
       renderGallery();
@@ -4717,6 +4720,9 @@ const t = useTranslations(lang);
         // that was empty from birth. A refused project write is THE Save
         // error, naming the project as its header does.
         const used = projects.filter((p) => gallery.some((g) => g.projectId === p.projectId));
+        // What the delete step may remove, decided NOW from the state Save
+        // read — not from whatever is dragged during the awaits below.
+        const emptiedAtStart = emptiedStoredIds(gallery, projects, storedProjectIds, deletedProjectIds);
         const projectFailures = await saveProjects(user.uid, used.map(toProjectRecord), storedProjectIds);
         // The ones that DID go are stored now, failure or not: allSettled
         // means A can be created while B is refused, and forgetting A would
@@ -4802,7 +4808,7 @@ const t = useTranslations(lang);
         // deleted through the menu. A failed delete does not fail the Save:
         // an empty project is invisible (the build skips it) and the next
         // Save tries again; the ids that did go leave every set.
-        const emptied = emptiedStoredIds(gallery, projects, storedProjectIds, deletedProjectIds);
+        const emptied = projectsToDelete(emptiedAtStart, gallery);
         const deleteFailures = await deleteProjects(emptied);
         deleteFailures.forEach((f) => console.warn(`[projects] ${f.projectId} not deleted:`, f.error));
         for (const id of emptied) {

@@ -38,7 +38,8 @@ export interface MemberGraph {
   onboardingRequest: Record<string, unknown> | null;
   deletion: DeletionJobView | null;
   slugs: { slug: string; current: boolean }[];
-  projects: AdminProject[];
+  /** Absent from an adminLookupMember deployed before projects (2026-09-23). */
+  projects?: AdminProject[];
 }
 export interface LookupResult {
   graph: MemberGraph | null;

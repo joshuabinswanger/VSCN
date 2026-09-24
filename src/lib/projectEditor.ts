@@ -319,6 +319,34 @@ export function emptiedStoredIds(
   return [...new Set([...emptyProjectIds(gallery, projects), ...deletedIds])].filter((id) => storedIds.has(id));
 }
 
+/**
+ * The delete step's list. The candidates are emptiedStoredIds() taken when
+ * Save STARTS — the gallery Save read, not whatever the member dragged
+ * during its awaits (final review, 2026-09-24). A candidate an image names
+ * again by the time the delete runs is kept: the member refilled it, and
+ * deleting it would leave that image naming nothing.
+ */
+export function projectsToDelete(candidates: readonly string[], galleryNow: readonly { projectId?: string }[]): string[] {
+  const named = new Set(galleryNow.map((g) => g.projectId).filter(Boolean));
+  return candidates.filter((id) => !named.has(id));
+}
+
+/**
+ * The loaded gallery with every projectId that names no stored project
+ * removed. Such an item already shows loose (editorBlocks ignores an unknown
+ * project), but kept the id — and saveGalleryRecords() writes the item's
+ * projectId, so the dangling id went back onto the record at every Save
+ * (final review, 2026-09-24). Stripped, the next Save deletes it instead.
+ */
+export function withoutDanglingProjects<T extends { projectId?: string }>(gallery: readonly T[], storedIds: ReadonlySet<string>): T[] {
+  return gallery.map((item) => {
+    if (!item.projectId || storedIds.has(item.projectId)) return item;
+    const loose = { ...item };
+    delete loose.projectId;
+    return loose;
+  });
+}
+
 /** Whether two gallery arrays hold the same ids in the same order. */
 export function sameIds(a: readonly { imageId: string }[], b: readonly { imageId: string }[]): boolean {
   return a.length === b.length && a.every((g, i) => g.imageId === b[i].imageId);

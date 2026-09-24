@@ -359,8 +359,10 @@ export function renderMemberDetail(g: MemberGraph, deps: DetailDeps): HTMLElemen
       el("p", { class: "muted small" }, `${count} image${count === 1 ? "" : "s"} in this project`),
     );
   };
-  const projectsSec = section("projects", `Projects (${g.projects.length})`, {},
-    g.projects.length ? g.projects.map(projectBlock) : el("p", { class: "muted" }, "No projects."),
+  // `?? []`: an adminLookupMember deployed before projects returns no key.
+  const projects = g.projects ?? [];
+  const projectsSec = section("projects", `Projects (${projects.length})`, {},
+    projects.length ? projects.map(projectBlock) : el("p", { class: "muted" }, "No projects."),
   );
 
   // ── 6. Onboarding request ───────────────────────────────

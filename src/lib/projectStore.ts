@@ -3,7 +3,7 @@
 // written is made by projectFields() in the pure module; this file only
 // decides create vs update and turns an absent field into deleteField().
 import {
-  collection, deleteDoc, deleteField, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where,
+  collection, deleteDoc, deleteField, doc, documentId, getDocs, query, serverTimestamp, setDoc, updateDoc, where,
 } from "firebase/firestore";
 import { db } from "./firebase.ts";
 import { projectFields, type ProjectFields, type ProjectRecord } from "./projects.ts";
@@ -66,12 +66,23 @@ export async function loadMemberOptions(): Promise<MemberOption[]> {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Current slugs for the preview's member-credit links. `in` takes at most 30 values. */
+/**
+ * Current slugs for the preview's member-credit links — VISIBLE members only,
+ * as the build resolves them (resolveMemberCredits is handed directory slugs
+ * only). A slug outlives hiding, so the slugs query alone had the preview link
+ * a credit the page renders as plain text (final review, 2026-09-24).
+ * Visibility is asked of publicProfiles here, so every caller gets it.
+ * `in` takes at most 30 values.
+ */
 export async function memberSlugs(uids: readonly string[]): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   const unique = [...new Set(uids)];
   for (let i = 0; i < unique.length; i += 30) {
-    const snap = await getDocs(query(collection(db, "slugs"), where("uid", "in", unique.slice(i, i + 30))));
+    const chunk = unique.slice(i, i + 30);
+    const profiles = await getDocs(query(collection(db, "publicProfiles"), where(documentId(), "in", chunk)));
+    const visible = profiles.docs.filter((d) => isProfileVisible(d.data())).map((d) => d.id);
+    if (!visible.length) continue;
+    const snap = await getDocs(query(collection(db, "slugs"), where("uid", "in", visible)));
     for (const d of snap.docs) if (d.data().current === true) out.set(String(d.data().uid), d.id);
   }
   return out;
