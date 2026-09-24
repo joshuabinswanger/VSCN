@@ -673,6 +673,14 @@ const t = useTranslations(lang);
           </div>
           <div class="gallery-project-images" data-project-images></div>
           {
+            /* Save writes only the projects an image names, so a block that
+              holds none stays local and is gone after a reload. Said here, in
+              the block, not behind an ⓘ — the words typed into an empty block
+              are exactly what would be lost (final review, 2026-09-24).
+              renderGallery() shows it while block.indices is empty. */
+          }
+          <p class="field-note gallery-project-empty" data-project-empty hidden>{t("profile.project.emptyNote")}</p>
+          {
             /* Uploads straight into this block: the same queue as the general
               picker, the task carrying the projectId, and the finished image
               lands after the block's last image (insertUploaded). Its pending
@@ -3509,6 +3517,8 @@ const t = useTranslations(lang);
         });
 
         images.append(...block.indices.map(buildRow).filter((n): n is HTMLElement => n !== null));
+        const emptyNote = el.querySelector<HTMLElement>("[data-project-empty]");
+        if (emptyNote) emptyNote.hidden = block.indices.length > 0;
 
         const picker = el.querySelector<HTMLInputElement>("[data-project-files]");
         picker?.addEventListener("change", () => {
