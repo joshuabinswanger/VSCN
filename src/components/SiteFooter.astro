@@ -170,20 +170,28 @@ const otherLangHref =
      scrolled under it and competed with Save for the bottom edge; at the end
      of the page it is where people look for it, and one tap from there. So on
      mobile the navbar's fixed toggle is hidden (Navbar.astro) and this one
-     leads the list, spaced off the legal links because it is a setting, not
-     one of them. Every row carries block padding: each is a tap target. */
+     joins the footer. Every row carries block padding: each is a tap target.
+     TWO COLUMNS (same day, Josh: "put the de en on the right the rest on the
+     left"). The legal links and the © stack down the left; the switch stands
+     alone on the right, level with the first link. It is a setting, not one
+     of the links, and the right-hand side is where it has sat on desktop all
+     along. A grid rather than a flex row so the switch can take row 1 of its
+     own column while the list runs on down the other. */
   @media (--bp-mobile) {
     .footer-lang {
       display: block;
+      grid-column: 2;
+      grid-row: 1;
+      justify-self: end;
       padding-block: 0.4rem;
-      margin-bottom: 0.5rem;
     }
 
     .site-footer {
       position: static;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 0.75rem;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: start;
+      gap: 0.75rem 1.5rem;
       margin: 3rem 30px 0;
       padding-top: 1.25rem;
       border-top: 1px solid var(--color-border);
@@ -193,8 +201,14 @@ const otherLangHref =
     }
 
     .footer-links {
+      grid-column: 1;
+      grid-row: 1;
       flex-direction: column;
       gap: 0;
+    }
+
+    .footer-copy {
+      grid-column: 1;
     }
 
     .footer-links a {
