@@ -137,6 +137,9 @@ later showed to be expensive. Since then the gallery moved onto `images/{imageId
   `projectId` through `saveGalleryRecords`, (3) the profile's `gallery` order, (4) deletes
   projects left without images. A refused project write is a Save error naming the project,
   never a console warning.
+- **A block with no image is never written.** It stays local, is gone after a reload, and says
+  so inside the block (*"Add an image to keep this project — a project without images is not
+  saved."*), visible rather than behind an ⓘ, for as long as it holds no image.
 - **Preview tab** renders the real member page with its grouping.
 - The 8-image cap is unchanged.
 
@@ -149,13 +152,16 @@ later showed to be expensive. Since then the gallery moved onto `images/{imageId
   site link shows the inherited project link when the image has none.
 - **Community** (Gallery, Grid, Index): tiles and cards unchanged; lightbox and card captions
   gain the "Part of" line.
-- **Structured data** (`src/lib/seo.ts`): a project is a `CreativeWork` with `hasPart` its
-  images; each image's `isPartOf` gains the project beside its publication. Affiliations map
-  to `Organization` (with `url`) or `Person` (the member's profile `@id`, trailing-slash
-  canonical).
+- **Structured data** (`src/lib/seo.ts`): a project is a `CreativeWork` on the member page.
+  The link runs from the images: each image's `isPartOf` names the project's `@id` beside its
+  publication — the inverse of `hasPart`, so the project node does not list its images again.
+  Affiliations map to `Organization` (with `url`) or `Person` (the member's profile `@id`,
+  trailing-slash canonical). The community page's JSON-LD is unchanged.
 - **Build:** `membersBuild` reads live projects once beside the gallery records; the pure join
-  attaches projects to members, skipping foreign and empty ones. A project save already
-  queues a rebuild through the profile-save path.
+  attaches projects to members, skipping foreign and empty ones. The profile Save's
+  `requestRebuild` queues it, and the rebuild fingerprint (`functions/src/rebuildQueue.ts`)
+  includes the member's projects, timestamps excluded — so a Save that changes only a
+  project's words still republishes.
 
 ### Admin and scripts
 
