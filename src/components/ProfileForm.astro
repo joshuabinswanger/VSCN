@@ -3070,11 +3070,13 @@ const t = useTranslations(lang);
         // WHICH HALF, NOT WHICH ZONE (2026-09-24, dev walk: an image dragged
         // down onto a row inside a project landed loose beside the block).
         // SortableJS decides a cross-list insertion in "inverted" mode, where
-        // only the outer edges of the target row insert and its middle 65%
-        // does nothing — so a drop on a row's centre from another list was a
-        // dead zone, and the row's own list swallowed the event. With the
-        // threshold at 1 there is no dead zone: upper half of the target
-        // means before it, lower half after, for every drag in every list.
+        // only the target row's outer edges insert — 32.5% each at the
+        // default threshold of 0.65 (_getSwapDirection: y < top + h·t/2 or
+        // y > bottom − h·t/2) — and its middle 35% does nothing, while the
+        // row's own list still swallows the event. So a drop on a row's
+        // centre from another list was a dead zone. With the threshold at 1
+        // there is no dead zone: upper half of the target means before it,
+        // lower half after, for every drag in every list.
         swapThreshold: 0.65,
         invertSwap: true,
         invertedSwapThreshold: 1,
@@ -3114,15 +3116,24 @@ const t = useTranslations(lang);
      * placement. On every list, because SortableJS consults the list the
      * drag STARTED in, not the one under the pointer.
      */
+    /**
+     * The pointer's y from whatever SortableJS hands over: a MouseEvent /
+     * PointerEvent on the native lane, but on the touch fallback lane
+     * (_emulateDragOver) a PLAIN OBJECT { clientX, clientY, target, rootEl }
+     * — no prototype, no `touches`. An instanceof check saw neither and the
+     * block rule silently deferred on every phone drag (review, 2026-09-24).
+     */
+    function pointerY(original: unknown): number | undefined {
+      const o = original as { clientY?: unknown; touches?: ArrayLike<{ clientY?: unknown }> } | null | undefined;
+      if (typeof o?.clientY === "number") return o.clientY;
+      const touch = o?.touches?.[0]?.clientY;
+      return typeof touch === "number" ? touch : undefined;
+    }
+
     function placeImageOverBlock(evt: Sortable.MoveEvent, original: Event): boolean | -1 | 1 {
       const block = evt.related;
       if (!block.matches("[data-project-block]") || evt.dragged.matches("[data-project-block]")) return true;
-      const y =
-        original instanceof MouseEvent
-          ? original.clientY
-          : original instanceof TouchEvent
-            ? original.touches[0]?.clientY
-            : undefined;
+      const y = pointerY(original);
       const list = block.querySelector<HTMLElement>("[data-project-images]");
       const head = block.querySelector(":scope > .gallery-project-head")?.getBoundingClientRect();
       if (y === undefined || !list || !head) return true;
