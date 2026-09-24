@@ -1148,6 +1148,16 @@ const indexMembers = [...members].sort((a, b) =>
          where it bites is roughly 1200–1300, and nowhere else. */
       --wall-gap-max: 160px;
       --wall-edge: 100px;
+      /* THE TALLEST A FRAME MAY BE, and so the height of every row
+         (2026-09-24, Josh: "grid images should get a maximum height, so all
+         rows are the same height always"). One card width — a square. It was
+         1.5 × the card, which nothing seeded reached, so it bounded nothing:
+         each row took the height of its tallest tile and the wall's rows ran
+         anywhere from 200 to 283px. At 1 × the card, square and portrait work
+         all stops at the same line (and narrows, by the tile's own width
+         formula), and grid-auto-rows below fixes the row at exactly this plus
+         the author line, so a row of landscapes is as tall as any other. */
+      --wall-frame: var(--wall-card);
       /* The gutter the row actually uses. Declared as the floor so the rule
          stands on its own, and overwritten inline by the script with the
          width that spreads the row across the measure — always ≥ the floor.
@@ -1184,9 +1194,13 @@ const indexMembers = [...members].sort((a, b) =>
          travels, and 30px absorbs that with the wall's damped amplitude (see
          flowScale, which scales it to a third of the spread's). */
       row-gap: calc(0.75 * var(--wall-gap-min));
-      /* The row is its content's height: the tallest card in it, and nothing
-         enforcing a floor under it. */
-      grid-auto-rows: minmax(0, auto);
+      /* EVERY ROW THE SAME HEIGHT: the frame cap plus the work tile's author
+         line (1.2rem, --cwork-chrome in CommunityWorkCard — the third place
+         that figure is stated, with the work-cell rule below). It was
+         `minmax(0, auto)`, the tallest tile in the row, which made the row
+         depth a property of whichever pictures the deal happened to put
+         together. A tile shorter than the row sits at its top, as before. */
+      grid-auto-rows: calc(var(--wall-frame) + 1.2rem);
       /* The 18rem tail is the SPREAD's — its cards are out of flow, so its
          last beat needs drawn whitespace under it where every earlier beat
          borrows the next one's. The wall's cards are in flow and its last row
@@ -1223,11 +1237,10 @@ const indexMembers = [...members].sort((a, b) =>
          CommunityImageCard computes --frame-cap as --slot-rows × --cgrid-row
          minus the card's chrome (5.4rem, mirrored here), and the wall's slots
          are one row tall, so shadowing the row unit on the CELL sets the cap
-         to 1.5 × the card width: 300px at a 200px card, at every window width,
-         where the drawn version drifted between 1.38× and 2.1×. Nothing seeded
-         reaches it, so no card narrows today; what it bounds is how deep one
-         tall upload may make its row. */
-      --cgrid-row: calc((1.5 * var(--wall-card) + 5.4rem) / var(--slot-rows, 1));
+         to --wall-frame (one card width since 2026-09-24; 1.5 × before), at
+         every window width, where the drawn version drifted between 1.38× and
+         2.1×. */
+      --cgrid-row: calc((var(--wall-frame) + 5.4rem) / var(--slot-rows, 1));
     }
 
     /* Same cap, the work tile's own chrome. The line above bakes in the member
@@ -1243,7 +1256,7 @@ const indexMembers = [...members].sort((a, b) =>
        tiles rattling inside rows that are the wrong depth rather than as an
        error. The extra specificity wins wherever this sits in the file. */
     .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
-      --cgrid-row: calc((1.5 * var(--wall-card) + 1.2rem) / var(--slot-rows, 1));
+      --cgrid-row: calc((var(--wall-frame) + 1.2rem) / var(--slot-rows, 1));
     }
   }
 
