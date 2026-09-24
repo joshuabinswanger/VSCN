@@ -1,5 +1,4 @@
-> Mirror of `~/.claude/projects/D--SynoDrive-VSCN/memory/vscn-gallery-tech-stack.md`, kept in the repo
-> so any Claude instance can read it without access to the user profile.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/vscn-gallery-tech-stack.md` memory file; keep the two in sync.
 
 ---
 name: vscn-gallery-tech-stack

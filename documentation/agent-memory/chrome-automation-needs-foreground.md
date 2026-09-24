@@ -1,4 +1,5 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/chrome-automation-needs-foreground.md, kept in sync so any Claude instance can read it without Josh's profile. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/chrome-automation-needs-foreground.md` memory file; keep the two in sync.
+
 ---
 name: chrome-automation-needs-foreground
 description: "Claude-in-Chrome traps found driving Brevo: a virtualised listbox renders nothing while the window is hidden, and typing an email address trips the PII classifier where a clipboard paste does not"

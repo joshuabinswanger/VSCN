@@ -1,5 +1,5 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/playwright-drives-the-animation-clock.md - kept in the repo so any
-     Claude instance can read it without access to the user profile. Edit both copies. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/playwright-drives-the-animation-clock.md` memory file; keep the two in sync.
+
 ---
 name: playwright-drives-the-animation-clock
 description: "Playwright MCP runs a real compositing browser — view() timelines, transitions and the split-flap flip all advance and can be scrubbed frame by frame, which the in-app pane cannot do"

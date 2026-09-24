@@ -1,4 +1,4 @@
-> Mirror of the `~/.claude` memory file `barless-lightbox-geometry.md` — readable without access to Josh's user profile.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/barless-lightbox-geometry.md` memory file; keep the two in sync.
 
 ---
 name: barless-lightbox-geometry

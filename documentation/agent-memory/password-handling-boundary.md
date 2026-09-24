@@ -1,4 +1,4 @@
-> Mirror of the `~/.claude/projects/D--SynoDrive-VSCN/memory/password-handling-boundary.md` memory file, kept in the repo so it travels with the code.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/password-handling-boundary.md` memory file; keep the two in sync.
 
 ---
 name: password-handling-boundary

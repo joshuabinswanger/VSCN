@@ -1,9 +1,8 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/image-descriptions-long-and-short.md — kept in the repo so any
-     Claude instance can read it without access to the user profile. Edit both copies. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/image-descriptions-long-and-short.md` memory file; keep the two in sync.
 
 ---
 name: image-descriptions-long-and-short
-description: "REVERSED after one day, then STRANDED for two: one description per image was committed 2026-09-04 but only reached dev on 2026-09-06 (377d2db). Prod still serves the two-field editor."
+description: "REVERSED after one day, then STRANDED for two: one description per image was committed 2026-09-04, reached dev 2026-09-06 (377d2db) and prod the same evening (0f051e6)."
 metadata: 
   node_type: memory
   type: project
@@ -88,8 +87,9 @@ branch it was true of.
 **Where it stands now.** Merged to `dev` as `377d2db` and deployed — hosting and
 functions both, verified on the live dev site: `/profile` ships exactly three gallery
 fields (`caption`, `description`, `link`) and `/members/<slug>` hands the lightbox the
-long `description`. **Prod is untouched** and still on `main` (`4f3febd`), so the split is
-still live there.
+long `description`. **Prod was untouched at the time of writing** (`main` at `4f3febd`) —
+but the 2026-09-06 evening prod release `0f051e6` carried it across, so the split is gone
+there too. See [[account-deletion-is-immediate]] for what else rode that deploy.
 
 **How to apply:** when a note records a design decision, say whether it is on a branch, on
 dev, or on prod. "Where it stands now" meant three different things at once here. See

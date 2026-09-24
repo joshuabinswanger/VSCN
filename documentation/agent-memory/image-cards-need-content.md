@@ -1,5 +1,4 @@
-<!-- Mirrors ~/.claude/projects/D--SynoDrive-VSCN/memory/image-cards-need-content.md — readable by any Claude instance without user-profile access. -->
-
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/image-cards-need-content.md` memory file; keep the two in sync.
 
 ---
 name: image-cards-need-content

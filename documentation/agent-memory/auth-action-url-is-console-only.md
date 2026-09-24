@@ -1,5 +1,5 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/auth-action-url-is-console-only.md — kept in the repo so any
-     Claude instance can read it without access to the user profile. Edit both copies. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/auth-action-url-is-console-only.md` memory file; keep the two in sync.
+
 ---
 name: auth-action-url-is-console-only
 description: "Dev CANNOT have a custom auth action URL — the console's own save gets the same 400 the API does; the workaround is to redeem the oobCode against the site directly"

@@ -1,4 +1,4 @@
-> Mirror of the `~/.claude/projects/D--SynoDrive-VSCN/memory/projects-feature-withdrawn.md` memory file, kept in the repo so any Claude instance can read it without access to the user profile. Keep both copies in sync.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/projects-feature-withdrawn.md` memory file; keep the two in sync.
 
 ---
 name: projects-feature-withdrawn
@@ -9,6 +9,8 @@ metadata:
   originSessionId: f49ede1e-5399-49d4-b844-eefe32ece1ee
   modified: 2026-09-01T13:20:06.231Z
 ---
+
+**HISTORICAL (2026-09-23):** projects are coming back in a new shape, see [[projects-reintroduced]]. Kept for the deleteField() and stale-key lessons below.
 
 2026-09-01, Josh: "drop projects for now" — and when asked how far down, "Rip it out
 completely". So it is gone, not hidden: `src/lib/projects.ts` deleted, `projects` off

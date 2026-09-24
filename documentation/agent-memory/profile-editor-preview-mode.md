@@ -1,5 +1,4 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/profile-editor-preview-mode.md — kept in the repo so any
-     Claude instance can read it without access to the user profile. Edit both copies. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/profile-editor-preview-mode.md` memory file; keep the two in sync.
 
 ---
 name: profile-editor-preview-mode

@@ -1,5 +1,4 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/concurrent-session-stash-hazard.md — kept in the repo so any
-     Claude instance can read it without access to the user profile. Edit both copies. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/concurrent-session-stash-hazard.md` memory file; keep the two in sync.
 
 ---
 name: concurrent-session-stash-hazard

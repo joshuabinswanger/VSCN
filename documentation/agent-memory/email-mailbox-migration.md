@@ -1,7 +1,8 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/email-mailbox-migration.md, kept in sync so any Claude instance can read it without Josh's profile. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/email-mailbox-migration.md` memory file; keep the two in sync.
+
 ---
 name: email-mailbox-migration
-description: "DECIDED 2026-09-17, not yet bought: vscn.ch gets a real mailbox at Infomaniak because Brevo structurally lands in Gmail's Promotions tab; the exact DNS change and its two sharp traps"
+description: "DONE 2026-09-18: vscn.ch has a real Infomaniak mailbox, because Brevo structurally lands in Gmail's Promotions tab; the DNS change as executed and its two sharp traps"
 metadata: 
   node_type: memory
   type: project
@@ -39,8 +40,9 @@ That is *why* Brevo exists in this project at all — see
 
 Josh chose **Infomaniak kSuite Standard** (CHF 1.76/user/month, ~CHF 21/year,
 two addresses per user, servers in Switzerland, ordinary IMAP/SMTP, 500 mails
-per day / 100 recipients per send). **Not purchased as of 2026-09-18** — the
-account is Josh's to create.
+per day / 100 recipients per send), and the service is **live as of 2026-09-18**
+— the DKIM selector below only exists because the mail service was created and
+the domain linked.
 
 **Only `info@vscn.ch` becomes a real mailbox** (Josh, 2026-09-18). That is not a
 gap: `notifications@vscn.ch` is only ever a *From:* address, set by
@@ -83,7 +85,8 @@ Migadu was rejected despite USD 19/year: its 20-outbound-per-day cap is exactly
 the size of one member run. Google Workspace works best of all but costs 3–4×
 and would reverse Josh's deliberate choice of a non-US mail processor.
 
-**How to apply — the migration, and its two sharp edges:**
+**The migration as executed on 2026-09-18, and its two sharp edges** (the state
+below is the pre-cutover starting point; it is the record of how it was done):
 
 - Current Cloudflare state, verified 2026-09-17: **one** routing rule,
   `info@vscn.ch` → `joshua.binswanger@gmail.com`, Active. Catch-all is Drop and

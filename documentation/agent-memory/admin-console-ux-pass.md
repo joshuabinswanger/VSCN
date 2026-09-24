@@ -1,4 +1,4 @@
-<!-- Mirrors the ~/.claude memory file admin-console-ux-pass.md; kept in sync so any agent can read it from the repo. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/admin-console-ux-pass.md` memory file; keep the two in sync.
 
 ---
 name: admin-console-ux-pass

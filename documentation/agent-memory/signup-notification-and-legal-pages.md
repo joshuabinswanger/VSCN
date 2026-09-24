@@ -1,7 +1,8 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/signup-notification-and-legal-pages.md — kept in sync so any Claude instance can read it without Josh's user profile. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/signup-notification-and-legal-pages.md` memory file; keep the two in sync.
+
 ---
 name: signup-notification-and-legal-pages
-description: "Admin email on Auth-create via Brevo (EU) + Impressum/Contact/Privacy pages and the site's first footer — built 2026-09-10 on feat/signup-notify-legal-pages, UNCOMMITTED, secrets and DNS still on Josh"
+description: "Admin email on Auth-create via Brevo (EU) + Impressum/Contact/Privacy pages and the site's first footer — SHIPPED TO PROD `343180c` 2026-09-10; DNS, Brevo and both secrets are done"
 metadata: 
   node_type: memory
   type: project
@@ -15,7 +16,9 @@ Built 2026-09-10 in worktree `wt-feat-signup-notify-legal-pages` (branch
 
 **Why it is shaped this way:**
 - vscn.ch has NO sending mailbox — MX is Cloudflare Email Routing (forward-only). So the
-  ping goes through Brevo's transactional REST API from `notifications@vscn.ch`; Josh chose
+  ping goes through Brevo's transactional REST API from `notifications@vscn.ch` (vscn.ch got
+  a real Infomaniak mailbox on 2026-09-18 — see [[email-mailbox-migration]] — which does not
+  change this path); Josh chose
   that sender, and it only works once he authenticates the domain in Brevo (DKIM + code TXT
   on Cloudflare). Brevo over Resend was HIS call after asking "is there a company in the EU":
   an EU processor is one plain line in the privacy policy; a US one rests on the DPF.
@@ -45,14 +48,15 @@ Built 2026-09-10 in worktree `wt-feat-signup-notify-legal-pages` (branch
   DISCARDED unless a routing rule is added. Branded subdomain declined (tracking links only).
   Brevo's page-level banner claimed "records don't match" while all four records showed green
   — trust the per-record verdicts, not the banner.
-- Josh must still, IN HIS OWN TERMINAL: generate the v3 API key (SMTP & API → API keys; none
-  exists yet), set `BREVO_API_KEY` + `ADMIN_NOTIFY_TO` on BOTH projects (`-P dev` and
-  default), deploy functions, test with a throwaway dev account. Claude does not create or
-  handle the key: it is a live sending credential and `functions:secrets:set` reads it from
-  stdin, which Claude's shell lacks.
+- **The key and both secrets are DONE on both projects** (2026-09-10) — Josh generated the
+  v3 API key and set `BREVO_API_KEY` + `ADMIN_NOTIFY_TO` on dev and prod himself, because a
+  live sending credential goes in over stdin, which Claude's shell lacks. The ping is proven
+  delivered on dev; see [[signup-ping-proven-and-its-traps]] for the traps that cost cycles
+  (both secrets got the API key on BOTH projects) and for what prod still has not proven.
 - The privacy policy is written from the code as it stands and asserts "no analytics".
   Any new data path (a contact form, a new provider) needs a paragraph in legal.ts.
-- Uncommitted at time of writing; PR into dev, then the usual prod release.
+- SHIPPED TO PROD as `343180c` (PR #22, dev → main) on 2026-09-10; the footer and all six
+  legal routes are live on vscn.ch.
 - See [[verification-publishes-without-rebuild]] (where the Impressum was first noted
   open), [[turnstile-app-check-provider]] (deploy needs FUNCTIONS_DISCOVERY_TIMEOUT=90),
   [[account-deletion-is-immediate]] (what the retention section promises).

@@ -1,4 +1,4 @@
-> Mirror of the `~/.claude` memory file `header-letter-overwrite-animation.md` — readable without access to Josh's user profile.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/header-letter-overwrite-animation.md` memory file; keep the two in sync.
 
 ---
 name: header-letter-overwrite-animation

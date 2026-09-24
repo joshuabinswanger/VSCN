@@ -1,8 +1,8 @@
-<!-- Mirrors the ~/.claude memory file `profile-optchip-unification.md`; keep both copies in sync. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/profile-optchip-unification.md` memory file; keep the two in sync.
 
 ---
 name: profile-optchip-unification
-description: "UNCOMMITTED on feat/tag-selector-density: every multi-select in the profile is now one `.optchip` in global.css; the components' own size/shape rules were DELETED, not overridden, because their selectors outranked any shared class"
+description: "MERGED TO DEV at c186874 (2026-09-08), not on prod: every multi-select in the profile is now one `.optchip` in global.css; the components' own size/shape rules were DELETED, not overridden, because their selectors outranked any shared class"
 metadata: 
   node_type: memory
   type: project

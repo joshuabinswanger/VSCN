@@ -1,4 +1,4 @@
-> Mirror of the `~/.claude` memory file `browser-pane-frozen-timeline.md` — readable without access to Josh's user profile.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/browser-pane-frozen-timeline.md` memory file; keep the two in sync.
 
 ---
 name: browser-pane-frozen-timeline
@@ -49,3 +49,20 @@ That combination — correct rects, stale opacities — is the exact shape of a 
 it is not one. Scroll with the mouse. (Also: `requestAnimationFrame` never resolves while
 the pane is hidden, so an rAF-based wait hangs the tool for its full timeout;
 `setTimeout` returns.) See [[community-mobile-pattern]] for the mechanism this was found on.
+
+**2026-09-10 — `IntersectionObserver` is in the same family, and the cure is a
+screenshot.** IO callbacks are delivered as part of the rendering steps, so while the pane
+is hidden the observer is created, `observe()` succeeds, and *no callback ever arrives* —
+not even the initial one every observer is supposed to fire. The class it was meant to
+toggle simply never appears, which reads exactly like "the observer is wired to the wrong
+root" or "a zero-height sentinel doesn't intersect". Both were investigated here; both
+were wrong. A probe observer whose promise you await will hang the tool for its full 45s
+timeout, because the callback that would resolve it is the thing that never runs.
+
+**How to apply:** `computer{action:"screenshot"}` forces a paint and flushes pending IO
+deliveries, so the pattern is *scroll → screenshot → read the class*, and a batch that
+scrolls and reads without a screenshot between them will report the pre-scroll state. Even
+with a screenshot the delivery can land a beat late, so a reading taken in the same batch
+can be one step stale — take a second screenshot, or re-read in a later call, before
+believing a negative. Verified on the scroll-revealed site footer, see
+[[site-footer-is-fixed-chrome]].

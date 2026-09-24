@@ -1,4 +1,4 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/details-display-contents-crash.md — kept in the repo so any Claude instance can read it without the user profile. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/details-display-contents-crash.md` memory file; keep the two in sync.
 
 ---
 name: details-display-contents-crash

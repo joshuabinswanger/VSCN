@@ -1,9 +1,13 @@
-<!-- Mirrors ~/.claude/projects/D--SynoDrive-VSCN/memory/community-grid-affinity-workflow.md so any agent can read it without Josh's user profile. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/community-grid-affinity-workflow.md` memory file; keep the two in sync.
+
 ---
 name: community-grid-affinity-workflow
-description: The community grid layout is redrawn in an Affinity doc (1px = 1 CSS px, artboard height = tileRows) and translated back by a library script that skips locked shapes
-metadata:
+description: "The community grid layout is redrawn in an Affinity doc (1px = 1 CSS px, artboard height = tileRows) and translated back by a library script that skips locked shapes"
+metadata: 
+  node_type: memory
   type: project
+  originSessionId: 19f07177-6ba8-4a05-9338-6a1872743743
+  modified: 2026-08-27T16:57:04.977Z
 ---
 
 The `/community` slot tables ([[image-cards-need-content]], since 2026-08-27 in

@@ -1,5 +1,5 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/gallery-uploader-reconciled.md - kept in the repo so any
-     Claude instance can read it without access to the user profile. Edit both copies. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/gallery-uploader-reconciled.md` memory file; keep the two in sync.
+
 ---
 name: gallery-uploader-reconciled
 description: "feat/gallery-uploader is ported onto dev, not merged - a third of it was superseded; the queue is VERIFIED signed-in as of 2026-09-22 and the link field's rules are deployed"

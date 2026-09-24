@@ -1,13 +1,24 @@
-<!-- Mirrors the ~/.claude memory file member-curation-stage1.md so any Claude instance can read it without user-profile access. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/member-curation-stage1.md` memory file; keep the two in sync.
 
 ---
 name: member-curation-stage1
-description: "Real-data community page: curation, real data, typographic + expandable cards, and card-size tiers all built. Desktop tag rail clipping is still open; medium tier is unreachable with current data."
-metadata:
+description: "The curation record (23 member folders, per-image provenance) + the 2026-08-21 prototype build. HISTORICAL: the proto surfaces are deleted; the curation data and unreviewed 3fcc0ba are what still matter."
+metadata: 
+  node_type: memory
   type: project
+  originSessionId: 47ef1a6f-dede-4cb0-8bb0-b9ba5d6920f5
+  modified: 2026-08-21T16:07:51.503Z
 ---
 
-As of 2026-08-21, **all three stages are built**; Josh approved the curation. Stage 1: `D:\SynoDrive\VSCN\Design\member-curation\` has **one folder per member (23)**,
+⚠ **Read as history, 2026-08-24 onward.** The prototype this describes was deleted with
+Release B — `src/pages/proto/community.astro`, `MemberCard` and embla are gone, and
+`/community` now serves the spread/grid directory ([[release-b-shipped-to-dev]],
+[[community-gallery-layout-selector]]). The two open items this note used to advertise —
+desktop tag-rail clipping and the unreachable medium card tier — died with those surfaces;
+do not pick them up. What is still live here: the curation folder and its per-image
+provenance, and the fact that `3fcc0ba` has never been reviewed.
+
+As of 2026-08-21, **all four stages are built** (curation, real data, typographic cards, card-size tiers); Josh approved the curation. Stage 1: `D:\SynoDrive\VSCN\Design\member-curation\` has **one folder per member (23)**,
 each with a `links.md` (source URL, direct image URL, reasoning, rejected alternatives).
 **16 of 23 have 3 curated images each; every image was opened and visually verified.**
 Nothing is committed anywhere; the folder is outside the repo.
@@ -66,7 +77,7 @@ cycling table. `getCardTier()` in `proto-data.ts`: `large` = has artwork
 (unchanged card-type split), `medium` = no image but a link (portfolio or
 socialMedia) **and** 2+ tags, `small` = everything else. Full writeup and
 the bug it caught (narrow `small` cards overflowing the role-mode text) at
-[[card-size-tiers]] / `documentation/20260821-card-size-tiers.md`.
+`documentation/20260821-card-size-tiers.md`.
 
 **`medium` is dead with today's real data** — checked all 5 text-only
 members, none has both a link and tags. Only `small` and `large` actually
@@ -84,7 +95,7 @@ against the mock's ~9 ("molecular").
 
 **Mobile (390px) is clean** — the rail flips to a horizontal wrapped row there
 (`writing-mode: horizontal-tb`), 0 tags spill past the frame, no h-scroll. This inverts
-the assumption in [[community-prototype-state]], which recorded mobile as the problem
+the assumption of the (now-deleted) prototype-state note, which recorded mobile as the problem
 case; with real data the problem is desktop-only.
 
 Stage 3 **mitigates but does not fix** this: the rail is capped at 3 tags in

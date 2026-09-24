@@ -1,7 +1,14 @@
-> Mirror of the agent memory file `~/.claude/projects/D--SynoDrive-VSCN/memory/scientists-as-member-type.md`
-> — kept in the repo so any Claude instance can read it without access to the user profile.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/scientists-as-member-type.md` memory file; keep the two in sync.
 
-# Scientists as a member type
+---
+name: scientists-as-member-type
+description: "VSCN welcomes scientists via a memberType profile field, not org accounts; a requests board is the deferred phase 2"
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: 447c279a-e834-4727-a333-3932fed04e98
+  modified: 2026-08-19T07:11:30.173Z
+---
 
 Opening VSCN to scientists and research groups (decided 2026-08-19) is deliberately
 scoped as a **profile type**, not as organization accounts. Research groups sign up as
@@ -23,4 +30,4 @@ researcher had no way to say "I need visuals for my work" and no reason to feel 
 
 **How to apply:** treat new scientist-facing features as profile-shaped until Josh asks
 for real organizations. Before adding any field to a profile, add it to the `hasOnly`
-key lists in `firestore.rules` — see `firestore-rules-hasonly-gotcha.md`.
+key lists in `firestore.rules` — see [[firestore-rules-hasonly-gotcha]].

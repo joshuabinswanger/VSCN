@@ -1,4 +1,4 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/subagent-workflow-preference.md — kept in sync so any Claude instance can read it without access to the user profile. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/subagent-workflow-preference.md` memory file; keep the two in sync.
 
 ---
 name: subagent-workflow-preference
@@ -31,4 +31,5 @@ Two things that paid off and are worth repeating: telling an implementer to
 caught two of my rulings that way, including a CSS specificity claim I had not
 checked), and telling it to report a gate it could not run rather than
 substituting a weaker check. Both produced better outcomes than a clean report
-would have. See [[community-prototype-state]].
+would have. The prototype those runs were measured on is gone — see
+[[release-b-shipped-to-dev]].

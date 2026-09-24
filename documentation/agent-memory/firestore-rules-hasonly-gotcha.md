@@ -1,7 +1,14 @@
-> Mirror of the agent memory file `~/.claude/projects/D--SynoDrive-VSCN/memory/firestore-rules-hasonly-gotcha.md`
-> — kept in the repo so any Claude instance can read it without access to the user profile.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/firestore-rules-hasonly-gotcha.md` memory file; keep the two in sync.
 
-# firestore.rules `hasOnly` gotcha
+---
+name: firestore-rules-hasonly-gotcha
+description: "VSCN firestore.rules gates writes with hasOnly(), so an unlisted profile field silently rejects the entire write"
+metadata: 
+  node_type: memory
+  type: project
+  originSessionId: 447c279a-e834-4727-a333-3932fed04e98
+  modified: 2026-08-19T07:11:43.523Z
+---
 
 `firestore.rules` validates profile writes with `data.keys().hasOnly(allowedKeys)` in both
 `validPublicProfile` and `validPrivateUser`. A field missing from those lists does not get
@@ -19,5 +26,5 @@ expensive to diagnose from the symptom.
 
 **How to apply:** any new profile field means editing `firestore.rules` in the same change —
 add it to both `allowedKeys` lists plus a type check in `validPublicFields`, and mirror any
-enum in a `valid*` helper next to the TypeScript const. See `scientists-as-member-type.md`
+enum in a `valid*` helper next to the TypeScript const. See [[scientists-as-member-type]]
 for the `memberType` example.

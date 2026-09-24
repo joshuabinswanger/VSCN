@@ -1,4 +1,14 @@
-> Mirrors the user's memory note `~/.claude/projects/D--SynoDrive-VSCN/memory/rules-evaluation-budget.md`; keep both copies in sync.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/rules-evaluation-budget.md` memory file; keep the two in sync.
+
+---
+name: rules-evaluation-budget
+description: "firestore.rules has an evaluation budget the gallery spends eight times — a thorough validGalleryItem let a real profile save ONE image, and the error is a bare permission-denied"
+metadata:
+  node_type: memory
+  type: project
+  originSessionId: 0245c4ba-76a1-4d2e-ba9e-2c372be82057
+  modified: 2026-09-03T16:54:27.862Z
+---
 
 **2026-09-03. A profile save is refused when the write becomes too EXPENSIVE to judge, and
 that refusal is indistinguishable from every other one.** `validGallery` unrolls a call to

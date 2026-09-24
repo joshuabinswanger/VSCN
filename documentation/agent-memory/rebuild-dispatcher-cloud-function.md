@@ -1,5 +1,6 @@
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/rebuild-dispatcher-cloud-function.md` memory file; keep the two in sync.
+
 ---
-# Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/rebuild-dispatcher-cloud-function.md
 name: rebuild-dispatcher-cloud-function
 description: "CLOSED 2026-09-01 — requestRebuild deployed and proven on prod and dev, leaked token revoked, stale secret versions destroyed; do not re-open"
 metadata:
@@ -57,5 +58,5 @@ silently while looking like it worked. Remember that for any future `gcloud secr
 The dispatcher itself reached `origin/main` as the squashed `678b5fb`; this branch
 carries the same work as its own `ec529dd`, which is why `main` is not its ancestor.
 
-Related: [[rebuild-target-per-project]], [[user-content-backend-status]],
-[[pr-preview-deploy-secret-fix]].
+Related: [[user-content-backend-status]], [[pr-preview-deploy-secret-fix]],
+[[stale-branches-superseded]].

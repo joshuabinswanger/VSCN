@@ -1,4 +1,4 @@
-Mirrors the `~/.claude` memory file `projects/D--SynoDrive-VSCN/memory/vite-optimizedeps-504-trap.md` — keep both copies in sync.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/vite-optimizedeps-504-trap.md` memory file; keep the two in sync.
 
 ---
 name: vite-optimizedeps-504-trap

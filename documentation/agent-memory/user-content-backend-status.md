@@ -1,4 +1,4 @@
-> Mirror of the `~/.claude/projects/D--SynoDrive-VSCN/memory/user-content-backend-status.md` memory file, kept in the repo so any Claude instance can read it without access to the user profile. Keep both copies in sync.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/user-content-backend-status.md` memory file; keep the two in sync.
 
 ---
 name: user-content-backend-status
@@ -10,8 +10,9 @@ metadata:
   modified: 2026-08-23T21:23:19.478Z
 ---
 
-⚠ Superseded in part — the "still pending" items below moved on; read the two 2026-08-24 updates
-AND the 2026-08-28 correction at the end before acting on anything here.
+⚠ Superseded in part — the "still pending" items below moved on. The state as of 2026-09-01:
+prod rules ARE deployed (a `main`-cut ruleset with `memberType`), and the projects blocker is
+GONE because projects were withdrawn. Read the updates at the end before acting on anything here.
 
 As of 2026-08-23: the user-content backend hardening (spec `documentation/20260823-user-content-backend-design.md`, plan `...-plan.md`, both untracked) is fully implemented in 5 commits on `feature/user-content-backend` (branched off dev; the uncommitted proto/member-curation WIP rides along untouched). Immutable cache headers, avatar unique-name WebP overhaul, dominant-color placeholders (`photoColor`, `gallery[].color`), AVIF input + SVG/HEIC rejections, crop/rotate editor (`src/lib/imageEditor.ts`).
 
@@ -22,9 +23,9 @@ accepting BOTH buckets (the prod-only allowlist would have rejected every dev
 save). The cleanup script exists (scripts/cleanup-orphaned-storage.mjs), never run.
 
 Still open:
-- PROD rules deployed nowhere. ⚠ **No longer true as written — see the 2026-08-28
-  correction at the end.** A prod ruleset DID go out on 2026-08-28; it is just not
-  the one this file is about.
+- ~~PROD rules deployed nowhere.~~ ⚠ **Wrong as written.** A prod ruleset went out on
+  2026-08-28 (the `memberType` one, not this file's), and the projects rules it lacks
+  stopped mattering on 2026-09-01 — see the updates at the end.
 - Live verification of the CLIENT paths (upload flows, legacy JPEG avatar
   replacement, crop UI) still needs Josh signed in on dev.
 
@@ -38,7 +39,8 @@ until it lands, every profile Save from the editor writes `projects` and is
 rejected whole by hasOnly — so members would lose unrelated edits too, silently.
 Dev rules are current. See [[firestore-rules-hasonly-gotcha]].
 
-Update 2026-08-28 (correction to "PROD rules deployed nowhere"): prod `vscn-39508` **does**
+Update 2026-08-28 (correction to "PROD rules deployed nowhere" — ⚠ its *blocker* half was
+itself overtaken on 2026-09-01; read the last update before acting): prod `vscn-39508` **does**
 now have a deployed ruleset — it went out ahead of the scientist-signup push and carries the
 `memberType` keys ([[scientist-signup-slice-off-main]]). It was cut from `main`, so it does
 **not** carry `validProjects`/`validProjectItem`. The hard blocker in the 2026-08-24 projects

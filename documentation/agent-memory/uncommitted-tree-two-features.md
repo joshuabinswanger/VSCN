@@ -1,12 +1,15 @@
-> Mirror of `~/.claude/projects/D--SynoDrive-VSCN/memory/uncommitted-tree-two-features.md`, kept in the repo
-> so any Claude instance can read it without access to the user profile.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/uncommitted-tree-two-features.md` memory file; keep the two in sync.
 
 ---
 name: uncommitted-tree-two-features
-description: "RESOLVED 2026-08-31: the four-day dirty tree on feature/user-content-backend was split into six commits, so the 3fcc0ba failure did not repeat — but all 35 commits on the branch are still unpushed and the prod rules deploy still blocks profile Saves"
+description: "RESOLVED 2026-08-31: the four-day dirty tree on feature/user-content-backend was split into six topical commits, so the 3fcc0ba failure did not repeat; the branch has since been pushed and merged into dev. Kept for the hunk-splitting technique."
 metadata:
   type: project
 ---
+
+> **Fully closed as of 2026-09-03.** The branch is pushed and merged into `dev`, and the
+> prod-rules blocker dissolved when projects were withdrawn — see the corrected "Still open"
+> section at the end. What is worth keeping here is the hunk-splitting technique.
 
 **Resolved on 2026-08-31.** The dirty tree that had been growing on
 `feature/user-content-backend` since 2026-08-24 (`0c985b3`) — 26 modified files, ~4,350
@@ -40,16 +43,17 @@ Verified after the split: `npm run lint` at the standing 8-warning / 0-error bas
 `npm run build` green at 66 pages. **Intermediate commits were not individually built** —
 only the final tree was.
 
-**Still open, and both matter more than the commits did:**
+**What was open on 2026-08-31 — all three have since closed:**
 
-- **Nothing is pushed.** `feature/user-content-backend` has no upstream and sits 35 commits
-  ahead of `origin/dev`. Josh gates his own pushes — propose, do not run it unasked.
-- **The manual PROD rules deploy still blocks the projects half.** Until it lands, every
-  profile Save writes `projects` and is rejected whole by `hasOnly`, silently taking
-  unrelated edits with it — see [[user-content-backend-status]] and
-  [[firestore-rules-hasonly-gotcha]].
-- The old GitHub rebuild token was in the public client bundle and **must be revoked** —
-  see [[rebuild-dispatcher-cloud-function]].
+- ~~Nothing is pushed.~~ `feature/user-content-backend` was pushed and is now fully merged
+  into `dev` (0 commits outstanding by content and patch-id) — [[stale-branches-superseded]].
+- ~~The manual PROD rules deploy blocks the projects half.~~ Dissolved 2026-09-01: projects
+  were ripped out, so the client sends `projects: deleteField()`, which merges to an absent
+  key and passes even prod's old ruleset — [[projects-feature-withdrawn]],
+  [[user-content-backend-status]]. The *new* (tightened) ruleset is still undeployed, which
+  is harmless rather than blocking.
+- ~~The old GitHub rebuild token must be revoked.~~ Revoked, and the stale secret versions
+  destroyed — [[rebuild-dispatcher-cloud-function]] (CLOSED 2026-09-01).
 
 The repo mirrors of these notes (`documentation/agent-memory/*.md`) are **now tracked**, and
 `CLAUDE.md` was updated to say so. An edit to either copy belongs in both.

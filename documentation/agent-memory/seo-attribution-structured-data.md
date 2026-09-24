@@ -1,4 +1,4 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/seo-attribution-structured-data.md — kept in the repo so any Claude instance can read it without Josh's user profile. Keep both copies in sync. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/seo-attribution-structured-data.md` memory file; keep the two in sync.
 
 ---
 name: seo-attribution-structured-data

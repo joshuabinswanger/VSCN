@@ -1,4 +1,4 @@
-<!-- Mirrors the ~/.claude memory file merge-gate-must-read-exit-code.md; kept in sync so any agent can read it from the repo. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/merge-gate-must-read-exit-code.md` memory file; keep the two in sync.
 
 ---
 name: merge-gate-must-read-exit-code

@@ -1,4 +1,4 @@
-<!-- Mirrors the ~/.claude memory file image-moderation-ranking.md; kept in sync so any agent can read it from the repo. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/image-moderation-ranking.md` memory file; keep the two in sync.
 
 ---
 name: image-moderation-ranking

@@ -1,4 +1,4 @@
-<!-- Mirrors the ~/.claude memory file dev-deploy-is-ci-only.md; kept in sync so any agent can read it from the repo. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/dev-deploy-is-ci-only.md` memory file; keep the two in sync.
 
 ---
 name: dev-deploy-is-ci-only

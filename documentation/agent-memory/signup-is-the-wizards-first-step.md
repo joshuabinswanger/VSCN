@@ -1,4 +1,4 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/signup-is-the-wizards-first-step.md — kept in sync so any Claude instance can read it without the user profile. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/signup-is-the-wizards-first-step.md` memory file; keep the two in sync.
 
 ---
 name: signup-is-the-wizards-first-step

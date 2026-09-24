@@ -1,4 +1,4 @@
-> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/main-branch-protected.md` memory file.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/main-branch-protected.md` memory file; keep the two in sync.
 
 ---
 name: main-branch-protected

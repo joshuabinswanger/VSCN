@@ -1,4 +1,5 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/onboarding-closing-steps.md — keep both copies in sync. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/onboarding-closing-steps.md` memory file; keep the two in sync.
+
 ---
 name: onboarding-closing-steps
 description: "The wizard's closing work, ALL THREE ROUNDS MERGED AND LIVE ON DEV at 7abce98: verify + visibility steps close the wizard, the bridge no longer publishes, the first upload gets its title/description/tags, the amber verify banner is /profile-only, and the tag cap is stated by the field not the component. Not on prod; the signed-in path is unwalked"
@@ -76,3 +77,8 @@ images were on the PHONE.
   everything else waiting on dev.
 - Related: [[signup-is-the-wizards-first-step]], [[profile-editor-preview-mode]],
   [[community-mobile-pattern]].
+
+**SHIPPED TO PROD 2026-09-08 as `ef63f4d`** (PR #17, the release that carried the whole of
+`dev`). Verified live only from outside: 25 member pages served, build stamp `ef63f4d`. The
+signed-in walk through the wizard ON PROD is still unwalked by anyone — that is the one thing
+left on this feature.

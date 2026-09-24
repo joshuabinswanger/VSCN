@@ -1,4 +1,4 @@
-<!-- Mirrors the ~/.claude memory file `admin-console-shows-everything.md` so it travels with the code. Keep both copies in sync. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/admin-console-shows-everything.md` memory file; keep the two in sync.
 
 ---
 name: admin-console-shows-everything
@@ -10,7 +10,9 @@ metadata:
   modified: 2026-09-17T13:59:21.683Z
 ---
 
-2026-09-17, uncommitted in `repo/` on `dev`. The console was rebuilt so nothing
+2026-09-17, **PR #42** (`feat/admin-console-detail`, off `56133f8`). Built in
+`repo/` but rebuilt onto live dev before commit — see
+[[repo-checkout-is-stale-not-dirty]]. The console was rebuilt so nothing
 `memberGraph` sends can be dropped, and restructured into nine collapsible
 sections. `src/components/admin/AdminConsole.astro` keeps markup, styles, the
 forced-token-refresh gate and the hash router; the views live in
@@ -46,3 +48,7 @@ shortcuts, the queue-count badge fetch and the reload-after-mutation round trip
 were never walked. The detail renderer was verified against synthetic data in
 the dev server. Related: [[dev-deploy-is-ci-only]] — putting this on dev means
 merging into dev.
+
+`src/lib/admin/fields.ts` lists `receiveCommunityEmails` and
+`correspondenceLanguage` as display keys. They are display-only, so the PR
+stands alone, but the fields themselves arrive with PR #45.

@@ -1,4 +1,5 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/verification-publishes-without-rebuild.md — kept in sync so any Claude instance can read it without Josh's user profile. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/verification-publishes-without-rebuild.md` memory file; keep the two in sync.
+
 ---
 name: verification-publishes-without-rebuild
 description: "Michael Zehnder's missing index entry (2026-09-08) — email verification flipped `active` but never rebuilt the static site; fix on feat/verify-triggers-rebuild, plus Analytics removed for GDPR"

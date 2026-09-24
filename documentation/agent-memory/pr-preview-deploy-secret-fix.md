@@ -1,81 +1,66 @@
-> Mirror of `~/.claude/projects/D--SynoDrive-VSCN/memory/pr-preview-deploy-secret-fix.md` — readable by any Claude instance without access to Josh's user profile.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/pr-preview-deploy-secret-fix.md` memory file; keep the two in sync.
+
 ---
 name: pr-preview-deploy-secret-fix
-description: "PR preview deploys were dead since 2026-05-03 (deleted secret name); fix is COMMITTED as 115f979 on feature/user-content-backend but UNPUSHED and never exercised — verifying it needs a PR whose head branch carries the commit"
+description: "CLOSED 2026-09-07: PR previews proven working by PR #2 (run 34098880706) — preview URL posted, members present in the build; a preview's build-commit stamp is the ephemeral refs/pull/N/merge SHA and resolves to nothing in the repo"
 metadata:
   node_type: memory
   type: project
   originSessionId: a86d4f62-948a-47e1-8675-e14c75e1cd9e
-  modified: 2026-09-01T00:00:00.000Z
+  modified: 2026-09-07T08:09:05.571Z
 ---
 
-Paused 2026-09-01 mid-verification. The fix is written and committed; nothing
-is pushed and the workflow has never actually run green.
+**CLOSED 2026-09-07.** Previews were dead from 2026-05-03 to 2026-09-07. The fix
+(`115f979`, in `main` since the 09-06 release) is now *proven*, not just written:
+draft PR joshuabinswanger/VSCN#2, run `34098880706`, `build_and_preview` green in
+41s.
 
-## What was broken
+Both halves verified on the same run:
+
+- deploy step posted a preview channel URL comment
+  (`vscn-39508--pr2-ci-prove-pr-preview-…web.app`, 7-day expiry)
+- **no** `[community] Failed to fetch members` in the build log, and the served
+  page carries 24 member links with `/members/<slug>/` pages built for both
+  locales — so the build step's `FIREBASE_SERVICE_ACCOUNT` is reaching
+  `community.astro`. That was the silent half: previews used to build a
+  member-less community page and still report success.
+
+## What was broken (kept — the shape recurs)
 
 `.github/workflows/firebase-hosting-pull-request.yml` referenced
-`secrets.FIREBASE_SERVICE_ACCOUNT_VSCN_39508`, which no longer exists. Empty
-value → the action failed its own input validation before contacting Google:
-`Error: Input required and not supplied: firebaseServiceAccount`.
+`secrets.FIREBASE_SERVICE_ACCOUNT_VSCN_39508`, deleted in the 2026-05-03 rename
+onto `FIREBASE_ADMIN_SERVICE_ACCOUNT` (`3269f6d`, `0f43156`) which touched ONLY
+the merge workflow. Empty value → the action failed its own input validation
+before contacting Google: `Error: Input required and not supplied:
+firebaseServiceAccount`. Three workflows, one rename, one file forgotten.
 
-Cause: the 2026-05-03 rename onto `FIREBASE_ADMIN_SERVICE_ACCOUNT` (commits
-3269f6d and 0f43156) touched ONLY the merge workflow. Previews have been dead
-since that date, not since the June run that surfaced it.
+## New trap: a preview's build stamp resolves to nothing
 
-A second defect in the same file: the build step never set
-`FIREBASE_SERVICE_ACCOUNT`, which `src/pages/[...lang]/community.astro` reads
-at build time. It catches its own throw, so previews built "successfully" with
-a community page of ZERO members. Merge and staging both set it; only the PR
-workflow didn't. See [[dev-vs-prod-firestore-divergence]] for why an empty
-community page is easy to misread as a data problem rather than a CI one.
+`/community` on the preview stamped `build-commit 2df7b92` — which is not a
+commit in this repository. For `pull_request` events GitHub checks out
+`refs/pull/N/merge`, an ephemeral merge of the head into the base, so
+`src/lib/buildInfo.ts` records that SHA. The CLAUDE.md "which snapshot am I
+looking at" technique therefore identifies a *preview* build only by its
+timestamp; `git ls-remote origin 'refs/pull/N/*'` is what maps the stamp back to
+a real head commit. Same event property is why the fix did not need to reach
+main first: the workflow file runs from the PR head.
 
-## What is done
+## Still open, Josh's call
 
-Commit `115f979` on `feature/user-content-backend`, one file, +2/-1:
-- deploy step → `secrets.FIREBASE_ADMIN_SERVICE_ACCOUNT`
-- build env gains `FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_ADMIN_SERVICE_ACCOUNT }}`
+The repo secret `FIREBASE_SERVICE_ACCOUNT` (2026-04-26) is referenced by nothing
+and can be deleted in the GitHub UI — a third, older generation, not the
+predecessor of either current secret. Do not confuse it with the LOCAL env var
+of the same name in `.env`, which `community.astro` and the scripts genuinely
+use.
 
-Committed with a pathspec so it carries none of the in-progress work described
-in [[user-content-backend-status]] and [[uncommitted-tree-two-features]].
-
-Verified: YAML parses; every `secrets.*` reference across all three workflows
-now resolves to a secret that exists (only `GITHUB_TOKEN` is "missing", and
-Actions injects that). NOT verified: an actual deploy.
-
-## Why FIREBASE_ADMIN_SERVICE_ACCOUNT is the right account
-
-Not assumed — that account performs `channelId: live` deploys to vscn-39508
-today (merge run 33497872300 succeeded 2026-09-01). A preview channel is a
-narrower write to the same site, so no new secret is needed. It also matches
-the one-Admin-SDK-secret-per-environment pattern documented in
-`documentation/20260526-dev-environment-and-staging-setup.md`.
-
-## To resume
-
-1. Verification needs a PR — `on: pull_request` cannot be triggered any other
-   way (no `workflow_dispatch`). Key fact: for `pull_request` events GitHub
-   runs the workflow file FROM THE PR HEAD, so the fix does NOT need to reach
-   main first. The PR containing the fix is the PR that tests it.
-2. Base `main`; head must be a same-repo branch containing 115f979 (line 12's
-   `if:` guard rejects forks). For an isolated test, cherry-pick 115f979 onto
-   a branch off main rather than opening a PR from feature/user-content-backend,
-   which would drag the backend work into review.
-3. Success looks like: deploy step posts a preview URL comment, AND the build
-   log no longer contains `[community] Failed to fetch members`.
-4. Still open, my call left to Josh: the repo secret `FIREBASE_SERVICE_ACCOUNT`
-   (2026-04-26) is referenced by NOTHING and can be deleted in the GitHub UI.
-   It is a third, older generation — not the predecessor of either current
-   secret. Do not confuse it with the LOCAL env var of the same name in
-   `.env`, which community.astro and the scripts genuinely use.
-
-## Trap worth remembering
+## Trap that still stands
 
 If sign-in fails on a preview URL, that is not this fix regressing — preview
 channel domains are not auto-added to Firebase Auth authorized domains unless
-the deploying account holds Firebase Authentication Admin. Console setting,
-not a workflow bug.
+the deploying account holds Firebase Authentication Admin. Console setting, not
+a workflow bug. Untested on PR #2; nobody signed in.
 
-This session was handed an empty, unregistered worktree at
-`.claude/worktrees/priceless-dijkstra-3d7fdf`; all work happened in
-`D:/SynoDrive/VSCN/repo` on feature/user-content-backend.
+PR #2's payload is unrelated to the fix: a `vscn-preview` launch config salvaged
+from `claude/design-notes-20260904`'s `81024a5` before that branch was deleted
+([[stale-branches-superseded]]). It exists because `on: pull_request` has no
+`workflow_dispatch` — a PR is the only trigger there is.

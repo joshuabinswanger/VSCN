@@ -1,11 +1,17 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/deploy-dev-needs-development-mode.md — kept in the repo so any Claude instance can read it without the user profile. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/deploy-dev-needs-development-mode.md` memory file; keep the two in sync.
 
 ---
 name: deploy-dev-needs-development-mode
-description: "Deploying dev needs `--mode development` or /community loses ALL artwork. The stub-`node` half of this note is FIXED as of 2026-09-07 — `npm run deploy:dev` completes both halves again; kept for the diagnosis."
+description: "Deploying dev needs `--mode development` or /community loses ALL artwork — that half still holds, but it now runs inside CI: the LOCAL `npm run deploy:dev` is dead since 2026-09-15 (see dev-deploy-is-ci-only). The stub-`node` half was FIXED 2026-09-07; kept for the diagnosis."
 metadata:
   type: project
 ---
+
+> ⚠ **Read this first (2026-09-17):** the local deploy described below no longer runs.
+> Since the 2026-09-15 security release the `.env.development` service-account credential is
+> revoked, so `npm run deploy:dev` dies at the site-data export — deploying to dev now means
+> **merging into `dev`** and letting CI do it ([[dev-deploy-is-ci-only]]). What survives here is
+> WHY `--mode development` is load-bearing, and how to verify a build by counting `<img>`.
 
 `npm run deploy:dev` is `astro build --mode development && firebase deploy -P dev
 --only hosting`. The `--mode development` is load-bearing: it makes Astro read
@@ -19,9 +25,10 @@ for all of them and the whole directory silently renders as tag cards: 22 tag
 cards, 0 image cards, no `<img>` at all. Nothing errors, and the page looks
 plausible.
 
-**How to apply:** never `npm run build && firebase deploy -P dev` by hand — it
-deploys an artwork-less dev site. Use `npm run deploy:dev`. To verify a dev
-build before deploying, count the IMAGES, not the cards:
+**How to apply:** never build dev against prod's Firestore — that deploys an
+artwork-less dev site. The mode flag now lives inside the CI job (and inside
+`deploy:dev`, which no longer runs locally). To verify a build, count the
+IMAGES, not the cards:
 
 ```
 grep -o '<img' dist/community/index.html | wc -l      # 100 on dev, 0 is the failure
@@ -83,8 +90,8 @@ Verified after: `firebase --version`, `gemini --version` and `glslify --version`
 all answer under bash, and `npm run deploy:dev` completes build *and* deploy in
 one command. Reversible with `npm i -g node@22.11.0`, which reintroduces the bug.
 
-**How to apply:** `npm run deploy:dev` is one command again - use it, and do not
-reach for the old two-step workaround. If an npm-installed CLI ever dies under
+**How to apply:** the stub-`node` bug is gone, so npm CLIs answer under bash again
+(what blocks the local `deploy:dev` today is the revoked credential, not this). If an npm-installed CLI ever dies under
 bash with "line 1: This: command not found", check `npm ls -g --depth=0` for a
 package named `node`.
 

@@ -1,6 +1,4 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/storage-rules-cap-tracks-max-edge.md — kept in the repo so any
-     Claude instance can read it without access to the user profile. Edit both copies. -->
-
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/storage-rules-cap-tracks-max-edge.md` memory file; keep the two in sync.
 
 ---
 name: storage-rules-cap-tracks-max-edge

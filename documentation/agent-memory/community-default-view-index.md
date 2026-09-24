@@ -1,4 +1,4 @@
-<!-- Mirrors the ~/.claude memory file community-default-view-index.md; keep the two in sync. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/community-default-view-index.md` memory file; keep the two in sync.
 
 ---
 name: community-default-view-index
@@ -8,8 +8,8 @@ metadata:
 ---
 
 Since 2026-09-06 a bare `/community` opens on the **Index** (the ledger), not the
-gallery spread. Reason is content, not design: dev has 20 members and only 15 with
-artwork, prod has none, so the picture views open on a near-empty page while the
+gallery spread. **Live on prod** (vscn.ch) as of the 2026-09-06 release `0f051e6`. Reason is content, not design: dev has 20 members and only 15 with
+artwork, and prod's gallery holds exactly ONE card against 24 members in the ledger, so the picture views open on a near-empty page while the
 ledger is complete from the first member. Josh: "when people register then we will
 switch to gallery view."
 

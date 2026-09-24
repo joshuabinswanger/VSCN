@@ -1,5 +1,4 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/firebase-entity-restructuring.md — kept in the repo so any
-     Claude instance can read it without access to the user profile. Edit both copies. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/firebase-entity-restructuring.md` memory file; keep the two in sync.
 
 ---
 name: firebase-entity-restructuring
@@ -8,10 +7,10 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 84089297-2a1e-4bcf-8e4b-ca4faef528e6
-  modified: 2026-09-02T19:34:13.379Z
+  modified: 2026-09-04T16:39:35.372Z
 ---
 
-Approved on 2026-09-02, design at `documentation/20260902-firebase-entity-restructuring-design.md`, **DEV COMPLETE 2026-09 — prod pending Josh's go**. Josh's ask: everything linked by ids so an account can be purged, searched and re-emailed by a function.
+Approved on 2026-09-02, design at `documentation/20260902-firebase-entity-restructuring-design.md`, **DEV COMPLETE 2026-09; the PROD RELEASE THEN RAN 2026-09-04** (steps 1–7 — see the release section below; only step 8, `set-admin -P prod`, is outstanding). Josh's ask: everything linked by ids so an account can be purged, searched and re-emailed by a function.
 
 The load-bearing decisions, none of which are visible from the code:
 
@@ -86,6 +85,6 @@ happened, including two places this runbook was WRONG:
 7. `node scripts/check-integrity.mjs -P prod` — confirm 0 problems.
 8. `node scripts/set-admin.mjs -P prod <email>` — the `admin` claim is currently granted **nowhere**, dev included, so `/admin` and every `admin*` callable are unreachable until this runs. Sign out and back in afterwards; claims only ride a fresh ID token.
 
-**Both open items closed 2026-09-04.** Admin claim granted on dev: `node scripts/set-admin.mjs -P dev joshua.binswanger@gmail.com` → `admin=true` (uid `T7fOXylPrYarai6uvvEtGQjIZsu2`). Josh then ran the signed-in dev pass himself (manual, not agent-driven) and reported it all works — the specific flows exercised (upload / avatar replace / delete-cancel / `/admin`) weren't itemized back, so treat "the C1 avatar-save case" as covered by his "everything works" rather than independently confirmed line-by-line. This clears the runbook's last blocking prerequisite; what's left before prod is the `main`/`dev` reconciliation ([[stale-branches-superseded]]) and Josh's go on the 8 steps below.
+**Both open items closed 2026-09-04.** Admin claim granted on dev: `node scripts/set-admin.mjs -P dev joshua.binswanger@gmail.com` → `admin=true` (uid `T7fOXylPrYarai6uvvEtGQjIZsu2`). Josh then ran the signed-in dev pass himself (manual, not agent-driven) and reported it all works — the specific flows exercised (upload / avatar replace / delete-cancel / `/admin`) weren't itemized back, so treat "the C1 avatar-save case" as covered by his "everything works" rather than independently confirmed line-by-line. This cleared the runbook's last blocking prerequisite. ⚠ Written before the release — the `main`/`dev` reconciliation ([[stale-branches-superseded]]) and Josh's go both happened, and the 8 steps RAN on 2026-09-04.
 
 **Release ordering:** this note holds one gate of three that ride on a single prod deploy — see [[prod-release-order]] before sequencing anything.

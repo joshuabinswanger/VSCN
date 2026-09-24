@@ -1,5 +1,4 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/prod-release-order.md — kept in the repo so any
-     Claude instance can read it without access to the user profile. Edit both copies. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/prod-release-order.md` memory file; keep the two in sync.
 
 ---
 name: prod-release-order
@@ -8,7 +7,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: b58f7d4e-bbf2-4f19-a2f6-4579ba899643
-  modified: 2026-09-03T08:56:57.855Z
+  modified: 2026-09-04T16:39:48.715Z
 ---
 
 **RESOLVED 2026-09-04 — the release ran; this note is now the record of how, not a plan.**

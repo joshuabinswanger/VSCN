@@ -1,4 +1,14 @@
-> Mirrors the user's memory note `~/.claude/projects/D--SynoDrive-VSCN/memory/account-deletion-is-immediate.md`; keep both copies in sync.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/account-deletion-is-immediate.md` memory file; keep the two in sync.
+
+---
+name: account-deletion-is-immediate
+description: "member-facing account deletion destroys everything on the spot — on BOTH environments since the 2026-09-06 prod functions deploy; the 30-day grace is gone everywhere"
+metadata:
+  node_type: memory
+  type: project
+  originSessionId: 0245c4ba-76a1-4d2e-ba9e-2c372be82057
+  modified: 2026-09-04T07:47:15.576Z
+---
 
 **2026-09-04, Josh: "scheduled deletion is unnecessary. just make it delete accounts
 straight away".** `requestAccountDeletion` now opens the deletion job and immediately runs
@@ -11,11 +21,14 @@ and `purgeExpiredAccounts` finishes it on the next pass instead of a month later
 `onAuthUserDeleted` sees the job already exists and stands down, so deleting the Auth user
 from inside `purgeAccount` does not re-enter.
 
-**How to apply — the environments disagree, and the code does not show it.** The callable is
-deployed on **dev only**. Prod's deployed `requestAccountDeletion` still opens a 30-day job
-and walks away, so reading `functions/src/accounts.ts` tells you what dev does and nothing
-about what prod does. Any prod release has to include `--only functions` or prod members get
-a delete button whose copy promises immediate and permanent while the backend schedules.
+**The environments AGREE again as of 2026-09-06.** They did not for two days: the callable was
+deployed on dev only, so reading `functions/src/accounts.ts` told you what dev did and nothing
+about what prod did. The prod release of 2026-09-06 ran `deploy -P default --only functions`
+and `requestAccountDeletion` was updated with the rest — **a real member on vscn.ch who presses
+delete now loses the account on the spot, with no 30 days to change their mind.** That
+behaviour change rode along with a hosting release nobody would describe as "about deletion",
+which is the thing to remember: a functions deploy ships every callable, not the one you came
+for. Diff `functions/src` against what is deployed before assuming a release is narrow.
 
 **Still scheduled, deliberately:** `cancelDeletion`, `purgeExpiredAccounts`, the dated banner
 and "Keep my account" all stay. An admin can still schedule a dated deletion through

@@ -1,5 +1,4 @@
-<!-- Mirrors ~/.claude/projects/D--SynoDrive-VSCN/memory/release-b-shipped-to-dev.md — readable by any Claude instance without user-profile access. -->
-
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/release-b-shipped-to-dev.md` memory file; keep the two in sync.
 
 ---
 name: release-b-shipped-to-dev

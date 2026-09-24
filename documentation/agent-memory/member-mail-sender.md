@@ -1,10 +1,13 @@
-> Mirror of the `~/.claude/projects/D--SynoDrive-VSCN/memory/member-mail-sender.md` memory file, kept in the repo so it travels with the code.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/member-mail-sender.md` memory file; keep the two in sync.
 
 ---
 name: member-mail-sender
-description: How to re-send a plain-text mail to VSCN members from info@vscn.ch — the script, the anti-Promotions rules, the PowerShell traps, and the DPAPI credential that lets Claude run it unattended.
-metadata:
+description: "How to re-send a plain-text mail to VSCN members from info@vscn.ch — the script, the anti-Promotions rules, the PowerShell traps, and the DPAPI credential that lets Claude run it unattended."
+metadata: 
+  node_type: memory
   type: project
+  originSessionId: ed8f7ae2-eef2-49af-82b9-ebbde17bfc1a
+  modified: 2026-09-22T09:45:41.234Z
 ---
 
 The gallery invitation went out 2026-09-22 to 19 members who had no gallery images

@@ -1,15 +1,18 @@
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/scientist-signup-slice-off-main.md` memory file; keep the two in sync.
+
 ---
 name: scientist-signup-slice-off-main
-description: feat/scientist-signup is a hand-built 2-commit slice off main that opens signup to scientists without shipping Release B; it exists on no other branch and is blocked on the manual prod rules deploy
+description: "SHIPPED 2026-08-28 — the hand-built 2-commit slice off main that opened signup to scientists without shipping Release B; prod rules went out first, and its lineage is now inside dev. Read as the record of how it was cut."
 metadata: 
   node_type: memory
   type: project
   originSessionId: 6a015129-9da1-42c9-b3fd-a9c326359bbe
   modified: 2026-08-28T14:04:14.750Z
 ---
-> Mirror of `~/.claude/projects/D--SynoDrive-VSCN/memory/scientist-signup-slice-off-main.md`.
-> Kept in the repo so it travels with the code; edit either copy and sync the other.
 
+> **Status: ✅ SHIPPED 2026-08-28**, and everything this note listed as outstanding has since
+> closed — see the end of the file. Read the body below as the record of how the slice was cut,
+> not as a list of pending work.
 
 Built 2026-08-28 in the worktree `D:/SynoDrive/VSCN/wt-scientist-signup` (branch
 `feat/scientist-signup`, cut from `main`, **committed but never pushed** — Josh gates pushes).
@@ -58,13 +61,17 @@ merging back toward `dev`/`feature` so Release B does not re-fight it — see
 
 **Update 2026-08-28 (evening): SHIPPED.** Rules deployed to `vscn-39508` first
 (compiled + released), Josh pushed `c2a5ead`, CI went green, and vscn.ch serves the
-member-type onboarding in both locales — scientists can sign up on prod. A third
-commit `678b5fb` (the server-side rebuild dispatcher, lifted from the feature
-branch's uncommitted work) is on the branch and local `main` but **not pushed**;
-the `requestRebuild` function is **not deployed** (classifier-blocked). The new
-PAT is in prod Secret Manager as `GITHUB_REBUILD_TOKEN` v1. Until `678b5fb` +
-`firebase deploy --only functions -P default` land, the live bundle still runs the
-old client-side triggerRebuild — new signups won't appear in the static directory
-without a manual Actions dispatch. Old `PUBLIC_GITHUB_*` Actions secrets still
-need deleting, and the old burned token (plus the first mistyped PAT Josh pasted
-on 2026-08-28) must be revoked.
+member-type onboarding in both locales — scientists can sign up on prod.
+
+**Update 2026-09-03 — the trailing items are all closed.** The 2026-08-28 note ended with
+four open items (`678b5fb` unpushed, `requestRebuild` undeployed, `PUBLIC_GITHUB_*` Actions
+secrets undeleted, the burned token + mistyped PAT unrevoked). **None of them still stand:**
+`requestRebuild` is deployed and proven on prod and dev, both tokens are revoked, the stale
+secret versions are destroyed and the `PUBLIC_GITHUB_*` Actions secrets are gone
+([[rebuild-dispatcher-cloud-function]], CLOSED 2026-09-01). `678b5fb` reached `origin/main`
+and its content is inside `dev` under a rebased SHA, which is why branch counts still list it
+([[stale-branches-superseded]]). Do not re-open any of them.
+
+Also stale in the body above: the "unresolved" `main`/`dev` divergence. Everything on `main`
+and on the `claude/*` branches is already in `dev` by content — see
+[[stale-branches-superseded]] before planning any merge from it.

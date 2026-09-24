@@ -1,4 +1,4 @@
-<!-- Mirrors the ~/.claude memory file weekly-release-train.md; kept in sync so any agent can read it from the repo. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/weekly-release-train.md` memory file; keep the two in sync.
 
 ---
 name: weekly-release-train
@@ -30,3 +30,5 @@ The moderation release went out BY HAND as `f21a60f` on 2026-09-22 before the tr
 the first Tuesday train is 2026-09-29, watched live; expect the IAM list to
 need additions. See [[release-verification-protocol]], [[image-moderation-ranking]],
 [[merge-into-dev-without-asking]].
+
+**Ready marker (2026-09-24):** the `ready-for-release` GitHub label means Josh has cleared a merged-to-dev PR for the next prod release. The first ones labelled were #74 and #77 (the German role/bio). It's opt-IN, the reverse of the train's opt-out `hold`. When the train is built, decide whether it ships only labelled work or everything on dev.

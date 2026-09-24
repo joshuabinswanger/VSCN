@@ -1,9 +1,8 @@
-<!-- Mirror of ~/.claude/projects/D--SynoDrive-VSCN/memory/next-session-captions-and-prod.md — kept in the repo so any
-     Claude instance can read it without access to the user profile. Edit both copies. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/next-session-captions-and-prod.md` memory file; keep the two in sync.
 
 ---
 name: next-session-captions-and-prod
-description: "Captions RESOLVED 2026-09-06: placeholder-marked, mixed-language per work, seeded and live on dev. Prod is the remaining open item and is still a separate, big session."
+description: "CLOSED 2026-09-06 — captions shipped to dev, and prod caught up the same evening (release 0f051e6); kept for the two traps and the concurrent-session hazard"
 metadata: 
   node_type: memory
   type: project
@@ -72,7 +71,11 @@ seeded.** Nothing warns about this; the field just does two jobs.
 
 ## Prod is a separate session, and a big one
 
-Unchanged. Prod is still on `main` (`4f3febd`) and still serves the two-field
+⚠ **OVERTAKEN the same evening** — the prod release `0f051e6` went out on 2026-09-06
+(hosting + functions), so the "20 commits behind" picture below is the *afternoon* state.
+See [[community-default-view-index]] and [[account-deletion-is-immediate]] for what it shipped.
+
+Prod was still on `main` (`4f3febd`) and still serves the two-field
 editor; `dev` is ~20 commits past it. Landing the description fix on prod means
 landing all of it — account deletion becoming immediate
 ([[account-deletion-is-immediate]]) among others — and dev's PLACEHOLDER text

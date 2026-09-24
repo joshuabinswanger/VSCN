@@ -1,4 +1,4 @@
-> Mirror of the `~/.claude/projects/D--SynoDrive-VSCN/memory/community-gallery-layout-selector.md` memory file, kept in the repo so any Claude instance can read it without access to the user profile. Keep both copies in sync.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/community-gallery-layout-selector.md` memory file; keep the two in sync.
 
 ---
 name: community-gallery-layout-selector
@@ -246,3 +246,6 @@ the tree unrendered (its header says so). Members with an empty gallery are rows
 INDEX and nowhere else on the page — which is also why the empty-state message now uses
 the "no artwork" wording for both galleries and the "no members" wording only for the
 ledger.
+
+
+**2026-09-24: EVERY GRID ROW IS ONE FIXED HEIGHT** (PR #88, `3eb122b`, on dev, not prod). Josh: "grid images should get a maximum height, so all rows are the same height always". The desktop wall frame cap fell from 1.5 × card (300px, which no seeded work reached, so it capped nothing) to `--wall-frame: var(--wall-card)` (a 200px square), and `grid-auto-rows` is now `calc(var(--wall-frame) + 1.2rem)` instead of `minmax(0, auto)`. Measured on dev at 1440: all 45 cells are 216px (they had been 200–283px). The 1.2rem author-line figure is now stated THREE times (`--cwork-chrome`, the work-cell `--cgrid-row`, `grid-auto-rows`). Shorter tiles still sit at the top of their row. The phone Grid (2-col masonry) has no rows and was not changed.

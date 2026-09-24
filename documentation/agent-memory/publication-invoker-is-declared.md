@@ -1,4 +1,4 @@
-<!-- Mirrors the ~/.claude memory file publication-invoker-is-declared.md; kept in sync so any agent can read it from the repo. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/publication-invoker-is-declared.md` memory file; keep the two in sync.
 
 ---
 name: publication-invoker-is-declared

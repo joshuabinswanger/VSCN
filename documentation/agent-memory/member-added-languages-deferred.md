@@ -1,4 +1,4 @@
-<!-- Mirrors the ~/.claude memory file `member-added-languages-deferred.md`; keep both copies in sync. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/member-added-languages-deferred.md` memory file; keep the two in sync.
 
 ---
 name: member-added-languages-deferred

@@ -1,0 +1,26 @@
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/turnstile-app-check-provider.md` memory file; keep the two in sync.
+
+---
+name: turnstile-app-check-provider
+description: LIVE ON PROD 2026-09-07 (main 88cfc41): App Check attested by Cloudflare Turnstile via a custom provider, Google reCAPTCHA gone from the login path; the traps — signBlob IAM, the CLI's 10 s discovery timeout, the pane's clicks; the late-click follow-up closed 2026-09-08 and shipped to prod as ef63f4d
+metadata:
+  type: project
+---
+
+Decision (2026-09-07, spec in `documentation/20260907-turnstile-app-check-provider.md`): prod enforces App Check on Auth and Firestore, the SLF network blocks Google reCAPTCHA (confirmed: 30 s face), and most members are expected at ETH/UZH-type institutions. Josh chose to keep enforcement and swap the attestation to Cloudflare Turnstile (Managed widget, `appearance: interaction-only`) through App Check's `CustomProvider`. Client: `src/lib/appCheckTurnstile.ts` loads the Turnstile script itself (with onerror → `isSecurityCheckBlocked()`), runs the challenge, POSTs the token same-origin to `/api/app-check` (Hosting rewrite; localhost goes to cloudfunctions.net directly). Server: `functions/src/appCheck.ts` `mintAppCheckToken` verifies with siteverify and mints via `getAppCheck().createToken`. Dev runs entirely on Cloudflare's published always-pass test pair (`1x00000000000000000000AA` / `1x0000000000000000000000000000000AA`); siteverify then answers `hostname: "example.com"` and no `action`, so the server treats a missing action as fine and dev's host list includes example.com.
+
+**Three traps:**
+
+1. **Minting needs `iam.serviceAccounts.signBlob`, and `roles/editor` does not include it.** The Admin SDK signs the App Check token through the IAM API. The runtime SA needs `roles/iam.serviceAccountTokenCreator` on itself. The first dev deploy failed with "Permission 'iam.serviceAccounts.signBlob' denied". The grant command was classifier-blocked for me; Josh ran it on BOTH projects on 2026-09-07 (dev SA `640269226461-compute@…`, prod SA `365553954084-compute@…`), after which dev minted a real 938-char token with a 1 h TTL and the login carried it with no Auth warning.
+2. **`firebase deploy --only functions` fails discovery on this machine** with "Cannot determine backend specification. Timeout after 10000" although `require('./lib/index.js')` takes 0.7 s and the discovery server answers in 6 s by hand. `FUNCTIONS_DISCOVERY_TIMEOUT=90` in the environment makes it deploy.
+3. **In the Browser pane, physical clicks on a form button can silently miss** (0×0 viewport quirk); `form_input` fills fields but `left_click` by ref did nothing three times while `btn.click()` from `javascript_tool` ran the handler. Also, the first two page loads in a fresh worktree dev server serve Vite "Outdated Optimize Dep" 504s that leave component scripts unattached; the shared junctioned `node_modules/.vite` cache is the reason, `rm -rf node_modules/.vite` + restart + reload twice clears it.
+
+**Why:** the reCAPTCHA route was structurally unfixable for institutional networks, and each trap above looked like a code bug for a while.
+
+**Shipped.** Release PR #13 merged 2026-09-07, prod build `88cfc41`. Verified live: a fresh visitor's /login requests `challenges.cloudflare.com` and nothing from Google's reCAPTCHA hosts; `vscn.ch/api/app-check` reaches the prod function and refuses a bogus token with 403 (real secret, widget `0x4AAAAAAErqqGe_M5F4Q8wc`, Managed). The in-app browser pane is judged suspicious by Cloudflare and gets the checkbox; its synthetic clicks do not satisfy Turnstile, so from the pane only the DEGRADED path is observable: 25 s challenge deadline → dummy token → prod enforcement 401 → the appCheck sentence naming challenges.cloudflare.com. That path worked. The silent pass in a real browser was left to Josh. Also left: the reCAPTCHA key in the Firebase console and the `PUBLIC_FIREBASE_RECAPTCHA_SITE_KEY` GitHub secret (both unused), and a Turnstile mention on the privacy page.
+
+**Follow-up — CLOSED 2026-09-08, see the Update below and [[turnstile-mobile-attestation-budget]]:** when Cloudflare wanted a click and the member clicked AFTER the 25 s attempt window, `appCheckTurnstile.ts` drops that token (`pending` is already null) and the next attempt re-challenges. Keeping a late token as a spare for the next getToken is a few lines. The deadline itself must stay under Auth's 30 s because App Check's wait runs INSIDE Auth's request timeout.
+
+**How to apply:** for prod release follow the spec's release order exactly — Cloudflare widget → secret → GitHub secret → Token Creator IAM grant → deploy function → hosting. The IAM grant is done on both projects and **prod completed this whole order on 2026-09-07 (`88cfc41`)** — nothing of it remains open; the order is kept as the recipe for the next environment. Related: [[network-error-has-two-faces]], [[rebuild-dispatcher-cloud-function]].
+
+**Update 2026-09-08:** the open follow-up is closed — a late token is now kept as a spare, the whole attestation runs under one 24 s budget, and the forms warm App Check up at page load; see [[turnstile-mobile-attestation-budget]] — since **shipped to prod `ef63f4d`**.

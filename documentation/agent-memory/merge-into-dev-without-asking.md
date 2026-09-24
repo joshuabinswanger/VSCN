@@ -1,4 +1,4 @@
-<!-- Mirrors the ~/.claude memory file merge-into-dev-without-asking.md; kept in sync so any agent can read it from the repo. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/merge-into-dev-without-asking.md` memory file; keep the two in sync.
 
 ---
 name: merge-into-dev-without-asking

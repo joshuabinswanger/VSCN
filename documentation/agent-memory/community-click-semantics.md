@@ -1,4 +1,4 @@
-> Mirror of the `~/.claude/projects/D--SynoDrive-VSCN/memory/community-click-semantics.md` memory file, kept in the repo so any Claude instance can read it without access to the user profile. Keep both copies in sync.
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/community-click-semantics.md` memory file; keep the two in sync.
 
 ---
 name: community-click-semantics

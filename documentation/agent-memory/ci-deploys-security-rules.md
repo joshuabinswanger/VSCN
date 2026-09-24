@@ -1,4 +1,4 @@
-<!-- Mirrors the ~/.claude memory file ci-deploys-security-rules.md; kept in sync so any agent can read it from the repo. -->
+> Mirrors the `~/.claude/projects/D--SynoDrive-VSCN/memory/ci-deploys-security-rules.md` memory file; keep the two in sync.
 
 ---
 name: ci-deploys-security-rules
