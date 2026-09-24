@@ -432,6 +432,13 @@ const t = useTranslations(lang);
             <span class="gallery-video-badge" data-gallery-video-badge hidden
               ><span class="vscn-play" aria-hidden="true"></span><span data-gallery-video-name></span></span
             >
+            {
+              /* ON THE PICTURE, beside ✕ (2026-09-24, Josh: "the replace
+                button should be a small symbol next to the X in the image").
+                Both act on the image itself, so both sit on it; the words live
+                in aria-label and the tooltip. */
+            }
+            <button type="button" class="gallery-thumb-replace" data-gallery-replace>↻</button>
             <button type="button" class="gallery-thumb-remove" data-gallery-remove>✕</button>
           </div>
           <div class="gallery-fields">
@@ -604,7 +611,6 @@ const t = useTranslations(lang);
                 <button type="button" class="gallery-tool gallery-menu-btn" data-menu-btn aria-haspopup="menu" aria-expanded="false">⋯</button>
                 <div class="gallery-menu-list" role="menu" data-menu-list hidden></div>
               </div>
-              <button type="button" class="gallery-tool" data-gallery-replace></button>
               <button type="button" class="gallery-tool" data-gallery-auto-thumb hidden></button>
             </div>
           </div>
@@ -1545,6 +1551,36 @@ const t = useTranslations(lang);
 
   .gallery-thumb-remove:hover {
     background: var(--color-error);
+  }
+
+  /* The ✕'s twin, one button-width to its left. Hover goes dark rather than
+     red: replacing keeps the work, so it must not look like the removal. */
+  .gallery-thumb-replace {
+    position: absolute;
+    top: 4px;
+    right: 30px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: 0.85rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .gallery-thumb-replace:hover:not(:disabled) {
+    background: var(--color-dark);
+  }
+
+  /* Mid-upload for this work: still there, visibly not pressable. */
+  .gallery-thumb-replace:disabled {
+    opacity: 0.4;
+    cursor: default;
   }
 
   /* The drop target. No border of its own until something is being dragged
@@ -3417,7 +3453,7 @@ const t = useTranslations(lang);
             // New picture, same work: captions, description, links, tags and
             // position all stay. Disabled while one is already on its way —
             // see updateGalleryControls, which the queue repaints through.
-            replace.textContent = s["profile.gallery.replace"];
+            named(replace, s["profile.gallery.replace"]).title = s["profile.gallery.replace"];
             replace.dataset.imageId = item.imageId;
             replace.addEventListener("click", () => {
               galleryReplaceTarget = item.imageId;
