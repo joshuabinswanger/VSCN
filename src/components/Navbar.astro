@@ -162,23 +162,21 @@ import "../styles/global.css";
       gap: 0.5rem;
     }
 
-    /* BOTTOM-LEFT ON A PHONE AGAIN (2026-09-24, Josh: Save should "align
-       right as well" on mobile, so the toggle has to go somewhere else). From
-       2026-09-10 to now it stayed bottom-right on mobile, because the fixed
-       site footer held the left corner. The right corner cannot hold Save and
-       the toggle both at 375px, and Save is what a member is reaching for.
-       The left corner is free again because on mobile the footer links are no
-       longer fixed there — they are a stacked list at the end of the page
-       (SiteFooter.astro) — and at full scroll the toggle sits directly under
-       that list, on the same 30px edge, as its last line.
-       `right: auto` is load-bearing, not tidying: position:fixed blockifies
-       the anchor, so leaving both offsets set stretches the box the full width
-       and its hit area swallows taps across the whole bottom strip at z-index
-       20 — while the text still looks correctly placed. */
-    .lang-toggle {
-      right: auto;
-      left: 30px;
-    }
+    /* NOT FLOATING ON A PHONE (2026-09-24, Josh: "the language switch on
+       mobile has to be placed underneath, so when you scroll all the way to
+       the bottom, above the impressum etc. think from a UX perspective").
+       Earlier the same day it went bottom-left to leave the right corner to
+       Save — and a fixed switch on a phone still sat over whatever scrolled
+       under it. On every page with a footer, the footer's own copy
+       (#footer-lang, SiteFooter.astro) replaces it at the end of the page;
+       the rule that hides this one lives in Layout.astro, which knows whether
+       the page has a footer (`.page-wrap.has-footer`). A `:global(body:has())`
+       selector here was dropped from the compiled CSS without a word.
+       The fullscreen landing hero renders no footer, so there this one stays
+       in its bottom-right corner — hiding it would leave no switch at all.
+       If it is ever mirrored to the left again, set `right: auto` too:
+       position:fixed blockifies the anchor, and with both offsets set the box
+       stretches the full width and eats taps across the bottom strip. */
   }
 </style>
 
@@ -192,8 +190,10 @@ import "../styles/global.css";
   // it wins for this session, and a signed-in member's stored language follows
   // it — the same setting /profile labels "Your language". Registered once, at
   // module level: the toggle is transition:persist, and so is this script.
+  // #footer-lang is the same switch in the phone footer (SiteFooter.astro);
+  // delegation on document catches it although it is re-rendered every page.
   document.addEventListener("click", (event) => {
-    const toggle = (event.target as Element | null)?.closest?.("#nav-lang");
+    const toggle = (event.target as Element | null)?.closest?.("#nav-lang, #footer-lang");
     if (!toggle) return;
     const chosen: SiteLanguage = document.documentElement.lang === "de" ? "en" : "de";
     rememberSessionChoice(chosen);

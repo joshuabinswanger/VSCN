@@ -24,9 +24,34 @@ const { lang = "en" } = Astro.props;
 const t = useTranslations(lang);
 const prefix = lang === "de" ? "/de" : "";
 const year = new Date().getFullYear();
+
+// The other locale's address for THIS page — the same rule the navbar's
+// persisted toggle applies client-side in updateNavLinks(), computed here at
+// build because the footer is re-rendered for every page rather than carried
+// across navigations.
+const path = Astro.url.pathname.replace(/\/+$/, "") || "/";
+const otherLangHref =
+  lang === "de" ? path.replace(/^\/de/, "").replace(/\/+$/, "") || "/" : "/de" + path;
 ---
 
 <footer class="site-footer" id="site-footer">
+  {
+    /* The phone's language switch (2026-09-24, Josh: "the language switch on
+       mobile has to be placed underneath, so when you scroll all the way to
+       the bottom, above the impressum etc."). Hidden on desktop, where the
+       navbar's fixed toggle keeps its corner. The id is what Navbar's click
+       listener and OnboardingForm's save-before-leaving hook look for. */
+  }
+  <a href={otherLangHref} class="footer-lang" id="footer-lang">
+    {/* One line per branch: whitespace between the spans would render. */}
+    {
+      lang === "de" ? (
+        <><span class="lang-tgt">EN</span><span class="lang-sep"> / </span><span class="lang-cur">DE</span></>
+      ) : (
+        <><span class="lang-cur">EN</span><span class="lang-sep"> / </span><span class="lang-tgt">DE</span></>
+      )
+    }
+  </a>
   <nav class="footer-links" aria-label={t("footer.aria")}>
     <a href={`${prefix}/impressum`}>{t("footer.impressum")}</a>
     <a href={`${prefix}/contact`}>{t("footer.contact")}</a>
@@ -109,17 +134,51 @@ const year = new Date().getFullYear();
     color: var(--color-dark);
   }
 
+  /* Desktop keeps the navbar's fixed toggle in the bottom-right corner; this
+     copy exists only for the phone layout below. Same faces as .lang-toggle in
+     Navbar.astro, so the two read as one control in two places. */
+  .footer-lang {
+    display: none;
+    text-decoration: none;
+    color: var(--color-muted);
+  }
+
+  .footer-lang .lang-cur {
+    color: var(--color-dark);
+    font-weight: 600;
+  }
+
+  .footer-lang .lang-tgt {
+    font-weight: 400;
+    transition: color 0.15s;
+  }
+
+  .footer-lang:hover .lang-tgt,
+  .footer-lang:focus-visible .lang-tgt {
+    color: var(--color-dark);
+  }
+
   /* A STACKED LIST ON A PHONE (2026-09-24, Josh: "move the impressum etc as a
-     stacked list at the bottom. as is common with mobile versions"). The fixed
-     bottom-left corner went to the language toggle (Navbar.astro), so here the
+     stacked list at the bottom. as is common with mobile versions"). The
      footer drops back into the flow: after the content, always visible, one
      link per line. Visible without the scroll gate because there is nothing
      to hide it from — it is below the content, not over it. The observer
      still toggles .is-visible; nothing on mobile reads it.
-     The 30px edge is the toggle's, so at full scroll the list and the toggle
-     under it (in .page-wrap's 80px bottom padding) read as one column. The
-     links carry block padding because each is now a tap target of its own. */
+     THE LANGUAGE SWITCH HEADS IT (same day, Josh: "underneath, so when you
+     scroll all the way to the bottom, above the impressum etc. think from a
+     UX perspective"). A floating EN / DE on a phone sat on top of whatever
+     scrolled under it and competed with Save for the bottom edge; at the end
+     of the page it is where people look for it, and one tap from there. So on
+     mobile the navbar's fixed toggle is hidden (Navbar.astro) and this one
+     leads the list, spaced off the legal links because it is a setting, not
+     one of them. Every row carries block padding: each is a tap target. */
   @media (--bp-mobile) {
+    .footer-lang {
+      display: block;
+      padding-block: 0.4rem;
+      margin-bottom: 0.5rem;
+    }
+
     .site-footer {
       position: static;
       flex-direction: column;
