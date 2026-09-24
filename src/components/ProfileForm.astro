@@ -3680,7 +3680,12 @@ const t = useTranslations(lang);
             const badgeName = row.querySelector<HTMLElement>("[data-gallery-video-name]");
             const autoThumb = row.querySelector<HTMLButtonElement>("[data-gallery-auto-thumb]");
             if (item.embed) {
-              replace.textContent = s["profile.embed.replaceThumb"];
+              // The same ↻ on the picture as every image row (2026-09-24,
+              // Josh: "replace thumbnail needs to get the same icons as the
+              // images for replacing") — this used to write the words into
+              // the button, which wiped the icon. Only the name says what it
+              // replaces here: the poster, not the video.
+              named(replace, s["profile.embed.replaceThumb"]).title = s["profile.embed.replaceThumb"];
               if (badge && badgeName) {
                 badge.hidden = false;
                 badgeName.textContent = s["profile.embed.badge"].replace("{provider}", providerName(item.embed.provider));
