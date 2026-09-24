@@ -313,9 +313,10 @@ const radiusUsage: Record<string, string> = {
         <li>
           <code>Layout.astro</code> viewport meta lacks <code>viewport-fit=cover</code>, so
           <code>env(safe-area-inset-*)</code> resolves to <code>0</code> — relevant if any
-          bottom-fixed UI is added — <code>.lang-toggle</code> (bottom-right) and
+          bottom-fixed UI is added — on desktop <code>.lang-toggle</code> (bottom-right) and
           <code>.site-footer</code> (bottom-left) both already sit at
-          <code>bottom: 20px</code>.
+          <code>bottom: 20px</code>; on mobile the toggle is bottom-left, the footer is a
+          stacked list in the flow, and the profile Save holds bottom-right.
         </li>
       </ul>
     </section>

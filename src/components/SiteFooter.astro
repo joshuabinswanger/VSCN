@@ -11,6 +11,8 @@
 // two read as one bottom bar rather than as two unrelated fixtures. Being out
 // of flow it costs the page no height; .page-wrap's 80px bottom padding is
 // what keeps it off the last line of content.
+// On a phone it is content after all: a stacked list below the page, always
+// visible, since 2026-09-24 — see the mobile block in the styles below.
 import { useTranslations } from "../i18n/utils.ts";
 import type { Lang } from "../i18n/utils.ts";
 
@@ -105,6 +107,40 @@ const year = new Date().getFullYear();
   .footer-links a:hover,
   .footer-links a:focus-visible {
     color: var(--color-dark);
+  }
+
+  /* A STACKED LIST ON A PHONE (2026-09-24, Josh: "move the impressum etc as a
+     stacked list at the bottom. as is common with mobile versions"). The fixed
+     bottom-left corner went to the language toggle (Navbar.astro), so here the
+     footer drops back into the flow: after the content, always visible, one
+     link per line. Visible without the scroll gate because there is nothing
+     to hide it from — it is below the content, not over it. The observer
+     still toggles .is-visible; nothing on mobile reads it.
+     The 30px edge is the toggle's, so at full scroll the list and the toggle
+     under it (in .page-wrap's 80px bottom padding) read as one column. The
+     links carry block padding because each is now a tap target of its own. */
+  @media (--bp-mobile) {
+    .site-footer {
+      position: static;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin: 3rem 30px 0;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--color-border);
+      opacity: 1;
+      visibility: visible;
+      transition: none;
+    }
+
+    .footer-links {
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .footer-links a {
+      padding-block: 0.4rem;
+    }
   }
 </style>
 

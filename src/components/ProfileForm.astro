@@ -2144,14 +2144,13 @@ const t = useTranslations(lang);
        different lines. 8px drops it under the content and onto roughly the
        footer's line, which is what makes the bottom edge read as one strip
        rather than a staircase.
-       On that line it also meets the language toggle, which is bottom-right on
-       every breakpoint (Navbar.astro: right 30px, ~42px wide) — at 375px Save
-       ran 204→330 and the toggle 303→345, the button on top of it. The 80px
-       lift above hid that. 3rem of right inset (measured 36px at 375px)
-       ends Save ~9px short of the toggle, so the two share the line instead of stacking. */
+       FLUSH RIGHT, LIKE DESKTOP (2026-09-24, Josh: "make button on mobile
+       align right as well"). For one day it was inset 3rem to clear the
+       language toggle, which then held this corner. The toggle moved to the
+       bottom-left on mobile instead (Navbar.astro) and the footer links went
+       into the flow (SiteFooter.astro), so Save has the right corner alone. */
     @media (--bp-mobile) {
       padding-bottom: 0.5rem;
-      padding-right: 3rem;
     }
   }
 
