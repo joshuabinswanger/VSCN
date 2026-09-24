@@ -418,6 +418,10 @@ export const ui: Record<string, Record<string, string>> = {
     // label and the EXAMPLE lives in .ph beside it, exactly as the link field
     // below splits the two. Writing the example into this key would have a
     // screen reader announce one specific zebrafish before every caption box.
+    // The heading of each work's fold in the Works tab (2026-09-24); the
+    // folded row prints the caption beside it, or .noCaption when there is none.
+    "profile.gallery.details": "Details",
+    "profile.gallery.details.noCaption": "No caption yet",
     "profile.gallery.caption": "Caption",
     // A REAL ONE (2026-09-04, Josh: "only caption (make a good example)"),
     // labelled as one (2026-09-04, Josh: "the example inside the text box
@@ -984,6 +988,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.embed.err.network": "Die Verbindung wurde unterbrochen. Bitte versuche es noch einmal.",
     "profile.embed.err.unknown": "Das Video konnte nicht hinzugefügt werden. Bitte versuche es noch einmal.",
     "profile.gallery.overflow": "Es passen nur {n} Bilder — {m} nicht hinzugefügt.",
+    "profile.gallery.details": "Details",
+    "profile.gallery.details.noCaption": "Noch kein Bildtitel",
     "profile.gallery.caption": "Bildtitel",
     "profile.gallery.caption.ph": "Beispiel: Zebrafisch-Netzhaut im Querschnitt, konfokal",
     "profile.gallery.captionNote":
