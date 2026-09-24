@@ -443,6 +443,30 @@ const t = useTranslations(lang);
           </div>
           <div class="gallery-fields">
             {
+              /* THE WHOLE ROW'S WORDS FOLD (2026-09-24, Josh: "make the image
+                details collapsible in the work tab. default for already there
+                images is collapsed then"). Six images each carrying two
+                panes, two links and a tag selector made the Works tab a long
+                scroll past finished rows to reach the one being written. An
+                image already in the gallery when the page loads starts FOLDED;
+                one uploaded or linked in this session starts OPEN, because
+                that is the row about to be filled in. The ⋯ menu stays outside
+                the fold, so a folded row can still be moved.
+
+                The summary carries the caption, which is what makes a folded
+                row still say which work it is — and "No caption yet" when
+                there is none, since that is the one field worth coming back
+                for. Open/closed lives in galleryDetailsOpenUI, keyed by
+                imageId, for the same re-clone reason as the tag fold below. */
+            }
+            <details class="gallery-details">
+              <summary class="gallery-details-summary">
+                <span class="gallery-details-title">{t("profile.gallery.details")}</span>
+                <span class="gallery-details-caption" data-gallery-details-caption></span>
+                <span class="gallery-details-chevron" aria-hidden="true"></span>
+              </summary>
+              <div class="gallery-details-body">
+            {
               /* THE EN/DE SWITCH (2026-09-04, Josh: "make it into a modal
                 switch"). Caption and description used to carry their German
                 twins stacked directly underneath — four text controls in a
@@ -641,6 +665,8 @@ const t = useTranslations(lang);
                 <span class="gallery-tags-chevron" aria-hidden="true"></span>
               </summary>
               <TagSelector lang={lang} maxTags={7} />
+            </details>
+              </div>
             </details>
             {
               /* THE ⋯ MENU (2026-09-23) replaced the ↑/↓ pair when dragging
@@ -1800,6 +1826,86 @@ const t = useTranslations(lang);
     margin-bottom: 0.5rem;
   }
 
+  /* THE ROW'S OWN FOLD — see the markup comment. Same heading voice as the
+     tag fold inside it, so the two levels read as one idiom. Its chevron has
+     its own class: `.gallery-details[open] .gallery-tags-chevron` would also
+     turn the nested tag fold's arrow, whatever that fold's own state. */
+  .gallery-details-summary {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0 0 0.45rem;
+    border-bottom: 1px solid var(--color-border);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+  }
+
+  .gallery-details-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .gallery-details-title {
+    flex: none;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-muted);
+    transition: color 0.15s;
+  }
+
+  .gallery-details-summary:hover .gallery-details-title {
+    color: var(--color-dark);
+  }
+
+  /* One line, cut: a folded row names its work, it does not reprint it. */
+  .gallery-details-caption {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.85rem;
+    color: var(--color-dark);
+  }
+
+  .gallery-details-caption.is-empty {
+    color: var(--color-muted);
+    font-style: italic;
+  }
+
+  /* Open, the caption is in its own field right below. */
+  .gallery-details[open] .gallery-details-caption {
+    display: none;
+  }
+
+  .gallery-details-chevron {
+    flex: none;
+    align-self: center;
+    margin-left: auto;
+    width: 7px;
+    height: 7px;
+    border-right: 1px solid var(--color-muted);
+    border-bottom: 1px solid var(--color-muted);
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+    transform-origin: 60% 60%;
+  }
+
+  .gallery-details[open] .gallery-details-chevron {
+    transform: rotate(225deg);
+  }
+
+  .gallery-details[open] .gallery-details-summary {
+    margin-bottom: 0.5rem;
+  }
+
+  .gallery-details-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
   .gallery-tools {
     display: flex;
     gap: 6px;
@@ -2887,6 +2993,11 @@ const t = useTranslations(lang);
     // imageId key as galleryLangUI above (2026-09-17). Unknown means open, so a
     // row the member has never touched matches the template's `open`.
     const galleryTagsOpenUI = new Map<string, boolean>();
+    // Whether a row's whole details fold is open (2026-09-24). Unknown means
+    // FOLDED — the opposite default to the tags — so every image already in
+    // the gallery at page load starts short; onGalleryUploaded() marks each
+    // new work open before its row is first drawn.
+    const galleryDetailsOpenUI = new Map<string, boolean>();
     // The images/ record behind the current avatar. Passed to
     // handleProfileUpdate so the replaced record can be marked for deletion
     // once the new photoURL has landed in Firestore.
@@ -3377,8 +3488,10 @@ const t = useTranslations(lang);
             );
             const tagsFold = row.querySelector<HTMLDetailsElement>(".gallery-tags");
             const tagsCount = row.querySelector<HTMLElement>("[data-gallery-tags-count]");
+            const detailsFold = row.querySelector<HTMLDetailsElement>(".gallery-details");
+            const detailsCaption = row.querySelector<HTMLElement>("[data-gallery-details-caption]");
             if (!img || !remove || !caption || !description) return null;
-            if (!tagsFold || !tagsCount) return null;
+            if (!tagsFold || !tagsCount || !detailsFold || !detailsCaption) return null;
             if (!captionDe || !descriptionDe) return null;
             if (!link || !siteLink || !cover || !menu || !tagsSelector) return null;
             const replace = row.querySelector<HTMLButtonElement>("[data-gallery-replace]");
@@ -3399,8 +3512,20 @@ const t = useTranslations(lang);
             caption.maxLength = MAX_GALLERY_CAPTION;
             caption.placeholder = s["profile.gallery.caption.ph"];
             named(caption, s["profile.gallery.caption"]);
+            // The folded row's name for itself, kept in step with the field.
+            const setDetailsCaption = () => {
+              const text = caption.value.trim();
+              detailsCaption.textContent = text || s["profile.gallery.details.noCaption"];
+              detailsCaption.classList.toggle("is-empty", !text);
+            };
+            setDetailsCaption();
+            detailsFold.open = galleryDetailsOpenUI.get(item.imageId) ?? false;
+            detailsFold.addEventListener("toggle", () => {
+              galleryDetailsOpenUI.set(item.imageId, detailsFold.open);
+            });
             caption.addEventListener("input", () => {
               gallery[index].caption = caption.value;
+              setDetailsCaption();
               syncPreview();
             });
 
@@ -4023,6 +4148,8 @@ const t = useTranslations(lang);
       // `projects` passed so an upload into a block deleted meanwhile arrives
       // loose instead of carrying a dangling projectId onto its record.
       gallery = insertUploaded(gallery, item, projects);
+      // A new work is the one about to be written, so its row arrives open.
+      galleryDetailsOpenUI.set(item.imageId, true);
       renderGallery();
       await persistGalleryNow();
     }
@@ -4044,6 +4171,8 @@ const t = useTranslations(lang);
         return;
       }
       const inPlace = item.imageId === replaced;
+      // Same work, new record id: the fold stays as the member left it.
+      if (!inPlace) galleryDetailsOpenUI.set(item.imageId, galleryDetailsOpenUI.get(replaced) ?? false);
       gallery[index] = {
         ...gallery[index],
         imageId: item.imageId,
