@@ -2,13 +2,13 @@
 // THE i BESIDE A LABEL (2026-09-23, Josh: "all the tips etc. are things that
 // are hidden behind an information icon"). Only the button lives here. The
 // hint stays the field's own <p class="field-note"> — now `hidden` with
-// `data-tip`, placed directly under the label row — so the field's
-// aria-describedby still points at it and a screen reader announces it
-// whether or not it is open.
+// `data-tip` — so the field's aria-describedby still points at it and a screen
+// reader announces it whether or not it is open. Open, it hovers under the
+// field at the field's width; focusing a text field opens it too.
 //
-// A plain italic "i" (2026-09-24, Josh: "just an i not this weird Symbol"):
-// the ⓘ glyph drew its own circle inside the button's ring, and that double
-// ring rendered differently in every font. Behaviour is in src/lib/infotip.ts.
+// A plain italic "i" (2026-09-24, Josh: "just an i not this weird Symbol",
+// then "just a plain italic i"): no glyph circle, no ring. Behaviour is in
+// src/lib/infotip.ts.
 //
 // Click/tap, never hover: hover is not a phone gesture. /profile only; the
 // signup wizard keeps its notes written out (Josh: "sign up should be more

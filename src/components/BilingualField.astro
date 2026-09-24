@@ -76,8 +76,8 @@ const noteIdDe = `${idDe}-note`;
     </div>
   </div>
 
-  {/* With a tip, each pane's note opens directly under the label row, above
-      its control (2026-09-24); written out, it stays under the control. */}
+  {/* With a tip, each pane's note is a box that hovers under its control
+      (src/lib/infotip.ts); written out, it sits under the control. */}
   <div class="bifield__pane" data-bifield-pane="en">
     {tip && note && <p id={noteId} class="field-note" data-tip hidden>{note}</p>}
     {
@@ -203,7 +203,7 @@ const noteIdDe = `${idDe}-note`;
       root.querySelectorAll<HTMLElement>(".field-note[data-tip]").forEach((n) => {
         n.hidden = !open || n.id !== activeNote.id;
       });
-      if (open) placeInfoTip(tipBtn, activeNote);
+      if (open) placeInfoTip(activeNote);
     }
   });
 </script>

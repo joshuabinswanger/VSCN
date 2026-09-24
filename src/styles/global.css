@@ -311,58 +311,52 @@ a:hover {
   gap: 0.2rem 0.35rem;
 }
 
-/* THE i (2026-09-24). A lowercase italic serif "i" in a hairline ring — the
-   information mark people already know — instead of the ⓘ glyph, whose own
-   circle sat inside the ring as a second one. Filled with ink while its box is
-   open: the same "fill means active" language as the form's chips. The
-   vertical-align keeps it on the text's middle when it sits inside a legend. */
+/* THE i (2026-09-24, Josh: "just a plain italic i"). A bare italic serif "i",
+   no ring: the ⓘ glyph drew a circle of its own and a hairline ring around it
+   made two. Muted at rest, ink on hover and while its box is open. The button
+   is larger than the letter so a thumb can hit it; the negative margin hands
+   the extra size back so the label row does not grow. */
 .infotip {
   display: inline-grid;
   flex: none;
   place-items: center;
-  width: 1.1rem;
-  height: 1.1rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  margin: -0.3rem -0.25rem;
   padding: 0;
-  border: 1px solid var(--color-muted);
-  border-radius: 50%;
+  border: 0;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-muted);
-  font: italic 600 0.72rem/1 Georgia, "Times New Roman", serif;
+  font: italic 600 0.95rem/1 Georgia, "Times New Roman", serif;
   letter-spacing: 0;
   text-transform: none;
   vertical-align: middle;
   cursor: pointer;
-  transition:
-    background-color 0.12s ease,
-    color 0.12s ease,
-    border-color 0.12s ease;
+  transition: color 0.12s ease;
 }
 
 .infotip:hover,
-.infotip:focus-visible {
-  color: var(--color-dark);
-  border-color: var(--color-dark);
-}
-
+.infotip:focus-visible,
 .infotip[aria-expanded="true"] {
-  background: var(--color-dark);
-  border-color: var(--color-dark);
-  color: var(--color-bg);
+  color: var(--color-dark);
 }
 
-/* THE BOX an i opens (2026-09-24, Josh: "pop out like a box"). In the flow,
-   directly under its label, pushing the field down — never floating over the
-   input it explains. The caret is aimed at the i by placeInfoTip()
-   (src/lib/infotip.ts), which measures; the fallback only matters for the
-   frame before it runs. */
+/* THE BOX (2026-09-24, Josh: "the help opens up beneath the field in a box
+   that hovers over it … always the same width as the field"). Taken out of
+   the flow and laid over whatever follows; placeInfoTip()
+   (src/lib/infotip.ts) measures the field and sets top, left and width. The
+   caret points up at the field. */
 .field-note[data-tip] {
-  position: relative;
-  margin-top: 0.35rem;
+  position: absolute;
+  z-index: 30;
+  box-sizing: border-box;
+  margin: 0;
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--color-muted);
   border-radius: var(--radius-sm);
   background: var(--color-bg);
-  box-shadow: 0 3px 12px rgb(0 0 0 / 0.07);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.12);
   color: var(--color-dark);
   font-size: 0.78rem;
   font-weight: 400;
@@ -376,7 +370,7 @@ a:hover {
   content: "";
   position: absolute;
   top: -5.5px;
-  left: var(--infotip-caret, 0.6rem);
+  left: 1rem;
   width: 9px;
   height: 9px;
   border-top: 1px solid var(--color-muted);
