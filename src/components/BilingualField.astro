@@ -76,7 +76,10 @@ const noteIdDe = `${idDe}-note`;
     </div>
   </div>
 
+  {/* With a tip, each pane's note opens directly under the label row, above
+      its control (2026-09-24); written out, it stays under the control. */}
   <div class="bifield__pane" data-bifield-pane="en">
+    {tip && note && <p id={noteId} class="field-note" data-tip hidden>{note}</p>}
     {
       rows ? (
         <textarea id={id} rows={rows} class="input textarea" aria-label={labelEn} placeholder={placeholder} aria-describedby={note ? noteId : undefined} />
@@ -84,10 +87,11 @@ const noteIdDe = `${idDe}-note`;
         <input id={id} type="text" class="input" aria-label={labelEn} placeholder={placeholder} aria-describedby={note ? noteId : undefined} />
       )
     }
-    {note && <p id={noteId} class="field-note" data-tip={tip || undefined} hidden={tip}>{note}</p>}
+    {!tip && note && <p id={noteId} class="field-note">{note}</p>}
   </div>
 
   <div class="bifield__pane" data-bifield-pane="de" hidden>
+    {tip && <p id={noteIdDe} class="field-note" data-tip hidden>{noteDe}</p>}
     {
       rows ? (
         <textarea id={idDe} rows={rows} class="input textarea" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteIdDe} />
@@ -95,7 +99,7 @@ const noteIdDe = `${idDe}-note`;
         <input id={idDe} type="text" class="input" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteIdDe} />
       )
     }
-    <p id={noteIdDe} class="field-note" data-tip={tip || undefined} hidden={tip}>{noteDe}</p>
+    {!tip && <p id={noteIdDe} class="field-note">{noteDe}</p>}
   </div>
 </div>
 
@@ -166,6 +170,7 @@ const noteIdDe = `${idDe}-note`;
 </style>
 
 <script>
+  import { placeInfoTip } from "../lib/infotip";
   // Delegated on the document, once: the editors are swapped in by client-side
   // navigation, and a listener bound per element at load would miss the new
   // page's fields.
@@ -198,6 +203,7 @@ const noteIdDe = `${idDe}-note`;
       root.querySelectorAll<HTMLElement>(".field-note[data-tip]").forEach((n) => {
         n.hidden = !open || n.id !== activeNote.id;
       });
+      if (open) placeInfoTip(tipBtn, activeNote);
     }
   });
 </script>

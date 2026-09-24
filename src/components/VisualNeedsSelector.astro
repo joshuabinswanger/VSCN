@@ -27,6 +27,7 @@ const t = useTranslations(lang);
     <label class="label">{t("profile.visualNeeds.legend")}</label>
     {tip && <InfoTip lang={lang} for="note-visual-needs" />}
   </div>
+  {tip && <p id="note-visual-needs" class="field-note" data-tip hidden>{t("profile.visualNeeds.note")}</p>}
   <div id="visualNeeds-chips" class="visualNeeds-chips"></div>
   <div id="visualNeeds-custom-list" class="visualNeeds-custom-list"></div>
   <div class="addrow visualNeeds-input-row">
@@ -41,7 +42,7 @@ const t = useTranslations(lang);
       >+</button
     >
   </div>
-  <p id="note-visual-needs" class="field-note" data-tip={tip || undefined} hidden={tip}>{t("profile.visualNeeds.note")}</p>
+  {!tip && <p id="note-visual-needs" class="field-note">{t("profile.visualNeeds.note")}</p>}
 </visual-needs-selector>
 
 <style is:global>

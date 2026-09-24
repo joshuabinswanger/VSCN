@@ -149,6 +149,7 @@ const t = useTranslations(lang);
 
     <fieldset class="target-audience-field" aria-describedby="note-languages">
       <legend class="label">{t("profile.label.languages")} <InfoTip lang={lang} for="note-languages" /></legend>
+      <p id="note-languages" class="field-note" data-tip hidden>{t("profile.note.languages")}</p>
       <div class="target-audience-options">
         {
           LANGUAGES.map((code) => (
@@ -159,7 +160,6 @@ const t = useTranslations(lang);
           ))
         }
       </div>
-      <p id="note-languages" class="field-note" data-tip hidden>{t("profile.note.languages")}</p>
     </fieldset>
 
     <BilingualField
@@ -183,6 +183,13 @@ const t = useTranslations(lang);
         >
         <InfoTip lang={lang} for="note-portfolio" />
       </div>
+      {
+        /* The one field on this tab that had no note (2026-09-10). Every
+          other field here says what it is for; this one only showed a prefix
+          and a placeholder, and the thing it does — a followed link from
+          vscn.ch to the member's own site — is invisible unless it is said. */
+      }
+      <p id="note-portfolio" class="field-note" data-tip hidden>{t("profile.note.portfolio")}</p>
       <div class="input-prefix-wrap">
         <span class="input-prefix">https://</span>
         <input
@@ -193,13 +200,6 @@ const t = useTranslations(lang);
           aria-describedby="note-portfolio"
         />
       </div>
-      {
-        /* The one field on this tab that had no note (2026-09-10). Every
-          other field here says what it is for; this one only showed a prefix
-          and a placeholder, and the thing it does — a followed link from
-          vscn.ch to the member's own site — is invisible unless it is said. */
-      }
-      <p id="note-portfolio" class="field-note" data-tip hidden>{t("profile.note.portfolio")}</p>
     </div>
 
     {
@@ -214,12 +214,12 @@ const t = useTranslations(lang);
         <p id="social-label" class="label">{t("profile.label.social")}</p>
         <InfoTip lang={lang} for="note-social" />
       </div>
+      <p id="note-social" class="field-note" data-tip hidden>{t("profile.note.social")}</p>
       <div id="social-editor" class="social-editor" aria-describedby="note-social"></div>
       <button type="button" id="social-add" class="btn-outline choose-img">
         {t("profile.social.add")}
       </button>
       <p id="social-status" class="field-note" style="display:none;"></p>
-      <p id="note-social" class="field-note" data-tip hidden>{t("profile.note.social")}</p>
       {
         /* Cloned by renderSocial(). Rendered here rather than built in JS so
         each clone carries Astro's data-astro-cid-* attribute and matches the
@@ -268,7 +268,6 @@ const t = useTranslations(lang);
         <label class="label" for="tag-input">{t("profile.label.tags")}</label>
         <InfoTip lang={lang} for="note-tags" />
       </div>
-      <TagSelector lang={lang} maxTags={7} inputId="tag-input" />
       {
         /* The cap, stated by the field that sets it rather than by the
           component — which printed "Up to 7 tags." whatever `maxTags` said,
@@ -277,6 +276,7 @@ const t = useTranslations(lang);
           goes. */
       }
       <p id="note-tags" class="field-note" data-tip hidden>{t("profile.note.tags")}</p>
+      <TagSelector lang={lang} maxTags={7} inputId="tag-input" />
     </div>
   </div>
 
@@ -376,6 +376,7 @@ const t = useTranslations(lang);
           <label id="gallery-video-label" class="gallery-video-label" for="gallery-video-url">{t("profile.embed.label")}</label>
           <InfoTip lang={lang} for="note-gallery-video" />
         </div>
+        <p id="note-gallery-video" class="field-note" data-tip hidden>{t("profile.embed.note")}</p>
         <div class="gallery-video-row">
           <input
             id="gallery-video-url"
@@ -390,7 +391,6 @@ const t = useTranslations(lang);
           <button id="gallery-video-add" type="button" class="btn-outline">{t("profile.embed.add")}</button>
         </div>
         <p id="gallery-video-status" class="field-note" role="status" hidden></p>
-        <p id="note-gallery-video" class="field-note" data-tip hidden>{t("profile.embed.note")}</p>
       </div>
       <p id="gallery-status" class="field-note" style="display:none;"></p>
       {
@@ -469,7 +469,24 @@ const t = useTranslations(lang);
               >DE</button>
             </div>
 
+            {
+              /* A VISIBLE TITLE ON EVERY FIELD (2026-09-24, Josh: "we need
+                more explicit descriptions for the things we need to fill in
+                … lets add a Title to each field. and add the i next to it").
+                The fields used to be named only by their placeholders, which
+                vanish the moment a member types — a filled row was a stack
+                of unnamed boxes, and the two links could not be told apart.
+                Each title is a real <label>; renderGallery() gives the
+                control its id and the label its `for` at clone time, since
+                the template is cloned once per image. The placeholders are
+                examples now, not names. */
+            }
             <div class="gallery-lang-pane" data-gallery-lang-pane="en">
+              <div class="label-row">
+                <label class="row-label" data-row-label="caption">{t("profile.gallery.caption")}</label>
+                <InfoTip lang={lang} rowKey="caption" />
+              </div>
+              <p class="field-note" data-tip data-tip-note="caption" hidden>{t("profile.gallery.captionNote")}</p>
               <input type="text" class="input" data-gallery-field="caption" />
               {
                 /* TWO TEXTS PER IMAGE, NOT THREE (2026-09-04, Josh: "we only
@@ -490,6 +507,12 @@ const t = useTranslations(lang);
                   length one — see the switch above. This pane stays the
                   single English pair of record. */
               }
+              <div class="label-row">
+                <label class="row-label" data-row-label="description">{t("profile.gallery.description.label")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
+                <InfoTip lang={lang} rowKey="description" />
+              </div>
+              <p class="field-note" data-tip data-tip-note="description" hidden>{t("profile.gallery.descriptionNote")}</p>
               <textarea class="input textarea" rows="3" data-gallery-field="description"
               ></textarea>
             </div>
@@ -502,16 +525,26 @@ const t = useTranslations(lang);
                 fallback that makes that safe to leave blank: the German site
                 reads the English pane above until these are filled in, the
                 same way `useTranslations()` falls back to English for every
-                button and label on the site. The two field-notes below say so
+                button and label on the site. The two notes behind the i's say so
                 out loud, because a switch that reveals two empty boxes does
                 not say "leaving these blank is fine" on its own. */
             }
             <div class="gallery-lang-pane" data-gallery-lang-pane="de" hidden>
+              <div class="label-row">
+                <label class="row-label" data-row-label="captionDe">{t("profile.gallery.caption.de")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
+                <InfoTip lang={lang} rowKey="captionDe" />
+              </div>
+              <p class="field-note" data-tip data-tip-note="captionDe" hidden>{t("profile.gallery.caption.deNote")}</p>
               <input type="text" class="input" data-gallery-field="captionDe" />
-              <p class="field-note gallery-caption-de-note"></p>
+              <div class="label-row">
+                <label class="row-label" data-row-label="descriptionDe">{t("profile.gallery.description.de")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
+                <InfoTip lang={lang} rowKey="descriptionDe" />
+              </div>
+              <p class="field-note" data-tip data-tip-note="descriptionDe" hidden>{t("profile.gallery.description.deNote")}</p>
               <textarea class="input textarea" rows="3" data-gallery-field="descriptionDe"
               ></textarea>
-              <p class="field-note gallery-desc-de-note"></p>
             </div>
 
             {
@@ -534,30 +567,33 @@ const t = useTranslations(lang);
                 mix of "nature.com/…" and "https://nature.com/…" in one
                 field. */
             }
+            {
+              /* Static text in the template: the same for every row and every
+                state, so `t()` here is enough — the clone carries it. Note
+                ids are assigned at clone time by renderGallery(), since the
+                template itself is cloned once per image (see the comment
+                there). */
+            }
             <div class="label-row">
-              <div class="input-prefix-wrap">
-                <span class="input-prefix">https://</span>
-                <input type="text" class="input input-prefixed" data-gallery-field="siteLink" />
-              </div>
+              <label class="row-label" data-row-label="siteLink">{t("profile.gallery.siteLink")}</label>
+              <span class="row-optional">{t("profile.optional")}</span>
               <InfoTip lang={lang} rowKey="siteLink" />
             </div>
-            {
-              /* Static text in the template, unlike the DE notes above, which
-                are filled in JS because they toggle with the pane. These are
-                the same for every row and every state, so `t()` here is
-                enough — the clone carries them. Its id is assigned at clone
-                time by renderGallery(), since the template itself is cloned
-                once per image (see the comment there). */
-            }
             <p class="field-note" data-tip data-tip-note="siteLink" hidden>{t("profile.gallery.siteLinkNote")}</p>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">https://</span>
+              <input type="text" class="input input-prefixed" data-gallery-field="siteLink" />
+            </div>
             <div class="label-row">
-              <div class="input-prefix-wrap">
-                <span class="input-prefix">https://</span>
-                <input type="text" class="input input-prefixed" data-gallery-field="link" />
-              </div>
+              <label class="row-label" data-row-label="link">{t("profile.gallery.link")}</label>
+              <span class="row-optional">{t("profile.optional")}</span>
               <InfoTip lang={lang} rowKey="link" />
             </div>
             <p class="field-note" data-tip data-tip-note="link" hidden>{t("profile.gallery.linkNote")}</p>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">https://</span>
+              <input type="text" class="input input-prefixed" data-gallery-field="link" />
+            </div>
             {
               /* WHAT IS IN THE PICTURE, not who made it — the community wall
                 filters by this (2026-09-08, step 2 of
@@ -646,22 +682,38 @@ const t = useTranslations(lang);
               <button type="button" class="gallery-lang-btn is-active" data-gallery-lang-btn="en">EN</button>
               <button type="button" class="gallery-lang-btn" data-gallery-lang-btn="de">DE</button>
             </div>
+            {/* Titled like the image rows' fields (2026-09-24); see there. */}
             <div class="gallery-lang-pane" data-gallery-lang-pane="en">
+              <label class="row-label" data-row-label="title">{t("profile.project.title.label")}</label>
               <input type="text" class="input" data-project-field="title" />
+              <div class="label-row">
+                <label class="row-label" data-row-label="description">{t("profile.project.description.label")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
+              </div>
               <textarea class="input textarea" rows="2" data-project-field="description"></textarea>
             </div>
             <div class="gallery-lang-pane" data-gallery-lang-pane="de" hidden>
+              <div class="label-row">
+                <label class="row-label" data-row-label="titleDe">{t("profile.project.title.de")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
+              </div>
               <input type="text" class="input" data-project-field="titleDe" />
+              <div class="label-row">
+                <label class="row-label" data-row-label="descriptionDe">{t("profile.project.description.de")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
+              </div>
               <textarea class="input textarea" rows="2" data-project-field="descriptionDe"></textarea>
             </div>
             <div class="label-row">
-              <div class="input-prefix-wrap">
-                <span class="input-prefix">https://</span>
-                <input type="text" class="input input-prefixed" data-project-field="link" />
-              </div>
+              <label class="row-label" data-row-label="link">{t("profile.project.website")}</label>
+              <span class="row-optional">{t("profile.optional")}</span>
               <InfoTip lang={lang} rowKey="link" />
             </div>
             <p class="field-note" data-tip data-tip-note="link" hidden>{t("profile.project.linkNote")}</p>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">https://</span>
+              <input type="text" class="input input-prefixed" data-project-field="link" />
+            </div>
             {
               /* AFFILIATIONS, like the Social Media rows: repeatable, + Add
                 and ✕ per row. Each row is a name with an optional link OR a
@@ -670,7 +722,10 @@ const t = useTranslations(lang);
                 scale. Rows are cloned from the template below the block's. */
             }
             <div class="gallery-project-affiliations">
-              <p class="gallery-project-sublabel">{t("profile.project.affiliations")}</p>
+              <div class="label-row">
+                <p class="row-label">{t("profile.project.affiliations")}</p>
+                <span class="row-optional">{t("profile.optional")}</span>
+              </div>
               <div class="social-editor" data-affiliations></div>
               <button type="button" class="btn-outline choose-img gallery-aff-add" data-aff-add>
                 {t("profile.project.affiliations.add")}
@@ -836,11 +891,11 @@ const t = useTranslations(lang);
         <label class="label" for="preferred-language">{t("profile.label.preferredLanguage")}</label>
         <InfoTip lang={lang} for="note-preferred-language" />
       </div>
+      <p id="note-preferred-language" class="field-note" data-tip hidden>{t("profile.note.preferredLanguage")}</p>
       <select id="preferred-language" class="input" aria-describedby="note-preferred-language">
         <option value="de" selected={lang === "de"}>{t("profile.lang.de")}</option>
         <option value="en" selected={lang !== "de"}>{t("profile.lang.en")}</option>
       </select>
-      <p id="note-preferred-language" class="field-note" data-tip hidden>{t("profile.note.preferredLanguage")}</p>
     </div>
 
     <div class="field">
@@ -856,6 +911,9 @@ const t = useTranslations(lang);
         <label class="label" for="phone">{t("profile.label.phone")}</label>
         <InfoTip lang={lang} for="note-phone" />
       </div>
+      <p id="note-phone" class="field-note" data-tip hidden>
+        {t("profile.note.phone")}
+      </p>
       <input
         id="phone"
         type="tel"
@@ -864,9 +922,6 @@ const t = useTranslations(lang);
         autocomplete="tel"
         aria-describedby="note-phone"
       />
-      <p id="note-phone" class="field-note" data-tip hidden>
-        {t("profile.note.phone")}
-      </p>
     </div>
 
     {
@@ -1281,13 +1336,6 @@ const t = useTranslations(lang);
     border-color: #111;
   }
 
-  /* The gallery link rows' tip sits beside the field, not above it (there is
-     no label element here to carry it) — the wrap has to give up the row's
-     free space or the ⓘ crowds the input instead of sitting flush right
-     (2026-09-23). */
-  .label-row > .input-prefix-wrap {
-    flex: 1;
-  }
 
   .input-prefix {
     padding: 8px 10px;
@@ -1905,13 +1953,30 @@ const t = useTranslations(lang);
     font-size: 0.85rem;
   }
 
-  .gallery-project-sublabel {
-    margin: 4px 0 0;
-    font-size: 0.68rem;
+  /* THE FIELD TITLES inside an image row or a project block (2026-09-24).
+     Sentence case and smaller than the form's own uppercase .label: these sit
+     inside a field that already has one, and a second row of capitals would
+     read as the form restarting. "optional" is said in grey beside the title
+     rather than left for the member to guess. */
+  .row-label {
+    margin: 0;
+    font-size: 0.78rem;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+    color: var(--color-dark);
+  }
+
+  .row-optional {
+    font-size: 0.72rem;
     color: var(--color-muted);
+  }
+
+  /* A title hugs the field it names, and the space goes between fields
+     instead — with one flat gap, a title sat as close to the field above it
+     as to its own. */
+  :is(.gallery-fields, .gallery-lang-pane, .gallery-project-fields, .gallery-project-affiliations)
+    > :is(.label-row, .row-label) {
+    margin-top: 4px;
+    margin-bottom: -3px;
   }
 
   .gallery-project-affiliations {
@@ -3270,10 +3335,8 @@ const t = useTranslations(lang);
             const remove = row.querySelector<HTMLButtonElement>("[data-gallery-remove]");
             const caption = field<HTMLInputElement>("caption");
             const captionDe = field<HTMLInputElement>("captionDe");
-            const captionDeNote = row.querySelector<HTMLElement>(".gallery-caption-de-note");
             const description = field<HTMLTextAreaElement>("description");
             const descriptionDe = field<HTMLTextAreaElement>("descriptionDe");
-            const descriptionDeNote = row.querySelector<HTMLElement>(".gallery-desc-de-note");
             const link = field<HTMLInputElement>("link");
             const siteLink = field<HTMLInputElement>("siteLink");
             const cover = row.querySelector<HTMLElement>("[data-gallery-cover]");
@@ -3290,8 +3353,7 @@ const t = useTranslations(lang);
             const tagsCount = row.querySelector<HTMLElement>("[data-gallery-tags-count]");
             if (!img || !remove || !caption || !description) return null;
             if (!tagsFold || !tagsCount) return null;
-            if (!captionDe || !captionDeNote) return null;
-            if (!descriptionDe || !descriptionDeNote) return null;
+            if (!captionDe || !descriptionDe) return null;
             if (!link || !siteLink || !cover || !menu || !tagsSelector) return null;
             const replace = row.querySelector<HTMLButtonElement>("[data-gallery-replace]");
             if (!replace) return null;
@@ -3324,12 +3386,11 @@ const t = useTranslations(lang);
               gallery[index].captionDe = captionDe.value;
               syncPreview();
             });
-            captionDeNote.textContent = s["profile.gallery.caption.deNote"];
 
             description.value = item.description ?? "";
             description.maxLength = MAX_GALLERY_DESCRIPTION;
-            description.placeholder = s["profile.gallery.description"];
-            named(description, s["profile.gallery.description"]);
+            description.placeholder = s["profile.gallery.description.ph"];
+            named(description, s["profile.gallery.description.label"]);
             description.addEventListener("input", () => {
               gallery[index].description = description.value;
               syncPreview();
@@ -3343,7 +3404,6 @@ const t = useTranslations(lang);
               gallery[index].descriptionDe = descriptionDe.value;
               syncPreview();
             });
-            descriptionDeNote.textContent = s["profile.gallery.description.deNote"];
 
             // THE MODAL SWITCH (2026-09-04, Josh: "make it into a modal
             // switch"). State lives OUTSIDE this render function, keyed by
@@ -3496,6 +3556,16 @@ const t = useTranslations(lang);
                 .querySelector<HTMLElement>(`[data-gallery-field="${key}"]`)
                 ?.setAttribute("aria-describedby", note.id);
             });
+            // The titles, the same way: a clone cannot carry ids, so each
+            // control gets one here and its <label> is pointed at it — which
+            // is what makes a click on the title focus the field.
+            row.querySelectorAll<HTMLLabelElement>("label[data-row-label]").forEach((label) => {
+              const key = label.dataset.rowLabel ?? "";
+              const control = row.querySelector<HTMLElement>(`[data-gallery-field="${key}"]`);
+              if (!control) return;
+              control.id = `gallery-${index}-field-${key}`;
+              label.htmlFor = control.id;
+            });
 
             // Read back by the focus hint below and by the drag read-back;
             // the rows are otherwise anonymous once they are in the DOM.
@@ -3565,12 +3635,12 @@ const t = useTranslations(lang);
         // back into `projects` and reaches the preview. The header re-reads
         // the title as it is typed, so the block is named while it is named.
         type TextKey = "title" | "titleDe" | "description" | "descriptionDe" | "link";
-        const wire = (key: TextKey, max: number, labelKey: string) => {
+        const wire = (key: TextKey, max: number, labelKey: string, phKey: string) => {
           const input = el.querySelector<HTMLInputElement | HTMLTextAreaElement>(`[data-project-field="${key}"]`);
           if (!input) return;
           input.value = project[key] ?? "";
           input.maxLength = max;
-          input.placeholder = s[labelKey];
+          input.placeholder = s[phKey];
           named(input, s[labelKey]);
           input.addEventListener("input", () => {
             const value = input.value;
@@ -3580,11 +3650,11 @@ const t = useTranslations(lang);
             syncPreview();
           });
         };
-        wire("title", MAX_PROJECT_TITLE, "profile.project.title.en");
-        wire("titleDe", MAX_PROJECT_TITLE, "profile.project.title.de");
-        wire("description", MAX_PROJECT_DESCRIPTION, "profile.project.description.en");
-        wire("descriptionDe", MAX_PROJECT_DESCRIPTION, "profile.project.description.de");
-        wire("link", MAX_PROJECT_LINK, "profile.project.link");
+        wire("title", MAX_PROJECT_TITLE, "profile.project.title.label", "profile.project.title.ph");
+        wire("titleDe", MAX_PROJECT_TITLE, "profile.project.title.de", "profile.project.title.de.ph");
+        wire("description", MAX_PROJECT_DESCRIPTION, "profile.project.description.label", "profile.project.description.ph");
+        wire("descriptionDe", MAX_PROJECT_DESCRIPTION, "profile.project.description.de", "profile.project.description.de.ph");
+        wire("link", MAX_PROJECT_LINK, "profile.project.website", "profile.project.website.ph");
 
         // AFFILIATIONS: rows re-rendered inside the block on add/remove, like
         // the Social Media editor; a mode switch or typing edits in place.
@@ -3615,6 +3685,13 @@ const t = useTranslations(lang);
           note.id = `project-${project.projectId}-note-${key}`;
           el.querySelector<HTMLButtonElement>(`[data-infotip-for="${key}"]`)?.setAttribute("aria-controls", note.id);
           el.querySelector<HTMLElement>(`[data-project-field="${key}"]`)?.setAttribute("aria-describedby", note.id);
+        });
+        el.querySelectorAll<HTMLLabelElement>("label[data-row-label]").forEach((label) => {
+          const key = label.dataset.rowLabel ?? "";
+          const control = el.querySelector<HTMLElement>(`[data-project-field="${key}"]`);
+          if (!control) return;
+          control.id = `project-${project.projectId}-field-${key}`;
+          label.htmlFor = control.id;
         });
 
         images.append(...block.indices.map(buildRow).filter((n): n is HTMLElement => n !== null));
