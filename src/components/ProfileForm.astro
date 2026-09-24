@@ -3067,10 +3067,21 @@ const t = useTranslations(lang);
         delay: 180,
         delayOnTouchOnly: true,
         fallbackOnBody: true,
+        // WHICH HALF, NOT WHICH ZONE (2026-09-24, dev walk: an image dragged
+        // down onto a row inside a project landed loose beside the block).
+        // SortableJS decides a cross-list insertion in "inverted" mode, where
+        // only the outer edges of the target row insert and its middle 65%
+        // does nothing — so a drop on a row's centre from another list was a
+        // dead zone, and the row's own list swallowed the event. With the
+        // threshold at 1 there is no dead zone: upper half of the target
+        // means before it, lower half after, for every drag in every list.
         swapThreshold: 0.65,
+        invertSwap: true,
+        invertedSwapThreshold: 1,
         ghostClass: "sortable-ghost",
         chosenClass: "sortable-chosen",
         dragClass: "sortable-drag",
+        onMove: placeImageOverBlock,
         onEnd: onDragEnd,
       };
       sortables.push(Sortable.create(galleryEditor, { ...common, group: { name: "gallery", pull: true, put: true } }));
@@ -3082,6 +3093,48 @@ const t = useTranslations(lang);
           }),
         );
       }
+    }
+
+    /**
+     * What an image row hovering over a project block means (2026-09-24).
+     * SortableJS's own answer was "swap past the whole block" as soon as the
+     * pointer crossed the block's fields, so the block jumped up before the
+     * pointer ever reached the image list inside it — an image aimed at an
+     * empty block from directly above never got there.
+     *
+     * From outside the block — over the header: before it; below the image
+     * list: after it; over the fields: nothing, the member is heading for
+     * the list, whose own Sortable takes over the moment the pointer is on
+     * it. From INSIDE the block's list: only leaving the block's box takes
+     * the row out — the instant a row joins a block from above, its old row
+     * disappears above the block and the block shifts up under the still
+     * pointer, which then sits over the block's tail; without this clause
+     * that shift read as "after the block" and threw the row straight back
+     * out. Blocks over blocks, and rows over rows, keep SortableJS's own
+     * placement. On every list, because SortableJS consults the list the
+     * drag STARTED in, not the one under the pointer.
+     */
+    function placeImageOverBlock(evt: Sortable.MoveEvent, original: Event): boolean | -1 | 1 {
+      const block = evt.related;
+      if (!block.matches("[data-project-block]") || evt.dragged.matches("[data-project-block]")) return true;
+      const y =
+        original instanceof MouseEvent
+          ? original.clientY
+          : original instanceof TouchEvent
+            ? original.touches[0]?.clientY
+            : undefined;
+      const list = block.querySelector<HTMLElement>("[data-project-images]");
+      const head = block.querySelector(":scope > .gallery-project-head")?.getBoundingClientRect();
+      if (y === undefined || !list || !head) return true;
+      if (list.contains(evt.dragged)) {
+        // The header still means "out, before": that shift only ever lands
+        // the pointer on the block's TAIL, so the tail stays inert and the
+        // row leaves downwards only past the block's bottom edge.
+        return y <= head.bottom ? -1 : y >= block.getBoundingClientRect().bottom ? 1 : false;
+      }
+      if (y <= head.bottom) return -1;
+      if (y >= list.getBoundingClientRect().bottom) return 1;
+      return false;
     }
 
     /**
