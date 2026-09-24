@@ -150,6 +150,23 @@ const t = useTranslations(lang);
         </figcaption>
       </figure></template
     >
+    {
+      /* A PROJECT BLOCK (2026-09-23), cloned once per project that holds at
+         least one of the member's works — same shape groupWorks() cuts on the
+         member page. The works slot is filled with clones of the `work`
+         template above, so a project's figures are drawn exactly like a loose
+         one. */
+    }
+    <template data-ppv-tpl="project">
+      <section class="mprof__project">
+        <div class="mprof__project-head">
+          <h2 class="mprof__project-title" data-ppv-project="title"></h2>
+          <p class="mprof__project-desc" data-ppv-project="desc"></p>
+          <p class="mprof__project-with" data-ppv-project="with"></p>
+        </div>
+        <div data-ppv-project="works" style="display: contents"></div>
+      </section>
+    </template>
   </article>
 
   <hr class="ppv-rule" />

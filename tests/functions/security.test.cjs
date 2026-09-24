@@ -148,6 +148,28 @@ test('rebuilds coalesce members and ignore unchanged saves and timestamp-only ch
   assert.equal(dispatch.mock.callCount(), 2);
 });
 
+test('a project-only Save queues the member, a timestamp-only project resave does not', async () => {
+  // The export ships every project of a visible member (projectKeys in
+  // scripts/export-site-data.mjs), so the fingerprint must see them: a Save
+  // that only retitles a project changes no profile field and no image record.
+  const queue = db.doc('rebuildQueue/site');
+  await db.doc('publicProfiles/member').set({ active: true, displayName: 'Member', gallery: ['work'] });
+  await db.doc('images/work').set({ ownerUid: 'member', caption: 'Cell', projectId: 'p1' });
+  await db.doc('projects/p1').set({ ownerUid: 'member', title: 'Atlas', createdAt: Timestamp.now(), updatedAt: Timestamp.now() });
+  await db.doc('projects/theirs').set({ ownerUid: 'other', title: 'Not hers' });
+  await queueMemberRebuild('member');
+  await queue.delete();
+  await db.doc('projects/p1').update({ updatedAt: Timestamp.now() });
+  await queueMemberRebuild('member');
+  assert.equal((await queue.get()).exists, false, 'a resave with only a new updatedAt changes nothing the site shows');
+  await db.doc('projects/theirs').update({ title: 'Still not hers' });
+  await queueMemberRebuild('member');
+  assert.equal((await queue.get()).exists, false, 'someone else\'s project is not this member\'s fingerprint');
+  await db.doc('projects/p1').update({ title: 'Atlas of cells', updatedAt: Timestamp.now() });
+  await queueMemberRebuild('member');
+  assert.ok((await queue.get()).data()?.dirtyAt, 'retitling a project queues the build that publishes it');
+});
+
 test('a hidden member changes nothing the site shows: their uploads queue no build, hiding them does', async () => {
   // The release walk uploads and deletes an image per release as a
   // moderationHidden member (documentation/20260923-release-walk-automation.md §7).
@@ -373,14 +395,14 @@ test('a replacement starts as a new record carrying the work\'s words, and only 
   const newId = '66666666-6666-4666-8666-666666666666';
   const request = (uid, replaces) => ({ auth: { uid, token: { email_verified: true } }, data: { imageId: newId, kind: 'gallery', width: 10, height: 10, replaces } });
   await db.doc(`images/${oldId}`).set({ ownerUid: 'member', kind: 'gallery', status: 'live', origin: 'member', storagePath: `users/member/gallery/${oldId}.webp`,
-    caption: 'Cell', captionDe: 'Zelle', description: 'Long', link: 'nature.com/x', siteLink: 'me.ch/x', tags: ['biology'], descriptionShort: 'gone' });
+    caption: 'Cell', captionDe: 'Zelle', description: 'Long', link: 'nature.com/x', siteLink: 'me.ch/x', tags: ['biology'], descriptionShort: 'gone', projectId: 'p1' });
   await assert.rejects(authorizeImageUpload.run(request('intruder', oldId)), { code: 'permission-denied' });
   await assert.rejects(authorizeImageUpload.run({ ...request('member', oldId), data: { ...request('member', oldId).data, kind: 'avatar' } }), { code: 'invalid-argument' });
   await authorizeImageUpload.run(request('member', oldId));
   const created = (await db.doc(`images/${newId}`).get()).data();
   assert.deepEqual(
-    { caption: created.caption, captionDe: created.captionDe, description: created.description, link: created.link, siteLink: created.siteLink, tags: created.tags },
-    { caption: 'Cell', captionDe: 'Zelle', description: 'Long', link: 'nature.com/x', siteLink: 'me.ch/x', tags: ['biology'] },
+    { caption: created.caption, captionDe: created.captionDe, description: created.description, link: created.link, siteLink: created.siteLink, tags: created.tags, projectId: created.projectId },
+    { caption: 'Cell', captionDe: 'Zelle', description: 'Long', link: 'nature.com/x', siteLink: 'me.ch/x', tags: ['biology'], projectId: 'p1' },
   );
   assert.equal(created.descriptionShort, undefined);
   assert.equal(created.status, 'uploading');
@@ -574,4 +596,29 @@ test('the sweep removes a video work\'s automatic poster with it', async () => {
   await sweepImages.run({});
   assert.equal(objects.size, 0);
   assert.equal((await db.doc(`images/${id}`).get()).exists, false);
+});
+
+test('purge deletes the member\'s projects and leaves everyone else\'s', async () => {
+  const { scheduleDeletion } = require('../../functions/lib/lifecycle.js');
+  const { purgeAccount } = require('../../functions/lib/purge.js');
+  await db.doc('users/member').set({ displayName: 'Member' });
+  await db.doc('publicProfiles/member').set({ displayName: 'Member', active: true });
+  await db.doc('projects/mine').set({ ownerUid: 'member', title: 'Mine' });
+  await db.doc('projects/theirs').set({ ownerUid: 'other', title: 'Theirs' });
+  await scheduleDeletion('member', 'member', Timestamp.now());
+  mock.method(adminModule.adminAuth, 'updateUser', async () => ({}));
+  mock.method(adminModule.adminAuth, 'deleteUser', async () => {});
+  mock.method(adminModule, 'getBucket', () => ({ deleteFiles: async () => {}, getFiles: async () => [[]] }));
+  await purgeAccount('member');
+  assert.equal((await db.doc('projects/mine').get()).exists, false);
+  assert.equal((await db.doc('projects/theirs').get()).exists, true);
+});
+
+test('the admin member graph lists the member\'s projects', async () => {
+  const { memberGraph } = require('../../functions/lib/adminOps.js');
+  mock.method(adminModule.adminAuth, 'getUser', async () => { throw Object.assign(new Error('x'), { code: 'auth/user-not-found' }); });
+  await db.doc('projects/mine').set({ ownerUid: 'member', title: 'Mine' });
+  await db.doc('projects/theirs').set({ ownerUid: 'other', title: 'Theirs' });
+  const graph = await memberGraph('member');
+  assert.deepEqual(graph.projects.map((p) => [p.projectId, p.title]), [['mine', 'Mine']]);
 });

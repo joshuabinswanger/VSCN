@@ -196,6 +196,13 @@ export interface GalleryItem {
    */
   tags?: string[];
   /**
+   * WHICH PROJECT THIS WORK IS IN (2026-09-23, documentation/20260923-projects-design.md).
+   * At most one. Written onto the record at Save with the other words; the
+   * gallery array stays ids only, and the editor keeps a project's images
+   * adjacent in it.
+   */
+  projectId?: string;
+  /**
    * A VIDEO WORK (2026-09-23, documentation/20260923-motion-works-design.md):
    * the YouTube or Vimeo video it plays. `url` above is then the poster. Set
    * by the server (resolveEmbed), never edited here — Save does not write it.
@@ -449,6 +456,7 @@ export async function saveGalleryRecords(items: readonly GalleryItem[]): Promise
         link: item.link,
         siteLink: item.siteLink,
         tags: item.tags,
+        projectId: item.projectId,
       }),
     ),
   );

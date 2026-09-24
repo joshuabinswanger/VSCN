@@ -19,6 +19,8 @@ import { href, hostLabel, socialLinks } from "./links.ts";
 // src/lib/communityCarousel.ts.
 import { destroyCarousel, initCarousels } from "./communityCarousel.ts";
 import type { ProfileViewModel } from "./profileView.ts";
+import { groupWorks, projectTitle, projectDescription, affiliationHref } from "./projects.ts";
+import type { Lang } from "../i18n/utils";
 
 export interface ProfilePreviewLabels {
   /** Shown in place of the name before the member has typed one. */
@@ -27,6 +29,10 @@ export interface ProfilePreviewLabels {
   openTo: string;
   /** Shown instead of artwork when the gallery is empty. Editor-only text. */
   noWorks: string;
+  /** Prefix for a project's affiliations line — the page's own `member.project.with`. */
+  with: string;
+  /** The editor's current tab locale, for projectTitle()/projectDescription()/affiliationHref() — same split those take everywhere else. */
+  lang: Lang;
 }
 
 export function renderProfilePreview(
@@ -167,72 +173,130 @@ export function renderProfilePreview(
 
   const works = part("works");
   if (works) {
-    const figures = vm.works
-      .filter((w) => w.url && w.width > 0 && w.height > 0)
-      .map((w) => {
-        const figure = clone("work");
-        const img = figure?.querySelector("img");
-        if (!figure || !img) return null;
-        const workPart = <T extends HTMLElement = HTMLElement>(name: string) =>
-          figure.querySelector<T>(`[data-ppv-work="${name}"]`);
+    const figureFor = (w: ProfileViewModel["works"][number]): HTMLElement | null => {
+      const figure = clone("work");
+      const img = figure?.querySelector("img");
+      if (!figure || !img) return null;
+      const workPart = <T extends HTMLElement = HTMLElement>(name: string) =>
+        figure.querySelector<T>(`[data-ppv-work="${name}"]`);
 
-        img.src = w.url;
-        img.width = w.width;
-        img.height = w.height;
-        // A caption is real alt text; without one the image is decorative and
-        // an empty alt is the correct, honest value. The description is
-        // deliberately NOT used here — a paragraph read before every image is
-        // worse for a screen reader than no caption at all.
-        img.alt = w.caption?.trim() ?? "";
-        // Painted on the image, not on the frame around it — the page writes
-        // this inline on <img> too, so a slow upload shows the same colour
-        // block in both places.
-        img.style.backgroundColor = w.color ?? "var(--color-border)";
+      img.src = w.url;
+      img.width = w.width;
+      img.height = w.height;
+      // A caption is real alt text; without one the image is decorative and
+      // an empty alt is the correct, honest value. The description is
+      // deliberately NOT used here — a paragraph read before every image is
+      // worse for a screen reader than no caption at all.
+      img.alt = w.caption?.trim() ?? "";
+      // Painted on the image, not on the frame around it — the page writes
+      // this inline on <img> too, so a slow upload shows the same colour
+      // block in both places.
+      img.style.backgroundColor = w.color ?? "var(--color-border)";
 
-        // A video work shows its poster with the play mark, as the page does.
-        show(workPart("play"), Boolean(w.embed));
+      // A video work shows its poster with the play mark, as the page does.
+      show(workPart("play"), Boolean(w.embed));
 
-        const captionText = w.caption?.trim() ?? "";
-        const descText = w.description?.trim() ?? "";
+      const captionText = w.caption?.trim() ?? "";
+      const descText = w.description?.trim() ?? "";
 
-        const caption = workPart("caption");
-        if (caption) {
-          caption.textContent = captionText;
-          caption.hidden = !captionText;
+      const caption = workPart("caption");
+      if (caption) {
+        caption.textContent = captionText;
+        caption.hidden = !captionText;
+      }
+
+      const desc = workPart("desc");
+      if (desc) {
+        desc.textContent = descText;
+        desc.hidden = !descText;
+      }
+
+      // `w.link` arrives already scheme-prefixed and already filtered for
+      // linkability — by workLink() in links.ts, which BOTH producers of this
+      // view model call: works() in memberView.ts at build time, and the
+      // editor's own mapping as the member types. The two build the model
+      // separately, so a shared rule is the only thing keeping the preview
+      // honest about what a visitor will get.
+      const setLink = (part: string, value: string | undefined) => {
+        const a = workPart<HTMLAnchorElement>(part);
+        if (!a) return;
+        a.textContent = value ? hostLabel(value) : "";
+        a.href = value ?? "";
+        a.hidden = !value;
+      };
+      // Own project page first, then where it appeared — the page's order.
+      setLink("site-link", w.siteLink);
+      setLink("link", w.link);
+      show(workPart("links"), Boolean(w.siteLink || w.link));
+
+      show(workPart("caption-block"), Boolean(captionText || descText || w.link || w.siteLink));
+      return figure;
+    };
+
+    // PROJECT BLOCKS (2026-09-23): the gallery stays one list in the member's
+    // order; a project's images sit together under its heading, loose works
+    // in between — groupWorks() is the same cut the member page makes.
+    const sections = groupWorks(vm.works.filter((w) => w.url && w.width > 0 && w.height > 0), vm.projects ?? []);
+    const nodes = sections.flatMap((section) => {
+      const figures = section.works.map(figureFor).filter((n): n is HTMLElement => n !== null);
+      if (!section.project) return figures;
+      const block = clone("project");
+      if (!block) return figures;
+      const slot = (name: string) => block.querySelector<HTMLElement>(`[data-ppv-project="${name}"]`);
+      const title = projectTitle(section.project, labels.lang) ?? "";
+      const titleEl = slot("title");
+      if (titleEl) {
+        titleEl.replaceChildren();
+        if (title && section.project.link) {
+          const a = document.createElement("a");
+          a.href = section.project.link;
+          a.target = "_blank";
+          a.rel = "noopener";
+          a.textContent = title;
+          titleEl.append(a);
+        } else titleEl.textContent = title;
+        titleEl.hidden = !title;
+      }
+      const desc = projectDescription(section.project, labels.lang) ?? "";
+      const descEl = slot("desc");
+      if (descEl) {
+        descEl.textContent = desc;
+        descEl.hidden = !desc;
+      }
+      const withEl = slot("with");
+      if (withEl) {
+        withEl.replaceChildren();
+        const list = section.project.affiliations;
+        if (list.length) {
+          withEl.append(`${labels.with} `);
+          list.forEach((a, k) => {
+            if (k > 0) withEl.append(" · ");
+            const href = affiliationHref(a, labels.lang);
+            const node = document.createElement(href ? "a" : "span");
+            node.textContent = a.name;
+            if (node instanceof HTMLAnchorElement && href) {
+              node.href = href;
+              // Same rule the member page applies (see [slug].astro's
+              // affiliationHref map): a member credit stays on-site and
+              // in-tab, so ClientRouter can pick up the navigation; any
+              // other affiliation is external and opens in a new tab.
+              if (!a.memberSlug) {
+                node.target = "_blank";
+                node.rel = "noopener";
+              }
+            }
+            withEl.append(node);
+          });
         }
+        withEl.hidden = list.length === 0;
+      }
+      slot("works")?.replaceChildren(...figures);
+      return [block];
+    });
 
-        const desc = workPart("desc");
-        if (desc) {
-          desc.textContent = descText;
-          desc.hidden = !descText;
-        }
-
-        // `w.link` arrives already scheme-prefixed and already filtered for
-        // linkability — by workLink() in links.ts, which BOTH producers of this
-        // view model call: works() in memberView.ts at build time, and the
-        // editor's own mapping as the member types. The two build the model
-        // separately, so a shared rule is the only thing keeping the preview
-        // honest about what a visitor will get.
-        const setLink = (part: string, value: string | undefined) => {
-          const a = workPart<HTMLAnchorElement>(part);
-          if (!a) return;
-          a.textContent = value ? hostLabel(value) : "";
-          a.href = value ?? "";
-          a.hidden = !value;
-        };
-        // Own project page first, then where it appeared — the page's order.
-        setLink("site-link", w.siteLink);
-        setLink("link", w.link);
-        show(workPart("links"), Boolean(w.siteLink || w.link));
-
-        show(workPart("caption-block"), Boolean(captionText || descText || w.link || w.siteLink));
-        return figure;
-      })
-      .filter((n): n is HTMLElement => n !== null);
-
-    works.replaceChildren(...figures);
-    show(works, figures.length > 0);
-    show(empty, figures.length === 0);
+    works.replaceChildren(...nodes);
+    show(works, nodes.length > 0);
+    show(empty, nodes.length === 0);
   }
 }
 

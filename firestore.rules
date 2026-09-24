@@ -141,13 +141,40 @@ service cloud.firestore {
                     && request.resource.data.get('posterSource', null) == resource.data.get('posterSource', null)
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                          'caption', 'captionDe', 'description', 'descriptionDe', 'descriptionShort',
-                         'link', 'siteLink', 'tags', 'status', 'updatedAt'])
+                         'link', 'siteLink', 'tags', 'projectId', 'status', 'updatedAt'])
                     && (request.resource.data.status == resource.data.status
                         || (resource.data.status == 'live' && request.resource.data.status == 'pendingDeletion'))
                     && validImage(request.resource.data, imageId);
 
       // Clients MARK (status: pendingDeletion); only the sweeper deletes.
       allow delete: if false;
+    }
+
+    match /projects/{projectId} {
+      // A MEMBER'S GROUPING OF THEIR OWN WORKS (2026-09-23,
+      // documentation/20260923-projects-design.md). Owner-only: the build
+      // reads through the Admin SDK and nothing public reads here. The member
+      // may delete — unlike an image there are no bytes behind a project for
+      // a sweeper to clear.
+      allow read: if isAdmin()
+                  || (request.auth != null && resource.data.ownerUid == request.auth.uid);
+
+      allow create: if request.auth != null
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && accountWritable(request.auth.uid)
+                    && projectId.size() <= 64
+                    && validProject(request.resource.data);
+
+      allow update: if request.auth != null
+                    && resource.data.ownerUid == request.auth.uid
+                    && accountWritable(request.auth.uid)
+                    && request.resource.data.ownerUid == resource.data.ownerUid
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && validProject(request.resource.data);
+
+      allow delete: if request.auth != null
+                    && resource.data.ownerUid == request.auth.uid
+                    && accountWritable(request.auth.uid);
     }
 
     match /imageModeration/{imageId} {
@@ -391,7 +418,7 @@ function validBioWordCount(bio) {
 // id IS the filename, and the owner IS the folder.
 function validImage(data, imageId) {
   return data.keys().hasOnly(['ownerUid', 'kind', 'storagePath', 'width', 'height', 'color',
-                              'caption', 'captionDe', 'description', 'descriptionDe', 'link', 'siteLink', 'tags', 'descriptionShort', 'origin',
+                              'caption', 'captionDe', 'description', 'descriptionDe', 'link', 'siteLink', 'tags', 'projectId', 'descriptionShort', 'origin',
                               'provenance', 'media', 'embed', 'posterSource', 'status', 'createdAt', 'updatedAt'])
     && data.ownerUid is string
     && (data.kind == 'avatar' || data.kind == 'gallery')
@@ -427,6 +454,12 @@ function validImage(data, imageId) {
     // 8x-per-save budget — a plain size cap plus per-element checks costs
     // nothing extra here.
     && (!('tags' in data) || validImageTags(data.tags))
+    // WHICH OF THE MEMBER'S PROJECTS THIS WORK BELONGS TO (2026-09-23,
+    // documentation/20260923-projects-design.md). One id, so an image is in at
+    // most one project. Whether the project exists and is the same member's is
+    // the READER's question (ownProjects in src/lib/projects.ts), exactly as
+    // for a gallery id: a get() here would cost a read on every image save.
+    && (!('projectId' in data) || (data.projectId is string && data.projectId.size() > 0 && data.projectId.size() <= 64))
     && (!('descriptionShort' in data) || (data.descriptionShort is string && data.descriptionShort.size() <= 240))
     && (data.origin == 'member' || data.origin == 'curated')
     // A VIDEO WORK IS STILL AN IMAGE RECORD (2026-09-23,
@@ -473,6 +506,50 @@ function validImageTags(value) {
 
 function validImageTag(v) {
   return v is string && v.size() > 0 && v.size() <= 50;
+}
+
+// Keep in sync with the MAX_PROJECT_* / MAX_AFFILIATION* constants in
+// src/lib/projects.ts. One document per write, so the per-entry unroll below
+// costs ten short checks once — not the eight-times-per-save shape
+// documentation/20260903-gallery-rules-budget.md warns about.
+function validProject(data) {
+  return data.keys().hasOnly(['ownerUid', 'title', 'titleDe', 'description', 'descriptionDe',
+                              'link', 'affiliations', 'createdAt', 'updatedAt'])
+    && data.ownerUid is string
+    && (!('title' in data) || (data.title is string && data.title.size() <= 100))
+    && (!('titleDe' in data) || (data.titleDe is string && data.titleDe.size() <= 100))
+    && (!('description' in data) || (data.description is string && data.description.size() <= 600))
+    && (!('descriptionDe' in data) || (data.descriptionDe is string && data.descriptionDe.size() <= 600))
+    && (!('link' in data) || (data.link is string && data.link.size() <= 200))
+    && (!('affiliations' in data) || validAffiliations(data.affiliations))
+    && data.createdAt is timestamp
+    && data.updatedAt is timestamp;
+}
+
+function validAffiliations(value) {
+  return value is list && value.size() <= 10
+    && (value.size() < 1 || validAffiliation(value[0]))
+    && (value.size() < 2 || validAffiliation(value[1]))
+    && (value.size() < 3 || validAffiliation(value[2]))
+    && (value.size() < 4 || validAffiliation(value[3]))
+    && (value.size() < 5 || validAffiliation(value[4]))
+    && (value.size() < 6 || validAffiliation(value[5]))
+    && (value.size() < 7 || validAffiliation(value[6]))
+    && (value.size() < 8 || validAffiliation(value[7]))
+    && (value.size() < 9 || validAffiliation(value[8]))
+    && (value.size() < 10 || validAffiliation(value[9]));
+}
+
+// EXACTLY ONE OF TWO SHAPES: a name with an optional link, or a VSCN member
+// credited by uid with their name kept as the fallback text. A member credit
+// carries no url — its link is the member's page, derived at build time.
+function validAffiliation(a) {
+  return a is map
+    && a.name is string && a.name.size() > 0 && a.name.size() <= 100
+    && ((a.keys().hasOnly(['name', 'url'])
+          && (!('url' in a) || (a.url is string && a.url.size() <= 200)))
+        || (a.keys().hasOnly(['memberUid', 'name'])
+          && a.memberUid is string && a.memberUid.size() > 0 && a.memberUid.size() <= 128));
 }
 
 function validTag(data) {

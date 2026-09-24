@@ -25,6 +25,8 @@ export interface ImageDoc {
   siteLink?: string;
   /** What is in the picture, ≤ 5 (2026-09-08). No function reads this — mirrored for hasOnly parity only. */
   tags?: string[];
+  /** The member's project this work is in (2026-09-23). Carried over by a replacement; nothing else server-side reads it. */
+  projectId?: string;
   origin: ImageOrigin;
   /**
    * What the work IS (2026-09-23, documentation/20260923-motion-works-design.md).

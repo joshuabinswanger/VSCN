@@ -7,12 +7,20 @@ import { db } from "./admin";
 import { dispatchRebuild, githubRebuildToken } from "./rebuild";
 
 /** Ignore bookkeeping timestamps: resaving identical content needs no build. */
-export function rebuildFingerprint(profile: Record<string, unknown>, images: { id: string; data: Record<string, unknown> }[]): string {
+export function rebuildFingerprint(
+  profile: Record<string, unknown>,
+  images: { id: string; data: Record<string, unknown> }[],
+  projects: { id: string; data: Record<string, unknown> }[] = [],
+): string {
   const content = (data: Record<string, unknown>) => Object.fromEntries(
     Object.entries(data).filter(([key]) => key !== "updatedAt" && key !== "createdAt").sort(([a], [b]) => a.localeCompare(b)),
   );
+  const rows = (docs: { id: string; data: Record<string, unknown> }[]) =>
+    docs.map((row) => [row.id, content(row.data)]).sort(([a], [b]) => String(a).localeCompare(String(b)));
+  // No projects fingerprints exactly as before projects existed, so a member
+  // without any is not re-queued by the deploy that added them.
   return createHash("sha256").update(JSON.stringify([
-    content(profile), images.map((row) => [row.id, content(row.data)]).sort(([a], [b]) => String(a).localeCompare(String(b))),
+    content(profile), rows(images), ...(projects.length ? [rows(projects)] : []),
   ])).digest("hex");
 }
 
@@ -37,10 +45,15 @@ export async function queueMemberRebuild(uid: string): Promise<void> {
       ? shown!.gallery.filter((id: unknown): id is string => typeof id === "string" && !id.includes("/")).slice(0, 8)
       : [];
     const images = ids.length ? await tx.getAll(...ids.map((id: string) => db.doc(`images/${id}`))) : [];
+    // Projects too, because the export ships every project of a visible
+    // member: a Save that only retitles a project touches no profile field
+    // and no image record, and without this it would never publish
+    // (documentation/20260923-projects-design.md, Build).
+    const projects = shown ? (await tx.get(db.collection("projects").where("ownerUid", "==", uid))).docs : [];
     const fingerprint = rebuildFingerprint(shown ?? { deleted: true }, images
       .filter((d) => d.exists)
       .map((d) => ({ id: d.id, data: d.data() as Record<string, unknown> }))
-      .filter((d) => d.data.ownerUid === uid));
+      .filter((d) => d.data.ownerUid === uid), projects.map((d) => ({ id: d.id, data: d.data() })));
     tx.set(stateRef, { checkedAt: Timestamp.fromMillis(now), fingerprint });
     if (fingerprint !== state.data()?.fingerprint) {
       tx.set(queueRef, { dirtyAt: Timestamp.fromMillis(now), revision: randomUUID() }, { merge: true });

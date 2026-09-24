@@ -11,6 +11,8 @@ export interface AdminImage {
   imageId: string; ownerUid: string; kind: "avatar" | "gallery"; storagePath: string;
   width: number; height: number; color?: string; caption?: string; captionDe?: string; description?: string;
   descriptionDe?: string;
+  /** The project this work is in, if any (functions/src/types.ts ImageDoc.projectId). */
+  projectId?: string;
   origin: "member" | "curated"; status: "uploading" | "live" | "pendingDeletion"; createdAt: string;
   /**
    * Is a profile document actually pointing at this? NOT the same question as
@@ -25,6 +27,8 @@ export interface DeletionJobView {
   steps: { imagesDeleted: boolean; filesDeleted: boolean; docsDeleted: boolean; authDeleted: boolean };
   completedAt: string | null; lastError: string | null;
 }
+/** One projects/{projectId} document — see functions/src/adminOps.ts memberGraph. */
+export interface AdminProject { projectId: string; [key: string]: unknown }
 export interface MemberGraph {
   uid: string;
   auth: AuthSummary | null;
@@ -34,6 +38,8 @@ export interface MemberGraph {
   onboardingRequest: Record<string, unknown> | null;
   deletion: DeletionJobView | null;
   slugs: { slug: string; current: boolean }[];
+  /** Absent from an adminLookupMember deployed before projects (2026-09-23). */
+  projects?: AdminProject[];
 }
 export interface LookupResult {
   graph: MemberGraph | null;

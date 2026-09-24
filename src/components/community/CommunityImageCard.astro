@@ -3,6 +3,7 @@ import { getImage } from "astro:assets";
 import type { MemberView } from "../../lib/memberView.ts";
 import { memberHref } from "../../lib/links.ts";
 import { embedDataAttrs } from "../../lib/embed.ts";
+import { projectSlideData } from "../../lib/projects.ts";
 import { useTranslations, type Lang } from "../../i18n/utils.ts";
 import MemberDetailPanel from "./MemberDetailPanel.astro";
 // THIS CARD'S SURFACE, in a file of its own so the profile editor's preview
@@ -82,23 +83,31 @@ const profileHref = memberHref(lang, member.slug);
 // is the only route out of a full-screen picture to the person who made it.
 // `data-pswp-profile` is what carries it — on every slide, because a slide is
 // now a lightbox item in its own right, and on the trigger too.
-const pswpFor = (w: (typeof works)[number]) => ({
-  width: String(w.width),
-  height: String(w.height),
-  caption: w.caption?.trim() || "",
-  // THE DESCRIPTION — the only one there is, since 2026-09-04 (see
-  // GalleryItem.description in gallery.ts). What this feeds is the lightbox,
-  // which has room for it: the card itself never prints it.
-  description: w.description || "",
-  // Where the image appeared — already absolute and already filtered for
-  // linkability by workLink(). Per slide, unlike `meta` and the profile
-  // href below: every image in this card is the same member's, but each
-  // one appeared somewhere of its own.
-  link: w.link || "",
-  // The member's own project page for the piece (2026-09-10) — same treatment.
-  siteLink: w.siteLink || "",
-  meta: member.displayName,
-});
+const pswpFor = (w: (typeof works)[number]) => {
+  // THE PROJECT THIS WORK IS IN (2026-09-23) — the lightbox's "Part of …"
+  // line and its affiliations, same data the member page's trigger carries.
+  const slide = projectSlideData(member.projects?.find((p) => p.id === w.projectId), lang);
+  return {
+    width: String(w.width),
+    height: String(w.height),
+    caption: w.caption?.trim() || "",
+    // THE DESCRIPTION — the only one there is, since 2026-09-04 (see
+    // GalleryItem.description in gallery.ts). What this feeds is the lightbox,
+    // which has room for it: the card itself never prints it.
+    description: w.description || "",
+    // Where the image appeared — already absolute and already filtered for
+    // linkability by workLink(). Per slide, unlike `meta` and the profile
+    // href below: every image in this card is the same member's, but each
+    // one appeared somewhere of its own.
+    link: w.link || "",
+    // The member's own project page for the piece (2026-09-10) — same treatment.
+    siteLink: w.siteLink || "",
+    meta: member.displayName,
+    project: slide.project || "",
+    projectLink: slide.projectLink || "",
+    affiliations: slide.affiliations || "",
+  };
+};
 
 // Alt: the member's own caption when they wrote one, a translated fallback
 // otherwise — never "" (a named debt of the prototype this card graduated
@@ -194,6 +203,9 @@ const positionFor = (i: number) =>
               data-pswp-site-link={pswpFor(w).siteLink || undefined}
               data-pswp-meta={pswpFor(w).meta}
               data-pswp-profile={profileHref}
+              data-pswp-project={pswpFor(w).project || undefined}
+              data-pswp-project-link={pswpFor(w).projectLink || undefined}
+              data-pswp-affiliations={pswpFor(w).affiliations || undefined}
               {...embedDataAttrs(w.embed)}
             >
               <img
@@ -254,6 +266,9 @@ const positionFor = (i: number) =>
         data-pswp-site-link={pswpFor(frame).siteLink || undefined}
         data-pswp-meta={pswpFor(frame).meta}
         data-pswp-profile={profileHref}
+        data-pswp-project={pswpFor(frame).project || undefined}
+        data-pswp-project-link={pswpFor(frame).projectLink || undefined}
+        data-pswp-affiliations={pswpFor(frame).affiliations || undefined}
         aria-label={`${t("community.card.openImage")} ${member.displayName}`}></a>
       {
         isCarousel && (

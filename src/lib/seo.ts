@@ -78,6 +78,16 @@ export interface SeoMember {
   photoURL?: string;
 }
 
+/** A project the work is part of, with membership and attribution details for SEO. */
+export interface SeoProject {
+  id: string;
+  name?: string;
+  description?: string;
+  /** Absolute. */
+  url?: string;
+  affiliations: { name: string; url?: string; personUrl?: string }[];
+}
+
 /** One work, with its texts already picked for the page's locale. */
 export interface SeoWork {
   /** The stored original — what the lightbox opens and the tile's anchor points at. */
@@ -96,6 +106,8 @@ export interface SeoWork {
   embed?: EmbedRef;
   /** When the video work was added to VSCN (ISO) — its uploadDate here. */
   addedAt?: string;
+  /** The project this work is part of (2026-09-24). */
+  project?: SeoProject;
 }
 
 type Node = Record<string, unknown>;
@@ -140,14 +152,39 @@ function personNode(member: SeoMember, memberUrl: string): Node {
   });
 }
 
+function partOf(...refs: (Node | undefined)[]): Node | Node[] | undefined {
+  const present = refs.filter((r): r is Node => r !== undefined);
+  return present.length === 0 ? undefined : present.length === 1 ? present[0] : present;
+}
+
+function projectId(pageUrl: string, id: string): string {
+  return `${pageUrl}#project-${id}`;
+}
+
+function projectNode(p: SeoProject, pageUrl: string): Node {
+  return compact({
+    "@type": "CreativeWork",
+    "@id": projectId(pageUrl, p.id),
+    name: p.name,
+    description: p.description,
+    url: p.url,
+    creator: { "@id": personId(pageUrl) },
+    contributor: p.affiliations.map((a) =>
+      a.personUrl
+        ? { "@type": "Person", "@id": personId(a.personUrl), name: a.name }
+        : compact({ "@type": "Organization", name: a.name, url: a.url }),
+    ),
+  });
+}
+
 /**
  * One picture. `creator` is a reference, not a copy — the caller decides how
  * much of the person to inline. `creditText` and `copyrightNotice` are what
  * Google Images prints beside a result; the name is the whole credit here, as
  * it is on every surface of the site.
  */
-function imageNode(work: SeoWork, creator: Node, creatorName: string, site: string): Node {
-  if (work.embed) return videoNode(work, work.embed, creator, creatorName);
+function imageNode(work: SeoWork, creator: Node, creatorName: string, site: string, projectRef?: Node): Node {
+  if (work.embed) return videoNode(work, work.embed, creator, creatorName, projectRef);
   return compact({
     "@type": "ImageObject",
     contentUrl: work.url,
@@ -165,7 +202,10 @@ function imageNode(work: SeoWork, creator: Node, creatorName: string, site: stri
     // the picture is part of; until the second field existed it sat in
     // mainEntityOfPage, which was the nearest slot, not the right one.
     mainEntityOfPage: work.siteLink,
-    isPartOf: work.link ? { "@type": "WebPage", url: work.link } : undefined,
+    // Publication and project, side by side (2026-09-23): the picture is part
+    // of the page it appeared on AND of the member's project. One value stays
+    // a plain object, so pages without projects serialise exactly as before.
+    isPartOf: partOf(work.link ? { "@type": "WebPage", url: work.link } : undefined, projectRef),
   });
 }
 
@@ -183,7 +223,7 @@ function imageNode(work: SeoWork, creator: Node, creatorName: string, site: stri
  * uploadDate is when the work was added to VSCN, not when the platform got
  * it: oEmbed does not say for YouTube, and the date is ours to state.
  */
-function videoNode(work: SeoWork, embed: EmbedRef, creator: Node, creatorName: string): Node {
+function videoNode(work: SeoWork, embed: EmbedRef, creator: Node, creatorName: string, projectRef?: Node): Node {
   return compact({
     "@type": "VideoObject",
     name: work.caption?.trim() || creatorName,
@@ -197,7 +237,7 @@ function videoNode(work: SeoWork, embed: EmbedRef, creator: Node, creatorName: s
     creditText: creatorName,
     copyrightNotice: `© ${creatorName}`,
     mainEntityOfPage: work.siteLink,
-    isPartOf: work.link ? { "@type": "WebPage", url: work.link } : undefined,
+    isPartOf: partOf(work.link ? { "@type": "WebPage", url: work.link } : undefined, projectRef),
   });
 }
 
@@ -217,6 +257,7 @@ export function memberPageJsonLd(input: {
   const { member, works, pageUrl, site, description } = input;
   const person = personNode(member, pageUrl);
   const ref = { "@id": personId(pageUrl) };
+  const projects = [...new Map(works.flatMap((w) => (w.project ? [[w.project.id, w.project]] : []))).values()];
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -228,7 +269,8 @@ export function memberPageJsonLd(input: {
         description,
         mainEntity: person,
       }),
-      ...works.map((w) => imageNode(w, ref, member.displayName, site)),
+      ...projects.map((p) => projectNode(p, pageUrl)),
+      ...works.map((w) => imageNode(w, ref, member.displayName, site, w.project ? { "@id": projectId(pageUrl, w.project.id) } : undefined)),
     ],
   };
 }
@@ -255,7 +297,7 @@ export function communityJsonLd(input: {
       name: member.displayName,
       url: portfolio ?? member.memberUrl,
     };
-    return works.map((w) => imageNode(w, creator, member.displayName, site));
+    return works.map((w) => imageNode(w, creator, member.displayName, site, undefined));
   });
   return {
     "@context": "https://schema.org",

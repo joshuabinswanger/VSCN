@@ -245,6 +245,55 @@
   margin-top: 4.5rem;
 }
 
+/* A PROJECT BLOCK on the member page and in the editor's preview (2026-09-23).
+   The works inside keep exactly the layout loose works have; the block only
+   adds a heading, its words and a quiet rule above, so the gallery still reads
+   as one column. The 4rem gap here is the WORKS rhythm — matching
+   .mprof__works above, read as a literal there and reused as one here rather
+   than invented as a custom property — so it belongs between the heading
+   group and the first figure, and nowhere inside the heading group itself.
+   See .mprof__project-head for that inner spacing (fix round 1, 2026-09-24:
+   this rule used to put the SAME 4rem between the title, the description and
+   the "With …" line, so the heading read as three lines floating 52px
+   apart — a bug found by rendering a synthetic project, not by either gate). */
+.mprof__project {
+  display: flex;
+  flex-direction: column;
+  gap: 4rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+/* THE HEADING GROUP — title, description and affiliations read as one label
+   for the works below, not as three unrelated paragraphs. A tight gap (a hair
+   more than a line-height) keeps them visually one unit while still reading
+   as separate lines. Both the page and the editor's preview wrap the same
+   three parts in this element (members/[slug].astro's <section
+   class="mprof__project"> children, and ProfileViewPreview.astro's
+   data-ppv-tpl="project" template) so the two never diverge on this again. */
+.mprof__project-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.mprof__project-title {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.mprof__project-title a {
+  color: inherit;
+}
+
+.mprof__project-desc,
+.mprof__project-with {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
 .mprof__works-key {
   margin-bottom: -2rem;
 }

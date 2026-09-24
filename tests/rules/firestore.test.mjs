@@ -4,6 +4,7 @@ import { test, before, after, beforeEach } from "node:test";
 import { deleteField } from "firebase/firestore";
 import assert from "node:assert/strict";
 import { isProfileVisible } from "../../src/lib/profileVisibility.ts";
+import * as projectsModule from "../../src/lib/projects.ts";
 import {
   setupEnv, seed, assertFails, assertSucceeds,
   OWNER, OTHER, ADMIN, verified, unverified, slot, minimalUser,
@@ -318,7 +319,7 @@ test("images: verified members also require server allocation", async () => {
 
 test("images: an unlisted key is rejected (hasOnly)", async () => {
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
-  await assertFails(db.doc("images/img-1").set(imageDoc(OWNER, "img-1", { projectId: "p" })));
+  await assertFails(db.doc("images/img-1").set(imageDoc(OWNER, "img-1", { notAField: "p" })));
 });
 
 test("images: the record carries where the image appeared", async () => {
@@ -696,4 +697,121 @@ test("communication preferences validate private creates and public updates", as
   await assertSucceeds(publicProfile.set({ displayName: "Test Member" }));
   await assertFails(publicProfile.update({ receiveCommunityEmails: false }));
   await assertFails(publicProfile.update({ preferredLanguage: "de" }));
+});
+
+// ── PROJECTS (2026-09-23, documentation/20260923-projects-design.md) ─────────
+function projectDoc(uid, overrides = {}) {
+  return { ownerUid: uid, createdAt: new Date(), updatedAt: new Date(), ...overrides };
+}
+
+test("projects: the owner creates, edits and deletes their own; all fields optional", async () => {
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("projects/p1").set(projectDoc(OWNER)));
+  await assertSucceeds(db.doc("projects/p1").update({
+    title: "Cryo-EM of the ribosome", titleDe: "Kryo-EM des Ribosoms",
+    description: "x".repeat(600), descriptionDe: "y".repeat(600),
+    link: "lab.example.org/ribosome",
+    affiliations: [{ name: "ETH Zürich", url: "ethz.ch" }, { name: "Lab" }, { memberUid: OTHER, name: "Anna Meier" }],
+    updatedAt: new Date(),
+  }));
+  await assertSucceeds(db.doc("projects/p1").get());
+  await assertSucceeds(db.collection("projects").where("ownerUid", "==", OWNER).get());
+  await assertSucceeds(db.doc("projects/p1").delete());
+});
+
+test("projects: caps hold — title, description, link, affiliation count and each entry", async () => {
+  await seed(env, "projects/p1", projectDoc(OWNER));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  const up = (fields) => db.doc("projects/p1").update({ ...fields, updatedAt: new Date() });
+  await assertFails(up({ title: "x".repeat(101) }));
+  await assertFails(up({ titleDe: "x".repeat(101) }));
+  await assertFails(up({ description: "x".repeat(601) }));
+  await assertFails(up({ descriptionDe: "x".repeat(601) }));
+  await assertFails(up({ link: "x".repeat(201) }));
+  await assertSucceeds(up({ affiliations: Array.from({ length: 10 }, (_, i) => ({ name: `Org ${i}` })) }));
+  await assertFails(up({ affiliations: Array.from({ length: 11 }, (_, i) => ({ name: `Org ${i}` })) }));
+  await assertFails(up({ affiliations: [{ name: "" }] }));
+  await assertFails(up({ affiliations: [{ name: "x".repeat(101) }] }));
+  await assertFails(up({ affiliations: [{ name: "Org", url: "x".repeat(201) }] }));
+  await assertFails(up({ affiliations: [{ url: "ethz.ch" }] }));
+  await assertFails(up({ affiliations: [{ memberUid: OTHER, name: "Anna", url: "x.ch" }] }));
+  await assertFails(up({ affiliations: [{ name: "Org", role: "partner" }] }));
+  await assertFails(up({ affiliations: "ETH" }));
+  await assertFails(up({ unknownField: true }));
+});
+
+test("projects: the exact payloads saveProjects() sends pass the rules — create, full update, emptied update", async () => {
+  // The REAL src/lib/projectStore.ts, only its Firebase handle swapped for the
+  // emulator's: create = ownerUid + projectFields() + createdAt/updatedAt as
+  // serverTimestamp(); update = every EDITABLE key present or deleteField(),
+  // plus updatedAt. A key added to EDITABLE and projectFields() but not to
+  // validProject() fails here instead of silently failing a member's Save.
+  const context = env.authenticatedContext(OWNER, verified(OWNER));
+  const { saveProjects, EDITABLE } = loadTs("src/lib/projectStore.ts", {
+    "./firebase.ts": { db: context.firestore()._delegate },
+    "./projects.ts": projectsModule,
+    "./profileVisibility.ts": { isProfileVisible },
+    "firebase/firestore": modularFirestore,
+  });
+  const full = {
+    projectId: "p1",
+    title: " Cryo-EM of the ribosome ", titleDe: "Kryo-EM des Ribosoms",
+    description: "x".repeat(700), descriptionDe: "y".repeat(600),
+    link: "https://lab.example.org/ribosome",
+    affiliations: [{ name: "ETH Zürich", url: "https://ethz.ch" }, { name: "Lab" }, { memberUid: OTHER, name: "Anna Meier" }],
+  };
+  // The fixture must exercise every key an update writes, or a new key would
+  // only ever be sent as deleteField() here and never reach hasOnly.
+  assert.deepEqual(Object.keys(projectsModule.projectFields(full)).sort(), [...EDITABLE].sort());
+  const empty = { projectId: "p2" };
+  assert.deepEqual(projectsModule.projectFields(empty), {});
+
+  assert.deepEqual(await saveProjects(OWNER, [full, empty], new Set()), [], "create, all fields and none");
+  const stored = new Set(["p1", "p2"]);
+  assert.deepEqual(await saveProjects(OWNER, [full, empty], stored), [], "update, all fields and none");
+  assert.deepEqual(await saveProjects(OWNER, [{ ...empty, projectId: "p1" }, { ...full, projectId: "p2" }], stored), [],
+    "update that empties every field, and one that fills every field");
+  const p1 = (await context.firestore().doc("projects/p1").get()).data();
+  assert.deepEqual(Object.keys(p1).sort(), ["createdAt", "ownerUid", "updatedAt"]);
+  const p2 = (await context.firestore().doc("projects/p2").get()).data();
+  assert.equal(p2.link, "lab.example.org/ribosome");
+  assert.equal(p2.description.length, 600);
+});
+
+test("projects: another member can neither read, create for, edit nor delete my project", async () => {
+  await seed(env, "projects/p1", projectDoc(OWNER));
+  const other = env.authenticatedContext(OTHER, verified(OTHER)).firestore();
+  await assertFails(other.doc("projects/p1").get());
+  await assertFails(other.doc("projects/p2").set(projectDoc(OWNER)));
+  await assertFails(other.doc("projects/p1").update({ title: "mine now", updatedAt: new Date() }));
+  await assertFails(other.doc("projects/p1").delete());
+  await assertFails(env.unauthenticatedContext().firestore().doc("projects/p1").get());
+});
+
+test("projects: ownerUid and createdAt are immutable; admins read", async () => {
+  await seed(env, "projects/p1", projectDoc(OWNER, { createdAt: new Date(1_700_000_000_000) }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertFails(db.doc("projects/p1").update({ ownerUid: OTHER, updatedAt: new Date() }));
+  await assertFails(db.doc("projects/p1").update({ createdAt: new Date(), updatedAt: new Date() }));
+  const admin = env.authenticatedContext(ADMIN, verified(ADMIN, { admin: true })).firestore();
+  await assertSucceeds(admin.doc("projects/p1").get());
+});
+
+test("projects: a deletion tombstone blocks project writes", async () => {
+  await seed(env, "projects/p1", projectDoc(OWNER));
+  await seed(env, `deletions/${OWNER}`, { uid: OWNER });
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertFails(db.doc("projects/p2").set(projectDoc(OWNER)));
+  await assertFails(db.doc("projects/p1").update({ title: "t", updatedAt: new Date() }));
+  await assertFails(db.doc("projects/p1").delete());
+});
+
+test("images: a work names at most one project — projectId is a short string", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({ projectId: "3f2c9a1e-8b7d-4e6f-9a0b-1c2d3e4f5a6b", updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ projectId: deleteField(), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ projectId: "x".repeat(65), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ projectId: "", updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ projectId: ["p1"], updatedAt: new Date() }));
 });
