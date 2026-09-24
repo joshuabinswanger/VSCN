@@ -50,12 +50,7 @@ const noteIdDe = `${idDe}-note`;
 
 <div class="field bifield" data-bifield>
   <div class="bifield__head">
-    {/* 2026-09-23: wrap label and ⓘ together so space-between separates
-        [label + tip] from the language switch, keeping the ⓘ beside its label */}
-    <div class="label-row">
-      <label class="label" for={id} data-bifield-label>{label}</label>
-      {tip && <InfoTip lang={lang} for={note ? noteId : noteIdDe} />}
-    </div>
+    <label class="label" for={id} data-bifield-label>{label}</label>
     <div class="bifield__switch" role="group" aria-label={label}>
       <button
         type="button"
@@ -76,29 +71,36 @@ const noteIdDe = `${idDe}-note`;
     </div>
   </div>
 
-  {/* With a tip, each pane's note is a box that hovers under its control
-      (src/lib/infotip.ts); written out, it sits under the control. */}
+  {/* With a tip, each pane's control carries its own i, and its note is a
+      box that hovers under the control (src/lib/infotip.ts); written out, the
+      note sits under the control. */}
   <div class="bifield__pane" data-bifield-pane="en">
     {tip && note && <p id={noteId} class="field-note" data-tip hidden>{note}</p>}
-    {
-      rows ? (
-        <textarea id={id} rows={rows} class="input textarea" aria-label={labelEn} placeholder={placeholder} aria-describedby={note ? noteId : undefined} />
-      ) : (
-        <input id={id} type="text" class="input" aria-label={labelEn} placeholder={placeholder} aria-describedby={note ? noteId : undefined} />
-      )
-    }
+    <div class="infotip-field">
+      {
+        rows ? (
+          <textarea id={id} rows={rows} class="input textarea" aria-label={labelEn} placeholder={placeholder} aria-describedby={note ? noteId : undefined} />
+        ) : (
+          <input id={id} type="text" class="input" aria-label={labelEn} placeholder={placeholder} aria-describedby={note ? noteId : undefined} />
+        )
+      }
+      {tip && note && <InfoTip lang={lang} for={noteId} />}
+    </div>
     {!tip && note && <p id={noteId} class="field-note">{note}</p>}
   </div>
 
   <div class="bifield__pane" data-bifield-pane="de" hidden>
     {tip && <p id={noteIdDe} class="field-note" data-tip hidden>{noteDe}</p>}
-    {
-      rows ? (
-        <textarea id={idDe} rows={rows} class="input textarea" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteIdDe} />
-      ) : (
-        <input id={idDe} type="text" class="input" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteIdDe} />
-      )
-    }
+    <div class="infotip-field">
+      {
+        rows ? (
+          <textarea id={idDe} rows={rows} class="input textarea" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteIdDe} />
+        ) : (
+          <input id={idDe} type="text" class="input" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteIdDe} />
+        )
+      }
+      {tip && <InfoTip lang={lang} for={noteIdDe} />}
+    </div>
     {!tip && <p id={noteIdDe} class="field-note">{noteDe}</p>}
   </div>
 </div>
@@ -170,7 +172,6 @@ const noteIdDe = `${idDe}-note`;
 </style>
 
 <script>
-  import { placeInfoTip } from "../lib/infotip";
   // Delegated on the document, once: the editors are swapped in by client-side
   // navigation, and a listener bound per element at load would miss the new
   // page's fields.
@@ -190,20 +191,5 @@ const noteIdDe = `${idDe}-note`;
     // The visible label names whichever control is showing.
     const label = root.querySelector<HTMLLabelElement>("[data-bifield-label]");
     if (label && btn.dataset.for) label.htmlFor = btn.dataset.for;
-
-    // The tip follows the pane too: a DE note opened while the EN pane shows
-    // is not reachable, so aria-controls and the open state move with it.
-    const tipBtn = root.querySelector<HTMLButtonElement>("[data-infotip]");
-    const activeNote = root.querySelector<HTMLElement>(
-      `[data-bifield-pane="${lang}"] .field-note[data-tip]`
-    );
-    if (tipBtn && activeNote) {
-      const open = tipBtn.getAttribute("aria-expanded") === "true";
-      tipBtn.setAttribute("aria-controls", activeNote.id);
-      root.querySelectorAll<HTMLElement>(".field-note[data-tip]").forEach((n) => {
-        n.hidden = !open || n.id !== activeNote.id;
-      });
-      if (open) placeInfoTip(activeNote);
-    }
   });
 </script>

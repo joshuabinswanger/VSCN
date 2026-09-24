@@ -342,11 +342,50 @@ a:hover {
   color: var(--color-dark);
 }
 
+/* THE i INSIDE ITS FIELD (2026-09-24, Josh: "the i should be in the text
+   fields not next to the title"). A text field wears its i at its right edge:
+   centred on a one-line input, in the top corner of a textarea, and as the
+   last item of an https:// frame. The padding keeps typed text from running
+   under it. Groups, checkboxes and the select have no box to put it in, so
+   theirs stays beside the title. */
+.infotip-field {
+  position: relative;
+}
+
+.infotip-field > .infotip {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  margin: 0;
+  transform: translateY(-50%);
+}
+
+.infotip-field > textarea + .infotip {
+  top: 0.3rem;
+  transform: none;
+}
+
+.infotip-field > .input {
+  padding-right: 2rem;
+}
+
+/* In an https:// frame the i is the frame's last cell, full height and on the
+   input's white, so the frame reads as one field that ends in an i. */
+.input-prefix-wrap > .infotip {
+  align-self: stretch;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0 0.6rem 0 0.2rem;
+  border-radius: 0;
+  background: white;
+}
+
 /* THE BOX (2026-09-24, Josh: "the help opens up beneath the field in a box
    that hovers over it … always the same width as the field"). Taken out of
    the flow and laid over whatever follows; placeInfoTip()
-   (src/lib/infotip.ts) measures the field and sets top, left and width. The
-   caret points up at the field. */
+   (src/lib/infotip.ts) measures the field and sets top, left and width, and
+   aims the caret up at the i. */
 .field-note[data-tip] {
   position: absolute;
   z-index: 30;
@@ -370,7 +409,7 @@ a:hover {
   content: "";
   position: absolute;
   top: -5.5px;
-  left: 1rem;
+  left: var(--infotip-caret, 1rem);
   width: 9px;
   height: 9px;
   border-top: 1px solid var(--color-muted);
