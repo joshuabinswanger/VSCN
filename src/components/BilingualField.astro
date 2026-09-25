@@ -22,7 +22,8 @@ interface Props {
   placeholder: string;
   placeholderDe: string;
   note?: string;
-  noteDe: string;
+  /** Omit for no German note at all (the profile editor, 2026-09-25). */
+  noteDe?: string;
   /** A textarea of this many rows; absent means a one-line input. */
   rows?: number;
   /** Hide both notes behind an ⓘ, /profile only — the wizard omits this. */
@@ -90,18 +91,18 @@ const noteIdDe = `${idDe}-note`;
   </div>
 
   <div class="bifield__pane" data-bifield-pane="de" hidden>
-    {tip && <p id={noteIdDe} class="field-note" data-tip hidden>{noteDe}</p>}
+    {tip && noteDe && <p id={noteIdDe} class="field-note" data-tip hidden>{noteDe}</p>}
     <div class="infotip-field">
       {
         rows ? (
-          <textarea id={idDe} rows={rows} class="input textarea" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteIdDe} />
+          <textarea id={idDe} rows={rows} class="input textarea" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteDe ? noteIdDe : undefined} />
         ) : (
-          <input id={idDe} type="text" class="input" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteIdDe} />
+          <input id={idDe} type="text" class="input" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteDe ? noteIdDe : undefined} />
         )
       }
-      {tip && <InfoTip lang={lang} for={noteIdDe} />}
+      {tip && noteDe && <InfoTip lang={lang} for={noteIdDe} />}
     </div>
-    {!tip && <p id={noteIdDe} class="field-note">{noteDe}</p>}
+    {!tip && noteDe && <p id={noteIdDe} class="field-note">{noteDe}</p>}
   </div>
 </div>
 

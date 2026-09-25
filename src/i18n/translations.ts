@@ -170,14 +170,12 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.ph.role": "e.g. Science Illustrator, Researcher, Data Journalist…",
     "profile.ph.role.science": "e.g. Neuroscientist, PhD Student, Lab Head…",
     "profile.ph.role.organization": "e.g. Research Group, Institute, Museum…",
-    "profile.note.role": "Shown on your card — best kept under 25 characters.",
     "profile.label.affiliation": "Affiliation",
     "profile.ph.affiliation": "Studio, company, or freelance",
     "profile.ph.affiliation.science": "Institute, department, university",
     "profile.label.location": "Location",
     "profile.ph.location": "Zurich, Switzerland",
     "profile.label.languages": "Working languages",
-    "profile.note.languages": "Shown on your public profile. The language the website and our emails use is set under “Your language”.",
     "profile.label.preferredLanguage": "Your language",
     "profile.note.preferredLanguage": "One setting for both: the website opens in this language when you sign in, and emails from VSCN are written in it. Switching EN / DE at the top of the page changes it too.",
     "profile.receiveCommunityEmails": "Send me optional community emails",
@@ -206,8 +204,6 @@ export const ui: Record<string, Record<string, string>> = {
     // anchor on the public page and, since the same day, the Person's url in
     // the page's structured data — a reference to their site that search
     // engines count. "Followed" is jargon; "search engines follow" is not.
-    "profile.note.portfolio":
-      "Shown on your public page as a link search engines follow. Visits from here appear in your analytics as vscn.ch.",
     "profile.info.toggle": "More about this field",
     // Beside a field title inside an image row or a project block (2026-09-24).
     "profile.optional": "optional",
@@ -396,7 +392,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.embed.ph": "youtube.com/watch?v=… or vimeo.com/…",
     "profile.embed.add": "Add video",
     "profile.embed.adding": "Adding…",
-    "profile.embed.note": "A YouTube or Vimeo link (Shorts too). It counts as one of your works; its thumbnail is what the directory shows, and the video plays when someone presses play.",
+    "profile.embed.submit": "Add",
     "profile.embed.badge": "Video · {provider}",
     "profile.embed.replaceThumb": "Replace thumbnail",
     "profile.embed.autoThumb": "Use automatic thumbnail",
@@ -447,14 +443,10 @@ export const ui: Record<string, Record<string, string>> = {
     // Rewritten (2026-09-04) to say what happens rather than point at a
     // neighbouring field — the EN/DE switch above means the two are never
     // both on screen at once, so "the line above" no longer names anything.
-    "profile.gallery.caption.deNote":
-      "Optional. German visitors hear this read aloud in place of the caption; until it's filled in, they hear the English one instead.",
     "profile.gallery.description.label": "Description",
     "profile.gallery.description": "About this image — how it was made, who it was for, what it shows",
     // Behind the Description field's i on /profile (2026-09-24). The
     // placeholder below is an example now, since the field has a visible title.
-    "profile.gallery.descriptionNote":
-      "Shown in the lightbox and on your page wherever there's room: how it was made, who it was for, what it shows.",
     "profile.gallery.description.ph":
       "Example: Made for a paper on immune cells in the zebrafish embryo, reconstructed from confocal microscopy. It shows how scavenger cells move through the tissue to track down pathogens.",
     "profile.gallery.description.de": "Description (German)",
@@ -467,8 +459,6 @@ export const ui: Record<string, Record<string, string>> = {
     // itself asks for in gallery.ts.
     "profile.gallery.description.de.ph":
       "Example: Angefertigt für eine Publikation über Immunzellen im Zebrafisch-Embryo, aus konfokalen Mikroskopieaufnahmen rekonstruiert. Die Illustration zeigt, wie Fresszellen durch das Gewebe wandern, um Krankheitserreger aufzuspüren.",
-    "profile.gallery.description.deNote":
-      "Optional. German visitors read this in place of the description; until it's filled in, they read the English one instead.",
     // Stored without a scheme, like Portfolio: the input carries a fixed
     // https:// prefix, so the placeholder must not repeat one.
     "profile.gallery.link": "Where it was published",
@@ -476,8 +466,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.tagsNote":
       "Up to 7. The community grid filters by these, so tag what the picture shows, not what you do.",
     "profile.gallery.link.ph": "nature.com/articles/…",
-    "profile.gallery.linkNote":
-      "Optional. The publication, campaign or shop where this image appeared. Shown under the image as a link search engines follow.",
     // THE SECOND LINK (2026-09-10, Josh: "the image link should be
     // additional"). For one day the note above told members to put their own
     // project page into "Where this image appeared", which made one field mean
@@ -487,9 +475,7 @@ export const ui: Record<string, Record<string, string>> = {
     // editor knows it (see renderGallery() in ProfileForm.astro).
     "profile.gallery.siteLink": "Link to your page about it",
     "profile.gallery.siteLink.ph": "yoursite.ch/projects/…",
-    "profile.gallery.siteLinkNote":
-      "Optional. Your own page about this piece — the strongest link back to your site this directory can give you. Shown under the image as a link search engines follow.",
-    "profile.project.new": "New project",
+    "profile.project.new": "Add project",
     "profile.project.untitled": "Project {n}",
     // The visible titles of a project block's fields (2026-09-24); the .ph
     // keys are the examples inside them.
@@ -516,15 +502,12 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.project.affiliation.remove": "Remove affiliation",
     "profile.project.addImages": "Add images to this project",
     "profile.project.delete": "Delete project",
+    "profile.project.select": "Project",
+    "profile.project.none": "None",
     "profile.project.deleteNote": "The images stay in your gallery.",
-    "profile.project.drag": "Drag to move",
-    "profile.project.menu": "More actions",
     "profile.project.moveUp": "Move up",
     "profile.project.moveDown": "Move down",
-    "profile.project.moveTo": "Move to project",
-    "profile.project.removeFrom": "Remove from project",
     "profile.project.saveFailed": "Project “{name}” could not be saved.",
-    "profile.project.note": "Group images that belong together. Every field is optional; a project can hold a single image.",
     "profile.project.emptyNote": "Add an image to keep this project — a project without images is not saved.",
     "profile.tag.error": "Tags must be unique, 1–50 characters, and no more than 7 tags.",
     "profile.reauth.confirming": "Confirming…",
@@ -776,14 +759,12 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.ph.role": "z.B. Wissenschaftsillustrator:in, Forscher:in, Datenjournalist:in…",
     "profile.ph.role.science": "z.B. Neurowissenschaftler:in, Doktorand:in, Institutsleitung…",
     "profile.ph.role.organization": "z.B. Forschungsgruppe, Institut, Museum…",
-    "profile.note.role": "Wird auf deiner Karte angezeigt — am besten unter 25 Zeichen.",
     "profile.label.affiliation": "Institution",
     "profile.ph.affiliation": "Studio, Agentur oder freischaffend",
     "profile.ph.affiliation.science": "Institut, Abteilung, Universität",
     "profile.label.location": "Ort",
     "profile.ph.location": "Zürich, Schweiz",
     "profile.label.languages": "Arbeitssprachen",
-    "profile.note.languages": "Wird in deinem öffentlichen Profil angezeigt. In welcher Sprache die Website und unsere E-Mails erscheinen, stellst du unter „Deine Sprache“ ein.",
     "profile.label.preferredLanguage": "Deine Sprache",
     "profile.note.preferredLanguage": "Eine Einstellung für beides: Die Website öffnet sich nach der Anmeldung in dieser Sprache, und E-Mails von VSCN schreiben wir dir darin. Der Wechsel EN / DE oben auf der Seite ändert sie ebenfalls.",
     "profile.receiveCommunityEmails": "Optionale Community-E-Mails erhalten",
@@ -808,8 +789,6 @@ export const ui: Record<string, Record<string, string>> = {
       "Optional, maximal 35 Wörter. Deutsche Seiten zeigen diesen Text statt des englischen; solange das Feld leer ist, erscheint der englische.",
     "profile.label.portfolio": "Portfolio / Website",
     "profile.ph.portfolio": "deinewebsite.com",
-    "profile.note.portfolio":
-      "Erscheint auf deiner öffentlichen Seite als Link, dem Suchmaschinen folgen. Besuche von hier erscheinen in deiner Statistik als vscn.ch.",
     "profile.info.toggle": "Mehr zu diesem Feld",
     "profile.optional": "optional",
     "profile.label.portfolio.science": "Website / Institutsseite",
@@ -970,7 +949,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.embed.ph": "youtube.com/watch?v=… oder vimeo.com/…",
     "profile.embed.add": "Video hinzufügen",
     "profile.embed.adding": "Wird hinzugefügt…",
-    "profile.embed.note": "Ein Link zu YouTube oder Vimeo (auch Shorts). Er zählt als eines deiner Werke; im Verzeichnis erscheint sein Vorschaubild, und das Video läuft, wenn jemand auf Play drückt.",
+    "profile.embed.submit": "Hinzufügen",
     "profile.embed.badge": "Video · {provider}",
     "profile.embed.replaceThumb": "Vorschaubild ersetzen",
     "profile.embed.autoThumb": "Automatisches Vorschaubild verwenden",
@@ -996,32 +975,22 @@ export const ui: Record<string, Record<string, string>> = {
       "Eine Zeile. Wird auch Menschen vorgelesen, die das Bild nicht sehen können.",
     "profile.gallery.caption.de": "Bildtitel (Deutsch)",
     "profile.gallery.caption.de.ph": "Beispiel: Zebrafisch-Netzhaut im Querschnitt, konfokal",
-    "profile.gallery.caption.deNote":
-      "Optional. Wird deutschen Besucher:innen anstelle des Bildtitels vorgelesen; bis er ausgefüllt ist, hören sie den englischen.",
     "profile.gallery.description.label": "Beschreibung",
     "profile.gallery.description":
       "Über dieses Bild — wie es entstand, für wen, was es zeigt",
-    "profile.gallery.descriptionNote":
-      "Erscheint in der Grossansicht und auf deiner Seite, wo Platz ist: wie es entstand, für wen, was es zeigt.",
     "profile.gallery.description.ph":
       "Beispiel: Angefertigt für eine Publikation über Immunzellen im Zebrafisch-Embryo, aus konfokalen Mikroskopieaufnahmen rekonstruiert. Die Illustration zeigt, wie Fresszellen durch das Gewebe wandern, um Krankheitserreger aufzuspüren.",
     "profile.gallery.description.de": "Beschreibung (Deutsch)",
     "profile.gallery.description.de.ph":
       "Beispiel: Angefertigt für eine Publikation über Immunzellen im Zebrafisch-Embryo, aus konfokalen Mikroskopieaufnahmen rekonstruiert. Die Illustration zeigt, wie Fresszellen durch das Gewebe wandern, um Krankheitserreger aufzuspüren.",
-    "profile.gallery.description.deNote":
-      "Optional. Wird deutschen Besucher:innen anstelle der Beschreibung gezeigt; bis sie ausgefüllt ist, lesen sie die englische.",
     "profile.gallery.link": "Wo es veröffentlicht wurde",
     "profile.gallery.tags": "Was ist auf dem Bild",
     "profile.gallery.tagsNote":
       "Bis zu 7. Das Community-Raster filtert danach, also tagge, was das Bild zeigt, nicht was du machst.",
     "profile.gallery.link.ph": "nature.com/articles/…",
-    "profile.gallery.linkNote":
-      "Optional. Die Publikation, Kampagne oder der Shop, wo dieses Bild erschienen ist. Erscheint unter dem Bild als Link, dem Suchmaschinen folgen.",
     "profile.gallery.siteLink": "Link zu deiner Seite darüber",
     "profile.gallery.siteLink.ph": "deineseite.ch/projekte/…",
-    "profile.gallery.siteLinkNote":
-      "Optional. Deine eigene Seite zu diesem Werk – der stärkste Link zurück auf deine Website, den dieses Verzeichnis dir geben kann. Erscheint unter dem Bild als Link, dem Suchmaschinen folgen.",
-    "profile.project.new": "Neues Projekt",
+    "profile.project.new": "Projekt hinzufügen",
     "profile.project.untitled": "Projekt {n}",
     "profile.project.title.label": "Projekttitel",
     "profile.project.title.ph": "Beispiel: Immunzellen im Zebrafisch-Embryo",
@@ -1045,15 +1014,12 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.project.affiliation.remove": "Beteiligte entfernen",
     "profile.project.addImages": "Bilder zu diesem Projekt hinzufügen",
     "profile.project.delete": "Projekt löschen",
+    "profile.project.select": "Projekt",
+    "profile.project.none": "Keines",
     "profile.project.deleteNote": "Die Bilder bleiben in deiner Galerie.",
-    "profile.project.drag": "Ziehen zum Verschieben",
-    "profile.project.menu": "Weitere Aktionen",
     "profile.project.moveUp": "Nach oben",
     "profile.project.moveDown": "Nach unten",
-    "profile.project.moveTo": "In Projekt verschieben",
-    "profile.project.removeFrom": "Aus Projekt entfernen",
     "profile.project.saveFailed": "Projekt „{name}“ konnte nicht gespeichert werden.",
-    "profile.project.note": "Fasse zusammengehörige Bilder zusammen. Alle Felder sind optional; ein Projekt kann auch ein einzelnes Bild enthalten.",
     "profile.project.emptyNote": "Füge ein Bild hinzu, um dieses Projekt zu behalten — ein Projekt ohne Bilder wird nicht gespeichert.",
     "profile.tag.error": "Tags müssen eindeutig sein, 1–50 Zeichen, und maximal 7 Tags.",
     "profile.reauth.confirming": "Wird bestätigt…",

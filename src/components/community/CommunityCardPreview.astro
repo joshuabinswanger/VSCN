@@ -197,19 +197,25 @@ import "../../styles/communityCard.css";
     overflow-wrap: anywhere;
   }
 
-  /* The card in the directory is as wide as the slot it was dealt; in a form
-     there is no slot, and a card at the full width of the editor's measure
-     reads as a banner rather than as a card. This is the preview's frame
-     around the card, not a change to the card — .ccard's own width formula
-     (min(100%, …)) resolves against it untouched. */
+  /* THE SLOT THE DIRECTORY WOULD DEAL (2026-09-25, Josh: the preview "doesn't
+     match the sizes of … the real gallery card"). The card in the directory is
+     as wide as the slot it was dealt, and its frame as tall as the slot's rows
+     allow; a form has no slot, so this one states the spread's: a lane of 9 of
+     the grid's 24 columns (CommunityGrid's --cgrid-col, same arithmetic) and
+     26 rows of 1.5rem — the middle of the 8–9 columns and 24–28 rows the
+     table deals. The card's own width formula then runs exactly as it does
+     on /community, so a tall first picture narrows the card the same way.
+     It used to be a flat 22rem, a number chosen to look like "a card" and
+     not taken from anywhere: 286px at 1280, against the 390–440px the real
+     card gets there. */
   .ccard--preview {
-    max-width: 22rem;
+    --slot-rows: 26;
+    --cgrid-row: 1.5rem;
+    max-width: calc(9 * min(94vw - 30px, 2000px) / 24);
   }
 
   /* NOT ON A PHONE (2026-09-08, Josh: "the gallery card preview is still not
-     full width"). The reasoning above is a DESKTOP reasoning: there, the
-     editor's measure is much wider than any slot the directory would deal, so
-     an uncapped card really would read as a banner. On a phone the directory
+     full width"). The lane above is a DESKTOP slot. On a phone the directory
      deals exactly one card per row and `.ccard` takes `width: 100%` of it
      (see the --bp-mobile block in communityCard.css), so the cap is no longer
      standing in for a slot — it is inventing a narrower one than the member
