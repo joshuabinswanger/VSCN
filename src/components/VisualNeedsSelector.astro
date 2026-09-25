@@ -1,7 +1,6 @@
 ---
 import { useTranslations } from "../i18n/utils";
 import type { Lang } from "../i18n/utils";
-import InfoTip from "./InfoTip.astro";
 
 // "What do you need visuals for?" — the science side's counterpart to
 // OpenToSelector, and the field that turns a member type into matchmaking
@@ -14,20 +13,19 @@ import InfoTip from "./InfoTip.astro";
 // generalised, so a change to one cannot regress the other.
 interface Props {
   lang?: Lang;
-  /** Hide the note behind an ⓘ, /profile only — the wizard omits this. */
-  tip?: boolean;
+  /** False drops the note: /profile, where the selector itself shows what
+   *  it is for (2026-09-25). The wizard keeps it written out. */
+  note?: boolean;
 }
 
-const { lang = "en", tip = false } = Astro.props;
+const { lang = "en", note = true } = Astro.props;
 const t = useTranslations(lang);
 ---
 
 <visual-needs-selector class="field visual-needs-selector" data-lang={lang} hidden>
   <div class="label-row">
     <label class="label">{t("profile.visualNeeds.legend")}</label>
-    {tip && <InfoTip lang={lang} for="note-visual-needs" />}
   </div>
-  {tip && <p id="note-visual-needs" class="field-note" data-tip hidden>{t("profile.visualNeeds.note")}</p>}
   <div id="visualNeeds-chips" class="visualNeeds-chips"></div>
   <div id="visualNeeds-custom-list" class="visualNeeds-custom-list"></div>
   <div class="addrow visualNeeds-input-row">
@@ -36,13 +34,13 @@ const t = useTranslations(lang);
       type="text"
       class="input"
       placeholder={t("profile.visualNeeds.custom.ph")}
-      aria-describedby="note-visual-needs"
+      aria-describedby={note ? "note-visual-needs" : undefined}
     />
     <button type="button" class="addbtn visualNeeds-add-btn" aria-label={t("profile.visualNeeds.add")}
       >+</button
     >
   </div>
-  {!tip && <p id="note-visual-needs" class="field-note">{t("profile.visualNeeds.note")}</p>}
+  {note && <p id="note-visual-needs" class="field-note">{t("profile.visualNeeds.note")}</p>}
 </visual-needs-selector>
 
 <style is:global>
