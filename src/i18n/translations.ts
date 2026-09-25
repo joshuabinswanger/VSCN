@@ -272,6 +272,10 @@ export const ui: Record<string, Record<string, string>> = {
     // every surface (2026-09-23, documentation/20260923-projects-design.md).
     "member.project.partOf": "Part of",
     "member.project.with": "With",
+    "member.projects.label": "Projects",
+    "member.projects.prev": "Previous project",
+    "member.projects.next": "Next project",
+    "member.projects.position": "Project {n} of {total}",
     "community.card.expand": "Expand profile:",
     // Two forms of the same idea, and they are not interchangeable. The
     // colon-suffixed one is an ARIA-LABEL PREFIX — "View profile: Jane Doe" —
@@ -291,6 +295,7 @@ export const ui: Record<string, Record<string, string>> = {
     "community.card.image": "image",
     "community.card.gallery": "gallery",
     "community.card.imagePosition": "Image {n} of {total}",
+    "community.card.info": "Image description",
     "profile.gallery.nudge":
       "Your card in the directory shows no artwork yet — add images and it becomes an image card.",
     "profile.cardPreview": "Community card preview",
@@ -867,6 +872,10 @@ export const ui: Record<string, Record<string, string>> = {
     "member.lightbox.play": "Video auf {provider} abspielen",
     "member.project.partOf": "Teil von",
     "member.project.with": "Mit",
+    "member.projects.label": "Projekte",
+    "member.projects.prev": "Vorheriges Projekt",
+    "member.projects.next": "Nächstes Projekt",
+    "member.projects.position": "Projekt {n} von {total}",
     "community.card.expand": "Profil aufklappen:",
     "community.card.viewProfile": "Profil ansehen:",
     "community.card.viewProfile.text": "Profil ansehen",
@@ -877,6 +886,7 @@ export const ui: Record<string, Record<string, string>> = {
     "community.card.image": "Bild",
     "community.card.gallery": "Galerie",
     "community.card.imagePosition": "Bild {n} von {total}",
+    "community.card.info": "Bildbeschreibung",
     "profile.gallery.nudge":
       "Deine Karte im Verzeichnis zeigt noch keine Arbeiten — füge Bilder hinzu und sie wird zur Bildkarte.",
     "profile.cardPreview": "Community-Karten-Vorschau",

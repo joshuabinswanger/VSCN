@@ -42,6 +42,16 @@ interface CarouselHandle {
 const liveCarousels = new Map<HTMLElement, CarouselHandle>();
 
 /**
+ * The "i" overlay's listeners, per frame. Kept apart from liveCarousels
+ * because a gallery of ONE has an overlay and no Embla instance, and because
+ * the editor's preview re-inits the same frame whenever the gallery changes:
+ * without the abort in destroyCarousel, every rebuild would stack another
+ * click handler on the one button, and an even number of them toggles the
+ * panel shut inside the same click (the InfoTip trap, PR #94).
+ */
+const infoBindings = new Map<HTMLElement, AbortController>();
+
+/**
  * Releases one carousel: its Embla instance, its auto-advance timer and its
  * visibility observer. Safe on a node that never had one.
  */
@@ -53,6 +63,8 @@ export function destroyCarousel(node: HTMLElement): void {
   // ready after the member's FIRST image, and it would never page again once
   // they added a second.
   delete node.dataset.ready;
+  infoBindings.get(node)?.abort();
+  infoBindings.delete(node);
   const handle = liveCarousels.get(node);
   if (!handle) return;
   if (handle.timer !== null) clearInterval(handle.timer);
@@ -66,7 +78,80 @@ export function destroyCarousel(node: HTMLElement): void {
  * navigation would keep firing against dead nodes forever.
  */
 export function destroyAllCarousels(): void {
-  [...liveCarousels.keys()].forEach(destroyCarousel);
+  new Set([...liveCarousels.keys(), ...infoBindings.keys()]).forEach(destroyCarousel);
+}
+
+/**
+ * THE "i" OVERLAY (2026-09-25, Josh: pressing an "i" lays the image's
+ * description over the image, washed out behind the words, without leaving
+ * the card). Wires the frame's `[data-carousel-info]` button to its
+ * `[data-carousel-info-panel]` and returns the function that refills the
+ * panel for a slide — called on every carousel move, so the words always
+ * belong to the picture underneath them.
+ *
+ * THE WORDS ARE THE LIGHTBOX'S: the slide's data-pswp-caption as a heading
+ * line and its data-pswp-description as the text, the exact pair
+ * lightboxText.ts prints under the full-screen picture. The caption is the
+ * SHORT text (140, also the alt) and the description the LONG one (600);
+ * the button follows the description alone, because a caption on its own is
+ * already the image's name and would make the overlay a one-line label.
+ *
+ * A disclosure rather than a dialog: focus stays on the button, the button
+ * again or Escape closes, and a slide with no description hides the button
+ * and closes the panel if it was open.
+ */
+function bindInfo(carousel: HTMLElement): (slide: HTMLElement | undefined) => void {
+  const button = carousel.querySelector<HTMLButtonElement>("[data-carousel-info]");
+  const panel = carousel.querySelector<HTMLElement>("[data-carousel-info-panel]");
+  const captionEl = panel?.querySelector<HTMLElement>("[data-carousel-info-caption]");
+  const descEl = panel?.querySelector<HTMLElement>("[data-carousel-info-desc]");
+  if (!button || !panel || !captionEl || !descEl) return () => {};
+
+  const controller = new AbortController();
+  infoBindings.set(carousel, controller);
+  const { signal } = controller;
+
+  const setOpen = (open: boolean) => {
+    panel.hidden = !open;
+    button.setAttribute("aria-expanded", String(open));
+    // Read by the auto-advance tick: a card must not turn to the next
+    // picture under a reader who is reading about this one.
+    if (open) carousel.dataset.infoOpen = "true";
+    else delete carousel.dataset.infoOpen;
+  };
+
+  button.addEventListener("click", () => setOpen(panel.hidden), { signal });
+  carousel.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key !== "Escape" || panel.hidden) return;
+      e.preventDefault();
+      setOpen(false);
+      button.focus();
+    },
+    { signal },
+  );
+  setOpen(false);
+
+  return (slide) => {
+    const caption = slide?.dataset.pswpCaption?.trim() ?? "";
+    const description = slide?.dataset.pswpDescription?.trim() ?? "";
+    // textContent: member-authored text.
+    captionEl.textContent = caption;
+    captionEl.hidden = !caption;
+    descEl.textContent = description;
+    // A keyboard reader paging with the arrow keys from the button would lose
+    // focus to <body> when the button hides under them — and with it the
+    // arrow keys, which are bound to the frame. Hand focus to the frame link,
+    // the carousel's usual tab stop (the preview's is href-less and cannot
+    // take focus, so there it simply stays where the browser puts it).
+    if (!description && document.activeElement === button) {
+      carousel.querySelector<HTMLElement>(".ccard__frame-link[href]")?.focus();
+    }
+    button.hidden = !description;
+    if (!description) setOpen(false);
+    panel.scrollTop = 0;
+  };
 }
 
 // Registered by the module rather than by each consumer: the state above is
@@ -186,11 +271,15 @@ export function initCarousels(root: ParentNode = document): void {
     carousel.addEventListener("pointerenter", hydrateAll, { once: true });
     carousel.addEventListener("touchstart", hydrateAll, { once: true, passive: true });
 
+    const slides = Array.from(carousel.querySelectorAll<HTMLElement>(".ccard__slide"));
+
+    // Before the single-work return: a gallery of one has words to show too.
+    const showInfo = bindInfo(carousel);
+    showInfo(slides[0]);
+
     // One work: the track is there for the layout, but there is nothing to
     // page, nothing to announce, and no reason to pay for a drag handler.
     if (images.length < 2) return;
-
-    const slides = Array.from(carousel.querySelectorAll<HTMLElement>(".ccard__slide"));
 
     // ── THE LIGHTBOX TRIGGER FOLLOWS THE CAROUSEL ─────────
     // One link covers the frame, so it can only describe one image — and the
@@ -295,6 +384,7 @@ export function initCarousels(root: ParentNode = document): void {
     const sync = () => {
       const i = embla.selectedScrollSnap();
       syncTrigger(i);
+      showInfo(slides[i]);
       // The safety net the old show() carried: hydrate the target even if
       // neither the pointer nor the intersection observer got there first.
       // select fires as the scroll STARTS, so this is still in time.
@@ -343,7 +433,7 @@ export function initCarousels(root: ParentNode = document): void {
         // desktop or backgrounding the tab all take effect with no bookkeeping
         // — and the card that has just scrolled into the middle picks up the
         // advancing from the one that has left it.
-        if (focusedCarousel() !== carousel) return;
+        if (focusedCarousel() !== carousel || carousel.dataset.infoOpen) return;
         announce = false;
         embla.scrollNext();
         announce = true;
