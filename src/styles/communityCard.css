@@ -285,13 +285,14 @@
 }
 
 /* ── The "i" and its words ────────────────────────────── */
-/* THE BUTTON (2026-09-25). The one control on the artwork that is visible
-   at rest, because it has to be findable on a touch screen, where nothing
-   hovers — so, unlike the chevrons, it gets a small paper plate: a bare
-   letter would be lost on dark or busy artwork. Bottom right, clear of the
-   dots above the frame's top-right corner and of the chevron's middle of the
-   strip. Above the overlay in the stacking order, because it is also the
-   control that closes it. */
+/* THE BUTTON (2026-09-25). A BARE ITALIC "i" — no plate, no ring
+   (2026-09-25, Josh: "make the info button less obvious ... just a i no
+   circle or anything"). The same letter the profile editor's info tips use,
+   and the chevrons' trade: nothing paints a ground, so it can be lost on
+   dark or busy artwork, and that is accepted for a clean face. The box is
+   hit area only. Bottom right, clear of the dots above the frame's top-right
+   corner and of the chevron in the middle of the strip; above the overlay in
+   the stacking order, because it is also the control that closes it. */
 .ccard__info {
   position: absolute;
   right: 0.45rem;
@@ -303,31 +304,30 @@
   height: 1.5rem;
   padding: 0;
   border: 0;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--color-bg) 86%, transparent);
+  background: none;
   color: var(--color-dark);
-  font: italic 600 0.82rem/1 "Archivo", sans-serif;
+  font: italic 600 0.95rem/1 "Archivo", sans-serif;
   cursor: pointer;
-  opacity: 0.85;
-  transition:
-    opacity 120ms ease,
-    background-color 120ms ease,
-    color 120ms ease;
-}
-.ccard__frame:hover .ccard__info,
-.ccard__info:focus-visible {
-  opacity: 1;
+  transition: opacity 120ms ease;
 }
 .ccard__info:focus-visible {
   outline: 2px solid var(--color-dark);
   outline-offset: 2px;
 }
-/* Open: the plate inverts, so the button reads as the thing that is ON —
-   and as the thing to press to turn it off. */
-.ccard__info[aria-expanded="true"] {
-  background: var(--color-dark);
-  color: var(--color-bg);
-  opacity: 1;
+/* ON A POINTER THAT HOVERS, ONLY ON HOVER — the arrows' rule: it comes up
+   with the pointer on the frame or the focus inside it, and stays up while
+   the words are open, because it is what closes them. Keyed to the pointer,
+   not to --bp-desktop: a touch tablet at desktop width cannot hover, and
+   there the "i" has to be visible at rest or it cannot be found at all. */
+@media (hover: hover) and (pointer: fine) {
+  .ccard__info {
+    opacity: 0;
+  }
+  .ccard__frame:hover .ccard__info,
+  .ccard__frame:focus-within .ccard__info,
+  .ccard__info[aria-expanded="true"] {
+    opacity: 1;
+  }
 }
 
 /* THE WORDS, WITH THE PICTURE WASHED OUT BEHIND THEM. A paper scrim over the
