@@ -44,6 +44,14 @@
      10.2px there would be a legibility cost nobody asked for, so mobile keeps
      the base and the reduction lives in the --bp-desktop block below. */
   --font-size-chrome: var(--font-size-base);
+  /* THE HEADER'S SEE-THROUGH BACKDROP (2026-09-25). The sticky nav — and on
+     /community the filter bar docked under it — used to paint solid paper, so
+     artwork vanished at the header's edge. Now the page shows through, frosted:
+     paper at this strength plus this blur is what keeps the nav and filter
+     words readable over a photograph. One layer, owned by the nav (see
+     Navbar.astro), so the two rows never stack two veils where they overlap. */
+  --color-bg-veil: color-mix(in srgb, var(--color-bg) 72%, transparent);
+  --veil-blur: 14px;
 }
 
 /* Media query aliases available in global CSS and Astro component styles. */

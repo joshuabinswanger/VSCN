@@ -25,8 +25,34 @@ import "../styles/global.css";
     position: sticky;
     top: 0;
     z-index: 10;
-    background: var(--color-bg);
     line-height: 1;
+  }
+
+  /* THE BACKDROP IS A LAYER BEHIND THE LINKS, NOT THE NAV'S BACKGROUND
+     (2026-09-25: the page shows through while scrolling). Two reasons it is a
+     pseudo-element. It can reach further down than the nav's own box: on
+     /community CommunityGrid writes --nav-backdrop-extend on .page-wrap, and
+     the same single veil runs on behind the docked filter bar, which paints no
+     backdrop of its own. Two translucent layers would double up in the strip
+     where the bar docks into the nav's padding, and meeting edge to edge
+     instead is the one-device-pixel hairline the overlap exists to prevent.
+     And a backdrop-filter on the nav itself would make it the containing block
+     for any fixed-position descendant. .page-wrap is swapped on every
+     navigation and the nav is persisted into the new one, so the extension
+     disappears on its own when you leave the page that set it.
+     z-index -1 is inside the nav's own stacking context (sticky + z-index), so
+     the veil sits under the links and over whatever scrolls behind. The opaque
+     fill comes first as the fallback for a browser without color-mix. */
+  nav[data-astro-transition-persist="navbar"]::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 calc(-1 * var(--nav-backdrop-extend, 0px));
+    z-index: -1;
+    pointer-events: none;
+    background: var(--color-bg);
+    background: var(--color-bg-veil);
+    -webkit-backdrop-filter: blur(var(--veil-blur));
+    backdrop-filter: blur(var(--veil-blur));
   }
 
   .nav-links {

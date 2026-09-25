@@ -315,8 +315,8 @@ const indexMembers = [...members].sort((a, b) =>
   {
     /* THE BAR: sticky at the top of .page-wrap's scrollport, which is flush
       under the brand ticker (the ticker lives OUTSIDE the scroll container —
-      see Layout.astro). The outer strip spans the wide main and paints
-      --color-bg so artwork vanishes under it cleanly; the inner line and its
+      see Layout.astro). The outer strip spans the wide main and is
+      see-through, frosted by the nav's backdrop (Navbar.astro); the inner line and its
       rule hold the header's 900px shell measure, mirroring the ticker's own
       box (max-width + 15px inline padding), so the bar's edges align with the
       title above it. Without JS every control renders and does nothing —
@@ -708,7 +708,8 @@ const indexMembers = [...members].sort((a, b) =>
   /* ── The bar ──────────────────────────────────────────── */
   /* Sticky at top:0 of .page-wrap's scrollport = flush under the brand
      ticker, which lives outside the scroll container. The outer strip spans
-     the wide main and paints the page background, so cards vanish under it
+     the wide main and lets the page show through, frosted by the nav's
+     backdrop stretched down behind it (Navbar.astro), so cards pass under it
      instead of colliding with its 900px content; the rule and the controls
      hold the shell measure and align with the title's edges. z-index clears
      the cells' own stacking contexts (GSAP transforms; an open disclosure
@@ -724,8 +725,8 @@ const indexMembers = [...members].sort((a, b) =>
        padding. Two header lines with a gap between them read as two things.
        So the dock moves 6px up, into space the nav only pads with, and the
        inner drops its top padding (below) — about 8px closed, leaving ~4px.
-       WHY 6 AND NOT 8. The bar paints --color-bg and outranks the nav on
-       z-index, so whatever it docks over, it hides. The active link's
+       WHY 6 AND NOT 8. The bar outranks the nav on z-index, and it used to
+       paint --color-bg, so whatever it docked over, it hid. The active link's
        underline sits at `bottom: 8px` in a 1.5px band — 8 to 9.5px up from the
        nav's bottom edge — so docking 8px up would land exactly on it and
        subpixel rounding would eat it. 6px leaves the underline 2px of
@@ -735,7 +736,15 @@ const indexMembers = [...members].sort((a, b) =>
        sticky at top 0 and the bar never reaches its text. */
     top: calc(var(--font-size-base) + 14px);
     z-index: 20;
-    background: var(--color-bg);
+    /* NO FILL OF ITS OWN (2026-09-25). The page shows through the header while
+       scrolling, and the frosted backdrop behind these controls is the NAV'S —
+       stretched down to this bar's bottom edge by --nav-backdrop-extend, which
+       the page-load script measures (see "WHERE THE GALLERY FADE BEGINS").
+       A second veil here would stack on the nav's in the 6px this bar docks
+       into it, and read as a denser stripe under the links. With the bar
+       transparent, the underline clearance argued below is no longer about
+       what the bar hides, only about the controls not touching it. */
+    background: transparent;
     /* BOTH HALVES OF THE 6px, and it takes both. `top` governs only where a
        sticky element STOPS once it is stuck; at rest the bar sits in normal
        flow, directly after the nav, and no `top` in the world moves it there.
@@ -796,7 +805,7 @@ const indexMembers = [...members].sort((a, b) =>
          bar jumps 2px the moment it sticks. */
       margin-top: -2px;
       /* Out through <main>'s 15px gutter so the bar reaches the screen edges
-         like the nav and the title above it — and so the background it paints
+         like the nav and the title above it — and so the backdrop behind it
          covers the full width it is docking across. */
       margin-inline: -15px;
     }
@@ -807,7 +816,7 @@ const indexMembers = [...members].sort((a, b) =>
          nav now holds the 15px content edge (see Navbar's --bp-mobile block,
          2026-09-01). Flush controls under an inset nav is the misalignment the
          old rule was trying to avoid, pointing the other way.
-         The OUTER strip keeps its full-bleed negative margin — it paints the
+         The OUTER strip keeps its full-bleed negative margin — it spans the
          background the sticky bar docks across, and that has to reach the
          screen edges whatever the controls inside it do.
          Top padding still 0: the nav's own padding is all the separation the
@@ -2555,12 +2564,31 @@ const indexMembers = [...members].sort((a, b) =>
       // to the top. Once per page-load and once per bar resize — the font-size
       // token steps at the breakpoint and the controls can wrap — and never on
       // scroll: this is a constant the compositor then animates against.
+      //
+      // The same edge is where the header's frosted backdrop has to end: the
+      // bar paints no fill of its own, and the nav's veil is stretched down
+      // past the nav by the difference. Set on .page-wrap because the nav is
+      // its child (not this grid's), and .page-wrap is swapped on navigation,
+      // so leaving the page takes the extension with it.
       const fadeBar = document.querySelector<HTMLElement>(".community-bar");
       if (fadeBar) {
         const measureFadeInset = () => {
           const dock = parseFloat(getComputedStyle(fadeBar).top);
           if (!Number.isFinite(dock)) return;
-          grid.style.setProperty("--cgrid-fade-inset", `${dock + fadeBar.offsetHeight}px`);
+          const barBottom = dock + fadeBar.offsetHeight;
+          grid.style.setProperty("--cgrid-fade-inset", `${barBottom}px`);
+          const pageWrap = fadeBar.closest<HTMLElement>(".page-wrap");
+          const nav = pageWrap?.querySelector<HTMLElement>(":scope > nav");
+          if (pageWrap && nav) {
+            // Unrounded heights, not offsetHeight: the veil's edge is drawn,
+            // and a rounded one stops a fraction short of the bar and leaves
+            // a sliver of unfrosted artwork showing under the controls.
+            const extend = Math.max(
+              0,
+              dock + fadeBar.getBoundingClientRect().height - nav.getBoundingClientRect().height,
+            );
+            pageWrap.style.setProperty("--nav-backdrop-extend", `${extend}px`);
+          }
         };
         measureFadeInset();
         fadeInsetObserver?.disconnect();
