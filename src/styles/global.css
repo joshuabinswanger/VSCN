@@ -46,12 +46,14 @@
   --font-size-chrome: var(--font-size-base);
   /* THE HEADER'S SEE-THROUGH BACKDROP (2026-09-25). The sticky nav — and on
      /community the filter bar docked under it — used to paint solid paper, so
-     artwork vanished at the header's edge. Now the page shows through, frosted:
-     paper at this strength plus this blur is what keeps the nav and filter
-     words readable over a photograph. One layer, owned by the nav (see
-     Navbar.astro), so the two rows never stack two veils where they overlap. */
-  --color-bg-veil: color-mix(in srgb, var(--color-bg) 72%, transparent);
-  --veil-blur: 14px;
+     artwork vanished at the header's edge. It is NOTHING now: no paper, no
+     blur, the page scrolls behind the links in the clear (Josh, same day,
+     after seeing the frosted version: "no filter with blur … just nothing").
+     The layer that carries these is kept (see Navbar.astro), so frosting is
+     two values away if the bare header turns out hard to read — it was
+     color-mix(in srgb, var(--color-bg) 72%, transparent) and blur(14px). */
+  --color-bg-veil: transparent;
+  --veil-filter: none;
 }
 
 /* Media query aliases available in global CSS and Astro component styles. */

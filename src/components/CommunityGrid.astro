@@ -316,7 +316,7 @@ const indexMembers = [...members].sort((a, b) =>
     /* THE BAR: sticky at the top of .page-wrap's scrollport, which is flush
       under the brand ticker (the ticker lives OUTSIDE the scroll container —
       see Layout.astro). The outer strip spans the wide main and is
-      see-through, frosted by the nav's backdrop (Navbar.astro); the inner line and its
+      see-through, backed only by the nav's backdrop layer (Navbar.astro); the inner line and its
       rule hold the header's 900px shell measure, mirroring the ticker's own
       box (max-width + 15px inline padding), so the bar's edges align with the
       title above it. Without JS every control renders and does nothing —
@@ -708,7 +708,7 @@ const indexMembers = [...members].sort((a, b) =>
   /* ── The bar ──────────────────────────────────────────── */
   /* Sticky at top:0 of .page-wrap's scrollport = flush under the brand
      ticker, which lives outside the scroll container. The outer strip spans
-     the wide main and lets the page show through, frosted by the nav's
+     the wide main and lets the page show through, backed by the nav's
      backdrop stretched down behind it (Navbar.astro), so cards pass under it
      instead of colliding with its 900px content; the rule and the controls
      hold the shell measure and align with the title's edges. z-index clears
@@ -737,7 +737,8 @@ const indexMembers = [...members].sort((a, b) =>
     top: calc(var(--font-size-base) + 14px);
     z-index: 20;
     /* NO FILL OF ITS OWN (2026-09-25). The page shows through the header while
-       scrolling, and the frosted backdrop behind these controls is the NAV'S —
+       scrolling, and whatever backdrop sits behind these controls is the NAV'S (bare
+       since 2026-09-25, see --color-bg-veil in global.css) —
        stretched down to this bar's bottom edge by --nav-backdrop-extend, which
        the page-load script measures (see "WHERE THE GALLERY FADE BEGINS").
        A second veil here would stack on the nav's in the 6px this bar docks
@@ -2565,7 +2566,7 @@ const indexMembers = [...members].sort((a, b) =>
       // token steps at the breakpoint and the controls can wrap — and never on
       // scroll: this is a constant the compositor then animates against.
       //
-      // The same edge is where the header's frosted backdrop has to end: the
+      // The same edge is where the header's backdrop layer has to end: the
       // bar paints no fill of its own, and the nav's veil is stretched down
       // past the nav by the difference. Set on .page-wrap because the nav is
       // its child (not this grid's), and .page-wrap is swapped on navigation,
@@ -2582,7 +2583,7 @@ const indexMembers = [...members].sort((a, b) =>
           if (pageWrap && nav) {
             // Unrounded heights, not offsetHeight: the veil's edge is drawn,
             // and a rounded one stops a fraction short of the bar and leaves
-            // a sliver of unfrosted artwork showing under the controls.
+            // a sliver of unveiled artwork showing under the controls.
             const extend = Math.max(
               0,
               dock + fadeBar.getBoundingClientRect().height - nav.getBoundingClientRect().height,
