@@ -41,18 +41,19 @@ import "../styles/global.css";
      navigation and the nav is persisted into the new one, so the extension
      disappears on its own when you leave the page that set it.
      z-index -1 is inside the nav's own stacking context (sticky + z-index), so
-     the veil sits under the links and over whatever scrolls behind. The opaque
-     fill comes first as the fallback for a browser without color-mix. */
+     the veil sits under the links and over whatever scrolls behind.
+     Both values are tokens in global.css and currently say "nothing" — the
+     header is bare. The layer stays so frosting can come back as a token
+     change, not a rebuild of the extension. */
   nav[data-astro-transition-persist="navbar"]::before {
     content: "";
     position: absolute;
     inset: 0 0 calc(-1 * var(--nav-backdrop-extend, 0px));
     z-index: -1;
     pointer-events: none;
-    background: var(--color-bg);
     background: var(--color-bg-veil);
-    -webkit-backdrop-filter: blur(var(--veil-blur));
-    backdrop-filter: blur(var(--veil-blur));
+    -webkit-backdrop-filter: var(--veil-filter);
+    backdrop-filter: var(--veil-filter);
   }
 
   .nav-links {
