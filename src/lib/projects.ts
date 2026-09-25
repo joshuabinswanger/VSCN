@@ -163,6 +163,34 @@ export function groupWorks<W extends { projectId?: string }>(
   return sections;
 }
 
+/** A run of the member page's gallery: loose works, one project, or the projects slider. */
+export type PageSection<W> = WorkSection<W> | { slider: WorkSection<W>[] };
+
+/**
+ * THE PROJECTS SLIDER'S CUT (2026-09-25, Josh: projects as a horizontal
+ * slider, one project per step). With two or more projects, every project
+ * block is gathered into ONE slider, standing where the member's first
+ * project stands; the loose works keep their own order around it. With one
+ * project, or none, the sections pass through untouched, because a slider of
+ * one project is just that project with controls that do nothing.
+ *
+ * The slider's projects keep the member's order among themselves. What moves
+ * is only a loose run that sat BETWEEN two projects: it now follows the
+ * slider. That is the price of one slider instead of several, and the reason
+ * it is paid: a page of alternating single-project "sliders" would be a list
+ * of projects with arrows on it.
+ */
+export function withProjectSlider<W>(sections: WorkSection<W>[]): PageSection<W>[] {
+  const projects = sections.filter((s) => s.project);
+  if (projects.length < 2) return sections;
+  const out: PageSection<W>[] = [];
+  for (const s of sections) {
+    if (!s.project) out.push(s);
+    else if (s === projects[0]) out.push({ slider: projects });
+  }
+  return out;
+}
+
 /**
  * THE LINK A WORK SHOWS AS "THIS PIECE ON THE MAKER'S SITE" (2026-09-23, Josh:
  * "images inherit it. if there is a link in the image tab it takes

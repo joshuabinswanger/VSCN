@@ -1,0 +1,84 @@
+---
+// ONE PROJECT BLOCK on the member page: its heading group and its works.
+// Extracted from [slug].astro (2026-09-25) so the same block can stand either
+// on its own in the gallery column or as one step of the projects slider —
+// Astro does not allow a local component inside a page file, and the block
+// was already an inline IIFE there. Moved verbatim; the only addition is that
+// any extra attributes (the slider's group semantics) land on the <section>.
+import type { ComponentProps, HTMLAttributes } from "astro/types";
+import MemberWork from "./MemberWork.astro";
+import { affiliationHref, projectDescription, projectTitle, type ProfileProject } from "../lib/projects.ts";
+import { useTranslations, type Lang } from "../i18n/utils.ts";
+
+type Work = ComponentProps<typeof MemberWork>["work"];
+
+interface Props extends HTMLAttributes<"section"> {
+  project: ProfileProject;
+  /** This project's works, as the page rendered them (MemberWork's shape). */
+  works: Work[];
+  /** The member's whole works list, for each work's index (transition name, eager loading). */
+  allWorks: Work[];
+  memberId: string;
+  displayName: string;
+  lang: Lang;
+}
+
+const { project, works, allWorks, memberId, displayName, lang, class: className, ...rest } = Astro.props;
+const t = useTranslations(lang);
+const title = projectTitle(project, lang);
+const desc = projectDescription(project, lang);
+---
+
+<section class:list={["mprof__project", className]} {...rest}>
+  <div class="mprof__project-head">
+    {
+      title && (
+        <h2 class="mprof__project-title">
+          {project.link ? (
+            <a href={project.link} target="_blank" rel="noopener">
+              {title}
+            </a>
+          ) : (
+            title
+          )}
+        </h2>
+      )
+    }
+    {desc && <p class="mprof__project-desc">{desc}</p>}
+    {
+      project.affiliations.length > 0 && (
+        <p class="mprof__project-with">
+          {t("member.project.with")}{" "}
+          {project.affiliations.map((a, k) => (
+            <>
+              {k > 0 && " · "}
+              {affiliationHref(a, lang) ? (
+                <a
+                  href={affiliationHref(a, lang)}
+                  {...(a.memberSlug ? {} : { target: "_blank", rel: "noopener" })}
+                >
+                  {a.name}
+                </a>
+              ) : (
+                <span>{a.name}</span>
+              )}
+            </>
+          ))}
+        </p>
+      )
+    }
+  </div>
+  {
+    works.map((w) => (
+      <MemberWork
+        work={w}
+        index={allWorks.indexOf(w)}
+        memberId={memberId}
+        displayName={displayName}
+        workAlt={t("member.workAlt")}
+        linkTitle={t("member.lightbox.link")}
+        siteLinkTitle={t("member.lightbox.siteLink")}
+      />
+    ))
+  }
+</section>
