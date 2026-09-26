@@ -675,7 +675,7 @@ const indexMembers = [...members].sort((a, b) =>
 
   .state-msg {
     color: var(--color-muted);
-    font-size: 0.9rem;
+    font-size: var(--fs-90);
   }
 
   /* ── The view selector ────────────────────────────────── */
@@ -718,7 +718,7 @@ const indexMembers = [...members].sort((a, b) =>
     position: sticky;
     /* ── IT DOCKS 6px INTO THE NAV, ON PURPOSE ──────────
        (2026-09-01, Josh: "no gap between commujity kinks and filters".)
-       The nav's box is one line of --font-size-base at line-height 1 plus the
+       The nav's box is one line of --fs-100 at line-height 1 plus the
        links' 10px paddings, and the bar used to dock at exactly that height —
        flush under the nav's BOX, which put 12px of dead air under the nav's
        TEXT: 10px of the links' own bottom padding plus this bar's 2px top
@@ -734,7 +734,7 @@ const indexMembers = [...members].sort((a, b) =>
        it, and so does the mobile figure below.
        The nav is still ABOVE the bar in every sense that matters: it is
        sticky at top 0 and the bar never reaches its text. */
-    top: calc(var(--font-size-base) + 14px);
+    top: calc(var(--fs-100) + 14px);
     z-index: 20;
     /* NO FILL OF ITS OWN (2026-09-25). The page shows through the header while
        scrolling, and whatever backdrop sits behind these controls is the NAV'S (bare
@@ -774,7 +774,7 @@ const indexMembers = [...members].sort((a, b) =>
     justify-content: space-between;
     align-items: baseline;
     gap: 0.6rem 1.75rem;
-    font-size: 0.85rem;
+    font-size: var(--fs-85);
   }
 
   @media (--bp-mobile) {
@@ -800,7 +800,7 @@ const indexMembers = [...members].sort((a, b) =>
          page you are on. Desktop takes 6px for the same reason at that scale
          (see the calc above), and both figures move if Navbar's padding or
          that offset does. */
-      top: calc(0.9 * var(--font-size-base) + 10px);
+      top: calc(var(--fs-90) + 10px);
       /* Both halves, exactly as on the desktop rule: `top` governs the docked
          position, this governs the resting one, and they have to agree or the
          bar jumps 2px the moment it sticks. */
@@ -920,7 +920,7 @@ const indexMembers = [...members].sort((a, b) =>
     border-radius: 0;
     background: var(--color-bg);
     font: inherit;
-    font-size: 0.85rem;
+    font-size: var(--fs-85);
     color: var(--color-dark);
   }
 
@@ -957,7 +957,7 @@ const indexMembers = [...members].sort((a, b) =>
     background: none;
     padding: 0.3rem 0.25rem;
     font: inherit;
-    font-size: 0.85rem;
+    font-size: var(--fs-85);
     text-align: left;
     color: var(--color-dark);
     cursor: pointer;
@@ -1576,7 +1576,7 @@ const indexMembers = [...members].sort((a, b) =>
      role that does not fit should wrap under the name rather than lose its
      ending. */
   .cindex__role {
-    font-size: 0.85rem;
+    font-size: var(--fs-85);
     color: var(--color-muted);
   }
 
