@@ -371,18 +371,20 @@ const t = useTranslations(lang);
           unequal. Closed again once the link has landed. */
       }
       <div id="gallery-video" class="gallery-video" role="group" aria-labelledby="gallery-video-label" hidden>
-        <label id="gallery-video-label" class="gallery-video-label" for="gallery-video-url">{t("profile.embed.label")}</label>
         <div class="gallery-video-row">
-          <input
-            id="gallery-video-url"
-            class="input"
-            type="url"
-            inputmode="url"
-            autocomplete="off"
-            spellcheck="false"
-            maxlength="500"
-            placeholder={t("profile.embed.ph")}
-          />
+          <div class="infield">
+            <input
+              id="gallery-video-url"
+              class="input"
+              type="url"
+              inputmode="url"
+              autocomplete="off"
+              spellcheck="false"
+              maxlength="500"
+              placeholder={t("profile.embed.ph")}
+            />
+            <label id="gallery-video-label" class="infield-label" for="gallery-video-url">{t("profile.embed.label")}</label>
+          </div>
           <button id="gallery-video-add" type="button" class="btn-solid gallery-video-submit">{t("profile.embed.submit")}</button>
           <button id="gallery-video-cancel" type="button" class="btn-link gallery-video-cancel">{t("profile.reauth.cancel")}</button>
         </div>
@@ -495,12 +497,10 @@ const t = useTranslations(lang);
                 examples now, not names. */
             }
             <div class="gallery-lang-pane" data-gallery-lang-pane="en">
-              <div class="label-row">
-                <label class="row-label" data-row-label="caption">{t("profile.gallery.caption")}</label>
-              </div>
               <p class="field-note" data-tip data-tip-note="caption" hidden>{t("profile.gallery.captionNote")}</p>
-              <div class="infotip-field">
-                <input type="text" class="input" data-gallery-field="caption" />
+              <div class="infotip-field infield">
+                <input type="text" class="input" placeholder=" " data-gallery-field="caption" />
+                <label class="infield-label" data-row-label="caption">{t("profile.gallery.caption")}</label>
                 <InfoTip lang={lang} rowKey="caption" />
               </div>
               {
@@ -522,11 +522,10 @@ const t = useTranslations(lang);
                   length one — see the switch above. This pane stays the
                   single English pair of record. */
               }
-              <div class="label-row">
-                <label class="row-label" data-row-label="description">{t("profile.gallery.description.label")}</label>
-                <span class="row-optional">{t("profile.optional")}</span>
+              <div class="infield">
+                <textarea class="input textarea" rows="3" placeholder=" " data-gallery-field="description"></textarea>
+                <label class="infield-label" data-row-label="description">{t("profile.gallery.description.label")} <span class="infield-optional">{t("profile.optional")}</span></label>
               </div>
-              <textarea class="input textarea" rows="3" data-gallery-field="description"></textarea>
             </div>
 
             {
@@ -542,16 +541,14 @@ const t = useTranslations(lang);
                 not say "leaving these blank is fine" on its own. */
             }
             <div class="gallery-lang-pane" data-gallery-lang-pane="de" hidden>
-              <div class="label-row">
-                <label class="row-label" data-row-label="captionDe">{t("profile.gallery.caption.de")}</label>
-                <span class="row-optional">{t("profile.optional")}</span>
+              <div class="infield">
+                <input type="text" class="input" placeholder=" " data-gallery-field="captionDe" />
+                <label class="infield-label" data-row-label="captionDe">{t("profile.gallery.caption.de")} <span class="infield-optional">{t("profile.optional")}</span></label>
               </div>
-              <input type="text" class="input" data-gallery-field="captionDe" />
-              <div class="label-row">
-                <label class="row-label" data-row-label="descriptionDe">{t("profile.gallery.description.de")}</label>
-                <span class="row-optional">{t("profile.optional")}</span>
+              <div class="infield">
+                <textarea class="input textarea" rows="3" placeholder=" " data-gallery-field="descriptionDe"></textarea>
+                <label class="infield-label" data-row-label="descriptionDe">{t("profile.gallery.description.de")} <span class="infield-optional">{t("profile.optional")}</span></label>
               </div>
-              <textarea class="input textarea" rows="3" data-gallery-field="descriptionDe"></textarea>
             </div>
 
             {
@@ -581,21 +578,19 @@ const t = useTranslations(lang);
                 template itself is cloned once per image (see the comment
                 there). */
             }
-            <div class="label-row">
-              <label class="row-label" data-row-label="siteLink">{t("profile.gallery.siteLink")}</label>
-              <span class="row-optional">{t("profile.optional")}</span>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">https://</span>
+              <div class="infield">
+                <input type="text" class="input input-prefixed" placeholder=" " data-gallery-field="siteLink" />
+                <label class="infield-label" data-row-label="siteLink">{t("profile.gallery.siteLink")} <span class="infield-optional">{t("profile.optional")}</span></label>
+              </div>
             </div>
             <div class="input-prefix-wrap">
               <span class="input-prefix">https://</span>
-              <input type="text" class="input input-prefixed" data-gallery-field="siteLink" />
-            </div>
-            <div class="label-row">
-              <label class="row-label" data-row-label="link">{t("profile.gallery.link")}</label>
-              <span class="row-optional">{t("profile.optional")}</span>
-            </div>
-            <div class="input-prefix-wrap">
-              <span class="input-prefix">https://</span>
-              <input type="text" class="input input-prefixed" data-gallery-field="link" />
+              <div class="infield">
+                <input type="text" class="input input-prefixed" placeholder=" " data-gallery-field="link" />
+                <label class="infield-label" data-row-label="link">{t("profile.gallery.link")} <span class="infield-optional">{t("profile.optional")}</span></label>
+              </div>
             </div>
             {
               /* WHAT IS IN THE PICTURE, not who made it — the community wall
@@ -694,41 +689,56 @@ const t = useTranslations(lang);
             <button type="button" class="gallery-tool gallery-move" data-project-move="down"><span aria-hidden="true">↓</span></button>
             <button type="button" class="gallery-tool" data-project-delete>{t("profile.project.delete")}</button>
           </header>
+          {
+            /* THE PROJECT'S WORDS FOLD, LIKE A WORK'S (2026-09-25, Josh: "the
+              projects should be collapsible as well"). Same element, same
+              classes and the same rule as a work's Details: a project already
+              saved starts FOLDED, one added in this session starts OPEN
+              (projectDetailsOpenUI, keyed by projectId). Only the words fold.
+              The header keeps the name, the arrows and Delete, and the images
+              below stay listed, so a folded block can still be moved and its
+              works still reordered. The summary carries the description's
+              start, or says there is none yet. */
+          }
+          <details class="gallery-details gallery-project-details">
+            <summary class="gallery-details-summary">
+              <span class="gallery-details-title">{t("profile.gallery.details")}</span>
+              <span class="gallery-details-caption" data-project-details-caption></span>
+              <span class="gallery-details-chevron" aria-hidden="true"></span>
+            </summary>
           <div class="gallery-project-fields">
             <div class="gallery-lang-switch" role="group">
               <button type="button" class="gallery-lang-btn is-active" data-gallery-lang-btn="en">EN</button>
               <button type="button" class="gallery-lang-btn" data-gallery-lang-btn="de">DE</button>
             </div>
-            {/* Titled like the image rows' fields (2026-09-24); see there. */}
+            {/* Named inside the field, like the image rows' (2026-09-25). */}
             <div class="gallery-lang-pane" data-gallery-lang-pane="en">
-              <label class="row-label" data-row-label="title">{t("profile.project.title.label")}</label>
-              <input type="text" class="input" data-project-field="title" />
-              <div class="label-row">
-                <label class="row-label" data-row-label="description">{t("profile.project.description.label")}</label>
-                <span class="row-optional">{t("profile.optional")}</span>
+              <div class="infield">
+                <input type="text" class="input" placeholder=" " data-project-field="title" />
+                <label class="infield-label" data-row-label="title">{t("profile.project.title.label")}</label>
               </div>
-              <textarea class="input textarea" rows="2" data-project-field="description"></textarea>
+              <div class="infield">
+                <textarea class="input textarea" rows="2" placeholder=" " data-project-field="description"></textarea>
+                <label class="infield-label" data-row-label="description">{t("profile.project.description.label")} <span class="infield-optional">{t("profile.optional")}</span></label>
+              </div>
             </div>
             <div class="gallery-lang-pane" data-gallery-lang-pane="de" hidden>
-              <div class="label-row">
-                <label class="row-label" data-row-label="titleDe">{t("profile.project.title.de")}</label>
-                <span class="row-optional">{t("profile.optional")}</span>
+              <div class="infield">
+                <input type="text" class="input" placeholder=" " data-project-field="titleDe" />
+                <label class="infield-label" data-row-label="titleDe">{t("profile.project.title.de")} <span class="infield-optional">{t("profile.optional")}</span></label>
               </div>
-              <input type="text" class="input" data-project-field="titleDe" />
-              <div class="label-row">
-                <label class="row-label" data-row-label="descriptionDe">{t("profile.project.description.de")}</label>
-                <span class="row-optional">{t("profile.optional")}</span>
+              <div class="infield">
+                <textarea class="input textarea" rows="2" placeholder=" " data-project-field="descriptionDe"></textarea>
+                <label class="infield-label" data-row-label="descriptionDe">{t("profile.project.description.de")} <span class="infield-optional">{t("profile.optional")}</span></label>
               </div>
-              <textarea class="input textarea" rows="2" data-project-field="descriptionDe"></textarea>
-            </div>
-            <div class="label-row">
-              <label class="row-label" data-row-label="link">{t("profile.project.website")}</label>
-              <span class="row-optional">{t("profile.optional")}</span>
             </div>
             <p class="field-note" data-tip data-tip-note="link" hidden>{t("profile.project.linkNote")}</p>
             <div class="input-prefix-wrap">
               <span class="input-prefix">https://</span>
-              <input type="text" class="input input-prefixed" data-project-field="link" />
+              <div class="infield">
+                <input type="text" class="input input-prefixed" placeholder=" " data-project-field="link" />
+                <label class="infield-label" data-row-label="link">{t("profile.project.website")} <span class="infield-optional">{t("profile.optional")}</span></label>
+              </div>
               <InfoTip lang={lang} rowKey="link" />
             </div>
             {
@@ -738,17 +748,15 @@ const t = useTranslations(lang);
                 Name | Member switch is the rows' EN/DE switch at the same
                 scale. Rows are cloned from the template below the block's. */
             }
+            {/* No title over the rows (2026-09-25): "Add affiliation" names them. */}
             <div class="gallery-project-affiliations">
-              <div class="label-row">
-                <p class="row-label">{t("profile.project.affiliations")}</p>
-                <span class="row-optional">{t("profile.optional")}</span>
-              </div>
               <div class="social-editor" data-affiliations></div>
               <button type="button" class="btn-outline choose-img gallery-aff-add" data-aff-add>
                 {t("profile.project.affiliations.add")}
               </button>
             </div>
           </div>
+          </details>
           <div class="gallery-project-images" data-project-images></div>
           {
             /* Save writes only the projects an image names, so a block that
@@ -1326,17 +1334,9 @@ const t = useTranslations(lang);
   .gallery-video[hidden] {
     display: none;
   }
-  .gallery-video-label {
-    font-size: 0.85rem;
-    font-weight: 600;
-  }
   .gallery-video-row {
     display: flex;
     gap: 0.5rem;
-    min-width: 0;
-  }
-  .gallery-video-row .input {
-    flex: 1 1 auto;
     min-width: 0;
   }
   .gallery-video-row .btn-solid,
@@ -1987,30 +1987,105 @@ const t = useTranslations(lang);
     font-size: 0.85rem;
   }
 
-  /* THE FIELD TITLES inside an image row or a project block (2026-09-24).
-     Sentence case and smaller than the form's own uppercase .label: these sit
-     inside a field that already has one, and a second row of capitals would
-     read as the form restarting. "optional" is said in grey beside the title
-     rather than left for the member to guess. */
-  .row-label {
-    margin: 0;
-    font-size: 0.78rem;
+  /* THE NAME IS INSIDE THE FIELD (2026-09-25, Josh: "make the description of
+     the Field into the field so we do not need a title everywhere and
+     everything gets more compact"). A floating label, not a placeholder: the
+     2026-09-24 titles existed because placeholders vanish when a member
+     types, which left a filled row as a stack of unnamed boxes. Here the
+     name sits where the text will go while the field is empty, and moves up
+     small into the field's top edge the moment it is focused or filled, so
+     a filled field still says what it is. The examples ("Example:
+     Zebrafish retina…") still show, on focus only, once the name has moved
+     out of their way. The label comes AFTER its control in the markup,
+     because the state is read with a sibling selector. `:placeholder-shown`
+     needs a placeholder, hence `placeholder=" "` on every templated field
+     until renderGallery() sets the real example. */
+  .infield {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .infield > .input {
+    padding-top: 1.15rem;
+    padding-bottom: 0.3rem;
+    padding-left: 12px;
+  }
+
+  .infield > .textarea {
+    padding-top: 1.35rem;
+  }
+
+  .infield > .input::placeholder {
+    color: transparent;
+  }
+
+  .infield > .input:focus::placeholder {
+    color: var(--color-muted);
+    opacity: 0.7;
+  }
+
+  .infield-label {
+    position: absolute;
+    top: 50%;
+    left: 13.5px;
+    right: 2rem;
+    transform: translateY(-50%);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 0.85rem;
+    color: var(--color-muted);
+    pointer-events: none;
+    transition:
+      top 0.15s,
+      font-size 0.15s,
+      transform 0.15s;
+  }
+
+  /* An https:// frame has no border of its own on the input. The prefix cell
+     stretches to the taller field, or its grey would stop short of the
+     frame's edges. */
+  .input-prefix-wrap .infield-label {
+    left: 12px;
+  }
+
+  .input-prefix-wrap:has(> .infield) {
+    align-items: stretch;
+  }
+
+  .input-prefix-wrap:has(> .infield) > .input-prefix {
+    display: flex;
+    align-items: center;
+  }
+
+  .infield > .textarea + .infield-label {
+    top: 0.7rem;
+    transform: none;
+  }
+
+  .infield > .input:is(:focus, :not(:placeholder-shown)) + .infield-label {
+    top: 0.3rem;
+    transform: none;
+    font-size: 0.66rem;
     font-weight: 600;
+    letter-spacing: 0.02em;
     color: var(--color-dark);
   }
 
-  .row-optional {
-    font-size: 0.72rem;
+  .infield-optional {
+    font-weight: 400;
     color: var(--color-muted);
   }
 
-  /* A title hugs the field it names, and the space goes between fields
-     instead — with one flat gap, a title sat as close to the field above it
-     as to its own. */
-  :is(.gallery-fields, .gallery-lang-pane, .gallery-project-fields, .gallery-project-affiliations)
-    > :is(.label-row, .row-label) {
-    margin-top: 4px;
-    margin-bottom: -3px;
+  .infield-optional::before {
+    content: "· ";
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .infield-label {
+      transition: none;
+    }
   }
 
   .gallery-project-affiliations {
@@ -2955,6 +3030,9 @@ const t = useTranslations(lang);
     // the gallery at page load starts short; onGalleryUploaded() marks each
     // new work open before its row is first drawn.
     const galleryDetailsOpenUI = new Map<string, boolean>();
+    // The same for a project block's words (2026-09-25), keyed by projectId:
+    // unknown = folded, and newProject() opens the block it adds.
+    const projectDetailsOpenUI = new Map<string, boolean>();
     // The images/ record behind the current avatar. Passed to
     // handleProfileUpdate so the replaced record can be marked for deletion
     // once the new photoURL has landed in Firestore.
@@ -3475,6 +3553,22 @@ const t = useTranslations(lang);
         };
         setName();
 
+        // The block's words fold (2026-09-25), exactly like a work's Details.
+        // Queried before the rows are appended, so this cannot reach theirs.
+        const detailsFold = el.querySelector<HTMLDetailsElement>(".gallery-project-details");
+        const detailsCaption = el.querySelector<HTMLElement>("[data-project-details-caption]");
+        const setDetailsCaption = () => {
+          if (!detailsCaption) return;
+          const text = (lang === "de" ? project.descriptionDe || project.description : project.description || project.descriptionDe)?.trim();
+          detailsCaption.textContent = text || s["profile.project.details.empty"];
+          detailsCaption.classList.toggle("is-empty", !text);
+        };
+        setDetailsCaption();
+        if (detailsFold) {
+          detailsFold.open = projectDetailsOpenUI.get(project.projectId) ?? false;
+          detailsFold.addEventListener("toggle", () => projectDetailsOpenUI.set(project.projectId, detailsFold.open));
+        }
+
         // The header's ↑/↓ move the whole block past its neighbour. Delete
         // ungroups in place — the images stay, as its tooltip says; the
         // document itself goes at Save.
@@ -3525,6 +3619,7 @@ const t = useTranslations(lang);
             if (value.trim()) project[key] = value;
             else delete project[key];
             if (key === "title" || key === "titleDe") setName();
+            if (key === "description" || key === "descriptionDe") setDetailsCaption();
             syncPreview();
           });
         };
@@ -4088,6 +4183,8 @@ const t = useTranslations(lang);
     function newProject() {
       const projectId = crypto.randomUUID();
       projects.push({ projectId, affiliations: [] });
+      // Open: its title is where focus goes, and it is the block about to be filled in.
+      projectDetailsOpenUI.set(projectId, true);
       renderGallery({ projectId, field: "title" });
     }
     galleryNewProject.addEventListener("click", newProject);
@@ -4104,6 +4201,7 @@ const t = useTranslations(lang);
       gallery = applyBlocks(gallery, dissolveProject(blocks, projectId));
       projects = projects.filter((p) => p.projectId !== projectId);
       projectLangUI.delete(projectId);
+      projectDetailsOpenUI.delete(projectId);
       if (storedProjectIds.has(projectId)) deletedProjectIds.add(projectId);
       renderGallery(first ? { imageId: first.imageId, control: "up" } : undefined);
       // A lone image has both arrows disabled, and nothing else to land on.

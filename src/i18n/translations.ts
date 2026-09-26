@@ -423,6 +423,7 @@ export const ui: Record<string, Record<string, string>> = {
     // folded row prints the caption beside it, or .noCaption when there is none.
     "profile.gallery.details": "Details",
     "profile.gallery.details.noCaption": "No caption yet",
+    "profile.project.details.empty": "No description yet",
     "profile.gallery.caption": "Caption",
     // A REAL ONE (2026-09-04, Josh: "only caption (make a good example)"),
     // labelled as one (2026-09-04, Josh: "the example inside the text box
@@ -979,6 +980,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.overflow": "Es passen nur {n} Bilder — {m} nicht hinzugefügt.",
     "profile.gallery.details": "Details",
     "profile.gallery.details.noCaption": "Noch kein Bildtitel",
+    "profile.project.details.empty": "Noch keine Beschreibung",
     "profile.gallery.caption": "Bildtitel",
     "profile.gallery.caption.ph": "Beispiel: Zebrafisch-Netzhaut im Querschnitt, konfokal",
     "profile.gallery.captionNote":
