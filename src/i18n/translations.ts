@@ -338,11 +338,11 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.upload.error": "Could not process image.",
     "profile.label.gallery": "Gallery",
     "profile.note.gallery":
-      "Up to 8 images. They appear on your member card after the next site update.",
+      "Up to 12 images. They appear on your member card after the next site update.",
     "profile.note.galleryUnverified":
-      "One image until your email is verified — then up to 8. They appear on your member card after the next site update.",
+      "One image until your email is verified — then up to 12. They appear on your member card after the next site update.",
     "profile.gallery.add": "Add images",
-    "profile.gallery.full": "Gallery is full (8 images max).",
+    "profile.gallery.full": "Gallery is full (12 images max).",
     "profile.gallery.verifyForMore":
       "Verify your email to add more images. Check your inbox for the link.",
     "profile.gallery.error": "Could not upload image. Please try again.",
@@ -423,6 +423,9 @@ export const ui: Record<string, Record<string, string>> = {
     // The heading of each work's fold in the Works tab (2026-09-24); the
     // folded row prints the caption beside it, or .noCaption when there is none.
     "profile.gallery.details": "Details",
+    // The project block's fold (2026-09-26, Josh: "details on project should be
+    // called project details"), so it is not read as the first work's Details.
+    "profile.project.details": "Project details",
     "profile.gallery.caption": "Caption",
     // A REAL ONE (2026-09-04, Josh: "only caption (make a good example)"),
     // labelled as one (2026-09-04, Josh: "the example inside the text box
@@ -540,7 +543,7 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.step4.sub": "A short bio and photo help your profile stand out.",
     "onboarding.step5.title": "Show your work",
     "onboarding.step5.sub": "Add a few images and they become your card in the member directory.",
-    "onboarding.step5.note": "Up to 8 images.",
+    "onboarding.step5.note": "Up to 12 images.",
     "onboarding.step5.noteUnverified":
       "One image for now — up to 8 once your email is verified.",
     "onboarding.step5.noteUnverifiedFull":
@@ -913,11 +916,11 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.upload.error": "Bild konnte nicht verarbeitet werden.",
     "profile.label.gallery": "Galerie",
     "profile.note.gallery":
-      "Bis zu 8 Bilder. Sie erscheinen nach dem nächsten Site-Update auf deiner Mitgliedskarte.",
+      "Bis zu 12 Bilder. Sie erscheinen nach dem nächsten Site-Update auf deiner Mitgliedskarte.",
     "profile.note.galleryUnverified":
-      "Ein Bild, bis deine E-Mail bestätigt ist — danach bis zu 8. Sie erscheinen nach der nächsten Aktualisierung auf deiner Mitgliederkarte.",
+      "Ein Bild, bis deine E-Mail bestätigt ist — danach bis zu 12. Sie erscheinen nach der nächsten Aktualisierung auf deiner Mitgliederkarte.",
     "profile.gallery.add": "Bilder hinzufügen",
-    "profile.gallery.full": "Galerie ist voll (max. 8 Bilder).",
+    "profile.gallery.full": "Galerie ist voll (max. 12 Bilder).",
     "profile.gallery.verifyForMore":
       "Bestätige deine E-Mail, um weitere Bilder hinzuzufügen. Der Link ist in deinem Posteingang.",
     "profile.gallery.error": "Bild konnte nicht hochgeladen werden. Bitte erneut versuchen.",
@@ -977,6 +980,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.embed.err.unknown": "Das Video konnte nicht hinzugefügt werden. Bitte versuche es noch einmal.",
     "profile.gallery.overflow": "Es passen nur {n} Bilder — {m} nicht hinzugefügt.",
     "profile.gallery.details": "Details",
+    "profile.project.details": "Projektdetails",
     "profile.gallery.caption": "Bildtitel",
     "profile.gallery.caption.ph": "Beispiel: Zebrafisch-Netzhaut im Querschnitt, konfokal",
     "profile.gallery.captionNote":
@@ -1058,7 +1062,7 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.step5.title": "Zeig deine Arbeit",
     "onboarding.step5.sub":
       "Ein paar Bilder genügen — sie werden zu deiner Karte im Mitgliederverzeichnis.",
-    "onboarding.step5.note": "Bis zu 8 Bilder.",
+    "onboarding.step5.note": "Bis zu 12 Bilder.",
     "onboarding.step5.noteUnverified":
       "Vorerst ein Bild — bis zu 8, sobald deine E-Mail bestätigt ist.",
     "onboarding.step5.noteUnverifiedFull":

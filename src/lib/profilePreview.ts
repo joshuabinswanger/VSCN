@@ -576,7 +576,7 @@ export function renderCardPreview(
 
             // A REAL src on every slide, not the card's data-src scheme: this
             // runs in the browser where the build-time optimiser does not
-            // exist, and one member's gallery is eight images at most. The
+            // exist, and one member's gallery is twelve images at most. The
             // card serves getImage() output and defers the rest.
             img.src = w.url;
             img.width = w.width;

@@ -42,7 +42,7 @@ export async function queueMemberRebuild(uid: string): Promise<void> {
     const data = profile.data();
     const shown = data && data.active !== false && data.moderationHidden !== true ? data : null;
     const ids = Array.isArray(shown?.gallery)
-      ? shown!.gallery.filter((id: unknown): id is string => typeof id === "string" && !id.includes("/")).slice(0, 8)
+      ? shown!.gallery.filter((id: unknown): id is string => typeof id === "string" && !id.includes("/")).slice(0, 12)
       : [];
     const images = ids.length ? await tx.getAll(...ids.map((id: string) => db.doc(`images/${id}`))) : [];
     // Projects too, because the export ships every project of a visible

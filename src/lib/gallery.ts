@@ -18,8 +18,11 @@ function storageBucket(): string {
   return storage.app.options.storageBucket ?? "";
 }
 
-// Keep in sync with validGallery() in firestore.rules.
-export const MAX_GALLERY_IMAGES = 8;
+// Keep in sync with validGallery() in firestore.rules, and with the slice in
+// functions/src/rebuildQueue.ts. 8 -> 12 on 2026-09-26 (Josh: "lets up the
+// image count to 12"); uploads.ts's MAX_STORED_WORKS (20) still leaves room
+// for replacements awaiting cleanup.
+export const MAX_GALLERY_IMAGES = 12;
 
 /**
  * What an account may hold BEFORE its email is verified (2026-09-02, Josh:
