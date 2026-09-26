@@ -1873,14 +1873,20 @@ const indexMembers = [...members].sort((a, b) =>
      fade-OUT, because the wall is a reference view to scan, not a column to
      page through, and a tile dimming under the bar would read as greyed out.
 
-     The same `cgrid-cell-in` keyframes as the gallery, but over `entry`
-     instead of a fitted slice of `cover`: 0% is the tile's top edge crossing
-     the bottom of the screen, 100% the moment its bottom edge has crossed too.
-     Exact for every tile height, nothing to fit — a tile is at full strength
-     the moment the whole of it is on screen, which keeps the ramp short and
-     the effect faint. Fill `backwards` for the same reason as the gallery's
-     in-ramp: it holds 0.35 below the fold, then stops contributing and leaves
-     the tile at its own opacity of 1 for good. */
+     (Same day, Josh: "make the mobile fade more pronounced".) The first cut
+     borrowed the gallery's 0.35 → 1 over the tile's `entry` alone, finished
+     the instant the whole tile was on screen — so short and so shallow that
+     it barely read. Now it is deeper AND longer, with keyframes of its own so
+     the gallery's liked fade is untouched:
+     - DEEPER: `cgrid-wall-in` starts at 0.12, below the desktop wall's 0.2,
+       because a phone tile is small and a shallow fade on it is invisible.
+     - LONGER: `entry 0%` → `cover 30%`. It still starts as the top edge
+       crosses the bottom of the screen, but runs on until the tile is well
+       into the lower third (~300px of scroll for the page's ~180px tiles),
+       so the arrival is something you watch rather than a flicker.
+     Fill `backwards` for the same reason as the gallery's in-ramp: it holds
+     the dim start below the fold, then stops contributing and leaves the
+     tile at its own opacity of 1 for good. */
   @media (--bp-mobile) and (prefers-reduced-motion: no-preference) {
     @supports (animation-timeline: view()) {
       .cgrid[data-pattern="grid"] .cgrid__cell {
@@ -1892,10 +1898,10 @@ const indexMembers = [...members].sort((a, b) =>
            animates. The dev server does not minify, so it looked fine
            locally and shipped dead (PR #111). The gallery rule above escapes
            the fold only because it has two timelines. */
-        animation-name: cgrid-cell-in;
+        animation-name: cgrid-wall-in;
         animation-fill-mode: backwards;
         animation-timeline: view();
-        animation-range: entry 0% entry 100%;
+        animation-range: entry 0% cover 30%;
       }
     }
   }
@@ -1914,6 +1920,15 @@ const indexMembers = [...members].sort((a, b) =>
   @keyframes cgrid-cell-in {
     0% {
       opacity: 0.35;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes cgrid-wall-in {
+    0% {
+      opacity: 0.12;
     }
     100% {
       opacity: 1;
