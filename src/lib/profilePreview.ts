@@ -266,7 +266,7 @@ export function renderProfilePreview(
       const trigger = figure.querySelector<HTMLAnchorElement>(".mprof__work-link");
       if (trigger) {
         trigger.href = w.url;
-        // The picture's shape, for the 75vh height cap (.mprof__work-link).
+        // The picture's shape, for the 60vh height cap (.mprof__work-link).
         trigger.style.setProperty("--work-ar", String(w.width / w.height));
         writeSlideData(trigger, w, meta, project, labels.lang);
       }
