@@ -12,7 +12,7 @@ import {
   workDescription,
 } from "../../../lib/links.ts";
 import { memberPageJsonLd, memberPageUrl, memberTitle } from "../../../lib/seo.ts";
-import { groupWorks, withProjectSlider, projectTitle, projectDescription, projectSlideData, type ProfileProject } from "../../../lib/projects.ts";
+import { groupWorks, projectTitle, projectDescription, projectSlideData, type ProfileProject } from "../../../lib/projects.ts";
 import MemberWork from "../../../components/MemberWork.astro";
 import MemberProject from "../../../components/MemberProject.astro";
 import { useTranslations } from "../../../i18n/utils";
@@ -120,9 +120,10 @@ const works = await Promise.all(
 // PROJECT BLOCKS (2026-09-23): the gallery stays one list in the member's
 // order; a project's images sit together under its heading, loose works in
 // between. groupWorks() is the same cut the editor preview makes.
+// Projects stack in the member's order; each one with two or more works is
+// its own carousel (MemberProject.astro, 2026-09-26). The one slider that
+// paged between projects (2026-09-25) is gone with that change.
 const sections = groupWorks(works, member.projects ?? []);
-// Two or more projects are gathered into one slider (2026-09-25).
-const pageSections = withProjectSlider(sections);
 
 // The lightbox's own labels. One attribute rather than five, for the same
 // reason as pswpMeta above: the client script is a module, so `define:vars` is
@@ -330,76 +331,8 @@ const jsonLd = memberPageJsonLd({
               rather than being inert. The gallery is still one list in the
               member's own order (works.indexOf below); a project only draws a
               heading and a rule around the run of its own works within it. */}
-          {pageSections.map((section) =>
-            "slider" in section ? (
-              /* THE PROJECTS SLIDER (2026-09-25, Josh: projects as a
-                 horizontal slider that moves one project per step, prev/next
-                 and swipe). Each step is one project at the width a project
-                 has always had — the page's column — and the track bleeds
-                 out to the window's edges, so the first project sits exactly
-                 where it did and the next one spills out to the right. The
-                 bleed is measured, not assumed: see src/lib/projectSlider.ts.
-                 Two or more projects only; withProjectSlider() says why. */
-              <div
-                class="mprof__projects"
-                data-project-slider
-                data-position-label={t("member.projects.position")}
-              >
-                <div class="mprof__projects-bar">
-                  <p class="mprof__projects-key">{t("member.projects.label")}</p>
-                  <span class="mprof__projects-count" data-project-count aria-hidden="true">
-                    1 / {section.slider.length}
-                  </span>
-                  <button
-                    class="mprof__projects-btn mprof__projects-btn--prev"
-                    type="button"
-                    data-project-prev
-                    aria-controls={`mprof-projects-${member.id}`}
-                    aria-label={t("member.projects.prev")}
-                  >
-                    <span aria-hidden="true" />
-                  </button>
-                  <button
-                    class="mprof__projects-btn mprof__projects-btn--next"
-                    type="button"
-                    data-project-next
-                    aria-controls={`mprof-projects-${member.id}`}
-                    aria-label={t("member.projects.next")}
-                  >
-                    <span aria-hidden="true" />
-                  </button>
-                </div>
-                {/* The track is a real scroll container, so swipe, trackpad
-                    and the arrow keys (it is a tab stop) all page it natively,
-                    and scroll-snap makes every one of them land on a project. */}
-                <div
-                  class="mprof__projects-track"
-                  id={`mprof-projects-${member.id}`}
-                  data-project-track
-                  tabindex="0"
-                  role="region"
-                  aria-roledescription={t("community.card.carousel")}
-                  aria-label={t("member.projects.label")}
-                >
-                  {section.slider.map((s, k) => (
-                    <MemberProject
-                      class="mprof__projects-slide"
-                      role="group"
-                      aria-label={t("member.projects.position")
-                        .replace("{n}", String(k + 1))
-                        .replace("{total}", String(section.slider.length))}
-                      project={s.project!}
-                      works={s.works}
-                      allWorks={works}
-                      memberId={member.id}
-                      displayName={member.displayName}
-                      lang={currentLang}
-                    />
-                  ))}
-                </div>
-                <p class="mprof__projects-live" aria-live="polite" aria-atomic="true" data-project-live />
-              </div>
-            ) : section.project ? (
+          {sections.map((section) =>
+            section.project ? (
               <MemberProject
                 project={section.project}
                 works={section.works}
@@ -435,8 +368,8 @@ const jsonLd = memberPageJsonLd({
   // site, defined once in lib/lightbox.ts (the grid and the editor's preview
   // build theirs from the same function).
   import { createLightbox, parseLightboxStrings } from "../../../lib/lightbox.ts";
-  // The projects slider (2026-09-25); it releases itself on astro:before-swap.
-  import { initProjectSliders } from "../../../lib/projectSlider.ts";
+  // The project carousels (2026-09-26); they release themselves on astro:before-swap.
+  import { initProjectCarousels, showInCarousel } from "../../../lib/projectCarousel.ts";
   import "photoswipe/style.css";
   // Immediately after the package sheet, never before: this is the chrome that
   // replaces it. The overrides are also written to win on specificity alone
@@ -450,7 +383,7 @@ const jsonLd = memberPageJsonLd({
   let lightbox: PhotoSwipeLightbox | null = null;
 
   document.addEventListener("astro:page-load", () => {
-    initProjectSliders();
+    initProjectCarousels();
     lightbox?.destroy();
     lightbox = null;
     const gallery = document.querySelector<HTMLElement>(".mprof__works");
@@ -460,6 +393,9 @@ const jsonLd = memberPageJsonLd({
       gallery: ".mprof__works",
       children: ".mprof__work-link",
     });
+    // Paging the lightbox pages the project carousel behind it, so closing
+    // zooms back onto the picture the visitor ended on.
+    lightbox.on("change", () => showInCarousel(lightbox?.pswp?.currSlide?.data.element));
     lightbox.init();
   });
 

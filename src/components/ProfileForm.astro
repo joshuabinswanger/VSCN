@@ -474,6 +474,19 @@ const t = useTranslations(lang);
           </div>
           <div class="gallery-fields">
             {
+              /* ALWAYS SHOWN ON DESKTOP (2026-09-26, Josh: "on desktop we can
+                add some more details that are always shown, description and
+                tags"). A desktop row has a whole column of paper beside its
+                picture, and a folded row left it empty. So on desktop
+                renderGallery() moves the words (the EN/DE switch with caption
+                and description) and the tag fold up into this slot, and the
+                Details fold below keeps only the two links. On a phone
+                nothing moves: the row is a picture-wide column there, and
+                everything folds as before. Moved, not duplicated, so every
+                field still has exactly one control. */
+            }
+            <div class="gallery-always" data-gallery-always hidden></div>
+            {
               /* THE WHOLE ROW'S WORDS FOLD (2026-09-24, Josh: "make the image
                 details collapsible in the work tab. default for already there
                 images is collapsed then"). Six images each carrying two
@@ -513,6 +526,7 @@ const t = useTranslations(lang);
                 scale, which a member has already learned by the time they
                 reach this field. */
             }
+            <div class="gallery-words" data-gallery-words>
             <div class="gallery-lang-switch" role="group">
               <button
                 type="button"
@@ -593,6 +607,7 @@ const t = useTranslations(lang);
                 <span class="row-optional">{t("profile.optional")}</span>
               </div>
               <textarea class="input textarea" rows="3" data-gallery-field="descriptionDe"></textarea>
+            </div>
             </div>
 
             {
@@ -1643,6 +1658,20 @@ const t = useTranslations(lang);
     flex-direction: column;
     gap: 8px;
     min-width: 0;
+  }
+
+  /* The desktop slot and the words block both stack at the fold body's
+     rhythm, so the fields read the same whether they sit in or out of it. */
+  .gallery-always,
+  .gallery-words {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .gallery-always[hidden] {
+    display: none;
   }
 
   /* THE MODAL SWITCH — see the markup comment. A two-segment toggle at
@@ -3301,6 +3330,16 @@ const t = useTranslations(lang);
     /**
      * Renders the committed gallery. `focusHint`: see FocusHint above.
      */
+    /** The --bp-desktop breakpoint: where a row shows its words beside the picture. */
+    const GALLERY_DESKTOP = window.matchMedia("(min-width: 768px)");
+    const onGalleryBreakpoint = () => renderGallery();
+    GALLERY_DESKTOP.addEventListener("change", onGalleryBreakpoint);
+    document.addEventListener(
+      "astro:before-swap",
+      () => GALLERY_DESKTOP.removeEventListener("change", onGalleryBreakpoint),
+      { once: true },
+    );
+
     function renderGallery(focusHint?: FocusHint) {
       if (!galleryItemTpl || !galleryProjectTpl) return;
       // The list's shape: loose rows and project blocks in gallery order, then
@@ -3360,7 +3399,10 @@ const t = useTranslations(lang);
             const tagsFold = row.querySelector<HTMLDetailsElement>(".gallery-tags");
             const tagsCount = row.querySelector<HTMLElement>("[data-gallery-tags-count]");
             const detailsFold = row.querySelector<HTMLDetailsElement>(".gallery-details");
+            const always = row.querySelector<HTMLElement>("[data-gallery-always]");
+            const words = row.querySelector<HTMLElement>("[data-gallery-words]");
             if (!img || !remove || !caption || !description) return null;
+            if (!always || !words) return null;
             if (!tagsFold || !tagsCount || !detailsFold) return null;
             if (!captionDe || !descriptionDe) return null;
             if (!link || !siteLink || !cover || !tagsSelector) return null;
@@ -3387,6 +3429,12 @@ const t = useTranslations(lang);
             detailsFold.addEventListener("toggle", () => {
               galleryDetailsOpenUI.set(item.imageId, detailsFold.open);
             });
+            // On desktop the words and the tags stand outside the fold (see
+            // the template); GALLERY_DESKTOP's change re-renders the rows.
+            if (GALLERY_DESKTOP.matches) {
+              always.append(words, tagsFold);
+              always.hidden = false;
+            }
             caption.addEventListener("input", () => {
               gallery[index].caption = caption.value;
               syncPreview();
@@ -4570,6 +4618,13 @@ const t = useTranslations(lang);
         noWorks: s["profile.view.noWorks"],
         with: s["member.project.with"],
         lang,
+        carousel: {
+          prev: s["member.project.prev"],
+          next: s["member.project.next"],
+          position: s["member.project.position"],
+          works: s["member.project.works"],
+          roledescription: s["community.card.carousel"],
+        },
       });
     }
 

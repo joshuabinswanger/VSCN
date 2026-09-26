@@ -268,10 +268,12 @@ export const ui: Record<string, Record<string, string>> = {
     // every surface (2026-09-23, documentation/20260923-projects-design.md).
     "member.project.partOf": "Part of",
     "member.project.with": "With",
-    "member.projects.label": "Projects",
-    "member.projects.prev": "Previous project",
-    "member.projects.next": "Next project",
-    "member.projects.position": "Project {n} of {total}",
+    // A project's carousel of works (2026-09-26); "works" names its track
+    // when the project has no title.
+    "member.project.works": "Project works",
+    "member.project.prev": "Previous work",
+    "member.project.next": "Next work",
+    "member.project.position": "Work {n} of {total}",
     "community.card.expand": "Expand profile:",
     // Two forms of the same idea, and they are not interchangeable. The
     // colon-suffixed one is an ARIA-LABEL PREFIX — "View profile: Jane Doe" —
@@ -849,10 +851,10 @@ export const ui: Record<string, Record<string, string>> = {
     "member.lightbox.play": "Video auf {provider} abspielen",
     "member.project.partOf": "Teil von",
     "member.project.with": "Mit",
-    "member.projects.label": "Projekte",
-    "member.projects.prev": "Vorheriges Projekt",
-    "member.projects.next": "Nächstes Projekt",
-    "member.projects.position": "Projekt {n} von {total}",
+    "member.project.works": "Werke des Projekts",
+    "member.project.prev": "Vorheriges Werk",
+    "member.project.next": "Nächstes Werk",
+    "member.project.position": "Werk {n} von {total}",
     "community.card.expand": "Profil aufklappen:",
     "community.card.viewProfile": "Profil ansehen:",
     "community.card.viewProfile.text": "Profil ansehen",

@@ -171,6 +171,27 @@ const t = useTranslations(lang);
         <div data-ppv-project="works" style="display: contents"></div>
       </section>
     </template>
+    {
+      /* A PROJECT'S CAROUSEL (2026-09-26), wrapped around a project's figures
+         when it has two or more — MemberProject.astro's markup, attribute for
+         attribute, so projectCarousel.ts wires both the same way. The
+         renderer writes the labels, the count and one slide per work. */
+    }
+    <template data-ppv-tpl="carousel">
+      <div class="mprof__carousel" data-carousel>
+        <div class="mprof__carousel-bar">
+          <span class="mprof__carousel-count" data-carousel-count aria-hidden="true"></span>
+          <button class="mprof__carousel-btn mprof__carousel-btn--prev" type="button" data-carousel-prev>
+            <span aria-hidden="true"></span>
+          </button>
+          <button class="mprof__carousel-btn mprof__carousel-btn--next" type="button" data-carousel-next>
+            <span aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="mprof__carousel-track" data-carousel-track tabindex="0" role="region"></div>
+        <p class="mprof__carousel-live" aria-live="polite" aria-atomic="true" data-carousel-live></p>
+      </div>
+    </template>
   </article>
 
   <hr class="ppv-rule" />

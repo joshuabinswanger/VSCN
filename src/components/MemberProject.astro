@@ -4,7 +4,13 @@
 // on its own in the gallery column or as one step of the projects slider —
 // Astro does not allow a local component inside a page file, and the block
 // was already an inline IIFE there. Moved verbatim; the only addition is that
-// any extra attributes (the slider's group semantics) land on the <section>.
+// any extra attributes land on the <section>.
+//
+// TWO OR MORE WORKS ARE A CAROUSEL (2026-09-26, Josh: "the projects should be
+// shown as carousels"): the heading group, then one work per step, paged by
+// swipe, the arrow keys or prev/next. See src/lib/projectCarousel.ts. One work
+// stays a plain figure, because a carousel of one is a picture with two
+// buttons that do nothing.
 import type { ComponentProps, HTMLAttributes } from "astro/types";
 import MemberWork from "./MemberWork.astro";
 import { affiliationHref, projectDescription, projectTitle, type ProfileProject } from "../lib/projects.ts";
@@ -27,6 +33,17 @@ const { project, works, allWorks, memberId, displayName, lang, class: className,
 const t = useTranslations(lang);
 const title = projectTitle(project, lang);
 const desc = projectDescription(project, lang);
+const carousel = works.length > 1;
+const trackId = `mprof-project-${memberId}-${project.id}`;
+const figure = (w: Work) => ({
+  work: w,
+  index: allWorks.indexOf(w),
+  memberId,
+  displayName,
+  workAlt: t("member.workAlt"),
+  linkTitle: t("member.lightbox.link"),
+  siteLinkTitle: t("member.lightbox.siteLink"),
+});
 ---
 
 <section class:list={["mprof__project", className]} {...rest}>
@@ -69,16 +86,59 @@ const desc = projectDescription(project, lang);
     }
   </div>
   {
-    works.map((w) => (
-      <MemberWork
-        work={w}
-        index={allWorks.indexOf(w)}
-        memberId={memberId}
-        displayName={displayName}
-        workAlt={t("member.workAlt")}
-        linkTitle={t("member.lightbox.link")}
-        siteLinkTitle={t("member.lightbox.siteLink")}
-      />
-    ))
+    carousel ? (
+      <div class="mprof__carousel" data-carousel data-position-label={t("member.project.position")}>
+        <div class="mprof__carousel-bar">
+          <span class="mprof__carousel-count" data-carousel-count aria-hidden="true">
+            1 / {works.length}
+          </span>
+          <button
+            class="mprof__carousel-btn mprof__carousel-btn--prev"
+            type="button"
+            data-carousel-prev
+            aria-controls={trackId}
+            aria-label={t("member.project.prev")}
+          >
+            <span aria-hidden="true" />
+          </button>
+          <button
+            class="mprof__carousel-btn mprof__carousel-btn--next"
+            type="button"
+            data-carousel-next
+            aria-controls={trackId}
+            aria-label={t("member.project.next")}
+          >
+            <span aria-hidden="true" />
+          </button>
+        </div>
+        {/* A real scroll container, so swipe, trackpad and the arrow keys (it
+            is a tab stop) all page it natively, and scroll-snap makes every
+            one of them land on a work. */}
+        <div
+          class="mprof__carousel-track"
+          id={trackId}
+          data-carousel-track
+          tabindex="0"
+          role="region"
+          aria-roledescription={t("community.card.carousel")}
+          aria-label={title ?? t("member.project.works")}
+        >
+          {works.map((w, k) => (
+            <div
+              class="mprof__carousel-slide"
+              role="group"
+              aria-label={t("member.project.position")
+                .replace("{n}", String(k + 1))
+                .replace("{total}", String(works.length))}
+            >
+              <MemberWork {...figure(w)} />
+            </div>
+          ))}
+        </div>
+        <p class="mprof__carousel-live" aria-live="polite" aria-atomic="true" data-carousel-live />
+      </div>
+    ) : (
+      works.map((w) => <MemberWork {...figure(w)} />)
+    )
   }
 </section>
