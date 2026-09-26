@@ -241,17 +241,22 @@
 .mprof__works {
   display: flex;
   flex-direction: column;
-  gap: 4rem;
+  /* The space between one work or project and the next. 4rem -> 7rem on
+     2026-09-26 (Josh: "we need to give more space in the profile view between
+     images and projects"): with pictures up to 75vh tall, 4rem read as one
+     continuous strip. */
+  gap: 7rem;
   margin-top: 4.5rem;
 }
 
 /* A PROJECT BLOCK on the member page and in the editor's preview (2026-09-23).
    The works inside keep exactly the layout loose works have; the block only
    adds a heading, its words and a quiet rule above, so the gallery still reads
-   as one column. The 4rem gap here is the WORKS rhythm — matching
-   .mprof__works above, read as a literal there and reused as one here rather
-   than invented as a custom property — so it belongs between the heading
-   group and the first figure, and nowhere inside the heading group itself.
+   as one column. The 4rem gap here separates the heading group from the
+   first figure (it matched .mprof__works until that gap grew to 7rem on
+   2026-09-26; a project's heading belongs to its works, so it stays closer
+   to them than to the work before), and it goes nowhere inside the heading
+   group itself.
    See .mprof__project-head for that inner spacing (fix round 1, 2026-09-24:
    this rule used to put the SAME 4rem between the title, the description and
    the "With …" line, so the heading read as three lines floating 52px
@@ -531,7 +536,7 @@
     padding-block: 2rem 6rem;
   }
   .mprof__works {
-    gap: 2.5rem;
+    gap: 4rem;
     margin-top: 3rem;
   }
   .mprof__works-key {
