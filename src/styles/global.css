@@ -17,10 +17,7 @@
 /* ── Design tokens ── */
 :root {
   font-family: "Archivo", sans-serif;
-  /* 13px on EVERY width since 2026-09-26 (Josh: "the font size should be a
-     bit bigger on mobile"). Phones were 12px, a pixel under desktop; nearly
-     all type is in rem, so this one value is the whole mobile type scale. */
-  --font-size-base: 13px;
+  --font-size-base: 12px;
   --color-dark: #000000;
   --color-bg: #fcfbfa;
   --color-border: #e0e0e0;
@@ -42,11 +39,11 @@
      fixtures. They used to say var(--font-size-base) separately, which is a
      rule a future edit can break silently; this token is the rule stated once.
      DESKTOP ONLY drops below the base size (2026-09-22, Josh: "make impressum
-     etc smaller", reported on a MacBook Pro 16). On a phone this is the
-     smallest print on the page — taking it to 11px there would be a legibility
-     cost nobody asked for, so mobile keeps the base and the reduction lives in
-     the --bp-desktop block below. */
-  --font-size-chrome: var(--font-size-base);
+     etc smaller", reported on a MacBook Pro 16). On a phone the base size is
+     already 12px and this is the smallest print on the page — taking it to
+     10.2px there would be a legibility cost nobody asked for, so mobile keeps
+     the base and the reduction lives in the --bp-desktop block below. */
+  --font-size-chrome: var(--fs-100);
   /* THE HEADER'S SEE-THROUGH BACKDROP (2026-09-25). The sticky nav — and on
      /community the filter bar docked under it — used to paint solid paper, so
      artwork vanished at the header's edge. It is NOTHING now: no paper, no
@@ -64,16 +61,90 @@
 @custom-media --bp-mobile (width <= 767px);
 @custom-media --bp-desktop (767px < width);
 
-/* NO DESKTOP BUMP ANY MORE. Desktop was 14px until 2026-09-22 (Josh, MacBook
-   Pro 16: "everything is a bit big"), then 13px over mobile's 12px; since
-   mobile came up to 13px on 2026-09-26 the two agree and the base is set once
-   in :root above. 12px on desktop was rejected as too far — the 0.72rem
-   labels would land under 9px. The giant VSCN title does NOT follow the base
-   size — it is fitted to --shell-max, not to the root size; see
-   BRAND_REPEATS_* in Layout.astro for the lever that sizes it. */
+/* THE DESKTOP BUMP IS ONE PIXEL, NOT TWO (2026-09-22, Josh, MacBook Pro 16:
+   "everything is a bit big"). Nearly all type on the site is in rem, so this
+   one declaration is the site's whole type scale on desktop — it was 14px,
+   and 13px takes roughly 7% off everything at once rather than leaving a
+   trail of per-component overrides. 12px, which would drop the bump entirely
+   and match mobile, was the other candidate and is too far: the 0.72rem
+   labels would land under 9px. The giant VSCN title does NOT follow this —
+   it is fitted to --shell-max, not to the root size; see BRAND_REPEATS_* in
+   Layout.astro for the lever that sizes it. */
 @media (--bp-desktop) {
   :root {
+    --font-size-base: 13px;
     --font-size-chrome: 0.85rem;
+  }
+}
+
+/* THE TYPE SCALE, STATED EXPLICITLY (2026-09-26, Josh: "everything should get
+   the next round pixel value except very small things. Tags should get a bump
+   down 1px"). Every font-size on the site used to be a bare rem, so a phone
+   drew whatever 12px × factor came to — 9.36px, 10.56px — and the only lever
+   was the root size, which moves padding and gaps along with the type.
+   Now each size the site uses is a token named after its rem factor
+   (--fs-78 = 0.78rem). DESKTOP is untouched: the token IS the rem it replaced.
+   On MOBILE each one is pinned to the next whole pixel above what 12px × factor
+   gave, so everything grows by under a pixel and lands on a round value; sizes
+   that collapse onto one pixel (0.75–0.82 → 10px) were never meant to be told
+   apart at that scale anyway. The root stays 12px, so spacing does not move.
+   LEFT ALONE, on purpose: everything under 0.72rem (≤8.4px on a phone — the
+   eyebrows and micro-labels, which were not to grow), the vw-driven display
+   clamps and the fitted brand title. Those are still bare rem in their rules.
+   A NEW SIZE belongs in this table, with its mobile pixel, not as a bare rem. */
+:root {
+  --fs-72: 0.72rem;
+  --fs-74: 0.74rem;
+  --fs-75: 0.75rem;
+  --fs-76: 0.76rem;
+  --fs-78: 0.78rem;
+  --fs-80: 0.8rem;
+  --fs-82: 0.82rem;
+  --fs-85: 0.85rem;
+  --fs-88: 0.88rem;
+  --fs-90: 0.9rem;
+  --fs-95: 0.95rem;
+  /* Body copy. <body> sets it, so text with no size of its own follows. */
+  --fs-100: 1rem;
+  --fs-105: 1.05rem;
+  --fs-115: 1.15rem;
+  --fs-120: 1.2rem;
+  --fs-125: 1.25rem;
+  --fs-140: 1.4rem;
+  --fs-160: 1.6rem;
+  --fs-180: 1.8rem;
+  --fs-190: 1.9rem;
+  --fs-225: 2.25rem;
+  /* Every tag chip (.tagchip). Its own token because tags go the OTHER way on
+     a phone: down to the whole pixel below 8.64px, where everything else goes
+     up to the one above. */
+  --fs-tag: 0.72rem;
+}
+
+@media (--bp-mobile) {
+  :root {
+    --fs-72: 9px; /* 8.64 */
+    --fs-74: 9px; /* 8.88 */
+    --fs-75: 10px; /* 9.00 */
+    --fs-76: 10px; /* 9.12 */
+    --fs-78: 10px; /* 9.36 */
+    --fs-80: 10px; /* 9.60 */
+    --fs-82: 10px; /* 9.84 */
+    --fs-85: 11px; /* 10.20 */
+    --fs-88: 11px; /* 10.56 */
+    --fs-90: 11px; /* 10.80 */
+    --fs-95: 12px; /* 11.40 */
+    --fs-100: 13px; /* 12.00 */
+    --fs-105: 13px; /* 12.60 */
+    --fs-115: 14px; /* 13.80 */
+    --fs-120: 15px; /* 14.40 */
+    --fs-125: 16px; /* 15.00 */
+    --fs-140: 17px; /* 16.80 */
+    --fs-160: 20px; /* 19.20 */
+    --fs-180: 22px; /* 21.60 */
+    --fs-190: 23px; /* 22.80 */
+    --fs-225: 28px; /* 27.00 */
+    --fs-tag: 8px; /* 8.64 */
   }
 }
 
@@ -123,6 +194,7 @@ body {
   overflow: hidden;
   overscroll-behavior: none;
   margin: 0;
+  font-size: var(--fs-100);
 }
 
 .page-wrap {
@@ -292,7 +364,7 @@ a:hover {
 }
 
 .label {
-  font-size: 0.82rem;
+  font-size: var(--fs-82);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -306,7 +378,7 @@ a:hover {
    inside the selectors finally look like notes. */
 .field-note {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: var(--fs-72);
   line-height: 1.5;
   color: var(--color-muted);
 }
@@ -338,7 +410,7 @@ a:hover {
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-muted);
-  font: italic 600 0.95rem/1 Georgia, "Times New Roman", serif;
+  font: italic 600 var(--fs-95)/1 Georgia, "Times New Roman", serif;
   letter-spacing: 0;
   text-transform: none;
   vertical-align: middle;
@@ -407,7 +479,7 @@ a:hover {
   background: var(--color-bg);
   box-shadow: 0 6px 18px rgb(0 0 0 / 0.12);
   color: var(--color-dark);
-  font-size: 0.78rem;
+  font-size: var(--fs-78);
   font-weight: 400;
   line-height: 1.5;
   letter-spacing: 0;
@@ -462,7 +534,7 @@ a:hover {
   flex: 1;
   min-width: 0;
   padding: 4px 10px;
-  font-size: 0.82rem;
+  font-size: var(--fs-82);
 }
 
 .addbtn {
@@ -473,7 +545,7 @@ a:hover {
   background: transparent;
   color: var(--color-muted);
   font-family: "Archivo", sans-serif;
-  font-size: 1.05rem;
+  font-size: var(--fs-105);
   font-weight: 300;
   line-height: 1;
   cursor: pointer;
@@ -498,7 +570,7 @@ a:hover {
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-sm);
   font: inherit;
-  font-size: 0.95rem;
+  font-size: var(--fs-95);
   color: black;
   background: white;
   transition: border-color 0.15s;
@@ -525,7 +597,7 @@ a:hover {
   padding: 10px 15px;
   border: 1.5px solid #ddd;
   border-radius: var(--radius-sm);
-  font-size: 0.88rem;
+  font-size: var(--fs-88);
   font-weight: 600;
   color: #333;
   cursor: pointer;
@@ -540,7 +612,7 @@ a:hover {
   background: #f4f4f4;
 }
 .upload-status {
-  font-size: 0.82rem;
+  font-size: var(--fs-82);
   color: #666;
 }
 
@@ -571,7 +643,7 @@ a:hover {
   background: transparent;
   color: #555;
   font-family: "Archivo", sans-serif;
-  font-size: 0.88rem;
+  font-size: var(--fs-88);
   font-weight: 400;
   line-height: 1.2;
   text-align: center;
@@ -660,7 +732,7 @@ a:hover {
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-family: "Archivo", sans-serif;
-  font-size: 0.72rem;
+  font-size: var(--fs-tag);
   font-weight: 400;
   line-height: 1.25;
   letter-spacing: 0.03em;
@@ -703,7 +775,7 @@ a:hover {
   border-radius: var(--radius-sm);
   font: inherit;
   font-family: "Archivo", sans-serif;
-  font-size: var(--font-size-base);
+  font-size: var(--fs-100);
   font-weight: 700;
   cursor: pointer;
   transition: background 0.2s;
@@ -727,7 +799,7 @@ a:hover {
   text-decoration: none;
   border-radius: var(--radius-sm);
   font-family: "Archivo", sans-serif;
-  font-size: 0.85rem;
+  font-size: var(--fs-85);
   color: #111;
   transition: opacity 0.2s;
   background-color: white;
@@ -750,7 +822,7 @@ a:hover {
   border-radius: var(--radius-sm);
   font: inherit;
   font-family: "Archivo", sans-serif;
-  font-size: 0.95rem;
+  font-size: var(--fs-95);
   font-weight: 700;
   cursor: pointer;
   text-decoration: none;
@@ -784,7 +856,7 @@ a:hover {
   border-radius: var(--radius-sm);
   font: inherit;
   font-family: "Archivo", sans-serif;
-  font-size: 0.95rem;
+  font-size: var(--fs-95);
   cursor: pointer;
   text-decoration: none;
   transition:
@@ -808,7 +880,7 @@ a:hover {
   padding: 0;
   font: inherit;
   font-family: "Archivo", sans-serif;
-  font-size: 0.88rem;
+  font-size: var(--fs-88);
   font-weight: 600;
   color: var(--color-dark);
   cursor: pointer;
@@ -826,11 +898,11 @@ a:hover {
 
 /* ── Feedback messages ── */
 .msg-ok {
-  font-size: 0.88rem;
+  font-size: var(--fs-88);
   color: var(--color-success);
 }
 .msg-err {
-  font-size: 0.88rem;
+  font-size: var(--fs-88);
   color: var(--color-error);
 }
 

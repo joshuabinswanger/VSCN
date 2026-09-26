@@ -33,17 +33,15 @@ const breakpoints = [...globalCss.matchAll(/@custom-media\s+(--[\w-]+)\s+([^;]+)
   value: (m[2] ?? "").trim(),
 }));
 
-// Font sizes literally in use across src/. Deliberately not presented as a
-// token scale — listing them makes the duplication and gaps visible.
-const fontSizesInUse = [
-  { size: "0.82rem", where: ".label, .upload-status, .msg-ok, .msg-err" },
-  { size: "0.83rem", where: ".tag-suggestion-chip" },
-  { size: "0.85rem", where: ".btn-ghost" },
-  { size: "0.88rem", where: ".file-btn, .btn-link, .tag-chip" },
-  { size: "0.95rem", where: ".input, .btn-save, .btn-solid, .btn-outline" },
-  { size: "var(--font-size-base)", where: ".nav-link, .btn-primary, .lang-toggle" },
-  { size: "8rem", where: ".brand-name (auto-fitted at runtime)" },
-];
+// The --fs-* type scale: first declaration is the desktop rem, the last one
+// (the --bp-mobile block) is the phone's whole pixel.
+const typeScale: { name: string; desktop: string; mobile: string }[] = [];
+for (const t of rootBlocks.flatMap(parseTokens)) {
+  if (!t.name.startsWith("--fs-")) continue;
+  const seen = typeScale.find((s) => s.name === t.name);
+  if (seen) seen.mobile = t.value;
+  else typeScale.push({ name: t.name, desktop: t.value, mobile: t.value });
+}
 
 const weightsInUse = [400, 600, 700, 800];
 
@@ -180,23 +178,26 @@ const radiusUsage: Record<string, string> = {
         }
       </div>
 
-      <h3 class="sg-h3">Sizes in use</h3>
+      <h3 class="sg-h3">Type scale</h3>
       <div class="sg-sizes">
         {
-          fontSizesInUse.map((f) => (
+          typeScale.map((f) => (
             <div class="sg-size">
-              <span class="sg-size-sample" style={`font-size: ${f.size};`}>
+              <span class="sg-size-sample" style={`font-size: var(${f.name});`}>
                 Making knowledge visible
               </span>
-              <code class="sg-token-name">{f.size}</code>
-              <span class="sg-token-usage">{f.where}</span>
+              <code class="sg-token-name">{f.name}</code>
+              <span class="sg-token-usage">
+                {f.desktop} · mobile {f.mobile}
+              </span>
             </div>
           ))
         }
       </div>
       <p class="sg-note">
-        There is no type scale token set — only <code>--font-size-base</code>. Everything else is a
-        literal <code>rem</code> value declared per component.
+        Every size is a <code>--fs-*</code> token in <code>global.css</code>: the rem it replaced on
+        desktop, a whole pixel on mobile. Sizes under <code>0.72rem</code>, the display clamps and
+        the fitted <code>.brand-name</code> are still literal values in their rules.
       </p>
     </section>
 
@@ -335,7 +336,7 @@ const radiusUsage: Record<string, string> = {
 
   .sg-h1 {
     margin: 0 0 0.75rem;
-    font-size: 2.25rem;
+    font-size: var(--fs-225);
     font-weight: 800;
     letter-spacing: -0.02em;
   }
@@ -343,7 +344,7 @@ const radiusUsage: Record<string, string> = {
   .sg-lede {
     max-width: 62ch;
     margin: 0;
-    font-size: 0.95rem;
+    font-size: var(--fs-95);
     line-height: 1.6;
     color: #444;
   }
@@ -356,14 +357,14 @@ const radiusUsage: Record<string, string> = {
 
   .sg-h2 {
     margin: 0 0 0.35rem;
-    font-size: 1.25rem;
+    font-size: var(--fs-125);
     font-weight: 700;
     letter-spacing: 0.01em;
   }
 
   .sg-h3 {
     margin: 2rem 0 0.9rem;
-    font-size: 0.82rem;
+    font-size: var(--fs-82);
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -372,7 +373,7 @@ const radiusUsage: Record<string, string> = {
 
   .sg-sub {
     margin: 0 0 1.5rem;
-    font-size: 0.88rem;
+    font-size: var(--fs-88);
     color: var(--color-muted);
   }
 
@@ -405,14 +406,14 @@ const radiusUsage: Record<string, string> = {
     margin-bottom: 0.6rem;
     background: #fff;
     border: 1.5px solid var(--color-dark);
-    font-size: 0.82rem;
+    font-size: var(--fs-82);
     font-weight: 600;
   }
 
   /* ── Shared token meta ── */
   .sg-token-name {
     display: block;
-    font-size: 0.82rem;
+    font-size: var(--fs-82);
     font-weight: 600;
     color: var(--color-dark);
   }
@@ -420,14 +421,14 @@ const radiusUsage: Record<string, string> = {
   .sg-token-value {
     display: block;
     margin-top: 0.15rem;
-    font-size: 0.82rem;
+    font-size: var(--fs-82);
     color: var(--color-muted);
   }
 
   .sg-token-usage {
     display: block;
     margin-top: 0.2rem;
-    font-size: 0.78rem;
+    font-size: var(--fs-78);
     line-height: 1.45;
     color: var(--color-muted);
   }
@@ -436,13 +437,13 @@ const radiusUsage: Record<string, string> = {
   .sg-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.88rem;
+    font-size: var(--fs-88);
   }
 
   .sg-table th {
     padding: 0.5rem 0.75rem 0.5rem 0;
     border-bottom: 1.5px solid var(--color-border);
-    font-size: 0.78rem;
+    font-size: var(--fs-78);
     font-weight: 600;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -467,12 +468,12 @@ const radiusUsage: Record<string, string> = {
     display: flex;
     align-items: baseline;
     gap: 1rem;
-    font-size: 1.15rem;
+    font-size: var(--fs-115);
   }
 
   .sg-weight-num {
     flex: 0 0 3rem;
-    font-size: 0.78rem;
+    font-size: var(--fs-78);
     font-weight: 600;
     color: var(--color-muted);
   }
@@ -492,7 +493,7 @@ const radiusUsage: Record<string, string> = {
   /* ── Specimens ── */
   .sg-row-label {
     margin: 1.75rem 0 0.7rem;
-    font-size: 0.78rem;
+    font-size: var(--fs-78);
     font-weight: 600;
     letter-spacing: 0.05em;
     color: var(--color-muted);
@@ -533,7 +534,7 @@ const radiusUsage: Record<string, string> = {
   .sg-note {
     max-width: 72ch;
     margin: 1.25rem 0 0;
-    font-size: 0.82rem;
+    font-size: var(--fs-82);
     line-height: 1.65;
     color: #555;
   }
@@ -546,7 +547,7 @@ const radiusUsage: Record<string, string> = {
     max-width: 72ch;
     margin: 0;
     padding-left: 1.15rem;
-    font-size: 0.85rem;
+    font-size: var(--fs-85);
     line-height: 1.7;
     color: #444;
   }
