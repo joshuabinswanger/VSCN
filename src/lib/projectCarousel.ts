@@ -23,15 +23,22 @@
 //      the two distances are measured against .page-wrap's client box and
 //      handed to the stylesheet as --bleed-l / --bleed-r. Unmeasured (no
 //      script) they are 0 and the carousel is simply a column-wide scroller.
-//   2. PREV / NEXT, the counter and the spoken position.
+//   2. PREV / NEXT, the dots and the spoken position.
+//   2b. THE FRAME. A work narrower than the column (the 60vh cap, centred) is
+//      not where the column's edges are, so the dots and the two chevrons are
+//      placed on the CURRENT picture: its offsets inside its slide go to the
+//      stylesheet as --frame-l / --frame-r / --frame-h. The picture is the
+//      slide's `.mprof__work-link` (MemberWork.astro, and the preview's
+//      figure); without one the frame is the whole slide.
 //   3. FOLLOWING THE LIGHTBOX (showInCarousel): paging the lightbox pages the
 //      carousel behind it, so the close animation lands on a visible picture.
 //
 // Contract with the markup (MemberProject.astro on the page, the `carousel`
 // template in ProfileViewPreview.astro in the editor): `[data-carousel]` on
 // the wrapper, `[data-carousel-track]` holding one child per work,
-// `[data-carousel-prev/next]`, `[data-carousel-count]`, `[data-carousel-live]`,
-// and `data-position-label` ("Work {n} of {total}").
+// `[data-carousel-prev/next]`, `[data-carousel-dots]` (an empty row this module
+// fills with one dot per work), `[data-carousel-live]`, and
+// `data-position-label` ("Work {n} of {total}").
 
 const live = new Map<HTMLElement, () => void>();
 
@@ -68,7 +75,13 @@ export function initProjectCarousels(root: ParentNode = document): void {
     const slides = Array.from(track.children) as HTMLElement[];
     const prev = carousel.querySelector<HTMLButtonElement>("[data-carousel-prev]");
     const next = carousel.querySelector<HTMLButtonElement>("[data-carousel-next]");
-    const count = carousel.querySelector<HTMLElement>("[data-carousel-count]");
+    const dotRow = carousel.querySelector<HTMLElement>("[data-carousel-dots]");
+    const dots = slides.map(() => {
+      const dot = document.createElement("span");
+      dot.className = "mprof__carousel-dot";
+      return dot;
+    });
+    dotRow?.replaceChildren(...dots);
     const liveRegion = carousel.querySelector<HTMLElement>("[data-carousel-live]");
     const positionLabel = carousel.dataset.positionLabel ?? "";
     const controller = new AbortController();
@@ -114,6 +127,18 @@ export function initProjectCarousels(root: ParentNode = document): void {
 
     let shown = -1;
     let announce = false;
+
+    const frame = () => {
+      const slide = slides[shown < 0 ? 0 : shown];
+      if (!slide) return;
+      const pic = slide.querySelector<HTMLElement>(".mprof__work-link") ?? slide;
+      const s = slide.getBoundingClientRect();
+      const p = pic.getBoundingClientRect();
+      if (!s.width) return;
+      carousel.style.setProperty("--frame-l", `${Math.max(0, Math.round(p.left - s.left))}px`);
+      carousel.style.setProperty("--frame-r", `${Math.max(0, Math.round(s.right - p.right))}px`);
+      carousel.style.setProperty("--frame-h", `${Math.round(p.height)}px`);
+    };
     const update = () => {
       const i = current();
       if (i === shown) return;
@@ -122,8 +147,9 @@ export function initProjectCarousels(root: ParentNode = document): void {
       const atEnd = i === slides.length - 1;
       if (prev) prev.disabled = atStart;
       if (next) next.disabled = atEnd;
-      if (count) count.textContent = `${i + 1} / ${slides.length}`;
+      dots.forEach((dot, n) => dot.classList.toggle("mprof__carousel-dot--on", n === i));
       slides.forEach((slide, n) => slide.classList.toggle("is-current", n === i));
+      frame();
       // Spoken only when a control asked for the move — a swipe or a scroll is
       // already visible to whoever made it, and page load is not news.
       if (liveRegion && announce) {

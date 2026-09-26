@@ -339,8 +339,6 @@ export function renderProfilePreview(
       const words = labels.carousel;
       const at = (n: number) => words.position.replace("{n}", String(n)).replace("{total}", String(figures.length));
       box.dataset.positionLabel = words.position;
-      const count = box.querySelector<HTMLElement>("[data-carousel-count]");
-      if (count) count.textContent = `1 / ${figures.length}`;
       box.querySelector("[data-carousel-prev]")?.setAttribute("aria-label", words.prev);
       box.querySelector("[data-carousel-next]")?.setAttribute("aria-label", words.next);
       track.setAttribute("aria-roledescription", words.roledescription);

@@ -88,29 +88,11 @@ const figure = (w: Work) => ({
   {
     carousel ? (
       <div class="mprof__carousel" data-carousel data-position-label={t("member.project.position")}>
-        <div class="mprof__carousel-bar">
-          <span class="mprof__carousel-count" data-carousel-count aria-hidden="true">
-            1 / {works.length}
-          </span>
-          <button
-            class="mprof__carousel-btn mprof__carousel-btn--prev"
-            type="button"
-            data-carousel-prev
-            aria-controls={trackId}
-            aria-label={t("member.project.prev")}
-          >
-            <span aria-hidden="true" />
-          </button>
-          <button
-            class="mprof__carousel-btn mprof__carousel-btn--next"
-            type="button"
-            data-carousel-next
-            aria-controls={trackId}
-            aria-label={t("member.project.next")}
-          >
-            <span aria-hidden="true" />
-          </button>
-        </div>
+        {/* The gallery card's dots, top right (2026-09-26, Josh: "use the
+            same styles for the project carousels! with the dots top right").
+            Indicators, not controls; projectCarousel.ts draws one per work. */}
+        <div class="mprof__carousel-dots" data-carousel-dots aria-hidden="true" />
+        <div class="mprof__carousel-stage">
         {/* A real scroll container, so swipe, trackpad and the arrow keys (it
             is a tab stop) all page it natively, and scroll-snap makes every
             one of them land on a work. */}
@@ -134,6 +116,27 @@ const figure = (w: Work) => ({
               <MemberWork {...figure(w)} />
             </div>
           ))}
+        </div>
+          {/* The card's hover chevrons: a strip down each edge of the
+              column, painted only while the pointer or focus is on it. */}
+          <button
+            class="mprof__carousel-arrow mprof__carousel-arrow--prev"
+            type="button"
+            data-carousel-prev
+            aria-controls={trackId}
+            aria-label={t("member.project.prev")}
+          >
+            <span aria-hidden="true" />
+          </button>
+          <button
+            class="mprof__carousel-arrow mprof__carousel-arrow--next"
+            type="button"
+            data-carousel-next
+            aria-controls={trackId}
+            aria-label={t("member.project.next")}
+          >
+            <span aria-hidden="true" />
+          </button>
         </div>
         <p class="mprof__carousel-live" aria-live="polite" aria-atomic="true" data-carousel-live />
       </div>
