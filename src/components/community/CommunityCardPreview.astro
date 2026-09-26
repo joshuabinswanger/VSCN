@@ -40,12 +40,6 @@
 // member's data never reaches the build, so there is nothing to render here
 // until the form has loaded.
 import "../../styles/communityCard.css";
-import { getLangFromUrl, useTranslations } from "../../i18n/utils.ts";
-
-// The "i" button's label is the one string this shell carries itself rather
-// than receiving through CardPreviewLabels: the button is static markup, and
-// taking it from the page's own locale keeps the editor's code out of it.
-const t = useTranslations(getLangFromUrl(Astro.url));
 ---
 
 <article class="ccard ccard--preview" data-ccpv-root>
@@ -109,26 +103,6 @@ const t = useTranslations(getLangFromUrl(Astro.url));
       {/* Empty at render: a live region has to be in the DOM before the change
           it announces. */}
       <p class="ccard__live" aria-live="polite" aria-atomic="true" data-carousel-live></p>
-      {/* The card's "i" and its overlay, same markup and same wiring
-          (bindInfo in communityCarousel.ts): the module fills the panel from
-          the selected slide's data-pswp-caption/-description and unhides the
-          button only on a slide that has a description. Hidden until then,
-          since the shell does not know the gallery at render time. */}
-      <button
-        class="ccard__info"
-        type="button"
-        data-carousel-info
-        aria-expanded="false"
-        aria-controls="ccpv-info"
-        aria-label={t("community.card.info")}
-        hidden
-      >
-        <span aria-hidden="true">i</span>
-      </button>
-      <div class="ccard__info-panel" id="ccpv-info" data-carousel-info-panel tabindex="0" hidden>
-        <p class="ccard__info-caption" data-carousel-info-caption></p>
-        <p class="ccard__info-desc" data-carousel-info-desc></p>
-      </div>
     </div>
   </div>
 

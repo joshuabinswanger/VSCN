@@ -291,7 +291,6 @@ export const ui: Record<string, Record<string, string>> = {
     "community.card.image": "image",
     "community.card.gallery": "gallery",
     "community.card.imagePosition": "Image {n} of {total}",
-    "community.card.info": "Image description",
     "profile.gallery.nudge":
       "Your card in the directory shows no artwork yet — add images and it becomes an image card.",
     "profile.cardPreview": "Community card preview",
@@ -864,7 +863,6 @@ export const ui: Record<string, Record<string, string>> = {
     "community.card.image": "Bild",
     "community.card.gallery": "Galerie",
     "community.card.imagePosition": "Bild {n} von {total}",
-    "community.card.info": "Bildbeschreibung",
     "profile.gallery.nudge":
       "Deine Karte im Verzeichnis zeigt noch keine Arbeiten — füge Bilder hinzu und sie wird zur Bildkarte.",
     "profile.cardPreview": "Community-Karten-Vorschau",
