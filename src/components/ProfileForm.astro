@@ -1513,42 +1513,57 @@ const t = useTranslations(lang);
     min-width: 0;
   }
 
-  /* ── The toolbar (2026-09-26, Josh: "a bit more modern") ──
-     One tinted, rounded strip holding four equal icon buttons: no borders
-     between or around them, the icons in the muted ink, and the pressed-on
-     state lifted onto paper with a hairline shadow. Disabled at an edge
-     rather than removed, so the strip never changes length. */
+  /* ── The toolbar (2026-09-26; restyled the same day, Josh: "the design
+     doesn't match the rest of the site") ──
+     Drawn in the site's own control language, the EN/DE switch's: joined
+     segments on white, a 1.5px hairline in --color-border, the small radius,
+     the muted ink at rest and the dark hairline on hover. No tint, no shadow,
+     no pill: every other control in the form is flat and square-cornered.
+     Disabled at an edge rather than removed, so the strip never changes
+     length. */
   .gallery-toolbar {
     display: grid;
     grid-auto-flow: column;
     grid-auto-columns: minmax(0, 1fr);
-    gap: 2px;
-    padding: 2px;
-    background: color-mix(in srgb, var(--color-border) 55%, transparent);
-    border-radius: var(--radius-md);
   }
 
   .gallery-tbtn {
+    position: relative;
     display: grid;
     place-items: center;
     height: 28px;
     min-width: 0;
     padding: 0;
-    background: transparent;
+    background: white;
     color: var(--color-muted);
-    border: 0;
-    border-radius: calc(var(--radius-md) - 2px);
+    border: 1.5px solid var(--color-border);
+    border-radius: 0;
     cursor: pointer;
     transition:
-      background-color 0.15s,
       color 0.15s,
-      box-shadow 0.15s;
+      border-color 0.15s;
   }
 
-  .gallery-tbtn:hover:not(:disabled) {
-    background: var(--color-bg);
+  /* Shared walls: each segment after the first overlaps the one before by
+     its border, so the joins are one hairline wide, and a hovered segment
+     is raised so its dark wall is drawn whole. */
+  .gallery-tbtn + .gallery-tbtn {
+    margin-left: -1.5px;
+  }
+
+  .gallery-tbtn:first-child {
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  }
+
+  .gallery-tbtn:last-child {
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  .gallery-tbtn:hover:not(:disabled),
+  .gallery-tbtn:focus-visible {
+    z-index: 1;
     color: var(--color-dark);
-    box-shadow: 0 1px 2px color-mix(in srgb, var(--color-dark) 12%, transparent);
+    border-color: var(--color-dark);
   }
 
   .gallery-tbtn:focus-visible,
@@ -1558,12 +1573,15 @@ const t = useTranslations(lang);
     outline-offset: 1px;
   }
 
+  /* Delete goes red on hover, as the social rows' remove does; replace stays
+     dark, because it keeps the work. */
   .gallery-tbtn--danger:hover:not(:disabled) {
     color: var(--color-error);
+    border-color: var(--color-error);
   }
 
   .gallery-tbtn:disabled {
-    opacity: 0.3;
+    color: var(--color-border);
     cursor: default;
   }
 
@@ -1577,30 +1595,32 @@ const t = useTranslations(lang);
     stroke-linejoin: round;
   }
 
-  /* A text control in the toolbar's material: "Use automatic thumbnail",
-     "Delete project". */
+  /* A text control beside the toolbar, in the same dress: "Use automatic
+     thumbnail", "Delete project". */
   .gallery-tpill {
     min-height: 28px;
     padding: 4px 10px;
-    background: color-mix(in srgb, var(--color-border) 55%, transparent);
-    color: var(--color-dark);
-    border: 0;
-    border-radius: var(--radius-md);
+    background: white;
+    color: var(--color-muted);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
     font: inherit;
     font-size: var(--fs-75);
     line-height: 1.25;
     cursor: pointer;
     transition:
-      background-color 0.15s,
-      color 0.15s;
+      color 0.15s,
+      border-color 0.15s;
   }
 
   .gallery-tpill:hover:not(:disabled) {
-    background: var(--color-border);
+    color: var(--color-dark);
+    border-color: var(--color-dark);
   }
 
   .gallery-tpill--danger:hover:not(:disabled) {
     color: var(--color-error);
+    border-color: var(--color-error);
   }
 
   .gallery-tpill:disabled {
@@ -1992,7 +2012,7 @@ const t = useTranslations(lang);
     cursor: default;
   }
 
-  /* THE PROJECT DROPDOWN: a native select in the toolbar's material, at its
+  /* THE PROJECT DROPDOWN: a native select in the toolbar's dress, at its
      width, with the site's own thin chevron drawn by the wrapper (a native
      arrow would be the one heavy glyph in the row). No title of its own. */
   .gallery-select-wrap {
@@ -2019,23 +2039,26 @@ const t = useTranslations(lang);
 
   .gallery-project-select {
     appearance: none;
+    box-sizing: border-box;
     width: 100%;
     height: 32px;
     min-width: 0;
     padding: 0 26px 0 10px;
-    background: color-mix(in srgb, var(--color-border) 55%, transparent);
+    background: white;
     color: var(--color-dark);
-    border: 0;
-    border-radius: var(--radius-md);
+    /* The form's .input, at the toolbar's scale. */
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
     font: inherit;
     font-size: var(--fs-75);
     text-overflow: ellipsis;
     cursor: pointer;
-    transition: background-color 0.15s;
+    transition: border-color 0.15s;
   }
 
-  .gallery-project-select:hover {
-    background: var(--color-border);
+  .gallery-project-select:hover,
+  .gallery-project-select:focus {
+    border-color: var(--color-dark);
   }
 
   /* ── Project blocks (2026-09-23) ─────────────────────── */
