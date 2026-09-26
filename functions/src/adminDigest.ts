@@ -16,8 +16,8 @@ import type { ImageDoc } from "./types";
 //   minutes after Auth-create for someone who never finished — so the mail
 //   describes what the person did, not merely that an Auth user appeared
 //   (the 2026-09-10 ping fired at wizard step 1 and knew only the address).
-// - A gallery of eight uploads becomes one mail listing eight images, not
-//   eight mails.
+// - A gallery of twelve uploads becomes one mail listing twelve images, not
+//   twelve mails.
 
 /** How long an unfinished signup waits before it is reported as unfinished. */
 export const SIGNUP_REPORT_DELAY_MINUTES = 30;
