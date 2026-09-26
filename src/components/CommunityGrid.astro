@@ -1789,9 +1789,10 @@ const indexMembers = [...members].sort((a, b) =>
      bottom edge sits (--cgrid-fade-inset), taken on load and when the bar
      resizes — never while scrolling. No observers, no scroll handler.
 
-     Gallery only: the grid wall is a reference view and stays still. Browsers
-     without scroll-driven animations get every card at full opacity, which is
-     the finished no-motion state and what the page did before.
+     The grid wall gets only the arrival, and a shorter one — see the block
+     after this one. Browsers without scroll-driven animations get every card
+     at full opacity, which is the finished no-motion state and what the page
+     did before.
 
      The 5s auto-advance follows the same idea of prominence, decided in JS
      because it is a timer rather than a paint — `focusedCarousel()` in
@@ -1828,6 +1829,33 @@ const indexMembers = [...members].sort((a, b) =>
         animation-range:
           exit 0% exit 100%,
           cover 0% cover 35%;
+      }
+    }
+  }
+
+  /* ── THE PHONE'S GRID FADES IN TOO ───────────────
+     (2026-09-26, Josh: "the grid should have a faint fade in animation also on
+     mobile".) The desktop wall has always arrived — GSAP's grow-on-approach,
+     0.2 → 1 with a scale — but that layer is desktop-only by design (mobile
+     downloads no GSAP at all), so the phone's two-column wall just sat there.
+     This gives it the arrival and nothing else: no scale, no parallax, and no
+     fade-OUT, because the wall is a reference view to scan, not a column to
+     page through, and a tile dimming under the bar would read as greyed out.
+
+     The same `cgrid-cell-in` keyframes as the gallery, but over `entry`
+     instead of a fitted slice of `cover`: 0% is the tile's top edge crossing
+     the bottom of the screen, 100% the moment its bottom edge has crossed too.
+     Exact for every tile height, nothing to fit — a tile is at full strength
+     the moment the whole of it is on screen, which keeps the ramp short and
+     the effect faint. Fill `backwards` for the same reason as the gallery's
+     in-ramp: it holds 0.35 below the fold, then stops contributing and leaves
+     the tile at its own opacity of 1 for good. */
+  @media (--bp-mobile) and (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .cgrid[data-pattern="grid"] .cgrid__cell {
+        animation: cgrid-cell-in backwards;
+        animation-timeline: view();
+        animation-range: entry 0% entry 100%;
       }
     }
   }
