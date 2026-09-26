@@ -467,6 +467,16 @@
      picture rather than on the figure, caption included. */
   position: relative;
   display: block;
+  /* NO PICTURE TALLER THAN 75vh (2026-09-26, Josh: "make the max height of
+     an image 75vh"). Capped through the WIDTH, not the height: the frame is
+     this link, and a height cap on the <img> would leave the frame at the
+     column's width around a narrower picture, or letterbox it in its
+     placeholder colour. So the frame is at most as wide as the picture is at
+     75vh tall — --work-ar is width / height, set per work by MemberWork.astro
+     and by the editor's preview — and the image fills it. A landscape work
+     never reaches the cap and keeps the full column. Without --work-ar the
+     declaration is invalid and the frame is simply column-wide, as before. */
+  max-width: calc(75vh * var(--work-ar));
   border: 1.5px solid var(--color-border);
   border-radius: 0;
   background: var(--color-bg);
