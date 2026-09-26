@@ -1878,8 +1878,9 @@ const indexMembers = [...members].sort((a, b) =>
      the instant the whole tile was on screen — so short and so shallow that
      it barely read. Now it is deeper AND longer, with keyframes of its own so
      the gallery's liked fade is untouched:
-     - DEEPER: `cgrid-wall-in` starts at 0.12, below the desktop wall's 0.2,
-       because a phone tile is small and a shallow fade on it is invisible.
+     - DEEPER: `cgrid-wall-in` starts at 0 — fully invisible below the fold
+       (Josh, same day: "fade from 0", after 0.12). A tile appears out of the
+       paper rather than brightening from a ghost.
      - LONGER: `entry 0%` → `cover 30%`. It still starts as the top edge
        crosses the bottom of the screen, but runs on until the tile is well
        into the lower third (~300px of scroll for the page's ~180px tiles),
@@ -1928,7 +1929,7 @@ const indexMembers = [...members].sort((a, b) =>
 
   @keyframes cgrid-wall-in {
     0% {
-      opacity: 0.12;
+      opacity: 0;
     }
     100% {
       opacity: 1;
