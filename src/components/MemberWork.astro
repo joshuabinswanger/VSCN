@@ -43,7 +43,11 @@ interface Props {
 const { work: w, index: i, memberId, displayName, workAlt, linkTitle, siteLinkTitle } = Astro.props as Props;
 ---
 
-<figure class="mprof__work" transition:name={i === 0 ? `mimg-${memberId}` : undefined}>
+<figure
+  class="mprof__work"
+  transition:name={i === 0 ? `mimg-${memberId}` : undefined}
+  style={`--work-ar: ${w.width / w.height}`}
+>
   <a
     class="mprof__work-link"
     href={w.url}
@@ -59,7 +63,6 @@ const { work: w, index: i, memberId, displayName, workAlt, linkTitle, siteLinkTi
     data-pswp-project={w.slide.project}
     data-pswp-project-link={w.slide.projectLink}
     data-pswp-affiliations={w.slide.affiliations}
-    style={`--work-ar: ${w.width / w.height}`}
     {...embedDataAttrs(w.embed)}
   >
     <img

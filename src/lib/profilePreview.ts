@@ -266,12 +266,14 @@ export function renderProfilePreview(
       const trigger = figure.querySelector<HTMLAnchorElement>(".mprof__work-link");
       if (trigger) {
         trigger.href = w.url;
-        // The picture's shape, for the 60vh height cap (.mprof__work-link).
-        trigger.style.setProperty("--work-ar", String(w.width / w.height));
         writeSlideData(trigger, w, meta, project, labels.lang);
       }
       const workPart = <T extends HTMLElement = HTMLElement>(name: string) =>
         figure.querySelector<T>(`[data-ppv-work="${name}"]`);
+
+      // The picture's shape, on the figure as the page writes it: the 60vh
+      // cap on .mprof__work-link and the caption under it both read it.
+      figure.style.setProperty("--work-ar", String(w.width / w.height));
 
       img.src = w.url;
       img.width = w.width;

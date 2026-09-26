@@ -387,8 +387,8 @@ export const ui: Record<string, Record<string, string>> = {
     // any member of a bilingual site already reads without translation, and
     // there is no room in the compact gallery row for the full word twice.
     // These are the buttons' accessible names only.
-    "profile.gallery.lang.en": "Show the English caption and description fields",
-    "profile.gallery.lang.de": "Show the German caption and description fields",
+    "profile.gallery.lang.en": "Show the English title and description fields",
+    "profile.gallery.lang.de": "Show the German title and description fields",
     "profile.gallery.cancel": "Cancel upload",
     "profile.gallery.retry": "Retry",
     "profile.gallery.dismiss": "Dismiss",
@@ -428,7 +428,12 @@ export const ui: Record<string, Record<string, string>> = {
     // The project block's fold (2026-09-26, Josh: "details on project should be
     // called project details"), so it is not read as the first work's Details.
     "profile.project.details": "Project details",
-    "profile.gallery.caption": "Caption",
+    // Called TITLE since 2026-09-26 (Josh: "add a Title for each image that
+    // can be edited"). The field was always the picture's name: the page
+    // prints it first under the picture, the lightbox and the alt text
+    // use it. German already said "Bildtitel". The key keeps its name
+    // because the stored field is still `caption`.
+    "profile.gallery.caption": "Title",
     // A REAL ONE (2026-09-04, Josh: "only caption (make a good example)"),
     // labelled as one (2026-09-04, Josh: "the example inside the text box
     // should be labeled as such") — a member's own first attempt could sit in
@@ -443,7 +448,7 @@ export const ui: Record<string, Record<string, string>> = {
     // The accessible name for the German field below, not its placeholder —
     // see .de.ph for that. Names the field itself so a screen reader tabbing
     // in announces what it is, the same job "Caption" above does.
-    "profile.gallery.caption.de": "Caption (German)",
+    "profile.gallery.caption.de": "Title (German)",
     // The example carries its OWN caption.de.ph rather than reusing the one
     // above (2026-09-04, "make the explanations better"): the sentence has to
     // exist in German to demonstrate a German caption, and swapping only the
