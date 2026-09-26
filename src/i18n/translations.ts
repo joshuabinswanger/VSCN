@@ -422,8 +422,6 @@ export const ui: Record<string, Record<string, string>> = {
     // The heading of each work's fold in the Works tab (2026-09-24); the
     // folded row prints the caption beside it, or .noCaption when there is none.
     "profile.gallery.details": "Details",
-    "profile.gallery.details.noCaption": "No caption yet",
-    "profile.project.details.empty": "No description yet",
     "profile.gallery.caption": "Caption",
     // A REAL ONE (2026-09-04, Josh: "only caption (make a good example)"),
     // labelled as one (2026-09-04, Josh: "the example inside the text box
@@ -509,7 +507,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.project.addImages": "Add images to this project",
     "profile.project.delete": "Delete project",
     "profile.project.select": "Project",
-    "profile.project.none": "None",
+    "profile.project.none": "No project",
     "profile.project.deleteNote": "The images stay in your gallery.",
     "profile.project.moveUp": "Move up",
     "profile.project.moveDown": "Move down",
@@ -979,8 +977,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.embed.err.unknown": "Das Video konnte nicht hinzugefügt werden. Bitte versuche es noch einmal.",
     "profile.gallery.overflow": "Es passen nur {n} Bilder — {m} nicht hinzugefügt.",
     "profile.gallery.details": "Details",
-    "profile.gallery.details.noCaption": "Noch kein Bildtitel",
-    "profile.project.details.empty": "Noch keine Beschreibung",
     "profile.gallery.caption": "Bildtitel",
     "profile.gallery.caption.ph": "Beispiel: Zebrafisch-Netzhaut im Querschnitt, konfokal",
     "profile.gallery.captionNote":
@@ -1027,7 +1023,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.project.addImages": "Bilder zu diesem Projekt hinzufügen",
     "profile.project.delete": "Projekt löschen",
     "profile.project.select": "Projekt",
-    "profile.project.none": "Keines",
+    "profile.project.none": "Kein Projekt",
     "profile.project.deleteNote": "Die Bilder bleiben in deiner Galerie.",
     "profile.project.moveUp": "Nach oben",
     "profile.project.moveDown": "Nach unten",

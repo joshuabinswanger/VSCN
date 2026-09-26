@@ -371,20 +371,18 @@ const t = useTranslations(lang);
           unequal. Closed again once the link has landed. */
       }
       <div id="gallery-video" class="gallery-video" role="group" aria-labelledby="gallery-video-label" hidden>
+        <label id="gallery-video-label" class="gallery-video-label" for="gallery-video-url">{t("profile.embed.label")}</label>
         <div class="gallery-video-row">
-          <div class="infield">
-            <input
-              id="gallery-video-url"
-              class="input"
-              type="url"
-              inputmode="url"
-              autocomplete="off"
-              spellcheck="false"
-              maxlength="500"
-              placeholder={t("profile.embed.ph")}
-            />
-            <label id="gallery-video-label" class="infield-label" for="gallery-video-url">{t("profile.embed.label")}</label>
-          </div>
+          <input
+            id="gallery-video-url"
+            class="input"
+            type="url"
+            inputmode="url"
+            autocomplete="off"
+            spellcheck="false"
+            maxlength="500"
+            placeholder={t("profile.embed.ph")}
+          />
           <button id="gallery-video-add" type="button" class="btn-solid gallery-video-submit">{t("profile.embed.submit")}</button>
           <button id="gallery-video-cancel" type="button" class="btn-link gallery-video-cancel">{t("profile.reauth.cancel")}</button>
         </div>
@@ -419,18 +417,45 @@ const t = useTranslations(lang);
         <div class="gallery-item">
           <div class="gallery-thumb">
             <img alt="" loading="lazy" data-gallery-img />
-            <span class="gallery-cover" data-gallery-cover hidden></span>
-            <span class="gallery-video-badge" data-gallery-video-badge hidden
-              ><span class="vscn-play" aria-hidden="true"></span><span data-gallery-video-name></span></span
-            >
             {
-              /* ON THE PICTURE, beside ✕ (2026-09-24, Josh: "the replace
-                button should be a small symbol next to the X in the image").
-                Both act on the image itself, so both sit on it; the words live
-                in aria-label and the tooltip. */
+              /* Both labels bottom left, stacked (2026-09-25, Josh: "the video
+                tag should be bottom left"), so a video that is also the cover
+                wears both without one covering the other. */
             }
-            <button type="button" class="gallery-thumb-replace" data-gallery-replace>↻</button>
-            <button type="button" class="gallery-thumb-remove" data-gallery-remove>✕</button>
+            <div class="gallery-thumb-labels">
+              <span class="gallery-cover" data-gallery-cover hidden></span>
+              <span class="gallery-video-badge" data-gallery-video-badge hidden
+                ><span class="vscn-play" aria-hidden="true"></span><span data-gallery-video-name></span></span
+              >
+            </div>
+          </div>
+          {
+            /* EVERY TOOL RIGHT OF THE PICTURE (2026-09-25, Josh: "move the
+              replace image, delete image, move image up, move image down,
+              project selection button to right of the image"). They used to
+              be split: ↻ and ✕ on the picture, the arrows and the project
+              under the Details fold. Now one column beside the thumb holds
+              everything that acts on the work as a whole, and the fold holds
+              only its words.
+              Up/down stay inside the row's container (moveImage in
+              projectEditor.ts): a loose row steps past a whole block, a row
+              inside a project stays inside it. The select is the only way into
+              or out of a project, "No project" meaning a loose work, and it is
+              hidden while the member has no project at all: a dropdown with
+              one choice is not a choice. Unlabelled on screen (Josh: "remove
+              the Title"); its name is in aria-label. */
+          }
+          <div class="gallery-tools gallery-row-tools">
+            <div class="gallery-tool-pair">
+              <button type="button" class="gallery-tool gallery-move" data-gallery-move="up"><span aria-hidden="true">↑</span></button>
+              <button type="button" class="gallery-tool gallery-move" data-gallery-move="down"><span aria-hidden="true">↓</span></button>
+            </div>
+            <div class="gallery-tool-pair">
+              <button type="button" class="gallery-tool gallery-move" data-gallery-replace><span aria-hidden="true">↻</span></button>
+              <button type="button" class="gallery-tool gallery-move gallery-tool--danger" data-gallery-remove><span aria-hidden="true">✕</span></button>
+            </div>
+            <select class="gallery-project-select" data-gallery-project hidden></select>
+            <button type="button" class="gallery-tool" data-gallery-auto-thumb hidden></button>
           </div>
           <div class="gallery-fields">
             {
@@ -444,16 +469,15 @@ const t = useTranslations(lang);
                 that is the row about to be filled in. The ⋯ menu stays outside
                 the fold, so a folded row can still be moved.
 
-                The summary carries the caption, which is what makes a folded
-                row still say which work it is — and "No caption yet" when
-                there is none, since that is the one field worth coming back
-                for. Open/closed lives in galleryDetailsOpenUI, keyed by
-                imageId, for the same re-clone reason as the tag fold below. */
+                The summary says "Details" and nothing else (2026-09-25, Josh:
+                "detail drop down should not display any name or anything"); it
+                used to repeat the caption. Open/closed lives in
+                galleryDetailsOpenUI, keyed by imageId, for the same re-clone
+                reason as the tag fold below. */
             }
             <details class="gallery-details">
               <summary class="gallery-details-summary">
                 <span class="gallery-details-title">{t("profile.gallery.details")}</span>
-                <span class="gallery-details-caption" data-gallery-details-caption></span>
                 <span class="gallery-details-chevron" aria-hidden="true"></span>
               </summary>
               <div class="gallery-details-body">
@@ -497,10 +521,12 @@ const t = useTranslations(lang);
                 examples now, not names. */
             }
             <div class="gallery-lang-pane" data-gallery-lang-pane="en">
+              <div class="label-row">
+                <label class="row-label" data-row-label="caption">{t("profile.gallery.caption")}</label>
+              </div>
               <p class="field-note" data-tip data-tip-note="caption" hidden>{t("profile.gallery.captionNote")}</p>
-              <div class="infotip-field infield">
-                <input type="text" class="input" placeholder=" " data-gallery-field="caption" />
-                <label class="infield-label" data-row-label="caption">{t("profile.gallery.caption")}</label>
+              <div class="infotip-field">
+                <input type="text" class="input" data-gallery-field="caption" />
                 <InfoTip lang={lang} rowKey="caption" />
               </div>
               {
@@ -522,10 +548,11 @@ const t = useTranslations(lang);
                   length one — see the switch above. This pane stays the
                   single English pair of record. */
               }
-              <div class="infield">
-                <textarea class="input textarea" rows="3" placeholder=" " data-gallery-field="description"></textarea>
-                <label class="infield-label" data-row-label="description">{t("profile.gallery.description.label")} <span class="infield-optional">{t("profile.optional")}</span></label>
+              <div class="label-row">
+                <label class="row-label" data-row-label="description">{t("profile.gallery.description.label")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
               </div>
+              <textarea class="input textarea" rows="3" data-gallery-field="description"></textarea>
             </div>
 
             {
@@ -541,14 +568,16 @@ const t = useTranslations(lang);
                 not say "leaving these blank is fine" on its own. */
             }
             <div class="gallery-lang-pane" data-gallery-lang-pane="de" hidden>
-              <div class="infield">
-                <input type="text" class="input" placeholder=" " data-gallery-field="captionDe" />
-                <label class="infield-label" data-row-label="captionDe">{t("profile.gallery.caption.de")} <span class="infield-optional">{t("profile.optional")}</span></label>
+              <div class="label-row">
+                <label class="row-label" data-row-label="captionDe">{t("profile.gallery.caption.de")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
               </div>
-              <div class="infield">
-                <textarea class="input textarea" rows="3" placeholder=" " data-gallery-field="descriptionDe"></textarea>
-                <label class="infield-label" data-row-label="descriptionDe">{t("profile.gallery.description.de")} <span class="infield-optional">{t("profile.optional")}</span></label>
+              <input type="text" class="input" data-gallery-field="captionDe" />
+              <div class="label-row">
+                <label class="row-label" data-row-label="descriptionDe">{t("profile.gallery.description.de")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
               </div>
+              <textarea class="input textarea" rows="3" data-gallery-field="descriptionDe"></textarea>
             </div>
 
             {
@@ -578,19 +607,21 @@ const t = useTranslations(lang);
                 template itself is cloned once per image (see the comment
                 there). */
             }
-            <div class="input-prefix-wrap">
-              <span class="input-prefix">https://</span>
-              <div class="infield">
-                <input type="text" class="input input-prefixed" placeholder=" " data-gallery-field="siteLink" />
-                <label class="infield-label" data-row-label="siteLink">{t("profile.gallery.siteLink")} <span class="infield-optional">{t("profile.optional")}</span></label>
-              </div>
+            <div class="label-row">
+              <label class="row-label" data-row-label="siteLink">{t("profile.gallery.siteLink")}</label>
+              <span class="row-optional">{t("profile.optional")}</span>
             </div>
             <div class="input-prefix-wrap">
               <span class="input-prefix">https://</span>
-              <div class="infield">
-                <input type="text" class="input input-prefixed" placeholder=" " data-gallery-field="link" />
-                <label class="infield-label" data-row-label="link">{t("profile.gallery.link")} <span class="infield-optional">{t("profile.optional")}</span></label>
-              </div>
+              <input type="text" class="input input-prefixed" data-gallery-field="siteLink" />
+            </div>
+            <div class="label-row">
+              <label class="row-label" data-row-label="link">{t("profile.gallery.link")}</label>
+              <span class="row-optional">{t("profile.optional")}</span>
+            </div>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">https://</span>
+              <input type="text" class="input input-prefixed" data-gallery-field="link" />
             </div>
             {
               /* WHAT IS IN THE PICTURE, not who made it — the community wall
@@ -636,27 +667,6 @@ const t = useTranslations(lang);
             </details>
               </div>
             </details>
-            {
-              /* THE ↑/↓ PAIR IS BACK, AND THE PROJECT IS A DROPDOWN
-                (2026-09-25, Josh: drag-to-arrange out entirely — "a gallery
-                this small doesn't need it"). The drag and its ⋯ menu from
-                2026-09-23 are gone. Up/down stay inside the row's container
-                (moveImage in projectEditor.ts): a loose row steps past a whole
-                block, a row inside a project stays inside it. The select is
-                the only way into or out of a project; "None" is a loose work.
-                It is hidden while the member has no project at all — a
-                dropdown with one choice is not a choice. Outside the details
-                fold, so a folded row can still be moved and assigned. */
-            }
-            <div class="gallery-tools">
-              <button type="button" class="gallery-tool gallery-move" data-gallery-move="up"><span aria-hidden="true">↑</span></button>
-              <button type="button" class="gallery-tool gallery-move" data-gallery-move="down"><span aria-hidden="true">↓</span></button>
-              <label class="gallery-project-pick" data-gallery-project-pick hidden>
-                <span class="gallery-project-pick-label">{t("profile.project.select")}</span>
-                <select class="gallery-project-select" data-gallery-project></select>
-              </label>
-              <button type="button" class="gallery-tool" data-gallery-auto-thumb hidden></button>
-            </div>
           </div>
         </div>
       </template>
@@ -697,13 +707,12 @@ const t = useTranslations(lang);
               (projectDetailsOpenUI, keyed by projectId). Only the words fold.
               The header keeps the name, the arrows and Delete, and the images
               below stay listed, so a folded block can still be moved and its
-              works still reordered. The summary carries the description's
-              start, or says there is none yet. */
+              works still reordered. The summary says "Details" and nothing
+              else, like a work's (2026-09-25). */
           }
           <details class="gallery-details gallery-project-details">
             <summary class="gallery-details-summary">
               <span class="gallery-details-title">{t("profile.gallery.details")}</span>
-              <span class="gallery-details-caption" data-project-details-caption></span>
               <span class="gallery-details-chevron" aria-hidden="true"></span>
             </summary>
           <div class="gallery-project-fields">
@@ -711,34 +720,36 @@ const t = useTranslations(lang);
               <button type="button" class="gallery-lang-btn is-active" data-gallery-lang-btn="en">EN</button>
               <button type="button" class="gallery-lang-btn" data-gallery-lang-btn="de">DE</button>
             </div>
-            {/* Named inside the field, like the image rows' (2026-09-25). */}
+            {/* Titled like the image rows' fields (2026-09-24); see there. */}
             <div class="gallery-lang-pane" data-gallery-lang-pane="en">
-              <div class="infield">
-                <input type="text" class="input" placeholder=" " data-project-field="title" />
-                <label class="infield-label" data-row-label="title">{t("profile.project.title.label")}</label>
+              <label class="row-label" data-row-label="title">{t("profile.project.title.label")}</label>
+              <input type="text" class="input" data-project-field="title" />
+              <div class="label-row">
+                <label class="row-label" data-row-label="description">{t("profile.project.description.label")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
               </div>
-              <div class="infield">
-                <textarea class="input textarea" rows="2" placeholder=" " data-project-field="description"></textarea>
-                <label class="infield-label" data-row-label="description">{t("profile.project.description.label")} <span class="infield-optional">{t("profile.optional")}</span></label>
-              </div>
+              <textarea class="input textarea" rows="2" data-project-field="description"></textarea>
             </div>
             <div class="gallery-lang-pane" data-gallery-lang-pane="de" hidden>
-              <div class="infield">
-                <input type="text" class="input" placeholder=" " data-project-field="titleDe" />
-                <label class="infield-label" data-row-label="titleDe">{t("profile.project.title.de")} <span class="infield-optional">{t("profile.optional")}</span></label>
+              <div class="label-row">
+                <label class="row-label" data-row-label="titleDe">{t("profile.project.title.de")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
               </div>
-              <div class="infield">
-                <textarea class="input textarea" rows="2" placeholder=" " data-project-field="descriptionDe"></textarea>
-                <label class="infield-label" data-row-label="descriptionDe">{t("profile.project.description.de")} <span class="infield-optional">{t("profile.optional")}</span></label>
+              <input type="text" class="input" data-project-field="titleDe" />
+              <div class="label-row">
+                <label class="row-label" data-row-label="descriptionDe">{t("profile.project.description.de")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
               </div>
+              <textarea class="input textarea" rows="2" data-project-field="descriptionDe"></textarea>
+            </div>
+            <div class="label-row">
+              <label class="row-label" data-row-label="link">{t("profile.project.website")}</label>
+              <span class="row-optional">{t("profile.optional")}</span>
             </div>
             <p class="field-note" data-tip data-tip-note="link" hidden>{t("profile.project.linkNote")}</p>
             <div class="input-prefix-wrap">
               <span class="input-prefix">https://</span>
-              <div class="infield">
-                <input type="text" class="input input-prefixed" placeholder=" " data-project-field="link" />
-                <label class="infield-label" data-row-label="link">{t("profile.project.website")} <span class="infield-optional">{t("profile.optional")}</span></label>
-              </div>
+              <input type="text" class="input input-prefixed" data-project-field="link" />
               <InfoTip lang={lang} rowKey="link" />
             </div>
             {
@@ -748,8 +759,11 @@ const t = useTranslations(lang);
                 Name | Member switch is the rows' EN/DE switch at the same
                 scale. Rows are cloned from the template below the block's. */
             }
-            {/* No title over the rows (2026-09-25): "Add affiliation" names them. */}
             <div class="gallery-project-affiliations">
+              <div class="label-row">
+                <p class="row-label">{t("profile.project.affiliations")}</p>
+                <span class="row-optional">{t("profile.optional")}</span>
+              </div>
               <div class="social-editor" data-affiliations></div>
               <button type="button" class="btn-outline choose-img gallery-aff-add" data-aff-add>
                 {t("profile.project.affiliations.add")}
@@ -1334,9 +1348,17 @@ const t = useTranslations(lang);
   .gallery-video[hidden] {
     display: none;
   }
+  .gallery-video-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
   .gallery-video-row {
     display: flex;
     gap: 0.5rem;
+    min-width: 0;
+  }
+  .gallery-video-row .input {
+    flex: 1 1 auto;
     min-width: 0;
   }
   .gallery-video-row .btn-solid,
@@ -1453,10 +1475,52 @@ const t = useTranslations(lang);
 
   .gallery-item {
     display: grid;
-    /* Thumb, words. The 18px grip column went with dragging (2026-09-25). */
-    grid-template-columns: 110px minmax(0, 1fr);
+    /* Thumb, its tools, its words (2026-09-25: every tool right of the
+       picture). A pending upload has no tools column; see .gallery-task. */
+    grid-template-columns: 110px auto minmax(0, 1fr);
     gap: 12px;
     align-items: start;
+  }
+
+  .gallery-item.gallery-task {
+    grid-template-columns: 110px minmax(0, 1fr);
+  }
+
+  /* THE TOOL COLUMN: move, then replace/delete, as square pairs, and the
+     project dropdown under them at the pairs' width. */
+  .gallery-row-tools {
+    flex-direction: column;
+    align-items: stretch;
+    flex-wrap: nowrap;
+    width: 7.5rem;
+  }
+
+  .gallery-tool-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .gallery-row-tools .gallery-move {
+    width: auto;
+  }
+
+  .gallery-row-tools .gallery-project-select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .gallery-row-tools [data-gallery-auto-thumb] {
+    height: auto;
+    min-height: 26px;
+    padding-block: 4px;
+    line-height: 1.25;
+  }
+
+  /* Delete goes red on hover; replace stays dark, because it keeps the work. */
+  .gallery-tool--danger:hover:not(:disabled) {
+    color: var(--color-error);
+    border-color: var(--color-error);
   }
 
   .gallery-fields {
@@ -1575,36 +1639,6 @@ const t = useTranslations(lang);
 
   .gallery-thumb-remove:hover {
     background: var(--color-error);
-  }
-
-  /* The ✕'s twin, one button-width to its left. Hover goes dark rather than
-     red: replacing keeps the work, so it must not look like the removal. */
-  .gallery-thumb-replace {
-    position: absolute;
-    top: 4px;
-    right: 30px;
-    width: 22px;
-    height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.6);
-    color: #fff;
-    border: none;
-    border-radius: 50%;
-    font-size: 0.85rem;
-    line-height: 1;
-    cursor: pointer;
-  }
-
-  .gallery-thumb-replace:hover:not(:disabled) {
-    background: var(--color-dark);
-  }
-
-  /* Mid-upload for this work: still there, visibly not pressable. */
-  .gallery-thumb-replace:disabled {
-    opacity: 0.4;
-    cursor: default;
   }
 
   /* The drop target. No border of its own until something is being dragged
@@ -1803,26 +1837,6 @@ const t = useTranslations(lang);
     color: var(--color-dark);
   }
 
-  /* One line, cut: a folded row names its work, it does not reprint it. */
-  .gallery-details-caption {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 0.85rem;
-    color: var(--color-dark);
-  }
-
-  .gallery-details-caption.is-empty {
-    color: var(--color-muted);
-    font-style: italic;
-  }
-
-  /* Open, the caption is in its own field right below. */
-  .gallery-details[open] .gallery-details-caption {
-    display: none;
-  }
-
   .gallery-details-chevron {
     flex: none;
     align-self: center;
@@ -1891,24 +1905,10 @@ const t = useTranslations(lang);
   }
 
   /* THE PROJECT DROPDOWN (2026-09-25): a native select at the tools' own
-     height and hairline, its title beside it in the row-label voice, so it
-     reads as one more small tool in the row rather than as a form field. */
-  .gallery-project-pick {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-    margin-left: 4px;
-  }
-
-  .gallery-project-pick[hidden] {
+     height and hairline, so it reads as one more small tool beside the
+     picture rather than as a form field. No title of its own. */
+  .gallery-project-select[hidden] {
     display: none;
-  }
-
-  .gallery-project-pick-label {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--color-dark);
   }
 
   .gallery-project-select {
@@ -1987,105 +1987,30 @@ const t = useTranslations(lang);
     font-size: 0.85rem;
   }
 
-  /* THE NAME IS INSIDE THE FIELD (2026-09-25, Josh: "make the description of
-     the Field into the field so we do not need a title everywhere and
-     everything gets more compact"). A floating label, not a placeholder: the
-     2026-09-24 titles existed because placeholders vanish when a member
-     types, which left a filled row as a stack of unnamed boxes. Here the
-     name sits where the text will go while the field is empty, and moves up
-     small into the field's top edge the moment it is focused or filled, so
-     a filled field still says what it is. The examples ("Example:
-     Zebrafish retina…") still show, on focus only, once the name has moved
-     out of their way. The label comes AFTER its control in the markup,
-     because the state is read with a sibling selector. `:placeholder-shown`
-     needs a placeholder, hence `placeholder=" "` on every templated field
-     until renderGallery() sets the real example. */
-  .infield {
-    position: relative;
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  .infield > .input {
-    padding-top: 1.15rem;
-    padding-bottom: 0.3rem;
-    padding-left: 12px;
-  }
-
-  .infield > .textarea {
-    padding-top: 1.35rem;
-  }
-
-  .infield > .input::placeholder {
-    color: transparent;
-  }
-
-  .infield > .input:focus::placeholder {
-    color: var(--color-muted);
-    opacity: 0.7;
-  }
-
-  .infield-label {
-    position: absolute;
-    top: 50%;
-    left: 13.5px;
-    right: 2rem;
-    transform: translateY(-50%);
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    font-size: 0.85rem;
-    color: var(--color-muted);
-    pointer-events: none;
-    transition:
-      top 0.15s,
-      font-size 0.15s,
-      transform 0.15s;
-  }
-
-  /* An https:// frame has no border of its own on the input. The prefix cell
-     stretches to the taller field, or its grey would stop short of the
-     frame's edges. */
-  .input-prefix-wrap .infield-label {
-    left: 12px;
-  }
-
-  .input-prefix-wrap:has(> .infield) {
-    align-items: stretch;
-  }
-
-  .input-prefix-wrap:has(> .infield) > .input-prefix {
-    display: flex;
-    align-items: center;
-  }
-
-  .infield > .textarea + .infield-label {
-    top: 0.7rem;
-    transform: none;
-  }
-
-  .infield > .input:is(:focus, :not(:placeholder-shown)) + .infield-label {
-    top: 0.3rem;
-    transform: none;
-    font-size: 0.66rem;
+  /* THE FIELD TITLES inside an image row or a project block (2026-09-24).
+     Sentence case and smaller than the form's own uppercase .label: these sit
+     inside a field that already has one, and a second row of capitals would
+     read as the form restarting. "optional" is said in grey beside the title
+     rather than left for the member to guess. */
+  .row-label {
+    margin: 0;
+    font-size: 0.78rem;
     font-weight: 600;
-    letter-spacing: 0.02em;
     color: var(--color-dark);
   }
 
-  .infield-optional {
-    font-weight: 400;
+  .row-optional {
+    font-size: 0.72rem;
     color: var(--color-muted);
   }
 
-  .infield-optional::before {
-    content: "· ";
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .infield-label {
-      transition: none;
-    }
+  /* A title hugs the field it names, and the space goes between fields
+     instead — with one flat gap, a title sat as close to the field above it
+     as to its own. */
+  :is(.gallery-fields, .gallery-lang-pane, .gallery-project-fields, .gallery-project-affiliations)
+    > :is(.label-row, .row-label) {
+    margin-top: 4px;
+    margin-bottom: -3px;
   }
 
   .gallery-project-affiliations {
@@ -2206,9 +2131,6 @@ const t = useTranslations(lang);
   /* Which rows are videos: the play mark and the platform, top left, in the
      cover label's dress so the two read as one family of labels. */
   .gallery-video-badge {
-    position: absolute;
-    top: 4px;
-    left: 4px;
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -2228,10 +2150,23 @@ const t = useTranslations(lang);
   .gallery-video-badge[hidden] {
     display: none;
   }
-  .gallery-cover {
+  /* The picture's labels, bottom left, stacked when a video is the cover. */
+  .gallery-thumb-labels {
     position: absolute;
     bottom: 4px;
     left: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    pointer-events: none;
+  }
+
+  .gallery-cover[hidden] {
+    display: none;
+  }
+
+  .gallery-cover {
     padding: 2px 6px;
     background: rgba(0, 0, 0, 0.6);
     color: #fff;
@@ -2244,7 +2179,19 @@ const t = useTranslations(lang);
 
   @media (--bp-mobile) {
     /* The words drop under the thumb. */
+    /* Thumb and tools share the first line; the words span both below. The
+       second track is 1fr, not auto, or the grid shrink-wraps and the Details
+       fold stops at the tools' right edge. */
     .gallery-item {
+      grid-template-columns: minmax(0, 140px) minmax(0, 1fr);
+    }
+    .gallery-row-tools {
+      justify-self: start;
+    }
+    .gallery-item .gallery-fields {
+      grid-column: 1 / -1;
+    }
+    .gallery-item.gallery-task {
       grid-template-columns: minmax(0, 1fr);
     }
     .gallery-actions {
@@ -3276,7 +3223,6 @@ const t = useTranslations(lang);
             const cover = row.querySelector<HTMLElement>("[data-gallery-cover]");
             const moveUp = row.querySelector<HTMLButtonElement>('[data-gallery-move="up"]');
             const moveDown = row.querySelector<HTMLButtonElement>('[data-gallery-move="down"]');
-            const projectPick = row.querySelector<HTMLElement>("[data-gallery-project-pick]");
             const projectSelect = row.querySelector<HTMLSelectElement>("[data-gallery-project]");
             const langBtns = Array.from(
               row.querySelectorAll<HTMLButtonElement>("[data-gallery-lang-btn]"),
@@ -3289,12 +3235,11 @@ const t = useTranslations(lang);
             const tagsFold = row.querySelector<HTMLDetailsElement>(".gallery-tags");
             const tagsCount = row.querySelector<HTMLElement>("[data-gallery-tags-count]");
             const detailsFold = row.querySelector<HTMLDetailsElement>(".gallery-details");
-            const detailsCaption = row.querySelector<HTMLElement>("[data-gallery-details-caption]");
             if (!img || !remove || !caption || !description) return null;
-            if (!tagsFold || !tagsCount || !detailsFold || !detailsCaption) return null;
+            if (!tagsFold || !tagsCount || !detailsFold) return null;
             if (!captionDe || !descriptionDe) return null;
             if (!link || !siteLink || !cover || !tagsSelector) return null;
-            if (!moveUp || !moveDown || !projectPick || !projectSelect) return null;
+            if (!moveUp || !moveDown || !projectSelect) return null;
             const replace = row.querySelector<HTMLButtonElement>("[data-gallery-replace]");
             if (!replace) return null;
             if (langBtns.length !== 2 || !langPaneEn || !langPaneDe) return null;
@@ -3313,20 +3258,12 @@ const t = useTranslations(lang);
             caption.maxLength = MAX_GALLERY_CAPTION;
             caption.placeholder = s["profile.gallery.caption.ph"];
             named(caption, s["profile.gallery.caption"]);
-            // The folded row's name for itself, kept in step with the field.
-            const setDetailsCaption = () => {
-              const text = caption.value.trim();
-              detailsCaption.textContent = text || s["profile.gallery.details.noCaption"];
-              detailsCaption.classList.toggle("is-empty", !text);
-            };
-            setDetailsCaption();
             detailsFold.open = galleryDetailsOpenUI.get(item.imageId) ?? false;
             detailsFold.addEventListener("toggle", () => {
               galleryDetailsOpenUI.set(item.imageId, detailsFold.open);
             });
             caption.addEventListener("input", () => {
               gallery[index].caption = caption.value;
-              setDetailsCaption();
               syncPreview();
             });
 
@@ -3447,11 +3384,12 @@ const t = useTranslations(lang);
             wireMove(moveDown, 1, "down");
 
             // THE PROJECT DROPDOWN (2026-09-25). A project joins the image
-            // at the END of that block (moveToProject); "None" lands it
+            // at the END of that block (moveToProject); "No project" lands it
             // directly below the block it left (removeFromProject).
             // Membership is written at Save, like every field here.
             const current = item.projectId && projects.some((p) => p.projectId === item.projectId) ? item.projectId : "";
-            projectPick.hidden = projects.length === 0;
+            projectSelect.hidden = projects.length === 0;
+            named(projectSelect, s["profile.project.select"]).title = s["profile.project.select"];
             const none = new Option(s["profile.project.none"], "");
             projectSelect.replaceChildren(
               none,
@@ -3556,14 +3494,6 @@ const t = useTranslations(lang);
         // The block's words fold (2026-09-25), exactly like a work's Details.
         // Queried before the rows are appended, so this cannot reach theirs.
         const detailsFold = el.querySelector<HTMLDetailsElement>(".gallery-project-details");
-        const detailsCaption = el.querySelector<HTMLElement>("[data-project-details-caption]");
-        const setDetailsCaption = () => {
-          if (!detailsCaption) return;
-          const text = (lang === "de" ? project.descriptionDe || project.description : project.description || project.descriptionDe)?.trim();
-          detailsCaption.textContent = text || s["profile.project.details.empty"];
-          detailsCaption.classList.toggle("is-empty", !text);
-        };
-        setDetailsCaption();
         if (detailsFold) {
           detailsFold.open = projectDetailsOpenUI.get(project.projectId) ?? false;
           detailsFold.addEventListener("toggle", () => projectDetailsOpenUI.set(project.projectId, detailsFold.open));
@@ -3619,7 +3549,6 @@ const t = useTranslations(lang);
             if (value.trim()) project[key] = value;
             else delete project[key];
             if (key === "title" || key === "titleDe") setName();
-            if (key === "description" || key === "descriptionDe") setDetailsCaption();
             syncPreview();
           });
         };
