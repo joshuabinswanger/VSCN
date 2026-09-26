@@ -73,7 +73,7 @@
 @media (--bp-desktop) {
   :root {
     --font-size-base: 13px;
-    --font-size-chrome: 0.85rem;
+    --font-size-chrome: var(--fs-85);
   }
 }
 
@@ -83,41 +83,44 @@
    drew whatever 12px × factor came to — 9.36px, 10.56px — and the only lever
    was the root size, which moves padding and gaps along with the type.
    Now each size the site uses is a token named after its rem factor
-   (--fs-78 = 0.78rem). DESKTOP is untouched: the token IS the rem it replaced.
-   On MOBILE each one is pinned to the next whole pixel above what 12px × factor
-   gave, so everything grows by under a pixel and lands on a round value; sizes
-   that collapse onto one pixel (0.75–0.82 → 10px) were never meant to be told
-   apart at that scale anyway. The root stays 12px, so spacing does not move.
+   (--fs-78 = 0.78rem). On MOBILE each one is pinned to the next whole pixel
+   above what 12px × factor gave, so everything grows by under a pixel and lands
+   on a round value; sizes that collapse onto one pixel (0.75–0.82 → 10px) were
+   never meant to be told apart at that scale anyway.
+   DESKTOP followed the same day (Josh: "bump the text size on desktop as well
+   by 1px"): each token is 13px × factor plus one pixel, rounded to the whole
+   pixel, the old value in the comment. Body copy 13 → 14px.
+   The roots stay 12px / 13px, so spacing does not move on either.
    LEFT ALONE, on purpose: everything under 0.72rem (≤8.4px on a phone — the
    eyebrows and micro-labels, which were not to grow), the vw-driven display
    clamps and the fitted brand title. Those are still bare rem in their rules.
-   A NEW SIZE belongs in this table, with its mobile pixel, not as a bare rem. */
+   A NEW SIZE belongs in this table, with both its pixels, not as a bare rem. */
 :root {
-  --fs-72: 0.72rem;
-  --fs-74: 0.74rem;
-  --fs-75: 0.75rem;
-  --fs-76: 0.76rem;
-  --fs-78: 0.78rem;
-  --fs-80: 0.8rem;
-  --fs-82: 0.82rem;
-  --fs-85: 0.85rem;
-  --fs-88: 0.88rem;
-  --fs-90: 0.9rem;
-  --fs-95: 0.95rem;
+  --fs-72: 10px; /* 9.36 */
+  --fs-74: 11px; /* 9.62 */
+  --fs-75: 11px; /* 9.75 */
+  --fs-76: 11px; /* 9.88 */
+  --fs-78: 11px; /* 10.14 */
+  --fs-80: 11px; /* 10.40 */
+  --fs-82: 12px; /* 10.66 */
+  --fs-85: 12px; /* 11.05 */
+  --fs-88: 12px; /* 11.44 */
+  --fs-90: 13px; /* 11.70 */
+  --fs-95: 13px; /* 12.35 */
   /* Body copy. <body> sets it, so text with no size of its own follows. */
-  --fs-100: 1rem;
-  --fs-105: 1.05rem;
-  --fs-115: 1.15rem;
-  --fs-120: 1.2rem;
-  --fs-125: 1.25rem;
-  --fs-140: 1.4rem;
-  --fs-160: 1.6rem;
-  --fs-180: 1.8rem;
-  --fs-190: 1.9rem;
-  --fs-225: 2.25rem;
+  --fs-100: 14px; /* 13.00 */
+  --fs-105: 15px; /* 13.65 */
+  --fs-115: 16px; /* 14.95 */
+  --fs-120: 17px; /* 15.60 */
+  --fs-125: 17px; /* 16.25 */
+  --fs-140: 19px; /* 18.20 */
+  --fs-160: 22px; /* 20.80 */
+  --fs-180: 24px; /* 23.40 */
+  --fs-190: 26px; /* 24.70 */
+  --fs-225: 30px; /* 29.25 */
   /* Every tag chip (.tagchip). Its own token because tags go the OTHER way on
      a phone: down to the whole pixel below 8.64px, where everything else goes
-     up to the one above. */
+     up to the one above. Not in the desktop bump either: still 0.72rem. */
   --fs-tag: 0.72rem;
 }
 
@@ -727,8 +730,11 @@ a:hover {
      down from the arithmetic centre — optical, and the eye is the authority
      here, not the glyph metrics.
      Because this shifts the whole content box, the × travels with the label and
-     its own measured offset still holds. */
-  padding: 3.5px 8px 2.5px;
+     its own measured offset still holds.
+     Tightened 2026-09-26 (Josh: "tags should have less padding to their
+     border"): 1px off top and bottom, 2px off the sides, the 1px optical drop
+     kept. */
+  padding: 2.5px 6px 1.5px;
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-family: "Archivo", sans-serif;
@@ -761,7 +767,7 @@ a:hover {
    tags are links, so the same reasoning applies there. */
 @media (pointer: coarse) {
   .tagchip {
-    padding: 6.5px 10px 5.5px;
+    padding: 4.5px 7px 3.5px;
   }
 }
 

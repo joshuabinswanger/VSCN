@@ -1543,23 +1543,38 @@ const indexMembers = [...members].sort((a, b) =>
      with it. column-gap is 0 for the same reason — the space after the comma
      is part of that generated content, so nothing is left behind when there is
      no role to separate.
-     Wrapping is allowed: a long name plus a long role drops the role onto its
-     own line under the name rather than pushing into the field's column, which
-     is also exactly the stack the mobile block wants. */
+     ONE LINE WHILE COLLAPSED (2026-09-26, Josh: "truncate the role description
+     for the collapsed index entry? so we always only have 1 line"). The role
+     used to wrap under the name when the pair ran out of room, so the ledger's
+     rows came in two heights. Now a closed row is always one line and the role
+     ends in an ellipsis; opening the row lets it wrap again, because the panel
+     does not repeat the role and the open row is the only place its ending can
+     be read. */
   .cindex__who {
     /* Takes every pixel the chevron does not — this is what holds the chevron
        against the row's right edge now that there is no track to pin it to
        (see the summary's flex note above). */
     flex: 1 1 auto;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: baseline;
     column-gap: 0;
     row-gap: 0.15rem;
     min-width: 0;
   }
 
+  .cindex__line :global(.pdisc[open]) .cindex__who {
+    flex-wrap: wrap;
+  }
+
   .cindex__name {
+    /* The name does not give way to its role: the role is what truncates. Only
+       a name longer than the whole row shrinks, and it gets the same ellipsis. */
+    flex: 0 0 auto;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-weight: 600;
     letter-spacing: -0.01em;
     color: var(--color-dark);
@@ -1571,13 +1586,22 @@ const indexMembers = [...members].sort((a, b) =>
   }
 
   /* Beside the name, in the name's own box — the same muted voice it had as a
-     column, so the eye still reads one bold name and one quiet qualifier. No
-     ellipsis machinery any more: an inline flex item cannot truncate, and a
-     role that does not fit should wrap under the name rather than lose its
-     ending. */
+     column, so the eye still reads one bold name and one quiet qualifier. A
+     flex item is blockified, so it CAN carry an ellipsis once min-width: 0 lets
+     it shrink below its text. */
   .cindex__role {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: var(--fs-85);
     color: var(--color-muted);
+  }
+
+  .cindex__line :global(.pdisc[open]) .cindex__name,
+  .cindex__line :global(.pdisc[open]) .cindex__role {
+    white-space: normal;
   }
 
   /* The separator, generated rather than typed, so it can only ever exist when
@@ -1607,8 +1631,8 @@ const indexMembers = [...members].sort((a, b) =>
        hide the role because it could not afford a third column for it; beside
        the name it costs no column at all, and a directory row that says only
        "Jane Doe" tells a phone reader strictly less than the desktop does for
-       no saving. It wraps under the name when the measure runs out, which is
-       the stack the old rule was building by hand. */
+       no saving. Closed, it ends in an ellipsis when the measure runs out;
+       open, it wraps under the name (see .cindex__who). */
     /* One column, and the chevron leaves the grid for the corner it used to
        hold: four tracks on a phone would give the name about eight characters.
        The row is still the toggle — it is only laid out as a stack. */
@@ -1617,6 +1641,13 @@ const indexMembers = [...members].sort((a, b) =>
       align-items: flex-start;
       gap: 0.2rem;
       padding-right: 2rem;
+    }
+
+    /* The stack's flex-start sizes the name box to its CONTENT, which is the
+       whole unwrapped role, so it ran past the row instead of truncating.
+       Stretched, it is held to the row's width and the role's ellipsis fires. */
+    .cindex__who {
+      align-self: stretch;
     }
 
     .cindex__line :global(.pdisc__toggle::after) {

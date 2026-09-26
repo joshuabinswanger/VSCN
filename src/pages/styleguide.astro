@@ -33,7 +33,7 @@ const breakpoints = [...globalCss.matchAll(/@custom-media\s+(--[\w-]+)\s+([^;]+)
   value: (m[2] ?? "").trim(),
 }));
 
-// The --fs-* type scale: first declaration is the desktop rem, the last one
+// The --fs-* type scale: first declaration is the desktop value, the last one
 // (the --bp-mobile block) is the phone's whole pixel.
 const typeScale: { name: string; desktop: string; mobile: string }[] = [];
 for (const t of rootBlocks.flatMap(parseTokens)) {
@@ -195,8 +195,8 @@ const radiusUsage: Record<string, string> = {
         }
       </div>
       <p class="sg-note">
-        Every size is a <code>--fs-*</code> token in <code>global.css</code>: the rem it replaced on
-        desktop, a whole pixel on mobile. Sizes under <code>0.72rem</code>, the display clamps and
+        Every size is a <code>--fs-*</code> token in <code>global.css</code>: a whole pixel on
+        both desktop and mobile. Sizes under <code>0.72rem</code>, the display clamps and
         the fitted <code>.brand-name</code> are still literal values in their rules.
       </p>
     </section>
