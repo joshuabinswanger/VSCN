@@ -294,53 +294,50 @@
   line-height: 1.5;
 }
 
-/* ── THE PROJECTS SLIDER (2026-09-25) ─────────────────────
-   Two or more projects become one horizontal track, one project per step
-   (Josh: "show Projects as a horizontal slider that moves in steps"). The
-   stepping is the browser's own: a scroll container snapping to each
-   project's start, so a swipe, a trackpad flick, the arrow keys on the
-   focused track and the prev/next buttons all come to rest on a whole
-   project. src/lib/projectSlider.ts adds the buttons and the measurement.
+/* ── A PROJECT'S CAROUSEL (2026-09-26) ────────────────────
+   A project with two or more works pages through them, one work per step
+   (Josh: "the projects should be shown as carousels on the profile page and
+   in the preview"). This replaced the 2026-09-25 slider that paged between
+   whole PROJECTS: those stack down the page again, and only the works move
+   sideways, so there is one level of swiping. The stepping is the browser's
+   own: a scroll container snapping to each work's start, so a swipe, a
+   trackpad flick, the arrow keys on the focused track and the prev/next
+   buttons all come to rest on a whole work. src/lib/projectCarousel.ts adds
+   the buttons, the measurement and the lightbox follow.
 
-   THE BLEED. At rest a project is exactly as wide as projects were before
-   the slider — the page's column — and the first one stands exactly where it
-   stood. The TRACK is wider than that: negative margins take it out to the
-   edges of the scrollport and the same distances come back as padding and
-   as scroll-padding, so the snap points still sit on the column's left edge
-   while the next project spills out to the right (and a passed one to the
-   left). --bleed-l / --bleed-r are measured by the script against
-   .page-wrap's client box; before it runs, or without it, they are 0 and the
-   slider is a column-wide scroller that still snaps. */
-.mprof__projects {
+   THE BLEED. At rest a work is exactly as wide as a work has always been —
+   the page's column — and the first one stands exactly where it stood. The
+   TRACK is wider than that: negative margins take it out to the edges of the
+   scrollport and the same distances come back as padding and as
+   scroll-padding, so the snap points still sit on the column's left edge
+   while the next work spills out to the right (and a passed one to the left).
+   --bleed-l / --bleed-r are measured by the script against .page-wrap's
+   client box; before it runs, or without it, they are 0 and the carousel is
+   a column-wide scroller that still snaps. */
+.mprof__carousel {
   --bleed-l: 0px;
   --bleed-r: 0px;
-  --projects-gap: 3rem;
+  --carousel-gap: 3rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  padding-top: 1rem;
-  /* The quiet rule a single project draws above itself, drawn once for the
-     slider instead: each slide's own rule is taken off below, so the bar and
-     the projects read as one block. */
-  border-top: 1px solid var(--color-border);
 }
 
-.mprof__projects-bar {
+/* The heading group and the carousel's controls belong together: the project's
+   4rem works rhythm would push the bar a screen-width's worth of air away from
+   the title it serves. */
+.mprof__project:has(.mprof__carousel) {
+  gap: 1.5rem;
+}
+
+.mprof__carousel-bar {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.5rem;
 }
 
-.mprof__projects-key {
-  margin: 0 auto 0 0;
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-}
-
-.mprof__projects-count {
+.mprof__carousel-count {
   margin-right: 0.35rem;
   font-size: var(--fs-72);
   font-variant-numeric: tabular-nums;
@@ -350,7 +347,7 @@
 /* The card's chevron drawing (communityCard.css, .ccard__arrow span) in a
    bordered square: here the control sits on paper, not on artwork, so it can
    afford a box, and a box is what makes it read as a button at this size. */
-.mprof__projects-btn {
+.mprof__carousel-btn {
   display: grid;
   place-items: center;
   width: 2rem;
@@ -365,75 +362,72 @@
     border-color 0.15s,
     opacity 0.15s;
 }
-.mprof__projects-btn:hover:not(:disabled),
-.mprof__projects-btn:focus-visible {
+.mprof__carousel-btn:hover:not(:disabled),
+.mprof__carousel-btn:focus-visible {
   border-color: var(--color-dark);
 }
-.mprof__projects-btn:disabled {
+.mprof__carousel-btn:disabled {
   opacity: 0.3;
   cursor: default;
 }
-.mprof__projects-btn span {
+.mprof__carousel-btn span {
   display: block;
   width: 0.5rem;
   height: 0.5rem;
   border-top: 2px solid currentColor;
   border-right: 2px solid currentColor;
 }
-.mprof__projects-btn--prev span {
+.mprof__carousel-btn--prev span {
   transform: translate(0.08rem, 0) rotate(-135deg);
 }
-.mprof__projects-btn--next span {
+.mprof__carousel-btn--next span {
   transform: translate(-0.08rem, 0) rotate(45deg);
 }
 
-.mprof__projects-track {
+.mprof__carousel-track {
   /* The offset parent the script measures each slide's offsetLeft from. */
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: var(--projects-gap);
+  gap: var(--carousel-gap);
   margin-inline: calc(-1 * var(--bleed-l)) calc(-1 * var(--bleed-r));
   padding-inline: var(--bleed-l) var(--bleed-r);
   scroll-padding-inline: var(--bleed-l) var(--bleed-r);
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
-  /* No scrollbar: the buttons, the counter and the spill of the next project
-     are the affordance, and a bar under a tall project would sit a screen
+  /* No scrollbar: the buttons, the counter and the spill of the next work
+     are the affordance, and a bar under a tall picture would sit a screen
      below the thing it scrolls. */
   scrollbar-width: none;
 }
-.mprof__projects-track::-webkit-scrollbar {
+.mprof__carousel-track::-webkit-scrollbar {
   display: none;
 }
-.mprof__projects-track:focus-visible {
+.mprof__carousel-track:focus-visible {
   outline: 2px solid var(--color-dark);
   outline-offset: 4px;
 }
 
-/* One project per step, at the column's width: once the bleed is padded back
+/* One work per step, at the column's width: once the bleed is padded back
    in, the track's content box IS the column, so 100% is that width.
-   scroll-snap-stop keeps a hard swipe from flying past a project. */
-.mprof__projects-slide {
+   scroll-snap-stop keeps a hard swipe from flying past a work. */
+.mprof__carousel-slide {
   flex: 0 0 100%;
   min-width: 0;
   scroll-snap-align: start;
   scroll-snap-stop: always;
-  /* The slider draws the rule once, above the bar. */
-  padding-top: 0;
-  border-top: 0;
   transition: opacity 0.3s ease;
 }
-/* The project on the column reads at full strength; the ones spilling into
-   the margins are turned down so the step shows at a glance. Keyed to the
-   script's .is-current, so without the script every project stays full. */
-.mprof__projects-track:has(.is-current) > .mprof__projects-slide:not(.is-current) {
+/* The work on the column reads at full strength; the ones spilling into the
+   margins are turned down so the step shows at a glance. Keyed to the
+   script's .is-current, so without the script every work stays full. */
+.mprof__carousel-track:has(.is-current) > .mprof__carousel-slide:not(.is-current) {
   opacity: 0.4;
 }
 
 /* The spoken position — the clip technique, as .ccard__live. */
-.mprof__projects-live {
+.mprof__carousel-live {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -446,16 +440,16 @@
 }
 
 /* On a phone the column is the screen less its gutters, so there is no margin
-   for the next project to spill into; the gap only has to say "another one",
-   and the full 3rem would be swipe travel spent on paper. */
+   for the next work to spill into; the gap only has to say "another one", and
+   the full 3rem would be swipe travel spent on paper. */
 @media (--bp-mobile) {
-  .mprof__projects {
-    --projects-gap: 1.25rem;
+  .mprof__carousel {
+    --carousel-gap: 1.25rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mprof__projects-slide {
+  .mprof__carousel-slide {
     transition: none;
   }
 }

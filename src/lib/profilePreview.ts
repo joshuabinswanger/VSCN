@@ -23,6 +23,7 @@ import { groupWorks, projectTitle, projectDescription, affiliationHref, projectS
 import type { ProfileProject } from "./projects.ts";
 import { embedDataAttrs } from "./embed.ts";
 import { CARD_TRIGGER, bindCardOpener, createLightbox, type LightboxStrings } from "./lightbox.ts";
+import { initProjectCarousels, showInCarousel } from "./projectCarousel.ts";
 import type { Lang } from "../i18n/utils";
 
 type PreviewWork = ProfileViewModel["works"][number];
@@ -90,6 +91,8 @@ export function bindPreviewLightbox(
   const unbindCard = roots.card?.querySelector(CARD_TRIGGER)
     ? bindCardOpener(roots.card, lightbox)
     : () => {};
+  // As on the member page: the project carousel follows the lightbox.
+  lightbox.on("change", () => showInCarousel(lightbox.pswp?.currSlide?.data.element));
   lightbox.init();
   return () => {
     unbindCard();
@@ -108,6 +111,8 @@ export interface ProfilePreviewLabels {
   with: string;
   /** The editor's current tab locale, for projectTitle()/projectDescription()/affiliationHref() — same split those take everywhere else. */
   lang: Lang;
+  /** A project carousel's accessible names — the page's own `member.project.*` and `community.card.carousel`. */
+  carousel: { prev: string; next: string; position: string; works: string; roledescription: string };
 }
 
 export function renderProfilePreview(
@@ -319,6 +324,38 @@ export function renderProfilePreview(
       return figure;
     };
 
+    /** A project's figures as MemberProject.astro's carousel (2026-09-26). */
+    const carouselOf = (figures: HTMLElement[], title: string): HTMLElement => {
+      const box = clone("carousel");
+      const track = box?.querySelector<HTMLElement>("[data-carousel-track]");
+      if (!box || !track) {
+        const plain = document.createElement("div");
+        plain.style.display = "contents";
+        plain.append(...figures);
+        return plain;
+      }
+      const words = labels.carousel;
+      const at = (n: number) => words.position.replace("{n}", String(n)).replace("{total}", String(figures.length));
+      box.dataset.positionLabel = words.position;
+      const count = box.querySelector<HTMLElement>("[data-carousel-count]");
+      if (count) count.textContent = `1 / ${figures.length}`;
+      box.querySelector("[data-carousel-prev]")?.setAttribute("aria-label", words.prev);
+      box.querySelector("[data-carousel-next]")?.setAttribute("aria-label", words.next);
+      track.setAttribute("aria-roledescription", words.roledescription);
+      track.setAttribute("aria-label", title || words.works);
+      track.replaceChildren(
+        ...figures.map((figure, k) => {
+          const slide = document.createElement("div");
+          slide.className = "mprof__carousel-slide";
+          slide.setAttribute("role", "group");
+          slide.setAttribute("aria-label", at(k + 1));
+          slide.append(figure);
+          return slide;
+        }),
+      );
+      return box;
+    };
+
     // PROJECT BLOCKS (2026-09-23): the gallery stays one list in the member's
     // order; a project's images sit together under its heading, loose works
     // in between — groupWorks() is the same cut the member page makes.
@@ -378,13 +415,17 @@ export function renderProfilePreview(
         }
         withEl.hidden = list.length === 0;
       }
-      slot("works")?.replaceChildren(...figures);
+      slot("works")?.replaceChildren(...(figures.length > 1 ? [carouselOf(figures, title)] : figures));
       return [block];
     });
 
     works.replaceChildren(...nodes);
     show(works, nodes.length > 0);
     show(empty, nodes.length === 0);
+    // After the swap, so carousels that just left the document are released,
+    // and after the list is shown, so the new ones measure a real box
+    // (projectCarousel.ts).
+    initProjectCarousels(works);
   }
 }
 
