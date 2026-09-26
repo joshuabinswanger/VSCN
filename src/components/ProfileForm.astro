@@ -1165,11 +1165,23 @@ const t = useTranslations(lang);
       the top of it, and a card with their name on it — and a label above a
       preview is one more thing between the member and the thing they are
       looking at. ProfileViewPreview draws the rule above and below itself;
-      this section closes the last one under the card. */
+      this section closes the last one under the card.
+
+      THE CARD IS NAMED AGAIN (2026-09-26, Josh: "in the preview clearly
+      label the gallery card!"). The page names itself; a lone card under
+      it did not say where it goes, and read as one more work at the page's
+      foot. So the card, and only the card, has a label and one line saying
+      where it appears. */
     }
     <div class="preview-section">
       <ProfileViewPreview lang={lang} />
-      <CommunityCardPreview />
+      <div class="preview-card">
+        <div class="preview-card-head">
+          <p class="label">{t("profile.preview.card")}</p>
+          <p class="field-note">{t("profile.preview.cardNote")}</p>
+        </div>
+        <CommunityCardPreview />
+      </div>
       <hr class="preview-rule" />
     </div>
   </div>
@@ -2467,6 +2479,25 @@ const t = useTranslations(lang);
     .preview-section {
       margin-inline: -15px;
     }
+  }
+
+  /* The card's label sits close over it and well clear of the page's
+     closing rule above, so it reads as the card's name, not the page's
+     last line. */
+  .preview-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .preview-card-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .preview-card-head p {
+    margin: 0;
   }
 
   /* The closing line under the directory card — same hairline
