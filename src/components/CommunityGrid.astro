@@ -1853,7 +1853,16 @@ const indexMembers = [...members].sort((a, b) =>
   @media (--bp-mobile) and (prefers-reduced-motion: no-preference) {
     @supports (animation-timeline: view()) {
       .cgrid[data-pattern="grid"] .cgrid__cell {
-        animation: cgrid-cell-in backwards;
+        /* LONGHANDS, NOT THE SHORTHAND — load-bearing. Written as
+           `animation: … ; animation-timeline: view()`, the build's CSS
+           minifier folds the timeline INTO the shorthand
+           (`animation: backwards cgrid-cell-in view()`), which no browser
+           accepts, so the whole declaration is dropped and the tile never
+           animates. The dev server does not minify, so it looked fine
+           locally and shipped dead (PR #111). The gallery rule above escapes
+           the fold only because it has two timelines. */
+        animation-name: cgrid-cell-in;
+        animation-fill-mode: backwards;
         animation-timeline: view();
         animation-range: entry 0% entry 100%;
       }
