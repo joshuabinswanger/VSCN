@@ -269,6 +269,18 @@
   border-top: 1px solid var(--color-border);
 }
 
+/* MORE AIR ON EITHER SIDE OF A PROJECT (2026-09-26, Josh: "add more white
+   space on the profile page between projects and images"). On top of the
+   works gap, so a project reads as its own chapter of the page, set further
+   apart than one loose work is from the next. Not at the list's ends: the
+   first and last child keep the list's own margins. */
+.mprof__works > .mprof__project:not(:first-child) {
+  margin-top: 4rem;
+}
+.mprof__works > .mprof__project:not(:last-child) {
+  margin-bottom: 4rem;
+}
+
 /* THE HEADING GROUP — title, description and affiliations read as one label
    for the works below, not as three unrelated paragraphs. A tight gap (a hair
    more than a line-height) keeps them visually one unit while still reading
@@ -538,7 +550,8 @@
      declaration is invalid and the frame is simply column-wide, as before. */
   max-width: calc(60vh * var(--work-ar));
   /* A frame narrower than the column sits in its middle (2026-09-26, Josh:
-     "center the images horizontally"); a column-wide one is unaffected. */
+     "center the images horizontally"); a column-wide one is unaffected.
+     --work-ar is set on the figure and inherited here. */
   margin-inline: auto;
   border: 1.5px solid var(--color-border);
   border-radius: 0;
@@ -557,11 +570,18 @@
 /* One block under the image holding the caption line and the longer
      description. A column rather than two siblings so the gaps stay the
      caption's business, not the gallery's. */
+/* UNDER THE PICTURE, NOT UNDER THE COLUMN (2026-09-26, Josh: "move the
+   description under the images"). Since the 60vh cap centres a narrower
+   picture, the words stayed at the column's left edge, under nothing. They now
+   take the picture's own width and place, from the same --work-ar the frame
+   uses (set on the figure), so title, description and links start at the
+   picture's left edge. A column-wide picture changes nothing. */
 .mprof__caption {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-  margin: 0.7rem 0 0;
+  max-width: calc(60vh * var(--work-ar));
+  margin: 0.7rem auto 0;
   font-size: var(--fs-78);
   line-height: 1.45;
   color: var(--color-muted);
@@ -596,6 +616,12 @@
   .mprof__works {
     gap: 4rem;
     margin-top: 3rem;
+  }
+  .mprof__works > .mprof__project:not(:first-child) {
+    margin-top: 2rem;
+  }
+  .mprof__works > .mprof__project:not(:last-child) {
+    margin-bottom: 2rem;
   }
   .mprof__works-key {
     margin-bottom: -1.25rem;
