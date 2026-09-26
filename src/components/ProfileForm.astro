@@ -415,6 +415,13 @@ const t = useTranslations(lang);
       }
       <template data-gallery-tpl="item">
         <div class="gallery-item">
+          {
+            /* THE PICTURE AND ITS TOOLS ARE ONE COLUMN (2026-09-26, Josh: "move
+              the buttons on desktop under the image. make a bit more modern").
+              On desktop the toolbar sits under the thumb at its width; on a
+              phone the two sit side by side, the words below both. */
+          }
+          <div class="gallery-media">
           <div class="gallery-thumb">
             <img alt="" loading="lazy" data-gallery-img />
             {
@@ -445,17 +452,25 @@ const t = useTranslations(lang);
               one choice is not a choice. Unlabelled on screen (Josh: "remove
               the Title"); its name is in aria-label. */
           }
-          <div class="gallery-tools gallery-row-tools">
-            <div class="gallery-tool-pair">
-              <button type="button" class="gallery-tool gallery-move" data-gallery-move="up"><span aria-hidden="true">↑</span></button>
-              <button type="button" class="gallery-tool gallery-move" data-gallery-move="down"><span aria-hidden="true">↓</span></button>
+          <div class="gallery-row-tools">
+            {
+              /* One segmented toolbar instead of four loose boxes: move up,
+                move down, replace, delete. Line icons (Lucide's geometry,
+                drawn in currentColor) rather than text glyphs, so the four
+                read as one set at one weight. Names are in aria-label and
+                the tooltip, set by renderGallery(). */
+            }
+            <div class="gallery-toolbar" role="group">
+              <button type="button" class="gallery-tbtn" data-gallery-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+              <button type="button" class="gallery-tbtn" data-gallery-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
+              <button type="button" class="gallery-tbtn" data-gallery-replace><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button>
+              <button type="button" class="gallery-tbtn gallery-tbtn--danger" data-gallery-remove><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
             </div>
-            <div class="gallery-tool-pair">
-              <button type="button" class="gallery-tool gallery-move" data-gallery-replace><span aria-hidden="true">↻</span></button>
-              <button type="button" class="gallery-tool gallery-move gallery-tool--danger" data-gallery-remove><span aria-hidden="true">✕</span></button>
+            <div class="gallery-select-wrap" data-gallery-project-wrap hidden>
+              <select class="gallery-project-select" data-gallery-project></select>
             </div>
-            <select class="gallery-project-select" data-gallery-project hidden></select>
-            <button type="button" class="gallery-tool" data-gallery-auto-thumb hidden></button>
+            <button type="button" class="gallery-tpill" data-gallery-auto-thumb hidden></button>
+          </div>
           </div>
           <div class="gallery-fields">
             {
@@ -695,9 +710,11 @@ const t = useTranslations(lang);
           }
           <header class="gallery-project-head">
             <span class="gallery-project-name" data-project-name></span>
-            <button type="button" class="gallery-tool gallery-move" data-project-move="up"><span aria-hidden="true">↑</span></button>
-            <button type="button" class="gallery-tool gallery-move" data-project-move="down"><span aria-hidden="true">↓</span></button>
-            <button type="button" class="gallery-tool" data-project-delete>{t("profile.project.delete")}</button>
+            <div class="gallery-toolbar gallery-toolbar--head" role="group">
+              <button type="button" class="gallery-tbtn" data-project-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+              <button type="button" class="gallery-tbtn" data-project-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
+            </div>
+            <button type="button" class="gallery-tpill gallery-tpill--danger" data-project-delete>{t("profile.project.delete")}</button>
           </header>
           {
             /* THE PROJECT'S WORDS FOLD, LIKE A WORK'S (2026-09-25, Josh: "the
@@ -1475,52 +1492,130 @@ const t = useTranslations(lang);
 
   .gallery-item {
     display: grid;
-    /* Thumb, its tools, its words (2026-09-25: every tool right of the
-       picture). A pending upload has no tools column; see .gallery-task. */
-    grid-template-columns: 110px auto minmax(0, 1fr);
-    gap: 12px;
+    /* The picture with its toolbar under it, then the words (2026-09-26). A
+       pending upload has no toolbar; its thumb is the column's only child. */
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: 14px;
     align-items: start;
   }
 
-  .gallery-item.gallery-task {
-    grid-template-columns: 110px minmax(0, 1fr);
-  }
-
-  /* THE TOOL COLUMN: move, then replace/delete, as square pairs, and the
-     project dropdown under them at the pairs' width. */
-  .gallery-row-tools {
+  .gallery-media {
+    display: flex;
     flex-direction: column;
-    align-items: stretch;
-    flex-wrap: nowrap;
-    width: 7.5rem;
+    gap: 8px;
+    min-width: 0;
   }
 
-  .gallery-tool-pair {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+  .gallery-row-tools {
+    display: flex;
+    flex-direction: column;
     gap: 6px;
+    min-width: 0;
   }
 
-  .gallery-row-tools .gallery-move {
-    width: auto;
+  /* ── The toolbar (2026-09-26, Josh: "a bit more modern") ──
+     One tinted, rounded strip holding four equal icon buttons: no borders
+     between or around them, the icons in the muted ink, and the pressed-on
+     state lifted onto paper with a hairline shadow. Disabled at an edge
+     rather than removed, so the strip never changes length. */
+  .gallery-toolbar {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 2px;
+    padding: 2px;
+    background: color-mix(in srgb, var(--color-border) 55%, transparent);
+    border-radius: var(--radius-md);
   }
 
-  .gallery-row-tools .gallery-project-select {
-    width: 100%;
-    max-width: none;
+  .gallery-tbtn {
+    display: grid;
+    place-items: center;
+    height: 28px;
+    min-width: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--color-muted);
+    border: 0;
+    border-radius: calc(var(--radius-md) - 2px);
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      color 0.15s,
+      box-shadow 0.15s;
   }
 
-  .gallery-row-tools [data-gallery-auto-thumb] {
-    height: auto;
-    min-height: 26px;
-    padding-block: 4px;
-    line-height: 1.25;
+  .gallery-tbtn:hover:not(:disabled) {
+    background: var(--color-bg);
+    color: var(--color-dark);
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--color-dark) 12%, transparent);
   }
 
-  /* Delete goes red on hover; replace stays dark, because it keeps the work. */
-  .gallery-tool--danger:hover:not(:disabled) {
+  .gallery-tbtn:focus-visible,
+  .gallery-tpill:focus-visible,
+  .gallery-project-select:focus-visible {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 1px;
+  }
+
+  .gallery-tbtn--danger:hover:not(:disabled) {
     color: var(--color-error);
-    border-color: var(--color-error);
+  }
+
+  .gallery-tbtn:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  .gallery-icon {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* A text control in the toolbar's material: "Use automatic thumbnail",
+     "Delete project". */
+  .gallery-tpill {
+    min-height: 28px;
+    padding: 4px 10px;
+    background: color-mix(in srgb, var(--color-border) 55%, transparent);
+    color: var(--color-dark);
+    border: 0;
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-size: 0.75rem;
+    line-height: 1.25;
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      color 0.15s;
+  }
+
+  .gallery-tpill:hover:not(:disabled) {
+    background: var(--color-border);
+  }
+
+  .gallery-tpill--danger:hover:not(:disabled) {
+    color: var(--color-error);
+  }
+
+  .gallery-tpill:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  /* The project header's pair: the same strip, two buttons wide. */
+  .gallery-toolbar--head {
+    flex: none;
+    width: 64px;
+  }
+
+  .gallery-project-head .gallery-tpill {
+    flex: none;
   }
 
   .gallery-fields {
@@ -1897,38 +1992,50 @@ const t = useTranslations(lang);
     cursor: default;
   }
 
-  /* The arrows are glyphs, not words: a square at the tool's own height. */
-  .gallery-move {
-    width: 26px;
-    padding: 0;
-    font-size: 0.85rem;
+  /* THE PROJECT DROPDOWN: a native select in the toolbar's material, at its
+     width, with the site's own thin chevron drawn by the wrapper (a native
+     arrow would be the one heavy glyph in the row). No title of its own. */
+  .gallery-select-wrap {
+    position: relative;
   }
 
-  /* THE PROJECT DROPDOWN (2026-09-25): a native select at the tools' own
-     height and hairline, so it reads as one more small tool beside the
-     picture rather than as a form field. No title of its own. */
-  .gallery-project-select[hidden] {
+  .gallery-select-wrap[hidden] {
     display: none;
   }
 
-  .gallery-project-select {
-    height: 26px;
-    max-width: 14rem;
-    min-width: 0;
-    padding: 0 6px;
-    background: var(--color-bg);
-    color: var(--color-dark);
-    border: 1.5px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    font: inherit;
-    font-size: 0.78rem;
-    cursor: pointer;
+  .gallery-select-wrap::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 11px;
+    width: 6px;
+    height: 6px;
+    margin-top: -5px;
+    border-right: 1.5px solid var(--color-muted);
+    border-bottom: 1.5px solid var(--color-muted);
+    transform: rotate(45deg);
+    pointer-events: none;
   }
 
-  .gallery-project-select:hover,
-  .gallery-project-select:focus {
-    border-color: var(--color-dark);
-    outline: none;
+  .gallery-project-select {
+    appearance: none;
+    width: 100%;
+    height: 32px;
+    min-width: 0;
+    padding: 0 26px 0 10px;
+    background: color-mix(in srgb, var(--color-border) 55%, transparent);
+    color: var(--color-dark);
+    border: 0;
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-size: 0.75rem;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+
+  .gallery-project-select:hover {
+    background: var(--color-border);
   }
 
   /* ── Project blocks (2026-09-23) ─────────────────────── */
@@ -2178,21 +2285,16 @@ const t = useTranslations(lang);
   }
 
   @media (--bp-mobile) {
-    /* The words drop under the thumb. */
-    /* Thumb and tools share the first line; the words span both below. The
-       second track is 1fr, not auto, or the grid shrink-wraps and the Details
-       fold stops at the tools' right edge. */
+    /* On a phone the picture and its toolbar sit side by side, and the words
+       take the full width below them. */
     .gallery-item {
-      grid-template-columns: minmax(0, 140px) minmax(0, 1fr);
-    }
-    .gallery-row-tools {
-      justify-self: start;
-    }
-    .gallery-item .gallery-fields {
-      grid-column: 1 / -1;
-    }
-    .gallery-item.gallery-task {
       grid-template-columns: minmax(0, 1fr);
+    }
+    .gallery-media {
+      display: grid;
+      grid-template-columns: minmax(0, 140px) 136px;
+      gap: 12px;
+      align-items: start;
     }
     .gallery-actions {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2200,7 +2302,7 @@ const t = useTranslations(lang);
     .gallery-action--project {
       grid-column: 1 / -1;
     }
-    .gallery-thumb {
+    .gallery-task .gallery-thumb {
       max-width: 140px;
     }
     .gallery-project {
@@ -3251,7 +3353,7 @@ const t = useTranslations(lang);
             cover.textContent = s["profile.gallery.cover"];
 
             img.src = item.url;
-            remove.setAttribute("aria-label", s["profile.gallery.remove"]);
+            named(remove, s["profile.gallery.remove"]).title = s["profile.gallery.remove"];
             remove.addEventListener("click", () => removeGalleryImage(index));
 
             caption.value = item.caption ?? "";
@@ -3388,7 +3490,8 @@ const t = useTranslations(lang);
             // directly below the block it left (removeFromProject).
             // Membership is written at Save, like every field here.
             const current = item.projectId && projects.some((p) => p.projectId === item.projectId) ? item.projectId : "";
-            projectSelect.hidden = projects.length === 0;
+            const projectWrap = projectSelect.closest<HTMLElement>("[data-gallery-project-wrap]");
+            if (projectWrap) projectWrap.hidden = projects.length === 0;
             named(projectSelect, s["profile.project.select"]).title = s["profile.project.select"];
             const none = new Option(s["profile.project.none"], "");
             projectSelect.replaceChildren(
