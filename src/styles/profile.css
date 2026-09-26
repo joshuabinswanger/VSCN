@@ -243,7 +243,7 @@
   flex-direction: column;
   /* The space between one work or project and the next. 4rem -> 7rem on
      2026-09-26 (Josh: "we need to give more space in the profile view between
-     images and projects"): with pictures up to 75vh tall, 4rem read as one
+     images and projects"): with pictures up to 60vh tall, 4rem read as one
      continuous strip. */
   gap: 7rem;
   margin-top: 4.5rem;
@@ -472,16 +472,19 @@
      picture rather than on the figure, caption included. */
   position: relative;
   display: block;
-  /* NO PICTURE TALLER THAN 75vh (2026-09-26, Josh: "make the max height of
-     an image 75vh"). Capped through the WIDTH, not the height: the frame is
+  /* NO PICTURE TALLER THAN 60vh (2026-09-26, Josh: "make the max height of
+     an image 75vh", then the same day: "the vh should be 60vh"). Capped through the WIDTH, not the height: the frame is
      this link, and a height cap on the <img> would leave the frame at the
      column's width around a narrower picture, or letterbox it in its
      placeholder colour. So the frame is at most as wide as the picture is at
-     75vh tall — --work-ar is width / height, set per work by MemberWork.astro
+     60vh tall — --work-ar is width / height, set per work by MemberWork.astro
      and by the editor's preview — and the image fills it. A landscape work
      never reaches the cap and keeps the full column. Without --work-ar the
      declaration is invalid and the frame is simply column-wide, as before. */
-  max-width: calc(75vh * var(--work-ar));
+  max-width: calc(60vh * var(--work-ar));
+  /* A frame narrower than the column sits in its middle (2026-09-26, Josh:
+     "center the images horizontally"); a column-wide one is unaffected. */
+  margin-inline: auto;
   border: 1.5px solid var(--color-border);
   border-radius: 0;
   background: var(--color-bg);
