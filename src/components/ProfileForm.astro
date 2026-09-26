@@ -1691,8 +1691,12 @@ const t = useTranslations(lang);
 
   /* The folded row's summary (see the markup comment): desktop only. The
      description is the page's own muted body text, clamped so a long essay
-     cannot make a folded row tall again; the chips are the site's tag chips,
-     .optchip.tagchip.optchip--on from global.css, without the editor's ×. */
+     cannot make a folded row tall again. The chips are drawn exactly as the
+     profile page draws its tags (2026-09-26, Josh: "the image tags should
+     have the same styling as the profile tags"): bare `.tagchip`, outlined
+     and muted on the page's ground, 5px apart as in .mprof__vals. They were
+     the editor's picked state (.optchip--on, a black fill), which read as
+     buttons in a row that is only telling. */
   .gallery-summary {
     display: none;
   }
@@ -1722,7 +1726,7 @@ const t = useTranslations(lang);
   .gallery-summary-tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 5px;
   }
 
   .gallery-summary-desc[hidden],
@@ -3511,7 +3515,7 @@ const t = useTranslations(lang);
               summaryTags.replaceChildren(
                 ...tags.map((tag) => {
                   const chip = document.createElement("span");
-                  chip.className = "optchip tagchip optchip--on";
+                  chip.className = "tagchip";
                   chip.textContent = tag;
                   return chip;
                 }),
