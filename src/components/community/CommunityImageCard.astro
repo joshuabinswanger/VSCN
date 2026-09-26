@@ -92,14 +92,12 @@ const pswpFor = (w: (typeof works)[number]) => {
     height: String(w.height),
     // PICKED FOR THIS PAGE'S LOCALE (2026-09-25), the member page's rule
     // (workCaption/workDescription in links.ts). These read the raw English
-    // fields until the "i" overlay below started printing the description on
-    // the card itself, where /de/community showing English under a German
-    // interface would have been plain to see.
+    // fields, so /de/community's lightbox showed English under a German
+    // interface.
     caption: workCaption(w, lang)?.trim() || "",
     // THE DESCRIPTION — the only one there is, since 2026-09-04 (see
-    // GalleryItem.description in gallery.ts). It feeds the lightbox and, since
-    // 2026-09-25, the card's "i" overlay, which communityCarousel.ts fills
-    // from this same attribute on the selected slide.
+    // GalleryItem.description in gallery.ts). What this feeds is the lightbox,
+    // which has room for it: the card itself never prints it.
     description: workDescription(w, lang) || "",
     // Where the image appeared — already absolute and already filtered for
     // linkability by workLink(). Per slide, unlike `meta` and the profile
@@ -121,11 +119,6 @@ const pswpFor = (w: (typeof works)[number]) => {
 const altFor = (w: (typeof works)[number]) =>
   workCaption(w, lang)?.trim() || `${member.displayName} — ${t("member.workAlt")}`;
 
-// Whether ANY slide has words for the "i" overlay. Only then is the button
-// rendered at all; which slide it shows for is the script's business, since
-// the selected slide changes (see bindInfo in communityCarousel.ts).
-const anyDescription = works.some((w) => pswpFor(w).description);
-const infoId = `ccard-info-${member.id}`;
 
 // "Image {n} of {total}". Filled here for the per-slide labels and handed to
 // the client as a template too, because the live region rebuilds it at every
@@ -305,37 +298,6 @@ const positionFor = (i: number) =>
                 change it announces, and "Image 1 of 3" from every card at page
                 load is noise, not information. */}
             <p class="ccard__live" aria-live="polite" aria-atomic="true" data-carousel-live />
-          </>
-        )
-      }
-      {
-        /* THE WORDS, ON THE PICTURE (2026-09-25, Josh: an "i" that lays the
-          description over the image without leaving the card). One button and
-          one overlay per FRAME, not per slide: the carousel script fills the
-          overlay from whichever slide is selected — the same data-pswp-caption
-          and data-pswp-description the lightbox reads, so the card and the
-          lightbox cannot say different things — and hides the button on a
-          slide that has no description. Rendered only when some slide has one.
-          A disclosure (aria-expanded + aria-controls), not a dialog: it never
-          takes focus away, and Escape or the button again closes it. */
-      }
-      {
-        anyDescription && (
-          <>
-            <button
-              class="ccard__info"
-              type="button"
-              data-carousel-info
-              aria-expanded="false"
-              aria-controls={infoId}
-              aria-label={t("community.card.info")}
-            >
-              <span aria-hidden="true">i</span>
-            </button>
-            <div class="ccard__info-panel" id={infoId} data-carousel-info-panel tabindex="0" hidden>
-              <p class="ccard__info-caption" data-carousel-info-caption />
-              <p class="ccard__info-desc" data-carousel-info-desc />
-            </div>
           </>
         )
       }
