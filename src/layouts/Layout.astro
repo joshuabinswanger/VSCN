@@ -111,9 +111,22 @@ const BRAND_SPILL_COUNT = Math.max(...BRAND_LETTERS.map((l) => l.tail.length));
 // initWordmarkChoice). To revert: set BRAND_FIT_VIEWPORT to false.
 const BRAND_FIT_VIEWPORT = true;
 const BRAND_COPY_TARGET_PX = 145;
-// Enough copies for a ~3500px window at the target size; wider than that the
-// line keeps this many and the fit lets the letters grow.
-const BRAND_POOL_REPEATS = 24;
+// OVERSHOOT (2026-09-26, Josh: "it should overshoot on the right a bit so when
+// a word shorten the header it pulls in letters"). Wherever the line ends on
+// the window's right edge — fitted to the window, and on every phone — this
+// many further copies run on past that edge, where the ticker's clip hides
+// them. They are not part of the fit: the last FITTED N still lands on the
+// edge. They are there for the overwrite: a word is narrower than the capitals
+// it writes over, so the line shortens while it shows, and without letters
+// waiting off-screen that shortening opened a gap at the right end. With them
+// the next letters slide in from the edge. One copy covers the worst case,
+// "Communication" over twelve capitals, with room to spare.
+// ?wordmark=shell has none: that line ends at the measure, inside the window,
+// so letters past it would be seen.
+const BRAND_OVERSHOOT_REPEATS = 1;
+// Enough copies for a ~3500px window at the target size, plus the overshoot;
+// wider than that the line keeps this many and the fit lets the letters grow.
+const BRAND_POOL_REPEATS = 24 + BRAND_OVERSHOOT_REPEATS;
 // The markup carries the whole pool, one slot per glyph, every slot tagged with
 // its copy number. Without JS a desktop shows the first BRAND_REPEATS_DESKTOP
 // (`.brand-slot--pool` is display:none) and a phone the first
@@ -285,6 +298,7 @@ const BRAND_SLOTS: BrandSlot[] = [
       data-brand-copy-target={BRAND_COPY_TARGET_PX}
       data-brand-repeats-desktop={BRAND_REPEATS_DESKTOP}
       data-brand-repeats-mobile={BRAND_REPEATS_MOBILE}
+      data-brand-overshoot={BRAND_OVERSHOOT_REPEATS}
       transition:persist
     >
       <a
@@ -451,6 +465,13 @@ const BRAND_SLOTS: BrandSlot[] = [
     .brand-slot.brand-slot--wide {
       display: none;
     }
+  }
+
+  /* The overshoot copies (see BRAND_OVERSHOOT_REPEATS). On a phone they are
+     --wide copies, which the rule above hides; three classes outrank its two
+     wherever the rules sit. */
+  .brand-slot.brand-slot--on.brand-slot--overshoot {
+    display: inline-grid;
   }
 
   .brand-link {
@@ -624,9 +645,11 @@ const BRAND_SLOTS: BrandSlot[] = [
 
   // What the title reads when no word is written over it, at THIS width. Read
   // back off the DOM rather than handed down from the frontmatter, which could
-  // only ever state one of the lengths.
+  // only ever state one of the lengths. The overshoot copies are left out: they
+  // are on the line but past the window's edge, so the fit must not count them.
   function restingBrandText(brandName: HTMLElement): string {
     return visibleBrandSlots(brandName)
+      .filter((slot) => !slot.classList.contains("brand-slot--overshoot"))
       .map((slot) => slot.querySelector<HTMLElement>(".brand-slot__rest")?.textContent ?? "")
       .join("");
   }
@@ -644,7 +667,9 @@ const BRAND_SLOTS: BrandSlot[] = [
     const slots = Array.from(brandName.querySelectorAll<HTMLElement>("[data-brand-repeat]")).filter(
       (slot) => Number(slot.dataset.brandRepeat) >= 0,
     );
-    slots.forEach((slot) => slot.classList.remove("brand-slot--on", "brand-slot--off"));
+    slots.forEach((slot) =>
+      slot.classList.remove("brand-slot--on", "brand-slot--off", "brand-slot--overshoot"),
+    );
     const probe = slots.find(
       (slot) =>
         slot.classList.contains("brand-slot--wide") && !slot.classList.contains("brand-slot--pool"),
@@ -653,6 +678,11 @@ const BRAND_SLOTS: BrandSlot[] = [
     const mobile = Number(ticker.dataset.brandRepeatsMobile) || 4;
     const desktop = Number(ticker.dataset.brandRepeatsDesktop) || 6;
     const pool = slots.reduce((max, slot) => Math.max(max, Number(slot.dataset.brandRepeat) + 1), 0);
+    // Copies past the right edge, where the line ends on it (see
+    // BRAND_OVERSHOOT_REPEATS). Taken out of the pool first, so the widest
+    // window still has them.
+    const endsOnWindowEdge = isPhone || ticker.dataset.wordmark === "fit";
+    const overshoot = endsOnWindowEdge ? Number(ticker.dataset.brandOvershoot) || 0 : 0;
     let count = desktop;
     if (isPhone) {
       count = mobile;
@@ -661,12 +691,14 @@ const BRAND_SLOTS: BrandSlot[] = [
       const available =
         ticker.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
       const target = Number(ticker.dataset.brandCopyTarget) || 145;
-      count = Math.min(pool, Math.max(mobile, Math.round(available / target)));
+      count = Math.min(pool - overshoot, Math.max(mobile, Math.round(available / target)));
     }
     slots.forEach((slot) => {
-      const inLine = Number(slot.dataset.brandRepeat) < count;
+      const repeat = Number(slot.dataset.brandRepeat);
+      const inLine = repeat < count + overshoot;
       slot.classList.toggle("brand-slot--on", inLine);
       slot.classList.toggle("brand-slot--off", !inLine);
+      slot.classList.toggle("brand-slot--overshoot", inLine && repeat >= count);
     });
   }
 
