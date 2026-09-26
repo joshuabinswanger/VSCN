@@ -72,7 +72,7 @@ export function getStaticPaths() {
 
 ### Styling
 
-All design tokens live at the top of [src/styles/global.css](src/styles/global.css): `--color-dark`, `--color-bg` (`#fcfbfa`), `--color-border`, `--color-muted`, `--radius-xs` … `--radius-xl`, `--shell-max`, and `--font-size-base` (13px mobile / 15px desktop, set on `html`, so `rem` units scale with the breakpoint automatically).
+All design tokens live at the top of [src/styles/global.css](src/styles/global.css): `--color-dark`, `--color-bg` (`#fcfbfa`), `--color-border`, `--color-muted`, `--radius-xs` … `--radius-xl`, `--shell-max`, and `--font-size-base` (13px on every width since 2026-09-26, set on `html`; nearly all type is in `rem`, so this one value is the whole type scale).
 
 `--shell-max` (900px) is the header's measure, and it is a **three-way contract**: the `VSCNVSCN` brand ticker in `Layout.astro`, `.nav-links` in `Navbar.astro` and `main` in `global.css` all size to it, which is what keeps the title, the nav links and the content on the same two vertical edges.
 
