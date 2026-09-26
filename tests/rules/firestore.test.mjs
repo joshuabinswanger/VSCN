@@ -351,12 +351,12 @@ test("images: what is in the picture — up to 7 tags from the registry's own al
   await assertFails(db.doc("images/img-1").update({ tags: "Botany", updatedAt: new Date() }));
 });
 
-test("images: a FULL gallery saves — eight maximal records, seven tags each, then both profile docs", async () => {
+test("images: a FULL gallery saves — twelve maximal records, seven tags each, then both profile docs", async () => {
   // The per-image cap went 5 -> 7 on 2026-09-23. The records are judged one
-  // write each (saveGalleryRecords in src/lib/gallery.ts: eight parallel
+  // write each (saveGalleryRecords in src/lib/gallery.ts: twelve parallel
   // updateDoc calls), and the profile docs in one batch after them
   // (updateUserProfile) — so this mirrors the real Save, every field at cap.
-  const ids = Array.from({ length: 8 }, (_, i) => `img-${i + 1}`);
+  const ids = Array.from({ length: 12 }, (_, i) => `img-${i + 1}`);
   for (const id of ids) await seed(env, `images/${id}`, imageDoc(OWNER, id, { status: "live" }));
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
   const tags = Array.from({ length: 7 }, (_, i) => `${i}`.padEnd(50, "x"));
@@ -428,12 +428,12 @@ test("publicProfiles: the gallery is a list of image ids, and nothing else", asy
 
   await assertSucceeds(save([]));
   await assertSucceeds(save(["img-1"]));
-  await assertSucceeds(save(["img-1", "img-2", "img-3", "img-4", "img-5", "img-6", "img-7", "img-8"]));
+  await assertSucceeds(save(Array.from({ length: 12 }, (_, i) => `img-${i + 1}`)));
   await assertSucceeds(save([`${OWNER}-gallery`]));
   await assertSucceeds(save([crypto.randomUUID()]));
 
-  // A ninth is refused: the cap is the list's own size.
-  await assertFails(save(["1", "2", "3", "4", "5", "6", "7", "8", "9"]));
+  // A thirteenth is refused: the cap is the list's own size.
+  await assertFails(save(Array.from({ length: 13 }, (_, i) => `${i + 1}`)));
   // THE OLD SHAPE is refused outright (2026-09-07 — the record is the work,
   // documentation/20260907-works-on-the-record-design.md). A stale tab that
   // still writes objects fails safe rather than re-growing the array.
@@ -444,10 +444,10 @@ test("publicProfiles: the gallery is a list of image ids, and nothing else", asy
   await assertFails(save([42]));
 });
 
-test("publicProfiles: eight ids save on a FULL profile", async () => {
+test("publicProfiles: twelve ids save on a FULL profile", async () => {
   // The whole reason for the shape change: validGalleryItem could not be
   // afforded eight times on a realistic profile (see
-  // documentation/20260903-gallery-rules-budget.md). Eight ids must fit next
+  // documentation/20260903-gallery-rules-budget.md). Twelve ids must fit next
   // to every other field the editor writes — every field below sits at its
   // cap, because a merely "realistic" fixture (short photoURL, empty
   // primaryAudiences) understates the budget the real save is judged against.
@@ -463,7 +463,7 @@ test("publicProfiles: eight ids save on a FULL profile", async () => {
     affiliation: "x".repeat(150), location: "x".repeat(100),
     languages: ["de", "en", "fr", "it"], visualNeeds: ["a", "b", "c", "d", "e", "f", "g", "h"],
     openTo: ["a", "b", "c", "d", "e"], primaryAudiences, tags: ["a", "b", "c", "d", "e", "f", "g"],
-    gallery: Array.from({ length: 8 }, () => crypto.randomUUID()),
+    gallery: Array.from({ length: 12 }, () => crypto.randomUUID()),
     active: true,
   }));
   await env.withSecurityRulesDisabled(async (ctx) => {
@@ -480,7 +480,7 @@ test("publicProfiles: eight ids save on a FULL profile", async () => {
     affiliation: "x".repeat(150), location: "x".repeat(100),
     languages: ["de", "en", "fr", "it"], visualNeeds: ["a", "b", "c", "d", "e", "f", "g", "h"],
     openTo: ["a", "b", "c", "d", "e"], primaryAudiences, tags: ["a", "b", "c", "d", "e", "f", "g"],
-    gallery: Array.from({ length: 8 }, () => crypto.randomUUID()),
+    gallery: Array.from({ length: 12 }, () => crypto.randomUUID()),
     phone: "x".repeat(40), wantsToContribute: true, onboardingComplete: true,
     receiveCommunityEmails: true, preferredLanguage: "en",
   }));
