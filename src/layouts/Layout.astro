@@ -91,58 +91,48 @@ const BRAND_REPEATS_DESKTOP = 6;
 // resting glyph is empty (head ""), which measures zero wide until a word
 // reaches them.
 const BRAND_SPILL_COUNT = Math.max(...BRAND_LETTERS.map((l) => l.tail.length));
-// EXPERIMENT (2026-09-25, Josh: "can we try that") — THE TITLE RUNS THE WHOLE
-// WIDTH OF THE TOP BAR. The fitted repeats above still fill the 900px measure
-// and still set the font size; BLEED copies continue the same VSCNVSCN line out
-// to both screen edges, so the header stops reading as a block floating in the
-// middle of a wide screen. A copy boundary stays on the shell's content edge, so
-// the title keeps its three-way alignment with the nav and <main>.
-// To compare: ?wordmark=shell shows the old measure-only title and
-// ?wordmark=bleed brings the bleed back, for the rest of the tab's session (see
-// initWordmarkChoice). To revert: set BRAND_BLEED to false — the bleed slots
-// then stay in the markup but hidden, and every measurement ignores them.
-// Twelve per side covers a 4K-wide window at the desktop fit (~145px a copy);
-// the part past the screen edge is clipped by body { overflow: hidden }.
-// Desktop only: on a phone the fitted title already reaches both edges.
-const BRAND_BLEED = true;
-const BRAND_BLEED_REPEATS = 12;
-// The markup always carries the DESKTOP pool; the repeats past the mobile
-// count are flagged `wide` and hidden by a media query below. Rendering the
-// larger set and hiding part of it — rather than rendering per breakpoint —
-// keeps this DOM a single server-rendered thing, which matters because
-// .brand-ticker is transition:persist and survives every navigation.
-// The spill slots stay AFTER the hidden ones so they are reachable at both
-// sizes; the JS walks the visible list, so a word overwritten near the right
+// THE TITLE FITS THE WINDOW, NOT THE MEASURE (2026-09-26, Josh: "the header is
+// now too wide. we need to perfectly fit it to the viewport"). On desktop the
+// line is a whole number of VSCNs, sized so the first V touches the left edge
+// of the window and the last N the right: no letter cut, nothing hanging off.
+// The COUNT is what changes with the window (initBrandRepeats picks it), so the
+// letters stay about the size six repeats gave them across the 900px measure —
+// BRAND_COPY_TARGET_PX, one VSCN's width at that size. The fit then settles the
+// last few pixels, so the height steps a little as a copy is added or dropped
+// rather than growing with the window.
+// This replaced a day-old full-bleed version (fixed-size copies running past
+// both edges, cut at the screen edge), which read as too wide.
+// Accepted cost: on desktop the title's edges no longer line up with INFO /
+// LOGIN and <main> — it is the one element of the three-way --shell-max
+// contract that now answers to the window instead.
+// Phones keep BRAND_REPEATS_MOBILE: there the measure already IS the window.
+// To compare: ?wordmark=shell shows the old measure-fitted title and
+// ?wordmark=fit brings this back, for the rest of the tab's session (see
+// initWordmarkChoice). To revert: set BRAND_FIT_VIEWPORT to false.
+const BRAND_FIT_VIEWPORT = true;
+const BRAND_COPY_TARGET_PX = 145;
+// Enough copies for a ~3500px window at the target size; wider than that the
+// line keeps this many and the fit lets the letters grow.
+const BRAND_POOL_REPEATS = 24;
+// The markup carries the whole pool, one slot per glyph, every slot tagged with
+// its copy number. Without JS a desktop shows the first BRAND_REPEATS_DESKTOP
+// (`.brand-slot--pool` is display:none) and a phone the first
+// BRAND_REPEATS_MOBILE (`.brand-slot--wide` too) — the old title, never a
+// screenful of letters at 8rem. initBrandRepeats then shows exactly the count
+// it picked. Rendering the larger set and hiding part of it — rather than
+// rendering per breakpoint — keeps this DOM a single server-rendered thing,
+// which matters because .brand-ticker is transition:persist and survives every
+// navigation.
+// The spill slots stay AFTER the whole pool so they are reachable at every
+// count; the JS walks the visible list, so a word overwritten near the right
 // end never disappears into a hidden slot.
-// The bleed copies sit on either side of the fitted ones in ONE line, so the
-// overwrite walk needs no special case: hovering a letter in any copy writes its
-// word over whatever follows it, across copy boundaries included. The left bleed
-// is pulled out past the shell edge by a measured negative margin (see
-// applyBrandBleedOffset), which keeps every letter left of the pointer still
-// while a word is written — the same thing the fitted line has always done.
-type BrandSlot = { head: string; tail: string; wide: boolean; bleed: "" | "left" | "right" };
-const bleedCopies = (bleed: "left" | "right"): BrandSlot[] =>
-  Array.from({ length: BRAND_BLEED_REPEATS }, () =>
-    BRAND_LETTERS.map((letter) => ({ ...letter, wide: false, bleed })),
-  ).flat();
+type BrandSlot = { head: string; tail: string; repeat: number };
 const BRAND_SLOTS: BrandSlot[] = [
-  ...bleedCopies("left"),
-  ...Array.from({ length: BRAND_REPEATS_DESKTOP }, (_, repeat) =>
-    BRAND_LETTERS.map((letter) => ({
-      ...letter,
-      wide: repeat >= BRAND_REPEATS_MOBILE,
-      bleed: "" as const,
-    })),
+  ...Array.from({ length: BRAND_POOL_REPEATS }, (_, repeat) =>
+    BRAND_LETTERS.map((letter) => ({ ...letter, repeat })),
   ).flat(),
-  ...bleedCopies("right"),
-  ...Array.from({ length: BRAND_SPILL_COUNT }, () => ({
-    head: "",
-    tail: "",
-    wide: false,
-    bleed: "" as const,
-  })),
-];
----
+  ...Array.from({ length: BRAND_SPILL_COUNT }, () => ({ head: "", tail: "", repeat: -1 })),
+];---
 
 <!doctype html>
 <html lang={lang}>
@@ -290,8 +280,11 @@ const BRAND_SLOTS: BrandSlot[] = [
   <body class:list={[{ "content-wide": contentWide }]}>
     <div
       class="brand-ticker"
-      data-wordmark={BRAND_BLEED ? "bleed" : "shell"}
-      data-wordmark-default={BRAND_BLEED ? "bleed" : "shell"}
+      data-wordmark={BRAND_FIT_VIEWPORT ? "fit" : "shell"}
+      data-wordmark-default={BRAND_FIT_VIEWPORT ? "fit" : "shell"}
+      data-brand-copy-target={BRAND_COPY_TARGET_PX}
+      data-brand-repeats-desktop={BRAND_REPEATS_DESKTOP}
+      data-brand-repeats-mobile={BRAND_REPEATS_MOBILE}
       transition:persist
     >
       <a
@@ -302,17 +295,17 @@ const BRAND_SLOTS: BrandSlot[] = [
       >
         <span class="brand-name" id="brand-name" aria-hidden="true">
           {
-            BRAND_SLOTS.map(({ head, tail, wide, bleed }) => (
+            BRAND_SLOTS.map(({ head, tail, repeat }) => (
               <span
                 class:list={[
                   "brand-slot",
                   {
-                    "brand-slot--wide": wide,
-                    "brand-slot--bleed": bleed,
-                    "brand-slot--bleed-left": bleed === "left",
+                    "brand-slot--wide": repeat >= BRAND_REPEATS_MOBILE,
+                    "brand-slot--pool": repeat >= BRAND_REPEATS_DESKTOP,
                   },
                 ]}
                 data-brand-tail={tail}
+                data-brand-repeat={repeat}
               >
                 <span class="brand-slot__rest">{head}</span>
                 <span class="brand-slot__over" />
@@ -384,15 +377,15 @@ const BRAND_SLOTS: BrandSlot[] = [
        max-width: var(--shell-max) + 15px padding put it — min(100% - 30px,
        870px), centred — so fitBrandName, which reads the padding back, fits the
        same title to the same edges. The box had to reach the screen edges so
-       it can CLIP there (below). */
+       it can CLIP there (below). That is the ?wordmark=shell title; the
+       default one fits the window and drops the padding (rule below). */
     padding: 0 max(15px, calc((100% - var(--shell-max)) / 2 + 15px));
     flex-shrink: 0;
     box-sizing: border-box;
-    /* A word overwriting near the right end, and the full-bleed copies, run on
-       past the measure; they stop at the screen edge. `clip`, not `hidden`, and
-       not left to body { overflow: hidden }: both of those still let a script,
-       or find-in-page landing on an off-screen "VSCN", scroll the page
-       sideways, and the bleed puts well over a screen of letters out there.
+    /* A word overwriting near the right end runs on past the last letter; it
+       stops at the screen edge. `clip`, not `hidden`, and not left to
+       body { overflow: hidden }: both of those still let a script, or
+       find-in-page landing on an off-screen letter, scroll the page sideways.
        `clip` contributes no scrollable overflow at all, and on one axis only it
        leaves the flap turns free to overhang vertically. */
     overflow-x: clip;
@@ -409,6 +402,32 @@ const BRAND_SLOTS: BrandSlot[] = [
        MacBook Pro 16: "make the header flip away on scrolling also on
        desktop") — a 16" panel is wide, not tall. */
     margin-top: calc(-1 * var(--brand-hide, 0px));
+  }
+
+  /* Fitted to the WINDOW — the default since 2026-09-26, see
+     BRAND_FIT_VIEWPORT. No padding, so the content box is the window and the
+     fit puts the first V and the last N on its two edges. */
+  .brand-ticker[data-wordmark="fit"] {
+    padding-inline: 0;
+  }
+
+  /* HOW MANY COPIES SHOW. The pool past BRAND_REPEATS_DESKTOP is hidden until
+     initBrandRepeats picks a count; then --on / --off say which copies are in
+     the line. display:none rather than zero width: the JS reads the visible
+     slots back out of the DOM to build both the string it fits and the line it
+     writes words along. Two classes each for the reason given in the mobile
+     block below, and --on after --pool so it wins the tie; the mobile block
+     comes after both, so a phone never shows a copy past its own count. */
+  .brand-slot.brand-slot--pool {
+    display: none;
+  }
+
+  .brand-slot.brand-slot--on {
+    display: inline-grid;
+  }
+
+  .brand-slot.brand-slot--off {
+    display: none;
   }
 
   @media (--bp-mobile) {
@@ -429,18 +448,9 @@ const BRAND_SLOTS: BrandSlot[] = [
        with it on specificity and LOSES on source order — which showed up as a
        phone rendering all six repeats at 21px while desktop was correct. The
        0,2,0 selector settles it wherever either rule ends up sitting. */
-    .brand-slot.brand-slot--wide,
-    .brand-slot.brand-slot--bleed {
+    .brand-slot.brand-slot--wide {
       display: none;
     }
-  }
-
-  /* The full-bleed experiment switched off — by BRAND_BLEED or by
-     ?wordmark=shell. display:none for the same reason as the rule above: the JS
-     reads the visible slots back out of the DOM, so a hidden bleed slot drops
-     out of the overwrite walk and out of the left offset on its own. */
-  .brand-ticker[data-wordmark="shell"] .brand-slot.brand-slot--bleed {
-    display: none;
   }
 
   .brand-link {
@@ -465,12 +475,6 @@ const BRAND_SLOTS: BrandSlot[] = [
     /* No overflow clip here — a word overwriting near the right end is allowed
        to run past the 900px shell. */
     overflow: visible;
-    /* The left bleed's resting width, written by applyBrandBleedOffset. A
-       negative margin widens this block leftwards, so the line starts that far
-       outside the measure and the first FITTED letter lands on the content edge
-       exactly as it did before the bleed existed. 0 whenever the bleed is
-       hidden (mobile, ?wordmark=shell). */
-    margin-left: calc(-1 * var(--brand-bleed-left, 0px));
   }
 
   /* One slot per glyph position, holding the resting VSCN letter and the word
@@ -607,56 +611,80 @@ const BRAND_SLOTS: BrandSlot[] = [
 
   let brandResizeObserver: ResizeObserver | null = null;
 
-  // The slots the current breakpoint actually shows. `.brand-slot--wide` is
-  // display:none on mobile (see the style block above), so the title is six
-  // VSCNs wide on desktop and four on a phone — and everything downstream, the
-  // fit and the word-overwrite walk alike, has to count the visible ones only.
-  // offsetParent is the read that asks the layout rather than re-deriving the
-  // media query: a slot inside a display:none rule has none.
+  // The slots the line currently shows: the copies initBrandRepeats switched
+  // on, less whatever the breakpoint hides, plus the spill slots — and
+  // everything downstream, the fit and the word-overwrite walk alike, has to
+  // count the visible ones only. offsetParent is the read that asks the layout
+  // rather than re-deriving the CSS: a slot inside a display:none rule has none.
   function visibleBrandSlots(brandName: HTMLElement): HTMLElement[] {
     return Array.from(brandName.querySelectorAll<HTMLElement>(".brand-slot")).filter(
       (slot) => slot.offsetParent !== null,
     );
   }
 
-  // What the FITTED title reads when no word is written over it, at THIS
-  // breakpoint. Read back off the DOM rather than handed down from the
-  // frontmatter, which could only ever state one of the two lengths. The bleed
-  // copies are left out: they run past the measure by design, so counting them
-  // would shrink the title to nothing.
+  // What the title reads when no word is written over it, at THIS width. Read
+  // back off the DOM rather than handed down from the frontmatter, which could
+  // only ever state one of the lengths.
   function restingBrandText(brandName: HTMLElement): string {
     return visibleBrandSlots(brandName)
-      .filter((slot) => !slot.classList.contains("brand-slot--bleed"))
       .map((slot) => slot.querySelector<HTMLElement>(".brand-slot__rest")?.textContent ?? "")
       .join("");
   }
 
-  // Pull the line left by the resting width of the visible left bleed, so the
-  // first fitted letter sits on the content edge. Resting widths only: taken
-  // while no word is showing, so writing a word never moves the line's start —
-  // letters left of the pointer stay put, as they always have.
-  function applyBrandBleedOffset(brandName: HTMLElement) {
-    const left = visibleBrandSlots(brandName)
-      .filter((slot) => slot.classList.contains("brand-slot--bleed-left"))
-      .reduce((sum, slot) => sum + Number(slot.dataset.brandRestWidth ?? 0), 0);
-    brandName.style.setProperty("--brand-bleed-left", `${left}px`);
+  // HOW MANY VSCNs THE LINE HOLDS. On a phone, and for ?wordmark=shell, the
+  // fixed counts from the frontmatter. Fitted to the window, as many copies as
+  // fit at about BRAND_COPY_TARGET_PX each, so the fit that follows only has to
+  // settle the remainder: the letters stay the size the desktop title has always
+  // had, and the height steps slightly as the window crosses a copy boundary
+  // instead of scaling with the window's width.
+  // Whether this is a phone is asked of the layout, not re-derived from the
+  // breakpoint: with the pool classes cleared, the mobile block's rule is the
+  // only thing that can hide a `.brand-slot--wide` copy that is not in the pool.
+  function applyBrandRepeats(ticker: HTMLElement, brandName: HTMLElement) {
+    const slots = Array.from(brandName.querySelectorAll<HTMLElement>("[data-brand-repeat]")).filter(
+      (slot) => Number(slot.dataset.brandRepeat) >= 0,
+    );
+    slots.forEach((slot) => slot.classList.remove("brand-slot--on", "brand-slot--off"));
+    const probe = slots.find(
+      (slot) =>
+        slot.classList.contains("brand-slot--wide") && !slot.classList.contains("brand-slot--pool"),
+    );
+    const isPhone = probe ? probe.offsetParent === null : false;
+    const mobile = Number(ticker.dataset.brandRepeatsMobile) || 4;
+    const desktop = Number(ticker.dataset.brandRepeatsDesktop) || 6;
+    const pool = slots.reduce((max, slot) => Math.max(max, Number(slot.dataset.brandRepeat) + 1), 0);
+    let count = desktop;
+    if (isPhone) {
+      count = mobile;
+    } else if (ticker.dataset.wordmark === "fit") {
+      const cs = getComputedStyle(ticker);
+      const available =
+        ticker.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const target = Number(ticker.dataset.brandCopyTarget) || 145;
+      count = Math.min(pool, Math.max(mobile, Math.round(available / target)));
+    }
+    slots.forEach((slot) => {
+      const inLine = Number(slot.dataset.brandRepeat) < count;
+      slot.classList.toggle("brand-slot--on", inLine);
+      slot.classList.toggle("brand-slot--off", !inLine);
+    });
   }
 
-  // ?wordmark=shell | bleed flips the full-bleed experiment for the rest of the
-  // tab's session, so the two can be compared on one deploy. Stored on the
-  // persisted ticker, not on <html>, whose attributes every view transition
-  // replaces.
+  // ?wordmark=shell | fit flips between the measure-fitted title and the
+  // window-fitted one for the rest of the tab's session, so the two can be
+  // compared on one deploy. Stored on the persisted ticker, not on <html>, whose
+  // attributes every view transition replaces.
   const WORDMARK_KEY = "vscn:wordmark";
   function initWordmarkChoice(ticker: HTMLElement) {
     let choice: string | null = new URLSearchParams(location.search).get("wordmark");
     try {
-      if (choice === "shell" || choice === "bleed") sessionStorage.setItem(WORDMARK_KEY, choice);
+      if (choice === "shell" || choice === "fit") sessionStorage.setItem(WORDMARK_KEY, choice);
       else choice = sessionStorage.getItem(WORDMARK_KEY);
     } catch {
       /* Private mode: the URL still works for this one page. */
     }
     ticker.dataset.wordmark =
-      choice === "shell" || choice === "bleed" ? choice : (ticker.dataset.wordmarkDefault ?? "shell");
+      choice === "shell" || choice === "fit" ? choice : (ticker.dataset.wordmarkDefault ?? "shell");
   }
 
   function fitBrandName() {
@@ -871,13 +899,14 @@ const BRAND_SLOTS: BrandSlot[] = [
   function refreshBrandName() {
     const brandName = document.getElementById("brand-name") as HTMLElement | null;
     if (!brandName) return;
+    const ticker = brandName.closest<HTMLElement>(".brand-ticker");
+    if (ticker) applyBrandRepeats(ticker, brandName);
     fitBrandName();
     measureBrandGlyphs(brandName);
     // Crossing the mobile breakpoint changes which slots exist on the line, and
     // the walk is index-based — so the list is rebuilt on every refresh, not
     // just once when the listeners are bound.
     brandSlots = visibleBrandSlots(brandName);
-    applyBrandBleedOffset(brandName);
   }
 
   function initBrandFit() {
