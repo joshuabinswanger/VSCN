@@ -23,6 +23,14 @@ export const MAX_PROJECT_LINK = 200;
 export const MAX_AFFILIATIONS = 10;
 export const MAX_AFFILIATION_NAME = 100;
 export const MAX_AFFILIATION_URL = 200;
+/**
+ * A project's tags (2026-09-27, Josh: "add project tags"). The same registry
+ * and the same cap as a work's own (validImageTags in firestore.rules, the
+ * per-image <tag-selector maxTags={7}>), so a project can say no more about
+ * itself than one of its pictures can.
+ */
+export const MAX_PROJECT_TAGS = 7;
+export const MAX_PROJECT_TAG = 50;
 
 /** One stored affiliation: a name with an optional scheme-less link, or a member credit. */
 export type AffiliationRecord = { name: string; url?: string } | { memberUid: string; name: string };
@@ -37,6 +45,7 @@ export interface ProjectRecord {
   descriptionDe?: string;
   link?: string;
   affiliations?: AffiliationRecord[];
+  tags?: string[];
 }
 
 /** An affiliation as renderers see it. */
@@ -60,6 +69,8 @@ export interface ProfileProject {
   /** Absolute href, through workLink(). */
   link?: string;
   affiliations: ProjectAffiliation[];
+  /** Trimmed labels, empties dropped; always present, like `affiliations`. */
+  tags: string[];
 }
 
 export interface WorkSection<W> {
@@ -80,6 +91,7 @@ export interface ProjectFields {
   descriptionDe?: string;
   link?: string;
   affiliations?: AffiliationRecord[];
+  tags?: string[];
 }
 
 function text(value: unknown): string | undefined {
@@ -90,8 +102,21 @@ function stripScheme(value: string): string {
   return value.replace(/^https?:\/\//i, "");
 }
 
+/** Trimmed, empties and case-insensitive repeats dropped, first spelling kept. */
+function tagList(value: unknown): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of Array.isArray(value) ? value : []) {
+    const tag = text(raw);
+    if (!tag || seen.has(tag.toLowerCase())) continue;
+    seen.add(tag.toLowerCase());
+    out.push(tag);
+  }
+  return out;
+}
+
 export function toProfileProject(rec: ProjectRecord): ProfileProject {
-  const p: ProfileProject = { id: rec.projectId, affiliations: [] };
+  const p: ProfileProject = { id: rec.projectId, affiliations: [], tags: tagList(rec.tags) };
   const title = text(rec.title);
   const titleDe = text(rec.titleDe);
   const description = text(rec.description);
@@ -171,6 +196,16 @@ export function groupWorks<W extends { projectId?: string }>(
  */
 export function inheritedSiteLink(own: string | undefined, project: { link?: string } | undefined): string | undefined {
   return own ?? project?.link;
+}
+
+/**
+ * THE TAGS A WORK IS FOUND BY on the Community Grid (2026-09-27): its own,
+ * then its project's, repeats dropped case-insensitively. A project's tags
+ * describe every picture in it, the way its link does, so the wall's tag
+ * filter and its counts reach a project's works through either.
+ */
+export function inheritedTags(own: readonly string[], project: { tags?: readonly string[] } | undefined): string[] {
+  return tagList([...own, ...(project?.tags ?? [])]);
 }
 
 /** Both ways, like profileRole(): a German-only title still shows on the English page. */
@@ -253,6 +288,8 @@ export function projectFields(p: ProjectFields): ProjectFields {
     }
   }
   if (affiliations.length) out.affiliations = affiliations.slice(0, MAX_AFFILIATIONS);
+  const tags = tagList(p.tags).map((tag) => tag.slice(0, MAX_PROJECT_TAG)).slice(0, MAX_PROJECT_TAGS);
+  if (tags.length) out.tags = tags;
   return out;
 }
 

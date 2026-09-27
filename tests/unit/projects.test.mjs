@@ -4,8 +4,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  toProfileProject, ownProjects, contiguousOrder, groupWorks, inheritedSiteLink,
-  projectTitle, projectDescription, resolveMemberCredits, affiliationHref,
+  toProfileProject, ownProjects, contiguousOrder, groupWorks, inheritedSiteLink, inheritedTags,
+  MAX_PROJECT_TAGS, projectTitle, projectDescription, resolveMemberCredits, affiliationHref,
   projectSlideData, projectFields, editorBlocks, emptyProjectIds,
 } from "../../src/lib/projects.ts";
 
@@ -69,6 +69,26 @@ test("inheritedSiteLink: the image's own link wins, else the project's, else non
   assert.equal(inheritedSiteLink("https://me.ch/w", { link: "https://lab.org" }), "https://me.ch/w");
   assert.equal(inheritedSiteLink(undefined, { link: "https://lab.org" }), "https://lab.org");
   assert.equal(inheritedSiteLink(undefined, undefined), undefined);
+});
+
+test("project tags: trimmed, empties and case-insensitive repeats dropped, always an array", () => {
+  assert.deepEqual(toProfileProject(rec("p")).tags, []);
+  assert.deepEqual(toProfileProject(rec("p", { tags: [" 3D ", "", "3d", "Biology", 7] })).tags, ["3D", "Biology"]);
+});
+
+test("projectFields: tags capped at the image cap, each at 50, dropped when empty", () => {
+  const many = Array.from({ length: MAX_PROJECT_TAGS + 3 }, (_, i) => `Tag ${i}`);
+  const out = projectFields({ tags: [" Long ".concat("x".repeat(60)), ...many] });
+  assert.equal(out.tags.length, MAX_PROJECT_TAGS);
+  assert.equal(out.tags[0].length, 50);
+  assert.equal("tags" in projectFields({ tags: ["  ", ""] }), false);
+  assert.equal("tags" in projectFields({}), false);
+});
+
+test("inheritedTags: a work carries its own tags, then its project's, without repeats", () => {
+  assert.deepEqual(inheritedTags(["3D", "Biology"], { tags: ["biology", "Ecology"] }), ["3D", "Biology", "Ecology"]);
+  assert.deepEqual(inheritedTags([], { tags: ["Ecology"] }), ["Ecology"]);
+  assert.deepEqual(inheritedTags(["3D"], undefined), ["3D"]);
 });
 
 test("title and description fall back both ways", () => {

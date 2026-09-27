@@ -712,6 +712,7 @@ test("projects: the owner creates, edits and deletes their own; all fields optio
     description: "x".repeat(600), descriptionDe: "y".repeat(600),
     link: "lab.example.org/ribosome",
     affiliations: [{ name: "ETH Zürich", url: "ethz.ch" }, { name: "Lab" }, { memberUid: OTHER, name: "Anna Meier" }],
+    tags: ["Structural Biology", "Microscopy", "3D", "Research", "ETH", "Biology", "Medicine"],
     updatedAt: new Date(),
   }));
   await assertSucceeds(db.doc("projects/p1").get());
@@ -737,6 +738,13 @@ test("projects: caps hold — title, description, link, affiliation count and ea
   await assertFails(up({ affiliations: [{ memberUid: OTHER, name: "Anna", url: "x.ch" }] }));
   await assertFails(up({ affiliations: [{ name: "Org", role: "partner" }] }));
   await assertFails(up({ affiliations: "ETH" }));
+  // Project tags (2026-09-27): the image cap, validImageTags reused.
+  await assertSucceeds(up({ tags: Array.from({ length: 7 }, (_, i) => `Tag ${i}`) }));
+  await assertFails(up({ tags: Array.from({ length: 8 }, (_, i) => `Tag ${i}`) }));
+  await assertFails(up({ tags: [""] }));
+  await assertFails(up({ tags: ["x".repeat(51)] }));
+  await assertFails(up({ tags: [3] }));
+  await assertFails(up({ tags: "3D" }));
   await assertFails(up({ unknownField: true }));
 });
 
@@ -759,6 +767,7 @@ test("projects: the exact payloads saveProjects() sends pass the rules — creat
     description: "x".repeat(700), descriptionDe: "y".repeat(600),
     link: "https://lab.example.org/ribosome",
     affiliations: [{ name: "ETH Zürich", url: "https://ethz.ch" }, { name: "Lab" }, { memberUid: OTHER, name: "Anna Meier" }],
+    tags: [" 3D ", "Microscopy", "3d"],
   };
   // The fixture must exercise every key an update writes, or a new key would
   // only ever be sent as deleteField() here and never reach hasOnly.
@@ -776,6 +785,7 @@ test("projects: the exact payloads saveProjects() sends pass the rules — creat
   const p2 = (await context.firestore().doc("projects/p2").get()).data();
   assert.equal(p2.link, "lab.example.org/ribosome");
   assert.equal(p2.description.length, 600);
+  assert.deepEqual(p2.tags, ["3D", "Microscopy"]);
 });
 
 test("projects: another member can neither read, create for, edit nor delete my project", async () => {

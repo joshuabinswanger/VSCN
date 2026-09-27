@@ -516,9 +516,13 @@ function validImageTag(v) {
 // src/lib/projects.ts. One document per write, so the per-entry unroll below
 // costs ten short checks once — not the eight-times-per-save shape
 // documentation/20260903-gallery-rules-budget.md warns about.
+// `tags` (2026-09-27, Josh: "add project tags") reuses validImageTags: the
+// same registry labels and the same seven-tag cap as a work's own. Seven more
+// unrolled checks, still once per project document and never inside
+// validGallery, so the profile save's budget does not pay for them.
 function validProject(data) {
   return data.keys().hasOnly(['ownerUid', 'title', 'titleDe', 'description', 'descriptionDe',
-                              'link', 'affiliations', 'createdAt', 'updatedAt'])
+                              'link', 'affiliations', 'tags', 'createdAt', 'updatedAt'])
     && data.ownerUid is string
     && (!('title' in data) || (data.title is string && data.title.size() <= 100))
     && (!('titleDe' in data) || (data.titleDe is string && data.titleDe.size() <= 100))
@@ -526,6 +530,7 @@ function validProject(data) {
     && (!('descriptionDe' in data) || (data.descriptionDe is string && data.descriptionDe.size() <= 600))
     && (!('link' in data) || (data.link is string && data.link.size() <= 200))
     && (!('affiliations' in data) || validAffiliations(data.affiliations))
+    && (!('tags' in data) || validImageTags(data.tags))
     && data.createdAt is timestamp
     && data.updatedAt is timestamp;
 }

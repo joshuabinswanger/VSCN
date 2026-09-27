@@ -811,6 +811,22 @@ const t = useTranslations(lang);
                 {t("profile.project.affiliations.add")}
               </button>
             </div>
+            {
+              /* A PROJECT'S TAGS (2026-09-27, Josh: "add project tags"). The
+                work row's own fold and picker, cloned per block the same way,
+                so the vocabulary, the seven-tag cap and the chips are one
+                thing across the editor. Open by default like a work's, and
+                remembered per projectId (projectTagsOpenUI) across the
+                re-renders every move and upload causes. */
+            }
+            <details class="gallery-tags gallery-project-tags" open>
+              <summary class="gallery-tags-summary">
+                <span class="gallery-tags-title">{t("profile.label.tags")}</span>
+                <span class="gallery-tags-count" data-project-tags-count></span>
+                <span class="gallery-tags-chevron" aria-hidden="true"></span>
+              </summary>
+              <TagSelector lang={lang} maxTags={7} />
+            </details>
           </div>
           </details>
           <div class="gallery-project-images" data-project-images></div>
@@ -3221,6 +3237,9 @@ const t = useTranslations(lang);
     // The same for a project block's words (2026-09-25), keyed by projectId:
     // unknown = folded, and newProject() opens the block it adds.
     const projectDetailsOpenUI = new Map<string, boolean>();
+    // A project block's tag fold (2026-09-27): galleryTagsOpenUI's rule,
+    // keyed by projectId. Unknown = open, as the template draws it.
+    const projectTagsOpenUI = new Map<string, boolean>();
     // The images/ record behind the current avatar. Passed to
     // handleProfileUpdate so the replaced record can be marked for deletion
     // once the new photoURL has landed in Firestore.
@@ -3857,6 +3876,31 @@ const t = useTranslations(lang);
             affList.querySelector<HTMLInputElement>(`[data-aff-index="${project.affiliations.length - 1}"] [data-aff-field="name"]`)?.focus();
           });
           renderAffiliations();
+        }
+
+        // TAGS (2026-09-27), wired like a work row's: `.value` from state, a
+        // change writes back (deleted, never stored empty) and reaches the
+        // preview. Queried before the rows are appended, so this finds the
+        // block's own selector and never one of its works'.
+        const projectTags = el.querySelector<HTMLElement & { value: string[] }>(".gallery-project-tags tag-selector");
+        const projectTagsFold = el.querySelector<HTMLDetailsElement>(".gallery-project-tags");
+        const projectTagsCount = el.querySelector<HTMLElement>("[data-project-tags-count]");
+        if (projectTags && projectTagsFold && projectTagsCount) {
+          const setCount = (tags: readonly string[]) => {
+            projectTagsCount.textContent = tags.length ? `(${tags.length})` : "";
+          };
+          projectTags.value = project.tags ?? [];
+          setCount(project.tags ?? []);
+          named(projectTags, s["profile.label.tags"]);
+          projectTagsFold.open = projectTagsOpenUI.get(project.projectId) ?? true;
+          projectTagsFold.addEventListener("toggle", () => projectTagsOpenUI.set(project.projectId, projectTagsFold.open));
+          projectTags.addEventListener("change", () => {
+            const tags = projectTags.value;
+            if (tags.length) project.tags = tags;
+            else delete project.tags;
+            setCount(tags);
+            syncPreview();
+          });
         }
 
         // The block's own tips get their ids here, like the rows' — and
@@ -5001,6 +5045,7 @@ const t = useTranslations(lang);
         ...(r.descriptionDe ? { descriptionDe: r.descriptionDe } : {}),
         ...(r.link ? { link: r.link } : {}),
         affiliations: editorAffiliations(r.affiliations),
+        ...(Array.isArray(r.tags) && r.tags.length ? { tags: r.tags } : {}),
       }));
       storedProjectIds = new Set(records.map((r) => r.projectId));
       deletedProjectIds.clear();

@@ -23,9 +23,12 @@
 //      the two distances are measured against .page-wrap's client box and
 //      handed to the stylesheet as --bleed-l / --bleed-r. Unmeasured (no
 //      script) they are 0 and the carousel is simply a column-wide scroller.
-//   2. PREV / NEXT, the dots and the spoken position.
+//   2. PREV / NEXT, the count and the spoken position. THE COUNT REPLACED
+//      THE DOTS (2026-09-27, Josh: "add a number and count top right so it is
+//      obvious there are more images"): "2 / 7" on the current picture's top
+//      right corner, where the card's tiny dots had not been enough.
 //   2b. THE FRAME. A work narrower than the column (the 60vh cap, centred) is
-//      not where the column's edges are, so the dots and the two chevrons are
+//      not where the column's edges are, so the count and the two chevrons are
 //      placed on the CURRENT picture: its offsets inside its slide go to the
 //      stylesheet as --frame-l / --frame-r / --frame-h. The picture is the
 //      slide's `.mprof__work-link` (MemberWork.astro, and the preview's
@@ -36,8 +39,8 @@
 // Contract with the markup (MemberProject.astro on the page, the `carousel`
 // template in ProfileViewPreview.astro in the editor): `[data-carousel]` on
 // the wrapper, `[data-carousel-track]` holding one child per work,
-// `[data-carousel-prev/next]`, `[data-carousel-dots]` (an empty row this module
-// fills with one dot per work), `[data-carousel-live]`, and
+// `[data-carousel-prev/next]`, `[data-carousel-count]` (an empty element this
+// module fills with "n / total"), `[data-carousel-live]`, and
 // `data-position-label` ("Work {n} of {total}").
 
 const live = new Map<HTMLElement, () => void>();
@@ -75,13 +78,7 @@ export function initProjectCarousels(root: ParentNode = document): void {
     const slides = Array.from(track.children) as HTMLElement[];
     const prev = carousel.querySelector<HTMLButtonElement>("[data-carousel-prev]");
     const next = carousel.querySelector<HTMLButtonElement>("[data-carousel-next]");
-    const dotRow = carousel.querySelector<HTMLElement>("[data-carousel-dots]");
-    const dots = slides.map(() => {
-      const dot = document.createElement("span");
-      dot.className = "mprof__carousel-dot";
-      return dot;
-    });
-    dotRow?.replaceChildren(...dots);
+    const count = carousel.querySelector<HTMLElement>("[data-carousel-count]");
     const liveRegion = carousel.querySelector<HTMLElement>("[data-carousel-live]");
     const positionLabel = carousel.dataset.positionLabel ?? "";
     const controller = new AbortController();
@@ -147,7 +144,7 @@ export function initProjectCarousels(root: ParentNode = document): void {
       const atEnd = i === slides.length - 1;
       if (prev) prev.disabled = atStart;
       if (next) next.disabled = atEnd;
-      dots.forEach((dot, n) => dot.classList.toggle("mprof__carousel-dot--on", n === i));
+      if (count) count.textContent = `${i + 1} / ${slides.length}`;
       slides.forEach((slide, n) => slide.classList.toggle("is-current", n === i));
       frame();
       // Spoken only when a control asked for the move — a swipe or a scroll is

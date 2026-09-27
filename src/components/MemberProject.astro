@@ -14,6 +14,7 @@
 import type { ComponentProps, HTMLAttributes } from "astro/types";
 import MemberWork from "./MemberWork.astro";
 import { affiliationHref, projectDescription, projectTitle, type ProfileProject } from "../lib/projects.ts";
+import { communityWorkTagHref } from "../lib/links.ts";
 import { useTranslations, type Lang } from "../i18n/utils.ts";
 
 type Work = ComponentProps<typeof MemberWork>["work"];
@@ -84,15 +85,33 @@ const figure = (w: Work) => ({
         </p>
       )
     }
+    {
+      /* THE PROJECT'S TAGS (2026-09-27, Josh: "add project tags"), drawn as
+         the profile's own tags are: bare `.tagchip` links, each one a way into
+         the Grid wall filtered by it (communityWorkTagHref). */
+      project.tags.length > 0 && (
+        <ul class="mprof__vals mprof__project-tags">
+          {project.tags.map((tag) => (
+            <li>
+              <a class="mprof__val mprof__tag tagchip" href={communityWorkTagHref(lang, tag)}>
+                {tag}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
   </div>
   {
     carousel ? (
       <div class="mprof__carousel" data-carousel data-position-label={t("member.project.position")}>
-        {/* The gallery card's dots, top right (2026-09-26, Josh: "use the
-            same styles for the project carousels! with the dots top right").
-            Indicators, not controls; projectCarousel.ts draws one per work. */}
-        <div class="mprof__carousel-dots" data-carousel-dots aria-hidden="true" />
         <div class="mprof__carousel-stage">
+          {/* "2 / 7" ON THE PICTURE, top right (2026-09-27, Josh: "add a
+              number and count top right so it is obvious there are more
+              images"). It replaced the gallery card's dots (2026-09-26), which
+              were too small to say so. An indicator, not a control; the
+              position is spoken by the live region below. */}
+          <span class="mprof__carousel-count" data-carousel-count aria-hidden="true" />
         {/* A real scroll container, so swipe, trackpad and the arrow keys (it
             is a tab stop) all page it natively, and scroll-snap makes every
             one of them land on a work. */}

@@ -12,7 +12,7 @@ import { profileBio, profileRole, workLink } from "./links.ts";
 import type { Lang } from "../i18n/utils";
 import { orderedGalleryItems, type GalleryRecord } from "./galleryRecords.ts";
 import { imageScore } from "./imageScore.ts";
-import { inheritedSiteLink, ownProjects, type ProfileProject, type ProjectRecord } from "./projects.ts";
+import { inheritedSiteLink, inheritedTags, ownProjects, type ProfileProject, type ProjectRecord } from "./projects.ts";
 
 /**
  * A work as the BUILD knows it: everything a renderer needs, plus what
@@ -211,7 +211,7 @@ function works(
       descriptionDe: g.descriptionDe,
       link: workLink(g.link),
       siteLink: inheritedSiteLink(workLink(g.siteLink), project),
-      tags: g.tags ?? [],
+      tags: inheritedTags(g.tags ?? [], project),
       ...(g.embed ? { embed: g.embed } : {}),
       ...(g.addedAt ? { addedAt: g.addedAt } : {}),
       ...(project ? { projectId: project.id } : {}),
