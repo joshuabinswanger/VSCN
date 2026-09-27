@@ -311,6 +311,26 @@
   line-height: 1.5;
 }
 
+/* A member who wrote paragraphs meant them (2026-09-27, Josh: "Paragraphs are
+   not respected in the Project description"): the same `pre-line` the bio,
+   a work's description and the lightbox already wear. The text is set as
+   text (Astro escapes it, the preview uses textContent), so no markup is
+   ever interpreted; only the newlines survive. */
+.mprof__project-desc {
+  white-space: pre-line;
+}
+
+/* The project's tags (2026-09-27): the profile's `.mprof__vals` row, a
+   touch apart from the words above it. */
+.mprof__project-tags {
+  margin-top: 0.35rem;
+}
+/* The preview hides an empty row with `hidden`, which `.mprof__vals`'
+   display: flex would otherwise win over. */
+.mprof__project-tags[hidden] {
+  display: none;
+}
+
 /* ── A PROJECT'S CAROUSEL (2026-09-26) ────────────────────
    A project with two or more works pages through them, one work per step
    (Josh: "the projects should be shown as carousels on the profile page and
@@ -340,43 +360,48 @@
   gap: 0.5rem;
 }
 
-/* The heading group and the carousel's dots belong together: the project's
-   4rem works rhythm would push the dots a screen-width's worth of air away
-   from the title they serve. */
+/* The heading group and the carousel belong together: the project's 4rem
+   works rhythm would push the carousel a screen-width's worth of air away
+   from the title it serves. (Written for the dots above the picture, which
+   the count replaced on 2026-09-27; the spacing was kept as it was.) */
 .mprof__project:has(.mprof__carousel) {
   gap: 1.5rem;
 }
 
-/* THE GALLERY CARD'S CHROME (2026-09-26, Josh: "use the same styles for the
-   project carousels! with the dots top right"). Until today the carousel had
-   its own bar, a "1 / 3" count beside two bordered squares. Now it wears
-   exactly what the directory card wears (communityCard.css): a row of tiny
-   dots hard right above the picture, and a bare chevron down each edge that
-   comes out on hover or focus. Same sizes, same timings; restated here
-   rather than shared because the card's rules are keyed to .ccard__frame.
+/* THE CAROUSEL'S CHROME. Since 2026-09-26 it has worn what the directory
+   card wears (communityCard.css): a bare chevron down each edge, restated
+   here because the card's rules are keyed to .ccard__frame. The card's row
+   of tiny dots came with them and was REPLACED on 2026-09-27 (Josh: "add a
+   number and count top right so it is obvious there are more images. Or
+   would it be better to have a more obvious carousel indicator? Maybe adding
+   some arrows somewhere?"). He picked, from three mockups on this page, a
+   "2 / 7" count on the picture's top right corner, and chevrons that are
+   always out on a touch screen, where there is no hover to call them.
    ON THE PICTURE, NOT THE COLUMN. A capped work is centred and narrower than
-   the column, so the dots end at the current picture's right edge and the
+   the column, so the count sits in the current picture's corner and the
    chevrons run down its own two edges: --frame-l / --frame-r / --frame-h are
    that picture's offsets, measured by projectCarousel.ts. Unmeasured they
    fall back to the column. */
-.mprof__carousel-dots {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.18rem;
-  padding-right: var(--frame-r, 0px);
+.mprof__carousel-count {
+  position: absolute;
+  z-index: 2;
+  top: 0.6rem;
+  right: calc(var(--frame-r, 0px) + 0.6rem);
+  padding: 0.3rem 0.45rem;
+  font-size: var(--fs-78);
+  line-height: 1;
+  letter-spacing: 0.03em;
+  /* So "9 / 12" and "10 / 12" do not jitter the tag's width digit by digit. */
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--color-dark);
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
   pointer-events: none;
 }
-
-.mprof__carousel-dot {
-  width: 0.18rem;
-  height: 0.18rem;
-  border-radius: 50%;
-  background: var(--color-dark);
-  opacity: 0.22;
-  transition: opacity 180ms ease;
-}
-.mprof__carousel-dot--on {
-  opacity: 1;
+/* Empty until the script has counted: no paper tag with nothing on it. */
+.mprof__carousel-count:empty {
+  display: none;
 }
 
 /* The track and its two edge strips. The strips sit on the COLUMN's edges,
@@ -422,6 +447,14 @@
 .mprof__carousel-arrow:hover,
 .mprof__carousel-arrow:focus-visible {
   opacity: 1;
+}
+/* A touch screen has no hover to call the chevrons out, so they are out
+   from the start (2026-09-27): with the count, they are what says "swipe". */
+@media (hover: none) {
+  .mprof__carousel-arrow {
+    opacity: 0.75;
+    transform: translate(0, 0);
+  }
 }
 /* At either end there is nowhere to go, so that side's strip is not there
    at all: no chevron, and the picture under it is the picture's again. */
@@ -520,7 +553,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .mprof__carousel-slide,
-  .mprof__carousel-dot,
   .mprof__carousel-arrow {
     transition: none;
   }

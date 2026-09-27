@@ -47,6 +47,8 @@ export interface EditorProject {
   descriptionDe?: string;
   link?: string;
   affiliations: EditorAffiliation[];
+  /** Absent rather than empty, like a work's (the row's tag-selector deletes it). */
+  tags?: string[];
 }
 
 type ProjectBlock = Extract<EditorBlock, { kind: "project" }>;

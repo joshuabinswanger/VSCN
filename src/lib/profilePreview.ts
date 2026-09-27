@@ -184,8 +184,9 @@ export function renderProfilePreview(
   const tags = part("tags");
   if (tags) {
     const items = vm.tags.map((t) => {
-      const li = clone("val");
-      if (li) li.textContent = t;
+      const li = clone("tag");
+      const chip = li?.querySelector("span");
+      if (chip) chip.textContent = t;
       return li;
     });
     tags.replaceChildren(...items.filter((n): n is HTMLElement => n !== null));
@@ -416,6 +417,17 @@ export function renderProfilePreview(
           });
         }
         withEl.hidden = list.length === 0;
+      }
+      const tagsEl = slot("tags");
+      if (tagsEl) {
+        const chips = section.project.tags.map((tag) => {
+          const li = clone("tag");
+          const chip = li?.querySelector("span");
+          if (chip) chip.textContent = tag;
+          return li;
+        });
+        tagsEl.replaceChildren(...chips.filter((n): n is HTMLElement => n !== null));
+        tagsEl.hidden = chips.length === 0;
       }
       slot("works")?.replaceChildren(...(figures.length > 1 ? [carouselOf(figures, title)] : figures));
       return [block];

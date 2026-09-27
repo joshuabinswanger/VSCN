@@ -284,3 +284,17 @@ export function communityTagHref(lang: string, tag: string): string {
   const tagParam = key ? `tag=${encodeURIComponent(key)}&` : "";
   return `${base}?${tagParam}pattern=${TAG_CHIP_VIEW}`;
 }
+
+/**
+ * A tag printed on a WORK or a PROJECT (2026-09-27) goes to the Grid wall,
+ * not the spread: the wall's tiles filter by what is in the picture, and a
+ * project's tags are carried by its works there (inheritedTags() in
+ * projects.ts). The spread filters by the member's own tags, so a project
+ * tag the member never put on their profile would land on an empty page.
+ */
+export function communityWorkTagHref(lang: string, tag: string): string {
+  const base = lang === "de" ? "/de/community" : "/community";
+  const key = tag.trim().toLowerCase();
+  const tagParam = key ? `tag=${encodeURIComponent(key)}&` : "";
+  return `${base}?${tagParam}pattern=grid`;
+}
