@@ -124,29 +124,37 @@
   --fs-tag: 0.72rem;
 }
 
+/* THE PHONE READS AT THE REFERENCE'S SIZE (2026-09-27, Josh: "text larger on
+   mobile, check illustratoren schweiz for reference"). Measured there at 375px:
+   captions and credits 12px, body 14px, section heads 16px, menu 16px. The
+   phone column now takes the DESKTOP pixel for every token, and the caption
+   band (0.78–0.80: card roles, profile links, card bios) one more on top, so
+   the smallest running text on a phone is 12px like the reference's. The old
+   phone pixel is in each comment. Tags stay at 8px: Josh took them down on
+   purpose the day before, and they get letter-spacing instead (.tagchip). */
 @media (--bp-mobile) {
   :root {
-    --fs-72: 9px; /* 8.64 */
-    --fs-74: 9px; /* 8.88 */
-    --fs-75: 10px; /* 9.00 */
-    --fs-76: 10px; /* 9.12 */
-    --fs-78: 10px; /* 9.36 */
-    --fs-80: 10px; /* 9.60 */
-    --fs-82: 10px; /* 9.84 */
-    --fs-85: 11px; /* 10.20 */
-    --fs-88: 11px; /* 10.56 */
-    --fs-90: 11px; /* 10.80 */
-    --fs-95: 12px; /* 11.40 */
-    --fs-100: 13px; /* 12.00 */
-    --fs-105: 13px; /* 12.60 */
-    --fs-115: 14px; /* 13.80 */
-    --fs-120: 15px; /* 14.40 */
-    --fs-125: 16px; /* 15.00 */
-    --fs-140: 17px; /* 16.80 */
-    --fs-160: 20px; /* 19.20 */
-    --fs-180: 22px; /* 21.60 */
-    --fs-190: 23px; /* 22.80 */
-    --fs-225: 28px; /* 27.00 */
+    --fs-72: 10px; /* 9 */
+    --fs-74: 10px; /* 9 */
+    --fs-75: 11px; /* 10 */
+    --fs-76: 11px; /* 10 */
+    --fs-78: 12px; /* 10 */
+    --fs-80: 12px; /* 10 */
+    --fs-82: 12px; /* 10 */
+    --fs-85: 12px; /* 11 */
+    --fs-88: 13px; /* 11 */
+    --fs-90: 13px; /* 11 */
+    --fs-95: 13px; /* 12 */
+    --fs-100: 14px; /* 13 */
+    --fs-105: 15px; /* 13 */
+    --fs-115: 16px; /* 14 */
+    --fs-120: 17px; /* 15 */
+    --fs-125: 17px; /* 16 */
+    --fs-140: 19px; /* 17 */
+    --fs-160: 22px; /* 20 */
+    --fs-180: 24px; /* 22 */
+    --fs-190: 26px; /* 23 */
+    --fs-225: 30px; /* 28 */
     --fs-tag: 8px; /* 8.64 */
   }
 }
@@ -734,14 +742,21 @@ a:hover {
      Tightened 2026-09-26 (Josh: "tags should have less padding to their
      border"): 1px off top and bottom, 2px off the sides, the 1px optical drop
      kept. */
-  padding: 2.5px 6px 1.5px;
+  /* TRACKING (2026-09-27, Josh: "tags should get a bit more horizontal letter
+     spacing"). 0.03em was a quarter pixel at the phone's 8px. Letter-spacing
+     also trails the LAST letter, so the label's ink sits that much left of
+     centre; the left padding takes the same amount back so the chip stays
+     balanced. 0.06em, tried against 0.08 and 0.10 at 8px, is also what the
+     site's other uppercase labels carry (info headings, lightbox links). */
+  --tag-track: 0.06em;
+  padding: 2.5px 6px 1.5px calc(6px + var(--tag-track));
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-family: "Archivo", sans-serif;
   font-size: var(--fs-tag);
   font-weight: 400;
   line-height: 1.25;
-  letter-spacing: 0.03em;
+  letter-spacing: var(--tag-track);
   text-transform: uppercase;
 }
 
@@ -767,7 +782,7 @@ a:hover {
    tags are links, so the same reasoning applies there. */
 @media (pointer: coarse) {
   .tagchip {
-    padding: 4.5px 7px 3.5px;
+    padding: 4.5px 7px 3.5px calc(7px + var(--tag-track));
   }
 }
 
