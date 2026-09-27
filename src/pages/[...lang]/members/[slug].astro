@@ -143,11 +143,10 @@ const lightboxStrings = JSON.stringify({
 
 const social = socialLinks(member.socialMedia);
 
-// One line for where and in what: "Zurich, Switzerland · DE, EN".
-const where = [member.location, member.languages.map((c) => c.toUpperCase()).join(", ")]
-  .filter(Boolean)
-  .join(" · ");
-const communityHref = currentLang === "de" ? "/de/community" : "/community";
+// Where, and only where (2026-09-27, Josh: "Remove the EN DE from the Profile
+// Page"). The working languages used to follow the place — "Zurich · DE, EN" —
+// and read as a second language switch under the name.
+const where = member.location;
 
 const description = member.caption
   ? `${member.displayName} — ${member.role}. ${member.caption}`
@@ -211,8 +210,6 @@ const jsonLd = memberPageJsonLd({
   redirectTo={aliasOf}
 >
   <article class="mprof">
-    <a class="mprof__back" href={communityHref}>&#8592; {t("member.backToCommunity")}</a>
-
     <header class="mprof__head">
       {member.photoURL && (
         <img

@@ -245,7 +245,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.label.phone": "Phone Number",
     "profile.note.phone":
       "Hidden from the community page. Used only to help create a VSCN chat group.",
-    "member.backToCommunity": "Community",
     "member.openTo": "Open to",
     "member.needs": "Looking for",
     "member.tags": "Tags",
@@ -424,9 +423,11 @@ export const ui: Record<string, Record<string, string>> = {
     // screen reader announce one specific zebrafish before every caption box.
     // The heading of each work's fold in the Works tab (2026-09-24); the
     // folded row prints the caption beside it, or .noCaption when there is none.
-    "profile.gallery.details": "Details",
+    // "Image Details" since 2026-09-27 (Josh: "“Image Details” instead of
+    // Details"), the twin of "Project details" below.
+    "profile.gallery.details": "Image Details",
     // The project block's fold (2026-09-26, Josh: "details on project should be
-    // called project details"), so it is not read as the first work's Details.
+    // called project details"), so it is not read as the first work's Image Details.
     "profile.project.details": "Project details",
     // Called TITLE since 2026-09-26 (Josh: "add a Title for each image that
     // can be edited"). The field was always the picture's name: the page
@@ -844,7 +845,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.label.phone": "Telefonnummer",
     "profile.note.phone":
       "Nicht auf der Community-Seite sichtbar. Nur zur Erstellung einer VSCN-Chat-Gruppe.",
-    "member.backToCommunity": "Community",
     "member.openTo": "Offen für",
     "member.needs": "Sucht",
     "member.tags": "Tags",
@@ -988,7 +988,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.embed.err.network": "Die Verbindung wurde unterbrochen. Bitte versuche es noch einmal.",
     "profile.embed.err.unknown": "Das Video konnte nicht hinzugefügt werden. Bitte versuche es noch einmal.",
     "profile.gallery.overflow": "Es passen nur {n} Bilder — {m} nicht hinzugefügt.",
-    "profile.gallery.details": "Details",
+    "profile.gallery.details": "Bilddetails",
     "profile.project.details": "Projektdetails",
     "profile.gallery.caption": "Bildtitel",
     "profile.gallery.caption.ph": "Beispiel: Zebrafisch-Netzhaut im Querschnitt, konfokal",

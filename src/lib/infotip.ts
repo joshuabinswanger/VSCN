@@ -14,9 +14,17 @@
 // A text field wears its i inside, at its right edge (2026-09-24, Josh: "the i
 // should be in the text fields not next to the title"); the others keep theirs
 // beside the title.
-// One open at a time; leaving the field, Esc, a click anywhere else, or the i
+// One open at a time; leaving the field, Esc, a tap anywhere else, or the i
 // again closes it. The note keeps its id and stays in the field's
 // aria-describedby, so a screen reader hears it whether or not the box is open.
+//
+// "Anywhere else" is a POINTER tap, not a click (2026-09-27, Josh: "hints not
+// sticky on iphone"). iOS sends a click only to an element that looks
+// clickable (a control, a click handler, cursor: pointer), so a tap on the
+// page's blank paper reached no click listener and the box stayed open until
+// some control was tapped. Pointer events reach every element. A swipe that
+// turns into a scroll is cancelled, and the box stays open and rides along
+// with its field (.profile-form is its containing block, for that reason).
 
 const OPEN = '[data-infotip][aria-expanded="true"]';
 const NOTE = ".field-note[data-tip]";
@@ -126,6 +134,23 @@ function closeAll(except?: HTMLElement | null): void {
   });
 }
 
+/** On the i or inside an open box: the two places a tap never closes from. */
+function onTip(target: Element | null): boolean {
+  return Boolean(target?.closest(`[data-infotip], ${NOTE}`));
+}
+
+/**
+ * The tip a tap on `target` keeps open: the one belonging to the text field
+ * tapped, or to the field whose label was tapped. Everything else is
+ * "elsewhere". Not document.activeElement: on iOS a tap on blank paper leaves
+ * the field focused and the keyboard up, and the box must close anyway.
+ */
+function tipKeptBy(target: Element | null): HTMLElement | null {
+  const field =
+    target?.closest("input, textarea, select") ?? target?.closest("label")?.control ?? null;
+  return isTextEntry(field) ? tipOfField(field) : null;
+}
+
 declare global {
   interface Window {
     __vscnInfoTips?: boolean;
@@ -153,8 +178,33 @@ export function installInfoTips(): void {
   // otherwise the field's focusout closes the box a moment before the click
   // would, and on a phone the keyboard drops.
   document.addEventListener("mousedown", (event) => {
+    if (onTip(event.target as Element | null)) event.preventDefault();
+  });
+
+  // The tap that is under way: whether it began on the i or in the box, and
+  // which tip it keeps if it ends somewhere else ("ignore" when it began on a
+  // tip, or turned into a scroll). Decided where the finger went DOWN, so a
+  // text selection dragged out of the field does not count as a tap outside.
+  let pointerOnTip = false;
+  let tapKeeps: HTMLElement | null | "ignore" = "ignore";
+
+  document.addEventListener("pointerdown", (event) => {
     const target = event.target as Element | null;
-    if (target?.closest(`[data-infotip], ${NOTE}`)) event.preventDefault();
+    pointerOnTip = onTip(target);
+    tapKeeps = pointerOnTip ? "ignore" : tipKeptBy(target);
+  });
+
+  document.addEventListener("pointerup", () => {
+    const keeps = tapKeeps;
+    tapKeeps = "ignore";
+    // pointerOnTip stays set for the focusout and click that follow, which on
+    // iOS arrive a task or more later; the click clears it.
+    if (keeps !== "ignore") closeAll(keeps);
+  });
+
+  document.addEventListener("pointercancel", () => {
+    tapKeeps = "ignore";
+    pointerOnTip = false;
   });
 
   document.addEventListener("focusin", (event) => {
@@ -171,27 +221,31 @@ export function installInfoTips(): void {
     if (!note || note.hidden) return;
     const next = event.relatedTarget as Element | null;
     if (next && (next === buttonOf(note) || note.contains(next))) return;
+    // A tap on the i or the box that moved focus anyway (Safari does not
+    // focus a tapped button, so relatedTarget is null): the click decides.
+    if (pointerOnTip) return;
     setOpen(note, false);
   });
 
+  // The i toggles its box, by pointer or by keyboard (Enter and Space on a
+  // button arrive as a click). Closing on a tap elsewhere is pointerup's job.
   document.addEventListener("click", (event) => {
-    const target = event.target as Element | null;
-    const button = target?.closest<HTMLElement>("[data-infotip]");
+    pointerOnTip = false;
+    const button = (event.target as Element | null)?.closest<HTMLElement>("[data-infotip]");
     const note = button && noteOf(button);
-    if (note) {
-      const open = note.hidden;
-      closeAll(note);
-      setOpen(note, open);
+    if (!note) {
+      // A control pressed from the keyboard (detail 0: no pointer behind it)
+      // is "elsewhere" too, as a click anywhere was before pointerup took over.
+      if (event.detail === 0) closeAll(tipOfField(document.activeElement));
       return;
     }
-    // A click inside the open box leaves it open, so its text can be read.
-    if (target?.closest(NOTE)) return;
-    // The click that focused a field (its title, or the field itself) has
-    // just opened that field's tip; everything else closes.
-    closeAll(tipOfField(document.activeElement));
+    const open = note.hidden;
+    closeAll(note);
+    setOpen(note, open);
   });
 
   document.addEventListener("keydown", (event) => {
+    pointerOnTip = false;
     if (event.key !== "Escape") return;
     const note = document.querySelector<HTMLElement>(`${NOTE}:not([hidden])`);
     if (!note) return;
