@@ -11,8 +11,9 @@
 // two read as one bottom bar rather than as two unrelated fixtures. Being out
 // of flow it costs the page no height; .page-wrap's 80px bottom padding is
 // what keeps it off the last line of content.
-// On a phone it is content after all: a stacked list below the page, always
-// visible, since 2026-09-24 — see the mobile block in the styles below.
+// On a phone it is content after all: a stacked list below the page since
+// 2026-09-24, and since 2026-09-27 always below the first screen too, so it
+// only ever arrives by scrolling — see the mobile block in the styles below.
 import { useTranslations } from "../i18n/utils.ts";
 import type { Lang } from "../i18n/utils.ts";
 
@@ -160,10 +161,15 @@ const otherLangHref =
 
   /* A STACKED LIST ON A PHONE (2026-09-24, Josh: "move the impressum etc as a
      stacked list at the bottom. as is common with mobile versions"). The
-     footer drops back into the flow: after the content, always visible, one
-     link per line. Visible without the scroll gate because there is nothing
-     to hide it from — it is below the content, not over it. The observer
-     still toggles .is-visible; nothing on mobile reads it.
+     footer drops back into the flow: after the content, one link per line.
+     No opacity gate because there is nothing to hide it from — it is below
+     the content, not over it. The observer still toggles .is-visible; nothing
+     on mobile reads it.
+     NEVER ON THE FIRST SCREEN (2026-09-27, Josh: "only show on mobile if you
+     scroll down, never from the beginning"). A short page used to show it at
+     load. Layout.astro now keeps <main> at least as tall as the scrollport,
+     so the footer always starts below the fold and scrolling is what brings
+     it in.
      THE LANGUAGE SWITCH HEADS IT (same day, Josh: "underneath, so when you
      scroll all the way to the bottom, above the impressum etc. think from a
      UX perspective"). A floating EN / DE on a phone sat on top of whatever
