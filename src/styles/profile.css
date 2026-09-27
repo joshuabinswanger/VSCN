@@ -23,23 +23,15 @@
  * (--bp-mobile) resolves through postcss-global-data — see postcss.config.mjs.
  */
 
+/* MORE WHITE SPACE (2026-09-27, Josh: "More White Space on Profile"). Every
+   step between the page's parts grew: the head now opens the page on its own
+   (the "← Community" link above it went the same day, and the padding took
+   back its height), the lines under the
+   name sit further apart, and the bio, the meta rows and the works each stand
+   off the block before them by more than they did. */
 .mprof {
   font-family: "Archivo", sans-serif;
-  padding-block: 3rem 10rem;
-}
-
-.mprof__back {
-  display: inline-block;
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  text-decoration: none;
-  color: var(--color-muted);
-}
-.mprof__back:hover,
-.mprof__back:focus-visible {
-  color: var(--color-dark);
+  padding-block: 7rem 10rem;
 }
 
 /* ── Identity ─────────────────────────────────────────── */
@@ -47,8 +39,7 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
-  gap: 1.25rem;
-  margin-top: 2.5rem;
+  gap: 2rem;
 }
 
 .mprof__avatar {
@@ -73,7 +64,7 @@
 }
 
 .mprof__role {
-  margin: 0.7rem 0 0;
+  margin: 1rem 0 0;
   max-width: 36rem;
   font-size: var(--fs-90);
   font-weight: 600;
@@ -84,7 +75,7 @@
 /* Institution sits with the title block, but a step quieter than the
      role: it identifies, it is not the headline. */
 .mprof__affiliation {
-  margin: 0.25rem 0 0;
+  margin: 0.4rem 0 0;
   max-width: 36rem;
   font-size: var(--fs-90);
   line-height: 1.35;
@@ -92,7 +83,7 @@
 }
 
 .mprof__where {
-  margin: 0.25rem 0 0;
+  margin: 0.4rem 0 0;
   max-width: 36rem;
   font-size: var(--fs-85);
   line-height: 1.35;
@@ -105,7 +96,7 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  margin: 0.55rem 0 0;
+  margin: 1rem 0 0;
   font-size: 0.62rem;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -122,7 +113,7 @@
 }
 
 .mprof__bio {
-  margin: 2.2rem 0 0;
+  margin: 3.5rem 0 0;
   max-width: 38rem;
   font-size: var(--fs-95);
   line-height: 1.55;
@@ -134,8 +125,8 @@
 .mprof__meta {
   display: flex;
   flex-direction: column;
-  gap: 1.4rem;
-  margin-top: 2.4rem;
+  gap: 1.75rem;
+  margin-top: 3rem;
 }
 
 .mprof__row {
@@ -246,7 +237,7 @@
      images and projects"): with pictures up to 60vh tall, 4rem read as one
      continuous strip. */
   gap: 7rem;
-  margin-top: 4.5rem;
+  margin-top: 6rem;
 }
 
 /* A PROJECT BLOCK on the member page and in the editor's preview (2026-09-23).
@@ -611,11 +602,14 @@
 
 @media (--bp-mobile) {
   .mprof {
-    padding-block: 2rem 6rem;
+    padding-block: 4.5rem 6rem;
+  }
+  .mprof__head {
+    gap: 1.25rem;
   }
   .mprof__works {
     gap: 4rem;
-    margin-top: 3rem;
+    margin-top: 4rem;
   }
   .mprof__works > .mprof__project:not(:first-child) {
     margin-top: 2rem;

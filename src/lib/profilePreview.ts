@@ -165,10 +165,10 @@ export function renderProfilePreview(
   if (affiliation) affiliation.textContent = vm.affiliation;
   show(affiliation, Boolean(vm.affiliation));
 
-  // Location and languages read as one line: "Zurich, Switzerland · DE, EN".
+  // Location only, as on the page: the working languages that followed it
+  // ("Zurich · DE, EN") came off on 2026-09-27.
   const where = part("where");
-  const languageLabels = vm.languages.map((code) => code.toUpperCase());
-  const whereText = [vm.location, languageLabels.join(", ")].filter(Boolean).join(" · ");
+  const whereText = vm.location.trim();
   if (where) where.textContent = whereText;
   show(where, Boolean(whereText));
 

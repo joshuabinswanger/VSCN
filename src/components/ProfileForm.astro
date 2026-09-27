@@ -441,7 +441,7 @@ const t = useTranslations(lang);
               replace image, delete image, move image up, move image down,
               project selection button to right of the image"). They used to
               be split: ↻ and ✕ on the picture, the arrows and the project
-              under the Details fold. Now one column beside the thumb holds
+              under the Image Details fold. Now one column beside the thumb holds
               everything that acts on the work as a whole, and the fold holds
               only its words.
               Up/down stay inside the row's container (moveImage in
@@ -484,8 +484,8 @@ const t = useTranslations(lang);
                 descriptions and the full tag picker — which made a folded row
                 as tall as an open one. Now a folded row shows only what the
                 picture SAYS: its description as text and its tags as chips,
-                both read-only. Everything is edited in Details, as on a
-                phone, and the summary steps aside while Details is open so
+                both read-only. Everything is edited in Image Details, as on a
+                phone, and the summary steps aside while that fold is open so
                 nothing is on screen twice. Painted by renderGallery(); hidden
                 by the CSS below 768px and when there is nothing to say.
                 THE TITLE, NOT THE DESCRIPTION (2026-09-26, Josh: "this should
@@ -507,9 +507,11 @@ const t = useTranslations(lang);
                 that is the row about to be filled in. The ⋯ menu stays outside
                 the fold, so a folded row can still be moved.
 
-                The summary says "Details" and nothing else (2026-09-25, Josh:
-                "detail drop down should not display any name or anything"); it
-                used to repeat the caption. Open/closed lives in
+                The summary says "Image Details" and nothing else (2026-09-25,
+                Josh: "detail drop down should not display any name or
+                anything"); it used to repeat the caption. It said just
+                "Details" until 2026-09-27 (Josh: "“Image Details” instead of
+                Details"). Open/closed lives in
                 galleryDetailsOpenUI, keyed by imageId, for the same re-clone
                 reason as the tag fold below. */
             }
@@ -742,13 +744,13 @@ const t = useTranslations(lang);
           {
             /* THE PROJECT'S WORDS FOLD, LIKE A WORK'S (2026-09-25, Josh: "the
               projects should be collapsible as well"). Same element, same
-              classes and the same rule as a work's Details: a project already
+              classes and the same rule as a work's Image Details: a project already
               saved starts FOLDED, one added in this session starts OPEN
               (projectDetailsOpenUI, keyed by projectId). Only the words fold.
               The header keeps the name, the arrows and Delete, and the images
               below stay listed, so a folded block can still be moved and its
-              works still reordered. The summary says "Details" and nothing
-              else, like a work's (2026-09-25). */
+              works still reordered. The summary says "Project details" and
+              nothing else (2026-09-26), the twin of a work's "Image Details". */
           }
           <details class="gallery-details gallery-project-details">
             <summary class="gallery-details-summary">
@@ -1298,6 +1300,12 @@ const t = useTranslations(lang);
     /* clip, not hidden: hidden makes the form a scroll container, and the
        sticky footer would stick to that instead of the page. */
     overflow-x: clip;
+    /* The i's hover box is absolute, and without a positioned ancestor its
+       containing block was the viewport, OUTSIDE .page-wrap's scrolling: it
+       stayed put on screen while its field scrolled away (2026-09-27, Josh:
+       "hints not sticky on iphone", where focusing a field scrolls it above
+       the keyboard). The form moves with the page, so the box does too. */
+    position: relative;
 
     @media (--bp-desktop) {
       padding: 0;
@@ -1523,7 +1531,7 @@ const t = useTranslations(lang);
 
   /* ONE WORK PER BAND (2026-09-26, Josh: "add more spacing or group the
      detail drop down to image relationship better"). At a 14px gap with
-     nothing between them, a row's toolbar and Details line sat as close to
+     nothing between them, a row's toolbar and Image Details line sat as close to
      the NEXT picture as to their own, so a fold could be read as belonging
      to either. Now two neighbouring rows are parted by the list's hairline
      with 24px of air on each side: everything between two lines is one
