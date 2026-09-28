@@ -116,9 +116,13 @@ async function build() {
         // this layer, so nothing is missed by skipping them.
         .filter((card) => !card.closest(".cgrid__strip, .cgrid__cell[hidden]"))
         .forEach((card) => {
+          // 0.88, not 0.72 (2026-09-28, Josh: "make the scaling effect
+          // less pronounced on grid and gallery"): a card now grows by an
+          // eighth on its way up rather than by more than a third, so the
+          // arrival reads as a settle, not a zoom. Same curve and window.
           gsap.fromTo(
             card,
-            { scale: 0.72, opacity: 0.2 },
+            { scale: 0.88, opacity: 0.2 },
             {
               scale: 1,
               opacity: 1,
