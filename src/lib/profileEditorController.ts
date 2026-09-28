@@ -3,6 +3,15 @@ import { confirmDialog } from "./confirmDialog.ts";
 import { bindTabKeys } from "./uiTabs.ts";
 import { watchPublication } from "./publicationStatus.ts";
 import { editorDraft } from "./editorDraft.ts";
+import {
+  committedForNew,
+  committedFromLoad,
+  mergeDraftGallery,
+  mergeDraftProjects,
+  projectSignature,
+  uncommittedWorks,
+  type WorkWords,
+} from "./draftMerge.ts";
 import { auth } from "./firebase.ts";
 import {
   signOut,
@@ -279,6 +288,13 @@ document.addEventListener("astro:page-load", () => {
   let projects: EditorProject[] = [];
   let storedProjectIds = new Set<string>();
   const deletedProjectIds = new Set<string>();
+  // Each work's words AS THE RECORD HOLDS THEM — set at load, per arrival,
+  // and after a Save. The draft compares against this, not against the
+  // gallery array, so that committed membership and order never read as
+  // unsaved (draftMerge.ts).
+  let committedWords = new Map<string, WorkWords>();
+  /** When the loaded profile was last saved (ms) — the draft banner says so when the server copy is the newer one. */
+  let loadedUpdatedAt: number | undefined;
   let previewSlugs = new Map<string, string>();
   /** Which EN/DE pane a project block shows — UI-only, keyed by projectId, like galleryLangUI. */
   const projectLangUI = new Map<string, "en" | "de">();
@@ -1323,6 +1339,9 @@ document.addEventListener("astro:page-load", () => {
     // `projects` passed so an upload into a block deleted meanwhile arrives
     // loose instead of carrying a dangling projectId onto its record.
     gallery = insertUploaded(gallery, item, projects);
+    // Its record exists with these words (a video's platform title among
+    // them); the block it was dropped into does not reach the record until Save.
+    committedWords.set(item.imageId, committedForNew(item));
     // A new work is the one about to be written, so its row arrives open.
     galleryDetailsOpenUI.set(item.imageId, true);
     renderGallery();
@@ -1362,6 +1381,14 @@ document.addEventListener("astro:page-load", () => {
       // the platform's. The embed itself rides on the spread above.
       ...(gallery[index].embed ? { posterSource: item.posterSource ?? "member" } : {}),
     };
+    if (!inPlace) {
+      // The new record inherits the old one's stored words on the server
+      // (inheritedFields in functions/src/uploads.ts), so what was committed
+      // for the old id is committed for the new one — and what the member
+      // had typed but not saved stays unsaved.
+      committedWords.set(item.imageId, committedWords.get(replaced) ?? committedForNew(gallery[index]));
+      committedWords.delete(replaced);
+    }
     renderGallery();
     syncPreview();
     if (inPlace) return;
@@ -1370,6 +1397,7 @@ document.addEventListener("astro:page-load", () => {
 
   async function removeGalleryImage(index: number) {
     const [removed] = gallery.splice(index, 1);
+    if (removed) committedWords.delete(removed.imageId);
     // A new picture on its way to this work has nowhere to land any more.
     for (const task of galleryQueue.tasks()) {
       if (removed && task.replaces === removed.imageId) galleryQueue.cancel(task.id);
@@ -1989,6 +2017,11 @@ document.addEventListener("astro:page-load", () => {
   let loadState: "loading" | "loaded" | "failed" = "loading";
 
   function markLoaded() {
+    // A load that finishes after the page was swapped away (an auth callback
+    // past its await, a slow read that lost the race) must not create a
+    // draft for the torn-down instance: its listeners would never be
+    // disposed and its persist() would remove the live instance's key.
+    if (lifecycle.signal.aborted) return;
     loadState = "loaded";
     if (loadingEl) loadingEl.style.display = "none";
     form.classList.add("is-loaded");
@@ -1996,30 +2029,62 @@ document.addEventListener("astro:page-load", () => {
       // Explicit allowlist excludes account credentials, email and phone.
       const ids = ["name", "role", "role-de", "bio", "bio-de", "portfolio", "affiliation", "location"];
       const fields = () => Object.fromEntries(ids.map(id => [id, (document.getElementById(id) as HTMLInputElement).value]));
-      const read = () => ({ fields: fields(), gallery, projects, tags: tagSelector?.value ?? [],
+      // ONLY WHAT SAVE WOULD STILL WRITE (2026-09-28). The gallery's
+      // membership and order are stored the moment they change
+      // (persistGalleryNow), so they must neither count as unsaved nor be
+      // restored over a newer account: the draft holds the words of works
+      // that differ from their records, keyed by record id, and the
+      // projects by id with the two sets Save reads. See draftMerge.ts.
+      const read = () => ({ fields: fields(), works: uncommittedWorks(gallery, committedWords), projects: projectSignature(projects),
+        storedProjectIds: [...storedProjectIds].sort(), deletedProjectIds: [...deletedProjectIds].sort(), tags: tagSelector?.value ?? [],
         memberType: memberTypeSelector?.value ?? "", openTo: openToSelector?.value ?? [],
         visualNeeds: visualNeedsSelector?.value ?? [], social: socialStored(), languages: getSelectedLanguages(), audiences: getSelectedPrimaryAudiences() });
-      draft = editorDraft({ key: `profile-draft:${auth.app.options.projectId}:${auth.currentUser.uid}`, root: form, read,
+      const activeTab = () => sectionTabs.find(btn => btn.getAttribute("aria-selected") === "true") ?? null;
+      const firstFieldInActiveSection = () =>
+        formSections.find(el => el.classList.contains("is-active"))
+          ?.querySelector<HTMLElement>('input:not([type="hidden"]):not([type="file"]):not([disabled]), textarea:not([disabled]), select:not([disabled])') ?? null;
+      draft = editorDraft({ key: `profile-draft:${auth.app.options.projectId}:${auth.currentUser.uid}`, version: 2, root: form, read,
+        serverUpdatedAt: loadedUpdatedAt,
         readDirty: () => ({ ...read(), phone: phoneInput.value, active: activeInput.checked, preferredLanguage: preferredLanguageInput.value, wants: wantsToContributeInput.checked, receive: receiveCommunityEmailsInput.checked, languages: getSelectedLanguages(), audiences: getSelectedPrimaryAudiences(), avatar: resizedAvatarBlob?.size ?? 0 }),
-        restore(value: ReturnType<typeof read>) {
-          if (!value || !value.fields || !Array.isArray(value.gallery) || !Array.isArray(value.projects)) return;
-          ids.forEach(id => { if (typeof value.fields[id] === "string") (document.getElementById(id) as HTMLInputElement).value = value.fields[id]; });
-          // A recovered draft cannot resurrect deleted media.
-          const liveIds = new Set(gallery.map(item => item.imageId));
-          gallery = value.gallery.filter(item => liveIds.has(item.imageId)); projects = value.projects;
-          if (tagSelector) tagSelector.value = value.tags;
-          if (memberTypeSelector) memberTypeSelector.value = value.memberType;
-          if (openToSelector) openToSelector.value = value.openTo;
-          if (visualNeedsSelector) visualNeedsSelector.value = value.visualNeeds;
-          setSocialValues(splitSocial(value.social));
-          setSelectedLanguages(value.languages);
+        restore(value: Partial<ReturnType<typeof read>>) {
+          if (!value || !value.fields || !Array.isArray(value.works) || !Array.isArray(value.projects)) return null;
+          const values = value.fields;
+          ids.forEach(id => { if (typeof values[id] === "string") (document.getElementById(id) as HTMLInputElement).value = values[id]; });
+          // Projects: the draft's fields onto the ones still stored, a
+          // deletion the draft had made is made again, a block deleted
+          // elsewhere since stays gone, an unsaved new block comes back.
+          const merged = mergeDraftProjects(projects, {
+            projects: value.projects, storedProjectIds: value.storedProjectIds ?? [], deletedProjectIds: value.deletedProjectIds ?? [],
+          }, storedProjectIds);
+          projects = merged.projects;
+          for (const id of merged.deleted) { deletedProjectIds.add(id); projectLangUI.delete(id); projectDetailsOpenUI.delete(id); }
+          // Gallery: LIVE membership and order (committed), the draft's
+          // words on the works present in both. A recovered draft cannot
+          // resurrect removed media, and it must not hide media added since.
+          const before = gallery;
+          gallery = mergeDraftGallery(gallery, value.works, new Set(projects.map(p => p.projectId)));
+          // Restored membership may need a block made contiguous again, as at load.
+          if (!sameIds(before, gallery)) void persistGalleryNow();
+          if (tagSelector) tagSelector.value = value.tags ?? [];
+          if (memberTypeSelector) memberTypeSelector.value = value.memberType ?? "";
+          if (openToSelector) openToSelector.value = value.openTo ?? [];
+          if (visualNeedsSelector) visualNeedsSelector.value = value.visualNeeds ?? [];
+          setSocialValues(splitSocial(value.social ?? ""));
+          setSelectedLanguages(value.languages ?? []);
           primaryAudienceInputs.forEach(input => { input.checked = (value.audiences ?? []).includes(input.value); });
           renderGallery(); syncPreview();
-        }, labels: lang === "de" ? {
+          return firstFieldInActiveSection() ?? activeTab();
+        },
+        discardFocus: activeTab,
+        labels: lang === "de" ? {
           found: "Profiltexte und Werkdetails sind in diesem Tab gespeichert. Kontoeinstellungen und ausstehende Dateien bitte erneut eingeben.",
+          foundNewer: "In diesem Tab ist ein Entwurf gespeichert, aber das Profil wurde seither anderswo gespeichert. Wiederherstellen bringt die älteren Texte zurück.",
           restore: "Entwurf wiederherstellen", discard: "Verwerfen", leave: "Ungespeicherte Änderungen. Seite verlassen? Der Entwurf bleibt in diesem Tab gespeichert.",
+          stay: "Bleiben", go: "Verlassen",
         } : { found: "Profile text and work details are saved in this tab. Re-enter account settings and select pending files again.",
-          restore: "Restore draft", discard: "Discard", leave: "Unsaved changes. Leave this page? Your draft will remain saved in this tab." },
+          foundNewer: "A draft is saved in this tab, but the profile has been saved elsewhere since. Restoring it brings back the older text.",
+          restore: "Restore draft", discard: "Discard", leave: "Unsaved changes. Leave this page? Your draft will remain saved in this tab.",
+          stay: "Stay", go: "Leave" },
       });
     }
   }
@@ -2092,6 +2157,9 @@ document.addEventListener("astro:page-load", () => {
   async function loadProfile(user: User) {
     const data = await getUser(user.uid);
     if (lifecycle.signal.aborted) return;
+    // getUser() hands back raw Firestore data: a Timestamp at runtime, a Date by type.
+    const stamp = data.updatedAt as unknown as Date | { toMillis?: () => number } | undefined;
+    loadedUpdatedAt = stamp instanceof Date ? stamp.getTime() : typeof stamp?.toMillis === "function" ? stamp.toMillis() : undefined;
 
     // Sign-in lands here, so this is where a member's stored language takes
     // them to their locale — unless they switched EN / DE on this visit,
@@ -2172,6 +2240,8 @@ document.addEventListener("astro:page-load", () => {
     const contiguous = contiguousOrder(gallery, (g) => g.projectId);
     const reordered = !sameIds(gallery, contiguous);
     gallery = contiguous;
+    // Every word on screen is now the record's: nothing is unsaved yet.
+    committedWords = committedFromLoad(gallery);
     // Never chosen: offer the locale they are reading in, not a blanket German.
     // Set before the gallery renders: its folded rows speak this language.
     preferredLanguageInput.value = isSiteLanguage(data.preferredLanguage) ? data.preferredLanguage : lang;
@@ -2213,6 +2283,10 @@ document.addEventListener("astro:page-load", () => {
 
   unsubscribeAuth?.();
   unsubscribeAuth = requireAuth(async (user) => {
+    // requireAuth awaits the verification claim before calling back; a
+    // callback past that await when the page has already swapped away
+    // belongs to a torn-down instance and must do nothing here.
+    if (lifecycle.signal.aborted) return;
     clearTimeout(authWatchdog);
     // The admin link, shown only to an admin. Two reads, exactly as the
     // console's own gate does it: the cached token first (free, right for
@@ -2271,7 +2345,10 @@ document.addEventListener("astro:page-load", () => {
   });
 
   document.getElementById("btn-logout")!.addEventListener("click", async () => {
-    if (draft?.hasChanges() && !await confirmDialog(lang === "de" ? "Abmelden? Ungespeicherte Änderungen bleiben als Entwurf in diesem Tab." : "Sign out? Unsaved changes remain as a draft in this tab.")) return;
+    if (draft?.hasChanges() && !await confirmDialog(
+      lang === "de" ? "Abmelden? Ungespeicherte Änderungen bleiben als Entwurf in diesem Tab." : "Sign out? Unsaved changes remain as a draft in this tab.",
+      { confirm: s["profile.logout"], cancel: s["profile.delete.cancel"] },
+    )) return;
     draft?.dispose();
     await signOut(auth);
     window.location.href = prefix || "/";
@@ -2381,6 +2458,8 @@ document.addEventListener("astro:page-load", () => {
       const queued = await triggerRebuild();
       watchPublication(saveMsg, lang, queued, lifecycle.signal);
       resizedAvatarBlob = null;
+      // The records hold every word on screen now (persistWorkMetadata ran first).
+      committedWords = committedFromLoad(gallery);
       draft?.saved();
       saveMsg.style.display = "block";
 
