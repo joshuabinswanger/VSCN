@@ -672,8 +672,8 @@ export function renderCardPreview(
       });
     } else {
       // No artwork: the slides go, and the carousel with them. An eight-image
-      // track left behind a hidden body would keep its timer and its observers
-      // running over pictures nobody can see.
+      // track left behind a hidden body would keep Embla's observers running
+      // over pictures nobody can see.
       destroyCarousel(frame);
       delete frame.dataset.ccpvSignature;
       track.replaceChildren();

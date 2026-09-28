@@ -90,9 +90,12 @@
   --fs-180: 24px; /* 23.40 */
   --fs-190: 26px; /* 24.70 */
   --fs-225: 30px; /* 29.25 */
-  /* Every tag chip (.tagchip). Its own token because tags go the OTHER way on
-     a phone: down to the whole pixel below 8.64px, where everything else goes
-     up to the one above. Not in the desktop bump either: still 0.72rem. */
+  /* Every tag chip (.tagchip). Its own token because tags are a voice, not a
+     factor: 11px on BOTH breakpoints since 2026-09-28. They were 0.72rem here
+     and 8px on a phone (taken down on purpose on 2026-09-26, then given
+     letter-spacing instead); at 8px they failed to read at all on a phone,
+     so they came up to 11px, and the desktop followed so a tag is one size
+     everywhere. */
   --fs-tag: 11px;
   /* The small caps that label things (see LABEL below). Its own token
      because it is a voice, not a factor: 10px here, 11px on a phone. */
@@ -111,8 +114,9 @@
    phone column now takes the DESKTOP pixel for every token, and the caption
    band (0.78–0.80: card roles, profile links, card bios) one more on top, so
    the smallest running text on a phone is 12px like the reference's. The old
-   phone pixel is in each comment. Tags stay at 8px: Josh took them down on
-   purpose the day before, and they get letter-spacing instead (.tagchip). */
+   phone pixel is in each comment. Tags are the one token that does not move
+   between the columns: 11px on both (see --fs-tag above; the 8px they had
+   here for a day did not read). */
 @media (--bp-mobile) {
   :root {
     --fs-58: 7px; /* 6.96 */
@@ -143,7 +147,7 @@
     --fs-180: 24px; /* 22 */
     --fs-190: 26px; /* 23 */
     --fs-225: 30px; /* 28 */
-    --fs-tag: 11px; /* 8.64 */
+    --fs-tag: 11px; /* 8 until 2026-09-28; 8.64 before that */
     --fs-label: 11px;
   }
 }

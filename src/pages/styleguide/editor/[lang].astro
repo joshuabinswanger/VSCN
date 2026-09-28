@@ -8,7 +8,7 @@ import type { Lang } from '../../../i18n/utils';
 export function getStaticPaths() { return [{ params: { lang: 'en' } }, { params: { lang: 'de' } }]; }
 const lang = Astro.params.lang as Lang;
 ---
-<Layout title="Editor component examples" lang={lang}>
+<Layout title="Editor component examples" lang={lang} noindex>
   <h1 class="t-heading">Editor component examples</h1>
   <p class="field-note">Local sample content. These examples never save to an account.</p>
   <div class="profile-editor" data-editor-example>

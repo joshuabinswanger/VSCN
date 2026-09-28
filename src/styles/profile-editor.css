@@ -1,8 +1,18 @@
-@scope (.profile-editor) {
+/* THE PROFILE EDITOR'S STYLESHEET, nested under `.profile-editor`.
+   This was ProfileForm.astro's scoped <style> until 2026-09-28; it moved out
+   so the editor's components (src/components/profile/*) and the styleguide's
+   sample editor share it. For one day it was `@scope (.profile-editor)`,
+   which Safari before 17.4 and Firefox before 128 drop WHOLESALE — every
+   tab panel showed at once there. Plain CSS nesting instead: the same
+   containment, lowered to flat selectors by the build, and every rule is
+   served at (0,1,0) more than it reads — about what Astro's scope attribute
+   used to add. Rules that must NOT reach a child component say so with
+   `:not(tag-selector *)`. */
+.profile-editor {
 
   .loading-state {
     margin-top: 3rem;
-    color: var(--color-text-secondary);
+    color: var(--color-muted);
     font-size: var(--fs-90);
   }
 
@@ -94,8 +104,14 @@
     padding: 0 15px;
     box-sizing: border-box;
     /* clip, not hidden: hidden makes the form a scroll container, and the
-       sticky footer would stick to that instead of the page. */
+       sticky footer would stick to that instead of the page. The margin
+       (2026-09-28) lets a focus ring — 2px at 2px offset on a chip or a
+       toolbar button at the column's edge — and the drop zone's dashed
+       border at -4px show whole on desktop, where the form has no padding
+       to draw them in. Browsers without overflow-clip-margin clip at the
+       border box as before. */
     overflow-x: clip;
+    overflow-clip-margin: 4px;
     /* The i's hover box is absolute, and without a positioned ancestor its
        containing block was the viewport, OUTSIDE .page-wrap's scrolling: it
        stayed put on screen while its field scrolled away (2026-09-27, Josh:
@@ -243,6 +259,12 @@
   .input-prefix-wrap:focus-within {
     border-color: #111;
   }
+  /* The frame wears the keyboard ring for the input inside it (the input's
+     own border is off, below), like .optchip does for its checkbox. */
+  .input-prefix-wrap:has(.input:focus-visible) {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
 
 
   .input-prefix {
@@ -260,8 +282,13 @@
     flex: 1;
     min-width: 0;
   }
-  .input-prefixed:focus {
-    border-color: transparent;
+  /* Both focus states, at a specificity above global.css's
+     `.input:focus-visible` (which draws a 2px border): inside the frame that
+     border would appear on Tab and shift the value 2px. The frame shows the
+     focus instead (above). */
+  .input-prefixed:focus,
+  .input-prefixed:focus-visible {
+    border: none;
   }
 
   /* ── Social links ─────────────────────────────────────── */
@@ -596,8 +623,12 @@
   }
 
   /* Compact by design: these sit three-deep inside a field that already has
-     its own label, so full-size inputs would read as the form restarting. */
-  .gallery-fields .input {
+     its own label, so full-size inputs would read as the form restarting.
+     NOT the tag picker's own two fields (its find field and its add field,
+     TagSelector.astro): those are drawn alike by their own rules, and this
+     one reaching in made the add field a size larger than the find field
+     beside it (2026-09-09, Josh: the two should look the same). */
+  .gallery-fields .input:not(tag-selector *) {
     font-size: var(--fs-85);
   }
 
@@ -775,10 +806,11 @@
     transition: color 0.15s;
   }
 
+  /* Full muted ink, no opacity, like TagSelector's own group counts: at 0.6
+     the number came out under 2.5:1 against the paper. */
   .gallery-tags-count {
     font-size: var(--fs-68);
     color: var(--color-muted);
-    opacity: 0.6;
     font-variant-numeric: tabular-nums;
   }
 
@@ -967,13 +999,18 @@
   }
 
   /* The label voice (uppercase, tracked) so the header reads as a heading
-     over its rows and not as one more input. */
+     over its rows and not as one more input. It WRAPS (2026-09-28): a name
+     like "Interdisziplinäre Wissenschaftskommunikation" is longer than a
+     phone's block, and an ellipsis took the half that said what it was.
+     `hyphens: auto` so German breaks at a syllable, not mid-word (the
+     language is <html lang>); `anywhere` remains the last resort for a
+     word no dictionary knows. */
   .gallery-project-name {
     flex: 1 1 auto;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    hyphens: auto;
     color: var(--color-dark);
   }
 
@@ -984,7 +1021,8 @@
     min-width: 0;
   }
 
-  .gallery-project-fields .input {
+  /* Not the tag picker's fields — see .gallery-fields .input above. */
+  .gallery-project-fields .input:not(tag-selector *) {
     font-size: var(--fs-85);
     padding: 7px 10px;
   }
@@ -1424,15 +1462,11 @@
     border: 2px solid rgb(255 255 255 / 0.35);
     border-top-color: #fff;
     border-radius: 50%;
-    /* Named for this component on purpose: @keyframes are GLOBAL in Astro, so
-       a bare `spin` would collide with the next one anybody writes. */
+    /* Named for this component on purpose: @keyframes are GLOBAL, so a bare
+       `spin` would collide with the next one anybody writes. Declared at the
+       end of this file, outside the nesting: an @keyframes inside a style
+       rule is invalid. */
     animation: profile-save-spin 0.7s linear infinite;
-  }
-
-  @keyframes profile-save-spin {
-    to {
-      transform: rotate(1turn);
-    }
   }
 
   /* Slowed rather than stopped: this is a progress indicator, and a frozen one
@@ -1460,9 +1494,9 @@
    * (VisualNeedsSelector already knew — it ships its own
    * `visual-needs-selector[hidden]` rule for exactly this reason.)
    *
-   * Astro's scope attribute lifts this to (0,2,0) and `!important` settles the
-   * ties with the component's own classes, so from here `hidden` means hidden.
-   * Same trap, same fix as `.ccard--preview [hidden]` in communityCard.css.
+   * The nesting lifts this to (0,2,0) and `!important` settles the ties with
+   * the component's own classes, so from here `hidden` means hidden. Same
+   * trap, same fix as `.ccard--preview [hidden]` in communityCard.css.
    */
   [hidden] {
     display: none !important;
@@ -1620,12 +1654,16 @@
     transition: background 0.2s;
   }
 
+  /* Derived from the token, not a second red: --color-error darkened on
+     2026-09-28 and the old fixed hover (#b91c1c) became indistinguishable
+     from it. A fifth of black keeps the hover a visible step darker
+     whatever the token is set to. */
   .btn-danger:hover {
-    background: #b91c1c;
+    background: color-mix(in srgb, var(--color-error), black 20%);
   }
 
   .btn-danger:disabled {
-    background: #999;
+    background: var(--color-muted);
     cursor: not-allowed;
   }
 
@@ -1691,35 +1729,101 @@
     }
   }
 
-}
+  /* ── The release pass (2026-09-28) ───────────────────────── */
+  /* NOTHING WIDER THAN THE COLUMN. The form is a one-column grid whose track
+     is `minmax(0, 1fr)`, and every box that holds something unbreakable (a
+     long URL, a tag row, the two-up media grid) is min-width: 0, so a phone
+     never gets a horizontal scroll from the editor. */
+  .profile-form {
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
+  }
 
-@scope (.profile-editor) {
-  .profile-form { grid-template-columns: minmax(0, 1fr); min-width: 0; }
-  .profile-form :is(.field, .gallery-project, .gallery-media, .gallery-item, .section-tabs) { min-width: 0; }
-  .section-tabs { gap: .75rem; flex-wrap: wrap; }
-  .section-tab { min-height: 44px; }
-  .gallery-toolbar--head { flex-wrap: wrap; }
-  .gallery-project-name { overflow-wrap: anywhere; }
-  .editor-recovery { border: 1px solid var(--color-border); padding: 1rem; }
-  .editor-recovery button { margin: .4rem; }
+  .profile-form :is(.field, .gallery-project, .gallery-media, .gallery-item, .section-tabs) {
+    min-width: 0;
+  }
+
+  /* The tabs wrap rather than overflow, and each is a 44px target. */
+  .section-tabs {
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .section-tab {
+    min-height: 44px;
+  }
+
+  /* The draft-recovery notice editorDraft.ts inserts at the top of the form. */
+  .editor-recovery {
+    border: 1px solid var(--color-border);
+    padding: 1rem;
+  }
+
+  .editor-recovery button {
+    margin: 0.4rem;
+  }
+
+  /* The per-row toolbar folds behind "Image actions" (WorkEditor.astro); the
+     summary is a 32px target. */
+  .gallery-more {
+    min-width: 0;
+  }
+
+  .gallery-more > summary {
+    cursor: pointer;
+    min-height: 32px;
+    padding: 0.5rem 0;
+  }
+
+  /* The fold chevrons are rotated squares; without a minimum they were the
+     first thing a tight row squeezed to nothing. */
+  .tag-group-chevron,
+  .gallery-details-chevron,
+  .gallery-tags-chevron {
+    margin-inline-end: 3px;
+    flex-shrink: 0;
+  }
+
   @media (--bp-mobile) {
-    .gallery-media { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-    .gallery-project-head { flex-wrap: wrap; }
-    .gallery-project-name { display: block; min-width: 0; }
+    /* The picture and its toolbar split the width evenly on a phone. */
+    .gallery-media {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .gallery-project-head {
+      flex-wrap: wrap;
+    }
+
+    .gallery-project-name {
+      display: block;
+      min-width: 0;
+    }
+
+    /* The folded row's title and tags show on a phone too, stacked. */
+    .gallery-summary:not([hidden]) {
+      display: block;
+    }
+  }
+
+  /* BORDER-BOX FOR THE EDITOR'S OWN BOXES. global.css has no universal reset,
+     and the editor's controls were sized as if there were one (a 28px toolbar
+     button with a 1.5px border came out 31px). NOT the Preview tab's
+     contents: `.preview-section` holds the REAL member page and the REAL
+     directory card, whose geometry is written for content-box (see the
+     .ccard__frame note in communityCard.css), and a reset reaching them would
+     make the preview lie about the page. `:where()` keeps this at (0,1,0),
+     so any component rule that sets box-sizing itself still wins. */
+  :where(:not(.preview-section *)),
+  :where(:not(.preview-section *))::before,
+  :where(:not(.preview-section *))::after {
+    box-sizing: border-box;
   }
 }
 
-@scope (.profile-editor) {
-  @media (--bp-mobile) {
-    .gallery-summary:not([hidden]) { display: block; }
+/* At the top level: an @keyframes inside a style rule is invalid (see
+   .profile-save-button.is-saving::before). */
+@keyframes profile-save-spin {
+  to {
+    transform: rotate(1turn);
   }
-}
-
-@scope (.profile-editor) {
-  *, *::before, *::after { box-sizing: border-box; }
-  .gallery-project-name { white-space: normal; overflow-wrap: anywhere; }
-  .gallery-more { min-width: 0; }
-  .gallery-more > summary { cursor: pointer; min-height: 32px; padding: .5rem 0; }
-  .gallery-more .gallery-toolbar { flex-wrap: wrap; }
-  .tag-group-chevron, .gallery-details-chevron, .gallery-tags-chevron { margin-inline-end: 3px; flex-shrink: 0; }
 }

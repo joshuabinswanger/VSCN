@@ -186,10 +186,12 @@ const t = useTranslations(lang);
     transition: color 0.15s;
   }
 
+  /* Full muted ink, no opacity (2026-09-28): at 0.6 the count came out at
+     2.4:1 against the paper. The size is what keeps it quieter than the
+     title beside it. */
   tag-selector .tag-group-count {
     font-size: var(--fs-68);
     color: var(--color-muted);
-    opacity: 0.6;
     font-variant-numeric: tabular-nums;
   }
 

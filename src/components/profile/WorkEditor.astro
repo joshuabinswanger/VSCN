@@ -60,12 +60,13 @@ const t = useTranslations(lang);
         <div class="gallery-actions">
           <label id="gallery-add" class="btn-outline gallery-action" for="gallery-files">
             {t("profile.gallery.add")}
+            {/* Clipped, not display:none, so Tab reaches it (.picker-input). */}
             <input
               id="gallery-files"
+              class="picker-input"
               type="file"
               accept="image/jpeg,image/png,image/webp,image/avif"
               multiple
-              style="display:none;"
             />
           </label>
           <button

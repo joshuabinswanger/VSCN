@@ -115,8 +115,10 @@ const figure = (w: Work) => ({
             A day's detour through a "2 / 7" count ended on 2026-09-28 (Josh:
             "the carousel should be dots again, but make the dots bigger"):
             the dots are back, card and carousel both at the larger size.
-            Indicators, not controls; projectCarousel.ts draws one per work. */}
-        <div class="mprof__carousel-dots" data-carousel-dots aria-hidden="true" />
+            projectCarousel.ts fills the row: one dot per work, the "2 / 7"
+            count and its two chevrons — named buttons, not tab stops (the
+            track pages on its arrow keys), so the row is not aria-hidden. */}
+        <div class="mprof__carousel-dots" data-carousel-dots />
         <div class="mprof__carousel-stage">
         {/* A real scroll container, so swipe, trackpad and the arrow keys (it
             is a tab stop) all page it natively, and scroll-snap makes every

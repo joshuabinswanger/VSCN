@@ -138,12 +138,14 @@ const positionFor = (i: number) =>
   </h2>
 
   {
-    /* Indicators, not controls — aria-hidden, pointer-events:none, no tab
-      stops. A directory page holds a couple of dozen cards; giving each one a
-      focusable dot per work would put dozens of tab stops in front of the
-      member links that are the page's actual journey, to duplicate paging the
-      arrows and the arrow keys already do. The position is spoken instead, by
-      the live region inside the frame.
+    /* The count row: "‹ 2 / 7 ›". Not aria-hidden (since 2026-09-28) — the
+      chevrons are named buttons a screen reader can reach and press — but
+      NOT tab stops. A directory page holds a couple of dozen cards; giving
+      each one two focusable chevrons would put dozens of tab stops in front
+      of the member links that are the page's actual journey, to duplicate
+      paging the edge arrows and the frame's arrow keys already do. The
+      position is also spoken by the live region inside the frame. The dots
+      themselves are pointer-events:none indicators.
       ABOVE the artwork and hard right, not on it: a row of the card's own
       chrome between the name and the picture, opposite the name so the two
       share one line. Nothing has to survive the image
@@ -151,18 +153,30 @@ const positionFor = (i: number) =>
   }
   {
     isCarousel && (
-      <div class="ccard__dots" aria-hidden="true">
+      <div class="ccard__dots">
         {/* THE POSITION AS TEXT (2026-09-28, Josh: "try text instead of
             dots"). The dots stay in the markup and the engine, hidden by one
             rule in communityCard.css, so switching back is that rule.
             The chevrons page (communityCarousel.ts wires them, src/lib/pager.ts
-            draws the same pair for the preview); not tab stops, since the row
-            is aria-hidden and the edge arrows are the accessible controls. */}
-        <button class="pager-chev pager-chev--prev" type="button" tabindex="-1">
+            draws the same pair for the preview) and carry the edge arrows'
+            names; tabindex="-1" — see the note above. */}
+        <button
+          class="pager-chev pager-chev--prev"
+          type="button"
+          tabindex="-1"
+          aria-label={t("community.card.prev")}
+          title={t("community.card.prev")}
+        >
           <span aria-hidden="true" />
         </button>
         <span class="ccard__count">1 / {works.length}</span>
-        <button class="pager-chev pager-chev--next" type="button" tabindex="-1">
+        <button
+          class="pager-chev pager-chev--next"
+          type="button"
+          tabindex="-1"
+          aria-label={t("community.card.next")}
+          title={t("community.card.next")}
+        >
           <span aria-hidden="true" />
         </button>
         {works.map((_, i) => (
