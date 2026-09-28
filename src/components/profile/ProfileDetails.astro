@@ -1,0 +1,186 @@
+---
+import Input from "../ui/Input.astro";
+import MemberTypeSelector from "../MemberTypeSelector.astro";
+import BilingualField from "../BilingualField.astro";
+import OpenToSelector from "../OpenToSelector.astro";
+import VisualNeedsSelector from "../VisualNeedsSelector.astro";
+import TagSelector from "../TagSelector.astro";
+import { LANGUAGES } from "../../lib/firestore.ts";
+import { useTranslations } from "../../i18n/utils";
+import type { Lang } from "../../i18n/utils";
+interface Props { lang?: Lang }
+const { lang = "en" } = Astro.props;
+const t = useTranslations(lang);
+---
+  <div class="form-section is-active" data-section="profile" role="tabpanel" id="panel-profile" aria-labelledby="tab-profile">
+    <div class="avatar-wrap">
+      <div class="avatar-image">
+        <img id="avatar-preview" src="" alt="" class="avatar-img" />
+        <div id="avatar-placeholder" class="avatar-placeholder">?</div>
+      </div>
+      <label class="btn-outline choose-img" for="avatar">
+        {t("profile.chooseImage")}
+        <input
+          id="avatar"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/avif"
+          style="display:none;"
+        />
+      </label>
+      <p id="upload-status" class="upload-status" style="display:none;"></p>
+    </div>
+
+    <MemberTypeSelector lang={lang} note={false} />
+
+    <div class="field">
+      <label class="label" for="name">{t("profile.label.name")}</label>
+      <Input id="name" type="text" class="input" placeholder={t("profile.ph.name")} />
+    </div>
+
+    {
+      /* THE GERMAN TWIN, OPTIONAL (2026-09-23, member feedback "Alles sollte
+        zweisprachig sein"), behind the gallery's EN/DE switch (Josh: "make it
+        the same switch as with the images"). Blank is fine in either
+        direction — see profileRole() in src/lib/links.ts for the fallback. */
+    }
+    <BilingualField
+      lang={lang}
+      id="role"
+      label={t("profile.label.role")}
+      labelEn={t("profile.label.role.en")}
+      labelDe={t("profile.label.role.de")}
+      placeholder={t("profile.ph.role")}
+      placeholderDe={t("profile.ph.role.de")}
+    />
+
+    <div class="field">
+      <label class="label" for="affiliation">{t("profile.label.affiliation")}</label>
+      <input
+        id="affiliation"
+        type="text"
+        class="input"
+        placeholder={t("profile.ph.affiliation")}
+      />
+    </div>
+
+    <div class="field">
+      <label class="label" for="location">{t("profile.label.location")}</label>
+      <Input id="location" type="text" class="input" placeholder={t("profile.ph.location")} />
+    </div>
+
+    <fieldset class="target-audience-field">
+      <legend class="label">{t("profile.label.languages")}</legend>
+      <div class="target-audience-options">
+        {
+          LANGUAGES.map((code) => (
+            <label class="optchip target-audience-option">
+              <input type="checkbox" name="language" value={code} />
+              <span>{t(`profile.lang.${code}`)}</span>
+            </label>
+          ))
+        }
+      </div>
+    </fieldset>
+
+    <BilingualField
+      lang={lang}
+      id="bio"
+      rows={4}
+      label={t("profile.label.bio")}
+      labelEn={t("profile.label.bio.en")}
+      labelDe={t("profile.label.bio.de")}
+      placeholder={t("profile.ph.bio")}
+      placeholderDe={t("profile.ph.bio.de")}
+      note={t("profile.note.bio")}
+      noteDe={t("profile.note.bio")}
+      tip
+    />
+
+    <div class="field">
+      <div class="label-row">
+        <label id="portfolio-label" class="label" for="portfolio"
+          >{t("profile.label.portfolio")}</label
+        >
+      </div>
+      <div class="input-prefix-wrap">
+        <span class="input-prefix">https://</span>
+        <input
+          id="portfolio"
+          type="text"
+          class="input input-prefixed"
+          placeholder={t("profile.ph.portfolio")}
+        />
+      </div>
+    </div>
+
+    {
+      /* One row per link, not one box for all of them. The STORED shape is
+      unchanged — the rows are joined back into the single comma-separated
+      `socialMedia` string by joinSocial() — so old profiles, the build-time
+      directory snapshot and firestore.rules all keep working untouched. A <p>
+      rather than a <label>: there is no single control left to point at. */
+    }
+    <div class="field">
+      <div class="label-row">
+        <p id="social-label" class="label">{t("profile.label.social")}</p>
+      </div>
+      <div id="social-editor" class="social-editor"></div>
+      <button type="button" id="social-add" class="btn-outline choose-img">
+        {t("profile.social.add")}
+      </button>
+      <p id="social-status" class="field-note" style="display:none;"></p>
+      {
+        /* Cloned by renderSocial(). Rendered here rather than built in JS so
+        each clone carries Astro's data-astro-cid-* attribute and matches the
+        scoped rules below — a node built with document.createElement() would
+        match none of them. */
+      }
+      <template data-social-tpl="row">
+        <div class="social-row">
+          <div class="input-prefix-wrap">
+            <span class="input-prefix">https://</span>
+            <input type="text" class="input input-prefixed" data-social-input />
+          </div>
+          <button type="button" class="social-row-remove" data-social-remove>✕</button>
+        </div>
+      </template>
+    </div>
+
+    <OpenToSelector lang={lang} />
+
+    <VisualNeedsSelector lang={lang} note={false} />
+
+    <fieldset class="target-audience-field">
+      <legend class="label">{t("profile.primaryAudience.legend")}</legend>
+      <div class="target-audience-options">
+        <label class="optchip target-audience-option">
+          <input type="checkbox" name="primary-audience" value="science" />
+          <span>{t("profile.primaryAudience.science")}</span>
+        </label>
+        <label class="optchip target-audience-option">
+          <input type="checkbox" name="primary-audience" value="public" />
+          <span>{t("profile.primaryAudience.public")}</span>
+        </label>
+        <label class="optchip target-audience-option">
+          <input type="checkbox" name="primary-audience" value="policy-makers" />
+          <span>{t("profile.primaryAudience.policyMakers")}</span>
+        </label>
+        <label class="optchip target-audience-option">
+          <input type="checkbox" name="primary-audience" value="education" />
+          <span>{t("profile.primaryAudience.education")}</span>
+        </label>
+      </div>
+    </fieldset>
+
+    {
+      /* No "Up to 7 tags." note since 2026-09-25: the selector says so itself
+        at the one moment it matters, when an eighth tag is refused
+        (profile.tag.error). */
+    }
+    <div class="field" id="member-tags-field">
+      <div class="label-row">
+        <label class="label" for="tag-input">{t("profile.label.tags")}</label>
+      </div>
+      <TagSelector lang={lang} maxTags={7} inputId="tag-input" />
+    </div>
+  </div>

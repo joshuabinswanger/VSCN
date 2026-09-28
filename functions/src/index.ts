@@ -1,3 +1,6 @@
+import { setGlobalOptions } from "firebase-functions/v2";
+import { backendLabels } from "./releaseStamp";
+setGlobalOptions({ labels: backendLabels });
 // The deployable surface. One line per exported function; the code lives in
 // the module named for its concern.
 export { requestRebuild } from "./rebuild";
@@ -9,6 +12,7 @@ export { requestAccountDeletion, cancelAccountDeletion, syncEmail } from "./acco
 export { purgeExpiredAccounts, sweepImages, reconcileEmails } from "./maintenance";
 export { onAuthUserCreated, onAuthUserDeleted } from "./authTriggers";
 export { onImageWentLive, sendAdminDigest } from "./adminDigest";
+export { adminRetryNotice } from "./adminDigest";
 export { onPublicProfileWritten } from "./slugs";
 export {
   adminDeleteImage,
@@ -24,4 +28,4 @@ export {
 
 export { adminListRatingQueue, adminRateImage, adminSetImageHidden } from "./moderation";
 
-export { acknowledgeSitePublication } from "./publication";
+export { acknowledgeSitePublication, getPublicationStatus } from "./publication";

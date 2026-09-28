@@ -49,7 +49,7 @@ export function recordObjectPaths(record: FirebaseFirestore.DocumentData): strin
  * re-opened (the unverified slot), which therefore takes no new place.
  */
 export async function reserveWork(
-  tx: FirebaseFirestore.Transaction, uid: string, reuses?: string,
+  tx: FirebaseFirestore.Transaction, uid: string, reuses?: string, countAttempt = true,
 ): Promise<() => void> {
   const lock = db.doc(`uploadLimits/${uid}`);
   const [deletion, state, works] = await Promise.all([
@@ -65,8 +65,8 @@ export async function reserveWork(
   const now = Date.now();
   const inWindow = now - (state.data()?.windowStart?.toMillis() ?? 0) < 3_600_000;
   const count = inWindow ? Number(state.data()?.count ?? 0) : 0;
-  if (count >= MAX_AUTHORIZATIONS_PER_HOUR) throw new HttpsError("resource-exhausted", "Too many uploads. Please try again later.", { reason: "hourlyLimit" });
-  return () => tx.set(lock, { windowStart: inWindow ? state.data()!.windowStart : Timestamp.fromMillis(now), count: count + 1 });
+  if (countAttempt && count >= MAX_AUTHORIZATIONS_PER_HOUR) throw new HttpsError("resource-exhausted", "Too many uploads. Please try again later.", { reason: "hourlyLimit" });
+  return () => { if (countAttempt) tx.set(lock, { windowStart: inWindow ? state.data()!.windowStart : Timestamp.fromMillis(now), count: count + 1 }); };
 }
 
 /**
@@ -123,7 +123,7 @@ function imageRequest(req: { data: any; auth?: { token: Record<string, unknown> 
 }
 
 /** Allocate the document and the Storage permit together, before bytes arrive. */
-export const authorizeImageUpload = onCall({ maxInstances: 3 }, async (req) => {
+export const authorizeImageUpload = onCall({ enforceAppCheck: true, maxInstances: 3 }, async (req) => {
   const uid = requireUser(req);
   const image = imageRequest(req, uid);
   const replaces = replacementId(req.data?.replaces, image.kind, uid);
@@ -226,7 +226,7 @@ export function settleReplacedModeration(
 }
 
 /** Only the server can publish a record after the uploaded object matches its declared dimensions. */
-export const completeImageUpload = onCall({ maxInstances: 3 }, async (req) => {
+export const completeImageUpload = onCall({ enforceAppCheck: true, maxInstances: 3 }, async (req) => {
   const uid = requireUser(req);
   const imageId = req.data?.imageId;
   if (typeof imageId !== "string" || (imageId !== `${uid}-avatar` && imageId !== `${uid}-gallery` && !UUID.test(imageId))) {

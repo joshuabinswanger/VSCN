@@ -349,14 +349,23 @@ export function initCarousels(root: ParentNode = document): void {
     // Embla's Autoplay plugin: that plugin has no way to express "only in the
     // spread view, only on mobile, only the centred card, re-decided on every
     // tick".
+    let paused = true;
+    const pause = document.createElement("button");
+    dotRow?.querySelector('.carousel-motion')?.remove();
+    pause.type = "button"; pause.className = "carousel-motion btn-outline";
+    const motionLabel = () => document.documentElement.lang === "de" ? (paused ? "Automatisch abspielen" : "Pause") : (paused ? "Auto play" : "Pause");
+    const syncMotion = () => { pause.textContent = paused ? '▶' : 'Ⅱ'; pause.title = motionLabel(); pause.setAttribute('aria-label', motionLabel()); pause.setAttribute('aria-pressed', String(!paused)); };
+    syncMotion(); pause.disabled = REDUCED.matches;
+    pause.addEventListener("click", () => { paused = !paused; syncMotion(); if (paused) stop(); else start(); });
+    dotRow?.append(pause);
     const start = () => {
-      if (handle.timer !== null) return;
+      if (paused || handle.timer !== null) return;
       handle.timer = setInterval(() => {
         // Re-decided every tick, so scrolling, switching views, rotating to
         // desktop or backgrounding the tab all take effect with no bookkeeping
         // — and the card that has just scrolled into the middle picks up the
         // advancing from the one that has left it.
-        if (focusedCarousel() !== carousel) return;
+        if (paused || carousel.contains(document.activeElement) || focusedCarousel() !== carousel) return;
         announce = false;
         embla.scrollNext();
         announce = true;

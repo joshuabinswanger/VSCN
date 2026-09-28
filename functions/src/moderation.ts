@@ -72,7 +72,7 @@ async function markSiteDirty(): Promise<void> {
   );
 }
 
-export const adminRateImage = onCall(async (req) => {
+export const adminRateImage = onCall({ enforceAppCheck: true }, async (req) => {
   const actor = requireAdmin(req);
   const imageId = requireImageId(req.data);
   const data = req.data as Record<string, unknown>;
@@ -109,7 +109,7 @@ export const adminRateImage = onCall(async (req) => {
   return { ok: true as const, score };
 });
 
-export const adminSetImageHidden = onCall(async (req) => {
+export const adminSetImageHidden = onCall({ enforceAppCheck: true }, async (req) => {
   const actor = requireAdmin(req);
   const imageId = requireImageId(req.data);
   const hidden = (req.data as { hidden?: unknown }).hidden === true;
@@ -135,7 +135,7 @@ export const adminSetImageHidden = onCall(async (req) => {
   return { ok: true as const };
 });
 
-export const adminListRatingQueue = onCall(async (req) => {
+export const adminListRatingQueue = onCall({ enforceAppCheck: true }, async (req) => {
   const actor = requireAdmin(req);
   const limit = Math.min(200, Math.max(1, Number((req.data as { limit?: unknown })?.limit) || QUEUE_LIMIT));
 

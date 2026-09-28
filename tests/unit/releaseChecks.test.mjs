@@ -141,7 +141,7 @@ test("pairingVerdict: partial failure warns, quiet weeks and abandoned uploads p
   assert.equal(pairingVerdict({ authorize: 10, complete: 4 }).status, "WARN");
   assert.equal(pairingVerdict({ authorize: 10, complete: 5 }).status, "PASS");
   assert.equal(pairingVerdict({ authorize: 2, complete: 0 }).status, "PASS");
-  assert.equal(pairingVerdict({ authorize: 0, complete: 0 }).status, "PASS");
+  assert.equal(pairingVerdict({ authorize: 0, complete: 0 }).status, "WARN");
   assert.equal(pairingVerdict({ authorize: 6, complete: 1 }).status, "PASS");
 });
 

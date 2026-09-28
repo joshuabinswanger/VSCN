@@ -22,14 +22,40 @@ concurrency:
 jobs:
   verify:
     uses: ./.github/workflows/verify.yml
-  export:
+  backend:
     needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci && npm --prefix functions ci
+      - name: Require backend deploy identity
+        env:
+          BACKEND_PROVIDER: ${{ vars.DEV_FUNCTIONS_WIF_PROVIDER }}
+          BACKEND_ACCOUNT: ${{ vars.DEV_FUNCTIONS_SERVICE_ACCOUNT }}
+        run: test -n "$BACKEND_PROVIDER" && test -n "$BACKEND_ACCOUNT"
+      - uses: google-github-actions/auth@v3
+        with:
+          project_id: vscn-dev-f4b60
+          workload_identity_provider: ${{ vars.DEV_FUNCTIONS_WIF_PROVIDER }}
+          service_account: ${{ vars.DEV_FUNCTIONS_SERVICE_ACCOUNT }}
+      - name: Deploy backend before exporting or deploying Hosting
+        run: npx -y firebase-tools@latest deploy --only functions --project vscn-dev-f4b60 --non-interactive
+  export:
+    needs: [verify, backend]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
     outputs:
       revision: ${{ steps.publication.outputs.revision }}
+      generation: ${{ steps.publication.outputs.generation }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -138,7 +164,8 @@ jobs:
         env:
           PUBLICATION_TOKEN: ${{ steps.publication-auth.outputs.id_token }}
           PUBLICATION_REVISION: ${{ needs.export.outputs.revision }}
+          PUBLICATION_GENERATION: ${{ needs.export.outputs.generation }}
         run: |
           curl --fail-with-body --retry 3 -X POST 'https://us-central1-vscn-dev-f4b60.cloudfunctions.net/acknowledgeSitePublication' \
             -H "Authorization: Bearer $PUBLICATION_TOKEN" -H 'Content-Type: application/json' \
-            --data "{\"revision\":\"$PUBLICATION_REVISION\"}"
+            --data "{\"revision\":\"$PUBLICATION_REVISION\",\"generation\":$PUBLICATION_GENERATION}"

@@ -24,7 +24,7 @@ import { requireRecentLogin, requireUser } from "./util";
  *
  * The client reauthenticates first; auth_time is how the server knows it did.
  */
-export const requestAccountDeletion = onCall({ timeoutSeconds: 540, secrets: [githubRebuildToken] }, async (req) => {
+export const requestAccountDeletion = onCall({ enforceAppCheck: true, timeoutSeconds: 540, secrets: [githubRebuildToken] }, async (req) => {
   const uid = requireUser(req);
   requireRecentLogin(req);
   await scheduleDeletion(uid, "member", Timestamp.now());
@@ -34,7 +34,7 @@ export const requestAccountDeletion = onCall({ timeoutSeconds: 540, secrets: [gi
   return { deleted: true };
 });
 
-export const cancelAccountDeletion = onCall({ secrets: [githubRebuildToken] }, async (req) => {
+export const cancelAccountDeletion = onCall({ enforceAppCheck: true, secrets: [githubRebuildToken] }, async (req) => {
   const uid = requireUser(req);
   await cancelDeletion(uid);
   await dispatchRebuild();
@@ -48,7 +48,7 @@ export const cancelAccountDeletion = onCall({ secrets: [githubRebuildToken] }, a
  * and whenever it notices user.email differs from the stored copy;
  * reconcileEmails sweeps up anything it missed.
  */
-export const syncEmail = onCall(async (req) => {
+export const syncEmail = onCall({ enforceAppCheck: true }, async (req) => {
   const uid = requireUser(req);
   const email = req.auth?.token.email;
   if (!email) throw new HttpsError("failed-precondition", "Token carries no email.");

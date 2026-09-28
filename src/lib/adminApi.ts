@@ -57,6 +57,7 @@ export interface Queues {
   noticeMaxAttempts: number;
 }
 export interface UnsentNotice {
+  failed?: boolean;
   id: string; kind: "signup" | "image"; uid: string; imageId: string | null; email: string | null;
   at: string;
   /** Earliest tick that may send it: a signup waits for the wizard or half an hour. */
@@ -111,6 +112,7 @@ export const lookupMember = call<{ query: string }, LookupResult>("adminLookupMe
 export const listActions = call<{ targetUid?: string; limit?: number }, { actions: AdminAction[] }>("adminListActions");
 export const listMembers = call<void, { members: MemberRow[] }>("adminListMembers");
 export const listQueues = call<void, Queues>("adminListQueues");
+export const retryNotice = call<{ id: string }, { ok: true }>("adminRetryNotice");
 export const purgeAccount = call<{ uid: string; immediate?: boolean }, { ok: true; purgeAfter: string }>("adminPurgeAccount");
 export const restoreAccount = call<{ uid: string }, { ok: true }>("adminRestoreAccount");
 export const setMemberEmail = call<{ uid: string; email: string }, { ok: true }>("adminSetMemberEmail");

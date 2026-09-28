@@ -1,0 +1,134 @@
+---
+import TagSelector from "../TagSelector.astro";
+import InfoTip from "../InfoTip.astro";
+import { useTranslations, type Lang } from "../../i18n/utils";
+interface Props { lang?: Lang }
+const { lang = "en" } = Astro.props;
+const t = useTranslations(lang);
+---
+      <template data-gallery-tpl="project">
+        <section class="gallery-project" data-project-block>
+          {
+            /* The block moves as a whole with its own ↑/↓, past the
+              neighbouring row or block (moveProject). Delete ungroups in
+              place: the images stay, loose, where the block stood, and the
+              document goes at Save. */
+          }
+          <header class="gallery-project-head">
+            <span class="gallery-project-name" data-project-name></span>
+            <div class="gallery-toolbar gallery-toolbar--head" role="group">
+              <button type="button" class="gallery-tbtn" data-project-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+              <button type="button" class="gallery-tbtn" data-project-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
+            </div>
+            <button type="button" class="gallery-tpill gallery-tpill--danger" data-project-delete>{t("profile.project.delete")}</button>
+          </header>
+          {
+            /* THE PROJECT'S WORDS FOLD, LIKE A WORK'S (2026-09-25, Josh: "the
+              projects should be collapsible as well"). Same element, same
+              classes and the same rule as a work's Image Details: a project already
+              saved starts FOLDED, one added in this session starts OPEN
+              (projectDetailsOpenUI, keyed by projectId). Only the words fold.
+              The header keeps the name, the arrows and Delete, and the images
+              below stay listed, so a folded block can still be moved and its
+              works still reordered. The summary says "Project details" and
+              nothing else (2026-09-26), the twin of a work's "Image Details". */
+          }
+          <details class="gallery-details gallery-project-details">
+            <summary class="gallery-details-summary">
+              <span class="gallery-details-title">{t("profile.project.details")}</span>
+              <span class="gallery-details-chevron" aria-hidden="true"></span>
+            </summary>
+          <div class="gallery-project-fields">
+            <div class="gallery-lang-switch" role="group">
+              <button type="button" class="gallery-lang-btn is-active" data-gallery-lang-btn="en">EN</button>
+              <button type="button" class="gallery-lang-btn" data-gallery-lang-btn="de">DE</button>
+            </div>
+            {/* Titled like the image rows' fields (2026-09-24); see there. */}
+            <div class="gallery-lang-pane" data-gallery-lang-pane="en">
+              <label class="row-label" data-row-label="title">{t("profile.project.title.label")}</label>
+              <input type="text" class="input" data-project-field="title" />
+              <div class="label-row">
+                <label class="row-label" data-row-label="description">{t("profile.project.description.label")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
+              </div>
+              <textarea class="input textarea" rows="2" data-project-field="description"></textarea>
+            </div>
+            <div class="gallery-lang-pane" data-gallery-lang-pane="de" hidden>
+              <div class="label-row">
+                <label class="row-label" data-row-label="titleDe">{t("profile.project.title.de")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
+              </div>
+              <input type="text" class="input" data-project-field="titleDe" />
+              <div class="label-row">
+                <label class="row-label" data-row-label="descriptionDe">{t("profile.project.description.de")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
+              </div>
+              <textarea class="input textarea" rows="2" data-project-field="descriptionDe"></textarea>
+            </div>
+            <div class="label-row">
+              <label class="row-label" data-row-label="link">{t("profile.project.website")}</label>
+              <span class="row-optional">{t("profile.optional")}</span>
+            </div>
+            <p class="field-note" data-tip data-tip-note="link" hidden>{t("profile.project.linkNote")}</p>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">https://</span>
+              <input type="text" class="input input-prefixed" data-project-field="link" />
+              <InfoTip lang={lang} rowKey="link" />
+            </div>
+            {
+              /* AFFILIATIONS, like the Social Media rows: repeatable, + Add
+                and ✕ per row. Each row is a name with an optional link OR a
+                credit to a VSCN member (Josh: "no approval needed"); the
+                Name | Member switch is the rows' EN/DE switch at the same
+                scale. Rows are cloned from the template below the block's. */
+            }
+            <div class="gallery-project-affiliations">
+              <div class="label-row">
+                <p class="row-label">{t("profile.project.affiliations")}</p>
+                <span class="row-optional">{t("profile.optional")}</span>
+              </div>
+              <div class="social-editor" data-affiliations></div>
+              <button type="button" class="btn-outline choose-img gallery-aff-add" data-aff-add>
+                {t("profile.project.affiliations.add")}
+              </button>
+            </div>
+            {
+              /* A PROJECT'S TAGS (2026-09-27, Josh: "add project tags"). The
+                work row's own fold and picker, cloned per block the same way,
+                so the vocabulary, the seven-tag cap and the chips are one
+                thing across the editor. Open by default like a work's, and
+                remembered per projectId (projectTagsOpenUI) across the
+                re-renders every move and upload causes. */
+            }
+            <details class="gallery-tags gallery-project-tags" open>
+              <summary class="gallery-tags-summary">
+                <span class="gallery-tags-title">{t("profile.label.tags")}</span>
+                <span class="gallery-tags-count" data-project-tags-count></span>
+                <span class="gallery-tags-chevron" aria-hidden="true"></span>
+              </summary>
+              <TagSelector lang={lang} maxTags={7} />
+            </details>
+          </div>
+          </details>
+          <div class="gallery-project-images" data-project-images></div>
+          {
+            /* Save writes only the projects an image names, so a block that
+              holds none stays local and is gone after a reload. Said here, in
+              the block, not behind an ⓘ — the words typed into an empty block
+              are exactly what would be lost (final review, 2026-09-24).
+              renderGallery() shows it while block.indices is empty. */
+          }
+          <p class="field-note gallery-project-empty" data-project-empty hidden>{t("profile.project.emptyNote")}</p>
+          {
+            /* Uploads straight into this block: the same queue as the general
+              picker, the task carrying the projectId, and the finished image
+              lands after the block's last image (insertUploaded). Its pending
+              row is shown INSIDE the block too (renderQueue homes it here), so
+              nothing appears at the bottom of the list and then jumps. */
+          }
+          <label class="btn-outline choose-img gallery-project-add">
+            {t("profile.project.addImages")}
+            <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple hidden data-project-files />
+          </label>
+        </section>
+      </template>

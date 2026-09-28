@@ -1,4 +1,8 @@
 ---
+import Button from "../components/ui/Button.astro";
+import Input from "../components/ui/Input.astro";
+import Field from "../components/ui/Field.astro";
+import Feedback from "../components/ui/Feedback.astro";
 import Layout from "../layouts/Layout.astro";
 import globalCss from "../styles/global.css?raw";
 import typeCss from "../styles/type.css?raw";
@@ -71,6 +75,18 @@ const radiusUsage: Record<string, string> = {
 
 <Layout title="Styleguide — VSCN" description="Internal design system reference." noindex wide>
   <div class="sg">
+    <section aria-labelledby="sg-controls">
+      <h2 id="sg-controls">Reusable controls · Wiederverwendbare Elemente</h2>
+      <p>Every control inherits the semantic color, type, radius and focus tokens. Tab through these examples to inspect focus.</p>
+      <Button>Save changes</Button> <Button variant="outline">Änderungen speichern</Button>
+      <Button disabled>Saving…</Button>
+      <Field id="sg-name" label="Name" hint="Visible on your public profile."><Input id="sg-name" placeholder="Your name" aria-describedby="sg-name-hint" /></Field>
+      <Field id="sg-error" label="Projektbeschreibung mit einem langen deutschen Feldnamen" error="Please shorten this value."><Input id="sg-error" value="Invalid example" invalid aria-describedby="sg-error-error" /></Field>
+      <Field id="sg-disabled" label="Disabled"><Input id="sg-disabled" disabled value="Unavailable" /></Field>
+      <Feedback tone="success">Saved. Publication queued.</Feedback>
+      <Feedback tone="error">Could not save. Your draft is retained.</Feedback>
+      <Feedback>No works yet. Add your first image or video.</Feedback>
+    </section>
     <header class="sg-head">
       <h1 class="sg-h1">Styleguide</h1>
       <p class="sg-lede">

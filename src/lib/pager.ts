@@ -33,12 +33,15 @@ export function ensurePagerChevron(
   dir: "prev" | "next",
   onPress: () => void,
 ): HTMLButtonElement {
+  row.removeAttribute("aria-hidden");
+  const label = document.documentElement.lang === "de" ? (dir === "prev" ? "Vorheriges Bild" : "Nächstes Bild") : (dir === "prev" ? "Previous image" : "Next image");
   const found = row.querySelector<HTMLButtonElement>(`.pager-chev--${dir}`);
   if (found) {
+    found.tabIndex = 0; found.setAttribute("aria-label", label);
     found.addEventListener("click", onPress);
     return found;
   }
-  const made = pagerChevron(dir, onPress, { focusable: false });
+  const made = pagerChevron(dir, onPress, { label });
   if (dir === "prev") row.prepend(made);
   else row.append(made);
   return made;

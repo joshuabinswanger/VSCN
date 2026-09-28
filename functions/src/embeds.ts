@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import sharp, { type Region } from "sharp";
 import { db, getBucket } from "./admin";
 import { requireUser } from "./util";
+import { beginEmbedRequest, endEmbedRequest } from "./embedAllowance";
 import { oembedEndpoint, parseEmbedUrl, thumbnailCandidates, type EmbedRef } from "./embedUrl";
 import {
   autoPosterPath, inheritedFields, PUBLIC_CACHE, reserveWork, settleReplacedModeration, UUID, webpDimensions,
@@ -220,7 +221,7 @@ async function publish(
  * exists and may be embedded, stores its thumbnail as the poster, and returns
  * a live work the editor appends to the gallery like a finished upload.
  */
-export const resolveEmbed = onCall({ maxInstances: 3, memory: "512MiB", timeoutSeconds: 60 }, async (req) => {
+export const resolveEmbed = onCall({ enforceAppCheck: true, maxInstances: 3, memory: "512MiB", timeoutSeconds: 60 }, async (req) => {
   const uid = requireUser(req);
   requireVerified(req);
   const ref = parseEmbedUrl(req.data?.url);
@@ -228,8 +229,8 @@ export const resolveEmbed = onCall({ maxInstances: 3, memory: "512MiB", timeoutS
   // Refused before anything is fetched, so a member at the cap does not make
   // us download a thumbnail only to throw it away. Re-checked in the
   // transaction below, which is the check that counts.
-  await db.runTransaction(async (tx) => { await reserveWork(tx, uid); });
-
+  const attempt = await beginEmbedRequest(uid);
+  try {
   const meta = await fetchOembed(ref);
   const poster = await fetchPoster(ref, meta.thumbnailUrl);
   const imageId = randomUUID();
@@ -239,7 +240,7 @@ export const resolveEmbed = onCall({ maxInstances: 3, memory: "512MiB", timeoutS
   // yet — it is a new work, so there is no caption of theirs to overwrite.
   const caption = meta.title?.trim().slice(0, 140) || undefined;
   await db.runTransaction(async (tx) => {
-    const commitAllowance = await reserveWork(tx, uid);
+    const commitAllowance = await reserveWork(tx, uid, undefined, false);
     const now = Timestamp.now();
     commitAllowance();
     tx.create(db.doc(`images/${imageId}`), {
@@ -254,6 +255,9 @@ export const resolveEmbed = onCall({ maxInstances: 3, memory: "512MiB", timeoutS
     ...(caption ? { caption } : {}), media: "embed", embed, posterSource: "auto",
   };
   return result;
+  } finally {
+    await endEmbedRequest(uid, attempt).catch((error) => logger.warn("Video lease release failed", { uid, error: String(error) }));
+  }
 });
 
 /**
@@ -263,7 +267,7 @@ export const resolveEmbed = onCall({ maxInstances: 3, memory: "512MiB", timeoutS
  * published object is cached `immutable`), with the same moderation outcome:
  * ratings reset, a hide carries over.
  */
-export const restoreAutoPoster = onCall({ maxInstances: 3, memory: "512MiB" }, async (req) => {
+export const restoreAutoPoster = onCall({ enforceAppCheck: true, maxInstances: 3, memory: "512MiB" }, async (req) => {
   const uid = requireUser(req);
   requireVerified(req);
   const oldId = req.data?.imageId;
@@ -274,6 +278,8 @@ export const restoreAutoPoster = onCall({ maxInstances: 3, memory: "512MiB" }, a
     || old.media !== "embed" || old.posterSource !== "member") {
     throw new HttpsError("failed-precondition", "Only a video work of yours with its own thumbnail can go back to the automatic one.", { reason: "notRestorable" });
   }
+  const attempt = await beginEmbedRequest(uid);
+  try {
   let bytes: Buffer;
   try {
     [bytes] = await getBucket().file(autoPosterPath(old.storagePath)).download();
@@ -288,7 +294,7 @@ export const restoreAutoPoster = onCall({ maxInstances: 3, memory: "512MiB" }, a
   const storagePath = `users/${uid}/gallery/${imageId}.webp`;
   let fields: Record<string, unknown> = {};
   await db.runTransaction(async (tx) => {
-    const commitAllowance = await reserveWork(tx, uid);
+    const commitAllowance = await reserveWork(tx, uid, undefined, false);
     const current = (await tx.get(oldRef)).data();
     if (!current || current.status !== "live" || current.media !== "embed") {
       throw new HttpsError("failed-precondition", "The work changed while its thumbnail was being restored.", { reason: "notRestorable" });
@@ -311,4 +317,7 @@ export const restoreAutoPoster = onCall({ maxInstances: 3, memory: "512MiB" }, a
     media: "embed", embed: fields.embed as EmbedRef, posterSource: "auto",
   };
   return result;
+  } finally {
+    await endEmbedRequest(uid, attempt).catch(error => logger.warn("Could not release poster request", { uid, error: String(error) }));
+  }
 });

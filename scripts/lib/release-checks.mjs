@@ -111,6 +111,7 @@ export function countRequests(entries) {
 
 /** authorizeImageUpload must pair with completeImageUpload. Ratio with a floor, not equality. */
 export function pairingVerdict({ authorize, complete }) {
+  if (authorize === 0 && complete === 0) return { status: "WARN", reason: "NOT TESTED: no upload traffic in the window" };
   if (authorize >= 3 && complete === 0) {
     return { status: "FAIL", reason: "nothing is getting through: uploads are authorised and never completed" };
   }

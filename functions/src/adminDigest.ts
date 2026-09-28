@@ -1,4 +1,7 @@
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
+import { createHash } from "node:crypto";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { requireAdmin } from "./util";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { logger } from "firebase-functions/v2";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
@@ -21,7 +24,7 @@ import type { ImageDoc } from "./types";
 
 /** How long an unfinished signup waits before it is reported as unfinished. */
 export const SIGNUP_REPORT_DELAY_MINUTES = 30;
-/** Ticks a mail may fail before its events are dropped with an error, so a dead mailbox does not queue forever. */
+/** Automatic attempts before retaining the notice for an operator retry. */
 export const MAX_ATTEMPTS = 12;
 const BATCH = 100;
 /** The SMTP reply is the finding; a stack trace is not, and a row has to fit on screen. */
@@ -49,10 +52,32 @@ interface AdminEvent {
  * mailbox keeps putting back. Read here rather than in adminOps.ts so the
  * queue's shape has one owner.
  */
-export async function listUnsentNotices(): Promise<(AdminEvent & { id: string })[]> {
-  const snap = await db.collection("adminEvents").orderBy("at").limit(BATCH).get();
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as AdminEvent) }));
+export async function listUnsentNotices(): Promise<(AdminEvent & { id: string; failed: boolean })[]> {
+  const [pending, failed] = await Promise.all([
+    db.collection("adminEvents").orderBy("at").limit(BATCH).get(),
+    db.collection("failedAdminEvents").orderBy("at").limit(BATCH).get(),
+  ]);
+  return [...failed.docs.map((d) => ({ id: d.id, ...(d.data() as AdminEvent), failed: true })),
+    ...pending.docs.map((d) => ({ id: d.id, ...(d.data() as AdminEvent), failed: false }))];
 }
+
+/** Retrying is an explicit, audited admin action; members cannot read or retry notices. */
+export const adminRetryNotice = onCall({ enforceAppCheck: true, maxInstances: 1 }, async (req) => {
+  const actorUid = requireAdmin(req);
+  const id = req.data?.id;
+  if (typeof id !== "string" || !/^[a-zA-Z0-9_-]{1,180}$/.test(id)) throw new HttpsError("invalid-argument", "Invalid notice id.");
+  await db.runTransaction(async (tx) => {
+    const failedRef = db.doc(`failedAdminEvents/${id}`);
+    const pendingRef = db.doc(`adminEvents/${id}`);
+    const [failed, pending] = await Promise.all([tx.get(failedRef), tx.get(pendingRef)]);
+    if (!failed.exists) throw new HttpsError("not-found", "No failed notice.");
+    if (pending.exists) throw new HttpsError("already-exists", "Notice already queued.");
+    tx.create(pendingRef, { ...failed.data(), attempts: 0, dueAt: Timestamp.now(), retriedBy: actorUid });
+    tx.delete(failedRef);
+    tx.create(db.collection("adminActions").doc(), { actorUid, action: "retryNotice", targetUid: failed.data()?.uid, at: Timestamp.now(), detail: { id } });
+  });
+  return { ok: true };
+});
 
 export async function queueSignup(uid: string, email: string | null | undefined, createdAt: Date): Promise<void> {
   const at = Timestamp.fromDate(createdAt);
@@ -84,15 +109,22 @@ export const onImageWentLive = onDocumentWritten({ document: "images/{imageId}",
   // (documentation/20260923-release-walk-automation.md §7).
   const owner = await db.doc(`publicProfiles/${after.ownerUid}`).get();
   if (owner.data()?.moderationHidden === true) return;
+  const ownerUid = after.ownerUid;
   const now = Timestamp.now();
-  await db.doc(`adminEvents/image-${event.params.imageId}-${now.toMillis()}`).set({
+  const key = createHash("sha256").update(event.id ?? `${event.params.imageId}:${JSON.stringify(after.updatedAt)}`).digest("hex");
+  await db.runTransaction(async (tx) => {
+    const receipt = db.doc(`adminEventReceipts/image-${key}`);
+    if ((await tx.get(receipt)).exists) return;
+    tx.create(receipt, { at: now });
+    tx.create(db.doc(`adminEvents/image-${key}`), {
     kind: "image",
-    uid: after.ownerUid,
+    uid: ownerUid,
     imageId: event.params.imageId,
     at: now,
     dueAt: now,
     attempts: 0,
   } satisfies AdminEvent);
+  });
 });
 
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v : null);
@@ -212,11 +244,16 @@ export const sendAdminDigest = onSchedule(
     const batch = db.batch();
     for (const { id, ev } of due) {
       const ref = db.doc(`adminEvents/${id}`);
-      if (ok || ev.attempts + 1 >= MAX_ATTEMPTS) batch.delete(ref);
+      if (ok) batch.delete(ref);
+      else if (ev.attempts + 1 >= MAX_ATTEMPTS) {
+        batch.set(db.doc(`failedAdminEvents/${id}`), { ...ev, attempts: ev.attempts + 1,
+          lastError: failure.slice(0, ERROR_CHARS), lastAttemptAt: now, failedAt: now });
+        batch.delete(ref);
+      }
       else batch.update(ref, { attempts: FieldValue.increment(1), lastError: failure.slice(0, ERROR_CHARS), lastAttemptAt: now });
     }
     await batch.commit();
     if (ok) logger.info("Admin digest sent", { events: due.length, subject: msg.subject });
-    else if (due.some(({ ev }) => ev.attempts + 1 >= MAX_ATTEMPTS)) logger.error("Admin digest events dropped after repeated failures", { events: due.length });
+    else if (due.some(({ ev }) => ev.attempts + 1 >= MAX_ATTEMPTS)) logger.error("Admin digest needs operator retry; notices retained", { events: due.length });
   },
 );
