@@ -91,7 +91,8 @@
    preloader's auto margin pushing the buttons away from it. The artist line
    now lives above the picture's top-left corner, inside this same height, so
    the left has to be empty; everything gathers on the right. The preloader
-   rule below is the other half of that. */
+   rule below is the other half of that. The counter itself left the row on
+   2026-09-28 for the picture's top-right corner (see "The counter" below). */
 .pswp--vscn .pswp__top-bar {
   height: 2.75rem;
   align-items: center;
@@ -99,20 +100,6 @@
   padding: 0 1.5rem;
   background: transparent;
   border-bottom: 0;
-}
-
-/* ── Counter ──────────────────────────────────────────────────────────────
-   The site's own "2 / 7": COUNT in type.css, the voice of the directory
-   card's and the project carousel's counts (2026-09-28, Josh: "make the
-   counter and all the styles in photoswipe adjusted to the rest of the
-   site"). It was small caps until then, a different drawing of the same
-   number the page had just shown above the picture. */
-.pswp--vscn .pswp__counter {
-  height: auto;
-  margin: 0;
-  color: var(--color-muted);
-  text-shadow: none;
-  opacity: 1;
 }
 
 /* ── Buttons, shared ──────────────────────────────────────────────────────
@@ -262,13 +249,13 @@
 /* ── Loading indicator ────────────────────────────────────────────────────
    Left as PhotoSwipe's spinner — it reports state, it is not chrome — but
    shrunk out of its 50x60 slot so it sits on the row's centre line with the
-   counter. Its rotation stays under reduced motion: it is the only signal
+   buttons. Its rotation stays under reduced motion: it is the only signal
    that a large original is still arriving — and since 2026-09-06 the only one
    at all, the placeholder box having gone transparent (see the variables).
    NO AUTO MARGIN. PhotoSwipe's own sheet gives this `margin-right: auto`,
    which is what held the counter (before it in the row) against the LEFT
    edge and pushed the buttons right. The left belongs to the artist line now,
-   so the counter and the spinner join the buttons on the right. */
+   so the spinner joins the buttons on the right. */
 .pswp--vscn .pswp__preloader {
   width: 1.1rem;
   height: 1.1rem;
@@ -338,6 +325,62 @@
 .pswp--vscn a.pswp__vscn-credit-name:hover,
 .pswp--vscn a.pswp__vscn-credit-name:focus-visible {
   color: var(--color-dark);
+}
+
+/* THE COUNTER, ON THE PICTURE'S TOP-RIGHT CORNER (2026-09-28, Josh: "the
+   counter should be black add also some chevrons that act as arrows … it
+   should sit at the same height as the Artist Name"). "‹ 2 / 7 ›": the site's
+   COUNT (type.css), dark, between two chevrons that page. The script writes
+   left/top at the picture's top-right corner; the translate hangs the box
+   up and to the left of it, as the credit hangs off the other corner.
+   ONE LINE, THE NAME'S LINE. A plain block of inline content, like the
+   credit, so both boxes are the same line box hung off the same top and the
+   count sits on the name's own BASELINE (a flex box centred the count 3px
+   below the name). The chevrons' hit area is larger than that line and the
+   negative margin gives the extra back, so a thumb gets a real target and
+   the line above the picture does not grow by a pixel. */
+.pswp--vscn .pswp__vscn-counter {
+  position: absolute;
+  white-space: nowrap;
+  /* The next chevron's padding would stand it off the picture's edge, so the
+     box hangs that much further right. */
+  transform: translate(calc(-100% + 0.45rem), -100%);
+  color: var(--color-dark);
+}
+.pswp--vscn .pswp__vscn-counter.is-empty {
+  display: none;
+}
+.pswp--vscn .pswp__vscn-counter-arrow {
+  display: inline-grid;
+  place-items: center;
+  vertical-align: middle;
+  margin: -0.6rem 0;
+  padding: 0.6rem 0.45rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+.pswp--vscn .pswp__vscn-counter-arrow:hover,
+.pswp--vscn .pswp__vscn-counter-arrow:focus-visible {
+  color: var(--color-muted);
+}
+.pswp--vscn .pswp__vscn-counter-arrow:focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: -0.35rem;
+}
+/* The side arrows' chevron, drawn at the count's size. */
+.pswp--vscn .pswp__vscn-counter .pswp__vscn-chevron {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-width: 1.5px;
+}
+.pswp--vscn .pswp__vscn-counter-arrow--prev .pswp__vscn-chevron {
+  transform: translate(0.08rem, 0) rotate(-135deg);
+}
+.pswp--vscn .pswp__vscn-counter-arrow--next .pswp__vscn-chevron {
+  transform: translate(-0.08rem, 0) rotate(45deg);
 }
 
 /* THE CAPTION, THE DESCRIPTION AND THE LINK — under the picture, at the
@@ -459,6 +502,7 @@
    this class on the root; hiding is done here so the two halves of the
    decision are not split across a stylesheet and a style attribute. */
 .pswp--vscn.pswp--vscn-zoomed-words .pswp__vscn-credit,
+.pswp--vscn.pswp--vscn-zoomed-words .pswp__vscn-counter,
 .pswp--vscn.pswp--vscn-zoomed-words .pswp__vscn-text {
   opacity: 0;
   pointer-events: none;
@@ -495,6 +539,7 @@
    two-class selector by more than source order. */
 @media (prefers-reduced-motion: reduce) {
   .pswp--vscn .pswp__button,
+  .pswp--vscn .pswp__vscn-counter-arrow,
   .pswp--vscn .pswp__vscn-word,
   .pswp--vscn .pswp__vscn-zoom::after {
     transition: none;
