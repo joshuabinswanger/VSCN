@@ -75,3 +75,23 @@ still follow the carousel**. One rule per stylesheet hides them
 in profile.css), so going back is deleting those two rules and hiding the
 counts. The card's count is server-rendered as "1 / n". The editor's card
 preview builds only dots, so `communityCarousel.ts` adds the count there.
+
+## 2026-09-28, later still: the lightbox in the site's voices
+
+Josh: "make the counter and all the styles in photoswipe adjusted to the rest
+of the site". Every lightbox line now takes the voice of its twin on the page:
+
+- **Counter** — a new COUNT voice in `type.css` (`--fs-75`, weight 400,
+  tabular figures, muted), shared by `.ccard__count`, `.mprof__carousel-count`
+  and `.pswp__counter`. `--fs-carousel-count` is gone; the voice replaced it.
+  The counter was LABEL caps before.
+- **Artist credit** — META, the Grid tile's author line, not caps.
+- **A work's links** — META, dark, a plain underline 2px below, muted on
+  hover: exactly `.mprof__link`, the same links under the work on the page.
+  They were bold, muted and 1.5px-underlined.
+- **"Part of …" / "With …"** — CAPTION, muted, like the project's own "With …"
+  line on the page, with underlined names.
+- **Arrows** — the card's bare chevron at 0.75, full strength on hover. The
+  paper block that inverted to black was the card's old drawing.
+- **Close** — still a LABEL caps word, now with the site's link underline
+  (1.5px, 3px below) instead of a 1px border.

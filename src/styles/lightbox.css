@@ -102,8 +102,11 @@
 }
 
 /* ── Counter ──────────────────────────────────────────────────────────────
-   Set in the page's small-caps meta face — the one .mprof__open and
-   .mprof__key use — not PhotoSwipe's shadowed 14px label. */
+   The site's own "2 / 7": COUNT in type.css, the voice of the directory
+   card's and the project carousel's counts (2026-09-28, Josh: "make the
+   counter and all the styles in photoswipe adjusted to the rest of the
+   site"). It was small caps until then, a different drawing of the same
+   number the page had just shown above the picture. */
 .pswp--vscn .pswp__counter {
   height: auto;
   margin: 0;
@@ -140,27 +143,27 @@
 }
 
 /* ── Close ────────────────────────────────────────────────────────────────
-   Typographic, not a glyph in a circle: the localized word under a hairline,
-   in the small-caps treatment of the profile page's meta lines —
-   muted, going dark on hover. The word itself is injected by the page script
-   (PhotoSwipe's `closeSVG` option takes any HTML) so it can be translated. */
+   Typographic, not a glyph in a circle: the localized word, underlined, in
+   the LABEL caps the site names things in — muted, going dark on hover. The
+   underline is the site's link underline (1.5px, 3px below, as on the card's
+   "View profile"), not the 1px border it was drawn with until 2026-09-28.
+   The word itself is injected by the page script (PhotoSwipe's `closeSVG`
+   option takes any HTML) so it can be translated. */
 .pswp--vscn .pswp__button--close {
   margin-right: 0;
   margin-left: 0.25rem;
 }
 .pswp--vscn .pswp__vscn-word {
   display: block;
-  padding-bottom: 2px;
   color: var(--color-muted);
-  border-bottom: 1px solid var(--color-border);
-  transition:
-    color 140ms ease,
-    border-color 140ms ease;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+  transition: color 140ms ease;
 }
 .pswp--vscn .pswp__button--close:hover .pswp__vscn-word,
 .pswp--vscn .pswp__button--close:focus-visible .pswp__vscn-word {
   color: var(--color-dark);
-  border-bottom-color: var(--color-dark);
 }
 
 /* ── Zoom ─────────────────────────────────────────────────────────────────
@@ -209,24 +212,26 @@
 }
 
 /* ── Arrows ───────────────────────────────────────────────────────────────
-   The same control as .ccard__arrow on the community card, on purpose: same
-   2.4x1.8rem block, same --radius-xs corner, same light ground carrying a
-   dark stroked chevron, same inversion on hover. The chevron is the card's
-   drawing reproduced exactly — two borders on a box turned 45deg — so the two
-   places you page through images on this site are one design.
+   The same control as .ccard__arrow on the community card and the project
+   carousel's chevrons, on purpose: a bare stroked chevron — two borders on a
+   box turned 45deg — held back at 0.75 and coming to full strength on hover.
+   Until 2026-09-28 this was still the card's OLD drawing, a paper block that
+   inverted to black on hover, which the card itself had dropped for the bare
+   chevron (Josh: "all the styles in photoswipe adjusted to the rest of the
+   site").
 
    Unlike the card these do not fade in on hover: there is no frame to hover,
-   so they simply stand. On the light ground the block is invisible and only
-   the chevron reads, which is the card's own logic (the block exists to carry
-   the stroke over artwork, and disappears where it is not needed). */
+   so they simply stand. They sit on the paper beside the picture, so the
+   stroke never has to hold its own over artwork. */
 .pswp--vscn .pswp__button--arrow {
   width: 2.4rem;
   height: 1.8rem;
   margin-top: -0.9rem;
   padding: 0;
-  border-radius: var(--radius-xs);
-  background: var(--color-bg);
+  background: none;
   color: var(--color-dark);
+  opacity: 0.75;
+  transition: opacity 140ms ease;
 }
 .pswp--vscn .pswp__button--arrow--prev {
   right: auto;
@@ -238,8 +243,7 @@
 }
 .pswp--vscn .pswp__button--arrow:hover,
 .pswp--vscn .pswp__button--arrow:focus-visible {
-  background: var(--color-dark);
-  color: var(--color-bg);
+  opacity: 1;
 }
 .pswp--vscn .pswp__vscn-chevron {
   display: block;
@@ -315,7 +319,8 @@
   color: var(--color-muted);
   text-decoration: none;
 }
-/* THE CREDIT AS THE WAY TO THE MEMBER'S PAGE (2026-09-03) — see the renderer
+/* THE CREDIT AS THE WAY TO THE MEMBER'S PAGE (2026-09-03). Its type is META
+   since 2026-09-28, the Grid tile's author line, not small caps. See the renderer
    in lightboxText.ts for why the name itself is the control. It is an <a> only
    when the trigger carried a profile href, so this styles the openable case
    and leaves the member page's own gallery, where the credit is just a credit,
@@ -400,10 +405,10 @@
 /* THE PIECE'S LINKS — the member's own project page, then where it appeared
    (two since 2026-09-10). One shrink-wrapped row, so the links are only as
    wide as their URLs — a stretched flex item would put a clickable band across
-   the whole column. Set in the credit's small-caps face rather than the
-   description's, because they are provenance and not part of the prose; the
-   wrap rule lets a long path break inside a narrow column instead of widening
-   it. */
+   the whole column. Drawn exactly as the same links under the work on the
+   member page (.mprof__link: META, dark, a plain underline 2px below, muted
+   on hover) since 2026-09-28; they were muted and bold here. The wrap rule
+   lets a long path break inside a narrow column instead of widening it. */
 .pswp--vscn .pswp__vscn-text-links {
   display: flex;
   flex-wrap: wrap;
@@ -414,21 +419,21 @@
 }
 .pswp--vscn .pswp__vscn-text-link {
   max-width: 100%;
-  color: var(--color-muted);
+  color: var(--color-dark);
   text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
   overflow-wrap: anywhere;
   transition: color 0.15s;
 }
 .pswp--vscn .pswp__vscn-text-link:hover,
 .pswp--vscn .pswp__vscn-text-link:focus-visible {
-  color: var(--color-dark);
+  color: var(--color-muted);
 }
 
 /* THE PROJECT THIS PICTURE IS PART OF, and who it was made with (2026-09-23).
-   Same size and colour as the links row above — provenance, not prose — one
-   line each, printed after the piece's own links. */
+   One line each, printed after the piece's own links, in the voice of the
+   member page's own "With …" line under a project's title (CAPTION, muted)
+   since 2026-09-28. The names in them are underlined links, going dark. */
 .pswp--vscn .pswp__vscn-text-project,
 .pswp--vscn .pswp__vscn-text-affiliations {
   display: block;
@@ -439,8 +444,7 @@
 .pswp--vscn .pswp__vscn-text-affiliations a {
   color: inherit;
   text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
 }
 .pswp--vscn .pswp__vscn-text-project a:hover,
 .pswp--vscn .pswp__vscn-text-project a:focus-visible,
