@@ -30,12 +30,17 @@
   --radius-lg: 14px;
   --radius-xl: 16px;
   /* EVERY PAGER'S CHEVRON: the gallery card's and the project carousel's
-     edge arrows, the lightbox's side arrows, and the chevrons beside each
-     "2 / 7" count (.pager-chev below). Two borders on a box turned 45deg.
+     edge arrows and the lightbox's side arrows; the chevrons beside each
+     "2 / 7" count (.pager-chev below) use the smaller pair after these. Two
+     borders on a box turned 45deg.
      Thinner and smaller since 2026-09-28 (Josh: "the icon should be thinner
      and a bit smaller"); it was 0.7rem at 2px. */
   --chevron-size: 0.55rem;
   --chevron-stroke: 1.5px;
+  /* The ones beside a count are smaller again, drawn to the count's own
+     size (2026-09-28, Josh: "also they are too big"). */
+  --pager-chev-size: 0.38rem;
+  --pager-chev-stroke: 1.25px;
   /* The page's shared measure. The brand ticker, the navbar and <main> all
      size to it, which is what keeps the giant VSCN title, the nav links and
      the content on the same two vertical edges. */
@@ -938,10 +943,10 @@ a:hover {
 }
 .pager-chev span {
   display: block;
-  width: var(--chevron-size);
-  height: var(--chevron-size);
-  border-top: var(--chevron-stroke) solid currentColor;
-  border-right: var(--chevron-stroke) solid currentColor;
+  width: var(--pager-chev-size);
+  height: var(--pager-chev-size);
+  border-top: var(--pager-chev-stroke) solid currentColor;
+  border-right: var(--pager-chev-stroke) solid currentColor;
 }
 .pager-chev--prev span {
   transform: translate(0.05rem, 0) rotate(-135deg);

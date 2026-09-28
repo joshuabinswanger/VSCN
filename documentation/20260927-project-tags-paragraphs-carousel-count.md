@@ -143,3 +143,21 @@ project carousel".
   order 8: after the preloader, before + and Close), grey. Its chevrons keep
   their tab stop and label. The corner placement and the credit's max-width
   are gone from `place()`. Close has no underline now.
+
+## 2026-09-28, the card's count joins the name's line
+
+Josh: "the arrows dont work. also they are too big. also there is still a gap
+to the title. they shoudl be in the same ehight, not two stacked divs".
+
+- **Same line.** `.ccard` is a grid now (`minmax(0, 1fr) auto`). The name and
+  `.ccard__dots` share row one on the name's last baseline, and every other
+  child spans both columns. The name-to-picture gap went from the stacked
+  row's ~20px to the row gap's 4px. The editor's card preview has the same
+  children, so it follows unchanged.
+- **Smaller.** The count chevrons have their own `--pager-chev-size` (0.38rem)
+  and `--pager-chev-stroke` (1.25px). The edge arrows keep `--chevron-size`.
+- **"Don't work."** Not reproduced. On dev (`3689508`) a mouse click and a
+  touch tap on the card's and the lightbox's chevrons both paged. The likely
+  cause is a page loaded before the deploy: ClientRouter swaps new HTML in
+  under the OLD script, which never wires the new buttons. WebKit is not
+  installed here, so iOS Safari is untested.
