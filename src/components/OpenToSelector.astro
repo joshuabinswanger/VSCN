@@ -158,6 +158,7 @@ const t = useTranslations(lang);
       this.querySelectorAll<HTMLElement>("[data-open-to]").forEach((el) => {
         const openTo = el.dataset.openTo;
         el.classList.toggle("optchip--on", !!openTo && this.selectedOpenTo.has(openTo));
+        el.setAttribute("aria-pressed", String(!!openTo && this.selectedOpenTo.has(openTo)));
       });
     }
 

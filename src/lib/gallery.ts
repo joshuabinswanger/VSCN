@@ -505,11 +505,13 @@ export type EmbedErrorCode =
   | "hourlyLimit"
   /** "Use automatic thumbnail" on a work that no longer has one to go back to. */
   | "notRestorable"
+  /** Another video import or poster restore for this member holds the lease (up to 90 s, functions/src/embedAllowance.ts). */
+  | "busy"
   | "full" | "denied" | "network" | "unknown";
 
 const EMBED_REASONS = new Set<EmbedErrorCode>([
   "verify", "notVideoLink", "videoNotFound", "notEmbeddable", "providerUnavailable", "noThumbnail",
-  "storedLimit", "hourlyLimit", "notRestorable",
+  "storedLimit", "hourlyLimit", "notRestorable", "busy",
 ]);
 
 export function embedErrorCode(error: unknown): EmbedErrorCode {

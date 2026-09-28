@@ -1,0 +1,6 @@
+---
+import type { HTMLAttributes } from 'astro/types';
+interface Props extends HTMLAttributes<'p'> { tone?: 'success' | 'error' | 'neutral' }
+const { tone = 'neutral', class: className, ...rest } = Astro.props;
+---
+<p class:list={[tone === 'error' ? 'msg-err' : tone === 'success' ? 'msg-ok' : 'field-note', className]} role={tone === 'error' ? 'alert' : 'status'} {...rest}><slot /></p>

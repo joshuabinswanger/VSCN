@@ -1,0 +1,264 @@
+---
+import InfoTip from "../InfoTip.astro";
+import { useTranslations } from "../../i18n/utils";
+import type { Lang } from "../../i18n/utils";
+interface Props { lang?: Lang }
+const { lang = "en" } = Astro.props;
+const t = useTranslations(lang);
+---
+  <div class="form-section" data-section="account" role="tabpanel" id="panel-account" aria-labelledby="tab-account">
+    {
+      /* THE WAY INTO /admin, AT THE TOP OF THE TAB (2026-09-04, Josh: "at top
+        or seperate tab"). It arrived on 2026-09-03 (Josh: "i cant see the
+        admin console ... cant it be on the normal profile page?") wedged
+        between the logout and the danger zone, which is where the ACCOUNT
+        things are — but it is not an account thing. It is a door out of this
+        page entirely, and buried among the account's own controls it read as
+        one more of them. A separate tab would be the other answer; a tab
+        holding one link, for one person, is more furniture than the link
+        earns, so it leads the tab instead.
+
+        Not locale-prefixed: /admin is a single page outside src/pages/[...lang]
+        (there is no /de/admin), so a `${prefix}` here would 404 in German.
+
+        `hidden` until the claim is confirmed, and the claim is read the same
+        way the console itself reads it (see AdminConsole): a forced token
+        refresh, because Firebase serves a CACHED ID token for up to an hour
+        and a claim granted by set-admin.mjs after the browser last signed in
+        is not in it. Without that refresh this link would stay invisible to a
+        brand-new admin for an hour, which is the same bug the console's own
+        gate had. A non-admin never sees it — see the `[hidden]` rule in the
+        styles below for why that sentence was false until 2026-09-03. It is a
+        link, not a permission: /admin and every admin callable gate
+        themselves. Which is also why leading the tab costs nothing: for
+        everyone who is not an admin there is nothing here at all. */
+    }
+    <a id="admin-link" class="btn-outline account-quiet" href="/admin" hidden>
+      {t("profile.adminConsole")}
+    </a>
+
+    <div class="field">
+      <div class="label-row">
+        <label class="checkbox-label" for="profile-active" aria-describedby="directory-visibility-note">
+          <input id="profile-active" type="checkbox" />
+          <span>{t("profile.active.label")}</span>
+        </label>
+        <p id="directory-visibility-note" class="field-note">{lang === "de" ? "Diese Einstellung blendet dein Profil aus dem Verzeichnis aus. Bereits veröffentlichte Profilfelder und Medien sind weiterhin über direkte Links öffentlich zugänglich." : "This setting hides your profile from the directory. Public profile fields and media remain accessible through direct links."}</p>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="label-row">
+        <label class="checkbox-label" for="wants-to-contribute">
+          <input id="wants-to-contribute" type="checkbox" />
+          <span>{t("profile.wantsToContribute")}</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="checkbox-label" for="receive-community-emails">
+        <input id="receive-community-emails" type="checkbox" />
+        <span>{t("profile.receiveCommunityEmails")}</span>
+      </label>
+      <p id="receive-community-emails-note" class="field-note">{t("profile.receiveCommunityEmails.note")}</p>
+    </div>
+
+    <div class="field">
+      <div class="label-row">
+        <label class="label" for="phone">{t("profile.label.phone")}</label>
+      </div>
+      <p id="note-phone" class="field-note" data-tip hidden>
+        {t("profile.note.phone")}
+      </p>
+      <div class="infotip-field">
+        <input
+          id="phone"
+          type="tel"
+          class="input"
+          placeholder="+41 79 123 45 67"
+          autocomplete="tel"
+          aria-describedby="note-phone"
+        />
+        <InfoTip lang={lang} for="note-phone" />
+      </div>
+    </div>
+
+    {/* Directly after Phone (2026-09-25, Josh). */}
+    <div class="field">
+      <div class="label-row">
+        <label class="label" for="preferred-language">{t("profile.label.preferredLanguage")}</label>
+        <InfoTip lang={lang} for="note-preferred-language" />
+      </div>
+      <p id="note-preferred-language" class="field-note" data-tip hidden>{t("profile.note.preferredLanguage")}</p>
+      <select id="preferred-language" class="input" aria-describedby="note-preferred-language">
+        <option value="de" selected={lang === "de"}>{t("profile.lang.de")}</option>
+        <option value="en" selected={lang !== "de"}>{t("profile.lang.en")}</option>
+      </select>
+    </div>
+
+    {
+      /* ── THE TWO DOORS ────────────────────────────────────────────────
+        Change email address and Delete account, as a pair. They are the same
+        kind of thing — a quiet link that opens a form asking you to prove who
+        you are before an irreversible change to your account — and since
+        2026-09-04 they are drawn the same way, so they have to be SPACED the
+        same way too. Left as two independent blocks they sat 2rem apart, far
+        enough that the second read as a lone control at the bottom of the tab
+        rather than as the twin of the one above it. The group carries the 2rem
+        now; inside it the gap is a line. */
+    }
+    <div class="account-doors">
+    {
+      /* Auth owns the change: the confirmation link goes to the NEW address
+        and the swap happens only when it is clicked. users/{uid}.email is a
+        server-written mirror that catches up on the next load.
+
+        BEHIND ITS OWN TRIGGER (2026-09-03, Josh: "email change behind
+        seperate mask"). Standing open, an empty "new email address" beside an
+        empty password box reads as a field the Account tab is asking you to
+        fill in — and it sat directly under the phone number, which IS one.
+        Changing an email is a deliberate errand; it should take a deliberate
+        click to start. */
+    }
+    <div class="account-block">
+      <div id="email-idle">
+        <button type="button" id="btn-email-start" class="btn-link"
+          >{t("profile.email.title")}</button
+        >
+      </div>
+
+      <div id="email-form" class="account-disclosure" hidden>
+        <label class="label" for="email-new">{t("profile.email.new")}</label>
+        <input id="email-new" type="email" class="input" autocomplete="email" />
+        <label class="label" for="email-password">{t("profile.reauth.text")}</label>
+        <input id="email-password" type="password" class="input" autocomplete="current-password" />
+        <p id="email-msg" class="msg-ok" style="display:none;"></p>
+        <p id="email-error" class="msg-err" style="display:none;"></p>
+        <div class="account-actions">
+          <button type="button" id="btn-email-cancel" class="btn-link"
+            >{t("profile.reauth.cancel")}</button
+          >
+          <button type="button" id="btn-email-change" class="btn-solid"
+            >{t("profile.email.submit")}</button
+          >
+        </div>
+      </div>
+    </div>
+
+    {
+      /* THE SAME WEIGHT AS "CHANGE EMAIL ADDRESS", AND DIRECTLY UNDER IT
+        (2026-09-04, Josh: "here in the same weight the delete Account"). It
+        was a pale red link under a 2rem rule in its own "danger zone", which
+        is the received wisdom for a destructive control and was wrong here for
+        two reasons.
+
+        The rule and the red made a whole region out of one link, so the tab
+        ended in a warning rather than in a control — and a member who has to
+        delete their account (the last thing anybody wants to do while being
+        talked out of it) had to cross a boundary drawn to discourage them.
+
+        And it is the SAME KIND OF THING as the email change: two doors that
+        open a form asking you to prove who you are before an irreversible
+        change to your account. Drawing them differently claimed a distinction
+        that does not survive the click.
+
+        The red survives where it is worth something — on the confirm button
+        inside the opened form, where there is something to confirm. What
+        guards this door is not its colour: the form behind it asks for the
+        account's own address AND its password, and requestAccountDeletion
+        refuses a token older than five minutes. */
+    }
+    <div class="account-block">
+      <div id="delete-idle">
+        <button type="button" id="btn-delete-start" class="btn-link"
+          >{t("profile.delete.idle")}</button
+        >
+      </div>
+
+      {
+        /* TWO THINGS TO GET WRONG, ON PURPOSE (2026-09-04, Josh: "a typed
+          confirmation would be good!").
+
+          The one-step design used to be justified right here: the password
+          prompt WAS the confirmation, because requestAccountDeletion refuses a
+          token whose auth_time is older than five minutes, so an "are you
+          sure" screen in front of it added a click and no safety. That
+          reasoning rested on the 30-day grace period. The grace period is gone
+          — the callable now destroys documents, files and the Auth user before
+          it returns — and the argument went with it.
+
+          A password is the one string a member types on this site often enough
+          to type without reading it, and a password manager will fill it
+          unasked. The address is the opposite: nothing autofills it into a
+          bare text field, and it names WHICH account is about to go, which a
+          password never does.
+
+          The address rather than the word DELETE because this form is
+          bilingual. A magic word needs translating, and a member who switches
+          language halfway through would find the word they had just typed no
+          longer matches. An address means the same thing in both. */
+      }
+      <div id="delete-reauth" style="display:none;">
+        <p class="danger-text">{t("profile.delete.text")}</p>
+
+        <label class="danger-label" for="delete-confirm-email"
+          >{t("profile.delete.typePrompt")}</label
+        >
+        <p id="delete-confirm-target" class="danger-target"></p>
+        <input
+          id="delete-confirm-email"
+          type="text"
+          class="input"
+          autocomplete="off"
+          autocapitalize="none"
+          autocorrect="off"
+          spellcheck="false"
+          inputmode="email"
+        />
+        <p id="delete-confirm-error" class="msg-err" style="display:none;"></p>
+
+        <p class="danger-text danger-text-spaced">{t("profile.reauth.text")}</p>
+        <input
+          id="reauth-password"
+          type="password"
+          class="input"
+          placeholder="••••••••"
+          autocomplete="current-password"
+        />
+        <p id="reauth-error" class="msg-err" style="display:none;"></p>
+        <div class="danger-actions">
+          <button type="button" id="btn-reauth-cancel" class="btn-link"
+            >{t("profile.reauth.cancel")}</button
+          >
+          <button type="button" id="btn-reauth-confirm" class="btn-danger" disabled
+            >{t("profile.delete.confirm")}</button
+          >
+        </div>
+      </div>
+
+      <div id="delete-scheduled" style="display:none;">
+        <p id="delete-scheduled-text" class="danger-text"></p>
+      </div>
+    </div>
+    </div>
+
+    {
+      /* LAST (2026-09-04, Josh: "bottom"). It led the tab from 2026-09-03,
+        when it was promoted out of a pair of grey ghosts on the grounds that
+        signing out is what a member opens this tab to DO. That was true of the
+        tab as it stood — the only other things on it were a link most members
+        cannot follow and a danger zone. It is not true of the tab now: the
+        settings above are things a member came to CHANGE, and a button that
+        ends the session, sitting above them, is a trapdoor in front of the
+        work. Bottom of the tab is where you reach it after doing what you came
+        for, which is also when you want it.
+
+        It keeps the full-strength outline it was given, so the demotion is in
+        the position only. Still an outline and not filled black: that is
+        Save's, and two black buttons on one screen is two primary actions. */
+    }
+    <button id="btn-logout" type="button" class="btn-logout-strong">
+      {t("profile.logout")}
+    </button>
+  </div>

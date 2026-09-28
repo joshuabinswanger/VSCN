@@ -73,6 +73,30 @@ export function functionsDrift(exports, deployed, lastCommit) {
 }
 
 /**
+ * Is the deployed backend exactly the one this source builds? Every export
+ * must be deployed AND carry the source digest the build stamps into its
+ * labels (scripts/stamp-backend.mjs). Anything else — missing, unstamped,
+ * another digest — means the Hosting workflow must deploy Functions before
+ * it may publish. Deployed functions the source no longer exports are
+ * reported but do not force a deploy: firebase deploy would refuse to delete
+ * them non-interactively anyway, which is a job for a human.
+ */
+export function backendVerdict(exports, deployed, expectedDigest) {
+  const byName = new Map(deployed.map((f) => [f.name, f]));
+  const mismatched = [];
+  for (const { name } of exports) {
+    const fn = byName.get(name);
+    if (!fn) mismatched.push(`${name}: not deployed`);
+    else if (fn.labels?.source_digest !== expectedDigest) {
+      mismatched.push(`${name}: ${fn.labels?.source_digest ?? "unstamped"}`);
+    }
+  }
+  const exported = new Set(exports.map((e) => e.name));
+  const orphans = deployed.map((f) => f.name).filter((name) => !exported.has(name));
+  return { current: mismatched.length === 0, mismatched, orphans };
+}
+
+/**
  * Each expected grant is looked up in the policy its scope names:
  * `project` → policies.project, `serviceAccount` / `runService` →
  * policies[scope][resource]. Conditional bindings never satisfy an
@@ -111,6 +135,7 @@ export function countRequests(entries) {
 
 /** authorizeImageUpload must pair with completeImageUpload. Ratio with a floor, not equality. */
 export function pairingVerdict({ authorize, complete }) {
+  if (authorize === 0 && complete === 0) return { status: "WARN", reason: "NOT TESTED: no upload traffic in the window" };
   if (authorize >= 3 && complete === 0) {
     return { status: "FAIL", reason: "nothing is getting through: uploads are authorised and never completed" };
   }

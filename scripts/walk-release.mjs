@@ -127,6 +127,7 @@ async function visibleBefore(locator, errorLocator, what, timeout) {
 /** Click the remove control on the first gallery item and wait for the count to drop. */
 async function removeFirstImage() {
   const before = await galleryItems().count();
+  await galleryItems().first().locator('.gallery-more > summary').click();
   await galleryItems().first().locator("[data-gallery-remove]").click();
   await expect(galleryItems()).toHaveCount(before - 1, { timeout: 20_000 });
   await expect(page.locator("#gallery-status")).toBeHidden();

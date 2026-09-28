@@ -1,0 +1,1829 @@
+/* THE PROFILE EDITOR'S STYLESHEET, nested under `.profile-editor`.
+   This was ProfileForm.astro's scoped <style> until 2026-09-28; it moved out
+   so the editor's components (src/components/profile/*) and the styleguide's
+   sample editor share it. For one day it was `@scope (.profile-editor)`,
+   which Safari before 17.4 and Firefox before 128 drop WHOLESALE — every
+   tab panel showed at once there. Plain CSS nesting instead: the same
+   containment, lowered to flat selectors by the build, and every rule is
+   served at (0,1,0) more than it reads — about what Astro's scope attribute
+   used to add. Rules that must NOT reach a child component say so with
+   `:not(tag-selector *)`. */
+.profile-editor {
+
+  .loading-state {
+    margin-top: 3rem;
+    color: var(--color-muted);
+    font-size: var(--fs-90);
+  }
+
+  .loading-state.is-failed {
+    color: var(--color-dark, #111);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.9rem;
+  }
+
+  .verify-banner {
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto clamp(1.5rem, 3vw, 2.5rem);
+    padding: 0.75rem 1rem;
+    background: #fffbeb;
+    border: 1.5px solid #f59e0b;
+    border-radius: var(--radius-sm);
+    box-sizing: border-box;
+
+    @media (--bp-desktop) {
+      padding: 0.75rem 1rem;
+    }
+  }
+
+  /* The quiet sibling of the amber banner: same box, the page's own colours —
+     a hidden profile is a state the member chose, not a problem to fix. */
+  .hidden-banner {
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto clamp(1.5rem, 3vw, 2.5rem);
+    padding: 0.75rem 1rem;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    box-sizing: border-box;
+  }
+
+  .hidden-banner-text {
+    margin: 0;
+    font-size: var(--fs-88);
+    color: var(--color-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .verify-banner-text {
+    margin: 0;
+    font-size: var(--fs-88);
+    color: #92400e;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-resend-verify {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    font-size: var(--fs-88);
+    font-weight: 600;
+    color: #92400e;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .btn-resend-verify:hover {
+    color: #78350f;
+  }
+
+  .verify-banner-sent {
+    margin: 0.4rem 0 0;
+    font-size: var(--fs-82);
+    color: #65a30d;
+  }
+
+  .profile-form {
+    display: none;
+    grid-auto-rows: min-content;
+    gap: 2rem;
+    width: 100%;
+    max-width: 560px;
+    margin: clamp(2rem, 4vw, 4rem) auto;
+    padding: 0 15px;
+    box-sizing: border-box;
+    /* clip, not hidden: hidden makes the form a scroll container, and the
+       sticky footer would stick to that instead of the page. The margin
+       (2026-09-28) lets a focus ring — 2px at 2px offset on a chip or a
+       toolbar button at the column's edge — and the drop zone's dashed
+       border at -4px show whole on desktop, where the form has no padding
+       to draw them in. Browsers without overflow-clip-margin clip at the
+       border box as before. */
+    overflow-x: clip;
+    overflow-clip-margin: 4px;
+    /* The i's hover box is absolute, and without a positioned ancestor its
+       containing block was the viewport, OUTSIDE .page-wrap's scrolling: it
+       stayed put on screen while its field scrolled away (2026-09-27, Josh:
+       "hints not sticky on iphone", where focusing a field scrolls it above
+       the keyboard). The form moves with the page, so the box does too. */
+    position: relative;
+
+    @media (--bp-desktop) {
+      padding: 0;
+      gap: 2.5rem;
+    }
+  }
+
+  .profile-form.is-loaded {
+    display: grid;
+  }
+
+  /* THE PREVIEW TAB TAKES THE PAGE'S MEASURE (2026-09-25, Josh: the preview
+     "doesn't match the sizes of the real member profile page"). The form is a
+     560px column, and the preview used to be rendered inside it — so the
+     member page, which the real site lays straight into <main> at 870px,
+     came out at 560: every picture, the bio's measure and the head's grid
+     drawn at two-thirds of its real width. On this tab the form lets go of
+     its cap and fills <main>'s content box, which is exactly the box the real
+     page gets. Everything that is not the rendering (the tabs, the deletion
+     banner) keeps the column's width and centre, so the tab row does not
+     jump when Preview is chosen. 530 on a phone because the form's own 15px
+     padding came out of the 560 there; the desktop form has none. */
+  .profile-form.is-previewing {
+    max-width: none;
+  }
+
+  .profile-form.is-previewing > :not(.form-section) {
+    justify-self: center;
+    width: 100%;
+    max-width: 530px;
+
+    @media (--bp-desktop) {
+      max-width: 560px;
+    }
+  }
+
+  /* display: contents keeps every field a direct grid item of the form, so
+     the section wrappers add tab navigation without changing the layout. */
+  .form-section {
+    display: none;
+  }
+
+  .form-section.is-active {
+    display: contents;
+  }
+
+  .avatar-wrap {
+    position: relative;
+    display: grid;
+    grid-template-columns: min-content 1fr 1fr;
+    justify-items: start;
+    align-items: center;
+    gap: 25px;
+    flex-shrink: 0;
+  }
+
+  .avatar-img,
+  .avatar-placeholder {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  /* default: show placeholder, hide image */
+  .avatar-img {
+    display: none;
+  }
+
+  /* has-image: show image, hide placeholder */
+  .avatar-wrap.has-image .avatar-img {
+    display: block;
+  }
+  .avatar-wrap.has-image .avatar-placeholder {
+    display: none;
+  }
+
+  .avatar-placeholder {
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--fs-180);
+    color: var(--color-text-placeholder);
+    border: 1.5px solid #e5e5e5;
+  }
+  .choose-img {
+    width: fit-content;
+  }
+
+  /* The video link field (2026-09-23): a label, the field and its button on
+     one line, then its status and its note — the gallery's other controls'
+     spacing, one step below the drop zone. */
+  .gallery-video {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-top: 0.75rem;
+  }
+  .gallery-video[hidden] {
+    display: none;
+  }
+  .gallery-video-label {
+    font-size: var(--fs-85);
+    font-weight: 600;
+  }
+  .gallery-video-row {
+    display: flex;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+  .gallery-video-row .input {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .gallery-video-row .btn-solid,
+  .gallery-video-row .btn-link {
+    flex: none;
+  }
+  .gallery-video-submit {
+    padding: 0.5rem 1.1rem;
+    font-size: var(--fs-85);
+  }
+  .gallery-video-row .btn-solid:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+
+  .input-prefix-wrap {
+    display: flex;
+    align-items: center;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    transition: border-color 0.15s;
+    min-width: 0;
+  }
+  .input-prefix-wrap:focus-within {
+    border-color: #111;
+  }
+  /* The frame wears the keyboard ring for the input inside it (the input's
+     own border is off, below), like .optchip does for its checkbox. */
+  .input-prefix-wrap:has(.input:focus-visible) {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
+
+  .input-prefix {
+    padding: 8px 10px;
+    background: #f5f5f5;
+    color: var(--color-muted);
+    font-size: var(--fs-88);
+    border-right: 1.5px solid var(--color-border);
+    white-space: nowrap;
+  }
+
+  .input-prefixed {
+    border: none;
+    border-radius: 0;
+    flex: 1;
+    min-width: 0;
+  }
+  /* Both focus states, at a specificity above global.css's
+     `.input:focus-visible` (which draws a 2px border): inside the frame that
+     border would appear on Tab and shift the value 2px. The frame shows the
+     focus instead (above). */
+  .input-prefixed:focus,
+  .input-prefixed:focus-visible {
+    border: none;
+  }
+
+  /* ── Social links ─────────────────────────────────────── */
+  /* A stack of the same prefixed input the single field used, each with its
+     own remove control. No border around a row and no per-row label: a link is
+     one value, so a bordered block would be a box drawn around a single input. */
+  .social-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 0.75rem;
+  }
+
+  .social-editor:empty {
+    display: none;
+  }
+
+  .social-row {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .social-row .input-prefix-wrap {
+    flex: 1 1 auto;
+  }
+
+  /* An outline circle, in the flow rather than pinned to a corner — there is
+     no block here for it to sit in. */
+  .social-row-remove {
+    flex: 0 0 auto;
+    align-self: center;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    color: var(--color-muted);
+    border: 1.5px solid var(--color-border);
+    border-radius: 50%;
+    font-size: var(--fs-70);
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .social-row-remove:hover {
+    color: #fff;
+    background: var(--color-error);
+    border-color: var(--color-error);
+  }
+
+  /* Was a grid of bare 90px thumbs. Each image now carries a caption and a
+     description, which no square that small can hold — so an
+     entry is a row: thumb on the left, its words on the right. */
+  .gallery-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    margin-bottom: 0.5rem;
+  }
+
+  /* ONE WORK PER BAND (2026-09-26, Josh: "add more spacing or group the
+     detail drop down to image relationship better"). At a 14px gap with
+     nothing between them, a row's toolbar and Image Details line sat as close to
+     the NEXT picture as to their own, so a fold could be read as belonging
+     to either. Now two neighbouring rows are parted by the list's hairline
+     with 24px of air on each side: everything between two lines is one
+     work. A project block needs no line, since its frame already parts it. */
+  .gallery-item + .gallery-item {
+    padding-top: 24px;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .gallery-editor:empty {
+    display: none;
+  }
+
+  .gallery-item {
+    display: grid;
+    /* The picture with its toolbar under it, then the words (2026-09-26). A
+       pending upload has no toolbar; its thumb is the column's only child. */
+    grid-template-columns: 120px minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+  }
+
+  .gallery-media {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .gallery-row-tools {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  /* ── The toolbar (2026-09-26; restyled the same day, Josh: "the design
+     doesn't match the rest of the site") ──
+     Drawn in the site's own control language, the EN/DE switch's: joined
+     segments on white, a 1.5px hairline in --color-border, the small radius,
+     the muted ink at rest and the dark hairline on hover. No tint, no shadow,
+     no pill: every other control in the form is flat and square-cornered.
+     Disabled at an edge rather than removed, so the strip never changes
+     length. */
+  .gallery-toolbar {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+
+  .gallery-tbtn {
+    position: relative;
+    display: grid;
+    place-items: center;
+    height: 28px;
+    min-width: 0;
+    padding: 0;
+    background: white;
+    color: var(--color-muted);
+    border: 1.5px solid var(--color-border);
+    border-radius: 0;
+    cursor: pointer;
+    transition:
+      color 0.15s,
+      border-color 0.15s;
+  }
+
+  /* Shared walls: each segment after the first overlaps the one before by
+     its border, so the joins are one hairline wide, and a hovered segment
+     is raised so its dark wall is drawn whole. */
+  .gallery-tbtn + .gallery-tbtn {
+    margin-left: -1.5px;
+  }
+
+  .gallery-tbtn:first-child {
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  }
+
+  .gallery-tbtn:last-child {
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  .gallery-tbtn:hover:not(:disabled),
+  .gallery-tbtn:focus-visible {
+    z-index: 1;
+    color: var(--color-dark);
+    border-color: var(--color-dark);
+  }
+
+  .gallery-tbtn:focus-visible,
+  .gallery-tpill:focus-visible,
+  .gallery-project-select:focus-visible {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 1px;
+  }
+
+  /* Delete goes red on hover, as the social rows' remove does; replace stays
+     dark, because it keeps the work. */
+  .gallery-tbtn--danger:hover:not(:disabled) {
+    color: var(--color-error);
+    border-color: var(--color-error);
+  }
+
+  .gallery-tbtn:disabled {
+    color: var(--color-border);
+    cursor: default;
+  }
+
+  .gallery-icon {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* A text control beside the toolbar, in the same dress: "Use automatic
+     thumbnail", "Delete project". */
+  .gallery-tpill {
+    min-height: 28px;
+    padding: 4px 10px;
+    background: white;
+    color: var(--color-muted);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-size: var(--fs-75);
+    line-height: 1.25;
+    cursor: pointer;
+    transition:
+      color 0.15s,
+      border-color 0.15s;
+  }
+
+  .gallery-tpill:hover:not(:disabled) {
+    color: var(--color-dark);
+    border-color: var(--color-dark);
+  }
+
+  .gallery-tpill--danger:hover:not(:disabled) {
+    color: var(--color-error);
+    border-color: var(--color-error);
+  }
+
+  .gallery-tpill:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  /* The project header's pair: the same strip, two buttons wide. */
+  .gallery-toolbar--head {
+    flex: none;
+    width: 64px;
+  }
+
+  .gallery-project-head .gallery-tpill {
+    flex: none;
+  }
+
+  .gallery-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  /* The folded row's summary (see the markup comment): desktop only. The
+     title is the page's own caption line: dark, one line, cut with an
+     ellipsis rather than wrapped. The chips are drawn exactly as the
+     profile page draws its tags (2026-09-26, Josh: "the image tags should
+     have the same styling as the profile tags"): bare `.tagchip`, outlined
+     and muted on the page's ground, 5px apart as in .mprof__vals. They were
+     the editor's picked state (.optchip--on, a black fill), which read as
+     buttons in a row that is only telling. */
+  .gallery-summary {
+    display: none;
+  }
+
+  @media (--bp-desktop) {
+    .gallery-summary:not([hidden]) {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 0;
+    }
+  }
+
+  .gallery-summary-title {
+    margin: 0;
+    color: var(--color-dark);
+    font-size: var(--fs-85);
+    line-height: 1.5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .gallery-summary-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .gallery-summary-title[hidden],
+  .gallery-summary-tags[hidden] {
+    display: none;
+  }
+
+  /* THE MODAL SWITCH — see the markup comment. A two-segment toggle at
+     .gallery-tool's own scale (same border weight, radius, muted resting
+     colour), because it is one more small control among the move buttons
+     below it, not a second set of tabs competing with .section-tab above the
+     whole form. Filled dark for the active half rather than an underline —
+     .section-tab's language reads right at tab width; at two letters wide an
+     underline would be nearly invisible, where a fill reads at a glance. */
+  .gallery-lang-switch {
+    display: flex;
+    width: fit-content;
+  }
+
+  .gallery-lang-btn {
+    padding: 3px 10px;
+    background: none;
+    border: 1.5px solid var(--color-border);
+    color: var(--color-muted);
+    font: inherit;
+    font-size: var(--fs-72);
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      color 0.15s,
+      border-color 0.15s;
+  }
+
+  .gallery-lang-btn + .gallery-lang-btn {
+    border-left: none;
+  }
+
+  .gallery-lang-btn:first-child {
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  }
+
+  .gallery-lang-btn:last-child {
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  .gallery-lang-btn:hover:not(.is-active) {
+    color: var(--color-dark);
+    border-color: var(--color-dark);
+  }
+
+  .gallery-lang-btn.is-active {
+    background: var(--color-dark);
+    color: var(--color-bg);
+    border-color: var(--color-dark);
+  }
+
+  .gallery-lang-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Compact by design: these sit three-deep inside a field that already has
+     its own label, so full-size inputs would read as the form restarting.
+     NOT the tag picker's own two fields (its find field and its add field,
+     TagSelector.astro): those are drawn alike by their own rules, and this
+     one reaching in made the add field a size larger than the find field
+     beside it (2026-09-09, Josh: the two should look the same). */
+  .gallery-fields .input:not(tag-selector *) {
+    font-size: var(--fs-85);
+  }
+
+  .gallery-fields .textarea {
+    min-height: 56px;
+  }
+
+  /* The fixed `https://` belongs to the field it sits against, so it takes the
+     row's compact size too. Without this it keeps the form's full type size and
+     reads a size larger than the value beside it. */
+  .gallery-fields .input-prefix {
+    font-size: var(--fs-85);
+  }
+
+  .gallery-thumb {
+    position: relative;
+    aspect-ratio: 1;
+  }
+
+  .gallery-thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--color-border);
+    box-sizing: border-box;
+  }
+
+  .gallery-thumb-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: var(--fs-80);
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .gallery-thumb-remove:hover {
+    background: var(--color-error);
+  }
+
+  /* The drop target. No border of its own until something is being dragged
+     over it — a permanently outlined box in the middle of a form reads as a
+     disabled field, and this one is only special for the two seconds a drag
+     lasts. */
+  .gallery-drop {
+    position: relative;
+    border: 1.5px dashed transparent;
+    border-radius: var(--radius-sm);
+    padding: 4px;
+    margin: -4px -4px 0.5rem;
+    transition: border-color 0.15s ease;
+  }
+
+  .gallery-drop.is-dragging {
+    border-color: var(--color-dark);
+  }
+
+  /* Only ever seen mid-drag, so it costs nothing at rest and does not compete
+     with the Add button for the same job. */
+  .gallery-drop-hint {
+    display: none;
+    margin-left: 10px;
+    font-size: var(--fs-85);
+    color: var(--color-muted);
+  }
+
+  .gallery-drop.is-dragging .gallery-drop-hint {
+    display: inline;
+  }
+
+  /* The cap is a fact about the gallery, not an error, so the button says so by
+     going quiet rather than by the form growing a message. */
+  .gallery-drop .choose-img[aria-disabled="true"],
+  .gallery-action[aria-disabled="true"],
+  .gallery-action:disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .gallery-queue {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .gallery-queue:not(:empty) {
+    margin-top: 14px;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Held apart from a committed row on purpose: this image is not in the
+     gallery yet, and an identical-looking row would claim it was. */
+  .gallery-task .gallery-thumb img {
+    opacity: 0.55;
+  }
+
+  .gallery-task-name {
+    margin: 0;
+    font-size: var(--fs-85);
+    color: var(--color-dark);
+    overflow-wrap: anywhere;
+  }
+
+  .gallery-task-state {
+    margin: 0;
+    font-size: var(--fs-80);
+    color: var(--color-muted);
+  }
+
+  .gallery-task.has-error .gallery-task-state {
+    color: var(--color-error);
+  }
+
+  .gallery-bar {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-border);
+    overflow: hidden;
+  }
+
+  .gallery-bar span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--color-dark);
+    transition: width 0.2s ease;
+  }
+
+  /* Progress is meaningless for a file that failed and for one still waiting
+     its turn, and an empty track sitting under the name looks like a stall. */
+  .gallery-task.has-error .gallery-bar,
+  .gallery-task.is-waiting .gallery-bar {
+    display: none;
+  }
+
+  /* THE SAME HEADING THE TAG GROUPS INSIDE IT ALREADY WEAR. TagSelector draws
+     DISCIPLINES / TOPICS / OTHER with .tag-group-summary, but those rules are
+     scoped under the `tag-selector` element selector and stop at its boundary,
+     so the fold AROUND the selector has to restate them here — one voice for
+     both levels of fold, rather than a second idiom stacked on the first.
+     No `display: contents` on the <details>: it segfaults iOS WebKit, see
+     documentation/20260831-webkit-details-display-contents-crash.md. */
+  .gallery-tags-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0 0.45rem;
+    border-bottom: 1px solid var(--color-border);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+  }
+
+  .gallery-tags-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .gallery-tags-summary:hover .gallery-tags-title {
+    color: var(--color-dark);
+  }
+
+  .gallery-tags-title {
+    color: var(--color-muted);
+    transition: color 0.15s;
+  }
+
+  /* Full muted ink, no opacity, like TagSelector's own group counts: at 0.6
+     the number came out under 2.5:1 against the paper. */
+  .gallery-tags-count {
+    font-size: var(--fs-68);
+    color: var(--color-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .gallery-tags-count:empty {
+    display: none;
+  }
+
+  .gallery-tags-chevron {
+    margin-left: auto;
+    width: 7px;
+    height: 7px;
+    border-right: 1px solid var(--color-muted);
+    border-bottom: 1px solid var(--color-muted);
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+    transform-origin: 60% 60%;
+  }
+
+  .gallery-tags[open] .gallery-tags-chevron {
+    transform: rotate(225deg);
+  }
+
+  /* On the summary rather than on the selector below it: the selector is a
+     child COMPONENT, so this block's scope attribute never lands on it and a
+     `.gallery-tags > tag-selector` rule here would match nothing. */
+  .gallery-tags[open] .gallery-tags-summary {
+    margin-bottom: 0.5rem;
+  }
+
+  /* THE ROW'S OWN FOLD — see the markup comment. Same heading voice as the
+     tag fold inside it, so the two levels read as one idiom. Its chevron has
+     its own class: `.gallery-details[open] .gallery-tags-chevron` would also
+     turn the nested tag fold's arrow, whatever that fold's own state. */
+  .gallery-details-summary {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0 0 0.45rem;
+    border-bottom: 1px solid var(--color-border);
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+  }
+
+  .gallery-details-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .gallery-details-title {
+    flex: none;
+    color: var(--color-muted);
+    transition: color 0.15s;
+  }
+
+  .gallery-details-summary:hover .gallery-details-title {
+    color: var(--color-dark);
+  }
+
+  .gallery-details-chevron {
+    flex: none;
+    align-self: center;
+    margin-left: auto;
+    width: 7px;
+    height: 7px;
+    border-right: 1px solid var(--color-muted);
+    border-bottom: 1px solid var(--color-muted);
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+    transform-origin: 60% 60%;
+  }
+
+  .gallery-details[open] .gallery-details-chevron {
+    transform: rotate(225deg);
+  }
+
+  .gallery-details[open] .gallery-details-summary {
+    margin-bottom: 0.5rem;
+  }
+
+  .gallery-details-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .gallery-tools {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .gallery-tool {
+    min-width: 26px;
+    height: 26px;
+    padding: 0 8px;
+    background: none;
+    color: var(--color-muted);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-78);
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .gallery-tool:hover:not(:disabled) {
+    color: var(--color-dark);
+    border-color: var(--color-dark);
+  }
+
+  /* The first and last rows keep their buttons rather than losing them: a
+     control that disappears at the edge of a list makes the list jump, and the
+     disabled state already says the same thing without moving anything. */
+  .gallery-tool:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  /* THE PROJECT DROPDOWN: a native select in the toolbar's dress, at its
+     width, with the site's own thin chevron drawn by the wrapper (a native
+     arrow would be the one heavy glyph in the row). No title of its own. */
+  .gallery-select-wrap {
+    position: relative;
+  }
+
+  .gallery-select-wrap[hidden] {
+    display: none;
+  }
+
+  .gallery-select-wrap::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 11px;
+    width: 6px;
+    height: 6px;
+    margin-top: -5px;
+    border-right: 1.5px solid var(--color-muted);
+    border-bottom: 1.5px solid var(--color-muted);
+    transform: rotate(45deg);
+    pointer-events: none;
+  }
+
+  .gallery-project-select {
+    appearance: none;
+    box-sizing: border-box;
+    width: 100%;
+    height: 32px;
+    min-width: 0;
+    padding: 0 26px 0 10px;
+    background: white;
+    color: var(--color-dark);
+    /* The form's .input, at the toolbar's scale. */
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-size: var(--fs-75);
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+
+  .gallery-project-select:hover,
+  .gallery-project-select:focus {
+    border-color: var(--color-dark);
+  }
+
+  /* ── Project blocks (2026-09-23) ─────────────────────── */
+  /* A frame inside the list, at the row's own gap, so the images inside read
+     as the same rows they were outside — only enclosed. Hairline and radius
+     from the inputs, not a card: this is a grouping in a form, not content. */
+  .gallery-project {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .gallery-project-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  /* The label voice (uppercase, tracked) so the header reads as a heading
+     over its rows and not as one more input. It WRAPS (2026-09-28): a name
+     like "Interdisziplinäre Wissenschaftskommunikation" is longer than a
+     phone's block, and an ellipsis took the half that said what it was.
+     `hyphens: auto` so German breaks at a syllable, not mid-word (the
+     language is <html lang>); `anywhere` remains the last resort for a
+     word no dictionary knows. */
+  .gallery-project-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    hyphens: auto;
+    color: var(--color-dark);
+  }
+
+  .gallery-project-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  /* Not the tag picker's fields — see .gallery-fields .input above. */
+  .gallery-project-fields .input:not(tag-selector *) {
+    font-size: var(--fs-85);
+    padding: 7px 10px;
+  }
+
+  .gallery-project-fields .textarea {
+    resize: vertical;
+    min-height: 2.6rem;
+  }
+
+  .gallery-project-fields .input-prefix {
+    font-size: var(--fs-85);
+  }
+
+  /* THE FIELD TITLES inside an image row or a project block (2026-09-24).
+     Sentence case and smaller than the form's own uppercase .label: these sit
+     inside a field that already has one, and a second row of capitals would
+     read as the form restarting. "optional" is said in grey beside the title
+     rather than left for the member to guess. */
+  .row-label {
+    margin: 0;
+    font-size: var(--fs-78);
+    font-weight: 600;
+    color: var(--color-dark);
+  }
+
+  .row-optional {
+    font-size: var(--fs-72);
+    color: var(--color-muted);
+  }
+
+  /* A title hugs the field it names, and the space goes between fields
+     instead — with one flat gap, a title sat as close to the field above it
+     as to its own. */
+  :is(.gallery-fields, .gallery-lang-pane, .gallery-project-fields, .gallery-project-affiliations)
+    > :is(.label-row, .row-label) {
+    margin-top: 4px;
+    margin-bottom: -3px;
+  }
+
+  .gallery-project-affiliations {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .gallery-project-affiliations .social-editor {
+    margin-bottom: 0;
+  }
+
+  .gallery-aff-add,
+  .gallery-project-add {
+    padding: 0.5rem 1rem;
+    font-size: var(--fs-80);
+  }
+
+  .gallery-project-add[aria-disabled="true"] {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  /* The switch leads, the fields fill, the ✕ trails — and on a narrow
+     screen the fields drop to their own line under the switch. */
+  .gallery-aff-row {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .gallery-aff-row .gallery-lang-switch {
+    flex: 0 0 auto;
+  }
+
+  .gallery-aff-row .social-row-remove {
+    align-self: flex-start;
+    margin-top: 2px;
+  }
+
+  .gallery-aff-fields {
+    flex: 1 1 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .gallery-aff-fields[hidden] {
+    display: none;
+  }
+
+  .gallery-aff-nomatch {
+    margin: 0;
+    color: var(--color-error);
+  }
+
+  /* The block's own rows, at the list's gap and with its dividers. */
+  .gallery-project-images {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* An empty block shows its note instead of rows (renderGallery). */
+  .gallery-project-images:empty {
+    display: none;
+  }
+
+  /* THREE BUTTONS OF ONE WEIGHT (2026-09-25). Images and video share the
+     solid outline and an equal share of the row; the project button is the
+     same size in a dashed outline with a ＋, because it adds a container,
+     not a work. On a phone the two works share the first line and the
+     project takes the second. */
+  .gallery-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  /* border-box, or the <label> ("Add images") comes out its padding wider
+     than the <button> beside it: they are the same class, not the same
+     element, and only the button gets the UA's border-box. */
+  .gallery-action {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    padding: 0.6rem 0.75rem;
+    font-size: var(--fs-85);
+    color: var(--color-dark);
+    border-color: var(--color-border);
+    text-align: center;
+  }
+
+  .gallery-action:hover {
+    border-color: var(--color-dark);
+    color: var(--color-dark);
+  }
+
+  .gallery-action.is-open {
+    border-color: var(--color-dark);
+  }
+
+  .gallery-action--project {
+    gap: 6px;
+    background: transparent;
+    border-style: dashed;
+    border-color: var(--color-muted);
+  }
+
+  .gallery-action-plus {
+    font-size: var(--fs-100);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  /* Names what the first image already IS. Not a control — pressing it would
+     imply the others could be chosen, and they are chosen by being moved. */
+  /* Which rows are videos: the play mark and the platform, top left, in the
+     cover label's dress so the two read as one family of labels. */
+  .gallery-video-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px 2px 2px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-65);
+    line-height: 1.4;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .gallery-video-badge .vscn-play {
+    --play-size: 1.1rem;
+    background: transparent;
+  }
+  .gallery-video-badge[hidden] {
+    display: none;
+  }
+  /* The picture's labels, bottom left, stacked when a video is the cover. */
+  .gallery-thumb-labels {
+    position: absolute;
+    bottom: 4px;
+    left: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    pointer-events: none;
+  }
+
+  .gallery-cover[hidden] {
+    display: none;
+  }
+
+  .gallery-cover {
+    padding: 2px 6px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-65);
+    line-height: 1.4;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  @media (--bp-mobile) {
+    /* On a phone the picture and its toolbar sit side by side, and the words
+       take the full width below them. */
+    .gallery-item {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .gallery-media {
+      display: grid;
+      grid-template-columns: minmax(0, 140px) 136px;
+      gap: 12px;
+      align-items: start;
+    }
+    .gallery-actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .gallery-action--project {
+      grid-column: 1 / -1;
+    }
+    .gallery-task .gallery-thumb {
+      max-width: 140px;
+    }
+    .gallery-project {
+      padding: 10px;
+    }
+  }
+
+  /* ── Section tabs ─────────────────────────────────────── */
+  /* Text tabs on a hairline, in the same uppercase voice as .label — the
+     boxed segmented control read as one more form control among many. */
+  .section-tabs {
+    display: flex;
+    gap: 1.75rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .section-tab {
+    padding: 0 0 0.6rem;
+    margin-bottom: -1px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    /* Family only, not the `font` shorthand: the size and weight are HEADING
+       in type.css, and a shorthand here would reset them at higher
+       specificity. */
+    font-family: inherit;
+    color: var(--color-muted);
+    cursor: pointer;
+    transition:
+      color 0.15s,
+      border-color 0.15s;
+  }
+
+  .section-tab:hover {
+    color: var(--color-dark);
+  }
+
+  .section-tab.is-active {
+    color: var(--color-dark);
+    border-bottom-color: var(--color-dark);
+  }
+
+  @media (--bp-mobile) {
+    .section-tabs {
+      justify-content: space-between;
+      gap: 1rem;
+    }
+  }
+
+  /* The preview tab is the one place in this form where air is the point: the
+     two renderings have to read as things being LOOKED at, not fields being
+     filled in.
+     THE GAP IS SMALL NOW, AND THE RULES DO THE PARTING (2026-09-02). It was
+     6rem, sized to separate two labelled blocks; the labels are gone and each
+     rendering is bounded by a hairline, so 6rem on top of that just opened a
+     hole between a page and the line that closes it. The profile page brings
+     its own 3rem/10rem of internal air (profile.css), which is the whole point
+     of showing it unmodified. */
+  .preview-section {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    padding-top: 2rem;
+    padding-bottom: 5rem;
+  }
+
+  /* FULL WIDTH ON A PHONE, LIKE THE PAGE (2026-09-08, Josh: "preview gallery
+     on mobile should be full width as the gallery"). The real page sits
+     straight in <main>, whose 15px gutters are the only inset it has. The
+     preview sits inside .profile-form, which adds its own 15px on mobile for
+     the sake of the form fields — so the rendering was inset twice, and every
+     picture came out 30px narrower than the member will actually see it. The
+     negative margin hands those 15px back; .profile-form's overflow-x: clip
+     clips at the padding edge, which is exactly where this reaches. Desktop
+     needs nothing: .profile-form drops its padding there. */
+  @media (--bp-mobile) {
+    .preview-section {
+      margin-inline: -15px;
+    }
+  }
+
+  /* The card's label sits close over it and well clear of the page's
+     closing rule above, so it reads as the card's name, not the page's
+     last line. */
+  .preview-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .preview-card-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .preview-card-head p {
+    margin: 0;
+  }
+
+  /* The closing line under the directory card — same hairline
+     ProfileViewPreview draws above and below the page, so the tab reads as one
+     stack of rendered things rather than a page in a frame and a loose card. */
+  .preview-rule {
+    height: 0;
+    margin: 0;
+    border: 0;
+    border-top: 1px solid var(--color-border);
+  }
+
+  /* A REVERSED STICKY: pinned to the viewport bottom while the tab is longer
+     than the screen, resting at the END OF THE TAB'S OWN CONTENT when it is
+     not (2026-09-10, Josh: "save button should also attach to the bottom of
+     the profile tabs if it is shorter than the viewport"). That is what
+     `sticky` already means, so this is one property rather than a mechanism.
+     It was `fixed` between 2026-09-04 and now — Josh, "save changes at bottom
+     always" — which nailed Save to the viewport bottom on every tab, including
+     short ones (Account, a thin gallery) where it then floated over empty
+     space with the last field far above it. Sticky keeps it in
+     .profile-form's centered column, so unlike `fixed` it needs no copy of
+     that column's width and padding: inheriting them is the point.
+     Consequences of being in flow again, both intended: it unpins at
+     .profile-form's own bottom edge, so at full scroll it comes to rest above
+     the form's bottom margin rather than at the viewport's edge; and while
+     pinned on mobile it shares the bottom line with the site footer, which
+     holds the opposite corner (see SiteFooter.astro).
+     No bar behind it — just the button, so the container must not eat clicks
+     on the content it hovers over.
+     THE NEGATIVE BOTTOM (2026-09-23, Josh: "save button at bottom"). A sticky
+     box pins against the scroll container's PADDING edge, not its visible
+     edge, and .page-wrap carries 80px of bottom padding for the fixed site
+     footer — so `bottom: 0` parked Save ~100px up the screen, over the
+     portfolio hint, from the day it became sticky. Nobody saw it: /profile
+     needs a sign-in and this was only ever checked as compiled CSS.
+     Cancelling the padding puts it where every comment here assumed it was. */
+  .form-footer {
+    position: sticky;
+    bottom: calc(-1 * var(--page-wrap-pad-bottom, 0px));
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    pointer-events: none;
+    box-sizing: border-box;
+    padding: 0 0 1.25rem;
+
+    /* LOWER ON A PHONE (2026-09-11, Josh: "put save bar lower on mobile").
+       20px of lift is right on a desktop, where there is room below the fold
+       to spare; on a phone it pushed Save up into the last field it was meant
+       to sit under, and put it a clear step above the site footer's own
+       bottom: 20px in the opposite corner — two bottom fixtures on two
+       different lines. 8px drops it under the content and onto roughly the
+       footer's line, which is what makes the bottom edge read as one strip
+       rather than a staircase.
+       FLUSH RIGHT, LIKE DESKTOP (2026-09-24, Josh: "make button on mobile
+       align right as well"). For one day it was inset 3rem to clear the
+       language toggle, which then held this corner. The toggle moved to the
+       bottom-left on mobile instead (Navbar.astro) and the footer links went
+       into the flow (SiteFooter.astro), so Save has the right corner alone. */
+    @media (--bp-mobile) {
+      padding-bottom: 0.5rem;
+    }
+  }
+
+  .form-footer > * {
+    pointer-events: auto;
+  }
+
+  /* Preview needs no Save: nothing on that tab can be edited. */
+  .profile-form.is-previewing .form-footer {
+    display: none;
+  }
+
+  /* The save/error message floats next to the button, so it carries its own
+     surface to stay legible over whatever it happens to hover above. */
+  .form-footer .msg-ok,
+  .form-footer .msg-err {
+    margin: 0;
+    padding: 0.45rem 0.9rem;
+    background: var(--color-bg);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  .profile-save-button {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  }
+
+  /*
+   * SAVING HAS TO LOOK LIKE SAVING.
+   *
+   * The button did nothing at all while a save was in flight, and a save is not
+   * one round trip: both profile documents, then the image records, then the
+   * active flag, then the rebuild dispatch. On anything slower than an office
+   * connection the member pressed a button that then sat there unchanged for
+   * several seconds, which reads as "nothing happened" and gets pressed again.
+   *
+   * It stays BLACK rather than taking .btn-solid:disabled's grey. Grey says
+   * "you cannot press this" — true, and not the news. The news is that it is
+   * working, and the ring is what says so.
+   */
+  .profile-save-button.is-saving:disabled {
+    background: var(--color-dark);
+    cursor: progress;
+  }
+
+  .profile-save-button.is-saving::before {
+    content: "";
+    width: 0.9em;
+    height: 0.9em;
+    margin-right: 0.6em;
+    border: 2px solid rgb(255 255 255 / 0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    /* Named for this component on purpose: @keyframes are GLOBAL, so a bare
+       `spin` would collide with the next one anybody writes. Declared at the
+       end of this file, outside the nesting: an @keyframes inside a style
+       rule is invalid. */
+    animation: profile-save-spin 0.7s linear infinite;
+  }
+
+  /* Slowed rather than stopped: this is a progress indicator, and a frozen one
+     would take back the very thing it was added to say. */
+  @media (prefers-reduced-motion: reduce) {
+    .profile-save-button.is-saving::before {
+      animation-duration: 2.4s;
+    }
+  }
+
+  /*
+   * `hidden` ALONE DOES NOT HIDE ANYTHING HERE, and that is not a detail.
+   *
+   * The UA sheet's `[hidden] { display: none }` loses to ANY author rule that
+   * sets `display` — and `.btn-outline` sets `display: inline-flex`. So the
+   * admin link carried the attribute, was never un-hidden by the claim check,
+   * and was on screen for every signed-in member anyway (2026-09-03, Josh:
+   * "Admin console only shows up for people with permission"). Harmless in
+   * itself — /admin gates itself — but it advertised a door nobody could open.
+   *
+   * The same silence was defeating the upload queue's row controls, which is
+   * where it actually cost something: `.gallery-thumb-remove` and
+   * `.gallery-tools` both set `display: flex`, so every row showed its Cancel
+   * AND its Retry/Dismiss pair at once, on rows that had nothing to retry.
+   * (VisualNeedsSelector already knew — it ships its own
+   * `visual-needs-selector[hidden]` rule for exactly this reason.)
+   *
+   * The nesting lifts this to (0,2,0) and `!important` settles the ties with
+   * the component's own classes, so from here `hidden` means hidden. Same
+   * trap, same fix as `.ccard--preview [hidden]` in communityCard.css.
+   */
+  [hidden] {
+    display: none !important;
+  }
+
+  /*
+   * Full-strength ink and border instead of the muted ghost it used to share
+   * with the admin link. It stays an outline — the filled black is Save's, and
+   * two black buttons on one screen is two primary actions.
+   *
+   * The weight is all that survives of 2026-09-03's promotion: the button was
+   * also moved to the head of the tab then and moved back to its foot on
+   * 2026-09-04. See the markup for why the two decisions are not in conflict.
+   */
+  .btn-logout-strong {
+    align-self: start;
+    padding: 0.75rem 1.75rem;
+    background: var(--color-bg);
+    color: var(--color-dark);
+    border: 1.5px solid var(--color-dark);
+    border-radius: var(--radius-sm);
+    font-family: "Archivo", sans-serif;
+    font-size: var(--fs-95);
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .btn-logout-strong:hover {
+    background: var(--color-dark);
+    color: var(--color-bg);
+  }
+
+  /* A door to somewhere else rather than an account action, so it keeps the
+     quiet outline even though it now leads the tab — see the markup. Shrunk to
+     its own width, or a grid item would stretch it across the column and make
+     the quietest thing on the tab the widest. */
+  .account-quiet {
+    align-self: start;
+    margin-bottom: 2rem;
+  }
+
+  .account-disclosure {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .account-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.25rem;
+  }
+
+  .deletion-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--color-dark);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+  }
+
+  /* The pair — see the markup. `display: contents` is deliberately NOT used:
+     the two blocks have to be siblings in a box that can carry a gap, and the
+     tab is a grid whose gap is sized for fields, not for two adjacent links. */
+  .account-doors {
+    display: grid;
+    gap: 0.6rem;
+    margin-bottom: 2rem;
+  }
+
+  .account-block {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .danger-text {
+    font-size: var(--fs-88);
+    color: var(--color-muted);
+    margin: 0 0 1rem;
+    line-height: 1.5;
+  }
+
+  .danger-label {
+    display: block;
+    font-size: var(--fs-88);
+    color: var(--color-muted);
+    margin: 0 0 0.35rem;
+  }
+
+  /* The address is quoted back so it can be read off rather than recalled.
+    Set apart from the prose around it and selectable, because getting it
+    exactly right is the whole point and copying it is a legitimate way to. */
+  .danger-target {
+    display: inline-block;
+    max-width: 100%;
+    padding: 0.3rem 0.55rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-88);
+    font-weight: 700;
+    color: var(--color-dark);
+    margin: 0 0 0.5rem;
+    word-break: break-all;
+  }
+
+  .danger-text-spaced {
+    margin-top: 1.5rem;
+  }
+
+  /* SMALLER, AND ON ONE LINE WITH THE CANCEL LINK (2026-09-04, Josh: "smaller
+     aligned"). The pair used to be a 1.5rem-apart Cancel and a button padded
+     like a primary action, which made the red the largest object on the tab —
+     shouting at a member who has already typed their own address out to be
+     let through. It is the same shape as .account-actions above it now (the
+     email change's Cancel/Save pair), which is the point: the two forms do the
+     same kind of work and should not look like different rooms.
+     Centre, not baseline: the button's own padding is what sets its height,
+     and a baseline would hang the bare link off the button's text rather than
+     lining the two controls up. */
+  .danger-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.25rem;
+  }
+
+  /* The red, kept exactly where it is worth something: on the one control
+     that actually destroys the account. What shrank is its SIZE, not its
+     colour — see .danger-actions. Deliberately SMALLER than the email form's
+     .btn-solid confirm rather than its equal (31px tall against 38, measured):
+     the two forms are twins as far as the doors that open them (see
+     .account-doors), but a member who has already typed their own address into
+     a box does not need the button that follows to be the biggest object on
+     the screen. */
+  .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.45rem 1rem;
+    background: var(--color-error);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font: inherit;
+    font-size: var(--fs-80);
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  /* Derived from the token, not a second red: --color-error darkened on
+     2026-09-28 and the old fixed hover (#b91c1c) became indistinguishable
+     from it. A fifth of black keeps the hover a visible step darker
+     whatever the token is set to. */
+  .btn-danger:hover {
+    background: color-mix(in srgb, var(--color-error), black 20%);
+  }
+
+  .btn-danger:disabled {
+    background: var(--color-muted);
+    cursor: not-allowed;
+  }
+
+  .field-open-to {
+    border: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .field-open-to legend {
+    margin-bottom: 0.5rem;
+  }
+
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: var(--fs-95);
+    color: #333;
+    cursor: pointer;
+  }
+
+  .checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-dark);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .target-audience-field {
+    border: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+
+  .target-audience-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  /* Languages and Primary audience are `.optchip` (global.css) like every other
+     multi-select on this form. They used to be the only two that drew a real
+     checkbox inside the chip; the fill says "selected" for the other three, so
+     it says it here too and all five finally match. The input itself is still
+     in the DOM and still focusable — `.optchip` clips it rather than hiding
+     it — so the keyboard and screen readers are unaffected. */
+
+  @media (max-width: 520px) {
+    .avatar-wrap {
+      grid-template-columns: min-content 1fr;
+    }
+
+    .upload-status {
+      grid-column: 1 / -1;
+    }
+  }
+
+  /* ── The release pass (2026-09-28) ───────────────────────── */
+  /* NOTHING WIDER THAN THE COLUMN. The form is a one-column grid whose track
+     is `minmax(0, 1fr)`, and every box that holds something unbreakable (a
+     long URL, a tag row, the two-up media grid) is min-width: 0, so a phone
+     never gets a horizontal scroll from the editor. */
+  .profile-form {
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
+  }
+
+  .profile-form :is(.field, .gallery-project, .gallery-media, .gallery-item, .section-tabs) {
+    min-width: 0;
+  }
+
+  /* The tabs wrap rather than overflow, and each is a 44px target. */
+  .section-tabs {
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .section-tab {
+    min-height: 44px;
+  }
+
+  /* The draft-recovery notice editorDraft.ts inserts at the top of the form. */
+  .editor-recovery {
+    border: 1px solid var(--color-border);
+    padding: 1rem;
+  }
+
+  .editor-recovery button {
+    margin: 0.4rem;
+  }
+
+  /* The per-row toolbar folds behind "Image actions" (WorkEditor.astro); the
+     summary is a 32px target. */
+  .gallery-more {
+    min-width: 0;
+  }
+
+  .gallery-more > summary {
+    cursor: pointer;
+    min-height: 32px;
+    padding: 0.5rem 0;
+  }
+
+  /* The fold chevrons are rotated squares; without a minimum they were the
+     first thing a tight row squeezed to nothing. */
+  .tag-group-chevron,
+  .gallery-details-chevron,
+  .gallery-tags-chevron {
+    margin-inline-end: 3px;
+    flex-shrink: 0;
+  }
+
+  @media (--bp-mobile) {
+    /* The picture and its toolbar split the width evenly on a phone. */
+    .gallery-media {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .gallery-project-head {
+      flex-wrap: wrap;
+    }
+
+    .gallery-project-name {
+      display: block;
+      min-width: 0;
+    }
+
+    /* The folded row's title and tags show on a phone too, stacked. */
+    .gallery-summary:not([hidden]) {
+      display: block;
+    }
+  }
+
+  /* BORDER-BOX FOR THE EDITOR'S OWN BOXES. global.css has no universal reset,
+     and the editor's controls were sized as if there were one (a 28px toolbar
+     button with a 1.5px border came out 31px). NOT the Preview tab's
+     contents: `.preview-section` holds the REAL member page and the REAL
+     directory card, whose geometry is written for content-box (see the
+     .ccard__frame note in communityCard.css), and a reset reaching them would
+     make the preview lie about the page. `:where()` keeps this at (0,1,0),
+     so any component rule that sets box-sizing itself still wins. */
+  :where(:not(.preview-section *)),
+  :where(:not(.preview-section *))::before,
+  :where(:not(.preview-section *))::after {
+    box-sizing: border-box;
+  }
+}
+
+/* At the top level: an @keyframes inside a style rule is invalid (see
+   .profile-save-button.is-saving::before). */
+@keyframes profile-save-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}

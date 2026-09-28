@@ -1,3 +1,4 @@
+import { backendLabels } from "./releaseStamp";
 import * as functionsV1 from "firebase-functions/v1";
 import { logger } from "firebase-functions/v2";
 import { Timestamp } from "firebase-admin/firestore";
@@ -14,7 +15,7 @@ import { dispatchRebuild } from "./rebuild";
  * thirty minutes) and then reports what the person actually did. Best-effort
  * end to end: a failed write is logged and the account creation is untouched.
  */
-export const onAuthUserCreated = functionsV1.auth.user().onCreate(async (user) => {
+export const onAuthUserCreated = functionsV1.runWith({ labels: backendLabels }).auth.user().onCreate(async (user) => {
   try {
     await queueSignup(user.uid, user.email, new Date(user.metadata.creationTime ?? Date.now()));
     logger.info("Signup queued for the admin digest", { uid: user.uid });
@@ -37,7 +38,7 @@ export const onAuthUserCreated = functionsV1.auth.user().onCreate(async (user) =
  * dispatch, and the secret binding a v1 function needs to reach it.
  */
 export const onAuthUserDeleted = functionsV1
-  .runWith({ timeoutSeconds: 540, secrets: ["GITHUB_REBUILD_TOKEN"] })
+  .runWith({ labels: backendLabels, timeoutSeconds: 540, secrets: ["GITHUB_REBUILD_TOKEN"] })
   .auth.user()
   .onDelete(async (user) => {
     const existing = await db.doc(`deletions/${user.uid}`).get();

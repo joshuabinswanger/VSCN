@@ -30,6 +30,7 @@ export async function queueMemberRebuild(uid: string): Promise<void> {
   const queueRef = db.doc("rebuildQueue/site");
   await db.runTransaction(async (tx) => {
     const state = await tx.get(stateRef);
+    const queue = await tx.get(queueRef);
     const now = Date.now();
     const profile = await tx.get(db.doc(`publicProfiles/${uid}`));
     // Fingerprint what the SITE would show, not what the document holds. The
@@ -54,9 +55,17 @@ export async function queueMemberRebuild(uid: string): Promise<void> {
       .filter((d) => d.exists)
       .map((d) => ({ id: d.id, data: d.data() as Record<string, unknown> }))
       .filter((d) => d.data.ownerUid === uid), projects.map((d) => ({ id: d.id, data: d.data() })));
-    tx.set(stateRef, { checkedAt: Timestamp.fromMillis(now), fingerprint });
-    if (fingerprint !== state.data()?.fingerprint) {
-      tx.set(queueRef, { dirtyAt: Timestamp.fromMillis(now), revision: randomUUID() }, { merge: true });
+    tx.set(stateRef, { checkedAt: Timestamp.fromMillis(now), fingerprint }, { merge: true });
+    if (fingerprint === state.data()?.fingerprint) {
+      // A member whose last change predates generations (2026-09-28) has
+      // nothing unpublished — the fingerprint says the site already shows it —
+      // so they start at 0, which getPublicationStatus reads as published.
+      // Without this, every unchanged save reported "unknown" indefinitely.
+      if (typeof state.data()?.generation !== "number") tx.set(stateRef, { generation: 0 }, { merge: true });
+    } else {
+      const generation = (queue.data()?.generation ?? 0) + 1;
+      tx.set(stateRef, { generation }, { merge: true });
+      tx.set(queueRef, { generation, dirtyAt: Timestamp.fromMillis(now), revision: randomUUID() }, { merge: true });
     }
   });
 }

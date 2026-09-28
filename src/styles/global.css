@@ -21,9 +21,10 @@
   --color-dark: #000000;
   --color-bg: #fcfbfa;
   --color-border: #e0e0e0;
-  --color-muted: #888;
-  --color-error: #d94f4f;
-  --color-success: #2a9d5c;
+  --color-muted: #686868;
+  --color-text-placeholder: #707070;
+  --color-error: #b83232;
+  --color-success: #217a47;
   --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 10px;
@@ -41,6 +42,9 @@
      size (2026-09-28, Josh: "also they are too big"). */
   --pager-chev-size: 0.38rem;
   --pager-chev-stroke: 1.25px;
+  /* The i beside a label / inside a field (.infotip): its hit box. 24px is
+     the smallest target a thumb reliably hits; the glyph inside stays small. */
+  --infotip-size: 24px;
   /* The page's shared measure. The brand ticker, the navbar and <main> all
      size to it, which is what keeps the giant VSCN title, the nav links and
      the content on the same two vertical edges. */
@@ -340,9 +344,14 @@ a:hover {
   display: inline-grid;
   flex: none;
   place-items: center;
-  width: 1.4rem;
-  height: 1.4rem;
-  margin: -0.3rem -0.25rem;
+  /* 24 × 24 (2026-09-28): the smallest target a thumb reliably hits. It was
+     1.4rem (17–18px). The footprint it takes in the label row is unchanged —
+     0.8rem tall, 0.9rem wide, as before — because the negative margins hand
+     back exactly what the box grew by. --infotip-size is in the token table
+     because the fields the i sits in pad for it. */
+  width: var(--infotip-size);
+  height: var(--infotip-size);
+  margin: calc((0.8rem - var(--infotip-size)) / 2) calc((0.9rem - var(--infotip-size)) / 2);
   padding: 0;
   border: 0;
   border-radius: var(--radius-sm);
@@ -385,8 +394,10 @@ a:hover {
   transform: none;
 }
 
+/* Room for the whole 24px target plus its inset, so typed text never runs
+   under the i. */
 .infotip-field > .input {
-  padding-right: 2rem;
+  padding-right: calc(0.35rem + var(--infotip-size) + 4px);
 }
 
 /* In an https:// frame the i is the frame's last cell, full height and on the
@@ -394,6 +405,7 @@ a:hover {
 .input-prefix-wrap > .infotip {
   align-self: stretch;
   width: auto;
+  min-width: var(--infotip-size);
   height: auto;
   margin: 0;
   padding: 0 0.6rem 0 0.2rem;
@@ -522,8 +534,19 @@ a:hover {
   outline-offset: 2px;
 }
 .input::placeholder {
-  color: #bbb;
+  color: var(--color-text-placeholder);
 }
+.input[aria-invalid="true"] { border-color: var(--color-error); }
+.ui-dialog {
+  max-width: min(32rem, calc(100vw - 2rem));
+  padding: 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-dark);
+}
+.ui-dialog::backdrop { background: rgb(0 0 0 / 35%); }
+.ui-dialog form { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
 .textarea {
   resize: vertical;
   min-height: 80px;
@@ -633,6 +656,33 @@ a:hover {
   outline-offset: 2px;
 }
 
+/* A FILE PICKER BEHIND A BUTTON-SHAPED <label> ("Choose image", "Add
+   images"), the same way: the <input type="file"> used to be display:none,
+   which takes it out of the tab order — a keyboard could not reach any
+   picker on the site (2026-09-28). Clipped instead, so Tab lands on it, and
+   the label draws the ring on its behalf. The label is positioned so the
+   clipped input sits ON the label: focusing an element scrolls it into view,
+   and an absolute input with no positioned parent would sit at the form's
+   top-left and scroll the page there. */
+.picker-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+label:has(> .picker-input) {
+  position: relative;
+}
+label:has(> .picker-input:focus-visible) {
+  outline: 2px solid var(--color-dark);
+  outline-offset: 2px;
+}
+
 /* TAGS ARE THE ONE DELIBERATE DIFFERENCE. Same shape, same border, same fill,
    smaller and uppercase — a tag is content that also appears on the public
    member card, where it is drawn this way, while the other chips are answers
@@ -670,11 +720,14 @@ a:hover {
      border"): 1px off top and bottom, 2px off the sides, the 1px optical drop
      kept. */
   /* TRACKING (2026-09-27, Josh: "tags should get a bit more horizontal letter
-     spacing"). 0.03em was a quarter pixel at the phone's 8px. Letter-spacing
-     also trails the LAST letter, so the label's ink sits that much left of
-     centre; the left padding takes the same amount back so the chip stays
-     balanced. 0.06em, tried against 0.08 and 0.10 at 8px, is also what the
-     site's other uppercase labels carry (info headings, lightbox links). */
+     spacing"). 0.03em was a quarter pixel at the 8px the phone's tags had that
+     day. Letter-spacing also trails the LAST letter, so the label's ink sits
+     that much left of centre; the left padding takes the same amount back so
+     the chip stays balanced. 0.06em, tried against 0.08 and 0.10 at 8px, is
+     also what the site's other uppercase labels carry (info headings,
+     lightbox links). Kept when the tags went to 11px on both breakpoints
+     (--fs-tag in type.css, 2026-09-28): at 11px it is two-thirds of a pixel
+     and still reads as air, not as a gap. */
   --tag-track: 0.06em;
   padding: 2.5px 6px 1.5px calc(6px + var(--tag-track));
   border: 1.5px solid var(--color-border);
@@ -727,7 +780,7 @@ a:hover {
   background: black;
 }
 .btn-primary:disabled {
-  background: #999;
+  background: var(--color-muted);
   cursor: not-allowed;
 }
 .btn-primary:focus-visible {
@@ -781,9 +834,13 @@ a:hover {
 .btn-solid:hover {
   background: #333;
 }
+/* Disabled is grey against the live button's black, and the grey is the
+   muted ink rather than #999: white on #999 was 2.85:1, white on
+   --color-muted is 5.6:1, so "Saving…" stays legible while still reading as
+   not-pressable. */
 .btn-save:disabled,
 .btn-solid:disabled {
-  background: #999;
+  background: var(--color-muted);
   cursor: not-allowed;
 }
 
@@ -912,6 +969,8 @@ a:hover {
    not loop, the one with nowhere to go is not there, keeping its space so
    the count does not shift. */
 .pager-chev {
+  min-width: 24px;
+  min-height: 24px;
   display: inline-grid;
   place-items: center;
   vertical-align: middle;

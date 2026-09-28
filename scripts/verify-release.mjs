@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { backendDigestAt } from "./lib/backend-digest.mjs";
 // Post-release check: does the Google project match the code that just shipped?
 //
 //   node scripts/verify-release.mjs --project prod
@@ -33,7 +34,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  buildStampVerdict, compareRules, countRequests, exitCodeFor, functionsDrift, iamDiff,
+  backendVerdict, buildStampVerdict, compareRules, countRequests, exitCodeFor, iamDiff,
   pairingVerdict, parseFunctionExports, parseSecretNames, resolveProjectAlias, strandedVerdict,
   summariseErrors,
 } from "./lib/release-checks.mjs";
@@ -146,7 +147,8 @@ async function listFunctions(ctx) {
     const res = await api(ctx, `https://cloudfunctions.googleapis.com/v2/projects/${ctx.projectId}/locations/-/functions?pageSize=500`);
     ctx.functions = (res?.functions ?? []).map((f) => ({
       name: f.name.split("/").pop(), updateTime: f.updateTime, environment: f.environment,
-      serviceAccount: f.serviceConfig?.serviceAccountEmail,
+      serviceAccount: f.serviceConfig?.serviceAccountEmail, labels: f.labels ?? {},
+      secrets: f.serviceConfig?.secretEnvironmentVariables ?? [],
     }));
   }
   return ctx.functions;
@@ -169,18 +171,14 @@ async function probeBuildStamp(ctx) {
 
 async function probeFunctions(ctx) {
   const exports = parseFunctionExports(git("show", `${ctx.release}:functions/src/index.ts`));
-  const lastCommit = {};
-  for (const module of new Set(exports.map((e) => e.module))) {
-    lastCommit[module] = git("log", "-1", "--format=%cI", ctx.release, "--", module);
-  }
-  const drift = functionsDrift(exports, await listFunctions(ctx), lastCommit);
-  const lines = [];
-  for (const name of drift.missing) lines.push(`NOT DEPLOYED  ${name} (exported at ${ctx.releaseShort})`);
-  for (const s of drift.stale) lines.push(`STALE         ${s.name} deployed ${shortIso(s.deployed)}, source changed ${s.source}`);
-  for (const name of drift.extra) lines.push(`ORPHAN        ${name} is deployed but ${ctx.releaseShort} does not export it`);
-  const status = drift.missing.length || drift.stale.length ? "FAIL" : drift.extra.length ? "WARN" : "PASS";
-  const summary = `${drift.current.length} of ${exports.length} exports deployed after their last source change`;
-  return { status, detail: lines.length ? [summary, ...lines] : summary };
+  const expected = backendDigestAt(git, ctx.release);
+  const verdict = backendVerdict(exports, await listFunctions(ctx), expected);
+  const lines = [
+    ...verdict.mismatched.map((m) => `ARTIFACT MISMATCH ${m}, expected ${expected}`),
+    ...verdict.orphans.map((name) => `ORPHAN ${name} is deployed but ${ctx.releaseShort} does not export it`),
+  ];
+  const status = !verdict.current ? "FAIL" : verdict.orphans.length ? "WARN" : "PASS";
+  return { status, detail: lines.length ? lines : `${exports.length} exports match backend artifact ${expected}` };
 }
 
 async function probeRules(ctx) {
@@ -244,6 +242,21 @@ async function probeSecrets(ctx) {
   const sources = git("grep", "-h", "-o", "-E", 'defineSecret\\("[A-Z0-9_]+"\\)', ctx.release, "--", "functions/src").split("\n");
   const names = parseSecretNames(sources);
   const lines = [];
+  const required = {
+    sendAdminDigest: ["INFOMANIAK_SMTP_PASSWORD", "ADMIN_NOTIFY_TO"],
+    mintAppCheckToken: ["TURNSTILE_SECRET_KEY"],
+    ...Object.fromEntries(["onAuthUserDeleted", "requestAccountDeletion", "cancelAccountDeletion", "adminPurgeAccount", "adminRestoreAccount", "adminDeleteImage", "adminSetProfileActive", "purgeExpiredAccounts", "flushMemberRebuilds"].map(name => [name, ["GITHUB_REBUILD_TOKEN"]])),
+  };
+  const functions = await listFunctions(ctx);
+  for (const [name, secrets] of Object.entries(required)) {
+    const fn = functions.find(fn => fn.name === name);
+    for (const secret of secrets) {
+      const binding = fn?.secrets.find(binding => binding.key === secret && binding.secret === secret && [ctx.projectId, ctx.exp.number].includes(binding.projectId));
+      if (!binding) { lines.push(`UNBOUND ${name}: ${secret}`); continue; }
+      const version = await api(ctx, `https://secretmanager.googleapis.com/v1/projects/${ctx.projectId}/secrets/${secret}/versions/${binding.version}`);
+      if (version?.state !== "ENABLED") lines.push(`DISABLED BINDING ${name}: ${secret} version ${binding.version}`);
+    }
+  }
   for (const name of names) {
     const res = await api(ctx, `https://secretmanager.googleapis.com/v1/projects/${ctx.projectId}/secrets/${name}/versions?filter=state:ENABLED`);
     if (res === null) lines.push(`MISSING   ${name} — declared in functions/src at ${ctx.releaseShort}, no such secret on ${ctx.projectId}`);

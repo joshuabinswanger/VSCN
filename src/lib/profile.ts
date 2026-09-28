@@ -109,7 +109,9 @@ export async function triggerRebuild() {
   try {
     const requestRebuild = httpsCallable(functions, "requestRebuild");
     await requestRebuild();
+    return true;
   } catch (rebuildErr) {
     console.error("Rebuild trigger error:", rebuildErr);
+    return false;
   }
 }

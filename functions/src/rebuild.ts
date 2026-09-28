@@ -60,7 +60,7 @@ export async function dispatchRebuild(): Promise<boolean> {
  * Callable from the client via the Firebase Functions SDK after a profile
  * change. Member requests are deduplicated and dispatched by the scheduled queue.
  */
-export const requestRebuild = onCall({ maxInstances: 3 }, async (request) => {
+export const requestRebuild = onCall({ enforceAppCheck: true, maxInstances: 3 }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Sign-in required.");
   }

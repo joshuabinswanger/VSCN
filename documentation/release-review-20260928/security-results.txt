@@ -1,0 +1,167 @@
+i  emulators: Starting emulators: firestore, storage
+i  emulators: Detected demo project ID "demo-vscn-rules", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.
+i  firestore: Firestore Emulator logging to firestore-debug.log
++  firestore: Firestore Emulator was started in standard edition.
++  firestore: Firestore Emulator UI websocket is running on 9150.
+!  Unexpected rules runtime error: WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::arrayBaseOffset has been called by com.google.protobuf.UnsafeUtil$MemoryAccessor (file:/C:/Users/Josh/.cache/firebase/emulators/cloud-storage-rules-runtime-v1.1.3.jar)
+WARNING: Please consider reporting this to the maintainers of class com.google.protobuf.UnsafeUtil$MemoryAccessor
+WARNING: sun.misc.Unsafe::arrayBaseOffset will be removed in a future release
+
+i  Running script: node --test --test-concurrency=1 tests/rules/**/*.test.mjs tests/functions/*.test.cjs
+✔ moderation is admin-only on every one of the three callables (2044.1022ms)
+✔ a rating outside the scale is refused rather than clamped at the door (66.8983ms)
+✔ completeness null is stored as null — auto is an instruction, not a number (183.6559ms)
+✔ one admin rating writes one entry, and the stored score is that map scored (119.9483ms)
+✔ a second admin joins the average and does not disturb the first (214.7996ms)
+✔ re-rating overwrites only the caller’s own entry (258.6239ms)
+✔ rating or hiding an image that does not exist is not-found (88.6288ms)
+✔ hiding is independent of the score, and unhiding clears who hid it (186.8239ms)
+✔ every moderation write lands in adminActions, and reading the queue writes nothing (202.4745ms)
+✔ rating and hiding each mark the site rebuild dirty by hand (151.292ms)
+✔ the queue is what THIS admin has not rated, of what a visible profile shows (143.3724ms)
+✔ the queue is newest first, by number and not by the text of a number (44.9815ms)
+✔ the manifest names the Hosting deployer of the project being deployed to (1.2347ms)
+✔ the endpoint is neither public nor granted to nobody (0.1826ms)
+✔ only one expensive import runs, failed attempts are charged, stale finalizers cannot release another lease (3611.2641ms)
+{"events":1,"detail":"Mail not sent: Error: SMTP unavailable","severity":"ERROR","message":"Error: Admin digest not sent\n    at entryFromArgs (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\node_modules\\firebase-functions\\lib\\logger\\index.js:120:13)\n    at Object.error (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\node_modules\\firebase-functions\\lib\\logger\\index.js:109:8)\n    at D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\lib\\adminDigest.js:225:21\n    at deliver (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\lib\\notify.js:109:9)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async Function.run (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\lib\\adminDigest.js:223:16)\n    at async TestContext.<anonymous> (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\tests\\functions\\releaseReadiness.test.cjs:32:3)\n    at async Test.run (node:internal/test_runner/test:1208:7)\n    at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)"}
+{"events":1,"severity":"ERROR","message":"Error: Admin digest needs operator retry; notices retained\n    at entryFromArgs (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\node_modules\\firebase-functions\\lib\\logger\\index.js:120:13)\n    at Object.error (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\node_modules\\firebase-functions\\lib\\logger\\index.js:109:8)\n    at Function.run (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\lib\\adminDigest.js:244:21)\n    at async TestContext.<anonymous> (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\tests\\functions\\releaseReadiness.test.cjs:32:3)\n    at async Test.run (node:internal/test_runner/test:1208:7)\n    at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)"}
+✔ exhausted mail is retained and only an administrator can retry it (138.9304ms)
+{"severity":"WARNING","message":"No value found for secret parameter \"INFOMANIAK_SMTP_PASSWORD\". A function can only access a secret if you include the secret in the function's dependency array."}
+{"severity":"WARNING","message":"No value found for secret parameter \"ADMIN_NOTIFY_TO\". A function can only access a secret if you include the secret in the function's dependency array."}
+✔ mail adapter uses authenticated TLS, sends plain text, and closes on failure (8.4888ms)
+✔ redelivered image events do not recreate a delivered notification (131.0573ms)
+✔ publication tracks the member generation independently of newer queued edits (187.1783ms)
+✔ upload allocation counts stored works and serializes concurrent reservations (3997.6914ms)
+✔ upload allocation enforces ownership and hourly limits (79.6147ms)
+✔ server publishes only an uploaded WebP matching its record (133.8576ms)
+✔ mislabeled bytes and forged dimensions cannot become live (54.27ms)
+{"swept":0,"orphaned":0,"skippedInGrace":0,"severity":"INFO","message":"sweepImages"}
+✔ sweeper retains a recently reopened upload slot (53.3447ms)
+{"swept":0,"orphaned":1,"skippedInGrace":0,"severity":"INFO","message":"sweepImages"}
+✔ sweeper deletes old orphaned private uploads (21.1366ms)
+✔ admin moderation rejects ordinary users and preserves member drafts on restore (89.5827ms)
+✔ rebuilds coalesce members and ignore unchanged saves and timestamp-only changes (533.0629ms)
+✔ a project-only Save queues the member, a timestamp-only project resave does not (397.6055ms)
+✔ a hidden member changes nothing the site shows: their uploads queue no build, hiding them does (499.8743ms)
+✔ an image going live for a hidden member queues no operator event (91.9779ms)
+{"events":1,"detail":"Mail not sent: Error: Invalid login: 535 5.7.0 Invalid login","severity":"ERROR","message":"Error: Admin digest not sent\n    at entryFromArgs (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\node_modules\\firebase-functions\\lib\\logger\\index.js:120:13)\n    at Object.error (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\node_modules\\firebase-functions\\lib\\logger\\index.js:109:8)\n    at D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\lib\\adminDigest.js:225:21\n    at deliver (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\lib\\notify.js:109:9)\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async Function.run (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\lib\\adminDigest.js:223:16)\n    at async TestContext.<anonymous> (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\tests\\functions\\security.test.cjs:220:3)\n    at async Test.run (node:internal/test_runner/test:1208:7)\n    at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)"}
+{"events":1,"subject":"[dev] VSCN: an image from Member","severity":"INFO","message":"Admin digest sent"}
+✔ a refused digest keeps its notices with the reason, and a sent one clears them (104.0561ms)
+{"severity":"ERROR","message":"Error: Publication delayed over 30 minutes\n    at entryFromArgs (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\node_modules\\firebase-functions\\lib\\logger\\index.js:120:13)\n    at Object.error (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\node_modules\\firebase-functions\\lib\\logger\\index.js:109:8)\n    at D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\lib\\rebuildQueue.js:77:25\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async Transaction.runTransactionOnce (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\node_modules\\@google-cloud\\firestore\\build\\src\\transaction.js:505:28)\n    at async D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\node_modules\\@google-cloud\\firestore\\build\\src\\transaction.js:477:28\n    at async Function.run (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\lib\\rebuildQueue.js:71:21)\n    at async TestContext.<anonymous> (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\tests\\functions\\security.test.cjs:236:3)\n    at async Test.run (node:internal/test_runner/test:1208:7)\n    at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)"}
+{"severity":"ERROR","message":"Error: Publication delayed over 30 minutes\n    at entryFromArgs (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\node_modules\\firebase-functions\\lib\\logger\\index.js:120:13)\n    at Object.error (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\node_modules\\firebase-functions\\lib\\logger\\index.js:109:8)\n    at D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\lib\\rebuildQueue.js:77:25\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async Transaction.runTransactionOnce (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\node_modules\\@google-cloud\\firestore\\build\\src\\transaction.js:505:28)\n    at async D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\node_modules\\@google-cloud\\firestore\\build\\src\\transaction.js:477:28\n    at async Function.run (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\functions\\lib\\rebuildQueue.js:71:21)\n    at async TestContext.<anonymous> (D:\\SynoDrive\\VSCN\\repo\\.worktrees\\release-readiness\\tests\\functions\\security.test.cjs:243:3)\n    at async Test.run (node:internal/test_runner/test:1208:7)\n    at async Test.processPendingSubtests (node:internal/test_runner/test:831:7)"}
+✔ failed dispatch and changes arriving during dispatch stay queued (153.5527ms)
+✔ an unacknowledged deployment retries after lease expiry (242.9899ms)
+✔ only deployment of the current revision clears pending publication (92.4942ms)
+{"uid":"member","slug":"newest-name","severity":"INFO","message":"Slug claimed"}
+{"uid":"member","slug":"newest-name","severity":"INFO","message":"Slug claimed"}
+✔ server profile events publish latest names despite stale delivery, including deletion (404.4131ms)
+{"uid":"member","severity":"INFO","message":"Account purged"}
+✔ purge excludes concurrent workers and cancellation, then resumes after failure (327.0792ms)
+✔ a scheduled deletion can be cancelled before cleanup starts (92.3819ms)
+✔ deletion revokes pending upload permits atomically (73.8347ms)
+✔ private publication endpoint rejects malformed revisions and ignores stale builds (76.9672ms)
+✔ deletion during upload publication removes only the newly copied generation (79.9205ms)
+✔ a replacement starts as a new record carrying the work's words, and only for the owner's live work (212.1471ms)
+✔ a replaced picture loses its ratings but keeps a hide (261.9349ms)
+✔ a video link becomes a live work whose poster is stored twice, never the URL (215.9078ms)
+✔ a refused link is refused before anything is fetched or stored (14.6817ms)
+✔ a missing or non-embeddable video leaves nothing behind (215.2916ms)
+✔ a video link counts against the stored-work cap like any upload (99.3282ms)
+✔ a member thumbnail on a video keeps the video, and carries the automatic poster to the new id (165.9257ms)
+✔ "Use automatic thumbnail" makes a new record from the kept poster, resetting ratings and keeping a hide (290.2599ms)
+{"swept":1,"orphaned":0,"skippedInGrace":0,"severity":"INFO","message":"sweepImages"}
+✔ the sweep removes a video work's automatic poster with it (47.527ms)
+{"uid":"member","severity":"INFO","message":"Account purged"}
+✔ purge deletes the member's projects and leaves everyone else's (214.9267ms)
+✔ the admin member graph lists the member's projects (18.6273ms)
+✔ tags: members submit bounded tags but only admins change shared taxonomy (1034.9139ms)
+✔ moderation: members cannot seed a moderation flag, including false (155.9654ms)
+✔ moderation: editing and republishing cannot undo an admin hide (305.1216ms)
+✔ users: owner can create their own private doc (38.01ms)
+✔ users: another member cannot write it (33.2057ms)
+✔ users: another member cannot read it (52.2398ms)
+✔ images: anyone can read (46.2645ms)
+✔ images: only the server can allocate a record (30.572ms)
+✔ images: create must start as uploading (43.2019ms)
+✔ images: cannot create under someone else's uid (30.2963ms)
+✔ images: storagePath must match owner, kind and id (34.5417ms)
+✔ images: client cannot claim curated origin or provenance (57.3441ms)
+✔ images: only the server publishes; owner may request deletion (102.4471ms)
+✔ images: owner edits caption and both descriptions (62.059ms)
+✔ images: descriptionDe shares description's 600-char cap (63.4818ms)
+✔ images: captionDe shares caption's 140-char cap (58.6066ms)
+✔ images: ownerUid, kind, storagePath, origin and createdAt are immutable (105.3446ms)
+✔ images: identity pins hold even when the change is self-consistent (54.6917ms)
+✔ images: a video work takes a caption save and a removal like any picture (54.6935ms)
+✔ images: a Vimeo work with an unlisted hash is valid on save (50.3753ms)
+✔ images: the client can never change media, embed or posterSource (91.0018ms)
+✔ images: a still cannot be turned into a video by the client (65.5074ms)
+✔ images: a malformed embed makes the record unsaveable, so the server cannot store one either unnoticed (267.1282ms)
+✔ images: another member cannot update, nobody can delete (69.3013ms)
+✔ images: an unverified member cannot self-allocate a slot record (33.8488ms)
+✔ images: an unverified member cannot create any other id (60.3688ms)
+✔ images: an unverified slot id must name its own kind (25.3868ms)
+✔ images: unverified cannot allocate or replace slot geometry directly (87.184ms)
+✔ images: verified members also require server allocation (38.3996ms)
+✔ images: an unlisted key is rejected (hasOnly) (30.2155ms)
+✔ images: the record carries where the image appeared (80.7584ms)
+✔ images: the record carries the member's own page for the piece, beside where it appeared (80.9889ms)
+✔ images: what is in the picture — up to 7 tags from the registry's own alphabet (119.2691ms)
+✔ images: a FULL gallery saves — twelve maximal records, seven tags each, then both profile docs (359.4724ms)
+✔ users: an owner update leaves server-owned fields alone and passes (60.309ms)
+✔ users: client cannot set or change status / deletion fields (96.9478ms)
+✔ users/publicProfiles: photoImageId is an accepted string field (51.1774ms)
+✔ publicProfiles: the gallery is a list of image ids, and nothing else (134.4739ms)
+✔ publicProfiles: twelve ids save on a FULL profile (75.0415ms)
+✔ roleDe/bioDe: optional, and held to the English pair's caps on both docs (231.3741ms)
+✔ publicProfiles: another member's image id is accepted by rules — the READER drops it (29.0268ms)
+✔ users: email is server-written — absent on create, unchanged on update (66.3173ms)
+✔ users/publicProfiles: owners cannot delete their own docs (purge does) (80.7235ms)
+✔ slugs: public read, no client write (89.8767ms)
+✔ deletions/adminActions: admin reads, nobody writes, members cannot read (171.8081ms)
+✔ admin: reads every users doc but cannot write one (85.8518ms)
+✔ onboardingRequests: admin can list, member cannot (83.6707ms)
+✔ profile batch rolls back both projections when either write is rejected (277.8435ms)
+✔ deletion tombstones block cached-token writes and recreation (126.6647ms)
+✔ imageModeration: admins read it, members and visitors do not (103.6316ms)
+✔ imageModeration: nobody writes it from a client — not even an admin (82.4119ms)
+✔ imageModeration: a member can still save their own image record (54.0391ms)
+✔ profile sync keeps communication preferences out of the public projection (97.5267ms)
+✔ communication preferences are private, typed, and preserve an unknown legacy choice (81.0512ms)
+✔ communication preferences validate private creates and public updates (154.9034ms)
+✔ projects: the owner creates, edits and deletes their own; all fields optional (91.7708ms)
+✔ projects: caps hold — title, description, link, affiliation count and each entry (274.3789ms)
+✔ projects: the exact payloads saveProjects() sends pass the rules — create, full update, emptied update (108.1234ms)
+✔ projects: another member can neither read, create for, edit nor delete my project (122.3365ms)
+✔ projects: ownerUid and createdAt are immutable; admins read (76.2151ms)
+✔ projects: a deletion tombstone blocks project writes (62.2365ms)
+✔ images: a work names at most one project — projectId is a short string (100.8658ms)
+!  com.google.firebase.rules.runtime.common.EvaluationException: Error: storage.rules line [30], column [20]. Null value error.
+✔ storage: unreserved and expired uploads are rejected (1082.8089ms)
+✔ storage: member upload stays private and cannot write the public path (207.1514ms)
+✔ storage: a published record cannot be reuploaded even with a permit (161.811ms)
+✔ storage: avatar uploads remain available in private staging (201.8062ms)
+✔ storage: another member cannot upload to the owner's prefix (143.8845ms)
+✔ storage: unknown kind, filename, and MIME type are rejected (157.1694ms)
+✔ storage: avatar capped at 2 MB and gallery at 8 MB (657.9364ms)
+✔ storage: server-promoted files are public, but members cannot delete them (155.9714ms)
+✔ storage: unverified member may replace one slot per kind (221.5464ms)
+✔ storage: unverified member cannot use another filename or slot (144.5623ms)
+✔ storage: a verified member may still use the slot (135.8141ms)
+✔ storage: legacy paths remain denied (157.8397ms)
+ℹ tests 125
+ℹ suites 0
+ℹ pass 125
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 32173.8063
++  Script exited successfully (code 0)
+i  emulators: Shutting down emulators.
+i  firestore: Stopping Firestore Emulator
+!  Firestore Emulator has exited upon receiving signal: SIGINT
+i  storage: Stopping Storage Emulator
+i  hub: Stopping emulator hub
+i  logging: Stopping Logging Emulator

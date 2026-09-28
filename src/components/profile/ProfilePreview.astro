@@ -1,0 +1,48 @@
+---
+import CommunityCardPreview from "../community/CommunityCardPreview.astro";
+import ProfileViewPreview from "../ProfileViewPreview.astro";
+import { useTranslations } from "../../i18n/utils";
+import type { Lang } from "../../i18n/utils";
+interface Props { lang?: Lang }
+const { lang = "en" } = Astro.props;
+const t = useTranslations(lang);
+---
+  <div class="form-section" data-section="preview" role="tabpanel" id="panel-preview" aria-labelledby="tab-preview">
+    {
+      /* The Preview tab. Both representations sit here together so
+      they are comparable, and so the form itself stays a form.
+
+      The profile page comes first: it is the artefact the member is actually
+      building. The directory card is the smaller, secondary view of the same
+      data — the image card itself, carousel and all, bound by
+      renderCardPreview(), which is what /community renders since the directory
+      switched over.
+
+      NOTHING BETWEEN THEM BUT A RULE (2026-09-02, Josh: "make the preview be
+      exactly the profile page seperated only by horizontal bars"). The two
+      "YOUR PROFILE PAGE" / "YOUR DIRECTORY CARD" headings are gone with the
+      preview's sheet and note. They were the editor naming its own contents
+      over renderings that name themselves — a page with the member's name at
+      the top of it, and a card with their name on it — and a label above a
+      preview is one more thing between the member and the thing they are
+      looking at. ProfileViewPreview draws the rule above and below itself;
+      this section closes the last one under the card.
+
+      THE CARD IS NAMED AGAIN (2026-09-26, Josh: "in the preview clearly
+      label the gallery card!"). The page names itself; a lone card under
+      it did not say where it goes, and read as one more work at the page's
+      foot. So the card, and only the card, has a label and one line saying
+      where it appears. */
+    }
+    <div class="preview-section">
+      <ProfileViewPreview lang={lang} />
+      <div class="preview-card">
+        <div class="preview-card-head">
+          <p class="label">{t("profile.preview.card")}</p>
+          <p class="field-note">{t("profile.preview.cardNote")}</p>
+        </div>
+        <CommunityCardPreview />
+      </div>
+      <hr class="preview-rule" />
+    </div>
+  </div>
