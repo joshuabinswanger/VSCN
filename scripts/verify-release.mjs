@@ -54,11 +54,20 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 // Scopes: `project` is the project IAM policy. `serviceAccount` is the policy
 // ON a service account (who may act as it). `runService` is the invoker
 // policy on one Cloud Run service — a gen-2 function's private endpoint.
+// `secret` is the policy on one Secret Manager secret.
 function grants(projectId, number) {
   const storageAgent = `serviceAccount:service-${number}@gcp-sa-firebasestorage.iam.gserviceaccount.com`;
   const runtime = `${number}-compute@developer.gserviceaccount.com`;
   const deployer = `serviceAccount:vscn-hosting-deployer@${projectId}.iam.gserviceaccount.com`;
   const reader = `serviceAccount:vscn-build-reader@${projectId}.iam.gserviceaccount.com`;
+  // The backend job's own identity (2026-09-28). It is reached through the
+  // Hosting deployer's Workload Identity provider, whose condition already
+  // pins this repository and the environment's branch; the provider is shared,
+  // the account is not.
+  const functionsAccount = `vscn-functions-deployer@${projectId}.iam.gserviceaccount.com`;
+  const functionsDeployer = `serviceAccount:${functionsAccount}`;
+  const gen1Runtime = `${projectId}@appspot.gserviceaccount.com`;
+  const deploy = (role, why) => ({ scope: "project", member: functionsDeployer, role, why: `the backend job deploys Functions as this account: ${why}` });
   return [
     { scope: "project", member: storageAgent, role: "roles/firebaserules.firestoreServiceAgent",
       why: "lets storage.rules call firestore.get(); without it every rule evaluation errors, every error denies, and members see 'sign-in expired' on every upload" },
@@ -76,6 +85,29 @@ function grants(projectId, number) {
       why: "publishing the STORAGE ruleset first resolves the project's default bucket, which firebaserules.admin does not permit — dev's first automated rules deploy died on exactly that 403. The viewer role is read-only on purpose: firebasestorage.admin carries defaultBucket.create and .delete, which no deploy credential should hold" },
     { scope: "project", member: reader, role: "roles/datastore.viewer",
       why: "the export job reads Firestore to build the static site; without it the build renders zero members and still says Complete" },
+    { scope: "serviceAccount", resource: functionsAccount, role: "roles/iam.workloadIdentityUser",
+      member: `principalSet://iam.googleapis.com/projects/${number}/locations/global/workloadIdentityPools/vscn-hosting-deploy/attribute.repository_id/1207092943`,
+      why: "lets the merge/staging backend job sign in as the Functions deployer; without it every push stops at the backend job and, on prod, nothing publishes" },
+    deploy("roles/cloudfunctions.admin", "create and update every function and set its invoker policy; the callables are public and acknowledgeSitePublication declares its invoker, so without setIamPolicy the deploy fails half-way"),
+    deploy("roles/run.admin", "the gen-2 functions are Cloud Run services, and their invoker policies are set there"),
+    deploy("roles/cloudscheduler.admin", "the onSchedule functions (flushMemberRebuilds, sendAdminDigest, sweepImages, purgeExpiredAccounts, reconcileEmails) each own a Scheduler job"),
+    deploy("roles/eventarc.admin", "the Firestore-triggered functions (onImageWritten, onImageWentLive, onPublicProfileWritten) each own an Eventarc trigger"),
+    deploy("roles/firebase.viewer", "the CLI reads the Firebase project before it deploys"),
+    deploy("roles/serviceusage.serviceUsageConsumer", "the CLI checks the project's enabled APIs"),
+    deploy("roles/secretmanager.viewer", "the CLI confirms each declared secret has a version before binding it"),
+    deploy("roles/artifactregistry.reader", "the CLI inspects the gcf-artifacts repository's cleanup policy"),
+    ...[`${number}-compute@developer.gserviceaccount.com`, gen1Runtime].map((resource) => ({
+      scope: "serviceAccount", resource, member: functionsDeployer, role: "roles/iam.serviceAccountUser",
+      why: "a deploy attaches the runtime account to each function (gen 2 on compute, the two gen-1 Auth triggers on App Engine's account); granted on these two accounts only",
+    })),
+    { scope: "project", member: functionsDeployer, role: "roles/iam.serviceAccountUser", forbidden: true,
+      why: "project-wide it would let the Functions deployer act as EVERY service account, the Hosting deployer and the build reader included" },
+    ...["TURNSTILE_SECRET_KEY", "INFOMANIAK_SMTP_PASSWORD", "ADMIN_NOTIFY_TO", "GITHUB_REBUILD_TOKEN"].map((resource) => ({
+      scope: "secret", resource, member: functionsDeployer, role: "roles/secretmanager.admin",
+      why: "a deploy grants the runtime account access to each declared secret, which takes setIamPolicy on that secret; without it the deploy stops at the secret bindings",
+    })),
+    { scope: "project", member: functionsDeployer, role: "roles/secretmanager.admin", forbidden: true,
+      why: "the Functions deployer administers the four declared secrets only; project-wide it could read FIREBASE_SERVICE_ACCOUNT and every other secret" },
   ];
 }
 
@@ -208,7 +240,7 @@ async function probeRules(ctx) {
 }
 
 async function probeIam(ctx) {
-  const policies = { project: null, serviceAccount: {}, runService: {} };
+  const policies = { project: null, serviceAccount: {}, runService: {}, secret: {} };
   policies.project = await api(ctx, `https://cloudresourcemanager.googleapis.com/v1/projects/${ctx.projectId}:getIamPolicy`, {
     method: "POST", body: { options: { requestedPolicyVersion: 3 } },
   });
@@ -220,6 +252,10 @@ async function probeIam(ctx) {
     if (grant.scope === "runService" && !policies.runService[grant.resource]) {
       policies.runService[grant.resource] = await api(ctx,
         `https://run.googleapis.com/v2/projects/${ctx.projectId}/locations/${ctx.exp.region}/services/${grant.resource}:getIamPolicy`);
+    }
+    if (grant.scope === "secret" && !policies.secret[grant.resource]) {
+      policies.secret[grant.resource] = await api(ctx,
+        `https://secretmanager.googleapis.com/v1/projects/${ctx.projectId}/secrets/${grant.resource}:getIamPolicy`);
     }
   }
   const diff = iamDiff(ctx.exp.grants, policies);

@@ -116,6 +116,20 @@ test("iamDiff: a grant is checked in the policy its scope names, and a forbidden
   assert.deepEqual(diff.forbidden.map((g) => g.role), ["roles/run.invoker"]);
 });
 
+test("iamDiff: a secret-scoped grant is read from that secret's own policy, not the project's", () => {
+  const expected = [
+    { scope: "secret", resource: "A", member: "serviceAccount:fn@x", role: "roles/secretmanager.admin", why: "bind A" },
+    { scope: "secret", resource: "B", member: "serviceAccount:fn@x", role: "roles/secretmanager.admin", why: "bind B" },
+  ];
+  const policies = {
+    project: { bindings: [{ role: "roles/secretmanager.admin", members: ["serviceAccount:fn@x"] }] },
+    secret: { A: { bindings: [{ role: "roles/secretmanager.admin", members: ["serviceAccount:fn@x"] }] }, B: {} },
+  };
+  const diff = iamDiff(expected, policies);
+  assert.deepEqual(diff.present.map((g) => g.resource), ["A"]);
+  assert.deepEqual(diff.missing.map((g) => g.resource), ["B"]);
+});
+
 test("iamDiff: a conditional binding does not satisfy an unconditional expectation", () => {
   const expected = [{ scope: "project", member: "serviceAccount:a@x", role: "roles/x", why: "" }];
   const policies = { project: { bindings: [{ role: "roles/x", members: ["serviceAccount:a@x"], condition: { expression: "true" } }] } };
