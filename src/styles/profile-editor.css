@@ -523,47 +523,6 @@
     min-width: 0;
   }
 
-  /* The folded row's summary (see the markup comment): desktop only. The
-     title is the page's own caption line: dark, one line, cut with an
-     ellipsis rather than wrapped. The chips are drawn exactly as the
-     profile page draws its tags (2026-09-26, Josh: "the image tags should
-     have the same styling as the profile tags"): bare `.tagchip`, outlined
-     and muted on the page's ground, 5px apart as in .mprof__vals. They were
-     the editor's picked state (.optchip--on, a black fill), which read as
-     buttons in a row that is only telling. */
-  .gallery-summary {
-    display: none;
-  }
-
-  @media (--bp-desktop) {
-    .gallery-summary:not([hidden]) {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      min-width: 0;
-    }
-  }
-
-  .gallery-summary-title {
-    margin: 0;
-    color: var(--color-dark);
-    font-size: var(--fs-85);
-    line-height: 1.5;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .gallery-summary-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-  }
-
-  .gallery-summary-title[hidden],
-  .gallery-summary-tags[hidden] {
-    display: none;
-  }
 
   /* THE MODAL SWITCH — see the markup comment. A two-segment toggle at
      .gallery-tool's own scale (same border weight, radius, muted resting
@@ -1795,17 +1754,13 @@
       display: block;
       min-width: 0;
     }
-
-    /* No folded-row title and tags on a phone (2026-09-28, Josh: "Title
-       and Tags on mobile should be removed again, image details is enough
-       as a drop down containing it"). The summary stays desktop-only, as
-       the .gallery-summary rule above has always said. */
   }
 
   /* A GALLERY ROW ARRIVES IN READING ORDER (2026-09-28, Josh: "add
      animations on gallery elements where you fade in Name First, then image
-     then the controls and such"). Its name first (the folded row's title on
-     desktop; a project's name), then the picture, then everything that acts
+     then the controls and such"). Its name first (a project's name; an
+     image row's Image Details line, since the row's own title came off the
+     folded row the same day), then the picture, then everything that acts
      on it. .is-entering is set by renderGallery() only on a row or block not
      seen before, so a first paint cascades down the list (--enter-i steps
      each newcomer 70ms later, capped at the ninth) and an upload or a new
@@ -1813,9 +1768,9 @@
      The backwards fill holds each part invisible through its own delay and
      leaves nothing behind once it has played: a transform still applied
      would make the row a containing block for the i boxes inside it. */
-  .is-entering :is(.gallery-summary, .gallery-project-name),
+  .is-entering :is(.gallery-item > .gallery-fields, .gallery-project-name),
   .is-entering .gallery-thumb,
-  .is-entering :is(.gallery-row-tools, .gallery-details, .gallery-toolbar--head, [data-project-delete]) {
+  .is-entering :is(.gallery-row-tools, .gallery-project-details, .gallery-toolbar--head, [data-project-delete]) {
     animation: gallery-enter 420ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
     animation-delay: calc(var(--enter-i, 0) * 70ms);
   }
@@ -1824,7 +1779,7 @@
     animation-delay: calc(var(--enter-i, 0) * 70ms + 140ms);
   }
 
-  .is-entering :is(.gallery-row-tools, .gallery-details, .gallery-toolbar--head, [data-project-delete]) {
+  .is-entering :is(.gallery-row-tools, .gallery-project-details, .gallery-toolbar--head, [data-project-delete]) {
     animation-delay: calc(var(--enter-i, 0) * 70ms + 280ms);
   }
 

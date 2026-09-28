@@ -106,6 +106,13 @@ async function build() {
       //    Cards inside the horizontal strip are skipped in both jobs: the
       //    strip scrolls on its own axis, and a scroll-linked transform
       //    would fight the hover growth that layout owns.
+      // Where a card starts, per view. The scale is a RATIO, and a gallery
+      // card is ~500px wide against the grid's ~200px, so one ratio moves
+      // the gallery two and a half times as many pixels: at 0.88 for both
+      // (2026-09-28) the gallery still read as a zoom (Josh, same day: "on
+      // gallery the scale effect is still too strong"). 0.95 there is about
+      // the travel the grid gets at 0.88.
+      const startScale = document.getElementById("member-grid")?.dataset.pattern === "grid" ? 0.88 : 0.95;
       gsap.utils
         .toArray<HTMLElement>(".ccard, .cwork")
         // The view the deal did NOT build is still in the DOM, hidden — the
@@ -116,13 +123,13 @@ async function build() {
         // this layer, so nothing is missed by skipping them.
         .filter((card) => !card.closest(".cgrid__strip, .cgrid__cell[hidden]"))
         .forEach((card) => {
-          // 0.88, not 0.72 (2026-09-28, Josh: "make the scaling effect
-          // less pronounced on grid and gallery"): a card now grows by an
-          // eighth on its way up rather than by more than a third, so the
+          // startScale, not 0.72 (2026-09-28, Josh: "make the scaling effect
+          // less pronounced on grid and gallery"): a card grows by a few
+          // percent on its way up rather than by more than a third, so the
           // arrival reads as a settle, not a zoom. Same curve and window.
           gsap.fromTo(
             card,
-            { scale: 0.88, opacity: 0.2 },
+            { scale: startScale, opacity: 0.2 },
             {
               scale: 1,
               opacity: 1,

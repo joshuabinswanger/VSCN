@@ -225,28 +225,13 @@ const t = useTranslations(lang);
           </div>
           <div class="gallery-fields">
             {
-              /* WHAT A FOLDED ROW SAYS, ON DESKTOP (2026-09-26, Josh: "on
-                desktop we can add some more details that are always shown,
-                description and tags", then the same day: "we only want the
-                tags that are selected and the description nothing else on
-                collapse!"). A desktop row has a whole column of paper beside
-                its picture, and a folded row left it empty. The first cut
-                moved the whole editor up here — EN/DE switch, caption, both
-                descriptions and the full tag picker — which made a folded row
-                as tall as an open one. Now a folded row shows only what the
-                picture SAYS: its description as text and its tags as chips,
-                both read-only. Everything is edited in Image Details, as on a
-                phone, and the summary steps aside while that fold is open so
-                nothing is on screen twice. Painted by renderGallery(); hidden
-                by the CSS below 768px and when there is nothing to say.
-                THE TITLE, NOT THE DESCRIPTION (2026-09-26, Josh: "this should
-                be shown instead of the description in the work editor in the
-                collapsed state"): a folded row names its picture, one line. */
+              /* NOTHING BESIDE THE PICTURE BUT ITS FOLD (2026-09-28, Josh:
+                "there is also the title and tags still left on desktop,
+                remove it there too as on mobile"). From 2026-09-26 a folded
+                desktop row showed its title and tags as read-only text here;
+                the phone dropped them earlier the same day, and now both
+                breakpoints show only Image Details, which holds them. */
             }
-            <div class="gallery-summary" data-gallery-summary hidden>
-              <p class="gallery-summary-title" data-gallery-summary-title></p>
-              <div class="gallery-summary-tags" data-gallery-summary-tags></div>
-            </div>
             {
               /* THE WHOLE ROW'S WORDS FOLD (2026-09-24, Josh: "make the image
                 details collapsible in the work tab. default for already there
