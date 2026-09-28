@@ -31,7 +31,9 @@
    a global component rule of the same specificity (`.optchip` vs `.tagchip`
    on the editor's tag chips is the case that needs it).
 
-   NOT HERE YET: the vw-fitted display type (the brand title, page and member
+   NOT HERE YET: the carousel's "2 / 7" count (.ccard__count,
+   .mprof__carousel-count), which was still an experiment when this file
+   landed; the vw-fitted display type (the brand title, page and member
    names), the form controls' own sizes (.input, .btn-*, .optchip, which are
    components in global.css), and the admin console. Those are the next rows
    when this becomes a design system. */
@@ -103,6 +105,9 @@
      bigger"). */
   --carousel-dot: 0.36rem;
   --carousel-dot-gap: 0.28rem;
+  /* The same indicator as TEXT, "2 / 7" (2026-09-28, Josh: "try text
+     instead of dots"): .ccard__count and .mprof__carousel-count. */
+  --fs-carousel-count: var(--fs-75);
 }
 
 /* THE PHONE READS AT THE REFERENCE'S SIZE (2026-09-27, Josh: "text larger on

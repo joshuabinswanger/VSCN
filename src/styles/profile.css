@@ -217,9 +217,16 @@
   /* The space between one work or project and the next. 4rem -> 7rem on
      2026-09-26 (Josh: "we need to give more space in the profile view between
      images and projects"): with pictures up to 60vh tall, 4rem read as one
-     continuous strip. */
-  gap: 7rem;
-  margin-top: 6rem;
+     continuous strip.
+     ONE THING ON SCREEN AT A TIME (2026-09-28, Josh: "We need to give even
+     more white space in the profile view! Make it so that almost only one
+     element / project is shown"). The gap is a share of the WINDOW, not a
+     fixed step: a picture is at most 60vh tall, so with 40vh between two of
+     them, one centred on screen leaves its neighbours out of view. 7rem stays
+     the floor for a short window. The first work stands off the profile's
+     words by the same measure, half of it. */
+  gap: max(7rem, 40vh);
+  margin-top: max(6rem, 20vh);
 }
 
 /* A PROJECT BLOCK on the member page and in the editor's preview (2026-09-23).
@@ -267,9 +274,16 @@
   gap: 0.4rem;
 }
 
+/* A heading, in the name's face (2026-09-28, Josh: "Project Title should be
+   bigger too"): bold and tight like .mprof__name, two sizes under it so the
+   member still outranks their project. */
 .mprof__project-title {
   margin: 0;
-  font-size: var(--fs-105);
+  font-size: var(--fs-225);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
 }
 
 .mprof__project-title a {
@@ -372,6 +386,21 @@
 }
 .mprof__carousel-dot--on {
   opacity: 1;
+}
+
+/* TEXT INSTEAD OF DOTS (2026-09-28), exactly as .ccard__count in
+   communityCard.css: the dots still follow the carousel, and this rule is
+   the whole switch back. */
+.mprof__carousel-dot {
+  display: none;
+}
+.mprof__carousel-count {
+  font-size: var(--fs-carousel-count);
+  line-height: 1;
+  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--color-muted);
 }
 
 /* The track and its two edge strips. The strips sit on the COLUMN's edges,
@@ -617,9 +646,15 @@
   .mprof__head {
     gap: 1.25rem;
   }
+  /* A phone picture is width-bound (the column is ~345px, so a square is
+     ~42% of the screen): 30vh is enough to keep the neighbours out of view. */
   .mprof__works {
-    gap: 4rem;
-    margin-top: 4rem;
+    gap: max(4rem, 30vh);
+    margin-top: max(4rem, 15vh);
+  }
+  /* The name is 24px here, so the project title steps down to stay under it. */
+  .mprof__project-title {
+    font-size: var(--fs-160);
   }
   .mprof__works > .mprof__project:not(:first-child) {
     margin-top: 2rem;

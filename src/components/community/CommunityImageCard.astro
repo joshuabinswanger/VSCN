@@ -152,6 +152,10 @@ const positionFor = (i: number) =>
   {
     isCarousel && (
       <div class="ccard__dots" aria-hidden="true">
+        {/* THE POSITION AS TEXT (2026-09-28, Josh: "try text instead of
+            dots"). The dots stay in the markup and the engine, hidden by one
+            rule in communityCard.css, so switching back is that rule. */}
+        <span class="ccard__count">1 / {works.length}</span>
         {works.map((_, i) => (
           <span class="ccard__dot" class:list={{ "ccard__dot--on": i === 0 }} />
         ))}
