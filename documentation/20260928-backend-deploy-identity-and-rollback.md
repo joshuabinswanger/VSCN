@@ -13,18 +13,20 @@ Production is **fail-closed**: without `PROD_FUNCTIONS_WIF_PROVIDER` and `PROD_F
 
 ## The deploy identity
 
-A dedicated service account per project (for example `vscn-functions-deployer@<project>.iam.gserviceaccount.com`), impersonated through a Workload Identity provider whose attribute condition admits only this repository, and only its `main` ref for prod or its `dev` ref for dev. `workflow_dispatch` runs on that ref too, so the same condition covers them. Do not reuse or widen `vscn-build-reader` or `vscn-hosting-deployer`.
+A dedicated service account per project, `vscn-functions-deployer@<project>.iam.gserviceaccount.com`, created 2026-09-28 in both. It is impersonated through the Hosting deployer's existing Workload Identity provider (`vscn-hosting-deploy/github-main` on prod, `vscn-hosting-deploy/github-dev` on dev), whose attribute condition already admits only this repository and only that environment's branch. `workflow_dispatch` runs on that ref too, so the same condition covers them. The provider is shared; the account is not. Do not reuse or widen `vscn-build-reader` or `vscn-hosting-deployer`.
 
-What `firebase deploy --only functions` does on this codebase, and so what the identity must be allowed to do. **This is a starting list, not a proven one: the first dev deploy under the identity is the proof, and `verify-release` does not yet check these grants.**
+The repository variables point at them: `PROD_FUNCTIONS_WIF_PROVIDER` / `PROD_FUNCTIONS_SERVICE_ACCOUNT` and `DEV_FUNCTIONS_WIF_PROVIDER` / `DEV_FUNCTIONS_SERVICE_ACCOUNT`.
+
+What `firebase deploy --only functions` does on this codebase, and so what the identity must be allowed to do. **Proven 2026-09-28:** dev's first deploy under the identity (run 36481093216, `d82f9b6`) updated all 34 functions with exactly this list. `verify-release` probe 4 checks every grant below, and flags a project-wide `serviceAccountUser` or `secretmanager.admin` on this account as forbidden.
 
 - Create and update gen-2 and gen-1 functions, and set their IAM policies. The callables are public invokers, and `acknowledgeSitePublication` declares its invoker (memory note `publication-invoker-is-declared`), so a role without `setIamPolicy` ends in a deploy that fails half-way. That means Cloud Functions Admin, plus Cloud Run Admin for the gen-2 services.
-- Act as the runtime service account (`<number>-compute@developer.gserviceaccount.com`): Service Account User, granted on that account only.
+- Act as the two runtime service accounts: `<number>-compute@developer.gserviceaccount.com` for the gen-2 functions and `<project>@appspot.gserviceaccount.com` for the two gen-1 Auth triggers. Service Account User, granted on those two accounts only, never project-wide.
 - Scheduler jobs for the `onSchedule` functions (Cloud Scheduler Admin), and Eventarc triggers for the Firestore-triggered ones (Eventarc Admin).
-- Secret bindings: the CLI checks each declared secret's versions and grants the runtime account access. That requires Secret Manager Admin, or Viewer plus `setIamPolicy` on those four secrets.
+- Secret bindings: the CLI checks each declared secret's versions and grants the runtime account access. Granted as Secret Manager Viewer on the project plus Secret Manager Admin on the four declared secrets only (`TURNSTILE_SECRET_KEY`, `INFOMANIAK_SMTP_PASSWORD`, `ADMIN_NOTIFY_TO`, `GITHUB_REBUILD_TOKEN`), so it cannot touch `FIREBASE_SERVICE_ACCOUNT` or any other secret.
 - Read the project and its enabled APIs: Firebase Viewer and Service Usage Consumer.
 - Artifact Registry: the CLI inspects the `gcf-artifacts` repository's cleanup policy.
 
-After the first run, add the granted roles to the `EXPECTED` table in `scripts/verify-release.mjs`, so drift in them is caught like the existing grants.
+The same grants are recorded in the `EXPECTED` table in `scripts/verify-release.mjs`. A grant added here and not there is invisible to the release check.
 
 ## Rollback
 

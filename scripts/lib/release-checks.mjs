@@ -98,7 +98,7 @@ export function backendVerdict(exports, deployed, expectedDigest) {
 
 /**
  * Each expected grant is looked up in the policy its scope names:
- * `project` → policies.project, `serviceAccount` / `runService` →
+ * `project` → policies.project, `serviceAccount` / `runService` / `secret` →
  * policies[scope][resource]. Conditional bindings never satisfy an
  * expectation; the grants this project depends on are unconditional.
  */
