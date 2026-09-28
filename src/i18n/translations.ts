@@ -605,6 +605,8 @@ export const ui: Record<string, Record<string, string>> = {
     // Profile active toggle
     "profile.active.label": "Active",
     "profile.active.note": "Should your community card be visible?",
+    "profile.active.directoryNote":
+      "This setting hides your profile from the directory. Public profile fields and media remain accessible through direct links.",
     "profile.hiddenBanner": "Your profile is hidden from the community directory.",
     "profile.hiddenBanner.cta": "Change on the Account tab",
     "profile.verifyBanner.hidden": "Until then your profile is hidden from the directory.",
@@ -1127,6 +1129,8 @@ export const ui: Record<string, Record<string, string>> = {
     // Profile active toggle
     "profile.active.label": "Aktiv",
     "profile.active.note": "Soll deine Community-Karte sichtbar sein?",
+    "profile.active.directoryNote":
+      "Diese Einstellung blendet dein Profil aus dem Verzeichnis aus. Bereits veröffentlichte Profilfelder und Medien sind weiterhin über direkte Links öffentlich zugänglich.",
     "profile.hiddenBanner": "Dein Profil ist im Community-Verzeichnis nicht sichtbar.",
     "profile.hiddenBanner.cta": "Im Konto-Tab ändern",
     "profile.verifyBanner.hidden": "Bis dahin ist dein Profil im Verzeichnis nicht sichtbar.",

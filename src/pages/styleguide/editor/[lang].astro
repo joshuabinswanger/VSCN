@@ -53,6 +53,10 @@ const lang = Astro.params.lang as Lang;
       if (image) { image.alt = 'Sample artwork'; image.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="%2397aab4"/></svg>'; }
       editor.append(fragment);
     }
+    // Enter like renderGallery()'s newcomers do, so the cascade can be seen here.
+    editor?.querySelectorAll<HTMLElement>('.gallery-project, .gallery-item').forEach((el, i) => {
+      el.classList.add('is-entering'); el.style.setProperty('--enter-i', String(i));
+    });
     root.querySelectorAll<HTMLButtonElement>('button').forEach(button => {
       if (!button.textContent?.trim() && !button.getAttribute('aria-label')) button.setAttribute('aria-label', 'Example image action');
     });

@@ -333,6 +333,12 @@ document.addEventListener("astro:page-load", () => {
   // the gallery at page load starts short; onGalleryUploaded() marks each
   // new work open before its row is first drawn.
   const galleryDetailsOpenUI = new Map<string, boolean>();
+  // Rows and project blocks that have already been on screen, keyed by
+  // imageId / projectId. renderGallery() rebuilds every row on every change,
+  // so the entry animation (.is-entering in profile-editor.css) goes only to
+  // the ones not in here: all of them on first paint, then just the new
+  // upload or the new project. A move or a save must not replay it.
+  const galleryEntered = new Set<string>();
   // The same for a project block's words (2026-09-25), keyed by projectId:
   // unknown = folded, and newProject() opens the block it adds.
   const projectDetailsOpenUI = new Map<string, boolean>();
@@ -1034,6 +1040,18 @@ document.addEventListener("astro:page-load", () => {
         .map((block) => (block.kind === "image" ? buildRow(block.index) : buildBlock(block)))
         .filter((n): n is HTMLElement => n !== null),
     );
+    // THE ENTRY (2026-09-28, Josh: "fade in Name first, then image then the
+    // controls"). Each newcomer is marked in document order and numbered, so
+    // a first paint cascades down the list rather than arriving all at once;
+    // the CSS staggers name, picture and controls inside each one.
+    let entering = 0;
+    galleryEditor.querySelectorAll<HTMLElement>(".gallery-item[data-image-id], [data-project-block]").forEach((el) => {
+      const key = el.dataset.imageId ? `image:${el.dataset.imageId}` : `project:${el.dataset.projectId}`;
+      if (galleryEntered.has(key)) return;
+      galleryEntered.add(key);
+      el.classList.add("is-entering");
+      el.style.setProperty("--enter-i", String(Math.min(entering++, 8)));
+    });
     // Pending uploads into a block were unhomed by replaceChildren above.
     renderQueue();
     // The image-led directory renders a typographic card for an empty

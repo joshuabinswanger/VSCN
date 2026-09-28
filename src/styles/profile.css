@@ -34,6 +34,18 @@
   padding-block: 7rem 10rem;
 }
 
+/* NARROWER ON DESKTOP (2026-09-28, Josh: "make the project page on desktop
+   less wide on max width"). The page used the whole 870px column, so a
+   landscape work ran as wide as the header. 54rem (702px at the desktop's
+   13px root) centred in <main>; a phone keeps the full column. The editor's
+   Preview tab renders this same element, so it narrows with it. */
+@media (--bp-desktop) {
+  .mprof {
+    max-width: 54rem;
+    margin-inline: auto;
+  }
+}
+
 /* ── Identity ─────────────────────────────────────────── */
 .mprof__head {
   display: grid;
@@ -249,17 +261,12 @@
   gap: 4rem;
 }
 
-/* MORE AIR ON EITHER SIDE OF A PROJECT (2026-09-26, Josh: "add more white
-   space on the profile page between projects and images"). On top of the
-   works gap, so a project reads as its own chapter of the page, set further
-   apart than one loose work is from the next. Not at the list's ends: the
-   first and last child keep the list's own margins. */
-.mprof__works > .mprof__project:not(:first-child) {
-  margin-top: 4rem;
-}
-.mprof__works > .mprof__project:not(:last-child) {
-  margin-bottom: 4rem;
-}
+/* NO EXTRA AIR AROUND A PROJECT any more (2026-09-28, Josh: "less white
+   space between projects"). From 2026-09-26 a project stood 4rem further off
+   its neighbours than the works gap, so a project's edge was 30vh + 8rem from
+   the next one; once that gap became a share of the window, the extra only
+   made the page longer. A project now sits in the same rhythm as a loose
+   work. */
 
 /* THE HEADING GROUP — title, description and affiliations read as one label
    for the works below, not as three unrelated paragraphs. A tight gap (a hair
@@ -661,12 +668,6 @@
   /* The name is 24px here, so the project title steps down to stay under it. */
   .mprof__project-title {
     font-size: var(--fs-160);
-  }
-  .mprof__works > .mprof__project:not(:first-child) {
-    margin-top: 2rem;
-  }
-  .mprof__works > .mprof__project:not(:last-child) {
-    margin-bottom: 2rem;
   }
   .mprof__works-key {
     margin-bottom: -1.25rem;
