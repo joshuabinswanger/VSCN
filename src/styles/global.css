@@ -59,7 +59,9 @@
      already 12px and this is the smallest print on the page — taking it to
      10.2px there would be a legibility cost nobody asked for, so mobile keeps
      the base and the reduction lives in the --bp-desktop block below. */
-  --font-size-chrome: var(--fs-100);
+  /* A step smaller again on 2026-09-28 (Josh: "Impressum and EN / DE
+     smaller abit"): 14px -> 13px on a phone, 12px -> 11px on desktop. */
+  --font-size-chrome: var(--fs-90);
   /* THE HEADER'S SEE-THROUGH BACKDROP (2026-09-25). The sticky nav — and on
      /community the filter bar docked under it — used to paint solid paper, so
      artwork vanished at the header's edge. It is NOTHING now: no paper, no
@@ -89,7 +91,7 @@
 @media (--bp-desktop) {
   :root {
     --font-size-base: 13px;
-    --font-size-chrome: var(--fs-85);
+    --font-size-chrome: var(--fs-78);
   }
 }
 
@@ -333,6 +335,25 @@ a:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.2rem 0.35rem;
+}
+
+/* ONE GAP UNDER EVERY TITLE (2026-09-28, Josh: "unify gaps after Titles in
+   Profile Editor. they should visually be equal"). A title that is a <p>
+   (Gallery, Social Media: they name a group, not one control, so they are
+   not <label>s) carried the browser's 1em paragraph margins, which put
+   12px more under those two than under any other. The field's own gap is
+   the one space between a title and what it names. */
+.label-row > p.label,
+.field > p.label {
+  margin: 0;
+}
+
+/* A fieldset's legend is not a flex item, so the fieldset's gap never
+   reached the space under it: the chips sat right against "Who are you?",
+   "Working languages" and "Primary target audiences". This is that gap. */
+fieldset > legend.label {
+  margin-bottom: 0.45rem;
+  padding: 0;
 }
 
 /* THE i (2026-09-24, Josh: "just a plain italic i"). A bare italic serif "i",
@@ -725,9 +746,7 @@ label:has(> .picker-input:focus-visible) {
      that much left of centre; the left padding takes the same amount back so
      the chip stays balanced. 0.06em, tried against 0.08 and 0.10 at 8px, is
      also what the site's other uppercase labels carry (info headings,
-     lightbox links). Kept when the tags went to 11px on both breakpoints
-     (--fs-tag in type.css, 2026-09-28): at 11px it is two-thirds of a pixel
-     and still reads as air, not as a gap. */
+     lightbox links). */
   --tag-track: 0.06em;
   padding: 2.5px 6px 1.5px calc(6px + var(--tag-track));
   border: 1.5px solid var(--color-border);
@@ -1016,5 +1035,16 @@ label:has(> .picker-input:focus-visible) {
 @media (prefers-reduced-motion: reduce) {
   .pager-chev {
     transition: none;
+  }
+}
+/* NO CHEVRONS ON A PHONE'S PICTURES (2026-09-28, Josh: "chevron should not be
+   visible on mobile on the images"). On the directory card and a project's
+   carousel the count stays and the swipe pages; the lightbox keeps its pair,
+   since it is one modal and its chevrons are its keyboard pager. The count
+   rows are right-aligned, so dropping the buttons leaves "2 / 7" on the
+   picture's right edge where the next chevron was. */
+@media (--bp-mobile) {
+  :is(.ccard, .mprof) .pager-chev {
+    display: none;
   }
 }

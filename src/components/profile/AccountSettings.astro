@@ -37,31 +37,46 @@ const t = useTranslations(lang);
       {t("profile.adminConsole")}
     </a>
 
+    {
+      /* EVERY TICK HAS ITS i (2026-09-28, Josh: "add 'i' to the account
+        ticks in profile page"). Each note used to sit open under its
+        checkbox, or (wants-to-contribute) was not shown at all; now each is
+        a tip beside the tick, as for Phone and Your language below. The i is
+        a sibling of the <label>, never inside it — see .label-row. The
+        checkbox keeps aria-describedby, so a screen reader still hears the
+        note without opening it. */
+    }
     <div class="field">
       <div class="label-row">
-        <label class="checkbox-label" for="profile-active" aria-describedby="directory-visibility-note">
-          <input id="profile-active" type="checkbox" />
+        <label class="checkbox-label" for="profile-active">
+          <input id="profile-active" type="checkbox" aria-describedby="directory-visibility-note" />
           <span>{t("profile.active.label")}</span>
         </label>
-        <p id="directory-visibility-note" class="field-note">{lang === "de" ? "Diese Einstellung blendet dein Profil aus dem Verzeichnis aus. Bereits veröffentlichte Profilfelder und Medien sind weiterhin über direkte Links öffentlich zugänglich." : "This setting hides your profile from the directory. Public profile fields and media remain accessible through direct links."}</p>
+        <InfoTip lang={lang} for="directory-visibility-note" />
       </div>
+      <p id="directory-visibility-note" class="field-note" data-tip hidden>{t("profile.active.directoryNote")}</p>
     </div>
 
     <div class="field">
       <div class="label-row">
         <label class="checkbox-label" for="wants-to-contribute">
-          <input id="wants-to-contribute" type="checkbox" />
+          <input id="wants-to-contribute" type="checkbox" aria-describedby="wants-to-contribute-note" />
           <span>{t("profile.wantsToContribute")}</span>
         </label>
+        <InfoTip lang={lang} for="wants-to-contribute-note" />
       </div>
+      <p id="wants-to-contribute-note" class="field-note" data-tip hidden>{t("profile.wantsToContribute.note")}</p>
     </div>
 
     <div class="field">
-      <label class="checkbox-label" for="receive-community-emails">
-        <input id="receive-community-emails" type="checkbox" />
-        <span>{t("profile.receiveCommunityEmails")}</span>
-      </label>
-      <p id="receive-community-emails-note" class="field-note">{t("profile.receiveCommunityEmails.note")}</p>
+      <div class="label-row">
+        <label class="checkbox-label" for="receive-community-emails">
+          <input id="receive-community-emails" type="checkbox" aria-describedby="receive-community-emails-note" />
+          <span>{t("profile.receiveCommunityEmails")}</span>
+        </label>
+        <InfoTip lang={lang} for="receive-community-emails-note" />
+      </div>
+      <p id="receive-community-emails-note" class="field-note" data-tip hidden>{t("profile.receiveCommunityEmails.note")}</p>
     </div>
 
     <div class="field">

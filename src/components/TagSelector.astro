@@ -143,6 +143,13 @@ const t = useTranslations(lang);
      (2026-09-09, Josh: "make the find bar the same style as the add tag"). */
   tag-selector .ts-filter {
     margin-top: 0.9rem;
+  }
+
+  /* With nothing picked yet the filter is the first thing under the field's
+     title, and that space is the field's own gap, the one every title in the
+     form has (2026-09-28). The 0.9rem is the step down from the picked row. */
+  tag-selector .tag-list:empty + .ts-filter {
+    margin-top: 0;
     padding: 4px 10px;
     font-size: var(--fs-82);
   }
