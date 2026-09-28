@@ -63,3 +63,15 @@ drawn exactly as the directory card's. Both now take their size from one pair
 of tokens in `global.css`, `--carousel-dot` (0.36rem, twice the old 0.18rem)
 and `--carousel-dot-gap` (0.28rem), so the card and the carousel cannot drift
 apart. The touch-screen chevrons from section 3 stay.
+
+## 2026-09-28, later: text instead of dots, on trial
+
+Josh: "try text instead of dots". Both the gallery card and the project
+carousel now show "2 / 7" as plain muted text (`--fs-carousel-count`, tabular
+figures) in the dots' own place, hard right on the line above the picture:
+`.ccard__count` / `.mprof__carousel-count`. The dots are **still rendered and
+still follow the carousel**. One rule per stylesheet hides them
+(`.ccard__dot { display: none }` in communityCard.css, `.mprof__carousel-dot`
+in profile.css), so going back is deleting those two rules and hiding the
+counts. The card's count is server-rendered as "1 / n". The editor's card
+preview builds only dots, so `communityCarousel.ts` adds the count there.

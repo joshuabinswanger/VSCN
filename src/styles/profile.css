@@ -394,6 +394,21 @@
   opacity: 1;
 }
 
+/* TEXT INSTEAD OF DOTS (2026-09-28), exactly as .ccard__count in
+   communityCard.css: the dots still follow the carousel, and this rule is
+   the whole switch back. */
+.mprof__carousel-dot {
+  display: none;
+}
+.mprof__carousel-count {
+  font-size: var(--fs-carousel-count);
+  line-height: 1;
+  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--color-muted);
+}
+
 /* The track and its two edge strips. The strips sit on the COLUMN's edges,
    not the track's: the track bleeds out into the margins, the stage does
    not. */

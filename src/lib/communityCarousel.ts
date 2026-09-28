@@ -233,6 +233,17 @@ export function initCarousels(root: ParentNode = document): void {
     // Embla was handed — they are queried from the card.
     const card = carousel.closest<HTMLElement>(".ccard") ?? carousel;
     const dots = Array.from(card.querySelectorAll<HTMLElement>(".ccard__dot"));
+    // The position as text (2026-09-28): rendered by CommunityImageCard; the
+    // editor's card preview builds only the dots, so it is added here.
+    const dotRow = card.querySelector<HTMLElement>(".ccard__dots");
+    let count = dotRow?.querySelector<HTMLElement>(".ccard__count") ?? null;
+    if (dotRow && !count) {
+      count = document.createElement("span");
+      count.className = "ccard__count";
+      // `select` only fires on a change; a card starts on its first work.
+      count.textContent = `1 / ${slides.length}`;
+      dotRow.prepend(count);
+    }
     const liveRegion = carousel.querySelector<HTMLElement>("[data-carousel-live]");
     const positionLabel = carousel.dataset.positionLabel ?? "";
 
@@ -304,6 +315,7 @@ export function initCarousels(root: ParentNode = document): void {
         else slide.setAttribute("aria-hidden", "true");
       });
       dots.forEach((dot, n) => dot.classList.toggle("ccard__dot--on", n === i));
+      if (count) count.textContent = `${i + 1} / ${slides.length}`;
       if (liveRegion && announce) {
         liveRegion.textContent = positionLabel
           .replace("{n}", String(i + 1))
