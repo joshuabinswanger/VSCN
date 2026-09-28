@@ -105,13 +105,14 @@ const figure = (w: Work) => ({
   {
     carousel ? (
       <div class="mprof__carousel" data-carousel data-position-label={t("member.project.position")}>
+        {/* The gallery card's dots, top right (2026-09-26, Josh: "use the
+            same styles for the project carousels! with the dots top right").
+            A day's detour through a "2 / 7" count ended on 2026-09-28 (Josh:
+            "the carousel should be dots again, but make the dots bigger"):
+            the dots are back, card and carousel both at the larger size.
+            Indicators, not controls; projectCarousel.ts draws one per work. */}
+        <div class="mprof__carousel-dots" data-carousel-dots aria-hidden="true" />
         <div class="mprof__carousel-stage">
-          {/* "2 / 7" ON THE PICTURE, top right (2026-09-27, Josh: "add a
-              number and count top right so it is obvious there are more
-              images"). It replaced the gallery card's dots (2026-09-26), which
-              were too small to say so. An indicator, not a control; the
-              position is spoken by the live region below. */}
-          <span class="mprof__carousel-count" data-carousel-count aria-hidden="true" />
         {/* A real scroll container, so swipe, trackpad and the arrow keys (it
             is a tab stop) all page it natively, and scroll-snap makes every
             one of them land on a work. */}

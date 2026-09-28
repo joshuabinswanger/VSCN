@@ -351,48 +351,47 @@
   gap: 0.5rem;
 }
 
-/* The heading group and the carousel belong together: the project's 4rem
-   works rhythm would push the carousel a screen-width's worth of air away
-   from the title it serves. (Written for the dots above the picture, which
-   the count replaced on 2026-09-27; the spacing was kept as it was.) */
+/* The heading group and the carousel's dots belong together: the project's
+   4rem works rhythm would push the dots a screen-width's worth of air away
+   from the title they serve. */
 .mprof__project:has(.mprof__carousel) {
   gap: 1.5rem;
 }
 
-/* THE CAROUSEL'S CHROME. Since 2026-09-26 it has worn what the directory
-   card wears (communityCard.css): a bare chevron down each edge, restated
-   here because the card's rules are keyed to .ccard__frame. The card's row
-   of tiny dots came with them and was REPLACED on 2026-09-27 (Josh: "add a
-   number and count top right so it is obvious there are more images. Or
-   would it be better to have a more obvious carousel indicator? Maybe adding
-   some arrows somewhere?"). He picked, from three mockups on this page, a
-   "2 / 7" count on the picture's top right corner, and chevrons that are
-   always out on a touch screen, where there is no hover to call them.
+/* THE GALLERY CARD'S CHROME (2026-09-26, Josh: "use the same styles for the
+   project carousels! with the dots top right"). The carousel wears exactly
+   what the directory card wears (communityCard.css): a row of dots hard
+   right above the picture, and a bare chevron down each edge that comes out
+   on hover or focus. Restated here rather than shared because the card's
+   rules are keyed to .ccard__frame; the dots' SIZE is shared, as the
+   --carousel-dot tokens in global.css, so the two cannot drift apart.
+   2026-09-27 swapped the dots for a "2 / 7" count on the picture; 2026-09-28
+   brought them back, bigger, on the card too (Josh: "the carousel should be
+   dots again, but make the dots bigger. do it the same way as on the gallery
+   but bigger. also adjust the gallery").
    ON THE PICTURE, NOT THE COLUMN. A capped work is centred and narrower than
-   the column, so the count sits in the current picture's corner and the
+   the column, so the dots end at the current picture's right edge and the
    chevrons run down its own two edges: --frame-l / --frame-r / --frame-h are
    that picture's offsets, measured by projectCarousel.ts. Unmeasured they
    fall back to the column. */
-.mprof__carousel-count {
-  position: absolute;
-  z-index: 2;
-  top: 0.6rem;
-  right: calc(var(--frame-r, 0px) + 0.6rem);
-  padding: 0.3rem 0.45rem;
-  font-size: var(--fs-78);
-  line-height: 1;
-  letter-spacing: 0.03em;
-  /* So "9 / 12" and "10 / 12" do not jitter the tag's width digit by digit. */
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  color: var(--color-dark);
-  background: var(--color-bg);
-  border-radius: var(--radius-sm);
+.mprof__carousel-dots {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--carousel-dot-gap);
+  padding-right: var(--frame-r, 0px);
   pointer-events: none;
 }
-/* Empty until the script has counted: no paper tag with nothing on it. */
-.mprof__carousel-count:empty {
-  display: none;
+
+.mprof__carousel-dot {
+  width: var(--carousel-dot);
+  height: var(--carousel-dot);
+  border-radius: 50%;
+  background: var(--color-dark);
+  opacity: 0.22;
+  transition: opacity 180ms ease;
+}
+.mprof__carousel-dot--on {
+  opacity: 1;
 }
 
 /* The track and its two edge strips. The strips sit on the COLUMN's edges,
@@ -440,7 +439,7 @@
   opacity: 1;
 }
 /* A touch screen has no hover to call the chevrons out, so they are out
-   from the start (2026-09-27): with the count, they are what says "swipe". */
+   from the start (2026-09-27): with the dots, they are what says "swipe". */
 @media (hover: none) {
   .mprof__carousel-arrow {
     opacity: 0.75;
@@ -544,6 +543,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .mprof__carousel-slide,
+  .mprof__carousel-dot,
   .mprof__carousel-arrow {
     transition: none;
   }

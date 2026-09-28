@@ -53,3 +53,13 @@ the first:
 Rules before Hosting, as always. The merge workflow deploys them ahead of
 Hosting, so nothing is by hand. **No functions** need deploying for this
 change.
+
+## 2026-09-28: dots again, bigger (supersedes section 3's count)
+
+Josh: "the carousel should be dots again, but make the dots bigger. do it the
+same way as on the gallery but bigger. also adjust the gallery". The count is
+gone. The project carousel's dots row is back above the picture's top right,
+drawn exactly as the directory card's. Both now take their size from one pair
+of tokens in `global.css`, `--carousel-dot` (0.36rem, twice the old 0.18rem)
+and `--carousel-dot-gap` (0.28rem), so the card and the carousel cannot drift
+apart. The touch-screen chevrons from section 3 stay.
