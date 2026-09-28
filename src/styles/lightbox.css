@@ -343,8 +343,9 @@
   position: absolute;
   white-space: nowrap;
   /* The next chevron's padding would stand it off the picture's edge, so the
-     box hangs that much further right. */
-  transform: translate(calc(-100% + 0.45rem), -100%);
+     box hangs further right: the padding less the ~2px the turned chevron's
+     tip reaches past its own box, which puts the tip on the edge. */
+  transform: translate(calc(-100% + 0.3rem), -100%);
   color: var(--color-dark);
 }
 .pswp--vscn .pswp__vscn-counter.is-empty {
@@ -359,28 +360,28 @@
   border: 0;
   background: none;
   color: inherit;
+  opacity: 0.75;
   cursor: pointer;
-  transition: color 140ms ease;
+  transition: opacity 140ms ease;
 }
 .pswp--vscn .pswp__vscn-counter-arrow:hover,
 .pswp--vscn .pswp__vscn-counter-arrow:focus-visible {
-  color: var(--color-muted);
+  opacity: 1;
 }
 .pswp--vscn .pswp__vscn-counter-arrow:focus-visible {
   outline: 2px solid var(--color-dark);
   outline-offset: -0.35rem;
 }
-/* The side arrows' chevron, drawn at the count's size. */
-.pswp--vscn .pswp__vscn-counter .pswp__vscn-chevron {
-  width: 0.4rem;
-  height: 0.4rem;
-  border-width: 1.5px;
-}
+/* THE PROJECT CAROUSEL'S CHEVRON, exactly (.mprof__carousel-arrow span:
+   0.7rem, 2px stroke, held at 0.75, full on hover), not a smaller one drawn
+   to the count's size (2026-09-28, Josh: "it should use the same as the
+   carousel as an icon for the arrows"). The base .pswp__vscn-chevron rule
+   above is already that drawing, so only the turn is set here. */
 .pswp--vscn .pswp__vscn-counter-arrow--prev .pswp__vscn-chevron {
-  transform: translate(0.08rem, 0) rotate(-135deg);
+  transform: translate(0.06rem, 0) rotate(-135deg);
 }
 .pswp--vscn .pswp__vscn-counter-arrow--next .pswp__vscn-chevron {
-  transform: translate(-0.08rem, 0) rotate(45deg);
+  transform: translate(-0.06rem, 0) rotate(45deg);
 }
 
 /* THE CAPTION, THE DESCRIPTION AND THE LINK — under the picture, at the
