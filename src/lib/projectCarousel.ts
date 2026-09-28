@@ -81,7 +81,11 @@ export function initProjectCarousels(root: ParentNode = document): void {
       dot.className = "mprof__carousel-dot";
       return dot;
     });
-    dotRow?.replaceChildren(...dots);
+    // The position as text (2026-09-28, Josh: "try text instead of dots"),
+    // in the dots' row; the dots stay, hidden by one rule in profile.css.
+    const count = document.createElement("span");
+    count.className = "mprof__carousel-count";
+    dotRow?.replaceChildren(count, ...dots);
     const liveRegion = carousel.querySelector<HTMLElement>("[data-carousel-live]");
     const positionLabel = carousel.dataset.positionLabel ?? "";
     const controller = new AbortController();
@@ -148,6 +152,7 @@ export function initProjectCarousels(root: ParentNode = document): void {
       if (prev) prev.disabled = atStart;
       if (next) next.disabled = atEnd;
       dots.forEach((dot, n) => dot.classList.toggle("mprof__carousel-dot--on", n === i));
+      count.textContent = `${i + 1} / ${slides.length}`;
       slides.forEach((slide, n) => slide.classList.toggle("is-current", n === i));
       frame();
       // Spoken only when a control asked for the move — a swipe or a scroll is

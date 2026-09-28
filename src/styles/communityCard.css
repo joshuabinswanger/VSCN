@@ -318,6 +318,24 @@
   opacity: 1;
 }
 
+/* TEXT INSTEAD OF DOTS (2026-09-28, Josh: "try text instead of dots"). The
+   same place, the same job: "2 / 7" hard right on the name line. The dots are
+   still drawn and still follow the carousel; THIS RULE is the whole switch,
+   delete it (and hide .ccard__count) to go back. Mirrored for the member
+   page's project carousels in profile.css. */
+.ccard__dot {
+  display: none;
+}
+.ccard__count {
+  font-size: var(--fs-carousel-count);
+  line-height: 1;
+  letter-spacing: 0.03em;
+  /* So "9 / 12" and "10 / 12" do not shift the digits beside them. */
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--color-muted);
+}
+
 /* The spoken position. There is no sr-only utility anywhere in this
    codebase, so the clip technique lives here. */
 .ccard__live {
