@@ -91,11 +91,26 @@
    by 1px"): each token is 13px × factor plus one pixel, rounded to the whole
    pixel, the old value in the comment. Body copy 13 → 14px.
    The roots stay 12px / 13px, so spacing does not move on either.
-   LEFT ALONE, on purpose: everything under 0.72rem (≤8.4px on a phone — the
-   eyebrows and micro-labels, which were not to grow), the vw-driven display
-   clamps and the fitted brand title. Those are still bare rem in their rules.
+   THE SMALL PRINT JOINED THE TABLE (2026-09-28, Josh: "can you centralize the
+   styles?"). Sizes under 0.72rem (the eyebrows, keys, value chips and "View
+   profile" links) were left as bare rem in their own rules until then. They
+   are rows here now, so every font size on the site is set in this one table.
+   Desktop keeps their exact rem, so nothing moves there; a phone gets the next
+   whole pixel, the same rule the rest of the table started from.
+   ROLE TOKENS (--fs-lightbox-*, --fs-tag) name a voice rather than a factor.
+   Use one where a group of rules must move together; the lightbox's words are
+   the first. Still literal: the vw-driven display clamps and the fitted brand
+   title, which are fitted to the screen and not part of the scale.
    A NEW SIZE belongs in this table, with both its pixels, not as a bare rem. */
 :root {
+  /* Small print: the rem it always was, on desktop. */
+  --fs-58: 0.58rem;
+  --fs-60: 0.6rem;
+  --fs-62: 0.62rem;
+  --fs-65: 0.65rem;
+  --fs-66: 0.66rem;
+  --fs-68: 0.68rem;
+  --fs-70: 0.7rem;
   --fs-72: 10px; /* 9.36 */
   --fs-74: 11px; /* 9.62 */
   --fs-75: 11px; /* 9.75 */
@@ -122,6 +137,15 @@
      a phone: down to the whole pixel below 8.64px, where everything else goes
      up to the one above. Not in the desktop bump either: still 0.72rem. */
   --fs-tag: 0.72rem;
+  /* THE LIGHTBOX'S THREE VOICES (src/styles/lightbox.css). Label: the counter
+     and the Close word in the top row. Meta: the artist credit and the
+     provenance lines (links, project, made with). Words: the title and the
+     description under the picture. Desktop is what they were; the phone
+     column is where they grew (2026-09-28, Josh: "type should also be bigger
+     on the photoswipe light box"). */
+  --fs-lightbox-label: var(--fs-62);
+  --fs-lightbox-meta: var(--fs-58);
+  --fs-lightbox-words: var(--fs-78);
 }
 
 /* THE PHONE READS AT THE REFERENCE'S SIZE (2026-09-27, Josh: "text larger on
@@ -134,6 +158,13 @@
    purpose the day before, and they get letter-spacing instead (.tagchip). */
 @media (--bp-mobile) {
   :root {
+    --fs-58: 7px; /* 6.96 */
+    --fs-60: 8px; /* 7.20 */
+    --fs-62: 8px; /* 7.44 */
+    --fs-65: 8px; /* 7.80 */
+    --fs-66: 8px; /* 7.92 */
+    --fs-68: 9px; /* 8.16 */
+    --fs-70: 9px; /* 8.40 */
     --fs-72: 10px; /* 9 */
     --fs-74: 10px; /* 9 */
     --fs-75: 11px; /* 10 */
@@ -156,6 +187,13 @@
     --fs-190: 26px; /* 23 */
     --fs-225: 30px; /* 28 */
     --fs-tag: 8px; /* 8.64 */
+    /* The lightbox on a phone: the top row and the credit were 7–7.5px and the
+       words 10px, a step BELOW the page they open from. The words now match
+       the page's captions (12px), and the small caps sit one step under them
+       at 11px, so they still read as labels beside the words. */
+    --fs-lightbox-label: 11px; /* 7.44 */
+    --fs-lightbox-meta: 11px; /* 6.96 */
+    --fs-lightbox-words: 12px; /* 10 */
   }
 }
 

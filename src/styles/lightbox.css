@@ -107,7 +107,7 @@
 .pswp--vscn .pswp__counter {
   height: auto;
   margin: 0;
-  font-size: 0.62rem;
+  font-size: var(--fs-lightbox-label);
   font-weight: 600;
   line-height: 1;
   letter-spacing: 0.08em;
@@ -156,7 +156,7 @@
 .pswp--vscn .pswp__vscn-word {
   display: block;
   padding-bottom: 2px;
-  font-size: 0.62rem;
+  font-size: var(--fs-lightbox-label);
   font-weight: 600;
   line-height: 1;
   letter-spacing: 0.08em;
@@ -322,7 +322,7 @@
   display: none;
 }
 .pswp--vscn .pswp__vscn-credit-name {
-  font-size: 0.58rem;
+  font-size: var(--fs-lightbox-meta);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -402,7 +402,7 @@
    through. There is no band and the block scrolls, so there is nothing left to
    protect the layout from. */
 .pswp--vscn .pswp__vscn-text-caption {
-  font-size: var(--fs-78);
+  font-size: var(--fs-lightbox-words);
   line-height: 1.45;
   color: var(--color-dark);
 }
@@ -411,7 +411,7 @@
    page. */
 .pswp--vscn .pswp__vscn-text-desc {
   white-space: pre-line;
-  font-size: var(--fs-78);
+  font-size: var(--fs-lightbox-words);
   line-height: 1.45;
   color: var(--color-muted);
 }
@@ -432,7 +432,7 @@
 }
 .pswp--vscn .pswp__vscn-text-link {
   max-width: 100%;
-  font-size: 0.58rem;
+  font-size: var(--fs-lightbox-meta);
   font-weight: 600;
   letter-spacing: 0.06em;
   color: var(--color-muted);
@@ -454,7 +454,7 @@
 .pswp--vscn .pswp__vscn-text-affiliations {
   display: block;
   margin-top: 0.15rem;
-  font-size: 0.58rem;
+  font-size: var(--fs-lightbox-meta);
   font-weight: 600;
   letter-spacing: 0.06em;
   color: var(--color-muted);
@@ -502,13 +502,10 @@
     height: 2.25rem;
     padding: 0 1rem;
   }
-  /* The words are under the picture here as everywhere now, so there is
-     nothing to switch — only the type, brought down a step for the narrower
-     measure. */
-  .pswp--vscn .pswp__vscn-text-caption,
-  .pswp--vscn .pswp__vscn-text-desc {
-    font-size: var(--fs-74);
-  }
+  /* The words used to be brought down a step here (--fs-74) for the
+     narrower measure. They are no longer: on a phone they now read at the
+     page's caption size, set by --fs-lightbox-words in global.css with the
+     rest of the lightbox's type (2026-09-28). */
 }
 
 /* ── Reduced motion ───────────────────────────────────────────────────────
