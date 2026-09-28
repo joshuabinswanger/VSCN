@@ -1991,10 +1991,6 @@ const t = useTranslations(lang);
   }
 
   .gallery-tags-title {
-    font-size: var(--fs-68);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
     color: var(--color-muted);
     transition: color 0.15s;
   }
@@ -2053,10 +2049,6 @@ const t = useTranslations(lang);
 
   .gallery-details-title {
     flex: none;
-    font-size: var(--fs-68);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
     color: var(--color-muted);
     transition: color 0.15s;
   }
@@ -2202,10 +2194,6 @@ const t = useTranslations(lang);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: var(--fs-78);
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
     color: var(--color-dark);
   }
 
@@ -2461,11 +2449,10 @@ const t = useTranslations(lang);
     background: none;
     border: none;
     border-bottom: 2px solid transparent;
-    font: inherit;
-    font-size: var(--fs-78);
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    /* Family only, not the `font` shorthand: the size and weight are HEADING
+       in type.css, and a shorthand here would reset them at higher
+       specificity. */
+    font-family: inherit;
     color: var(--color-muted);
     cursor: pointer;
     transition:

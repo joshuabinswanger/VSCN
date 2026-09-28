@@ -1,6 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import globalCss from "../styles/global.css?raw";
+import typeCss from "../styles/type.css?raw";
 
 interface Token {
   name: string;
@@ -33,17 +34,31 @@ const breakpoints = [...globalCss.matchAll(/@custom-media\s+(--[\w-]+)\s+([^;]+)
   value: (m[2] ?? "").trim(),
 }));
 
-// The --fs-* type scale: first declaration is the desktop value, the last one
-// (the --bp-mobile block) is the phone's whole pixel.
+// The --fs-* type scale lives in type.css: first declaration is the desktop
+// value, the last one (the --bp-mobile block) is the phone's whole pixel.
+const typeRootBlocks = [...typeCss.matchAll(/:root\s*\{([\s\S]*?)\}/g)].map((m) => m[1] ?? "");
 const typeScale: { name: string; desktop: string; mobile: string }[] = [];
-for (const t of rootBlocks.flatMap(parseTokens)) {
+for (const t of typeRootBlocks.flatMap(parseTokens)) {
   if (!t.name.startsWith("--fs-")) continue;
   const seen = typeScale.find((s) => s.name === t.name);
   if (seen) seen.mobile = t.value;
   else typeScale.push({ name: t.name, desktop: t.value, mobile: t.value });
 }
 
-const weightsInUse = [400, 600, 700, 800];
+// The site's text styles, read out of type.css: each voice is a comment that
+// opens "NAME:" followed by a rule whose first selector is its .t-* class and
+// whose remaining selectors are the elements that speak it.
+const voices = [...typeCss.matchAll(/\/\*\s*([A-Z]+):\s*([\s\S]*?)\*\/\s*(\.t-[\w-]+)((?:,\s*[^{]+?)?)\s*\{([^}]*)\}/g)].map(
+  (m) => ({
+    name: m[1] ?? "",
+    note: (m[2] ?? "").replace(/\s+/g, " ").split(/(?<=\.)\s/)[0] ?? "",
+    cls: (m[3] ?? "").slice(1),
+    speakers: (m[4] ?? "").split(",").map((x) => x.trim()).filter(Boolean).length,
+    decls: [...(m[5] ?? "").matchAll(/([\w-]+)\s*:\s*([^;]+);/g)].map((d) => `${d[1]}: ${(d[2] ?? "").trim()}`),
+  }),
+);
+
+const weightsInUse = [400, 500, 600, 700, 800];
 
 const radiusUsage: Record<string, string> = {
   "--radius-xs": "declared but unused — .ob-progress-bar/-fill hardcode 2px instead",
@@ -178,6 +193,26 @@ const radiusUsage: Record<string, string> = {
         }
       </div>
 
+      <h3 class="sg-h3">Text styles</h3>
+      <div class="sg-voices">
+        {
+          voices.map((v) => (
+            <div class="sg-voice">
+              <div class="sg-voice-sample">
+                <span class={v.cls}>Making knowledge visible</span>
+              </div>
+              <div class="sg-voice-meta">
+                <code class="sg-token-name">.{v.cls}</code>
+                <span class="sg-token-usage">
+                  {v.name} · {v.speakers} elements · {v.decls.join("; ")}
+                </span>
+                <span class="sg-note">{v.note}</span>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+
       <h3 class="sg-h3">Type scale</h3>
       <div class="sg-sizes">
         {
@@ -195,9 +230,10 @@ const radiusUsage: Record<string, string> = {
         }
       </div>
       <p class="sg-note">
-        Every size is a <code>--fs-*</code> token in <code>global.css</code>: a whole pixel on
-        both desktop and mobile. Sizes under <code>0.72rem</code>, the display clamps and
-        the fitted <code>.brand-name</code> are still literal values in their rules.
+        Every size is a <code>--fs-*</code> token and every text style a voice, both in
+        <code>src/styles/type.css</code>. New markup takes a <code>.t-*</code> class; a
+        component keeps layout and colour and never sets its own type. Only the display
+        clamps and the fitted <code>.brand-name</code> stay literal.
       </p>
     </section>
 
@@ -476,6 +512,34 @@ const radiusUsage: Record<string, string> = {
     font-size: var(--fs-78);
     font-weight: 600;
     color: var(--color-muted);
+  }
+
+  .sg-voices {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    margin-bottom: 2rem;
+  }
+
+  .sg-voice {
+    display: grid;
+    grid-template-columns: minmax(10rem, 1fr) 2fr;
+    gap: 0.4rem 1.5rem;
+    align-items: baseline;
+    padding-bottom: 1.1rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .sg-voice-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  @media (--bp-mobile) {
+    .sg-voice {
+      grid-template-columns: 1fr;
+    }
   }
 
   .sg-sizes {

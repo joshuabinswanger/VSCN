@@ -64,9 +64,6 @@
 .ccard__name {
   margin: 0;
   /* The heading is semantic; its size is the card's, not a heading scale. */
-  font-size: var(--fs-120);
-  font-weight: 700;
-  letter-spacing: -0.01em;
   /* Explicit, not `inherit`. Nothing up the tree sets a line-height — not
      body, not .page-wrap — so `inherit` resolved to `normal`, i.e. Archivo's
      own metrics (~1.25) re-resolved against this element's 1.2rem (15.6px
@@ -75,7 +72,6 @@
      than one. 1.1 closes it to a couple of pixels while still clearing a
      descender sitting over a capital, which is where a tighter value starts
      to collide. */
-  line-height: 1.1;
 }
 .ccard__name-link {
   display: block;
@@ -406,9 +402,6 @@
   display: block;
   width: fit-content;
   margin-top: 0.6rem;
-  font-size: var(--fs-70);
-  font-weight: 600;
-  letter-spacing: 0.02em;
   white-space: nowrap;
   color: var(--color-muted);
   text-decoration: underline;
@@ -425,9 +418,6 @@
 .ccard__role {
   min-width: 0;
   margin-top: 0.15rem;
-  font-size: var(--fs-78);
-  font-weight: 600;
-  line-height: 1.3;
   color: var(--color-dark);
 }
 
