@@ -34,6 +34,7 @@ export default defineConfig({
       },
       filter: (page) =>
         !page.includes('/proto') &&
+        !page.includes('/styleguide') &&
         !page.includes('/profile') &&
         !page.includes('/verify-email') &&
         !page.includes('/auth/') &&

@@ -1823,12 +1823,10 @@ const indexMembers = [...members].sort((a, b) =>
      at full opacity, which is the finished no-motion state and what the page
      did before.
 
-     The 5s auto-advance follows the same idea of prominence, decided in JS
-     because it is a timer rather than a paint — `focusedCarousel()` in
-     src/lib/communityCarousel.ts picks the one card nearest the middle of the
-     scrollport. It is the stricter of the two: the fade leaves every card
-     between the middle and the bar lit, and the timer moves exactly one of
-     them. */
+     (Until 2026-09-28 a 5 s auto-advance in src/lib/communityCarousel.ts
+     followed the same idea of prominence, moving only the card nearest the
+     middle of the scrollport. Autoplay is gone; the fade is the page's only
+     motion of its own now.) */
   @media (--bp-mobile) and (prefers-reduced-motion: no-preference) {
     @supports (animation-timeline: view()) {
       .cgrid:not([data-pattern="grid"]) .cgrid__cell {

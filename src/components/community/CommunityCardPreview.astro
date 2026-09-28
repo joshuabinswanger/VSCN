@@ -52,11 +52,13 @@ import "../../styles/communityCard.css";
   <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
 
   {
-    /* Indicators, not controls — aria-hidden, pointer-events:none, no tab
-       stops. One <span> per work, built by the renderer from the same
-       template mechanism the tags use. */
+    /* The count row, as on the real card (CommunityImageCard): one dot per
+       work, built by the renderer from the same template mechanism the tags
+       use, plus the "2 / 7" count and its two chevrons, which the carousel
+       module adds — named buttons, not tab stops, so the row is not
+       aria-hidden. */
   }
-  <div class="ccard__dots" data-ccpv="dots" aria-hidden="true" hidden></div>
+  <div class="ccard__dots" data-ccpv="dots" hidden></div>
 
   <div class="ccard__body" data-ccpv="body" hidden>
     {

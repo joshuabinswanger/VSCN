@@ -88,10 +88,17 @@ export function initProjectCarousels(root: ParentNode = document): void {
     const count = document.createElement("span");
     count.className = "mprof__carousel-count";
     // Flanked by chevrons that page, "‹ 2 / 7 ›", like the gallery card's and
-    // the lightbox's (src/lib/pager.ts). Not tab stops: the row is
-    // aria-hidden and the edge arrows are the accessible controls.
-    const countPrev = pagerChevron("prev", () => go(current() - 1), { focusable: false });
-    const countNext = pagerChevron("next", () => go(current() + 1), { focusable: false });
+    // the lightbox's (src/lib/pager.ts). Named after the edge arrows and
+    // reachable by a screen reader, but not tab stops: the track itself is
+    // the tab stop and its arrow keys page (see pager.ts for the reasoning).
+    const countPrev = pagerChevron("prev", () => go(current() - 1), {
+      label: prev?.getAttribute("aria-label"),
+      focusable: false,
+    });
+    const countNext = pagerChevron("next", () => go(current() + 1), {
+      label: next?.getAttribute("aria-label"),
+      focusable: false,
+    });
     dotRow?.replaceChildren(countPrev, count, countNext, ...dots);
     const liveRegion = carousel.querySelector<HTMLElement>("[data-carousel-live]");
     const positionLabel = carousel.dataset.positionLabel ?? "";
