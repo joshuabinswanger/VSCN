@@ -294,7 +294,7 @@
   /* Hard right, on the artwork's own right edge: the name holds the left of
      this line, so the count sits where nothing else does. */
   justify-content: flex-end;
-  gap: 0.18rem;
+  gap: var(--carousel-dot-gap);
   /* Pulled up into the card's 0.3rem row gap: the count belongs to the name
      line it shares, and the space that gap left under the title read as a
      break between the two. The image comes up with it. */
@@ -303,9 +303,12 @@
   pointer-events: none;
 }
 
+/* Twice the first size since 2026-09-28 (Josh: "make the dots bigger … also
+   adjust the gallery"): --carousel-dot in global.css, shared with the
+   member page's project carousels. */
 .ccard__dot {
-  width: 0.18rem;
-  height: 0.18rem;
+  width: var(--carousel-dot);
+  height: var(--carousel-dot);
   border-radius: 50%;
   background: var(--color-dark);
   opacity: 0.22;
