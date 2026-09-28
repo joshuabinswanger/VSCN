@@ -286,8 +286,11 @@
   overflow-wrap: anywhere;
 }
 
-.mprof__project-title a {
-  color: inherit;
+/* More room under the title than between the lines below it (2026-09-28,
+   Josh: "make a bigger gap from title to description for projects"): on top
+   of the head's 0.4rem, so title to description is 1.15rem. */
+.mprof__project-head > .mprof__project-title {
+  margin-bottom: 0.75rem;
 }
 
 .mprof__project-desc,
@@ -303,6 +306,12 @@
    ever interpreted; only the newlines survive. */
 .mprof__project-desc {
   white-space: pre-line;
+}
+
+.mprof__project-links {
+  margin: 0;
+  font-size: var(--fs-85);
+  line-height: 1.5;
 }
 
 /* The project's tags (2026-09-27): the profile's `.mprof__vals` row, a

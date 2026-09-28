@@ -374,15 +374,7 @@ export function renderProfilePreview(
       const title = projectTitle(section.project, labels.lang) ?? "";
       const titleEl = slot("title");
       if (titleEl) {
-        titleEl.replaceChildren();
-        if (title && section.project.link) {
-          const a = document.createElement("a");
-          a.href = section.project.link;
-          a.target = "_blank";
-          a.rel = "noopener";
-          a.textContent = title;
-          titleEl.append(a);
-        } else titleEl.textContent = title;
+        titleEl.textContent = title;
         titleEl.hidden = !title;
       }
       const desc = projectDescription(section.project, labels.lang) ?? "";
@@ -390,6 +382,17 @@ export function renderProfilePreview(
       if (descEl) {
         descEl.textContent = desc;
         descEl.hidden = !desc;
+      }
+      // The link after the words, as MemberProject prints it (2026-09-28).
+      const linkEl = slot("link");
+      const linkA = linkEl?.querySelector("a");
+      if (linkEl && linkA) {
+        const link = section.project.link ?? "";
+        if (link) {
+          linkA.href = link;
+          linkA.textContent = hostLabel(link);
+        }
+        linkEl.hidden = !link;
       }
       const withEl = slot("with");
       if (withEl) {
