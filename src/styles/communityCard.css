@@ -30,9 +30,16 @@
  */
 
 .ccard {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+  /* A GRID, NOT A COLUMN, for the first row only (2026-09-28, Josh: "they
+     shoudl be in the same ehight, not two stacked divs"): the name on the
+     left and the count "‹ 2 / 7 ›" on the right share row one, on one
+     baseline, instead of the count's row standing between the name and the
+     picture. Every other child spans both columns, which is the column it
+     was. A card without a count leaves the auto column empty and zero wide. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: start;
+  row-gap: 0.3rem;
   /* Everything above and below the frame — the name line, the caption row and
      the gaps around them. Measured at 63–78px across the seeded directory;
      plus the dots row that now sits under
@@ -61,6 +68,14 @@
 }
 
 /* ── Name ─────────────────────────────────────────────── */
+.ccard > * {
+  grid-column: 1 / -1;
+}
+.ccard > .ccard__name {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: last baseline;
+}
 .ccard__name {
   margin: 0;
   /* The heading is semantic; its size is the card's, not a heading scale. */
@@ -290,11 +305,15 @@
   /* Hard right, on the artwork's own right edge: the name holds the left of
      this line, so the count sits where nothing else does. */
   justify-content: flex-end;
+  align-items: center;
   gap: var(--carousel-dot-gap);
-  /* Pulled up into the card's 0.3rem row gap: the count belongs to the name
-     line it shares, and the space that gap left under the title read as a
-     break between the two. The image comes up with it. */
-  margin-top: -0.2rem;
+  /* On the name's own line (see .ccard): the second column of row one, on
+     the name's last baseline, so a wrapped name keeps the count beside its
+     bottom line. The left padding is the least room between the two. */
+  grid-column: 2;
+  grid-row: 1;
+  align-self: last baseline;
+  padding-left: 0.75rem;
   /* Indicators, never controls — see the markup note. */
   pointer-events: none;
 }
