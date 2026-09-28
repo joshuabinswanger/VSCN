@@ -1,7 +1,9 @@
 ---
 import { getImage } from "astro:assets";
 import type { MemberView } from "../../lib/memberView.ts";
-import { memberHref } from "../../lib/links.ts";
+import { memberHref, workCaption, workDescription } from "../../lib/links.ts";
+import { embedDataAttrs } from "../../lib/embed.ts";
+import { projectSlideData } from "../../lib/projects.ts";
 import { useTranslations, type Lang } from "../../i18n/utils.ts";
 import MemberDetailPanel from "./MemberDetailPanel.astro";
 // THIS CARD'S SURFACE, in a file of its own so the profile editor's preview
@@ -81,29 +83,42 @@ const profileHref = memberHref(lang, member.slug);
 // is the only route out of a full-screen picture to the person who made it.
 // `data-pswp-profile` is what carries it — on every slide, because a slide is
 // now a lightbox item in its own right, and on the trigger too.
-const pswpFor = (w: (typeof works)[number]) => ({
-  width: String(w.width),
-  height: String(w.height),
-  caption: w.caption?.trim() || "",
-  // THE DESCRIPTION — the only one there is, since 2026-09-04 (see
-  // GalleryItem.description in gallery.ts). What this feeds is the lightbox,
-  // which has room for it: the card itself never prints it.
-  description: w.description || "",
-  // Where the image appeared — already absolute and already filtered for
-  // linkability by workLink(). Per slide, unlike `meta` and the profile
-  // href below: every image in this card is the same member's, but each
-  // one appeared somewhere of its own.
-  link: w.link || "",
-  // The member's own project page for the piece (2026-09-10) — same treatment.
-  siteLink: w.siteLink || "",
-  meta: member.displayName,
-});
+const pswpFor = (w: (typeof works)[number]) => {
+  // THE PROJECT THIS WORK IS IN (2026-09-23) — the lightbox's "Part of …"
+  // line and its affiliations, same data the member page's trigger carries.
+  const slide = projectSlideData(member.projects?.find((p) => p.id === w.projectId), lang);
+  return {
+    width: String(w.width),
+    height: String(w.height),
+    // PICKED FOR THIS PAGE'S LOCALE (2026-09-25), the member page's rule
+    // (workCaption/workDescription in links.ts). These read the raw English
+    // fields, so /de/community's lightbox showed English under a German
+    // interface.
+    caption: workCaption(w, lang)?.trim() || "",
+    // THE DESCRIPTION — the only one there is, since 2026-09-04 (see
+    // GalleryItem.description in gallery.ts). What this feeds is the lightbox,
+    // which has room for it: the card itself never prints it.
+    description: workDescription(w, lang) || "",
+    // Where the image appeared — already absolute and already filtered for
+    // linkability by workLink(). Per slide, unlike `meta` and the profile
+    // href below: every image in this card is the same member's, but each
+    // one appeared somewhere of its own.
+    link: w.link || "",
+    // The member's own project page for the piece (2026-09-10) — same treatment.
+    siteLink: w.siteLink || "",
+    meta: member.displayName,
+    project: slide.project || "",
+    projectLink: slide.projectLink || "",
+    affiliations: slide.affiliations || "",
+  };
+};
 
 // Alt: the member's own caption when they wrote one, a translated fallback
 // otherwise — never "" (a named debt of the prototype this card graduated
 // from).
 const altFor = (w: (typeof works)[number]) =>
-  w.caption?.trim() || `${member.displayName} — ${t("member.workAlt")}`;
+  workCaption(w, lang)?.trim() || `${member.displayName} — ${t("member.workAlt")}`;
+
 
 // "Image {n} of {total}". Filled here for the per-slide labels and handed to
 // the client as a template too, because the live region rebuilds it at every
@@ -123,12 +138,14 @@ const positionFor = (i: number) =>
   </h2>
 
   {
-    /* Indicators, not controls — aria-hidden, pointer-events:none, no tab
-      stops. A directory page holds a couple of dozen cards; giving each one a
-      focusable dot per work would put dozens of tab stops in front of the
-      member links that are the page's actual journey, to duplicate paging the
-      arrows and the arrow keys already do. The position is spoken instead, by
-      the live region inside the frame.
+    /* The count row: "‹ 2 / 7 ›". Not aria-hidden (since 2026-09-28) — the
+      chevrons are named buttons a screen reader can reach and press — but
+      NOT tab stops. A directory page holds a couple of dozen cards; giving
+      each one two focusable chevrons would put dozens of tab stops in front
+      of the member links that are the page's actual journey, to duplicate
+      paging the edge arrows and the frame's arrow keys already do. The
+      position is also spoken by the live region inside the frame. The dots
+      themselves are pointer-events:none indicators.
       ABOVE the artwork and hard right, not on it: a row of the card's own
       chrome between the name and the picture, opposite the name so the two
       share one line. Nothing has to survive the image
@@ -136,7 +153,32 @@ const positionFor = (i: number) =>
   }
   {
     isCarousel && (
-      <div class="ccard__dots" aria-hidden="true">
+      <div class="ccard__dots">
+        {/* THE POSITION AS TEXT (2026-09-28, Josh: "try text instead of
+            dots"). The dots stay in the markup and the engine, hidden by one
+            rule in communityCard.css, so switching back is that rule.
+            The chevrons page (communityCarousel.ts wires them, src/lib/pager.ts
+            draws the same pair for the preview) and carry the edge arrows'
+            names; tabindex="-1" — see the note above. */}
+        <button
+          class="pager-chev pager-chev--prev"
+          type="button"
+          tabindex="-1"
+          aria-label={t("community.card.prev")}
+          title={t("community.card.prev")}
+        >
+          <span aria-hidden="true" />
+        </button>
+        <span class="ccard__count">1 / {works.length}</span>
+        <button
+          class="pager-chev pager-chev--next"
+          type="button"
+          tabindex="-1"
+          aria-label={t("community.card.next")}
+          title={t("community.card.next")}
+        >
+          <span aria-hidden="true" />
+        </button>
         {works.map((_, i) => (
           <span class="ccard__dot" class:list={{ "ccard__dot--on": i === 0 }} />
         ))}
@@ -193,6 +235,10 @@ const positionFor = (i: number) =>
               data-pswp-site-link={pswpFor(w).siteLink || undefined}
               data-pswp-meta={pswpFor(w).meta}
               data-pswp-profile={profileHref}
+              data-pswp-project={pswpFor(w).project || undefined}
+              data-pswp-project-link={pswpFor(w).projectLink || undefined}
+              data-pswp-affiliations={pswpFor(w).affiliations || undefined}
+              {...embedDataAttrs(w.embed)}
             >
               <img
                 class="ccard__img"
@@ -208,6 +254,7 @@ const positionFor = (i: number) =>
                 loading="lazy"
                 decoding="async"
               />
+              {w.embed && <span class="vscn-play vscn-play--over" aria-hidden="true" />}
             </div>
           ))
         }
@@ -251,6 +298,9 @@ const positionFor = (i: number) =>
         data-pswp-site-link={pswpFor(frame).siteLink || undefined}
         data-pswp-meta={pswpFor(frame).meta}
         data-pswp-profile={profileHref}
+        data-pswp-project={pswpFor(frame).project || undefined}
+        data-pswp-project-link={pswpFor(frame).projectLink || undefined}
+        data-pswp-affiliations={pswpFor(frame).affiliations || undefined}
         aria-label={`${t("community.card.openImage")} ${member.displayName}`}></a>
       {
         isCarousel && (

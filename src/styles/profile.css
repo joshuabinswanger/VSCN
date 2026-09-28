@@ -23,23 +23,27 @@
  * (--bp-mobile) resolves through postcss-global-data — see postcss.config.mjs.
  */
 
+/* MORE WHITE SPACE (2026-09-27, Josh: "More White Space on Profile"). Every
+   step between the page's parts grew: the head now opens the page on its own
+   (the "← Community" link above it went the same day, and the padding took
+   back its height), the lines under the
+   name sit further apart, and the bio, the meta rows and the works each stand
+   off the block before them by more than they did. */
 .mprof {
   font-family: "Archivo", sans-serif;
-  padding-block: 3rem 10rem;
+  padding-block: 7rem 10rem;
 }
 
-.mprof__back {
-  display: inline-block;
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  text-decoration: none;
-  color: var(--color-muted);
-}
-.mprof__back:hover,
-.mprof__back:focus-visible {
-  color: var(--color-dark);
+/* NARROWER ON DESKTOP (2026-09-28, Josh: "make the project page on desktop
+   less wide on max width"). The page used the whole 870px column, so a
+   landscape work ran as wide as the header. 54rem (702px at the desktop's
+   13px root) centred in <main>; a phone keeps the full column. The editor's
+   Preview tab renders this same element, so it narrows with it. */
+@media (--bp-desktop) {
+  .mprof {
+    max-width: 54rem;
+    margin-inline: auto;
+  }
 }
 
 /* ── Identity ─────────────────────────────────────────── */
@@ -47,8 +51,7 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
-  gap: 1.25rem;
-  margin-top: 2.5rem;
+  gap: 2rem;
 }
 
 .mprof__avatar {
@@ -73,9 +76,9 @@
 }
 
 .mprof__role {
-  margin: 0.7rem 0 0;
+  margin: 1rem 0 0;
   max-width: 36rem;
-  font-size: 0.9rem;
+  font-size: var(--fs-90);
   font-weight: 600;
   line-height: 1.35;
   color: var(--color-dark);
@@ -84,17 +87,17 @@
 /* Institution sits with the title block, but a step quieter than the
      role: it identifies, it is not the headline. */
 .mprof__affiliation {
-  margin: 0.25rem 0 0;
+  margin: 0.4rem 0 0;
   max-width: 36rem;
-  font-size: 0.9rem;
+  font-size: var(--fs-90);
   line-height: 1.35;
   color: var(--color-dark);
 }
 
 .mprof__where {
-  margin: 0.25rem 0 0;
+  margin: 0.4rem 0 0;
   max-width: 36rem;
-  font-size: 0.85rem;
+  font-size: var(--fs-85);
   line-height: 1.35;
   color: var(--color-muted);
 }
@@ -105,11 +108,7 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  margin: 0.55rem 0 0;
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  margin: 1rem 0 0;
   color: var(--color-muted);
 }
 .mprof__open::before {
@@ -122,10 +121,8 @@
 }
 
 .mprof__bio {
-  margin: 2.2rem 0 0;
+  margin: 3.5rem 0 0;
   max-width: 38rem;
-  font-size: 0.95rem;
-  line-height: 1.55;
   color: var(--color-dark);
   white-space: pre-line;
 }
@@ -134,8 +131,8 @@
 .mprof__meta {
   display: flex;
   flex-direction: column;
-  gap: 1.4rem;
-  margin-top: 2.4rem;
+  gap: 1.75rem;
+  margin-top: 3rem;
 }
 
 .mprof__row {
@@ -147,10 +144,6 @@
 /* A real heading, so the page has an outline rather than styled spans. */
 .mprof__key {
   margin: 0;
-  font-size: 0.58rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--color-muted);
 }
 
@@ -170,11 +163,6 @@
    them here rather than fighting it with specificity in `.tagchip` keeps one
    drawing per class and no ordering dependency between the two sheets. */
 .mprof__val:not(.tagchip) {
-  font-size: 0.68rem;
-  font-weight: 500;
-  line-height: 1.25;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
   padding: 5px 7px;
   color: var(--color-muted);
   border: 1px solid var(--color-border);
@@ -225,9 +213,6 @@
 }
 
 .mprof__link {
-  font-size: 0.78rem;
-  font-weight: 500;
-  line-height: 1.3;
   color: var(--color-dark);
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -241,8 +226,349 @@
 .mprof__works {
   display: flex;
   flex-direction: column;
+  /* The space between one work or project and the next. 4rem -> 7rem on
+     2026-09-26 (Josh: "we need to give more space in the profile view between
+     images and projects"): with pictures up to 60vh tall, 4rem read as one
+     continuous strip.
+     ONE THING ON SCREEN AT A TIME (2026-09-28, Josh: "We need to give even
+     more white space in the profile view! Make it so that almost only one
+     element / project is shown"). The gap is a share of the WINDOW, not a
+     fixed step: a picture is at most 60vh tall, so with 30vh between two of
+     them, one centred on screen leaves its neighbours out of view. 7rem stays
+     the floor for a short window. The first work stands off the profile's
+     words by the same measure, half of it. 40vh at first, trimmed the same
+     day (Josh: "a bit less gap between images and projects"). */
+  gap: max(7rem, 30vh);
+  margin-top: max(6rem, 15vh);
+}
+
+/* A PROJECT BLOCK on the member page and in the editor's preview (2026-09-23).
+   The works inside keep exactly the layout loose works have; the block only
+   adds a heading and its words, so the gallery still reads as one column.
+   No rule above it since 2026-09-28 (Josh: "remove horizontal line on
+   profile page"): the window-sized gap already sets a project apart. The 4rem gap here separates the heading group from the
+   first figure (it matched .mprof__works until that gap grew to 7rem on
+   2026-09-26; a project's heading belongs to its works, so it stays closer
+   to them than to the work before), and it goes nowhere inside the heading
+   group itself.
+   See .mprof__project-head for that inner spacing (fix round 1, 2026-09-24:
+   this rule used to put the SAME 4rem between the title, the description and
+   the "With …" line, so the heading read as three lines floating 52px
+   apart — a bug found by rendering a synthetic project, not by either gate). */
+.mprof__project {
+  display: flex;
+  flex-direction: column;
   gap: 4rem;
-  margin-top: 4.5rem;
+}
+
+/* NO EXTRA AIR AROUND A PROJECT any more (2026-09-28, Josh: "less white
+   space between projects"). From 2026-09-26 a project stood 4rem further off
+   its neighbours than the works gap, so a project's edge was 30vh + 8rem from
+   the next one; once that gap became a share of the window, the extra only
+   made the page longer. A project now sits in the same rhythm as a loose
+   work. */
+
+/* THE HEADING GROUP — title, description and affiliations read as one label
+   for the works below, not as three unrelated paragraphs. A tight gap (a hair
+   more than a line-height) keeps them visually one unit while still reading
+   as separate lines. Both the page and the editor's preview wrap the same
+   three parts in this element (members/[slug].astro's <section
+   class="mprof__project"> children, and ProfileViewPreview.astro's
+   data-ppv-tpl="project" template) so the two never diverge on this again. */
+.mprof__project-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* A heading, in the name's face (2026-09-28, Josh: "Project Title should be
+   bigger too"): bold and tight like .mprof__name, two sizes under it so the
+   member still outranks their project. */
+.mprof__project-title {
+  margin: 0;
+  font-size: var(--fs-225);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+/* More room under the title than between the lines below it (2026-09-28,
+   Josh: "make a bigger gap from title to description for projects"): on top
+   of the head's 0.4rem, so title to description is 1.15rem. */
+.mprof__project-head > .mprof__project-title {
+  margin-bottom: 0.75rem;
+}
+
+.mprof__project-desc,
+.mprof__project-with {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+/* A member who wrote paragraphs meant them (2026-09-27, Josh: "Paragraphs are
+   not respected in the Project description"): the same `pre-line` the bio,
+   a work's description and the lightbox already wear. The text is set as
+   text (Astro escapes it, the preview uses textContent), so no markup is
+   ever interpreted; only the newlines survive. */
+.mprof__project-desc {
+  white-space: pre-line;
+}
+
+.mprof__project-links {
+  margin: 0;
+  font-size: var(--fs-85);
+  line-height: 1.5;
+}
+
+/* The project's tags (2026-09-27): the profile's `.mprof__vals` row, a
+   touch apart from the words above it. */
+.mprof__project-tags {
+  margin-top: 0.35rem;
+}
+/* The preview hides an empty row with `hidden`, which `.mprof__vals`'
+   display: flex would otherwise win over. */
+.mprof__project-tags[hidden] {
+  display: none;
+}
+
+/* ── A PROJECT'S CAROUSEL (2026-09-26) ────────────────────
+   A project with two or more works pages through them, one work per step
+   (Josh: "the projects should be shown as carousels on the profile page and
+   in the preview"). This replaced the 2026-09-25 slider that paged between
+   whole PROJECTS: those stack down the page again, and only the works move
+   sideways, so there is one level of swiping. The stepping is the browser's
+   own: a scroll container snapping to each work's start, so a swipe, a
+   trackpad flick, the arrow keys on the focused track and the prev/next
+   buttons all come to rest on a whole work. src/lib/projectCarousel.ts adds
+   the buttons, the measurement and the lightbox follow.
+
+   THE BLEED. At rest a work is exactly as wide as a work has always been —
+   the page's column — and the first one stands exactly where it stood. The
+   TRACK is wider than that: negative margins take it out to the edges of the
+   scrollport and the same distances come back as padding and as
+   scroll-padding, so the snap points still sit on the column's left edge
+   while the next work spills out to the right (and a passed one to the left).
+   --bleed-l / --bleed-r are measured by the script against .page-wrap's
+   client box; before it runs, or without it, they are 0 and the carousel is
+   a column-wide scroller that still snaps. */
+.mprof__carousel {
+  --bleed-l: 0px;
+  --bleed-r: 0px;
+  --carousel-gap: 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* The heading group and the carousel's dots belong together: the project's
+   4rem works rhythm would push the dots a screen-width's worth of air away
+   from the title they serve. */
+.mprof__project:has(.mprof__carousel) {
+  gap: 1.5rem;
+}
+
+/* THE GALLERY CARD'S CHROME (2026-09-26, Josh: "use the same styles for the
+   project carousels! with the dots top right"). The carousel wears exactly
+   what the directory card wears (communityCard.css): a row of dots hard
+   right above the picture, and a bare chevron down each edge that comes out
+   on hover or focus. Restated here rather than shared because the card's
+   rules are keyed to .ccard__frame; the dots' SIZE is shared, as the
+   --carousel-dot tokens in global.css, so the two cannot drift apart.
+   2026-09-27 swapped the dots for a "2 / 7" count on the picture; 2026-09-28
+   brought them back, bigger, on the card too (Josh: "the carousel should be
+   dots again, but make the dots bigger. do it the same way as on the gallery
+   but bigger. also adjust the gallery").
+   ON THE PICTURE, NOT THE COLUMN. A capped work is centred and narrower than
+   the column, so the dots end at the current picture's right edge and the
+   chevrons run down its own two edges: --frame-l / --frame-r / --frame-h are
+   that picture's offsets, measured by projectCarousel.ts. Unmeasured they
+   fall back to the column. */
+.mprof__carousel-dots {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--carousel-dot-gap);
+  padding-right: var(--frame-r, 0px);
+  pointer-events: none;
+}
+
+.mprof__carousel-dot {
+  width: var(--carousel-dot);
+  height: var(--carousel-dot);
+  border-radius: 50%;
+  background: var(--color-dark);
+  opacity: 0.22;
+  transition: opacity 180ms ease;
+}
+.mprof__carousel-dot--on {
+  opacity: 1;
+}
+
+/* TEXT INSTEAD OF DOTS (2026-09-28), exactly as .ccard__count in
+   communityCard.css: the dots still follow the carousel, and this rule is
+   the whole switch back. */
+.mprof__carousel-dot {
+  display: none;
+}
+/* Its type is COUNT in type.css. */
+.mprof__carousel-count {
+  white-space: nowrap;
+  color: var(--color-muted);
+}
+
+/* The track and its two edge strips. The strips sit on the COLUMN's edges,
+   not the track's: the track bleeds out into the margins, the stage does
+   not. */
+.mprof__carousel-stage {
+  position: relative;
+}
+/* The strip's width is a share of the picture, as on the card, not of the
+   column: 16% of a column would take a third of a narrow portrait. */
+.mprof__carousel {
+  --frame-w: calc(100% - var(--frame-l, 0px) - var(--frame-r, 0px));
+}
+
+.mprof__carousel-arrow {
+  position: absolute;
+  top: 0;
+  height: var(--frame-h, 100%);
+  z-index: 1;
+  display: grid;
+  width: clamp(2.75rem, calc(var(--frame-w) * 0.16), 4.5rem);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-dark);
+  opacity: 0;
+  cursor: pointer;
+  transform: translate(0, 0);
+  /* The hide, a third shorter than the appear, as on the card. */
+  transition:
+    opacity 120ms ease,
+    transform 147ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.mprof__carousel-stage:hover .mprof__carousel-arrow,
+.mprof__carousel-stage:focus-within .mprof__carousel-arrow,
+.mprof__carousel-arrow:focus-visible {
+  opacity: 0.75;
+  transform: translate(0, 0);
+  transition:
+    opacity 180ms ease,
+    transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.mprof__carousel-arrow:hover,
+.mprof__carousel-arrow:focus-visible {
+  opacity: 1;
+}
+/* A touch screen has no hover to call the chevrons out, so they are out
+   from the start (2026-09-27): with the dots, they are what says "swipe". */
+@media (hover: none) {
+  .mprof__carousel-arrow {
+    opacity: 0.75;
+    transform: translate(0, 0);
+  }
+}
+/* At either end there is nowhere to go, so that side's strip is not there
+   at all: no chevron, and the picture under it is the picture's again. */
+.mprof__carousel-stage .mprof__carousel-arrow:disabled {
+  visibility: hidden;
+}
+.mprof__carousel-arrow span {
+  display: block;
+  width: var(--chevron-size);
+  height: var(--chevron-size);
+  border-top: var(--chevron-stroke) solid currentColor;
+  border-right: var(--chevron-stroke) solid currentColor;
+}
+.mprof__carousel-arrow--prev span {
+  transform: translate(0.05rem, 0) rotate(-135deg);
+}
+.mprof__carousel-arrow--next span {
+  transform: translate(-0.05rem, 0) rotate(45deg);
+}
+.mprof__carousel-arrow--prev {
+  left: var(--frame-l, 0px);
+  place-items: center start;
+  padding-left: 0.95rem;
+  transform: translate(-0.4rem, 0);
+}
+.mprof__carousel-arrow--next {
+  right: var(--frame-r, 0px);
+  place-items: center end;
+  padding-right: 0.95rem;
+  transform: translate(0.4rem, 0);
+}
+
+.mprof__carousel-track {
+  /* The offset parent the script measures each slide's offsetLeft from. */
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--carousel-gap);
+  margin-inline: calc(-1 * var(--bleed-l)) calc(-1 * var(--bleed-r));
+  padding-inline: var(--bleed-l) var(--bleed-r);
+  scroll-padding-inline: var(--bleed-l) var(--bleed-r);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  /* No scrollbar: the chevrons, the dots and the spill of the next work
+     are the affordance, and a bar under a tall picture would sit a screen
+     below the thing it scrolls. */
+  scrollbar-width: none;
+}
+.mprof__carousel-track::-webkit-scrollbar {
+  display: none;
+}
+.mprof__carousel-track:focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: 4px;
+}
+
+/* One work per step, at the column's width: once the bleed is padded back
+   in, the track's content box IS the column, so 100% is that width.
+   scroll-snap-stop keeps a hard swipe from flying past a work. */
+.mprof__carousel-slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  transition: opacity 0.3s ease;
+}
+/* The work on the column reads at full strength; the ones spilling into the
+   margins are turned down so the step shows at a glance. Keyed to the
+   script's .is-current, so without the script every work stays full. */
+.mprof__carousel-track:has(.is-current) > .mprof__carousel-slide:not(.is-current) {
+  opacity: 0.4;
+}
+
+/* The spoken position — the clip technique, as .ccard__live. */
+.mprof__carousel-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* On a phone the column is the screen less its gutters, so there is no margin
+   for the next work to spill into; the gap only has to say "another one", and
+   the full 3rem would be swipe travel spent on paper. */
+@media (--bp-mobile) {
+  .mprof__carousel {
+    --carousel-gap: 1.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mprof__carousel-slide,
+  .mprof__carousel-dot,
+  .mprof__carousel-arrow {
+    transition: none;
+  }
 }
 
 .mprof__works-key {
@@ -254,7 +580,24 @@
 }
 
 .mprof__work-link {
+  /* Relative so a video work's play mark (.vscn-play--over) centres on the
+     picture rather than on the figure, caption included. */
+  position: relative;
   display: block;
+  /* NO PICTURE TALLER THAN 60vh (2026-09-26, Josh: "make the max height of
+     an image 75vh", then the same day: "the vh should be 60vh"). Capped through the WIDTH, not the height: the frame is
+     this link, and a height cap on the <img> would leave the frame at the
+     column's width around a narrower picture, or letterbox it in its
+     placeholder colour. So the frame is at most as wide as the picture is at
+     60vh tall — --work-ar is width / height, set per work by MemberWork.astro
+     and by the editor's preview — and the image fills it. A landscape work
+     never reaches the cap and keeps the full column. Without --work-ar the
+     declaration is invalid and the frame is simply column-wide, as before. */
+  max-width: calc(60vh * var(--work-ar));
+  /* A frame narrower than the column sits in its middle (2026-09-26, Josh:
+     "center the images horizontally"); a column-wide one is unaffected.
+     --work-ar is set on the figure and inherited here. */
+  margin-inline: auto;
   border: 1.5px solid var(--color-border);
   border-radius: 0;
   background: var(--color-bg);
@@ -272,13 +615,18 @@
 /* One block under the image holding the caption line and the longer
      description. A column rather than two siblings so the gaps stay the
      caption's business, not the gallery's. */
+/* UNDER THE PICTURE, NOT UNDER THE COLUMN (2026-09-26, Josh: "move the
+   description under the images"). Since the 60vh cap centres a narrower
+   picture, the words stayed at the column's left edge, under nothing. They now
+   take the picture's own width and place, from the same --work-ar the frame
+   uses (set on the figure), so title, description and links start at the
+   picture's left edge. A column-wide picture changes nothing. */
 .mprof__caption {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-  margin: 0.7rem 0 0;
-  font-size: 0.78rem;
-  line-height: 1.45;
+  max-width: calc(60vh * var(--work-ar));
+  margin: 0.7rem auto 0;
   color: var(--color-muted);
 }
 
@@ -306,11 +654,20 @@
 
 @media (--bp-mobile) {
   .mprof {
-    padding-block: 2rem 6rem;
+    padding-block: 4.5rem 6rem;
   }
+  .mprof__head {
+    gap: 1.25rem;
+  }
+  /* A phone picture is width-bound (the column is ~345px, so a square is
+     ~42% of the screen): 22vh is enough to keep the neighbours out of view. */
   .mprof__works {
-    gap: 2.5rem;
-    margin-top: 3rem;
+    gap: max(4rem, 22vh);
+    margin-top: max(4rem, 11vh);
+  }
+  /* The name is 24px here, so the project title steps down to stay under it. */
+  .mprof__project-title {
+    font-size: var(--fs-160);
   }
   .mprof__works-key {
     margin-bottom: -1.25rem;
@@ -344,7 +701,7 @@
   margin: 4.5rem 0 0;
   padding: 2rem 1.25rem;
   border: 1.5px dashed var(--color-border);
-  font-size: 0.82rem;
+  font-size: var(--fs-82);
   line-height: 1.5;
   text-align: center;
   color: var(--color-muted);

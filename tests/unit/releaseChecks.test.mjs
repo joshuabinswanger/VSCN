@@ -15,6 +15,7 @@ import {
   normaliseRules,
   compareRules,
   functionsDrift,
+  backendVerdict,
   iamDiff,
   countRequests,
   pairingVerdict,
@@ -115,6 +116,20 @@ test("iamDiff: a grant is checked in the policy its scope names, and a forbidden
   assert.deepEqual(diff.forbidden.map((g) => g.role), ["roles/run.invoker"]);
 });
 
+test("iamDiff: a secret-scoped grant is read from that secret's own policy, not the project's", () => {
+  const expected = [
+    { scope: "secret", resource: "A", member: "serviceAccount:fn@x", role: "roles/secretmanager.admin", why: "bind A" },
+    { scope: "secret", resource: "B", member: "serviceAccount:fn@x", role: "roles/secretmanager.admin", why: "bind B" },
+  ];
+  const policies = {
+    project: { bindings: [{ role: "roles/secretmanager.admin", members: ["serviceAccount:fn@x"] }] },
+    secret: { A: { bindings: [{ role: "roles/secretmanager.admin", members: ["serviceAccount:fn@x"] }] }, B: {} },
+  };
+  const diff = iamDiff(expected, policies);
+  assert.deepEqual(diff.present.map((g) => g.resource), ["A"]);
+  assert.deepEqual(diff.missing.map((g) => g.resource), ["B"]);
+});
+
 test("iamDiff: a conditional binding does not satisfy an unconditional expectation", () => {
   const expected = [{ scope: "project", member: "serviceAccount:a@x", role: "roles/x", why: "" }];
   const policies = { project: { bindings: [{ role: "roles/x", members: ["serviceAccount:a@x"], condition: { expression: "true" } }] } };
@@ -141,7 +156,7 @@ test("pairingVerdict: partial failure warns, quiet weeks and abandoned uploads p
   assert.equal(pairingVerdict({ authorize: 10, complete: 4 }).status, "WARN");
   assert.equal(pairingVerdict({ authorize: 10, complete: 5 }).status, "PASS");
   assert.equal(pairingVerdict({ authorize: 2, complete: 0 }).status, "PASS");
-  assert.equal(pairingVerdict({ authorize: 0, complete: 0 }).status, "PASS");
+  assert.equal(pairingVerdict({ authorize: 0, complete: 0 }).status, "WARN");
   assert.equal(pairingVerdict({ authorize: 6, complete: 1 }).status, "PASS");
 });
 
@@ -190,4 +205,16 @@ test("resolveProjectAlias: only the two aliases; a raw project id is refused", (
   assert.equal(resolveProjectAlias("dev", rc), "vscn-dev-f4b60");
   assert.throws(() => resolveProjectAlias("vscn-39508", rc), /prod or dev/);
   assert.throws(() => resolveProjectAlias(undefined, rc), /prod or dev/);
+});
+
+test("backendVerdict: current only when every export carries the expected digest; orphans never force a deploy", () => {
+  const exports = [{ name: "a" }, { name: "b" }];
+  const stamped = (name, d) => ({ name, labels: { source_digest: d } });
+  assert.deepEqual(backendVerdict(exports, [stamped("a", "x"), stamped("b", "x")], "x"), { current: true, mismatched: [], orphans: [] });
+  const v = backendVerdict(exports, [stamped("a", "old"), { name: "z", labels: {} }], "x");
+  assert.equal(v.current, false);
+  assert.deepEqual(v.mismatched, ["a: old", "b: not deployed"]);
+  assert.deepEqual(v.orphans, ["z"]);
+  assert.deepEqual(backendVerdict(exports, [{ name: "a" }, stamped("b", "x"), stamped("z", "x")], "x"),
+    { current: false, mismatched: ["a: unstamped"], orphans: ["z"] });
 });

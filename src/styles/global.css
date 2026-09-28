@@ -21,14 +21,30 @@
   --color-dark: #000000;
   --color-bg: #fcfbfa;
   --color-border: #e0e0e0;
-  --color-muted: #888;
-  --color-error: #d94f4f;
-  --color-success: #2a9d5c;
+  --color-muted: #686868;
+  --color-text-placeholder: #707070;
+  --color-error: #b83232;
+  --color-success: #217a47;
   --radius-xs: 2px;
   --radius-sm: 4px;
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 16px;
+  /* EVERY PAGER'S CHEVRON: the gallery card's and the project carousel's
+     edge arrows and the lightbox's side arrows; the chevrons beside each
+     "2 / 7" count (.pager-chev below) use the smaller pair after these. Two
+     borders on a box turned 45deg.
+     Thinner and smaller since 2026-09-28 (Josh: "the icon should be thinner
+     and a bit smaller"); it was 0.7rem at 2px. */
+  --chevron-size: 0.55rem;
+  --chevron-stroke: 1.5px;
+  /* The ones beside a count are smaller again, drawn to the count's own
+     size (2026-09-28, Josh: "also they are too big"). */
+  --pager-chev-size: 0.38rem;
+  --pager-chev-stroke: 1.25px;
+  /* The i beside a label / inside a field (.infotip): its hit box. 24px is
+     the smallest target a thumb reliably hits; the glyph inside stays small. */
+  --infotip-size: 24px;
   /* The page's shared measure. The brand ticker, the navbar and <main> all
      size to it, which is what keeps the giant VSCN title, the nav links and
      the content on the same two vertical edges. */
@@ -43,7 +59,19 @@
      already 12px and this is the smallest print on the page — taking it to
      10.2px there would be a legibility cost nobody asked for, so mobile keeps
      the base and the reduction lives in the --bp-desktop block below. */
-  --font-size-chrome: var(--font-size-base);
+  /* A step smaller again on 2026-09-28 (Josh: "Impressum and EN / DE
+     smaller abit"): 14px -> 13px on a phone, 12px -> 11px on desktop. */
+  --font-size-chrome: var(--fs-90);
+  /* THE HEADER'S SEE-THROUGH BACKDROP (2026-09-25). The sticky nav — and on
+     /community the filter bar docked under it — used to paint solid paper, so
+     artwork vanished at the header's edge. It is NOTHING now: no paper, no
+     blur, the page scrolls behind the links in the clear (Josh, same day,
+     after seeing the frosted version: "no filter with blur … just nothing").
+     The layer that carries these is kept (see Navbar.astro), so frosting is
+     two values away if the bare header turns out hard to read — it was
+     color-mix(in srgb, var(--color-bg) 72%, transparent) and blur(14px). */
+  --color-bg-veil: transparent;
+  --veil-filter: none;
 }
 
 /* Media query aliases available in global CSS and Astro component styles. */
@@ -63,9 +91,11 @@
 @media (--bp-desktop) {
   :root {
     --font-size-base: 13px;
-    --font-size-chrome: 0.85rem;
+    --font-size-chrome: var(--fs-78);
   }
 }
+
+/* The type scale and the site's text styles live in src/styles/type.css. */
 
 /* ── Reset ── */
 
@@ -113,6 +143,7 @@ body {
   overflow: hidden;
   overscroll-behavior: none;
   margin: 0;
+  font-size: var(--fs-100);
 }
 
 .page-wrap {
@@ -281,12 +312,7 @@ a:hover {
   gap: 0.45rem;
 }
 
-.label {
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
+/* .label is all type, so it is wholly HEADING in src/styles/type.css. */
 
 /* GLOBAL, and it has to be. This rule lived three times over in scoped blocks —
    ProfileForm, OnboardingForm, MemberTypeSelector — which meant a note printed
@@ -296,9 +322,170 @@ a:hover {
    inside the selectors finally look like notes. */
 .field-note {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: var(--fs-72);
   line-height: 1.5;
   color: var(--color-muted);
+}
+
+/* A LABEL AND ITS i on one line (2026-09-23). The tip is a sibling of the
+   <label>, never inside it: a button inside a label is interactive content
+   inside interactive content, and a click on it would also focus the input. */
+.label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.35rem;
+}
+
+/* ONE GAP UNDER EVERY TITLE (2026-09-28, Josh: "unify gaps after Titles in
+   Profile Editor. they should visually be equal"). A title that is a <p>
+   (Gallery, Social Media: they name a group, not one control, so they are
+   not <label>s) carried the browser's 1em paragraph margins, which put
+   12px more under those two than under any other. The field's own gap is
+   the one space between a title and what it names. */
+.label-row > p.label,
+.field > p.label {
+  margin: 0;
+}
+
+/* A fieldset's legend is not a flex item, so the fieldset's gap never
+   reached the space under it: the chips sat right against "Who are you?",
+   "Working languages" and "Primary target audiences". This is that gap. */
+fieldset > legend.label {
+  margin-bottom: 0.45rem;
+  padding: 0;
+}
+
+/* THE i (2026-09-24, Josh: "just a plain italic i"). A bare italic serif "i",
+   no ring: the ⓘ glyph drew a circle of its own and a hairline ring around it
+   made two. Muted at rest, ink on hover and while its box is open. The button
+   is larger than the letter so a thumb can hit it; the negative margin hands
+   the extra size back so the label row does not grow. */
+.infotip {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  /* 24 × 24 (2026-09-28): the smallest target a thumb reliably hits. It was
+     1.4rem (17–18px). The footprint it takes in the label row is unchanged —
+     0.8rem tall, 0.9rem wide, as before — because the negative margins hand
+     back exactly what the box grew by. --infotip-size is in the token table
+     because the fields the i sits in pad for it. */
+  width: var(--infotip-size);
+  height: var(--infotip-size);
+  margin: calc((0.8rem - var(--infotip-size)) / 2) calc((0.9rem - var(--infotip-size)) / 2);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-muted);
+  font: italic 600 var(--fs-95)/1 Georgia, "Times New Roman", serif;
+  letter-spacing: 0;
+  text-transform: none;
+  vertical-align: middle;
+  cursor: pointer;
+  transition: color 0.12s ease;
+}
+
+.infotip:hover,
+.infotip:focus-visible,
+.infotip[aria-expanded="true"] {
+  color: var(--color-dark);
+}
+
+/* THE i INSIDE ITS FIELD (2026-09-24, Josh: "the i should be in the text
+   fields not next to the title"). A text field wears its i at its right edge:
+   centred on a one-line input, in the top corner of a textarea, and as the
+   last item of an https:// frame. The padding keeps typed text from running
+   under it. Groups, checkboxes and the select have no box to put it in, so
+   theirs stays beside the title. */
+.infotip-field {
+  position: relative;
+}
+
+.infotip-field > .infotip {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  margin: 0;
+  transform: translateY(-50%);
+}
+
+.infotip-field > textarea + .infotip {
+  top: 0.3rem;
+  transform: none;
+}
+
+/* Room for the whole 24px target plus its inset, so typed text never runs
+   under the i. */
+.infotip-field > .input {
+  padding-right: calc(0.35rem + var(--infotip-size) + 4px);
+}
+
+/* In an https:// frame the i is the frame's last cell, full height and on the
+   input's white, so the frame reads as one field that ends in an i. */
+.input-prefix-wrap > .infotip {
+  align-self: stretch;
+  width: auto;
+  min-width: var(--infotip-size);
+  height: auto;
+  margin: 0;
+  padding: 0 0.6rem 0 0.2rem;
+  border-radius: 0;
+  background: white;
+}
+
+/* THE BOX (2026-09-24, Josh: "the help opens up beneath the field in a box
+   that hovers over it … always the same width as the field"). Taken out of
+   the flow and laid over whatever follows; placeInfoTip()
+   (src/lib/infotip.ts) measures the field and sets top, left and width, and
+   aims the caret up at the i. */
+.field-note[data-tip] {
+  position: absolute;
+  z-index: 30;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-muted);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.12);
+  color: var(--color-dark);
+  font-size: var(--fs-78);
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+  text-transform: none;
+  animation: infotip-in 0.14s ease-out;
+}
+
+.field-note[data-tip]::before {
+  content: "";
+  position: absolute;
+  top: -5.5px;
+  left: var(--infotip-caret, 1rem);
+  width: 9px;
+  height: 9px;
+  border-top: 1px solid var(--color-muted);
+  border-left: 1px solid var(--color-muted);
+  background: var(--color-bg);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.field-note[data-tip][hidden] {
+  display: none;
+}
+
+@keyframes infotip-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field-note[data-tip] {
+    animation: none;
+  }
 }
 
 /* THE ADD ROW — a text field and the button that commits it, shared by the
@@ -318,7 +505,7 @@ a:hover {
   flex: 1;
   min-width: 0;
   padding: 4px 10px;
-  font-size: 0.82rem;
+  font-size: var(--fs-82);
 }
 
 .addbtn {
@@ -329,7 +516,7 @@ a:hover {
   background: transparent;
   color: var(--color-muted);
   font-family: "Archivo", sans-serif;
-  font-size: 1.05rem;
+  font-size: var(--fs-105);
   font-weight: 300;
   line-height: 1;
   cursor: pointer;
@@ -354,7 +541,7 @@ a:hover {
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-sm);
   font: inherit;
-  font-size: 0.95rem;
+  font-size: var(--fs-95);
   color: black;
   background: white;
   transition: border-color 0.15s;
@@ -368,8 +555,19 @@ a:hover {
   outline-offset: 2px;
 }
 .input::placeholder {
-  color: #bbb;
+  color: var(--color-text-placeholder);
 }
+.input[aria-invalid="true"] { border-color: var(--color-error); }
+.ui-dialog {
+  max-width: min(32rem, calc(100vw - 2rem));
+  padding: 1.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-dark);
+}
+.ui-dialog::backdrop { background: rgb(0 0 0 / 35%); }
+.ui-dialog form { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
 .textarea {
   resize: vertical;
   min-height: 80px;
@@ -381,7 +579,7 @@ a:hover {
   padding: 10px 15px;
   border: 1.5px solid #ddd;
   border-radius: var(--radius-sm);
-  font-size: 0.88rem;
+  font-size: var(--fs-88);
   font-weight: 600;
   color: #333;
   cursor: pointer;
@@ -396,7 +594,7 @@ a:hover {
   background: #f4f4f4;
 }
 .upload-status {
-  font-size: 0.82rem;
+  font-size: var(--fs-82);
   color: #666;
 }
 
@@ -427,7 +625,7 @@ a:hover {
   background: transparent;
   color: #555;
   font-family: "Archivo", sans-serif;
-  font-size: 0.88rem;
+  font-size: var(--fs-88);
   font-weight: 400;
   line-height: 1.2;
   text-align: center;
@@ -479,6 +677,33 @@ a:hover {
   outline-offset: 2px;
 }
 
+/* A FILE PICKER BEHIND A BUTTON-SHAPED <label> ("Choose image", "Add
+   images"), the same way: the <input type="file"> used to be display:none,
+   which takes it out of the tab order — a keyboard could not reach any
+   picker on the site (2026-09-28). Clipped instead, so Tab lands on it, and
+   the label draws the ring on its behalf. The label is positioned so the
+   clipped input sits ON the label: focusing an element scrolls it into view,
+   and an absolute input with no positioned parent would sit at the form's
+   top-left and scroll the page there. */
+.picker-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+label:has(> .picker-input) {
+  position: relative;
+}
+label:has(> .picker-input:focus-visible) {
+  outline: 2px solid var(--color-dark);
+  outline-offset: 2px;
+}
+
 /* TAGS ARE THE ONE DELIBERATE DIFFERENCE. Same shape, same border, same fill,
    smaller and uppercase — a tag is content that also appears on the public
    member card, where it is drawn this way, while the other chips are answers
@@ -511,16 +736,22 @@ a:hover {
      down from the arithmetic centre — optical, and the eye is the authority
      here, not the glyph metrics.
      Because this shifts the whole content box, the × travels with the label and
-     its own measured offset still holds. */
-  padding: 3.5px 8px 2.5px;
+     its own measured offset still holds.
+     Tightened 2026-09-26 (Josh: "tags should have less padding to their
+     border"): 1px off top and bottom, 2px off the sides, the 1px optical drop
+     kept. */
+  /* TRACKING (2026-09-27, Josh: "tags should get a bit more horizontal letter
+     spacing"). 0.03em was a quarter pixel at the 8px the phone's tags had that
+     day. Letter-spacing also trails the LAST letter, so the label's ink sits
+     that much left of centre; the left padding takes the same amount back so
+     the chip stays balanced. 0.06em, tried against 0.08 and 0.10 at 8px, is
+     also what the site's other uppercase labels carry (info headings,
+     lightbox links). */
+  --tag-track: 0.06em;
+  padding: 2.5px 6px 1.5px calc(6px + var(--tag-track));
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-family: "Archivo", sans-serif;
-  font-size: 0.72rem;
-  font-weight: 400;
-  line-height: 1.25;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
 }
 
 /* An unpicked tag carries the PAGE's ground, not the panel's. Every other chip
@@ -545,7 +776,7 @@ a:hover {
    tags are links, so the same reasoning applies there. */
 @media (pointer: coarse) {
   .tagchip {
-    padding: 6.5px 10px 5.5px;
+    padding: 4.5px 7px 3.5px calc(7px + var(--tag-track));
   }
 }
 
@@ -559,7 +790,7 @@ a:hover {
   border-radius: var(--radius-sm);
   font: inherit;
   font-family: "Archivo", sans-serif;
-  font-size: var(--font-size-base);
+  font-size: var(--fs-100);
   font-weight: 700;
   cursor: pointer;
   transition: background 0.2s;
@@ -568,7 +799,7 @@ a:hover {
   background: black;
 }
 .btn-primary:disabled {
-  background: #999;
+  background: var(--color-muted);
   cursor: not-allowed;
 }
 .btn-primary:focus-visible {
@@ -583,7 +814,7 @@ a:hover {
   text-decoration: none;
   border-radius: var(--radius-sm);
   font-family: "Archivo", sans-serif;
-  font-size: 0.85rem;
+  font-size: var(--fs-85);
   color: #111;
   transition: opacity 0.2s;
   background-color: white;
@@ -606,7 +837,7 @@ a:hover {
   border-radius: var(--radius-sm);
   font: inherit;
   font-family: "Archivo", sans-serif;
-  font-size: 0.95rem;
+  font-size: var(--fs-95);
   font-weight: 700;
   cursor: pointer;
   text-decoration: none;
@@ -622,9 +853,13 @@ a:hover {
 .btn-solid:hover {
   background: #333;
 }
+/* Disabled is grey against the live button's black, and the grey is the
+   muted ink rather than #999: white on #999 was 2.85:1, white on
+   --color-muted is 5.6:1, so "Saving…" stays legible while still reading as
+   not-pressable. */
 .btn-save:disabled,
 .btn-solid:disabled {
-  background: #999;
+  background: var(--color-muted);
   cursor: not-allowed;
 }
 
@@ -640,7 +875,7 @@ a:hover {
   border-radius: var(--radius-sm);
   font: inherit;
   font-family: "Archivo", sans-serif;
-  font-size: 0.95rem;
+  font-size: var(--fs-95);
   cursor: pointer;
   text-decoration: none;
   transition:
@@ -664,7 +899,7 @@ a:hover {
   padding: 0;
   font: inherit;
   font-family: "Archivo", sans-serif;
-  font-size: 0.88rem;
+  font-size: var(--fs-88);
   font-weight: 600;
   color: var(--color-dark);
   cursor: pointer;
@@ -682,11 +917,11 @@ a:hover {
 
 /* ── Feedback messages ── */
 .msg-ok {
-  font-size: 0.88rem;
+  font-size: var(--fs-88);
   color: var(--color-success);
 }
 .msg-err {
-  font-size: 0.88rem;
+  font-size: var(--fs-88);
   color: var(--color-error);
 }
 
@@ -701,4 +936,115 @@ a:hover {
 }
 .turnstile-slot:empty {
   display: none;
+}
+
+/* ── The play mark (2026-09-23, video works) ──
+   One drawing for every place a video work appears without playing: the wall
+   tile, the gallery card, the member page, the editor row and the lightbox's
+   play button. A triangle in a disc, drawn in CSS so it inherits currentColor
+   and needs no asset. GLOBAL, not scoped, because five components draw it and
+   a scoped copy in each would be five marks. */
+.vscn-play {
+  --play-size: 2.6rem;
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: var(--play-size);
+  height: var(--play-size);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--color-bg);
+  vertical-align: middle;
+}
+.vscn-play::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 54%;
+  transform: translate(-50%, -50%);
+  border-style: solid;
+  border-width: calc(var(--play-size) * 0.2) 0 calc(var(--play-size) * 0.2) calc(var(--play-size) * 0.32);
+  border-color: transparent transparent transparent currentColor;
+}
+/* Over a poster that is not playing here: centred, and out of the pointer's
+   way so the click still lands on the link beneath it. */
+.vscn-play--over {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.vscn-play[hidden] {
+  display: none;
+}
+
+/* ── A count's chevrons, "‹ 2 / 7 ›" ─────────────────────────────────────
+   (2026-09-28, Josh: the gallery card, the project carousel and the
+   lightbox should page the same way.) Built by src/lib/pager.ts, and in the
+   card's markup. Grey like the count they flank, dark on hover. The hit area
+   is larger than the line, and the negative margin gives the extra back, so
+   the count's row keeps its height. At either end of a carousel that does
+   not loop, the one with nowhere to go is not there, keeping its space so
+   the count does not shift. */
+.pager-chev {
+  min-width: 24px;
+  min-height: 24px;
+  display: inline-grid;
+  place-items: center;
+  vertical-align: middle;
+  margin: -0.6rem 0;
+  padding: 0.6rem 0.4rem;
+  border: 0;
+  background: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  /* The count rows are pointer-events: none (indicators); these are not. */
+  pointer-events: auto;
+  transition: color 140ms ease;
+}
+/* Its padding would hold the last chevron in from the edge the row is
+   aligned to (the picture's right edge on the card and the carousel). */
+.pager-chev--next {
+  margin-right: -0.3rem;
+}
+.pager-chev:hover,
+.pager-chev:focus-visible {
+  color: var(--color-dark);
+}
+.pager-chev:focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: -0.3rem;
+}
+.pager-chev:disabled {
+  visibility: hidden;
+}
+.pager-chev span {
+  display: block;
+  width: var(--pager-chev-size);
+  height: var(--pager-chev-size);
+  border-top: var(--pager-chev-stroke) solid currentColor;
+  border-right: var(--pager-chev-stroke) solid currentColor;
+}
+.pager-chev--prev span {
+  transform: translate(0.05rem, 0) rotate(-135deg);
+}
+.pager-chev--next span {
+  transform: translate(-0.05rem, 0) rotate(45deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pager-chev {
+    transition: none;
+  }
+}
+/* NO CHEVRONS ON A PHONE'S PICTURES (2026-09-28, Josh: "chevron should not be
+   visible on mobile on the images"). On the directory card and a project's
+   carousel the count stays and the swipe pages; the lightbox keeps its pair,
+   since it is one modal and its chevrons are its keyboard pager. The count
+   rows are right-aligned, so dropping the buttons leaves "2 / 7" on the
+   picture's right edge where the next chevron was. */
+@media (--bp-mobile) {
+  :is(.ccard, .mprof) .pager-chev {
+    display: none;
+  }
 }

@@ -1,0 +1,174 @@
+---
+// ONE PROJECT BLOCK on the member page: its heading group and its works.
+// Extracted from [slug].astro (2026-09-25) so the same block can stand either
+// on its own in the gallery column or as one step of the projects slider —
+// Astro does not allow a local component inside a page file, and the block
+// was already an inline IIFE there. Moved verbatim; the only addition is that
+// any extra attributes land on the <section>.
+//
+// TWO OR MORE WORKS ARE A CAROUSEL (2026-09-26, Josh: "the projects should be
+// shown as carousels"): the heading group, then one work per step, paged by
+// swipe, the arrow keys or prev/next. See src/lib/projectCarousel.ts. One work
+// stays a plain figure, because a carousel of one is a picture with two
+// buttons that do nothing.
+import type { ComponentProps, HTMLAttributes } from "astro/types";
+import MemberWork from "./MemberWork.astro";
+import { affiliationHref, projectDescription, projectTitle, type ProfileProject } from "../lib/projects.ts";
+import { communityWorkTagHref, hostLabel } from "../lib/links.ts";
+import { useTranslations, type Lang } from "../i18n/utils.ts";
+
+type Work = ComponentProps<typeof MemberWork>["work"];
+
+interface Props extends HTMLAttributes<"section"> {
+  project: ProfileProject;
+  /** This project's works, as the page rendered them (MemberWork's shape). */
+  works: Work[];
+  /** The member's whole works list, for each work's index (transition name, eager loading). */
+  allWorks: Work[];
+  memberId: string;
+  displayName: string;
+  lang: Lang;
+}
+
+const { project, works, allWorks, memberId, displayName, lang, class: className, ...rest } = Astro.props;
+const t = useTranslations(lang);
+const title = projectTitle(project, lang);
+const desc = projectDescription(project, lang);
+const carousel = works.length > 1;
+const trackId = `mprof-project-${memberId}-${project.id}`;
+const figure = (w: Work) => ({
+  work: w,
+  index: allWorks.indexOf(w),
+  memberId,
+  displayName,
+  workAlt: t("member.workAlt"),
+  linkTitle: t("member.lightbox.link"),
+  siteLinkTitle: t("member.lightbox.siteLink"),
+});
+---
+
+<section class:list={["mprof__project", className]} {...rest}>
+  <div class="mprof__project-head">
+    {
+      title && (
+        <h2 class="mprof__project-title">{title}</h2>
+      )
+    }
+    {desc && <p class="mprof__project-desc">{desc}</p>}
+    {
+      project.affiliations.length > 0 && (
+        <p class="mprof__project-with">
+          {t("member.project.with")}{" "}
+          {project.affiliations.map((a, k) => (
+            <>
+              {k > 0 && " · "}
+              {affiliationHref(a, lang) ? (
+                <a
+                  href={affiliationHref(a, lang)}
+                  {...(a.memberSlug ? {} : { target: "_blank", rel: "noopener" })}
+                >
+                  {a.name}
+                </a>
+              ) : (
+                <span>{a.name}</span>
+              )}
+            </>
+          ))}
+        </p>
+      )
+    }
+    {
+      /* THE LINK AFTER THE WORDS (2026-09-28, Josh: "a project that has a link
+         should show it after the text"). It used to hide in the title, which
+         read as a plain heading. Now it is printed the way a work's links are,
+         after all the words: the host as the link text. */
+      project.link && (
+        <p class="mprof__project-links">
+          <a class="mprof__link" href={project.link} target="_blank" rel="noopener">
+            {hostLabel(project.link)}
+          </a>
+        </p>
+      )
+    }
+    {
+      /* THE PROJECT'S TAGS (2026-09-27, Josh: "add project tags"), drawn as
+         the profile's own tags are: bare `.tagchip` links, each one a way into
+         the Grid wall filtered by it (communityWorkTagHref). */
+      project.tags.length > 0 && (
+        <ul class="mprof__vals mprof__project-tags">
+          {project.tags.map((tag) => (
+            <li>
+              <a class="mprof__val mprof__tag tagchip" href={communityWorkTagHref(lang, tag)}>
+                {tag}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </div>
+  {
+    carousel ? (
+      <div class="mprof__carousel" data-carousel data-position-label={t("member.project.position")}>
+        {/* The gallery card's dots, top right (2026-09-26, Josh: "use the
+            same styles for the project carousels! with the dots top right").
+            A day's detour through a "2 / 7" count ended on 2026-09-28 (Josh:
+            "the carousel should be dots again, but make the dots bigger"):
+            the dots are back, card and carousel both at the larger size.
+            projectCarousel.ts fills the row: one dot per work, the "2 / 7"
+            count and its two chevrons — named buttons, not tab stops (the
+            track pages on its arrow keys), so the row is not aria-hidden. */}
+        <div class="mprof__carousel-dots" data-carousel-dots />
+        <div class="mprof__carousel-stage">
+        {/* A real scroll container, so swipe, trackpad and the arrow keys (it
+            is a tab stop) all page it natively, and scroll-snap makes every
+            one of them land on a work. */}
+        <div
+          class="mprof__carousel-track"
+          id={trackId}
+          data-carousel-track
+          tabindex="0"
+          role="region"
+          aria-roledescription={t("community.card.carousel")}
+          aria-label={title ?? t("member.project.works")}
+        >
+          {works.map((w, k) => (
+            <div
+              class="mprof__carousel-slide"
+              role="group"
+              aria-label={t("member.project.position")
+                .replace("{n}", String(k + 1))
+                .replace("{total}", String(works.length))}
+            >
+              <MemberWork {...figure(w)} />
+            </div>
+          ))}
+        </div>
+          {/* The card's hover chevrons: a strip down each edge of the
+              column, painted only while the pointer or focus is on it. */}
+          <button
+            class="mprof__carousel-arrow mprof__carousel-arrow--prev"
+            type="button"
+            data-carousel-prev
+            aria-controls={trackId}
+            aria-label={t("member.project.prev")}
+          >
+            <span aria-hidden="true" />
+          </button>
+          <button
+            class="mprof__carousel-arrow mprof__carousel-arrow--next"
+            type="button"
+            data-carousel-next
+            aria-controls={trackId}
+            aria-label={t("member.project.next")}
+          >
+            <span aria-hidden="true" />
+          </button>
+        </div>
+        <p class="mprof__carousel-live" aria-live="polite" aria-atomic="true" data-carousel-live />
+      </div>
+    ) : (
+      works.map((w) => <MemberWork {...figure(w)} />)
+    )
+  }
+</section>

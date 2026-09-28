@@ -52,11 +52,13 @@ import "../../styles/communityCard.css";
   <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
 
   {
-    /* Indicators, not controls — aria-hidden, pointer-events:none, no tab
-       stops. One <span> per work, built by the renderer from the same
-       template mechanism the tags use. */
+    /* The count row, as on the real card (CommunityImageCard): one dot per
+       work, built by the renderer from the same template mechanism the tags
+       use, plus the "2 / 7" count and its two chevrons, which the carousel
+       module adds — named buttons, not tab stops, so the row is not
+       aria-hidden. */
   }
-  <div class="ccard__dots" data-ccpv="dots" aria-hidden="true" hidden></div>
+  <div class="ccard__dots" data-ccpv="dots" hidden></div>
 
   <div class="ccard__body" data-ccpv="body" hidden>
     {
@@ -71,13 +73,15 @@ import "../../styles/communityCard.css";
     <div class="ccard__frame" data-ccpv="frame" data-carousel>
       <div class="ccard__track" data-ccpv="track"></div>
       {
-        /* The whole-artwork click target, and DELIBERATELY href-less. On the
-           card this opens the lightbox; there is no lightbox in the editor,
-           and a link to the raw Storage file would take the member out of
-           their unsaved form. It stays in the markup because it is what makes
-           the frame's box the same box — and communityCarousel.ts checks for
-           the attribute before writing a slide's URL into it, so the inert
-           trigger stays inert as the carousel moves. */
+        /* The whole-artwork click target, and DELIBERATELY href-less. It
+           opens the lightbox exactly as the card's does (bindCardOpener in
+           lib/lightbox.ts, bound by bindPreviewLightbox since 2026-09-24),
+           reading every slide of the frame and starting on the one showing.
+           No href because a link to the raw Storage file would take the
+           member out of their unsaved form if the lightbox ever failed to
+           bind — and communityCarousel.ts checks for the attribute before
+           writing a slide's URL into it, so it stays href-less as the
+           carousel moves. */
       }
       <a class="ccard__frame-link" aria-hidden="true"></a>
       <button
@@ -185,29 +189,30 @@ import "../../styles/communityCard.css";
   /* The tag voice — was .ctcard__tag; before that, MemberDetailPanel's chips
      without the chip border. */
   .ccpv__tag {
-    font-size: 0.68rem;
-    font-weight: 500;
-    line-height: 1.25;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
     color: var(--color-muted);
     min-width: 0;
     overflow-wrap: anywhere;
   }
 
-  /* The card in the directory is as wide as the slot it was dealt; in a form
-     there is no slot, and a card at the full width of the editor's measure
-     reads as a banner rather than as a card. This is the preview's frame
-     around the card, not a change to the card — .ccard's own width formula
-     (min(100%, …)) resolves against it untouched. */
+  /* THE SLOT THE DIRECTORY WOULD DEAL (2026-09-25, Josh: the preview "doesn't
+     match the sizes of … the real gallery card"). The card in the directory is
+     as wide as the slot it was dealt, and its frame as tall as the slot's rows
+     allow; a form has no slot, so this one states the spread's: a lane of 9 of
+     the grid's 24 columns (CommunityGrid's --cgrid-col, same arithmetic) and
+     26 rows of 1.5rem — the middle of the 8–9 columns and 24–28 rows the
+     table deals. The card's own width formula then runs exactly as it does
+     on /community, so a tall first picture narrows the card the same way.
+     It used to be a flat 22rem, a number chosen to look like "a card" and
+     not taken from anywhere: 286px at 1280, against the 390–440px the real
+     card gets there. */
   .ccard--preview {
-    max-width: 22rem;
+    --slot-rows: 26;
+    --cgrid-row: 1.5rem;
+    max-width: calc(9 * min(94vw - 30px, 2000px) / 24);
   }
 
   /* NOT ON A PHONE (2026-09-08, Josh: "the gallery card preview is still not
-     full width"). The reasoning above is a DESKTOP reasoning: there, the
-     editor's measure is much wider than any slot the directory would deal, so
-     an uncapped card really would read as a banner. On a phone the directory
+     full width"). The lane above is a DESKTOP slot. On a phone the directory
      deals exactly one card per row and `.ccard` takes `width: 100%` of it
      (see the --bp-mobile block in communityCard.css), so the cap is no longer
      standing in for a slot — it is inventing a narrower one than the member

@@ -2,6 +2,7 @@
 import Layout from "../../layouts/Layout.astro";
 import CommunityGrid from "../../components/CommunityGrid.astro";
 import { fetchMemberViews } from "../../lib/membersBuild.ts";
+import { localizeMember } from "../../lib/memberView.ts";
 import { workCaption, workDescription } from "../../lib/links.ts";
 import { communityJsonLd, memberPageUrl } from "../../lib/seo.ts";
 import type { Lang } from "../../i18n/utils";
@@ -31,7 +32,8 @@ const currentLang = (lang || "en") as Lang;
 // `jsonLd` below is built from this same array, so a hidden work leaves the
 // structured data with it rather than needing a second filter to remember.
 const members = (await fetchMemberViews()).map((m) => ({
-  ...m,
+  // Role, bio and card caption in this page's language — see localizeMember().
+  ...localizeMember(m, currentLang),
   works: m.works
     .filter((w) => !w.hidden)
     .map((w) => ({

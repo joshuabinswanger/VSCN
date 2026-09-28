@@ -6,14 +6,17 @@ import type { Lang } from "../i18n/utils";
 interface Props {
   lang?: Lang;
   name?: string;
+  /** False drops the note: /profile, where it only repeated the obvious
+   *  (2026-09-25). The wizard keeps it written out. */
+  note?: boolean;
 }
 
-const { lang = "en", name = "member-type" } = Astro.props;
+const { lang = "en", name = "member-type", note = true } = Astro.props;
 const t = useTranslations(lang);
 ---
 
 <member-type-selector class="member-type-selector" data-lang={lang}>
-  <fieldset class="memberType-field">
+  <fieldset class="memberType-field" aria-describedby={note ? "note-member-type" : undefined}>
     <legend class="label">{t("profile.memberType.legend")}</legend>
     <div class="memberType-options">
       {
@@ -25,7 +28,7 @@ const t = useTranslations(lang);
         ))
       }
     </div>
-    <p class="field-note">{t("profile.memberType.note")}</p>
+    {note && <p id="note-member-type" class="field-note">{t("profile.memberType.note")}</p>}
   </fieldset>
 </member-type-selector>
 
@@ -54,7 +57,7 @@ const t = useTranslations(lang);
     border-radius: var(--radius-sm);
     background: transparent;
     color: #333;
-    font-size: 0.9rem;
+    font-size: var(--fs-90);
     line-height: 1.2;
     cursor: pointer;
     transition:

@@ -1,0 +1,523 @@
+---
+import ProjectEditor from "./ProjectEditor.astro";
+import InfoTip from "../InfoTip.astro";
+import TagSelector from "../TagSelector.astro";
+import { useTranslations } from "../../i18n/utils";
+import type { Lang } from "../../i18n/utils";
+interface Props { lang?: Lang }
+const { lang = "en" } = Astro.props;
+const t = useTranslations(lang);
+---
+  <div class="form-section" data-section="work" role="tabpanel" id="panel-work" aria-labelledby="tab-work">
+    <div class="field">
+      <div class="label-row">
+        <p class="label">{t("profile.label.gallery")}</p>
+        <InfoTip lang={lang} for="note-gallery-cover" />
+      </div>
+      {
+        /* Order is not a preference, it is the card's geometry: works[0]'s
+        width/height become the aspect box in CommunityImageCard. Nothing used
+        to say so, so members had no way to know the first image was doing
+        anything at all. Placed right under the label its ⓘ opens, not down by
+        the drop zone (2026-09-23, review round 1): every other converted note
+        stays adjacent to its trigger, and this one did not. */
+      }
+      <p id="note-gallery-cover" class="field-note" data-tip hidden>{t("profile.gallery.coverNote")}</p>
+      {
+        /* The drop target is this wrapper, not the list: an empty gallery has a
+        list of zero height, so a member with no images yet — the one most
+        likely to be dragging a folder of work at the screen — would have had
+        nothing to drag onto. Wrapping the Add button in it too means the whole
+        block is the target, which is also what it looks like. */
+      }
+      <div id="gallery-drop" class="gallery-drop">
+        <div id="gallery-editor" class="gallery-editor"></div>
+        {
+          /* Pending uploads live in their own list BELOW the committed images,
+          because that is where a finished upload lands — a row does not jump
+          when it completes, it just stops being a queue row. */
+        }
+        {
+          /* NOT aria-live. The obvious choice here is wrong: the state text
+          inside carries a percentage that updates several times a second per
+          upload, and a polite live region would read all of it aloud, three
+          uploads at a time. Progress is exposed as a progressbar instead —
+          available on demand, silent until asked — and only a FAILURE is
+          announced, by paintTaskRow promoting that one row to role="alert". */
+        }
+        <div id="gallery-queue" class="gallery-queue"></div>
+        {
+          /* THREE WAYS TO ADD, ONE ROW (2026-09-25, Josh: "Add image" and "Add
+          video" equal, side by side, neither primary; "Add project" similar
+          weight but a different kind of thing). Images and video are both
+          WORKS, so they wear the same outline at the same width; a project is
+          a container for works, so it takes the dashed outline and the ＋ —
+          the same weight, a different role. The general "Add images" adds
+          LOOSE images at the end; each project block carries its own picker.
+          "Add video" only opens the link field below: a video arrives as a
+          pasted link, not a file. */
+        }
+        <div class="gallery-actions">
+          <label id="gallery-add" class="btn-outline gallery-action" for="gallery-files">
+            {t("profile.gallery.add")}
+            {/* Clipped, not display:none, so Tab reaches it (.picker-input). */}
+            <input
+              id="gallery-files"
+              class="picker-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/avif"
+              multiple
+            />
+          </label>
+          <button
+            type="button"
+            id="gallery-video-open"
+            class="btn-outline gallery-action"
+            aria-expanded="false"
+            aria-controls="gallery-video"
+          >
+            {t("profile.embed.add")}
+          </button>
+          <button type="button" id="gallery-new-project" class="btn-outline gallery-action gallery-action--project">
+            <span class="gallery-action-plus" aria-hidden="true">+</span>
+            {t("profile.project.new")}
+          </button>
+        </div>
+        {
+          /* ONE picker for every row's "Replace image": the row that was
+            pressed is remembered in the script, not in the input. */
+        }
+        <input
+          id="gallery-replace-file"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/avif"
+          style="display:none;"
+        />
+        <span class="gallery-drop-hint" aria-hidden="true">{t("profile.gallery.drop")}</span>
+      </div>
+      {
+        /* A VIDEO LINK IS A WORK TOO (2026-09-23, release 1 of
+          documentation/20260923-motion-works-design.md). Outside the drop
+          zone, because nothing is dropped here: the member pastes a link, the
+          server turns it into a work with the platform's thumbnail as its
+          poster, and the row lands in the gallery above like a finished
+          upload. Its own status line, so a refused link is answered next to
+          the field that was refused.
+
+          NOT A <form>, though it behaves like one (Enter adds the link): this
+          whole editor is already inside #profile-form, and a nested form is
+          not HTML — the parser drops the inner tag and its </form> closes the
+          PROFILE form early, which took Save and every later section out of
+          it and stopped the editor loading at all. The button is type=button
+          and Enter is handled on the field, so neither can submit the
+          profile. */
+      }
+      {
+        /* Opened by "Add video" above (2026-09-25) rather than standing open
+          under the drop zone: a permanent empty link field read as a second,
+          heavier way in, which is what made the two kinds of work look
+          unequal. Closed again once the link has landed. */
+      }
+      <div id="gallery-video" class="gallery-video" role="group" aria-labelledby="gallery-video-label" hidden>
+        <label id="gallery-video-label" class="gallery-video-label" for="gallery-video-url">{t("profile.embed.label")}</label>
+        <div class="gallery-video-row">
+          <input
+            id="gallery-video-url"
+            class="input"
+            type="url"
+            inputmode="url"
+            autocomplete="off"
+            spellcheck="false"
+            maxlength="500"
+            placeholder={t("profile.embed.ph")}
+          />
+          <button id="gallery-video-add" type="button" class="btn-solid gallery-video-submit">{t("profile.embed.submit")}</button>
+          <button id="gallery-video-cancel" type="button" class="btn-link gallery-video-cancel">{t("profile.reauth.cancel")}</button>
+        </div>
+        <p id="gallery-video-status" class="field-note" role="status" hidden></p>
+      </div>
+      <p id="gallery-status" class="field-note" style="display:none;"></p>
+      {
+        /* Two notes, one shown. The verify banner used to carry "until then
+          you can add only one image" and no longer does — a strip about email
+          is the wrong place for the gallery's ceiling, and it left this line
+          saying "up to 8" to a member who could upload exactly one. The limit
+          belongs next to the uploader. Defaults to the verified copy so the
+          swap, like the banner's, is a single act with nothing to undo. */
+      }
+      <p id="gallery-note" class="field-note">{t("profile.note.gallery")}</p>
+      <p id="gallery-note-unverified" class="field-note" hidden>
+        {t("profile.note.galleryUnverified")}
+      </p>
+      {
+        /* The directory is image-led: a member without a gallery holds a
+        typographic card. Saying so here is the standing mechanism that fills
+        the directory — hidden the moment the first image lands. */
+      }
+      <p id="gallery-nudge" class="field-note gallery-nudge" hidden>{t("profile.gallery.nudge")}</p>
+      {
+        /* Cloned by renderGallery(). Astro scopes this component's CSS by
+        appending data-astro-cid-* to EVERY compound selector, so .gallery-item, .gallery-thumb and .gallery-thumb-remove
+        are scoped rules, so createElement() rows got none of them — the thumbs
+        rendered at their natural size with an untreated remove button. */
+      }
+      <template data-gallery-tpl="item">
+        <div class="gallery-item">
+          {
+            /* THE PICTURE AND ITS TOOLS ARE ONE COLUMN (2026-09-26, Josh: "move
+              the buttons on desktop under the image. make a bit more modern").
+              On desktop the toolbar sits under the thumb at its width; on a
+              phone the two sit side by side, the words below both. */
+          }
+          <div class="gallery-media">
+          <div class="gallery-thumb">
+            <img alt="" loading="lazy" data-gallery-img />
+            {
+              /* Both labels bottom left, stacked (2026-09-25, Josh: "the video
+                tag should be bottom left"), so a video that is also the cover
+                wears both without one covering the other. */
+            }
+            <div class="gallery-thumb-labels">
+              <span class="gallery-cover" data-gallery-cover hidden></span>
+              <span class="gallery-video-badge" data-gallery-video-badge hidden
+                ><span class="vscn-play" aria-hidden="true"></span><span data-gallery-video-name></span></span
+              >
+            </div>
+          </div>
+          {
+            /* EVERY TOOL RIGHT OF THE PICTURE (2026-09-25, Josh: "move the
+              replace image, delete image, move image up, move image down,
+              project selection button to right of the image"). They used to
+              be split: ↻ and ✕ on the picture, the arrows and the project
+              under the Image Details fold. Now one column beside the thumb holds
+              everything that acts on the work as a whole, and the fold holds
+              only its words.
+              Up/down stay inside the row's container (moveImage in
+              projectEditor.ts): a loose row steps past a whole block, a row
+              inside a project stays inside it. The select is the only way into
+              or out of a project, "No project" meaning a loose work, and it is
+              hidden while the member has no project at all: a dropdown with
+              one choice is not a choice. Unlabelled on screen (Josh: "remove
+              the Title"); its name is in aria-label. */
+          }
+          <div class="gallery-row-tools">
+            {
+              /* One segmented toolbar instead of four loose boxes: move up,
+                move down, replace, delete. Line icons (Lucide's geometry,
+                drawn in currentColor) rather than text glyphs, so the four
+                read as one set at one weight. Names are in aria-label and
+                the tooltip, set by renderGallery(). Always in view: it sat
+                behind an "Image actions" fold for a day (2026-09-28, Josh:
+                "Image Actions drop down is unnecessary"), which hid four
+                small buttons behind a fifth. */
+            }
+            <div class="gallery-toolbar" role="group">
+              <button type="button" class="gallery-tbtn" data-gallery-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+              <button type="button" class="gallery-tbtn" data-gallery-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
+              <button type="button" class="gallery-tbtn" data-gallery-replace><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button>
+              <button type="button" class="gallery-tbtn gallery-tbtn--danger" data-gallery-remove><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+            </div>
+            <div class="gallery-select-wrap" data-gallery-project-wrap hidden>
+              <select class="gallery-project-select" data-gallery-project></select>
+            </div>
+            <button type="button" class="gallery-tpill" data-gallery-auto-thumb hidden></button>
+          </div>
+          </div>
+          <div class="gallery-fields">
+            {
+              /* NOTHING BESIDE THE PICTURE BUT ITS FOLD (2026-09-28, Josh:
+                "there is also the title and tags still left on desktop,
+                remove it there too as on mobile"). From 2026-09-26 a folded
+                desktop row showed its title and tags as read-only text here;
+                the phone dropped them earlier the same day, and now both
+                breakpoints show only Image Details, which holds them. */
+            }
+            {
+              /* THE WHOLE ROW'S WORDS FOLD (2026-09-24, Josh: "make the image
+                details collapsible in the work tab. default for already there
+                images is collapsed then"). Six images each carrying two
+                panes, two links and a tag selector made the Works tab a long
+                scroll past finished rows to reach the one being written. An
+                image already in the gallery when the page loads starts FOLDED;
+                one uploaded or linked in this session starts OPEN, because
+                that is the row about to be filled in. The row buttons stay outside
+                the fold, so a folded row can still be moved.
+
+                The summary says "Image Details" and nothing else (2026-09-25,
+                Josh: "detail drop down should not display any name or
+                anything"); it used to repeat the caption. It said just
+                "Details" until 2026-09-27 (Josh: "“Image Details” instead of
+                Details"). Open/closed lives in
+                galleryDetailsOpenUI, keyed by imageId, for the same re-clone
+                reason as the tag fold below. */
+            }
+            <details class="gallery-details">
+              <summary class="gallery-details-summary">
+                <span class="gallery-details-title">{t("profile.gallery.details")}</span>
+                <span class="gallery-details-chevron" aria-hidden="true"></span>
+              </summary>
+              <div class="gallery-details-body">
+            {
+              /* THE EN/DE SWITCH (2026-09-04, Josh: "make it into a modal
+                switch"). Caption and description used to carry their German
+                twins stacked directly underneath — four text controls in a
+                row already narrowed for a compact gallery item, two of them
+                asking to be left blank most of the time. This toggles between
+                two PANES instead, English and German, so only one language's
+                pair is ever on screen: the switch is the one small addition,
+                not two more full-height fields.
+
+                Text buttons, not a checkbox-styled switch: "modal" here means
+                a mode switch, and a two-way mode is exactly what
+                .section-tab above already draws for the four form tabs — this
+                reuses that same on/off-by-position language at gallery-row
+                scale, which a member has already learned by the time they
+                reach this field. */
+            }
+            <div class="gallery-lang-switch" role="group">
+              <button
+                type="button"
+                class="gallery-lang-btn is-active"
+                data-gallery-lang-btn="en"
+              >EN</button>
+              <button type="button" class="gallery-lang-btn" data-gallery-lang-btn="de"
+              >DE</button>
+            </div>
+
+            {
+              /* A VISIBLE TITLE ON EVERY FIELD (2026-09-24, Josh: "we need
+                more explicit descriptions for the things we need to fill in
+                … lets add a Title to each field. and add the i next to it").
+                The fields used to be named only by their placeholders, which
+                vanish the moment a member types — a filled row was a stack
+                of unnamed boxes, and the two links could not be told apart.
+                Each title is a real <label>; renderGallery() gives the
+                control its id and the label its `for` at clone time, since
+                the template is cloned once per image. The placeholders are
+                examples now, not names. */
+            }
+            <div class="gallery-lang-pane" data-gallery-lang-pane="en">
+              <div class="label-row">
+                <label class="row-label" data-row-label="caption">{t("profile.gallery.caption")}</label>
+              </div>
+              <p class="field-note" data-tip data-tip-note="caption" hidden>{t("profile.gallery.captionNote")}</p>
+              <div class="infotip-field">
+                <input type="text" class="input" data-gallery-field="caption" />
+                <InfoTip lang={lang} rowKey="caption" />
+              </div>
+              {
+                /* TWO TEXTS PER IMAGE, NOT THREE (2026-09-04, Josh: "we only
+                  need one description field for the image"). A 240-character
+                  short version sat here for a day, between the caption and
+                  this one, on the theory that the lightbox wanted a summary
+                  and the portfolio page wanted the essay. In the editor it
+                  read as being asked to write the same thing twice at two
+                  lengths, with no way to tell which surface would show which
+                  — so it mostly went unfilled, and the lightbox showed
+                  nothing where the member had plainly written something. The
+                  caption names the picture and is what screen readers say;
+                  this describes it, and now goes wherever there is room for
+                  it.
+
+                  Still true a day later: the DE pane below is a second
+                  caption and description, but on the LANGUAGE axis, not the
+                  length one — see the switch above. This pane stays the
+                  single English pair of record. */
+              }
+              <div class="label-row">
+                <label class="row-label" data-row-label="description">{t("profile.gallery.description.label")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
+              </div>
+              <textarea class="input textarea" rows="3" data-gallery-field="description"></textarea>
+            </div>
+
+            {
+              /* THE GERMAN PANE, OPTIONAL (2026-09-04: "english and german
+                image descriptions", then "caption also in german" and "make
+                it into a modal switch"). Both fields default to empty — see
+                GalleryItem.captionDe / descriptionDe in gallery.ts for the
+                fallback that makes that safe to leave blank: the German site
+                reads the English pane above until these are filled in, the
+                same way `useTranslations()` falls back to English for every
+                button and label on the site. The two notes behind the i's say so
+                out loud, because a switch that reveals two empty boxes does
+                not say "leaving these blank is fine" on its own. */
+            }
+            <div class="gallery-lang-pane" data-gallery-lang-pane="de" hidden>
+              <div class="label-row">
+                <label class="row-label" data-row-label="captionDe">{t("profile.gallery.caption.de")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
+              </div>
+              <input type="text" class="input" data-gallery-field="captionDe" />
+              <div class="label-row">
+                <label class="row-label" data-row-label="descriptionDe">{t("profile.gallery.description.de")}</label>
+                <span class="row-optional">{t("profile.optional")}</span>
+              </div>
+              <textarea class="input textarea" rows="3" data-gallery-field="descriptionDe"></textarea>
+            </div>
+
+            {
+              /* TWO LINKS PER PICTURE, IN THE ORDER THE PAGE PRINTS THEM
+                (2026-09-10, Josh: "the image link should be additional no?").
+                This one is the member's own page about the piece; the one
+                below is where it appeared. Until today a single field was
+                asked to be both, and its note said so — which made a reader
+                unable to tell a portfolio from a publication, and left the
+                structured data unable to either (see imageNode() in
+                src/lib/seo.ts, where the own page is what the image is the
+                main entity OF and the publication is what it is part of).
+
+                A second NAMED field rather than a repeatable list of URLs:
+                a row of bare hosts under a picture says nothing about which
+                is which, and neither field is worth having if the reader
+                cannot tell them apart. Same fixed-prefix treatment as
+                Portfolio and the social rows, because both are stored the
+                same way: without a scheme. A bare text input would collect a
+                mix of "nature.com/…" and "https://nature.com/…" in one
+                field. */
+            }
+            {
+              /* Static text in the template: the same for every row and every
+                state, so `t()` here is enough — the clone carries it. Note
+                ids are assigned at clone time by renderGallery(), since the
+                template itself is cloned once per image (see the comment
+                there). */
+            }
+            <div class="label-row">
+              <label class="row-label" data-row-label="siteLink">{t("profile.gallery.siteLink")}</label>
+              <span class="row-optional">{t("profile.optional")}</span>
+            </div>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">https://</span>
+              <input type="text" class="input input-prefixed" data-gallery-field="siteLink" />
+            </div>
+            <div class="label-row">
+              <label class="row-label" data-row-label="link">{t("profile.gallery.link")}</label>
+              <span class="row-optional">{t("profile.optional")}</span>
+            </div>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">https://</span>
+              <input type="text" class="input input-prefixed" data-gallery-field="link" />
+            </div>
+            {
+              /* WHAT IS IN THE PICTURE, not who made it — the community wall
+                filters by this (2026-09-08, step 2 of
+                documentation/20260907-works-on-the-record-design.md). Same
+                element and registry as the member's own tags above, capped
+                lower: a picture is tagged with what it shows, not with
+                everything the member could say about themselves. Wired in
+                renderGallery() like every other field here, via `.value` and
+                a `change` listener — never by id, since this template is
+                cloned once per image and a duplicate id would be meaningless
+                to query by anyway. */
+            }
+            {
+              /* FOLDED AWAY, BUT OPEN TO START WITH (2026-09-17, Josh: "make
+                image tags collapsible. default open!"). The selector is the
+                tallest thing in a row — a filter, three groups and an add row
+                — and a member with six images was scrolling past six of them
+                to reach the move buttons. Folding it gives the row back its
+                short shape once the tagging is done, and the count in the
+                summary is what makes a folded row still say what is in the
+                picture.
+
+                Open/closed is remembered OUTSIDE this row, keyed by imageId
+                (galleryTagsOpenUI, same reason as the EN/DE
+                switch above): every row is re-cloned from this template on
+                each upload, remove and reorder, so a fold not held somewhere
+                else would spring back open while the member is still
+                uploading.
+
+                Titled "Tags", not "What's in the picture" (2026-09-17, Josh,
+                after seeing it on the preview: "change the name to Tags").
+                The long form is the question the field asks; a fold heading
+                is a name, and the member's own tags field is called Tags too. */
+            }
+            <details class="gallery-tags" open>
+              <summary class="gallery-tags-summary">
+                <span class="gallery-tags-title">{t("profile.label.tags")}</span>
+                <span class="gallery-tags-count" data-gallery-tags-count></span>
+                <span class="gallery-tags-chevron" aria-hidden="true"></span>
+              </summary>
+              <TagSelector lang={lang} maxTags={7} />
+            </details>
+              </div>
+            </details>
+          </div>
+        </div>
+      </template>
+      {
+        /* A PROJECT BLOCK (2026-09-23), cloned by renderGallery() once per
+          project. Josh: "the project should encapsulate the images, so it
+          still keeps this linear look … everything keeps together" — so the
+          block is a frame INSIDE the one gallery list, holding its own image
+          rows in [data-project-images], and the list stays linear: loose rows
+          and blocks in one order, the gallery array's order.
+
+          Title and Description reuse the image row's EN/DE switch and panes
+          rather than BilingualField: that component keys on fixed ids, and
+          this template is cloned per project. The Link is the project's own
+          page; images inside the block without a site link of their own
+          inherit it (inheritedSiteLink in projects.ts), which is what the
+          note behind the ⓘ says. */
+      }
+      <ProjectEditor lang={lang} />
+      <template data-gallery-tpl="affiliation">
+        <div class="social-row gallery-aff-row">
+          <div class="gallery-lang-switch" role="group">
+            <button type="button" class="gallery-lang-btn is-active" data-aff-mode="name">{t("profile.project.affiliation.name")}</button>
+            <button type="button" class="gallery-lang-btn" data-aff-mode="member">{t("profile.project.affiliation.member")}</button>
+          </div>
+          <div class="gallery-aff-fields" data-aff-pane="name">
+            <input type="text" class="input" data-aff-field="name" />
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">https://</span>
+              <input type="text" class="input input-prefixed" data-aff-field="url" />
+            </div>
+          </div>
+          <div class="gallery-aff-fields" data-aff-pane="member" hidden>
+            <input type="text" class="input" data-aff-field="member" list="gallery-member-options" autocomplete="off" />
+            <p class="field-note gallery-aff-nomatch" hidden>{t("profile.project.affiliation.noMatch")}</p>
+          </div>
+          <button type="button" class="social-row-remove" data-aff-remove>✕</button>
+        </div>
+      </template>
+      {
+        /* ONE datalist for every Member-mode input on the page, filled once
+          from publicProfiles on the first Member focus (loadMemberOptions).
+          The chosen member is resolved from the typed name back to a uid. */
+      }
+      <datalist id="gallery-member-options"></datalist>
+      {
+        /* One pending upload, cloned by renderQueue(). Deliberately the same
+        .gallery-item geometry as a committed row: the thumb is in the same
+        place at the same size, so a completed upload reads as the row settling
+        rather than as one row vanishing and a different one appearing. */
+      }
+      <template data-gallery-tpl="task">
+        <div class="gallery-item gallery-task">
+          <div class="gallery-thumb">
+            <img alt="" data-task-img />
+            <button type="button" class="gallery-thumb-remove" data-task-cancel>✕</button>
+          </div>
+          <div class="gallery-fields">
+            <p class="gallery-task-name" data-task-name></p>
+            <div
+              class="gallery-bar"
+              data-task-track
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax="100"
+            >
+              <span data-task-bar></span>
+            </div>
+            <p class="gallery-task-state" data-task-state></p>
+            <div class="gallery-tools" data-task-tools hidden>
+              <button type="button" class="gallery-tool" data-task-retry></button>
+              <button type="button" class="gallery-tool" data-task-dismiss></button>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>

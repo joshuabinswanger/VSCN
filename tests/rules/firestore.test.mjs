@@ -4,6 +4,7 @@ import { test, before, after, beforeEach } from "node:test";
 import { deleteField } from "firebase/firestore";
 import assert from "node:assert/strict";
 import { isProfileVisible } from "../../src/lib/profileVisibility.ts";
+import * as projectsModule from "../../src/lib/projects.ts";
 import {
   setupEnv, seed, assertFails, assertSucceeds,
   OWNER, OTHER, ADMIN, verified, unverified, slot, minimalUser,
@@ -199,6 +200,67 @@ test("images: identity pins hold even when the change is self-consistent", async
   }));
 });
 
+// VIDEO WORKS (2026-09-23, release 1 of documentation/20260923-motion-works-design.md).
+// media / embed / posterSource are server-written: a member's caption save must
+// carry them through untouched (the MERGED record is what hasOnly judges, so
+// leaving them off the list would have silently refused every save on a video
+// work), and must never be able to change them.
+const EMBED = { provider: "youtube", videoId: "dQw4w9WgXcQ" };
+const embedDoc = (overrides = {}) =>
+  imageDoc(OWNER, "img-1", { status: "live", media: "embed", embed: EMBED, posterSource: "auto", ...overrides });
+
+test("images: a video work takes a caption save and a removal like any picture", async () => {
+  await seed(env, "images/img-1", embedDoc());
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({
+    caption: "Cell division", captionDe: "Zellteilung", tags: ["biology"], updatedAt: new Date(),
+  }));
+  await assertSucceeds(db.doc("images/img-1").update({ status: "pendingDeletion", updatedAt: new Date() }));
+});
+
+test("images: a Vimeo work with an unlisted hash is valid on save", async () => {
+  await seed(env, "images/img-1", embedDoc({ embed: { provider: "vimeo", videoId: "22439234", hash: "a1b2c3d4e5" }, posterSource: "member" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({ caption: "The Mountain", updatedAt: new Date() }));
+});
+
+test("images: the client can never change media, embed or posterSource", async () => {
+  await seed(env, "images/img-1", embedDoc());
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertFails(db.doc("images/img-1").update({ media: "still", updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ embed: { provider: "youtube", videoId: "jNQXAC9IVRw" }, updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ "embed.videoId": "jNQXAC9IVRw", updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ posterSource: "member", updatedAt: new Date() }));
+});
+
+test("images: a still cannot be turned into a video by the client", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertFails(db.doc("images/img-1").update({ media: "embed", embed: EMBED, updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ posterSource: "auto", updatedAt: new Date() }));
+});
+
+test("images: a malformed embed makes the record unsaveable, so the server cannot store one either unnoticed", async () => {
+  // Seeded bad records stand in for a server bug: validImage judges the whole
+  // record on every member save, so a bad embed fails loudly at the first one.
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  for (const embed of [
+    { provider: "youtube", videoId: "short" },
+    { provider: "youtube", videoId: "dQw4w9WgXcQ", hash: "abcdef" },
+    { provider: "vimeo", videoId: "12ab" },
+    { provider: "vimeo", videoId: "22439234", hash: "NOT-HEX" },
+    { provider: "dailymotion", videoId: "x7tgad0" },
+    { provider: "youtube", videoId: "dQw4w9WgXcQ", url: "https://evil.example/" },
+  ]) {
+    await seed(env, "images/img-1", embedDoc({ embed }));
+    await assertFails(db.doc("images/img-1").update({ caption: "x", updatedAt: new Date() }));
+  }
+  await seed(env, "images/img-1", embedDoc({ media: "gif" }));
+  await assertFails(db.doc("images/img-1").update({ caption: "x", updatedAt: new Date() }));
+  await seed(env, "images/img-1", embedDoc({ posterSource: "platform" }));
+  await assertFails(db.doc("images/img-1").update({ caption: "x", updatedAt: new Date() }));
+});
+
 test("images: another member cannot update, nobody can delete", async () => {
   await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
   const other = env.authenticatedContext(OTHER, verified(OTHER)).firestore();
@@ -257,7 +319,7 @@ test("images: verified members also require server allocation", async () => {
 
 test("images: an unlisted key is rejected (hasOnly)", async () => {
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
-  await assertFails(db.doc("images/img-1").set(imageDoc(OWNER, "img-1", { projectId: "p" })));
+  await assertFails(db.doc("images/img-1").set(imageDoc(OWNER, "img-1", { notAField: "p" })));
 });
 
 test("images: the record carries where the image appeared", async () => {
@@ -278,15 +340,58 @@ test("images: the record carries the member's own page for the piece, beside whe
   await assertFails(db.doc("images/img-1").update({ siteLink: 42, updatedAt: new Date() }));
 });
 
-test("images: what is in the picture — up to 5 tags from the registry's own alphabet", async () => {
+test("images: what is in the picture — up to 7 tags from the registry's own alphabet", async () => {
   await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
-  await assertSucceeds(db.doc("images/img-1").update({ tags: ["Botany", "Ink", "Field notes", "d", "e"], updatedAt: new Date() }));
-  await assertFails(db.doc("images/img-1").update({ tags: ["a", "b", "c", "d", "e", "f"], updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ tags: ["Botany", "Ink", "Field notes", "d", "e", "f", "g"], updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ tags: ["a", "b", "c", "d", "e", "f", "g", "h"], updatedAt: new Date() }));
   await assertFails(db.doc("images/img-1").update({ tags: ["x".repeat(51)], updatedAt: new Date() }));
   await assertSucceeds(db.doc("images/img-1").update({ tags: ["x".repeat(50)], updatedAt: new Date() }));
   await assertFails(db.doc("images/img-1").update({ tags: [42], updatedAt: new Date() }));
   await assertFails(db.doc("images/img-1").update({ tags: "Botany", updatedAt: new Date() }));
+});
+
+test("images: a FULL gallery saves — twelve maximal records, seven tags each, then both profile docs", async () => {
+  // The per-image cap went 5 -> 7 on 2026-09-23. The records are judged one
+  // write each (saveGalleryRecords in src/lib/gallery.ts: twelve parallel
+  // updateDoc calls), and the profile docs in one batch after them
+  // (updateUserProfile) — so this mirrors the real Save, every field at cap.
+  const ids = Array.from({ length: 12 }, (_, i) => `img-${i + 1}`);
+  for (const id of ids) await seed(env, `images/${id}`, imageDoc(OWNER, id, { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  const tags = Array.from({ length: 7 }, (_, i) => `${i}`.padEnd(50, "x"));
+  await Promise.all(ids.map((id) => assertSucceeds(db.doc(`images/${id}`).update({
+    caption: "x".repeat(140), captionDe: "x".repeat(140),
+    description: "x".repeat(600), descriptionDe: "x".repeat(600),
+    link: "x".repeat(200), siteLink: "x".repeat(200),
+    tags, updatedAt: new Date(),
+  }))));
+
+  const photoURL = "https://firebasestorage.googleapis.com/v0/b/vscn-dev-f4b60.firebasestorage.app/o/x.webp?alt=media";
+  const profile = {
+    displayName: "x".repeat(100), photoURL, role: "x".repeat(100), roleDe: "x".repeat(100),
+    bio: Array.from({ length: 35 }, () => "word").join(" "),
+    bioDe: Array.from({ length: 35 }, () => "Wort").join(" "),
+    portfolio: "x".repeat(200), socialMedia: "x".repeat(500),
+    affiliation: "x".repeat(150), location: "x".repeat(100),
+    languages: ["de", "en", "fr", "it"], visualNeeds: ["a", "b", "c", "d", "e", "f", "g", "h"],
+    openTo: ["a", "b", "c", "d", "e"], primaryAudiences: ["science", "public", "policy-makers", "education"],
+    tags: ["a", "b", "c", "d", "e", "f", "g"],
+    gallery: ids,
+  };
+  const batch = db.batch();
+  batch.set(db.doc(`users/${OWNER}`), {
+    ...minimalUser(OWNER), ...profile,
+    phone: "x".repeat(40), wantsToContribute: true, onboardingComplete: true,
+    receiveCommunityEmails: true, preferredLanguage: "en",
+  }, { merge: true });
+  batch.set(db.doc(`publicProfiles/${OWNER}`), {
+    ...profile, photoImageId: "img-a", photoColor: "#123456", memberType: "creator", active: true,
+  }, { merge: true });
+  await assertSucceeds(batch.commit());
+
+  // And the eighth tag is still the one refused.
+  await assertFails(db.doc("images/img-8").update({ tags: [...tags, "h"], updatedAt: new Date() }));
 });
 
 test("users: an owner update leaves server-owned fields alone and passes", async () => {
@@ -323,12 +428,12 @@ test("publicProfiles: the gallery is a list of image ids, and nothing else", asy
 
   await assertSucceeds(save([]));
   await assertSucceeds(save(["img-1"]));
-  await assertSucceeds(save(["img-1", "img-2", "img-3", "img-4", "img-5", "img-6", "img-7", "img-8"]));
+  await assertSucceeds(save(Array.from({ length: 12 }, (_, i) => `img-${i + 1}`)));
   await assertSucceeds(save([`${OWNER}-gallery`]));
   await assertSucceeds(save([crypto.randomUUID()]));
 
-  // A ninth is refused: the cap is the list's own size.
-  await assertFails(save(["1", "2", "3", "4", "5", "6", "7", "8", "9"]));
+  // A thirteenth is refused: the cap is the list's own size.
+  await assertFails(save(Array.from({ length: 13 }, (_, i) => `${i + 1}`)));
   // THE OLD SHAPE is refused outright (2026-09-07 — the record is the work,
   // documentation/20260907-works-on-the-record-design.md). A stale tab that
   // still writes objects fails safe rather than re-growing the array.
@@ -339,10 +444,10 @@ test("publicProfiles: the gallery is a list of image ids, and nothing else", asy
   await assertFails(save([42]));
 });
 
-test("publicProfiles: eight ids save on a FULL profile", async () => {
+test("publicProfiles: twelve ids save on a FULL profile", async () => {
   // The whole reason for the shape change: validGalleryItem could not be
   // afforded eight times on a realistic profile (see
-  // documentation/20260903-gallery-rules-budget.md). Eight ids must fit next
+  // documentation/20260903-gallery-rules-budget.md). Twelve ids must fit next
   // to every other field the editor writes — every field below sits at its
   // cap, because a merely "realistic" fixture (short photoURL, empty
   // primaryAudiences) understates the budget the real save is judged against.
@@ -351,13 +456,14 @@ test("publicProfiles: eight ids save on a FULL profile", async () => {
   const primaryAudiences = ["science", "public", "policy-makers", "education"];
   await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).set({
     displayName: "x".repeat(100), photoURL, photoImageId: "img-a", photoColor: "#123456",
-    memberType: "creator", role: "x".repeat(100),
+    memberType: "creator", role: "x".repeat(100), roleDe: "x".repeat(100),
     bio: Array.from({ length: 35 }, () => "word").join(" "),
+    bioDe: Array.from({ length: 35 }, () => "Wort").join(" "),
     portfolio: "x".repeat(200), socialMedia: "x".repeat(500),
     affiliation: "x".repeat(150), location: "x".repeat(100),
     languages: ["de", "en", "fr", "it"], visualNeeds: ["a", "b", "c", "d", "e", "f", "g", "h"],
     openTo: ["a", "b", "c", "d", "e"], primaryAudiences, tags: ["a", "b", "c", "d", "e", "f", "g"],
-    gallery: Array.from({ length: 8 }, () => crypto.randomUUID()),
+    gallery: Array.from({ length: 12 }, () => crypto.randomUUID()),
     active: true,
   }));
   await env.withSecurityRulesDisabled(async (ctx) => {
@@ -367,15 +473,35 @@ test("publicProfiles: eight ids save on a FULL profile", async () => {
   await assertSucceeds(db.doc(`publicProfiles/${OWNER}`).update({ updatedAt: new Date(), active: true }));
   await assertSucceeds(db.doc(`users/${OWNER}`).set({
     ...minimalUser(OWNER),
-    displayName: "x".repeat(100), photoURL, role: "x".repeat(100),
+    displayName: "x".repeat(100), photoURL, role: "x".repeat(100), roleDe: "x".repeat(100),
     bio: Array.from({ length: 35 }, () => "word").join(" "),
+    bioDe: Array.from({ length: 35 }, () => "Wort").join(" "),
     portfolio: "x".repeat(200), socialMedia: "x".repeat(500),
     affiliation: "x".repeat(150), location: "x".repeat(100),
     languages: ["de", "en", "fr", "it"], visualNeeds: ["a", "b", "c", "d", "e", "f", "g", "h"],
     openTo: ["a", "b", "c", "d", "e"], primaryAudiences, tags: ["a", "b", "c", "d", "e", "f", "g"],
-    gallery: Array.from({ length: 8 }, () => crypto.randomUUID()),
+    gallery: Array.from({ length: 12 }, () => crypto.randomUUID()),
     phone: "x".repeat(40), wantsToContribute: true, onboardingComplete: true,
+    receiveCommunityEmails: true, preferredLanguage: "en",
   }));
+});
+
+test("roleDe/bioDe: optional, and held to the English pair's caps on both docs", async () => {
+  // An unlisted key would reject the WHOLE save through hasOnly, so the first
+  // assertion is the one that matters: a German pair saves at all.
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await seed(env, `users/${OWNER}`, minimalUser(OWNER));
+  const tooManyWords = Array.from({ length: 36 }, () => "Wort").join(" ");
+  for (const path of [`publicProfiles/${OWNER}`, `users/${OWNER}`]) {
+    const ref = db.doc(path);
+    await assertSucceeds(ref.set({ displayName: "Test Member", roleDe: "Illustratorin", bioDe: "Zeichnet Dinge." }, { merge: true }));
+    await assertSucceeds(ref.set({ roleDe: "", bioDe: "" }, { merge: true }));
+    await assertFails(ref.set({ roleDe: "x".repeat(101) }, { merge: true }));
+    await assertFails(ref.set({ bioDe: tooManyWords }, { merge: true }));
+    await assertFails(ref.set({ bioDe: "x".repeat(501) }, { merge: true }));
+    await assertFails(ref.set({ roleDe: 7 }, { merge: true }));
+    await assertFails(ref.set({ bioDe: ["not", "a", "string"] }, { merge: true }));
+  }
 });
 
 test("publicProfiles: another member's image id is accepted by rules — the READER drops it", async () => {
@@ -512,4 +638,190 @@ test("imageModeration: a member can still save their own image record", async ()
   await assertSucceeds(owner.doc("images/img-1").update({
     caption: "a new line", updatedAt: new Date(),
   }));
+});
+
+test("profile sync keeps communication preferences out of the public projection", async () => {
+  await seed(env, `users/${OWNER}`, minimalUser(OWNER));
+  const context = env.authenticatedContext(OWNER, verified(OWNER));
+  const { updateUserProfile } = loadTs('src/lib/firestore.ts', {
+    './firebase.ts': { auth: { currentUser: { emailVerified: true } }, db: context.firestore()._delegate },
+    './profileVisibility.ts': { isProfileVisible },
+    'firebase/firestore': modularFirestore,
+  });
+
+  await assertSucceeds(updateUserProfile(OWNER, {
+    receiveCommunityEmails: true,
+    preferredLanguage: "en",
+  }));
+  const privateData = (await context.firestore().doc(`users/${OWNER}`).get()).data();
+  const publicData = (await context.firestore().doc(`publicProfiles/${OWNER}`).get()).data();
+  assert.equal(privateData.receiveCommunityEmails, true);
+  assert.equal(privateData.preferredLanguage, "en");
+  assert.equal(publicData.receiveCommunityEmails, undefined);
+  assert.equal(publicData.preferredLanguage, undefined);
+});
+
+test("communication preferences are private, typed, and preserve an unknown legacy choice", async () => {
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  // Historic documents legitimately omit both fields: omission is not consent.
+  await assertSucceeds(db.doc(`users/${OWNER}`).set(minimalUser(OWNER)));
+  await assertSucceeds(db.doc(`users/${OWNER}`).update({
+    receiveCommunityEmails: true,
+    preferredLanguage: "en",
+  }));
+  await assertFails(db.doc(`users/${OWNER}`).update({ receiveCommunityEmails: "true" }));
+  await assertFails(db.doc(`users/${OWNER}`).update({ preferredLanguage: "fr" }));
+
+  const publicProfile = db.doc(`publicProfiles/${OWNER}`);
+  await assertFails(publicProfile.set({ displayName: "Test Member", receiveCommunityEmails: true }));
+  await assertFails(publicProfile.set({ displayName: "Test Member", preferredLanguage: "en" }));
+});
+
+test("communication preferences validate private creates and public updates", async () => {
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  const privateProfile = db.doc(`users/${OWNER}`);
+  for (const invalid of [
+    { receiveCommunityEmails: "true" },
+    { receiveCommunityEmails: null },
+    { preferredLanguage: "fr" },
+    { preferredLanguage: null },
+  ]) {
+    await assertFails(privateProfile.set({ ...minimalUser(OWNER), ...invalid }));
+  }
+  await assertSucceeds(privateProfile.set({
+    ...minimalUser(OWNER), receiveCommunityEmails: false, preferredLanguage: "de",
+  }));
+  await assertFails(privateProfile.update({ receiveCommunityEmails: null }));
+  await assertFails(privateProfile.update({ preferredLanguage: null }));
+  const publicProfile = db.doc(`publicProfiles/${OWNER}`);
+  await assertSucceeds(publicProfile.set({ displayName: "Test Member" }));
+  await assertFails(publicProfile.update({ receiveCommunityEmails: false }));
+  await assertFails(publicProfile.update({ preferredLanguage: "de" }));
+});
+
+// ── PROJECTS (2026-09-23, documentation/20260923-projects-design.md) ─────────
+function projectDoc(uid, overrides = {}) {
+  return { ownerUid: uid, createdAt: new Date(), updatedAt: new Date(), ...overrides };
+}
+
+test("projects: the owner creates, edits and deletes their own; all fields optional", async () => {
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("projects/p1").set(projectDoc(OWNER)));
+  await assertSucceeds(db.doc("projects/p1").update({
+    title: "Cryo-EM of the ribosome", titleDe: "Kryo-EM des Ribosoms",
+    description: "x".repeat(600), descriptionDe: "y".repeat(600),
+    link: "lab.example.org/ribosome",
+    affiliations: [{ name: "ETH Zürich", url: "ethz.ch" }, { name: "Lab" }, { memberUid: OTHER, name: "Anna Meier" }],
+    tags: ["Structural Biology", "Microscopy", "3D", "Research", "ETH", "Biology", "Medicine"],
+    updatedAt: new Date(),
+  }));
+  await assertSucceeds(db.doc("projects/p1").get());
+  await assertSucceeds(db.collection("projects").where("ownerUid", "==", OWNER).get());
+  await assertSucceeds(db.doc("projects/p1").delete());
+});
+
+test("projects: caps hold — title, description, link, affiliation count and each entry", async () => {
+  await seed(env, "projects/p1", projectDoc(OWNER));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  const up = (fields) => db.doc("projects/p1").update({ ...fields, updatedAt: new Date() });
+  await assertFails(up({ title: "x".repeat(101) }));
+  await assertFails(up({ titleDe: "x".repeat(101) }));
+  await assertFails(up({ description: "x".repeat(601) }));
+  await assertFails(up({ descriptionDe: "x".repeat(601) }));
+  await assertFails(up({ link: "x".repeat(201) }));
+  await assertSucceeds(up({ affiliations: Array.from({ length: 10 }, (_, i) => ({ name: `Org ${i}` })) }));
+  await assertFails(up({ affiliations: Array.from({ length: 11 }, (_, i) => ({ name: `Org ${i}` })) }));
+  await assertFails(up({ affiliations: [{ name: "" }] }));
+  await assertFails(up({ affiliations: [{ name: "x".repeat(101) }] }));
+  await assertFails(up({ affiliations: [{ name: "Org", url: "x".repeat(201) }] }));
+  await assertFails(up({ affiliations: [{ url: "ethz.ch" }] }));
+  await assertFails(up({ affiliations: [{ memberUid: OTHER, name: "Anna", url: "x.ch" }] }));
+  await assertFails(up({ affiliations: [{ name: "Org", role: "partner" }] }));
+  await assertFails(up({ affiliations: "ETH" }));
+  // Project tags (2026-09-27): the image cap, validImageTags reused.
+  await assertSucceeds(up({ tags: Array.from({ length: 7 }, (_, i) => `Tag ${i}`) }));
+  await assertFails(up({ tags: Array.from({ length: 8 }, (_, i) => `Tag ${i}`) }));
+  await assertFails(up({ tags: [""] }));
+  await assertFails(up({ tags: ["x".repeat(51)] }));
+  await assertFails(up({ tags: [3] }));
+  await assertFails(up({ tags: "3D" }));
+  await assertFails(up({ unknownField: true }));
+});
+
+test("projects: the exact payloads saveProjects() sends pass the rules — create, full update, emptied update", async () => {
+  // The REAL src/lib/projectStore.ts, only its Firebase handle swapped for the
+  // emulator's: create = ownerUid + projectFields() + createdAt/updatedAt as
+  // serverTimestamp(); update = every EDITABLE key present or deleteField(),
+  // plus updatedAt. A key added to EDITABLE and projectFields() but not to
+  // validProject() fails here instead of silently failing a member's Save.
+  const context = env.authenticatedContext(OWNER, verified(OWNER));
+  const { saveProjects, EDITABLE } = loadTs("src/lib/projectStore.ts", {
+    "./firebase.ts": { db: context.firestore()._delegate },
+    "./projects.ts": projectsModule,
+    "./profileVisibility.ts": { isProfileVisible },
+    "firebase/firestore": modularFirestore,
+  });
+  const full = {
+    projectId: "p1",
+    title: " Cryo-EM of the ribosome ", titleDe: "Kryo-EM des Ribosoms",
+    description: "x".repeat(700), descriptionDe: "y".repeat(600),
+    link: "https://lab.example.org/ribosome",
+    affiliations: [{ name: "ETH Zürich", url: "https://ethz.ch" }, { name: "Lab" }, { memberUid: OTHER, name: "Anna Meier" }],
+    tags: [" 3D ", "Microscopy", "3d"],
+  };
+  // The fixture must exercise every key an update writes, or a new key would
+  // only ever be sent as deleteField() here and never reach hasOnly.
+  assert.deepEqual(Object.keys(projectsModule.projectFields(full)).sort(), [...EDITABLE].sort());
+  const empty = { projectId: "p2" };
+  assert.deepEqual(projectsModule.projectFields(empty), {});
+
+  assert.deepEqual(await saveProjects(OWNER, [full, empty], new Set()), [], "create, all fields and none");
+  const stored = new Set(["p1", "p2"]);
+  assert.deepEqual(await saveProjects(OWNER, [full, empty], stored), [], "update, all fields and none");
+  assert.deepEqual(await saveProjects(OWNER, [{ ...empty, projectId: "p1" }, { ...full, projectId: "p2" }], stored), [],
+    "update that empties every field, and one that fills every field");
+  const p1 = (await context.firestore().doc("projects/p1").get()).data();
+  assert.deepEqual(Object.keys(p1).sort(), ["createdAt", "ownerUid", "updatedAt"]);
+  const p2 = (await context.firestore().doc("projects/p2").get()).data();
+  assert.equal(p2.link, "lab.example.org/ribosome");
+  assert.equal(p2.description.length, 600);
+  assert.deepEqual(p2.tags, ["3D", "Microscopy"]);
+});
+
+test("projects: another member can neither read, create for, edit nor delete my project", async () => {
+  await seed(env, "projects/p1", projectDoc(OWNER));
+  const other = env.authenticatedContext(OTHER, verified(OTHER)).firestore();
+  await assertFails(other.doc("projects/p1").get());
+  await assertFails(other.doc("projects/p2").set(projectDoc(OWNER)));
+  await assertFails(other.doc("projects/p1").update({ title: "mine now", updatedAt: new Date() }));
+  await assertFails(other.doc("projects/p1").delete());
+  await assertFails(env.unauthenticatedContext().firestore().doc("projects/p1").get());
+});
+
+test("projects: ownerUid and createdAt are immutable; admins read", async () => {
+  await seed(env, "projects/p1", projectDoc(OWNER, { createdAt: new Date(1_700_000_000_000) }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertFails(db.doc("projects/p1").update({ ownerUid: OTHER, updatedAt: new Date() }));
+  await assertFails(db.doc("projects/p1").update({ createdAt: new Date(), updatedAt: new Date() }));
+  const admin = env.authenticatedContext(ADMIN, verified(ADMIN, { admin: true })).firestore();
+  await assertSucceeds(admin.doc("projects/p1").get());
+});
+
+test("projects: a deletion tombstone blocks project writes", async () => {
+  await seed(env, "projects/p1", projectDoc(OWNER));
+  await seed(env, `deletions/${OWNER}`, { uid: OWNER });
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertFails(db.doc("projects/p2").set(projectDoc(OWNER)));
+  await assertFails(db.doc("projects/p1").update({ title: "t", updatedAt: new Date() }));
+  await assertFails(db.doc("projects/p1").delete());
+});
+
+test("images: a work names at most one project — projectId is a short string", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({ projectId: "3f2c9a1e-8b7d-4e6f-9a0b-1c2d3e4f5a6b", updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ projectId: deleteField(), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ projectId: "x".repeat(65), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ projectId: "", updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ projectId: ["p1"], updatedAt: new Date() }));
 });

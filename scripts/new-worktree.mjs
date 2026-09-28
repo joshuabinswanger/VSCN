@@ -27,7 +27,14 @@
 // is invisible to `git worktree list` and easy to accumulate. Seven had piled
 // up beside repo/ by 2026-09-07.
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, readdirSync, rmSync, symlinkSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  lstatSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -136,9 +143,20 @@ function remove() {
   const junction = join(dir, "node_modules");
   const strays = readdirSync(dir).filter((e) => e !== "node_modules");
 
+  // --install gives the worktree a REAL node_modules rather than a junction, so
+  // teardown has to handle both. lstat, never stat: stat follows the link and
+  // would report the junction as the directory it points at.
+  const modules = existsSync(junction)
+    ? lstatSync(junction).isSymbolicLink()
+      ? "junction"
+      : "real"
+    : "none";
+
   console.log(`worktree   ${dir}`);
   console.log(`git        ${registered ? "registered - git removes it" : "NOT registered - husk, removing the directory"}`);
-  console.log(`modules    ${existsSync(junction) ? "junction to drop" : "none"}`);
+  console.log(
+    `modules    ${{ junction: "junction to drop", real: "own tree to delete (--install)", none: "none" }[modules]}`
+  );
   if (!registered && strays.length) {
     console.log(`contents   ${strays.length} entr${strays.length === 1 ? "y" : "ies"} besides node_modules`);
   }
@@ -173,7 +191,15 @@ function remove() {
   // and if it ever changes this delete would recurse into repo/node_modules
   // and take the real dependency tree with it. Unlinking first means the
   // safety never depends on it. rmdir removes the link, never the target.
-  if (existsSync(junction)) rmSync(junction, { recursive: false, force: true });
+  //
+  // recursive ONLY for a real tree. Passing recursive:false at a populated
+  // directory throws ERR_FS_EISDIR/ENOTEMPTY, and it throws HERE - after git
+  // has already deregistered the worktree above - so an --install worktree
+  // used to die mid-teardown and leave behind the very husk this function
+  // exists to prevent. The junction branch stays non-recursive, which is what
+  // keeps repo/node_modules safe.
+  if (modules === "junction") rmSync(junction, { recursive: false, force: true });
+  else if (modules === "real") rmSync(junction, { recursive: true, force: true });
   if (existsSync(dir)) rmSync(dir, { recursive: true, force: true });
 
   git("worktree", "prune");

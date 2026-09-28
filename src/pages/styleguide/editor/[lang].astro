@@ -1,0 +1,65 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import ProfileDetails from '../../../components/profile/ProfileDetails.astro';
+import WorkEditor from '../../../components/profile/WorkEditor.astro';
+import AccountSettings from '../../../components/profile/AccountSettings.astro';
+import '../../../styles/profile-editor.css';
+import type { Lang } from '../../../i18n/utils';
+export function getStaticPaths() { return [{ params: { lang: 'en' } }, { params: { lang: 'de' } }]; }
+const lang = Astro.params.lang as Lang;
+---
+<Layout title="Editor component examples" lang={lang} noindex>
+  <h1 class="t-heading">Editor component examples</h1>
+  <p class="field-note">Local sample content. These examples never save to an account.</p>
+  <div class="profile-editor" data-editor-example>
+    <form class="profile-form is-loaded">
+      <div class="section-tabs" role="tablist" aria-label="Editor examples">
+        {['profile', 'work', 'account'].map((section, index) => <button type="button" class="section-tab" data-section={section} role="tab" id={`tab-${section}`} aria-controls={`panel-${section}`} aria-selected={index === 0} tabindex={index === 0 ? 0 : -1}>{section}</button>)}
+      </div>
+      <ProfileDetails lang={lang} />
+      <WorkEditor lang={lang} />
+      <AccountSettings lang={lang} />
+    </form>
+  </div>
+</Layout>
+<script>
+  import { bindTabKeys } from '../../../lib/uiTabs';
+  import { editorDraft } from '../../../lib/editorDraft';
+  document.addEventListener('astro:page-load', () => {
+    const root = document.querySelector<HTMLElement>('[data-editor-example]'); if (!root) return;
+    root.querySelector('form')?.addEventListener('submit', event => event.preventDefault());
+    const tabs = Array.from(root.querySelectorAll<HTMLButtonElement>('[role=tab]'));
+    const select = (tab: HTMLButtonElement) => {
+      tabs.forEach(item => { const active = item === tab; item.tabIndex = active ? 0 : -1; item.setAttribute('aria-selected', String(active)); });
+      root.querySelectorAll<HTMLElement>('.form-section').forEach(panel => panel.classList.toggle('is-active', panel.dataset.section === tab.dataset.section));
+    };
+    tabs.forEach(tab => tab.addEventListener('click', () => select(tab))); bindTabKeys(tabs, select);
+    const projectTemplate = root.querySelector<HTMLTemplateElement>('[data-gallery-tpl=project]');
+    const imageTemplate = root.querySelector<HTMLTemplateElement>('[data-gallery-tpl=item]');
+    const editor = root.querySelector('#gallery-editor');
+    if (projectTemplate && editor) {
+      const fragment = projectTemplate.content.cloneNode(true) as DocumentFragment;
+      const name = fragment.querySelector('[data-project-name]');
+      if (name) name.textContent = 'Interdisziplinäre Wissenschaftskommunikation und Visualisierung';
+      editor.append(fragment);
+    }
+    if (imageTemplate && editor) {
+      const fragment = imageTemplate.content.cloneNode(true) as DocumentFragment;
+      const image = fragment.querySelector('img');
+      if (image) { image.alt = 'Sample artwork'; image.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="%2397aab4"/></svg>'; }
+      editor.append(fragment);
+    }
+    // Enter like renderGallery()'s newcomers do, so the cascade can be seen here.
+    editor?.querySelectorAll<HTMLElement>('.gallery-project, .gallery-item').forEach((el, i) => {
+      el.classList.add('is-entering'); el.style.setProperty('--enter-i', String(i));
+    });
+    root.querySelectorAll<HTMLButtonElement>('button').forEach(button => {
+      if (!button.textContent?.trim() && !button.getAttribute('aria-label')) button.setAttribute('aria-label', 'Example image action');
+    });
+    select(tabs[1]);
+    const name = root.querySelector<HTMLInputElement>('#name')!;
+    const draft = editorDraft({ key: 'styleguide-editor-draft', root, read: () => ({ name: name.value }),
+      restore: value => { name.value = value.name; }, labels: { found: 'Sample draft available.', restore: 'Restore sample', discard: 'Discard sample', leave: 'Leave with unsaved sample changes?' } });
+    document.addEventListener('astro:before-swap', () => draft.dispose(), { once: true });
+  });
+</script>

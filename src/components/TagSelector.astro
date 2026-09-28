@@ -128,7 +128,7 @@ const t = useTranslations(lang);
   tag-selector .tag-chip span {
     color: inherit;
     opacity: 0.65;
-    font-size: 0.85rem;
+    font-size: var(--fs-85);
     line-height: 1;
     letter-spacing: 0;
     transform: translateY(-0.084em);
@@ -143,8 +143,15 @@ const t = useTranslations(lang);
      (2026-09-09, Josh: "make the find bar the same style as the add tag"). */
   tag-selector .ts-filter {
     margin-top: 0.9rem;
+  }
+
+  /* With nothing picked yet the filter is the first thing under the field's
+     title, and that space is the field's own gap, the one every title in the
+     form has (2026-09-28). The 0.9rem is the step down from the picked row. */
+  tag-selector .tag-list:empty + .ts-filter {
+    margin-top: 0;
     padding: 4px 10px;
-    font-size: 0.82rem;
+    font-size: var(--fs-82);
   }
 
   tag-selector .tag-groups {
@@ -182,18 +189,16 @@ const t = useTranslations(lang);
   }
 
   tag-selector .tag-group-title {
-    font-size: 0.68rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
     color: var(--color-muted);
     transition: color 0.15s;
   }
 
+  /* Full muted ink, no opacity (2026-09-28): at 0.6 the count came out at
+     2.4:1 against the paper. The size is what keeps it quieter than the
+     title beside it. */
   tag-selector .tag-group-count {
-    font-size: 0.68rem;
+    font-size: var(--fs-68);
     color: var(--color-muted);
-    opacity: 0.6;
     font-variant-numeric: tabular-nums;
   }
 
@@ -243,7 +248,7 @@ const t = useTranslations(lang);
     content: "—";
     color: var(--color-muted);
     opacity: 0.4;
-    font-size: 0.75rem;
+    font-size: var(--fs-75);
   }
 </style>
 

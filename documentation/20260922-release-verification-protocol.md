@@ -7,6 +7,11 @@
 
 > **Where the implementation departs from this design, and why** (2026-09-22)
 >
+> - **The human walk (§6, §7.1) is not human.** Since 2026-09-23 Playwright walks the six steps as
+>   the verification member, from CI, after every release to main: a step that depends on a person
+>   is a step that does not happen, and this one had not. The member exists as §7.1 says (created by
+>   hand, hidden by Claude); Turnstile is bypassed with an App Check debug token, enforcement
+>   untouched. Design and gaps: `documentation/20260923-release-walk-automation.md`.
 > - **Credentials (§4.2, §10).** The script uses the gcloud CLI's own user credential
 >   (`gcloud auth login`), mints one access token from it and calls every Google API over REST.
 >   No ADC, no `firebase-admin`: ADC was not set up on the machine, the dev service-account key is

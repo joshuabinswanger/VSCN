@@ -73,6 +73,14 @@ export async function uploadImage(
    * record and bytes together. So there is nothing to unwind here.
    */
   onCancellable: (cancel: () => void) => void = () => {},
+  /**
+   * The gallery record these bytes stand in for (2026-09-23). The server
+   * checks it is the caller's live work, starts the new record with its words
+   * and carries its hide over; the caller swaps the id in the array and marks
+   * the old record. For the unverified slot the two ids are the same, and the
+   * record is simply re-uploaded in place.
+   */
+  replaces?: string,
 ): Promise<UploadedImage> {
   let cancelled = false;
   let cancelTransfer: (() => void) | undefined;
@@ -103,7 +111,7 @@ export async function uploadImage(
   const imageId = usesSlot ? slotImageId(uid, kind) : crypto.randomUUID();
   const storagePath = imageStoragePath(uid, kind, imageId);
   const uploadPath = imageUploadPath(uid, kind, imageId);
-  await httpsCallable(functions, "authorizeImageUpload")({ imageId, kind, ...dims });
+  await httpsCallable(functions, "authorizeImageUpload")({ imageId, kind, ...dims, ...(replaces ? { replaces } : {}) });
   checkCancelled();
   await new Promise<void>((resolve, reject) => {
     const task = uploadBytesResumable(ref(storage, uploadPath), blob, {
@@ -149,6 +157,7 @@ export async function updateImageText(
     link?: string;
     siteLink?: string;
     tags?: string[];
+    projectId?: string;
   },
 ): Promise<void> {
   await updateDoc(doc(db, "images", imageId), {
@@ -162,6 +171,7 @@ export async function updateImageText(
     link: text.link ? text.link : deleteField(),
     siteLink: text.siteLink ? text.siteLink : deleteField(),
     tags: text.tags && text.tags.length ? text.tags : deleteField(),
+    projectId: text.projectId ? text.projectId : deleteField(),
     // THE RETIRED FIELD, SWEPT (2026-09-04 — see GalleryItem.description for
     // why the short description is gone). Unconditional, and the only mention
     // of the name left in the app: records written during its one-day life

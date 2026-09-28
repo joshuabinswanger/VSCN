@@ -19,31 +19,34 @@
 // and it pages.
 import EmblaCarousel from "embla-carousel";
 import type { EmblaCarouselType } from "embla-carousel";
+import { ensurePagerChevron } from "./pager.ts";
 
 /**
- * Everything one carousel holds that has to be released. Embla is the worst of
- * the three: each instance owns a ResizeObserver, a MutationObserver, an
- * IntersectionObserver and non-passive drag listeners. Dropping the reference
- * removes none of them — only destroy() does.
+ * Everything one carousel holds that has to be released. Each Embla instance
+ * owns a ResizeObserver, a MutationObserver, an IntersectionObserver and
+ * non-passive drag listeners. Dropping the reference removes none of them —
+ * only destroy() does.
  *
- * A MAP KEYED BY THE FRAME, not the three parallel Sets this used to be. The
- * Sets could only ever be swept whole, which was enough while carousels were
- * built once per page; the editor's preview REBUILDS its slides whenever the
+ * A MAP KEYED BY THE FRAME, not the parallel Sets this used to be. The Sets
+ * could only ever be swept whole, which was enough while carousels were built
+ * once per page; the editor's preview REBUILDS its slides whenever the
  * member's gallery changes, and a rebuild has to release that one carousel
  * without touching any other. destroyAllCarousels() is still here for the
  * navigation sweep and now just walks the map.
+ *
+ * NO TIMER ANY MORE (2026-09-28, Josh: autoplay and its ▶/Ⅱ button removed).
+ * The card used to advance itself every 5 s on a phone, for the one card
+ * nearest the middle of the scrollport; a card now moves only when somebody
+ * moves it — swipe, arrows, chevrons, keys or the lightbox.
  */
 interface CarouselHandle {
   embla: EmblaCarouselType;
-  io: IntersectionObserver | null;
-  timer: ReturnType<typeof setInterval> | null;
 }
 
 const liveCarousels = new Map<HTMLElement, CarouselHandle>();
 
 /**
- * Releases one carousel: its Embla instance, its auto-advance timer and its
- * visibility observer. Safe on a node that never had one.
+ * Releases one carousel's Embla instance. Safe on a node that never had one.
  */
 export function destroyCarousel(node: HTMLElement): void {
   // FIRST, AND UNCONDITIONALLY. initCarousels() sets this guard before it
@@ -55,15 +58,13 @@ export function destroyCarousel(node: HTMLElement): void {
   delete node.dataset.ready;
   const handle = liveCarousels.get(node);
   if (!handle) return;
-  if (handle.timer !== null) clearInterval(handle.timer);
-  handle.io?.disconnect();
   handle.embla.destroy();
   liveCarousels.delete(node);
 }
 
 /**
- * The navigation sweep. An interval or observer that survived a ClientRouter
- * navigation would keep firing against dead nodes forever.
+ * The navigation sweep. An observer that survived a ClientRouter navigation
+ * would keep firing against dead nodes forever.
  */
 export function destroyAllCarousels(): void {
   [...liveCarousels.keys()].forEach(destroyCarousel);
@@ -74,84 +75,7 @@ export function destroyAllCarousels(): void {
 // once per page bundle however many components import it.
 document.addEventListener("astro:before-swap", destroyAllCarousels);
 
-const MOBILE = window.matchMedia("(max-width: 767px)");
 const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)");
-const AUTO_ADVANCE_MS = 5000;
-
-/** Mobile gallery view only: the wall and the ledger hold still, desktop
- *  has the hover arrows. The default (server-rendered) state carries no
- *  data-pattern and IS the gallery — which is also what the editor's preview
- *  gets, since there is no #member-grid there at all. Deliberate: the preview
- *  shows what the member's card will do, and on a phone it advances. */
-function inMobileGallery(): boolean {
-  if (!MOBILE.matches || REDUCED.matches || document.hidden) return false;
-  const grid = document.getElementById("member-grid");
-  return !grid?.dataset.pattern || grid.dataset.pattern === "spread";
-}
-
-/**
- * THE ONE CAROUSEL THAT MAY ADVANCE, or null when none may.
- *
- * (2026-09-03, Josh: "highlight only one carousel at a time in gallery mode".)
- * The mobile gallery is a single column of full-width cards and two or three of
- * them are on screen at once; every one of them used to be running its own 5s
- * timer, so a reader looking at one card had two more changing in the corner of
- * their eye. Now only the card the reader is actually on advances: the one whose
- * centre is NEAREST THE MIDDLE OF THE VIEWPORT.
- *
- * This is the STRICTER of the page's two ideas of prominence, and deliberately
- * so (2026-09-04). The opacity fade next door — cgrid-cell-in/cgrid-cell-out in
- * CommunityGrid.astro — leaves every card between the middle of the screen and
- * the filter bar at full strength, which can be more than one. This picks
- * exactly one of those to move. What must never happen is the reverse, a card
- * moving while it is faded, and "nearest the middle" cannot produce it: the
- * card nearest the middle is always inside the lit stretch.
- *
- * NEAREST, not "inside a band": a band leaves gaps where nothing qualifies (two
- * tall cards meeting) and overlaps where two do (short cards), and both read as
- * the page forgetting to move. Nearest always names exactly one.
- *
- * Measured here rather than tracked by an observer because it is only ever
- * asked at a 5s tick, once per live carousel — a dozen getBoundingClientRects
- * every five seconds, against an IntersectionObserver's worth of bookkeeping
- * for the same answer.
- */
-function focusedCarousel(): HTMLElement | null {
-  if (!inMobileGallery()) return null;
-  // THE SCROLLPORT, NOT THE WINDOW — .page-wrap is what scrolls on this site
-  // (body is overflow:hidden; see Layout.astro), and it is also the box
-  // `view()` measures the opacity focus against, because it is the cells'
-  // nearest scroll container. Measuring the window instead would put this
-  // centre a ticker's height above that one, and the moving card would be the
-  // one just below the bright card. The window is the fallback for the
-  // editor's preview, which has no .page-wrap.
-  const scroller = document.querySelector<HTMLElement>(".page-wrap");
-  const port = scroller
-    ? scroller.getBoundingClientRect()
-    : new DOMRect(0, 0, window.innerWidth, window.innerHeight);
-  const middle = port.top + port.height / 2;
-  let best: HTMLElement | null = null;
-  let bestDistance = Infinity;
-  // EVERY carousel frame in the document, not just the ones with an Embla
-  // instance. A gallery of one gets no instance (there is nothing to page) but
-  // it is still a card on screen, and skipping it here would let the nearest
-  // MULTI-image card advance while a single-image card held the middle — the
-  // faded card moving and the bright one still, which is the exact thing this
-  // is for.
-  for (const node of document.querySelectorAll<HTMLElement>("[data-carousel]")) {
-    const box = node.getBoundingClientRect();
-    // Outside the scrollport entirely: not a candidate however close its centre
-    // projects. (A `display: none` card measures 0×0 at the origin, which would
-    // otherwise look like a near miss.)
-    if (box.height === 0 || box.bottom <= port.top || box.top >= port.bottom) continue;
-    const distance = Math.abs((box.top + box.bottom) / 2 - middle);
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      best = node;
-    }
-  }
-  return best;
-}
 
 /**
  * Wires every un-wired `[data-carousel]` under `root`. Idempotent: a frame that
@@ -211,9 +135,9 @@ export function initCarousels(root: ParentNode = document): void {
       if (!frameLink || !slide) return;
       const url = slide.dataset.workUrl;
       // Only where the link already goes somewhere. The preview's trigger is
-      // deliberately href-less — there is no lightbox in the editor — and
-      // writing one in would turn an inert element into something that looks
-      // like a control and navigates out of an unsaved form.
+      // deliberately href-less — its lightbox opens from the slides
+      // (bindCardOpener), and an href written in would navigate out of an
+      // unsaved form whenever that handler is not there to stop it.
       if (url && frameLink.hasAttribute("href")) frameLink.href = url;
       // Absent caption/description mean the attribute must GO, not be set to
       // "": PhotoSwipe's caption band tests the trimmed value, but a stale
@@ -233,6 +157,17 @@ export function initCarousels(root: ParentNode = document): void {
     // Embla was handed — they are queried from the card.
     const card = carousel.closest<HTMLElement>(".ccard") ?? carousel;
     const dots = Array.from(card.querySelectorAll<HTMLElement>(".ccard__dot"));
+    // The position as text (2026-09-28): rendered by CommunityImageCard; the
+    // editor's card preview builds only the dots, so it is added here.
+    const dotRow = card.querySelector<HTMLElement>(".ccard__dots");
+    let count = dotRow?.querySelector<HTMLElement>(".ccard__count") ?? null;
+    if (dotRow && !count) {
+      count = document.createElement("span");
+      count.className = "ccard__count";
+      // `select` only fires on a change; a card starts on its first work.
+      count.textContent = `1 / ${slides.length}`;
+      dotRow.prepend(count);
+    }
     const liveRegion = carousel.querySelector<HTMLElement>("[data-carousel-live]");
     const positionLabel = carousel.dataset.positionLabel ?? "";
 
@@ -242,10 +177,9 @@ export function initCarousels(root: ParentNode = document): void {
       // them happens to be first is a markup detail nothing should depend on.
       container: ".ccard__track",
       slides: ".ccard__slide",
-      // The hand-rolled carousel wrapped with a modulo and the 5s
-      // auto-advance relies on that to keep cycling; loop is the same
-      // behaviour. Embla loops by translating the real slides, not by
-      // cloning, so no image is ever duplicated into the DOM.
+      // The hand-rolled carousel this replaced wrapped with a modulo; loop is
+      // the same behaviour. Embla loops by translating the real slides, not
+      // by cloning, so no image is ever duplicated into the DOM.
       loop: true,
       align: "start",
       // NOT the default 0. slidesInView is an IntersectionObserver, and at
@@ -269,8 +203,7 @@ export function initCarousels(root: ParentNode = document): void {
       watchResize: (_api, entries) => entries.every((e) => e.contentRect.width > 0),
     });
 
-    const handle: CarouselHandle = { embla, io: null, timer: null };
-    liveCarousels.set(carousel, handle);
+    liveCarousels.set(carousel, { embla });
 
     // Reduced motion: arrive rather than travel. Embla's `jump` argument is
     // the exact counterpart of the crossfade dropping its transition under
@@ -281,17 +214,12 @@ export function initCarousels(root: ParentNode = document): void {
     // Embla's slidesInView is scoped to the FRAME (its observer root is the
     // container's parent), so this fires for a slide entering the carousel's
     // own viewport — the documented lazy-load hook, and the only wake-up
-    // that covers auto-advance and the arrow keys on a card no pointer ever
-    // entered.
+    // that covers the arrow keys on a card no pointer ever entered.
     const hydrateInView = () => embla.slidesInView().forEach((i) => hydrate(images[i]));
     embla.on("slidesInView", hydrateInView);
 
-    // The live region must not narrate the 5s auto-advance: a phone with
-    // three cards on screen would otherwise talk over itself every few
-    // seconds. The flag is lowered around the tick only, and `select` is
-    // emitted synchronously from scrollNext, so it can never be read by the
-    // wrong change.
-    let announce = true;
+    // Every move is somebody's doing now (no autoplay), so every move is
+    // announced.
     const sync = () => {
       const i = embla.selectedScrollSnap();
       syncTrigger(i);
@@ -304,7 +232,8 @@ export function initCarousels(root: ParentNode = document): void {
         else slide.setAttribute("aria-hidden", "true");
       });
       dots.forEach((dot, n) => dot.classList.toggle("ccard__dot--on", n === i));
-      if (liveRegion && announce) {
+      if (count) count.textContent = `${i + 1} / ${slides.length}`;
+      if (liveRegion) {
         liveRegion.textContent = positionLabel
           .replace("{n}", String(i + 1))
           .replace("{total}", String(slides.length));
@@ -324,59 +253,24 @@ export function initCarousels(root: ParentNode = document): void {
       if (i >= 0 && i !== embla.selectedScrollSnap()) embla.scrollTo(i, true);
     });
 
-    // The 5s auto-advance, mobile gallery only (arrows are display:none on
-    // touch, so a multi-work gallery would otherwise be invisible past its
-    // first image), and only for the ONE card the reader is on — see
-    // focusedCarousel. The IntersectionObserver below still gates the timer's
-    // existence: an off-screen carousel advancing would hydrate its whole
-    // gallery for nobody, and decoded-image memory is what crashed iOS Safari.
-    // (Both gates are needed. The observer is what stops a timer existing at
-    // all for a card nobody can see; the centre test is what stops the two or
-    // three cards that ARE visible from all moving at once.) Deliberately NOT
-    // Embla's Autoplay plugin: that plugin has no way to express "only in the
-    // spread view, only on mobile, only the centred card, re-decided on every
-    // tick".
-    const start = () => {
-      if (handle.timer !== null) return;
-      handle.timer = setInterval(() => {
-        // Re-decided every tick, so scrolling, switching views, rotating to
-        // desktop or backgrounding the tab all take effect with no bookkeeping
-        // — and the card that has just scrolled into the middle picks up the
-        // advancing from the one that has left it.
-        if (focusedCarousel() !== carousel) return;
-        announce = false;
-        embla.scrollNext();
-        announce = true;
-      }, AUTO_ADVANCE_MS);
-    };
-    const stop = () => {
-      if (handle.timer === null) return;
-      clearInterval(handle.timer);
-      handle.timer = null;
-    };
-    const restart = () => {
-      stop();
-      start();
-    };
-    const io = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) start();
-      else stop();
-    });
-    io.observe(carousel);
-    handle.io = io;
-
-    // A fresh 5s from the image the visitor chose — without this the standing
-    // timer can advance again moments after a drag.
-    embla.on("pointerUp", restart);
-
-    carousel.querySelector("[data-carousel-prev]")?.addEventListener("click", () => {
-      embla.scrollPrev(jump());
-      restart();
-    });
-    carousel.querySelector("[data-carousel-next]")?.addEventListener("click", () => {
-      embla.scrollNext(jump());
-      restart();
-    });
+    // The edge arrows (desktop hover) — the card's accessible controls, named
+    // by the markup (and by renderCardPreview for the editor's preview).
+    const prevArrow = carousel.querySelector<HTMLElement>("[data-carousel-prev]");
+    const nextArrow = carousel.querySelector<HTMLElement>("[data-carousel-next]");
+    prevArrow?.addEventListener("click", () => embla.scrollPrev(jump()));
+    nextArrow?.addEventListener("click", () => embla.scrollNext(jump()));
+    // The count's own chevrons, "‹ 2 / 7 ›" (2026-09-28, src/lib/pager.ts).
+    // Unlike the edge arrows they show on a phone too, where they are the
+    // only thing that pages the card besides the swipe. They take the edge
+    // arrows' names, so the two pairs are one control to a screen reader.
+    if (dotRow) {
+      ensurePagerChevron(dotRow, "prev", () => embla.scrollPrev(jump()), {
+        label: prevArrow?.getAttribute("aria-label"),
+      });
+      ensurePagerChevron(dotRow, "next", () => embla.scrollNext(jump()), {
+        label: nextArrow?.getAttribute("aria-label"),
+      });
+    }
 
     // Keyboard. Bound to the FRAME, not to the arrows, because the arrows are
     // display:none under --bp-mobile and a keyboard user on a narrow viewport
@@ -390,7 +284,6 @@ export function initCarousels(root: ParentNode = document): void {
       hydrateAll();
       if (e.key === "ArrowRight") embla.scrollNext(jump());
       else embla.scrollPrev(jump());
-      restart();
     });
 
     // A drag must not navigate, and nothing here tracks a `swiped` flag any

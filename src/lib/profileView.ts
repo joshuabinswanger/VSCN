@@ -8,6 +8,9 @@
 // editor preview the real thing — the public page is a static build-time
 // snapshot, so a member cannot see their own edits there until a rebuild runs.
 
+import type { EmbedRef } from "./embed.ts";
+import type { ProfileProject } from "./projects.ts";
+
 export interface ProfileWork {
   url: string;
   width: number;
@@ -62,6 +65,16 @@ export interface ProfileWork {
    * fallback — the same shape the member's own `tags` field already has.
    */
   tags: string[];
+  /**
+   * The video this work plays; `url` is then its poster (2026-09-23). Every
+   * surface that cannot play shows the poster and a play mark, and the
+   * lightbox plays it — see lightboxEmbed.ts.
+   */
+  embed?: EmbedRef;
+  /** When a video work was added (ISO), for the VideoObject's uploadDate. */
+  addedAt?: string;
+  /** The member's own project this work is in, when it is one the view model also carries in `projects`. */
+  projectId?: string;
 }
 
 export interface ProfileViewModel {
@@ -75,6 +88,15 @@ export interface ProfileViewModel {
    */
   memberType?: string;
   bio: string;
+  /**
+   * The German role and bio, RAW — the `captionDe` treatment for the same
+   * reason: the build makes this shape once per member for both locales.
+   * localizeMember() in memberView.ts resolves them into `role` / `bio` at
+   * the page, where the lang is known; the editor resolves them itself.
+   * Every renderer reads `role` / `bio` only.
+   */
+  roleDe?: string;
+  bioDe?: string;
   /** Institution, lab, studio or company. Empty when unset. */
   affiliation: string;
   /** Free text, e.g. "Zurich, Switzerland". Empty when unset. */
@@ -89,4 +111,10 @@ export interface ProfileViewModel {
   socialMedia: string;
   /** The member's gallery, in order. Empty is a normal state, not an error. */
   works: ProfileWork[];
+  /**
+   * The member's projects that hold at least one of `works` (2026-09-23).
+   * Optional so producers that know nothing of projects (the signup wizard's
+   * preview) need not invent an empty list; renderers treat absent as none.
+   */
+  projects?: ProfileProject[];
 }

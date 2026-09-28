@@ -8,9 +8,11 @@
 
 import type { PublicProfileDoc } from "./firestore.ts";
 import type { ProfileViewModel, ProfileWork } from "./profileView.ts";
-import { workLink } from "./links.ts";
+import { profileBio, profileRole, workLink } from "./links.ts";
+import type { Lang } from "../i18n/utils";
 import { orderedGalleryItems, type GalleryRecord } from "./galleryRecords.ts";
 import { imageScore } from "./imageScore.ts";
+import { inheritedSiteLink, inheritedTags, ownProjects, type ProfileProject, type ProjectRecord } from "./projects.ts";
 
 /**
  * A work as the BUILD knows it: everything a renderer needs, plus what
@@ -179,35 +181,48 @@ export function stripStorageToken(url: string): string {
  * storage path — tokenless, as stripStorageToken() always made it. This
  * function only maps that onto ProfileWork.
  */
-function works(uid: string, doc: PublicProfileDoc, records: readonly GalleryRecord[], bucket: string): RankedWork[] {
+function works(
+  uid: string,
+  doc: PublicProfileDoc,
+  records: readonly GalleryRecord[],
+  bucket: string,
+  projects: readonly ProfileProject[],
+): RankedWork[] {
   // The RECORD, not the item: orderedGalleryItems() deliberately knows nothing
   // about moderation — it is shared with the profile editor and with
   // /members/<slug>, and the whole boundary of the ranking design is that the
   // member's own order survives there. So the two moderation fields are read
   // back off the record here, after the ordering has happened.
   const byId = new Map(records.map((rec) => [rec.imageId, rec]));
-  return orderedGalleryItems(uid, doc.gallery, records, bucket).map((g) => ({
-    url: g.url,
-    width: g.width,
-    height: g.height,
-    caption: g.caption,
-    // Raw, unresolved — workCaption() / workDescription() in links.ts pick a
-    // locale once each page's lang is known; this base is built once and
-    // shared by the English and German pages.
-    captionDe: g.captionDe,
-    color: g.color,
-    description: g.description,
-    descriptionDe: g.descriptionDe,
-    link: workLink(g.link),
-    siteLink: workLink(g.siteLink),
-    tags: g.tags ?? [],
-    // A record that reached here without a precomputed score — an older
-    // snapshot, or any caller that is not the build — gets its completeness
-    // reading rather than a zero, which would sink it to the bottom of the
-    // wall for a reason nobody chose.
-    score: byId.get(g.imageId)?.score ?? imageScore(byId.get(g.imageId) ?? {}),
-    hidden: byId.get(g.imageId)?.hidden === true,
-  }));
+  const byProject = new Map(projects.map((p) => [p.id, p]));
+  return orderedGalleryItems(uid, doc.gallery, records, bucket).map((g) => {
+    const project = g.projectId ? byProject.get(g.projectId) : undefined;
+    return {
+      url: g.url,
+      width: g.width,
+      height: g.height,
+      caption: g.caption,
+      // Raw, unresolved — workCaption() / workDescription() in links.ts pick a
+      // locale once each page's lang is known; this base is built once and
+      // shared by the English and German pages.
+      captionDe: g.captionDe,
+      color: g.color,
+      description: g.description,
+      descriptionDe: g.descriptionDe,
+      link: workLink(g.link),
+      siteLink: inheritedSiteLink(workLink(g.siteLink), project),
+      tags: inheritedTags(g.tags ?? [], project),
+      ...(g.embed ? { embed: g.embed } : {}),
+      ...(g.addedAt ? { addedAt: g.addedAt } : {}),
+      ...(project ? { projectId: project.id } : {}),
+      // A record that reached here without a precomputed score — an older
+      // snapshot, or any caller that is not the build — gets its completeness
+      // reading rather than a zero, which would sink it to the bottom of the
+      // wall for a reason nobody chose.
+      score: byId.get(g.imageId)?.score ?? imageScore(byId.get(g.imageId) ?? {}),
+      hidden: byId.get(g.imageId)?.hidden === true,
+    };
+  });
 }
 
 export function toMemberViewBase(
@@ -219,8 +234,12 @@ export function toMemberViewBase(
   // scripts/migrate-image-records.mjs (a historical script that never reads
   // `works`) keeps compiling.
   bucket = "",
+  projectRecords: readonly ProjectRecord[] = [],
 ): MemberViewBase {
   const bio = (doc.bio ?? "").trim();
+  const own = ownProjects(uid, projectRecords);
+  const memberWorks = works(uid, doc, records, bucket, own);
+  const used = new Set(memberWorks.map((w) => w.projectId).filter(Boolean));
   return {
     id: uid,
     displayName: (doc.displayName ?? "").trim(),
@@ -228,6 +247,9 @@ export function toMemberViewBase(
     photoColor: doc.photoColor,
     role: (doc.role ?? "").trim(),
     bio,
+    // Raw, like the works' captionDe — localizeMember() picks per page.
+    roleDe: (doc.roleDe ?? "").trim() || undefined,
+    bioDe: (doc.bioDe ?? "").trim() || undefined,
     caption: caption(bio),
     affiliation: (doc.affiliation ?? "").trim(),
     location: (doc.location ?? "").trim(),
@@ -238,8 +260,22 @@ export function toMemberViewBase(
     portfolio: (doc.portfolio ?? "").trim(),
     socialMedia: (doc.socialMedia ?? "").trim(),
     memberType: doc.memberType ?? "",
-    works: works(uid, doc, records, bucket),
+    works: memberWorks,
+    projects: own.filter((p) => used.has(p.id)),
   };
+}
+
+/**
+ * The member as ONE locale's pages show them: `role`, `bio` and the card's
+ * `caption` picked for `lang` (German when written, English otherwise), so
+ * every card, index row, profile page and JSON-LD node downstream reads the
+ * plain fields and none of them has to know a second language exists. Called
+ * by each page right after fetchMemberViews(), whose result is shared by the
+ * English and German builds and so stays raw.
+ */
+export function localizeMember<T extends MemberViewBase>(m: T, lang: Lang): T {
+  const bio = profileBio(m, lang);
+  return { ...m, role: profileRole(m, lang), bio, caption: caption(bio) };
 }
 
 /**

@@ -1,0 +1,45 @@
+---
+// THE i BESIDE A LABEL (2026-09-23, Josh: "all the tips etc. are things that
+// are hidden behind an information icon"). Only the button lives here. The
+// hint stays the field's own <p class="field-note"> — now `hidden` with
+// `data-tip` — so the field's aria-describedby still points at it and a screen
+// reader announces it whether or not it is open. Open, it hovers under the
+// field at the field's width; focusing a text field opens it too. In a text
+// field the button sits inside the field (wrapped in `.infotip-field`, or last
+// in an `.input-prefix-wrap`); elsewhere it sits beside the title.
+//
+// A plain italic "i" (2026-09-24, Josh: "just an i not this weird Symbol",
+// then "just a plain italic i"): no glyph circle, no ring. Behaviour is in
+// src/lib/infotip.ts.
+//
+// Click/tap, never hover: hover is not a phone gesture. /profile only; the
+// signup wizard keeps its notes written out (Josh: "sign up should be more
+// written out").
+import { useTranslations, type Lang } from "../i18n/utils";
+
+interface Props {
+  lang: Lang;
+  /** id of the note this button opens. Omit only inside a cloned template. */
+  for?: string;
+  /** In a cloned template: which note in the same row, resolved by renderGallery(). */
+  rowKey?: string;
+}
+
+const { lang, for: noteId, rowKey } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<button
+  type="button"
+  class="infotip"
+  data-infotip
+  data-infotip-for={rowKey}
+  aria-controls={noteId}
+  aria-expanded="false"
+  aria-label={t("profile.info.toggle")}
+><span aria-hidden="true">i</span></button>
+
+<script>
+  import { installInfoTips } from "../lib/infotip";
+  installInfoTips();
+</script>

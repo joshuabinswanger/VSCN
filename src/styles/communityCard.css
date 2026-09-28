@@ -30,9 +30,16 @@
  */
 
 .ccard {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+  /* A GRID, NOT A COLUMN, for the first row only (2026-09-28, Josh: "they
+     shoudl be in the same ehight, not two stacked divs"): the name on the
+     left and the count "‹ 2 / 7 ›" on the right share row one, on one
+     baseline, instead of the count's row standing between the name and the
+     picture. Every other child spans both columns, which is the column it
+     was. A card without a count leaves the auto column empty and zero wide. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: start;
+  row-gap: 0.3rem;
   /* Everything above and below the frame — the name line, the caption row and
      the gaps around them. Measured at 63–78px across the seeded directory;
      plus the dots row that now sits under
@@ -61,12 +68,17 @@
 }
 
 /* ── Name ─────────────────────────────────────────────── */
+.ccard > * {
+  grid-column: 1 / -1;
+}
+.ccard > .ccard__name {
+  grid-column: 1;
+  grid-row: 1;
+  align-self: last baseline;
+}
 .ccard__name {
   margin: 0;
   /* The heading is semantic; its size is the card's, not a heading scale. */
-  font-size: 1.2rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
   /* Explicit, not `inherit`. Nothing up the tree sets a line-height — not
      body, not .page-wrap — so `inherit` resolved to `normal`, i.e. Archivo's
      own metrics (~1.25) re-resolved against this element's 1.2rem (15.6px
@@ -75,7 +87,6 @@
      than one. 1.1 closes it to a couple of pixels while still clearing a
      descender sitting over a capital, which is where a tighter value starts
      to collide. */
-  line-height: 1.1;
 }
 .ccard__name-link {
   display: block;
@@ -186,15 +197,23 @@
 
 .ccard__arrow {
   position: absolute;
-  top: 50%;
+  /* THE WHOLE HEIGHT OF THE PICTURE (2026-09-25, Josh: the prev/next click
+     areas should cover the card image top to bottom, so they are easy to
+     hit). The box used to be 2.4rem × 1.8rem centred on the edge — a target
+     the size of the chevron's neighbourhood, on a picture up to 600px tall.
+     Now each arrow is a strip down its own edge: the chevron is still the
+     only thing painted, still vertically centred, and the strip is hit area.
+     THE MIDDLE STAYS THE PICTURE'S. The strips are held to a narrow band
+     (clamp below: never under 2.75rem, never over 4.5rem, 16% between), so
+     most of the artwork is still the frame link and still opens the
+     lightbox on the slide that was clicked — "click a thing and THAT thing
+     opens". The cursor says which is which: zoom-in over the picture,
+     a pointer over a strip. */
+  top: 0;
+  bottom: 0;
   z-index: 1;
   display: grid;
-  place-items: center;
-  /* The box is HIT AREA ONLY — nothing paints it. Wider than tall because
-     these sit on the artwork's left and right edges, and a wide target is
-     easier to hit; the visible control is the chevron alone. */
-  width: 2.4rem;
-  height: 1.8rem;
+  width: clamp(2.75rem, 16%, 4.5rem);
   padding: 0;
   border: 0;
   /* No ground. The chevron is the whole control, so its contrast is now
@@ -210,7 +229,7 @@
      unregistered custom property is not itself animatable, and relying
      on the substitution to carry a transition is a subtlety this file
      does not need. Each state names its own transform. */
-  transform: translate(0, -50%);
+  transform: translate(0, 0);
   /* THIS IS THE HIDE. A transition on the base state is what plays on the
      way back to it, so these timings are the ones that run when the pointer
      leaves — a third shorter than the appear below, so the chevron clears
@@ -228,7 +247,7 @@
 .ccard__frame:focus-within .ccard__arrow,
 .ccard__arrow:focus-visible {
   opacity: 0.75;
-  transform: translate(0, -50%);
+  transform: translate(0, 0);
   /* The appear, unchanged: it may take its time coming out of the edge. */
   transition:
     opacity 180ms ease,
@@ -245,29 +264,35 @@
    so both controls on a card read as one family. */
 .ccard__arrow span {
   display: block;
-  width: 0.7rem;
-  height: 0.7rem;
-  border-top: 2px solid currentColor;
-  border-right: 2px solid currentColor;
+  width: var(--chevron-size);
+  height: var(--chevron-size);
+  border-top: var(--chevron-stroke) solid currentColor;
+  border-right: var(--chevron-stroke) solid currentColor;
 }
 .ccard__arrow--prev span {
-  transform: translate(0.06rem, 0) rotate(-135deg);
+  transform: translate(0.05rem, 0) rotate(-135deg);
 }
 .ccard__arrow--next span {
-  transform: translate(-0.06rem, 0) rotate(45deg);
+  transform: translate(-0.05rem, 0) rotate(45deg);
 }
-/* Measured to the button box, not the chevron: the box grew by 1.3rem,
-   so the inset shrinks to leave the glyph about where it sat before. */
+/* The strips sit flush on the frame's edges, and the chevron is held to the
+   OUTER side of its strip by the padding rather than centred in it — so the
+   glyph stays about where it sat when the button was 2.4rem wide and 0.15rem
+   in (~1.35rem from the edge), however wide the strip gets. */
 /* The resting offset: tucked toward its own edge, so the block appears
    to come out of the card rather than fade in on the spot. Overridden
    by the :hover/:focus rule above, which is later and more specific. */
 .ccard__arrow--prev {
-  left: 0.15rem;
-  transform: translate(-0.4rem, -50%);
+  left: 0;
+  place-items: center start;
+  padding-left: 0.95rem;
+  transform: translate(-0.4rem, 0);
 }
 .ccard__arrow--next {
-  right: 0.15rem;
-  transform: translate(0.4rem, -50%);
+  right: 0;
+  place-items: center end;
+  padding-right: 0.95rem;
+  transform: translate(0.4rem, 0);
 }
 
 /* ── Position indicator ───────────────────────────────── */
@@ -280,18 +305,25 @@
   /* Hard right, on the artwork's own right edge: the name holds the left of
      this line, so the count sits where nothing else does. */
   justify-content: flex-end;
-  gap: 0.18rem;
-  /* Pulled up into the card's 0.3rem row gap: the count belongs to the name
-     line it shares, and the space that gap left under the title read as a
-     break between the two. The image comes up with it. */
-  margin-top: -0.2rem;
+  align-items: center;
+  gap: var(--carousel-dot-gap);
+  /* On the name's own line (see .ccard): the second column of row one, on
+     the name's last baseline, so a wrapped name keeps the count beside its
+     bottom line. The left padding is the least room between the two. */
+  grid-column: 2;
+  grid-row: 1;
+  align-self: last baseline;
+  padding-left: 0.75rem;
   /* Indicators, never controls — see the markup note. */
   pointer-events: none;
 }
 
+/* Twice the first size since 2026-09-28 (Josh: "make the dots bigger … also
+   adjust the gallery"): --carousel-dot in global.css, shared with the
+   member page's project carousels. */
 .ccard__dot {
-  width: 0.18rem;
-  height: 0.18rem;
+  width: var(--carousel-dot);
+  height: var(--carousel-dot);
   border-radius: 50%;
   background: var(--color-dark);
   opacity: 0.22;
@@ -299,6 +331,20 @@
 }
 .ccard__dot--on {
   opacity: 1;
+}
+
+/* TEXT INSTEAD OF DOTS (2026-09-28, Josh: "try text instead of dots"). The
+   same place, the same job: "2 / 7" hard right on the name line. The dots are
+   still drawn and still follow the carousel; THIS RULE is the whole switch,
+   delete it (and hide .ccard__count) to go back. Mirrored for the member
+   page's project carousels in profile.css. */
+.ccard__dot {
+  display: none;
+}
+/* Its type is COUNT in type.css, shared with the lightbox's counter. */
+.ccard__count {
+  white-space: nowrap;
+  color: var(--color-muted);
 }
 
 /* The spoken position. There is no sr-only utility anywhere in this
@@ -371,9 +417,6 @@
   display: block;
   width: fit-content;
   margin-top: 0.6rem;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
   white-space: nowrap;
   color: var(--color-muted);
   text-decoration: underline;
@@ -390,9 +433,6 @@
 .ccard__role {
   min-width: 0;
   margin-top: 0.15rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  line-height: 1.3;
   color: var(--color-dark);
 }
 
@@ -426,7 +466,7 @@
 
   /* The chevron still appears, it just does not travel to get there. */
   .ccard__arrow {
-    transform: translate(0, -50%);
+    transform: translate(0, 0);
     transition: opacity 120ms ease;
   }
 }

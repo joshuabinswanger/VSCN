@@ -1,11 +1,108 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { logger } from "firebase-functions/v2";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { db, getBucket } from "./admin";
 import { requireUser } from "./util";
 
-const MAX_STORED_OBJECTS = 20;
+/**
+ * WORKS, NOT FILES (2026-09-23, release 1 of
+ * documentation/20260923-motion-works-design.md). This counted Storage objects
+ * under users/{uid}/ until a video link arrived with two of them — the poster
+ * and the automatic poster it can be restored from — which put eight video
+ * works plus a couple of thumbnail swaps over a cap that eight stills never
+ * came near. It counts images/ RECORDS now: every stored object belongs to
+ * one (a record is allocated before its bytes, and sweepImages removes the
+ * two together), so the cap keeps meaning what it always meant — how much one
+ * account may hold — and a loop's extra files (release 2) cost nothing here.
+ * Records awaiting the sweep still count, exactly as their files did.
+ */
+export const MAX_STORED_WORKS = 20;
 const MAX_AUTHORIZATIONS_PER_HOUR = 40;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** A verified member's objects: immutable, because the id IS the filename and never takes new bytes. */
+export const PUBLIC_CACHE = "public, max-age=31536000, immutable";
+
+/**
+ * Where an embed keeps the poster it was given by YouTube or Vimeo, so "Use
+ * automatic thumbnail" restores it without asking the platform again.
+ * Derived, never stored: `{id}.webp` → `{id}.auto.webp`.
+ */
+export function autoPosterPath(storagePath: string): string {
+  return storagePath.replace(/\.webp$/, ".auto.webp");
+}
+
+/** Every object a record owns — what the sweep, the purge and admin delete must remove. */
+export function recordObjectPaths(record: FirebaseFirestore.DocumentData): string[] {
+  const path = typeof record.storagePath === "string" ? record.storagePath : "";
+  if (!path) return [];
+  // Asked of every gallery record, not only embeds: a resolveEmbed that failed
+  // halfway can leave an automatic poster beside its record.
+  return record.kind === "gallery" ? [path, autoPosterPath(path)] : [path];
+}
+
+/**
+ * The shared allowance behind every way a work comes into being: an upload,
+ * a video link, a restored poster. Reads only — a transaction must read
+ * before it writes — and hands back the one write it owes, the hourly
+ * counter. `reuses` names a record that already exists and is being
+ * re-opened (the unverified slot), which therefore takes no new place.
+ */
+export async function reserveWork(
+  tx: FirebaseFirestore.Transaction, uid: string, reuses?: string, countAttempt = true,
+): Promise<() => void> {
+  const lock = db.doc(`uploadLimits/${uid}`);
+  const [deletion, state, works] = await Promise.all([
+    tx.get(db.doc(`deletions/${uid}`)),
+    tx.get(lock),
+    tx.get(db.collection("images").where("ownerUid", "==", uid).limit(MAX_STORED_WORKS + 1)),
+  ]);
+  if (deletion.exists) throw new HttpsError("failed-precondition", "Account deletion is pending or completed.");
+  const held = works.docs.filter((d) => d.id !== reuses).length;
+  if (held + 1 > MAX_STORED_WORKS) {
+    throw new HttpsError("resource-exhausted", "Stored image limit reached. Remove unused images and wait for cleanup before uploading more.", { reason: "storedLimit" });
+  }
+  const now = Date.now();
+  const inWindow = now - (state.data()?.windowStart?.toMillis() ?? 0) < 3_600_000;
+  const count = inWindow ? Number(state.data()?.count ?? 0) : 0;
+  if (countAttempt && count >= MAX_AUTHORIZATIONS_PER_HOUR) throw new HttpsError("resource-exhausted", "Too many uploads. Please try again later.", { reason: "hourlyLimit" });
+  return () => { if (countAttempt) tx.set(lock, { windowStart: inWindow ? state.data()!.windowStart : Timestamp.fromMillis(now), count: count + 1 }); };
+}
+
+/**
+ * THE WORDS A WORK KEEPS WHEN ITS PICTURE IS REPLACED (2026-09-23, member
+ * feedback: replacing an image meant deleting the whole work and typing it
+ * all again). Everything a member writes about a picture lives on its record
+ * (updateImageText in src/lib/images.ts), so a replacement is a NEW record —
+ * a new id, because the id is the filename and a verified member's object is
+ * cached `immutable` for a year — that starts life carrying these.
+ * `projectId` rides along so a replaced picture stays in its project.
+ */
+export const WORK_TEXT_FIELDS = ["caption", "captionDe", "description", "descriptionDe", "link", "siteLink", "tags", "projectId"] as const;
+
+/**
+ * The words, plus what KIND of work it is. A video link keeps its video when
+ * its thumbnail is swapped: the member's own picture is only the poster, so
+ * the new record carries `media`/`embed` over and records whose poster it is.
+ * These fields are server-written — the rules let a client keep them on a
+ * caption save and never change them — so this is the only way they move.
+ */
+export function inheritedFields(work: FirebaseFirestore.DocumentData, posterSource: "auto" | "member"): Record<string, unknown> {
+  const words = Object.fromEntries(WORK_TEXT_FIELDS.filter((key) => work[key] !== undefined).map((key) => [key, work[key]]));
+  return work.media === "embed" && work.embed
+    ? { ...words, media: "embed", embed: work.embed, posterSource }
+    : words;
+}
+
+/** The record a replacement stands in for. Gallery only: the avatar has its own replace path. */
+function replacementId(value: unknown, kind: string, uid: string): string | null {
+  if (value === undefined || value === null) return null;
+  if (kind !== "gallery" || typeof value !== "string"
+    || (value !== `${uid}-gallery` && !UUID.test(value))) {
+    throw new HttpsError("invalid-argument", "Invalid image to replace.");
+  }
+  return value;
+}
 
 function imageRequest(req: { data: any; auth?: { token: Record<string, unknown> } }, uid: string) {
   const { imageId, kind, width, height, color } = req.data ?? {};
@@ -26,31 +123,32 @@ function imageRequest(req: { data: any; auth?: { token: Record<string, unknown> 
 }
 
 /** Allocate the document and the Storage permit together, before bytes arrive. */
-export const authorizeImageUpload = onCall({ maxInstances: 3 }, async (req) => {
+export const authorizeImageUpload = onCall({ enforceAppCheck: true, maxInstances: 3 }, async (req) => {
   const uid = requireUser(req);
   const image = imageRequest(req, uid);
-  const [files] = await getBucket().getFiles({ prefix: `users/${uid}/`, maxResults: MAX_STORED_OBJECTS + 1, autoPaginate: false });
+  const replaces = replacementId(req.data?.replaces, image.kind, uid);
   await db.runTransaction(async (tx) => {
-    if ((await tx.get(db.doc(`deletions/${uid}`))).exists) throw new HttpsError("failed-precondition", "Account deletion is pending or completed.");
-    const lock = db.doc(`uploadLimits/${uid}`);
+    const commitAllowance = await reserveWork(tx, uid, image.slot ? image.imageId : undefined);
     const imageRef = db.doc(`images/${image.imageId}`);
-    const [state, existing] = await Promise.all([tx.get(lock), tx.get(imageRef)]);
+    const [existing, replaced] = await Promise.all([
+      tx.get(imageRef), replaces ? tx.get(db.doc(`images/${replaces}`)) : null,
+    ]);
     const previous = existing.data();
+    // Only a work this member can see in their own gallery. `live` rules out
+    // replacing into a record the sweeper is about to take away.
+    const work = replaced?.data();
+    if (replaces && (!work || work.ownerUid !== uid || work.kind !== "gallery" || work.status !== "live")) {
+      throw new HttpsError("permission-denied", "Only a live gallery image of yours can be replaced.");
+    }
+    // The unverified slot replaces IN PLACE (same id, same record), so its
+    // words never move. Any other replacement is a fresh record that inherits them.
+    const inherited = work && replaces !== image.imageId ? inheritedFields(work, "member") : {};
     if (previous && (previous.ownerUid !== uid || previous.kind !== image.kind || previous.storagePath !== image.storagePath
       || previous.origin !== "member" || !image.slot)) {
       throw new HttpsError("permission-denied", "Upload record cannot be replaced.");
     }
-    const permits = await tx.get(db.collection("uploadPermits").where("ownerUid", "==", uid).limit(MAX_STORED_OBJECTS + 1));
-    const paths = new Set([...files.map((file) => file.name), ...permits.docs.map((d) => d.data().storagePath)]);
-    paths.add(image.storagePath);
-    if (paths.size > MAX_STORED_OBJECTS) {
-      throw new HttpsError("resource-exhausted", "Stored image limit reached. Remove unused images and wait for cleanup before uploading more.");
-    }
     const now = Date.now();
-    const inWindow = now - (state.data()?.windowStart?.toMillis() ?? 0) < 3_600_000;
-    const count = inWindow ? Number(state.data()?.count ?? 0) : 0;
-    if (count >= MAX_AUTHORIZATIONS_PER_HOUR) throw new HttpsError("resource-exhausted", "Too many uploads. Please try again later.");
-    tx.set(lock, { windowStart: inWindow ? state.data()!.windowStart : Timestamp.fromMillis(now), count: count + 1 });
+    commitAllowance();
     if (previous) {
       tx.update(imageRef, {
         width: image.width, height: image.height, color: image.color ?? FieldValue.delete(),
@@ -61,11 +159,15 @@ export const authorizeImageUpload = onCall({ maxInstances: 3 }, async (req) => {
         ownerUid: uid, kind: image.kind, storagePath: image.storagePath,
         width: image.width, height: image.height, ...(image.color ? { color: image.color } : {}),
         origin: "member", status: "uploading", createdAt: Timestamp.fromMillis(now), updatedAt: Timestamp.fromMillis(now),
+        ...inherited,
       });
     }
     tx.set(db.doc(`uploadPermits/${image.imageId}.webp`), {
       imageId: image.imageId, ownerUid: uid, kind: image.kind, storagePath: image.storagePath, uploadPath: image.uploadPath,
       expiresAt: Timestamp.fromMillis(now + 30 * 60_000),
+      // Carried to completeImageUpload, which settles the moderation record
+      // only once the new bytes are actually live.
+      ...(replaces ? { replaces } : {}),
     });
   });
   return { ok: true };
@@ -96,8 +198,35 @@ export function webpDimensions(header: Buffer, totalSize: number): { width: numb
   return width > 0 && width <= 10000 && height > 0 && height <= 10000 ? { width, height } : null;
 }
 
+/**
+ * WHAT A REPLACED PICTURE KEEPS OF ITS REVIEW (2026-09-23, Josh: "reset
+ * ratings, keep hidden"). Moderation is post-hoc — uploads go live and admins
+ * rank or hide them afterwards — so the danger in a replacement is a grade or
+ * a hide judged on bytes that are no longer there:
+ *
+ * - RATINGS RESET. Every admin's rating was of the old picture, so the new one
+ *   arrives with none and lands back in each admin's queue
+ *   (adminListRatingQueue lists what the caller has not rated).
+ * - HIDDEN STAYS. Otherwise replacing would be the way round a hide.
+ *
+ * The old id's own record is left for the sweep to retire with the old image.
+ */
+export function settleReplacedModeration(
+  tx: FirebaseFirestore.Transaction, imageId: string, replaces: string, old: FirebaseFirestore.DocumentData,
+): void {
+  if (replaces === imageId) {
+    tx.update(db.doc(`imageModeration/${imageId}`), {
+      ratings: FieldValue.delete(), score: FieldValue.delete(), scoredAt: FieldValue.delete(),
+    });
+  } else if (old.hidden === true) {
+    tx.set(db.doc(`imageModeration/${imageId}`), {
+      hidden: true, hiddenBy: old.hiddenBy ?? null, hiddenAt: old.hiddenAt ?? null,
+    });
+  }
+}
+
 /** Only the server can publish a record after the uploaded object matches its declared dimensions. */
-export const completeImageUpload = onCall({ maxInstances: 3 }, async (req) => {
+export const completeImageUpload = onCall({ enforceAppCheck: true, maxInstances: 3 }, async (req) => {
   const uid = requireUser(req);
   const imageId = req.data?.imageId;
   if (typeof imageId !== "string" || (imageId !== `${uid}-avatar` && imageId !== `${uid}-gallery` && !UUID.test(imageId))) {
@@ -143,17 +272,30 @@ export const completeImageUpload = onCall({ maxInstances: 3 }, async (req) => {
   try {
     const [, response] = await bucket.file(allocation.uploadPath, { generation: metadata.generation }).copy(bucket.file(data.storagePath), {
       contentType: "image/webp",
-      cacheControl: imageId === `${uid}-${data.kind}` ? "public, max-age=60" : "public, max-age=31536000, immutable",
+      cacheControl: imageId === `${uid}-${data.kind}` ? "public, max-age=60" : PUBLIC_CACHE,
       metadata: { ownerUid: uid, imageId },
     });
     publishedGeneration = (response as { resource?: { generation?: string } }).resource?.generation;
   } catch {
     throw new HttpsError("failed-precondition", "Uploaded image changed before validation completed.");
   }
+  // A member's thumbnail on a video link: the automatic poster travels to the
+  // new id, so "Use automatic thumbnail" still has it to go back to. Best
+  // effort — a missing original costs that one button, never the upload.
+  const priorWork = typeof allocation.replaces === "string" && allocation.replaces !== imageId ? allocation.replaces : null;
+  const autoCopy = data.media === "embed" && priorWork ? autoPosterPath(data.storagePath) : null;
+  if (autoCopy) {
+    await bucket.file(autoPosterPath(`users/${uid}/gallery/${priorWork}.webp`))
+      .copy(bucket.file(autoCopy), { contentType: "image/webp", cacheControl: PUBLIC_CACHE, metadata: { ownerUid: uid, imageId } })
+      .catch((error: unknown) => logger.warn("Automatic poster not carried over", { imageId, priorWork, error: String(error) }));
+  }
   try {
     await db.runTransaction(async (tx) => {
       if ((await tx.get(db.doc(`deletions/${uid}`))).exists) throw new HttpsError("failed-precondition", "Account deletion is pending or completed.");
-      const [currentImage, currentPermit] = await Promise.all([tx.get(imageRef), tx.get(permitRef)]);
+      const replaces = typeof allocation.replaces === "string" ? allocation.replaces : null;
+      const [currentImage, currentPermit, oldModeration] = await Promise.all([
+        tx.get(imageRef), tx.get(permitRef), replaces ? tx.get(db.doc(`imageModeration/${replaces}`)) : null,
+      ]);
       if (currentImage.data()?.status !== "uploading" || currentPermit.data()?.ownerUid !== uid
         || currentPermit.data()?.storagePath !== data.storagePath
         || currentPermit.data()?.uploadPath !== allocation.uploadPath
@@ -162,11 +304,13 @@ export const completeImageUpload = onCall({ maxInstances: 3 }, async (req) => {
       }
       tx.update(imageRef, { status: "live", updatedAt: Timestamp.now() });
       tx.delete(permitRef);
+      if (oldModeration?.exists) settleReplacedModeration(tx, imageId, replaces!, oldModeration.data()!);
     });
   } catch (error) {
     // Remove only the generation this call published; preserve any newer upload.
     if (publishedGeneration) await bucket.file(data.storagePath, { generation: publishedGeneration })
       .delete({ ignoreNotFound: true });
+    if (autoCopy) await bucket.file(autoCopy).delete({ ignoreNotFound: true }).catch(() => {});
     throw error;
   }
   await file.delete({ ignoreNotFound: true }).catch(() => {});

@@ -219,3 +219,72 @@ test("jsonLdScript: member-authored text cannot close the script tag", () => {
   assert.equal(out.includes("<"), false);
   assert.equal(JSON.parse(out).description, "</script><img src=x onerror=alert(1)>&");
 });
+
+test("a video work is a VideoObject: poster as thumbnail, player built from the id, same creator", () => {
+  const poster = "https://firebasestorage.googleapis.com/v0/b/x/o/users%2Fu%2Fgallery%2Fv.webp?alt=media";
+  const ld = memberPageJsonLd({
+    member,
+    works: [
+      { url: poster, width: 1920, height: 1080, caption: "Mitosis", description: "Two minutes of it.",
+        embed: { provider: "youtube", videoId: "dQw4w9WgXcQ" }, addedAt: "2026-09-23T10:00:00.000Z" },
+      { url: poster, width: 1080, height: 1920, embed: { provider: "vimeo", videoId: "22439234", hash: "a1b2c3d4e5" } },
+    ],
+    pageUrl: "https://vscn.ch/members/ada-lovelace/",
+    site: SITE,
+    description: "d",
+  });
+  const [, video, bare] = ld["@graph"];
+  assert.equal(video["@type"], "VideoObject");
+  assert.equal(video.name, "Mitosis");
+  assert.equal(video.description, "Two minutes of it.");
+  assert.equal(video.thumbnailUrl, poster);
+  assert.equal(video.uploadDate, "2026-09-23T10:00:00.000Z");
+  assert.equal(video.embedUrl, "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
+  assert.equal("contentUrl" in video, false);
+  assert.deepEqual(video.creator, { "@id": "https://vscn.ch/members/ada-lovelace/#person" });
+  assert.equal(video.creditText, "Ada Lovelace");
+  // A VideoObject with no name is dropped by search engines: the maker's name stands in.
+  assert.equal(bare.name, "Ada Lovelace");
+  assert.equal(bare.embedUrl, "https://player.vimeo.com/video/22439234?dnt=1&h=a1b2c3d4e5");
+  assert.equal("uploadDate" in bare, false);
+});
+
+test("a project is one CreativeWork node; its images point at it beside their publication", () => {
+  const project = {
+    id: "p1", name: "Ribosome", description: "Cryo-EM", url: "https://lab.org/r",
+    affiliations: [{ name: "ETH", url: "https://ethz.ch" }, { name: "Anna", personUrl: "https://vscn.ch/members/anna/" }, { name: "Plain" }],
+  };
+  const graph = memberPageJsonLd({
+    member: { displayName: "Ada", portfolio: "", socialMedia: "" },
+    works: [
+      { url: "https://x/1.webp", width: 10, height: 10, link: "https://nature.com/a", project },
+      { url: "https://x/2.webp", width: 10, height: 10, project },
+      { url: "https://x/3.webp", width: 10, height: 10 },
+    ],
+    pageUrl: "https://vscn.ch/members/ada/",
+    site: SITE,
+    description: "d",
+  })["@graph"];
+  const projects = graph.filter((n) => n["@type"] === "CreativeWork");
+  assert.equal(projects.length, 1);
+  assert.deepEqual(projects[0], {
+    "@type": "CreativeWork",
+    "@id": "https://vscn.ch/members/ada/#project-p1",
+    name: "Ribosome",
+    description: "Cryo-EM",
+    url: "https://lab.org/r",
+    creator: { "@id": "https://vscn.ch/members/ada/#person" },
+    contributor: [
+      { "@type": "Organization", name: "ETH", url: "https://ethz.ch" },
+      { "@type": "Person", "@id": "https://vscn.ch/members/anna/#person", name: "Anna" },
+      { "@type": "Organization", name: "Plain" },
+    ],
+  });
+  const images = graph.filter((n) => n["@type"] === "ImageObject");
+  assert.deepEqual(images[0].isPartOf, [
+    { "@type": "WebPage", url: "https://nature.com/a" },
+    { "@id": "https://vscn.ch/members/ada/#project-p1" },
+  ]);
+  assert.deepEqual(images[1].isPartOf, { "@id": "https://vscn.ch/members/ada/#project-p1" });
+  assert.equal("isPartOf" in images[2], false);
+});

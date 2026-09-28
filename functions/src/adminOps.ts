@@ -2,12 +2,14 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import type { UserRecord } from "firebase-admin/auth";
 import { adminAuth, db, getBucket } from "./admin";
+import { listUnsentNotices, MAX_ATTEMPTS as NOTICE_MAX_ATTEMPTS } from "./adminDigest";
 import { GRACE_DAYS, STALE_UPLOAD_HOURS } from "./constants";
 import { findEmailMismatches } from "./emails";
 import { cancelDeletion, scheduleDeletion } from "./lifecycle";
 import { purgeAccount } from "./purge";
 import { dispatchRebuild, githubRebuildToken } from "./rebuild";
 import { galleryImageIds, plain, requireAdmin } from "./util";
+import { recordObjectPaths } from "./uploads";
 
 // Exported since 2026-09-22 so moderation.ts logs through the same row shape
 // rather than growing a second audit writer.
@@ -147,7 +149,7 @@ async function nameMatches(fragment: string) {
 
 /** Everything attached to one identity, in one response. */
 export async function memberGraph(uid: string) {
-  const [authUser, user, pub, images, onboarding, deletion, slugs] = await Promise.all([
+  const [authUser, user, pub, images, onboarding, deletion, slugs, projects] = await Promise.all([
     adminAuth.getUser(uid).catch(() => null),
     db.doc(`users/${uid}`).get(),
     db.doc(`publicProfiles/${uid}`).get(),
@@ -155,6 +157,7 @@ export async function memberGraph(uid: string) {
     db.doc(`onboardingRequests/${uid}`).get(),
     db.doc(`deletions/${uid}`).get(),
     db.collection("slugs").where("uid", "==", uid).get(),
+    db.collection("projects").where("ownerUid", "==", uid).get(),
   ]);
   // WHICH OF THESE IS ACTUALLY ON THE PAGE. The console asks a different
   // question before deleting a picture that is live on a member's profile
@@ -179,10 +182,11 @@ export async function memberGraph(uid: string) {
     onboardingRequest: onboarding.exists ? onboarding.data() : null,
     deletion: deletion.exists ? deletion.data() : null,
     slugs: slugs.docs.map((d) => ({ slug: d.id, current: d.data().current === true })),
+    projects: projects.docs.map((d) => ({ projectId: d.id, ...d.data() })),
   });
 }
 
-export const adminLookupMember = onCall(async (req) => {
+export const adminLookupMember = onCall({ enforceAppCheck: true }, async (req) => {
   requireAdmin(req);
   const query = String((req.data as { query?: unknown })?.query ?? "").trim();
   if (!query) throw new HttpsError("invalid-argument", "query is required");
@@ -214,7 +218,7 @@ export const adminLookupMember = onCall(async (req) => {
  * 100 identifiers at a time, and a member with no Auth user (every curated
  * seed profile) simply comes back missing — which is itself a column here.
  */
-export const adminListMembers = onCall(async (req) => {
+export const adminListMembers = onCall({ enforceAppCheck: true }, async (req) => {
   requireAdmin(req);
   const [pubs, users, images, deletions, slugByUid] = await Promise.all([
     db.collection("publicProfiles").get(),
@@ -273,16 +277,17 @@ export const adminListMembers = onCall(async (req) => {
   return plain({ members: rows });
 });
 
-export const adminListQueues = onCall(async (req) => {
+export const adminListQueues = onCall({ enforceAppCheck: true }, async (req) => {
   requireAdmin(req);
   const cutoff = Date.now() - STALE_UPLOAD_HOURS * 3_600_000;
-  const [open, uploading, live, pubs, users, emailMismatches] = await Promise.all([
+  const [open, uploading, live, pubs, users, emailMismatches, notices] = await Promise.all([
     db.collection("deletions").where("completedAt", "==", null).get(),
     db.collection("images").where("status", "==", "uploading").get(),
     db.collection("images").where("status", "==", "live").get(),
     db.collection("publicProfiles").get(),
     db.collection("users").get(),
     findEmailMismatches(),
+    listUnsentNotices(),
   ]);
 
   // The orphan the upload inversion does NOT prevent: a record that reached
@@ -311,6 +316,15 @@ export const adminListQueues = onCall(async (req) => {
       .filter((d) => !referenced.has(d.id) && (d.data().createdAt as Timestamp).toMillis() < cutoff)
       .map((d) => ({ imageId: d.id, referenced: false, ...d.data() })),
     emailMismatches,
+    // The operator's mail queue (adminDigest.ts). Not a decision like the
+    // four above, but a notice that keeps failing is news nothing else
+    // carries: the digest cannot mail you that the digest cannot mail you.
+    unsentNotices: notices.map((n) => ({
+      id: n.id, kind: n.kind, uid: n.uid, imageId: n.imageId ?? null, email: n.email ?? null,
+      at: n.at, dueAt: n.dueAt, attempts: n.attempts ?? 0,
+      lastError: n.lastError ?? null, lastAttemptAt: n.lastAttemptAt ?? null, failed: n.failed,
+    })),
+    noticeMaxAttempts: NOTICE_MAX_ATTEMPTS,
   });
 });
 
@@ -350,7 +364,7 @@ async function displayNames(uids: string[]): Promise<Map<string, string>> {
  * it; both are already sitting in `detail`, per the shape each call site
  * chose for itself.
  */
-export const adminListActions = onCall(async (req) => {
+export const adminListActions = onCall({ enforceAppCheck: true }, async (req) => {
   requireAdmin(req);
   const targetUid = String((req.data as { targetUid?: unknown })?.targetUid ?? "").trim();
   const rawLimit = Number((req.data as { limit?: unknown })?.limit ?? 200);
@@ -399,7 +413,7 @@ export const adminListActions = onCall(async (req) => {
   return plain({ actions });
 });
 
-export const adminPurgeAccount = onCall({ timeoutSeconds: 540, secrets: [githubRebuildToken] }, async (req) => {
+export const adminPurgeAccount = onCall({ enforceAppCheck: true, timeoutSeconds: 540, secrets: [githubRebuildToken] }, async (req) => {
   const actor = requireAdmin(req);
   const uid = requireUidArg(req.data);
   const immediate = (req.data as { immediate?: unknown })?.immediate === true;
@@ -418,7 +432,7 @@ export const adminPurgeAccount = onCall({ timeoutSeconds: 540, secrets: [githubR
   return { ok: true, purgeAfter: purgeAfter.toDate().toISOString() };
 });
 
-export const adminRestoreAccount = onCall({ secrets: [githubRebuildToken] }, async (req) => {
+export const adminRestoreAccount = onCall({ enforceAppCheck: true, secrets: [githubRebuildToken] }, async (req) => {
   const actor = requireAdmin(req);
   const uid = requireUidArg(req.data);
   await cancelDeletion(uid);
@@ -433,7 +447,7 @@ export const adminRestoreAccount = onCall({ secrets: [githubRebuildToken] }, asy
  * member changing their own address (that path is verifyBeforeUpdateEmail in
  * the client, which Auth verifies itself).
  */
-export const adminSetMemberEmail = onCall(async (req) => {
+export const adminSetMemberEmail = onCall({ enforceAppCheck: true }, async (req) => {
   const actor = requireAdmin(req);
   const uid = requireUidArg(req.data);
   const email = String((req.data as { email?: unknown })?.email ?? "").trim().toLowerCase();
@@ -479,7 +493,7 @@ export const adminSetMemberEmail = onCall(async (req) => {
  * referenced or how old it is — an admin looked at it and pressed a button,
  * and the audit entry records which of the two cases it was.
  */
-export const adminDeleteImage = onCall({ secrets: [githubRebuildToken] }, async (req) => {
+export const adminDeleteImage = onCall({ enforceAppCheck: true, secrets: [githubRebuildToken] }, async (req) => {
   const actor = requireAdmin(req);
   const imageId = String((req.data as { imageId?: unknown })?.imageId ?? "").trim();
   if (!imageId) throw new HttpsError("invalid-argument", "imageId is required");
@@ -525,7 +539,8 @@ export const adminDeleteImage = onCall({ secrets: [githubRebuildToken] }, async 
   // FIREBASE_CONFIG, which the CLI's trigger-discovery pass does not supply.
   // See the comment on getBucket in ./admin — evaluating it at import time made
   // firebase-tools report a generic discovery timeout instead of the real error.
-  if (storagePath) await getBucket().file(storagePath).delete({ ignoreNotFound: true });
+  // The poster and, for a video link, the automatic poster behind it.
+  for (const path of recordObjectPaths(rec)) await getBucket().file(path).delete({ ignoreNotFound: true });
   await ref.delete();
 
   await audit(actor, "deleteImage", ownerUid, {
@@ -543,7 +558,7 @@ export const adminDeleteImage = onCall({ secrets: [githubRebuildToken] }, async 
   return { ok: true, ownerUid, removedFrom, wasReferenced: removedFrom.length > 0 };
 });
 
-export const adminSetProfileActive = onCall({ secrets: [githubRebuildToken] }, async (req) => {
+export const adminSetProfileActive = onCall({ enforceAppCheck: true, secrets: [githubRebuildToken] }, async (req) => {
   const actor = requireAdmin(req);
   const uid = requireUidArg(req.data);
   const active = (req.data as { active?: unknown })?.active === true;

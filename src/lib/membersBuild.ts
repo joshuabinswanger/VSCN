@@ -7,6 +7,7 @@ import type { PublicProfileDoc } from "./firestore.ts";
 import { resolveSlugs, toMemberViewBase, type MemberView } from "./memberView.ts";
 import type { GalleryRecord } from "./galleryRecords.ts";
 import { isProfileVisible } from "./profileVisibility.ts";
+import { resolveMemberCredits, type ProjectRecord } from "./projects.ts";
 
 interface Directory {
   members: MemberView[];
@@ -29,6 +30,13 @@ export interface SiteSnapshot {
    * nobody's business outside the console.
    */
   moderation: { imageId: string; score: number; hidden: boolean }[];
+  /**
+   * One row per project, every owner's, not only those with works. Required
+   * for the same reason `moderation` is: a snapshot from an exporter that
+   * predates projects would otherwise deploy a site that silently groups
+   * nothing, indistinguishable from a correctly grouped one with no projects.
+   */
+  projects: ProjectRecord[];
 }
 
 let directoryPromise: Promise<Directory> | null = null;
@@ -45,6 +53,7 @@ function fetchDirectory(): Directory {
     // like a correctly ranked one — the same "no members / no credentials"
     // ambiguity this validator exists to refuse. Fail loudly instead.
     || !Array.isArray(snapshot.moderation)
+    || !Array.isArray(snapshot.projects)
     || typeof snapshot.bucket !== "string" || typeof snapshot.projectId !== "string"
     || !Number.isFinite(Date.parse(snapshot.generatedAt))
     || Math.abs(Date.now() - Date.parse(snapshot.generatedAt)) > 60 * 60_000) {
@@ -73,12 +82,30 @@ function fetchDirectory(): Directory {
     if (row.current) current.set(row.uid, row.slug);
     else retired.push({ slug: row.slug, uid: row.uid });
   }
-  const members = resolveSlugs(
+  const projectsByOwner = new Map<string, ProjectRecord[]>();
+  for (const p of snapshot.projects) {
+    const list = projectsByOwner.get(p.ownerUid) ?? [];
+    list.push(p);
+    projectsByOwner.set(p.ownerUid, list);
+  }
+  const resolved = resolveSlugs(
     snapshot.profiles
       .filter((profile) => isProfileVisible(profile.data))
-      .map((profile) => toMemberViewBase(profile.id, profile.data, recordsByOwner.get(profile.id) ?? [], snapshot.bucket)),
+      .map((profile) => toMemberViewBase(
+        profile.id,
+        profile.data,
+        recordsByOwner.get(profile.id) ?? [],
+        snapshot.bucket,
+        projectsByOwner.get(profile.id) ?? [],
+      )),
     current,
   );
+  // Member credits link only to members who are in this build's directory.
+  const slugByUid = new Map(resolved.map((m) => [m.id, m.slug]));
+  const members = resolved.map((m) => ({
+    ...m,
+    projects: (m.projects ?? []).map((p) => resolveMemberCredits(p, slugByUid)),
+  }));
   const activeUids = new Set(members.map((member) => member.id));
   return { members, aliases: retired.filter((alias) => activeUids.has(alias.uid)) };
 }

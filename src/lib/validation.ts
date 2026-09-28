@@ -53,10 +53,11 @@ export function countWords(value: string): number {
   return value.trim().split(/\s+/).filter(Boolean).length;
 }
 
-export function validateBio(value: string): { ok: boolean; error?: string } {
+/** `label` names the field in the error — the German bio has the same cap. */
+export function validateBio(value: string, label = "About you"): { ok: boolean; error?: string } {
   const words = countWords(value);
   if (words > MAX_BIO_WORDS) {
-    return { ok: false, error: `About you must be ${MAX_BIO_WORDS} words or fewer.` };
+    return { ok: false, error: `${label} must be ${MAX_BIO_WORDS} words or fewer.` };
   }
   return { ok: true };
 }

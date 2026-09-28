@@ -156,18 +156,31 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.label.name": "Display Name",
     "profile.ph.name": "Your name",
     "profile.ph.name.organization": "Name of your group or institution",
+    // The visible label stays language-neutral: the EN/DE switch beside it
+    // says which language is showing (2026-09-23). The .en/.de keys are the
+    // two controls' accessible names — see BilingualField.astro.
     "profile.label.role": "Role",
+    "profile.label.role.en": "Role (English)",
+    "profile.label.role.de": "Role (German)",
+    // In German whatever the UI language, like profile.gallery.caption.de.ph:
+    // the example has to be in the language the field asks for.
+    "profile.ph.role.de": "z.B. Wissenschaftsillustrator:in, Forscher:in, Datenjournalist:in…",
+    "profile.note.role.de":
+      "Optional. German pages show this in place of the English role; until it's filled in, they show the English one.",
     "profile.ph.role": "e.g. Science Illustrator, Researcher, Data Journalist…",
     "profile.ph.role.science": "e.g. Neuroscientist, PhD Student, Lab Head…",
     "profile.ph.role.organization": "e.g. Research Group, Institute, Museum…",
-    "profile.note.role": "Shown on your card — best kept under 25 characters.",
     "profile.label.affiliation": "Affiliation",
     "profile.ph.affiliation": "Studio, company, or freelance",
     "profile.ph.affiliation.science": "Institute, department, university",
     "profile.label.location": "Location",
     "profile.ph.location": "Zurich, Switzerland",
     "profile.label.languages": "Working languages",
-    "profile.note.languages": "Languages you can work in.",
+    "profile.label.preferredLanguage": "Your language",
+    "profile.note.preferredLanguage": "One setting for both: the website opens in this language when you sign in, and emails from VSCN are written in it. Switching EN / DE at the top of the page changes it too.",
+    "profile.receiveCommunityEmails": "Send me optional community emails",
+    "profile.receiveCommunityEmails.note": "Account, security, and other essential service emails will still be sent.",
+    "profile.receiveCommunityEmails.unknown": "No community email preference has been saved yet. Account, security, and other essential service emails will still be sent.",
     "profile.lang.de": "German",
     "profile.lang.en": "English",
     "profile.lang.fr": "French",
@@ -176,16 +189,24 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.wantsToContribute.note":
       "VSCN is still in its early stages. Tick this and we'll reach out about ways to get involved.",
     "profile.label.bio": "About you",
+    "profile.label.bio.en": "About you (English)",
     "profile.ph.bio": "A short description of your work, interests, or background…",
     "profile.note.bio": "Maximum 35 words.",
+    "profile.label.bio.de": "About you (German)",
+    "profile.ph.bio.de": "Eine kurze Beschreibung deiner Arbeit, Interessen oder deines Hintergrunds…",
+    "profile.bilingual.show.en": "Show the English field",
+    "profile.bilingual.show.de": "Show the German field",
+    "profile.note.bio.de":
+      "Optional, maximum 35 words. German pages show this in place of the English text; until it's filled in, they show the English one.",
     "profile.label.portfolio": "Portfolio / Website",
     "profile.ph.portfolio": "yoursite.com",
     // WHY THIS FIELD IS WORTH FILLING IN (2026-09-10). The link is a followed
     // anchor on the public page and, since the same day, the Person's url in
     // the page's structured data — a reference to their site that search
     // engines count. "Followed" is jargon; "search engines follow" is not.
-    "profile.note.portfolio":
-      "Shown on your public page as a link search engines follow. Visits from here appear in your analytics as vscn.ch.",
+    "profile.info.toggle": "More about this field",
+    // Beside a field title inside an image row or a project block (2026-09-24).
+    "profile.optional": "optional",
     "profile.label.portfolio.science": "Website / Lab page",
     "profile.ph.portfolio.science": "lab.university.edu",
     "profile.label.social": "Social Media",
@@ -224,7 +245,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.label.phone": "Phone Number",
     "profile.note.phone":
       "Hidden from the community page. Used only to help create a VSCN chat group.",
-    "member.backToCommunity": "Community",
     "member.openTo": "Open to",
     "member.needs": "Looking for",
     "member.tags": "Tags",
@@ -240,6 +260,19 @@ export const ui: Record<string, Record<string, string>> = {
     // scheme stripped, which names a destination but not what it IS.
     "member.lightbox.link": "Where this image appeared",
     "member.lightbox.siteLink": "This piece on the maker's own site",
+    "member.lightbox.play": "Play video on {provider}",
+    // The project block's heading prefix ("Part of {title}") and its
+    // affiliations line ("With {name} · {name}") — both on the member page,
+    // the editor preview and the lightbox, so a project reads the same on
+    // every surface (2026-09-23, documentation/20260923-projects-design.md).
+    "member.project.partOf": "Part of",
+    "member.project.with": "With",
+    // A project's carousel of works (2026-09-26); "works" names its track
+    // when the project has no title.
+    "member.project.works": "Project works",
+    "member.project.prev": "Previous work",
+    "member.project.next": "Next work",
+    "member.project.position": "Work {n} of {total}",
     "community.card.expand": "Expand profile:",
     // Two forms of the same idea, and they are not interchangeable. The
     // colon-suffixed one is an ARIA-LABEL PREFIX — "View profile: Jane Doe" —
@@ -297,6 +330,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.reauth.cancel": "Cancel",
     "profile.reauth.confirm": "Confirm delete",
     "profile.preview.defaultName": "Your name",
+    "profile.preview.card": "Gallery card",
+    "profile.preview.cardNote": "How you appear in the community gallery.",
     "profile.upload.processing": "Processing…",
     "profile.upload.uploading": "Uploading…",
     "profile.upload.selected": "Selected: ",
@@ -304,11 +339,11 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.upload.error": "Could not process image.",
     "profile.label.gallery": "Gallery",
     "profile.note.gallery":
-      "Up to 8 images. They appear on your member card after the next site update.",
+      "Up to 12 images. They appear on your member card after the next site update.",
     "profile.note.galleryUnverified":
-      "One image until your email is verified — then up to 8. They appear on your member card after the next site update.",
+      "One image until your email is verified — then up to 12. They appear on your member card after the next site update.",
     "profile.gallery.add": "Add images",
-    "profile.gallery.full": "Gallery is full (8 images max).",
+    "profile.gallery.full": "Gallery is full (12 images max).",
     "profile.gallery.verifyForMore":
       "Verify your email to add more images. Check your inbox for the link.",
     "profile.gallery.error": "Could not upload image. Please try again.",
@@ -351,19 +386,56 @@ export const ui: Record<string, Record<string, string>> = {
     // any member of a bilingual site already reads without translation, and
     // there is no room in the compact gallery row for the full word twice.
     // These are the buttons' accessible names only.
-    "profile.gallery.lang.en": "Show the English caption and description fields",
-    "profile.gallery.lang.de": "Show the German caption and description fields",
+    "profile.gallery.lang.en": "Show the English title and description fields",
+    "profile.gallery.lang.de": "Show the German title and description fields",
     "profile.gallery.cancel": "Cancel upload",
     "profile.gallery.retry": "Retry",
     "profile.gallery.dismiss": "Dismiss",
     "profile.gallery.queued": "Waiting…",
     "profile.gallery.preparing": "Preparing…",
+    "profile.gallery.replace": "Replace image",
+    "profile.gallery.replacing": "New image for this work: {name}",
+    "profile.embed.label": "Video link",
+    "profile.embed.ph": "youtube.com/watch?v=… or vimeo.com/…",
+    "profile.embed.add": "Add video",
+    "profile.embed.adding": "Adding…",
+    "profile.embed.submit": "Add",
+    "profile.embed.badge": "Video · {provider}",
+    "profile.embed.replaceThumb": "Replace thumbnail",
+    "profile.embed.autoThumb": "Use automatic thumbnail",
+    "profile.embed.err.verify": "Verify your email before adding video links.",
+    "profile.embed.err.notVideoLink": "That is not a YouTube or Vimeo video link. Paste the address of the video itself, e.g. youtube.com/watch?v=… or vimeo.com/123456.",
+    "profile.embed.err.videoNotFound": "No public video at that link. Check it is not private or deleted.",
+    "profile.embed.err.notEmbeddable": "The owner of this video does not allow it to be shown on other sites.",
+    "profile.embed.err.providerUnavailable": "The video platform did not answer. Please try again in a moment.",
+    "profile.embed.err.noThumbnail": "This video has no thumbnail we could use.",
+    "profile.embed.err.full": "Your gallery is full. Remove a work to add a video.",
+    "profile.embed.err.storedLimit": "Your account holds as many works as it can for now. Removed works are cleared within a few hours; please try again then.",
+    "profile.embed.err.hourlyLimit": "That is a lot of new works in one hour. Please try again later.",
+    "profile.embed.err.notRestorable": "The automatic thumbnail for this video is no longer available. Reload the page and try again.",
+    "profile.embed.err.busy": "Another video is still being processed. Try again in a minute.",
+    "profile.embed.err.denied": "Your session has expired. Sign in again, then try once more.",
+    "profile.embed.err.network": "The connection dropped. Please try again.",
+    "profile.embed.err.unknown": "The video could not be added. Please try again.",
     "profile.gallery.overflow": "Only {n} images fit — {m} not added.",
     // The label, which is also the field's accessible name — so it stays a
     // label and the EXAMPLE lives in .ph beside it, exactly as the link field
     // below splits the two. Writing the example into this key would have a
     // screen reader announce one specific zebrafish before every caption box.
-    "profile.gallery.caption": "Caption",
+    // The heading of each work's fold in the Works tab (2026-09-24); the
+    // folded row prints the caption beside it, or .noCaption when there is none.
+    // "Image Details" since 2026-09-27 (Josh: "“Image Details” instead of
+    // Details"), the twin of "Project details" below.
+    "profile.gallery.details": "Image Details",
+    // The project block's fold (2026-09-26, Josh: "details on project should be
+    // called project details"), so it is not read as the first work's Image Details.
+    "profile.project.details": "Project details",
+    // Called TITLE since 2026-09-26 (Josh: "add a Title for each image that
+    // can be edited"). The field was always the picture's name: the page
+    // prints it first under the picture, the lightbox and the alt text
+    // use it. German already said "Bildtitel". The key keeps its name
+    // because the stored field is still `caption`.
+    "profile.gallery.caption": "Title",
     // A REAL ONE (2026-09-04, Josh: "only caption (make a good example)"),
     // labelled as one (2026-09-04, Josh: "the example inside the text box
     // should be labeled as such") — a member's own first attempt could sit in
@@ -378,7 +450,7 @@ export const ui: Record<string, Record<string, string>> = {
     // The accessible name for the German field below, not its placeholder —
     // see .de.ph for that. Names the field itself so a screen reader tabbing
     // in announces what it is, the same job "Caption" above does.
-    "profile.gallery.caption.de": "Caption (German)",
+    "profile.gallery.caption.de": "Title (German)",
     // The example carries its OWN caption.de.ph rather than reusing the one
     // above (2026-09-04, "make the explanations better"): the sentence has to
     // exist in German to demonstrate a German caption, and swapping only the
@@ -388,10 +460,12 @@ export const ui: Record<string, Record<string, string>> = {
     // Rewritten (2026-09-04) to say what happens rather than point at a
     // neighbouring field — the EN/DE switch above means the two are never
     // both on screen at once, so "the line above" no longer names anything.
-    "profile.gallery.caption.deNote":
-      "Optional. German visitors hear this read aloud in place of the caption; until it's filled in, they hear the English one instead.",
     "profile.gallery.description.label": "Description",
     "profile.gallery.description": "About this image — how it was made, who it was for, what it shows",
+    // Behind the Description field's i on /profile (2026-09-24). The
+    // placeholder below is an example now, since the field has a visible title.
+    "profile.gallery.description.ph":
+      "Example: Made for a paper on immune cells in the zebrafish embryo, reconstructed from confocal microscopy. It shows how scavenger cells move through the tissue to track down pathogens.",
     "profile.gallery.description.de": "Description (German)",
     // Longer than the German caption's example on purpose (2026-09-04, Josh:
     // "example for lng image description should be longer") — this field
@@ -402,17 +476,13 @@ export const ui: Record<string, Record<string, string>> = {
     // itself asks for in gallery.ts.
     "profile.gallery.description.de.ph":
       "Example: Angefertigt für eine Publikation über Immunzellen im Zebrafisch-Embryo, aus konfokalen Mikroskopieaufnahmen rekonstruiert. Die Illustration zeigt, wie Fresszellen durch das Gewebe wandern, um Krankheitserreger aufzuspüren.",
-    "profile.gallery.description.deNote":
-      "Optional. German visitors read this in place of the description; until it's filled in, they read the English one instead.",
     // Stored without a scheme, like Portfolio: the input carries a fixed
     // https:// prefix, so the placeholder must not repeat one.
-    "profile.gallery.link": "Where this image appeared",
+    "profile.gallery.link": "Where it was published",
     "profile.gallery.tags": "What's in the picture",
     "profile.gallery.tagsNote":
-      "Up to 5. The community grid filters by these, so tag what the picture shows, not what you do.",
-    "profile.gallery.link.ph": "nature.com/articles/… (optional)",
-    "profile.gallery.linkNote":
-      "Optional. The publication, campaign or shop where this image appeared. Shown under the image as a link search engines follow.",
+      "Up to 7. The community grid filters by these, so tag what the picture shows, not what you do.",
+    "profile.gallery.link.ph": "nature.com/articles/…",
     // THE SECOND LINK (2026-09-10, Josh: "the image link should be
     // additional"). For one day the note above told members to put their own
     // project page into "Where this image appeared", which made one field mean
@@ -420,10 +490,42 @@ export const ui: Record<string, Record<string, string>> = {
     // picture on their own site counts for more than a second link to their
     // homepage would. The placeholder is their own portfolio host when the
     // editor knows it (see renderGallery() in ProfileForm.astro).
-    "profile.gallery.siteLink": "This piece on your site",
-    "profile.gallery.siteLink.ph": "yoursite.ch/projects/… (optional)",
-    "profile.gallery.siteLinkNote":
-      "Optional. Your own page about this piece — the strongest link back to your site this directory can give you. Shown under the image as a link search engines follow.",
+    "profile.gallery.siteLink": "Link to your page about it",
+    "profile.gallery.siteLink.ph": "yoursite.ch/projects/…",
+    "profile.project.new": "Add project",
+    "profile.project.untitled": "Project {n}",
+    // The visible titles of a project block's fields (2026-09-24); the .ph
+    // keys are the examples inside them.
+    "profile.project.title.label": "Project title",
+    "profile.project.title.ph": "Example: Immune cells in the zebrafish embryo",
+    "profile.project.title.de": "Project title (German)",
+    "profile.project.title.de.ph": "Example: Immunzellen im Zebrafisch-Embryo",
+    "profile.project.description.label": "Project description",
+    "profile.project.description.ph": "What the project was, who it was for, and your part in it",
+    "profile.project.description.de": "Project description (German)",
+    "profile.project.description.de.ph": "Worum es ging, für wen, und was dein Teil war",
+    "profile.project.website": "Project website",
+    "profile.project.website.ph": "example.org/project/…",
+    // An affiliation's link field, not the project's own (that is .website).
+    "profile.project.link": "Link",
+    "profile.project.linkNote": "Where the project lives, e.g. a lab page or a paper. Images without their own site link use this one.",
+    "profile.project.affiliations": "Affiliations",
+    "profile.project.affiliations.add": "Add affiliation",
+    "profile.project.affiliation.name": "Name",
+    "profile.project.affiliation.member": "VSCN member",
+    "profile.project.affiliation.namePh": "Institution, lab or partner",
+    "profile.project.affiliation.memberPh": "Search members…",
+    "profile.project.affiliation.noMatch": "Choose a member from the list — only a listed member can be credited.",
+    "profile.project.affiliation.remove": "Remove affiliation",
+    "profile.project.addImages": "Add images to this project",
+    "profile.project.delete": "Delete project",
+    "profile.project.select": "Project",
+    "profile.project.none": "No project",
+    "profile.project.deleteNote": "The images stay in your gallery.",
+    "profile.project.moveUp": "Move up",
+    "profile.project.moveDown": "Move down",
+    "profile.project.saveFailed": "Project “{name}” could not be saved.",
+    "profile.project.emptyNote": "Add an image to keep this project — a project without images is not saved.",
     "profile.tag.error": "Tags must be unique, 1–50 characters, and no more than 7 tags.",
     "profile.reauth.confirming": "Confirming…",
     "profile.reauth.error": "Incorrect password. Please try again.",
@@ -450,7 +552,7 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.step4.sub": "A short bio and photo help your profile stand out.",
     "onboarding.step5.title": "Show your work",
     "onboarding.step5.sub": "Add a few images and they become your card in the member directory.",
-    "onboarding.step5.note": "Up to 8 images.",
+    "onboarding.step5.note": "Up to 12 images.",
     "onboarding.step5.noteUnverified":
       "One image for now — up to 8 once your email is verified.",
     "onboarding.step5.noteUnverifiedFull":
@@ -503,6 +605,8 @@ export const ui: Record<string, Record<string, string>> = {
     // Profile active toggle
     "profile.active.label": "Active",
     "profile.active.note": "Should your community card be visible?",
+    "profile.active.directoryNote":
+      "This setting hides your profile from the directory. Public profile fields and media remain accessible through direct links.",
     "profile.hiddenBanner": "Your profile is hidden from the community directory.",
     "profile.hiddenBanner.cta": "Change on the Account tab",
     "profile.verifyBanner.hidden": "Until then your profile is hidden from the directory.",
@@ -666,17 +770,25 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.ph.name": "Dein Name",
     "profile.ph.name.organization": "Name deiner Gruppe oder Institution",
     "profile.label.role": "Rolle",
+    "profile.label.role.en": "Rolle (Englisch)",
+    "profile.label.role.de": "Rolle (Deutsch)",
+    "profile.ph.role.de": "z.B. Wissenschaftsillustrator:in, Forscher:in, Datenjournalist:in…",
+    "profile.note.role.de":
+      "Optional. Deutsche Seiten zeigen diese statt der englischen Rolle; solange das Feld leer ist, erscheint die englische.",
     "profile.ph.role": "z.B. Wissenschaftsillustrator:in, Forscher:in, Datenjournalist:in…",
     "profile.ph.role.science": "z.B. Neurowissenschaftler:in, Doktorand:in, Institutsleitung…",
     "profile.ph.role.organization": "z.B. Forschungsgruppe, Institut, Museum…",
-    "profile.note.role": "Wird auf deiner Karte angezeigt — am besten unter 25 Zeichen.",
     "profile.label.affiliation": "Institution",
     "profile.ph.affiliation": "Studio, Agentur oder freischaffend",
     "profile.ph.affiliation.science": "Institut, Abteilung, Universität",
     "profile.label.location": "Ort",
     "profile.ph.location": "Zürich, Schweiz",
     "profile.label.languages": "Arbeitssprachen",
-    "profile.note.languages": "Sprachen, in denen du arbeiten kannst.",
+    "profile.label.preferredLanguage": "Deine Sprache",
+    "profile.note.preferredLanguage": "Eine Einstellung für beides: Die Website öffnet sich nach der Anmeldung in dieser Sprache, und E-Mails von VSCN schreiben wir dir darin. Der Wechsel EN / DE oben auf der Seite ändert sie ebenfalls.",
+    "profile.receiveCommunityEmails": "Optionale Community-E-Mails erhalten",
+    "profile.receiveCommunityEmails.note": "Konto-, Sicherheits- und andere notwendige Service-E-Mails erhältst du weiterhin.",
+    "profile.receiveCommunityEmails.unknown": "Es ist noch keine Community-E-Mail-Einstellung gespeichert. Konto-, Sicherheits- und andere notwendige Service-E-Mails erhältst du weiterhin.",
     "profile.lang.de": "Deutsch",
     "profile.lang.en": "Englisch",
     "profile.lang.fr": "Französisch",
@@ -685,12 +797,19 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.wantsToContribute.note":
       "VSCN steht noch am Anfang. Setze hier ein Häkchen und wir melden uns mit Möglichkeiten, dich einzubringen.",
     "profile.label.bio": "Über dich",
+    "profile.label.bio.en": "Über dich (Englisch)",
     "profile.ph.bio": "Eine kurze Beschreibung deiner Arbeit, Interessen oder deines Hintergrunds…",
     "profile.note.bio": "Maximal 35 Wörter.",
+    "profile.label.bio.de": "Über dich (Deutsch)",
+    "profile.ph.bio.de": "Eine kurze Beschreibung deiner Arbeit, Interessen oder deines Hintergrunds…",
+    "profile.bilingual.show.en": "Englisches Feld anzeigen",
+    "profile.bilingual.show.de": "Deutsches Feld anzeigen",
+    "profile.note.bio.de":
+      "Optional, maximal 35 Wörter. Deutsche Seiten zeigen diesen Text statt des englischen; solange das Feld leer ist, erscheint der englische.",
     "profile.label.portfolio": "Portfolio / Website",
     "profile.ph.portfolio": "deinewebsite.com",
-    "profile.note.portfolio":
-      "Erscheint auf deiner öffentlichen Seite als Link, dem Suchmaschinen folgen. Besuche von hier erscheinen in deiner Statistik als vscn.ch.",
+    "profile.info.toggle": "Mehr zu diesem Feld",
+    "profile.optional": "optional",
     "profile.label.portfolio.science": "Website / Institutsseite",
     "profile.ph.portfolio.science": "institut.uni.ch",
     "profile.label.social": "Social Media",
@@ -729,7 +848,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.label.phone": "Telefonnummer",
     "profile.note.phone":
       "Nicht auf der Community-Seite sichtbar. Nur zur Erstellung einer VSCN-Chat-Gruppe.",
-    "member.backToCommunity": "Community",
     "member.openTo": "Offen für",
     "member.needs": "Sucht",
     "member.tags": "Tags",
@@ -743,6 +861,13 @@ export const ui: Record<string, Record<string, string>> = {
     "member.lightbox.error": "Dieses Bild konnte nicht geladen werden.",
     "member.lightbox.link": "Wo dieses Bild erschienen ist",
     "member.lightbox.siteLink": "Dieses Werk auf der eigenen Website",
+    "member.lightbox.play": "Video auf {provider} abspielen",
+    "member.project.partOf": "Teil von",
+    "member.project.with": "Mit",
+    "member.project.works": "Werke des Projekts",
+    "member.project.prev": "Vorheriges Werk",
+    "member.project.next": "Nächstes Werk",
+    "member.project.position": "Werk {n} von {total}",
     "community.card.expand": "Profil aufklappen:",
     "community.card.viewProfile": "Profil ansehen:",
     "community.card.viewProfile.text": "Profil ansehen",
@@ -794,6 +919,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.reauth.cancel": "Abbrechen",
     "profile.reauth.confirm": "Löschen bestätigen",
     "profile.preview.defaultName": "Dein Name",
+    "profile.preview.card": "Galeriekarte",
+    "profile.preview.cardNote": "So erscheinst du in der Community-Galerie.",
     "profile.upload.processing": "Wird verarbeitet…",
     "profile.upload.uploading": "Wird hochgeladen…",
     "profile.upload.selected": "Ausgewählt: ",
@@ -801,11 +928,11 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.upload.error": "Bild konnte nicht verarbeitet werden.",
     "profile.label.gallery": "Galerie",
     "profile.note.gallery":
-      "Bis zu 8 Bilder. Sie erscheinen nach dem nächsten Site-Update auf deiner Mitgliedskarte.",
+      "Bis zu 12 Bilder. Sie erscheinen nach dem nächsten Site-Update auf deiner Mitgliedskarte.",
     "profile.note.galleryUnverified":
-      "Ein Bild, bis deine E-Mail bestätigt ist — danach bis zu 8. Sie erscheinen nach der nächsten Aktualisierung auf deiner Mitgliederkarte.",
+      "Ein Bild, bis deine E-Mail bestätigt ist — danach bis zu 12. Sie erscheinen nach der nächsten Aktualisierung auf deiner Mitgliederkarte.",
     "profile.gallery.add": "Bilder hinzufügen",
-    "profile.gallery.full": "Galerie ist voll (max. 8 Bilder).",
+    "profile.gallery.full": "Galerie ist voll (max. 12 Bilder).",
     "profile.gallery.verifyForMore":
       "Bestätige deine E-Mail, um weitere Bilder hinzuzufügen. Der Link ist in deinem Posteingang.",
     "profile.gallery.error": "Bild konnte nicht hochgeladen werden. Bitte erneut versuchen.",
@@ -840,34 +967,85 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.dismiss": "Verwerfen",
     "profile.gallery.queued": "Wartet…",
     "profile.gallery.preparing": "Wird vorbereitet…",
+    "profile.gallery.replace": "Bild ersetzen",
+    "profile.gallery.replacing": "Neues Bild für dieses Werk: {name}",
+    "profile.embed.label": "Video-Link",
+    "profile.embed.ph": "youtube.com/watch?v=… oder vimeo.com/…",
+    "profile.embed.add": "Video hinzufügen",
+    "profile.embed.adding": "Wird hinzugefügt…",
+    "profile.embed.submit": "Hinzufügen",
+    "profile.embed.badge": "Video · {provider}",
+    "profile.embed.replaceThumb": "Vorschaubild ersetzen",
+    "profile.embed.autoThumb": "Automatisches Vorschaubild verwenden",
+    "profile.embed.err.verify": "Bestätige zuerst deine E-Mail-Adresse, um Video-Links hinzuzufügen.",
+    "profile.embed.err.notVideoLink": "Das ist kein Video-Link von YouTube oder Vimeo. Füge die Adresse des Videos selbst ein, z. B. youtube.com/watch?v=… oder vimeo.com/123456.",
+    "profile.embed.err.videoNotFound": "Unter diesem Link gibt es kein öffentliches Video. Prüfe, ob es privat oder gelöscht ist.",
+    "profile.embed.err.notEmbeddable": "Die Person, der das Video gehört, erlaubt nicht, dass es auf anderen Websites gezeigt wird.",
+    "profile.embed.err.providerUnavailable": "Die Videoplattform hat nicht geantwortet. Bitte versuche es gleich noch einmal.",
+    "profile.embed.err.noThumbnail": "Für dieses Video gibt es kein Vorschaubild, das wir verwenden können.",
+    "profile.embed.err.full": "Deine Galerie ist voll. Entferne ein Werk, um ein Video hinzuzufügen.",
+    "profile.embed.err.storedLimit": "Dein Konto enthält im Moment so viele Werke, wie es kann. Entfernte Werke werden innert weniger Stunden aufgeräumt; bitte versuche es dann noch einmal.",
+    "profile.embed.err.hourlyLimit": "Das sind viele neue Werke in einer Stunde. Bitte versuche es später noch einmal.",
+    "profile.embed.err.notRestorable": "Das automatische Vorschaubild für dieses Video ist nicht mehr verfügbar. Lade die Seite neu und versuche es noch einmal.",
+    "profile.embed.err.busy": "Ein anderes Video wird noch verarbeitet. Versuche es in einer Minute erneut.",
+    "profile.embed.err.denied": "Deine Sitzung ist abgelaufen. Melde dich erneut an und versuche es noch einmal.",
+    "profile.embed.err.network": "Die Verbindung wurde unterbrochen. Bitte versuche es noch einmal.",
+    "profile.embed.err.unknown": "Das Video konnte nicht hinzugefügt werden. Bitte versuche es noch einmal.",
     "profile.gallery.overflow": "Es passen nur {n} Bilder — {m} nicht hinzugefügt.",
+    "profile.gallery.details": "Bilddetails",
+    "profile.project.details": "Projektdetails",
     "profile.gallery.caption": "Bildtitel",
     "profile.gallery.caption.ph": "Beispiel: Zebrafisch-Netzhaut im Querschnitt, konfokal",
     "profile.gallery.captionNote":
       "Eine Zeile. Wird auch Menschen vorgelesen, die das Bild nicht sehen können.",
     "profile.gallery.caption.de": "Bildtitel (Deutsch)",
     "profile.gallery.caption.de.ph": "Beispiel: Zebrafisch-Netzhaut im Querschnitt, konfokal",
-    "profile.gallery.caption.deNote":
-      "Optional. Wird deutschen Besucher:innen anstelle des Bildtitels vorgelesen; bis er ausgefüllt ist, hören sie den englischen.",
     "profile.gallery.description.label": "Beschreibung",
     "profile.gallery.description":
       "Über dieses Bild — wie es entstand, für wen, was es zeigt",
+    "profile.gallery.description.ph":
+      "Beispiel: Angefertigt für eine Publikation über Immunzellen im Zebrafisch-Embryo, aus konfokalen Mikroskopieaufnahmen rekonstruiert. Die Illustration zeigt, wie Fresszellen durch das Gewebe wandern, um Krankheitserreger aufzuspüren.",
     "profile.gallery.description.de": "Beschreibung (Deutsch)",
     "profile.gallery.description.de.ph":
       "Beispiel: Angefertigt für eine Publikation über Immunzellen im Zebrafisch-Embryo, aus konfokalen Mikroskopieaufnahmen rekonstruiert. Die Illustration zeigt, wie Fresszellen durch das Gewebe wandern, um Krankheitserreger aufzuspüren.",
-    "profile.gallery.description.deNote":
-      "Optional. Wird deutschen Besucher:innen anstelle der Beschreibung gezeigt; bis sie ausgefüllt ist, lesen sie die englische.",
-    "profile.gallery.link": "Wo dieses Bild erschienen ist",
+    "profile.gallery.link": "Wo es veröffentlicht wurde",
     "profile.gallery.tags": "Was ist auf dem Bild",
     "profile.gallery.tagsNote":
-      "Bis zu 5. Das Community-Raster filtert danach, also tagge, was das Bild zeigt, nicht was du machst.",
-    "profile.gallery.link.ph": "nature.com/articles/… (optional)",
-    "profile.gallery.linkNote":
-      "Optional. Die Publikation, Kampagne oder der Shop, wo dieses Bild erschienen ist. Erscheint unter dem Bild als Link, dem Suchmaschinen folgen.",
-    "profile.gallery.siteLink": "Dieses Werk auf deiner Website",
-    "profile.gallery.siteLink.ph": "deineseite.ch/projekte/… (optional)",
-    "profile.gallery.siteLinkNote":
-      "Optional. Deine eigene Seite zu diesem Werk – der stärkste Link zurück auf deine Website, den dieses Verzeichnis dir geben kann. Erscheint unter dem Bild als Link, dem Suchmaschinen folgen.",
+      "Bis zu 7. Das Community-Raster filtert danach, also tagge, was das Bild zeigt, nicht was du machst.",
+    "profile.gallery.link.ph": "nature.com/articles/…",
+    "profile.gallery.siteLink": "Link zu deiner Seite darüber",
+    "profile.gallery.siteLink.ph": "deineseite.ch/projekte/…",
+    "profile.project.new": "Projekt hinzufügen",
+    "profile.project.untitled": "Projekt {n}",
+    "profile.project.title.label": "Projekttitel",
+    "profile.project.title.ph": "Beispiel: Immunzellen im Zebrafisch-Embryo",
+    "profile.project.title.de": "Projekttitel (Deutsch)",
+    "profile.project.title.de.ph": "Beispiel: Immunzellen im Zebrafisch-Embryo",
+    "profile.project.description.label": "Projektbeschreibung",
+    "profile.project.description.ph": "Worum es ging, für wen, und was dein Teil war",
+    "profile.project.description.de": "Projektbeschreibung (Deutsch)",
+    "profile.project.description.de.ph": "Worum es ging, für wen, und was dein Teil war",
+    "profile.project.website": "Projektwebsite",
+    "profile.project.website.ph": "beispiel.ch/projekt/…",
+    "profile.project.link": "Link",
+    "profile.project.linkNote": "Wo das Projekt zu finden ist, z. B. eine Laborseite oder ein Paper. Bilder ohne eigenen Website-Link verwenden diesen.",
+    "profile.project.affiliations": "Beteiligte",
+    "profile.project.affiliations.add": "Beteiligte hinzufügen",
+    "profile.project.affiliation.name": "Name",
+    "profile.project.affiliation.member": "VSCN-Mitglied",
+    "profile.project.affiliation.namePh": "Institution, Labor oder Partner",
+    "profile.project.affiliation.memberPh": "Mitglieder suchen…",
+    "profile.project.affiliation.noMatch": "Wähle ein Mitglied aus der Liste – nur ein gelistetes Mitglied kann genannt werden.",
+    "profile.project.affiliation.remove": "Beteiligte entfernen",
+    "profile.project.addImages": "Bilder zu diesem Projekt hinzufügen",
+    "profile.project.delete": "Projekt löschen",
+    "profile.project.select": "Projekt",
+    "profile.project.none": "Kein Projekt",
+    "profile.project.deleteNote": "Die Bilder bleiben in deiner Galerie.",
+    "profile.project.moveUp": "Nach oben",
+    "profile.project.moveDown": "Nach unten",
+    "profile.project.saveFailed": "Projekt „{name}“ konnte nicht gespeichert werden.",
+    "profile.project.emptyNote": "Füge ein Bild hinzu, um dieses Projekt zu behalten — ein Projekt ohne Bilder wird nicht gespeichert.",
     "profile.tag.error": "Tags müssen eindeutig sein, 1–50 Zeichen, und maximal 7 Tags.",
     "profile.reauth.confirming": "Wird bestätigt…",
     "profile.reauth.error": "Falsches Passwort. Bitte erneut versuchen.",
@@ -897,7 +1075,7 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.step5.title": "Zeig deine Arbeit",
     "onboarding.step5.sub":
       "Ein paar Bilder genügen — sie werden zu deiner Karte im Mitgliederverzeichnis.",
-    "onboarding.step5.note": "Bis zu 8 Bilder.",
+    "onboarding.step5.note": "Bis zu 12 Bilder.",
     "onboarding.step5.noteUnverified":
       "Vorerst ein Bild — bis zu 8, sobald deine E-Mail bestätigt ist.",
     "onboarding.step5.noteUnverifiedFull":
@@ -951,6 +1129,8 @@ export const ui: Record<string, Record<string, string>> = {
     // Profile active toggle
     "profile.active.label": "Aktiv",
     "profile.active.note": "Soll deine Community-Karte sichtbar sein?",
+    "profile.active.directoryNote":
+      "Diese Einstellung blendet dein Profil aus dem Verzeichnis aus. Bereits veröffentlichte Profilfelder und Medien sind weiterhin über direkte Links öffentlich zugänglich.",
     "profile.hiddenBanner": "Dein Profil ist im Community-Verzeichnis nicht sichtbar.",
     "profile.hiddenBanner.cta": "Im Konto-Tab ändern",
     "profile.verifyBanner.hidden": "Bis dahin ist dein Profil im Verzeichnis nicht sichtbar.",

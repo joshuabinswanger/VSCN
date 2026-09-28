@@ -32,11 +32,12 @@ function publicStorageUrl(storagePath) {
 
 try {
   console.log(`Integrity check — ${projectId}\n`);
-  const [users, pubs, images, openJobs] = await Promise.all([
+  const [users, pubs, images, openJobs, projectsSnap] = await Promise.all([
     db.collection("users").get(),
     db.collection("publicProfiles").get(),
     db.collection("images").get(),
     db.collection("deletions").where("completedAt", "==", null).get(),
+    db.collection("projects").get(),
   ]);
   const imageById = new Map(images.docs.map((d) => [d.id, d.data()]));
   const userIds = new Set(users.docs.map((d) => d.id));
@@ -84,6 +85,26 @@ try {
     if (pubIds.join("\n") !== privIds.join("\n")) {
       problem(`${doc.id} gallery differs: users [${privIds.join(", ")}], publicProfiles [${pubIds.join(", ")}]`);
     }
+  }
+
+  // PROJECTS (2026-09-23, documentation/20260923-projects-design.md). The rules
+  // judge only shape, so what can drift is ownership and existence: a project
+  // whose member is gone, an image naming a project that is missing or someone
+  // else's, and a project no image names (harmless — the build skips it — but
+  // the editor should have deleted it at Save, so worth a note).
+  console.log("Projects ↔ owners and images");
+  const projectById = new Map(projectsSnap.docs.map((d) => [d.id, d.data()]));
+  const named = new Set();
+  for (const [id, rec] of imageById) {
+    if (!rec.projectId) continue;
+    named.add(rec.projectId);
+    const project = projectById.get(rec.projectId);
+    if (!project) problem(`images/${id}.projectId → projects/${rec.projectId} missing`);
+    else if (project.ownerUid !== rec.ownerUid) problem(`images/${id} (${rec.ownerUid}) names projects/${rec.projectId} owned by ${project.ownerUid}`);
+  }
+  for (const [id, project] of projectById) {
+    if (!userIds.has(project.ownerUid) && !inGrace.has(project.ownerUid)) problem(`projects/${id} owner ${project.ownerUid} has no users doc`);
+    if (!named.has(id)) note(`projects/${id} holds no images`);
   }
 
   // The avatar is the one image whose URL lives in a plain field rather than

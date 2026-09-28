@@ -1,5 +1,8 @@
 ---
 import "../styles/global.css";
+// After global.css on purpose: a text style must win a tie with a global
+// component rule on the same element (see the ORDER note in type.css).
+import "../styles/type.css";
 ---
 
 <nav transition:persist="navbar">
@@ -25,8 +28,35 @@ import "../styles/global.css";
     position: sticky;
     top: 0;
     z-index: 10;
-    background: var(--color-bg);
     line-height: 1;
+  }
+
+  /* THE BACKDROP IS A LAYER BEHIND THE LINKS, NOT THE NAV'S BACKGROUND
+     (2026-09-25: the page shows through while scrolling). Two reasons it is a
+     pseudo-element. It can reach further down than the nav's own box: on
+     /community CommunityGrid writes --nav-backdrop-extend on .page-wrap, and
+     the same single veil runs on behind the docked filter bar, which paints no
+     backdrop of its own. Two translucent layers would double up in the strip
+     where the bar docks into the nav's padding, and meeting edge to edge
+     instead is the one-device-pixel hairline the overlap exists to prevent.
+     And a backdrop-filter on the nav itself would make it the containing block
+     for any fixed-position descendant. .page-wrap is swapped on every
+     navigation and the nav is persisted into the new one, so the extension
+     disappears on its own when you leave the page that set it.
+     z-index -1 is inside the nav's own stacking context (sticky + z-index), so
+     the veil sits under the links and over whatever scrolls behind.
+     Both values are tokens in global.css and currently say "nothing" — the
+     header is bare. The layer stays so frosting can come back as a token
+     change, not a rebuild of the extension. */
+  nav[data-astro-transition-persist="navbar"]::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 calc(-1 * var(--nav-backdrop-extend, 0px));
+    z-index: -1;
+    pointer-events: none;
+    background: var(--color-bg-veil);
+    -webkit-backdrop-filter: var(--veil-filter);
+    backdrop-filter: var(--veil-filter);
   }
 
   .nav-links {
@@ -47,7 +77,7 @@ import "../styles/global.css";
     justify-self: start;
     padding: 10px;
     font-family: "Archivo", sans-serif;
-    font-size: var(--font-size-base);
+    font-size: var(--fs-100);
     font-weight: 600;
     text-decoration: none;
     color: var(--color-dark);
@@ -149,7 +179,7 @@ import "../styles/global.css";
       /* Tighter to the title above it — on a phone the two read as one block,
          so the 10px the desktop row uses to breathe just looks like a gap. */
       padding: 5px 0 7px;
-      font-size: 0.9rem;
+      font-size: var(--fs-90);
     }
 
     .nav-link::after {
@@ -162,22 +192,47 @@ import "../styles/global.css";
       gap: 0.5rem;
     }
 
-    /* THE TOGGLE STAYS BOTTOM-RIGHT ON MOBILE TOO (2026-09-10). It used to be
-       mirrored to the left here, where a thumb rests, but the site footer now
-       owns that corner on every breakpoint — see SiteFooter.astro. The two
-       cannot share it, and the footer is the one that has to be on the side
-       the eye reads a page's small print from.
-       If it is ever mirrored again, `right: auto` is load-bearing, not
-       tidying: position:fixed blockifies the anchor, so leaving both offsets
-       set stretches the box the full width and its hit area swallows taps
-       across the whole bottom strip at z-index 20 — while the text still looks
-       correctly placed. */
+    /* NOT FLOATING ON A PHONE (2026-09-24, Josh: "the language switch on
+       mobile has to be placed underneath, so when you scroll all the way to
+       the bottom, above the impressum etc. think from a UX perspective").
+       Earlier the same day it went bottom-left to leave the right corner to
+       Save — and a fixed switch on a phone still sat over whatever scrolled
+       under it. On every page with a footer, the footer's own copy
+       (#footer-lang, SiteFooter.astro) replaces it at the end of the page;
+       the rule that hides this one lives in Layout.astro, which knows whether
+       the page has a footer (`.page-wrap.has-footer`). A `:global(body:has())`
+       selector here was dropped from the compiled CSS without a word.
+       The fullscreen landing hero renders no footer, so there this one stays
+       in its bottom-right corner — hiding it would leave no switch at all.
+       If it is ever mirrored to the left again, set `right: auto` too:
+       position:fixed blockifies the anchor, and with both offsets set the box
+       stretches the full width and eats taps across the bottom strip. */
   }
 </style>
 
 <script>
   import { auth } from "../lib/firebase.ts";
   import { onAuthStateChanged } from "firebase/auth";
+  import { savePreferredLanguage } from "../lib/firestore.ts";
+  import { rememberSessionChoice, type SiteLanguage } from "../lib/siteLanguage.ts";
+
+  // The EN / DE switch is an explicit choice, and nothing may route against it:
+  // it wins for this session, and a signed-in member's stored language follows
+  // it — the same setting /profile labels "Your language". Registered once, at
+  // module level: the toggle is transition:persist, and so is this script.
+  // #footer-lang is the same switch in the phone footer (SiteFooter.astro);
+  // delegation on document catches it although it is re-rendered every page.
+  document.addEventListener("click", (event) => {
+    const toggle = (event.target as Element | null)?.closest?.("#nav-lang, #footer-lang");
+    if (!toggle) return;
+    const chosen: SiteLanguage = document.documentElement.lang === "de" ? "en" : "de";
+    rememberSessionChoice(chosen);
+    const user = auth.currentUser;
+    if (!user) return;
+    savePreferredLanguage(user.uid, chosen).catch((err) => {
+      console.warn("[nav] Language preference not saved:", err);
+    });
+  });
 
   type Lang = "en" | "de";
 

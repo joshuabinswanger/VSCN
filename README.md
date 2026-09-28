@@ -11,7 +11,7 @@ A platform for visual science communicators to connect, showcase their work, and
 - **Automated Rebuilds:** Updates to profiles trigger GitHub Action dispatches to refresh the static community grid.
 
 ## 🛠 Tech Stack
-- **Frontend:** [Astro](https://astro.build/) (v6)
+- **Frontend:** [Astro](https://astro.build/) (v7)
 - **Styling:** Vanilla CSS with PostCSS (Custom Media, Global Data)
 - **Animations:** [GSAP](https://gsap.com/)
 - **Backend/DB:** [Firebase](https://firebase.google.com/) (Auth, Firestore, Storage)
@@ -29,7 +29,7 @@ A platform for visual science communicators to connect, showcase their work, and
 
 1. **Install Dependencies:**
    ```bash
-   npm install
+   npm ci
    ```
 
 2. **Environment Variables:**
@@ -48,3 +48,19 @@ A platform for visual science communicators to connect, showcase their work, and
 ## 🧹 Maintenance
 - **Linting:** `npm run lint`
 - **Formatting:** `npm run format`
+
+## Verification and publishing
+
+Install backend dependencies with `npm --prefix functions ci`, then run `npm run verify`.
+This runs lint, Astro type checking, unit tests, backend compilation, and serialized
+Firestore/Storage emulator tests (Java 21 or later). `npm run build` is a separate
+rendering check and needs configured Firebase data or a directory snapshot.
+
+CI verifies the code, exports public directory data, renders on a separate runner
+without service-account credentials, and deploys the resulting artifact. A queued
+publication is acknowledged only after Hosting deployment succeeds. The Hosting workflows
+deploy the Firestore and Storage rules before Hosting, but never Functions: deploy those by
+hand when changing backend behavior.
+
+See [the audit remediation notes](documentation/codebase-audit-20260915/remediation.md)
+for verification results and rollout requirements.

@@ -40,6 +40,9 @@ const cases = members.map((m) => ({
     portfolio: m.portfolio,
     socialMedia: m.socialMedia,
     works: m.works,
+    // Since 2026-09-27, so a member's project blocks (title, paragraphs,
+    // tags, the carousel's count) can be looked at here too.
+    projects: m.projects,
   },
 }));
 
@@ -49,6 +52,15 @@ const labels = {
   defaultName: "Your name",
   openTo: ui.en["member.openTo"],
   noWorks: "No images yet. Add work in the gallery field and it will appear here.",
+  with: ui.en["member.project.with"],
+  lang: "en" as const,
+  carousel: {
+    prev: ui.en["member.project.prev"],
+    next: ui.en["member.project.next"],
+    position: ui.en["member.project.position"],
+    works: ui.en["member.project.works"],
+    roledescription: ui.en["community.card.carousel"],
+  },
 };
 
 // Everything the directory card says that its markup cannot carry — the
@@ -67,6 +79,7 @@ const cardLabels = {
   prev: ui.en["community.card.prev"],
   next: ui.en["community.card.next"],
   workAlt: ui.en["member.workAlt"],
+  lang: "en" as const,
 };
 ---
 
@@ -96,7 +109,10 @@ const cardLabels = {
   </script>
 
   <script>
-    import { renderCardPreview, renderProfilePreview } from "../../lib/profilePreview.ts";
+    import { bindPreviewLightbox, renderCardPreview, renderProfilePreview } from "../../lib/profilePreview.ts";
+    import { LIGHTBOX_FALLBACK } from "../../lib/lightbox.ts";
+    import "photoswipe/style.css";
+    import "../../styles/lightbox.css";
 
     import type { ProfileViewModel } from "../../lib/profileView.ts";
     declare global {
@@ -126,6 +142,16 @@ const cardLabels = {
         const found = cases.find((c) => c.id === id);
         if (found) drawBoth(found.view);
       };
+
+      // The editor binds this once per page load; so does the harness.
+      const unbind = bindPreviewLightbox(
+        {
+          works: root.querySelector<HTMLElement>('[data-ppv="works"]'),
+          card: cardRoot instanceof HTMLElement ? cardRoot : null,
+        },
+        LIGHTBOX_FALLBACK,
+      );
+      document.addEventListener("astro:before-swap", unbind, { once: true });
 
       select.addEventListener("change", () => draw(select.value));
       blank?.addEventListener("click", () => {
@@ -169,17 +195,13 @@ const cardLabels = {
   }
 
   .harness__label {
-    font-size: 0.58rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
     color: var(--color-muted);
   }
 
   .harness__select,
   .harness__btn {
     font: inherit;
-    font-size: 0.78rem;
+    font-size: var(--fs-78);
     padding: 0.4rem 0.6rem;
     border: 1.5px solid var(--color-border);
     border-radius: 0;

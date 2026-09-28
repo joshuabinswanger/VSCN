@@ -2,17 +2,19 @@
 import { getImage } from "astro:assets";
 import Layout from "../../../layouts/Layout.astro";
 import { fetchMemberViews, fetchSlugAliases } from "../../../lib/membersBuild.ts";
-import type { MemberView } from "../../../lib/memberView.ts";
+import { localizeMember, type MemberView } from "../../../lib/memberView.ts";
 import {
   communityTagHref,
   href,
-  hostLabel,
   memberHref,
   socialLinks,
   workCaption,
   workDescription,
 } from "../../../lib/links.ts";
-import { memberPageJsonLd, memberTitle } from "../../../lib/seo.ts";
+import { memberPageJsonLd, memberPageUrl, memberTitle } from "../../../lib/seo.ts";
+import { groupWorks, projectTitle, projectDescription, projectSlideData, type ProfileProject } from "../../../lib/projects.ts";
+import MemberWork from "../../../components/MemberWork.astro";
+import MemberProject from "../../../components/MemberProject.astro";
 import { useTranslations } from "../../../i18n/utils";
 import type { Lang } from "../../../i18n/utils";
 // THIS PAGE'S SURFACE, in a file of its own so the profile editor's preview
@@ -62,9 +64,12 @@ interface Props {
   aliasOf?: string;
 }
 
-const { member, aliasOf } = Astro.props as Props;
+const { member: sharedMember, aliasOf } = Astro.props as Props;
 const { lang = "en" } = Astro.params;
 const currentLang = (lang || "en") as Lang;
+// The props are shared with the other locale's page for the same member, so
+// role, bio and caption are picked for this one here — see localizeMember().
+const member = localizeMember(sharedMember, currentLang);
 const t = useTranslations(currentLang);
 
 // Gallery originals are already client-side compressed to a 4K-capped WebP (see
@@ -73,35 +78,52 @@ const t = useTranslations(currentLang);
 // stored file, which is what the bigger cap is FOR — full screen is the one
 // view where 2000px was visibly short.
 const works = await Promise.all(
-  member.works.map(async (w) => ({
-    ...w,
-    // Picked for this page's locale — member.works is built once and shared
-    // with the /de page for the same member (see toMemberViewBase's
-    // callers), so the raw caption/description pairs are only resolved here,
-    // where currentLang is known. See workCaption()/workDescription() in
-    // links.ts. w.caption is what the <img alt> and the lightbox trigger's
-    // data-pswp-caption both read below, so this is also what a German
-    // screen reader speaks for this image.
-    caption: workCaption(w, currentLang),
-    description: workDescription(w, currentLang),
-    rendered: await getImage({
-      src: w.url,
-      width: w.width,
-      height: w.height,
-      widths: [600, 1000, 1600],
-      format: "webp",
-    }),
-    // What the lightbox says under the image. Resolved here rather than in the
-    // client script because it is translated, and the script is a module that
-    // cannot take `define:vars`; it travels on the trigger link instead.
-    //
-    // The whose-and-what-of-it line, not a repeat of the caption: full screen,
-    // the page's own name heading is covered, so the member's name is the one
-    // thing the view has lost. It is just the name now — the project credit
-    // that used to follow it went with the projects feature (2026-09-01).
-    pswpMeta: member.displayName,
-  })),
+  member.works.map(async (w) => {
+    const project = member.projects?.find((p) => p.id === w.projectId);
+    return {
+      ...w,
+      // Picked for this page's locale — member.works is built once and shared
+      // with the /de page for the same member (see toMemberViewBase's
+      // callers), so the raw caption/description pairs are only resolved here,
+      // where currentLang is known. See workCaption()/workDescription() in
+      // links.ts. w.caption is what the <img alt> and the lightbox trigger's
+      // data-pswp-caption both read below, so this is also what a German
+      // screen reader speaks for this image.
+      caption: workCaption(w, currentLang),
+      description: workDescription(w, currentLang),
+      rendered: await getImage({
+        src: w.url,
+        width: w.width,
+        height: w.height,
+        widths: [600, 1000, 1600],
+        format: "webp",
+      }),
+      // What the lightbox says under the image. Resolved here rather than in the
+      // client script because it is translated, and the script is a module that
+      // cannot take `define:vars`; it travels on the trigger link instead.
+      //
+      // The whose-and-what-of-it line, not a repeat of the caption: full screen,
+      // the page's own name heading is covered, so the member's name is the one
+      // thing the view has lost. It is just the name now — the project credit
+      // that used to follow it went with the projects feature (2026-09-01, and
+      // is back as its own block below the picture since 2026-09-23).
+      pswpMeta: member.displayName,
+      // The project this work is in, as data-pswp-* strings for the lightbox's
+      // shared renderer — see projectSlideData() in lib/projects.ts.
+      slide: projectSlideData(project, currentLang),
+      // The project this work is in, resolved once above for SEO and lightbox.
+      project,
+    };
+  }),
 );
+
+// PROJECT BLOCKS (2026-09-23): the gallery stays one list in the member's
+// order; a project's images sit together under its heading, loose works in
+// between. groupWorks() is the same cut the editor preview makes.
+// Projects stack in the member's order; each one with two or more works is
+// its own carousel (MemberProject.astro, 2026-09-26). The one slider that
+// paged between projects (2026-09-25) is gone with that change.
+const sections = groupWorks(works, member.projects ?? []);
 
 // The lightbox's own labels. One attribute rather than five, for the same
 // reason as pswpMeta above: the client script is a module, so `define:vars` is
@@ -114,15 +136,17 @@ const lightboxStrings = JSON.stringify({
   error: t("member.lightbox.error"),
   linkTitle: t("member.lightbox.link"),
   siteLinkTitle: t("member.lightbox.siteLink"),
+  play: t("member.lightbox.play"),
+  partOf: t("member.project.partOf"),
+  with: t("member.project.with"),
 });
 
 const social = socialLinks(member.socialMedia);
 
-// One line for where and in what: "Zurich, Switzerland · DE, EN".
-const where = [member.location, member.languages.map((c) => c.toUpperCase()).join(", ")]
-  .filter(Boolean)
-  .join(" · ");
-const communityHref = currentLang === "de" ? "/de/community" : "/community";
+// Where, and only where (2026-09-27, Josh: "Remove the EN DE from the Profile
+// Page"). The working languages used to follow the place — "Zurich · DE, EN" —
+// and read as a second language switch under the name.
+const where = member.location;
 
 const description = member.caption
   ? `${member.displayName} — ${member.role}. ${member.caption}`
@@ -136,6 +160,23 @@ const ogImage = works.length ? new URL(works[0].rendered.src, Astro.site).href :
 // WHO MADE EVERY PICTURE, for machines (2026-09-10; see src/lib/seo.ts). The
 // canonical URL is the page's own on a member's real page and the CURRENT page
 // on an alias, the same rule the layout applies to <link rel="canonical">.
+type ProjectAffiliation = ProfileProject["affiliations"][number];
+
+function seoProject(p: ProfileProject | undefined) {
+  if (!p) return undefined;
+  return {
+    id: p.id,
+    name: projectTitle(p, currentLang),
+    description: projectDescription(p, currentLang),
+    url: p.link,
+    affiliations: p.affiliations.map((a: ProjectAffiliation) =>
+      a.memberSlug
+        ? { name: a.name, personUrl: memberPageUrl(currentLang, a.memberSlug, Astro.site!.href) }
+        : { name: a.name, url: a.href },
+    ),
+  };
+}
+
 const pageUrl = new URL(aliasOf ?? Astro.url.pathname, Astro.site).href;
 const jsonLd = memberPageJsonLd({
   member,
@@ -148,6 +189,9 @@ const jsonLd = memberPageJsonLd({
     description: w.description,
     link: w.link,
     siteLink: w.siteLink,
+    embed: w.embed,
+    addedAt: w.addedAt,
+    project: seoProject(w.project),
   })),
   pageUrl,
   site: Astro.site!.href,
@@ -166,8 +210,6 @@ const jsonLd = memberPageJsonLd({
   redirectTo={aliasOf}
 >
   <article class="mprof">
-    <a class="mprof__back" href={communityHref}>&#8592; {t("member.backToCommunity")}</a>
-
     <header class="mprof__head">
       {member.photoURL && (
         <img
@@ -283,66 +325,33 @@ const jsonLd = memberPageJsonLd({
         <div class="mprof__works" data-pswp-i18n={lightboxStrings}>
           {/* Each work is a link to the original, which is what PhotoSwipe
               binds to — and what makes the image openable with scripting off
-              rather than being inert. */}
-          {works.map((w, i) => (
-            <figure class="mprof__work" transition:name={i === 0 ? `mimg-${member.id}` : undefined}>
-              <a
-                class="mprof__work-link"
-                href={w.url}
-                target="_blank"
-                rel="noreferrer"
-                data-pswp-width={w.width}
-                data-pswp-height={w.height}
-                data-pswp-caption={w.caption?.trim() || undefined}
-                data-pswp-description={w.description || undefined}
-                data-pswp-link={w.link || undefined}
-                data-pswp-site-link={w.siteLink || undefined}
-                data-pswp-meta={w.pswpMeta || undefined}
-              >
-                <img
-                  class="mprof__img"
-                  src={w.rendered.src}
-                  srcset={w.rendered.srcSet.attribute}
-                  sizes="(min-width: 768px) min(94vw, 900px), 94vw"
-                  width={w.width}
-                  height={w.height}
-                  loading={i === 0 ? "eager" : "lazy"}
-                  decoding="async"
-                  alt={w.caption?.trim() || `${member.displayName} — ${t("member.workAlt")}`}
-                  style={`background-color: ${w.color ?? "var(--color-border)"}`}
+              rather than being inert. The gallery is still one list in the
+              member's own order (works.indexOf below); a project only draws a
+              heading and a rule around the run of its own works within it. */}
+          {sections.map((section) =>
+            section.project ? (
+              <MemberProject
+                project={section.project}
+                works={section.works}
+                allWorks={works}
+                memberId={member.id}
+                displayName={member.displayName}
+                lang={currentLang}
+              />
+            ) : (
+              section.works.map((w) => (
+                <MemberWork
+                  work={w}
+                  index={works.indexOf(w)}
+                  memberId={member.id}
+                  displayName={member.displayName}
+                  workAlt={t("member.workAlt")}
+                  linkTitle={t("member.lightbox.link")}
+                  siteLinkTitle={t("member.lightbox.siteLink")}
                 />
-              </a>
-              {(w.caption?.trim() || w.description || w.link || w.siteLink) && (
-                <figcaption class="mprof__caption">
-                  {w.caption?.trim() && <span class="mprof__caption-line">{w.caption}</span>}
-                  {w.description && <span class="mprof__desc">{w.description}</span>}
-                  {/* Where the piece lives in the world: the member's own
-                      project page first, then the publication it appeared in
-                      (two links since 2026-09-10, Josh: "the image link should
-                      be additional"). In the caption and not on the image,
-                      because the image's own anchor is the lightbox trigger —
-                      wrapping that in an outbound link would take the reader
-                      off the page every time they tried to look closer. The
-                      host IS the link text: "nature.com" says where you are
-                      going, in any language; the title says what it is. */}
-                  {(w.siteLink || w.link) && (
-                    <span class="mprof__caption-links">
-                      {w.siteLink && (
-                        <a class="mprof__link" href={w.siteLink} target="_blank" rel="noopener" title={t("member.lightbox.siteLink")}>
-                          {hostLabel(w.siteLink)}
-                        </a>
-                      )}
-                      {w.link && (
-                        <a class="mprof__link" href={w.link} target="_blank" rel="noopener" title={t("member.lightbox.link")}>
-                          {hostLabel(w.link)}
-                        </a>
-                      )}
-                    </span>
-                  )}
-                </figcaption>
-              )}
-            </figure>
-          ))}
+              ))
+            ),
+          )}
         </div>
       )
     }
@@ -351,8 +360,13 @@ const jsonLd = memberPageJsonLd({
 
 
 <script>
-  import PhotoSwipeLightbox from "photoswipe/lightbox";
-  import { lightboxPadding, registerLightboxText } from "../../../lib/lightboxText.ts";
+  import type PhotoSwipeLightbox from "photoswipe/lightbox";
+  // The options, the words and the video slides: one lightbox for the whole
+  // site, defined once in lib/lightbox.ts (the grid and the editor's preview
+  // build theirs from the same function).
+  import { createLightbox, parseLightboxStrings } from "../../../lib/lightbox.ts";
+  // The project carousels (2026-09-26); they release themselves on astro:before-swap.
+  import { initProjectCarousels, showInCarousel } from "../../../lib/projectCarousel.ts";
   import "photoswipe/style.css";
   // Immediately after the package sheet, never before: this is the chrome that
   // replaces it. The overrides are also written to win on specificity alone
@@ -360,111 +374,25 @@ const jsonLd = memberPageJsonLd({
   // rather than carrying it.
   import "../../../styles/lightbox.css";
 
-  interface LightboxStrings {
-    close: string;
-    zoom: string;
-    prev: string;
-    next: string;
-    error: string;
-    /** Accessible name for the per-image "where this appeared" link. */
-    linkTitle: string;
-    /** Accessible name for the member's own-site link on a piece. */
-    siteLinkTitle: string;
-  }
-
-  // English is the fallback, matching useTranslations() — a missing or
-  // malformed attribute costs the translation, never the lightbox.
-  const FALLBACK: LightboxStrings = {
-    close: "Close",
-    zoom: "Zoom",
-    prev: "Previous image",
-    next: "Next image",
-    error: "The image cannot be loaded",
-    linkTitle: "Where this image appeared",
-    siteLinkTitle: "This piece on the maker's own site",
-  };
-
-  // These options take raw HTML, which is how the stock SVG icons get replaced
-  // with markup this site can style. Everything injected here is either a
-  // static string or an escaped translation.
-  const esc = (s: string) =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
-  // Two borders on a box turned 45deg — the drawing .ccard__arrow uses on the
-  // community card, reproduced so both pagers on the site are one control.
-  const CHEVRON = '<span class="pswp__vscn-chevron" aria-hidden="true"></span>';
-
   // Rebuilt per navigation rather than once: ClientRouter swaps the document,
   // so a lightbox bound to the previous page's nodes would be holding dead
   // elements. MemberCard is the existing precedent for this pair.
   let lightbox: PhotoSwipeLightbox | null = null;
 
   document.addEventListener("astro:page-load", () => {
+    initProjectCarousels();
     lightbox?.destroy();
     lightbox = null;
     const gallery = document.querySelector<HTMLElement>(".mprof__works");
     if (!gallery) return;
 
-    let strings = FALLBACK;
-    try {
-      strings = { ...FALLBACK, ...JSON.parse(gallery.dataset.pswpI18n || "{}") };
-    } catch {
-      /* keep the fallback */
-    }
-
-    // The site drops transitions and leaves the thing in its final state
-    // rather than substituting a gentler animation. PhotoSwipe drives its
-    // open, close and zoom from JS, so they have to be switched off here; the
-    // CSS half lives in lightbox.css.
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    lightbox = new PhotoSwipeLightbox({
+    lightbox = createLightbox(parseLightboxStrings(gallery.dataset.pswpI18n), {
       gallery: ".mprof__works",
       children: ".mprof__work-link",
-      pswpModule: () => import("photoswipe"),
-
-      // ── Chrome. Nothing below changes behaviour. ──
-      // The hook every rule in lightbox.css hangs off.
-      mainClass: "pswp--vscn",
-      // Solid: the ground is the page's own paper, not a veil over it. Drag to
-      // dismiss still fades it, which is what makes the gesture legible.
-      bgOpacity: 1,
-      // PER SLIDE, and shared with the member page — see lightboxPadding in
-      // lightboxText.ts, which is also where the reasoning lives. The words go
-      // under the picture on every shape (2026-09-06); an upright image only
-      // reserves more room below, because it comes out narrower.
-      paddingFn: lightboxPadding,
-      closeSVG: `<span class="pswp__vscn-word">${esc(strings.close)}</span>`,
-      arrowPrevSVG: CHEVRON,
-      arrowNextSVG: CHEVRON,
-      zoomSVG: '<span class="pswp__vscn-zoom" aria-hidden="true"></span>',
-      // The glyphs above are all aria-hidden, so these are what a screen
-      // reader gets; PhotoSwipe writes each to both `title` and `aria-label`.
-      closeTitle: strings.close,
-      zoomTitle: strings.zoom,
-      arrowPrevTitle: strings.prev,
-      arrowNextTitle: strings.next,
-      errorMsg: strings.error,
-
-      // Spread rather than a ternary per key: PhotoSwipe merges options over
-      // its defaults, so writing `undefined` into one of these would erase the
-      // default instead of keeping it.
-      ...(reduced
-        ? {
-            showHideAnimationType: "none" as const,
-            showAnimationDuration: 0,
-            hideAnimationDuration: 0,
-            zoomAnimationDuration: false as const,
-          }
-        : {}),
     });
-
-    // The artist line, the caption, the description and the link — all of it
-    // in one shared module, because there is ONE lightbox on this site and it
-    // must not speak differently depending on which gallery opened it. Both
-    // galleries carried their own copy of this renderer until 2026-09-04.
-    registerLightboxText(lightbox, { linkTitle: strings.linkTitle, siteLinkTitle: strings.siteLinkTitle });
-
+    // Paging the lightbox pages the project carousel behind it, so closing
+    // zooms back onto the picture the visitor ended on.
+    lightbox.on("change", () => showInCarousel(lightbox?.pswp?.currSlide?.data.element));
     lightbox.init();
   });
 

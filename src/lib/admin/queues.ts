@@ -5,6 +5,7 @@
  * control.
  */
 import type { AdminImage, Queues } from "../adminApi.ts";
+import { retryNotice } from "../adminApi.ts";
 import { type Child, el, fmt, linkBtn } from "./dom.ts";
 
 export interface QueueDeps {
@@ -17,11 +18,26 @@ export interface QueueDeps {
   imageCache: Map<string, AdminImage>;
 }
 
-/** Everything that wants a human's decision, as one number for the badge. */
+/**
+ * Everything that wants a human's decision, as one number for the badge. A
+ * notice merely waiting for its tick is not in it; one the mailbox refused is,
+ * because nothing else will ever tell you.
+ */
+export const failingNotices = (q: Queues) => q.unsentNotices.filter((n) => n.attempts > 0);
 export const queueTotal = (q: Queues): number =>
-  q.pendingDeletions.length + q.staleUploads.length + q.unreferencedLive.length + q.emailMismatches.length;
+  q.pendingDeletions.length + q.staleUploads.length + q.unreferencedLive.length + q.emailMismatches.length +
+  failingNotices(q).length;
 
 export function renderQueues(q: Queues, deps: QueueDeps): HTMLElement {
+  const retry = (id: string) => {
+    const status = el("span", { role: "status" });
+    const button = linkBtn("Retry delivery", async () => {
+      button.disabled = true;
+      try { await retryNotice({ id }); await deps.refresh(); }
+      catch { status.textContent = "Retry failed. Please try again."; button.disabled = false; }
+    });
+    return el("span", {}, button, status);
+  };
   const memberLink = (uid: string) =>
     linkBtn(deps.memberName(uid) || uid, () => deps.go(`#uid/${encodeURIComponent(uid)}`));
   const imageLink = (imageId: string) =>
@@ -66,5 +82,22 @@ export function renderQueues(q: Queues, deps: QueueDeps): HTMLElement {
     ...q.emailMismatches.map((m) => el("div", { class: "row" },
       el("span", {}, `mirror ${m.storedEmail ?? "—"} ≠ auth ${m.authEmail}`), memberLink(m.uid))),
     empty(q.emailMismatches.length),
+
+    // The count is the failing ones, like the badge; the list is all of them,
+    // because "why has the signup from ten minutes ago not reached me" is
+    // answered by the row that says it is waiting for the wizard.
+    heading("Unsent notices", failingNotices(q).length,
+      `Operator mails awaiting delivery. After ${q.noticeMaxAttempts} failed sends, notices are retained here for manual retry.`),
+    ...q.unsentNotices.map((n) => el("div", { class: "row" },
+      el("span", {},
+        n.kind === "image" && n.imageId ? el("span", {}, "image ", imageLink(n.imageId)) : `signup${n.email ? ` ${n.email}` : ""}`,
+        ` · queued ${fmt(n.at)} · `,
+        n.attempts > 0
+          ? el("span", { class: "error" },
+              `failed ${n.attempts} of ${q.noticeMaxAttempts}, last ${fmt(n.lastAttemptAt)}`,
+              n.lastError ? ` · ${n.lastError}` : "")
+          : Date.parse(n.dueAt) > Date.now() ? `waiting until ${fmt(n.dueAt)}` : "goes with the next digest"),
+      el("span", { class: "row-actions" }, n.failed ? retry(n.id) : null, memberLink(n.uid)))),
+    empty(q.unsentNotices.length),
   );
 }

@@ -44,6 +44,29 @@ export function workDescription(
 }
 
 /**
+ * Which role and bio a locale shows (2026-09-23, "Alles sollte zweisprachig
+ * sein"). The pickLocaleText() rule with ONE difference: it falls back in
+ * BOTH directions. A gallery's English pane is the one always on screen, so
+ * an image cannot end up with German words only; the profile's two fields sit
+ * side by side as equals, and a member who fills in only the German one must
+ * not vanish from the English pages. Returns "" rather than undefined because
+ * ProfileViewModel types both as plain strings.
+ */
+function pickEitherText(en: string | undefined, de: string | undefined, lang: Lang): string {
+  const enText = (en ?? "").trim();
+  const deText = (de ?? "").trim();
+  return lang === "de" ? deText || enText : enText || deText;
+}
+
+export function profileRole(p: { role?: string; roleDe?: string }, lang: Lang): string {
+  return pickEitherText(p.role, p.roleDe, lang);
+}
+
+export function profileBio(p: { bio?: string; bioDe?: string }, lang: Lang): string {
+  return pickEitherText(p.bio, p.bioDe, lang);
+}
+
+/**
  * Real `portfolio` values are stored without a scheme ("quaint.ch",
  * "www.ikonaut.ch"), so they need one to be a usable href. Anything that
  * already has a scheme is left exactly as stored.
@@ -260,4 +283,18 @@ export function communityTagHref(lang: string, tag: string): string {
   const key = tag.trim().toLowerCase();
   const tagParam = key ? `tag=${encodeURIComponent(key)}&` : "";
   return `${base}?${tagParam}pattern=${TAG_CHIP_VIEW}`;
+}
+
+/**
+ * A tag printed on a WORK or a PROJECT (2026-09-27) goes to the Grid wall,
+ * not the spread: the wall's tiles filter by what is in the picture, and a
+ * project's tags are carried by its works there (inheritedTags() in
+ * projects.ts). The spread filters by the member's own tags, so a project
+ * tag the member never put on their profile would land on an empty page.
+ */
+export function communityWorkTagHref(lang: string, tag: string): string {
+  const base = lang === "de" ? "/de/community" : "/community";
+  const key = tag.trim().toLowerCase();
+  const tagParam = key ? `tag=${encodeURIComponent(key)}&` : "";
+  return `${base}?${tagParam}pattern=grid`;
 }

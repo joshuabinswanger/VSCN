@@ -1,7 +1,9 @@
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { uploadImage, updateImageText } from "./images.ts";
-import { db, storage } from "./firebase.ts";
-import { orderedGalleryItems, type GalleryRecord } from "./galleryRecords.ts";
+import { db, functions, storage } from "./firebase.ts";
+import { orderedGalleryItems, storageUrl, type GalleryRecord } from "./galleryRecords.ts";
+import { httpsCallable } from "firebase/functions";
+import type { EmbedRef } from "./embed.ts";
 import {
   decodeImage,
   toWebpBlob,
@@ -16,8 +18,11 @@ function storageBucket(): string {
   return storage.app.options.storageBucket ?? "";
 }
 
-// Keep in sync with validGallery() in firestore.rules.
-export const MAX_GALLERY_IMAGES = 8;
+// Keep in sync with validGallery() in firestore.rules, and with the slice in
+// functions/src/rebuildQueue.ts. 8 -> 12 on 2026-09-26 (Josh: "lets up the
+// image count to 12"); uploads.ts's MAX_STORED_WORKS (20) still leaves room
+// for replacements awaiting cleanup.
+export const MAX_GALLERY_IMAGES = 12;
 
 /**
  * What an account may hold BEFORE its email is verified (2026-09-02, Josh:
@@ -187,12 +192,29 @@ export interface GalleryItem {
    */
   siteLink?: string;
   /**
-   * Up to 5 labels from the same curated registry member tags draw from
+   * Up to 7 labels from the same curated registry member tags draw from
    * (2026-09-07, step 2 of documentation/20260907-works-on-the-record-design.md:
    * the wall filters by what is IN the picture, not who made it). Lives on
    * the record, same as every other word here.
    */
   tags?: string[];
+  /**
+   * WHICH PROJECT THIS WORK IS IN (2026-09-23, documentation/20260923-projects-design.md).
+   * At most one. Written onto the record at Save with the other words; the
+   * gallery array stays ids only, and the editor keeps a project's images
+   * adjacent in it.
+   */
+  projectId?: string;
+  /**
+   * A VIDEO WORK (2026-09-23, documentation/20260923-motion-works-design.md):
+   * the YouTube or Vimeo video it plays. `url` above is then the poster. Set
+   * by the server (resolveEmbed), never edited here — Save does not write it.
+   */
+  embed?: EmbedRef;
+  /** Whose poster `url` is: the platform's, or one the member uploaded ("Replace thumbnail"). */
+  posterSource?: "auto" | "member";
+  /** When the work was added (ISO). Build only — the VideoObject's uploadDate. */
+  addedAt?: string;
 }
 
 /**
@@ -387,6 +409,8 @@ export interface UploadOptions {
    * so a per-image Cancel button in the queue has something to call.
    */
   onCancellable?: (cancel: () => void) => void;
+  /** The work whose picture this upload replaces — see uploadImage in images.ts. */
+  replaces?: string;
 }
 
 /** Uploads through the record-first pipeline and returns the array item to append. */
@@ -402,6 +426,7 @@ export async function uploadGalleryImage(
     { width: image.width, height: image.height, color: image.color },
     options.onProgress,
     options.onCancellable,
+    options.replaces,
   );
   return { imageId, url, caption: "", width: image.width, height: image.height, color: image.color };
 }
@@ -434,6 +459,7 @@ export async function saveGalleryRecords(items: readonly GalleryItem[]): Promise
         link: item.link,
         siteLink: item.siteLink,
         tags: item.tags,
+        projectId: item.projectId,
       }),
     ),
   );
@@ -444,4 +470,95 @@ export async function saveGalleryRecords(items: readonly GalleryItem[]): Promise
     }
   });
   return failures;
+}
+
+// ── VIDEO LINKS (2026-09-23, release 1 of documentation/20260923-motion-works-design.md) ──
+//
+// A YouTube or Vimeo link is a work like any picture, and it arrives the way a
+// finished upload does: as a live record plus the GalleryItem to append. The
+// server does all of it (resolveEmbed in functions/src/embeds.ts) — it decides
+// what the link means, fetches the poster and stores it — so there is nothing
+// to prepare in the browser and no queue lane to wait in.
+
+/** What resolveEmbed / restoreAutoPoster hand back. Mirrors EmbedWorkResult in functions/src/embeds.ts. */
+interface EmbedWork {
+  imageId: string;
+  storagePath: string;
+  width: number;
+  height: number;
+  color?: string;
+  caption?: string;
+  embed: EmbedRef;
+  posterSource: "auto" | "member";
+}
+
+/**
+ * Why a video link did not become a work, one sentence each
+ * (profile.embed.err.*). The first six are the server's own reasons; the
+ * rest are the same transport failures an upload can meet.
+ */
+export type EmbedErrorCode =
+  | "verify" | "notVideoLink" | "videoNotFound" | "notEmbeddable" | "providerUnavailable" | "noThumbnail"
+  /** The account holds its 20 works, counting removed ones the sweep has not collected yet. */
+  | "storedLimit"
+  /** 40 new works in an hour. */
+  | "hourlyLimit"
+  /** "Use automatic thumbnail" on a work that no longer has one to go back to. */
+  | "notRestorable"
+  /** Another video import or poster restore for this member holds the lease (up to 90 s, functions/src/embedAllowance.ts). */
+  | "busy"
+  | "full" | "denied" | "network" | "unknown";
+
+const EMBED_REASONS = new Set<EmbedErrorCode>([
+  "verify", "notVideoLink", "videoNotFound", "notEmbeddable", "providerUnavailable", "noThumbnail",
+  "storedLimit", "hourlyLimit", "notRestorable", "busy",
+]);
+
+export function embedErrorCode(error: unknown): EmbedErrorCode {
+  const details = typeof error === "object" && error !== null ? Reflect.get(error, "details") : undefined;
+  const reason = typeof details === "object" && details !== null ? String(Reflect.get(details, "reason") ?? "") : "";
+  if (EMBED_REASONS.has(reason as EmbedErrorCode)) return reason as EmbedErrorCode;
+  const code = typeof error === "object" && error !== null ? String(Reflect.get(error, "code") ?? "") : "";
+  // The callable SDK prefixes its codes ("functions/resource-exhausted").
+  switch (code.replace(/^functions\//, "")) {
+    case "resource-exhausted":
+      return "full";
+    case "permission-denied":
+    case "unauthenticated":
+      return "denied";
+    case "unavailable":
+    case "deadline-exceeded":
+    case "internal":
+      return "network";
+    default:
+      return "unknown";
+  }
+}
+
+function embedItem(work: EmbedWork): GalleryItem {
+  return {
+    imageId: work.imageId,
+    url: storageUrl(storageBucket(), work.storagePath),
+    caption: work.caption ?? "",
+    width: work.width,
+    height: work.height,
+    ...(work.color ? { color: work.color } : {}),
+    embed: work.embed,
+    posterSource: work.posterSource,
+  };
+}
+
+/** "Add a video link": the server makes the work; this returns it ready to append. */
+export async function addVideoLink(url: string): Promise<GalleryItem> {
+  const result = await httpsCallable<{ url: string }, EmbedWork>(functions, "resolveEmbed")({ url });
+  return embedItem(result.data);
+}
+
+/**
+ * "Use automatic thumbnail": a NEW record with the platform's poster, for the
+ * editor to swap in exactly as it swaps a replaced picture (onGalleryReplaced).
+ */
+export async function restoreAutoThumbnail(imageId: string): Promise<GalleryItem> {
+  const result = await httpsCallable<{ imageId: string }, EmbedWork>(functions, "restoreAutoPoster")({ imageId });
+  return embedItem(result.data);
 }

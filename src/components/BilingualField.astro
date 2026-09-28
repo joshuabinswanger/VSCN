@@ -1,0 +1,199 @@
+---
+// One profile text field in two languages behind an EN/DE switch: the same
+// mode switch a gallery image uses for its caption and description
+// (2026-09-23, Josh: "make it the same switch as with the images"). Only one
+// language's control is on screen at a time; the other keeps its value while
+// hidden, so the form scripts read and write both ids exactly as before.
+//
+// The German side is optional in either direction — see profileRole() /
+// profileBio() in src/lib/links.ts for the fallback the notes describe.
+import { useTranslations, type Lang } from "../i18n/utils";
+import InfoTip from "./InfoTip.astro";
+
+interface Props {
+  lang: Lang;
+  /** id of the English control; the German one is `${id}-de`. */
+  id: string;
+  /** Visible label, language-neutral ("Role"). */
+  label: string;
+  /** Accessible names of the two controls ("Role (English)", "Role (German)"). */
+  labelEn: string;
+  labelDe: string;
+  placeholder: string;
+  placeholderDe: string;
+  note?: string;
+  /** Omit for no German note at all (the profile editor, 2026-09-25). */
+  noteDe?: string;
+  /** A textarea of this many rows; absent means a one-line input. */
+  rows?: number;
+  /** Hide both notes behind an ⓘ, /profile only — the wizard omits this. */
+  tip?: boolean;
+}
+
+const {
+  lang,
+  id,
+  label,
+  labelEn,
+  labelDe,
+  placeholder,
+  placeholderDe,
+  note,
+  noteDe,
+  rows,
+  tip = false,
+} = Astro.props;
+const t = useTranslations(lang);
+const idDe = `${id}-de`;
+const noteId = `${id}-note`;
+const noteIdDe = `${idDe}-note`;
+---
+
+<div class="field bifield" data-bifield>
+  <div class="bifield__head">
+    <label class="label" for={id} data-bifield-label>{label}</label>
+    <div class="bifield__switch" role="group" aria-label={label}>
+      <button
+        type="button"
+        class="bifield__btn is-active"
+        data-bifield-btn="en"
+        data-for={id}
+        aria-pressed="true"
+        aria-label={t("profile.bilingual.show.en")}
+      >EN</button>
+      <button
+        type="button"
+        class="bifield__btn"
+        data-bifield-btn="de"
+        data-for={idDe}
+        aria-pressed="false"
+        aria-label={t("profile.bilingual.show.de")}
+      >DE</button>
+    </div>
+  </div>
+
+  {/* With a tip, each pane's control carries its own i, and its note is a
+      box that hovers under the control (src/lib/infotip.ts); written out, the
+      note sits under the control. */}
+  <div class="bifield__pane" data-bifield-pane="en">
+    {tip && note && <p id={noteId} class="field-note" data-tip hidden>{note}</p>}
+    <div class="infotip-field">
+      {
+        rows ? (
+          <textarea id={id} rows={rows} class="input textarea" aria-label={labelEn} placeholder={placeholder} aria-describedby={note ? noteId : undefined} />
+        ) : (
+          <input id={id} type="text" class="input" aria-label={labelEn} placeholder={placeholder} aria-describedby={note ? noteId : undefined} />
+        )
+      }
+      {tip && note && <InfoTip lang={lang} for={noteId} />}
+    </div>
+    {!tip && note && <p id={noteId} class="field-note">{note}</p>}
+  </div>
+
+  <div class="bifield__pane" data-bifield-pane="de" hidden>
+    {tip && noteDe && <p id={noteIdDe} class="field-note" data-tip hidden>{noteDe}</p>}
+    <div class="infotip-field">
+      {
+        rows ? (
+          <textarea id={idDe} rows={rows} class="input textarea" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteDe ? noteIdDe : undefined} />
+        ) : (
+          <input id={idDe} type="text" class="input" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteDe ? noteIdDe : undefined} />
+        )
+      }
+      {tip && noteDe && <InfoTip lang={lang} for={noteIdDe} />}
+    </div>
+    {!tip && noteDe && <p id={noteIdDe} class="field-note">{noteDe}</p>}
+  </div>
+</div>
+
+<style>
+  .bifield__pane {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .bifield__pane[hidden] {
+    display: none;
+  }
+
+  /* Bottom-aligned, so the title's own line sits the field's gap above the
+     input like every other title (2026-09-28). Centred on the 24px EN/DE
+     switch, it floated 4px higher than the rest. */
+  .bifield__head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  /* The gallery's switch (.gallery-lang-* in ProfileForm.astro), value for
+     value — the point of the change is that a member meets one control, not
+     two that look alike. */
+  .bifield__switch {
+    display: flex;
+    width: fit-content;
+  }
+
+  .bifield__btn {
+    padding: 3px 10px;
+    background: none;
+    border: 1.5px solid var(--color-border);
+    color: var(--color-muted);
+    font: inherit;
+    font-size: var(--fs-72);
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      color 0.15s,
+      border-color 0.15s;
+  }
+
+  .bifield__btn + .bifield__btn {
+    border-left: none;
+  }
+
+  .bifield__btn:first-child {
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  }
+
+  .bifield__btn:last-child {
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  .bifield__btn:hover:not(.is-active) {
+    color: var(--color-dark);
+    border-color: var(--color-dark);
+  }
+
+  .bifield__btn.is-active {
+    background: var(--color-dark);
+    color: var(--color-bg);
+    border-color: var(--color-dark);
+  }
+</style>
+
+<script>
+  // Delegated on the document, once: the editors are swapped in by client-side
+  // navigation, and a listener bound per element at load would miss the new
+  // page's fields.
+  document.addEventListener("click", (e) => {
+    const btn = (e.target as Element | null)?.closest<HTMLButtonElement>("[data-bifield-btn]");
+    const root = btn?.closest<HTMLElement>("[data-bifield]");
+    if (!btn || !root) return;
+    const lang = btn.dataset.bifieldBtn;
+    root.querySelectorAll<HTMLButtonElement>("[data-bifield-btn]").forEach((b) => {
+      const active = b === btn;
+      b.classList.toggle("is-active", active);
+      b.setAttribute("aria-pressed", String(active));
+    });
+    root.querySelectorAll<HTMLElement>("[data-bifield-pane]").forEach((pane) => {
+      pane.hidden = pane.dataset.bifieldPane !== lang;
+    });
+    // The visible label names whichever control is showing.
+    const label = root.querySelector<HTMLLabelElement>("[data-bifield-label]");
+    if (label && btn.dataset.for) label.htmlFor = btn.dataset.for;
+  });
+</script>

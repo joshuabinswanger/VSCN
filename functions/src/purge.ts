@@ -6,6 +6,7 @@ import { adminAuth, db, getBucket } from "./admin";
 import { imageRefsFor } from "./lifecycle";
 import type { DeletionJob } from "./types";
 import { deleteRefs } from "./util";
+import { recordObjectPaths } from "./uploads";
 
 type Step = keyof DeletionJob["steps"];
 
@@ -47,7 +48,7 @@ export async function purgeAccount(uid: string): Promise<void> {
       const images = await imageRefsFor(uid);
       const bucket = getBucket();
       for (const d of images) {
-        await bucket.file(d.data().storagePath as string).delete({ ignoreNotFound: true });
+        for (const path of recordObjectPaths(d.data())) await bucket.file(path).delete({ ignoreNotFound: true });
       }
       await deleteRefs(images.map((d) => d.ref));
       await tick("imagesDeleted");
@@ -62,9 +63,14 @@ export async function purgeAccount(uid: string): Promise<void> {
     if (!done.docsDeleted) {
       const slugs = await db.collection("slugs").where("uid", "==", uid).get();
       const permits = await db.collection("uploadPermits").where("ownerUid", "==", uid).get();
+      const projects = await db.collection("projects").where("ownerUid", "==", uid).get();
+      const failedNotices = await db.collection("failedAdminEvents").where("uid", "==", uid).get();
       await deleteRefs([
         ...slugs.docs.map((d) => d.ref),
         ...permits.docs.map((d) => d.ref),
+        ...projects.docs.map((d) => d.ref),
+        ...failedNotices.docs.map((d) => d.ref),
+        db.doc(`embedRequests/${uid}`),
         db.doc(`uploadLimits/${uid}`),
         db.doc(`rebuildMembers/${uid}`),
         db.doc(`publicProfiles/${uid}`),

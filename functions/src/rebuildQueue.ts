@@ -7,12 +7,20 @@ import { db } from "./admin";
 import { dispatchRebuild, githubRebuildToken } from "./rebuild";
 
 /** Ignore bookkeeping timestamps: resaving identical content needs no build. */
-export function rebuildFingerprint(profile: Record<string, unknown>, images: { id: string; data: Record<string, unknown> }[]): string {
+export function rebuildFingerprint(
+  profile: Record<string, unknown>,
+  images: { id: string; data: Record<string, unknown> }[],
+  projects: { id: string; data: Record<string, unknown> }[] = [],
+): string {
   const content = (data: Record<string, unknown>) => Object.fromEntries(
     Object.entries(data).filter(([key]) => key !== "updatedAt" && key !== "createdAt").sort(([a], [b]) => a.localeCompare(b)),
   );
+  const rows = (docs: { id: string; data: Record<string, unknown> }[]) =>
+    docs.map((row) => [row.id, content(row.data)]).sort(([a], [b]) => String(a).localeCompare(String(b)));
+  // No projects fingerprints exactly as before projects existed, so a member
+  // without any is not re-queued by the deploy that added them.
   return createHash("sha256").update(JSON.stringify([
-    content(profile), images.map((row) => [row.id, content(row.data)]).sort(([a], [b]) => String(a).localeCompare(String(b))),
+    content(profile), rows(images), ...(projects.length ? [rows(projects)] : []),
   ])).digest("hex");
 }
 
@@ -22,19 +30,42 @@ export async function queueMemberRebuild(uid: string): Promise<void> {
   const queueRef = db.doc("rebuildQueue/site");
   await db.runTransaction(async (tx) => {
     const state = await tx.get(stateRef);
+    const queue = await tx.get(queueRef);
     const now = Date.now();
     const profile = await tx.get(db.doc(`publicProfiles/${uid}`));
-    const ids = Array.isArray(profile.data()?.gallery)
-      ? profile.data()!.gallery.filter((id: unknown): id is string => typeof id === "string" && !id.includes("/")).slice(0, 8)
+    // Fingerprint what the SITE would show, not what the document holds. The
+    // export (scripts/export-site-data.mjs) drops profiles that are inactive
+    // or moderationHidden, so for the build they are absent, and they are
+    // fingerprinted as absent here. A hidden member's uploads then change
+    // nothing and queue nothing — the release walk relies on this — while
+    // hiding or deactivating a visible member still changes the fingerprint
+    // and queues the build that drops them.
+    const data = profile.data();
+    const shown = data && data.active !== false && data.moderationHidden !== true ? data : null;
+    const ids = Array.isArray(shown?.gallery)
+      ? shown!.gallery.filter((id: unknown): id is string => typeof id === "string" && !id.includes("/")).slice(0, 12)
       : [];
     const images = ids.length ? await tx.getAll(...ids.map((id: string) => db.doc(`images/${id}`))) : [];
-    const fingerprint = rebuildFingerprint(profile.data() ?? { deleted: true }, images
+    // Projects too, because the export ships every project of a visible
+    // member: a Save that only retitles a project touches no profile field
+    // and no image record, and without this it would never publish
+    // (documentation/20260923-projects-design.md, Build).
+    const projects = shown ? (await tx.get(db.collection("projects").where("ownerUid", "==", uid))).docs : [];
+    const fingerprint = rebuildFingerprint(shown ?? { deleted: true }, images
       .filter((d) => d.exists)
       .map((d) => ({ id: d.id, data: d.data() as Record<string, unknown> }))
-      .filter((d) => d.data.ownerUid === uid));
-    tx.set(stateRef, { checkedAt: Timestamp.fromMillis(now), fingerprint });
-    if (fingerprint !== state.data()?.fingerprint) {
-      tx.set(queueRef, { dirtyAt: Timestamp.fromMillis(now), revision: randomUUID() }, { merge: true });
+      .filter((d) => d.data.ownerUid === uid), projects.map((d) => ({ id: d.id, data: d.data() })));
+    tx.set(stateRef, { checkedAt: Timestamp.fromMillis(now), fingerprint }, { merge: true });
+    if (fingerprint === state.data()?.fingerprint) {
+      // A member whose last change predates generations (2026-09-28) has
+      // nothing unpublished — the fingerprint says the site already shows it —
+      // so they start at 0, which getPublicationStatus reads as published.
+      // Without this, every unchanged save reported "unknown" indefinitely.
+      if (typeof state.data()?.generation !== "number") tx.set(stateRef, { generation: 0 }, { merge: true });
+    } else {
+      const generation = (queue.data()?.generation ?? 0) + 1;
+      tx.set(stateRef, { generation }, { merge: true });
+      tx.set(queueRef, { generation, dirtyAt: Timestamp.fromMillis(now), revision: randomUUID() }, { merge: true });
     }
   });
 }

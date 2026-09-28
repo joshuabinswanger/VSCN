@@ -25,16 +25,18 @@ const bucket = process.env.PUBLIC_FIREBASE_STORAGE_BUCKET || env.PUBLIC_FIREBASE
 if (!projectId || (expected && expected !== projectId)) throw new Error("Export credential does not match the site project.");
 
 const pick = (data, keys) => Object.fromEntries(keys.filter((key) => data[key] !== undefined).map((key) => [key, data[key]]));
-const profileKeys = ["displayName", "photoURL", "photoImageId", "photoColor", "memberType", "role", "bio", "portfolio", "socialMedia", "affiliation", "location", "languages", "visualNeeds", "openTo", "primaryAudiences", "tags", "gallery", "active", "moderationHidden"];
-const imageKeys = ["ownerUid", "kind", "storagePath", "width", "height", "color", "caption", "captionDe", "description", "descriptionDe", "descriptionShort", "link", "siteLink", "tags", "status", "origin", "provenance"];
+const profileKeys = ["displayName", "photoURL", "photoImageId", "photoColor", "memberType", "role", "roleDe", "bio", "bioDe", "portfolio", "socialMedia", "affiliation", "location", "languages", "visualNeeds", "openTo", "primaryAudiences", "tags", "gallery", "active", "moderationHidden"];
+const imageKeys = ["ownerUid", "kind", "storagePath", "width", "height", "color", "caption", "captionDe", "description", "descriptionDe", "descriptionShort", "link", "siteLink", "tags", "status", "origin", "provenance", "media", "embed", "posterSource", "projectId"];
+const projectKeys = ["ownerUid", "title", "titleDe", "description", "descriptionDe", "link", "affiliations", "tags"];
 const app = initializeApp({ credential: credential ? cert(credential) : applicationDefault(), projectId }, `site-export-${Date.now()}`);
 try {
   const db = getFirestore(app);
-  const [profiles, slugs, images, moderation] = await Promise.all([
+  const [profiles, slugs, images, moderation, projects] = await Promise.all([
     db.collection("publicProfiles").orderBy("displayName").get(),
     db.collection("slugs").get(),
     db.collection("images").where("kind", "==", "gallery").where("status", "==", "live").get(),
     db.collection("imageModeration").get(),
+    db.collection("projects").get(),
   ]);
   const visibleProfiles = profiles.docs
     .filter((doc) => doc.data().active !== false && doc.data().moderationHidden !== true)
@@ -47,7 +49,15 @@ try {
     slugs: slugs.docs.filter((doc) => visible.has(doc.data().uid))
       .map((doc) => ({ slug: doc.id, uid: doc.data().uid, current: doc.data().current === true })),
     images: images.docs.filter((doc) => visible.has(doc.data().ownerUid) && referenced.has(doc.id))
-      .map((doc) => ({ imageId: doc.id, ...pick(doc.data(), imageKeys) })),
+      .map((doc) => ({
+        imageId: doc.id, ...pick(doc.data(), imageKeys),
+        // A video work's uploadDate in its VideoObject (src/lib/seo.ts). As a
+        // string: a Timestamp would serialise as {_seconds, _nanoseconds}.
+        ...(doc.data().media === "embed" && doc.data().createdAt?.toDate
+          ? { createdAt: doc.data().createdAt.toDate().toISOString() } : {}),
+      })),
+    projects: projects.docs.filter((doc) => visible.has(doc.data().ownerUid))
+      .map((doc) => ({ projectId: doc.id, ...pick(doc.data(), projectKeys) })),
   };
   // ADMIN UIDS DO NOT TRAVEL. The snapshot carries the conclusion — a number
   // and a flag — and never the ratings map that produced it: this file is
@@ -69,6 +79,7 @@ try {
     projectId, profiles: snapshot.profiles.length, images: snapshot.images.length,
     rated: snapshot.moderation.filter((row) => modById.has(row.imageId)).length,
     hidden: snapshot.moderation.filter((row) => row.hidden).length,
+    projects: snapshot.projects.length,
   }));
 } finally {
   await deleteApp(app);

@@ -1,0 +1,328 @@
+/* ── Type ─────────────────────────────────────────────────────────────────
+   THE SITE'S TYPE, IN ONE FILE (2026-09-28, Josh: "centralize the type in a
+   central css file, so we have a kind of unified look across the website").
+
+   Two halves:
+
+   1. THE SCALE: every font size the site uses, as --fs-* tokens with both
+      breakpoints' pixels. Moved here from global.css unchanged.
+   2. THE VOICES: a dozen named text styles (size, weight, leading, tracking,
+      case), each written ONCE below. Before this file there were 126 distinct
+      combinations across 226 rules, many of them near-duplicates of each other:
+      keys at 0.58rem beside keys at 0.62rem, a card's role at weight 600 beside
+      a profile's links at 500, a lightbox caption a step smaller than the same
+      caption on the page it opened from.
+
+   HOW A VOICE IS APPLIED. Each voice is one rule whose selector list is the
+   `.t-*` class plus every existing element that speaks it. New markup takes
+   the class. Existing elements are listed by name because several of them are
+   drawn by JavaScript (the lightbox, the editor's live previews) or by
+   PhotoSwipe itself, and a selector reaches those where a class in a template
+   would not. So this file is also the INDEX of who speaks what: to change how
+   the site's labels look, change LABEL; to see what is a label, read its list.
+
+   WHAT STAYS IN THE COMPONENTS. Layout and colour: margins, display, clamps,
+   the muted/dark choice, underlines. A component rule for a listed element
+   must NOT set font-size, font-weight, line-height, letter-spacing or
+   text-transform. If it does, it forks the voice. Where one genuinely has to
+   differ, say so beside the override.
+
+   ORDER. Navbar imports this file straight after global.css, so a voice beats
+   a global component rule of the same specificity (`.optchip` vs `.tagchip`
+   on the editor's tag chips is the case that needs it).
+
+   NOT HERE YET: the vw-fitted display type (the brand title, page and member
+   names), the form controls' own sizes (.input, .btn-*, .optchip, which are
+   components in global.css), and the admin console. Those are the next rows
+   when this becomes a design system. */
+
+/* THE TYPE SCALE, STATED EXPLICITLY (2026-09-26, Josh: "everything should get
+   the next round pixel value except very small things. Tags should get a bump
+   down 1px"). Every font-size on the site used to be a bare rem, so a phone
+   drew whatever 12px × factor came to — 9.36px, 10.56px — and the only lever
+   was the root size, which moves padding and gaps along with the type.
+   Now each size the site uses is a token named after its rem factor
+   (--fs-78 = 0.78rem). On MOBILE each one is pinned to the next whole pixel
+   above what 12px × factor gave, so everything grows by under a pixel and lands
+   on a round value; sizes that collapse onto one pixel (0.75–0.82 → 10px) were
+   never meant to be told apart at that scale anyway.
+   DESKTOP followed the same day (Josh: "bump the text size on desktop as well
+   by 1px"): each token is 13px × factor plus one pixel, rounded to the whole
+   pixel, the old value in the comment. Body copy 13 → 14px.
+   The roots stay 12px / 13px, so spacing does not move on either.
+   THE SMALL PRINT JOINED THE TABLE (2026-09-28, Josh: "can you centralize the
+   styles?"). Sizes under 0.72rem (the eyebrows, keys, value chips and "View
+   profile" links) were left as bare rem in their own rules until then. They
+   are rows here now, so every font size on the site is set in this one table.
+   Desktop keeps their exact rem, so nothing moves there; a phone gets the next
+   whole pixel, the same rule the rest of the table started from.
+   Still literal: the vw-driven display clamps and the fitted brand title,
+   which are fitted to the screen and not part of the scale.
+   A NEW SIZE belongs in this table, with both its pixels, not as a bare rem. */
+:root {
+  /* Small print: the rem it always was, on desktop. */
+  --fs-58: 0.58rem;
+  --fs-60: 0.6rem;
+  --fs-62: 0.62rem;
+  --fs-65: 0.65rem;
+  --fs-66: 0.66rem;
+  --fs-68: 0.68rem;
+  --fs-70: 0.7rem;
+  --fs-72: 10px; /* 9.36 */
+  --fs-74: 11px; /* 9.62 */
+  --fs-75: 11px; /* 9.75 */
+  --fs-76: 11px; /* 9.88 */
+  --fs-78: 11px; /* 10.14 */
+  --fs-80: 11px; /* 10.40 */
+  --fs-82: 12px; /* 10.66 */
+  --fs-85: 12px; /* 11.05 */
+  --fs-88: 12px; /* 11.44 */
+  --fs-90: 13px; /* 11.70 */
+  --fs-95: 13px; /* 12.35 */
+  /* Body copy. <body> sets it, so text with no size of its own follows. */
+  --fs-100: 14px; /* 13.00 */
+  --fs-105: 15px; /* 13.65 */
+  --fs-115: 16px; /* 14.95 */
+  --fs-120: 17px; /* 15.60 */
+  --fs-125: 17px; /* 16.25 */
+  --fs-140: 19px; /* 18.20 */
+  --fs-160: 22px; /* 20.80 */
+  --fs-180: 24px; /* 23.40 */
+  --fs-190: 26px; /* 24.70 */
+  --fs-225: 30px; /* 29.25 */
+  /* Every tag chip (.tagchip). Its own token because tags go the OTHER way on
+     a phone: down to the whole pixel below 8.64px, where everything else goes
+     up to the one above. Not in the desktop bump either: still 0.72rem.
+     11px on both breakpoints for part of 2026-09-28, then back to these
+     (Josh, same day: "make the tags smaller again"). */
+  --fs-tag: 0.72rem;
+  /* The small caps that label things (see LABEL below). Its own token
+     because it is a voice, not a factor: 10px here, 11px on a phone. */
+  --fs-label: 10px;
+  /* A carousel's position dots, on the directory card (.ccard__dot) and on
+     a member page's project carousels (.mprof__carousel-dot): one size for
+     both. Doubled from 0.18rem on 2026-09-28 (Josh: "make the dots
+     bigger"). */
+  --carousel-dot: 0.36rem;
+  --carousel-dot-gap: 0.28rem;
+}
+
+/* THE PHONE READS AT THE REFERENCE'S SIZE (2026-09-27, Josh: "text larger on
+   mobile, check illustratoren schweiz for reference"). Measured there at 375px:
+   captions and credits 12px, body 14px, section heads 16px, menu 16px. The
+   phone column now takes the DESKTOP pixel for every token, and the caption
+   band (0.78–0.80: card roles, profile links, card bios) one more on top, so
+   the smallest running text on a phone is 12px like the reference's. The old
+   phone pixel is in each comment. Tags stay at 8px: Josh took them down on
+   purpose on 2026-09-26, and they get letter-spacing instead (.tagchip).
+   An 11px trial on 2026-09-28 was reverted the same day. */
+@media (--bp-mobile) {
+  :root {
+    --fs-58: 7px; /* 6.96 */
+    --fs-60: 8px; /* 7.20 */
+    --fs-62: 8px; /* 7.44 */
+    --fs-65: 8px; /* 7.80 */
+    --fs-66: 8px; /* 7.92 */
+    --fs-68: 9px; /* 8.16 */
+    --fs-70: 9px; /* 8.40 */
+    --fs-72: 10px; /* 9 */
+    --fs-74: 10px; /* 9 */
+    --fs-75: 11px; /* 10 */
+    --fs-76: 11px; /* 10 */
+    --fs-78: 12px; /* 10 */
+    --fs-80: 12px; /* 10 */
+    --fs-82: 12px; /* 10 */
+    --fs-85: 12px; /* 11 */
+    --fs-88: 13px; /* 11 */
+    --fs-90: 13px; /* 11 */
+    --fs-95: 13px; /* 12 */
+    --fs-100: 14px; /* 13 */
+    --fs-105: 15px; /* 13 */
+    --fs-115: 16px; /* 14 */
+    --fs-120: 17px; /* 15 */
+    --fs-125: 17px; /* 16 */
+    --fs-140: 19px; /* 17 */
+    --fs-160: 22px; /* 20 */
+    --fs-180: 24px; /* 22 */
+    --fs-190: 26px; /* 23 */
+    --fs-225: 30px; /* 28 */
+    --fs-tag: 8px; /* 8.64 */
+    --fs-label: 11px;
+  }
+}
+/* ══ THE VOICES ════════════════════════════════════════════════════════════ */
+
+/* TITLE: the heading of a form page (sign in, onboarding, verify). */
+.t-title,
+.auth-title,
+.ob-title,
+.verify-title,
+.action-title {
+  font-size: var(--fs-140);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+/* SUB: the sentence under a TITLE. */
+.t-sub,
+.auth-sub,
+.ob-sub,
+.verify-sub,
+.action-sub {
+  font-size: var(--fs-90);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* NAME: a member's name on a directory card. */
+.t-name,
+.ccard__name {
+  font-size: var(--fs-120);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+/* HEADING: section heads and field labels, in caps. The info and legal
+   pages' heads were 0.85, the form labels 0.82 and the editor's tabs 0.78,
+   which are all 12px on a phone and 11–12px on desktop: one voice. */
+.t-heading,
+.label,
+.info-heading,
+.legal-heading,
+.section-tab,
+.ob-progress-text,
+.gallery-project-name {
+  font-size: var(--fs-82);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* LABEL: the small caps that name a thing rather than say it. Keys on the
+   member page and the card panel ("TAGS", "LINKS"), "Open to", the tag
+   groups in the editor, and the lightbox's Close. These were five sizes
+   (0.58–0.68rem, 7–9px) and the lightbox's were the smallest type on the
+   site. Now one: --fs-label, 10px, 11px on a phone. The lightbox's counter
+   and artist credit left this voice on 2026-09-28 for COUNT and META. */
+.t-label,
+.mprof__key,
+.mprof__open,
+.pdisc__key,
+.tag-group-title,
+.gallery-tags-title,
+.gallery-details-title,
+.harness__label,
+.pswp--vscn .pswp__vscn-word {
+  font-size: var(--fs-label);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* META: the line under a name, meaning a member's role, their links, a work's
+   author. Was 0.75–0.78rem at weights 500 and 600; now 500 throughout, so a
+   role on a card and the same role on a profile are the same line. The
+   lightbox's artist credit and a work's links there joined on 2026-09-28
+   (Josh: "all the styles in photoswipe adjusted to the rest of the site"):
+   the same author line as a Grid tile's, the same links as under the work on
+   the member page. */
+.t-meta,
+.ccard__role,
+.member-role,
+.mprof__link,
+.member-link,
+.pdisc__link,
+.cwork__author,
+.pswp--vscn .pswp__vscn-credit-name,
+.pswp--vscn .pswp__vscn-text-link {
+  font-size: var(--fs-78);
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+/* CAPTION: the words that belong to a picture (a work's title and
+   description, a card's bio, a project's description) wherever the picture
+   is: on the member page, in the card's panel, in the lightbox. The lightbox
+   used to set them a step smaller than the page it opened from. Colour (dark
+   title, muted description) stays with each component. */
+.t-caption,
+.mprof__caption,
+.mprof__project-desc,
+.mprof__project-with,
+.pdisc__bio,
+.pswp--vscn .pswp__vscn-text-caption,
+.pswp--vscn .pswp__vscn-text-desc,
+.pswp--vscn .pswp__vscn-text-project,
+.pswp--vscn .pswp__vscn-text-affiliations {
+  font-size: var(--fs-78);
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+/* LINK: a small named step, meaning "View profile". Same size as LABEL, in
+   lower case: an action, not a name. The underline is drawn by each
+   component. (The lightbox's provenance lines were LINK until 2026-09-28;
+   they are META and CAPTION now, as the same lines are on the member page.) */
+.t-link,
+.ccard__profile,
+.cindex__profile {
+  font-size: var(--fs-label);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+}
+
+/* COUNT: a carousel's position, "2 / 7", wherever pictures are paged: the
+   directory card, a project's carousel on the member page, and the
+   lightbox's own counter (2026-09-28, Josh: "make the counter and all the
+   styles in photoswipe adjusted to the rest of the site"). Plain numerals,
+   not caps, with tabular figures so "9 / 12" and "10 / 12" do not shift.
+   Colour (muted) stays with each component. */
+.t-count,
+.ccard__count,
+.mprof__carousel-count,
+.pswp--vscn .pswp__vscn-counter-count {
+  font-size: var(--fs-75);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* BODY: running prose that is not a caption, meaning a member's bio. */
+.t-body,
+.mprof__bio,
+.member-bio {
+  font-size: var(--fs-100);
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+/* CHIP: the square value chips beside the tags (visual needs, links), kept
+   apart from TAG on purpose (2026-09-08, Josh: "tags only"). */
+.t-chip,
+.pdisc__val:not(.tagchip),
+.mprof__val:not(.tagchip),
+.ccpv__tag {
+  font-size: var(--fs-68);
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* TAG: every tag, on every page. The chip's box (border, padding, the
+   tracking compensation) is .tagchip in global.css; --tag-track is set there
+   because the padding reads it too. */
+.t-tag,
+.tagchip {
+  font-size: var(--fs-tag);
+  font-weight: 400;
+  line-height: 1.25;
+  letter-spacing: var(--tag-track);
+  text-transform: uppercase;
+}

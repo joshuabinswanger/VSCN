@@ -11,6 +11,8 @@ export interface AdminImage {
   imageId: string; ownerUid: string; kind: "avatar" | "gallery"; storagePath: string;
   width: number; height: number; color?: string; caption?: string; captionDe?: string; description?: string;
   descriptionDe?: string;
+  /** The project this work is in, if any (functions/src/types.ts ImageDoc.projectId). */
+  projectId?: string;
   origin: "member" | "curated"; status: "uploading" | "live" | "pendingDeletion"; createdAt: string;
   /**
    * Is a profile document actually pointing at this? NOT the same question as
@@ -25,6 +27,8 @@ export interface DeletionJobView {
   steps: { imagesDeleted: boolean; filesDeleted: boolean; docsDeleted: boolean; authDeleted: boolean };
   completedAt: string | null; lastError: string | null;
 }
+/** One projects/{projectId} document — see functions/src/adminOps.ts memberGraph. */
+export interface AdminProject { projectId: string; [key: string]: unknown }
 export interface MemberGraph {
   uid: string;
   auth: AuthSummary | null;
@@ -34,6 +38,8 @@ export interface MemberGraph {
   onboardingRequest: Record<string, unknown> | null;
   deletion: DeletionJobView | null;
   slugs: { slug: string; current: boolean }[];
+  /** Absent from an adminLookupMember deployed before projects (2026-09-23). */
+  projects?: AdminProject[];
 }
 export interface LookupResult {
   graph: MemberGraph | null;
@@ -45,6 +51,20 @@ export interface Queues {
   /** `live` records no profile points at — the one orphan class no sweeper takes. */
   unreferencedLive: AdminImage[];
   emailMismatches: { uid: string; storedEmail: string | null; authEmail: string }[];
+  /** adminEvents/ — the operator notices the digest has not mailed yet, oldest first. */
+  unsentNotices: UnsentNotice[];
+  /** Failed ticks after which the digest drops a notice (MAX_ATTEMPTS in adminDigest.ts). */
+  noticeMaxAttempts: number;
+}
+export interface UnsentNotice {
+  failed?: boolean;
+  id: string; kind: "signup" | "image"; uid: string; imageId: string | null; email: string | null;
+  at: string;
+  /** Earliest tick that may send it: a signup waits for the wizard or half an hour. */
+  dueAt: string;
+  /** Failed sends so far. 0 = simply not sent yet. */
+  attempts: number;
+  lastError: string | null; lastAttemptAt: string | null;
 }
 
 /**
@@ -92,6 +112,7 @@ export const lookupMember = call<{ query: string }, LookupResult>("adminLookupMe
 export const listActions = call<{ targetUid?: string; limit?: number }, { actions: AdminAction[] }>("adminListActions");
 export const listMembers = call<void, { members: MemberRow[] }>("adminListMembers");
 export const listQueues = call<void, Queues>("adminListQueues");
+export const retryNotice = call<{ id: string }, { ok: true }>("adminRetryNotice");
 export const purgeAccount = call<{ uid: string; immediate?: boolean }, { ok: true; purgeAfter: string }>("adminPurgeAccount");
 export const restoreAccount = call<{ uid: string }, { ok: true }>("adminRestoreAccount");
 export const setMemberEmail = call<{ uid: string; email: string }, { ok: true }>("adminSetMemberEmail");

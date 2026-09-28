@@ -50,6 +50,7 @@
 import type PhotoSwipeLightbox from "photoswipe/lightbox";
 import type PhotoSwipe from "photoswipe";
 import type { SlideData, Point } from "photoswipe";
+import { pagerChevron } from "./pager.ts";
 
 /** Below this the viewport is a phone: one column, and the text always below. */
 const MOBILE_MAX = 767;
@@ -96,7 +97,7 @@ const GAP = 14;
  *
  * THE TOP IS NO LONGER THE CONTROLS ROW, it merely clears it. The row lost its
  * band on 2026-09-06 (Josh: "lose the top bar in lightbox") — the close word,
- * zoom, counter and preloader survive in a cluster at the top right, on bare
+ * zoom and preloader survive in a cluster at the top right, on bare
  * paper — and `top` was sized to exactly that row's height, 56 desktop (2.75rem
  * plus air) and 44 on a phone. Every number here is now comfortably above it,
  * so the row is a FLOOR rather than the value: nothing in this function may
@@ -150,6 +151,22 @@ interface TriggerText {
   profile: string;
   link: string;
   siteLink: string;
+  project: string;
+  projectLink: string;
+  affiliations: { name: string; href?: string }[];
+}
+
+/** The trigger's affiliations, tolerant of a missing or malformed attribute — a bad value shows nothing, never throws in a slide change. */
+function parseAffiliations(raw: string | undefined): { name: string; href?: string }[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((a): a is { name: string; href?: string } => typeof a?.name === "string" && a.name.trim() !== "")
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 function readTrigger(el: HTMLElement | undefined): TriggerText {
@@ -160,6 +177,9 @@ function readTrigger(el: HTMLElement | undefined): TriggerText {
     profile: el?.dataset.pswpProfile?.trim() || "",
     link: el?.dataset.pswpLink?.trim() || "",
     siteLink: el?.dataset.pswpSiteLink?.trim() || "",
+    project: el?.dataset.pswpProject?.trim() || "",
+    projectLink: el?.dataset.pswpProjectLink?.trim() || "",
+    affiliations: parseAffiliations(el?.dataset.pswpAffiliations),
   };
 }
 
@@ -178,6 +198,13 @@ export interface LightboxTextLabels {
   linkTitle: string;
   /** Accessible name for the member's own-site link, e.g. "This piece on the maker's own site". */
   siteLinkTitle: string;
+  /** "Part of", before a project's title. */
+  partOf: string;
+  /** "With", before a project's affiliations. */
+  with: string;
+  /** Accessible names for the counter's two chevrons. */
+  prev: string;
+  next: string;
 }
 
 /**
@@ -238,6 +265,39 @@ export function registerLightboxText(
       },
     });
 
+    // ── The counter, "‹ 2 / 7 ›", in the top row ────────────────────────
+    // (2026-09-28.) The site's own count with chevrons that page, the same
+    // pair the gallery card and the project carousel show (src/lib/pager.ts),
+    // in the top row beside the + and Close, grey like them. It sat on the
+    // artist line above the picture for part of that day, until Josh: "in
+    // lightbox mode dont put it, just add it to the top row". On a phone the
+    // chevrons are the only pager showing: PhotoSwipe keeps its side arrows
+    // hidden until it sees a mouse. `counter: false` in lightbox.ts retires
+    // the stock one; order 8 puts this after the preloader (7), before the
+    // zoom (10) and the close word (20).
+    ui.registerElement({
+      name: "vscn-counter",
+      className: "pswp__vscn-counter",
+      appendTo: "bar",
+      order: 8,
+      onInit: (el, pswp) => {
+        const count = document.createElement("span");
+        count.className = "pswp__vscn-counter-count";
+        el.append(
+          pagerChevron("prev", () => pswp.prev(), { label: labels.prev }),
+          count,
+          pagerChevron("next", () => pswp.next(), { label: labels.next }),
+        );
+        const render = () => {
+          count.textContent = `${pswp.currIndex + 1} / ${pswp.getNumItems()}`;
+          // One picture has nowhere to page to.
+          el.classList.toggle("is-empty", pswp.getNumItems() < 2);
+        };
+        pswp.on("change", render);
+        render();
+      },
+    });
+
     // ── The words about the picture ─────────────────────────────────────
     ui.registerElement({
       name: "vscn-text",
@@ -246,7 +306,7 @@ export function registerLightboxText(
       order: 10,
       onInit: (el, pswp) => {
         const render = () => {
-          const { caption, description, link, siteLink } = readTrigger(
+          const { caption, description, link, siteLink, project, projectLink, affiliations } = readTrigger(
             pswp.currSlide?.data.element as HTMLElement | undefined,
           );
           el.replaceChildren();
@@ -290,7 +350,42 @@ export function registerLightboxText(
             if (link) add(link, labels.linkTitle);
             el.append(row);
           }
-          el.classList.toggle("is-empty", !caption && !description && !link && !siteLink);
+          // THE PROJECT THIS PICTURE IS PART OF (2026-09-23,
+          // documentation/20260923-projects-design.md): its title, linked
+          // when the project has a link, then who it was made with. Member
+          // text, so textContent throughout.
+          if (project) {
+            const line = document.createElement("span");
+            line.className = "pswp__vscn-text-project";
+            line.append(`${labels.partOf} `);
+            const name = document.createElement(projectLink ? "a" : "span");
+            name.textContent = project;
+            if (name instanceof HTMLAnchorElement) {
+              name.href = projectLink;
+              name.target = "_blank";
+              name.rel = "noopener";
+            }
+            line.append(name);
+            el.append(line);
+          }
+          if (affiliations.length) {
+            const line = document.createElement("span");
+            line.className = "pswp__vscn-text-affiliations";
+            line.append(`${labels.with} `);
+            affiliations.forEach((a, i) => {
+              if (i > 0) line.append(" · ");
+              const node = document.createElement(a.href ? "a" : "span");
+              node.textContent = a.name;
+              if (node instanceof HTMLAnchorElement && a.href) {
+                node.href = a.href;
+                // A member credit is on-site (ClientRouter picks it up); an external one opens a tab.
+                if (/^https?:/i.test(a.href)) { node.target = "_blank"; node.rel = "noopener"; }
+              }
+              line.append(node);
+            });
+            el.append(line);
+          }
+          el.classList.toggle("is-empty", !caption && !description && !link && !siteLink && !project && !affiliations.length);
           // The block can scroll; a slide change has to start it at the top or
           // the next description opens mid-paragraph.
           el.scrollTop = 0;

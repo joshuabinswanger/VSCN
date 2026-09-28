@@ -7,6 +7,48 @@ fills in the action. Newest first. How to read a verdict: [release-verification.
 Green entries are one line. The value is the history: slow drift shows up here as a pattern
 rather than as a member's email.
 
+## 2026-09-23 · f21a60f · prod · the digest delivers
+Machine: not re-run; sendAdminDigest alone redeployed by Josh at 07:39Z, now bound to
+         INFOMANIAK_SMTP_PASSWORD@3 (written from the DPAPI credential file, no trailing newline).
+Walk:    n/a (functions only)
+Action:  none. 07:45:07Z "Admin digest sent", the first delivery on prod, carrying a member's 07:28
+         upload. The new version alone had changed nothing: the 07:35 tick still ran on @1 and failed,
+         because Functions pin the secret version at deploy. Dev binds @2 since 07:28Z and waits for a
+         real event to prove it.
+
+## 2026-09-23 · c07fc9a · dev · the release walk merged
+Machine: GREEN after a fix, one warning. First run RED on functions deployed: the four functions the walk
+         PR changed (flushMemberRebuilds, onImageWritten, onImageWentLive, sendAdminDigest) were stale.
+         Deployed those four to dev by name; re-run 30 of 30 current.
+         WARN function errors: 12 × "Admin digest not sent", every one "535 5.7.0 Invalid login or
+         password" from Infomaniak. The operator digest has NEVER delivered on either project: prod shows
+         the same refusal on every tick since its first event at 2026-09-22T22:05Z, dev since 20:03Z.
+         INFOMANIAK_SMTP_PASSWORD holds one enabled version on each, so probe 5 passes; the value is wrong.
+Walk:    n/a (dev)
+Action:  Josh replaces INFOMANIAK_SMTP_PASSWORD on both projects with the password that logs in as
+         info@vscn.ch (Claude does not handle it). Probe 7 is the only thing that saw this.
+
+## 2026-09-23 · f21a60f · prod · the first walk, by Playwright
+Machine: not re-run; the f21a60f entry below stands
+Walk:    GREEN — all six steps on vscn-39508.web.app as the verification member, CI run 35828595679
+         from branch chore/release-walk; about 30 s end to end. The member was left clean: both
+         galleries empty, the one image record pendingDeletion for the sweep, its caption proving the
+         save reached it. The first attempt walked vscn.ch and got a 403 from Cloudflare's bot
+         challenge before the site was reached, which is why CI walks the Hosting origin.
+Action:  none. The walk half of the protocol has now run once on prod, where before it never had.
+
+## 2026-09-22 · f21a60f · prod · the release
+Machine: GREEN, exit 0. Six passing, two warnings, both of them the upload outage still inside the lookback:
+         upload pairing 24 authorised / 1 completed since the 2026-09-18 release, and 23 expired permits with
+         23 uploading records left from the morning retries. Neither is new; the pairing clears when the next
+         release moves the window, the residue when sweepImages next passes its six-hour cutoff.
+         Both rulesets were published at 20:10 by the merge workflow itself — prod rules deployed by CI for
+         the first time, ahead of Hosting, and the acknowledgement step closed the release normally.
+         Prod functions were deployed by hand beforehand (30 of 30 current) and the run.invoker grant on
+         acknowledgeSitePublication SURVIVED that deploy, where the same deploy erased it on dev this
+         afternoon — the publication fix doing its job on prod.
+Walk:    pending — the verification member does not exist yet
+Action:  none outstanding on the machine half. PR #60 closed as superseded: this release carried the same fix.
 ## 2026-09-22 · d7e89c2 · dev · CI deploys the security rules now, and it took three tries to get there
 Machine: GREEN — all eight probes, exit 0. Both rulesets were released at 19:58:12 by the staging workflow
          itself, the first automated rules deploy this project has had; probe 4 now covers seven grants.

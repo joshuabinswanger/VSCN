@@ -3,6 +3,8 @@ import { getImage } from "astro:assets";
 import type { MemberView } from "../../lib/memberView.ts";
 import type { ProfileWork } from "../../lib/profileView.ts";
 import { memberHref } from "../../lib/links.ts";
+import { embedDataAttrs } from "../../lib/embed.ts";
+import { projectSlideData } from "../../lib/projects.ts";
 import { useTranslations, type Lang } from "../../i18n/utils.ts";
 
 // THE GRID WALL'S TILE, and the wall's whole subject: ONE artwork, and nothing
@@ -106,6 +108,10 @@ const alt = work.caption?.trim() || `${member.displayName} — ${t("member.workA
 // it. The band already named the member; `data-pswp-profile` is what lets the
 // caption renderer make that name a link instead of a dead end.
 const pswpMeta = member.displayName;
+
+// THE PROJECT THIS WORK IS IN (2026-09-23) — the lightbox's "Part of …" line
+// and its affiliations, same data every other trigger on the site carries.
+const pswpProject = projectSlideData(member.projects?.find((p) => p.id === work.projectId), lang);
 ---
 
 <article class="cwork" style={`--frame-ar:${frameAspect}`}>
@@ -170,6 +176,10 @@ const pswpMeta = member.displayName;
       data-pswp-site-link={work.siteLink || undefined}
       data-pswp-meta={pswpMeta || undefined}
       data-pswp-profile={profileHref}
+      data-pswp-project={pswpProject.project}
+      data-pswp-project-link={pswpProject.projectLink}
+      data-pswp-affiliations={pswpProject.affiliations}
+      {...embedDataAttrs(work.embed)}
     >
       {
         /* No aria-label on the link: the image's alt names it, which is the
@@ -188,6 +198,13 @@ const pswpMeta = member.displayName;
         loading="lazy"
         decoding="async"
       />
+      {
+        /* A VIDEO WORK (2026-09-23): on the wall it is only ever its poster
+          and this mark — never a player, never a request to YouTube. The
+          lightbox plays it on press (lightboxEmbed.ts). Inside the link, so
+          the mark scales with the picture; it takes no pointer events. */
+        work.embed && <span class="vscn-play vscn-play--over" aria-hidden="true" />
+      }
     </a>
   </div>
 
@@ -226,9 +243,10 @@ const pswpMeta = member.displayName;
        down from the 3.3rem that also carried two lines' worth of title and the
        gap between them. Over-reserving costs a little air, under-reserving
        costs the drawing, so the rounding goes up.
-       STATED TWICE — the wall repeats the figure on the cell (see
-       CommunityGrid's wall block) and the two must move together, or the rows
-       keep the old height and the tiles rattle inside them. */
+       STATED THREE TIMES — the wall repeats the figure on the work cell and in
+       its fixed grid-auto-rows (see CommunityGrid's wall block) and all three
+       must move together, or the rows keep the old height and the tiles
+       rattle inside them. */
     --cwork-chrome: 1.2rem;
     /* How tall the frame may be, out of the slot the grid dealt. Absent a slot
        (nothing renders this outside the wall today) the fallback is no cap. */
@@ -377,9 +395,6 @@ const pswpMeta = member.displayName;
     overflow: hidden;
     /* One line, truncated: the name is a credit, not a paragraph, and a
        wrapped one would reach into the row below. */
-    font-size: 0.75rem;
-    font-weight: 500;
-    line-height: 1.3;
     color: var(--color-muted);
     text-overflow: ellipsis;
     white-space: nowrap;

@@ -132,15 +132,49 @@ service cloud.firestore {
                     && request.resource.data.origin == resource.data.origin
                     && request.resource.data.get('provenance', null) == resource.data.get('provenance', null)
                     && request.resource.data.createdAt == resource.data.createdAt
+                    // WHAT KIND OF WORK IT IS (2026-09-23, video links): kept on
+                    // every caption save, changed by nobody but the server. The
+                    // diff below already refuses a change; these say so out loud,
+                    // the same way the pins above do for ownerUid and storagePath.
+                    && request.resource.data.get('media', null) == resource.data.get('media', null)
+                    && request.resource.data.get('embed', null) == resource.data.get('embed', null)
+                    && request.resource.data.get('posterSource', null) == resource.data.get('posterSource', null)
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                          'caption', 'captionDe', 'description', 'descriptionDe', 'descriptionShort',
-                         'link', 'siteLink', 'tags', 'status', 'updatedAt'])
+                         'link', 'siteLink', 'tags', 'projectId', 'status', 'updatedAt'])
                     && (request.resource.data.status == resource.data.status
                         || (resource.data.status == 'live' && request.resource.data.status == 'pendingDeletion'))
                     && validImage(request.resource.data, imageId);
 
       // Clients MARK (status: pendingDeletion); only the sweeper deletes.
       allow delete: if false;
+    }
+
+    match /projects/{projectId} {
+      // A MEMBER'S GROUPING OF THEIR OWN WORKS (2026-09-23,
+      // documentation/20260923-projects-design.md). Owner-only: the build
+      // reads through the Admin SDK and nothing public reads here. The member
+      // may delete — unlike an image there are no bytes behind a project for
+      // a sweeper to clear.
+      allow read: if isAdmin()
+                  || (request.auth != null && resource.data.ownerUid == request.auth.uid);
+
+      allow create: if request.auth != null
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && accountWritable(request.auth.uid)
+                    && projectId.size() <= 64
+                    && validProject(request.resource.data);
+
+      allow update: if request.auth != null
+                    && resource.data.ownerUid == request.auth.uid
+                    && accountWritable(request.auth.uid)
+                    && request.resource.data.ownerUid == resource.data.ownerUid
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && validProject(request.resource.data);
+
+      allow delete: if request.auth != null
+                    && resource.data.ownerUid == request.auth.uid
+                    && accountWritable(request.auth.uid);
     }
 
     match /imageModeration/{imageId} {
@@ -185,7 +219,7 @@ function canPublish(data, auth) {
 }
 
 function validPublicProfile(data) {
-  let allowedKeys = ['displayName', 'photoURL', 'photoImageId', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'active', 'moderationHidden', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'photoImageId', 'photoColor', 'memberType', 'role', 'roleDe', 'bio', 'bioDe', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'active', 'moderationHidden', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && data.get('moderationHidden', false) is bool
@@ -193,7 +227,7 @@ function validPublicProfile(data) {
 }
 
 function validPrivateUser(data) {
-  let allowedKeys = ['displayName', 'photoURL', 'photoImageId', 'photoColor', 'memberType', 'role', 'bio', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'phone', 'email', 'wantsToContribute', 'onboardingComplete', 'status', 'deletionRequestedAt', 'purgeAfter', 'createdAt', 'updatedAt'];
+  let allowedKeys = ['displayName', 'photoURL', 'photoImageId', 'photoColor', 'memberType', 'role', 'roleDe', 'bio', 'bioDe', 'portfolio', 'socialMedia', 'affiliation', 'location', 'languages', 'visualNeeds', 'openTo', 'primaryAudiences', 'tags', 'gallery', 'phone', 'email', 'receiveCommunityEmails', 'preferredLanguage', 'wantsToContribute', 'onboardingComplete', 'status', 'deletionRequestedAt', 'purgeAfter', 'createdAt', 'updatedAt'];
 
   return data.keys().hasOnly(allowedKeys)
     && validPublicFields(data)
@@ -205,7 +239,23 @@ function validPrivateUser(data) {
     // See the comment on validGallery.
     && data.get('phone', '').size() <= 40
     && data.get('wantsToContribute', false) is bool
-    && data.get('onboardingComplete', false) is bool;
+    && data.get('onboardingComplete', false) is bool
+    // `get` with a default here too, and for the reason the comment above
+    // gives: the `!('x' in data) ||` form these two arrived in costs more of
+    // the same evaluation budget the gallery is spending, and this function is
+    // the tighter of the two caps. Absent is the common case for both.
+    && data.get('receiveCommunityEmails', false) is bool
+    && validPreferredLanguage(data.get('preferredLanguage', 'de'));
+}
+
+/**
+ * The member's preferred language: the site locale they are routed to and the
+ * language VSCN writes to them in. Private only: it is how we address a member,
+ * not a working language they advertise — `languages` is that, and
+ * validLanguages() governs it on the public projection.
+ */
+function validPreferredLanguage(value) {
+  return value is string && (value == 'de' || value == 'en');
 }
 
 function validPublicFields(data) {
@@ -215,6 +265,14 @@ function validPublicFields(data) {
                              && validBioWordCount(data.bio)))
     && (!('memberType' in data) || validMemberType(data.memberType))
     && (!('role' in data) || (data.role is string && data.role.size() <= 100))
+    // The German role and bio (2026-09-23): optional, same caps as the English
+    // pair. `get` with a default rather than `!('x' in data) ||` — this
+    // function is shared with users/{uid}, the tighter evaluation budget of
+    // the two (see validPrivateUser). An absent key reads as '' and passes.
+    && data.get('roleDe', '') is string && data.get('roleDe', '').size() <= 100
+    && data.get('bioDe', '') is string
+    && data.get('bioDe', '').size() <= 500
+    && validBioWordCount(data.get('bioDe', ''))
     && (!('portfolio' in data) || (data.portfolio is string && data.portfolio.size() <= 200))
     // 500, not 200: the editor now offers six link rows, and six real URLs
     // (a LinkedIn vanity path alone runs ~55 chars) overrun 200 long before
@@ -277,7 +335,7 @@ function validStorageUrl(url) {
 // (rules cannot loop over lists, hence the unrolled element checks).
 function validGallery(value) {
   return value is list
-    && value.size() <= 8
+    && value.size() <= 12
     && (value.size() < 1 || validGalleryId(value[0]))
     && (value.size() < 2 || validGalleryId(value[1]))
     && (value.size() < 3 || validGalleryId(value[2]))
@@ -285,7 +343,11 @@ function validGallery(value) {
     && (value.size() < 5 || validGalleryId(value[4]))
     && (value.size() < 6 || validGalleryId(value[5]))
     && (value.size() < 7 || validGalleryId(value[6]))
-    && (value.size() < 8 || validGalleryId(value[7]));
+    && (value.size() < 8 || validGalleryId(value[7]))
+    && (value.size() < 9 || validGalleryId(value[8]))
+    && (value.size() < 10 || validGalleryId(value[9]))
+    && (value.size() < 11 || validGalleryId(value[10]))
+    && (value.size() < 12 || validGalleryId(value[11]));
 }
 
 // A uuid is 36 characters; an unverified member's slot id `{uid}-gallery` is
@@ -360,8 +422,8 @@ function validBioWordCount(bio) {
 // id IS the filename, and the owner IS the folder.
 function validImage(data, imageId) {
   return data.keys().hasOnly(['ownerUid', 'kind', 'storagePath', 'width', 'height', 'color',
-                              'caption', 'captionDe', 'description', 'descriptionDe', 'link', 'siteLink', 'tags', 'descriptionShort', 'origin',
-                              'provenance', 'status', 'createdAt', 'updatedAt'])
+                              'caption', 'captionDe', 'description', 'descriptionDe', 'link', 'siteLink', 'tags', 'projectId', 'descriptionShort', 'origin',
+                              'provenance', 'media', 'embed', 'posterSource', 'status', 'createdAt', 'updatedAt'])
     && data.ownerUid is string
     && (data.kind == 'avatar' || data.kind == 'gallery')
     && data.storagePath == 'users/' + data.ownerUid + '/' + data.kind + '/' + imageId + '.webp'
@@ -396,27 +458,107 @@ function validImage(data, imageId) {
     // 8x-per-save budget — a plain size cap plus per-element checks costs
     // nothing extra here.
     && (!('tags' in data) || validImageTags(data.tags))
+    // WHICH OF THE MEMBER'S PROJECTS THIS WORK BELONGS TO (2026-09-23,
+    // documentation/20260923-projects-design.md). One id, so an image is in at
+    // most one project. Whether the project exists and is the same member's is
+    // the READER's question (ownProjects in src/lib/projects.ts), exactly as
+    // for a gallery id: a get() here would cost a read on every image save.
+    && (!('projectId' in data) || (data.projectId is string && data.projectId.size() > 0 && data.projectId.size() <= 64))
     && (!('descriptionShort' in data) || (data.descriptionShort is string && data.descriptionShort.size() <= 240))
     && (data.origin == 'member' || data.origin == 'curated')
+    // A VIDEO WORK IS STILL AN IMAGE RECORD (2026-09-23,
+    // documentation/20260923-motion-works-design.md): the WebP at storagePath
+    // is its poster. These three are server-written and pinned on update
+    // above — they are on the hasOnly list only because it judges the MERGED
+    // record, and without them a member could not caption their own video.
+    // Absent `media` means a still, so every older record passes unchanged.
+    && (!('media' in data) || data.media == 'still' || data.media == 'loop' || data.media == 'embed')
+    && (!('embed' in data) || validEmbed(data.embed))
+    && (!('posterSource' in data) || data.posterSource == 'auto' || data.posterSource == 'member')
     && (data.status == 'uploading' || data.status == 'live' || data.status == 'pendingDeletion')
     && data.createdAt is timestamp
     && data.updatedAt is timestamp;
 }
 
-// Same cap as validTag's label below — a tag on an image is the same kind of
+// The video an embed plays: a provider and an id, never a URL — the player
+// URL is rebuilt from these (src/lib/embed.ts). Keep the patterns in sync with
+// functions/src/embedUrl.ts.
+function validEmbed(value) {
+  return value is map
+    && value.keys().hasOnly(['provider', 'videoId', 'hash'])
+    && ((value.get('provider', '') == 'youtube' && value.get('videoId', '') is string
+         && value.videoId.matches('^[A-Za-z0-9_-]{11}$') && !('hash' in value))
+        || (value.get('provider', '') == 'vimeo' && value.get('videoId', '') is string
+            && value.videoId.matches('^[0-9]{1,12}$')
+            && (!('hash' in value) || (value.hash is string && value.hash.matches('^[0-9a-f]{6,20}$')))));
+}
+
+// Seven, the same count a member may carry (2026-09-23, member feedback:
+// "7 tags allowed"). Same length cap as validTag's label below — a tag on an image is the same kind of
 // value as a tag on a profile, just not registered here (getOrCreateTag does
 // that, exactly as the profile tag-selector does).
 function validImageTags(value) {
-  return value is list && value.size() <= 5
+  return value is list && value.size() <= 7
     && (value.size() < 1 || validImageTag(value[0]))
     && (value.size() < 2 || validImageTag(value[1]))
     && (value.size() < 3 || validImageTag(value[2]))
     && (value.size() < 4 || validImageTag(value[3]))
-    && (value.size() < 5 || validImageTag(value[4]));
+    && (value.size() < 5 || validImageTag(value[4]))
+    && (value.size() < 6 || validImageTag(value[5]))
+    && (value.size() < 7 || validImageTag(value[6]));
 }
 
 function validImageTag(v) {
   return v is string && v.size() > 0 && v.size() <= 50;
+}
+
+// Keep in sync with the MAX_PROJECT_* / MAX_AFFILIATION* constants in
+// src/lib/projects.ts. One document per write, so the per-entry unroll below
+// costs ten short checks once — not the eight-times-per-save shape
+// documentation/20260903-gallery-rules-budget.md warns about.
+// `tags` (2026-09-27, Josh: "add project tags") reuses validImageTags: the
+// same registry labels and the same seven-tag cap as a work's own. Seven more
+// unrolled checks, still once per project document and never inside
+// validGallery, so the profile save's budget does not pay for them.
+function validProject(data) {
+  return data.keys().hasOnly(['ownerUid', 'title', 'titleDe', 'description', 'descriptionDe',
+                              'link', 'affiliations', 'tags', 'createdAt', 'updatedAt'])
+    && data.ownerUid is string
+    && (!('title' in data) || (data.title is string && data.title.size() <= 100))
+    && (!('titleDe' in data) || (data.titleDe is string && data.titleDe.size() <= 100))
+    && (!('description' in data) || (data.description is string && data.description.size() <= 600))
+    && (!('descriptionDe' in data) || (data.descriptionDe is string && data.descriptionDe.size() <= 600))
+    && (!('link' in data) || (data.link is string && data.link.size() <= 200))
+    && (!('affiliations' in data) || validAffiliations(data.affiliations))
+    && (!('tags' in data) || validImageTags(data.tags))
+    && data.createdAt is timestamp
+    && data.updatedAt is timestamp;
+}
+
+function validAffiliations(value) {
+  return value is list && value.size() <= 10
+    && (value.size() < 1 || validAffiliation(value[0]))
+    && (value.size() < 2 || validAffiliation(value[1]))
+    && (value.size() < 3 || validAffiliation(value[2]))
+    && (value.size() < 4 || validAffiliation(value[3]))
+    && (value.size() < 5 || validAffiliation(value[4]))
+    && (value.size() < 6 || validAffiliation(value[5]))
+    && (value.size() < 7 || validAffiliation(value[6]))
+    && (value.size() < 8 || validAffiliation(value[7]))
+    && (value.size() < 9 || validAffiliation(value[8]))
+    && (value.size() < 10 || validAffiliation(value[9]));
+}
+
+// EXACTLY ONE OF TWO SHAPES: a name with an optional link, or a VSCN member
+// credited by uid with their name kept as the fallback text. A member credit
+// carries no url — its link is the member's page, derived at build time.
+function validAffiliation(a) {
+  return a is map
+    && a.name is string && a.name.size() > 0 && a.name.size() <= 100
+    && ((a.keys().hasOnly(['name', 'url'])
+          && (!('url' in a) || (a.url is string && a.url.size() <= 200)))
+        || (a.keys().hasOnly(['memberUid', 'name'])
+          && a.memberUid is string && a.memberUid.size() > 0 && a.memberUid.size() <= 128));
 }
 
 function validTag(data) {
