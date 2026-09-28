@@ -29,6 +29,13 @@
   --radius-md: 10px;
   --radius-lg: 14px;
   --radius-xl: 16px;
+  /* EVERY PAGER'S CHEVRON: the gallery card's and the project carousel's
+     edge arrows, the lightbox's side arrows, and the chevrons beside each
+     "2 / 7" count (.pager-chev below). Two borders on a box turned 45deg.
+     Thinner and smaller since 2026-09-28 (Josh: "the icon should be thinner
+     and a bit smaller"); it was 0.7rem at 2px. */
+  --chevron-size: 0.55rem;
+  --chevron-stroke: 1.5px;
   /* The page's shared measure. The brand ticker, the navbar and <main> all
      size to it, which is what keeps the giant VSCN title, the nav links and
      the content on the same two vertical edges. */
@@ -889,4 +896,61 @@ a:hover {
 }
 .vscn-play[hidden] {
   display: none;
+}
+
+/* ── A count's chevrons, "‹ 2 / 7 ›" ─────────────────────────────────────
+   (2026-09-28, Josh: the gallery card, the project carousel and the
+   lightbox should page the same way.) Built by src/lib/pager.ts, and in the
+   card's markup. Grey like the count they flank, dark on hover. The hit area
+   is larger than the line, and the negative margin gives the extra back, so
+   the count's row keeps its height. At either end of a carousel that does
+   not loop, the one with nowhere to go is not there, keeping its space so
+   the count does not shift. */
+.pager-chev {
+  display: inline-grid;
+  place-items: center;
+  vertical-align: middle;
+  margin: -0.6rem 0;
+  padding: 0.6rem 0.4rem;
+  border: 0;
+  background: none;
+  color: var(--color-muted);
+  cursor: pointer;
+  /* The count rows are pointer-events: none (indicators); these are not. */
+  pointer-events: auto;
+  transition: color 140ms ease;
+}
+/* Its padding would hold the last chevron in from the edge the row is
+   aligned to (the picture's right edge on the card and the carousel). */
+.pager-chev--next {
+  margin-right: -0.3rem;
+}
+.pager-chev:hover,
+.pager-chev:focus-visible {
+  color: var(--color-dark);
+}
+.pager-chev:focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: -0.3rem;
+}
+.pager-chev:disabled {
+  visibility: hidden;
+}
+.pager-chev span {
+  display: block;
+  width: var(--chevron-size);
+  height: var(--chevron-size);
+  border-top: var(--chevron-stroke) solid currentColor;
+  border-right: var(--chevron-stroke) solid currentColor;
+}
+.pager-chev--prev span {
+  transform: translate(0.05rem, 0) rotate(-135deg);
+}
+.pager-chev--next span {
+  transform: translate(-0.05rem, 0) rotate(45deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pager-chev {
+    transition: none;
+  }
 }

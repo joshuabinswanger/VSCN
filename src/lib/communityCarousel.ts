@@ -19,6 +19,7 @@
 // and it pages.
 import EmblaCarousel from "embla-carousel";
 import type { EmblaCarouselType } from "embla-carousel";
+import { ensurePagerChevron } from "./pager.ts";
 
 /**
  * Everything one carousel holds that has to be released. Embla is the worst of
@@ -389,6 +390,19 @@ export function initCarousels(root: ParentNode = document): void {
       embla.scrollNext(jump());
       restart();
     });
+    // The count's own chevrons, "‹ 2 / 7 ›" (2026-09-28, src/lib/pager.ts).
+    // Unlike the edge arrows they show on a phone too, where they are the
+    // only thing that pages the card besides the swipe and the timer.
+    if (dotRow) {
+      ensurePagerChevron(dotRow, "prev", () => {
+        embla.scrollPrev(jump());
+        restart();
+      });
+      ensurePagerChevron(dotRow, "next", () => {
+        embla.scrollNext(jump());
+        restart();
+      });
+    }
 
     // Keyboard. Bound to the FRAME, not to the arrows, because the arrows are
     // display:none under --bp-mobile and a keyboard user on a narrow viewport
