@@ -541,8 +541,6 @@ document.addEventListener("astro:page-load", () => {
   /**
    * Renders the committed gallery. `focusHint`: see FocusHint above.
    */
-  // The folded rows' summaries speak the preferred language.
-  preferredLanguageInput.addEventListener("change", () => renderGallery());
 
   function renderGallery(focusHint?: FocusHint) {
     if (!galleryItemTpl || !galleryProjectTpl) return;
@@ -603,11 +601,7 @@ document.addEventListener("astro:page-load", () => {
           const tagsFold = row.querySelector<HTMLDetailsElement>(".gallery-tags");
           const tagsCount = row.querySelector<HTMLElement>("[data-gallery-tags-count]");
           const detailsFold = row.querySelector<HTMLDetailsElement>(".gallery-details");
-          const summary = row.querySelector<HTMLElement>("[data-gallery-summary]");
-          const summaryTitle = row.querySelector<HTMLElement>("[data-gallery-summary-title]");
-          const summaryTags = row.querySelector<HTMLElement>("[data-gallery-summary-tags]");
           if (!img || !remove || !caption || !description) return null;
-          if (!summary || !summaryTitle || !summaryTags) return null;
           if (!tagsFold || !tagsCount || !detailsFold) return null;
           if (!captionDe || !descriptionDe) return null;
           if (!link || !siteLink || !cover || !tagsSelector) return null;
@@ -630,35 +624,9 @@ document.addEventListener("astro:page-load", () => {
           caption.maxLength = MAX_GALLERY_CAPTION;
           caption.placeholder = s["profile.gallery.caption.ph"];
           named(caption, s["profile.gallery.caption"]);
-          // The folded row's summary (see the template): the title
-          // in the member's PREFERRED language (Josh: "in the preferred
-          // language"), the form's live choice rather than the saved one,
-          // falling back to the other language; then the picked tags.
-          // Repainted on every edit, so closing Details shows what was just
-          // written, and re-rendered when the preference changes (below).
-          const paintSummary = () => {
-            const w = gallery[index];
-            const [first, second] =
-              preferredLanguageInput.value === "de" ? [w.captionDe, w.caption] : [w.caption, w.captionDe];
-            const title = (first?.trim() || second?.trim()) ?? "";
-            const tags = w.tags ?? [];
-            summaryTitle.textContent = title;
-            summaryTitle.hidden = !title;
-            summaryTags.replaceChildren(
-              ...tags.map((tag) => {
-                const chip = document.createElement("span");
-                chip.className = "tagchip";
-                chip.textContent = tag;
-                return chip;
-              }),
-            );
-            summaryTags.hidden = tags.length === 0;
-            summary.hidden = detailsFold.open || (!title && tags.length === 0);
-          };
           detailsFold.open = galleryDetailsOpenUI.get(item.imageId) ?? false;
           detailsFold.addEventListener("toggle", () => {
             galleryDetailsOpenUI.set(item.imageId, detailsFold.open);
-            paintSummary();
           });
           caption.addEventListener("input", () => {
             gallery[index].caption = caption.value;
@@ -680,7 +648,6 @@ document.addEventListener("astro:page-load", () => {
           named(description, s["profile.gallery.description.label"]);
           description.addEventListener("input", () => {
             gallery[index].description = description.value;
-            paintSummary();
             syncPreview();
           });
 
@@ -690,7 +657,6 @@ document.addEventListener("astro:page-load", () => {
           named(descriptionDe, s["profile.gallery.description.de"]);
           descriptionDe.addEventListener("input", () => {
             gallery[index].descriptionDe = descriptionDe.value;
-            paintSummary();
             syncPreview();
           });
 
@@ -754,7 +720,6 @@ document.addEventListener("astro:page-load", () => {
 
           tagsSelector.value = item.tags ?? [];
           setTagsCount(item.tags ?? []);
-          paintSummary();
           tagsFold.open = galleryTagsOpenUI.get(item.imageId) ?? true;
           tagsFold.addEventListener("toggle", () => {
             galleryTagsOpenUI.set(item.imageId, tagsFold.open);
@@ -767,7 +732,6 @@ document.addEventListener("astro:page-load", () => {
             if (tags.length) gallery[index].tags = tags;
             else delete gallery[index].tags;
             setTagsCount(tags);
-            paintSummary();
             syncPreview();
           });
 

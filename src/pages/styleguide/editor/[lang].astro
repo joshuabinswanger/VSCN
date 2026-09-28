@@ -45,10 +45,6 @@ const lang = Astro.params.lang as Lang;
     }
     if (imageTemplate && editor) {
       const fragment = imageTemplate.content.cloneNode(true) as DocumentFragment;
-      const summary = fragment.querySelector<HTMLElement>('[data-gallery-summary]');
-      if (summary) summary.hidden = false;
-      const title = fragment.querySelector('[data-gallery-summary-title]');
-      if (title) title.textContent = 'Long image title · Wissenschaftliche Visualisierung';
       const image = fragment.querySelector('img');
       if (image) { image.alt = 'Sample artwork'; image.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="%2397aab4"/></svg>'; }
       editor.append(fragment);
