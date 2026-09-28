@@ -40,6 +40,8 @@
 // fills with one dot per work), `[data-carousel-live]`, and
 // `data-position-label` ("Work {n} of {total}").
 
+import { pagerChevron } from "./pager.ts";
+
 const live = new Map<HTMLElement, () => void>();
 
 /** Releases every carousel's observers and listeners — the navigation sweep. */
@@ -85,7 +87,12 @@ export function initProjectCarousels(root: ParentNode = document): void {
     // in the dots' row; the dots stay, hidden by one rule in profile.css.
     const count = document.createElement("span");
     count.className = "mprof__carousel-count";
-    dotRow?.replaceChildren(count, ...dots);
+    // Flanked by chevrons that page, "‹ 2 / 7 ›", like the gallery card's and
+    // the lightbox's (src/lib/pager.ts). Not tab stops: the row is
+    // aria-hidden and the edge arrows are the accessible controls.
+    const countPrev = pagerChevron("prev", () => go(current() - 1), { focusable: false });
+    const countNext = pagerChevron("next", () => go(current() + 1), { focusable: false });
+    dotRow?.replaceChildren(countPrev, count, countNext, ...dots);
     const liveRegion = carousel.querySelector<HTMLElement>("[data-carousel-live]");
     const positionLabel = carousel.dataset.positionLabel ?? "";
     const controller = new AbortController();
@@ -151,6 +158,8 @@ export function initProjectCarousels(root: ParentNode = document): void {
       const atEnd = i === slides.length - 1;
       if (prev) prev.disabled = atStart;
       if (next) next.disabled = atEnd;
+      countPrev.disabled = atStart;
+      countNext.disabled = atEnd;
       dots.forEach((dot, n) => dot.classList.toggle("mprof__carousel-dot--on", n === i));
       count.textContent = `${i + 1} / ${slides.length}`;
       slides.forEach((slide, n) => slide.classList.toggle("is-current", n === i));

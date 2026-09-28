@@ -50,6 +50,7 @@
 import type PhotoSwipeLightbox from "photoswipe/lightbox";
 import type PhotoSwipe from "photoswipe";
 import type { SlideData, Point } from "photoswipe";
+import { pagerChevron } from "./pager.ts";
 
 /** Below this the viewport is a phone: one column, and the text always below. */
 const MOBILE_MAX = 767;
@@ -264,33 +265,29 @@ export function registerLightboxText(
       },
     });
 
-    // ── The counter, on the picture's top-right corner ──────────────────
-    // (2026-09-28, Josh: "the counter should be black add also some chevrons
-    // that act as arrows … it should sit at the same height as the Artist
-    // Name".) It was PhotoSwipe's own counter in the top-right cluster, by the
-    // close word; now it faces the artist line across the picture's top edge,
-    // "‹ 2 / 7 ›", and the chevrons page. They are the only pager a phone
-    // shows: PhotoSwipe keeps its side arrows hidden until it sees a mouse.
-    // `counter: false` in lightbox.ts retires the stock one.
+    // ── The counter, "‹ 2 / 7 ›", in the top row ────────────────────────
+    // (2026-09-28.) The site's own count with chevrons that page, the same
+    // pair the gallery card and the project carousel show (src/lib/pager.ts),
+    // in the top row beside the + and Close, grey like them. It sat on the
+    // artist line above the picture for part of that day, until Josh: "in
+    // lightbox mode dont put it, just add it to the top row". On a phone the
+    // chevrons are the only pager showing: PhotoSwipe keeps its side arrows
+    // hidden until it sees a mouse. `counter: false` in lightbox.ts retires
+    // the stock one; order 8 puts this after the preloader (7), before the
+    // zoom (10) and the close word (20).
     ui.registerElement({
       name: "vscn-counter",
       className: "pswp__vscn-counter",
-      appendTo: "root",
-      order: 9,
+      appendTo: "bar",
+      order: 8,
       onInit: (el, pswp) => {
-        const arrow = (dir: "prev" | "next") => {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = `pswp__vscn-counter-arrow pswp__vscn-counter-arrow--${dir}`;
-          button.title = labels[dir];
-          button.setAttribute("aria-label", labels[dir]);
-          button.innerHTML = '<span class="pswp__vscn-chevron" aria-hidden="true"></span>';
-          button.addEventListener("click", () => (dir === "prev" ? pswp.prev() : pswp.next()));
-          return button;
-        };
         const count = document.createElement("span");
         count.className = "pswp__vscn-counter-count";
-        el.append(arrow("prev"), count, arrow("next"));
+        el.append(
+          pagerChevron("prev", () => pswp.prev(), { label: labels.prev }),
+          count,
+          pagerChevron("next", () => pswp.next(), { label: labels.next }),
+        );
         const render = () => {
           count.textContent = `${pswp.currIndex + 1} / ${pswp.getNumItems()}`;
           // One picture has nowhere to page to.
@@ -424,10 +421,9 @@ function attachPlacement(pswp: PhotoSwipe): void {
   const place = () => {
     const root = pswp.element;
     const credit = root?.querySelector<HTMLElement>(".pswp__vscn-credit");
-    const counter = root?.querySelector<HTMLElement>(".pswp__vscn-counter");
     const text = root?.querySelector<HTMLElement>(".pswp__vscn-text");
     const slide = pswp.currSlide;
-    if (!root || !credit || !counter || !text || !slide) return;
+    if (!root || !credit || !text || !slide) return;
 
     // HIDDEN WHILE ZOOMED IN. The blocks are glued to the picture's rect, and
     // a zoomed picture's rect is mostly off-screen — following it would drag
@@ -453,15 +449,6 @@ function attachPlacement(pswp: PhotoSwipe): void {
     // own height never has to be measured here.
     credit.style.left = `${Math.round(x)}px`;
     credit.style.top = `${Math.round(y - GAP)}px`;
-    // The counter on the same line, right-aligned to the picture's right edge
-    // (the stylesheet's translate(-100%, -100%)). Its box is exactly the
-    // credit's line height, so the two share a centre line and neither adds
-    // height above the picture. On an upright picture the name is held short
-    // of the counter rather than running under it.
-    counter.style.left = `${Math.round(x + w)}px`;
-    counter.style.top = `${Math.round(y - GAP)}px`;
-    const room = w - (counter.classList.contains("is-empty") ? 0 : counter.offsetWidth + 16);
-    credit.style.maxWidth = `min(60ch, ${Math.max(0, Math.round(room))}px)`;
 
     const viewport = pswp.viewportSize;
     // Under the picture, at the picture's own measure, on every shape: the

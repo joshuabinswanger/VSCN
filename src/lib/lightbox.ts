@@ -127,7 +127,7 @@ export function createLightbox(
     // (2026-09-06); an upright image only reserves more room below, because
     // it comes out narrower.
     paddingFn: lightboxPadding,
-    // The counter is the site's own, beside the artist line (lightboxText.ts).
+    // The counter is the site's own "‹ 2 / 7 ›", in the top row (lightboxText.ts).
     counter: false,
     closeSVG: `<span class="pswp__vscn-word">${esc(strings.close)}</span>`,
     arrowPrevSVG: CHEVRON,
@@ -154,7 +154,7 @@ export function createLightbox(
       : {}),
   });
 
-  // The artist line and the counter, the caption, the description and the links.
+  // The artist line, the counter, the caption, the description and the links.
   registerLightboxText(lightbox, {
     linkTitle: strings.linkTitle,
     siteLinkTitle: strings.siteLinkTitle,

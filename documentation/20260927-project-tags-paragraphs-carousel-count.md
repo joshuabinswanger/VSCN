@@ -119,3 +119,27 @@ Artist Name".
   hidden until it sees a mouse.
 - The COUNT voice in `type.css` now lists `.pswp__vscn-counter-count` instead
   of `.pswp__counter`.
+
+## 2026-09-28, one pager everywhere: "‹ 2 / 7 ›" on card, carousel and lightbox
+
+Josh: "the the icon should be thinner and a bit smaller. also in lightbox mode
+dont put it, just add it to the top row, where close and + are. but make the
+close not underlined. make the numbers and icons gery as well.. Also the galley
+card did not get updated...". Then, asked what the card should get: "Both, and
+project carousel".
+
+- **One chevron.** `--chevron-size` (0.55rem) and `--chevron-stroke` (1.5px)
+  in `global.css` draw every pager chevron: the card's and the carousel's
+  edge arrows, the lightbox's side arrows, and the count's chevrons. It was
+  0.7rem at 2px.
+- **One count pager.** `.pager-chev` (global.css) and `src/lib/pager.ts`.
+  The gallery card renders the pair in its markup, and `communityCarousel.ts`
+  wires it, or builds it for the editor's preview. `projectCarousel.ts` builds
+  it with the count. Both rows stay aria-hidden, so their chevrons are not tab
+  stops; the edge arrows remain the accessible controls. At a non-looping
+  carousel's end the idle chevron is `visibility: hidden`, so the count does
+  not shift. The negative margins keep each row at its old height.
+- **Lightbox.** The counter is back in the top row (`appendTo: "bar"`,
+  order 8: after the preloader, before + and Close), grey. Its chevrons keep
+  their tab stop and label. The corner placement and the credit's max-width
+  are gone from `place()`. Close has no underline now.

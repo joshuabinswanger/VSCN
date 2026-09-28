@@ -91,8 +91,8 @@
    preloader's auto margin pushing the buttons away from it. The artist line
    now lives above the picture's top-left corner, inside this same height, so
    the left has to be empty; everything gathers on the right. The preloader
-   rule below is the other half of that. The counter itself left the row on
-   2026-09-28 for the picture's top-right corner (see "The counter" below). */
+   rule below is the other half of that. Since 2026-09-28 the counter here is
+   the site's own "‹ 2 / 7 ›" (see "Counter" below). */
 .pswp--vscn .pswp__top-bar {
   height: 2.75rem;
   align-items: center;
@@ -100,6 +100,24 @@
   padding: 0 1.5rem;
   background: transparent;
   border-bottom: 0;
+}
+
+/* ── Counter ──────────────────────────────────────────────────────────────
+   "‹ 2 / 7 ›", registered in lightboxText.ts: the COUNT voice (type.css)
+   between the site's pager chevrons (.pager-chev in global.css), the same
+   pair the gallery card and the project carousel show. Grey like the + and
+   the Close beside it (2026-09-28, Josh: "add it to the top row, where
+   close and + are … make the numbers and icons gery as well"). It spent part
+   of that day on the artist line above the picture, in black. Hidden for a
+   single picture, which has nowhere to page to. */
+.pswp--vscn .pswp__vscn-counter {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  color: var(--color-muted);
+}
+.pswp--vscn .pswp__vscn-counter.is-empty {
+  display: none;
 }
 
 /* ── Buttons, shared ──────────────────────────────────────────────────────
@@ -130,12 +148,12 @@
 }
 
 /* ── Close ────────────────────────────────────────────────────────────────
-   Typographic, not a glyph in a circle: the localized word, underlined, in
-   the LABEL caps the site names things in — muted, going dark on hover. The
-   underline is the site's link underline (1.5px, 3px below, as on the card's
-   "View profile"), not the 1px border it was drawn with until 2026-09-28.
-   The word itself is injected by the page script (PhotoSwipe's `closeSVG`
-   option takes any HTML) so it can be translated. */
+   Typographic, not a glyph in a circle: the localized word in the LABEL caps
+   the site names things in — muted, going dark on hover. No underline since
+   2026-09-28 (Josh: "make the close not underlined"); it had a 1px border,
+   then for a few hours the site's link underline. The word itself is
+   injected by the page script (PhotoSwipe's `closeSVG` option takes any
+   HTML) so it can be translated. */
 .pswp--vscn .pswp__button--close {
   margin-right: 0;
   margin-left: 0.25rem;
@@ -143,9 +161,6 @@
 .pswp--vscn .pswp__vscn-word {
   display: block;
   color: var(--color-muted);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-thickness: 1.5px;
   transition: color 140ms ease;
 }
 .pswp--vscn .pswp__button--close:hover .pswp__vscn-word,
@@ -234,16 +249,16 @@
 }
 .pswp--vscn .pswp__vscn-chevron {
   display: block;
-  width: 0.7rem;
-  height: 0.7rem;
-  border-top: 2px solid currentColor;
-  border-right: 2px solid currentColor;
+  width: var(--chevron-size);
+  height: var(--chevron-size);
+  border-top: var(--chevron-stroke) solid currentColor;
+  border-right: var(--chevron-stroke) solid currentColor;
 }
 .pswp--vscn .pswp__button--arrow--prev .pswp__vscn-chevron {
-  transform: translate(0.06rem, 0) rotate(-135deg);
+  transform: translate(0.05rem, 0) rotate(-135deg);
 }
 .pswp--vscn .pswp__button--arrow--next .pswp__vscn-chevron {
-  transform: translate(-0.06rem, 0) rotate(45deg);
+  transform: translate(-0.05rem, 0) rotate(45deg);
 }
 
 /* ── Loading indicator ────────────────────────────────────────────────────
@@ -325,63 +340,6 @@
 .pswp--vscn a.pswp__vscn-credit-name:hover,
 .pswp--vscn a.pswp__vscn-credit-name:focus-visible {
   color: var(--color-dark);
-}
-
-/* THE COUNTER, ON THE PICTURE'S TOP-RIGHT CORNER (2026-09-28, Josh: "the
-   counter should be black add also some chevrons that act as arrows … it
-   should sit at the same height as the Artist Name"). "‹ 2 / 7 ›": the site's
-   COUNT (type.css), dark, between two chevrons that page. The script writes
-   left/top at the picture's top-right corner; the translate hangs the box
-   up and to the left of it, as the credit hangs off the other corner.
-   ONE LINE, THE NAME'S LINE. A plain block of inline content, like the
-   credit, so both boxes are the same line box hung off the same top and the
-   count sits on the name's own BASELINE (a flex box centred the count 3px
-   below the name). The chevrons' hit area is larger than that line and the
-   negative margin gives the extra back, so a thumb gets a real target and
-   the line above the picture does not grow by a pixel. */
-.pswp--vscn .pswp__vscn-counter {
-  position: absolute;
-  white-space: nowrap;
-  /* The next chevron's padding would stand it off the picture's edge, so the
-     box hangs further right: the padding less the ~2px the turned chevron's
-     tip reaches past its own box, which puts the tip on the edge. */
-  transform: translate(calc(-100% + 0.3rem), -100%);
-  color: var(--color-dark);
-}
-.pswp--vscn .pswp__vscn-counter.is-empty {
-  display: none;
-}
-.pswp--vscn .pswp__vscn-counter-arrow {
-  display: inline-grid;
-  place-items: center;
-  vertical-align: middle;
-  margin: -0.6rem 0;
-  padding: 0.6rem 0.45rem;
-  border: 0;
-  background: none;
-  color: inherit;
-  opacity: 0.75;
-  cursor: pointer;
-  transition: opacity 140ms ease;
-}
-.pswp--vscn .pswp__vscn-counter-arrow:hover,
-.pswp--vscn .pswp__vscn-counter-arrow:focus-visible {
-  opacity: 1;
-}
-.pswp--vscn .pswp__vscn-counter-arrow:focus-visible {
-  outline: 2px solid var(--color-dark);
-  outline-offset: -0.35rem;
-}
-/* THE PROJECT CAROUSEL'S CHEVRON, exactly (.mprof__carousel-arrow span:
-   0.7rem, 2px stroke, held at 0.75, full on hover), not a smaller one drawn
-   to the count's size (2026-09-28, Josh: "it should use the same as the
-   carousel as an icon for the arrows"). The base .pswp__vscn-chevron rule
-   above is already that drawing, so only the turn is set here. */
-.pswp--vscn .pswp__vscn-counter-arrow--prev .pswp__vscn-chevron {
-  transform: translate(0.06rem, 0) rotate(-135deg);
-}
-.pswp--vscn .pswp__vscn-counter-arrow--next .pswp__vscn-chevron {
-  transform: translate(-0.06rem, 0) rotate(45deg);
 }
 
 /* THE CAPTION, THE DESCRIPTION AND THE LINK — under the picture, at the
@@ -503,7 +461,6 @@
    this class on the root; hiding is done here so the two halves of the
    decision are not split across a stylesheet and a style attribute. */
 .pswp--vscn.pswp--vscn-zoomed-words .pswp__vscn-credit,
-.pswp--vscn.pswp--vscn-zoomed-words .pswp__vscn-counter,
 .pswp--vscn.pswp--vscn-zoomed-words .pswp__vscn-text {
   opacity: 0;
   pointer-events: none;
@@ -540,7 +497,6 @@
    two-class selector by more than source order. */
 @media (prefers-reduced-motion: reduce) {
   .pswp--vscn .pswp__button,
-  .pswp--vscn .pswp__vscn-counter-arrow,
   .pswp--vscn .pswp__vscn-word,
   .pswp--vscn .pswp__vscn-zoom::after {
     transition: none;

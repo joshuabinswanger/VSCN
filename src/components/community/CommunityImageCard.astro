@@ -154,8 +154,17 @@ const positionFor = (i: number) =>
       <div class="ccard__dots" aria-hidden="true">
         {/* THE POSITION AS TEXT (2026-09-28, Josh: "try text instead of
             dots"). The dots stay in the markup and the engine, hidden by one
-            rule in communityCard.css, so switching back is that rule. */}
+            rule in communityCard.css, so switching back is that rule.
+            The chevrons page (communityCarousel.ts wires them, src/lib/pager.ts
+            draws the same pair for the preview); not tab stops, since the row
+            is aria-hidden and the edge arrows are the accessible controls. */}
+        <button class="pager-chev pager-chev--prev" type="button" tabindex="-1">
+          <span aria-hidden="true" />
+        </button>
         <span class="ccard__count">1 / {works.length}</span>
+        <button class="pager-chev pager-chev--next" type="button" tabindex="-1">
+          <span aria-hidden="true" />
+        </button>
         {works.map((_, i) => (
           <span class="ccard__dot" class:list={{ "ccard__dot--on": i === 0 }} />
         ))}
