@@ -247,7 +247,7 @@
   .admin :global(.copyable__val) { overflow-wrap: anywhere; }
   .admin :global(.copybtn) {
     background: none; border: 1px solid var(--color-border); border-radius: var(--radius-xs);
-    padding: 0 0.35rem; font: inherit; font-size: 0.66rem; color: var(--color-muted); cursor: pointer;
+    padding: 0 0.35rem; font: inherit; font-size: var(--fs-66); color: var(--color-muted); cursor: pointer;
     white-space: nowrap; line-height: 1.5; opacity: 0.4; transition: opacity 0.12s;
   }
   .admin :global(tr:hover .copybtn), .admin :global(.copyable:hover .copybtn), .admin :global(.copybtn:focus-visible) { opacity: 1; }
@@ -294,7 +294,7 @@
   }
   .admin :global(.sortbtn:hover) { color: var(--color-dark); }
   .admin :global(.sortbtn--on) { color: var(--color-dark); font-weight: 600; }
-  .admin :global(.sortbtn__dir) { font-size: 0.6rem; opacity: 0.35; }
+  .admin :global(.sortbtn__dir) { font-size: var(--fs-60); opacity: 0.35; }
   .admin :global(.sortbtn--on .sortbtn__dir) { opacity: 1; }
   /* The name cell is the row's own link into the member. A button styled as a
      link rather than an <a>: the destination is a hash this script owns. */
@@ -320,7 +320,7 @@
   .admin :global(.badge) {
     display: inline-block; min-width: 1.4em; padding: 0 0.4em; margin-left: 0.4em;
     border-radius: 1em; background: var(--color-dark); color: var(--color-bg);
-    font-size: 0.68rem; font-weight: 700; text-align: center; line-height: 1.5;
+    font-size: var(--fs-68); font-weight: 700; text-align: center; line-height: 1.5;
   }
 
   /* ── Member detail: grouped sections ──────────────────
@@ -493,7 +493,7 @@
   .admin :global(.rate__yn-seat[aria-checked="true"]) { background: var(--color-dark); color: var(--color-bg); }
   .admin :global(.rate__yn-seat:focus-visible) { outline: 2px solid var(--color-dark); outline-offset: 2px; }
   .admin :global(.rate__auto) {
-    font-size: 0.66rem; color: var(--color-muted);
+    font-size: var(--fs-66); color: var(--color-muted);
     background: var(--tint-2); border-radius: 1em; padding: 0 0.5em; line-height: 1.7;
   }
   .admin :global(.rate__revert) { font-size: var(--fs-75); }
@@ -511,7 +511,7 @@
   .admin :global(.rate__actions .btn-solid) { width: 100%; align-self: stretch; padding: 0.65rem 1rem; font-size: var(--fs-85); }
   .admin :global(.rate__actions-row) { display: flex; gap: 0.5rem; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
   .admin :global(.rate__actions-row .btn-ghost) { padding: 0.35rem 0.7rem; font-size: var(--fs-76); }
-  .admin :global(.rate__keys) { font-size: 0.7rem; color: var(--color-muted); }
+  .admin :global(.rate__keys) { font-size: var(--fs-70); color: var(--color-muted); }
   .admin :global(.rate__keys kbd) { font: inherit; padding: 0 0.35em; background: var(--tint-2); border-radius: var(--radius-xs); }
 
   @media (--bp-mobile) {
