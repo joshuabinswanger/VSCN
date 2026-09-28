@@ -95,3 +95,27 @@ of the site". Every lightbox line now takes the voice of its twin on the page:
   paper block that inverted to black was the card's old drawing.
 - **Close** — still a LABEL caps word, now with the site's link underline
   (1.5px, 3px below) instead of a 1px border.
+
+## 2026-09-28, the lightbox counter joins the artist line
+
+Josh: "the counter should be black add also some chevrons that act as arrows
+to the counter to the left and right of it. also check that it does not insert
+an additional gap below the name. it should sit at the same height as the
+Artist Name".
+
+- PhotoSwipe's own counter is off (`counter: false` in `src/lib/lightbox.ts`).
+  `registerLightboxText` registers `pswp__vscn-counter` in its place:
+  "‹ 2 / 7 ›", dark, with the chevrons calling `pswp.prev()` / `pswp.next()`.
+  It is hidden for a single picture and while zoomed in, like the credit.
+- It hangs off the picture's top-RIGHT corner at the credit's `top`, so the
+  name and the count face each other across the picture's top edge. Both are
+  plain blocks of inline content on the same line box, so the count sits on
+  the name's baseline (measured: centres equal on desktop, 0.5px apart on a
+  phone). A flex box had centred it 3px lower.
+- The chevrons' hit area is larger than the line, and negative margins give
+  the extra back, so nothing above the picture grows. On a narrow picture the
+  name's max-width stops short of the counter.
+- These are the only pager a phone shows: PhotoSwipe keeps its side arrows
+  hidden until it sees a mouse.
+- The COUNT voice in `type.css` now lists `.pswp__vscn-counter-count` instead
+  of `.pswp__counter`.

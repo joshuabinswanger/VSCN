@@ -127,6 +127,8 @@ export function createLightbox(
     // (2026-09-06); an upright image only reserves more room below, because
     // it comes out narrower.
     paddingFn: lightboxPadding,
+    // The counter is the site's own, beside the artist line (lightboxText.ts).
+    counter: false,
     closeSVG: `<span class="pswp__vscn-word">${esc(strings.close)}</span>`,
     arrowPrevSVG: CHEVRON,
     arrowNextSVG: CHEVRON,
@@ -152,12 +154,14 @@ export function createLightbox(
       : {}),
   });
 
-  // The artist line, the caption, the description and the links.
+  // The artist line and the counter, the caption, the description and the links.
   registerLightboxText(lightbox, {
     linkTitle: strings.linkTitle,
     siteLinkTitle: strings.siteLinkTitle,
     partOf: strings.partOf,
     with: strings.with,
+    prev: strings.prev,
+    next: strings.next,
   });
   // A video work opens as its poster with a play button; see lightboxEmbed.ts.
   registerLightboxEmbeds(lightbox, { play: strings.play });
