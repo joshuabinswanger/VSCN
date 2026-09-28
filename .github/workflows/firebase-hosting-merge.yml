@@ -13,6 +13,15 @@ concurrency:
 jobs:
   verify:
     uses: ./.github/workflows/verify.yml
+  # BACKEND BEFORE HOSTING. A frontend must never go live ahead of the
+  # callables it calls, so Functions deploy first and a failure stops the run.
+  # A release (push) always deploys. A workflow_dispatch is a member-triggered
+  # rebuild from flushMemberRebuilds, several an hour: it asks the Functions
+  # API whether every export already carries this commit's source digest
+  # (scripts/backend-current.mjs) and deploys only when one does not, e.g.
+  # after a release whose backend deploy failed. Publishing content therefore
+  # does not redeploy the backend on every member save.
+  # Production is fail-closed: without its deploy identity nothing publishes.
   backend:
     needs: verify
     runs-on: ubuntu-latest
@@ -20,23 +29,43 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci && npm --prefix functions ci
       - name: Require backend deploy identity
+        id: identity
         env:
           BACKEND_PROVIDER: ${{ vars.PROD_FUNCTIONS_WIF_PROVIDER }}
           BACKEND_ACCOUNT: ${{ vars.PROD_FUNCTIONS_SERVICE_ACCOUNT }}
-        run: test -n "$BACKEND_PROVIDER" && test -n "$BACKEND_ACCOUNT"
-      - uses: google-github-actions/auth@v3
+        run: |
+          if [ -n "$BACKEND_PROVIDER" ] && [ -n "$BACKEND_ACCOUNT" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::PROD_FUNCTIONS_WIF_PROVIDER and PROD_FUNCTIONS_SERVICE_ACCOUNT must be set: production never publishes a frontend without deploying its backend."
+            exit 1
+          fi
+      - if: steps.identity.outputs.configured == 'true'
+        uses: actions/checkout@v4
+      - if: steps.identity.outputs.configured == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - if: steps.identity.outputs.configured == 'true'
+        run: npm ci
+      - if: steps.identity.outputs.configured == 'true'
+        uses: google-github-actions/auth@v3
         with:
           project_id: vscn-39508
           workload_identity_provider: ${{ vars.PROD_FUNCTIONS_WIF_PROVIDER }}
           service_account: ${{ vars.PROD_FUNCTIONS_SERVICE_ACCOUNT }}
+      - name: Is this commit's backend already deployed?
+        id: current
+        if: steps.identity.outputs.configured == 'true' && github.event_name != 'push'
+        run: node scripts/backend-current.mjs --project vscn-39508
       - name: Deploy backend before exporting or deploying Hosting
+        if: steps.identity.outputs.configured == 'true' && (github.event_name == 'push' || steps.current.outputs.current != 'true')
+        env:
+          # The CLI's 10 s discovery window is too tight for this codebase
+          # (memory note functions-deploy-discovery-timeout); seconds.
+          FUNCTIONS_DISCOVERY_TIMEOUT: "60"
         run: npx -y firebase-tools@latest deploy --only functions --project vscn-39508 --non-interactive
   export:
     needs: [verify, backend]

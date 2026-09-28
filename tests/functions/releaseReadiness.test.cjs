@@ -73,3 +73,15 @@ test('publication tracks the member generation independently of newer queued edi
   assert.equal((await getPublicationStatus.run({ auth: { uid: 'second' } })).state, 'queued');
   await assert.rejects(getPublicationStatus.run({}), { code: 'unauthenticated' });
 });
+test('a member whose last change predates generations reads as published, not unknown', async () => {
+  await db.doc('publicProfiles/legacy').set({ displayName: 'Legacy', active: true });
+  await queueMemberRebuild('legacy');
+  // The shape rebuildMembers/{uid} had before generations existed.
+  const { FieldValue } = backendRequire('firebase-admin/firestore');
+  await db.doc('rebuildMembers/legacy').update({ generation: FieldValue.delete() });
+  await db.doc('rebuildQueue/site').update({ publishedGeneration: 0 });
+  assert.equal((await getPublicationStatus.run({ auth: { uid: 'legacy' } })).state, 'unknown');
+  await queueMemberRebuild('legacy'); // an unchanged save
+  assert.equal((await db.doc('rebuildMembers/legacy').get()).data().generation, 0);
+  assert.equal((await getPublicationStatus.run({ auth: { uid: 'legacy' } })).state, 'published');
+});

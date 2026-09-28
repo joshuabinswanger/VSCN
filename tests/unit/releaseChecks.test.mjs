@@ -15,6 +15,7 @@ import {
   normaliseRules,
   compareRules,
   functionsDrift,
+  backendVerdict,
   iamDiff,
   countRequests,
   pairingVerdict,
@@ -190,4 +191,16 @@ test("resolveProjectAlias: only the two aliases; a raw project id is refused", (
   assert.equal(resolveProjectAlias("dev", rc), "vscn-dev-f4b60");
   assert.throws(() => resolveProjectAlias("vscn-39508", rc), /prod or dev/);
   assert.throws(() => resolveProjectAlias(undefined, rc), /prod or dev/);
+});
+
+test("backendVerdict: current only when every export carries the expected digest; orphans never force a deploy", () => {
+  const exports = [{ name: "a" }, { name: "b" }];
+  const stamped = (name, d) => ({ name, labels: { source_digest: d } });
+  assert.deepEqual(backendVerdict(exports, [stamped("a", "x"), stamped("b", "x")], "x"), { current: true, mismatched: [], orphans: [] });
+  const v = backendVerdict(exports, [stamped("a", "old"), { name: "z", labels: {} }], "x");
+  assert.equal(v.current, false);
+  assert.deepEqual(v.mismatched, ["a: old", "b: not deployed"]);
+  assert.deepEqual(v.orphans, ["z"]);
+  assert.deepEqual(backendVerdict(exports, [{ name: "a" }, stamped("b", "x"), stamped("z", "x")], "x"),
+    { current: false, mismatched: ["a: unstamped"], orphans: ["z"] });
 });

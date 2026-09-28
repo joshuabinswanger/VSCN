@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { backendDigest } from "./lib/backend-digest.mjs";
+import { backendDigestAt } from "./lib/backend-digest.mjs";
 // Post-release check: does the Google project match the code that just shipped?
 //
 //   node scripts/verify-release.mjs --project prod
@@ -34,7 +34,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  buildStampVerdict, compareRules, countRequests, exitCodeFor, iamDiff,
+  backendVerdict, buildStampVerdict, compareRules, countRequests, exitCodeFor, iamDiff,
   pairingVerdict, parseFunctionExports, parseSecretNames, resolveProjectAlias, strandedVerdict,
   summariseErrors,
 } from "./lib/release-checks.mjs";
@@ -171,16 +171,14 @@ async function probeBuildStamp(ctx) {
 
 async function probeFunctions(ctx) {
   const exports = parseFunctionExports(git("show", `${ctx.release}:functions/src/index.ts`));
-  const paths = git("ls-tree", "-r", "--name-only", ctx.release, "--", "functions/src", "functions/package.json", "functions/package-lock.json", "functions/tsconfig.json", "functions/.env", "functions/.env.vscn-39508", "functions/.env.vscn-dev-f4b60").split("\n").filter(Boolean);
-  const expected = backendDigest(Object.fromEntries(paths.map(path => [path, git("show", `${ctx.release}:${path}`)])));
-  const deployed = await listFunctions(ctx);
-  const lines = [];
-  for (const entry of exports) {
-    const fn = deployed.find(f => f.name === entry.name);
-    if (!fn) lines.push(`NOT DEPLOYED ${entry.name}`);
-    else if (fn.labels.source_digest !== expected) lines.push(`ARTIFACT MISMATCH ${entry.name}: ${fn.labels.source_digest ?? "unstamped"}, expected ${expected}`);
-  }
-  return { status: lines.length ? "FAIL" : "PASS", detail: lines.length ? lines : `${exports.length} exports match backend artifact ${expected}` };
+  const expected = backendDigestAt(git, ctx.release);
+  const verdict = backendVerdict(exports, await listFunctions(ctx), expected);
+  const lines = [
+    ...verdict.mismatched.map((m) => `ARTIFACT MISMATCH ${m}, expected ${expected}`),
+    ...verdict.orphans.map((name) => `ORPHAN ${name} is deployed but ${ctx.releaseShort} does not export it`),
+  ];
+  const status = !verdict.current ? "FAIL" : verdict.orphans.length ? "WARN" : "PASS";
+  return { status, detail: lines.length ? lines : `${exports.length} exports match backend artifact ${expected}` };
 }
 
 async function probeRules(ctx) {
