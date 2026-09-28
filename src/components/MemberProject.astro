@@ -14,7 +14,7 @@
 import type { ComponentProps, HTMLAttributes } from "astro/types";
 import MemberWork from "./MemberWork.astro";
 import { affiliationHref, projectDescription, projectTitle, type ProfileProject } from "../lib/projects.ts";
-import { communityWorkTagHref } from "../lib/links.ts";
+import { communityWorkTagHref, hostLabel } from "../lib/links.ts";
 import { useTranslations, type Lang } from "../i18n/utils.ts";
 
 type Work = ComponentProps<typeof MemberWork>["work"];
@@ -51,15 +51,7 @@ const figure = (w: Work) => ({
   <div class="mprof__project-head">
     {
       title && (
-        <h2 class="mprof__project-title">
-          {project.link ? (
-            <a href={project.link} target="_blank" rel="noopener">
-              {title}
-            </a>
-          ) : (
-            title
-          )}
-        </h2>
+        <h2 class="mprof__project-title">{title}</h2>
       )
     }
     {desc && <p class="mprof__project-desc">{desc}</p>}
@@ -82,6 +74,19 @@ const figure = (w: Work) => ({
               )}
             </>
           ))}
+        </p>
+      )
+    }
+    {
+      /* THE LINK AFTER THE WORDS (2026-09-28, Josh: "a project that has a link
+         should show it after the text"). It used to hide in the title, which
+         read as a plain heading. Now it is printed the way a work's links are,
+         after all the words: the host as the link text. */
+      project.link && (
+        <p class="mprof__project-links">
+          <a class="mprof__link" href={project.link} target="_blank" rel="noopener">
+            {hostLabel(project.link)}
+          </a>
         </p>
       )
     }
