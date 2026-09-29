@@ -20,7 +20,40 @@ concurrency:
   group: staging-deploy
   cancel-in-progress: false
 jobs:
+  # A MEMBER REBUILD DOES NOT RE-TEST THE CODE. A workflow_dispatch from
+  # flushMemberRebuilds builds the same commit an earlier run already built;
+  # only the Firestore data is new, and verify reads none of it. So verify is
+  # skipped when THIS commit already has a green `verify / verify` check run,
+  # and runs otherwise: when this commit's push run failed verify, or was
+  # replaced in the concurrency queue before it got that far. A push always
+  # verifies. The lookup fails open, so an API error means verify runs.
+  # Security rules still deploy on every run (about 4 s): a release that failed
+  # at the rules step skipped Hosting too, and a rebuild that then deployed
+  # Hosting alone would put the frontend ahead of its rules.
+  # The jobs below verify carry `!cancelled() && !failure()` because a skipped
+  # job otherwise skips everything downstream of it, transitively.
+  verified:
+    runs-on: ubuntu-latest
+    permissions:
+      checks: read
+    outputs:
+      already: ${{ steps.lookup.outputs.already }}
+    steps:
+      - id: lookup
+        if: github.event_name != 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          runs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?check_name=verify%20%2F%20verify&filter=all"             --jq '[.check_runs[] | select(.conclusion == "success")] | length' 2>/dev/null || echo 0)
+          if [ "$runs" -gt 0 ] 2>/dev/null; then
+            echo "already=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$GITHUB_SHA already passed verify ($runs green runs); this rebuild skips it."
+          else
+            echo "already=false" >> "$GITHUB_OUTPUT"
+          fi
   verify:
+    needs: verified
+    if: needs.verified.outputs.already != 'true'
     uses: ./.github/workflows/verify.yml
   # BACKEND BEFORE HOSTING. A frontend must never go live ahead of the
   # callables it calls, so Functions deploy first and a failure stops the run.
@@ -36,6 +69,7 @@ jobs:
   # reports any drift. Production (firebase-hosting-merge.yml) stays strict.
   backend:
     needs: verify
+    if: ${{ !cancelled() && !failure() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -81,6 +115,7 @@ jobs:
         run: npx -y firebase-tools@latest deploy --only functions --project vscn-dev-f4b60 --non-interactive
   export:
     needs: [verify, backend]
+    if: ${{ !cancelled() && !failure() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -123,6 +158,7 @@ jobs:
           retention-days: 1
   render:
     needs: export
+    if: ${{ !cancelled() && !failure() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -154,6 +190,7 @@ jobs:
           retention-days: 1
   deploy:
     needs: [export, render]
+    if: ${{ !cancelled() && !failure() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read

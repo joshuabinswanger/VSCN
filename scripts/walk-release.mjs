@@ -186,8 +186,22 @@ try {
 
   const ok3 = ok2 && await step("save", async () => {
     await galleryItems().first().locator('input[data-gallery-field="caption"]').fill(caption);
-    await page.locator("#save-button").click();
-    await visibleBefore(page.locator("#save-msg"), page.locator("#save-error"), "save", 30_000);
+    // Since #140 Save refuses while an upload is still committing: a queue row
+    // not yet cleared, or the gallery write that follows it, which leaves no
+    // mark in the page. The item appears a moment before either is done, so
+    // the first release walk after #140 pressed Save too early (2026-09-28).
+    // Wait for the queue to empty, then treat that one refusal as "not yet".
+    await expect(page.locator("#gallery-queue [data-task-state]")).toHaveCount(0, { timeout: 30_000 });
+    for (let attempt = 1; ; attempt++) {
+      await page.locator("#save-button").click();
+      try {
+        await visibleBefore(page.locator("#save-msg"), page.locator("#save-error"), "save", 30_000);
+        return;
+      } catch (err) {
+        if (attempt >= 10 || !/wait for uploads/i.test(String(err))) throw err;
+        await page.waitForTimeout(1_000);
+      }
+    }
   });
 
   const ok4 = ok3 && await step("preview", async () => {
