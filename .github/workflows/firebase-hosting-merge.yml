@@ -240,9 +240,9 @@ jobs:
             --data "{\"revision\":\"$PUBLICATION_REVISION\",\"generation\":$PUBLICATION_GENERATION}"
   # THE WALK FOLLOWS THE RELEASE — and only the release. Every walk saves the
   # member's profile, which dirties rebuildQueue/site, and flushMemberRebuilds
-  # then dispatches THIS workflow as workflow_dispatch within five minutes. A
+  # then dispatches THIS workflow as workflow_dispatch within a minute. A
   # walk that also ran on that dispatch would dirty the queue again: the site
-  # would rebuild itself, and walk itself, every five minutes for ever. Hence
+  # would rebuild itself, and walk itself, every few minutes for ever. Hence
   # the event gate. Design: documentation/20260923-release-walk-automation.md.
   walk:
     needs: deploy
