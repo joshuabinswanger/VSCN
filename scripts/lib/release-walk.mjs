@@ -1,6 +1,7 @@
 // The release walk's PURE half: argument and credential parsing, the step
-// list, and the sentences the runner prints. Everything that touches a browser
-// lives in scripts/walk-release.mjs and is exercised only by running it.
+// list, the sentences the runner prints and the redaction of what it writes.
+// Everything that touches a browser lives in scripts/walk-release.mjs and is
+// exercised only by running it.
 // Design: documentation/20260923-release-walk-automation.md.
 
 /** Where each project's live site answers. Never a PR preview. */
@@ -69,6 +70,33 @@ export function walkCredentials(env, project) {
     password: read("WALK_MEMBER_PASSWORD"),
     debugToken: project === "prod" ? read("WALK_APPCHECK_DEBUG_TOKEN") : null,
   };
+}
+
+/**
+ * Text that is safe to put in a CI artifact. A public repository's workflow
+ * artifacts can be downloaded by any GitHub account, and secret masking covers
+ * the step log only, never a file. The App Check SDK prints its debug token
+ * itself ("App Check debug token: <token>. You will need to add it ...")
+ * whenever one is set, outside its logger, so nothing on the page can silence
+ * it; the page console the walk keeps for a failed step carried that line into
+ * a public artifact on 2026-09-28.
+ *
+ * Two passes. Each known secret goes wherever it turns up, verbatim and in the
+ * URL-encoded and JSON-escaped forms a request or a log line hands it back in;
+ * then the SDK's sentence goes whatever token it names, so one the runner was
+ * never told about (a stale one, a second one) cannot ride along either.
+ * Values under 6 characters, Firebase Auth's shortest password, are not treated
+ * as secrets: an empty one would split the text at every character.
+ */
+export function redactSecrets(text, secrets) {
+  let out = String(text ?? "");
+  for (const secret of secrets ?? []) {
+    if (typeof secret !== "string" || secret.length < 6) continue;
+    for (const form of new Set([secret, encodeURIComponent(secret), JSON.stringify(secret).slice(1, -1)])) {
+      out = out.split(form).join("[redacted]");
+    }
+  }
+  return out.replace(/(App Check debug token:\s*)(?!\[redacted\])\S+/gi, "$1[redacted]");
 }
 
 /** Parse a dotenv-style file: KEY=value lines, optional quotes, # comments. Never overrides what is already set. */

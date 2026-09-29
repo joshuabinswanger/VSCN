@@ -140,8 +140,23 @@ release costs Josh one digest mail and one redundant prod rebuild. Neither break
 | GitHub secrets `WALK_MEMBER_EMAIL`, `WALK_APPCHECK_DEBUG_TOKEN` | Josh (secret writes are classifier-blocked for Claude) | 2026-09-23 |
 
 The debug token is a bypass credential for App Check on prod: it lets a holder skip Turnstile,
-not the security rules. Rotate it by deleting the entry in the console (App Check → Apps →
-Manage debug tokens) and registering a new one.
+not the security rules. It must never reach a log or an artifact. On a public repository any
+GitHub account can download a workflow artifact and secret masking covers the step log only,
+while the App Check SDK prints the token itself ("App Check debug token: …") whenever one is
+set, outside its logger. That is how the page console kept for a failed step carried it into a
+public artifact (run 36491067157, 2026-09-28) until the artifact was deleted the next day. Two
+layers keep it out since: `redactSecrets` in `scripts/lib/release-walk.mjs`, applied as the
+console and requests are captured and again as each file is written, and a step in
+`release-walk.yml` that drops any walk-artifacts file still holding the token, the password or
+the email before the upload, and uploads nothing if that step cannot run.
+
+Rotate it by adding a new token in the console (App Check → Apps → Manage debug tokens),
+putting the same value in the `WALK_APPCHECK_DEBUG_TOKEN` secret (`gh secret set … --body`, so
+no trailing newline rides along) and in `.env.walk` if you keep one, and only then deleting the
+old entry, so the walk never runs without a registered token. Rotate after any sign it was
+exposed, including an `::error::` from that step. Not done: a token registered and deleted per
+run through the App Check API, which would leave no standing bypass but needs Google
+credentials in the walk job.
 
 ## 9. Out of scope, and known gaps
 

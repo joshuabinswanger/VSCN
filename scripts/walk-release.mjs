@@ -9,7 +9,8 @@
 // WALK_APPCHECK_DEBUG_TOKEN — from the environment or an untracked .env.walk
 // next to package.json. Exit 0 when all six steps pass, 1 otherwise. On a
 // failure the step's screenshot, the page console and every failed request
-// land in walk-artifacts/ (or --artifacts <dir>).
+// land in walk-artifacts/ (or --artifacts <dir>), with the debug token and the
+// member's credentials redacted: in CI that directory becomes a public artifact.
 //
 // It acts only as the member, through the site's own front end, so it can do
 // nothing a member cannot. Selectors are the editor's ids and data-* hooks;
@@ -26,6 +27,7 @@ import {
   memberLinks,
   mergeDotenv,
   parseWalkArgs,
+  redactSecrets,
   walkCredentials,
   walkReport,
 } from "./lib/release-walk.mjs";
@@ -35,6 +37,11 @@ const args = parseWalkArgs(process.argv.slice(2));
 const dotenvPath = join(root, ".env.walk");
 const env = existsSync(dotenvPath) ? mergeDotenv(process.env, readFileSync(dotenvPath, "utf8")) : process.env;
 const creds = walkCredentials(env, args.project);
+// Everything written into walk-artifacts/ goes through safe(): in CI that
+// directory becomes an artifact any GitHub account can download (the repo is
+// public), and the App Check SDK prints the debug token to the page console.
+const secrets = [creds.debugToken, creds.password, creds.email];
+const safe = (text) => redactSecrets(text, secrets);
 const artifactsDir = resolve(root, args.artifactsDir);
 mkdirSync(artifactsDir, { recursive: true });
 
@@ -78,12 +85,14 @@ if (creds.debugToken) {
 const page = await context.newPage();
 page.setDefaultTimeout(30_000);
 
+// Redacted as they are captured, so neither buffer ever holds a secret, and
+// again as each file is written (step() below).
 const consoleLog = [];
 const requestLog = [];
-page.on("console", (msg) => consoleLog.push(`${new Date().toISOString()} [${msg.type()}] ${msg.text()}`));
-page.on("pageerror", (err) => consoleLog.push(`${new Date().toISOString()} [pageerror] ${err.message}`));
-page.on("requestfailed", (req) => requestLog.push(`${new Date().toISOString()} FAILED ${req.method()} ${req.url()} — ${req.failure()?.errorText ?? ""}`));
-page.on("response", (res) => { if (res.status() >= 400) requestLog.push(`${new Date().toISOString()} ${res.status()} ${res.request().method()} ${res.url()}`); });
+page.on("console", (msg) => consoleLog.push(safe(`${new Date().toISOString()} [${msg.type()}] ${msg.text()}`)));
+page.on("pageerror", (err) => consoleLog.push(safe(`${new Date().toISOString()} [pageerror] ${err.message}`)));
+page.on("requestfailed", (req) => requestLog.push(safe(`${new Date().toISOString()} FAILED ${req.method()} ${req.url()} — ${req.failure()?.errorText ?? ""}`)));
+page.on("response", (res) => { if (res.status() >= 400) requestLog.push(safe(`${new Date().toISOString()} ${res.status()} ${res.request().method()} ${res.url()}`)); });
 
 // ── step harness ───────────────────────────────────────────────────────────
 const results = [];
@@ -104,9 +113,9 @@ async function step(id, fn) {
     results.push({ id, ok: false, ms: Date.now() - started, error: message });
     console.log(`\r✗ ${id}: ${message}`);
     await page.screenshot({ path: join(artifactsDir, `${id}-failed.png`), fullPage: true }).catch(() => {});
-    writeFileSync(join(artifactsDir, `${id}-console.log`), consoleLog.join("\n") + "\n");
-    writeFileSync(join(artifactsDir, `${id}-requests.log`), requestLog.join("\n") + "\n");
-    writeFileSync(join(artifactsDir, `${id}-failed.html`), await page.content().catch(() => ""));
+    writeFileSync(join(artifactsDir, `${id}-console.log`), safe(consoleLog.join("\n")) + "\n");
+    writeFileSync(join(artifactsDir, `${id}-requests.log`), safe(requestLog.join("\n")) + "\n");
+    writeFileSync(join(artifactsDir, `${id}-failed.html`), safe(await page.content().catch(() => "")));
     return false;
   }
 }

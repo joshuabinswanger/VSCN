@@ -51,7 +51,34 @@ jobs:
           WALK_MEMBER_EMAIL: ${{ secrets.WALK_MEMBER_EMAIL }}
           WALK_MEMBER_PASSWORD: ${{ secrets.WALK_MEMBER_PASSWORD }}
           WALK_APPCHECK_DEBUG_TOKEN: ${{ secrets.WALK_APPCHECK_DEBUG_TOKEN }}
-      - if: failure()
+      # A second layer behind the redaction in scripts/walk-release.mjs, and
+      # independent of it: whatever wrote into walk-artifacts, a file that still
+      # holds one of the walk's secrets is dropped before the upload. The repo is
+      # public, so any GitHub account can download a workflow artifact, and
+      # secret masking covers the step log only. If this step cannot run,
+      # nothing is uploaded.
+      - name: Drop any artifact file that still holds a walk secret
+        id: scrub
+        if: failure()
+        env:
+          WALK_MEMBER_EMAIL: ${{ secrets.WALK_MEMBER_EMAIL }}
+          WALK_MEMBER_PASSWORD: ${{ secrets.WALK_MEMBER_PASSWORD }}
+          WALK_APPCHECK_DEBUG_TOKEN: ${{ secrets.WALK_APPCHECK_DEBUG_TOKEN }}
+        run: |
+          clean=true
+          for raw in "$WALK_APPCHECK_DEBUG_TOKEN" "$WALK_MEMBER_PASSWORD" "$WALK_MEMBER_EMAIL"; do
+            # Trimmed as walkCredentials trims; under 6 characters is not a secret.
+            secret="${raw#"${raw%%[![:space:]]*}"}"
+            secret="${secret%"${secret##*[![:space:]]}"}"
+            [ "${#secret}" -ge 6 ] || continue
+            hits=$(grep -rlF -e "$secret" walk-artifacts 2>/dev/null || true)
+            [ -n "$hits" ] || continue
+            clean=false
+            echo "::error::walk-artifacts held a walk secret despite the redaction; dropped before the upload: ${hits//$'\n'/, }"
+            printf '%s\n' "$hits" | while IFS= read -r file; do rm -f -- "$file"; done
+          done
+          if $clean; then echo "walk-artifacts: no walk secret in any file"; fi
+      - if: failure() && steps.scrub.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: walk-artifacts

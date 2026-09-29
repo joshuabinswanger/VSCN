@@ -90,7 +90,8 @@ Turnstile, a challenge built to fail exactly this browser; enforcement and the r
 untouched, and the Turnstile mint function is the one thing the walk does not cover.
 
 A failed step stops the walk. The step's screenshot, the page console and every failed request
-are in `walk-artifacts/` (uploaded with the CI run). Fix or roll back, then re-run; do not fix
+are in `walk-artifacts/` (uploaded with the CI run, the debug token and the member's credentials
+redacted first). Fix or roll back, then re-run; do not fix
 inside the walk. Before uploading, the script removes any image a failed earlier run left on
 the member and says so, so the member never fills to the cap and fails a later walk for the
 wrong reason.
