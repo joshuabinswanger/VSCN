@@ -1,9 +1,11 @@
 // The release walk's PURE half (scripts/lib/release-walk.mjs). The browser
 // steps are exercised only by running scripts/walk-release.mjs against a real
 // site; what is worth pinning here is that the runner refuses to start
-// half-configured, and that the sentence it prints says which step failed.
+// half-configured, that the sentence it prints says which step failed, and
+// that nothing it writes for a public CI artifact carries a secret.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   ORIGINS,
   STEPS,
@@ -12,6 +14,7 @@ import {
   memberLinks,
   mergeDotenv,
   parseWalkArgs,
+  redactSecrets,
   walkCredentials,
   walkReport,
 } from "../../scripts/lib/release-walk.mjs";
@@ -118,4 +121,37 @@ test("a build stamp that is not the release is a note, not a failure", () => {
   });
   assert.equal(report.verdict, "GREEN");
   assert.match(report.logLine, /NOTE: the site's build stamp f21a60f is not the release abcdef0/);
+});
+
+test("redactSecrets removes the App Check SDK's debug-token line and every known secret, and leaves other text alone", () => {
+  // Deliberately low-entropy, so secret scanners do not take the stand-in for a real token.
+  const token = "not-a-real-debug-token";
+  const sdkLine = `App Check debug token: ${token}. You will need to add it to your app's App Check settings in the Firebase console for it to work.`;
+
+  // A token the runner knows goes, and the sentence around it stays readable.
+  assert.equal(redactSecrets(sdkLine, [token]), sdkLine.replace(token, "[redacted]"));
+
+  // One it was never told about (stale, rotated, a second one): the SDK's own sentence gives it away.
+  const unknown = redactSecrets(`2026-09-28T22:20:10.964Z [log] ${sdkLine}`);
+  assert.ok(!unknown.includes(token));
+  assert.match(unknown, /\[log\] App Check debug token: \[redacted\]/);
+  assert.equal(redactSecrets(unknown), unknown, "redacting twice changes nothing");
+
+  // A secret in the shapes a request URL or a JSON log hands it back in.
+  const password = 'pa"ss\\word 12&x';
+  const shapes = [password, encodeURIComponent(password), JSON.stringify(password).slice(1, -1)];
+  assert.equal(redactSecrets(`saw ${shapes.join(" | ")} end`, [password]), "saw [redacted] | [redacted] | [redacted] end");
+
+  // Other text, and empty, short or missing secrets, are left alone.
+  assert.equal(redactSecrets("[log] page loaded", [token, "", "abc", null, undefined, 12345678]), "[log] page loaded");
+  assert.equal(redactSecrets("[log] page loaded", null), "[log] page loaded");
+  assert.equal(redactSecrets(undefined, [token]), "");
+});
+
+test("every file the runner writes goes through safe(), and the debug token is on its list", () => {
+  const source = readFileSync(new URL("../../scripts/walk-release.mjs", import.meta.url), "utf8");
+  const writes = source.split(/\r?\n/).filter((line) => line.includes("writeFileSync("));
+  assert.ok(writes.length >= 3, `expected the failure files, found ${writes.length} writes`);
+  for (const line of writes) assert.match(line, /writeFileSync\(.+,\s*safe\(/, `unredacted write: ${line.trim()}`);
+  assert.match(source, /const secrets = \[creds\.debugToken\b/);
 });
