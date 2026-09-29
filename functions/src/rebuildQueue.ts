@@ -76,9 +76,12 @@ export const onImageWritten = onDocumentWritten({ document: "images/{imageId}", 
   if (typeof uid === "string") await queueMemberRebuild(uid);
 });
 
-/** Dirty state is acknowledged by CI only AFTER successful Hosting deployment. */
+/** Dirty state is acknowledged by CI only AFTER successful Hosting deployment.
+ *  Every minute, so a save waits at most a minute before its build starts. It
+ *  cannot stack builds: a dispatch holds the 15-minute lease until CI
+ *  acknowledges it, and a flush that finds a live lease just returns. */
 export const flushMemberRebuilds = onSchedule(
-  { schedule: "every 5 minutes", secrets: [githubRebuildToken], maxInstances: 1 },
+  { schedule: "every 1 minutes", secrets: [githubRebuildToken], maxInstances: 1 },
   async () => {
     const ref = db.doc("rebuildQueue/site");
     const dirtyAt = await db.runTransaction(async (tx) => {
