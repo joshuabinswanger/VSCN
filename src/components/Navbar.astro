@@ -222,8 +222,19 @@ import "../styles/type.css";
   // module level: the toggle is transition:persist, and so is this script.
   // #footer-lang is the same switch in the phone footer (SiteFooter.astro);
   // delegation on document catches it although it is re-rendered every page.
-  document.addEventListener("click", (event) => {
-    const toggle = (event.target as Element | null)?.closest?.("#nav-lang, #footer-lang");
+  //
+  // ON THE NAVIGATION, NOT THE CLICK (2026-09-29). The profile editor's leave
+  // guard (editorDraft.ts) takes a link's click at the document's capture
+  // phase and stops it there, so a click listener here never ran while the
+  // editor was dirty: Leave landed on the other locale with no session
+  // choice, and /profile routed the member straight back to the stored one.
+  // `astro:before-preparation` fires for every navigation the router makes —
+  // the ClientRouter's own and the guard's navigate() alike — and both pass
+  // the link as `sourceElement`. It also fires only when the page is actually
+  // left, so Stay records nothing. `documentElement.lang` is still the page
+  // being left; the choice is its opposite.
+  document.addEventListener("astro:before-preparation", (event) => {
+    const toggle = event.sourceElement?.closest?.("#nav-lang, #footer-lang");
     if (!toggle) return;
     const chosen: SiteLanguage = document.documentElement.lang === "de" ? "en" : "de";
     rememberSessionChoice(chosen);
