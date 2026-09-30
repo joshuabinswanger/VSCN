@@ -2028,6 +2028,13 @@ document.addEventListener("astro:page-load", () => {
       draft = editorDraft({ key: `profile-draft:${auth.app.options.projectId}:${auth.currentUser.uid}`, version: 2, root: form, read,
         serverUpdatedAt: loadedUpdatedAt,
         readDirty: () => ({ ...read(), phone: phoneInput.value, active: activeInput.checked, preferredLanguage: preferredLanguageInput.value, wants: wantsToContributeInput.checked, receive: receiveCommunityEmailsInput.checked, languages: getSelectedLanguages(), audiences: getSelectedPrimaryAudiences(), avatar: resizedAvatarBlob?.size ?? 0 }),
+        // TRANSFERS ARE NOT A DRAFT (2026-09-29): an upload, a video link being
+        // resolved, a poster being restored or the gallery write that follows
+        // them are cancelled by the before-swap dispose, and no draft brings
+        // them back — so the guard asks about them in their own words. The
+        // same state Save refuses on (its gate below), minus the avatar
+        // resize, which readDirty already counts through the blob.
+        busy: () => restoringThumbs.size > 0 || galleryQueue.tasks().some(task => task.state !== "error") || videoPending > 0 || galleryWrite !== null,
         restore(value: Partial<ReturnType<typeof read>>) {
           if (!value || !value.fields || !Array.isArray(value.works) || !Array.isArray(value.projects)) return null;
           const values = value.fields;
@@ -2048,7 +2055,13 @@ document.addEventListener("astro:page-load", () => {
           // Restored membership may need a block made contiguous again, as at load.
           if (!sameIds(before, gallery)) void persistGalleryNow();
           if (tagSelector) tagSelector.value = value.tags ?? [];
-          if (memberTypeSelector) memberTypeSelector.value = value.memberType ?? "";
+          if (memberTypeSelector) {
+            // The element's setter only checks a radio, and only a radio's own
+            // change dispatches member-type-change: sync the wording and the
+            // Visual-needs question by hand, as the load path does.
+            memberTypeSelector.value = value.memberType ?? "";
+            syncMemberTypeCopy();
+          }
           if (openToSelector) openToSelector.value = value.openTo ?? [];
           if (visualNeedsSelector) visualNeedsSelector.value = value.visualNeeds ?? [];
           setSocialValues(splitSocial(value.social ?? ""));
@@ -2061,11 +2074,19 @@ document.addEventListener("astro:page-load", () => {
         labels: lang === "de" ? {
           found: "Profiltexte und Werkdetails sind in diesem Tab gespeichert. Kontoeinstellungen und ausstehende Dateien bitte erneut eingeben.",
           foundNewer: "In diesem Tab ist ein Entwurf gespeichert, aber das Profil wurde seither anderswo gespeichert. Wiederherstellen bringt die älteren Texte zurück.",
-          restore: "Entwurf wiederherstellen", discard: "Verwerfen", leave: "Ungespeicherte Änderungen. Seite verlassen? Der Entwurf bleibt in diesem Tab gespeichert.",
+          foundUnkept: "Geänderte Kontoeinstellungen oder ausgewählte Dateien wurden nicht gespeichert. Bitte erneut eingeben.",
+          restore: "Entwurf wiederherstellen", discard: "Verwerfen", dismiss: "Verstanden",
+          leave: "Ungespeicherte Änderungen. Seite verlassen? Der Entwurf bleibt in diesem Tab gespeichert.",
+          leaveUnkept: "Ungespeicherte Änderungen. Seite verlassen? Sie gehen dabei verloren.",
+          leaveBusy: "Uploads laufen noch und werden beim Verlassen abgebrochen. Seite verlassen?",
           stay: "Bleiben", go: "Verlassen",
         } : { found: "Profile text and work details are saved in this tab. Re-enter account settings and select pending files again.",
           foundNewer: "A draft is saved in this tab, but the profile has been saved elsewhere since. Restoring it brings back the older text.",
-          restore: "Restore draft", discard: "Discard", leave: "Unsaved changes. Leave this page? Your draft will remain saved in this tab.",
+          foundUnkept: "Changed account settings or selected files were not saved. Please enter them again.",
+          restore: "Restore draft", discard: "Discard", dismiss: "Got it",
+          leave: "Unsaved changes. Leave this page? Your draft will remain saved in this tab.",
+          leaveUnkept: "Unsaved changes. Leave this page? They will be lost.",
+          leaveBusy: "Uploads are still in progress and will be cancelled if you leave. Leave this page?",
           stay: "Stay", go: "Leave" },
       });
     }
@@ -2327,8 +2348,12 @@ document.addEventListener("astro:page-load", () => {
   });
 
   document.getElementById("btn-logout")!.addEventListener("click", async () => {
+    // The same honesty as the leave dialog: the draft is promised only once
+    // it is written (not for account-tab edits, not when storage refused it).
     if (draft?.hasChanges() && !await confirmDialog(
-      lang === "de" ? "Abmelden? Ungespeicherte Änderungen bleiben als Entwurf in diesem Tab." : "Sign out? Unsaved changes remain as a draft in this tab.",
+      draft.keep()
+        ? (lang === "de" ? "Abmelden? Ungespeicherte Änderungen bleiben als Entwurf in diesem Tab." : "Sign out? Unsaved changes remain as a draft in this tab.")
+        : (lang === "de" ? "Abmelden? Ungespeicherte Änderungen gehen dabei verloren." : "Sign out? Unsaved changes will be lost."),
       { confirm: s["profile.logout"], cancel: s["profile.delete.cancel"] },
     )) return;
     draft?.dispose();
