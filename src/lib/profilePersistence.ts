@@ -28,12 +28,14 @@ export async function persistWorkMetadata(uid: string, gallery: GalleryItem[], p
     );
   }
 
-  // THE RECORDS FIRST, AND HARD (2026-09-07). Until today this ran after
-  // the profile write as best-effort — a failed record write was a
+  // THE RECORDS BEFORE THE PROFILE, AND HARD (2026-09-07; projects go
+  // ahead of them since 2026-09-23, above). Until then this ran after the
+  // profile write as best-effort — a failed record write was a
   // console.warn under a green "Changes saved", tolerable only because
   // the array carried the same text. The array carries nothing now: a
-  // refused record write is a caption gone. So it runs first, and a
-  // failure is THE Save error, naming the image by its position.
+  // refused record write is a caption gone. So it runs ahead of the
+  // profile, and a failure is THE Save error, naming the image by its
+  // position.
   const recordFailures = await saveGalleryRecords(gallery);
   if (recordFailures.length > 0) {
     recordFailures.forEach((f) =>

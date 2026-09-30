@@ -19,11 +19,19 @@ export function watchPublication(root: HTMLElement, lang: 'en' | 'de', queued: b
     unknown: 'Saved. Publication not yet confirmed.', failed: 'Saved. Publication could not be requested.', retry: 'Check again' };
   let timer: ReturnType<typeof setTimeout> | undefined;
   controller.signal.addEventListener('abort', () => clearTimeout(timer), { once: true });
+  let shown: keyof typeof labels | undefined;
+  let retry: HTMLButtonElement | undefined;
   const show = (state: keyof typeof labels) => {
+    // The root is a live region: rewriting it with the same words every poll
+    // (15 s while queued) would have some readers announce it every time.
+    // Unchanged state touches nothing but the retry button's availability.
+    if (state === shown) { if (retry) retry.disabled = false; return; }
+    shown = state; retry = undefined;
     root.replaceChildren(document.createTextNode(labels[state]));
     if (['failed', 'delayed', 'unknown'].includes(state)) {
       const button = document.createElement('button'); button.type = 'button'; button.className = 'btn-outline'; button.textContent = labels.retry;
       button.addEventListener('click', async () => { button.disabled = true; await triggerRebuild(); void poll(); }); root.append(button);
+      retry = button;
     }
   };
   const poll = async () => {
