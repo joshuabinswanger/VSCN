@@ -297,6 +297,7 @@ const lightboxStrings = JSON.stringify({
   play: t("member.lightbox.play"),
   partOf: t("member.project.partOf"),
   with: t("member.project.with"),
+  dialog: t("member.lightbox.dialog"),
 });
 
 const indexMembers = [...members].sort((a, b) =>
@@ -345,7 +346,7 @@ const indexMembers = [...members].sort((a, b) =>
           <span class="tag-filter__caret" aria-hidden="true">▾</span>
         </button>
         <div id="tag-filter-panel" class="tag-filter__panel" hidden>
-          <p class="field-note">{lang === "de" ? "Galerie und Index: Personen-Tags. Raster: Tags einzelner Arbeiten und Projekte." : "Gallery and Index: member tags. Grid: tags on individual works and projects."}</p>
+          <p class="field-note">{t("community.filter.tags.scope")}</p>
           <input
             id="tag-filter-search"
             class="tag-filter__search"
@@ -416,6 +417,7 @@ const indexMembers = [...members].sort((a, b) =>
           class="view-toggle__btn"
           data-mode="index"
           aria-pressed={DEFAULT_VIEW === "index" ? "true" : "false"}
+          aria-describedby="member-index-note"
         >
           {t("community.view.index")}
         </button>
@@ -542,6 +544,10 @@ const indexMembers = [...members].sort((a, b) =>
       band above, shared by all three views — the ledger just hides rows. */
   }
   <div id="member-index" class="cindex-wrap" hidden={DEFAULT_VIEW !== "index"}>
+    {/* Why this view is longer than the other two: the galleries are
+        artwork-only, so a member who has not uploaded yet is only here.
+        Also the Index button's description, so it is heard before the switch. */}
+    <p id="member-index-note" class="field-note cindex__note">{t("community.index.note")}</p>
     <ol class="cindex">
       {
         indexMembers.map((m) => {
@@ -1374,6 +1380,10 @@ const indexMembers = [...members].sort((a, b) =>
 
   .cindex-wrap[hidden] {
     display: none;
+  }
+
+  .cindex__note {
+    margin: 0 0 1rem;
   }
 
   .cindex {

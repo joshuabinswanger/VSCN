@@ -34,6 +34,8 @@ export interface LightboxStrings {
   partOf: string;
   /** "With", before a project's affiliations. */
   with: string;
+  /** The dialog's own name: PhotoSwipe makes it role="dialog" and names it nothing. */
+  dialog: string;
 }
 
 // English is the fallback, matching useTranslations() — a missing or
@@ -49,6 +51,7 @@ export const LIGHTBOX_FALLBACK: LightboxStrings = {
   play: "Play video on {provider}",
   partOf: "Part of",
   with: "With",
+  dialog: "Image viewer",
 };
 
 /** The translation key behind each string — what the built pages pass to t() and the editor reads off `ui`. */
@@ -63,6 +66,7 @@ export const LIGHTBOX_STRING_KEYS: Record<keyof LightboxStrings, string> = {
   play: "member.lightbox.play",
   partOf: "member.project.partOf",
   with: "member.project.with",
+  dialog: "member.lightbox.dialog",
 };
 
 /** The strings from a client-side translation table; a missing key keeps the English fallback. */
@@ -165,6 +169,13 @@ export function createLightbox(
   });
   // A video work opens as its poster with a play button; see lightboxEmbed.ts.
   registerLightboxEmbeds(lightbox, { play: strings.play });
+  // PhotoSwipe marks its root role="dialog" but leaves it unnamed and not
+  // modal, so a screen reader announced "dialog" and nothing else.
+  lightbox.on("afterInit", () => {
+    const root = lightbox.pswp?.element;
+    root?.setAttribute("aria-label", strings.dialog);
+    root?.setAttribute("aria-modal", "true");
+  });
 
   return lightbox;
 }

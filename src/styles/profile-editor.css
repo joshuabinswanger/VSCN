@@ -1711,10 +1711,17 @@
      is 2.5rem on desktop (2026-09-28, Josh: "more gap between tabs in
      profile page"): the 0.75rem this pass first set ran PROFILE WORK
      ACCOUNT together into one line of capitals. A phone keeps its
-     space-between spread from the tab block above. */
+     space-between spread and 1rem gap from the tab block above: the 2.5rem
+     used to sit outside any query and win over it, which pushed PREVIEW /
+     VORSCHAU onto a second row on 360-375px phones. */
   .section-tabs {
-    gap: 0.75rem 2.5rem;
     flex-wrap: wrap;
+  }
+
+  @media (--bp-desktop) {
+    .section-tabs {
+      gap: 0.75rem 2.5rem;
+    }
   }
 
   .section-tab {

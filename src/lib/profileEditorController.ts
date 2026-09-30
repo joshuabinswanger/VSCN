@@ -12,7 +12,7 @@ import {
   uncommittedWorks,
   type WorkWords,
 } from "./draftMerge.ts";
-import { auth } from "./firebase.ts";
+import { auth, isAttestationFailing, isSecurityCheckBlocked } from "./firebase.ts";
 import {
   signOut,
   reauthenticateWithCredential,
@@ -634,6 +634,7 @@ document.addEventListener("astro:page-load", () => {
           cover.textContent = s["profile.gallery.cover"];
 
           img.src = item.url;
+          named(row, s["profile.gallery.rowLabel"].replace("{n}", String(index + 1)).replace("{total}", String(gallery.length)));
           named(remove, s["profile.gallery.remove"]).title = s["profile.gallery.remove"];
           remove.addEventListener("click", () => removeGalleryImage(index));
 
@@ -2194,7 +2195,16 @@ document.addEventListener("astro:page-load", () => {
     loadingEl.classList.add("is-failed");
     loadingEl.style.display = "";
     const text = document.createElement("p");
-    text.textContent = s["profile.loadFailed"];
+    // Name the cause when the page knows it; the login form was given the
+    // same sentences for the same causes.
+    const cause = isSecurityCheckBlocked()
+      ? s["auth.error.code.securityCheckBlocked"]
+      : isAttestationFailing()
+        ? s["auth.error.code.appCheck"]
+        : navigator.onLine === false
+          ? s["profile.loadFailed.offline"]
+          : "";
+    text.textContent = cause ? `${s["profile.loadFailed"]} ${cause}` : s["profile.loadFailed"];
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "btn-outline";
@@ -2208,6 +2218,9 @@ document.addEventListener("astro:page-load", () => {
       void runLoad(current);
     });
     loadingEl.append(text, btn);
+    // #loading is a status region, so the sentence is announced; Retry takes
+    // focus unless the member has already put it somewhere else.
+    if (!document.activeElement || document.activeElement === document.body) btn.focus();
   }
 
   async function runLoad(user: User) {

@@ -66,6 +66,23 @@ export function isSecurityCheckBlocked(): boolean {
   return scriptFailed;
 }
 
+/** Whether the latest attestation on this page failed; see isAttestationFailing(). */
+let lastAttestationFailed = false;
+
+/**
+ * True while this page has no working App Check attestation: the script is
+ * blocked, or the most recent attempt failed and none has succeeded since.
+ *
+ * Callables need it. When attestation fails, the Functions SDK sends the call
+ * without an App Check header, and a function with enforceAppCheck answers
+ * `unauthenticated`, the same code as a missing sign-in. Without this flag the
+ * editor told a signed-in member their session had expired, which signing in
+ * again cannot fix (gallery.ts, galleryErrorCode and embedErrorCode).
+ */
+export function isAttestationFailing(): boolean {
+  return scriptFailed || lastAttestationFailed;
+}
+
 function loadScript(): Promise<TurnstileApi> {
   if (scriptReady) return scriptReady;
   scriptReady = new Promise<TurnstileApi>((resolve, reject) => {
@@ -245,8 +262,11 @@ export function turnstileProvider(siteKey: string, projectId: string): CustomPro
     getToken: async () => {
       const budget = new Budget(ATTESTATION_BUDGET_MS);
       try {
-        return await mint(await challenge(siteKey, budget), projectId, budget);
+        const token = await mint(await challenge(siteKey, budget), projectId, budget);
+        lastAttestationFailed = false;
+        return token;
       } catch (err) {
+        lastAttestationFailed = true;
         console.warn("App Check attestation failed:", err);
         throw err;
       }

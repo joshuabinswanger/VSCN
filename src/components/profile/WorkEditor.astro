@@ -162,7 +162,9 @@ const t = useTranslations(lang);
         rendered at their natural size with an untreated remove button. */
       }
       <template data-gallery-tpl="item">
-        <div class="gallery-item">
+        {/* Named per row by renderGallery ("Work 3 of 12"), so the row's
+            identical Remove / Move / Replace buttons say which work they act on. */}
+        <div class="gallery-item" role="group">
           {
             /* THE PICTURE AND ITS TOOLS ARE ONE COLUMN (2026-09-26, Josh: "move
               the buttons on desktop under the image. make a bit more modern").
@@ -211,7 +213,7 @@ const t = useTranslations(lang);
                 "Image Actions drop down is unnecessary"), which hid four
                 small buttons behind a fifth. */
             }
-            <div class="gallery-toolbar" role="group">
+            <div class="gallery-toolbar" role="group" aria-label={t("profile.gallery.toolbar")}>
               <button type="button" class="gallery-tbtn" data-gallery-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
               <button type="button" class="gallery-tbtn" data-gallery-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
               <button type="button" class="gallery-tbtn" data-gallery-replace><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button>
@@ -506,6 +508,7 @@ const t = useTranslations(lang);
               class="gallery-bar"
               data-task-track
               role="progressbar"
+              aria-label={t("profile.gallery.progress")}
               aria-valuemin="0"
               aria-valuemax="100"
             >

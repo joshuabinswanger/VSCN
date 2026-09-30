@@ -150,8 +150,8 @@ const t = useTranslations(lang);
         <input id="email-new" type="email" class="input" autocomplete="email" />
         <label class="label" for="email-password">{t("profile.reauth.text")}</label>
         <input id="email-password" type="password" class="input" autocomplete="current-password" />
-        <p id="email-msg" class="msg-ok" style="display:none;"></p>
-        <p id="email-error" class="msg-err" style="display:none;"></p>
+        <p role="status" id="email-msg" class="msg-ok" style="display:none;"></p>
+        <p role="alert" id="email-error" class="msg-err" style="display:none;"></p>
         <div class="account-actions">
           <button type="button" id="btn-email-cancel" class="btn-link"
             >{t("profile.reauth.cancel")}</button
@@ -233,17 +233,18 @@ const t = useTranslations(lang);
           spellcheck="false"
           inputmode="email"
         />
-        <p id="delete-confirm-error" class="msg-err" style="display:none;"></p>
+        <p role="alert" id="delete-confirm-error" class="msg-err" style="display:none;"></p>
 
-        <p class="danger-text danger-text-spaced">{t("profile.reauth.text")}</p>
+        <p id="reauth-text" class="danger-text danger-text-spaced">{t("profile.reauth.text")}</p>
         <input
           id="reauth-password"
+          aria-labelledby="reauth-text"
           type="password"
           class="input"
           placeholder="••••••••"
           autocomplete="current-password"
         />
-        <p id="reauth-error" class="msg-err" style="display:none;"></p>
+        <p role="alert" id="reauth-error" class="msg-err" style="display:none;"></p>
         <div class="danger-actions">
           <button type="button" id="btn-reauth-cancel" class="btn-link"
             >{t("profile.reauth.cancel")}</button

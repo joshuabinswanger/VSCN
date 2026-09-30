@@ -4,7 +4,7 @@
  * belongs to, and image rows also jump to the record and carry the delete
  * control.
  */
-import type { AdminImage, Queues } from "../adminApi.ts";
+import type { AdminImage, Queues, UnsentNotice } from "../adminApi.ts";
 import { retryNotice } from "../adminApi.ts";
 import { type Child, el, fmt, linkBtn } from "./dom.ts";
 
@@ -29,13 +29,33 @@ export const queueTotal = (q: Queues): number =>
   failingNotices(q).length;
 
 export function renderQueues(q: Queues, deps: QueueDeps): HTMLElement {
-  const retry = (id: string) => {
+  // Every exhausted row carries the same visible "Retry delivery", so the
+  // accessible name says which notice it retries.
+  const noticeName = (n: UnsentNotice) =>
+    n.kind === "image" && n.imageId ? `image ${n.imageId}` : `signup ${n.email ?? n.uid}`;
+  const retry = (n: UnsentNotice) => {
     const status = el("span", { role: "status" });
     const button = linkBtn("Retry delivery", async () => {
       button.disabled = true;
-      try { await retryNotice({ id }); await deps.refresh(); }
-      catch { status.textContent = "Retry failed. Please try again."; button.disabled = false; }
+      try { await retryNotice({ id: n.id }); await deps.refresh(); }
+      catch (err) {
+        // adminRetryNotice refuses a notice that is no longer failed
+        // (not-found: another admin retried it, or it was delivered) or is
+        // already queued again (already-exists). A second click cannot
+        // succeed there, so say so and reload the list instead.
+        const code = String((err as { code?: unknown })?.code ?? "").replace(/^functions\//, "");
+        if (code === "not-found" || code === "already-exists") {
+          status.textContent = code === "not-found"
+            ? " Already handled: this notice is no longer waiting for a retry."
+            : " Already queued: it goes with the next digest.";
+          await deps.refresh().catch(() => {});
+          return;
+        }
+        status.textContent = ` Retry failed${code ? ` (${code})` : ""}. Please try again.`;
+        button.disabled = false;
+      }
     });
+    button.setAttribute("aria-label", `Retry delivery of ${noticeName(n)}`);
     return el("span", {}, button, status);
   };
   const memberLink = (uid: string) =>
@@ -97,7 +117,7 @@ export function renderQueues(q: Queues, deps: QueueDeps): HTMLElement {
               `failed ${n.attempts} of ${q.noticeMaxAttempts}, last ${fmt(n.lastAttemptAt)}`,
               n.lastError ? ` · ${n.lastError}` : "")
           : Date.parse(n.dueAt) > Date.now() ? `waiting until ${fmt(n.dueAt)}` : "goes with the next digest"),
-      el("span", { class: "row-actions" }, n.failed ? retry(n.id) : null, memberLink(n.uid)))),
+      el("span", { class: "row-actions" }, n.failed ? retry(n) : null, memberLink(n.uid)))),
     empty(q.unsentNotices.length),
   );
 }

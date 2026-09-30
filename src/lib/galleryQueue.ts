@@ -129,10 +129,11 @@ export interface GalleryQueue {
  * Offering Retry next to "this file is not an image" is a lie the old single
  * message told by omission; the point of the taxonomy is to stop telling it.
  * `denied` is here because the honest fix — sign in again — happens in another
- * tab and then the retry works.
+ * tab and then the retry works. `appCheck` likewise: once the blocker allows
+ * the site, the next attempt attests.
  */
 export function isRetryable(code: GalleryErrorCode): boolean {
-  return code === "network" || code === "unknown" || code === "denied";
+  return code === "network" || code === "unknown" || code === "denied" || code === "appCheck";
 }
 
 /** The i18n key for a code, so both gallery surfaces name a cause the same way. */

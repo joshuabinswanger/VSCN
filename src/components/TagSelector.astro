@@ -19,7 +19,9 @@ const { lang = "en", maxTags = 7, inputId } = Astro.props;
 const t = useTranslations(lang);
 ---
 
-<tag-selector data-lang={lang} data-max-tags={maxTags}>
+{/* role="group" so an aria-label a caller sets on the element (the
+    per-work and per-project selectors in the editor) names something. */}
+<tag-selector role="group" data-lang={lang} data-max-tags={maxTags}>
   <div class="tag-list ts-selected" aria-live="polite"></div>
   {
     /* TWO FIELDS, TWO INTENTS (2026-09-09, Josh: "can it be that the tag
@@ -84,7 +86,7 @@ const t = useTranslations(lang);
       5. A component cannot say how many of itself are allowed; the field that
       places it can, and the two member-tag fields do. */
   }
-  <p class="ts-error msg-err" hidden></p>
+  <p role="alert" class="ts-error msg-err" hidden></p>
 </tag-selector>
 
 <style is:global>
@@ -143,6 +145,8 @@ const t = useTranslations(lang);
      (2026-09-09, Josh: "make the find bar the same style as the add tag"). */
   tag-selector .ts-filter {
     margin-top: 0.9rem;
+    padding: 4px 10px;
+    font-size: var(--fs-82);
   }
 
   /* With nothing picked yet the filter is the first thing under the field's
@@ -150,8 +154,6 @@ const t = useTranslations(lang);
      form has (2026-09-28). The 0.9rem is the step down from the picked row. */
   tag-selector .tag-list:empty + .ts-filter {
     margin-top: 0;
-    padding: 4px 10px;
-    font-size: var(--fs-82);
   }
 
   tag-selector .tag-groups {
@@ -385,6 +387,9 @@ const t = useTranslations(lang);
         btn.className = "optchip tagchip optchip--on tag-chip";
         btn.dataset.tag = tag;
         btn.textContent = tag;
+        // Named for what a press does: a picked chip and a suggestion both
+        // read as the bare tag otherwise, and one removes while one adds.
+        btn.setAttribute("aria-label", ui[this.locale]["profile.tag.removeNamed"].replace("{tag}", tag));
         const x = document.createElement("span");
         x.setAttribute("aria-hidden", "true");
         x.textContent = "×";
@@ -408,6 +413,7 @@ const t = useTranslations(lang);
       btn.className = "optchip tagchip tag-suggestion-chip";
       btn.dataset.tag = tag;
       btn.textContent = tag;
+      btn.setAttribute("aria-label", ui[this.locale]["profile.tag.addNamed"].replace("{tag}", tag));
       return btn;
     }
 
@@ -568,12 +574,17 @@ const t = useTranslations(lang);
         }
       });
 
+      // Both chip lists are rebuilt on every change, which destroys the chip
+      // that was just pressed. Focus goes to its neighbour in the same list,
+      // or to the filter when the list is empty, instead of falling to body.
       this.selectedEl.addEventListener("click", (e) => {
         const btn = (e.target as HTMLElement).closest(
           "button.tag-chip"
         ) as HTMLButtonElement | null;
         if (!btn?.dataset.tag) return;
+        const refocus = this.neighbourFocus(btn, this.selectedEl);
         this.removeTag(btn.dataset.tag);
+        refocus();
       });
 
       // A picked suggestion leaves the filter as it is: the member may be
@@ -583,8 +594,24 @@ const t = useTranslations(lang);
           "button.tag-suggestion-chip"
         ) as HTMLButtonElement | null;
         if (!btn?.dataset.tag) return;
+        const list = btn.parentElement;
+        const refocus = list ? this.neighbourFocus(btn, list) : () => {};
         this.addTag(btn.dataset.tag);
+        refocus();
       });
+    }
+
+    /** Taken before `chip` is re-rendered away; run afterwards to put focus
+     *  on the chip now at its place in `list`, the one before it, or the
+     *  filter. A no-op when the chip did not hold focus. */
+    private neighbourFocus(chip: HTMLButtonElement, list: HTMLElement): () => void {
+      if (document.activeElement !== chip) return () => {};
+      const index = Array.from(list.querySelectorAll("button")).indexOf(chip);
+      return () => {
+        if (document.activeElement && document.activeElement !== document.body) return;
+        const chips = Array.from(list.querySelectorAll<HTMLButtonElement>("button"));
+        (chips[index] ?? chips[index - 1] ?? this.filterEl).focus();
+      };
     }
   }
 

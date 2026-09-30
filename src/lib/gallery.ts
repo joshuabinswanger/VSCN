@@ -1,6 +1,6 @@
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { uploadImage, updateImageText } from "./images.ts";
-import { db, functions, storage } from "./firebase.ts";
+import { db, functions, isAttestationFailing, storage } from "./firebase.ts";
 import { orderedGalleryItems, storageUrl, type GalleryRecord } from "./galleryRecords.ts";
 import { httpsCallable } from "firebase/functions";
 import type { EmbedRef } from "./embed.ts";
@@ -279,6 +279,16 @@ export type GalleryErrorCode =
   | "network"
   /** The project's Storage bucket is out of room. Nothing the member can do about it. */
   | "quota"
+  /**
+   * A callable answered `unauthenticated` while this page's App Check
+   * attestation is failing: a blocker or the network stopped the security
+   * check, and the session is fine. See isAttestationFailing().
+   */
+  | "appCheck"
+  /** authorizeImageUpload: the account holds as many images as it may, removed ones included until the sweep. */
+  | "storedLimit"
+  /** authorizeImageUpload: too many upload authorizations in the past hour. */
+  | "hourlyLimit"
   /** The member pressed Cancel. Not a failure, but carried here so one path handles every ending. */
   | "cancelled"
   | "unknown";
@@ -307,8 +317,19 @@ export class GalleryError extends Error {
  */
 export function galleryErrorCode(error: unknown): GalleryErrorCode {
   if (error instanceof GalleryError) return error.code;
-  const code =
+  const raw =
     typeof error === "object" && error !== null ? String(Reflect.get(error, "code") ?? "") : "";
+  // The upload's two callables (authorizeImageUpload, completeImageUpload)
+  // throw FunctionsErrors, whose codes carry a "functions/" prefix. Without the
+  // strip every one of them fell through to "unknown".
+  const fromCallable = raw.startsWith("functions/");
+  const code = raw.replace(/^functions\//, "");
+  if (fromCallable) {
+    const reason = callableReason(error);
+    if (reason === "storedLimit" || reason === "hourlyLimit") return reason;
+    if (code === "unauthenticated" && isAttestationFailing()) return "appCheck";
+    if (code === "deadline-exceeded" || code === "internal") return "network";
+  }
   switch (code) {
     case "storage/canceled":
       return "cancelled";
@@ -331,6 +352,12 @@ export function galleryErrorCode(error: unknown): GalleryErrorCode {
     default:
       return "unknown";
   }
+}
+
+/** The server's own reason on an HttpsError (`details.reason`), or "". */
+function callableReason(error: unknown): string {
+  const details = typeof error === "object" && error !== null ? Reflect.get(error, "details") : undefined;
+  return typeof details === "object" && details !== null ? String(Reflect.get(details, "reason") ?? "") : "";
 }
 
 /**
@@ -507,7 +534,9 @@ export type EmbedErrorCode =
   | "notRestorable"
   /** Another video import or poster restore for this member holds the lease (up to 90 s, functions/src/embedAllowance.ts). */
   | "busy"
-  | "full" | "denied" | "network" | "unknown";
+  | "full" | "denied" | "network" | "unknown"
+  /** `unauthenticated` while App Check attestation is failing; see GalleryErrorCode's "appCheck". */
+  | "appCheck";
 
 const EMBED_REASONS = new Set<EmbedErrorCode>([
   "verify", "notVideoLink", "videoNotFound", "notEmbeddable", "providerUnavailable", "noThumbnail",
@@ -515,16 +544,18 @@ const EMBED_REASONS = new Set<EmbedErrorCode>([
 ]);
 
 export function embedErrorCode(error: unknown): EmbedErrorCode {
-  const details = typeof error === "object" && error !== null ? Reflect.get(error, "details") : undefined;
-  const reason = typeof details === "object" && details !== null ? String(Reflect.get(details, "reason") ?? "") : "";
+  const reason = callableReason(error);
   if (EMBED_REASONS.has(reason as EmbedErrorCode)) return reason as EmbedErrorCode;
   const code = typeof error === "object" && error !== null ? String(Reflect.get(error, "code") ?? "") : "";
   // The callable SDK prefixes its codes ("functions/resource-exhausted").
   switch (code.replace(/^functions\//, "")) {
     case "resource-exhausted":
       return "full";
-    case "permission-denied":
     case "unauthenticated":
+      // Signed in, but the call arrived without an App Check token: the
+      // session is fine and signing in again would not help.
+      return isAttestationFailing() ? "appCheck" : "denied";
+    case "permission-denied":
       return "denied";
     case "unavailable":
     case "deadline-exceeded":
