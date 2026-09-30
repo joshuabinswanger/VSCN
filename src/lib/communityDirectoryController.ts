@@ -1,5 +1,5 @@
-import { auth } from "./firebase.ts";
-import { onAuthStateChanged } from "firebase/auth";
+import { watchAuth } from "./auth.ts";
+import { pageLifetime } from "./pageLifecycle.ts";
 import { navigate } from "astro:transitions/client";
 import {
   DEFAULT_VIEW,
@@ -799,12 +799,22 @@ document.addEventListener("astro:page-load", () => {
     );
   }
 
+  // One observer per VISIT, not per page-load for ever: every view and tag
+  // switch is a navigation (goTo), so a bare observer here gained one more
+  // copy, each holding a detached page, with every click in the directory.
   const cta = document.getElementById("community-signup-cta");
   if (cta) {
-    onAuthStateChanged(auth, (user) => {
+    watchAuth(pageLifetime(), (user) => {
       cta.style.display = user ? "none" : "flex";
     });
   }
+});
+
+// The bar's ResizeObserver goes with the page it measures, rather than
+// waiting to be replaced by the next visit to /community.
+document.addEventListener("astro:before-swap", () => {
+  fadeInsetObserver?.disconnect();
+  fadeInsetObserver = null;
 });
 
 // ────────────────────────────────────────────────────────────────────────
