@@ -27,25 +27,31 @@ first-parent commit as the previous release, and prints one row per probe:
 
 ```
 PASS  1 build stamp          live 1e033a7 = released 1e033a7, built 2026-09-22T14:23:37Z
-FAIL  2 functions deployed   16 of 25 exports deployed after their last source change
-                            NOT DEPLOYED  adminListActions (exported at 1e033a7)
-                            STALE         adminListMembers deployed 2026-09-15T15:26:39Z, source changed 2026-09-17T17:23:05+02:00
+FAIL  2 functions deployed   ARTIFACT MISMATCH adminListActions: not deployed, expected 8f4c11659fad2a39c8557c50236c9acc217a51fd
+                            ARTIFACT MISMATCH adminListMembers: unstamped, expected 8f4c11659fad2a39c8557c50236c9acc217a51fd
 ```
+
+(Illustrative. Probe 2 changed from a timestamp comparison to a source-digest comparison in
+PR #140; the 2026-09-22 outage this sample comes from was found by the old wording.)
 
 | # | Probe | What red means |
 | --- | --- | --- |
 | 1 | build stamp | The live origin does not serve the released commit. The deploy did not land, or an intermediary is caching. |
-| 2 | functions deployed | An exported function is missing on the project, or was deployed before its source last changed. The release pipeline deploys hosting only; functions go by hand. |
+| 2 | functions deployed | An exported function is missing on the project, or its `source_digest` label differs from the digest of the released commit's backend (`functions/src`, `functions/package*.json`, `tsconfig.json` and the `functions/.env*` files, comments stripped; `scripts/lib/backend-digest.mjs`). Both Hosting workflows deploy Functions first (see [20260928-backend-deploy-identity-and-rollback.md](20260928-backend-deploy-identity-and-rollback.md)), so a red row means that job failed or left a mixed backend, or someone deployed by hand from another tree. A deployed function the release no longer exports is a WARN (`ORPHAN`), never a delete. |
 | 3 | rules parity | The live Firestore or Storage ruleset differs from the rules file at the released commit. Since 2026-09-22 CI deploys rules ahead of Hosting, so a red row means that step failed or was skipped, or someone hand-deployed from another branch. |
 | 4 | IAM grants | A grant in the script's `EXPECTED` table is missing, or a forbidden one is present. Each row names what breaks without it. |
-| 5 | secrets bound | A secret `defineSecret()` names in `functions/src` does not exist, or has no enabled version. |
-| 6 | upload pairing | `authorizeImageUpload` ran three or more times in the window and `completeImageUpload` never did. Uploads are failing for everyone. WARN when fewer than half complete. |
+| 5 | secrets bound | A secret `defineSecret()` names in `functions/src` does not exist or has no enabled version, or one of the twelve function/secret bindings the script requires (`sendAdminDigest`, `mintAppCheckToken` and the nine functions that use `GITHUB_REBUILD_TOKEN`) is unbound or points at a version that is not `ENABLED`. A new secret version changes nothing until the function is redeployed, so the bound version is the one that counts. |
+| 6 | upload pairing | `authorizeImageUpload` ran three or more times in the window and `completeImageUpload` never did. Uploads are failing for everyone. WARN when fewer than half complete (ten or more authorised). **Zero traffic in the window is also a WARN, `NOT TESTED`, and the verdict stays GREEN with exit code 0**: a quiet window is not evidence that uploads work. |
 | 7 | function errors | Never red on its own. Any `ERROR` entry from a function in the window is a WARN with the three most frequent messages, and belongs in the log entry. |
 | 8 | stranded state | Upload residue (expired permits, records still `uploading`, `pending/` objects) older than the sweep horizon. The sweep is not clearing it. WARN when there is a pile younger than that: uploads are failing, the sweep has not reached them yet. |
 
-Verdict: `RED` if any probe is `FAIL` or `SKIP`, else `GREEN`. A probe that could not run is not a
-pass. `WARN` does not change the verdict but goes in the log entry: a warning nobody records is
-the same as no warning.
+Verdict: `RED` if any probe is `FAIL` or `SKIP` (exit code 1), else `GREEN` (exit code 0). A probe
+that could not run is not a pass. `WARN` does not change the verdict but goes in the log entry: a
+warning nobody records is the same as no warning. `NOT TESTED` is the case to watch: it reads GREEN.
+
+The check is run by hand. As of 2026-09-29 nothing in CI runs `verify:release`; the `verify`
+workflow is the unit, emulator and build gate, and the walk is the only post-release check CI
+performs.
 
 The behaviour probes (6 to 8) read a time window. Override it to look at a past incident:
 
@@ -98,8 +104,11 @@ wrong reason.
 
 ## The log
 
-Every run appends an entry to [release-log.md](release-log.md). The script prints one ready to
-paste. Green entries are one line; the value is the history.
+Every run should leave an entry in [release-log.md](release-log.md). Nothing appends it: the script
+prints one ready to paste and whoever ran it pastes it, so a release that was never checked by hand
+has no entry (the 2026-09-28 and 2026-09-29 production releases were the first to show that; the
+log now carries them, marked with what could not be confirmed). Green entries are one line; the
+value is the history.
 
 ```
 ## 2026-09-22 · 1e033a7 · prod

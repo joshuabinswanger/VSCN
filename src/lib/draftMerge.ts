@@ -215,3 +215,68 @@ export function guardedLinkHref(
   if (to.pathname === from.pathname && to.search === from.search && to.hash) return null;
   return to.href;
 }
+
+/**
+ * What the tab stores. `loadedAt` is the server copy's updatedAt when the
+ * page that wrote the draft was loaded (or last saved) — the conflict check
+ * compares against THAT, not against the last keystroke (2026-09-29: `at`
+ * was refreshed by every input, so a save made elsewhere before the member's
+ * last keystroke was offered as current). `value` is null when the member
+ * left with unsaved edits the draft never holds (account settings, a chosen
+ * file): the reminder is worth showing, but there is nothing to restore.
+ */
+export interface StoredDraft<T> {
+  version: number;
+  at: number;
+  loadedAt?: number | null;
+  value: T | null;
+}
+
+export type DraftOffer =
+  | { kind: "none" }
+  /** Words to restore; `newer` when the profile was saved elsewhere since. */
+  | { kind: "restore"; newer: boolean }
+  /** Only unkept edits were unsaved: remind, offer nothing. */
+  | { kind: "unkept" };
+
+export const DRAFT_MAX_AGE_MS = 86_400_000;
+
+/**
+ * Whether a stored draft is worth a banner, and which one. `current` is the
+ * JSON of the page's loaded state: a draft equal to it has been saved since
+ * (in this tab or another) and is silently dropped rather than offered as a
+ * Restore that changes nothing.
+ */
+export function draftOffer(
+  saved: unknown,
+  page: { version: number; now: number; serverUpdatedAt?: number; current: string },
+): DraftOffer {
+  if (!saved || typeof saved !== "object") return { kind: "none" };
+  const draft = saved as Partial<StoredDraft<unknown>>;
+  if (draft.version !== page.version || typeof draft.at !== "number" || page.now - draft.at >= DRAFT_MAX_AGE_MS) return { kind: "none" };
+  if (draft.value === null || draft.value === undefined) return { kind: "unkept" };
+  if (JSON.stringify(draft.value) === page.current) return { kind: "none" };
+  const server = page.serverUpdatedAt;
+  let newer: boolean;
+  if (typeof server !== "number") newer = false;
+  // A draft written on a copy that had never been saved: any stamp is newer.
+  else if (draft.loadedAt === null) newer = true;
+  // Two seconds of slack for the clocks: updatedAt is written from whichever
+  // client saved, and after a save in this tab loadedAt is this tab's clock.
+  else newer = server - (typeof draft.loadedAt === "number" ? draft.loadedAt : draft.at) > 2000;
+  return { kind: "restore", newer };
+}
+
+/**
+ * The leave dialog's sentence. Work in flight outranks the draft: an upload
+ * that navigation cancels is the loss the member cannot undo, while the words
+ * persist regardless. A draft is promised only when it was actually written —
+ * not when storage refused it, and not when only unkept fields changed.
+ */
+export function leaveCopy(
+  state: { busy: boolean; kept: boolean },
+  labels: { leave: string; leaveUnkept?: string; leaveBusy?: string },
+): string {
+  if (state.busy) return labels.leaveBusy ?? labels.leave;
+  return state.kept ? labels.leave : (labels.leaveUnkept ?? labels.leave);
+}

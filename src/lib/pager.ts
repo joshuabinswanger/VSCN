@@ -26,12 +26,13 @@ export function pagerLabel(dir: "prev" | "next"): string {
 /**
  * A prev/next chevron button for a count row. `label` names it (falls back
  * to pagerLabel); `focusable: false` takes it out of the tab order while
- * leaving it in the accessibility tree — see the header.
+ * leaving it in the accessibility tree — see the header. `signal` removes the
+ * press handler with the engine that owns it.
  */
 export function pagerChevron(
   dir: "prev" | "next",
   onPress: () => void,
-  opts: { label?: string | null; focusable?: boolean } = {},
+  opts: { label?: string | null; focusable?: boolean; signal?: AbortSignal } = {},
 ): HTMLButtonElement {
   const button = document.createElement("button");
   button.type = "button";
@@ -41,7 +42,7 @@ export function pagerChevron(
   button.title = label;
   button.setAttribute("aria-label", label);
   button.innerHTML = '<span aria-hidden="true"></span>';
-  button.addEventListener("click", onPress);
+  button.addEventListener("click", onPress, { signal: opts.signal });
   return button;
 }
 
@@ -50,12 +51,16 @@ export function pagerChevron(
  * it. For the card's count row: named, reachable, not a tab stop; the row's
  * aria-hidden (if the markup still carries one) comes off, because a row
  * holding two named buttons is not decoration.
+ *
+ * A chevron that is already there is REUSED, so the handler has to be able to
+ * leave: pass the carousel's `signal`, or every re-init of the same row adds
+ * one more press handler to the same button.
  */
 export function ensurePagerChevron(
   row: HTMLElement,
   dir: "prev" | "next",
   onPress: () => void,
-  opts: { label?: string | null } = {},
+  opts: { label?: string | null; signal?: AbortSignal } = {},
 ): HTMLButtonElement {
   row.removeAttribute("aria-hidden");
   const label = opts.label || pagerLabel(dir);
@@ -64,10 +69,10 @@ export function ensurePagerChevron(
     found.tabIndex = -1;
     found.title = label;
     found.setAttribute("aria-label", label);
-    found.addEventListener("click", onPress);
+    found.addEventListener("click", onPress, { signal: opts.signal });
     return found;
   }
-  const made = pagerChevron(dir, onPress, { label, focusable: false });
+  const made = pagerChevron(dir, onPress, { label, focusable: false, signal: opts.signal });
   if (dir === "prev") row.prepend(made);
   else row.append(made);
   return made;

@@ -333,7 +333,13 @@ Where the build had to choose something the text above did not say:
   after a press). The iframe keeps the origin as referrer: YouTube refuses to
   play an embed that arrives with none.
 - **Deploying:** `resolveEmbed` and `restoreAutoPoster` are new callables and
-  the upload pair changed; CI ships rules + hosting only. Deploy them by hand
-  before (or with) the hosting release. On this machine the CLI's 10-second
-  functions discovery times out: prefix the deploy with
-  `FUNCTIONS_DISCOVERY_TIMEOUT=60`.
+  the upload pair changed. *Superseded 2026-09-28 (`1c50fe7`, PR #140):* this
+  bullet said CI ships rules and Hosting only and the callables must be deployed
+  by hand first. Both Hosting workflows now deploy Functions before they export
+  and publish (a failure stops the run), and both callables reached production
+  that way, created by run 36491067157 (the 80f5850 release) together with
+  `adminRetryNotice` and `getPublicationStatus`. Nothing needs deploying by hand.
+  A by-hand deploy on this machine still needs the CLI's 10-second functions
+  discovery lengthened: prefix it with `FUNCTIONS_DISCOVERY_TIMEOUT=60` (CI sets
+  that itself). See
+  [20260928-backend-deploy-identity-and-rollback.md](20260928-backend-deploy-identity-and-rollback.md).

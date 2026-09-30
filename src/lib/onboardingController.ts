@@ -40,6 +40,7 @@ import "photoswipe/style.css";
 // Immediately after the package sheet: the chrome that replaces it.
 import "../styles/lightbox.css";
 import { markImageForDeletion } from "./images.ts";
+import { pageLifetime, releaseWith } from "./pageLifecycle.ts";
 import { syncEmail } from "./account.ts";
 // The one gallery upload path in the codebase, the same four calls the
 // profile editor composes: validate → compress to WebP → upload to Storage
@@ -80,12 +81,24 @@ const STEP_VISIBILITY = 7;
 const STEP_DONE = 8;
 
 let unsubscribeAuth: (() => void) | null = null;
-let prevNavLangHandler: ((e: Event) => void) | null = null;
-let prevPageHideHandler: ((e: Event) => void) | null = null;
 
 document.addEventListener("astro:page-load", () => {
   const wrap = document.getElementById("onboarding-wrap") as HTMLElement | null;
   if (!wrap) return;
+
+  // THIS VISIT'S LIFETIME (2026-09-29). Everything below that outlives the
+  // page's own elements - the pagehide and language-switch listeners, the auth
+  // observer, the avatar's object URL - is released when the router swaps the
+  // page out. The listeners used to be replaced only by the NEXT visit, so
+  // after a soft navigation away a click on EN/DE or a reload still ran
+  // saveTransientState against a page that was gone and stored a blank form
+  // (empty name, language 'de', boxes unticked) that the next visit then
+  // restored over the member's saved answers.
+  const lifetime = pageLifetime();
+  releaseWith(lifetime, () => {
+    unsubscribeAuth?.();
+    unsubscribeAuth = null;
+  });
 
   // Start the App Check attestation while the member fills in the first
   // step, so the sign-up click does not spend Auth's 30 s clock on a slow
@@ -123,7 +136,7 @@ document.addEventListener("astro:page-load", () => {
     { card: document.querySelector<HTMLElement>("[data-ccpv-root]") },
     lightboxStringsFrom(s),
   );
-  document.addEventListener("astro:before-swap", unbindPreviewLightbox, { once: true });
+  releaseWith(lifetime, unbindPreviewLightbox);
 
   const loadingEl = document.getElementById("ob-loading");
   const errorEl = document.getElementById("ob-error")!;
@@ -176,7 +189,6 @@ document.addEventListener("astro:page-load", () => {
 
   async function finishToPreview(opts: {
     bio?: string;
-    avatarObjectUrl?: string | null;
     photoURL?: string;
   }) {
     const user = auth.currentUser;
@@ -247,7 +259,6 @@ document.addEventListener("astro:page-load", () => {
       socialMedia: socialStored(),
       bio: profileBio({ bio: opts.bio ?? "", bioDe: getInputValue("ob-bio-de") }, lang === "de" ? "de" : "en"),
       photoURL: opts.photoURL ?? user.photoURL ?? "",
-      avatarObjectUrl: opts.avatarObjectUrl ?? null,
     });
     setStep(STEP_DONE);
     await triggerRebuild();
@@ -259,7 +270,8 @@ document.addEventListener("astro:page-load", () => {
   }
 
   function saveTransientState() {
-    if (currentStep === STEP_DONE) return;
+    // Never from a page that is gone: every field below would read as empty.
+    if (!wrap!.isConnected || currentStep === STEP_DONE) return;
     try {
       sessionStorage.setItem(
         STORAGE_KEY,
@@ -483,6 +495,12 @@ document.addEventListener("astro:page-load", () => {
   const uploadStatus = document.getElementById("ob-upload-status") as HTMLElement;
   let resizedAvatarBlob: Blob | null = null;
   let avatarColor = "";
+  // The picked avatar's object URL: released when a new pick replaces it and
+  // when the page goes.
+  let avatarObjectUrl = "";
+  releaseWith(lifetime, () => {
+    if (avatarObjectUrl) URL.revokeObjectURL(avatarObjectUrl);
+  });
   // The record behind the avatar currently stored, exactly as ProfileForm
   // tracks it. Without it, replacing the avatar twice inside one onboarding
   // left the first record `live` forever — an image nothing references and
@@ -503,6 +521,8 @@ document.addEventListener("astro:page-load", () => {
     try {
       ({ blob: resizedAvatarBlob, color: avatarColor } = await resizeAvatar(file));
       const url = URL.createObjectURL(resizedAvatarBlob);
+      if (avatarObjectUrl) URL.revokeObjectURL(avatarObjectUrl);
+      avatarObjectUrl = url;
       avatarImg.src = url;
       avatarWrap.classList.add("has-image");
       uploadStatus.textContent = `${s["profile.upload.selected"]}${file.name}`;
@@ -871,16 +891,17 @@ document.addEventListener("astro:page-load", () => {
     socialMedia: string;
     bio: string;
     photoURL: string;
-    avatarObjectUrl: string | null;
   }) {
     const root = document.querySelector<HTMLElement>("[data-ccpv-root]");
     if (!root) return;
     // Which face the card gets is decided by the gallery step: an image
     // card when something was uploaded, otherwise the typographic card —
     // the framed rectangle of their tags, falling back to member type, then
-    // role. Either way it is what /community will render. The avatar fields
-    // still arrive in opts but the directory card does not show an avatar;
-    // the gallery is the card's only image source.
+    // role. Either way it is what /community will render. photoURL still
+    // arrives in opts but the directory card does not show an avatar; the
+    // gallery is the card's only image source. (It was also handed an object
+    // URL of the avatar, minted for this, never shown and never released;
+    // gone 2026-09-29.)
     renderCardPreview(
       root,
       {
@@ -914,7 +935,6 @@ document.addEventListener("astro:page-load", () => {
   // the trip.
   let pendingBio = "";
   let pendingPhotoURL: string | undefined;
-  let pendingAvatarObjectUrl: string | null = null;
 
   document.getElementById("ob-next-4")?.addEventListener("click", async () => {
     const user = auth.currentUser;
@@ -924,10 +944,6 @@ document.addEventListener("astro:page-load", () => {
     try {
       const bioVal = getInputValue("ob-bio").trim();
       const bioDeVal = getInputValue("ob-bio-de").trim();
-      let avatarObjectUrl: string | null = null;
-      if (resizedAvatarBlob) {
-        avatarObjectUrl = URL.createObjectURL(resizedAvatarBlob);
-      }
 
       const { photoURL, photoImageId } = await handleProfileUpdate(
         user,
@@ -947,7 +963,6 @@ document.addEventListener("astro:page-load", () => {
       if (photoImageId) currentPhotoImageId = photoImageId;
       pendingBio = bioVal;
       pendingPhotoURL = photoURL;
-      pendingAvatarObjectUrl = avatarObjectUrl;
       setBtnState("ob-next-4", false, s["onboarding.nav.next"]);
       setStep(STEP_GALLERY);
     } catch (err: unknown) {
@@ -1060,7 +1075,6 @@ document.addEventListener("astro:page-load", () => {
       await finishToPreview({
         bio: pendingBio,
         photoURL: pendingPhotoURL,
-        avatarObjectUrl: pendingAvatarObjectUrl,
       });
     } finally {
       setBtnState("ob-finish", false, s["onboarding.nav.finish"]);
@@ -1081,6 +1095,9 @@ document.addEventListener("astro:page-load", () => {
       // step from it, and setStep counts steps by it.
       emailVerified = user.emailVerified;
       const data = await getUser(user.uid);
+      // The member may have left while the account was being read: nothing
+      // below is for another page, least of all the redirect.
+      if (lifetime.aborted) return;
       if (data.onboardingComplete) {
         window.location.href = `${prefix}/community`;
         return;
@@ -1144,6 +1161,7 @@ document.addEventListener("astro:page-load", () => {
       // list, because `persistGallery` writes the in-memory ids over it and
       // the earlier records would be left orphaned, listed by nothing.
     }
+    if (lifetime.aborted) return;
 
     // Restore transient state (e.g. after a language switch)
     const restoreState = readTransientState();
@@ -1201,27 +1219,17 @@ document.addEventListener("astro:page-load", () => {
     }
 
     // Save state before navigating away (e.g. clicking the lang toggle).
-    // Re-binding is safe because nav-lang is `transition:persist`-ed across
-    // navigations, so remove any previous handler first.
-    // #footer-lang is the phone's copy of the switch (SiteFooter.astro). It
-    // is re-rendered with every page, so a fresh one needs binding each time
-    // and a stale one leaves with its page.
+    // #nav-lang is `transition:persist`-ed and window outlives every page, so
+    // both listeners carry this visit's signal and leave with it; the next
+    // visit binds its own. #footer-lang is the phone's copy of the switch
+    // (SiteFooter.astro), re-rendered with every page, so a stale one leaves
+    // with its page anyway.
     const navLang = document.getElementById("nav-lang");
     const footerLang = document.getElementById("footer-lang");
-    if (prevNavLangHandler) {
-      navLang?.removeEventListener("click", prevNavLangHandler, { capture: true });
-      footerLang?.removeEventListener("click", prevNavLangHandler, { capture: true });
-    }
-    if (prevPageHideHandler) {
-      window.removeEventListener("pagehide", prevPageHideHandler);
-    }
-    const onNavLangClick = () => saveTransientState();
-    const onPageHide = () => saveTransientState();
-    navLang?.addEventListener("click", onNavLangClick, { capture: true });
-    footerLang?.addEventListener("click", onNavLangClick, { capture: true });
-    window.addEventListener("pagehide", onPageHide);
-    prevNavLangHandler = onNavLangClick;
-    prevPageHideHandler = onPageHide;
+    const onLeave = () => saveTransientState();
+    navLang?.addEventListener("click", onLeave, { capture: true, signal: lifetime });
+    footerLang?.addEventListener("click", onLeave, { capture: true, signal: lifetime });
+    window.addEventListener("pagehide", onLeave, { signal: lifetime });
 
     const verifyEmailEl = document.getElementById("ob-verify-email");
     if (verifyEmailEl) verifyEmailEl.textContent = user.email ?? "";

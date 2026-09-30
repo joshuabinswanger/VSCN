@@ -24,14 +24,17 @@ import {
 import { returnTo } from "./authEmail.ts";
 import { hasVerifiedClaim, requireAuth } from "./auth.ts";
 import { providerName } from "./embed.ts";
-import { getUser, getPublicProfileActive, setProfileActive } from "./firestore.ts";
+import { getUser, getPublicProfileActive } from "./firestore.ts";
+import type { GalleryMerge } from "./galleryMerge.ts";
+import { firstProfileProblem, type ProfileField, type ProfileProblem } from "./profileValidation.ts";
+import { saveErrorMessage } from "./saveError.ts";
 import { markImageForDeletion } from "./images.ts";
 import {
   cancelAccountDeletion,
   ensureEmailSynced,
   requestAccountDeletion,
 } from "./account.ts";
-import { validateAvatar, resizeAvatar, validateBio, validateSocialMedia } from "./validation.ts";
+import { validateAvatar, resizeAvatar } from "./validation.ts";
 import { handleProfileUpdate, triggerRebuild } from "./profile.ts";
 import { isMemberType, MEMBER_TYPES } from "./firestore.ts";
 import { memberTypeFieldCopy, needsVisuals } from "./memberType.ts";
@@ -393,6 +396,20 @@ document.addEventListener("astro:page-load", () => {
   function setGalleryStatus(text: string) {
     galleryStatus.textContent = text;
     galleryStatus.style.display = text ? "block" : "none";
+  }
+
+  /**
+   * Clears the line THROUGH the cap-note bookkeeping, never around it: a
+   * bare setGalleryStatus("") left galleryCapNote claiming the line still
+   * said "Gallery is full", so updateGalleryControls never wrote it again
+   * and a member at the cap sat before disabled pickers with no explanation
+   * until the next Save. Zeroing the note first lets the controls take the
+   * line back — a gallery that really is full says so again.
+   */
+  function clearGalleryStatus() {
+    setGalleryStatus("");
+    galleryCapNote = "";
+    updateGalleryControls();
   }
 
   /**
@@ -1116,6 +1133,15 @@ document.addEventListener("astro:page-load", () => {
     galleryVideoAdd.disabled = full || videoPending > 0;
     galleryVideoUrl.disabled = full;
     galleryVideoOpen.disabled = full && galleryVideoPanel.hidden;
+    // The open panel's own line says why its field just went dead — and
+    // stops showing an earlier refusal beside a field that is now disabled
+    // for a different reason. Cleared on the way back down only if it is
+    // this note, so a refusal still standing over a free field is kept.
+    if (full && !galleryVideoPanel.hidden) {
+      setVideoStatus(s["profile.embed.err.full"]);
+    } else if (!full && galleryVideoStatus.textContent === s["profile.embed.err.full"]) {
+      setVideoStatus("");
+    }
 
     const capNote = full
       ? limit < MAX_GALLERY_IMAGES
@@ -1228,13 +1254,16 @@ document.addEventListener("astro:page-load", () => {
       state.setAttribute("role", failed ? "alert" : "presentation");
       // Per file, in words, in the member's language. "Uploading 40%" on a
       // shared line could never say WHICH of six files was at 40%.
-      state.textContent = failed
+      const text = failed
         ? s[galleryErrorKey(task.error ?? "unknown")]
         : task.state === "uploading"
           ? `${s["profile.upload.uploading"]} ${task.progress}%`
           : task.state === "preparing"
             ? s["profile.gallery.preparing"]
             : s["profile.gallery.queued"];
+      // Only when it changed: every upload's progress repaints EVERY row, and
+      // rewriting an alert's text with the same words re-announces it.
+      if (state.textContent !== text) state.textContent = text;
     }
     // Cancel belongs to work in progress; Retry and Dismiss belong to work
     // that stopped. Showing all three at once would offer to cancel a file
@@ -1257,10 +1286,45 @@ document.addEventListener("astro:page-load", () => {
   async function persistGallery() {
     const user = auth.currentUser;
     if (!user) return;
-    await updateUserProfile(user.uid, {
+    const merge = await updateUserProfile(user.uid, {
       gallery: galleryIds(gallery),
       updatedAt: new Date(),
-    });
+    }, { galleryBase });
+    await adoptGalleryMerge(merge, user.uid);
+  }
+
+  /**
+   * The gallery ids this tab last saw stored — loaded, or written by its
+   * last successful write. Every write of the array is a three-way merge
+   * against it (galleryMerge.ts), so a stale tab no longer overwrites a
+   * work another session of the same account added or removed meanwhile.
+   */
+  let galleryBase: string[] = [];
+
+  /**
+   * Takes on what a write's merge found. Works another session removed
+   * leave the list at once; works it added come in at the end, once their
+   * records are fetched. The base moves only AFTER the additions are on
+   * screen: a write in between would otherwise read them as ids this tab
+   * had dropped, and take them out of the stored array again.
+   */
+  async function adoptGalleryMerge(merge: GalleryMerge | null | undefined, uid: string) {
+    if (!merge) return;
+    if (merge.dropped.length) {
+      const dropped = new Set(merge.dropped);
+      gallery = gallery.filter((work) => !dropped.has(work.imageId));
+      for (const id of merge.dropped) committedWords.delete(id);
+      renderGallery();
+      syncPreview();
+    }
+    if (merge.added.length) {
+      const items = await loadGallery(uid, merge.added);
+      gallery = [...gallery, ...items];
+      for (const [id, words] of committedFromLoad(items)) committedWords.set(id, words);
+      renderGallery();
+      syncPreview();
+    }
+    galleryBase = merge.merged;
   }
 
   let galleryWrite: Promise<boolean> | null = null;
@@ -1301,7 +1365,7 @@ document.addEventListener("astro:page-load", () => {
           galleryWriteAgain = false;
           await persistGallery();
         } while (galleryWriteAgain);
-        setGalleryStatus("");
+        clearGalleryStatus();
         return true;
       } catch (error) {
         setGalleryStatus(s[galleryErrorKey(galleryErrorCode(error))]);
@@ -1378,8 +1442,25 @@ document.addEventListener("astro:page-load", () => {
     if (await persistGalleryNow()) await markImageForDeletion(replaced).catch(() => {});
   }
 
+  /**
+   * The editor's one immediately destructive control (2026-09-29): the
+   * array is stored and the record marked before any Save, and the rules
+   * allow a record only forward, live → pendingDeletion, so there is no
+   * client-side way back. A confirmation, then, rather than an undo — an
+   * undo would have to defer the mark, reopening the orphan window that
+   * persistGalleryNow deliberately closes. Cancel takes focus (confirmDialog).
+   */
   async function removeGalleryImage(index: number) {
-    const [removed] = gallery.splice(index, 1);
+    const target = gallery[index];
+    if (!target) return;
+    if (!await confirmDialog(s["profile.gallery.remove.confirm"], {
+      confirm: s["profile.gallery.remove"], cancel: s["profile.delete.cancel"],
+    })) return;
+    // By id, not the index the button was rendered with: an upload can land
+    // and shift the list while the dialog is open.
+    const at = gallery.findIndex((work) => work.imageId === target.imageId);
+    if (at === -1) return;
+    const [removed] = gallery.splice(at, 1);
     if (removed) committedWords.delete(removed.imageId);
     // A new picture on its way to this work has nowhere to land any more.
     for (const task of galleryQueue.tasks()) {
@@ -1596,7 +1677,11 @@ document.addEventListener("astro:page-load", () => {
       );
       if (limit < MAX_GALLERY_IMAGES) problems.push(s["profile.gallery.verifyForMore"]);
     }
-    setGalleryStatus(problems.join(" · "));
+    // A clean selection clears an earlier batch's complaints — through the
+    // cap bookkeeping, since the queue's onChange has just written the cap
+    // note this line would otherwise wipe before it was ever painted.
+    if (problems.length) setGalleryStatus(problems.join(" · "));
+    else clearGalleryStatus();
   }
 
   // ── Video links (2026-09-23) ──────────────────────────
@@ -1955,6 +2040,14 @@ document.addEventListener("astro:page-load", () => {
   languageInputs.forEach((input) => input.addEventListener("change", syncProfileView));
   visualNeedsSelector?.addEventListener("visual-needs-change", syncProfileView);
 
+  // The unsaved avatar's object URL. It is still the <img>'s src (and the
+  // preview's portrait) after Save, so it is released only when a new pick
+  // replaces it or the page goes, never when the upload lands.
+  let avatarObjectUrl = "";
+  lifecycle.signal.addEventListener("abort", () => {
+    if (avatarObjectUrl) URL.revokeObjectURL(avatarObjectUrl);
+  }, { once: true });
+
   avatarInput.addEventListener("change", async () => {
     const file = avatarInput.files?.[0];
     if (!file) return;
@@ -1974,6 +2067,8 @@ document.addEventListener("astro:page-load", () => {
     try {
       ({ blob: resizedAvatarBlob, color: avatarColor } = await resizeAvatar(file));
       const previewUrl = URL.createObjectURL(resizedAvatarBlob);
+      if (avatarObjectUrl) URL.revokeObjectURL(avatarObjectUrl);
+      avatarObjectUrl = previewUrl;
       showPreview(previewUrl);
       uploadStatus.textContent = `${s["profile.upload.selected"]}${file.name}`;
     } catch {
@@ -2029,6 +2124,13 @@ document.addEventListener("astro:page-load", () => {
       draft = editorDraft({ key: `profile-draft:${auth.app.options.projectId}:${auth.currentUser.uid}`, version: 2, root: form, read,
         serverUpdatedAt: loadedUpdatedAt,
         readDirty: () => ({ ...read(), phone: phoneInput.value, active: activeInput.checked, preferredLanguage: preferredLanguageInput.value, wants: wantsToContributeInput.checked, receive: receiveCommunityEmailsInput.checked, languages: getSelectedLanguages(), audiences: getSelectedPrimaryAudiences(), avatar: resizedAvatarBlob?.size ?? 0 }),
+        // TRANSFERS ARE NOT A DRAFT (2026-09-29): an upload, a video link being
+        // resolved, a poster being restored or the gallery write that follows
+        // them are cancelled by the before-swap dispose, and no draft brings
+        // them back — so the guard asks about them in their own words. The
+        // same state Save refuses on (its gate below), minus the avatar
+        // resize, which readDirty already counts through the blob.
+        busy: () => restoringThumbs.size > 0 || galleryQueue.tasks().some(task => task.state !== "error") || videoPending > 0 || galleryWrite !== null,
         restore(value: Partial<ReturnType<typeof read>>) {
           if (!value || !value.fields || !Array.isArray(value.works) || !Array.isArray(value.projects)) return null;
           const values = value.fields;
@@ -2049,7 +2151,13 @@ document.addEventListener("astro:page-load", () => {
           // Restored membership may need a block made contiguous again, as at load.
           if (!sameIds(before, gallery)) void persistGalleryNow();
           if (tagSelector) tagSelector.value = value.tags ?? [];
-          if (memberTypeSelector) memberTypeSelector.value = value.memberType ?? "";
+          if (memberTypeSelector) {
+            // The element's setter only checks a radio, and only a radio's own
+            // change dispatches member-type-change: sync the wording and the
+            // Visual-needs question by hand, as the load path does.
+            memberTypeSelector.value = value.memberType ?? "";
+            syncMemberTypeCopy();
+          }
           if (openToSelector) openToSelector.value = value.openTo ?? [];
           if (visualNeedsSelector) visualNeedsSelector.value = value.visualNeeds ?? [];
           setSocialValues(splitSocial(value.social ?? ""));
@@ -2062,11 +2170,19 @@ document.addEventListener("astro:page-load", () => {
         labels: lang === "de" ? {
           found: "Profiltexte und Werkdetails sind in diesem Tab gespeichert. Kontoeinstellungen und ausstehende Dateien bitte erneut eingeben.",
           foundNewer: "In diesem Tab ist ein Entwurf gespeichert, aber das Profil wurde seither anderswo gespeichert. Wiederherstellen bringt die älteren Texte zurück.",
-          restore: "Entwurf wiederherstellen", discard: "Verwerfen", leave: "Ungespeicherte Änderungen. Seite verlassen? Der Entwurf bleibt in diesem Tab gespeichert.",
+          foundUnkept: "Geänderte Kontoeinstellungen oder ausgewählte Dateien wurden nicht gespeichert. Bitte erneut eingeben.",
+          restore: "Entwurf wiederherstellen", discard: "Verwerfen", dismiss: "Verstanden",
+          leave: "Ungespeicherte Änderungen. Seite verlassen? Der Entwurf bleibt in diesem Tab gespeichert.",
+          leaveUnkept: "Ungespeicherte Änderungen. Seite verlassen? Sie gehen dabei verloren.",
+          leaveBusy: "Uploads laufen noch und werden beim Verlassen abgebrochen. Seite verlassen?",
           stay: "Bleiben", go: "Verlassen",
         } : { found: "Profile text and work details are saved in this tab. Re-enter account settings and select pending files again.",
           foundNewer: "A draft is saved in this tab, but the profile has been saved elsewhere since. Restoring it brings back the older text.",
-          restore: "Restore draft", discard: "Discard", leave: "Unsaved changes. Leave this page? Your draft will remain saved in this tab.",
+          foundUnkept: "Changed account settings or selected files were not saved. Please enter them again.",
+          restore: "Restore draft", discard: "Discard", dismiss: "Got it",
+          leave: "Unsaved changes. Leave this page? Your draft will remain saved in this tab.",
+          leaveUnkept: "Unsaved changes. Leave this page? They will be lost.",
+          leaveBusy: "Uploads are still in progress and will be cancelled if you leave. Leave this page?",
           stay: "Stay", go: "Leave" },
       });
     }
@@ -2234,6 +2350,9 @@ document.addEventListener("astro:page-load", () => {
     gallery = withoutDanglingProjects(gallery, storedProjectIds);
     const contiguous = contiguousOrder(gallery, (g) => g.projectId);
     const reordered = !sameIds(gallery, contiguous);
+    // What is stored NOW is the base every later write reconciles against —
+    // the loaded order, before this tab's own contiguity fix rewrites it.
+    galleryBase = galleryIds(gallery);
     gallery = contiguous;
     // Every word on screen is now the record's: nothing is unsaved yet.
     committedWords = committedFromLoad(gallery);
@@ -2340,8 +2459,12 @@ document.addEventListener("astro:page-load", () => {
   });
 
   document.getElementById("btn-logout")!.addEventListener("click", async () => {
+    // The same honesty as the leave dialog: the draft is promised only once
+    // it is written (not for account-tab edits, not when storage refused it).
     if (draft?.hasChanges() && !await confirmDialog(
-      lang === "de" ? "Abmelden? Ungespeicherte Änderungen bleiben als Entwurf in diesem Tab." : "Sign out? Unsaved changes remain as a draft in this tab.",
+      draft.keep()
+        ? (lang === "de" ? "Abmelden? Ungespeicherte Änderungen bleiben als Entwurf in diesem Tab." : "Sign out? Unsaved changes remain as a draft in this tab.")
+        : (lang === "de" ? "Abmelden? Ungespeicherte Änderungen gehen dabei verloren." : "Sign out? Unsaved changes will be lost."),
       { confirm: s["profile.logout"], cancel: s["profile.delete.cancel"] },
     )) return;
     draft?.dispose();
@@ -2349,24 +2472,165 @@ document.addEventListener("astro:page-load", () => {
     window.location.href = prefix || "/";
   });
 
+  // ── Save ──────────────────────────────────────────────
+
+  function showSaveError(text: string) {
+    saveError.textContent = text;
+    saveError.style.display = "block";
+  }
+
+  /**
+   * Where a refused field lives: its control, its tab, and for a bilingual
+   * field which of the two panes — the German bio sits behind the EN/DE
+   * switch, and an error that names it while it is hidden names nothing.
+   */
+  const FIELD_TARGETS: Record<ProfileField, { id: string; section: "profile" | "account"; pane?: "en" | "de" }> = {
+    displayName: { id: "name", section: "profile" },
+    role: { id: "role", section: "profile", pane: "en" },
+    roleDe: { id: "role-de", section: "profile", pane: "de" },
+    affiliation: { id: "affiliation", section: "profile" },
+    location: { id: "location", section: "profile" },
+    bio: { id: "bio", section: "profile", pane: "en" },
+    bioDe: { id: "bio-de", section: "profile", pane: "de" },
+    portfolio: { id: "portfolio", section: "profile" },
+    socialMedia: { id: "social-editor", section: "profile" },
+    tags: { id: "member-tags-field", section: "profile" },
+    openTo: { id: "openTo-input", section: "profile" },
+    visualNeeds: { id: "visualNeeds-input", section: "profile" },
+    phone: { id: "phone", section: "account" },
+  };
+
+  /** Controls flagged by the last refused Save; unflagged on input or at the next attempt. */
+  const invalidControls = new Set<HTMLElement>();
+
+  function describedBy(el: HTMLElement): string[] {
+    return (el.getAttribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean);
+  }
+
+  function unmarkInvalid(el: HTMLElement) {
+    el.removeAttribute("aria-invalid");
+    const ids = describedBy(el).filter((id) => id !== saveError.id);
+    if (ids.length) el.setAttribute("aria-describedby", ids.join(" "));
+    else el.removeAttribute("aria-describedby");
+    invalidControls.delete(el);
+  }
+
+  function markInvalid(el: HTMLElement) {
+    el.setAttribute("aria-invalid", "true");
+    const ids = describedBy(el);
+    if (!ids.includes(saveError.id)) el.setAttribute("aria-describedby", [...ids, saveError.id].join(" "));
+    invalidControls.add(el);
+    el.addEventListener("input", () => unmarkInvalid(el), { once: true });
+  }
+
+  /** The footer says what is wrong; the field it is about gets the focus, the flag and the tab. */
+  function showSaveProblem(problem: ProfileProblem) {
+    const target = FIELD_TARGETS[problem.field];
+    const anchor = document.getElementById(target.id);
+    setSection(target.section);
+    if (target.pane) {
+      anchor?.closest("[data-bifield]")?.querySelector<HTMLButtonElement>(`[data-bifield-btn="${target.pane}"]`)?.click();
+    }
+    const control = anchor && (anchor.matches("input, textarea, select")
+      ? anchor
+      : anchor.querySelector<HTMLElement>('input:not([type="hidden"]), textarea, select, button'));
+    showSaveError(problem.message);
+    if (!control) return;
+    markInvalid(control);
+    control.focus();
+    control.scrollIntoView?.({ block: "center" });
+  }
+
+  /**
+   * A save that has not settled in this long has lost the network: Firestore
+   * write promises resolve only on the backend's acknowledgement, so an
+   * offline Save used to hold the whole editor inert on "Saving…" until the
+   * connection returned. The load path has had its watchdog since the App
+   * Check work (LOAD_TIMEOUT_MS); this is the save path's. The chain keeps
+   * running behind it — the queued writes land when they can, and its
+   * result is still reported unless a later Save has taken the footer over.
+   */
+  const SAVE_TIMEOUT_MS = 30_000;
+  let saveGeneration = 0;
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     saveMsg.style.display = "none";
     saveError.style.display = "none";
+    for (const el of [...invalidControls]) unmarkInvalid(el);
 
     const user = auth.currentUser;
     if (!user) return;
 
     if (saveButton.disabled) return;
-    if (avatarProcessing || restoringThumbs.size || galleryQueue.tasks().some(task => task.state !== "error") || videoPending || galleryWrite) {
-      saveError.textContent = lang === "de" ? "Bitte warten, bis die Uploads abgeschlossen sind." : "Please wait for uploads to finish before saving.";
-      saveError.style.display = "block"; return;
+
+    // Where the keyboard was. setSaving makes the sections inert, which
+    // throws focus to <body> and never brought it back; the finally does.
+    const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const refocus = () => {
+      const target = focused?.isConnected && !focused.closest("[inert]") ? focused : saveButton;
+      target.focus({ preventScroll: true });
+    };
+
+    // A gallery write in flight is not an upload: it is this tab's own
+    // array on its way, gone in one round trip. Waited for, visibly, rather
+    // than refused (2026-09-29) — the item already looked committed, and
+    // the refusal read as an error for pressing Save a moment too soon.
+    if (galleryWrite) {
+      setSaving(true);
+      try {
+        while (galleryWrite) await galleryWrite;
+      } finally {
+        setSaving(false);
+      }
     }
-    for (const result of [validateBio(bioInput.value), validateBio(bioDeInput.value), validateSocialMedia(socialStored())]) {
-      if (!result.ok) { saveError.textContent = result.error ?? s["profile.save.error"]; saveError.style.display = "block"; return; }
+    if (avatarProcessing || restoringThumbs.size || galleryQueue.tasks().some(task => task.state !== "error") || videoPending) {
+      showSaveError(s["profile.save.waitUploads"]);
+      refocus();
+      return;
     }
     const memberType = memberTypeSelector?.value ?? "";
+    // Every cap the rules hold, checked here first and named — the rules'
+    // own answer is a bare permission error, given only after the records,
+    // the projects and the avatar have already been written.
+    const problem = firstProfileProblem({
+      displayName: nameInput.value.trim(),
+      role: roleInput.value.trim(),
+      roleDe: roleDeInput.value.trim(),
+      affiliation: affiliationInput.value.trim(),
+      location: locationInput.value.trim(),
+      bio: bioInput.value.trim(),
+      bioDe: bioDeInput.value.trim(),
+      portfolio: portfolioInput.value.trim(),
+      socialMedia: socialStored(),
+      phone: phoneInput.value.trim(),
+      tags: tagSelector?.value ?? [],
+      openTo: openToSelector?.value ?? [],
+      visualNeeds: needsVisuals(memberType) ? (visualNeedsSelector?.value ?? []) : [],
+    }, s);
+    if (problem) {
+      showSaveProblem(problem);
+      return;
+    }
+    if (navigator.onLine === false) {
+      showSaveError(s["profile.save.offline"]);
+      refocus();
+      return;
+    }
+
+    const generation = ++saveGeneration;
+    let timedOut = false;
     setSaving(true);
+    const watchdog = setTimeout(() => {
+      timedOut = true;
+      setSaving(false);
+      showSaveError(s["profile.save.slow"]);
+      refocus();
+    }, SAVE_TIMEOUT_MS);
+    // The words every record is about to hold, taken now: a save that
+    // outlives the watchdog finishes under a form the member may have gone
+    // on editing, and must not commit THOSE words as saved.
+    const wordsWritten = committedFromLoad(gallery);
 
     try {
       const savedLanguage = preferredLanguageInput.value === "en" ? "en" : "de";
@@ -2414,6 +2678,11 @@ document.addEventListener("astro:page-load", () => {
           resizedAvatarBlob,
           previousPhotoImageId: currentPhotoImageId,
           ...(resizedAvatarBlob && avatarColor ? { photoColor: avatarColor } : {}),
+          // Visibility rides in the same commit as the profile (it used to be
+          // a separate write after it, whose refusal for an unverified member
+          // showed as an error over a profile that had in fact saved).
+          active: activeInput.checked,
+          galleryBase,
         },
         (pct) => {
           uploadStatus.textContent = `${s["profile.upload.uploading"]} ${pct}%`;
@@ -2422,6 +2691,7 @@ document.addEventListener("astro:page-load", () => {
       );
 
       if (saved.photoImageId) currentPhotoImageId = saved.photoImageId;
+      await adoptGalleryMerge(saved.gallery, user.uid);
 
       // Stored projects that no image names any more — dragged empty, or
       // deleted through the menu. A failed delete does not fail the Save:
@@ -2448,15 +2718,22 @@ document.addEventListener("astro:page-load", () => {
         uploadStatus.textContent = s["profile.upload.complete"];
       }
 
-      await setProfileActive(user.uid, activeInput.checked);
       syncHiddenBanner(user.emailVerified, activeInput.checked);
       const queued = await triggerRebuild();
-      watchPublication(saveMsg, lang, queued, lifecycle.signal);
       resizedAvatarBlob = null;
-      // The records hold every word on screen now (persistWorkMetadata ran first).
-      committedWords = committedFromLoad(gallery);
-      draft?.saved();
+      // The records hold the words that were on screen when this Save began
+      // (persistWorkMetadata ran first) — for the works still here.
+      for (const [id, words] of wordsWritten) {
+        if (gallery.some((work) => work.imageId === id)) committedWords.set(id, words);
+      }
+      // A later Save owns the footer now; this one's result is its business.
+      if (generation !== saveGeneration) return;
+      saveError.style.display = "none";
+      watchPublication(saveMsg, lang, queued, lifecycle.signal);
       saveMsg.style.display = "block";
+      // Not after the watchdog fired: the member may have edited since, and
+      // saved() would take THAT as the saved state. The next Save clears it.
+      if (!timedOut) draft?.saved();
 
       // A GALLERY ERROR MUST NOT OUTLIVE THE SAVE THAT SETTLED IT.
       //
@@ -2466,26 +2743,23 @@ document.addEventListener("astro:page-load", () => {
       // "Your sign-in expired. Sign in again, then try once more." directly
       // above a green "Changes saved." — the editor contradicting itself, and
       // the wrong half is the one that sounds urgent.
-      //
-      // Cleared through the cap-note bookkeeping rather than around it:
-      // zeroing galleryCapNote first is what lets updateGalleryControls take
-      // the line back, so a gallery that really is full says so again instead
-      // of falling silent.
-      setGalleryStatus("");
-      galleryCapNote = "";
-      updateGalleryControls();
+      clearGalleryStatus();
 
       // Choosing a language here is as explicit as the EN / DE switch, so the
       // site follows it now rather than at the next sign-in.
-      if (savedLanguage !== lang) {
+      if (!timedOut && savedLanguage !== lang) {
         rememberSessionChoice(savedLanguage);
         window.location.replace(localePath(window.location.pathname, savedLanguage));
       }
     } catch (err: unknown) {
-      saveError.textContent = err instanceof Error ? err.message : s["profile.save.error"];
-      saveError.style.display = "block";
+      if (generation !== saveGeneration) return;
+      showSaveError(saveErrorMessage(err, s));
     } finally {
-      setSaving(false);
+      clearTimeout(watchdog);
+      if (!timedOut) {
+        setSaving(false);
+        refocus();
+      }
     }
   });
 
