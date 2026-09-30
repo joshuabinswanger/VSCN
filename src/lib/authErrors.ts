@@ -40,9 +40,12 @@ const ERROR_KEYS: Record<string, string> = {
   // It means the request carried no usable App Check token: the Turnstile
   // challenge or the mint call failed (see appCheckTurnstile.ts). In practice
   // that is a blocker, a privacy extension or a locked-down network on the
-  // member's side, which they CAN fix - so it earns a sentence. It is also
-  // what every Hosting PREVIEW channel does, because preview domains are not
-  // on the Turnstile widget's hostname list; auth cannot be tested on a preview.
+  // member's side, which they CAN fix - so it earns a sentence. (Hosting
+  // PREVIEW channels attest fine: they build with Cloudflare's always-pass
+  // test key against the dev function, whose host list carries the test
+  // secret's hostname. Sign-in may still fail on a preview, but for a
+  // different reason: preview domains are not in Auth's authorized-domain
+  // list, which is a console setting, not this code.)
   "auth/firebase-app-check-token-is-invalid.": "auth.error.code.appCheck",
   "auth/firebase-app-check-token-is-invalid":  "auth.error.code.appCheck",
   // NOT an Auth code — Firestore's. It reaches the same catch because the

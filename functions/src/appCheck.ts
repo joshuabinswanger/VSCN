@@ -15,9 +15,33 @@
 // same-origin through a Hosting rewrite (`/api/app-check` in firebase.json)
 // on deployed sites, and directly on cloudfunctions.net from `astro dev`.
 //
-// Abuse: a Turnstile token is single-use and expires after 300 s, and the only
-// way to obtain one is to pass Cloudflare's challenge on an allowed hostname.
-// That IS the rate limit on minting. maxInstances caps the bill regardless.
+// Abuse. A Turnstile token is single-use and expires after 300 s, and the only
+// way to obtain one is to pass Cloudflare's challenge on an allowed hostname:
+// that bounds SUCCESSFUL mints, and nothing else does. It bounds nothing about
+// the requests themselves — every well-formed POST costs one siteverify round
+// trip whatever its token says — so this endpoint's availability is what a
+// flood attacks (2026-09-29 review, T2-12): a request held a Cloud Run slot
+// until Cloudflare answered, up to the platform's 60 s default, and with prod
+// enforcing App Check on Auth, Firestore and every callable, saturating it
+// would have taken sign-in and every member write down with it. Hence:
+//
+//   - Nothing reaches Cloudflare before the request has passed cheap checks
+//     (method, content type, size, token shape). Garbage costs a few
+//     microseconds and no upstream call.
+//   - The siteverify call carries its own clock (SITEVERIFY_TIMEOUT_MS) and
+//     the function a slightly longer one, so a stalled Cloudflare frees the
+//     slot in seconds and the member gets our sentence, not the platform's.
+//   - There is deliberately NO per-IP throttle here. Behind the Hosting
+//     rewrite the one address the request path writes into x-forwarded-for
+//     is Hosting's own egress, shared by every member; the visitor's address
+//     rides in a header (fastly-client-ip) that anyone calling the function
+//     directly can set themselves; and members at ETH or UZH arrive from one
+//     NAT address by the hundred. Every key available is either spoofable
+//     (no protection) or shared (a self-inflicted outage). Rate limiting by
+//     visitor belongs at Cloudflare's edge in front of vscn.ch, where the
+//     visitor is actually known. maxInstances caps the bill regardless.
+//   - No Firestore counter either: a write per request would let a flood
+//     run up the bill as well as the latency.
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret, defineString } from "firebase-functions/params";
 import { logger } from "firebase-functions/v2";
@@ -46,7 +70,36 @@ const ACTION = "app-check";
 /** One hour: App Check's default, and what reCAPTCHA Enterprise gave. */
 const TTL_MS = 60 * 60 * 1000;
 /** Cloudflare's documented maximum token length. */
-const MAX_TOKEN_LENGTH = 2048;
+export const MAX_TOKEN_LENGTH = 2048;
+/**
+ * A token is one run of visible ASCII (Turnstile's are base64url-ish, dotted).
+ * Whitespace, control bytes or non-ASCII cannot be a token and are refused
+ * here rather than sent to Cloudflare to be refused there.
+ */
+const TOKEN_SHAPE = /^[\x21-\x7e]+$/;
+/**
+ * The request is `{ "token": "<2048 chars at most>" }`: 8 KiB is several
+ * times that. The Functions Framework itself parses bodies up to 1 GiB, so
+ * this is the only cap. It runs after the framework has parsed the body — it
+ * cannot save that work — but it keeps an oversized request off Cloudflare.
+ */
+export const MAX_BODY_BYTES = 8 * 1024;
+/**
+ * How long Cloudflare gets to answer. Normally it answers in well under a
+ * second; the bound exists for the day it does not, so that a stalled
+ * upstream frees this instance's slot instead of holding it for a minute.
+ * The client spends this out of ONE 24 s attestation budget shared with a
+ * mobile challenge that can itself take 15-25 s (src/lib/appCheckTiming.ts),
+ * so it has to stay small: a mint that takes 8 s is already a lost login on
+ * a slow phone, and waiting longer would rescue nothing.
+ */
+export const SITEVERIFY_TIMEOUT_MS = 8_000;
+/**
+ * The function's own clock, above SITEVERIFY_TIMEOUT_MS plus the mint call so
+ * that our own 504 (with a reason the client can quote) wins over the
+ * platform's, and well under Auth's 30 s request timeout on the client.
+ */
+export const TIMEOUT_SECONDS = 15;
 
 interface SiteverifyOutcome {
   success?: boolean;
@@ -76,8 +129,61 @@ export function corsOriginFor(origin: string | undefined, list: string[]): strin
   }
 }
 
+/**
+ * The Turnstile token in the request, or the status and one-word reason to
+ * refuse it with. Everything here is decided from the request alone, before
+ * any upstream call, and each refusal is a few comparisons at most.
+ */
+export function tokenFromRequest(req: {
+  get(name: string): string | undefined;
+  body?: unknown;
+}): { token: string } | { status: number; reason: string } {
+  if (!/^application\/json\b/i.test(req.get("content-type") ?? "")) {
+    return { status: 415, reason: "content-type" };
+  }
+  const declared = Number(req.get("content-length") ?? "0");
+  if (declared > MAX_BODY_BYTES) return { status: 413, reason: "size" };
+  const body = req.body;
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return { status: 400, reason: "body" };
+  }
+  const token = (body as { token?: unknown }).token;
+  if (typeof token !== "string" || token.length === 0 || token.length > MAX_TOKEN_LENGTH || !TOKEN_SHAPE.test(token)) {
+    return { status: 400, reason: "token" };
+  }
+  return { token };
+}
+
+/**
+ * The first x-forwarded-for hop, as a HINT for Cloudflare's `remoteip`,
+ * which is optional and only sharpens its verdict: a wrong or missing value
+ * fails nothing (siteverify has no mismatch error code), so best-effort is
+ * enough. It is NOT the visitor's address in any trustworthy sense — the
+ * caller can write that hop themselves, and behind the Hosting rewrite it
+ * may be a proxy — which is why nothing here keys anything on it; see the
+ * header. Kept as it has always been because it is proven on prod.
+ */
+export function visitorHint(req: { get(name: string): string | undefined }): string | undefined {
+  return (req.get("x-forwarded-for") ?? "").split(",")[0].trim() || undefined;
+}
+
 export const mintAppCheckToken = onRequest(
-  { region: "us-central1", maxInstances: 3, secrets: [turnstileSecretKey] },
+  {
+    region: "us-central1",
+    maxInstances: 3,
+    // 80 concurrent requests per instance is the platform default for a
+    // 1-vCPU function; written out because it is a sizing decision: each
+    // request spends its life waiting on Cloudflare, so the slots are cheap
+    // and a low number would turn a modest burst of real logins into 429s.
+    concurrency: 80,
+    timeoutSeconds: TIMEOUT_SECONDS,
+    // Public on purpose and in writing: the Hosting rewrite and the page's
+    // bare fetch both call it anonymously, and a functions deploy rewrites
+    // the service's invoker policy from this manifest (see publication.ts
+    // for the outage an undeclared invoker caused).
+    invoker: "public",
+    secrets: [turnstileSecretKey],
+  },
   async (req, res) => {
     const list = hostList();
     const origin = corsOriginFor(req.get("origin"), list);
@@ -98,26 +204,37 @@ export const mintAppCheckToken = onRequest(
       return;
     }
 
-    const token = (req.body as { token?: unknown } | undefined)?.token;
-    if (typeof token !== "string" || token.length === 0 || token.length > MAX_TOKEN_LENGTH) {
-      res.status(400).send("token");
+    const parsed = tokenFromRequest(req);
+    if (!("token" in parsed)) {
+      res.status(parsed.status).send(parsed.reason);
       return;
     }
-
-    // Behind Hosting and Cloud Run the caller's address is the first hop of
-    // x-forwarded-for; remoteip is optional to Cloudflare and only sharpens
-    // its verdict, so a missing value is fine.
-    const remoteip = (req.get("x-forwarded-for") ?? "").split(",")[0].trim() || undefined;
+    const { token } = parsed;
 
     let outcome: SiteverifyOutcome;
     try {
       const verify = await fetch(SITEVERIFY, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ secret: turnstileSecretKey.value(), response: token, remoteip }),
+        body: JSON.stringify({ secret: turnstileSecretKey.value(), response: token, remoteip: visitorHint(req) }),
+        signal: AbortSignal.timeout(SITEVERIFY_TIMEOUT_MS),
       });
+      if (!verify.ok) {
+        logger.error("siteverify answered with an error status", { status: verify.status });
+        res.status(502).send("siteverify");
+        return;
+      }
       outcome = (await verify.json()) as SiteverifyOutcome;
     } catch (err) {
+      // undici rejects an AbortSignal.timeout() with a DOMException named
+      // TimeoutError; anything else is DNS, TLS, a reset, or a body that was
+      // not JSON. The client only reads the status and the word, so the
+      // distinction is for the logs and for whoever reads a member's report.
+      if (err instanceof Error && err.name === "TimeoutError") {
+        logger.error("siteverify did not answer in time", { timeoutMs: SITEVERIFY_TIMEOUT_MS });
+        res.status(504).send("timeout");
+        return;
+      }
       logger.error("siteverify unreachable", { err: String(err) });
       res.status(502).send("siteverify");
       return;
