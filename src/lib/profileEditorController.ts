@@ -2438,7 +2438,7 @@ document.addEventListener("astro:page-load", () => {
       await setProfileActive(user.uid, activeInput.checked);
       syncHiddenBanner(user.emailVerified, activeInput.checked);
       const queued = await triggerRebuild();
-      watchPublication(saveMsg, lang, queued, lifecycle.signal);
+      watchPublication(saveMsg, lang, queued, lifecycle.signal, { listed: activeInput.checked });
       resizedAvatarBlob = null;
       // The records hold every word on screen now (persistWorkMetadata ran first).
       committedWords = committedFromLoad(gallery);

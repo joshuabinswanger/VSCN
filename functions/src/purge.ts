@@ -64,15 +64,27 @@ export async function purgeAccount(uid: string): Promise<void> {
       const slugs = await db.collection("slugs").where("uid", "==", uid).get();
       const permits = await db.collection("uploadPermits").where("ownerUid", "==", uid).get();
       const projects = await db.collection("projects").where("ownerUid", "==", uid).get();
+      // The operator's notices, pending AND retained: the pending signup
+      // notice carries the email, and a mailbox outage used to let it outlive
+      // the account by moving into failedAdminEvents at the twelfth failed
+      // tick (review T2-8). The signup receipt goes too, so a redelivered
+      // Auth-create event for this uid cannot re-queue it. adminEventReceipts
+      // for images are keyed by event, hold no uid, and stay.
+      const pendingNotices = await db.collection("adminEvents").where("uid", "==", uid).get();
       const failedNotices = await db.collection("failedAdminEvents").where("uid", "==", uid).get();
+      // rebuildMembers/{uid} is NOT in this list: it is the tombstone the
+      // profile-delete trigger compares against (rebuildQueue.ts), and it holds
+      // no personal data.
       await deleteRefs([
         ...slugs.docs.map((d) => d.ref),
         ...permits.docs.map((d) => d.ref),
         ...projects.docs.map((d) => d.ref),
+        ...pendingNotices.docs.map((d) => d.ref),
         ...failedNotices.docs.map((d) => d.ref),
+        db.doc(`adminEvents/signup-${uid}`),
+        db.doc(`adminEventReceipts/signup-${uid}`),
         db.doc(`embedRequests/${uid}`),
         db.doc(`uploadLimits/${uid}`),
-        db.doc(`rebuildMembers/${uid}`),
         db.doc(`publicProfiles/${uid}`),
         db.doc(`users/${uid}`),
         db.doc(`onboardingRequests/${uid}`),

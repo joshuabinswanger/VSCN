@@ -924,6 +924,13 @@ label:has(> .picker-input:focus-visible) {
   font-size: var(--fs-88);
   color: var(--color-error);
 }
+/* Neither success nor failure: the save landed, the publication is not yet
+   confirmed or is late (src/lib/publicationStatus.ts swaps this in for
+   .msg-ok, so a delayed publication no longer reads green). */
+.msg-note {
+  font-size: var(--fs-88);
+  color: var(--color-muted);
+}
 
 /* App Check's Turnstile widget (src/lib/appCheckTurnstile.ts). Rendered with
    appearance "interaction-only", so this box holds nothing visible until

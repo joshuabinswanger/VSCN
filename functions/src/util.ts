@@ -28,9 +28,13 @@ export function requireAdmin(req: CallableRequest): string {
 
 /** Deletes in batches of 500 (the Firestore batch limit). Missing docs are no-ops. */
 export async function deleteRefs(refs: DocumentReference[]): Promise<void> {
-  for (let i = 0; i < refs.length; i += 500) {
+  // Deduplicated by path: purge lists a query's results next to the ids it
+  // knows, and the same document twice in one batch is a wasted write at
+  // best.
+  const unique = [...new Map(refs.map((ref) => [ref.path, ref])).values()];
+  for (let i = 0; i < unique.length; i += 500) {
     const batch = db.batch();
-    for (const ref of refs.slice(i, i + 500)) batch.delete(ref);
+    for (const ref of unique.slice(i, i + 500)) batch.delete(ref);
     await batch.commit();
   }
 }

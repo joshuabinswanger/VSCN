@@ -100,10 +100,13 @@ export async function handleProfileUpdate(
 }
 
 /**
- * Triggers a GitHub Actions rebuild for the community page via the
- * `requestRebuild` Cloud Function, which verifies the caller's Firebase Auth
- * token and holds the GitHub token as a server-side secret.
- * Best-effort: failures are logged, never thrown.
+ * Asks the `requestRebuild` Cloud Function to fingerprint the caller's
+ * published state and, if it changed, queue a site build; the scheduled
+ * flush (functions/src/rebuildQueue.ts) is what dispatches GitHub Actions.
+ * The Firestore triggers on the profile and image records queue the same
+ * way, so a failure here does NOT mean the change will not publish — it
+ * means only that this call could not confirm it (publicationStatus.ts
+ * then asks getPublicationStatus). Best-effort: false, never a throw.
  */
 export async function triggerRebuild() {
   try {

@@ -1,8 +1,8 @@
 /**
- * The housekeeping queues: pending deletions, stale uploads, live records no
- * profile points at, and email mismatches. Every row jumps to the member it
- * belongs to, and image rows also jump to the record and carry the delete
- * control.
+ * The housekeeping queues: the publication queue's age, pending deletions,
+ * stale uploads, live records no profile points at, email mismatches and the
+ * operator's unsent notices. Every member row jumps to the member it belongs
+ * to, and image rows also jump to the record and carry the delete control.
  */
 import type { AdminImage, Queues } from "../adminApi.ts";
 import { retryNotice } from "../adminApi.ts";
@@ -24,9 +24,11 @@ export interface QueueDeps {
  * because nothing else will ever tell you.
  */
 export const failingNotices = (q: Queues) => q.unsentNotices.filter((n) => n.attempts > 0);
+/** Retained after the last automatic attempt; nothing but a Retry moves these. Counted server-side since 2026-09-29, derived from the rows before. */
+export const retainedNotices = (q: Queues): number => q.failedNotices ?? q.unsentNotices.filter((n) => n.failed).length;
 export const queueTotal = (q: Queues): number =>
   q.pendingDeletions.length + q.staleUploads.length + q.unreferencedLive.length + q.emailMismatches.length +
-  failingNotices(q).length;
+  failingNotices(q).length + (q.publication?.delayed ? 1 : 0);
 
 export function renderQueues(q: Queues, deps: QueueDeps): HTMLElement {
   const retry = (id: string) => {
@@ -60,8 +62,27 @@ export function renderQueues(q: Queues, deps: QueueDeps): HTMLElement {
       el("p", { class: "muted small" }, hint));
   const empty = (n: number) => (n ? null : el("p", { class: "muted" }, "Nothing here."));
 
+  // The site's own queue: one row, because "is the site behind, and since
+  // when" is the question nobody could answer from the console before
+  // (review T2-9). An old callable answers without it; then the row says so.
+  const p = q.publication;
+  const publication = !p
+    ? el("p", { class: "muted" }, "Not reported by this deployment.")
+    : el("div", { class: "row" },
+        el("span", {},
+          p.dirty
+            ? el("span", { class: p.delayed ? "error" : "" },
+                `${p.delayed ? "DELAYED" : "queued"} ${p.ageMinutes ?? 0} min · oldest ${fmt(p.queuedAt)} · newest ${fmt(p.dirtyAt)}`,
+                p.leaseUntil ? ` · build in flight until ${fmt(p.leaseUntil)}` : " · waiting for the next flush")
+            : `up to date · published ${p.publishedAt ? fmt(p.publishedAt) : "never"}`,
+          ` · generation ${p.publishedGeneration} of ${p.generation}`));
+
   return el("div", { class: "card" },
     deps.crumbs(),
+    heading("Publication", p?.delayed ? 1 : 0,
+      `Member changes waiting for a site build. Older than ${p?.delayedAfterMinutes ?? 30} minutes counts as delayed: the flush logs an error and members are told.`),
+    publication,
+
     heading("Pending deletions", q.pendingDeletions.length, "Accounts in a grace period or with a stalled purge."),
     ...q.pendingDeletions.map((j) => el("div", { class: "row" },
       el("span", {}, `purge after ${fmt(j.purgeAfter)} · by ${j.requestedBy}`,
@@ -87,7 +108,8 @@ export function renderQueues(q: Queues, deps: QueueDeps): HTMLElement {
     // because "why has the signup from ten minutes ago not reached me" is
     // answered by the row that says it is waiting for the wizard.
     heading("Unsent notices", failingNotices(q).length,
-      `Operator mails awaiting delivery. After ${q.noticeMaxAttempts} failed sends, notices are retained here for manual retry.`),
+      `Operator mails awaiting delivery. After ${q.noticeMaxAttempts} failed sends, notices are retained here for manual retry` +
+      `${retainedNotices(q) ? ` — ${retainedNotices(q)} retained now` : ""}.`),
     ...q.unsentNotices.map((n) => el("div", { class: "row" },
       el("span", {},
         n.kind === "image" && n.imageId ? el("span", {}, "image ", imageLink(n.imageId)) : `signup${n.email ? ` ${n.email}` : ""}`,

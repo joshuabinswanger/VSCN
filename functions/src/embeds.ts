@@ -226,9 +226,11 @@ export const resolveEmbed = onCall({ enforceAppCheck: true, maxInstances: 3, mem
   requireVerified(req);
   const ref = parseEmbedUrl(req.data?.url);
   if (!ref) refuse("invalid-argument", "notVideoLink", "Not a YouTube or Vimeo video link.");
-  // Refused before anything is fetched, so a member at the cap does not make
-  // us download a thumbnail only to throw it away. Re-checked in the
-  // transaction below, which is the check that counts.
+  // The gate: the hourly allowance is checked and charged HERE, before
+  // anything is fetched, so a member at the cap does not make us download a
+  // thumbnail only to throw it away — and a link to a deleted video costs an
+  // attempt like any other. The transaction below re-checks only the stored
+  // cap and the deletion tombstone (reserveWork with countAttempt false).
   const attempt = await beginEmbedRequest(uid);
   try {
   const meta = await fetchOembed(ref);

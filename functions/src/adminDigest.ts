@@ -13,7 +13,10 @@ import type { ImageDoc } from "./types";
 // The operator's notices are a QUEUE, not a mail per trigger. Triggers write
 // a small document into adminEvents/ (server-only: the rules' default deny
 // applies); a schedule reads what is due, looks the facts up at THAT moment,
-// sends one mail and deletes the events it covered. Two things fall out:
+// sends one mail and deletes the events it covered. A refused send keeps the
+// events with the reason; after MAX_ATTEMPTS they move to failedAdminEvents/
+// and wait for an administrator's Retry in the console (adminRetryNotice).
+// Two things fall out:
 //
 // - A signup is reported once the wizard says it is finished, or thirty
 //   minutes after Auth-create for someone who never finished — so the mail
@@ -21,6 +24,12 @@ import type { ImageDoc } from "./types";
 //   (the 2026-09-10 ping fired at wizard step 1 and knew only the address).
 // - A gallery of twelve uploads becomes one mail listing twelve images, not
 //   twelve mails.
+//
+// Delivery is AT-LEAST-ONCE: the mail leaves before the bookkeeping batch
+// commits, so a crash between the two re-sends next tick. One tick at a time
+// is a property of the schedule, not of the code — every 10 minutes with a
+// 120-second timeout, and the transport's own timeouts (mail.ts) bound a send
+// well inside that — so two ticks never bookkeep the same events.
 
 /** How long an unfinished signup waits before it is reported as unfinished. */
 export const SIGNUP_REPORT_DELAY_MINUTES = 30;
@@ -74,21 +83,39 @@ export const adminRetryNotice = onCall({ enforceAppCheck: true, maxInstances: 1 
     if (pending.exists) throw new HttpsError("already-exists", "Notice already queued.");
     tx.create(pendingRef, { ...failed.data(), attempts: 0, dueAt: Timestamp.now(), retriedBy: actorUid });
     tx.delete(failedRef);
-    tx.create(db.collection("adminActions").doc(), { actorUid, action: "retryNotice", targetUid: failed.data()?.uid, at: Timestamp.now(), detail: { id } });
+    // Same row shape as audit() in adminOps.ts, where the detail keys are
+    // spread flat; a nested `detail` rendered as a literal key in the console.
+    tx.create(db.collection("adminActions").doc(), { actorUid, action: "retryNotice", targetUid: failed.data()?.uid, at: Timestamp.now(), noticeId: id });
   });
   return { ok: true };
 });
 
-export async function queueSignup(uid: string, email: string | null | undefined, createdAt: Date): Promise<void> {
+/**
+ * Queued once per account. The receipt is what makes a redelivered
+ * Auth-create event a no-op: without it a redelivery after the notice had
+ * been mailed and deleted re-queued it (and one during a mailbox outage
+ * reset its attempts). Purge deletes both documents with the account.
+ */
+export async function queueSignup(uid: string, email: string | null | undefined, createdAt: Date): Promise<boolean> {
   const at = Timestamp.fromDate(createdAt);
-  await db.doc(`adminEvents/signup-${uid}`).set({
-    kind: "signup",
-    uid,
-    email: email ?? null,
-    at,
-    dueAt: Timestamp.fromMillis(at.toMillis() + SIGNUP_REPORT_DELAY_MINUTES * 60_000),
-    attempts: 0,
-  } satisfies AdminEvent);
+  return db.runTransaction(async (tx) => {
+    const receipt = db.doc(`adminEventReceipts/signup-${uid}`);
+    const eventRef = db.doc(`adminEvents/signup-${uid}`);
+    const [seen, pending] = await Promise.all([tx.get(receipt), tx.get(eventRef)]);
+    if (seen.exists) return false;
+    tx.create(receipt, { at });
+    // An event queued before receipts existed (2026-09-29) keeps its attempts.
+    if (pending.exists) return false;
+    tx.create(eventRef, {
+      kind: "signup",
+      uid,
+      email: email ?? null,
+      at,
+      dueAt: Timestamp.fromMillis(at.toMillis() + SIGNUP_REPORT_DELAY_MINUTES * 60_000),
+      attempts: 0,
+    } satisfies AdminEvent);
+    return true;
+  });
 }
 
 /**
@@ -130,9 +157,26 @@ export const onImageWentLive = onDocumentWritten({ document: "images/{imageId}",
 const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v : null);
 const strs = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
 
-async function signupReport(ev: AdminEvent): Promise<SignupReport> {
+/**
+ * "Deleted" means Auth says user-not-found, nothing else. Any other lookup
+ * failure (a 429, a 500, a permission slip) throws and fails the tick, so the
+ * event stays queued with its facts intact and the next tick looks again —
+ * where `.catch(() => null)` used to turn every such error into a mailed
+ * "the account was deleted again" and then deleted the event (review T2-26).
+ */
+async function lookupAuthUser(uid: string) {
+  try {
+    return await adminAuth.getUser(uid);
+  } catch (err) {
+    if ((err as { code?: string }).code === "auth/user-not-found") return null;
+    throw err;
+  }
+}
+
+/** `gone`: the Auth user AND the private doc are missing, i.e. the account was purged. */
+async function signupReport(ev: AdminEvent): Promise<{ report: SignupReport; gone: boolean }> {
   const [authUser, userSnap, profileSnap, requestSnap, liveImages] = await Promise.all([
-    adminAuth.getUser(ev.uid).catch(() => null),
+    lookupAuthUser(ev.uid),
     db.doc(`users/${ev.uid}`).get(),
     db.doc(`publicProfiles/${ev.uid}`).get(),
     db.doc(`onboardingRequests/${ev.uid}`).get(),
@@ -140,7 +184,8 @@ async function signupReport(ev: AdminEvent): Promise<SignupReport> {
   ]);
   const user = userSnap.data() ?? {};
   const p = profileSnap.data();
-  return {
+  const gone = authUser === null && !userSnap.exists;
+  const report: SignupReport = {
     kind: "signup",
     uid: ev.uid,
     email: authUser?.email ?? str(user.email) ?? ev.email ?? null,
@@ -174,6 +219,7 @@ async function signupReport(ev: AdminEvent): Promise<SignupReport> {
     },
     requestMessage: str(requestSnap.data()?.message),
   };
+  return { report, gone };
 }
 
 async function imageReport(ev: AdminEvent): Promise<ImageReport> {
@@ -230,8 +276,18 @@ export const sendAdminDigest = onSchedule(
     const projectId = process.env.GCLOUD_PROJECT ?? "unknown-project";
 
     const reports: Report[] = [];
-    for (const { ev } of due) {
-      reports.push(ev.kind === "signup" ? await signupReport(ev) : await imageReport(ev));
+    // Events whose account no longer exists. Their notice is not RETAINED
+    // once the mail fails: purge sweeps adminEvents/ (purge.ts), and this
+    // covers the tick that had already read the event when the purge ran —
+    // a deleted member's address must not sit in failedAdminEvents until an
+    // operator clicks Retry.
+    const gone = new Set<string>();
+    for (const { id, ev } of due) {
+      if (ev.kind === "signup") {
+        const signup = await signupReport(ev);
+        reports.push(signup.report);
+        if (signup.gone) gone.add(id);
+      } else reports.push(await imageReport(ev));
     }
     const msg = adminDigest(reports, projectId);
     if (!msg) return;
@@ -242,18 +298,21 @@ export const sendAdminDigest = onSchedule(
       logger.error("Admin digest not sent", { events: due.length, detail });
     });
     const batch = db.batch();
+    let retained = 0;
     for (const { id, ev } of due) {
       const ref = db.doc(`adminEvents/${id}`);
-      if (ok) batch.delete(ref);
+      if (ok || gone.has(id)) batch.delete(ref);
       else if (ev.attempts + 1 >= MAX_ATTEMPTS) {
         batch.set(db.doc(`failedAdminEvents/${id}`), { ...ev, attempts: ev.attempts + 1,
           lastError: failure.slice(0, ERROR_CHARS), lastAttemptAt: now, failedAt: now });
         batch.delete(ref);
+        retained += 1;
       }
       else batch.update(ref, { attempts: FieldValue.increment(1), lastError: failure.slice(0, ERROR_CHARS), lastAttemptAt: now });
     }
     await batch.commit();
     if (ok) logger.info("Admin digest sent", { events: due.length, subject: msg.subject });
-    else if (due.some(({ ev }) => ev.attempts + 1 >= MAX_ATTEMPTS)) logger.error("Admin digest needs operator retry; notices retained", { events: due.length });
+    else if (gone.size) logger.warn("Admin digest dropped notices of purged accounts", { dropped: gone.size });
+    if (retained) logger.error("Admin digest needs operator retry; notices retained", { retained });
   },
 );

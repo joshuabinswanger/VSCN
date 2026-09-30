@@ -257,16 +257,29 @@ test('an unacknowledged deployment retries after lease expiry', async () => {
   assert.ok((await db.doc('rebuildQueue/site').get()).data().revision);
 });
 
-test('only deployment of the current revision clears pending publication', async () => {
-  const { acknowledgePublication } = await import('../../scripts/lib/publication-state.mjs');
-  const { FieldValue } = backendRequire('firebase-admin/firestore');
+test('acknowledgement advances the published generation: a stale build keeps what it carried and frees the lease, a matching one publishes the queue and a hand ack without a generation strands nobody', async () => {
+  const { acknowledgeSitePublication } = require('../../functions/lib/publication.js');
+  const ack = async (body) => { let result; await acknowledgeSitePublication({ method: 'POST', body }, { status: () => ({ send: () => {} }), send: () => {}, json: (r) => { result = r; } }); return result; };
+  const current = '11111111-1111-4111-8111-111111111111';
+  const stale = '22222222-2222-4222-8222-222222222222';
   const ref = db.doc('rebuildQueue/site');
-  await ref.set({ revision: 'new', dirtyAt: Timestamp.now(), leaseUntil: Timestamp.now() });
-  assert.equal(await acknowledgePublication(db, 'old', FieldValue), false);
-  assert.ok((await ref.get()).data().dirtyAt);
-  assert.equal(await acknowledgePublication(db, 'new', FieldValue), true);
-  assert.equal((await ref.get()).data().dirtyAt, undefined);
-  assert.equal((await ref.get()).data().publishedRevision, 'new');
+  // Generation 3 was exported under the stale revision; generation 5 was queued while it built.
+  await ref.set({ revision: current, generation: 5, publishedGeneration: 2, dirtyAt: Timestamp.now(), queuedAt: Timestamp.fromMillis(1), leaseUntil: Timestamp.fromMillis(Date.now() + 600_000) });
+  assert.deepEqual(await ack({ revision: stale, generation: 3 }), { acknowledged: false });
+  let data = (await ref.get()).data();
+  assert.equal(data.publishedGeneration, 3, 'the stale build still published everything up to the generation it carried');
+  assert.ok(data.dirtyAt, 'the queue stays dirty for the save that landed mid-build');
+  assert.equal(data.leaseUntil, undefined, 'the finished deploy no longer holds the lease, so the next flush redispatches within a minute');
+  assert.deepEqual(await ack({ revision: stale, generation: 99 }), { acknowledged: false });
+  assert.equal((await ref.get()).data().publishedGeneration, 3, 'a forged or future generation is ignored');
+  assert.deepEqual(await ack({ revision: current }), { acknowledged: true });
+  data = (await ref.get()).data();
+  assert.equal(data.publishedGeneration, 5, 'a revision match proves the queue generation went live, even without a generation in the body');
+  assert.equal(data.dirtyAt, undefined);
+  assert.equal(data.queuedAt, undefined);
+  assert.equal(data.publishedRevision, current);
+  assert.deepEqual(await ack({ revision: current }), { acknowledged: true }, 'a duplicate acknowledgement is idempotent');
+  assert.equal((await ref.get()).data().publishedGeneration, 5);
 });
 
 test('server profile events publish latest names despite stale delivery, including deletion', async () => {
