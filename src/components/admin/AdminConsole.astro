@@ -543,8 +543,8 @@
 </style>
 
 <script>
-  import { onAuthStateChanged } from "firebase/auth";
   import { auth } from "../../lib/firebase.ts";
+  import { watchAuth } from "../../lib/auth.ts";
   import {
     deleteImage, listMembers, listQueues, listRatingQueue, lookupMember, rateImage, setImageHidden,
     type AdminImage, type MemberRow,
@@ -576,7 +576,7 @@
     const ratingBtn = document.getElementById("admin-rating-btn") as HTMLButtonElement;
     const tabs = [listBtn, queuesBtn, ratingBtn];
 
-    // Window/document listeners are torn down on the next view transition;
+    // Window/document listeners and the auth observer are torn down on the next view transition;
     // the page-load handler runs again on every arrival and would otherwise
     // stack a second copy of each.
     const teardown = new AbortController();
@@ -667,7 +667,10 @@
       return b;
     }
 
-    onAuthStateChanged(auth, async (user) => {
+    // Tied to the same teardown as the listeners: an observer left behind
+    // re-ran the token check and the roster callable on every later sign-in
+    // or token change, from whatever page the admin had moved on to.
+    watchAuth(signal, async (user) => {
       // The `admin` claim rides on the ID token, and Firebase serves a CACHED
       // one for up to an hour — so a claim granted by scripts/set-admin.mjs
       // after this browser last signed in is simply not in it, and the gate
@@ -677,6 +680,7 @@
       // is noindex and linked from nowhere.
       let claims = user ? (await user.getIdTokenResult()).claims : {};
       if (user && claims.admin !== true) claims = (await user.getIdTokenResult(true)).claims;
+      if (signal.aborted) return;
       // The access check is over; the markup's initial busy state ends here.
       if (inFlight === 0) root.classList.remove("admin--busy");
       if (claims.admin !== true) {

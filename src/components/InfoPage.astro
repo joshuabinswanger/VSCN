@@ -120,14 +120,15 @@ const t = useTranslations(lang);
 </style>
 
 <script>
-  import { auth } from "../lib/firebase.ts";
-  import { onAuthStateChanged } from "firebase/auth";
+  import { watchAuth } from "../lib/auth.ts";
+  import { pageLifetime } from "../lib/pageLifecycle.ts";
 
   document.addEventListener("astro:page-load", () => {
     const cta = document.getElementById("info-signup-cta");
     if (!cta) return;
 
-    onAuthStateChanged(auth, (user) => {
+    // One observer per visit, dropped on the way out (see pageLifecycle.ts).
+    watchAuth(pageLifetime(), (user) => {
       cta.style.display = user ? "none" : "flex";
     });
   });

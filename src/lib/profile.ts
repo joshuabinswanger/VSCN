@@ -5,7 +5,9 @@ import { uploadAvatar } from "./storage.ts";
 import { markImageForDeletion } from "./images.ts";
 import { updateUserProfile } from "./firestore.ts";
 import { validateBio, validateSocialMedia } from "./validation.ts";
+import { saveErrorKind } from "./saveError.ts";
 import type { UserDoc } from "./firestore.ts";
+import type { GalleryMerge } from "./galleryMerge.ts";
 
 // Every field excluded here is server-written, and firestore.rules pins all of
 // them: `email` is a mirror of Auth maintained by syncEmail, and the lifecycle
@@ -20,16 +22,22 @@ export interface ProfileUpdateOptions
   resizedAvatarBlob?: Blob | null;
   /** The record behind the avatar being replaced; marked pendingDeletion once the save has landed. */
   previousPhotoImageId?: string;
+  /** Directory visibility, committed WITH the profile — see ProfileWriteOptions. */
+  active?: boolean;
+  /** The gallery ids this tab last saw stored — see ProfileWriteOptions. */
+  galleryBase?: readonly string[];
 }
 
 export async function handleProfileUpdate(
   user: User,
   options: ProfileUpdateOptions,
   onProgress?: (pct: number) => void
-): Promise<{ photoURL?: string; photoImageId?: string }> {
+): Promise<{ photoURL?: string; photoImageId?: string; gallery?: GalleryMerge }> {
   const {
     resizedAvatarBlob,
     previousPhotoImageId,
+    active,
+    galleryBase,
     photoURL: passedPhotoURL,
     photoImageId: passedPhotoImageId,
     ...data
@@ -67,16 +75,22 @@ export async function handleProfileUpdate(
     }
   }
 
-  // 2. Avatar upload — record first, bytes second (images.ts).
+  // 2. Avatar upload — record first, bytes second (images.ts). The URL has
+  // to exist before the profile can point at it, so this one write cannot
+  // follow the Firestore commit.
+  let uploadedAvatarId: string | undefined;
   if (resizedAvatarBlob) {
     const uploaded = await uploadAvatar(user.uid, resizedAvatarBlob, data.photoColor, onProgress);
     photoURL = uploaded.url;
     photoImageId = uploaded.imageId;
-    await updateProfile(user, { photoURL });
-    await user.getIdToken(true);
+    uploadedAvatarId = uploaded.imageId;
   }
 
-  // 3. Firestore sync
+  // 3. Firestore FIRST (2026-09-29). Auth's copies of the name and picture
+  // used to be written before this commit, so a profile the rules refused —
+  // an over-long field, an unverified member's `active` — left Auth
+  // disagreeing with Firestore and the editor showing an avatar that was
+  // never saved. Now nothing else moves until the source of truth has.
   const profileData: Partial<UserDoc> = {
     ...data,
     ...(photoURL !== undefined ? { photoURL } : {}),
@@ -84,11 +98,29 @@ export async function handleProfileUpdate(
     updatedAt: new Date(),
   };
 
+  let gallery: GalleryMerge | undefined;
+  try {
+    gallery = (await updateUserProfile(user.uid, profileData, { active, galleryBase })) ?? undefined;
+  } catch (error) {
+    // A DEFINITIVE refusal orphans the avatar record just made live: nothing
+    // will ever point at it, no sweeper takes a live record, and each retry
+    // would add another against MAX_STORED_WORKS. Retire it now. Not on a
+    // network failure — a queued write may still land and want it — and not
+    // when it IS the previous record (the unverified slot re-uses one id).
+    if (uploadedAvatarId && uploadedAvatarId !== previousPhotoImageId && saveErrorKind(error) === "refused") {
+      await markImageForDeletion(uploadedAvatarId).catch(() => {});
+    }
+    throw error;
+  }
+
+  // 4. Auth's copies, once Firestore holds the profile.
+  if (resizedAvatarBlob && photoURL) {
+    await updateProfile(user, { photoURL });
+    await user.getIdToken(true);
+  }
   if (data.displayName && data.displayName !== user.displayName) {
     await updateProfile(user, { displayName: data.displayName });
   }
-
-  await updateUserProfile(user.uid, profileData);
 
   // The replaced avatar's record is marked only after Firestore holds the new
   // one: the source of truth moves first, then the old bytes become sweepable.
@@ -96,17 +128,18 @@ export async function handleProfileUpdate(
     await markImageForDeletion(previousPhotoImageId).catch(() => {});
   }
 
-  return { photoURL, photoImageId };
+  return { photoURL, photoImageId, gallery };
 }
 
 /**
- * Asks the `requestRebuild` Cloud Function to fingerprint the caller's
- * published state and, if it changed, queue a site build; the scheduled
- * flush (functions/src/rebuildQueue.ts) is what dispatches GitHub Actions.
- * The Firestore triggers on the profile and image records queue the same
- * way, so a failure here does NOT mean the change will not publish — it
- * means only that this call could not confirm it (publicationStatus.ts
- * then asks getPublicationStatus). Best-effort: false, never a throw.
+ * Asks the `requestRebuild` callable to queue this member's publication. It
+ * does not dispatch anything itself: it fingerprints the member's public data
+ * and marks the rebuild queue, and `flushMemberRebuilds` dispatches the site
+ * workflow from there (functions/src/rebuildQueue.ts). The GitHub token stays
+ * server-side. The Firestore triggers on the profile and image records queue
+ * the same way, so a failure here does NOT mean the change will not publish —
+ * only that this call could not confirm it (publicationStatus.ts then asks
+ * getPublicationStatus). Best-effort: false, never a throw.
  */
 export async function triggerRebuild() {
   try {

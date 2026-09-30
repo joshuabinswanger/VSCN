@@ -11,9 +11,11 @@ import {
   updateDoc,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   writeBatch,
 } from "firebase/firestore";
+import { mergeGalleryIds, type GalleryMerge } from "./galleryMerge.ts";
 
 // Keep in sync with validLanguages() in firestore.rules.
 export const LANGUAGES = ["de", "en", "fr", "it"] as const;
@@ -247,14 +249,58 @@ export async function getPublicProfileActive(uid: string): Promise<boolean> {
   return snap.exists() ? ((snap.data().active as boolean | undefined) ?? false) : false;
 }
 
-export async function updateUserProfile(uid: string, data: Partial<UserDoc>): Promise<void> {
+export interface ProfileWriteOptions {
+  /**
+   * Directory visibility, written onto publicProfiles ONLY — `active` is not
+   * a users/{uid} key, and hasOnly would refuse the whole write. Folded into
+   * the same commit as the profile (2026-09-29) so a refused flag can no
+   * longer land AFTER a saved profile as a separate, unexplained error.
+   * Absent leaves the stored value alone.
+   */
+  active?: boolean;
+  /**
+   * The gallery ids this tab last saw stored. With `data.gallery` present the
+   * write becomes a transaction: the stored array is read and reconciled
+   * against it (galleryMerge.ts), so a stale tab's Save no longer drops a
+   * work another session added. The merge that was written comes back.
+   */
+  galleryBase?: readonly string[];
+}
+
+export async function updateUserProfile(
+  uid: string,
+  data: Partial<UserDoc>,
+  options: ProfileWriteOptions = {},
+): Promise<GalleryMerge | null> {
   const cleanup = { primaryAudience: deleteField(), projects: deleteField() };
-  const publicData = { ...toPublicProfile(data), ...cleanup };
-  if (auth.currentUser && !auth.currentUser.emailVerified) publicData.active = false;
+  const userRef = doc(db, "users", uid);
+  const publicRef = doc(db, "publicProfiles", uid);
+  const project = (payload: Partial<UserDoc>) => {
+    const publicData = { ...toPublicProfile(payload), ...cleanup };
+    if (options.active !== undefined) publicData.active = options.active;
+    // An unverified member saves a DRAFT, whatever the flag says — see
+    // publishPublicProfile. canPublish() in firestore.rules refuses the
+    // alternative outright.
+    if (auth.currentUser && !auth.currentUser.emailVerified) publicData.active = false;
+    return publicData;
+  };
+  if (options.galleryBase && data.gallery) {
+    const base = options.galleryBase;
+    const ours = data.gallery;
+    return runTransaction(db, async (tx) => {
+      const stored = await tx.get(userRef);
+      const merge = mergeGalleryIds(base, ours, stored.exists() ? stored.data().gallery : undefined);
+      const payload = { ...data, gallery: merge.merged };
+      tx.set(userRef, { ...payload, ...cleanup }, { merge: true });
+      tx.set(publicRef, project(payload), { merge: true });
+      return merge;
+    });
+  }
   const batch = writeBatch(db);
-  batch.set(doc(db, "users", uid), { ...data, ...cleanup }, { merge: true });
-  batch.set(doc(db, "publicProfiles", uid), publicData, { merge: true });
+  batch.set(userRef, { ...data, ...cleanup }, { merge: true });
+  batch.set(publicRef, project(data), { merge: true });
   await batch.commit();
+  return null;
 }
 
 export async function upsertOnboardingRequest(

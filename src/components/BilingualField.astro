@@ -26,6 +26,8 @@ interface Props {
   noteDe?: string;
   /** A textarea of this many rows; absent means a one-line input. */
   rows?: number;
+  /** The rules' character cap on either language's value — see PROFILE_TEXT_CAPS. */
+  maxlength?: number;
   /** Hide both notes behind an ⓘ, /profile only — the wizard omits this. */
   tip?: boolean;
 }
@@ -41,6 +43,7 @@ const {
   note,
   noteDe,
   rows,
+  maxlength,
   tip = false,
 } = Astro.props;
 const t = useTranslations(lang);
@@ -80,9 +83,9 @@ const noteIdDe = `${idDe}-note`;
     <div class="infotip-field">
       {
         rows ? (
-          <textarea id={id} rows={rows} class="input textarea" aria-label={labelEn} placeholder={placeholder} aria-describedby={note ? noteId : undefined} />
+          <textarea id={id} rows={rows} maxlength={maxlength} class="input textarea" aria-label={labelEn} placeholder={placeholder} aria-describedby={note ? noteId : undefined} />
         ) : (
-          <input id={id} type="text" class="input" aria-label={labelEn} placeholder={placeholder} aria-describedby={note ? noteId : undefined} />
+          <input id={id} type="text" maxlength={maxlength} class="input" aria-label={labelEn} placeholder={placeholder} aria-describedby={note ? noteId : undefined} />
         )
       }
       {tip && note && <InfoTip lang={lang} for={noteId} />}
@@ -95,9 +98,9 @@ const noteIdDe = `${idDe}-note`;
     <div class="infotip-field">
       {
         rows ? (
-          <textarea id={idDe} rows={rows} class="input textarea" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteDe ? noteIdDe : undefined} />
+          <textarea id={idDe} rows={rows} maxlength={maxlength} class="input textarea" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteDe ? noteIdDe : undefined} />
         ) : (
-          <input id={idDe} type="text" class="input" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteDe ? noteIdDe : undefined} />
+          <input id={idDe} type="text" maxlength={maxlength} class="input" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteDe ? noteIdDe : undefined} />
         )
       }
       {tip && noteDe && <InfoTip lang={lang} for={noteIdDe} />}

@@ -2,6 +2,24 @@
 
 **Recommendation: conditional go for 29 September, after the release blockers below are closed.** The application has a useful security foundation and its automated suites pass. It is not ready for a frontend-only promotion. Keep tomorrow's changes focused; build the larger component system incrementally after the release.
 
+## Status as of 2026-09-29
+
+This review describes `241c3d8` as it stood on 2026-09-28. It is kept as written, as history. Most of it was acted on within a day, so several statements below no longer describe the code. It was rechecked against `origin/dev` at `10953cc`; production runs `d5b3ae0`.
+
+| Statement below | What is true now |
+| --- | --- |
+| Header: "conditional go for 29 September, after the release blockers below are closed." | Released. `80f5850` reached production on 2026-09-28 at 22:13Z (run 36491067157); the walk was red at Save because of a walk-script race, fixed by PR #147 and green on re-run. `d4ba84b` and `d5b3ae0` followed on 2026-09-29. See [release-log.md](../release-log.md). |
+| Line 28: "Test/audit evidence is in this folder." | Only partly. The baseline this review cites (193 unit tests, 120 emulator tests, one high Nodemailer advisory at `241c3d8`) was never committed. The tracked logs (`unit-results.txt`, `security-results.txt`, `astro-results.txt`, `build-results.txt`, `dependency-audit.json`, `lint-results.txt`, which is empty) are post-implementation results, name no commit, branch or date, and `build-results.txt` is a development-mode build. For a release, cite the CI run instead: run 36491067157 recorded 204 unit and 127 emulator tests at `80f5850`. |
+| R1: "The current production export set has 30 functions; dev has 32 ... The production workflow deploys rules and Hosting, **not Functions**." | Both projects export 34 functions. Both Hosting workflows run a `backend` job that deploys Functions before the export, render and Hosting jobs; production fails closed without its deploy identity. Rules are deployed by the same run, ahead of Hosting. The four functions the release added (`resolveEmbed`, `restoreAutoPoster`, `adminRetryNotice`, `getPublicationStatus`) were created on production by run 36491067157. |
+| R2: "The callables additionally do not set `enforceAppCheck` or validate `req.app`." | All 22 `onCall` exports set `enforceAppCheck: true` (added in `1c50fe7`). Nothing in the test suites would fail if that flag were removed; the emulator tests call handlers directly. |
+| R2: the failed-lookup allowance. | Fixed in `1c50fe7`: `beginEmbedRequest` (`functions/src/embedAllowance.ts`) takes a per-member lease and charges the allowance before any network work, so a failed lookup is charged. Comments left in `embeds.ts` and `uploads.ts` still describe the old shape; they were reported separately. |
+| C1: "`setSaving()` disables only the save button." | `setSaving()` now sets `aria-busy` on the form and `inert` on every section, the recovery banner and the tabs (`profileEditorController.ts`), and the save is refused while uploads are in flight. |
+| C1: "no warning or recoverable draft" on navigation. | A per-account, per-tab draft with a 24-hour expiry and a leave guard now exist (`editorDraft.ts`). Back and Forward only persist the draft; a link click or a full unload asks. |
+| C2: `ProfileForm.astro` is 5,532 lines and mixes everything. | The editor was split (`ProfileDetails`, `WorkEditor`, `AccountSettings`, `ProfilePreview` under `src/components/profile/`, with `ProjectEditor` inside `WorkEditor`; controller code in `src/lib/`). "One lifecycle owner" was delivered for the profile editor only: the community directory, the info pages and the admin console still leave `onAuthStateChanged` subscriptions unreleased. |
+| Dependency audit: Nodemailer 7.0.13 is a high-severity advisory. | `functions/package.json` pins `nodemailer` 10.0.12. |
+
+The implementation record for these changes, with its own corrections, is [IMPLEMENTATION.md](IMPLEMENTATION.md).
+
 ## Scope and evidence
 
 Reviewed `origin/dev` at **241c3d8693bcf481f5ef2e93ba6d0caa3f5889b2**, the version served by the dev site. The shared checkout was at `2d3903d`, so the current dev source was reviewed and tested in a separate snapshot without changing the checkout. Production served `f21a60f`.

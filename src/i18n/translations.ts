@@ -539,6 +539,16 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.reauth.error": "Incorrect password. Please try again.",
     "profile.save.saving": "Saving…",
     "profile.save.error": "Could not save changes.",
+    "profile.save.error.refused": "Could not save: the server refused one of the fields. Shorten your entries and try again.",
+    "profile.save.error.network": "Could not save: the connection dropped. Check your connection and try again.",
+    "profile.save.error.session": "Could not save: your sign-in has expired. Sign in again, then try once more.",
+    "profile.save.offline": "You appear to be offline. Check your connection and try again.",
+    "profile.save.slow": "Saving is taking longer than usual. Check your connection — the save continues in the background.",
+    "profile.save.waitUploads": "Please wait for uploads to finish before saving.",
+    "profile.validation.tooLong": "{field} must be {n} characters or fewer.",
+    "profile.validation.tooManyWords": "{field} must be {n} words or fewer.",
+    "profile.validation.tooMany": "{field}: choose at most {n}.",
+    "profile.gallery.remove.confirm": "Remove this work? Its image and everything written about it are deleted for good.",
 
     // Onboarding
     "onboarding.step1.title": "About you",
@@ -1063,6 +1073,16 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.reauth.error": "Falsches Passwort. Bitte erneut versuchen.",
     "profile.save.saving": "Wird gespeichert…",
     "profile.save.error": "Änderungen konnten nicht gespeichert werden.",
+    "profile.save.error.refused": "Speichern fehlgeschlagen: Der Server hat eines der Felder abgelehnt. Kürze deine Angaben und versuche es erneut.",
+    "profile.save.error.network": "Speichern fehlgeschlagen: Die Verbindung ist abgebrochen. Prüfe deine Verbindung und versuche es erneut.",
+    "profile.save.error.session": "Speichern fehlgeschlagen: Deine Anmeldung ist abgelaufen. Melde dich erneut an und versuche es noch einmal.",
+    "profile.save.offline": "Du scheinst offline zu sein. Prüfe deine Verbindung und versuche es erneut.",
+    "profile.save.slow": "Das Speichern dauert länger als üblich. Prüfe deine Verbindung — das Speichern läuft im Hintergrund weiter.",
+    "profile.save.waitUploads": "Bitte warten, bis die Uploads abgeschlossen sind.",
+    "profile.validation.tooLong": "{field} darf höchstens {n} Zeichen lang sein.",
+    "profile.validation.tooManyWords": "{field} darf höchstens {n} Wörter haben.",
+    "profile.validation.tooMany": "{field}: höchstens {n} auswählen.",
+    "profile.gallery.remove.confirm": "Dieses Werk entfernen? Bild und alle Angaben dazu werden endgültig gelöscht.",
 
     // Onboarding
     "onboarding.step1.title": "Über dich",

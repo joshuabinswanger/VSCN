@@ -27,13 +27,23 @@ const POLL_MS = { first: 15_000, max: 60_000 };
 export function watchPublication(
   root: HTMLElement, lang: 'en' | 'de', queued: boolean, parent: AbortSignal, options: { listed?: boolean } = {},
 ) {
+  // A Save that finishes after the page has gone: an abort listener added to
+  // an already-aborted signal never fires, so the poll would run from a dead page.
+  if (parent.aborted) return;
   running.get(root)?.abort();
   const controller = new AbortController(); running.set(root, controller);
   parent.addEventListener('abort', () => controller.abort(), { once: true });
   const t = (key: string) => ui[lang][key] ?? ui.en[key] ?? key;
   let timer: ReturnType<typeof setTimeout> | undefined;
   controller.signal.addEventListener('abort', () => clearTimeout(timer), { once: true });
+  let shown: Label | undefined;
+  let retry: HTMLButtonElement | undefined;
   const show = (state: Label) => {
+    // The root is a live region: rewriting it with the same words every poll
+    // would have some readers announce it every time. Unchanged state touches
+    // nothing but the retry button's availability.
+    if (state === shown) { if (retry) retry.disabled = false; return; }
+    shown = state; retry = undefined;
     root.replaceChildren(document.createTextNode(t(`profile.publication.${state}`)));
     // Green only for what is actually on the site; the rest is neutral.
     const settled = state === 'published' || state === 'saved';
@@ -44,6 +54,7 @@ export function watchPublication(
       // A re-request is a no-op on an unchanged fingerprint; what it does do
       // is give a member from before generations a generation to be read by.
       button.addEventListener('click', async () => { button.disabled = true; await triggerRebuild(); void poll(); }); root.append(button);
+      retry = button;
     }
   };
   let wait = POLL_MS.first;
