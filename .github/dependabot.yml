@@ -1,5 +1,5 @@
 # Version updates (review T2-11). Dependabot ALERTS and security updates are
-# a repository setting, not this file, and are off as of 2026-09-30.
+# a repository setting, not this file.
 #
 # PRs target dev, the integration branch, like every other change; main only
 # moves by release PR. Minor and patch bumps are grouped per ecosystem so a
@@ -19,6 +19,12 @@ updates:
     groups:
       root-minor-and-patch:
         update-types: [minor, patch]
+    # TypeScript 7 cannot install at the root yet: @astrojs/check (npm run check)
+    # peers on TypeScript 5, so npm ci fails with ERESOLVE (PR #171). Functions
+    # moved to 7 in #165. Drop this once @astrojs/check accepts 7.
+    ignore:
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
   - package-ecosystem: npm
     directory: /functions
     target-branch: dev
