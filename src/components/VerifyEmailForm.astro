@@ -24,7 +24,7 @@ const t = useTranslations(lang);
   <div class="verify-body">
     <button id="btn-check" class="btn-solid">{t('verify.cta')}</button>
 
-    <p id="status-msg" class="msg-err" style="display:none;"></p>
+    <p role="alert" id="status-msg" class="msg-err" style="display:none;"></p>
 
     <div class="resend-row">
       <span class="resend-label">{t('verify.resend.label')}</span>
@@ -35,7 +35,7 @@ const t = useTranslations(lang);
       <button id="btn-back" class="btn-link">{t('verify.back')}</button>
     </div>
 
-    <p id="resend-msg" class="msg-ok" style="display:none;">
+    <p role="status" id="resend-msg" class="msg-ok" style="display:none;">
       {t('verify.resend.msg')}
     </p>
   </div>

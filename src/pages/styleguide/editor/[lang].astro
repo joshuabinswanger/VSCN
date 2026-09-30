@@ -4,9 +4,13 @@ import ProfileDetails from '../../../components/profile/ProfileDetails.astro';
 import WorkEditor from '../../../components/profile/WorkEditor.astro';
 import AccountSettings from '../../../components/profile/AccountSettings.astro';
 import '../../../styles/profile-editor.css';
-import type { Lang } from '../../../i18n/utils';
+import { useTranslations, type Lang } from '../../../i18n/utils';
 export function getStaticPaths() { return [{ params: { lang: 'en' } }, { params: { lang: 'de' } }]; }
 const lang = Astro.params.lang as Lang;
+const t = useTranslations(lang);
+// All four tabs in the page's own language, as /profile draws them: the
+// widest set is what shows whether the bar still fits one row on a phone.
+const tabs = ['profile', 'work', 'account', 'preview'];
 ---
 <Layout title="Editor component examples" lang={lang} noindex>
   <h1 class="t-heading">Editor component examples</h1>
@@ -14,7 +18,7 @@ const lang = Astro.params.lang as Lang;
   <div class="profile-editor" data-editor-example>
     <form class="profile-form is-loaded">
       <div class="section-tabs" role="tablist" aria-label="Editor examples">
-        {['profile', 'work', 'account'].map((section, index) => <button type="button" class="section-tab" data-section={section} role="tab" id={`tab-${section}`} aria-controls={`panel-${section}`} aria-selected={index === 0} tabindex={index === 0 ? 0 : -1}>{section}</button>)}
+        {tabs.map((section, index) => <button type="button" class="section-tab" data-section={section} role="tab" id={`tab-${section}`} aria-controls={`panel-${section}`} aria-selected={index === 0} tabindex={index === 0 ? 0 : -1}>{t(`profile.tab.${section}`)}</button>)}
       </div>
       <ProfileDetails lang={lang} />
       <WorkEditor lang={lang} />
@@ -56,6 +60,10 @@ const lang = Astro.params.lang as Lang;
     root.querySelectorAll<HTMLButtonElement>('button').forEach(button => {
       if (!button.textContent?.trim() && !button.getAttribute('aria-label')) button.setAttribute('aria-label', 'Example image action');
     });
+    // A picked tag at the legal maximum, 50 characters of one word: it must
+    // wrap inside the form at 320px rather than be clipped.
+    const sampleTags = root.querySelector<HTMLElement & { value: string[] }>('.gallery-item tag-selector');
+    if (sampleTags) sampleTags.value = ['Elektronenrastermikroskopiefotografieausstellungen', 'Botany'];
     select(tabs[1]);
     const name = root.querySelector<HTMLInputElement>('#name')!;
     const draft = editorDraft({ key: 'styleguide-editor-draft', root, read: () => ({ name: name.value }),

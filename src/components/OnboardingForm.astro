@@ -34,7 +34,7 @@ const prefix = lang === "de" ? "/de" : "";
     <span id="ob-progress-text" class="ob-progress-text"></span>
   </div>
 
-  <p id="ob-error" class="msg-err" style="display:none;"></p>
+  <p role="alert" id="ob-error" class="msg-err" style="display:none;"></p>
 
   <!-- Step auth: Create account -->
   <div class="onboarding-step" data-step="-1" style="display:none;">
@@ -457,12 +457,12 @@ const prefix = lang === "de" ? "/de" : "";
     <div class="ob-fields">
       <div class="ob-verify-actions">
         <button id="ob-verify-check" type="button" class="btn-solid">{t("verify.cta")}</button>
-        <p id="ob-verify-status" class="msg-err" style="display:none;"></p>
+        <p role="alert" id="ob-verify-status" class="msg-err" style="display:none;"></p>
         <p class="ob-verify-resend">
           <span>{t("verify.resend.label")}</span>
           <button id="ob-verify-resend" type="button" class="btn-link">{t("verify.resend.btn")}</button>
         </p>
-        <p id="ob-verify-resent" class="msg-ok" style="display:none;">{t("verify.resend.msg")}</p>
+        <p role="status" id="ob-verify-resent" class="msg-ok" style="display:none;">{t("verify.resend.msg")}</p>
       </div>
     </div>
     <div class="ob-footer ob-footer--with-skip">
