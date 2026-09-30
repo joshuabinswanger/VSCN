@@ -6,9 +6,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  DRAFT_MAX_AGE_MS,
   committedForNew,
   committedFromLoad,
+  draftOffer,
   guardedLinkHref,
+  leaveCopy,
   mergeDraftGallery,
   mergeDraftProjects,
   projectSignature,
@@ -140,4 +143,50 @@ test("the leave guard takes exactly the clicks the ClientRouter would", () => {
   assert.equal(guardedLinkHref({ ...link, href: "https://vscn.ch/profile?x=1#account" }, click, here), null, "a hash on the same page moves nothing");
   assert.equal(guardedLinkHref({ ...link, href: "https://vscn.ch/profile?x=1" }, click, here), "https://vscn.ch/profile?x=1", "the same page without a hash is a soft reload");
   assert.equal(guardedLinkHref({ ...link, href: "https://vscn.ch/profile?x=2#work" }, click, here), "https://vscn.ch/profile?x=2#work");
+});
+
+test("a stored draft is offered only when it holds words the page does not", () => {
+  const now = 1_000_000;
+  const page = { version: 2, now, serverUpdatedAt: 500_000, current: JSON.stringify({ fields: { role: "loaded" } }) };
+  const draft = { version: 2, at: now - 60_000, loadedAt: 500_000, value: { fields: { role: "typed" } } };
+  assert.deepEqual(draftOffer(draft, page), { kind: "restore", newer: false });
+  // Nothing, wrong shape, another version, expired: no banner.
+  assert.deepEqual(draftOffer(null, page), { kind: "none" });
+  assert.deepEqual(draftOffer("x", page), { kind: "none" });
+  assert.deepEqual(draftOffer({ ...draft, version: 1 }, page), { kind: "none" });
+  assert.deepEqual(draftOffer({ ...draft, at: now - DRAFT_MAX_AGE_MS }, page), { kind: "none" });
+  // The words are on the page already (saved since, here or elsewhere): a Restore would change nothing.
+  assert.deepEqual(draftOffer({ ...draft, value: { fields: { role: "loaded" } } }, page), { kind: "none" });
+  // Only account settings or a chosen file were unsaved: the reminder, no Restore.
+  assert.deepEqual(draftOffer({ ...draft, value: null }, page), { kind: "unkept" });
+});
+
+test("the conflict warning compares the server stamp with the copy the draft was based on, not the last keystroke", () => {
+  const now = 1_000_000;
+  const current = JSON.stringify({ role: "loaded" });
+  const value = { role: "typed" };
+  // Loaded at T0, saved elsewhere at T2, typed at T3 > T2: still a conflict.
+  const t0 = 100_000, t2 = 200_000, t3 = 300_000;
+  assert.deepEqual(draftOffer({ version: 2, at: t3, loadedAt: t0, value }, { version: 2, now, serverUpdatedAt: t2, current }), { kind: "restore", newer: true });
+  // This tab's own save: loadedAt is refreshed to its clock, at or after the stamp it wrote.
+  assert.deepEqual(draftOffer({ version: 2, at: t3, loadedAt: t2 + 900, value }, { version: 2, now, serverUpdatedAt: t2, current }), { kind: "restore", newer: false });
+  // Two seconds of clock slack, as before.
+  assert.deepEqual(draftOffer({ version: 2, at: t3, loadedAt: t0, value }, { version: 2, now, serverUpdatedAt: t0 + 1500, current }), { kind: "restore", newer: false });
+  // Never saved when the draft was written; any stamp now means a save since.
+  assert.deepEqual(draftOffer({ version: 2, at: t3, loadedAt: null, value }, { version: 2, now, serverUpdatedAt: t2, current }), { kind: "restore", newer: true });
+  assert.deepEqual(draftOffer({ version: 2, at: t3, loadedAt: null, value }, { version: 2, now, current }), { kind: "restore", newer: false });
+  // A draft from before loadedAt existed falls back to the old rule.
+  assert.deepEqual(draftOffer({ version: 2, at: t3, value }, { version: 2, now, serverUpdatedAt: t2, current }), { kind: "restore", newer: false });
+  assert.deepEqual(draftOffer({ version: 2, at: t0, value }, { version: 2, now, serverUpdatedAt: t2, current }), { kind: "restore", newer: true });
+});
+
+test("the leave dialog promises a draft only when one was written, and names uploads first", () => {
+  const labels = { leave: "kept", leaveUnkept: "lost", leaveBusy: "uploads" };
+  assert.equal(leaveCopy({ busy: false, kept: true }, labels), "kept");
+  assert.equal(leaveCopy({ busy: false, kept: false }, labels), "lost", "storage refused it, or only account fields changed");
+  assert.equal(leaveCopy({ busy: true, kept: true }, labels), "uploads");
+  assert.equal(leaveCopy({ busy: true, kept: false }, labels), "uploads");
+  // A caller with only the one sentence keeps it.
+  assert.equal(leaveCopy({ busy: true, kept: false }, { leave: "kept" }), "kept");
+  assert.equal(leaveCopy({ busy: false, kept: false }, { leave: "kept" }), "kept");
 });

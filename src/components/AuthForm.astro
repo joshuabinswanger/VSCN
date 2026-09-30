@@ -17,7 +17,7 @@ const t = useTranslations(lang);
 
   <form id="auth-form" class="auth-form">
     <div class="field">
-      <label class="label" for="email">Email</label>
+      <label class="label" for="email">{t('auth.label.email')}</label>
       <input
         id="email"
         type="email"
@@ -30,7 +30,7 @@ const t = useTranslations(lang);
 
     <div class="field">
       <div class="field-label-row">
-        <label class="label" for="password">Password</label>
+        <label class="label" for="password">{t('auth.label.password')}</label>
         <button type="button" id="forgot-link" class="btn-link forgot-btn"
           >{t('auth.forgot')}</button
         >
@@ -44,7 +44,7 @@ const t = useTranslations(lang);
         autocomplete="current-password"
       />
     </div>
-    <p id="auth-error" class="msg-err" style="display:none;"></p>
+    <p role="alert" id="auth-error" class="msg-err" style="display:none;"></p>
     <p id="auth-status" class="auth-status" aria-live="polite" style="display:none;"></p>
 
     <div class="auth-footer">
@@ -58,7 +58,7 @@ const t = useTranslations(lang);
 
   <div id="forgot-section" style="display:none;">
     <div class="field">
-      <label class="label" for="forgot-email">Email</label>
+      <label class="label" for="forgot-email">{t('auth.label.email')}</label>
       <input
         id="forgot-email"
         type="email"
@@ -67,8 +67,8 @@ const t = useTranslations(lang);
         autocomplete="email"
       />
     </div>
-    <p id="forgot-error" class="msg-err" style="display:none;"></p>
-    <p id="forgot-success" class="msg-ok" style="display:none;">
+    <p role="alert" id="forgot-error" class="msg-err" style="display:none;"></p>
+    <p role="status" id="forgot-success" class="msg-ok" style="display:none;">
       {t('auth.reset.success')}
     </p>
     <div class="auth-footer">
@@ -197,7 +197,6 @@ const t = useTranslations(lang);
 <script>
   import { auth, isSecurityCheckBlocked, warmUpAppCheck } from "../lib/firebase.ts";
   import {
-    onAuthStateChanged,
     signInWithEmailAndPassword,
     sendPasswordResetEmail,
   } from "firebase/auth";
@@ -205,9 +204,10 @@ const t = useTranslations(lang);
   import { returnTo } from "../lib/authEmail.ts";
   import { friendlyError, errorParts, SECURITY_CHECK_BLOCKED } from "../lib/authErrors.ts";
   import { ui } from "../i18n/translations.ts";
+  import { watchAuth } from "../lib/auth.ts";
+  import { pageLifetime } from "../lib/pageLifecycle.ts";
 
   let isSubmitting = false;
-  let unsubscribeAuth: (() => void) | null = null;
 
   document.addEventListener("astro:page-load", () => {
     const form = document.getElementById("auth-form") as HTMLFormElement;
@@ -236,8 +236,10 @@ const t = useTranslations(lang);
     const forgotError = document.getElementById("forgot-error")!;
     const forgotSuccess = document.getElementById("forgot-success")!;
 
-    unsubscribeAuth?.();
-    unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+    // Dropped when the member leaves the page: kept alive, this observer sent
+    // anyone who later signed in (another tab, the wizard) to /community from
+    // whatever page they were on by then.
+    watchAuth(pageLifetime(), (user) => {
       if (!user) return;
       if (isSubmitting) return;
       window.location.href = `${prefix}/community`;

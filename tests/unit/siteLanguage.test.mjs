@@ -30,8 +30,15 @@ test("a matching, absent or foreign preference stays put", () => {
 });
 
 test("an explicit switch on this visit outranks the stored preference", () => {
+  // A stale stored value (the switch's own write failed, or the member was
+  // signed out) must not undo the click.
   assert.equal(preferredLocaleTarget("de", "en", "/profile", "en"), null);
-  // Even when the member later reaches the other locale by a link: the click
-  // said what they want, and a stale stored value must not undo it.
+});
+
+test("any explicit choice on this visit stops the routing, even one that agrees with the stored value", () => {
+  // Stored and clicked both say EN, and the member reached /de/profile by a
+  // link or Back: they stay. Routing here would bounce Back straight forward
+  // again after the EN / DE switch (see siteLanguage.ts).
   assert.equal(preferredLocaleTarget("en", "de", "/de/profile", "en"), null);
+  assert.equal(preferredLocaleTarget("de", "en", "/profile", "de"), null);
 });

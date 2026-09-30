@@ -51,10 +51,31 @@ export interface Queues {
   /** `live` records no profile points at — the one orphan class no sweeper takes. */
   unreferencedLive: AdminImage[];
   emailMismatches: { uid: string; storedEmail: string | null; authEmail: string }[];
-  /** adminEvents/ — the operator notices the digest has not mailed yet, oldest first. */
+  /** failedAdminEvents/ then adminEvents/ — the retained notices first, then everything the digest has not mailed yet, oldest first. */
   unsentNotices: UnsentNotice[];
-  /** Failed ticks after which the digest drops a notice (MAX_ATTEMPTS in adminDigest.ts). */
+  /** Failed ticks after which the digest RETAINS a notice for Retry (MAX_ATTEMPTS in adminDigest.ts). */
   noticeMaxAttempts: number;
+  /** How many of unsentNotices are retained after that many failures. Absent from an adminListQueues deployed before 2026-09-29. */
+  failedNotices?: number;
+  /** rebuildQueue/site — how far the site is behind its members. Absent from an adminListQueues deployed before 2026-09-29. */
+  publication?: PublicationQueue;
+}
+export interface PublicationQueue {
+  generation: number;
+  publishedGeneration: number;
+  /** A build is owed. */
+  dirty: boolean;
+  /** Oldest unpublished write; null when clean. */
+  queuedAt: string | null;
+  /** Newest unpublished write. */
+  dirtyAt: string | null;
+  /** A dispatch is in flight until CI acknowledges or this lapses. */
+  leaseUntil: string | null;
+  publishedAt: string | null;
+  ageMinutes: number | null;
+  /** Older than delayedAfterMinutes: the flush logs an error and members read "delayed". */
+  delayed: boolean;
+  delayedAfterMinutes: number;
 }
 export interface UnsentNotice {
   failed?: boolean;

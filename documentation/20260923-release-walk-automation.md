@@ -77,7 +77,7 @@ exposes for behaviour (never through class names used for styling):
 | --- | --- | --- |
 | 1 | sign in | `/login` submits and `/profile` reports `#profile-form.is-loaded`; `#auth-error` never shows |
 | 2 | upload | one `.gallery-item` appears in `#gallery-editor` and no queue row carries `.has-error`; the image src names the member's uid |
-| 3 | caption and save | the caption is written, `#save-msg` becomes visible, `#save-error` does not |
+| 3 | caption and save | the caption is written, the upload queue is empty, and `#save-msg` becomes visible with `#save-error` not. A refusal "wait for uploads" is retried up to ten times, a second apart (PR #147; the first release walk after #140 pressed Save while the upload was still committing and went red) |
 | 4 | preview | the Preview tab renders exactly one `img.mprof__img` under `[data-ppv-root]`, with the same src, and the browser has actually loaded it (`naturalWidth > 0`, which is Storage serving the object) |
 | 5 | delete | the remove control empties `#gallery-editor` and no error note shows |
 | 6 | sign out and anonymous | `#btn-logout` lands on the home page with `#nav-join` visible; the home page and the first member page linked from `/community/` return 200 and render |
@@ -97,12 +97,16 @@ site's own front end, so it cannot do anything a member cannot.
 A `walk` job in `firebase-hosting-merge.yml`, after the acknowledgement step, calling the
 reusable `release-walk.yml`, which also carries `workflow_dispatch` for a walk on demand.
 
-The job runs **only on `push` events**. This is not tidiness. Every walk writes an image record
-and saves the profile, which dirties `rebuildQueue/site`; `flushMemberRebuilds` then dispatches
-this very workflow as `workflow_dispatch` within five minutes. A walk that ran on that dispatch
-would dirty the queue again and the site would rebuild itself, and walk itself, every five
-minutes for ever. (§7 removes the dirtying for hidden members, but the gate stays: the walk
-should follow a release, not a rebuild.)
+The job runs **only on `push` events**. This began as a necessity and is now a guard. As first
+built, every walk wrote an image record and saved the profile, which dirtied `rebuildQueue/site`,
+and `flushMemberRebuilds` then dispatched this very workflow as `workflow_dispatch`; a walk that
+ran on that dispatch would have dirtied the queue again and the site would have rebuilt itself,
+and walked itself, for ever. §7's change removed the dirtying: the verification member is hidden,
+so its writes queue nothing (`queueMemberRebuild`, `functions/src/rebuildQueue.ts`), and the
+hidden-aware fingerprint reached production with the Functions deploy of the 80f5850 release
+(2026-09-28, about 22:17Z). Since then a walk costs no rebuild: the walks of `d4ba84b` and
+`d5b3ae0` were followed by no production dispatch. The gate stays, because the walk should follow
+a release, not a rebuild.
 
 **From CI the walk goes to `https://vscn-39508.web.app`, not vscn.ch.** vscn.ch is proxied by
 Cloudflare, and its bot protection answered the first CI walk (2026-09-23) with a 403 "Just a
@@ -111,14 +115,18 @@ Hosting origin serves the same release byte for byte, is an authorised Auth doma
 Firebase call from it is identical. What CI skips is the Cloudflare proxy itself, which does not
 change per release; a local run still walks vscn.ch.
 
-Failure artefacts upload with the run. A red walk is a red workflow. The protocol already says
+Failure artefacts upload with the run, redacted first (§8; that redaction is on `dev` since PR
+#152 and reaches `main` with the next release, until when a red walk still uploads its page
+console unredacted). A red walk is a red workflow. The protocol already says
 what that means: a release incident, fix or roll back, and do not fix from inside the walk.
 
 ## 7. Two side effects, silenced
 
-Both are one small change in `functions/src`, tested against the emulator, and both reach prod
-with the next functions deploy (still by hand until the release train exists). Until then each
-release costs Josh one digest mail and one redundant prod rebuild. Neither breaks anything.
+Both are one small change in `functions/src`, tested against the emulator. *Status 2026-09-29:*
+both reached production with the 80f5850 release, whose CI backend job deployed all 34
+functions, and neither costs anything now. The paragraph as first written, kept for the reason
+the gate in §6 exists: they waited for a by-hand functions deploy, and until then each release
+would have cost Josh one digest mail and one redundant prod rebuild. Neither broke anything.
 
 - **`onImageWentLive` skips hidden owners.** The operator digest reports every member image that
   crosses into `live`. A hidden member's pictures never reach the site, so they are not the
@@ -140,8 +148,23 @@ release costs Josh one digest mail and one redundant prod rebuild. Neither break
 | GitHub secrets `WALK_MEMBER_EMAIL`, `WALK_APPCHECK_DEBUG_TOKEN` | Josh (secret writes are classifier-blocked for Claude) | 2026-09-23 |
 
 The debug token is a bypass credential for App Check on prod: it lets a holder skip Turnstile,
-not the security rules. Rotate it by deleting the entry in the console (App Check → Apps →
-Manage debug tokens) and registering a new one.
+not the security rules. It must never reach a log or an artifact. On a public repository any
+GitHub account can download a workflow artifact and secret masking covers the step log only,
+while the App Check SDK prints the token itself ("App Check debug token: …") whenever one is
+set, outside its logger. That is how the page console kept for a failed step carried it into a
+public artifact (run 36491067157, 2026-09-28) until the artifact was deleted the next day. Two
+layers keep it out since: `redactSecrets` in `scripts/lib/release-walk.mjs`, applied as the
+console and requests are captured and again as each file is written, and a step in
+`release-walk.yml` that drops any walk-artifacts file still holding the token, the password or
+the email before the upload, and uploads nothing if that step cannot run.
+
+Rotate it by adding a new token in the console (App Check → Apps → Manage debug tokens),
+putting the same value in the `WALK_APPCHECK_DEBUG_TOKEN` secret (`gh secret set … --body`, so
+no trailing newline rides along) and in `.env.walk` if you keep one, and only then deleting the
+old entry, so the walk never runs without a registered token. Rotate after any sign it was
+exposed, including an `::error::` from that step. Not done: a token registered and deleted per
+run through the App Check API, which would leave no standing bypass but needs Google
+credentials in the walk job.
 
 ## 9. Out of scope, and known gaps
 
@@ -152,4 +175,8 @@ Manage debug tokens) and registering a new one.
 - The Cloudflare proxy in front of vscn.ch, from CI (§6).
 - The member page in step 6 is a build-time snapshot. The walk asserts that it renders, not
   that it shows this run's image; the member is hidden, so it never would.
-- The probe-2 gap in the machine check (deploy-time params in `functions/.env`) is unchanged.
+- The probe-2 gap in the machine check (deploy-time params in `functions/.env`) is closed:
+  the source digest that probe 2 compares covers `functions/.env` and the two project-specific
+  `functions/.env.*` files (`scripts/lib/backend-digest.mjs`).
+- The walk does not cover video import, poster restore, project save or image replace. Those
+  were walked by hand on 2026-09-28 (see [release-log.md](release-log.md)).

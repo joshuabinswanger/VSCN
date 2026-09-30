@@ -18,7 +18,13 @@ const smtpHost = defineString("SMTP_HOST", { default: "mail.infomaniak.com" });
 const smtpUser = defineString("SMTP_USER", { default: "info@vscn.ch" });
 const notifyFrom = defineString("NOTIFY_FROM", { default: "VSCN <info@vscn.ch>" });
 
-/** One plain-text message to the operator. Throws on failure; notify.deliver() is the catch. */
+/**
+ * One plain-text message to the operator. Throws on failure; notify.deliver()
+ * is the catch. The three timeouts are the send's deadline: connect, greet
+ * and any idle stretch of the session each give up on their own, so a
+ * silent server costs at most about a minute of the digest's 120-second
+ * tick and never runs it into the next one.
+ */
 export async function sendToOperator(msg: AdminMessage): Promise<void> {
   const transport = createTransport({
     host: smtpHost.value(),

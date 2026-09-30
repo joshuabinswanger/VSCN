@@ -6,11 +6,19 @@ export const ALLOWED_INPUT_TYPES = ["image/jpeg", "image/png", "image/webp", "im
 /** Why a file was turned away before anything tried to decode it. */
 export type InputRejection = "svg" | "heic" | "type";
 
-/** Returns why an unsupported file is rejected, or null if the type is accepted. */
-export function rejectionCode(file: File): InputRejection | null {
+/**
+ * Returns why an unsupported file is rejected, or null if the type is accepted.
+ *
+ * A browser only knows a HEIC file's MIME type when the operating system does:
+ * Windows without the HEIF extension reports an empty File.type for an iPhone
+ * photo dragged in. The name is then the only clue left, and it is consulted
+ * only for a file that is being refused anyway, so it can change the sentence
+ * ("export as JPEG" instead of the list of formats) but never what is accepted.
+ */
+export function rejectionCode(file: Pick<File, "type" | "name">): InputRejection | null {
   if (file.type === "image/svg+xml") return "svg";
   if (file.type === "image/heic" || file.type === "image/heif") return "heic";
-  if (!ALLOWED_INPUT_TYPES.includes(file.type)) return "type";
+  if (!ALLOWED_INPUT_TYPES.includes(file.type)) return /\.hei[cf]$/i.test(file.name ?? "") ? "heic" : "type";
   return null;
 }
 

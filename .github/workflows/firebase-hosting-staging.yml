@@ -63,10 +63,11 @@ jobs:
   # (scripts/backend-current.mjs) and deploys only when one does not, e.g.
   # after a release whose backend deploy failed. Publishing content therefore
   # does not redeploy the backend on every member save.
-  # Staging is deliberately SOFT while DEV_FUNCTIONS_* are unset
-  # (decided 2026-09-28): dev Functions are deployed by hand from the merged
-  # tree, the job warns and Hosting proceeds, and verify-release --project dev
-  # reports any drift. Production (firebase-hosting-merge.yml) stays strict.
+  # Fail-closed like production (firebase-hosting-merge.yml): without its
+  # deploy identity nothing publishes. Staging was soft while DEV_FUNCTIONS_*
+  # were unset; they have been set since 2026-09-28 and dev Functions deploy
+  # from here, so the soft path only ever served a variable deleted by
+  # accident, which should stop the run rather than warn on a green one.
   backend:
     needs: verify
     if: ${{ !cancelled() && !failure() }}
@@ -75,7 +76,7 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - name: Look for backend deploy identity
+      - name: Require backend deploy identity
         id: identity
         env:
           BACKEND_PROVIDER: ${{ vars.DEV_FUNCTIONS_WIF_PROVIDER }}
@@ -84,20 +85,20 @@ jobs:
           if [ -n "$BACKEND_PROVIDER" ] && [ -n "$BACKEND_ACCOUNT" ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
           else
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::DEV_FUNCTIONS_* are unset: dev Functions are NOT deployed by this run. Deploy them by hand from this commit and check with verify-release --project dev."
+            echo "::error::DEV_FUNCTIONS_WIF_PROVIDER and DEV_FUNCTIONS_SERVICE_ACCOUNT must be set: staging never publishes a frontend without deploying its backend."
+            exit 1
           fi
       - if: steps.identity.outputs.configured == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - if: steps.identity.outputs.configured == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
       - if: steps.identity.outputs.configured == 'true'
         run: npm ci
       - if: steps.identity.outputs.configured == 'true'
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           project_id: vscn-dev-f4b60
           workload_identity_provider: ${{ vars.DEV_FUNCTIONS_WIF_PROVIDER }}
@@ -112,7 +113,7 @@ jobs:
           # The CLI's 10 s discovery window is too tight for this codebase
           # (memory note functions-deploy-discovery-timeout); seconds.
           FUNCTIONS_DISCOVERY_TIMEOUT: "60"
-        run: npx -y firebase-tools@latest deploy --only functions --project vscn-dev-f4b60 --non-interactive
+        run: npx -y firebase-tools@15.32.0 deploy --only functions --project vscn-dev-f4b60 --non-interactive
   export:
     needs: [verify, backend]
     if: ${{ !cancelled() && !failure() }}
@@ -124,14 +125,14 @@ jobs:
       revision: ${{ steps.publication.outputs.revision }}
       generation: ${{ steps.publication.outputs.generation }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - id: auth
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           project_id: vscn-dev-f4b60
           workload_identity_provider: projects/640269226461/locations/global/workloadIdentityPools/vscn-site-export/providers/github-vscn
@@ -150,7 +151,7 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
       - if: always()
         run: rm -f "${{ steps.auth.outputs.credentials_file_path }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: site-data
           path: .site-data.json
@@ -163,13 +164,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
       - run: npm ci
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: site-data
       - run: npm run build:site -- --mode development
@@ -183,7 +184,7 @@ jobs:
           # Cloudflare's published always-pass Turnstile TEST key: public by design,
           # so staging exercises the App Check pipeline without a real widget.
           PUBLIC_TURNSTILE_SITE_KEY: 1x00000000000000000000AA
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: site-dist
           path: dist
@@ -196,17 +197,17 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: site-dist
           path: dist
       - id: deploy-auth
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           project_id: vscn-dev-f4b60
           workload_identity_provider: projects/640269226461/locations/global/workloadIdentityPools/vscn-hosting-deploy/providers/github-dev
@@ -215,13 +216,13 @@ jobs:
       # firebase-hosting-merge.yml. Dev is where a rules change lands first, so
       # this is the copy that proves the step works.
       - name: Deploy security rules
-        run: npx -y firebase-tools@latest deploy --only firestore:rules,storage --project vscn-dev-f4b60 --non-interactive
-      - run: npx -y firebase-tools@latest deploy --only hosting --project vscn-dev-f4b60 --non-interactive
+        run: npx -y firebase-tools@15.32.0 deploy --only firestore:rules,storage --project vscn-dev-f4b60 --non-interactive
+      - run: npx -y firebase-tools@15.32.0 deploy --only hosting --project vscn-dev-f4b60 --non-interactive
       - if: always()
         run: rm -f "${{ steps.deploy-auth.outputs.credentials_file_path }}"
       - id: publication-auth
         if: needs.export.outputs.revision != ''
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: projects/640269226461/locations/global/workloadIdentityPools/vscn-hosting-deploy/providers/github-dev
           service_account: vscn-hosting-deployer@vscn-dev-f4b60.iam.gserviceaccount.com

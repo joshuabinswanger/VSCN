@@ -14,7 +14,6 @@ import {
   parseSecretNames,
   normaliseRules,
   compareRules,
-  functionsDrift,
   backendVerdict,
   iamDiff,
   countRequests,
@@ -23,8 +22,12 @@ import {
   strandedVerdict,
   buildStampVerdict,
   exitCodeFor,
+  verdictLabel,
   resolveProjectAlias,
+  parseSecretConsumers,
+  secretBindingVerdict,
 } from "../../scripts/lib/release-checks.mjs";
+import { readdirSync, readFileSync } from "node:fs";
 
 test("parseFunctionExports: one export per line, multi-line braces, module per name", () => {
   const source = `// comment
@@ -67,31 +70,6 @@ test("compareRules: a real difference names the first differing line", () => {
   const live = "line one\nline two\nline three\n";
   const repo = "line one\nline TWO\nline three\n";
   assert.deepEqual(compareRules(live, repo), { equal: false, line: 2, live: "line two", repo: "line TWO" });
-});
-
-test("functionsDrift: missing, stale and extra deployments are all reported", () => {
-  const exports = [
-    { name: "authorizeImageUpload", module: "functions/src/uploads.ts" },
-    { name: "onAuthUserCreated", module: "functions/src/authTriggers.ts" },
-    { name: "adminRateImage", module: "functions/src/adminOps.ts" },
-  ];
-  const deployed = [
-    { name: "authorizeImageUpload", updateTime: "2026-09-15T15:26:41Z" },
-    { name: "onAuthUserCreated", updateTime: "2026-09-15T15:26:23Z" },
-    { name: "legacyThing", updateTime: "2026-08-01T00:00:00Z" },
-  ];
-  const lastCommit = {
-    "functions/src/uploads.ts": "2026-09-12T10:00:00+02:00",
-    "functions/src/authTriggers.ts": "2026-09-22T13:16:30+02:00",
-    "functions/src/adminOps.ts": "2026-09-22T12:00:00+02:00",
-  };
-  const drift = functionsDrift(exports, deployed, lastCommit);
-  assert.deepEqual(drift.missing, ["adminRateImage"]);
-  assert.deepEqual(drift.stale, [
-    { name: "onAuthUserCreated", deployed: "2026-09-15T15:26:23Z", source: "2026-09-22T13:16:30+02:00" },
-  ]);
-  assert.deepEqual(drift.extra, ["legacyThing"]);
-  assert.deepEqual(drift.current, ["authorizeImageUpload"]);
 });
 
 test("iamDiff: a grant is checked in the policy its scope names, and a forbidden grant is a finding too", () => {
@@ -155,9 +133,18 @@ test("pairingVerdict: prod's 2026-09-14 → 2026-09-22 state is RED", () => {
 test("pairingVerdict: partial failure warns, quiet weeks and abandoned uploads pass", () => {
   assert.equal(pairingVerdict({ authorize: 10, complete: 4 }).status, "WARN");
   assert.equal(pairingVerdict({ authorize: 10, complete: 5 }).status, "PASS");
-  assert.equal(pairingVerdict({ authorize: 2, complete: 0 }).status, "PASS");
   assert.equal(pairingVerdict({ authorize: 0, complete: 0 }).status, "WARN");
   assert.equal(pairingVerdict({ authorize: 6, complete: 1 }).status, "PASS");
+});
+
+test("pairingVerdict: a window with no completed upload is NOT TESTED, not a pass", () => {
+  for (const traffic of [{ authorize: 0, complete: 0 }, { authorize: 2, complete: 0 }, { authorize: 1, complete: 0 }]) {
+    const v = pairingVerdict(traffic);
+    assert.deepEqual({ status: v.status, untested: v.untested }, { status: "WARN", untested: true }, JSON.stringify(traffic));
+    assert.match(v.reason, /^NOT TESTED/);
+  }
+  assert.equal(pairingVerdict({ authorize: 1, complete: 1 }).untested, undefined);
+  assert.equal(pairingVerdict({ authorize: 32, complete: 0 }).untested, undefined);
 });
 
 test("summariseErrors: counts entries and ranks the three most frequent messages", () => {
@@ -199,6 +186,14 @@ test("exitCodeFor: a probe that did not run is not a pass; a warning is", () => 
   assert.equal(exitCodeFor([{ status: "FAIL" }]), 1);
 });
 
+test("verdictLabel: GREEN only when every probe that passed was exercised; NOT TESTED keeps exit 0", () => {
+  assert.equal(verdictLabel([{ name: "a", status: "PASS" }, { name: "b", status: "WARN" }]), "GREEN");
+  const quiet = [{ name: "build stamp", status: "PASS" }, { name: "upload pairing", status: "WARN", untested: true }];
+  assert.equal(verdictLabel(quiet), "GREEN, NOT TESTED: upload pairing");
+  assert.equal(exitCodeFor(quiet), 0);
+  assert.equal(verdictLabel([...quiet, { name: "rules parity", status: "FAIL" }]), "RED");
+});
+
 test("resolveProjectAlias: only the two aliases; a raw project id is refused", () => {
   const rc = { projects: { default: "vscn-39508", dev: "vscn-dev-f4b60" } };
   assert.equal(resolveProjectAlias("prod", rc), "vscn-39508");
@@ -217,4 +212,71 @@ test("backendVerdict: current only when every export carries the expected digest
   assert.deepEqual(v.orphans, ["z"]);
   assert.deepEqual(backendVerdict(exports, [{ name: "a" }, stamped("b", "x"), stamped("z", "x")], "x"),
     { current: false, mismatched: ["a: unstamped"], orphans: ["z"] });
+});
+
+test("backendVerdict: a function the last deploy left FAILED is not current, whatever its label says", () => {
+  const exports = [{ name: "a" }, { name: "b" }];
+  const fn = (name, state) => ({ name, state, labels: { source_digest: "x" } });
+  assert.deepEqual(backendVerdict(exports, [fn("a", "FAILED"), fn("b", "ACTIVE")], "x"), { current: false, mismatched: ["a: FAILED"], orphans: [] });
+  assert.equal(backendVerdict(exports, [fn("a", "DEPLOYING"), fn("b", "ACTIVE")], "x").current, false);
+  assert.equal(backendVerdict(exports, [fn("a", "ACTIVE"), fn("b", undefined)], "x").current, true);
+});
+
+test("iamDiff: a CONDITIONAL forbidden grant is still a forbidden grant", () => {
+  // Reproduces review T2-10: an expiring roles/iam.serviceAccountUser on the
+  // Functions deployer used to read as absent.
+  const expected = [{ scope: "project", member: "serviceAccount:fn@x", role: "roles/iam.serviceAccountUser", forbidden: true, why: "" }];
+  const conditional = { project: { bindings: [{ role: "roles/iam.serviceAccountUser", members: ["serviceAccount:fn@x"], condition: { title: "expires 2027", expression: "request.time < timestamp('2027-01-01T00:00:00Z')" } }] } };
+  const diff = iamDiff(expected, conditional);
+  assert.equal(diff.forbidden.length, 1);
+  assert.equal(diff.forbidden[0].condition, "expires 2027");
+  assert.equal(iamDiff(expected, { project: { bindings: [{ role: "roles/iam.serviceAccountUser", members: ["serviceAccount:fn@x"] }] } }).forbidden[0].condition, undefined);
+  assert.equal(iamDiff(expected, { project: { bindings: [] } }).forbidden.length, 0);
+});
+
+test("secretBindingVerdict: a binding older than the newest enabled version is STALE; a disabled one is DISABLED", () => {
+  const versions = ["projects/1/secrets/S/versions/1", "projects/1/secrets/S/versions/3"];
+  assert.equal(secretBindingVerdict("3", versions).status, "CURRENT");
+  assert.deepEqual(secretBindingVerdict("1", versions), { status: "STALE", newest: 3 });
+  assert.equal(secretBindingVerdict("2", versions).status, "DISABLED");
+  assert.equal(secretBindingVerdict("latest", versions).status, "CURRENT");
+  assert.equal(secretBindingVerdict("1", []).status, "DISABLED");
+});
+
+test("parseSecretConsumers: every declaration shape the backend uses, handles resolved across modules", () => {
+  const sources = {
+    "functions/src/rebuild.ts": 'export const githubRebuildToken = defineSecret("GITHUB_REBUILD_TOKEN");',
+    "functions/src/mail.ts": 'export const smtpPassword = defineSecret("SMTP"); export const notifyTo = defineSecret("NOTIFY_TO");',
+    "functions/src/a.ts": `import { githubRebuildToken } from "./rebuild";
+export const callable = onCall({ enforceAppCheck: true, secrets: [githubRebuildToken] }, async (req) => { const secrets = [1]; return { secrets: [] }; });
+export const plain = onCall({ enforceAppCheck: true }, async () => ({ secrets: ["NOT_A_BINDING"] }));
+export const digest = onSchedule(
+  { schedule: "every 10 minutes", secrets: [smtpPassword, notifyTo] },
+  async () => {},
+);
+export const v1 = functionsV1.runWith({ secrets: ["LITERAL"] }).auth.user().onDelete(async () => null);
+const internal = onCall({ secrets: [githubRebuildToken] }, async () => {});`,
+  };
+  assert.deepEqual(parseSecretConsumers(sources), {
+    callable: ["GITHUB_REBUILD_TOKEN"],
+    digest: ["NOTIFY_TO", "SMTP"],
+    v1: ["LITERAL"],
+  });
+  assert.throws(() => parseSecretConsumers({ "functions/src/x.ts": "export const f = onCall({ secrets: [unknownHandle] }, async () => {});" }), /cannot resolve/);
+});
+
+test("parseSecretConsumers over the real backend finds every binding the old hand-kept map listed", () => {
+  // The map verify-release carried until 2026-09-30. If the parser stops
+  // seeing a declaration shape, probe 5 would silently check fewer bindings;
+  // this is the floor. A NEW binding in the source needs no edit here.
+  const src = Object.fromEntries(readdirSync("functions/src").filter((f) => f.endsWith(".ts")).map((f) => [`functions/src/${f}`, readFileSync(`functions/src/${f}`, "utf8")]));
+  const derived = parseSecretConsumers(src);
+  const handKept = {
+    sendAdminDigest: ["ADMIN_NOTIFY_TO", "INFOMANIAK_SMTP_PASSWORD"],
+    mintAppCheckToken: ["TURNSTILE_SECRET_KEY"],
+    ...Object.fromEntries(["onAuthUserDeleted", "requestAccountDeletion", "cancelAccountDeletion", "adminPurgeAccount", "adminRestoreAccount", "adminDeleteImage", "adminSetProfileActive", "purgeExpiredAccounts", "flushMemberRebuilds"].map((name) => [name, ["GITHUB_REBUILD_TOKEN"]])),
+  };
+  for (const [name, secrets] of Object.entries(handKept)) {
+    for (const secret of secrets) assert.ok(derived[name]?.includes(secret), `${name} should bind ${secret}`);
+  }
 });

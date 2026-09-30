@@ -16,7 +16,7 @@ const t = useTranslations(lang);
 ---
 <div class="profile-editor">
 
-<div id="loading" class="loading-state">{t("profile.loading")}</div>
+<div id="loading" class="loading-state" role="status">{t("profile.loading")}</div>
 
 {
   /* Above the form, not inside a section: an unverified address matters on
@@ -96,9 +96,8 @@ const t = useTranslations(lang);
 
   {/* Floating Save: reachable from every editing tab, hidden on Preview. */}
   <div class="form-footer">
-    <p role="status" aria-live="polite" id="save-msg" class="msg-ok" style="display:none;">
-      {t("profile.saveMsg")}
-    </p>
+    {/* Filled by watchPublication (src/lib/publicationStatus.ts) after each save. */}
+    <p role="status" aria-live="polite" id="save-msg" class="msg-ok" style="display:none;"></p>
     <p role="alert" id="save-error" class="msg-err" style="display:none;"></p>
     <Button id="save-button" type="submit" class="btn-solid profile-save-button"
       >{t("profile.save")}</Button

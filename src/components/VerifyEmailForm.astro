@@ -24,7 +24,7 @@ const t = useTranslations(lang);
   <div class="verify-body">
     <button id="btn-check" class="btn-solid">{t('verify.cta')}</button>
 
-    <p id="status-msg" class="msg-err" style="display:none;"></p>
+    <p role="alert" id="status-msg" class="msg-err" style="display:none;"></p>
 
     <div class="resend-row">
       <span class="resend-label">{t('verify.resend.label')}</span>
@@ -35,7 +35,7 @@ const t = useTranslations(lang);
       <button id="btn-back" class="btn-link">{t('verify.back')}</button>
     </div>
 
-    <p id="resend-msg" class="msg-ok" style="display:none;">
+    <p role="status" id="resend-msg" class="msg-ok" style="display:none;">
       {t('verify.resend.msg')}
     </p>
   </div>
@@ -122,12 +122,11 @@ const t = useTranslations(lang);
   import { auth } from "../lib/firebase.ts";
   import { activatePublicProfileIfExists } from "../lib/firestore.ts";
   import { triggerRebuild } from "../lib/profile.ts";
-  import { hasVerifiedClaim } from "../lib/auth.ts";
-  import { onAuthStateChanged, sendEmailVerification, signOut } from "firebase/auth";
+  import { hasVerifiedClaim, watchAuth } from "../lib/auth.ts";
+  import { sendEmailVerification, signOut } from "firebase/auth";
+  import { pageLifetime } from "../lib/pageLifecycle.ts";
   import { returnTo } from "../lib/authEmail.ts";
   import { ui } from "../i18n/translations.ts";
-
-  let unsubscribeAuth: (() => void) | null = null;
 
   document.addEventListener("astro:page-load", () => {
     const btnCheck = document.getElementById("btn-check") as HTMLButtonElement;
@@ -146,8 +145,10 @@ const t = useTranslations(lang);
     let currentUser: import("firebase/auth").User | null = null;
     let resendCooldown = false;
 
-    unsubscribeAuth?.();
-    unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+    // One observer per visit (see pageLifecycle.ts). Kept alive, it sent a
+    // member who signed out anywhere later in the session to /signup.
+    const lifetime = pageLifetime();
+    watchAuth(lifetime, async (user) => {
       if (!user) {
         window.location.href = `${prefix}/signup`;
         return;
@@ -172,7 +173,10 @@ const t = useTranslations(lang);
         // in Firestore and absent from the site until somebody else saved
         // (2026-09-08, Michael Zehnder).
         if (await activatePublicProfileIfExists(user.uid).catch(() => false)) await triggerRebuild();
-        window.location.href = `${prefix}/profile`;
+        // The publish and its rebuild above run to the end either way; only
+        // the redirect is this page's, and it must not follow a member who has
+        // already navigated somewhere else.
+        if (!lifetime.aborted) window.location.href = `${prefix}/profile`;
         return;
       }
       currentUser = user;

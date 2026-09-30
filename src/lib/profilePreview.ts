@@ -17,7 +17,7 @@ import { href, hostLabel, socialLinks } from "./links.ts";
 // The card preview drives the DIRECTORY CARD'S OWN carousel now, not a still
 // picture that looks like one -- see renderCardPreview below and the header of
 // src/lib/communityCarousel.ts.
-import { destroyCarousel, initCarousels } from "./communityCarousel.ts";
+import { destroyCarousel, initCarousels, refreshCarousel } from "./communityCarousel.ts";
 import type { ProfileViewModel } from "./profileView.ts";
 import { groupWorks, projectTitle, projectDescription, affiliationHref, projectSlideData } from "./projects.ts";
 import type { ProfileProject } from "./projects.ts";
@@ -563,26 +563,33 @@ export function renderCardPreview(
       frame.style.aspectRatio = `${first.width} / ${first.height}`;
       frame.style.background = first.color ?? "";
 
-      // ONLY WHEN THE GALLERY ITSELF CHANGED. renderCardPreview runs on every
-      // keystroke in the form — the name, the role, a tag — and rebuilding the
-      // track each time would destroy the Embla instance, throw the member
-      // back to image 1 and re-decode every picture while they type. The
-      // signature covers the images AND the text bound into them, so a caption
-      // edit still lands.
+      // ONLY WHEN THE PICTURES THEMSELVES CHANGED. renderCardPreview runs on
+      // every keystroke in the form — the name, the role, a tag, a caption —
+      // and rebuilding the track each time would destroy the Embla instance,
+      // throw the member back to image 1 and re-decode every picture while
+      // they type. The signature is STRUCTURE only: which pictures, in which
+      // order, at which size, and whether each is a video (its embed
+      // attributes are written, never removed, so a change there needs a
+      // fresh slide). The words bound into each slide — alt, caption,
+      // description, links, project — are written in place on every render
+      // below (2026-09-29). They were in the signature until then, so every
+      // keystroke in a caption rebuilt the whole carousel on the same frame
+      // and stacked another set of its listeners there.
       // The project a work is in, for the lightbox's "Part of" line.
       const projectOf = (w: PreviewWork) =>
         w.projectId ? vm.projects?.find((p) => p.id === w.projectId) : undefined;
       const signature = works
         .map(
           (w) =>
-            `${w.url}|${w.width}x${w.height}|${w.caption ?? ""}|${w.description ?? ""}|${w.link ?? ""}|${w.siteLink ?? ""}|${w.embed ? `${w.embed.provider}:${w.embed.videoId}` : ""}|${JSON.stringify(labels.lang ? projectSlideData(projectOf(w), labels.lang) : {})}`
+            `${w.url}|${w.width}x${w.height}|${w.embed ? `${w.embed.provider}:${w.embed.videoId}` : ""}`
         )
         .join("~");
       if (frame.dataset.ccpvSignature !== signature) {
         frame.dataset.ccpvSignature = signature;
         // Release the previous carousel before its slides go: dropping the
-        // nodes leaves Embla's observers and its 5s timer alive against
-        // detached elements (see destroyCarousel).
+        // nodes would leave Embla's observers running against detached
+        // elements, and the listeners initCarousels() put on this same frame
+        // would be bound a second time (see destroyCarousel).
         destroyCarousel(frame);
 
         const slides = works
@@ -598,18 +605,10 @@ export function renderCardPreview(
             img.src = w.url;
             img.width = w.width;
             img.height = w.height;
-            // The card's rule exactly: the member's caption when they wrote
-            // one, a translated fallback otherwise — never "".
-            img.alt = w.caption?.trim() || `${displayName} — ${labels.workAlt ?? ""}`.trim();
             if (w.color) img.style.background = w.color;
-
-            // The card's whole slide contract. communityCarousel.ts copies it
-            // onto the frame's trigger as the carousel moves (the preview's
-            // trigger is href-less, so the URL is ignored there), and the
-            // lightbox opens from the slides themselves (bindCardOpener),
-            // exactly as it does on /community.
+            // The words (alt and the data-pswp-* set) are written by the
+            // in-place pass after the rebuild, which covers new slides too.
             slide.dataset.workUrl = w.url;
-            writeSlideData(slide, w, displayName, projectOf(w), labels.lang);
 
             // A single picture is not a carousel: no group semantics, no
             // position label. Calling one image a carousel would be a lie to a
@@ -665,11 +664,26 @@ export function renderCardPreview(
         // what the card does with a single work too.
         initCarousels(root);
       }
-      // The artist line follows the name on EVERY render, outside the
-      // signature: typing a name must not rebuild the carousel (see above).
-      track.querySelectorAll<HTMLElement>(".ccard__slide").forEach((slide) => {
-        slide.dataset.pswpMeta = displayName;
+      // THE WORDS, ON EVERY RENDER, outside the signature: typing a caption
+      // or a name must not rebuild the carousel (see above). The slides are
+      // in `works` order, which the structural signature guarantees.
+      //
+      // The card's whole slide contract. communityCarousel.ts copies it onto
+      // the frame's trigger as the carousel moves (the preview's trigger is
+      // href-less, so the URL is ignored there), and the lightbox opens from
+      // the slides themselves (bindCardOpener), exactly as it does on
+      // /community. The alt is the card's rule exactly: the member's caption
+      // when they wrote one, a translated fallback otherwise — never "".
+      track.querySelectorAll<HTMLElement>(".ccard__slide").forEach((slide, i) => {
+        const w = works[i];
+        if (!w) return;
+        const img = slide.querySelector("img");
+        if (img) img.alt = w.caption?.trim() || `${displayName} — ${labels.workAlt ?? ""}`.trim();
+        writeSlideData(slide, w, displayName, projectOf(w), labels.lang);
       });
+      // ...and the trigger's mirror of the slide showing, which only a move
+      // would otherwise refresh.
+      refreshCarousel(frame);
     } else {
       // No artwork: the slides go, and the carousel with them. An eight-image
       // track left behind a hidden body would keep Embla's observers running

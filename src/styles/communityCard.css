@@ -195,6 +195,19 @@
   cursor: zoom-in;
 }
 
+/* The card's main tab stop needs a ring of its own: the browser's default
+   one is drawn outside the link, where .ccard__frame's overflow and
+   clip-path cut it away entirely. So it is drawn INSIDE, and in two tones —
+   a paper band at the edge, the dark ring within it — because the picture
+   under it can be any colour, and either tone alone vanishes on half of them.
+   The paper band is 3px because the frame's clip-path shaves 1px off each
+   side. */
+.ccard__frame-link:focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: -5px;
+  box-shadow: inset 0 0 0 3px var(--color-bg);
+}
+
 .ccard__arrow {
   position: absolute;
   /* THE WHOLE HEIGHT OF THE PICTURE (2026-09-25, Josh: the prev/next click

@@ -50,6 +50,8 @@ export const ui: Record<string, Record<string, string>> = {
     "community.view.grid": "Grid",
     "community.view.index": "Index",
     "community.index.search": "Search name, role, tags…",
+    "community.index.note": "Index lists every member, including those who have not shown artwork yet. Gallery and Grid show artwork only.",
+    "community.filter.tags.scope": "Gallery and Index: member tags. Grid: tags on individual works and projects.",
     "community.filter.type": "Who",
     "community.filter.looking": "Looking for",
     "community.filter.all": "All",
@@ -76,6 +78,8 @@ export const ui: Record<string, Record<string, string>> = {
 
     // AuthForm
     "auth.title.login": "Log In",
+    "auth.label.email": "Email",
+    "auth.label.password": "Password",
     "auth.title.reset": "Reset Password",
     "auth.submit.login": "Log In",
     "auth.submit.loginLoading": "Logging in...",
@@ -141,6 +145,7 @@ export const ui: Record<string, Record<string, string>> = {
     // ProfileForm
     "profile.loading": "Loading profile…",
     "profile.loadFailed": "Your profile could not be loaded.",
+    "profile.loadFailed.offline": "You appear to be offline. Check your connection, then try again.",
     "profile.loadRetry": "Try again",
     "profile.verifyBanner":
       "Please verify your email to secure your account — if it hasn't arrived, check your spam folder.",
@@ -223,6 +228,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.openTo.seeking": "Find services",
     "profile.openTo.networking": "Network & collaborate",
     "profile.openTo.custom.ph": "Something else? Add a custom option…",
+    "profile.openTo.add": "Add custom option",
     "profile.visualNeeds.legend": "What do you need visuals for?",
     "profile.visualNeeds.note":
       "Helps illustrators and designers find requests they can actually help with. Up to 8.",
@@ -239,6 +245,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.tag.filterLabel": "Filter the suggested tags",
     "profile.note.tags": "Up to 7 tags.",
     "profile.tag.add": "Add tag",
+    "profile.tag.addNamed": "Add tag {tag}",
+    "profile.tag.removeNamed": "Remove tag {tag}",
     "profile.browseTags": "Browse tags",
     "profile.browseAllTags": "Browse all tags",
     "profile.hideTags": "Hide tags",
@@ -252,6 +260,7 @@ export const ui: Record<string, Record<string, string>> = {
     "member.work": "Work",
     "member.workAlt": "work sample",
     "member.lightbox.close": "Close",
+    "member.lightbox.dialog": "Image viewer",
     "member.lightbox.zoom": "Zoom",
     "member.lightbox.prev": "Previous image",
     "member.lightbox.next": "Next image",
@@ -301,7 +310,15 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.tab.preview": "Preview",
     "profile.view.noWorks": "No images yet. Add work in the gallery field and it will appear here.",
     "profile.view.defaultName": "Your name",
-    "profile.saveMsg": "Changes saved. Publication is queued and may take a few minutes.",
+    // The status line under Save (src/lib/publicationStatus.ts). Every state
+    // starts with "Saved." because the save has landed whatever the site does
+    // next; only the hidden member gets the bare word (their page is not built).
+    "profile.publication.saved": "Saved.",
+    "profile.publication.queued": "Saved. Publication queued.",
+    "profile.publication.published": "Saved and published.",
+    "profile.publication.delayed": "Saved. Publication delayed.",
+    "profile.publication.unknown": "Saved. Publication not yet confirmed.",
+    "profile.publication.retry": "Check again",
     "profile.adminConsole": "Admin console",
     "profile.logout": "Log Out",
     "profile.save": "Save Changes",
@@ -327,6 +344,9 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.email.error":
       "The address could not be changed. Check it and your password, then try again.",
     "profile.reauth.text": "Please enter your password to confirm.",
+    "profile.gallery.progress": "Upload progress",
+    "profile.gallery.toolbar": "Actions for this work",
+    "profile.gallery.rowLabel": "Work {n} of {total}",
     "profile.reauth.cancel": "Cancel",
     "profile.reauth.confirm": "Confirm delete",
     "profile.preview.defaultName": "Your name",
@@ -339,11 +359,11 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.upload.error": "Could not process image.",
     "profile.label.gallery": "Gallery",
     "profile.note.gallery":
-      "Up to 12 images. They appear on your member card after the next site update.",
+      "Up to 12 works, images and video links together. They appear on your member card after the next site update.",
     "profile.note.galleryUnverified":
       "One image until your email is verified — then up to 12. They appear on your member card after the next site update.",
     "profile.gallery.add": "Add images",
-    "profile.gallery.full": "Gallery is full (12 images max).",
+    "profile.gallery.full": "Gallery is full (12 works max).",
     "profile.gallery.verifyForMore":
       "Verify your email to add more images. Check your inbox for the link.",
     "profile.gallery.error": "Could not upload image. Please try again.",
@@ -372,6 +392,14 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.err.quota": "Storage is full. Please contact VSCN.",
     "profile.gallery.err.cancelled": "Cancelled.",
     "profile.gallery.err.unknown": "Something went wrong.",
+    // An upload callable refused a call that carried no App Check token. Same
+    // advice as auth.error.code.appCheck: the session is fine, the security
+    // check is what a blocker or the network stopped.
+    "profile.gallery.err.appCheck":
+      "A security check could not run in your browser, so the upload was refused. If you use an ad blocker, a privacy extension or a VPN, allow this site and reload the page. On an institutional network (ETH, UZH, another university, a hospital or a company) ask your IT department to allow challenges.cloudflare.com.",
+    "profile.gallery.err.storedLimit":
+      "Your account holds as many images as it can for now. Removed works are cleared within a few hours; please try again then.",
+    "profile.gallery.err.hourlyLimit": "Too many uploads in the past hour. Please wait up to an hour and try again.",
     "profile.gallery.remove": "Remove image",
     "profile.gallery.drop": "Drop images here",
     // The cover image is not a setting anywhere — it is whichever image is
@@ -411,12 +439,14 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.embed.err.noThumbnail": "This video has no thumbnail we could use.",
     "profile.embed.err.full": "Your gallery is full. Remove a work to add a video.",
     "profile.embed.err.storedLimit": "Your account holds as many works as it can for now. Removed works are cleared within a few hours; please try again then.",
-    "profile.embed.err.hourlyLimit": "That is a lot of new works in one hour. Please try again later.",
+    "profile.embed.err.hourlyLimit": "You have tried to add many works in the past hour. Please wait up to an hour and try again.",
     "profile.embed.err.notRestorable": "The automatic thumbnail for this video is no longer available. Reload the page and try again.",
     "profile.embed.err.busy": "Another video is still being processed. Try again in a minute.",
     "profile.embed.err.denied": "Your session has expired. Sign in again, then try once more.",
     "profile.embed.err.network": "The connection dropped. Please try again.",
     "profile.embed.err.unknown": "The video could not be added. Please try again.",
+    "profile.embed.err.appCheck":
+      "A security check could not run in your browser, so the video could not be added. If you use an ad blocker, a privacy extension or a VPN, allow this site and reload the page. On an institutional network (ETH, UZH, another university, a hospital or a company) ask your IT department to allow challenges.cloudflare.com.",
     "profile.gallery.overflow": "Only {n} images fit — {m} not added.",
     // The label, which is also the field's accessible name — so it stays a
     // label and the EXAMPLE lives in .ph beside it, exactly as the link field
@@ -531,6 +561,16 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.reauth.error": "Incorrect password. Please try again.",
     "profile.save.saving": "Saving…",
     "profile.save.error": "Could not save changes.",
+    "profile.save.error.refused": "Could not save: the server refused one of the fields. Shorten your entries and try again.",
+    "profile.save.error.network": "Could not save: the connection dropped. Check your connection and try again.",
+    "profile.save.error.session": "Could not save: your sign-in has expired. Sign in again, then try once more.",
+    "profile.save.offline": "You appear to be offline. Check your connection and try again.",
+    "profile.save.slow": "Saving is taking longer than usual. Check your connection — the save continues in the background.",
+    "profile.save.waitUploads": "Please wait for uploads to finish before saving.",
+    "profile.validation.tooLong": "{field} must be {n} characters or fewer.",
+    "profile.validation.tooManyWords": "{field} must be {n} words or fewer.",
+    "profile.validation.tooMany": "{field}: choose at most {n}.",
+    "profile.gallery.remove.confirm": "Remove this work? Its image and everything written about it are deleted for good.",
 
     // Onboarding
     "onboarding.step1.title": "About you",
@@ -668,6 +708,8 @@ export const ui: Record<string, Record<string, string>> = {
     "community.view.grid": "Raster",
     "community.view.index": "Index",
     "community.index.search": "Name, Rolle, Tags suchen…",
+    "community.index.note": "Der Index zeigt alle Mitglieder, auch jene, die noch keine Arbeiten zeigen. Galerie und Raster zeigen nur Arbeiten.",
+    "community.filter.tags.scope": "Galerie und Index: Personen-Tags. Raster: Tags einzelner Arbeiten und Projekte.",
     "community.filter.type": "Wer",
     "community.filter.looking": "Auf der Suche nach",
     "community.filter.all": "Alle",
@@ -691,6 +733,8 @@ export const ui: Record<string, Record<string, string>> = {
 
     // AuthForm
     "auth.title.login": "Anmelden",
+    "auth.label.email": "E-Mail",
+    "auth.label.password": "Passwort",
     "auth.title.reset": "Passwort zurücksetzen",
     "auth.submit.login": "Anmelden",
     "auth.submit.loginLoading": "Wird angemeldet...",
@@ -753,6 +797,7 @@ export const ui: Record<string, Record<string, string>> = {
     // ProfileForm
     "profile.loading": "Profil wird geladen…",
     "profile.loadFailed": "Dein Profil konnte nicht geladen werden.",
+    "profile.loadFailed.offline": "Du scheinst offline zu sein. Prüfe deine Verbindung und versuche es dann noch einmal.",
     "profile.loadRetry": "Erneut versuchen",
     "profile.verifyBanner":
       "Bitte bestätige deine E-Mail, um dein Konto zu sichern — ist sie nicht angekommen, sieh in deinem Spam-Ordner nach.",
@@ -826,6 +871,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.openTo.seeking": "Dienste zu finden",
     "profile.openTo.networking": "Netzwerken & zusammenzuarbeiten",
     "profile.openTo.custom.ph": "Etwas anderes? Eigene Option hinzufügen…",
+    "profile.openTo.add": "Eigene Option hinzufügen",
     "profile.visualNeeds.legend": "Wofür brauchst du Visualisierungen?",
     "profile.visualNeeds.note":
       "Hilft Illustrator:innen und Designer:innen, passende Anfragen zu finden. Bis zu 8.",
@@ -842,6 +888,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.tag.filterLabel": "Vorgeschlagene Tags filtern",
     "profile.note.tags": "Bis zu 7 Tags.",
     "profile.tag.add": "Tag hinzufügen",
+    "profile.tag.addNamed": "Tag {tag} hinzufügen",
+    "profile.tag.removeNamed": "Tag {tag} entfernen",
     "profile.browseTags": "Tags durchsuchen",
     "profile.browseAllTags": "Alle Tags durchsuchen",
     "profile.hideTags": "Tags ausblenden",
@@ -855,6 +903,7 @@ export const ui: Record<string, Record<string, string>> = {
     "member.work": "Arbeiten",
     "member.workAlt": "Arbeitsbeispiel",
     "member.lightbox.close": "Schliessen",
+    "member.lightbox.dialog": "Bildbetrachter",
     "member.lightbox.zoom": "Zoomen",
     "member.lightbox.prev": "Vorheriges Bild",
     "member.lightbox.next": "Nächstes Bild",
@@ -888,8 +937,12 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.view.noWorks":
       "Noch keine Bilder. Füge Arbeiten im Galerie-Feld hinzu, dann erscheinen sie hier.",
     "profile.view.defaultName": "Dein Name",
-    "profile.saveMsg":
-      "Änderungen gespeichert. Die Veröffentlichung ist vorgemerkt und kann einige Minuten dauern.",
+    "profile.publication.saved": "Gespeichert.",
+    "profile.publication.queued": "Gespeichert. Veröffentlichung vorgemerkt.",
+    "profile.publication.published": "Gespeichert und veröffentlicht.",
+    "profile.publication.delayed": "Gespeichert. Veröffentlichung verzögert.",
+    "profile.publication.unknown": "Gespeichert. Veröffentlichung noch nicht bestätigt.",
+    "profile.publication.retry": "Erneut prüfen",
     "profile.adminConsole": "Admin-Konsole",
     "profile.logout": "Abmelden",
     "profile.save": "Änderungen speichern",
@@ -916,6 +969,9 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.email.error":
       "Die Adresse konnte nicht geändert werden. Prüfe sie und dein Passwort und versuche es erneut.",
     "profile.reauth.text": "Bitte gib dein Passwort zur Bestätigung ein.",
+    "profile.gallery.progress": "Upload-Fortschritt",
+    "profile.gallery.toolbar": "Aktionen für dieses Werk",
+    "profile.gallery.rowLabel": "Werk {n} von {total}",
     "profile.reauth.cancel": "Abbrechen",
     "profile.reauth.confirm": "Löschen bestätigen",
     "profile.preview.defaultName": "Dein Name",
@@ -928,11 +984,11 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.upload.error": "Bild konnte nicht verarbeitet werden.",
     "profile.label.gallery": "Galerie",
     "profile.note.gallery":
-      "Bis zu 12 Bilder. Sie erscheinen nach dem nächsten Site-Update auf deiner Mitgliedskarte.",
+      "Bis zu 12 Werke, Bilder und Video-Links zusammen. Sie erscheinen nach dem nächsten Site-Update auf deiner Mitgliedskarte.",
     "profile.note.galleryUnverified":
       "Ein Bild, bis deine E-Mail bestätigt ist — danach bis zu 12. Sie erscheinen nach der nächsten Aktualisierung auf deiner Mitgliederkarte.",
     "profile.gallery.add": "Bilder hinzufügen",
-    "profile.gallery.full": "Galerie ist voll (max. 12 Bilder).",
+    "profile.gallery.full": "Galerie ist voll (max. 12 Werke).",
     "profile.gallery.verifyForMore":
       "Bestätige deine E-Mail, um weitere Bilder hinzuzufügen. Der Link ist in deinem Posteingang.",
     "profile.gallery.error": "Bild konnte nicht hochgeladen werden. Bitte erneut versuchen.",
@@ -953,6 +1009,12 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.err.quota": "Der Speicher ist voll. Bitte VSCN kontaktieren.",
     "profile.gallery.err.cancelled": "Abgebrochen.",
     "profile.gallery.err.unknown": "Etwas ist schiefgelaufen.",
+    "profile.gallery.err.appCheck":
+      "Eine Sicherheitsprüfung konnte in deinem Browser nicht ausgeführt werden, deshalb wurde der Upload abgelehnt. Wenn du einen Adblocker, eine Datenschutz-Erweiterung oder ein VPN nutzt, erlaube diese Seite und lade sie neu. In Netzwerken von Institutionen (ETH, UZH, andere Hochschulen, Spitäler oder Firmen) bitte deine IT, challenges.cloudflare.com freizugeben.",
+    "profile.gallery.err.storedLimit":
+      "Dein Konto enthält im Moment so viele Bilder, wie es kann. Entfernte Werke werden innert weniger Stunden aufgeräumt; bitte versuche es dann noch einmal.",
+    "profile.gallery.err.hourlyLimit":
+      "Zu viele Uploads in der letzten Stunde. Bitte warte bis zu einer Stunde und versuche es dann noch einmal.",
     "profile.gallery.remove": "Bild entfernen",
     "profile.gallery.drop": "Bilder hier ablegen",
     "profile.gallery.cover": "Titelbild",
@@ -985,12 +1047,14 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.embed.err.noThumbnail": "Für dieses Video gibt es kein Vorschaubild, das wir verwenden können.",
     "profile.embed.err.full": "Deine Galerie ist voll. Entferne ein Werk, um ein Video hinzuzufügen.",
     "profile.embed.err.storedLimit": "Dein Konto enthält im Moment so viele Werke, wie es kann. Entfernte Werke werden innert weniger Stunden aufgeräumt; bitte versuche es dann noch einmal.",
-    "profile.embed.err.hourlyLimit": "Das sind viele neue Werke in einer Stunde. Bitte versuche es später noch einmal.",
+    "profile.embed.err.hourlyLimit": "Du hast in der letzten Stunde viele Werke hinzuzufügen versucht. Bitte warte bis zu einer Stunde und versuche es dann noch einmal.",
     "profile.embed.err.notRestorable": "Das automatische Vorschaubild für dieses Video ist nicht mehr verfügbar. Lade die Seite neu und versuche es noch einmal.",
     "profile.embed.err.busy": "Ein anderes Video wird noch verarbeitet. Versuche es in einer Minute erneut.",
     "profile.embed.err.denied": "Deine Sitzung ist abgelaufen. Melde dich erneut an und versuche es noch einmal.",
     "profile.embed.err.network": "Die Verbindung wurde unterbrochen. Bitte versuche es noch einmal.",
     "profile.embed.err.unknown": "Das Video konnte nicht hinzugefügt werden. Bitte versuche es noch einmal.",
+    "profile.embed.err.appCheck":
+      "Eine Sicherheitsprüfung konnte in deinem Browser nicht ausgeführt werden, deshalb konnte das Video nicht hinzugefügt werden. Wenn du einen Adblocker, eine Datenschutz-Erweiterung oder ein VPN nutzt, erlaube diese Seite und lade sie neu. In Netzwerken von Institutionen (ETH, UZH, andere Hochschulen, Spitäler oder Firmen) bitte deine IT, challenges.cloudflare.com freizugeben.",
     "profile.gallery.overflow": "Es passen nur {n} Bilder — {m} nicht hinzugefügt.",
     "profile.gallery.details": "Bilddetails",
     "profile.project.details": "Projektdetails",
@@ -1051,6 +1115,16 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.reauth.error": "Falsches Passwort. Bitte erneut versuchen.",
     "profile.save.saving": "Wird gespeichert…",
     "profile.save.error": "Änderungen konnten nicht gespeichert werden.",
+    "profile.save.error.refused": "Speichern fehlgeschlagen: Der Server hat eines der Felder abgelehnt. Kürze deine Angaben und versuche es erneut.",
+    "profile.save.error.network": "Speichern fehlgeschlagen: Die Verbindung ist abgebrochen. Prüfe deine Verbindung und versuche es erneut.",
+    "profile.save.error.session": "Speichern fehlgeschlagen: Deine Anmeldung ist abgelaufen. Melde dich erneut an und versuche es noch einmal.",
+    "profile.save.offline": "Du scheinst offline zu sein. Prüfe deine Verbindung und versuche es erneut.",
+    "profile.save.slow": "Das Speichern dauert länger als üblich. Prüfe deine Verbindung — das Speichern läuft im Hintergrund weiter.",
+    "profile.save.waitUploads": "Bitte warten, bis die Uploads abgeschlossen sind.",
+    "profile.validation.tooLong": "{field} darf höchstens {n} Zeichen lang sein.",
+    "profile.validation.tooManyWords": "{field} darf höchstens {n} Wörter haben.",
+    "profile.validation.tooMany": "{field}: höchstens {n} auswählen.",
+    "profile.gallery.remove.confirm": "Dieses Werk entfernen? Bild und alle Angaben dazu werden endgültig gelöscht.",
 
     // Onboarding
     "onboarding.step1.title": "Über dich",

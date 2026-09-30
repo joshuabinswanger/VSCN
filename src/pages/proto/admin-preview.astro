@@ -209,9 +209,13 @@ import AdminConsole from "../../components/admin/AdminConsole.astro";
     staleUploads: [img({ imageId: "img_x", ownerUid: "9pR2xKvB6nWzQhLt3MdYcJs0Ef5g", status: "uploading", referenced: false })],
     unreferencedLive: [img({ imageId: "img_orph", referenced: false })],
     emailMismatches: [{ uid: "Tq7HsN4mXbZv2RpLd9KcWy6Ja1Ur", storedEmail: "m.brunner.old@example.org", authEmail: "marco.brunner@example.org" }],
-    // One of each state the row can be in: refused by the mailbox, waiting
-    // for the wizard's half hour, and simply due.
+    // One of each state the row can be in: exhausted (every attempt spent,
+    // only a manual Retry moves it), refused by the mailbox, waiting for the
+    // wizard's half hour, and simply due.
     unsentNotices: [
+      { id: "signup-9pR2xKvB6nWzQhLt3MdYcJs0Ef5g", kind: "signup", uid: "9pR2xKvB6nWzQhLt3MdYcJs0Ef5g", imageId: null,
+        email: "lea.meier@example.org", at: "2026-09-22T05:10:00.000Z", dueAt: "2026-09-22T05:40:00.000Z", attempts: 12,
+        lastError: "Mail not sent: Error: Connection timeout", lastAttemptAt: "2026-09-22T07:30:00.000Z", failed: true },
       { id: "image-img_orph-1", kind: "image", uid: "k3Qw8ZrT2bVnPjXs7LmHcYd1Ae4f", imageId: "img_orph", email: null,
         at: "2026-09-23T07:28:28.000Z", dueAt: "2026-09-23T07:28:28.000Z", attempts: 3,
         lastError: "Mail not sent: Error: Invalid login: 535 5.7.0 Invalid login", lastAttemptAt: "2026-09-23T07:55:00.000Z" },
@@ -220,8 +224,20 @@ import AdminConsole from "../../components/admin/AdminConsole.astro";
         lastError: null, lastAttemptAt: null },
       { id: "image-img_x-2", kind: "image", uid: "9pR2xKvB6nWzQhLt3MdYcJs0Ef5g", imageId: "img_x", email: null,
         at: "2026-09-23T07:41:00.000Z", dueAt: "2026-09-23T07:41:00.000Z", attempts: 0, lastError: null, lastAttemptAt: null },
+      // Exhausted: retained after the twelfth failure, Retry is the only way on.
+      { id: "signup-Zm9KdX3pQw7LvBn5RtYc2Hs8Jf1e", kind: "signup", uid: "Zm9KdX3pQw7LvBn5RtYc2Hs8Jf1e", imageId: null,
+        email: "sven.lindqvist@example.org", at: "2026-09-22T09:00:00.000Z", dueAt: "2026-09-22T09:30:00.000Z", attempts: 12,
+        lastError: "Mail not sent: Error: Invalid login: 535 5.7.0 Invalid login", lastAttemptAt: "2026-09-22T11:20:00.000Z", failed: true },
     ],
     noticeMaxAttempts: 12,
+    failedNotices: 1,
+    // A stalled pipeline: dirty for longer than the threshold with a build
+    // still holding the lease, so the row renders its DELAYED face.
+    publication: {
+      generation: 14, publishedGeneration: 11, dirty: true,
+      queuedAt: "2026-09-23T06:50:00.000Z", dirtyAt: "2026-09-23T07:41:00.000Z", leaseUntil: "2026-09-23T07:56:00.000Z",
+      publishedAt: "2026-09-23T06:31:00.000Z", ageMinutes: 51, delayed: true, delayedAfterMinutes: 30,
+    },
   };
 
   /**

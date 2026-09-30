@@ -20,6 +20,7 @@
 import EmblaCarousel from "embla-carousel";
 import type { EmblaCarouselType } from "embla-carousel";
 import { ensurePagerChevron } from "./pager.ts";
+import { hasKeyModifier } from "./keys.ts";
 
 /**
  * Everything one carousel holds that has to be released. Each Embla instance
@@ -38,15 +39,30 @@ import { ensurePagerChevron } from "./pager.ts";
  * The card used to advance itself every 5 s on a phone, for the one card
  * nearest the middle of the scrollport; a card now moves only when somebody
  * moves it — swipe, arrows, chevrons, keys or the lightbox.
+ *
+ * AND THE LISTENERS (2026-09-29). initCarousels() binds the frame's keydown
+ * and carousel-show, the arrows' clicks, the chevrons' presses and the
+ * first-contact hydration on nodes that OUTLIVE a re-init — the preview
+ * re-inits the same frame whenever its slides are rebuilt — so each one
+ * carries the handle's signal and destroyCarousel() takes them all back. Before
+ * that, every rebuild left one more copy of each on the frame (measured: 100
+ * rebuilds, 100 keydown handlers, one ArrowRight preventDefault-ed 100 times).
+ * The handle exists from the first line of the init, before the gallery-of-one
+ * early return, so even a frame with no Embla instance has its listeners
+ * released.
  */
 interface CarouselHandle {
-  embla: EmblaCarouselType;
+  listeners: AbortController;
+  embla?: EmblaCarouselType;
+  /** Re-mirrors the showing slide onto the frame's trigger. */
+  sync?: () => void;
 }
 
 const liveCarousels = new Map<HTMLElement, CarouselHandle>();
 
 /**
- * Releases one carousel's Embla instance. Safe on a node that never had one.
+ * Releases one carousel: its listeners and its Embla instance. Safe on a node
+ * that never had either.
  */
 export function destroyCarousel(node: HTMLElement): void {
   // FIRST, AND UNCONDITIONALLY. initCarousels() sets this guard before it
@@ -58,8 +74,18 @@ export function destroyCarousel(node: HTMLElement): void {
   delete node.dataset.ready;
   const handle = liveCarousels.get(node);
   if (!handle) return;
-  handle.embla.destroy();
+  handle.listeners.abort();
+  handle.embla?.destroy();
   liveCarousels.delete(node);
+}
+
+/**
+ * For a caller that rewrote the slides' data in place (the editor's preview,
+ * as a caption is typed): the frame's trigger mirrors the slide showing, and
+ * would otherwise keep the old words until the next move.
+ */
+export function refreshCarousel(node: HTMLElement): void {
+  liveCarousels.get(node)?.sync?.();
 }
 
 /**
@@ -86,6 +112,9 @@ export function initCarousels(root: ParentNode = document): void {
   root.querySelectorAll<HTMLElement>("[data-carousel]").forEach((carousel) => {
     if (carousel.dataset.ready) return;
     carousel.dataset.ready = "true";
+    const handle: CarouselHandle = { listeners: new AbortController() };
+    liveCarousels.set(carousel, handle);
+    const { signal } = handle.listeners;
     const images = Array.from(carousel.querySelectorAll<HTMLImageElement>(".ccard__img"));
 
     // The build gives only the first image a src; the rest wait as data-src
@@ -107,8 +136,8 @@ export function initCarousels(root: ParentNode = document): void {
       delete image.dataset.srcset;
     };
     const hydrateAll = () => images.forEach(hydrate);
-    carousel.addEventListener("pointerenter", hydrateAll, { once: true });
-    carousel.addEventListener("touchstart", hydrateAll, { once: true, passive: true });
+    carousel.addEventListener("pointerenter", hydrateAll, { once: true, signal });
+    carousel.addEventListener("touchstart", hydrateAll, { once: true, passive: true, signal });
 
     // One work: the track is there for the layout, but there is nothing to
     // page, nothing to announce, and no reason to pay for a drag handler.
@@ -203,7 +232,7 @@ export function initCarousels(root: ParentNode = document): void {
       watchResize: (_api, entries) => entries.every((e) => e.contentRect.width > 0),
     });
 
-    liveCarousels.set(carousel, { embla });
+    handle.embla = embla;
 
     // Reduced motion: arrive rather than travel. Embla's `jump` argument is
     // the exact counterpart of the crossfade dropping its transition under
@@ -240,6 +269,7 @@ export function initCarousels(root: ParentNode = document): void {
       }
     };
     embla.on("select", sync);
+    handle.sync = () => syncTrigger(embla.selectedScrollSnap());
 
     // THE CAROUSEL FOLLOWS THE LIGHTBOX. When the lightbox (a separate module,
     // CommunityGrid) pages through this card's images, it dispatches this on
@@ -251,24 +281,27 @@ export function initCarousels(root: ParentNode = document): void {
     carousel.addEventListener("vscn:carousel-show", (e) => {
       const i = slides.indexOf(e.target as HTMLElement);
       if (i >= 0 && i !== embla.selectedScrollSnap()) embla.scrollTo(i, true);
-    });
+    }, { signal });
 
     // The edge arrows (desktop hover) — the card's accessible controls, named
     // by the markup (and by renderCardPreview for the editor's preview).
     const prevArrow = carousel.querySelector<HTMLElement>("[data-carousel-prev]");
     const nextArrow = carousel.querySelector<HTMLElement>("[data-carousel-next]");
-    prevArrow?.addEventListener("click", () => embla.scrollPrev(jump()));
-    nextArrow?.addEventListener("click", () => embla.scrollNext(jump()));
+    prevArrow?.addEventListener("click", () => embla.scrollPrev(jump()), { signal });
+    nextArrow?.addEventListener("click", () => embla.scrollNext(jump()), { signal });
     // The count's own chevrons, "‹ 2 / 7 ›" (2026-09-28, src/lib/pager.ts).
-    // Unlike the edge arrows they show on a phone too, where they are the
-    // only thing that pages the card besides the swipe. They take the edge
-    // arrows' names, so the two pairs are one control to a screen reader.
+    // Desktop only, like the edge arrows: on a phone both pairs are
+    // display:none (global.css, 2026-09-28, Josh: no chevrons on a phone's
+    // pictures) and the swipe and the lightbox page the card. They take the
+    // edge arrows' names, so the two pairs are one control to a screen reader.
     if (dotRow) {
       ensurePagerChevron(dotRow, "prev", () => embla.scrollPrev(jump()), {
         label: prevArrow?.getAttribute("aria-label"),
+        signal,
       });
       ensurePagerChevron(dotRow, "next", () => embla.scrollNext(jump()), {
         label: nextArrow?.getAttribute("aria-label"),
+        signal,
       });
     }
 
@@ -277,14 +310,16 @@ export function initCarousels(root: ParentNode = document): void {
     // could not reach works 2..n at all. The frame always contains exactly one
     // tab stop — .ccard__frame-link — so this needs no tabindex of its own and
     // adds no stops to a page already full of them. An arrow key on a link has
-    // no default worth keeping here; this page never scrolls sideways.
+    // no default worth keeping here; this page never scrolls sideways. A
+    // MODIFIED arrow does (Alt+Left is Back), so it is left alone (keys.ts).
     carousel.addEventListener("keydown", (e) => {
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      if (hasKeyModifier(e)) return;
       e.preventDefault();
       hydrateAll();
       if (e.key === "ArrowRight") embla.scrollNext(jump());
       else embla.scrollPrev(jump());
-    });
+    }, { signal });
 
     // A drag must not navigate, and nothing here tracks a `swiped` flag any
     // more: Embla 8 owns that guard itself, with a capture-phase click

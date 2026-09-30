@@ -35,8 +35,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   backendVerdict, buildStampVerdict, compareRules, countRequests, exitCodeFor, iamDiff,
-  pairingVerdict, parseFunctionExports, parseSecretNames, resolveProjectAlias, strandedVerdict,
-  summariseErrors,
+  pairingVerdict, parseFunctionExports, parseSecretConsumers, parseSecretNames, resolveProjectAlias,
+  secretBindingVerdict, strandedVerdict, summariseErrors, verdictLabel,
 } from "./lib/release-checks.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -178,7 +178,7 @@ async function listFunctions(ctx) {
   if (!ctx.functions) {
     const res = await api(ctx, `https://cloudfunctions.googleapis.com/v2/projects/${ctx.projectId}/locations/-/functions?pageSize=500`);
     ctx.functions = (res?.functions ?? []).map((f) => ({
-      name: f.name.split("/").pop(), updateTime: f.updateTime, environment: f.environment,
+      name: f.name.split("/").pop(), updateTime: f.updateTime, environment: f.environment, state: f.state,
       serviceAccount: f.serviceConfig?.serviceAccountEmail, labels: f.labels ?? {},
       secrets: f.serviceConfig?.secretEnvironmentVariables ?? [],
     }));
@@ -262,7 +262,7 @@ async function probeIam(ctx) {
   const lines = [];
   const where = (g) => (g.scope === "project" ? "project" : `${g.scope} ${g.resource}`);
   for (const g of diff.missing) lines.push(`MISSING    ${g.role} for ${g.member} on ${where(g)}`, `           → ${g.why}`);
-  for (const g of diff.forbidden) lines.push(`FORBIDDEN  ${g.role} for ${g.member} on ${where(g)}`, `           → ${g.why}`);
+  for (const g of diff.forbidden) lines.push(`FORBIDDEN  ${g.role} for ${g.member} on ${where(g)}${g.condition ? ` (conditional: ${g.condition})` : ""}`, `           → ${g.why}`);
   // The TokenCreator expectation is only about the right account if the
   // functions actually run as it. Gen 2 only: the two gen-1 Auth triggers run
   // as the App Engine default account by design and mint nothing.
@@ -278,27 +278,44 @@ async function probeSecrets(ctx) {
   const sources = git("grep", "-h", "-o", "-E", 'defineSecret\\("[A-Z0-9_]+"\\)', ctx.release, "--", "functions/src").split("\n");
   const names = parseSecretNames(sources);
   const lines = [];
-  const required = {
-    sendAdminDigest: ["INFOMANIAK_SMTP_PASSWORD", "ADMIN_NOTIFY_TO"],
-    mintAppCheckToken: ["TURNSTILE_SECRET_KEY"],
-    ...Object.fromEntries(["onAuthUserDeleted", "requestAccountDeletion", "cancelAccountDeletion", "adminPurgeAccount", "adminRestoreAccount", "adminDeleteImage", "adminSetProfileActive", "purgeExpiredAccounts", "flushMemberRebuilds"].map(name => [name, ["GITHUB_REBUILD_TOKEN"]])),
-  };
+  const warnings = [];
+  // Which function binds which secret comes from the release's own source
+  // (parseSecretConsumers), not from a hand-kept list.
+  const modules = git("ls-tree", "-r", "--name-only", ctx.release, "--", "functions/src").split("\n").filter((p) => p.endsWith(".ts"));
+  const required = parseSecretConsumers(Object.fromEntries(modules.map((p) => [p, git("show", `${ctx.release}:${p}`)])));
+  const enabled = {};
+  for (const name of names) {
+    const res = await api(ctx, `https://secretmanager.googleapis.com/v1/projects/${ctx.projectId}/secrets/${name}/versions?filter=state:ENABLED&pageSize=100`);
+    enabled[name] = (res?.versions ?? []).map((v) => v.name);
+    if (res === null) lines.push(`MISSING   ${name} — declared in functions/src at ${ctx.releaseShort}, no such secret on ${ctx.projectId}`);
+    else if (!enabled[name].length) lines.push(`DISABLED  ${name} exists but has no enabled version`);
+  }
   const functions = await listFunctions(ctx);
   for (const [name, secrets] of Object.entries(required)) {
     const fn = functions.find(fn => fn.name === name);
     for (const secret of secrets) {
       const binding = fn?.secrets.find(binding => binding.key === secret && binding.secret === secret && [ctx.projectId, ctx.exp.number].includes(binding.projectId));
       if (!binding) { lines.push(`UNBOUND ${name}: ${secret}`); continue; }
-      const version = await api(ctx, `https://secretmanager.googleapis.com/v1/projects/${ctx.projectId}/secrets/${secret}/versions/${binding.version}`);
-      if (version?.state !== "ENABLED") lines.push(`DISABLED BINDING ${name}: ${secret} version ${binding.version}`);
+      const v = secretBindingVerdict(binding.version, enabled[secret] ?? []);
+      if (v.status === "DISABLED") lines.push(`DISABLED BINDING ${name}: ${secret} version ${binding.version}`);
+      // Functions pin the version they were deployed with: a rotated secret
+      // does nothing until the function is redeployed (2026-09-23, @1 vs @3).
+      if (v.status === "STALE") warnings.push(`STALE BINDING ${name}: ${secret}@${binding.version}, newest enabled is @${v.newest}; redeploy ${name} to pick it up`);
     }
   }
-  for (const name of names) {
-    const res = await api(ctx, `https://secretmanager.googleapis.com/v1/projects/${ctx.projectId}/secrets/${name}/versions?filter=state:ENABLED`);
-    if (res === null) lines.push(`MISSING   ${name} — declared in functions/src at ${ctx.releaseShort}, no such secret on ${ctx.projectId}`);
-    else if (!(res.versions ?? []).length) lines.push(`DISABLED  ${name} exists but has no enabled version`);
+  // Bindings the source does not declare: a hand deploy from another tree, or
+  // a secret dropped from the code whose binding no deploy removes.
+  for (const fn of functions) {
+    for (const binding of fn.secrets ?? []) {
+      if (!(required[fn.name] ?? []).includes(binding.secret)) {
+        warnings.push(`UNEXPECTED BINDING ${fn.name}: ${binding.secret}@${binding.version} is bound but ${ctx.releaseShort} does not declare it`);
+      }
+    }
   }
-  return { status: lines.length ? "FAIL" : "PASS", detail: lines.length ? lines : `${names.length} declared secrets each hold an enabled version: ${names.join(", ")}` };
+  const bindings = Object.values(required).reduce((n, s) => n + s.length, 0);
+  if (lines.length) return { status: "FAIL", detail: [...lines, ...warnings] };
+  if (warnings.length) return { status: "WARN", detail: warnings };
+  return { status: "PASS", detail: `${names.length} declared secrets each hold an enabled version; ${bindings} bindings, each on the newest: ${names.join(", ")}` };
 }
 
 async function requestCounts(ctx, service) {
@@ -310,7 +327,7 @@ async function probePairing(ctx) {
   const [authorize, complete] = await Promise.all([requestCounts(ctx, "authorizeimageupload"), requestCounts(ctx, "completeimageupload")]);
   const v = pairingVerdict({ authorize: authorize.ok, complete: complete.ok });
   const traffic = `authorize ${authorize.ok} ok of ${authorize.total} / complete ${complete.ok} ok of ${complete.total}, ${ctx.windowLabel}`;
-  return { status: v.status, detail: `${traffic} — ${v.reason}` };
+  return { status: v.status, untested: v.untested, detail: `${traffic} — ${v.reason}` };
 }
 
 async function probeErrors(ctx) {
@@ -425,13 +442,15 @@ async function main() {
   const code = exitCodeFor(rows);
   const bad = rows.filter((r) => r.status === "FAIL" || r.status === "SKIP");
   const warn = rows.filter((r) => r.status === "WARN");
-  console.log(`\n${code ? "RED" : "GREEN"} — ${bad.length} failing, ${warn.length} warning, ${rows.length - bad.length - warn.length} passing\n`);
+  const verdict = verdictLabel(rows);
+  const untested = rows.some((r) => r.untested);
+  console.log(`\n${verdict} — ${bad.length} failing, ${warn.length} warning, ${rows.length - bad.length - warn.length} passing\n`);
   console.log("Release-log entry (documentation/release-log.md):\n");
   const first = (r) => (Array.isArray(r.detail) ? r.detail[0] : r.detail);
   console.log(`## ${new Date().toISOString().slice(0, 10)} · ${releaseShort} · ${exp.alias}`);
-  console.log(`Machine: ${code ? "RED" : "GREEN"}${bad.length ? " — " + bad.map((r) => `${r.name}: ${first(r)}`).join("; ") : ""}`);
+  console.log(`Machine: ${verdict}${bad.length ? " — " + bad.map((r) => `${r.name}: ${first(r)}`).join("; ") : ""}`);
   for (const r of warn) console.log(`         WARN ${r.name}: ${first(r)}`);
-  console.log(`Walk:    ${exp.alias === "prod" ? (code ? "not run (blocked on machine check)" : "pending") : "n/a (dev)"}`);
+  console.log(`Walk:    ${exp.alias === "prod" ? (code ? "not run (blocked on machine check)" : untested ? "pending — the walk's upload is the only upload this window will have seen" : "pending") : "n/a (dev)"}`);
   console.log("Action:  ");
   return code;
 }

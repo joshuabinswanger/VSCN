@@ -630,6 +630,14 @@ fieldset > legend.label {
   line-height: 1.2;
   text-align: center;
   cursor: pointer;
+  /* A chip never outgrows its row: a tag may be 50 characters of one word,
+     which at a 320px phone is wider than the form, and the form clips
+     (overflow-x: clip), so the tail and its remove x were silently cut.
+     `anywhere` rather than `break-word` because only `anywhere` lets the
+     min-content width shrink, which is what a flex item needs. */
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
   transition:
     background 0.15s,
     border-color 0.15s,
@@ -729,6 +737,10 @@ label:has(> .picker-input:focus-visible) {
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
+  /* The same wrap contract as .optchip above. */
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
   /* NOT symmetric, and measured. Uppercase type does not fill its line box the
      way the box implies. Centring it by INK measures out at 2.5px top /
      3.5px bottom, and that still read high on the page (2026-09-08, Josh:
@@ -923,6 +935,13 @@ label:has(> .picker-input:focus-visible) {
 .msg-err {
   font-size: var(--fs-88);
   color: var(--color-error);
+}
+/* Neither success nor failure: the save landed, the publication is not yet
+   confirmed or is late (src/lib/publicationStatus.ts swaps this in for
+   .msg-ok, so a delayed publication no longer reads green). */
+.msg-note {
+  font-size: var(--fs-88);
+  color: var(--color-muted);
 }
 
 /* App Check's Turnstile widget (src/lib/appCheckTurnstile.ts). Rendered with

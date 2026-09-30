@@ -9,7 +9,8 @@
 // WALK_APPCHECK_DEBUG_TOKEN — from the environment or an untracked .env.walk
 // next to package.json. Exit 0 when all six steps pass, 1 otherwise. On a
 // failure the step's screenshot, the page console and every failed request
-// land in walk-artifacts/ (or --artifacts <dir>).
+// land in walk-artifacts/ (or --artifacts <dir>), with the debug token and the
+// member's credentials redacted: in CI that directory becomes a public artifact.
 //
 // It acts only as the member, through the site's own front end, so it can do
 // nothing a member cannot. Selectors are the editor's ids and data-* hooks;
@@ -26,6 +27,7 @@ import {
   memberLinks,
   mergeDotenv,
   parseWalkArgs,
+  redactSecrets,
   walkCredentials,
   walkReport,
 } from "./lib/release-walk.mjs";
@@ -35,6 +37,11 @@ const args = parseWalkArgs(process.argv.slice(2));
 const dotenvPath = join(root, ".env.walk");
 const env = existsSync(dotenvPath) ? mergeDotenv(process.env, readFileSync(dotenvPath, "utf8")) : process.env;
 const creds = walkCredentials(env, args.project);
+// Everything written into walk-artifacts/ goes through safe(): in CI that
+// directory becomes an artifact any GitHub account can download (the repo is
+// public), and the App Check SDK prints the debug token to the page console.
+const secrets = [creds.debugToken, creds.password, creds.email];
+const safe = (text) => redactSecrets(text, secrets);
 const artifactsDir = resolve(root, args.artifactsDir);
 mkdirSync(artifactsDir, { recursive: true });
 
@@ -78,12 +85,14 @@ if (creds.debugToken) {
 const page = await context.newPage();
 page.setDefaultTimeout(30_000);
 
+// Redacted as they are captured, so neither buffer ever holds a secret, and
+// again as each file is written (step() below).
 const consoleLog = [];
 const requestLog = [];
-page.on("console", (msg) => consoleLog.push(`${new Date().toISOString()} [${msg.type()}] ${msg.text()}`));
-page.on("pageerror", (err) => consoleLog.push(`${new Date().toISOString()} [pageerror] ${err.message}`));
-page.on("requestfailed", (req) => requestLog.push(`${new Date().toISOString()} FAILED ${req.method()} ${req.url()} — ${req.failure()?.errorText ?? ""}`));
-page.on("response", (res) => { if (res.status() >= 400) requestLog.push(`${new Date().toISOString()} ${res.status()} ${res.request().method()} ${res.url()}`); });
+page.on("console", (msg) => consoleLog.push(safe(`${new Date().toISOString()} [${msg.type()}] ${msg.text()}`)));
+page.on("pageerror", (err) => consoleLog.push(safe(`${new Date().toISOString()} [pageerror] ${err.message}`)));
+page.on("requestfailed", (req) => requestLog.push(safe(`${new Date().toISOString()} FAILED ${req.method()} ${req.url()} — ${req.failure()?.errorText ?? ""}`)));
+page.on("response", (res) => { if (res.status() >= 400) requestLog.push(safe(`${new Date().toISOString()} ${res.status()} ${res.request().method()} ${res.url()}`)); });
 
 // ── step harness ───────────────────────────────────────────────────────────
 const results = [];
@@ -104,9 +113,9 @@ async function step(id, fn) {
     results.push({ id, ok: false, ms: Date.now() - started, error: message });
     console.log(`\r✗ ${id}: ${message}`);
     await page.screenshot({ path: join(artifactsDir, `${id}-failed.png`), fullPage: true }).catch(() => {});
-    writeFileSync(join(artifactsDir, `${id}-console.log`), consoleLog.join("\n") + "\n");
-    writeFileSync(join(artifactsDir, `${id}-requests.log`), requestLog.join("\n") + "\n");
-    writeFileSync(join(artifactsDir, `${id}-failed.html`), await page.content().catch(() => ""));
+    writeFileSync(join(artifactsDir, `${id}-console.log`), safe(consoleLog.join("\n")) + "\n");
+    writeFileSync(join(artifactsDir, `${id}-requests.log`), safe(requestLog.join("\n")) + "\n");
+    writeFileSync(join(artifactsDir, `${id}-failed.html`), safe(await page.content().catch(() => "")));
     return false;
   }
 }
@@ -128,6 +137,9 @@ async function visibleBefore(locator, errorLocator, what, timeout) {
 async function removeFirstImage() {
   const before = await galleryItems().count();
   await galleryItems().first().locator("[data-gallery-remove]").click();
+  // Removal asks first (fix/editor-save-path): the shared confirm dialog,
+  // Cancel focused, Remove as the accepting button.
+  await page.locator("dialog.ui-dialog button[value='accept']").click({ timeout: 10_000 });
   await expect(galleryItems()).toHaveCount(before - 1, { timeout: 20_000 });
   await expect(page.locator("#gallery-status")).toBeHidden();
   // persistGalleryNow writes both profile docs right after the re-render; give
@@ -186,10 +198,11 @@ try {
 
   const ok3 = ok2 && await step("save", async () => {
     await galleryItems().first().locator('input[data-gallery-field="caption"]').fill(caption);
-    // Since #140 Save refuses while an upload is still committing: a queue row
-    // not yet cleared, or the gallery write that follows it, which leaves no
-    // mark in the page. The item appears a moment before either is done, so
+    // Since #140 Save refuses while an upload is still committing — a queue
+    // row not yet cleared. The item appears a moment before that is done, so
     // the first release walk after #140 pressed Save too early (2026-09-28).
+    // The gallery write that follows the row is awaited by Save itself now
+    // (fix/editor-save-path); the retry below stays for the row.
     // Wait for the queue to empty, then treat that one refusal as "not yet".
     await expect(page.locator("#gallery-queue [data-task-state]")).toHaveCount(0, { timeout: 30_000 });
     for (let attempt = 1; ; attempt++) {

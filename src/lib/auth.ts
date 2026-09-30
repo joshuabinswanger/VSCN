@@ -1,7 +1,22 @@
 import { auth } from "./firebase.ts";
 import { onAuthStateChanged, type User } from "firebase/auth";
+import { releaseWith } from "./pageLifecycle.ts";
 
 export { friendlyError } from "./authErrors.ts";
+
+/**
+ * onAuthStateChanged for ONE PAGE VISIT: the observer is dropped when `signal`
+ * aborts (pass pageLifetime() from pageLifecycle.ts). A bare observer made in
+ * astro:page-load outlives the page, so each visit added another one holding
+ * the old document, and a redirecting one (the login and verify pages)
+ * redirected from whatever page the member had moved on to.
+ */
+export function watchAuth(signal: AbortSignal, onChange: (user: User | null) => void): void {
+  if (signal.aborted) return;
+  releaseWith(signal, onAuthStateChanged(auth, (user) => {
+    if (!signal.aborted) onChange(user);
+  }));
+}
 
 /**
  * Is this account verified AS THE RULESETS WILL SEE IT?

@@ -63,7 +63,7 @@ export function warmUpAppCheck(): void {
 // ask before calling Auth and show auth.error.code.securityCheckBlocked, so a
 // blocked script is reported in milliseconds rather than after Auth's 30 s
 // timeout blames the internet connection (the reCAPTCHA-era failure mode).
-export { isSecurityCheckBlocked } from "./appCheckTurnstile.ts";
+export { isAttestationFailing, isSecurityCheckBlocked } from "./appCheckTurnstile.ts";
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
