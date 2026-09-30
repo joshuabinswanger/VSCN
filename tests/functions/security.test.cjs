@@ -519,6 +519,50 @@ test('a missing or non-embeddable video leaves nothing behind', async () => {
   }
   assert.equal(objects.size, 0);
   assert.equal((await db.collection('images').get()).size, 0);
+  // Every failed lookup was CHARGED (the allowance is taken before the
+  // platform is asked, so failures cannot be free) and each released its lease.
+  assert.equal((await db.doc('uploadLimits/member').get()).data()?.count, 3);
+  assert.equal((await db.doc('embedRequests/member').get()).exists, false);
+});
+
+test('a live video lease refuses a second import as busy, and an expired one does not', async () => {
+  const { bucket } = memoryBucket();
+  mock.method(adminModule, 'getBucket', () => bucket);
+  const thumbnail = await sharp({ create: { width: 640, height: 360, channels: 3, background: '#336699' } }).jpeg().toBuffer();
+  const calls = stubPlatforms({ thumbnail });
+  await db.doc('embedRequests/member').set({ token: 'other-call', expiresAt: Timestamp.fromMillis(Date.now() + 60_000) });
+  await assert.rejects(resolveEmbed.run(verifiedMember({ url: 'youtu.be/dQw4w9WgXcQ' })),
+    (e) => e.code === 'resource-exhausted' && e.details?.reason === 'busy');
+  assert.equal(calls.length, 0);
+  assert.equal((await db.doc('uploadLimits/member').get()).exists, false, 'a busy refusal is not charged');
+  assert.equal((await db.doc('embedRequests/member').get()).data().token, 'other-call', 'and does not release a lease it does not hold');
+
+  // A lease past its 90 s expiry is a crashed call: the next import proceeds.
+  await db.doc('embedRequests/member').set({ token: 'crashed-call', expiresAt: Timestamp.fromMillis(Date.now() - 1_000) });
+  const result = await resolveEmbed.run(verifiedMember({ url: 'youtu.be/dQw4w9WgXcQ' }));
+  assert.equal((await db.doc(`images/${result.imageId}`).get()).data().status, 'live');
+  assert.equal((await db.doc('uploadLimits/member').get()).data().count, 1);
+  assert.equal((await db.doc('embedRequests/member').get()).exists, false);
+});
+
+test('"Use automatic thumbnail" is charged against the allowance, succeeding or failing, and releases its lease', async () => {
+  const embed = { provider: 'youtube', videoId: 'dQw4w9WgXcQ' };
+  const auto = await sharp({ create: { width: 320, height: 180, channels: 3, background: '#224466' } }).webp().toBuffer();
+  const kept = 'f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1';
+  const lost = 'f2f2f2f2-f2f2-4f2f-8f2f-f2f2f2f2f2f2';
+  const { bucket } = memoryBucket(new Map([[`users/member/gallery/${kept}.auto.webp`, { bytes: auto }]]));
+  mock.method(adminModule, 'getBucket', () => bucket);
+  for (const id of [kept, lost]) {
+    await db.doc(`images/${id}`).set({ ownerUid: 'member', kind: 'gallery', status: 'live', origin: 'member', storagePath: `users/member/gallery/${id}.webp`,
+      media: 'embed', embed, posterSource: 'member', width: 10, height: 10 });
+  }
+  await restoreAutoPoster.run(verifiedMember({ imageId: kept }));
+  assert.equal((await db.doc('uploadLimits/member').get()).data().count, 1);
+  assert.equal((await db.doc('embedRequests/member').get()).exists, false);
+  // The automatic poster is gone: refused AFTER the charge, so still counted.
+  await assert.rejects(restoreAutoPoster.run(verifiedMember({ imageId: lost })), (e) => e.details?.reason === 'notRestorable');
+  assert.equal((await db.doc('uploadLimits/member').get()).data().count, 2);
+  assert.equal((await db.doc('embedRequests/member').get()).exists, false);
 });
 
 test('a video link counts against the stored-work cap like any upload', async () => {

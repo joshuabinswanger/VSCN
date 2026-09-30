@@ -43,7 +43,7 @@ async function listDeployed() {
 
 let verdict;
 try {
-  const deployed = (await listDeployed()).map((f) => ({ name: f.name.split("/").pop(), labels: f.labels ?? {} }));
+  const deployed = (await listDeployed()).map((f) => ({ name: f.name.split("/").pop(), labels: f.labels ?? {}, state: f.state }));
   verdict = backendVerdict(exports, deployed, expected);
 } catch (error) {
   // Unknown is not current: deploying is the safe answer, and the deploy

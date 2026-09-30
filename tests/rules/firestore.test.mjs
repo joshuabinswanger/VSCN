@@ -825,3 +825,43 @@ test("images: a work names at most one project — projectId is a short string",
   await assertFails(db.doc("images/img-1").update({ projectId: "", updatedAt: new Date() }));
   await assertFails(db.doc("images/img-1").update({ projectId: ["p1"], updatedAt: new Date() }));
 });
+
+// SERVER-ONLY COLLECTIONS (review T2-18). None has a match block: each falls
+// to the closing `match /{document=**}` deny, which is exactly what a new
+// match block written too generously would silently override. The doc id is
+// the member's own uid where the server keys it that way, so "my own lease"
+// and "my own allowance" are covered, and an admin is refused too — admins
+// write through audited callables, never directly.
+test("server-only collections: no member, owner or admin reads or writes them", async () => {
+  const docs = [
+    `embedRequests/${OWNER}`, // the video-import lease
+    `uploadLimits/${OWNER}`, // the hourly allowance
+    `failedAdminEvents/evt-1`,
+    `adminEventReceipts/evt-1`,
+    `adminEvents/evt-1`,
+    `rebuildMembers/${OWNER}`,
+    "rebuildQueue/site",
+    "uploadPermits/img-1.webp",
+  ];
+  for (const path of docs) await seed(env, path, { ownerUid: OWNER, count: 1 });
+  const contexts = [
+    ["owner", env.authenticatedContext(OWNER, verified(OWNER)).firestore()],
+    ["admin", env.authenticatedContext(ADMIN, verified(ADMIN, { admin: true })).firestore()],
+    ["anonymous", env.unauthenticatedContext().firestore()],
+  ];
+  for (const path of docs) {
+    const collection = path.split("/")[0];
+    for (const [who, db] of contexts) {
+      const ref = db.doc(path);
+      for (const [op, attempt] of [
+        ["get", () => ref.get()],
+        ["list", () => db.collection(collection).get()],
+        ["create", () => db.doc(`${collection}/fresh-${who}`).set({ ownerUid: OWNER, count: 0 })],
+        ["update", () => ref.update({ count: 0 })],
+        ["delete", () => ref.delete()],
+      ]) {
+        try { await assertFails(attempt()); } catch { assert.fail(`${who} may ${op} ${path}; it must be denied`); }
+      }
+    }
+  }
+});
