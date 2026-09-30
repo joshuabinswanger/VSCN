@@ -6,6 +6,7 @@ import OpenToSelector from "../OpenToSelector.astro";
 import VisualNeedsSelector from "../VisualNeedsSelector.astro";
 import TagSelector from "../TagSelector.astro";
 import { LANGUAGES } from "../../lib/firestore.ts";
+import { PROFILE_TEXT_CAPS } from "../../lib/profileValidation.ts";
 import { useTranslations } from "../../i18n/utils";
 import type { Lang } from "../../i18n/utils";
 interface Props { lang?: Lang }
@@ -34,7 +35,7 @@ const t = useTranslations(lang);
 
     <div class="field">
       <label class="label" for="name">{t("profile.label.name")}</label>
-      <Input id="name" type="text" class="input" placeholder={t("profile.ph.name")} />
+      <Input id="name" type="text" class="input" maxlength={PROFILE_TEXT_CAPS.displayName} placeholder={t("profile.ph.name")} />
     </div>
 
     {
@@ -46,6 +47,7 @@ const t = useTranslations(lang);
     <BilingualField
       lang={lang}
       id="role"
+      maxlength={PROFILE_TEXT_CAPS.role}
       label={t("profile.label.role")}
       labelEn={t("profile.label.role.en")}
       labelDe={t("profile.label.role.de")}
@@ -59,13 +61,14 @@ const t = useTranslations(lang);
         id="affiliation"
         type="text"
         class="input"
+        maxlength={PROFILE_TEXT_CAPS.affiliation}
         placeholder={t("profile.ph.affiliation")}
       />
     </div>
 
     <div class="field">
       <label class="label" for="location">{t("profile.label.location")}</label>
-      <Input id="location" type="text" class="input" placeholder={t("profile.ph.location")} />
+      <Input id="location" type="text" class="input" maxlength={PROFILE_TEXT_CAPS.location} placeholder={t("profile.ph.location")} />
     </div>
 
     <fieldset class="target-audience-field">
@@ -86,6 +89,7 @@ const t = useTranslations(lang);
       lang={lang}
       id="bio"
       rows={4}
+      maxlength={PROFILE_TEXT_CAPS.bio}
       label={t("profile.label.bio")}
       labelEn={t("profile.label.bio.en")}
       labelDe={t("profile.label.bio.de")}
@@ -108,6 +112,7 @@ const t = useTranslations(lang);
           id="portfolio"
           type="text"
           class="input input-prefixed"
+          maxlength={PROFILE_TEXT_CAPS.portfolio}
           placeholder={t("profile.ph.portfolio")}
         />
       </div>

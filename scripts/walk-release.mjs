@@ -137,6 +137,9 @@ async function visibleBefore(locator, errorLocator, what, timeout) {
 async function removeFirstImage() {
   const before = await galleryItems().count();
   await galleryItems().first().locator("[data-gallery-remove]").click();
+  // Removal asks first (fix/editor-save-path): the shared confirm dialog,
+  // Cancel focused, Remove as the accepting button.
+  await page.locator("dialog.ui-dialog button[value='accept']").click({ timeout: 10_000 });
   await expect(galleryItems()).toHaveCount(before - 1, { timeout: 20_000 });
   await expect(page.locator("#gallery-status")).toBeHidden();
   // persistGalleryNow writes both profile docs right after the re-render; give
@@ -195,10 +198,11 @@ try {
 
   const ok3 = ok2 && await step("save", async () => {
     await galleryItems().first().locator('input[data-gallery-field="caption"]').fill(caption);
-    // Since #140 Save refuses while an upload is still committing: a queue row
-    // not yet cleared, or the gallery write that follows it, which leaves no
-    // mark in the page. The item appears a moment before either is done, so
+    // Since #140 Save refuses while an upload is still committing — a queue
+    // row not yet cleared. The item appears a moment before that is done, so
     // the first release walk after #140 pressed Save too early (2026-09-28).
+    // The gallery write that follows the row is awaited by Save itself now
+    // (fix/editor-save-path); the retry below stays for the row.
     // Wait for the queue to empty, then treat that one refusal as "not yet".
     await expect(page.locator("#gallery-queue [data-task-state]")).toHaveCount(0, { timeout: 30_000 });
     for (let attempt = 1; ; attempt++) {

@@ -5,6 +5,7 @@ import { deleteField } from "firebase/firestore";
 import assert from "node:assert/strict";
 import { isProfileVisible } from "../../src/lib/profileVisibility.ts";
 import * as projectsModule from "../../src/lib/projects.ts";
+import * as galleryMergeModule from "../../src/lib/galleryMerge.ts";
 import {
   setupEnv, seed, assertFails, assertSucceeds,
   OWNER, OTHER, ADMIN, verified, unverified, slot, minimalUser,
@@ -573,6 +574,7 @@ test('profile batch rolls back both projections when either write is rejected', 
   const { updateUserProfile } = loadTs('src/lib/firestore.ts', {
     './firebase.ts': { auth: { currentUser: { emailVerified: true } }, db: context.firestore()._delegate },
     './profileVisibility.ts': { isProfileVisible },
+    './galleryMerge.ts': galleryMergeModule,
     'firebase/firestore': modularFirestore,
   });
   // Stale account metadata: private name is legal but publication is refused.
@@ -585,6 +587,34 @@ test('profile batch rolls back both projections when either write is rejected', 
   assert.equal((await context.firestore().doc(`publicProfiles/${OWNER}`).get()).data().displayName, 'Original');
   await assertSucceeds(updateUserProfile(OWNER, { displayName: 'Changed' }));
   assert.equal((await context.firestore().doc(`users/${OWNER}`).get()).data().displayName, 'Changed');
+});
+
+test('profile save reconciles the gallery against what another session stored (T2-3)', async () => {
+  await seed(env, `users/${OWNER}`, { ...minimalUser(OWNER), gallery: ['x'] });
+  await seed(env, `publicProfiles/${OWNER}`, { displayName: 'Original', active: true, gallery: ['x'] });
+  const context = env.authenticatedContext(OWNER, verified(OWNER));
+  const { updateUserProfile } = loadTs('src/lib/firestore.ts', {
+    './firebase.ts': { auth: { currentUser: { emailVerified: true } }, db: context.firestore()._delegate },
+    './profileVisibility.ts': { isProfileVisible },
+    './galleryMerge.ts': galleryMergeModule,
+    'firebase/firestore': modularFirestore,
+  });
+  // Another session (the phone) added y since this tab loaded [x].
+  await seed(env, `users/${OWNER}`, { gallery: ['x', 'y'] });
+  const merge = await assertSucceeds(updateUserProfile(OWNER, { bio: 'edited', gallery: ['x'] }, { galleryBase: ['x'], active: true }));
+  assert.deepEqual(merge.merged, ['x', 'y']);
+  assert.deepEqual(merge.added, ['y']);
+  for (const col of ['users', 'publicProfiles']) {
+    assert.deepEqual((await context.firestore().doc(`${col}/${OWNER}`).get()).data().gallery, ['x', 'y']);
+  }
+  assert.equal((await context.firestore().doc(`publicProfiles/${OWNER}`).get()).data().active, true);
+  // The batch path is unchanged: no base, no transaction, the array as sent.
+  assert.equal(await assertSucceeds(updateUserProfile(OWNER, { gallery: ['x'] })), null);
+  assert.deepEqual((await context.firestore().doc(`users/${OWNER}`).get()).data().gallery, ['x']);
+  // `active` goes to publicProfiles only — it is not a users/{uid} key.
+  await assertSucceeds(updateUserProfile(OWNER, { bio: 'again' }, { active: false }));
+  assert.equal((await context.firestore().doc(`users/${OWNER}`).get()).data().active, undefined);
+  assert.equal((await context.firestore().doc(`publicProfiles/${OWNER}`).get()).data().active, false);
 });
 
 test('deletion tombstones block cached-token writes and recreation', async () => {
@@ -646,6 +676,7 @@ test("profile sync keeps communication preferences out of the public projection"
   const { updateUserProfile } = loadTs('src/lib/firestore.ts', {
     './firebase.ts': { auth: { currentUser: { emailVerified: true } }, db: context.firestore()._delegate },
     './profileVisibility.ts': { isProfileVisible },
+    './galleryMerge.ts': galleryMergeModule,
     'firebase/firestore': modularFirestore,
   });
 
