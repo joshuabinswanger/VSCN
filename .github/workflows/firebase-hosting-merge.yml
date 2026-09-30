@@ -76,16 +76,16 @@ jobs:
             exit 1
           fi
       - if: steps.identity.outputs.configured == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - if: steps.identity.outputs.configured == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
       - if: steps.identity.outputs.configured == 'true'
         run: npm ci
       - if: steps.identity.outputs.configured == 'true'
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           project_id: vscn-39508
           workload_identity_provider: ${{ vars.PROD_FUNCTIONS_WIF_PROVIDER }}
@@ -100,7 +100,7 @@ jobs:
           # The CLI's 10 s discovery window is too tight for this codebase
           # (memory note functions-deploy-discovery-timeout); seconds.
           FUNCTIONS_DISCOVERY_TIMEOUT: "60"
-        run: npx -y firebase-tools@latest deploy --only functions --project vscn-39508 --non-interactive
+        run: npx -y firebase-tools@15.32.0 deploy --only functions --project vscn-39508 --non-interactive
   export:
     needs: [verify, backend]
     if: ${{ !cancelled() && !failure() }}
@@ -112,14 +112,14 @@ jobs:
       revision: ${{ steps.publication.outputs.revision }}
       generation: ${{ steps.publication.outputs.generation }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - id: auth
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           project_id: vscn-39508
           workload_identity_provider: projects/365553954084/locations/global/workloadIdentityPools/vscn-site-export/providers/github-vscn
@@ -138,7 +138,7 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
       - if: always()
         run: rm -f "${{ steps.auth.outputs.credentials_file_path }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: site-data
           path: .site-data.json
@@ -151,13 +151,13 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
       - run: npm ci
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: site-data
       - run: npm run build:site
@@ -169,7 +169,7 @@ jobs:
           PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
           PUBLIC_FIREBASE_APP_ID: ${{ secrets.PUBLIC_FIREBASE_APP_ID }}
           PUBLIC_TURNSTILE_SITE_KEY: ${{ secrets.PUBLIC_TURNSTILE_SITE_KEY }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: site-dist
           path: dist
@@ -182,17 +182,17 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: site-dist
           path: dist
       - id: deploy-auth
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           project_id: vscn-39508
           workload_identity_provider: projects/365553954084/locations/global/workloadIdentityPools/vscn-hosting-deploy/providers/github-main
@@ -215,13 +215,13 @@ jobs:
       # to do. The rules themselves are already tested against the emulator by
       # verify, in this run or an earlier one of the same commit.
       - name: Deploy security rules
-        run: npx -y firebase-tools@latest deploy --only firestore:rules,storage --project vscn-39508 --non-interactive
-      - run: npx -y firebase-tools@latest deploy --only hosting --project vscn-39508 --non-interactive
+        run: npx -y firebase-tools@15.32.0 deploy --only firestore:rules,storage --project vscn-39508 --non-interactive
+      - run: npx -y firebase-tools@15.32.0 deploy --only hosting --project vscn-39508 --non-interactive
       - if: always()
         run: rm -f "${{ steps.deploy-auth.outputs.credentials_file_path }}"
       - id: publication-auth
         if: needs.export.outputs.revision != ''
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: projects/365553954084/locations/global/workloadIdentityPools/vscn-hosting-deploy/providers/github-main
           service_account: vscn-hosting-deployer@vscn-39508.iam.gserviceaccount.com

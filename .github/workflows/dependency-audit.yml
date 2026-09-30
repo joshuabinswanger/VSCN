@@ -1,0 +1,35 @@
+name: Dependency audit
+# Review C4 / T2-11: high and critical advisories in either lockfile, with
+# dated exceptions in .github/audit-allowlist.json (scripts/audit-deps.mjs).
+#
+# A workflow of its OWN, not a step in verify.yml, on purpose. verify.yml is
+# called by the merge and staging deploys, and a called workflow's jobs all
+# have to pass for the caller's `verify` job to pass, so an audit step there
+# would let a registry outage or a fresh advisory stop a production hotfix.
+# Here a red audit is loud on the PR and in Actions, and blocks nothing. It is
+# not a required check; making it one is Josh's call (main is protected by
+# four required checks, and this is deliberately not among them).
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+  schedule:
+    # Mondays 05:17 UTC: advisories published against an unchanged lockfile.
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: dependency-audit-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      # npm audit reads the lockfiles only; nothing is installed.
+      - run: node scripts/audit-deps.mjs
