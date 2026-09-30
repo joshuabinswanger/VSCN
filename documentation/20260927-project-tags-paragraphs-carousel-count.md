@@ -46,7 +46,9 @@ the first:
   (placed by the measured `--frame-r`), filled by `projectCarousel.ts`. It
   replaces the dots. A project with one work has no carousel, so no count.
 - On a touch screen (`hover: none`) the edge chevrons are out from the start.
-  On desktop they still come out on hover or focus.
+  On desktop they still come out on hover or focus. *(Still true of the member
+  page's project carousel, `profile.css`. Not true of the directory card: see
+  the 2026-09-29 note at the end.)*
 
 ## Prod release
 
@@ -135,8 +137,10 @@ project carousel".
 - **One count pager.** `.pager-chev` (global.css) and `src/lib/pager.ts`.
   The gallery card renders the pair in its markup, and `communityCarousel.ts`
   wires it, or builds it for the editor's preview. `projectCarousel.ts` builds
-  it with the count. Both rows stay aria-hidden, so their chevrons are not tab
-  stops; the edge arrows remain the accessible controls. At a non-looping
+  it with the count. *(Superseded the same day: the rows are NOT aria-hidden
+  and the chevrons are named buttons; see the 2026-09-29 note at the end.)* The
+  chevrons on the card and the project carousel are not tab stops
+  (`tabindex="-1"`); the edge arrows and the keys remain the keyboard controls. At a non-looping
   carousel's end the idle chevron is `visibility: hidden`, so the count does
   not shift. The negative margins keep each row at its old height.
 - **Lightbox.** The counter is back in the top row (`appendTo: "bar"`,
@@ -161,3 +165,39 @@ to the title. they shoudl be in the same ehight, not two stacked divs".
   cause is a page loaded before the deploy: ClientRouter swaps new HTML in
   under the OLD script, which never wires the new buttons. WebKit is not
   installed here, so iOS Safari is untested.
+
+## 2026-09-29: corrections, and the phone-chevron decision recorded
+
+Written to bring this note in line with the code after the 2026-09-28 follow-ups
+(PRs #140 and #141). Nothing above was deleted.
+
+- **The count rows are not `aria-hidden`.** `src/lib/pager.ts` gives every
+  chevron an accessible name ("Previous image" / "Vorheriges Bild", or the label
+  its carousel already gives its edge arrows), and `ensurePagerChevron` removes
+  `aria-hidden` from the card's row because a row holding two named buttons is
+  not decoration. The card's and the project carousel's chevrons are still
+  `tabindex="-1"`: a directory holds a couple of dozen cards, and two tab stops
+  each would put some fifty stops ahead of the member links. Keyboard users have
+  the frame's arrow keys and the project track's native scroll. Only the
+  lightbox's pair is a tab stop, since it is a modal with a handful of stops and
+  PhotoSwipe's own side arrows only appear once a mouse has been seen.
+- **Autoplay is gone.** The card used to advance itself every 5 s on a phone.
+  PR #140 removed the timer and its play/pause button (`communityCarousel.ts`:
+  "NO TIMER ANY MORE"); a card now moves only when someone moves it. Anything
+  that says the carousel "advances itself" is out of date, including two
+  comments in `communityCard.css` and `CommunityGrid.astro` that were being
+  corrected separately.
+- **The dots are built but hidden.** The "2 / 7" text replaced them on the card
+  and the carousel (`profile.css` hides the dot elements).
+- **Decision, 2026-09-28, PR #141 (Josh: "chevron should not be visible on
+  mobile on the images"):** at 767px and below the directory card's and the
+  project carousel's count chevrons are `display: none`
+  (`global.css`, `:is(.ccard, .mprof) .pager-chev`). The count stays,
+  right-aligned; swipe pages the pictures; the lightbox keeps its pair. The
+  card's edge arrows are also `display: none` at 767px and below
+  (`communityCard.css`, whose comment calls it "touch"; the switch is the
+  width, not the input device), a decided trade from before: the artwork keeps a clean face and paging is the
+  swipe, for whoever finds it. The cost is that a touch user who does not
+  discover the swipe has only the count as a cue, and a screen-reader or
+  switch user on a phone reaches paging only through the lightbox. The member
+  page's project carousel keeps its edge arrows on `hover: none`.

@@ -21,7 +21,7 @@ A platform for visual science communicators to connect, showcase their work, and
 - `src/components/`: Reusable UI components (MemberCard, TagSelector, etc.)
 - `src/layouts/`: Main page layout and global styles.
 - `src/lib/`: Firebase configuration and core logic (Auth, Firestore, Storage).
-- `src/pages/`: File-based routing (including German overrides in `/de`).
+- `src/pages/`: File-based routing (one set of pages under `src/pages/[...lang]/` serves both English and German at `/de/`; there is no `src/pages/de/`).
 - `scripts/`: Maintenance scripts for seeding data and migrations.
 - `documentation/`: Detailed decision logs and technical updates.
 
@@ -58,9 +58,12 @@ rendering check and needs configured Firebase data or a directory snapshot.
 
 CI verifies the code, exports public directory data, renders on a separate runner
 without service-account credentials, and deploys the resulting artifact. A queued
-publication is acknowledged only after Hosting deployment succeeds. The Hosting workflows
-deploy the Firestore and Storage rules before Hosting, but never Functions: deploy those by
-hand when changing backend behavior.
+publication is acknowledged only after Hosting deployment succeeds. The merge and staging
+workflows deploy Cloud Functions first (a failure stops the run, and production refuses to
+publish without its deploy identity), then export, render, and deploy the Firestore and Storage
+rules ahead of Hosting. Functions no longer need a hand deploy. See
+[the deploy identity and rollback note](documentation/20260928-backend-deploy-identity-and-rollback.md),
+which also says why a console Hosting rollback does not hold.
 
 See [the audit remediation notes](documentation/codebase-audit-20260915/remediation.md)
 for verification results and rollout requirements.
