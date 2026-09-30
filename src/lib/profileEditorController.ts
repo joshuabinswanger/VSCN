@@ -1954,6 +1954,14 @@ document.addEventListener("astro:page-load", () => {
   languageInputs.forEach((input) => input.addEventListener("change", syncProfileView));
   visualNeedsSelector?.addEventListener("visual-needs-change", syncProfileView);
 
+  // The unsaved avatar's object URL. It is still the <img>'s src (and the
+  // preview's portrait) after Save, so it is released only when a new pick
+  // replaces it or the page goes, never when the upload lands.
+  let avatarObjectUrl = "";
+  lifecycle.signal.addEventListener("abort", () => {
+    if (avatarObjectUrl) URL.revokeObjectURL(avatarObjectUrl);
+  }, { once: true });
+
   avatarInput.addEventListener("change", async () => {
     const file = avatarInput.files?.[0];
     if (!file) return;
@@ -1973,6 +1981,8 @@ document.addEventListener("astro:page-load", () => {
     try {
       ({ blob: resizedAvatarBlob, color: avatarColor } = await resizeAvatar(file));
       const previewUrl = URL.createObjectURL(resizedAvatarBlob);
+      if (avatarObjectUrl) URL.revokeObjectURL(avatarObjectUrl);
+      avatarObjectUrl = previewUrl;
       showPreview(previewUrl);
       uploadStatus.textContent = `${s["profile.upload.selected"]}${file.name}`;
     } catch {

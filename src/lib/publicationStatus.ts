@@ -5,6 +5,9 @@ import { triggerRebuild } from './profile.ts';
 const status = httpsCallable<void, { state: 'published' | 'queued' | 'delayed' | 'unknown' }>(functions, 'getPublicationStatus');
 const running = new WeakMap<HTMLElement, AbortController>();
 export function watchPublication(root: HTMLElement, lang: 'en' | 'de', queued: boolean, parent: AbortSignal) {
+  // A Save that finishes after the page has gone: an abort listener added to
+  // an already-aborted signal never fires, so the poll would run from a dead page.
+  if (parent.aborted) return;
   running.get(root)?.abort();
   const controller = new AbortController(); running.set(root, controller);
   parent.addEventListener('abort', () => controller.abort(), { once: true });

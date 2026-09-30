@@ -197,7 +197,6 @@ const t = useTranslations(lang);
 <script>
   import { auth, isSecurityCheckBlocked, warmUpAppCheck } from "../lib/firebase.ts";
   import {
-    onAuthStateChanged,
     signInWithEmailAndPassword,
     sendPasswordResetEmail,
   } from "firebase/auth";
@@ -205,9 +204,10 @@ const t = useTranslations(lang);
   import { returnTo } from "../lib/authEmail.ts";
   import { friendlyError, errorParts, SECURITY_CHECK_BLOCKED } from "../lib/authErrors.ts";
   import { ui } from "../i18n/translations.ts";
+  import { watchAuth } from "../lib/auth.ts";
+  import { pageLifetime } from "../lib/pageLifecycle.ts";
 
   let isSubmitting = false;
-  let unsubscribeAuth: (() => void) | null = null;
 
   document.addEventListener("astro:page-load", () => {
     const form = document.getElementById("auth-form") as HTMLFormElement;
@@ -236,8 +236,10 @@ const t = useTranslations(lang);
     const forgotError = document.getElementById("forgot-error")!;
     const forgotSuccess = document.getElementById("forgot-success")!;
 
-    unsubscribeAuth?.();
-    unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+    // Dropped when the member leaves the page: kept alive, this observer sent
+    // anyone who later signed in (another tab, the wizard) to /community from
+    // whatever page they were on by then.
+    watchAuth(pageLifetime(), (user) => {
       if (!user) return;
       if (isSubmitting) return;
       window.location.href = `${prefix}/community`;
