@@ -9,7 +9,6 @@
 // static site.
 //
 // See documentation/20260922-image-moderation-ranking-design.md.
-import { randomUUID } from "node:crypto";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { Timestamp } from "firebase-admin/firestore";
 import { db } from "./admin";
@@ -23,6 +22,7 @@ import {
   type ModerationRecord,
   type ScorableRecord,
 } from "./imageScore";
+import { markSiteDirty } from "./rebuildQueue";
 import { galleryImageIds, plain, requireAdmin } from "./util";
 
 /** The queue is a page of work, not a dump of the collection. */
@@ -61,16 +61,9 @@ function optionalCriterion(value: unknown, name: string): number | null {
   return criterion(value, name);
 }
 
-/**
- * The rebuild sweep dispatches when this document is dirty. Marked here
- * because rebuildFingerprint() cannot see a collection it does not read.
- */
-async function markSiteDirty(): Promise<void> {
-  await db.doc("rebuildQueue/site").set(
-    { dirtyAt: Timestamp.now(), revision: randomUUID() },
-    { merge: true },
-  );
-}
+// The rebuild sweep dispatches when rebuildQueue/site is dirty. Ratings and
+// hides are marked through rebuildQueue.markSiteDirty() because
+// rebuildFingerprint() cannot see a collection it does not read.
 
 export const adminRateImage = onCall({ enforceAppCheck: true }, async (req) => {
   const actor = requireAdmin(req);

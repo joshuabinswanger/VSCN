@@ -528,7 +528,7 @@ export type EmbedErrorCode =
   | "verify" | "notVideoLink" | "videoNotFound" | "notEmbeddable" | "providerUnavailable" | "noThumbnail"
   /** The account holds its 20 works, counting removed ones the sweep has not collected yet. */
   | "storedLimit"
-  /** 40 new works in an hour. */
+  /** 40 ATTEMPTS in an hour — uploads and video links share the counter, and a failed lookup counts (functions/src/uploads.ts reserveWork). */
   | "hourlyLimit"
   /** "Use automatic thumbnail" on a work that no longer has one to go back to. */
   | "notRestorable"

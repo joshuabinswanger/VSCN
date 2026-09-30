@@ -47,6 +47,14 @@ export function recordObjectPaths(record: FirebaseFirestore.DocumentData): strin
  * before it writes — and hands back the one write it owes, the hourly
  * counter. `reuses` names a record that already exists and is being
  * re-opened (the unverified slot), which therefore takes no new place.
+ *
+ * The hourly counter is ATTEMPTS, not works: uploadLimits/{uid} counts every
+ * authorisation and every video import begun in a fixed hour from the first
+ * one, shared between pictures and links, and a lookup that then fails is
+ * still charged (embedAllowance.ts). With `countAttempt` false — the embed
+ * transactions, which begin their attempt through beginEmbedRequest — the
+ * hourly cap is neither checked nor charged here; only the stored cap and the
+ * deletion tombstone are.
  */
 export async function reserveWork(
   tx: FirebaseFirestore.Transaction, uid: string, reuses?: string, countAttempt = true,

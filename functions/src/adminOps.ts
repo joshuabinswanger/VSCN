@@ -8,6 +8,7 @@ import { findEmailMismatches } from "./emails";
 import { cancelDeletion, scheduleDeletion } from "./lifecycle";
 import { purgeAccount } from "./purge";
 import { dispatchRebuild, githubRebuildToken } from "./rebuild";
+import { DELAYED_AFTER_MINUTES, queueAgeMillis } from "./rebuildQueue";
 import { galleryImageIds, plain, requireAdmin } from "./util";
 import { recordObjectPaths } from "./uploads";
 
@@ -280,7 +281,7 @@ export const adminListMembers = onCall({ enforceAppCheck: true }, async (req) =>
 export const adminListQueues = onCall({ enforceAppCheck: true }, async (req) => {
   requireAdmin(req);
   const cutoff = Date.now() - STALE_UPLOAD_HOURS * 3_600_000;
-  const [open, uploading, live, pubs, users, emailMismatches, notices] = await Promise.all([
+  const [open, uploading, live, pubs, users, emailMismatches, notices, queue] = await Promise.all([
     db.collection("deletions").where("completedAt", "==", null).get(),
     db.collection("images").where("status", "==", "uploading").get(),
     db.collection("images").where("status", "==", "live").get(),
@@ -288,6 +289,7 @@ export const adminListQueues = onCall({ enforceAppCheck: true }, async (req) => 
     db.collection("users").get(),
     findEmailMismatches(),
     listUnsentNotices(),
+    db.doc("rebuildQueue/site").get(),
   ]);
 
   // The orphan the upload inversion does NOT prevent: a record that reached
@@ -325,8 +327,32 @@ export const adminListQueues = onCall({ enforceAppCheck: true }, async (req) => 
       lastError: n.lastError ?? null, lastAttemptAt: n.lastAttemptAt ?? null, failed: n.failed,
     })),
     noticeMaxAttempts: NOTICE_MAX_ATTEMPTS,
+    failedNotices: notices.filter((n) => n.failed).length,
+    // The publication queue (rebuildQueue.ts): the only place besides a log
+    // line that says how long the site has been behind its members. Ages are
+    // computed here, once, against the server's clock.
+    publication: publicationSummary(queue.data()),
   });
 });
+
+/** rebuildQueue/site as the Queues tab shows it: nothing a member could not already infer from their own status line, plus the age. */
+function publicationSummary(queue: FirebaseFirestore.DocumentData | undefined) {
+  const age = queueAgeMillis(queue);
+  return {
+    generation: typeof queue?.generation === "number" ? queue.generation : 0,
+    publishedGeneration: typeof queue?.publishedGeneration === "number" ? queue.publishedGeneration : 0,
+    dirty: Boolean(queue?.dirtyAt),
+    /** Oldest unpublished write; the newest is dirtyAt. */
+    queuedAt: queue?.queuedAt ?? queue?.dirtyAt ?? null,
+    dirtyAt: queue?.dirtyAt ?? null,
+    /** A dispatch is in flight until CI acknowledges or the lease lapses. */
+    leaseUntil: (queue?.leaseUntil?.toMillis() ?? 0) > Date.now() ? queue!.leaseUntil : null,
+    publishedAt: queue?.publishedAt ?? null,
+    ageMinutes: age === null ? null : Math.round(age / 60_000),
+    delayed: age !== null && age > DELAYED_AFTER_MINUTES * 60_000,
+    delayedAfterMinutes: DELAYED_AFTER_MINUTES,
+  };
+}
 
 /**
  * uid → the name worth showing for it, for a page that only ever has uids to
@@ -553,8 +579,9 @@ export const adminDeleteImage = onCall({ enforceAppCheck: true, secrets: [github
     wasReferenced: removedFrom.length > 0,
   });
   // The member page is prerendered; without this the picture stays up until
-  // something else happens to trigger a build.
-  await dispatchRebuild();
+  // something else happens to trigger a build. An orphan was never on the
+  // page, so clearing one builds nothing (review T2-27).
+  if (removedFrom.length > 0) await dispatchRebuild();
   return { ok: true, ownerUid, removedFrom, wasReferenced: removedFrom.length > 0 };
 });
 

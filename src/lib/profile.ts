@@ -135,8 +135,11 @@ export async function handleProfileUpdate(
  * Asks the `requestRebuild` callable to queue this member's publication. It
  * does not dispatch anything itself: it fingerprints the member's public data
  * and marks the rebuild queue, and `flushMemberRebuilds` dispatches the site
- * workflow from there (functions/src/rebuild.ts). The GitHub token stays
- * server-side. Best-effort: failures are logged, never thrown.
+ * workflow from there (functions/src/rebuildQueue.ts). The GitHub token stays
+ * server-side. The Firestore triggers on the profile and image records queue
+ * the same way, so a failure here does NOT mean the change will not publish —
+ * only that this call could not confirm it (publicationStatus.ts then asks
+ * getPublicationStatus). Best-effort: false, never a throw.
  */
 export async function triggerRebuild() {
   try {

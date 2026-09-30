@@ -1,6 +1,7 @@
 import { onCall, HttpsError, onRequest } from "firebase-functions/v2/https";
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "./admin";
+import { DELAYED_AFTER_MINUTES } from "./rebuildQueue";
 
 // WHO MAY ACKNOWLEDGE A RELEASE — DECLARED HERE, NOT APPLIED BY HAND.
 //
@@ -50,12 +51,28 @@ export const acknowledgeSitePublication = onRequest({ invoker: [hostingDeployer(
   const acknowledged = await db.runTransaction(async tx => {
     const ref = db.doc("rebuildQueue/site");
     const snap = await tx.get(ref);
-    const generation = req.body?.generation;
-    if (Number.isSafeInteger(generation) && generation >= 0 && generation <= (snap.data()?.generation ?? 0)) {
-      tx.update(ref, { publishedGeneration: Math.max(generation, snap.data()?.publishedGeneration ?? 0) });
+    const data = snap.data() ?? {};
+    const published = data.publishedGeneration ?? 0;
+    // Which generation the deploy carried. The workflow sends the one it
+    // captured before export; a revision match proves nothing was queued
+    // since, so the queue's own generation is what went live (queueMemberRebuild
+    // writes generation and revision together) and a body without one — a
+    // hand-run curl — must not strand members on "queued". A forged or
+    // future generation is ignored, never trusted.
+    const claimed = req.body?.generation;
+    const carried = data.revision === revision
+      ? data.generation ?? 0
+      : Number.isSafeInteger(claimed) && claimed >= 0 && claimed <= (data.generation ?? 0) ? claimed : null;
+    if (carried !== null && carried > published) tx.update(ref, { publishedGeneration: carried });
+    if (data.revision !== revision) {
+      // A stale build: a save landed while it ran, so the queue stays dirty.
+      // But the deploy that held the lease has finished, so release it now
+      // rather than making that save wait out the rest of the fifteen
+      // minutes (the flush runs every minute; a live lease makes it return).
+      if (data.leaseUntil) tx.update(ref, { leaseUntil: FieldValue.delete() });
+      return false;
     }
-    if (snap.data()?.revision !== revision) return false;
-    tx.update(ref, { dirtyAt: FieldValue.delete(), leaseUntil: FieldValue.delete(),
+    tx.update(ref, { dirtyAt: FieldValue.delete(), queuedAt: FieldValue.delete(), leaseUntil: FieldValue.delete(),
       publishedRevision: revision, publishedAt: FieldValue.serverTimestamp() });
     return true;
   });
@@ -68,6 +85,11 @@ export const getPublicationStatus = onCall({ enforceAppCheck: true }, async (req
   const [member, queue] = await Promise.all([db.doc(`rebuildMembers/${request.auth.uid}`).get(), db.doc("rebuildQueue/site").get()]);
   const target = member.data()?.generation;
   const published = queue.data()?.publishedGeneration ?? 0;
-  const delayed = Date.now() - (queue.data()?.dirtyAt?.toMillis() ?? Date.now()) > 30 * 60_000;
+  // Measured from the member's own oldest unpublished change, not from the
+  // queue's newest write: while the pipeline is stuck, every save by anyone
+  // used to reset the clock and nobody was ever told "delayed". A member
+  // document from before queuedAt existed falls back to the queue's age.
+  const since = member.data()?.queuedAt ?? queue.data()?.queuedAt ?? queue.data()?.dirtyAt;
+  const delayed = since ? Date.now() - since.toMillis() > DELAYED_AFTER_MINUTES * 60_000 : false;
   return { state: typeof target !== "number" ? "unknown" : target <= published ? "published" : delayed ? "delayed" : "queued" };
 });

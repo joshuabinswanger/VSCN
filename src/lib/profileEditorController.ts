@@ -2729,7 +2729,7 @@ document.addEventListener("astro:page-load", () => {
       // A later Save owns the footer now; this one's result is its business.
       if (generation !== saveGeneration) return;
       saveError.style.display = "none";
-      watchPublication(saveMsg, lang, queued, lifecycle.signal);
+      watchPublication(saveMsg, lang, queued, lifecycle.signal, { listed: activeInput.checked });
       saveMsg.style.display = "block";
       // Not after the watchdog fired: the member may have edited since, and
       // saved() would take THAT as the saved state. The next Save clears it.
