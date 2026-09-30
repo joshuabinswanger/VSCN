@@ -22,8 +22,9 @@ Action:  PR #152 (merged to dev 2026-09-29 20:48Z) redacts the debug token, the 
          keeps the console of a failed step in `walk-artifacts/`, and CI uploads that folder; on a
          public repository anyone can download artifacts. Run 36491067157 (the 80f5850 release, walk red
          at save) uploaded one containing the prod walk token. That artifact has been deleted, and the
-         token was rotated on 2026-09-29 at about 20:40Z (operator-reported; the old token's removal from
-         the prod App Check registration is not confirmed here). Any future walk that fails a step
+         token was rotated on 2026-09-29: the secret at 20:39Z, a new registration "release walk (CI)
+         2026-09-29" at 20:41Z, and the old registration deleted (confirmed from the prod web app's
+         App Check debug-token list, which returns names only). Any future walk that fails a step
          before #152 reaches main can repeat the leak.
 
 ## 2026-09-29 · d5b3ae0 · prod · member rebuilds every minute
