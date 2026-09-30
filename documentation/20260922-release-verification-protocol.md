@@ -1,7 +1,7 @@
 # Release verification protocol — design
 
 **Date:** 2026-09-22
-**Status:** implemented 2026-09-22 — `scripts/verify-release.mjs`, `documentation/release-verification.md`,
+**Status:** implemented 2026-09-22, partly superseded since (see the last note in the box below) — `scripts/verify-release.mjs`, `documentation/release-verification.md`,
 `documentation/release-log.md`; acceptance test (§8) passed the same day
 **Implements:** a repeatable check that a prod release actually works, run by Josh and Claude together after every release.
 
@@ -32,6 +32,16 @@
 >   covers gen-2 functions only; the two gen-1 Auth triggers run as the App Engine default.
 > - **Probe 4 acceptance (§8).** The grant had been applied by hand before the script existed, so
 >   it was tested with a bogus expected role: red, then removed.
+> - **The pipeline no longer deploys hosting only (2026-09-28, PR #140).** §1's "the merge pipeline
+>   deploys `--only hosting`" and §4 probe 2's timestamp comparison are historical. Both Hosting
+>   workflows run a `backend` job that deploys Functions first (and security rules ride in the
+>   deploy job, ahead of Hosting, since 2026-09-22), and probe 2 compares each function's
+>   `source_digest` label with the digest of the released commit's backend (`functions/src`,
+>   `functions/package*.json`, `tsconfig.json`, `functions/.env*`;
+>   `scripts/lib/backend-digest.mjs`), so a comment-only change is not drift and a shared helper
+>   change is. Probe 5 also checks twelve function/secret bindings and the bound version's state,
+>   and a window with no upload traffic is a WARN "NOT TESTED" with a GREEN verdict. Current
+>   behaviour: [release-verification.md](release-verification.md).
 
 ## 1. Why this exists
 

@@ -22,7 +22,7 @@ Verification is **`npm run verify`**: ESLint, Astro diagnostics, Node unit tests
 
 `npm run format` is a **trap, not a check**: `npx prettier --check src` currently flags nearly every file, so running the documented command rewrites the repo and buries whatever you were doing in an unreviewable diff. Leave it alone unless you are deliberately doing the one mechanical reformat commit — that decision is Josh's and has not been made.
 
-`npm run build` is the strongest available gate: it type-checks and renders all 20 pages.
+`npm run build` is the strongest available gate: it type-checks and renders every page (76 in the last recorded development-mode build, 2026-09-28; the count grows with the member export, so do not treat it as a constant).
 
 ## Architecture
 
@@ -68,7 +68,7 @@ export function getStaticPaths() {
 }
 ```
 
-`prefixDefaultLocale: false`, so English is at `/`, German at `/de/`. Strings come from `ui` in [src/i18n/translations.ts](src/i18n/translations.ts) via `useTranslations(lang)`, which falls back `ui[lang][key] ?? ui.en[key] ?? key` — a missing German string renders the English one, silently. Add both locales when adding a key.
+`prefixDefaultLocale: false`, so English is at `/`, German at `/de/`. Strings come from `ui` in [src/i18n/translations.ts](src/i18n/translations.ts) via `useTranslations(lang)`, which falls back `ui[lang][key] ?? ui.en[key] ?? key` — in Astro pages a missing German string renders the English one, silently. The client controllers do not: `profileEditorController.ts` and `onboardingController.ts` fall back per language (`ui[lang] ?? ui.en`) and `AuthForm`, `LandingHero` and `VerifyEmailForm` index `ui[lang]` directly, so a key missing from German is `undefined` there, printed as such. Add both locales when adding a key.
 
 ### Styling
 
@@ -78,7 +78,7 @@ Colour, radius and layout tokens live at the top of [src/styles/global.css](src/
 - **The `--fs-*` scale.** Every font size is a token with both breakpoints' whole pixels: desktop 13px × factor + 1px, mobile the same pixel with the 0.78–0.80 caption band one more (measured against illustratoren-schweiz.ch), small print under 0.72rem at its rem on desktop and the next whole pixel on a phone, and tags the one token going the other way (`--fs-tag`: 0.72rem on desktop, down to 8px on a phone).
 - **The voices.** About a dozen named text styles (TITLE, SUB, NAME, HEADING, LABEL, META, CAPTION, LINK, BODY, CHIP, TAG). Each is ONE rule whose selector list is its `.t-*` class plus every existing element that speaks it. They're listed by name because the lightbox, PhotoSwipe's own chrome and the editor's live previews are drawn by JavaScript, where a template class would not reach.
 
-**Two rules follow.** New markup takes a `.t-*` class. A component rule for a listed element sets layout and colour only, never `font-size`, `font-weight`, `line-height`, `letter-spacing`, `text-transform` or a `font` shorthand (a `font: inherit` on a button silently resets its voice; use `font-family: inherit`). `/styleguide` renders the voices straight from the file.
+**Two rules follow.** New markup either takes a `.t-*` class or has its element added to the matching voice's selector list in `type.css` (almost every element is in a list; a `.t-*` class appears in only one template today, the styleguide's editor examples). A component rule for a listed element sets layout and colour only, never `font-size`, `font-weight`, `line-height`, `letter-spacing`, `text-transform` or a `font` shorthand (a `font: inherit` on a button silently resets its voice; use `font-family: inherit`). `/styleguide` renders the voices straight from the file.
 
 Not yet voices: the vw display clamps and the fitted brand title, the form controls in global.css (`.input`, `.btn-*`, `.optchip`), and the admin console.
 
@@ -88,7 +88,7 @@ Not yet voices: the vw display clamps and the fitted brand title, the form contr
 
 Two things inside `fitBrandName()` look redundant and are not. The ticker's 15px inline padding is load-bearing — the function subtracts it, so removing one without the other either clips the last glyph or breaks the alignment. And it measures with `width: max-content` because `.brand-name` is a block: a block's `scrollWidth` never reports less than its own box, so measuring directly makes the ratio come out 1 on any measure the text does not already overflow — a silent no-op, not an error. The `Math.min` capping the result at `8rem` is what keeps the fit shrink-only.
 
-Use tokens; raw hex values are treated as defects in review. [src/pages/styleguide.astro](src/pages/styleguide.astro) renders them all.
+Use tokens; raw hex values are treated as defects in review, though roughly a hundred remain in components and pages (a cleanup, not a licence for more). [src/pages/styleguide.astro](src/pages/styleguide.astro) renders them all.
 
 Breakpoints are **only** these two custom-media aliases, resolved by `@csstools/postcss-global-data` + `postcss-custom-media` and usable inside scoped Astro `<style>` blocks:
 
@@ -113,7 +113,7 @@ The large repeating `VSCNVSCNVSCN` band is `.brand-ticker`, rendered *outside* `
 
 ### Astro specifics worth knowing
 
-`ClientRouter` (view transitions) is active site-wide. Client scripts must initialise on `astro:page-load` — not `DOMContentLoaded`, which fires once — and tear down on `astro:before-swap` or state leaks across navigations. The motion layer in [src/components/CommunityGrid.astro](src/components/CommunityGrid.astro) is the precedent, epoch guard included.
+`ClientRouter` (view transitions) is active site-wide. Client scripts must initialise on `astro:page-load` — not `DOMContentLoaded`, which fires once — and tear down on `astro:before-swap` or state leaks across navigations. The motion layer in [src/lib/communityMotionController.ts](src/lib/communityMotionController.ts) (mounted by `CommunityGrid.astro`) is the precedent, epoch guard included.
 
 Two scoping facts, both verified against built CSS in this repo:
 
@@ -129,11 +129,11 @@ Remote images (Firebase Storage) are optimised at build time with `getImage` fro
 - `PUBLIC_FIREBASE_*` — client SDK config, plus `PUBLIC_TURNSTILE_SITE_KEY` for App Check.
 - `FIREBASE_SERVICE_ACCOUNT` — a JSON service account read at **build time** by `community.astro`.
 
-App Check is attested by **Cloudflare Turnstile** through a custom provider (`src/lib/appCheckTurnstile.ts` → `functions/src/appCheck.ts`, reached same-origin at `/api/app-check`), not by Google reCAPTCHA — institutional networks block reCAPTCHA and prod enforces App Check on Auth and Firestore, so with reCAPTCHA nobody at the SLF could sign in (`documentation/20260907-turnstile-app-check-provider.md`). Prod builds MUST carry the site key or every sign-in fails. Dev and localhost run on Cloudflare's published always-pass test key `1x00000000000000000000AA` (in `.env.development` and the staging workflow) against the dev function, whose `TURNSTILE_SECRET_KEY` is the matching test secret; there is no debug-token flow for members or dev any more. The one debug token left belongs to the prod release walk (`documentation/20260923-release-walk-automation.md` §8): it bypasses Turnstile for whoever holds it, so nothing the walk writes may contain it, which `redactSecrets` in `scripts/lib/release-walk.mjs` enforces.
+App Check is attested by **Cloudflare Turnstile** through a custom provider (`src/lib/appCheckTurnstile.ts` → `functions/src/appCheck.ts`, reached same-origin at `/api/app-check`), not by Google reCAPTCHA — institutional networks block reCAPTCHA and prod enforces App Check on Auth and Firestore, so with reCAPTCHA nobody at the SLF could sign in (`documentation/20260907-turnstile-app-check-provider.md`). Prod builds MUST carry the site key or every sign-in fails. Dev and localhost run on Cloudflare's published always-pass test key `1x00000000000000000000AA` (in `.env.development` and the staging workflow) against the dev function, whose `TURNSTILE_SECRET_KEY` is the matching test secret; there is no debug-token flow for members or dev any more. The one debug token left belongs to the prod release walk (`documentation/20260923-release-walk-automation.md` §8): the walk injects `self.FIREBASE_APPCHECK_DEBUG_TOKEN` from the repo secret `WALK_APPCHECK_DEBUG_TOKEN`, registered on the prod web app, and it bypasses Turnstile for whoever holds it, so nothing the walk writes may contain it. `redactSecrets` in `scripts/lib/release-walk.mjs` enforces that, and a scrub step in `release-walk.yml` drops any artifact file that still holds a walk secret before upload (the 2026-09-29 leak and rotation are in `documentation/release-log.md`). Enforcement itself is on in code: every one of the 22 `onCall` exports sets `enforceAppCheck: true`.
 
 ## Deployment
 
-Three GitHub Actions in `.github/workflows/` handle Firebase Hosting: merge, pull-request preview, and staging. **Staging follows `dev`**: a push to `dev` (which, under the flow below, is a PR merge) deploys the dev host, restored on 2026-09-07 after being manual-only since `3e8e2fc` (`documentation/20260526-dev-environment-and-staging-setup.md` has the history). One deploy runs at a time and the newest cancels an older one. `npm run deploy:dev` remains the way to put an *unmerged* tree on staging.
+Five workflow files in `.github/workflows/`: three deploy Firebase Hosting (`firebase-hosting-merge.yml` for production, `firebase-hosting-pull-request.yml` for previews, `firebase-hosting-staging.yml` for dev) and two are reusable pieces they call, `verify.yml` (the gate) and `release-walk.yml` (the post-release walk, production merges only). Each deploying run goes verify, then a `backend` job that deploys Functions, then export, render, and a deploy job that publishes rules and then Hosting, fail-closed on production. A member-triggered rebuild (a `workflow_dispatch` from `flushMemberRebuilds`, at most one a minute) skips `verify` when its commit already passed it (#148), and deploys Functions only when the deployed digest differs (`scripts/backend-current.mjs`). Deploy identity, and why a console rollback does not hold, are in `documentation/20260928-backend-deploy-identity-and-rollback.md`. **Staging follows `dev`**: a push to `dev` (which, under the flow below, is a PR merge) deploys the dev host, restored on 2026-09-07 after being manual-only since `3e8e2fc` (`documentation/20260526-dev-environment-and-staging-setup.md` has the history). One deploy per environment runs at a time; a pending run is superseded by a newer one but an in-flight run is never cancelled (`cancel-in-progress: false`), except preview deploys, which cancel their own PR's older run. `npm run deploy:dev` remains the way to put an *unmerged* tree on staging.
 
 Branches: `main` is production, `dev` is integration. Two features once sat interleaved in one dirty working tree for two months and could no longer be split into separate commits — hence `3fcc0ba`, which had to land both at once.
 
@@ -163,7 +163,7 @@ A worktree is the isolation; `npm run worktree` exists because a bare `git workt
 
 **What the broken ancestry actually cost, in case it recurs.** During the auth release the merge base of `main` and `dev` was `272e5729`, ancient, so a dev → main PR three-way merged from that bogus base and reported **conflicts in five files** while `git diff main dev` showed only the release's eleven files of real change. GitHub refuses to build a preview for a CONFLICTING PR, so the release stood blocked by an artefact rather than by any real conflict. The fix was `git merge -s ours origin/main` on `dev`, which keeps dev's tree byte for byte and records `main` as a second parent; prove it safe the same way it was proven then — compare the tree hash before and after (identical, `c09cc1f5`) and confirm `main` holds nothing `dev` lacks. The release then merged as an ordinary pull request, `e3c8cf9`, and production deployed normally (memory note `release-history-repaired`).
 
-**Rules go first.** If the release ships a frontend that writes a new field, deploy `firestore.rules` **before or with** it — the `hasOnly` trap rejects the whole write, silently, and a member's save just stops working.
+**Rules go first, Functions before that.** The workflows do it: verify, Functions, export, render, rules, Hosting. If the release ships a frontend that writes a new field, `firestore.rules` must reach production **before or with** it — the `hasOnly` trap rejects the whole write, silently, and a member's save just stops working.
 
 ## Conventions
 
@@ -179,6 +179,6 @@ The in-app browser pane opens with a **0 × 0 viewport** in this environment. Ca
 
 ## Audit release verification
 
-Run npm run verify (lint, Astro diagnostics, unit tests, Functions compilation and local emulator tests). Install both root and functions dependencies with npm ci. Hosting workflows require verification and isolate public-data export, image rendering, and deployment on separate runners. The publication queue stays dirty until the private acknowledgeSitePublication endpoint accepts the revision captured before export. Only the Hosting deployer service account has invocation permission.
+Run npm run verify (lint, Astro diagnostics, unit tests, Functions compilation and local emulator tests). Install both root and functions dependencies with npm ci. The Hosting workflows run verification (a member rebuild of an already-verified commit reuses the earlier result) and isolate public-data export, image rendering, and deployment on separate runners. The publication queue stays dirty until the private acknowledgeSitePublication endpoint accepts the revision captured before export. Only the Hosting deployer service account has invocation permission.
 
-Account deletion revokes upload permits and blocks new writes. Purging holds a renewable/retryable state with a 15-minute exclusive lease; callers have a 540-second timeout. Cancellation is allowed only before cleanup begins.
+Account deletion revokes upload permits and blocks new writes. Purging holds a retryable state under a fixed 15-minute exclusive lease that is taken once and never renewed (a crashed worker is retried when it expires); callers have a 540-second timeout. Cancellation is allowed only before cleanup begins.
