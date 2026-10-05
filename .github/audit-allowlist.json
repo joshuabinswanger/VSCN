@@ -1,4 +1,11 @@
 {
-  "//": "Dated exceptions for scripts/audit-deps.mjs. Each entry: { \"id\": \"GHSA-xxxx-xxxx-xxxx\", \"package\": \"name\", \"reason\": \"why it cannot reach us / what we wait for\", \"until\": \"YYYY-MM-DD\" }. An entry stops suppressing the day after `until`, so every exception is re-decided rather than forgotten. Empty on 2026-09-30: both trees audit clean.",
-  "advisories": []
+  "//": "Dated exceptions for scripts/audit-deps.mjs. Each entry: { \"id\": \"GHSA-xxxx-xxxx-xxxx\", \"package\": \"name\", \"reason\": \"why it cannot reach us / what we wait for\", \"until\": \"YYYY-MM-DD\" }. An entry stops suppressing the day after `until`, so every exception is re-decided rather than forgotten.",
+  "advisories": [
+    {
+      "id": "GHSA-m9gg-hp2v-232j",
+      "package": "@grpc/grpc-js",
+      "reason": "Root tree only, reached through the firebase client SDK: @firebase/firestore 4.17.2 pins @grpc/grpc-js ~1.9.0 and the 1.9 line has no fixed release (the fixes are 1.13.6 and 1.14.5). The flaw is in getAuthContext, which reports a peer certificate as verified when it was not; that is an API for gRPC servers and mTLS clients that inspect the peer. Our only use of this copy is the Firestore client talking TLS to Google in the rules tests and scripts, which never calls it. The functions tree is on 1.14.5 via google-gax. Waiting for firebase-js-sdk to lift the ~1.9.0 pin; re-decide if that has not happened by the date below.",
+      "until": "2026-12-01"
+    }
+  ]
 }
