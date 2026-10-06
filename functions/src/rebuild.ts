@@ -64,7 +64,7 @@ export const requestRebuild = onCall({ enforceAppCheck: true, maxInstances: 3 },
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "Sign-in required.");
   }
-  const { queueMemberRebuild } = await import("./rebuildQueue");
+  const { queueMemberRebuild } = await import("./rebuildQueue.js");
   await queueMemberRebuild(request.auth.uid);
   return { ok: true, queued: true };
 });

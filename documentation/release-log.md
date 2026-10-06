@@ -11,21 +11,23 @@ Nothing appends to this file by itself. Entries dated 2026-09-28 and 2026-09-29 
 afterwards, on 2026-09-29, from the CI run records (`gh run view <id>`); what a run record cannot
 show, chiefly a by-hand `verify:release` result, is marked "operator-reported" or "not confirmed".
 
-## Awaiting release · dev 10953cc · the walk stops leaking the App Check debug token
-Machine: n/a (dev, not released)
-Walk:    n/a. The fix is unproven until the next production release, because `release-walk.yml` runs
-         only from the main merge workflow or a manual dispatch, and PR #152's checks do not run it.
-Action:  PR #152 (merged to dev 2026-09-29 20:48Z) redacts the debug token, the password and the email
-         from the walk's captured console and requests, and drops any artifact file that still contains
-         one, so nothing is uploaded if the scrub fails. It waits for the next release to main.
-         The leak it closes: the App Check SDK prints its debug token to the page console, the walk
-         keeps the console of a failed step in `walk-artifacts/`, and CI uploads that folder; on a
-         public repository anyone can download artifacts. Run 36491067157 (the 80f5850 release, walk red
-         at save) uploaded one containing the prod walk token. That artifact has been deleted, and the
-         token was rotated on 2026-09-29: the secret at 20:39Z, a new registration "release walk (CI)
-         2026-09-29" at 20:41Z, and the old registration deleted (confirmed from the prod web app's
-         App Check debug-token list, which returns names only). Any future walk that fails a step
-         before #152 reaches main can repeat the leak.
+## 2026-09-30 · 7d8ce41 · prod · review fixes #152-#161, the walk stops leaking the debug token
+Machine: not run. CI has no `verify:release` step; the release job itself deployed the backend
+         (all 34 functions updated), rules and Hosting, and https://vscn.ch serves build 7d8ce41.
+Walk:    GREEN, all six steps on vscn-39508.web.app for 7d8ce41, site built from 7d8ce41; run
+         36707487000 (PR #162 merged 11:16Z, walk job 11:22:54-11:23:56Z). First live run of the
+         rotated debug token and of the #157 Remove confirmation, which the walk now accepts. The
+         scrub step and the artifact upload stay skipped on a green walk, so no walk-artifacts exist.
+Action:  none. Contents: #152 walk redaction + artifact scrub; #153 mint endpoint bounds; #154 docs;
+         #155 leave guard; #156 lifecycle; #157 save path; #158 notifications and publication; #159
+         a11y; #160 release tooling and dependency audit; #161 brace-expansion 2.1.7. The leak #152
+         closes: run 36491067157 (the 80f5850 release, walk red at save) uploaded the page console
+         with the prod walk token. That artifact is deleted and the token was rotated on 2026-09-29
+         (secret 20:39Z, new registration "release walk (CI) 2026-09-29" 20:41Z, old registration
+         deleted; confirmed from the prod web app debug-token list, which returns names only). The
+         stale "astro-desktop-dev" registration was deleted on 2026-09-30. Signed-in editor paths
+         (Remove confirm, EN/DE switch with unsaved edits, pre-save validation, Save) walked on dev
+         ae1b72a before release; not yet walked signed-in on prod.
 
 ## 2026-09-29 · d5b3ae0 · prod · member rebuilds every minute
 Machine: not confirmed. CI has no `verify:release` run for this release; the operator reported the release
