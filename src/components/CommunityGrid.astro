@@ -1379,8 +1379,35 @@ const indexMembers = [...members].sort((a, b) =>
        double up with its own). Nothing else sets this property on the card,
        and the closed state needs no rule: it falls back to that inline none,
        which interpolates as 1, so the shrink animates too. */
-    :global(.cgrid[data-pattern="spread"] .cgrid__cell > .ccard:has(.pdisc[open])) {
+    /* `.ccard--settled` is the scroll taking it back (2026-10-09, Josh: "on
+       scroll it should get smaller again"): the controller sets it once the
+       page has moved on from where the card was opened, and the card shrinks
+       to its slot with the panel still open, so a long bio can still be
+       scrolled to and read. Closing clears it, so the next open grows again. */
+    :global(.cgrid[data-pattern="spread"] .cgrid__cell > .ccard:has(.pdisc[open]):not(.ccard--settled)) {
       scale: 1.3 !important;
+    }
+    /* ONLY THE WORDS AND THE PICTURE GROW (2026-10-09, Josh: "only text
+       should get bigger not the tags etc"). The scale above takes everything
+       in the card with it, so the chrome is scaled back down by the inverse:
+       the count "‹ 2 / 7 ›", the disclosure chevron and the carousel
+       arrows' chevrons by a `scale` of their own on the same timing — the
+       product stays within 2% of 1 on the way, and they keep their layout box,
+       so nothing moves — and the tags by `zoom`, which shrinks their layout
+       too: a scale would keep each chip's 1.3× slot and leave the row gappy.
+       The tags sit in the unfolding panel, so zoom's lack of a transition is
+       out of sight on open. */
+    :global(.cgrid[data-pattern="spread"] .cgrid__cell > .ccard :is(.ccard__dots, .pdisc__toggle, .ccard__arrow > span)) {
+      transition: scale 420ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+    :global(.cgrid[data-pattern="spread"] .cgrid__cell > .ccard .ccard__dots) {
+      transform-origin: 100% 100%;
+    }
+    :global(.cgrid[data-pattern="spread"] .cgrid__cell > .ccard:has(.pdisc[open]):not(.ccard--settled) :is(.ccard__dots, .pdisc__toggle, .ccard__arrow > span)) {
+      scale: calc(1 / 1.3);
+    }
+    :global(.cgrid[data-pattern="spread"] .cgrid__cell > .ccard:has(.pdisc[open]):not(.ccard--settled) .pdisc__vals--tags) {
+      zoom: calc(1 / 1.3);
     }
     /* The z-index lift above drops the instant the panel closes, while the
        card still has 420ms of shrinking to do — and a neighbour would cut
@@ -1400,6 +1427,7 @@ const indexMembers = [...members].sort((a, b) =>
 
   @media (prefers-reduced-motion: reduce) {
     :global(.cgrid[data-pattern="spread"] .cgrid__cell > .ccard),
+    :global(.cgrid[data-pattern="spread"] .cgrid__cell > .ccard :is(.ccard__dots, .pdisc__toggle, .ccard__arrow > span)),
     :global(.cgrid[data-pattern="spread"] .cgrid__cell) {
       transition: none;
     }
