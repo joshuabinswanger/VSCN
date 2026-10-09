@@ -1354,6 +1354,57 @@ const indexMembers = [...members].sort((a, b) =>
     z-index: 3;
   }
 
+  /* ── THE OPEN CARD GROWS (2026-10-09, Josh: "make the expanded card bigger
+     … also make the text etc. bigger. add a smooth animation") ──────────────
+     The CSS `scale` property, not a transform and not a wider box: GSAP owns
+     `transform` on .ccard (the scale-on-approach) and writes it inline, and
+     the individual property composes with it instead of being overwritten.
+     It also does the "text etc." for free — picture, name, role, panel and
+     tags all grow as one, which a width change could not, because the card's
+     width is derived from its slot (see .ccard in communityCard.css).
+     The pivot's x is set per card on open (communityDirectoryController.ts,
+     the toggle listener) so a card near the window's edge grows inward
+     instead of off-screen; y stays the top edge, which keeps the name where
+     the visitor clicked near it and lets the panel unfold downward.
+     Desktop spread only: a phone's card is already the screen's width, and
+     the wall and strip hide the disclosure. The timing matches the panel's
+     own unfold in MemberDetailPanel (320ms), a little longer so the two
+     land together. */
+  @media (--bp-desktop) {
+    :global(.cgrid[data-pattern="spread"] .cgrid__cell > .ccard) {
+      transition: scale 420ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+    /* !important because GSAP writes `scale: none` INLINE alongside its
+       transform (it clears the individual transform properties so they cannot
+       double up with its own). Nothing else sets this property on the card,
+       and the closed state needs no rule: it falls back to that inline none,
+       which interpolates as 1, so the shrink animates too. */
+    :global(.cgrid[data-pattern="spread"] .cgrid__cell > .ccard:has(.pdisc[open])) {
+      scale: 1.3 !important;
+    }
+    /* The z-index lift above drops the instant the panel closes, while the
+       card still has 420ms of shrinking to do — and a neighbour would cut
+       across it for all of them. The drop waits for the shrink; the rise
+       (the :has rule, which zeroes the delay) does not. LONGHANDS: in the
+       shorthand the minifier drops the 0s duration, and the delay left alone
+       is read back as the duration. */
+    :global(.cgrid[data-pattern="spread"] .cgrid__cell) {
+      transition-property: z-index;
+      transition-duration: 0s;
+      transition-delay: 420ms;
+    }
+    :global(.cgrid[data-pattern="spread"] .cgrid__cell:has(details[open])) {
+      transition-delay: 0s;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.cgrid[data-pattern="spread"] .cgrid__cell > .ccard),
+    :global(.cgrid[data-pattern="spread"] .cgrid__cell) {
+      transition: none;
+    }
+  }
+
   /* Nothing hides a cell today. Kept because the filters are coming back, and
      on a grid a hidden cell leaves its slot empty rather than repacking —
      worth knowing before wiring them to this layout. */

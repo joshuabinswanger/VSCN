@@ -272,6 +272,17 @@
 .ccard__arrow:focus-visible {
   opacity: 1;
 }
+/* CLICKED, SO OUT OF THE WAY (2026-10-09). communityCarousel.ts sets this on
+   the frame after a pointer click on an arrow and clears it when the pointer
+   moves on or leaves. Same specificity as the frame-hover rule above and
+   later, so it wins over hover and :focus-within (Chrome focuses a clicked
+   button) alike; it stays in place rather than sliding back to the edge, and
+   it is quicker than the ordinary hide because the visitor has already said
+   what they wanted. Opacity only: the strip is still there to click again. */
+.ccard__frame.is-arrows-resting .ccard__arrow {
+  opacity: 0;
+  transition: opacity 90ms ease;
+}
 /* A stroked chevron rather than a filled triangle — two borders on a box
    turned 45deg. Same drawing as the disclosure toggle in MemberDetailPanel,
    so both controls on a card read as one family. */

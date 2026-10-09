@@ -289,6 +289,32 @@ export function initCarousels(root: ParentNode = document): void {
     const nextArrow = carousel.querySelector<HTMLElement>("[data-carousel-next]");
     prevArrow?.addEventListener("click", () => embla.scrollPrev(jump()), { signal });
     nextArrow?.addEventListener("click", () => embla.scrollNext(jump()), { signal });
+
+    // THE ARROWS STEP BACK ONCE CLICKED (2026-10-09, Josh: "the arrow button
+    // should disappear sooner after having clicked it"). Hover alone kept them
+    // up for as long as the pointer rested on the frame, so after a click the
+    // chevron sat over the new picture the visitor had just asked to see.
+    // `.is-arrows-resting` fades them out (communityCard.css); the strips stay
+    // hit area, so clicking again still pages. They come back when the pointer
+    // MOVES — a real move, not the hand's jitter after a click — or leaves.
+    // A keyboard press (detail 0) leaves them alone: there the arrow is the
+    // focused control, and hiding it would hide the focus.
+    let restingAt: { x: number; y: number } | null = null;
+    const rest = (e: MouseEvent) => {
+      if (e.detail === 0) return;
+      restingAt = { x: e.clientX, y: e.clientY };
+      carousel.classList.toggle("is-arrows-resting", true);
+    };
+    const wake = () => {
+      restingAt = null;
+      carousel.classList.toggle("is-arrows-resting", false);
+    };
+    prevArrow?.addEventListener("click", rest, { signal });
+    nextArrow?.addEventListener("click", rest, { signal });
+    carousel.addEventListener("pointermove", (e) => {
+      if (restingAt && Math.hypot(e.clientX - restingAt.x, e.clientY - restingAt.y) > 16) wake();
+    }, { signal });
+    carousel.addEventListener("pointerleave", wake, { signal });
     // The count's own chevrons, "‹ 2 / 7 ›" (2026-09-28, src/lib/pager.ts).
     // Desktop only, like the edge arrows: on a phone both pairs are
     // display:none (global.css, 2026-09-28, Josh: no chevrons on a phone's
