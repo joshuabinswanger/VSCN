@@ -313,6 +313,38 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeTagPanel();
 });
 
+// THE OPEN CARD GROWS INWARD. The spread scales a card up when its disclosure
+// opens (the `scale` rules in CommunityGrid.astro), and growing about its
+// centre would push a card in the first or last column past the window's
+// edge. So on open the pivot's x is placed where the grown card just fits
+// between the window's edges: centred when there is room, shifted toward the
+// far side when there is not. Module scope and capture phase — `toggle` does
+// not bubble, and a document listener installed per page-load would stack.
+const OPEN_SCALE = 1.3;
+const EDGE = 24;
+document.addEventListener(
+  "toggle",
+  (e) => {
+    const details = e.target;
+    if (!(details instanceof HTMLDetailsElement) || !details.open) return;
+    const card = details.closest<HTMLElement>(".cgrid[data-pattern='spread'] .cgrid__cell > .ccard");
+    if (!card) return;
+    // offsetWidth, not the rect's width: the rect carries GSAP's approach
+    // scale, and the origin is in the card's own untransformed pixels.
+    const w = card.offsetWidth;
+    const { left } = card.getBoundingClientRect();
+    const right = left + w;
+    const grow = OPEN_SCALE - 1;
+    const viewport = document.documentElement.clientWidth;
+    // Grown left edge = left - grow·x, grown right edge = right + grow·(w - x).
+    const most = (left - EDGE) / grow;
+    const least = w - (viewport - EDGE - right) / grow;
+    const x = Math.min(Math.max(w / 2, least), most);
+    card.style.transformOrigin = `${Math.round(x)}px 0`;
+  },
+  true
+);
+
 /** The ledger's pass. Returns the visible count. */
 function applyIndexFilter(): number {
   let visible = 0;
