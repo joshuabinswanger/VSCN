@@ -1118,10 +1118,14 @@ const BRAND_SLOTS: BrandSlot[] = [
     // because that means something else — most likely the reader — has taken
     // over, and fighting them would be worse than not restoring at all.
     let tries = 0;
+    let firstRestore = true;
     const apply = () => {
       const at = scroller.scrollTop;
       const arrived = Math.abs(at - top) <= 1;
-      if (!arrived && at > 1) return;
+      // Native restoration can land at an adjusted offset during the swap.
+      // Apply our saved entry once; later retries yield to reader scrolling.
+      if (!firstRestore && !arrived && at > 1) return;
+      firstRestore = false;
       scroller.scrollTop = top;
       applyBrandHide();
       if (Math.abs(scroller.scrollTop - top) > 1 && tries++ < SCROLL_RESTORE_TRIES) {
