@@ -397,4 +397,10 @@ const hasSummary = Astro.slots.has("summary");
   .pdisc__link:hover {
     color: var(--color-muted);
   }
+  @media (--bp-mobile) {
+    .pdisc__toggle::after { width: 6px; height: 6px; border-width: 1px; }
+    .pdisc__body { padding: 24px 0 12px; }
+    .pdisc__body-inner { gap: 24px; }
+    .pdisc__vals--links { gap: 12px 18px; }
+  }
 </style>

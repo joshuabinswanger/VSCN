@@ -199,6 +199,7 @@ const BRAND_SLOTS: BrandSlot[] = [
         }
 
         function sync() {
+          if (window.matchMedia("(max-width: 767px)").matches) return;
           if (vv.scale !== 1 || editing()) return;
           const h = Math.round(vv.height);
           // A zero height is "not laid out yet", never a shell to adopt.
@@ -209,7 +210,7 @@ const BRAND_SLOTS: BrandSlot[] = [
 
         function settle() {
           settleTimer = 0;
-          if (vv.scale !== 1) return;
+          if (vv.scale !== 1 || window.matchMedia("(max-width: 767px)").matches) return;
           // Parked past the page's own end, or above its start: the state from
           // the bug report. Nothing else can undo it, because a document with
           // `overflow: hidden` gives the reader nothing to scroll back with.
@@ -367,8 +368,9 @@ const BRAND_SLOTS: BrandSlot[] = [
      under the last link. The landing hero has no footer and keeps its fixed
      toggle, so it keeps the 80px. */
   @media (--bp-mobile) {
+    .brand-ticker { margin-top: 0; }
     .page-wrap.has-footer {
-      --page-wrap-pad-bottom: 30px;
+      --page-wrap-pad-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
     }
 
     /* THE FOOTER WAITS BELOW THE FIRST SCREEN (2026-09-27, Josh: "footer
@@ -988,7 +990,8 @@ const BRAND_SLOTS: BrandSlot[] = [
     brandHideFrame = 0;
     const ticker = document.querySelector<HTMLElement>(".brand-ticker");
     if (!ticker) return;
-    if (!brandScroller) {
+    // On mobile the ticker leaves naturally with document scrolling.
+    if (!brandScroller || window.matchMedia("(max-width: 767px)").matches) {
       ticker.style.removeProperty("--brand-hide");
       return;
     }
@@ -1010,10 +1013,18 @@ const BRAND_SLOTS: BrandSlot[] = [
   // so the listener has to be moved to the new scroller each time.
   function initBrandScrollHide() {
     brandScroller?.removeEventListener("scroll", onBrandHideScroll);
-    brandScroller = document.querySelector<HTMLElement>(".page-wrap");
+    window.removeEventListener("scroll", onBrandHideScroll);
+    brandScroller = window.matchMedia("(max-width: 767px)").matches
+      ? document.documentElement
+      : document.querySelector<HTMLElement>(".page-wrap");
+    if (brandScroller === document.documentElement) {
+      window.addEventListener("scroll", onBrandHideScroll, { passive: true });
+    }
     brandScroller?.addEventListener("scroll", onBrandHideScroll, { passive: true });
     applyBrandHide();
   }
+
+  window.matchMedia("(max-width: 767px)").addEventListener("change", initBrandScrollHide);
 
   // ── Back and forward have to land where you left ──────────
   // ClientRouter restores scroll by writing to the WINDOW, and on this site the
@@ -1054,13 +1065,16 @@ const BRAND_SLOTS: BrandSlot[] = [
   // Updated on page-load, which is the one moment both the DOM and the entry
   // are settled.
   let currentIndex: number | null = null;
+  let swappingScroll = false;
+  let scrollTransitionDone: Promise<unknown> = Promise.resolve();
+  let scrollNavigation = 0;
 
   function scrollKeyFor(index: number | null): string | null {
     return typeof index === "number" ? SCROLL_KEY + index : null;
   }
 
   function saveScroll(force = false) {
-    if (!brandScroller) return;
+    if (swappingScroll || !brandScroller) return;
     const now = performance.now();
     if (!force && now - lastScrollSave < SCROLL_SAVE_MS) return;
     lastScrollSave = now;
@@ -1074,10 +1088,12 @@ const BRAND_SLOTS: BrandSlot[] = [
   }
 
   function restoreScroll() {
+    // Retry after the gallery is dealt: the document can be too short when
+    // ClientRouter first restores its mobile scroll position.
     // Reads the entry we have just ARRIVED on, which is why currentIndex is
     // refreshed from history.state immediately before this is called.
     const key = scrollKeyFor(currentIndex);
-    const scroller = document.querySelector<HTMLElement>(".page-wrap");
+    const scroller = brandScroller;
     if (!key || !scroller) return;
     let saved: string | null;
     try {
@@ -1123,7 +1139,16 @@ const BRAND_SLOTS: BrandSlot[] = [
   document.addEventListener("astro:before-preparation", () => saveScroll(true));
 
   document.addEventListener("astro:before-swap", (event) => {
-    const swapEvent = event as unknown as { newDocument?: Document };
+    saveScroll(true);
+    // The router resets document scroll during a swap. Do not save that
+    // reset over the outgoing page's position.
+    swappingScroll = true;
+    const swapEvent = event as unknown as {
+      newDocument?: Document;
+      viewTransition?: { finished: Promise<void> };
+    };
+    scrollNavigation++;
+    scrollTransitionDone = swapEvent.viewTransition?.finished.catch(() => {}) ?? Promise.resolve();
     const newLang = swapEvent.newDocument?.documentElement?.lang === "de" ? "de" : "en";
     updateBrandHomeLink(newLang);
     swapEvent.newDocument?.getElementById("page-loader")?.remove();
@@ -1140,7 +1165,17 @@ const BRAND_SLOTS: BrandSlot[] = [
     // After initBrandScrollHide, which is what points brandScroller at the new
     // .page-wrap — restoring before that would set an offset on the document
     // that was just thrown away.
-    restoreScroll();
+    // Native document scroll can be reset when the browser finishes its
+    // view transition. Wait for it and for the gallery's page-load layout.
+    const navigation = scrollNavigation;
+    const settled = window.matchMedia("(max-width: 767px)").matches
+      ? scrollTransitionDone
+      : Promise.resolve();
+    void settled.then(() => requestAnimationFrame(() => {
+      if (navigation !== scrollNavigation) return;
+      restoreScroll();
+      swappingScroll = false;
+    }));
     // On client-side navigation there's no loader, so start animations immediately
     if (!document.getElementById("page-loader")) {
       document.body.classList.add("page-loaded");
