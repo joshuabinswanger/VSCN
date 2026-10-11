@@ -1067,3 +1067,10 @@ label:has(> .picker-input:focus-visible) {
     display: none;
   }
 }
+
+/* Native document scrolling lets mobile Safari retract its browser toolbar. */
+@media (--bp-mobile) {
+  html { height: auto; overflow: visible; overscroll-behavior-y: auto; }
+  body { display: block; height: auto; min-height: 100svh; overflow: visible; overscroll-behavior-y: auto; }
+  .page-wrap { overflow: visible; min-height: 100svh; scrollbar-gutter: auto; }
+}

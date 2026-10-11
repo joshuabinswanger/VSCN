@@ -720,7 +720,9 @@
     // is reading `window.scrollY`; every scroll question in this file has to
     // be asked of that element.
     const scroller = (): HTMLElement =>
-      (document.querySelector(".page-wrap") as HTMLElement | null) ??
+      window.matchMedia("(max-width: 767px)").matches
+        ? (document.scrollingElement as HTMLElement)
+        : (document.querySelector(".page-wrap") as HTMLElement | null) ??
       (document.scrollingElement as HTMLElement);
 
     // Where the roster was when a record was opened from it. Twelve rows down

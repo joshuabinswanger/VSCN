@@ -1792,7 +1792,7 @@ const indexMembers = [...members].sort((a, b) =>
          full-width artwork; Grid is the stacked two-column wall. */
       display: grid;
       grid-template-columns: minmax(0, 1fr);
-      row-gap: 4.5rem;
+      row-gap: 72px;
       align-items: start;
       width: auto;
       padding-block: 1.5rem 7rem;
@@ -1806,12 +1806,12 @@ const indexMembers = [...members].sort((a, b) =>
     .cgrid[data-pattern="grid"]:not([hidden]) {
       display: block;
       columns: 2;
-      column-gap: 1.1rem;
+      column-gap: 24px;
     }
 
     .cgrid[data-pattern="grid"] .cgrid__cell {
       break-inside: avoid;
-      margin-bottom: 1.1rem;
+      margin-bottom: 48px;
     }
 
     /* THE DESKTOP CAP, ON THE PHONE'S COLUMNS (2026-09-08, Josh: "very tall
@@ -1943,7 +1943,8 @@ const indexMembers = [...members].sort((a, b) =>
            passing the same line. Against `cover 0% 35%`, which is the arrival,
            unchanged. */
         animation-range:
-          exit 0% exit 100%,
+          /* Hold brightness until 30% passes the bar, then fade gently. */
+          exit 30% exit 100%,
           cover 0% cover 35%;
       }
     }
@@ -2026,7 +2027,7 @@ const indexMembers = [...members].sort((a, b) =>
       opacity: 1;
     }
     100% {
-      opacity: 0.35;
+      opacity: 0.65;
     }
   }
 

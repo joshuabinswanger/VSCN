@@ -107,15 +107,9 @@
   --carousel-dot-gap: 0.28rem;
 }
 
-/* THE PHONE READS AT THE REFERENCE'S SIZE (2026-09-27, Josh: "text larger on
-   mobile, check illustratoren schweiz for reference"). Measured there at 375px:
-   captions and credits 12px, body 14px, section heads 16px, menu 16px. The
-   phone column now takes the DESKTOP pixel for every token, and the caption
-   band (0.78–0.80: card roles, profile links, card bios) one more on top, so
-   the smallest running text on a phone is 12px like the reference's. The old
-   phone pixel is in each comment. Tags stay at 8px: Josh took them down on
-   purpose on 2026-09-26, and they get letter-spacing instead (.tagchip).
-   An 11px trial on 2026-09-28 was reverted the same day. */
+/* Mobile follows the Koppen reference: 13px body, 16px large copy,
+   18–32px headings, and 10–12px metadata. The 12px root keeps layout
+   spacing independent of type. Smaller label tokens remain unchanged. */
 @media (--bp-mobile) {
   :root {
     --fs-58: 7px; /* 6.96 */
@@ -125,28 +119,28 @@
     --fs-66: 8px; /* 7.92 */
     --fs-68: 9px; /* 8.16 */
     --fs-70: 9px; /* 8.40 */
-    --fs-72: 10px; /* 9 */
-    --fs-74: 10px; /* 9 */
-    --fs-75: 11px; /* 10 */
-    --fs-76: 11px; /* 10 */
-    --fs-78: 12px; /* 10 */
-    --fs-80: 12px; /* 10 */
-    --fs-82: 12px; /* 10 */
-    --fs-85: 12px; /* 11 */
-    --fs-88: 13px; /* 11 */
-    --fs-90: 13px; /* 11 */
-    --fs-95: 13px; /* 12 */
-    --fs-100: 14px; /* 13 */
-    --fs-105: 15px; /* 13 */
-    --fs-115: 16px; /* 14 */
-    --fs-120: 17px; /* 15 */
-    --fs-125: 17px; /* 16 */
-    --fs-140: 19px; /* 17 */
-    --fs-160: 22px; /* 20 */
-    --fs-180: 24px; /* 22 */
-    --fs-190: 26px; /* 23 */
-    --fs-225: 30px; /* 28 */
-    --fs-tag: 8px; /* 8.64 */
+    --fs-72: 10px;
+    --fs-74: 10px;
+    --fs-75: 11px;
+    --fs-76: 12px;
+    --fs-78: 12px;
+    --fs-80: 13px;
+    --fs-82: 13px;
+    --fs-85: 13px;
+    --fs-88: 13px;
+    --fs-90: 13px;
+    --fs-95: 13px;
+    --fs-100: 13px;
+    --fs-105: 14px;
+    --fs-115: 16px;
+    --fs-120: 18px;
+    --fs-125: 18px;
+    --fs-140: 20px;
+    --fs-160: 24px;
+    --fs-180: 26px;
+    --fs-190: 28px;
+    --fs-225: 32px;
+    --fs-tag: 10px;
     --fs-label: 11px;
   }
 }
@@ -325,4 +319,16 @@
   line-height: 1.25;
   letter-spacing: var(--tag-track);
   text-transform: uppercase;
+}
+
+/* Mobile gallery: a quieter closed caption and a readable expanded title.
+   Sizing and weights follow the Koppen reference while retaining Archivo. */
+@media (--bp-mobile) {
+  .ccard__name { font-size: var(--fs-105); font-weight: 500; line-height: 1.2; }
+  .ccard__role { font-weight: 400; line-height: 1.4; }
+  .ccard:has(.pdisc[open]) .ccard__name { font-size: var(--fs-160); }
+  .ccard:has(.pdisc[open]) .ccard__role { font-size: var(--fs-115); }
+  .ccard__profile { font-size: var(--fs-76); font-weight: 500; }
+  .pdisc__bio { line-height: 1.6; }
+  .pdisc__link { font-weight: 400; line-height: 1.5; }
 }
