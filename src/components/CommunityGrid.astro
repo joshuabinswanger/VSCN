@@ -377,7 +377,7 @@ const indexMembers = [...members].sort((a, b) =>
           </div>
           <ul class="tag-filter__list">
             <li>
-              <button type="button" class="tag-filter__option" data-tag="">
+              <button type="button" class="tag-filter__option tagchip" data-tag="">
                 {t("community.filter.tags.all")}
               </button>
             </li>
@@ -399,7 +399,7 @@ const indexMembers = [...members].sort((a, b) =>
                 >
                   <button
                     type="button"
-                    class="tag-filter__option"
+                    class="tag-filter__option tagchip"
                     data-tag={key}
                     data-label={label}
                     data-count-members={members}
@@ -811,7 +811,7 @@ const indexMembers = [...members].sort((a, b) =>
     padding: var(--bar-pad);
     background: var(--color-bg);
     border: 1px solid var(--color-border);
-    border-radius: 999px;
+    border-radius: 0;
     box-shadow: 0 6px 24px -8px color-mix(in srgb, var(--color-dark) 22%, transparent);
     font-size: var(--fs-85);
   }
@@ -848,7 +848,7 @@ const indexMembers = [...members].sort((a, b) =>
     gap: 0.45em;
     padding: var(--chip-pad-y, 0.4rem) 0.9rem;
     border: none;
-    border-radius: 999px;
+    border-radius: 0;
     background: transparent;
     font: inherit;
     color: var(--color-dark);
@@ -901,7 +901,7 @@ const indexMembers = [...members].sort((a, b) =>
     padding: 6px;
     background: var(--color-bg);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
+    border-radius: 0;
     box-shadow: 0 16px 40px -12px color-mix(in srgb, var(--color-dark) 28%, transparent);
     transform-origin: bottom center;
   }
@@ -949,7 +949,7 @@ const indexMembers = [...members].sort((a, b) =>
     gap: 1rem;
     padding: 0.55rem 0.75rem;
     border: none;
-    border-radius: var(--radius-md);
+    border-radius: 0;
     background: none;
     font: inherit;
     text-align: left;
@@ -1020,7 +1020,7 @@ const indexMembers = [...members].sort((a, b) =>
     flex: none;
     padding: 0.5rem 0.8rem;
     border: 1px solid var(--color-border);
-    border-radius: 999px;
+    border-radius: 0;
     background: transparent;
     font: inherit;
     font-size: var(--fs-82);
@@ -1048,7 +1048,7 @@ const indexMembers = [...members].sort((a, b) =>
     box-sizing: border-box;
     padding: 0.5rem 0.9rem;
     border: 1px solid transparent;
-    border-radius: 999px;
+    border-radius: 0;
     background: color-mix(in srgb, var(--color-dark) 6%, var(--color-bg));
     font: inherit;
     font-size: var(--fs-85);
@@ -1084,14 +1084,14 @@ const indexMembers = [...members].sort((a, b) =>
     gap: 6px;
   }
 
+  /* THE SITE'S TAG (2026-10-12, Josh: "the tags use the tag style"). Each
+     option is a .tagchip — the box in global.css, the TAG voice in type.css —
+     so the filter's tags look exactly like the tags on cards and profiles.
+     Only what a BUTTON needs on top is set here; no font-size or case, or
+     the voice forks (`font-family: inherit`, not `font: inherit`, for the
+     same reason). */
   .tag-filter__option {
-    padding: 0.4rem 0.75rem;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
-    background: transparent;
-    font: inherit;
-    font-size: var(--fs-82);
-    color: var(--color-dark);
+    font-family: inherit;
     cursor: pointer;
     white-space: nowrap;
     transition:
@@ -1103,6 +1103,7 @@ const indexMembers = [...members].sort((a, b) =>
   .tag-filter__option:hover,
   .tag-filter__option:focus-visible {
     border-color: var(--color-dark);
+    color: var(--color-dark);
     outline: none;
   }
 

@@ -159,6 +159,22 @@ body {
   animation-duration: 420ms;
 }
 
+/* The page change's content motion — used by <main>'s transition:animate in
+   Layout.astro, which explains the choreography. Small distances on purpose:
+   the content should settle, not travel. */
+@keyframes vscn-page-out-up {
+  to { opacity: 0; transform: translateY(-8px); }
+}
+@keyframes vscn-page-in-up {
+  from { opacity: 0; transform: translateY(14px); }
+}
+@keyframes vscn-page-out-down {
+  to { opacity: 0; transform: translateY(8px); }
+}
+@keyframes vscn-page-in-down {
+  from { opacity: 0; transform: translateY(-14px); }
+}
+
 /* THE PAPER GRAIN — and why its box is the size it is.
    This overlay only has to be large enough to still cover the viewport at the
    animation's furthest excursion. `translate()` percentages resolve against

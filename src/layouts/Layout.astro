@@ -1,5 +1,27 @@
 ---
 import { ClientRouter } from "astro:transitions";
+import type { TransitionDirectionalAnimations } from "astro";
+
+// THE PAGE CHANGE (2026-10-12, Josh: "make a smooth animation when switching
+// pages"). Only <main> moves: the old page fades out and lifts a few pixels,
+// the new one fades in rising from below. The brand ticker and the nav are
+// transition:persist and the root keeps its quiet cross-fade (global.css), so
+// the chrome holds still while the content changes under it. Back
+// navigations play the same motion reversed in direction. Astro drops these
+// animations under prefers-reduced-motion. Keyframes live in global.css,
+// because @keyframes are global anyway. Named elements inside <main> (the
+// member image and name morph) are extracted by the browser and keep their
+// own morph.
+const pageMotion: TransitionDirectionalAnimations = {
+  forwards: {
+    old: { name: "vscn-page-out-up", duration: "180ms", easing: "cubic-bezier(.4,0,1,1)", fillMode: "both" },
+    new: { name: "vscn-page-in-up", duration: "380ms", delay: "90ms", easing: "cubic-bezier(.2,.7,.2,1)", fillMode: "both" },
+  },
+  backwards: {
+    old: { name: "vscn-page-out-down", duration: "180ms", easing: "cubic-bezier(.4,0,1,1)", fillMode: "both" },
+    new: { name: "vscn-page-in-down", duration: "380ms", delay: "90ms", easing: "cubic-bezier(.2,.7,.2,1)", fillMode: "both" },
+  },
+};
 import Navbar from "../components/Navbar.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import PageLoader from "../components/PageLoader.astro";
@@ -341,7 +363,7 @@ const BRAND_SLOTS: BrandSlot[] = [
         fullscreen ? (
           <slot />
         ) : (
-          <main class:list={[{ "is-wide": wide }]}>
+          <main class:list={[{ "is-wide": wide }]} transition:name="page-main" transition:animate={pageMotion}>
             <slot />
           </main>
         )

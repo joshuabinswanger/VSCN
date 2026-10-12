@@ -103,3 +103,25 @@ should also be a drop up."
   screen less 12px on a phone, where the pill is too narrow for it. The view
   menu always hangs from its own trigger, right-aligned to the pill's edge.
 - **Soft shadows** use `color-mix` on `--color-dark`, so no raw colours.
+
+## Same day, third pass: square corners, the site's tags, nav blocks, page motion
+
+Josh: "make the button bar have sharp angles and the tags use the tag style.
+also top nav bar should have rectangular backgrounds. instead of underline
+they should get a black background when selected. also make a smooth
+animation when switching pages."
+
+- **Square.** Every box in the bottom bar has `border-radius: 0`: the pill,
+  the triggers, both cards, the search field, Clear, the view rows.
+- **Tags are `.tagchip`.** The filter's options use the same chip and TAG
+  voice as the tags on cards and profiles. The component sets only what a
+  button needs on top (cursor, hover, the dark pressed state).
+- **Nav blocks** (`Navbar.astro`). The underline is gone. Each link's padding
+  box is a square rectangle: a faint fill on hover, a solid black block with
+  paper-coloured type for the current page. On a phone the 8px edge margin
+  moved inside the links so the type stays where it was.
+- **Page motion** (`Layout.astro`, keyframes in `global.css`). `<main>` has
+  its own view-transition name: the old page fades and lifts 8px in 180ms,
+  the new one fades in rising 14px over 380ms after a 90ms beat. Back
+  navigations run it in the other direction. The persisted ticker and nav
+  hold still. Astro drops the motion under reduced motion.
