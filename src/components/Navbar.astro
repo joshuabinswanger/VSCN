@@ -79,34 +79,32 @@ import "../styles/type.css";
     text-decoration: none;
     color: var(--color-dark);
     white-space: nowrap;
-    transition: color 0.15s;
-  }
-
-  .nav-link::after {
-    content: "";
-    position: absolute;
-    bottom: 8px;
-    left: 10px;
-    right: 10px;
-    height: 1.5px;
-    background: var(--color-dark);
-    transform: scaleX(0);
-    transform-origin: center;
-    transition: transform 0.25s ease;
+    /* RECTANGLES, NOT AN UNDERLINE (2026-10-12, Josh: "top nav bar should
+       have rectangular backgrounds. instead of underline they should get a
+       black background when selected"). Each link's padding box IS its
+       rectangle: square corners, a faint fill on hover, and the current page
+       a solid black block with paper-coloured type. */
+    border-radius: 0;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
   }
 
   .nav-link:hover {
     color: var(--color-dark);
+    background: color-mix(in srgb, var(--color-dark) 7%, transparent);
   }
 
   .nav-link--active,
   .nav-link--active:visited,
   .nav-link--active:hover {
-    color: var(--color-dark);
+    color: var(--color-bg);
+    background: var(--color-dark);
   }
 
-  .nav-link--active::after {
-    transform: scaleX(1);
+  .nav-link:focus-visible {
+    outline: 1.5px solid var(--color-dark);
+    outline-offset: 2px;
   }
 
   .nav-center {
@@ -169,20 +167,17 @@ import "../styles/type.css";
      links' own 10px lands on the content edge. */
   @media (--bp-mobile) {
     .nav-links {
-      padding: 0 8px;
+      /* The 8px that kept the outermost letters off the screen edge now lives
+         INSIDE each link, as the rectangle's side padding — the type stays
+         where it was and the black block has room around it. */
+      padding: 0;
     }
 
     .nav-link {
       /* Tighter to the title above it — on a phone the two read as one block,
          so the 10px the desktop row uses to breathe just looks like a gap. */
-      padding: 5px 0 7px;
+      padding: 5px 8px 6px;
       font-size: var(--fs-90);
-    }
-
-    .nav-link::after {
-      left: 0;
-      right: 0;
-      bottom: 4px;
     }
 
     .nav-right-group {
