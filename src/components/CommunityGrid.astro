@@ -546,6 +546,22 @@ const indexMembers = [...members].sort((a, b) =>
         </div>
       ))
     }
+    {
+      /* A PHONE STARTS WITH THE CARDS FOLDED (2026-10-12, Josh: "on mobile
+        start closed and show name always"): the picture and the name, the
+        words a tap away. The cards render open — that is the desktop card,
+        and the no-JS state — so this closes them where they stand, inline
+        and before first paint, rather than in a module that runs after it
+        and would show every card open for a frame. Re-run on every
+        navigation into the page, which renders the cards open again. The
+        query is --bp-mobile's, written out: custom media do not reach JS. */
+    }
+    <script is:inline data-astro-rerun>
+      if (matchMedia("(max-width: 767px)").matches)
+        document
+          .querySelectorAll("#member-grid .ccard > details.pdisc--column[open]")
+          .forEach((d) => d.removeAttribute("open"));
+    </script>
 
     {
       /* THE WALL'S TILES, one per artwork. Rendered hidden and carrying no
@@ -1795,7 +1811,10 @@ const indexMembers = [...members].sort((a, b) =>
          full-width artwork; Grid is the stacked two-column wall. */
       display: grid;
       grid-template-columns: minmax(0, 1fr);
-      row-gap: 72px;
+      /* 112, from 72 (2026-10-12, Josh: "space the cards vertically more"):
+         a card now ends in its name and foot, and at 72 the next picture
+         read as part of it. */
+      row-gap: 112px;
       align-items: start;
       width: auto;
       padding-block: 1.5rem 7rem;
@@ -1848,10 +1867,25 @@ const indexMembers = [...members].sort((a, b) =>
        its rows are DRAWN and nothing may feed back into them; the phone's
        rows ARE the cards, so the absolute rule above would leave every cell
        zero-height with the cards piled at the top. */
-    :global(.cgrid__cell > .ccard),
     :global(.cgrid__cell > .cwork) {
       position: static;
       margin-inline: auto;
+    }
+    /* Relative, not static: the card's fold toggle is positioned against it
+       (MemberDetailPanel's mobile column rules), and the cell's padding below
+       would otherwise put the toggle outside the card. */
+    :global(.cgrid__cell > .ccard) {
+      position: relative;
+      margin-inline: auto;
+    }
+
+    /* AIR AT THE SIDES of the gallery's cards (2026-10-12, Josh: "it is too
+       wide, it can benefit from a bit of white space"): main's 15px gutter
+       made each card the screen's width less a hairline, so the picture
+       ran all but edge to edge. The wall's two lanes keep
+       their width. */
+    .cgrid__cell[data-slot="image"] {
+      padding-inline: 24px;
     }
   }
 
