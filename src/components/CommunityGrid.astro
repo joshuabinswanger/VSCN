@@ -365,6 +365,14 @@ const indexMembers = [...members].sort((a, b) =>
               aria-label={t("community.filter.tags.search")}
               autocomplete="off"
             />
+            {
+              /* Clear: one tap empties the search field AND drops the active
+                tag. Shown only while there is something to clear (a tag set
+                or text in the field) — reflectTagClear in the controller. */
+            }
+            <button type="button" id="tag-filter-clear" class="tag-filter__clear" hidden>
+              {t("community.filter.tags.clear")}
+            </button>
           </div>
           <ul class="tag-filter__list">
             <li>
@@ -1001,10 +1009,39 @@ const indexMembers = [...members].sort((a, b) =>
     margin-bottom: 4px;
     padding: 10px 0 8px;
     background: var(--color-bg);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tag-filter__clear {
+    flex: none;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: transparent;
+    font: inherit;
+    font-size: var(--fs-82);
+    color: var(--color-dark);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.15s;
+  }
+
+  .tag-filter__clear:hover,
+  .tag-filter__clear:focus-visible {
+    border-color: var(--color-dark);
+    outline: none;
+  }
+
+  .tag-filter__clear[hidden] {
+    display: none;
   }
 
   .tag-filter__search {
     display: block;
+    flex: 1;
+    min-width: 0;
     width: 100%;
     box-sizing: border-box;
     padding: 0.5rem 0.9rem;

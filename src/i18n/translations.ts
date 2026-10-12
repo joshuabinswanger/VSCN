@@ -68,6 +68,7 @@ export const ui: Record<string, Record<string, string>> = {
     "community.filter.tags": "Tags",
     "community.filter.tags.all": "All tags",
     "community.filter.tags.search": "Search tags…",
+    "community.filter.tags.clear": "Clear",
 
     // MemberCard
     "member.showBio": "Show bio for",
@@ -726,6 +727,7 @@ export const ui: Record<string, Record<string, string>> = {
     "community.filter.tags": "Tags",
     "community.filter.tags.all": "Alle Tags",
     "community.filter.tags.search": "Tags suchen…",
+    "community.filter.tags.clear": "Zurücksetzen",
 
     // MemberCard
     "member.showBio": "Bio anzeigen für",

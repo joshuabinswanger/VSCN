@@ -423,6 +423,16 @@ function reflectTagUI(mode: LayoutMode) {
   document
     .getElementById("tag-filter-btn")
     ?.classList.toggle("filter-word--set", Boolean(tagFilter));
+  reflectTagClear();
+}
+
+/** The tags card's Clear button stands only while there is something to
+ *  clear: an active tag, or text in the search field. */
+function reflectTagClear() {
+  const clear = document.getElementById("tag-filter-clear");
+  if (!clear) return;
+  const search = document.getElementById("tag-filter-search") as HTMLInputElement | null;
+  clear.hidden = !tagFilter && !(search?.value.trim() ?? "");
 }
 
 // One shuffle per VIEW, not per keystroke: page load and the view toggle
@@ -778,7 +788,28 @@ document.addEventListener("astro:page-load", () => {
 
     // Narrowing is the same pass that picks the view's options, so the two
     // rules cannot fight over a row — see reflectTagOptions.
-    tagSearch?.addEventListener("input", () => reflectTagOptions(mode));
+    tagSearch?.addEventListener("input", () => {
+      reflectTagOptions(mode);
+      reflectTagClear();
+    });
+
+    // Clear empties the field and, when a tag is set, drops it — a
+    // navigation like any other tag change, so it is a history entry.
+    // With only search text to clear, the card stays open on the full list.
+    document.getElementById("tag-filter-clear")?.addEventListener("click", () => {
+      if (tagSearch) tagSearch.value = "";
+      if (!tagFilter) {
+        reflectTagOptions(mode);
+        reflectTagClear();
+        // Same rule as opening: no keyboard summoned on a touch screen.
+        if (matchMedia("(hover: hover) and (pointer: fine)").matches) tagSearch?.focus();
+        return;
+      }
+      closeBarMenus();
+      const url = new URL(window.location.href);
+      url.searchParams.delete("tag");
+      goTo(url);
+    });
 
     document.querySelectorAll<HTMLButtonElement>(".tag-filter__option").forEach((opt) => {
       opt.addEventListener("click", () => {
