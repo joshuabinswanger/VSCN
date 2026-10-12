@@ -25,11 +25,15 @@
   --color-text-placeholder: #707070;
   --color-error: #b83232;
   --color-success: #217a47;
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 16px;
+  /* SHARP EDGES ALL OVER (2026-10-12, Josh: "use sharp edges all over the
+     visual design"). The tokens stay so every rule that names one keeps
+     working; they all say square now. The literal radii the tokens never
+     reached are flattened by the sharp-edges rule at the end of this file. */
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
   /* EVERY PAGER'S CHEVRON: the gallery card's and the project carousel's
      edge arrows and the lightbox's side arrows; the chevrons beside each
      "2 / 7" count (.pager-chev below) use the smaller pair after these. Two
@@ -154,9 +158,16 @@ body {
   scroll-behavior: smooth;
 }
 
+/* NO CROSS-FADE ON THE ROOT (2026-10-12, Josh: "there is also a flicker when
+   navigating from page to page"). Everything the root snapshot holds is the
+   same on both sides of a page change — the persisted title and nav, the
+   bar, the paper — except the paper's GRAIN, which drifts, so a 420ms
+   cross-fade of two grains at different offsets was a double exposure that
+   pulsed. The content's motion is <main>'s own (Layout.astro), so the root
+   simply switches. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 420ms;
+  animation: none;
 }
 
 /* <main>'s group does not travel. By default it morphs from the old page's
@@ -789,7 +800,9 @@ label:has(> .picker-input:focus-visible) {
      also what the site's other uppercase labels carry (info headings,
      lightbox links). */
   --tag-track: 0.06em;
-  padding: 2.5px 6px 1.5px calc(6px + var(--tag-track));
+  /* 1px less above and below again (2026-10-12, Josh: "vertical padding for
+     tags should be less"). */
+  padding: 1.5px 6px 0.5px calc(6px + var(--tag-track));
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-family: "Archivo", sans-serif;
@@ -817,7 +830,7 @@ label:has(> .picker-input:focus-visible) {
    tags are links, so the same reasoning applies there. */
 @media (pointer: coarse) {
   .tagchip {
-    padding: 4.5px 7px 3.5px calc(7px + var(--tag-track));
+    padding: 3px 7px 2px calc(7px + var(--tag-track));
   }
 }
 
@@ -1102,4 +1115,17 @@ label:has(> .picker-input:focus-visible) {
   html { height: auto; overflow: visible; overscroll-behavior-y: auto; }
   body { display: block; height: auto; min-height: 100svh; overflow: visible; overscroll-behavior-y: auto; }
   .page-wrap { overflow: visible; min-height: 100svh; scrollbar-gutter: auto; }
+}
+
+/* ── SHARP EDGES, EVERYWHERE (2026-10-12) ─────────────────────
+   Josh: "use sharp edges all over the visual design". The radius tokens are
+   0 (top of this file); this catches the literal radii they never reached —
+   carousel dots, avatars, the pill-shaped controls, PhotoSwipe's own chrome
+   and the elements scripts build. !important because it is a design rule,
+   not a component's: a component that wants a curve back has to say so
+   here, on purpose. */
+*,
+*::before,
+*::after {
+  border-radius: 0 !important;
 }

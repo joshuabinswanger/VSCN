@@ -835,12 +835,22 @@ const indexMembers = [...members].sort((a, b) =>
     }
   }
 
-  /* ── The two drop-ups ─────────────────────────────────── */
-  .bar-menu + .bar-menu {
-    /* A hairline between the two triggers: one bar, two jobs. */
-    padding-left: 2px;
-    border-left: 1px solid var(--color-border);
+  /* HIGHER AND A SIZE UP ON A DESKTOP (2026-10-12, Josh: "make it so that it
+     hovers a bit higher and a bit bigger on desktop"). It leaves the corners'
+     20px line for 36px of its own; the triggers' padding grows with the type. */
+  @media (--bp-desktop) {
+    .community-bar {
+      --chip-pad-y: 0.55rem;
+      bottom: 36px;
+    }
+    .community-bar__in {
+      --bar-pad: 5px;
+      gap: 5px;
+      font-size: var(--fs-95);
+    }
   }
+
+  /* ── The two drop-ups ─────────────────────────────────── */
 
   .bar-menu__trigger {
     display: inline-flex;
@@ -849,7 +859,12 @@ const indexMembers = [...members].sort((a, b) =>
     padding: var(--chip-pad-y, 0.4rem) 0.9rem;
     border: none;
     border-radius: 0;
-    background: transparent;
+    /* PERSISTENT (2026-10-12, Josh: "make the tag and view button
+       persistent"): each trigger is a box at rest — the paper with a black
+       hairline drawn inside it — not a word that only gets a ground when it
+       is pointed at. Open, or holding a tag, it is black. */
+    background: var(--color-bg);
+    box-shadow: inset 0 0 0 1px var(--color-dark);
     font: inherit;
     color: var(--color-dark);
     cursor: pointer;
@@ -865,9 +880,14 @@ const indexMembers = [...members].sort((a, b) =>
     text-overflow: ellipsis;
   }
 
-  .bar-menu__trigger:hover,
+  /* No grey (2026-10-12, "the grey hover tone I don't like"): the hairline
+     thickens under the pointer; an open menu's trigger is black. */
+  .bar-menu__trigger:hover {
+    box-shadow: inset 0 0 0 2px var(--color-dark);
+  }
   .bar-menu__trigger[aria-expanded="true"] {
-    background: color-mix(in srgb, var(--color-dark) 7%, transparent);
+    background: var(--color-dark);
+    color: var(--color-bg);
   }
 
   .bar-menu__trigger:focus-visible {
@@ -961,7 +981,7 @@ const indexMembers = [...members].sort((a, b) =>
 
   .view-toggle__btn:hover,
   .view-toggle__btn:focus-visible {
-    background: color-mix(in srgb, var(--color-dark) 7%, transparent);
+    box-shadow: inset 0 0 0 1.5px var(--color-dark);
     outline: none;
   }
 
@@ -1156,7 +1176,11 @@ const indexMembers = [...members].sort((a, b) =>
     /* No gap: gutters are columns the table leaves empty, so they can vary
        down the page. See the slot table's rule 4. */
     column-gap: 0;
-    width: min(100%, var(--grid-max));
+    /* MORE AIR AT THE SIDES (2026-10-12, Josh: "the gallery should get more
+       padding on the left and right"): 3vw a side inside main's own margin.
+       The wall and the phone set their own width and never read this. */
+    --cgrid-pad: 3vw;
+    width: min(100% - 2 * var(--cgrid-pad), var(--grid-max));
     /* Once <main> is wider than the cap — above a ~2160px viewport, where
        94vw minus main's padding clears 2000px — the leftover has to be split,
        or the whole drawing sits flush left and reads as off-centre against a
@@ -1380,7 +1404,7 @@ const indexMembers = [...members].sort((a, b) =>
          `minmax(0, auto)`, the tallest tile in the row, which made the row
          depth a property of whichever pictures the deal happened to put
          together. A tile shorter than the row sits at its top, as before. */
-      grid-auto-rows: calc(var(--wall-frame) + 1.2rem);
+      grid-auto-rows: var(--wall-frame);
       /* The 18rem tail is the SPREAD's — its cards are out of flow, so its
          last beat needs drawn whitespace under it where every earlier beat
          borrows the next one's. The wall's cards are in flow and its last row
@@ -1436,7 +1460,7 @@ const indexMembers = [...members].sort((a, b) =>
        tiles rattling inside rows that are the wrong depth rather than as an
        error. The extra specificity wins wherever this sits in the file. */
     .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
-      --cgrid-row: calc((var(--wall-frame) + 1.2rem) / var(--slot-rows, 1));
+      --cgrid-row: calc(var(--wall-frame) / var(--slot-rows, 1));
     }
   }
 
@@ -1917,7 +1941,7 @@ const indexMembers = [...members].sort((a, b) =>
     .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
       container-type: inline-size;
       --slot-rows: 1;
-      --cgrid-row: calc((1.5 * 100cqw + 1.2rem) / var(--slot-rows, 1));
+      --cgrid-row: calc((1.5 * 100cqw) / var(--slot-rows, 1));
     }
 
     .cgrid__cell {
