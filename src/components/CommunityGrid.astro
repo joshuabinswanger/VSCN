@@ -1371,7 +1371,9 @@ const indexMembers = [...members].sort((a, b) =>
          floor the parallax sets: a row can close on the one below it as it
          travels, and 30px absorbs that with the wall's damped amplitude (see
          flowScale, which scales it to a third of the spread's). */
-      row-gap: calc(0.75 * var(--wall-gap-min));
+      /* 1.1 × the floor since 2026-10-12 (Josh: "more white space in grid
+         view"), from three quarters: 88px. */
+      row-gap: calc(1.1 * var(--wall-gap-min));
       /* EVERY ROW THE SAME HEIGHT: the frame cap plus the work tile's author
          line (1.2rem, --cwork-chrome in CommunityWorkCard — the third place
          that figure is stated, with the work-cell rule below). It was
@@ -1891,12 +1893,13 @@ const indexMembers = [...members].sort((a, b) =>
     .cgrid[data-pattern="grid"]:not([hidden]) {
       display: block;
       columns: 2;
-      column-gap: 24px;
+      column-gap: 32px;
     }
 
     .cgrid[data-pattern="grid"] .cgrid__cell {
       break-inside: avoid;
-      margin-bottom: 48px;
+      /* 64, from 48 (2026-10-12, "more white space in grid view"). */
+      margin-bottom: 64px;
     }
 
     /* THE DESKTOP CAP, ON THE PHONE'S COLUMNS (2026-09-08, Josh: "very tall
