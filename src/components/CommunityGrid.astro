@@ -328,35 +328,44 @@ const indexMembers = [...members].sort((a, b) =>
   <div class="community-bar">
     <div class="community-bar__in">
       {
-        /* The tags dropdown: browse every tag or type inside it to narrow the
-          list, pick one to filter. Single-select — "All tags" (or re-picking
-          the active tag) clears. The trigger is a filter-word like its
-          neighbours; the panel is the one boxed element the bar owns, and it
-          floats, so it never disturbs the line. */
+        /* TWO DROP-UPS (2026-10-12, Josh: "floating bar. also restyle tags to
+          be more modern. the view version should also be a drop up"). Each is
+          a .bar-menu: a chip-shaped trigger and a card that rises from the
+          bar. Opening one closes the other; a click outside or Escape closes
+          both (communityDirectoryController.ts, closeBarMenus).
+
+          The tags menu: browse every tag as a chip or type to narrow them,
+          pick one to filter. Single-select — "All tags" (or re-picking the
+          active tag) clears. With a tag set, the trigger shows its name and
+          fills dark, so the bar says at a glance that the page is filtered. */
       }
-      <div class="tag-filter">
+      <div class="bar-menu tag-filter">
         <button
           type="button"
           id="tag-filter-btn"
-          class="filter-word"
+          class="bar-menu__trigger"
           aria-expanded="false"
           aria-controls="tag-filter-panel"
         >
           <span id="tag-filter-label" data-rest={t("community.filter.tags")}>
             {t("community.filter.tags")}
           </span>
-          <span class="tag-filter__caret" aria-hidden="true">▾</span>
+          <svg class="bar-menu__chev" viewBox="0 0 10 6" aria-hidden="true"
+            ><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.2"
+            ></path></svg
+          >
         </button>
-        <div id="tag-filter-panel" class="tag-filter__panel" hidden>
-          <p class="field-note">{t("community.filter.tags.scope")}</p>
-          <input
-            id="tag-filter-search"
-            class="tag-filter__search"
-            type="search"
-            placeholder={t("community.filter.tags.search")}
-            aria-label={t("community.filter.tags.search")}
-            autocomplete="off"
-          />
+        <div id="tag-filter-panel" class="bar-menu__panel tag-filter__panel" hidden>
+          <div class="tag-filter__head">
+            <input
+              id="tag-filter-search"
+              class="tag-filter__search"
+              type="search"
+              placeholder={t("community.filter.tags.search")}
+              aria-label={t("community.filter.tags.search")}
+              autocomplete="off"
+            />
+          </div>
           <ul class="tag-filter__list">
             <li>
               <button type="button" class="tag-filter__option" data-tag="">
@@ -395,34 +404,68 @@ const indexMembers = [...members].sort((a, b) =>
               ))
             }
           </ul>
+          <p class="field-note tag-filter__scope">{t("community.filter.tags.scope")}</p>
         </div>
       </div>
       {
-        /* All three views on every width: on mobile Gallery is a single
-          fading column, Grid the stacked two-column wall — see the
-          --bp-mobile block on .cgrid. */
+        /* The view menu. All three views on every width: on mobile Gallery is
+          a single fading column, Grid the stacked two-column wall — see the
+          --bp-mobile block on .cgrid. The trigger names the current view
+          (reflectMode writes it; the server renders the default's name). In
+          strip mode, which is URL-only, no row is pressed and the trigger
+          falls back to "View". */
       }
-      <div class="view-toggle" role="group" aria-label={t("community.view.label")}>
+      <div class="bar-menu view-menu">
         <button
           type="button"
-          class="view-toggle__btn"
-          data-mode="spread"
-          aria-pressed={DEFAULT_VIEW === "spread" ? "true" : "false"}
+          id="view-menu-btn"
+          class="bar-menu__trigger"
+          aria-expanded="false"
+          aria-controls="view-menu-panel"
+          aria-label={t("community.view.label")}
         >
-          {t("community.view.gallery")}
+          <span id="view-menu-label" data-rest={t("community.view.label")}>
+            {t(
+              DEFAULT_VIEW === "index"
+                ? "community.view.index"
+                : DEFAULT_VIEW === "grid"
+                  ? "community.view.grid"
+                  : "community.view.gallery"
+            )}
+          </span>
+          <svg class="bar-menu__chev" viewBox="0 0 10 6" aria-hidden="true"
+            ><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.2"
+            ></path></svg
+          >
         </button>
-        <button type="button" class="view-toggle__btn" data-mode="grid" aria-pressed="false">
-          {t("community.view.grid")}
-        </button>
-        <button
-          type="button"
-          class="view-toggle__btn"
-          data-mode="index"
-          aria-pressed={DEFAULT_VIEW === "index" ? "true" : "false"}
-          aria-describedby="member-index-note"
+        <div
+          id="view-menu-panel"
+          class="bar-menu__panel view-menu__panel view-toggle"
+          role="group"
+          aria-label={t("community.view.label")}
+          hidden
         >
-          {t("community.view.index")}
-        </button>
+          <button
+            type="button"
+            class="view-toggle__btn"
+            data-mode="spread"
+            aria-pressed={DEFAULT_VIEW === "spread" ? "true" : "false"}
+          >
+            {t("community.view.gallery")}
+          </button>
+          <button type="button" class="view-toggle__btn" data-mode="grid" aria-pressed="false">
+            {t("community.view.grid")}
+          </button>
+          <button
+            type="button"
+            class="view-toggle__btn"
+            data-mode="index"
+            aria-pressed={DEFAULT_VIEW === "index" ? "true" : "false"}
+            aria-describedby="member-index-note"
+          >
+            {t("community.view.index")}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -687,67 +730,41 @@ const indexMembers = [...members].sort((a, b) =>
     font-size: var(--fs-90);
   }
 
-  /* ── The view selector ────────────────────────────────── */
-  .view-toggle {
-    display: flex;
-    gap: 1.2rem;
-  }
-
-  .view-toggle__btn {
-    border: none;
-    background: none;
-    padding: 0;
-    font: inherit;
-    color: var(--color-muted);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: color 0.15s;
-  }
-
-  .view-toggle__btn:hover {
-    color: var(--color-dark);
-  }
-
-  .view-toggle__btn[aria-pressed="true"] {
-    color: var(--color-dark);
-    text-decoration: underline;
-    text-underline-offset: 0.35em;
-  }
-
   /* ── The bar ──────────────────────────────────────────── */
-  /* A FIXED ISLAND AT THE BOTTOM (2026-10-12). One line of chrome runs along
-     the bottom edge on desktop: the footer's links fixed bottom-left at 20px
-     (SiteFooter.astro), the EN / DE toggle fixed bottom-right at 20px
-     (Navbar.astro), and this pill centred between them. Those two are bare
-     type with no box; this one is the page's controls floating over cards
-     that scroll under it, so it needs a fill — paper, not frost, in keeping
-     with the bare header (--color-bg-veil in global.css says "nothing").
-     z-index 20 matches its two neighbours and clears the cells' own stacking
-     contexts (GSAP transforms; an open disclosure raises its cell to 3).
+  /* A FLOATING PILL AT THE BOTTOM, ON EVERY WIDTH (2026-10-12). On desktop it
+     sits on one line of chrome with the footer's links fixed bottom-left at
+     20px (SiteFooter.astro) and the EN / DE toggle fixed bottom-right at 20px
+     (Navbar.astro). On a phone those corners are empty — the footer is in the
+     flow and carries the language switch — so the pill floats on its own,
+     lifted off the edge and the home bar. Paper with a hairline and a soft
+     shadow, no blur, in keeping with the bare header (--color-bg-veil in
+     global.css says "nothing"). z-index 20 matches its two neighbours and
+     clears the cells' own stacking contexts (GSAP transforms; an open
+     disclosure raises its cell to 3).
 
      TWO ELEMENTS: the outer is a full-width TRACK that only positions, the
      inner is the pill. A track rather than `left: 50%; translateX(-50%)`
      because of the footer. Centred by the viewport alone, the pill meets the
-     footer's "© 2026 VSCN" on any window narrower than ~930px, once the
-     footer has faded in at the end of the page. The track is a grid whose
+     footer's "© 2026 VSCN" on any desktop window narrower than ~930px, once
+     the footer has faded in at the end of the page. The track is a grid whose
      outer columns are 1fr each — equal, so the pill is centred — with a floor
      of --bar-reserve: when the window is too narrow for both floors and the
-     pill, the grid overflows to the RIGHT instead of shrinking the floors,
-     and the pill ends up sitting just past the footer rather than on it. The
-     toggle is 39px wide inside the right-hand floor, so it is never reached.
-     The reserve is the footer's wider (German) line — 30px in, ~276px of
-     links and ©, measured 2026-10-12 — plus a gap; it has to move if the
-     footer's words do. pointer-events: the track is see-through to clicks
-     and the pill takes them back. */
+     pill, the grid overflows to the RIGHT instead of shrinking the floors, and
+     the pill ends up just past the footer rather than on it. The reserve is
+     the footer's wider (German) line — 30px in, ~276px of links and ©,
+     measured 2026-10-12 — plus a gap; it moves if the footer's words do. The
+     track is see-through to clicks and the pill takes them back. */
   .community-bar {
     position: fixed;
     /* THE TYPE SITS ON THE CORNERS' LINE, NOT THE BOX. The footer and the
        toggle put their line boxes at 20px from the edge; the pill pads its
-       line by --bar-pad-y and a 1px border, so the box sits that much lower
-       and the three texts share one line across the width. */
-    --bar-pad-y: 0.5rem;
+       triggers by --bar-pad, the triggers pad their text by --chip-pad-y, and
+       the pill has a 1px border — so the box sits that much lower and the
+       three texts share one line across the width. */
+    --bar-pad: 4px;
+    --chip-pad-y: 0.4rem;
     --bar-reserve: 330px;
-    bottom: calc(20px - var(--bar-pad-y) - 1px);
+    bottom: calc(20px - var(--bar-pad) - var(--chip-pad-y) - 1px);
     left: 0;
     right: 0;
     z-index: 20;
@@ -758,152 +775,230 @@ const indexMembers = [...members].sort((a, b) =>
 
   .community-bar__in {
     grid-column: 2;
+    /* The panels hang from the PILL on desktop: the tags card from its left
+       edge, the view menu from its right. */
+    position: relative;
     pointer-events: auto;
-    box-sizing: border-box;
-    padding: var(--bar-pad-y) 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: var(--bar-pad);
     background: var(--color-bg);
     border: 1px solid var(--color-border);
     border-radius: 999px;
-    display: flex;
-    align-items: baseline;
-    gap: 0.6rem 1.75rem;
+    box-shadow: 0 6px 24px -8px color-mix(in srgb, var(--color-dark) 22%, transparent);
     font-size: var(--fs-85);
   }
 
-  /* A hairline between the filter and the view selector: the two are one
-     bar, but they do two different things. */
-  .view-toggle {
-    padding-left: 1.75rem;
-    border-left: 1px solid var(--color-border);
-  }
-
   @media (--bp-mobile) {
-    /* A FULL-WIDTH STRIP ON A PHONE. The corners are empty here — the footer
-       is in the flow at the end of the page and carries the language switch
-       (Layout.astro hides the fixed toggle wherever there is a footer) — so
-       there is nothing to centre between, and a pill would waste the width
-       the controls need. It reaches the screen edges like the nav; the inner
-       row keeps main's 15px gutter so the type lines up with the content.
-       The safe-area inset keeps the controls above the iPhone home bar.
+    /* Floats on a phone too: centred, 12px off the bottom plus the home-bar
+       inset. The track is a plain block here — there is no footer to dodge —
+       and the pill centres in it. The track is ALSO the panels' containing
+       block on a phone (the pill drops position:relative below), so a card
+       spans the screen less a 12px margin instead of the pill's narrow width.
        .page-wrap's 72px bottom padding (Layout.astro) is what lets the last
        card and the footer's last line scroll out from under it. */
     .community-bar {
-      bottom: 0;
-      display: block;
+      bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+      display: flex;
+      justify-content: center;
     }
 
     .community-bar__in {
-      justify-content: space-between;
-      padding: 0.6rem 15px calc(0.6rem + env(safe-area-inset-bottom, 0px));
-      border: 0;
-      border-top: 1px solid var(--color-border);
-      border-radius: 0;
-    }
-
-    .view-toggle {
-      padding-left: 0;
-      border-left: 0;
+      position: static;
     }
   }
 
-  .filter-word {
+  /* ── The two drop-ups ─────────────────────────────────── */
+  .bar-menu + .bar-menu {
+    /* A hairline between the two triggers: one bar, two jobs. */
+    padding-left: 2px;
+    border-left: 1px solid var(--color-border);
+  }
+
+  .bar-menu__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+    padding: var(--chip-pad-y, 0.4rem) 0.9rem;
     border: none;
-    background: none;
-    padding: 0;
+    border-radius: 999px;
+    background: transparent;
     font: inherit;
-    color: var(--color-muted);
+    color: var(--color-dark);
     cursor: pointer;
     white-space: nowrap;
-    transition: color 0.15s;
+    max-width: 14rem;
+    transition:
+      background-color 0.15s,
+      color 0.15s;
   }
 
-  .filter-word:hover {
-    color: var(--color-dark);
+  .bar-menu__trigger > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .filter-word[aria-pressed="true"],
-  .filter-word--set {
-    color: var(--color-dark);
-    text-decoration: underline;
-    text-underline-offset: 0.35em;
+  .bar-menu__trigger:hover,
+  .bar-menu__trigger[aria-expanded="true"] {
+    background: color-mix(in srgb, var(--color-dark) 7%, transparent);
   }
 
-  @media (--bp-mobile) {
-    /* Touch targets: the hit area grows around the type without moving it —
-       padding out, the same distance back in margin. Must sit BELOW
-       `.filter-word { padding: 0 }` above: it used to live further up the
-       file, where that rule cancelled the padding and left the trigger with
-       the negative margin only — a 15px-tall tap target sitting 0.4rem left of
-       where it belonged, which the old 15px gutter hid. */
-    .view-toggle__btn,
-    .filter-word {
-      padding: 0.55rem 0.4rem;
-      margin: -0.55rem -0.4rem;
+  .bar-menu__trigger:focus-visible {
+    outline: 1.5px solid var(--color-dark);
+    outline-offset: 1px;
+  }
+
+  /* A tag is set: the trigger fills, so the bar says the page is filtered. */
+  .bar-menu__trigger.filter-word--set {
+    background: var(--color-dark);
+    color: var(--color-bg);
+  }
+
+  .bar-menu__chev {
+    width: 0.7em;
+    height: 0.42em;
+    flex: none;
+    transition: transform 0.2s ease;
+  }
+
+  .bar-menu__trigger[aria-expanded="true"] .bar-menu__chev {
+    transform: rotate(180deg);
+  }
+
+  /* The card that rises from the bar. Absolute against the pill on desktop,
+     against the track on a phone (see the --bp-mobile block above). */
+  .bar-menu__panel {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    box-sizing: border-box;
+    padding: 6px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 16px 40px -12px color-mix(in srgb, var(--color-dark) 28%, transparent);
+    transform-origin: bottom center;
+  }
+
+  .bar-menu__panel[hidden] {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .bar-menu__panel:not([hidden]) {
+      /* Global name: Astro does not scope @keyframes. */
+      animation: community-bar-menu-rise 0.18s ease-out;
     }
   }
 
-  /* ── The tags dropdown ────────────────────────────────── */
-  .tag-filter {
+  @keyframes community-bar-menu-rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.98);
+    }
+  }
+
+  /* ── The view menu ────────────────────────────────────── */
+  /* Anchored to its OWN trigger on every width, unlike the tags card: it is
+     narrow, so on a phone it should rise from the trigger it belongs to, not
+     from the screen edge. The offsets line its right edge up with the pill's
+     outer edge and its gap up with the tags card's (the pill's padding plus
+     its border). */
+  .view-menu {
     position: relative;
   }
 
-  .tag-filter__caret {
-    font-size: 0.6em;
+  .view-menu__panel {
+    right: calc(-1 * var(--bar-pad) - 1px);
+    bottom: calc(100% + 8px + var(--bar-pad) + 1px);
+    display: flex;
+    flex-direction: column;
+    min-width: 9rem;
   }
 
-  /* The one boxed element the bar owns. Floats below the trigger, above the
-     grid — inside the bar's stacking context, so no z fight with the cells. */
+  .view-toggle__btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.55rem 0.75rem;
+    border: none;
+    border-radius: var(--radius-md);
+    background: none;
+    font: inherit;
+    text-align: left;
+    color: var(--color-dark);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s;
+  }
+
+  .view-toggle__btn:hover,
+  .view-toggle__btn:focus-visible {
+    background: color-mix(in srgb, var(--color-dark) 7%, transparent);
+    outline: none;
+  }
+
+  /* The current view: a check at the row's end. */
+  .view-toggle__btn[aria-pressed="true"]::after {
+    content: "";
+    width: 0.8em;
+    height: 0.45em;
+    margin-top: -0.25em;
+    border-left: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(-45deg);
+  }
+
+  /* ── The tags menu ────────────────────────────────────── */
   .tag-filter__panel {
-    position: absolute;
-    /* Opens UPWARD: the bar sits at the bottom of the viewport, so below the
-       trigger there is nothing but the edge. */
-    bottom: calc(100% + 0.6rem);
-    /* Hangs from the trigger's left edge, which is now the shell's left
-       edge: centring a 16rem panel on a trigger that far left would hang
-       it off the side of the page. */
     left: 0;
-    width: 16rem;
-    /* The list IS the panel's content, so this cap is what decides how many
-       tags read at a glance before scrolling. It rises from a bar at the
-       bottom of the viewport, so the vh half keeps it clear of the header;
-       the rem half stops the panel drawing itself as a full-height column on
-       a tall screen. */
-    max-height: min(60vh, 34rem);
+    width: 22rem;
+    /* The chips ARE the panel's content, so this cap is what decides how
+       many read at a glance before scrolling. The vh half keeps the card
+       clear of the header; the rem half stops it drawing itself as a full
+       column on a tall screen. */
+    max-height: min(60vh, 30rem);
     overflow-y: auto;
-    background: var(--color-bg);
-    border: 1px solid var(--color-dark);
-    /* No top padding of its own: the gap above the search field belongs TO
-       the field, so the field can stick flush to the scrollport edge with no
-       strip for the options to show through (see .tag-filter__search). */
-    padding: 0 0.7rem 0.4rem;
+    overscroll-behavior: contain;
+    padding: 0 10px 10px;
     scrollbar-width: thin;
     scrollbar-color: var(--color-border) transparent;
   }
 
-  .tag-filter__panel[hidden] {
-    display: none;
+  @media (--bp-mobile) {
+    .tag-filter__panel {
+      left: 12px;
+      right: 12px;
+      width: auto;
+    }
+
+  }
+
+  /* Holds the search field in place while the chips scroll under it. The
+     panel's top padding lives HERE, so the band paints over every chip
+     passing behind it. */
+  .tag-filter__head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    margin-bottom: 4px;
+    padding: 10px 0 8px;
+    background: var(--color-bg);
   }
 
   .tag-filter__search {
     display: block;
     width: 100%;
     box-sizing: border-box;
-    /* Holds its place while a long list scrolls under it. The panel's top
-       padding lives HERE instead, so the field's own box reaches the
-       scrollport edge and the sticky band paints over every option passing
-       behind it — with the type sitting exactly where it did before. */
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    margin-bottom: 0.5rem;
-    padding: 0.7rem 0 0.25rem;
-    border: none;
-    border-bottom: 1px solid var(--color-border);
-    border-radius: 0;
-    background: var(--color-bg);
+    padding: 0.5rem 0.9rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-dark) 6%, var(--color-bg));
     font: inherit;
     font-size: var(--fs-85);
     color: var(--color-dark);
+    transition: border-color 0.15s;
   }
 
   .tag-filter__search::placeholder {
@@ -912,7 +1007,7 @@ const indexMembers = [...members].sort((a, b) =>
 
   .tag-filter__search:focus {
     outline: none;
-    border-bottom-color: var(--color-dark);
+    border-color: var(--color-dark);
   }
 
   @media (--bp-mobile) {
@@ -923,36 +1018,48 @@ const indexMembers = [...members].sort((a, b) =>
     }
   }
 
+  /* The tags as chips: a wrapping cloud rather than a list, so many more
+     read at once and each is a clear tap target. */
   .tag-filter__list {
     list-style: none;
     margin: 0;
     padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
   }
 
   .tag-filter__option {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 1rem;
-    width: 100%;
-    border: none;
-    background: none;
-    padding: 0.3rem 0.25rem;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: transparent;
     font: inherit;
-    font-size: var(--fs-85);
-    text-align: left;
+    font-size: var(--fs-82);
     color: var(--color-dark);
     cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s,
+      color 0.15s;
   }
 
   .tag-filter__option:hover,
   .tag-filter__option:focus-visible {
-    background-color: color-mix(in srgb, var(--color-dark) 5%, transparent);
+    border-color: var(--color-dark);
+    outline: none;
   }
 
   .tag-filter__option[aria-pressed="true"] {
-    text-decoration: underline;
-    text-underline-offset: 0.35em;
+    background: var(--color-dark);
+    border-color: var(--color-dark);
+    color: var(--color-bg);
+  }
+
+  .tag-filter__scope {
+    margin: 10px 2px 0;
+    color: var(--color-muted);
   }
 
   .filter-empty {

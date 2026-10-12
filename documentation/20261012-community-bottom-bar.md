@@ -78,3 +78,28 @@ returned UNAUTHENTICATED all morning, so no fresh export was possible).
 Browser pane at 1280×800, 800×600 and 375×812: pill geometry, click-through
 on the track, the panel opening upward, the footer fading in on a real scroll
 at the page end, and the strip clearing the phone footer.
+
+## Same day, second pass: floating everywhere, two drop-ups
+
+Josh: "floating bar. also restyle tags to be more modern. the view version
+should also be a drop up."
+
+- **Floating on a phone too.** The full-width strip is gone. The pill floats
+  centred, 12px off the bottom plus the home-bar inset. Desktop keeps the
+  track and the footer reserve described above.
+- **Two drop-ups.** The pill holds two chip-shaped triggers, Tags and the
+  current view's name, split by a hairline. Each opens a card that rises
+  from the bar with a short fade and lift (none under reduced motion).
+  Opening one closes the other, and a click outside or Escape closes both
+  (`closeBarMenus` in the controller).
+- **Tags are chips.** The panel is a rounded search well over a wrapping
+  cloud of pill chips, the active one filled dark. With a tag set, the bar's
+  trigger fills dark and shows the tag's name. The scope note moved under
+  the chips.
+- **The view menu** lists Gallery, Grid and Index with a check on the
+  current one. The trigger shows the current view's name; strip mode, which
+  has no row, falls back to "View".
+- **Anchoring.** The tags card hangs from the pill on desktop and spans the
+  screen less 12px on a phone, where the pill is too narrow for it. The view
+  menu always hangs from its own trigger, right-aligned to the pill's edge.
+- **Soft shadows** use `color-mix` on `--color-dark`, so no raw colours.

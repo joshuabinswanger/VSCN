@@ -291,26 +291,44 @@ function memberMatches(el: HTMLElement): boolean {
   return !tagFilter || (el.dataset.tags ?? "").includes(`|${tagFilter}|`);
 }
 
-/** Close the tags panel wherever it is. Queries the live DOM rather than
- *  closing over it, so the module-level listeners below survive
- *  ClientRouter swaps without stacking or holding dead nodes. */
-function closeTagPanel() {
-  const panel = document.getElementById("tag-filter-panel");
-  if (panel && !panel.hidden) {
-    panel.hidden = true;
-    document.getElementById("tag-filter-btn")?.setAttribute("aria-expanded", "false");
+/** The bar's two drop-ups (tags, view), as [trigger, panel] id pairs. */
+const BAR_MENUS = [
+  ["tag-filter-btn", "tag-filter-panel"],
+  ["view-menu-btn", "view-menu-panel"],
+] as const;
+
+/** Close every drop-up in the bar, or every one but `keep`. Queries the live
+ *  DOM rather than closing over it, so the module-level listeners below
+ *  survive ClientRouter swaps without stacking or holding dead nodes. */
+function closeBarMenus(keep?: string) {
+  for (const [btnId, panelId] of BAR_MENUS) {
+    if (panelId === keep) continue;
+    const panel = document.getElementById(panelId);
+    if (panel && !panel.hidden) {
+      panel.hidden = true;
+      document.getElementById(btnId)?.setAttribute("aria-expanded", "false");
+    }
   }
+}
+
+/** Flip one drop-up, closing the other. Returns whether it is now open. */
+function toggleBarMenu(btnId: string, panelId: string): boolean {
+  const panel = document.getElementById(panelId);
+  if (!panel) return false;
+  const opening = panel.hidden;
+  closeBarMenus(panelId);
+  panel.hidden = !opening;
+  document.getElementById(btnId)?.setAttribute("aria-expanded", String(opening));
+  return opening;
 }
 
 // Module scope, installed ONCE per session — not inside astro:page-load,
 // where document-level listeners would stack one copy per navigation.
 document.addEventListener("click", (e) => {
-  const panel = document.getElementById("tag-filter-panel");
-  if (!panel || panel.hidden) return;
-  if (!(e.target instanceof Element) || !e.target.closest(".tag-filter")) closeTagPanel();
+  if (!(e.target instanceof Element) || !e.target.closest(".bar-menu")) closeBarMenus();
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeTagPanel();
+  if (e.key === "Escape") closeBarMenus();
 });
 
 /** The ledger's pass. Returns the visible count. */
@@ -567,12 +585,18 @@ function modeFromURL(): LayoutMode {
   return (MODES as string[]).includes(p ?? "") ? (p as LayoutMode) : DEFAULT_VIEW;
 }
 
-/** The Gallery/Grid selector's pressed state. In strip mode (URL-only,
- *  no UI) neither button is pressed, which is the honest rendering. */
+/** The view menu's pressed row and its trigger's name. In strip mode
+ *  (URL-only, no UI) no row is pressed and the trigger says "View", which
+ *  is the honest rendering. */
 function reflectMode(mode: LayoutMode) {
+  let current = "";
   document.querySelectorAll<HTMLButtonElement>(".view-toggle__btn").forEach((btn) => {
-    btn.setAttribute("aria-pressed", String(btn.dataset.mode === mode));
+    const active = btn.dataset.mode === mode;
+    btn.setAttribute("aria-pressed", String(active));
+    if (active) current = btn.textContent?.trim() ?? "";
   });
+  const label = document.getElementById("view-menu-label");
+  if (label) label.textContent = current || (label.dataset.rest ?? "");
 }
 
 // Module scope so a page swap replaces the watch instead of stacking a
@@ -653,6 +677,7 @@ document.addEventListener("astro:page-load", () => {
     document.querySelectorAll<HTMLButtonElement>(".view-toggle__btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const next = btn.dataset.mode as LayoutMode;
+        closeBarMenus();
         if (grid.dataset.pattern === next) return;
         const url = new URL(window.location.href);
         // The DEFAULT view is the bare URL; every other view is named.
@@ -729,11 +754,13 @@ document.addEventListener("astro:page-load", () => {
     const tagPanel = document.getElementById("tag-filter-panel");
     const tagSearch = document.getElementById("tag-filter-search") as HTMLInputElement | null;
 
+    document
+      .getElementById("view-menu-btn")
+      ?.addEventListener("click", () => toggleBarMenu("view-menu-btn", "view-menu-panel"));
+
     tagBtn?.addEventListener("click", () => {
       if (!tagPanel) return;
-      const opening = tagPanel.hidden;
-      tagPanel.hidden = !opening;
-      tagBtn.setAttribute("aria-expanded", String(opening));
+      const opening = toggleBarMenu("tag-filter-btn", "tag-filter-panel");
       // ── THE PANEL DOES NOT SUMMON A KEYBOARD ──────────────
       // (2026-09-04, Josh: "search field should not trigger a keyboard
       // directly".) Focusing on open is right where the keyboard is already
@@ -757,7 +784,7 @@ document.addEventListener("astro:page-load", () => {
       opt.addEventListener("click", () => {
         const picked = opt.dataset.tag ?? "";
         const next = picked === tagFilter ? "" : picked;
-        closeTagPanel();
+        closeBarMenus();
         const url = new URL(window.location.href);
         if (next) url.searchParams.set("tag", next);
         else url.searchParams.delete("tag");
