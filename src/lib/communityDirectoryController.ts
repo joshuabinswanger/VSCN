@@ -682,48 +682,34 @@ document.addEventListener("astro:page-load", () => {
 
     // ── WHERE THE GALLERY FADE BEGINS ─────────────────────
     // The mobile gallery's fade runs over `exit` against a scrollport inset
-    // by this many pixels, so the number IS the docked filter bar's bottom
-    // edge — see the cgrid-cell-out block in the stylesheet. It is read
-    // rather than recomputed because the two halves are a calc that has
-    // already had to be restated twice (`top`) and a line box of type
-    // (`offsetHeight`), and a third copy of either would be a third thing to
-    // keep in step.
+    // by this many pixels, so the number IS the sticky nav's bottom edge —
+    // see the cgrid-cell-out block in the stylesheet. Until 2026-10-12 it was
+    // the filter bar's bottom edge, because the bar docked under the nav and
+    // was the lowest thing a card slid under; the bar now floats at the
+    // bottom of the viewport (CommunityGrid.astro, "The bar"), and the nav
+    // is the top of the page again. It is read rather than recomputed
+    // because the nav's height is a line box of type plus paddings that
+    // Navbar.astro owns, and a second copy would be a second thing to keep
+    // in step.
     //
-    // `top` is the DOCKED offset whether or not the bar is docked right now,
+    // The nav is sticky at top 0, so its height IS its docked bottom edge,
     // which is what makes this safe to take at load with the page scrolled
-    // to the top. Once per page-load and once per bar resize — the font-size
-    // token steps at the breakpoint and the controls can wrap — and never on
-    // scroll: this is a constant the compositor then animates against.
-    //
-    // The same edge is where the header's backdrop layer has to end: the
-    // bar paints no fill of its own, and the nav's veil is stretched down
-    // past the nav by the difference. Set on .page-wrap because the nav is
-    // its child (not this grid's), and .page-wrap is swapped on navigation,
-    // so leaving the page takes the extension with it.
-    const fadeBar = document.querySelector<HTMLElement>(".community-bar");
-    if (fadeBar) {
+    // to the top. Once per page-load and once per nav resize — the font-size
+    // token steps at the breakpoint — and never on scroll: this is a constant
+    // the compositor then animates against.
+    const pageWrap = grid.closest<HTMLElement>(".page-wrap");
+    const fadeNav = pageWrap?.querySelector<HTMLElement>(":scope > nav") ?? null;
+    if (fadeNav) {
       const measureFadeInset = () => {
-        const dock = parseFloat(getComputedStyle(fadeBar).top);
-        if (!Number.isFinite(dock)) return;
-        const barBottom = dock + fadeBar.offsetHeight;
-        grid.style.setProperty("--cgrid-fade-inset", `${barBottom}px`);
-        const pageWrap = fadeBar.closest<HTMLElement>(".page-wrap");
-        const nav = pageWrap?.querySelector<HTMLElement>(":scope > nav");
-        if (pageWrap && nav) {
-          // Unrounded heights, not offsetHeight: the veil's edge is drawn,
-          // and a rounded one stops a fraction short of the bar and leaves
-          // a sliver of unveiled artwork showing under the controls.
-          const extend = Math.max(
-            0,
-            dock + fadeBar.getBoundingClientRect().height - nav.getBoundingClientRect().height,
-          );
-          pageWrap.style.setProperty("--nav-backdrop-extend", `${extend}px`);
-        }
+        // Unrounded, not offsetHeight: a rounded edge leaves the fade's line
+        // a fraction off the nav's drawn bottom.
+        const navBottom = fadeNav.getBoundingClientRect().height;
+        grid.style.setProperty("--cgrid-fade-inset", `${navBottom}px`);
       };
       measureFadeInset();
       fadeInsetObserver?.disconnect();
       fadeInsetObserver = new ResizeObserver(measureFadeInset);
-      fadeInsetObserver.observe(fadeBar);
+      fadeInsetObserver.observe(fadeNav);
     }
 
     // The tags dropdown: the trigger flips the panel; typing in the panel

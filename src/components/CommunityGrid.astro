@@ -314,14 +314,16 @@ const indexMembers = [...members].sort((a, b) =>
   <h1 class="sr-title">{t("community.title")}</h1>
 
   {
-    /* THE BAR: sticky at the top of .page-wrap's scrollport, which is flush
-      under the brand ticker (the ticker lives OUTSIDE the scroll container —
-      see Layout.astro). The outer strip spans the wide main and is
-      see-through, backed only by the nav's backdrop layer (Navbar.astro); the inner line and its
-      rule hold the header's 900px shell measure, mirroring the ticker's own
-      box (max-width + 15px inline padding), so the bar's edges align with the
-      title above it. Without JS every control renders and does nothing —
-      harmless rather than broken, and a no-JS visitor gets the full spread. */
+    /* THE BAR: a fixed island at the BOTTOM of the viewport (2026-10-12,
+      Josh: "the filter and gallery / grid / index in a bar at the bottom to
+      reflect modern UI design"). Until then it was sticky under the nav, docked
+      6px into its padding so the two read as one header. Now it fills the hole
+      in the bottom line of chrome between the footer (bottom-left) and the
+      language toggle (bottom-right), see SiteFooter.astro and Navbar.astro.
+      Rendered here, inside main, so it is swapped with the page it belongs to;
+      position:fixed lifts it out of the flow regardless. Without JS every
+      control renders and does nothing — harmless rather than broken, and a
+      no-JS visitor gets the full spread. */
   }
   <div class="community-bar">
     <div class="community-bar__in">
@@ -713,123 +715,94 @@ const indexMembers = [...members].sort((a, b) =>
   }
 
   /* ── The bar ──────────────────────────────────────────── */
-  /* Sticky at top:0 of .page-wrap's scrollport = flush under the brand
-     ticker, which lives outside the scroll container. The outer strip spans
-     the wide main and lets the page show through, backed by the nav's
-     backdrop stretched down behind it (Navbar.astro), so cards pass under it
-     instead of colliding with its 900px content; the rule and the controls
-     hold the shell measure and align with the title's edges. z-index clears
-     the cells' own stacking contexts (GSAP transforms; an open disclosure
-     raises its cell to 3). */
+  /* A FIXED ISLAND AT THE BOTTOM (2026-10-12). One line of chrome runs along
+     the bottom edge on desktop: the footer's links fixed bottom-left at 20px
+     (SiteFooter.astro), the EN / DE toggle fixed bottom-right at 20px
+     (Navbar.astro), and this pill centred between them. Those two are bare
+     type with no box; this one is the page's controls floating over cards
+     that scroll under it, so it needs a fill — paper, not frost, in keeping
+     with the bare header (--color-bg-veil in global.css says "nothing").
+     z-index 20 matches its two neighbours and clears the cells' own stacking
+     contexts (GSAP transforms; an open disclosure raises its cell to 3).
+
+     TWO ELEMENTS: the outer is a full-width TRACK that only positions, the
+     inner is the pill. A track rather than `left: 50%; translateX(-50%)`
+     because of the footer. Centred by the viewport alone, the pill meets the
+     footer's "© 2026 VSCN" on any window narrower than ~930px, once the
+     footer has faded in at the end of the page. The track is a grid whose
+     outer columns are 1fr each — equal, so the pill is centred — with a floor
+     of --bar-reserve: when the window is too narrow for both floors and the
+     pill, the grid overflows to the RIGHT instead of shrinking the floors,
+     and the pill ends up sitting just past the footer rather than on it. The
+     toggle is 39px wide inside the right-hand floor, so it is never reached.
+     The reserve is the footer's wider (German) line — 30px in, ~276px of
+     links and ©, measured 2026-10-12 — plus a gap; it has to move if the
+     footer's words do. pointer-events: the track is see-through to clicks
+     and the pill takes them back. */
   .community-bar {
-    position: sticky;
-    /* ── IT DOCKS 6px INTO THE NAV, ON PURPOSE ──────────
-       (2026-09-01, Josh: "no gap between commujity kinks and filters".)
-       The nav's box is one line of --fs-100 at line-height 1 plus the
-       links' 10px paddings, and the bar used to dock at exactly that height —
-       flush under the nav's BOX, which put 12px of dead air under the nav's
-       TEXT: 10px of the links' own bottom padding plus this bar's 2px top
-       padding. Two header lines with a gap between them read as two things.
-       So the dock moves 6px up, into space the nav only pads with, and the
-       inner drops its top padding (below) — about 8px closed, leaving ~4px.
-       WHY 6 AND NOT 8. The bar outranks the nav on z-index, and it used to
-       paint --color-bg, so whatever it docked over, it hid. The active link's
-       underline sits at `bottom: 8px` in a 1.5px band — 8 to 9.5px up from the
-       nav's bottom edge — so docking 8px up would land exactly on it and
-       subpixel rounding would eat it. 6px leaves the underline 2px of
-       clearance. If Navbar's padding or that offset changes, this changes with
-       it, and so does the mobile figure below.
-       The nav is still ABOVE the bar in every sense that matters: it is
-       sticky at top 0 and the bar never reaches its text. */
-    top: calc(var(--fs-100) + 14px);
+    position: fixed;
+    /* THE TYPE SITS ON THE CORNERS' LINE, NOT THE BOX. The footer and the
+       toggle put their line boxes at 20px from the edge; the pill pads its
+       line by --bar-pad-y and a 1px border, so the box sits that much lower
+       and the three texts share one line across the width. */
+    --bar-pad-y: 0.5rem;
+    --bar-reserve: 330px;
+    bottom: calc(20px - var(--bar-pad-y) - 1px);
+    left: 0;
+    right: 0;
     z-index: 20;
-    /* NO FILL OF ITS OWN (2026-09-25). The page shows through the header while
-       scrolling, and whatever backdrop sits behind these controls is the NAV'S (bare
-       since 2026-09-25, see --color-bg-veil in global.css) —
-       stretched down to this bar's bottom edge by --nav-backdrop-extend, which
-       the page-load script measures (see "WHERE THE GALLERY FADE BEGINS").
-       A second veil here would stack on the nav's in the 6px this bar docks
-       into it, and read as a denser stripe under the links. With the bar
-       transparent, the underline clearance argued below is no longer about
-       what the bar hides, only about the controls not touching it. */
-    background: transparent;
-    /* BOTH HALVES OF THE 6px, and it takes both. `top` governs only where a
-       sticky element STOPS once it is stuck; at rest the bar sits in normal
-       flow, directly after the nav, and no `top` in the world moves it there.
-       That is why the old contract — "resting and stuck are the same place" —
-       held: the offset happened to equal the nav's height. This margin is what
-       actually lifts the resting position, and the calc above keeps the stuck
-       position in agreement with it. Change one and you must change the other,
-       or the bar jumps by the difference the moment it docks. */
-    margin-top: -6px;
+    display: grid;
+    grid-template-columns: minmax(var(--bar-reserve), 1fr) auto minmax(var(--bar-reserve), 1fr);
+    pointer-events: none;
   }
 
   .community-bar__in {
-    max-width: var(--shell-max);
-    margin-inline: auto;
+    grid-column: 2;
+    pointer-events: auto;
     box-sizing: border-box;
-    /* NO TOP PADDING. The 0.15rem that used to be here was the last 2px of the
-       gap the dock offset above closes; with the bar riding into the nav's
-       padding there is nothing left for it to breathe away from. */
-    padding: 0 15px 0.6rem;
-    /* Two occupants pushed to the shell's two edges: tags holds the left,
-       the view switcher the right. Nothing centres any more, so this is a
-       flex row rather than the three-track grid it used to need — and on
-       mobile, where the view switcher is display:none, the lone tags
-       trigger simply keeps the left edge. */
+    padding: var(--bar-pad-y) 1.25rem;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
     display: flex;
-    justify-content: space-between;
     align-items: baseline;
     gap: 0.6rem 1.75rem;
     font-size: var(--fs-85);
   }
 
-  @media (--bp-mobile) {
-    .community-bar {
-      /* The mobile nav is shorter than the desktop one: 0.9rem of type at
-         line-height 1 plus its 5px/7px paddings (Navbar.astro's --bp-mobile
-         block). Same contract as the calc above — if that block's size or
-         padding changes, change this with it or the bar overlaps the links.
+  /* A hairline between the filter and the view selector: the two are one
+     bar, but they do two different things. */
+  .view-toggle {
+    padding-left: 1.75rem;
+    border-left: 1px solid var(--color-border);
+  }
 
-         ── IT OVERLAPS BY 2px RATHER THAN MEETING THE NAV EXACTLY ──
-         (2026-09-02, Josh: "gap between info community login and filters
-         should be 0px so i dont see images scroll behind it", on a phone.)
-         The figure used to be the nav's full height, which made the two boxes
-         share an edge to the subpixel: nav bottom and bar top landed on the
-         same fractional CSS pixel, and on a fractional-DPR screen — every
-         iPhone — a shared edge rounds to a one-device-pixel HAIRLINE that
-         neither box paints. Artwork scrolling under the header shows through
-         it as a moving line. An overlap cannot round to a gap; a shared edge
-         can, and did.
-         2px is also every pixel there is to take: the nav pads its bottom by 7
-         and its active underline sits at `bottom: 4px` in a 1.5px band, so
-         anything past 2px starts painting over the underline that says which
-         page you are on. Desktop takes 6px for the same reason at that scale
-         (see the calc above), and both figures move if Navbar's padding or
-         that offset does. */
-      top: calc(var(--fs-90) + 10px);
-      /* Both halves, exactly as on the desktop rule: `top` governs the docked
-         position, this governs the resting one, and they have to agree or the
-         bar jumps 2px the moment it sticks. */
-      margin-top: -2px;
-      /* Out through <main>'s 15px gutter so the bar reaches the screen edges
-         like the nav and the title above it — and so the backdrop behind it
-         covers the full width it is docking across. */
-      margin-inline: -15px;
+  @media (--bp-mobile) {
+    /* A FULL-WIDTH STRIP ON A PHONE. The corners are empty here — the footer
+       is in the flow at the end of the page and carries the language switch
+       (Layout.astro hides the fixed toggle wherever there is a footer) — so
+       there is nothing to centre between, and a pill would waste the width
+       the controls need. It reaches the screen edges like the nav; the inner
+       row keeps main's 15px gutter so the type lines up with the content.
+       The safe-area inset keeps the controls above the iPhone home bar.
+       .page-wrap's 72px bottom padding (Layout.astro) is what lets the last
+       card and the footer's last line scroll out from under it. */
+    .community-bar {
+      bottom: 0;
+      display: block;
     }
 
     .community-bar__in {
-      /* THE GUTTER IS BACK, and only the reason for dropping it has changed:
-         it was dropped to join a nav row that ran to the screen edges, and that
-         nav now holds the 15px content edge (see Navbar's --bp-mobile block,
-         2026-09-01). Flush controls under an inset nav is the misalignment the
-         old rule was trying to avoid, pointing the other way.
-         The OUTER strip keeps its full-bleed negative margin — it spans the
-         background the sticky bar docks across, and that has to reach the
-         screen edges whatever the controls inside it do.
-         Top padding still 0: the nav's own padding is all the separation the
-         two lines need. */
-      padding: 0 15px 0.35rem;
+      justify-content: space-between;
+      padding: 0.6rem 15px calc(0.6rem + env(safe-area-inset-bottom, 0px));
+      border: 0;
+      border-top: 1px solid var(--color-border);
+      border-radius: 0;
+    }
+
+    .view-toggle {
+      padding-left: 0;
+      border-left: 0;
     }
   }
 
@@ -882,17 +855,19 @@ const indexMembers = [...members].sort((a, b) =>
      grid — inside the bar's stacking context, so no z fight with the cells. */
   .tag-filter__panel {
     position: absolute;
-    top: calc(100% + 0.6rem);
+    /* Opens UPWARD: the bar sits at the bottom of the viewport, so below the
+       trigger there is nothing but the edge. */
+    bottom: calc(100% + 0.6rem);
     /* Hangs from the trigger's left edge, which is now the shell's left
        edge: centring a 16rem panel on a trigger that far left would hang
        it off the side of the page. */
     left: 0;
     width: 16rem;
     /* The list IS the panel's content, so this cap is what decides how many
-       tags read at a glance before scrolling. It hangs off a bar that is
-       sticky near the top of the viewport, so the vh half can't reach the
-       fold in practice; the rem half stops the panel drawing itself as a
-       full-height column on a tall screen. */
+       tags read at a glance before scrolling. It rises from a bar at the
+       bottom of the viewport, so the vh half keeps it clear of the header;
+       the rem half stops the panel drawing itself as a full-height column on
+       a tall screen. */
     max-height: min(60vh, 34rem);
     overflow-y: auto;
     background: var(--color-bg);
@@ -1824,9 +1799,9 @@ const indexMembers = [...members].sort((a, b) =>
      scrollport height less the bar). A card taller than the scrollport would
      close that gap, and there is none — the tallest is ~502px.
 
-     THE ONLY JS is a single measurement of where the docked filter bar's
-     bottom edge sits (--cgrid-fade-inset), taken on load and when the bar
-     resizes — never while scrolling. No observers, no scroll handler.
+     THE ONLY JS is a single measurement of where the nav's bottom edge sits
+     (--cgrid-fade-inset), taken on load and when the nav resizes — never
+     while scrolling. No scroll handler.
 
      The grid wall gets only the arrival, and a shorter one — see the block
      after this one. Browsers without scroll-driven animations get every card
@@ -1846,25 +1821,26 @@ const indexMembers = [...members].sort((a, b) =>
         animation:
           cgrid-cell-out both,
           cgrid-cell-in backwards;
-        /* THE INSET IS THE FILTER BAR. `view()`'s inset shrinks the scrollport
-           the timeline is measured against, so moving the out-ramp's start
-           edge down to the docked bar's bottom makes `exit` mean "against the
-           bar" rather than "against the top of the scrollport" — which is what
-           the bar is, visually: the top of the page. Measured into
-           --cgrid-fade-inset by the page-load handler, because the bar's
-           height is type metrics and its dock offset is a calc that has
-           already had to be restated twice; the fallback is a plausible phone
-           value for the frame before the measurement lands.
+        /* THE INSET IS THE NAV. `view()`'s inset shrinks the scrollport the
+           timeline is measured against, so moving the out-ramp's start edge
+           down to the sticky nav's bottom makes `exit` mean "against the nav"
+           rather than "against the top of the scrollport" — which is what the
+           nav is, visually: the top of the page. (Until 2026-10-12 the filter
+           bar docked under the nav and this edge was the BAR's bottom; the
+           bar now floats at the bottom of the viewport.) Measured into
+           --cgrid-fade-inset by the page-load handler, because the nav's
+           height is type metrics; the fallback is a plausible phone value for
+           the frame before the measurement lands.
            The in-ramp keeps the plain, un-inset `view()` it always had. */
         animation-timeline:
           view(block var(--cgrid-fade-inset, 40px) 0px),
           view();
-        /* `exit` — the card's departure UNDER THE BAR, and nothing else: 0% is
-           its top edge meeting the bar's bottom, 100% its own bottom edge
+        /* `exit` — the card's departure UNDER THE NAV, and nothing else: 0% is
+           its top edge meeting the nav's bottom, 100% its own bottom edge
            passing the same line. Against `cover 0% 35%`, which is the arrival,
            unchanged. */
         animation-range:
-          /* Hold brightness until 30% passes the bar, then fade gently. */
+          /* Hold brightness until 30% passes the nav, then fade gently. */
           exit 30% exit 100%,
           cover 0% cover 35%;
       }
