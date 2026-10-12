@@ -235,6 +235,12 @@ function writeSlot(cell: HTMLElement, s: Slot) {
  *  data-pattern="grid" (and the body its bleed class) when this is called —
  *  otherwise it measures against the wrong width. */
 function wallMetrics(grid: HTMLElement): { cols: number; gap: number } {
+  // TWO WIDE, ALWAYS (2026-10-12, Josh: "Images should be centered in a static
+  // grid 2 wide"). The count no longer follows the window; the CSS sizes the
+  // two square cells, and the gutter is the floor. The measuring below is kept
+  // for the day the wall goes back to filling the window.
+  const floor = parseFloat(getComputedStyle(grid).getPropertyValue("--wall-gap-min"));
+  if (!Number.isNaN(floor)) return { cols: 2, gap: floor };
   const cs = getComputedStyle(grid);
   const px = (name: string) => parseFloat(cs.getPropertyValue(name));
   const card = px("--wall-card");
@@ -569,15 +575,11 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
     // for the CSS to build its tracks from, and is remembered so a resize
     // can tell a real change from a wobble.
     wallCols = writeWallMetrics(grid);
-    const all = layOutWall(matching.length, wallCols);
+    const all = layOutWall(matching.length, wallCols, false);
     orderedGallery.forEach((cell, i) => {
       writeSlot(cell, all[i]);
-      // The brick: even rows are the offset ones (layOutWall's parity), and
-      // a one-track wall has nothing to step against — the only card in a
-      // row would simply hang off the right edge.
-      if (wallCols >= 2 && all[i].rowStart % 2 === 0) {
-        cell.style.setProperty("--row-offset", "calc(var(--wall-pitch) / 2)");
-      }
+      // No brick step since the static two-wide grid (2026-10-12): the cells
+      // stand square in two straight columns.
     });
     if (strip) strip.hidden = true;
     cells.sort(domOrder).forEach((cell) => grid.appendChild(cell));

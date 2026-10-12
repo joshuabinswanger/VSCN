@@ -493,8 +493,8 @@ const hasSummary = Astro.slots.has("summary");
      backgrounds, one from the top and one from the bottom, each stopping
      short of the middle by the chevron's room. A border could not break. */
   .pdisc--column > .pdisc__toggle {
-    /* Black (2026-10-12, Josh: "vertical bar should be black as well"); the
-       pointer thickens it rather than changing its colour. */
+    /* Black (2026-10-12, Josh: "vertical bar should be black as well"), and
+       a hairline whatever the pointer does ("make the outline thinner"). */
     --rail-line: var(--color-dark);
     --rail-w: 1px;
     --rail-break: 0.9rem;
@@ -517,7 +517,6 @@ const hasSummary = Astro.slots.has("summary");
 
   .pdisc--column > .pdisc__toggle:hover,
   .pdisc--column > .pdisc__toggle:focus-visible {
-    --rail-w: 2px;
     color: var(--color-dark);
   }
 
@@ -553,7 +552,7 @@ const hasSummary = Astro.slots.has("summary");
     gap: 3px;
   }
   .pdisc--column .pdisc__vals--tags .tagchip {
-    padding: 1px 4px 0 calc(4px + var(--tag-track, 0px));
+    padding: 0 4px 0 calc(4px + var(--tag-track, 0px));
     border-width: 1px;
   }
 

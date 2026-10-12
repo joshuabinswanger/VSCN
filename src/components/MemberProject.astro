@@ -16,6 +16,7 @@ import MemberWork from "./MemberWork.astro";
 import { affiliationHref, projectDescription, projectTitle, type ProfileProject } from "../lib/projects.ts";
 import { communityWorkTagHref, hostLabel } from "../lib/links.ts";
 import { useTranslations, type Lang } from "../i18n/utils.ts";
+import { splitParagraphs } from "../lib/paragraphs.ts";
 
 type Work = ComponentProps<typeof MemberWork>["work"];
 
@@ -54,7 +55,11 @@ const figure = (w: Work) => ({
         <h2 class="mprof__project-title">{title}</h2>
       )
     }
-    {desc && <p class="mprof__project-desc">{desc}</p>}
+    {desc && (
+      <p class="mprof__project-desc">
+        {splitParagraphs(desc).map((para) => <span class="mprof__para">{para}</span>)}
+      </p>
+    )}
     {
       project.affiliations.length > 0 && (
         <p class="mprof__project-with">

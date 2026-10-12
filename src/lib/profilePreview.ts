@@ -22,6 +22,7 @@ import type { ProfileViewModel } from "./profileView.ts";
 import { groupWorks, projectTitle, projectDescription, affiliationHref, projectSlideData } from "./projects.ts";
 import type { ProfileProject } from "./projects.ts";
 import { embedDataAttrs } from "./embed.ts";
+import { fillParagraphs } from "./paragraphs.ts";
 import { CARD_TRIGGER, bindCardOpener, createLightbox, type LightboxStrings } from "./lightbox.ts";
 import { initProjectCarousels, showInCarousel } from "./projectCarousel.ts";
 import type { Lang } from "../i18n/utils";
@@ -177,7 +178,7 @@ export function renderProfilePreview(
   show(open, vm.openTo.length > 0);
 
   const bio = part("bio");
-  if (bio) bio.textContent = vm.bio;
+  if (bio) fillParagraphs(bio, vm.bio);
   show(bio, Boolean(vm.bio));
 
   // ── Tags ──────────────────────────────────────────────────
@@ -303,7 +304,7 @@ export function renderProfilePreview(
 
       const desc = workPart("desc");
       if (desc) {
-        desc.textContent = descText;
+        fillParagraphs(desc, descText);
         desc.hidden = !descText;
       }
 
@@ -380,7 +381,7 @@ export function renderProfilePreview(
       const desc = projectDescription(section.project, labels.lang) ?? "";
       const descEl = slot("desc");
       if (descEl) {
-        descEl.textContent = desc;
+        fillParagraphs(descEl, desc);
         descEl.hidden = !desc;
       }
       // The link after the words, as MemberProject prints it (2026-09-28).
