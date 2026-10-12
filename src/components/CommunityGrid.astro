@@ -4,6 +4,7 @@ import {
   DEFAULT_VIEW,
   GALLERY_PATTERNS,
   STRIP_ROWS,
+  laneOf,
   layOutSlots,
 } from "../lib/communityLayout.ts";
 import { memberHref } from "../lib/links.ts";
@@ -540,6 +541,7 @@ const indexMembers = [...members].sort((a, b) =>
           data-row={slot.rowStart}
           data-span={slot.rowSpan}
           data-col={`${slot.colStart}-${slot.colStart + slot.colSpan - 1}`}
+          data-lane={laneOf(slot)}
           style={`--gc:${slot.colStart} / span ${slot.colSpan};--gr:${slot.rowStart} / span ${slot.rowSpan};--slot-rows:${slot.rowSpan}`}
         >
           <CommunityImageCard member={member} lang={lang} />
@@ -1169,6 +1171,29 @@ const indexMembers = [...members].sort((a, b) =>
        overwrite anything written here. */
     inset-inline: 0;
     margin-inline: auto;
+  }
+
+  /* THE SLOT IS MEASURED, AND THE PICTURE HOLDS ITS PLACE (2026-10-12,
+     gallery card v2). An open card is its folded picture plus a column of
+     words hung off the inner side (communityCard.css), so it is wider than
+     its slot. The cell is an inline-size container so the card can read the
+     slot's width as 100cqw, and the card is pinned by the margin on its
+     OUTER side to exactly where the folded card would centre its picture
+     and rail: the words then grow inward, into the gutter, and folding or
+     unfolding never moves the picture. Not in the strip, whose cells are
+     sized by their cards. */
+  .cgrid > .cgrid__cell[data-slot="image"] {
+    container-type: inline-size;
+  }
+  @media (--bp-desktop) {
+    :global(.cgrid__cell[data-lane="left"] > .ccard) {
+      margin-left: calc((100cqw - var(--ccard-pic-w) - var(--ccard-rail)) / 2);
+      margin-right: auto;
+    }
+    :global(.cgrid__cell[data-lane="right"] > .ccard) {
+      margin-left: auto;
+      margin-right: calc((100cqw - var(--ccard-pic-w) - var(--ccard-rail)) / 2);
+    }
   }
 
   /* ── The grid wall ────────────────────────────────────── */

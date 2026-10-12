@@ -115,20 +115,38 @@ export const COLUMNS = 24;
 // Authored in code (2026-08-27, replacing the scrapped stagger tile; resized
 // and interlocked 2026-08-28) — not yet mirrored to the Affinity document,
 // whose first artboard still shows the old stagger drawing.
+//
+// THE INTERLOCK IS UNDONE (2026-10-12, gallery card v2: "the text should be
+// alternating right and left … add the text to the side", "bit more vertical
+// white space"). An open card is its folded picture PLUS a column of words
+// hung off its inner side (see laneOf and communityCard.css), and that column
+// reaches across the gutter into the other lane's columns. Interlocked beats
+// would put one card's words over the next card's picture, so each beat now
+// starts three rows after the last one ends. The slot sizes are unchanged —
+// they are still the picture sizes.
 const SPREAD_TILE: Pattern = {
   name: "spread",
   // Wider lanes and taller slots enlarge the artwork itself, without zoom.
-  // Keep two empty columns between lanes and room for each following card.
-  tileRows: 161,
+  // Keep two empty columns between lanes; the open cards' words use them.
+  tileRows: 214,
   slots: [
     { colStart: 1, colSpan: 11, rowStart: 1, rowSpan: 32 },
-    { colStart: 14, colSpan: 11, rowStart: 28, rowSpan: 35 },
-    { colStart: 2, colSpan: 10, rowStart: 55, rowSpan: 30 },
-    { colStart: 15, colSpan: 10, rowStart: 81, rowSpan: 32 },
-    { colStart: 1, colSpan: 11, rowStart: 108, rowSpan: 35 },
-    { colStart: 14, colSpan: 11, rowStart: 135, rowSpan: 32 },
+    { colStart: 14, colSpan: 11, rowStart: 36, rowSpan: 35 },
+    { colStart: 2, colSpan: 10, rowStart: 74, rowSpan: 30 },
+    { colStart: 15, colSpan: 10, rowStart: 107, rowSpan: 32 },
+    { colStart: 1, colSpan: 11, rowStart: 142, rowSpan: 35 },
+    { colStart: 14, colSpan: 11, rowStart: 180, rowSpan: 32 },
   ],
 };
+
+/** Which half of the 24-column table a slot stands in. A gallery card hangs
+ *  its words off its INNER side — a left-lane card to the right of its
+ *  picture, a right-lane card to the left — so the words alternate down the
+ *  spread as the beats do, and never run off the page's edge. Written onto
+ *  the cell as data-lane, at render and on every deal. */
+export function laneOf(slot: Pick<Slot, "colStart" | "colSpan">): "left" | "right" {
+  return slot.colStart - 1 + slot.colSpan / 2 >= COLUMNS / 2 ? "right" : "left";
+}
 
 // The SHELVED STRIP's index — its only remaining user: since the tag-card
 // restyle, both real galleries deal the members without artwork into

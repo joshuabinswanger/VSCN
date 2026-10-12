@@ -472,9 +472,12 @@ const hasSummary = Astro.slots.has("summary");
 
      THE RAIL IS POSITIONED AGAINST THE CARD, not this element. `.pdisc` is
      left position:static, so the rail's containing block is the nearest
-     positioned ancestor — `.ccard`, position:relative with a padding-right
-     the rail's width — and the rail spans the card's full height, frame and
-     foot included, whatever this element's own height is. The body stays in
+     positioned ancestor — `.ccard`, position:relative — and the rail spans
+     the card's full height, frame and foot included, whatever this
+     element's own height is. WHERE it stands is the card's to say: its own
+     column between the picture and the words, whose left edge the card
+     hands over as --pdisc-rail-start, along with the chevron's two angles
+     (the words hang off either side of the picture). The body stays in
      flow. No ground and no blur here: the column IS the card now rather than
      a panel laid over its neighbours, and sixteen always-on backdrop-filters
      would be a compositing bill the directory has no reason to pay. */
@@ -483,37 +486,48 @@ const hasSummary = Astro.slots.has("summary");
     min-width: 0;
   }
 
+  /* THE LINE, BROKEN BY THE CHEVRON (2026-10-12, Josh: "the line is broken
+     in the middle by the arrow", "not flush to the image but a bit of
+     padding"). A hairline down the middle of the rail's column — so it
+     stands half a rail clear of the picture and of the words — drawn as two
+     backgrounds, one from the top and one from the bottom, each stopping
+     short of the middle by the chevron's room. A border could not break. */
   .pdisc--column > .pdisc__toggle {
+    --rail-line: var(--color-border);
+    --rail-break: 0.9rem;
     position: absolute;
     top: 0;
-    right: 0;
     bottom: 0;
+    left: var(--pdisc-rail-start, auto);
+    right: auto;
     width: var(--ccard-rail, 1.6rem);
     flex: none;
     display: grid;
     place-items: center;
-    border-left: 1px solid var(--color-border);
-    transition:
-      color 0.15s,
-      border-color 0.15s;
+    background:
+      linear-gradient(var(--rail-line), var(--rail-line)) 50% 0 / 1px
+        calc(50% - var(--rail-break)) no-repeat,
+      linear-gradient(var(--rail-line), var(--rail-line)) 50% 100% / 1px
+        calc(50% - var(--rail-break)) no-repeat;
+    transition: color 0.15s;
   }
 
   .pdisc--column > .pdisc__toggle:hover,
   .pdisc--column > .pdisc__toggle:focus-visible {
+    --rail-line: var(--color-dark);
     color: var(--color-dark);
-    border-color: var(--color-dark);
   }
 
   /* The chevron points at the column it folds: ‹ while open (the column is
      there, press to send it away), › once folded (press to bring it back).
      Doubled class so these outrank the base [open] rule above at any order. */
   .pdisc.pdisc--column > .pdisc__toggle::after {
-    margin: 0 0 0 0.15rem;
-    transform: rotate(135deg);
+    margin: 0;
+    transform: rotate(var(--pdisc-rail-open, 135deg));
   }
   .pdisc.pdisc--column:not([open]) > .pdisc__toggle::after {
-    margin: 0 0.15rem 0 0;
-    transform: rotate(-45deg);
+    margin: 0;
+    transform: rotate(var(--pdisc-rail-folded, -45deg));
   }
 
   .pdisc--column .pdisc__body {
@@ -527,8 +541,17 @@ const hasSummary = Astro.slots.has("summary");
     gap: 0.7rem;
   }
 
+  /* COMPACT TAGS in the column (2026-10-12, Josh: "tags more compact"):
+     a tighter chip and a tighter cloud than the ledger's panel. Stated for
+     coarse pointers too — the global chip grows its padding there, and the
+     column is not where that trade is worth a line of chips. */
   .pdisc--column .pdisc__vals--tags {
     margin-bottom: 0;
+    gap: 3px;
+  }
+  .pdisc--column .pdisc__vals--tags .tagchip {
+    padding: 1.5px 4px 0.5px calc(4px + var(--tag-track, 0px));
+    border-width: 1px;
   }
 
   @supports selector(::details-content) {
@@ -552,6 +575,9 @@ const hasSummary = Astro.slots.has("summary");
     .pdisc--column > .pdisc__toggle {
       top: calc(100cqw / var(--frame-ar, 1) + 12px - 0.45rem);
       bottom: auto;
+      left: auto;
+      right: 0;
+      background: none;
       width: 2rem;
       height: 2rem;
       border-left: 0;
