@@ -117,14 +117,16 @@ export const COLUMNS = 24;
 // whose first artboard still shows the old stagger drawing.
 const SPREAD_TILE: Pattern = {
   name: "spread",
-  tileRows: 131,
+  // Wider lanes and taller slots enlarge the artwork itself, without zoom.
+  // Keep two empty columns between lanes and room for each following card.
+  tileRows: 161,
   slots: [
-    { colStart: 2, colSpan: 9, rowStart: 1, rowSpan: 26 },
-    { colStart: 13, colSpan: 9, rowStart: 23, rowSpan: 28 },
-    { colStart: 3, colSpan: 8, rowStart: 45, rowSpan: 24 },
-    { colStart: 14, colSpan: 8, rowStart: 66, rowSpan: 26 },
-    { colStart: 2, colSpan: 9, rowStart: 88, rowSpan: 28 },
-    { colStart: 13, colSpan: 9, rowStart: 110, rowSpan: 26 },
+    { colStart: 1, colSpan: 11, rowStart: 1, rowSpan: 32 },
+    { colStart: 14, colSpan: 11, rowStart: 28, rowSpan: 35 },
+    { colStart: 2, colSpan: 10, rowStart: 55, rowSpan: 30 },
+    { colStart: 15, colSpan: 10, rowStart: 81, rowSpan: 32 },
+    { colStart: 1, colSpan: 11, rowStart: 108, rowSpan: 35 },
+    { colStart: 14, colSpan: 11, rowStart: 135, rowSpan: 32 },
   ],
 };
 
