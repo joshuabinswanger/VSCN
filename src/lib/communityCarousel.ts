@@ -295,40 +295,47 @@ export function initCarousels(root: ParentNode = document): void {
     // up for as long as the pointer rested on the frame, so after a click the
     // chevron sat over the new picture the visitor had just asked to see.
     // `.is-arrows-resting` fades them out (communityCard.css); the strips stay
-    // hit area, so clicking again still pages. They come back when the pointer
-    // MOVES — a real move, not the hand's jitter after a click — or leaves.
+    // hit area, so clicking again still pages. Keep them hidden until the
+    // pointer leaves and enters again: mouse movement after a click must not
+    // cancel the fade, and leaving must not revive a mouse-focused button.
     // A keyboard press (detail 0) leaves them alone: there the arrow is the
     // focused control, and hiding it would hide the focus.
-    let restingAt: { x: number; y: number } | null = null;
     const rest = (e: MouseEvent) => {
       if (e.detail === 0) return;
-      restingAt = { x: e.clientX, y: e.clientY };
       carousel.classList.toggle("is-arrows-resting", true);
     };
     const wake = () => {
-      restingAt = null;
       carousel.classList.toggle("is-arrows-resting", false);
     };
     prevArrow?.addEventListener("click", rest, { signal });
     nextArrow?.addEventListener("click", rest, { signal });
-    carousel.addEventListener("pointermove", (e) => {
-      if (restingAt && Math.hypot(e.clientX - restingAt.x, e.clientY - restingAt.y) > 16) wake();
+    carousel.addEventListener("pointerenter", wake, { signal });
+    carousel.addEventListener("focusin", (e) => {
+      if (e.target instanceof Element && e.target.matches(":focus-visible")) wake();
     }, { signal });
-    carousel.addEventListener("pointerleave", wake, { signal });
+    // Dragging and the count's pager must clear the image's arrows too.
+    // Preserve visible controls when the carousel is operated by keyboard.
+    embla.on("select", () => {
+      const focused = document.activeElement;
+      if (focused instanceof Element && card.contains(focused) && focused.matches(":focus-visible")) return;
+      carousel.classList.add("is-arrows-resting");
+    });
     // The count's own chevrons, "‹ 2 / 7 ›" (2026-09-28, src/lib/pager.ts).
     // Desktop only, like the edge arrows: on a phone both pairs are
     // display:none (global.css, 2026-09-28, Josh: no chevrons on a phone's
     // pictures) and the swipe and the lightbox page the card. They take the
     // edge arrows' names, so the two pairs are one control to a screen reader.
     if (dotRow) {
-      ensurePagerChevron(dotRow, "prev", () => embla.scrollPrev(jump()), {
+      const prevPager = ensurePagerChevron(dotRow, "prev", () => embla.scrollPrev(jump()), {
         label: prevArrow?.getAttribute("aria-label"),
         signal,
       });
-      ensurePagerChevron(dotRow, "next", () => embla.scrollNext(jump()), {
+      const nextPager = ensurePagerChevron(dotRow, "next", () => embla.scrollNext(jump()), {
         label: nextArrow?.getAttribute("aria-label"),
         signal,
       });
+      prevPager.addEventListener("click", rest, { signal });
+      nextPager.addEventListener("click", rest, { signal });
     }
 
     // Keyboard. Bound to the FRAME, not to the arrows, because the arrows are
@@ -342,6 +349,7 @@ export function initCarousels(root: ParentNode = document): void {
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
       if (hasKeyModifier(e)) return;
       e.preventDefault();
+      wake();
       hydrateAll();
       if (e.key === "ArrowRight") embla.scrollNext(jump());
       else embla.scrollPrev(jump());
