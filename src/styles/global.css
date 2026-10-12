@@ -162,17 +162,21 @@ body {
 /* The page change's content motion — used by <main>'s transition:animate in
    Layout.astro, which explains the choreography. Small distances on purpose:
    the content should settle, not travel. */
+/* Bigger since 2026-10-12 (Josh: "make the animation more flashy!"): the old
+   page leaves faster and further, blurring and sinking back a little; the new
+   one comes up from well below, out of a blur, slightly small, and settles
+   past its mark on the overshooting curve in Layout.astro. */
 @keyframes vscn-page-out-up {
-  to { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 0; transform: translateY(-36px) scale(0.98); filter: blur(6px); }
 }
 @keyframes vscn-page-in-up {
-  from { opacity: 0; transform: translateY(14px); }
+  from { opacity: 0; transform: translateY(72px) scale(0.96); filter: blur(10px); }
 }
 @keyframes vscn-page-out-down {
-  to { opacity: 0; transform: translateY(8px); }
+  to { opacity: 0; transform: translateY(36px) scale(0.98); filter: blur(6px); }
 }
 @keyframes vscn-page-in-down {
-  from { opacity: 0; transform: translateY(-14px); }
+  from { opacity: 0; transform: translateY(-72px) scale(0.96); filter: blur(10px); }
 }
 
 /* THE PAPER GRAIN — and why its box is the size it is.

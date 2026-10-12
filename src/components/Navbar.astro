@@ -59,6 +59,9 @@ import "../styles/type.css";
   .nav-links {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    /* THREE EQUAL BARS (2026-10-12, Josh: "3 same width bars with a small
+       gap in between"): each link fills its third, the gap between them. */
+    column-gap: 4px;
     padding: 0px 5px;
     width: 100%;
     /* Shared with the brand ticker and <main> — see --shell-max in
@@ -71,7 +74,12 @@ import "../styles/type.css";
 
   .nav-link {
     position: relative;
-    justify-self: start;
+    /* The link's own stacking context, so the active block's wipe (::before,
+       z-index -1) paints over the bar's fill and under the type. */
+    isolation: isolate;
+    display: block;
+    justify-self: stretch;
+    text-align: center;
     padding: 10px;
     font-family: "Archivo", sans-serif;
     font-size: var(--fs-100);
@@ -85,21 +93,54 @@ import "../styles/type.css";
        rectangle: square corners, a faint fill on hover, and the current page
        a solid black block with paper-coloured type. */
     border-radius: 0;
+    /* A PERSISTENT GROUND (2026-10-12, Josh: "nav bar needs to have
+       persistent bg. bg color when inactive, black when active"): every bar
+       carries a solid tint of the paper at rest — opaque, so the page
+       scrolling under the sticky nav never shows through a bar — a deeper
+       one under the pointer, and black for the current page. */
+    background: color-mix(in srgb, var(--color-dark) 6%, var(--color-bg));
     transition:
       background-color 0.2s ease,
-      color 0.2s ease;
+      color 0.25s ease 0.08s;
+  }
+
+  /* THE BLACK WIPES IN ("make the animation more flashy!"). The current
+     page's block is a layer under the type that sweeps across the bar from
+     the left on an overshooting curve, rather than the fill fading in. The
+     nav is persisted across page changes, so the class moving from one link
+     to the next plays the sweep out of the old bar and into the new one. */
+  .nav-link::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--color-dark);
+    transform: scaleX(0);
+    transform-origin: 100% 50%;
+    transition: transform 0.28s cubic-bezier(0.5, 0, 0.75, 0);
   }
 
   .nav-link:hover {
     color: var(--color-dark);
-    background: color-mix(in srgb, var(--color-dark) 7%, transparent);
+    background: color-mix(in srgb, var(--color-dark) 13%, var(--color-bg));
   }
 
   .nav-link--active,
   .nav-link--active:visited,
   .nav-link--active:hover {
     color: var(--color-bg);
-    background: var(--color-dark);
+  }
+  .nav-link--active::before {
+    transform: scaleX(1);
+    transform-origin: 0% 50%;
+    transition: transform 0.55s cubic-bezier(0.2, 1.25, 0.35, 1) 0.05s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nav-link::before,
+    .nav-link--active::before {
+      transition: none;
+    }
   }
 
   .nav-link:focus-visible {
@@ -108,15 +149,19 @@ import "../styles/type.css";
   }
 
   .nav-center {
-    justify-self: center;
-    text-align: center;
+    justify-self: stretch;
   }
 
+  /* LOGIN and PROFILE share the third bar — only one of them is shown at a
+     time — and whichever it is fills it. */
   .nav-right-group {
     display: flex;
-    gap: 1.25rem;
-    justify-self: end;
-    align-items: center;
+    gap: 4px;
+    justify-self: stretch;
+    align-items: stretch;
+  }
+  .nav-right-group > .nav-link {
+    flex: 1 1 0;
   }
 
   .lang-toggle {
@@ -180,8 +225,8 @@ import "../styles/type.css";
       font-size: var(--fs-90);
     }
 
-    .nav-right-group {
-      gap: 0.5rem;
+    .nav-links {
+      column-gap: 3px;
     }
 
     /* NOT FLOATING ON A PHONE (2026-09-24, Josh: "the language switch on
