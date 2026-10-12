@@ -16,6 +16,9 @@
 
 /* ── Design tokens ── */
 :root {
+  /* The header row: one VSCN at the left, MENU at the right (Layout.astro,
+     Navbar.astro). */
+  --header-h: 56px;
   font-family: "Archivo", sans-serif;
   --font-size-base: 12px;
   --color-dark: #000000;
@@ -1128,4 +1131,10 @@ label:has(> .picker-input:focus-visible) {
 *::before,
 *::after {
   border-radius: 0 !important;
+}
+
+@media (--bp-mobile) {
+  :root {
+    --header-h: 48px;
+  }
 }

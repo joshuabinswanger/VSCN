@@ -6,7 +6,21 @@ import "../styles/type.css";
 ---
 
 <nav transition:persist="navbar">
-  <div class="nav-links">
+  {/* BEHIND ONE BUTTON (2026-10-12, Josh: "the three buttons should be behind a
+      Menu button"). MENU sits on the header's line at the right; it opens
+      the three bars as a small drop-down under it. The links keep their ids,
+      the script below still sets their labels, their targets and which of
+      LOGIN / PROFILE shows. */}
+  <button
+    type="button"
+    class="nav-menu-btn"
+    id="nav-menu-btn"
+    aria-expanded="false"
+    aria-controls="nav-menu"
+  >
+    MENU
+  </button>
+  <div class="nav-links" id="nav-menu" hidden>
     <a href="/info" class="nav-link" id="nav-info">INFO</a>
     <a href="/community" class="nav-link nav-center" id="nav-community">COMMUNITY</a>
     <div class="nav-right-group">
@@ -24,52 +38,76 @@ import "../styles/type.css";
      scope attributes after a deployment. Stable selectors keep the new page's
      stylesheet matching those links. */}
 <style is:global>
+  /* ON THE HEADER'S LINE, AT THE RIGHT (2026-10-12, Josh: "the header should
+     be inline with the Menu buttons"). The title is one VSCN at the left of a
+     --header-h tall row (Layout.astro); the nav is fixed over that row's
+     right end, so the two read as one header and neither moves on scroll. */
   nav[data-astro-transition-persist="navbar"] {
-    position: sticky;
+    position: fixed;
     top: 0;
-    z-index: 10;
+    right: 0;
+    z-index: 30;
+    height: var(--header-h);
+    display: flex;
+    align-items: center;
+    padding-right: 15px;
     line-height: 1;
   }
 
-  /* THE BACKDROP IS A LAYER BEHIND THE LINKS, NOT THE NAV'S BACKGROUND
-     (2026-09-25: the page shows through while scrolling). It is a
-     pseudo-element because a backdrop-filter on the nav itself would make it
-     the containing block for any fixed-position descendant. (Until
-     2026-10-12 it also reached further down than the nav's own box, stretched
-     by a --nav-backdrop-extend that /community measured so one veil ran on
-     behind the filter bar docked under the nav; that bar now floats at the
-     bottom of the viewport and paints its own paper, so the layer is the
-     nav's box again.)
-     z-index -1 is inside the nav's own stacking context (sticky + z-index), so
-     the veil sits under the links and over whatever scrolls behind.
-     Both values are tokens in global.css and currently say "nothing" — the
-     header is bare. The layer stays so frosting can come back as a token
-     change. */
-  nav[data-astro-transition-persist="navbar"]::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background: var(--color-bg-veil);
-    -webkit-backdrop-filter: var(--veil-filter);
-    backdrop-filter: var(--veil-filter);
+  .nav-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 12px 6px;
+    border: 0;
+    border-radius: 0;
+    /* The bottom bar's trigger, up here: paper with one black hairline,
+       black while open. */
+    background: var(--color-bg);
+    box-shadow: inset 0 0 0 1px var(--color-dark);
+    color: var(--color-dark);
+    font-family: "Archivo", sans-serif;
+    font-size: var(--fs-82);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      color 0.15s;
+  }
+  .nav-menu-btn:hover,
+  .nav-menu-btn[aria-expanded="true"] {
+    background: var(--color-dark);
+    color: var(--color-bg);
+  }
+  .nav-menu-btn:focus-visible {
+    outline: 1.5px solid var(--color-dark);
+    outline-offset: 2px;
   }
 
+  /* The drop-down: the three bars stacked under MENU, its right edge on the
+     button's. */
   .nav-links {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    /* THREE EQUAL BARS (2026-10-12, Josh: "3 same width bars with a small
-       gap in between"): each link fills its third, the gap between them. */
-    column-gap: 4px;
-    padding: 0px 5px;
-    width: 100%;
-    /* Shared with the brand ticker and <main> — see --shell-max in
-       global.css. 5px here plus the links' own 10px puts the nav text on
-       main's 15px content edge at any measure. */
-    max-width: var(--shell-max);
-    box-sizing: border-box;
-    margin: 0 auto;
+    position: absolute;
+    top: calc(100% - 6px);
+    right: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 10rem;
+  }
+  .nav-links[hidden] {
+    display: none;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .nav-links:not([hidden]) {
+      animation: nav-menu-drop 0.18s ease-out;
+    }
+  }
+  @keyframes nav-menu-drop {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
   }
 
   .nav-link {
@@ -78,38 +116,25 @@ import "../styles/type.css";
        z-index -1) paints over the bar's fill and under the type. */
     isolation: isolate;
     display: block;
-    justify-self: stretch;
-    text-align: center;
-    padding: 10px;
+    box-sizing: border-box;
+    padding: 8px 10px 7px;
     font-family: "Archivo", sans-serif;
-    font-size: var(--fs-100);
+    font-size: var(--fs-82);
     font-weight: 600;
     text-decoration: none;
     color: var(--color-dark);
     white-space: nowrap;
-    /* RECTANGLES, NOT AN UNDERLINE (2026-10-12, Josh: "top nav bar should
-       have rectangular backgrounds. instead of underline they should get a
-       black background when selected"). Each link's padding box IS its
-       rectangle: square corners, a faint fill on hover, and the current page
-       a solid black block with paper-coloured type. */
+    /* Rectangles on the page's own colour with one black hairline — they
+       stand over the content now — and black for the current page. */
     border-radius: 0;
-    /* A PERSISTENT GROUND (2026-10-12, Josh: "nav bar needs to have
-       persistent bg. bg color when inactive, black when active"): every bar
-       carries the page's own colour at rest — opaque, so the page scrolling
-       under the sticky nav never shows through a bar ("same colour as the
-       bg, not this weird grey", the same day) — a faint tint under the
-       pointer, and black for the current page. */
     background: var(--color-bg);
-    transition:
-      background-color 0.2s ease,
-      color 0.25s ease 0.08s;
+    box-shadow: inset 0 0 0 1px var(--color-dark);
+    transition: color 0.25s ease 0.08s;
   }
 
-  /* THE BLACK WIPES IN ("make the animation more flashy!"). The current
-     page's block is a layer under the type that sweeps across the bar from
-     the left on an overshooting curve, rather than the fill fading in. The
-     nav is persisted across page changes, so the class moving from one link
-     to the next plays the sweep out of the old bar and into the new one. */
+  /* THE BLACK WIPES IN for the current page (2026-10-12, "make the animation
+     more flashy!"): a layer under the type that sweeps across the bar from
+     the left on an overshooting curve. */
   .nav-link::before {
     content: "";
     position: absolute;
@@ -121,12 +146,11 @@ import "../styles/type.css";
     transition: transform 0.28s cubic-bezier(0.5, 0, 0.75, 0);
   }
 
-  /* NO GREY ON HOVER (2026-10-12, Josh: "the grey hover tone I don't like,
-     use something else"): the bar draws its own black frame instead — the
-     same black as the current page's block, as an outline. */
+  /* No grey and no thicker line under the pointer: the type underlines. */
   .nav-link:hover {
-    color: var(--color-dark);
-    box-shadow: inset 0 0 0 1px var(--color-dark);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
   }
 
   .nav-link--active,
@@ -147,55 +171,15 @@ import "../styles/type.css";
     }
   }
 
-  /* TOP RIGHT, AND SMALLER, ON A DESKTOP (2026-10-12, Josh: "navbar should
-     be smaller buttons and on desktop it should be in the top right"). The
-     three bars keep one width between them and ride the window's right edge
-     at the content's 15px, under the title — and once the title has ridden
-     up, in the window's top-right corner. */
-  @media (--bp-desktop) {
-    .nav-links {
-      display: flex;
-      justify-content: flex-end;
-      gap: 4px;
-      max-width: none;
-      padding: 6px 15px 0;
-    }
-    .nav-link {
-      flex: none;
-      box-sizing: border-box;
-      width: 7.5rem;
-      padding: 6px 8px;
-      font-size: var(--fs-82);
-    }
-    .nav-right-group {
-      flex: none;
-      box-sizing: border-box;
-      width: 7.5rem;
-    }
-    .nav-right-group > .nav-link {
-      width: auto;
-    }
-  }
-
   .nav-link:focus-visible {
     outline: 1.5px solid var(--color-dark);
     outline-offset: 2px;
   }
 
-  .nav-center {
-    justify-self: stretch;
-  }
-
-  /* LOGIN and PROFILE share the third bar — only one of them is shown at a
-     time — and whichever it is fills it. */
+  /* LOGIN and PROFILE share the third bar — only one of them is shown. */
   .nav-right-group {
     display: flex;
-    gap: 4px;
-    justify-self: stretch;
-    align-items: stretch;
-  }
-  .nav-right-group > .nav-link {
-    flex: 1 1 0;
+    flex-direction: column;
   }
 
   .lang-toggle {
@@ -230,39 +214,7 @@ import "../styles/type.css";
     color: var(--color-dark);
   }
 
-  /* On mobile the navbar is the top edge of the page — the giant title rides
-     up out of the way on scroll (see Layout.astro) and leaves the links
-     standing alone up there.
-     THEY SIT CLOSER TO THE EDGE THAN THE CONTENT DOES (2026-09-01, Josh:
-     "less border gap for the info and login on mobile"). Two failed extremes
-     bracket this number. At 0 the row ran hard against the viewport and
-     "LOGIN" fell off the right edge at 375px, because a link ranged against
-     the screen has nothing left to give. At 15px — the content edge that
-     .brand-name and <main> both hold (see --shell-max in CLAUDE.md) — INFO and
-     LOGIN read as two more items in the column of cards rather than as the
-     frame around them. 8px keeps the outermost letters clear of the edge while
-     letting the row sit outside the content measure, which is what makes it
-     read as chrome. Desktop keeps the shared measure, where 5px plus the
-     links' own 10px lands on the content edge. */
   @media (--bp-mobile) {
-    .nav-links {
-      /* The 8px that kept the outermost letters off the screen edge now lives
-         INSIDE each link, as the rectangle's side padding — the type stays
-         where it was and the black block has room around it. */
-      padding: 0;
-    }
-
-    .nav-link {
-      /* Tighter to the title above it — on a phone the two read as one block,
-         so the 10px the desktop row uses to breathe just looks like a gap. */
-      padding: 5px 8px 6px;
-      font-size: var(--fs-90);
-    }
-
-    .nav-links {
-      column-gap: 3px;
-    }
-
     /* NOT FLOATING ON A PHONE (2026-09-24, Josh: "the language switch on
        mobile has to be placed underneath, so when you scroll all the way to
        the bottom, above the impressum etc. think from a UX perspective").
@@ -286,6 +238,39 @@ import "../styles/type.css";
   import { onAuthStateChanged } from "firebase/auth";
   import { savePreferredLanguage } from "../lib/firestore.ts";
   import { rememberSessionChoice, type SiteLanguage } from "../lib/siteLanguage.ts";
+
+  // ── MENU ──────────────────────────────────────────────
+  // Opens and closes the drop-down; a click outside it, Escape, or leaving
+  // the page closes it. The nav is persisted across page changes, so it is
+  // closed on the navigation itself or it would stay open on the next page.
+  function setMenu(open: boolean) {
+    const btn = document.getElementById("nav-menu-btn");
+    const menu = document.getElementById("nav-menu");
+    if (!btn || !menu) return;
+    btn.setAttribute("aria-expanded", String(open));
+    menu.hidden = !open;
+  }
+  document.addEventListener("click", (event) => {
+    const target = event.target as Element | null;
+    if (!target?.closest?.("#nav-menu-btn")) return;
+    const btn = document.getElementById("nav-menu-btn");
+    setMenu(btn?.getAttribute("aria-expanded") !== "true");
+  });
+  // Outside presses close it at the capture phase: the gallery's pictures
+  // and the lightbox stop their clicks from bubbling, and a menu left open
+  // over an opened picture is the one place this must not survive.
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      const target = event.target as Element | null;
+      if (!target?.closest?.("#nav-menu, #nav-menu-btn")) setMenu(false);
+    },
+    { capture: true }
+  );
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setMenu(false);
+  });
+  document.addEventListener("astro:before-preparation", () => setMenu(false));
 
   // The EN / DE switch is an explicit choice, and nothing may route against it:
   // it wins for this session, and a signed-in member's stored language follows

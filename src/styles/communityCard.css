@@ -92,7 +92,8 @@
      the spread, so growing costs its slot nothing). */
   display: grid;
   grid-template-columns: var(--ccard-pic-w) var(--ccard-gap-now) var(--ccard-side) var(--ccard-rail);
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* A fourth row, empty while open: a folded card's name and role. */
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   row-gap: 0.7rem;
   align-items: start;
   box-sizing: border-box;
@@ -167,9 +168,17 @@
   --ccard-side: 0px;
   --ccard-gap-now: 0px;
 }
-.ccard:has(> .pdisc:not([open])) .ccard__head,
 .ccard:has(> .pdisc:not([open])) .ccard__foot {
   display: none;
+}
+/* THE NAME STAYS (2026-10-12, Josh: "the gallery card should have the name
+   and role displayed when collapsed"): folded, the head moves under the
+   picture, as wide as it — the one thing the fold no longer takes. */
+.ccard:has(> .pdisc:not([open])) > .ccard__head {
+  grid-area: 4 / 1 / 5 / 2;
+}
+[data-lane="right"] > .ccard:has(> .pdisc:not([open])) > .ccard__head {
+  grid-area: 4 / 4 / 5 / 5;
 }
 
 /* ── Name and role, at the head of the column ─────────── */
@@ -555,7 +564,6 @@
      and the button is the way to the person, and on a single column of
      cards neither costs a neighbour any room. CommunityGrid closes the
      columns before first paint on a phone. */
-  .ccard:has(> .pdisc:not([open])) .ccard__head,
   .ccard:has(> .pdisc:not([open])) .ccard__foot {
     display: flex;
   }
