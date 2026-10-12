@@ -128,14 +128,14 @@ const t = useTranslations(lang);
        member's page, and a live control that walked the member out of an
        unsaved form would be a trap, the same call the profile-page preview
        makes for its back link. The role under it, hidden until there is
-       one. The panel's own hooks (bio, links, tags) are inside the shell. */
+       one. The head stands outside the panel, as on the card, so it survives
+       the fold. The panel's own hooks (bio, links, tags) are inside the shell. */
   }
-  <MemberDetailPanel lang={lang} shell mode="column">
-    <div slot="lead" class="ccard__head">
-      <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
-      <p class="ccard__role" data-ccpv="role" hidden></p>
-    </div>
-  </MemberDetailPanel>
+  <div class="ccard__head">
+    <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
+    <p class="ccard__role" data-ccpv="role" hidden></p>
+  </div>
+  <MemberDetailPanel lang={lang} shell mode="column" />
 
   {
     /* The foot, as on the card: the count row — one dot per work, built by

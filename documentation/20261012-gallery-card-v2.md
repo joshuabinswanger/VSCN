@@ -84,6 +84,31 @@ Decisions taken in the conversation:
 - New string `community.card.profile` ("Profile" / "Profil"); the arrow is
   markup, `aria-hidden`. `community.card.viewProfile*` stay for the ledger.
 
+## Phone pass (same day)
+
+Josh, on the phone layout: "start closed and show name always", "more air,
+too wide", "space the cards vertically more".
+
+- **The head left the fold.** Name and role are `.ccard__head`, a direct
+  child of the card in row 1 of its grid, no longer the panel's `lead` slot:
+  a folded `<details>` renders only its summary, so nothing inside it can
+  outlive the fold. Desktop still folds everything (the folded rule hides
+  the head and the foot). The editor preview moved its head the same way.
+- **A phone starts folded.** An inline `data-astro-rerun` script after the
+  cards in `CommunityGrid.astro` drops `open` before first paint when
+  `(max-width: 767px)` matches; the cards still render open, which stays the
+  desktop and no-JS state. Folded on a phone the card is picture, name and
+  role, and the foot — the count and the button stay, unlike the desktop.
+- **The toggle finds the name's line by arithmetic.** It is positioned
+  against the card, which on a phone is an inline-size container: the frame
+  is the card's full width, so its height is `100cqw / --frame-ar` and the
+  toggle stands at that plus the head's 12px. The mobile cell's card is
+  `position: relative` (it was static), or the cell's new side padding would
+  have put the toggle outside the card.
+- **Air.** Image cells get 24px of side padding on a phone; the gallery's
+  row gap went from 72px to 112px. Card spacing is margins now, not gap, so
+  an empty folded `<details>` adds nothing.
+
 ## Two traps met while building it
 
 - **A column flex box inherits the grid's `align-items: start`.** On mobile

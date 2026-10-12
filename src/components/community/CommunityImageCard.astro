@@ -286,29 +286,37 @@ const positionFor = (i: number) =>
   </div>
 
   {
-    /* THE COLUMN: the member's words beside the picture, open, and the rail
-      that folds them. MemberDetailPanel owns the bio, the links and the tag
-      chips (every chip a way into the directory's tag filter) and the native
-      <details> that folds them — the same component the ledger rows use, in
-      its column mode. The name and the role lead it, slotted from here
-      because they are this card's: the h2 is the directory's outline
-      (h1 member count → h2 member) and its link is the way to the member's
-      page, keyed for the morph that page plays on arrival. A name is not an
-      affordance, though — nothing says it is clickable before pointing at
-      it — which is why the foot row ends with a button that says where it
-      goes. forceShow: a member with no bio, no links and no tags still has
-      a name, and the column is where the name lives now. */
+    /* THE HEAD: name and role, at the top of the words. The h2 is the
+      directory's outline (h1 member count → h2 member) and its link is the
+      way to the member's page, keyed for the morph that page plays on
+      arrival. A name is not an affordance, though — nothing says it is
+      clickable before pointing at it — which is why the foot row ends with a
+      button that says where it goes.
+      OUTSIDE THE FOLD, not slotted into the panel (2026-10-12, Josh: "on
+      mobile start closed and show name always"). A folded <details> renders
+      nothing but its summary, so a name inside it could not outlive the
+      fold. The desktop fold still takes it — "fold everything", by the
+      card's grid in communityCard.css — but on a phone the card starts
+      folded and the name is what stays. */
   }
-  <MemberDetailPanel member={member} lang={lang} forceShow mode="column">
-    <div slot="lead" class="ccard__head">
-      <h2 class="ccard__name">
-        <a class="ccard__name-link" href={profileHref} transition:name={`mname-${member.id}`}>
-          {member.displayName}
-        </a>
-      </h2>
-      {member.role && <p class="ccard__role">{member.role}</p>}
-    </div>
-  </MemberDetailPanel>
+  <div class="ccard__head">
+    <h2 class="ccard__name">
+      <a class="ccard__name-link" href={profileHref} transition:name={`mname-${member.id}`}>
+        {member.displayName}
+      </a>
+    </h2>
+    {member.role && <p class="ccard__role">{member.role}</p>}
+  </div>
+
+  {
+    /* THE COLUMN: the rest of the member's words, open, and the rail that
+      folds them. MemberDetailPanel owns the bio, the links and the tag chips
+      (every chip a way into the directory's tag filter) and the native
+      <details> that folds them — the same component the ledger rows use, in
+      its column mode. forceShow: a member with no bio, no links and no tags
+      still needs the rail, or the card could not fold. */
+  }
+  <MemberDetailPanel member={member} lang={lang} forceShow mode="column" />
 
   {
     /* THE FOOT, on the picture's bottom edge: the count "‹ 1 / 3 ›" just past
