@@ -313,68 +313,6 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeTagPanel();
 });
 
-// THE OPEN CARD GROWS INWARD. The spread scales a card up when its disclosure
-// opens (the `scale` rules in CommunityGrid.astro), and growing about its
-// centre would push a card in the first or last column past the window's
-// edge. So on open the pivot's x is placed where the grown card just fits
-// between the window's edges: centred when there is room, shifted toward the
-// far side when there is not. Module scope and capture phase — `toggle` does
-// not bubble, and a document listener installed per page-load would stack.
-const OPEN_SCALE = 1.3;
-const EDGE = 24;
-// AND SCROLLING TAKES IT BACK (2026-10-09, Josh: "on scroll it should get
-// smaller again"). Each grown card remembers where .page-wrap stood when it
-// opened; once the page has moved SETTLE_AFTER px from there the card gets
-// `.ccard--settled` and shrinks to its slot. The panel stays open — a bio
-// taller than the screen has to survive being scrolled to. A threshold rather
-// than the first scroll event, so a trackpad's settle after the click does not
-// take back what the click just did.
-const SETTLE_AFTER = 48;
-const grown = new Map<HTMLElement, number>();
-const scrollTop = () => document.querySelector(".page-wrap")?.scrollTop ?? 0;
-document.addEventListener(
-  "scroll",
-  () => {
-    if (grown.size === 0) return;
-    const now = scrollTop();
-    grown.forEach((from, card) => {
-      if (Math.abs(now - from) < SETTLE_AFTER) return;
-      card.classList.add("ccard--settled");
-      grown.delete(card);
-    });
-  },
-  { capture: true, passive: true }
-);
-document.addEventListener("astro:before-swap", () => grown.clear());
-document.addEventListener(
-  "toggle",
-  (e) => {
-    const details = e.target;
-    if (!(details instanceof HTMLDetailsElement)) return;
-    const card = details.closest<HTMLElement>(".cgrid[data-pattern='spread'] .cgrid__cell > .ccard");
-    if (!card) return;
-    card.classList.remove("ccard--settled");
-    if (!details.open) {
-      grown.delete(card);
-      return;
-    }
-    grown.set(card, scrollTop());
-    // offsetWidth, not the rect's width: the rect carries GSAP's approach
-    // scale, and the origin is in the card's own untransformed pixels.
-    const w = card.offsetWidth;
-    const { left } = card.getBoundingClientRect();
-    const right = left + w;
-    const grow = OPEN_SCALE - 1;
-    const viewport = document.documentElement.clientWidth;
-    // Grown left edge = left - grow·x, grown right edge = right + grow·(w - x).
-    const most = (left - EDGE) / grow;
-    const least = w - (viewport - EDGE - right) / grow;
-    const x = Math.min(Math.max(w / 2, least), most);
-    card.style.transformOrigin = `${Math.round(x)}px 0`;
-  },
-  true
-);
-
 /** The ledger's pass. Returns the visible count. */
 function applyIndexFilter(): number {
   let visible = 0;
