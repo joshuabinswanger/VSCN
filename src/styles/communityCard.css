@@ -40,51 +40,55 @@
  */
 
 .ccard {
-  /* The rail's containing block (MemberDetailPanel's column mode positions
+  /* The rail's containing block: MemberDetailPanel's column mode positions
      its <summary> absolutely against the nearest positioned ancestor, which
-     is this), and the padding the rail stands in. */
+     is this. */
   position: relative;
-  --ccard-rail: 1.6rem;
-  padding-right: var(--ccard-rail);
-  /* THE DEAL. Column 1 is the picture, column 2 the words; row 1 is the
-     head (name and role, outside the fold since 2026-10-12), row 2 the rest
-     of the column, row 3 the foot. The frame spans all three, so the foot — the
-     pager and the profile button — sits on the picture's bottom edge
-     whenever the column is shorter than the picture, which is the sketch,
-     and simply follows the words down when they are longer (the card is out
-     of flow in the spread, so growing costs its slot nothing). `1fr` for the
-     middle row: with no definite height on the card that is the content of
-     whatever spans it, i.e. the taller of the frame and the column. */
-  display: grid;
-  grid-template-columns: var(--ccard-frame-w) minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  column-gap: var(--ccard-gap);
-  row-gap: 0.7rem;
-  align-items: start;
-  --ccard-gap: 1.1rem;
-  /* HOW MUCH OF THE CARD THE PICTURE MAY TAKE, with the column open. The
-     frame is as wide as its aspect lets it be under the height cap — tall
-     artwork is narrow, and the words get the rest — but a landscape would
-     take the whole card at that rule, so it is held to this share and the
-     cap then bounds it from the width instead (the frame keeps its true
-     aspect either way: nothing here crops). */
-  --ccard-frame-share: 58%;
-  --ccard-frame-w: min(calc(var(--frame-cap) * var(--frame-ar, 1)), var(--ccard-frame-share));
-  /* What stands above or below the frame. Nothing now: the name moved into
-     the column and the foot stands beside the picture, not under it. Kept
-     as a named term because the cap below subtracts it and the preview
-     restates the slot it is measured against. */
+  /* ── THE PICTURE KEEPS ITS FOLDED SIZE (2026-10-12, Josh: "keep them the
+     same size as if they were collapsed, just add the text to the side").
+     The first cut of the second card split its slot, 58% picture and the
+     rest words, so opening it shrank the artwork. Now the picture is the
+     folded card's picture whatever the state — the slot's width, or the
+     width that makes it exactly as tall as the slot allows — and the words
+     are a column of their own width ADDED beside it, out past the slot's
+     edge into the gutter (the spread's beats no longer interlock so that
+     the words have somewhere to go; see SPREAD_TILE).
+     --ccard-slot-w is the slot: the cell is an inline-size container
+     (CommunityGrid), so 100cqw; the editor preview states its own. */
+  --ccard-rail: 2.4rem;
+  --ccard-side-w: 15rem;
+  --ccard-side: var(--ccard-side-w);
+  --ccard-pic-w: min(
+    var(--ccard-slot-w, 100cqw) - var(--ccard-rail),
+    var(--frame-cap) * var(--frame-ar, 1)
+  );
+  /* What stands above or below the frame. Nothing: the words stand beside
+     it. Kept as a named term because the cap below subtracts it. */
   --ccard-chrome: 0rem;
   /* How tall the frame may be. --slot-rows and --cgrid-row come from the
-     grid cell this card was dealt into; absent them (the editor preview, the
-     profile page) the fallback is large enough to be no cap at all, which is
-     the old behaviour exactly. */
+     grid cell this card was dealt into; absent them the fallback is large
+     enough to be no cap at all. */
   --frame-cap: calc(var(--slot-rows, 999) * var(--cgrid-row, 2rem) - var(--ccard-chrome));
-  /* The card is its slot's width while the column is open — the words take
-     whatever the picture leaves. The rail lives in the padding, so the box
-     has to be border-box or every card would overrun its slot by a rail. */
+  /* Where MemberDetailPanel draws the rail: the left edge of the rail's
+     column, and which way its chevron points open and folded. The words
+     stand to the right of the picture here; [data-lane="right"] mirrors
+     all three below. */
+  --pdisc-rail-start: var(--ccard-pic-w);
+  --pdisc-rail-open: 135deg;
+  --pdisc-rail-folded: -45deg;
+  /* THE DEAL. Picture | rail | words. The words' column is three rows —
+     the head (name and role), the rest of the panel, the foot — and the
+     frame spans all three, so the foot (pager and button) sits on the
+     picture's bottom edge whenever the words are shorter than the picture,
+     and follows them down when they are longer (the card is out of flow in
+     the spread, so growing costs its slot nothing). */
+  display: grid;
+  grid-template-columns: var(--ccard-pic-w) var(--ccard-rail) var(--ccard-side);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  row-gap: 0.7rem;
+  align-items: start;
   box-sizing: border-box;
-  width: 100%;
+  width: calc(var(--ccard-pic-w) + var(--ccard-rail) + var(--ccard-side));
   /* Pivot for the GSAP scale in CommunityGrid. Declared here so the effect
      is identical whoever drives the transform. Anchored at the top edge, not
      centre: the ScrollTrigger is keyed to the card's top, and a centre
@@ -100,16 +104,16 @@
   grid-area: 1 / 1 / 4 / 2;
 }
 .ccard__head {
-  grid-area: 1 / 2 / 2 / 3;
+  grid-area: 1 / 3 / 2 / 4;
 }
 /* The column: the panel's <details>. min-width so a long unbroken link
-   cannot widen the words' column past what the picture left it. */
+   cannot widen the words' column. */
 .ccard > .pdisc {
-  grid-area: 2 / 2 / 3 / 3;
+  grid-area: 2 / 3 / 3 / 4;
   min-width: 0;
 }
 .ccard__foot {
-  grid-area: 3 / 2 / 4 / 3;
+  grid-area: 3 / 3 / 4 / 4;
   align-self: end;
   display: flex;
   align-items: center;
@@ -118,19 +122,41 @@
   min-width: 0;
 }
 
+/* ── THE WORDS ALTERNATE (2026-10-12, Josh: "the text should be alternating
+   right and left"). A card in the right-hand lane hangs its words off its
+   LEFT side: words | rail | picture, the chevron mirrored, and the foot
+   reversed so the pager still stands at the picture's bottom corner and the
+   button at the card's outer edge. The lane is the cell's (data-lane,
+   written by the deal from laneOf), so the words always face the gutter. */
+[data-lane="right"] > .ccard {
+  grid-template-columns: var(--ccard-side) var(--ccard-rail) var(--ccard-pic-w);
+  --pdisc-rail-start: var(--ccard-side);
+  --pdisc-rail-open: -45deg;
+  --pdisc-rail-folded: 135deg;
+}
+[data-lane="right"] > .ccard > .ccard__body {
+  grid-area: 1 / 3 / 4 / 4;
+}
+[data-lane="right"] > .ccard > .ccard__head {
+  grid-area: 1 / 1 / 2 / 2;
+}
+[data-lane="right"] > .ccard > .pdisc {
+  grid-area: 2 / 1 / 3 / 2;
+}
+[data-lane="right"] > .ccard > .ccard__foot {
+  grid-area: 3 / 1 / 4 / 2;
+  flex-direction: row-reverse;
+}
+[data-lane="right"] > .ccard > .ccard__foot > .ccard__profile {
+  margin-left: 0;
+  margin-right: auto;
+}
+
 /* ── FOLDED: "fold everything" ──────────────────────────
-   The column goes, the foot goes with it (the pager and the button were the
-   column's bottom line), and the picture widens to the slot — exactly the
-   card as it was before the second version, minus its name. The width
-   formula is the first card's: normally the full slot; where the artwork is
-   tall enough that filling the width would overrun the slot's height, the
-   width that makes the frame exactly as tall as the cap allows, plus the
-   rail that still stands beside it. The grid centres a narrower card in its
-   slot (CommunityGrid's margin-inline: auto). */
+   The words go — head, panel and foot — and what is left is the picture and
+   the rail beside it, at exactly the size the picture had open. */
 .ccard:has(> .pdisc:not([open])) {
-  grid-template-columns: minmax(0, 1fr) 0;
-  column-gap: 0;
-  width: min(100%, calc(var(--frame-cap) * var(--frame-ar, 1) + var(--ccard-rail)));
+  --ccard-side: 0px;
 }
 .ccard:has(> .pdisc:not([open])) .ccard__head,
 .ccard:has(> .pdisc:not([open])) .ccard__foot {
@@ -456,9 +482,11 @@
 .ccard__profile {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   margin-left: auto;
-  padding: 0.5rem 0.8rem 0.45rem;
+  /* Smaller since 2026-10-12 (Josh: "profile should be a smaller button,
+     white on black text"): the LABEL voice in type.css, and this padding. */
+  padding: 0.35rem 0.55rem 0.3rem;
   background: var(--color-dark);
   color: var(--color-bg);
   border-radius: 0;
@@ -538,6 +566,20 @@
   .ccard__foot {
     align-self: stretch;
     margin-top: 14px;
+  }
+  /* Smaller on a phone (2026-10-12, Josh: "the Profile button smaller on
+     mobile!"): the type a step down in type.css, and a tighter box. */
+  .ccard__profile {
+    gap: 0.3rem;
+    padding: 0.25rem 0.45rem 0.2rem;
+  }
+  /* The lane's mirror is a desktop drawing; a phone has one column. */
+  [data-lane="right"] > .ccard > .ccard__foot {
+    flex-direction: row;
+  }
+  [data-lane="right"] > .ccard > .ccard__foot > .ccard__profile {
+    margin-left: auto;
+    margin-right: 0;
   }
 
   /* No paging chrome on touch — a decided trade: the artwork keeps a clean

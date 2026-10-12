@@ -91,6 +91,14 @@ const profileHref = memberHref(lang, member.slug);
 // picture, and its fallback is the one place the author is always spoken.
 const alt = work.caption?.trim() || `${member.displayName} — ${t("member.workAlt")}`;
 
+// THE TITLE IS BACK, IN THE AUTHOR'S PLACE (2026-10-12, Josh: "in grid mode
+// the title of the image instead of the name should be shown"). One line,
+// truncated, so the 09-06 worry — a caption running to a paragraph under a
+// thumbnail — cannot recur: the line reserves exactly the height the author
+// used to. A work with no caption keeps the author's name, linked as before,
+// so no tile is left without a line.
+const title = work.caption?.trim();
+
 // What the LIGHTBOX says under the image, in exactly the form the member page's
 // gallery says it (see [slug].astro, which resolves the same lines): the caption
 // is the work's own, the DESCRIPTION is its SHORT text — a description joined
@@ -224,9 +232,15 @@ const pswpProject = projectSlideData(member.projects?.find((p) => p.id === work.
         shifts the name a few pixels off the artwork's left edge — the one
         alignment a line under a picture has to hold. */
     }
-    <span class="cwork__author"
-      ><a class="cwork__author-link" href={profileHref}>{member.displayName}</a></span
-    >
+    {
+      title ? (
+        <span class="cwork__author" title={title}>{title}</span>
+      ) : (
+        <span class="cwork__author"
+          ><a class="cwork__author-link" href={profileHref}>{member.displayName}</a></span
+        >
+      )
+    }
   </div>
   </div>
 </article>

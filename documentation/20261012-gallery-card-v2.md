@@ -109,6 +109,38 @@ too wide", "space the cards vertically more".
   row gap went from 72px to 112px. Card spacing is margins now, not gap, so
   an empty folded `<details>` adds nothing.
 
+## Words beside the folded picture (same day, third pass)
+
+Josh: words alternating right and left; the picture keeps its folded size
+with the words added to the side; the rail's line broken by the chevron and
+standing clear of the picture; a smaller PROFILE button (still white on
+black); the work's title instead of the name on Grid tiles; a lighter name;
+more vertical air; tighter tags.
+
+- **Picture | rail | words.** `--ccard-pic-w` is the folded picture's width
+  (`min(slot − rail, cap × aspect)`), the slot read as `100cqw` from the
+  cell, which is now an inline-size container. The words are a fixed
+  `--ccard-side-w` (15rem) column added beside it, so an open card is wider
+  than its slot. Folding sets the side to 0; the picture never moves.
+- **The words face the gutter.** `laneOf()` in `communityLayout.ts` puts a
+  slot in the left or right half; the cell carries `data-lane` (render and
+  every deal). A right-lane card mirrors: words | rail | picture, chevron
+  angles swapped, foot reversed so the pager stays at the picture's corner.
+  Desktop pins the card by its OUTER margin to where the folded card centred.
+- **The spread's beats no longer interlock.** The words cross the gutter
+  into the other lane's columns, so each beat starts three rows after the
+  last ends (`tileRows` 161 → 214). Slot sizes unchanged.
+- **The rail** is its own 2.4rem column; the hairline is two background
+  gradients down its middle, stopping 0.9rem short of the chevron. Position
+  and chevron angles come from the card as `--pdisc-rail-start`,
+  `--pdisc-rail-open`, `--pdisc-rail-folded`.
+- **Grid tiles** print the caption, one line, truncated; a work without one
+  keeps the author link.
+- Name 700 → 500; PROFILE moved to the LABEL voice with less padding; the
+  column's chips are 1px-bordered with 4px sides and a 3px gap.
+- The editor preview wraps the card in `.ccpv-slot` (a container) and gives
+  the picture whatever the form leaves after the words, capped at 9 columns.
+
 ## Two traps met while building it
 
 - **A column flex box inherits the grid's `align-items: start`.** On mobile

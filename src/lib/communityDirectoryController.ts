@@ -6,6 +6,7 @@ import {
   GALLERY_PATTERNS,
   STRIP_SLOT_ROWS,
   TAG_CHIP_VIEW,
+  laneOf,
   layOutSlots,
   layOutWall,
   type Slot,
@@ -212,6 +213,8 @@ function writeSlot(cell: HTMLElement, s: Slot) {
   cell.dataset.row = String(s.rowStart);
   cell.dataset.span = String(s.rowSpan);
   cell.dataset.col = `${s.colStart}-${s.colStart + s.colSpan - 1}`;
+  // Which side an open gallery card hangs its words off (communityCard.css).
+  cell.dataset.lane = laneOf(s);
 }
 
 /** The wall's two measurements: how many fixed-width cards the window fits,
@@ -549,6 +552,7 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
       cell.dataset.row = "0";
       cell.dataset.span = "";
       cell.dataset.col = "";
+      delete cell.dataset.lane;
       strip.appendChild(cell);
     });
     strip.hidden = false;
