@@ -15,7 +15,7 @@
 // Everything below is a contract with the MARKUP, not with either component:
 // `[data-carousel]` on the frame, `.ccard__track` inside it, `.ccard__slide`
 // per work, `.ccard__img` per slide, `[data-carousel-prev/next]`,
-// `[data-carousel-live]`, and `.ccard__dot` up on the card. Render that shape
+// `[data-carousel-live]`, and `.ccard__dot` on the card's foot row. Render that shape
 // and it pages.
 import EmblaCarousel from "embla-carousel";
 import type { EmblaCarouselType } from "embla-carousel";
@@ -182,7 +182,7 @@ export function initCarousels(root: ParentNode = document): void {
       copy("pswpDescription", "data-pswp-description");
       copy("pswpLink", "data-pswp-link");
     };
-    // The dots sit ABOVE the frame, so they are not descendants of the node
+    // The dots sit in the card's FOOT ROW, so they are not descendants of the node
     // Embla was handed — they are queried from the card.
     const card = carousel.closest<HTMLElement>(".ccard") ?? carousel;
     const dots = Array.from(card.querySelectorAll<HTMLElement>(".ccard__dot"));

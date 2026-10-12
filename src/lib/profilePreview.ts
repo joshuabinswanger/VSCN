@@ -528,6 +528,75 @@ export function renderCardPreview(
   const nameEl = part("name");
   if (nameEl) nameEl.textContent = displayName;
 
+  // ── The column (2026-10-12, gallery card v2) ──────────────
+  // The card's words stand beside the picture now: bio, links and tags in
+  // MemberDetailPanel's shell, the same rules the profile-page preview above
+  // applies to the same fields (renderProfilePreview). The panel's hooks are
+  // its own names — `ptags`, not `tags`, because `tags` is the typographic
+  // face's list below. The fold's toggle is labelled here, once there is a
+  // name to label it with; the prefix came with the shell.
+  const toggle = part("toggle");
+  if (toggle) {
+    const prefix = toggle.dataset.ccpvExpand ?? "";
+    toggle.setAttribute("aria-label", `${prefix} ${displayName}`.trim());
+  }
+
+  const bioEl = part("bio");
+  const bioText = vm.bio.trim();
+  if (bioEl) bioEl.textContent = bioText;
+  show(bioEl, Boolean(bioText));
+
+  const links = part("links");
+  const portfolio = vm.portfolio.trim();
+  const social = socialLinks(vm.socialMedia.trim());
+  if (links) {
+    const items: HTMLElement[] = [];
+    if (portfolio) {
+      const li = clone("plink");
+      const a = li?.querySelector("a");
+      if (li && a) {
+        a.href = href(portfolio);
+        a.textContent = portfolio;
+        items.push(li);
+      }
+    }
+    for (const entry of social) {
+      if (entry.href) {
+        const li = clone("plink");
+        const a = li?.querySelector("a");
+        if (li && a) {
+          a.href = entry.href;
+          a.textContent = entry.label;
+          items.push(li);
+        }
+      } else {
+        // Not link-shaped (a bare handle, or free text) — shown as text
+        // rather than given an invented URL, as on the card.
+        const li = clone("pval");
+        if (li) {
+          li.textContent = entry.label;
+          items.push(li);
+        }
+      }
+    }
+    links.replaceChildren(...items);
+  }
+  show(part("links-row"), Boolean(portfolio) || social.length > 0);
+
+  const ptags = part("ptags");
+  if (ptags) {
+    const items = vm.tags
+      .map((tag) => {
+        const li = clone("ptag");
+        const chip = li?.querySelector("span");
+        if (chip) chip.textContent = tag;
+        return li;
+      })
+      .filter((n): n is HTMLElement => n !== null);
+    ptags.replaceChildren(...items);
+  }
+  show(ptags, vm.tags.length > 0);
+
   // Same filter the profile-page preview applies: a gallery item mid-upload has
   // no dimensions yet, and a slide with no aspect is a collapsed frame.
   const works = vm.works.filter((w) => w.url && w.width > 0 && w.height > 0);
@@ -544,7 +613,7 @@ export function renderCardPreview(
   // there instead of an empty box, so the shell has to as well.
   const frameIsRule = !first && tagLines.length === 0;
 
-  // The role prints in the caption on every face, always.
+  // The role prints under the name on every face, always.
   const role = vm.role.trim();
   const roleEl = part("role");
   if (roleEl) roleEl.textContent = role;
@@ -624,7 +693,7 @@ export function renderCardPreview(
           .filter((n): n is HTMLElement => n !== null);
         track.replaceChildren(...slides);
 
-        // The dots live on the CARD, above the frame — one per work, and none
+        // The dots live on the CARD, in its foot row — one per work, and none
         // at all for a gallery of one.
         const dots = part("dots");
         if (dots) {

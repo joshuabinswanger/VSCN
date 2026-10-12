@@ -17,11 +17,21 @@
 // (src/styles/communityCard.css) and the paging comes from the one module both
 // call (src/lib/communityCarousel.ts).
 //
+// AND THE COLUMN (2026-10-12, gallery card v2). The card's words — name,
+// role, bio, links, tags — stand beside the picture now, open, so the preview
+// has to carry them too or it would be previewing half a card. They are
+// MemberDetailPanel in its `shell` mode: the panel's own markup with the
+// text left empty and `data-ccpv` hooks for the renderer, rendered by the
+// panel so its scoped rules reach it (a copy written here would carry this
+// component's scope attribute and none of them). The fold works in the
+// preview exactly as on the card, because it is the same native <details>.
+//
 // What is still the preview's own, and has to be:
-//   - `.ccard--preview`, which takes back two affordances the shell cannot
-//     honour: the name's hover underline and the frame's zoom-in cursor. Both
-//     are inert here (see below), and both are described in that stylesheet's
-//     foot rather than here, because they are rules about the card.
+//   - `.ccard--preview`, which takes back the affordances the shell cannot
+//     honour: the name's hover underline, the frame's zoom-in cursor, the
+//     button's and the chips' pointers. All are inert here (see below), and
+//     all are described in that stylesheet's foot rather than here, because
+//     they are rules about the card.
 //   - the TYPOGRAPHIC face (`.ccpv__tframe`). It began as a mirror of
 //     CommunityTextCard, the gallery's no-artwork card; that component was
 //     deleted on 2026-09-08 once neither gallery dealt it any more, so this
@@ -38,28 +48,20 @@
 //
 // Empty on the server, filled on the client: the editor is behind auth and the
 // member's data never reaches the build, so there is nothing to render here
-// until the form has loaded.
+// until the form has loaded. The one thing rendered with words is the
+// profile button's label, which is the page's language and nobody's data.
+import MemberDetailPanel from "./MemberDetailPanel.astro";
+import { useTranslations, type Lang } from "../../i18n/utils.ts";
 import "../../styles/communityCard.css";
+
+interface Props {
+  lang?: Lang;
+}
+const { lang = "en" } = Astro.props;
+const t = useTranslations(lang);
 ---
 
 <article class="ccard ccard--preview" data-ccpv-root>
-  {
-    /* An <h2> like the card's, and a <span> where the card has an <a>: the
-       card's name links to the member's page, and a live control that walked
-       the member out of an unsaved form would be a trap — the same call the
-       profile-page preview makes for its back link. */
-  }
-  <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
-
-  {
-    /* The count row, as on the real card (CommunityImageCard): one dot per
-       work, built by the renderer from the same template mechanism the tags
-       use, plus the "2 / 7" count and its two chevrons, which the carousel
-       module adds — named buttons, not tab stops, so the row is not
-       aria-hidden. */
-  }
-  <div class="ccard__dots" data-ccpv="dots" hidden></div>
-
   <div class="ccard__body" data-ccpv="body" hidden>
     {
       /* The frame IS the Embla viewport, exactly as on the card: the module
@@ -113,24 +115,41 @@ import "../../styles/communityCard.css";
        .ctcard__frame: one hairline where the
        box's top edge used to be, holding tag lines where the artwork would
        stand. Shown only when the member has no gallery at all, which is
-       exactly the rule /community applies (`hasArtwork`). */
+       exactly the rule /community applies (`hasArtwork`). It stands where
+       the picture would (the card's first column, both rows). */
   }
   <div class="ccpv__tframe" data-ccpv="tframe" hidden>
     <ul class="ccpv__tags" data-ccpv="tags"></ul>
   </div>
 
-  <div class="ccard__caption">
-    <div class="ccard__caption-row">
-      {
-        /* The role, on its own line below the frame on every face — the card
-           prints it there whether or not there is artwork. No disclosure
-           beside it: the panel is the card's bio, links and tags, which the
-           profile-page preview above already shows in full. */
-      }
-      <div class="ccard__meta-line">
-        <span class="ccard__role" data-ccpv="role" hidden></span>
-      </div>
+  {
+    /* The column, as the card renders it: an <h2> like the card's, and a
+       <span> where the card has an <a> — the card's name links to the
+       member's page, and a live control that walked the member out of an
+       unsaved form would be a trap, the same call the profile-page preview
+       makes for its back link. The role under it, hidden until there is
+       one. The panel's own hooks (bio, links, tags) are inside the shell. */
+  }
+  <MemberDetailPanel lang={lang} shell mode="column">
+    <div slot="lead" class="ccard__head">
+      <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
+      <p class="ccard__role" data-ccpv="role" hidden></p>
     </div>
+  </MemberDetailPanel>
+
+  {
+    /* The foot, as on the card: the count row — one dot per work, built by
+       the renderer from the same template mechanism the tags use, plus the
+       "2 / 7" count and its two chevrons, which the carousel module adds —
+       and the profile button, a <span> here because there is no page to go
+       to from an unsaved form. */
+  }
+  <div class="ccard__foot">
+    <div class="ccard__dots" data-ccpv="dots" hidden></div>
+    <span class="ccard__profile">
+      {t("community.card.profile")}
+      <span aria-hidden="true">→</span>
+    </span>
   </div>
 
   {
@@ -139,7 +158,9 @@ import "../../styles/communityCard.css";
        concatenation — and the clone carries this component's scope attribute,
        which a node built in JS would not (see renderProfilePreview's header).
        The slide's data-pswp-* set (+ data-work-url) is what communityCarousel.ts reads; it is
-       filled per image so the shell speaks the card's own contract. */
+       filled per image so the shell speaks the card's own contract. The
+       column's item templates (links, values, tag chips) live in the panel's
+       shell for the scope reason above. */
   }
   <template data-ccpv-tpl="slide"
     ><div class="ccard__slide"><img class="ccard__img" alt="" decoding="async" /></div></template
@@ -155,8 +176,9 @@ import "../../styles/communityCard.css";
      CommunityTextCard's .ctcard__frame, and now the only copy of it: inline
      padding went with the border, which only ever inset tags from a box edge; the
      vertical padding stays. No --frame-cap here — the preview sits in a form,
-     not a grid slot. */
+     not a grid slot. In the picture's place on the card's grid. */
   .ccpv__tframe {
+    grid-area: 1 / 1 / 3 / 2;
     box-sizing: border-box;
     overflow: hidden;
     padding: 0.7rem 0;
@@ -200,8 +222,9 @@ import "../../styles/communityCard.css";
      allow; a form has no slot, so this one states the spread's: a lane of 9 of
      the grid's 24 columns (CommunityGrid's --cgrid-col, same arithmetic) and
      26 rows of 1.5rem — the middle of the 8–9 columns and 24–28 rows the
-     table deals. The card's own width formula then runs exactly as it does
-     on /community, so a tall first picture narrows the card the same way.
+     table deals. The card's own width and frame formulas then run exactly as
+     they do on /community, so a tall first picture narrows the frame the
+     same way and the words get the same room beside it.
      It used to be a flat 22rem, a number chosen to look like "a card" and
      not taken from anywhere: 286px at 1280, against the 390–440px the real
      card gets there. */

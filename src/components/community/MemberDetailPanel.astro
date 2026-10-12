@@ -4,16 +4,30 @@ import { communityTagHref, href, socialLinks } from "../../lib/links.ts";
 import { useTranslations, type Lang } from "../../i18n/utils.ts";
 
 interface Props {
-  member: MemberViewBase;
+  /** Absent only in `shell` mode, where nothing is read from it. */
+  member?: MemberViewBase;
   lang: Lang;
   /** Render the disclosure even when hasDetail() says no — for a caller
    *  slotting its own lead content (the index rows slot the member's
    *  profile picture, which is content worth a toggle by itself). */
   forceShow?: boolean;
+  /** COLUMN MODE (2026-10-12, gallery card v2): the panel is the directory
+   *  card's TEXT COLUMN, standing beside the artwork and OPEN by default,
+   *  with the toggle drawn as a rail down the card's right edge. The card
+   *  slots the member's name and role into `lead`. Folding takes the whole
+   *  column away — see the column rules below and communityCard.css. */
+  mode?: "column";
+  /** SHELL: the same markup, empty, carrying `data-ccpv` hooks and the item
+   *  templates renderCardPreview() (src/lib/profilePreview.ts) fills from
+   *  live form state. Rendered here rather than copied into the preview
+   *  component so the panel's SCOPED rules reach it — a hand-written twin in
+   *  another file would carry a different scope attribute and none of them. */
+  shell?: boolean;
 }
 
-const { member, lang, forceShow = false } = Astro.props;
+const { member, lang, forceShow = false, mode, shell = false } = Astro.props;
 const t = useTranslations(lang);
+const column = mode === "column";
 
 // Native <details> on purpose. ClientRouter is active site-wide, so any script
 // here would need an astro:page-load / astro:before-swap pair and would leak
@@ -21,14 +35,16 @@ const t = useTranslations(lang);
 // none of that, and comes with keyboard and screen-reader behaviour already
 // correct.
 
-const bio = member.bio.trim();
-const portfolio = member.portfolio.trim();
-const social = socialLinks(member.socialMedia.trim());
-const tags = member.tags;
+const bio = member?.bio.trim() ?? "";
+const portfolio = member?.portfolio.trim() ?? "";
+const social = socialLinks(member?.socialMedia.trim() ?? "");
+const tags = member?.tags ?? [];
+const displayName = member?.displayName ?? "";
 
 // Nothing to disclose — a profile that is name + role only. Rendering an
-// empty toggle would promise content that isn't there.
-const show = forceShow || hasDetail(member);
+// empty toggle would promise content that isn't there. A shell always
+// renders: what it will hold is decided in the browser.
+const show = shell || forceShow || (member ? hasDetail(member) : false);
 
 // THE WHOLE LINE AS THE TOGGLE (2026-09-01, Josh: "in index clicking on the
 // profile expands it"). A caller may slot the row it wants to be clickable
@@ -47,14 +63,23 @@ const hasSummary = Astro.slots.has("summary");
 
 {
   show ? (
-    <details class="pdisc" class:list={{ "pdisc--line": hasSummary }}>
+    <details
+      class="pdisc"
+      class:list={{ "pdisc--line": hasSummary, "pdisc--column": column }}
+      open={column}
+    >
       {/* No aria-label in line mode: the summary names ITSELF there — its
           content is the member's name and field, which is a better label than
           any sentence written here, and an aria-label would silence all of
-          it. */}
+          it. The shell's label is completed in the browser, once there is a
+          name to complete it with (data-ccpv-expand carries the prefix). */}
       <summary
         class="pdisc__toggle"
-        aria-label={hasSummary ? undefined : `${t("community.card.expand")} ${member.displayName}`}
+        aria-label={
+          hasSummary ? undefined : shell ? undefined : `${t("community.card.expand")} ${displayName}`
+        }
+        data-ccpv={shell ? "toggle" : undefined}
+        data-ccpv-expand={shell ? t("community.card.expand") : undefined}
       >
         {hasSummary && <slot name="summary" />}
       </summary>
@@ -64,6 +89,15 @@ const hasSummary = Astro.slots.has("summary");
           {/* The caller's lead content — the index slots the member's
               profile picture here. Empty for the card usages. */}
           <slot name="lead" />
+          {/* THE SHELL'S HOOKS: the same elements, empty and hidden, that
+              renderCardPreview() fills and shows. Each rendered twin follows. */}
+          {shell && <p class="pdisc__bio" data-ccpv="bio" hidden />}
+          {shell && (
+            <div class="pdisc__row" data-ccpv="links-row" hidden>
+              <ul class="pdisc__vals pdisc__vals--links" data-ccpv="links" />
+            </div>
+          )}
+          {shell && <ul class="pdisc__vals pdisc__vals--tags" data-ccpv="ptags" hidden />}
           {bio && <p class="pdisc__bio">{bio}</p>}
 
           {(portfolio || social.length > 0) && (
@@ -138,6 +172,28 @@ const hasSummary = Astro.slots.has("summary");
               A ledger row with nothing to disclose has no panel to put it in
               and keeps its link on the line — see CommunityGrid. */}
           <slot name="footer" />
+          {/* The shell's item templates. Cloned by renderCardPreview(): a
+              template's content is inert, and a clone carries THIS
+              component's scope attribute, which a node built in JS would not.
+              The tag is a <span>, not the card's <a>: a live filter link in
+              the editor would walk the member out of an unsaved form. */}
+          {shell && (
+            <>
+              <template data-ccpv-tpl="plink">
+                <li>
+                  <a class="pdisc__link" target="_blank" rel="noopener" />
+                </li>
+              </template>
+              <template data-ccpv-tpl="pval">
+                <li class="pdisc__val" />
+              </template>
+              <template data-ccpv-tpl="ptag">
+                <li>
+                  <span class="pdisc__val pdisc__tag tagchip" />
+                </li>
+              </template>
+            </>
+          )}
         </div>
       </div>
     </details>
@@ -402,5 +458,113 @@ const hasSummary = Astro.slots.has("summary");
     .pdisc__body { padding: 24px 0 12px; }
     .pdisc__body-inner { gap: 24px; }
     .pdisc__vals--links { gap: 12px 18px; }
+  }
+
+  /* ── COLUMN MODE ───────────────────────────────────────
+     (2026-10-12, gallery card v2 — Josh's sketch.) The panel is the
+     directory card's TEXT COLUMN: it stands beside the artwork, open by
+     default, holding the member's name and role (slotted into `lead` by the
+     card), the bio, the links and the tags. The toggle is a RAIL down the
+     card's right edge — a hairline with one chevron at mid-height — and
+     folding takes the WHOLE column away ("fold everything"): the picture then
+     widens to the slot, which is the card's business (see
+     `.ccard:has(> .pdisc:not([open]))` in communityCard.css).
+
+     THE RAIL IS POSITIONED AGAINST THE CARD, not this element. `.pdisc` is
+     left position:static, so the rail's containing block is the nearest
+     positioned ancestor — `.ccard`, position:relative with a padding-right
+     the rail's width — and the rail spans the card's full height, frame and
+     foot included, whatever this element's own height is. The body stays in
+     flow. No ground and no blur here: the column IS the card now rather than
+     a panel laid over its neighbours, and sixteen always-on backdrop-filters
+     would be a compositing bill the directory has no reason to pay. */
+  .pdisc--column {
+    position: static;
+    min-width: 0;
+  }
+
+  .pdisc--column > .pdisc__toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: var(--ccard-rail, 1.6rem);
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-left: 1px solid var(--color-border);
+    transition:
+      color 0.15s,
+      border-color 0.15s;
+  }
+
+  .pdisc--column > .pdisc__toggle:hover,
+  .pdisc--column > .pdisc__toggle:focus-visible {
+    color: var(--color-dark);
+    border-color: var(--color-dark);
+  }
+
+  /* The chevron points at the column it folds: ‹ while open (the column is
+     there, press to send it away), › once folded (press to bring it back).
+     Doubled class so these outrank the base [open] rule above at any order. */
+  .pdisc.pdisc--column > .pdisc__toggle::after {
+    margin: 0 0 0 0.15rem;
+    transform: rotate(135deg);
+  }
+  .pdisc.pdisc--column:not([open]) > .pdisc__toggle::after {
+    margin: 0 0.15rem 0 0;
+    transform: rotate(-45deg);
+  }
+
+  .pdisc--column .pdisc__body {
+    padding: 0;
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .pdisc--column .pdisc__body-inner {
+    gap: 0.7rem;
+  }
+
+  .pdisc--column .pdisc__vals--tags {
+    margin-bottom: 0;
+  }
+
+  @supports selector(::details-content) {
+    /* No travel on the fold. The column leaves SIDEWAYS — the card re-deals
+       its columns in one step — so a height tween under that would only show
+       the text crumpling before it goes. */
+    .pdisc.pdisc--column::details-content {
+      transition: none;
+    }
+  }
+
+  @media (--bp-mobile) {
+    /* On a phone the column stacks UNDER the picture, so the rail becomes the
+       card's old square toggle: top-right of the column, on the name's line,
+       pointing down to fold and up to unfold. Positioned against the column
+       itself here, which keeps a minimum height so the folded box still has
+       the toggle in it. */
+    .pdisc--column {
+      position: relative;
+      min-height: 2rem;
+      padding-right: 2rem;
+    }
+    .pdisc--column > .pdisc__toggle {
+      top: 0;
+      bottom: auto;
+      width: 2rem;
+      height: 2rem;
+      border-left: 0;
+    }
+    .pdisc.pdisc--column > .pdisc__toggle::after {
+      margin: 0 0 0.1rem;
+      transform: rotate(225deg);
+    }
+    .pdisc.pdisc--column:not([open]) > .pdisc__toggle::after {
+      margin: 0 0 0.1rem;
+      transform: rotate(45deg);
+    }
   }
 </style>

@@ -289,6 +289,9 @@ export const ui: Record<string, Record<string, string>> = {
     // control on the image card's caption row.
     "community.card.viewProfile": "View profile:",
     "community.card.viewProfile.text": "View profile",
+    // The gallery card's filled button (2026-10-12), "PROFILE →" in the
+    // sketch — the arrow is markup, this is the word.
+    "community.card.profile": "Profile",
     // Aria-label prefix for the artwork itself, which as of 2026-09-01 opens
     // the lightbox rather than the profile.
     "community.card.openImage": "Open image:",
@@ -920,6 +923,7 @@ export const ui: Record<string, Record<string, string>> = {
     "community.card.expand": "Profil aufklappen:",
     "community.card.viewProfile": "Profil ansehen:",
     "community.card.viewProfile.text": "Profil ansehen",
+    "community.card.profile": "Profil",
     "community.card.openImage": "Bild öffnen:",
     "community.card.prev": "Vorheriges Bild",
     "community.card.next": "Nächstes Bild",
