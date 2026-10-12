@@ -2194,6 +2194,46 @@ const indexMembers = [...members].sort((a, b) =>
     display: flex;
     justify-content: center;
   }
+
+  /* ── IMAGES AS A MASONRY (2026-10-12) ─────────────────────────
+     Josh, with illustratoren-schweiz.ch's grid as the reference: "the grid
+     view like this". Columns about 300px wide — as many as the window fits on
+     a desktop, two on a phone — each work at its own aspect, full column
+     width, the member's name under it, one card straight under the next
+     (multicol packs the columns, so no row leaves holes and the columns
+     start out of step, as the reference's do). Static: no brick, no
+     parallax. The deal still writes its slots; multicol ignores them. Stated
+     last in this block so it outranks the square-cell grid above at equal
+     specificity on every width. */
+  .cgrid[data-pattern="grid"]:not([hidden]) {
+    display: block;
+    column-width: 300px;
+    column-count: auto;
+    column-gap: 40px;
+  }
+  .cgrid[data-pattern="grid"] .cgrid__cell:not([hidden]) {
+    display: block;
+    break-inside: avoid;
+    aspect-ratio: auto;
+    left: 0;
+    margin-bottom: 44px;
+  }
+  /* The tallest a work may stand: one and a half times its column. */
+  .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
+    container-type: inline-size;
+    --slot-rows: 1;
+    --cgrid-row: calc(1.5 * 100cqw / var(--slot-rows, 1));
+  }
+  @media (--bp-mobile) {
+    .cgrid[data-pattern="grid"]:not([hidden]) {
+      column-count: 2;
+      column-width: auto;
+      column-gap: 24px;
+    }
+    .cgrid[data-pattern="grid"] .cgrid__cell:not([hidden]) {
+      margin-bottom: 36px;
+    }
+  }
 </style>
 
 <script>import "../lib/communityDirectoryController.ts";</script>
