@@ -121,9 +121,12 @@ import "../styles/type.css";
     transition: transform 0.28s cubic-bezier(0.5, 0, 0.75, 0);
   }
 
+  /* NO GREY ON HOVER (2026-10-12, Josh: "the grey hover tone I don't like,
+     use something else"): the bar draws its own black frame instead — the
+     same black as the current page's block, as an outline. */
   .nav-link:hover {
     color: var(--color-dark);
-    background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
+    box-shadow: inset 0 0 0 1.5px var(--color-dark);
   }
 
   .nav-link--active,
@@ -141,6 +144,36 @@ import "../styles/type.css";
     .nav-link::before,
     .nav-link--active::before {
       transition: none;
+    }
+  }
+
+  /* TOP RIGHT, AND SMALLER, ON A DESKTOP (2026-10-12, Josh: "navbar should
+     be smaller buttons and on desktop it should be in the top right"). The
+     three bars keep one width between them and ride the window's right edge
+     at the content's 15px, under the title — and once the title has ridden
+     up, in the window's top-right corner. */
+  @media (--bp-desktop) {
+    .nav-links {
+      display: flex;
+      justify-content: flex-end;
+      gap: 4px;
+      max-width: none;
+      padding: 6px 15px 0;
+    }
+    .nav-link {
+      flex: none;
+      box-sizing: border-box;
+      width: 7.5rem;
+      padding: 6px 8px;
+      font-size: var(--fs-82);
+    }
+    .nav-right-group {
+      flex: none;
+      box-sizing: border-box;
+      width: 7.5rem;
+    }
+    .nav-right-group > .nav-link {
+      width: auto;
     }
   }
 

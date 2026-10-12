@@ -58,6 +58,10 @@
   --ccard-rail: 2.4rem;
   --ccard-side-w: 15rem;
   --ccard-side: var(--ccard-side-w);
+  /* The air between the picture and the words, now that the rail stands on
+     the words' far side. */
+  --ccard-gap: 1.2rem;
+  --ccard-gap-now: var(--ccard-gap);
   --ccard-pic-w: min(
     var(--ccard-slot-w, 100cqw) - var(--ccard-rail),
     var(--frame-cap) * var(--frame-ar, 1)
@@ -72,23 +76,27 @@
   /* Where MemberDetailPanel draws the rail: the left edge of the rail's
      column, and which way its chevron points open and folded. The words
      stand to the right of the picture here; [data-lane="right"] mirrors
-     all three below. */
-  --pdisc-rail-start: var(--ccard-pic-w);
+     all three below.
+     THE RAIL STANDS ON THE WORDS' FAR SIDE (2026-10-12, Josh: "make the bar
+     on the gallery card be on the right side of text when expanded"): picture,
+     gap, words, rail — so open, the rail is the card's outer edge; folded,
+     the words and the gap go to 0 and it stands beside the picture again. */
+  --pdisc-rail-start: calc(var(--ccard-pic-w) + var(--ccard-gap-now) + var(--ccard-side));
   --pdisc-rail-open: 135deg;
   --pdisc-rail-folded: -45deg;
-  /* THE DEAL. Picture | rail | words. The words' column is three rows —
+  /* THE DEAL. Picture | gap | words | rail. The words' column is three rows —
      the head (name and role), the rest of the panel, the foot — and the
      frame spans all three, so the foot (pager and button) sits on the
      picture's bottom edge whenever the words are shorter than the picture,
      and follows them down when they are longer (the card is out of flow in
      the spread, so growing costs its slot nothing). */
   display: grid;
-  grid-template-columns: var(--ccard-pic-w) var(--ccard-rail) var(--ccard-side);
+  grid-template-columns: var(--ccard-pic-w) var(--ccard-gap-now) var(--ccard-side) var(--ccard-rail);
   grid-template-rows: auto minmax(0, 1fr) auto;
   row-gap: 0.7rem;
   align-items: start;
   box-sizing: border-box;
-  width: calc(var(--ccard-pic-w) + var(--ccard-rail) + var(--ccard-side));
+  width: calc(var(--ccard-pic-w) + var(--ccard-gap-now) + var(--ccard-side) + var(--ccard-rail));
   /* Pivot for the GSAP scale in CommunityGrid. Declared here so the effect
      is identical whoever drives the transform. Anchored at the top edge, not
      centre: the ScrollTrigger is keyed to the card's top, and a centre
@@ -124,27 +132,27 @@
 
 /* ── THE WORDS ALTERNATE (2026-10-12, Josh: "the text should be alternating
    right and left"). A card in the right-hand lane hangs its words off its
-   LEFT side: words | rail | picture, the chevron mirrored, and the foot
+   LEFT side: rail | words | gap | picture, the chevron mirrored, and the foot
    reversed so the pager still stands at the picture's bottom corner and the
    button at the card's outer edge. The lane is the cell's (data-lane,
    written by the deal from laneOf), so the words always face the gutter. */
 [data-lane="right"] > .ccard {
-  grid-template-columns: var(--ccard-side) var(--ccard-rail) var(--ccard-pic-w);
-  --pdisc-rail-start: var(--ccard-side);
+  grid-template-columns: var(--ccard-rail) var(--ccard-side) var(--ccard-gap-now) var(--ccard-pic-w);
+  --pdisc-rail-start: 0px;
   --pdisc-rail-open: -45deg;
   --pdisc-rail-folded: 135deg;
 }
 [data-lane="right"] > .ccard > .ccard__body {
-  grid-area: 1 / 3 / 4 / 4;
+  grid-area: 1 / 4 / 4 / 5;
 }
 [data-lane="right"] > .ccard > .ccard__head {
-  grid-area: 1 / 1 / 2 / 2;
+  grid-area: 1 / 2 / 2 / 3;
 }
 [data-lane="right"] > .ccard > .pdisc {
-  grid-area: 2 / 1 / 3 / 2;
+  grid-area: 2 / 2 / 3 / 3;
 }
 [data-lane="right"] > .ccard > .ccard__foot {
-  grid-area: 3 / 1 / 4 / 2;
+  grid-area: 3 / 2 / 4 / 3;
   flex-direction: row-reverse;
 }
 [data-lane="right"] > .ccard > .ccard__foot > .ccard__profile {
@@ -157,6 +165,7 @@
    the rail beside it, at exactly the size the picture had open. */
 .ccard:has(> .pdisc:not([open])) {
   --ccard-side: 0px;
+  --ccard-gap-now: 0px;
 }
 .ccard:has(> .pdisc:not([open])) .ccard__head,
 .ccard:has(> .pdisc:not([open])) .ccard__foot {

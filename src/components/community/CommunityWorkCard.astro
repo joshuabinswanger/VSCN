@@ -261,7 +261,11 @@ const pswpProject = projectSlideData(member.projects?.find((p) => p.id === work.
        its fixed grid-auto-rows (see CommunityGrid's wall block) and all three
        must move together, or the rows keep the old height and the tiles
        rattle inside them. */
-    --cwork-chrome: 1.2rem;
+    /* 0 since 2026-10-12 (Josh: "grid lose image titles, on hover display
+       image title"): the line under the frame is out of flow and only shows
+       on hover, so nothing is reserved for it. The wall's two other
+       statements of this figure went to 0 with it. */
+    --cwork-chrome: 0rem;
     /* How tall the frame may be, out of the slot the grid dealt. Absent a slot
        (nothing renders this outside the wall today) the fallback is no cap. */
     --frame-cap: calc(var(--slot-rows, 999) * var(--cgrid-row, 2rem) - var(--cwork-chrome));
@@ -357,12 +361,9 @@ const pswpProject = projectSlideData(member.projects?.find((p) => p.id === work.
 
   /* Touch scrolling can synthesize hover and retain focus. Only enlarge
      artwork on a desktop with a precise, hover-capable pointer. */
-  @media (--bp-desktop) and (hover: hover) and (pointer: fine) {
-    .cwork:hover .cwork__grow,
-    .cwork:has(:focus-visible) .cwork__grow {
-      transform: scale(1.1);
-    }
-  }
+  /* NO ZOOM ON HOVER any more (2026-10-12, Josh: "remove the zoom of the
+     image on hover"). The pointer reveals the title instead — see
+     .cwork__caption. */
 
   /* IN FRONT, for as long as the pointer is on it. Without this the wall's
      source order decides which artwork wins where two spill into each other,
@@ -394,6 +395,24 @@ const pswpProject = projectSlideData(member.projects?.find((p) => p.id === work.
        thing the gap was ever needed for. */
     padding-top: 0.15rem;
     font-family: "Archivo", sans-serif;
+    /* OUT OF FLOW AND HIDDEN AT REST (2026-10-12, "grid lose image titles,
+       on hover display image title"): it hangs under the frame in the row
+       gap and appears while the tile is pointed at or holds focus. */
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+  }
+  .cwork__grow {
+    position: relative;
+  }
+  .cwork:hover .cwork__caption,
+  .cwork:focus-within .cwork__caption {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   /* THE AUTHOR, printed — in flow, on every
