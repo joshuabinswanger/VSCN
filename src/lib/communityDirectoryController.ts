@@ -430,13 +430,13 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
   // cards. Cleared for every other mode by the same call.
   document.body.classList.toggle("wall-bleed", mode === "grid");
 
-  // The grid wall hides the disclosures in CSS; close them here too, or
-  // a panel left open in the spread is still open on the way back.
-  if (mode !== "spread") {
-    grid.querySelectorAll<HTMLDetailsElement>("details[open]").forEach((d) => {
-      d.open = false;
-    });
-  }
+  // NOTHING TO CLOSE ANY MORE (2026-10-12). This used to fold every open
+  // disclosure on the way out of the spread, so a panel left open there was
+  // not still open on the way back. The only disclosures in the grid now are
+  // the gallery cards' text columns, which are OPEN by default and are the
+  // card — folding them here would bring the visitor back to a spread of
+  // nameless pictures. The wall hides the image cells outright, columns and
+  // all, so there is nothing to tidy.
 
   // The index is not a deal: the server rendered the whole ledger, so the
   // selector only swaps which of the two siblings is visible. The grid keeps
