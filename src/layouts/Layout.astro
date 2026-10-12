@@ -103,8 +103,16 @@ const BRAND_LETTERS = [
 // design rule here and six repeats keeps it rather than breaking it.
 // Mobile stays at four: there the measure is the phone's width, so six repeats
 // would shrink the title past the point where it reads as a title at all.
-const BRAND_REPEATS_MOBILE = 4;
-const BRAND_REPEATS_DESKTOP = 6;
+// ONE VSCN (2026-10-12, Josh: "we also only want a VSCN and not the wide
+// banner. it should still expand on hovering over the text", and "the header
+// should be inline with the Menu buttons"). BRAND_COMPACT draws the title as a
+// single copy at a fixed size at the left of a --header-h row, with the nav's
+// MENU at the row's right end; the word overwrite on hover is unchanged. The
+// repeat, fit and overshoot machinery below stays, switched off by these
+// numbers, so the banner is a constant away.
+const BRAND_COMPACT = true;
+const BRAND_REPEATS_MOBILE = BRAND_COMPACT ? 1 : 4;
+const BRAND_REPEATS_DESKTOP = BRAND_COMPACT ? 1 : 6;
 // One slot per glyph position of the resting title, then a run of spill slots.
 // Hovering a slot writes its tail OVER the slots that follow it, so the line
 // rewrites itself in place instead of growing and shoving its neighbours
@@ -145,10 +153,10 @@ const BRAND_COPY_TARGET_PX = 145;
 // "Communication" over twelve capitals, with room to spare.
 // ?wordmark=shell has none: that line ends at the measure, inside the window,
 // so letters past it would be seen.
-const BRAND_OVERSHOOT_REPEATS = 1;
+const BRAND_OVERSHOOT_REPEATS = BRAND_COMPACT ? 0 : 1;
 // Enough copies for a ~3500px window at the target size, plus the overshoot;
 // wider than that the line keeps this many and the fit lets the letters grow.
-const BRAND_POOL_REPEATS = 24 + BRAND_OVERSHOOT_REPEATS;
+const BRAND_POOL_REPEATS = BRAND_COMPACT ? 1 : 24 + BRAND_OVERSHOOT_REPEATS;
 // The markup carries the whole pool, one slot per glyph, every slot tagged with
 // its copy number. Without JS a desktop shows the first BRAND_REPEATS_DESKTOP
 // (`.brand-slot--pool` is display:none) and a phone the first
@@ -316,8 +324,8 @@ const BRAND_SLOTS: BrandSlot[] = [
   <body class:list={[{ "content-wide": contentWide }]}>
     <div
       class="brand-ticker"
-      data-wordmark={BRAND_FIT_VIEWPORT ? "fit" : "shell"}
-      data-wordmark-default={BRAND_FIT_VIEWPORT ? "fit" : "shell"}
+      data-wordmark={BRAND_COMPACT ? "compact" : BRAND_FIT_VIEWPORT ? "fit" : "shell"}
+      data-wordmark-default={BRAND_COMPACT ? "compact" : BRAND_FIT_VIEWPORT ? "fit" : "shell"}
       data-brand-copy-target={BRAND_COPY_TARGET_PX}
       data-brand-repeats-desktop={BRAND_REPEATS_DESKTOP}
       data-brand-repeats-mobile={BRAND_REPEATS_MOBILE}
@@ -513,6 +521,39 @@ const BRAND_SLOTS: BrandSlot[] = [
      wherever the rules sit. */
   .brand-slot.brand-slot--on.brand-slot--overshoot {
     display: inline-grid;
+  }
+
+  /* THE COMPACT HEADER (BRAND_COMPACT): one row --header-h tall, the title at
+     its left at a fixed size, MENU fixed over its right end (Navbar.astro).
+     It never rides away: on a desktop the ticker stands above .page-wrap, and
+     on a phone, where the document scrolls, it is sticky and paints the paper
+     so the page passes under it. */
+  .brand-ticker[data-wordmark="compact"] {
+    display: flex;
+    align-items: center;
+    height: var(--header-h);
+    padding: 0 15px;
+    margin-top: 0;
+    overflow-x: clip;
+  }
+  .brand-ticker[data-wordmark="compact"] .brand-link {
+    height: auto;
+  }
+  .brand-ticker[data-wordmark="compact"] .brand-name {
+    font-size: 30px;
+    line-height: 1;
+  }
+  @media (--bp-mobile) {
+    .brand-ticker[data-wordmark="compact"] {
+      position: sticky;
+      top: 0;
+      z-index: 25;
+      padding: 0 15px;
+      background: var(--color-bg);
+    }
+    .brand-ticker[data-wordmark="compact"] .brand-name {
+      font-size: 26px;
+    }
   }
 
   .brand-link {
@@ -722,6 +763,14 @@ const BRAND_SLOTS: BrandSlot[] = [
     // Copies past the right edge, where the line ends on it (see
     // BRAND_OVERSHOOT_REPEATS). Taken out of the pool first, so the widest
     // window still has them.
+    if (ticker.dataset.wordmark === "compact") {
+      slots.forEach((slot) => {
+        const inLine = Number(slot.dataset.brandRepeat) === 0;
+        slot.classList.toggle("brand-slot--on", inLine);
+        slot.classList.toggle("brand-slot--off", !inLine);
+      });
+      return;
+    }
     const endsOnWindowEdge = isPhone || ticker.dataset.wordmark === "fit";
     const overshoot = endsOnWindowEdge ? Number(ticker.dataset.brandOvershoot) || 0 : 0;
     let count = desktop;
@@ -756,15 +805,23 @@ const BRAND_SLOTS: BrandSlot[] = [
     } catch {
       /* Private mode: the URL still works for this one page. */
     }
+    // The compact title has one copy in its markup, so the banner modes have
+    // nothing to show there; the choice only applies to a banner build.
+    const fallback = ticker.dataset.wordmarkDefault ?? "shell";
     ticker.dataset.wordmark =
-      choice === "shell" || choice === "fit" ? choice : (ticker.dataset.wordmarkDefault ?? "shell");
+      fallback !== "compact" && (choice === "shell" || choice === "fit") ? choice : fallback;
   }
 
   function fitBrandName() {
     const el = document.getElementById("brand-name") as HTMLElement | null;
     if (!el) return;
-    el.style.fontSize = "8rem";
     const ticker = el.closest<HTMLElement>(".brand-ticker");
+    // The compact title is a fixed size (the CSS states it); nothing to fit.
+    if (ticker?.dataset.wordmark === "compact") {
+      el.style.fontSize = "";
+      return;
+    }
+    el.style.fontSize = "8rem";
     if (!ticker) return;
     // clientWidth includes the ticker's inline padding; the text can only use
     // the content box, so subtract it or the title overflows by exactly the
@@ -1013,8 +1070,13 @@ const BRAND_SLOTS: BrandSlot[] = [
     brandHideFrame = 0;
     const ticker = document.querySelector<HTMLElement>(".brand-ticker");
     if (!ticker) return;
-    // On mobile the ticker leaves naturally with document scrolling.
-    if (!brandScroller || window.matchMedia("(max-width: 767px)").matches) {
+    // On mobile the ticker leaves naturally with document scrolling, and the
+    // compact title never leaves at all.
+    if (
+      !brandScroller ||
+      ticker.dataset.wordmark === "compact" ||
+      window.matchMedia("(max-width: 767px)").matches
+    ) {
       ticker.style.removeProperty("--brand-hide");
       return;
     }
@@ -1203,7 +1265,11 @@ const BRAND_SLOTS: BrandSlot[] = [
       )
       .finished.then(() => {});
     let title: Promise<void> = Promise.resolve();
-    if (ticker && !phone && (parseFloat(ticker.style.getPropertyValue("--brand-hide")) || 0) > 0) {
+    // The compact title never leaves the screen, so there is nothing to bring
+    // back; the old page only fades.
+    if (ticker?.dataset.wordmark === "compact") {
+      // nothing
+    } else if (ticker && !phone && (parseFloat(ticker.style.getPropertyValue("--brand-hide")) || 0) > 0) {
       ticker.style.transition = `margin-top ${TITLE_MS}ms cubic-bezier(.2,.7,.2,1)`;
       ticker.style.setProperty("--brand-hide", "0px");
       title = new Promise<void>((resolve) => setTimeout(resolve, TITLE_MS)).then(() => {

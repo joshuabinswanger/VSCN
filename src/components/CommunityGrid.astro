@@ -1107,7 +1107,9 @@ const indexMembers = [...members].sort((a, b) =>
     padding: 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    /* Tighter between the rows than across (2026-10-12, Josh: "less padding
+       between tags vertically"). */
+    gap: 3px 6px;
   }
 
   /* THE SITE'S TAG (2026-10-12, Josh: "the tags use the tag style"). Each
@@ -1344,14 +1346,16 @@ const indexMembers = [...members].sort((a, b) =>
      there. */
   @media (--bp-desktop) {
     .cgrid[data-pattern="grid"] {
-      /* TWO WIDE (2026-10-12, Josh: "Images should be centered in a static
-         grid 2 wide and vertically centered!"). Two square cells, as large as
-         the window allows up to 440px, each artwork centred in its cell on
-         both axes; no brick step and no parallax (communityDirectoryController
-         and communityMotionController). wallMetrics no longer measures a
-         count, so this may be a formula. */
-      --wall-card: min(440px, calc((100vw - 2 * var(--wall-edge) - var(--wall-gap-min)) / 2));
-      --wall-gap-min: 120px;
+      /* STATIC AND CENTRED (2026-10-12, Josh: "Images should be centered in a
+         static grid … and vertically centered!"): square cells, each artwork
+         centred in its cell on both axes, no brick step and no parallax
+         (communityDirectoryController and communityMotionController). Two
+         wide for an hour, then ("on desktop the images can be wider, maybe
+         300px per image and then dynamic depending on viewport width") 300px
+         cells, as many as the window fits — wallMetrics measures the count
+         from this, so it stays a plain length. */
+      --wall-card: 300px;
+      --wall-gap-min: 80px;
       /* AND A CEILING, because a spread with only a floor has one bad width.
          Just under a step the row is a card short and the whole of that card's
          room goes into two or three gutters: 3 cards 210px apart at a 1280

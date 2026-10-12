@@ -235,12 +235,6 @@ function writeSlot(cell: HTMLElement, s: Slot) {
  *  data-pattern="grid" (and the body its bleed class) when this is called —
  *  otherwise it measures against the wrong width. */
 function wallMetrics(grid: HTMLElement): { cols: number; gap: number } {
-  // TWO WIDE, ALWAYS (2026-10-12, Josh: "Images should be centered in a static
-  // grid 2 wide"). The count no longer follows the window; the CSS sizes the
-  // two square cells, and the gutter is the floor. The measuring below is kept
-  // for the day the wall goes back to filling the window.
-  const floor = parseFloat(getComputedStyle(grid).getPropertyValue("--wall-gap-min"));
-  if (!Number.isNaN(floor)) return { cols: 2, gap: floor };
   const cs = getComputedStyle(grid);
   const px = (name: string) => parseFloat(cs.getPropertyValue(name));
   const card = px("--wall-card");

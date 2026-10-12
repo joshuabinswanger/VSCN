@@ -122,20 +122,22 @@ export const COLUMNS = 24;
 // hung off its inner side (see laneOf and communityCard.css), and that column
 // reaches across the gutter into the other lane's columns. Interlocked beats
 // would put one card's words over the next card's picture, so each beat now
-// starts three rows after the last one ends. The slot sizes are unchanged —
-// they are still the picture sizes.
+// starts after the last one ends — six rows after since the same evening
+// ("more vertical white space"; it was three), which also holds a folded
+// card's name line. The slot sizes are unchanged — they are still the
+// picture sizes.
 const SPREAD_TILE: Pattern = {
   name: "spread",
   // Wider lanes and taller slots enlarge the artwork itself, without zoom.
   // Keep two empty columns between lanes; the open cards' words use them.
-  tileRows: 214,
+  tileRows: 232,
   slots: [
     { colStart: 1, colSpan: 11, rowStart: 1, rowSpan: 32 },
-    { colStart: 14, colSpan: 11, rowStart: 36, rowSpan: 35 },
-    { colStart: 2, colSpan: 10, rowStart: 74, rowSpan: 30 },
-    { colStart: 15, colSpan: 10, rowStart: 107, rowSpan: 32 },
-    { colStart: 1, colSpan: 11, rowStart: 142, rowSpan: 35 },
-    { colStart: 14, colSpan: 11, rowStart: 180, rowSpan: 32 },
+    { colStart: 14, colSpan: 11, rowStart: 39, rowSpan: 35 },
+    { colStart: 2, colSpan: 10, rowStart: 80, rowSpan: 30 },
+    { colStart: 15, colSpan: 10, rowStart: 116, rowSpan: 32 },
+    { colStart: 1, colSpan: 11, rowStart: 154, rowSpan: 35 },
+    { colStart: 14, colSpan: 11, rowStart: 195, rowSpan: 32 },
   ],
 };
 
