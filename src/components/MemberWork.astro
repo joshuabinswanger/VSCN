@@ -9,6 +9,7 @@
 import type { EmbedRef } from "../lib/embed.ts";
 import { embedDataAttrs } from "../lib/embed.ts";
 import { hostLabel } from "../lib/links.ts";
+import { splitParagraphs } from "../lib/paragraphs.ts";
 
 interface WorkProps {
   url: string;
@@ -82,7 +83,11 @@ const { work: w, index: i, memberId, displayName, workAlt, linkTitle, siteLinkTi
   {(w.caption?.trim() || w.description || w.link || w.siteLink) && (
     <figcaption class="mprof__caption">
       {w.caption?.trim() && <span class="mprof__caption-line">{w.caption}</span>}
-      {w.description && <span class="mprof__desc">{w.description}</span>}
+      {w.description && (
+        <span class="mprof__desc">
+          {splitParagraphs(w.description).map((para) => <span class="mprof__para">{para}</span>)}
+        </span>
+      )}
       {/* Where the piece lives in the world: the member's own project page
           first, then the publication it appeared in (two links since
           2026-09-10). In the caption and not on the image, because the

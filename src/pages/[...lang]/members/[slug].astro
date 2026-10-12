@@ -1,6 +1,7 @@
 ---
 import { getImage } from "astro:assets";
 import Layout from "../../../layouts/Layout.astro";
+import { splitParagraphs } from "../../../lib/paragraphs.ts";
 import { fetchMemberViews, fetchSlugAliases } from "../../../lib/membersBuild.ts";
 import { localizeMember, type MemberView } from "../../../lib/memberView.ts";
 import {
@@ -237,7 +238,11 @@ const jsonLd = memberPageJsonLd({
       </div>
     </header>
 
-    {member.bio && <p class="mprof__bio">{member.bio}</p>}
+    {member.bio && (
+      <p class="mprof__bio">
+        {splitParagraphs(member.bio).map((para) => <span class="mprof__para">{para}</span>)}
+      </p>
+    )}
 
     <div class="mprof__meta">
       {

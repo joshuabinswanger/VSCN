@@ -120,6 +120,17 @@
   border-radius: 50%;
 }
 
+/* ONE BLOCK PER PARAGRAPH (2026-10-12, Josh: "more vertical padding for
+   paragraphs in profile view"): the bio, a work's description and a
+   project's description are split on their blank lines (src/lib/paragraphs.ts)
+   and each paragraph stands this far below the last. */
+.mprof__para {
+  display: block;
+}
+.mprof__para + .mprof__para {
+  margin-top: 1.1em;
+}
+
 .mprof__bio {
   margin: 3.5rem 0 0;
   max-width: 38rem;

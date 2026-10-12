@@ -224,12 +224,13 @@ export const TEXT_TILE: Pattern = {
 // per track and one row per row cannot overlap, cannot leave the grid, and
 // cannot come out of emission order. The rules exist to catch a human drawing
 // two rectangles on top of each other.
-export function layOutWall(count: number, cols: number): Slot[] {
+export function layOutWall(count: number, cols: number, brick = true): Slot[] {
   const wide = Math.max(1, Math.floor(cols));
   // The half step has to come out of the row's width or it would hang the last
   // card off the right edge — so an offset row holds one card fewer, and the
-  // wall's two rows sit symmetrically inside the same measure.
-  const narrow = Math.max(1, wide - 1);
+  // wall's two rows sit symmetrically inside the same measure. Without the
+  // brick (the static two-wide grid, 2026-10-12) every row is full.
+  const narrow = brick ? Math.max(1, wide - 1) : wide;
   const out: Slot[] = [];
   for (let i = 0, row = 1; i < count; row++) {
     const perRow = row % 2 === 1 ? wide : narrow;

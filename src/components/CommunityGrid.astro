@@ -807,12 +807,16 @@ const indexMembers = [...members].sort((a, b) =>
     pointer-events: auto;
     display: flex;
     align-items: center;
-    gap: 2px;
-    padding: var(--bar-pad);
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
+    gap: 4px;
+    /* ONE OUTLINE, NOT TWO (2026-10-12, Josh: "the tag selection etc should
+       have only one black outline, not a black and a grey one"). The pill
+       used to be a paper box with a grey hairline around the two triggers,
+       which have their own black frames now; it is only the row that holds
+       them. --bar-pad stays a number the panels' offsets read. */
+    padding: 0;
+    background: none;
+    border: 0;
     border-radius: 0;
-    box-shadow: 0 6px 24px -8px color-mix(in srgb, var(--color-dark) 22%, transparent);
     font-size: var(--fs-85);
   }
 
@@ -844,7 +848,6 @@ const indexMembers = [...members].sort((a, b) =>
       bottom: 36px;
     }
     .community-bar__in {
-      --bar-pad: 5px;
       gap: 5px;
       font-size: var(--fs-95);
     }
@@ -880,10 +883,12 @@ const indexMembers = [...members].sort((a, b) =>
     text-overflow: ellipsis;
   }
 
-  /* No grey (2026-10-12, "the grey hover tone I don't like"): the hairline
-     thickens under the pointer; an open menu's trigger is black. */
+  /* No grey (2026-10-12, "the grey hover tone I don't like"), and no thicker
+     line either ("make the outline thinner"): under the pointer the trigger
+     takes the black it will have once open. */
   .bar-menu__trigger:hover {
-    box-shadow: inset 0 0 0 2px var(--color-dark);
+    background: var(--color-dark);
+    color: var(--color-bg);
   }
   .bar-menu__trigger[aria-expanded="true"] {
     background: var(--color-dark);
@@ -920,7 +925,8 @@ const indexMembers = [...members].sort((a, b) =>
     box-sizing: border-box;
     padding: 6px;
     background: var(--color-bg);
-    border: 1px solid var(--color-border);
+    /* Black, like the triggers they rise from — one kind of outline. */
+    border: 1px solid var(--color-dark);
     border-radius: 0;
     box-shadow: 0 16px 40px -12px color-mix(in srgb, var(--color-dark) 28%, transparent);
     transform-origin: bottom center;
@@ -981,7 +987,7 @@ const indexMembers = [...members].sort((a, b) =>
 
   .view-toggle__btn:hover,
   .view-toggle__btn:focus-visible {
-    box-shadow: inset 0 0 0 1.5px var(--color-dark);
+    box-shadow: inset 0 0 0 1px var(--color-dark);
     outline: none;
   }
 
@@ -1338,8 +1344,14 @@ const indexMembers = [...members].sort((a, b) =>
      there. */
   @media (--bp-desktop) {
     .cgrid[data-pattern="grid"] {
-      --wall-card: 231px; /* ~33% more image area at the same aspect ratio. */
-      --wall-gap-min: 80px;
+      /* TWO WIDE (2026-10-12, Josh: "Images should be centered in a static
+         grid 2 wide and vertically centered!"). Two square cells, as large as
+         the window allows up to 440px, each artwork centred in its cell on
+         both axes; no brick step and no parallax (communityDirectoryController
+         and communityMotionController). wallMetrics no longer measures a
+         count, so this may be a formula. */
+      --wall-card: min(440px, calc((100vw - 2 * var(--wall-edge) - var(--wall-gap-min)) / 2));
+      --wall-gap-min: 120px;
       /* AND A CEILING, because a spread with only a floor has one bad width.
          Just under a step the row is a card short and the whole of that card's
          room goes into two or three gutters: 3 cards 210px apart at a 1280
@@ -1434,9 +1446,18 @@ const indexMembers = [...members].sort((a, b) =>
          would eat into a fixed-width track and shrink the card inside it, and
          GSAP owns the transform on every cell (the parallax). The cells are
          already position:relative, for the ?grid labels. */
-      left: var(--row-offset, 0px);
+      left: 0;
       /* The row-gap carries the vertical air now. */
       padding-bottom: 0;
+      /* THE CELL IS THE SQUARE, the tile sits in its middle. */
+      align-self: stretch;
+      align-items: center;
+      justify-content: center;
+    }
+    /* Visible cells only: a bare `display` here outranked the [hidden] rule
+       and put the gallery's hidden cells back into the grid. */
+    .cgrid[data-pattern="grid"] .cgrid__cell:not([hidden]) {
+      display: flex;
       /* The frame cap, stated directly instead of in rhythm units.
          CommunityImageCard computes --frame-cap as --slot-rows × --cgrid-row
          minus the card's chrome (5.4rem, mirrored here), and the wall's slots
@@ -1914,16 +1935,21 @@ const indexMembers = [...members].sort((a, b) =>
        uniform gap, so varied card heights never leave row-aligned holes.
        :not([hidden]) keeps this from tying with the `.cgrid[hidden]`
        display:none above, which an emptied filter depends on. */
+    /* Two wide and static on a phone too (2026-10-12, "a static grid 2 wide
+       and vertically centered"): square cells in two equal columns, each
+       artwork centred in its cell — it was a two-lane masonry flow. */
     .cgrid[data-pattern="grid"]:not([hidden]) {
-      display: block;
-      columns: 2;
-      column-gap: 32px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 24px;
+      row-gap: 40px;
     }
 
-    .cgrid[data-pattern="grid"] .cgrid__cell {
-      break-inside: avoid;
-      /* 64, from 48 (2026-10-12, "more white space in grid view"). */
-      margin-bottom: 64px;
+    .cgrid[data-pattern="grid"] .cgrid__cell:not([hidden]) {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     /* THE DESKTOP CAP, ON THE PHONE'S COLUMNS (2026-09-08, Josh: "very tall
@@ -1941,7 +1967,7 @@ const indexMembers = [...members].sort((a, b) =>
     .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
       container-type: inline-size;
       --slot-rows: 1;
-      --cgrid-row: calc((1.5 * 100cqw) / var(--slot-rows, 1));
+      --cgrid-row: calc(100cqw / var(--slot-rows, 1));
     }
 
     .cgrid__cell {

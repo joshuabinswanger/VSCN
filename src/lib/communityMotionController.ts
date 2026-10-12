@@ -43,7 +43,8 @@ function flowScale(_cell: HTMLElement, mode: string | undefined): number {
   // ~7px and makes the motion proportionate to the card carrying it.
   // Scaling is the whole change — the per-row deal above is untouched, so a
   // row still moves as one flat edge.
-  if (mode === "grid") return 0.35;
+  // STATIC since 2026-10-12 (Josh: "a static grid 2 wide"): no travel at all.
+  if (mode === "grid") return 0;
   return 1;
 }
 
