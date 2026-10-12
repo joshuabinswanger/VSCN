@@ -95,10 +95,11 @@ import "../styles/type.css";
     border-radius: 0;
     /* A PERSISTENT GROUND (2026-10-12, Josh: "nav bar needs to have
        persistent bg. bg color when inactive, black when active"): every bar
-       carries a solid tint of the paper at rest — opaque, so the page
-       scrolling under the sticky nav never shows through a bar — a deeper
-       one under the pointer, and black for the current page. */
-    background: color-mix(in srgb, var(--color-dark) 6%, var(--color-bg));
+       carries the page's own colour at rest — opaque, so the page scrolling
+       under the sticky nav never shows through a bar ("same colour as the
+       bg, not this weird grey", the same day) — a faint tint under the
+       pointer, and black for the current page. */
+    background: var(--color-bg);
     transition:
       background-color 0.2s ease,
       color 0.25s ease 0.08s;
@@ -122,7 +123,7 @@ import "../styles/type.css";
 
   .nav-link:hover {
     color: var(--color-dark);
-    background: color-mix(in srgb, var(--color-dark) 13%, var(--color-bg));
+    background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
   }
 
   .nav-link--active,

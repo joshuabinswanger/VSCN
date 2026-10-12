@@ -486,11 +486,10 @@
   margin-left: auto;
   /* Smaller since 2026-10-12 (Josh: "profile should be a smaller button,
      white on black text"): the LABEL voice in type.css, and this padding.
-     OUTLINED, not filled, the same day ("profile is too strong, make it
-     without black bg"): a hairline box in the type's colour, filled only
-     while pointed at. The padding gives back the border's pixel. */
-  padding: calc(0.35rem - 1px) calc(0.55rem - 1px) calc(0.3rem - 1px);
-  border: 1px solid var(--color-dark);
+     Then PLAIN, the same day ("profile is too strong, make it without black
+     bg", then "no outline for Profile"): the word and its arrow, no box at
+     all, underlined while pointed at like the card's other links. */
+  padding: 0;
   background: transparent;
   color: var(--color-dark);
   border-radius: 0;
@@ -500,8 +499,9 @@
 }
 .ccard__profile:hover,
 .ccard__profile:focus-visible {
-  background: var(--color-dark);
-  color: var(--color-bg);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
 }
 .ccard__profile:focus-visible {
   outline: 2px solid var(--color-dark);
@@ -576,7 +576,6 @@
      mobile!"): the type a step down in type.css, and a tighter box. */
   .ccard__profile {
     gap: 0.3rem;
-    padding: calc(0.25rem - 1px) calc(0.45rem - 1px) calc(0.2rem - 1px);
   }
   /* The lane's mirror is a desktop drawing; a phone has one column. */
   [data-lane="right"] > .ccard > .ccard__foot {
@@ -638,8 +637,7 @@
   cursor: default;
 }
 .ccard.ccard--preview .ccard__profile:hover {
-  background: transparent;
-  color: var(--color-dark);
+  text-decoration: none;
 }
 .ccard.ccard--preview .pdisc__vals .pdisc__tag:hover {
   color: var(--color-muted);

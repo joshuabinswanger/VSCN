@@ -15,11 +15,11 @@ import type { TransitionDirectionalAnimations } from "astro";
 const pageMotion: TransitionDirectionalAnimations = {
   forwards: {
     old: { name: "vscn-page-out-up", duration: "220ms", easing: "cubic-bezier(.5,0,.9,.4)", fillMode: "both" },
-    new: { name: "vscn-page-in-up", duration: "620ms", delay: "120ms", easing: "cubic-bezier(.18,1.25,.32,1)", fillMode: "both" },
+    new: { name: "vscn-page-in-up", duration: "620ms", easing: "cubic-bezier(.18,1.25,.32,1)", fillMode: "both" },
   },
   backwards: {
     old: { name: "vscn-page-out-down", duration: "220ms", easing: "cubic-bezier(.5,0,.9,.4)", fillMode: "both" },
-    new: { name: "vscn-page-in-down", duration: "620ms", delay: "120ms", easing: "cubic-bezier(.18,1.25,.32,1)", fillMode: "both" },
+    new: { name: "vscn-page-in-down", duration: "620ms", easing: "cubic-bezier(.18,1.25,.32,1)", fillMode: "both" },
   },
 };
 import Navbar from "../components/Navbar.astro";
@@ -1007,6 +1007,7 @@ const BRAND_SLOTS: BrandSlot[] = [
   // above for why desktop was given the same behaviour.
   let brandScroller: HTMLElement | null = null;
   let brandHideFrame = 0;
+  let leavingPage = false;
 
   function applyBrandHide() {
     brandHideFrame = 0;
@@ -1024,6 +1025,8 @@ const BRAND_SLOTS: BrandSlot[] = [
   }
 
   function onBrandHideScroll() {
+    // The leave sequence below owns the title while a page is being left.
+    if (leavingPage) return;
     // Piggybacked on the one scroll listener the page already has, throttled
     // separately — see saveScroll.
     saveScroll();
@@ -1164,6 +1167,69 @@ const BRAND_SLOTS: BrandSlot[] = [
   // that has to remember.
   document.addEventListener("astro:before-preparation", () => saveScroll(true));
 
+  // ── LEAVING A PAGE: FINISH THE OLD MOTION, THEN SWAP ──
+  // (2026-10-12, Josh: "the animation trips up because of the disappearing
+  // header. check that animations are done before switching page".) The
+  // title rides away as a page scrolls, and a new page starts at the top, so
+  // the swap used to bring the title back in the same frame the content
+  // started moving — and the view transition's group for <main> slid the new
+  // page from the OLD page's scrolled position to its own, which is the
+  // stumble. Now the leave is a sequence the router waits for: the old page
+  // fades out where it stands, the title comes back (sliding down on a
+  // desktop; on a phone, where the document itself scrolls, the scroll is
+  // reset under the invisible page and the title fades in), and only then is
+  // the swap allowed. The loader is wrapped, so the fetch runs in parallel
+  // and the swap waits for whichever finishes last. With nothing left
+  // moving, the new page only rises (global.css stops the group's slide).
+  // Same-path navigations (the directory's view switches) keep their own
+  // behaviour, and reduced motion skips all of it.
+  const LEAVE_MS = 220;
+  const TITLE_MS = 260;
+
+  function leavePage(): Promise<void> {
+    const main = document.querySelector<HTMLElement>(".page-wrap main");
+    const ticker = document.querySelector<HTMLElement>(".brand-ticker");
+    if (!main || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return Promise.resolve();
+    }
+    leavingPage = true;
+    // From here on a scroll is the leave's, not the reader's: never save it.
+    swappingScroll = true;
+    const phone = window.matchMedia("(max-width: 767px)").matches;
+    const fade = main
+      .animate(
+        [{}, { opacity: 0, transform: "translateY(-36px) scale(0.98)", filter: "blur(6px)" }],
+        { duration: LEAVE_MS, easing: "cubic-bezier(.5,0,.9,.4)", fill: "forwards" }
+      )
+      .finished.then(() => {});
+    let title: Promise<void> = Promise.resolve();
+    if (ticker && !phone && (parseFloat(ticker.style.getPropertyValue("--brand-hide")) || 0) > 0) {
+      ticker.style.transition = `margin-top ${TITLE_MS}ms cubic-bezier(.2,.7,.2,1)`;
+      ticker.style.setProperty("--brand-hide", "0px");
+      title = new Promise<void>((resolve) => setTimeout(resolve, TITLE_MS)).then(() => {
+        ticker.style.transition = "";
+      });
+    } else if (ticker && phone && window.scrollY > 0) {
+      title = fade.then(() => {
+        window.scrollTo({ top: 0, behavior: "instant" });
+        return ticker
+          .animate([{ opacity: 0 }, { opacity: 1 }], { duration: TITLE_MS, easing: "ease-out" })
+          .finished.then(() => {});
+      });
+    }
+    return Promise.all([fade, title])
+      .then(() => {})
+      .catch(() => {});
+  }
+
+  document.addEventListener("astro:before-preparation", (event) => {
+    if (event.to.pathname === event.from.pathname) return;
+    const load = event.loader;
+    event.loader = async () => {
+      await Promise.all([load(), leavePage()]);
+    };
+  });
+
   document.addEventListener("astro:before-swap", (event) => {
     saveScroll(true);
     // The router resets document scroll during a swap. Do not save that
@@ -1181,6 +1247,7 @@ const BRAND_SLOTS: BrandSlot[] = [
   });
 
   document.addEventListener("astro:page-load", () => {
+    leavingPage = false;
     const lang = document.documentElement.lang === "de" ? "de" : "en";
     updateBrandHomeLink(lang);
     initBrandFit();

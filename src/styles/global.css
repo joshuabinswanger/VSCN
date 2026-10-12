@@ -159,6 +159,15 @@ body {
   animation-duration: 420ms;
 }
 
+/* <main>'s group does not travel. By default it morphs from the old page's
+   box to the new one's, and the old box sits wherever the old page had been
+   scrolled to, so the new page used to slide in from there. The old page has
+   already faded out by the time of the swap (Layout.astro's leave sequence),
+   so the new one only has its own rise to make. */
+::view-transition-group(page-main) {
+  animation: none;
+}
+
 /* The page change's content motion — used by <main>'s transition:animate in
    Layout.astro, which explains the choreography. Small distances on purpose:
    the content should settle, not travel. */
