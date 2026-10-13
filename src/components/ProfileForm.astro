@@ -1,7 +1,6 @@
 ---
 import Button from "./ui/Button.astro";
 import "../styles/profile-editor.css";
-import ProfilePreview from "./profile/ProfilePreview.astro";
 import AccountSettings from "./profile/AccountSettings.astro";
 import WorkEditor from "./profile/WorkEditor.astro";
 import ProfileDetails from "./profile/ProfileDetails.astro";
@@ -65,11 +64,13 @@ const t = useTranslations(lang);
   </div>
 
   {
-    /* One form, four sections. A tab switch only toggles visibility, so the
-      single Save still collects every field. Preview is the last tab rather
-      than a separate mode: it needs no save and no rebuild, which matters
-      because the real profile page is a build-time snapshot — saving alone
-      would not show the member their own change for minutes. */
+    /* One form, three sections. A tab switch only toggles visibility, so the
+      single Save still collects every field. The Works tab IS the member page
+      (WorkEditor.astro): it previews and edits in place, switched by the bar
+      in the footer below, so there is no Preview tab any more (2026-10-13).
+      It needs no rebuild, which matters because the real profile page is a
+      build-time snapshot — saving alone would not show the member their own
+      change for minutes. */
   }
   <div class="section-tabs" role="tablist" aria-label={lang === "de" ? "Profil bearbeiten" : "Edit profile"} id="section-tabs">
     <button type="button" class="section-tab is-active" role="tab" id="tab-profile" aria-controls="panel-profile" tabindex="0" data-section="profile" aria-selected="true">
@@ -81,9 +82,6 @@ const t = useTranslations(lang);
     <button type="button" class="section-tab" role="tab" id="tab-account" aria-controls="panel-account" tabindex="-1" data-section="account" aria-selected="false">
       {t("profile.tab.account")}
     </button>
-    <button type="button" class="section-tab" role="tab" id="tab-preview" aria-controls="panel-preview" tabindex="-1" data-section="preview" aria-selected="false">
-      {t("profile.tab.preview")}
-    </button>
   </div>
 
   <ProfileDetails lang={lang} />
@@ -92,10 +90,31 @@ const t = useTranslations(lang);
 
   <AccountSettings lang={lang} />
 
-  <ProfilePreview lang={lang} />
-
-  {/* Floating Save: reachable from every editing tab, hidden on Preview. */}
-  <div class="form-footer">
+  {
+    /* THE BAR (2026-10-13, Josh: "on mobile we can have the toggle centered
+      on the bottom like the tags and gallery view selection. also a switch
+      between card and profile in the same bottom bar. En De switch as well
+      in the bottom bar. save also in the bar"). Sticky at the foot of the
+      form on every tab, holding Save; on the Works tab it also holds the
+      three switches — Profile | Card, Preview | Edit, EN | DE — and centres.
+      Each switch is a pair of pressed buttons (aria-pressed), the EN/DE
+      switch's own dress. */
+  }
+  <div class="form-footer" id="form-footer">
+    <div id="works-bar" class="works-bar" role="group" aria-label={t("profile.works.bar")} hidden>
+      <div class="works-seg" role="group" aria-label={t("profile.works.view")}>
+        <button type="button" class="works-seg__btn" data-works-view="profile" aria-pressed="true">{t("profile.works.view.profile")}</button>
+        <button type="button" class="works-seg__btn" data-works-view="card" aria-pressed="false">{t("profile.works.view.card")}</button>
+      </div>
+      <div class="works-seg" role="group" aria-label={t("profile.works.mode")} data-works-mode-seg>
+        <button type="button" class="works-seg__btn" data-works-mode="preview" aria-pressed="false">{t("profile.works.mode.preview")}</button>
+        <button type="button" class="works-seg__btn" data-works-mode="edit" aria-pressed="true">{t("profile.works.mode.edit")}</button>
+      </div>
+      <div class="works-seg" role="group" aria-label={t("profile.works.lang")}>
+        <button type="button" class="works-seg__btn" data-works-lang="en" aria-pressed={lang === "en" ? "true" : "false"} title={t("profile.gallery.lang.en")}>EN</button>
+        <button type="button" class="works-seg__btn" data-works-lang="de" aria-pressed={lang === "de" ? "true" : "false"} title={t("profile.gallery.lang.de")}>DE</button>
+      </div>
+    </div>
     {/* Filled by watchPublication (src/lib/publicationStatus.ts) after each save. */}
     <p role="status" aria-live="polite" id="save-msg" class="msg-ok" style="display:none;"></p>
     <p role="alert" id="save-error" class="msg-err" style="display:none;"></p>
