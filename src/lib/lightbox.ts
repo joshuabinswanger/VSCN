@@ -126,10 +126,9 @@ export function createLightbox(
     // Solid: the ground is the page's own paper, not a veil over it. Drag to
     // dismiss still fades it, which is what makes the gesture legible.
     bgOpacity: 1,
-    // PER SLIDE — see lightboxPadding in lightboxText.ts, which is also where
-    // the reasoning lives. The words go under the picture on every shape
-    // (2026-09-06); an upright image only reserves more room below, because
-    // it comes out narrower.
+    // The window split by height — 10 % over the picture, a 60 % band it is
+    // centred in, 30 % under it for the words — see lightboxPadding in
+    // lightboxText.ts, which is also where the reasoning lives.
     paddingFn: lightboxPadding,
     // The counter is the site's own "‹ 2 / 7 ›", in the top row (lightboxText.ts).
     counter: false,

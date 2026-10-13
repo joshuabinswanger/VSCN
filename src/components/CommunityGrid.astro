@@ -176,8 +176,8 @@ const workTagsAttr = (w: MemberView["works"][number]) => {
 // communityLayout.ts).
 //
 // WHICH VIEW A BARE /community OPENS ON is DEFAULT_VIEW in communityLayout.ts,
-// not the spread by birthright — it is the ledger for now, because the
-// galleries are near-empty until members register and fill them. That constant
+// not the spread by birthright — the Portfolios since 2026-10-13; it was the
+// ledger from 2026-09-06 while the galleries were near-empty. That constant
 // is also what the server renders visible and what a no-JS visitor is left
 // with, so the three cannot drift apart. Mobile
 // keeps the full selector and re-lays whichever deal is active into its own
@@ -2108,48 +2108,20 @@ const indexMembers = [...members].sort((a, b) =>
     }
   }
 
-  /* ── THE PHONE'S GRID FADES IN TOO ───────────────
-     (2026-09-26, Josh: "the grid should have a faint fade in animation also on
-     mobile".) The desktop wall has always arrived — GSAP's grow-on-approach,
-     0.2 → 1 with a scale — but that layer is desktop-only by design (mobile
-     downloads no GSAP at all), so the phone's two-column wall just sat there.
-     This gives it the arrival and nothing else: no scale, no parallax, and no
-     fade-OUT, because the wall is a reference view to scan, not a column to
-     page through, and a tile dimming under the bar would read as greyed out.
-
-     (Same day, Josh: "make the mobile fade more pronounced".) The first cut
-     borrowed the gallery's 0.35 → 1 over the tile's `entry` alone, finished
-     the instant the whole tile was on screen — so short and so shallow that
-     it barely read. Now it is deeper AND longer, with keyframes of its own so
-     the gallery's liked fade is untouched:
-     - DEEPER: `cgrid-wall-in` starts at 0 — fully invisible below the fold
-       (Josh, same day: "fade from 0", after 0.12). A tile appears out of the
-       paper rather than brightening from a ghost.
-     - LONGER: `entry 0%` → `cover 30%`. It still starts as the top edge
-       crosses the bottom of the screen, but runs on until the tile is well
-       into the lower third (~300px of scroll for the page's ~180px tiles),
-       so the arrival is something you watch rather than a flicker.
-     Fill `backwards` for the same reason as the gallery's in-ramp: it holds
-     the dim start below the fold, then stops contributing and leaves the
-     tile at its own opacity of 1 for good. */
-  @media (--bp-mobile) and (prefers-reduced-motion: no-preference) {
-    @supports (animation-timeline: view()) {
-      .cgrid[data-pattern="grid"] .cgrid__cell {
-        /* LONGHANDS, NOT THE SHORTHAND — load-bearing. Written as
-           `animation: … ; animation-timeline: view()`, the build's CSS
-           minifier folds the timeline INTO the shorthand
-           (`animation: backwards cgrid-cell-in view()`), which no browser
-           accepts, so the whole declaration is dropped and the tile never
-           animates. The dev server does not minify, so it looked fine
-           locally and shipped dead (PR #111). The gallery rule above escapes
-           the fold only because it has two timelines. */
-        animation-name: cgrid-wall-in;
-        animation-fill-mode: backwards;
-        animation-timeline: view();
-        animation-range: entry 0% cover 30%;
-      }
-    }
-  }
+  /* THE PHONE'S WALL NO LONGER FADES IN (2026-10-13). From 2026-09-26 the
+     Images tiles arrived through `cgrid-wall-in`, a 0 → 1 fade on a `view()`
+     timeline (Josh: "the grid should have a faint fade in animation also on
+     mobile", then "fade from 0"). The wall became a multicol masonry on
+     2026-10-12 (#200), and Josh then saw "a gap at the top right every time
+     the view opens": the first tile of the RIGHT column missing. A view
+     timeline's subject inside a multicol is the tile's position in the
+     unfragmented flow — far down the first column — so a tile standing at the
+     top of the second column believed itself below the fold and held its
+     fill-backwards opacity of 0 until the page had scrolled a column's
+     height. Chromium measures the fragment correctly; the phone's WebKit did
+     not. The wall is static by Josh's own call (#198, #199: no brick, no
+     parallax), so the arrival goes rather than being rebuilt on an
+     IntersectionObserver. The gallery column's fade (above) is untouched. */
 
   /* @keyframes are global in Astro (see CLAUDE.md) — hence the prefix.
 
@@ -2165,15 +2137,6 @@ const indexMembers = [...members].sort((a, b) =>
   @keyframes cgrid-cell-in {
     0% {
       opacity: 0.35;
-    }
-    100% {
-      opacity: 1;
-    }
-  }
-
-  @keyframes cgrid-wall-in {
-    0% {
-      opacity: 0;
     }
     100% {
       opacity: 1;
@@ -2199,24 +2162,29 @@ const indexMembers = [...members].sort((a, b) =>
      Josh, with illustratoren-schweiz.ch's grid as the reference: "the grid
      view like this". Columns about 300px wide — as many as the window fits on
      a desktop, two on a phone — each work at its own aspect, full column
-     width, the member's name under it, one card straight under the next
-     (multicol packs the columns, so no row leaves holes and the columns
-     start out of step, as the reference's do). Static: no brick, no
-     parallax. The deal still writes its slots; multicol ignores them. Stated
-     last in this block so it outranks the square-cell grid above at equal
-     specificity on every width. */
+     width, one straight under the next (multicol packs the columns, so no
+     row leaves holes and the columns start out of step, as the reference's
+     do). Static: no brick, no parallax. The deal still writes its slots;
+     multicol ignores them. Stated last in this block so it outranks the
+     square-cell grid above at equal specificity on every width.
+     PICTURES ONLY, WITH MORE AIR (2026-10-13, Josh: "remove the names that
+     still appear under the pictures", "give the grid a bit more space"): the
+     tile lost its name line (CommunityWorkCard), so the gaps below carry the
+     whole distance between two works — wider than the day before on both
+     axes, so the wall reads as pictures on paper rather than a contact
+     sheet. */
   .cgrid[data-pattern="grid"]:not([hidden]) {
     display: block;
     column-width: 300px;
     column-count: auto;
-    column-gap: 40px;
+    column-gap: 60px;
   }
   .cgrid[data-pattern="grid"] .cgrid__cell:not([hidden]) {
     display: block;
     break-inside: avoid;
     aspect-ratio: auto;
     left: 0;
-    margin-bottom: 44px;
+    margin-bottom: 60px;
   }
   /* The tallest a work may stand: one and a half times its column. */
   .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
@@ -2228,10 +2196,10 @@ const indexMembers = [...members].sort((a, b) =>
     .cgrid[data-pattern="grid"]:not([hidden]) {
       column-count: 2;
       column-width: auto;
-      column-gap: 24px;
+      column-gap: 32px;
     }
     .cgrid[data-pattern="grid"] .cgrid__cell:not([hidden]) {
-      margin-bottom: 36px;
+      margin-bottom: 44px;
     }
   }
 </style>

@@ -108,77 +108,83 @@
   transform-origin: 50% 0%;
 }
 
-/* ── Where things stand ────────────────────────────────── */
-.ccard__body {
-  grid-area: 1 / 1 / 4 / 2;
-}
-.ccard__head {
-  grid-area: 1 / 3 / 2 / 4;
-}
-/* The column: the panel's <details>. min-width so a long unbroken link
-   cannot widen the words' column. */
-.ccard > .pdisc {
-  grid-area: 2 / 3 / 3 / 4;
-  min-width: 0;
-}
-.ccard__foot {
-  grid-area: 3 / 3 / 4 / 4;
-  align-self: end;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  min-width: 0;
-}
+/* ── Where things stand — DESKTOP. The phone re-deals the card as its own
+   grid in the --bp-mobile block at the foot of this file, so the placement,
+   the lane mirror and the fold are stated for the desktop only; left
+   unconditional, the lane rules outranked the phone's by specificity. ── */
+@media (--bp-desktop) {
+  /* ── Where things stand ────────────────────────────────── */
+  .ccard__body {
+    grid-area: 1 / 1 / 4 / 2;
+  }
+  .ccard__head {
+    grid-area: 1 / 3 / 2 / 4;
+  }
+  /* The column: the panel's <details>. min-width so a long unbroken link
+     cannot widen the words' column. */
+  .ccard > .pdisc {
+    grid-area: 2 / 3 / 3 / 4;
+    min-width: 0;
+  }
+  .ccard__foot {
+    grid-area: 3 / 3 / 4 / 4;
+    align-self: end;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-width: 0;
+  }
 
-/* ── THE WORDS ALTERNATE (2026-10-12, Josh: "the text should be alternating
-   right and left"). A card in the right-hand lane hangs its words off its
-   LEFT side: rail | words | gap | picture, the chevron mirrored, and the foot
-   reversed so the pager still stands at the picture's bottom corner and the
-   button at the card's outer edge. The lane is the cell's (data-lane,
-   written by the deal from laneOf), so the words always face the gutter. */
-[data-lane="right"] > .ccard {
-  grid-template-columns: var(--ccard-rail) var(--ccard-side) var(--ccard-gap-now) var(--ccard-pic-w);
-  --pdisc-rail-start: 0px;
-  --pdisc-rail-open: -45deg;
-  --pdisc-rail-folded: 135deg;
-}
-[data-lane="right"] > .ccard > .ccard__body {
-  grid-area: 1 / 4 / 4 / 5;
-}
-[data-lane="right"] > .ccard > .ccard__head {
-  grid-area: 1 / 2 / 2 / 3;
-}
-[data-lane="right"] > .ccard > .pdisc {
-  grid-area: 2 / 2 / 3 / 3;
-}
-[data-lane="right"] > .ccard > .ccard__foot {
-  grid-area: 3 / 2 / 4 / 3;
-  flex-direction: row-reverse;
-}
-[data-lane="right"] > .ccard > .ccard__foot > .ccard__profile {
-  margin-left: 0;
-  margin-right: auto;
-}
+  /* ── THE WORDS ALTERNATE (2026-10-12, Josh: "the text should be alternating
+     right and left"). A card in the right-hand lane hangs its words off its
+     LEFT side: rail | words | gap | picture, the chevron mirrored, and the foot
+     reversed so the pager still stands at the picture's bottom corner and the
+     button at the card's outer edge. The lane is the cell's (data-lane,
+     written by the deal from laneOf), so the words always face the gutter. */
+  [data-lane="right"] > .ccard {
+    grid-template-columns: var(--ccard-rail) var(--ccard-side) var(--ccard-gap-now) var(--ccard-pic-w);
+    --pdisc-rail-start: 0px;
+    --pdisc-rail-open: -45deg;
+    --pdisc-rail-folded: 135deg;
+  }
+  [data-lane="right"] > .ccard > .ccard__body {
+    grid-area: 1 / 4 / 4 / 5;
+  }
+  [data-lane="right"] > .ccard > .ccard__head {
+    grid-area: 1 / 2 / 2 / 3;
+  }
+  [data-lane="right"] > .ccard > .pdisc {
+    grid-area: 2 / 2 / 3 / 3;
+  }
+  [data-lane="right"] > .ccard > .ccard__foot {
+    grid-area: 3 / 2 / 4 / 3;
+    flex-direction: row-reverse;
+  }
+  [data-lane="right"] > .ccard > .ccard__foot > .ccard__profile {
+    margin-left: 0;
+    margin-right: auto;
+  }
 
-/* ── FOLDED: "fold everything" ──────────────────────────
-   The words go — head, panel and foot — and what is left is the picture and
-   the rail beside it, at exactly the size the picture had open. */
-.ccard:has(> .pdisc:not([open])) {
-  --ccard-side: 0px;
-  --ccard-gap-now: 0px;
-}
-.ccard:has(> .pdisc:not([open])) .ccard__foot {
-  display: none;
-}
-/* THE NAME STAYS (2026-10-12, Josh: "the gallery card should have the name
-   and role displayed when collapsed"): folded, the head moves under the
-   picture, as wide as it — the one thing the fold no longer takes. */
-.ccard:has(> .pdisc:not([open])) > .ccard__head {
-  grid-area: 4 / 1 / 5 / 2;
-}
-[data-lane="right"] > .ccard:has(> .pdisc:not([open])) > .ccard__head {
-  grid-area: 4 / 4 / 5 / 5;
+  /* ── FOLDED: "fold everything" ──────────────────────────
+     The words go — head, panel and foot — and what is left is the picture and
+     the rail beside it, at exactly the size the picture had open. */
+  .ccard:has(> .pdisc:not([open])) {
+    --ccard-side: 0px;
+    --ccard-gap-now: 0px;
+  }
+  .ccard:has(> .pdisc:not([open])) .ccard__foot {
+    display: none;
+  }
+  /* THE NAME STAYS (2026-10-12, Josh: "the gallery card should have the name
+     and role displayed when collapsed"): folded, the head moves under the
+     picture, as wide as it — the one thing the fold no longer takes. */
+  .ccard:has(> .pdisc:not([open])) > .ccard__head {
+    grid-area: 4 / 1 / 5 / 2;
+  }
+  [data-lane="right"] > .ccard:has(> .pdisc:not([open])) > .ccard__head {
+    grid-area: 4 / 4 / 5 / 5;
+  }
 }
 
 /* ── Name and role, at the head of the column ─────────── */
@@ -528,84 +534,86 @@
 
 /* ── Mobile ───────────────────────────────────────────── */
 @media (--bp-mobile) {
-  /* ONE COLUMN: the picture, then the words, then the foot. The rail is a
-     square toggle on the column's own top-right here (MemberDetailPanel's
-     mobile column rules), so the card keeps no padding for it. The width
-     formula narrows a folded card to fit a DESKTOP slot's height — but
-     --slot-rows still arrives from the desktop deal on a phone, where the
-     cell's height is simply the card's own. Full width of whatever beat the
-     mobile pattern dealt (see CommunityGrid's --bp-mobile block). */
+  /* ONE COLUMN, AS A GRID (2026-10-13, Josh — the folded card: "do NOT
+     expose the profile button at first. Show name and role on the left, the
+     image count at the top, and the expand arrow at the bottom right"). The
+     picture across both columns; then a row with the head (name, role) in
+     the first column and the carousel's count in the second, at the top;
+     then the panel's words across both columns; then the PROFILE → link,
+     which the fold hides. The expand arrow is the panel's <summary>, which
+     MemberDetailPanel's mobile column rules stand at that row's bottom-right
+     corner. The card starts folded on a phone (CommunityGrid closes the
+     columns before first paint), so what a visitor meets is the picture, the
+     name and role, the count and the arrow — the way to the person is the
+     name, and the button once the card is open.
+     The second column is at least the arrow's width, so the head's text can
+     never run under the arrow however long the role. Full width of whatever
+     beat the mobile pattern dealt (see CommunityGrid's --bp-mobile block). */
   .ccard,
   .ccard:has(> .pdisc:not([open])) {
-    display: flex;
-    flex-direction: column;
-    /* The card measures itself so the fold toggle can find the picture's
-       bottom edge: see .pdisc--column's mobile toggle in MemberDetailPanel,
-       which stands at 100cqw / --frame-ar below the card's top. The card is
-       its cell's full width here, so containing its inline size costs
-       nothing. */
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(2rem, auto);
+    column-gap: 0.75rem;
+    row-gap: 0;
+    align-items: start;
+    /* The card measures itself — kept for the editor's preview, which states
+       its own slot width against this container. */
     container-type: inline-size;
-    /* `stretch`, restated: the desktop grid's `align-items: start` is about
-       its ROWS, but in a column flex box the same property is the cross
-       axis — the width — and `start` there shrinks the frame's wrapper to
-       its in-flow content, which is nothing (the track is absolutely
-       positioned), so the picture rendered 0px wide. */
-    align-items: stretch;
-    /* Spacing by margins, not gap: a folded <details> is a box with nothing
-       in it, and a gap would still stand on both sides of it. */
-    gap: 0;
     padding-right: 0;
     width: 100%;
   }
-
-  /* FOLDED ON A PHONE, AND BY DEFAULT (2026-10-12, Josh: "on mobile start
-     closed and show name always"): the picture, the name and role, and the
-     foot. Not "fold everything" here — the count says where a swipe got to
-     and the button is the way to the person, and on a single column of
-     cards neither costs a neighbour any room. CommunityGrid closes the
-     columns before first paint on a phone. */
-  .ccard:has(> .pdisc:not([open])) .ccard__foot {
-    display: flex;
-  }
-
-  /* The head carries the toggle on its first line, so its text stops short
-     of the toggle's square. */
-  .ccard__head {
-    margin-top: 12px;
-    padding-right: 2rem;
-  }
-  .ccard > .pdisc[open] {
-    margin-top: 12px;
-  }
-
   .ccard__body {
-    display: block;
+    grid-area: 1 / 1 / 2 / 3;
   }
-
-  /* The foot spans the card here too (the grid's `align-self: end` would
-     read as "right-aligned, shrink to fit" in a column flex box): the count
-     at the left, the button at the right, as on the desktop. */
-  .ccard__foot {
-    align-self: stretch;
-    margin-top: 14px;
+  /* The head: name and role, in the first column. Tall enough for the count
+     at the row's top and the arrow at its bottom not to meet when the name
+     is one line and there is no role. */
+  .ccard__head {
+    grid-area: 2 / 1 / 3 / 2;
+    margin-top: 12px;
+    padding-right: 0;
+    min-height: 3rem;
   }
-  /* Smaller on a phone (2026-10-12, Josh: "the Profile button smaller on
+  /* The foot dissolves: its count and its button are placed on their own.
+     Doubled with the fold selector so this outranks the desktop's
+     display:none for a folded foot at equal specificity. */
+  .ccard__foot,
+  .ccard:has(> .pdisc:not([open])) .ccard__foot {
+    display: contents;
+  }
+  /* The count, on the name's line at the right. */
+  .ccard__dots {
+    grid-area: 2 / 2 / 3 / 3;
+    justify-self: end;
+    align-self: start;
+    margin-top: 12px;
+    padding-top: 0.2rem;
+  }
+  .ccard > .pdisc {
+    grid-area: 3 / 1 / 4 / 3;
+  }
+  /* Air between the head and the open panel's words — on the body, not the
+     <details>, so the arrow (lifted off the details' top edge) does not move
+     when the card opens. */
+  .ccard > .pdisc[open] > .pdisc__body {
+    margin-top: 12px;
+  }
+  /* The button, at the right under the words, only once the card is open.
+     Smaller on a phone (2026-10-12, Josh: "the Profile button smaller on
      mobile!"): the type a step down in type.css, and a tighter box. */
   .ccard__profile {
+    grid-area: 4 / 1 / 5 / 3;
+    justify-self: end;
+    margin: 14px 0 0;
     gap: 0.3rem;
   }
-  /* The lane's mirror is a desktop drawing; a phone has one column. */
-  [data-lane="right"] > .ccard > .ccard__foot {
-    flex-direction: row;
-  }
-  [data-lane="right"] > .ccard > .ccard__foot > .ccard__profile {
-    margin-left: auto;
-    margin-right: 0;
+  .ccard:has(> .pdisc:not([open])) .ccard__profile {
+    display: none;
   }
 
   /* No paging chrome on touch — a decided trade: the artwork keeps a clean
-     face, paging is the swipe for whoever finds it, and the foot's count
-     says where the swipe got to. */
+     face, paging is the swipe for whoever finds it, and the count says where
+     the swipe got to. */
   .ccard__arrow {
     display: none;
   }

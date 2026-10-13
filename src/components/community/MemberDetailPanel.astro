@@ -566,19 +566,25 @@ const hasSummary = Astro.slots.has("summary");
   }
 
   @media (--bp-mobile) {
-    /* On a phone the column stacks UNDER the picture, so the rail becomes the
-       card's old square toggle, on the name's line at the right, pointing
-       down to unfold and up to fold. The name is the card's (`.ccard__head`,
-       outside this element so it outlives the fold), so the toggle is still
-       positioned against the CARD, and finds the name's line by the
-       picture's height: the card is a size container on a phone and the
-       frame its full width, so the frame is 100cqw / --frame-ar tall, and
-       the head starts 12px under it (communityCard.css). */
+    /* On a phone the column stacks UNDER the picture and the card is a grid
+       (communityCard.css's mobile block): the rail becomes a square toggle
+       at the BOTTOM-RIGHT of the name-and-role row (2026-10-13, Josh: "the
+       expand arrow at the bottom right"; the count stands at the row's top),
+       pointing down to unfold and up to fold. Positioned against THIS
+       element — the grid row directly under the head — and lifted by its own
+       height, so it stands on the head's last line however many lines the
+       name and role take. The fold toggle no longer needs the picture's
+       height to find its place, which the previous version computed from
+       100cqw / --frame-ar. */
+    .pdisc--column {
+      position: relative;
+    }
     .pdisc--column > .pdisc__toggle {
-      top: calc(100cqw / var(--frame-ar, 1) + 12px - 0.45rem);
+      top: 0;
       bottom: auto;
       left: auto;
       right: 0;
+      transform: translateY(-100%);
       background: none;
       width: 2rem;
       height: 2rem;

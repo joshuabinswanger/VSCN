@@ -67,80 +67,64 @@ const GAP = 14;
  * THE SPACE THE WORDS NEED, RESERVED — the other half of the placement above.
  *
  * PhotoSwipe fits the image inside the viewport MINUS this padding and then
- * CENTRES it in what is left, so these two numbers do two jobs at once: their
- * SUM sets how big the picture comes out, and their DIFFERENCE decides where
- * it sits. That second job was the bug. The reserve used to be 56 over the
- * picture and 192 under it, and half of that 136px difference is 68px of lift:
- * the picture opened 68px above the middle of the window, and what read as
- * centred was the GROUP — picture and words together, 56px of paper above,
- * 63px below. Josh, 2026-09-08: "the image only should define the centering of
- * the content." So top and bottom are now the SAME number.
+ * CENTRES it in what is left, so `top` and `bottom` together decide how big
+ * the picture comes out and where it sits. THE WINDOW IS SPLIT BY HEIGHT
+ * since 2026-10-13 (Josh: "10vh top padding, then a 60vh band for the image,
+ * with the image centred inside it, then 30vh for the text"):
  *
- * THE SUM IS PRESERVED, deliberately: 124 + 124 is the 56 + 192 the old pair
- * added up to, 156 + 156 the old 56 + 256, 97 + 97 the phone's 44 + 150. The
- * picture therefore comes out at exactly the size it did before this change
- * and only moves — the artwork gives up nothing to gain its centre. What pays
- * instead is the room under it, which is now half the sum rather than all of
- * the bottom of it: a landscape's words get 124px of it, minus the GAP and a
- * 16px foot, so ~94px of usable height where they had ~162. A caption with a
- * description of any length overruns that and falls to the scroll-and-fade in
- * lightbox.css — routinely, not rarely. That is the accepted price of the
- * centre; the lever if it ever proves too tight is to raise BOTH numbers
- * together, which buys height under the picture by taking it off the picture.
+ *   ┌ 10 % ┐  the controls row and the artist line, above the picture
+ *   │ 60 % │  the picture, centred in this band whatever its shape
+ *   └ 30 % ┘  the words
  *
- * `paddingFn` is still handed the item's data, and the reserve still follows
- * the SHAPE: an upright picture comes out narrow — a 2:3 image in a 900px
- * window is ~390px wide — and a narrow measure wraps the same words taller,
- * roughly 85,000 ÷ measure px for a worst-case block (a 140-character caption,
- * a 600-character description and a long link). 156 against 124 is that
- * difference, carried over unchanged from the old 256 against 192.
+ * It replaces a SYMMETRIC reserve (the same number over and under the
+ * picture — 150 / 188 / 116 by shape and breakpoint, 2026-09-08 to
+ * 2026-10-13), which centred the picture on the window's midline and left
+ * the words whatever was under it: ~120px on a desktop landscape, less on a
+ * phone, so a caption with any description at all hit the scroll-and-fade
+ * in lightbox.css routinely. Josh: the text "gets too little room". The
+ * split pays for the words with the picture's height — on a 900px window a
+ * landscape stood 600px tall and now stands 540 — and makes the reserve
+ * the same fraction of every window instead of a fixed pixel count.
  *
- * THE TOP IS NO LONGER THE CONTROLS ROW, it merely clears it. The row lost its
- * band on 2026-09-06 (Josh: "lose the top bar in lightbox") — the close word,
- * zoom and preloader survive in a cluster at the top right, on bare
- * paper — and `top` was sized to exactly that row's height, 56 desktop (2.75rem
- * plus air) and 44 on a phone. Every number here is now comfortably above it,
- * so the row is a FLOOR rather than the value: nothing in this function may
- * fall below 56 desktop / 44 phone, or a wide picture runs under the close
- * word and the artist line above its top-left corner goes with it.
+ * THE TOP CLEARS THE CONTROLS ROW. The row lost its band on 2026-09-06 (Josh:
+ * "lose the top bar in lightbox") — the close word, zoom and preloader
+ * survive in a cluster at the top right, on bare paper — and its height, 56
+ * desktop (2.75rem plus air) and 44 on a phone, is a FLOOR: 10 % of a short
+ * window (under 560px desktop, 440px phone) would put a wide picture under
+ * the close word, and the artist line above its top-left corner with it, so
+ * the floor takes over there and the picture's band gives up the difference.
+ *
+ * ONE RESERVE FOR EVERY SHAPE. The symmetric version reserved more under an
+ * upright picture, which comes out narrow and wraps the same words taller.
+ * The band gives a portrait the same 30 % — the lever, if it proves tight,
+ * is BAND_TEXT, which trades picture height for room under it on every
+ * shape at once.
+ *
+ * `paddingFn` is still handed the item's data; nothing here reads it now.
  */
+const BAND_TOP = 0.1;
+const BAND_TEXT = 0.3;
+// The band between them, 60 %, is what the two leave the picture.
 
-/**
- * Half of the old top + bottom, per shape, then bumped ~20% — Josh, 2026-09-08
- * (second pass): "make the image a bit smaller". The symmetry stays exact
- * (still SAME number top and bottom, still 56/44 as the floor); only the sum
- * grows, which is the lever the comment above names for buying room under the
- * picture by taking it off the picture — used here to trim the picture a
- * little rather than to fit more text.
- */
-const RESERVE_LANDSCAPE = 150; // was 124 (56 over, 192 under, pre-centring)
-const RESERVE_PORTRAIT = 188; // was 156 (56 over, 256 under, pre-centring)
-const RESERVE_MOBILE = 116; // was 97 (44 over, 150 under, pre-centring)
+/** The controls row's height, which `top` may never fall under. */
+const TOP_FLOOR_DESKTOP = 56;
+const TOP_FLOOR_MOBILE = 44;
 
-export function lightboxPadding(viewportSize: Point, itemData: SlideData) {
+export function lightboxPadding(viewportSize: Point, _itemData: SlideData) {
   const mobile = viewportSize.x <= MOBILE_MAX;
-  if (mobile) {
-    return { top: RESERVE_MOBILE, bottom: RESERVE_MOBILE, left: 12, right: 12 };
-  }
-  // Equal over and under, so the PICTURE is what sits in the middle of the
-  // window; an upright one reserves more on both sides, because it comes out
-  // narrower and its words wrap taller.
-  const reserve = isPortrait(itemData.width, itemData.height)
-    ? RESERVE_PORTRAIT
-    : RESERVE_LANDSCAPE;
-  return { top: reserve, bottom: reserve, left: 32, right: 32 };
+  const top = Math.max(
+    Math.round(viewportSize.y * BAND_TOP),
+    mobile ? TOP_FLOOR_MOBILE : TOP_FLOOR_DESKTOP,
+  );
+  const bottom = Math.round(viewportSize.y * BAND_TEXT);
+  const side = mobile ? 12 : 32;
+  return { top, bottom, left: side, right: side };
 }
 
-/**
- * Taller than wide, with a deliberate margin. This used to choose the
- * ARRANGEMENT (a column beside the picture, 09-04 to 09-06) and now chooses
- * the RESERVE under it: a 1.05:1 image is square to the eye and comes out
- * nearly as wide as a landscape, so it wraps its words about as tall; only a
- * decisively upright picture is narrow enough to need the deeper reserve.
- */
-function isPortrait(width: number | undefined, height: number | undefined): boolean {
-  if (!width || !height) return false;
-  return height / width >= 1.15;
+/** Where the words' band starts: the foot of the picture's band. The same
+ *  arithmetic as lightboxPadding's `bottom`, so the two cannot disagree. */
+function textBandTop(viewportY: number): number {
+  return viewportY - Math.round(viewportY * BAND_TEXT);
 }
 
 /** What the caption renderer reads off a trigger. All optional but width/height. */
@@ -451,17 +435,25 @@ function attachPlacement(pswp: PhotoSwipe): void {
     credit.style.top = `${Math.round(y - GAP)}px`;
 
     const viewport = pswp.viewportSize;
-    // Under the picture, at the picture's own measure, on every shape: the
+    // In the words' band, at the picture's own measure, on every shape: the
     // artwork sets the column width, which is what makes the words look placed
     // rather than laid over the window. A portrait picture got a column to its
     // right instead from 09-04 to 09-06 — see the header and lightboxPadding
-    // for why that went, and what the reserve does about the narrower measure.
+    // for why that went.
+    // THE TOP IS THE BAND'S, NOT THE PICTURE'S (2026-10-13): the picture is
+    // centred in its 60 % band, so a landscape's bottom edge sits above the
+    // band's foot and hanging the words off it would put them at a different
+    // height on every slide. They start where the band ends instead — the
+    // one place the picture can never reach, whatever its shape. The max()
+    // only matters mid-animation, while the opening picture is still growing
+    // out of its thumbnail and may overrun the band for a frame.
     // Bounded so a long description cannot run past the foot of the window;
     // past that it scrolls, and markClipped shows the fade that says so.
+    const top = Math.max(y + h, textBandTop(viewport.y)) + GAP;
     text.style.left = `${Math.round(x)}px`;
-    text.style.top = `${Math.round(y + h + GAP)}px`;
+    text.style.top = `${Math.round(top)}px`;
     text.style.width = `${Math.round(w)}px`;
-    text.style.maxHeight = `${Math.round(viewport.y - (y + h + GAP) - 16)}px`;
+    text.style.maxHeight = `${Math.round(viewport.y - top - 16)}px`;
     markClipped(text);
   };
 

@@ -424,8 +424,10 @@ export function layOutStripIndex(textCards: number): Slot[] {
  *  type error — which is the point of putting the default in a constant. */
 export type ViewName = GalleryPatternName | "strip" | "index";
 
-/** The view a bare `/community` (no `?pattern=`) resolves to. */
-export const DEFAULT_VIEW: ViewName = "index";
+/** The view a bare `/community` (no `?pattern=`) resolves to. The
+ *  Portfolios since 2026-10-13 (Josh); it was the ledger ("index") from
+ *  2026-09-06 while the galleries were near-empty. */
+export const DEFAULT_VIEW: ViewName = "spread";
 
 /** The gallery a tag chip goes to — the picture view, whatever the default is. */
 export const TAG_CHIP_VIEW: GalleryPatternName = "spread";
