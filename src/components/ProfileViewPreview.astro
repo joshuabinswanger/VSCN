@@ -99,6 +99,13 @@ const t = useTranslations(lang);
 
     <div class="mprof__works" data-ppv="works" hidden></div>
     <p class="mprof__empty" data-ppv="works-empty" hidden></p>
+    {
+      /* THE EDITOR'S PLACE (2026-10-13): the profile editor's Works tab
+         renders its rows here, in the page's works column, in edit mode —
+         WorkEditor.astro fills the slot; every other consumer leaves it
+         empty. */
+    }
+    <slot name="editor" />
 
     {
       /* Cloned by the renderer. Rendered here rather than built in JS for

@@ -168,8 +168,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.label.role": "Role",
     "profile.label.role.en": "Role (English)",
     "profile.label.role.de": "Role (German)",
-    // In German whatever the UI language, like profile.gallery.caption.de.ph:
-    // the example has to be in the language the field asks for.
+    // In German whatever the UI language: the example has to be in the
+    // language the field asks for.
     "profile.ph.role.de": "z.B. Wissenschaftsillustrator:in, Forscher:in, Datenjournalist:in…",
     "profile.note.role.de":
       "Optional. German pages show this in place of the English role; until it's filled in, they show the English one.",
@@ -311,7 +311,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.tab.profile": "Profile",
     "profile.tab.work": "Work",
     "profile.tab.account": "Account",
-    "profile.tab.preview": "Preview",
     "profile.view.noWorks": "No images yet. Add work in the gallery field and it will appear here.",
     "profile.view.defaultName": "Your name",
     // The status line under Save (src/lib/publicationStatus.ts). Every state
@@ -356,6 +355,20 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.preview.defaultName": "Your name",
     "profile.preview.card": "Gallery card",
     "profile.preview.cardNote": "How you appear in the community gallery.",
+    // The Works tab's bar (2026-10-13): three switches and Save, and the
+    // inline fields' placeholders in the page's works column.
+    "profile.works.bar": "Works view",
+    "profile.works.view": "Show",
+    "profile.works.view.profile": "Profile",
+    "profile.works.view.card": "Card",
+    "profile.works.mode": "Mode",
+    "profile.works.mode.preview": "Preview",
+    "profile.works.mode.edit": "Edit",
+    "profile.works.lang": "Language",
+    "profile.works.caption.ph": "Title",
+    "profile.works.description.ph": "Description (optional)",
+    "profile.works.projectTitle.ph": "Project title",
+    "profile.works.projectDescription.ph": "Project description (optional)",
     "profile.upload.processing": "Processing…",
     "profile.upload.uploading": "Uploading…",
     "profile.upload.selected": "Selected: ",
@@ -460,7 +473,7 @@ export const ui: Record<string, Record<string, string>> = {
     // folded row prints the caption beside it, or .noCaption when there is none.
     // "Image Details" since 2026-09-27 (Josh: "“Image Details” instead of
     // Details"), the twin of "Project details" below.
-    "profile.gallery.details": "Image Details",
+    "profile.gallery.details": "Links & tags",
     // The project block's fold (2026-09-26, Josh: "details on project should be
     // called project details"), so it is not read as the first work's Image Details.
     "profile.project.details": "Project details",
@@ -481,19 +494,10 @@ export const ui: Record<string, Record<string, string>> = {
     // describing it cannot: a subject, and the thing about it worth knowing.
     "profile.gallery.caption.ph": "Example: Zebrafish retina in cross-section, confocal",
     "profile.gallery.captionNote": "One line. Also read aloud to people who can't see the image.",
-    // The accessible name for the German field below, not its placeholder —
-    // see .de.ph for that. Names the field itself so a screen reader tabbing
-    // in announces what it is, the same job "Caption" above does.
+    // The accessible name for the German field: a screen reader tabbing in
+    // announces what it is, the same job "Title" above does. The placeholder
+    // is the inline field's own (profile.works.caption.ph) since 2026-10-13.
     "profile.gallery.caption.de": "Title (German)",
-    // The example carries its OWN caption.de.ph rather than reusing the one
-    // above (2026-09-04, "make the explanations better"): the sentence has to
-    // exist in German to demonstrate a German caption, and swapping only the
-    // "Example:" word in front of an English sentence would show a member the
-    // wrong language example for the field they are looking at.
-    "profile.gallery.caption.de.ph": "Example: Zebrafisch-Netzhaut im Querschnitt, konfokal",
-    // Rewritten (2026-09-04) to say what happens rather than point at a
-    // neighbouring field — the EN/DE switch above means the two are never
-    // both on screen at once, so "the line above" no longer names anything.
     "profile.gallery.description.label": "Description",
     "profile.gallery.description": "About this image — how it was made, who it was for, what it shows",
     // Behind the Description field's i on /profile (2026-09-24). The
@@ -508,8 +512,6 @@ export const ui: Record<string, Record<string, string>> = {
     // here. Two sentences: what it is and how it was made, then who it was
     // for and what it shows — the same "how/who/what" GalleryItem.description
     // itself asks for in gallery.ts.
-    "profile.gallery.description.de.ph":
-      "Example: Angefertigt für eine Publikation über Immunzellen im Zebrafisch-Embryo, aus konfokalen Mikroskopieaufnahmen rekonstruiert. Die Illustration zeigt, wie Fresszellen durch das Gewebe wandern, um Krankheitserreger aufzuspüren.",
     // Stored without a scheme, like Portfolio: the input carries a fixed
     // https:// prefix, so the placeholder must not repeat one.
     "profile.gallery.link": "Where it was published",
@@ -531,13 +533,9 @@ export const ui: Record<string, Record<string, string>> = {
     // The visible titles of a project block's fields (2026-09-24); the .ph
     // keys are the examples inside them.
     "profile.project.title.label": "Project title",
-    "profile.project.title.ph": "Example: Immune cells in the zebrafish embryo",
     "profile.project.title.de": "Project title (German)",
-    "profile.project.title.de.ph": "Example: Immunzellen im Zebrafisch-Embryo",
     "profile.project.description.label": "Project description",
-    "profile.project.description.ph": "What the project was, who it was for, and your part in it",
     "profile.project.description.de": "Project description (German)",
-    "profile.project.description.de.ph": "Worum es ging, für wen, und was dein Teil war",
     "profile.project.website": "Project website",
     "profile.project.website.ph": "example.org/project/…",
     // An affiliation's link field, not the project's own (that is .website).
@@ -939,7 +937,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.tab.profile": "Profil",
     "profile.tab.work": "Arbeiten",
     "profile.tab.account": "Konto",
-    "profile.tab.preview": "Vorschau",
     "profile.view.noWorks":
       "Noch keine Bilder. Füge Arbeiten im Galerie-Feld hinzu, dann erscheinen sie hier.",
     "profile.view.defaultName": "Dein Name",
@@ -983,6 +980,18 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.preview.defaultName": "Dein Name",
     "profile.preview.card": "Galeriekarte",
     "profile.preview.cardNote": "So erscheinst du in der Community-Galerie.",
+    "profile.works.bar": "Ansicht der Arbeiten",
+    "profile.works.view": "Anzeigen",
+    "profile.works.view.profile": "Profil",
+    "profile.works.view.card": "Karte",
+    "profile.works.mode": "Modus",
+    "profile.works.mode.preview": "Vorschau",
+    "profile.works.mode.edit": "Bearbeiten",
+    "profile.works.lang": "Sprache",
+    "profile.works.caption.ph": "Titel",
+    "profile.works.description.ph": "Beschreibung (optional)",
+    "profile.works.projectTitle.ph": "Projekttitel",
+    "profile.works.projectDescription.ph": "Projektbeschreibung (optional)",
     "profile.upload.processing": "Wird verarbeitet…",
     "profile.upload.uploading": "Wird hochgeladen…",
     "profile.upload.selected": "Ausgewählt: ",
@@ -1062,22 +1071,19 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.embed.err.appCheck":
       "Eine Sicherheitsprüfung konnte in deinem Browser nicht ausgeführt werden, deshalb konnte das Video nicht hinzugefügt werden. Wenn du einen Adblocker, eine Datenschutz-Erweiterung oder ein VPN nutzt, erlaube diese Seite und lade sie neu. In Netzwerken von Institutionen (ETH, UZH, andere Hochschulen, Spitäler oder Firmen) bitte deine IT, challenges.cloudflare.com freizugeben.",
     "profile.gallery.overflow": "Es passen nur {n} Bilder — {m} nicht hinzugefügt.",
-    "profile.gallery.details": "Bilddetails",
+    "profile.gallery.details": "Links & Tags",
     "profile.project.details": "Projektdetails",
     "profile.gallery.caption": "Bildtitel",
     "profile.gallery.caption.ph": "Beispiel: Zebrafisch-Netzhaut im Querschnitt, konfokal",
     "profile.gallery.captionNote":
       "Eine Zeile. Wird auch Menschen vorgelesen, die das Bild nicht sehen können.",
     "profile.gallery.caption.de": "Bildtitel (Deutsch)",
-    "profile.gallery.caption.de.ph": "Beispiel: Zebrafisch-Netzhaut im Querschnitt, konfokal",
     "profile.gallery.description.label": "Beschreibung",
     "profile.gallery.description":
       "Über dieses Bild — wie es entstand, für wen, was es zeigt",
     "profile.gallery.description.ph":
       "Beispiel: Angefertigt für eine Publikation über Immunzellen im Zebrafisch-Embryo, aus konfokalen Mikroskopieaufnahmen rekonstruiert. Die Illustration zeigt, wie Fresszellen durch das Gewebe wandern, um Krankheitserreger aufzuspüren.",
     "profile.gallery.description.de": "Beschreibung (Deutsch)",
-    "profile.gallery.description.de.ph":
-      "Beispiel: Angefertigt für eine Publikation über Immunzellen im Zebrafisch-Embryo, aus konfokalen Mikroskopieaufnahmen rekonstruiert. Die Illustration zeigt, wie Fresszellen durch das Gewebe wandern, um Krankheitserreger aufzuspüren.",
     "profile.gallery.link": "Wo es veröffentlicht wurde",
     "profile.gallery.tags": "Was ist auf dem Bild",
     "profile.gallery.tagsNote":
@@ -1088,13 +1094,9 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.project.new": "Projekt hinzufügen",
     "profile.project.untitled": "Projekt {n}",
     "profile.project.title.label": "Projekttitel",
-    "profile.project.title.ph": "Beispiel: Immunzellen im Zebrafisch-Embryo",
     "profile.project.title.de": "Projekttitel (Deutsch)",
-    "profile.project.title.de.ph": "Beispiel: Immunzellen im Zebrafisch-Embryo",
     "profile.project.description.label": "Projektbeschreibung",
-    "profile.project.description.ph": "Worum es ging, für wen, und was dein Teil war",
     "profile.project.description.de": "Projektbeschreibung (Deutsch)",
-    "profile.project.description.de.ph": "Worum es ging, für wen, und was dein Teil war",
     "profile.project.website": "Projektwebsite",
     "profile.project.website.ph": "beispiel.ch/projekt/…",
     "profile.project.link": "Link",

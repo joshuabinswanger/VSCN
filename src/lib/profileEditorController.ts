@@ -299,8 +299,6 @@ document.addEventListener("astro:page-load", () => {
   /** When the loaded profile was last saved (ms) — the draft banner says so when the server copy is the newer one. */
   let loadedUpdatedAt: number | undefined;
   let previewSlugs = new Map<string, string>();
-  /** Which EN/DE pane a project block shows — UI-only, keyed by projectId, like galleryLangUI. */
-  const projectLangUI = new Map<string, "en" | "de">();
   // The member type-ahead's options, loaded once on the first Member-mode
   // focus: every visible member's display name, the way the directory
   // shows it. A typed name resolves to the first member wearing it.
@@ -322,14 +320,12 @@ document.addEventListener("astro:page-load", () => {
       });
     return memberOptionsLoad;
   }
-  // Which of a gallery item's EN/DE panes is open — UI-only, never saved,
-  // and kept outside renderGallery() so it survives the re-renders that
-  // function does on every add/remove/reorder. Keyed by imageId; see the
-  // switch wiring in renderGallery() for why index would not do.
-  const galleryLangUI = new Map<string, "en" | "de">();
-  // Whether a gallery item's tag fold is open — same shape, same reason, same
-  // imageId key as galleryLangUI above (2026-09-17). Unknown means open, so a
-  // row the member has never touched matches the template's `open`.
+  // Whether a gallery item's tag fold is open — UI-only, never saved, and
+  // kept outside renderGallery() so it survives the re-renders that function
+  // does on every add/remove/reorder. Keyed by imageId, not index: a
+  // reordered row would otherwise be handed someone else's fold. Unknown
+  // means open, so a row the member has never touched matches the
+  // template's `open`.
   const galleryTagsOpenUI = new Map<string, boolean>();
   // Whether a row's whole details fold is open (2026-09-24). Unknown means
   // FOLDED — the opposite default to the tags — so every image already in
@@ -607,11 +603,6 @@ document.addEventListener("astro:page-load", () => {
           const moveUp = row.querySelector<HTMLButtonElement>('[data-gallery-move="up"]');
           const moveDown = row.querySelector<HTMLButtonElement>('[data-gallery-move="down"]');
           const projectSelect = row.querySelector<HTMLSelectElement>("[data-gallery-project]");
-          const langBtns = Array.from(
-            row.querySelectorAll<HTMLButtonElement>("[data-gallery-lang-btn]"),
-          );
-          const langPaneEn = row.querySelector<HTMLElement>('[data-gallery-lang-pane="en"]');
-          const langPaneDe = row.querySelector<HTMLElement>('[data-gallery-lang-pane="de"]');
           const tagsSelector = row.querySelector<HTMLElement & { value: string[] }>(
             "tag-selector",
           );
@@ -625,7 +616,6 @@ document.addEventListener("astro:page-load", () => {
           if (!moveUp || !moveDown || !projectSelect) return null;
           const replace = row.querySelector<HTMLButtonElement>("[data-gallery-replace]");
           if (!replace) return null;
-          if (langBtns.length !== 2 || !langPaneEn || !langPaneDe) return null;
 
           // The one thing on screen that admits the order means something:
           // CommunityImageCard takes works[0]'s width/height as the aspect
@@ -634,13 +624,17 @@ document.addEventListener("astro:page-load", () => {
           cover.textContent = s["profile.gallery.cover"];
 
           img.src = item.url;
+          // The picture's shape, on the figure as the page writes it: the
+          // 60vh cap on .mprof__work-link and the caption under it both read
+          // it (profile.css), so the row is the size the visitor gets.
+          if (item.width > 0 && item.height > 0) row.style.setProperty("--work-ar", String(item.width / item.height));
           named(row, s["profile.gallery.rowLabel"].replace("{n}", String(index + 1)).replace("{total}", String(gallery.length)));
           named(remove, s["profile.gallery.remove"]).title = s["profile.gallery.remove"];
           remove.addEventListener("click", () => removeGalleryImage(index));
 
           caption.value = item.caption ?? "";
           caption.maxLength = MAX_GALLERY_CAPTION;
-          caption.placeholder = s["profile.gallery.caption.ph"];
+          caption.placeholder = s["profile.works.caption.ph"];
           named(caption, s["profile.gallery.caption"]);
           detailsFold.open = galleryDetailsOpenUI.get(item.imageId) ?? false;
           detailsFold.addEventListener("toggle", () => {
@@ -653,7 +647,7 @@ document.addEventListener("astro:page-load", () => {
 
           captionDe.value = item.captionDe ?? "";
           captionDe.maxLength = MAX_GALLERY_CAPTION;
-          captionDe.placeholder = s["profile.gallery.caption.de.ph"];
+          captionDe.placeholder = s["profile.works.caption.ph"];
           named(captionDe, s["profile.gallery.caption.de"]);
           captionDe.addEventListener("input", () => {
             gallery[index].captionDe = captionDe.value;
@@ -662,46 +656,24 @@ document.addEventListener("astro:page-load", () => {
 
           description.value = item.description ?? "";
           description.maxLength = MAX_GALLERY_DESCRIPTION;
-          description.placeholder = s["profile.gallery.description.ph"];
+          description.placeholder = s["profile.works.description.ph"];
           named(description, s["profile.gallery.description.label"]);
           description.addEventListener("input", () => {
             gallery[index].description = description.value;
+            fitInline(description);
             syncPreview();
           });
 
           descriptionDe.value = item.descriptionDe ?? "";
           descriptionDe.maxLength = MAX_GALLERY_DESCRIPTION;
-          descriptionDe.placeholder = s["profile.gallery.description.de.ph"];
+          descriptionDe.placeholder = s["profile.works.description.ph"];
           named(descriptionDe, s["profile.gallery.description.de"]);
           descriptionDe.addEventListener("input", () => {
             gallery[index].descriptionDe = descriptionDe.value;
+            fitInline(descriptionDe);
             syncPreview();
           });
 
-          // THE MODAL SWITCH (2026-09-04, Josh: "make it into a modal
-          // switch"). State lives OUTSIDE this render function, keyed by
-          // imageId rather than index — renderGallery() rebuilds every row
-          // from scratch on any add/remove/reorder, and an index-keyed map
-          // would hand a reordered row someone else's open pane. imageId is
-          // assigned before this item can even appear in `gallery` (see
-          // uploadGalleryImage in gallery.ts), so it is stable for exactly
-          // as long as the row is.
-          const setGalleryLang = (lang: "en" | "de") => {
-            galleryLangUI.set(item.imageId, lang);
-            langBtns.forEach((btn) => {
-              const active = btn.dataset.galleryLangBtn === lang;
-              btn.classList.toggle("is-active", active);
-              btn.setAttribute("aria-pressed", String(active));
-            });
-            langPaneEn.hidden = lang !== "en";
-            langPaneDe.hidden = lang !== "de";
-          };
-          langBtns.forEach((btn) => {
-            const btnLang = btn.dataset.galleryLangBtn === "de" ? "de" : "en";
-            named(btn, s[`profile.gallery.lang.${btnLang}`]);
-            btn.addEventListener("click", () => setGalleryLang(btnLang));
-          });
-          setGalleryLang(galleryLangUI.get(item.imageId) ?? "en");
 
           // The two per-image links, wired identically — they differ in
           // what they MEAN, not in how they are stored (2026-09-10).
@@ -862,14 +834,11 @@ document.addEventListener("astro:page-load", () => {
       el.dataset.projectId = project.projectId;
       const name = el.querySelector<HTMLElement>("[data-project-name]");
       const images = el.querySelector<HTMLElement>("[data-project-images]");
-      const head = el.querySelector<HTMLElement>(":scope > .gallery-project-head");
+      const head = el.querySelector<HTMLElement>(":scope > .gallery-project-tools");
       const headUp = head?.querySelector<HTMLButtonElement>('[data-project-move="up"]');
       const headDown = head?.querySelector<HTMLButtonElement>('[data-project-move="down"]');
       const headDelete = head?.querySelector<HTMLButtonElement>("[data-project-delete]");
-      const langBtns = Array.from(el.querySelectorAll<HTMLButtonElement>("[data-gallery-lang-btn]"));
-      const paneEn = el.querySelector<HTMLElement>('[data-gallery-lang-pane="en"]');
-      const paneDe = el.querySelector<HTMLElement>('[data-gallery-lang-pane="de"]');
-      if (!name || !images || !headUp || !headDown || !headDelete || langBtns.length !== 2 || !paneEn || !paneDe) return null;
+      if (!name || !images || !headUp || !headDown || !headDelete) return null;
 
       const setName = () => {
         name.textContent = projectLabel(projects, project.projectId, lang, s["profile.project.untitled"]);
@@ -900,23 +869,6 @@ document.addEventListener("astro:page-load", () => {
       headDelete.title = s["profile.project.deleteNote"];
       headDelete.addEventListener("click", () => deleteProject(id));
 
-      // Same switch as the rows', keyed by projectId (see galleryLangUI).
-      const setProjectLang = (paneLang: "en" | "de") => {
-        projectLangUI.set(project.projectId, paneLang);
-        langBtns.forEach((btn) => {
-          const active = btn.dataset.galleryLangBtn === paneLang;
-          btn.classList.toggle("is-active", active);
-          btn.setAttribute("aria-pressed", String(active));
-        });
-        paneEn.hidden = paneLang !== "en";
-        paneDe.hidden = paneLang !== "de";
-      };
-      langBtns.forEach((btn) => {
-        const btnLang = btn.dataset.galleryLangBtn === "de" ? "de" : "en";
-        named(btn, s[`profile.gallery.lang.${btnLang}`]);
-        btn.addEventListener("click", () => setProjectLang(btnLang));
-      });
-      setProjectLang(projectLangUI.get(project.projectId) ?? "en");
 
       // Field wiring follows the rows': `.value` from state, `input` writes
       // back into `projects` and reaches the preview. The header re-reads
@@ -934,13 +886,14 @@ document.addEventListener("astro:page-load", () => {
           if (value.trim()) project[key] = value;
           else delete project[key];
           if (key === "title" || key === "titleDe") setName();
+          if (input instanceof HTMLTextAreaElement) fitInline(input);
           syncPreview();
         });
       };
-      wire("title", MAX_PROJECT_TITLE, "profile.project.title.label", "profile.project.title.ph");
-      wire("titleDe", MAX_PROJECT_TITLE, "profile.project.title.de", "profile.project.title.de.ph");
-      wire("description", MAX_PROJECT_DESCRIPTION, "profile.project.description.label", "profile.project.description.ph");
-      wire("descriptionDe", MAX_PROJECT_DESCRIPTION, "profile.project.description.de", "profile.project.description.de.ph");
+      wire("title", MAX_PROJECT_TITLE, "profile.project.title.label", "profile.works.projectTitle.ph");
+      wire("titleDe", MAX_PROJECT_TITLE, "profile.project.title.de", "profile.works.projectTitle.ph");
+      wire("description", MAX_PROJECT_DESCRIPTION, "profile.project.description.label", "profile.works.projectDescription.ph");
+      wire("descriptionDe", MAX_PROJECT_DESCRIPTION, "profile.project.description.de", "profile.works.projectDescription.ph");
       wire("link", MAX_PROJECT_LINK, "profile.project.website", "profile.project.website.ph");
 
       // AFFILIATIONS: rows re-rendered inside the block on add/remove, like
@@ -1036,6 +989,7 @@ document.addEventListener("astro:page-load", () => {
     });
     // Pending uploads into a block were unhomed by replaceChildren above.
     renderQueue();
+    refitInline();
     // The image-led directory renders a typographic card for an empty
     // gallery; the nudge says so, and disappears with the first image.
     const nudge = document.getElementById("gallery-nudge");
@@ -1062,7 +1016,7 @@ document.addEventListener("astro:page-load", () => {
         target = focusHint.field
           ? block?.querySelector<HTMLElement>(`[data-project-field="${focusHint.field}"]`)
           : pick(
-              block?.querySelector(":scope > .gallery-project-head") ?? null,
+              block?.querySelector(":scope > .gallery-project-tools") ?? null,
               '[data-project-move="up"]',
               '[data-project-move="down"]',
               focusHint.control ?? "up",
@@ -1627,7 +1581,6 @@ document.addEventListener("astro:page-load", () => {
     const first = gallery.find((g) => g.projectId === projectId);
     gallery = applyBlocks(gallery, dissolveProject(blocks, projectId));
     projects = projects.filter((p) => p.projectId !== projectId);
-    projectLangUI.delete(projectId);
     projectDetailsOpenUI.delete(projectId);
     if (storedProjectIds.has(projectId)) deletedProjectIds.add(projectId);
     renderGallery(first ? { imageId: first.imageId, control: "up" } : undefined);
@@ -1880,11 +1833,13 @@ document.addEventListener("astro:page-load", () => {
       // portrait into the preview.
       photoURL: avatarWrap.classList.contains("has-image") ? avatarImg.src : "",
       photoColor: avatarColor || undefined,
-      // For the tab's own locale, as localizeMember() does for the built
-      // pages — a member previewing /de/profile sees the German pair.
-      role: profileRole({ role: roleInput.value, roleDe: roleDeInput.value }, lang),
+      // For the bar's language (EN | DE on the Works tab, the tab's own
+      // locale to begin with), as localizeMember() does for the built pages:
+      // DE shows the German pair where it is written, the English where it
+      // is not — exactly what a German visitor gets.
+      role: profileRole({ role: roleInput.value, roleDe: roleDeInput.value }, worksLang),
       memberType: memberTypeSelector?.value ?? "",
-      bio: profileBio({ bio: bioInput.value, bioDe: bioDeInput.value }, lang),
+      bio: profileBio({ bio: bioInput.value, bioDe: bioDeInput.value }, worksLang),
       tags: tagSelector?.value ?? [],
       openTo: openToSelector?.value ?? [],
       affiliation: affiliationInput.value.trim(),
@@ -1910,9 +1865,9 @@ document.addEventListener("astro:page-load", () => {
           // links.ts. A member previewing the German tab sees exactly what
           // a German visitor would: the German field if they wrote one, the
           // field above otherwise.
-          caption: workCaption(g, lang),
+          caption: workCaption(g, worksLang),
           color: g.color,
-          description: workDescription(g, lang),
+          description: workDescription(g, worksLang),
           // Same rule the built page applies — works() in memberView.ts calls
           // this too — so the Preview tab shows a link exactly when a visitor
           // would get one, including showing none for a value that is not
@@ -1930,22 +1885,26 @@ document.addEventListener("astro:page-load", () => {
   }
 
   /**
-   * The profile-page preview. Skipped entirely while the form is in edit
-   * mode — it is off-screen there, so re-rendering it on every keystroke
-   * would be work nobody can see.
+   * The profile-page rendering on the Works tab. Skipped while another tab
+   * is open or the card is showing — it is off-screen then, so re-rendering
+   * it on every keystroke would be work nobody can see. In edit mode the
+   * page's works slot is hidden under the editor's own list (profile-editor
+   * .css), so the head is rendered and the works are not: the editor's rows
+   * ARE the works there.
    */
   function syncProfileView() {
-    if (!profileViewRoot || !form.classList.contains("is-previewing")) return;
+    if (!profileViewRoot || !form.classList.contains("is-works") || worksView !== "profile") return;
+    const vm = currentViewModel();
     // `member.openTo`, not `profile.view.openTo`: the shell renders the
     // page's markup, so the words in it have to be the page's words. The two
     // keys read identically today, and that is precisely the kind of
     // agreement that survives only while someone remembers to maintain it.
-    renderProfilePreview(profileViewRoot, currentViewModel(), {
+    renderProfilePreview(profileViewRoot, worksMode === "edit" ? { ...vm, works: [], projects: [] } : vm, {
       defaultName: s["profile.view.defaultName"],
       openTo: s["member.openTo"],
       noWorks: s["profile.view.noWorks"],
       with: s["member.project.with"],
-      lang,
+      lang: worksLang,
       carousel: {
         prev: s["member.project.prev"],
         next: s["member.project.next"],
@@ -1980,10 +1939,115 @@ document.addEventListener("astro:page-load", () => {
       btn.setAttribute("aria-selected", String(active));
       btn.tabIndex = active ? 0 : -1;
     });
-    // The preview renders on tab entry, not on every keystroke behind the
-    // scenes — syncProfileView's early return keys off this class.
-    form.classList.toggle("is-previewing", section === "preview");
-    if (section === "preview") syncProfileView();
+    // The page renders on tab entry, not on every keystroke behind the
+    // scenes — syncProfileView's early return keys off this class, which
+    // also lets the form take the page's measure (profile-editor.css) and
+    // shows the bar's switches.
+    form.classList.toggle("is-works", section === "work");
+    worksBar.hidden = section !== "work";
+    if (section === "work") {
+      syncProfileView();
+      refitInline();
+    }
+  }
+
+  // ── THE WORKS BAR (2026-10-13) ────────────────────────────
+  // Three switches at the foot of the form: which rendering (the page or the
+  // directory card), whether it is being looked at or edited, and which
+  // language's words are on screen. Each is written onto the stage as a data
+  // attribute, and the stylesheet does the showing and hiding; the mode and
+  // the language are remembered for the session, the view is not (the page
+  // is what the tab is for).
+  const worksStage = document.getElementById("works-stage");
+  const worksBar = document.getElementById("works-bar")!;
+  type WorksMode = "edit" | "preview";
+  type WorksView = "profile" | "card";
+  const remembered = (key: string) => {
+    try {
+      return sessionStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  };
+  const remember = (key: string, value: string) => {
+    try {
+      sessionStorage.setItem(key, value);
+    } catch {
+      /* private mode: the choice lasts the page */
+    }
+  };
+  let worksMode: WorksMode = remembered("vscn-works-mode") === "preview" ? "preview" : "edit";
+  let worksView: WorksView = "profile";
+  let worksLang: Lang = remembered("vscn-works-lang") === "de" ? "de" : remembered("vscn-works-lang") === "en" ? "en" : lang;
+
+  const press = (attr: string, value: string) => {
+    worksBar.querySelectorAll<HTMLButtonElement>(`[${attr}]`).forEach((btn) => {
+      btn.setAttribute("aria-pressed", String(btn.getAttribute(attr) === value));
+    });
+  };
+  function applyWorksBar() {
+    if (worksStage) {
+      worksStage.dataset.mode = worksMode;
+      worksStage.dataset.view = worksView;
+      worksStage.dataset.lang = worksLang;
+      worksStage.querySelectorAll<HTMLElement>("[data-works-pane]").forEach((pane) => {
+        pane.hidden = pane.dataset.worksPane !== worksView;
+      });
+    }
+    press("data-works-mode", worksMode);
+    press("data-works-view", worksView);
+    press("data-works-lang", worksLang);
+    // The mode switch means nothing while the card is showing: the card is
+    // drawn from the same fields and is never edited in place.
+    const modeSeg = worksBar.querySelector<HTMLElement>("[data-works-mode-seg]");
+    if (modeSeg) modeSeg.hidden = worksView !== "profile";
+  }
+  function setWorksMode(mode: WorksMode) {
+    worksMode = mode;
+    remember("vscn-works-mode", mode);
+    applyWorksBar();
+    syncPreview();
+    refitInline();
+  }
+  function setWorksView(view: WorksView) {
+    worksView = view;
+    applyWorksBar();
+    syncPreview();
+    refitInline();
+  }
+  function setWorksLang(next: Lang) {
+    worksLang = next;
+    remember("vscn-works-lang", next);
+    applyWorksBar();
+    syncPreview();
+    refitInline();
+  }
+  worksBar.querySelectorAll<HTMLButtonElement>("[data-works-mode]").forEach((btn) => {
+    btn.addEventListener("click", () => setWorksMode(btn.dataset.worksMode === "preview" ? "preview" : "edit"));
+  });
+  worksBar.querySelectorAll<HTMLButtonElement>("[data-works-view]").forEach((btn) => {
+    btn.addEventListener("click", () => setWorksView(btn.dataset.worksView === "card" ? "card" : "profile"));
+  });
+  worksBar.querySelectorAll<HTMLButtonElement>("[data-works-lang]").forEach((btn) => {
+    btn.addEventListener("click", () => setWorksLang(btn.dataset.worksLang === "de" ? "de" : "en"));
+  });
+  applyWorksBar();
+
+  /**
+   * An inline textarea is as tall as its text — a description in the page's
+   * caption voice, not a box with a scrollbar. Measured, because
+   * `field-sizing: content` has not reached every phone yet; a hidden box
+   * measures 0, which is why refitInline() runs again whenever the list,
+   * the mode, the view or the language changes.
+   */
+  function fitInline(el: HTMLTextAreaElement) {
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }
+  function refitInline() {
+    requestAnimationFrame(() => {
+      galleryEditor.querySelectorAll<HTMLTextAreaElement>("textarea.gallery-inline").forEach(fitInline);
+    });
   }
 
   /** Scientists and research groups get lab-facing field wording. */
@@ -2142,7 +2206,7 @@ document.addEventListener("astro:page-load", () => {
             projects: value.projects, storedProjectIds: value.storedProjectIds ?? [], deletedProjectIds: value.deletedProjectIds ?? [],
           }, storedProjectIds);
           projects = merged.projects;
-          for (const id of merged.deleted) { deletedProjectIds.add(id); projectLangUI.delete(id); projectDetailsOpenUI.delete(id); }
+          for (const id of merged.deleted) { deletedProjectIds.add(id); projectDetailsOpenUI.delete(id); }
           // Gallery: LIVE membership and order (committed), the draft's
           // words on the works present in both. A recovered draft cannot
           // resurrect removed media, and it must not hide media added since.

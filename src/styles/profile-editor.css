@@ -129,22 +129,24 @@
     display: grid;
   }
 
-  /* THE PREVIEW TAB TAKES THE PAGE'S MEASURE (2026-09-25, Josh: the preview
-     "doesn't match the sizes of the real member profile page"). The form is a
-     560px column, and the preview used to be rendered inside it — so the
-     member page, which the real site lays straight into <main> at 870px,
-     came out at 560: every picture, the bio's measure and the head's grid
-     drawn at two-thirds of its real width. On this tab the form lets go of
-     its cap and fills <main>'s content box, which is exactly the box the real
-     page gets. Everything that is not the rendering (the tabs, the deletion
-     banner) keeps the column's width and centre, so the tab row does not
-     jump when Preview is chosen. 530 on a phone because the form's own 15px
-     padding came out of the 560 there; the desktop form has none. */
-  .profile-form.is-previewing {
+  /* THE WORKS TAB TAKES THE PAGE'S MEASURE (2026-09-25, Josh: the preview
+     "doesn't match the sizes of the real member profile page"; since
+     2026-10-13 the Works tab IS that rendering, edited in place). The form
+     is a 560px column, and the preview used to be rendered inside it — so
+     the member page, which the real site lays straight into <main> at
+     870px, came out at 560: every picture, the bio's measure and the head's
+     grid drawn at two-thirds of its real width. On this tab the form lets
+     go of its cap and fills <main>'s content box, which is exactly the box
+     the real page gets. Everything that is not the rendering (the tabs, the
+     deletion banner, the bar) keeps the column's width and centre, so the
+     tab row does not jump when Works is chosen. 530 on a phone because the
+     form's own 15px padding came out of the 560 there; the desktop form has
+     none. */
+  .profile-form.is-works {
     max-width: none;
   }
 
-  .profile-form.is-previewing > :not(.form-section) {
+  .profile-form.is-works > :not(.form-section) {
     justify-self: center;
     width: 100%;
     max-width: 530px;
@@ -342,53 +344,146 @@
     border-color: var(--color-error);
   }
 
-  /* Was a grid of bare 90px thumbs. Each image now carries a caption and a
-     description, which no square that small can hold — so an
-     entry is a row: thumb on the left, its words on the right. */
+  /* ── THE EDITOR IN THE PAGE'S COLUMN (2026-10-13) ──
+     Josh: "Edit mode should look like the preview: the same layout, the same
+     widths, and no horizontal shrinking of the content." The list sits where
+     the page's works do (the `editor` slot of ProfileViewPreview, right
+     after the page's own works slot) and takes the page's rhythm: the
+     same stand-off from the profile's words and the same window-sized gap
+     between works that .mprof__works has in profile.css — restated here
+     because the page's class on this wrapper would also space the Add row
+     and the notes a screen apart. Change one, change the other. */
+  .works-editor {
+    margin-top: max(6rem, 15vh);
+  }
+
   .gallery-editor {
     display: flex;
     flex-direction: column;
-    gap: 24px;
-    margin-bottom: 0.5rem;
-  }
-
-  /* ONE WORK PER BAND (2026-09-26, Josh: "add more spacing or group the
-     detail drop down to image relationship better"). At a 14px gap with
-     nothing between them, a row's toolbar and Image Details line sat as close to
-     the NEXT picture as to their own, so a fold could be read as belonging
-     to either. Now two neighbouring rows are parted by the list's hairline
-     with 24px of air on each side: everything between two lines is one
-     work. A project block needs no line, since its frame already parts it. */
-  .gallery-item + .gallery-item {
-    padding-top: 24px;
-    border-top: 1px solid var(--color-border);
+    gap: max(7rem, 30vh);
   }
 
   .gallery-editor:empty {
     display: none;
   }
 
-  .gallery-item {
-    display: grid;
-    /* The picture with its toolbar under it, then the words (2026-09-26). A
-       pending upload has no toolbar; its thumb is the column's only child. */
-    grid-template-columns: 120px minmax(0, 1fr);
-    gap: 14px;
-    align-items: start;
+  @media (--bp-mobile) {
+    .works-editor {
+      margin-top: max(4rem, 11vh);
+    }
+    .gallery-editor {
+      gap: max(4rem, 22vh);
+    }
   }
 
-  .gallery-media {
+  /* The Add row and the notes stand off the last work by the heading gap,
+     not the works gap: they are the foot of the list, not one more work. */
+  .gallery-editor:not(:empty) + .gallery-queue + .gallery-actions,
+  .gallery-editor:not(:empty) + .gallery-actions {
+    margin-top: 4rem;
+  }
+
+  .gallery-notes {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    min-width: 0;
+    gap: 0.35rem;
+    margin-top: 0.75rem;
   }
 
+  .gallery-notes .field-note {
+    margin: 0;
+  }
+
+  /* A row is the page's figure (.mprof__work, profile.css): the picture at
+     the page's size, the words under it at the picture's width. The editor
+     adds the tools ABOVE the picture, right-aligned over its edge — the same
+     --work-ar cap and centring the frame below them has, so the strip sits
+     on the picture it acts on, not on the column. A project's tools have
+     no --work-ar and take the column. */
   .gallery-row-tools {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
     gap: 6px;
     min-width: 0;
+    max-width: calc(60vh * var(--work-ar));
+    margin: 0 auto 0.5rem;
+  }
+
+  .gallery-project-tools {
+    margin-bottom: 1.25rem;
+  }
+
+  /* THE INLINE FIELDS. A work's title and description, a project's title
+     and description, as real inputs standing exactly where the page prints
+     the words: no box, the parent's voice (`font: inherit` at zero
+     specificity — at the FOOT of this file, outside the .profile-editor
+     block, or nesting would lift it to a tie with .mprof__project-title's
+     own voice, which must win), the parent's colour, and one dotted
+     hairline underneath that says
+     "this is yours to change" — solid and dark while it is being changed.
+     A textarea grows with its text (fitInline in the controller) and never
+     scrolls. */
+  .gallery-inline {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0 0 2px;
+    border: 0;
+    border-bottom: 1px dotted var(--color-border);
+    border-radius: 0;
+    background: none;
+    resize: none;
+    overflow: hidden;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .gallery-inline:hover {
+    border-bottom-color: var(--color-muted);
+  }
+
+  .gallery-inline:focus {
+    border-bottom-style: solid;
+    border-bottom-color: var(--color-dark);
+  }
+
+  .gallery-inline::placeholder {
+    color: var(--color-muted);
+    opacity: 0.6;
+  }
+
+  /* The description keeps the page's paragraph breaks while it is typed. */
+  textarea.gallery-inline {
+    white-space: pre-wrap;
+  }
+
+  /* One language at a time: the bar's EN | DE writes data-lang on the
+     stage, and the other pane goes. */
+  .works-stage[data-lang="en"] [data-gallery-lang-pane="de"],
+  .works-stage[data-lang="de"] [data-gallery-lang-pane="en"] {
+    display: none;
+  }
+
+  .gallery-lang-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  /* Preview shows the page's own works; edit shows the editor's list in
+     their place. Both are children of the same .mprof article, so the head
+     and the bio are the same nodes either way. */
+  .works-stage[data-mode="edit"] :is([data-ppv="works"], [data-ppv="works-empty"]),
+  .works-stage[data-mode="preview"] [data-works-editor] {
+    display: none;
+  }
+
+  .works-view[hidden] {
+    display: none;
   }
 
   /* ── The toolbar (2026-09-26; restyled the same day, Josh: "the design
@@ -512,14 +607,23 @@
     width: 64px;
   }
 
-  .gallery-project-head .gallery-tpill {
+  .gallery-project-tools .gallery-tpill {
     flex: none;
   }
 
+  /* "Add images" is a <label> around a clipped file input, in the pill's
+     dress: inline-flex so the label's box is the pill, not a line of text. */
+  .gallery-project-add {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    overflow: hidden;
+  }
+
+  /* The words are the page's own figcaption (.mprof__caption draws the
+     column, its gap and the picture's width); only the width guard is the
+     editor's. */
   .gallery-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
     min-width: 0;
   }
 
@@ -602,19 +706,12 @@
     font-size: var(--fs-85);
   }
 
+  /* The picture is the page's frame (.mprof__work-link + .mprof__img in
+     profile.css): a <div> here, since the editor's picture opens nothing,
+     and no cursor to promise otherwise. */
   .gallery-thumb {
     position: relative;
-    aspect-ratio: 1;
-  }
-
-  .gallery-thumb img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: var(--radius-sm);
-    border: 1.5px solid var(--color-border);
-    box-sizing: border-box;
+    cursor: default;
   }
 
   .gallery-thumb-remove {
@@ -939,47 +1036,17 @@
     border-color: var(--color-dark);
   }
 
-  /* ── Project blocks (2026-09-23) ─────────────────────── */
-  /* A frame inside the list, at the row's own gap, so the images inside read
-     as the same rows they were outside — only enclosed. Hairline and radius
-     from the inputs, not a card: this is a grouping in a form, not content. */
-  .gallery-project {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 12px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-  }
-
-  .gallery-project-head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-  }
-
-  /* The label voice (uppercase, tracked) so the header reads as a heading
-     over its rows and not as one more input. It WRAPS (2026-09-28): a name
-     like "Interdisziplinäre Wissenschaftskommunikation" is longer than a
-     phone's block, and an ellipsis took the half that said what it was.
-     `hyphens: auto` so German breaks at a syllable, not mid-word (the
-     language is <html lang>); `anywhere` remains the last resort for a
-     word no dictionary knows. */
-  .gallery-project-name {
-    flex: 1 1 auto;
-    min-width: 0;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    hyphens: auto;
-    color: var(--color-dark);
-  }
-
+  /* ── Project blocks (2026-09-23; the page's own since 2026-10-13) ── */
+  /* The block is the page's .mprof__project (profile.css draws the column
+     and its gaps) and its heading group is the page's .mprof__project-head;
+     no frame of its own any more. The works inside are listed one under
+     the other at the heading gap, where the page pages them as a carousel. */
   .gallery-project-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
     min-width: 0;
+  }
+
+  .gallery-project-fields > .gallery-details {
+    margin-top: 0.75rem;
   }
 
   /* Not the tag picker's fields — see .gallery-fields .input above. */
@@ -1036,8 +1103,7 @@
     margin-bottom: 0;
   }
 
-  .gallery-aff-add,
-  .gallery-project-add {
+  .gallery-aff-add {
     padding: 0.5rem 1rem;
     font-size: var(--fs-80);
   }
@@ -1080,11 +1146,11 @@
     color: var(--color-error);
   }
 
-  /* The block's own rows, at the list's gap and with its dividers. */
+  /* The block's own rows, one under the other at the heading gap. */
   .gallery-project-images {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 4rem;
   }
 
   /* An empty block shows its note instead of rows (renderGallery). */
@@ -1191,28 +1257,11 @@
   }
 
   @media (--bp-mobile) {
-    /* On a phone the picture and its toolbar sit side by side, and the words
-       take the full width below them. */
-    .gallery-item {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    .gallery-media {
-      display: grid;
-      grid-template-columns: minmax(0, 140px) 136px;
-      gap: 12px;
-      align-items: start;
-    }
     .gallery-actions {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .gallery-action--project {
       grid-column: 1 / -1;
-    }
-    .gallery-task .gallery-thumb {
-      max-width: 140px;
-    }
-    .gallery-project {
-      padding: 10px;
     }
   }
 
@@ -1267,7 +1316,7 @@
      hole between a page and the line that closes it. The profile page brings
      its own 3rem/10rem of internal air (profile.css), which is the whole point
      of showing it unmodified. */
-  .preview-section {
+  .works-stage {
     display: flex;
     flex-direction: column;
     gap: 2.5rem;
@@ -1285,7 +1334,7 @@
      clips at the padding edge, which is exactly where this reaches. Desktop
      needs nothing: .profile-form drops its padding there. */
   @media (--bp-mobile) {
-    .preview-section {
+    .works-stage {
       margin-inline: -15px;
     }
   }
@@ -1379,9 +1428,113 @@
     pointer-events: auto;
   }
 
-  /* Preview needs no Save: nothing on that tab can be edited. */
-  .profile-form.is-previewing .form-footer {
+  /* THE WORKS BAR (2026-10-13, Josh: "on mobile we can have the toggle
+     centered on the bottom like the tags and gallery view selection. also a
+     switch between card and profile in the same bottom bar. En De switch as
+     well in the bottom bar. save also in the bar"). On the Works tab the
+     footer is a strip: the three switches and Save on one line, centred,
+     on paper with a hairline, so the controls read as one bar over the
+     page rather than four boxes floating on it. The other tabs keep the
+     lone Save at the right. */
+  .profile-form.is-works .form-footer {
+    justify-content: center;
+    gap: 0.5rem 0.75rem;
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+    padding: 0.45rem 0.6rem;
+    background: var(--color-bg);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    pointer-events: auto;
+  }
+
+  .profile-form.is-works .form-footer .profile-save-button {
+    box-shadow: none;
+  }
+
+  .profile-form.is-works .form-footer .msg-ok,
+  .profile-form.is-works .form-footer .msg-err {
+    flex-basis: 100%;
+    text-align: center;
+  }
+
+  @media (--bp-mobile) {
+    .profile-form.is-works .form-footer {
+      margin-bottom: 0.5rem;
+      padding: 0.4rem 0.45rem;
+    }
+  }
+
+  .works-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+  }
+
+  .works-bar[hidden] {
     display: none;
+  }
+
+  /* Each switch is the EN/DE switch's pair: joined segments on white, a
+     1.5px hairline, the small radius, muted at rest and filled dark when
+     pressed. 32px tall so a thumb lands on it. */
+  .works-seg {
+    display: flex;
+  }
+
+  .works-seg[hidden] {
+    display: none;
+  }
+
+  .works-seg__btn {
+    min-height: 32px;
+    padding: 4px 10px;
+    background: white;
+    border: 1.5px solid var(--color-border);
+    color: var(--color-muted);
+    font-family: inherit;
+    font-size: var(--fs-72);
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background 0.15s,
+      color 0.15s,
+      border-color 0.15s;
+  }
+
+  .works-seg__btn + .works-seg__btn {
+    border-left: none;
+  }
+
+  .works-seg__btn:first-child {
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  }
+
+  .works-seg__btn:last-child {
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  .works-seg__btn:hover {
+    color: var(--color-dark);
+  }
+
+  .works-seg__btn[aria-pressed="true"] {
+    background: var(--color-dark);
+    border-color: var(--color-dark);
+    color: white;
+  }
+
+  .works-seg__btn:focus-visible {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 1px;
+    z-index: 1;
   }
 
   /* The save/error message floats next to the button, so it carries its own
@@ -1703,7 +1856,7 @@
     min-width: 0;
   }
 
-  .profile-form :is(.field, .gallery-project, .gallery-media, .gallery-item, .section-tabs) {
+  .profile-form :is(.field, .gallery-project, .gallery-item, .section-tabs) {
     min-width: 0;
   }
 
@@ -1747,19 +1900,12 @@
     flex-shrink: 0;
   }
 
+  /* THE TOOLS KEEP THEIR SIZE (2026-10-13): the toolbar does not shrink
+     with the column, it wraps; on a phone the project's three controls
+     take the full width between them. */
   @media (--bp-mobile) {
-    /* The picture and its toolbar split the width evenly on a phone. */
-    .gallery-media {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    }
-
-    .gallery-project-head {
-      flex-wrap: wrap;
-    }
-
-    .gallery-project-name {
-      display: block;
-      min-width: 0;
+    .gallery-project-tools {
+      justify-content: flex-start;
     }
   }
 
@@ -1775,7 +1921,7 @@
      The backwards fill holds each part invisible through its own delay and
      leaves nothing behind once it has played: a transform still applied
      would make the row a containing block for the i boxes inside it. */
-  .is-entering :is(.gallery-item > .gallery-fields, .gallery-project-name),
+  .is-entering :is(.gallery-item > .gallery-fields, .mprof__project-head),
   .is-entering .gallery-thumb,
   .is-entering :is(.gallery-row-tools, .gallery-project-details, .gallery-toolbar--head, [data-project-delete]) {
     animation: gallery-enter 420ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
@@ -1798,15 +1944,23 @@
 
   /* BORDER-BOX FOR THE EDITOR'S OWN BOXES. global.css has no universal reset,
      and the editor's controls were sized as if there were one (a 28px toolbar
-     button with a 1.5px border came out 31px). NOT the Preview tab's
-     contents: `.preview-section` holds the REAL member page and the REAL
+     button with a 1.5px border came out 31px). NOT the Works stage's
+     contents: `.works-stage` holds the REAL member page and the REAL
      directory card, whose geometry is written for content-box (see the
      .ccard__frame note in communityCard.css), and a reset reaching them would
-     make the preview lie about the page. `:where()` keeps this at (0,1,0),
-     so any component rule that sets box-sizing itself still wins. */
-  :where(:not(.preview-section *)),
-  :where(:not(.preview-section *))::before,
-  :where(:not(.preview-section *))::after {
+     make the rendering lie about the page. `:where()` keeps this at (0,1,0),
+     so any component rule that sets box-sizing itself still wins. The
+     editor's own controls inside the stage — the toolbar, the folds, the
+     Add row, the video field — get the reset by name below. */
+  :where(:not(.works-stage *)),
+  :where(:not(.works-stage *))::before,
+  :where(:not(.works-stage *))::after {
+    box-sizing: border-box;
+  }
+
+  .works-stage :where(.gallery-row-tools, .gallery-row-tools *, .gallery-details, .gallery-details *, .gallery-actions, .gallery-actions *, .gallery-video, .gallery-video *, .gallery-notes, .gallery-notes *, .gallery-task .gallery-fields *, .gallery-thumb-remove, .gallery-thumb-labels *),
+  .works-stage :where(.gallery-row-tools *, .gallery-details *, .gallery-actions *, .gallery-video *)::before,
+  .works-stage :where(.gallery-row-tools *, .gallery-details *, .gallery-actions *, .gallery-video *)::after {
     box-sizing: border-box;
   }
 }
@@ -1824,4 +1978,13 @@
   to {
     transform: rotate(1turn);
   }
+}
+
+/* At the top level, at zero specificity: the inline fields take their
+   parent's voice and colour unless the page gives the element one of its own
+   (.mprof__project-title, .mprof__caption-line). Inside the .profile-editor
+   block this would be (0,1,0) and tie with those. */
+:where(.gallery-inline) {
+  font: inherit;
+  color: inherit;
 }
