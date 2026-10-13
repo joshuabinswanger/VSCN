@@ -44,6 +44,15 @@ export function followContentSize(bar: HTMLElement, inner: HTMLElement): () => v
  * Tab away. Arrow keys move between the enabled items, Home/End jump. Items
  * carry role="menuitem" and tabindex="-1"; the menu manages focus itself.
  *
+ * IT OPENS OVER ITS BUTTON (2026-10-13, Josh: "the add menu should be over
+ * the plus icon") and it animates both ways, like the site's MENU
+ * (Navbar.astro): the state is the `is-open` class, never `hidden`, so the
+ * stylesheet can play the leave as well as the arrival. A closed menu is
+ * `inert` at once, so nothing in it can be reached while it fades out. Each
+ * open measures the button and writes `--menu-left` (px, in the menu's
+ * containing block): centred on the button, or ending at its right edge when
+ * the stylesheet sets `--menu-align: end`, and kept 16px inside the window.
+ *
  * `onChoose` runs before the item's own click handlers do their work (it is a
  * capturing listener), so the caller can prepare the page — here, switch the
  * Works tab to Edit — before the item acts.
@@ -57,17 +66,32 @@ export function bindMenuButton(
   const items = () =>
     Array.from(menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).filter((el) => !el.disabled && !el.hidden);
 
-  const isOpen = () => !menu.hidden;
+  const isOpen = () => menu.classList.contains("is-open");
+  const place = () => {
+    const host = (menu.offsetParent as HTMLElement | null) ?? document.body;
+    const hostBox = host.getBoundingClientRect();
+    const b = button.getBoundingClientRect();
+    const width = menu.offsetWidth;
+    const end = getComputedStyle(menu).getPropertyValue("--menu-align").trim() === "end";
+    const wanted = end ? b.right - width : b.left + b.width / 2 - width / 2;
+    const margin = 16;
+    const x = Math.min(Math.max(wanted, margin), window.innerWidth - margin - width);
+    menu.style.setProperty("--menu-left", `${Math.round(x - hostBox.left)}px`);
+  };
+  menu.inert = true;
   const open = () => {
     if (isOpen()) return;
     options.onOpen?.();
-    menu.hidden = false;
+    place();
+    menu.inert = false;
+    menu.classList.add("is-open");
     button.setAttribute("aria-expanded", "true");
     items()[0]?.focus();
   };
   const close = (refocus = false) => {
     if (!isOpen()) return;
-    menu.hidden = true;
+    menu.classList.remove("is-open");
+    menu.inert = true;
     button.setAttribute("aria-expanded", "false");
     if (refocus) button.focus();
   };

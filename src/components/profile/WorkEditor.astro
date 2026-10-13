@@ -102,10 +102,11 @@ const t = useTranslations(lang);
         /* THE CARD IS NAMED (2026-09-26, Josh: "in the preview clearly label
           the gallery card!"): the page names itself; the card says where it
           appears. Read-only in both modes: the card is drawn from the same
-          fields the page is. */
+          fields the page is. No hairlines above and below it since
+          2026-10-13 (Josh: "the horizontal bars on the gallery card can be
+          removed!"). */
       }
       <div class="works-view" data-works-pane="card" hidden>
-        <hr class="preview-rule" />
         <div class="preview-card">
           <div class="preview-card-head">
             <p class="label">{t("profile.preview.card")}</p>
@@ -113,7 +114,6 @@ const t = useTranslations(lang);
           </div>
           <CommunityCardPreview lang={lang} />
         </div>
-        <hr class="preview-rule" />
       </div>
     </div>
 
@@ -128,8 +128,8 @@ const t = useTranslations(lang);
           caption carry the page's own classes (profile.css draws them), so
           the picture is the size and in the place the visitor gets it;
           `--work-ar` is set per row by renderGallery, as the page sets it
-          per figure. What the editor adds: the toolbar above the picture
-          (↑ ↓ ↻ ✕ and the project select), the title and description as
+          per figure. What the editor adds: the toolbar on the picture's top
+          edge (↑ ↓ ↻ ✕ and the project select), the title and description as
           inline fields where the caption prints them — one language at a
           time, the bar's — and a fold under the words for the links and the
           tags. Named per row by renderGallery ("Work 3 of 12"), so the

@@ -867,7 +867,8 @@ document.addEventListener("astro:page-load", () => {
       };
       wireHeadMove(headUp, -1, "up");
       wireHeadMove(headDown, 1, "down");
-      headDelete.title = s["profile.project.deleteNote"];
+      // An icon now (2026-10-13), so the tooltip carries the name too.
+      headDelete.title = `${s["profile.project.delete"]}. ${s["profile.project.deleteNote"]}`;
       headDelete.addEventListener("click", () => deleteProject(id));
 
 
