@@ -91,11 +91,12 @@ const profileHref = memberHref(lang, member.slug);
 // picture, and its fallback is the one place the author is always spoken.
 const alt = work.caption?.trim() || `${member.displayName} — ${t("member.workAlt")}`;
 
-// THE NAME, UNDER EVERY PICTURE, AGAIN (2026-10-12, Josh, with
-// illustratoren-schweiz.ch's grid as the reference: "name a tad smaller, the
-// grid view like this"). The title had the line for an evening, then only on
-// hover; now the member's name is printed under each work as the reference
-// does, and the work's title is the picture link's tooltip.
+// NO LINE UNDER THE PICTURE (2026-10-13, Josh: "remove the names that still
+// appear under the pictures"). The name had the line for a day (after
+// illustratoren-schweiz.ch's grid), the title before that; now the tile is
+// the picture alone. The work's title is the link's tooltip, and the
+// lightbox credit is what names the member — and routes to them (see
+// pswpMeta / data-pswp-profile below).
 const title = work.caption?.trim();
 
 // What the LIGHTBOX says under the image, in exactly the form the member page's
@@ -216,26 +217,6 @@ const pswpProject = projectSlideData(member.projects?.find((p) => p.id === work.
     </a>
   </div>
 
-  {
-    /* THE LABEL. Not a heading: this block holds a credit, not a name for the
-      picture, and a heading that says whose it is rather than what it is would
-      put the wrong thing in the page outline. The picture's alt text — its own
-      caption — is what names a tile to a screen reader; this block is the
-      label beside it. */
-  }
-  <div class="cwork__caption">
-    {
-      /* THE AUTHOR, in flow — see the header — and now the only line in here,
-        so it sits directly under the frame.
-        The anchor is written tight against its text on purpose: Astro keeps
-        the indentation around an expression as a real space, and a leading one
-        shifts the name a few pixels off the artwork's left edge — the one
-        alignment a line under a picture has to hold. */
-    }
-    <span class="cwork__author"
-      ><a class="cwork__author-link" href={profileHref}>{member.displayName}</a></span
-    >
-  </div>
   </div>
 </article>
 
@@ -356,8 +337,8 @@ const pswpProject = projectSlideData(member.projects?.find((p) => p.id === work.
   /* Touch scrolling can synthesize hover and retain focus. Only enlarge
      artwork on a desktop with a precise, hover-capable pointer. */
   /* NO ZOOM ON HOVER any more (2026-10-12, Josh: "remove the zoom of the
-     image on hover"). The pointer reveals the title instead — see
-     .cwork__caption. */
+     image on hover"), and no line under the picture either (2026-10-13):
+     the title is the link's tooltip. */
 
   /* IN FRONT, for as long as the pointer is on it. Without this the wall's
      source order decides which artwork wins where two spill into each other,
@@ -375,59 +356,6 @@ const pswpProject = projectSlideData(member.projects?.find((p) => p.id === work.
     .cwork:has(:focus-visible) {
       z-index: 5;
     }
-  }
-
-  /* ── The label ────────────────────────────────────────── */
-  .cwork__caption {
-    /* The block holds the author line and nothing else now, so it is a plain
-       box with a top gap and nothing to lay out.
-       TIGHT TO THE PICTURE (2026-09-02, Josh: "grid gap of name to image
-       less"). It was 0.4rem, which is the gap between two paragraphs — and
-       these words are not a paragraph after the artwork, they are its label,
-       so the distance has to read as attachment rather than as separation.
-       0.15rem still keeps the type off the frame's edge, which is the only
-       thing the gap was ever needed for. */
-    /* The reference's distance from picture to name (2026-10-12). */
-    padding-top: 0.55rem;
-    font-family: "Archivo", sans-serif;
-  }
-
-  /* THE AUTHOR, printed — in flow, on every
-     breakpoint (2026-09-03, Josh: "add the name to the images in grid view in
-     desktop"). Used to be a desktop-only hover reveal, out of flow so
-     appearing could never resize a tile; that traded the name's visibility
-     for a quieter wall, and the trade reversed two days after it was made.
-     The mobile treatment (2026-09-01, "grid should contain name also in
-     mobile") is now the only treatment: --cwork-chrome above reserves this
-     line's height on every card, so a row is never surprised by it. */
-  .cwork__author {
-    display: block;
-    overflow: hidden;
-    /* One line, truncated: the name is a credit, not a paragraph, and a
-       wrapped one would reach into the row below. */
-    /* Black, as the reference prints it. */
-    color: var(--color-dark);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    /* NOTHING OF ITS OWN: the caption box's own top gap is already the whole
-       distance to the frame, and now that the author is the only line there
-       is, a second step here would pay twice for one gap (2026-09-02, "grid
-       gap of name to image less"). */
-    padding-top: 0;
-  }
-
-  /* Undecorated at rest, underlined when it is the thing being pointed at or
-     focused, at the member card's offset and thickness so every name on the
-     site behaves alike. */
-  .cwork__author-link {
-    color: inherit;
-    text-decoration: none;
-  }
-  .cwork__author-link:hover,
-  .cwork__author-link:focus-visible {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    text-decoration-thickness: 1.5px;
   }
 
   /* The site drops motion rather than substituting a gentler version of it:
