@@ -50,14 +50,18 @@ const t = useTranslations(lang);
             {
               /* Title and description, one language at a time — the bar's
                 EN | DE, like a work's words. The German pair is optional and
-                falls back to the English one on the German site. */
+                falls back to the English one on the German site.
+                The title is a one-line TEXTAREA, not an input, so it wraps
+                beside the toolbar instead of being cut off under it; the
+                controller keeps it to one paragraph (no Enter, no pasted
+                line breaks). */
             }
             <div class="gallery-lang-pane" data-gallery-lang-pane="en">
-              <input type="text" class="mprof__project-title gallery-inline" data-project-field="title" />
+              <textarea class="mprof__project-title gallery-inline" rows="1" data-project-field="title"></textarea>
               <textarea class="mprof__project-desc gallery-inline" rows="1" data-project-field="description"></textarea>
             </div>
             <div class="gallery-lang-pane" data-gallery-lang-pane="de">
-              <input type="text" class="mprof__project-title gallery-inline" data-project-field="titleDe" />
+              <textarea class="mprof__project-title gallery-inline" rows="1" data-project-field="titleDe"></textarea>
               <textarea class="mprof__project-desc gallery-inline" rows="1" data-project-field="descriptionDe"></textarea>
             </div>
             {

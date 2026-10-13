@@ -883,7 +883,16 @@ document.addEventListener("astro:page-load", () => {
         input.maxLength = max;
         input.placeholder = s[phKey];
         named(input, s[labelKey]);
+        // The title wraps (a textarea, ProjectEditor.astro) but stays one
+        // line of text: Enter does nothing, a pasted break becomes a space.
+        const oneLine = key === "title" || key === "titleDe";
+        if (oneLine) {
+          input.addEventListener("keydown", (e) => {
+            if ((e as KeyboardEvent).key === "Enter") e.preventDefault();
+          });
+        }
         input.addEventListener("input", () => {
+          if (oneLine && /[\r\n]/.test(input.value)) input.value = input.value.replace(/[\r\n]+/g, " ");
           const value = input.value;
           if (value.trim()) project[key] = value;
           else delete project[key];
