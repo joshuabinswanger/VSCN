@@ -524,15 +524,23 @@ const BRAND_SLOTS: BrandSlot[] = [
   }
 
   /* THE COMPACT HEADER (BRAND_COMPACT): one row --header-h tall, the title at
-     its left at a fixed size, MENU fixed over its right end (Navbar.astro).
+     its left at a fixed size, the nav fixed over its right end (Navbar.astro).
      It never rides away: on a desktop the ticker stands above .page-wrap, and
-     on a phone, where the document scrolls, it is sticky and paints the paper
-     so the page passes under it. */
+     on a phone, where the document scrolls, it is sticky.
+     NO FILL (2026-10-13, Josh: "remove the background behind the VSCN title
+     and the menu"): the row paints nothing, the page passes under the bare
+     letters on a phone as it does under the nav on a desktop.
+     The two numbers Josh tunes by eye are the custom properties on the row:
+     the title's size and how far in from the screen's left edge it starts
+     (2026-10-13: "smaller and a bit to the left", 30px at 15px -> 24px at
+     8px on a desktop, 26px -> 20px on a phone). */
   .brand-ticker[data-wordmark="compact"] {
+    --brand-compact-size: 24px;
+    --brand-compact-inset: 8px;
     display: flex;
     align-items: center;
     height: var(--header-h);
-    padding: 0 15px;
+    padding: 0 15px 0 var(--brand-compact-inset);
     margin-top: 0;
     overflow-x: clip;
   }
@@ -540,19 +548,17 @@ const BRAND_SLOTS: BrandSlot[] = [
     height: auto;
   }
   .brand-ticker[data-wordmark="compact"] .brand-name {
-    font-size: 30px;
+    font-size: var(--brand-compact-size);
     line-height: 1;
   }
   @media (--bp-mobile) {
     .brand-ticker[data-wordmark="compact"] {
+      --brand-compact-size: 20px;
       position: sticky;
       top: 0;
       z-index: 25;
-      padding: 0 15px;
-      background: var(--color-bg);
-    }
-    .brand-ticker[data-wordmark="compact"] .brand-name {
-      font-size: 26px;
+      padding: 0 8px 0 var(--brand-compact-inset);
+      background: transparent;
     }
   }
 

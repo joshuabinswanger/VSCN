@@ -321,6 +321,25 @@
   text-transform: uppercase;
 }
 
+/* NAV: the header's MENU and its three links (Navbar.astro), which on a phone
+   are three chips in the header row. A step up from TAG on a phone on
+   purpose (2026-10-13, Josh: "a bit bigger than the tags"): --fs-tag is 10px
+   there, this is 11px. */
+.t-nav,
+.nav-link,
+.nav-menu-btn {
+  font-size: var(--fs-82);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+@media (--bp-mobile) {
+  .nav-link {
+    font-size: var(--fs-75);
+  }
+}
+
 /* TAG: every tag, on every page. The chip's box (border, padding, the
    tracking compensation) is .tagchip in global.css; --tag-track is set there
    because the padding reads it too. */

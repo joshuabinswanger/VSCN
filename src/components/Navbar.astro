@@ -6,11 +6,14 @@ import "../styles/type.css";
 ---
 
 <nav transition:persist="navbar">
-  {/* BEHIND ONE BUTTON (2026-10-12, Josh: "the three buttons should be behind a
-      Menu button"). MENU sits on the header's line at the right; it opens
-      the three bars as a small drop-down under it. The links keep their ids,
-      the script below still sets their labels, their targets and which of
-      LOGIN / PROFILE shows. */}
+  {/* BEHIND ONE BUTTON ON A DESKTOP (2026-10-12, Josh: "the three buttons
+      should be behind a Menu button"). MENU sits on the header's line at the
+      right; it opens the three bars as a small drop-down under it.
+      THREE CHIPS ON A PHONE (2026-10-13, Josh: "replace the MENU drop-down
+      with three chips reading Info, Community and Profile"): there the same
+      three links stand in a row where MENU was, always open, and the button
+      is not drawn. The links keep their ids, the script below still sets
+      their labels, their targets and which of LOGIN / PROFILE shows. */}
   <button
     type="button"
     class="nav-menu-btn"
@@ -41,8 +44,17 @@ import "../styles/type.css";
   /* ON THE HEADER'S LINE, AT THE RIGHT (2026-10-12, Josh: "the header should
      be inline with the Menu buttons"). The title is one VSCN at the left of a
      --header-h tall row (Layout.astro); the nav is fixed over that row's
-     right end, so the two read as one header and neither moves on scroll. */
+     right end, so the two read as one header and neither moves on scroll.
+     Nothing is painted behind it: the row has no fill and no veil
+     (2026-10-13, Josh), the page scrolls under the bare title and the black
+     chips. Type for the button and the links is the NAV voice in type.css;
+     this file sets boxes and colours only.
+     THE KNOBS: --nav-ink / --nav-paper are the chips' two colours (black on
+     white type, the current page inverted), --nav-chip-pad the chip's box. */
   nav[data-astro-transition-persist="navbar"] {
+    --nav-ink: var(--color-dark);
+    --nav-paper: var(--color-bg);
+    --nav-chip-pad: 8px 10px 7px;
     position: fixed;
     top: 0;
     right: 0;
@@ -54,33 +66,28 @@ import "../styles/type.css";
     line-height: 1;
   }
 
+  /* MENU, the desktop trigger: black, white type (2026-10-13, Josh: "desktop
+     menu: black background with white type"); underlined under the pointer
+     and while open, like the links. */
   .nav-menu-btn {
     display: inline-flex;
     align-items: center;
-    padding: 7px 12px 6px;
+    padding: var(--nav-chip-pad);
     border: 0;
     border-radius: 0;
-    /* The bottom bar's trigger, up here: paper with one black hairline,
-       black while open. */
-    background: var(--color-bg);
-    box-shadow: inset 0 0 0 1px var(--color-dark);
-    color: var(--color-dark);
-    font-family: "Archivo", sans-serif;
-    font-size: var(--fs-82);
-    font-weight: 600;
-    letter-spacing: 0.04em;
+    background: var(--nav-ink);
+    color: var(--nav-paper);
+    font-family: inherit;
     cursor: pointer;
-    transition:
-      background-color 0.15s,
-      color 0.15s;
   }
   .nav-menu-btn:hover,
   .nav-menu-btn[aria-expanded="true"] {
-    background: var(--color-dark);
-    color: var(--color-bg);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
   }
   .nav-menu-btn:focus-visible {
-    outline: 1.5px solid var(--color-dark);
+    outline: 1.5px solid var(--nav-ink);
     outline-offset: 2px;
   }
 
@@ -110,37 +117,35 @@ import "../styles/type.css";
     }
   }
 
+  /* Each link is a black chip with white type, square (the site has no
+     radii), with a hairline the same black so the inverted chip below keeps
+     an edge. */
   .nav-link {
     position: relative;
-    /* The link's own stacking context, so the active block's wipe (::before,
-       z-index -1) paints over the bar's fill and under the type. */
+    /* The link's own stacking context, so the active chip's wipe (::before,
+       z-index -1) paints over the chip's fill and under the type. */
     isolation: isolate;
     display: block;
     box-sizing: border-box;
-    padding: 8px 10px 7px;
-    font-family: "Archivo", sans-serif;
-    font-size: var(--fs-82);
-    font-weight: 600;
+    padding: var(--nav-chip-pad);
     text-decoration: none;
-    color: var(--color-dark);
+    color: var(--nav-paper);
     white-space: nowrap;
-    /* Rectangles on the page's own colour with one black hairline — they
-       stand over the content now — and black for the current page. */
     border-radius: 0;
-    background: var(--color-bg);
-    box-shadow: inset 0 0 0 1px var(--color-dark);
+    background: var(--nav-ink);
+    box-shadow: inset 0 0 0 1px var(--nav-ink);
     transition: color 0.25s ease 0.08s;
   }
 
-  /* THE BLACK WIPES IN for the current page (2026-10-12, "make the animation
-     more flashy!"): a layer under the type that sweeps across the bar from
-     the left on an overshooting curve. */
+  /* THE CURRENT PAGE IS THE INVERTED CHIP: paper with black type. It wipes in
+     (2026-10-12, "make the animation more flashy!"): a layer under the type
+     that sweeps across the chip from the left on an overshooting curve. */
   .nav-link::before {
     content: "";
     position: absolute;
     inset: 0;
     z-index: -1;
-    background: var(--color-dark);
+    background: var(--nav-paper);
     transform: scaleX(0);
     transform-origin: 100% 50%;
     transition: transform 0.28s cubic-bezier(0.5, 0, 0.75, 0);
@@ -156,7 +161,7 @@ import "../styles/type.css";
   .nav-link--active,
   .nav-link--active:visited,
   .nav-link--active:hover {
-    color: var(--color-bg);
+    color: var(--nav-ink);
   }
   .nav-link--active::before {
     transform: scaleX(1);
@@ -215,6 +220,33 @@ import "../styles/type.css";
   }
 
   @media (--bp-mobile) {
+    /* THREE CHIPS, NO MENU (2026-10-13, Josh: "on mobile replace the MENU
+       drop-down with three chips reading Info, Community and Profile ... a
+       bit bigger than the tags, all black with white type, square corners").
+       The drop-down's box becomes a row in the header's flow, always shown:
+       the `hidden` the desktop script toggles is overridden here, and the
+       script itself leaves the row open on a phone (see setMenu). The row
+       sits 8px from the screen edge, where the title sits on the left. */
+    nav[data-astro-transition-persist="navbar"] {
+      --nav-chip-pad: 6px 8px 5px;
+      padding-right: 8px;
+    }
+    .nav-menu-btn {
+      display: none;
+    }
+    .nav-links,
+    .nav-links[hidden] {
+      position: static;
+      display: flex;
+      flex-direction: row;
+      gap: 4px;
+      width: auto;
+      animation: none;
+    }
+    .nav-right-group {
+      flex-direction: row;
+    }
+
     /* NOT FLOATING ON A PHONE (2026-09-24, Josh: "the language switch on
        mobile has to be placed underneath, so when you scroll all the way to
        the bottom, above the impressum etc. think from a UX perspective").
@@ -243,13 +275,22 @@ import "../styles/type.css";
   // Opens and closes the drop-down; a click outside it, Escape, or leaving
   // the page closes it. The nav is persisted across page changes, so it is
   // closed on the navigation itself or it would stay open on the next page.
+  // ON A PHONE THERE IS NO DROP-DOWN (2026-10-13): the three links are chips
+  // in the header row, so the row is never hidden there. The query is the
+  // --bp-mobile breakpoint (global.css), which a script cannot read by name.
+  const phoneNav = window.matchMedia("(max-width: 767px)");
   function setMenu(open: boolean) {
     const btn = document.getElementById("nav-menu-btn");
     const menu = document.getElementById("nav-menu");
     if (!btn || !menu) return;
+    const shown = phoneNav.matches || open;
     btn.setAttribute("aria-expanded", String(open));
-    menu.hidden = !open;
+    menu.hidden = !shown;
   }
+  // Crossing the breakpoint: a phone's open row must not arrive on a desktop
+  // as an opened menu, and a desktop's closed menu must open as the row.
+  phoneNav.addEventListener("change", () => setMenu(false));
+  setMenu(false);
   document.addEventListener("click", (event) => {
     const target = event.target as Element | null;
     if (!target?.closest?.("#nav-menu-btn")) return;
