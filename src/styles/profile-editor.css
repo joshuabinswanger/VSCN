@@ -411,8 +411,14 @@
     margin: 0 auto 0.5rem;
   }
 
+  /* A project's tools are a flex ITEM of the page's .mprof__project column,
+     where the auto margins above would shrink-wrap and centre them (seen on
+     desktop, 2026-10-13); they take the column and sit at its right edge,
+     like a work's tools sit at its picture's. */
   .gallery-project-tools {
-    margin-bottom: 1.25rem;
+    align-self: stretch;
+    max-width: none;
+    margin: 0 0 1.25rem;
   }
 
   /* THE INLINE FIELDS. A work's title and description, a project's title
@@ -742,15 +748,18 @@
      lasts. */
   .gallery-drop {
     position: relative;
-    border: 1.5px dashed transparent;
-    border-radius: var(--radius-sm);
-    padding: 4px;
-    margin: -4px -4px 0.5rem;
-    transition: border-color 0.15s ease;
+    margin-bottom: 0.5rem;
+    /* An OUTLINE, not a border (2026-10-13): a border took 3px off every
+       row's width, and the rows are the page's figures, which must be the
+       page's width to the pixel. The outline sits 4px outside the box and
+       costs nothing. */
+    outline: 1.5px dashed transparent;
+    outline-offset: 4px;
+    transition: outline-color 0.15s ease;
   }
 
   .gallery-drop.is-dragging {
-    border-color: var(--color-dark);
+    outline-color: var(--color-dark);
   }
 
   /* Only ever seen mid-drag, so it costs nothing at rest and does not compete
@@ -1421,6 +1430,14 @@
        into the flow (SiteFooter.astro), so Save has the right corner alone. */
     @media (--bp-mobile) {
       padding-bottom: 0.5rem;
+      /* THE DOCUMENT SCROLLS ON A PHONE (global.css: html, body and
+         .page-wrap go overflow: visible under --bp-mobile so Safari can
+         retract its toolbar), so the footer sticks to the WINDOW's bottom
+         edge, and .page-wrap's padding is not between it and the screen.
+         The negative bottom above, right for the desktop scrollport, parked
+         the whole footer 72px below the fold here (measured 2026-10-13 in
+         Chromium at 375x812: footer 838..884 in an 812px viewport). */
+      bottom: 0;
     }
   }
 
@@ -1467,12 +1484,17 @@
     }
   }
 
+  /* display: contents, so the three switches and Save wrap as ONE set in
+     the footer's flex row: on a phone that is two lines (Profile | Card
+     and Preview | Edit, then EN | DE and Save) instead of the switches
+     on two lines and Save alone on a third. */
   .works-bar {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 0.5rem 0.75rem;
+    display: contents;
+  }
+
+  .profile-form.is-works .form-footer .profile-save-button {
+    min-height: 32px;
+    padding: 4px 14px;
   }
 
   .works-bar[hidden] {
