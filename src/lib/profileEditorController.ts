@@ -98,6 +98,7 @@ import {
   type EditorProject,
 } from "./projectEditor.ts";
 import { bindPreviewLightbox, renderCardPreview, renderProfilePreview } from "./profilePreview.ts";
+import { bindMenuButton, followContentSize } from "./editorBar.ts";
 import { lightboxStringsFrom } from "./lightbox.ts";
 import type { Lang } from "../i18n/utils";
 import "photoswipe/style.css";
@@ -365,7 +366,7 @@ document.addEventListener("astro:page-load", () => {
   const galleryDrop = document.getElementById("gallery-drop")!;
   // By id since 2026-09-23: project blocks inside the list carry their own
   // .choose-img pickers, and the first match in the drop zone is one of those.
-  const galleryAdd = document.getElementById("gallery-add") as HTMLLabelElement;
+  const galleryAdd = document.getElementById("gallery-add") as HTMLButtonElement;
   const galleryStatus = document.getElementById("gallery-status")!;
   // Row shells for the two list editors. Cloned rather than built: see the
   // comment on each <template> above — Astro's scope attribute is on the
@@ -1068,6 +1069,7 @@ document.addEventListener("astro:page-load", () => {
     const limit = galleryLimit(auth.currentUser);
     const full = gallery.length + galleryQueue.pendingCount() + videoPending >= limit;
     galleryAdd.setAttribute("aria-disabled", String(full));
+    galleryAdd.disabled = full;
     galleryInput.disabled = full;
     // The blocks' own pickers share the cap: an image is an image wherever
     // it is added.
@@ -1653,7 +1655,7 @@ document.addEventListener("astro:page-load", () => {
       galleryVideoUrl.focus();
     } else {
       setVideoStatus("");
-      if (refocus) galleryVideoOpen.focus();
+      if (refocus) document.getElementById("ebar-add")?.focus();
     }
     updateGalleryControls();
   }
@@ -1748,7 +1750,11 @@ document.addEventListener("astro:page-load", () => {
     // a failure fires no change event at all.
     galleryInput.value = "";
     addGalleryFiles(files);
+    // The new rows land at the foot of the list (or inside their project),
+    // and the Plus that started this sits on top of the page, not near them.
+    if (files.length) requestAnimationFrame(() => galleryQueueEl.scrollIntoView({ behavior: "smooth", block: "center" }));
   });
+  galleryAdd.addEventListener("click", () => galleryInput.click());
 
   /**
    * Drag-and-drop onto the gallery block.
@@ -1944,7 +1950,9 @@ document.addEventListener("astro:page-load", () => {
     // also lets the form take the page's measure (profile-editor.css) and
     // shows the bar's switches.
     form.classList.toggle("is-works", section === "work");
-    worksBar.hidden = section !== "work";
+    addMenu?.close();
+    if (section !== "work" && !galleryVideoPanel.hidden) setVideoPanel(false, false);
+    syncBarContents();
     if (section === "work") {
       syncProfileView();
       refitInline();
@@ -1997,10 +2005,21 @@ document.addEventListener("astro:page-load", () => {
     press("data-works-mode", worksMode);
     press("data-works-view", worksView);
     press("data-works-lang", worksLang);
-    // The mode switch means nothing while the card is showing: the card is
-    // drawn from the same fields and is never edited in place.
-    const modeSeg = worksBar.querySelector<HTMLElement>("[data-works-mode-seg]");
-    if (modeSeg) modeSeg.hidden = worksView !== "profile";
+    syncBarContents();
+  }
+
+  /**
+   * What the bar holds right now. Save, always. On the Works tab, the view
+   * and language switches; and, while the PAGE is showing, the mode switch
+   * and the Plus — the card is drawn from the same fields and is never
+   * edited in place, so neither means anything over it.
+   */
+  function syncBarContents() {
+    const onWorks = form.classList.contains("is-works");
+    worksBar.querySelectorAll<HTMLElement>("[data-ebar-works]").forEach((el) => {
+      const pageOnly = el.matches("[data-works-mode-seg], [data-ebar-plus]");
+      el.hidden = !onWorks || (pageOnly && worksView !== "profile");
+    });
   }
   function setWorksMode(mode: WorksMode) {
     worksMode = mode;
@@ -2031,6 +2050,41 @@ document.addEventListener("astro:page-load", () => {
   worksBar.querySelectorAll<HTMLButtonElement>("[data-works-lang]").forEach((btn) => {
     btn.addEventListener("click", () => setWorksLang(btn.dataset.worksLang === "de" ? "de" : "en"));
   });
+
+  // THE PLUS (2026-10-13, Josh: "Images Videos and Project now can be added
+  // via a Plus Button in the bottom bar"). A pull-down whose three items are
+  // the old Add row's buttons, ids and all, so their own handlers above (the
+  // picker, the video sheet, newProject) are unchanged. Choosing one first
+  // puts the tab into Edit on the page, where the new work will appear.
+  const addButton = document.getElementById("ebar-add") as HTMLButtonElement | null;
+  const addMenuEl = document.getElementById("ebar-add-menu");
+  const addMenu =
+    addButton && addMenuEl
+      ? bindMenuButton(addButton, addMenuEl, {
+          signal: lifecycle.signal,
+          onOpen: () => {
+            if (!galleryVideoPanel.hidden) setVideoPanel(false, false);
+          },
+          onChoose: () => {
+            if (worksView !== "profile") setWorksView("profile");
+            if (worksMode !== "edit") setWorksMode("edit");
+          },
+        })
+      : null;
+  // Escape closes the video sheet too, as it closes the menu.
+  galleryVideoPanel.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key === "Escape") setVideoPanel(false);
+    },
+    { signal: lifecycle.signal },
+  );
+
+  const barEl = document.getElementById("ebar");
+  if (barEl) {
+    const stopFollowing = followContentSize(barEl, worksBar);
+    lifecycle.signal.addEventListener("abort", stopFollowing, { once: true });
+  }
   applyWorksBar();
 
   /**

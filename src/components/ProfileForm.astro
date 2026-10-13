@@ -91,36 +91,132 @@ const t = useTranslations(lang);
   <AccountSettings lang={lang} />
 
   {
-    /* THE BAR (2026-10-13, Josh: "on mobile we can have the toggle centered
-      on the bottom like the tags and gallery view selection. also a switch
-      between card and profile in the same bottom bar. En De switch as well
-      in the bottom bar. save also in the bar"). Sticky at the foot of the
-      form on every tab, holding Save; on the Works tab it also holds the
-      three switches — Profile | Card, Preview | Edit, EN | DE — and centres.
-      Each switch is a pair of pressed buttons (aria-pressed), the EN/DE
-      switch's own dress. */
+    /* THE BAR (2026-10-13). Josh, first: "on mobile we can have the toggle
+      centered on the bottom like the tags and gallery view selection. also a
+      switch between card and profile in the same bottom bar. En De switch as
+      well in the bottom bar. save also in the bar". Then: "make the Bar
+      consistently sit at the same height. also add smooth animation when its
+      width changes … Images Videos and Project now can be added via a Plus
+      Button in the bottom bar."
+
+      ONE BAR, ONE PLACE, EVERY TAB. Fixed at the window's foot, centred, the
+      same distance up on every tab and at both breakpoints; it used to be a
+      sticky footer whose resting place depended on the tab's length and on
+      which element scrolled. On Profile and Account it holds Save alone; on
+      Works it grows to hold the switches and the Plus, and the change of
+      size is animated (editorBar.ts sizes .ebar from .ebar__in).
+
+      Two groups, so a phone breaks the bar into two rows in the right place:
+      what you are LOOKING at (Profile | Card, EN | DE) above, what you are
+      DOING (Preview | Edit, +, Save) below, nearest the thumb. On a desktop
+      they sit on one line. Save is the one prominent control and it is last,
+      on the trailing side (HIG toolbars › Actions).
+
+      The Plus is a pull-down: its three items are the gallery's old Add row
+      (HIG pull-down-buttons › Best practices: "An Add button could present a
+      menu that lets people specify the item they want to add"). The menu and
+      the video-link sheet open ABOVE the bar, outside .ebar, whose clip is
+      what lets its size animate. */
   }
   <div class="form-footer" id="form-footer">
-    <div id="works-bar" class="works-bar" role="group" aria-label={t("profile.works.bar")} hidden>
-      <div class="works-seg" role="group" aria-label={t("profile.works.view")}>
-        <button type="button" class="works-seg__btn" data-works-view="profile" aria-pressed="true">{t("profile.works.view.profile")}</button>
-        <button type="button" class="works-seg__btn" data-works-view="card" aria-pressed="false">{t("profile.works.view.card")}</button>
+    <div class="ebar-pop">
+      {/* Filled by watchPublication (src/lib/publicationStatus.ts) after each save. */}
+      <p role="status" aria-live="polite" id="save-msg" class="msg-ok" style="display:none;"></p>
+      <p role="alert" id="save-error" class="msg-err" style="display:none;"></p>
+      <div id="ebar-add-menu" class="ebar-menu" role="menu" aria-labelledby="ebar-add" hidden>
+        <button type="button" role="menuitem" id="gallery-add" class="ebar-menu__item" tabindex="-1">
+          <svg class="ebar-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+          <span>{t("profile.gallery.add")}</span>
+        </button>
+        <button type="button" role="menuitem" id="gallery-video-open" class="ebar-menu__item" tabindex="-1" aria-controls="gallery-video" aria-expanded="false">
+          <svg class="ebar-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/></svg>
+          <span>{t("profile.embed.add")}</span>
+        </button>
+        <button type="button" role="menuitem" id="gallery-new-project" class="ebar-menu__item" tabindex="-1">
+          <svg class="ebar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+          <span>{t("profile.project.new")}</span>
+        </button>
       </div>
-      <div class="works-seg" role="group" aria-label={t("profile.works.mode")} data-works-mode-seg>
-        <button type="button" class="works-seg__btn" data-works-mode="preview" aria-pressed="false">{t("profile.works.mode.preview")}</button>
-        <button type="button" class="works-seg__btn" data-works-mode="edit" aria-pressed="true">{t("profile.works.mode.edit")}</button>
-      </div>
-      <div class="works-seg" role="group" aria-label={t("profile.works.lang")}>
-        <button type="button" class="works-seg__btn" data-works-lang="en" aria-pressed={lang === "en" ? "true" : "false"} title={t("profile.gallery.lang.en")}>EN</button>
-        <button type="button" class="works-seg__btn" data-works-lang="de" aria-pressed={lang === "de" ? "true" : "false"} title={t("profile.gallery.lang.de")}>DE</button>
+      {
+        /* A VIDEO LINK IS A WORK TOO (2026-09-23): the member pastes a link,
+          the server turns it into a work with the platform's thumbnail as
+          its poster. Opened by the Plus menu's "Add video", as a small sheet
+          above the bar. NOT A <form>: this is inside #profile-form, and a
+          nested form closes the profile form early
+          (tests/unit/profileFormMarkup.test.mjs). Enter adds the link; the
+          buttons are type=button. */
+      }
+      <div id="gallery-video" class="ebar-sheet gallery-video" role="group" aria-labelledby="gallery-video-label" hidden>
+        <label id="gallery-video-label" class="gallery-video-label" for="gallery-video-url">{t("profile.embed.label")}</label>
+        <input
+          id="gallery-video-url"
+          class="input"
+          type="url"
+          inputmode="url"
+          autocomplete="off"
+          spellcheck="false"
+          maxlength="500"
+          placeholder={t("profile.embed.ph")}
+        />
+        <div class="gallery-video-row">
+          <button id="gallery-video-cancel" type="button" class="btn-link gallery-video-cancel">{t("profile.reauth.cancel")}</button>
+          <button id="gallery-video-add" type="button" class="btn-solid gallery-video-submit">{t("profile.embed.submit")}</button>
+        </div>
+        <p id="gallery-video-status" class="field-note" role="status" hidden></p>
       </div>
     </div>
-    {/* Filled by watchPublication (src/lib/publicationStatus.ts) after each save. */}
-    <p role="status" aria-live="polite" id="save-msg" class="msg-ok" style="display:none;"></p>
-    <p role="alert" id="save-error" class="msg-err" style="display:none;"></p>
-    <Button id="save-button" type="submit" class="btn-solid profile-save-button"
-      >{t("profile.save")}</Button
-    >
+    {
+      /* The picker the menu's "Add images" opens. Clipped, not display:none
+        (.picker-input), and out of the tab order: the menu item is the
+        control. */
+    }
+    <input
+      id="gallery-files"
+      class="picker-input"
+      type="file"
+      accept="image/jpeg,image/png,image/webp,image/avif"
+      multiple
+      tabindex="-1"
+      aria-hidden="true"
+    />
+    <div class="ebar" id="ebar">
+      <div class="ebar__in" id="works-bar" role="toolbar" aria-label={t("profile.works.bar")}>
+        <div class="ebar__group" data-ebar-works hidden>
+          <div class="seg" role="group" aria-label={t("profile.works.view")}>
+            <button type="button" data-works-view="profile" aria-pressed="true">{t("profile.works.view.profile")}</button>
+            <button type="button" data-works-view="card" aria-pressed="false">{t("profile.works.view.card")}</button>
+          </div>
+          <div class="seg" role="group" aria-label={t("profile.works.lang")}>
+            <button type="button" data-works-lang="en" aria-pressed={lang === "en" ? "true" : "false"} title={t("profile.gallery.lang.en")}>EN</button>
+            <button type="button" data-works-lang="de" aria-pressed={lang === "de" ? "true" : "false"} title={t("profile.gallery.lang.de")}>DE</button>
+          </div>
+        </div>
+        <div class="ebar__group">
+          <div class="seg" role="group" aria-label={t("profile.works.mode")} data-works-mode-seg data-ebar-works hidden>
+            <button type="button" data-works-mode="preview" aria-pressed="false">{t("profile.works.mode.preview")}</button>
+            <button type="button" data-works-mode="edit" aria-pressed="true">{t("profile.works.mode.edit")}</button>
+          </div>
+          <button
+            type="button"
+            id="ebar-add"
+            class="ebar__plus"
+            aria-haspopup="menu"
+            aria-expanded="false"
+            aria-controls="ebar-add-menu"
+            aria-label={t("profile.works.add")}
+            title={t("profile.works.add")}
+            data-ebar-works
+            data-ebar-plus
+            hidden
+          >
+            <svg class="ebar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <Button id="save-button" type="submit" class="btn-solid profile-save-button"
+            >{t("profile.save")}</Button
+          >
+        </div>
+      </div>
+    </div>
   </div>
 </form>
 

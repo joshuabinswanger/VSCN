@@ -58,41 +58,12 @@ const t = useTranslations(lang);
               }
               <div id="gallery-queue" class="gallery-queue"></div>
               {
-                /* THREE WAYS TO ADD, ONE ROW (2026-09-25): images and video
-                  are both WORKS and wear the same outline; a project is a
-                  container for works and takes the dashed outline and the ＋.
-                  The general "Add images" adds LOOSE images at the end; each
-                  project block carries its own picker. */
-              }
-              <div class="gallery-actions">
-                <label id="gallery-add" class="btn-outline gallery-action" for="gallery-files">
-                  {t("profile.gallery.add")}
-                  {/* Clipped, not display:none, so Tab reaches it (.picker-input). */}
-                  <input
-                    id="gallery-files"
-                    class="picker-input"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/avif"
-                    multiple
-                  />
-                </label>
-                <button
-                  type="button"
-                  id="gallery-video-open"
-                  class="btn-outline gallery-action"
-                  aria-expanded="false"
-                  aria-controls="gallery-video"
-                >
-                  {t("profile.embed.add")}
-                </button>
-                <button type="button" id="gallery-new-project" class="btn-outline gallery-action gallery-action--project">
-                  <span class="gallery-action-plus" aria-hidden="true">+</span>
-                  {t("profile.project.new")}
-                </button>
-              </div>
-              {
-                /* ONE picker for every row's "Replace image": the row that was
-                  pressed is remembered in the script, not in the input. */
+                /* ADDING LIVES IN THE BAR NOW (2026-10-13): the Plus in the
+                  form's footer opens Add images, Add video and Add project
+                  (ProfileForm.astro). Dropping files anywhere on this list
+                  still adds them; each project block keeps its own picker.
+                  ONE picker for every row's "Replace image": the row that
+                  was pressed is remembered in the script, not in the input. */
               }
               <input
                 id="gallery-replace-file"
@@ -101,31 +72,6 @@ const t = useTranslations(lang);
                 style="display:none;"
               />
               <span class="gallery-drop-hint" aria-hidden="true">{t("profile.gallery.drop")}</span>
-            </div>
-            {
-              /* A VIDEO LINK IS A WORK TOO (2026-09-23). Opened by "Add video"
-                above; the server turns the link into a work with the
-                platform's thumbnail as its poster. NOT A <form>: this editor
-                is inside #profile-form, and a nested form closes the profile
-                form early (tests/unit/profileFormMarkup.test.mjs). */
-            }
-            <div id="gallery-video" class="gallery-video" role="group" aria-labelledby="gallery-video-label" hidden>
-              <label id="gallery-video-label" class="gallery-video-label" for="gallery-video-url">{t("profile.embed.label")}</label>
-              <div class="gallery-video-row">
-                <input
-                  id="gallery-video-url"
-                  class="input"
-                  type="url"
-                  inputmode="url"
-                  autocomplete="off"
-                  spellcheck="false"
-                  maxlength="500"
-                  placeholder={t("profile.embed.ph")}
-                />
-                <button id="gallery-video-add" type="button" class="btn-solid gallery-video-submit">{t("profile.embed.submit")}</button>
-                <button id="gallery-video-cancel" type="button" class="btn-link gallery-video-cancel">{t("profile.reauth.cancel")}</button>
-              </div>
-              <p id="gallery-video-status" class="field-note" role="status" hidden></p>
             </div>
             <p id="gallery-status" class="field-note" style="display:none;"></p>
             {
@@ -199,7 +145,7 @@ const t = useTranslations(lang);
               project, "No project" meaning a loose work, and it is hidden
               while the member has no project at all. */
           }
-          <div class="gallery-toolbar" role="group" aria-label={t("profile.gallery.toolbar")}>
+          <div class="gallery-toolbar seg seg--actions" role="group" aria-label={t("profile.gallery.toolbar")}>
             <button type="button" class="gallery-tbtn" data-gallery-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
             <button type="button" class="gallery-tbtn" data-gallery-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
             <button type="button" class="gallery-tbtn" data-gallery-replace><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button>
@@ -299,7 +245,7 @@ const t = useTranslations(lang);
     <ProjectEditor lang={lang} />
     <template data-gallery-tpl="affiliation">
       <div class="social-row gallery-aff-row">
-        <div class="gallery-lang-switch" role="group">
+        <div class="gallery-lang-switch seg" role="group">
           <button type="button" class="gallery-lang-btn is-active" data-aff-mode="name">{t("profile.project.affiliation.name")}</button>
           <button type="button" class="gallery-lang-btn" data-aff-mode="member">{t("profile.project.affiliation.member")}</button>
         </div>

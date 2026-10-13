@@ -1120,17 +1120,169 @@ label:has(> .picker-input:focus-visible) {
   .page-wrap { overflow: visible; min-height: 100svh; scrollbar-gutter: auto; }
 }
 
-/* ── SHARP EDGES, EVERYWHERE (2026-10-12) ─────────────────────
-   Josh: "use sharp edges all over the visual design". The radius tokens are
-   0 (top of this file); this catches the literal radii they never reached —
-   carousel dots, avatars, the pill-shaped controls, PhotoSwipe's own chrome
-   and the elements scripts build. !important because it is a design rule,
-   not a component's: a component that wants a curve back has to say so
-   here, on purpose. */
-*,
-*::before,
-*::after {
+/* ── SHARP SURFACES, ROUND CONTROLS (2026-10-13) ─────────────
+   2026-10-12, Josh: "use sharp edges all over the visual design". 2026-10-13,
+   after living with it: "the ui feels strange with the square buttons
+   somehow… make the Buttons Round all over the site. tags get rounded
+   corners." So the split is by ROLE: pictures, cards, panels, fields and
+   rules stay square; everything you press is a capsule; a tag is a softly
+   rounded label. A capsule says "this does something" at a glance, which the
+   square controls never did against square pictures.
+   The radius tokens at the top of this file stay 0, because they dress the
+   surfaces. This block is the whole shape system: a control gets its curve
+   here, by being in CONTROLS, not by a radius of its own, and the universal
+   reset still flattens every literal radius the tokens never reached.
+   Kept square although they are buttons: the section tabs (an underline
+   would bend round a capsule's ends) and a project carousel's edge strips
+   (tall hover bands, not buttons to the eye). */
+:root {
+  --radius-pill: 999px;
+  --radius-tag: 0.5em;
+}
+
+*:not(
+    button:not(.section-tab, .mprof__carousel-arrow),
+    select,
+    input:is([type="button"], [type="submit"], [type="reset"]),
+    [role="button"],
+    .btn-solid,
+    .btn-outline,
+    .btn-primary,
+    .btn-ghost,
+    .btn-danger,
+    .btn-join,
+    .choose-img,
+    .gallery-action,
+    .gallery-tpill,
+    .gallery-project-select,
+    .optchip,
+    .nav-link,
+    .ccard__profile,
+    .cindex__profile,
+    .seg,
+    .seg > *,
+    .tagchip,
+    .mprof__val,
+    .pdisc__val,
+    .ccpv__tag,
+    .tag-suggestion-chip,
+    .ebar,
+    .ebar-menu,
+    .ebar-sheet
+  ),
+*:not(.seg, .ebar, .ebar-menu, .profile-save-button)::before,
+*:not(.seg, .ebar, .ebar-menu)::after {
   border-radius: 0 !important;
+}
+
+/* CONTROLS: a capsule. :where(), and so is TAGS below: both at zero
+   specificity, so ORDER decides, and a tag drawn as a <button> is a tag. */
+:where(
+    button:not(.section-tab, .mprof__carousel-arrow),
+    select,
+    input:is([type="button"], [type="submit"], [type="reset"]),
+    [role="button"],
+    .btn-solid,
+    .btn-outline,
+    .btn-primary,
+    .btn-ghost,
+    .btn-danger,
+    .btn-join,
+    .choose-img,
+    .gallery-action,
+    .gallery-tpill,
+    .gallery-project-select,
+    .optchip,
+    .nav-link,
+    .ccard__profile,
+    .cindex__profile,
+    .seg,
+    .seg > *
+  ) {
+  border-radius: var(--radius-pill) !important;
+}
+
+/* TAGS: rounded corners, not a capsule — a tag is a label, not a button, even
+   where it links somewhere. Declared after CONTROLS at the same specificity,
+   so a tag drawn as a <button> (TagSelector's picked chips) is a tag. */
+:where(.tagchip, .mprof__val, .pdisc__val, .ccpv__tag, .tag-suggestion-chip) {
+  border-radius: var(--radius-tag) !important;
+}
+
+/* ── SEGMENTED CONTROLS (2026-10-13) ─────────────────────────
+   One drawing for every two- or three-way switch and every joined strip of
+   small actions: a capsule TRACK in a faint tint, CAPSULE segments, and the
+   chosen one lifted onto a white thumb. Apple's segmented control, because
+   the joined square boxes it replaces could not survive round corners (a
+   shared hairline between two capsules is a seam, not a join) and because a
+   white thumb on a grey track reads as "this one" without spending the black
+   that Save owns. Used by the EN/DE switches (BilingualField, the gallery's
+   affiliation rows), the Works bar's switches, and a work's ↑ ↓ ↻ ✕ strip
+   (.seg--actions: nothing stays chosen there, the thumb is only hover).
+   Muted ink on the track: #686868 on about #eae9e8, 4.6:1. */
+.seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  width: fit-content;
+  padding: 2px;
+  background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
+}
+
+.seg > :is(button, label) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 12px;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  font-family: inherit;
+  font-size: var(--fs-72);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.seg > :is(button, label):hover:not(:disabled) {
+  color: var(--color-dark);
+}
+
+.seg > :is(button, label):is([aria-pressed="true"], .is-active),
+.seg--actions > button:hover:not(:disabled) {
+  background: #fff;
+  color: var(--color-dark);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.14),
+    0 0 0 0.5px rgb(0 0 0 / 0.06);
+}
+
+.seg > :is(button, label):focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: 1px;
+}
+
+.seg > button:disabled {
+  color: color-mix(in srgb, var(--color-muted) 40%, transparent);
+  cursor: default;
+}
+
+.seg[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seg > :is(button, label) {
+    transition: none;
+  }
 }
 
 @media (--bp-mobile) {

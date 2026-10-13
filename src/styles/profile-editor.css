@@ -210,34 +210,17 @@
     width: fit-content;
   }
 
-  /* The video link field (2026-09-23): a label, the field and its button on
-     one line, then its status and its note — the gallery's other controls'
-     spacing, one step below the drop zone. */
-  .gallery-video {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    margin-top: 0.75rem;
-  }
-  .gallery-video[hidden] {
-    display: none;
-  }
+  /* The video link field (2026-09-23), in the Plus menu's sheet since
+     2026-10-13: its title, the field, then Cancel and Add on the right. */
   .gallery-video-label {
     font-size: var(--fs-85);
     font-weight: 600;
   }
   .gallery-video-row {
     display: flex;
-    gap: 0.5rem;
-    min-width: 0;
-  }
-  .gallery-video-row .input {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-  .gallery-video-row .btn-solid,
-  .gallery-video-row .btn-link {
-    flex: none;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
   }
   .gallery-video-submit {
     padding: 0.5rem 1.1rem;
@@ -247,7 +230,6 @@
     opacity: 0.5;
     cursor: not-allowed;
   }
-
 
   .input-prefix-wrap {
     display: flex;
@@ -378,10 +360,6 @@
 
   /* The Add row and the notes stand off the last work by the heading gap,
      not the works gap: they are the foot of the list, not one more work. */
-  .gallery-editor:not(:empty) + .gallery-queue + .gallery-actions,
-  .gallery-editor:not(:empty) + .gallery-actions {
-    margin-top: 4rem;
-  }
 
   .gallery-notes {
     display: flex;
@@ -492,76 +470,27 @@
     display: none;
   }
 
-  /* ── The toolbar (2026-09-26; restyled the same day, Josh: "the design
-     doesn't match the rest of the site") ──
-     Drawn in the site's own control language, the EN/DE switch's: joined
-     segments on white, a 1.5px hairline in --color-border, the small radius,
-     the muted ink at rest and the dark hairline on hover. No tint, no shadow,
-     no pill: every other control in the form is flat and square-cornered.
-     Disabled at an edge rather than removed, so the strip never changes
-     length. */
-  .gallery-toolbar {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(0, 1fr);
-  }
-
-  .gallery-tbtn {
-    position: relative;
-    display: grid;
-    place-items: center;
-    height: 28px;
-    min-width: 0;
+  /* ── A WORK'S TOOLBAR ── ↑ ↓ ↻ ✕ as the site's segmented control
+     (.seg.seg--actions in global.css, 2026-10-13): a capsule track of round
+     icon buttons, the white thumb only under the pointer. It replaced joined
+     square boxes (2026-09-26) that round corners could not survive. 32px
+     targets, up from 28. Disabled at an edge rather than removed, so the
+     strip never changes length. */
+  .gallery-toolbar > .gallery-tbtn {
+    width: 32px;
+    min-height: 32px;
     padding: 0;
-    background: white;
-    color: var(--color-muted);
-    border: 1.5px solid var(--color-border);
-    border-radius: 0;
-    cursor: pointer;
-    transition:
-      color 0.15s,
-      border-color 0.15s;
   }
 
-  /* Shared walls: each segment after the first overlaps the one before by
-     its border, so the joins are one hairline wide, and a hovered segment
-     is raised so its dark wall is drawn whole. */
-  .gallery-tbtn + .gallery-tbtn {
-    margin-left: -1.5px;
-  }
-
-  .gallery-tbtn:first-child {
-    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-  }
-
-  .gallery-tbtn:last-child {
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  }
-
-  .gallery-tbtn:hover:not(:disabled),
-  .gallery-tbtn:focus-visible {
-    z-index: 1;
-    color: var(--color-dark);
-    border-color: var(--color-dark);
-  }
-
-  .gallery-tbtn:focus-visible,
   .gallery-tpill:focus-visible,
   .gallery-project-select:focus-visible {
     outline: 2px solid var(--color-dark);
     outline-offset: 1px;
   }
 
-  /* Delete goes red on hover, as the social rows' remove does; replace stays
-     dark, because it keeps the work. */
-  .gallery-tbtn--danger:hover:not(:disabled) {
+  /* Delete goes red under the pointer; replace stays dark, it keeps the work. */
+  .gallery-toolbar > .gallery-tbtn--danger:hover:not(:disabled) {
     color: var(--color-error);
-    border-color: var(--color-error);
-  }
-
-  .gallery-tbtn:disabled {
-    color: var(--color-border);
-    cursor: default;
   }
 
   .gallery-icon {
@@ -607,10 +536,8 @@
     cursor: default;
   }
 
-  /* The project header's pair: the same strip, two buttons wide. */
   .gallery-toolbar--head {
     flex: none;
-    width: 64px;
   }
 
   .gallery-project-tools .gallery-tpill {
@@ -633,57 +560,6 @@
     min-width: 0;
   }
 
-
-  /* THE MODAL SWITCH — see the markup comment. A two-segment toggle at
-     .gallery-tool's own scale (same border weight, radius, muted resting
-     colour), because it is one more small control among the move buttons
-     below it, not a second set of tabs competing with .section-tab above the
-     whole form. Filled dark for the active half rather than an underline —
-     .section-tab's language reads right at tab width; at two letters wide an
-     underline would be nearly invisible, where a fill reads at a glance. */
-  .gallery-lang-switch {
-    display: flex;
-    width: fit-content;
-  }
-
-  .gallery-lang-btn {
-    padding: 3px 10px;
-    background: none;
-    border: 1.5px solid var(--color-border);
-    color: var(--color-muted);
-    font: inherit;
-    font-size: var(--fs-72);
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    cursor: pointer;
-    transition:
-      background 0.15s,
-      color 0.15s,
-      border-color 0.15s;
-  }
-
-  .gallery-lang-btn + .gallery-lang-btn {
-    border-left: none;
-  }
-
-  .gallery-lang-btn:first-child {
-    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-  }
-
-  .gallery-lang-btn:last-child {
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  }
-
-  .gallery-lang-btn:hover:not(.is-active) {
-    color: var(--color-dark);
-    border-color: var(--color-dark);
-  }
-
-  .gallery-lang-btn.is-active {
-    background: var(--color-dark);
-    color: var(--color-bg);
-    border-color: var(--color-dark);
-  }
 
   .gallery-lang-pane {
     display: flex;
@@ -777,9 +653,7 @@
 
   /* The cap is a fact about the gallery, not an error, so the button says so by
      going quiet rather than by the form growing a message. */
-  .gallery-drop .choose-img[aria-disabled="true"],
-  .gallery-action[aria-disabled="true"],
-  .gallery-action:disabled {
+  .gallery-drop .choose-img[aria-disabled="true"] {
     opacity: 0.45;
     pointer-events: none;
   }
@@ -1167,53 +1041,6 @@
     display: none;
   }
 
-  /* THREE BUTTONS OF ONE WEIGHT (2026-09-25). Images and video share the
-     solid outline and an equal share of the row; the project button is the
-     same size in a dashed outline with a ＋, because it adds a container,
-     not a work. On a phone the two works share the first line and the
-     project takes the second. */
-  .gallery-actions {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  /* border-box, or the <label> ("Add images") comes out its padding wider
-     than the <button> beside it: they are the same class, not the same
-     element, and only the button gets the UA's border-box. */
-  .gallery-action {
-    box-sizing: border-box;
-    width: 100%;
-    min-width: 0;
-    padding: 0.6rem 0.75rem;
-    font-size: var(--fs-85);
-    color: var(--color-dark);
-    border-color: var(--color-border);
-    text-align: center;
-  }
-
-  .gallery-action:hover {
-    border-color: var(--color-dark);
-    color: var(--color-dark);
-  }
-
-  .gallery-action.is-open {
-    border-color: var(--color-dark);
-  }
-
-  .gallery-action--project {
-    gap: 6px;
-    background: transparent;
-    border-style: dashed;
-    border-color: var(--color-muted);
-  }
-
-  .gallery-action-plus {
-    font-size: var(--fs-100);
-    font-weight: 600;
-    line-height: 1;
-  }
-
   /* Names what the first image already IS. Not a control — pressing it would
      imply the others could be chosen, and they are chosen by being moved. */
   /* Which rows are videos: the play mark and the platform, top left, in the
@@ -1265,14 +1092,6 @@
     text-transform: uppercase;
   }
 
-  @media (--bp-mobile) {
-    .gallery-actions {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .gallery-action--project {
-      grid-column: 1 / -1;
-    }
-  }
 
   /* ── Section tabs ─────────────────────────────────────── */
   /* Text tabs on a hairline, in the same uppercase voice as .label — the
@@ -1377,67 +1196,34 @@
     border-top: 1px solid var(--color-border);
   }
 
-  /* A REVERSED STICKY: pinned to the viewport bottom while the tab is longer
-     than the screen, resting at the END OF THE TAB'S OWN CONTENT when it is
-     not (2026-09-10, Josh: "save button should also attach to the bottom of
-     the profile tabs if it is shorter than the viewport"). That is what
-     `sticky` already means, so this is one property rather than a mechanism.
-     It was `fixed` between 2026-09-04 and now — Josh, "save changes at bottom
-     always" — which nailed Save to the viewport bottom on every tab, including
-     short ones (Account, a thin gallery) where it then floated over empty
-     space with the last field far above it. Sticky keeps it in
-     .profile-form's centered column, so unlike `fixed` it needs no copy of
-     that column's width and padding: inheriting them is the point.
-     Consequences of being in flow again, both intended: it unpins at
-     .profile-form's own bottom edge, so at full scroll it comes to rest above
-     the form's bottom margin rather than at the viewport's edge; and while
-     pinned on mobile it shares the bottom line with the site footer, which
-     holds the opposite corner (see SiteFooter.astro).
-     No bar behind it — just the button, so the container must not eat clicks
-     on the content it hovers over.
-     THE NEGATIVE BOTTOM (2026-09-23, Josh: "save button at bottom"). A sticky
-     box pins against the scroll container's PADDING edge, not its visible
-     edge, and .page-wrap carries 80px of bottom padding for the fixed site
-     footer — so `bottom: 0` parked Save ~100px up the screen, over the
-     portfolio hint, from the day it became sticky. Nobody saw it: /profile
-     needs a sign-in and this was only ever checked as compiled CSS.
-     Cancelling the padding puts it where every comment here assumed it was. */
+  /* ── THE BAR (2026-10-13) ────────────────────────────────
+     Josh: "make the Bar consistently sit at the same height. also add
+     smooth animation when its width changes". It was a reversed sticky
+     (2026-09-10 to 2026-10-13): resting at the end of a short tab, pinned
+     to the bottom of a long one, and on a desktop pinned 0px from the
+     window's edge because .page-wrap's padding was cancelled under it —
+     three heights depending on the tab and the device. Now it is FIXED:
+     centred, --ebar-gap up from the window's foot, on every tab, at both
+     breakpoints, the same line the desktop footer and language toggle sit
+     on (20px, SiteFooter.astro). The form keeps room for it at its end
+     (padding-bottom on .profile-form, below).
+     The positioner is click-through; the bar, the menu, the sheet and the
+     messages above it take their own clicks. */
   .form-footer {
-    position: sticky;
-    bottom: calc(-1 * var(--page-wrap-pad-bottom, 0px));
-    z-index: 5;
+    --ebar-gap: 20px;
+    position: fixed;
+    left: 50%;
+    bottom: var(--ebar-gap);
+    z-index: 30;
+    transform: translateX(-50%);
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+    width: max-content;
     pointer-events: none;
-    box-sizing: border-box;
-    padding: 0 0 1.25rem;
 
-    /* LOWER ON A PHONE (2026-09-11, Josh: "put save bar lower on mobile").
-       20px of lift is right on a desktop, where there is room below the fold
-       to spare; on a phone it pushed Save up into the last field it was meant
-       to sit under, and put it a clear step above the site footer's own
-       bottom: 20px in the opposite corner — two bottom fixtures on two
-       different lines. 8px drops it under the content and onto roughly the
-       footer's line, which is what makes the bottom edge read as one strip
-       rather than a staircase.
-       FLUSH RIGHT, LIKE DESKTOP (2026-09-24, Josh: "make button on mobile
-       align right as well"). For one day it was inset 3rem to clear the
-       language toggle, which then held this corner. The toggle moved to the
-       bottom-left on mobile instead (Navbar.astro) and the footer links went
-       into the flow (SiteFooter.astro), so Save has the right corner alone. */
     @media (--bp-mobile) {
-      padding-bottom: 0.5rem;
-      /* THE DOCUMENT SCROLLS ON A PHONE (global.css: html, body and
-         .page-wrap go overflow: visible under --bp-mobile so Safari can
-         retract its toolbar), so the footer sticks to the WINDOW's bottom
-         edge, and .page-wrap's padding is not between it and the screen.
-         The negative bottom above, right for the desktop scrollport, parked
-         the whole footer 72px below the fold here (measured 2026-10-13 in
-         Chromium at 375x812: footer 838..884 in an 812px viewport). */
-      bottom: 0;
+      --ebar-gap: calc(12px + env(safe-area-inset-bottom, 0px));
     }
   }
 
@@ -1445,134 +1231,237 @@
     pointer-events: auto;
   }
 
-  /* THE WORKS BAR (2026-10-13, Josh: "on mobile we can have the toggle
-     centered on the bottom like the tags and gallery view selection. also a
-     switch between card and profile in the same bottom bar. En De switch as
-     well in the bottom bar. save also in the bar"). On the Works tab the
-     footer is a strip: the three switches and Save on one line, centred,
-     on paper with a hairline, so the controls read as one bar over the
-     page rather than four boxes floating on it. The other tabs keep the
-     lone Save at the right. */
-  .profile-form.is-works .form-footer {
-    justify-content: center;
-    gap: 0.5rem 0.75rem;
-    width: fit-content;
-    max-width: 100%;
-    margin-inline: auto;
-    padding: 0.45rem 0.6rem;
-    background: var(--color-bg);
-    border: 1.5px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-    pointer-events: auto;
-  }
-
-  .profile-form.is-works .form-footer .profile-save-button {
-    box-shadow: none;
-  }
-
-  .profile-form.is-works .form-footer .msg-ok,
-  .profile-form.is-works .form-footer .msg-err {
-    flex-basis: 100%;
-    text-align: center;
+  /* Room at the end of every tab, so the last field is never under the bar:
+     its height, its gap, and a little air. Two rows on a phone's Works tab. */
+  .profile-form {
+    padding-bottom: 6rem;
   }
 
   @media (--bp-mobile) {
-    .profile-form.is-works .form-footer {
-      margin-bottom: 0.5rem;
-      padding: 0.4rem 0.45rem;
+    .profile-form.is-works {
+      padding-bottom: 9rem;
     }
   }
 
-  /* display: contents, so the three switches and Save wrap as ONE set in
-     the footer's flex row: on a phone that is two lines (Profile | Card
-     and Preview | Edit, then EN | DE and Save) instead of the switches
-     on two lines and Save alone on a third. */
-  .works-bar {
-    display: contents;
-  }
-
-  .profile-form.is-works .form-footer .profile-save-button {
-    min-height: 32px;
-    padding: 4px 14px;
-  }
-
-  .works-bar[hidden] {
-    display: none;
-  }
-
-  /* Each switch is the EN/DE switch's pair: joined segments on white, a
-     1.5px hairline, the small radius, muted at rest and filled dark when
-     pressed. 32px tall so a thumb lands on it. */
-  .works-seg {
-    display: flex;
-  }
-
-  .works-seg[hidden] {
-    display: none;
-  }
-
-  .works-seg__btn {
-    min-height: 32px;
-    padding: 4px 10px;
-    background: white;
-    border: 1.5px solid var(--color-border);
-    color: var(--color-muted);
-    font-family: inherit;
-    font-size: var(--fs-72);
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    line-height: 1.2;
-    white-space: nowrap;
-    cursor: pointer;
-    transition:
-      background 0.15s,
-      color 0.15s,
-      border-color 0.15s;
-  }
-
-  .works-seg__btn + .works-seg__btn {
-    border-left: none;
-  }
-
-  .works-seg__btn:first-child {
-    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-  }
-
-  .works-seg__btn:last-child {
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  }
-
-  .works-seg__btn:hover {
-    color: var(--color-dark);
-  }
-
-  .works-seg__btn[aria-pressed="true"] {
-    background: var(--color-dark);
-    border-color: var(--color-dark);
-    color: white;
-  }
-
-  .works-seg__btn:focus-visible {
-    outline: 2px solid var(--color-dark);
-    outline-offset: 1px;
-    z-index: 1;
-  }
-
-  /* The save/error message floats next to the button, so it carries its own
-     surface to stay legible over whatever it happens to hover above. */
-  .form-footer .msg-ok,
-  .form-footer .msg-err {
-    margin: 0;
-    padding: 0.45rem 0.9rem;
+  /* THE BAR ITSELF: paper, a hairline and a soft shadow, so it reads as one
+     floating object over pictures and text alike. Its corner is 22px and
+     not a capsule on purpose: 6px of padding around 32px capsules makes a
+     44px bar whose radius is CONCENTRIC with theirs (HIG toolbars › Best
+     practices: "ensure that its corner radius is also concentric with the
+     bar's corners"), and when a phone wraps it to two rows the same 22px
+     stays concentric where a capsule's would not. Width and height are set
+     by editorBar.ts and transition; the clip hides the content's new edge
+     while the box catches up. */
+  .ebar {
+    box-sizing: content-box;
+    padding: 6px;
     background: var(--color-bg);
-    border: 1.5px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--color-border);
+    border-radius: 22px !important;
+    box-shadow:
+      0 8px 28px rgb(0 0 0 / 0.1),
+      0 1px 3px rgb(0 0 0 / 0.06);
+    overflow: hidden;
   }
 
-  .profile-save-button {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  .ebar.is-sized {
+    transition:
+      width 0.38s cubic-bezier(0.25, 1, 0.5, 1),
+      height 0.38s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ebar.is-sized {
+      transition: none;
+    }
+  }
+
+  /* max-content, capped by the window: its size never depends on the bar's,
+     which is what lets the bar be sized FROM it. 2 x 16px of window margin
+     and the bar's own 2 x 7px. */
+  .ebar__in {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 6px 10px;
+    width: max-content;
+    max-width: calc(100vw - 46px);
+  }
+
+  .ebar__group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ebar__group[hidden],
+  .ebar__plus[hidden] {
+    display: none;
+  }
+
+  /* In the bar every control is 32px tall: the segmented tracks (28px
+     segments in 2px of track), the Plus and Save. */
+  .ebar .seg > button {
+    min-height: 28px;
+    padding-inline: 12px;
+  }
+
+  .ebar__plus {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
+    color: var(--color-dark);
+    border: 0;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .ebar__plus:hover,
+  .ebar__plus[aria-expanded="true"] {
+    background: color-mix(in srgb, var(--color-dark) 14%, var(--color-bg));
+  }
+
+  .ebar__plus:focus-visible {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
+  .ebar__plus .ebar-icon {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2.2;
+    transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  /* The + turns into a × while its menu is open: the same button closes it. */
+  .ebar__plus[aria-expanded="true"] .ebar-icon {
+    transform: rotate(45deg);
+  }
+
+  .ebar .profile-save-button {
+    min-height: 32px;
+    padding: 4px 16px;
+    font-size: var(--fs-85);
+  }
+
+  .ebar-icon {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* WHAT OPENS ABOVE THE BAR: the save message, the Plus menu, the video
+     sheet. Stacked in a column that grows upward from 10px over the bar. */
+  .ebar-pop {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: max-content;
+    max-width: calc(100vw - 32px);
+    pointer-events: none;
+  }
+
+  .ebar-pop > * {
+    pointer-events: auto;
+  }
+
+  .ebar-pop .msg-ok,
+  .ebar-pop .msg-err {
+    margin: 0;
+    padding: 0.5rem 0.9rem;
+    max-width: 100%;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.08);
+    text-align: center;
+  }
+
+  /* THE PLUS MENU: three rows, each an icon and its words, in the bar's
+     material. 12px corners, concentric with the 8px rows inside 4px of
+     padding. Opens with a short rise; Reduce Motion drops it. */
+  .ebar-menu {
+    display: flex;
+    flex-direction: column;
+    min-width: 13rem;
+    padding: 4px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 12px !important;
+    box-shadow:
+      0 12px 32px rgb(0 0 0 / 0.12),
+      0 1px 3px rgb(0 0 0 / 0.06);
+    transform-origin: bottom center;
+    animation: ebar-pop-in 0.18s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  .ebar-menu[hidden],
+  .ebar-sheet[hidden] {
+    display: none;
+  }
+
+  .ebar-menu__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 40px;
+    padding: 0 12px;
+    background: none;
+    border: 0;
+    border-radius: 8px !important;
+    color: var(--color-dark);
+    font-family: inherit;
+    font-size: var(--fs-90);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .ebar-menu__item:is(:hover, :focus-visible):not(:disabled) {
+    background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
+    outline: none;
+  }
+
+  .ebar-menu__item:disabled {
+    color: var(--color-muted);
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  /* THE VIDEO SHEET: the link field and its two buttons, in the menu's
+     material, as wide as a phone allows. */
+  .ebar-sheet {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: min(26rem, calc(100vw - 32px));
+    padding: 12px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 16px !important;
+    box-shadow:
+      0 12px 32px rgb(0 0 0 / 0.12),
+      0 1px 3px rgb(0 0 0 / 0.06);
+    animation: ebar-pop-in 0.18s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ebar-menu,
+    .ebar-sheet {
+      animation: none;
+    }
   }
 
   /*
@@ -1980,9 +1869,9 @@
     box-sizing: border-box;
   }
 
-  .works-stage :where(.gallery-row-tools, .gallery-row-tools *, .gallery-details, .gallery-details *, .gallery-actions, .gallery-actions *, .gallery-video, .gallery-video *, .gallery-notes, .gallery-notes *, .gallery-task .gallery-fields *, .gallery-thumb-remove, .gallery-thumb-labels *),
-  .works-stage :where(.gallery-row-tools *, .gallery-details *, .gallery-actions *, .gallery-video *)::before,
-  .works-stage :where(.gallery-row-tools *, .gallery-details *, .gallery-actions *, .gallery-video *)::after {
+  .works-stage :where(.gallery-row-tools, .gallery-row-tools *, .gallery-details, .gallery-details *, .gallery-notes, .gallery-notes *, .gallery-task .gallery-fields *, .gallery-thumb-remove, .gallery-thumb-labels *),
+  .works-stage :where(.gallery-row-tools *, .gallery-details *)::before,
+  .works-stage :where(.gallery-row-tools *, .gallery-details *)::after {
     box-sizing: border-box;
   }
 }
@@ -2009,4 +1898,12 @@
 :where(.gallery-inline) {
   font: inherit;
   color: inherit;
+}
+
+/* The Plus menu and the video sheet rise into place (2026-10-13). */
+@keyframes ebar-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
 }

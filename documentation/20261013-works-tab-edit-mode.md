@@ -71,3 +71,38 @@ Lint, `astro check`, 271 unit tests and `astro build --mode development` on the
 merged tree. Layout and voices measured on `/styleguide/editor/en` at 375px
 (row 343px wide, toolbar above the picture, title 12px dark, description
 muted, project title 24px/700). The signed-in walk on dev is the reviewer's.
+
+## Second pass, same day: one fixed bar, round controls, the Plus
+
+Josh: "the bar sits too low on desktop … the adding images etc. is not working
+well … the ui feels strange with the square buttons". Guided by the Apple HIG
+skill (`~/.claude/skills/apple-design`, from dickwu/apple-design-skill).
+
+- **The bar is fixed**, centred, 20px above the window's foot on a desktop (the
+  footer's line) and 12px plus the safe area on a phone, on every tab. It was a
+  sticky footer whose resting place depended on the tab's length and on which
+  element scrolled. `.profile-form` keeps padding at its end so nothing hides
+  under it.
+- **Its size animates.** `followContentSize()` in `src/lib/editorBar.ts` sets
+  explicit width and height on `.ebar` from `.ebar__in` (max-content, capped
+  by the window) through a ResizeObserver, and CSS transitions them. CSS alone
+  cannot transition `width: auto`, and `interpolate-size` is not in every
+  Safari. The first size is applied untransitioned.
+- **Two groups**: what you look at (Profile | Card, EN | DE), what you do
+  (Preview | Edit, +, Save). A phone wraps them into two rows, the doing row
+  nearest the thumb. Save is the one prominent control, trailing.
+- **The Plus** is a pull-down (`bindMenuButton()` in `editorBar.ts`) with the
+  old Add row's three buttons, ids unchanged, so their handlers are unchanged.
+  Choosing an item switches to Edit on the page first. The video link field is
+  a sheet above the bar. The list-foot Add row is gone; drop-to-upload and each
+  project's own picker stay.
+- **Shapes** (`global.css`, "SHARP SURFACES, ROUND CONTROLS"): pictures,
+  cards, panels and fields stay square; every control is a capsule; tags get
+  `--radius-tag`. Both shape rules are `:where()` so order decides, which is
+  what makes TagSelector's picked chips (buttons) tags. Section tabs and a
+  carousel's edge strips stay square.
+- **One segmented control** (`.seg` in `global.css`): capsule track, capsule
+  segments, a white thumb for the chosen one. It replaced four joined-box
+  switches that round corners could not survive: BilingualField's EN/DE, the
+  affiliation rows' Name | Member, the bar's switches, and a work's ↑ ↓ ↻ ✕
+  (`.seg--actions`, thumb on hover only).
