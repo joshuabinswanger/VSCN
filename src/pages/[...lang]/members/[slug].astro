@@ -210,8 +210,11 @@ const jsonLd = memberPageJsonLd({
   jsonLd={aliasOf ? undefined : jsonLd}
   noindex={Boolean(aliasOf)}
   redirectTo={aliasOf}
+  contentWide
 >
   <article class="mprof">
+    {/* The person, the left column on a desktop (profile.css). */}
+    <div class="mprof__aside">
     <header class="mprof__head">
       {member.photoURL && (
         <img
@@ -324,6 +327,7 @@ const jsonLd = memberPageJsonLd({
         )
       }
 
+    </div>
     </div>
 
     {

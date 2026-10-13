@@ -30,6 +30,15 @@
    name sit further apart, and the bio, the meta rows and the works each stand
    off the block before them by more than they did. */
 .mprof {
+  /* THE PAGE'S RHYTHM, AS TOKENS (2026-10-13). The editor's list sits inside
+     this element (ProfileViewPreview's `editor` slot) and reads the same
+     three, so the edit view can never space its works differently from the
+     page: the gap between one work or project and the next, the stand-off
+     of the first work from the profile's words, and a project's heading to
+     its first work. Values and history at .mprof__works below. */
+  --works-gap: max(4.5rem, 16vh);
+  --works-top: max(5rem, 12vh);
+  --project-gap: 2.5rem;
   font-family: "Archivo", sans-serif;
   padding-block: 7rem 10rem;
 }
@@ -43,6 +52,62 @@
   .mprof {
     max-width: 54rem;
     margin-inline: auto;
+  }
+}
+
+/* TWO COLUMNS ON A DESKTOP (2026-10-13, Josh: "profile on desktop should
+   have a 2 column design left artist info right projects and images"). The
+   person on the left — picture, name, the lines under it, the bio, the
+   needs, tags and links, all in .mprof__aside — and the works on the right,
+   starting level with the name. Both the page and the editor's Works tab
+   render this element, so both split the same way. The page now lays out on
+   Layout's `contentWide` measure and caps itself at 86rem here (1118px at
+   the desktop's 13px root), so the works column keeps about the 54rem a
+   single-column page gave them. A phone keeps the single column: the aside
+   is a plain block there and changes nothing.
+   The aside spans every row the works column makes, so the works, the empty
+   note and the editor's list (whichever are showing) all stack in column 2.
+   It is NOT sticky: a long bio or many tags would leave its foot unreachable
+   until the end of the page. */
+@media (--bp-desktop) {
+  .mprof {
+    --aside-w: clamp(15rem, 28%, 24rem);
+    /* The works column's left edge is the carousel's: a passed slide must
+       not spill over the person's column (projectCarousel.ts reads this). */
+    --carousel-bleed-left: 0;
+    display: grid;
+    grid-template-columns: var(--aside-w) minmax(0, 1fr);
+    column-gap: clamp(3rem, 5vw, 6rem);
+    align-items: start;
+    max-width: 86rem;
+    --works-top: 0px;
+  }
+  .mprof > :not(.mprof__aside) {
+    grid-column: 2;
+  }
+  .mprof__aside {
+    grid-column: 1;
+    grid-row: 1 / span 6;
+  }
+  /* In a column a third of the page wide, the picture stands over the name
+     instead of beside it, and the name scales with the window rather than
+     at the page's full display size. */
+  .mprof__aside .mprof__head {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+  .mprof__aside .mprof__avatar {
+    width: 7rem;
+    height: 7rem;
+  }
+  .mprof__aside .mprof__name {
+    font-size: clamp(2rem, 2.9vw, 3.2rem);
+  }
+  .mprof__aside .mprof__bio {
+    margin-top: 2.5rem;
+  }
+  .mprof__aside .mprof__meta {
+    margin-top: 2.25rem;
   }
 }
 
@@ -249,8 +314,13 @@
      the floor for a short window. The first work stands off the profile's
      words by the same measure, half of it. 40vh at first, trimmed the same
      day (Josh: "a bit less gap between images and projects"). */
-  gap: max(7rem, 30vh);
-  margin-top: max(6rem, 15vh);
+  /* LESS AIR AGAIN (2026-10-13, Josh: "vertical padding between projects and
+     images less big"): 30vh -> 16vh, the first work 15vh -> 12vh off the
+     words, a project's heading 4rem -> 2.5rem off its first work. Now the
+     --works-gap / --works-top / --project-gap tokens on .mprof, which the
+     editor's list reads too. */
+  gap: var(--works-gap);
+  margin-top: var(--works-top);
 }
 
 /* A PROJECT BLOCK on the member page and in the editor's preview (2026-09-23).
@@ -269,7 +339,7 @@
 .mprof__project {
   display: flex;
   flex-direction: column;
-  gap: 4rem;
+  gap: var(--project-gap);
 }
 
 /* NO EXTRA AIR AROUND A PROJECT any more (2026-09-28, Josh: "less white
@@ -671,10 +741,12 @@
     gap: 1.25rem;
   }
   /* A phone picture is width-bound (the column is ~345px, so a square is
-     ~42% of the screen): 22vh is enough to keep the neighbours out of view. */
-  .mprof__works {
-    gap: max(4rem, 22vh);
-    margin-top: max(4rem, 11vh);
+     ~42% of the screen). 22vh until 2026-10-13, then 12vh with the desktop's
+     cut. */
+  .mprof {
+    --works-gap: max(3.5rem, 12vh);
+    --works-top: max(4rem, 10vh);
+    --project-gap: 2rem;
   }
   /* The name is 24px here, so the project title steps down to stay under it. */
   .mprof__project-title {

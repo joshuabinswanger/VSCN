@@ -11,7 +11,7 @@ const t = useTranslations(lang);
           /* A PROJECT IN THE PAGE'S CLOTHES (2026-10-13): the block is the
             page's own `.mprof__project` — its heading group, then its works —
             with the title and the description as inline fields in the
-            heading's own voices. The tools stand above the heading: the
+            heading's own voices. The tools stand level with the title: the
             block's ↑/↓ (moveProject: the block moves as a whole, past the
             neighbouring row or block), Delete, which ungroups in place (the
             images stay, loose, where the block stood; the document goes at
@@ -21,16 +21,24 @@ const t = useTranslations(lang);
             two or more page as a carousel. */
         }
         <section class="mprof__project gallery-project" data-project-block>
+          {
+            /* ONE TOOLBAR, LEVEL WITH THE TITLE (2026-10-13, Josh: "the tool
+              bar for the project … should be … on the same height as the
+              title"): ↑ ↓, Add images, Delete as one segmented strip of
+              icons, at the heading's right edge (the title field keeps room
+              for it, profile-editor.css). The words are in aria-label and
+              the tooltip. */
+          }
           <div class="gallery-row-tools gallery-project-tools">
             <div class="gallery-toolbar gallery-toolbar--head seg seg--actions" role="group">
               <button type="button" class="gallery-tbtn" data-project-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
               <button type="button" class="gallery-tbtn" data-project-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
+              <label class="gallery-tbtn gallery-project-add" title={t("profile.project.addImages")}>
+                <svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/><circle cx="9" cy="9" r="2"/><path d="M16 5h6M19 2v6"/></svg>
+                <input type="file" class="picker-input" accept="image/jpeg,image/png,image/webp,image/avif" multiple data-project-files aria-label={t("profile.project.addImages")} />
+              </label>
+              <button type="button" class="gallery-tbtn gallery-tbtn--danger" data-project-delete aria-label={t("profile.project.delete")} title={t("profile.project.delete")}><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
             </div>
-            <label class="gallery-tpill gallery-project-add">
-              {t("profile.project.addImages")}
-              <input type="file" class="picker-input" accept="image/jpeg,image/png,image/webp,image/avif" multiple data-project-files />
-            </label>
-            <button type="button" class="gallery-tpill gallery-tpill--danger" data-project-delete>{t("profile.project.delete")}</button>
           </div>
           <div class="mprof__project-head gallery-project-fields">
             {

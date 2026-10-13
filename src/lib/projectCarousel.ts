@@ -119,7 +119,10 @@ export function initProjectCarousels(root: ParentNode = document): void {
       // Not laid out (a hidden tab): nothing to measure yet. The observer
       // below calls again once it has a size.
       if (!box.width) return;
-      bleedLeft = Math.max(0, Math.floor(box.left - left));
+      // In the desktop's two columns (profile.css) the person's column is on
+      // the left, and a passed slide must not spill over it.
+      const noLeftBleed = getComputedStyle(carousel).getPropertyValue("--carousel-bleed-left").trim() === "0";
+      bleedLeft = noLeftBleed ? 0 : Math.max(0, Math.floor(box.left - left));
       const bleedRight = Math.max(0, Math.floor(right - box.right));
       carousel.style.setProperty("--bleed-l", `${bleedLeft}px`);
       carousel.style.setProperty("--bleed-r", `${bleedRight}px`);

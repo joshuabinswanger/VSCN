@@ -146,7 +146,10 @@
     max-width: none;
   }
 
-  .profile-form.is-works > :not(.form-section) {
+  /* Not the bar: it is fixed, and this width and centring would reach it
+     (an abspos box takes justify-self too — on a phone it pushed the
+     floating controls 16px off the left edge). */
+  .profile-form.is-works > :not(.form-section, .form-footer) {
     justify-self: center;
     width: 100%;
     max-width: 530px;
@@ -332,30 +335,22 @@
      the page's works do (the `editor` slot of ProfileViewPreview, right
      after the page's own works slot) and takes the page's rhythm: the
      same stand-off from the profile's words and the same window-sized gap
-     between works that .mprof__works has in profile.css — restated here
-     because the page's class on this wrapper would also space the Add row
-     and the notes a screen apart. Change one, change the other. */
+     between works that .mprof__works has in profile.css. Since 2026-10-13
+     both read the same tokens off .mprof (--works-top, --works-gap), so they
+     cannot drift; the page's class on this wrapper would also space the
+     notes a screen apart, which is why it is not simply reused. */
   .works-editor {
-    margin-top: max(6rem, 15vh);
+    margin-top: var(--works-top);
   }
 
   .gallery-editor {
     display: flex;
     flex-direction: column;
-    gap: max(7rem, 30vh);
+    gap: var(--works-gap);
   }
 
   .gallery-editor:empty {
     display: none;
-  }
-
-  @media (--bp-mobile) {
-    .works-editor {
-      margin-top: max(4rem, 11vh);
-    }
-    .gallery-editor {
-      gap: max(4rem, 22vh);
-    }
   }
 
   /* The Add row and the notes stand off the last work by the heading gap,
@@ -373,30 +368,91 @@
   }
 
   /* A row is the page's figure (.mprof__work, profile.css): the picture at
-     the page's size, the words under it at the picture's width. The editor
-     adds the tools ABOVE the picture, right-aligned over its edge — the same
-     --work-ar cap and centring the frame below them has, so the strip sits
-     on the picture it acts on, not on the column. A project's tools have
-     no --work-ar and take the column. */
+     the page's size, the words under it at the picture's width.
+     THE TOOLS ARE ON THE PICTURE (2026-10-13, Josh: "the tool bar … should
+     be either contained in the images or on the same height as the title").
+     They stood above it, a strip of their own with half a rem of air, and
+     read as belonging to whatever was nearer. Now they float in the
+     picture's top edge, 10px in: the project select at the left, ↑ ↓ ↻ ✕
+     at the right. The strip is laid over the figure at the frame's own
+     width and place (the same --work-ar cap and centring), so it lines up
+     with the picture it acts on, and it takes no height: the figure is the
+     page's figure exactly. Click-through between the controls. */
+  .gallery-item {
+    position: relative;
+  }
+
   .gallery-row-tools {
+    position: absolute;
+    top: 10px;
+    left: 0;
+    right: 0;
+    z-index: 2;
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-end;
     align-items: center;
     gap: 6px;
     min-width: 0;
     max-width: calc(60vh * var(--work-ar));
-    margin: 0 auto 0.5rem;
+    margin-inline: auto;
+    padding-inline: 10px;
+    pointer-events: none;
   }
 
-  /* A project's tools are a flex ITEM of the page's .mprof__project column,
-     where the auto margins above would shrink-wrap and centre them (seen on
-     desktop, 2026-10-13); they take the column and sit at its right edge,
-     like a work's tools sit at its picture's. */
+  .gallery-row-tools > * {
+    pointer-events: auto;
+  }
+
+  /* The strip itself trails; the select and the video's thumbnail pill lead. */
+  .gallery-row-tools > .gallery-toolbar {
+    order: 1;
+    margin-inline-start: auto;
+  }
+
+  /* Floating over a picture: the toolbar's track and the select lift off it
+     with a shadow, so they read on a white picture and on a dark one. */
+  .gallery-row-tools :is(.gallery-toolbar, .gallery-project-select, .gallery-tpill) {
+    box-shadow:
+      0 2px 10px rgb(0 0 0 / 0.16),
+      0 0 0 0.5px rgb(0 0 0 / 0.08);
+  }
+
+  .gallery-row-tools > .gallery-toolbar {
+    background: color-mix(in srgb, var(--color-dark) 6%, white);
+  }
+
+  /* A PROJECT'S TOOLS, LEVEL WITH ITS TITLE. One segmented strip (↑ ↓, Add
+     images, Delete — ProjectEditor.astro) at the heading's right edge,
+     centred on the title's first line; the title field keeps --ptools-w of
+     room on its right so a long title wraps before it, never under it. */
+  .gallery-project {
+    --ptools-w: 138px;
+    position: relative;
+  }
+
   .gallery-project-tools {
-    align-self: stretch;
+    top: var(--ptools-top, -1px);
+    left: auto;
+    right: 0;
     max-width: none;
-    margin: 0 0 1.25rem;
+    margin: 0;
+    padding: 0;
+    flex-wrap: nowrap;
+  }
+
+  .gallery-project-tools > .gallery-toolbar {
+    box-shadow: none;
+    background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
+  }
+
+  .gallery-project-fields .mprof__project-title.gallery-inline {
+    padding-inline-end: calc(var(--ptools-w) + 0.75rem);
+  }
+
+  @media (--bp-mobile) {
+    .gallery-project {
+      --ptools-top: -5px;
+    }
   }
 
   /* THE INLINE FIELDS. A work's title and description, a project's title
@@ -540,17 +596,12 @@
     flex: none;
   }
 
-  .gallery-project-tools .gallery-tpill {
-    flex: none;
-  }
-
-  /* "Add images" is a <label> around a clipped file input, in the pill's
-     dress: inline-flex so the label's box is the pill, not a line of text. */
+  /* "Add images" is a <label> around a clipped file input, a segment of
+     the project's toolbar like the buttons beside it. */
   .gallery-project-add {
     position: relative;
-    display: inline-flex;
-    align-items: center;
     overflow: hidden;
+    cursor: pointer;
   }
 
   /* The words are the page's own figcaption (.mprof__caption draws the
@@ -1033,7 +1084,7 @@
   .gallery-project-images {
     display: flex;
     flex-direction: column;
-    gap: 4rem;
+    gap: var(--project-gap);
   }
 
   /* An empty block shows its note instead of rows (renderGallery). */
@@ -1170,10 +1221,16 @@
   /* The card's label sits close over it and well clear of the page's
      closing rule above, so it reads as the card's name, not the page's
      last line. */
+  /* On the page's measure (profile.css caps .mprof at 86rem on a desktop),
+     so the card starts at the left edge the profile view's person column
+     does, not at the wide stage's. */
   .preview-card {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+    width: 100%;
+    max-width: 86rem;
+    margin-inline: auto;
   }
 
   .preview-card-head {
@@ -1186,15 +1243,6 @@
     margin: 0;
   }
 
-  /* The closing line under the directory card — same hairline
-     ProfileViewPreview draws above and below the page, so the tab reads as one
-     stack of rendered things rather than a page in a frame and a loose card. */
-  .preview-rule {
-    height: 0;
-    margin: 0;
-    border: 0;
-    border-top: 1px solid var(--color-border);
-  }
 
   /* ── THE BAR (2026-10-13) ────────────────────────────────
      Josh: "make the Bar consistently sit at the same height. also add
@@ -1213,7 +1261,7 @@
     --ebar-gap: 20px;
     position: fixed;
     left: 50%;
-    bottom: var(--ebar-gap);
+    bottom: calc(var(--ebar-gap) + var(--ebar-lift, 0px));
     z-index: 30;
     transform: translateX(-50%);
     display: flex;
@@ -1231,6 +1279,20 @@
     pointer-events: auto;
   }
 
+  /* CLEAR OF THE SITE FOOTER (2026-10-13, measured): on the footer's line,
+     the Works tab's full bar (about 500px, 560 in German) ran over the
+     footer's links in any desktop window under about 1100px — 1024 and
+     860 were both hit. Below 1180px it rises 40px, over the footer row
+     instead of on it. A step, not a slide: the clamp is 0 or 40px with
+     nothing between (any width under 1180px gives at least 100 x 1 px).
+     Save alone (Profile, Account) is narrow enough never to reach the
+     links, so it stays on the line. */
+  @media (--bp-desktop) {
+    .profile-form.is-works .form-footer {
+      --ebar-lift: clamp(0px, (1180px - 100vw) * 100, 40px);
+    }
+  }
+
   /* Room at the end of every tab, so the last field is never under the bar:
      its height, its gap, and a little air. Two rows on a phone's Works tab. */
   .profile-form {
@@ -1239,7 +1301,7 @@
 
   @media (--bp-mobile) {
     .profile-form.is-works {
-      padding-bottom: 9rem;
+      padding-bottom: 10rem;
     }
   }
 
@@ -1348,6 +1410,131 @@
     font-size: var(--fs-85);
   }
 
+  /* ── ON A PHONE THE BAR COMES APART (2026-10-13, Josh: "the buttons on
+     mobile should be seperated and layed out better. atm there is a big bar
+     but either split it or float them. you make a design decision") ──
+     Floated. The two-row slab became five controls standing on their own
+     over the page, each with its own shadow, in two rows that span the
+     window between the 16px gutters:
+        Profile | Card   EN | DE          (+)
+        Preview | Edit             [ Save ]
+     The left edge holds what you look at, the right edge what you do, and
+     Save keeps the bottom-right corner on every tab, where the thumb is. The
+     row above is empty off the Works tab, so Save stands alone there.
+     Controls grow to 40px (HIG buttons: 44pt is the touch target the
+     shadowed 40px sits in with the 8px gaps). The bar's paper, hairline,
+     clip and measured size are switched off; `!important` beats the inline
+     size editorBar.ts keeps writing, so nothing animates here — each control
+     fades in on its own when it appears instead. */
+  @media (--bp-mobile) {
+    .form-footer {
+      left: 16px;
+      right: 16px;
+      width: auto;
+      transform: none;
+      align-items: stretch;
+    }
+
+    .ebar {
+      width: auto !important;
+      height: auto !important;
+      padding: 0;
+      background: none;
+      border: 0;
+      box-shadow: none;
+      overflow: visible;
+    }
+
+    /* Two rows that do not share columns (a grid did, and squeezed Save
+       onto two lines under the wide row above it): one wrapping flex line
+       per row, broken by a zero-height item in between. The groups dissolve
+       so their controls can be ordered across them. */
+    .ebar__in {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px 8px;
+      width: auto;
+      max-width: none;
+    }
+
+    .ebar__in::before {
+      content: "";
+      order: 4;
+      flex-basis: 100%;
+      height: 0;
+    }
+
+    .ebar__group {
+      display: contents;
+    }
+
+    .ebar__group[hidden] {
+      display: none;
+    }
+
+    .ebar__view {
+      order: 1;
+    }
+    .ebar__lang {
+      order: 2;
+    }
+    .ebar__plus {
+      order: 3;
+      margin-inline-start: auto;
+    }
+    .ebar__mode {
+      order: 5;
+    }
+    .ebar .profile-save-button {
+      order: 6;
+      margin-inline-start: auto;
+    }
+
+    .ebar .seg,
+    .ebar__plus,
+    .ebar .profile-save-button {
+      box-shadow:
+        0 6px 20px rgb(0 0 0 / 0.14),
+        0 1px 3px rgb(0 0 0 / 0.1);
+      animation: ebar-float-in 0.28s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .ebar .seg {
+      padding: 3px;
+      background: color-mix(in srgb, var(--color-dark) 5%, white);
+    }
+
+    .ebar .seg > button {
+      min-height: 34px;
+      padding-inline: 14px;
+    }
+
+    .ebar__plus {
+      width: 40px;
+      height: 40px;
+      background: white;
+    }
+
+    .ebar__plus:hover,
+    .ebar__plus[aria-expanded="true"] {
+      background: color-mix(in srgb, var(--color-dark) 7%, white);
+    }
+
+    .ebar .profile-save-button {
+      min-height: 40px;
+      padding: 4px 20px;
+    }
+  }
+
+  @media (--bp-mobile) and (prefers-reduced-motion: reduce) {
+    .ebar .seg,
+    .ebar__plus,
+    .ebar .profile-save-button {
+      animation: none;
+    }
+  }
+
   .ebar-icon {
     width: 18px;
     height: 18px;
@@ -1390,54 +1577,139 @@
     text-align: center;
   }
 
-  /* THE PLUS MENU: three rows, each an icon and its words, in the bar's
-     material. 12px corners, concentric with the 8px rows inside 4px of
-     padding. Opens with a short rise; Reduce Motion drops it. */
+  /* THE PLUS MENU (2026-10-13, Josh: "the add menu should be over the plus
+     icon … 3 buttons on desktop one next to each other. on mobile just black
+     bars, thinner though"). No panel: three black capsules with white words,
+     the site's MENU chips (Navbar.astro) at the bar's scale. On a desktop
+     they stand in a row centred over the Plus; on a phone they stack, their
+     right edge on the Plus's (--menu-align: end), 32px each. editorBar.ts
+     writes --menu-left from the Plus's position and keeps the row 16px inside
+     the window.
+     BOTH WAYS, like the site's MENU: the state is `.is-open`; closed, the
+     menu is `visibility: hidden` (and `inert`, set by the script), and each
+     capsule is a transition, arriving nearest-the-Plus first with the
+     site's spring and leaving faster without it. Visibility flips at the END
+     of the close, after the last capsule (0.3s > 2 x 30ms + 0.2s). */
   .ebar-menu {
+    --menu-align: center;
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: var(--menu-left, 0px);
+    z-index: 1;
     display: flex;
-    flex-direction: column;
-    min-width: 13rem;
-    padding: 4px;
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: 12px !important;
-    box-shadow:
-      0 12px 32px rgb(0 0 0 / 0.12),
-      0 1px 3px rgb(0 0 0 / 0.06);
-    transform-origin: bottom center;
-    animation: ebar-pop-in 0.18s cubic-bezier(0.25, 1, 0.5, 1);
+    gap: 6px;
+    width: max-content;
+    visibility: hidden;
+    pointer-events: none;
+    transition: visibility 0s linear 0.3s;
   }
 
-  .ebar-menu[hidden],
-  .ebar-sheet[hidden] {
-    display: none;
+  .ebar-menu.is-open {
+    visibility: visible;
+    pointer-events: auto;
+    transition-delay: 0s;
   }
 
   .ebar-menu__item {
+    --i: 0;
     display: flex;
     align-items: center;
-    gap: 10px;
-    min-height: 40px;
-    padding: 0 12px;
-    background: none;
+    gap: 8px;
+    min-height: 34px;
+    padding: 0 16px 0 13px;
+    background: var(--color-dark);
     border: 0;
-    border-radius: 8px !important;
-    color: var(--color-dark);
+    color: var(--color-bg);
     font-family: inherit;
-    font-size: var(--fs-90);
+    font-size: var(--fs-85);
+    font-weight: 600;
+    white-space: nowrap;
     text-align: left;
     cursor: pointer;
+    box-shadow:
+      0 8px 22px rgb(0 0 0 / 0.18),
+      0 1px 3px rgb(0 0 0 / 0.12);
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+    transition:
+      background-color 0.15s ease,
+      opacity 0.14s ease calc((2 - var(--i)) * 30ms),
+      transform 0.2s ease calc((2 - var(--i)) * 30ms);
   }
 
-  .ebar-menu__item:is(:hover, :focus-visible):not(:disabled) {
-    background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
-    outline: none;
+  /* Nearest the Plus first: the middle of the row on a desktop is the Plus,
+     so the order is middle, then the two ends; on a phone the bottom of the
+     stack is nearest, so bottom up. */
+  .ebar-menu__item:nth-child(2) {
+    --i: 0;
+  }
+  .ebar-menu__item:nth-child(1) {
+    --i: 1;
+  }
+  .ebar-menu__item:nth-child(3) {
+    --i: 2;
+  }
+
+  .ebar-menu.is-open .ebar-menu__item {
+    opacity: 1;
+    transform: none;
+    transition:
+      background-color 0.15s ease,
+      opacity 0.2s ease calc(var(--i) * 55ms),
+      transform 0.4s cubic-bezier(0.2, 1.25, 0.35, 1) calc(var(--i) * 55ms);
+  }
+
+  .ebar-menu__item .ebar-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .ebar-menu__item:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-dark) 80%, white);
+  }
+
+  .ebar-menu__item:focus-visible {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
   }
 
   .ebar-menu__item:disabled {
-    color: var(--color-muted);
-    opacity: 0.5;
+    background: color-mix(in srgb, var(--color-dark) 45%, white);
     cursor: default;
+  }
+
+  @media (--bp-mobile) {
+    .ebar-menu {
+      --menu-align: end;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 4px;
+    }
+    .ebar-menu__item {
+      min-height: 32px;
+      padding: 0 14px 0 12px;
+    }
+    .ebar-menu__item:nth-child(3) {
+      --i: 0;
+    }
+    .ebar-menu__item:nth-child(2) {
+      --i: 1;
+    }
+    .ebar-menu__item:nth-child(1) {
+      --i: 2;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ebar-menu__item,
+    .ebar-menu.is-open .ebar-menu__item {
+      transform: none;
+      transition: opacity 0.15s ease;
+    }
+  }
+
+  .ebar-sheet[hidden] {
+    display: none;
   }
 
   /* THE VIDEO SHEET: the link field and its two buttons, in the menu's
@@ -1458,7 +1730,6 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .ebar-menu,
     .ebar-sheet {
       animation: none;
     }
@@ -1811,15 +2082,6 @@
     flex-shrink: 0;
   }
 
-  /* THE TOOLS KEEP THEIR SIZE (2026-10-13): the toolbar does not shrink
-     with the column, it wraps; on a phone the project's three controls
-     take the full width between them. */
-  @media (--bp-mobile) {
-    .gallery-project-tools {
-      justify-content: flex-start;
-    }
-  }
-
   /* A GALLERY ROW ARRIVES IN READING ORDER (2026-09-28, Josh: "add
      animations on gallery elements where you fade in Name First, then image
      then the controls and such"). Its name first (a project's name; an
@@ -1901,6 +2163,13 @@
 }
 
 /* The Plus menu and the video sheet rise into place (2026-10-13). */
+@keyframes ebar-float-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.94);
+  }
+}
+
 @keyframes ebar-pop-in {
   from {
     opacity: 0;

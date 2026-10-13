@@ -25,9 +25,9 @@
 //   - THE `--preview` PADDING OVERRIDE, which zeroed `padding-block: 3rem
 //     10rem`. That padding is the page's own placement, and the point of this
 //     component is that the page's placement is what gets shown.
-// What is left is a rule above and a rule below. They are the only thing that
-// is not the page, and all that is needed: a thematic break is exactly what
-// the boundary between the form and the rendering IS.
+// What was left was a rule above and a rule below, and those went too
+// (2026-10-13, Josh: "the horizontal bars on the gallery card can be
+// removed!"): the Works tab IS the page now, with nothing to set it off from.
 //
 // `.mprof__empty`, the "no images yet" note, stays — it is the one editor-only
 // element with nothing to say once the member has artwork. The real page
@@ -50,9 +50,9 @@ const t = useTranslations(lang);
 ---
 
 <div class="ppv-stage">
-  <hr class="ppv-rule" />
-
   <article class="mprof mprof--preview" data-ppv-root>
+    {/* The person: the left column on a desktop, as on the page. */}
+    <div class="mprof__aside">
     <header class="mprof__head">
       {
         /* Hidden until the member has a picture, which is also how the grid
@@ -95,6 +95,7 @@ const t = useTranslations(lang);
       <div class="mprof__row" data-ppv="links-row" hidden>
         <ul class="mprof__vals mprof__vals--links" data-ppv="links"></ul>
       </div>
+    </div>
     </div>
 
     <div class="mprof__works" data-ppv="works" hidden></div>
@@ -204,8 +205,6 @@ const t = useTranslations(lang);
       </div>
     </template>
   </article>
-
-  <hr class="ppv-rule" />
 </div>
 
 <style>
@@ -214,16 +213,5 @@ const t = useTranslations(lang);
      here may describe it. */
   .ppv-stage {
     font-family: "Archivo", sans-serif;
-  }
-
-  /* The rule the whole thing now hangs on: one hairline in the border token,
-     square and full width, with no margin of its own. The page's own
-     padding-block is the air on either side of it — adding more here would be
-     the sheet's padding coming back under another name. */
-  .ppv-rule {
-    height: 0;
-    margin: 0;
-    border: 0;
-    border-top: 1px solid var(--color-border);
   }
 </style>

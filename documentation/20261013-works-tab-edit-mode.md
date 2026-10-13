@@ -106,3 +106,52 @@ skill (`~/.claude/skills/apple-design`, from dickwu/apple-design-skill).
   switches that round corners could not survive: BilingualField's EN/DE, the
   affiliation rows' Name | Member, the bar's switches, and a work's ↑ ↓ ↻ ✕
   (`.seg--actions`, thumb on hover only).
+
+## Third pass, same day: two columns, tools on the work, a floating bar
+
+Josh: "the tool bar for the project images etc, should be either contained in
+the images or on the same height as the title … the horizontal bars on the
+gallery card can be removed! … vertical padding between projects and images
+less big … profile on desktop should have a 2 column design left artist info
+right projects and images … the add menu should be over the plus icon … the
+buttons on mobile should be separated … either split it or float them … the
+menu should be 3 buttons on desktop one next to each other. on mobile just
+black bars, thinner though."
+
+- **Two columns on a desktop** (`profile.css`). The page's head, bio and meta
+  rows are wrapped in `.mprof__aside` — on the member page and in
+  `ProfileViewPreview` alike — and `.mprof` becomes a grid at `--bp-desktop`:
+  the person on the left (`clamp(15rem, 28%, 24rem)`, picture over the name),
+  the works on the right from the name's line. The member page and `/profile`
+  now use Layout's `contentWide`, and `.mprof` caps itself at 86rem, so the
+  works column stays about the old 54rem. Not sticky: a long bio would leave
+  its foot unreachable. A phone is unchanged. `projectCarousel.ts` reads
+  `--carousel-bleed-left: 0` so a passed slide no longer spills over the
+  person's column.
+- **Less air.** The rhythm is three tokens on `.mprof`, read by the page and
+  the editor's list: `--works-gap` 30vh → 16vh (phone 22vh → 12vh),
+  `--works-top` 15vh → 12vh (0 in two columns), `--project-gap` 4rem → 2.5rem.
+- **A work's tools are on its picture**: the strip is laid over the figure at
+  the frame's width, 10px into its top edge, select left and ↑ ↓ ↻ ✕ right,
+  with a shadow; the figure is the page's figure exactly.
+- **A project's tools are level with its title**: ↑ ↓, Add images and Delete
+  as one icon strip at the heading's right; the title field keeps 138px of
+  room for it. No outline around projects: with the tools where they belong
+  the grouping reads without one.
+- **No rules** above and below the page or the card.
+- **The Plus menu** is three black capsules (the site MENU's language), in a
+  row centred over the Plus on a desktop and stacked, right edge on the
+  Plus's, 32px each, on a phone. `bindMenuButton` positions it on open
+  (`--menu-left`, kept 16px inside the window) and animates both ways: state
+  is `.is-open` + `inert`, never `hidden`.
+- **On a phone there is no bar.** The five controls float on their own, in
+  two flex rows across the gutters: Profile | Card, EN | DE and the Plus
+  above; Preview | Edit and Save below. 40px controls. Two rows that do not
+  share columns: a grid did, and squeezed Save onto two lines.
+- **Trap:** `.profile-form.is-works > :not(.form-section)` gave every child
+  `width: 100%` and `justify-self: center`, and an absolutely positioned box
+  honours `justify-self` — it centred the fixed bar off its own `left`. The
+  footer is excluded now.
+- **The bar clears the site footer**: on the Works tab, below 1180px of
+  window, it rises 40px (measured: at 1024 and 860 it covered the footer's
+  links).
