@@ -9,11 +9,12 @@ import "../styles/type.css";
   {/* BEHIND ONE BUTTON ON A DESKTOP (2026-10-12, Josh: "the three buttons
       should be behind a Menu button"). MENU sits on the header's line at the
       right; it opens the three bars as a small drop-down under it.
-      THREE CHIPS ON A PHONE (2026-10-13, Josh: "replace the MENU drop-down
-      with three chips reading Info, Community and Profile"): there the same
-      three links stand in a row where MENU was, always open, and the button
-      is not drawn. The links keep their ids, the script below still sets
-      their labels, their targets and which of LOGIN / PROFILE shows. */}
+      A HAMBURGER ON A PHONE (2026-10-13, Josh: "actually a hamburger will be
+      better"): the same button, drawn as a black square with three white bars
+      that turn into a cross while it is open; the word MENU stays in the
+      markup, clipped, as the button's name. The three black chips Josh asked
+      for are what it opens. The links keep their ids, the script below still
+      sets their labels, their targets and which of LOGIN / PROFILE shows. */}
   <button
     type="button"
     class="nav-menu-btn"
@@ -21,9 +22,10 @@ import "../styles/type.css";
     aria-expanded="false"
     aria-controls="nav-menu"
   >
-    MENU
+    <span class="nav-menu-btn__label">MENU</span>
+    <span class="nav-burger" aria-hidden="true"><i></i><i></i><i></i></span>
   </button>
-  <div class="nav-links" id="nav-menu" hidden>
+  <div class="nav-links" id="nav-menu">
     <a href="/info" class="nav-link" id="nav-info">INFO</a>
     <a href="/community" class="nav-link nav-center" id="nav-community">COMMUNITY</a>
     <div class="nav-right-group">
@@ -91,8 +93,63 @@ import "../styles/type.css";
     outline-offset: 2px;
   }
 
-  /* The drop-down: the three bars stacked under MENU, its right edge on the
-     button's. */
+  /* THE HAMBURGER: three bars in a 16 x 12 box, drawn on a phone only. Open,
+     the outer two slide to the middle and turn through 45 degrees into a
+     cross while the middle one shrinks away. The turn overshoots on the
+     site's one springy curve (the same the current page's chip wipes in on),
+     and the middle bar leaves first so the cross is never drawn over a third
+     line. */
+  .nav-burger {
+    display: none;
+    position: relative;
+    width: 16px;
+    height: 12px;
+  }
+  .nav-burger i {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: currentColor;
+    transition:
+      transform 0.42s cubic-bezier(0.2, 1.25, 0.35, 1) 0.04s,
+      opacity 0.12s ease 0.04s;
+  }
+  .nav-burger i:nth-child(1) {
+    top: 0;
+  }
+  .nav-burger i:nth-child(2) {
+    top: 5px;
+    transition-delay: 0.1s;
+  }
+  .nav-burger i:nth-child(3) {
+    top: 10px;
+  }
+  .nav-menu-btn[aria-expanded="true"] .nav-burger i:nth-child(1) {
+    transform: translateY(5px) rotate(45deg);
+  }
+  .nav-menu-btn[aria-expanded="true"] .nav-burger i:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0);
+    transition-delay: 0s;
+  }
+  .nav-menu-btn[aria-expanded="true"] .nav-burger i:nth-child(3) {
+    transform: translateY(-5px) rotate(-45deg);
+  }
+
+  /* The drop-down: the three chips stacked under the button, its right edge
+     on the button's.
+     IT ANIMATES BOTH WAYS (2026-10-13, Josh: "pay attention to the
+     animation"). It used to be toggled with `hidden`, so it could only
+     appear with a one-shot keyframe and it vanished with no motion at all.
+     Now the button's aria-expanded is the single state: the list is
+     `visibility: hidden` while closed (out of the tab order and the
+     accessibility tree, and not clickable), and each chip is a transition on
+     opacity and transform. They arrive top to bottom, 55ms apart, dropping
+     in with the spring curve; they leave bottom to top, 30ms apart, faster
+     and without the spring. Visibility changes at the END of the close, once
+     the last chip has gone: the 0.3s below has to stay above the longest
+     leave (last chip's delay 60ms + 0.2s). */
   .nav-links {
     position: absolute;
     top: calc(100% - 6px);
@@ -101,20 +158,22 @@ import "../styles/type.css";
     flex-direction: column;
     gap: 4px;
     width: 10rem;
+    visibility: hidden;
+    transition: visibility 0s linear 0.3s;
   }
-  .nav-links[hidden] {
-    display: none;
+  .nav-menu-btn[aria-expanded="true"] ~ .nav-links {
+    visibility: visible;
+    transition-delay: 0s;
   }
-  @media (prefers-reduced-motion: no-preference) {
-    .nav-links:not([hidden]) {
-      animation: nav-menu-drop 0.18s ease-out;
-    }
+  #nav-info {
+    --i: 0;
   }
-  @keyframes nav-menu-drop {
-    from {
-      opacity: 0;
-      transform: translateY(-6px);
-    }
+  #nav-community {
+    --i: 1;
+  }
+  #nav-join,
+  #nav-profile {
+    --i: 2;
   }
 
   /* Each link is a black chip with white type, square (the site has no
@@ -134,7 +193,21 @@ import "../styles/type.css";
     border-radius: 0;
     background: var(--nav-ink);
     box-shadow: inset 0 0 0 1px var(--nav-ink);
-    transition: color 0.25s ease 0.08s;
+    /* Closed: lifted and clear. Leaves last-first (see the drop-down above). */
+    opacity: 0;
+    transform: translateY(-8px);
+    transition:
+      color 0.25s ease 0.08s,
+      opacity 0.14s ease calc((2 - var(--i, 0)) * 30ms),
+      transform 0.2s ease calc((2 - var(--i, 0)) * 30ms);
+  }
+  .nav-menu-btn[aria-expanded="true"] ~ .nav-links .nav-link {
+    opacity: 1;
+    transform: none;
+    transition:
+      color 0.25s ease 0.08s,
+      opacity 0.2s ease calc(30ms + var(--i, 0) * 55ms),
+      transform 0.4s cubic-bezier(0.2, 1.25, 0.35, 1) calc(30ms + var(--i, 0) * 55ms);
   }
 
   /* THE CURRENT PAGE IS THE INVERTED CHIP: paper with black type. It wipes in
@@ -171,8 +244,12 @@ import "../styles/type.css";
 
   @media (prefers-reduced-motion: reduce) {
     .nav-link::before,
-    .nav-link--active::before {
-      transition: none;
+    .nav-link--active::before,
+    .nav-burger i,
+    .nav-links,
+    .nav-link,
+    .nav-menu-btn[aria-expanded="true"] ~ .nav-links .nav-link {
+      transition: none !important;
     }
   }
 
@@ -220,31 +297,40 @@ import "../styles/type.css";
   }
 
   @media (--bp-mobile) {
-    /* THREE CHIPS, NO MENU (2026-10-13, Josh: "on mobile replace the MENU
-       drop-down with three chips reading Info, Community and Profile ... a
-       bit bigger than the tags, all black with white type, square corners").
-       The drop-down's box becomes a row in the header's flow, always shown:
-       the `hidden` the desktop script toggles is overridden here, and the
-       script itself leaves the row open on a phone (see setMenu). The row
-       sits 8px from the screen edge, where the title sits on the left. */
+    /* THE HAMBURGER (2026-10-13, Josh: "a hamburger will be better"): the
+       button becomes a 36px black square with the three bars, the word MENU
+       clipped out of sight (it stays as the button's name), and the drop-down
+       it opens is the three chips, a touch roomier than on a desktop for a
+       thumb. Both sit 8px in from the screen edge, where the title sits on
+       the left. */
     nav[data-astro-transition-persist="navbar"] {
-      --nav-chip-pad: 6px 8px 5px;
+      --nav-chip-pad: 9px 12px 8px;
       padding-right: 8px;
     }
     .nav-menu-btn {
-      display: none;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      justify-content: center;
     }
-    .nav-links,
-    .nav-links[hidden] {
-      position: static;
-      display: flex;
-      flex-direction: row;
-      gap: 4px;
-      width: auto;
-      animation: none;
+    .nav-menu-btn:hover,
+    .nav-menu-btn[aria-expanded="true"] {
+      text-decoration: none;
     }
-    .nav-right-group {
-      flex-direction: row;
+    .nav-menu-btn__label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    .nav-burger {
+      display: block;
+    }
+    .nav-links {
+      right: 8px;
+      top: calc(100% - 2px);
     }
 
     /* NOT FLOATING ON A PHONE (2026-09-24, Josh: "the language switch on
@@ -275,22 +361,12 @@ import "../styles/type.css";
   // Opens and closes the drop-down; a click outside it, Escape, or leaving
   // the page closes it. The nav is persisted across page changes, so it is
   // closed on the navigation itself or it would stay open on the next page.
-  // ON A PHONE THERE IS NO DROP-DOWN (2026-10-13): the three links are chips
-  // in the header row, so the row is never hidden there. The query is the
-  // --bp-mobile breakpoint (global.css), which a script cannot read by name.
-  const phoneNav = window.matchMedia("(max-width: 767px)");
+  // The open state is the button's aria-expanded and nothing else: the CSS
+  // shows and animates the list from it (see the drop-down in the style
+  // block), so there is no `hidden` to toggle and no exit to wait for here.
   function setMenu(open: boolean) {
-    const btn = document.getElementById("nav-menu-btn");
-    const menu = document.getElementById("nav-menu");
-    if (!btn || !menu) return;
-    const shown = phoneNav.matches || open;
-    btn.setAttribute("aria-expanded", String(open));
-    menu.hidden = !shown;
+    document.getElementById("nav-menu-btn")?.setAttribute("aria-expanded", String(open));
   }
-  // Crossing the breakpoint: a phone's open row must not arrive on a desktop
-  // as an opened menu, and a desktop's closed menu must open as the row.
-  phoneNav.addEventListener("change", () => setMenu(false));
-  setMenu(false);
   document.addEventListener("click", (event) => {
     const target = event.target as Element | null;
     if (!target?.closest?.("#nav-menu-btn")) return;
