@@ -126,8 +126,7 @@ function toggle(details: HTMLDetailsElement): void {
   });
 }
 
-if (typeof document !== "undefined" && !(window as any).__vscnCardFold) {
-  (window as any).__vscnCardFold = true;
+if (typeof document !== "undefined") {
   document.addEventListener("click", (e) => {
     if (e.defaultPrevented || !(e.target instanceof Element)) return;
     const summary = e.target.closest("details.pdisc--column > summary");
