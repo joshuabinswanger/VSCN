@@ -464,48 +464,28 @@ const hasSummary = Astro.slots.has("summary");
   }
 
   /* ── COLUMN MODE ───────────────────────────────────────
-     (2026-10-12, gallery card v2 — Josh's sketch.) The panel is the
-     directory card's TEXT COLUMN: it stands beside the artwork, open by
-     default, holding the member's name and role (slotted into `lead` by the
-     card), the bio, the links and the tags. The toggle is a RAIL down the
-     card's right edge — a hairline with one chevron at mid-height — and
-     folding takes the WHOLE column away ("fold everything"): the picture then
-     widens to the slot, which is the card's business (see
-     `.ccard:has(> .pdisc:not([open]))` in communityCard.css).
-
-     THE RAIL IS POSITIONED AGAINST THE CARD, not this element. `.pdisc` is
-     left position:static, so the rail's containing block is the nearest
-     positioned ancestor — `.ccard`, position:relative — and the rail spans
-     the card's full height, frame and foot included, whatever this
-     element's own height is. WHERE it stands is the card's to say: its own
-     column between the picture and the words, whose left edge the card
-     hands over as --pdisc-rail-start, along with the chevron's two angles
-     (the words hang off either side of the picture). The body stays in
-     flow. No ground and no blur here: the column IS the card now rather than
-     a panel laid over its neighbours, and sixteen always-on backdrop-filters
-     would be a compositing bill the directory has no reason to pay. */
+     (2026-10-12, gallery card v2 — Josh's sketch; reworked through
+     2026-10-14.) The panel is the directory card's TEXT COLUMN beside the
+     artwork: the bio, the links and the tags, under the card's own name and
+     role, folded by default. On a desktop the toggle is a horizontal bar
+     under the role with the chevron at its outer end (the rules after the
+     chevron's); on a phone a square at the head's bottom-right (the mobile
+     block). The opening and closing are cardFold.ts's. No ground and no
+     blur here: the column IS the card rather than a panel laid over its
+     neighbours, and sixteen always-on backdrop-filters would be a
+     compositing bill the directory has no reason to pay. */
   .pdisc--column {
     position: static;
     min-width: 0;
   }
 
-  /* THE TOGGLE BESIDE THE PICTURE, A CHEVRON ALONE (2026-10-14, Josh:
-     "remove vertical bar"). The hairline that ran down this column — full
-     height and broken by the chevron since 10-12, the head's height since
-     earlier on the 14th — is gone; the column stays as the hit area, and
-     the chevron stands at its foot, 16px off the picture. */
+  /* The toggle as the phone places it (see the mobile block below): out of
+     flow, a square on the head's last line. The desktop puts it back in flow
+     as a bar — the block after the chevron rules. */
   .pdisc--column > .pdisc__toggle {
     position: absolute;
     top: 0;
     bottom: 0;
-    /* AS TALL AS THE NAME AND ROLE (2026-10-14, Josh: "the bar should go only
-       up to the role"). The card hands over its head's grid row, and an
-       absolutely positioned box whose containing block is a grid container
-       takes its grid-row as that containing block, so top:0/bottom:0 span
-       exactly the head, however many lines it takes. An engine that ignores
-       the placement gets the card's full height, the earlier rail. */
-    grid-row: var(--pdisc-rail-row, auto);
-    left: var(--pdisc-rail-start, auto);
     right: auto;
     width: var(--ccard-rail, 1.6rem);
     flex: none;
@@ -526,15 +506,6 @@ const hasSummary = Astro.slots.has("summary");
     margin: 0;
     transform: rotate(var(--pdisc-rail-open, 135deg));
   }
-  /* The chevron at the hairline's foot, centred on the line. */
-  @media (--bp-desktop) {
-    .pdisc.pdisc--column > .pdisc__toggle::after {
-      position: absolute;
-      bottom: 0.2rem;
-      left: calc(var(--pdisc-rail-line, 50%) + 0.5px);
-      translate: -50% 0;
-    }
-  }
   .pdisc.pdisc--column:not([open]) > .pdisc__toggle::after,
   .pdisc.pdisc--column.is-closing > .pdisc__toggle::after {
     margin: 0;
@@ -546,6 +517,36 @@ const hasSummary = Astro.slots.has("summary");
      close. */
   .pdisc.pdisc--column > .pdisc__toggle::after {
     transition: transform 460ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /* THE BAR UNDER THE ROLE (2026-10-14, Josh: "create a horizontal bar with
+     the arrow below the role. now it sits at a weird place"). On a desktop
+     the <summary> is back IN FLOW as the panel's first line, so it stands
+     directly under the name and role (the card's row gap away): a hairline
+     across the words' column, ending in the chevron at the column's outer
+     end — the card mirrors that with --pdisc-toggle-dir. The words unfold
+     below it, so the bar never moves. Replaces the vertical rail beside the
+     picture (10-12 to earlier on the 14th). */
+  @media (--bp-desktop) {
+    .pdisc--column > .pdisc__toggle {
+      position: static;
+      display: flex;
+      flex-direction: var(--pdisc-toggle-dir, row);
+      align-items: center;
+      gap: 0.6rem;
+      width: auto;
+      height: 1.25rem;
+      margin-bottom: 0.7rem;
+    }
+    .pdisc--column > .pdisc__toggle::before {
+      content: "";
+      flex: 1 1 auto;
+      height: 1px;
+      background: var(--color-dark);
+    }
+    .pdisc.pdisc--column > .pdisc__toggle::after {
+      flex: none;
+    }
   }
 
   .pdisc--column .pdisc__body {

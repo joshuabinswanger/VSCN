@@ -54,21 +54,17 @@
      somewhere to go; see SPREAD_TILE).
      --ccard-slot-w is the slot: the cell is an inline-size container
      (CommunityGrid), so 100cqw; the editor preview states its own. */
-  /* ── THE RAIL BESIDE THE PICTURE, AND NOTHING MOVES (2026-10-14, Josh: "the
-     bar should go only up to the role and when collapsed the bar sits next
-     to the image only with around 16px padding. Also make the animation not
-     have any layout shift, keep the role a constant width").
-     Picture | rail | gap | words, open AND folded. The rail's hairline stands
-     --ccard-rail-inset off the picture and is only as tall as the name and
-     role (MemberDetailPanel places the <summary> in this grid's first row),
-     with the chevron at its foot. The words' column keeps one width in both
-     states, so the name and role never re-wrap and the fold is purely the
-     words unfolding under them (src/lib/cardFold.ts). This replaces the rail
-     on the words' far side (2026-10-12, "on the right side of text when
-     expanded") and the column that narrowed when folded (earlier today). */
+  /* ── NOTHING MOVES (2026-10-14, Josh: "make the animation not have any
+     layout shift, keep the role a constant width"). Picture | air | words,
+     open AND folded: the words' column keeps one width in both states, so the
+     name and role never re-wrap and the fold is purely the words unfolding
+     under them (src/lib/cardFold.ts). The toggle is a horizontal bar under
+     the role ("create a horizontal bar with the arrow below the role"), drawn
+     by MemberDetailPanel as the panel's first line. --ccard-rail is the
+     column that held the vertical rail until then, kept as air so the
+     picture keeps its size. */
   --ccard-rail: 2rem;
-  --ccard-rail-inset: 16px;
-  /* The air between the rail's column and the words. */
+  /* More air between the picture and the words. */
   --ccard-gap: 0.6rem;
   /* The words' column (2026-10-14, Josh: "make the text etc wider"). The
      editor preview reads this name to size its slot. */
@@ -84,12 +80,11 @@
      grid cell this card was dealt into; absent them the fallback is large
      enough to be no cap at all. */
   --frame-cap: calc(var(--slot-rows, 999) * var(--cgrid-row, 2rem) - var(--ccard-chrome));
-  /* What MemberDetailPanel reads to draw the rail: the left edge of the
-     rail's column, the hairline's offset inside it, and the chevron's angle
-     open (pointing up: fold the words back) and folded (pointing down: the
-     words unfold below). [data-lane="right"] mirrors the first two. */
-  --pdisc-rail-start: var(--ccard-pic-w);
-  --pdisc-rail-line: var(--ccard-rail-inset);
+  /* What MemberDetailPanel reads to draw the toggle: which end of the bar
+     the chevron stands at (the outer one; [data-lane="right"] mirrors it),
+     and the chevron's angle open (up: fold the words back) and folded
+     (down: the words unfold below). */
+  --pdisc-toggle-dir: row;
   --pdisc-rail-open: 225deg;
   --pdisc-rail-folded: 45deg;
   /* THE DEAL. The words' column is three rows — the head (name and role),
@@ -120,10 +115,6 @@
    the lane mirror and the fold are stated for the desktop only; left
    unconditional, the lane rules outranked the phone's by specificity. ── */
 @media (--bp-desktop) {
-  .ccard {
-    /* The rail's row: the head's. */
-    --pdisc-rail-row: 1 / 2;
-  }
   .ccard__body {
     grid-area: 1 / 1 / 4 / 2;
   }
@@ -148,17 +139,16 @@
 
   /* ── THE WORDS ALTERNATE (2026-10-12, Josh: "the text should be alternating
      right and left"). A card in the right-hand lane hangs its words off its
-     LEFT side — words | gap | rail | picture — with the rail still against
-     the picture, the foot reversed so the pager still stands at the
+     LEFT side — words | air | picture — the toggle's chevron at the bar's
+     left end, the foot reversed so the pager still stands at the
      picture's bottom corner and the button at the card's outer edge, and
-     the name and role set flush right, against the rail (2026-10-14, Josh:
+     the name and role set flush right, towards the picture (2026-10-14, Josh:
      "right side image should get a right aligne Title and Role"). The lane is
      the cell's (data-lane, written by the deal from laneOf), so the words
      always face the gutter. */
   [data-lane="right"] > .ccard {
     grid-template-columns: var(--ccard-side-w) var(--ccard-gap) var(--ccard-rail) var(--ccard-pic-w);
-    --pdisc-rail-start: calc(var(--ccard-side-w) + var(--ccard-gap));
-    --pdisc-rail-line: calc(var(--ccard-rail) - var(--ccard-rail-inset) - 1px);
+    --pdisc-toggle-dir: row-reverse;
   }
   [data-lane="right"] > .ccard > .ccard__body {
     grid-area: 1 / 4 / 4 / 5;
