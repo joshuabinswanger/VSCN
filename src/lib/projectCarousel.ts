@@ -19,6 +19,16 @@
 //      clips at the column now, as the directory card does (Josh: "the
 //      carousel should not show the other card on the right"), so there is
 //      nothing left to measure.
+//   1b. SLIDES AS WIDE AS THEIR PICTURES (2026-10-14, Josh: "there is still
+//      a gap to the right of the images and we see them transition through
+//      that"). A picture capped at 60vh is narrower than the column; in a
+//      column-wide slide the works travelled a column apart, a strip of bare
+//      paper between them. Each slide now takes its picture's width (the
+//      frame's own resolved max-width), slides snap to the column's CENTRE,
+//      and the track is padded so the first and last can reach it. The
+//      stylesheet clips the track to the current picture, so the next one
+//      arrives one gap behind the last, as on the directory card. Without
+//      the script every slide is column-wide, as before.
 //   2. PREV / NEXT, the dots and the spoken position.
 //   2b. THE FRAME. A work narrower than the column (the 60vh cap, centred) is
 //      not where the column's edges are, so the dots and the two chevrons are
@@ -101,9 +111,28 @@ export function initProjectCarousels(root: ParentNode = document): void {
     const controller = new AbortController();
     const { signal } = controller;
 
-    // A slide's resting scroll position: its left edge on the column's.
-    // offsetLeft is measured from the track (position: relative in the CSS).
-    const restFor = (i: number) => slides[i].offsetLeft;
+    // 1b: each slide's width, and the track's end padding. The column is the
+    // stage's width (the track's own box shrinks by its padding).
+    const stage = track.parentElement ?? carousel;
+    let column = 0;
+    let widths: number[] = [];
+    const size = () => {
+      column = stage.clientWidth;
+      if (!column) return;
+      widths = slides.map((slide) => {
+        const pic = slide.querySelector<HTMLElement>(".mprof__work-link");
+        const cap = pic ? parseFloat(getComputedStyle(pic).maxWidth) : NaN;
+        return Math.round(Number.isFinite(cap) ? Math.min(column, cap) : column);
+      });
+      slides.forEach((slide, i) => slide.style.setProperty("--slide-w", `${widths[i]}px`));
+      track.style.setProperty("--pad-l", `${(column - widths[0]) / 2}px`);
+      track.style.setProperty("--pad-r", `${(column - widths[widths.length - 1]) / 2}px`);
+    };
+
+    // A slide's resting scroll position: its centre on the column's.
+    // offsetLeft is measured from the track (position: relative in the CSS)
+    // and includes the track's padding.
+    const restFor = (i: number) => slides[i].offsetLeft - (column - (widths[i] ?? column)) / 2;
 
     const current = () => {
       let best = 0;
@@ -125,11 +154,12 @@ export function initProjectCarousels(root: ParentNode = document): void {
       const slide = slides[shown < 0 ? 0 : shown];
       if (!slide) return;
       const pic = slide.querySelector<HTMLElement>(".mprof__work-link") ?? slide;
-      const s = slide.getBoundingClientRect();
       const p = pic.getBoundingClientRect();
-      if (!s.width) return;
-      carousel.style.setProperty("--frame-l", `${Math.max(0, Math.round(p.left - s.left))}px`);
-      carousel.style.setProperty("--frame-r", `${Math.max(0, Math.round(s.right - p.right))}px`);
+      if (!p.width || !column) return;
+      // Where the picture stands once it is at rest: centred on the column.
+      const side = Math.max(0, Math.round((column - Math.min(column, p.width)) / 2));
+      carousel.style.setProperty("--frame-l", `${side}px`);
+      carousel.style.setProperty("--frame-r", `${side}px`);
       carousel.style.setProperty("--frame-h", `${Math.round(p.height)}px`);
     };
     const update = () => {
@@ -172,13 +202,18 @@ export function initProjectCarousels(root: ParentNode = document): void {
     // is also what frames a carousel that was built while hidden (the
     // editor's preview tab): it has no box until the tab opens, and opening
     // it is a resize.
-    const observer = new ResizeObserver(() => {
+    const reseat = () => {
       const i = shown < 0 ? 0 : shown;
+      size();
       track.scrollTo({ left: restFor(i), behavior: "auto" });
       shown = -1;
       update();
-    });
+    };
+    const observer = new ResizeObserver(reseat);
     observer.observe(carousel);
+    // The pictures' cap is in vh: a window that only grows taller changes it
+    // without changing the column.
+    window.addEventListener("resize", reseat, { signal });
 
     seat.set(carousel, (slide) => {
       const i = slides.indexOf(slide);
@@ -186,6 +221,7 @@ export function initProjectCarousels(root: ParentNode = document): void {
       track.scrollTo({ left: restFor(i), behavior: "auto" });
     });
 
+    size();
     update();
 
     live.set(carousel, () => {
