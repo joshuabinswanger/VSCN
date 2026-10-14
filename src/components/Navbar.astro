@@ -6,9 +6,10 @@ import "../styles/type.css";
 ---
 
 <nav transition:persist="navbar">
-  {/* BEHIND ONE BUTTON ON A DESKTOP (2026-10-12, Josh: "the three buttons
-      should be behind a Menu button"). MENU sits on the header's line at the
-      right; it opens the three bars as a small drop-down under it.
+  {/* THREE PILLS ON A DESKTOP (2026-10-14, Josh: "on desktop it should be 3
+      pills that are directly selectable"). The links stand in a row on the
+      header's line at the right, always shown; the button is not drawn. (From
+      2026-10-12 they were behind a MENU button there.)
       A HAMBURGER ON A PHONE (2026-10-13, Josh: "actually a hamburger will be
       better"): the same button, drawn as a black square with three white bars
       that turn into a cross while it is open; the word MENU stays in the
@@ -284,6 +285,38 @@ import "../styles/type.css";
     flex-direction: column;
   }
 
+  /* THREE PILLS, NO MENU, ON A DESKTOP (2026-10-14, Josh: "on desktop it
+     should be 3 pills that are directly selectable"). The drop-down above is
+     the phone's; here the same list is a row in the header's flow, always
+     shown, and the button is not drawn. The open/closed machinery is
+     switched off rather than removed: the list is visible, each pill is at
+     rest, and only the type's colour and the current page's wipe animate.
+     Two classes on the pill outrank the closed state (.nav-link, one class)
+     whatever the button says, so a phone's open menu carried across the
+     breakpoint changes nothing here. */
+  @media (--bp-desktop) {
+    .nav-menu-btn {
+      display: none;
+    }
+    .nav-links {
+      position: static;
+      flex-direction: row;
+      align-items: center;
+      gap: 6px;
+      width: auto;
+      visibility: visible;
+      transition: none;
+    }
+    .nav-right-group {
+      flex-direction: row;
+    }
+    .nav-links .nav-link {
+      opacity: 1;
+      transform: none;
+      transition: color 0.25s ease 0.08s;
+    }
+  }
+
   .lang-toggle {
     position: fixed;
     bottom: 20px;
@@ -387,6 +420,11 @@ import "../styles/type.css";
   function setMenu(open: boolean) {
     document.getElementById("nav-menu-btn")?.setAttribute("aria-expanded", String(open));
   }
+  // The menu is the phone's only (on a desktop the pills are always shown),
+  // so crossing the breakpoint closes it: a phone menu left open must not
+  // come back open after a round trip through the desktop width. The query is
+  // --bp-mobile (global.css), which a script cannot read by name.
+  window.matchMedia("(max-width: 767px)").addEventListener("change", () => setMenu(false));
   document.addEventListener("click", (event) => {
     const target = event.target as Element | null;
     if (!target?.closest?.("#nav-menu-btn")) return;
