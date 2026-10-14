@@ -5,7 +5,6 @@ import {
   DEFAULT_VIEW,
   GALLERY_PATTERNS,
   STRIP_SLOT_ROWS,
-  TAG_CHIP_VIEW,
   laneOf,
   layOutSlots,
   layOutWall,
@@ -636,45 +635,14 @@ document.addEventListener("astro:page-load", () => {
     applyLayout(grid, mode);
     reflectMode(mode);
 
-    // ── A TAG CHIP KEEPS THE PICTURE VIEW YOU ARE IN ──────
-    // (2026-09-03.) communityTagHref() sends every chip to the GALLERY,
-    // which is right everywhere the link is printed off this page — a
-    // member's own profile has no view to keep. On /community that left
-    // the chips disagreeing with the dropdown directly above them: picking
-    // "Animation" from the dropdown preserves ?pattern= (it builds its URL
-    // from window.location), while a chip in an open panel silently moved a
-    // reader off the wall and into the spread.
-    //
-    // The rule that satisfies both halves of Josh's ask ("clicking on tags
-    // opens gallery with tag filter applied", and NOT "a narrower ledger"):
-    // a chip goes to PICTURES, and keeps the picture view it was pressed in.
-    // The wall is pictures, so grid → grid. The ledger is not, so index →
-    // the spread, exactly as before.
-    //
-    // THE GALLERY IS NAMED NOW, not implied by an absent parameter — the
-    // bare URL is the ledger while DEFAULT_VIEW says so, and a chip that
-    // dropped ?pattern= would land the reader on the very ledger this rule
-    // exists to take them off. So every chip carries an explicit view.
-    //
-    // The href is REWRITTEN rather than intercepted on click, so the status
-    // bar, middle-click and open-in-new-tab all agree with what a left click
-    // does. Re-run on every page-load because a view switch is a navigation
-    // that swaps this document (see goTo).
-    // Edited as TEXT, not round-tripped through URL/URLSearchParams. That
-    // rewrites `%20` to `+` in a multi-word tag, which decodes to the same
-    // filter but is a different string — a second URL, a second history
-    // entry and a second cache key for one place, and it would have silently
-    // changed every chip on the page including the ones this rule leaves
-    // alone. Splitting on the suffix first makes the pass idempotent, since
-    // it runs again on every swapped-in document.
-    document.querySelectorAll<HTMLAnchorElement>("a.pdisc__tag").forEach((chip) => {
-      // Split on EITHER separator: communityTagHref emits "?tag=…&pattern="
-      // for a real tag and "?pattern=" for the tagless case, and a pass that
-      // only knew the "&" form would append a second pattern to the latter.
-      const base = (chip.getAttribute("href") ?? "").split(/[?&]pattern=/)[0];
-      const view = mode === "grid" ? "grid" : TAG_CHIP_VIEW;
-      chip.setAttribute("href", `${base}${base.includes("?") ? "&" : "?"}pattern=${view}`);
-    });
+    // ── A PROFILE TAG GOES TO PORTFOLIOS, WHATEVER VIEW IT IS IN
+    // (2026-10-15, Josh: "image tags send to images site with tag selected,
+    // profile tags to portfolio".) A chip in a card panel is a MEMBER tag, so
+    // communityTagHref() already sends it to the spread, and the chip is left
+    // alone. Until today this pass rewrote it to keep the Images view when
+    // pressed there (2026-09-03), which landed a member tag on a wall that
+    // filters by the PICTURES' tags. Work and project tags go to Images via
+    // communityWorkTagHref().
     if (new URLSearchParams(window.location.search).has("grid")) {
       grid.classList.add("cgrid--debug");
     }
