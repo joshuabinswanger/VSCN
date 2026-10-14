@@ -504,17 +504,23 @@ const hasSummary = Astro.slots.has("summary");
     position: absolute;
     top: 0;
     bottom: 0;
+    /* AS TALL AS THE NAME AND ROLE (2026-10-14, Josh: "the bar should go only
+       up to the role"). The card hands over its head's grid row, and an
+       absolutely positioned box whose containing block is a grid container
+       takes its grid-row as that containing block, so top:0/bottom:0 span
+       exactly the head, however many lines it takes. An engine that ignores
+       the placement gets the card's full height, the earlier rail. */
+    grid-row: var(--pdisc-rail-row, auto);
     left: var(--pdisc-rail-start, auto);
     right: auto;
     width: var(--ccard-rail, 1.6rem);
     flex: none;
     display: grid;
     place-items: center;
-    background:
-      linear-gradient(var(--rail-line), var(--rail-line)) 50% 0 / var(--rail-w)
-        calc(50% - var(--rail-break)) no-repeat,
-      linear-gradient(var(--rail-line), var(--rail-line)) 50% 100% / var(--rail-w)
-        calc(50% - var(--rail-break)) no-repeat;
+    /* The hairline at --pdisc-rail-line inside the column (16px off the
+       picture), from the head's top down to the chevron at its foot. */
+    background: linear-gradient(var(--rail-line), var(--rail-line))
+      var(--pdisc-rail-line, 50%) 0 / var(--rail-w) calc(100% - var(--rail-break)) no-repeat;
     transition: color 0.15s;
   }
 
@@ -529,6 +535,15 @@ const hasSummary = Astro.slots.has("summary");
   .pdisc.pdisc--column > .pdisc__toggle::after {
     margin: 0;
     transform: rotate(var(--pdisc-rail-open, 135deg));
+  }
+  /* The chevron at the hairline's foot, centred on the line. */
+  @media (--bp-desktop) {
+    .pdisc.pdisc--column > .pdisc__toggle::after {
+      position: absolute;
+      bottom: 0.2rem;
+      left: calc(var(--pdisc-rail-line, 50%) + 0.5px);
+      translate: -50% 0;
+    }
   }
   .pdisc.pdisc--column:not([open]) > .pdisc__toggle::after,
   .pdisc.pdisc--column.is-closing > .pdisc__toggle::after {
