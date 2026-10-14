@@ -189,6 +189,33 @@ export interface LightboxTextLabels {
   /** Accessible names for the counter's two chevrons. */
   prev: string;
   next: string;
+  /** The words toggle: its visible word, and its name in each state. */
+  textToggle: string;
+  hideText: string;
+  showText: string;
+}
+
+/**
+ * Whether the visitor last chose to hide the words. Remembered for the
+ * session's next lightbox and the next visit: someone who wants the pictures
+ * bare wants them bare on every one. Storage can be missing or throw (a
+ * private window, blocked site data); then the words simply start shown.
+ */
+const WORDS_OFF_KEY = "vscn.lightbox.wordsOff";
+function readWordsOff(): boolean {
+  try {
+    return localStorage.getItem(WORDS_OFF_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+function writeWordsOff(off: boolean): void {
+  try {
+    if (off) localStorage.setItem(WORDS_OFF_KEY, "1");
+    else localStorage.removeItem(WORDS_OFF_KEY);
+  } catch {
+    /* the choice lasts this lightbox only */
+  }
 }
 
 /**
@@ -372,13 +399,51 @@ export function registerLightboxText(
             });
             el.append(line);
           }
-          el.classList.toggle("is-empty", !caption && !description && !link && !siteLink && !project && !affiliations.length);
+          const empty = !caption && !description && !link && !siteLink && !project && !affiliations.length;
+          el.classList.toggle("is-empty", empty);
+          // A slide with no words has nothing for the toggle to hide.
+          pswp.element?.classList.toggle("pswp--vscn-wordless", empty);
           // The block can scroll; a slide change has to start it at the top or
           // the next description opens mid-paragraph.
           el.scrollTop = 0;
         };
         pswp.on("change", render);
         render();
+      },
+    });
+
+    // ── The words toggle, "Text", in the top row ────────────────────────
+    // (2026-10-15, Josh: "add a button to hide or show image title and
+    // description".) A word in the Close's voice rather than an icon, between
+    // the + and the Close. It hides the whole words block — caption,
+    // description, links, project — and leaves the artist line, which is the
+    // route out to the person and not text about the picture. Struck through
+    // while the words are off, so the row says what state it is in; the
+    // accessible name says what pressing it will do. Hidden on a slide that
+    // has no words (pswp--vscn-wordless, set by the block's render above).
+    ui.registerElement({
+      name: "vscn-text-toggle",
+      className: "pswp__button--vscn-text-toggle",
+      appendTo: "bar",
+      order: 15,
+      isButton: true,
+      html: `<span class="pswp__vscn-word" aria-hidden="true"></span>`,
+      onInit: (el, pswp) => {
+        const word = el.querySelector<HTMLElement>(".pswp__vscn-word");
+        if (word) word.textContent = labels.textToggle;
+        const apply = (off: boolean) => {
+          pswp.element?.classList.toggle("pswp--vscn-words-off", off);
+          el.setAttribute("aria-pressed", String(!off));
+          const name = off ? labels.showText : labels.hideText;
+          el.setAttribute("aria-label", name);
+          el.title = name;
+        };
+        apply(readWordsOff());
+        el.addEventListener("click", () => {
+          const off = !pswp.element?.classList.contains("pswp--vscn-words-off");
+          writeWordsOff(off);
+          apply(off);
+        });
       },
     });
 
