@@ -1173,7 +1173,8 @@ label:has(> .picker-input:focus-visible) {
     .avatar-img,
     .avatar-placeholder,
     .ob-avatar-img,
-    .ob-avatar-ph
+    .ob-avatar-ph,
+    .cindex__avatar
   ),
 *:not(.seg, .ebar, .ebar-menu, .profile-save-button, .nav-link)::before,
 *:not(.seg, .ebar, .ebar-menu)::after {
@@ -1217,10 +1218,10 @@ label:has(> .picker-input:focus-visible) {
 /* PORTRAITS: a circle (2026-10-14, Josh: "the profile should have a round
    profile image"). The member's picture on their page, the editor's photo
    field and the wizard's — one person, one shape wherever they set or see
-   it. Their own rules already ask for 50%; the reset above was flattening
-   them, so this only lets them through. The community index's small avatar
-   is not in the list: it sits in a square row of pictures. */
-:where(.mprof__avatar, .avatar-img, .avatar-placeholder, .ob-avatar-img, .ob-avatar-ph) {
+   it, and the community index's opened row (added the same day: "make the
+   index avatar round too"). Their own rules ask for 50% or nothing; the
+   reset above was flattening them, so this lets them through. */
+:where(.mprof__avatar, .avatar-img, .avatar-placeholder, .ob-avatar-img, .ob-avatar-ph, .cindex__avatar) {
   border-radius: 50% !important;
 }
 

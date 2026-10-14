@@ -281,6 +281,14 @@
   list-style: none;
 }
 
+/* An item is as tall as its chip (2026-10-14, Josh: "less vertical spacing
+   on tags"): a list item is a block whose line box is the font's, 23px round
+   a 14px tag, so each row of tags stood 9px further apart than the 5px gap
+   said. */
+.mprof__vals > li {
+  display: flex;
+}
+
 /* `:not(.tagchip)` because TAGS LEFT THIS DRAWING (2026-09-08, Josh: "use this
    style for the tags across all pages", then "tags only"). A tag now wears
    `.tagchip` from global.css — rounded, 0.72rem — and the chips beside it here,

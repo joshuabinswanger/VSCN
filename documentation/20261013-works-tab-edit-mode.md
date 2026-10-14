@@ -164,3 +164,11 @@ Josh: "the profile should have a round profile image. also the left column shoul
 - **Three tracks on a desktop.** `.mprof` is `minmax(16rem, 1fr) minmax(0, 54rem) minmax(0, 1fr)` on the full `contentWide` measure: the works keep their 54rem column, centred on the window (and on the Works bar), and the person stands at the left of the first track. Below about 1100px the first track keeps its minimum and the works give up their centring. The name in the aside dropped to `clamp(1.75rem, 2.2vw, 3.2rem)` so a long surname fits the narrower column whole.
 - **Sticky aside.** `position: sticky; top: 7rem` with a `max-height` of the window less its top and 4rem; an aside taller than that scrolls on its own, scrollbar hidden. A scroll-driven animation (`animation-timeline: scroll(self block)`) puts a fade on its foot while there is more below; a box that does not overflow has no timeline, so it never fades.
 - **The carousel clips at its column.** The bleed (the track reaching to the window's edges so the next work showed in the margin at 40%) is gone from both `profile.css` and `projectCarousel.ts`, together with the dimming and `--carousel-bleed-left`. One work in view, the next arriving from the column's edge, as the directory card does.
+
+## Fifth pass, 2026-10-14: bigger words on the member page, tighter tags, round index avatar
+
+Josh: "make the index avatar round too, also make the font bigger on the work page it seems extremely small. less vertical spacing on tags".
+
+- **Type.** A work's title and description and a project's description left CAPTION (11px desktop / 12px phone) for their own voice in `type.css` at `--fs-100` (14 / 13px), the bio's size; the "With …" line and `.mprof__link` sit at `--fs-90` (13px). The card's panel and the lightbox keep CAPTION and META. The editor's inline fields inherit, so the Works tab grows with the page.
+- **Tags.** Each `.mprof__vals > li` was a block whose line box (23px) stood round a 14px chip, so rows were 9px further apart than the 5px gap. The item is a flex box now: rows 28px → 19px apart.
+- **Index avatar.** `.cindex__avatar` joined the PORTRAITS rule in `global.css`.
