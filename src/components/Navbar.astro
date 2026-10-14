@@ -210,18 +210,39 @@ import "../styles/type.css";
       transform 0.4s cubic-bezier(0.2, 1.25, 0.35, 1) calc(30ms + var(--i, 0) * 55ms);
   }
 
-  /* THE CURRENT PAGE IS THE INVERTED CHIP: paper with black type. It wipes in
-     (2026-10-12, "make the animation more flashy!"): a layer under the type
-     that sweeps across the chip from the left on an overshooting curve. */
+  /* WHITE ON BLACK EVEN ONCE VISITED (2026-10-14, Josh: "the text is black on
+     black bg"). global.css resets links with `a, a:visited { color: inherit }`,
+     and a:visited (0,1,1) outranks .nav-link (0,1,0): every page the reader
+     had already been to inherited the nav's black and vanished into the chip.
+     A fresh browser has no history, and getComputedStyle reports :visited
+     links as unvisited on purpose, so neither a clean test run nor a script
+     can see this; look at it after visiting the pages. The current page's
+     own :visited rule below comes later and still wins. */
+  .nav-link:visited {
+    color: var(--nav-paper);
+  }
+
+  /* THE CURRENT PAGE IS THE INVERTED CHIP: a paper capsule with a black
+     hairline and black type. It wipes in (2026-10-12, "make the animation
+     more flashy!"): a layer under the type that sweeps across the chip from
+     the left.
+     A CAPSULE LIKE THE CHIP (2026-10-14, Josh: "take a close look at the UI
+     again"). Since the chips went round (global.css, CONTROLS) this layer
+     stayed a square: it covered the capsule's hairline, so the current page
+     read as loose black text on desktop and as a box with broken sides on a
+     phone. It now takes the chip's radius (global.css excludes it from the
+     square reset) and carries the hairline itself, and the wipe is a
+     clip-path instead of a scaleX, which would squash the round ends. */
   .nav-link::before {
     content: "";
     position: absolute;
     inset: 0;
     z-index: -1;
+    border-radius: inherit;
     background: var(--nav-paper);
-    transform: scaleX(0);
-    transform-origin: 100% 50%;
-    transition: transform 0.28s cubic-bezier(0.5, 0, 0.75, 0);
+    box-shadow: inset 0 0 0 1px var(--nav-ink);
+    clip-path: inset(0 100% 0 0);
+    transition: clip-path 0.28s cubic-bezier(0.5, 0, 0.75, 0);
   }
 
   /* No grey and no thicker line under the pointer: the type underlines. */
@@ -237,9 +258,8 @@ import "../styles/type.css";
     color: var(--nav-ink);
   }
   .nav-link--active::before {
-    transform: scaleX(1);
-    transform-origin: 0% 50%;
-    transition: transform 0.55s cubic-bezier(0.2, 1.25, 0.35, 1) 0.05s;
+    clip-path: inset(0 0 0 0);
+    transition: clip-path 0.5s cubic-bezier(0.2, 0.9, 0.2, 1) 0.05s;
   }
 
   @media (prefers-reduced-motion: reduce) {
