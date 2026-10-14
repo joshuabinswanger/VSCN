@@ -58,36 +58,74 @@
 /* TWO COLUMNS ON A DESKTOP (2026-10-13, Josh: "profile on desktop should
    have a 2 column design left artist info right projects and images"). The
    person on the left — picture, name, the lines under it, the bio, the
-   needs, tags and links, all in .mprof__aside — and the works on the right,
-   starting level with the name. Both the page and the editor's Works tab
-   render this element, so both split the same way. The page now lays out on
-   Layout's `contentWide` measure and caps itself at 86rem here (1118px at
-   the desktop's 13px root), so the works column keeps about the 54rem a
-   single-column page gave them. A phone keeps the single column: the aside
-   is a plain block there and changes nothing.
+   needs, tags and links, all in .mprof__aside — and the works beside them.
+   Both the page and the editor's Works tab render this element, so both
+   split the same way. The page lays out on Layout's `contentWide` measure.
+   A phone keeps the single column: the aside is a plain block there and
+   changes nothing.
+   PERSON AT THE EDGE, WORKS IN THE MIDDLE (2026-10-14, Josh: "the left
+   column should be sticky. also more to the left and the center column
+   should be in the middle"). Three tracks, not two: the works keep their
+   54rem column (702px at the desktop's 13px root, what a single-column page
+   gave them) and the two tracks either side share what is left equally, so
+   the works sit on the window's centre line — and on the Works bar's, which
+   is centred on the window too. The person stands at the left of the first
+   track; the third is empty on purpose. Below about 1100px the first track
+   keeps its 15rem minimum and the works give up their centring before they
+   give up width.
    The aside spans every row the works column makes, so the works, the empty
    note and the editor's list (whichever are showing) all stack in column 2.
-   It is NOT sticky: a long bio or many tags would leave its foot unreachable
-   until the end of the page. */
+   STICKY, and never cut off: it stays put under the header while the works
+   scroll past, and an aside taller than the window (a long bio, many tags)
+   scrolls on its own, inside a box the window's height, rather than leaving
+   its foot unreachable until the end of the page. Its scrollbar is hidden
+   (a grey bar beside a name reads as a fault); a fade along its foot says
+   there is more, and goes once the last line is in view. */
 @media (--bp-desktop) {
   .mprof {
-    --aside-w: clamp(15rem, 28%, 24rem);
-    /* The works column's left edge is the carousel's: a passed slide must
-       not spill over the person's column (projectCarousel.ts reads this). */
-    --carousel-bleed-left: 0;
+    --aside-w: 16rem;
     display: grid;
-    grid-template-columns: var(--aside-w) minmax(0, 1fr);
-    column-gap: clamp(3rem, 5vw, 6rem);
+    grid-template-columns: minmax(var(--aside-w), 1fr) minmax(0, 54rem) minmax(0, 1fr);
+    column-gap: clamp(2.5rem, 4vw, 5rem);
     align-items: start;
-    max-width: 86rem;
+    max-width: none;
     --works-top: 0px;
   }
   .mprof > :not(.mprof__aside) {
     grid-column: 2;
   }
   .mprof__aside {
+    --aside-top: 7rem;
     grid-column: 1;
     grid-row: 1 / span 6;
+    justify-self: start;
+    width: 100%;
+    max-width: 22rem;
+    position: sticky;
+    top: var(--aside-top);
+    max-height: calc(var(--shell-h, 100dvh) - var(--aside-top) - 4rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    /* Room for a focused link's outline inside the scroll box's clip. */
+    padding: 3px;
+    margin: -3px;
+  }
+  .mprof__aside::-webkit-scrollbar {
+    display: none;
+  }
+  /* The fade is a scroll-driven animation on the aside's own scroll: a box
+     that does not overflow has no scroll timeline, so it never fades. No
+     support, no fade, and the aside still scrolls. Longhands, because the
+     minifier folds an `animation` shorthand holding a timeline. */
+  @supports (animation-timeline: scroll()) {
+    .mprof__aside {
+      animation-name: mprof-aside-more;
+      animation-duration: auto;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
+      animation-timeline: scroll(self block);
+    }
   }
   /* In a column a third of the page wide, the picture stands over the name
      instead of beside it, and the name scales with the window rather than
@@ -100,14 +138,25 @@
     width: 7rem;
     height: 7rem;
   }
+  /* Small enough that a long surname fits the column whole at 1280. */
   .mprof__aside .mprof__name {
-    font-size: clamp(2rem, 2.9vw, 3.2rem);
+    font-size: clamp(1.75rem, 2.2vw, 3.2rem);
   }
   .mprof__aside .mprof__bio {
     margin-top: 2.5rem;
   }
   .mprof__aside .mprof__meta {
     margin-top: 2.25rem;
+  }
+}
+
+@keyframes mprof-aside-more {
+  0%,
+  97% {
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 3rem), transparent);
+  }
+  100% {
+    mask-image: none;
   }
 }
 
@@ -424,18 +473,14 @@
    buttons all come to rest on a whole work. src/lib/projectCarousel.ts adds
    the buttons, the measurement and the lightbox follow.
 
-   THE BLEED. At rest a work is exactly as wide as a work has always been —
-   the page's column — and the first one stands exactly where it stood. The
-   TRACK is wider than that: negative margins take it out to the edges of the
-   scrollport and the same distances come back as padding and as
-   scroll-padding, so the snap points still sit on the column's left edge
-   while the next work spills out to the right (and a passed one to the left).
-   --bleed-l / --bleed-r are measured by the script against .page-wrap's
-   client box; before it runs, or without it, they are 0 and the carousel is
-   a column-wide scroller that still snaps. */
+   INSIDE ITS OWN COLUMN (2026-10-14, Josh: "the carousel should not show
+   the other card on the right. it should work the same as on the gallery
+   view, just for project images"). The track used to bleed out to the
+   window's edges, so the next work stood in the margin, turned down to 40%.
+   Now it clips at the column, as the directory card's frame clips its
+   slides (communityCard.css): one work in view, the next one arriving from
+   the column's edge as you page. */
 .mprof__carousel {
-  --bleed-l: 0px;
-  --bleed-r: 0px;
   --carousel-gap: 3rem;
   display: flex;
   flex-direction: column;
@@ -497,9 +542,7 @@
   color: var(--color-muted);
 }
 
-/* The track and its two edge strips. The strips sit on the COLUMN's edges,
-   not the track's: the track bleeds out into the margins, the stage does
-   not. */
+/* The track and its two edge strips, both on the column. */
 .mprof__carousel-stage {
   position: relative;
 }
@@ -586,15 +629,11 @@
   display: flex;
   align-items: flex-start;
   gap: var(--carousel-gap);
-  margin-inline: calc(-1 * var(--bleed-l)) calc(-1 * var(--bleed-r));
-  padding-inline: var(--bleed-l) var(--bleed-r);
-  scroll-padding-inline: var(--bleed-l) var(--bleed-r);
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
-  /* No scrollbar: the chevrons, the dots and the spill of the next work
-     are the affordance, and a bar under a tall picture would sit a screen
-     below the thing it scrolls. */
+  /* No scrollbar: the chevrons and the count are the affordance, and a bar
+     under a tall picture would sit a screen below the thing it scrolls. */
   scrollbar-width: none;
 }
 .mprof__carousel-track::-webkit-scrollbar {
@@ -605,21 +644,13 @@
   outline-offset: 4px;
 }
 
-/* One work per step, at the column's width: once the bleed is padded back
-   in, the track's content box IS the column, so 100% is that width.
-   scroll-snap-stop keeps a hard swipe from flying past a work. */
+/* One work per step, at the column's width. scroll-snap-stop keeps a hard
+   swipe from flying past a work. */
 .mprof__carousel-slide {
   flex: 0 0 100%;
   min-width: 0;
   scroll-snap-align: start;
   scroll-snap-stop: always;
-  transition: opacity 0.3s ease;
-}
-/* The work on the column reads at full strength; the ones spilling into the
-   margins are turned down so the step shows at a glance. Keyed to the
-   script's .is-current, so without the script every work stays full. */
-.mprof__carousel-track:has(.is-current) > .mprof__carousel-slide:not(.is-current) {
-  opacity: 0.4;
 }
 
 /* The spoken position — the clip technique, as .ccard__live. */
@@ -635,9 +666,7 @@
   white-space: nowrap;
 }
 
-/* On a phone the column is the screen less its gutters, so there is no margin
-   for the next work to spill into; the gap only has to say "another one", and
-   the full 3rem would be swipe travel spent on paper. */
+/* On a phone the full 3rem would be swipe travel spent on paper. */
 @media (--bp-mobile) {
   .mprof__carousel {
     --carousel-gap: 1.25rem;
@@ -645,7 +674,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mprof__carousel-slide,
   .mprof__carousel-dot,
   .mprof__carousel-arrow {
     transition: none;

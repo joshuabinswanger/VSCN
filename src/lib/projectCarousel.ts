@@ -14,15 +14,11 @@
 // on the focused track all land on a whole work with no code at all. This
 // module adds only what CSS cannot do:
 //
-//   1. THE BLEED. A work is as wide as the page's column; the track reaches
-//      out to the edges of the scrollport so the next work spills into the
-//      margin instead of being cut at the column's edge. How far that is
-//      depends on where the column sits, which CSS cannot know without
-//      `100vw` — and 100vw includes the .page-wrap scrollbar, which would
-//      overshoot by its width and give the whole PAGE a horizontal scroll. So
-//      the two distances are measured against .page-wrap's client box and
-//      handed to the stylesheet as --bleed-l / --bleed-r. Unmeasured (no
-//      script) they are 0 and the carousel is simply a column-wide scroller.
+//   1. THE BLEED, until 2026-10-14: the track reached out to the window's
+//      edges so the next work spilled into the margin, measured here. It
+//      clips at the column now, as the directory card does (Josh: "the
+//      carousel should not show the other card on the right"), so there is
+//      nothing left to measure.
 //   2. PREV / NEXT, the dots and the spoken position.
 //   2b. THE FRAME. A work narrower than the column (the 60vh cap, centred) is
 //      not where the column's edges are, so the dots and the two chevrons are
@@ -61,7 +57,7 @@ const seat = new WeakMap<HTMLElement, (slide: HTMLElement) => void>();
  * Wires every un-wired carousel under `root`. Idempotent. Carousels that have
  * left the document are released first: the editor's preview replaces its
  * whole works list on every render, and each carousel holds a ResizeObserver
- * on .page-wrap that would otherwise outlive it.
+ * that would otherwise outlive it.
  */
 export function initProjectCarousels(root: ParentNode = document): void {
   live.forEach((release, el) => {
@@ -105,33 +101,9 @@ export function initProjectCarousels(root: ParentNode = document): void {
     const controller = new AbortController();
     const { signal } = controller;
 
-    let bleedLeft = 0;
-    // The scrollport the page actually scrolls in (body is overflow:hidden,
-    // see Layout.astro); the root element is the fallback for a page without
-    // one. clientLeft/clientWidth, not the rect: they stop at the scrollbar.
-    const bound = carousel.closest<HTMLElement>(".page-wrap") ?? document.documentElement;
-
-    const measure = () => {
-      const port = bound.getBoundingClientRect();
-      const left = port.left + bound.clientLeft;
-      const right = left + bound.clientWidth;
-      const box = carousel.getBoundingClientRect();
-      // Not laid out (a hidden tab): nothing to measure yet. The observer
-      // below calls again once it has a size.
-      if (!box.width) return;
-      // In the desktop's two columns (profile.css) the person's column is on
-      // the left, and a passed slide must not spill over it.
-      const noLeftBleed = getComputedStyle(carousel).getPropertyValue("--carousel-bleed-left").trim() === "0";
-      bleedLeft = noLeftBleed ? 0 : Math.max(0, Math.floor(box.left - left));
-      const bleedRight = Math.max(0, Math.floor(right - box.right));
-      carousel.style.setProperty("--bleed-l", `${bleedLeft}px`);
-      carousel.style.setProperty("--bleed-r", `${bleedRight}px`);
-    };
-
     // A slide's resting scroll position: its left edge on the column's.
-    // offsetLeft is measured from the track (position: relative in the CSS)
-    // and includes the track's padding, which is the bleed.
-    const restFor = (i: number) => slides[i].offsetLeft - bleedLeft;
+    // offsetLeft is measured from the track (position: relative in the CSS).
+    const restFor = (i: number) => slides[i].offsetLeft;
 
     const current = () => {
       let best = 0;
@@ -194,20 +166,18 @@ export function initProjectCarousels(root: ParentNode = document): void {
     next?.addEventListener("click", () => go(current() + 1), { signal });
     track.addEventListener("scroll", update, { passive: true, signal });
 
-    // Re-measured whenever the scrollport or the column changes size, and the
-    // slide the visitor was on is put back on the column afterwards: a new
-    // bleed moves every snap point, and without the re-seat a resize would
-    // leave the track resting halfway between two works. This is also what
-    // measures a carousel that was built while hidden (the editor's preview
-    // tab): it has no box until the tab opens, and opening it is a resize.
+    // Whenever the column changes size the slide the visitor was on is put
+    // back on it: a new width moves every snap point, and without the re-seat
+    // a resize would leave the track resting halfway between two works. This
+    // is also what frames a carousel that was built while hidden (the
+    // editor's preview tab): it has no box until the tab opens, and opening
+    // it is a resize.
     const observer = new ResizeObserver(() => {
       const i = shown < 0 ? 0 : shown;
-      measure();
       track.scrollTo({ left: restFor(i), behavior: "auto" });
       shown = -1;
       update();
     });
-    observer.observe(bound);
     observer.observe(carousel);
 
     seat.set(carousel, (slide) => {
@@ -216,7 +186,6 @@ export function initProjectCarousels(root: ParentNode = document): void {
       track.scrollTo({ left: restFor(i), behavior: "auto" });
     });
 
-    measure();
     update();
 
     live.set(carousel, () => {

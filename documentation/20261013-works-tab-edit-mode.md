@@ -155,3 +155,12 @@ black bars, thinner though."
 - **The bar clears the site footer**: on the Works tab, below 1180px of
   window, it rises 40px (measured: at 1024 and 860 it covered the footer's
   links).
+
+## Fourth pass, 2026-10-14: round portrait, person at the edge, works in the middle
+
+Josh: "the profile should have a round profile image. also the left column should be sticky. also more to the left and the center column should be in the middle. the carousel should not show the other card on the right. it should work the same as on the gallery view, just for project images."
+
+- **Round portrait.** The avatar rules already asked for 50%; the site-wide square reset in `global.css` (SHARP SURFACES, ROUND CONTROLS) was flattening them. The member's picture, the editor's photo field and the wizard's are now exceptions to that reset and get `50% !important` in a PORTRAITS rule. The community index's small avatar stays square.
+- **Three tracks on a desktop.** `.mprof` is `minmax(16rem, 1fr) minmax(0, 54rem) minmax(0, 1fr)` on the full `contentWide` measure: the works keep their 54rem column, centred on the window (and on the Works bar), and the person stands at the left of the first track. Below about 1100px the first track keeps its minimum and the works give up their centring. The name in the aside dropped to `clamp(1.75rem, 2.2vw, 3.2rem)` so a long surname fits the narrower column whole.
+- **Sticky aside.** `position: sticky; top: 7rem` with a `max-height` of the window less its top and 4rem; an aside taller than that scrolls on its own, scrollbar hidden. A scroll-driven animation (`animation-timeline: scroll(self block)`) puts a fade on its foot while there is more below; a box that does not overflow has no timeline, so it never fades.
+- **The carousel clips at its column.** The bleed (the track reaching to the window's edges so the next work showed in the margin at 40%) is gone from both `profile.css` and `projectCarousel.ts`, together with the dimming and `--carousel-bleed-left`. One work in view, the next arriving from the column's edge, as the directory card does.
