@@ -551,6 +551,33 @@ const BRAND_SLOTS: BrandSlot[] = [
     font-size: var(--brand-compact-size);
     line-height: 1;
   }
+  /* NO BAND ON A DESKTOP EITHER (2026-10-14, Josh: "on desktop the logo and
+     menu buttons should not be over a filled BG bar at the top"). The row
+     painted nothing, but it stood ABOVE .page-wrap, the desktop's scroller,
+     so the paper between the title and the pills was a strip the content
+     could never enter — a bar by position. Now the row floats over the
+     scroller's top and .page-wrap starts at the window's top edge, padded
+     down by the row's height, so the page passes under the bare letters as
+     it does on a phone. Sticky children pin inside that padding (ProfileForm
+     relies on the same for the bottom), so every sticky top keeps its place.
+     Only the title takes pointer events; the empty row lets clicks through. */
+  @media (--bp-desktop) {
+    .brand-ticker[data-wordmark="compact"] {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 25;
+      pointer-events: none;
+    }
+    .brand-ticker[data-wordmark="compact"] .brand-link {
+      pointer-events: auto;
+    }
+    .brand-ticker[data-wordmark="compact"] ~ .page-wrap {
+      padding-top: var(--header-h);
+      scroll-padding-top: var(--header-h);
+    }
+  }
   @media (--bp-mobile) {
     .brand-ticker[data-wordmark="compact"] {
       --brand-compact-size: 20px;
