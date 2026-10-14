@@ -542,9 +542,14 @@ const hasSummary = Astro.slots.has("summary");
       --bar-break: 0.75rem;
       top: auto;
       bottom: 0;
-      left: 0;
-      right: 0;
-      width: auto;
+      /* NO WIDER THAN THE ROLE (2026-10-15, Josh: "make the horizontal bar
+         max as wide as the role text"): the card measures its role's words
+         (cardFold.ts, --ccard-role-w; the name's when there is no role) and
+         hangs the bar from the side the words are set to. Without the
+         measurement it spans the column. */
+      left: var(--pdisc-bar-left, 0);
+      right: var(--pdisc-bar-right, auto);
+      width: min(100%, var(--ccard-role-w, 100%));
       height: var(--pdisc-bar-h);
       display: grid;
       place-items: center;

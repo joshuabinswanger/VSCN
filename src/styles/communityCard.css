@@ -117,6 +117,10 @@
   }
   .ccard__head {
     grid-area: 1 / 4 / 2 / 5;
+    /* The name and the role as wide as their words, not the column, so the
+       bar under them can be measured off the role (cardFold.ts writes
+       --ccard-role-w). The right lane says flex-end. */
+    align-items: flex-start;
   }
   /* The column: the panel's <details>. min-width so a long unbroken link
      cannot widen the words' column. */
@@ -144,6 +148,9 @@
      always face the gutter. */
   [data-lane="right"] > .ccard {
     grid-template-columns: var(--ccard-side-w) var(--ccard-gap) var(--ccard-rail) var(--ccard-pic-w);
+    /* The bar under right-aligned words hangs from the column's right edge. */
+    --pdisc-bar-left: auto;
+    --pdisc-bar-right: 0;
   }
   [data-lane="right"] > .ccard > .ccard__body {
     grid-area: 1 / 4 / 4 / 5;

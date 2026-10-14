@@ -102,7 +102,48 @@ function toggle(details: HTMLDetailsElement): void {
   });
 }
 
+// THE BAR AS WIDE AS THE ROLE (2026-10-15, Josh: "make the horizontal bar max
+// as wide as the role text"). CSS cannot hand one element's text width to a
+// box in another subtree, so each card's role (its name, while there is no
+// role) is watched and its width written onto the card as --ccard-role-w,
+// which MemberDetailPanel's desktop bar reads. offsetWidth, not the client
+// rect: the directory scales cards as they scroll, and the bar wants the
+// unscaled width. A ResizeObserver catches the font arriving, a wrap, the
+// window changing, and the editor's preview filling or emptying its role.
+// Rebuilt on every page load, released before every swap.
+let headWatch: ResizeObserver | null = null;
+
+function sizeBar(card: HTMLElement): void {
+  const role = card.querySelector<HTMLElement>(":scope > .ccard__head > .ccard__role");
+  const name = card.querySelector<HTMLElement>(":scope > .ccard__head > .ccard__name");
+  const width = role && role.offsetWidth > 0 ? role.offsetWidth : (name?.offsetWidth ?? 0);
+  if (width > 0) card.style.setProperty("--ccard-role-w", `${width}px`);
+  else card.style.removeProperty("--ccard-role-w");
+}
+
+function watchHeads(): void {
+  headWatch?.disconnect();
+  headWatch = new ResizeObserver((entries) => {
+    const cards = new Set<HTMLElement>();
+    for (const entry of entries) {
+      const card = (entry.target as HTMLElement).closest<HTMLElement>(".ccard");
+      if (card) cards.add(card);
+    }
+    cards.forEach(sizeBar);
+  });
+  document
+    .querySelectorAll<HTMLElement>(".ccard > .ccard__head > :is(.ccard__role, .ccard__name)")
+    .forEach((el) => headWatch?.observe(el));
+}
+
 if (typeof document !== "undefined") {
+  document.addEventListener("astro:page-load", watchHeads);
+  document.addEventListener("astro:before-swap", () => {
+    headWatch?.disconnect();
+    headWatch = null;
+  });
+  watchHeads();
+
   document.addEventListener("click", (e) => {
     if (e.defaultPrevented || !(e.target instanceof Element)) return;
     const summary = e.target.closest("details.pdisc--column > summary");
