@@ -539,7 +539,6 @@ const hasSummary = Astro.slots.has("summary");
       padding-bottom: var(--pdisc-bar-h);
     }
     .pdisc--column > .pdisc__toggle {
-      --bar-break: 0.75rem;
       top: auto;
       bottom: 0;
       /* NO WIDER THAN THE ROLE (2026-10-15, Josh: "make the horizontal bar
@@ -553,11 +552,9 @@ const hasSummary = Astro.slots.has("summary");
       height: var(--pdisc-bar-h);
       display: grid;
       place-items: center;
-      background:
-        linear-gradient(var(--color-dark), var(--color-dark)) 0 50% / calc(50% - var(--bar-break))
-          1px no-repeat,
-        linear-gradient(var(--color-dark), var(--color-dark)) 100% 50% /
-          calc(50% - var(--bar-break)) 1px no-repeat;
+      /* JUST THE ARROW (2026-10-15, Josh): the hairline either side of the
+         chevron is gone; the row stays as the hit area, as wide as the role,
+         with the chevron at its centre. */
     }
     /* The air between the words and the bar, inside the unfolding body so
        it grows with them. */
