@@ -1,27 +1,11 @@
 ---
 import { ClientRouter } from "astro:transitions";
-import type { TransitionDirectionalAnimations } from "astro";
 
 // THE PAGE CHANGE (2026-10-12, Josh: "make a smooth animation when switching
-// pages"). Only <main> moves: the old page fades out and lifts a few pixels,
-// the new one fades in rising from below. The brand ticker and the nav are
-// transition:persist and the root keeps its quiet cross-fade (global.css), so
-// the chrome holds still while the content changes under it. Back
-// navigations play the same motion reversed in direction. Astro drops these
-// animations under prefers-reduced-motion. Keyframes live in global.css,
-// because @keyframes are global anyway. Named elements inside <main> (the
-// member image and name morph) are extracted by the browser and keep their
-// own morph.
-const pageMotion: TransitionDirectionalAnimations = {
-  forwards: {
-    old: { name: "vscn-page-out-up", duration: "220ms", easing: "cubic-bezier(.5,0,.9,.4)", fillMode: "both" },
-    new: { name: "vscn-page-in-up", duration: "620ms", easing: "cubic-bezier(.18,1.25,.32,1)", fillMode: "both" },
-  },
-  backwards: {
-    old: { name: "vscn-page-out-down", duration: "220ms", easing: "cubic-bezier(.5,0,.9,.4)", fillMode: "both" },
-    new: { name: "vscn-page-in-down", duration: "620ms", easing: "cubic-bezier(.18,1.25,.32,1)", fillMode: "both" },
-  },
-};
+// pages"). Only <main> moves: the old page fades out and lifts, the new one
+// rises in from below; Back plays it reversed in direction. Both halves are
+// WAAPI on the live <main> (the leave and enter sequences in the script
+// below), NOT a view-transition name on <main> — see enterPage() for why.
 import Navbar from "../components/Navbar.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import PageLoader from "../components/PageLoader.astro";
@@ -371,7 +355,7 @@ const BRAND_SLOTS: BrandSlot[] = [
         fullscreen ? (
           <slot />
         ) : (
-          <main class:list={[{ "is-wide": wide }]} transition:name="page-main" transition:animate={pageMotion}>
+          <main class:list={[{ "is-wide": wide }]}>
             <slot />
           </main>
         )
@@ -1327,6 +1311,35 @@ const BRAND_SLOTS: BrandSlot[] = [
     event.loader = async () => {
       await Promise.all([load(), leavePage()]);
     };
+  });
+
+  // ── ARRIVING: THE NEW PAGE RISES IN ──
+  // This used to be <main>'s transition:name + transition:animate, and that
+  // was the flash (2026-10-14, Josh: "on page transitions there is still this
+  // weird flashing"). A named element is lifted out of the page into its own
+  // ::view-transition-group, which the browser paints ABOVE the root snapshot
+  // — and the paper grain (body::before, a multiply overlay) lives in the
+  // root. So for the whole 620ms rise the content showed bare, un-grained and
+  // brighter, and the grain snapped back over it the moment the transition
+  // ended. Animating the live <main> instead keeps it in the root, under the
+  // grain, the whole way. Same keyframes, same curve.
+  const ENTER_MS = 620;
+  let arriveDirection: "forward" | "back" = "forward";
+  document.addEventListener("astro:before-swap", (event) => {
+    arriveDirection = (event as unknown as { direction?: string }).direction === "back" ? "back" : "forward";
+  });
+  document.addEventListener("astro:after-swap", () => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const main = document.querySelector<HTMLElement>(".page-wrap main");
+    if (!main) return;
+    const rise = arriveDirection === "back" ? -72 : 72;
+    main.animate(
+      [
+        { opacity: 0, transform: `translateY(${rise}px) scale(0.96)`, filter: "blur(10px)" },
+        { opacity: 1, transform: "none", filter: "none" },
+      ],
+      { duration: ENTER_MS, easing: "cubic-bezier(.18,1.25,.32,1)", fill: "backwards" }
+    );
   });
 
   document.addEventListener("astro:before-swap", (event) => {

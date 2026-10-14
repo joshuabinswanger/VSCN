@@ -166,40 +166,13 @@ body {
    same on both sides of a page change — the persisted title and nav, the
    bar, the paper — except the paper's GRAIN, which drifts, so a 420ms
    cross-fade of two grains at different offsets was a double exposure that
-   pulsed. The content's motion is <main>'s own (Layout.astro), so the root
-   simply switches. */
+   pulsed. The content's motion is WAAPI on the live <main> (Layout.astro), so
+   the root simply switches. <main> deliberately has NO view-transition name:
+   a named group paints above the root, i.e. above the grain, and the page
+   flashed bare paper until the grain came back over it (2026-10-14). */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
-}
-
-/* <main>'s group does not travel. By default it morphs from the old page's
-   box to the new one's, and the old box sits wherever the old page had been
-   scrolled to, so the new page used to slide in from there. The old page has
-   already faded out by the time of the swap (Layout.astro's leave sequence),
-   so the new one only has its own rise to make. */
-::view-transition-group(page-main) {
-  animation: none;
-}
-
-/* The page change's content motion — used by <main>'s transition:animate in
-   Layout.astro, which explains the choreography. Small distances on purpose:
-   the content should settle, not travel. */
-/* Bigger since 2026-10-12 (Josh: "make the animation more flashy!"): the old
-   page leaves faster and further, blurring and sinking back a little; the new
-   one comes up from well below, out of a blur, slightly small, and settles
-   past its mark on the overshooting curve in Layout.astro. */
-@keyframes vscn-page-out-up {
-  to { opacity: 0; transform: translateY(-36px) scale(0.98); filter: blur(6px); }
-}
-@keyframes vscn-page-in-up {
-  from { opacity: 0; transform: translateY(72px) scale(0.96); filter: blur(10px); }
-}
-@keyframes vscn-page-out-down {
-  to { opacity: 0; transform: translateY(36px) scale(0.98); filter: blur(6px); }
-}
-@keyframes vscn-page-in-down {
-  from { opacity: 0; transform: translateY(-72px) scale(0.96); filter: blur(10px); }
 }
 
 /* THE PAPER GRAIN — and why its box is the size it is.
