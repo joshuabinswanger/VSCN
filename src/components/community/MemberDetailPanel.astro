@@ -12,10 +12,13 @@ interface Props {
    *  profile picture, which is content worth a toggle by itself). */
   forceShow?: boolean;
   /** COLUMN MODE (2026-10-12, gallery card v2): the panel is the directory
-   *  card's TEXT COLUMN, standing beside the artwork and OPEN by default,
-   *  with the toggle drawn as a rail down the card's right edge. The card
-   *  slots the member's name and role into `lead`. Folding takes the whole
-   *  column away — see the column rules below and communityCard.css. */
+   *  card's TEXT COLUMN, standing beside the artwork, with the toggle drawn
+   *  as a rail down the card's outer edge. FOLDED by default since
+   *  2026-10-14 — only the editor's preview shell starts open, so a member
+   *  sees their words as they type. The card's name and role stand outside
+   *  the panel and stay; folding takes the bio, links and tags away, animated
+   *  by src/lib/cardFold.ts — see the column rules below and
+   *  communityCard.css. */
   mode?: "column";
   /** SHELL: the same markup, empty, carrying `data-ccpv` hooks and the item
    *  templates renderCardPreview() (src/lib/profilePreview.ts) fills from
@@ -66,7 +69,7 @@ const hasSummary = Astro.slots.has("summary");
     <details
       class="pdisc"
       class:list={{ "pdisc--line": hasSummary, "pdisc--column": column }}
-      open={column}
+      open={column && shell}
     >
       {/* No aria-label in line mode: the summary names ITSELF there — its
           content is the member's name and field, which is a better label than
@@ -527,9 +530,17 @@ const hasSummary = Astro.slots.has("summary");
     margin: 0;
     transform: rotate(var(--pdisc-rail-open, 135deg));
   }
-  .pdisc.pdisc--column:not([open]) > .pdisc__toggle::after {
+  .pdisc.pdisc--column:not([open]) > .pdisc__toggle::after,
+  .pdisc.pdisc--column.is-closing > .pdisc__toggle::after {
     margin: 0;
     transform: rotate(var(--pdisc-rail-folded, -45deg));
+  }
+  /* The turn is part of the fold's motion (cardFold.ts), so it takes the
+     fold's easing and a little longer than the base 320ms ease; `is-closing`
+     above is what lets it start with the click rather than at the end of the
+     close. */
+  .pdisc.pdisc--column > .pdisc__toggle::after {
+    transition: transform 460ms cubic-bezier(0.22, 0.61, 0.36, 1);
   }
 
   .pdisc--column .pdisc__body {
@@ -557,9 +568,9 @@ const hasSummary = Astro.slots.has("summary");
   }
 
   @supports selector(::details-content) {
-    /* No travel on the fold. The column leaves SIDEWAYS — the card re-deals
-       its columns in one step — so a height tween under that would only show
-       the text crumpling before it goes. */
+    /* No native tween on the fold: cardFold.ts plays it, on every engine
+       (interpolate-size is Chromium's alone), and a second height transition
+       here would fight it. */
     .pdisc.pdisc--column::details-content {
       transition: none;
     }
@@ -594,9 +605,17 @@ const hasSummary = Astro.slots.has("summary");
       margin: 0 0 0.1rem;
       transform: rotate(225deg);
     }
-    .pdisc.pdisc--column:not([open]) > .pdisc__toggle::after {
+    .pdisc.pdisc--column:not([open]) > .pdisc__toggle::after,
+    .pdisc.pdisc--column.is-closing > .pdisc__toggle::after {
       margin: 0 0 0.1rem;
       transform: rotate(45deg);
     }
   }
 </style>
+
+<script>
+  // The fold's animation. Imported here, in the one component both consumers of
+  // the column (the directory's card and the editor's preview) render, and
+  // registered once on the document — nothing to tear down between pages.
+  import "../../lib/cardFold.ts";
+</script>

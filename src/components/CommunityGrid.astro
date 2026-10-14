@@ -556,22 +556,6 @@ const indexMembers = [...members].sort((a, b) =>
         </div>
       ))
     }
-    {
-      /* A PHONE STARTS WITH THE CARDS FOLDED (2026-10-12, Josh: "on mobile
-        start closed and show name always"): the picture and the name, the
-        words a tap away. The cards render open — that is the desktop card,
-        and the no-JS state — so this closes them where they stand, inline
-        and before first paint, rather than in a module that runs after it
-        and would show every card open for a frame. Re-run on every
-        navigation into the page, which renders the cards open again. The
-        query is --bp-mobile's, written out: custom media do not reach JS. */
-    }
-    <script is:inline data-astro-rerun>
-      if (matchMedia("(max-width: 767px)").matches)
-        document
-          .querySelectorAll("#member-grid .ccard > details.pdisc--column[open]")
-          .forEach((d) => d.removeAttribute("open"));
-    </script>
 
     {
       /* THE WALL'S TILES, one per artwork. Rendered hidden and carrying no

@@ -23,12 +23,13 @@
  *
  * ── THE SECOND CARD (2026-10-12, "gallery card v2", from Josh's sketch) ──
  * The artwork on the left, a TEXT COLUMN on the right: name, role, bio, links
- * and tags, open by default, and under it a foot row with the carousel's
- * "‹ 1 / 3 ›" at the picture's bottom-right corner and a filled PROFILE →
- * button at the far right. A hairline rail down the card's right edge folds
- * the column away; folded, the card is the picture alone, widened to its
- * slot. It REPLACES the first card (name above the picture, role and a
- * dropdown below), which held the same text behind a chevron.
+ * and tags, and under it a foot row with the carousel's "‹ 1 / 3 ›" at the
+ * picture's bottom-right corner and a PROFILE → link at the far right. A
+ * hairline rail down the card's outer edge folds the column. Cards START
+ * FOLDED (2026-10-14): the picture, with the name and role in the corner
+ * beside it; the bio, links, tags and foot unfold from under them. It
+ * REPLACES the first card (name above the picture, role and a dropdown
+ * below), which held the same text behind a chevron.
  *
  * The column is MemberDetailPanel in its column mode (`.pdisc--column`), so
  * the words, their rules and the native <details> that folds them are the
@@ -166,24 +167,22 @@
     margin-right: auto;
   }
 
-  /* ── FOLDED: "fold everything" ──────────────────────────
-     The words go — head, panel and foot — and what is left is the picture and
-     the rail beside it, at exactly the size the picture had open. */
-  .ccard:has(> .pdisc:not([open])) {
-    --ccard-side: 0px;
-    --ccard-gap-now: 0px;
-  }
+  /* ── FOLDED (2026-10-14, Josh: "instead of moving the name and title to the
+     bottom on collapse it should be actually in the top corner adjacent
+     according to the side the image is on. also … default should be close").
+     The columns do NOT move. The words' column, the gap and the rail stand
+     exactly where they stood open, so the name and role keep the top corner
+     beside the picture — on the words' side, which the lane already decides —
+     and what the fold takes is only what stood UNDER them: the bio, the links,
+     the tags and the foot. Nothing re-deals, which is also what lets the fold
+     be a tween (src/lib/cardFold.ts) instead of a card rebuilding itself in
+     one step: the picture, the rail and the head never shift, a box of words
+     simply grows out from under the head and folds back into it.
+     The foot is hidden by visibility, not display, so it keeps its row and the
+     script can fade it. */
   .ccard:has(> .pdisc:not([open])) .ccard__foot {
-    display: none;
-  }
-  /* THE NAME STAYS (2026-10-12, Josh: "the gallery card should have the name
-     and role displayed when collapsed"): folded, the head moves under the
-     picture, as wide as it — the one thing the fold no longer takes. */
-  .ccard:has(> .pdisc:not([open])) > .ccard__head {
-    grid-area: 4 / 1 / 5 / 2;
-  }
-  [data-lane="right"] > .ccard:has(> .pdisc:not([open])) > .ccard__head {
-    grid-area: 4 / 4 / 5 / 5;
+    visibility: hidden;
+    pointer-events: none;
   }
 }
 
@@ -542,8 +541,8 @@
      then the panel's words across both columns; then the PROFILE → link,
      which the fold hides. The expand arrow is the panel's <summary>, which
      MemberDetailPanel's mobile column rules stand at that row's bottom-right
-     corner. The card starts folded on a phone (CommunityGrid closes the
-     columns before first paint), so what a visitor meets is the picture, the
+     corner. The card renders folded (no `open` on the panel), so what a
+     visitor meets is the picture, the
      name and role, the count and the arrow — the way to the person is the
      name, and the button once the card is open.
      The second column is at least the arrow's width, so the head's text can
