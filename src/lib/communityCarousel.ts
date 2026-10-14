@@ -103,25 +103,42 @@ document.addEventListener("astro:before-swap", destroyAllCarousels);
 
 const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-// ── A SCROLL PAST A CARD TURNS IT (2026-10-14, Josh: "on scroll at least one
-// image has to advance over the period the gallery card is in the
-// viewport"). Once per VISIT — from the card's first pixel showing to its
-// last one leaving — a directory card pages on by one, at the moment a
-// scroll carries it across half-visible, whichever way: a card scrolled up
-// into view turns as it comes half in, and the card already on screen at
-// load turns as it goes half out. Not a timer: the 5 s auto-advance was
-// withdrawn on 2026-09-28, and this moves only when the visitor moves the
-// page. Hence the scroll stamp: the observer also fires when a card appears
-// without a scroll — on load, or when the view switches back to the spread —
-// and those must not count. Any scroll counts (capture, so .page-wrap's on
-// a desktop and the document's on a phone both reach it). Registered once,
-// by the module.
+// ── A SCROLL CARRIES A CARD ONTO ITS COVER (2026-10-14, Josh: "on scroll at
+// least one image has to advance over the period the gallery card is in
+// the viewport", then "the shown image should end up on the cover on
+// scrolling"). A directory card waits just out of sight on its LAST work,
+// and as a scroll brings it into view it pages on once — which, the carousel
+// looping, lands it on its cover. So every card a visitor scrolls to moves
+// in passing and comes to rest on the picture its member put first. The
+// waiting is set up only for cards within half a window of the visible
+// area, so the page does not wake every gallery's last image at load. A
+// card already in view at load has nothing to arrive from: at the first
+// scroll it turns to its second work and comes back to the cover when the
+// scrolling stops. Once per VISIT (first pixel in to last pixel out).
+// Not a timer: the 5 s auto-advance was withdrawn on 2026-09-28, and this
+// moves only when the visitor moves the page. Hence the scroll stamp: the
+// observers also fire when a card appears without a scroll — on load, or
+// when the view switches back to the spread — and those must not count.
+// Any scroll counts (capture, so .page-wrap's on a desktop and the
+// document's on a phone both reach it). Registered once, by the module.
 const SCROLL_FRESH_MS = 400;
+const SCROLL_IDLE_MS = 450;
 let lastScrollAt = -Infinity;
-document.addEventListener("scroll", () => (lastScrollAt = performance.now()), {
-  capture: true,
-  passive: true,
-});
+let scrollIdleTimer = 0;
+const onScrollIdle = new Set<() => void>();
+document.addEventListener(
+  "scroll",
+  () => {
+    lastScrollAt = performance.now();
+    clearTimeout(scrollIdleTimer);
+    scrollIdleTimer = window.setTimeout(() => {
+      const due = [...onScrollIdle];
+      onScrollIdle.clear();
+      due.forEach((run) => run());
+    }, SCROLL_IDLE_MS);
+  },
+  { capture: true, passive: true }
+);
 
 /**
  * Wires every un-wired `[data-carousel]` under `root`. Idempotent: a frame that
@@ -282,11 +299,20 @@ export function initCarousels(root: ParentNode = document): void {
       });
       dots.forEach((dot, n) => dot.classList.toggle("ccard__dot--on", n === i));
       if (count) count.textContent = `${i + 1} / ${slides.length}`;
-      if (liveRegion) {
+      if (liveRegion && !quiet) {
         liveRegion.textContent = positionLabel
           .replace("{n}", String(i + 1))
           .replace("{total}", String(slides.length));
       }
+    };
+    // A move the page made on its own (the scroll turn below) is not
+    // announced: a screen reader would otherwise hear positions of cards
+    // nobody asked about, some of them out of sight.
+    let quiet = false;
+    const quietly = (move: () => void) => {
+      quiet = true;
+      move();
+      quiet = false;
     };
     embla.on("select", sync);
     handle.sync = () => syncTrigger(embla.selectedScrollSnap());
@@ -361,29 +387,84 @@ export function initCarousels(root: ParentNode = document): void {
     // THE SCROLL TURN (see SCROLL_FRESH_MS above). The directory's cards only:
     // the editor's preview is not scrolled past, it is looked at. Reduced
     // motion keeps the card still — a picture changing on its own is the
-    // movement that setting asks to be spared. A ratio of at least a quarter
-    // is what tells a half-way crossing (or a fast scroll that jumped
-    // straight past it) from the first pixel arriving at threshold 0.
+    // movement that setting asks to be spared. Two observers: `near` sets a
+    // card up on its last work while it is still out of sight (within half
+    // a window), `visit` plays the turn once it is 40% in (0.98 reports the
+    // first scroll under a card that sat fully in view at load) and sets it
+    // up again the moment it has fully left.
     if (card.closest("#member-grid")) {
+      const last = slides.length - 1;
+      let primed = false;
       let turned = false;
+      let inView = false;
+      const outOfSight = () => {
+        const r = card.getBoundingClientRect();
+        return r.bottom <= 0 || r.top >= window.innerHeight;
+      };
+      const prime = () => {
+        if (primed || REDUCED.matches || !outOfSight()) return;
+        if (embla.selectedScrollSnap() !== last) quietly(() => embla.scrollTo(last, true));
+        primed = true;
+      };
+      const backToCover = () => {
+        if (inView && embla.selectedScrollSnap() !== 0) quietly(() => embla.scrollTo(0));
+      };
+      // The look-ahead must be measured against the box that actually
+      // scrolls: on a desktop that is .page-wrap, which CLIPS the window's
+      // margin away (an implicit-root observer never saw a card below it);
+      // on a phone .page-wrap is overflow:visible and the document scrolls.
+      const wrap = document.querySelector<HTMLElement>(".page-wrap");
+      const scroller = wrap && getComputedStyle(wrap).overflowY !== "visible" ? wrap : null;
+      const near = new IntersectionObserver(
+        (entries) => entries.forEach((e) => e.isIntersecting && prime()),
+        { root: scroller, rootMargin: "50% 0px 50% 0px" }
+      );
       const visit = new IntersectionObserver(
         (entries) => {
           for (const entry of entries) {
             if (!entry.isIntersecting) {
+              const left = inView;
+              inView = false;
               turned = false;
+              onScrollIdle.delete(backToCover);
+              if (left) prime();
               continue;
             }
-            if (turned || entry.intersectionRatio < 0.25) continue;
-            if (performance.now() - lastScrollAt > SCROLL_FRESH_MS) continue;
-            if (REDUCED.matches) continue;
+            inView = true;
+            const scrolled = performance.now() - lastScrollAt <= SCROLL_FRESH_MS;
+            // In view WITHOUT a scroll (the page's entrance motion carried a
+            // set-up card into sight, or the view switched back): show the
+            // cover rather than the last work, and let a later scroll do the
+            // turn-and-back instead.
+            if (primed && !scrolled) {
+              primed = false;
+              if (embla.selectedScrollSnap() !== 0) quietly(() => embla.scrollTo(0, true));
+              continue;
+            }
+            if (turned || entry.intersectionRatio < 0.4) continue;
+            if (!scrolled || REDUCED.matches) continue;
             turned = true;
-            embla.scrollNext();
+            if (primed) {
+              // The last work → the cover, the loop's one step.
+              primed = false;
+              quietly(() => embla.scrollNext());
+            } else if (embla.selectedScrollSnap() === 0) {
+              quietly(() => embla.scrollTo(1));
+              onScrollIdle.add(backToCover);
+            }
           }
         },
-        { threshold: [0, 0.5] }
+        { threshold: [0, 0.4, 0.98] }
       );
+      near.observe(card);
       visit.observe(card);
-      signal.addEventListener("abort", () => visit.disconnect());
+      signal.addEventListener("abort", () => {
+        near.disconnect();
+        visit.disconnect();
+        onScrollIdle.delete(backToCover);
+      });
+      // Somebody paging the card by hand owns it for this visit.
+      carousel.addEventListener("pointerdown", () => (primed = false), { signal });
     }
 
     // Keyboard. Bound to the FRAME, not to the arrows, because the arrows are
