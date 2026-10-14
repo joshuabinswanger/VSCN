@@ -204,7 +204,10 @@ export function registerLightboxText(
     const ui = lightbox.pswp?.ui;
     if (!ui) return;
 
-    // ── The artist, on the picture's top-left corner ────────────────────
+    // ── The artist, pinned to the window's top-left ─────────────────────
+    // (2026-10-14: "make the artist name stick to the top left" — the
+    // paragraph below is the 09-04 reasoning for the line above the picture;
+    // where it stands is lightbox.css's call now.)
     // (2026-09-04: "artist name alway left top of the image".) It was the last
     // line of the bottom band, under the description — the furthest point in
     // the layout from the picture, for the one piece of text that says whose
@@ -404,16 +407,16 @@ function attachPlacement(pswp: PhotoSwipe): void {
 
   const place = () => {
     const root = pswp.element;
-    const credit = root?.querySelector<HTMLElement>(".pswp__vscn-credit");
     const text = root?.querySelector<HTMLElement>(".pswp__vscn-text");
     const slide = pswp.currSlide;
-    if (!root || !credit || !text || !slide) return;
+    if (!root || !text || !slide) return;
 
-    // HIDDEN WHILE ZOOMED IN. The blocks are glued to the picture's rect, and
-    // a zoomed picture's rect is mostly off-screen — following it would drag
-    // the caption out of the window and the artist line under the top bar. A
-    // reader who has zoomed in is looking at the picture, not reading about
-    // it. Compared against the slide's own initial level rather than 1: a
+    // THE WORDS ARE HIDDEN WHILE ZOOMED IN. The block is glued to the picture's
+    // rect, and a zoomed picture's rect is mostly off-screen — following it
+    // would drag the caption out of the window. A reader who has zoomed in is
+    // looking at the picture, not reading about it. (The artist line is not
+    // glued to the picture any more and stays: see the credit's rule in
+    // lightbox.css.) Compared against the slide's own initial level rather than 1: a
     // small image opens BELOW 1:1 and a large one above it, so 1 is not the
     // resting state of anything.
     const initial = slide.zoomLevels?.initial ?? 1;
@@ -428,11 +431,11 @@ function attachPlacement(pswp: PhotoSwipe): void {
     const y = slide.pan?.y ?? 0;
     if (!w || !h) return;
 
-    // Left-aligned to the picture's left edge and sitting just above its top
-    // edge — translateY(-100%) in the stylesheet does the lift, so the line's
-    // own height never has to be measured here.
-    credit.style.left = `${Math.round(x)}px`;
-    credit.style.top = `${Math.round(y - GAP)}px`;
+    // THE ARTIST LINE IS NOT PLACED HERE (2026-10-14, Josh: "make the artist
+    // name stick to the top left"). It is pinned to the window's top-left in
+    // lightbox.css, in the controls row's height, so it stays in one place
+    // from slide to slide and through zoom instead of floating at whatever
+    // height the picture's centring left its corner.
 
     const viewport = pswp.viewportSize;
     // In the words' band, at the picture's own measure, on every shape: the

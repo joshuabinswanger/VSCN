@@ -304,15 +304,36 @@
    will fight the script and win on the wrong frames. What lives here is
    everything else: the type, the gaps, the lift, and the hide-on-zoom. */
 
-/* THE ARTIST, ON THE PICTURE'S TOP-LEFT CORNER. The script writes left/top at
-   the image's top-left; this lifts the line clear of that edge, so its own
-   height never has to be measured in JS. */
+/* THE ARTIST, PINNED TO THE WINDOW'S TOP-LEFT (2026-10-14, Josh: "make the
+   artist name stick to the top left"). It hung off the picture's top-left
+   corner until then, which in the 10 / 60 / 30 layout (lightboxPadding)
+   meant a different height on every shape. Now it is the left end of the
+   controls row: the row's own height and inset, so it centres on the same
+   line as the counter and Close, and it never moves. This is the one block
+   whose left/top are CSS rather than the script's — it is not glued to the
+   picture, which is also why it stays visible while zoomed. It stops short of
+   the controls cluster on the right (16rem covers the counter, + and Close
+   on a phone) and truncates rather than run under it. */
 .pswp--vscn .pswp__vscn-credit {
   position: absolute;
-  transform: translateY(-100%);
+  top: 0;
+  left: 1.5rem;
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
   /* Wider than the name only if the name is long; never a clickable strip
      across the window. */
-  max-width: 60ch;
+  max-width: min(60ch, calc(100% - 3rem - 16rem));
+}
+/* The ellipsis has to sit on the flex item that holds the text, not on the
+   flex container; the bottom padding keeps the link's underline inside the
+   clip. */
+.pswp--vscn .pswp__vscn-credit-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding-bottom: 3px;
 }
 .pswp--vscn .pswp__vscn-credit.is-empty {
   display: none;
@@ -457,10 +478,10 @@
 
 /* ZOOMED IN: THE WORDS GO. They are glued to the picture's rect, and a zoomed
    picture's rect is mostly outside the window — following it would drag the
-   caption off-screen and the artist line under the top bar. The script sets
-   this class on the root; hiding is done here so the two halves of the
-   decision are not split across a stylesheet and a style attribute. */
-.pswp--vscn.pswp--vscn-zoomed-words .pswp__vscn-credit,
+   caption off-screen. The script sets this class on the root; hiding is
+   done here so the two halves of the decision are not split across a
+   stylesheet and a style attribute. The artist line is pinned to the
+   window now and stays. */
 .pswp--vscn.pswp--vscn-zoomed-words .pswp__vscn-text {
   opacity: 0;
   pointer-events: none;
@@ -483,6 +504,12 @@
   .pswp--vscn .pswp__top-bar {
     height: 2.25rem;
     padding: 0 1rem;
+  }
+  /* The artist line follows the row: same height, same inset. */
+  .pswp--vscn .pswp__vscn-credit {
+    left: 1rem;
+    height: 2.25rem;
+    max-width: calc(100% - 2rem - 16rem);
   }
   /* The words' size is CAPTION in src/styles/type.css, shared with the page
      the lightbox opens from (2026-09-28). */
