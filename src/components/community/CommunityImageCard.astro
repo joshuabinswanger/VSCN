@@ -316,14 +316,28 @@ const positionFor = (i: number) =>
       its column mode. forceShow: a member with no bio, no links and no tags
       still needs the rail, or the card could not fold. */
   }
-  <MemberDetailPanel member={member} lang={lang} forceShow mode="column" />
+  <MemberDetailPanel member={member} lang={lang} forceShow mode="column">
+    {
+      /* THE NAMED WAY TO THE PERSON (2026-09-01, Josh: "add 'view profile'
+        button to image cards"). It exists because the frame stopped going
+        there: the artwork opens the artwork, so the journey to a member's
+        page needs a control that says where it goes. A LINK, not a button
+        element, because it goes somewhere. The arrow is markup, aria-hidden,
+        so the link reads as "Profile" and not as "Profile right arrow".
+        IN THE PANEL, last (2026-10-14, Josh: "profile above the bar. bar
+        above the carousel control"): it unfolds with the words, and the
+        panel's bar closes the column under it. */
+    }
+    <a slot="footer" class="ccard__profile" href={profileHref}>
+      {t("community.card.profile")}
+      <span aria-hidden="true">→</span>
+    </a>
+  </MemberDetailPanel>
 
   {
     /* THE FOOT, on the picture's bottom edge: the count "‹ 1 / 3 ›" just past
-      the frame's bottom-right corner (the sketch's place for it), and the
-      PROFILE → button at the far right. The foot goes with the column when
-      the column is folded; a folded card is the picture and the rail, nothing
-      else. */
+      the frame's bottom corner (the sketch's place for it), open or folded
+      (2026-10-14, "make the carousel controls always visible"). */
   }
   <div class="ccard__foot">
     {
@@ -369,19 +383,6 @@ const positionFor = (i: number) =>
         </div>
       )
     }
-    {
-      /* THE NAMED WAY TO THE PERSON (2026-09-01, Josh: "add 'view profile'
-        button to image cards"), a FILLED button since the second card
-        (2026-10-12). It exists because the frame stopped going there: the
-        artwork opens the artwork, so the journey to a member's page needs a
-        control that says where it goes. A LINK, not a button element,
-        because it goes somewhere. The arrow is markup, aria-hidden, so the
-        link reads as "Profile" and not as "Profile right arrow". */
-    }
-    <a class="ccard__profile" href={profileHref}>
-      {t("community.card.profile")}
-      <span aria-hidden="true">→</span>
-    </a>
   </div>
 </article>
 

@@ -11,10 +11,11 @@
 // read.
 //
 // THE ORDER OF THINGS. Opening sets `open` first and then plays the words in
-// (their box grows from nothing, the text rises into it a beat later, the
-// foot follows). Closing is the reverse, and `open` is only removed once the
-// last frame has played — until then the class `is-closing` stands in for
-// "folded" wherever the CSS needs the new state early (the rail's chevron).
+// (their box grows from nothing, the text rises into it a beat later, and
+// the bar under them travels down with the box). Closing is the reverse,
+// and `open` is only removed once the last frame has played — until then
+// the class `is-closing` stands in for
+// "folded" wherever the CSS needs the new state early (the bar's chevron).
 // Every animation is DECORATION on top of a state the stylesheet already
 // states fully, so cancelling one at any point lands on a correct card.
 //
@@ -27,16 +28,6 @@ const OPEN_MS = 520;
 const CLOSE_MS = 360;
 
 const running = new WeakMap<HTMLDetailsElement, Animation[]>();
-
-/** What stands outside the panel and goes with it: the Profile link. The
- *  pager stays whatever the state (2026-10-14, "make the carousel controls
- *  always visible"). */
-function outsideTargets(details: HTMLDetailsElement): HTMLElement[] {
-  const el = details
-    .closest<HTMLElement>(".ccard")
-    ?.querySelector<HTMLElement>(":scope > .ccard__foot > .ccard__profile");
-  return el ? [el] : [];
-}
 
 function toggle(details: HTMLDetailsElement): void {
   const body = details.querySelector<HTMLElement>(":scope > .pdisc__body");
@@ -94,17 +85,6 @@ function toggle(details: HTMLDetailsElement): void {
         : { duration: ms * 0.6, easing: "ease-in", fill: "both" }
     ),
   ];
-  for (const el of outsideTargets(details)) {
-    const from = busy ? parseFloat(getComputedStyle(el).opacity) : opening ? 0 : 1;
-    anims.push(
-      el.animate(
-        { opacity: opening ? [from, 1] : [from, 0] },
-        opening
-          ? { duration: ms - 200, delay: 200, easing: EASE, fill: "both" }
-          : { duration: ms * 0.5, easing: "ease-in", fill: "both" }
-      )
-    );
-  }
   running.set(details, anims);
 
   const finish = () => {

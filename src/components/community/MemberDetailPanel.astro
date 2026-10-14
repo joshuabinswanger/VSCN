@@ -474,14 +474,15 @@ const hasSummary = Astro.slots.has("summary");
      blur here: the column IS the card rather than a panel laid over its
      neighbours, and sixteen always-on backdrop-filters would be a
      compositing bill the directory has no reason to pay. */
+  /* The toggle's containing block, on a phone and a desktop alike. */
   .pdisc--column {
-    position: static;
+    position: relative;
     min-width: 0;
   }
 
-  /* The toggle as the phone places it (see the mobile block below): out of
-     flow, a square on the head's last line. The desktop puts it back in flow
-     as a bar — the block after the chevron rules. */
+  /* The toggle, out of flow: a square on the head's last line on a phone
+     (the mobile block), the bar at the panel's foot on a desktop (the block
+     after the chevron rules). */
   .pdisc--column > .pdisc__toggle {
     position: absolute;
     top: 0;
@@ -519,33 +520,53 @@ const hasSummary = Astro.slots.has("summary");
     transition: transform 460ms cubic-bezier(0.22, 0.61, 0.36, 1);
   }
 
-  /* THE BAR UNDER THE ROLE (2026-10-14, Josh: "create a horizontal bar with
-     the arrow below the role. now it sits at a weird place"). On a desktop
-     the <summary> is back IN FLOW as the panel's first line, so it stands
-     directly under the name and role (the card's row gap away): a hairline
-     across the words' column, ending in the chevron at the column's outer
-     end — the card mirrors that with --pdisc-toggle-dir. The words unfold
-     below it, so the bar never moves. Replaces the vertical rail beside the
-     picture (10-12 to earlier on the 14th). */
+  /* THE BAR CLOSES THE COLUMN (2026-10-14, Josh: "bar should move down as
+     well. profile above the bar. bar above the carousel control. also the
+     arrow in the middle of the bar and nicely centered"). On a desktop the
+     <summary> is a hairline across the words' column, broken in the middle
+     by the chevron, at the panel's FOOT: it is absolutely placed at the
+     bottom of the <details>, whose padding keeps its room, so it stands
+     under whatever the panel shows — directly under the name and role when
+     folded, under the words and the Profile link when open — and travels
+     down with the words as they unfold (cardFold.ts grows the body above
+     it). The card's pager stays below, at the picture's bottom corner.
+     The chevron is centred on what it DRAWS: a rotated box's V sits in one
+     half of the box, so it is lifted (pointing down) or dropped (pointing
+     up) by 0.35 of its size, in the same transform as the turn. */
   @media (--bp-desktop) {
-    .pdisc--column > .pdisc__toggle {
-      position: static;
-      display: flex;
-      flex-direction: var(--pdisc-toggle-dir, row);
-      align-items: center;
-      gap: 0.6rem;
-      width: auto;
-      height: 1.25rem;
-      margin-bottom: 0.7rem;
+    .pdisc--column {
+      --pdisc-bar-h: 1.25rem;
+      padding-bottom: var(--pdisc-bar-h);
     }
-    .pdisc--column > .pdisc__toggle::before {
-      content: "";
-      flex: 1 1 auto;
-      height: 1px;
-      background: var(--color-dark);
+    .pdisc--column > .pdisc__toggle {
+      --bar-break: 0.75rem;
+      top: auto;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: auto;
+      height: var(--pdisc-bar-h);
+      display: grid;
+      place-items: center;
+      background:
+        linear-gradient(var(--color-dark), var(--color-dark)) 0 50% / calc(50% - var(--bar-break))
+          1px no-repeat,
+        linear-gradient(var(--color-dark), var(--color-dark)) 100% 50% /
+          calc(50% - var(--bar-break)) 1px no-repeat;
+    }
+    /* The air between the words and the bar, inside the unfolding body so
+       it grows with them. */
+    .pdisc--column .pdisc__body-inner {
+      padding-bottom: 0.9rem;
     }
     .pdisc.pdisc--column > .pdisc__toggle::after {
-      flex: none;
+      transform: translateY(calc(var(--pager-chev-size) * 0.35))
+        rotate(var(--pdisc-rail-open, 225deg));
+    }
+    .pdisc.pdisc--column:not([open]) > .pdisc__toggle::after,
+    .pdisc.pdisc--column.is-closing > .pdisc__toggle::after {
+      transform: translateY(calc(var(--pager-chev-size) * -0.35))
+        rotate(var(--pdisc-rail-folded, 45deg));
     }
   }
 

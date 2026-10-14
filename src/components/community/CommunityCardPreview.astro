@@ -138,21 +138,22 @@ const t = useTranslations(lang);
     <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
     <p class="ccard__role" data-ccpv="role" hidden></p>
   </div>
-  <MemberDetailPanel lang={lang} shell mode="column" />
+  <MemberDetailPanel lang={lang} shell mode="column">
+    {/* In the panel, last, as on the card — a <span> here because there is
+        no page to go to from an unsaved form. */}
+    <span slot="footer" class="ccard__profile">
+      {t("community.card.profile")}
+      <span aria-hidden="true">→</span>
+    </span>
+  </MemberDetailPanel>
 
   {
     /* The foot, as on the card: the count row — one dot per work, built by
        the renderer from the same template mechanism the tags use, plus the
-       "2 / 7" count and its two chevrons, which the carousel module adds —
-       and the profile button, a <span> here because there is no page to go
-       to from an unsaved form. */
+       "2 / 7" count and its two chevrons, which the carousel module adds. */
   }
   <div class="ccard__foot">
     <div class="ccard__dots" data-ccpv="dots" hidden></div>
-    <span class="ccard__profile">
-      {t("community.card.profile")}
-      <span aria-hidden="true">→</span>
-    </span>
   </div>
 
   {
