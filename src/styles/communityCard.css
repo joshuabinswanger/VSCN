@@ -66,6 +66,14 @@
   --ccard-rail: 2rem;
   /* More air between the picture and the words. */
   --ccard-gap: 0.6rem;
+  /* THE AIR, THREE QUARTERS OF IT (2026-10-15, Josh: "3/4 of the gap to the
+     image"). The words stand at 3/4 of the rail-plus-gap they stood at; the
+     picture keeps its size, because --ccard-pic-w still subtracts the whole
+     --ccard-rail. This is the column the grid actually deals. */
+  --ccard-air: calc((var(--ccard-rail) + var(--ccard-gap)) * 0.75 - var(--ccard-gap));
+  /* Where the toggle's chevron stands in its row: at the words' start
+     ("align the arrow with the text start"); the right lane says end. */
+  --pdisc-bar-justify: start;
   /* The words' column (2026-10-14, Josh: "make the text etc wider"). The
      editor preview reads this name to size its slot. */
   --ccard-side-w: 20rem;
@@ -91,12 +99,12 @@
      longer (the card is out of flow in the spread, so growing costs its slot
      nothing). */
   display: grid;
-  grid-template-columns: var(--ccard-pic-w) var(--ccard-rail) var(--ccard-gap) var(--ccard-side-w);
+  grid-template-columns: var(--ccard-pic-w) var(--ccard-air) var(--ccard-gap) var(--ccard-side-w);
   grid-template-rows: auto minmax(0, 1fr) auto;
   row-gap: 0.7rem;
   align-items: start;
   box-sizing: border-box;
-  width: calc(var(--ccard-pic-w) + var(--ccard-rail) + var(--ccard-gap) + var(--ccard-side-w));
+  width: calc(var(--ccard-pic-w) + var(--ccard-air) + var(--ccard-gap) + var(--ccard-side-w));
   /* Pivot for the GSAP scale in CommunityGrid. Declared here so the effect
      is identical whoever drives the transform. Anchored at the top edge, not
      centre: the ScrollTrigger is keyed to the card's top, and a centre
@@ -147,10 +155,11 @@
      the cell's (data-lane, written by the deal from laneOf), so the words
      always face the gutter. */
   [data-lane="right"] > .ccard {
-    grid-template-columns: var(--ccard-side-w) var(--ccard-gap) var(--ccard-rail) var(--ccard-pic-w);
+    grid-template-columns: var(--ccard-side-w) var(--ccard-gap) var(--ccard-air) var(--ccard-pic-w);
     /* The bar under right-aligned words hangs from the column's right edge. */
     --pdisc-bar-left: auto;
     --pdisc-bar-right: 0;
+    --pdisc-bar-justify: end;
   }
   [data-lane="right"] > .ccard > .ccard__body {
     grid-area: 1 / 4 / 4 / 5;

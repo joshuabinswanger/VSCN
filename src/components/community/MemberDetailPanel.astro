@@ -551,10 +551,12 @@ const hasSummary = Astro.slots.has("summary");
       width: min(100%, var(--ccard-role-w, 100%));
       height: var(--pdisc-bar-h);
       display: grid;
-      place-items: center;
+      align-items: center;
       /* JUST THE ARROW (2026-10-15, Josh): the hairline either side of the
          chevron is gone; the row stays as the hit area, as wide as the role,
-         with the chevron at its centre. */
+         and the chevron stands at the words' start ("align the arrow with
+         the text start") — the card says which side that is. */
+      justify-content: var(--pdisc-bar-justify, center);
     }
     /* The air between the words and the bar, inside the unfolding body so
        it grows with them. */
