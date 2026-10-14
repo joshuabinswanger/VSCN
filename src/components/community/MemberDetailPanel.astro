@@ -489,18 +489,12 @@ const hasSummary = Astro.slots.has("summary");
     min-width: 0;
   }
 
-  /* THE LINE, BROKEN BY THE CHEVRON (2026-10-12, Josh: "the line is broken
-     in the middle by the arrow", "not flush to the image but a bit of
-     padding"). A hairline down the middle of the rail's column — so it
-     stands half a rail clear of the picture and of the words — drawn as two
-     backgrounds, one from the top and one from the bottom, each stopping
-     short of the middle by the chevron's room. A border could not break. */
+  /* THE TOGGLE BESIDE THE PICTURE, A CHEVRON ALONE (2026-10-14, Josh:
+     "remove vertical bar"). The hairline that ran down this column — full
+     height and broken by the chevron since 10-12, the head's height since
+     earlier on the 14th — is gone; the column stays as the hit area, and
+     the chevron stands at its foot, 16px off the picture. */
   .pdisc--column > .pdisc__toggle {
-    /* Black (2026-10-12, Josh: "vertical bar should be black as well"), and
-       a hairline whatever the pointer does ("make the outline thinner"). */
-    --rail-line: var(--color-dark);
-    --rail-w: 1px;
-    --rail-break: 0.9rem;
     position: absolute;
     top: 0;
     bottom: 0;
@@ -517,10 +511,6 @@ const hasSummary = Astro.slots.has("summary");
     flex: none;
     display: grid;
     place-items: center;
-    /* The hairline at --pdisc-rail-line inside the column (16px off the
-       picture), from the head's top down to the chevron at its foot. */
-    background: linear-gradient(var(--rail-line), var(--rail-line))
-      var(--pdisc-rail-line, 50%) 0 / var(--rail-w) calc(100% - var(--rail-break)) no-repeat;
     transition: color 0.15s;
   }
 

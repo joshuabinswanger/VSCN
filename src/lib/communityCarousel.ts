@@ -103,6 +103,26 @@ document.addEventListener("astro:before-swap", destroyAllCarousels);
 
 const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+// ── A SCROLL PAST A CARD TURNS IT (2026-10-14, Josh: "on scroll at least one
+// image has to advance over the period the gallery card is in the
+// viewport"). Once per VISIT — from the card's first pixel showing to its
+// last one leaving — a directory card pages on by one, at the moment a
+// scroll carries it across half-visible, whichever way: a card scrolled up
+// into view turns as it comes half in, and the card already on screen at
+// load turns as it goes half out. Not a timer: the 5 s auto-advance was
+// withdrawn on 2026-09-28, and this moves only when the visitor moves the
+// page. Hence the scroll stamp: the observer also fires when a card appears
+// without a scroll — on load, or when the view switches back to the spread —
+// and those must not count. Any scroll counts (capture, so .page-wrap's on
+// a desktop and the document's on a phone both reach it). Registered once,
+// by the module.
+const SCROLL_FRESH_MS = 400;
+let lastScrollAt = -Infinity;
+document.addEventListener("scroll", () => (lastScrollAt = performance.now()), {
+  capture: true,
+  passive: true,
+});
+
 /**
  * Wires every un-wired `[data-carousel]` under `root`. Idempotent: a frame that
  * already has an instance is skipped, which is what makes it safe to call on
@@ -336,6 +356,34 @@ export function initCarousels(root: ParentNode = document): void {
       });
       prevPager.addEventListener("click", rest, { signal });
       nextPager.addEventListener("click", rest, { signal });
+    }
+
+    // THE SCROLL TURN (see SCROLL_FRESH_MS above). The directory's cards only:
+    // the editor's preview is not scrolled past, it is looked at. Reduced
+    // motion keeps the card still — a picture changing on its own is the
+    // movement that setting asks to be spared. A ratio of at least a quarter
+    // is what tells a half-way crossing (or a fast scroll that jumped
+    // straight past it) from the first pixel arriving at threshold 0.
+    if (card.closest("#member-grid")) {
+      let turned = false;
+      const visit = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) {
+              turned = false;
+              continue;
+            }
+            if (turned || entry.intersectionRatio < 0.25) continue;
+            if (performance.now() - lastScrollAt > SCROLL_FRESH_MS) continue;
+            if (REDUCED.matches) continue;
+            turned = true;
+            embla.scrollNext();
+          }
+        },
+        { threshold: [0, 0.5] }
+      );
+      visit.observe(card);
+      signal.addEventListener("abort", () => visit.disconnect());
     }
 
     // Keyboard. Bound to the FRAME, not to the arrows, because the arrows are

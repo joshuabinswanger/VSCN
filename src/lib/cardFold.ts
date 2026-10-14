@@ -22,23 +22,19 @@
 // instantly. Registered once, on the document, so a ClientRouter navigation
 // has nothing to tear down or re-run.
 
-const PHONE = "(max-width: 767px)";
 const EASE = "cubic-bezier(0.22, 0.61, 0.36, 1)";
 const OPEN_MS = 520;
 const CLOSE_MS = 360;
 
 const running = new WeakMap<HTMLDetailsElement, Animation[]>();
 
-/** What stands outside the panel and goes with it: the whole foot (count and
- *  Profile link) on a desktop, only the Profile link on a phone, where the
- *  count is always shown. */
+/** What stands outside the panel and goes with it: the Profile link. The
+ *  pager stays whatever the state (2026-10-14, "make the carousel controls
+ *  always visible"). */
 function outsideTargets(details: HTMLDetailsElement): HTMLElement[] {
-  const card = details.closest<HTMLElement>(".ccard");
-  if (!card) return [];
-  const phone = matchMedia(PHONE).matches;
-  const el = card.querySelector<HTMLElement>(
-    phone ? ":scope > .ccard__foot > .ccard__profile" : ":scope > .ccard__foot"
-  );
+  const el = details
+    .closest<HTMLElement>(".ccard")
+    ?.querySelector<HTMLElement>(":scope > .ccard__foot > .ccard__profile");
   return el ? [el] : [];
 }
 

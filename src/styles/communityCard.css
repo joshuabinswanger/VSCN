@@ -183,9 +183,11 @@
   /* ── FOLDED (2026-10-14, Josh: the name and role stay "in the top corner
      adjacent according to the side the image is on"; cards start folded).
      Nothing re-deals: the fold takes only what stands under the head — the
-     panel's words, and the foot, hidden by visibility rather than display so
-     it keeps its row and cardFold.ts can fade it. */
-  .ccard:has(> .pdisc:not([open])) .ccard__foot {
+     panel's words and the Profile link, hidden by visibility rather than
+     display so it keeps its place and cardFold.ts can fade it. The pager
+     stays ("make the carousel controls always visible"): "‹ 1 / 3 ›" at the
+     picture's bottom corner, open or folded. */
+  .ccard:has(> .pdisc:not([open])) .ccard__profile {
     visibility: hidden;
     pointer-events: none;
   }
@@ -454,6 +456,19 @@
   /* Indicators, never controls — see the markup note. The chevrons inside
      take their own pointer-events back (.pager-chev in global.css). */
   pointer-events: none;
+}
+/* THE CHEVRONS CLOSE IN ON THE COUNT (2026-10-14, Josh: "make the image
+   carousel arrows more tightly spaced"). global.css gives a pager chevron a
+   24px-wide box with the glyph centred, which stood each one ~13px off the
+   "1 / 3"; on the card the box is narrower and the row's gap smaller, so
+   the three read as one control. The hit area keeps its height. */
+.ccard__dots {
+  gap: 0.1rem;
+}
+.ccard__dots .pager-chev {
+  min-width: 14px;
+  padding-left: 0.15rem;
+  padding-right: 0.15rem;
 }
 
 /* Twice the first size since 2026-09-28 (Josh: "make the dots bigger … also
