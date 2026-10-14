@@ -36,9 +36,7 @@ export interface LightboxStrings {
   with: string;
   /** The dialog's own name: PhotoSwipe makes it role="dialog" and names it nothing. */
   dialog: string;
-  /** The top row's word for the words toggle, e.g. "Text". */
-  textToggle: string;
-  /** The toggle's accessible name while the words are showing / hidden. */
+  /** The words toggle's accessible name while the words are showing / hidden. */
   hideText: string;
   showText: string;
 }
@@ -57,7 +55,6 @@ export const LIGHTBOX_FALLBACK: LightboxStrings = {
   partOf: "Part of",
   with: "With",
   dialog: "Image viewer",
-  textToggle: "Text",
   hideText: "Hide title and description",
   showText: "Show title and description",
 };
@@ -75,7 +72,6 @@ export const LIGHTBOX_STRING_KEYS: Record<keyof LightboxStrings, string> = {
   partOf: "member.project.partOf",
   with: "member.project.with",
   dialog: "member.lightbox.dialog",
-  textToggle: "member.lightbox.textToggle",
   hideText: "member.lightbox.hideText",
   showText: "member.lightbox.showText",
 };
@@ -176,7 +172,6 @@ export function createLightbox(
     with: strings.with,
     prev: strings.prev,
     next: strings.next,
-    textToggle: strings.textToggle,
     hideText: strings.hideText,
     showText: strings.showText,
   });

@@ -189,8 +189,7 @@ export interface LightboxTextLabels {
   /** Accessible names for the counter's two chevrons. */
   prev: string;
   next: string;
-  /** The words toggle: its visible word, and its name in each state. */
-  textToggle: string;
+  /** The words toggle's accessible name in each state. */
   hideText: string;
   showText: string;
 }
@@ -412,25 +411,26 @@ export function registerLightboxText(
       },
     });
 
-    // ── The words toggle, "Text", in the top row ────────────────────────
+    // ── The words toggle, under the picture ─────────────────────────────
     // (2026-10-15, Josh: "add a button to hide or show image title and
-    // description".) A word in the Close's voice rather than an icon, between
-    // the + and the Close. It hides the whole words block — caption,
-    // description, links, project — and leaves the artist line, which is the
-    // route out to the person and not text about the picture. Struck through
-    // while the words are off, so the row says what state it is in; the
-    // accessible name says what pressing it will do. Hidden on a slide that
-    // has no words (pswp--vscn-wordless, set by the block's render above).
+    // description", then "use an icon instead of the word TEXT and put it
+    // under the image".) Three hairlines of text at the right end of the
+    // words' first line — the corner the words grow from, so the control sits
+    // with the thing it hides and stays put when they go. It hides the whole
+    // words block — caption, description, links, project — and leaves the
+    // artist line, which is the route out to the person and not text about
+    // the picture. Struck through while the words are off; the accessible
+    // name says what pressing it will do. Placed by attachPlacement with the
+    // words; hidden on a slide that has no words (pswp--vscn-wordless, set by
+    // the block's render above) and while zoomed.
     ui.registerElement({
       name: "vscn-text-toggle",
       className: "pswp__button--vscn-text-toggle",
-      appendTo: "bar",
-      order: 15,
+      appendTo: "root",
+      order: 11,
       isButton: true,
-      html: `<span class="pswp__vscn-word" aria-hidden="true"></span>`,
+      html: '<span class="pswp__vscn-lines" aria-hidden="true"></span>',
       onInit: (el, pswp) => {
-        const word = el.querySelector<HTMLElement>(".pswp__vscn-word");
-        if (word) word.textContent = labels.textToggle;
         const apply = (off: boolean) => {
           pswp.element?.classList.toggle("pswp--vscn-words-off", off);
           el.setAttribute("aria-pressed", String(!off));
@@ -473,6 +473,7 @@ function attachPlacement(pswp: PhotoSwipe): void {
   const place = () => {
     const root = pswp.element;
     const text = root?.querySelector<HTMLElement>(".pswp__vscn-text");
+    const toggle = root?.querySelector<HTMLElement>(".pswp__button--vscn-text-toggle");
     const slide = pswp.currSlide;
     if (!root || !text || !slide) return;
 
@@ -523,6 +524,12 @@ function attachPlacement(pswp: PhotoSwipe): void {
     text.style.width = `${Math.round(w)}px`;
     text.style.maxHeight = `${Math.round(viewport.y - top - 16)}px`;
     markClipped(text);
+    // The toggle on the first line's right end, inside the picture's measure;
+    // the first line keeps clear of it in lightbox.css.
+    if (toggle) {
+      toggle.style.left = `${Math.round(x + w - toggle.offsetWidth)}px`;
+      toggle.style.top = `${Math.round(top)}px`;
+    }
   };
 
   // Every event that can move the picture. `change` for a new slide,

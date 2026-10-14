@@ -168,22 +168,6 @@
   color: var(--color-dark);
 }
 
-/* ── Words toggle ─────────────────────────────────────────────────────────
-   "Text", registered in lightboxText.ts (2026-10-15): the Close's word and
-   colour, struck through while the words are hidden. Gone on a slide that has
-   no words to hide. */
-.pswp--vscn .pswp__button--vscn-text-toggle:hover .pswp__vscn-word,
-.pswp--vscn .pswp__button--vscn-text-toggle:focus-visible .pswp__vscn-word {
-  color: var(--color-dark);
-}
-.pswp--vscn.pswp--vscn-words-off .pswp__button--vscn-text-toggle .pswp__vscn-word {
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
-}
-.pswp--vscn.pswp--vscn-wordless .pswp__button--vscn-text-toggle {
-  display: none;
-}
-
 /* ── Zoom ─────────────────────────────────────────────────────────────────
    KEPT, not hidden. Pinch and click-to-zoom cover pointer and touch, but this
    button is the only zoom a keyboard reaches, so removing it would remove
@@ -328,8 +312,8 @@
    line as the counter and Close, and it never moves. This is the one block
    whose left/top are CSS rather than the script's — it is not glued to the
    picture, which is also why it stays visible while zoomed. It stops short of
-   the controls cluster on the right (19rem covers the counter, +, Text and
-   Close on a phone) and truncates rather than run under it. */
+   the controls cluster on the right (16rem covers the counter, + and Close
+   on a phone) and truncates rather than run under it. */
 .pswp--vscn .pswp__vscn-credit {
   position: absolute;
   top: 0;
@@ -339,7 +323,7 @@
   align-items: center;
   /* Wider than the name only if the name is long; never a clickable strip
      across the window. */
-  max-width: min(60ch, calc(100% - 3rem - 19rem));
+  max-width: min(60ch, calc(100% - 3rem - 16rem));
 }
 /* The ellipsis has to sit on the flex item that holds the text, not on the
    flex container; the bottom padding keeps the link's underline inside the
@@ -502,10 +486,54 @@
   opacity: 0;
   pointer-events: none;
 }
-/* Hidden by the "Text" toggle: visibility as well, so the block's links leave
+/* Hidden by the words toggle: visibility as well, so the block's links leave
    the tab order and a screen reader stops reading it. */
 .pswp--vscn.pswp--vscn-words-off .pswp__vscn-text {
   visibility: hidden;
+}
+
+/* ── Words toggle ─────────────────────────────────────────────────────────
+   Registered in lightboxText.ts (2026-10-15) and placed by its script at the
+   right end of the words' first line. Three hairlines of "text", the last one
+   short, drawn like the zoom's plus; a diagonal strikes them while the words
+   are hidden. Grey like the top row's controls, dark on hover. Gone on a slide
+   with no words, and with the words while zoomed. */
+.pswp--vscn .pswp__button--vscn-text-toggle {
+  position: absolute;
+  padding: 0.3rem 0 0.3rem 0.4rem;
+  color: var(--color-muted);
+}
+.pswp--vscn .pswp__button--vscn-text-toggle:hover,
+.pswp--vscn .pswp__button--vscn-text-toggle:focus-visible {
+  color: var(--color-dark);
+}
+.pswp--vscn .pswp__vscn-lines {
+  position: relative;
+  display: block;
+  width: 0.9rem;
+  height: 0.65rem;
+  background:
+    linear-gradient(currentColor 0 0) left top / 100% 1px no-repeat,
+    linear-gradient(currentColor 0 0) left center / 100% 1px no-repeat,
+    linear-gradient(currentColor 0 0) left bottom / 60% 1px no-repeat;
+}
+.pswp--vscn.pswp--vscn-words-off .pswp__vscn-lines::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -0.15rem;
+  right: -0.15rem;
+  height: 1px;
+  background: currentColor;
+  transform: rotate(-35deg);
+}
+.pswp--vscn.pswp--vscn-wordless .pswp__button--vscn-text-toggle,
+.pswp--vscn.pswp--vscn-zoomed-words .pswp__button--vscn-text-toggle {
+  display: none;
+}
+/* The words' first line stops short of the toggle. */
+.pswp--vscn .pswp__vscn-text > :first-child {
+  padding-right: 1.6rem;
 }
 
 /* ── Error ────────────────────────────────────────────────────────────────
@@ -530,7 +558,7 @@
   .pswp--vscn .pswp__vscn-credit {
     left: 1rem;
     height: 2.25rem;
-    max-width: calc(100% - 2rem - 19rem);
+    max-width: calc(100% - 2rem - 16rem);
   }
   /* The words' size is CAPTION in src/styles/type.css, shared with the page
      the lightbox opens from (2026-09-28). */
