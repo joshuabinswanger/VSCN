@@ -91,7 +91,7 @@
     max-width: none;
     --works-top: 0px;
   }
-  .mprof > :not(.mprof__aside) {
+  .mprof > :not(.mprof__aside, .mprof__index) {
     grid-column: 2;
   }
   .mprof__aside {
@@ -148,6 +148,84 @@
   .mprof__aside .mprof__meta {
     margin-top: 2.25rem;
   }
+}
+
+/* THE INDEX (2026-10-14, Josh: "a small scroller on the right that lists the
+   projects (or image title if it stands alone)"). The third track's
+   occupant, built by src/lib/profileIndex.ts: a short list at the track's
+   right edge, mirroring the person at the left one, sticky at the same
+   height. A hairline down its left side, and the entry being read gets a
+   dark stretch of it, as a table of contents does. Only on a desktop, and
+   only when the track is wide enough for a title (the container query); a
+   phone has no third track. */
+.mprof__index {
+  display: none;
+}
+
+@media (--bp-desktop) {
+  .mprof__index {
+    display: block;
+    grid-column: 3;
+    grid-row: 1 / span 6;
+    container-type: inline-size;
+    position: sticky;
+    top: var(--aside-top, 7rem);
+    max-height: calc(var(--shell-h, 100dvh) - 11rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+  .mprof__index::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.mprof__index-list {
+  width: fit-content;
+  max-width: 14rem;
+  margin: 0 0 0 auto;
+  padding: 0;
+  list-style: none;
+  border-left: 1px solid var(--color-border);
+}
+
+@container (width < 8rem) {
+  .mprof__index-list {
+    display: none;
+  }
+}
+
+/* Its type is META in type.css. */
+.mprof__index-link {
+  display: block;
+  margin-left: -1px;
+  padding: 0.35rem 0 0.35rem 0.9rem;
+  border-left: 2px solid transparent;
+  color: var(--color-muted);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.mprof__index-link:hover {
+  color: var(--color-dark);
+}
+
+.mprof__index-link[aria-current] {
+  border-left-color: var(--color-dark);
+  color: var(--color-dark);
+}
+
+.mprof__index-link:focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: 2px;
+}
+
+/* Arriving at an item from the index leaves room for the header. */
+.mprof__works > :is(.mprof__project, .mprof__work) {
+  scroll-margin-top: 7rem;
 }
 
 @keyframes mprof-aside-more {
@@ -421,10 +499,12 @@
 
 /* A heading, in the name's face (2026-09-28, Josh: "Project Title should be
    bigger too"): bold and tight like .mprof__name, two sizes under it so the
-   member still outranks their project. */
+   member still outranks their project. A step back down on 2026-10-14
+   (Josh: "the project title smaller"): 30px over captions that had grown to
+   14px shouted; 22px still heads them. */
 .mprof__project-title {
   margin: 0;
-  font-size: var(--fs-225);
+  font-size: var(--fs-160);
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: -0.02em;
@@ -487,9 +567,23 @@
    window's edges, so the next work stood in the margin, turned down to 40%.
    Now it clips at the column, as the directory card's frame clips its
    slides (communityCard.css): one work in view, the next one arriving from
-   the column's edge as you page. */
+   the column's edge as you page.
+   ...AND AT ITS PICTURE (same day: "there is still a gap to the right of the
+   images and we see them transition through that"). A picture capped at
+   60vh is narrower than the column and centred in it, so the works slid
+   across the empty paper either side of it. The track is now clipped to the
+   CURRENT picture's frame (--frame-l / --frame-r, measured by
+   projectCarousel.ts; a caption takes the picture's width, so it is inside
+   the same window), and the window eases to the next picture's width once
+   that one is current. Each slide is as wide as its picture and snaps to the
+   column's centre, so the next work follows one gap behind (the script sets
+   --slide-w and the end padding). Unmeasured, slides and window are the
+   column. */
 .mprof__carousel {
-  --carousel-gap: 3rem;
+  /* The strip of paper between two works as they pass through the window:
+     enough to part them, no more (3rem until the window closed on the
+     picture, 2026-10-14). */
+  --carousel-gap: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -643,21 +737,32 @@
   /* No scrollbar: the chevrons and the count are the affordance, and a bar
      under a tall picture would sit a screen below the thing it scrolls. */
   scrollbar-width: none;
+  padding-inline: var(--pad-l, 0px) var(--pad-r, 0px);
+  clip-path: inset(0 var(--frame-r, 0px) 0 var(--frame-l, 0px));
+  transition: clip-path 0.32s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 .mprof__carousel-track::-webkit-scrollbar {
   display: none;
 }
 .mprof__carousel-track:focus-visible {
+  outline: none;
+}
+/* The clip would cut the track's own focus ring away, so the stage draws it,
+   round the current picture. */
+.mprof__carousel-stage:has(> .mprof__carousel-track:focus-visible)::after {
+  content: "";
+  position: absolute;
+  inset: -4px calc(var(--frame-r, 0px) - 4px) -4px calc(var(--frame-l, 0px) - 4px);
   outline: 2px solid var(--color-dark);
-  outline-offset: 4px;
+  pointer-events: none;
 }
 
-/* One work per step, at the column's width. scroll-snap-stop keeps a hard
-   swipe from flying past a work. */
+/* One work per step, at its picture's width (the column's without the
+   script). scroll-snap-stop keeps a hard swipe from flying past a work. */
 .mprof__carousel-slide {
-  flex: 0 0 100%;
+  flex: 0 0 var(--slide-w, 100%);
   min-width: 0;
-  scroll-snap-align: start;
+  scroll-snap-align: center;
   scroll-snap-stop: always;
 }
 
@@ -674,14 +779,9 @@
   white-space: nowrap;
 }
 
-/* On a phone the full 3rem would be swipe travel spent on paper. */
-@media (--bp-mobile) {
-  .mprof__carousel {
-    --carousel-gap: 1.25rem;
-  }
-}
 
 @media (prefers-reduced-motion: reduce) {
+  .mprof__carousel-track,
   .mprof__carousel-dot,
   .mprof__carousel-arrow {
     transition: none;
@@ -786,7 +886,7 @@
   }
   /* The name is 24px here, so the project title steps down to stay under it. */
   .mprof__project-title {
-    font-size: var(--fs-160);
+    font-size: var(--fs-140);
   }
   .mprof__works-key {
     margin-bottom: -1.25rem;

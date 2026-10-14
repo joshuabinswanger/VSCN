@@ -231,9 +231,8 @@
 .ccard__role,
 .member-role,
 .member-link,
-.pdisc__link,
-.pswp--vscn .pswp__vscn-credit-name,
-.pswp--vscn .pswp__vscn-text-link {
+.mprof__index-link,
+.pswp--vscn .pswp__vscn-credit-name {
   font-size: var(--fs-78);
   font-weight: 500;
   line-height: 1.3;
@@ -243,40 +242,37 @@
    description, a card's bio, a project's description) wherever the picture
    is: on the member page, in the card's panel, in the lightbox. The lightbox
    used to set them a step smaller than the page it opened from. Colour (dark
-   title, muted description) stays with each component. */
+   title, muted description) stays with each component.
+   A STEP UP (2026-10-14, Josh: "make the font bigger on the work page it
+   seems extremely small", then "make the lightbox and card captions bigger
+   too"): 11px on a desktop until then, under pictures 700px wide and beside a
+   14px bio. Now the bio's size, everywhere a picture is. The lines that
+   follow a caption — "With …" and the links — are CAPTION'S SECOND LINE,
+   a step below. The editor's inline fields inherit, so editing grows too. */
 .t-caption,
+.mprof__caption,
+.mprof__project-desc,
 .pdisc__bio,
 .pswp--vscn .pswp__vscn-text-caption,
-.pswp--vscn .pswp__vscn-text-desc,
-.pswp--vscn .pswp__vscn-text-project,
-.pswp--vscn .pswp__vscn-text-affiliations {
-  font-size: var(--fs-78);
-  font-weight: 400;
-  line-height: 1.45;
-}
-
-/* ON THE MEMBER PAGE, A STEP UP (2026-10-14, Josh: "make the font bigger on
-   the work page it seems extremely small"). A work's title and description
-   and a project's description were CAPTION, 11px on a desktop, under
-   pictures 700px wide and beside a 14px bio. They read at the bio's size
-   now; the "With …" line and the links under a work or in the person's
-   column are a step below, at the role's. The editor's Works tab is this
-   page, and its inline fields inherit, so editing grows with it. CAPTION and
-   META keep their sizes in the card's panel and the lightbox. */
-.mprof__caption,
-.mprof__project-desc {
+.pswp--vscn .pswp__vscn-text-desc {
   font-size: var(--fs-100);
   font-weight: 400;
   line-height: 1.5;
 }
 
-.mprof__project-with {
+/* CAPTION'S SECOND LINE: who a project was with, and the links under a
+   picture, on the page, in the card's panel and in the lightbox. */
+.mprof__project-with,
+.pswp--vscn .pswp__vscn-text-project,
+.pswp--vscn .pswp__vscn-text-affiliations {
   font-size: var(--fs-90);
   font-weight: 400;
   line-height: 1.45;
 }
 
-.mprof__link {
+.mprof__link,
+.pdisc__link,
+.pswp--vscn .pswp__vscn-text-link {
   font-size: var(--fs-90);
   font-weight: 500;
   line-height: 1.35;

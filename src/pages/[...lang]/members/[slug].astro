@@ -332,7 +332,7 @@ const jsonLd = memberPageJsonLd({
 
     {
       works.length > 0 && (
-        <div class="mprof__works" data-pswp-i18n={lightboxStrings}>
+        <div class="mprof__works" data-pswp-i18n={lightboxStrings} data-index-label={t("member.index")}>
           {/* Each work is a link to the original, which is what PhotoSwipe
               binds to — and what makes the image openable with scripting off
               rather than being inert. The gallery is still one list in the
@@ -377,6 +377,8 @@ const jsonLd = memberPageJsonLd({
   import { createLightbox, parseLightboxStrings } from "../../../lib/lightbox.ts";
   // The project carousels (2026-09-26); they release themselves on astro:before-swap.
   import { initProjectCarousels, showInCarousel } from "../../../lib/projectCarousel.ts";
+  // The list of projects and works in the third track (2026-10-14).
+  import { initProfileIndex } from "../../../lib/profileIndex.ts";
   import "photoswipe/style.css";
   // Immediately after the package sheet, never before: this is the chrome that
   // replaces it. The overrides are also written to win on specificity alone
@@ -391,6 +393,7 @@ const jsonLd = memberPageJsonLd({
 
   document.addEventListener("astro:page-load", () => {
     initProjectCarousels();
+    initProfileIndex(document.querySelector<HTMLElement>(".mprof"));
     lightbox?.destroy();
     lightbox = null;
     const gallery = document.querySelector<HTMLElement>(".mprof__works");

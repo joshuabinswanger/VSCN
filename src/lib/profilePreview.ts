@@ -25,6 +25,7 @@ import { embedDataAttrs } from "./embed.ts";
 import { fillParagraphs } from "./paragraphs.ts";
 import { CARD_TRIGGER, bindCardOpener, createLightbox, type LightboxStrings } from "./lightbox.ts";
 import { initProjectCarousels, showInCarousel } from "./projectCarousel.ts";
+import { initProfileIndex } from "./profileIndex.ts";
 import type { Lang } from "../i18n/utils";
 
 type PreviewWork = ProfileViewModel["works"][number];
@@ -444,6 +445,8 @@ export function renderProfilePreview(
     // and after the list is shown, so the new ones measure a real box
     // (projectCarousel.ts).
     initProjectCarousels(works);
+    // The page's list of projects and works, rebuilt with them (profileIndex.ts).
+    initProfileIndex(works.closest<HTMLElement>(".mprof"));
   }
 }
 
