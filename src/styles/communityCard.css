@@ -40,6 +40,12 @@
  * in MemberDetailPanel.astro, and nothing here reaches into `.pdisc*`.
  */
 
+@property --ccard-side {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px; /* absolute: rem is not computationally independent, and a rule with it is dropped */
+}
+
 .ccard {
   /* The rail's containing block: MemberDetailPanel's column mode positions
      its <summary> absolutely against the nearest positioned ancestor, which
@@ -57,8 +63,16 @@
      --ccard-slot-w is the slot: the cell is an inline-size container
      (CommunityGrid), so 100cqw; the editor preview states its own. */
   --ccard-rail: 2.4rem;
-  --ccard-side-w: 15rem;
+  /* The words' column: wide open (2026-10-14, Josh: "make the text etc
+     wider" — 15rem was a narrow strip for a 14px bio), narrower folded, where
+     it holds only the name and role and the rail comes in to meet them
+     ("the card bar need to collapse to inside as well"). --ccard-side is a
+     REGISTERED length (the @property above this rule), so the change between
+     the two is a transition, not a jump. */
+  --ccard-side-w: 20rem;
+  --ccard-side-folded: 13rem;
   --ccard-side: var(--ccard-side-w);
+  transition: --ccard-side 460ms cubic-bezier(0.22, 0.61, 0.36, 1);
   /* The air between the picture and the words, now that the rail stands on
      the words' far side. */
   --ccard-gap: 1.2rem;
@@ -180,6 +194,10 @@
      simply grows out from under the head and folds back into it.
      The foot is hidden by visibility, not display, so it keeps its row and the
      script can fade it. */
+  .ccard:has(> .pdisc:not([open])),
+  .ccard:has(> .pdisc.is-closing) {
+    --ccard-side: var(--ccard-side-folded);
+  }
   .ccard:has(> .pdisc:not([open])) .ccard__foot {
     visibility: hidden;
     pointer-events: none;
@@ -619,6 +637,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .ccard {
+    transition: none;
+  }
   /* Slide travel is no longer a CSS transition — the script asks Embla to
      jump instead of animate under this query, which is the same trade the
      crossfade used to make by dropping its transition here. What is left in

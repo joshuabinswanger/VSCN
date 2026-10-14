@@ -180,6 +180,19 @@
   letter-spacing: -0.01em;
 }
 
+/* THE CARD'S WORDS, A STEP DOWN ON A DESKTOP (2026-10-14, Josh: "the font is
+   too big"): beside the picture they stand in a column, not a line, and the
+   page-wide NAME and BODY sizes read large in it. Only the card's own
+   elements; a phone stacks them under the picture at full width. */
+@media (--bp-desktop) {
+  .ccard__name {
+    font-size: var(--fs-100);
+  }
+  .ccard .pdisc__bio {
+    font-size: var(--fs-95);
+  }
+}
+
 /* HEADING: section heads and field labels, in caps. The info and legal
    pages' heads were 0.85, the form labels 0.82 and the editor's tabs 0.78,
    which are all 12px on a phone and 11–12px on desktop: one voice. */
