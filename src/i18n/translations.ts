@@ -354,8 +354,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.reauth.cancel": "Cancel",
     "profile.reauth.confirm": "Confirm delete",
     "profile.preview.defaultName": "Your name",
-    "profile.preview.card": "Gallery card",
-    "profile.preview.cardNote": "How you appear in the community gallery.",
     // The Works tab's bar (2026-10-13): three switches and Save, and the
     // inline fields' placeholders in the page's works column.
     "profile.works.bar": "Works view",
@@ -981,8 +979,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.reauth.cancel": "Abbrechen",
     "profile.reauth.confirm": "Löschen bestätigen",
     "profile.preview.defaultName": "Dein Name",
-    "profile.preview.card": "Galeriekarte",
-    "profile.preview.cardNote": "So erscheinst du in der Community-Galerie.",
     "profile.works.bar": "Ansicht der Arbeiten",
     "profile.works.view": "Anzeigen",
     "profile.works.view.profile": "Profil",
