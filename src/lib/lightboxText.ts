@@ -116,7 +116,11 @@ export function lightboxPadding(viewportSize: Point, _itemData: SlideData) {
     Math.round(viewportSize.y * BAND_TOP),
     mobile ? TOP_FLOOR_MOBILE : TOP_FLOOR_DESKTOP,
   );
-  const bottom = Math.round(viewportSize.y * BAND_TEXT);
+  // WORDS HIDDEN, PICTURE CENTRED (2026-10-15, Josh: "image needs to be
+  // centered"). With the words off there is nothing for the 30 % band to hold,
+  // so the reserve goes symmetric — the top's number under the picture too,
+  // which also leaves the toggle its line beneath it.
+  const bottom = wordsAreOff() ? top : Math.round(viewportSize.y * BAND_TEXT);
   const side = mobile ? 12 : 32;
   return { top, bottom, left: side, right: side };
 }
@@ -208,7 +212,13 @@ function readWordsOff(): boolean {
     return false;
   }
 }
+/** The choice as the layout reads it: storage once, then the last toggle. */
+let wordsOff: boolean | undefined;
+function wordsAreOff(): boolean {
+  return (wordsOff ??= readWordsOff());
+}
 function writeWordsOff(off: boolean): void {
+  wordsOff = off;
   try {
     if (off) localStorage.setItem(WORDS_OFF_KEY, "1");
     else localStorage.removeItem(WORDS_OFF_KEY);
@@ -438,11 +448,14 @@ export function registerLightboxText(
           el.setAttribute("aria-label", name);
           el.title = name;
         };
-        apply(readWordsOff());
+        apply(wordsAreOff());
         el.addEventListener("click", () => {
           const off = !pswp.element?.classList.contains("pswp--vscn-words-off");
           writeWordsOff(off);
           apply(off);
+          // lightboxPadding reads the choice: re-fit so the picture moves
+          // between its band and the window's centre.
+          pswp.updateSize(true);
         });
       },
     });
@@ -518,7 +531,9 @@ function attachPlacement(pswp: PhotoSwipe): void {
     // out of its thumbnail and may overrun the band for a frame.
     // Bounded so a long description cannot run past the foot of the window;
     // past that it scrolls, and markClipped shows the fade that says so.
-    const top = Math.max(y + h, textBandTop(viewport.y)) + GAP;
+    // With the words off the band is gone (lightboxPadding) and only the
+    // toggle is placed here, straight under the centred picture.
+    const top = (wordsAreOff() ? y + h : Math.max(y + h, textBandTop(viewport.y))) + GAP;
     text.style.left = `${Math.round(x)}px`;
     text.style.top = `${Math.round(top)}px`;
     text.style.width = `${Math.round(w)}px`;

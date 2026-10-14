@@ -495,35 +495,36 @@
 /* ── Words toggle ─────────────────────────────────────────────────────────
    Registered in lightboxText.ts (2026-10-15) and placed by its script at the
    right end of the words' first line. Three hairlines of "text", the last one
-   short, drawn like the zoom's plus; a diagonal strikes them while the words
-   are hidden. Grey like the top row's controls, dark on hover. Gone on a slide
-   with no words, and with the words while zoomed. */
+   short; a diagonal strikes them while the words are hidden. In the ink
+   colour at 1.5px — the grey hairlines of the first cut were missed outright
+   on the paper (2026-10-15, Josh: "icon not visible"). Gone on a slide with
+   no words, and with the words while zoomed. */
 .pswp--vscn .pswp__button--vscn-text-toggle {
   position: absolute;
-  padding: 0.3rem 0 0.3rem 0.4rem;
-  color: var(--color-muted);
+  padding: 0.3rem 0 0.3rem 0.5rem;
+  color: var(--color-dark);
 }
 .pswp--vscn .pswp__button--vscn-text-toggle:hover,
 .pswp--vscn .pswp__button--vscn-text-toggle:focus-visible {
-  color: var(--color-dark);
+  color: var(--color-muted);
 }
 .pswp--vscn .pswp__vscn-lines {
   position: relative;
   display: block;
-  width: 0.9rem;
-  height: 0.65rem;
+  width: 1.15rem;
+  height: 0.85rem;
   background:
-    linear-gradient(currentColor 0 0) left top / 100% 1px no-repeat,
-    linear-gradient(currentColor 0 0) left center / 100% 1px no-repeat,
-    linear-gradient(currentColor 0 0) left bottom / 60% 1px no-repeat;
+    linear-gradient(currentColor 0 0) left top / 100% 1.5px no-repeat,
+    linear-gradient(currentColor 0 0) left center / 100% 1.5px no-repeat,
+    linear-gradient(currentColor 0 0) left bottom / 60% 1.5px no-repeat;
 }
 .pswp--vscn.pswp--vscn-words-off .pswp__vscn-lines::after {
   content: "";
   position: absolute;
   top: 50%;
-  left: -0.15rem;
-  right: -0.15rem;
-  height: 1px;
+  left: -0.2rem;
+  right: -0.2rem;
+  height: 1.5px;
   background: currentColor;
   transform: rotate(-35deg);
 }
@@ -533,7 +534,7 @@
 }
 /* The words' first line stops short of the toggle. */
 .pswp--vscn .pswp__vscn-text > :first-child {
-  padding-right: 1.6rem;
+  padding-right: 2rem;
 }
 
 /* ── Error ────────────────────────────────────────────────────────────────
