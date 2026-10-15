@@ -44,9 +44,12 @@
    The phone re-deals this as one column in the --bp-mobile block at the
    foot of this file. */
 .ccard {
-  /* More white space between the words and the picture (2026-10-15,
-     Josh: "even more white space"); it also holds the pager. */
-  --ccard-air: 6rem;
+  /* The air between the words and the picture: 6rem from "even more white
+     space" (2026-10-15), back to 3rem the same day ("the gap between image
+     and text still too big"). The count hangs in it at the picture's
+     bottom edge and may reach a little into the words' column, whose foot
+     is kept clear for it (.pdisc max-height). */
+  --ccard-air: 3rem;
   /* The words' column (2026-10-14, Josh: "make the text etc wider"). The
      editor preview reads this name too. */
   --ccard-side-w: 20rem;
@@ -85,7 +88,7 @@
   grid-area: 2 / 1 / 3 / 2;
   min-width: 0;
   min-height: 0;
-  max-height: calc(var(--cpage-pic-h, 30rem) - 3rem);
+  max-height: calc(var(--cpage-pic-h, 30rem) - 5rem);
   overflow: hidden auto;
   scrollbar-width: thin;
 }
