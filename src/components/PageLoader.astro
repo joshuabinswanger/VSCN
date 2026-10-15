@@ -34,8 +34,8 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
      its own slot in the header's VSCN while the paper lifts. The choreography
      is data in src/lib/introCascade.ts; the script below only plays it. */
   #page-loader {
-    --pl-beat: 0.2s;
-    --pl-travel: 0.5s;
+    --pl-beat: 0.17s;
+    --pl-travel: 0.4s;
     /* The column's measure: the old intro's stage, 70vw up to 600px. */
     --pl-measure: min(600px, 70vw);
     /* Fallback before the script measures: "Communication" is about 7.9em
@@ -154,24 +154,25 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
 <script>
   import { INTRO_WORDS, planStack, type StackEvent } from "../lib/introCascade";
 
-  // The whole rhythm, in one place. The beat matches the header's flap so it
-  // reads as the same mechanism. Rows write with a short offset rather than
-  // one after the other: they are separate lines, so nothing overlays.
+  // The whole rhythm, in one place. Rows write with a short offset rather
+  // than one after the other: they are separate lines, so nothing overlays.
+  // Tightened 2026-10-15 (Josh: "the transition into the [header] should
+  // start sooner and be a bit quicker in general"): ~4.4 s -> ~3.4 s.
   const TIMING = {
-    beat: 0.2,
+    beat: 0.17,
     stagger: 0.02,
-    lead: 0.3,
+    lead: 0.2,
     arriveStagger: 0.07,
-    hold: 0.15,
-    rowOffset: 0.22,
-    holdName: 0.6,
-    foldStagger: 0.06,
-    rest: 0.15,
+    hold: 0.1,
+    rowOffset: 0.18,
+    holdName: 0.35,
+    foldStagger: 0.04,
+    rest: 0.05,
   };
-  const TRAVEL_S = 0.5;
+  const TRAVEL_S = 0.4;
   // Between one initial setting off and the next, top to bottom: the column
   // peels into the line rather than snapping to it.
-  const TRAVEL_STAGGER_S = 0.04;
+  const TRAVEL_STAGGER_S = 0.03;
   const LONGEST = INTRO_WORDS.reduce((a, b) => (b.length > a.length ? b : a));
   const CURVE = "cubic-bezier(0.65, 0, 0.35, 1)";
 
