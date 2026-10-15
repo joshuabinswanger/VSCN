@@ -44,7 +44,9 @@
    The phone re-deals this as one column in the --bp-mobile block at the
    foot of this file. */
 .ccard {
-  --ccard-air: 2rem;
+  /* More white space between the words and the picture (2026-10-15,
+     Josh: "even more white space"); it also holds the pager. */
+  --ccard-air: 6rem;
   /* The words' column (2026-10-14, Josh: "make the text etc wider"). The
      editor preview reads this name too. */
   --ccard-side-w: 20rem;
@@ -315,15 +317,32 @@
   transform: translate(0.4rem, 0);
 }
 
+/* NO TAGS ON THE CARD (2026-10-15, Josh: "remove the tags"); the bar's tag
+   filter and the profile page still have them. */
+.ccard .pdisc__vals--tags {
+  display: none;
+}
+
 /* ── The foot: the pager under the picture ────────────── */
 .ccard__foot {
   flex: none;
   display: flex;
-  /* The count at the picture's LEFT corner (2026-10-15, Josh). */
   justify-content: flex-start;
   align-items: center;
   min-width: 0;
   padding-top: 0.4rem;
+}
+/* BESIDE THE PICTURE, NOT UNDER IT (2026-10-15, Josh: "controls to the
+   left and not below"): the count stands in the air between the words and
+   the picture, level with the picture's bottom edge. A phone has no room
+   beside it and keeps the count under the picture's left corner. */
+@media (--bp-desktop) {
+  .ccard__foot {
+    position: absolute;
+    bottom: 0;
+    right: calc(100% + 0.9rem);
+    padding-top: 0;
+  }
 }
 
 /* ── Position indicator ───────────────────────────────── */
@@ -465,8 +484,7 @@
   /* A PHONE SHOWS THE PICTURE, THE NAME, THE LINKS AND THE WAY IN
      (2026-10-15, Josh: "on mobile the bio and tags should not be shown").
      The profile page has them. */
-  .ccard .pdisc__bio,
-  .ccard .pdisc__vals--tags {
+  .ccard .pdisc__bio {
     display: none;
   }
   /* Smaller on a phone (2026-10-12, Josh: "the Profile button smaller on
