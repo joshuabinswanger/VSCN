@@ -130,10 +130,6 @@ const t = useTranslations(lang);
   <div class="ccard__head">
     <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
     <p class="ccard__role" data-ccpv="role" hidden></p>
-    {/* The count, in the text block as on the card. */}
-    <div class="ccard__foot">
-      <div class="ccard__dots" data-ccpv="dots" hidden></div>
-    </div>
   </div>
   <MemberDetailPanel lang={lang} shell mode="plain">
     {/* In the panel, last, as on the card — a <span> here because there is
@@ -143,6 +139,10 @@ const t = useTranslations(lang);
       <span aria-hidden="true">→</span>
     </span>
   </MemberDetailPanel>
+  {/* The count, closing the words as on the card. */}
+  <div class="ccard__foot">
+    <div class="ccard__dots" data-ccpv="dots" hidden></div>
+  </div>
 
   {
     /* Cloned by the renderer. A template's content is inert, so cloning is the
