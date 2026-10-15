@@ -1491,9 +1491,14 @@ const indexMembers = [...members].sort((a, b) =>
     .cgrid[data-pattern="pages"][data-motion] {
       --cpage-ease: cubic-bezier(0.16, 1, 0.3, 1);
     }
-    /* The picture opens out of an inset and settles from a slight zoom. */
+    /* The picture opens out of an inset and settles from a slight zoom.
+       Until then it is not there at all (2026-10-15, Josh: "the next
+       portfolio element should either be super faded in on the bottom edge
+       always or never"): NEVER — a card that is not the one on screen shows
+       nothing, so no edge of the next one ever peeks in at the bottom. */
     :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__frame) {
       clip-path: inset(9% 9% 9% 9%);
+      opacity: 0;
     }
     :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__img) {
       transform: scale(1.16);
@@ -1528,7 +1533,10 @@ const indexMembers = [...members].sort((a, b) =>
 
     :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__frame) {
       clip-path: inset(0 0 0 0);
-      transition: clip-path 1.15s var(--cpage-ease);
+      opacity: 1;
+      transition:
+        clip-path 1.15s var(--cpage-ease),
+        opacity 0.6s var(--cpage-ease);
     }
     :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__img) {
       transform: none;
