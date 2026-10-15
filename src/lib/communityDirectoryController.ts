@@ -5,6 +5,7 @@ import { isWorkSort, sectionWorks, type SortableWork, type WorkSort } from "./co
 import { DEFAULT_VIEW, viewFromParam, type ViewName } from "./communityLayout.ts";
 import { setPagesPaging } from "./pagesPager.ts";
 import { setPagesEntrance } from "./pagesEntrance.ts";
+import { setPagesViewport } from "./pagesViewport.ts";
 import { shuffleBands } from "./communityDeal.ts";
 
 // ────────────────────────────────────────────────────────────────────────
@@ -696,6 +697,7 @@ function reflectSnap(mode: LayoutMode) {
   else delete wrap.dataset.snap;
   setPagesPaging(mode === "pages");
   setPagesEntrance(mode === "pages");
+  setPagesViewport(mode === "pages");
 }
 document.addEventListener("astro:before-swap", () => {
   const wrap = document.querySelector<HTMLElement>(".page-wrap");
