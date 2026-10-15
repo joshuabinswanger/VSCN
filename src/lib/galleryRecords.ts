@@ -148,8 +148,12 @@ export function orderedGalleryItems(
     if (embed) {
       item.embed = embed;
       item.posterSource = rec.posterSource === "member" ? "member" : "auto";
-      if (typeof rec.createdAt === "string") item.addedAt = rec.createdAt;
     }
+    // When the work was added. Every record, not only a video's (which was
+    // the case until 2026-10-15, for the VideoObject's uploadDate alone): the
+    // Images view sorts by it now. Only the build's snapshot carries it as a
+    // string — see the field's note above.
+    if (typeof rec.createdAt === "string") item.addedAt = rec.createdAt;
     items.push(item);
   }
   return items;

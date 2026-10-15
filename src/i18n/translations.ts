@@ -69,6 +69,13 @@ export const ui: Record<string, Record<string, string>> = {
     "community.filter.tags.all": "All tags",
     "community.filter.tags.search": "Search tags…",
     "community.filter.tags.clear": "Clear",
+    "community.sort": "Sort",
+    "community.sort.date": "Date",
+    "community.sort.member": "Member",
+    "community.sort.project": "Project",
+    "community.sort.field": "Field",
+    "community.sort.noProject": "Without project",
+    "community.sort.noField": "Without tags",
 
     // MemberCard
     "member.showBio": "Show bio for",
@@ -728,6 +735,13 @@ export const ui: Record<string, Record<string, string>> = {
     "community.filter.tags.all": "Alle Tags",
     "community.filter.tags.search": "Tags suchen…",
     "community.filter.tags.clear": "Zurücksetzen",
+    "community.sort": "Sortieren",
+    "community.sort.date": "Datum",
+    "community.sort.member": "Mitglied",
+    "community.sort.project": "Projekt",
+    "community.sort.field": "Fachgebiet",
+    "community.sort.noProject": "Ohne Projekt",
+    "community.sort.noField": "Ohne Tags",
 
     // MemberCard
     "member.showBio": "Bio anzeigen für",
