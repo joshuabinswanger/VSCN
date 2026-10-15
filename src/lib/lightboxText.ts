@@ -116,11 +116,9 @@ export function lightboxPadding(viewportSize: Point, _itemData: SlideData) {
     Math.round(viewportSize.y * BAND_TOP),
     mobile ? TOP_FLOOR_MOBILE : TOP_FLOOR_DESKTOP,
   );
-  // WORDS HIDDEN, PICTURE CENTRED (2026-10-15, Josh: "image needs to be
-  // centered"). With the words off there is nothing for the 30 % band to hold,
-  // so the reserve goes symmetric — the top's number under the picture too,
-  // which also leaves the toggle its line beneath it.
-  const bottom = wordsAreOff() ? top : Math.round(viewportSize.y * BAND_TEXT);
+  // The band stays reserved while the description is folded, so unfolding
+  // it never moves the picture.
+  const bottom = Math.round(viewportSize.y * BAND_TEXT);
   const side = mobile ? 12 : 32;
   return { top, bottom, left: side, right: side };
 }
@@ -193,38 +191,9 @@ export interface LightboxTextLabels {
   /** Accessible names for the counter's two chevrons. */
   prev: string;
   next: string;
-  /** The words toggle's accessible name in each state. */
+  /** The title's dropdown, by what pressing it does. */
   hideText: string;
   showText: string;
-}
-
-/**
- * Whether the visitor last chose to hide the words. Remembered for the
- * session's next lightbox and the next visit: someone who wants the pictures
- * bare wants them bare on every one. Storage can be missing or throw (a
- * private window, blocked site data); then the words simply start shown.
- */
-const WORDS_OFF_KEY = "vscn.lightbox.wordsOff";
-function readWordsOff(): boolean {
-  try {
-    return localStorage.getItem(WORDS_OFF_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-/** The choice as the layout reads it: storage once, then the last toggle. */
-let wordsOff: boolean | undefined;
-function wordsAreOff(): boolean {
-  return (wordsOff ??= readWordsOff());
-}
-function writeWordsOff(off: boolean): void {
-  wordsOff = off;
-  try {
-    if (off) localStorage.setItem(WORDS_OFF_KEY, "1");
-    else localStorage.removeItem(WORDS_OFF_KEY);
-  } catch {
-    /* the choice lasts this lightbox only */
-  }
 }
 
 /**
@@ -248,6 +217,9 @@ export function registerLightboxText(
     // line of the bottom band, under the description — the furthest point in
     // the layout from the picture, for the one piece of text that says whose
     // picture it is.
+    //
+    // Black and not underlined since 2026-10-15 (Josh: "artist name top left
+    // without underline and black"): the name is still the link.
     //
     // It stays the ROUTE OUT (2026-09-03, Josh: "in lightbox a way to get to
     // the profile of a person"): the lightbox is the whole screen, so every
@@ -322,6 +294,18 @@ export function registerLightboxText(
     });
 
     // ── The words about the picture ─────────────────────────────────────
+    // THE TITLE IS THE DROPDOWN (2026-10-15, Josh: "the show more text should
+    // be left aligned and be the title and drop down button to show the
+    // description"). The caption opens the block, left-aligned under the
+    // picture, with a chevron after it; pressing it unfolds everything else —
+    // description, links, project, affiliations — beneath it. Folded by
+    // default; the choice holds while paging, so a reader who opened one
+    // description reads the next one too, and a new lightbox starts folded.
+    // A work with no caption still gets the chevron alone (named by its
+    // aria-label); a work with nothing but a caption gets no chevron.
+    // Replaces the three-hairline words toggle of the same morning, which hid
+    // the title too.
+    let open = false;
     ui.registerElement({
       name: "vscn-text",
       className: "pswp__vscn-text",
@@ -333,17 +317,14 @@ export function registerLightboxText(
             pswp.currSlide?.data.element as HTMLElement | undefined,
           );
           el.replaceChildren();
-          if (caption) {
-            const line = document.createElement("span");
-            line.className = "pswp__vscn-text-caption";
-            line.textContent = caption;
-            el.append(line);
-          }
+          const more = document.createElement("div");
+          more.className = "pswp__vscn-text-more";
+          more.id = "pswp-vscn-text-more";
           if (description) {
             const desc = document.createElement("span");
             desc.className = "pswp__vscn-text-desc";
             desc.textContent = description;
-            el.append(desc);
+            more.append(desc);
           }
           // WHERE THIS IMAGE APPEARED (2026-09-04, from the sketch: "DESC
           // (WITH LINKS)"). The field has existed since the projects feature
@@ -371,7 +352,7 @@ export function registerLightboxText(
             };
             if (siteLink) add(siteLink, labels.siteLinkTitle);
             if (link) add(link, labels.linkTitle);
-            el.append(row);
+            more.append(row);
           }
           // THE PROJECT THIS PICTURE IS PART OF (2026-09-23,
           // documentation/20260923-projects-design.md): its title, linked
@@ -389,7 +370,7 @@ export function registerLightboxText(
               name.rel = "noopener";
             }
             line.append(name);
-            el.append(line);
+            more.append(line);
           }
           if (affiliations.length) {
             const line = document.createElement("span");
@@ -406,57 +387,54 @@ export function registerLightboxText(
               }
               line.append(node);
             });
-            el.append(line);
+            more.append(line);
           }
-          const empty = !caption && !description && !link && !siteLink && !project && !affiliations.length;
-          el.classList.toggle("is-empty", empty);
-          // A slide with no words has nothing for the toggle to hide.
-          pswp.element?.classList.toggle("pswp--vscn-wordless", empty);
+          const hasMore = more.childElementCount > 0;
+
+          // The head: the caption, a button when there is something to unfold.
+          if (caption || hasMore) {
+            const head = document.createElement(hasMore ? "button" : "span");
+            head.className = "pswp__vscn-text-head";
+            if (caption) {
+              const line = document.createElement("span");
+              line.className = "pswp__vscn-text-caption";
+              line.textContent = caption;
+              head.append(line);
+            }
+            el.append(head);
+            if (head instanceof HTMLButtonElement) {
+              head.type = "button";
+              head.setAttribute("aria-controls", more.id);
+              const chev = document.createElement("span");
+              chev.className = "pswp__vscn-text-chev";
+              chev.setAttribute("aria-hidden", "true");
+              head.append(chev);
+              el.append(more);
+              const apply = () => {
+                const name = open ? labels.hideText : labels.showText;
+                head.setAttribute("aria-expanded", String(open));
+                // A caption names the button itself; the chevron alone needs a name.
+                if (!caption) head.setAttribute("aria-label", name);
+                head.title = name;
+                more.hidden = !open;
+                el.classList.toggle("is-open", open);
+                el.scrollTop = 0;
+                markClipped(el);
+              };
+              head.addEventListener("click", () => {
+                open = !open;
+                apply();
+              });
+              apply();
+            }
+          }
+          el.classList.toggle("is-empty", !caption && !hasMore);
           // The block can scroll; a slide change has to start it at the top or
           // the next description opens mid-paragraph.
           el.scrollTop = 0;
         };
         pswp.on("change", render);
         render();
-      },
-    });
-
-    // ── The words toggle, under the picture ─────────────────────────────
-    // (2026-10-15, Josh: "add a button to hide or show image title and
-    // description", then "use an icon instead of the word TEXT and put it
-    // under the image".) Three hairlines of text at the right end of the
-    // words' first line — the corner the words grow from, so the control sits
-    // with the thing it hides and stays put when they go. It hides the whole
-    // words block — caption, description, links, project — and leaves the
-    // artist line, which is the route out to the person and not text about
-    // the picture. Struck through while the words are off; the accessible
-    // name says what pressing it will do. Placed by attachPlacement with the
-    // words; hidden on a slide that has no words (pswp--vscn-wordless, set by
-    // the block's render above) and while zoomed.
-    ui.registerElement({
-      name: "vscn-text-toggle",
-      className: "pswp__button--vscn-text-toggle",
-      appendTo: "root",
-      order: 11,
-      isButton: true,
-      html: '<span class="pswp__vscn-lines" aria-hidden="true"></span>',
-      onInit: (el, pswp) => {
-        const apply = (off: boolean) => {
-          pswp.element?.classList.toggle("pswp--vscn-words-off", off);
-          el.setAttribute("aria-pressed", String(!off));
-          const name = off ? labels.showText : labels.hideText;
-          el.setAttribute("aria-label", name);
-          el.title = name;
-        };
-        apply(wordsAreOff());
-        el.addEventListener("click", () => {
-          const off = !pswp.element?.classList.contains("pswp--vscn-words-off");
-          writeWordsOff(off);
-          apply(off);
-          // lightboxPadding reads the choice: re-fit so the picture moves
-          // between its band and the window's centre.
-          pswp.updateSize(true);
-        });
       },
     });
 
@@ -471,22 +449,23 @@ export function registerLightboxText(
   });
 }
 
+/**
+ * Says whether there is text past the block's bottom edge, which is the only
+ * thing that makes the fade in lightbox.css appear. Read AFTER the width and
+ * max-height are written, and again when the description unfolds, because
+ * each changes the answer — and read off scrollHeight rather than predicted
+ * from the character count, since where a paragraph wraps is the browser's
+ * business.
+ */
+function markClipped(el: HTMLElement): void {
+  el.classList.toggle("is-clipped", el.scrollHeight > el.clientHeight + 1);
+}
+
 function attachPlacement(pswp: PhotoSwipe): void {
-  /**
-   * Says whether there is text past the block's bottom edge, which is the only
-   * thing that makes the fade in lightbox.css appear. Read AFTER the width and
-   * max-height above are written, because both change the answer — and read
-   * off scrollHeight rather than predicted from the character count, since
-   * where a paragraph wraps is the browser's business.
-   */
-  const markClipped = (el: HTMLElement) => {
-    el.classList.toggle("is-clipped", el.scrollHeight > el.clientHeight + 1);
-  };
 
   const place = () => {
     const root = pswp.element;
     const text = root?.querySelector<HTMLElement>(".pswp__vscn-text");
-    const toggle = root?.querySelector<HTMLElement>(".pswp__button--vscn-text-toggle");
     const slide = pswp.currSlide;
     if (!root || !text || !slide) return;
 
@@ -531,20 +510,12 @@ function attachPlacement(pswp: PhotoSwipe): void {
     // out of its thumbnail and may overrun the band for a frame.
     // Bounded so a long description cannot run past the foot of the window;
     // past that it scrolls, and markClipped shows the fade that says so.
-    // With the words off the band is gone (lightboxPadding) and only the
-    // toggle is placed here, straight under the centred picture.
-    const top = (wordsAreOff() ? y + h : Math.max(y + h, textBandTop(viewport.y))) + GAP;
+    const top = Math.max(y + h, textBandTop(viewport.y)) + GAP;
     text.style.left = `${Math.round(x)}px`;
     text.style.top = `${Math.round(top)}px`;
     text.style.width = `${Math.round(w)}px`;
     text.style.maxHeight = `${Math.round(viewport.y - top - 16)}px`;
     markClipped(text);
-    // The toggle on the first line's right end, inside the picture's measure;
-    // the first line keeps clear of it in lightbox.css.
-    if (toggle) {
-      toggle.style.left = `${Math.round(x + w - toggle.offsetWidth)}px`;
-      toggle.style.top = `${Math.round(top)}px`;
-    }
   };
 
   // Every event that can move the picture. `change` for a new slide,

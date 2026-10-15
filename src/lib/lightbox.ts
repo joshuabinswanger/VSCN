@@ -36,7 +36,7 @@ export interface LightboxStrings {
   with: string;
   /** The dialog's own name: PhotoSwipe makes it role="dialog" and names it nothing. */
   dialog: string;
-  /** The words toggle's accessible name while the words are showing / hidden. */
+  /** The title's dropdown, by what pressing it does: fold / unfold the description. */
   hideText: string;
   showText: string;
 }
@@ -55,8 +55,8 @@ export const LIGHTBOX_FALLBACK: LightboxStrings = {
   partOf: "Part of",
   with: "With",
   dialog: "Image viewer",
-  hideText: "Hide title and description",
-  showText: "Show title and description",
+  hideText: "Hide description",
+  showText: "Show description",
 };
 
 /** The translation key behind each string — what the built pages pass to t() and the editor reads off `ui`. */
@@ -96,10 +96,7 @@ export function parseLightboxStrings(json: string | undefined): LightboxStrings 
 }
 
 // These options take raw HTML, which is how the stock SVG icons get replaced
-// with markup this site can style. Everything injected here is either a
-// static string or an escaped translation.
-const esc = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+// with markup this site can style. Everything injected here is static.
 
 // Two borders on a box turned 45deg — the drawing .ccard__arrow uses on the
 // community card, reproduced so every pager on the site is one control.
@@ -139,14 +136,18 @@ export function createLightbox(
     paddingFn: lightboxPadding,
     // The counter is the site's own "‹ 2 / 7 ›", in the top row (lightboxText.ts).
     counter: false,
-    closeSVG: `<span class="pswp__vscn-word">${esc(strings.close)}</span>`,
+    // AN X, NOT THE WORD (2026-10-15, Josh: "instead of Close an X"): two
+    // hairlines crossed, drawn in lightbox.css. The localized word survives
+    // as closeTitle, which is what a screen reader and a hover get.
+    closeSVG: '<span class="pswp__vscn-x" aria-hidden="true"></span>',
     arrowPrevSVG: CHEVRON,
     arrowNextSVG: CHEVRON,
-    zoomSVG: '<span class="pswp__vscn-zoom" aria-hidden="true"></span>',
+    // NO ZOOM BUTTON (2026-10-15, Josh: "remove the +"). Click, pinch and
+    // the wheel still zoom; what goes is the keyboard's only zoom control.
+    zoom: false,
     // The glyphs above are all aria-hidden, so these are what a screen
     // reader gets; PhotoSwipe writes each to both `title` and `aria-label`.
     closeTitle: strings.close,
-    zoomTitle: strings.zoom,
     arrowPrevTitle: strings.prev,
     arrowNextTitle: strings.next,
     errorMsg: strings.error,
