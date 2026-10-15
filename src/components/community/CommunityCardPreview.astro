@@ -104,6 +104,15 @@ const t = useTranslations(lang);
           it announces. */}
       <p class="ccard__live" aria-live="polite" aria-atomic="true" data-carousel-live></p>
     </div>
+    {
+      /* The foot, as on the card, under the picture: the count row — one dot
+         per work, built by the renderer from the same template mechanism the
+         tags use, plus the "2 / 7" count and its two chevrons, which the
+         carousel module adds. */
+    }
+    <div class="ccard__foot">
+      <div class="ccard__dots" data-ccpv="dots" hidden></div>
+    </div>
   </div>
 
   {
@@ -130,10 +139,6 @@ const t = useTranslations(lang);
   <div class="ccard__head">
     <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
     <p class="ccard__role" data-ccpv="role" hidden></p>
-    {/* The count row, in the head as on the card. */}
-    <div class="ccard__foot">
-      <div class="ccard__dots" data-ccpv="dots" hidden></div>
-    </div>
   </div>
   <MemberDetailPanel lang={lang} shell mode="plain">
     {/* In the panel, last, as on the card — a <span> here because there is
