@@ -386,13 +386,18 @@
 
 /* THE TITLE IS THE DROPDOWN (2026-10-15, Josh: "the show more text should be
    left aligned and be the title and drop down button to show the
-   description"). The caption, left-aligned, with a chevron after its last
-   word — the pager's chevron, turned down, and up while open. A bare button:
+   description"). The caption, left-aligned, and the chevron at the RIGHT end
+   of the picture's measure (Josh, same day: "the drop down arrow should be
+   on the right") — the pager's chevron, turned down, and up while open. The
+   head spans the whole column, so the gap between them is clickable too. A bare button:
    no box, no underline; the chevron is what says it opens. A <span> rather
    than a button when the work has nothing but a caption. */
 .pswp--vscn .pswp__vscn-text-head {
-  display: inline;
-  max-width: 100%;
+  display: flex;
+  align-self: stretch;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
   margin: 0;
   padding: 0;
   border: 0;
@@ -417,21 +422,18 @@
 .pswp--vscn .pswp__vscn-text-caption {
   color: inherit;
 }
-/* Two borders on a box turned 45deg, the site's chevron, pointing down. Inline
-   so it follows the caption's last word instead of claiming a column. */
+/* Two borders on a box turned 45deg, the site's chevron, pointing down,
+   pushed to the right end — also when there is no caption before it. */
 .pswp--vscn .pswp__vscn-text-chev {
-  display: inline-block;
+  flex: none;
   width: 0.45rem;
   height: 0.45rem;
-  margin: 0 0.3rem 0.18em 0.55rem;
+  margin: -0.2rem 0.2rem 0 auto;
   border-right: var(--chevron-stroke) solid currentColor;
   border-bottom: var(--chevron-stroke) solid currentColor;
   vertical-align: middle;
   transform: rotate(45deg);
   transition: transform 140ms ease;
-}
-.pswp--vscn .pswp__vscn-text-head > .pswp__vscn-text-chev:first-child {
-  margin-left: 0;
 }
 .pswp--vscn .pswp__vscn-text.is-open .pswp__vscn-text-chev {
   transform: translate(0, 0.2rem) rotate(-135deg);
