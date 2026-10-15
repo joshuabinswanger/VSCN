@@ -146,18 +146,19 @@ const SLOT_COUNT = Math.max(...INTRO_STATES.map((s) => s.length));
 <script>
   import { INTRO_STATES, planCascade, type CascadeStep } from "../lib/introCascade";
 
-  // The whole rhythm, in one place. Beats match the header's flap closely
-  // enough to read as the same mechanism; holds shorten as the chain goes on,
-  // because by the third word the viewer knows the rule and anything slower
-  // reads as waiting.
+  // The whole rhythm, in one place. The beat matches the header's flap so it
+  // reads as the same mechanism; holds shorten as the chain goes on, because
+  // by the third word the viewer knows the rule and anything slower reads as
+  // waiting. Shortened 2026-10-15 (Josh: "it's too long"): ~6.2 s -> ~4.8 s.
+  // Six flips at two beats each are the floor; the beat is the next lever.
   const TIMING = {
     beat: 0.2,
-    stagger: 0.03,
-    lead: 0.45,
-    holds: [0.4, 0.3, 0.25, 0.25, 0.2],
-    rest: 0.25,
+    stagger: 0.02,
+    lead: 0.3,
+    holds: [0.2, 0.15, 0.15, 0.12, 0.1],
+    rest: 0.12,
   };
-  const TRAVEL_S = 0.45;
+  const TRAVEL_S = 0.4;
   const WIDEST = INTRO_STATES.reduce((a, b) => (b.length > a.length ? b : a));
 
   const loader = document.getElementById("page-loader");
