@@ -1442,7 +1442,7 @@ const indexMembers = [...members].sort((a, b) =>
     :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__body) {
       justify-content: center;
     }
-    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__head) {
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard .ccard__head) {
       overflow: hidden;
     }
     /* Two lines at most, so the room kept for it is never outrun. */
@@ -1535,7 +1535,7 @@ const indexMembers = [...members].sort((a, b) =>
     }
     /* The count, the links and PROFILE drift up into place. */
     :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__foot),
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard > .pdisc) {
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__words > .pdisc) {
       opacity: 0;
       translate: 0 0.6rem;
     }
@@ -1562,7 +1562,7 @@ const indexMembers = [...members].sort((a, b) =>
         opacity 0.7s var(--cpage-ease) var(--t-rest, 0.48s),
         translate 0.9s var(--cpage-ease) var(--t-rest, 0.48s);
     }
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard > .pdisc) {
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__words > .pdisc) {
       opacity: 1;
       translate: 0 0;
       transition:
