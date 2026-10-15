@@ -8,6 +8,7 @@ import {
   layOutSlots,
 } from "../lib/communityLayout.ts";
 import { memberHref } from "../lib/links.ts";
+import { projectTitle } from "../lib/projects.ts";
 import CommunityImageCard from "./community/CommunityImageCard.astro";
 import CommunityWorkCard from "./community/CommunityWorkCard.astro";
 import MemberDetailPanel from "./community/MemberDetailPanel.astro";
@@ -128,6 +129,25 @@ const tagsAttr = (m: MemberView) => {
 const workTagsAttr = (w: MemberView["works"][number]) => {
   const keys = [...new Set(w.tags.map((raw) => raw.trim().toLowerCase()).filter(Boolean))];
   return keys.length ? `|${keys.join("|")}|` : "";
+};
+
+// THE WALL'S SORT KEYS (2026-10-15, src/lib/communitySort.ts). A work's
+// FIELD is its first tag — a tile is on the wall once, so it sits under one
+// tag, and the first is the one the member (or the project) put first. The
+// key is the lowercase identity the filter uses; the label is the first
+// spelling seen, from tagIndex, so a section head and the dropdown's chip
+// agree on how a tag is written.
+const firstTag = (w: MemberView["works"][number]) => {
+  const raw = w.tags.map((t) => t.trim()).find(Boolean);
+  if (!raw) return null;
+  const key = raw.toLowerCase();
+  return { key, label: tagIndex.get(key)?.label ?? raw };
+};
+// A project's head is its title in this page's language; a project with
+// no title in either is named by its kind, so its works are still one run.
+const projectLabel = (m: MemberView, w: MemberView["works"][number]) => {
+  const p = w.projectId ? m.projects?.find((x) => x.id === w.projectId) : undefined;
+  return p ? (projectTitle(p, lang) ?? t("community.sort.project")) : undefined;
 };
 
 // ── The hand-authored grid ────────────────────────────────────────────────
@@ -419,6 +439,52 @@ const indexMembers = [...members].sort((a, b) =>
         </div>
       </div>
       {
+        /* THE SORT MENU (2026-10-15, Josh: "we need sort for the images
+          page. sort by: date, member, project, field/tags"). Images only —
+          hidden in every other view (reflectSort in the controller; the
+          server renders it for the default view's state). Date orders the
+          wall newest first; the other three group it, with the group's name
+          over a hairline between one run of pictures and the next — a
+          member's name links to their page. Field runs are in random order,
+          as asked. One pick at a time; re-picking the active one clears it.
+          Same anatomy as the view menu: a chip trigger naming the current
+          sort ("Sort" at rest), a column of rows with a check on the one
+          pressed. */
+      }
+      <div class="bar-menu sort-menu" hidden={DEFAULT_VIEW !== "grid"}>
+        <button
+          type="button"
+          id="sort-menu-btn"
+          class="bar-menu__trigger"
+          aria-expanded="false"
+          aria-controls="sort-menu-panel"
+          aria-label={t("community.sort")}
+        >
+          <span id="sort-menu-label" data-rest={t("community.sort")}>
+            {t("community.sort")}
+          </span>
+          <svg class="bar-menu__chev" viewBox="0 0 10 6" aria-hidden="true"
+            ><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.2"
+            ></path></svg
+          >
+        </button>
+        <div
+          id="sort-menu-panel"
+          class="bar-menu__panel sort-menu__panel"
+          role="group"
+          aria-label={t("community.sort")}
+          hidden
+        >
+          {
+            (["date", "member", "project", "field"] as const).map((sort) => (
+              <button type="button" class="sort-menu__btn" data-sort={sort} aria-pressed="false">
+                {t(`community.sort.${sort}`)}
+              </button>
+            ))
+          }
+        </div>
+      </div>
+      {
         /* The view menu. All three views on every width: on mobile Gallery is
           a single fading column, Grid the stacked two-column wall — see the
           --bp-mobile block on .cgrid. The trigger names the current view
@@ -527,6 +593,8 @@ const indexMembers = [...members].sort((a, b) =>
     id="member-grid"
     class="cgrid"
     data-pswp-i18n={lightboxStrings}
+    data-sort-no-project={t("community.sort.noProject")}
+    data-sort-no-field={t("community.sort.noField")}
     hidden={DEFAULT_VIEW !== "spread" && DEFAULT_VIEW !== "grid"}
   >
     {members.length === 0 && <p class="state-msg">{t("community.empty")}</p>}
@@ -581,6 +649,14 @@ const indexMembers = [...members].sort((a, b) =>
           data-work={key}
           data-row="0"
           data-col="0-0"
+          data-date={work.addedAt}
+          data-member={member.slug}
+          data-member-name={member.displayName}
+          data-member-href={memberHref(lang, member.slug)}
+          data-project={work.projectId}
+          data-project-name={projectLabel(member, work)}
+          data-field={firstTag(work)?.key}
+          data-field-label={firstTag(work)?.label}
           hidden
         >
           <CommunityWorkCard member={member} work={work} lang={lang} />
@@ -954,7 +1030,27 @@ const indexMembers = [...members].sort((a, b) =>
     min-width: 9rem;
   }
 
-  .view-toggle__btn {
+  /* The sort menu rises from its own trigger too, lined up on its LEFT edge
+     (it sits in the pill's middle, so neither pill edge is its anchor);
+     its rows are the view menu's rows. */
+  .sort-menu {
+    position: relative;
+  }
+
+  .sort-menu__panel {
+    left: calc(-1 * var(--bar-pad) - 1px);
+    bottom: calc(100% + 8px + var(--bar-pad) + 1px);
+    display: flex;
+    flex-direction: column;
+    min-width: 9rem;
+  }
+
+  .sort-menu[hidden] {
+    display: none;
+  }
+
+  .view-toggle__btn,
+  .sort-menu__btn {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -972,13 +1068,16 @@ const indexMembers = [...members].sort((a, b) =>
   }
 
   .view-toggle__btn:hover,
+  .sort-menu__btn:hover,
+  .sort-menu__btn:focus-visible,
   .view-toggle__btn:focus-visible {
     box-shadow: inset 0 0 0 1px var(--color-dark);
     outline: none;
   }
 
   /* The current view: a check at the row's end. */
-  .view-toggle__btn[aria-pressed="true"]::after {
+  .view-toggle__btn[aria-pressed="true"]::after,
+  .sort-menu__btn[aria-pressed="true"]::after {
     content: "";
     width: 0.8em;
     height: 0.45em;
@@ -1473,6 +1572,47 @@ const indexMembers = [...members].sort((a, b) =>
     .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
       --cgrid-row: calc(var(--wall-frame) / var(--slot-rows, 1));
     }
+  }
+
+  /* ── The wall's section heads ─────────────────────────── */
+  /* One per run when the sort groups the wall (2026-10-15, Josh: "the name
+     of the member and a horizontal line separating the different images
+     from member to member"). Created by the deal (communityDirectoryController,
+     the grid branch), so they exist only on the wall — the rule below is
+     scoped to it all the same, because a view switch hides the grid rather
+     than emptying it. The wall is a MULTICOL flow (the masonry block at the
+     end of this sheet), so a head is a SPANNER: `column-span: all` ends the
+     columns above it, draws the head across the whole measure, and starts
+     fresh, rebalanced columns under it — one run of pictures per head, which
+     is the whole point. The hairline over the top is the line Josh asked
+     for; the air above it is the last tile's own margin-bottom, and the
+     margin below holds the name close over its pictures. The voice is NAME
+     (type.css); this rule is layout and colour.
+     :global because the heads are made by the script, which cannot give
+     them this block's scope attribute — the same reason the card roots
+     above are written global. */
+  .cgrid :global(.cgrid__head) {
+    display: none;
+  }
+
+  .cgrid[data-pattern="grid"] :global(.cgrid__head) {
+    display: block;
+    column-span: all;
+    margin: 0 0 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-dark);
+    color: var(--color-dark);
+  }
+
+  .cgrid :global(.cgrid__head a) {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .cgrid :global(.cgrid__head a:hover),
+  .cgrid :global(.cgrid__head a:focus-visible) {
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
   }
 
   /* ── The strip ────────────────────────────────────────── */

@@ -1,13 +1,13 @@
 import { watchAuth } from "./auth.ts";
 import { pageLifetime } from "./pageLifecycle.ts";
 import { navigate } from "astro:transitions/client";
+import { isWorkSort, sectionWorks, type SortableWork, type WorkSort } from "./communitySort.ts";
 import {
   DEFAULT_VIEW,
   GALLERY_PATTERNS,
   STRIP_SLOT_ROWS,
   laneOf,
   layOutSlots,
-  layOutWall,
   type Slot,
   type ViewName,
 } from "./communityLayout.ts";
@@ -293,9 +293,55 @@ function memberMatches(el: HTMLElement): boolean {
   return !tagFilter || (el.dataset.tags ?? "").includes(`|${tagFilter}|`);
 }
 
-/** The bar's two drop-ups (tags, view), as [trigger, panel] id pairs. */
+// ── The Images view's sort ────────────────────────────────────────────────
+// One of communitySort's four, or none — the wall's standing shuffled-in-
+// bands order. Mirrors into ?sort= like the tag does, reset on every
+// astro:page-load for the same reason. Only the wall reads it; the sort
+// menu is hidden in every other view (reflectSort).
+let workSort: WorkSort | "" = "";
+
+function sortFromURL(): WorkSort | "" {
+  const s = new URLSearchParams(window.location.search).get("sort");
+  return isWorkSort(s) ? s : "";
+}
+
+/** The sort menu: shown on the wall only; its pressed row and the trigger's
+ *  name follow `workSort` (the option's text when one is set, the resting
+ *  "Sort" otherwise — the tags trigger's convention). */
+function reflectSort(mode: LayoutMode) {
+  const menu = document.querySelector<HTMLElement>(".sort-menu");
+  if (menu) menu.hidden = mode !== "grid";
+  let current = "";
+  document.querySelectorAll<HTMLButtonElement>(".sort-menu__btn").forEach((btn) => {
+    const active = Boolean(workSort) && btn.dataset.sort === workSort;
+    btn.setAttribute("aria-pressed", String(active));
+    if (active) current = btn.textContent?.trim() ?? "";
+  });
+  const label = document.getElementById("sort-menu-label");
+  if (label) label.textContent = current || (label.dataset.rest ?? "");
+  // Filled dark while a sort is set, as the tags trigger is with a tag.
+  document.getElementById("sort-menu-btn")?.classList.toggle("filter-word--set", Boolean(current));
+}
+
+/** A wall tile, read for communitySort. The attributes are stamped by
+ *  CommunityGrid.astro's work cells (data-date, data-member…), the member's
+ *  href comes from the same place the lightbox's credit link reads it. */
+function sortableOf(cell: HTMLElement): SortableWork & { cell: HTMLElement } {
+  const d = cell.dataset;
+  const out: SortableWork & { cell: HTMLElement } = {
+    cell,
+    member: { key: d.member ?? "", label: d.memberName ?? "", href: d.memberHref },
+  };
+  if (d.date) out.date = d.date;
+  if (d.project) out.project = { key: d.project, label: d.projectName ?? "" };
+  if (d.field) out.field = { key: d.field, label: d.fieldLabel ?? d.field };
+  return out;
+}
+
+/** The bar's three drop-ups (tags, sort, view), as [trigger, panel] id pairs. */
 const BAR_MENUS = [
   ["tag-filter-btn", "tag-filter-panel"],
+  ["sort-menu-btn", "sort-menu-panel"],
   ["view-menu-btn", "view-menu-panel"],
 ] as const;
 
@@ -562,20 +608,70 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
   }
 
   if (mode === "grid") {
-    // The wall deals every WORK into its own slot, and nothing else.
-    // Generated, not drawn: as many fixed-width tracks as the window fits
-    // (see the wall block in the styles above). The count goes onto the grid
-    // for the CSS to build its tracks from, and is remembered so a resize
-    // can tell a real change from a wobble.
+    // THE WALL IS A FLOW, NOT A DEAL INTO SLOTS (2026-10-15, with the sort).
+    // It has been a multicol masonry since 2026-10-12 (the block at the end
+    // of CommunityGrid.astro's sheet), which places by DOM ORDER and ignores
+    // the --gc/--gr slots layOutWall kept writing until today. So the tiles
+    // are now appended in reading order with that placement cleared, and the
+    // sort's SECTION HEADS are `.cgrid__head` elements the deal creates here
+    // and removes on the next: each is a column spanner, so the columns end
+    // above it and start again under it — one run of pictures per head.
+    // writeWallMetrics still measures the window (--wall-cols, --wall-gap),
+    // which the masonry does not read; it is kept so the resize path stays
+    // one path.
     wallCols = writeWallMetrics(grid);
-    const all = layOutWall(matching.length, wallCols, false);
-    orderedGallery.forEach((cell, i) => {
-      writeSlot(cell, all[i]);
-      // No brick step since the static two-wide grid (2026-10-12): the cells
-      // stand square in two straight columns.
+    grid.querySelectorAll(".cgrid__head").forEach((head) => head.remove());
+    const items = orderedGallery.map(sortableOf);
+    // The filtered tag's display label, for the one-section field sort:
+    // the option that offered it carries the first spelling seen.
+    const filteredOpt = tagFilter
+      ? document.querySelector<HTMLElement>(`.tag-filter__option[data-tag="${CSS.escape(tagFilter)}"]`)
+      : null;
+    const sections = workSort
+      ? sectionWorks(items, workSort, {
+          // Its own generator over the deal's seed, so the tag sections come
+          // back in the same order on Back (see rememberedSeed) without
+          // consuming the shuffle's own sequence.
+          random: rngFrom(dealSeed + 1),
+          noProject: grid.dataset.sortNoProject ?? "",
+          noField: grid.dataset.sortNoField ?? "",
+          ...(tagFilter && filteredOpt
+            ? { filtered: { key: tagFilter, label: filteredOpt.dataset.label ?? tagFilter } }
+            : {}),
+        })
+      : [{ key: "", label: "", items }];
+    // The cells this view does not show stay in the grid (display:none) —
+    // appended first so the shown run is contiguous and reads in order.
+    cells.filter((cell) => cell.hidden).forEach((cell) => grid.appendChild(cell));
+    sections.forEach((section, i) => {
+      if (section.label) {
+        const head = document.createElement("h2");
+        head.className = "cgrid__head";
+        if (section.href) {
+          const a = document.createElement("a");
+          a.href = section.href;
+          a.textContent = section.label;
+          head.appendChild(a);
+        } else {
+          head.textContent = section.label;
+        }
+        grid.appendChild(head);
+      }
+      section.items.forEach(({ cell }) => {
+        cell.style.removeProperty("--gc");
+        cell.style.removeProperty("--gr");
+        cell.style.removeProperty("--row-offset");
+        // One row tall for the frame cap, as every wall slot was.
+        cell.style.setProperty("--slot-rows", "1");
+        // The ?grid labels: the section the tile is in, not a drawn row.
+        cell.dataset.row = String(i + 1);
+        cell.dataset.span = "1";
+        cell.dataset.col = "";
+        delete cell.dataset.lane;
+        grid.appendChild(cell);
+      });
     });
     if (strip) strip.hidden = true;
-    cells.sort(domOrder).forEach((cell) => grid.appendChild(cell));
     reflectFilterState(grid, mode);
     return;
   }
@@ -627,6 +723,10 @@ document.addEventListener("astro:page-load", () => {
     // The view first: the dropdown's list depends on it (reflectTagOptions).
     const mode = modeFromURL();
     reflectTagUI(mode);
+    // The wall's sort, from the URL like the tag; the menu shows on the
+    // wall only. Before the deal, which reads it.
+    workSort = sortFromURL();
+    reflectSort(mode);
 
     // Before the first deal: a Back onto this entry reproduces the page it
     // was left showing, a fresh arrival gets a new one. See rememberedSeed.
@@ -735,6 +835,9 @@ document.addEventListener("astro:page-load", () => {
     document
       .getElementById("view-menu-btn")
       ?.addEventListener("click", () => toggleBarMenu("view-menu-btn", "view-menu-panel"));
+    document
+      .getElementById("sort-menu-btn")
+      ?.addEventListener("click", () => toggleBarMenu("sort-menu-btn", "sort-menu-panel"));
 
     tagBtn?.addEventListener("click", () => {
       if (!tagPanel) return;
@@ -787,6 +890,21 @@ document.addEventListener("astro:page-load", () => {
         const url = new URL(window.location.href);
         if (next) url.searchParams.set("tag", next);
         else url.searchParams.delete("tag");
+        goTo(url);
+      });
+    });
+
+    // The sort menu: a navigation to ?sort=, like a tag pick — re-picking
+    // the active sort clears it, back to the shuffled wall. The sort menu
+    // trigger itself is wired with the other two below.
+    document.querySelectorAll<HTMLButtonElement>(".sort-menu__btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const picked = btn.dataset.sort ?? "";
+        const next = picked === workSort ? "" : picked;
+        closeBarMenus();
+        const url = new URL(window.location.href);
+        if (next) url.searchParams.set("sort", next);
+        else url.searchParams.delete("sort");
         goTo(url);
       });
     });
