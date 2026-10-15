@@ -721,6 +721,10 @@ const BRAND_SLOTS: BrandSlot[] = [
 </style>
 
 <script>
+  // The directory's Portfolios deal, run on the incoming page before a swap
+  // — on every page, because the directory's own script is not loaded yet.
+  import "../lib/communityDealSwap.ts";
+
   type Lang = "en" | "de";
 
   function updateBrandHomeLink(lang: Lang) {

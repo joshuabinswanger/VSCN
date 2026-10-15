@@ -4,7 +4,7 @@ import { navigate } from "astro:transitions/client";
 import { isWorkSort, sectionWorks, type SortableWork, type WorkSort } from "./communitySort.ts";
 import { DEFAULT_VIEW, viewFromParam, type ViewName } from "./communityLayout.ts";
 import { setPagesPaging } from "./pagesPager.ts";
-import { dealPagesInto, shuffleBands } from "./communityDeal.ts";
+import { shuffleBands } from "./communityDeal.ts";
 
 // ────────────────────────────────────────────────────────────────────────
 // Behaviour layer: the deal and the signed-out CTA.
@@ -700,31 +700,6 @@ document.addEventListener("astro:before-swap", () => {
   if (wrap) delete wrap.dataset.snap;
 });
 
-/** The seed the deal before the first paint used — this navigation's, or a
- *  full load's (the inline script in CommunityGrid hands it over on window).
- *  page-load adopts it, so its own deal reproduces the order on screen. */
-let pendingSeed: number | null = null;
-
-// DEAL THE INCOMING PAGE BEFORE IT IS SWAPPED IN (2026-10-15, the flutter):
-// the new document is still off screen here, so the visitor's first frame is
-// already the dealt order. A Back onto an entry re-uses its stored seed (the
-// router has already moved history.state to the target on a traverse); any
-// other arrival gets a fresh one, as page-load's rememberedSeed would.
-document.addEventListener("astro:before-swap", (e) => {
-  const ev = e as unknown as { newDocument: Document; to: URL; navigationType: string };
-  const grid = ev.newDocument.getElementById("member-grid");
-  if (!grid) return;
-  const params = ev.to.searchParams;
-  if (viewFromParam(params.get("pattern")) !== "pages") return;
-  const asked = params.get("tag") ?? "";
-  const tag =
-    asked && ev.newDocument.querySelector(`.tag-filter__option[data-tag="${CSS.escape(asked)}"]`)
-      ? asked
-      : "";
-  const seed = ev.navigationType === "traverse" ? rememberedSeed() : freshSeed();
-  pendingSeed = seed;
-  dealPagesInto(grid, seed, tag);
-});
 
 function modeFromURL(): LayoutMode {
   return viewFromParam(new URLSearchParams(window.location.search).get("pattern"));
@@ -771,8 +746,10 @@ document.addEventListener("astro:page-load", () => {
     // was left showing, a fresh arrival gets a new one. See rememberedSeed.
     {
       const w = window as unknown as { __vscnDeal?: number };
-      const handed = pendingSeed ?? w.__vscnDeal ?? null;
-      pendingSeed = null;
+      // The deal before the first paint (communityDealSwap.ts on a
+      // navigation, the inline script in CommunityGrid on a full load) hands
+      // its seed over; adopting it makes this deal reproduce the screen.
+      const handed = w.__vscnDeal ?? null;
       delete w.__vscnDeal;
       dealSeed = handed ? storeSeed(handed) : rememberedSeed();
     }
