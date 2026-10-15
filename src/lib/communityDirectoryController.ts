@@ -4,6 +4,7 @@ import { navigate } from "astro:transitions/client";
 import { isWorkSort, sectionWorks, type SortableWork, type WorkSort } from "./communitySort.ts";
 import { DEFAULT_VIEW, viewFromParam, type ViewName } from "./communityLayout.ts";
 import { setPagesPaging } from "./pagesPager.ts";
+import { setPagesEntrance } from "./pagesEntrance.ts";
 import { shuffleBands } from "./communityDeal.ts";
 
 // ────────────────────────────────────────────────────────────────────────
@@ -694,6 +695,7 @@ function reflectSnap(mode: LayoutMode) {
   if (mode === "pages") wrap.dataset.snap = "y";
   else delete wrap.dataset.snap;
   setPagesPaging(mode === "pages");
+  setPagesEntrance(mode === "pages");
 }
 document.addEventListener("astro:before-swap", () => {
   const wrap = document.querySelector<HTMLElement>(".page-wrap");

@@ -31,6 +31,9 @@ document.addEventListener("astro:before-swap", (e) => {
   const ev = e as unknown as { newDocument: Document; to: URL; navigationType: string };
   const grid = ev.newDocument.getElementById("member-grid");
   if (!grid) return;
+  // The entrance's starting state, set before the page is shown
+  // (pagesEntrance.ts); never under reduced motion.
+  if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) grid.dataset.motion = "";
   const params = ev.to.searchParams;
   if (viewFromParam(params.get("pattern")) !== "pages") return;
   const asked = params.get("tag") ?? "";

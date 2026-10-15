@@ -660,7 +660,7 @@ const indexMembers = [...members].sort((a, b) =>
   }
   <script
     is:inline
-    set:html={`(function(){try{${shuffleBands.toString()};${dealPagesInto.toString()};var g=document.getElementById("member-grid");if(!g||g.dataset.dealt)return;var p=new URLSearchParams(location.search);var v=p.get("pattern");if(v&&v!=="pages"&&v!=="spread"&&v!=="strip")return;var t=p.get("tag")||"";if(t&&!document.querySelector('.tag-filter__option[data-tag="'+CSS.escape(t)+'"]'))t="";var s=0;try{var i=history.state&&history.state.index;if(typeof i==="number")s=Number(sessionStorage.getItem("vscn:deal:"+i))||0}catch(e){}if(!s)s=(Math.floor(Math.random()*4294967295)||1)>>>0;window.__vscnDeal=s;dealPagesInto(g,s,t)}catch(e){}})()`}
+    set:html={`(function(){try{${shuffleBands.toString()};${dealPagesInto.toString()};var g=document.getElementById("member-grid");if(g&&!matchMedia("(prefers-reduced-motion: reduce)").matches)g.dataset.motion="";if(!g||g.dataset.dealt)return;var p=new URLSearchParams(location.search);var v=p.get("pattern");if(v&&v!=="pages"&&v!=="spread"&&v!=="strip")return;var t=p.get("tag")||"";if(t&&!document.querySelector('.tag-filter__option[data-tag="'+CSS.escape(t)+'"]'))t="";var s=0;try{var i=history.state&&history.state.index;if(typeof i==="number")s=Number(sessionStorage.getItem("vscn:deal:"+i))||0}catch(e){}if(!s)s=(Math.floor(Math.random()*4294967295)||1)>>>0;window.__vscnDeal=s;dealPagesInto(g,s,t)}catch(e){}})()`}
   />
 
   {
@@ -1399,21 +1399,11 @@ const indexMembers = [...members].sort((a, b) =>
          bar. The picture has what is left above them, centred in it. */
       --cpage-head-h: 4.4rem;
       --cpage-links-h: 1.7rem;
-      --cpage-words-air: 1.25rem;
+      --cpage-words-air: 1rem;
       --cpage-row-gap: 0.75rem;
-      /* AIR UNDER THE HEADER (2026-10-15, Josh's iPhone screenshot: the
-         picture stood 4px under the header while 85px lay empty above the
-         bar). Air above the picture as well as above the bar. */
-      --cpage-top-air: 1.25rem;
-      --cpage-card-h: calc(
-        var(--cpage-h) - var(--cpage-chrome-b) - var(--cpage-words-air) - var(--cpage-top-air)
-      );
-      /* The picture's band less the words — CAPPED at 60% of the frame, so
-         a portrait on a tall phone keeps air above and below it in its band
-         instead of filling it edge to edge. */
-      --cpage-pic-h: min(
-        calc(var(--cpage-card-h) - var(--cpage-head-h) - var(--cpage-links-h) - 2 * var(--cpage-row-gap)),
-        calc(var(--cpage-h) * 0.6)
+      --cpage-card-h: calc(var(--cpage-h) - var(--cpage-chrome-b) - var(--cpage-words-air));
+      --cpage-pic-h: calc(
+        var(--cpage-card-h) - var(--cpage-head-h) - var(--cpage-links-h) - 2 * var(--cpage-row-gap)
       );
       width: 100%;
     }
@@ -1422,7 +1412,6 @@ const indexMembers = [...members].sort((a, b) =>
        gutter — the spread's 24px cell padding was for its framed cards. */
     .cgrid[data-pattern="pages"] > .cgrid__cell:not([hidden]) {
       padding-inline: 0;
-      padding-top: var(--cpage-top-air);
       align-items: flex-start;
     }
     /* THE CARD IS THE FRAME LESS THE BAR, its rows fixed: the picture's
@@ -1458,8 +1447,8 @@ const indexMembers = [...members].sort((a, b) =>
   }
 
   /* ── THE FLOURISH (2026-10-15, Josh: entry 2 + exit 1 of the brainstorm)
-     The picture arrives first, the words settle a beat later, the card
-     leaving shrinks and dims. View timelines against .page-wrap (the nearest
+     The card leaving shrinks and dims, linked to the scroll. (Its arrival
+     was scroll-linked too until the timed ENTRANCE below replaced it.) View timelines against .page-wrap (the nearest
      scrollport); the CELL — the snap stop — is never transformed, so the
      snap geometry is layout's alone. LONGHANDS ONLY: the minifier folds a
      following animation-timeline INTO an `animation` shorthand, which no
@@ -1472,21 +1461,6 @@ const indexMembers = [...members].sort((a, b) =>
      there, which reads fine. */
   @media (prefers-reduced-motion: no-preference) {
     @supports (animation-timeline: view()) {
-      :global(.cgrid[data-pattern="pages"] .ccard__body) {
-        animation-name: cpage-pic-in;
-        animation-timing-function: linear;
-        animation-fill-mode: both;
-        animation-timeline: view();
-        animation-range: entry 0% entry 100%;
-      }
-      :global(.cgrid[data-pattern="pages"] .ccard__head),
-      :global(.cgrid[data-pattern="pages"] .ccard > .pdisc) {
-        animation-name: cpage-words-in;
-        animation-timing-function: linear;
-        animation-fill-mode: both;
-        animation-timeline: view();
-        animation-range: entry 35% entry 110%;
-      }
       :global(.cgrid[data-pattern="pages"] .ccard) {
         animation-name: cpage-out;
         animation-timing-function: linear;
@@ -1497,24 +1471,79 @@ const indexMembers = [...members].sort((a, b) =>
       }
     }
   }
-  @keyframes cpage-pic-in {
-    0% {
-      transform: translateX(-6%) scale(0.97);
-      opacity: 0.3;
+
+  /* ── THE ENTRANCE (2026-10-15, Josh: "a smooth animation where it moves in
+     satisfyingly. motion design style") ─────────────────────────────────
+     Timed, not scroll-linked: pagesEntrance.ts puts .is-in on a cell once it
+     is over half in view, and takes it off once it has fully left. The
+     starting state applies only under [data-motion] (set before the first
+     paint by the deal, never under reduced motion), and the transitions live
+     on the .is-in state alone, so leaving resets instantly, off screen.
+     One curve for everything — a long expo-out, fast off the mark and a
+     slow, soft landing — and a stagger: picture, name, role, the rest. */
+  @media (prefers-reduced-motion: no-preference) {
+    .cgrid[data-pattern="pages"][data-motion] {
+      --cpage-ease: cubic-bezier(0.16, 1, 0.3, 1);
     }
-    100% {
-      transform: none;
-      opacity: 1;
+    /* The picture opens out of an inset and settles from a slight zoom. */
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__frame) {
+      clip-path: inset(9% 9% 9% 9%);
     }
-  }
-  @keyframes cpage-words-in {
-    0% {
-      transform: translateY(22px);
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__img) {
+      transform: scale(1.16);
+    }
+    /* The name rises out of its own line. */
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__name) {
+      overflow: clip;
+      overflow-clip-margin: 4px;
+    }
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__name-link) {
+      transform: translateY(110%);
+    }
+    /* The role unmasks upward as it rises. */
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__role) {
+      clip-path: inset(0 0 100% 0);
+      transform: translateY(0.7em);
+    }
+    /* The count, the links and PROFILE drift up into place. */
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__foot),
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard > .pdisc) {
       opacity: 0;
+      translate: 0 0.6rem;
     }
-    100% {
+
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__frame) {
+      clip-path: inset(0 0 0 0);
+      transition: clip-path 1.15s var(--cpage-ease);
+    }
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__img) {
       transform: none;
+      transition: transform 1.5s var(--cpage-ease);
+    }
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__name-link) {
+      transform: none;
+      transition: transform 0.95s var(--cpage-ease) 0.22s;
+    }
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__role) {
+      clip-path: inset(0 0 -20% 0);
+      transform: none;
+      transition:
+        clip-path 0.95s var(--cpage-ease) 0.34s,
+        transform 0.95s var(--cpage-ease) 0.34s;
+    }
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__foot) {
       opacity: 1;
+      translate: 0 0;
+      transition:
+        opacity 0.7s var(--cpage-ease) 0.48s,
+        translate 0.9s var(--cpage-ease) 0.48s;
+    }
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard > .pdisc) {
+      opacity: 1;
+      translate: 0 0;
+      transition:
+        opacity 0.7s var(--cpage-ease) 0.56s,
+        translate 0.9s var(--cpage-ease) 0.56s;
     }
   }
   @keyframes cpage-out {
