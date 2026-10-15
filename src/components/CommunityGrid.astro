@@ -1429,6 +1429,15 @@ const indexMembers = [...members].sort((a, b) =>
       grid-template-rows: auto auto auto;
       align-content: center;
       row-gap: var(--cpage-row-gap);
+      /* BETWEEN THE TWO TOOLBAR STATES (2026-10-15, Josh: "move it down half
+         of the vh of the collapsible bar so it sits in between"): the card is
+         sized for the toolbar SHOWN (svh) and set half the toolbar's height
+         lower, so it sits midway whether the bar is up or collapsed. A fixed
+         offset, never re-measured — following the toolbar live was tried
+         twice and was not smooth (reverted). `top`, not a transform: the
+         card's transform is the cpage-out exit. */
+      position: relative;
+      top: calc((100lvh - 100svh) / 2);
     }
     :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__body) {
       justify-content: center;
