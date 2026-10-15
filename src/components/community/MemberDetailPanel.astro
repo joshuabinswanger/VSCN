@@ -18,8 +18,11 @@ interface Props {
    *  sees their words as they type. The card's name and role stand outside
    *  the panel and stay; folding takes the bio, links and tags away, animated
    *  by src/lib/cardFold.ts — see the column rules below and
-   *  communityCard.css. */
-  mode?: "column";
+   *  communityCard.css.
+   *  PLAIN (2026-10-15, the pages card): the same words with NO disclosure
+   *  at all — a <div>, no summary, nothing folds. The full-frame card has
+   *  room for them in the open. */
+  mode?: "column" | "plain";
   /** SHELL: the same markup, empty, carrying `data-ccpv` hooks and the item
    *  templates renderCardPreview() (src/lib/profilePreview.ts) fills from
    *  live form state. Rendered here rather than copied into the preview
@@ -31,6 +34,10 @@ interface Props {
 const { member, lang, forceShow = false, mode, shell = false } = Astro.props;
 const t = useTranslations(lang);
 const column = mode === "column";
+const plain = mode === "plain";
+// A disclosure or a plain box, same children. Astro renders a capitalised
+// string variable as a dynamic tag.
+const Root = plain ? "div" : "details";
 
 // Native <details> on purpose. ClientRouter is active site-wide, so any script
 // here would need an astro:page-load / astro:before-swap pair and would leak
@@ -66,26 +73,28 @@ const hasSummary = Astro.slots.has("summary");
 
 {
   show ? (
-    <details
+    <Root
       class="pdisc"
-      class:list={{ "pdisc--line": hasSummary, "pdisc--column": column }}
-      open={column && shell}
+      class:list={{ "pdisc--line": hasSummary, "pdisc--column": column, "pdisc--plain": plain }}
+      open={!plain && column && shell ? true : undefined}
     >
       {/* No aria-label in line mode: the summary names ITSELF there — its
           content is the member's name and field, which is a better label than
           any sentence written here, and an aria-label would silence all of
           it. The shell's label is completed in the browser, once there is a
           name to complete it with (data-ccpv-expand carries the prefix). */}
-      <summary
-        class="pdisc__toggle"
-        aria-label={
-          hasSummary ? undefined : shell ? undefined : `${t("community.card.expand")} ${displayName}`
-        }
-        data-ccpv={shell ? "toggle" : undefined}
-        data-ccpv-expand={shell ? t("community.card.expand") : undefined}
-      >
-        {hasSummary && <slot name="summary" />}
-      </summary>
+      {!plain && (
+        <summary
+          class="pdisc__toggle"
+          aria-label={
+            hasSummary ? undefined : shell ? undefined : `${t("community.card.expand")} ${displayName}`
+          }
+          data-ccpv={shell ? "toggle" : undefined}
+          data-ccpv-expand={shell ? t("community.card.expand") : undefined}
+        >
+          {hasSummary && <slot name="summary" />}
+        </summary>
+      )}
 
       <div class="pdisc__body">
         <div class="pdisc__body-inner">
@@ -199,7 +208,7 @@ const hasSummary = Astro.slots.has("summary");
           )}
         </div>
       </div>
-    </details>
+    </Root>
   ) : (
     hasSummary && (
       /* NOTHING TO DISCLOSE, but the line still has to be printed. Before the
@@ -574,11 +583,30 @@ const hasSummary = Astro.slots.has("summary");
     }
   }
 
-  .pdisc--column .pdisc__body {
+  .pdisc--column .pdisc__body,
+  .pdisc--plain .pdisc__body {
     padding: 0;
     background: none;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
+  }
+
+  /* PLAIN: a block, no toggle; the words' rhythm and the compact tags are
+     the column's. */
+  .pdisc--plain {
+    display: block;
+    min-width: 0;
+  }
+  .pdisc--plain .pdisc__body-inner {
+    gap: 0.7rem;
+  }
+  .pdisc--plain .pdisc__vals--tags {
+    margin-bottom: 0;
+    gap: 2px 3px;
+  }
+  .pdisc--plain .pdisc__vals--tags .tagchip {
+    padding: 0 4px 0 calc(4px + var(--tag-track, 0px));
+    border-width: 1px;
   }
 
   .pdisc--column .pdisc__body-inner {
