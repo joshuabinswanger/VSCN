@@ -1,40 +1,49 @@
-// THE INTRO IS THE HEADER'S OWN MECHANIC, PLAYED AS A SEQUENCE (2026-10-15,
-// Josh: "Visual -> VScience -> VSCommunication -> VSCNetwork -> VSCN"). The
-// header writes a word over the letters that follow its initial, one flap per
-// glyph. The intro is a row of the same flap slots, and the chain below is a
-// list of strings; between two of them, every slot whose glyph differs turns
-// once, the flips sent across the line left to right. The choreography is
-// planned here as data so it can be tested without a browser; PageLoader.astro
-// only plays it.
-export const INTRO_STATES = [
-  "VSCN",
-  "Visual",
-  "VScience",
-  "VSCommunication",
-  "VSCNetwork",
-  "VSCN",
-] as const;
+// THE INTRO IS THE HEADER'S OWN MECHANIC, STACKED (2026-10-15). The header
+// writes a word over the letters that follow its initial, one flap per glyph.
+// The intro is four rows of the same flap slots, initials aligned in a column:
+// the initials arrive top to bottom, each row writes its word, the whole name
+// holds, the words fold back to the column, and the column travels into the
+// header's VSCN letter by letter. (Josh, same day: first "Visual -> VScience
+// -> VSCommunication -> VSCNetwork -> VSCN" on one line, then "i like the
+// vertical alignment ... make the animation vertical again but then smoothly
+// transition into the bar on the top left".) The choreography is planned here
+// as data so it can be tested without a browser; PageLoader.astro only plays it.
+export const INTRO_WORDS = ["Visual", "Science", "Communication", "Network"] as const;
 
 export type SlotChange = { index: number; char: string; delay: number };
 
-export type CascadeTiming = {
+export type StackTiming = {
   /** One beat is half a flip: the outgoing letter tips away on the first, the incoming drops in on the second. Seconds. */
   beat: number;
-  /** Delay added per slot so a word flips across the line rather than all at once. Seconds. */
+  /** Delay added per slot so a word flips across its row rather than all at once. Seconds. */
   stagger: number;
-  /** Before the first state appears. Seconds. */
+  /** Before the first initial appears. Seconds. */
   lead: number;
-  /** How long each state is held, once its last letter has landed, before the next begins. One per transition. Seconds. */
-  holds: readonly number[];
-  /** The folded VSCN's rest before it travels to the header. Seconds. */
+  /** Between one initial's arrival and the next, top to bottom. Seconds. */
+  arriveStagger: number;
+  /** After the last initial has landed, before the first word writes. Seconds. */
+  hold: number;
+  /** Between one row starting to write and the next. Seconds. */
+  rowOffset: number;
+  /** How long the whole name stays readable before the words fold. Seconds. */
+  holdName: number;
+  /** Between one row starting to fold and the next, top to bottom. Seconds. */
+  foldStagger: number;
+  /** The folded column's rest before it travels to the header. Seconds. */
   rest: number;
 };
 
-export type CascadeStep = { at: number; text: string; changes: SlotChange[] };
+export type StackEvent = {
+  at: number;
+  row: number;
+  phase: "arrive" | "write" | "fold";
+  changes: SlotChange[];
+};
 
-export type CascadePlan = {
-  slots: number;
-  steps: CascadeStep[];
+export type StackPlan = {
+  rows: number;
+  slotsPerRow: number;
+  events: StackEvent[];
   travelAt: number;
 };
 
@@ -52,21 +61,44 @@ export function diffLine(from: string, to: string, slots: number, stagger: numbe
   return changes;
 }
 
-export function planCascade(states: readonly string[], timing: CascadeTiming): CascadePlan {
-  const slots = Math.max(...states.map((s) => s.length));
+export function planStack(words: readonly string[], timing: StackTiming): StackPlan {
+  const slotsPerRow = Math.max(...words.map((w) => w.length));
   const flip = 2 * timing.beat;
-  const steps: CascadeStep[] = [];
-  let at = timing.lead;
-  let previous = "";
-  states.forEach((text, i) => {
-    const changes = diffLine(previous, text, slots, timing.stagger);
-    steps.push({ at: round(at), text, changes });
-    const landed = at + flip + (changes.at(-1)?.delay ?? 0);
-    at = landed + (timing.holds[i] ?? timing.rest);
-    previous = text;
-  });
-  // The last hold index is one past the holds list, so `at` already carries the rest.
-  return { slots, steps, travelAt: round(at) };
+  const landed = (event: StackEvent) => event.at + flip + (event.changes.at(-1)?.delay ?? 0);
+  const events: StackEvent[] = [];
+
+  const arrivals = words.map((word, row): StackEvent => ({
+    at: round(timing.lead + row * timing.arriveStagger),
+    row,
+    phase: "arrive",
+    changes: diffLine("", word[0], slotsPerRow, timing.stagger),
+  }));
+  events.push(...arrivals);
+
+  const writeAt = Math.max(...arrivals.map(landed)) + timing.hold;
+  const writes = words.map((word, row): StackEvent => ({
+    at: round(writeAt + row * timing.rowOffset),
+    row,
+    phase: "write",
+    changes: diffLine(word[0], word, slotsPerRow, timing.stagger),
+  }));
+  events.push(...writes);
+
+  const foldAt = Math.max(...writes.map(landed)) + timing.holdName;
+  const folds = words.map((word, row): StackEvent => ({
+    at: round(foldAt + row * timing.foldStagger),
+    row,
+    phase: "fold",
+    changes: diffLine(word, word[0], slotsPerRow, timing.stagger),
+  }));
+  events.push(...folds);
+
+  return {
+    rows: words.length,
+    slotsPerRow,
+    events,
+    travelAt: round(Math.max(...folds.map(landed)) + timing.rest),
+  };
 }
 
 function round(seconds: number): number {

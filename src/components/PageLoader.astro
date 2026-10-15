@@ -1,69 +1,74 @@
 ---
-import { INTRO_STATES } from "../lib/introCascade";
+import { INTRO_WORDS } from "../lib/introCascade";
 
-// One flap slot per glyph position of the widest state ("VSCommunication").
-const SLOT_COUNT = Math.max(...INTRO_STATES.map((s) => s.length));
+// One row per word, one flap slot per glyph position of the longest word.
+const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
 ---
 
 <div id="page-loader" aria-hidden="true">
-  <span class="pl-line" id="pl-line" aria-label="Visual Science Communication Network">
+  <div class="pl-stack" id="pl-stack" aria-label="Visual Science Communication Network">
     {
-      Array.from({ length: SLOT_COUNT }, () => (
-        <span class="pl-slot">
-          <span class="pl-face" />
-          <span class="pl-face" />
+      INTRO_WORDS.map(() => (
+        <span class="pl-row">
+          {Array.from({ length: SLOT_COUNT }, () => (
+            <span class="pl-slot">
+              <span class="pl-face" />
+              <span class="pl-face" />
+            </span>
+          ))}
         </span>
       ))
     }
-  </span>
+  </div>
 </div>
 
 <style>
-  /* THE INTRO IS THE HEADER'S FLAP, PLAYED AS A SEQUENCE (2026-10-15, Josh:
-     "Visual -> VScience -> VSCommunication -> VSCNetwork -> VSCN ... take to
-     heart motion design principles"). The header writes a word over the
-     letters after its initial, one split-flap turn per glyph (Layout.astro,
-     .brand-slot). This is a row of the same slots at display size: VSCN drops
-     in, then each state of the chain is written over the last, slot by slot,
-     left to right, and at the end the folded VSCN travels into the header's
-     own slot while the paper lifts. The chain and its timing are data in
-     src/lib/introCascade.ts; the script below only plays the plan.
-     Left-anchored on purpose: the line's width breathes as the words change,
-     and centred it would jitter sideways on every step. Anchored on the V,
-     it reads as writing, and the V is the one letter that never moves. */
+  /* THE INTRO IS THE HEADER'S FLAP, STACKED (2026-10-15, Josh: "i like the
+     vertical alignment ... make the animation vertical again but then
+     smoothly transition into the bar on the top left"). The header writes a
+     word over the letters after its initial, one split-flap turn per glyph
+     (Layout.astro, .brand-slot). This is four rows of the same slots at
+     display size, the initials aligned in a column: V S C N drop in top to
+     bottom, each row writes its word, the whole name holds, the words fold
+     back into the column, and then each initial travels on its own path onto
+     its own slot in the header's VSCN while the paper lifts. The choreography
+     is data in src/lib/introCascade.ts; the script below only plays it. */
   #page-loader {
-    --pl-inset: clamp(16px, 8vw, 120px);
     --pl-beat: 0.2s;
-    --pl-travel: 0.45s;
-    /* Fallback before the script measures: "VSCommunication" is about 8.6em
+    --pl-travel: 0.5s;
+    /* The column's measure: the old intro's stage, 70vw up to 600px. */
+    --pl-measure: min(600px, 70vw);
+    /* Fallback before the script measures: "Communication" is about 7.9em
        at this weight. */
-    --pl-size: min(88px, calc((100vw - var(--pl-inset) - 16px) / 8.6));
+    --pl-size: min(64px, calc(var(--pl-measure) / 7.9));
     position: fixed;
     inset: 0;
     z-index: 9999;
     background: var(--color-bg);
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    padding-left: var(--pl-inset);
+    justify-content: center;
     pointer-events: none;
     transition: background-color var(--pl-travel) ease-in;
   }
 
-  /* The paper lifts while the VSCN travels; the letters stay solid ink. */
+  /* The paper lifts while the letters travel; they stay solid ink. */
   #page-loader.pl--leaving {
     background-color: transparent;
   }
 
-  /* The header's own VSCN stays out of sight until the traveller lands on
+  /* The header's own VSCN stays out of sight until the travellers land on
      it: the intro's last frame is the site's first. The loader is removed in
      the same frame the swap happens, so nothing is ever drawn twice. */
   :global(body:has(#page-loader) #brand-name) {
     visibility: hidden;
   }
 
-  .pl-line {
-    display: inline-block;
+  .pl-stack {
+    width: var(--pl-measure);
+    display: flex;
+    flex-direction: column;
+    gap: 0.12em;
     /* Same typography as .brand-name in Layout.astro, so that a transform
        scale lands the glyphs exactly on the header's. */
     font-size: var(--pl-size);
@@ -72,8 +77,11 @@ const SLOT_COUNT = Math.max(...INTRO_STATES.map((s) => s.length));
     letter-spacing: 0;
     color: var(--color-dark);
     white-space: nowrap;
-    transition: transform var(--pl-travel) cubic-bezier(0.65, 0, 0.35, 1);
-    will-change: transform;
+  }
+
+  .pl-row {
+    display: block;
+    height: 1em;
   }
 
   /* One slot per glyph position, two faces stacked in one grid cell. The
@@ -93,6 +101,7 @@ const SLOT_COUNT = Math.max(...INTRO_STATES.map((s) => s.length));
     transition-duration: var(--pl-beat);
     transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
     transition-delay: var(--pl-late);
+    transform-origin: 0 0;
   }
 
   /* A face waits edge-on above the line (-90), drops in to 0 when it is
@@ -127,9 +136,8 @@ const SLOT_COUNT = Math.max(...INTRO_STATES.map((s) => s.length));
     transition: none;
   }
 
-  /* Reduced motion: VSCN appears in place and the paper fades. */
+  /* Reduced motion: the column appears in place and the paper fades. */
   #page-loader.pl--still,
-  #page-loader.pl--still .pl-line,
   #page-loader.pl--still .pl-slot,
   #page-loader.pl--still .pl-face {
     transition: none;
@@ -144,29 +152,37 @@ const SLOT_COUNT = Math.max(...INTRO_STATES.map((s) => s.length));
 </style>
 
 <script>
-  import { INTRO_STATES, planCascade, type CascadeStep } from "../lib/introCascade";
+  import { INTRO_WORDS, planStack, type StackEvent } from "../lib/introCascade";
 
   // The whole rhythm, in one place. The beat matches the header's flap so it
-  // reads as the same mechanism; holds shorten as the chain goes on, because
-  // by the third word the viewer knows the rule and anything slower reads as
-  // waiting. Shortened 2026-10-15 (Josh: "it's too long"): ~6.2 s -> ~4.8 s.
-  // Six flips at two beats each are the floor; the beat is the next lever.
+  // reads as the same mechanism. Rows write with a short offset rather than
+  // one after the other: they are separate lines, so nothing overlays.
   const TIMING = {
     beat: 0.2,
     stagger: 0.02,
     lead: 0.3,
-    holds: [0.2, 0.15, 0.15, 0.12, 0.1],
-    rest: 0.12,
+    arriveStagger: 0.07,
+    hold: 0.15,
+    rowOffset: 0.22,
+    holdName: 0.6,
+    foldStagger: 0.06,
+    rest: 0.15,
   };
-  const TRAVEL_S = 0.4;
-  const WIDEST = INTRO_STATES.reduce((a, b) => (b.length > a.length ? b : a));
+  const TRAVEL_S = 0.5;
+  // Between one initial setting off and the next, top to bottom: the column
+  // peels into the line rather than snapping to it.
+  const TRAVEL_STAGGER_S = 0.04;
+  const LONGEST = INTRO_WORDS.reduce((a, b) => (b.length > a.length ? b : a));
+  const CURVE = "cubic-bezier(0.65, 0, 0.35, 1)";
 
   const loader = document.getElementById("page-loader");
-  const line = document.getElementById("pl-line");
-  if (loader && line) play(loader, line);
+  const stack = document.getElementById("pl-stack");
+  if (loader && stack) play(loader, stack);
 
-  function play(loader: HTMLElement, line: HTMLElement) {
-    const slots = Array.from(line.querySelectorAll<HTMLElement>(".pl-slot"));
+  function play(loader: HTMLElement, stack: HTMLElement) {
+    const rows = Array.from(stack.querySelectorAll<HTMLElement>(".pl-row")).map((row) =>
+      Array.from(row.querySelectorAll<HTMLElement>(".pl-slot")),
+    );
     const timers: ReturnType<typeof setTimeout>[] = [];
     let done = false;
 
@@ -178,18 +194,20 @@ const SLOT_COUNT = Math.max(...INTRO_STATES.map((s) => s.length));
       document.body.classList.add("page-loaded");
     };
 
-    fitLine(loader, line);
-    const widths = measureGlyphs(line);
-    const applyStep = (step: CascadeStep) => {
-      step.changes.forEach((change) => {
-        const slot = slots[change.index];
+    fitStack(stack);
+    const widths = measureGlyphs(stack);
+    const applyEvent = (event: StackEvent) => {
+      event.changes.forEach((change) => {
+        const slot = rows[event.row]?.[change.index];
         if (slot) flipSlot(slot, change.char, change.delay, widths.get(change.char) ?? 0);
       });
     };
 
+    const plan = planStack(INTRO_WORDS, TIMING);
+
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       loader.classList.add("pl--still");
-      applyStep(planCascade(["VSCN"], TIMING).steps[0]);
+      plan.events.filter((e) => e.phase === "arrive").forEach(applyEvent);
       timers.push(setTimeout(() => loader.classList.add("pl--leaving"), 600));
       timers.push(setTimeout(finish, 950));
       return;
@@ -197,42 +215,42 @@ const SLOT_COUNT = Math.max(...INTRO_STATES.map((s) => s.length));
 
     loader.style.setProperty("--pl-beat", `${TIMING.beat}s`);
     loader.style.setProperty("--pl-travel", `${TRAVEL_S}s`);
-    const plan = planCascade(INTRO_STATES, TIMING);
-    plan.steps.forEach((step) => {
-      timers.push(setTimeout(() => applyStep(step), step.at * 1000));
+    plan.events.forEach((event) => {
+      timers.push(setTimeout(() => applyEvent(event), event.at * 1000));
     });
-    timers.push(setTimeout(() => travel(loader, line, finish), plan.travelAt * 1000));
+    const initials = rows.map((row) => row[0]).filter((s): s is HTMLElement => !!s);
+    timers.push(setTimeout(() => travel(loader, initials, finish), plan.travelAt * 1000));
     // Safety net for environments that never deliver transition events
     // (hidden tabs, some webviews): past the travel's end.
-    timers.push(setTimeout(finish, (plan.travelAt + TRAVEL_S) * 1000 + 1500));
+    const travelEnds = plan.travelAt + TRAVEL_S + (initials.length - 1) * TRAVEL_STAGGER_S;
+    timers.push(setTimeout(finish, travelEnds * 1000 + 1500));
   }
 
-  // Fit the widest state between the left inset and a 16px right margin,
-  // never larger than the stylesheet's size. Runs before any letter shows,
-  // so nothing is seen to jump.
-  function fitLine(loader: HTMLElement, line: HTMLElement) {
-    const current = parseFloat(getComputedStyle(line).fontSize);
-    const available = loader.clientWidth - parseFloat(getComputedStyle(loader).paddingLeft) - 16;
+  // Fit the longest word to the column's measure, never larger than the
+  // stylesheet's size. Runs before any letter shows, so nothing is seen to jump.
+  function fitStack(stack: HTMLElement) {
+    const current = parseFloat(getComputedStyle(stack).fontSize);
+    const available = stack.clientWidth;
     const mirror = document.createElement("span");
-    mirror.textContent = WIDEST;
+    mirror.textContent = LONGEST;
     mirror.style.cssText =
       "position:absolute;visibility:hidden;pointer-events:none;white-space:nowrap;left:0;top:0";
-    line.appendChild(mirror);
+    stack.appendChild(mirror);
     const width = mirror.getBoundingClientRect().width;
     mirror.remove();
     if (available > 0 && width > available) {
-      loader.style.setProperty("--pl-size", `${(current * available) / width}px`);
+      stack.style.fontSize = `${(current * available) / width}px`;
     }
   }
 
-  // Advance width of every glyph the chain can show, at the fitted size.
-  function measureGlyphs(line: HTMLElement): Map<string, number> {
+  // Advance width of every glyph the words can show, at the fitted size.
+  function measureGlyphs(stack: HTMLElement): Map<string, number> {
     const mirror = document.createElement("span");
     mirror.style.cssText =
       "position:absolute;visibility:hidden;pointer-events:none;white-space:pre;left:0;top:0";
-    line.appendChild(mirror);
+    stack.appendChild(mirror);
     const widths = new Map<string, number>();
-    for (const char of new Set(INTRO_STATES.join(""))) {
+    for (const char of new Set(INTRO_WORDS.join(""))) {
       mirror.textContent = char;
       widths.set(char, mirror.getBoundingClientRect().width);
     }
@@ -267,24 +285,46 @@ const SLOT_COUNT = Math.max(...INTRO_STATES.map((s) => s.length));
     slot.dataset.front = String(1 - frontIndex);
   }
 
-  // The folded VSCN shrinks and moves onto the header's own VSCN while the
-  // paper lifts; the header's copy shows the instant the loader goes.
-  function travel(loader: HTMLElement, line: HTMLElement, finish: () => void) {
+  // The header's VSCN, letter by letter: the resting slots that show a glyph,
+  // in order. Hidden by visibility while the loader is up, so their boxes
+  // are real.
+  function headerLetterRects(count: number): DOMRect[] | null {
     const brand = document.getElementById("brand-name");
-    if (!brand) {
+    if (!brand) return null;
+    const rects = Array.from(brand.querySelectorAll<HTMLElement>(".brand-slot"))
+      .filter((slot) => slot.offsetParent !== null)
+      .filter((slot) => (slot.querySelector(".brand-slot__rest")?.textContent ?? "") !== "")
+      .slice(0, count)
+      .map((slot) => slot.getBoundingClientRect());
+    return rects.length === count ? rects : null;
+  }
+
+  // The folded column peels into the header's line: each initial shrinks and
+  // moves onto its own header slot, top to bottom, while the paper lifts.
+  // The header's copy shows the instant the loader goes.
+  function travel(loader: HTMLElement, initials: HTMLElement[], finish: () => void) {
+    const targets = headerLetterRects(initials.length);
+    const brand = document.getElementById("brand-name");
+    const stack = initials[0]?.closest<HTMLElement>(".pl-stack");
+    if (!targets || !brand || !stack) {
       loader.classList.add("pl--still", "pl--leaving");
       setTimeout(finish, 350);
       return;
     }
-    const from = line.getBoundingClientRect();
-    const to = brand.getBoundingClientRect();
     const scale =
-      parseFloat(getComputedStyle(brand).fontSize) / parseFloat(getComputedStyle(line).fontSize);
-    line.style.transformOrigin = "0 0";
-    line.style.transform = `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${scale})`;
+      parseFloat(getComputedStyle(brand).fontSize) / parseFloat(getComputedStyle(stack).fontSize);
+    const last = initials[initials.length - 1];
+    initials.forEach((slot, i) => {
+      const from = slot.getBoundingClientRect();
+      const to = targets[i];
+      if (!to) return;
+      slot.style.transition = `transform ${TRAVEL_S}s ${CURVE} ${(i * TRAVEL_STAGGER_S).toFixed(3)}s`;
+      slot.style.willChange = "transform";
+      slot.style.transform = `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${scale})`;
+    });
     loader.classList.add("pl--leaving");
-    line.addEventListener("transitionend", (event) => {
-      if (event.target === line && event.propertyName === "transform") finish();
+    last?.addEventListener("transitionend", (event) => {
+      if (event.target === last && event.propertyName === "transform") finish();
     });
   }
 </script>
