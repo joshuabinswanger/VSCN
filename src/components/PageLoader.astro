@@ -112,6 +112,12 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
   .pl-row--folding .pl-slot {
     transition-delay: var(--pl-early);
     transition-duration: calc(var(--pl-beat) * 1.5);
+    /* ...and a closing cell cuts its own letter (2026-10-15, Josh: "on
+       mobile ... the letters overlap"). The cell shrinks while its glyph is
+       still tipping away, so unclipped the glyph spilled over the letters the
+       closing cells pulled in from the right ("S·ence", "C -ication").
+       Sideways only: the flap's turn may still overshoot the line. */
+    overflow-x: clip;
   }
 
   /* A face waits edge-on above the line (-90), drops in to 0 when it is

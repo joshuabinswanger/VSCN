@@ -21,7 +21,7 @@ const timing = {
   travelLag: 0.1,
 };
 const flip = 2 * timing.beat;
-const landed = (event) => event.at + flip + (event.changes.at(-1)?.delay ?? 0);
+const landed = (event) => event.at + flip + Math.max(0, ...event.changes.map((c) => c.delay));
 
 test("the words are Visual, Science, Communication, Network", () => {
   assert.deepEqual(INTRO_WORDS, ["Visual", "Science", "Communication", "Network"]);
@@ -97,4 +97,16 @@ test("the travel starts as the words begin to fold, not after", () => {
   const folds = plan.events.filter((e) => e.phase === "fold");
   assert.ok(Math.abs(plan.travelAt - (folds[0].at + timing.travelLag)) < 1e-9);
   assert.ok(plan.travelAt < Math.min(...folds.map(landed)));
+});
+
+// 2026-10-15, Josh: "on mobile ... the letters overlap". Folding from the
+// initial outwards closed the cells nearest the initial first, pulling the
+// rest of the word left over letters still tipping away. A fold retracts from
+// the END instead, so a closing cell only ever has empty space to its right.
+test("a fold retracts from the end of the word towards its initial", () => {
+  const plan = planStack(INTRO_WORDS, timing);
+  const fold = plan.events.find((e) => e.phase === "fold" && e.row === 2);
+  const byDelay = [...fold.changes].sort((a, b) => a.delay - b.delay).map((c) => c.index);
+  assert.deepEqual(byDelay, [12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+  assert.equal(Math.min(...fold.changes.map((c) => c.delay)), 0);
 });

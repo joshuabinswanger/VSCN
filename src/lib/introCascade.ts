@@ -66,7 +66,8 @@ export function diffLine(from: string, to: string, slots: number, stagger: numbe
 export function planStack(words: readonly string[], timing: StackTiming): StackPlan {
   const slotsPerRow = Math.max(...words.map((w) => w.length));
   const flip = 2 * timing.beat;
-  const landed = (event: StackEvent) => event.at + flip + (event.changes.at(-1)?.delay ?? 0);
+  const landed = (event: StackEvent) =>
+    event.at + flip + Math.max(0, ...event.changes.map((change) => change.delay));
   const events: StackEvent[] = [];
 
   const arrivals = words.map((word, row): StackEvent => ({
@@ -91,7 +92,7 @@ export function planStack(words: readonly string[], timing: StackTiming): StackP
     at: round(foldAt + row * timing.foldStagger),
     row,
     phase: "fold",
-    changes: diffLine(word, word[0], slotsPerRow, timing.stagger),
+    changes: retract(diffLine(word, word[0], slotsPerRow, timing.stagger)),
   }));
   events.push(...folds);
 
@@ -101,6 +102,12 @@ export function planStack(words: readonly string[], timing: StackTiming): StackP
     events,
     travelAt: round(folds[0].at + timing.travelLag),
   };
+}
+
+/** The same changes, staggered from the LAST slot back towards the first (2026-10-15, Josh: "on mobile ... the letters overlap"). A fold that started next to the initial closed those cells first and pulled the rest of the word left over letters still tipping away; retracting from the end, a closing cell only ever has empty space to its right. */
+function retract(changes: SlotChange[]): SlotChange[] {
+  const last = changes.at(-1)?.delay ?? 0;
+  return changes.map((change) => ({ ...change, delay: round(last - change.delay) }));
 }
 
 function round(seconds: number): number {
