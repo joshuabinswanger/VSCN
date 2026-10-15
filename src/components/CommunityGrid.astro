@@ -2035,28 +2035,6 @@ const indexMembers = [...members].sort((a, b) =>
        no debug-only trickery to be that: the cell fills its rows in production
        too, because the card inside it is out of flow.
 
-       There is no second box any more. It marked a 2:3 ceiling that no longer
-       exists: a card is now bounded by its own slot (--slot-rows, read by
-       CommunityImageCard), so nothing can outgrow the grey box and there is
-       nothing to warn about. */
-  .cgrid--debug .cgrid__cell {
-    outline: 1px dashed color-mix(in srgb, var(--color-dark) 30%, transparent);
-  }
-
-  .cgrid--debug .cgrid__cell::after {
-    content: attr(data-slot) " r" attr(data-row) "+" attr(data-span) " c" attr(data-col);
-    position: absolute;
-    /* Sits clear of the slot outline it labels — close enough to read as its
-       caption, far enough that the two lines never look like one edge. */
-    top: -2.6rem;
-    left: 0;
-    font-size: var(--fs-65);
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--color-muted);
-    pointer-events: none;
-  }
 
   @media (--bp-mobile) {
 

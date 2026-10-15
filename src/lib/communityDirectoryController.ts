@@ -699,10 +699,6 @@ document.addEventListener("astro:page-load", () => {
     // pressed there (2026-09-03), which landed a member tag on a wall that
     // filters by the PICTURES' tags. Work and project tags go to Images via
     // communityWorkTagHref().
-    if (new URLSearchParams(window.location.search).has("grid")) {
-      grid.classList.add("cgrid--debug");
-    }
-
     // The view selector. Each choice is a NAVIGATION to the same page with a
     // different ?pattern= — see goTo above for why it is not a local re-deal
     // any more. Everything else follows from the URL: the handler below runs
