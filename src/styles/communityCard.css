@@ -332,16 +332,19 @@
   min-width: 0;
   padding-top: 0.4rem;
 }
-/* BESIDE THE PICTURE, NOT UNDER IT (2026-10-15, Josh: "controls to the
-   left and not below"): the count stands in the air between the words and
-   the picture, level with the picture's bottom edge. A phone has no room
-   beside it and keeps the count under the picture's left corner. */
+/* BESIDE THE PICTURE, ON THE NAME'S LINE (2026-10-15, Josh: "controls to
+   the left and not below", then "the Name and the carousel controls should
+   be on the same line"): the count stands in the air between the words and
+   the picture, level with the name at the picture's top edge. On a phone it
+   stands under the picture's right corner, on the name's line there too. */
+.ccard__foot {
+  position: absolute;
+  padding-top: 0;
+}
 @media (--bp-desktop) {
   .ccard__foot {
-    position: absolute;
-    bottom: 0;
+    top: 0.3rem;
     right: calc(100% + 0.9rem);
-    padding-top: 0;
   }
 }
 
@@ -499,7 +502,12 @@
   /* The count under the picture's RIGHT corner on a phone (2026-10-15,
      Josh: "on mobile the controls on the right under the image"). */
   .ccard__foot {
-    justify-content: flex-end;
+    top: calc(100% + 0.75rem + 0.3rem);
+    right: 0;
+  }
+  /* Room for the count at the end of the name's line. */
+  .ccard__head {
+    padding-right: 3.5rem;
   }
   /* No edge arrows on a phone: paging is the swipe, and the count says where
      the swipe got to. */

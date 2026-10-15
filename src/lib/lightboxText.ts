@@ -102,8 +102,11 @@ const GAP = 14;
  *
  * `paddingFn` is still handed the item's data; nothing here reads it now.
  */
-const BAND_TOP = 0.1;
-const BAND_TEXT = 0.3;
+// 17 / 60 / 23 since 2026-10-15 (Josh: "center images more on the vertical
+// in photoswipe"): the picture's band moved down, its centre from 40 % to 47 %
+// of the window; the words' band is shorter and scrolls past its foot.
+const BAND_TOP = 0.17;
+const BAND_TEXT = 0.23;
 // The band between them, 60 %, is what the two leave the picture.
 
 /** The controls row's height, which `top` may never fall under. */
