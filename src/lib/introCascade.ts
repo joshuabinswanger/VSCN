@@ -2,8 +2,10 @@
 // writes a word over the letters that follow its initial, one flap per glyph.
 // The intro is four rows of the same flap slots, initials aligned in a column:
 // the initials arrive top to bottom, each row writes its word, the whole name
-// holds, the words fold back to the column, and the column travels into the
-// header's VSCN letter by letter. (Josh, same day: first "Visual -> VScience
+// holds, and then each row sets off for the header as a whole word, its tail
+// folding away in flight, so it lands as its initial on its own slot of the
+// header's VSCN ("it should transition from full words directly into the top
+// VSCN"). (Josh, same day: first "Visual -> VScience
 // -> VSCommunication -> VSCNetwork -> VSCN" on one line, then "i like the
 // vertical alignment ... make the animation vertical again but then smoothly
 // transition into the bar on the top left".) The choreography is planned here
@@ -29,8 +31,8 @@ export type StackTiming = {
   holdName: number;
   /** Between one row starting to fold and the next, top to bottom. Seconds. */
   foldStagger: number;
-  /** The folded column's rest before it travels to the header. Seconds. */
-  rest: number;
+  /** After the first row starts to fold, when the rows set off for the header. The fold finishes in flight. Seconds. */
+  travelLag: number;
 };
 
 export type StackEvent = {
@@ -97,7 +99,7 @@ export function planStack(words: readonly string[], timing: StackTiming): StackP
     rows: words.length,
     slotsPerRow,
     events,
-    travelAt: round(Math.max(...folds.map(landed)) + timing.rest),
+    travelAt: round(folds[0].at + timing.travelLag),
   };
 }
 
