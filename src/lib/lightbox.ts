@@ -189,7 +189,7 @@ export function createLightbox(
 }
 
 /** The gallery card's click target: one bare link laid over its carousel. */
-export const CARD_TRIGGER = ".ccard__frame-link";
+export const CARD_TRIGGER = ".ccard__slide";
 
 /**
  * THE GALLERY CARD OPENS AS A WHOLE (2026-09-08). Returns the unbind.

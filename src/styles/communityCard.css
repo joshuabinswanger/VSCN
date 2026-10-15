@@ -229,25 +229,6 @@
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
-  /* ONE PIXEL IN FROM EACH SIDE, on top of the overflow clip (2026-09-06,
-     Josh: "in the member carousel sometimes you see the next image's pixels
-     as a vertical bar"). The frame is never a whole number of pixels wide —
-     439.94793701px is a real measurement, see communityCarousel.ts — and
-     Embla moves the track by whole multiples of that width, so the seam
-     between two slides always lands on a FRACTION of a pixel. The compositor
-     resolves that by blending: the frame's edge column shows a mix of this
-     picture's last column and the next picture's first, which reads as a
-     thin bar of the wrong image standing at the edge. It comes and goes with
-     the fractional part, which is why it is "sometimes".
-     `overflow: hidden` cannot help — its clip edge is that same fractional
-     coordinate. Insetting the visible area by a full CSS pixel puts the seam's
-     whole blend band outside it at ANY device-pixel ratio: 1px is at least one
-     device pixel, and Windows scaling at 1.25 or 1.5 is exactly where rounding
-     the frame's WIDTH to CSS pixels would not have been enough. The picture is
-     object-fit: cover, so the pixel it loses at each side was never
-     load-bearing, and the arrows sit well inside it. Top and bottom
-     are not inset: there is no seam there. */
-  clip-path: inset(0 1px);
   /* NO BORDER, deliberately. The artwork is its own edge; a grey rule around
      it read as a box the picture had been placed inside, which is the
      opposite of the page it sits on.
@@ -263,37 +244,45 @@
   /* Dominant colour is painted inline where the member has one; this is the
      fallback ground. */
   background: var(--color-bg);
-  /* Vertical panning stays the browser's; only a horizontal gesture ever
-     reaches Embla's drag. This declaration IS the defence for "a page scroll
-     that starts on a card still scrolls the page": following the finger
-     means a non-passive touchmove, and without this the browser would have
-     to wait on that listener to learn whether the page may move at all. */
-  touch-action: pan-y pinch-zoom;
+  /* Both axes are the browser's: a horizontal pan pages the track, a
+     vertical one scrolls the page. No script listens to touchmove. */
+  touch-action: pan-x pan-y pinch-zoom;
 }
 
-/* The Embla container. Absolutely positioned rather than height:100% so it
-   fills the aspect box exactly the way the stacked images used to, with no
-   percentage height resolving against an aspect-ratio'd parent. Embla
-   translates THIS element and nothing else in the frame, which is why the
-   click target and the arrows can be its siblings and stay put. */
+/* THE TRACK IS A SCROLLER (2026-10-15): one frame-wide column per work,
+   snapping on the x axis, its scrollbar hidden. The browser pages it —
+   swipe, trackpad, shift+wheel — and communityCarousel.ts reads where it
+   landed. Absolutely positioned so it fills the frame with no percentage
+   height resolving against a flex item. */
 .ccard__track {
   position: absolute;
   inset: 0;
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 100%;
+  overflow: auto hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.ccard__track::-webkit-scrollbar {
+  display: none;
 }
 
-/* One frame-wide slide per work: `flex: 0 0 100%` is what makes a snap a
-   whole image, and min-width:0 stops the image's intrinsic width from
-   inflating the slide past the frame. */
+/* One slide per work, and THE CLICK TARGET: an <a> to the original upload
+   that the lightbox intercepts (CARD_TRIGGER in lightbox.ts). Says "this
+   opens" with the cursor — the same word the wall's tile uses. */
 .ccard__slide {
   position: relative;
-  flex: 0 0 100%;
+  display: block;
   min-width: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  cursor: zoom-in;
 }
 
-/* Was position:absolute + an opacity crossfade; in a track the image simply
-   fills its slide. Nothing animates the image itself any more — the motion
-   is Embla translating the track under it. */
+/* The picture fills its slide; nothing animates the image itself — the
+   motion is the track scrolling under it. */
 .ccard__img {
   display: block;
   width: 100%;
@@ -301,23 +290,12 @@
   object-fit: cover;
 }
 
-.ccard__frame-link {
-  position: absolute;
-  inset: 0;
-  /* Says "this opens" — the same word the wall's tile uses for the same
-     gesture, and the reason it changed: this link used to go to the profile,
-     where a pointer cursor was the honest cue. */
-  cursor: zoom-in;
-}
-
-/* The card's main tab stop needs a ring of its own: the browser's default
-   one is drawn outside the link, where .ccard__frame's overflow and
-   clip-path cut it away entirely. So it is drawn INSIDE, and in two tones —
-   a paper band at the edge, the dark ring within it — because the picture
-   under it can be any colour, and either tone alone vanishes on half of them.
-   The paper band is 3px because the frame's clip-path shaves 1px off each
-   side. */
-.ccard__frame-link:focus-visible {
+/* The card's tab stop needs a ring of its own: the browser's default one is
+   drawn outside the link, where .ccard__frame's overflow cuts it away. So
+   it is drawn INSIDE, and in two tones — a paper band at the edge, the dark
+   ring within it — because the picture under it can be any colour, and
+   either tone alone vanishes on half of them. */
+.ccard__slide:focus-visible {
   outline: 2px solid var(--color-dark);
   outline-offset: -5px;
   box-shadow: inset 0 0 0 3px var(--color-bg);
@@ -661,7 +639,7 @@
   text-decoration: none;
 }
 
-.ccard--preview .ccard__frame-link {
+.ccard--preview .ccard__slide {
   cursor: default;
 }
 

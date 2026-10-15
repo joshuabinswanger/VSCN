@@ -686,8 +686,8 @@ export function renderCardPreview(
             // A single picture is not a carousel: no group semantics, no
             // position label. Calling one image a carousel would be a lie to a
             // screen reader — the card's own reasoning, and its own markup.
+            slide.tabIndex = i === 0 ? 0 : -1;
             if (isCarousel) {
-              slide.setAttribute("role", "group");
               attr(slide, "aria-roledescription", labels.image ?? "");
               attr(slide, "aria-label", position(labels.imagePosition, i, works.length));
               if (i !== 0) slide.setAttribute("aria-hidden", "true");

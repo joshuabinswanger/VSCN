@@ -174,11 +174,18 @@ const positionFor = (i: number) =>
             announced at once, because opacity:0 hides nothing from a screen
             reader. */
           works.map((w, i) => (
-            <div
+            <a
               class="ccard__slide"
-              role={isCarousel ? "group" : undefined}
+              href={w.url}
+              target="_blank"
+              rel="noreferrer"
+              tabindex={i === 0 ? 0 : -1}
               aria-roledescription={isCarousel ? t("community.card.image") : undefined}
-              aria-label={isCarousel ? positionFor(i) : undefined}
+              aria-label={
+                isCarousel
+                  ? `${t("community.card.openImage")} ${member.displayName} — ${positionFor(i)}`
+                  : `${t("community.card.openImage")} ${member.displayName}`
+              }
               aria-hidden={isCarousel && i !== 0 ? "true" : undefined}
               data-work-url={w.url}
               data-pswp-width={pswpFor(w).width}
@@ -209,53 +216,25 @@ const positionFor = (i: number) =>
                 decoding="async"
               />
               {w.embed && <span class="vscn-play vscn-play--over" aria-hidden="true" />}
-            </div>
+            </a>
           ))
         }
       </div>
       {
-        /* Whole-artwork click target. A sibling of the arrows AND of the track
-          rather than a wrapper, so no interactive element nests inside another
-          and Embla never translates it; the arrows sit above it on z-index and
-          keep working. It is also the carousel's only tab stop, which is what
-          the keydown handler hangs the arrow keys off — see the script.
+        /* EVERY SLIDE IS THE CLICK TARGET (2026-10-15). The track scrolls
+          natively now, and a click overlay above a scroller eats its touch
+          pan, so each slide is an <a> to its original upload: that is what
+          keeps the link meaningful with scripting off, and how the lightbox
+          knows which slide to open on (lightbox.ts, CARD_TRIGGER = the slide;
+          it gathers every .ccard__slide in the track as its items). The
+          showing slide is the carousel's one tab stop — the engine moves the
+          tabindex with the page.
 
           IT OPENS THE PICTURE, NOT THE PROFILE (2026-09-01, Josh: "on click
-          directly lightbox"). Clicking an image to be taken somewhere else is
-          the one thing a wall of artwork should not do — the picture is what
-          was clicked, so the picture is what opens. The profile did not lose
-          its way in: the name at the head of the column is a link to it, and
-          the foot row ends with an explicit PROFILE → button (see
-          .ccard__foot). That pairing — image opens image, a named control
-          goes to the person — is the same one the ledger rows use.
-
-          The href is the ORIGINAL upload of THE SELECTED SLIDE, rewritten by
-          the script on every carousel move (rendered from slide 0, so it is
-          right before any script runs). It is what keeps the link meaningful
-          with scripting off, and it is how the lightbox knows which slide to
-          open on: CommunityGrid intercepts the click, gathers every
-          .ccard__slide in this frame as the lightbox's items, and starts on
-          the one whose data-work-url matches this href. The data-pswp-* copy
-          on the link itself is a mirror kept for that contract's readability;
-          the lightbox reads the slides. */
+          directly lightbox"). The picture is what was clicked, so the picture
+          is what opens. The name at the head of the column is a link to the
+          person, and the column ends with an explicit PROFILE → button. */
       }
-      <a
-        class="ccard__frame-link"
-        href={frame.url}
-        target="_blank"
-        rel="noreferrer"
-        data-pswp-width={pswpFor(frame).width}
-        data-pswp-height={pswpFor(frame).height}
-        data-pswp-caption={pswpFor(frame).caption || undefined}
-        data-pswp-description={pswpFor(frame).description || undefined}
-        data-pswp-link={pswpFor(frame).link || undefined}
-        data-pswp-site-link={pswpFor(frame).siteLink || undefined}
-        data-pswp-meta={pswpFor(frame).meta}
-        data-pswp-profile={profileHref}
-        data-pswp-project={pswpFor(frame).project || undefined}
-        data-pswp-project-link={pswpFor(frame).projectLink || undefined}
-        data-pswp-affiliations={pswpFor(frame).affiliations || undefined}
-        aria-label={`${t("community.card.openImage")} ${member.displayName}`}></a>
       {
         isCarousel && (
           <>

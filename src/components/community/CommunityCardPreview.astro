@@ -78,17 +78,10 @@ const t = useTranslations(lang);
     <div class="ccard__frame" data-ccpv="frame" data-carousel>
       <div class="ccard__track" data-ccpv="track"></div>
       {
-        /* The whole-artwork click target, and DELIBERATELY href-less. It
-           opens the lightbox exactly as the card's does (bindCardOpener in
-           lib/lightbox.ts, bound by bindPreviewLightbox since 2026-09-24),
-           reading every slide of the frame and starting on the one showing.
-           No href because a link to the raw Storage file would take the
-           member out of their unsaved form if the lightbox ever failed to
-           bind — and communityCarousel.ts checks for the attribute before
-           writing a slide's URL into it, so it stays href-less as the
-           carousel moves. */
+        /* No click overlay: the slides are the lightbox's triggers (see the
+           card), href-less here so a link to the raw Storage file can never
+           take the member out of their unsaved form. */
       }
-      <a class="ccard__frame-link" aria-hidden="true"></a>
       <button
         class="ccard__arrow ccard__arrow--prev"
         type="button"
@@ -167,7 +160,7 @@ const t = useTranslations(lang);
        shell for the scope reason above. */
   }
   <template data-ccpv-tpl="slide"
-    ><div class="ccard__slide"><img class="ccard__img" alt="" decoding="async" /></div></template
+    ><a class="ccard__slide" tabindex="-1"><img class="ccard__img" alt="" decoding="async" /></a></template
   >
   <template data-ccpv-tpl="dot"><span class="ccard__dot"></span></template>
   <template data-ccpv-tpl="tag"><li class="ccpv__tag"></li></template>
