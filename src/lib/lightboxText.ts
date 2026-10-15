@@ -126,12 +126,6 @@ export function lightboxPadding(viewportSize: Point, _itemData: SlideData) {
   return { top, bottom, left: side, right: side };
 }
 
-/** Where the words' band starts: the foot of the picture's band. The same
- *  arithmetic as lightboxPadding's `bottom`, so the two cannot disagree. */
-function textBandTop(viewportY: number): number {
-  return viewportY - Math.round(viewportY * BAND_TEXT);
-}
-
 /** What the caption renderer reads off a trigger. All optional but width/height. */
 interface TriggerText {
   caption: string;
@@ -504,16 +498,16 @@ function attachPlacement(pswp: PhotoSwipe): void {
     // rather than laid over the window. A portrait picture got a column to its
     // right instead from 09-04 to 09-06 — see the header and lightboxPadding
     // for why that went.
-    // THE TOP IS THE BAND'S, NOT THE PICTURE'S (2026-10-13): the picture is
-    // centred in its 60 % band, so a landscape's bottom edge sits above the
-    // band's foot and hanging the words off it would put them at a different
-    // height on every slide. They start where the band ends instead — the
-    // one place the picture can never reach, whatever its shape. The max()
-    // only matters mid-animation, while the opening picture is still growing
-    // out of its thumbnail and may overrun the band for a frame.
+    // THE TOP IS THE PICTURE'S (2026-10-16, Josh: "wide images have a gap to
+    // the description"). From 10-13 the words started at the band's foot, so
+    // they sat at one height on every slide. But a wide picture is centred in
+    // its 60 % band, which left a hole between its bottom edge and the title.
+    // Now the title hangs off the picture itself, GAP below it, whatever its
+    // shape. The band below stays reserved (lightboxPadding), so the room
+    // under a wide picture only grows.
     // Bounded so a long description cannot run past the foot of the window;
     // past that it scrolls, and markClipped shows the fade that says so.
-    const top = Math.max(y + h, textBandTop(viewport.y)) + GAP;
+    const top = y + h + GAP;
     text.style.left = `${Math.round(x)}px`;
     text.style.top = `${Math.round(top)}px`;
     text.style.width = `${Math.round(w)}px`;
