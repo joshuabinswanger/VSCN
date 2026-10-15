@@ -887,6 +887,8 @@ const indexMembers = [...members].sort((a, b) =>
     border: 0;
     border-radius: 0;
     font-size: var(--fs-85);
+    /* The row never outgrows the screen; past this a label wraps in its pill. */
+    max-width: calc(100vw - 24px);
   }
 
   @media (--bp-mobile) {
@@ -940,16 +942,21 @@ const indexMembers = [...members].sort((a, b) =>
     font: inherit;
     color: var(--color-dark);
     cursor: pointer;
-    white-space: nowrap;
-    max-width: 14rem;
+    /* THE PILL GROWS WITH ITS WORDS (2026-10-15, Josh: "make the pills
+       expand so it is always contained in a pill"). No width cap and no
+       ellipsis: a long sort, view or tag name widens its own box. Only when
+       the row would leave the screen (the max-width on .community-bar__in)
+       does a label break onto a second line — still inside its frame. */
+    min-width: 0;
+    text-align: center;
     transition:
       background-color 0.15s,
       color 0.15s;
   }
 
   .bar-menu__trigger > span {
-    overflow: hidden;
-    text-overflow: ellipsis;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   /* No grey (2026-10-12, "the grey hover tone I don't like"), and no thicker
