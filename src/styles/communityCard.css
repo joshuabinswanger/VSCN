@@ -55,24 +55,26 @@
      frame's own width — the artwork's aspect at the frame height — not
      whatever the screen leaves, so the words always stand one --ccard-air
      from the picture's edge and the pair is centred in the cell. */
-  grid-template-columns: auto var(--ccard-air) var(--ccard-side-w);
+  /* WORDS | air | picture (2026-10-15, Josh: "the words should be on the
+     left of the image"). */
+  grid-template-columns: var(--ccard-side-w) var(--ccard-air) auto;
   grid-template-rows: auto 1fr;
   row-gap: 0.7rem;
   box-sizing: border-box;
   max-width: 100%;
 }
 .ccard__body {
-  grid-area: 1 / 1 / 3 / 2;
+  grid-area: 1 / 3 / 3 / 4;
 }
 .ccard__head {
-  grid-area: 1 / 3 / 2 / 4;
+  grid-area: 1 / 1 / 2 / 2;
   align-items: flex-start;
 }
 /* The words. min-width so a long unbroken link cannot widen the column;
    the column scrolls on its own in the rare case the words outrun the frame
    on a desktop (the phone lets the card grow instead). */
 .ccard > .pdisc {
-  grid-area: 2 / 3 / 3 / 4;
+  grid-area: 2 / 1 / 3 / 2;
   min-width: 0;
   min-height: 0;
   max-height: calc(var(--cpage-pic-h, 30rem) - 3rem);
@@ -317,7 +319,8 @@
 .ccard__foot {
   flex: none;
   display: flex;
-  justify-content: flex-end;
+  /* The count at the picture's LEFT corner (2026-10-15, Josh). */
+  justify-content: flex-start;
   align-items: center;
   min-width: 0;
   padding-top: 0.4rem;
@@ -449,7 +452,7 @@
   }
   .ccard__frame {
     width: 100%;
-    max-height: calc(var(--cpage-h, 100svh) * 0.6);
+    max-height: var(--cpage-pic-h, 50svh);
   }
   .ccard__head {
     grid-area: 2 / 1 / 3 / 2;
@@ -458,6 +461,13 @@
     grid-area: 3 / 1 / 4 / 2;
     max-height: none;
     overflow: visible;
+  }
+  /* A PHONE SHOWS THE PICTURE, THE NAME, THE LINKS AND THE WAY IN
+     (2026-10-15, Josh: "on mobile the bio and tags should not be shown").
+     The profile page has them. */
+  .ccard .pdisc__bio,
+  .ccard .pdisc__vals--tags {
+    display: none;
   }
   /* Smaller on a phone (2026-10-12, Josh: "the Profile button smaller on
      mobile!"): the type a step down in type.css, and a tighter box. */
