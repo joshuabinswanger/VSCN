@@ -315,49 +315,53 @@ const positionFor = (i: number) =>
     </div>
   </div>
 
-  {
-    /* THE HEAD: name and role, at the top of the words. The h2 is the
-      directory's outline (h1 member count → h2 member) and its link is the
-      way to the member's page, keyed for the morph that page plays on
-      arrival. A name is not an affordance, though — nothing says it is
-      clickable before pointing at it — which is why the foot row ends with a
-      button that says where it goes.
-      Outside the panel, so the name is the column's first line whatever
-      the panel holds. */
-  }
-  <div class="ccard__head">
-    <h2 class="ccard__name">
-      <a class="ccard__name-link" href={profileHref} transition:name={`mname-${member.id}`}>
-        {member.displayName}
-      </a>
-    </h2>
-    {member.role && <p class="ccard__role">{member.role}</p>}
-  </div>
-
-  {
-    /* THE WORDS: the rest of the member's words, in the open. MemberDetailPanel
-      owns the bio, the links and the tag chips (every chip a way into the
-      directory's tag filter) — the same component the ledger rows use, in
-      its plain mode: no disclosure, nothing folds. forceShow: a member with
-      no bio, no links and no tags still gets the box, which holds the
-      Profile link. */
-  }
-  <MemberDetailPanel member={member} lang={lang} forceShow mode="plain">
+  {/* THE WORDS, one block (2026-10-15): name and role, then the panel. A
+      single box so the desktop grid can hang it beside a CENTRED picture. */}
+  <div class="ccard__words">
     {
-      /* THE NAMED WAY TO THE PERSON (2026-09-01, Josh: "add 'view profile'
-        button to image cards"). It exists because the frame stopped going
-        there: the artwork opens the artwork, so the journey to a member's
-        page needs a control that says where it goes. A LINK, not a button
-        element, because it goes somewhere. The arrow is markup, aria-hidden,
-        so the link reads as "Profile" and not as "Profile right arrow".
-        IN THE PANEL, last (2026-10-14, Josh: "profile above the bar"): the
-        column's closing line. */
+      /* THE HEAD: name and role, at the top of the words. The h2 is the
+        directory's outline (h1 member count → h2 member) and its link is the
+        way to the member's page, keyed for the morph that page plays on
+        arrival. A name is not an affordance, though — nothing says it is
+        clickable before pointing at it — which is why the foot row ends with a
+        button that says where it goes.
+        Outside the panel, so the name is the column's first line whatever
+        the panel holds. */
     }
-    <a slot="footer" class="ccard__profile" href={profileHref}>
-      {t("community.card.profile")}
-      <span aria-hidden="true">→</span>
-    </a>
-  </MemberDetailPanel>
+    <div class="ccard__head">
+      <h2 class="ccard__name">
+        <a class="ccard__name-link" href={profileHref} transition:name={`mname-${member.id}`}>
+          {member.displayName}
+        </a>
+      </h2>
+      {member.role && <p class="ccard__role">{member.role}</p>}
+    </div>
+
+    {
+      /* THE WORDS: the rest of the member's words, in the open. MemberDetailPanel
+        owns the bio, the links and the tag chips (every chip a way into the
+        directory's tag filter) — the same component the ledger rows use, in
+        its plain mode: no disclosure, nothing folds. forceShow: a member with
+        no bio, no links and no tags still gets the box, which holds the
+        Profile link. */
+    }
+    <MemberDetailPanel member={member} lang={lang} forceShow mode="plain">
+      {
+        /* THE NAMED WAY TO THE PERSON (2026-09-01, Josh: "add 'view profile'
+          button to image cards"). It exists because the frame stopped going
+          there: the artwork opens the artwork, so the journey to a member's
+          page needs a control that says where it goes. A LINK, not a button
+          element, because it goes somewhere. The arrow is markup, aria-hidden,
+          so the link reads as "Profile" and not as "Profile right arrow".
+          IN THE PANEL, last (2026-10-14, Josh: "profile above the bar"): the
+          column's closing line. */
+      }
+      <a slot="footer" class="ccard__profile" href={profileHref}>
+        {t("community.card.profile")}
+        <span aria-hidden="true">→</span>
+      </a>
+    </MemberDetailPanel>
+  </div>
 
 </article>
 
