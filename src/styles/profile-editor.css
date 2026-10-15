@@ -1422,21 +1422,21 @@
   /* ── ON A PHONE THE BAR COMES APART (2026-10-13, Josh: "the buttons on
      mobile should be seperated and layed out better. atm there is a big bar
      but either split it or float them. you make a design decision") ──
-     Floated. The two-row slab became five controls standing on their own
-     over the page, each with its own shadow, in two rows that span the
-     window between the 16px gutters:
-        Preview | Edit                    (+)
-        Profile | Card   EN | DE          (S)
-     Save has been an icon since 2026-10-15 (Josh: "make save changes into a
-     small icon … then we have space for the profile/Card and EnDe switch in
-     the bottom row"), so the two view switches share the bottom row with it.
+     Floated. The slab became five controls standing on their own over the
+     page, each with its own shadow, in ONE row across the window between
+     the 16px gutters (2026-10-15, Josh: "preview edit is not on the same
+     bottom row… make everything smaller to fit if necessary for iphone 15"):
+        Profile|Card  EN|DE  Preview|Edit  (+) (S)
+     Save has been an icon since the same day, which is what makes room.
      Save keeps the bottom-right corner on every tab, where the thumb is. The
      other controls are Works-only, so elsewhere Save stands alone there.
-     Controls grow to 40px (HIG buttons: 44pt is the touch target the
-     shadowed 40px sits in with the 8px gaps). The bar's paper, hairline,
-     clip and measured size are switched off; `!important` beats the inline
-     size editorBar.ts keeps writing, so nothing animates here — each control
-     fades in on its own when it appears instead. */
+     Controls are 32px, as in the desktop bar, to fit an iPhone 15 (393pt)
+     in German too (measured: 351 of 361px); the shadow
+     and the 4px gaps keep the touch targets apart. Narrower than that (an
+     SE at 375pt in German) the row may still wrap, Save last. The bar's
+     paper, hairline, clip and measured size are switched off; `!important`
+     beats the inline size editorBar.ts keeps writing, so nothing animates
+     here — each control fades in on its own when it appears instead. */
   @media (--bp-mobile) {
     .form-footer {
       left: 16px;
@@ -1456,24 +1456,15 @@
       overflow: visible;
     }
 
-    /* Two rows that do not share columns (a grid did, and squeezed Save
-       onto two lines under the wide row above it): one wrapping flex line
-       per row, broken by a zero-height item in between. The groups dissolve
-       so their controls can be ordered across them. */
+    /* One wrapping flex line; the groups dissolve so their controls can be
+       ordered across them. */
     .ebar__in {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 4px 8px;
+      gap: 4px;
       width: auto;
       max-width: none;
-    }
-
-    .ebar__in::before {
-      content: "";
-      order: 4;
-      flex-basis: 100%;
-      height: 0;
     }
 
     .ebar__group {
@@ -1484,21 +1475,25 @@
       display: none;
     }
 
-    .ebar__mode {
+    .ebar__view {
       order: 1;
     }
-    .ebar__plus {
+    .ebar__lang {
       order: 2;
+    }
+    .ebar__mode {
+      order: 3;
+    }
+    .ebar__plus {
+      order: 4;
       margin-inline-start: auto;
     }
-    .ebar__view {
+    /* The Plus pushes itself and Save to the right edge as a pair; with no
+       Plus (any tab but Works) Save pushes itself. */
+    .ebar .profile-save-button {
       order: 5;
     }
-    .ebar__lang {
-      order: 6;
-    }
-    .ebar .profile-save-button {
-      order: 7;
+    .ebar__plus[hidden] ~ .profile-save-button {
       margin-inline-start: auto;
     }
 
@@ -1512,18 +1507,18 @@
     }
 
     .ebar .seg {
-      padding: 3px;
+      padding: 2px;
       background: color-mix(in srgb, var(--color-dark) 5%, white);
     }
 
     .ebar .seg > button {
-      min-height: 34px;
-      padding-inline: 14px;
+      min-height: 28px;
+      padding-inline: 6px;
     }
 
     .ebar__plus {
-      width: 40px;
-      height: 40px;
+      width: 32px;
+      height: 32px;
       background: white;
     }
 
@@ -1533,8 +1528,8 @@
     }
 
     .ebar .profile-save-button {
-      width: 40px;
-      height: 40px;
+      width: 32px;
+      height: 32px;
     }
   }
 
