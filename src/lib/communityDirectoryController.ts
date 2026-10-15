@@ -3,6 +3,7 @@ import { pageLifetime } from "./pageLifecycle.ts";
 import { navigate } from "astro:transitions/client";
 import { isWorkSort, sectionWorks, type SortableWork, type WorkSort } from "./communitySort.ts";
 import { DEFAULT_VIEW, viewFromParam, type ViewName } from "./communityLayout.ts";
+import { setPagesPaging } from "./pagesPager.ts";
 
 // ────────────────────────────────────────────────────────────────────────
 // Behaviour layer: the deal and the signed-out CTA.
@@ -667,6 +668,7 @@ function reflectSnap(mode: LayoutMode) {
   if (!wrap) return;
   if (mode === "pages") wrap.dataset.snap = "y";
   else delete wrap.dataset.snap;
+  setPagesPaging(mode === "pages");
 }
 document.addEventListener("astro:before-swap", () => {
   const wrap = document.querySelector<HTMLElement>(".page-wrap");

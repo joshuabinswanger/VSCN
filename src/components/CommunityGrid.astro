@@ -1328,38 +1328,47 @@ const indexMembers = [...members].sort((a, b) =>
     /* The bar floats at the bottom of the viewport (.community-bar); this
        keeps the card's last line above it. Tunable. */
     --cpage-chrome-b: 5.5rem;
+    /* MORE WHITE SPACE (2026-10-15, Josh): the picture is the frame less
+       an air band above and below, and the pair sits centred in it. */
+    --cpage-pic-h: calc(var(--cpage-h) - var(--cpage-chrome-b) - 16vh);
     display: block;
     width: min(100% - 2 * var(--cgrid-pad), var(--grid-max));
     margin-inline: auto;
     padding-block: 0;
   }
   .cgrid[data-pattern="pages"] > .cgrid__cell:not([hidden]) {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     position: relative;
     box-sizing: border-box;
     min-height: var(--cpage-h);
     padding-bottom: var(--cpage-chrome-b);
     scroll-snap-align: start;
     scroll-snap-stop: always;
-    container-type: normal;
+    container-type: inline-size;
   }
   :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard) {
     position: static;
     margin: 0;
-    width: 100%;
-    height: calc(var(--cpage-h) - var(--cpage-chrome-b));
   }
   @media (--bp-mobile) {
+    /* A STABLE HEIGHT ON A PHONE (2026-10-15, Josh: "without this part
+       where the card moves a bit further than it needs to and then drops
+       down"). --shell-h follows the visual viewport, which grows as Safari
+       retracts its toolbar mid-scroll: every card resized under the finger
+       and the snap re-aligned with a visible drop. svh never moves. */
     .cgrid[data-pattern="pages"] {
+      --cpage-h: calc(100svh - var(--header-h));
       --cpage-chrome-b: 4.5rem;
+      --cpage-pic-h: calc(var(--cpage-h) * 0.6);
       width: 100%;
     }
     /* A phone's card may grow past one screen when the bio runs long; the
        snap stays mandatory — the reader scrolls freely inside an oversized
        snap area. */
     :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard) {
-      height: auto;
-      min-height: calc(var(--cpage-h) - var(--cpage-chrome-b));
+      width: 100%;
     }
   }
   /* What follows the last card must be reachable under mandatory snap. */
