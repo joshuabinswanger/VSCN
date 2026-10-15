@@ -16,9 +16,12 @@ import "../../styles/communityCard.css";
 interface Props {
   member: MemberView;
   lang: Lang;
+  /** This card's position in the pages — the first card's first picture
+   *  loads eagerly, everything else lazily. */
+  index?: number;
 }
 
-const { member, lang } = Astro.props;
+const { member, lang, index = 0 } = Astro.props;
 const t = useTranslations(lang);
 
 // Gallery images are Firebase Storage remote URLs; getImage optimises them at
@@ -212,7 +215,8 @@ const positionFor = (i: number) =>
                 height={w.height}
                 style={w.color ? `background:${w.color}` : undefined}
                 alt={altFor(w)}
-                loading="lazy"
+                loading={index === 0 && i === 0 ? "eager" : "lazy"}
+                fetchpriority={index === 0 && i === 0 ? "high" : undefined}
                 decoding="async"
               />
               {w.embed && <span class="vscn-play vscn-play--over" aria-hidden="true" />}

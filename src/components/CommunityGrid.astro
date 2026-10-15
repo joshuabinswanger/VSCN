@@ -1,12 +1,6 @@
 ---
 import { hasArtwork, stripStorageToken, type MemberView } from "../lib/memberView.ts";
-import {
-  DEFAULT_VIEW,
-  GALLERY_PATTERNS,
-  STRIP_ROWS,
-  laneOf,
-  layOutSlots,
-} from "../lib/communityLayout.ts";
+import { DEFAULT_VIEW } from "../lib/communityLayout.ts";
 import { memberHref } from "../lib/links.ts";
 import { projectTitle } from "../lib/projects.ts";
 import CommunityImageCard from "./community/CommunityImageCard.astro";
@@ -257,16 +251,10 @@ const rankedMembers = members.map((m) => ({ ...m, works: [...m.works].sort(bySco
 const imageMembers = rankedMembers
   .filter(hasArtwork)
   .sort((a, b) => bestScore(b) - bestScore(a));
-// textCards: 0 — TEXT_TILE plays no part in this pattern; it survives only as
-// the shelved strip mode's index ladder.
-const slots = layOutSlots(GALLERY_PATTERNS.spread, imageMembers.length, 0);
-const ordered = imageMembers;
-
-// Deal in row order, so the server-rendered DOM already reads top to bottom
-// for anyone without JS. Pairing member i with slot i is only correct because
-// the pattern is authored in ascending rowStart (rule 4, checked at module
-// load) and tilePattern repeats it in row order across tiles.
-const cells = slots.map((slot, i) => ({ slot, member: ordered[i] }));
+// THE PAGES (2026-10-15): one cell per member with artwork, in rank order,
+// which is the no-JS reading order; the client deal re-orders them within
+// score bands (communityDirectoryController.ts). No slot table any more.
+const cells = imageMembers;
 
 // ── The wall's own cells ──────────────────────────────────────────────────
 //
@@ -525,8 +513,8 @@ const indexMembers = [...members].sort((a, b) =>
           <button
             type="button"
             class="view-toggle__btn"
-            data-mode="spread"
-            aria-pressed={DEFAULT_VIEW === "spread" ? "true" : "false"}
+            data-mode="pages"
+            aria-pressed={DEFAULT_VIEW === "pages" ? "true" : "false"}
           >
             {t("community.view.gallery")}
           </button>
@@ -595,34 +583,20 @@ const indexMembers = [...members].sort((a, b) =>
     data-pswp-i18n={lightboxStrings}
     data-sort-no-project={t("community.sort.noProject")}
     data-sort-no-field={t("community.sort.noField")}
-    hidden={DEFAULT_VIEW !== "spread" && DEFAULT_VIEW !== "grid"}
+    hidden={DEFAULT_VIEW !== "pages" && DEFAULT_VIEW !== "grid"}
   >
     {members.length === 0 && <p class="state-msg">{t("community.empty")}</p>}
-    {
-      /* The SHELVED strip layout's home (?pattern=strip — no UI reaches it): a
-        full-width flex row the client script moves the image cells into.
-        Rendered here (empty, hidden) rather than created in JS so it carries
-        the scoped-style attribute. Its row span has to agree with the index
-        offset the script computes, so both come from STRIP_ROWS in
-        communityLayout.ts. */
-    }
-    <div class="cgrid__strip" hidden style={`--gc:1 / span 24;--gr:1 / span ${STRIP_ROWS}`}></div>
 
     {
-      cells.map(({ slot, member }, i) => (
+      cells.map((member, i) => (
         <div
           class="cgrid__cell"
           data-slot="image"
           data-rank={i}
           data-score={bestScore(member)}
           data-tags={tagsAttr(member)}
-          data-row={slot.rowStart}
-          data-span={slot.rowSpan}
-          data-col={`${slot.colStart}-${slot.colStart + slot.colSpan - 1}`}
-          data-lane={laneOf(slot)}
-          style={`--gc:${slot.colStart} / span ${slot.colSpan};--gr:${slot.rowStart} / span ${slot.rowSpan};--slot-rows:${slot.rowSpan}`}
         >
-          <CommunityImageCard member={member} lang={lang} />
+          <CommunityImageCard member={member} lang={lang} index={i} />
         </div>
       ))
     }
@@ -1328,6 +1302,58 @@ const indexMembers = [...members].sort((a, b) =>
     margin-inline: auto;
   }
 
+  /* ── THE PAGES (2026-10-15) ────────────────────────────────
+     One member a screen (documentation/20261015-portfolio-pages-view.md).
+     The frame is the viewport minus the header row the card sits under and
+     the bar's band at the bottom; each cell is a snap stop of the page's
+     own scroller (.page-wrap[data-snap], global.css). The card inside is in
+     flow and fills the frame — the spread kept it absolute and GSAP-scaled,
+     which the rule above still says for the wall's tiles. */
+  .cgrid[data-pattern="pages"] {
+    --cpage-h: calc(var(--shell-h, 100dvh) - var(--header-h));
+    /* The bar floats at the bottom of the viewport (.community-bar); this
+       keeps the card's last line above it. Tunable. */
+    --cpage-chrome-b: 5.5rem;
+    display: block;
+    width: min(100% - 2 * var(--cgrid-pad), var(--grid-max));
+    margin-inline: auto;
+    padding-block: 0;
+  }
+  .cgrid[data-pattern="pages"] > .cgrid__cell {
+    display: block;
+    position: relative;
+    box-sizing: border-box;
+    min-height: var(--cpage-h);
+    padding-bottom: var(--cpage-chrome-b);
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    container-type: normal;
+  }
+  :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard) {
+    position: static;
+    margin: 0;
+    width: 100%;
+    height: calc(var(--cpage-h) - var(--cpage-chrome-b));
+  }
+  @media (--bp-mobile) {
+    .cgrid[data-pattern="pages"] {
+      --cpage-chrome-b: 4.5rem;
+      width: 100%;
+    }
+    /* A phone's card may grow past one screen when the bio runs long; the
+       snap stays mandatory — the reader scrolls freely inside an oversized
+       snap area. */
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard) {
+      height: auto;
+      min-height: calc(var(--cpage-h) - var(--cpage-chrome-b));
+    }
+  }
+  /* What follows the last card must be reachable under mandatory snap. */
+  :global(.page-wrap[data-snap="y"] .community-signup-cta),
+  :global(.page-wrap[data-snap="y"] > .site-footer) {
+    scroll-snap-align: end;
+  }
+
   /* THE SLOT IS MEASURED, AND THE PICTURE HOLDS ITS PLACE (2026-10-12,
      gallery card v2). An open card is its folded picture plus a column of
      words hung off the inner side (communityCard.css), so it is wider than
@@ -1339,16 +1365,6 @@ const indexMembers = [...members].sort((a, b) =>
      sized by their cards. */
   .cgrid > .cgrid__cell[data-slot="image"] {
     container-type: inline-size;
-  }
-  @media (--bp-desktop) {
-    :global(.cgrid__cell[data-lane="left"] > .ccard) {
-      margin-left: calc((100cqw - var(--ccard-pic-w) - var(--ccard-rail)) / 2);
-      margin-right: auto;
-    }
-    :global(.cgrid__cell[data-lane="right"] > .ccard) {
-      margin-left: auto;
-      margin-right: calc((100cqw - var(--ccard-pic-w) - var(--ccard-rail)) / 2);
-    }
   }
 
   /* ── The grid wall ────────────────────────────────────── */
@@ -1615,63 +1631,6 @@ const indexMembers = [...members].sort((a, b) =>
     text-underline-offset: 0.15em;
   }
 
-  /* ── The strip ────────────────────────────────────────── */
-  /* The horizontal gallery: one grid item spanning all 24 columns and
-     STRIP_ROWS rows (the --gc/--gr inline on it, same convention as a cell),
-     scrolling on its own axis. The cells inside it are flex items again —
-     the grid placement props they carry go inert, which is what makes moving
-     them in and out of here cheap. */
-  .cgrid__strip {
-    grid-column: var(--gc);
-    grid-row: var(--gr);
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding-inline: 0.25rem;
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-border) transparent;
-  }
-
-  /* display:flex above would beat the [hidden] presentational hint. */
-  .cgrid__strip[hidden] {
-    display: none;
-  }
-
-  @media (--bp-desktop) {
-    /* A thumbnail at rest, the focus size on hover — the width transition is
-       the whole effect: the card inside follows its cell's width (see .ccard
-       in CommunityImageCard), the frame keeps its true aspect, and the flex
-       row pushes the neighbours aside. :focus-within grows a card the
-       keyboard is in, so the enlargement is not mouse-only. */
-    .cgrid__strip .cgrid__cell {
-      flex: none;
-      width: var(--strip-thumb, 13rem);
-      align-self: center;
-      transition: width 380ms cubic-bezier(0.22, 0.61, 0.36, 1);
-    }
-
-    .cgrid__strip .cgrid__cell:hover,
-    .cgrid__strip .cgrid__cell:focus-within {
-      width: var(--strip-focus, 28rem);
-    }
-  }
-
-  /* Back into flow: the band centres each card on the strip's midline, and a
-     portrait narrowed by --slot-rows still needs centring in its grown cell —
-     auto margins on a static block do both jobs the absolute rule above was
-     doing. */
-  :global(.cgrid__strip .cgrid__cell > .ccard) {
-    position: static;
-    margin-inline: auto;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .cgrid__strip .cgrid__cell {
-      transition: none;
-    }
-  }
 
   /* The grid wall reads as a wall — aligned rows of equal cells — and a
      card growing a disclosure panel out of one of them breaks that row.
@@ -2036,13 +1995,6 @@ const indexMembers = [...members].sort((a, b) =>
   }
 
   @media (--bp-mobile) {
-    /* If the strip was active on desktop and the viewport crossed the
-       breakpoint, dissolve the wrapper so its cells become ordinary grid
-       items again. Still display:none while hidden — the [hidden] rule above
-       outranks this on specificity. */
-    .cgrid__strip {
-      display: contents;
-    }
 
     .cgrid {
       /* The slot table is a desktop drawing — a phone has no room for it.

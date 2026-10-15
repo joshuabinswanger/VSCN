@@ -2,15 +2,7 @@ import { watchAuth } from "./auth.ts";
 import { pageLifetime } from "./pageLifecycle.ts";
 import { navigate } from "astro:transitions/client";
 import { isWorkSort, sectionWorks, type SortableWork, type WorkSort } from "./communitySort.ts";
-import {
-  DEFAULT_VIEW,
-  GALLERY_PATTERNS,
-  STRIP_SLOT_ROWS,
-  laneOf,
-  layOutSlots,
-  type Slot,
-  type ViewName,
-} from "./communityLayout.ts";
+import { DEFAULT_VIEW, viewFromParam, type ViewName } from "./communityLayout.ts";
 
 // ────────────────────────────────────────────────────────────────────────
 // Behaviour layer: the deal and the signed-out CTA.
@@ -20,24 +12,14 @@ import {
 // ────────────────────────────────────────────────────────────────────────
 
 /**
- * The grid is drawn at build time; this decides who stands where in it.
- * The layout is recomputed from the same module the frontmatter used.
- * SPREAD and WALL deal identically: every member into the pattern's own
- * slots, shuffled artwork leading, the tag cards closing the page in
- * their build-time completeness order (restored from data-rank), which a
- * shuffle would throw away — same treatment, always last.
- *
- * `strip` — the shelved horizontal layout, reachable only by typing
- * ?pattern=strip — is the exception with no slot table: the image cells
- * move into the .cgrid__strip flex row instead, and only the index is
- * laid out.
- *
- * Rewriting geometry decouples DOM order from what you see, so the DOM is
- * re-sorted into row order afterwards and reading order still runs down
- * the page (appendChild also moves cells back OUT of the strip wrapper).
+ * This decides who stands where. The layout is recomputed from the same
+ * module the frontmatter used. PAGES and WALL deal identically: every
+ * member (or every work, on the wall) into the view, shuffled artwork
+ * leading within a score band, in the build-time completeness order
+ * (restored from data-rank) between bands. The pages have no slot table —
+ * the DOM order the deal appends IS the stack the page snaps down.
  */
 type LayoutMode = ViewName;
-const MODES: LayoutMode[] = ["spread", "grid", "strip", "index"];
 
 // ── THE DEAL HAS TO SURVIVE A BACK ────────────────────
 // The shuffle used to draw straight from Math.random(), so returning to this
@@ -196,26 +178,6 @@ function goTo(url: URL) {
   navigate(url.pathname + url.search);
 }
 
-function writeSlot(cell: HTMLElement, s: Slot) {
-  cell.style.setProperty("--gc", `${s.colStart} / span ${s.colSpan}`);
-  cell.style.setProperty("--gr", `${s.rowStart} / span ${s.rowSpan}`);
-  // The card reads this to bound its frame — a deal that moved the
-  // geometry without it would leave a card capped to its old slot.
-  cell.style.setProperty("--slot-rows", String(s.rowSpan));
-  // The wall's brick step belongs to the wall. Cleared here so a cell that
-  // was in an offset row cannot carry the step into the spread — where it
-  // would be inert (only the wall's rule reads it) but a lie in the DOM —
-  // and the wall re-writes it straight after this call.
-  cell.style.removeProperty("--row-offset");
-  // Kept in step with the placement so the ?grid labels stay truthful after
-  // a deal, and so the row sort below reads the row the cell actually has.
-  cell.dataset.row = String(s.rowStart);
-  cell.dataset.span = String(s.rowSpan);
-  cell.dataset.col = `${s.colStart}-${s.colStart + s.colSpan - 1}`;
-  // Which side an open gallery card hangs its words off (communityCard.css).
-  cell.dataset.lane = laneOf(s);
-}
-
 /** The wall's two measurements: how many fixed-width cards the window fits,
  *  and the gutter that spreads them from edge to edge once they are in.
  *
@@ -271,14 +233,6 @@ function writeWallMetrics(grid: HTMLElement): number {
  *  for nothing. */
 let wallCols = 0;
 
-/** Reading order for the DOM re-sort: down the page, then across it. The
- *  column tiebreak only matters in aligned-rows patterns (grid), where a
- *  whole row shares a rowStart and a stable sort alone would leave the
- *  shuffled deal's order — visually left-to-right, read in random order. */
-function domOrder(a: HTMLElement, b: HTMLElement): number {
-  const col = (cell: HTMLElement) => Number((cell.dataset.col ?? "").split("-")[0]) || 0;
-  return Number(a.dataset.row) - Number(b.dataset.row) || col(a) - col(b);
-}
 
 // ── The bar's state ───────────────────────────────────────────────────────
 // One selected tag, shared by every view: the galleries re-deal the
@@ -498,6 +452,7 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
   // aligned-rows grid, per cell in the spread. Stamped before any early
   // return so it is always truthful about what is on screen.
   grid.dataset.pattern = mode;
+  reflectSnap(mode);
 
   // The wall measures the WINDOW; every other view sits inside the page's
   // measure. This releases main's cap for the wall alone (see global.css),
@@ -521,13 +476,10 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
   if (index) index.hidden = mode !== "index";
   if (mode === "index") {
     grid.hidden = true;
-    const stripEl = grid.querySelector<HTMLElement>(".cgrid__strip");
-    if (stripEl) stripEl.hidden = true;
     reflectFilterState(grid, mode);
     return;
   }
 
-  const strip = grid.querySelector<HTMLElement>(".cgrid__strip");
   const cells = Array.from(grid.querySelectorAll<HTMLElement>(".cgrid__cell"));
   // WHICH ARTWORK CELLS THIS VIEW IS MADE OF. The wall deals one tile per
   // WORK; every other view deals one card per MEMBER. Both sets are in the
@@ -555,7 +507,6 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
   // slot math is never asked to lay out zero cards.
   grid.hidden = matching.length === 0;
   if (matching.length === 0) {
-    if (strip) strip.hidden = true;
     reflectFilterState(grid, mode);
     return;
   }
@@ -588,24 +539,6 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
   }
   const orderedGallery = artworkOrder[artKind].filter((cell) => matching.includes(cell));
 
-  if (mode === "strip" && strip) {
-    orderedGallery.forEach((cell) => {
-      // Grid placement goes inert inside the flex row, but the frame cap
-      // does not — without it a portrait would grow to its slotless 999.
-      cell.style.setProperty("--slot-rows", String(STRIP_SLOT_ROWS));
-      // The old rectangle is gone; a stale ?grid label would lie about it.
-      cell.dataset.row = "0";
-      cell.dataset.span = "";
-      cell.dataset.col = "";
-      delete cell.dataset.lane;
-      strip.appendChild(cell);
-    });
-    strip.hidden = false;
-    // The index ladder that used to run under the strip is gone with the tag
-    // cards it laid out — layOutStripIndex has no callers left.
-    reflectFilterState(grid, mode);
-    return;
-  }
 
   if (mode === "grid") {
     // THE WALL IS A FLOW, NOT A DEAL INTO SLOTS (2026-10-15, with the sort).
@@ -671,23 +604,47 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
         grid.appendChild(cell);
       });
     });
-    if (strip) strip.hidden = true;
     reflectFilterState(grid, mode);
     return;
   }
 
-  // The spread deals exactly like the wall: one run of slots, filled with
-  // the shuffled artwork and nothing else.
-  const all = layOutSlots(GALLERY_PATTERNS.spread, matching.length, 0);
-  orderedGallery.forEach((cell, i) => writeSlot(cell, all[i]));
-  if (strip) strip.hidden = true;
-  cells.sort(domOrder).forEach((cell) => grid.appendChild(cell));
+  // PAGES: the members in deal order, one section each, DOM order = snap
+  // order (there is no slot table any more — the cell IS the frame, see
+  // the pages block in CommunityGrid.astro). The deal is still banded by
+  // score and seeded per history entry, so Back returns to the stack it
+  // left. The wall's placement properties are cleared in case the cell
+  // carried them across a view change.
+  orderedGallery.forEach((cell) => {
+    cell.style.removeProperty("--gc");
+    cell.style.removeProperty("--gr");
+    cell.style.removeProperty("--slot-rows");
+    cell.style.removeProperty("--row-offset");
+    delete cell.dataset.lane;
+    grid.appendChild(cell);
+  });
+  cells.filter((cell) => cell.hidden).forEach((cell) => grid.appendChild(cell));
   reflectFilterState(grid, mode);
 }
 
+/**
+ * THE PAGE SNAPS ONLY FOR THE PAGES VIEW. .page-wrap is the site's one
+ * scroll container (Layout.astro), so the snap is an attribute on it that
+ * global.css reads, set here and cleared for every other view and before a
+ * swap — a snapping /profile would be a trap.
+ */
+function reflectSnap(mode: LayoutMode) {
+  const wrap = document.querySelector<HTMLElement>(".page-wrap");
+  if (!wrap) return;
+  if (mode === "pages") wrap.dataset.snap = "y";
+  else delete wrap.dataset.snap;
+}
+document.addEventListener("astro:before-swap", () => {
+  const wrap = document.querySelector<HTMLElement>(".page-wrap");
+  if (wrap) delete wrap.dataset.snap;
+});
+
 function modeFromURL(): LayoutMode {
-  const p = new URLSearchParams(window.location.search).get("pattern");
-  return (MODES as string[]).includes(p ?? "") ? (p as LayoutMode) : DEFAULT_VIEW;
+  return viewFromParam(new URLSearchParams(window.location.search).get("pattern"));
 }
 
 /** The view menu's pressed row and its trigger's name. In strip mode
@@ -706,7 +663,6 @@ function reflectMode(mode: LayoutMode) {
 
 // Module scope so a page swap replaces the watch instead of stacking a
 // second one on a bar the first is still holding.
-let fadeInsetObserver: ResizeObserver | null = null;
 
 document.addEventListener("astro:page-load", () => {
   const grid = document.getElementById("member-grid");
@@ -782,38 +738,6 @@ document.addEventListener("astro:page-load", () => {
         goTo(url);
       });
     });
-
-    // ── WHERE THE GALLERY FADE BEGINS ─────────────────────
-    // The mobile gallery's fade runs over `exit` against a scrollport inset
-    // by this many pixels, so the number IS the sticky nav's bottom edge —
-    // see the cgrid-cell-out block in the stylesheet. Until 2026-10-12 it was
-    // the filter bar's bottom edge, because the bar docked under the nav and
-    // was the lowest thing a card slid under; the bar now floats at the
-    // bottom of the viewport (CommunityGrid.astro, "The bar"), and the nav
-    // is the top of the page again. It is read rather than recomputed
-    // because the nav's height is a line box of type plus paddings that
-    // Navbar.astro owns, and a second copy would be a second thing to keep
-    // in step.
-    //
-    // The nav is sticky at top 0, so its height IS its docked bottom edge,
-    // which is what makes this safe to take at load with the page scrolled
-    // to the top. Once per page-load and once per nav resize — the font-size
-    // token steps at the breakpoint — and never on scroll: this is a constant
-    // the compositor then animates against.
-    const pageWrap = grid.closest<HTMLElement>(".page-wrap");
-    const fadeNav = pageWrap?.querySelector<HTMLElement>(":scope > nav") ?? null;
-    if (fadeNav) {
-      const measureFadeInset = () => {
-        // Unrounded, not offsetHeight: a rounded edge leaves the fade's line
-        // a fraction off the nav's drawn bottom.
-        const navBottom = fadeNav.getBoundingClientRect().height;
-        grid.style.setProperty("--cgrid-fade-inset", `${navBottom}px`);
-      };
-      measureFadeInset();
-      fadeInsetObserver?.disconnect();
-      fadeInsetObserver = new ResizeObserver(measureFadeInset);
-      fadeInsetObserver.observe(fadeNav);
-    }
 
     // The tags dropdown: the trigger flips the panel; typing in the panel
     // narrows its LIST (local, no deal); picking an option NAVIGATES to the
@@ -909,24 +833,6 @@ document.addEventListener("astro:page-load", () => {
       });
     });
 
-    // The page scrolls in .page-wrap, so a mouse wheel over the strip would
-    // scroll the PAGE past it. Translate the dominant vertical delta to the
-    // strip's own axis — but only while it can still move that way, so the
-    // page takes over at either end instead of the strip trapping the wheel.
-    const strip = grid.querySelector<HTMLElement>(".cgrid__strip");
-    strip?.addEventListener(
-      "wheel",
-      (e) => {
-        if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
-        const canRight = strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 1;
-        const canLeft = strip.scrollLeft > 0;
-        if ((e.deltaY > 0 && canRight) || (e.deltaY < 0 && canLeft)) {
-          e.preventDefault();
-          strip.scrollLeft += e.deltaY;
-        }
-      },
-      { passive: false }
-    );
   }
 
   // One observer per VISIT, not per page-load for ever: every view and tag
@@ -940,12 +846,6 @@ document.addEventListener("astro:page-load", () => {
   }
 });
 
-// The bar's ResizeObserver goes with the page it measures, rather than
-// waiting to be replaced by the next visit to /community.
-document.addEventListener("astro:before-swap", () => {
-  fadeInsetObserver?.disconnect();
-  fadeInsetObserver = null;
-});
 
 // ────────────────────────────────────────────────────────────────────────
 // The wall follows the window.
