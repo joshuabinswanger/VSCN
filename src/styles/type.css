@@ -169,13 +169,11 @@
   line-height: 1.5;
 }
 
-/* NAME: a member's name on a directory card — and the Images view's section
-   heads (2026-10-15), which are mostly members' names too: a sort by member
-   prints the name over each member's run of pictures, and the project and
-   tag sorts speak in the same voice. */
+/* NAME: a member's name on a directory card. (The Images view's section
+   heads spoke NAME for a day on 2026-10-15; they are BODY now — Josh: "the
+   same regular width as the rest of the text".) */
 .t-name,
-.ccard__name,
-.cgrid__head {
+.ccard__name {
   /* A step down from --fs-120 (2026-10-12, Josh: "name a tad smaller"). */
   font-size: var(--fs-105);
   /* 500, from 700 (2026-10-12, Josh: "lighter font weight"). */
@@ -326,10 +324,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* BODY: running prose that is not a caption, meaning a member's bio. */
+/* BODY: running prose that is not a caption, meaning a member's bio — and
+   the Images view's section heads (2026-10-15, Josh: "make the separation
+   text the same regular width as the rest of the text"): the name beside
+   its rule in the regular weight, not NAME's heavier one. */
 .t-body,
 .mprof__bio,
-.member-bio {
+.member-bio,
+.cgrid__head {
   font-size: var(--fs-100);
   font-weight: 400;
   line-height: 1.6;
