@@ -1718,7 +1718,7 @@ const indexMembers = [...members].sort((a, b) =>
     display: flex;
     align-items: center;
     gap: 1.25rem;
-    column-span: all;
+    /* (Was a multicol spanner until the script took over the columns.) */
     /* 10rem ≈ 130px over the last tile's edge on a desktop and 3.5rem under
        the head (2026-10-15, "more white space after and before the break",
        from 7rem / 1.5rem the same afternoon) — twice the 60px the tiles keep
@@ -2208,19 +2208,41 @@ const indexMembers = [...members].sort((a, b) =>
      tile lost its name line (CommunityWorkCard), so the gaps below carry the
      whole distance between two works — wider than the day before on both
      axes, so the wall reads as pictures on paper rather than a contact
-     sheet. */
+     sheet.
+     PLACED BY THE SCRIPT, NOT BY MULTICOL (2026-10-15, Josh: "there is a
+     weird stagger for the right column if sorted"). Multicol BALANCES: it
+     cuts the run at half its height and a tile that will not break goes
+     over to the next column, so a group of three stood as one tile on the
+     left and two on the right with a hole under the first — invisible in
+     one wall of forty tiles, plain in a sorted run of three. The deal now
+     builds each run as a flex row of N columns (`.cgrid__run` > `.cgrid__col`)
+     and drops every tile into the SHORTEST column, heights known from the
+     picture's own aspect (communityDirectoryController, the grid branch).
+     The three knobs the script reads are here: the column it aims for, the
+     gutter, and the air under a tile — the same 300 / 60 / 60 the multicol
+     drew (32 / 44 on a phone, two columns fixed). */
   .cgrid[data-pattern="grid"]:not([hidden]) {
     display: block;
-    column-width: 300px;
-    column-count: auto;
-    column-gap: 60px;
+    --masonry-col: 300px;
+    --masonry-gap: 60px;
+    --masonry-tile-gap: 60px;
+    /* 0 = as many 300px columns as the measure holds; a phone fixes 2. */
+    --masonry-cols: 0;
+  }
+  .cgrid[data-pattern="grid"] :global(.cgrid__run) {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--masonry-gap);
+  }
+  .cgrid[data-pattern="grid"] :global(.cgrid__col) {
+    flex: 1 1 0;
+    min-width: 0;
   }
   .cgrid[data-pattern="grid"] .cgrid__cell:not([hidden]) {
     display: block;
-    break-inside: avoid;
     aspect-ratio: auto;
     left: 0;
-    margin-bottom: 60px;
+    margin-bottom: var(--masonry-tile-gap);
   }
   /* The tallest a work may stand: one and a half times its column. */
   .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
@@ -2230,12 +2252,9 @@ const indexMembers = [...members].sort((a, b) =>
   }
   @media (--bp-mobile) {
     .cgrid[data-pattern="grid"]:not([hidden]) {
-      column-count: 2;
-      column-width: auto;
-      column-gap: 32px;
-    }
-    .cgrid[data-pattern="grid"] .cgrid__cell:not([hidden]) {
-      margin-bottom: 44px;
+      --masonry-cols: 2;
+      --masonry-gap: 32px;
+      --masonry-tile-gap: 44px;
     }
   }
 </style>

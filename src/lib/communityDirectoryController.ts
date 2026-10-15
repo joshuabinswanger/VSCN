@@ -196,37 +196,47 @@ function goTo(url: URL) {
  *  Reads clientWidth, so the grid must already be visible and already carry
  *  data-pattern="grid" (and the body its bleed class) when this is called —
  *  otherwise it measures against the wrong width. */
-function wallMetrics(grid: HTMLElement): { cols: number; gap: number } {
+/** THE MASONRY'S MEASURE (2026-10-15, replacing the multicol — see the
+ *  masonry block at the end of CommunityGrid.astro's sheet). The knobs are
+ *  read off the grid rule so the drawing has one source: a column to aim
+ *  for and a gutter on a desktop (as many columns as fit, the way
+ *  `column-width` chose), a fixed count on a phone, and the air under each
+ *  tile, which the placement counts as part of a tile's height. `colWidth`
+ *  is what the flex columns will resolve to, so a tile's height can be
+ *  known from its picture's aspect before anything is laid out. */
+function masonryMetrics(grid: HTMLElement): {
+  cols: number;
+  colWidth: number;
+  tileGap: number;
+} {
   const cs = getComputedStyle(grid);
   const px = (name: string) => parseFloat(cs.getPropertyValue(name));
-  const card = px("--wall-card");
-  const min = px("--wall-gap-min");
-  const max = px("--wall-gap-max");
-  const edge = px("--wall-edge");
-  if (!card || Number.isNaN(min) || Number.isNaN(edge)) return { cols: 0, gap: 0 };
-  // n cards and n−1 gutters at the floor have to fit inside the measure less
-  // both edges: n × (card + min) − min ≤ available. At least one, however
-  // narrow the window.
-  const available = grid.clientWidth - 2 * edge;
-  const cols = Math.max(1, Math.floor((available + min) / (card + min)));
-  // Then spread: everything the cards did not use goes into the gutters, so
-  // the first and last card sit on the edges. A lone card has no gutter to
-  // widen and keeps the floor. The max() is belt and braces — the count was
-  // taken at the floor, so the division cannot come back under it.
-  const spread = cols > 1 ? Math.max(min, (available - cols * card) / (cols - 1)) : min;
-  // The ceiling hands the surplus back to the edges (the tracks are centred,
-  // so nothing else has to know) at the one width where spreading would draw
-  // a gutter wider than a card.
-  return { cols, gap: Number.isNaN(max) ? spread : Math.min(spread, max) };
+  const fixed = px("--masonry-cols");
+  const col = px("--masonry-col");
+  const gap = px("--masonry-gap");
+  const tileGap = px("--masonry-tile-gap");
+  const width = grid.clientWidth;
+  if (Number.isNaN(gap) || !width) return { cols: 0, colWidth: 0, tileGap: 0 };
+  const cols =
+    fixed > 0 ? fixed : col > 0 ? Math.max(1, Math.floor((width + gap) / (col + gap))) : 1;
+  return {
+    cols,
+    colWidth: (width - (cols - 1) * gap) / cols,
+    tileGap: Number.isNaN(tileGap) ? 0 : tileGap,
+  };
 }
 
-/** Writes the measurements onto the grid for the CSS to draw from, and hands
- *  back the count the deal needs. */
-function writeWallMetrics(grid: HTMLElement): number {
-  const { cols, gap } = wallMetrics(grid);
-  grid.style.setProperty("--wall-cols", String(Math.max(1, cols)));
-  grid.style.setProperty("--wall-gap", `${gap}px`);
-  return cols;
+/** A wall tile's height in a column of `colWidth`, from its picture's
+ *  dimensions (the lightbox's data-pswp-width/height): the frame keeps the
+ *  aspect and caps a tall work at 1.5 × the column (CommunityWorkCard's
+ *  --frame-cap through the cell's --cgrid-row), narrowing it instead. A tile
+ *  with no readable dimensions counts as a square. */
+function tileHeight(cell: HTMLElement, colWidth: number): number {
+  const link = cell.querySelector<HTMLElement>(".cwork__link");
+  const w = Number(link?.dataset.pswpWidth);
+  const h = Number(link?.dataset.pswpHeight);
+  if (!(w > 0 && h > 0)) return colWidth;
+  return Math.min(colWidth * (h / w), 1.5 * colWidth);
 }
 
 /** The count the wall was last dealt at. A resize that fits the same number
@@ -498,6 +508,13 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
   // deal: gone before the deal counts, matches or orders anything.
   grid.querySelectorAll(".cgrid__cell[data-clone]").forEach((clone) => clone.remove());
   const cells = Array.from(grid.querySelectorAll<HTMLElement>(".cgrid__cell"));
+  // The wall's column wrappers (the grid branch below) are not part of any
+  // other view: their cells go back to the grid root, then the wrappers go.
+  // Cells first — removing a wrapper would take its cells with it.
+  grid.querySelectorAll<HTMLElement>(".cgrid__run").forEach((run) => {
+    run.querySelectorAll<HTMLElement>(".cgrid__cell").forEach((cell) => grid.appendChild(cell));
+    run.remove();
+  });
   // WHICH ARTWORK CELLS THIS VIEW IS MADE OF. The wall deals one tile per
   // WORK; every other view deals one card per MEMBER. Both sets are in the
   // DOM, and the one this view is not built from is hidden outright — which
@@ -558,18 +575,22 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
 
 
   if (mode === "grid") {
-    // THE WALL IS A FLOW, NOT A DEAL INTO SLOTS (2026-10-15, with the sort).
-    // It has been a multicol masonry since 2026-10-12 (the block at the end
-    // of CommunityGrid.astro's sheet), which places by DOM ORDER and ignores
-    // the --gc/--gr slots layOutWall kept writing until today. So the tiles
-    // are now appended in reading order with that placement cleared, and the
-    // sort's SECTION HEADS are `.cgrid__head` elements the deal creates here
-    // and removes on the next: each is a column spanner, so the columns end
-    // above it and start again under it — one run of pictures per head.
-    // writeWallMetrics still measures the window (--wall-cols, --wall-gap),
-    // which the masonry does not read; it is kept so the resize path stays
-    // one path.
-    wallCols = writeWallMetrics(grid);
+    // THE WALL IS A MASONRY THE SCRIPT PLACES (2026-10-15, twice over). The
+    // slot deal (layOutWall's --gc/--gr) went first, for the sort's SECTION
+    // HEADS — `.cgrid__head` elements made here and removed on the next
+    // deal, one run of pictures per head. Then the MULTICOL went, the same
+    // evening (Josh: "there is a weird stagger for the right column if
+    // sorted"): multicol balances a run by cutting it at half its height,
+    // and a tile that will not break goes over to the next column, so three
+    // tiles stood one left, two right, with a hole under the first. So each
+    // run is now a flex row of N `.cgrid__col`s and every tile goes into the
+    // SHORTEST column, its height known from its picture's aspect before
+    // anything is laid out (tileHeight) — the masonry the reference site
+    // actually draws. N and the column width come from the grid rule's
+    // knobs (masonryMetrics); the count is remembered so a resize can tell a
+    // step from a wobble (redealWall).
+    const metrics = masonryMetrics(grid);
+    wallCols = metrics.cols;
     grid.querySelectorAll(".cgrid__head").forEach((head) => head.remove());
     const items = orderedGallery.map(sortableOf);
     // The filtered tag's display label, for the one-section field sort:
@@ -614,6 +635,22 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
         }
         grid.appendChild(head);
       }
+      // The run: N columns, each a stack. A tile goes to the shortest
+      // column — but a column has to be shorter by more than the air under
+      // a tile to count as shorter, else the leftmost wins: with two
+      // columns a pixel apart the eye reads them as level, and a third tile
+      // dropped on the right for a pixel's sake is exactly the hole on the
+      // left the multicol used to leave.
+      const run = document.createElement("div");
+      run.className = "cgrid__run";
+      const cols = Math.max(1, metrics.cols);
+      const columns: { el: HTMLElement; height: number }[] = [];
+      for (let c = 0; c < cols; c++) {
+        const el = document.createElement("div");
+        el.className = "cgrid__col";
+        run.appendChild(el);
+        columns.push({ el, height: 0 });
+      }
       section.items.forEach(({ cell: original }) => {
         let cell = original;
         if (placed.has(original)) {
@@ -627,13 +664,19 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
         cell.style.removeProperty("--row-offset");
         // One row tall for the frame cap, as every wall slot was.
         cell.style.setProperty("--slot-rows", "1");
-        // The ?grid labels: the section the tile is in, not a drawn row.
+        let target = columns[0];
+        for (const col of columns) {
+          if (col.height < target.height - metrics.tileGap) target = col;
+        }
+        // The ?grid labels: the run and the column, not a drawn row.
         cell.dataset.row = String(i + 1);
         cell.dataset.span = "1";
-        cell.dataset.col = "";
+        cell.dataset.col = String(columns.indexOf(target) + 1);
         delete cell.dataset.lane;
-        grid.appendChild(cell);
+        target.el.appendChild(cell);
+        target.height += tileHeight(cell, metrics.colWidth) + metrics.tileGap;
       });
+      grid.appendChild(run);
     });
     reflectFilterState(grid, mode);
     return;
@@ -900,25 +943,18 @@ function liveWall(): HTMLElement | null {
 function redealWall(): void {
   const grid = liveWall();
   if (!grid) return;
-  if (wallMetrics(grid).cols === wallCols) return;
+  if (masonryMetrics(grid).cols === wallCols) return;
   applyLayout(grid, "grid", false);
   document.dispatchEvent(new Event("community:layout-changed"));
 }
 
-// TWO SPEEDS, because the window changes two different things. The GUTTER is
-// continuous — every pixel of width redistributes it — so it has to follow
-// the drag, and it costs two custom properties. The COUNT is a step, and
-// stepping it means re-placing every cell and re-measuring the whole motion
-// layer, so that waits for the drag to settle and only runs when the count
-// has actually moved.
-let wallFrame = 0;
+// The COUNT is a step, and stepping it means re-placing every cell and
+// re-measuring the whole motion layer, so it waits for the drag to settle
+// and only runs when the count has actually moved. The columns themselves
+// are flex and follow the drag on their own. (A continuous gutter used to
+// be written here every frame, for the slot grid the masonry replaced.)
 let wallResizeTimer = 0;
 window.addEventListener("resize", () => {
-  cancelAnimationFrame(wallFrame);
-  wallFrame = requestAnimationFrame(() => {
-    const grid = liveWall();
-    if (grid) writeWallMetrics(grid);
-  });
   clearTimeout(wallResizeTimer);
   wallResizeTimer = window.setTimeout(redealWall, 180);
 });
