@@ -1399,11 +1399,21 @@ const indexMembers = [...members].sort((a, b) =>
          bar. The picture has what is left above them, centred in it. */
       --cpage-head-h: 4.4rem;
       --cpage-links-h: 1.7rem;
-      --cpage-words-air: 1rem;
+      --cpage-words-air: 1.25rem;
       --cpage-row-gap: 0.75rem;
-      --cpage-card-h: calc(var(--cpage-h) - var(--cpage-chrome-b) - var(--cpage-words-air));
-      --cpage-pic-h: calc(
-        var(--cpage-card-h) - var(--cpage-head-h) - var(--cpage-links-h) - 2 * var(--cpage-row-gap)
+      /* AIR UNDER THE HEADER (2026-10-15, Josh's iPhone screenshot: the
+         picture stood 4px under the header while 85px lay empty above the
+         bar). Air above the picture as well as above the bar. */
+      --cpage-top-air: 1.25rem;
+      --cpage-card-h: calc(
+        var(--cpage-h) - var(--cpage-chrome-b) - var(--cpage-words-air) - var(--cpage-top-air)
+      );
+      /* The picture's band less the words — CAPPED at 60% of the frame, so
+         a portrait on a tall phone keeps air above and below it in its band
+         instead of filling it edge to edge. */
+      --cpage-pic-h: min(
+        calc(var(--cpage-card-h) - var(--cpage-head-h) - var(--cpage-links-h) - 2 * var(--cpage-row-gap)),
+        calc(var(--cpage-h) * 0.6)
       );
       width: 100%;
     }
@@ -1412,6 +1422,7 @@ const indexMembers = [...members].sort((a, b) =>
        gutter — the spread's 24px cell padding was for its framed cards. */
     .cgrid[data-pattern="pages"] > .cgrid__cell:not([hidden]) {
       padding-inline: 0;
+      padding-top: var(--cpage-top-air);
       align-items: flex-start;
     }
     /* THE CARD IS THE FRAME LESS THE BAR, its rows fixed: the picture's
