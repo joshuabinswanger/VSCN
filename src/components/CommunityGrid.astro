@@ -1382,6 +1382,15 @@ const indexMembers = [...members].sort((a, b) =>
     position: static;
     margin: 0;
   }
+  /* Registered so a new visible height EASES in rather than jumping. */
+  @property --cpage-vh {
+    syntax: "<length>";
+    inherits: true;
+    initial-value: 0px;
+  }
+  .cgrid[data-pattern="pages"][data-vh-ease] {
+    transition: --cpage-vh 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  }
   @media (--bp-mobile) {
     /* A STABLE HEIGHT ON A PHONE (2026-10-15, Josh: "without this part
        where the card moves a bit further than it needs to and then drops
@@ -1389,7 +1398,17 @@ const indexMembers = [...members].sort((a, b) =>
        retracts its toolbar mid-scroll: every card resized under the finger
        and the snap re-aligned with a visible drop. svh never moves. */
     .cgrid[data-pattern="pages"] {
-      --cpage-h: calc(100svh - var(--header-h));
+      /* THE VISIBLE HEIGHT, ONCE STILL (2026-10-15, Josh: "we don't consider
+         the collapsing lower bar in chrome on ios"): pagesViewport.ts writes
+         --cpage-vh from the visual viewport after a scroll has settled, and
+         it eases in (registered below). svh until then, and without JS. The
+         picture stays on svh (--cpage-svh-card-h) so only the room around
+         the words changes. */
+      /* An initial value must be absolute; svh is set here instead, and the
+         script's inline height outranks it. */
+      --cpage-vh: 100svh;
+      --cpage-h: calc(var(--cpage-vh) - var(--header-h));
+      --cpage-svh-card-h: calc(100svh - var(--header-h) - var(--cpage-chrome-b) - var(--cpage-words-air));
       --cpage-chrome-b: 4.5rem;
       /* THE WORDS ARE A FIXED BLOCK ON THE PILLS (2026-10-15, Josh: "the
          info for the member should be fix size and always just above the
@@ -1403,7 +1422,7 @@ const indexMembers = [...members].sort((a, b) =>
       --cpage-row-gap: 0.75rem;
       --cpage-card-h: calc(var(--cpage-h) - var(--cpage-chrome-b) - var(--cpage-words-air));
       --cpage-pic-h: calc(
-        var(--cpage-card-h) - var(--cpage-head-h) - var(--cpage-links-h) - 2 * var(--cpage-row-gap)
+        var(--cpage-svh-card-h) - var(--cpage-head-h) - var(--cpage-links-h) - 2 * var(--cpage-row-gap)
       );
       width: 100%;
     }
