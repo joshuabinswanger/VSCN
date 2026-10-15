@@ -1422,7 +1422,12 @@ const indexMembers = [...members].sort((a, b) =>
     :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard) {
       width: 100%;
       height: var(--cpage-card-h);
-      grid-template-rows: minmax(0, 1fr) var(--cpage-head-h) var(--cpage-links-h);
+      /* THE WORDS DIRECTLY UNDER THE PICTURE (2026-10-15, Josh: "on mobile
+         the text doesn't sit under the images directly"): picture, name and
+         role, links as one group, centred in the card. The picture keeps its
+         cap (--cpage-pic-h), so the group always fits. */
+      grid-template-rows: auto auto auto;
+      align-content: center;
       row-gap: var(--cpage-row-gap);
     }
     :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__body) {
@@ -1480,7 +1485,8 @@ const indexMembers = [...members].sort((a, b) =>
      paint by the deal, never under reduced motion), and the transitions live
      on the .is-in state alone, so leaving resets instantly, off screen.
      One curve for everything — a long expo-out, fast off the mark and a
-     slow, soft landing — and a stagger: picture, name, role, the rest. */
+     slow, soft landing — and a stagger: picture, then the name and role word
+     by word (so longer words take longer), then the count and the links. */
   @media (prefers-reduced-motion: no-preference) {
     .cgrid[data-pattern="pages"][data-motion] {
       --cpage-ease: cubic-bezier(0.16, 1, 0.3, 1);
@@ -1492,18 +1498,26 @@ const indexMembers = [...members].sort((a, b) =>
     :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__img) {
       transform: scale(1.16);
     }
-    /* The name rises out of its own line. */
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__name) {
+    /* The name and the role rise word by word, each word out of its own
+       mask (pagesEntrance.ts splits them and stamps each word's --d). Until
+       the split has happened the words are held invisible, so the plain
+       text never shows and then vanishes. */
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell:not([data-words]) .ccard__name-link),
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell:not([data-words]) .ccard__role) {
+      opacity: 0;
+    }
+    :global(.cgrid[data-pattern="pages"][data-motion] .cw) {
+      display: inline-block;
       overflow: clip;
-      overflow-clip-margin: 4px;
+      overflow-clip-margin: 2px;
+      /* Room for descenders inside the mask, given back to the line. */
+      padding-bottom: 0.12em;
+      margin-bottom: -0.12em;
+      vertical-align: top;
     }
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__name-link) {
-      transform: translateY(110%);
-    }
-    /* The role unmasks upward as it rises. */
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__role) {
-      clip-path: inset(0 0 100% 0);
-      transform: translateY(0.7em);
+    :global(.cgrid[data-pattern="pages"][data-motion] .cw__i) {
+      display: inline-block;
+      transform: translateY(105%);
     }
     /* The count, the links and PROFILE drift up into place. */
     :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__foot),
@@ -1520,30 +1534,23 @@ const indexMembers = [...members].sort((a, b) =>
       transform: none;
       transition: transform 1.5s var(--cpage-ease);
     }
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__name-link) {
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .cw__i) {
       transform: none;
-      transition: transform 0.95s var(--cpage-ease) 0.22s;
-    }
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__role) {
-      clip-path: inset(0 0 -20% 0);
-      transform: none;
-      transition:
-        clip-path 0.95s var(--cpage-ease) 0.34s,
-        transform 0.95s var(--cpage-ease) 0.34s;
+      transition: transform 0.85s var(--cpage-ease) var(--d, 0.2s);
     }
     :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__foot) {
       opacity: 1;
       translate: 0 0;
       transition:
-        opacity 0.7s var(--cpage-ease) 0.48s,
-        translate 0.9s var(--cpage-ease) 0.48s;
+        opacity 0.7s var(--cpage-ease) var(--t-rest, 0.48s),
+        translate 0.9s var(--cpage-ease) var(--t-rest, 0.48s);
     }
     :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard > .pdisc) {
       opacity: 1;
       translate: 0 0;
       transition:
-        opacity 0.7s var(--cpage-ease) 0.56s,
-        translate 0.9s var(--cpage-ease) 0.56s;
+        opacity 0.7s var(--cpage-ease) calc(var(--t-rest, 0.48s) + 0.08s),
+        translate 0.9s var(--cpage-ease) calc(var(--t-rest, 0.48s) + 0.08s);
     }
   }
   @keyframes cpage-out {

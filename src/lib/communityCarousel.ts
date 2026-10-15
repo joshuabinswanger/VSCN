@@ -162,15 +162,14 @@ export function initCarousels(root: ParentNode = document): void {
       reflect(indexOf(track, total));
     };
 
-    // The ends WRAP, as Embla's loop did: ‹ on the first slide shows the last.
-    // A wrap is a jump — sliding the whole track past every picture in
-    // between would be a film strip, not a page turn.
+    // The ends WRAP, as Embla's loop did: › on the last slide shows the first.
+    // The wrap SLIDES back across the strip (2026-10-15, Josh: "smooth scroll
+    // back when going from 3/3 to 1/3") — it used to jump.
     const goTo = (i: number, jump = false) => {
       const target = ((i % total) + total) % total;
-      const wraps = Math.abs(target - current) > 1;
       track.scrollTo({
         left: target * track.clientWidth,
-        behavior: jump || wraps || REDUCED.matches ? "instant" : "smooth",
+        behavior: jump || REDUCED.matches ? "instant" : "smooth",
       });
       reflect(target);
     };
