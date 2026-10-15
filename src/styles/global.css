@@ -161,6 +161,25 @@ body {
   scroll-behavior: smooth;
 }
 
+/* THE PAGES VIEW SNAPS (2026-10-15, /community Portfolios): the directory
+   controller sets this while one member a screen is on; cleared on every
+   other view and before a swap. scroll-padding keeps a snapped card under
+   the floating header row, not behind it. */
+.page-wrap[data-snap="y"] {
+  scroll-snap-type: y mandatory;
+  scroll-padding-top: var(--header-h);
+}
+/* ON A PHONE THE DOCUMENT IS THE SCROLLER (the --bp-mobile block below
+   gives html its overflow back so Safari can retract its toolbar), so the
+   snap has to stand on html there; the attribute stays on .page-wrap as the
+   one switch, and :has() reads it. */
+@media (--bp-mobile) {
+  html:has(.page-wrap[data-snap="y"]) {
+    scroll-snap-type: y mandatory;
+    scroll-padding-top: var(--header-h);
+  }
+}
+
 /* NO CROSS-FADE ON THE ROOT (2026-10-12, Josh: "there is also a flicker when
    navigating from page to page"). Everything the root snapshot holds is the
    same on both sides of a page change — the persisted title and nav, the

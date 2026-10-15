@@ -532,18 +532,6 @@ export function renderCardPreview(
   const nameEl = part("name");
   if (nameEl) nameEl.textContent = displayName;
 
-  // ── The column (2026-10-12, gallery card v2) ──────────────
-  // The card's words stand beside the picture now: bio, links and tags in
-  // MemberDetailPanel's shell, the same rules the profile-page preview above
-  // applies to the same fields (renderProfilePreview). The panel's hooks are
-  // its own names — `ptags`, not `tags`, because `tags` is the typographic
-  // face's list below. The fold's toggle is labelled here, once there is a
-  // name to label it with; the prefix came with the shell.
-  const toggle = part("toggle");
-  if (toggle) {
-    const prefix = toggle.dataset.ccpvExpand ?? "";
-    toggle.setAttribute("aria-label", `${prefix} ${displayName}`.trim());
-  }
 
   const bioEl = part("bio");
   const bioText = vm.bio.trim();
@@ -634,7 +622,6 @@ export function renderCardPreview(
       // artwork fills the preview's measure instead of narrowing to fit.
       root.style.setProperty("--frame-ar", String(first.width / first.height));
       frame.style.aspectRatio = `${first.width} / ${first.height}`;
-      frame.style.background = first.color ?? "";
 
       // ONLY WHEN THE PICTURES THEMSELVES CHANGED. renderCardPreview runs on
       // every keystroke in the form — the name, the role, a tag, a caption —
@@ -678,7 +665,6 @@ export function renderCardPreview(
             img.src = w.url;
             img.width = w.width;
             img.height = w.height;
-            if (w.color) img.style.background = w.color;
             // The words (alt and the data-pswp-* set) are written by the
             // in-place pass after the rebuild, which covers new slides too.
             slide.dataset.workUrl = w.url;
@@ -686,8 +672,8 @@ export function renderCardPreview(
             // A single picture is not a carousel: no group semantics, no
             // position label. Calling one image a carousel would be a lie to a
             // screen reader — the card's own reasoning, and its own markup.
+            slide.tabIndex = i === 0 ? 0 : -1;
             if (isCarousel) {
-              slide.setAttribute("role", "group");
               attr(slide, "aria-roledescription", labels.image ?? "");
               attr(slide, "aria-label", position(labels.imagePosition, i, works.length));
               if (i !== 0) slide.setAttribute("aria-hidden", "true");

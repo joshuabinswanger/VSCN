@@ -78,17 +78,10 @@ const t = useTranslations(lang);
     <div class="ccard__frame" data-ccpv="frame" data-carousel>
       <div class="ccard__track" data-ccpv="track"></div>
       {
-        /* The whole-artwork click target, and DELIBERATELY href-less. It
-           opens the lightbox exactly as the card's does (bindCardOpener in
-           lib/lightbox.ts, bound by bindPreviewLightbox since 2026-09-24),
-           reading every slide of the frame and starting on the one showing.
-           No href because a link to the raw Storage file would take the
-           member out of their unsaved form if the lightbox ever failed to
-           bind — and communityCarousel.ts checks for the attribute before
-           writing a slide's URL into it, so it stays href-less as the
-           carousel moves. */
+        /* No click overlay: the slides are the lightbox's triggers (see the
+           card), href-less here so a link to the raw Storage file can never
+           take the member out of their unsaved form. */
       }
-      <a class="ccard__frame-link" aria-hidden="true"></a>
       <button
         class="ccard__arrow ccard__arrow--prev"
         type="button"
@@ -111,6 +104,15 @@ const t = useTranslations(lang);
           it announces. */}
       <p class="ccard__live" aria-live="polite" aria-atomic="true" data-carousel-live></p>
     </div>
+    {
+      /* The foot, as on the card, under the picture: the count row — one dot
+         per work, built by the renderer from the same template mechanism the
+         tags use, plus the "2 / 7" count and its two chevrons, which the
+         carousel module adds. */
+    }
+    <div class="ccard__foot">
+      <div class="ccard__dots" data-ccpv="dots" hidden></div>
+    </div>
   </div>
 
   {
@@ -131,14 +133,14 @@ const t = useTranslations(lang);
        member's page, and a live control that walked the member out of an
        unsaved form would be a trap, the same call the profile-page preview
        makes for its back link. The role under it, hidden until there is
-       one. The head stands outside the panel, as on the card, so it survives
-       the fold. The panel's own hooks (bio, links, tags) are inside the shell. */
+       one. The head stands outside the panel, as on the card. The panel's
+       own hooks (bio, links, tags) are inside the shell. */
   }
   <div class="ccard__head">
     <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
     <p class="ccard__role" data-ccpv="role" hidden></p>
   </div>
-  <MemberDetailPanel lang={lang} shell mode="column">
+  <MemberDetailPanel lang={lang} shell mode="plain">
     {/* In the panel, last, as on the card — a <span> here because there is
         no page to go to from an unsaved form. */}
     <span slot="footer" class="ccard__profile">
@@ -146,15 +148,6 @@ const t = useTranslations(lang);
       <span aria-hidden="true">→</span>
     </span>
   </MemberDetailPanel>
-
-  {
-    /* The foot, as on the card: the count row — one dot per work, built by
-       the renderer from the same template mechanism the tags use, plus the
-       "2 / 7" count and its two chevrons, which the carousel module adds. */
-  }
-  <div class="ccard__foot">
-    <div class="ccard__dots" data-ccpv="dots" hidden></div>
-  </div>
 
   {
     /* Cloned by the renderer. A template's content is inert, so cloning is the
@@ -167,7 +160,7 @@ const t = useTranslations(lang);
        shell for the scope reason above. */
   }
   <template data-ccpv-tpl="slide"
-    ><div class="ccard__slide"><img class="ccard__img" alt="" decoding="async" /></div></template
+    ><a class="ccard__slide" tabindex="-1"><img class="ccard__img" alt="" decoding="async" /></a></template
   >
   <template data-ccpv-tpl="dot"><span class="ccard__dot"></span></template>
   <template data-ccpv-tpl="tag"><li class="ccpv__tag"></li></template>
@@ -183,7 +176,7 @@ const t = useTranslations(lang);
      vertical padding stays. No --frame-cap here — the preview sits in a form,
      not a grid slot. In the picture's place on the card's grid. */
   .ccpv__tframe {
-    grid-area: 1 / 1 / 4 / 2;
+    grid-area: 1 / 1 / 3 / 2;
     box-sizing: border-box;
     overflow: hidden;
     padding: 0.7rem 0;
@@ -221,22 +214,22 @@ const t = useTranslations(lang);
     overflow-wrap: anywhere;
   }
 
-  /* THE SLOT THE DIRECTORY WOULD DEAL (2026-09-25, Josh: the preview "doesn't
-     match the sizes of … the real gallery card"). A form has no slot, so this
-     one states the spread's: a lane of 9 of the grid's 24 columns
-     (CommunityGrid's --cgrid-col, same arithmetic) and 26 rows of 1.5rem.
-     Since 2026-10-12 the words stand BESIDE that slot rather than in it, so
-     the picture gets the slot or, where the form is narrower, what the form
-     leaves after the words — the card never runs out of its container. */
+  /* THE FRAME THE DIRECTORY WOULD GIVE (2026-10-15, the pages card): a form
+     has no viewport-tall cell, so the preview states a height of its own —
+     the card's grid then fills it exactly as the directory's cell does. The
+     phone's rule in communityCard.css lets the card grow instead. */
   .ccpv-slot {
     container-type: inline-size;
   }
   .ccard--preview {
-    --slot-rows: 26;
-    --cgrid-row: 1.5rem;
-    --ccard-slot-w: min(
-      100cqw - var(--ccard-side-w),
-      9 * min(94vw - 30px, 2000px) / 24
-    );
+    --cpage-h: 30rem;
+    --cpage-chrome-b: 0rem;
+    --ccard-side-w: 16rem;
+    height: 30rem;
+  }
+  @media (--bp-mobile) {
+    .ccard--preview {
+      height: auto;
+    }
   }
 </style>

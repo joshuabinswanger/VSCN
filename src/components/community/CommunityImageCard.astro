@@ -16,9 +16,12 @@ import "../../styles/communityCard.css";
 interface Props {
   member: MemberView;
   lang: Lang;
+  /** This card's position in the pages — the first card's first picture
+   *  loads eagerly, everything else lazily. */
+  index?: number;
 }
 
-const { member, lang } = Astro.props;
+const { member, lang, index = 0 } = Astro.props;
 const t = useTranslations(lang);
 
 // Gallery images are Firebase Storage remote URLs; getImage optimises them at
@@ -40,8 +43,6 @@ const works = await Promise.all(
   }))
 );
 
-const frame = works[0];
-
 // A single work still gets the track markup — same box, same CSS — but no
 // carousel semantics, no controls and no Embla instance. Calling one picture a
 // carousel would be a lie to a screen reader, and a drag handler on it would
@@ -56,13 +57,12 @@ const isCarousel = works.length > 1;
 // dead tab. This describes the CARD, not the slide, and must stay that way: a
 // `sizes` rewritten to match the track's slide widths puts the 1400s back on
 // phones and the crash back with them.
-const SIZES = "(max-width: 767px) 55vw, 680px";
+// THE PAGES (2026-10-15): the picture is most of the frame, so the sizes
+// say so — and the memory defence moved: only the showing card's slides and
+// their neighbours are hydrated (communityCarousel.ts), every other card's
+// pictures beyond its first stay data-src.
+const SIZES = "(max-width: 767px) 100vw, 60vw";
 
-// The frame keeps the artwork's TRUE aspect at every ratio — nothing here is
-// cropped or letterboxed. Tall artwork is bounded by getting narrower instead,
-// which the stylesheet does with --frame-ar and the slot height the grid hands
-// down; see .ccard__frame. This ratio is the input to that.
-const frameAspect = frame.width / frame.height;
 
 const profileHref = memberHref(lang, member.slug);
 
@@ -129,16 +129,18 @@ const positionFor = (i: number) =>
   positionTemplate.replace("{n}", String(i + 1)).replace("{total}", String(works.length));
 ---
 
-<article class="ccard" style={`--frame-ar:${frameAspect}`}>
+<article class="ccard">
   {
-    /* THE SECOND CARD (2026-10-12, Josh's sketch): the artwork on the left,
-      the words beside it on the right, open; a foot row under the words with
-      the pager at the picture's bottom-right corner and a filled PROFILE →
-      at the far right; a rail down the card's right edge that folds the
-      words away. The grid that places these is in communityCard.css; the
-      column is MemberDetailPanel in its column mode, below. The frame and
-      everything in it is the first card's, untouched — the carousel, the
-      lightbox contract and the member-page morph all key off it. */
+    /* THE PAGES CARD (2026-10-15, layout A of the brainstorm): one member a
+      screen on /community. The artwork on the left, filling the frame's
+      height, each work at its own aspect; the words beside it on the right,
+      open — name and role, bio, links, tags, PROFILE → — in MemberDetailPanel's
+      plain mode (no fold: the full frame has room for them). The pager
+      "‹ 1 / 3 ›" sits under the picture's bottom corner. The grid that places
+      these is in communityCard.css; the cell that frames the card is
+      CommunityGrid's pages block. The frame and everything in it keeps the
+      lightbox contract and the member-page morph. It replaces card v2
+      (documentation/20261012-gallery-card-v2.md) outright. */
   }
   <div class="ccard__body">
     {
@@ -152,7 +154,6 @@ const positionFor = (i: number) =>
     }
     <div
       class="ccard__frame"
-      style={`aspect-ratio:${frame.width} / ${frame.height};${frame.color ? `background:${frame.color}` : ""}`}
       transition:name={`mimg-${member.id}`}
       data-carousel
       data-position-label={isCarousel ? positionTemplate : undefined}
@@ -174,11 +175,18 @@ const positionFor = (i: number) =>
             announced at once, because opacity:0 hides nothing from a screen
             reader. */
           works.map((w, i) => (
-            <div
+            <a
               class="ccard__slide"
-              role={isCarousel ? "group" : undefined}
+              href={w.url}
+              target="_blank"
+              rel="noreferrer"
+              tabindex={i === 0 ? 0 : -1}
               aria-roledescription={isCarousel ? t("community.card.image") : undefined}
-              aria-label={isCarousel ? positionFor(i) : undefined}
+              aria-label={
+                isCarousel
+                  ? `${t("community.card.openImage")} ${member.displayName} — ${positionFor(i)}`
+                  : `${t("community.card.openImage")} ${member.displayName}`
+              }
               aria-hidden={isCarousel && i !== 0 ? "true" : undefined}
               data-work-url={w.url}
               data-pswp-width={pswpFor(w).width}
@@ -203,59 +211,31 @@ const positionFor = (i: number) =>
                 sizes={SIZES}
                 width={w.width}
                 height={w.height}
-                style={w.color ? `background:${w.color}` : undefined}
                 alt={altFor(w)}
-                loading="lazy"
+                loading={index === 0 && i === 0 ? "eager" : "lazy"}
+                fetchpriority={index === 0 && i === 0 ? "high" : undefined}
                 decoding="async"
               />
               {w.embed && <span class="vscn-play vscn-play--over" aria-hidden="true" />}
-            </div>
+            </a>
           ))
         }
       </div>
       {
-        /* Whole-artwork click target. A sibling of the arrows AND of the track
-          rather than a wrapper, so no interactive element nests inside another
-          and Embla never translates it; the arrows sit above it on z-index and
-          keep working. It is also the carousel's only tab stop, which is what
-          the keydown handler hangs the arrow keys off — see the script.
+        /* EVERY SLIDE IS THE CLICK TARGET (2026-10-15). The track scrolls
+          natively now, and a click overlay above a scroller eats its touch
+          pan, so each slide is an <a> to its original upload: that is what
+          keeps the link meaningful with scripting off, and how the lightbox
+          knows which slide to open on (lightbox.ts, CARD_TRIGGER = the slide;
+          it gathers every .ccard__slide in the track as its items). The
+          showing slide is the carousel's one tab stop — the engine moves the
+          tabindex with the page.
 
           IT OPENS THE PICTURE, NOT THE PROFILE (2026-09-01, Josh: "on click
-          directly lightbox"). Clicking an image to be taken somewhere else is
-          the one thing a wall of artwork should not do — the picture is what
-          was clicked, so the picture is what opens. The profile did not lose
-          its way in: the name at the head of the column is a link to it, and
-          the foot row ends with an explicit PROFILE → button (see
-          .ccard__foot). That pairing — image opens image, a named control
-          goes to the person — is the same one the ledger rows use.
-
-          The href is the ORIGINAL upload of THE SELECTED SLIDE, rewritten by
-          the script on every carousel move (rendered from slide 0, so it is
-          right before any script runs). It is what keeps the link meaningful
-          with scripting off, and it is how the lightbox knows which slide to
-          open on: CommunityGrid intercepts the click, gathers every
-          .ccard__slide in this frame as the lightbox's items, and starts on
-          the one whose data-work-url matches this href. The data-pswp-* copy
-          on the link itself is a mirror kept for that contract's readability;
-          the lightbox reads the slides. */
+          directly lightbox"). The picture is what was clicked, so the picture
+          is what opens. The name at the head of the column is a link to the
+          person, and the column ends with an explicit PROFILE → button. */
       }
-      <a
-        class="ccard__frame-link"
-        href={frame.url}
-        target="_blank"
-        rel="noreferrer"
-        data-pswp-width={pswpFor(frame).width}
-        data-pswp-height={pswpFor(frame).height}
-        data-pswp-caption={pswpFor(frame).caption || undefined}
-        data-pswp-description={pswpFor(frame).description || undefined}
-        data-pswp-link={pswpFor(frame).link || undefined}
-        data-pswp-site-link={pswpFor(frame).siteLink || undefined}
-        data-pswp-meta={pswpFor(frame).meta}
-        data-pswp-profile={profileHref}
-        data-pswp-project={pswpFor(frame).project || undefined}
-        data-pswp-project-link={pswpFor(frame).projectLink || undefined}
-        data-pswp-affiliations={pswpFor(frame).affiliations || undefined}
-        aria-label={`${t("community.card.openImage")} ${member.displayName}`}></a>
       {
         isCarousel && (
           <>
@@ -283,6 +263,56 @@ const positionFor = (i: number) =>
         )
       }
     </div>
+      {
+        /* THE FOOT, under the picture's bottom edge: the count "‹ 1 / 3 ›" at
+          its right corner. Inside the body since 2026-10-15 so it travels with
+          the picture, not the words. */
+      }
+    <div class="ccard__foot">
+      {
+        /* The count row. Not aria-hidden (since 2026-09-28) — the chevrons are
+          named buttons a screen reader can reach and press — but NOT tab
+          stops. A directory page holds a couple of dozen cards; giving each
+          one two focusable chevrons would put dozens of tab stops in front of
+          the member links that are the page's actual journey, to duplicate
+          paging the edge arrows and the frame's arrow keys already do. The
+          position is also spoken by the live region inside the frame. The
+          dots themselves are pointer-events:none indicators.
+          THE POSITION AS TEXT (2026-09-28, Josh: "try text instead of dots").
+          The dots stay in the markup and the engine, hidden by one rule in
+          communityCard.css, so switching back is that rule. The chevrons page
+          (communityCarousel.ts wires them, src/lib/pager.ts draws the same
+          pair for the preview) and carry the edge arrows' names. */
+      }
+      {
+        isCarousel && (
+          <div class="ccard__dots">
+            <button
+              class="pager-chev pager-chev--prev"
+              type="button"
+              tabindex="-1"
+              aria-label={t("community.card.prev")}
+              title={t("community.card.prev")}
+            >
+              <span aria-hidden="true" />
+            </button>
+            <span class="ccard__count">1 / {works.length}</span>
+            <button
+              class="pager-chev pager-chev--next"
+              type="button"
+              tabindex="-1"
+              aria-label={t("community.card.next")}
+              title={t("community.card.next")}
+            >
+              <span aria-hidden="true" />
+            </button>
+            {works.map((_, i) => (
+              <span class="ccard__dot" class:list={{ "ccard__dot--on": i === 0 }} />
+            ))}
+          </div>
+        )
+      }
+    </div>
   </div>
 
   {
@@ -292,12 +322,8 @@ const positionFor = (i: number) =>
       arrival. A name is not an affordance, though — nothing says it is
       clickable before pointing at it — which is why the foot row ends with a
       button that says where it goes.
-      OUTSIDE THE FOLD, not slotted into the panel (2026-10-12, Josh: "on
-      mobile start closed and show name always"). A folded <details> renders
-      nothing but its summary, so a name inside it could not outlive the
-      fold. The desktop fold still takes it — "fold everything", by the
-      card's grid in communityCard.css — but on a phone the card starts
-      folded and the name is what stays. */
+      Outside the panel, so the name is the column's first line whatever
+      the panel holds. */
   }
   <div class="ccard__head">
     <h2 class="ccard__name">
@@ -309,14 +335,14 @@ const positionFor = (i: number) =>
   </div>
 
   {
-    /* THE COLUMN: the rest of the member's words, open, and the rail that
-      folds them. MemberDetailPanel owns the bio, the links and the tag chips
-      (every chip a way into the directory's tag filter) and the native
-      <details> that folds them — the same component the ledger rows use, in
-      its column mode. forceShow: a member with no bio, no links and no tags
-      still needs the rail, or the card could not fold. */
+    /* THE WORDS: the rest of the member's words, in the open. MemberDetailPanel
+      owns the bio, the links and the tag chips (every chip a way into the
+      directory's tag filter) — the same component the ledger rows use, in
+      its plain mode: no disclosure, nothing folds. forceShow: a member with
+      no bio, no links and no tags still gets the box, which holds the
+      Profile link. */
   }
-  <MemberDetailPanel member={member} lang={lang} forceShow mode="column">
+  <MemberDetailPanel member={member} lang={lang} forceShow mode="plain">
     {
       /* THE NAMED WAY TO THE PERSON (2026-09-01, Josh: "add 'view profile'
         button to image cards"). It exists because the frame stopped going
@@ -324,9 +350,8 @@ const positionFor = (i: number) =>
         page needs a control that says where it goes. A LINK, not a button
         element, because it goes somewhere. The arrow is markup, aria-hidden,
         so the link reads as "Profile" and not as "Profile right arrow".
-        IN THE PANEL, last (2026-10-14, Josh: "profile above the bar. bar
-        above the carousel control"): it unfolds with the words, and the
-        panel's bar closes the column under it. */
+        IN THE PANEL, last (2026-10-14, Josh: "profile above the bar"): the
+        column's closing line. */
     }
     <a slot="footer" class="ccard__profile" href={profileHref}>
       {t("community.card.profile")}
@@ -334,56 +359,6 @@ const positionFor = (i: number) =>
     </a>
   </MemberDetailPanel>
 
-  {
-    /* THE FOOT, on the picture's bottom edge: the count "‹ 1 / 3 ›" just past
-      the frame's bottom corner (the sketch's place for it), open or folded
-      (2026-10-14, "make the carousel controls always visible"). */
-  }
-  <div class="ccard__foot">
-    {
-      /* The count row. Not aria-hidden (since 2026-09-28) — the chevrons are
-        named buttons a screen reader can reach and press — but NOT tab
-        stops. A directory page holds a couple of dozen cards; giving each
-        one two focusable chevrons would put dozens of tab stops in front of
-        the member links that are the page's actual journey, to duplicate
-        paging the edge arrows and the frame's arrow keys already do. The
-        position is also spoken by the live region inside the frame. The
-        dots themselves are pointer-events:none indicators.
-        THE POSITION AS TEXT (2026-09-28, Josh: "try text instead of dots").
-        The dots stay in the markup and the engine, hidden by one rule in
-        communityCard.css, so switching back is that rule. The chevrons page
-        (communityCarousel.ts wires them, src/lib/pager.ts draws the same
-        pair for the preview) and carry the edge arrows' names. */
-    }
-    {
-      isCarousel && (
-        <div class="ccard__dots">
-          <button
-            class="pager-chev pager-chev--prev"
-            type="button"
-            tabindex="-1"
-            aria-label={t("community.card.prev")}
-            title={t("community.card.prev")}
-          >
-            <span aria-hidden="true" />
-          </button>
-          <span class="ccard__count">1 / {works.length}</span>
-          <button
-            class="pager-chev pager-chev--next"
-            type="button"
-            tabindex="-1"
-            aria-label={t("community.card.next")}
-            title={t("community.card.next")}
-          >
-            <span aria-hidden="true" />
-          </button>
-          {works.map((_, i) => (
-            <span class="ccard__dot" class:list={{ "ccard__dot--on": i === 0 }} />
-          ))}
-        </div>
-      )
-    }
-  </div>
 </article>
 
 <script>

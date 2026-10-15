@@ -1,5 +1,7 @@
 # Gallery card v2 — the words beside the picture
 
+> **Superseded 2026-10-15** by the pages card (`20261015-portfolio-pages-view.md`): the Portfolios view is one member a screen now, the words always open, no fold, no rail, no spread. This note is the record of what stood between 2026-10-12 and then.
+
 2026-10-12. Josh's sketch ("GALLERY CARD V2"): the carousel on the left, a
 text column on the right, open; under the column a foot row with the pager
 "‹ 1 / 3 ›" at the picture's bottom-right corner and a filled **PROFILE →**

@@ -1,12 +1,6 @@
 ---
 import { hasArtwork, stripStorageToken, type MemberView } from "../lib/memberView.ts";
-import {
-  DEFAULT_VIEW,
-  GALLERY_PATTERNS,
-  STRIP_ROWS,
-  laneOf,
-  layOutSlots,
-} from "../lib/communityLayout.ts";
+import { DEFAULT_VIEW } from "../lib/communityLayout.ts";
 import { memberHref } from "../lib/links.ts";
 import { projectTitle } from "../lib/projects.ts";
 import CommunityImageCard from "./community/CommunityImageCard.astro";
@@ -265,16 +259,10 @@ const rankedMembers = members.map((m) => ({ ...m, works: [...m.works].sort(bySco
 const imageMembers = rankedMembers
   .filter(hasArtwork)
   .sort((a, b) => bestScore(b) - bestScore(a));
-// textCards: 0 — TEXT_TILE plays no part in this pattern; it survives only as
-// the shelved strip mode's index ladder.
-const slots = layOutSlots(GALLERY_PATTERNS.spread, imageMembers.length, 0);
-const ordered = imageMembers;
-
-// Deal in row order, so the server-rendered DOM already reads top to bottom
-// for anyone without JS. Pairing member i with slot i is only correct because
-// the pattern is authored in ascending rowStart (rule 4, checked at module
-// load) and tilePattern repeats it in row order across tiles.
-const cells = slots.map((slot, i) => ({ slot, member: ordered[i] }));
+// THE PAGES (2026-10-15): one cell per member with artwork, in rank order,
+// which is the no-JS reading order; the client deal re-orders them within
+// score bands (communityDirectoryController.ts). No slot table any more.
+const cells = imageMembers;
 
 // ── The wall's own cells ──────────────────────────────────────────────────
 //
@@ -533,8 +521,8 @@ const indexMembers = [...members].sort((a, b) =>
           <button
             type="button"
             class="view-toggle__btn"
-            data-mode="spread"
-            aria-pressed={DEFAULT_VIEW === "spread" ? "true" : "false"}
+            data-mode="pages"
+            aria-pressed={DEFAULT_VIEW === "pages" ? "true" : "false"}
           >
             {t("community.view.gallery")}
           </button>
@@ -603,34 +591,20 @@ const indexMembers = [...members].sort((a, b) =>
     data-pswp-i18n={lightboxStrings}
     data-sort-no-project={t("community.sort.noProject")}
     data-sort-no-field={t("community.sort.noField")}
-    hidden={DEFAULT_VIEW !== "spread" && DEFAULT_VIEW !== "grid"}
+    hidden={DEFAULT_VIEW !== "pages" && DEFAULT_VIEW !== "grid"}
   >
     {members.length === 0 && <p class="state-msg">{t("community.empty")}</p>}
-    {
-      /* The SHELVED strip layout's home (?pattern=strip — no UI reaches it): a
-        full-width flex row the client script moves the image cells into.
-        Rendered here (empty, hidden) rather than created in JS so it carries
-        the scoped-style attribute. Its row span has to agree with the index
-        offset the script computes, so both come from STRIP_ROWS in
-        communityLayout.ts. */
-    }
-    <div class="cgrid__strip" hidden style={`--gc:1 / span 24;--gr:1 / span ${STRIP_ROWS}`}></div>
 
     {
-      cells.map(({ slot, member }, i) => (
+      cells.map((member, i) => (
         <div
           class="cgrid__cell"
           data-slot="image"
           data-rank={i}
           data-score={bestScore(member)}
           data-tags={tagsAttr(member)}
-          data-row={slot.rowStart}
-          data-span={slot.rowSpan}
-          data-col={`${slot.colStart}-${slot.colStart + slot.colSpan - 1}`}
-          data-lane={laneOf(slot)}
-          style={`--gc:${slot.colStart} / span ${slot.colSpan};--gr:${slot.rowStart} / span ${slot.rowSpan};--slot-rows:${slot.rowSpan}`}
         >
-          <CommunityImageCard member={member} lang={lang} />
+          <CommunityImageCard member={member} lang={lang} index={i} />
         </div>
       ))
     }
@@ -1342,6 +1316,129 @@ const indexMembers = [...members].sort((a, b) =>
     margin-inline: auto;
   }
 
+  /* ── THE PAGES (2026-10-15) ────────────────────────────────
+     One member a screen (documentation/20261015-portfolio-pages-view.md).
+     The frame is the viewport minus the header row the card sits under and
+     the bar's band at the bottom; each cell is a snap stop of the page's
+     own scroller (.page-wrap[data-snap], global.css). The card inside is in
+     flow and fills the frame — the spread kept it absolute and GSAP-scaled,
+     which the rule above still says for the wall's tiles. */
+  .cgrid[data-pattern="pages"] {
+    --cpage-h: calc(var(--shell-h, 100dvh) - var(--header-h));
+    /* The bar floats at the bottom of the viewport (.community-bar); this
+       keeps the card's last line above it. Tunable. */
+    --cpage-chrome-b: 5.5rem;
+    display: block;
+    width: min(100% - 2 * var(--cgrid-pad), var(--grid-max));
+    margin-inline: auto;
+    padding-block: 0;
+  }
+  .cgrid[data-pattern="pages"] > .cgrid__cell:not([hidden]) {
+    display: block;
+    position: relative;
+    box-sizing: border-box;
+    min-height: var(--cpage-h);
+    padding-bottom: var(--cpage-chrome-b);
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    container-type: normal;
+  }
+  :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard) {
+    position: static;
+    margin: 0;
+    width: 100%;
+    height: calc(var(--cpage-h) - var(--cpage-chrome-b));
+  }
+  @media (--bp-mobile) {
+    .cgrid[data-pattern="pages"] {
+      --cpage-chrome-b: 4.5rem;
+      width: 100%;
+    }
+    /* A phone's card may grow past one screen when the bio runs long; the
+       snap stays mandatory — the reader scrolls freely inside an oversized
+       snap area. */
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard) {
+      height: auto;
+      min-height: calc(var(--cpage-h) - var(--cpage-chrome-b));
+    }
+  }
+  /* What follows the last card must be reachable under mandatory snap. */
+  :global(.page-wrap[data-snap="y"] .community-signup-cta),
+  :global(.page-wrap[data-snap="y"] > .site-footer) {
+    scroll-snap-align: end;
+  }
+
+  /* ── THE FLOURISH (2026-10-15, Josh: entry 2 + exit 1 of the brainstorm)
+     The picture arrives first, the words settle a beat later, the card
+     leaving shrinks and dims. View timelines against .page-wrap (the nearest
+     scrollport); the CELL — the snap stop — is never transformed, so the
+     snap geometry is layout's alone. LONGHANDS ONLY: the minifier folds a
+     following animation-timeline INTO an `animation` shorthand, which no
+     browser accepts, so the whole animation silently drops (memory note
+     minifier-folds-animation-timeline; checked in the built CSS). A browser without view() gets the plain
+     snap, which is the complete experience; reduced motion gets it too.
+     Amounts are the brainstorm demo's — tunable. The body's own crossing
+     is the timeline for the picture: on a desktop it is the card's height,
+     on a phone 60% of it, so the picture finishes arriving a little sooner
+     there, which reads fine. */
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      :global(.cgrid[data-pattern="pages"] .ccard__body) {
+        animation-name: cpage-pic-in;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 100%;
+      }
+      :global(.cgrid[data-pattern="pages"] .ccard__head),
+      :global(.cgrid[data-pattern="pages"] .ccard > .pdisc) {
+        animation-name: cpage-words-in;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-timeline: view();
+        animation-range: entry 35% entry 110%;
+      }
+      :global(.cgrid[data-pattern="pages"] .ccard) {
+        animation-name: cpage-out;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-timeline: view();
+        animation-range: exit 0% exit 100%;
+        transform-origin: 50% 50%;
+      }
+    }
+  }
+  @keyframes cpage-pic-in {
+    0% {
+      transform: translateX(-6%) scale(0.97);
+      opacity: 0.3;
+    }
+    100% {
+      transform: none;
+      opacity: 1;
+    }
+  }
+  @keyframes cpage-words-in {
+    0% {
+      transform: translateY(22px);
+      opacity: 0;
+    }
+    100% {
+      transform: none;
+      opacity: 1;
+    }
+  }
+  @keyframes cpage-out {
+    0% {
+      transform: none;
+      opacity: 1;
+    }
+    100% {
+      transform: scale(0.96);
+      opacity: 0.35;
+    }
+  }
+
   /* THE SLOT IS MEASURED, AND THE PICTURE HOLDS ITS PLACE (2026-10-12,
      gallery card v2). An open card is its folded picture plus a column of
      words hung off the inner side (communityCard.css), so it is wider than
@@ -1353,16 +1450,6 @@ const indexMembers = [...members].sort((a, b) =>
      sized by their cards. */
   .cgrid > .cgrid__cell[data-slot="image"] {
     container-type: inline-size;
-  }
-  @media (--bp-desktop) {
-    :global(.cgrid__cell[data-lane="left"] > .ccard) {
-      margin-left: calc((100cqw - var(--ccard-pic-w) - var(--ccard-rail)) / 2);
-      margin-right: auto;
-    }
-    :global(.cgrid__cell[data-lane="right"] > .ccard) {
-      margin-left: auto;
-      margin-right: calc((100cqw - var(--ccard-pic-w) - var(--ccard-rail)) / 2);
-    }
   }
 
   /* ── The grid wall ────────────────────────────────────── */
@@ -1653,63 +1740,6 @@ const indexMembers = [...members].sort((a, b) =>
     text-underline-offset: 0.15em;
   }
 
-  /* ── The strip ────────────────────────────────────────── */
-  /* The horizontal gallery: one grid item spanning all 24 columns and
-     STRIP_ROWS rows (the --gc/--gr inline on it, same convention as a cell),
-     scrolling on its own axis. The cells inside it are flex items again —
-     the grid placement props they carry go inert, which is what makes moving
-     them in and out of here cheap. */
-  .cgrid__strip {
-    grid-column: var(--gc);
-    grid-row: var(--gr);
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding-inline: 0.25rem;
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-border) transparent;
-  }
-
-  /* display:flex above would beat the [hidden] presentational hint. */
-  .cgrid__strip[hidden] {
-    display: none;
-  }
-
-  @media (--bp-desktop) {
-    /* A thumbnail at rest, the focus size on hover — the width transition is
-       the whole effect: the card inside follows its cell's width (see .ccard
-       in CommunityImageCard), the frame keeps its true aspect, and the flex
-       row pushes the neighbours aside. :focus-within grows a card the
-       keyboard is in, so the enlargement is not mouse-only. */
-    .cgrid__strip .cgrid__cell {
-      flex: none;
-      width: var(--strip-thumb, 13rem);
-      align-self: center;
-      transition: width 380ms cubic-bezier(0.22, 0.61, 0.36, 1);
-    }
-
-    .cgrid__strip .cgrid__cell:hover,
-    .cgrid__strip .cgrid__cell:focus-within {
-      width: var(--strip-focus, 28rem);
-    }
-  }
-
-  /* Back into flow: the band centres each card on the strip's midline, and a
-     portrait narrowed by --slot-rows still needs centring in its grown cell —
-     auto margins on a static block do both jobs the absolute rule above was
-     doing. */
-  :global(.cgrid__strip .cgrid__cell > .ccard) {
-    position: static;
-    margin-inline: auto;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .cgrid__strip .cgrid__cell {
-      transition: none;
-    }
-  }
 
   /* The grid wall reads as a wall — aligned rows of equal cells — and a
      card growing a disclosure panel out of one of them breaks that row.
@@ -2043,44 +2073,7 @@ const indexMembers = [...members].sort((a, b) =>
     }
   }
 
-  /* ?grid — the drawing aid, for tuning the slot table against the real page
-     instead of by arithmetic. Two rectangles per slot:
-
-       The grey outline is the slot exactly as the table reserved it. It needs
-       no debug-only trickery to be that: the cell fills its rows in production
-       too, because the card inside it is out of flow.
-
-       There is no second box any more. It marked a 2:3 ceiling that no longer
-       exists: a card is now bounded by its own slot (--slot-rows, read by
-       CommunityImageCard), so nothing can outgrow the grey box and there is
-       nothing to warn about. */
-  .cgrid--debug .cgrid__cell {
-    outline: 1px dashed color-mix(in srgb, var(--color-dark) 30%, transparent);
-  }
-
-  .cgrid--debug .cgrid__cell::after {
-    content: attr(data-slot) " r" attr(data-row) "+" attr(data-span) " c" attr(data-col);
-    position: absolute;
-    /* Sits clear of the slot outline it labels — close enough to read as its
-       caption, far enough that the two lines never look like one edge. */
-    top: -2.6rem;
-    left: 0;
-    font-size: var(--fs-65);
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--color-muted);
-    pointer-events: none;
-  }
-
   @media (--bp-mobile) {
-    /* If the strip was active on desktop and the viewport crossed the
-       breakpoint, dissolve the wrapper so its cells become ordinary grid
-       items again. Still display:none while hidden — the [hidden] rule above
-       outranks this on specificity. */
-    .cgrid__strip {
-      display: contents;
-    }
 
     .cgrid {
       /* The slot table is a desktop drawing — a phone has no room for it.
@@ -2174,148 +2167,6 @@ const indexMembers = [...members].sort((a, b) =>
     }
   }
 
-  /* ── ARRIVE BRIGHT, LEAVE DIM ───────────────────
-     (2026-09-03, Josh: "highlight only one carousel at a time in gallery
-     mode … the most prominent card is fully opaque the others are a bit
-     faded", xk.studio/work as the reference. 2026-09-04, Josh: "the fade …
-     should only start to happen once the top of the image touches the filter
-     bar", then — the correction that produced the shape below — "until they
-     reach the middle they should be faded out. i liked the fade in so far it
-     should have just changed the fade out".)
-
-     The mobile gallery is a single column of full-width cards, so scrolling it
-     is really paging through one member at a time — but every card in the
-     scrollport was drawn at full strength, which meant half-cards at the edges
-     competing with the one the reader is actually looking at, and three
-     carousels quietly advancing at once. So a card is dim on the way in,
-     reaches full strength around the middle of the screen, HOLDS it for the
-     whole time it is below the filter bar, and gives it up only as it slides
-     under the bar.
-
-     ── WHY THAT IS TWO ANIMATIONS AND NOT ONE ───────
-     Because the two ramps want different clocks, and one keyframe list can
-     only have one.
-     The way IN was always fitted to percentages of `cover`, and can only be
-     fitted: `cover`'s 0%..100% is linear in the SCROLL DISTANCE the whole card
-     travels (its own height plus the scrollport's), not in the screen position
-     of either edge, so "top edge halfway down the screen" falls at a different
-     percentage for a 236px card than for a 502px one. 35% is that fit against
-     this page's real cards (~353px average, spread ~236–502px, against an
-     812px viewport) and it is the fit Josh accepted, so it is kept EXACTLY as
-     it was — this is the ramp that was already liked.
-     The way OUT cannot be fitted, because "touching the filter bar" is a
-     specific line on the screen and a percentage of `cover` is not. It gets
-     its own timeline whose scrollport is INSET from the top by the bar's
-     height, which makes the `exit` range mean "leaving under the bar" rather
-     than "leaving at the top of the scrollport" — exact for every card height,
-     nothing fitted.
-
-     ── HOW THEY HAND OVER: THE FILL MODES ───────────
-     Both animate `opacity`, so the later one in the list wins wherever it
-     contributes at all — and `cgrid-cell-in` is listed second with fill
-     `backwards`, which is the whole trick. `backwards` fills the BEFORE phase
-     only, so the in-ramp holds 0.35 under a card that has not entered yet,
-     drives the ramp while it is entering, and then STOPS CONTRIBUTING at the
-     end of its range. From that moment `cgrid-cell-out` — listed first, fill
-     `both` — is the only animation left, holding its own 0% keyframe (opacity
-     1) until the card reaches the bar. Give the in-ramp `both` instead and it
-     would pin every card at 1 forever and the fade-out would never be seen.
-     The two ranges cannot overlap on this page: the in-ramp ends around 400px
-     of scroll for every card size above, the out-ramp starts at ~771px (the
-     scrollport height less the bar). A card taller than the scrollport would
-     close that gap, and there is none — the tallest is ~502px.
-
-     THE ONLY JS is a single measurement of where the nav's bottom edge sits
-     (--cgrid-fade-inset), taken on load and when the nav resizes — never
-     while scrolling. No scroll handler.
-
-     The grid wall gets only the arrival, and a shorter one — see the block
-     after this one. Browsers without scroll-driven animations get every card
-     at full opacity, which is the finished no-motion state and what the page
-     did before.
-
-     (Until 2026-09-28 a 5 s auto-advance in src/lib/communityCarousel.ts
-     followed the same idea of prominence, moving only the card nearest the
-     middle of the scrollport. Autoplay is gone; the fade is the page's only
-     motion of its own now.) */
-  @media (--bp-mobile) and (prefers-reduced-motion: no-preference) {
-    @supports (animation-timeline: view()) {
-      .cgrid:not([data-pattern="grid"]) .cgrid__cell {
-        /* Shorthand first: `animation` resets animation-timeline, so the
-           timelines must be declared after it. Order is load-bearing — see
-           the fill-mode note above. */
-        animation:
-          cgrid-cell-out both,
-          cgrid-cell-in backwards;
-        /* THE INSET IS THE NAV. `view()`'s inset shrinks the scrollport the
-           timeline is measured against, so moving the out-ramp's start edge
-           down to the sticky nav's bottom makes `exit` mean "against the nav"
-           rather than "against the top of the scrollport" — which is what the
-           nav is, visually: the top of the page. (Until 2026-10-12 the filter
-           bar docked under the nav and this edge was the BAR's bottom; the
-           bar now floats at the bottom of the viewport.) Measured into
-           --cgrid-fade-inset by the page-load handler, because the nav's
-           height is type metrics; the fallback is a plausible phone value for
-           the frame before the measurement lands.
-           The in-ramp keeps the plain, un-inset `view()` it always had. */
-        animation-timeline:
-          view(block var(--cgrid-fade-inset, 40px) 0px),
-          view();
-        /* `exit` — the card's departure UNDER THE NAV, and nothing else: 0% is
-           its top edge meeting the nav's bottom, 100% its own bottom edge
-           passing the same line. Against `cover 0% 35%`, which is the arrival,
-           unchanged. */
-        animation-range:
-          /* Hold brightness until 30% passes the nav, then fade gently. */
-          exit 30% exit 100%,
-          cover 0% cover 35%;
-      }
-    }
-  }
-
-  /* THE PHONE'S WALL NO LONGER FADES IN (2026-10-13). From 2026-09-26 the
-     Images tiles arrived through `cgrid-wall-in`, a 0 → 1 fade on a `view()`
-     timeline (Josh: "the grid should have a faint fade in animation also on
-     mobile", then "fade from 0"). The wall became a multicol masonry on
-     2026-10-12 (#200), and Josh then saw "a gap at the top right every time
-     the view opens": the first tile of the RIGHT column missing. A view
-     timeline's subject inside a multicol is the tile's position in the
-     unfragmented flow — far down the first column — so a tile standing at the
-     top of the second column believed itself below the fold and held its
-     fill-backwards opacity of 0 until the page had scrolled a column's
-     height. Chromium measures the fragment correctly; the phone's WebKit did
-     not. The wall is static by Josh's own call (#198, #199: no brick, no
-     parallax), so the arrival goes rather than being rebuilt on an
-     IntersectionObserver. The gallery column's fade (above) is untouched. */
-
-  /* @keyframes are global in Astro (see CLAUDE.md) — hence the prefix.
-
-     Opacity-only, both ways: the translateY these used to carry read as "the
-     card arriving/leaving" rather than a pure fade, and made the effect feel
-     softer than intended. Motion is gone; only the fade remains.
-
-     0.35 rather than the ~0.3 the xk.studio reference reads at: that page is
-     white on black, where a dimmed thing recedes into the ground, and this one
-     is dark on off-white, where the same figure washes a photograph out
-     instead of pushing it back. Far enough to be unmistakably secondary, near
-     enough that the card either side of the one in hand is still a picture. */
-  @keyframes cgrid-cell-in {
-    0% {
-      opacity: 0.35;
-    }
-    100% {
-      opacity: 1;
-    }
-  }
-
-  @keyframes cgrid-cell-out {
-    0% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 0.65;
-    }
-  }
 
   .community-signup-cta {
     padding-top: 5rem;
