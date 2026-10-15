@@ -148,9 +148,8 @@
 }
 
 /* ── Close ────────────────────────────────────────────────────────────────
-   AN X (2026-10-15, Josh: "instead of Close an X"): two 1.5px hairlines
-   crossed, in ink, going muted on hover — the stroke of the pager chevrons
-   and the words' dropdown. It was the localized word in LABEL caps from
+   AN X (2026-10-15, Josh: "instead of Close an X"): two hairlines crossed,
+   at the pager chevrons' stroke, in ink, going muted on hover. It was the localized word in LABEL caps from
    2026-09-06; the word is still the button's title and accessible name
    (closeTitle in lightbox.ts). The padding is the hit box: 24px or more
    around a 0.9rem glyph.
@@ -179,9 +178,13 @@
   top: 50%;
   left: -0.12rem;
   right: -0.12rem;
-  height: 1.5px;
-  margin-top: -0.75px;
-  background: currentColor;
+  /* The stroke of the "‹ 2 / 7 ›" chevrons beside it (2026-10-15, Josh: "x in
+     same line thickness as the other arrows"). A BORDER, as theirs is, not a
+     filled bar: a border width snaps to whole device pixels and a height
+     does not, so at the same number the bar drew heavier. */
+  height: 0;
+  border-top: var(--pager-chev-stroke) solid currentColor;
+  margin-top: calc(var(--pager-chev-stroke) / -2);
   transform: rotate(45deg);
 }
 .pswp--vscn .pswp__vscn-x::after {
