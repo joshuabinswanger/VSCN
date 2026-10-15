@@ -71,14 +71,10 @@ test("project: by project title, works without a project close the list", () => 
   assert.equal(out[2].href, undefined);
 });
 
+const F = (...keys) => ({ fields: keys.map((k) => ({ key: k, label: k.toUpperCase() })) });
+
 test("field: the tag sections come in the order the random source deals, untagged last", () => {
-  const items = [
-    W("a", { field: { key: "3d", label: "3D" } }),
-    W("b"),
-    W("c", { field: { key: "sem", label: "SEM" } }),
-    W("d", { field: { key: "ink", label: "Ink" } }),
-    W("e", { field: { key: "3d", label: "3D" } }),
-  ];
+  const items = [W("a", F("3d")), W("b"), W("c", F("sem")), W("d", F("ink")), W("e", F("3d"))];
   // A random source that always returns 0 swaps each slot with index 0 in
   // a Fisher-Yates walk: a fixed, non-identity permutation.
   const zero = sectionWorks(items, "field", { ...OPTS, random: () => 0 });
@@ -94,13 +90,21 @@ test("field: the tag sections come in the order the random source deals, untagge
     half.slice(0, 3).map((s) => s.key)
   );
   assert.deepEqual(ids(zero.find((s) => s.key === "3d")), ["a", "e"]);
+  assert.equal(zero.find((s) => s.key === "sem").label, "SEM");
+});
+
+test("field: a work with several tags is in every one of their sections, once each", () => {
+  const items = [W("a", F("3d", "sem", "3d")), W("b", F("sem")), W("c", F("ink", "3d"))];
+  const out = sectionWorks(items, "field", { ...OPTS, random: () => 0 });
+  const by = Object.fromEntries(out.map((s) => [s.key, ids(s)]));
+  assert.deepEqual(by, { "3d": ["a", "c"], sem: ["a", "b"], ink: ["c"] });
+  // The same object, not a copy — the caller tells a repeat by identity.
+  assert.equal(out.find((s) => s.key === "sem").items[0], items[0]);
+  assert.equal(out.some((s) => s.label === "Untagged"), false);
 });
 
 test("field with the tag filter set: one section, named for the filtered tag", () => {
-  const items = [
-    W("a", { field: { key: "3d", label: "3D" } }),
-    W("b", { field: { key: "sem", label: "SEM" } }),
-  ];
+  const items = [W("a", F("3d", "sem")), W("b", F("sem"))];
   const out = sectionWorks(items, "field", { ...OPTS, filtered: { key: "sem", label: "SEM" } });
   assert.deepEqual(
     out.map((s) => [s.key, s.label, ids(s)]),

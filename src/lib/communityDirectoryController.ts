@@ -288,7 +288,20 @@ function sortableOf(cell: HTMLElement): SortableWork & { cell: HTMLElement } {
   };
   if (d.date) out.date = d.date;
   if (d.project) out.project = { key: d.project, label: d.projectName ?? "" };
-  if (d.field) out.field = { key: d.field, label: d.fieldLabel ?? d.field };
+  if (d.fields) {
+    // Build-stamped JSON (see workFields in CommunityGrid.astro); a tile
+    // whose attribute will not parse is treated as untagged, not dropped.
+    try {
+      const parsed: unknown = JSON.parse(d.fields);
+      if (Array.isArray(parsed)) {
+        out.fields = parsed
+          .filter((f): f is { key: string; label?: string } => !!f && typeof f.key === "string")
+          .map((f) => ({ key: f.key, label: f.label ?? f.key }));
+      }
+    } catch {
+      /* untagged */
+    }
+  }
   return out;
 }
 
@@ -480,6 +493,9 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
     return;
   }
 
+  // The field sort's doubles (see the grid branch) are not cells of the
+  // deal: gone before the deal counts, matches or orders anything.
+  grid.querySelectorAll(".cgrid__cell[data-clone]").forEach((clone) => clone.remove());
   const cells = Array.from(grid.querySelectorAll<HTMLElement>(".cgrid__cell"));
   // WHICH ARTWORK CELLS THIS VIEW IS MADE OF. The wall deals one tile per
   // WORK; every other view deals one card per MEMBER. Both sets are in the
@@ -576,6 +592,13 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
     // The cells this view does not show stay in the grid (display:none) —
     // appended first so the shown run is contiguous and reads in order.
     cells.filter((cell) => cell.hidden).forEach((cell) => grid.appendChild(cell));
+    // A TILE IN MORE THAN ONE SECTION (the field sort: a work under every
+    // tag it carries) is the real cell the first time and a CLONE after
+    // that — a node has one place in the DOM. Clones are marked so the next
+    // deal removes them (above) and the lightbox pages them like any tile:
+    // the same picture under two heads opens from either. The motion layer
+    // treats them as cells too; it builds after the deal.
+    const placed = new Set<HTMLElement>();
     sections.forEach((section, i) => {
       if (section.label) {
         const head = document.createElement("h2");
@@ -590,7 +613,14 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
         }
         grid.appendChild(head);
       }
-      section.items.forEach(({ cell }) => {
+      section.items.forEach(({ cell: original }) => {
+        let cell = original;
+        if (placed.has(original)) {
+          cell = original.cloneNode(true) as HTMLElement;
+          cell.dataset.clone = "";
+        } else {
+          placed.add(original);
+        }
         cell.style.removeProperty("--gc");
         cell.style.removeProperty("--gr");
         cell.style.removeProperty("--row-offset");
