@@ -1085,7 +1085,9 @@ const indexMembers = [...members].sort((a, b) =>
     max-height: min(60vh, 30rem);
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 0 10px 10px;
+    /* The other two cards' 6px, top excepted — the head below carries it, so
+       it can paint over the chips scrolling under it. */
+    padding: 0 6px 6px;
     scrollbar-width: thin;
     scrollbar-color: var(--color-border) transparent;
   }
@@ -1106,31 +1108,33 @@ const indexMembers = [...members].sort((a, b) =>
     position: sticky;
     top: 0;
     z-index: 1;
-    margin-bottom: 4px;
-    padding: 10px 0 8px;
+    margin-bottom: 6px;
+    padding: 6px 0 6px;
     background: var(--color-bg);
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
   }
 
+  /* MATCHES THE OTHER TWO CARDS (2026-10-15, Josh: "tags pill and tags
+     search needs design adjustment to match the rest"). Clear is a row of
+     the Sort and View menus — same type, same padding, no box at rest, the
+     inset hairline under the pointer — rather than a square in a grey
+     border at a smaller size. */
   .tag-filter__clear {
     flex: none;
-    padding: 0.5rem 0.8rem;
-    border: 1px solid var(--color-border);
-    border-radius: 0;
-    background: transparent;
+    padding: 0.55rem 0.75rem;
+    border: none;
+    background: none;
     font: inherit;
-    font-size: var(--fs-82);
     color: var(--color-dark);
     cursor: pointer;
     white-space: nowrap;
-    transition: border-color 0.15s;
   }
 
   .tag-filter__clear:hover,
   .tag-filter__clear:focus-visible {
-    border-color: var(--color-dark);
+    box-shadow: inset 0 0 0 1px var(--color-dark);
     outline: none;
   }
 
@@ -1144,14 +1148,18 @@ const indexMembers = [...members].sort((a, b) =>
     min-width: 0;
     width: 100%;
     box-sizing: border-box;
-    padding: 0.5rem 0.9rem;
-    border: 1px solid transparent;
-    border-radius: 0;
-    background: color-mix(in srgb, var(--color-dark) 6%, var(--color-bg));
+    /* The bar's own field: a capsule (CONTROLS in global.css) on the paper,
+       drawn in the one black hairline the pill, the cards and the triggers
+       share, at the bar's type size and a row's padding. It was a grey-filled
+       square at a size of its own — the one surface in the bar that was
+       neither paper nor black. Focus thickens nothing ("make the outline
+       thinner"); it fills the field's ring in, inside. */
+    padding: 0.55rem 0.9rem;
+    border: 1px solid var(--color-dark);
+    background: var(--color-bg);
     font: inherit;
-    font-size: var(--fs-85);
     color: var(--color-dark);
-    transition: border-color 0.15s;
+    transition: box-shadow 0.15s;
   }
 
   .tag-filter__search::placeholder {
@@ -1160,7 +1168,13 @@ const indexMembers = [...members].sort((a, b) =>
 
   .tag-filter__search:focus {
     outline: none;
-    border-color: var(--color-dark);
+    box-shadow: inset 0 0 0 0.5px var(--color-dark);
+  }
+
+  /* The browser's own clear cross on a search field: the Clear row does that
+     job, and the cross is a second, differently drawn control beside it. */
+  .tag-filter__search::-webkit-search-cancel-button {
+    appearance: none;
   }
 
   @media (--bp-mobile) {
