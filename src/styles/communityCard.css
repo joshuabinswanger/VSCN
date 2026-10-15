@@ -50,13 +50,16 @@
   --ccard-side-w: 20rem;
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--ccard-air) var(--ccard-side-w);
-  grid-template-rows: auto minmax(0, 1fr);
+  /* THE PICTURE AND THE WORDS STAY TOGETHER (2026-10-15, Josh: "text and
+     images should always be close together"): the picture's column is the
+     frame's own width — the artwork's aspect at the frame height — not
+     whatever the screen leaves, so the words always stand one --ccard-air
+     from the picture's edge and the pair is centred in the cell. */
+  grid-template-columns: auto var(--ccard-air) var(--ccard-side-w);
+  grid-template-rows: auto 1fr;
   row-gap: 0.7rem;
   box-sizing: border-box;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
+  max-width: 100%;
 }
 .ccard__body {
   grid-area: 1 / 1 / 3 / 2;
@@ -72,6 +75,7 @@
   grid-area: 2 / 3 / 3 / 4;
   min-width: 0;
   min-height: 0;
+  max-height: calc(var(--cpage-pic-h, 30rem) - 3rem);
   overflow: hidden auto;
   scrollbar-width: thin;
 }
@@ -117,10 +121,16 @@
 
 .ccard__frame {
   position: relative;
-  /* Fills the body's height; the pager row below takes only its own. */
-  flex: 1 1 auto;
-  min-width: 0;
-  min-height: 0;
+  /* THE FRAME HUGS THE ARTWORK: the first work's aspect (--frame-ar, set
+     on the card) at the pages' picture height (--cpage-pic-h, CommunityGrid),
+     narrowed — never cropped — when the screen is too narrow for it beside
+     the words. The cell is an inline-size container, hence the cqw. */
+  flex: none;
+  width: min(
+    calc(var(--cpage-pic-h, 30rem) * var(--frame-ar, 1)),
+    calc(100cqw - var(--ccard-side-w) - var(--ccard-air))
+  );
+  aspect-ratio: var(--frame-ar, 1);
   overflow: hidden;
   /* NO BORDER, deliberately. The artwork is its own edge; a grey rule around
      it read as a box the picture had been placed inside, which is the
@@ -178,7 +188,7 @@
   /* The work at its own aspect, never cropped: a tall piece stands at the
      frame's left with air toward the words, a wide one spans the column. */
   object-fit: contain;
-  object-position: left top;
+  object-position: center;
 }
 
 /* The card's tab stop needs a ring of its own: the browser's default one is
@@ -424,33 +434,37 @@
 
 /* ── Mobile ───────────────────────────────────────────── */
 @media (--bp-mobile) {
-  /* ONE COLUMN: the picture over the words. The picture takes a fixed share
-     of the frame (60% — tunable) so a long bio can run under it and grow the
-     card; the cell's snap stays at the card's top. */
+  /* ONE COLUMN: the picture over the words, right under it. The frame is
+     the screen's width at the artwork's aspect, capped at 60% of the frame
+     height — a tall piece then letterboxes on paper at its sides rather than
+     pushing the words away. */
   .ccard {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto;
     row-gap: 0.75rem;
-    height: auto;
+    width: 100%;
   }
   .ccard__body {
     grid-area: 1 / 1 / 2 / 2;
-    height: calc((var(--cpage-h, 100dvh) - var(--cpage-chrome-b, 4.5rem)) * 0.6);
+  }
+  .ccard__frame {
+    width: 100%;
+    max-height: calc(var(--cpage-h, 100svh) * 0.6);
   }
   .ccard__head {
     grid-area: 2 / 1 / 3 / 2;
   }
   .ccard > .pdisc {
     grid-area: 3 / 1 / 4 / 2;
+    max-height: none;
     overflow: visible;
-  }
-  .ccard__img {
-    object-position: center;
   }
   /* Smaller on a phone (2026-10-12, Josh: "the Profile button smaller on
      mobile!"): the type a step down in type.css, and a tighter box. */
+  /* At the words' start, as on a desktop (2026-10-15, Josh: "profile on
+     the left"). */
   .ccard__profile {
-    align-self: flex-end;
+    align-self: flex-start;
     margin-top: 2px;
     gap: 0.3rem;
   }
