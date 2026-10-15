@@ -1374,7 +1374,20 @@ const indexMembers = [...members].sort((a, b) =>
     .cgrid[data-pattern="pages"] {
       --cpage-h: calc(100svh - var(--header-h));
       --cpage-chrome-b: 4.5rem;
-      --cpage-pic-h: calc(var(--cpage-h) * 0.58);
+      /* THE WORDS ARE A FIXED BLOCK ON THE PILLS (2026-10-15, Josh: "the
+         info for the member should be fix size and always just above the
+         pills. so it does not shift from portfolio to portfolio"): the name
+         and role get room for a two-line role whatever this member's is, the
+         links one line, and the block stands --cpage-words-air above the
+         bar. The picture has what is left above them, centred in it. */
+      --cpage-head-h: 4.4rem;
+      --cpage-links-h: 1.7rem;
+      --cpage-words-air: 1rem;
+      --cpage-row-gap: 0.75rem;
+      --cpage-card-h: calc(var(--cpage-h) - var(--cpage-chrome-b) - var(--cpage-words-air));
+      --cpage-pic-h: calc(
+        var(--cpage-card-h) - var(--cpage-head-h) - var(--cpage-links-h) - 2 * var(--cpage-row-gap)
+      );
       width: 100%;
     }
     /* THE PICTURE TAKES THE PHONE'S WIDTH (2026-10-15, Josh: "on mobile the
@@ -1384,20 +1397,30 @@ const indexMembers = [...members].sort((a, b) =>
       padding-inline: 0;
       align-items: flex-start;
     }
-    /* THE PICTURE CENTRED, NOT THE CARD (2026-10-15, Josh: "center images
-       more on the vertical"): the words hang under the picture, so centring
-       the whole card put the picture high. The card drops by half of what
-       the frame leaves around the picture's real height — the width at the
-       artwork's aspect, capped at --cpage-pic-h; 100cqw is the cell. */
-    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard) {
-      --pic-real-h: min(calc(100cqw / var(--frame-ar, 1)), var(--cpage-pic-h));
-      margin-top: max(0px, calc((var(--cpage-h) - var(--cpage-chrome-b) - var(--pic-real-h)) / 2));
-    }
-    /* A phone's card may grow past one screen when the bio runs long; the
-       snap stays mandatory — the reader scrolls freely inside an oversized
-       snap area. */
+    /* THE CARD IS THE FRAME LESS THE BAR, its rows fixed: the picture's
+       band, the name and role, the links. Every member's name, links and
+       PROFILE stand on the same lines, and the picture is centred in its
+       band (2026-10-15, Josh: "the image should be centered in the top
+       part"). The count hangs under the band's foot, on the name's line. */
     :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard) {
       width: 100%;
+      height: var(--cpage-card-h);
+      grid-template-rows: minmax(0, 1fr) var(--cpage-head-h) var(--cpage-links-h);
+      row-gap: var(--cpage-row-gap);
+    }
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__body) {
+      justify-content: center;
+    }
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__head) {
+      overflow: hidden;
+    }
+    /* Two lines at most, so the room kept for it is never outrun. */
+    :global(.cgrid[data-pattern="pages"] .ccard__role) {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      overflow: hidden;
     }
   }
   /* What follows the last card must be reachable under mandatory snap. */

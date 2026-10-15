@@ -494,9 +494,21 @@
      mobile!"): the type a step down in type.css, and a tighter box. */
   /* Bottom right on a phone (2026-10-15, Josh: "Profile on the bottom
      right in mobile view"); a desktop keeps it at the words' start. */
+  /* On the links' line (2026-10-15, Josh: "Profile there should be in line
+     with instagram website etc."): the words' rows run as one wrapping line
+     on a phone (bio and tags are hidden there), PROFILE pushed to its right
+     end; a member with long links sees it wrap under them, still right.
+     One class over the panel's scoped rule, which would win a tie. */
+  .ccard > .pdisc .pdisc__body-inner {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 1rem;
+    row-gap: 0.35rem;
+  }
   .ccard__profile {
-    align-self: flex-end;
-    margin-top: 2px;
+    align-self: baseline;
+    margin-left: auto;
     gap: 0.3rem;
   }
   /* The count under the picture's RIGHT corner on a phone (2026-10-15,
