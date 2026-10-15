@@ -132,16 +132,24 @@ const workTagsAttr = (w: MemberView["works"][number]) => {
 };
 
 // THE WALL'S SORT KEYS (2026-10-15, src/lib/communitySort.ts). A work's
-// FIELD is its first tag — a tile is on the wall once, so it sits under one
-// tag, and the first is the one the member (or the project) put first. The
-// key is the lowercase identity the filter uses; the label is the first
-// spelling seen, from tagIndex, so a section head and the dropdown's chip
-// agree on how a tag is written.
-const firstTag = (w: MemberView["works"][number]) => {
-  const raw = w.tags.map((t) => t.trim()).find(Boolean);
-  if (!raw) return null;
-  const key = raw.toLowerCase();
-  return { key, label: tagIndex.get(key)?.label ?? raw };
+// FIELDS are all of its tags: the field sort shows the picture under every
+// tag it carries (Josh: "show the image in every tag group it belongs to"),
+// cloning the tile for the second and later groups. The key is the lowercase
+// identity the filter uses; the label is the first spelling seen, from
+// tagIndex, so a section head and the dropdown's chip agree on how a tag is
+// written. JSON on one attribute, because a tag label can hold any character
+// a pipe encoding would have to escape.
+const workFields = (w: MemberView["works"][number]) => {
+  const seen = new Set<string>();
+  const out: { key: string; label: string }[] = [];
+  for (const raw of w.tags.map((t) => t.trim())) {
+    if (!raw) continue;
+    const key = raw.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ key, label: tagIndex.get(key)?.label ?? raw });
+  }
+  return out.length ? JSON.stringify(out) : undefined;
 };
 // A project's head is its title in this page's language; a project with
 // no title in either is named by its kind, so its works are still one run.
@@ -655,8 +663,7 @@ const indexMembers = [...members].sort((a, b) =>
           data-member-href={memberHref(lang, member.slug)}
           data-project={work.projectId}
           data-project-name={projectLabel(member, work)}
-          data-field={firstTag(work)?.key}
-          data-field-label={firstTag(work)?.label}
+          data-fields={workFields(work)}
           hidden
         >
           <CommunityWorkCard member={member} work={work} lang={lang} />
@@ -1584,10 +1591,14 @@ const indexMembers = [...members].sort((a, b) =>
      end of this sheet), so a head is a SPANNER: `column-span: all` ends the
      columns above it, draws the head across the whole measure, and starts
      fresh, rebalanced columns under it — one run of pictures per head, which
-     is the whole point. The hairline over the top is the line Josh asked
-     for; the air above it is the last tile's own margin-bottom, and the
-     margin below holds the name close over its pictures. The voice is NAME
-     (type.css); this rule is layout and colour.
+     is the whole point. THE NAME AND THE LINE SHARE ONE LINE (2026-10-15,
+     Josh: "text and bar in one line"): the head is a flex row, the name
+     first and the rule a flex-grown pseudo-element running from after it to
+     the right edge. It was a border over the top of the name. The air ABOVE
+     the head is its own margin-top on top of the last tile's margin-bottom
+     ("more vertical spacing between bars"), zeroed on the first head, which
+     has no run above it; the margin below holds the name close over its
+     pictures. The voice is NAME (type.css); this rule is layout and colour.
      :global because the heads are made by the script, which cannot give
      them this block's scope attribute — the same reason the card roots
      above are written global. */
@@ -1596,12 +1607,32 @@ const indexMembers = [...members].sort((a, b) =>
   }
 
   .cgrid[data-pattern="grid"] :global(.cgrid__head) {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
     column-span: all;
-    margin: 0 0 1.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--color-dark);
+    /* 7rem ≈ 91px over the last tile's edge on a desktop — half again the
+       60px the tiles keep between themselves, so a run's end reads as an
+       end. (The tile's own margin-bottom does not add to this: the spanner's
+       margin and the column's trailing margin meet, they do not stack.) */
+    margin: 7rem 0 1.5rem;
     color: var(--color-dark);
+  }
+
+  .cgrid[data-pattern="grid"] :global(.cgrid__head:first-of-type) {
+    margin-top: 0;
+  }
+
+  .cgrid[data-pattern="grid"] :global(.cgrid__head::after) {
+    content: "";
+    flex: 1 1 auto;
+    border-top: 1px solid var(--color-dark);
+  }
+
+  @media (--bp-mobile) {
+    .cgrid[data-pattern="grid"] :global(.cgrid__head) {
+      margin-top: 4.5rem;
+    }
   }
 
   .cgrid :global(.cgrid__head a) {

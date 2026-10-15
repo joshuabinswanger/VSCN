@@ -18,12 +18,14 @@
 //    no project close the list under `noProject`.
 //  - field: one section per tag, in the order `random` deals them — Josh's
 //    ask, and the same reason the wall itself is shuffled: no tag is first by
-//    birthright. The untagged close the list under `noField`. A work carries
-//    its FIRST tag here (the controller's choice); a work is on the wall once,
-//    so it is in one section, not in one per tag.
+//    birthright. The untagged close the list under `noField`. A work is in
+//    EVERY section of a tag it carries (2026-10-15, Josh: "show the image in
+//    every tag group it belongs to") — the one sort where a tile appears more
+//    than once; the controller clones the cell for its second and later
+//    sections. The same item object is returned in each, so a caller can tell.
 //    With the tag FILTER set every survivor carries that tag, so the sections
 //    collapse to one named for it (`filtered`) — a wall filtered to "SEM" and
-//    headed "3D" because that happened to be a tile's first tag would be lying.
+//    also headed "3D" for the tiles that carry both would be a wall of doubles.
 //
 // Within a section the input order is kept, and the controller passes the
 // standing shuffled-in-bands order, so a section still reads best-first.
@@ -49,8 +51,8 @@ export interface SortableWork {
   date?: string;
   member: SortKey;
   project?: SortKey;
-  /** The work's first tag. */
-  field?: SortKey;
+  /** The work's tags, every one; absent or empty means untagged. */
+  fields?: SortKey[];
 }
 
 export interface WorkSection<T> {
@@ -152,8 +154,30 @@ export function sectionWorks<T extends SortableWork>(
   if (opts.filtered) {
     return [{ key: opts.filtered.key, label: opts.filtered.label, items: [...items] }];
   }
-  const { sections, rest } = group(items, (w) => w.field, opts.noField);
-  const out = shuffled(sections, opts.random);
+  // Not `group`: a work goes into EVERY tag's section it carries, so the
+  // walk is items × fields, first-seen order within and between sections.
+  const byKey = new Map<string, WorkSection<T>>();
+  const rest: WorkSection<T> = { key: "", label: opts.noField, items: [] };
+  for (const item of items) {
+    const fields = item.fields ?? [];
+    if (fields.length === 0) {
+      rest.items.push(item);
+      continue;
+    }
+    const seen = new Set<string>();
+    for (const f of fields) {
+      // The same tag twice on one work (casing, say) is one membership.
+      if (seen.has(f.key)) continue;
+      seen.add(f.key);
+      let section = byKey.get(f.key);
+      if (!section) {
+        section = { key: f.key, label: f.label, items: [] };
+        byKey.set(f.key, section);
+      }
+      section.items.push(item);
+    }
+  }
+  const out = shuffled([...byKey.values()], opts.random);
   if (rest.items.length) out.push(rest);
   return out;
 }
