@@ -1363,6 +1363,12 @@ const indexMembers = [...members].sort((a, b) =>
       --cpage-pic-h: calc(var(--cpage-h) * 0.58);
       width: 100%;
     }
+    /* THE PICTURE TAKES THE PHONE'S WIDTH (2026-10-15, Josh: "on mobile the
+       image should take up more width"): no inset of its own inside main's
+       gutter — the spread's 24px cell padding was for its framed cards. */
+    .cgrid[data-pattern="pages"] > .cgrid__cell:not([hidden]) {
+      padding-inline: 0;
+    }
     /* A phone's card may grow past one screen when the bio runs long; the
        snap stays mandatory — the reader scrolls freely inside an oversized
        snap area. */

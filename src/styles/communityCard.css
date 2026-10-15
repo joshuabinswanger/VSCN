@@ -489,12 +489,17 @@
   }
   /* Smaller on a phone (2026-10-12, Josh: "the Profile button smaller on
      mobile!"): the type a step down in type.css, and a tighter box. */
-  /* At the words' start, as on a desktop (2026-10-15, Josh: "profile on
-     the left"). */
+  /* Bottom right on a phone (2026-10-15, Josh: "Profile on the bottom
+     right in mobile view"); a desktop keeps it at the words' start. */
   .ccard__profile {
-    align-self: flex-start;
+    align-self: flex-end;
     margin-top: 2px;
     gap: 0.3rem;
+  }
+  /* The count under the picture's RIGHT corner on a phone (2026-10-15,
+     Josh: "on mobile the controls on the right under the image"). */
+  .ccard__foot {
+    justify-content: flex-end;
   }
   /* No edge arrows on a phone: paging is the swipe, and the count says where
      the swipe got to. */
