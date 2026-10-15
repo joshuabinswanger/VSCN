@@ -156,7 +156,6 @@ const positionFor = (i: number) =>
     }
     <div
       class="ccard__frame"
-      style={frame.color ? `background:${frame.color}` : undefined}
       transition:name={`mimg-${member.id}`}
       data-carousel
       data-position-label={isCarousel ? positionTemplate : undefined}
@@ -214,7 +213,6 @@ const positionFor = (i: number) =>
                 sizes={SIZES}
                 width={w.width}
                 height={w.height}
-                style={w.color ? `background:${w.color}` : undefined}
                 alt={altFor(w)}
                 loading={index === 0 && i === 0 ? "eager" : "lazy"}
                 fetchpriority={index === 0 && i === 0 ? "high" : undefined}

@@ -634,7 +634,6 @@ export function renderCardPreview(
       // artwork fills the preview's measure instead of narrowing to fit.
       root.style.setProperty("--frame-ar", String(first.width / first.height));
       frame.style.aspectRatio = `${first.width} / ${first.height}`;
-      frame.style.background = first.color ?? "";
 
       // ONLY WHEN THE PICTURES THEMSELVES CHANGED. renderCardPreview runs on
       // every keystroke in the form — the name, the role, a tag, a caption —
@@ -678,7 +677,6 @@ export function renderCardPreview(
             img.src = w.url;
             img.width = w.width;
             img.height = w.height;
-            if (w.color) img.style.background = w.color;
             // The words (alt and the data-pswp-* set) are written by the
             // in-place pass after the rebuild, which covers new slides too.
             slide.dataset.workUrl = w.url;
