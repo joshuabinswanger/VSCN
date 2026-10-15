@@ -11,7 +11,7 @@ import "../styles/type.css";
       header's line at the right, always shown; the button is not drawn. (From
       2026-10-12 they were behind a MENU button there.)
       A HAMBURGER ON A PHONE (2026-10-13, Josh: "actually a hamburger will be
-      better"): the same button, drawn as a black square with three white bars
+      better"): the same button, drawn as three black bars on the bare page
       that turn into a cross while it is open; the word MENU stays in the
       markup, clipped, as the button's name. The three black chips Josh asked
       for are what it opens. The links keep their ids, the script below still
@@ -351,7 +351,9 @@ import "../styles/type.css";
 
   @media (--bp-mobile) {
     /* THE HAMBURGER (2026-10-13, Josh: "a hamburger will be better"): the
-       button becomes a 36px black square with the three bars, the word MENU
+       button becomes a 36px tap target holding three black bars on the bare
+       page (2026-10-15, Josh: "just black lines not a black dot with lines";
+       it was a black square with white bars until then), the word MENU
        clipped out of sight (it stays as the button's name), and the drop-down
        it opens is the three chips, a touch roomier than on a desktop for a
        thumb. Both sit 8px in from the screen edge, where the title sits on
@@ -365,6 +367,8 @@ import "../styles/type.css";
       height: 36px;
       padding: 0;
       justify-content: center;
+      background: transparent;
+      color: var(--nav-ink);
     }
     .nav-menu-btn:hover,
     .nav-menu-btn[aria-expanded="true"] {
