@@ -1560,6 +1560,14 @@ const indexMembers = [...members].sort((a, b) =>
         opacity 0.7s var(--cpage-ease) calc(var(--t-rest, 0.48s) + 0.08s),
         translate 0.9s var(--cpage-ease) calc(var(--t-rest, 0.48s) + 0.08s);
     }
+    /* On a desktop the count closes the words, so it comes in after them. */
+    @media (--bp-desktop) {
+      :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__foot) {
+        transition:
+          opacity 0.7s var(--cpage-ease) calc(var(--t-rest, 0.48s) + 0.16s),
+          translate 0.9s var(--cpage-ease) calc(var(--t-rest, 0.48s) + 0.16s);
+      }
+    }
   }
   @keyframes cpage-out {
     0% {
