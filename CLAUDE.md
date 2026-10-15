@@ -106,7 +106,7 @@ Breakpoints are **only** these two custom-media aliases, resolved by `@csstools/
 - `window.scrollY` and window scroll listeners will not work.
 - GSAP ScrollTrigger must be passed `scroller: ".page-wrap"` explicitly.
 - CSS `animation-timeline: view()` resolves against it as the nearest scrollport.
-- **`/community`'s Portfolios view snaps it:** the directory controller sets `data-snap="y"` on `.page-wrap` for the pages view (one member a screen, `scroll-snap-type: y mandatory` in global.css, `scroll-padding-top: var(--header-h)`) and clears it for every other view and before a swap. A programmatic scroll there must land on a snap stop. Design: `documentation/20261015-portfolio-pages-view.md`.
+- **`/community`'s Portfolios view snaps it:** the directory controller sets `data-snap="y"` on `.page-wrap` for the pages view (one member a screen, `scroll-snap-type: y mandatory` in global.css, `scroll-padding-top: var(--header-h)`) and clears it for every other view and before a swap. On a phone the DOCUMENT scrolls (the `--bp-mobile` block in global.css), so the same rule stands on `html:has(.page-wrap[data-snap])` there. A programmatic scroll there must land on a snap stop. Design: `documentation/20261015-portfolio-pages-view.md`.
 
 The large repeating `VSCNVSCNVSCN` band is `.brand-ticker`, rendered *outside* `.page-wrap` with `transition:persist`, so it is fixed above the scrolling region on every page.
 
