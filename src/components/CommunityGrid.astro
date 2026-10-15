@@ -1368,6 +1368,16 @@ const indexMembers = [...members].sort((a, b) =>
        gutter — the spread's 24px cell padding was for its framed cards. */
     .cgrid[data-pattern="pages"] > .cgrid__cell:not([hidden]) {
       padding-inline: 0;
+      align-items: flex-start;
+    }
+    /* THE PICTURE CENTRED, NOT THE CARD (2026-10-15, Josh: "center images
+       more on the vertical"): the words hang under the picture, so centring
+       the whole card put the picture high. The card drops by half of what
+       the frame leaves around the picture's real height — the width at the
+       artwork's aspect, capped at --cpage-pic-h; 100cqw is the cell. */
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard) {
+      --pic-real-h: min(calc(100cqw / var(--frame-ar, 1)), var(--cpage-pic-h));
+      margin-top: max(0px, calc((var(--cpage-h) - var(--cpage-chrome-b) - var(--pic-real-h)) / 2));
     }
     /* A phone's card may grow past one screen when the bio runs long; the
        snap stays mandatory — the reader scrolls freely inside an oversized
