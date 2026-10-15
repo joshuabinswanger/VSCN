@@ -11,18 +11,12 @@ interface Props {
    *  slotting its own lead content (the index rows slot the member's
    *  profile picture, which is content worth a toggle by itself). */
   forceShow?: boolean;
-  /** COLUMN MODE (2026-10-12, gallery card v2): the panel is the directory
-   *  card's TEXT COLUMN, standing beside the artwork, with the toggle drawn
-   *  as a rail down the card's outer edge. FOLDED by default since
-   *  2026-10-14 — only the editor's preview shell starts open, so a member
-   *  sees their words as they type. The card's name and role stand outside
-   *  the panel and stay; folding takes the bio, links and tags away, animated
-   *  by src/lib/cardFold.ts — see the column rules below and
-   *  communityCard.css.
-   *  PLAIN (2026-10-15, the pages card): the same words with NO disclosure
-   *  at all — a <div>, no summary, nothing folds. The full-frame card has
-   *  room for them in the open. */
-  mode?: "column" | "plain";
+
+  /** PLAIN (2026-10-15, the pages card): the same words with NO disclosure
+   *  at all — a <div>, no summary, nothing folds. The full-frame directory
+   *  card has room for them in the open; the editor's card preview renders
+   *  the same. */
+  mode?: "plain";
   /** SHELL: the same markup, empty, carrying `data-ccpv` hooks and the item
    *  templates renderCardPreview() (src/lib/profilePreview.ts) fills from
    *  live form state. Rendered here rather than copied into the preview
@@ -33,7 +27,6 @@ interface Props {
 
 const { member, lang, forceShow = false, mode, shell = false } = Astro.props;
 const t = useTranslations(lang);
-const column = mode === "column";
 const plain = mode === "plain";
 // A disclosure or a plain box, same children. Astro renders a capitalised
 // string variable as a dynamic tag.
@@ -75,8 +68,7 @@ const hasSummary = Astro.slots.has("summary");
   show ? (
     <Root
       class="pdisc"
-      class:list={{ "pdisc--line": hasSummary, "pdisc--column": column, "pdisc--plain": plain }}
-      open={!plain && column && shell ? true : undefined}
+      class:list={{ "pdisc--line": hasSummary, "pdisc--plain": plain }}
     >
       {/* No aria-label in line mode: the summary names ITSELF there — its
           content is the member's name and field, which is a better label than
@@ -89,8 +81,6 @@ const hasSummary = Astro.slots.has("summary");
           aria-label={
             hasSummary ? undefined : shell ? undefined : `${t("community.card.expand")} ${displayName}`
           }
-          data-ccpv={shell ? "toggle" : undefined}
-          data-ccpv-expand={shell ? t("community.card.expand") : undefined}
         >
           {hasSummary && <slot name="summary" />}
         </summary>
@@ -472,127 +462,19 @@ const hasSummary = Astro.slots.has("summary");
     .pdisc__vals--links { gap: 12px 18px; }
   }
 
-  /* ── COLUMN MODE ───────────────────────────────────────
-     (2026-10-12, gallery card v2 — Josh's sketch; reworked through
-     2026-10-14.) The panel is the directory card's TEXT COLUMN beside the
-     artwork: the bio, the links and the tags, under the card's own name and
-     role, folded by default. On a desktop the toggle is a horizontal bar
-     under the role with the chevron at its outer end (the rules after the
-     chevron's); on a phone a square at the head's bottom-right (the mobile
-     block). The opening and closing are cardFold.ts's. No ground and no
-     blur here: the column IS the card rather than a panel laid over its
-     neighbours, and sixteen always-on backdrop-filters would be a
-     compositing bill the directory has no reason to pay. */
-  /* The toggle's containing block, on a phone and a desktop alike. */
-  .pdisc--column {
-    position: relative;
-    min-width: 0;
-  }
 
-  /* The toggle, out of flow: a square on the head's last line on a phone
-     (the mobile block), the bar at the panel's foot on a desktop (the block
-     after the chevron rules). */
-  .pdisc--column > .pdisc__toggle {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    right: auto;
-    width: var(--ccard-rail, 1.6rem);
-    flex: none;
-    display: grid;
-    place-items: center;
-    transition: color 0.15s;
-  }
-
-  .pdisc--column > .pdisc__toggle:hover,
-  .pdisc--column > .pdisc__toggle:focus-visible {
-    color: var(--color-dark);
-  }
-
-  /* The chevron points at the column it folds: ‹ while open (the column is
-     there, press to send it away), › once folded (press to bring it back).
-     Doubled class so these outrank the base [open] rule above at any order. */
-  .pdisc.pdisc--column > .pdisc__toggle::after {
-    margin: 0;
-    transform: rotate(var(--pdisc-rail-open, 135deg));
-  }
-  .pdisc.pdisc--column:not([open]) > .pdisc__toggle::after,
-  .pdisc.pdisc--column.is-closing > .pdisc__toggle::after {
-    margin: 0;
-    transform: rotate(var(--pdisc-rail-folded, -45deg));
-  }
-  /* The turn is part of the fold's motion (cardFold.ts), so it takes the
-     fold's easing and a little longer than the base 320ms ease; `is-closing`
-     above is what lets it start with the click rather than at the end of the
-     close. */
-  .pdisc.pdisc--column > .pdisc__toggle::after {
-    transition: transform 460ms cubic-bezier(0.22, 0.61, 0.36, 1);
-  }
-
-  /* THE BAR CLOSES THE COLUMN (2026-10-14, Josh: "bar should move down as
-     well. profile above the bar. bar above the carousel control. also the
-     arrow in the middle of the bar and nicely centered"). On a desktop the
-     <summary> is a hairline across the words' column, broken in the middle
-     by the chevron, at the panel's FOOT: it is absolutely placed at the
-     bottom of the <details>, whose padding keeps its room, so it stands
-     under whatever the panel shows — directly under the name and role when
-     folded, under the words and the Profile link when open — and travels
-     down with the words as they unfold (cardFold.ts grows the body above
-     it). The card's pager stays below, at the picture's bottom corner.
-     The chevron is centred on what it DRAWS: a rotated box's V sits in one
-     half of the box, so it is lifted (pointing down) or dropped (pointing
-     up) by 0.35 of its size, in the same transform as the turn. */
-  @media (--bp-desktop) {
-    .pdisc--column {
-      --pdisc-bar-h: 1.25rem;
-      padding-bottom: var(--pdisc-bar-h);
-    }
-    .pdisc--column > .pdisc__toggle {
-      top: auto;
-      bottom: 0;
-      /* NO WIDER THAN THE ROLE (2026-10-15, Josh: "make the horizontal bar
-         max as wide as the role text"): the card measures its role's words
-         (cardFold.ts, --ccard-role-w; the name's when there is no role) and
-         hangs the bar from the side the words are set to. Without the
-         measurement it spans the column. */
-      left: var(--pdisc-bar-left, 0);
-      right: var(--pdisc-bar-right, auto);
-      width: min(100%, var(--ccard-role-w, 100%));
-      height: var(--pdisc-bar-h);
-      display: grid;
-      align-items: center;
-      /* JUST THE ARROW (2026-10-15, Josh): the hairline either side of the
-         chevron is gone; the row stays as the hit area, as wide as the role,
-         and the chevron stands at the words' start ("align the arrow with
-         the text start") — the card says which side that is. */
-      justify-content: var(--pdisc-bar-justify, center);
-    }
-    /* The air between the words and the bar, inside the unfolding body so
-       it grows with them. */
-    .pdisc--column .pdisc__body-inner {
-      padding-bottom: 0.9rem;
-    }
-    .pdisc.pdisc--column > .pdisc__toggle::after {
-      transform: translateY(calc(var(--pager-chev-size) * 0.35))
-        rotate(var(--pdisc-rail-open, 225deg));
-    }
-    .pdisc.pdisc--column:not([open]) > .pdisc__toggle::after,
-    .pdisc.pdisc--column.is-closing > .pdisc__toggle::after {
-      transform: translateY(calc(var(--pager-chev-size) * -0.35))
-        rotate(var(--pdisc-rail-folded, 45deg));
-    }
-  }
-
-  .pdisc--column .pdisc__body,
+  /* ── PLAIN MODE (2026-10-15, the pages card) ──────────────
+     The panel is the directory card's TEXT COLUMN beside the artwork: the
+     bio, the links and the tags under the card's own name and role, in the
+     open. No ground and no blur: the column IS the card rather than a panel
+     laid over its neighbours. Compact tags (2026-10-12, Josh: "tags more
+     compact"): a tighter chip and a tighter cloud than the ledger's panel. */
   .pdisc--plain .pdisc__body {
     padding: 0;
     background: none;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
-
-  /* PLAIN: a block, no toggle; the words' rhythm and the compact tags are
-     the column's. */
   .pdisc--plain {
     display: block;
     min-width: 0;
@@ -609,72 +491,7 @@ const hasSummary = Astro.slots.has("summary");
     border-width: 1px;
   }
 
-  .pdisc--column .pdisc__body-inner {
-    gap: 0.7rem;
-  }
 
-  /* COMPACT TAGS in the column (2026-10-12, Josh: "tags more compact"):
-     a tighter chip and a tighter cloud than the ledger's panel. Stated for
-     coarse pointers too — the global chip grows its padding there, and the
-     column is not where that trade is worth a line of chips. */
-  .pdisc--column .pdisc__vals--tags {
-    margin-bottom: 0;
-    gap: 2px 3px;
-  }
-  .pdisc--column .pdisc__vals--tags .tagchip {
-    padding: 0 4px 0 calc(4px + var(--tag-track, 0px));
-    border-width: 1px;
-  }
 
-  @supports selector(::details-content) {
-    /* No native tween on the fold: cardFold.ts plays it, on every engine
-       (interpolate-size is Chromium's alone), and a second height transition
-       here would fight it. */
-    .pdisc.pdisc--column::details-content {
-      transition: none;
-    }
-  }
-
-  @media (--bp-mobile) {
-    /* On a phone the column stacks UNDER the picture and the card is a grid
-       (communityCard.css's mobile block): the rail becomes a square toggle
-       at the BOTTOM-RIGHT of the name-and-role row (2026-10-13, Josh: "the
-       expand arrow at the bottom right"; the count stands at the row's top),
-       pointing down to unfold and up to fold. Positioned against THIS
-       element — the grid row directly under the head — and lifted by its own
-       height, so it stands on the head's last line however many lines the
-       name and role take. The fold toggle no longer needs the picture's
-       height to find its place, which the previous version computed from
-       100cqw / --frame-ar. */
-    .pdisc--column {
-      position: relative;
-    }
-    .pdisc--column > .pdisc__toggle {
-      top: 0;
-      bottom: auto;
-      left: auto;
-      right: 0;
-      transform: translateY(-100%);
-      background: none;
-      width: 2rem;
-      height: 2rem;
-      border-left: 0;
-    }
-    .pdisc.pdisc--column > .pdisc__toggle::after {
-      margin: 0 0 0.1rem;
-      transform: rotate(225deg);
-    }
-    .pdisc.pdisc--column:not([open]) > .pdisc__toggle::after,
-    .pdisc.pdisc--column.is-closing > .pdisc__toggle::after {
-      margin: 0 0 0.1rem;
-      transform: rotate(45deg);
-    }
-  }
 </style>
 
-<script>
-  // The fold's animation. Imported here, in the one component both consumers of
-  // the column (the directory's card and the editor's preview) render, and
-  // registered once on the document — nothing to tear down between pages.
-  import "../../lib/cardFold.ts";
-</script>
