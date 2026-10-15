@@ -59,7 +59,10 @@
      from the picture's edge and the pair is centred in the cell. */
   /* WORDS | air | picture (2026-10-15, Josh: "the words should be on the
      left of the image"). */
-  grid-template-columns: var(--ccard-side-w) var(--ccard-air) auto;
+  /* The words' column is as wide as its words, up to --ccard-side-w
+     (2026-10-15, Josh: "the text block should shrink to the width that the
+     block actually has"). */
+  grid-template-columns: fit-content(var(--ccard-side-w)) var(--ccard-air) auto;
   grid-template-rows: auto 1fr;
   row-gap: 0.7rem;
   box-sizing: border-box;
@@ -67,6 +70,9 @@
 }
 .ccard__body {
   grid-area: 1 / 3 / 3 / 4;
+  /* As tall as the picture, not the row, so the count hangs off the
+     picture's own bottom edge. */
+  align-self: start;
 }
 .ccard__head {
   grid-area: 1 / 1 / 2 / 2;
@@ -332,20 +338,17 @@
   min-width: 0;
   padding-top: 0.4rem;
 }
-/* BESIDE THE PICTURE, ON THE NAME'S LINE (2026-10-15, Josh: "controls to
-   the left and not below", then "the Name and the carousel controls should
-   be on the same line"): the count stands in the air between the words and
-   the picture, level with the name at the picture's top edge. On a phone it
-   stands under the picture's right corner, on the name's line there too. */
+/* LEFT OF THE PICTURE, LEVEL WITH ITS BOTTOM EDGE, TAKING NO SPACE
+   (2026-10-15, Josh: "bottom left to the image … should not have an extra
+   column and space for them", then "to the left of the image not below it.
+   so it is bottom aligned"): out of flow, hung off the body — exactly the
+   picture's box — into the air between the words and the picture. The
+   phone puts it on the name's line instead (mobile block). */
 .ccard__foot {
   position: absolute;
+  bottom: 0;
+  right: calc(100% + 0.9rem);
   padding-top: 0;
-}
-@media (--bp-desktop) {
-  .ccard__foot {
-    top: 0.3rem;
-    right: calc(100% + 0.9rem);
-  }
 }
 
 /* ── Position indicator ───────────────────────────────── */
@@ -471,6 +474,18 @@
   }
   .ccard__body {
     grid-area: 1 / 1 / 2 / 2;
+    /* The picture's height, so the count hangs off the picture. */
+    align-self: start;
+  }
+  /* On a phone the name sits right under the picture, so the count takes
+     the right end of the name's line instead of the picture's corner. */
+  .ccard__foot {
+    bottom: auto;
+    right: 0;
+    top: calc(100% + var(--cpage-row-gap, 0.75rem) + 0.15rem);
+  }
+  .ccard__head {
+    padding-right: 3.5rem;
   }
   .ccard__frame {
     width: 100%;
@@ -510,16 +525,6 @@
     align-self: baseline;
     margin-left: auto;
     gap: 0.3rem;
-  }
-  /* The count under the picture's RIGHT corner on a phone (2026-10-15,
-     Josh: "on mobile the controls on the right under the image"). */
-  .ccard__foot {
-    top: calc(100% + 0.75rem + 0.3rem);
-    right: 0;
-  }
-  /* Room for the count at the end of the name's line. */
-  .ccard__head {
-    padding-right: 3.5rem;
   }
   /* No edge arrows on a phone: paging is the swipe, and the count says where
      the swipe got to. */

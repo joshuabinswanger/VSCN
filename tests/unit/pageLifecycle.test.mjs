@@ -170,7 +170,7 @@ test("carousel: chevrons page by one width and wrap at the ends", () => {
   h.chevPrev.dispatchEvent(new Event("click"));
   h.chevPrev.dispatchEvent(new Event("click"));
   assert.equal(h.track.scrolls.at(-1).left, 600, "prev from the first slide wraps to the last");
-  assert.equal(h.track.scrolls.at(-1).behavior, "instant", "a wrap jumps");
+  assert.equal(h.track.scrolls.at(-1).behavior, "smooth", "a wrap slides back (2026-10-15)");
   // A finger swipe moves the track; the scroll event is how the engine learns.
   h.track.scrollLeft = 310;
   h.track.dispatchEvent(new Event("scroll"));
