@@ -1402,11 +1402,8 @@ const indexMembers = [...members].sort((a, b) =>
       --cpage-words-air: 1rem;
       --cpage-row-gap: 0.75rem;
       --cpage-card-h: calc(var(--cpage-h) - var(--cpage-chrome-b) - var(--cpage-words-air));
-      /* The picture is CENTRED in the card with the words hanging under it,
-         so it may take the card less the words' block twice — once below
-         it, mirrored above. */
       --cpage-pic-h: calc(
-        var(--cpage-card-h) - 2 * (var(--cpage-head-h) + var(--cpage-links-h) + 2 * var(--cpage-row-gap))
+        var(--cpage-card-h) - var(--cpage-head-h) - var(--cpage-links-h) - 2 * var(--cpage-row-gap)
       );
       width: 100%;
     }
@@ -1424,21 +1421,19 @@ const indexMembers = [...members].sort((a, b) =>
        part"). The count hangs under the band's foot, on the name's line. */
     :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard) {
       width: 100%;
-      /* THE WORDS DIRECTLY UNDER THE PICTURE, THE PICTURE CENTRED (2026-10-15,
-         Josh: "the text doesn't sit under the images directly", then "the
-         image should always be centered"): the card drops by half of what
-         the card's height leaves around the picture's real height — the
-         phone's width at the artwork's aspect, capped at --cpage-pic-h;
-         100cqw is the cell — and the words hang under it. */
-      --pic-real-h: min(calc(100cqw / var(--frame-ar, 1)), var(--cpage-pic-h));
-      margin-top: max(0px, calc((var(--cpage-card-h) - var(--pic-real-h)) / 2));
-      grid-template-rows: auto auto;
+      height: var(--cpage-card-h);
+      /* THE WORDS DIRECTLY UNDER THE PICTURE (2026-10-15, Josh: "on mobile
+         the text doesn't sit under the images directly"): picture, name and
+         role, links as one group, centred in the card. The picture keeps its
+         cap (--cpage-pic-h), so the group always fits. */
+      grid-template-rows: auto auto auto;
+      align-content: center;
       row-gap: var(--cpage-row-gap);
     }
     :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__body) {
       justify-content: center;
     }
-    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard .ccard__head) {
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__head) {
       overflow: hidden;
     }
     /* Two lines at most, so the room kept for it is never outrun. */
@@ -1496,9 +1491,14 @@ const indexMembers = [...members].sort((a, b) =>
     .cgrid[data-pattern="pages"][data-motion] {
       --cpage-ease: cubic-bezier(0.16, 1, 0.3, 1);
     }
-    /* The picture opens out of an inset and settles from a slight zoom. */
+    /* The picture opens out of an inset and settles from a slight zoom.
+       Until then it is not there at all (2026-10-15, Josh: "the next
+       portfolio element should either be super faded in on the bottom edge
+       always or never"): NEVER — a card that is not the one on screen shows
+       nothing, so no edge of the next one ever peeks in at the bottom. */
     :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__frame) {
       clip-path: inset(9% 9% 9% 9%);
+      opacity: 0;
     }
     :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__img) {
       transform: scale(1.16);
@@ -1526,14 +1526,17 @@ const indexMembers = [...members].sort((a, b) =>
     }
     /* The count, the links and PROFILE drift up into place. */
     :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__foot),
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__words > .pdisc) {
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard > .pdisc) {
       opacity: 0;
       translate: 0 0.6rem;
     }
 
     :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__frame) {
       clip-path: inset(0 0 0 0);
-      transition: clip-path 1.15s var(--cpage-ease);
+      opacity: 1;
+      transition:
+        clip-path 1.15s var(--cpage-ease),
+        opacity 0.6s var(--cpage-ease);
     }
     :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__img) {
       transform: none;
@@ -1550,7 +1553,7 @@ const indexMembers = [...members].sort((a, b) =>
         opacity 0.7s var(--cpage-ease) var(--t-rest, 0.48s),
         translate 0.9s var(--cpage-ease) var(--t-rest, 0.48s);
     }
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__words > .pdisc) {
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard > .pdisc) {
       opacity: 1;
       translate: 0 0;
       transition:
