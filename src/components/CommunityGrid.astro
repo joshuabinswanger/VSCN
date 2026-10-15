@@ -1432,13 +1432,6 @@ const indexMembers = [...members].sort((a, b) =>
     .cgrid[data-pattern="pages"] > .cgrid__cell:not([hidden]) {
       padding-inline: 0;
       align-items: flex-start;
-      /* THE SLOT NEVER MOVES (2026-10-15, Josh: "not mega smooth when
-         scrolling down"): each snap slot is as tall as the screen with the
-         toolbars GONE, fixed, so a collapsing toolbar resizes nothing the
-         snap stands on — no re-snap, no scroll correction. Only the card
-         inside (--cpage-card-h, from the visible height) re-centres; with
-         the toolbar up the slot's spare foot sits behind it. */
-      min-height: calc(max(100lvh, var(--cpage-vh)) - var(--header-h));
     }
     /* THE CARD IS THE FRAME LESS THE BAR, its rows fixed: the picture's
        band, the name and role, the links. Every member's name, links and
