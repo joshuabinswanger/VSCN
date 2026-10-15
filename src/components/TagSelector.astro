@@ -90,8 +90,14 @@ const t = useTranslations(lang);
 </tag-selector>
 
 <style is:global>
+  /* THE FIND FIELD AND THE GROUPS SIT IN (2026-10-15, Josh: "make the
+     width of the find tags and the groups narrower than the rest of the
+     column so it is visually distinct"). Both are inset by this much on each
+     side; the picked tags above and the add row below keep the column's full
+     width, so the browsing part reads as one nested block between them. */
   tag-selector {
     display: block;
+    --ts-inset: 1.25rem;
   }
 
   tag-selector .ts-error {
@@ -155,7 +161,9 @@ const t = useTranslations(lang);
      global.css) on the paper in the black hairline, focus filling the ring
      in rather than thickening it. It keeps the thin size above. */
   tag-selector .ts-filter {
+    width: calc(100% - 2 * var(--ts-inset));
     margin-top: 0.9rem;
+    margin-inline: var(--ts-inset);
     padding: 3px 11px;
     border: 1px solid var(--color-dark);
     background: var(--color-bg);
@@ -191,6 +199,7 @@ const t = useTranslations(lang);
     flex-direction: column;
     gap: 0.8rem;
     margin-top: 0.6rem;
+    margin-inline: var(--ts-inset);
   }
 
   /* NO BOX OF ITS OWN. The heading and its rule are the whole frame for a
