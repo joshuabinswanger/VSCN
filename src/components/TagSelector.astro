@@ -148,12 +148,32 @@ const t = useTranslations(lang);
      own size class with a 1px border, so the eye lands on the tags and the
      filter reads as the utility it is. The add row keeps the field drawing:
      it is an action (it creates), and the one place the control asks for
-     input rather than a pick. */
+     input rather than a pick.
+     THE COMMUNITY BAR'S SEARCH, DRAWN SMALL (2026-10-15, Josh: the editor's
+     tag search should match the Tags panel's redesign). Same drawing as
+     .tag-filter__search in CommunityGrid.astro: a capsule (CONTROLS in
+     global.css) on the paper in the black hairline, focus filling the ring
+     in rather than thickening it. It keeps the thin size above. */
   tag-selector .ts-filter {
     margin-top: 0.9rem;
-    padding: 2px 9px;
-    border-width: 1px;
+    padding: 3px 11px;
+    border: 1px solid var(--color-dark);
+    background: var(--color-bg);
     font-size: var(--fs-75);
+    color: var(--color-dark);
+    transition: box-shadow 0.15s;
+  }
+
+  tag-selector .ts-filter::placeholder {
+    color: var(--color-muted);
+  }
+
+  /* :focus-visible too: .input's own focus-visible rule draws a 2px border
+     and outranks a bare :focus here. */
+  tag-selector .ts-filter:is(:focus, :focus-visible) {
+    border: 1px solid var(--color-dark);
+    outline: none;
+    box-shadow: inset 0 0 0 0.5px var(--color-dark);
   }
 
   /* With nothing picked yet the filter is the first thing under the field's
