@@ -203,7 +203,10 @@ document.addEventListener("astro:page-load", () => {
     form.querySelectorAll<HTMLElement>(".form-section, .editor-recovery, #section-tabs").forEach(section => { section.inert = on; });
     saveButton.disabled = on;
     saveButton.classList.toggle("is-saving", on);
-    saveButton.textContent = on ? s["profile.save.saving"] : s["profile.save"];
+    // An icon button: the words are its name, not its face.
+    const label = on ? s["profile.save.saving"] : s["profile.save"];
+    saveButton.setAttribute("aria-label", label);
+    saveButton.title = label;
   }
 
   const avatarWrap = avatarImg.closest<HTMLElement>(".avatar-wrap")!;

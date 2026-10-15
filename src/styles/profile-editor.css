@@ -1394,10 +1394,29 @@
     transform: rotate(45deg);
   }
 
+  /* Save is a black disc with the disk icon (2026-10-15), the same 32px as
+     the Plus; its words are its aria-label and tooltip (ProfileForm.astro). */
   .ebar .profile-save-button {
-    min-height: 32px;
-    padding: 4px 16px;
-    font-size: var(--fs-85);
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .ebar .profile-save-icon {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2;
+  }
+
+  /* Saving: the ring takes the disk's place, centred, with no gap after it. */
+  .profile-save-button.is-saving .profile-save-icon {
+    display: none;
+  }
+  .ebar .profile-save-button.is-saving::before {
+    margin-right: 0;
   }
 
   /* ── ON A PHONE THE BAR COMES APART (2026-10-13, Josh: "the buttons on
@@ -1406,11 +1425,13 @@
      Floated. The two-row slab became five controls standing on their own
      over the page, each with its own shadow, in two rows that span the
      window between the 16px gutters:
-        Profile | Card   EN | DE          (+)
-        Preview | Edit             [ Save ]
-     The left edge holds what you look at, the right edge what you do, and
+        Preview | Edit                    (+)
+        Profile | Card   EN | DE          (S)
+     Save has been an icon since 2026-10-15 (Josh: "make save changes into a
+     small icon … then we have space for the profile/Card and EnDe switch in
+     the bottom row"), so the two view switches share the bottom row with it.
      Save keeps the bottom-right corner on every tab, where the thumb is. The
-     row above is empty off the Works tab, so Save stands alone there.
+     other controls are Works-only, so elsewhere Save stands alone there.
      Controls grow to 40px (HIG buttons: 44pt is the touch target the
      shadowed 40px sits in with the 8px gaps). The bar's paper, hairline,
      clip and measured size are switched off; `!important` beats the inline
@@ -1463,21 +1484,21 @@
       display: none;
     }
 
-    .ebar__view {
+    .ebar__mode {
       order: 1;
     }
-    .ebar__lang {
-      order: 2;
-    }
     .ebar__plus {
-      order: 3;
+      order: 2;
       margin-inline-start: auto;
     }
-    .ebar__mode {
+    .ebar__view {
       order: 5;
     }
-    .ebar .profile-save-button {
+    .ebar__lang {
       order: 6;
+    }
+    .ebar .profile-save-button {
+      order: 7;
       margin-inline-start: auto;
     }
 
@@ -1512,8 +1533,8 @@
     }
 
     .ebar .profile-save-button {
-      min-height: 40px;
-      padding: 4px 20px;
+      width: 40px;
+      height: 40px;
     }
   }
 

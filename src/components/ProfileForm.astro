@@ -221,8 +221,25 @@ const t = useTranslations(lang);
           >
             <svg class="ebar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
           </button>
-          <Button id="save-button" type="submit" class="btn-solid profile-save-button"
-            >{t("profile.save")}</Button
+          {
+            /* SAVE IS AN ICON (2026-10-15, Josh: "make save changes into a
+              small icon for save and then we have space for the profile/Card
+              and EnDe switch in the bottom row"). A black disc with a floppy
+              disk; its words are its accessible name and its tooltip. While
+              saving, the controller swaps the name and the CSS swaps the disk
+              for the spinning ring. */
+          }
+          <Button
+            id="save-button"
+            type="submit"
+            class="btn-solid profile-save-button"
+            aria-label={t("profile.save")}
+            title={t("profile.save")}
+            ><svg class="ebar-icon profile-save-icon" viewBox="0 0 24 24" aria-hidden="true"
+              ><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"
+              ></path><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"></path><path d="M7 3v4a1 1 0 0 0 1 1h7"
+              ></path></svg
+            ></Button
           >
         </div>
       </div>
