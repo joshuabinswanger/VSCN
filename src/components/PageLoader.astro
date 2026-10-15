@@ -168,7 +168,8 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
   // than one after the other: they are separate lines, so nothing overlays.
   // Tightened 2026-10-15 twice (Josh: "start sooner and be a bit quicker",
   // then "transition from full words directly into the top VSCN"): the
-  // fold and the travel are one move now, ~4.4 s -> ~2.9 s.
+  // fold and the travel are one move now, ~4.4 s -> ~2.9 s; then "shorten
+  // the hold on the full name too", ~2.75 s.
   const TIMING = {
     beat: 0.17,
     stagger: 0.02,
@@ -176,7 +177,7 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
     arriveStagger: 0.07,
     hold: 0.1,
     rowOffset: 0.18,
-    holdName: 0.3,
+    holdName: 0.15,
     foldStagger: 0.04,
     travelLag: 0.08,
   };
