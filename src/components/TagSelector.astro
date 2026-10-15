@@ -139,14 +139,21 @@ const t = useTranslations(lang);
   /* The heading rows are NOT on the white — the box belongs to the tags. It is
      drawn on .tag-suggestion-list below, so DISCIPLINES / TOPICS / OTHER stay
      on the page and only the chips an open group reveals sit on a field. */
-  /* Drawn exactly like the add row's field below it (.addrow .input in
-     global.css): the two are the same kind of thing in the same control, and
-     the filter at .input's full size read as a heavier, different field
-     (2026-09-09, Josh: "make the find bar the same style as the add tag"). */
+  /* A THIN LINE, NOT A FIELD (2026-10-15, Josh: "the find tags and the tabs
+     for the groups a bit thinner so it stands out visually and create a
+     better visual hierarchy"). Until today the filter was drawn exactly like
+     the add row's field below it (2026-09-09, "make the find bar the same
+     style as the add tag"): 30px tall, 13px type, 1.5px border — the heaviest
+     thing in the control, above chips of 10px. Now a 24px line of the chips'
+     own size class with a 1px border, so the eye lands on the tags and the
+     filter reads as the utility it is. The add row keeps the field drawing:
+     it is an action (it creates), and the one place the control asks for
+     input rather than a pick. */
   tag-selector .ts-filter {
     margin-top: 0.9rem;
-    padding: 4px 10px;
-    font-size: var(--fs-82);
+    padding: 2px 9px;
+    border-width: 1px;
+    font-size: var(--fs-75);
   }
 
   /* With nothing picked yet the filter is the first thing under the field's
@@ -156,11 +163,14 @@ const t = useTranslations(lang);
     margin-top: 0;
   }
 
+  /* Tighter than it was (1.1rem between groups, 0.75 above): the heading rows
+     are thinner now (below), and the air around them was part of their
+     weight. */
   tag-selector .tag-groups {
     display: flex;
     flex-direction: column;
-    gap: 1.1rem;
-    margin-top: 0.75rem;
+    gap: 0.8rem;
+    margin-top: 0.6rem;
   }
 
   /* NO BOX OF ITS OWN. The heading and its rule are the whole frame for a
@@ -170,11 +180,17 @@ const t = useTranslations(lang);
     background: transparent;
   }
 
+  /* THE HEADING ROW IS THIN (2026-10-15, see .ts-filter above). The type is
+     the site's LABEL voice and stays so (type.css owns it); what makes the row
+     lighter is the room it takes — 0.25rem to its rule, down from 0.45 — and
+     a smaller chevron. The chips' white boxes are then the strongest frames
+     in the control. .gallery-tags-summary in profile-editor.css restates this
+     row for the fold around the selector; keep the two alike. */
   tag-selector .tag-group-summary {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0 0 0.45rem;
+    padding: 0 0 0.25rem;
     border-bottom: 1px solid var(--color-border);
     cursor: pointer;
     list-style: none;
@@ -210,8 +226,8 @@ const t = useTranslations(lang);
 
   tag-selector .tag-group-chevron {
     margin-left: auto;
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     border-right: 1px solid var(--color-muted);
     border-bottom: 1px solid var(--color-muted);
     transform: rotate(45deg);
@@ -239,7 +255,7 @@ const t = useTranslations(lang);
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: 0.55rem;
+    margin-top: 0.45rem;
     padding: 0.8rem 0.9rem;
     background: white;
     border: 1.5px solid var(--color-border);
