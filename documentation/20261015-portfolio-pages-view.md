@@ -189,3 +189,48 @@ the directory never shows both.
   card. The Browser pane freezes `view()` timelines and is not evidence for
   motion.
 - Merge straight to dev; Josh checks on his phone.
+
+## As built (2026-10-15, branch `feat/portfolio-pages`)
+
+What differs from the design above, and why:
+
+- **The slides are the links.** The card's click overlay (`.ccard__frame-link`)
+  is gone: an overlay above a native scroller eats the scroller's touch pan, so
+  each slide is an `<a>` to its original upload and the lightbox's `CARD_TRIGGER`
+  reads `.ccard__slide`. The showing slide is the one tab stop (the engine moves
+  the `tabindex`); the lightbox finds its start slide by the trigger's own
+  `data-work-url`.
+- **One engine for the card and the editor preview.** `communityCarousel.ts`
+  keeps its exports and markup contract but is native x-snap now; Embla is
+  uninstalled. The count follows the track's `scroll` event (rAF-throttled),
+  not `scrollend` and not an IntersectionObserver — the position is all it
+  needs. The spread's prime/turn/back-to-cover behaviour is gone with the
+  spread.
+- **The phone snaps the document.** On a phone `html` is the scroller (global.css
+  gives it its overflow back so Safari can retract its toolbar), so the snap
+  rule stands on `html:has(.page-wrap[data-snap="y"])` there as well as on
+  `.page-wrap` for the desktop. The attribute stays the one switch.
+- **No colour fills behind the pictures.** `object-fit: contain` letterboxes,
+  and the dominant-colour placeholder filled the letterbox; the frame and the
+  slides sit on paper. (The wall's tiles keep theirs.)
+- **Longhands only for the flourish.** The minifier folded a following
+  `animation-timeline` into the `animation` shorthand, which no browser accepts;
+  `animation-name` / `-timing-function` / `-fill-mode` / `-timeline` / `-range`
+  survive (checked in the built CSS).
+- **The pages' cell rule must not outrank `[hidden]`:** the wall's tiles are
+  `hidden` siblings in the same grid; the cell rule is written
+  `:not([hidden])`.
+- **The editor preview** renders the new card in a 30rem frame of its own
+  (`--cpage-h` on `.ccard--preview`, words column 16rem). Card v2's fold,
+  column mode and `cardFold.ts` are deleted; `MemberDetailPanel` gained
+  `mode="plain"`.
+- **Removed:** the slot tables, lanes, strip, the spread's GSAP parallax, the
+  mobile cell fades, the `?grid` debug outline, and the motion controller now
+  bails unless the wall is on screen.
+- **Left for a later pass:** the base `.cgrid` 24-column declarations and the
+  out-of-flow `.cgrid__cell > .cwork` rule that the wall still sits on; the pages
+  block overrides what it needs. Not touched because the Images view was not in
+  scope and its rules interleave with them.
+- **Not walked yet:** Safari/iPhone, and the flourish on a real wheel (the
+  Browser pane freezes view timelines). The dev-host Playwright walk follows
+  the merge.
