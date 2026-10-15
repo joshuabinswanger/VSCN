@@ -29,13 +29,14 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
      word over the letters after its initial, one split-flap turn per glyph
      (Layout.astro, .brand-slot). This is four rows of the same slots at
      display size, the initials aligned in a column: V S C N drop in top to
-     bottom, each row writes its word, the whole name holds, the words fold
-     back into the column, and then each initial travels on its own path onto
-     its own slot in the header's VSCN while the paper lifts. The choreography
-     is data in src/lib/introCascade.ts; the script below only plays it. */
+     bottom, each row writes its word, the whole name holds, and then the words
+     fly straight into the header, each row folding to its initial in flight
+     and landing on its own slot of the header's VSCN while the paper lifts.
+     The choreography is data in src/lib/introCascade.ts; the script below
+     only plays it. */
   #page-loader {
     --pl-beat: 0.17s;
-    --pl-travel: 0.4s;
+    --pl-travel: 0.5s;
     /* The column's measure: the old intro's stage, 70vw up to 600px. */
     --pl-measure: min(600px, 70vw);
     /* Fallback before the script measures: "Communication" is about 7.9em
@@ -104,6 +105,15 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
     transform-origin: 0 0;
   }
 
+  /* Folding in flight: the cell closes from the FIRST beat, together with
+     the letter tipping away, so the word contracts into its initial as the
+     row travels. Closing on the second beat, as a write does, left a gap
+     after the initial with the rest of the word stranded beyond it. */
+  .pl-row--folding .pl-slot {
+    transition-delay: var(--pl-early);
+    transition-duration: calc(var(--pl-beat) * 1.5);
+  }
+
   /* A face waits edge-on above the line (-90), drops in to 0 when it is
      the front, tips away to +90 when it leaves: always forward, as a real
      board falls. Opacity switches in zero time at the changeover, when both
@@ -156,8 +166,9 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
 
   // The whole rhythm, in one place. Rows write with a short offset rather
   // than one after the other: they are separate lines, so nothing overlays.
-  // Tightened 2026-10-15 (Josh: "the transition into the [header] should
-  // start sooner and be a bit quicker in general"): ~4.4 s -> ~3.4 s.
+  // Tightened 2026-10-15 twice (Josh: "start sooner and be a bit quicker",
+  // then "transition from full words directly into the top VSCN"): the
+  // fold and the travel are one move now, ~4.4 s -> ~2.9 s.
   const TIMING = {
     beat: 0.17,
     stagger: 0.02,
@@ -165,12 +176,14 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
     arriveStagger: 0.07,
     hold: 0.1,
     rowOffset: 0.18,
-    holdName: 0.35,
+    holdName: 0.3,
     foldStagger: 0.04,
-    rest: 0.05,
+    travelLag: 0.08,
   };
-  const TRAVEL_S = 0.4;
-  // Between one initial setting off and the next, top to bottom: the column
+  // Long enough for the longest tail ("ommunication") to finish folding in
+  // flight, so every row lands as a single letter.
+  const TRAVEL_S = 0.5;
+  // Between one row setting off and the next, top to bottom: the column
   // peels into the line rather than snapping to it.
   const TRAVEL_STAGGER_S = 0.03;
   const LONGEST = INTRO_WORDS.reduce((a, b) => (b.length > a.length ? b : a));
@@ -198,6 +211,7 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
     fitStack(stack);
     const widths = measureGlyphs(stack);
     const applyEvent = (event: StackEvent) => {
+      if (event.phase === "fold") rows[event.row]?.[0]?.parentElement?.classList.add("pl-row--folding");
       event.changes.forEach((change) => {
         const slot = rows[event.row]?.[change.index];
         if (slot) flipSlot(slot, change.char, change.delay, widths.get(change.char) ?? 0);
@@ -219,11 +233,11 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
     plan.events.forEach((event) => {
       timers.push(setTimeout(() => applyEvent(event), event.at * 1000));
     });
-    const initials = rows.map((row) => row[0]).filter((s): s is HTMLElement => !!s);
-    timers.push(setTimeout(() => travel(loader, initials, finish), plan.travelAt * 1000));
+    const rowEls = Array.from(stack.querySelectorAll<HTMLElement>(".pl-row"));
+    timers.push(setTimeout(() => travel(loader, rowEls, finish), plan.travelAt * 1000));
     // Safety net for environments that never deliver transition events
     // (hidden tabs, some webviews): past the travel's end.
-    const travelEnds = plan.travelAt + TRAVEL_S + (initials.length - 1) * TRAVEL_STAGGER_S;
+    const travelEnds = plan.travelAt + TRAVEL_S + (rowEls.length - 1) * TRAVEL_STAGGER_S;
     timers.push(setTimeout(finish, travelEnds * 1000 + 1500));
   }
 
@@ -300,13 +314,16 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
     return rects.length === count ? rects : null;
   }
 
-  // The folded column peels into the header's line: each initial shrinks and
-  // moves onto its own header slot, top to bottom, while the paper lifts.
-  // The header's copy shows the instant the loader goes.
-  function travel(loader: HTMLElement, initials: HTMLElement[], finish: () => void) {
-    const targets = headerLetterRects(initials.length);
+  // Full words straight into the header: each ROW flies, scaled about its
+  // initial's top-left corner, from where its initial stands onto its own
+  // slot of the header's VSCN, top to bottom, while the paper lifts. The
+  // tails are folding inside the moving row at the same time, so a word
+  // shrinks to its initial on the way. The header's copy shows the instant
+  // the loader goes.
+  function travel(loader: HTMLElement, rows: HTMLElement[], finish: () => void) {
+    const targets = headerLetterRects(rows.length);
     const brand = document.getElementById("brand-name");
-    const stack = initials[0]?.closest<HTMLElement>(".pl-stack");
+    const stack = rows[0]?.closest<HTMLElement>(".pl-stack");
     if (!targets || !brand || !stack) {
       loader.classList.add("pl--still", "pl--leaving");
       setTimeout(finish, 350);
@@ -314,14 +331,16 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
     }
     const scale =
       parseFloat(getComputedStyle(brand).fontSize) / parseFloat(getComputedStyle(stack).fontSize);
-    const last = initials[initials.length - 1];
-    initials.forEach((slot, i) => {
-      const from = slot.getBoundingClientRect();
+    const last = rows[rows.length - 1];
+    rows.forEach((row, i) => {
+      const initial = row.querySelector<HTMLElement>(".pl-slot");
       const to = targets[i];
-      if (!to) return;
-      slot.style.transition = `transform ${TRAVEL_S}s ${CURVE} ${(i * TRAVEL_STAGGER_S).toFixed(3)}s`;
-      slot.style.willChange = "transform";
-      slot.style.transform = `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${scale})`;
+      if (!initial || !to) return;
+      const from = initial.getBoundingClientRect();
+      row.style.transformOrigin = "0 0";
+      row.style.transition = `transform ${TRAVEL_S}s ${CURVE} ${(i * TRAVEL_STAGGER_S).toFixed(3)}s`;
+      row.style.willChange = "transform";
+      row.style.transform = `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${scale})`;
     });
     loader.classList.add("pl--leaving");
     last?.addEventListener("transitionend", (event) => {

@@ -1,9 +1,10 @@
 // The intro's choreography, planned as data (src/lib/introCascade.ts): four
 // rows of flap slots, one word each, initials aligned in a column. The
-// initials arrive, each row writes its word, the name holds, the words fold
-// back to the column, and the column travels into the header. 2026-10-15,
-// Josh: "make the animation vertical again but then smoothly transition into
-// the bar on the top left".
+// initials arrive, each row writes its word, the name holds, and then the
+// words set off for the header as they fold, each row landing as its initial
+// on its own slot. 2026-10-15, Josh: "make the animation vertical again but
+// then smoothly transition into the bar on the top left", then "it should
+// transition from full words directly into the top VSCN".
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { diffLine, planStack, INTRO_WORDS } from "../../src/lib/introCascade.ts";
@@ -17,7 +18,7 @@ const timing = {
   rowOffset: 0.22,
   holdName: 0.6,
   foldStagger: 0.06,
-  rest: 0.15,
+  travelLag: 0.1,
 };
 const flip = 2 * timing.beat;
 const landed = (event) => event.at + flip + (event.changes.at(-1)?.delay ?? 0);
@@ -91,9 +92,9 @@ test("the words fold back together once the whole name has been readable", () =>
   assert.equal(folds[0].changes.every((c) => c.char === ""), true);
 });
 
-test("the travel waits for the last letter to fold, plus the rest", () => {
+test("the travel starts as the words begin to fold, not after", () => {
   const plan = planStack(INTRO_WORDS, timing);
   const folds = plan.events.filter((e) => e.phase === "fold");
-  const folded = Math.max(...folds.map(landed));
-  assert.ok(Math.abs(plan.travelAt - (folded + timing.rest)) < 1e-9);
+  assert.ok(Math.abs(plan.travelAt - (folds[0].at + timing.travelLag)) < 1e-9);
+  assert.ok(plan.travelAt < Math.min(...folds.map(landed)));
 });
