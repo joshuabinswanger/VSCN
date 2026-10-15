@@ -93,8 +93,10 @@ const t = useTranslations(lang);
   /* THE FIND FIELD AND THE GROUPS SIT IN (2026-10-15, Josh: "make the
      width of the find tags and the groups narrower than the rest of the
      column so it is visually distinct"). Both are inset by this much on each
-     side; the picked tags above and the add row below keep the column's full
-     width, so the browsing part reads as one nested block between them.
+     side; the picked tags above keep the column's full width, so the
+     browsing part reads as one nested block under them. The add row sits in
+     by the same amount since the same day ("the custom tag should also be
+     the same width as the others").
      2rem since the same day ("a bit narrower still"; it was 1.25rem). */
   tag-selector {
     display: block;
@@ -181,7 +183,11 @@ const t = useTranslations(lang);
      and outranks a bare :focus here. */
   /* THE ADD FIELD IS A CAPSULE TOO (2026-10-15, Josh). Same drawing as the
      find field above, at the add row's own size (.addrow .input in
-     global.css); it stays full width, the one input that creates. */
+     global.css), inset like the find field and the groups. */
+  tag-selector .ts-input-row {
+    margin-inline: var(--ts-inset);
+  }
+
   tag-selector .ts-input {
     border: 1px solid var(--color-dark);
     background: var(--color-bg);
