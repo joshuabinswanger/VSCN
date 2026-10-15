@@ -830,7 +830,7 @@ const indexMembers = [...members].sort((a, b) =>
        triggers by --bar-pad, the triggers pad their text by --chip-pad-y, and
        the pill has a 1px border — so the box sits that much lower and the
        three texts share one line across the width. */
-    --bar-pad: 4px;
+    --bar-pad: 3px;
     --chip-pad-y: 0.4rem;
     --bar-reserve: 330px;
     bottom: calc(20px - var(--bar-pad) - var(--chip-pad-y) - 1px);
@@ -850,18 +850,20 @@ const indexMembers = [...members].sort((a, b) =>
     pointer-events: auto;
     display: flex;
     align-items: center;
-    gap: 4px;
-    /* ONE OUTLINE, NOT TWO (2026-10-12, Josh: "the tag selection etc should
-       have only one black outline, not a black and a grey one"). The pill
-       used to be a paper box with a grey hairline around the two triggers,
-       which have their own black frames now; it is only the row that holds
-       them. --bar-pad stays a number the panels' offsets read. */
-    padding: 0;
-    background: none;
-    border: 0;
-    border-radius: 0;
+    /* ONE PILL, ONE OUTLINE (2026-10-15, Josh: "it is still seperated").
+       The triggers sit INSIDE a single paper capsule with the black hairline
+       (its curve comes from CONTROLS in global.css), and the capsule grows
+       with whatever the labels say. Still one black outline, not two (10-12:
+       "only one black outline"): the triggers draw no frame of their own;
+       hovered, open or holding a tag, one fills black as a capsule inside the
+       capsule, inset by --bar-pad. Padding plus border is what the panels'
+       offsets add. */
+    padding: var(--bar-pad);
+    background: var(--color-bg);
+    border: 1px solid var(--color-dark);
+    gap: 2px;
     font-size: var(--fs-85);
-    /* The row never outgrows the screen; past this a label wraps in its pill. */
+    /* The pill never outgrows the screen; past this a label wraps inside it. */
     max-width: calc(100vw - 24px);
   }
 
@@ -893,7 +895,6 @@ const indexMembers = [...members].sort((a, b) =>
       bottom: 36px;
     }
     .community-bar__in {
-      gap: 5px;
       font-size: var(--fs-95);
     }
   }
@@ -908,11 +909,10 @@ const indexMembers = [...members].sort((a, b) =>
     border: none;
     border-radius: 0;
     /* PERSISTENT (2026-10-12, Josh: "make the tag and view button
-       persistent"): each trigger is a box at rest — the paper with a black
-       hairline drawn inside it — not a word that only gets a ground when it
-       is pointed at. Open, or holding a tag, it is black. */
+       persistent"): each trigger is a segment of the pill at rest, not a
+       word that only gets a ground when it is pointed at. Open, or holding
+       a tag, it is black. */
     background: var(--color-bg);
-    box-shadow: inset 0 0 0 1px var(--color-dark);
     font: inherit;
     color: var(--color-dark);
     cursor: pointer;
@@ -932,7 +932,6 @@ const indexMembers = [...members].sort((a, b) =>
     min-width: 0;
     overflow-wrap: anywhere;
   }
-
   /* No grey (2026-10-12, "the grey hover tone I don't like"), and no thicker
      line either ("make the outline thinner"): under the pointer the trigger
      takes the black it will have once open. */
