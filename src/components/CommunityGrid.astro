@@ -1358,6 +1358,10 @@ const indexMembers = [...members].sort((a, b) =>
     /* The bar floats at the bottom of the viewport (.community-bar); this
        keeps the card's last line above it. Tunable. */
     --cpage-chrome-b: 5.5rem;
+    /* A LITTLE HIGHER (2026-10-16, Josh: "padding at the bottom of the
+       gallery card so they sit a bit higher on mobile and desktop"): extra
+       room under the card, so the centred card rises by half of it. */
+    --cpage-lift: 2.5rem;
     /* MORE WHITE SPACE (2026-10-15, Josh): the picture is the frame less
        an air band above and below, and the pair sits centred in it. */
     --cpage-pic-h: calc(var(--cpage-h) - var(--cpage-chrome-b) - 22vh);
@@ -1373,7 +1377,7 @@ const indexMembers = [...members].sort((a, b) =>
     position: relative;
     box-sizing: border-box;
     min-height: var(--cpage-h);
-    padding-bottom: var(--cpage-chrome-b);
+    padding-bottom: calc(var(--cpage-chrome-b) + var(--cpage-lift));
     scroll-snap-align: start;
     scroll-snap-stop: always;
     container-type: inline-size;
@@ -1401,7 +1405,7 @@ const indexMembers = [...members].sort((a, b) =>
       --cpage-links-h: 1.7rem;
       --cpage-words-air: 1rem;
       --cpage-row-gap: 0.75rem;
-      --cpage-card-h: calc(var(--cpage-h) - var(--cpage-chrome-b) - var(--cpage-words-air));
+      --cpage-card-h: calc(var(--cpage-h) - var(--cpage-chrome-b) - var(--cpage-words-air) - var(--cpage-lift));
       --cpage-pic-h: calc(
         var(--cpage-card-h) - var(--cpage-head-h) - var(--cpage-links-h) - 2 * var(--cpage-row-gap)
       );
@@ -1429,11 +1433,20 @@ const indexMembers = [...members].sort((a, b) =>
       grid-template-rows: auto auto auto;
       align-content: center;
       row-gap: var(--cpage-row-gap);
+      /* BETWEEN THE TWO TOOLBAR STATES (2026-10-15, Josh: "move it down half
+         of the vh of the collapsible bar so it sits in between"): the card is
+         sized for the toolbar SHOWN (svh) and set half the toolbar's height
+         lower, so it sits midway whether the bar is up or collapsed. A fixed
+         offset, never re-measured — following the toolbar live was tried
+         twice and was not smooth (reverted). `top`, not a transform: the
+         card's transform is the cpage-out exit. */
+      position: relative;
+      top: calc((100lvh - 100svh) / 2);
     }
     :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__body) {
       justify-content: center;
     }
-    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__head) {
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard .ccard__head) {
       overflow: hidden;
     }
     /* Two lines at most, so the room kept for it is never outrun. */
@@ -1526,7 +1539,7 @@ const indexMembers = [...members].sort((a, b) =>
     }
     /* The count, the links and PROFILE drift up into place. */
     :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__foot),
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard > .pdisc) {
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__words > .pdisc) {
       opacity: 0;
       translate: 0 0.6rem;
     }
@@ -1553,7 +1566,7 @@ const indexMembers = [...members].sort((a, b) =>
         opacity 0.7s var(--cpage-ease) var(--t-rest, 0.48s),
         translate 0.9s var(--cpage-ease) var(--t-rest, 0.48s);
     }
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard > .pdisc) {
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__words > .pdisc) {
       opacity: 1;
       translate: 0 0;
       transition:

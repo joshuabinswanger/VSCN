@@ -127,21 +127,27 @@ const t = useTranslations(lang);
        one. The head stands outside the panel, as on the card. The panel's
        own hooks (bio, links, tags) are inside the shell. */
   }
-  <div class="ccard__head">
-    <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
-    <p class="ccard__role" data-ccpv="role" hidden></p>
-  </div>
-  <MemberDetailPanel lang={lang} shell mode="plain">
-    {/* In the panel, last, as on the card — a <span> here because there is
-        no page to go to from an unsaved form. */}
-    <span slot="footer" class="ccard__profile">
-      {t("community.card.profile")}
-      <span aria-hidden="true">→</span>
-    </span>
-  </MemberDetailPanel>
-  {/* The count, closing the words as on the card. */}
-  <div class="ccard__foot">
-    <div class="ccard__dots" data-ccpv="dots" hidden></div>
+  {/* THE WORDS, one box (2026-10-16, Josh: "on desktop the images to be
+      totally centered and the text to the left"): name and role, the panel,
+      the count. A desktop hangs it off the centred picture's left edge; a
+      phone dissolves it (display: contents) and places its parts itself. */}
+  <div class="ccard__words">
+    <div class="ccard__head">
+      <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
+      <p class="ccard__role" data-ccpv="role" hidden></p>
+    </div>
+    <MemberDetailPanel lang={lang} shell mode="plain">
+      {/* In the panel, last, as on the card — a <span> here because there is
+          no page to go to from an unsaved form. */}
+      <span slot="footer" class="ccard__profile">
+        {t("community.card.profile")}
+        <span aria-hidden="true">→</span>
+      </span>
+    </MemberDetailPanel>
+    {/* The count, closing the words as on the card. */}
+    <div class="ccard__foot">
+      <div class="ccard__dots" data-ccpv="dots" hidden></div>
+    </div>
   </div>
 
   {
@@ -220,5 +226,13 @@ const t = useTranslations(lang);
     --cpage-h: 30rem;
     --cpage-pic-h: 24rem;
     --ccard-side-w: 16rem;
+    /* Narrower than a page: the plain words | air | picture, no mirror
+       column to centre the picture against. */
+    --ccard-pic-room: calc(100cqw - var(--ccard-side-w) - var(--ccard-air));
+  }
+  @media (--bp-desktop) {
+    .ccard--preview {
+      grid-template-columns: fit-content(var(--ccard-side-w)) var(--ccard-air) auto;
+    }
   }
 </style>
