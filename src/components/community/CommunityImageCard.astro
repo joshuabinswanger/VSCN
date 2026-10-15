@@ -263,10 +263,30 @@ const positionFor = (i: number) =>
         )
       }
     </div>
+  </div>
+
+  {
+    /* THE HEAD: name and role, at the top of the words. The h2 is the
+      directory's outline (h1 member count → h2 member) and its link is the
+      way to the member's page, keyed for the morph that page plays on
+      arrival. A name is not an affordance, though — nothing says it is
+      clickable before pointing at it — which is why the foot row ends with a
+      button that says where it goes.
+      Outside the panel, so the name is the column's first line whatever
+      the panel holds. */
+  }
+  <div class="ccard__head">
+    <h2 class="ccard__name">
+      <a class="ccard__name-link" href={profileHref} transition:name={`mname-${member.id}`}>
+        {member.displayName}
+      </a>
+    </h2>
+    {member.role && <p class="ccard__role">{member.role}</p>}
       {
-        /* THE FOOT, under the picture's bottom edge: the count "‹ 1 / 3 ›" at
-          its right corner. Inside the body since 2026-10-15 so it travels with
-          the picture, not the words. */
+        /* THE FOOT: the count "‹ 1 / 3 ›", IN THE HEAD since 2026-10-15 so it
+          stands on the name's line wherever the name lands (a phone keeps the
+          name at the foot of a fixed block); a desktop lifts it out beside
+          the picture, communityCard.css. */
       }
     <div class="ccard__foot">
       {
@@ -313,25 +333,6 @@ const positionFor = (i: number) =>
         )
       }
     </div>
-  </div>
-
-  {
-    /* THE HEAD: name and role, at the top of the words. The h2 is the
-      directory's outline (h1 member count → h2 member) and its link is the
-      way to the member's page, keyed for the morph that page plays on
-      arrival. A name is not an affordance, though — nothing says it is
-      clickable before pointing at it — which is why the foot row ends with a
-      button that says where it goes.
-      Outside the panel, so the name is the column's first line whatever
-      the panel holds. */
-  }
-  <div class="ccard__head">
-    <h2 class="ccard__name">
-      <a class="ccard__name-link" href={profileHref} transition:name={`mname-${member.id}`}>
-        {member.displayName}
-      </a>
-    </h2>
-    {member.role && <p class="ccard__role">{member.role}</p>}
   </div>
 
   {
