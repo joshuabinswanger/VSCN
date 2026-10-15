@@ -165,7 +165,9 @@ body {
    controller sets this while one member a screen is on; cleared on every
    other view and before a swap. scroll-padding keeps a snapped card under
    the floating header row, not behind it. */
-.page-wrap[data-snap="y"] {
+/* Keyed off the grid's own mark, which the SERVER renders (2026-10-15):
+   waiting for the controller's data-snap left the first frame unsnapped. */
+:root:not([data-arriving]) .page-wrap:has(#member-grid[data-pattern="pages"]:not([hidden])) {
   scroll-snap-type: y mandatory;
   scroll-padding-top: var(--header-h);
 }
@@ -174,7 +176,7 @@ body {
    snap has to stand on html there; the attribute stays on .page-wrap as the
    one switch, and :has() reads it. */
 @media (--bp-mobile) {
-  html:has(.page-wrap[data-snap="y"]) {
+  html:not([data-arriving]):has(#member-grid[data-pattern="pages"]:not([hidden])) {
     scroll-snap-type: y mandatory;
     scroll-padding-top: var(--header-h);
   }

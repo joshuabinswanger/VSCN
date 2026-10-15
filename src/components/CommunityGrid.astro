@@ -1,6 +1,7 @@
 ---
 import { hasArtwork, stripStorageToken, type MemberView } from "../lib/memberView.ts";
 import { DEFAULT_VIEW } from "../lib/communityLayout.ts";
+import { dealPagesInto, shuffleBands } from "../lib/communityDeal.ts";
 import { memberHref } from "../lib/links.ts";
 import { projectTitle } from "../lib/projects.ts";
 import CommunityImageCard from "./community/CommunityImageCard.astro";
@@ -591,6 +592,7 @@ const indexMembers = [...members].sort((a, b) =>
     data-pswp-i18n={lightboxStrings}
     data-sort-no-project={t("community.sort.noProject")}
     data-sort-no-field={t("community.sort.noField")}
+    data-pattern={DEFAULT_VIEW}
     hidden={DEFAULT_VIEW !== "pages" && DEFAULT_VIEW !== "grid"}
   >
     {members.length === 0 && <p class="state-msg">{t("community.empty")}</p>}
@@ -645,6 +647,21 @@ const indexMembers = [...members].sort((a, b) =>
       ))
     }
   </div>
+
+  {
+    /* THE DEAL BEFORE THE FIRST PAINT, on a full load (2026-10-15, Josh: "the
+      initial images flutter"). Runs as the parser reaches it, before the
+      browser paints the grid, so the first card on screen is already this
+      visit's — it used to be the server's rank order, replaced a moment later.
+      communityDeal.ts's two functions inlined as text (they are written to
+      be self-contained). Leaves the grid alone when an in-site navigation
+      already dealt it (data-dealt) or another view is asked for; hands its
+      seed to the controller on window so page-load reproduces the order. */
+  }
+  <script
+    is:inline
+    set:html={`(function(){try{${shuffleBands.toString()};${dealPagesInto.toString()};var g=document.getElementById("member-grid");if(!g||g.dataset.dealt)return;var p=new URLSearchParams(location.search);var v=p.get("pattern");if(v&&v!=="pages"&&v!=="spread"&&v!=="strip")return;var t=p.get("tag")||"";if(t&&!document.querySelector('.tag-filter__option[data-tag="'+CSS.escape(t)+'"]'))t="";var s=0;try{var i=history.state&&history.state.index;if(typeof i==="number")s=Number(sessionStorage.getItem("vscn:deal:"+i))||0}catch(e){}if(!s)s=(Math.floor(Math.random()*4294967295)||1)>>>0;window.__vscnDeal=s;dealPagesInto(g,s,t)}catch(e){}})()`}
+  />
 
   {
     /* The index: every member as one ledger row — "Name, Role" and a chevron,
@@ -1401,8 +1418,8 @@ const indexMembers = [...members].sort((a, b) =>
     }
   }
   /* What follows the last card must be reachable under mandatory snap. */
-  :global(.page-wrap[data-snap="y"] .community-signup-cta),
-  :global(.page-wrap[data-snap="y"] > .site-footer) {
+  :global(.page-wrap:has(#member-grid[data-pattern="pages"]:not([hidden])) .community-signup-cta),
+  :global(.page-wrap:has(#member-grid[data-pattern="pages"]:not([hidden])) > .site-footer) {
     scroll-snap-align: end;
   }
 
