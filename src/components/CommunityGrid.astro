@@ -1714,11 +1714,13 @@ const indexMembers = [...members].sort((a, b) =>
     align-items: center;
     gap: 1.25rem;
     column-span: all;
-    /* 7rem ≈ 91px over the last tile's edge on a desktop — half again the
-       60px the tiles keep between themselves, so a run's end reads as an
-       end. (The tile's own margin-bottom does not add to this: the spanner's
-       margin and the column's trailing margin meet, they do not stack.) */
-    margin: 7rem 0 1.5rem;
+    /* 10rem ≈ 130px over the last tile's edge on a desktop and 3.5rem under
+       the head (2026-10-15, "more white space after and before the break",
+       from 7rem / 1.5rem the same afternoon) — twice the 60px the tiles keep
+       between themselves, so a run's end reads as an end. (The tile's own
+       margin-bottom does not add to this: the spanner's margin and the
+       column's trailing margin meet, they do not stack.) */
+    margin: 10rem 0 3.5rem;
     color: var(--color-dark);
   }
 
@@ -1729,12 +1731,16 @@ const indexMembers = [...members].sort((a, b) =>
   .cgrid[data-pattern="grid"] :global(.cgrid__head::after) {
     content: "";
     flex: 1 1 auto;
-    border-top: 1px solid var(--color-dark);
+    /* THINNER (2026-10-15, "thinner line"): half a device pixel where the
+       screen has one to give, and faded to the muted grey everywhere — a 1x
+       screen rounds 0.5px back up to one, so the colour is what makes it
+       read lighter there. */
+    border-top: 0.5px solid var(--color-muted);
   }
 
   @media (--bp-mobile) {
     .cgrid[data-pattern="grid"] :global(.cgrid__head) {
-      margin-top: 4.5rem;
+      margin: 7rem 0 2.5rem;
     }
   }
 
