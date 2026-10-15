@@ -1333,13 +1333,20 @@ const BRAND_SLOTS: BrandSlot[] = [
     const main = document.querySelector<HTMLElement>(".page-wrap main");
     if (!main) return;
     const rise = arriveDirection === "back" ? -72 : 72;
-    main.animate(
+    // NO SNAPPING WHILE THE PAGE RISES (2026-10-15, the Portfolios flutter):
+    // the rise moves every snap area with <main>, and a mandatory snap
+    // re-snapped the scroll on each frame — the page arrived ~120px down and
+    // eased back. global.css only snaps while <html> carries no data-arriving.
+    const root = document.documentElement;
+    root.dataset.arriving = "";
+    const enter = main.animate(
       [
         { opacity: 0, transform: `translateY(${rise}px) scale(0.96)`, filter: "blur(10px)" },
         { opacity: 1, transform: "none", filter: "none" },
       ],
       { duration: ENTER_MS, easing: "cubic-bezier(.18,1.25,.32,1)", fill: "backwards" }
     );
+    enter.finished.catch(() => {}).finally(() => delete root.dataset.arriving);
   });
 
   document.addEventListener("astro:before-swap", (event) => {

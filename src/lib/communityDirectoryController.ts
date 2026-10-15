@@ -4,6 +4,7 @@ import { navigate } from "astro:transitions/client";
 import { isWorkSort, sectionWorks, type SortableWork, type WorkSort } from "./communitySort.ts";
 import { DEFAULT_VIEW, viewFromParam, type ViewName } from "./communityLayout.ts";
 import { setPagesPaging } from "./pagesPager.ts";
+import { dealPagesInto, shuffleBands } from "./communityDeal.ts";
 
 // ────────────────────────────────────────────────────────────────────────
 // Behaviour layer: the deal and the signed-out CTA.
@@ -90,14 +91,6 @@ function freshSeed(): number {
 
 let dealSeed = 0;
 
-/** Fisher-Yates, in place, drawing from a caller-supplied stream. */
-function shuffleInto<T>(out: T[], random: () => number): T[] {
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
-}
 
 /**
  * THE DEAL IS RANDOM WITHIN A SCORE, ORDERED BETWEEN SCORES.
@@ -124,20 +117,9 @@ function shuffleInto<T>(out: T[], random: () => number): T[] {
  * seed still reproduces its deal on Back (see rememberedSeed).
  */
 function shuffledInBands(items: HTMLElement[]): HTMLElement[] {
-  const random = rngFrom(dealSeed || (dealSeed = freshSeed()));
-  const bands = new Map<number, HTMLElement[]>();
-  for (const item of items) {
-    // A cell with no readable score bands with the other unscored ones at 0
-    // rather than becoming its own NaN band — Map keys NaN to itself, which
-    // would sort unpredictably against real numbers.
-    const key = Number(item.dataset.score);
-    const band = bands.get(Number.isFinite(key) ? key : 0);
-    if (band) band.push(item);
-    else bands.set(Number.isFinite(key) ? key : 0, [item]);
-  }
-  return [...bands.keys()]
-    .sort((a, b) => b - a)
-    .flatMap((key) => shuffleInto(bands.get(key) as HTMLElement[], random));
+  // One implementation for this deal and the one that runs before the first
+  // paint (communityDeal.ts), so a seed always gives the same order.
+  return shuffleBands(items, dealSeed || (dealSeed = freshSeed()));
 }
 
 // ── THE VIEW IS A NAVIGATION ──────────────────────────
@@ -718,6 +700,32 @@ document.addEventListener("astro:before-swap", () => {
   if (wrap) delete wrap.dataset.snap;
 });
 
+/** The seed the deal before the first paint used — this navigation's, or a
+ *  full load's (the inline script in CommunityGrid hands it over on window).
+ *  page-load adopts it, so its own deal reproduces the order on screen. */
+let pendingSeed: number | null = null;
+
+// DEAL THE INCOMING PAGE BEFORE IT IS SWAPPED IN (2026-10-15, the flutter):
+// the new document is still off screen here, so the visitor's first frame is
+// already the dealt order. A Back onto an entry re-uses its stored seed (the
+// router has already moved history.state to the target on a traverse); any
+// other arrival gets a fresh one, as page-load's rememberedSeed would.
+document.addEventListener("astro:before-swap", (e) => {
+  const ev = e as unknown as { newDocument: Document; to: URL; navigationType: string };
+  const grid = ev.newDocument.getElementById("member-grid");
+  if (!grid) return;
+  const params = ev.to.searchParams;
+  if (viewFromParam(params.get("pattern")) !== "pages") return;
+  const asked = params.get("tag") ?? "";
+  const tag =
+    asked && ev.newDocument.querySelector(`.tag-filter__option[data-tag="${CSS.escape(asked)}"]`)
+      ? asked
+      : "";
+  const seed = ev.navigationType === "traverse" ? rememberedSeed() : freshSeed();
+  pendingSeed = seed;
+  dealPagesInto(grid, seed, tag);
+});
+
 function modeFromURL(): LayoutMode {
   return viewFromParam(new URLSearchParams(window.location.search).get("pattern"));
 }
@@ -761,7 +769,13 @@ document.addEventListener("astro:page-load", () => {
 
     // Before the first deal: a Back onto this entry reproduces the page it
     // was left showing, a fresh arrival gets a new one. See rememberedSeed.
-    dealSeed = rememberedSeed();
+    {
+      const w = window as unknown as { __vscnDeal?: number };
+      const handed = pendingSeed ?? w.__vscnDeal ?? null;
+      pendingSeed = null;
+      delete w.__vscnDeal;
+      dealSeed = handed ? storeSeed(handed) : rememberedSeed();
+    }
 
     applyLayout(grid, mode);
     reflectMode(mode);
