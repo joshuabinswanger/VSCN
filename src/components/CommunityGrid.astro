@@ -1600,7 +1600,7 @@ const indexMembers = [...members].sort((a, b) =>
         opacity 0.7s var(--cpage-ease) calc(var(--t-rest, 0.48s) + 0.08s),
         translate 0.9s var(--cpage-ease) calc(var(--t-rest, 0.48s) + 0.08s);
     }
-    /* On a desktop the count closes the words, so it comes in after them. */
+    /* On a desktop the count comes in last, after the words. */
     @media (--bp-desktop) {
       :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__foot) {
         transition:
@@ -2390,10 +2390,11 @@ const indexMembers = [...members].sort((a, b) =>
      drew (32 / 44 on a phone, two columns fixed). */
   .cgrid[data-pattern="grid"]:not([hidden]) {
     display: block;
-    --masonry-col: 300px;
+    --masonry-col: 220px;
     --masonry-gap: 60px;
     --masonry-tile-gap: 60px;
-    /* 0 = as many 300px columns as the measure holds; a phone fixes 2. */
+    /* 0 = as many 220px columns as the measure holds; a phone fixes 2.
+       220 (2026-10-16, Josh): six columns on a 16" MacBook (1728px). */
     --masonry-cols: 0;
   }
   .cgrid[data-pattern="grid"] :global(.cgrid__run) {
