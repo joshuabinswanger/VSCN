@@ -43,6 +43,14 @@ export function workDescription(
   return pickLocaleText(item.description, item.descriptionDe, lang);
 }
 
+/** The text block after a work (2026-10-16), picked for a locale the way a description is. */
+export function workTextAfter(
+  item: { textAfter?: string; textAfterDe?: string },
+  lang: Lang,
+): string | undefined {
+  return pickLocaleText(item.textAfter, item.textAfterDe, lang);
+}
+
 /**
  * Which role and bio a locale shows (2026-09-23, "Alles sollte zweisprachig
  * sein"). The pickLocaleText() rule with ONE difference: it falls back in

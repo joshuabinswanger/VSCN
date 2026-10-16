@@ -85,9 +85,11 @@ export async function reserveWork(
  * a new id, because the id is the filename and a verified member's object is
  * cached `immutable` for a year — that starts life carrying these.
  * `projectId` rides along so a replaced picture stays in its project, and
- * `inGallery` so one the member took out of the gallery stays out.
+ * `inGallery` so one the member took out of the gallery stays out, and the
+ * text block after the work (`textAfter`/`textAfterDe`, 2026-10-16) so the
+ * words between two pictures survive a swap of the first.
  */
-export const WORK_TEXT_FIELDS = ["caption", "captionDe", "description", "descriptionDe", "link", "siteLink", "tags", "projectId", "inGallery"] as const;
+export const WORK_TEXT_FIELDS = ["caption", "captionDe", "description", "descriptionDe", "link", "siteLink", "tags", "projectId", "inGallery", "textAfter", "textAfterDe"] as const;
 
 /**
  * The words, plus what KIND of work it is. A video link keeps its video when

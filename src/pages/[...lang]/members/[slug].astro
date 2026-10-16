@@ -11,6 +11,7 @@ import {
   socialLinks,
   workCaption,
   workDescription,
+  workTextAfter,
 } from "../../../lib/links.ts";
 import { memberPageJsonLd, memberPageUrl, memberTitle } from "../../../lib/seo.ts";
 import { groupWorks, projectTitle, projectDescription, projectSlideData, type ProfileProject } from "../../../lib/projects.ts";
@@ -92,6 +93,7 @@ const works = await Promise.all(
       // screen reader speaks for this image.
       caption: workCaption(w, currentLang),
       description: workDescription(w, currentLang),
+      textAfter: workTextAfter(w, currentLang),
       rendered: await getImage({
         src: w.url,
         width: w.width,
@@ -125,9 +127,9 @@ const works = await Promise.all(
 // model files old project-less works under a virtual "Works" / "Arbeiten"
 // project (adoptLooseWorks in toMemberViewBase), so the bare-MemberWork
 // branch below is only a fallback.
-// Projects stack in the member's order; each one with two or more works is
-// its own carousel (MemberProject.astro, 2026-09-26). The one slider that
-// paged between projects (2026-09-25) is gone with that change.
+// Projects stack in the member's order, every work in line with the text
+// blocks between them (MemberProject.astro, 2026-10-16); the per-project
+// carousels of 2026-09-26 are gone.
 const sections = groupWorks(works, member.projects ?? []);
 
 // The lightbox's own labels. One attribute rather than five, for the same
@@ -340,7 +342,7 @@ const jsonLd = memberPageJsonLd({
 
     {
       works.length > 0 && (
-        <div class="mprof__works" data-snap-projects data-pswp-i18n={lightboxStrings} data-index-label={t("member.index")}>
+        <div class="mprof__works" data-pswp-i18n={lightboxStrings} data-index-label={t("member.index")}>
           {/* Each work is a link to the original, which is what PhotoSwipe
               binds to — and what makes the image openable with scripting off
               rather than being inert. The gallery is still one list in the
@@ -384,8 +386,6 @@ const jsonLd = memberPageJsonLd({
   // site, defined once in lib/lightbox.ts (the grid and the editor's preview
   // build theirs from the same function).
   import { createLightbox, parseLightboxStrings } from "../../../lib/lightbox.ts";
-  // The project carousels (2026-09-26); they release themselves on astro:before-swap.
-  import { initProjectCarousels, showInCarousel } from "../../../lib/projectCarousel.ts";
   // The list of projects and works in the third track (2026-10-14).
   import { initProfileIndex } from "../../../lib/profileIndex.ts";
   import { workKey } from "../../../lib/communitySearch.ts";
@@ -403,9 +403,8 @@ const jsonLd = memberPageJsonLd({
 
   // ARRIVING FROM THE DIRECTORY'S SEARCH (2026-10-16): ?work= names a
   // picture by its stored path (workKey), ?project= a project by its id. The
-  // page opens on the project that holds it, its carousel seated on the
-  // picture. Two frames late, so the carousels have taken their first size
-  // and their own re-seat cannot undo this one.
+  // page opens on the picture, or on the project. Two frames late, so the
+  // layout has settled before the scroll.
   function revealLinked() {
     const params = new URLSearchParams(window.location.search);
     const work = params.get("work");
@@ -418,10 +417,7 @@ const jsonLd = memberPageJsonLd({
           const link = Array.from(document.querySelectorAll<HTMLAnchorElement>(".mprof__work-link")).find(
             (a) => workKey(a.href) === work,
           );
-          if (link) {
-            showInCarousel(link);
-            target = link.closest<HTMLElement>(".mprof__project, .mprof__work");
-          }
+          if (link) target = link.closest<HTMLElement>(".mprof__work");
         }
         if (!target && project) {
           target = document.querySelector<HTMLElement>(`.mprof__project[data-project-id="${CSS.escape(project)}"]`);
@@ -432,7 +428,6 @@ const jsonLd = memberPageJsonLd({
   }
 
   document.addEventListener("astro:page-load", () => {
-    initProjectCarousels();
     initProfileIndex(document.querySelector<HTMLElement>(".mprof"));
     revealLinked();
     lightbox?.destroy();
@@ -444,9 +439,6 @@ const jsonLd = memberPageJsonLd({
       gallery: ".mprof__works",
       children: ".mprof__work-link",
     });
-    // Paging the lightbox pages the project carousel behind it, so closing
-    // zooms back onto the picture the visitor ended on.
-    lightbox.on("change", () => showInCarousel(lightbox?.pswp?.currSlide?.data.element));
     lightbox.init();
   });
 
