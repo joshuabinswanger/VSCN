@@ -161,7 +161,17 @@ const positionFor = (i: number) =>
       aria-roledescription={isCarousel ? t("community.card.carousel") : undefined}
       aria-label={isCarousel ? `${member.displayName} — ${t("community.card.gallery")}` : undefined}
     >
-      <div class="ccard__track">
+      {
+        /* The scroller is declared INLINE as well as in communityCard.css
+          (2026-10-16, the WebKit Back crash). On a phone the document is the
+          root scroller; arriving at /community through a view transition,
+          WebKit's WebContent process dies when this track becomes a scroll
+          container through a stylesheet the browser had to revalidate (304)
+          for that navigation. Declared on the element, it is a scroller from
+          the moment it is inserted, whatever state the sheet is in.
+          documentation/20261016-webkit-back-crash-carousel-track.md */
+      }
+      <div class="ccard__track" style="overflow: auto hidden">
         {
           /* Only the first image carries a real src. The rest of the gallery
             waits as data-src until the visitor first touches or hovers THIS
