@@ -203,6 +203,27 @@ export function createLightbox(
     root?.setAttribute("aria-modal", "true");
   });
 
+  // PAGING SLIDES (2026-10-16, Josh: "add animation to photoswipe").
+  // PhotoSwipe animates only a released swipe; next()/prev() — the counter's
+  // chevrons, the side arrows, the keyboard — all go through goTo(), which
+  // moves the strip with animate unset, so the picture JUMPED. Same call with
+  // animate on: the strip glides on the spring a swipe ends with.
+  lightbox.on("init", () => {
+    const pswp = lightbox.pswp;
+    if (!pswp || reduced) return;
+    pswp.goTo = (index: number) => {
+      pswp.mainScroll.moveIndexBy(pswp.getLoopedIndex(index) - pswp.potentialIndex, true);
+    };
+    // The words are pinned under the CURRENT picture and rebuilt on
+    // `change`, which fires when the strip lands. While it travels — a glide
+    // or a finger — they would stand under nothing, so they fade out and the
+    // renderer fades the next work's words in (lightboxText.ts).
+    pswp.on("moveMainScroll", ({ x }) => {
+      const away = Math.abs(x - pswp.mainScroll.getCurrSlideX()) > 1;
+      pswp.element?.classList.toggle("pswp--vscn-paging", away);
+    });
+  });
+
   return lightbox;
 }
 

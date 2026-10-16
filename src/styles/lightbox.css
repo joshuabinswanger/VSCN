@@ -536,6 +536,12 @@
   opacity: 0;
   pointer-events: none;
 }
+/* PAGING: the strip is between pictures (lightbox.ts), so the words leave
+   quickly rather than stand under nothing. The next work's fade in on arrival. */
+.pswp--vscn.pswp--vscn-paging .pswp__vscn-text {
+  opacity: 0;
+  transition-duration: 160ms;
+}
 
 /* ── Error ────────────────────────────────────────────────────────────────
    Inherits --pswp-error-text-color from the block at the top; only the type
