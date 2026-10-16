@@ -6,6 +6,7 @@ import { DEFAULT_VIEW, viewFromParam, type ViewName } from "./communityLayout.ts
 import { setPagesPaging } from "./pagesPager.ts";
 import { setPagesEntrance } from "./pagesEntrance.ts";
 import { shuffleBands } from "./communityDeal.ts";
+import { searchDirectory, type SearchIndex } from "./communitySearch.ts";
 
 // ────────────────────────────────────────────────────────────────────────
 // Behaviour layer: the deal and the signed-out CTA.
@@ -299,8 +300,9 @@ function sortableOf(cell: HTMLElement): SortableWork & { cell: HTMLElement } {
   return out;
 }
 
-/** The bar's three drop-ups (tags, sort, view), as [trigger, panel] id pairs. */
+/** The bar's four drop-ups (search, tags, sort, view), as [trigger, panel] id pairs. */
 const BAR_MENUS = [
+  ["search-btn", "search-panel"],
   ["tag-filter-btn", "tag-filter-panel"],
   ["sort-menu-btn", "sort-menu-panel"],
   ["view-menu-btn", "view-menu-panel"],
@@ -479,6 +481,123 @@ document.addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeBarMenus();
 });
+
+// ── THE SEARCH (2026-10-16, src/lib/communitySearch.ts) ─────────────────
+// The index rides in the bar as JSON; parsed once per bar (the bar persists
+// across the directory's own navigations, so usually once per visit).
+let searchIndexCache: { el: Element; index: SearchIndex } | null = null;
+function searchIndex(): SearchIndex | null {
+  const el = document.getElementById("community-search-index");
+  if (!el) return null;
+  if (searchIndexCache?.el === el) return searchIndexCache.index;
+  try {
+    const index = JSON.parse(el.textContent ?? "") as SearchIndex;
+    searchIndexCache = { el, index };
+    return index;
+  } catch {
+    return null;
+  }
+}
+
+function make<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text?: string): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  node.className = cls;
+  if (text) node.textContent = text;
+  return node;
+}
+
+/** A row: an optional picture, a name, a quieter line under it. */
+function searchRow(href: string, name: string, sub: string, photo: string, round: boolean): HTMLLIElement {
+  const li = document.createElement("li");
+  const a = make("a", "search__row");
+  a.href = href;
+  // A person without a picture keeps the disc, so the names stay in line.
+  const thumb = `search__thumb${round ? " search__thumb--round" : ""}`;
+  if (photo) {
+    const img = make("img", thumb);
+    img.src = photo;
+    img.alt = "";
+    img.decoding = "async";
+    a.append(img);
+  } else if (round) {
+    a.append(make("span", thumb));
+  }
+  const words = make("span", "search__words");
+  words.append(make("span", "search__name", name));
+  if (sub) words.append(make("span", "search__sub", sub));
+  a.append(words);
+  li.append(a);
+  return li;
+}
+
+/** Draw the results for what the field holds. Picture thumbnails are the
+ *  wall's own rendered tiles, found by their data-work key. */
+function renderSearch() {
+  const box = document.getElementById("search-results");
+  const input = document.getElementById("search-input") as HTMLInputElement | null;
+  const index = searchIndex();
+  if (!box || !input || !index) return;
+  const q = input.value.trim();
+  const found = searchDirectory(index, q);
+  const group = (title: string, list: HTMLElement) => {
+    const section = make("section", "search__group");
+    section.append(make("h3", "search__group-title", title), list);
+    return section;
+  };
+  const parts: HTMLElement[] = [];
+  if (found.people.length) {
+    const list = make("ul", "search__list");
+    found.people.forEach((p) => list.append(searchRow(p.href, p.name, p.role, p.photo, true)));
+    parts.push(group(box.dataset.people ?? "", list));
+  }
+  if (found.projects.length) {
+    const list = make("ul", "search__list");
+    found.projects.forEach((p) => list.append(searchRow(p.href, p.title, p.member, "", false)));
+    parts.push(group(box.dataset.projects ?? "", list));
+  }
+  if (found.images.length) {
+    const list = make("ul", "search__grid");
+    found.images.forEach((w) => {
+      const li = document.createElement("li");
+      const a = make("a", "search__tile");
+      a.href = w.href;
+      const label = [w.caption, w.member].filter(Boolean).join(" — ");
+      a.title = label;
+      a.setAttribute("aria-label", label);
+      const src = document
+        .querySelector<HTMLImageElement>(`.cgrid__cell[data-work="${CSS.escape(w.key)}"] img`)
+        ?.getAttribute("src");
+      if (src) {
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = "";
+        img.decoding = "async";
+        a.append(img);
+      }
+      li.append(a);
+      list.append(li);
+    });
+    parts.push(group(box.dataset.images ?? "", list));
+  }
+  if (!parts.length) {
+    parts.push(make("p", "field-note search__note", (q ? box.dataset.none : box.dataset.hint) ?? ""));
+  }
+  box.replaceChildren(...parts);
+}
+
+/** Size the pill to what the results now need, from where it stands. */
+function resizeSearch() {
+  const pill = document.querySelector<HTMLElement>(".community-bar__in");
+  if (!pill || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    renderSearch();
+    return;
+  }
+  const from = pill.getBoundingClientRect();
+  barAnim?.cancel();
+  barAnim = null;
+  renderSearch();
+  sizeBar(pill, from);
+}
 
 /** The ledger's pass. Returns the visible count. */
 function applyIndexFilter(): number {
@@ -967,6 +1086,24 @@ document.addEventListener("astro:page-load", () => {
     document
       .getElementById("view-menu-btn")
       ?.addEventListener("click", () => toggleBarMenu("view-menu-panel"), { signal: life });
+
+    // The search: open it and the field takes the caret — unlike the tags
+    // room, typing is the whole point here, so a phone's keyboard is asked
+    // for on purpose. Each keystroke redraws the lists and the pill eases to
+    // their height; Enter follows the first result.
+    const searchInput = document.getElementById("search-input") as HTMLInputElement | null;
+    document.getElementById("search-btn")?.addEventListener("click", () => {
+      if (toggleBarMenu("search-panel")) searchInput?.focus({ preventScroll: true });
+    }, { signal: life });
+    searchInput?.addEventListener("input", resizeSearch, { signal: life });
+    searchInput?.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      document.querySelector<HTMLAnchorElement>("#search-results a")?.click();
+    }, { signal: life });
+    document.getElementById("search-results")?.addEventListener("click", (e) => {
+      if (e.target instanceof Element && e.target.closest("a")) closeBarMenus();
+    }, { signal: life });
     document
       .getElementById("sort-menu-btn")
       ?.addEventListener("click", () => toggleBarMenu("sort-menu-panel"), { signal: life });

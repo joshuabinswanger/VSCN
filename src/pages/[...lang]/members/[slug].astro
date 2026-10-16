@@ -350,6 +350,7 @@ const jsonLd = memberPageJsonLd({
             section.project ? (
               <MemberProject
                 project={section.project}
+                data-project-id={section.project.id}
                 works={section.works}
                 allWorks={works}
                 memberId={member.id}
@@ -387,6 +388,7 @@ const jsonLd = memberPageJsonLd({
   import { initProjectCarousels, showInCarousel } from "../../../lib/projectCarousel.ts";
   // The list of projects and works in the third track (2026-10-14).
   import { initProfileIndex } from "../../../lib/profileIndex.ts";
+  import { workKey } from "../../../lib/communitySearch.ts";
   import "photoswipe/style.css";
   // Immediately after the package sheet, never before: this is the chrome that
   // replaces it. The overrides are also written to win on specificity alone
@@ -399,9 +401,40 @@ const jsonLd = memberPageJsonLd({
   // elements. MemberCard is the existing precedent for this pair.
   let lightbox: PhotoSwipeLightbox | null = null;
 
+  // ARRIVING FROM THE DIRECTORY'S SEARCH (2026-10-16): ?work= names a
+  // picture by its stored path (workKey), ?project= a project by its id. The
+  // page opens on the project that holds it, its carousel seated on the
+  // picture. Two frames late, so the carousels have taken their first size
+  // and their own re-seat cannot undo this one.
+  function revealLinked() {
+    const params = new URLSearchParams(window.location.search);
+    const work = params.get("work");
+    const project = params.get("project");
+    if (!work && !project) return;
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        let target: HTMLElement | null = null;
+        if (work) {
+          const link = Array.from(document.querySelectorAll<HTMLAnchorElement>(".mprof__work-link")).find(
+            (a) => workKey(a.href) === work,
+          );
+          if (link) {
+            showInCarousel(link);
+            target = link.closest<HTMLElement>(".mprof__project, .mprof__work");
+          }
+        }
+        if (!target && project) {
+          target = document.querySelector<HTMLElement>(`.mprof__project[data-project-id="${CSS.escape(project)}"]`);
+        }
+        target?.scrollIntoView({ block: "start", behavior: "instant" });
+      }),
+    );
+  }
+
   document.addEventListener("astro:page-load", () => {
     initProjectCarousels();
     initProfileIndex(document.querySelector<HTMLElement>(".mprof"));
+    revealLinked();
     lightbox?.destroy();
     lightbox = null;
     const gallery = document.querySelector<HTMLElement>(".mprof__works");
