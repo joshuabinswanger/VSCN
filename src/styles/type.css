@@ -182,31 +182,18 @@
   letter-spacing: -0.01em;
 }
 
-/* THE CARD'S WORDS, A STEP DOWN ON A DESKTOP (2026-10-14, Josh: "the font is
-   too big"): beside the picture they stand in a column, not a line, and the
-   page-wide NAME and BODY sizes read large in it. Only the card's own
-   elements; a phone stacks them under the picture at full width. */
-@media (--bp-desktop) {
-  /* THE MEMBER PAGE'S COLUMN (2026-10-16, Josh: "the portfolio text column
-     should match the profile view"): the name, role and affiliation as
-     .mprof__aside sets them in profile.css. */
-  .ccard__name {
-    font-size: clamp(1.75rem, 2.2vw, 3.2rem);
-    font-weight: 700;
-    line-height: 1.02;
-    letter-spacing: -0.03em;
-  }
-  /* The role and the bio: at the foot of this file, after META and BODY,
-     which would otherwise win the tie. */
-}
-/* The head's quieter lines, .mprof__affiliation / .mprof__where. */
-.ccard__affiliation {
-  font-size: var(--fs-90);
-  line-height: 1.35;
-}
-.ccard__where {
-  font-size: var(--fs-85);
-  line-height: 1.35;
+/* THE CARD'S NAME AS THE MEMBER PAGE SETS IT (2026-10-16, Josh: "the
+   portfolio text column should match the profile view"), .mprof__aside's
+   name in profile.css — at EVERY width since the same day: the name is the
+   card's only line beside the picture now, and a phone sets it as big
+   (Josh: "on phone increase the Name font as well"). The clamp's floor is
+   what a phone gets. The bio: at the foot of this file, after BODY, which
+   would otherwise win the tie. */
+.ccard__name {
+  font-size: clamp(1.75rem, 2.2vw, 3.2rem);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
 }
 
 /* HEADING: section heads and field labels, in caps. The info and legal
@@ -258,7 +245,6 @@
    the same author line as a Grid tile's, the same links as under the work on
    the member page. */
 .t-meta,
-.ccard__role,
 .member-role,
 .member-link,
 .mprof__index-link,
@@ -311,7 +297,6 @@
 }
 
 .mprof__link,
-.ccard__link,
 .pdisc__link,
 .pswp--vscn .pswp__vscn-text-link {
   font-size: var(--fs-90);
@@ -413,7 +398,6 @@
    caption — its words are either open beside the picture or folded away —
    so they speak NAME and META at every width.) */
 @media (--bp-mobile) {
-  .ccard__role { font-weight: 400; line-height: 1.4; }
   .pdisc__bio { line-height: 1.6; }
   .pdisc__link { font-weight: 400; line-height: 1.5; }
   /* The phone's PROFILE button a step under the label's phone size
@@ -421,17 +405,12 @@
   .ccard__profile { font-size: var(--fs-tag); }
 }
 
-/* THE CARD'S ROLE AND BIO ON A DESKTOP (2026-10-16), after the voices they
-   step out of. The role as .mprof__role; the bio a step under BODY (2026-10-15,
+/* THE CARD'S BIO ON A DESKTOP (2026-10-16), after the voice it steps out
+   of: a step under BODY (2026-10-15,
    Josh: "the paragraph a bit smaller"), and the member page's bio the same
    size since 2026-10-16 (Josh: "the profile should get the same font size for
    flow text"). */
 @media (--bp-desktop) {
-  .ccard__role {
-    font-size: var(--fs-90);
-    font-weight: 600;
-    line-height: 1.35;
-  }
   .ccard__bio,
   .mprof__bio {
     font-size: var(--fs-85);

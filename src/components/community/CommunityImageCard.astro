@@ -1,7 +1,7 @@
 ---
 import { getImage } from "astro:assets";
 import type { MemberView } from "../../lib/memberView.ts";
-import { href, memberHref, socialLinks, workCaption, workDescription } from "../../lib/links.ts";
+import { memberHref, workCaption, workDescription } from "../../lib/links.ts";
 import { splitParagraphs } from "../../lib/paragraphs.ts";
 import { embedDataAttrs } from "../../lib/embed.ts";
 import { projectSlideData } from "../../lib/projects.ts";
@@ -65,8 +65,6 @@ const SIZES = "(max-width: 767px) 100vw, 60vw";
 
 
 const profileHref = memberHref(lang, member.slug);
-const portfolio = member.portfolio.trim();
-const social = socialLinks(member.socialMedia.trim());
 
 // WHAT THE LIGHTBOX GETS, one entry per work. EVERY SLIDE IS A LIGHTBOX ITEM
 // (2026-09-08, Josh: "photoswipe should pick all images in the gallery ...
@@ -289,7 +287,11 @@ const positionFor = (i: number) =>
       measures in communityCard.css. No tags; PROFILE → closes it. No "Open
       to" either (2026-10-16, Josh: "dont show the open to on portfolio"),
       and the picture stands LEFT of the name at every width (same day:
-      "move the profile to the left of the name always"). */}
+      "move the profile to the left of the name always").
+      THE NAME ALONE (2026-10-16, Josh's Affinity redraw of his own card,
+      Design/Card/Binswanger/VSCN_Card_Binswanger.af): no role, affiliation,
+      place or links on the card — the member page has them. The picture
+      hangs from the name's top, and a phone shows no picture at all. */}
   <div class="ccard__words">
     {
       /* THE HEAD. The h2 is the directory's outline (h1 member count → h2
@@ -317,9 +319,6 @@ const positionFor = (i: number) =>
           {member.displayName}
         </a>
       </h2>
-      {member.role && <p class="ccard__role">{member.role}</p>}
-      {member.affiliation && <p class="ccard__affiliation">{member.affiliation}</p>}
-      {member.location && <p class="ccard__where">{member.location}</p>}
       </div>
     </div>
 
@@ -336,28 +335,6 @@ const positionFor = (i: number) =>
             {member.visualNeeds.map((need) => <li class="ccard__val">{need}</li>)}
           </ul>
         </div>
-      )}
-      {(portfolio || social.length > 0) && (
-        <ul class="ccard__links">
-          {portfolio && (
-            <li>
-              <a class="ccard__link" href={href(portfolio)} target="_blank" rel="noopener">
-                {portfolio}
-              </a>
-            </li>
-          )}
-          {social.map((s) =>
-            s.href ? (
-              <li>
-                <a class="ccard__link" href={s.href} target="_blank" rel="noopener">
-                  {s.label}
-                </a>
-              </li>
-            ) : (
-              <li class="ccard__val">{s.label}</li>
-            )
-          )}
-        </ul>
       )}
       {
         /* THE NAMED WAY TO THE PERSON (2026-09-01, Josh: "add 'view profile'

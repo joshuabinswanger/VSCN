@@ -498,8 +498,8 @@ export function renderCardPreview(
   const nameEl = part("name");
   if (nameEl) nameEl.textContent = displayName;
 
-  // THE MEMBER PAGE'S COLUMN (2026-10-16): the head's lines as
-  // renderProfilePreview fills them, minus the tags and "Open to".
+  // THE NAME ALONE (2026-10-16): the card's head is the picture and the
+  // name — no role, affiliation, place or links, as on the real card.
   const avatar = part("avatar") as HTMLImageElement | null;
   if (avatar) {
     const photo = vm.photoURL?.trim() ?? "";
@@ -511,14 +511,6 @@ export function renderCardPreview(
     }
     show(avatar, Boolean(photo));
   }
-  const affiliation = part("affiliation");
-  if (affiliation) affiliation.textContent = vm.affiliation;
-  show(affiliation, Boolean(vm.affiliation));
-  const where = part("where");
-  const whereText = vm.location.trim();
-  if (where) where.textContent = whereText;
-  show(where, Boolean(whereText));
-
   const bioEl = part("bio");
   if (bioEl) fillParagraphs(bioEl, vm.bio, "ccard__para");
   show(bioEl, Boolean(vm.bio.trim()));
@@ -535,43 +527,6 @@ export function renderCardPreview(
     needs.replaceChildren(...items);
   }
   show(part("needs-row"), vm.visualNeeds.length > 0);
-
-  const links = part("links");
-  const portfolio = vm.portfolio.trim();
-  const social = socialLinks(vm.socialMedia.trim());
-  if (links) {
-    const items: HTMLElement[] = [];
-    if (portfolio) {
-      const li = clone("plink");
-      const a = li?.querySelector("a");
-      if (li && a) {
-        a.href = href(portfolio);
-        a.textContent = portfolio;
-        items.push(li);
-      }
-    }
-    for (const entry of social) {
-      if (entry.href) {
-        const li = clone("plink");
-        const a = li?.querySelector("a");
-        if (li && a) {
-          a.href = entry.href;
-          a.textContent = entry.label;
-          items.push(li);
-        }
-      } else {
-        // Not link-shaped (a bare handle, or free text) — shown as text
-        // rather than given an invented URL, as on the card.
-        const li = clone("pval");
-        if (li) {
-          li.textContent = entry.label;
-          items.push(li);
-        }
-      }
-    }
-    links.replaceChildren(...items);
-  }
-  show(links, Boolean(portfolio) || social.length > 0);
 
   // Same filter the profile-page preview applies: a gallery item mid-upload has
   // no dimensions yet, and a slide with no aspect is a collapsed frame.
@@ -590,12 +545,6 @@ export function renderCardPreview(
   // A typographic face with nothing for its frame: the real card draws a rule
   // there instead of an empty box, so the shell has to as well.
   const frameIsRule = !first && tagLines.length === 0;
-
-  // The role prints under the name on every face, always.
-  const role = vm.role.trim();
-  const roleEl = part("role");
-  if (roleEl) roleEl.textContent = role;
-  show(roleEl, Boolean(role));
 
   // ── The image face ────────────────────────────────────────
   const frame = part("frame");
