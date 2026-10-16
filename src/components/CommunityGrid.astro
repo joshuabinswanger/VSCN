@@ -1386,6 +1386,16 @@ const indexMembers = [...members].sort((a, b) =>
     position: static;
     margin: 0;
   }
+  /* THE PICTURE'S SWIPE IS THE CAROUSEL'S (2026-10-16, Josh: "the vertical
+     scroll is so sensitive that it is hard to swipe the gallery cards"):
+     with both axes the browser's, a sideways swipe a few degrees off level
+     locked onto the page and, under mandatory snap, jumped a whole member.
+     On the picture the browser now pans only sideways, so every swipe that
+     is not clearly vertical pages the works; a clearly vertical one is
+     turned into one card by pagesPager.ts. */
+  :global(.cgrid[data-pattern="pages"] .ccard__frame) {
+    touch-action: pan-x pinch-zoom;
+  }
   @media (--bp-mobile) {
     /* A STABLE HEIGHT ON A PHONE (2026-10-15, Josh: "without this part
        where the card moves a bit further than it needs to and then drops

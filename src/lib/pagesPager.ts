@@ -11,12 +11,26 @@
 // phone keeps the native flick; a horizontal wheel or a trackpad swipe
 // sideways is left to the works row.
 //
+// ON THE PICTURE A PHONE'S SWIPE IS THE CAROUSEL'S (2026-10-16): the frame
+// lets the browser pan only sideways (CommunityGrid.astro), so a vertical
+// swipe there would do nothing; a CLEARLY vertical one (VERTICAL_RATIO,
+// SWIPE_PX) steps one card here instead.
+//
 // A gesture is a burst of wheel events with no gap longer than QUIET_MS: a
 // trackpad flick and its momentum tail are one card, not ten.
 
 const QUIET_MS = 180;
 const LOCK_MS = 650;
 const REDUCED = "(prefers-reduced-motion: reduce)";
+const SWIPE_PX = 40;
+const VERTICAL_RATIO = 1.5;
+
+/** A finished touch on the picture: the step it asks for, or 0 when it was a
+ *  tap or a sideways (carousel) swipe. */
+export function swipeStep(dx: number, dy: number): 1 | -1 | 0 {
+  if (Math.abs(dy) < SWIPE_PX || Math.abs(dy) < VERTICAL_RATIO * Math.abs(dx)) return 0;
+  return dy < 0 ? 1 : -1;
+}
 
 /**
  * Where one step lands. `stops` are the scroll offsets that put each card's
@@ -126,6 +140,30 @@ export function setPagesPaging(on: boolean): void {
     },
     { signal },
   );
+  let touch: { x: number; y: number } | null = null;
+  document.addEventListener(
+    "touchstart",
+    (e) => {
+      const t = e.touches[0];
+      touch =
+        e.touches.length === 1 && e.target instanceof Element && e.target.closest("#member-grid .ccard__frame")
+          ? { x: t.clientX, y: t.clientY }
+          : null;
+    },
+    { passive: true, signal },
+  );
+  document.addEventListener(
+    "touchend",
+    (e) => {
+      if (!touch || document.querySelector(".pswp--open")) return;
+      const t = e.changedTouches[0];
+      const dir = swipeStep(t.clientX - touch.x, t.clientY - touch.y);
+      touch = null;
+      if (dir) step(wrap, dir);
+    },
+    { passive: true, signal },
+  );
+  document.addEventListener("touchcancel", () => (touch = null), { passive: true, signal });
   signal.addEventListener("abort", () => clearTimeout(quiet));
 }
 
