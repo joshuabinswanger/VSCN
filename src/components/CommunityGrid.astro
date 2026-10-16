@@ -347,7 +347,17 @@ const indexMembers = [...members].sort((a, b) =>
       control renders and does nothing — harmless rather than broken, and a
       no-JS visitor gets the full spread. */
   }
-  <div class="community-bar">
+  {
+    /* ONE BAR FOR THE WHOLE DIRECTORY (2026-10-16, Josh: "make it persistent
+      across page changes within community"). Every view, tag and sort is a
+      navigation to this same page, and each used to render a fresh bar that
+      rose and blurred in with <main>. transition:persist hands the SAME
+      element to the next page — its typed search, its scroll and a menu
+      still closing included — and liftBar (communityDirectoryController.ts) keeps it a
+      child of <body>, out of <main>'s rise. Keyed by language, so a switch
+      to German renders the German bar instead of keeping the English one. */
+  }
+  <div class="community-bar" transition:persist={`community-bar-${lang}`}>
     <div class="community-bar__in">
       {
         /* THE CARDS LIVE INSIDE THE PILL (2026-10-16, Josh: "can the selections
