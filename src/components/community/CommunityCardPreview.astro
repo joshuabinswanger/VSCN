@@ -20,7 +20,7 @@
 // AND THE COLUMN (2026-10-12, gallery card v2). The card's words stand
 // beside the picture, open, so the preview carries them too or it would be
 // previewing half a card. Since 2026-10-16 they are the member page's column
-// (picture, name, role, affiliation, place, open to, bio, looking for, links,
+// (picture, name, role, affiliation, place, bio, looking for, links,
 // PROFILE →), drawn by communityCard.css — a plain sheet, so the same
 // `ccard__*` markup below, left empty with `data-ccpv` hooks, takes the card's
 // rules exactly. (Until then it was MemberDetailPanel's scoped `shell` mode.)
@@ -130,11 +130,12 @@ const t = useTranslations(lang);
   <div class="ccard__words">
     <div class="ccard__head">
       <img class="ccard__avatar" data-ccpv="avatar" width="112" height="112" alt="" hidden />
+      <div class="ccard__head-copy">
       <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
       <p class="ccard__role" data-ccpv="role" hidden></p>
       <p class="ccard__affiliation" data-ccpv="affiliation" hidden></p>
       <p class="ccard__where" data-ccpv="where" hidden></p>
-      <p class="ccard__open" data-ccpv="open" hidden></p>
+      </div>
     </div>
     <div class="ccard__more">
       <p class="ccard__bio" data-ccpv="bio" hidden></p>

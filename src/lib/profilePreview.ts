@@ -471,8 +471,6 @@ export interface CardPreviewLabels {
   next?: string;
   /** `member.workAlt` — the alt-text fallback for an uncaptioned image. */
   workAlt?: string;
-  /** `member.openTo` — the availability line's prefix, as on the page. */
-  openTo?: string;
   /** The editor's tab locale, for the lightbox's project line (projectSlideData). Without it the line is left out. */
   lang?: Lang;
 }
@@ -530,7 +528,7 @@ export function renderCardPreview(
   if (nameEl) nameEl.textContent = displayName;
 
   // THE MEMBER PAGE'S COLUMN (2026-10-16): the head's lines as
-  // renderProfilePreview fills them, minus the tags.
+  // renderProfilePreview fills them, minus the tags and "Open to".
   const avatar = part("avatar") as HTMLImageElement | null;
   if (avatar) {
     const photo = vm.photoURL?.trim() ?? "";
@@ -549,9 +547,6 @@ export function renderCardPreview(
   const whereText = vm.location.trim();
   if (where) where.textContent = whereText;
   show(where, Boolean(whereText));
-  const open = part("open");
-  if (open) open.textContent = `${labels.openTo ?? ""} ${vm.openTo.join(", ")}`.trim();
-  show(open, vm.openTo.length > 0);
 
   const bioEl = part("bio");
   if (bioEl) fillParagraphs(bioEl, vm.bio, "ccard__para");

@@ -275,8 +275,11 @@ const positionFor = (i: number) =>
       should match the profile view except that we should keep the flow text
       size, remove the Tags and have the profile button"): the same lines in
       the same order as .mprof__aside on /members/<slug> — picture, name,
-      role, affiliation, place, open to, bio, looking for, links — drawn to
-      the same measures in communityCard.css. No tags; PROFILE → closes it. */}
+      role, affiliation, place, bio, looking for, links — drawn to the same
+      measures in communityCard.css. No tags; PROFILE → closes it. No "Open
+      to" either (2026-10-16, Josh: "dont show the open to on portfolio"),
+      and the picture stands LEFT of the name at every width (same day:
+      "move the profile to the left of the name always"). */}
   <div class="ccard__words">
     {
       /* THE HEAD. The h2 is the directory's outline (h1 member count → h2
@@ -298,6 +301,7 @@ const positionFor = (i: number) =>
           style={`background-color: ${member.photoColor ?? "var(--color-border)"}`}
         />
       )}
+      <div class="ccard__head-copy">
       <h2 class="ccard__name">
         <a class="ccard__name-link" href={profileHref} transition:name={`mname-${member.id}`}>
           {member.displayName}
@@ -306,11 +310,7 @@ const positionFor = (i: number) =>
       {member.role && <p class="ccard__role">{member.role}</p>}
       {member.affiliation && <p class="ccard__affiliation">{member.affiliation}</p>}
       {member.location && <p class="ccard__where">{member.location}</p>}
-      {member.openTo.length > 0 && (
-        <p class="ccard__open">
-          {t("member.openTo")} {member.openTo.join(", ")}
-        </p>
-      )}
+      </div>
     </div>
 
     <div class="ccard__more">

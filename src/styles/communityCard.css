@@ -125,18 +125,26 @@
   display: none;
 }
 
-/* ── The head: picture, name, role, where, open to ────── */
-/* .mprof__head and its lines in profile.css, at the aside's measures. */
+/* ── The head: picture, then name, role, where ────────── */
+/* .mprof__head's lines in profile.css, at the aside's measures — with the
+   picture LEFT of them at every width (2026-10-16, Josh: "move the profile
+   to the left of the name always"), centred on the lines beside it. */
 .ccard__head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+.ccard__head-copy {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 .ccard__avatar {
   display: block;
-  width: 7rem;
-  height: 7rem;
-  margin-bottom: 1.5rem;
+  flex: none;
+  width: 4.5rem;
+  height: 4.5rem;
   border-radius: 50%;
   object-fit: cover;
 }
@@ -170,22 +178,6 @@
 .ccard__where {
   margin: 0.4rem 0 0;
   color: var(--color-muted);
-}
-/* A dot plus the words, as .mprof__open. */
-.ccard__open {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin: 1rem 0 0;
-  color: var(--color-muted);
-}
-.ccard__open::before {
-  content: "";
-  flex: 0 0 auto;
-  width: 5px;
-  height: 5px;
-  background: var(--color-dark);
-  border-radius: 50%;
 }
 
 /* ── The rest: bio, looking for, links, PROFILE → ──────── */
@@ -621,11 +613,17 @@
      The profile page has them. */
   .ccard__bio,
   .ccard__row--needs,
-  .ccard__avatar,
   .ccard__affiliation,
-  .ccard__where,
-  .ccard__open {
+  .ccard__where {
     display: none;
+  }
+  /* The picture stays, left of the name, at the size of the two lines. */
+  .ccard__head {
+    gap: 0.75rem;
+  }
+  .ccard__avatar {
+    width: 2.75rem;
+    height: 2.75rem;
   }
   .ccard__role,
   .ccard__bio + * {
