@@ -141,7 +141,8 @@ service cloud.firestore {
                     && request.resource.data.get('posterSource', null) == resource.data.get('posterSource', null)
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                          'caption', 'captionDe', 'description', 'descriptionDe', 'descriptionShort',
-                         'link', 'siteLink', 'tags', 'projectId', 'inGallery', 'status', 'updatedAt'])
+                         'link', 'siteLink', 'tags', 'projectId', 'inGallery', 'textAfter', 'textAfterDe',
+                         'status', 'updatedAt'])
                     && (request.resource.data.status == resource.data.status
                         || (resource.data.status == 'live' && request.resource.data.status == 'pendingDeletion'))
                     && validImage(request.resource.data, imageId);
@@ -423,7 +424,8 @@ function validBioWordCount(bio) {
 function validImage(data, imageId) {
   return data.keys().hasOnly(['ownerUid', 'kind', 'storagePath', 'width', 'height', 'color',
                               'caption', 'captionDe', 'description', 'descriptionDe', 'link', 'siteLink', 'tags', 'projectId', 'descriptionShort', 'origin',
-                              'provenance', 'media', 'embed', 'posterSource', 'inGallery', 'status', 'createdAt', 'updatedAt'])
+                              'provenance', 'media', 'embed', 'posterSource', 'inGallery', 'textAfter', 'textAfterDe',
+                              'status', 'createdAt', 'updatedAt'])
     && data.ownerUid is string
     && (data.kind == 'avatar' || data.kind == 'gallery')
     && data.storagePath == 'users/' + data.ownerUid + '/' + data.kind + '/' + imageId + '.webp'
@@ -470,6 +472,13 @@ function validImage(data, imageId) {
     // stored — absent means included, so every older record passes as shown.
     // It takes the work off /community only; the member's page keeps it.
     && (!('inGallery' in data) || data.inGallery is bool)
+    // THE TEXT BLOCK AFTER THE WORK (2026-10-16, Josh: "make it possible to
+    // add text block in between image in projects"). A paragraph or a few,
+    // printed on the member page between this work and the next, so every
+    // gap in a project can hold words. Optional in both languages; one write
+    // per image, so two size caps cost nothing against the budget.
+    && (!('textAfter' in data) || (data.textAfter is string && data.textAfter.size() <= 2000))
+    && (!('textAfterDe' in data) || (data.textAfterDe is string && data.textAfterDe.size() <= 2000))
     && (data.origin == 'member' || data.origin == 'curated')
     // A VIDEO WORK IS STILL AN IMAGE RECORD (2026-09-23,
     // documentation/20260923-motion-works-design.md): the WebP at storagePath

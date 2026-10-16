@@ -76,6 +76,16 @@ test("a work the member took out of the gallery is hidden from /community but st
   assert.deepEqual(m.works.map((w) => [w.caption, w.hidden]), [["a", false], ["b", true], ["c", false]]);
 });
 
+// THE TEXT BLOCK AFTER A WORK (2026-10-16) travels raw, both languages, so
+// each locale's page picks its own (workTextAfter in links.ts).
+test("a work carries its text block raw, and a blank one not at all", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a", "b"] }, [
+    rec("a", { caption: "a", textAfter: "Between", textAfterDe: "Dazwischen" }),
+    rec("b", { caption: "b", textAfter: "  " }),
+  ], BUCKET);
+  assert.deepEqual(m.works.map((w) => [w.textAfter, w.textAfterDe]), [["Between", "Dazwischen"], [undefined, undefined]]);
+});
+
 test("a record with no moderation row still scores, so nothing sorts as zero", () => {
   const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a"] }, [rec("a")], BUCKET);
   // 100 * (0.85 * 2.5 + 0.15 * 0) / 5 — neutral on the three human criteria,

@@ -29,6 +29,10 @@ export interface ImageDoc {
   projectId?: string;
   /** The member's "In gallery" switch (2026-10-16): only `false` is stored, absent = shown on /community. */
   inGallery?: boolean;
+  /** The text block printed after this work on the member page (2026-10-16), ≤ 2000. Mirrored for hasOnly parity and replacement only. */
+  textAfter?: string;
+  /** Its German counterpart, ≤ 2000. */
+  textAfterDe?: string;
   origin: ImageOrigin;
   /**
    * What the work IS (2026-09-23, documentation/20260923-motion-works-design.md).

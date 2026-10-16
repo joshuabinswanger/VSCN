@@ -182,34 +182,10 @@ body {
   }
 }
 
-/* THE MEMBER PAGE SNAPS TOO (2026-10-16, Josh: "also add vertical scroll
-   snap", strict): each project comes to rest at the top, under the header
-   row. Keyed off the member page's own works list (data-snap-projects), so
-   the editor's preview of the same list never snaps the editor. A project
-   taller than the window scrolls freely inside itself, as the spec has it
-   for a snap area larger than the snapport, so nothing is unreachable. */
-:root:not([data-arriving]) .page-wrap:has([data-snap-projects]) {
-  scroll-snap-type: y mandatory;
-  scroll-padding-top: var(--header-h);
-}
-[data-snap-projects] > .mprof__project {
-  scroll-snap-align: start;
-}
-@media (--bp-mobile) {
-  html:not([data-arriving]):has([data-snap-projects]) {
-    scroll-snap-type: y mandatory;
-    scroll-padding-top: var(--header-h);
-  }
-  /* THE TOP IS A STOP TOO (2026-10-16, Josh: "the profile information is
-     not on mobile when opening a profile"): on a phone the name and bio
-     stand ABOVE the works, and with only the projects to snap to, mandatory
-     snap pulled every load down onto the first project. The margin pushes
-     the aside's snap position above the page, so it clamps to the very top. */
-  .mprof:has([data-snap-projects]) .mprof__aside {
-    scroll-snap-align: start;
-    scroll-margin-top: 100lvh;
-  }
-}
+/* THE MEMBER PAGE DOES NOT SNAP (2026-10-16). It snapped each project to
+   the top for one afternoon, while a project was one screen: a heading and a
+   carousel. With every work in line a project runs for several screens, and
+   a mandatory snap on blocks taller than the window fights the reader. */
 
 /* NO CROSS-FADE ON THE ROOT (2026-10-12, Josh: "there is also a flicker when
    navigating from page to page"). Everything the root snapshot holds is the
@@ -1220,7 +1196,7 @@ label:has(> .picker-input:focus-visible) {
 }
 
 *:not(
-    button:not(.section-tab, .mprof__carousel-arrow),
+    button:not(.section-tab),
     select,
     input:is([type="button"], [type="submit"], [type="reset"]),
     [role="button"],
@@ -1271,7 +1247,7 @@ label:has(> .picker-input:focus-visible) {
 /* CONTROLS: a capsule. :where(), and so is TAGS below: both at zero
    specificity, so ORDER decides, and a tag drawn as a <button> is a tag. */
 :where(
-    button:not(.section-tab, .mprof__carousel-arrow),
+    button:not(.section-tab),
     select,
     input:is([type="button"], [type="submit"], [type="reset"]),
     [role="button"],

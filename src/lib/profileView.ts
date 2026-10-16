@@ -51,6 +51,13 @@ export interface ProfileWork {
    */
   descriptionDe?: string;
   /**
+   * THE TEXT BLOCK AFTER THE WORK (2026-10-16), RAW like the description
+   * pair above; workTextAfter() in links.ts picks the locale. The editor's
+   * preview passes it already resolved, in `textAfter`.
+   */
+  textAfter?: string;
+  textAfterDe?: string;
+  /**
    * Absolute href for "where this image lives" — already scheme-prefixed and
    * already filtered for linkability by workLink() in links.ts, so a renderer
    * can link it without checking anything. Absent when the member wrote

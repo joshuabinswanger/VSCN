@@ -43,6 +43,7 @@ import {
   galleryLimit,
   MAX_GALLERY_CAPTION,
   MAX_GALLERY_DESCRIPTION,
+  MAX_GALLERY_TEXT_AFTER,
   MAX_GALLERY_LINK,
   galleryErrorCode,
   loadGallery,
@@ -114,6 +115,7 @@ import {
   profileRole,
   profileBio,
   workDescription,
+  workTextAfter,
   MAX_SOCIAL_LINKS,
   MAX_SOCIAL_MEDIA,
 } from "./links.ts";
@@ -695,6 +697,25 @@ document.addEventListener("astro:page-load", () => {
             fitInline(descriptionDe);
             syncPreview();
           });
+
+          // THE TEXT BLOCK AFTER THE WORK (2026-10-16): both languages, the
+          // bar's EN | DE showing one. Blank is stored as absent.
+          const wireTextAfter = (key: "textAfter" | "textAfterDe", labelKey: "profile.gallery.textAfter" | "profile.gallery.textAfter.de") => {
+            const area = field<HTMLTextAreaElement>(key);
+            if (!area) return;
+            area.value = item[key] ?? "";
+            area.maxLength = MAX_GALLERY_TEXT_AFTER;
+            area.placeholder = s["profile.works.textAfter.ph"];
+            named(area, s[labelKey]);
+            area.addEventListener("input", () => {
+              if (area.value.trim()) gallery[index][key] = area.value;
+              else delete gallery[index][key];
+              fitInline(area);
+              syncPreview();
+            });
+          };
+          wireTextAfter("textAfter", "profile.gallery.textAfter");
+          wireTextAfter("textAfterDe", "profile.gallery.textAfter.de");
 
 
           // The two per-image links, wired identically — they differ in
@@ -1970,6 +1991,7 @@ document.addEventListener("astro:page-load", () => {
           caption: workCaption(g, worksLang),
           color: g.color,
           description: workDescription(g, worksLang),
+          textAfter: workTextAfter(g, worksLang),
           // Same rule the built page applies — works() in memberView.ts calls
           // this too — so the Preview tab shows a link exactly when a visitor
           // would get one, including showing none for a value that is not
@@ -2009,13 +2031,6 @@ document.addEventListener("astro:page-load", () => {
       noWorks: s["profile.view.noWorks"],
       with: s["member.project.with"],
       lang: worksLang,
-      carousel: {
-        prev: s["member.project.prev"],
-        next: s["member.project.next"],
-        position: s["member.project.position"],
-        works: s["member.project.works"],
-        roledescription: s["community.card.carousel"],
-      },
     });
   }
 

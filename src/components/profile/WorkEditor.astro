@@ -252,6 +252,21 @@ const t = useTranslations(lang);
             </div>
           </details>
         </figcaption>
+        {
+          /* THE TEXT BLOCK AFTER THE WORK (2026-10-16, Josh: "make it
+            possible to add text block in between image in projects"). Typed
+            where the page prints it, under the work and before the next one,
+            in the bar's language. Empty, it is only its placeholder; the
+            page prints nothing for it. */
+        }
+        <div class="mprof__text gallery-text">
+          <div class="gallery-lang-pane" data-gallery-lang-pane="en">
+            <textarea class="gallery-inline" rows="1" data-gallery-field="textAfter"></textarea>
+          </div>
+          <div class="gallery-lang-pane" data-gallery-lang-pane="de">
+            <textarea class="gallery-inline" rows="1" data-gallery-field="textAfterDe"></textarea>
+          </div>
+        </div>
       </figure>
     </template>
     {

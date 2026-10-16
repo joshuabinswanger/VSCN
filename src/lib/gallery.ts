@@ -43,6 +43,8 @@ export function galleryLimit(user: { emailVerified: boolean } | null | undefined
 }
 export const MAX_GALLERY_CAPTION = 140;
 export const MAX_GALLERY_DESCRIPTION = 600;
+/** The text block after a work (2026-10-16). Mirrors validImage's textAfter cap in firestore.rules. */
+export const MAX_GALLERY_TEXT_AFTER = 2000;
 
 /**
  * THE PER-IMAGE LINK'S CEILING. Matches `portfolio` in firestore.rules,
@@ -211,6 +213,15 @@ export interface GalleryItem {
    * absent means included. Written onto the record at Save.
    */
   inGallery?: false;
+  /**
+   * THE TEXT BLOCK AFTER THIS WORK (2026-10-16, Josh: "make it possible to
+   * add text block in between image in projects"). Printed on the member page
+   * between this work and the next one, in its project's column. German
+   * optional, falling back to this one as a description does. Its place is
+   * the work's: moving the work moves the words with it.
+   */
+  textAfter?: string;
+  textAfterDe?: string;
   /**
    * A VIDEO WORK (2026-09-23, documentation/20260923-motion-works-design.md):
    * the YouTube or Vimeo video it plays. `url` above is then the poster. Set
@@ -494,6 +505,8 @@ export async function saveGalleryRecords(items: readonly GalleryItem[]): Promise
         tags: item.tags,
         projectId: item.projectId,
         inGallery: item.inGallery,
+        textAfter: item.textAfter,
+        textAfterDe: item.textAfterDe,
       }),
     ),
   );

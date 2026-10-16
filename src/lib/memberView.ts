@@ -209,6 +209,8 @@ function works(
       color: g.color,
       description: g.description,
       descriptionDe: g.descriptionDe,
+      ...(g.textAfter ? { textAfter: g.textAfter } : {}),
+      ...(g.textAfterDe ? { textAfterDe: g.textAfterDe } : {}),
       link: workLink(g.link),
       siteLink: inheritedSiteLink(workLink(g.siteLink), project),
       tags: inheritedTags(g.tags ?? [], project),
