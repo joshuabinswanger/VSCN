@@ -1242,6 +1242,7 @@ label:has(> .picker-input:focus-visible) {
     .seg > *,
     .tagchip,
     .mprof__val,
+    .ccard__val,
     .pdisc__val,
     .ccpv__tag,
     .tag-suggestion-chip,
@@ -1249,6 +1250,7 @@ label:has(> .picker-input:focus-visible) {
     .ebar-menu,
     .ebar-sheet,
     .mprof__avatar,
+    .ccard__avatar,
     .avatar-img,
     .avatar-placeholder,
     .ob-avatar-img,
@@ -1299,7 +1301,7 @@ label:has(> .picker-input:focus-visible) {
 /* TAGS: rounded corners, not a capsule — a tag is a label, not a button, even
    where it links somewhere. Declared after CONTROLS at the same specificity,
    so a tag drawn as a <button> (TagSelector's picked chips) is a tag. */
-:where(.tagchip, .mprof__val, .pdisc__val, .ccpv__tag, .tag-suggestion-chip) {
+:where(.tagchip, .mprof__val, .ccard__val, .pdisc__val, .ccpv__tag, .tag-suggestion-chip) {
   border-radius: var(--radius-tag) !important;
 }
 
@@ -1309,7 +1311,7 @@ label:has(> .picker-input:focus-visible) {
    it, and the community index's opened row (added the same day: "make the
    index avatar round too"). Their own rules ask for 50% or nothing; the
    reset above was flattening them, so this lets them through. */
-:where(.mprof__avatar, .avatar-img, .avatar-placeholder, .ob-avatar-img, .ob-avatar-ph, .cindex__avatar) {
+:where(.mprof__avatar, .ccard__avatar, .avatar-img, .avatar-placeholder, .ob-avatar-img, .ob-avatar-ph, .cindex__avatar) {
   border-radius: 50% !important;
 }
 

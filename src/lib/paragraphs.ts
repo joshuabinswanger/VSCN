@@ -15,11 +15,15 @@ export function splitParagraphs(text: string | null | undefined): string[] {
 }
 
 /** The preview's twin of the page's markup: one span per paragraph. */
-export function fillParagraphs(el: HTMLElement, text: string | null | undefined): void {
+export function fillParagraphs(
+  el: HTMLElement,
+  text: string | null | undefined,
+  className = "mprof__para"
+): void {
   el.replaceChildren(
     ...splitParagraphs(text).map((p) => {
       const span = document.createElement("span");
-      span.className = "mprof__para";
+      span.className = className;
       span.textContent = p;
       return span;
     })

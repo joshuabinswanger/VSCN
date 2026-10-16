@@ -471,6 +471,8 @@ export interface CardPreviewLabels {
   next?: string;
   /** `member.workAlt` — the alt-text fallback for an uncaptioned image. */
   workAlt?: string;
+  /** `member.openTo` — the availability line's prefix, as on the page. */
+  openTo?: string;
   /** The editor's tab locale, for the lightbox's project line (projectSlideData). Without it the line is left out. */
   lang?: Lang;
 }
@@ -527,11 +529,46 @@ export function renderCardPreview(
   const nameEl = part("name");
   if (nameEl) nameEl.textContent = displayName;
 
+  // THE MEMBER PAGE'S COLUMN (2026-10-16): the head's lines as
+  // renderProfilePreview fills them, minus the tags.
+  const avatar = part("avatar") as HTMLImageElement | null;
+  if (avatar) {
+    const photo = vm.photoURL?.trim() ?? "";
+    if (photo) {
+      if (avatar.src !== photo) avatar.src = photo;
+      avatar.style.backgroundColor = vm.photoColor ?? "var(--color-border)";
+    } else {
+      avatar.removeAttribute("src");
+    }
+    show(avatar, Boolean(photo));
+  }
+  const affiliation = part("affiliation");
+  if (affiliation) affiliation.textContent = vm.affiliation;
+  show(affiliation, Boolean(vm.affiliation));
+  const where = part("where");
+  const whereText = vm.location.trim();
+  if (where) where.textContent = whereText;
+  show(where, Boolean(whereText));
+  const open = part("open");
+  if (open) open.textContent = `${labels.openTo ?? ""} ${vm.openTo.join(", ")}`.trim();
+  show(open, vm.openTo.length > 0);
 
   const bioEl = part("bio");
-  const bioText = vm.bio.trim();
-  if (bioEl) bioEl.textContent = bioText;
-  show(bioEl, Boolean(bioText));
+  if (bioEl) fillParagraphs(bioEl, vm.bio, "ccard__para");
+  show(bioEl, Boolean(vm.bio.trim()));
+
+  const needs = part("needs");
+  if (needs) {
+    const items = vm.visualNeeds
+      .map((need) => {
+        const li = clone("pval");
+        if (li) li.textContent = need;
+        return li;
+      })
+      .filter((n): n is HTMLElement => n !== null);
+    needs.replaceChildren(...items);
+  }
+  show(part("needs-row"), vm.visualNeeds.length > 0);
 
   const links = part("links");
   const portfolio = vm.portfolio.trim();
@@ -568,21 +605,7 @@ export function renderCardPreview(
     }
     links.replaceChildren(...items);
   }
-  show(part("links-row"), Boolean(portfolio) || social.length > 0);
-
-  const ptags = part("ptags");
-  if (ptags) {
-    const items = vm.tags
-      .map((tag) => {
-        const li = clone("ptag");
-        const chip = li?.querySelector("span");
-        if (chip) chip.textContent = tag;
-        return li;
-      })
-      .filter((n): n is HTMLElement => n !== null);
-    ptags.replaceChildren(...items);
-  }
-  show(ptags, vm.tags.length > 0);
+  show(links, Boolean(portfolio) || social.length > 0);
 
   // Same filter the profile-page preview applies: a gallery item mid-upload has
   // no dimensions yet, and a slide with no aspect is a collapsed frame.

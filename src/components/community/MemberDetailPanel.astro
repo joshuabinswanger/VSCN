@@ -4,33 +4,17 @@ import { communityTagHref, href, socialLinks } from "../../lib/links.ts";
 import { useTranslations, type Lang } from "../../i18n/utils.ts";
 
 interface Props {
-  /** Absent only in `shell` mode, where nothing is read from it. */
-  member?: MemberViewBase;
+  member: MemberViewBase;
   lang: Lang;
   /** Render the disclosure even when hasDetail() says no — for a caller
    *  slotting its own lead content (the index rows slot the member's
    *  profile picture, which is content worth a toggle by itself). */
   forceShow?: boolean;
 
-  /** PLAIN (2026-10-15, the pages card): the same words with NO disclosure
-   *  at all — a <div>, no summary, nothing folds. The full-frame directory
-   *  card has room for them in the open; the editor's card preview renders
-   *  the same. */
-  mode?: "plain";
-  /** SHELL: the same markup, empty, carrying `data-ccpv` hooks and the item
-   *  templates renderCardPreview() (src/lib/profilePreview.ts) fills from
-   *  live form state. Rendered here rather than copied into the preview
-   *  component so the panel's SCOPED rules reach it — a hand-written twin in
-   *  another file would carry a different scope attribute and none of them. */
-  shell?: boolean;
 }
 
-const { member, lang, forceShow = false, mode, shell = false } = Astro.props;
+const { member, lang, forceShow = false } = Astro.props;
 const t = useTranslations(lang);
-const plain = mode === "plain";
-// A disclosure or a plain box, same children. Astro renders a capitalised
-// string variable as a dynamic tag.
-const Root = plain ? "div" : "details";
 
 // Native <details> on purpose. ClientRouter is active site-wide, so any script
 // here would need an astro:page-load / astro:before-swap pair and would leak
@@ -38,16 +22,15 @@ const Root = plain ? "div" : "details";
 // none of that, and comes with keyboard and screen-reader behaviour already
 // correct.
 
-const bio = member?.bio.trim() ?? "";
-const portfolio = member?.portfolio.trim() ?? "";
-const social = socialLinks(member?.socialMedia.trim() ?? "");
-const tags = member?.tags ?? [];
-const displayName = member?.displayName ?? "";
+const bio = member.bio.trim();
+const portfolio = member.portfolio.trim();
+const social = socialLinks(member.socialMedia.trim());
+const tags = member.tags;
+const displayName = member.displayName;
 
 // Nothing to disclose — a profile that is name + role only. Rendering an
-// empty toggle would promise content that isn't there. A shell always
-// renders: what it will hold is decided in the browser.
-const show = shell || forceShow || (member ? hasDetail(member) : false);
+// empty toggle would promise content that isn't there.
+const show = forceShow || hasDetail(member);
 
 // THE WHOLE LINE AS THE TOGGLE (2026-09-01, Josh: "in index clicking on the
 // profile expands it"). A caller may slot the row it wants to be clickable
@@ -66,40 +49,23 @@ const hasSummary = Astro.slots.has("summary");
 
 {
   show ? (
-    <Root
-      class="pdisc"
-      class:list={{ "pdisc--line": hasSummary, "pdisc--plain": plain }}
-    >
+    <details class="pdisc" class:list={{ "pdisc--line": hasSummary }}>
       {/* No aria-label in line mode: the summary names ITSELF there — its
           content is the member's name and field, which is a better label than
           any sentence written here, and an aria-label would silence all of
-          it. The shell's label is completed in the browser, once there is a
-          name to complete it with (data-ccpv-expand carries the prefix). */}
-      {!plain && (
-        <summary
-          class="pdisc__toggle"
-          aria-label={
-            hasSummary ? undefined : shell ? undefined : `${t("community.card.expand")} ${displayName}`
-          }
-        >
-          {hasSummary && <slot name="summary" />}
-        </summary>
-      )}
+          it. */}
+      <summary
+        class="pdisc__toggle"
+        aria-label={hasSummary ? undefined : `${t("community.card.expand")} ${displayName}`}
+      >
+        {hasSummary && <slot name="summary" />}
+      </summary>
 
       <div class="pdisc__body">
         <div class="pdisc__body-inner">
           {/* The caller's lead content — the index slots the member's
               profile picture here. Empty for the card usages. */}
           <slot name="lead" />
-          {/* THE SHELL'S HOOKS: the same elements, empty and hidden, that
-              renderCardPreview() fills and shows. Each rendered twin follows. */}
-          {shell && <p class="pdisc__bio" data-ccpv="bio" hidden />}
-          {shell && (
-            <div class="pdisc__row" data-ccpv="links-row" hidden>
-              <ul class="pdisc__vals pdisc__vals--links" data-ccpv="links" />
-            </div>
-          )}
-          {shell && <ul class="pdisc__vals pdisc__vals--tags" data-ccpv="ptags" hidden />}
           {bio && <p class="pdisc__bio">{bio}</p>}
 
           {(portfolio || social.length > 0) && (
@@ -174,31 +140,9 @@ const hasSummary = Astro.slots.has("summary");
               A ledger row with nothing to disclose has no panel to put it in
               and keeps its link on the line — see CommunityGrid. */}
           <slot name="footer" />
-          {/* The shell's item templates. Cloned by renderCardPreview(): a
-              template's content is inert, and a clone carries THIS
-              component's scope attribute, which a node built in JS would not.
-              The tag is a <span>, not the card's <a>: a live filter link in
-              the editor would walk the member out of an unsaved form. */}
-          {shell && (
-            <>
-              <template data-ccpv-tpl="plink">
-                <li>
-                  <a class="pdisc__link" target="_blank" rel="noopener" />
-                </li>
-              </template>
-              <template data-ccpv-tpl="pval">
-                <li class="pdisc__val" />
-              </template>
-              <template data-ccpv-tpl="ptag">
-                <li>
-                  <span class="pdisc__val pdisc__tag tagchip" />
-                </li>
-              </template>
-            </>
-          )}
         </div>
       </div>
-    </Root>
+    </details>
   ) : (
     hasSummary && (
       /* NOTHING TO DISCLOSE, but the line still has to be printed. Before the
@@ -461,37 +405,5 @@ const hasSummary = Astro.slots.has("summary");
     .pdisc__body-inner { gap: 24px; }
     .pdisc__vals--links { gap: 12px 18px; }
   }
-
-
-  /* ── PLAIN MODE (2026-10-15, the pages card) ──────────────
-     The panel is the directory card's TEXT COLUMN beside the artwork: the
-     bio, the links and the tags under the card's own name and role, in the
-     open. No ground and no blur: the column IS the card rather than a panel
-     laid over its neighbours. Compact tags (2026-10-12, Josh: "tags more
-     compact"): a tighter chip and a tighter cloud than the ledger's panel. */
-  .pdisc--plain .pdisc__body {
-    padding: 0;
-    background: none;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-  .pdisc--plain {
-    display: block;
-    min-width: 0;
-  }
-  .pdisc--plain .pdisc__body-inner {
-    gap: 0.7rem;
-  }
-  .pdisc--plain .pdisc__vals--tags {
-    margin-bottom: 0;
-    gap: 2px 3px;
-  }
-  .pdisc--plain .pdisc__vals--tags .tagchip {
-    padding: 0 4px 0 calc(4px + var(--tag-track, 0px));
-    border-width: 1px;
-  }
-
-
-
 </style>
 

@@ -1,11 +1,11 @@
 ---
 import { getImage } from "astro:assets";
 import type { MemberView } from "../../lib/memberView.ts";
-import { memberHref, workCaption, workDescription } from "../../lib/links.ts";
+import { href, memberHref, socialLinks, workCaption, workDescription } from "../../lib/links.ts";
+import { splitParagraphs } from "../../lib/paragraphs.ts";
 import { embedDataAttrs } from "../../lib/embed.ts";
 import { projectSlideData } from "../../lib/projects.ts";
 import { useTranslations, type Lang } from "../../i18n/utils.ts";
-import MemberDetailPanel from "./MemberDetailPanel.astro";
 // THIS CARD'S SURFACE, in a file of its own so the profile editor's preview
 // can render the identical card — carousel included — instead of a still
 // picture that looks like one. See the header of communityCard.css; moving
@@ -65,6 +65,8 @@ const SIZES = "(max-width: 767px) 100vw, 60vw";
 
 
 const profileHref = memberHref(lang, member.slug);
+const portfolio = member.portfolio.trim();
+const social = socialLinks(member.socialMedia.trim());
 
 // WHAT THE LIGHTBOX GETS, one entry per work. EVERY SLIDE IS A LIGHTBOX ITEM
 // (2026-09-08, Josh: "photoswipe should pick all images in the gallery ...
@@ -265,39 +267,88 @@ const positionFor = (i: number) =>
     </div>
   </div>
 
-  {
-    /* THE HEAD: name and role, at the top of the words. The h2 is the
-      directory's outline (h1 member count → h2 member) and its link is the
-      way to the member's page, keyed for the morph that page plays on
-      arrival. A name is not an affordance, though — nothing says it is
-      clickable before pointing at it — which is why the foot row ends with a
-      button that says where it goes.
-      Outside the panel, so the name is the column's first line whatever
-      the panel holds. */
-  }
   {/* THE WORDS, one box (2026-10-16, Josh: "on desktop the images to be
-      totally centered and the text to the left"): name and role, the panel,
-      the count. A desktop hangs it off the centred picture's left edge; a
-      phone dissolves it (display: contents) and places its parts itself. */}
+      totally centered and the text to the left"): the head and the rest. A
+      desktop hangs it off the centred picture's left edge; a phone dissolves
+      it (display: contents) and places its parts itself.
+      THE MEMBER PAGE'S COLUMN (2026-10-16, Josh: "the portfolio text column
+      should match the profile view except that we should keep the flow text
+      size, remove the Tags and have the profile button"): the same lines in
+      the same order as .mprof__aside on /members/<slug> — picture, name,
+      role, affiliation, place, open to, bio, looking for, links — drawn to
+      the same measures in communityCard.css. No tags; PROFILE → closes it. */}
   <div class="ccard__words">
+    {
+      /* THE HEAD. The h2 is the directory's outline (h1 member count → h2
+        member) and its link is the way to the member's page, keyed for the
+        morph that page plays on arrival. A name is not an affordance, though
+        — nothing says it is clickable before pointing at it — which is why
+        the column ends with a link that says where it goes. */
+    }
     <div class="ccard__head">
+      {member.photoURL && (
+        <img
+          class="ccard__avatar"
+          src={member.photoURL}
+          width="112"
+          height="112"
+          alt=""
+          loading="lazy"
+          decoding="async"
+          style={`background-color: ${member.photoColor ?? "var(--color-border)"}`}
+        />
+      )}
       <h2 class="ccard__name">
         <a class="ccard__name-link" href={profileHref} transition:name={`mname-${member.id}`}>
           {member.displayName}
         </a>
       </h2>
       {member.role && <p class="ccard__role">{member.role}</p>}
+      {member.affiliation && <p class="ccard__affiliation">{member.affiliation}</p>}
+      {member.location && <p class="ccard__where">{member.location}</p>}
+      {member.openTo.length > 0 && (
+        <p class="ccard__open">
+          {t("member.openTo")} {member.openTo.join(", ")}
+        </p>
+      )}
     </div>
 
-    {
-      /* THE WORDS: the rest of the member's words, in the open. MemberDetailPanel
-        owns the bio, the links and the tag chips (every chip a way into the
-        directory's tag filter) — the same component the ledger rows use, in
-        its plain mode: no disclosure, nothing folds. forceShow: a member with
-        no bio, no links and no tags still gets the box, which holds the
-        Profile link. */
-    }
-    <MemberDetailPanel member={member} lang={lang} forceShow mode="plain">
+    <div class="ccard__more">
+      {member.bio && (
+        <p class="ccard__bio">
+          {splitParagraphs(member.bio).map((para) => <span class="ccard__para">{para}</span>)}
+        </p>
+      )}
+      {member.visualNeeds.length > 0 && (
+        <div class="ccard__row ccard__row--needs">
+          <h3 class="ccard__key">{t("member.needs")}</h3>
+          <ul class="ccard__vals">
+            {member.visualNeeds.map((need) => <li class="ccard__val">{need}</li>)}
+          </ul>
+        </div>
+      )}
+      {(portfolio || social.length > 0) && (
+        <ul class="ccard__links">
+          {portfolio && (
+            <li>
+              <a class="ccard__link" href={href(portfolio)} target="_blank" rel="noopener">
+                {portfolio}
+              </a>
+            </li>
+          )}
+          {social.map((s) =>
+            s.href ? (
+              <li>
+                <a class="ccard__link" href={s.href} target="_blank" rel="noopener">
+                  {s.label}
+                </a>
+              </li>
+            ) : (
+              <li class="ccard__val">{s.label}</li>
+            )
+          )}
+        </ul>
+      )}
       {
         /* THE NAMED WAY TO THE PERSON (2026-09-01, Josh: "add 'view profile'
           button to image cards"). It exists because the frame stopped going
@@ -305,14 +356,13 @@ const positionFor = (i: number) =>
           page needs a control that says where it goes. A LINK, not a button
           element, because it goes somewhere. The arrow is markup, aria-hidden,
           so the link reads as "Profile" and not as "Profile right arrow".
-          IN THE PANEL, last (2026-10-14, Josh: "profile above the bar"): the
-          column's closing line. */
+          The column's closing line (2026-10-14, Josh: "profile above the bar"). */
       }
-      <a slot="footer" class="ccard__profile" href={profileHref}>
+      <a class="ccard__profile" href={profileHref}>
         {t("community.card.profile")}
         <span aria-hidden="true">→</span>
       </a>
-    </MemberDetailPanel>
+    </div>
   </div>
       {
         /* THE FOOT: the count "‹ 1 / 3 ›", UNDER THE PICTURE on a desktop

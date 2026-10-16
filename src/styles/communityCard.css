@@ -28,11 +28,12 @@
  * all in the open — nothing folds. The pager "‹ 1 / 3 ›" sits under the
  * picture's bottom corner. The phone stacks the picture over the words.
  *
- * The column is MemberDetailPanel in its plain mode (`.pdisc--plain`), so the
- * words and their rules are the panel's — the index rows use the same
- * component. What this file owns is the card's GRID: where the frame, the
- * head, the column and the foot stand. The panel's own rules are scoped
- * in MemberDetailPanel.astro, and nothing here reaches into `.pdisc*`.
+ * The column is THE MEMBER PAGE'S COLUMN since 2026-10-16 (Josh: "the
+ * portfolio text column should match the profile view except that we should
+ * keep the flow text size, remove the Tags and have the profile button"): the
+ * lines of .mprof__aside in profile.css, in its order and at its measures,
+ * drawn here under .ccard__* names because this sheet is also the editor
+ * preview's (it was MemberDetailPanel's plain mode until then).
  */
 
 /* ── THE CARD'S GRID (2026-10-15, the pages card, layout A) ──
@@ -48,7 +49,7 @@
      space" (2026-10-15), back to 3rem the same day ("the gap between image
      and text still too big"). The count hangs in it at the picture's
      bottom edge and may reach a little into the words' column, whose foot
-     is kept clear for it (.pdisc max-height). */
+     is kept clear for it (.ccard__words max-height). */
   /* 5rem since 2026-10-16 (Josh: "more gap between images and text"). */
   --ccard-air: 5rem;
   /* The words' column (2026-10-14, Josh: "make the text etc wider"). The
@@ -101,35 +102,43 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
 }
 .ccard__head {
   align-items: flex-start;
 }
-/* The words. min-width so a long unbroken link cannot widen the column;
-   the column scrolls on its own in the rare case the words outrun the frame
-   on a desktop (the phone lets the card grow instead). */
-.ccard__words > .pdisc {
-  min-width: 0;
-  min-height: 0;
-  max-height: calc(var(--cpage-pic-h, 30rem) - 5rem);
+/* The column scrolls on its own in the rare case the words outrun the
+   picture on a desktop, as the member page's aside does (the phone lets the
+   card grow instead). */
+.ccard__words {
+  max-height: var(--cpage-pic-h, 30rem);
   overflow: hidden auto;
   /* NO VISIBLE BAR (2026-10-16): a sub-pixel rounding (180 vs 179px) put a
      10px Windows scrollbar in a column that did not overflow, which pulled
      the right-aligned Profile in off the column's edge. A long bio still
      scrolls (wheel, trackpad, touch); it just shows no bar. */
   scrollbar-width: none;
+  /* Room for a focused link's outline inside the scroll box's clip. */
+  padding: 3px;
+  margin: -3px;
 }
-.ccard__words > .pdisc::-webkit-scrollbar {
+.ccard__words::-webkit-scrollbar {
   display: none;
 }
 
-/* ── Name and role, at the head of the column ─────────── */
+/* ── The head: picture, name, role, where, open to ────── */
+/* .mprof__head and its lines in profile.css, at the aside's measures. */
 .ccard__head {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
   min-width: 0;
+}
+.ccard__avatar {
+  display: block;
+  width: 7rem;
+  height: 7rem;
+  margin-bottom: 1.5rem;
+  border-radius: 50%;
+  object-fit: cover;
 }
 .ccard__name {
   margin: 0;
@@ -150,9 +159,100 @@
   text-decoration-thickness: 1.5px;
 }
 .ccard__role {
-  margin: 0;
+  margin: 1rem 0 0;
   min-width: 0;
   color: var(--color-dark);
+}
+.ccard__affiliation {
+  margin: 0.4rem 0 0;
+  color: var(--color-dark);
+}
+.ccard__where {
+  margin: 0.4rem 0 0;
+  color: var(--color-muted);
+}
+/* A dot plus the words, as .mprof__open. */
+.ccard__open {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 1rem 0 0;
+  color: var(--color-muted);
+}
+.ccard__open::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  background: var(--color-dark);
+  border-radius: 50%;
+}
+
+/* ── The rest: bio, looking for, links, PROFILE → ──────── */
+.ccard__more {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  margin-top: 2.5rem;
+  min-width: 0;
+}
+.ccard__bio {
+  margin: 0;
+  color: var(--color-dark);
+  white-space: pre-line;
+}
+.ccard__para {
+  display: block;
+}
+.ccard__para + .ccard__para {
+  margin-top: 1.1em;
+}
+/* The aside's bio → meta step is 2.25rem, its rows 1.75rem apart. */
+.ccard__bio + * {
+  margin-top: 0.5rem;
+}
+.ccard__row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.ccard__key {
+  margin: 0;
+  color: var(--color-muted);
+}
+.ccard__vals,
+.ccard__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ccard__vals > li,
+.ccard__links > li {
+  display: flex;
+}
+.ccard__val {
+  padding: 5px 7px;
+  color: var(--color-muted);
+  border: 1px solid var(--color-border);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ccard__links {
+  column-gap: 1.1rem;
+  row-gap: 0.35rem;
+  align-items: baseline;
+}
+.ccard__link {
+  color: var(--color-dark);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+.ccard__link:hover {
+  color: var(--color-muted);
 }
 
 /* ── Artwork frame ────────────────────────────────────── */
@@ -357,12 +457,6 @@
   transform: translate(0.4rem, 0);
 }
 
-/* NO TAGS ON THE CARD (2026-10-15, Josh: "remove the tags"); the bar's tag
-   filter and the profile page still have them. */
-.ccard .pdisc__vals--tags {
-  display: none;
-}
-
 /* ── The foot: the pager under the picture ────────────── */
 .ccard__foot {
   flex: none;
@@ -498,10 +592,9 @@
   .ccard__head {
     grid-area: 3 / 1 / 4 / 2;
   }
-  .ccard__words > .pdisc {
+  .ccard__more {
     grid-area: 4 / 1 / 5 / 2;
-    max-height: none;
-    overflow: visible;
+    margin-top: 0;
   }
   /* The dots on their own row between the picture and the name, centred
      (2026-10-16; until then at the end of the name's line). A gallery of
@@ -520,14 +613,23 @@
   .ccard:not(:has(.ccard__dots:not([hidden]))) .ccard__head {
     grid-area: 2 / 1 / 3 / 2;
   }
-  .ccard:not(:has(.ccard__dots:not([hidden]))) .ccard__words > .pdisc {
+  .ccard:not(:has(.ccard__dots:not([hidden]))) .ccard__more {
     grid-area: 3 / 1 / 4 / 2;
   }
   /* A PHONE SHOWS THE PICTURE, THE NAME, THE LINKS AND THE WAY IN
      (2026-10-15, Josh: "on mobile the bio and tags should not be shown").
      The profile page has them. */
-  .ccard .pdisc__bio {
+  .ccard__bio,
+  .ccard__row--needs,
+  .ccard__avatar,
+  .ccard__affiliation,
+  .ccard__where,
+  .ccard__open {
     display: none;
+  }
+  .ccard__role,
+  .ccard__bio + * {
+    margin-top: 0;
   }
   /* Smaller on a phone (2026-10-12, Josh: "the Profile button smaller on
      mobile!"): the type a step down in type.css, and a tighter box. */
@@ -538,7 +640,7 @@
      on a phone (bio and tags are hidden there), PROFILE pushed to its right
      end; a member with long links sees it wrap under them, still right.
      One class over the panel's scoped rule, which would win a tie. */
-  .ccard__words > .pdisc .pdisc__body-inner {
+  .ccard__more {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: baseline;
@@ -576,7 +678,7 @@
    the card, unmodified — that is the point of the file.
 
    The name is a <span> here, not the card's <a>, the profile button a <span>
-   with nowhere to go, the tags <span>s rather than filter links, and the
+   with nowhere to go, and the
    frame's click target has no href: a live control that walked the member out
    of an unsaved form would be a trap, exactly as on the profile-page preview
    (see the back link in ProfileViewPreview). All still carry the card's
@@ -584,8 +686,7 @@
    states and the cursors have to be taken back off here — an underline or a
    pointer on something inert is the card promising what the preview cannot
    do. The selectors are one class deeper than the rules they override so
-   they win outright rather than on stylesheet order (the panel's `.pdisc__tag`
-   is scoped, which adds a class's worth of specificity). */
+   they win outright rather than on stylesheet order. */
 .ccard--preview .ccard__name-link:hover,
 .ccard--preview .ccard__name-link:focus-visible {
   text-decoration: none;
@@ -595,16 +696,11 @@
   cursor: default;
 }
 
-.ccard.ccard--preview .ccard__profile,
-.ccard.ccard--preview .pdisc__vals .pdisc__tag:hover {
+.ccard.ccard--preview .ccard__profile {
   cursor: default;
 }
 .ccard.ccard--preview .ccard__profile:hover {
   text-decoration: none;
-}
-.ccard.ccard--preview .pdisc__vals .pdisc__tag:hover {
-  color: var(--color-muted);
-  border-color: var(--color-border);
 }
 
 /* The card is RENDERED — with one work it simply omits the arrows, the dots

@@ -162,6 +162,7 @@ document.addEventListener("astro:page-load", () => {
     prev: s["community.card.prev"],
     next: s["community.card.next"],
     workAlt: s["member.workAlt"],
+    openTo: s["member.openTo"],
     lang: lang as Lang,
   };
 

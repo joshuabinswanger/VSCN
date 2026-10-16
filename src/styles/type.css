@@ -187,14 +187,26 @@
    page-wide NAME and BODY sizes read large in it. Only the card's own
    elements; a phone stacks them under the picture at full width. */
 @media (--bp-desktop) {
-  /* Bigger again (2026-10-16, Josh: "Name bigger"). */
+  /* THE MEMBER PAGE'S COLUMN (2026-10-16, Josh: "the portfolio text column
+     should match the profile view"): the name, role and affiliation as
+     .mprof__aside sets them in profile.css. */
   .ccard__name {
-    font-size: var(--fs-140);
+    font-size: clamp(1.75rem, 2.2vw, 3.2rem);
+    font-weight: 700;
+    line-height: 1.02;
+    letter-spacing: -0.03em;
   }
-  /* A step smaller again (2026-10-15, Josh: "the paragraph a bit smaller"). */
-  .ccard .pdisc__bio {
-    font-size: var(--fs-85);
-  }
+  /* The role and the bio: at the foot of this file, after META and BODY,
+     which would otherwise win the tie. */
+}
+/* The head's quieter lines, .mprof__affiliation / .mprof__where. */
+.ccard__affiliation {
+  font-size: var(--fs-90);
+  line-height: 1.35;
+}
+.ccard__where {
+  font-size: var(--fs-85);
+  line-height: 1.35;
 }
 
 /* HEADING: section heads and field labels, in caps. The info and legal
@@ -223,6 +235,8 @@
 .t-label,
 .mprof__key,
 .mprof__open,
+.ccard__key,
+.ccard__open,
 .pdisc__key,
 .tag-group-title,
 .gallery-tags-title,
@@ -295,6 +309,7 @@
 }
 
 .mprof__link,
+.ccard__link,
 .pdisc__link,
 .pswp--vscn .pswp__vscn-text-link {
   font-size: var(--fs-90);
@@ -337,6 +352,7 @@
    its rule in the regular weight, not NAME's heavier one. */
 .t-body,
 .mprof__bio,
+.ccard__bio,
 .member-bio,
 .cgrid__head {
   font-size: var(--fs-100);
@@ -349,6 +365,7 @@
 .t-chip,
 .pdisc__val:not(.tagchip),
 .mprof__val:not(.tagchip),
+.ccard__val,
 .ccpv__tag {
   font-size: var(--fs-68);
   font-weight: 500;
@@ -400,4 +417,21 @@
   /* The phone's PROFILE button a step under the label's phone size
      (2026-10-12, Josh: "the Profile button smaller on mobile!"). */
   .ccard__profile { font-size: var(--fs-tag); }
+}
+
+/* THE CARD'S ROLE AND BIO ON A DESKTOP (2026-10-16), after the voices they
+   step out of. The role as .mprof__role; the bio a step under BODY (2026-10-15,
+   Josh: "the paragraph a bit smaller"), and the member page's bio the same
+   size since 2026-10-16 (Josh: "the profile should get the same font size for
+   flow text"). */
+@media (--bp-desktop) {
+  .ccard__role {
+    font-size: var(--fs-90);
+    font-weight: 600;
+    line-height: 1.35;
+  }
+  .ccard__bio,
+  .mprof__bio {
+    font-size: var(--fs-85);
+  }
 }

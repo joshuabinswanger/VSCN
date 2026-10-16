@@ -17,14 +17,13 @@
 // (src/styles/communityCard.css) and the paging comes from the one module both
 // call (src/lib/communityCarousel.ts).
 //
-// AND THE COLUMN (2026-10-12, gallery card v2). The card's words — name,
-// role, bio, links, tags — stand beside the picture now, open, so the preview
-// has to carry them too or it would be previewing half a card. They are
-// MemberDetailPanel in its `shell` mode: the panel's own markup with the
-// text left empty and `data-ccpv` hooks for the renderer, rendered by the
-// panel so its scoped rules reach it (a copy written here would carry this
-// component's scope attribute and none of them). The fold works in the
-// preview exactly as on the card, because it is the same native <details>.
+// AND THE COLUMN (2026-10-12, gallery card v2). The card's words stand
+// beside the picture, open, so the preview carries them too or it would be
+// previewing half a card. Since 2026-10-16 they are the member page's column
+// (picture, name, role, affiliation, place, open to, bio, looking for, links,
+// PROFILE →), drawn by communityCard.css — a plain sheet, so the same
+// `ccard__*` markup below, left empty with `data-ccpv` hooks, takes the card's
+// rules exactly. (Until then it was MemberDetailPanel's scoped `shell` mode.)
 //
 // What is still the preview's own, and has to be:
 //   - `.ccard--preview`, which takes back the affordances the shell cannot
@@ -50,7 +49,6 @@
 // member's data never reaches the build, so there is nothing to render here
 // until the form has loaded. The one thing rendered with words is the
 // profile button's label, which is the page's language and nobody's data.
-import MemberDetailPanel from "./MemberDetailPanel.astro";
 import { useTranslations, type Lang } from "../../i18n/utils.ts";
 import "../../styles/communityCard.css";
 
@@ -123,9 +121,7 @@ const t = useTranslations(lang);
        <span> where the card has an <a> — the card's name links to the
        member's page, and a live control that walked the member out of an
        unsaved form would be a trap, the same call the profile-page preview
-       makes for its back link. The role under it, hidden until there is
-       one. The head stands outside the panel, as on the card. The panel's
-       own hooks (bio, links, tags) are inside the shell. */
+       makes for its back link. Every line hidden until it has words. */
   }
   {/* THE WORDS, one box (2026-10-16, Josh: "on desktop the images to be
       totally centered and the text to the left"): name and role, the panel,
@@ -133,17 +129,27 @@ const t = useTranslations(lang);
       phone dissolves it (display: contents) and places its parts itself. */}
   <div class="ccard__words">
     <div class="ccard__head">
+      <img class="ccard__avatar" data-ccpv="avatar" width="112" height="112" alt="" hidden />
       <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
       <p class="ccard__role" data-ccpv="role" hidden></p>
+      <p class="ccard__affiliation" data-ccpv="affiliation" hidden></p>
+      <p class="ccard__where" data-ccpv="where" hidden></p>
+      <p class="ccard__open" data-ccpv="open" hidden></p>
     </div>
-    <MemberDetailPanel lang={lang} shell mode="plain">
-      {/* In the panel, last, as on the card — a <span> here because there is
-          no page to go to from an unsaved form. */}
-      <span slot="footer" class="ccard__profile">
+    <div class="ccard__more">
+      <p class="ccard__bio" data-ccpv="bio" hidden></p>
+      <div class="ccard__row ccard__row--needs" data-ccpv="needs-row" hidden>
+        <h3 class="ccard__key">{t("member.needs")}</h3>
+        <ul class="ccard__vals" data-ccpv="needs"></ul>
+      </div>
+      <ul class="ccard__links" data-ccpv="links" hidden></ul>
+      {/* Last, as on the card — a <span> here because there is no page to
+          go to from an unsaved form. */}
+      <span class="ccard__profile">
         {t("community.card.profile")}
         <span aria-hidden="true">→</span>
       </span>
-    </MemberDetailPanel>
+    </div>
   </div>
   {/* The count, outside the words as on the card. */}
   <div class="ccard__foot">
@@ -157,14 +163,15 @@ const t = useTranslations(lang);
        which a node built in JS would not (see renderProfilePreview's header).
        The slide's data-pswp-* set (+ data-work-url) is what communityCarousel.ts reads; it is
        filled per image so the shell speaks the card's own contract. The
-       column's item templates (links, values, tag chips) live in the panel's
-       shell for the scope reason above. */
+       column's link and value templates follow it. */
   }
   <template data-ccpv-tpl="slide"
     ><a class="ccard__slide" tabindex="-1"><img class="ccard__img" alt="" decoding="async" /></a></template
   >
   <template data-ccpv-tpl="dot"><span class="cdot"></span></template>
   <template data-ccpv-tpl="tag"><li class="ccpv__tag"></li></template>
+  <template data-ccpv-tpl="plink"><li><a class="ccard__link" target="_blank" rel="noopener"></a></li></template>
+  <template data-ccpv-tpl="pval"><li class="ccard__val"></li></template>
 </article>
 </div>
 
