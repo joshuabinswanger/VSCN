@@ -62,6 +62,7 @@
 // fills with one dot per work), `[data-carousel-live]`, and
 // `data-position-label` ("Work {n} of {total}").
 
+import { mountDots } from "./carouselDots.ts";
 import { pagerChevron } from "./pager.ts";
 
 const live = new Map<HTMLElement, () => void>();
@@ -151,15 +152,13 @@ export function initProjectCarousels(root: ParentNode = document): void {
     const dotRow = carousel.querySelector<HTMLElement>("[data-carousel-dots]");
     const dots = slides.map(() => {
       const dot = document.createElement("span");
-      dot.className = "mprof__carousel-dot";
+      dot.className = "cdot";
       return dot;
     });
-    // The position as text (2026-09-28, Josh: "try text instead of dots"),
-    // in the dots' row; the dots stay, hidden by one rule in profile.css.
-    const count = document.createElement("span");
-    count.className = "mprof__carousel-count";
-    // Flanked by chevrons that page, "‹ 2 / 7 ›", like the gallery card's and
-    // the lightbox's (src/lib/pager.ts). Named after the edge arrows and
+    // The position as Instagram's sliding row of dots (2026-10-16, Josh;
+    // carouselDots.ts), the same row as the gallery card's.
+    // Flanked by chevrons that page, "‹ ••• ›", like the gallery card's
+    // (src/lib/pager.ts). Named after the edge arrows and
     // reachable by a screen reader, but not tab stops: the track itself is
     // the tab stop and its arrow keys page (see pager.ts for the reasoning).
     const countPrev = pagerChevron("prev", () => go(current() - 1), {
@@ -170,7 +169,8 @@ export function initProjectCarousels(root: ParentNode = document): void {
       label: next?.getAttribute("aria-label"),
       focusable: false,
     });
-    dotRow?.replaceChildren(countPrev, count, countNext, ...dots);
+    dotRow?.replaceChildren(countPrev, countNext);
+    const showDot = dotRow ? mountDots(dotRow, dots) : null;
     const liveRegion = carousel.querySelector<HTMLElement>("[data-carousel-live]");
     const positionLabel = carousel.dataset.positionLabel ?? "";
     const controller = new AbortController();
@@ -274,8 +274,7 @@ export function initProjectCarousels(root: ParentNode = document): void {
       if (next) next.disabled = atEnd;
       countPrev.disabled = atStart;
       countNext.disabled = atEnd;
-      dots.forEach((dot, n) => dot.classList.toggle("mprof__carousel-dot--on", n === i));
-      count.textContent = `${i + 1} / ${slides.length}`;
+      showDot?.(i);
       carousel.classList.toggle("is-end", atEnd);
       slides.forEach((slide, n) => slide.classList.toggle("is-current", n === i));
       frame();

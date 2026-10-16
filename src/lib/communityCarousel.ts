@@ -26,6 +26,7 @@
 // lightbox.ts), `.ccard__img` per slide, `[data-carousel-prev/next]`,
 // `[data-carousel-live]`, and `.ccard__dots` on the card. Render that shape
 // and it pages. The frame's `data-index` says which slide is showing.
+import { mountDots } from "./carouselDots.ts";
 import { ensurePagerChevron } from "./pager.ts";
 import { hasKeyModifier } from "./keys.ts";
 
@@ -116,24 +117,19 @@ export function initCarousels(root: ParentNode = document): void {
     const total = slides.length;
 
     const card = carousel.closest<HTMLElement>(".ccard") ?? carousel;
-    const dots = Array.from(card.querySelectorAll<HTMLElement>(".ccard__dot"));
     const dotRow = card.querySelector<HTMLElement>(".ccard__dots");
-    let count = dotRow?.querySelector<HTMLElement>(".ccard__count") ?? null;
-    if (dotRow && !count) {
-      count = document.createElement("span");
-      count.className = "ccard__count";
-      count.textContent = `1 / ${total}`;
-      dotRow.prepend(count);
-    }
+    const dots = Array.from(card.querySelectorAll<HTMLElement>(".ccard__dots .cdot"));
     const liveRegion = carousel.querySelector<HTMLElement>("[data-carousel-live]");
     const positionLabel = carousel.dataset.positionLabel ?? "";
 
     // WHAT A SLIDE CHANGE MEANS: the showing slide is the one tab stop and
     // the one a screen reader may reach (the others are aria-hidden — opacity
     // and overflow hide nothing from it), its neighbours are fetched so the
-    // next swipe lands on a picture, the count and the dots follow, and the
+    // next swipe lands on a picture, the dots follow, and the
     // live region says "Image 2 of 3" — unless the lightbox asked for the
     // move, which is already announcing the picture it opened.
+    // The position as Instagram's sliding row of dots (carouselDots.ts).
+    const showDot = dotRow && dots.length ? mountDots(dotRow, dots) : null;
     let current = -1;
     let quiet = false;
     const reflect = (i: number) => {
@@ -148,8 +144,7 @@ export function initCarousels(root: ParentNode = document): void {
         else slide.setAttribute("aria-hidden", "true");
         slide.tabIndex = n === i ? 0 : -1;
       });
-      dots.forEach((dot, n) => dot.classList.toggle("ccard__dot--on", n === i));
-      if (count) count.textContent = `${i + 1} / ${total}`;
+      showDot?.(i);
       if (liveRegion && !quiet) {
         liveRegion.textContent = positionLabel
           .replace("{n}", String(i + 1))
@@ -244,7 +239,7 @@ export function initCarousels(root: ParentNode = document): void {
       { signal },
     );
 
-    // The card's count row: "‹ 2 / 7 ›". The chevrons are the same control
+    // The card's dot row: "‹ ••• ›". The chevrons are the same control
     // as the edge arrows, drawn where the count is (pager.ts).
     if (dotRow) {
       const prevPager = ensurePagerChevron(dotRow, "prev", prev, {

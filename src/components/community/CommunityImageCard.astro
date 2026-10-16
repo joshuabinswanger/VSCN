@@ -330,9 +330,10 @@ const positionFor = (i: number) =>
           paging the edge arrows and the frame's arrow keys already do. The
           position is also spoken by the live region inside the frame. The
           dots themselves are pointer-events:none indicators.
-          THE POSITION AS TEXT (2026-09-28, Josh: "try text instead of dots").
-          The dots stay in the markup and the engine, hidden by one rule in
-          communityCard.css, so switching back is that rule. The chevrons page
+          DOTS AGAIN, INSTAGRAM'S SLIDING WINDOW (2026-10-16, Josh), drawn
+          here in their first state so nothing jumps before the engine runs
+          (src/lib/carouselDots.ts). The "2 / 7" count they replaced is
+          recorded in documentation/20261016-carousel-count-design.md. The chevrons page
           (communityCarousel.ts wires them, src/lib/pager.ts draws the same
           pair for the preview) and carry the edge arrows' names. */
       }
@@ -348,7 +349,21 @@ const positionFor = (i: number) =>
             >
               <span aria-hidden="true" />
             </button>
-            <span class="ccard__count">1 / {works.length}</span>
+            <span class="cdots" aria-hidden="true" style={`--cdots-n: ${Math.min(works.length, 5)}`}>
+              <span class="cdots__strip">
+                {works.map((_, i) => (
+                  <span
+                    class="cdot"
+                    class:list={{
+                      "cdot--on": i === 0,
+                      "cdot--md": works.length > 5 && i === 3,
+                      "cdot--sm": works.length > 5 && i === 4,
+                      "cdot--out": i > 4,
+                    }}
+                  />
+                ))}
+              </span>
+            </span>
             <button
               class="pager-chev pager-chev--next"
               type="button"
@@ -358,9 +373,6 @@ const positionFor = (i: number) =>
             >
               <span aria-hidden="true" />
             </button>
-            {works.map((_, i) => (
-              <span class="ccard__dot" class:list={{ "ccard__dot--on": i === 0 }} />
-            ))}
           </div>
         )
       }

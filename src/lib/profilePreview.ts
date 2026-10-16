@@ -684,12 +684,10 @@ export function renderCardPreview(
         // at all for a gallery of one.
         const dots = part("dots");
         if (dots) {
+          // communityCarousel.ts gathers them into the sliding window
+          // (carouselDots.ts) and marks the current one.
           const marks = (isCarousel ? works : [])
-            .map((_, i) => {
-              const dot = clone("dot");
-              if (dot && i === 0) dot.classList.add("ccard__dot--on");
-              return dot;
-            })
+            .map(() => clone("dot"))
             .filter((n): n is HTMLElement => n !== null);
           dots.replaceChildren(...marks);
         }

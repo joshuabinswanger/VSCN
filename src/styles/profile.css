@@ -622,35 +622,15 @@
    fall back to the column. */
 .mprof__carousel-dots {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: var(--carousel-dot-gap);
   padding-right: var(--frame-r, 0px);
   pointer-events: none;
 }
 
-.mprof__carousel-dot {
-  width: var(--carousel-dot);
-  height: var(--carousel-dot);
-  border-radius: 50%;
-  background: var(--color-dark);
-  opacity: 0.22;
-  transition: opacity 180ms ease;
-}
-.mprof__carousel-dot--on {
-  opacity: 1;
-}
-
-/* TEXT INSTEAD OF DOTS (2026-09-28), exactly as .ccard__count in
-   communityCard.css: the dots still follow the carousel, and this rule is
-   the whole switch back. */
-.mprof__carousel-dot {
-  display: none;
-}
-/* Its type is COUNT in type.css. */
-.mprof__carousel-count {
-  white-space: nowrap;
-  color: var(--color-muted);
-}
+/* The dots themselves are .cdots / .cdot in global.css, shared with the
+   gallery card (2026-10-16). */
 
 /* The track and its two edge strips, both on the column. */
 .mprof__carousel-stage {
@@ -864,7 +844,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .mprof__carousel-track,
-  .mprof__carousel-dot,
   .mprof__carousel-arrow {
     transition: none;
   }

@@ -71,7 +71,7 @@ test("tab keys page with bare arrows/Home/End and leave modified ones to the bro
 // The engine is native scroll-snap (2026-10-15): the index is the track's
 // scrollLeft over its width, the chevrons scroll by one width, the ends
 // wrap. Just enough DOM for initCarousels(): the frame, its track and
-// slides, the arrows and the card's count row with server-rendered
+// slides, the arrows and the card's dot row with server-rendered
 // chevrons — the nodes that SURVIVE a re-init on the editor's preview frame.
 class El extends EventTarget {
   constructor(parts = {}, up = {}) {
@@ -83,7 +83,13 @@ class El extends EventTarget {
     this.tabIndex = 0;
     this.title = "";
     this.textContent = "";
-    this.classList = { toggle() {}, add() {}, contains() { return false; } };
+    const classes = new Set();
+    this.classList = {
+      toggle(c, on) { if (on ?? !classes.has(c)) classes.add(c); else classes.delete(c); },
+      add(c) { classes.add(c); },
+      contains(c) { return classes.has(c); },
+    };
+    this.style = { props: {}, setProperty(n, v) { this.props[n] = v; } };
     this.clientWidth = 300;
     this.scrollLeft = 0;
     this.scrolls = [];
@@ -105,6 +111,8 @@ class El extends EventTarget {
   focus() {}
   prepend() {}
   append() {}
+  before() {}
+  replaceChildren() {}
 }
 
 function carouselHarness() {
@@ -116,10 +124,11 @@ function carouselHarness() {
   };
   const window = { matchMedia: () => ({ matches: false }) };
   const pager = loadTs("src/lib/pager.ts", {}, { document });
+  const carouselDots = loadTs("src/lib/carouselDots.ts", {}, { document });
   const keys = loadTs("src/lib/keys.ts", {});
   const carousel = loadTs(
     "src/lib/communityCarousel.ts",
-    { "./pager.ts": pager, "./keys.ts": keys },
+    { "./carouselDots.ts": carouselDots, "./pager.ts": pager, "./keys.ts": keys },
     { document, window, requestAnimationFrame: (fn) => fn(), ResizeObserver: undefined },
   );
 
@@ -129,9 +138,11 @@ function carouselHarness() {
   const track = new El({ ".ccard__slide": slides, ".ccard__img": images });
   const chevPrev = new El();
   const chevNext = new El();
-  const count = new El();
-  const dotRow = new El({ ".ccard__count": count, ".pager-chev--prev": chevPrev, ".pager-chev--next": chevNext });
-  const card = new El({ ".ccard__dot": [], ".ccard__dots": dotRow });
+  const dots = [new El(), new El(), new El()];
+  const strip = new El();
+  strip.parentElement = new El();
+  const dotRow = new El({ ".cdots__strip": strip, ".pager-chev--prev": chevPrev, ".pager-chev--next": chevNext });
+  const card = new El({ ".ccard__dots .cdot": dots, ".ccard__dots": dotRow });
   const prev = new El();
   const next = new El();
   const live = new El();
@@ -148,7 +159,7 @@ function carouselHarness() {
   );
   frame.dataset.positionLabel = "Image {n} of {total}";
   const root = new El({ "[data-carousel]": frame });
-  return { ...carousel, root, frame, track, slides, prev, next, chevPrev, chevNext, count, live };
+  return { ...carousel, root, frame, track, slides, prev, next, chevPrev, chevNext, dots, live };
 }
 
 test("carousel: chevrons page by one width and wrap at the ends", () => {
@@ -161,7 +172,7 @@ test("carousel: chevrons page by one width and wrap at the ends", () => {
   h.chevNext.dispatchEvent(new Event("click"));
   assert.equal(h.track.scrolls.at(-1).left, 300);
   assert.equal(h.frame.dataset.index, "1");
-  assert.equal(h.count.textContent, "2 / 3");
+  assert.deepEqual(h.dots.map((d) => d.classList.contains("cdot--on")), [false, true, false]);
   assert.equal(h.live.textContent, "Image 2 of 3");
   assert.equal(h.slides[1].tabIndex, 0);
   assert.equal(h.slides[0].tabIndex, -1);
@@ -175,7 +186,7 @@ test("carousel: chevrons page by one width and wrap at the ends", () => {
   h.track.scrollLeft = 310;
   h.track.dispatchEvent(new Event("scroll"));
   assert.equal(h.frame.dataset.index, "1");
-  assert.equal(h.count.textContent, "2 / 3");
+  assert.deepEqual(h.dots.map((d) => d.classList.contains("cdot--on")), [false, true, false]);
 });
 
 test("carousel: a show event jumps to that slide; destroy releases the frame", () => {

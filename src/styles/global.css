@@ -1057,6 +1057,65 @@ label:has(> .picker-input:focus-visible) {
   display: none;
 }
 
+/* ── A carousel's dots, Instagram's sliding window ─────────────────────
+   (2026-10-16, Josh: "model the dots after instagram (with the fading
+   smaller dots) but highlight color should be black".) Built and moved by
+   src/lib/carouselDots.ts; on the directory card and a project's carousel.
+   .cdots is a window --cdots-n dots wide; the strip inside slides by
+   --cdots-start dots; an edge dot with more beyond it shrinks. Grey, the
+   current one black. */
+.cdots {
+  --cdot-step: calc(var(--carousel-dot) + var(--carousel-dot-gap));
+  display: block;
+  flex: none;
+  width: calc(var(--cdots-n, 1) * var(--cdot-step) - var(--carousel-dot-gap));
+  height: var(--carousel-dot);
+  overflow: hidden;
+  pointer-events: none;
+}
+.cdots__strip {
+  display: flex;
+  gap: var(--carousel-dot-gap);
+  transform: translateX(calc(var(--cdots-start, 0) * -1 * var(--cdot-step)));
+  transition: transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.cdot {
+  flex: none;
+  width: var(--carousel-dot);
+  height: var(--carousel-dot);
+  border-radius: 50%;
+  background: var(--color-dark);
+  opacity: 0.22;
+  transition:
+    opacity 180ms ease,
+    transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.cdot--on {
+  opacity: 1;
+}
+.cdot--md {
+  transform: scale(0.75);
+}
+.cdot--sm {
+  transform: scale(0.5);
+}
+.cdot--out {
+  transform: scale(0);
+}
+/* A little air between the dots and the chevrons either side; a phone
+   hides the chevrons, so the dots keep the picture's edge there. */
+@media (--bp-desktop) {
+  .pager-chev + .cdots {
+    margin-inline: 0.3rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cdots__strip,
+  .cdot {
+    transition: none;
+  }
+}
+
 /* ── A count's chevrons, "‹ 2 / 7 ›" ─────────────────────────────────────
    (2026-09-28, Josh: the gallery card, the project carousel and the
    lightbox should page the same way.) Built by src/lib/pager.ts, and in the
@@ -1192,7 +1251,8 @@ label:has(> .picker-input:focus-visible) {
     .community-bar__in,
     .tag-filter__search,
     .ts-filter,
-    .ts-input
+    .ts-input,
+    .cdot
   ),
 *:not(.seg, .ebar, .ebar-menu, .profile-save-button, .nav-link)::before,
 *:not(.seg, .ebar, .ebar-menu)::after {

@@ -99,12 +99,12 @@
   /* The small caps that label things (see LABEL below). Its own token
      because it is a voice, not a factor: 10px here, 11px on a phone. */
   --fs-label: 10px;
-  /* A carousel's position dots, on the directory card (.ccard__dot) and on
-     a member page's project carousels (.mprof__carousel-dot): one size for
+  /* A carousel's position dots, on the directory card (.cdot in global.css) and on
+     a member page's project carousels: one size for
      both. Doubled from 0.18rem on 2026-09-28 (Josh: "make the dots
-     bigger"). */
-  --carousel-dot: 0.36rem;
-  --carousel-dot-gap: 0.28rem;
+     bigger"); Instagram's ~6px on 2026-10-16, with the dots back. */
+  --carousel-dot: 0.46rem;
+  --carousel-dot-gap: 0.32rem;
 }
 
 /* Mobile follows the Koppen reference: 13px body, 16px large copy,
@@ -317,14 +317,12 @@
 }
 
 /* COUNT: a carousel's position, "2 / 7", wherever pictures are paged: the
-   directory card, a project's carousel on the member page, and the
-   lightbox's own counter (2026-09-28, Josh: "make the counter and all the
+   lightbox's own counter (the directory card and a project's carousel
+   show dots instead since 2026-10-16) (2026-09-28, Josh: "make the counter and all the
    styles in photoswipe adjusted to the rest of the site"). Plain numerals,
    not caps, with tabular figures so "9 / 12" and "10 / 12" do not shift.
    Colour (muted) stays with each component. */
 .t-count,
-.ccard__count,
-.mprof__carousel-count,
 .pswp--vscn .pswp__vscn-counter-count {
   font-size: var(--fs-75);
   font-weight: 400;
