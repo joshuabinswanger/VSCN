@@ -1067,7 +1067,16 @@ const BRAND_SLOTS: BrandSlot[] = [
     initWordmarkChoice(ticker);
     refreshBrandName();
     attachBrandOverwrite();
+    // observe() always reports once at the start, and refreshBrandName has
+    // just run above: that first report re-fitted the title for nothing and
+    // forced a second full layout of the page being arrived on — ~75–140ms
+    // of a phone's arrival (2026-10-16, the Portfolios stutter). Only a size
+    // that actually CHANGED does the work.
+    let fitted = `${ticker.offsetWidth}x${ticker.offsetHeight}`;
     brandResizeObserver = new ResizeObserver(() => {
+      const size = `${ticker.offsetWidth}x${ticker.offsetHeight}`;
+      if (size === fitted) return;
+      fitted = size;
       leaveBrandName();
       refreshBrandName();
       // The clamp on --brand-hide is the ticker's own height, and a resize is
@@ -1243,6 +1252,25 @@ const BRAND_SLOTS: BrandSlot[] = [
       ],
       { duration: ENTER_MS, easing: "cubic-bezier(.18,1.25,.32,1)", fill: "backwards" }
     );
+    // HELD UNTIL THE ARRIVAL'S WORK IS DONE (2026-10-16, Josh: "it still
+    // stutters"). Started here, the rise was timed from the swap, but the
+    // page-load handlers and the first layout of a page like /community
+    // block the main thread for 300ms and more on a phone — so the first
+    // frame that showed was already a third of the way up, and it jumped.
+    // It waits at its first frame (invisible) until two frames after
+    // page-load, then plays from the start.
+    // A second's fallback, so the page can never be left at its invisible
+    // first frame by a page-load that does not come.
+    enter.pause();
+    const start = () => {
+      if (enter.playState === "paused") enter.play();
+    };
+    document.addEventListener(
+      "astro:page-load",
+      () => requestAnimationFrame(() => requestAnimationFrame(start)),
+      { once: true }
+    );
+    setTimeout(start, 1000);
     enter.finished.catch(() => {}).finally(() => delete root.dataset.arriving);
   });
 
