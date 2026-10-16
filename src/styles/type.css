@@ -185,9 +185,9 @@
 /* THE CARD'S NAME AS THE MEMBER PAGE SETS IT (2026-10-16, Josh: "the
    portfolio text column should match the profile view"), .mprof__aside's
    name in profile.css — at EVERY width since the same day: the name is the
-   card's only line beside the picture now, and a phone sets it as big
+   card's first line beside the picture, and a phone sets it as big
    (Josh: "on phone increase the Name font as well"). The clamp's floor is
-   what a phone gets. The bio: at the foot of this file, after BODY, which
+   what a phone gets. The role: at the foot of this file, after META, which
    would otherwise win the tie. */
 .ccard__name {
   font-size: clamp(1.75rem, 2.2vw, 3.2rem);
@@ -222,7 +222,6 @@
 .t-label,
 .mprof__key,
 .mprof__open,
-.ccard__key,
 .pdisc__key,
 .tag-group-title,
 .gallery-tags-title,
@@ -245,6 +244,7 @@
    the same author line as a Grid tile's, the same links as under the work on
    the member page. */
 .t-meta,
+.ccard__role,
 .member-role,
 .member-link,
 .mprof__index-link,
@@ -339,7 +339,6 @@
    its rule in the regular weight, not NAME's heavier one. */
 .t-body,
 .mprof__bio,
-.ccard__bio,
 .member-bio,
 .cgrid__head {
   font-size: var(--fs-100);
@@ -352,7 +351,6 @@
 .t-chip,
 .pdisc__val:not(.tagchip),
 .mprof__val:not(.tagchip),
-.ccard__val,
 .ccpv__tag {
   font-size: var(--fs-68);
   font-weight: 500;
@@ -398,6 +396,7 @@
    caption — its words are either open beside the picture or folded away —
    so they speak NAME and META at every width.) */
 @media (--bp-mobile) {
+  .ccard__role { font-weight: 400; line-height: 1.4; }
   .pdisc__bio { line-height: 1.6; }
   .pdisc__link { font-weight: 400; line-height: 1.5; }
   /* The phone's PROFILE button a step under the label's phone size
@@ -405,8 +404,9 @@
   .ccard__profile { font-size: var(--fs-tag); }
 }
 
-/* THE CARD'S BIO ON A DESKTOP (2026-10-16), after the voice it steps out
-   of: a step under BODY (2026-10-15,
+/* THE CARD'S ROLE AND THE MEMBER PAGE'S BIO ON A DESKTOP (2026-10-16), after
+   the voices they step out
+   of. The bio a step under BODY (2026-10-15,
    Josh: "the paragraph a bit smaller"), and the member page's bio the same
    size since 2026-10-16 (Josh: "the profile should get the same font size for
    flow text"). A work's description under its picture on the member page
@@ -414,7 +414,13 @@
    same font size as the flow text for the profile"), with the bio's leading;
    the title above it keeps CAPTION's size. On a phone all three are 13px. */
 @media (--bp-desktop) {
-  .ccard__bio,
+  /* The card's role as .mprof__role (back on the card 2026-10-16, Josh:
+     "Add Role back in."). */
+  .ccard__role {
+    font-size: var(--fs-90);
+    font-weight: 600;
+    line-height: 1.35;
+  }
   .mprof__bio,
   .mprof__desc {
     font-size: var(--fs-85);

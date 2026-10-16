@@ -2,7 +2,6 @@
 import { getImage } from "astro:assets";
 import type { MemberView } from "../../lib/memberView.ts";
 import { memberHref, workCaption, workDescription } from "../../lib/links.ts";
-import { splitParagraphs } from "../../lib/paragraphs.ts";
 import { embedDataAttrs } from "../../lib/embed.ts";
 import { projectSlideData } from "../../lib/projects.ts";
 import { useTranslations, type Lang } from "../../i18n/utils.ts";
@@ -290,8 +289,9 @@ const positionFor = (i: number) =>
       "move the profile to the left of the name always").
       THE NAME ALONE (2026-10-16, Josh's Affinity redraw of his own card,
       Design/Card/Binswanger/VSCN_Card_Binswanger.af): no role, affiliation,
-      place or links on the card — the member page has them. The picture
-      hangs from the name's top, and a phone shows no picture at all. */}
+      place or links on the card — the member page has them.
+      NAME, ROLE, PROFILE (same day, Josh: "actually just Name and Profile
+      Button. Add Role back in."): no picture, no bio, no "looking for". */}
   <div class="ccard__words">
     {
       /* THE HEAD. The h2 is the directory's outline (h1 member count → h2
@@ -301,41 +301,17 @@ const positionFor = (i: number) =>
         the column ends with a link that says where it goes. */
     }
     <div class="ccard__head">
-      {member.photoURL && (
-        <img
-          class="ccard__avatar"
-          src={member.photoURL}
-          width="112"
-          height="112"
-          alt=""
-          loading="lazy"
-          decoding="async"
-          style={`background-color: ${member.photoColor ?? "var(--color-border)"}`}
-        />
-      )}
       <div class="ccard__head-copy">
       <h2 class="ccard__name">
         <a class="ccard__name-link" href={profileHref} transition:name={`mname-${member.id}`}>
           {member.displayName}
         </a>
       </h2>
+      {member.role && <p class="ccard__role">{member.role}</p>}
       </div>
     </div>
 
     <div class="ccard__more">
-      {member.bio && (
-        <p class="ccard__bio">
-          {splitParagraphs(member.bio).map((para) => <span class="ccard__para">{para}</span>)}
-        </p>
-      )}
-      {member.visualNeeds.length > 0 && (
-        <div class="ccard__row ccard__row--needs">
-          <h3 class="ccard__key">{t("member.needs")}</h3>
-          <ul class="ccard__vals">
-            {member.visualNeeds.map((need) => <li class="ccard__val">{need}</li>)}
-          </ul>
-        </div>
-      )}
       {
         /* THE NAMED WAY TO THE PERSON (2026-09-01, Josh: "add 'view profile'
           button to image cards"). It exists because the frame stopped going

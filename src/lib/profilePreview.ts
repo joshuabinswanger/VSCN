@@ -501,35 +501,12 @@ export function renderCardPreview(
   const nameEl = part("name");
   if (nameEl) nameEl.textContent = displayName;
 
-  // THE NAME ALONE (2026-10-16): the card's head is the picture and the
-  // name — no role, affiliation, place or links, as on the real card.
-  const avatar = part("avatar") as HTMLImageElement | null;
-  if (avatar) {
-    const photo = vm.photoURL?.trim() ?? "";
-    if (photo) {
-      if (avatar.src !== photo) avatar.src = photo;
-      avatar.style.backgroundColor = vm.photoColor ?? "var(--color-border)";
-    } else {
-      avatar.removeAttribute("src");
-    }
-    show(avatar, Boolean(photo));
-  }
-  const bioEl = part("bio");
-  if (bioEl) fillParagraphs(bioEl, vm.bio, "ccard__para");
-  show(bioEl, Boolean(vm.bio.trim()));
-
-  const needs = part("needs");
-  if (needs) {
-    const items = vm.visualNeeds
-      .map((need) => {
-        const li = clone("pval");
-        if (li) li.textContent = need;
-        return li;
-      })
-      .filter((n): n is HTMLElement => n !== null);
-    needs.replaceChildren(...items);
-  }
-  show(part("needs-row"), vm.visualNeeds.length > 0);
+  // NAME, ROLE, PROFILE (2026-10-16, Josh: "actually just Name and Profile
+  // Button. Add Role back in."), as on the real card.
+  const role = vm.role.trim();
+  const roleEl = part("role");
+  if (roleEl) roleEl.textContent = role;
+  show(roleEl, Boolean(role));
 
   // Same filter the profile-page preview applies: a gallery item mid-upload has
   // no dimensions yet, and a slide with no aspect is a collapsed frame.
