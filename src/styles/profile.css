@@ -822,17 +822,11 @@
     mask-image: none;
   }
 
-  /* THE LEFTMOST WORK IS THE ONE YOU ARE ON (2026-10-16, Josh: "make the not
-     most left images have a small fade"). The others stand a little back,
-     and come forward as paging brings each to the column's start. The
-     track's end padding (projectCarousel.ts) lets the LAST work reach that
-     start too ("the final image should end up at the left edge"). */
-  .mprof__carousel-slide {
-    transition: opacity 0.3s ease;
-  }
-  .mprof__carousel-slide:not(.is-current) {
-    opacity: 0.6;
-  }
+  /* NO STEP BACK for the works beside the leftmost one: they stood at 0.6
+     for an hour on 2026-10-16 (Josh: "make the not most left images have a
+     small fade", then "the fading out is a bad idea"). The track's end
+     padding (projectCarousel.ts) still lets the LAST work reach the column's
+     start ("the final image should end up at the left edge"). */
 }
 
 /* THE WORKS ARRIVE ONE AFTER THE OTHER (2026-10-16, Josh: "add an animation
@@ -846,9 +840,8 @@
 .mprof__carousel.is-staged:not(.is-revealed) .mprof__carousel-slide:not(:first-child) {
   opacity: 0;
 }
-/* Revealed, a work takes whatever opacity it has at rest (full, or the
-   desktop's step back), on its own delay; once the last has arrived the
-   script settles the carousel and paging fades without one. */
+/* Revealed, each work fades in on its own delay; once the last has arrived
+   the script settles the carousel, so nothing later inherits the delays. */
 .mprof__carousel.is-staged.is-revealed .mprof__carousel-slide {
   transition: opacity 0.5s ease calc(var(--i, 0) * 140ms);
 }
