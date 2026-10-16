@@ -49,7 +49,8 @@
      and text still too big"). The count hangs in it at the picture's
      bottom edge and may reach a little into the words' column, whose foot
      is kept clear for it (.pdisc max-height). */
-  --ccard-air: 3rem;
+  /* 5rem since 2026-10-16 (Josh: "more gap between images and text"). */
+  --ccard-air: 5rem;
   /* The words' column (2026-10-14, Josh: "make the text etc wider"). The
      editor preview reads this name too. */
   --ccard-side-w: 20rem;
@@ -71,7 +72,8 @@
      card's centre line whatever the words' width. The editor preview,
      narrower, keeps the plain words | air | picture (CommunityCardPreview). */
   grid-template-columns: minmax(0, 1fr) var(--ccard-air) auto var(--ccard-air) minmax(0, 1fr);
-  grid-template-rows: auto;
+  /* The picture's row, then the count's under it. */
+  grid-template-rows: auto auto;
   /* What the picture may be wide: never past 75vw (Josh: "max width of an
      image is 75vw"), and always leaving the words at least --ccard-words-min
      on each side of it. */
@@ -112,7 +114,14 @@
   min-height: 0;
   max-height: calc(var(--cpage-pic-h, 30rem) - 5rem);
   overflow: hidden auto;
-  scrollbar-width: thin;
+  /* NO VISIBLE BAR (2026-10-16): a sub-pixel rounding (180 vs 179px) put a
+     10px Windows scrollbar in a column that did not overflow, which pulled
+     the right-aligned Profile in off the column's edge. A long bio still
+     scrolls (wheel, trackpad, touch); it just shows no bar. */
+  scrollbar-width: none;
+}
+.ccard__words > .pdisc::-webkit-scrollbar {
+  display: none;
 }
 
 /* ── Name and role, at the head of the column ─────────── */
@@ -368,9 +377,12 @@
    on desktop should be at the end", "right aligned within the text
    column"): the words' last line, at the column's right edge. A phone
    lifts it onto the name's line (mobile block). */
+/* UNDER THE PICTURE, AT ITS RIGHT EDGE (2026-10-16, Josh: "move the
+   carousel controls under the image"). */
 .ccard__foot {
-  align-self: flex-end;
-  padding-top: 0;
+  grid-area: 2 / 3 / 3 / 4;
+  justify-self: end;
+  padding-top: 0.6rem;
 }
 
 /* ── Position indicator ───────────────────────────────── */
@@ -456,8 +468,9 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  /* The last line of the panel's words, at the column's start. */
-  align-self: flex-start;
+  /* The last line of the panel's words, at the column's RIGHT edge
+     (2026-10-16, Josh: "Profile right aligned"). */
+  align-self: flex-end;
   /* Smaller since 2026-10-12 (Josh: "profile should be a smaller button,
      white on black text"): the LABEL voice in type.css, and this padding.
      Then PLAIN, the same day ("profile is too strong, make it without black
