@@ -35,18 +35,22 @@ function harness(n) {
   };
 }
 
-test("carouselDots: five or fewer works show every dot at full size", () => {
+test("carouselDots: a dot shrinks three and four away from the current one", () => {
   const at = harness(3);
   assert.equal(at(0), "Ooo");
   assert.equal(at(2), "ooO");
+  const five = harness(5);
+  assert.equal(five(0), "Oooms", "Instagram's first slide: the 4th and 5th are smaller");
+  assert.equal(five(2), "ooOoo");
+  assert.equal(five(4), "smooO");
 });
 
 test("carouselDots: more than five slide a window with shrinking edges", () => {
   const at = harness(8);
   assert.equal(at(0), "Oooms---");
-  assert.equal(at(3), "oooOs---");
+  assert.equal(at(3), "mooOs---");
   assert.equal(at(4), "-smoOs--", "the window slides once the current dot nears its edge");
   assert.equal(at(7), "---smooO", "at the true end the current dot may reach the edge");
-  assert.equal(at(4), "---sOooo", "going back, the window holds until it must move");
+  assert.equal(at(4), "---sOoom", "going back, the window holds until it must move");
   assert.equal(at(3), "--sOoms-");
 });

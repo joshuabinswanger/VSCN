@@ -255,6 +255,7 @@ export function initProjectCarousels(root: ParentNode = document): void {
         carousel.style.setProperty("--frame-l", "0px");
         carousel.style.setProperty("--frame-r", "0px");
         carousel.style.setProperty("--frame-h", `${Math.round(p.height)}px`);
+        carousel.style.setProperty("--frame-pw", `${Math.round(p.width)}px`);
         return;
       }
       // Where the picture stands once it is at rest: centred on the column.
@@ -262,6 +263,7 @@ export function initProjectCarousels(root: ParentNode = document): void {
       carousel.style.setProperty("--frame-l", `${side}px`);
       carousel.style.setProperty("--frame-r", `${side}px`);
       carousel.style.setProperty("--frame-h", `${Math.round(p.height)}px`);
+      carousel.style.setProperty("--frame-pw", `${Math.round(Math.min(column, p.width))}px`);
     };
     const update = () => {
       const i = current();

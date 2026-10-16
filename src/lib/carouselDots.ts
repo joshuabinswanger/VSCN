@@ -4,12 +4,14 @@
 // should be black"). Shared by the directory card (communityCarousel.ts) and
 // a project's carousel on the member page (projectCarousel.ts).
 //
-// At most WINDOW dots show. With more works than that, the row is a sliding
-// window over all of them: the strip moves so the current dot stays off the
-// window's edges, and an edge dot with works beyond it shrinks (the outermost
-// to SMALL 0.4, its neighbour to MID 0.66), which is what says "there is more this
-// way". The current dot is never shrunk. Five or fewer works: every dot, full
-// size, no sliding. The look (grey, black when current) is `.cdots` in
+// At most WINDOW dots show. A dot shrinks with its distance from the current
+// one — three away to MID 0.66, four to SMALL 0.4 — so the first slide of
+// five reads "● • • · ·", as on Instagram (Josh, same day: "the 4th and 5th
+// are smaller dots"). With more works than five, the row is a sliding window
+// over all of them: the strip moves so the current dot stays off the
+// window's edges, and an edge dot with works beyond it shrinks too (the
+// outermost to SMALL, its neighbour to MID), which says "there is more this
+// way". The current dot is never shrunk. The look (grey, black when current) is `.cdots` in
 // global.css; the size and gap are the --carousel-dot tokens in type.css.
 //
 // The "2 / 7" count it replaced is recorded in
@@ -55,12 +57,16 @@ export function mountDots(row: HTMLElement, dots: HTMLElement[]): (i: number) =>
     const moreLeft = start > 0;
     const moreRight = end < total - 1;
     dots.forEach((dot, n) => {
-      let size = "";
-      if (n < start || n > end) size = "out";
-      else if (n !== i) {
-        if ((moreLeft && n === start) || (moreRight && n === end)) size = "sm";
-        else if ((moreLeft && n === start + 1) || (moreRight && n === end - 1)) size = "md";
+      // 0 full, 1 mid, 2 small: the smaller of the two rules wins.
+      let rank = 0;
+      if (n !== i) {
+        const away = Math.abs(n - i);
+        if (away >= 4) rank = 2;
+        else if (away === 3) rank = 1;
+        if ((moreLeft && n === start) || (moreRight && n === end)) rank = 2;
+        else if ((moreLeft && n === start + 1) || (moreRight && n === end - 1)) rank = Math.max(rank, 1);
       }
+      const size = n < start || n > end ? "out" : ["", "md", "sm"][rank];
       dot.classList.toggle("cdot--on", n === i);
       dot.classList.toggle("cdot--md", size === "md");
       dot.classList.toggle("cdot--sm", size === "sm");

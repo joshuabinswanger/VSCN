@@ -377,11 +377,12 @@
    on desktop should be at the end", "right aligned within the text
    column"): the words' last line, at the column's right edge. A phone
    lifts it onto the name's line (mobile block). */
-/* UNDER THE PICTURE, AT ITS RIGHT EDGE (2026-10-16, Josh: "move the
-   carousel controls under the image"). */
+/* UNDER THE PICTURE, CENTRED, ITS OWN ROW (2026-10-16, Josh: "move the
+   carousel controls under the image", then "the dots should be right
+   centered under the image and take up their own row"). */
 .ccard__foot {
   grid-area: 2 / 3 / 3 / 4;
-  justify-self: end;
+  justify-self: center;
   padding-top: 0.6rem;
 }
 
@@ -481,7 +482,7 @@
   }
   .ccard {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto auto auto;
     row-gap: 0.75rem;
     width: 100%;
   }
@@ -495,21 +496,32 @@
     max-height: var(--cpage-pic-h, 50svh);
   }
   .ccard__head {
-    grid-area: 2 / 1 / 3 / 2;
+    grid-area: 3 / 1 / 4 / 2;
   }
   .ccard__words > .pdisc {
-    grid-area: 3 / 1 / 4 / 2;
+    grid-area: 4 / 1 / 5 / 2;
     max-height: none;
     overflow: visible;
   }
-  /* The count at the end of the name's line, over the head's row; the head
-     keeps the room clear. */
+  /* The dots on their own row between the picture and the name, centred
+     (2026-10-16; until then at the end of the name's line). A gallery of
+     one has no dots: its words move up a row, so no empty row adds a gap. */
   .ccard__foot {
     grid-area: 2 / 1 / 3 / 2;
-    justify-self: end;
+    justify-self: center;
+    padding-top: 0;
   }
-  .ccard__head {
-    padding-right: 5rem;
+  .ccard:not(:has(.ccard__dots:not([hidden]))) {
+    grid-template-rows: auto auto auto;
+  }
+  .ccard:not(:has(.ccard__dots:not([hidden]))) .ccard__foot {
+    display: none;
+  }
+  .ccard:not(:has(.ccard__dots:not([hidden]))) .ccard__head {
+    grid-area: 2 / 1 / 3 / 2;
+  }
+  .ccard:not(:has(.ccard__dots:not([hidden]))) .ccard__words > .pdisc {
+    grid-area: 3 / 1 / 4 / 2;
   }
   /* A PHONE SHOWS THE PICTURE, THE NAME, THE LINKS AND THE WAY IN
      (2026-10-15, Josh: "on mobile the bio and tags should not be shown").

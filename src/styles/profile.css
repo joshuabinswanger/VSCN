@@ -620,13 +620,27 @@
    chevrons run down its own two edges: --frame-l / --frame-r / --frame-h are
    that picture's offsets, measured by projectCarousel.ts. Unmeasured they
    fall back to the column. */
+/* RIGHT UNDER THE PICTURE, CENTRED ON IT, between it and its caption
+   (2026-10-16, Josh: "the dots should be right centered under the image
+   and take up their own row"). The caption is part of each slide, so the
+   row cannot sit between them in flow: it stands on the stage at the
+   current picture's foot, and a carousel's captions start lower to give
+   it the room. */
 .mprof__carousel-dots {
+  position: absolute;
+  z-index: 1;
+  top: calc(var(--frame-h, 100%) + 0.75rem);
+  left: var(--frame-l, 0px);
+  width: var(--frame-pw, 100%);
+  height: var(--carousel-dot);
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   gap: var(--carousel-dot-gap);
-  padding-right: var(--frame-r, 0px);
   pointer-events: none;
+}
+.mprof__carousel .mprof__caption {
+  margin-top: 1.9rem;
 }
 
 /* The dots themselves are .cdots / .cdot in global.css, shared with the
