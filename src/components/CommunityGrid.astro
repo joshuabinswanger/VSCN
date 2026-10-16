@@ -1841,14 +1841,6 @@ const searchIndex: SearchIndex = {
     :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard .ccard__head) {
       overflow: hidden;
     }
-    /* Two lines at most, so the room kept for it is never outrun. */
-    :global(.cgrid[data-pattern="pages"] .ccard__role) {
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-      line-clamp: 2;
-      overflow: hidden;
-    }
   }
   /* What follows the last card must be reachable under mandatory snap. */
   :global(.page-wrap:has(#member-grid[data-pattern="pages"]:not([hidden])) .community-signup-cta),
@@ -1915,8 +1907,7 @@ const searchIndex: SearchIndex = {
        mask (pagesEntrance.ts splits them and stamps each word's --d). Until
        the split has happened the words are held invisible, so the plain
        text never shows and then vanishes. */
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell:not([data-words]) .ccard__name-link),
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell:not([data-words]) .ccard__role) {
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell:not([data-words]) .ccard__name-link) {
       opacity: 0;
     }
     :global(.cgrid[data-pattern="pages"][data-motion] .cw) {
