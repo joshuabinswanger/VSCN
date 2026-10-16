@@ -317,6 +317,21 @@ const BAR_MS = 320;
 let barAnim: Animation | null = null;
 let barLeaving: HTMLElement | null = null;
 
+/** Write the pill's corner radius. Only the phone sheet EASES it (`ease`);
+ *  everywhere else it snaps, because --bar-r rests at its registered 999px
+ *  and easing from there down to the half-height made the growing box bulge
+ *  round for the length of the transition (10-16, Josh: "should not expand
+ *  the border roundness on animation"). `null` drops back to the capsule. */
+function setBarR(pill: HTMLElement, r: string | null, ease = false) {
+  if (!ease) pill.style.transition = "none";
+  if (r === null) pill.style.removeProperty("--bar-r");
+  else pill.style.setProperty("--bar-r", r);
+  if (!ease) {
+    getComputedStyle(pill).getPropertyValue("--bar-r");
+    pill.style.removeProperty("transition");
+  }
+}
+
 /** End a size animation where it stands: the closing panel goes, the held
  *  size is released. */
 function settleBar(pill: HTMLElement) {
@@ -330,7 +345,7 @@ function settleBar(pill: HTMLElement) {
     barLeaving = null;
   }
   const anyOpen = BAR_MENUS.some(([, id]) => document.getElementById(id)?.hidden === false);
-  if (!anyOpen) pill.style.removeProperty("--bar-r");
+  if (!anyOpen) setBarR(pill, null);
 }
 
 /** Open one drop-up (`null`: none), the pill GROWING round it (2026-10-16,
@@ -358,7 +373,7 @@ function setBarMenu(open: string | null) {
   if (prev === open) return;
   // The corners of the closed capsule, kept while the box is tall: a 999px
   // radius on an open pill would bulge into a stadium.
-  if (pill && !prev) pill.style.setProperty("--bar-r", `${pill.offsetHeight / 2}px`);
+  if (pill && !prev) setBarR(pill, `${pill.offsetHeight / 2}px`);
 
   for (const [btnId, panelId] of BAR_MENUS) {
     const panel = document.getElementById(panelId);
@@ -376,13 +391,13 @@ function setBarMenu(open: string | null) {
     if (sheet) bar.dataset.searchSheet = "";
     else delete bar.dataset.searchSheet;
   }
-  if (sheet && pill) pill.style.setProperty("--bar-r", "0px");
+  if (sheet && pill) setBarR(pill, "0px", true);
   if (prev === "search-panel" && open !== prev && document.activeElement instanceof HTMLElement) {
     document.activeElement.blur();
   }
 
   if (!pill || !from || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    if (pill && !open) pill.style.removeProperty("--bar-r");
+    if (pill && !open) setBarR(pill, null);
     return;
   }
   const leaving = !open && prev ? document.getElementById(prev) : null;
@@ -406,7 +421,7 @@ function sizeBar(pill: HTMLElement, from: DOMRect) {
   // Closing: the capsule's corners for the size it closes to, so the sheet's
   // square corners round back while it shrinks (settleBar drops the value).
   if (!BAR_MENUS.some(([, id]) => document.getElementById(id)?.hidden === false)) {
-    pill.style.setProperty("--bar-r", `${to.height / 2}px`);
+    setBarR(pill, `${to.height / 2}px`, true);
   }
   // Measured above at rest; from here the row keeps that width (CSS).
   pill.dataset.sizing = "";
