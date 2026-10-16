@@ -422,11 +422,12 @@
   }
 
   /* A PROJECT'S TOOLS, LEVEL WITH ITS TITLE. One segmented strip (↑ ↓, Add
-     images, Delete — ProjectEditor.astro) at the heading's right edge,
-     centred on the title's first line; the title field keeps --ptools-w of
-     room on its right so a long title wraps before it, never under it. */
+     images, Add video since 2026-10-16, Delete — ProjectEditor.astro) at the
+     heading's right edge, centred on the title's first line; the title field
+     keeps --ptools-w of room on its right so a long title wraps before it,
+     never under it. One button wider than the four-button 138px. */
   .gallery-project {
-    --ptools-w: 138px;
+    --ptools-w: 172px;
     position: relative;
   }
 
@@ -669,37 +670,41 @@
     background: var(--color-error);
   }
 
-  /* The drop target. No border of its own until something is being dragged
-     over it — a permanently outlined box in the middle of a form reads as a
-     disabled field, and this one is only special for the two seconds a drag
-     lasts. */
+  /* The list that takes drops. Since 2026-10-16 a drop lands in the PROJECT
+     BLOCK under the pointer, so the block is what lights up, not the list:
+     no border of its own until something is dragged over it — a permanently
+     outlined box reads as a disabled field. */
   .gallery-drop {
     position: relative;
     margin-bottom: 0.5rem;
-    /* An OUTLINE, not a border (2026-10-13): a border took 3px off every
-       row's width, and the rows are the page's figures, which must be the
-       page's width to the pixel. The outline sits 4px outside the box and
-       costs nothing. */
+  }
+
+  /* An OUTLINE, not a border (2026-10-13): a border took 3px off every row's
+     width, and the rows are the page's figures, which must be the page's
+     width to the pixel. The outline sits 4px outside the box and costs
+     nothing. */
+  .gallery-project {
     outline: 1.5px dashed transparent;
     outline-offset: 4px;
     transition: outline-color 0.15s ease;
   }
 
-  .gallery-drop.is-dragging {
+  .gallery-project.is-drop-target {
     outline-color: var(--color-dark);
   }
 
-  /* Only ever seen mid-drag, so it costs nothing at rest and does not compete
-     with the Add button for the same job. */
-  .gallery-drop-hint {
-    display: none;
-    margin-left: 10px;
-    font-size: var(--fs-85);
-    color: var(--color-muted);
+  /* The way in for a member with no project yet (2026-10-16): a note and
+     the Add project button, where the first block will appear. */
+  .gallery-first {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 1rem;
   }
 
-  .gallery-drop.is-dragging .gallery-drop-hint {
-    display: inline;
+  .gallery-first[hidden] {
+    display: none;
   }
 
   /* The cap is a fact about the gallery, not an error, so the button says so by

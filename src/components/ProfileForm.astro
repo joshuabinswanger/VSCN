@@ -130,8 +130,9 @@ const t = useTranslations(lang);
       {
         /* A VIDEO LINK IS A WORK TOO (2026-09-23): the member pastes a link,
           the server turns it into a work with the platform's thumbnail as
-          its poster. Opened by the Plus menu's "Add video", as a small sheet
-          above the bar. NOT A <form>: this is inside #profile-form, and a
+          its poster. Opened by a project block's "Add video" (the Plus
+          menu's until 2026-10-16), as a small sheet above the bar; the link
+          lands in that block. NOT A <form>: this is inside #profile-form, and a
           nested form closes the profile form early
           (tests/unit/profileFormMarkup.test.mjs). Enter adds the link; the
           buttons are type=button. */
@@ -156,39 +157,22 @@ const t = useTranslations(lang);
       </div>
     </div>
     {
-      /* THE PLUS MENU, over the Plus (editorBar.ts places it): three black
+      /* THE PLUS MENU, over the Plus (editorBar.ts places it): black
         capsules, side by side on a desktop and stacked on a phone, the
         site's MENU language (Navbar.astro). Outside .ebar-pop so it can
-        stand at the button rather than at the bar's middle. */
+        stand at the button rather than at the bar's middle.
+        ONE ITEM SINCE 2026-10-16 (Josh: "images without project are not
+        allowed any longer! We need always a Project"): "Add images" and
+        "Add video" added works to no project, so they moved into each
+        project block (ProjectEditor.astro), and the picker they opened
+        went with them. */
     }
     <div id="ebar-add-menu" class="ebar-menu" role="menu" aria-labelledby="ebar-add">
-      <button type="button" role="menuitem" id="gallery-add" class="ebar-menu__item" tabindex="-1">
-        <svg class="ebar-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
-        <span>{t("profile.gallery.add")}</span>
-      </button>
-      <button type="button" role="menuitem" id="gallery-video-open" class="ebar-menu__item" tabindex="-1" aria-controls="gallery-video" aria-expanded="false">
-        <svg class="ebar-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/></svg>
-        <span>{t("profile.embed.add")}</span>
-      </button>
       <button type="button" role="menuitem" id="gallery-new-project" class="ebar-menu__item" tabindex="-1">
         <svg class="ebar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
         <span>{t("profile.project.new")}</span>
       </button>
     </div>
-    {
-      /* The picker the menu's "Add images" opens. Clipped, not display:none
-        (.picker-input), and out of the tab order: the menu item is the
-        control. */
-    }
-    <input
-      id="gallery-files"
-      class="picker-input"
-      type="file"
-      accept="image/jpeg,image/png,image/webp,image/avif"
-      multiple
-      tabindex="-1"
-      aria-hidden="true"
-    />
     <div class="ebar" id="ebar">
       <div class="ebar__in" id="works-bar" role="toolbar" aria-label={t("profile.works.bar")}>
         <div class="ebar__group" data-ebar-works hidden>

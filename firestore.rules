@@ -524,7 +524,15 @@ function validProject(data) {
   return data.keys().hasOnly(['ownerUid', 'title', 'titleDe', 'description', 'descriptionDe',
                               'link', 'affiliations', 'tags', 'createdAt', 'updatedAt'])
     && data.ownerUid is string
-    && (!('title' in data) || (data.title is string && data.title.size() <= 100))
+    // A TITLE IS MANDATORY (2026-10-16, Josh: "images without project are not
+    // allowed any longer! We need always a Project, just a title is
+    // mandatory"). Present, a string, at most 100, and not blank: the rules
+    // have no trim(), so "holds one non-space character" is the regex. Judged
+    // on the merged document, so an update cannot delete it either. titleDe
+    // stays optional; the German page falls back to the English title.
+    && 'title' in data
+    && data.title is string && data.title.size() >= 1 && data.title.size() <= 100
+    && data.title.matches('[\\s\\S]*\\S[\\s\\S]*')
     && (!('titleDe' in data) || (data.titleDe is string && data.titleDe.size() <= 100))
     && (!('description' in data) || (data.description is string && data.description.size() <= 600))
     && (!('descriptionDe' in data) || (data.descriptionDe is string && data.descriptionDe.size() <= 600))

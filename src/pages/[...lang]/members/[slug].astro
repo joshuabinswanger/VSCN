@@ -119,8 +119,12 @@ const works = await Promise.all(
 );
 
 // PROJECT BLOCKS (2026-09-23): the gallery stays one list in the member's
-// order; a project's images sit together under its heading, loose works in
-// between. groupWorks() is the same cut the editor preview makes.
+// order; a project's images sit together under its heading. groupWorks() is
+// the same cut the editor preview makes. No loose works since 2026-10-16
+// (Josh: "images without project are not allowed any longer!"): the view
+// model files old project-less works under a virtual "Works" / "Arbeiten"
+// project (adoptLooseWorks in toMemberViewBase), so the bare-MemberWork
+// branch below is only a fallback.
 // Projects stack in the member's order; each one with two or more works is
 // its own carousel (MemberProject.astro, 2026-09-26). The one slider that
 // paged between projects (2026-09-25) is gone with that change.

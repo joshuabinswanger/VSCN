@@ -8,17 +8,18 @@ import { editorBlocks } from "../../src/lib/projects.ts";
 import {
   affiliationRecords,
   applyBlocks,
-  dissolveProject,
   editorAffiliations,
   emptiedStoredIds,
+  firstUntitledProject,
+  homeLooseWorks,
   insertUploaded,
+  looseWorksProject,
   moveImage,
   moveProject,
   moveToProject,
   orderProjects,
   previewProjects,
   projectLabel,
-  removeFromProject,
   sameIds,
   toProjectRecord,
   memberUidFor,
@@ -96,17 +97,33 @@ test("moveToProject: the last image out of a block leaves the block, empty, in p
   assert.deepEqual(out.map((x) => (x.kind === "project" ? `[${x.projectId}:${x.indices.length}]` : x.index)), [0, "[p:3]", 3, "[q:0]", "[r:0]"]);
 });
 
-test("removeFromProject lands the image directly below its block", () => {
-  const out = removeFromProject(blocks(), 1);
-  assert.deepEqual(ids(applyBlocks(gallery, out)), ["a", "c:p", "b", "d", "e:q"]);
-  assert.deepEqual(removeFromProject(blocks(), 0), blocks(), "a loose row is left alone");
+// EVERY WORK IN A PROJECT (2026-10-16, Josh: "images without project are not
+// allowed any longer! We need always a Project, just a title is mandatory").
+// "Remove from project" and the dissolving delete are gone; loose works from
+// old data are filed under the member's "Works" project instead.
+test("homeLooseWorks files loose works under the Works project, gathered at the first of them", () => {
+  const home = looseWorksProject("uid-1");
+  assert.deepEqual(home, { projectId: "works-uid-1", title: "Works", titleDe: "Arbeiten", affiliations: [] });
+  const out = homeLooseWorks([...gallery, img("f", "ghost")], projects, home);
+  assert.deepEqual(ids(out.gallery), ["a:works-uid-1", "d:works-uid-1", "f:works-uid-1", "b:p", "c:p", "e:q"]);
+  assert.deepEqual(out.projects.map((p) => p.projectId), ["p", "q", "r", "works-uid-1"]);
+  assert.equal(editorBlocks(out.gallery, out.projects).some((b) => b.kind === "image"), false, "no loose row is left");
 });
 
-test("dissolveProject ungroups in place and drops the block", () => {
-  const out = dissolveProject(blocks(), "p");
-  assert.deepEqual(ids(applyBlocks(gallery, out)), ["a", "b", "c", "d", "e:q"]);
-  assert.equal(out.some((x) => x.kind === "project" && x.projectId === "p"), false);
-  assert.equal(dissolveProject(blocks(), "r").length, blocks().length - 1);
+test("homeLooseWorks: null when every work has a project; a known Works project is reused", () => {
+  const housed = [img("b", "p"), img("e", "q")];
+  assert.equal(homeLooseWorks(housed, projects, looseWorksProject("uid-1")), null);
+  const withHome = [...projects, looseWorksProject("uid-1")];
+  const out = homeLooseWorks([img("x"), img("b", "p")], withHome, looseWorksProject("uid-1"));
+  assert.equal(out.projects.length, withHome.length);
+  assert.deepEqual(ids(out.gallery), ["x:works-uid-1", "b:p"]);
+});
+
+test("firstUntitledProject: only a project a work names, and either language counts as a title", () => {
+  const g = [img("a", "p"), img("b", "q")];
+  assert.equal(firstUntitledProject([P("p", { title: "P" }), P("q"), P("r")], g), "q");
+  assert.equal(firstUntitledProject([P("p", { title: "  " }), P("q", { titleDe: "Q" })], g), "p");
+  assert.equal(firstUntitledProject([P("p", { titleDe: "P" }), P("q", { title: "Q" }), P("r")], g), undefined, "the empty r is never written");
 });
 
 test("insertUploaded: into a project after its last image, otherwise at the end", () => {

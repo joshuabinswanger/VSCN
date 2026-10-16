@@ -41,13 +41,24 @@ const t = useTranslations(lang);
       <div class="works-view" data-works-pane="profile">
         <ProfileViewPreview lang={lang}>
           {
-            /* THE EDITOR, in the page's works column. The drop target is the
-              whole list plus the Add row, so a member with no images yet has
-              something to drag onto. Pending uploads sit BELOW the committed
-              rows (or inside their project block), where a finished upload
-              lands, so a row does not jump when it completes. */
+            /* THE EDITOR, in the page's works column. Files dropped on the
+              list land in the project block under the pointer (2026-10-16:
+              nowhere else, since every work belongs to a project). Pending
+              uploads sit inside their project block, where a finished
+              upload lands, so a row does not jump when it completes. */
           }
           <div slot="editor" class="works-editor" data-works-editor>
+            {
+              /* THE WAY IN WITHOUT A PROJECT (2026-10-16, Josh: "We need
+                always a Project, just a title is mandatory"). A member with
+                no project yet has nowhere to add a work, so the list starts
+                with this instead; the controller hides it once a block
+                exists. Same action as the Plus menu's Add project. */
+            }
+            <div id="gallery-first" class="gallery-first" hidden>
+              <p class="field-note">{t("profile.project.firstNote")}</p>
+              <button type="button" id="gallery-first-project" class="btn-solid">{t("profile.project.new")}</button>
+            </div>
             <div id="gallery-drop" class="gallery-drop">
               <div id="gallery-editor" class="gallery-editor"></div>
               {
@@ -58,10 +69,10 @@ const t = useTranslations(lang);
               }
               <div id="gallery-queue" class="gallery-queue"></div>
               {
-                /* ADDING LIVES IN THE BAR NOW (2026-10-13): the Plus in the
-                  form's footer opens Add images, Add video and Add project
-                  (ProfileForm.astro). Dropping files anywhere on this list
-                  still adds them; each project block keeps its own picker.
+                /* ADDING (2026-10-13, narrowed 2026-10-16): the Plus in the
+                  form's footer adds a project (ProfileForm.astro); images
+                  and videos come in through a project block's own buttons
+                  or a drop onto the block.
                   ONE picker for every row's "Replace image": the row that
                   was pressed is remembered in the script, not in the input. */
               }
@@ -71,7 +82,6 @@ const t = useTranslations(lang);
                 accept="image/jpeg,image/png,image/webp,image/avif"
                 style="display:none;"
               />
-              <span class="gallery-drop-hint" aria-hidden="true">{t("profile.gallery.drop")}</span>
             </div>
             <p id="gallery-status" class="field-note" style="display:none;"></p>
             {
@@ -138,9 +148,9 @@ const t = useTranslations(lang);
             /* One segmented toolbar: move up, move down, replace, delete.
               Names are in aria-label and the tooltip, set by renderGallery().
               Up/down stay inside the row's container (moveImage in
-              projectEditor.ts). The select is the only way into or out of a
-              project, "No project" meaning a loose work, and it is hidden
-              while the member has no project at all. */
+              projectEditor.ts). The select moves a work to another project
+              — never out of all of them since 2026-10-16, when "No project"
+              went — and is hidden while there is no second project. */
           }
           <div class="gallery-toolbar seg seg--actions" role="group" aria-label={t("profile.gallery.toolbar")}>
             <button type="button" class="gallery-tbtn" data-gallery-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>

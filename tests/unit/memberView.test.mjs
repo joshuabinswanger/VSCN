@@ -133,12 +133,31 @@ test("works carry their own project; the project's link fills an empty siteLink"
   assert.equal(m.works[0].projectId, "p");
   assert.equal(m.works[0].siteLink, "https://lab.org/p");
   assert.equal(m.works[1].siteLink, "https://ada.ch/work/b");
-  assert.equal("projectId" in m.works[2], false);
+  // Someone else's project is no project: the work is filed under "Works"
+  // (2026-10-16), never shown project-less.
+  assert.equal(m.works[2].projectId, `works-${UID}`);
+  assert.deepEqual(m.projects.map((p) => p.id), ["p", `works-${UID}`]);
+});
+
+// EVERY WORK IN A PROJECT (2026-10-16, Josh: "images without project are not
+// allowed any longer!"). Old data with loose works reads as a virtual
+// "Works" / "Arbeiten" project, localized by projectTitle().
+test("loose works join a virtual Works project; no records at all means one project", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a"] }, [rec("a")], BUCKET);
+  assert.equal(m.works[0].projectId, `works-${UID}`);
+  assert.equal(m.projects.length, 1);
+  assert.equal(m.projects[0].title, "Works");
+  assert.equal(m.projects[0].titleDe, "Arbeiten");
+});
+
+test("a member whose works are all in projects gets no virtual project", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a"] }, [rec("a", { projectId: "p" })], BUCKET, [
+    { projectId: "p", ownerUid: UID, title: "P" },
+  ]);
   assert.deepEqual(m.projects.map((p) => p.id), ["p"]);
 });
 
-test("no project records means no projects and unchanged works", () => {
-  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a"] }, [rec("a")], BUCKET);
+test("no works means no projects", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada" }, [], BUCKET);
   assert.deepEqual(m.projects, []);
-  assert.equal("projectId" in m.works[0], false);
 });

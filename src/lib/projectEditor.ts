@@ -19,7 +19,10 @@ import {
   type EditorBlock,
   type ProfileProject,
   type ProjectFields,
+  contiguousOrder,
   emptyProjectIds,
+  LOOSE_WORKS_TITLE,
+  looseWorksProjectId,
   projectTitle,
   resolveMemberCredits,
   toProfileProject,
@@ -143,22 +146,56 @@ export function moveToProject(blocks: readonly EditorBlock[], index: number, pro
   );
 }
 
-/** "Remove from project": the image becomes a loose row directly below its block. */
-export function removeFromProject(blocks: readonly EditorBlock[], index: number): EditorBlock[] {
-  const where = locate(blocks, index);
-  if (!where || where.position === -1) return blocks.slice();
-  const out = withoutIndex(blocks, index);
-  out.splice(where.at + 1, 0, { kind: "image", index });
-  return out;
+// "Remove from project" and the dissolving "Delete project" went on
+// 2026-10-16 (Josh: "images without project are not allowed any longer!"):
+// a work leaves a project only into another one (moveToProject), and a
+// project that still holds works cannot be deleted (see deleteProject in
+// profileEditorController.ts).
+
+/**
+ * The editor's "Works" project (2026-10-16): where a work with no project is
+ * filed — at load (old data), after a draft restore, and when an upload lands
+ * after its block was deleted. Both titles, so Save's title rule is met
+ * whichever pane the member reads; the id is the one the page's virtual
+ * project and the migration use (looseWorksProjectId).
+ */
+export function looseWorksProject(uid: string): EditorProject {
+  return { projectId: looseWorksProjectId(uid), ...LOOSE_WORKS_TITLE, affiliations: [] };
 }
 
-/** "Delete project": its images stay, ungrouped, exactly where the block stood. */
-export function dissolveProject(blocks: readonly EditorBlock[], projectId: string): EditorBlock[] {
-  return blocks.flatMap((b) =>
-    b.kind === "project" && b.projectId === projectId
-      ? b.indices.map((index): EditorBlock => ({ kind: "image", index }))
-      : [b],
-  );
+/**
+ * Files every work that names no known project under `home`, adding `home`
+ * to the projects unless it is already there, and gathers them where the
+ * first of them stood. Null when every work already has a project — nothing
+ * to re-render, nothing to store.
+ */
+export function homeLooseWorks<T extends { projectId?: string }, P extends { projectId: string }>(
+  gallery: readonly T[],
+  projects: readonly P[],
+  home: P,
+): { gallery: T[]; projects: P[] } | null {
+  const known = new Set(projects.map((p) => p.projectId));
+  const housed = (g: T) => Boolean(g.projectId && known.has(g.projectId));
+  if (gallery.every(housed)) return null;
+  const filed = gallery.map((g) => (housed(g) ? g : { ...g, projectId: home.projectId }));
+  return {
+    gallery: contiguousOrder(filed, (g) => g.projectId),
+    projects: known.has(home.projectId) ? projects.slice() : [...projects, home],
+  };
+}
+
+/**
+ * The first project Save would write that has no title in either language —
+ * the rules refuse it (2026-10-16), so Save stops on its title field first.
+ * Only projects a work names count: an empty block is never written
+ * (persistWorkMetadata), so an untitled one is no reason to refuse.
+ */
+export function firstUntitledProject(
+  projects: readonly { projectId: string; title?: string; titleDe?: string }[],
+  gallery: readonly { projectId?: string }[],
+): string | undefined {
+  const used = new Set(gallery.map((g) => g.projectId));
+  return projects.find((p) => used.has(p.projectId) && !p.title?.trim() && !p.titleDe?.trim())?.projectId;
 }
 
 /**

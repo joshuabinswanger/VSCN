@@ -766,6 +766,31 @@
   scroll-snap-stop: always;
 }
 
+/* SEVERAL WORKS AT ONCE ON A DESKTOP (2026-10-16, Josh: "on bigger screens
+   we need to show multiple images for projects they should be smaller and
+   the carousel should show multiple images from the beginning. also add
+   scroll snap!"). The pictures are capped at 45vh instead of 60vh, start at
+   the column's left edge instead of its middle, and the track is clipped to
+   the column rather than to the current picture, so the next works stand in
+   view beside the first. Each work snaps to the column's start, one work a
+   step (projectCarousel.ts, 1c). A phone keeps one centred work per screen.
+   A single-work project is no carousel and keeps the 60vh cap. */
+@media (--bp-desktop) {
+  .mprof__carousel .mprof__work-link {
+    max-width: calc(45vh * var(--work-ar));
+    margin-inline: 0;
+  }
+  .mprof__carousel-track {
+    clip-path: none;
+  }
+  .mprof__carousel-slide {
+    scroll-snap-align: start;
+  }
+  .mprof__carousel-stage:has(> .mprof__carousel-track:focus-visible)::after {
+    inset: -4px;
+  }
+}
+
 /* The spoken position — the clip technique, as .ccard__live. */
 .mprof__carousel-live {
   position: absolute;
