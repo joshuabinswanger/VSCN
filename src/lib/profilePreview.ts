@@ -294,19 +294,14 @@ export function renderProfilePreview(
       // A video work shows its poster with the play mark, as the page does.
       show(workPart("play"), Boolean(w.embed));
 
+      // No description under the picture since 2026-10-16, as on the page
+      // (MemberWork.astro); the lightbox still reads it.
       const captionText = w.caption?.trim() ?? "";
-      const descText = w.description?.trim() ?? "";
 
       const caption = workPart("caption");
       if (caption) {
         caption.textContent = captionText;
         caption.hidden = !captionText;
-      }
-
-      const desc = workPart("desc");
-      if (desc) {
-        fillParagraphs(desc, descText);
-        desc.hidden = !descText;
       }
 
       // `w.link` arrives already scheme-prefixed and already filtered for
@@ -327,7 +322,7 @@ export function renderProfilePreview(
       setLink("link", w.link);
       show(workPart("links"), Boolean(w.siteLink || w.link));
 
-      show(workPart("caption-block"), Boolean(captionText || descText || w.link || w.siteLink));
+      show(workPart("caption-block"), Boolean(captionText || w.link || w.siteLink));
       return figure;
     };
 
