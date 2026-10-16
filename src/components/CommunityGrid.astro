@@ -926,6 +926,16 @@ const indexMembers = [...members].sort((a, b) =>
     max-width: 100%;
   }
 
+  /* While the pill eases its size (data-sizing, set by sizeBar) the row
+     keeps its own width and the pill's edges uncover it. Squeezed into
+     the starting width instead, the labels wrapped letter by letter
+     ("Tag/s", "So/rt") and the pill jumped a line taller for a few frames
+     — seen on an iPhone going Portfolios → Images, 2026-10-16. */
+  .community-bar__in[data-sizing] .community-bar__row {
+    width: max-content;
+    max-width: none;
+  }
+
   /* The stack the panels open in. Nothing open, it is nothing. Its width is
      the open panel's; the row's when the row is wider (stretch). */
   .community-bar__panels {
