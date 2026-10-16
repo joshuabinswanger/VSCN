@@ -161,6 +161,7 @@ export async function updateImageText(
     inGallery?: boolean;
     textAfter?: string;
     textAfterDe?: string;
+    size?: "s" | "m";
   },
 ): Promise<void> {
   await updateDoc(doc(db, "images", imageId), {
@@ -179,6 +180,8 @@ export async function updateImageText(
     inGallery: text.inGallery === false ? false : deleteField(),
     textAfter: text.textAfter?.trim() ? text.textAfter : deleteField(),
     textAfterDe: text.textAfterDe?.trim() ? text.textAfterDe : deleteField(),
+    // Only S and M are stored; L is the absence.
+    size: text.size === "s" || text.size === "m" ? text.size : deleteField(),
     // THE RETIRED FIELD, SWEPT (2026-09-04 — see GalleryItem.description for
     // why the short description is gone). Unconditional, and the only mention
     // of the name left in the app: records written during its one-day life

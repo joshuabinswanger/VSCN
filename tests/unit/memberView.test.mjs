@@ -86,6 +86,15 @@ test("a work carries its text block raw, and a blank one not at all", () => {
   assert.deepEqual(m.works.map((w) => [w.textAfter, w.textAfterDe]), [["Between", "Dazwischen"], [undefined, undefined]]);
 });
 
+test("a work carries its S or M size; anything else is L, i.e. absent", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a", "b", "c"] }, [
+    rec("a", { caption: "a", size: "s" }),
+    rec("b", { caption: "b", size: "m" }),
+    rec("c", { caption: "c", size: "xl" }),
+  ], BUCKET);
+  assert.deepEqual(m.works.map((w) => w.size), ["s", "m", undefined]);
+});
+
 test("a record with no moderation row still scores, so nothing sorts as zero", () => {
   const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a"] }, [rec("a")], BUCKET);
   // 100 * (0.85 * 2.5 + 0.15 * 0) / 5 — neutral on the three human criteria,

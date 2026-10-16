@@ -223,6 +223,12 @@ export interface GalleryItem {
   textAfter?: string;
   textAfterDe?: string;
   /**
+   * HOW WIDE THE WORK STANDS ON THE MEMBER PAGE (2026-10-16, Josh: "select
+   * between S M L for the image size width (give them in CSS Pixels)").
+   * Absent is L. Widths in WORK_SIZE_PX (workSize.ts).
+   */
+  size?: "s" | "m";
+  /**
    * A VIDEO WORK (2026-09-23, documentation/20260923-motion-works-design.md):
    * the YouTube or Vimeo video it plays. `url` above is then the poster. Set
    * by the server (resolveEmbed), never edited here — Save does not write it.
@@ -507,6 +513,7 @@ export async function saveGalleryRecords(items: readonly GalleryItem[]): Promise
         inGallery: item.inGallery,
         textAfter: item.textAfter,
         textAfterDe: item.textAfterDe,
+        size: item.size,
       }),
     ),
   );

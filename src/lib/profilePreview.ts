@@ -23,6 +23,7 @@ import { groupWorks, projectTitle, projectDescription, affiliationHref, projectS
 import type { ProfileProject } from "./projects.ts";
 import { embedDataAttrs } from "./embed.ts";
 import { fillParagraphs } from "./paragraphs.ts";
+import { workSizeWidth } from "./workSize.ts";
 import { CARD_TRIGGER, bindCardOpener, createLightbox, type LightboxStrings } from "./lightbox.ts";
 import { initProfileIndex } from "./profileIndex.ts";
 import type { Lang } from "../i18n/utils";
@@ -272,6 +273,8 @@ export function renderProfilePreview(
       // The picture's shape, on the figure as the page writes it: the 60vh
       // cap on .mprof__work-link and the caption under it both read it.
       figure.style.setProperty("--work-ar", String(w.width / w.height));
+      // Its S/M/L width, as MemberWork.astro writes it (2026-10-16).
+      figure.style.setProperty("--size-w", workSizeWidth(w));
 
       img.src = w.url;
       img.width = w.width;

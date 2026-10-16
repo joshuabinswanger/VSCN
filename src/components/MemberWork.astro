@@ -10,6 +10,7 @@ import type { EmbedRef } from "../lib/embed.ts";
 import { embedDataAttrs } from "../lib/embed.ts";
 import { hostLabel } from "../lib/links.ts";
 import { splitParagraphs } from "../lib/paragraphs.ts";
+import { workSizeWidth } from "../lib/workSize.ts";
 
 interface WorkProps {
   url: string;
@@ -22,6 +23,8 @@ interface WorkProps {
   pswpMeta?: string;
   /** The text block after this work, already picked for the page's locale (workTextAfter in links.ts). */
   textAfter?: string;
+  /** S/M/L (2026-10-16); absent = L. See src/lib/workSize.ts. */
+  size?: string;
   embed?: EmbedRef;
   color?: string;
   rendered: { src: string; srcSet: { attribute: string } };
@@ -49,7 +52,7 @@ const { work: w, index: i, memberId, displayName, workAlt, linkTitle, siteLinkTi
 <figure
   class="mprof__work"
   transition:name={i === 0 ? `mimg-${memberId}` : undefined}
-  style={`--work-ar: ${w.width / w.height}`}
+  style={`--work-ar: ${w.width / w.height}; --size-w: ${workSizeWidth(w)}`}
 >
   <a
     class="mprof__work-link"

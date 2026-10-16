@@ -57,6 +57,8 @@ export interface ProfileWork {
    */
   textAfter?: string;
   textAfterDe?: string;
+  /** The work's S/M/L width on the member page (2026-10-16); absent = L. See WORK_SIZE_PX in gallery.ts. */
+  size?: "s" | "m";
   /**
    * Absolute href for "where this image lives" — already scheme-prefixed and
    * already filtered for linkability by workLink() in links.ts, so a renderer
