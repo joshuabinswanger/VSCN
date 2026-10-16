@@ -624,8 +624,7 @@ document.addEventListener("astro:page-load", () => {
           if (!replace) return null;
 
           // IN GALLERY: unchecked keeps the work off /community, on the
-          // member's page only. The row dims so a folded list still shows
-          // which works the gallery will skip.
+          // member's page only.
           const include = row.querySelector<HTMLInputElement>("[data-gallery-include]");
           const includeLabel = row.querySelector<HTMLElement>("[data-gallery-include-label]");
           if (include && includeLabel) {
@@ -633,11 +632,9 @@ document.addEventListener("astro:page-load", () => {
             includeLabel.textContent = s["profile.gallery.include"];
             const pill = include.closest("label");
             if (pill) pill.title = s["profile.gallery.include.hint"];
-            row.classList.toggle("is-excluded", !include.checked);
             include.addEventListener("change", () => {
               if (include.checked) delete gallery[index].inGallery;
               else gallery[index].inGallery = false;
-              row.classList.toggle("is-excluded", !include.checked);
               syncPreview();
             });
           }

@@ -594,8 +594,8 @@
   }
 
   /* IN GALLERY: a real checkbox in the pill's dress. Checked reads dark;
-     unchecked reads muted and the work's picture fades, so the list shows at
-     a glance which works /community will skip. */
+     unchecked reads muted. The picture itself is never dimmed (Josh,
+     2026-10-16: "the images should not be greyed out"). */
   .gallery-include {
     display: inline-flex;
     align-items: center;
@@ -618,11 +618,6 @@
   .gallery-include:has(input:focus-visible) {
     outline: 2px solid var(--color-dark);
     outline-offset: 2px;
-  }
-
-  .gallery-item.is-excluded .gallery-thumb {
-    opacity: 0.4;
-    transition: opacity 0.15s;
   }
 
   .gallery-toolbar--head {
