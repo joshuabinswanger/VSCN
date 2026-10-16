@@ -33,6 +33,8 @@ export interface ImageDoc {
   textAfter?: string;
   /** Its German counterpart, ≤ 2000. */
   textAfterDe?: string;
+  /** How wide the work stands on the member page (2026-10-16): "s" or "m"; absent = L. */
+  size?: "s" | "m";
   origin: ImageOrigin;
   /**
    * What the work IS (2026-09-23, documentation/20260923-motion-works-design.md).

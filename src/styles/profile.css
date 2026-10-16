@@ -602,6 +602,11 @@
      never reaches the cap and keeps the full column. Without --work-ar the
      declaration is invalid and the frame is simply column-wide, as before. */
   max-width: calc(60vh * var(--work-ar));
+  /* AND NO WIDER THAN ITS S/M/L (2026-10-16, Josh: "select between S M L
+     for the image size width (give them in CSS Pixels)"): --size-w is the
+     chosen width in px, written on the figure from src/lib/workSize.ts. The
+     column still caps it, so on a phone L and M are simply column-wide. */
+  max-width: min(var(--size-w, 100%), calc(60vh * var(--work-ar)));
   /* A frame narrower than the column sits in its middle (2026-09-26, Josh:
      "center the images horizontally"); a column-wide one is unaffected.
      --work-ar is set on the figure and inherited here. */
@@ -633,6 +638,7 @@
   flex-direction: column;
   gap: 0.45rem;
   max-width: calc(60vh * var(--work-ar));
+  max-width: min(var(--size-w, 100%), calc(60vh * var(--work-ar)));
   margin: 0.7rem auto 0;
   color: var(--color-muted);
 }

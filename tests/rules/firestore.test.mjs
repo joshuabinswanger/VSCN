@@ -900,6 +900,16 @@ test("images: the text block after a work is two optional strings of up to 2000"
   await assertFails(db.doc("images/img-1").update({ textAfter: ["a"], updatedAt: new Date() }));
 });
 
+test("images: a work's page size is s or m, and absent means L", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({ size: "s", updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ size: "m", updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ size: deleteField(), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ size: "l", updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ size: 240, updatedAt: new Date() }));
+});
+
 // SERVER-ONLY COLLECTIONS (review T2-18). None has a match block: each falls
 // to the closing `match /{document=**}` deny, which is exactly what a new
 // match block written too generously would silently override. The doc id is

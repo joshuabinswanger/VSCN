@@ -39,6 +39,8 @@ export interface GalleryRecord {
   /** The text block after this work on the member page (2026-10-16), and its German counterpart. */
   textAfter?: string;
   textAfterDe?: string;
+  /** The work's S/M/L width on the member page (2026-10-16); only "s"/"m" stored, absent = L. */
+  size?: string;
   /**
    * What the work is — absent means a still (2026-09-23, video links). Written
    * only by the server; see ImageDoc.media in functions/src/types.ts.
@@ -151,6 +153,7 @@ export function orderedGalleryItems(
     const textAfterDe = str(rec.textAfterDe);
     if (textAfter) item.textAfter = textAfter;
     if (textAfterDe) item.textAfterDe = textAfterDe;
+    if (rec.size === "s" || rec.size === "m") item.size = rec.size;
     // A video work: the picture above is its poster, and this is what plays.
     // A record claiming to be an embed without a playable id is shown as the
     // still it then is, rather than as a player that cannot start.

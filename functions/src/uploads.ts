@@ -87,9 +87,10 @@ export async function reserveWork(
  * `projectId` rides along so a replaced picture stays in its project, and
  * `inGallery` so one the member took out of the gallery stays out, and the
  * text block after the work (`textAfter`/`textAfterDe`, 2026-10-16) so the
- * words between two pictures survive a swap of the first.
+ * words between two pictures survive a swap of the first, and its S/M/L
+ * size so the page keeps its shape.
  */
-export const WORK_TEXT_FIELDS = ["caption", "captionDe", "description", "descriptionDe", "link", "siteLink", "tags", "projectId", "inGallery", "textAfter", "textAfterDe"] as const;
+export const WORK_TEXT_FIELDS = ["caption", "captionDe", "description", "descriptionDe", "link", "siteLink", "tags", "projectId", "inGallery", "textAfter", "textAfterDe", "size"] as const;
 
 /**
  * The words, plus what KIND of work it is. A video link keeps its video when

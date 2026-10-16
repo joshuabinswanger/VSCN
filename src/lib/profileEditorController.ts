@@ -119,6 +119,7 @@ import {
   MAX_SOCIAL_LINKS,
   MAX_SOCIAL_MEDIA,
 } from "./links.ts";
+import { WORK_SIZE_PX, workSize, workSizeWidth, type WorkSize } from "./workSize.ts";
 import { ui } from "../i18n/translations.ts";
 import {
   isSiteLanguage,
@@ -640,6 +641,33 @@ document.addEventListener("astro:page-load", () => {
               syncPreview();
             });
           }
+
+          // S M L (2026-10-16): the work's width on the page, in px from
+          // workSize.ts. The row is the page's figure, so it takes the same
+          // --size-w and the editor shows the size the visitor gets.
+          const sizeSeg = row.querySelector<HTMLElement>("[data-gallery-size]");
+          const paintSize = () => {
+            const current = workSize(gallery[index]);
+            row.style.setProperty("--size-w", workSizeWidth(gallery[index]));
+            sizeSeg?.querySelectorAll<HTMLButtonElement>("[data-size]").forEach((b) => {
+              b.setAttribute("aria-pressed", String(b.dataset.size === current));
+            });
+          };
+          if (sizeSeg) {
+            named(sizeSeg, s["profile.gallery.size"]);
+            sizeSeg.querySelectorAll<HTMLButtonElement>("[data-size]").forEach((b) => {
+              const key = b.dataset.size as WorkSize;
+              const label = `${s[`profile.gallery.size.${key}`]} · ${WORK_SIZE_PX[key]} px`;
+              named(b, label).title = label;
+              b.addEventListener("click", () => {
+                if (key === "l") delete gallery[index].size;
+                else gallery[index].size = key;
+                paintSize();
+                syncPreview();
+              });
+            });
+          }
+          paintSize();
 
           // The one thing on screen that admits the order means something:
           // CommunityImageCard takes works[0]'s width/height as the aspect
@@ -1992,6 +2020,7 @@ document.addEventListener("astro:page-load", () => {
           color: g.color,
           description: workDescription(g, worksLang),
           textAfter: workTextAfter(g, worksLang),
+          ...(g.size ? { size: g.size } : {}),
           // Same rule the built page applies — works() in memberView.ts calls
           // this too — so the Preview tab shows a link exactly when a visitor
           // would get one, including showing none for a value that is not
