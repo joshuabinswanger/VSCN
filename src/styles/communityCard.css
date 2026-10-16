@@ -128,29 +128,18 @@
   display: none;
 }
 
-/* ── The head: picture, then the name ─────────────────── */
-/* The picture LEFT of the name (2026-10-16, Josh: "move the profile to the
-   left of the name always"), its top on the name's top — Josh's Affinity
-   redraw of the card (Design/Card/Binswanger/), where the head is the
-   picture and the name and nothing else. A phone drops the picture. */
+/* ── The head: the name, then the role ────────────────── */
+/* Name, role and PROFILE → are the card's whole column (2026-10-16, Josh:
+   "actually just Name and Profile Button. Add Role back in."): no picture,
+   bio or "looking for" — the member page has them. */
 .ccard__head {
   display: flex;
-  align-items: flex-start;
-  gap: 1rem;
   min-width: 0;
 }
 .ccard__head-copy {
   display: flex;
   flex-direction: column;
   min-width: 0;
-}
-.ccard__avatar {
-  display: block;
-  flex: none;
-  width: 4.5rem;
-  height: 4.5rem;
-  border-radius: 50%;
-  object-fit: cover;
 }
 .ccard__name {
   margin: 0;
@@ -170,56 +159,18 @@
   text-underline-offset: 3px;
   text-decoration-thickness: 1.5px;
 }
-/* ── The rest: bio, looking for, PROFILE → ─────────────── */
+.ccard__role {
+  margin: 1rem 0 0;
+  min-width: 0;
+  color: var(--color-dark);
+}
+
+/* ── The rest: PROFILE → ──────────────────────────────── */
 .ccard__more {
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
-  /* The redraw's step from the name to the bio. */
   margin-top: 2.25rem;
   min-width: 0;
-}
-.ccard__bio {
-  margin: 0;
-  color: var(--color-dark);
-  white-space: pre-line;
-}
-.ccard__para {
-  display: block;
-}
-.ccard__para + .ccard__para {
-  margin-top: 1.1em;
-}
-/* The aside's bio → meta step is 2.25rem, its rows 1.75rem apart. */
-.ccard__bio + * {
-  margin-top: 0.5rem;
-}
-.ccard__row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-.ccard__key {
-  margin: 0;
-  color: var(--color-muted);
-}
-.ccard__vals {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.ccard__vals > li {
-  display: flex;
-}
-.ccard__val {
-  padding: 5px 7px;
-  color: var(--color-muted);
-  border: 1px solid var(--color-border);
-  min-width: 0;
-  overflow-wrap: anywhere;
 }
 
 /* ── Artwork frame ────────────────────────────────────── */
@@ -510,8 +461,6 @@
   /* The last line of the panel's words, at the column's RIGHT edge
      (2026-10-16, Josh: "Profile right aligned"). */
   align-self: flex-end;
-  /* With the links gone, the redraw sets it 3rem under the words above. */
-  margin-top: 1.25rem;
   /* Smaller since 2026-10-12 (Josh: "profile should be a smaller button,
      white on black text"): the LABEL voice in type.css, and this padding.
      Then PLAIN, the same day ("profile is too strong, make it without black
@@ -587,18 +536,10 @@
   .ccard:not(:has(.ccard__dots:not([hidden]))) .ccard__more {
     grid-area: 3 / 1 / 4 / 2;
   }
-  /* A PHONE SHOWS THE PICTURE, THE NAME, THE LINKS AND THE WAY IN
-     (2026-10-15, Josh: "on mobile the bio and tags should not be shown").
-     The profile page has them. */
-  /* No picture beside the name on a phone either (2026-10-16, Josh: "dont
-     put the face card there"): the name alone, bigger (type.css). */
-  .ccard__bio,
-  .ccard__row--needs,
-  .ccard__avatar {
-    display: none;
-  }
-  .ccard__bio + * {
-    margin-top: 0;
+  /* The name bigger on a phone (2026-10-16, Josh: "on phone increase the
+     Name font as well"), in type.css; the role tight under it. */
+  .ccard__role {
+    margin-top: 0.25rem;
   }
   /* Smaller on a phone (2026-10-12, Josh: "the Profile button smaller on
      mobile!"): the type a step down in type.css, and a tighter box. */
@@ -618,7 +559,6 @@
   }
   .ccard__profile {
     align-self: baseline;
-    margin-top: 0;
     margin-left: auto;
     gap: 0.3rem;
   }

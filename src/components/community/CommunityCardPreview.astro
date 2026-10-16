@@ -129,17 +129,12 @@ const t = useTranslations(lang);
       phone dissolves it (display: contents) and places its parts itself. */}
   <div class="ccard__words">
     <div class="ccard__head">
-      <img class="ccard__avatar" data-ccpv="avatar" width="112" height="112" alt="" hidden />
       <div class="ccard__head-copy">
       <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
+      <p class="ccard__role" data-ccpv="role" hidden></p>
       </div>
     </div>
     <div class="ccard__more">
-      <p class="ccard__bio" data-ccpv="bio" hidden></p>
-      <div class="ccard__row ccard__row--needs" data-ccpv="needs-row" hidden>
-        <h3 class="ccard__key">{t("member.needs")}</h3>
-        <ul class="ccard__vals" data-ccpv="needs"></ul>
-      </div>
       {/* Last, as on the card — a <span> here because there is no page to
           go to from an unsaved form. */}
       <span class="ccard__profile">
@@ -167,7 +162,6 @@ const t = useTranslations(lang);
   >
   <template data-ccpv-tpl="dot"><span class="cdot"></span></template>
   <template data-ccpv-tpl="tag"><li class="ccpv__tag"></li></template>
-  <template data-ccpv-tpl="pval"><li class="ccard__val"></li></template>
 </article>
 </div>
 
