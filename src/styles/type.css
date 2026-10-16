@@ -409,10 +409,17 @@
    of: a step under BODY (2026-10-15,
    Josh: "the paragraph a bit smaller"), and the member page's bio the same
    size since 2026-10-16 (Josh: "the profile should get the same font size for
-   flow text"). */
+   flow text"). A work's description under its picture on the member page
+   joined them the same day (Josh: "image descriptions should be smaller the
+   same font size as the flow text for the profile"), with the bio's leading;
+   the title above it keeps CAPTION's size. On a phone all three are 13px. */
 @media (--bp-desktop) {
   .ccard__bio,
-  .mprof__bio {
+  .mprof__bio,
+  .mprof__desc {
     font-size: var(--fs-85);
+  }
+  .mprof__desc {
+    line-height: 1.6;
   }
 }
