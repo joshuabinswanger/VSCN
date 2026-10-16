@@ -1230,6 +1230,38 @@ const BRAND_SLOTS: BrandSlot[] = [
   // ended. Animating the live <main> instead keeps it in the root, under the
   // grain, the whole way. Same keyframes, same curve.
   const ENTER_MS = 620;
+  // The longest the page is held back waiting to be ready.
+  const ARRIVE_CAP_MS = 1400;
+
+  const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
+
+  /** Resolves once the arrived page can rise without stalling: fonts in,
+   *  the pictures on (or just below) the screen decoded, and two frames in
+   *  a row that came on time. Each wait is bounded; start() has the cap. */
+  async function whenArrivalReady(main: HTMLElement): Promise<void> {
+    await document.fonts?.ready.catch(() => {});
+    // On the screen in BOTH directions: a carousel's next slides sit beside
+    // it and, being lazy, may never load — waiting on them held every member
+    // page to the cap. And never more than half a second of decoding.
+    const pictures = Array.from(main.querySelectorAll("img")).filter((img) => {
+      const r = img.getBoundingClientRect();
+      return r.width > 0 && r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth;
+    });
+    await Promise.race([
+      Promise.all(pictures.map((img) => img.decode().catch(() => {}))),
+      new Promise((resolve) => setTimeout(resolve, 500)),
+    ]);
+    // Quiet = no long task in the frame: 40ms is past any display's frame
+    // (WebKit's headless frames run ~30ms) and short of a 50ms long task.
+    let last = await nextFrame();
+    let calm = 0;
+    for (let i = 0; i < 12 && calm < 2; i++) {
+      const now = await nextFrame();
+      calm = now - last < 40 ? calm + 1 : 0;
+      last = now;
+    }
+  }
+
   let arriveDirection: "forward" | "back" = "forward";
   document.addEventListener("astro:before-swap", (event) => {
     arriveDirection = (event as unknown as { direction?: string }).direction === "back" ? "back" : "forward";
@@ -1252,25 +1284,32 @@ const BRAND_SLOTS: BrandSlot[] = [
       ],
       { duration: ENTER_MS, easing: "cubic-bezier(.18,1.25,.32,1)", fill: "backwards" }
     );
-    // HELD UNTIL THE ARRIVAL'S WORK IS DONE (2026-10-16, Josh: "it still
-    // stutters"). Started here, the rise was timed from the swap, but the
-    // page-load handlers and the first layout of a page like /community
-    // block the main thread for 300ms and more on a phone — so the first
-    // frame that showed was already a third of the way up, and it jumped.
-    // It waits at its first frame (invisible) until two frames after
-    // page-load, then plays from the start.
-    // A second's fallback, so the page can never be left at its invisible
-    // first frame by a page-load that does not come.
+    // HELD UNTIL THE PAGE IS REALLY READY (2026-10-16, Josh: "it still
+    // stutters" twice, then "maybe delay page draw until it really is
+    // ready"). Started at the swap, the rise was timed from a moment the
+    // main thread then spent 300ms and more on a phone dealing and laying
+    // out /community, so its first visible frame was a third of the way up.
+    // Waiting for page-load alone still let it run into the rest: fonts,
+    // the pictures on screen decoding on their first paint, the motion
+    // layer's async measure. So it waits, invisible at its first frame, for
+    // all of that and then for the main thread to be QUIET (two short
+    // frames running), and only then plays — with a hard cap so a slow
+    // image can never keep the page hidden. data-arrive-hold on <html>
+    // holds the Portfolios entrance too (CommunityGrid.astro), so the
+    // picture opens with the rise instead of unseen behind it.
     enter.pause();
+    root.dataset.arriveHold = "";
+    let started = false;
     const start = () => {
+      if (started) return;
+      started = true;
+      delete root.dataset.arriveHold;
       if (enter.playState === "paused") enter.play();
     };
-    document.addEventListener(
-      "astro:page-load",
-      () => requestAnimationFrame(() => requestAnimationFrame(start)),
-      { once: true }
-    );
-    setTimeout(start, 1000);
+    setTimeout(start, ARRIVE_CAP_MS);
+    document.addEventListener("astro:page-load", () => void whenArrivalReady(main).then(start), {
+      once: true,
+    });
     enter.finished.catch(() => {}).finally(() => delete root.dataset.arriving);
   });
 
