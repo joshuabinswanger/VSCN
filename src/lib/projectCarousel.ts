@@ -98,6 +98,10 @@ function revealInView(): void {
     }
     if (visibleShare(carousel) < 0.5) return;
     carousel.classList.add("is-revealed");
+    // Settled once the last work's delayed fade is over: from then on a
+    // step back or forward fades at once.
+    const last = carousel.querySelectorAll("[data-carousel-track] > *").length - 2;
+    window.setTimeout(() => carousel.classList.add("is-settled"), Math.max(0, last) * 140 + 500);
     staged.delete(carousel);
     arrival.unobserve(carousel);
   });
@@ -204,14 +208,20 @@ export function initProjectCarousels(root: ParentNode = document): void {
       // 1c: left-aligned, so no padding to centre the ends on.
       const multi = MULTI.matches;
       track.style.setProperty("--pad-l", `${multi ? 0 : (column - widths[0]) / 2}px`);
-      track.style.setProperty("--pad-r", `${multi ? 0 : (column - widths[widths.length - 1]) / 2}px`);
+      // ...but room after the last work for it to come to rest at the start
+      // too (2026-10-16, Josh: "the final image should end up at the left edge").
+      track.style.setProperty(
+        "--pad-r",
+        `${multi ? Math.max(0, track.clientWidth - widths[widths.length - 1]) : (column - widths[widths.length - 1]) / 2}px`,
+      );
     };
 
     // A slide's resting scroll position: its centre on the column's.
     // offsetLeft is measured from the track (position: relative in the CSS)
     // and includes the track's padding.
-    // 1c: on a desktop its start on the column's, clamped to where the track
-    // can scroll — the last few works are already in view before their turn.
+    // 1c: on a desktop its start on the column's. The end padding lets every
+    // work get there, the last included; the clamp only guards a frame where
+    // the padding is not yet laid out.
     const maxScroll = () => track.scrollWidth - track.clientWidth;
     const restFor = (i: number) =>
       MULTI.matches
@@ -259,7 +269,7 @@ export function initProjectCarousels(root: ParentNode = document): void {
       shown = i;
       const atStart = i === 0;
       // 1c: on a desktop the end is where the track stops, not the last work.
-      const atEnd = i === slides.length - 1 || (MULTI.matches && restFor(i) >= maxScroll() - 1);
+      const atEnd = i === slides.length - 1;
       if (prev) prev.disabled = atStart;
       if (next) next.disabled = atEnd;
       countPrev.disabled = atStart;

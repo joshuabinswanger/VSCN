@@ -806,8 +806,9 @@
      projectCarousel.ts), and the track's last 6rem fade into the paper, so
      the next work trails off instead of being cut. At the end of the track
      there is nothing to trail off to, and the fade goes. */
+  /* 5rem since the same evening (Josh: "bigger horizontal gap"). */
   .mprof__carousel {
-    --carousel-gap: 3rem;
+    --carousel-gap: 5rem;
   }
   .mprof__carousel-stage {
     margin-right: calc(-1 * var(--bleed-r, 0px));
@@ -820,6 +821,18 @@
     -webkit-mask-image: none;
     mask-image: none;
   }
+
+  /* THE LEFTMOST WORK IS THE ONE YOU ARE ON (2026-10-16, Josh: "make the not
+     most left images have a small fade"). The others stand a little back,
+     and come forward as paging brings each to the column's start. The
+     track's end padding (projectCarousel.ts) lets the LAST work reach that
+     start too ("the final image should end up at the left edge"). */
+  .mprof__carousel-slide {
+    transition: opacity 0.3s ease;
+  }
+  .mprof__carousel-slide:not(.is-current) {
+    opacity: 0.6;
+  }
 }
 
 /* THE WORKS ARRIVE ONE AFTER THE OTHER (2026-10-16, Josh: "add an animation
@@ -830,12 +843,17 @@
    --i is each work's place, so each one starts 140ms after the one before.
    Once per visit: a revealed carousel stays revealed. Without the script, or
    with reduced motion, nothing is staged and every work simply shows. */
-.mprof__carousel.is-staged .mprof__carousel-slide:not(:first-child) {
+.mprof__carousel.is-staged:not(.is-revealed) .mprof__carousel-slide:not(:first-child) {
   opacity: 0;
 }
+/* Revealed, a work takes whatever opacity it has at rest (full, or the
+   desktop's step back), on its own delay; once the last has arrived the
+   script settles the carousel and paging fades without one. */
 .mprof__carousel.is-staged.is-revealed .mprof__carousel-slide {
-  opacity: 1;
   transition: opacity 0.5s ease calc(var(--i, 0) * 140ms);
+}
+.mprof__carousel.is-staged.is-settled .mprof__carousel-slide {
+  transition-delay: 0s;
 }
 
 /* The spoken position — the clip technique, as .ccard__live. */
