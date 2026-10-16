@@ -162,6 +162,17 @@ const t = useTranslations(lang);
             <select class="gallery-project-select" data-gallery-project></select>
           </div>
           <button type="button" class="gallery-tpill" data-gallery-auto-thumb hidden></button>
+          {
+            /* IN GALLERY (2026-10-16, Josh: "so we can control what gets
+              shown in the portfolio"). Checked = the work is on /community;
+              unchecked keeps it on the member's own page only. A real
+              checkbox inside the pill, so it is one tab stop and reads as a
+              checkbox. Stored on the record at Save. */
+          }
+          <label class="gallery-tpill gallery-include">
+            <input type="checkbox" data-gallery-include checked />
+            <span data-gallery-include-label></span>
+          </label>
         </div>
         {
           /* A <div>, not the page's <a>: the editor's picture opens nothing.

@@ -27,6 +27,8 @@ export interface ImageDoc {
   tags?: string[];
   /** The member's project this work is in (2026-09-23). Carried over by a replacement; nothing else server-side reads it. */
   projectId?: string;
+  /** The member's "In gallery" switch (2026-10-16): only `false` is stored, absent = shown on /community. */
+  inGallery?: boolean;
   origin: ImageOrigin;
   /**
    * What the work IS (2026-09-23, documentation/20260923-motion-works-design.md).

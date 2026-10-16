@@ -586,7 +586,9 @@ export function renderCardPreview(
 
   // Same filter the profile-page preview applies: a gallery item mid-upload has
   // no dimensions yet, and a slide with no aspect is a collapsed frame.
-  const works = vm.works.filter((w) => w.url && w.width > 0 && w.height > 0);
+  // And, being the CARD, it skips what /community skips: a work the member
+  // took out of the gallery (community.astro filters `hidden` the same way).
+  const works = vm.works.filter((w) => w.url && w.width > 0 && w.height > 0 && !w.hidden);
   const first = works[0];
   const isCarousel = works.length > 1;
 

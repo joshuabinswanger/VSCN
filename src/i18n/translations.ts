@@ -431,6 +431,8 @@ export const ui: Record<string, Record<string, string>> = {
     // first. Nothing said so, and the consequence is large: works[0]'s
     // proportions become the shape of the member's card in the directory.
     "profile.gallery.cover": "Cover",
+    "profile.gallery.include": "In gallery",
+    "profile.gallery.include.hint": "Show this work in the community gallery. Unticked, it stays on your profile page only.",
     "profile.gallery.coverNote":
       "The first image is your cover: its proportions set the shape of your card in the directory.",
     "profile.gallery.moveUp": "Move image earlier",
@@ -1050,6 +1052,8 @@ export const ui: Record<string, Record<string, string>> = {
       "Zu viele Uploads in der letzten Stunde. Bitte warte bis zu einer Stunde und versuche es dann noch einmal.",
     "profile.gallery.remove": "Bild entfernen",
     "profile.gallery.cover": "Titelbild",
+    "profile.gallery.include": "In Galerie",
+    "profile.gallery.include.hint": "Diese Arbeit in der Community-Galerie zeigen. Ohne Häkchen erscheint sie nur auf deiner Profilseite.",
     "profile.gallery.coverNote":
       "Das erste Bild ist dein Titelbild: seine Proportionen bestimmen die Form deiner Karte im Verzeichnis.",
     "profile.gallery.moveUp": "Bild nach vorne",
