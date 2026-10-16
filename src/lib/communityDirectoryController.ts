@@ -365,6 +365,21 @@ function setBarMenu(open: string | null) {
     if (panel) panel.hidden = panelId !== open;
     document.getElementById(btnId)?.setAttribute("aria-expanded", String(panelId === open));
   }
+  // THE SHEET (phone): the search opens as the whole screen, see the
+  // data-search-sheet rules in CommunityGrid.astro. Set before the size
+  // after is measured, so the pill eases from the capsule to the screen;
+  // cleared before the closing measure, so it eases back. The corners go
+  // with it (--bar-r transitions) and the keyboard is dismissed on close.
+  const sheet = open === "search-panel" && window.matchMedia("(max-width: 767px)").matches;
+  const bar = pill?.closest<HTMLElement>(".community-bar");
+  if (bar) {
+    if (sheet) bar.dataset.searchSheet = "";
+    else delete bar.dataset.searchSheet;
+  }
+  if (sheet && pill) pill.style.setProperty("--bar-r", "0px");
+  if (prev === "search-panel" && open !== prev && document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
 
   if (!pill || !from || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     if (pill && !open) pill.style.removeProperty("--bar-r");
@@ -388,6 +403,11 @@ function sizeBar(pill: HTMLElement, from: DOMRect) {
   delete pill.dataset.sizing;
   if (barLeaving) barLeaving.hidden = true;
   const to = pill.getBoundingClientRect();
+  // Closing: the capsule's corners for the size it closes to, so the sheet's
+  // square corners round back while it shrinks (settleBar drops the value).
+  if (!BAR_MENUS.some(([, id]) => document.getElementById(id)?.hidden === false)) {
+    pill.style.setProperty("--bar-r", `${to.height / 2}px`);
+  }
   // Measured above at rest; from here the row keeps that width (CSS).
   pill.dataset.sizing = "";
   if (barLeaving) barLeaving.hidden = false;
@@ -588,7 +608,9 @@ function renderSearch() {
 /** Size the pill to what the results now need, from where it stands. */
 function resizeSearch() {
   const pill = document.querySelector<HTMLElement>(".community-bar__in");
-  if (!pill || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  // The sheet is the screen already; nothing to ease.
+  const sheet = pill?.closest<HTMLElement>(".community-bar")?.dataset.searchSheet !== undefined;
+  if (!pill || sheet || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     renderSearch();
     return;
   }
@@ -1096,6 +1118,7 @@ document.addEventListener("astro:page-load", () => {
       if (toggleBarMenu("search-panel")) searchInput?.focus({ preventScroll: true });
     }, { signal: life });
     searchInput?.addEventListener("input", resizeSearch, { signal: life });
+    document.getElementById("search-cancel")?.addEventListener("click", closeBarMenus, { signal: life });
     searchInput?.addEventListener("keydown", (e) => {
       if (e.key !== "Enter") return;
       e.preventDefault();

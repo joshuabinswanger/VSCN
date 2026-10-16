@@ -83,6 +83,7 @@ export const ui: Record<string, Record<string, string>> = {
     "community.search.projects": "Projects",
     "community.search.images": "Images",
     "community.search.none": "Nothing matches.",
+    "community.search.cancel": "Cancel",
 
     // MemberCard
     "member.showBio": "Show bio for",
@@ -762,6 +763,7 @@ export const ui: Record<string, Record<string, string>> = {
     "community.search.projects": "Projekte",
     "community.search.images": "Bilder",
     "community.search.none": "Keine Treffer.",
+    "community.search.cancel": "Abbrechen",
 
     // MemberCard
     "member.showBio": "Bio anzeigen für",

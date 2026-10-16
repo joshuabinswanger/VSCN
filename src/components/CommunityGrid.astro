@@ -414,16 +414,32 @@ const searchIndex: SearchIndex = {
             from the JSON below. Results are links; nothing here filters the
             view behind it. */
         }
+        {
+          /* ON A PHONE THE SEARCH IS A FULL-SCREEN SHEET (2026-10-16, Josh:
+            "on iphone it does not pop up. i stay hidden behind the keyboard").
+            A fixed bar at the bottom sits against the LAYOUT viewport, which
+            iOS does not shrink for its keyboard, so a drop-up grew from under
+            it. The pill now morphs into a sheet (data-search-sheet on
+            .community-bar, set by setBarMenu): the field pinned at the top
+            with Cancel beside it, the keyboard owning the bottom, the results
+            scrolling between — the one layout every keyboard height leaves
+            readable. Desktop keeps the drop-up. */
+        }
         <div id="search-panel" class="bar-menu__panel search__panel" hidden>
-          <input
-            id="search-input"
-            class="tag-filter__search search__input"
-            type="search"
-            placeholder={t("community.search.placeholder")}
-            aria-label={t("community.search.placeholder")}
-            autocomplete="off"
-            enterkeyhint="search"
-          />
+          <div class="search__head">
+            <input
+              id="search-input"
+              class="tag-filter__search search__input"
+              type="search"
+              placeholder={t("community.search.placeholder")}
+              aria-label={t("community.search.placeholder")}
+              autocomplete="off"
+              enterkeyhint="search"
+            />
+            <button type="button" id="search-cancel" class="tag-filter__clear search__cancel">
+              {t("community.search.cancel")}
+            </button>
+          </div>
           <div
             id="search-results"
             class="search__results"
@@ -956,6 +972,14 @@ const searchIndex: SearchIndex = {
      the footer's wider (German) line — 30px in, ~276px of links and ©,
      measured 2026-10-12 — plus a gap; it moves if the footer's words do. The
      track is see-through to clicks and the pill takes them back. */
+  /* Registered so the pill's corner radius can TRANSITION; a bare custom
+     property only snaps. Global, like every @property. */
+  @property --bar-r {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 999px;
+  }
+
   .community-bar {
     position: fixed;
     /* THE TYPE SITS ON THE CORNERS' LINE, NOT THE BOX. The footer and the
@@ -994,6 +1018,9 @@ const searchIndex: SearchIndex = {
        radius on a tall box is a stadium, and between the two it would bulge.
        animateBar writes the closed half-height here before it grows. */
     border-radius: var(--bar-r, var(--radius-pill)) !important;
+    /* The corners ease (the sheet takes them away, closing brings them
+       back): --bar-r is registered below, so it interpolates. */
+    transition: --bar-r 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
     /* ONE PILL, ONE OUTLINE (2026-10-15, Josh: "it is still seperated").
        The triggers sit INSIDE a single paper capsule with the black hairline
        (its curve comes from CONTROLS in global.css), and the capsule grows
@@ -1051,6 +1078,8 @@ const searchIndex: SearchIndex = {
       bottom: calc(12px + env(safe-area-inset-bottom, 0px));
       display: flex;
       justify-content: center;
+      /* The sheet sits on the screen's edge; the pill floats 12px off it. */
+      transition: bottom 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
     }
   }
 
@@ -1336,19 +1365,95 @@ const searchIndex: SearchIndex = {
     }
   }
 
-  .search__input {
+  /* The field stays put while the rows scroll under it; the head's paper
+     covers them. Cancel is a sheet control (below) and not drawn here. */
+  .search__head {
     position: sticky;
     top: 0;
     z-index: 1;
-    /* The paper above the field covers the rows scrolling under it. */
-    margin: 0 0 6px;
-    box-shadow: 0 -6px 0 var(--color-bg);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: -6px 0 6px;
+    padding: 6px 0;
+    background: var(--color-bg);
   }
 
-  .search__input:focus {
-    box-shadow:
-      inset 0 0 0 0.5px var(--color-dark),
-      0 -6px 0 var(--color-bg);
+  .search__cancel {
+    display: none;
+  }
+
+  /* ── The sheet (phone only) ───────────────────────────────
+     With data-search-sheet on the bar, the pill IS the screen: the bar's
+     track spans the viewport, the pill fills it, the triggers' row steps
+     out of flow and fades, and the search room becomes a column — head at
+     the top, results scrolling under it. setBarMenu eases the pill's box
+     from the capsule to the full size and --bar-r (registered, so it
+     transitions) takes the corners away. Half a screen of padding under the
+     last result lets it scroll out from under the keyboard, which iOS lays
+     over the page rather than resizing it. Above the header (z 30). */
+  @media (--bp-mobile) {
+    .community-bar[data-search-sheet] {
+      top: 0;
+      bottom: 0;
+      z-index: 40;
+      align-items: flex-end;
+    }
+
+    .community-bar[data-search-sheet] .community-bar__in {
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      justify-content: flex-start;
+      padding: calc(6px + env(safe-area-inset-top, 0px)) 6px 0;
+      border: none;
+    }
+
+    .community-bar[data-search-sheet] .community-bar__row {
+      position: absolute;
+      bottom: 0;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s;
+    }
+
+    .community-bar[data-search-sheet] .community-bar__panels {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+    }
+
+    .community-bar[data-search-sheet] .search__panel {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      max-height: none;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .community-bar[data-search-sheet] .search__head {
+      position: static;
+      flex: none;
+      margin: 0;
+      padding: 6px 6px 8px;
+    }
+
+    .community-bar[data-search-sheet] .search__cancel {
+      display: block;
+    }
+
+    .community-bar[data-search-sheet] .search__results {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 6px 50vh;
+    }
   }
 
   .search__results :global(.search__note) {
