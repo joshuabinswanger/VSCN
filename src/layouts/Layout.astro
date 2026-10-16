@@ -1234,7 +1234,12 @@ const BRAND_SLOTS: BrandSlot[] = [
       // Apply our saved entry once; later retries yield to reader scrolling.
       if (!firstRestore && !arrived && at > 1) return;
       firstRestore = false;
-      scroller.scrollTop = top;
+      // INSTANT, explicitly (2026-10-16, Josh: "portfolio page slide around
+      // when naved to"): .page-wrap carries scroll-behavior: smooth, so a
+      // plain scrollTop assignment GLIDED from the top to the saved offset —
+      // Back onto Portfolios scrolled through every member above, 0 → 1488px
+      // over ~650ms, while the page rose. A restore is a place, not a move.
+      scroller.scrollTo({ top, behavior: "instant" });
       applyBrandHide();
       if (Math.abs(scroller.scrollTop - top) > 1 && tries++ < SCROLL_RESTORE_TRIES) {
         setTimeout(apply, SCROLL_RESTORE_STEP_MS);
