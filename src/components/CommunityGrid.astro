@@ -350,33 +350,14 @@ const indexMembers = [...members].sort((a, b) =>
   <div class="community-bar">
     <div class="community-bar__in">
       {
-        /* TWO DROP-UPS (2026-10-12, Josh: "floating bar. also restyle tags to
-          be more modern. the view version should also be a drop up"). Each is
-          a .bar-menu: a chip-shaped trigger and a card that rises from the
-          bar. Opening one closes the other; a click outside or Escape closes
-          both (communityDirectoryController.ts, closeBarMenus).
-
-          The tags menu: browse every tag as a chip or type to narrow them,
-          pick one to filter. Single-select — "All tags" (or re-picking the
-          active tag) clears. With a tag set, the trigger shows its name and
-          fills dark, so the bar says at a glance that the page is filtered. */
+        /* THE CARDS LIVE INSIDE THE PILL (2026-10-16, Josh: "can the selections
+          stay contained in the outer pill so everything smoothly animates with
+          expands and contracts"). The three panels sit in one stack above the
+          row of triggers, both inside the capsule, so opening a menu GROWS the
+          pill upward around it instead of hanging a second card over the page.
+          animateBar in communityDirectoryController.ts eases the size change. */
       }
-      <div class="bar-menu tag-filter">
-        <button
-          type="button"
-          id="tag-filter-btn"
-          class="bar-menu__trigger"
-          aria-expanded="false"
-          aria-controls="tag-filter-panel"
-        >
-          <span id="tag-filter-label" data-rest={t("community.filter.tags")}>
-            {t("community.filter.tags")}
-          </span>
-          <svg class="bar-menu__chev" viewBox="0 0 10 6" aria-hidden="true"
-            ><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.2"
-            ></path></svg
-          >
-        </button>
+      <div class="community-bar__panels">
         <div id="tag-filter-panel" class="bar-menu__panel tag-filter__panel" hidden>
           <div class="tag-filter__head">
             <input
@@ -436,37 +417,6 @@ const indexMembers = [...members].sort((a, b) =>
           </ul>
           <p class="field-note tag-filter__scope">{t("community.filter.tags.scope")}</p>
         </div>
-      </div>
-      {
-        /* THE SORT MENU (2026-10-15, Josh: "we need sort for the images
-          page. sort by: date, member, project, field/tags"). Images only —
-          hidden in every other view (reflectSort in the controller; the
-          server renders it for the default view's state). Date orders the
-          wall newest first; the other three group it, with the group's name
-          over a hairline between one run of pictures and the next — a
-          member's name links to their page. Field runs are in random order,
-          as asked. One pick at a time; re-picking the active one clears it.
-          Same anatomy as the view menu: a chip trigger naming the current
-          sort ("Sort" at rest), a column of rows with a check on the one
-          pressed. */
-      }
-      <div class="bar-menu sort-menu" hidden={DEFAULT_VIEW !== "grid"}>
-        <button
-          type="button"
-          id="sort-menu-btn"
-          class="bar-menu__trigger"
-          aria-expanded="false"
-          aria-controls="sort-menu-panel"
-          aria-label={t("community.sort")}
-        >
-          <span id="sort-menu-label" data-rest={t("community.sort")}>
-            {t("community.sort")}
-          </span>
-          <svg class="bar-menu__chev" viewBox="0 0 10 6" aria-hidden="true"
-            ><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.2"
-            ></path></svg
-          >
-        </button>
         <div
           id="sort-menu-panel"
           class="bar-menu__panel sort-menu__panel"
@@ -482,38 +432,6 @@ const indexMembers = [...members].sort((a, b) =>
             ))
           }
         </div>
-      </div>
-      {
-        /* The view menu. All three views on every width: on mobile Gallery is
-          a single fading column, Grid the stacked two-column wall — see the
-          --bp-mobile block on .cgrid. The trigger names the current view
-          (reflectMode writes it; the server renders the default's name). In
-          strip mode, which is URL-only, no row is pressed and the trigger
-          falls back to "View". */
-      }
-      <div class="bar-menu view-menu">
-        <button
-          type="button"
-          id="view-menu-btn"
-          class="bar-menu__trigger"
-          aria-expanded="false"
-          aria-controls="view-menu-panel"
-          aria-label={t("community.view.label")}
-        >
-          <span id="view-menu-label" data-rest={t("community.view.label")}>
-            {t(
-              DEFAULT_VIEW === "index"
-                ? "community.view.index"
-                : DEFAULT_VIEW === "grid"
-                  ? "community.view.grid"
-                  : "community.view.gallery"
-            )}
-          </span>
-          <svg class="bar-menu__chev" viewBox="0 0 10 6" aria-hidden="true"
-            ><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.2"
-            ></path></svg
-          >
-        </button>
         <div
           id="view-menu-panel"
           class="bar-menu__panel view-menu__panel view-toggle"
@@ -540,6 +458,100 @@ const indexMembers = [...members].sort((a, b) =>
             aria-describedby="member-index-note"
           >
             {t("community.view.index")}
+          </button>
+        </div>
+      </div>
+      <div class="community-bar__row">
+        {
+          /* TWO DROP-UPS (2026-10-12, Josh: "floating bar. also restyle tags to
+            be more modern. the view version should also be a drop up"). Each is
+            a .bar-menu: a chip-shaped trigger and a card that rises from the
+            bar. Opening one closes the other; a click outside or Escape closes
+            both (communityDirectoryController.ts, closeBarMenus).
+
+            The tags menu: browse every tag as a chip or type to narrow them,
+            pick one to filter. Single-select — "All tags" (or re-picking the
+            active tag) clears. With a tag set, the trigger shows its name and
+            fills dark, so the bar says at a glance that the page is filtered. */
+        }
+        <div class="bar-menu tag-filter">
+          <button
+            type="button"
+            id="tag-filter-btn"
+            class="bar-menu__trigger"
+            aria-expanded="false"
+            aria-controls="tag-filter-panel"
+          >
+            <span id="tag-filter-label" data-rest={t("community.filter.tags")}>
+              {t("community.filter.tags")}
+            </span>
+            <svg class="bar-menu__chev" viewBox="0 0 10 6" aria-hidden="true"
+              ><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.2"
+              ></path></svg
+            >
+          </button>
+        </div>
+        {
+          /* THE SORT MENU (2026-10-15, Josh: "we need sort for the images
+            page. sort by: date, member, project, field/tags"). Images only —
+            hidden in every other view (reflectSort in the controller; the
+            server renders it for the default view's state). Date orders the
+            wall newest first; the other three group it, with the group's name
+            over a hairline between one run of pictures and the next — a
+            member's name links to their page. Field runs are in random order,
+            as asked. One pick at a time; re-picking the active one clears it.
+            Same anatomy as the view menu: a chip trigger naming the current
+            sort ("Sort" at rest), a column of rows with a check on the one
+            pressed. */
+        }
+        <div class="bar-menu sort-menu" hidden={DEFAULT_VIEW !== "grid"}>
+          <button
+            type="button"
+            id="sort-menu-btn"
+            class="bar-menu__trigger"
+            aria-expanded="false"
+            aria-controls="sort-menu-panel"
+            aria-label={t("community.sort")}
+          >
+            <span id="sort-menu-label" data-rest={t("community.sort")}>
+              {t("community.sort")}
+            </span>
+            <svg class="bar-menu__chev" viewBox="0 0 10 6" aria-hidden="true"
+              ><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.2"
+              ></path></svg
+            >
+          </button>
+        </div>
+        {
+          /* The view menu. All three views on every width: on mobile Gallery is
+            a single fading column, Grid the stacked two-column wall — see the
+            --bp-mobile block on .cgrid. The trigger names the current view
+            (reflectMode writes it; the server renders the default's name). In
+            strip mode, which is URL-only, no row is pressed and the trigger
+            falls back to "View". */
+        }
+        <div class="bar-menu view-menu">
+          <button
+            type="button"
+            id="view-menu-btn"
+            class="bar-menu__trigger"
+            aria-expanded="false"
+            aria-controls="view-menu-panel"
+            aria-label={t("community.view.label")}
+          >
+            <span id="view-menu-label" data-rest={t("community.view.label")}>
+              {t(
+                DEFAULT_VIEW === "index"
+                  ? "community.view.index"
+                  : DEFAULT_VIEW === "grid"
+                    ? "community.view.grid"
+                    : "community.view.gallery"
+              )}
+            </span>
+            <svg class="bar-menu__chev" viewBox="0 0 10 6" aria-hidden="true"
+              ><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.2"
+              ></path></svg
+            >
           </button>
         </div>
       </div>
@@ -864,12 +876,23 @@ const indexMembers = [...members].sort((a, b) =>
 
   .community-bar__in {
     grid-column: 2;
-    /* The panels hang from the PILL on desktop: the tags card from its left
-       edge, the view menu from its right. */
+    /* A COLUMN: the open panel on top, the triggers' row at the foot, both
+       inside the one outline (10-16, "contained in the outer pill"). Packed
+       to the END on purpose: while animateBar holds the box smaller than its
+       content, the overflow goes UP and out to both sides — clipped — so the
+       row stays put on the bottom line and the panel is uncovered from it. */
     position: relative;
     pointer-events: auto;
+    box-sizing: border-box;
     display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
     align-items: center;
+    overflow: clip;
+    /* A capsule at rest, and the SAME corners round a tall open box: a 999px
+       radius on a tall box is a stadium, and between the two it would bulge.
+       animateBar writes the closed half-height here before it grows. */
+    border-radius: var(--bar-r, var(--radius-pill)) !important;
     /* ONE PILL, ONE OUTLINE (2026-10-15, Josh: "it is still seperated").
        The triggers sit INSIDE a single paper capsule with the black hairline
        (its curve comes from CONTROLS in global.css), and the capsule grows
@@ -881,28 +904,42 @@ const indexMembers = [...members].sort((a, b) =>
     padding: var(--bar-pad);
     background: var(--color-bg);
     border: 1px solid var(--color-dark);
-    gap: 2px;
     font-size: var(--fs-85);
     /* The pill never outgrows the screen; past this a label wraps inside it. */
     max-width: calc(100vw - 24px);
   }
 
+  .community-bar__row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    max-width: 100%;
+  }
+
+  /* The stack the panels open in. Nothing open, it is nothing. Its width is
+     the open panel's; the row's when the row is wider (stretch). */
+  .community-bar__panels {
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .community-bar__panels:not(:has(> :not([hidden]))) {
+    display: none;
+  }
+
   @media (--bp-mobile) {
     /* Floats on a phone too: centred, 12px off the bottom plus the home-bar
        inset. The track is a plain block here — there is no footer to dodge —
-       and the pill centres in it. The track is ALSO the panels' containing
-       block on a phone (the pill drops position:relative below), so a card
-       spans the screen less a 12px margin instead of the pill's narrow width.
-       .page-wrap's 72px bottom padding (Layout.astro) is what lets the last
-       card and the footer's last line scroll out from under it. */
+       and the pill centres in it. .page-wrap's 72px bottom padding
+       (Layout.astro) is what lets the last card and the footer's last line
+       scroll out from under it. */
     .community-bar {
       bottom: calc(12px + env(safe-area-inset-bottom, 0px));
       display: flex;
       justify-content: center;
-    }
-
-    .community-bar__in {
-      position: static;
     }
   }
 
@@ -986,67 +1023,27 @@ const indexMembers = [...members].sort((a, b) =>
     transform: rotate(180deg);
   }
 
-  /* The card that rises from the bar. Absolute against the pill on desktop,
-     against the track on a phone (see the --bp-mobile block above). */
+  /* A panel is a room of the pill, not a card of its own (10-16): no
+     outline, no shadow, no rise — the pill's outline is its outline and the
+     pill's growth is its entrance (animateBar). Above the row by a gap the
+     size of the row's own inset. */
   .bar-menu__panel {
-    position: absolute;
-    bottom: calc(100% + 8px);
     box-sizing: border-box;
+    flex: none;
+    max-width: 100%;
+    margin-bottom: var(--bar-pad);
     padding: 6px;
-    background: var(--color-bg);
-    /* Black, like the triggers they rise from — one kind of outline. */
-    border: 1px solid var(--color-dark);
-    border-radius: 0;
-    box-shadow: 0 16px 40px -12px color-mix(in srgb, var(--color-dark) 28%, transparent);
-    transform-origin: bottom center;
   }
 
   .bar-menu__panel[hidden] {
     display: none;
   }
 
-  @media (prefers-reduced-motion: no-preference) {
-    .bar-menu__panel:not([hidden]) {
-      /* Global name: Astro does not scope @keyframes. */
-      animation: community-bar-menu-rise 0.18s ease-out;
-    }
-  }
-
-  @keyframes community-bar-menu-rise {
-    from {
-      opacity: 0;
-      transform: translateY(6px) scale(0.98);
-    }
-  }
-
-  /* ── The view menu ────────────────────────────────────── */
-  /* Anchored to its OWN trigger on every width, unlike the tags card: it is
-     narrow, so on a phone it should rise from the trigger it belongs to, not
-     from the screen edge. The offsets line its right edge up with the pill's
-     outer edge and its gap up with the tags card's (the pill's padding plus
-     its border). */
-  .view-menu {
-    position: relative;
-  }
-
-  .view-menu__panel {
-    right: calc(-1 * var(--bar-pad) - 1px);
-    bottom: calc(100% + 8px + var(--bar-pad) + 1px);
-    display: flex;
-    flex-direction: column;
-    min-width: 9rem;
-  }
-
-  /* The sort menu rises from its own trigger too, lined up on its LEFT edge
-     (it sits in the pill's middle, so neither pill edge is its anchor);
-     its rows are the view menu's rows. */
-  .sort-menu {
-    position: relative;
-  }
-
+  /* The view and sort menus: a column of rows the pill's width (or 9rem,
+     whichever is wider — the pill grows to it). */
+  .view-menu__panel,
   .sort-menu__panel {
-    left: calc(-1 * var(--bar-pad) - 1px);
-    bottom: calc(100% + 8px + var(--bar-pad) + 1px);
+    align-self: stretch;
     display: flex;
     flex-direction: column;
     min-width: 9rem;
@@ -1096,7 +1093,6 @@ const indexMembers = [...members].sort((a, b) =>
 
   /* ── The tags menu ────────────────────────────────────── */
   .tag-filter__panel {
-    left: 0;
     width: 22rem;
     /* The chips ARE the panel's content, so this cap is what decides how
        many read at a glance before scrolling. The vh half keeps the card
@@ -1112,13 +1108,11 @@ const indexMembers = [...members].sort((a, b) =>
     scrollbar-color: var(--color-border) transparent;
   }
 
+  /* On a phone the tags room takes the whole width the pill may have. */
   @media (--bp-mobile) {
     .tag-filter__panel {
-      left: 12px;
-      right: 12px;
-      width: auto;
+      width: calc(100vw - 24px - 2 * var(--bar-pad) - 2px);
     }
-
   }
 
   /* Holds the search field in place while the chips scroll under it. The
