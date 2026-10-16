@@ -1337,7 +1337,10 @@ const BRAND_SLOTS: BrandSlot[] = [
     if (arrivalWasTraverse && window.matchMedia("(max-width: 767px)").matches) {
       // At once, before the first frame shows the router's restored offset,
       // and again once the transition is done, in case it lands later.
+      // Not when the page placed itself: Back to Portfolios returns to the
+      // member left (data-scroll-kept, communityDirectoryController.ts).
       const toTop = () => {
+        if (document.documentElement.hasAttribute("data-scroll-kept")) return;
         if (navigation === scrollNavigation && window.scrollY !== 0) {
           window.scrollTo({ top: 0, behavior: "instant" });
         }
