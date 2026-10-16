@@ -677,10 +677,6 @@ const indexMembers = [...members].sort((a, b) =>
       band above, shared by all three views — the ledger just hides rows. */
   }
   <div id="member-index" class="cindex-wrap" hidden={DEFAULT_VIEW !== "index"}>
-    {/* Why this view is longer than the other two: the galleries are
-        artwork-only, so a member who has not uploaded yet is only here.
-        Also the Index button's description, so it is heard before the switch. */}
-    <p id="member-index-note" class="field-note cindex__note">{t("community.index.note")}</p>
     <ol class="cindex">
       {
         indexMembers.map((m) => {
@@ -789,6 +785,11 @@ const indexMembers = [...members].sort((a, b) =>
         })
       }
     </ol>
+    {/* Why this view is longer than the other two: the galleries are
+        artwork-only, so a member who has not uploaded yet is only here.
+        Below the list, so the people come first; still the Index button's
+        description, so it is heard before the switch. */}
+    <p id="member-index-note" class="field-note cindex__note">{t("community.index.note")}</p>
   </div>
 
   <div id="community-signup-cta" class="community-signup-cta" style="display:none;">
@@ -1978,7 +1979,7 @@ const indexMembers = [...members].sort((a, b) =>
   }
 
   .cindex__note {
-    margin: 0 0 1rem;
+    margin: 1rem 0 0;
   }
 
   .cindex {
