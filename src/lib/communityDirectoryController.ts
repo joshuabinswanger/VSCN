@@ -998,6 +998,130 @@ document.addEventListener("astro:before-swap", () => {
   if (wrap) delete wrap.dataset.snap;
 });
 
+// ── BACK RETURNS TO THE MEMBER YOU LEFT (2026-10-16, Josh: "navigating back
+// from profiles to portfolio view"). Every arrival starts at the top since
+// 81ba724, so Back from member seven's profile landed on member one. A pixel
+// offset is not restored (that was the old slide, see Layout.astro): the
+// MEMBER is. Leaving the Portfolios view files the rank of the card on screen
+// under this entry's history index; a traverse back onto the entry puts that
+// card at its snap stop at once, while the arriving page is still held
+// invisible, so nothing glides. data-scroll-kept on <html> tells Layout's
+// phone "Back starts at the top" reset to stand aside for this arrival.
+const PAGES_AT_KEY = "vscn:pages-at:";
+/** The index of the entry on screen, adopted at page-load — on a Back,
+ *  history.state is already the DESTINATION's by before-preparation. */
+let pagesEntryIndex: number | null = null;
+let arrivalTraverse = false;
+let arrivalSettled: Promise<void> = Promise.resolve();
+
+function pagesCellOnScreen(): HTMLElement | null {
+  const mid = window.innerHeight / 2;
+  for (const cell of document.querySelectorAll<HTMLElement>(
+    '#member-grid[data-pattern="pages"] > .cgrid__cell[data-slot="image"]:not([hidden])'
+  )) {
+    const r = cell.getBoundingClientRect();
+    if (r.top <= mid && r.bottom > mid) return cell;
+  }
+  return null;
+}
+
+document.addEventListener("astro:before-preparation", () => {
+  if (pagesEntryIndex === null) return;
+  const rank = pagesCellOnScreen()?.dataset.rank;
+  try {
+    if (rank) sessionStorage.setItem(PAGES_AT_KEY + pagesEntryIndex, rank);
+    else sessionStorage.removeItem(PAGES_AT_KEY + pagesEntryIndex);
+  } catch {
+    /* Private mode: Back starts at the top, as everywhere else. */
+  }
+});
+
+document.addEventListener("astro:before-swap", (event) => {
+  const swap = event as unknown as {
+    navigationType?: string;
+    viewTransition?: { finished: Promise<void> };
+  };
+  delete document.documentElement.dataset.scrollKept;
+  pagesEntryIndex = null;
+  arrivalTraverse = swap.navigationType === "traverse";
+  arrivalSettled = swap.viewTransition?.finished.catch(() => {}) ?? Promise.resolve();
+});
+
+// Before page-load, so the flag is up whichever page-load handler runs first.
+document.addEventListener("astro:after-swap", () => {
+  if (arrivalTraverse && savedPagesRank() !== null) {
+    document.documentElement.dataset.scrollKept = "";
+  }
+});
+
+function savedPagesRank(): string | null {
+  const index = (history.state as { index?: number } | null)?.index;
+  if (typeof index !== "number") return null;
+  try {
+    return sessionStorage.getItem(PAGES_AT_KEY + index);
+  } catch {
+    return null;
+  }
+}
+
+/** Layout position, transforms ignored: the arriving <main> is held at its
+ *  first rise frame (translated and scaled), so a client rect lies. */
+function layoutTop(el: HTMLElement): number {
+  let y = 0;
+  for (let n: HTMLElement | null = el; n; n = n.offsetParent as HTMLElement | null) y += n.offsetTop;
+  return y;
+}
+
+function restorePagesMember(mode: LayoutMode) {
+  const index = (history.state as { index?: number } | null)?.index;
+  pagesEntryIndex = mode === "pages" && typeof index === "number" ? index : null;
+  const kept = document.documentElement.hasAttribute("data-scroll-kept");
+  const rank = arrivalTraverse ? savedPagesRank() : null;
+  arrivalTraverse = false;
+  if (mode !== "pages" || !rank) {
+    if (kept) delete document.documentElement.dataset.scrollKept;
+    return;
+  }
+  const cell = document.querySelector<HTMLElement>(
+    `#member-grid > .cgrid__cell[data-slot="image"][data-rank="${CSS.escape(rank)}"]:not([hidden])`
+  );
+  const wrap = document.querySelector<HTMLElement>(".page-wrap");
+  if (!cell || !wrap) {
+    if (kept) delete document.documentElement.dataset.scrollKept;
+    return;
+  }
+  document.documentElement.dataset.scrollKept = "";
+  const place = (): number => {
+    if (!cell.isConnected) return NaN;
+    const header = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--header-h")) || 0;
+    // On a phone the document scrolls (global.css), on a desktop .page-wrap.
+    const phone = getComputedStyle(wrap).overflowY === "visible";
+    const top = layoutTop(cell) - header - (phone ? 0 : layoutTop(wrap));
+    if (phone) window.scrollTo({ top, behavior: "instant" });
+    else wrap.scrollTo({ top, behavior: "instant" });
+    return top;
+  };
+  // Every frame while the page is held invisible, not once: at page-load the
+  // swapped-in cells can still be unstyled (each ~9000px tall for a frame in
+  // WebKit), and one placement then landed a card down and jumped back once
+  // the page was already showing. Stops when the hold is off and the target
+  // has stood still, so a reader's own scroll is never fought.
+  const root = document.documentElement;
+  let last = NaN;
+  let frames = 0;
+  const settle = () => {
+    const top = place();
+    const held = root.hasAttribute("data-arrive-hold");
+    if (!held && top === last) return;
+    last = top;
+    if (++frames < 120) requestAnimationFrame(settle);
+  };
+  settle();
+  // Again once the transition is done: the router may restore the window's
+  // offset late, and the snap only re-engages after the rise.
+  void arrivalSettled.then(() => requestAnimationFrame(place));
+}
+
 
 function modeFromURL(): LayoutMode {
   return viewFromParam(new URLSearchParams(window.location.search).get("pattern"));
@@ -1054,6 +1178,7 @@ document.addEventListener("astro:page-load", () => {
 
     applyLayout(grid, mode);
     reflectMode(mode);
+    restorePagesMember(mode);
 
     // ── A PROFILE TAG GOES TO PORTFOLIOS, WHATEVER VIEW IT IS IN
     // (2026-10-15, Josh: "image tags send to images site with tag selected,
