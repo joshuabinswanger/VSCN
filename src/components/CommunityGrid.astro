@@ -1406,9 +1406,14 @@ const indexMembers = [...members].sort((a, b) =>
       --cpage-words-air: 1rem;
       --cpage-row-gap: 0.75rem;
       --cpage-card-h: calc(var(--cpage-h) - var(--cpage-chrome-b) - var(--cpage-words-air) - var(--cpage-lift));
-      --cpage-pic-h: calc(
+      /* What the picture may be, the words kept above the bar... */
+      --cpage-pic-fit: calc(
         var(--cpage-card-h) - var(--cpage-head-h) - var(--cpage-links-h) - 2 * var(--cpage-row-gap)
       );
+      /* ...and inside the top 70svh band, under the header (2026-10-16, Josh:
+         "on mobile make the gallery be centered in the top 70vh"). */
+      --cpage-band-mid: calc(35svh - var(--header-h));
+      --cpage-pic-h: min(var(--cpage-pic-fit), 2 * var(--cpage-band-mid));
       width: 100%;
     }
     /* THE PICTURE TAKES THE PHONE'S WIDTH (2026-10-15, Josh: "on mobile the
@@ -1431,8 +1436,19 @@ const indexMembers = [...members].sort((a, b) =>
          role, links as one group, centred in the card. The picture keeps its
          cap (--cpage-pic-h), so the group always fits. */
       grid-template-rows: auto auto auto;
-      align-content: center;
+      align-content: start;
       row-gap: var(--cpage-row-gap);
+      /* THE PICTURE CENTRED IN THE TOP 70svh (2026-10-16, Josh: "on mobile
+         make the gallery be centered in the top 70vh"), the words hanging
+         right under it. Its real height is the phone's width at the
+         artwork's aspect, capped; the drop is clamped so the words never
+         run onto the bar. */
+      --pic-real-h: min(calc(100cqw / var(--frame-ar, 1)), var(--cpage-pic-h));
+      --pic-drop: clamp(
+        0px,
+        calc(var(--cpage-band-mid) - var(--pic-real-h) / 2),
+        calc(var(--cpage-pic-fit) - var(--pic-real-h))
+      );
       /* BETWEEN THE TWO TOOLBAR STATES (2026-10-15, Josh: "move it down half
          of the vh of the collapsible bar so it sits in between"): the card is
          sized for the toolbar SHOWN (svh) and set half the toolbar's height
@@ -1445,6 +1461,7 @@ const indexMembers = [...members].sort((a, b) =>
     }
     :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__body) {
       justify-content: center;
+      margin-top: var(--pic-drop);
     }
     :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard .ccard__head) {
       overflow: hidden;
