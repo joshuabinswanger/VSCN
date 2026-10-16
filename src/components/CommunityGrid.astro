@@ -583,12 +583,15 @@ const searchIndex: SearchIndex = {
             aria-controls="search-panel"
             aria-label={t("community.search")}
           >
+            {
+              /* The glass alone (2026-10-16, Josh: "remove 'search' just the
+                loope is enough"); the word stays as the button's name. */
+            }
             <svg class="search__glass" viewBox="0 0 12 12" aria-hidden="true"
               ><circle cx="5" cy="5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.3"
               ></circle><path d="M7.7 7.7L11 11" fill="none" stroke="currentColor" stroke-width="1.3"
               ></path></svg
             >
-            <span>{t("community.search")}</span>
           </button>
         </div>
         <div class="bar-menu tag-filter">
@@ -1343,10 +1346,16 @@ const searchIndex: SearchIndex = {
      The tags room's width and height cap; the field stays put while the
      results scroll under it. The rows are drawn by renderSearch, so every
      rule below the panel reaches them through :global. */
+  /* A glyph the height of a capital, on a trigger as wide as it is tall-ish:
+     the other triggers' side padding would leave it swimming. */
   .search__glass {
-    width: 0.85em;
-    height: 0.85em;
+    width: 1em;
+    height: 1em;
     flex: none;
+  }
+
+  .search-menu .bar-menu__trigger {
+    padding-inline: 0.7rem;
   }
 
   .search__panel {
