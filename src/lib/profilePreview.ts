@@ -294,19 +294,14 @@ export function renderProfilePreview(
       // A video work shows its poster with the play mark, as the page does.
       show(workPart("play"), Boolean(w.embed));
 
+      // No description under the picture since 2026-10-16, as on the page
+      // (MemberWork.astro); the lightbox still reads it.
       const captionText = w.caption?.trim() ?? "";
-      const descText = w.description?.trim() ?? "";
 
       const caption = workPart("caption");
       if (caption) {
         caption.textContent = captionText;
         caption.hidden = !captionText;
-      }
-
-      const desc = workPart("desc");
-      if (desc) {
-        fillParagraphs(desc, descText);
-        desc.hidden = !descText;
       }
 
       // `w.link` arrives already scheme-prefixed and already filtered for
@@ -327,7 +322,7 @@ export function renderProfilePreview(
       setLink("link", w.link);
       show(workPart("links"), Boolean(w.siteLink || w.link));
 
-      show(workPart("caption-block"), Boolean(captionText || descText || w.link || w.siteLink));
+      show(workPart("caption-block"), Boolean(captionText || w.link || w.siteLink));
       return figure;
     };
 
@@ -591,7 +586,9 @@ export function renderCardPreview(
 
   // Same filter the profile-page preview applies: a gallery item mid-upload has
   // no dimensions yet, and a slide with no aspect is a collapsed frame.
-  const works = vm.works.filter((w) => w.url && w.width > 0 && w.height > 0);
+  // And, being the CARD, it skips what /community skips: a work the member
+  // took out of the gallery (community.astro filters `hidden` the same way).
+  const works = vm.works.filter((w) => w.url && w.width > 0 && w.height > 0 && !w.hidden);
   const first = works[0];
   const isCarousel = works.length > 1;
 

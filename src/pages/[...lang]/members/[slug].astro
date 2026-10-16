@@ -141,6 +141,8 @@ const lightboxStrings = JSON.stringify({
   error: t("member.lightbox.error"),
   linkTitle: t("member.lightbox.link"),
   siteLinkTitle: t("member.lightbox.siteLink"),
+  linkText: t("member.lightbox.linkText"),
+  siteLinkText: t("member.lightbox.siteLinkText"),
   play: t("member.lightbox.play"),
   partOf: t("member.project.partOf"),
   with: t("member.project.with"),
@@ -338,7 +340,7 @@ const jsonLd = memberPageJsonLd({
 
     {
       works.length > 0 && (
-        <div class="mprof__works" data-pswp-i18n={lightboxStrings} data-index-label={t("member.index")}>
+        <div class="mprof__works" data-snap-projects data-pswp-i18n={lightboxStrings} data-index-label={t("member.index")}>
           {/* Each work is a link to the original, which is what PhotoSwipe
               binds to — and what makes the image openable with scripting off
               rather than being inert. The gallery is still one list in the

@@ -30,7 +30,7 @@ import { adoptLooseWorks, inheritedSiteLink, inheritedTags, ownProjects, type Pr
 export interface RankedWork extends ProfileWork {
   /** 0–100 priority. See src/lib/imageScore.ts. */
   score: number;
-  /** Moderation took this off /community. The member's own page still shows it. */
+  /** Moderation, or the member's "In gallery" switch, took this off /community. The member's own page still shows it. */
   hidden: boolean;
 }
 
@@ -220,7 +220,9 @@ function works(
       // reading rather than a zero, which would sink it to the bottom of the
       // wall for a reason nobody chose.
       score: byId.get(g.imageId)?.score ?? imageScore(byId.get(g.imageId) ?? {}),
-      hidden: byId.get(g.imageId)?.hidden === true,
+      // Off /community when moderation hid it OR the member switched it out
+      // of the gallery (2026-10-16); either way the member's page keeps it.
+      hidden: byId.get(g.imageId)?.hidden === true || g.inGallery === false,
     };
   });
 }

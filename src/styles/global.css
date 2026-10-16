@@ -182,6 +182,26 @@ body {
   }
 }
 
+/* THE MEMBER PAGE SNAPS TOO (2026-10-16, Josh: "also add vertical scroll
+   snap", strict): each project comes to rest at the top, under the header
+   row. Keyed off the member page's own works list (data-snap-projects), so
+   the editor's preview of the same list never snaps the editor. A project
+   taller than the window scrolls freely inside itself, as the spec has it
+   for a snap area larger than the snapport, so nothing is unreachable. */
+:root:not([data-arriving]) .page-wrap:has([data-snap-projects]) {
+  scroll-snap-type: y mandatory;
+  scroll-padding-top: var(--header-h);
+}
+[data-snap-projects] > .mprof__project {
+  scroll-snap-align: start;
+}
+@media (--bp-mobile) {
+  html:not([data-arriving]):has([data-snap-projects]) {
+    scroll-snap-type: y mandatory;
+    scroll-padding-top: var(--header-h);
+  }
+}
+
 /* NO CROSS-FADE ON THE ROOT (2026-10-12, Josh: "there is also a flicker when
    navigating from page to page"). Everything the root snapshot holds is the
    same on both sides of a page change — the persisted title and nav, the

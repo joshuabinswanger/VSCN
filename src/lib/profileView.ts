@@ -13,6 +13,12 @@ import type { ProfileProject } from "./projects.ts";
 
 export interface ProfileWork {
   url: string;
+  /**
+   * Off /community: moderation hid it, or the member switched it out of the
+   * gallery. Optional here because the profile page ignores it; the card
+   * preview and community.astro skip such works.
+   */
+  hidden?: boolean;
   width: number;
   height: number;
   /** Optional per-image caption, used as the image's alt text when present. */

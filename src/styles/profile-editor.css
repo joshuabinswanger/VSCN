@@ -593,6 +593,38 @@
     cursor: default;
   }
 
+  /* IN GALLERY: a real checkbox in the pill's dress. Checked reads dark;
+     unchecked reads muted and the work's picture fades, so the list shows at
+     a glance which works /community will skip. */
+  .gallery-include {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+  }
+
+  .gallery-include input[type="checkbox"] {
+    margin: 0;
+    width: 13px;
+    height: 13px;
+    accent-color: var(--color-dark);
+    cursor: pointer;
+  }
+
+  .gallery-include:has(input:checked) {
+    color: var(--color-dark);
+  }
+
+  .gallery-include:has(input:focus-visible) {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
+  .gallery-item.is-excluded .gallery-thumb {
+    opacity: 0.4;
+    transition: opacity 0.15s;
+  }
+
   .gallery-toolbar--head {
     flex: none;
   }

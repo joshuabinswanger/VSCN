@@ -44,6 +44,14 @@
 //      one picture, and every work snaps to the column's LEFT edge: the
 //      first work starts at the column's start and the next ones follow it
 //      in view. A step is still one work. On a phone nothing changed.
+//   1d. WIDER, FADING ON THE RIGHT (2026-10-16): on a desktop the stage reaches
+//      out of the column to the right, as far as the project index's list
+//      (or the window's edge, less a gutter, where the list is hidden).
+//      Measured here as --bleed-r; the fade and its removal at the track's
+//      end (is-end) are in profile.css.
+//   1e. THE STAGGERED ARRIVAL (2026-10-16): every work but the first is
+//      transparent until the page comes to rest with the carousel in view,
+//      then they fade in one after the other. See revealWhenSettled below.
 //   3. FOLLOWING THE LIGHTBOX (showInCarousel): paging the lightbox pages the
 //      carousel behind it, so the close animation lands on a visible picture.
 //
@@ -69,6 +77,53 @@ document.addEventListener("astro:before-swap", destroyProjectCarousels);
 const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)");
 /** 1c: the --bp-desktop alias (767px < width), where a carousel shows several works. */
 const MULTI = window.matchMedia("(min-width: 768px)");
+
+/** 1e: carousels staged and not yet revealed. */
+const staged = new Set<HTMLElement>();
+
+/** The share of `el` inside the window, 0–1. */
+function visibleShare(el: HTMLElement): number {
+  const r = el.getBoundingClientRect();
+  if (!r.height) return 0;
+  const shown = Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0);
+  return Math.max(0, shown) / Math.min(r.height, window.innerHeight);
+}
+
+/** Reveals every staged carousel that stands at least half in view. */
+function revealInView(): void {
+  staged.forEach((carousel) => {
+    if (!carousel.isConnected) {
+      staged.delete(carousel);
+      return;
+    }
+    if (visibleShare(carousel) < 0.5) return;
+    carousel.classList.add("is-revealed");
+    // Settled once the last work's delayed fade is over: from then on a
+    // step back or forward fades at once.
+    const last = carousel.querySelectorAll("[data-carousel-track] > *").length - 2;
+    window.setTimeout(() => carousel.classList.add("is-settled"), Math.max(0, last) * 140 + 500);
+    staged.delete(carousel);
+    arrival.unobserve(carousel);
+  });
+}
+
+// "After snapping": the page has stopped scrolling. scrollend where the
+// browser has it, and a short quiet after the last scroll event everywhere
+// (Safari has no scrollend). Captured, because the scroller is .page-wrap
+// on a desktop and the document on a phone, and the lightbox's own scrolls
+// would never reach a bubbling listener on either.
+let settleTimer = 0;
+const onScroll = () => {
+  if (!staged.size) return;
+  window.clearTimeout(settleTimer);
+  settleTimer = window.setTimeout(revealInView, 140);
+};
+document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+document.addEventListener("scrollend", () => staged.size && revealInView(), { capture: true });
+// Arrival needs no scroll: the page's entrance motion moves the carousel
+// into view without one, so a visibility observer hands the same settle to
+// whatever brought it there.
+const arrival = new IntersectionObserver(onScroll, { threshold: [0, 0.25, 0.5, 0.75, 1] });
 
 /** Per carousel: bring slide `i` to rest on the column, without animating. */
 const seat = new WeakMap<HTMLElement, (slide: HTMLElement) => void>();
@@ -122,12 +177,27 @@ export function initProjectCarousels(root: ParentNode = document): void {
     const { signal } = controller;
 
     // 1b: each slide's width, and the track's end padding. The column is the
-    // stage's width (the track's own box shrinks by its padding).
-    const stage = track.parentElement ?? carousel;
+    // carousel's width (the track's own box shrinks by its padding, and on a
+    // desktop the stage reaches past the column by the bleed).
     let column = 0;
     let widths: number[] = [];
+    // 1d: how far the stage may reach past the column, read before the
+    // column so the column is measured without the bleed.
+    const bleed = () => {
+      if (!MULTI.matches) {
+        carousel.style.removeProperty("--bleed-r");
+        return;
+      }
+      carousel.style.setProperty("--bleed-r", "0px");
+      const right = carousel.getBoundingClientRect().right;
+      const list = document.querySelector<HTMLElement>(".mprof__index-list");
+      const listBox = list?.getBoundingClientRect();
+      const limit = listBox && listBox.width ? listBox.left - 24 : document.documentElement.clientWidth - 16;
+      carousel.style.setProperty("--bleed-r", `${Math.max(0, Math.round(limit - right))}px`);
+    };
     const size = () => {
-      column = stage.clientWidth;
+      bleed();
+      column = carousel.clientWidth;
       if (!column) return;
       widths = slides.map((slide) => {
         const pic = slide.querySelector<HTMLElement>(".mprof__work-link");
@@ -138,14 +208,20 @@ export function initProjectCarousels(root: ParentNode = document): void {
       // 1c: left-aligned, so no padding to centre the ends on.
       const multi = MULTI.matches;
       track.style.setProperty("--pad-l", `${multi ? 0 : (column - widths[0]) / 2}px`);
-      track.style.setProperty("--pad-r", `${multi ? 0 : (column - widths[widths.length - 1]) / 2}px`);
+      // ...but room after the last work for it to come to rest at the start
+      // too (2026-10-16, Josh: "the final image should end up at the left edge").
+      track.style.setProperty(
+        "--pad-r",
+        `${multi ? Math.max(0, track.clientWidth - widths[widths.length - 1]) : (column - widths[widths.length - 1]) / 2}px`,
+      );
     };
 
     // A slide's resting scroll position: its centre on the column's.
     // offsetLeft is measured from the track (position: relative in the CSS)
     // and includes the track's padding.
-    // 1c: on a desktop its start on the column's, clamped to where the track
-    // can scroll — the last few works are already in view before their turn.
+    // 1c: on a desktop its start on the column's. The end padding lets every
+    // work get there, the last included; the clamp only guards a frame where
+    // the padding is not yet laid out.
     const maxScroll = () => track.scrollWidth - track.clientWidth;
     const restFor = (i: number) =>
       MULTI.matches
@@ -193,13 +269,14 @@ export function initProjectCarousels(root: ParentNode = document): void {
       shown = i;
       const atStart = i === 0;
       // 1c: on a desktop the end is where the track stops, not the last work.
-      const atEnd = i === slides.length - 1 || (MULTI.matches && restFor(i) >= maxScroll() - 1);
+      const atEnd = i === slides.length - 1;
       if (prev) prev.disabled = atStart;
       if (next) next.disabled = atEnd;
       countPrev.disabled = atStart;
       countNext.disabled = atEnd;
       dots.forEach((dot, n) => dot.classList.toggle("mprof__carousel-dot--on", n === i));
       count.textContent = `${i + 1} / ${slides.length}`;
+      carousel.classList.toggle("is-end", atEnd);
       slides.forEach((slide, n) => slide.classList.toggle("is-current", n === i));
       frame();
       // Spoken only when a control asked for the move — a swipe or a scroll is
@@ -250,10 +327,20 @@ export function initProjectCarousels(root: ParentNode = document): void {
     size();
     update();
 
+    // 1e: staged only when there is motion to give, and only once.
+    if (!REDUCED.matches && slides.length > 1 && !carousel.classList.contains("is-revealed")) {
+      slides.forEach((slide, n) => slide.style.setProperty("--i", String(Math.max(0, n - 1))));
+      carousel.classList.add("is-staged");
+      staged.add(carousel);
+      arrival.observe(carousel);
+    }
+
     live.set(carousel, () => {
       controller.abort();
       observer.disconnect();
       seat.delete(carousel);
+      staged.delete(carousel);
+      arrival.unobserve(carousel);
     });
   });
 }

@@ -227,6 +227,15 @@
 .mprof__works > :is(.mprof__project, .mprof__work) {
   scroll-margin-top: 7rem;
 }
+/* The same margin is where a project comes to rest under the vertical snap
+   (2026-10-16, global.css): on a desktop that lines its title up with the
+   aside's top. A phone has no index to arrive from and no aside beside it,
+   so a project rests just under the header row there. */
+@media (--bp-mobile) {
+  .mprof__works > :is(.mprof__project, .mprof__work) {
+    scroll-margin-top: 1rem;
+  }
+}
 
 @keyframes mprof-aside-more {
   0%,
@@ -789,6 +798,62 @@
   .mprof__carousel-stage:has(> .mprof__carousel-track:focus-visible)::after {
     inset: -4px;
   }
+
+  /* WIDER, WITH A FADE ON THE RIGHT, AND MORE AIR (2026-10-16, Josh: "the
+     carousel should be wider have a fade on the right and a bigger gap
+     between images"). The stage runs out of the works column to the right,
+     up to the project index or the window's edge (--bleed-r, measured by
+     projectCarousel.ts), and the track's last 6rem fade into the paper, so
+     the next work trails off instead of being cut. At the end of the track
+     there is nothing to trail off to, and the fade goes. */
+  /* 5rem since the same evening (Josh: "bigger horizontal gap"). */
+  .mprof__carousel {
+    --carousel-gap: 5rem;
+  }
+  .mprof__carousel-stage {
+    margin-right: calc(-1 * var(--bleed-r, 0px));
+  }
+  .mprof__carousel-track {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 6rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 6rem), transparent);
+  }
+  .mprof__carousel.is-end .mprof__carousel-track {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  /* THE LEFTMOST WORK IS THE ONE YOU ARE ON (2026-10-16, Josh: "make the not
+     most left images have a small fade"). The others stand a little back,
+     and come forward as paging brings each to the column's start. The
+     track's end padding (projectCarousel.ts) lets the LAST work reach that
+     start too ("the final image should end up at the left edge"). */
+  .mprof__carousel-slide {
+    transition: opacity 0.3s ease;
+  }
+  .mprof__carousel-slide:not(.is-current) {
+    opacity: 0.6;
+  }
+}
+
+/* THE WORKS ARRIVE ONE AFTER THE OTHER (2026-10-16, Josh: "add an animation
+   for the carousel, to fade in the pictures one after the other after
+   snapping. only the first should always be visible"). The script stages a
+   carousel (is-staged: every work but the first transparent) and reveals it
+   once the page has come to rest with the carousel in view (is-revealed);
+   --i is each work's place, so each one starts 140ms after the one before.
+   Once per visit: a revealed carousel stays revealed. Without the script, or
+   with reduced motion, nothing is staged and every work simply shows. */
+.mprof__carousel.is-staged:not(.is-revealed) .mprof__carousel-slide:not(:first-child) {
+  opacity: 0;
+}
+/* Revealed, a work takes whatever opacity it has at rest (full, or the
+   desktop's step back), on its own delay; once the last has arrived the
+   script settles the carousel and paging fades without one. */
+.mprof__carousel.is-staged.is-revealed .mprof__carousel-slide {
+  transition: opacity 0.5s ease calc(var(--i, 0) * 140ms);
+}
+.mprof__carousel.is-staged.is-settled .mprof__carousel-slide {
+  transition-delay: 0s;
 }
 
 /* The spoken position — the clip technique, as .ccard__live. */

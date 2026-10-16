@@ -158,6 +158,7 @@ export async function updateImageText(
     siteLink?: string;
     tags?: string[];
     projectId?: string;
+    inGallery?: boolean;
   },
 ): Promise<void> {
   await updateDoc(doc(db, "images", imageId), {
@@ -172,6 +173,8 @@ export async function updateImageText(
     siteLink: text.siteLink ? text.siteLink : deleteField(),
     tags: text.tags && text.tags.length ? text.tags : deleteField(),
     projectId: text.projectId ? text.projectId : deleteField(),
+    // Absent means "in the gallery", so only the exception is stored.
+    inGallery: text.inGallery === false ? false : deleteField(),
     // THE RETIRED FIELD, SWEPT (2026-09-04 — see GalleryItem.description for
     // why the short description is gone). Unconditional, and the only mention
     // of the name left in the app: records written during its one-day life
