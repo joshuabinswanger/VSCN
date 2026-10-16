@@ -90,7 +90,7 @@ Two things inside `fitBrandName()` look redundant and are not. The ticker's 15px
 
 Use tokens; raw hex values are treated as defects in review, though roughly a hundred remain in components and pages (a cleanup, not a licence for more). [src/pages/styleguide.astro](src/pages/styleguide.astro) renders them all.
 
-Breakpoints are **only** these two custom-media aliases, resolved by `@csstools/postcss-global-data` + `postcss-custom-media` and usable inside scoped Astro `<style>` blocks:
+Breakpoints are **only** these two custom-media aliases, defined in [src/styles/custom-media.css](src/styles/custom-media.css), resolved by `@csstools/postcss-global-data` + `postcss-custom-media` and usable inside scoped Astro `<style>` blocks. **Keep that file to `@custom-media` lines.** global-data injects it into every stylesheet and afterwards removes only the nodes it inserted, while custom-media replaces each `@media (--bp-*)` with a clone — so any rule in the injected file survives into every CSS chunk. Until 2026-10-16 the injected file was all of global.css, and its phone blocks shipped in every chunk, some Astro-scoped:
 
 ```css
 @media (--bp-mobile)  { }  /* width <= 767px */

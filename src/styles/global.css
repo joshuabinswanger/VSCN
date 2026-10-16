@@ -81,10 +81,9 @@
   --veil-filter: none;
 }
 
-/* Media query aliases available in global CSS and Astro component styles. */
-
-@custom-media --bp-mobile (width <= 767px);
-@custom-media --bp-desktop (767px < width);
+/* Media query aliases (--bp-mobile, --bp-desktop) are defined in
+   custom-media.css, which PostCSS injects into this file and every Astro
+   component style. */
 
 /* THE DESKTOP BUMP IS ONE PIXEL, NOT TWO (2026-09-22, Josh, MacBook Pro 16:
    "everything is a bit big"). Nearly all type on the site is in rem, so this
