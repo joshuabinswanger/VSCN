@@ -367,17 +367,24 @@ function setBarMenu(open: string | null) {
     if (pill && !open) pill.style.removeProperty("--bar-r");
     return;
   }
-  const to = pill.getBoundingClientRect();
   const leaving = !open && prev ? document.getElementById(prev) : null;
   if (leaving) {
-    leaving.hidden = false;
     leaving.style.pointerEvents = "none";
     leaving.animate([{ opacity: 1 }, { opacity: 0 }], { duration: BAR_MS * 0.6, fill: "forwards" });
     barLeaving = leaving;
   }
   const entering = open ? document.getElementById(open) : null;
   entering?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: BAR_MS, easing: BAR_EASE });
+  sizeBar(pill, from);
+}
 
+/** Ease the pill from `from` to the size its content now asks for. A panel
+ *  still closing (barLeaving) is left out of that size and kept shown until
+ *  the pill has shrunk off it. */
+function sizeBar(pill: HTMLElement, from: DOMRect) {
+  if (barLeaving) barLeaving.hidden = true;
+  const to = pill.getBoundingClientRect();
+  if (barLeaving) barLeaving.hidden = false;
   const anim = pill.animate(
     [
       { width: `${from.width}px`, height: `${from.height}px` },
@@ -393,6 +400,27 @@ function setBarMenu(open: string | null) {
   };
 }
 
+// THE LABELS CHANGE ACROSS A SWAP. The bar persists, but the new page names
+// a new view, tag or sort in its triggers (and shows or hides Sort), so the
+// pill's natural width moves. Its size just before the swap is the start;
+// once the page-load handler has relabelled it, it eases to the new one —
+// retargeting any open or close still in flight.
+let barBefore: { el: HTMLElement; rect: DOMRect } | null = null;
+document.addEventListener("astro:before-swap", () => {
+  const el = document.querySelector<HTMLElement>(".community-bar__in");
+  barBefore = el ? { el, rect: el.getBoundingClientRect() } : null;
+});
+function reflowBar() {
+  const before = barBefore;
+  barBefore = null;
+  const pill = document.querySelector<HTMLElement>(".community-bar__in");
+  if (!pill || before?.el !== pill) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  barAnim?.cancel();
+  barAnim = null;
+  sizeBar(pill, before.rect);
+}
+
 function closeBarMenus() {
   setBarMenu(null);
 }
@@ -405,6 +433,38 @@ function toggleBarMenu(panelId: string): boolean {
   setBarMenu(opening ? panelId : null);
   return opening;
 }
+
+/** The bar out of <main> and onto <body> (2026-10-16, "persistent across
+ *  page changes within community"). It is rendered in main and persisted
+ *  from page to page (transition:persist in CommunityGrid.astro), but main
+ *  itself fades, rises and blurs on every swap (Layout.astro), and a fixed
+ *  element inside an animated one moves with it. Run on after-swap, before
+ *  the first frame of the new page, and on page-load for a full load; the
+ *  swap finds a persisted element anywhere in the old body, so it comes
+ *  back next time too. */
+function liftBar() {
+  const bar = document.querySelector<HTMLElement>(".community-bar");
+  if (bar && bar.parentElement !== document.body) document.body.append(bar);
+  // A leave fade (below) whose navigation never left.
+  bar?.getAnimations().forEach((a) => a.cancel());
+  // Moving a node can drop the animation it carries, and then nothing would
+  // ever finish it: release a held size and a panel left half-closed.
+  const pill = bar?.querySelector<HTMLElement>(".community-bar__in");
+  if (pill && barAnim && barAnim.playState !== "running") settleBar(pill);
+}
+document.addEventListener("astro:after-swap", liftBar);
+document.addEventListener("astro:page-load", liftBar);
+
+// Off the directory (another page, or the other language's directory, whose
+// bar is a different one): the bar fades with the page it no longer belongs
+// to, since it is not in <main> to fade with it.
+document.addEventListener("astro:before-preparation", (e) => {
+  if (e.to.pathname === e.from.pathname) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  document
+    .querySelector<HTMLElement>(".community-bar")
+    ?.animate([{}, { opacity: 0 }], { duration: 220, easing: "ease-in", fill: "forwards" });
+});
 
 // Module scope, installed ONCE per session — not inside astro:page-load,
 // where document-level listeners would stack one copy per navigation.
@@ -848,6 +908,10 @@ document.addEventListener("astro:page-load", () => {
     // any more. Everything else follows from the URL: the handler below runs
     // again on the swapped-in document, deals the view, presses the right
     // button and rebuilds the motion layer.
+    // The bar PERSISTS across the directory's own navigations (transition:persist)
+    // while this handler runs again on every one, so its listeners are bound
+    // for this page only and dropped at the swap — or they would stack.
+    const life = pageLifetime();
     document.querySelectorAll<HTMLButtonElement>(".view-toggle__btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const next = btn.dataset.mode as LayoutMode;
@@ -876,7 +940,7 @@ document.addEventListener("astro:page-load", () => {
           url.searchParams.delete("tag");
         }
         goTo(url);
-      });
+      }, { signal: life });
     });
 
     // The tags dropdown: the trigger flips the panel; typing in the panel
@@ -898,10 +962,10 @@ document.addEventListener("astro:page-load", () => {
 
     document
       .getElementById("view-menu-btn")
-      ?.addEventListener("click", () => toggleBarMenu("view-menu-panel"));
+      ?.addEventListener("click", () => toggleBarMenu("view-menu-panel"), { signal: life });
     document
       .getElementById("sort-menu-btn")
-      ?.addEventListener("click", () => toggleBarMenu("sort-menu-panel"));
+      ?.addEventListener("click", () => toggleBarMenu("sort-menu-panel"), { signal: life });
 
     tagBtn?.addEventListener("click", () => {
       if (!tagPanel) return;
@@ -919,14 +983,14 @@ document.addEventListener("astro:page-load", () => {
       if (opening && matchMedia("(hover: hover) and (pointer: fine)").matches) {
         tagSearch?.focus();
       }
-    });
+    }, { signal: life });
 
     // Narrowing is the same pass that picks the view's options, so the two
     // rules cannot fight over a row — see reflectTagOptions.
     tagSearch?.addEventListener("input", () => {
       reflectTagOptions(mode);
       reflectTagClear();
-    });
+    }, { signal: life });
 
     // Clear empties the field and, when a tag is set, drops it — a
     // navigation like any other tag change, so it is a history entry.
@@ -944,7 +1008,7 @@ document.addEventListener("astro:page-load", () => {
       const url = new URL(window.location.href);
       url.searchParams.delete("tag");
       goTo(url);
-    });
+    }, { signal: life });
 
     document.querySelectorAll<HTMLButtonElement>(".tag-filter__option").forEach((opt) => {
       opt.addEventListener("click", () => {
@@ -955,7 +1019,7 @@ document.addEventListener("astro:page-load", () => {
         if (next) url.searchParams.set("tag", next);
         else url.searchParams.delete("tag");
         goTo(url);
-      });
+      }, { signal: life });
     });
 
     // The sort menu: a navigation to ?sort=, like a tag pick — re-picking
@@ -970,7 +1034,7 @@ document.addEventListener("astro:page-load", () => {
         if (next) url.searchParams.set("sort", next);
         else url.searchParams.delete("sort");
         goTo(url);
-      });
+      }, { signal: life });
     });
 
   }
@@ -978,6 +1042,9 @@ document.addEventListener("astro:page-load", () => {
   // One observer per VISIT, not per page-load for ever: every view and tag
   // switch is a navigation (goTo), so a bare observer here gained one more
   // copy, each holding a detached page, with every click in the directory.
+  // After every relabel above.
+  reflowBar();
+
   const cta = document.getElementById("community-signup-cta");
   if (cta) {
     watchAuth(pageLifetime(), (user) => {
