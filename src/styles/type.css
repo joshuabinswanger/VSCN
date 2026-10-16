@@ -269,11 +269,19 @@
 .mprof__caption,
 .mprof__project-desc,
 .pdisc__bio,
-.pswp--vscn .pswp__vscn-text-caption,
-.pswp--vscn .pswp__vscn-text-desc {
+.pswp--vscn .pswp__vscn-text-caption {
   font-size: var(--fs-100);
   font-weight: 400;
   line-height: 1.5;
+}
+/* THE LIGHTBOX DESCRIPTION, A STEP UNDER ITS TITLE (2026-10-16, Josh: "the
+   description text should be smaller on desktop"). 12px under the 14px title
+   on a desktop; on a phone --fs-85 is the same 13px as CAPTION, so nothing
+   changes there. More leading, since it is the one paragraph in the window. */
+.pswp--vscn .pswp__vscn-text-desc {
+  font-size: var(--fs-85);
+  font-weight: 400;
+  line-height: 1.6;
 }
 
 /* CAPTION'S SECOND LINE: who a project was with, and the links under a

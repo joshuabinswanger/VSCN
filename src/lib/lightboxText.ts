@@ -61,7 +61,7 @@ const MOBILE_MAX = 767;
  * image edge, not against a text baseline, so it wants to be a hair looser
  * than a normal paragraph gap or the words read as part of the picture.
  */
-const GAP = 14;
+const GAP = 20;
 
 /**
  * THE SPACE THE WORDS NEED, RESERVED — the other half of the placement above.
@@ -181,6 +181,9 @@ export interface LightboxTextLabels {
   linkTitle: string;
   /** Accessible name for the member's own-site link, e.g. "This piece on the maker's own site". */
   siteLinkTitle: string;
+  /** The links' visible words, by role: "Publication", "Link". */
+  linkText: string;
+  siteLinkText: string;
   /** "Part of", before a project's title. */
   partOf: string;
   /** "With", before a project's affiliations. */
@@ -332,23 +335,24 @@ export function registerLightboxText(
           //
           // TWO LINKS SINCE 2026-09-10 (Josh: "the image link should be
           // additional"): the member's own project page first, the
-          // publication second, on one row. Both print as bare hosts — the
-          // `title` is what says which is which, to a hover and to a reader.
+          // publication second, on one row. Since 2026-10-16 they print by
+          // ROLE, "Link" and "Publication" (Josh); two bare hosts never said
+          // which was which. The title carries the role and the host.
           if (siteLink || link) {
             const row = document.createElement("span");
             row.className = "pswp__vscn-text-links";
-            const add = (href: string, title: string) => {
+            const add = (href: string, text: string, title: string) => {
               const a = document.createElement("a");
               a.className = "pswp__vscn-text-link";
               a.href = href;
               a.target = "_blank";
               a.rel = "noopener";
-              a.title = title;
-              a.textContent = linkLabel(href);
+              a.title = `${title} — ${linkLabel(href)}`;
+              a.textContent = text;
               row.append(a);
             };
-            if (siteLink) add(siteLink, labels.siteLinkTitle);
-            if (link) add(link, labels.linkTitle);
+            if (siteLink) add(siteLink, labels.siteLinkText, labels.siteLinkTitle);
+            if (link) add(link, labels.linkText, labels.linkTitle);
             more.append(row);
           }
           // THE PROJECT THIS PICTURE IS PART OF (2026-09-23,
@@ -429,6 +433,15 @@ export function registerLightboxText(
           // The block can scroll; a slide change has to start it at the top or
           // the next description opens mid-paragraph.
           el.scrollTop = 0;
+          // The next work's words FADE IN rather than swap (2026-10-16): the
+          // block is rebuilt per slide, so a CSS transition has nothing to
+          // start from. Same curve as --lb-ease in lightbox.css.
+          if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            el.animate(
+              [{ opacity: 0, translate: "0 0.25rem" }, { opacity: 1, translate: "0 0" }],
+              { duration: 360, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)" },
+            );
+          }
         };
         pswp.on("change", render);
         render();
