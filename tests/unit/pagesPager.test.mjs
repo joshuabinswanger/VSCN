@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadTs } from "../helpers/load-ts.mjs";
 
-const { nextStop } = loadTs(
+const { nextStop, swipeStep } = loadTs(
   "src/lib/pagesPager.ts",
   {},
   { document: { addEventListener() {} }, window: {} },
@@ -32,4 +32,11 @@ test("past the last card a step goes to the footer, and back up to the last card
 test("a stop within the slack of the current offset is the current card", () => {
   assert.equal(nextStop(stops, 843, 1, end), 1688);
   assert.equal(nextStop(stops, 845, -1, end), 0);
+});
+
+test("a swipe on the picture steps only when it is clearly vertical", () => {
+  assert.equal(swipeStep(0, -120), 1); // finger up: next card
+  assert.equal(swipeStep(10, 90), -1);
+  assert.equal(swipeStep(80, -60), 0); // sideways-leaning: the carousel's
+  assert.equal(swipeStep(3, -20), 0); // a tap
 });
