@@ -5,6 +5,7 @@ import Field from "../components/ui/Field.astro";
 import Feedback from "../components/ui/Feedback.astro";
 import Layout from "../layouts/Layout.astro";
 import globalCss from "../styles/global.css?raw";
+import customMediaCss from "../styles/custom-media.css?raw";
 import typeCss from "../styles/type.css?raw";
 
 interface Token {
@@ -33,7 +34,7 @@ const scalarTokens = baseTokens.filter(
   (t) => !t.name.startsWith("--color-") && !t.name.startsWith("--radius-"),
 );
 
-const breakpoints = [...globalCss.matchAll(/@custom-media\s+(--[\w-]+)\s+([^;]+);/g)].map((m) => ({
+const breakpoints = [...customMediaCss.matchAll(/@custom-media\s+(--[\w-]+)\s+([^;]+);/g)].map((m) => ({
   name: m[1] ?? "",
   value: (m[2] ?? "").trim(),
 }));
@@ -185,8 +186,9 @@ const radiusUsage: Record<string, string> = {
         </tbody>
       </table>
       <p class="sg-note">
-        Resolved by <code>postcss-custom-media</code> + <code>@csstools/postcss-global-data</code>,
-        so these aliases work inside component <code>&lt;style&gt;</code> blocks too. Components
+        Defined in <code>src/styles/custom-media.css</code> and resolved by
+        <code>postcss-custom-media</code> + <code>@csstools/postcss-global-data</code>, so these
+        aliases work inside component <code>&lt;style&gt;</code> blocks too. Components
         additionally use raw queries such as <code>(min-width: 560px)</code> for
         <code>.ob-card</code>.
       </p>
