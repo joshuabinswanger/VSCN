@@ -713,3 +713,19 @@
 .ccard.ccard--preview [hidden] {
   display: none;
 }
+
+/* NO ARROWS ON THE PICTURE (2026-10-16, Josh: "remove the hover arrows on
+   the pictures too"): the swipe, the trackpad and the arrow keys page, and
+   the dots say where you are. The buttons stay in the markup and the engine
+   (communityCarousel.ts), so this rule is the whole switch back. */
+.ccard .ccard__arrow {
+  display: none;
+}
+
+/* BIGGER DOTS, MORE AIR, in the portfolio view (2026-10-16, Josh: "make the
+   dots bigger and more gap in portfolio view"). The member page keeps the
+   shared --carousel-dot sizes from type.css. */
+.ccard__dots {
+  --carousel-dot: 0.5rem;
+  --carousel-dot-gap: 0.5rem;
+}
