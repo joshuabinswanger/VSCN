@@ -1543,7 +1543,10 @@ const indexMembers = [...members].sort((a, b) =>
      on the .is-in state alone, so leaving resets instantly, off screen.
      One curve for everything — a long expo-out, fast off the mark and a
      slow, soft landing — and a stagger: picture, then the name and role word
-     by word (so longer words take longer), then the count and the links. */
+     by word (so longer words take longer), then the count and the links.
+     Not while <html> carries data-arrive-hold (Layout.astro holds an arriving
+     page invisible until it is ready): a card counted as in view behind the
+     hold would otherwise play its entrance unseen, or half of it. */
   @media (prefers-reduced-motion: no-preference) {
     .cgrid[data-pattern="pages"][data-motion] {
       --cpage-ease: cubic-bezier(0.16, 1, 0.3, 1);
@@ -1588,29 +1591,29 @@ const indexMembers = [...members].sort((a, b) =>
       translate: 0 0.6rem;
     }
 
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__frame) {
+    :global(:root:not([data-arrive-hold]) .cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__frame) {
       clip-path: inset(0 0 0 0);
       opacity: 1;
       transition:
         clip-path 1.15s var(--cpage-ease),
         opacity 0.6s var(--cpage-ease);
     }
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__img) {
+    :global(:root:not([data-arrive-hold]) .cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__img) {
       transform: none;
       transition: transform 1.5s var(--cpage-ease);
     }
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .cw__i) {
+    :global(:root:not([data-arrive-hold]) .cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .cw__i) {
       transform: none;
       transition: transform 0.85s var(--cpage-ease) var(--d, 0.2s);
     }
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__foot) {
+    :global(:root:not([data-arrive-hold]) .cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__foot) {
       opacity: 1;
       translate: 0 0;
       transition:
         opacity 0.7s var(--cpage-ease) var(--t-rest, 0.48s),
         translate 0.9s var(--cpage-ease) var(--t-rest, 0.48s);
     }
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__words > .pdisc) {
+    :global(:root:not([data-arrive-hold]) .cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__words > .pdisc) {
       opacity: 1;
       translate: 0 0;
       transition:
@@ -1619,7 +1622,7 @@ const indexMembers = [...members].sort((a, b) =>
     }
     /* On a desktop the count comes in last, after the words. */
     @media (--bp-desktop) {
-      :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__foot) {
+      :global(:root:not([data-arrive-hold]) .cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__foot) {
         transition:
           opacity 0.7s var(--cpage-ease) calc(var(--t-rest, 0.48s) + 0.16s),
           translate 0.9s var(--cpage-ease) calc(var(--t-rest, 0.48s) + 0.16s);
