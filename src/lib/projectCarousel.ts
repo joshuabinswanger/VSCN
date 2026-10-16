@@ -199,10 +199,23 @@ export function initProjectCarousels(root: ParentNode = document): void {
       bleed();
       column = carousel.clientWidth;
       if (!column) return;
+      // 1e: AT MOST TWO AND A HALF ACROSS on a desktop (2026-10-16, Josh:
+      // "make the images bigger and max 2.5 wide with a fade"): no work is
+      // wider than the view minus two gaps over 2.5, so the second gap ends
+      // half a picture before the view's edge, where the fade takes it.
+      let room = column;
+      if (MULTI.matches) {
+        const view = track.clientWidth || column;
+        const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
+        room = Math.max(1, (view - 2 * gap) / 2.5);
+        track.style.setProperty("--fade-w", `${Math.round(room / 2)}px`);
+      } else {
+        track.style.removeProperty("--fade-w");
+      }
       widths = slides.map((slide) => {
         const pic = slide.querySelector<HTMLElement>(".mprof__work-link");
         const cap = pic ? parseFloat(getComputedStyle(pic).maxWidth) : NaN;
-        return Math.round(Number.isFinite(cap) ? Math.min(column, cap) : column);
+        return Math.round(Number.isFinite(cap) ? Math.min(room, cap) : room);
       });
       slides.forEach((slide, i) => slide.style.setProperty("--slide-w", `${widths[i]}px`));
       // 1c: left-aligned, so no padding to centre the ends on.

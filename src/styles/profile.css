@@ -620,17 +620,12 @@
    chevrons run down its own two edges: --frame-l / --frame-r / --frame-h are
    that picture's offsets, measured by projectCarousel.ts. Unmeasured they
    fall back to the column. */
-/* RIGHT UNDER THE PICTURE, CENTRED ON IT, between it and its caption
-   (2026-10-16, Josh: "the dots should be right centered under the image
-   and take up their own row"). The caption is part of each slide, so the
-   row cannot sit between them in flow: it stands on the stage at the
-   current picture's foot, and a carousel's captions start lower to give
-   it the room. */
+/* UNDER THE PICTURE'S TITLE, CENTRED ON THE PICTURE (2026-10-16, Josh:
+   "carousel dots below the image title"). In flow after the stage, so
+   below the tallest title; --frame-l / --frame-pw put it on the current
+   picture's own width. */
 .mprof__carousel-dots {
-  position: absolute;
-  z-index: 1;
-  top: calc(var(--frame-h, 100%) + 0.75rem);
-  left: var(--frame-l, 0px);
+  margin-left: var(--frame-l, 0px);
   width: var(--frame-pw, 100%);
   height: var(--carousel-dot);
   display: flex;
@@ -638,9 +633,6 @@
   justify-content: center;
   gap: var(--carousel-dot-gap);
   pointer-events: none;
-}
-.mprof__carousel .mprof__caption {
-  margin-top: 1.9rem;
 }
 
 /* The dots themselves are .cdots / .cdot in global.css, shared with the
@@ -778,8 +770,10 @@
    step (projectCarousel.ts, 1c). A phone keeps one centred work per screen.
    A single-work project is no carousel and keeps the 60vh cap. */
 @media (--bp-desktop) {
+  /* 62vh since 2026-10-16 (Josh: "make the images bigger and max 2.5
+     wide"); projectCarousel.ts (1e) also caps each work at 2.5 across. */
   .mprof__carousel .mprof__work-link {
-    max-width: calc(45vh * var(--work-ar));
+    max-width: calc(62vh * var(--work-ar));
     margin-inline: 0;
   }
   .mprof__carousel-track {
@@ -806,9 +800,11 @@
   .mprof__carousel-stage {
     margin-right: calc(-1 * var(--bleed-r, 0px));
   }
+  /* The fade is the last half picture since 2026-10-16 (--fade-w, half the
+     2.5-across width, from projectCarousel.ts); 6rem before it is measured. */
   .mprof__carousel-track {
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 6rem), transparent);
-    mask-image: linear-gradient(to right, #000 calc(100% - 6rem), transparent);
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fade-w, 6rem)), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - var(--fade-w, 6rem)), transparent);
   }
   .mprof__carousel.is-end .mprof__carousel-track {
     -webkit-mask-image: none;
@@ -935,9 +931,12 @@
    look like every other link on the page. They sit on one wrapping row, and
    the row shrink-wraps: the caption is a flex COLUMN, so a stretched child
    would make an underline read as a rule across the page.
-   One rule, both consumers — the page and the editor's preview. */
+   One rule, both consumers — the page and the editor's preview.
+   HIDDEN since 2026-10-16 (Josh: "dont show the extra links in the profile
+   view"): under a work only its title shows; the lightbox still carries
+   the links. `display: flex` brings them back. */
 .mprof__caption-links {
-  display: flex;
+  display: none;
   flex-wrap: wrap;
   gap: 0.35rem 1.1rem;
   align-self: start;

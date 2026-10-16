@@ -1113,13 +1113,6 @@ label:has(> .picker-input:focus-visible) {
 .cdot--out {
   transform: scale(0);
 }
-/* A little air between the dots and the chevrons either side; a phone
-   hides the chevrons, so the dots keep the picture's edge there. */
-@media (--bp-desktop) {
-  .pager-chev + .cdots {
-    margin-inline: 0.3rem;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .cdots__strip,
   .cdot {
@@ -1191,10 +1184,12 @@ label:has(> .picker-input:focus-visible) {
    since it is one modal and its chevrons are its keyboard pager. The count
    rows are right-aligned, so dropping the buttons leaves "2 / 7" on the
    picture's right edge where the next chevron was. */
-@media (--bp-mobile) {
-  :is(.ccard, .mprof) .pager-chev {
-    display: none;
-  }
+/* ...and since 2026-10-16 none on a desktop either (Josh: "remove the
+   arrows from the desktop version of the carousel"): the dots stand alone,
+   centred. The buttons are still built (pager.ts) and still named, so this
+   rule is the whole switch back; the edge arrows and the arrow keys page. */
+:is(.ccard, .mprof) .pager-chev {
+  display: none;
 }
 
 /* Native document scrolling lets mobile Safari retract its browser toolbar. */
