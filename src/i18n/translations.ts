@@ -76,6 +76,13 @@ export const ui: Record<string, Record<string, string>> = {
     "community.sort.field": "Field",
     "community.sort.noProject": "Without project",
     "community.sort.noField": "Without tags",
+    "community.search": "Search",
+    "community.search.placeholder": "Search names, projects, images…",
+    "community.search.hint": "Type a name, a project or a picture's title.",
+    "community.search.people": "People",
+    "community.search.projects": "Projects",
+    "community.search.images": "Images",
+    "community.search.none": "Nothing matches.",
 
     // MemberCard
     "member.showBio": "Show bio for",
@@ -748,6 +755,13 @@ export const ui: Record<string, Record<string, string>> = {
     "community.sort.field": "Fachgebiet",
     "community.sort.noProject": "Ohne Projekt",
     "community.sort.noField": "Ohne Tags",
+    "community.search": "Suchen",
+    "community.search.placeholder": "Namen, Projekte, Bilder suchen…",
+    "community.search.hint": "Einen Namen, ein Projekt oder einen Bildtitel eingeben.",
+    "community.search.people": "Personen",
+    "community.search.projects": "Projekte",
+    "community.search.images": "Bilder",
+    "community.search.none": "Keine Treffer.",
 
     // MemberCard
     "member.showBio": "Bio anzeigen für",

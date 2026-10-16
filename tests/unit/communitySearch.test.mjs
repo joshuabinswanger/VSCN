@@ -1,0 +1,70 @@
+// The directory's search (2026-10-16): names, projects and images from one
+// field. Pure, so the matching is testable without the bar.
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { fold, queryWords, scoreEntry, searchDirectory, workKey } from "../../src/lib/communitySearch.ts";
+
+const INDEX = {
+  people: [
+    { name: "Johanna Keller", role: "Illustrator", href: "/members/johanna", photo: "", tags: ["botany"] },
+    { name: "Anna Müller", role: "Biologist", href: "/members/anna", photo: "", tags: ["glaciers"] },
+    { name: "Ben Ott", role: "Painter", href: "/members/ben", photo: "", tags: [] },
+  ],
+  projects: [
+    { title: "Alpine Flora", member: "Johanna Keller", href: "/members/johanna?project=p1", tags: ["botany"] },
+    { title: "Ice Cores", member: "Anna Müller", href: "/members/anna?project=p2", tags: [] },
+  ],
+  images: [
+    { key: "a-0", caption: "Edelweiss", member: "Johanna Keller", project: "Alpine Flora", href: "#", tags: [] },
+    { key: "b-0", caption: "", member: "Anna Müller", project: "Ice Cores", href: "#", tags: ["ice"] },
+  ],
+};
+
+test("folding drops case and accents", () => {
+  assert.equal(fold("Müller"), "muller");
+  assert.equal(fold("Straße"), "strasse");
+  assert.deepEqual(queryWords("  Anna   MÜL "), ["anna", "mul"]);
+});
+
+test("a blank query finds nothing", () => {
+  assert.deepEqual(searchDirectory(INDEX, "   "), { people: [], projects: [], images: [] });
+});
+
+test("a name that starts with the query ranks first", () => {
+  const { people } = searchDirectory(INDEX, "an");
+  assert.deepEqual(people.map((p) => p.name), ["Anna Müller", "Johanna Keller"]);
+});
+
+test("accents need not be typed", () => {
+  assert.deepEqual(searchDirectory(INDEX, "muller").people.map((p) => p.name), ["Anna Müller"]);
+});
+
+test("every word must match somewhere", () => {
+  assert.deepEqual(searchDirectory(INDEX, "anna biologist").people.map((p) => p.name), ["Anna Müller"]);
+  assert.equal(searchDirectory(INDEX, "anna painter").people.length, 0);
+});
+
+test("projects by title or member; images by caption, project, member or tag", () => {
+  const r = searchDirectory(INDEX, "alpine");
+  assert.deepEqual(r.projects.map((p) => p.title), ["Alpine Flora"]);
+  assert.deepEqual(r.images.map((w) => w.key), ["a-0"]);
+  assert.deepEqual(searchDirectory(INDEX, "ice").images.map((w) => w.key), ["b-0"]);
+  assert.deepEqual(searchDirectory(INDEX, "keller").projects.map((p) => p.title), ["Alpine Flora"]);
+});
+
+test("limits cap each list", () => {
+  const r = searchDirectory(INDEX, "a", { people: 1, projects: 1, images: 1 });
+  assert.equal(r.people.length, 1);
+});
+
+test("scoreEntry: -1 for a miss", () => {
+  assert.equal(scoreEntry(["zz"], "Anna", ["x"]), -1);
+});
+
+test("workKey is the stored object's path, token and bucket aside", () => {
+  const url =
+    "https://firebasestorage.googleapis.com/v0/b/vscn.appspot.com/o/users%2Fu1%2Fgallery%2Fimg9.webp?alt=media&token=abc";
+  assert.equal(workKey(url), "users/u1/gallery/img9.webp");
+  assert.equal(workKey(url.replace("token=abc", "token=zzz")), workKey(url));
+  assert.equal(workKey("not a url"), "not a url");
+});

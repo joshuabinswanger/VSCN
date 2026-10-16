@@ -2,8 +2,9 @@
 import { hasArtwork, stripStorageToken, type MemberView } from "../lib/memberView.ts";
 import { DEFAULT_VIEW } from "../lib/communityLayout.ts";
 import { dealPagesInto, shuffleBands } from "../lib/communityDeal.ts";
-import { memberHref } from "../lib/links.ts";
-import { projectTitle } from "../lib/projects.ts";
+import { memberHref, workCaption } from "../lib/links.ts";
+import { workKey, type SearchIndex } from "../lib/communitySearch.ts";
+import { looseWorksProjectId, projectTitle } from "../lib/projects.ts";
 import CommunityImageCard from "./community/CommunityImageCard.astro";
 import CommunityWorkCard from "./community/CommunityWorkCard.astro";
 import MemberDetailPanel from "./community/MemberDetailPanel.astro";
@@ -325,6 +326,45 @@ const lightboxStrings = JSON.stringify({
 const indexMembers = [...members].sort((a, b) =>
   (a.displayName || a.slug).localeCompare(b.displayName || b.slug)
 );
+
+// THE SEARCH'S INDEX (2026-10-16, src/lib/communitySearch.ts): everyone in
+// the ledger, every titled project, every picture on the wall — printed into
+// the page as JSON beside the bar, so a search is a pass over a list already
+// here. A project or picture link names it on the member page (?project=,
+// ?work=), which opens on it. The picture's thumbnail is NOT in here: the
+// wall's own tile already carries a rendered one, found by `key`.
+const searchIndex: SearchIndex = {
+  people: indexMembers.map((m) => ({
+    name: m.displayName || m.slug,
+    role: m.role ?? "",
+    href: memberHref(lang, m.slug),
+    photo: stripStorageToken(m.photoURL ?? ""),
+    tags: m.tags,
+  })),
+  projects: indexMembers.flatMap((m) =>
+    (m.projects ?? []).flatMap((p) => {
+      // The "Works" every member has for pictures outside a project
+      // (adoptLooseWorks) is not a project anyone would search for.
+      if (p.id === looseWorksProjectId(m.id)) return [];
+      const title = projectTitle(p, lang)?.trim();
+      if (!title) return [];
+      return [{
+        title,
+        member: m.displayName || m.slug,
+        href: `${memberHref(lang, m.slug)}?project=${encodeURIComponent(p.id)}`,
+        tags: p.tags,
+      }];
+    })
+  ),
+  images: workCells.map(({ member, work, key }) => ({
+    key,
+    caption: workCaption(work, lang)?.trim() ?? "",
+    member: member.displayName || member.slug,
+    project: work.projectId === looseWorksProjectId(member.id) ? "" : (projectLabel(member, work) ?? ""),
+    href: `${memberHref(lang, member.slug)}?work=${encodeURIComponent(workKey(work.url))}`,
+    tags: work.tags,
+  })),
+};
 ---
 
 <div class="community-wrapper" data-lang={lang}>
@@ -368,6 +408,40 @@ const indexMembers = [...members].sort((a, b) =>
           animateBar in communityDirectoryController.ts eases the size change. */
       }
       <div class="community-bar__panels">
+        {
+          /* THE SEARCH (2026-10-16): a field, and under it the people, projects
+            and pictures it matches — drawn by renderSearch in the controller
+            from the JSON below. Results are links; nothing here filters the
+            view behind it. */
+        }
+        <div id="search-panel" class="bar-menu__panel search__panel" hidden>
+          <input
+            id="search-input"
+            class="tag-filter__search search__input"
+            type="search"
+            placeholder={t("community.search.placeholder")}
+            aria-label={t("community.search.placeholder")}
+            autocomplete="off"
+            enterkeyhint="search"
+          />
+          <div
+            id="search-results"
+            class="search__results"
+            aria-live="polite"
+            data-people={t("community.search.people")}
+            data-projects={t("community.search.projects")}
+            data-images={t("community.search.images")}
+            data-none={t("community.search.none")}
+            data-hint={t("community.search.hint")}
+          >
+            <p class="field-note search__note">{t("community.search.hint")}</p>
+          </div>
+          <script
+            type="application/json"
+            id="community-search-index"
+            set:html={JSON.stringify(searchIndex).replace(/</g, "\\u003c")}
+          />
+        </div>
         <div id="tag-filter-panel" class="bar-menu__panel tag-filter__panel" hidden>
           <div class="tag-filter__head">
             <input
@@ -484,6 +558,23 @@ const indexMembers = [...members].sort((a, b) =>
             active tag) clears. With a tag set, the trigger shows its name and
             fills dark, so the bar says at a glance that the page is filtered. */
         }
+        <div class="bar-menu search-menu">
+          <button
+            type="button"
+            id="search-btn"
+            class="bar-menu__trigger"
+            aria-expanded="false"
+            aria-controls="search-panel"
+            aria-label={t("community.search")}
+          >
+            <svg class="search__glass" viewBox="0 0 12 12" aria-hidden="true"
+              ><circle cx="5" cy="5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.3"
+              ></circle><path d="M7.7 7.7L11 11" fill="none" stroke="currentColor" stroke-width="1.3"
+              ></path></svg
+            >
+            <span>{t("community.search")}</span>
+          </button>
+        </div>
         <div class="bar-menu tag-filter">
           <button
             type="button"
@@ -1217,6 +1308,149 @@ const indexMembers = [...members].sort((a, b) =>
     .tag-filter__search {
       font-size: 16px;
     }
+  }
+
+  /* ── The search room (2026-10-16) ─────────────────────────
+     The tags room's width and height cap; the field stays put while the
+     results scroll under it. The rows are drawn by renderSearch, so every
+     rule below the panel reaches them through :global. */
+  .search__glass {
+    width: 0.85em;
+    height: 0.85em;
+    flex: none;
+  }
+
+  .search__panel {
+    width: 22rem;
+    max-height: min(60vh, 30rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+
+  @media (--bp-mobile) {
+    .search__panel {
+      width: calc(100vw - 24px - 2 * var(--bar-pad) - 2px);
+    }
+  }
+
+  .search__input {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    /* The paper above the field covers the rows scrolling under it. */
+    margin: 0 0 6px;
+    box-shadow: 0 -6px 0 var(--color-bg);
+  }
+
+  .search__input:focus {
+    box-shadow:
+      inset 0 0 0 0.5px var(--color-dark),
+      0 -6px 0 var(--color-bg);
+  }
+
+  .search__results :global(.search__note) {
+    margin: 0;
+    padding: 0.55rem 0.75rem;
+    color: var(--color-muted);
+  }
+
+  .search__results :global(.search__group) {
+    margin: 0 0 6px;
+  }
+
+  .search__results :global(.search__group-title) {
+    margin: 0;
+    padding: 0.5rem 0.75rem 0.3rem;
+    color: var(--color-muted);
+  }
+
+  .search__results :global(.search__list) {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* A row of the Sort and View menus: no box at rest, the inset hairline
+     under the pointer or the keyboard. */
+  .search__results :global(.search__row) {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem 0.75rem;
+    color: var(--color-dark);
+    text-decoration: none;
+    text-align: left;
+  }
+
+  .search__results :global(.search__row:visited) {
+    color: var(--color-dark);
+  }
+
+  .search__results :global(.search__row:hover),
+  .search__results :global(.search__row:focus-visible) {
+    box-shadow: inset 0 0 0 1px var(--color-dark);
+    outline: none;
+  }
+
+  .search__results :global(.search__thumb) {
+    flex: none;
+    width: 2.2rem;
+    height: 2.2rem;
+    object-fit: cover;
+    background: var(--color-border);
+  }
+
+  .search__results :global(.search__thumb--round) {
+    border-radius: 50%;
+  }
+
+  .search__results :global(.search__words) {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .search__results :global(.search__name),
+  .search__results :global(.search__sub) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .search__results :global(.search__sub) {
+    color: var(--color-muted);
+  }
+
+  /* The pictures: a grid of squares, each one a link. */
+  .search__results :global(.search__grid) {
+    list-style: none;
+    margin: 0;
+    padding: 0 0.75rem;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+  }
+
+  .search__results :global(.search__tile) {
+    display: block;
+    aspect-ratio: 1;
+    background: var(--color-border);
+  }
+
+  .search__results :global(.search__tile img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .search__results :global(.search__tile:hover),
+  .search__results :global(.search__tile:focus-visible) {
+    outline: 1px solid var(--color-dark);
+    outline-offset: 1px;
   }
 
   /* The tags as chips: a wrapping cloud rather than a list, so many more
