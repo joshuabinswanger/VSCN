@@ -84,9 +84,10 @@ export async function reserveWork(
  * (updateImageText in src/lib/images.ts), so a replacement is a NEW record —
  * a new id, because the id is the filename and a verified member's object is
  * cached `immutable` for a year — that starts life carrying these.
- * `projectId` rides along so a replaced picture stays in its project.
+ * `projectId` rides along so a replaced picture stays in its project, and
+ * `inGallery` so one the member took out of the gallery stays out.
  */
-export const WORK_TEXT_FIELDS = ["caption", "captionDe", "description", "descriptionDe", "link", "siteLink", "tags", "projectId"] as const;
+export const WORK_TEXT_FIELDS = ["caption", "captionDe", "description", "descriptionDe", "link", "siteLink", "tags", "projectId", "inGallery"] as const;
 
 /**
  * The words, plus what KIND of work it is. A video link keeps its video when

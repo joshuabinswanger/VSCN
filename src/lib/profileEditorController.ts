@@ -623,6 +623,25 @@ document.addEventListener("astro:page-load", () => {
           const replace = row.querySelector<HTMLButtonElement>("[data-gallery-replace]");
           if (!replace) return null;
 
+          // IN GALLERY: unchecked keeps the work off /community, on the
+          // member's page only. The row dims so a folded list still shows
+          // which works the gallery will skip.
+          const include = row.querySelector<HTMLInputElement>("[data-gallery-include]");
+          const includeLabel = row.querySelector<HTMLElement>("[data-gallery-include-label]");
+          if (include && includeLabel) {
+            include.checked = item.inGallery !== false;
+            includeLabel.textContent = s["profile.gallery.include"];
+            const pill = include.closest("label");
+            if (pill) pill.title = s["profile.gallery.include.hint"];
+            row.classList.toggle("is-excluded", !include.checked);
+            include.addEventListener("change", () => {
+              if (include.checked) delete gallery[index].inGallery;
+              else gallery[index].inGallery = false;
+              row.classList.toggle("is-excluded", !include.checked);
+              syncPreview();
+            });
+          }
+
           // The one thing on screen that admits the order means something:
           // CommunityImageCard takes works[0]'s width/height as the aspect
           // box of the whole card, so this image decides its silhouette.
@@ -1965,6 +1984,8 @@ document.addEventListener("astro:page-load", () => {
           tags: g.tags ?? [],
           ...(g.embed ? { embed: g.embed } : {}),
           ...(project ? { projectId: project.id } : {}),
+          // The card preview skips it, as /community does.
+          ...(g.inGallery === false ? { hidden: true } : {}),
         };
       }),
     };

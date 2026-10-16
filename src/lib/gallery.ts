@@ -206,6 +206,12 @@ export interface GalleryItem {
    */
   projectId?: string;
   /**
+   * THE MEMBER'S "IN GALLERY" SWITCH (2026-10-16). `false` takes the work off
+   * /community (Portfolios and Images) while the member's own page keeps it;
+   * absent means included. Written onto the record at Save.
+   */
+  inGallery?: false;
+  /**
    * A VIDEO WORK (2026-09-23, documentation/20260923-motion-works-design.md):
    * the YouTube or Vimeo video it plays. `url` above is then the poster. Set
    * by the server (resolveEmbed), never edited here — Save does not write it.
@@ -487,6 +493,7 @@ export async function saveGalleryRecords(items: readonly GalleryItem[]): Promise
         siteLink: item.siteLink,
         tags: item.tags,
         projectId: item.projectId,
+        inGallery: item.inGallery,
       }),
     ),
   );

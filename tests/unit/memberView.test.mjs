@@ -64,6 +64,18 @@ test("a work carries its priority and whether moderation hid it", () => {
   assert.deepEqual(m.works.map((w) => [w.score, w.hidden]), [[91, false], [12, true]]);
 });
 
+// THE MEMBER'S OWN SWITCH (2026-10-16): `inGallery: false` on the record
+// takes the work off /community the same way moderation does, and keeps it in
+// the member's own list (still a work here, so /members/<slug> renders it).
+test("a work the member took out of the gallery is hidden from /community but still a work", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a", "b", "c"] }, [
+    rec("a", { caption: "a" }),
+    rec("b", { caption: "b", inGallery: false }),
+    rec("c", { caption: "c", inGallery: true }),
+  ], BUCKET);
+  assert.deepEqual(m.works.map((w) => [w.caption, w.hidden]), [["a", false], ["b", true], ["c", false]]);
+});
+
 test("a record with no moderation row still scores, so nothing sorts as zero", () => {
   const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a"] }, [rec("a")], BUCKET);
   // 100 * (0.85 * 2.5 + 0.15 * 0) / 5 — neutral on the three human criteria,
