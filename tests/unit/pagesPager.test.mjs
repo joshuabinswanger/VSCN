@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadTs } from "../helpers/load-ts.mjs";
 
-const { nextStop, swipeStep } = loadTs(
+const { nextStop, swipeStep, freshSwipe } = loadTs(
   "src/lib/pagesPager.ts",
   {},
   { document: { addEventListener() {} }, window: {} },
@@ -40,4 +40,11 @@ test("a swipe on the picture steps only when it is clearly vertical", () => {
   assert.equal(swipeStep(80, -60), 0); // sideways-leaning: the carousel's
   assert.equal(swipeStep(30, -45), 1); // a thumb's arcing flick still counts
   assert.equal(swipeStep(3, -15), 0); // a tap
+});
+
+test("a new trackpad swipe inside a momentum tail is a new gesture", () => {
+  assert.equal(freshSwipe(60, 2, 30), true); // tail decayed to 2, finger back at 30
+  assert.equal(freshSwipe(60, 2, 4), false); // the tail's own wobble
+  assert.equal(freshSwipe(60, 40, 70), false); // still the first swipe, not decayed
+  assert.equal(freshSwipe(100, 100, 100), false); // a mouse wheel spun at one speed
 });

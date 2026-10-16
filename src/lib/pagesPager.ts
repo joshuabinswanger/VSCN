@@ -23,10 +23,26 @@
 //
 // A gesture is a burst of wheel events with no gap longer than QUIET_MS: a
 // trackpad flick and its momentum tail are one card, not ten.
+//
+// A NEW SWIPE INSIDE A TAIL IS A NEW GESTURE (2026-10-16, Josh: "the scroll
+// still somehow needs an occasional click to work"): a trackpad's momentum
+// tail can run on for a second or more in tiny deltas with no gap, so a
+// second swipe made before it died joined the old gesture and did nothing —
+// until a click, which stops the fling. Now, once the lock has passed, a
+// delta that rises well above the tail's floor after the tail had decayed
+// (freshSwipe), or one in the other direction, starts a new gesture.
 
 const QUIET_MS = 180;
 const LOCK_MS = 650;
 const REDUCED = "(prefers-reduced-motion: reduce)";
+
+/** Inside an open gesture: does this delta start a new swipe? `peak` and
+ *  `floor` are the largest delta since the last step and the smallest
+ *  after it (absolute). Fresh when the move had decayed to under a third of
+ *  its peak and this delta is three times that floor and not a jitter. */
+export function freshSwipe(peak: number, floor: number, abs: number): boolean {
+  return floor < peak * 0.3 && abs >= Math.max(12, floor * 3);
+}
 const SWIPE_PX = 24;
 
 /** A finished touch on the picture: the step it asks for, or 0 when it was a
@@ -111,6 +127,9 @@ export function setPagesPaging(on: boolean): void {
   let gestureOpen = false;
   let quiet = 0;
   let lockedUntil = 0;
+  let peak = 0;
+  let floor = 0;
+  let dir = 0;
   document.addEventListener(
     "wheel",
     (e) => {
@@ -121,10 +140,23 @@ export function setPagesPaging(on: boolean): void {
       e.preventDefault();
       clearTimeout(quiet);
       quiet = window.setTimeout(() => (gestureOpen = false), QUIET_MS);
-      if (gestureOpen || performance.now() < lockedUntil || e.deltaY === 0) return;
+      if (e.deltaY === 0) return;
+      const abs = Math.abs(e.deltaY);
+      const sign = Math.sign(e.deltaY);
+      const now = performance.now();
+      const fresh =
+        gestureOpen && now >= lockedUntil && (sign !== dir || freshSwipe(peak, floor, abs));
+      if (gestureOpen && !fresh) {
+        if (abs > peak) peak = floor = abs;
+        else floor = Math.min(floor, abs);
+        return;
+      }
+      if (now < lockedUntil) return;
       gestureOpen = true;
-      lockedUntil = performance.now() + LOCK_MS;
-      step(wrap, e.deltaY > 0 ? 1 : -1);
+      lockedUntil = now + LOCK_MS;
+      peak = floor = abs;
+      dir = sign;
+      step(wrap, sign > 0 ? 1 : -1);
     },
     { passive: false, signal },
   );
