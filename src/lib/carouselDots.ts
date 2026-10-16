@@ -7,7 +7,7 @@
 // At most WINDOW dots show. With more works than that, the row is a sliding
 // window over all of them: the strip moves so the current dot stays off the
 // window's edges, and an edge dot with works beyond it shrinks (the outermost
-// to SMALL, its neighbour to MID), which is what says "there is more this
+// to SMALL 0.4, its neighbour to MID 0.66), which is what says "there is more this
 // way". The current dot is never shrunk. Five or fewer works: every dot, full
 // size, no sliding. The look (grey, black when current) is `.cdots` in
 // global.css; the size and gap are the --carousel-dot tokens in type.css.
