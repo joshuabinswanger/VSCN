@@ -28,6 +28,9 @@ export interface LightboxStrings {
   linkTitle: string;
   /** Accessible name for the member's own-site link on a piece. */
   siteLinkTitle: string;
+  /** The two links' visible words: "Publication" and "Link". */
+  linkText: string;
+  siteLinkText: string;
   /** "Play video on {provider}" — the video slide's button. */
   play: string;
   /** "Part of", before a project's title. */
@@ -51,6 +54,8 @@ export const LIGHTBOX_FALLBACK: LightboxStrings = {
   error: "The image cannot be loaded",
   linkTitle: "Where this image appeared",
   siteLinkTitle: "This piece on the maker's own site",
+  linkText: "Publication",
+  siteLinkText: "Link",
   play: "Play video on {provider}",
   partOf: "Part of",
   with: "With",
@@ -68,6 +73,8 @@ export const LIGHTBOX_STRING_KEYS: Record<keyof LightboxStrings, string> = {
   error: "member.lightbox.error",
   linkTitle: "member.lightbox.link",
   siteLinkTitle: "member.lightbox.siteLink",
+  linkText: "member.lightbox.linkText",
+  siteLinkText: "member.lightbox.siteLinkText",
   play: "member.lightbox.play",
   partOf: "member.project.partOf",
   with: "member.project.with",
@@ -162,13 +169,23 @@ export function createLightbox(
           hideAnimationDuration: 0,
           zoomAnimationDuration: false as const,
         }
-      : {}),
+      : {
+          // THE SITE'S EASE-OUT (2026-10-16, Josh: "smoother animations as
+          // the rest of the site"), the curve --lb-ease names in
+          // lightbox.css, at a slower open than PhotoSwipe's 333ms.
+          easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+          showAnimationDuration: 420,
+          hideAnimationDuration: 320,
+          zoomAnimationDuration: 380,
+        }),
   });
 
   // The artist line, the counter, the caption, the description and the links.
   registerLightboxText(lightbox, {
     linkTitle: strings.linkTitle,
     siteLinkTitle: strings.siteLinkTitle,
+    linkText: strings.linkText,
+    siteLinkText: strings.siteLinkText,
     partOf: strings.partOf,
     with: strings.with,
     prev: strings.prev,

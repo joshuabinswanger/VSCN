@@ -280,6 +280,10 @@ export const ui: Record<string, Record<string, string>> = {
     // scheme stripped, which names a destination but not what it IS.
     "member.lightbox.link": "Where this image appeared",
     "member.lightbox.siteLink": "This piece on the maker's own site",
+    // What the two links SAY in the lightbox (2026-10-16, Josh): a word for
+    // each role rather than two bare hosts; the host moves to the title.
+    "member.lightbox.linkText": "Publication",
+    "member.lightbox.siteLinkText": "Link",
     "member.lightbox.play": "Play video on {provider}",
     // The project block's heading prefix ("Part of {title}") and its
     // affiliations line ("With {name} · {name}") — both on the member page,
@@ -932,6 +936,8 @@ export const ui: Record<string, Record<string, string>> = {
     "member.lightbox.error": "Dieses Bild konnte nicht geladen werden.",
     "member.lightbox.link": "Wo dieses Bild erschienen ist",
     "member.lightbox.siteLink": "Dieses Werk auf der eigenen Website",
+    "member.lightbox.linkText": "Publikation",
+    "member.lightbox.siteLinkText": "Link",
     "member.lightbox.play": "Video auf {provider} abspielen",
     "member.project.partOf": "Teil von",
     "member.project.with": "Mit",
