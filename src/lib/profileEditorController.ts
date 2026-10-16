@@ -80,9 +80,11 @@ import {
 } from "./projectStore.ts";
 import {
   applyBlocks,
-  dissolveProject,
   editorAffiliations,
+  firstUntitledProject,
+  homeLooseWorks,
   insertUploaded,
+  looseWorksProject,
   memberUidFor,
   moveImage,
   moveProject,
@@ -91,7 +93,6 @@ import {
   previewProjects,
   projectLabel,
   projectsToDelete,
-  removeFromProject,
   sameIds,
   withoutDanglingProjects,
   type EditorAffiliation,
@@ -360,16 +361,16 @@ document.addEventListener("astro:page-load", () => {
       year: "numeric",
     });
 
-  const galleryInput = document.getElementById("gallery-files") as HTMLInputElement;
   const galleryReplaceInput = document.getElementById("gallery-replace-file") as HTMLInputElement;
   /** The work whose "Replace image" opened the picker; read once, when a file arrives. */
   let galleryReplaceTarget: string | null = null;
   const galleryEditor = document.getElementById("gallery-editor")!;
   const galleryQueueEl = document.getElementById("gallery-queue")!;
   const galleryDrop = document.getElementById("gallery-drop")!;
-  // By id since 2026-09-23: project blocks inside the list carry their own
-  // .choose-img pickers, and the first match in the drop zone is one of those.
-  const galleryAdd = document.getElementById("gallery-add") as HTMLButtonElement;
+  // The way in for a member with no project yet (2026-10-16): every work is
+  // added to a project, so with none there is nothing to add to but this.
+  const galleryFirst = document.getElementById("gallery-first");
+  const galleryFirstProject = document.getElementById("gallery-first-project") as HTMLButtonElement | null;
   const galleryStatus = document.getElementById("gallery-status")!;
   // Row shells for the two list editors. Cloned rather than built: see the
   // comment on each <template> above — Astro's scope attribute is on the
@@ -386,8 +387,9 @@ document.addEventListener("astro:page-load", () => {
   const galleryVideoAdd = document.getElementById("gallery-video-add") as HTMLButtonElement;
   const galleryVideoStatus = document.getElementById("gallery-video-status")!;
   const galleryVideoPanel = document.getElementById("gallery-video")!;
-  const galleryVideoOpen = document.getElementById("gallery-video-open") as HTMLButtonElement;
   const galleryVideoCancel = document.getElementById("gallery-video-cancel") as HTMLButtonElement;
+  /** The project whose "Add video" opened the sheet (2026-10-16); the link lands in it. */
+  let galleryVideoTarget: string | null = null;
   /** Links being resolved right now. Each holds a gallery place until it lands or fails. */
   let videoPending = 0;
   /** Works whose automatic thumbnail is on its way back. */
@@ -744,23 +746,22 @@ document.addEventListener("astro:page-load", () => {
           wireMove(moveDown, 1, "down");
 
           // THE PROJECT DROPDOWN (2026-09-25). A project joins the image
-          // at the END of that block (moveToProject); "No project" lands it
-          // directly below the block it left (removeFromProject).
-          // Membership is written at Save, like every field here.
-          const current = item.projectId && projects.some((p) => p.projectId === item.projectId) ? item.projectId : "";
+          // at the END of that block (moveToProject). Membership is written
+          // at Save, like every field here. NO "No project" since 2026-10-16
+          // (Josh: "images without project are not allowed any longer!"): a
+          // work moves from one project to another, never out of all of
+          // them — so the select only shows once there is a second project
+          // to move to.
           const projectWrap = projectSelect.closest<HTMLElement>("[data-gallery-project-wrap]");
-          if (projectWrap) projectWrap.hidden = projects.length === 0;
+          if (projectWrap) projectWrap.hidden = projects.length < 2;
           named(projectSelect, s["profile.project.select"]).title = s["profile.project.select"];
-          const none = new Option(s["profile.project.none"], "");
           projectSelect.replaceChildren(
-            none,
             ...projects.map((p) => new Option(projectLabel(projects, p.projectId, lang, s["profile.project.untitled"]), p.projectId)),
           );
-          projectSelect.value = current;
+          if (item.projectId) projectSelect.value = item.projectId;
           projectSelect.addEventListener("change", () => {
             const target = projectSelect.value;
-            const next = target ? moveToProject(blocks, index, target) : removeFromProject(blocks, index);
-            void applyBlockMove(next, { imageId: item.imageId, control: "project" });
+            if (target) void applyBlockMove(moveToProject(blocks, index, target), { imageId: item.imageId, control: "project" });
           });
 
           // New picture, same work: captions, description, links, tags and
@@ -858,8 +859,9 @@ document.addEventListener("astro:page-load", () => {
       }
 
       // The header's ↑/↓ move the whole block past its neighbour. Delete
-      // ungroups in place — the images stay, as its tooltip says; the
-      // document itself goes at Save.
+      // takes an EMPTY block only (2026-10-16): a work cannot be left
+      // without a project, so one that still holds works says to move or
+      // remove them first. The document itself goes at Save.
       const id = project.projectId;
       const wireHeadMove = (button: HTMLButtonElement, delta: -1 | 1, control: "up" | "down") => {
         const next = moveProject(blocks, id, delta);
@@ -871,8 +873,26 @@ document.addEventListener("astro:page-load", () => {
       wireHeadMove(headUp, -1, "up");
       wireHeadMove(headDown, 1, "down");
       // An icon now (2026-10-13), so the tooltip carries the name too.
-      headDelete.title = `${s["profile.project.delete"]}. ${s["profile.project.deleteNote"]}`;
+      headDelete.title = block.indices.length
+        ? `${s["profile.project.delete"]}. ${s["profile.project.deleteHasWorks"]}`
+        : s["profile.project.delete"];
       headDelete.addEventListener("click", () => deleteProject(id));
+
+      // A VIDEO INTO THIS PROJECT (2026-10-16). The Plus menu's general
+      // "Add video" went with the general picker — every work is added to
+      // a project — so each block opens the one video sheet for itself.
+      const headVideo = head?.querySelector<HTMLButtonElement>("[data-project-video]");
+      if (headVideo) {
+        named(headVideo, s["profile.project.addVideo"]).title = s["profile.project.addVideo"];
+        // Its pressed state and the cap: updateGalleryControls.
+        headVideo.dataset.projectId = id;
+        headVideo.setAttribute("aria-controls", galleryVideoPanel.id);
+        headVideo.addEventListener("click", () => {
+          const open = galleryVideoPanel.hidden || galleryVideoTarget !== id;
+          galleryVideoTarget = open ? id : null;
+          setVideoPanel(open);
+        });
+      }
 
 
       // Field wiring follows the rows': `.value` from state, `input` writes
@@ -1008,6 +1028,8 @@ document.addEventListener("astro:page-load", () => {
     // gallery; the nudge says so, and disappears with the first image.
     const nudge = document.getElementById("gallery-nudge");
     if (nudge) nudge.hidden = gallery.length > 0;
+    // No project, no way to add a work but this (2026-10-16).
+    if (galleryFirst) galleryFirst.hidden = projects.length > 0;
     updateGalleryControls();
     if (focusHint) {
       // Back onto the control that was just used, in the row or header it
@@ -1081,11 +1103,8 @@ document.addEventListener("astro:page-load", () => {
   function updateGalleryControls() {
     const limit = galleryLimit(auth.currentUser);
     const full = gallery.length + galleryQueue.pendingCount() + videoPending >= limit;
-    galleryAdd.setAttribute("aria-disabled", String(full));
-    galleryAdd.disabled = full;
-    galleryInput.disabled = full;
-    // The blocks' own pickers share the cap: an image is an image wherever
-    // it is added.
+    // The blocks' pickers are the only ones since 2026-10-16, and they
+    // share the cap: an image is an image wherever it is added.
     for (const picker of galleryEditor.querySelectorAll<HTMLInputElement>("[data-project-files]")) {
       picker.disabled = full;
       picker.closest(".gallery-project-add")?.setAttribute("aria-disabled", String(full));
@@ -1101,7 +1120,12 @@ document.addEventListener("astro:page-load", () => {
     // pressable while a link is on its way, so the panel can be closed.
     galleryVideoAdd.disabled = full || videoPending > 0;
     galleryVideoUrl.disabled = full;
-    galleryVideoOpen.disabled = full && galleryVideoPanel.hidden;
+    for (const opener of galleryEditor.querySelectorAll<HTMLButtonElement>("[data-project-video]")) {
+      const openHere = !galleryVideoPanel.hidden && galleryVideoTarget === opener.dataset.projectId;
+      opener.disabled = full && !openHere;
+      opener.setAttribute("aria-expanded", String(openHere));
+      opener.classList.toggle("is-open", openHere);
+    }
     // The open panel's own line says why its field just went dead — and
     // stops showing an earlier refusal beside a field that is now disabled
     // for a different reason. Cleared on the way back down only if it is
@@ -1290,6 +1314,9 @@ document.addEventListener("astro:page-load", () => {
       const items = await loadGallery(uid, merge.added);
       gallery = [...gallery, ...items];
       for (const [id, words] of committedFromLoad(items)) committedWords.set(id, words);
+      // A work this tab cannot place in a project it knows goes under
+      // "Works", as at load. Its order is stored with the next write.
+      homeLoose();
       renderGallery();
       syncPreview();
     }
@@ -1355,6 +1382,9 @@ document.addEventListener("astro:page-load", () => {
     // `projects` passed so an upload into a block deleted meanwhile arrives
     // loose instead of carrying a dangling projectId onto its record.
     gallery = insertUploaded(gallery, item, projects);
+    // ...and a work that arrived loose is filed under "Works" (2026-10-16):
+    // the block it was added to went while its bytes were on the way.
+    homeLoose();
     // Its record exists with these words (a video's platform title among
     // them); the block it was dropped into does not reach the record until Save.
     committedWords.set(item.imageId, committedForNew(item));
@@ -1584,23 +1614,48 @@ document.addEventListener("astro:page-load", () => {
     renderGallery({ projectId, field: "title" });
   }
   galleryNewProject.addEventListener("click", newProject);
+  galleryFirstProject?.addEventListener("click", newProject);
 
   /**
-   * "Delete project": the block dissolves where it stands and its images stay
-   * as loose rows, so the gallery's order does not change and nothing is
-   * stored now. The document is deleted at Save — `deletedProjectIds` is how
-   * Save still knows about a project no longer in `projects`.
+   * Files every work that names no project this tab knows under the
+   * member's "Works" project (2026-10-16; homeLooseWorks in
+   * projectEditor.ts). True when that changed anything; the caller renders.
+   */
+  function homeLoose(): boolean {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return false;
+    const homed = homeLooseWorks(gallery, projects, looseWorksProject(uid));
+    if (!homed) return false;
+    gallery = homed.gallery;
+    projects = homed.projects;
+    return true;
+  }
+
+  /**
+   * "Delete project", for an EMPTY block only (2026-10-16, Josh: "images
+   * without project are not allowed any longer!"). It used to dissolve in
+   * place and leave its images loose; now a block that holds works refuses,
+   * on the gallery's status line, and the member moves them (the row's
+   * project select) or removes them first. Nothing is stored now: the
+   * document is deleted at Save — `deletedProjectIds` is how Save still knows
+   * about a project no longer in `projects`.
    */
   function deleteProject(projectId: string) {
-    const blocks = editorBlocks(gallery, projects);
-    const first = gallery.find((g) => g.projectId === projectId);
-    gallery = applyBlocks(gallery, dissolveProject(blocks, projectId));
+    if (gallery.some((g) => g.projectId === projectId)) {
+      setGalleryStatus(s["profile.project.deleteHasWorks"]);
+      return;
+    }
     projects = projects.filter((p) => p.projectId !== projectId);
     projectDetailsOpenUI.delete(projectId);
     if (storedProjectIds.has(projectId)) deletedProjectIds.add(projectId);
-    renderGallery(first ? { imageId: first.imageId, control: "up" } : undefined);
-    // A lone image has both arrows disabled, and nothing else to land on.
-    if (!galleryEditor.contains(document.activeElement)) galleryNewProject.focus();
+    if (galleryVideoTarget === projectId) {
+      galleryVideoTarget = null;
+      setVideoPanel(false, false);
+    }
+    clearGalleryStatus();
+    renderGallery();
+    // The block and its buttons are gone; the way in, if it was the last one.
+    (galleryFirst && !galleryFirst.hidden ? galleryFirstProject : document.getElementById("ebar-add"))?.focus();
   }
 
   async function applyBlockMove(next: EditorBlock[] | null, focusHint?: FocusHint) {
@@ -1622,13 +1677,15 @@ document.addEventListener("astro:page-load", () => {
   }
 
   /**
-   * The one way files enter the queue, from the picker or from a drop.
+   * The one way files enter the queue, from a block's picker or from a drop
+   * onto a block. Always INTO a project since 2026-10-16: the target is no
+   * longer optional, because a work without one is no longer allowed.
    *
    * Rejections are reported per file and named per cause, all at once for the
    * whole selection — the old loop overwrote one shared line per file, so a
    * six-file batch ended showing only whatever happened to the last one.
    */
-  function addGalleryFiles(files: File[], target?: { projectId: string }) {
+  function addGalleryFiles(files: File[], target: { projectId: string }) {
     if (files.length === 0) return;
     const limit = galleryLimit(auth.currentUser);
     const outcome = galleryQueue.add(files, target);
@@ -1659,20 +1716,24 @@ document.addEventListener("astro:page-load", () => {
     galleryVideoStatus.hidden = !text;
   }
 
-  /** "Add video" opens the link field; Cancel, a second press or a landed link closes it. */
+  /**
+   * A block's "Add video" opens the link field for that block (2026-10-16;
+   * before, the Plus menu's, for no project); Cancel, a second press or a
+   * landed link closes it, and focus goes back to the block's button.
+   */
   function setVideoPanel(open: boolean, refocus = true) {
+    const opener = galleryVideoTarget
+      ? galleryEditor.querySelector<HTMLButtonElement>(`[data-project-video][data-project-id="${galleryVideoTarget}"]`)
+      : null;
     galleryVideoPanel.hidden = !open;
-    galleryVideoOpen.setAttribute("aria-expanded", String(open));
-    galleryVideoOpen.classList.toggle("is-open", open);
     if (open) {
       galleryVideoUrl.focus();
     } else {
       setVideoStatus("");
-      if (refocus) document.getElementById("ebar-add")?.focus();
+      if (refocus) (opener ?? document.getElementById("ebar-add"))?.focus();
     }
     updateGalleryControls();
   }
-  galleryVideoOpen.addEventListener("click", () => setVideoPanel(galleryVideoPanel.hidden));
   galleryVideoCancel.addEventListener("click", () => {
     galleryVideoUrl.value = "";
     setVideoPanel(false);
@@ -1681,6 +1742,13 @@ document.addEventListener("astro:page-load", () => {
   async function addGalleryVideo() {
     const url = galleryVideoUrl.value.trim();
     if (!url || videoPending > 0) return;
+    // Taken now: the sheet may be reopened for another block while the
+    // server resolves this link, and the work belongs where it was asked for.
+    const target = galleryVideoTarget;
+    if (!target || !projects.some((p) => p.projectId === target)) {
+      setVideoPanel(false);
+      return;
+    }
     if (gallery.length + galleryQueue.pendingCount() >= galleryLimit(auth.currentUser)) {
       setVideoStatus(s["profile.embed.err.full"]);
       return;
@@ -1703,7 +1771,9 @@ document.addEventListener("astro:page-load", () => {
       const item = await addVideoLink(url);
       galleryVideoUrl.value = "";
       setVideoPanel(false, false);
-      await onGalleryUploaded(item);
+      // Into its block, as a picked image is (the queue's target): the
+      // record gets the projectId at Save, like every membership.
+      await onGalleryUploaded({ ...item, projectId: target });
     } catch (error) {
       setVideoStatus(s[`profile.embed.err.${embedErrorCode(error)}`]);
     } finally {
@@ -1757,58 +1827,55 @@ document.addEventListener("astro:page-load", () => {
     }
   });
 
-  galleryInput.addEventListener("change", () => {
-    const files = Array.from(galleryInput.files ?? []);
-    // Cleared straight away: without this, picking the same file again after
-    // a failure fires no change event at all.
-    galleryInput.value = "";
-    addGalleryFiles(files);
-    // The new rows land at the foot of the list (or inside their project),
-    // and the Plus that started this sits on top of the page, not near them.
-    if (files.length) requestAnimationFrame(() => galleryQueueEl.scrollIntoView({ behavior: "smooth", block: "center" }));
-  });
-  galleryAdd.addEventListener("click", () => galleryInput.click());
+  // THE GENERAL PICKER IS GONE (2026-10-16, Josh: "images without project
+  // are not allowed any longer! We need always a Project"). The Plus menu's
+  // "Add images" and "Add video" added works to no project; images now come
+  // in through a block's own picker or a drop onto a block, videos through
+  // a block's "Add video".
 
   /**
-   * Drag-and-drop onto the gallery block.
-   *
-   * The depth counter is not incidental: dragenter and dragleave fire for
-   * every descendant the pointer crosses, so a plain dragleave handler
-   * un-highlights the zone the instant the cursor passes over a thumbnail
-   * INSIDE it. Counting entries and exits is what makes the highlight track
-   * the zone rather than its children.
+   * Drag-and-drop onto a PROJECT BLOCK (2026-10-16): the files land in the
+   * block under the pointer, as its own picker would put them. Anywhere else
+   * in the list refuses the drop (dropEffect "none"), so there is no
+   * project-less way in. The highlight follows dragover, which always names
+   * the deepest element under the pointer — no enter/leave depth counting.
    */
-  let galleryDragDepth = 0;
+  let dropBlock: HTMLElement | null = null;
 
   function galleryDragHasFiles(event: DragEvent) {
     return Boolean(event.dataTransfer?.types.includes("Files"));
   }
 
-  galleryDrop.addEventListener("dragenter", (event) => {
-    if (!galleryDragHasFiles(event)) return;
-    event.preventDefault();
-    galleryDragDepth += 1;
-    galleryDrop.classList.add("is-dragging");
-  });
+  function setDropBlock(next: HTMLElement | null) {
+    if (dropBlock === next) return;
+    dropBlock?.classList.remove("is-drop-target");
+    dropBlock = next;
+    dropBlock?.classList.add("is-drop-target");
+  }
+
+  const blockUnder = (event: DragEvent) =>
+    event.target instanceof Element ? event.target.closest<HTMLElement>("[data-project-block]") : null;
 
   galleryDrop.addEventListener("dragover", (event) => {
     if (!galleryDragHasFiles(event)) return;
     // Without preventDefault the browser treats the drop as navigation and
-    // opens the image file over the top of the form.
+    // opens the image file over the top of the form — off a block too.
     event.preventDefault();
-    if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    const block = blockUnder(event);
+    setDropBlock(block);
+    if (event.dataTransfer) event.dataTransfer.dropEffect = block ? "copy" : "none";
   });
 
-  galleryDrop.addEventListener("dragleave", () => {
-    galleryDragDepth = Math.max(0, galleryDragDepth - 1);
-    if (galleryDragDepth === 0) galleryDrop.classList.remove("is-dragging");
+  galleryDrop.addEventListener("dragleave", (event) => {
+    // Out of the list altogether; a move between its children is dragover's.
+    if (!(event.relatedTarget instanceof Node) || !galleryDrop.contains(event.relatedTarget)) setDropBlock(null);
   });
 
   galleryDrop.addEventListener("drop", (event) => {
     event.preventDefault();
-    galleryDragDepth = 0;
-    galleryDrop.classList.remove("is-dragging");
-    addGalleryFiles(Array.from(event.dataTransfer?.files ?? []));
+    const projectId = blockUnder(event)?.dataset.projectId;
+    setDropBlock(null);
+    if (projectId) addGalleryFiles(Array.from(event.dataTransfer?.files ?? []), { projectId });
   });
 
   function getSelectedPrimaryAudiences() {
@@ -2065,10 +2132,11 @@ document.addEventListener("astro:page-load", () => {
   });
 
   // THE PLUS (2026-10-13, Josh: "Images Videos and Project now can be added
-  // via a Plus Button in the bottom bar"). A pull-down whose three items are
-  // the old Add row's buttons, ids and all, so their own handlers above (the
-  // picker, the video sheet, newProject) are unchanged. Choosing one first
-  // puts the tab into Edit on the page, where the new work will appear.
+  // via a Plus Button in the bottom bar"). A pull-down whose items are the
+  // old Add row's buttons, ids and all, so their own handlers above are
+  // unchanged. One item since 2026-10-16, Add project: images and videos are
+  // added from inside a project (the block's own buttons). Choosing it first
+  // puts the tab into Edit on the page, where the new block will appear.
   const addButton = document.getElementById("ebar-add") as HTMLButtonElement | null;
   const addMenuEl = document.getElementById("ebar-add-menu");
   const addMenu =
@@ -2279,6 +2347,9 @@ document.addEventListener("astro:page-load", () => {
           // resurrect removed media, and it must not hide media added since.
           const before = gallery;
           gallery = mergeDraftGallery(gallery, value.works, new Set(projects.map(p => p.projectId)));
+          // A draft from before 2026-10-16 can hold a work's "No project";
+          // that work goes back under "Works".
+          homeLoose();
           // Restored membership may need a block made contiguous again, as at load.
           if (!sameIds(before, gallery)) void persistGalleryNow();
           if (tagSelector) tagSelector.value = value.tags ?? [];
@@ -2480,13 +2551,21 @@ document.addEventListener("astro:page-load", () => {
     // would write it back onto the record at every Save.
     gallery = withoutDanglingProjects(gallery, storedProjectIds);
     const contiguous = contiguousOrder(gallery, (g) => g.projectId);
-    const reordered = !sameIds(gallery, contiguous);
+    let reordered = !sameIds(gallery, contiguous);
     // What is stored NOW is the base every later write reconciles against —
     // the loaded order, before this tab's own contiguity fix rewrites it.
     galleryBase = galleryIds(gallery);
     gallery = contiguous;
     // Every word on screen is now the record's: nothing is unsaved yet.
     committedWords = committedFromLoad(gallery);
+    // EVERY WORK IN A PROJECT (2026-10-16, Josh: "images without project
+    // are not allowed any longer!"). Works stored without one are filed
+    // under a local "Works" / "Arbeiten" project AFTER the committed words
+    // were taken, so their new membership reads as unsaved and the next
+    // Save stores the project and the projectIds. The order that gathers
+    // them is stored at once, like any contiguity fix.
+    const unfiled = gallery;
+    if (homeLoose() && !sameIds(unfiled, gallery)) reordered = true;
     // Never chosen: offer the locale they are reading in, not a blanket German.
     // Set before the gallery renders: its folded rows speak this language.
     preferredLanguageInput.value = isSiteLanguage(data.preferredLanguage) ? data.preferredLanguage : lang;
@@ -2673,6 +2752,26 @@ document.addEventListener("astro:page-load", () => {
   }
 
   /**
+   * The project Save refused for its missing title: the Works tab in Edit,
+   * the block's title field in the language the bar shows — either one
+   * satisfies the rule (projectFields writes a German-only title as the
+   * title too) — flagged and focused, the footer saying why.
+   */
+  function showUntitledProject(projectId: string) {
+    setSection("work");
+    if (worksView !== "profile") setWorksView("profile");
+    if (worksMode !== "edit") setWorksMode("edit");
+    showSaveError(s["profile.project.titleRequired"]);
+    const field = galleryEditor.querySelector<HTMLElement>(
+      `[data-project-id="${projectId}"] [data-project-field="${worksLang === "de" ? "titleDe" : "title"}"]`,
+    );
+    if (!field) return;
+    markInvalid(field);
+    field.focus();
+    field.scrollIntoView?.({ block: "center" });
+  }
+
+  /**
    * A save that has not settled in this long has lost the network: Firestore
    * write promises resolve only on the backend's acknowledgement, so an
    * offline Save used to hold the whole editor inert on "Saving…" until the
@@ -2741,6 +2840,13 @@ document.addEventListener("astro:page-load", () => {
     }, s);
     if (problem) {
       showSaveProblem(problem);
+      return;
+    }
+    // A project needs a title (2026-10-16) — the rules refuse one without,
+    // after the work before it has been written. Asked here, by name.
+    const untitled = firstUntitledProject(projects, gallery);
+    if (untitled) {
+      showUntitledProject(untitled);
       return;
     }
     if (navigator.onLine === false) {

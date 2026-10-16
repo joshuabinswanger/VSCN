@@ -36,6 +36,14 @@
 //      stylesheet as --frame-l / --frame-r / --frame-h. The picture is the
 //      slide's `.mprof__work-link` (MemberWork.astro, and the preview's
 //      figure); without one the frame is the whole slide.
+//   1c. SEVERAL WORKS AT ONCE ON A DESKTOP (2026-10-16, Josh: "on bigger
+//      screens we need to show multiple images for projects they should be
+//      smaller and the carousel should show multiple images from the
+//      beginning. also add scroll snap!"). Above the phone breakpoint the
+//      pictures are capped lower (profile.css), the track is not clipped to
+//      one picture, and every work snaps to the column's LEFT edge: the
+//      first work starts at the column's start and the next ones follow it
+//      in view. A step is still one work. On a phone nothing changed.
 //   3. FOLLOWING THE LIGHTBOX (showInCarousel): paging the lightbox pages the
 //      carousel behind it, so the close animation lands on a visible picture.
 //
@@ -59,6 +67,8 @@ export function destroyProjectCarousels(): void {
 document.addEventListener("astro:before-swap", destroyProjectCarousels);
 
 const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)");
+/** 1c: the --bp-desktop alias (767px < width), where a carousel shows several works. */
+const MULTI = window.matchMedia("(min-width: 768px)");
 
 /** Per carousel: bring slide `i` to rest on the column, without animating. */
 const seat = new WeakMap<HTMLElement, (slide: HTMLElement) => void>();
@@ -125,14 +135,22 @@ export function initProjectCarousels(root: ParentNode = document): void {
         return Math.round(Number.isFinite(cap) ? Math.min(column, cap) : column);
       });
       slides.forEach((slide, i) => slide.style.setProperty("--slide-w", `${widths[i]}px`));
-      track.style.setProperty("--pad-l", `${(column - widths[0]) / 2}px`);
-      track.style.setProperty("--pad-r", `${(column - widths[widths.length - 1]) / 2}px`);
+      // 1c: left-aligned, so no padding to centre the ends on.
+      const multi = MULTI.matches;
+      track.style.setProperty("--pad-l", `${multi ? 0 : (column - widths[0]) / 2}px`);
+      track.style.setProperty("--pad-r", `${multi ? 0 : (column - widths[widths.length - 1]) / 2}px`);
     };
 
     // A slide's resting scroll position: its centre on the column's.
     // offsetLeft is measured from the track (position: relative in the CSS)
     // and includes the track's padding.
-    const restFor = (i: number) => slides[i].offsetLeft - (column - (widths[i] ?? column)) / 2;
+    // 1c: on a desktop its start on the column's, clamped to where the track
+    // can scroll — the last few works are already in view before their turn.
+    const maxScroll = () => track.scrollWidth - track.clientWidth;
+    const restFor = (i: number) =>
+      MULTI.matches
+        ? Math.min(slides[i].offsetLeft, maxScroll())
+        : slides[i].offsetLeft - (column - (widths[i] ?? column)) / 2;
 
     const current = () => {
       let best = 0;
@@ -156,6 +174,13 @@ export function initProjectCarousels(root: ParentNode = document): void {
       const pic = slide.querySelector<HTMLElement>(".mprof__work-link") ?? slide;
       const p = pic.getBoundingClientRect();
       if (!p.width || !column) return;
+      // 1c: several in view, so the chevrons run down the column's edges.
+      if (MULTI.matches) {
+        carousel.style.setProperty("--frame-l", "0px");
+        carousel.style.setProperty("--frame-r", "0px");
+        carousel.style.setProperty("--frame-h", `${Math.round(p.height)}px`);
+        return;
+      }
       // Where the picture stands once it is at rest: centred on the column.
       const side = Math.max(0, Math.round((column - Math.min(column, p.width)) / 2));
       carousel.style.setProperty("--frame-l", `${side}px`);
@@ -167,7 +192,8 @@ export function initProjectCarousels(root: ParentNode = document): void {
       if (i === shown) return;
       shown = i;
       const atStart = i === 0;
-      const atEnd = i === slides.length - 1;
+      // 1c: on a desktop the end is where the track stops, not the last work.
+      const atEnd = i === slides.length - 1 || (MULTI.matches && restFor(i) >= maxScroll() - 1);
       if (prev) prev.disabled = atStart;
       if (next) next.disabled = atEnd;
       countPrev.disabled = atStart;

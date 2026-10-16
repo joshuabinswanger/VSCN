@@ -13,10 +13,13 @@ const t = useTranslations(lang);
             with the title and the description as inline fields in the
             heading's own voices. The tools stand level with the title: the
             block's ↑/↓ (moveProject: the block moves as a whole, past the
-            neighbouring row or block), Delete, which ungroups in place (the
-            images stay, loose, where the block stood; the document goes at
-            Save), and the block's own picker (uploads land after its last
-            image, insertUploaded).
+            neighbouring row or block), Delete, and the block's own picker
+            (uploads land after its last image, insertUploaded). Since
+            2026-10-16 (Josh: "images without project are not allowed any
+            longer!") the block is the ONLY way a work comes in — its picker,
+            a drop onto it, its "Add video" — and Delete takes an empty block
+            only (the document goes at Save); one that holds works asks for
+            them to be moved or removed first.
             The works inside are listed one under the other here; on the page
             two or more page as a carousel. */
         }
@@ -37,6 +40,8 @@ const t = useTranslations(lang);
                 <svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/><circle cx="9" cy="9" r="2"/><path d="M16 5h6M19 2v6"/></svg>
                 <input type="file" class="picker-input" accept="image/jpeg,image/png,image/webp,image/avif" multiple data-project-files aria-label={t("profile.project.addImages")} />
               </label>
+              {/* Add video (2026-10-16): opens the bar's video sheet for THIS block; named by the controller. */}
+              <button type="button" class="gallery-tbtn" data-project-video aria-expanded="false"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/></svg></button>
               <button type="button" class="gallery-tbtn gallery-tbtn--danger" data-project-delete aria-label={t("profile.project.delete")} title={t("profile.project.delete")}><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
             </div>
           </div>

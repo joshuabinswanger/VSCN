@@ -12,7 +12,7 @@ import { profileBio, profileRole, workLink } from "./links.ts";
 import type { Lang } from "../i18n/utils";
 import { orderedGalleryItems, type GalleryRecord } from "./galleryRecords.ts";
 import { imageScore } from "./imageScore.ts";
-import { inheritedSiteLink, inheritedTags, ownProjects, type ProfileProject, type ProjectRecord } from "./projects.ts";
+import { adoptLooseWorks, inheritedSiteLink, inheritedTags, ownProjects, type ProfileProject, type ProjectRecord } from "./projects.ts";
 
 /**
  * A work as the BUILD knows it: everything a renderer needs, plus what
@@ -237,8 +237,13 @@ export function toMemberViewBase(
   projectRecords: readonly ProjectRecord[] = [],
 ): MemberViewBase {
   const bio = (doc.bio ?? "").trim();
-  const own = ownProjects(uid, projectRecords);
-  const memberWorks = works(uid, doc, records, bucket, own);
+  // EVERY WORK IN A PROJECT (2026-10-16, Josh: "images without project are
+  // not allowed any longer"). A work stored before that, with no project,
+  // joins a "Works" / "Arbeiten" project here — virtual until the migration
+  // or the member's next Save stores it — so the page, the wall and the
+  // lightbox all see the same project where the first such work stood.
+  const stored = ownProjects(uid, projectRecords);
+  const { works: memberWorks, projects: own } = adoptLooseWorks(uid, works(uid, doc, records, bucket, stored), stored);
   const used = new Set(memberWorks.map((w) => w.projectId).filter(Boolean));
   return {
     id: uid,
