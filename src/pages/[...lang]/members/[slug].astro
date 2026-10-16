@@ -1,6 +1,7 @@
 ---
 import { getImage } from "astro:assets";
 import Layout from "../../../layouts/Layout.astro";
+import { splitParagraphs } from "../../../lib/paragraphs.ts";
 import { fetchMemberViews, fetchSlugAliases } from "../../../lib/membersBuild.ts";
 import { localizeMember, type MemberView } from "../../../lib/memberView.ts";
 import {
@@ -10,6 +11,7 @@ import {
   socialLinks,
   workCaption,
   workDescription,
+  workTextAfter,
 } from "../../../lib/links.ts";
 import { memberPageJsonLd, memberPageUrl, memberTitle } from "../../../lib/seo.ts";
 import { groupWorks, projectTitle, projectDescription, projectSlideData, type ProfileProject } from "../../../lib/projects.ts";
@@ -91,6 +93,7 @@ const works = await Promise.all(
       // screen reader speaks for this image.
       caption: workCaption(w, currentLang),
       description: workDescription(w, currentLang),
+      textAfter: workTextAfter(w, currentLang),
       rendered: await getImage({
         src: w.url,
         width: w.width,
@@ -118,11 +121,15 @@ const works = await Promise.all(
 );
 
 // PROJECT BLOCKS (2026-09-23): the gallery stays one list in the member's
-// order; a project's images sit together under its heading, loose works in
-// between. groupWorks() is the same cut the editor preview makes.
-// Projects stack in the member's order; each one with two or more works is
-// its own carousel (MemberProject.astro, 2026-09-26). The one slider that
-// paged between projects (2026-09-25) is gone with that change.
+// order; a project's images sit together under its heading. groupWorks() is
+// the same cut the editor preview makes. No loose works since 2026-10-16
+// (Josh: "images without project are not allowed any longer!"): the view
+// model files old project-less works under a virtual "Works" / "Arbeiten"
+// project (adoptLooseWorks in toMemberViewBase), so the bare-MemberWork
+// branch below is only a fallback.
+// Projects stack in the member's order, every work in line with the text
+// blocks between them (MemberProject.astro, 2026-10-16); the per-project
+// carousels of 2026-09-26 are gone.
 const sections = groupWorks(works, member.projects ?? []);
 
 // The lightbox's own labels. One attribute rather than five, for the same
@@ -136,10 +143,14 @@ const lightboxStrings = JSON.stringify({
   error: t("member.lightbox.error"),
   linkTitle: t("member.lightbox.link"),
   siteLinkTitle: t("member.lightbox.siteLink"),
+  linkText: t("member.lightbox.linkText"),
+  siteLinkText: t("member.lightbox.siteLinkText"),
   play: t("member.lightbox.play"),
   partOf: t("member.project.partOf"),
   with: t("member.project.with"),
   dialog: t("member.lightbox.dialog"),
+  hideText: t("member.lightbox.hideText"),
+  showText: t("member.lightbox.showText"),
 });
 
 const social = socialLinks(member.socialMedia);
@@ -209,8 +220,11 @@ const jsonLd = memberPageJsonLd({
   jsonLd={aliasOf ? undefined : jsonLd}
   noindex={Boolean(aliasOf)}
   redirectTo={aliasOf}
+  contentWide
 >
   <article class="mprof">
+    {/* The person, the left column on a desktop (profile.css). */}
+    <div class="mprof__aside">
     <header class="mprof__head">
       {member.photoURL && (
         <img
@@ -237,7 +251,11 @@ const jsonLd = memberPageJsonLd({
       </div>
     </header>
 
-    {member.bio && <p class="mprof__bio">{member.bio}</p>}
+    {member.bio && (
+      <p class="mprof__bio">
+        {splitParagraphs(member.bio).map((para) => <span class="mprof__para">{para}</span>)}
+      </p>
+    )}
 
     <div class="mprof__meta">
       {
@@ -320,10 +338,11 @@ const jsonLd = memberPageJsonLd({
       }
 
     </div>
+    </div>
 
     {
       works.length > 0 && (
-        <div class="mprof__works" data-pswp-i18n={lightboxStrings}>
+        <div class="mprof__works" data-pswp-i18n={lightboxStrings} data-index-label={t("member.index")}>
           {/* Each work is a link to the original, which is what PhotoSwipe
               binds to — and what makes the image openable with scripting off
               rather than being inert. The gallery is still one list in the
@@ -333,6 +352,7 @@ const jsonLd = memberPageJsonLd({
             section.project ? (
               <MemberProject
                 project={section.project}
+                data-project-id={section.project.id}
                 works={section.works}
                 allWorks={works}
                 memberId={member.id}
@@ -366,8 +386,9 @@ const jsonLd = memberPageJsonLd({
   // site, defined once in lib/lightbox.ts (the grid and the editor's preview
   // build theirs from the same function).
   import { createLightbox, parseLightboxStrings } from "../../../lib/lightbox.ts";
-  // The project carousels (2026-09-26); they release themselves on astro:before-swap.
-  import { initProjectCarousels, showInCarousel } from "../../../lib/projectCarousel.ts";
+  // The list of projects and works in the third track (2026-10-14).
+  import { initProfileIndex } from "../../../lib/profileIndex.ts";
+  import { workKey } from "../../../lib/communitySearch.ts";
   import "photoswipe/style.css";
   // Immediately after the package sheet, never before: this is the chrome that
   // replaces it. The overrides are also written to win on specificity alone
@@ -380,8 +401,35 @@ const jsonLd = memberPageJsonLd({
   // elements. MemberCard is the existing precedent for this pair.
   let lightbox: PhotoSwipeLightbox | null = null;
 
+  // ARRIVING FROM THE DIRECTORY'S SEARCH (2026-10-16): ?work= names a
+  // picture by its stored path (workKey), ?project= a project by its id. The
+  // page opens on the picture, or on the project. Two frames late, so the
+  // layout has settled before the scroll.
+  function revealLinked() {
+    const params = new URLSearchParams(window.location.search);
+    const work = params.get("work");
+    const project = params.get("project");
+    if (!work && !project) return;
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        let target: HTMLElement | null = null;
+        if (work) {
+          const link = Array.from(document.querySelectorAll<HTMLAnchorElement>(".mprof__work-link")).find(
+            (a) => workKey(a.href) === work,
+          );
+          if (link) target = link.closest<HTMLElement>(".mprof__work");
+        }
+        if (!target && project) {
+          target = document.querySelector<HTMLElement>(`.mprof__project[data-project-id="${CSS.escape(project)}"]`);
+        }
+        target?.scrollIntoView({ block: "start", behavior: "instant" });
+      }),
+    );
+  }
+
   document.addEventListener("astro:page-load", () => {
-    initProjectCarousels();
+    initProfileIndex(document.querySelector<HTMLElement>(".mprof"));
+    revealLinked();
     lightbox?.destroy();
     lightbox = null;
     const gallery = document.querySelector<HTMLElement>(".mprof__works");
@@ -391,9 +439,6 @@ const jsonLd = memberPageJsonLd({
       gallery: ".mprof__works",
       children: ".mprof__work-link",
     });
-    // Paging the lightbox pages the project carousel behind it, so closing
-    // zooms back onto the picture the visitor ended on.
-    lightbox.on("change", () => showInCarousel(lightbox?.pswp?.currSlide?.data.element));
     lightbox.init();
   });
 

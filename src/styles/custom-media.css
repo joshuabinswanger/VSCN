@@ -1,0 +1,10 @@
+/* THE BREAKPOINTS, AND NOTHING ELSE (2026-10-16). postcss.config.mjs has
+   @csstools/postcss-global-data inject this file into EVERY stylesheet so
+   postcss-custom-media can resolve (--bp-*) in scoped component styles.
+   Keep it to @custom-media definitions: global-data removes only the nodes
+   it injected, and custom-media REPLACES each @media (--bp-*) with a clone,
+   so any rule injected from here would survive into every CSS chunk. That
+   is what happened while global.css itself was the injected file. */
+
+@custom-media --bp-mobile (width <= 767px);
+@custom-media --bp-desktop (767px < width);

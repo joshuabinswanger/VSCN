@@ -12,7 +12,7 @@ import { profileBio, profileRole, workLink } from "./links.ts";
 import type { Lang } from "../i18n/utils";
 import { orderedGalleryItems, type GalleryRecord } from "./galleryRecords.ts";
 import { imageScore } from "./imageScore.ts";
-import { inheritedSiteLink, inheritedTags, ownProjects, type ProfileProject, type ProjectRecord } from "./projects.ts";
+import { adoptLooseWorks, inheritedSiteLink, inheritedTags, ownProjects, type ProfileProject, type ProjectRecord } from "./projects.ts";
 
 /**
  * A work as the BUILD knows it: everything a renderer needs, plus what
@@ -30,7 +30,7 @@ import { inheritedSiteLink, inheritedTags, ownProjects, type ProfileProject, typ
 export interface RankedWork extends ProfileWork {
   /** 0–100 priority. See src/lib/imageScore.ts. */
   score: number;
-  /** Moderation took this off /community. The member's own page still shows it. */
+  /** Moderation, or the member's "In gallery" switch, took this off /community. The member's own page still shows it. */
   hidden: boolean;
 }
 
@@ -209,6 +209,9 @@ function works(
       color: g.color,
       description: g.description,
       descriptionDe: g.descriptionDe,
+      ...(g.textAfter ? { textAfter: g.textAfter } : {}),
+      ...(g.textAfterDe ? { textAfterDe: g.textAfterDe } : {}),
+      ...(g.size ? { size: g.size } : {}),
       link: workLink(g.link),
       siteLink: inheritedSiteLink(workLink(g.siteLink), project),
       tags: inheritedTags(g.tags ?? [], project),
@@ -220,7 +223,9 @@ function works(
       // reading rather than a zero, which would sink it to the bottom of the
       // wall for a reason nobody chose.
       score: byId.get(g.imageId)?.score ?? imageScore(byId.get(g.imageId) ?? {}),
-      hidden: byId.get(g.imageId)?.hidden === true,
+      // Off /community when moderation hid it OR the member switched it out
+      // of the gallery (2026-10-16); either way the member's page keeps it.
+      hidden: byId.get(g.imageId)?.hidden === true || g.inGallery === false,
     };
   });
 }
@@ -237,8 +242,13 @@ export function toMemberViewBase(
   projectRecords: readonly ProjectRecord[] = [],
 ): MemberViewBase {
   const bio = (doc.bio ?? "").trim();
-  const own = ownProjects(uid, projectRecords);
-  const memberWorks = works(uid, doc, records, bucket, own);
+  // EVERY WORK IN A PROJECT (2026-10-16, Josh: "images without project are
+  // not allowed any longer"). A work stored before that, with no project,
+  // joins a "Works" / "Arbeiten" project here — virtual until the migration
+  // or the member's next Save stores it — so the page, the wall and the
+  // lightbox all see the same project where the first such work stood.
+  const stored = ownProjects(uid, projectRecords);
+  const { works: memberWorks, projects: own } = adoptLooseWorks(uid, works(uid, doc, records, bucket, stored), stored);
   const used = new Set(memberWorks.map((w) => w.projectId).filter(Boolean));
   return {
     id: uid,

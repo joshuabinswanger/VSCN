@@ -17,11 +17,20 @@
 // (src/styles/communityCard.css) and the paging comes from the one module both
 // call (src/lib/communityCarousel.ts).
 //
+// AND THE COLUMN (2026-10-12, gallery card v2). The card's words stand
+// beside the picture, open, so the preview carries them too or it would be
+// previewing half a card. Since 2026-10-16 they are the member page's column
+// (picture, name, role, affiliation, place, bio, looking for, links,
+// PROFILE →), drawn by communityCard.css — a plain sheet, so the same
+// `ccard__*` markup below, left empty with `data-ccpv` hooks, takes the card's
+// rules exactly. (Until then it was MemberDetailPanel's scoped `shell` mode.)
+//
 // What is still the preview's own, and has to be:
-//   - `.ccard--preview`, which takes back two affordances the shell cannot
-//     honour: the name's hover underline and the frame's zoom-in cursor. Both
-//     are inert here (see below), and both are described in that stylesheet's
-//     foot rather than here, because they are rules about the card.
+//   - `.ccard--preview`, which takes back the affordances the shell cannot
+//     honour: the name's hover underline, the frame's zoom-in cursor, the
+//     button's and the chips' pointers. All are inert here (see below), and
+//     all are described in that stylesheet's foot rather than here, because
+//     they are rules about the card.
 //   - the TYPOGRAPHIC face (`.ccpv__tframe`). It began as a mirror of
 //     CommunityTextCard, the gallery's no-artwork card; that component was
 //     deleted on 2026-09-08 once neither gallery dealt it any more, so this
@@ -38,28 +47,22 @@
 //
 // Empty on the server, filled on the client: the editor is behind auth and the
 // member's data never reaches the build, so there is nothing to render here
-// until the form has loaded.
+// until the form has loaded. The one thing rendered with words is the
+// profile button's label, which is the page's language and nobody's data.
+import { useTranslations, type Lang } from "../../i18n/utils.ts";
 import "../../styles/communityCard.css";
+
+interface Props {
+  lang?: Lang;
+}
+const { lang = "en" } = Astro.props;
+const t = useTranslations(lang);
 ---
 
+{/* The slot's stand-in: an inline-size container, so the card can measure
+    the room it has the way a directory card measures its cell. */}
+<div class="ccpv-slot">
 <article class="ccard ccard--preview" data-ccpv-root>
-  {
-    /* An <h2> like the card's, and a <span> where the card has an <a>: the
-       card's name links to the member's page, and a live control that walked
-       the member out of an unsaved form would be a trap — the same call the
-       profile-page preview makes for its back link. */
-  }
-  <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
-
-  {
-    /* The count row, as on the real card (CommunityImageCard): one dot per
-       work, built by the renderer from the same template mechanism the tags
-       use, plus the "2 / 7" count and its two chevrons, which the carousel
-       module adds — named buttons, not tab stops, so the row is not
-       aria-hidden. */
-  }
-  <div class="ccard__dots" data-ccpv="dots" hidden></div>
-
   <div class="ccard__body" data-ccpv="body" hidden>
     {
       /* The frame IS the Embla viewport, exactly as on the card: the module
@@ -73,17 +76,10 @@ import "../../styles/communityCard.css";
     <div class="ccard__frame" data-ccpv="frame" data-carousel>
       <div class="ccard__track" data-ccpv="track"></div>
       {
-        /* The whole-artwork click target, and DELIBERATELY href-less. It
-           opens the lightbox exactly as the card's does (bindCardOpener in
-           lib/lightbox.ts, bound by bindPreviewLightbox since 2026-09-24),
-           reading every slide of the frame and starting on the one showing.
-           No href because a link to the raw Storage file would take the
-           member out of their unsaved form if the lightbox ever failed to
-           bind — and communityCarousel.ts checks for the attribute before
-           writing a slide's URL into it, so it stays href-less as the
-           carousel moves. */
+        /* No click overlay: the slides are the lightbox's triggers (see the
+           card), href-less here so a link to the raw Storage file can never
+           take the member out of their unsaved form. */
       }
-      <a class="ccard__frame-link" aria-hidden="true"></a>
       <button
         class="ccard__arrow ccard__arrow--prev"
         type="button"
@@ -113,24 +109,43 @@ import "../../styles/communityCard.css";
        .ctcard__frame: one hairline where the
        box's top edge used to be, holding tag lines where the artwork would
        stand. Shown only when the member has no gallery at all, which is
-       exactly the rule /community applies (`hasArtwork`). */
+       exactly the rule /community applies (`hasArtwork`). It stands where
+       the picture would (the card's first column, both rows). */
   }
   <div class="ccpv__tframe" data-ccpv="tframe" hidden>
     <ul class="ccpv__tags" data-ccpv="tags"></ul>
   </div>
 
-  <div class="ccard__caption">
-    <div class="ccard__caption-row">
-      {
-        /* The role, on its own line below the frame on every face — the card
-           prints it there whether or not there is artwork. No disclosure
-           beside it: the panel is the card's bio, links and tags, which the
-           profile-page preview above already shows in full. */
-      }
-      <div class="ccard__meta-line">
-        <span class="ccard__role" data-ccpv="role" hidden></span>
+  {
+    /* The column, as the card renders it: an <h2> like the card's, and a
+       <span> where the card has an <a> — the card's name links to the
+       member's page, and a live control that walked the member out of an
+       unsaved form would be a trap, the same call the profile-page preview
+       makes for its back link. Every line hidden until it has words. */
+  }
+  {/* THE WORDS, one box (2026-10-16, Josh: "on desktop the images to be
+      totally centered and the text to the left"): name and role, the panel,
+      the count. A desktop hangs it off the centred picture's left edge; a
+      phone dissolves it (display: contents) and places its parts itself. */}
+  <div class="ccard__words">
+    <div class="ccard__head">
+      <div class="ccard__head-copy">
+      <h2 class="ccard__name"><span class="ccard__name-link" data-ccpv="name"></span></h2>
+      <p class="ccard__role" data-ccpv="role" hidden></p>
       </div>
     </div>
+    <div class="ccard__more">
+      {/* Last, as on the card — a <span> here because there is no page to
+          go to from an unsaved form. */}
+      <span class="ccard__profile">
+        {t("community.card.profile")}
+        <span aria-hidden="true">→</span>
+      </span>
+    </div>
+  </div>
+  {/* The count, outside the words as on the card. */}
+  <div class="ccard__foot">
+    <div class="ccard__dots" data-ccpv="dots" hidden></div>
   </div>
 
   {
@@ -139,14 +154,16 @@ import "../../styles/communityCard.css";
        concatenation — and the clone carries this component's scope attribute,
        which a node built in JS would not (see renderProfilePreview's header).
        The slide's data-pswp-* set (+ data-work-url) is what communityCarousel.ts reads; it is
-       filled per image so the shell speaks the card's own contract. */
+       filled per image so the shell speaks the card's own contract. The
+       column's link and value templates follow it. */
   }
   <template data-ccpv-tpl="slide"
-    ><div class="ccard__slide"><img class="ccard__img" alt="" decoding="async" /></div></template
+    ><a class="ccard__slide" tabindex="-1"><img class="ccard__img" alt="" decoding="async" /></a></template
   >
-  <template data-ccpv-tpl="dot"><span class="ccard__dot"></span></template>
+  <template data-ccpv-tpl="dot"><span class="cdot"></span></template>
   <template data-ccpv-tpl="tag"><li class="ccpv__tag"></li></template>
 </article>
+</div>
 
 <style>
   /* ── The typographic face ──────────────────────────────
@@ -155,8 +172,9 @@ import "../../styles/communityCard.css";
      CommunityTextCard's .ctcard__frame, and now the only copy of it: inline
      padding went with the border, which only ever inset tags from a box edge; the
      vertical padding stays. No --frame-cap here — the preview sits in a form,
-     not a grid slot. */
+     not a grid slot. In the picture's place on the card's grid. */
   .ccpv__tframe {
+    grid-area: 1 / 1 / 3 / 2;
     box-sizing: border-box;
     overflow: hidden;
     padding: 0.7rem 0;
@@ -194,35 +212,24 @@ import "../../styles/communityCard.css";
     overflow-wrap: anywhere;
   }
 
-  /* THE SLOT THE DIRECTORY WOULD DEAL (2026-09-25, Josh: the preview "doesn't
-     match the sizes of … the real gallery card"). The card in the directory is
-     as wide as the slot it was dealt, and its frame as tall as the slot's rows
-     allow; a form has no slot, so this one states the spread's: a lane of 9 of
-     the grid's 24 columns (CommunityGrid's --cgrid-col, same arithmetic) and
-     26 rows of 1.5rem — the middle of the 8–9 columns and 24–28 rows the
-     table deals. The card's own width formula then runs exactly as it does
-     on /community, so a tall first picture narrows the card the same way.
-     It used to be a flat 22rem, a number chosen to look like "a card" and
-     not taken from anywhere: 286px at 1280, against the 390–440px the real
-     card gets there. */
-  .ccard--preview {
-    --slot-rows: 26;
-    --cgrid-row: 1.5rem;
-    max-width: calc(9 * min(94vw - 30px, 2000px) / 24);
+  /* THE FRAME THE DIRECTORY WOULD GIVE (2026-10-15, the pages card): a form
+     has no viewport-tall cell, so the preview states a height of its own —
+     the card's grid then fills it exactly as the directory's cell does. The
+     phone's rule in communityCard.css lets the card grow instead. */
+  .ccpv-slot {
+    container-type: inline-size;
   }
-
-  /* NOT ON A PHONE (2026-09-08, Josh: "the gallery card preview is still not
-     full width"). The lane above is a DESKTOP slot. On a phone the directory
-     deals exactly one card per row and `.ccard` takes `width: 100%` of it
-     (see the --bp-mobile block in communityCard.css), so the cap is no longer
-     standing in for a slot — it is inventing a narrower one than the member
-     will ever see, and 22rem lands at 264px against the 345px their real card
-     gets. The cap is the whole difference: the doubled gutter fixed earlier
-     the same day got the CONTAINER to the right width, and this is what lets
-     the card fill it. */
-  @media (--bp-mobile) {
+  .ccard--preview {
+    --cpage-h: 30rem;
+    --cpage-pic-h: 24rem;
+    --ccard-side-w: 16rem;
+    /* Narrower than a page: the plain words | air | picture, no mirror
+       column to centre the picture against. */
+    --ccard-pic-room: calc(100cqw - var(--ccard-side-w) - var(--ccard-air));
+  }
+  @media (--bp-desktop) {
     .ccard--preview {
-      max-width: none;
+      grid-template-columns: fit-content(var(--ccard-side-w)) var(--ccard-air) auto;
     }
   }
 </style>

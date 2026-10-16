@@ -12,102 +12,79 @@
 //   - renderCardPreview() in profilePreview.ts, which rebuilds the preview's
 //     slides from live form state and re-inits just that one carousel
 //
+// NATIVE SCROLL-SNAP SINCE 2026-10-15 (the pages view, Josh: "carousel, but
+// horizontal scroll-snap"). The track is a scroller the browser pages —
+// swipe, trackpad, shift+wheel — and this module only READS where it landed
+// (scrollLeft over the track's width) and moves it for the arrows, the
+// chevrons, the keys and the lightbox. Embla went with it: a translated track
+// needed a click overlay above it, and an overlay above a scroller eats the
+// scroller's touch pan, so the slides are the click targets now.
+//
 // Everything below is a contract with the MARKUP, not with either component:
-// `[data-carousel]` on the frame, `.ccard__track` inside it, `.ccard__slide`
-// per work, `.ccard__img` per slide, `[data-carousel-prev/next]`,
-// `[data-carousel-live]`, and `.ccard__dot` up on the card. Render that shape
-// and it pages.
-import EmblaCarousel from "embla-carousel";
-import type { EmblaCarouselType } from "embla-carousel";
+// `[data-carousel]` on the frame, `.ccard__track` inside it (the scroller),
+// `a.ccard__slide` per work (the lightbox trigger, see CARD_TRIGGER in
+// lightbox.ts), `.ccard__img` per slide, `[data-carousel-prev/next]`,
+// `[data-carousel-live]`, and `.ccard__dots` on the card. Render that shape
+// and it pages. The frame's `data-index` says which slide is showing.
+import { mountDots } from "./carouselDots.ts";
 import { ensurePagerChevron } from "./pager.ts";
 import { hasKeyModifier } from "./keys.ts";
 
 /**
- * Everything one carousel holds that has to be released. Each Embla instance
- * owns a ResizeObserver, a MutationObserver, an IntersectionObserver and
- * non-passive drag listeners. Dropping the reference removes none of them —
- * only destroy() does.
+ * Everything one carousel holds that has to be released: its listeners (all
+ * bound with the handle's signal) and its ResizeObserver.
  *
- * A MAP KEYED BY THE FRAME, not the parallel Sets this used to be. The Sets
- * could only ever be swept whole, which was enough while carousels were built
- * once per page; the editor's preview REBUILDS its slides whenever the
- * member's gallery changes, and a rebuild has to release that one carousel
- * without touching any other. destroyAllCarousels() is still here for the
- * navigation sweep and now just walks the map.
- *
- * NO TIMER ANY MORE (2026-09-28, Josh: autoplay and its ▶/Ⅱ button removed).
- * The card used to advance itself every 5 s on a phone, for the one card
- * nearest the middle of the scrollport; a card now moves only when somebody
- * moves it — swipe, arrows, chevrons, keys or the lightbox.
- *
- * AND THE LISTENERS (2026-09-29). initCarousels() binds the frame's keydown
- * and carousel-show, the arrows' clicks, the chevrons' presses and the
- * first-contact hydration on nodes that OUTLIVE a re-init — the preview
- * re-inits the same frame whenever its slides are rebuilt — so each one
- * carries the handle's signal and destroyCarousel() takes them all back. Before
- * that, every rebuild left one more copy of each on the frame (measured: 100
- * rebuilds, 100 keydown handlers, one ArrowRight preventDefault-ed 100 times).
- * The handle exists from the first line of the init, before the gallery-of-one
- * early return, so even a frame with no Embla instance has its listeners
- * released.
+ * A MAP KEYED BY THE FRAME, not a Set: the editor's preview REBUILDS its
+ * slides whenever the member's gallery changes, and a rebuild has to release
+ * that one carousel without touching any other. destroyAllCarousels() is the
+ * navigation sweep and walks the map.
  */
 interface CarouselHandle {
   listeners: AbortController;
-  embla?: EmblaCarouselType;
-  /** Re-mirrors the showing slide onto the frame's trigger. */
+  /** Re-reads the showing slide and re-reflects it. */
   sync?: () => void;
 }
 
 const liveCarousels = new Map<HTMLElement, CarouselHandle>();
 
 /**
- * Releases one carousel: its listeners and its Embla instance. Safe on a node
- * that never had either.
+ * Releases one carousel: its listeners and its observer. Safe on a node that
+ * never had either.
  */
 export function destroyCarousel(node: HTMLElement): void {
   // FIRST, AND UNCONDITIONALLY. initCarousels() sets this guard before it
-  // decides whether the frame is worth an Embla instance at all — a gallery of
-  // one gets the flag and no instance — so clearing it only when there is
-  // something to release would leave the preview's frame permanently marked
-  // ready after the member's FIRST image, and it would never page again once
-  // they added a second.
+  // decides whether the frame has anything to page at all — a gallery of one
+  // gets the flag and no engine — so clearing it only when there is something
+  // to release would leave the preview's frame permanently marked ready after
+  // the member's FIRST image, and it would never page again once they added a
+  // second.
   delete node.dataset.ready;
   const handle = liveCarousels.get(node);
   if (!handle) return;
   handle.listeners.abort();
-  handle.embla?.destroy();
   liveCarousels.delete(node);
 }
 
-/**
- * For a caller that rewrote the slides' data in place (the editor's preview,
- * as a caption is typed): the frame's trigger mirrors the slide showing, and
- * would otherwise keep the old words until the next move.
- */
+/** Re-reflects the showing slide (count, aria, tab stop) after the preview
+ *  rewrote the slides' data. */
 export function refreshCarousel(node: HTMLElement): void {
   liveCarousels.get(node)?.sync?.();
 }
 
-/**
- * The navigation sweep. An observer that survived a ClientRouter navigation
- * would keep firing against dead nodes forever.
- */
 export function destroyAllCarousels(): void {
   [...liveCarousels.keys()].forEach(destroyCarousel);
 }
 
-// Registered by the module rather than by each consumer: the state above is
-// this file's, so releasing it belongs here too, and a module is evaluated
-// once per page bundle however many components import it.
 document.addEventListener("astro:before-swap", destroyAllCarousels);
 
 const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-/**
- * Wires every un-wired `[data-carousel]` under `root`. Idempotent: a frame that
- * already has an instance is skipped, which is what makes it safe to call on
- * every astro:page-load and after every preview render.
- */
+/** The slide the track is resting on (or nearest to). */
+function indexOf(track: HTMLElement, total: number): number {
+  const w = track.clientWidth || 1;
+  return Math.max(0, Math.min(total - 1, Math.round(track.scrollLeft / w)));
+}
+
 export function initCarousels(root: ParentNode = document): void {
   root.querySelectorAll<HTMLElement>("[data-carousel]").forEach((carousel) => {
     if (carousel.dataset.ready) return;
@@ -115,19 +92,12 @@ export function initCarousels(root: ParentNode = document): void {
     const handle: CarouselHandle = { listeners: new AbortController() };
     liveCarousels.set(carousel, handle);
     const { signal } = handle.listeners;
-    const images = Array.from(carousel.querySelectorAll<HTMLImageElement>(".ccard__img"));
 
-    // The build gives only the first image a src; the rest wait as data-src
-    // so a page full of galleries doesn't decode every image of every member
-    // at once (the iOS Safari crash). First contact with a carousel wakes its
-    // whole gallery, so by the time a finger reaches the arrow the neighbours
-    // are already loading. Embla never writes src itself — this stays the
-    // only thing that does.
-    //
-    // The editor's preview writes a real src on every slide instead: it runs
-    // in the browser with no build pipeline, and one member's gallery is eight
-    // images at most. So there is nothing here for it to do, and nothing about
-    // it to undo.
+    // Only the first image carries a real src (see the card); the rest wait
+    // as data-src until the visitor first touches or hovers THIS carousel,
+    // or until the engine lands on them — before that, every member's whole
+    // gallery decoded at once, which is what crash-looped iOS Safari.
+    const images = Array.from(carousel.querySelectorAll<HTMLImageElement>(".ccard__img"));
     const hydrate = (image: HTMLImageElement | undefined) => {
       if (!image?.dataset.src) return;
       image.src = image.dataset.src;
@@ -139,192 +109,167 @@ export function initCarousels(root: ParentNode = document): void {
     carousel.addEventListener("pointerenter", hydrateAll, { once: true, signal });
     carousel.addEventListener("touchstart", hydrateAll, { once: true, passive: true, signal });
 
-    // One work: the track is there for the layout, but there is nothing to
-    // page, nothing to announce, and no reason to pay for a drag handler.
-    if (images.length < 2) return;
-
+    // A gallery of one still gets the track markup — same box, same CSS —
+    // but nothing to page: no controls, no live region, no tab-stop dance.
+    const track = carousel.querySelector<HTMLElement>(".ccard__track");
     const slides = Array.from(carousel.querySelectorAll<HTMLElement>(".ccard__slide"));
+    if (!track || slides.length < 2) return;
+    const total = slides.length;
 
-    // ── THE LIGHTBOX TRIGGER FOLLOWS THE CAROUSEL ─────────
-    // One link covers the frame, so it can only describe one image — and the
-    // one it must describe is whichever the visitor is looking at. Each slide
-    // carries its own data-pswp-* set plus data-work-url (rendered in the
-    // frontmatter); this copies the selected slide's onto the link. Since
-    // 2026-09-08 the lightbox (CommunityGrid) opens from THE SLIDES, all of
-    // them, and only uses the link's href to know which one to start on —
-    // so the href is the part that matters here, and the copied attributes
-    // are a mirror that keeps the trigger describing what it points at.
-    //
-    // Written as attributes rather than kept in a JS variable because the
-    // lightbox is a SEPARATE script (CommunityGrid) that re-queries the DOM
-    // at click time; the DOM is the only thing the two share.
-    const frameLink = carousel.querySelector<HTMLAnchorElement>(".ccard__frame-link");
-    const syncTrigger = (index: number) => {
-      const slide = slides[index];
-      if (!frameLink || !slide) return;
-      const url = slide.dataset.workUrl;
-      // Only where the link already goes somewhere. The preview's trigger is
-      // deliberately href-less — its lightbox opens from the slides
-      // (bindCardOpener), and an href written in would navigate out of an
-      // unsaved form whenever that handler is not there to stop it.
-      if (url && frameLink.hasAttribute("href")) frameLink.href = url;
-      // Absent caption/description mean the attribute must GO, not be set to
-      // "": PhotoSwipe's caption band tests the trimmed value, but a stale
-      // attribute from the previous slide would survive a `?? ""` write.
-      const copy = (from: string, to: string) => {
-        const value = slide.dataset[from];
-        if (value) frameLink.setAttribute(to, value);
-        else frameLink.removeAttribute(to);
-      };
-      copy("pswpWidth", "data-pswp-width");
-      copy("pswpHeight", "data-pswp-height");
-      copy("pswpCaption", "data-pswp-caption");
-      copy("pswpDescription", "data-pswp-description");
-      copy("pswpLink", "data-pswp-link");
-    };
-    // The dots sit ABOVE the frame, so they are not descendants of the node
-    // Embla was handed — they are queried from the card.
     const card = carousel.closest<HTMLElement>(".ccard") ?? carousel;
-    const dots = Array.from(card.querySelectorAll<HTMLElement>(".ccard__dot"));
-    // The position as text (2026-09-28): rendered by CommunityImageCard; the
-    // editor's card preview builds only the dots, so it is added here.
     const dotRow = card.querySelector<HTMLElement>(".ccard__dots");
-    let count = dotRow?.querySelector<HTMLElement>(".ccard__count") ?? null;
-    if (dotRow && !count) {
-      count = document.createElement("span");
-      count.className = "ccard__count";
-      // `select` only fires on a change; a card starts on its first work.
-      count.textContent = `1 / ${slides.length}`;
-      dotRow.prepend(count);
-    }
+    const dots = Array.from(card.querySelectorAll<HTMLElement>(".ccard__dots .cdot"));
     const liveRegion = carousel.querySelector<HTMLElement>("[data-carousel-live]");
     const positionLabel = carousel.dataset.positionLabel ?? "";
 
-    const embla = EmblaCarousel(carousel, {
-      // Named rather than left to Embla's "first child" default: the frame
-      // also holds the click target, the arrows and the dots, and which of
-      // them happens to be first is a markup detail nothing should depend on.
-      container: ".ccard__track",
-      slides: ".ccard__slide",
-      // The hand-rolled carousel this replaced wrapped with a modulo; loop is
-      // the same behaviour. Embla loops by translating the real slides, not
-      // by cloning, so no image is ever duplicated into the DOM.
-      loop: true,
-      align: "start",
-      // NOT the default 0. slidesInView is an IntersectionObserver, and at
-      // threshold 0 the neighbouring slide counts as in view the instant its
-      // rect touches the frame's — which, at a frame width of 439.94793701px,
-      // it does by 0.00002px of floating-point noise. That silently hydrated
-      // image 2 of every gallery on page load: sixteen extra decodes on the
-      // directory, i.e. exactly the thing the data-src scheme exists to
-      // prevent. 5% of the frame is far above the noise and still means "the
-      // slide has visibly begun to appear".
-      inViewThreshold: 0.05,
-      // Skip the reInit when the element has no box. The index view sets
-      // grid.hidden, which fires the ResizeObserver at width 0, and
-      // re-measuring there would snap the carousel against zero-width
-      // slides. Embla only rewrites its size cache on a real reInit, so the
-      // entry that arrives when the grid comes back matches what was
-      // measured at init and correctly asks for nothing.
-      // The editor needs this just as badly, for a different reason: the
-      // preview sits inside a `display: none` form section until the Preview
-      // tab is opened.
-      watchResize: (_api, entries) => entries.every((e) => e.contentRect.width > 0),
-    });
-
-    handle.embla = embla;
-
-    // Reduced motion: arrive rather than travel. Embla's `jump` argument is
-    // the exact counterpart of the crossfade dropping its transition under
-    // the same query. Read per call, never cached — the OS setting can
-    // change while the page is open.
-    const jump = () => REDUCED.matches;
-
-    // Embla's slidesInView is scoped to the FRAME (its observer root is the
-    // container's parent), so this fires for a slide entering the carousel's
-    // own viewport — the documented lazy-load hook, and the only wake-up
-    // that covers the arrow keys on a card no pointer ever entered.
-    const hydrateInView = () => embla.slidesInView().forEach((i) => hydrate(images[i]));
-    embla.on("slidesInView", hydrateInView);
-
-    // Every move is somebody's doing now (no autoplay), so every move is
-    // announced.
-    const sync = () => {
-      const i = embla.selectedScrollSnap();
-      syncTrigger(i);
-      // The safety net the old show() carried: hydrate the target even if
-      // neither the pointer nor the intersection observer got there first.
-      // select fires as the scroll STARTS, so this is still in time.
+    // WHAT A SLIDE CHANGE MEANS: the showing slide is the one tab stop and
+    // the one a screen reader may reach (the others are aria-hidden — opacity
+    // and overflow hide nothing from it), its neighbours are fetched so the
+    // next swipe lands on a picture, the dots follow, and the
+    // live region says "Image 2 of 3" — unless the lightbox asked for the
+    // move, which is already announcing the picture it opened.
+    // The position as Instagram's sliding row of dots (carouselDots.ts).
+    const showDot = dotRow && dots.length ? mountDots(dotRow, dots) : null;
+    let current = -1;
+    let quiet = false;
+    const reflect = (i: number) => {
+      if (i === current) return;
+      current = i;
+      carousel.dataset.index = String(i);
       hydrate(images[i]);
+      hydrate(images[i + 1]);
+      hydrate(images[i - 1]);
       slides.forEach((slide, n) => {
         if (n === i) slide.removeAttribute("aria-hidden");
         else slide.setAttribute("aria-hidden", "true");
+        slide.tabIndex = n === i ? 0 : -1;
       });
-      dots.forEach((dot, n) => dot.classList.toggle("ccard__dot--on", n === i));
-      if (count) count.textContent = `${i + 1} / ${slides.length}`;
-      if (liveRegion) {
+      showDot?.(i);
+      if (liveRegion && !quiet) {
         liveRegion.textContent = positionLabel
           .replace("{n}", String(i + 1))
-          .replace("{total}", String(slides.length));
+          .replace("{total}", String(total));
       }
     };
-    embla.on("select", sync);
-    handle.sync = () => syncTrigger(embla.selectedScrollSnap());
+    reflect(indexOf(track, total));
+    handle.sync = () => {
+      current = -1;
+      reflect(indexOf(track, total));
+    };
 
-    // THE CAROUSEL FOLLOWS THE LIGHTBOX. When the lightbox (a separate module,
-    // CommunityGrid) pages through this card's images, it dispatches this on
-    // the slide now showing; the card underneath turns to the same picture,
-    // so closing zooms back out onto the image the visitor was looking at
-    // rather than onto the one they opened. A jump, not a travel: the card is
-    // behind a full-screen picture while this happens, so there is nothing to
-    // animate for.
-    carousel.addEventListener("vscn:carousel-show", (e) => {
-      const i = slides.indexOf(e.target as HTMLElement);
-      if (i >= 0 && i !== embla.selectedScrollSnap()) embla.scrollTo(i, true);
-    }, { signal });
+    // The ends WRAP, as Embla's loop did: › on the last slide shows the first.
+    // The wrap SLIDES back across the strip (2026-10-15, Josh: "smooth scroll
+    // back when going from 3/3 to 1/3") — it used to jump.
+    const goTo = (i: number, jump = false) => {
+      const target = ((i % total) + total) % total;
+      track.scrollTo({
+        left: target * track.clientWidth,
+        behavior: jump || REDUCED.matches ? "instant" : "smooth",
+      });
+      reflect(target);
+    };
+    const next = () => goTo(current + 1);
+    const prev = () => goTo(current - 1);
 
-    // The edge arrows (desktop hover) — the card's accessible controls, named
-    // by the markup (and by renderCardPreview for the editor's preview).
+    // A swipe or a trackpad gesture moves the track without us: read it back
+    // once a frame. (Not `scrollend` — Safari delivered it late or not at all
+    // on an inner scroller, and this needs no end, only the position.)
+    let ticking = false;
+    track.addEventListener(
+      "scroll",
+      () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+          ticking = false;
+          reflect(indexOf(track, total));
+        });
+      },
+      { passive: true, signal },
+    );
+
+    // A resize moves every snap point; put the track back on its slide.
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(() => {
+        if (current >= 0) {
+          track.scrollTo({ left: current * track.clientWidth, behavior: "instant" });
+        }
+      });
+      ro.observe(track);
+      signal.addEventListener("abort", () => ro.disconnect());
+    }
+
+    // The lightbox paging THIS card's pictures full screen tells the slide
+    // it is on (lightbox.ts, bindCardOpener); the frame follows, quietly.
+    carousel.addEventListener(
+      "vscn:carousel-show",
+      (e) => {
+        const i = slides.indexOf(e.target as HTMLElement);
+        if (i >= 0 && i !== current) {
+          quiet = true;
+          goTo(i, true);
+          quiet = false;
+        }
+      },
+      { signal },
+    );
+
     const prevArrow = carousel.querySelector<HTMLElement>("[data-carousel-prev]");
     const nextArrow = carousel.querySelector<HTMLElement>("[data-carousel-next]");
-    prevArrow?.addEventListener("click", () => embla.scrollPrev(jump()), { signal });
-    nextArrow?.addEventListener("click", () => embla.scrollNext(jump()), { signal });
-    // The count's own chevrons, "‹ 2 / 7 ›" (2026-09-28, src/lib/pager.ts).
-    // Desktop only, like the edge arrows: on a phone both pairs are
-    // display:none (global.css, 2026-09-28, Josh: no chevrons on a phone's
-    // pictures) and the swipe and the lightbox page the card. They take the
-    // edge arrows' names, so the two pairs are one control to a screen reader.
+    prevArrow?.addEventListener("click", prev, { signal });
+    nextArrow?.addEventListener("click", next, { signal });
+
+    // THE ARROWS REST AFTER A CLICK (2026-09-03): a mouse press on an edge
+    // arrow hides both until the pointer comes back in or focus arrives
+    // visibly, so the arrow does not sit over the picture it just turned to.
+    // A keyboard activation (detail 0) never rests them.
+    const rest = (e: MouseEvent) => {
+      if (e.detail === 0) return;
+      carousel.classList.toggle("is-arrows-resting", true);
+    };
+    const wake = () => carousel.classList.toggle("is-arrows-resting", false);
+    prevArrow?.addEventListener("click", rest, { signal });
+    nextArrow?.addEventListener("click", rest, { signal });
+    carousel.addEventListener("pointerenter", wake, { signal });
+    carousel.addEventListener(
+      "focusin",
+      (e) => {
+        if (e.target instanceof Element && e.target.matches(":focus-visible")) wake();
+      },
+      { signal },
+    );
+
+    // The card's dot row: "‹ ••• ›". The chevrons are the same control
+    // as the edge arrows, drawn where the count is (pager.ts).
     if (dotRow) {
-      ensurePagerChevron(dotRow, "prev", () => embla.scrollPrev(jump()), {
+      const prevPager = ensurePagerChevron(dotRow, "prev", prev, {
         label: prevArrow?.getAttribute("aria-label"),
         signal,
       });
-      ensurePagerChevron(dotRow, "next", () => embla.scrollNext(jump()), {
+      const nextPager = ensurePagerChevron(dotRow, "next", next, {
         label: nextArrow?.getAttribute("aria-label"),
         signal,
       });
+      prevPager.addEventListener("click", rest, { signal });
+      nextPager.addEventListener("click", rest, { signal });
     }
 
-    // Keyboard. Bound to the FRAME, not to the arrows, because the arrows are
-    // display:none under --bp-mobile and a keyboard user on a narrow viewport
-    // could not reach works 2..n at all. The frame always contains exactly one
-    // tab stop — .ccard__frame-link — so this needs no tabindex of its own and
-    // adds no stops to a page already full of them. An arrow key on a link has
-    // no default worth keeping here; this page never scrolls sideways. A
-    // MODIFIED arrow does (Alt+Left is Back), so it is left alone (keys.ts).
-    carousel.addEventListener("keydown", (e) => {
-      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-      if (hasKeyModifier(e)) return;
-      e.preventDefault();
-      hydrateAll();
-      if (e.key === "ArrowRight") embla.scrollNext(jump());
-      else embla.scrollPrev(jump());
-    }, { signal });
-
-    // A drag must not navigate, and nothing here tracks a `swiped` flag any
-    // more: Embla 8 owns that guard itself, with a capture-phase click
-    // listener on the root that preventDefaults once the pointer has
-    // travelled past dragThreshold. (clickAllowed() was the v7 API and is
-    // gone from 8.x — the check moved inside the library.)
+    // Arrow keys page while anything in the frame has focus — the showing
+    // slide is the tab stop, and focus moves with the page so a second press
+    // keeps working from the new slide.
+    carousel.addEventListener(
+      "keydown",
+      (e) => {
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        if (hasKeyModifier(e)) return;
+        e.preventDefault();
+        wake();
+        hydrateAll();
+        if (e.key === "ArrowRight") next();
+        else prev();
+        slides[current]?.focus({ preventScroll: true });
+      },
+      { signal },
+    );
   });
 }

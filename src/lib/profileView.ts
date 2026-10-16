@@ -13,6 +13,12 @@ import type { ProfileProject } from "./projects.ts";
 
 export interface ProfileWork {
   url: string;
+  /**
+   * Off /community: moderation hid it, or the member switched it out of the
+   * gallery. Optional here because the profile page ignores it; the card
+   * preview and community.astro skip such works.
+   */
+  hidden?: boolean;
   width: number;
   height: number;
   /** Optional per-image caption, used as the image's alt text when present. */
@@ -44,6 +50,15 @@ export interface ProfileWork {
    * a given locale actually shows, at the point each renderer knows its lang.
    */
   descriptionDe?: string;
+  /**
+   * THE TEXT BLOCK AFTER THE WORK (2026-10-16), RAW like the description
+   * pair above; workTextAfter() in links.ts picks the locale. The editor's
+   * preview passes it already resolved, in `textAfter`.
+   */
+  textAfter?: string;
+  textAfterDe?: string;
+  /** The work's S/M/L width on the member page (2026-10-16); absent = L. See WORK_SIZE_PX in gallery.ts. */
+  size?: "s" | "m";
   /**
    * Absolute href for "where this image lives" — already scheme-prefixed and
    * already filtered for linkability by workLink() in links.ts, so a renderer

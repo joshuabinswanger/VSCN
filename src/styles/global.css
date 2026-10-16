@@ -16,6 +16,9 @@
 
 /* ── Design tokens ── */
 :root {
+  /* The header row: one VSCN at the left, MENU at the right (Layout.astro,
+     Navbar.astro). */
+  --header-h: 56px;
   font-family: "Archivo", sans-serif;
   --font-size-base: 12px;
   --color-dark: #000000;
@@ -25,11 +28,15 @@
   --color-text-placeholder: #707070;
   --color-error: #b83232;
   --color-success: #217a47;
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 16px;
+  /* SHARP EDGES ALL OVER (2026-10-12, Josh: "use sharp edges all over the
+     visual design"). The tokens stay so every rule that names one keeps
+     working; they all say square now. The literal radii the tokens never
+     reached are flattened by the sharp-edges rule at the end of this file. */
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
   /* EVERY PAGER'S CHEVRON: the gallery card's and the project carousel's
      edge arrows and the lightbox's side arrows; the chevrons beside each
      "2 / 7" count (.pager-chev below) use the smaller pair after these. Two
@@ -74,10 +81,9 @@
   --veil-filter: none;
 }
 
-/* Media query aliases available in global CSS and Astro component styles. */
-
-@custom-media --bp-mobile (width <= 767px);
-@custom-media --bp-desktop (767px < width);
+/* Media query aliases (--bp-mobile, --bp-desktop) are defined in
+   custom-media.css, which PostCSS injects into this file and every Astro
+   component style. */
 
 /* THE DESKTOP BUMP IS ONE PIXEL, NOT TWO (2026-09-22, Josh, MacBook Pro 16:
    "everything is a bit big"). Nearly all type on the site is in rem, so this
@@ -154,9 +160,44 @@ body {
   scroll-behavior: smooth;
 }
 
+/* THE PAGES VIEW SNAPS (2026-10-15, /community Portfolios): the directory
+   controller sets this while one member a screen is on; cleared on every
+   other view and before a swap. scroll-padding keeps a snapped card under
+   the floating header row, not behind it. */
+/* Keyed off the grid's own mark, which the SERVER renders (2026-10-15):
+   waiting for the controller's data-snap left the first frame unsnapped. */
+:root:not([data-arriving]) .page-wrap:has(#member-grid[data-pattern="pages"]:not([hidden])) {
+  scroll-snap-type: y mandatory;
+  scroll-padding-top: var(--header-h);
+}
+/* ON A PHONE THE DOCUMENT IS THE SCROLLER (the --bp-mobile block below
+   gives html its overflow back so Safari can retract its toolbar), so the
+   snap has to stand on html there; the attribute stays on .page-wrap as the
+   one switch, and :has() reads it. */
+@media (--bp-mobile) {
+  html:not([data-arriving]):has(#member-grid[data-pattern="pages"]:not([hidden])) {
+    scroll-snap-type: y mandatory;
+    scroll-padding-top: var(--header-h);
+  }
+}
+
+/* THE MEMBER PAGE DOES NOT SNAP (2026-10-16). It snapped each project to
+   the top for one afternoon, while a project was one screen: a heading and a
+   carousel. With every work in line a project runs for several screens, and
+   a mandatory snap on blocks taller than the window fights the reader. */
+
+/* NO CROSS-FADE ON THE ROOT (2026-10-12, Josh: "there is also a flicker when
+   navigating from page to page"). Everything the root snapshot holds is the
+   same on both sides of a page change — the persisted title and nav, the
+   bar, the paper — except the paper's GRAIN, which drifts, so a 420ms
+   cross-fade of two grains at different offsets was a double exposure that
+   pulsed. The content's motion is WAAPI on the live <main> (Layout.astro), so
+   the root simply switches. <main> deliberately has NO view-transition name:
+   a named group paints above the root, i.e. above the grain, and the page
+   flashed bare paper until the grain came back over it (2026-10-14). */
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 420ms;
+  animation: none;
 }
 
 /* THE PAPER GRAIN — and why its box is the size it is.
@@ -760,7 +801,9 @@ label:has(> .picker-input:focus-visible) {
      also what the site's other uppercase labels carry (info headings,
      lightbox links). */
   --tag-track: 0.06em;
-  padding: 2.5px 6px 1.5px calc(6px + var(--tag-track));
+  /* 1px less above and below again (2026-10-12, Josh: "vertical padding for
+     tags should be less"). */
+  padding: 0.5px 6px 0 calc(6px + var(--tag-track));
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-family: "Archivo", sans-serif;
@@ -788,7 +831,7 @@ label:has(> .picker-input:focus-visible) {
    tags are links, so the same reasoning applies there. */
 @media (pointer: coarse) {
   .tagchip {
-    padding: 4.5px 7px 3.5px calc(7px + var(--tag-track));
+    padding: 2px 7px 1px calc(7px + var(--tag-track));
   }
 }
 
@@ -998,6 +1041,60 @@ label:has(> .picker-input:focus-visible) {
   display: none;
 }
 
+/* ── A carousel's dots, Instagram's sliding window ─────────────────────
+   (2026-10-16, Josh: "model the dots after instagram (with the fading
+   smaller dots) but highlight color should be black".) Built and moved by
+   src/lib/carouselDots.ts; on the directory card and a project's carousel.
+   .cdots is a window --cdots-n dots wide; the strip inside slides by
+   --cdots-start dots; an edge dot with more beyond it shrinks. Grey, the
+   current one black. */
+.cdots {
+  --cdot-step: calc(var(--carousel-dot) + var(--carousel-dot-gap));
+  display: block;
+  flex: none;
+  width: calc(var(--cdots-n, 1) * var(--cdot-step) - var(--carousel-dot-gap));
+  height: var(--carousel-dot);
+  overflow: hidden;
+  pointer-events: none;
+}
+.cdots__strip {
+  display: flex;
+  gap: var(--carousel-dot-gap);
+  transform: translateX(calc(var(--cdots-start, 0) * -1 * var(--cdot-step)));
+  transition: transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.cdot {
+  flex: none;
+  width: var(--carousel-dot);
+  height: var(--carousel-dot);
+  border-radius: 50%;
+  background: var(--color-dark);
+  opacity: 0.22;
+  transition:
+    opacity 180ms ease,
+    transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.cdot--on {
+  opacity: 1;
+}
+/* Instagram's steps, measured off Josh's screenshot (2026-10-16): the 4th
+   dot about two thirds, the 5th under half. */
+.cdot--md {
+  transform: scale(0.66);
+}
+.cdot--sm {
+  transform: scale(0.4);
+}
+.cdot--out {
+  transform: scale(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cdots__strip,
+  .cdot {
+    transition: none;
+  }
+}
+
 /* ── A count's chevrons, "‹ 2 / 7 ›" ─────────────────────────────────────
    (2026-09-28, Josh: the gallery card, the project carousel and the
    lightbox should page the same way.) Built by src/lib/pager.ts, and in the
@@ -1062,8 +1159,214 @@ label:has(> .picker-input:focus-visible) {
    since it is one modal and its chevrons are its keyboard pager. The count
    rows are right-aligned, so dropping the buttons leaves "2 / 7" on the
    picture's right edge where the next chevron was. */
+/* ...and since 2026-10-16 none on a desktop either (Josh: "remove the
+   arrows from the desktop version of the carousel"): the dots stand alone,
+   centred. The buttons are still built (pager.ts) and still named, so this
+   rule is the whole switch back; the edge arrows and the arrow keys page. */
+:is(.ccard, .mprof) .pager-chev {
+  display: none;
+}
+
+/* Native document scrolling lets mobile Safari retract its browser toolbar. */
 @media (--bp-mobile) {
-  :is(.ccard, .mprof) .pager-chev {
-    display: none;
+  html { height: auto; overflow: visible; overscroll-behavior-y: auto; }
+  body { display: block; height: auto; min-height: 100svh; overflow: visible; overscroll-behavior-y: auto; }
+  .page-wrap { overflow: visible; min-height: 100svh; scrollbar-gutter: auto; }
+}
+
+/* ── SHARP SURFACES, ROUND CONTROLS (2026-10-13) ─────────────
+   2026-10-12, Josh: "use sharp edges all over the visual design". 2026-10-13,
+   after living with it: "the ui feels strange with the square buttons
+   somehow… make the Buttons Round all over the site. tags get rounded
+   corners." So the split is by ROLE: pictures, cards, panels, fields and
+   rules stay square; everything you press is a capsule; a tag is a softly
+   rounded label. A capsule says "this does something" at a glance, which the
+   square controls never did against square pictures.
+   The radius tokens at the top of this file stay 0, because they dress the
+   surfaces. This block is the whole shape system: a control gets its curve
+   here, by being in CONTROLS, not by a radius of its own, and the universal
+   reset still flattens every literal radius the tokens never reached.
+   Kept square although they are buttons: the section tabs (an underline
+   would bend round a capsule's ends) and a project carousel's edge strips
+   (tall hover bands, not buttons to the eye). */
+:root {
+  --radius-pill: 999px;
+  --radius-tag: 0.5em;
+}
+
+*:not(
+    button:not(.section-tab),
+    select,
+    input:is([type="button"], [type="submit"], [type="reset"]),
+    [role="button"],
+    .btn-solid,
+    .btn-outline,
+    .btn-primary,
+    .btn-ghost,
+    .btn-danger,
+    .btn-join,
+    .choose-img,
+    .gallery-action,
+    .gallery-tpill,
+    .gallery-project-select,
+    .optchip,
+    .nav-link,
+    .ccard__profile,
+    .cindex__profile,
+    .seg,
+    .seg > *,
+    .tagchip,
+    .mprof__val,
+    .pdisc__val,
+    .ccpv__tag,
+    .tag-suggestion-chip,
+    .ebar,
+    .ebar-menu,
+    .ebar-sheet,
+    .mprof__avatar,
+    .avatar-img,
+    .avatar-placeholder,
+    .ob-avatar-img,
+    .ob-avatar-ph,
+    .cindex__avatar,
+    .search__thumb--round,
+    .community-bar__in,
+    .tag-filter__search,
+    .ts-filter,
+    .ts-input,
+    .cdot
+  ),
+*:not(.seg, .ebar, .ebar-menu, .profile-save-button, .nav-link)::before,
+*:not(.seg, .ebar, .ebar-menu)::after {
+  border-radius: 0 !important;
+}
+
+/* CONTROLS: a capsule. :where(), and so is TAGS below: both at zero
+   specificity, so ORDER decides, and a tag drawn as a <button> is a tag. */
+:where(
+    button:not(.section-tab),
+    select,
+    input:is([type="button"], [type="submit"], [type="reset"]),
+    [role="button"],
+    .btn-solid,
+    .btn-outline,
+    .btn-primary,
+    .btn-ghost,
+    .btn-danger,
+    .btn-join,
+    .choose-img,
+    .gallery-action,
+    .gallery-tpill,
+    .gallery-project-select,
+    .optchip,
+    .nav-link,
+    .ccard__profile,
+    .cindex__profile,
+    .seg,
+    .seg > *,
+    .community-bar__in,
+    .tag-filter__search,
+    .ts-filter,
+    .ts-input
+  ) {
+  border-radius: var(--radius-pill) !important;
+}
+
+/* TAGS: rounded corners, not a capsule — a tag is a label, not a button, even
+   where it links somewhere. Declared after CONTROLS at the same specificity,
+   so a tag drawn as a <button> (TagSelector's picked chips) is a tag. */
+:where(.tagchip, .mprof__val, .pdisc__val, .ccpv__tag, .tag-suggestion-chip) {
+  border-radius: var(--radius-tag) !important;
+}
+
+/* PORTRAITS: a circle (2026-10-14, Josh: "the profile should have a round
+   profile image"). The member's picture on their page, the editor's photo
+   field and the wizard's — one person, one shape wherever they set or see
+   it, and the community index's opened row (added the same day: "make the
+   index avatar round too"). Their own rules ask for 50% or nothing; the
+   reset above was flattening them, so this lets them through. */
+:where(.mprof__avatar, .avatar-img, .avatar-placeholder, .ob-avatar-img, .ob-avatar-ph, .cindex__avatar, .search__thumb--round) {
+  border-radius: 50% !important;
+}
+
+/* ── SEGMENTED CONTROLS (2026-10-13) ─────────────────────────
+   One drawing for every two- or three-way switch and every joined strip of
+   small actions: a capsule TRACK in a faint tint, CAPSULE segments, and the
+   chosen one lifted onto a white thumb. Apple's segmented control, because
+   the joined square boxes it replaces could not survive round corners (a
+   shared hairline between two capsules is a seam, not a join) and because a
+   white thumb on a grey track reads as "this one" without spending the black
+   that Save owns. Used by the EN/DE switches (BilingualField, the gallery's
+   affiliation rows), the Works bar's switches, and a work's ↑ ↓ ↻ ✕ strip
+   (.seg--actions: nothing stays chosen there, the thumb is only hover).
+   Muted ink on the track: #686868 on about #eae9e8, 4.6:1. */
+.seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  width: fit-content;
+  padding: 2px;
+  background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
+}
+
+.seg > :is(button, label) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 12px;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  font-family: inherit;
+  font-size: var(--fs-72);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.seg > :is(button, label):hover:not(:disabled) {
+  color: var(--color-dark);
+}
+
+.seg > :is(button, label):is([aria-pressed="true"], .is-active),
+.seg--actions > :is(button, label):hover:not(:disabled) {
+  background: #fff;
+  color: var(--color-dark);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.14),
+    0 0 0 0.5px rgb(0 0 0 / 0.06);
+}
+
+.seg > :is(button, label):focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: 1px;
+}
+
+.seg > button:disabled {
+  color: color-mix(in srgb, var(--color-muted) 40%, transparent);
+  cursor: default;
+}
+
+.seg[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seg > :is(button, label) {
+    transition: none;
+  }
+}
+
+@media (--bp-mobile) {
+  :root {
+    --header-h: 48px;
   }
 }

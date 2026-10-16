@@ -28,6 +28,9 @@ export interface LightboxStrings {
   linkTitle: string;
   /** Accessible name for the member's own-site link on a piece. */
   siteLinkTitle: string;
+  /** The two links' visible words: "Publication" and "Link". */
+  linkText: string;
+  siteLinkText: string;
   /** "Play video on {provider}" — the video slide's button. */
   play: string;
   /** "Part of", before a project's title. */
@@ -36,6 +39,9 @@ export interface LightboxStrings {
   with: string;
   /** The dialog's own name: PhotoSwipe makes it role="dialog" and names it nothing. */
   dialog: string;
+  /** The title's dropdown, by what pressing it does: fold / unfold the description. */
+  hideText: string;
+  showText: string;
 }
 
 // English is the fallback, matching useTranslations() — a missing or
@@ -48,10 +54,14 @@ export const LIGHTBOX_FALLBACK: LightboxStrings = {
   error: "The image cannot be loaded",
   linkTitle: "Where this image appeared",
   siteLinkTitle: "This piece on the maker's own site",
+  linkText: "Publication",
+  siteLinkText: "Link",
   play: "Play video on {provider}",
   partOf: "Part of",
   with: "With",
   dialog: "Image viewer",
+  hideText: "Hide description",
+  showText: "Show description",
 };
 
 /** The translation key behind each string — what the built pages pass to t() and the editor reads off `ui`. */
@@ -63,10 +73,14 @@ export const LIGHTBOX_STRING_KEYS: Record<keyof LightboxStrings, string> = {
   error: "member.lightbox.error",
   linkTitle: "member.lightbox.link",
   siteLinkTitle: "member.lightbox.siteLink",
+  linkText: "member.lightbox.linkText",
+  siteLinkText: "member.lightbox.siteLinkText",
   play: "member.lightbox.play",
   partOf: "member.project.partOf",
   with: "member.project.with",
   dialog: "member.lightbox.dialog",
+  hideText: "member.lightbox.hideText",
+  showText: "member.lightbox.showText",
 };
 
 /** The strings from a client-side translation table; a missing key keeps the English fallback. */
@@ -89,10 +103,7 @@ export function parseLightboxStrings(json: string | undefined): LightboxStrings 
 }
 
 // These options take raw HTML, which is how the stock SVG icons get replaced
-// with markup this site can style. Everything injected here is either a
-// static string or an escaped translation.
-const esc = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+// with markup this site can style. Everything injected here is static.
 
 // Two borders on a box turned 45deg — the drawing .ccard__arrow uses on the
 // community card, reproduced so every pager on the site is one control.
@@ -126,21 +137,24 @@ export function createLightbox(
     // Solid: the ground is the page's own paper, not a veil over it. Drag to
     // dismiss still fades it, which is what makes the gesture legible.
     bgOpacity: 1,
-    // PER SLIDE — see lightboxPadding in lightboxText.ts, which is also where
-    // the reasoning lives. The words go under the picture on every shape
-    // (2026-09-06); an upright image only reserves more room below, because
-    // it comes out narrower.
+    // The window split by height — 17 % over the picture, a 60 % band it is
+    // centred in, 23 % under it for the words — see lightboxPadding in
+    // lightboxText.ts, which is also where the reasoning lives.
     paddingFn: lightboxPadding,
     // The counter is the site's own "‹ 2 / 7 ›", in the top row (lightboxText.ts).
     counter: false,
-    closeSVG: `<span class="pswp__vscn-word">${esc(strings.close)}</span>`,
+    // AN X, NOT THE WORD (2026-10-15, Josh: "instead of Close an X"): two
+    // hairlines crossed, drawn in lightbox.css. The localized word survives
+    // as closeTitle, which is what a screen reader and a hover get.
+    closeSVG: '<span class="pswp__vscn-x" aria-hidden="true"></span>',
     arrowPrevSVG: CHEVRON,
     arrowNextSVG: CHEVRON,
-    zoomSVG: '<span class="pswp__vscn-zoom" aria-hidden="true"></span>',
+    // NO ZOOM BUTTON (2026-10-15, Josh: "remove the +"). Click, pinch and
+    // the wheel still zoom; what goes is the keyboard's only zoom control.
+    zoom: false,
     // The glyphs above are all aria-hidden, so these are what a screen
     // reader gets; PhotoSwipe writes each to both `title` and `aria-label`.
     closeTitle: strings.close,
-    zoomTitle: strings.zoom,
     arrowPrevTitle: strings.prev,
     arrowNextTitle: strings.next,
     errorMsg: strings.error,
@@ -155,17 +169,29 @@ export function createLightbox(
           hideAnimationDuration: 0,
           zoomAnimationDuration: false as const,
         }
-      : {}),
+      : {
+          // THE SITE'S EASE-OUT (2026-10-16, Josh: "smoother animations as
+          // the rest of the site"), the curve --lb-ease names in
+          // lightbox.css, at a slower open than PhotoSwipe's 333ms.
+          easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+          showAnimationDuration: 420,
+          hideAnimationDuration: 320,
+          zoomAnimationDuration: 380,
+        }),
   });
 
   // The artist line, the counter, the caption, the description and the links.
   registerLightboxText(lightbox, {
     linkTitle: strings.linkTitle,
     siteLinkTitle: strings.siteLinkTitle,
+    linkText: strings.linkText,
+    siteLinkText: strings.siteLinkText,
     partOf: strings.partOf,
     with: strings.with,
     prev: strings.prev,
     next: strings.next,
+    hideText: strings.hideText,
+    showText: strings.showText,
   });
   // A video work opens as its poster with a play button; see lightboxEmbed.ts.
   registerLightboxEmbeds(lightbox, { play: strings.play });
@@ -177,11 +203,32 @@ export function createLightbox(
     root?.setAttribute("aria-modal", "true");
   });
 
+  // PAGING SLIDES (2026-10-16, Josh: "add animation to photoswipe").
+  // PhotoSwipe animates only a released swipe; next()/prev() — the counter's
+  // chevrons, the side arrows, the keyboard — all go through goTo(), which
+  // moves the strip with animate unset, so the picture JUMPED. Same call with
+  // animate on: the strip glides on the spring a swipe ends with.
+  lightbox.on("init", () => {
+    const pswp = lightbox.pswp;
+    if (!pswp || reduced) return;
+    pswp.goTo = (index: number) => {
+      pswp.mainScroll.moveIndexBy(pswp.getLoopedIndex(index) - pswp.potentialIndex, true);
+    };
+    // The words are pinned under the CURRENT picture and rebuilt on
+    // `change`, which fires when the strip lands. While it travels — a glide
+    // or a finger — they would stand under nothing, so they fade out and the
+    // renderer fades the next work's words in (lightboxText.ts).
+    pswp.on("moveMainScroll", ({ x }) => {
+      const away = Math.abs(x - pswp.mainScroll.getCurrSlideX()) > 1;
+      pswp.element?.classList.toggle("pswp--vscn-paging", away);
+    });
+  });
+
   return lightbox;
 }
 
 /** The gallery card's click target: one bare link laid over its carousel. */
-export const CARD_TRIGGER = ".ccard__frame-link";
+export const CARD_TRIGGER = ".ccard__slide";
 
 /**
  * THE GALLERY CARD OPENS AS A WHOLE (2026-09-08). Returns the unbind.

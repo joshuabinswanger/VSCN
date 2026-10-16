@@ -22,8 +22,10 @@ import type { ProfileViewModel } from "./profileView.ts";
 import { groupWorks, projectTitle, projectDescription, affiliationHref, projectSlideData } from "./projects.ts";
 import type { ProfileProject } from "./projects.ts";
 import { embedDataAttrs } from "./embed.ts";
+import { fillParagraphs } from "./paragraphs.ts";
+import { workSizeWidth } from "./workSize.ts";
 import { CARD_TRIGGER, bindCardOpener, createLightbox, type LightboxStrings } from "./lightbox.ts";
-import { initProjectCarousels, showInCarousel } from "./projectCarousel.ts";
+import { initProfileIndex } from "./profileIndex.ts";
 import type { Lang } from "../i18n/utils";
 
 type PreviewWork = ProfileViewModel["works"][number];
@@ -91,8 +93,6 @@ export function bindPreviewLightbox(
   const unbindCard = roots.card?.querySelector(CARD_TRIGGER)
     ? bindCardOpener(roots.card, lightbox)
     : () => {};
-  // As on the member page: the project carousel follows the lightbox.
-  lightbox.on("change", () => showInCarousel(lightbox.pswp?.currSlide?.data.element));
   lightbox.init();
   return () => {
     unbindCard();
@@ -111,8 +111,6 @@ export interface ProfilePreviewLabels {
   with: string;
   /** The editor's current tab locale, for projectTitle()/projectDescription()/affiliationHref() — same split those take everywhere else. */
   lang: Lang;
-  /** A project carousel's accessible names — the page's own `member.project.*` and `community.card.carousel`. */
-  carousel: { prev: string; next: string; position: string; works: string; roledescription: string };
 }
 
 export function renderProfilePreview(
@@ -177,7 +175,7 @@ export function renderProfilePreview(
   show(open, vm.openTo.length > 0);
 
   const bio = part("bio");
-  if (bio) bio.textContent = vm.bio;
+  if (bio) fillParagraphs(bio, vm.bio);
   show(bio, Boolean(vm.bio));
 
   // ── Tags ──────────────────────────────────────────────────
@@ -275,6 +273,8 @@ export function renderProfilePreview(
       // The picture's shape, on the figure as the page writes it: the 60vh
       // cap on .mprof__work-link and the caption under it both read it.
       figure.style.setProperty("--work-ar", String(w.width / w.height));
+      // Its S/M/L width, as MemberWork.astro writes it (2026-10-16).
+      figure.style.setProperty("--size-w", workSizeWidth(w));
 
       img.src = w.url;
       img.width = w.width;
@@ -292,19 +292,14 @@ export function renderProfilePreview(
       // A video work shows its poster with the play mark, as the page does.
       show(workPart("play"), Boolean(w.embed));
 
+      // No description under the picture since 2026-10-16, as on the page
+      // (MemberWork.astro); the lightbox still reads it.
       const captionText = w.caption?.trim() ?? "";
-      const descText = w.description?.trim() ?? "";
 
       const caption = workPart("caption");
       if (caption) {
         caption.textContent = captionText;
         caption.hidden = !captionText;
-      }
-
-      const desc = workPart("desc");
-      if (desc) {
-        desc.textContent = descText;
-        desc.hidden = !descText;
       }
 
       // `w.link` arrives already scheme-prefixed and already filtered for
@@ -325,38 +320,17 @@ export function renderProfilePreview(
       setLink("link", w.link);
       show(workPart("links"), Boolean(w.siteLink || w.link));
 
-      show(workPart("caption-block"), Boolean(captionText || descText || w.link || w.siteLink));
+      show(workPart("caption-block"), Boolean(captionText || w.link || w.siteLink));
       return figure;
     };
 
-    /** A project's figures as MemberProject.astro's carousel (2026-09-26). */
-    const carouselOf = (figures: HTMLElement[], title: string): HTMLElement => {
-      const box = clone("carousel");
-      const track = box?.querySelector<HTMLElement>("[data-carousel-track]");
-      if (!box || !track) {
-        const plain = document.createElement("div");
-        plain.style.display = "contents";
-        plain.append(...figures);
-        return plain;
-      }
-      const words = labels.carousel;
-      const at = (n: number) => words.position.replace("{n}", String(n)).replace("{total}", String(figures.length));
-      box.dataset.positionLabel = words.position;
-      box.querySelector("[data-carousel-prev]")?.setAttribute("aria-label", words.prev);
-      box.querySelector("[data-carousel-next]")?.setAttribute("aria-label", words.next);
-      track.setAttribute("aria-roledescription", words.roledescription);
-      track.setAttribute("aria-label", title || words.works);
-      track.replaceChildren(
-        ...figures.map((figure, k) => {
-          const slide = document.createElement("div");
-          slide.className = "mprof__carousel-slide";
-          slide.setAttribute("role", "group");
-          slide.setAttribute("aria-label", at(k + 1));
-          slide.append(figure);
-          return slide;
-        }),
-      );
-      return box;
+    /** A work's text block, as MemberWork.astro prints it after the figure (2026-10-16). */
+    const textAfter = (w: PreviewWork): HTMLElement | null => {
+      if (!w.textAfter?.trim()) return null;
+      const block = document.createElement("div");
+      block.className = "mprof__text";
+      fillParagraphs(block, w.textAfter);
+      return block;
     };
 
     // PROJECT BLOCKS (2026-09-23): the gallery stays one list in the member's
@@ -364,8 +338,9 @@ export function renderProfilePreview(
     // in between — groupWorks() is the same cut the member page makes.
     const sections = groupWorks(vm.works.filter((w) => w.url && w.width > 0 && w.height > 0), vm.projects ?? []);
     const nodes = sections.flatMap((section) => {
+      // Every work in line, each followed by its text block (2026-10-16).
       const figures = section.works
-        .map((w) => figureFor(w, section.project))
+        .flatMap((w) => [figureFor(w, section.project), textAfter(w)])
         .filter((n): n is HTMLElement => n !== null);
       if (!section.project) return figures;
       const block = clone("project");
@@ -380,7 +355,7 @@ export function renderProfilePreview(
       const desc = projectDescription(section.project, labels.lang) ?? "";
       const descEl = slot("desc");
       if (descEl) {
-        descEl.textContent = desc;
+        fillParagraphs(descEl, desc);
         descEl.hidden = !desc;
       }
       // The link after the words, as MemberProject prints it (2026-09-28).
@@ -432,17 +407,15 @@ export function renderProfilePreview(
         tagsEl.replaceChildren(...chips.filter((n): n is HTMLElement => n !== null));
         tagsEl.hidden = chips.length === 0;
       }
-      slot("works")?.replaceChildren(...(figures.length > 1 ? [carouselOf(figures, title)] : figures));
+      slot("works")?.replaceChildren(...figures);
       return [block];
     });
 
     works.replaceChildren(...nodes);
     show(works, nodes.length > 0);
     show(empty, nodes.length === 0);
-    // After the swap, so carousels that just left the document are released,
-    // and after the list is shown, so the new ones measure a real box
-    // (projectCarousel.ts).
-    initProjectCarousels(works);
+    // The page's list of projects and works, rebuilt with them (profileIndex.ts).
+    initProfileIndex(works.closest<HTMLElement>(".mprof"));
   }
 }
 
@@ -528,9 +501,18 @@ export function renderCardPreview(
   const nameEl = part("name");
   if (nameEl) nameEl.textContent = displayName;
 
+  // NAME, ROLE, PROFILE (2026-10-16, Josh: "actually just Name and Profile
+  // Button. Add Role back in."), as on the real card.
+  const role = vm.role.trim();
+  const roleEl = part("role");
+  if (roleEl) roleEl.textContent = role;
+  show(roleEl, Boolean(role));
+
   // Same filter the profile-page preview applies: a gallery item mid-upload has
   // no dimensions yet, and a slide with no aspect is a collapsed frame.
-  const works = vm.works.filter((w) => w.url && w.width > 0 && w.height > 0);
+  // And, being the CARD, it skips what /community skips: a work the member
+  // took out of the gallery (community.astro filters `hidden` the same way).
+  const works = vm.works.filter((w) => w.url && w.width > 0 && w.height > 0 && !w.hidden);
   const first = works[0];
   const isCarousel = works.length > 1;
 
@@ -544,12 +526,6 @@ export function renderCardPreview(
   // there instead of an empty box, so the shell has to as well.
   const frameIsRule = !first && tagLines.length === 0;
 
-  // The role prints in the caption on every face, always.
-  const role = vm.role.trim();
-  const roleEl = part("role");
-  if (roleEl) roleEl.textContent = role;
-  show(roleEl, Boolean(role));
-
   // ── The image face ────────────────────────────────────────
   const frame = part("frame");
   const track = part("track");
@@ -561,7 +537,6 @@ export function renderCardPreview(
       // artwork fills the preview's measure instead of narrowing to fit.
       root.style.setProperty("--frame-ar", String(first.width / first.height));
       frame.style.aspectRatio = `${first.width} / ${first.height}`;
-      frame.style.background = first.color ?? "";
 
       // ONLY WHEN THE PICTURES THEMSELVES CHANGED. renderCardPreview runs on
       // every keystroke in the form — the name, the role, a tag, a caption —
@@ -605,7 +580,6 @@ export function renderCardPreview(
             img.src = w.url;
             img.width = w.width;
             img.height = w.height;
-            if (w.color) img.style.background = w.color;
             // The words (alt and the data-pswp-* set) are written by the
             // in-place pass after the rebuild, which covers new slides too.
             slide.dataset.workUrl = w.url;
@@ -613,8 +587,8 @@ export function renderCardPreview(
             // A single picture is not a carousel: no group semantics, no
             // position label. Calling one image a carousel would be a lie to a
             // screen reader — the card's own reasoning, and its own markup.
+            slide.tabIndex = i === 0 ? 0 : -1;
             if (isCarousel) {
-              slide.setAttribute("role", "group");
               attr(slide, "aria-roledescription", labels.image ?? "");
               attr(slide, "aria-label", position(labels.imagePosition, i, works.length));
               if (i !== 0) slide.setAttribute("aria-hidden", "true");
@@ -624,16 +598,14 @@ export function renderCardPreview(
           .filter((n): n is HTMLElement => n !== null);
         track.replaceChildren(...slides);
 
-        // The dots live on the CARD, above the frame — one per work, and none
+        // The dots live on the CARD, in its foot row — one per work, and none
         // at all for a gallery of one.
         const dots = part("dots");
         if (dots) {
+          // communityCarousel.ts gathers them into the sliding window
+          // (carouselDots.ts) and marks the current one.
           const marks = (isCarousel ? works : [])
-            .map((_, i) => {
-              const dot = clone("dot");
-              if (dot && i === 0) dot.classList.add("ccard__dot--on");
-              return dot;
-            })
+            .map(() => clone("dot"))
             .filter((n): n is HTMLElement => n !== null);
           dots.replaceChildren(...marks);
         }

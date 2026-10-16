@@ -90,8 +90,17 @@ const t = useTranslations(lang);
 </tag-selector>
 
 <style is:global>
+  /* THE FIND FIELD AND THE GROUPS SIT IN (2026-10-15, Josh: "make the
+     width of the find tags and the groups narrower than the rest of the
+     column so it is visually distinct"). Both are inset by this much on each
+     side; the picked tags above keep the column's full width, so the
+     browsing part reads as one nested block under them. The add row sits in
+     by the same amount since the same day ("the custom tag should also be
+     the same width as the others").
+     2rem since the same day ("a bit narrower still"; it was 1.25rem). */
   tag-selector {
     display: block;
+    --ts-inset: 2rem;
   }
 
   tag-selector .ts-error {
@@ -139,14 +148,62 @@ const t = useTranslations(lang);
   /* The heading rows are NOT on the white — the box belongs to the tags. It is
      drawn on .tag-suggestion-list below, so DISCIPLINES / TOPICS / OTHER stay
      on the page and only the chips an open group reveals sit on a field. */
-  /* Drawn exactly like the add row's field below it (.addrow .input in
-     global.css): the two are the same kind of thing in the same control, and
-     the filter at .input's full size read as a heavier, different field
-     (2026-09-09, Josh: "make the find bar the same style as the add tag"). */
+  /* A THIN LINE, NOT A FIELD (2026-10-15, Josh: "the find tags and the tabs
+     for the groups a bit thinner so it stands out visually and create a
+     better visual hierarchy"). Until today the filter was drawn exactly like
+     the add row's field below it (2026-09-09, "make the find bar the same
+     style as the add tag"): 30px tall, 13px type, 1.5px border — the heaviest
+     thing in the control, above chips of 10px. Now a 24px line of the chips'
+     own size class with a 1px border, so the eye lands on the tags and the
+     filter reads as the utility it is. The add row keeps the field drawing:
+     it is an action (it creates), and the one place the control asks for
+     input rather than a pick.
+     THE COMMUNITY BAR'S SEARCH, DRAWN SMALL (2026-10-15, Josh: the editor's
+     tag search should match the Tags panel's redesign). Same drawing as
+     .tag-filter__search in CommunityGrid.astro: a capsule (CONTROLS in
+     global.css) on the paper in the black hairline, focus filling the ring
+     in rather than thickening it. It keeps the thin size above. */
   tag-selector .ts-filter {
+    width: calc(100% - 2 * var(--ts-inset));
     margin-top: 0.9rem;
-    padding: 4px 10px;
-    font-size: var(--fs-82);
+    margin-inline: var(--ts-inset);
+    padding: 3px 11px;
+    border: 1px solid var(--color-dark);
+    background: var(--color-bg);
+    font-size: var(--fs-75);
+    color: var(--color-dark);
+    transition: box-shadow 0.15s;
+  }
+
+  tag-selector .ts-filter::placeholder {
+    color: var(--color-muted);
+  }
+
+  /* :focus-visible too: .input's own focus-visible rule draws a 2px border
+     and outranks a bare :focus here. */
+  /* THE ADD FIELD IS A CAPSULE TOO (2026-10-15, Josh). Same drawing as the
+     find field above, at the add row's own size (.addrow .input in
+     global.css), inset like the find field and the groups. */
+  tag-selector .ts-input-row {
+    margin-inline: var(--ts-inset);
+  }
+
+  tag-selector .ts-input {
+    border: 1px solid var(--color-dark);
+    background: var(--color-bg);
+    color: var(--color-dark);
+    transition: box-shadow 0.15s;
+  }
+
+  tag-selector .ts-input::placeholder {
+    color: var(--color-muted);
+  }
+
+  tag-selector .ts-input:is(:focus, :focus-visible),
+  tag-selector .ts-filter:is(:focus, :focus-visible) {
+    border: 1px solid var(--color-dark);
+    outline: none;
+    box-shadow: inset 0 0 0 0.5px var(--color-dark);
   }
 
   /* With nothing picked yet the filter is the first thing under the field's
@@ -156,11 +213,15 @@ const t = useTranslations(lang);
     margin-top: 0;
   }
 
+  /* Tighter than it was (1.1rem between groups, 0.75 above): the heading rows
+     are thinner now (below), and the air around them was part of their
+     weight. */
   tag-selector .tag-groups {
     display: flex;
     flex-direction: column;
-    gap: 1.1rem;
-    margin-top: 0.75rem;
+    gap: 0.8rem;
+    margin-top: 0.6rem;
+    margin-inline: var(--ts-inset);
   }
 
   /* NO BOX OF ITS OWN. The heading and its rule are the whole frame for a
@@ -170,11 +231,17 @@ const t = useTranslations(lang);
     background: transparent;
   }
 
+  /* THE HEADING ROW IS THIN (2026-10-15, see .ts-filter above). The type is
+     the site's LABEL voice and stays so (type.css owns it); what makes the row
+     lighter is the room it takes — 0.25rem to its rule, down from 0.45 — and
+     a smaller chevron. The chips' white boxes are then the strongest frames
+     in the control. .gallery-tags-summary in profile-editor.css restates this
+     row for the fold around the selector; keep the two alike. */
   tag-selector .tag-group-summary {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0 0 0.45rem;
+    padding: 0 0 0.25rem;
     border-bottom: 1px solid var(--color-border);
     cursor: pointer;
     list-style: none;
@@ -210,8 +277,8 @@ const t = useTranslations(lang);
 
   tag-selector .tag-group-chevron {
     margin-left: auto;
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     border-right: 1px solid var(--color-muted);
     border-bottom: 1px solid var(--color-muted);
     transform: rotate(45deg);
@@ -239,7 +306,7 @@ const t = useTranslations(lang);
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: 0.55rem;
+    margin-top: 0.45rem;
     padding: 0.8rem 0.9rem;
     background: white;
     border: 1.5px solid var(--color-border);

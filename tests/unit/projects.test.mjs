@@ -7,6 +7,7 @@ import {
   toProfileProject, ownProjects, contiguousOrder, groupWorks, inheritedSiteLink, inheritedTags,
   MAX_PROJECT_TAGS, projectTitle, projectDescription, resolveMemberCredits, affiliationHref,
   projectSlideData, projectFields, editorBlocks, emptyProjectIds,
+  adoptLooseWorks, looseWorksProjectId, LOOSE_WORKS_TITLE,
 } from "../../src/lib/projects.ts";
 
 const UID = "owner-uid-000001";
@@ -63,6 +64,46 @@ test("groupWorks gathers a non-contiguous project at its first image", () => {
   assert.deepEqual(sections.map((s) => [s.project?.id ?? null, s.works.map((w) => w.id)]), [
     ["p", [1, 3]], [null, [2]],
   ]);
+});
+
+// EVERY WORK IN A PROJECT (2026-10-16, Josh: "images without project are not
+// allowed any longer! We need always a Project, just a title is mandatory").
+test("adoptLooseWorks files loose works under a virtual Works project, placed at the first loose work", () => {
+  const p = toProfileProject(rec("p", { title: "P" }));
+  const works = [{ id: 1, projectId: "p" }, { id: 2 }, { id: 3, projectId: "ghost" }, { id: 4, projectId: "p" }, { id: 5 }];
+  const out = adoptLooseWorks(UID, works, [p]);
+  const id = looseWorksProjectId(UID);
+  assert.deepEqual(out.works.map((w) => w.projectId), ["p", id, id, "p", id]);
+  assert.deepEqual(out.projects.map((x) => x.id), ["p", id]);
+  assert.deepEqual(out.projects[1], { id, title: "Works", titleDe: "Arbeiten", affiliations: [], tags: [] });
+  // The page: P where its first work stood, Works where ITS first stood, and
+  // no section without a project.
+  const sections = groupWorks(out.works, out.projects);
+  assert.deepEqual(sections.map((s) => [s.project?.id ?? null, s.works.map((w) => w.id)]), [
+    ["p", [1, 4]], [id, [2, 3, 5]],
+  ]);
+  assert.ok(sections.every((s) => s.project));
+  assert.equal(projectTitle(out.projects[1], "en"), "Works");
+  assert.equal(projectTitle(out.projects[1], "de"), "Arbeiten");
+  assert.deepEqual(works[1], { id: 2 }, "the input is not mutated");
+});
+
+test("adoptLooseWorks: nothing loose, nothing added; a stored Works project is reused, not doubled", () => {
+  const p = toProfileProject(rec("p"));
+  const housed = adoptLooseWorks(UID, [{ id: 1, projectId: "p" }], [p]);
+  assert.deepEqual(housed.projects.map((x) => x.id), ["p"]);
+  const stored = toProfileProject(rec(looseWorksProjectId(UID), { title: "My works" }));
+  const out = adoptLooseWorks(UID, [{ id: 1 }], [stored]);
+  assert.deepEqual(out.projects, [stored]);
+  assert.equal(out.works[0].projectId, stored.id);
+  assert.deepEqual(adoptLooseWorks(UID, [], []), { works: [], projects: [] });
+  assert.deepEqual(LOOSE_WORKS_TITLE, { title: "Works", titleDe: "Arbeiten" });
+});
+
+test("projectFields: a German-only title is written as the title too (the rules require one)", () => {
+  assert.deepEqual(projectFields({ titleDe: " Nur Deutsch " }), { title: "Nur Deutsch", titleDe: "Nur Deutsch" });
+  assert.deepEqual(projectFields({ title: "EN", titleDe: "DE" }), { title: "EN", titleDe: "DE" });
+  assert.equal("title" in projectFields({ title: "  " }), false);
 });
 
 test("inheritedSiteLink: the image's own link wins, else the project's, else none", () => {

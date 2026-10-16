@@ -21,72 +21,136 @@
  * scoped block would still get two different rules. Custom media (--bp-mobile)
  * resolves through postcss-global-data — see postcss.config.mjs.
  *
- * WHAT STAYED SCOPED IN THE CARD, and why it must: the two rules that reach
- * into MemberDetailPanel (`.ccard__caption-row .pdisc*`). Moved here they
- * would drop Astro's scope attribute and land at the same specificity as that
- * component's OWN `.pdisc__toggle` rule, leaving which one wins to source
- * order between two stylesheets — see the specificity note in CLAUDE.md. The
- * preview renders no disclosure, so it needs neither.
+ * ── THE PAGES CARD (2026-10-15, replacing "gallery card v2") ──
+ * One member a screen on /community (documentation/20261015-portfolio-pages-view.md).
+ * The artwork on the left, filling the frame's height at its own aspect; a
+ * TEXT COLUMN on the right: name, role, bio, links, tags and a PROFILE → link,
+ * all in the open — nothing folds. The pager "‹ 1 / 3 ›" sits under the
+ * picture's bottom corner. The phone stacks the picture over the words.
+ *
+ * The column is THE MEMBER PAGE'S COLUMN since 2026-10-16 (Josh: "the
+ * portfolio text column should match the profile view except that we should
+ * keep the flow text size, remove the Tags and have the profile button"): the
+ * lines of .mprof__aside in profile.css, in its order and at its measures,
+ * drawn here under .ccard__* names because this sheet is also the editor
+ * preview's (it was MemberDetailPanel's plain mode until then).
  */
 
+/* ── THE CARD'S GRID (2026-10-15, the pages card, layout A) ──
+   Picture | air | words. The picture's column takes whatever the frame
+   leaves after the words' fixed column; the frame's height is the cell's
+   (CommunityGrid's pages block sets the card's height), and the picture
+   fills it at its own aspect. The words' column is two rows — the head
+   (name and role) and the panel — and the body (frame + pager) spans both.
+   The phone re-deals this as one column in the --bp-mobile block at the
+   foot of this file. */
 .ccard {
-  /* A GRID, NOT A COLUMN, for the first row only (2026-09-28, Josh: "they
-     shoudl be in the same ehight, not two stacked divs"): the name on the
-     left and the count "‹ 2 / 7 ›" on the right share row one, on one
-     baseline, instead of the count's row standing between the name and the
-     picture. Every other child spans both columns, which is the column it
-     was. A card without a count leaves the auto column empty and zero wide. */
+  /* The air between the words and the picture: 6rem from "even more white
+     space" (2026-10-15), back to 3rem the same day ("the gap between image
+     and text still too big"). The count hangs in it at the picture's
+     bottom edge and may reach a little into the words' column, whose foot
+     is kept clear for it (.ccard__words max-height). */
+  /* 5rem since 2026-10-16 (Josh: "more gap between images and text"),
+     5.75rem the same day: his Affinity redraw (Design/Card/Binswanger/)
+     stands the words ~10px further off the picture — "it was
+     intentional". */
+  --ccard-air: 5.75rem;
+  /* The words' column (2026-10-14, Josh: "make the text etc wider"). The
+     editor preview reads this name too. */
+  --ccard-side-w: 20rem;
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-content: start;
-  row-gap: 0.3rem;
-  /* Everything above and below the frame — the name line, the caption row and
-     the gaps around them. Measured at 63–78px across the seeded directory;
-     plus the dots row that now sits under
-     the frame; rounded UP on purpose, because under-estimating it lets the card exceed
-     its slot while over-estimating only leaves a little more air. */
-  --ccard-chrome: 6rem;
-  /* How tall the frame may be. --slot-rows and --cgrid-row come from the
-     grid cell this card was dealt into; absent them (the editor preview, the
-     profile page) the fallback is large enough to be no cap at all, which is
-     the old behaviour exactly. */
-  --frame-cap: calc(var(--slot-rows, 999) * var(--cgrid-row, 2rem) - var(--ccard-chrome));
-  /* The whole card narrows with its artwork, not just the frame. Putting
-     this on the frame alone left a 115px image under a 440px name and
-     caption row, which reads as a broken card rather than a narrow one.
-     Normally this is the full slot width; where the artwork is tall enough
-     that filling the width would overrun the slot, it is instead the width
-     that makes the frame exactly as tall as the slot allows. */
-  width: min(100%, calc(var(--frame-cap) * var(--frame-ar, 1)));
-  /* Pivot for the GSAP scale in CommunityGrid. Declared here so the effect
-     is identical whoever drives the transform. Anchored at the top edge, not
-     centre: the ScrollTrigger is keyed to the card's top, and a centre
-     origin recomputes with every height change — opening the disclosure
-     grows the card and, at any scale short of 1, visibly shifts its top on
-     screen. A top origin keeps that edge fixed however tall the card gets. */
-  transform-origin: 50% 0%;
+  /* THE PICTURE AND THE WORDS STAY TOGETHER (2026-10-15, Josh: "text and
+     images should always be close together"): the picture's column is the
+     frame's own width — the artwork's aspect at the frame height — not
+     whatever the screen leaves, so the words always stand one --ccard-air
+     from the picture's edge and the pair is centred in the cell. */
+  /* WORDS | air | picture (2026-10-15, Josh: "the words should be on the
+     left of the image"). */
+  /* The words' column is as wide as its words, up to --ccard-side-w
+     (2026-10-15, Josh: "the text block should shrink to the width that the
+     block actually has"). */
+  /* THE PICTURE TOTALLY CENTRED, THE WORDS TO ITS LEFT (2026-10-16, Josh):
+     two equal outer columns around air | picture | air, the words' box
+     hung in the left one against its air — so the picture sits on the
+     card's centre line whatever the words' width. The editor preview,
+     narrower, keeps the plain words | air | picture (CommunityCardPreview). */
+  grid-template-columns: minmax(0, 1fr) var(--ccard-air) auto var(--ccard-air) minmax(0, 1fr);
+  /* The picture's row, then the count's under it. */
+  grid-template-rows: auto auto;
+  /* What the picture may be wide: never past 60vw, and always leaving the
+     words at least --ccard-words-min on each side of it. 75vw and 12rem
+     until 2026-10-16 (Josh: "make the max width for the image a bit smaller
+     so the text column has a bit more space"): a landscape picture took
+     776px at 1440 and left the words 162px; now 697px and 195px. A square
+     or tall picture is held by the frame's height first and does not move.
+     EVEN SMALLER (same day, Josh: "even smaller max width"): 18rem a side
+     for the words, never under 40% of the card so a small laptop keeps a
+     picture, never over 50vw. 1440x900: a landscape picture 698 -> 619px.
+     In the pages view this is also the picture's COLUMN, so every card's
+     words stand on the same line (CommunityGrid). */
+  --ccard-words-min: 18rem;
+  --ccard-pic-room: clamp(40cqw, calc(100cqw - 2 * (var(--ccard-words-min) + var(--ccard-air))), 50vw);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+}
+.ccard__body {
+  grid-area: 1 / 3 / 2 / 4;
+  align-self: start;
+}
+.ccard__words {
+  grid-area: 1 / 1 / 2 / 2;
+  justify-self: end;
+  /* Centred on the picture's height (2026-10-16, Josh: "center the text
+     column vertically"). */
+  align-self: center;
+  /* As wide as its words, up to the column (Josh: "the text block should
+     shrink to the width that the block actually has") — and never wider
+     than the room the picture leaves. */
+  width: fit-content;
+  max-width: min(var(--ccard-side-w), 100%);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* The column scrolls on its own in the rare case the words outrun the
+   picture on a desktop, as the member page's aside does (the phone lets the
+   card grow instead). */
+.ccard__words {
+  max-height: var(--cpage-pic-h, 30rem);
+  overflow: hidden auto;
+  /* NO VISIBLE BAR (2026-10-16): a sub-pixel rounding (180 vs 179px) put a
+     10px Windows scrollbar in a column that did not overflow, which pulled
+     the right-aligned Profile in off the column's edge. A long bio still
+     scrolls (wheel, trackpad, touch); it just shows no bar. */
+  scrollbar-width: none;
+  /* Room for a focused link's outline inside the scroll box's clip. */
+  padding: 3px;
+  margin: -3px;
+}
+.ccard__words::-webkit-scrollbar {
+  display: none;
 }
 
-/* ── Name ─────────────────────────────────────────────── */
-.ccard > * {
-  grid-column: 1 / -1;
+/* ── The head: the name, then the role ────────────────── */
+/* Name, role and PROFILE → are the card's whole column (2026-10-16, Josh:
+   "actually just Name and Profile Button. Add Role back in."): no picture,
+   bio or "looking for" — the member page has them. */
+.ccard__head {
+  display: flex;
+  min-width: 0;
 }
-.ccard > .ccard__name {
-  grid-column: 1;
-  grid-row: 1;
-  align-self: last baseline;
+.ccard__head-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 .ccard__name {
   margin: 0;
-  /* The heading is semantic; its size is the card's, not a heading scale. */
-  /* Explicit, not `inherit`. Nothing up the tree sets a line-height — not
-     body, not .page-wrap — so `inherit` resolved to `normal`, i.e. Archivo's
-     own metrics (~1.25) re-resolved against this element's 1.2rem (15.6px
-     mobile / 18px desktop). At that size the gap between the two lines of a
-     wrapped name is wide enough that the name reads as two entries rather
-     than one. 1.1 closes it to a couple of pixels while still clearing a
-     descender sitting over a capital, which is where a tighter value starts
-     to collide. */
+  /* The heading is semantic; its size is the card's, not a heading scale —
+     the NAME voice in type.css. */
+  overflow-wrap: anywhere;
 }
 .ccard__name-link {
   display: block;
@@ -100,109 +164,108 @@
   text-underline-offset: 3px;
   text-decoration-thickness: 1.5px;
 }
+.ccard__role {
+  margin: 1rem 0 0;
+  min-width: 0;
+  color: var(--color-dark);
+}
+
+/* ── The rest: PROFILE → ──────────────────────────────── */
+.ccard__more {
+  display: flex;
+  flex-direction: column;
+  margin-top: 2.25rem;
+  min-width: 0;
+}
 
 /* ── Artwork frame ────────────────────────────────────── */
 .ccard__body {
   position: relative;
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .ccard__frame {
   position: relative;
-  /* Fills the card, which is itself already the right width — see .ccard. */
-  flex: 1 1 auto;
-  min-width: 0;
+  /* THE FRAME HUGS THE ARTWORK: the first work's aspect (--frame-ar, set
+     on the card) at the pages' picture height (--cpage-pic-h, CommunityGrid),
+     narrowed — never cropped — when the screen is too narrow for it beside
+     the words. The cell is an inline-size container, hence the cqw. */
+  flex: none;
+  width: min(
+    calc(var(--cpage-pic-h, 30rem) * var(--frame-ar, 1)),
+    var(--ccard-pic-room)
+  );
+  aspect-ratio: var(--frame-ar, 1);
   overflow: hidden;
-  /* ONE PIXEL IN FROM EACH SIDE, on top of the overflow clip (2026-09-06,
-     Josh: "in the member carousel sometimes you see the next image's pixels
-     as a vertical bar"). The frame is never a whole number of pixels wide —
-     439.94793701px is a real measurement, see communityCarousel.ts — and
-     Embla moves the track by whole multiples of that width, so the seam
-     between two slides always lands on a FRACTION of a pixel. The compositor
-     resolves that by blending: the frame's edge column shows a mix of this
-     picture's last column and the next picture's first, which reads as a
-     thin bar of the wrong image standing at the edge. It comes and goes with
-     the fractional part, which is why it is "sometimes".
-     `overflow: hidden` cannot help — its clip edge is that same fractional
-     coordinate. Insetting the visible area by a full CSS pixel puts the seam's
-     whole blend band outside it at ANY device-pixel ratio: 1px is at least one
-     device pixel, and Windows scaling at 1.25 or 1.5 is exactly where rounding
-     the frame's WIDTH to CSS pixels would not have been enough. The picture is
-     object-fit: cover, so the pixel it loses at each side was never
-     load-bearing, and the arrows and dots sit well inside it. Top and bottom
-     are not inset: there is no seam there. */
-  clip-path: inset(0 1px);
   /* NO BORDER, deliberately. The artwork is its own edge; a grey rule around
      it read as a box the picture had been placed inside, which is the
-     opposite of the page it sits on.
-     Nothing has to compensate for the loss. This box is content-box —
-     global.css has no universal box-sizing reset — so the 1.5px sat OUTSIDE
-     the aspect-ratio'd content box and made the frame's border box ~3px
-     taller and wider than the ratio alone. Removing it makes .ccard's
-     width formula (--frame-cap × --frame-ar) exact where it used to
-     under-shoot the slot by those 3px, so the only movement is sub-pixel to
-     3px of RECLAIMED space, never a card outgrowing its cell. */
+     opposite of the page it sits on. */
   /* Square corners throughout the card — no --radius-* token here. */
   border-radius: 0;
   /* Dominant colour is painted inline where the member has one; this is the
      fallback ground. */
   background: var(--color-bg);
-  /* Vertical panning stays the browser's; only a horizontal gesture ever
-     reaches Embla's drag. This declaration IS the defence for "a page scroll
-     that starts on a card still scrolls the page": following the finger
-     means a non-passive touchmove, and without this the browser would have
-     to wait on that listener to learn whether the page may move at all. */
-  touch-action: pan-y pinch-zoom;
+  /* Both axes are the browser's: a horizontal pan pages the track, a
+     vertical one scrolls the page. No script listens to touchmove. */
+  touch-action: pan-x pan-y pinch-zoom;
 }
 
-/* The Embla container. Absolutely positioned rather than height:100% so it
-   fills the aspect box exactly the way the stacked images used to, with no
-   percentage height resolving against an aspect-ratio'd parent. Embla
-   translates THIS element and nothing else in the frame, which is why the
-   click target and the arrows can be its siblings and stay put. */
+/* THE TRACK IS A SCROLLER (2026-10-15): one frame-wide column per work,
+   snapping on the x axis, its scrollbar hidden. The browser pages it —
+   swipe, trackpad, shift+wheel — and communityCarousel.ts reads where it
+   landed. Absolutely positioned so it fills the frame with no percentage
+   height resolving against a flex item. */
 .ccard__track {
   position: absolute;
   inset: 0;
-  display: flex;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 100%;
+  grid-auto-rows: 100%;
+  /* Repeated inline on the element in CommunityImageCard.astro, on purpose:
+     the WebKit Back crash (documentation/20261016-webkit-back-crash-carousel-track.md). */
+  overflow: auto hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.ccard__track::-webkit-scrollbar {
+  display: none;
 }
 
-/* One frame-wide slide per work: `flex: 0 0 100%` is what makes a snap a
-   whole image, and min-width:0 stops the image's intrinsic width from
-   inflating the slide past the frame. */
+/* One slide per work, and THE CLICK TARGET: an <a> to the original upload
+   that the lightbox intercepts (CARD_TRIGGER in lightbox.ts). Says "this
+   opens" with the cursor — the same word the wall's tile uses. */
 .ccard__slide {
   position: relative;
-  flex: 0 0 100%;
+  display: block;
   min-width: 0;
+  height: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  cursor: zoom-in;
 }
 
-/* Was position:absolute + an opacity crossfade; in a track the image simply
-   fills its slide. Nothing animates the image itself any more — the motion
-   is Embla translating the track under it. */
+/* The picture fills its slide; nothing animates the image itself — the
+   motion is the track scrolling under it. */
 .ccard__img {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* The work at its own aspect, never cropped: a tall piece stands at the
+     frame's left with air toward the words, a wide one spans the column. */
+  object-fit: contain;
+  object-position: center;
 }
 
-.ccard__frame-link {
-  position: absolute;
-  inset: 0;
-  /* Says "this opens" — the same word the wall's tile uses for the same
-     gesture, and the reason it changed: this link used to go to the profile,
-     where a pointer cursor was the honest cue. */
-  cursor: zoom-in;
-}
-
-/* The card's main tab stop needs a ring of its own: the browser's default
-   one is drawn outside the link, where .ccard__frame's overflow and
-   clip-path cut it away entirely. So it is drawn INSIDE, and in two tones —
-   a paper band at the edge, the dark ring within it — because the picture
-   under it can be any colour, and either tone alone vanishes on half of them.
-   The paper band is 3px because the frame's clip-path shaves 1px off each
-   side. */
-.ccard__frame-link:focus-visible {
+/* The card's tab stop needs a ring of its own: the browser's default one is
+   drawn outside the link, where .ccard__frame's overflow cuts it away. So
+   it is drawn INSIDE, and in two tones — a paper band at the edge, the dark
+   ring within it — because the picture under it can be any colour, and
+   either tone alone vanishes on half of them. */
+.ccard__slide:focus-visible {
   outline: 2px solid var(--color-dark);
   outline-offset: -5px;
   box-shadow: inset 0 0 0 3px var(--color-bg);
@@ -272,6 +335,17 @@
 .ccard__arrow:focus-visible {
   opacity: 1;
 }
+/* CLICKED, SO OUT OF THE WAY (2026-10-09). communityCarousel.ts sets this on
+   the frame after paging and clears it on pointer re-entry or keyboard
+   focus. Same specificity as the frame-hover rule above and
+   later, so it wins over hover and :focus-within (Chrome focuses a clicked
+   button) alike; it stays in place rather than sliding back to the edge, and
+   it is quicker than the ordinary hide because the visitor has already said
+   what they wanted. Opacity only: the strip is still there to click again. */
+.ccard__frame.is-arrows-resting .ccard__arrow {
+  opacity: 0;
+  transition: opacity 45ms ease-out;
+}
 /* A stroked chevron rather than a filled triangle — two borders on a box
    turned 45deg. Same drawing as the disclosure toggle in MemberDetailPanel,
    so both controls on a card read as one family. */
@@ -308,57 +382,59 @@
   transform: translate(0.4rem, 0);
 }
 
+/* ── The foot: the pager under the picture ────────────── */
+.ccard__foot {
+  flex: none;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  min-width: 0;
+  padding-top: 0.4rem;
+}
+/* PART OF THE TEXT BLOCK, AT ITS END, RIGHT-ALIGNED (2026-10-15/16, Josh:
+   "the carousel controls should be part of the text block", "the controls
+   on desktop should be at the end", "right aligned within the text
+   column"): the words' last line, at the column's right edge. A phone
+   lifts it onto the name's line (mobile block). */
+/* UNDER THE PICTURE, CENTRED, ITS OWN ROW (2026-10-16, Josh: "move the
+   carousel controls under the image", then "the dots should be right
+   centered under the image and take up their own row"). */
+.ccard__foot {
+  grid-area: 2 / 3 / 3 / 4;
+  justify-self: center;
+  padding-top: 0.6rem;
+}
+
 /* ── Position indicator ───────────────────────────────── */
-/* A row of the card's chrome, sitting above the artwork at its right
-   edge — not a plate over the picture. Off the image there is no arbitrary
-   ground to survive, so the plate is gone and the marks shrink to
-   the smallest size that still reads as a count. */
+/* "‹ ••• ›" (a "‹ 1 / 3 ›" count until 2026-10-16), the first thing on the foot row: at the picture's
+   bottom-right corner, just past its edge, where the sketch put it. It was
+   the right end of the name's line while the name stood above the frame.
+   Off the image there is no arbitrary ground to survive, so no plate, and the
+   marks are the smallest size that still reads as a count. */
 .ccard__dots {
   display: flex;
-  /* Hard right, on the artwork's own right edge: the name holds the left of
-     this line, so the count sits where nothing else does. */
-  justify-content: flex-end;
   align-items: center;
   gap: var(--carousel-dot-gap);
-  /* On the name's own line (see .ccard): the second column of row one, on
-     the name's last baseline, so a wrapped name keeps the count beside its
-     bottom line. The left padding is the least room between the two. */
-  grid-column: 2;
-  grid-row: 1;
-  align-self: last baseline;
-  padding-left: 0.75rem;
-  /* Indicators, never controls — see the markup note. */
+  /* Indicators, never controls — see the markup note. The chevrons inside
+     take their own pointer-events back (.pager-chev in global.css). */
   pointer-events: none;
 }
-
-/* Twice the first size since 2026-09-28 (Josh: "make the dots bigger … also
-   adjust the gallery"): --carousel-dot in global.css, shared with the
-   member page's project carousels. */
-.ccard__dot {
-  width: var(--carousel-dot);
-  height: var(--carousel-dot);
-  border-radius: 50%;
-  background: var(--color-dark);
-  opacity: 0.22;
-  transition: opacity 180ms ease;
+/* THE CHEVRONS CLOSE IN ON THE COUNT (2026-10-14, Josh: "make the image
+   carousel arrows more tightly spaced"). global.css gives a pager chevron a
+   24px-wide box with the glyph centred, which stood each one ~13px off the
+   "1 / 3"; on the card the box is narrower and the row's gap smaller, so
+   the three read as one control. The hit area keeps its height. */
+.ccard__dots {
+  gap: 0.1rem;
 }
-.ccard__dot--on {
-  opacity: 1;
+.ccard__dots .pager-chev {
+  min-width: 14px;
+  padding-left: 0.15rem;
+  padding-right: 0.15rem;
 }
 
-/* TEXT INSTEAD OF DOTS (2026-09-28, Josh: "try text instead of dots"). The
-   same place, the same job: "2 / 7" hard right on the name line. The dots are
-   still drawn and still follow the carousel; THIS RULE is the whole switch,
-   delete it (and hide .ccard__count) to go back. Mirrored for the member
-   page's project carousels in profile.css. */
-.ccard__dot {
-  display: none;
-}
-/* Its type is COUNT in type.css, shared with the lightbox's counter. */
-.ccard__count {
-  white-space: nowrap;
-  color: var(--color-muted);
-}
+/* The dots themselves are .cdots / .cdot in global.css, shared with the
+   member page's project carousels (2026-10-16). */
 
 /* The spoken position. There is no sr-only utility anywhere in this
    codebase, so the clip technique lives here. */
@@ -374,98 +450,125 @@
   white-space: nowrap;
 }
 
-/* ── Member caption ───────────────────────────────────── */
-.ccard__caption {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  padding-top: 0.15rem;
-  font-family: "Archivo", sans-serif;
-}
-
-/* A plain block, not a grid, and .pdisc keeps a REAL box -- see the note in
-   MemberDetailPanel for why display:contents here was unopenable on iPhone.
-   The panel is full-width simply by being in flow (it still grows the card,
-   which is what the desktop slot wants and what pushes rows on mobile), and
-   the toggle is lifted to the row's right edge instead of placed in a
-   column. */
-.ccard__caption-row {
-  position: relative;
-}
-
-/* The toggle's space is reserved on the ROLE'S LINE, not on the row: row
-   padding would inset the open panel too, and a panel stopping short of
-   the card's right edge is exactly what the old pseudo-element grid item
-   existed to prevent. It sits on the wrapper now rather than on the role,
-   because the role no longer holds that line alone. */
-.ccard__caption-row .ccard__meta-line {
-  /* Wider than the chevron by design — it is the reserve for the chevron's
-     HIT AREA, which is 2rem square (below), not for the 0.36rem mark that
-     gets painted in the middle of it. */
-  padding-right: 1.9rem;
-}
-
-/* The role reads left and the chevron sits in the reserve above it. Still a
-   wrapping flex row although only the role is left in it: a long role must
-   be free to take the line rather than be truncated, and this card's height
-   is already free to grow (it is what the disclosure does). */
-.ccard__meta-line {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.15rem 0.8rem;
-  min-width: 0;
-}
-
-/* THE NAMED WAY TO THE PROFILE. Underlined at rest, unlike every other link
-   on this card: it is a control rather than a piece of prose, and the one
-   thing on the card whose whole job is to be findable. Muted so it does not
-   outrank the member's name above the frame, which is the same destination
-   and still the card's title. */
+/* ── The profile button ───────────────────────────────── */
+/* THE NAMED WAY TO THE PERSON, now a FILLED button at the foot's right end
+   (the sketch's "PROFILE →"). It used to be an underlined line at the end
+   of the dropdown; with the words in the open, the step after them wants a
+   control that looks like one. Ink on the page's ground inverted, square
+   like everything else on the card. The arrow is a glyph in the markup, not
+   generated content, so it is part of the link's text. `margin-left: auto`
+   keeps it at the right end when there is no pager to balance it. Its voice
+   is HEADING in type.css (caps, tracked). */
 .ccard__profile {
-  /* Its own line at the foot of the panel. `block` rather than an inline
-     run so the underline stops at the words and the control still owns a
-     row of its own — it is the last thing in the dropdown and should read
-     as the step after the text, not as a trailing link inside it. */
-  display: block;
-  width: fit-content;
-  margin-top: 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  /* The last line of the panel's words, at the column's RIGHT edge
+     (2026-10-16, Josh: "Profile right aligned"). */
+  align-self: flex-end;
+  /* Smaller since 2026-10-12 (Josh: "profile should be a smaller button,
+     white on black text"): the LABEL voice in type.css, and this padding.
+     Then PLAIN, the same day ("profile is too strong, make it without black
+     bg", then "no outline for Profile"): the word and its arrow, no box at
+     all, underlined while pointed at like the card's other links. */
+  padding: 0;
+  background: transparent;
+  color: var(--color-dark);
+  border-radius: 0;
   white-space: nowrap;
-  color: var(--color-muted);
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.ccard__profile:hover,
+.ccard__profile:focus-visible {
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 1.5px;
-  transition: color 0.15s;
 }
-
-.ccard__profile:hover,
 .ccard__profile:focus-visible {
-  color: var(--color-dark);
-}
-
-.ccard__role {
-  min-width: 0;
-  margin-top: 0.15rem;
-  color: var(--color-dark);
+  outline: 2px solid var(--color-dark);
+  outline-offset: 2px;
 }
 
 /* ── Mobile ───────────────────────────────────────────── */
 @media (--bp-mobile) {
-  /* The width formula narrows the card to fit a DESKTOP slot's height —
-     but --slot-rows still arrives from the desktop deal on a phone, where
-     the cell's height is simply the card's own. Full width of whatever
-     beat the mobile pattern dealt (see CommunityGrid's --bp-mobile block). */
+  /* ONE COLUMN: the picture over the words, right under it. The frame is
+     the screen's width at the artwork's aspect, capped at 60% of the frame
+     height — a tall piece then letterboxes on paper at its sides rather than
+     pushing the words away. */
+  .ccard__words {
+    display: contents;
+  }
   .ccard {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+    row-gap: 0.75rem;
     width: 100%;
   }
-
   .ccard__body {
-    display: block;
+    grid-area: 1 / 1 / 2 / 2;
+    /* The picture's height, so the count hangs off the picture. */
+    align-self: start;
   }
-
-  /* No paging chrome on touch — a decided trade: the artwork keeps a clean
-     face, paging is the swipe for whoever finds it, and in the gallery
-     view the carousel advances itself every 5s anyway. */
+  .ccard__frame {
+    width: 100%;
+    max-height: var(--cpage-pic-h, 50svh);
+  }
+  .ccard__head {
+    grid-area: 3 / 1 / 4 / 2;
+  }
+  .ccard__more {
+    grid-area: 4 / 1 / 5 / 2;
+    margin-top: 0;
+  }
+  /* The dots on their own row between the picture and the name, centred
+     (2026-10-16; until then at the end of the name's line). A gallery of
+     one has no dots: its words move up a row, so no empty row adds a gap. */
+  .ccard__foot {
+    grid-area: 2 / 1 / 3 / 2;
+    justify-self: center;
+    padding-top: 0;
+  }
+  .ccard:not(:has(.ccard__dots:not([hidden]))) {
+    grid-template-rows: auto auto auto;
+  }
+  .ccard:not(:has(.ccard__dots:not([hidden]))) .ccard__foot {
+    display: none;
+  }
+  .ccard:not(:has(.ccard__dots:not([hidden]))) .ccard__head {
+    grid-area: 2 / 1 / 3 / 2;
+  }
+  .ccard:not(:has(.ccard__dots:not([hidden]))) .ccard__more {
+    grid-area: 3 / 1 / 4 / 2;
+  }
+  /* The name bigger on a phone (2026-10-16, Josh: "on phone increase the
+     Name font as well"), in type.css; the role tight under it. */
+  .ccard__role {
+    margin-top: 0.25rem;
+  }
+  /* Smaller on a phone (2026-10-12, Josh: "the Profile button smaller on
+     mobile!"): the type a step down in type.css, and a tighter box. */
+  /* Bottom right on a phone (2026-10-15, Josh: "Profile on the bottom
+     right in mobile view"); a desktop keeps it at the words' start. */
+  /* On the links' line (2026-10-15, Josh: "Profile there should be in line
+     with instagram website etc."): the words' rows run as one wrapping line
+     on a phone (bio and tags are hidden there), PROFILE pushed to its right
+     end; a member with long links sees it wrap under them, still right.
+     One class over the panel's scoped rule, which would win a tie. */
+  .ccard__more {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 1rem;
+    row-gap: 0.35rem;
+  }
+  .ccard__profile {
+    align-self: baseline;
+    margin-left: auto;
+    gap: 0.3rem;
+  }
+  /* No edge arrows on a phone: paging is the swipe, and the count says where
+     the swipe got to. */
   .ccard__arrow {
     display: none;
   }
@@ -485,31 +588,59 @@
 }
 
 /* ── The editor's preview ─────────────────────────────────
-   Two affordances the card offers and the preview cannot honour, plus the
+   The affordances the card offers and the preview cannot honour, plus the
    `[hidden]` fix any FILLED shell needs. Everything else about the preview is
    the card, unmodified — that is the point of the file.
 
-   The name is a <span> here, not the card's <a>, and the frame's click target
-   has no href: a live control that walked the member out of an unsaved form
-   would be a trap, exactly as on the profile-page preview (see the back link
-   in ProfileViewPreview). Both still carry the card's classes so they sit
-   where the card puts them, which is why the hover and the zoom cursor have to
-   be taken back off here — an underline and a zoom-in pointer on something
-   inert is the card promising what the preview cannot do. */
+   The name is a <span> here, not the card's <a>, the profile button a <span>
+   with nowhere to go, and the
+   frame's click target has no href: a live control that walked the member out
+   of an unsaved form would be a trap, exactly as on the profile-page preview
+   (see the back link in ProfileViewPreview). All still carry the card's
+   classes so they sit where the card puts them, which is why the hover
+   states and the cursors have to be taken back off here — an underline or a
+   pointer on something inert is the card promising what the preview cannot
+   do. The selectors are one class deeper than the rules they override so
+   they win outright rather than on stylesheet order. */
 .ccard--preview .ccard__name-link:hover,
 .ccard--preview .ccard__name-link:focus-visible {
   text-decoration: none;
 }
 
-.ccard--preview .ccard__frame-link {
+.ccard--preview .ccard__slide {
   cursor: default;
 }
 
+.ccard.ccard--preview .ccard__profile {
+  cursor: default;
+}
+.ccard.ccard--preview .ccard__profile:hover {
+  text-decoration: none;
+}
+
 /* The card is RENDERED — with one work it simply omits the arrows, the dots
-   and the live region. The shell is FILLED, so it hides them instead, and the
-   UA's `display: none` for [hidden] loses to any author `display`: the arrows
-   are `display: grid` and the dots `display: flex`. This is the same fix
+   and the live region, and prints only the words a member has. The shell is
+   FILLED, so it hides them instead, and the UA's `display: none` for [hidden]
+   loses to any author `display`: the arrows are `display: grid`, the dots
+   `display: flex`, the panel's rows and lists flex too. Three classes deep
+   so it also beats the panel's scoped rules. This is the same fix
    .mprof--preview needs in profile.css, for the same reason. */
-.ccard--preview [hidden] {
+.ccard.ccard--preview [hidden] {
   display: none;
+}
+
+/* NO ARROWS ON THE PICTURE (2026-10-16, Josh: "remove the hover arrows on
+   the pictures too"): the swipe, the trackpad and the arrow keys page, and
+   the dots say where you are. The buttons stay in the markup and the engine
+   (communityCarousel.ts), so this rule is the whole switch back. */
+.ccard .ccard__arrow {
+  display: none;
+}
+
+/* BIGGER DOTS, MORE AIR, in the portfolio view (2026-10-16, Josh: "make the
+   dots bigger and more gap in portfolio view"). The member page keeps the
+   shared --carousel-dot sizes from type.css. */
+.ccard__dots {
+  --carousel-dot: 0.5rem;
+  --carousel-dot-gap: 0.5rem;
 }

@@ -141,7 +141,8 @@ service cloud.firestore {
                     && request.resource.data.get('posterSource', null) == resource.data.get('posterSource', null)
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                          'caption', 'captionDe', 'description', 'descriptionDe', 'descriptionShort',
-                         'link', 'siteLink', 'tags', 'projectId', 'status', 'updatedAt'])
+                         'link', 'siteLink', 'tags', 'projectId', 'inGallery', 'textAfter', 'textAfterDe',
+                         'size', 'status', 'updatedAt'])
                     && (request.resource.data.status == resource.data.status
                         || (resource.data.status == 'live' && request.resource.data.status == 'pendingDeletion'))
                     && validImage(request.resource.data, imageId);
@@ -423,7 +424,8 @@ function validBioWordCount(bio) {
 function validImage(data, imageId) {
   return data.keys().hasOnly(['ownerUid', 'kind', 'storagePath', 'width', 'height', 'color',
                               'caption', 'captionDe', 'description', 'descriptionDe', 'link', 'siteLink', 'tags', 'projectId', 'descriptionShort', 'origin',
-                              'provenance', 'media', 'embed', 'posterSource', 'status', 'createdAt', 'updatedAt'])
+                              'provenance', 'media', 'embed', 'posterSource', 'inGallery', 'textAfter', 'textAfterDe',
+                              'size', 'status', 'createdAt', 'updatedAt'])
     && data.ownerUid is string
     && (data.kind == 'avatar' || data.kind == 'gallery')
     && data.storagePath == 'users/' + data.ownerUid + '/' + data.kind + '/' + imageId + '.webp'
@@ -465,6 +467,22 @@ function validImage(data, imageId) {
     // for a gallery id: a get() here would cost a read on every image save.
     && (!('projectId' in data) || (data.projectId is string && data.projectId.size() > 0 && data.projectId.size() <= 64))
     && (!('descriptionShort' in data) || (data.descriptionShort is string && data.descriptionShort.size() <= 240))
+    // THE MEMBER'S OWN "IN GALLERY" SWITCH (2026-10-16, Josh: "add an include
+    // in gallery toggle for every image you add"). Only `false` is ever
+    // stored — absent means included, so every older record passes as shown.
+    // It takes the work off /community only; the member's page keeps it.
+    && (!('inGallery' in data) || data.inGallery is bool)
+    // THE TEXT BLOCK AFTER THE WORK (2026-10-16, Josh: "make it possible to
+    // add text block in between image in projects"). A paragraph or a few,
+    // printed on the member page between this work and the next, so every
+    // gap in a project can hold words. Optional in both languages; one write
+    // per image, so two size caps cost nothing against the budget.
+    && (!('textAfter' in data) || (data.textAfter is string && data.textAfter.size() <= 2000))
+    && (!('textAfterDe' in data) || (data.textAfterDe is string && data.textAfterDe.size() <= 2000))
+    // HOW WIDE THE WORK STANDS ON THE MEMBER PAGE (2026-10-16, Josh: "select
+    // between S M L for the image size"). Only s and m are stored; absent
+    // is L, so every older record passes as it was shown.
+    && (!('size' in data) || data.size == 's' || data.size == 'm')
     && (data.origin == 'member' || data.origin == 'curated')
     // A VIDEO WORK IS STILL AN IMAGE RECORD (2026-09-23,
     // documentation/20260923-motion-works-design.md): the WebP at storagePath
@@ -524,7 +542,15 @@ function validProject(data) {
   return data.keys().hasOnly(['ownerUid', 'title', 'titleDe', 'description', 'descriptionDe',
                               'link', 'affiliations', 'tags', 'createdAt', 'updatedAt'])
     && data.ownerUid is string
-    && (!('title' in data) || (data.title is string && data.title.size() <= 100))
+    // A TITLE IS MANDATORY (2026-10-16, Josh: "images without project are not
+    // allowed any longer! We need always a Project, just a title is
+    // mandatory"). Present, a string, at most 100, and not blank: the rules
+    // have no trim(), so "holds one non-space character" is the regex. Judged
+    // on the merged document, so an update cannot delete it either. titleDe
+    // stays optional; the German page falls back to the English title.
+    && 'title' in data
+    && data.title is string && data.title.size() >= 1 && data.title.size() <= 100
+    && data.title.matches('[\\s\\S]*\\S[\\s\\S]*')
     && (!('titleDe' in data) || (data.titleDe is string && data.titleDe.size() <= 100))
     && (!('description' in data) || (data.description is string && data.description.size() <= 600))
     && (!('descriptionDe' in data) || (data.descriptionDe is string && data.descriptionDe.size() <= 600))

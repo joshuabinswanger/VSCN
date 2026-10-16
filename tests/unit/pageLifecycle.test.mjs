@@ -67,10 +67,12 @@ test("tab keys page with bare arrows/Home/End and leave modified ones to the bro
   assert.deepEqual(picked, [2, 2]);
 });
 
-// ── The carousel, against a fake DOM and a fake Embla ─────────────────
-// Just enough of each for initCarousels(): the frame, its two slides, the
-// arrows and the card's count row with server-rendered chevrons — the nodes
-// that SURVIVE a re-init on the editor's preview frame.
+// ── The carousel, against a fake DOM and a fake scroller ──────────────
+// The engine is native scroll-snap (2026-10-15): the index is the track's
+// scrollLeft over its width, the chevrons scroll by one width, the ends
+// wrap. Just enough DOM for initCarousels(): the frame, its track and
+// slides, the arrows and the card's dot row with server-rendered
+// chevrons — the nodes that SURVIVE a re-init on the editor's preview frame.
 class El extends EventTarget {
   constructor(parts = {}, up = {}) {
     super();
@@ -80,7 +82,17 @@ class El extends EventTarget {
     this.attrs = {};
     this.tabIndex = 0;
     this.title = "";
-    this.classList = { toggle() {} };
+    this.textContent = "";
+    const classes = new Set();
+    this.classList = {
+      toggle(c, on) { if (on ?? !classes.has(c)) classes.add(c); else classes.delete(c); },
+      add(c) { classes.add(c); },
+      contains(c) { return classes.has(c); },
+    };
+    this.style = { props: {}, setProperty(n, v) { this.props[n] = v; } };
+    this.clientWidth = 300;
+    this.scrollLeft = 0;
+    this.scrolls = [];
   }
   querySelector(sel) {
     const v = this.parts[sel];
@@ -95,54 +107,103 @@ class El extends EventTarget {
   setAttribute(n, v) { this.attrs[n] = String(v); }
   removeAttribute(n) { delete this.attrs[n]; }
   hasAttribute(n) { return n in this.attrs; }
+  scrollTo(o) { this.scrolls.push(o); this.scrollLeft = o.left; }
+  focus() {}
   prepend() {}
   append() {}
+  before() {}
+  replaceChildren() {}
 }
 
 function carouselHarness() {
-  const calls = { next: 0, prev: 0 };
-  const instances = [];
-  const EmblaCarousel = () => {
-    const api = {
-      destroyed: false,
-      on() {},
-      destroy() { api.destroyed = true; },
-      scrollNext() { calls.next++; },
-      scrollPrev() { calls.prev++; },
-      scrollTo() {},
-      selectedScrollSnap: () => 0,
-      slidesInView: () => [],
-    };
-    instances.push(api);
-    return api;
+  const document = {
+    documentElement: { lang: "en" },
+    addEventListener() {},
+    activeElement: null,
+    createElement: () => new El(),
   };
-  const document = { documentElement: { lang: "en" }, addEventListener() {} };
+  const window = { matchMedia: () => ({ matches: false }) };
   const pager = loadTs("src/lib/pager.ts", {}, { document });
+  const carouselDots = loadTs("src/lib/carouselDots.ts", {}, { document });
   const keys = loadTs("src/lib/keys.ts", {});
   const carousel = loadTs(
     "src/lib/communityCarousel.ts",
-    { "embla-carousel": { default: EmblaCarousel }, "./pager.ts": pager, "./keys.ts": keys },
-    { document, window: { matchMedia: () => ({ matches: false }) } },
+    { "./carouselDots.ts": carouselDots, "./pager.ts": pager, "./keys.ts": keys },
+    { document, window, requestAnimationFrame: (fn) => fn(), ResizeObserver: undefined },
   );
 
+  const slides = [new El(), new El(), new El()];
+  slides.forEach((s, i) => { s.dataset.workUrl = `u${i}`; });
+  const images = slides.map(() => new El());
+  const track = new El({ ".ccard__slide": slides, ".ccard__img": images });
   const chevPrev = new El();
   const chevNext = new El();
-  const dotRow = new El({ ".ccard__count": new El(), ".pager-chev--prev": chevPrev, ".pager-chev--next": chevNext });
-  const card = new El({ ".ccard__dot": [], ".ccard__dots": dotRow });
+  const dots = [new El(), new El(), new El()];
+  const strip = new El();
+  strip.parentElement = new El();
+  const dotRow = new El({ ".cdots__strip": strip, ".pager-chev--prev": chevPrev, ".pager-chev--next": chevNext });
+  const card = new El({ ".ccard__dots .cdot": dots, ".ccard__dots": dotRow });
   const prev = new El();
   const next = new El();
+  const live = new El();
   const frame = new El(
     {
-      ".ccard__img": [new El(), new El()],
-      ".ccard__slide": [new El(), new El()],
+      ".ccard__track": track,
+      ".ccard__img": images,
+      ".ccard__slide": slides,
       "[data-carousel-prev]": prev,
       "[data-carousel-next]": next,
+      "[data-carousel-live]": live,
     },
     { ".ccard": card },
   );
+  frame.dataset.positionLabel = "Image {n} of {total}";
   const root = new El({ "[data-carousel]": frame });
-  return { ...carousel, calls, instances, root, frame, prev, next, chevNext };
+  return { ...carousel, root, frame, track, slides, prev, next, chevPrev, chevNext, dots, live };
 }
+
+test("carousel: chevrons page by one width and wrap at the ends", () => {
+  const h = carouselHarness();
+  h.initCarousels(h.root);
+  assert.equal(h.frame.dataset.ready, "true");
+  assert.equal(h.frame.dataset.index, "0");
+  assert.equal(h.slides[0].tabIndex, 0);
+  assert.equal(h.slides[1].tabIndex, -1);
+  h.chevNext.dispatchEvent(new Event("click"));
+  assert.equal(h.track.scrolls.at(-1).left, 300);
+  assert.equal(h.frame.dataset.index, "1");
+  assert.deepEqual(h.dots.map((d) => d.classList.contains("cdot--on")), [false, true, false]);
+  assert.equal(h.live.textContent, "Image 2 of 3");
+  assert.equal(h.slides[1].tabIndex, 0);
+  assert.equal(h.slides[0].tabIndex, -1);
+  assert.equal(h.slides[0].getAttribute("aria-hidden"), "true");
+  assert.equal(h.slides[1].getAttribute("aria-hidden"), null);
+  h.chevPrev.dispatchEvent(new Event("click"));
+  h.chevPrev.dispatchEvent(new Event("click"));
+  assert.equal(h.track.scrolls.at(-1).left, 600, "prev from the first slide wraps to the last");
+  assert.equal(h.track.scrolls.at(-1).behavior, "smooth", "a wrap slides back (2026-10-15)");
+  // A finger swipe moves the track; the scroll event is how the engine learns.
+  h.track.scrollLeft = 310;
+  h.track.dispatchEvent(new Event("scroll"));
+  assert.equal(h.frame.dataset.index, "1");
+  assert.deepEqual(h.dots.map((d) => d.classList.contains("cdot--on")), [false, true, false]);
+});
+
+test("carousel: a show event jumps to that slide; destroy releases the frame", () => {
+  const h = carouselHarness();
+  h.initCarousels(h.root);
+  const ev = new Event("vscn:carousel-show");
+  Object.defineProperty(ev, "target", { value: h.slides[2] });
+  h.frame.dispatchEvent(ev);
+  assert.equal(h.track.scrolls.at(-1).left, 600);
+  assert.equal(h.frame.dataset.index, "2");
+  h.destroyCarousel(h.frame);
+  assert.equal(h.frame.dataset.ready, undefined);
+  const before = h.track.scrolls.length;
+  h.chevNext.dispatchEvent(new Event("click"));
+  h.next.dispatchEvent(new Event("click"));
+  assert.equal(h.track.scrolls.length, before, "no handler left after destroy");
+});
 
 test("a re-inited carousel holds one set of listeners, not one per init", () => {
   const h = carouselHarness();
@@ -151,22 +212,18 @@ test("a re-inited carousel holds one set of listeners, not one per init", () => 
     h.destroyCarousel(h.frame);
     h.initCarousels(h.root);
   }
-  assert.equal(h.instances.length, 20);
-  assert.equal(h.instances.filter((e) => !e.destroyed).length, 1);
-
   const right = key("ArrowRight");
   h.frame.dispatchEvent(right);
-  assert.equal(h.calls.next, 1, "one ArrowRight, one move");
+  assert.equal(h.track.scrolls.length, 1, "one ArrowRight, one move");
   h.next.dispatchEvent(new Event("click"));
   h.chevNext.dispatchEvent(new Event("click"));
-  assert.equal(h.calls.next, 3, "each arrow and chevron press moves once");
+  assert.equal(h.track.scrolls.length, 3, "each arrow and chevron press moves once");
 
   // After the navigation sweep nothing is left listening at all.
   h.destroyAllCarousels();
   h.frame.dispatchEvent(key("ArrowRight"));
   h.chevNext.dispatchEvent(new Event("click"));
-  assert.equal(h.calls.next, 3);
-  assert.equal(h.instances.every((e) => e.destroyed), true);
+  assert.equal(h.track.scrolls.length, 3);
 });
 
 test("carousel keys leave Alt/Ctrl/Meta/Shift+arrow to the browser", () => {
@@ -177,9 +234,9 @@ test("carousel keys leave Alt/Ctrl/Meta/Shift+arrow to the browser", () => {
     h.frame.dispatchEvent(e);
     assert.equal(e.defaultPrevented, false, mod);
   }
-  assert.equal(h.calls.prev, 0);
+  assert.equal(h.track.scrolls.length, 0);
   const bare = key("ArrowLeft");
   h.frame.dispatchEvent(bare);
   assert.equal(bare.defaultPrevented, true);
-  assert.equal(h.calls.prev, 1);
+  assert.equal(h.track.scrolls.length, 1);
 });

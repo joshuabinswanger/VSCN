@@ -10,6 +10,7 @@ interface Props {
    *  slotting its own lead content (the index rows slot the member's
    *  profile picture, which is content worth a toggle by itself). */
   forceShow?: boolean;
+
 }
 
 const { member, lang, forceShow = false } = Astro.props;
@@ -25,6 +26,7 @@ const bio = member.bio.trim();
 const portfolio = member.portfolio.trim();
 const social = socialLinks(member.socialMedia.trim());
 const tags = member.tags;
+const displayName = member.displayName;
 
 // Nothing to disclose — a profile that is name + role only. Rendering an
 // empty toggle would promise content that isn't there.
@@ -54,7 +56,7 @@ const hasSummary = Astro.slots.has("summary");
           it. */}
       <summary
         class="pdisc__toggle"
-        aria-label={hasSummary ? undefined : `${t("community.card.expand")} ${member.displayName}`}
+        aria-label={hasSummary ? undefined : `${t("community.card.expand")} ${displayName}`}
       >
         {hasSummary && <slot name="summary" />}
       </summary>
@@ -210,11 +212,11 @@ const hasSummary = Astro.slots.has("summary");
      as one family. */
   .pdisc__toggle::after {
     content: "";
-    width: 0.36rem;
-    height: 0.36rem;
+    width: var(--pager-chev-size);
+    height: var(--pager-chev-size);
     margin-bottom: 0.1rem;
-    border-right: 1.5px solid currentColor;
-    border-bottom: 1.5px solid currentColor;
+    border-right: var(--pager-chev-stroke) solid currentColor;
+    border-bottom: var(--pager-chev-stroke) solid currentColor;
     transform: rotate(45deg);
     transition: transform 320ms ease;
   }
@@ -322,7 +324,7 @@ const hasSummary = Astro.slots.has("summary");
   .pdisc__vals {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 2px 4px;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -397,4 +399,11 @@ const hasSummary = Astro.slots.has("summary");
   .pdisc__link:hover {
     color: var(--color-muted);
   }
+  @media (--bp-mobile) {
+    .pdisc__toggle::after { border-width: 1px; }
+    .pdisc__body { padding: 24px 0 12px; }
+    .pdisc__body-inner { gap: 24px; }
+    .pdisc__vals--links { gap: 12px 18px; }
+  }
 </style>
+

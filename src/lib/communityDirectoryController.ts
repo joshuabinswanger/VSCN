@@ -1,16 +1,12 @@
 import { watchAuth } from "./auth.ts";
 import { pageLifetime } from "./pageLifecycle.ts";
 import { navigate } from "astro:transitions/client";
-import {
-  DEFAULT_VIEW,
-  GALLERY_PATTERNS,
-  STRIP_SLOT_ROWS,
-  TAG_CHIP_VIEW,
-  layOutSlots,
-  layOutWall,
-  type Slot,
-  type ViewName,
-} from "./communityLayout.ts";
+import { isWorkSort, sectionWorks, type SortableWork, type WorkSort } from "./communitySort.ts";
+import { DEFAULT_VIEW, viewFromParam, type ViewName } from "./communityLayout.ts";
+import { setPagesPaging } from "./pagesPager.ts";
+import { setPagesEntrance } from "./pagesEntrance.ts";
+import { shuffleBands } from "./communityDeal.ts";
+import { searchDirectory, type SearchIndex } from "./communitySearch.ts";
 
 // ────────────────────────────────────────────────────────────────────────
 // Behaviour layer: the deal and the signed-out CTA.
@@ -20,24 +16,14 @@ import {
 // ────────────────────────────────────────────────────────────────────────
 
 /**
- * The grid is drawn at build time; this decides who stands where in it.
- * The layout is recomputed from the same module the frontmatter used.
- * SPREAD and WALL deal identically: every member into the pattern's own
- * slots, shuffled artwork leading, the tag cards closing the page in
- * their build-time completeness order (restored from data-rank), which a
- * shuffle would throw away — same treatment, always last.
- *
- * `strip` — the shelved horizontal layout, reachable only by typing
- * ?pattern=strip — is the exception with no slot table: the image cells
- * move into the .cgrid__strip flex row instead, and only the index is
- * laid out.
- *
- * Rewriting geometry decouples DOM order from what you see, so the DOM is
- * re-sorted into row order afterwards and reading order still runs down
- * the page (appendChild also moves cells back OUT of the strip wrapper).
+ * This decides who stands where. The layout is recomputed from the same
+ * module the frontmatter used. PAGES and WALL deal identically: every
+ * member (or every work, on the wall) into the view, shuffled artwork
+ * leading within a score band, in the build-time completeness order
+ * (restored from data-rank) between bands. The pages have no slot table —
+ * the DOM order the deal appends IS the stack the page snaps down.
  */
 type LayoutMode = ViewName;
-const MODES: LayoutMode[] = ["spread", "grid", "strip", "index"];
 
 // ── THE DEAL HAS TO SURVIVE A BACK ────────────────────
 // The shuffle used to draw straight from Math.random(), so returning to this
@@ -107,14 +93,6 @@ function freshSeed(): number {
 
 let dealSeed = 0;
 
-/** Fisher-Yates, in place, drawing from a caller-supplied stream. */
-function shuffleInto<T>(out: T[], random: () => number): T[] {
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
-}
 
 /**
  * THE DEAL IS RANDOM WITHIN A SCORE, ORDERED BETWEEN SCORES.
@@ -141,20 +119,9 @@ function shuffleInto<T>(out: T[], random: () => number): T[] {
  * seed still reproduces its deal on Back (see rememberedSeed).
  */
 function shuffledInBands(items: HTMLElement[]): HTMLElement[] {
-  const random = rngFrom(dealSeed || (dealSeed = freshSeed()));
-  const bands = new Map<number, HTMLElement[]>();
-  for (const item of items) {
-    // A cell with no readable score bands with the other unscored ones at 0
-    // rather than becoming its own NaN band — Map keys NaN to itself, which
-    // would sort unpredictably against real numbers.
-    const key = Number(item.dataset.score);
-    const band = bands.get(Number.isFinite(key) ? key : 0);
-    if (band) band.push(item);
-    else bands.set(Number.isFinite(key) ? key : 0, [item]);
-  }
-  return [...bands.keys()]
-    .sort((a, b) => b - a)
-    .flatMap((key) => shuffleInto(bands.get(key) as HTMLElement[], random));
+  // One implementation for this deal and the one that runs before the first
+  // paint (communityDeal.ts), so a seed always gives the same order.
+  return shuffleBands(items, dealSeed || (dealSeed = freshSeed()));
 }
 
 // ── THE VIEW IS A NAVIGATION ──────────────────────────
@@ -196,24 +163,6 @@ function goTo(url: URL) {
   navigate(url.pathname + url.search);
 }
 
-function writeSlot(cell: HTMLElement, s: Slot) {
-  cell.style.setProperty("--gc", `${s.colStart} / span ${s.colSpan}`);
-  cell.style.setProperty("--gr", `${s.rowStart} / span ${s.rowSpan}`);
-  // The card reads this to bound its frame — a deal that moved the
-  // geometry without it would leave a card capped to its old slot.
-  cell.style.setProperty("--slot-rows", String(s.rowSpan));
-  // The wall's brick step belongs to the wall. Cleared here so a cell that
-  // was in an offset row cannot carry the step into the spread — where it
-  // would be inert (only the wall's rule reads it) but a lie in the DOM —
-  // and the wall re-writes it straight after this call.
-  cell.style.removeProperty("--row-offset");
-  // Kept in step with the placement so the ?grid labels stay truthful after
-  // a deal, and so the row sort below reads the row the cell actually has.
-  cell.dataset.row = String(s.rowStart);
-  cell.dataset.span = String(s.rowSpan);
-  cell.dataset.col = `${s.colStart}-${s.colStart + s.colSpan - 1}`;
-}
-
 /** The wall's two measurements: how many fixed-width cards the window fits,
  *  and the gutter that spreads them from edge to edge once they are in.
  *
@@ -231,37 +180,47 @@ function writeSlot(cell: HTMLElement, s: Slot) {
  *  Reads clientWidth, so the grid must already be visible and already carry
  *  data-pattern="grid" (and the body its bleed class) when this is called —
  *  otherwise it measures against the wrong width. */
-function wallMetrics(grid: HTMLElement): { cols: number; gap: number } {
+/** THE MASONRY'S MEASURE (2026-10-15, replacing the multicol — see the
+ *  masonry block at the end of CommunityGrid.astro's sheet). The knobs are
+ *  read off the grid rule so the drawing has one source: a column to aim
+ *  for and a gutter on a desktop (as many columns as fit, the way
+ *  `column-width` chose), a fixed count on a phone, and the air under each
+ *  tile, which the placement counts as part of a tile's height. `colWidth`
+ *  is what the flex columns will resolve to, so a tile's height can be
+ *  known from its picture's aspect before anything is laid out. */
+function masonryMetrics(grid: HTMLElement): {
+  cols: number;
+  colWidth: number;
+  tileGap: number;
+} {
   const cs = getComputedStyle(grid);
   const px = (name: string) => parseFloat(cs.getPropertyValue(name));
-  const card = px("--wall-card");
-  const min = px("--wall-gap-min");
-  const max = px("--wall-gap-max");
-  const edge = px("--wall-edge");
-  if (!card || Number.isNaN(min) || Number.isNaN(edge)) return { cols: 0, gap: 0 };
-  // n cards and n−1 gutters at the floor have to fit inside the measure less
-  // both edges: n × (card + min) − min ≤ available. At least one, however
-  // narrow the window.
-  const available = grid.clientWidth - 2 * edge;
-  const cols = Math.max(1, Math.floor((available + min) / (card + min)));
-  // Then spread: everything the cards did not use goes into the gutters, so
-  // the first and last card sit on the edges. A lone card has no gutter to
-  // widen and keeps the floor. The max() is belt and braces — the count was
-  // taken at the floor, so the division cannot come back under it.
-  const spread = cols > 1 ? Math.max(min, (available - cols * card) / (cols - 1)) : min;
-  // The ceiling hands the surplus back to the edges (the tracks are centred,
-  // so nothing else has to know) at the one width where spreading would draw
-  // a gutter wider than a card.
-  return { cols, gap: Number.isNaN(max) ? spread : Math.min(spread, max) };
+  const fixed = px("--masonry-cols");
+  const col = px("--masonry-col");
+  const gap = px("--masonry-gap");
+  const tileGap = px("--masonry-tile-gap");
+  const width = grid.clientWidth;
+  if (Number.isNaN(gap) || !width) return { cols: 0, colWidth: 0, tileGap: 0 };
+  const cols =
+    fixed > 0 ? fixed : col > 0 ? Math.max(1, Math.floor((width + gap) / (col + gap))) : 1;
+  return {
+    cols,
+    colWidth: (width - (cols - 1) * gap) / cols,
+    tileGap: Number.isNaN(tileGap) ? 0 : tileGap,
+  };
 }
 
-/** Writes the measurements onto the grid for the CSS to draw from, and hands
- *  back the count the deal needs. */
-function writeWallMetrics(grid: HTMLElement): number {
-  const { cols, gap } = wallMetrics(grid);
-  grid.style.setProperty("--wall-cols", String(Math.max(1, cols)));
-  grid.style.setProperty("--wall-gap", `${gap}px`);
-  return cols;
+/** A wall tile's height in a column of `colWidth`, from its picture's
+ *  dimensions (the lightbox's data-pswp-width/height): the frame keeps the
+ *  aspect and caps a tall work at 1.5 × the column (CommunityWorkCard's
+ *  --frame-cap through the cell's --cgrid-row), narrowing it instead. A tile
+ *  with no readable dimensions counts as a square. */
+function tileHeight(cell: HTMLElement, colWidth: number): number {
+  const link = cell.querySelector<HTMLElement>(".cwork__link");
+  const w = Number(link?.dataset.pswpWidth);
+  const h = Number(link?.dataset.pswpHeight);
+  if (!(w > 0 && h > 0)) return colWidth;
+  return Math.min(colWidth * (h / w), 1.5 * colWidth);
 }
 
 /** The count the wall was last dealt at. A resize that fits the same number
@@ -269,14 +228,6 @@ function writeWallMetrics(grid: HTMLElement): number {
  *  for nothing. */
 let wallCols = 0;
 
-/** Reading order for the DOM re-sort: down the page, then across it. The
- *  column tiebreak only matters in aligned-rows patterns (grid), where a
- *  whole row shares a rowStart and a stable sort alone would leave the
- *  shuffled deal's order — visually left-to-right, read in random order. */
-function domOrder(a: HTMLElement, b: HTMLElement): number {
-  const col = (cell: HTMLElement) => Number((cell.dataset.col ?? "").split("-")[0]) || 0;
-  return Number(a.dataset.row) - Number(b.dataset.row) || col(a) - col(b);
-}
 
 // ── The bar's state ───────────────────────────────────────────────────────
 // One selected tag, shared by every view: the galleries re-deal the
@@ -291,27 +242,399 @@ function memberMatches(el: HTMLElement): boolean {
   return !tagFilter || (el.dataset.tags ?? "").includes(`|${tagFilter}|`);
 }
 
-/** Close the tags panel wherever it is. Queries the live DOM rather than
- *  closing over it, so the module-level listeners below survive
- *  ClientRouter swaps without stacking or holding dead nodes. */
-function closeTagPanel() {
-  const panel = document.getElementById("tag-filter-panel");
-  if (panel && !panel.hidden) {
-    panel.hidden = true;
-    document.getElementById("tag-filter-btn")?.setAttribute("aria-expanded", "false");
+// ── The Images view's sort ────────────────────────────────────────────────
+// One of communitySort's four, or none — the wall's standing shuffled-in-
+// bands order. Mirrors into ?sort= like the tag does, reset on every
+// astro:page-load for the same reason. Only the wall reads it; the sort
+// menu is hidden in every other view (reflectSort).
+let workSort: WorkSort | "" = "";
+
+function sortFromURL(): WorkSort | "" {
+  const s = new URLSearchParams(window.location.search).get("sort");
+  return isWorkSort(s) ? s : "";
+}
+
+/** The sort menu: shown on the wall only; its pressed row and the trigger's
+ *  name follow `workSort` (the option's text when one is set, the resting
+ *  "Sort" otherwise — the tags trigger's convention). */
+function reflectSort(mode: LayoutMode) {
+  const menu = document.querySelector<HTMLElement>(".sort-menu");
+  if (menu) menu.hidden = mode !== "grid";
+  let current = "";
+  document.querySelectorAll<HTMLButtonElement>(".sort-menu__btn").forEach((btn) => {
+    const active = Boolean(workSort) && btn.dataset.sort === workSort;
+    btn.setAttribute("aria-pressed", String(active));
+    if (active) current = btn.textContent?.trim() ?? "";
+  });
+  const label = document.getElementById("sort-menu-label");
+  if (label) label.textContent = current || (label.dataset.rest ?? "");
+  // Filled dark while a sort is set, as the tags trigger is with a tag.
+  document.getElementById("sort-menu-btn")?.classList.toggle("filter-word--set", Boolean(current));
+}
+
+/** A wall tile, read for communitySort. The attributes are stamped by
+ *  CommunityGrid.astro's work cells (data-date, data-member…), the member's
+ *  href comes from the same place the lightbox's credit link reads it. */
+function sortableOf(cell: HTMLElement): SortableWork & { cell: HTMLElement } {
+  const d = cell.dataset;
+  const out: SortableWork & { cell: HTMLElement } = {
+    cell,
+    member: { key: d.member ?? "", label: d.memberName ?? "", href: d.memberHref },
+  };
+  if (d.date) out.date = d.date;
+  if (d.project) out.project = { key: d.project, label: d.projectName ?? "" };
+  if (d.fields) {
+    // Build-stamped JSON (see workFields in CommunityGrid.astro); a tile
+    // whose attribute will not parse is treated as untagged, not dropped.
+    try {
+      const parsed: unknown = JSON.parse(d.fields);
+      if (Array.isArray(parsed)) {
+        out.fields = parsed
+          .filter((f): f is { key: string; label?: string } => !!f && typeof f.key === "string")
+          .map((f) => ({ key: f.key, label: f.label ?? f.key }));
+      }
+    } catch {
+      /* untagged */
+    }
+  }
+  return out;
+}
+
+/** The bar's four drop-ups (search, tags, sort, view), as [trigger, panel] id pairs. */
+const BAR_MENUS = [
+  ["search-btn", "search-panel"],
+  ["tag-filter-btn", "tag-filter-panel"],
+  ["sort-menu-btn", "sort-menu-panel"],
+  ["view-menu-btn", "view-menu-panel"],
+] as const;
+
+/** The site's ease-out (lightbox.ts), and long enough to read as the pill
+ *  growing rather than jumping. */
+const BAR_EASE = "cubic-bezier(0.22, 0.61, 0.36, 1)";
+const BAR_MS = 320;
+
+/** The pill's size animation in flight, and the panel it is closing over. */
+let barAnim: Animation | null = null;
+let barLeaving: HTMLElement | null = null;
+
+/** Write the pill's corner radius. Only the phone sheet EASES it (`ease`);
+ *  everywhere else it snaps, because --bar-r rests at its registered 999px
+ *  and easing from there down to the half-height made the growing box bulge
+ *  round for the length of the transition (10-16, Josh: "should not expand
+ *  the border roundness on animation"). `null` drops back to the capsule. */
+function setBarR(pill: HTMLElement, r: string | null, ease = false) {
+  if (!ease) pill.style.transition = "none";
+  if (r === null) pill.style.removeProperty("--bar-r");
+  else pill.style.setProperty("--bar-r", r);
+  if (!ease) {
+    getComputedStyle(pill).getPropertyValue("--bar-r");
+    pill.style.removeProperty("transition");
   }
 }
 
+/** End a size animation where it stands: the closing panel goes, the held
+ *  size is released. */
+function settleBar(pill: HTMLElement) {
+  barAnim?.cancel();
+  barAnim = null;
+  delete pill.dataset.sizing;
+  if (barLeaving) {
+    barLeaving.getAnimations().forEach((a) => a.cancel());
+    barLeaving.hidden = true;
+    barLeaving.style.removeProperty("pointer-events");
+    barLeaving = null;
+  }
+  const anyOpen = BAR_MENUS.some(([, id]) => document.getElementById(id)?.hidden === false);
+  if (!anyOpen) setBarR(pill, null);
+}
+
+/** Open one drop-up (`null`: none), the pill GROWING round it (2026-10-16,
+ *  Josh: "can the selections stay contained in the outer pill so everything
+ *  smoothly animates with expands and contracts"). The panels are inside the
+ *  pill (.community-bar__panels), so the state change alone resizes it; this
+ *  measures the size before and after and eases between the two, the pill
+ *  clipping its content meanwhile. Closing keeps the panel in until the
+ *  pill has shrunk off it. Retargets from wherever an animation in flight
+ *  has got to. Queries the live DOM rather than closing over it, so the
+ *  module-level listeners below survive ClientRouter swaps. */
+function setBarMenu(open: string | null) {
+  const pill = document.querySelector<HTMLElement>(".community-bar__in");
+  if (barLeaving && !barLeaving.isConnected) barLeaving = null;
+  // Already headed there (a second click outside while it closes, say): let
+  // the animation run on rather than snap it to its end.
+  const shown = BAR_MENUS.find(([, id]) => {
+    const el = document.getElementById(id);
+    return el?.hidden === false && el !== barLeaving;
+  })?.[1];
+  if ((shown ?? null) === open) return;
+  const from = pill?.getBoundingClientRect();
+  if (pill) settleBar(pill);
+  const prev = BAR_MENUS.find(([, id]) => document.getElementById(id)?.hidden === false)?.[1] ?? null;
+  if (prev === open) return;
+  // The corners of the closed capsule, kept while the box is tall: a 999px
+  // radius on an open pill would bulge into a stadium.
+  if (pill && !prev) setBarR(pill, `${pill.offsetHeight / 2}px`);
+
+  for (const [btnId, panelId] of BAR_MENUS) {
+    const panel = document.getElementById(panelId);
+    if (panel) panel.hidden = panelId !== open;
+    document.getElementById(btnId)?.setAttribute("aria-expanded", String(panelId === open));
+  }
+  // THE SHEET (phone): the search opens as the whole screen, see the
+  // data-search-sheet rules in CommunityGrid.astro. Set before the size
+  // after is measured, so the pill eases from the capsule to the screen;
+  // cleared before the closing measure, so it eases back. The corners go
+  // with it (--bar-r transitions) and the keyboard is dismissed on close.
+  const sheet = open === "search-panel" && window.matchMedia("(max-width: 767px)").matches;
+  const bar = pill?.closest<HTMLElement>(".community-bar");
+  if (bar) {
+    if (sheet) bar.dataset.searchSheet = "";
+    else delete bar.dataset.searchSheet;
+  }
+  if (sheet && pill) setBarR(pill, "0px", true);
+  if (prev === "search-panel" && open !== prev && document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
+
+  if (!pill || !from || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (pill && !open) setBarR(pill, null);
+    return;
+  }
+  const leaving = !open && prev ? document.getElementById(prev) : null;
+  if (leaving) {
+    leaving.style.pointerEvents = "none";
+    leaving.animate([{ opacity: 1 }, { opacity: 0 }], { duration: BAR_MS * 0.6, fill: "forwards" });
+    barLeaving = leaving;
+  }
+  const entering = open ? document.getElementById(open) : null;
+  entering?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: BAR_MS, easing: BAR_EASE });
+  sizeBar(pill, from);
+}
+
+/** Ease the pill from `from` to the size its content now asks for. A panel
+ *  still closing (barLeaving) is left out of that size and kept shown until
+ *  the pill has shrunk off it. */
+function sizeBar(pill: HTMLElement, from: DOMRect) {
+  delete pill.dataset.sizing;
+  if (barLeaving) barLeaving.hidden = true;
+  const to = pill.getBoundingClientRect();
+  // Closing: the capsule's corners for the size it closes to, so the sheet's
+  // square corners round back while it shrinks (settleBar drops the value).
+  if (!BAR_MENUS.some(([, id]) => document.getElementById(id)?.hidden === false)) {
+    setBarR(pill, `${to.height / 2}px`, true);
+  }
+  // Measured above at rest; from here the row keeps that width (CSS).
+  pill.dataset.sizing = "";
+  if (barLeaving) barLeaving.hidden = false;
+  const anim = pill.animate(
+    [
+      { width: `${from.width}px`, height: `${from.height}px` },
+      { width: `${to.width}px`, height: `${to.height}px` },
+    ],
+    // Held at the end until the panel is gone, or the pill would flash
+    // back to the closing panel's size for a frame.
+    { duration: BAR_MS, easing: BAR_EASE, fill: "forwards" }
+  );
+  barAnim = anim;
+  anim.onfinish = () => {
+    if (barAnim === anim) settleBar(pill);
+  };
+}
+
+// THE LABELS CHANGE ACROSS A SWAP. The bar persists, but the new page names
+// a new view, tag or sort in its triggers (and shows or hides Sort), so the
+// pill's natural width moves. Its size just before the swap is the start;
+// once the page-load handler has relabelled it, it eases to the new one —
+// retargeting any open or close still in flight.
+let barBefore: { el: HTMLElement; rect: DOMRect } | null = null;
+document.addEventListener("astro:before-swap", () => {
+  const el = document.querySelector<HTMLElement>(".community-bar__in");
+  barBefore = el ? { el, rect: el.getBoundingClientRect() } : null;
+});
+function reflowBar() {
+  const before = barBefore;
+  barBefore = null;
+  const pill = document.querySelector<HTMLElement>(".community-bar__in");
+  if (!pill || before?.el !== pill) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  barAnim?.cancel();
+  barAnim = null;
+  sizeBar(pill, before.rect);
+}
+
+function closeBarMenus() {
+  setBarMenu(null);
+}
+
+/** Flip one drop-up, closing the other. Returns whether it is now open. */
+function toggleBarMenu(panelId: string): boolean {
+  const panel = document.getElementById(panelId);
+  if (!panel) return false;
+  const opening = panel.hidden || panel === barLeaving;
+  setBarMenu(opening ? panelId : null);
+  return opening;
+}
+
+/** The bar out of <main> and onto <body> (2026-10-16, "persistent across
+ *  page changes within community"). It is rendered in main and persisted
+ *  from page to page (transition:persist in CommunityGrid.astro), but main
+ *  itself fades, rises and blurs on every swap (Layout.astro), and a fixed
+ *  element inside an animated one moves with it. Run on after-swap, before
+ *  the first frame of the new page, and on page-load for a full load; the
+ *  swap finds a persisted element anywhere in the old body, so it comes
+ *  back next time too. */
+function liftBar() {
+  const bar = document.querySelector<HTMLElement>(".community-bar");
+  if (bar && bar.parentElement !== document.body) document.body.append(bar);
+  // A leave fade (below) whose navigation never left.
+  bar?.getAnimations().forEach((a) => a.cancel());
+  // Moving a node can drop the animation it carries, and then nothing would
+  // ever finish it: release a held size and a panel left half-closed.
+  const pill = bar?.querySelector<HTMLElement>(".community-bar__in");
+  if (pill && barAnim && barAnim.playState !== "running") settleBar(pill);
+}
+document.addEventListener("astro:after-swap", liftBar);
+document.addEventListener("astro:page-load", liftBar);
+
+// Off the directory (another page, or the other language's directory, whose
+// bar is a different one): the bar fades with the page it no longer belongs
+// to, since it is not in <main> to fade with it.
+document.addEventListener("astro:before-preparation", (e) => {
+  if (e.to.pathname === e.from.pathname) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  document
+    .querySelector<HTMLElement>(".community-bar")
+    ?.animate([{}, { opacity: 0 }], { duration: 220, easing: "ease-in", fill: "forwards" });
+});
+
 // Module scope, installed ONCE per session — not inside astro:page-load,
 // where document-level listeners would stack one copy per navigation.
+// The whole pill counts as inside: the panels are no longer in .bar-menu.
 document.addEventListener("click", (e) => {
-  const panel = document.getElementById("tag-filter-panel");
-  if (!panel || panel.hidden) return;
-  if (!(e.target instanceof Element) || !e.target.closest(".tag-filter")) closeTagPanel();
+  if (!(e.target instanceof Element) || !e.target.closest(".community-bar__in")) closeBarMenus();
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeTagPanel();
+  if (e.key === "Escape") closeBarMenus();
 });
+
+// ── THE SEARCH (2026-10-16, src/lib/communitySearch.ts) ─────────────────
+// The index rides in the bar as JSON; parsed once per bar (the bar persists
+// across the directory's own navigations, so usually once per visit).
+let searchIndexCache: { el: Element; index: SearchIndex } | null = null;
+function searchIndex(): SearchIndex | null {
+  const el = document.getElementById("community-search-index");
+  if (!el) return null;
+  if (searchIndexCache?.el === el) return searchIndexCache.index;
+  try {
+    const index = JSON.parse(el.textContent ?? "") as SearchIndex;
+    searchIndexCache = { el, index };
+    return index;
+  } catch {
+    return null;
+  }
+}
+
+function make<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text?: string): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  node.className = cls;
+  if (text) node.textContent = text;
+  return node;
+}
+
+/** A row: an optional picture, a name, a quieter line under it. */
+function searchRow(href: string, name: string, sub: string, photo: string, round: boolean): HTMLLIElement {
+  const li = document.createElement("li");
+  const a = make("a", "search__row");
+  a.href = href;
+  // A person without a picture keeps the disc, so the names stay in line.
+  const thumb = `search__thumb${round ? " search__thumb--round" : ""}`;
+  if (photo) {
+    const img = make("img", thumb);
+    img.src = photo;
+    img.alt = "";
+    img.decoding = "async";
+    a.append(img);
+  } else if (round) {
+    a.append(make("span", thumb));
+  }
+  const words = make("span", "search__words");
+  words.append(make("span", "search__name", name));
+  if (sub) words.append(make("span", "search__sub", sub));
+  a.append(words);
+  li.append(a);
+  return li;
+}
+
+/** Draw the results for what the field holds. Picture thumbnails are the
+ *  wall's own rendered tiles, found by their data-work key. */
+function renderSearch() {
+  const box = document.getElementById("search-results");
+  const input = document.getElementById("search-input") as HTMLInputElement | null;
+  const index = searchIndex();
+  if (!box || !input || !index) return;
+  const q = input.value.trim();
+  const found = searchDirectory(index, q);
+  const group = (title: string, list: HTMLElement) => {
+    const section = make("section", "search__group");
+    section.append(make("h3", "search__group-title", title), list);
+    return section;
+  };
+  const parts: HTMLElement[] = [];
+  if (found.people.length) {
+    const list = make("ul", "search__list");
+    found.people.forEach((p) => list.append(searchRow(p.href, p.name, p.role, p.photo, true)));
+    parts.push(group(box.dataset.people ?? "", list));
+  }
+  if (found.projects.length) {
+    const list = make("ul", "search__list");
+    found.projects.forEach((p) => list.append(searchRow(p.href, p.title, p.member, "", false)));
+    parts.push(group(box.dataset.projects ?? "", list));
+  }
+  if (found.images.length) {
+    const list = make("ul", "search__grid");
+    found.images.forEach((w) => {
+      const li = document.createElement("li");
+      const a = make("a", "search__tile");
+      a.href = w.href;
+      const label = [w.caption, w.member].filter(Boolean).join(" — ");
+      a.title = label;
+      a.setAttribute("aria-label", label);
+      const src = document
+        .querySelector<HTMLImageElement>(`.cgrid__cell[data-work="${CSS.escape(w.key)}"] img`)
+        ?.getAttribute("src");
+      if (src) {
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = "";
+        img.decoding = "async";
+        a.append(img);
+      }
+      li.append(a);
+      list.append(li);
+    });
+    parts.push(group(box.dataset.images ?? "", list));
+  }
+  if (!parts.length) {
+    parts.push(make("p", "field-note search__note", (q ? box.dataset.none : box.dataset.hint) ?? ""));
+  }
+  box.replaceChildren(...parts);
+}
+
+/** Size the pill to what the results now need, from where it stands. */
+function resizeSearch() {
+  const pill = document.querySelector<HTMLElement>(".community-bar__in");
+  // The sheet is the screen already; nothing to ease.
+  const sheet = pill?.closest<HTMLElement>(".community-bar")?.dataset.searchSheet !== undefined;
+  if (!pill || sheet || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    renderSearch();
+    return;
+  }
+  const from = pill.getBoundingClientRect();
+  barAnim?.cancel();
+  barAnim = null;
+  renderSearch();
+  sizeBar(pill, from);
+}
 
 /** The ledger's pass. Returns the visible count. */
 function applyIndexFilter(): number {
@@ -405,6 +728,16 @@ function reflectTagUI(mode: LayoutMode) {
   document
     .getElementById("tag-filter-btn")
     ?.classList.toggle("filter-word--set", Boolean(tagFilter));
+  reflectTagClear();
+}
+
+/** The tags card's Clear button stands only while there is something to
+ *  clear: an active tag, or text in the search field. */
+function reflectTagClear() {
+  const clear = document.getElementById("tag-filter-clear");
+  if (!clear) return;
+  const search = document.getElementById("tag-filter-search") as HTMLInputElement | null;
+  clear.hidden = !tagFilter && !(search?.value.trim() ?? "");
 }
 
 // One shuffle per VIEW, not per keystroke: page load and the view toggle
@@ -422,6 +755,7 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
   // aligned-rows grid, per cell in the spread. Stamped before any early
   // return so it is always truthful about what is on screen.
   grid.dataset.pattern = mode;
+  reflectSnap(mode);
 
   // The wall measures the WINDOW; every other view sits inside the page's
   // measure. This releases main's cap for the wall alone (see global.css),
@@ -430,13 +764,13 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
   // cards. Cleared for every other mode by the same call.
   document.body.classList.toggle("wall-bleed", mode === "grid");
 
-  // The grid wall hides the disclosures in CSS; close them here too, or
-  // a panel left open in the spread is still open on the way back.
-  if (mode !== "spread") {
-    grid.querySelectorAll<HTMLDetailsElement>("details[open]").forEach((d) => {
-      d.open = false;
-    });
-  }
+  // NOTHING TO CLOSE ANY MORE (2026-10-12). This used to fold every open
+  // disclosure on the way out of the spread, so a panel left open there was
+  // not still open on the way back. The only disclosures in the grid now are
+  // the gallery cards' text columns, which are OPEN by default and are the
+  // card — folding them here would bring the visitor back to a spread of
+  // nameless pictures. The wall hides the image cells outright, columns and
+  // all, so there is nothing to tidy.
 
   // The index is not a deal: the server rendered the whole ledger, so the
   // selector only swaps which of the two siblings is visible. The grid keeps
@@ -445,14 +779,21 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
   if (index) index.hidden = mode !== "index";
   if (mode === "index") {
     grid.hidden = true;
-    const stripEl = grid.querySelector<HTMLElement>(".cgrid__strip");
-    if (stripEl) stripEl.hidden = true;
     reflectFilterState(grid, mode);
     return;
   }
 
-  const strip = grid.querySelector<HTMLElement>(".cgrid__strip");
+  // The field sort's doubles (see the grid branch) are not cells of the
+  // deal: gone before the deal counts, matches or orders anything.
+  grid.querySelectorAll(".cgrid__cell[data-clone]").forEach((clone) => clone.remove());
   const cells = Array.from(grid.querySelectorAll<HTMLElement>(".cgrid__cell"));
+  // The wall's column wrappers (the grid branch below) are not part of any
+  // other view: their cells go back to the grid root, then the wrappers go.
+  // Cells first — removing a wrapper would take its cells with it.
+  grid.querySelectorAll<HTMLElement>(".cgrid__run").forEach((run) => {
+    run.querySelectorAll<HTMLElement>(".cgrid__cell").forEach((cell) => grid.appendChild(cell));
+    run.remove();
+  });
   // WHICH ARTWORK CELLS THIS VIEW IS MADE OF. The wall deals one tile per
   // WORK; every other view deals one card per MEMBER. Both sets are in the
   // DOM, and the one this view is not built from is hidden outright — which
@@ -479,7 +820,6 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
   // slot math is never asked to lay out zero cards.
   grid.hidden = matching.length === 0;
   if (matching.length === 0) {
-    if (strip) strip.hidden = true;
     reflectFilterState(grid, mode);
     return;
   }
@@ -512,72 +852,297 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
   }
   const orderedGallery = artworkOrder[artKind].filter((cell) => matching.includes(cell));
 
-  if (mode === "strip" && strip) {
-    orderedGallery.forEach((cell) => {
-      // Grid placement goes inert inside the flex row, but the frame cap
-      // does not — without it a portrait would grow to its slotless 999.
-      cell.style.setProperty("--slot-rows", String(STRIP_SLOT_ROWS));
-      // The old rectangle is gone; a stale ?grid label would lie about it.
-      cell.dataset.row = "0";
-      cell.dataset.span = "";
-      cell.dataset.col = "";
-      strip.appendChild(cell);
-    });
-    strip.hidden = false;
-    // The index ladder that used to run under the strip is gone with the tag
-    // cards it laid out — layOutStripIndex has no callers left.
-    reflectFilterState(grid, mode);
-    return;
-  }
 
   if (mode === "grid") {
-    // The wall deals every WORK into its own slot, and nothing else.
-    // Generated, not drawn: as many fixed-width tracks as the window fits
-    // (see the wall block in the styles above). The count goes onto the grid
-    // for the CSS to build its tracks from, and is remembered so a resize
-    // can tell a real change from a wobble.
-    wallCols = writeWallMetrics(grid);
-    const all = layOutWall(matching.length, wallCols);
-    orderedGallery.forEach((cell, i) => {
-      writeSlot(cell, all[i]);
-      // The brick: even rows are the offset ones (layOutWall's parity), and
-      // a one-track wall has nothing to step against — the only card in a
-      // row would simply hang off the right edge.
-      if (wallCols >= 2 && all[i].rowStart % 2 === 0) {
-        cell.style.setProperty("--row-offset", "calc(var(--wall-pitch) / 2)");
+    // THE WALL IS A MASONRY THE SCRIPT PLACES (2026-10-15, twice over). The
+    // slot deal (layOutWall's --gc/--gr) went first, for the sort's SECTION
+    // HEADS — `.cgrid__head` elements made here and removed on the next
+    // deal, one run of pictures per head. Then the MULTICOL went, the same
+    // evening (Josh: "there is a weird stagger for the right column if
+    // sorted"): multicol balances a run by cutting it at half its height,
+    // and a tile that will not break goes over to the next column, so three
+    // tiles stood one left, two right, with a hole under the first. So each
+    // run is now a flex row of N `.cgrid__col`s and every tile goes into the
+    // SHORTEST column, its height known from its picture's aspect before
+    // anything is laid out (tileHeight) — the masonry the reference site
+    // actually draws. N and the column width come from the grid rule's
+    // knobs (masonryMetrics); the count is remembered so a resize can tell a
+    // step from a wobble (redealWall).
+    const metrics = masonryMetrics(grid);
+    wallCols = metrics.cols;
+    grid.querySelectorAll(".cgrid__head").forEach((head) => head.remove());
+    const items = orderedGallery.map(sortableOf);
+    // The filtered tag's display label, for the one-section field sort:
+    // the option that offered it carries the first spelling seen.
+    const filteredOpt = tagFilter
+      ? document.querySelector<HTMLElement>(`.tag-filter__option[data-tag="${CSS.escape(tagFilter)}"]`)
+      : null;
+    const sections = workSort
+      ? sectionWorks(items, workSort, {
+          // Its own generator over the deal's seed, so the tag sections come
+          // back in the same order on Back (see rememberedSeed) without
+          // consuming the shuffle's own sequence.
+          random: rngFrom(dealSeed + 1),
+          noProject: grid.dataset.sortNoProject ?? "",
+          noField: grid.dataset.sortNoField ?? "",
+          ...(tagFilter && filteredOpt
+            ? { filtered: { key: tagFilter, label: filteredOpt.dataset.label ?? tagFilter } }
+            : {}),
+        })
+      : [{ key: "", label: "", items }];
+    // The cells this view does not show stay in the grid (display:none) —
+    // appended first so the shown run is contiguous and reads in order.
+    cells.filter((cell) => cell.hidden).forEach((cell) => grid.appendChild(cell));
+    // A TILE IN MORE THAN ONE SECTION (the field sort: a work under every
+    // tag it carries) is the real cell the first time and a CLONE after
+    // that — a node has one place in the DOM. Clones are marked so the next
+    // deal removes them (above) and the lightbox pages them like any tile:
+    // the same picture under two heads opens from either. The motion layer
+    // treats them as cells too; it builds after the deal.
+    const placed = new Set<HTMLElement>();
+    sections.forEach((section, i) => {
+      if (section.label) {
+        const head = document.createElement("h2");
+        head.className = "cgrid__head";
+        if (section.href) {
+          const a = document.createElement("a");
+          a.href = section.href;
+          a.textContent = section.label;
+          head.appendChild(a);
+        } else {
+          head.textContent = section.label;
+        }
+        grid.appendChild(head);
       }
+      // The run: N columns, each a stack. A tile goes to the shortest
+      // column — but a column has to be shorter by more than the air under
+      // a tile to count as shorter, else the leftmost wins: with two
+      // columns a pixel apart the eye reads them as level, and a third tile
+      // dropped on the right for a pixel's sake is exactly the hole on the
+      // left the multicol used to leave.
+      const run = document.createElement("div");
+      run.className = "cgrid__run";
+      const cols = Math.max(1, metrics.cols);
+      const columns: { el: HTMLElement; height: number }[] = [];
+      for (let c = 0; c < cols; c++) {
+        const el = document.createElement("div");
+        el.className = "cgrid__col";
+        run.appendChild(el);
+        columns.push({ el, height: 0 });
+      }
+      section.items.forEach(({ cell: original }) => {
+        let cell = original;
+        if (placed.has(original)) {
+          cell = original.cloneNode(true) as HTMLElement;
+          cell.dataset.clone = "";
+        } else {
+          placed.add(original);
+        }
+        cell.style.removeProperty("--gc");
+        cell.style.removeProperty("--gr");
+        cell.style.removeProperty("--row-offset");
+        // One row tall for the frame cap, as every wall slot was.
+        cell.style.setProperty("--slot-rows", "1");
+        let target = columns[0];
+        for (const col of columns) {
+          if (col.height < target.height - metrics.tileGap) target = col;
+        }
+        // The ?grid labels: the run and the column, not a drawn row.
+        cell.dataset.row = String(i + 1);
+        cell.dataset.span = "1";
+        cell.dataset.col = String(columns.indexOf(target) + 1);
+        delete cell.dataset.lane;
+        target.el.appendChild(cell);
+        target.height += tileHeight(cell, metrics.colWidth) + metrics.tileGap;
+      });
+      grid.appendChild(run);
     });
-    if (strip) strip.hidden = true;
-    cells.sort(domOrder).forEach((cell) => grid.appendChild(cell));
     reflectFilterState(grid, mode);
     return;
   }
 
-  // The spread deals exactly like the wall: one run of slots, filled with
-  // the shuffled artwork and nothing else.
-  const all = layOutSlots(GALLERY_PATTERNS.spread, matching.length, 0);
-  orderedGallery.forEach((cell, i) => writeSlot(cell, all[i]));
-  if (strip) strip.hidden = true;
-  cells.sort(domOrder).forEach((cell) => grid.appendChild(cell));
+  // PAGES: the members in deal order, one section each, DOM order = snap
+  // order (there is no slot table any more — the cell IS the frame, see
+  // the pages block in CommunityGrid.astro). The deal is still banded by
+  // score and seeded per history entry, so Back returns to the stack it
+  // left. The wall's placement properties are cleared in case the cell
+  // carried them across a view change.
+  orderedGallery.forEach((cell) => {
+    cell.style.removeProperty("--gc");
+    cell.style.removeProperty("--gr");
+    cell.style.removeProperty("--slot-rows");
+    cell.style.removeProperty("--row-offset");
+    delete cell.dataset.lane;
+    grid.appendChild(cell);
+  });
+  cells.filter((cell) => cell.hidden).forEach((cell) => grid.appendChild(cell));
   reflectFilterState(grid, mode);
 }
 
-function modeFromURL(): LayoutMode {
-  const p = new URLSearchParams(window.location.search).get("pattern");
-  return (MODES as string[]).includes(p ?? "") ? (p as LayoutMode) : DEFAULT_VIEW;
+/**
+ * THE PAGE SNAPS ONLY FOR THE PAGES VIEW. .page-wrap is the site's one
+ * scroll container (Layout.astro), so the snap is an attribute on it that
+ * global.css reads, set here and cleared for every other view and before a
+ * swap — a snapping /profile would be a trap.
+ */
+function reflectSnap(mode: LayoutMode) {
+  const wrap = document.querySelector<HTMLElement>(".page-wrap");
+  if (!wrap) return;
+  if (mode === "pages") wrap.dataset.snap = "y";
+  else delete wrap.dataset.snap;
+  setPagesPaging(mode === "pages");
+  setPagesEntrance(mode === "pages");
+}
+document.addEventListener("astro:before-swap", () => {
+  const wrap = document.querySelector<HTMLElement>(".page-wrap");
+  if (wrap) delete wrap.dataset.snap;
+});
+
+// ── BACK RETURNS TO THE MEMBER YOU LEFT (2026-10-16, Josh: "navigating back
+// from profiles to portfolio view"). Every arrival starts at the top since
+// 81ba724, so Back from member seven's profile landed on member one. A pixel
+// offset is not restored (that was the old slide, see Layout.astro): the
+// MEMBER is. Leaving the Portfolios view files the rank of the card on screen
+// under this entry's history index; a traverse back onto the entry puts that
+// card at its snap stop at once, while the arriving page is still held
+// invisible, so nothing glides. data-scroll-kept on <html> tells Layout's
+// phone "Back starts at the top" reset to stand aside for this arrival.
+const PAGES_AT_KEY = "vscn:pages-at:";
+/** The index of the entry on screen, adopted at page-load — on a Back,
+ *  history.state is already the DESTINATION's by before-preparation. */
+let pagesEntryIndex: number | null = null;
+let arrivalTraverse = false;
+let arrivalSettled: Promise<void> = Promise.resolve();
+
+function pagesCellOnScreen(): HTMLElement | null {
+  const mid = window.innerHeight / 2;
+  for (const cell of document.querySelectorAll<HTMLElement>(
+    '#member-grid[data-pattern="pages"] > .cgrid__cell[data-slot="image"]:not([hidden])'
+  )) {
+    const r = cell.getBoundingClientRect();
+    if (r.top <= mid && r.bottom > mid) return cell;
+  }
+  return null;
 }
 
-/** The Gallery/Grid selector's pressed state. In strip mode (URL-only,
- *  no UI) neither button is pressed, which is the honest rendering. */
+document.addEventListener("astro:before-preparation", () => {
+  if (pagesEntryIndex === null) return;
+  const rank = pagesCellOnScreen()?.dataset.rank;
+  try {
+    if (rank) sessionStorage.setItem(PAGES_AT_KEY + pagesEntryIndex, rank);
+    else sessionStorage.removeItem(PAGES_AT_KEY + pagesEntryIndex);
+  } catch {
+    /* Private mode: Back starts at the top, as everywhere else. */
+  }
+});
+
+document.addEventListener("astro:before-swap", (event) => {
+  const swap = event as unknown as {
+    navigationType?: string;
+    viewTransition?: { finished: Promise<void> };
+  };
+  delete document.documentElement.dataset.scrollKept;
+  pagesEntryIndex = null;
+  arrivalTraverse = swap.navigationType === "traverse";
+  arrivalSettled = swap.viewTransition?.finished.catch(() => {}) ?? Promise.resolve();
+});
+
+// Before page-load, so the flag is up whichever page-load handler runs first.
+document.addEventListener("astro:after-swap", () => {
+  if (arrivalTraverse && savedPagesRank() !== null) {
+    document.documentElement.dataset.scrollKept = "";
+  }
+});
+
+function savedPagesRank(): string | null {
+  const index = (history.state as { index?: number } | null)?.index;
+  if (typeof index !== "number") return null;
+  try {
+    return sessionStorage.getItem(PAGES_AT_KEY + index);
+  } catch {
+    return null;
+  }
+}
+
+/** Layout position, transforms ignored: the arriving <main> is held at its
+ *  first rise frame (translated and scaled), so a client rect lies. */
+function layoutTop(el: HTMLElement): number {
+  let y = 0;
+  for (let n: HTMLElement | null = el; n; n = n.offsetParent as HTMLElement | null) y += n.offsetTop;
+  return y;
+}
+
+function restorePagesMember(mode: LayoutMode) {
+  const index = (history.state as { index?: number } | null)?.index;
+  pagesEntryIndex = mode === "pages" && typeof index === "number" ? index : null;
+  const kept = document.documentElement.hasAttribute("data-scroll-kept");
+  const rank = arrivalTraverse ? savedPagesRank() : null;
+  arrivalTraverse = false;
+  if (mode !== "pages" || !rank) {
+    if (kept) delete document.documentElement.dataset.scrollKept;
+    return;
+  }
+  const cell = document.querySelector<HTMLElement>(
+    `#member-grid > .cgrid__cell[data-slot="image"][data-rank="${CSS.escape(rank)}"]:not([hidden])`
+  );
+  const wrap = document.querySelector<HTMLElement>(".page-wrap");
+  if (!cell || !wrap) {
+    if (kept) delete document.documentElement.dataset.scrollKept;
+    return;
+  }
+  document.documentElement.dataset.scrollKept = "";
+  const place = (): number => {
+    if (!cell.isConnected) return NaN;
+    const header = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--header-h")) || 0;
+    // On a phone the document scrolls (global.css), on a desktop .page-wrap.
+    const phone = getComputedStyle(wrap).overflowY === "visible";
+    const top = layoutTop(cell) - header - (phone ? 0 : layoutTop(wrap));
+    if (phone) window.scrollTo({ top, behavior: "instant" });
+    else wrap.scrollTo({ top, behavior: "instant" });
+    return top;
+  };
+  // Every frame while the page is held invisible, not once: at page-load the
+  // swapped-in cells can still be unstyled (each ~9000px tall for a frame in
+  // WebKit), and one placement then landed a card down and jumped back once
+  // the page was already showing. Stops when the hold is off and the target
+  // has stood still, so a reader's own scroll is never fought.
+  const root = document.documentElement;
+  let last = NaN;
+  let frames = 0;
+  const settle = () => {
+    const top = place();
+    const held = root.hasAttribute("data-arrive-hold");
+    if (!held && top === last) return;
+    last = top;
+    if (++frames < 120) requestAnimationFrame(settle);
+  };
+  settle();
+  // Again once the transition is done: the router may restore the window's
+  // offset late, and the snap only re-engages after the rise.
+  void arrivalSettled.then(() => requestAnimationFrame(place));
+}
+
+
+function modeFromURL(): LayoutMode {
+  return viewFromParam(new URLSearchParams(window.location.search).get("pattern"));
+}
+
+/** The view menu's pressed row and its trigger's name. In strip mode
+ *  (URL-only, no UI) no row is pressed and the trigger says "View", which
+ *  is the honest rendering. */
 function reflectMode(mode: LayoutMode) {
+  let current = "";
   document.querySelectorAll<HTMLButtonElement>(".view-toggle__btn").forEach((btn) => {
-    btn.setAttribute("aria-pressed", String(btn.dataset.mode === mode));
+    const active = btn.dataset.mode === mode;
+    btn.setAttribute("aria-pressed", String(active));
+    if (active) current = btn.textContent?.trim() ?? "";
   });
+  const label = document.getElementById("view-menu-label");
+  if (label) label.textContent = current || (label.dataset.rest ?? "");
 }
 
 // Module scope so a page swap replaces the watch instead of stacking a
 // second one on a bar the first is still holding.
-let fadeInsetObserver: ResizeObserver | null = null;
 
 document.addEventListener("astro:page-load", () => {
   const grid = document.getElementById("member-grid");
@@ -594,65 +1159,48 @@ document.addEventListener("astro:page-load", () => {
     // The view first: the dropdown's list depends on it (reflectTagOptions).
     const mode = modeFromURL();
     reflectTagUI(mode);
+    // The wall's sort, from the URL like the tag; the menu shows on the
+    // wall only. Before the deal, which reads it.
+    workSort = sortFromURL();
+    reflectSort(mode);
 
     // Before the first deal: a Back onto this entry reproduces the page it
     // was left showing, a fresh arrival gets a new one. See rememberedSeed.
-    dealSeed = rememberedSeed();
+    {
+      const w = window as unknown as { __vscnDeal?: number };
+      // The deal before the first paint (communityDealSwap.ts on a
+      // navigation, the inline script in CommunityGrid on a full load) hands
+      // its seed over; adopting it makes this deal reproduce the screen.
+      const handed = w.__vscnDeal ?? null;
+      delete w.__vscnDeal;
+      dealSeed = handed ? storeSeed(handed) : rememberedSeed();
+    }
 
     applyLayout(grid, mode);
     reflectMode(mode);
+    restorePagesMember(mode);
 
-    // ── A TAG CHIP KEEPS THE PICTURE VIEW YOU ARE IN ──────
-    // (2026-09-03.) communityTagHref() sends every chip to the GALLERY,
-    // which is right everywhere the link is printed off this page — a
-    // member's own profile has no view to keep. On /community that left
-    // the chips disagreeing with the dropdown directly above them: picking
-    // "Animation" from the dropdown preserves ?pattern= (it builds its URL
-    // from window.location), while a chip in an open panel silently moved a
-    // reader off the wall and into the spread.
-    //
-    // The rule that satisfies both halves of Josh's ask ("clicking on tags
-    // opens gallery with tag filter applied", and NOT "a narrower ledger"):
-    // a chip goes to PICTURES, and keeps the picture view it was pressed in.
-    // The wall is pictures, so grid → grid. The ledger is not, so index →
-    // the spread, exactly as before.
-    //
-    // THE GALLERY IS NAMED NOW, not implied by an absent parameter — the
-    // bare URL is the ledger while DEFAULT_VIEW says so, and a chip that
-    // dropped ?pattern= would land the reader on the very ledger this rule
-    // exists to take them off. So every chip carries an explicit view.
-    //
-    // The href is REWRITTEN rather than intercepted on click, so the status
-    // bar, middle-click and open-in-new-tab all agree with what a left click
-    // does. Re-run on every page-load because a view switch is a navigation
-    // that swaps this document (see goTo).
-    // Edited as TEXT, not round-tripped through URL/URLSearchParams. That
-    // rewrites `%20` to `+` in a multi-word tag, which decodes to the same
-    // filter but is a different string — a second URL, a second history
-    // entry and a second cache key for one place, and it would have silently
-    // changed every chip on the page including the ones this rule leaves
-    // alone. Splitting on the suffix first makes the pass idempotent, since
-    // it runs again on every swapped-in document.
-    document.querySelectorAll<HTMLAnchorElement>("a.pdisc__tag").forEach((chip) => {
-      // Split on EITHER separator: communityTagHref emits "?tag=…&pattern="
-      // for a real tag and "?pattern=" for the tagless case, and a pass that
-      // only knew the "&" form would append a second pattern to the latter.
-      const base = (chip.getAttribute("href") ?? "").split(/[?&]pattern=/)[0];
-      const view = mode === "grid" ? "grid" : TAG_CHIP_VIEW;
-      chip.setAttribute("href", `${base}${base.includes("?") ? "&" : "?"}pattern=${view}`);
-    });
-    if (new URLSearchParams(window.location.search).has("grid")) {
-      grid.classList.add("cgrid--debug");
-    }
-
+    // ── A PROFILE TAG GOES TO PORTFOLIOS, WHATEVER VIEW IT IS IN
+    // (2026-10-15, Josh: "image tags send to images site with tag selected,
+    // profile tags to portfolio".) A chip in a card panel is a MEMBER tag, so
+    // communityTagHref() already sends it to the spread, and the chip is left
+    // alone. Until today this pass rewrote it to keep the Images view when
+    // pressed there (2026-09-03), which landed a member tag on a wall that
+    // filters by the PICTURES' tags. Work and project tags go to Images via
+    // communityWorkTagHref().
     // The view selector. Each choice is a NAVIGATION to the same page with a
     // different ?pattern= — see goTo above for why it is not a local re-deal
     // any more. Everything else follows from the URL: the handler below runs
     // again on the swapped-in document, deals the view, presses the right
     // button and rebuilds the motion layer.
+    // The bar PERSISTS across the directory's own navigations (transition:persist)
+    // while this handler runs again on every one, so its listeners are bound
+    // for this page only and dropped at the swap — or they would stack.
+    const life = pageLifetime();
     document.querySelectorAll<HTMLButtonElement>(".view-toggle__btn").forEach((btn) => {
       btn.addEventListener("click", () => {
         const next = btn.dataset.mode as LayoutMode;
+        closeBarMenus();
         if (grid.dataset.pattern === next) return;
         const url = new URL(window.location.href);
         // The DEFAULT view is the bare URL; every other view is named.
@@ -677,54 +1225,8 @@ document.addEventListener("astro:page-load", () => {
           url.searchParams.delete("tag");
         }
         goTo(url);
-      });
+      }, { signal: life });
     });
-
-    // ── WHERE THE GALLERY FADE BEGINS ─────────────────────
-    // The mobile gallery's fade runs over `exit` against a scrollport inset
-    // by this many pixels, so the number IS the docked filter bar's bottom
-    // edge — see the cgrid-cell-out block in the stylesheet. It is read
-    // rather than recomputed because the two halves are a calc that has
-    // already had to be restated twice (`top`) and a line box of type
-    // (`offsetHeight`), and a third copy of either would be a third thing to
-    // keep in step.
-    //
-    // `top` is the DOCKED offset whether or not the bar is docked right now,
-    // which is what makes this safe to take at load with the page scrolled
-    // to the top. Once per page-load and once per bar resize — the font-size
-    // token steps at the breakpoint and the controls can wrap — and never on
-    // scroll: this is a constant the compositor then animates against.
-    //
-    // The same edge is where the header's backdrop layer has to end: the
-    // bar paints no fill of its own, and the nav's veil is stretched down
-    // past the nav by the difference. Set on .page-wrap because the nav is
-    // its child (not this grid's), and .page-wrap is swapped on navigation,
-    // so leaving the page takes the extension with it.
-    const fadeBar = document.querySelector<HTMLElement>(".community-bar");
-    if (fadeBar) {
-      const measureFadeInset = () => {
-        const dock = parseFloat(getComputedStyle(fadeBar).top);
-        if (!Number.isFinite(dock)) return;
-        const barBottom = dock + fadeBar.offsetHeight;
-        grid.style.setProperty("--cgrid-fade-inset", `${barBottom}px`);
-        const pageWrap = fadeBar.closest<HTMLElement>(".page-wrap");
-        const nav = pageWrap?.querySelector<HTMLElement>(":scope > nav");
-        if (pageWrap && nav) {
-          // Unrounded heights, not offsetHeight: the veil's edge is drawn,
-          // and a rounded one stops a fraction short of the bar and leaves
-          // a sliver of unveiled artwork showing under the controls.
-          const extend = Math.max(
-            0,
-            dock + fadeBar.getBoundingClientRect().height - nav.getBoundingClientRect().height,
-          );
-          pageWrap.style.setProperty("--nav-backdrop-extend", `${extend}px`);
-        }
-      };
-      measureFadeInset();
-      fadeInsetObserver?.disconnect();
-      fadeInsetObserver = new ResizeObserver(measureFadeInset);
-      fadeInsetObserver.observe(fadeBar);
-    }
 
     // The tags dropdown: the trigger flips the panel; typing in the panel
     // narrows its LIST (local, no deal); picking an option NAVIGATES to the
@@ -743,11 +1245,35 @@ document.addEventListener("astro:page-load", () => {
     const tagPanel = document.getElementById("tag-filter-panel");
     const tagSearch = document.getElementById("tag-filter-search") as HTMLInputElement | null;
 
+    document
+      .getElementById("view-menu-btn")
+      ?.addEventListener("click", () => toggleBarMenu("view-menu-panel"), { signal: life });
+
+    // The search: open it and the field takes the caret — unlike the tags
+    // room, typing is the whole point here, so a phone's keyboard is asked
+    // for on purpose. Each keystroke redraws the lists and the pill eases to
+    // their height; Enter follows the first result.
+    const searchInput = document.getElementById("search-input") as HTMLInputElement | null;
+    document.getElementById("search-btn")?.addEventListener("click", () => {
+      if (toggleBarMenu("search-panel")) searchInput?.focus({ preventScroll: true });
+    }, { signal: life });
+    searchInput?.addEventListener("input", resizeSearch, { signal: life });
+    document.getElementById("search-cancel")?.addEventListener("click", closeBarMenus, { signal: life });
+    searchInput?.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      document.querySelector<HTMLAnchorElement>("#search-results a")?.click();
+    }, { signal: life });
+    document.getElementById("search-results")?.addEventListener("click", (e) => {
+      if (e.target instanceof Element && e.target.closest("a")) closeBarMenus();
+    }, { signal: life });
+    document
+      .getElementById("sort-menu-btn")
+      ?.addEventListener("click", () => toggleBarMenu("sort-menu-panel"), { signal: life });
+
     tagBtn?.addEventListener("click", () => {
       if (!tagPanel) return;
-      const opening = tagPanel.hidden;
-      tagPanel.hidden = !opening;
-      tagBtn.setAttribute("aria-expanded", String(opening));
+      const opening = toggleBarMenu("tag-filter-panel");
       // ── THE PANEL DOES NOT SUMMON A KEYBOARD ──────────────
       // (2026-09-04, Josh: "search field should not trigger a keyboard
       // directly".) Focusing on open is right where the keyboard is already
@@ -761,47 +1287,68 @@ document.addEventListener("astro:page-load", () => {
       if (opening && matchMedia("(hover: hover) and (pointer: fine)").matches) {
         tagSearch?.focus();
       }
-    });
+    }, { signal: life });
 
     // Narrowing is the same pass that picks the view's options, so the two
     // rules cannot fight over a row — see reflectTagOptions.
-    tagSearch?.addEventListener("input", () => reflectTagOptions(mode));
+    tagSearch?.addEventListener("input", () => {
+      reflectTagOptions(mode);
+      reflectTagClear();
+    }, { signal: life });
+
+    // Clear empties the field and, when a tag is set, drops it — a
+    // navigation like any other tag change, so it is a history entry.
+    // With only search text to clear, the card stays open on the full list.
+    document.getElementById("tag-filter-clear")?.addEventListener("click", () => {
+      if (tagSearch) tagSearch.value = "";
+      if (!tagFilter) {
+        reflectTagOptions(mode);
+        reflectTagClear();
+        // Same rule as opening: no keyboard summoned on a touch screen.
+        if (matchMedia("(hover: hover) and (pointer: fine)").matches) tagSearch?.focus();
+        return;
+      }
+      closeBarMenus();
+      const url = new URL(window.location.href);
+      url.searchParams.delete("tag");
+      goTo(url);
+    }, { signal: life });
 
     document.querySelectorAll<HTMLButtonElement>(".tag-filter__option").forEach((opt) => {
       opt.addEventListener("click", () => {
         const picked = opt.dataset.tag ?? "";
         const next = picked === tagFilter ? "" : picked;
-        closeTagPanel();
+        closeBarMenus();
         const url = new URL(window.location.href);
         if (next) url.searchParams.set("tag", next);
         else url.searchParams.delete("tag");
         goTo(url);
-      });
+      }, { signal: life });
     });
 
-    // The page scrolls in .page-wrap, so a mouse wheel over the strip would
-    // scroll the PAGE past it. Translate the dominant vertical delta to the
-    // strip's own axis — but only while it can still move that way, so the
-    // page takes over at either end instead of the strip trapping the wheel.
-    const strip = grid.querySelector<HTMLElement>(".cgrid__strip");
-    strip?.addEventListener(
-      "wheel",
-      (e) => {
-        if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
-        const canRight = strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 1;
-        const canLeft = strip.scrollLeft > 0;
-        if ((e.deltaY > 0 && canRight) || (e.deltaY < 0 && canLeft)) {
-          e.preventDefault();
-          strip.scrollLeft += e.deltaY;
-        }
-      },
-      { passive: false }
-    );
+    // The sort menu: a navigation to ?sort=, like a tag pick — re-picking
+    // the active sort clears it, back to the shuffled wall. The sort menu
+    // trigger itself is wired with the other two below.
+    document.querySelectorAll<HTMLButtonElement>(".sort-menu__btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const picked = btn.dataset.sort ?? "";
+        const next = picked === workSort ? "" : picked;
+        closeBarMenus();
+        const url = new URL(window.location.href);
+        if (next) url.searchParams.set("sort", next);
+        else url.searchParams.delete("sort");
+        goTo(url);
+      }, { signal: life });
+    });
+
   }
 
   // One observer per VISIT, not per page-load for ever: every view and tag
   // switch is a navigation (goTo), so a bare observer here gained one more
   // copy, each holding a detached page, with every click in the directory.
+  // After every relabel above.
+  reflowBar();
+
   const cta = document.getElementById("community-signup-cta");
   if (cta) {
     watchAuth(pageLifetime(), (user) => {
@@ -810,12 +1357,6 @@ document.addEventListener("astro:page-load", () => {
   }
 });
 
-// The bar's ResizeObserver goes with the page it measures, rather than
-// waiting to be replaced by the next visit to /community.
-document.addEventListener("astro:before-swap", () => {
-  fadeInsetObserver?.disconnect();
-  fadeInsetObserver = null;
-});
 
 // ────────────────────────────────────────────────────────────────────────
 // The wall follows the window.
@@ -842,25 +1383,18 @@ function liveWall(): HTMLElement | null {
 function redealWall(): void {
   const grid = liveWall();
   if (!grid) return;
-  if (wallMetrics(grid).cols === wallCols) return;
+  if (masonryMetrics(grid).cols === wallCols) return;
   applyLayout(grid, "grid", false);
   document.dispatchEvent(new Event("community:layout-changed"));
 }
 
-// TWO SPEEDS, because the window changes two different things. The GUTTER is
-// continuous — every pixel of width redistributes it — so it has to follow
-// the drag, and it costs two custom properties. The COUNT is a step, and
-// stepping it means re-placing every cell and re-measuring the whole motion
-// layer, so that waits for the drag to settle and only runs when the count
-// has actually moved.
-let wallFrame = 0;
+// The COUNT is a step, and stepping it means re-placing every cell and
+// re-measuring the whole motion layer, so it waits for the drag to settle
+// and only runs when the count has actually moved. The columns themselves
+// are flex and follow the drag on their own. (A continuous gutter used to
+// be written here every frame, for the slot grid the masonry replaced.)
 let wallResizeTimer = 0;
 window.addEventListener("resize", () => {
-  cancelAnimationFrame(wallFrame);
-  wallFrame = requestAnimationFrame(() => {
-    const grid = liveWall();
-    if (grid) writeWallMetrics(grid);
-  });
   clearTimeout(wallResizeTimer);
   wallResizeTimer = window.setTimeout(redealWall, 180);
 });

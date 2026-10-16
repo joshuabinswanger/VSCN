@@ -6,16 +6,14 @@
 // was already an inline IIFE there. Moved verbatim; the only addition is that
 // any extra attributes land on the <section>.
 //
-// TWO OR MORE WORKS ARE A CAROUSEL (2026-09-26, Josh: "the projects should be
-// shown as carousels"): the heading group, then one work per step, paged by
-// swipe, the arrow keys or prev/next. See src/lib/projectCarousel.ts. One work
-// stays a plain figure, because a carousel of one is a picture with two
-// buttons that do nothing.
+// The heading group, then every work in line (2026-10-16), each with the text
+// block that follows it. The carousel of 2026-09-26 to 2026-10-16 is gone.
 import type { ComponentProps, HTMLAttributes } from "astro/types";
 import MemberWork from "./MemberWork.astro";
 import { affiliationHref, projectDescription, projectTitle, type ProfileProject } from "../lib/projects.ts";
 import { communityWorkTagHref, hostLabel } from "../lib/links.ts";
 import { useTranslations, type Lang } from "../i18n/utils.ts";
+import { splitParagraphs } from "../lib/paragraphs.ts";
 
 type Work = ComponentProps<typeof MemberWork>["work"];
 
@@ -34,8 +32,6 @@ const { project, works, allWorks, memberId, displayName, lang, class: className,
 const t = useTranslations(lang);
 const title = projectTitle(project, lang);
 const desc = projectDescription(project, lang);
-const carousel = works.length > 1;
-const trackId = `mprof-project-${memberId}-${project.id}`;
 const figure = (w: Work) => ({
   work: w,
   index: allWorks.indexOf(w),
@@ -54,7 +50,11 @@ const figure = (w: Work) => ({
         <h2 class="mprof__project-title">{title}</h2>
       )
     }
-    {desc && <p class="mprof__project-desc">{desc}</p>}
+    {desc && (
+      <p class="mprof__project-desc">
+        {splitParagraphs(desc).map((para) => <span class="mprof__para">{para}</span>)}
+      </p>
+    )}
     {
       project.affiliations.length > 0 && (
         <p class="mprof__project-with">
@@ -108,67 +108,10 @@ const figure = (w: Work) => ({
     }
   </div>
   {
-    carousel ? (
-      <div class="mprof__carousel" data-carousel data-position-label={t("member.project.position")}>
-        {/* The gallery card's dots, top right (2026-09-26, Josh: "use the
-            same styles for the project carousels! with the dots top right").
-            A day's detour through a "2 / 7" count ended on 2026-09-28 (Josh:
-            "the carousel should be dots again, but make the dots bigger"):
-            the dots are back, card and carousel both at the larger size.
-            projectCarousel.ts fills the row: one dot per work, the "2 / 7"
-            count and its two chevrons — named buttons, not tab stops (the
-            track pages on its arrow keys), so the row is not aria-hidden. */}
-        <div class="mprof__carousel-dots" data-carousel-dots />
-        <div class="mprof__carousel-stage">
-        {/* A real scroll container, so swipe, trackpad and the arrow keys (it
-            is a tab stop) all page it natively, and scroll-snap makes every
-            one of them land on a work. */}
-        <div
-          class="mprof__carousel-track"
-          id={trackId}
-          data-carousel-track
-          tabindex="0"
-          role="region"
-          aria-roledescription={t("community.card.carousel")}
-          aria-label={title ?? t("member.project.works")}
-        >
-          {works.map((w, k) => (
-            <div
-              class="mprof__carousel-slide"
-              role="group"
-              aria-label={t("member.project.position")
-                .replace("{n}", String(k + 1))
-                .replace("{total}", String(works.length))}
-            >
-              <MemberWork {...figure(w)} />
-            </div>
-          ))}
-        </div>
-          {/* The card's hover chevrons: a strip down each edge of the
-              column, painted only while the pointer or focus is on it. */}
-          <button
-            class="mprof__carousel-arrow mprof__carousel-arrow--prev"
-            type="button"
-            data-carousel-prev
-            aria-controls={trackId}
-            aria-label={t("member.project.prev")}
-          >
-            <span aria-hidden="true" />
-          </button>
-          <button
-            class="mprof__carousel-arrow mprof__carousel-arrow--next"
-            type="button"
-            data-carousel-next
-            aria-controls={trackId}
-            aria-label={t("member.project.next")}
-          >
-            <span aria-hidden="true" />
-          </button>
-        </div>
-        <p class="mprof__carousel-live" aria-live="polite" aria-atomic="true" data-carousel-live />
-      </div>
-    ) : (
-      works.map((w) => <MemberWork {...figure(w)} />)
-    )
+    /* EVERY WORK IN LINE (2026-10-16, Josh: "projects dont have galleries
+       anymore, images are all in line"): the works stack down the column in
+       the member's order, each followed by its text block when it has one
+       (MemberWork.astro). The carousel of 2026-09-26 is gone. */
+    works.map((w) => <MemberWork {...figure(w)} />)
   }
 </section>

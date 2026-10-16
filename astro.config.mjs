@@ -70,7 +70,6 @@ export default defineConfig({
         'gsap/ScrollTrigger',
         'photoswipe',
         'photoswipe/lightbox',
-        'embla-carousel',
         'firebase/app',
         'firebase/auth',
         'firebase/firestore',

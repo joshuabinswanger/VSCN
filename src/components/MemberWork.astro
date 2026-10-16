@@ -9,6 +9,8 @@
 import type { EmbedRef } from "../lib/embed.ts";
 import { embedDataAttrs } from "../lib/embed.ts";
 import { hostLabel } from "../lib/links.ts";
+import { splitParagraphs } from "../lib/paragraphs.ts";
+import { workSizeWidth } from "../lib/workSize.ts";
 
 interface WorkProps {
   url: string;
@@ -19,6 +21,10 @@ interface WorkProps {
   link?: string;
   siteLink?: string;
   pswpMeta?: string;
+  /** The text block after this work, already picked for the page's locale (workTextAfter in links.ts). */
+  textAfter?: string;
+  /** S/M/L (2026-10-16); absent = L. See src/lib/workSize.ts. */
+  size?: string;
   embed?: EmbedRef;
   color?: string;
   rendered: { src: string; srcSet: { attribute: string } };
@@ -46,7 +52,7 @@ const { work: w, index: i, memberId, displayName, workAlt, linkTitle, siteLinkTi
 <figure
   class="mprof__work"
   transition:name={i === 0 ? `mimg-${memberId}` : undefined}
-  style={`--work-ar: ${w.width / w.height}`}
+  style={`--work-ar: ${w.width / w.height}; --size-w: ${workSizeWidth(w)}`}
 >
   <a
     class="mprof__work-link"
@@ -79,10 +85,13 @@ const { work: w, index: i, memberId, displayName, workAlt, linkTitle, siteLinkTi
     />
     {w.embed && <span class="vscn-play vscn-play--over" aria-hidden="true" />}
   </a>
-  {(w.caption?.trim() || w.description || w.link || w.siteLink) && (
+  {/* NO DESCRIPTION UNDER THE PICTURE (2026-10-16, Josh: "we also want to
+      get rid of image descriptions on the profile page"). The title and the
+      links stay; the description is read in the lightbox, behind the
+      title's dropdown (data-pswp-description above). */}
+  {(w.caption?.trim() || w.link || w.siteLink) && (
     <figcaption class="mprof__caption">
       {w.caption?.trim() && <span class="mprof__caption-line">{w.caption}</span>}
-      {w.description && <span class="mprof__desc">{w.description}</span>}
       {/* Where the piece lives in the world: the member's own project page
           first, then the publication it appeared in (two links since
           2026-09-10). In the caption and not on the image, because the
@@ -106,3 +115,14 @@ const { work: w, index: i, memberId, displayName, workAlt, linkTitle, siteLinkTi
     </figcaption>
   )}
 </figure>
+{
+  /* THE TEXT BLOCK AFTER THE WORK (2026-10-16, Josh: "make it possible to
+     add text block in between image in projects"). A sibling of the figure,
+     not inside it: it is the project's own words between two pictures, not a
+     caption, so it takes the column's width and the lightbox never reads it. */
+  w.textAfter?.trim() && (
+    <div class="mprof__text">
+      {splitParagraphs(w.textAfter).map((para) => <span class="mprof__para">{para}</span>)}
+    </div>
+  )
+}

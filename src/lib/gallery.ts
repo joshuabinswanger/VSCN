@@ -43,6 +43,8 @@ export function galleryLimit(user: { emailVerified: boolean } | null | undefined
 }
 export const MAX_GALLERY_CAPTION = 140;
 export const MAX_GALLERY_DESCRIPTION = 600;
+/** The text block after a work (2026-10-16). Mirrors validImage's textAfter cap in firestore.rules. */
+export const MAX_GALLERY_TEXT_AFTER = 2000;
 
 /**
  * THE PER-IMAGE LINK'S CEILING. Matches `portfolio` in firestore.rules,
@@ -205,6 +207,27 @@ export interface GalleryItem {
    * adjacent in it.
    */
   projectId?: string;
+  /**
+   * THE MEMBER'S "IN GALLERY" SWITCH (2026-10-16). `false` takes the work off
+   * /community (Portfolios and Images) while the member's own page keeps it;
+   * absent means included. Written onto the record at Save.
+   */
+  inGallery?: false;
+  /**
+   * THE TEXT BLOCK AFTER THIS WORK (2026-10-16, Josh: "make it possible to
+   * add text block in between image in projects"). Printed on the member page
+   * between this work and the next one, in its project's column. German
+   * optional, falling back to this one as a description does. Its place is
+   * the work's: moving the work moves the words with it.
+   */
+  textAfter?: string;
+  textAfterDe?: string;
+  /**
+   * HOW WIDE THE WORK STANDS ON THE MEMBER PAGE (2026-10-16, Josh: "select
+   * between S M L for the image size width (give them in CSS Pixels)").
+   * Absent is L. Widths in WORK_SIZE_PX (workSize.ts).
+   */
+  size?: "s" | "m";
   /**
    * A VIDEO WORK (2026-09-23, documentation/20260923-motion-works-design.md):
    * the YouTube or Vimeo video it plays. `url` above is then the poster. Set
@@ -487,6 +510,10 @@ export async function saveGalleryRecords(items: readonly GalleryItem[]): Promise
         siteLink: item.siteLink,
         tags: item.tags,
         projectId: item.projectId,
+        inGallery: item.inGallery,
+        textAfter: item.textAfter,
+        textAfterDe: item.textAfterDe,
+        size: item.size,
       }),
     ),
   );

@@ -11,6 +11,25 @@ Nothing appends to this file by itself. Entries dated 2026-09-28 and 2026-09-29 
 afterwards, on 2026-09-29, from the CI run records (`gh run view <id>`); what a run record cannot
 show, chiefly a by-hand `verify:release` result, is marked "operator-reported" or "not confirmed".
 
+## 2026-10-06 · 137ccfb · prod · audit fixes, Functions on TypeScript 7, Actions majors
+Machine: GREEN, 8 of 8, `verify:release --project prod` run by Claude at 08:10Z: live build 137ccfb,
+         34 of 34 functions current, firestore and storage rules = 137ccfb, IAM 7/7, 4 secrets
+         bound, uploads 3 of 3 paired since 7d8ce41, no function errors, nothing stranded.
+Walk:    GREEN, all six steps on vscn-39508.web.app, site built from 137ccfb; run 37432784385
+         (PR #178 merged 07:56Z, walk job 08:02:40-08:03:53Z). First production run on the #166
+         Actions majors (checkout 7, setup-node 7, upload 7, download 8); the scrub step and the
+         artifact upload stayed skipped on a green walk, so no walk-artifacts exist.
+Action:  none. Contents: no member-facing change. #174 and #179 clear the high and critical
+         advisories published 2026-10-05/06 against unchanged lockfiles (devalue,
+         http-cache-semantics, @fastify/busboy, @grpc/grpc-js, source-map-js, proxy-addr; braces
+         went with #170; the firebase-pinned grpc 1.9 copy is allowlisted until 2026-12-01);
+         #165 Functions on TypeScript 7 (backend job updated all 34); #166 Actions majors;
+         #164 #167 #168 #169 #170 #175 #176 dependency groups and plugin majors; #173 Dependabot
+         holds root TypeScript at 5; #172 the 7d8ce41 entry. #179 was cut mid-release: the audit
+         on #178 went red on the two 2026-10-06 advisories, and the fix merged to dev before the
+         release did. The staging run for d1e7298 needed three attempts through a GitHub Actions
+         outage on 2026-10-05 (runners never acquired); nothing deployed until attempt 3.
+
 ## 2026-09-30 · 7d8ce41 · prod · review fixes #152-#161, the walk stops leaking the debug token
 Machine: not run. CI has no `verify:release` step; the release job itself deployed the backend
          (all 34 functions updated), rules and Hosting, and https://vscn.ch serves build 7d8ce41.

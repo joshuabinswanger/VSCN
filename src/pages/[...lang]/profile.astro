@@ -16,6 +16,9 @@ const currentLang = (lang || "en") as Lang;
 const title = currentLang === "de" ? "Profil bearbeiten — VSCN" : "Edit Profile — VSCN";
 ---
 
-<Layout title={title} noindex lang={currentLang}>
+{/* contentWide (2026-10-13): the Works tab renders the member page, which
+    lays out on that measure since it went to two columns on a desktop. The
+    Profile and Account tabs keep their own 560px column inside it. */}
+<Layout title={title} noindex lang={currentLang} contentWide>
   <ProfileForm lang={currentLang} />
 </Layout>
