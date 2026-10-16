@@ -320,6 +320,7 @@ let barLeaving: HTMLElement | null = null;
 function settleBar(pill: HTMLElement) {
   barAnim?.cancel();
   barAnim = null;
+  delete pill.dataset.sizing;
   if (barLeaving) {
     barLeaving.getAnimations().forEach((a) => a.cancel());
     barLeaving.hidden = true;
@@ -382,8 +383,11 @@ function setBarMenu(open: string | null) {
  *  still closing (barLeaving) is left out of that size and kept shown until
  *  the pill has shrunk off it. */
 function sizeBar(pill: HTMLElement, from: DOMRect) {
+  delete pill.dataset.sizing;
   if (barLeaving) barLeaving.hidden = true;
   const to = pill.getBoundingClientRect();
+  // Measured above at rest; from here the row keeps that width (CSS).
+  pill.dataset.sizing = "";
   if (barLeaving) barLeaving.hidden = false;
   const anim = pill.animate(
     [
