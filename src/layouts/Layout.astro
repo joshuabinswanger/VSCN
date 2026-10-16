@@ -1110,9 +1110,6 @@ const BRAND_SLOTS: BrandSlot[] = [
   function onBrandHideScroll() {
     // The leave sequence below owns the title while a page is being left.
     if (leavingPage) return;
-    // Piggybacked on the one scroll listener the page already has, throttled
-    // separately — see saveScroll.
-    saveScroll();
     if (brandHideFrame) return;
     brandHideFrame = requestAnimationFrame(applyBrandHide);
   }
@@ -1134,126 +1131,19 @@ const BRAND_SLOTS: BrandSlot[] = [
 
   window.matchMedia("(max-width: 767px)").addEventListener("change", initBrandScrollHide);
 
-  // ── Back and forward have to land where you left ──────────
-  // ClientRouter restores scroll by writing to the WINDOW, and on this site the
-  // window does not scroll: body is `overflow: hidden` and .page-wrap is the
-  // scrollport (see the layout note at the top of this file). So its
-  // restoration is a no-op, and every Back landed at the top of the page it
-  // returned to — most visibly coming back from a member's page to the point in
-  // the community directory you had scrolled to. (2026-09-01, Josh: "back
-  // navigation dors not work getting back from profiles"; the other half of
-  // that report was ClientRouter's history state being overwritten — see
-  // syncURL in CommunityGrid.)
-  //
-  // KEYED BY ClientRouter'S OWN HISTORY INDEX, and stored in sessionStorage
-  // rather than in the history entry itself. Two reasons, both practical:
-  // writing scroll into history.state on every scroll frame would hit Safari's
-  // replaceState rate limit, and reading the index at save time and at restore
-  // time makes this independent of WHERE in the transition lifecycle each
-  // happens — a forward navigation gets a fresh index and so finds nothing
-  // saved, which is exactly the "start at the top" behaviour a new page wants.
-  const SCROLL_KEY = "vscn:scroll:";
-  // Saving on every scroll frame is pointless; a quarter second of granularity
-  // is finer than a reader can notice they lost.
-  const SCROLL_SAVE_MS = 250;
-  // ~1s of trying, in 50ms steps — long enough for the directory's deal and the
-  // motion layer's first measure, short enough that a page which genuinely
-  // cannot reach the offset any more (a member deleted, a filter in the URL)
-  // gives up before the reader notices anything twitching.
-  const SCROLL_RESTORE_TRIES = 20;
-  const SCROLL_RESTORE_STEP_MS = 50;
-  let lastScrollSave = 0;
-  // THE ENTRY WE ARE ACTUALLY ON, tracked rather than read from history.state
-  // at save time. On a Back the browser has already swapped history.state to
-  // the DESTINATION before Astro starts the transition, so a save keyed off
-  // history.state during that transition writes the page-being-left's offset
-  // under the destination's key — obliterating the very value about to be
-  // restored. (Observed: leave /community at 1400, press Back, and the stored
-  // 1400 became the member page's 0 a moment before the restore read it.)
-  // Updated on page-load, which is the one moment both the DOM and the entry
-  // are settled.
-  let currentIndex: number | null = null;
-  let swappingScroll = false;
+  // ── EVERY ARRIVAL STARTS AT THE TOP ──
+  // (2026-10-16, Josh: "you dont have to keep scroll position when switching
+  // pages".) Back used to land where the page was left — offsets saved per
+  // history entry in sessionStorage and re-applied after the swap (since
+  // 2026-09-01) — and that re-application was the "portfolio page slides
+  // around" on arrival. Now nothing is remembered. A desktop arrival is at
+  // the top by construction (.page-wrap is a new element); on a phone the
+  // DOCUMENT scrolls and ClientRouter restores its offset on Back, so a
+  // traversal is put back at the top once the view transition is done (the
+  // router's own restore, and the browser's, can land as late as that).
+  let arrivalWasTraverse = false;
   let scrollTransitionDone: Promise<unknown> = Promise.resolve();
   let scrollNavigation = 0;
-
-  function scrollKeyFor(index: number | null): string | null {
-    return typeof index === "number" ? SCROLL_KEY + index : null;
-  }
-
-  function saveScroll(force = false) {
-    if (swappingScroll || !brandScroller) return;
-    const now = performance.now();
-    if (!force && now - lastScrollSave < SCROLL_SAVE_MS) return;
-    lastScrollSave = now;
-    const key = scrollKeyFor(currentIndex);
-    if (!key) return;
-    try {
-      sessionStorage.setItem(key, String(brandScroller.scrollTop));
-    } catch {
-      /* A private-mode quota refusal costs the restore, never the page. */
-    }
-  }
-
-  function restoreScroll() {
-    // Retry after the gallery is dealt: the document can be too short when
-    // ClientRouter first restores its mobile scroll position.
-    // Reads the entry we have just ARRIVED on, which is why currentIndex is
-    // refreshed from history.state immediately before this is called.
-    const key = scrollKeyFor(currentIndex);
-    const scroller = brandScroller;
-    if (!key || !scroller) return;
-    let saved: string | null;
-    try {
-      saved = sessionStorage.getItem(key);
-    } catch {
-      // A private-mode refusal costs the restore, never the page.
-      return;
-    }
-    if (saved === null) return;
-    const top = Number(saved);
-    if (!Number.isFinite(top) || top <= 0) return;
-    // UNTIL IT HOLDS, not once. An offset assigned to a scroller shorter than
-    // the offset is silently CLAMPED, and this runs at astro:page-load, when
-    // the page is still growing: the community directory deals its cards in its
-    // own page-load handler (whose order relative to this one is a bundling
-    // detail, not a guarantee) and the motion layer measures asynchronously
-    // after that. A single assignment, or even two a frame apart, lands on the
-    // short document and quietly becomes 0 — which is exactly what it did.
-    //
-    // Bounded, and it stops the moment it succeeds. It also stops if the
-    // scroller is found somewhere that is neither the target nor the top,
-    // because that means something else — most likely the reader — has taken
-    // over, and fighting them would be worse than not restoring at all.
-    let tries = 0;
-    let firstRestore = true;
-    const apply = () => {
-      const at = scroller.scrollTop;
-      const arrived = Math.abs(at - top) <= 1;
-      // Native restoration can land at an adjusted offset during the swap.
-      // Apply our saved entry once; later retries yield to reader scrolling.
-      if (!firstRestore && !arrived && at > 1) return;
-      firstRestore = false;
-      // INSTANT, explicitly (2026-10-16, Josh: "portfolio page slide around
-      // when naved to"): .page-wrap carries scroll-behavior: smooth, so a
-      // plain scrollTop assignment GLIDED from the top to the saved offset —
-      // Back onto Portfolios scrolled through every member above, 0 → 1488px
-      // over ~650ms, while the page rose. A restore is a place, not a move.
-      scroller.scrollTo({ top, behavior: "instant" });
-      applyBrandHide();
-      if (Math.abs(scroller.scrollTop - top) > 1 && tries++ < SCROLL_RESTORE_TRIES) {
-        setTimeout(apply, SCROLL_RESTORE_STEP_MS);
-      }
-    };
-    apply();
-  }
-
-  // The last chance to record where the page being left was scrolled to: the
-  // throttle above can have skipped the final frames of a scroll that ended in
-  // a click. The entry index has not changed yet at this point for a forward
-  // navigation, so this writes against the OUTGOING entry, which is the one
-  // that has to remember.
-  document.addEventListener("astro:before-preparation", () => saveScroll(true));
 
   // ── LEAVING A PAGE: FINISH THE OLD MOTION, THEN SWAP ──
   // (2026-10-12, Josh: "the animation trips up because of the disappearing
@@ -1281,8 +1171,6 @@ const BRAND_SLOTS: BrandSlot[] = [
       return Promise.resolve();
     }
     leavingPage = true;
-    // From here on a scroll is the leave's, not the reader's: never save it.
-    swappingScroll = true;
     const phone = window.matchMedia("(max-width: 767px)").matches;
     const fade = main
       .animate(
@@ -1359,14 +1247,12 @@ const BRAND_SLOTS: BrandSlot[] = [
   });
 
   document.addEventListener("astro:before-swap", (event) => {
-    saveScroll(true);
-    // The router resets document scroll during a swap. Do not save that
-    // reset over the outgoing page's position.
-    swappingScroll = true;
     const swapEvent = event as unknown as {
       newDocument?: Document;
+      navigationType?: string;
       viewTransition?: { finished: Promise<void> };
     };
+    arrivalWasTraverse = swapEvent.navigationType === "traverse";
     scrollNavigation++;
     scrollTransitionDone = swapEvent.viewTransition?.finished.catch(() => {}) ?? Promise.resolve();
     const newLang = swapEvent.newDocument?.documentElement?.lang === "de" ? "de" : "en";
@@ -1380,23 +1266,18 @@ const BRAND_SLOTS: BrandSlot[] = [
     updateBrandHomeLink(lang);
     initBrandFit();
     initBrandScrollHide();
-    // Adopt the arrived-at entry BEFORE restoring, and leave it adopted: every
-    // save until the next navigation belongs to this entry. See currentIndex.
-    currentIndex = (history.state as { index?: number } | null)?.index ?? null;
-    // After initBrandScrollHide, which is what points brandScroller at the new
-    // .page-wrap — restoring before that would set an offset on the document
-    // that was just thrown away.
-    // Native document scroll can be reset when the browser finishes its
-    // view transition. Wait for it and for the gallery's page-load layout.
     const navigation = scrollNavigation;
-    const settled = window.matchMedia("(max-width: 767px)").matches
-      ? scrollTransitionDone
-      : Promise.resolve();
-    void settled.then(() => requestAnimationFrame(() => {
-      if (navigation !== scrollNavigation) return;
-      restoreScroll();
-      swappingScroll = false;
-    }));
+    if (arrivalWasTraverse && window.matchMedia("(max-width: 767px)").matches) {
+      // At once, before the first frame shows the router's restored offset,
+      // and again once the transition is done, in case it lands later.
+      const toTop = () => {
+        if (navigation === scrollNavigation && window.scrollY !== 0) {
+          window.scrollTo({ top: 0, behavior: "instant" });
+        }
+      };
+      toTop();
+      void scrollTransitionDone.then(() => requestAnimationFrame(toTop));
+    }
     // On client-side navigation there's no loader, so start animations immediately
     if (!document.getElementById("page-loader")) {
       document.body.classList.add("page-loaded");
