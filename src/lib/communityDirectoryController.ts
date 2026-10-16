@@ -306,35 +306,111 @@ const BAR_MENUS = [
   ["view-menu-btn", "view-menu-panel"],
 ] as const;
 
-/** Close every drop-up in the bar, or every one but `keep`. Queries the live
- *  DOM rather than closing over it, so the module-level listeners below
- *  survive ClientRouter swaps without stacking or holding dead nodes. */
-function closeBarMenus(keep?: string) {
-  for (const [btnId, panelId] of BAR_MENUS) {
-    if (panelId === keep) continue;
-    const panel = document.getElementById(panelId);
-    if (panel && !panel.hidden) {
-      panel.hidden = true;
-      document.getElementById(btnId)?.setAttribute("aria-expanded", "false");
-    }
+/** The site's ease-out (lightbox.ts), and long enough to read as the pill
+ *  growing rather than jumping. */
+const BAR_EASE = "cubic-bezier(0.22, 0.61, 0.36, 1)";
+const BAR_MS = 320;
+
+/** The pill's size animation in flight, and the panel it is closing over. */
+let barAnim: Animation | null = null;
+let barLeaving: HTMLElement | null = null;
+
+/** End a size animation where it stands: the closing panel goes, the held
+ *  size is released. */
+function settleBar(pill: HTMLElement) {
+  barAnim?.cancel();
+  barAnim = null;
+  if (barLeaving) {
+    barLeaving.getAnimations().forEach((a) => a.cancel());
+    barLeaving.hidden = true;
+    barLeaving.style.removeProperty("pointer-events");
+    barLeaving = null;
   }
+  const anyOpen = BAR_MENUS.some(([, id]) => document.getElementById(id)?.hidden === false);
+  if (!anyOpen) pill.style.removeProperty("--bar-r");
+}
+
+/** Open one drop-up (`null`: none), the pill GROWING round it (2026-10-16,
+ *  Josh: "can the selections stay contained in the outer pill so everything
+ *  smoothly animates with expands and contracts"). The panels are inside the
+ *  pill (.community-bar__panels), so the state change alone resizes it; this
+ *  measures the size before and after and eases between the two, the pill
+ *  clipping its content meanwhile. Closing keeps the panel in until the
+ *  pill has shrunk off it. Retargets from wherever an animation in flight
+ *  has got to. Queries the live DOM rather than closing over it, so the
+ *  module-level listeners below survive ClientRouter swaps. */
+function setBarMenu(open: string | null) {
+  const pill = document.querySelector<HTMLElement>(".community-bar__in");
+  if (barLeaving && !barLeaving.isConnected) barLeaving = null;
+  // Already headed there (a second click outside while it closes, say): let
+  // the animation run on rather than snap it to its end.
+  const shown = BAR_MENUS.find(([, id]) => {
+    const el = document.getElementById(id);
+    return el?.hidden === false && el !== barLeaving;
+  })?.[1];
+  if ((shown ?? null) === open) return;
+  const from = pill?.getBoundingClientRect();
+  if (pill) settleBar(pill);
+  const prev = BAR_MENUS.find(([, id]) => document.getElementById(id)?.hidden === false)?.[1] ?? null;
+  if (prev === open) return;
+  // The corners of the closed capsule, kept while the box is tall: a 999px
+  // radius on an open pill would bulge into a stadium.
+  if (pill && !prev) pill.style.setProperty("--bar-r", `${pill.offsetHeight / 2}px`);
+
+  for (const [btnId, panelId] of BAR_MENUS) {
+    const panel = document.getElementById(panelId);
+    if (panel) panel.hidden = panelId !== open;
+    document.getElementById(btnId)?.setAttribute("aria-expanded", String(panelId === open));
+  }
+
+  if (!pill || !from || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (pill && !open) pill.style.removeProperty("--bar-r");
+    return;
+  }
+  const to = pill.getBoundingClientRect();
+  const leaving = !open && prev ? document.getElementById(prev) : null;
+  if (leaving) {
+    leaving.hidden = false;
+    leaving.style.pointerEvents = "none";
+    leaving.animate([{ opacity: 1 }, { opacity: 0 }], { duration: BAR_MS * 0.6, fill: "forwards" });
+    barLeaving = leaving;
+  }
+  const entering = open ? document.getElementById(open) : null;
+  entering?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: BAR_MS, easing: BAR_EASE });
+
+  const anim = pill.animate(
+    [
+      { width: `${from.width}px`, height: `${from.height}px` },
+      { width: `${to.width}px`, height: `${to.height}px` },
+    ],
+    // Held at the end until the panel is gone, or the pill would flash
+    // back to the closing panel's size for a frame.
+    { duration: BAR_MS, easing: BAR_EASE, fill: "forwards" }
+  );
+  barAnim = anim;
+  anim.onfinish = () => {
+    if (barAnim === anim) settleBar(pill);
+  };
+}
+
+function closeBarMenus() {
+  setBarMenu(null);
 }
 
 /** Flip one drop-up, closing the other. Returns whether it is now open. */
-function toggleBarMenu(btnId: string, panelId: string): boolean {
+function toggleBarMenu(panelId: string): boolean {
   const panel = document.getElementById(panelId);
   if (!panel) return false;
-  const opening = panel.hidden;
-  closeBarMenus(panelId);
-  panel.hidden = !opening;
-  document.getElementById(btnId)?.setAttribute("aria-expanded", String(opening));
+  const opening = panel.hidden || panel === barLeaving;
+  setBarMenu(opening ? panelId : null);
   return opening;
 }
 
 // Module scope, installed ONCE per session — not inside astro:page-load,
 // where document-level listeners would stack one copy per navigation.
+// The whole pill counts as inside: the panels are no longer in .bar-menu.
 document.addEventListener("click", (e) => {
-  if (!(e.target instanceof Element) || !e.target.closest(".bar-menu")) closeBarMenus();
+  if (!(e.target instanceof Element) || !e.target.closest(".community-bar__in")) closeBarMenus();
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeBarMenus();
@@ -822,14 +898,14 @@ document.addEventListener("astro:page-load", () => {
 
     document
       .getElementById("view-menu-btn")
-      ?.addEventListener("click", () => toggleBarMenu("view-menu-btn", "view-menu-panel"));
+      ?.addEventListener("click", () => toggleBarMenu("view-menu-panel"));
     document
       .getElementById("sort-menu-btn")
-      ?.addEventListener("click", () => toggleBarMenu("sort-menu-btn", "sort-menu-panel"));
+      ?.addEventListener("click", () => toggleBarMenu("sort-menu-panel"));
 
     tagBtn?.addEventListener("click", () => {
       if (!tagPanel) return;
-      const opening = toggleBarMenu("tag-filter-btn", "tag-filter-panel");
+      const opening = toggleBarMenu("tag-filter-panel");
       // ── THE PANEL DOES NOT SUMMON A KEYBOARD ──────────────
       // (2026-09-04, Josh: "search field should not trigger a keyboard
       // directly".) Focusing on open is right where the keyboard is already
