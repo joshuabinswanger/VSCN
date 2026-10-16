@@ -38,5 +38,6 @@ test("a swipe on the picture steps only when it is clearly vertical", () => {
   assert.equal(swipeStep(0, -120), 1); // finger up: next card
   assert.equal(swipeStep(10, 90), -1);
   assert.equal(swipeStep(80, -60), 0); // sideways-leaning: the carousel's
-  assert.equal(swipeStep(3, -20), 0); // a tap
+  assert.equal(swipeStep(30, -45), 1); // a thumb's arcing flick still counts
+  assert.equal(swipeStep(3, -15), 0); // a tap
 });

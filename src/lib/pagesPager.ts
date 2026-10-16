@@ -13,8 +13,13 @@
 //
 // ON THE PICTURE A PHONE'S SWIPE IS THE CAROUSEL'S (2026-10-16): the frame
 // lets the browser pan only sideways (CommunityGrid.astro), so a vertical
-// swipe there would do nothing; a CLEARLY vertical one (VERTICAL_RATIO,
-// SWIPE_PX) steps one card here instead.
+// swipe there would do nothing; a vertical one steps one card here instead.
+// (2026-10-16, Josh: "sometimes it doesn't react at all"): the first cut asked
+// for 40px at 1.5 : 1, which a thumb's arcing flick often missed, and dropped
+// any gesture the browser ended with touchcancel. Now any MOSTLY vertical move
+// past SWIPE_PX is a step, finished by touchend or touchcancel (last known
+// point). Not "did the works row move": under pan-x the row follows even a
+// vertical swipe's small sideways drift, so it always moves.
 //
 // A gesture is a burst of wheel events with no gap longer than QUIET_MS: a
 // trackpad flick and its momentum tail are one card, not ten.
@@ -22,13 +27,12 @@
 const QUIET_MS = 180;
 const LOCK_MS = 650;
 const REDUCED = "(prefers-reduced-motion: reduce)";
-const SWIPE_PX = 40;
-const VERTICAL_RATIO = 1.5;
+const SWIPE_PX = 24;
 
 /** A finished touch on the picture: the step it asks for, or 0 when it was a
- *  tap or a sideways (carousel) swipe. */
+ *  tap or a mostly sideways (carousel) move. */
 export function swipeStep(dx: number, dy: number): 1 | -1 | 0 {
-  if (Math.abs(dy) < SWIPE_PX || Math.abs(dy) < VERTICAL_RATIO * Math.abs(dx)) return 0;
+  if (Math.abs(dy) < SWIPE_PX || Math.abs(dy) <= Math.abs(dx)) return 0;
   return dy < 0 ? 1 : -1;
 }
 
@@ -140,30 +144,44 @@ export function setPagesPaging(on: boolean): void {
     },
     { signal },
   );
-  let touch: { x: number; y: number } | null = null;
+  let touch: { x: number; y: number; lx: number; ly: number } | null = null;
   document.addEventListener(
     "touchstart",
     (e) => {
       const t = e.touches[0];
       touch =
         e.touches.length === 1 && e.target instanceof Element && e.target.closest("#member-grid .ccard__frame")
-          ? { x: t.clientX, y: t.clientY }
+          ? { x: t.clientX, y: t.clientY, lx: t.clientX, ly: t.clientY }
           : null;
     },
     { passive: true, signal },
   );
   document.addEventListener(
-    "touchend",
+    "touchmove",
     (e) => {
-      if (!touch || document.querySelector(".pswp--open")) return;
-      const t = e.changedTouches[0];
-      const dir = swipeStep(t.clientX - touch.x, t.clientY - touch.y);
-      touch = null;
-      if (dir) step(wrap, dir);
+      if (!touch || e.touches.length !== 1) return;
+      touch.lx = e.touches[0].clientX;
+      touch.ly = e.touches[0].clientY;
     },
     { passive: true, signal },
   );
-  document.addEventListener("touchcancel", () => (touch = null), { passive: true, signal });
+  const finish = (x: number, y: number) => {
+    if (!touch) return;
+    const { x: x0, y: y0 } = touch;
+    touch = null;
+    if (document.querySelector(".pswp--open")) return;
+    const dir = swipeStep(x - x0, y - y0);
+    if (dir) step(wrap, dir);
+  };
+  document.addEventListener(
+    "touchend",
+    (e) => {
+      const t = e.changedTouches[0];
+      if (t) finish(t.clientX, t.clientY);
+    },
+    { passive: true, signal },
+  );
+  document.addEventListener("touchcancel", () => touch && finish(touch.lx, touch.ly), { passive: true, signal });
   signal.addEventListener("abort", () => clearTimeout(quiet));
 }
 
