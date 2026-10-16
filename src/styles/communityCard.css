@@ -83,9 +83,14 @@
      until 2026-10-16 (Josh: "make the max width for the image a bit smaller
      so the text column has a bit more space"): a landscape picture took
      776px at 1440 and left the words 162px; now 697px and 195px. A square
-     or tall picture is held by the frame's height first and does not move. */
-  --ccard-words-min: 15rem;
-  --ccard-pic-room: min(60vw, calc(100cqw - 2 * (var(--ccard-words-min) + var(--ccard-air))));
+     or tall picture is held by the frame's height first and does not move.
+     EVEN SMALLER (same day, Josh: "even smaller max width"): 18rem a side
+     for the words, never under 40% of the card so a small laptop keeps a
+     picture, never over 50vw. 1440x900: a landscape picture 698 -> 619px.
+     In the pages view this is also the picture's COLUMN, so every card's
+     words stand on the same line (CommunityGrid). */
+  --ccard-words-min: 18rem;
+  --ccard-pic-room: clamp(40cqw, calc(100cqw - 2 * (var(--ccard-words-min) + var(--ccard-air))), 50vw);
   box-sizing: border-box;
   width: 100%;
   max-width: 100%;

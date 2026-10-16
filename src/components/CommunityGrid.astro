@@ -1753,6 +1753,35 @@ const searchIndex: SearchIndex = {
     position: static;
     margin: 0;
   }
+  /* EVERY NAME ON THE SAME SPOT (2026-10-16, Josh: "put the Names always in
+     the same spott"). The card was as tall as its picture and the words hung
+     off the picture's edge, so a picture's shape moved the name both ways.
+     Now every card is the same box: the picture's column is the widest a
+     picture may be (--ccard-pic-room) and its row the tallest
+     (--cpage-pic-h), the picture centred in them; the words are a fixed
+     width against that column, their top a fixed drop into the row. The
+     count stays centred under the column, on the row's foot. */
+  @media (--bp-desktop) {
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard) {
+      grid-template-columns:
+        minmax(0, 1fr) var(--ccard-air) var(--ccard-pic-room) var(--ccard-air)
+        minmax(0, 1fr);
+      grid-template-rows: var(--cpage-pic-h) auto;
+    }
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__body) {
+      align-self: center;
+      justify-self: center;
+    }
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__words) {
+      align-self: start;
+      width: min(var(--ccard-words-min), 100%);
+      /* The name's top a little above the row's middle — where a centred
+         two-line name and role used to start. -3px undoes the focus
+         padding's pull (.ccard__words). */
+      margin-top: calc(var(--cpage-pic-h) / 2 - 5rem - 3px);
+      max-height: calc(var(--cpage-pic-h) / 2 + 5rem);
+    }
+  }
   /* THE PICTURE'S SWIPE IS THE CAROUSEL'S (2026-10-16, Josh: "the vertical
      scroll is so sensitive that it is hard to swipe the gallery cards"):
      with both axes the browser's, a sideways swipe a few degrees off level
