@@ -78,11 +78,14 @@
   grid-template-columns: minmax(0, 1fr) var(--ccard-air) auto var(--ccard-air) minmax(0, 1fr);
   /* The picture's row, then the count's under it. */
   grid-template-rows: auto auto;
-  /* What the picture may be wide: never past 75vw (Josh: "max width of an
-     image is 75vw"), and always leaving the words at least --ccard-words-min
-     on each side of it. */
-  --ccard-words-min: 12rem;
-  --ccard-pic-room: min(75vw, calc(100cqw - 2 * (var(--ccard-words-min) + var(--ccard-air))));
+  /* What the picture may be wide: never past 60vw, and always leaving the
+     words at least --ccard-words-min on each side of it. 75vw and 12rem
+     until 2026-10-16 (Josh: "make the max width for the image a bit smaller
+     so the text column has a bit more space"): a landscape picture took
+     776px at 1440 and left the words 162px; now 697px and 195px. A square
+     or tall picture is held by the frame's height first and does not move. */
+  --ccard-words-min: 15rem;
+  --ccard-pic-room: min(60vw, calc(100cqw - 2 * (var(--ccard-words-min) + var(--ccard-air))));
   box-sizing: border-box;
   width: 100%;
   max-width: 100%;
