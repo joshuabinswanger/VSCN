@@ -456,16 +456,16 @@
    of the dropdown; with the words in the open, the step after them wants a
    control that looks like one. Ink on the page's ground inverted, square
    like everything else on the card. The arrow is a glyph in the markup, not
-   generated content, so it is part of the link's text. `margin-left: auto`
-   keeps it at the right end when there is no pager to balance it. Its voice
+   generated content, so it is part of the link's text. Its voice
    is HEADING in type.css (caps, tracked). */
 .ccard__profile {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  /* The last line of the panel's words, at the column's RIGHT edge
-     (2026-10-16, Josh: "Profile right aligned"). */
-  align-self: flex-end;
+  /* The last line of the words, at their LEFT edge under the role
+     (2026-10-18, Josh: "profile button left aligned under the role"; right
+     aligned from 2026-10-16 until then). */
+  align-self: flex-start;
   /* Smaller since 2026-10-12 (Josh: "profile should be a smaller button,
      white on black text"): the LABEL voice in type.css, and this padding.
      Then PLAIN, the same day ("profile is too strong, make it without black
@@ -547,14 +547,8 @@
     margin-top: 0.25rem;
   }
   /* Smaller on a phone (2026-10-12, Josh: "the Profile button smaller on
-     mobile!"): the type a step down in type.css, and a tighter box. */
-  /* Bottom right on a phone (2026-10-15, Josh: "Profile on the bottom
-     right in mobile view"); a desktop keeps it at the words' start. */
-  /* On the links' line (2026-10-15, Josh: "Profile there should be in line
-     with instagram website etc."): the words' rows run as one wrapping line
-     on a phone (bio and tags are hidden there), PROFILE pushed to its right
-     end; a member with long links sees it wrap under them, still right.
-     One class over the panel's scoped rule, which would win a tie. */
+     mobile!"): the type a step down in type.css. Its row is the card's last
+     (bio, tags and links are off the card). */
   .ccard__more {
     flex-direction: row;
     flex-wrap: wrap;
@@ -562,9 +556,9 @@
     column-gap: 1rem;
     row-gap: 0.35rem;
   }
+  /* Left under the role on a phone too (2026-10-18). */
   .ccard__profile {
     align-self: baseline;
-    margin-left: auto;
     gap: 0.3rem;
   }
   /* No edge arrows on a phone: paging is the swipe, and the count says where
