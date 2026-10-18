@@ -677,7 +677,7 @@ document.addEventListener("astro:page-load", () => {
 
           img.src = item.url;
           // The picture's shape, on the figure as the page writes it: the
-          // 60vh cap on .mprof__work-link and the caption under it both read
+          // 70vh cap on .mprof__work-link and the caption under it both read
           // it (profile.css), so the row is the size the visitor gets.
           if (item.width > 0 && item.height > 0) row.style.setProperty("--work-ar", String(item.width / item.height));
           named(row, s["profile.gallery.rowLabel"].replace("{n}", String(index + 1)).replace("{total}", String(gallery.length)));

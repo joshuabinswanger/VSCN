@@ -270,7 +270,7 @@ export function renderProfilePreview(
       const workPart = <T extends HTMLElement = HTMLElement>(name: string) =>
         figure.querySelector<T>(`[data-ppv-work="${name}"]`);
 
-      // The picture's shape, on the figure as the page writes it: the 60vh
+      // The picture's shape, on the figure as the page writes it: the 70vh
       // cap on .mprof__work-link and the caption under it both read it.
       figure.style.setProperty("--work-ar", String(w.width / w.height));
       // Its S/M/L width, as MemberWork.astro writes it (2026-10-16).
