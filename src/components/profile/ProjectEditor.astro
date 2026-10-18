@@ -11,7 +11,7 @@ const t = useTranslations(lang);
           /* A PROJECT IN THE PAGE'S CLOTHES (2026-10-13): the block is the
             page's own `.mprof__project` — its heading group, then its works —
             with the title and the description as inline fields in the
-            heading's own voices. The tools stand level with the title: the
+            heading's own voices. The tools stand above the title: the
             block's ↑/↓ (moveProject: the block moves as a whole, past the
             neighbouring row or block), Delete, and the block's own picker
             (uploads land after its last image, insertUploaded). Since
@@ -25,11 +25,10 @@ const t = useTranslations(lang);
         }
         <section class="mprof__project gallery-project" data-project-block>
           {
-            /* ONE TOOLBAR, LEVEL WITH THE TITLE (2026-10-13, Josh: "the tool
-              bar for the project … should be … on the same height as the
-              title"): ↑ ↓, Add images, Delete as one segmented strip of
-              icons, at the heading's right edge (the title field keeps room
-              for it, profile-editor.css). The words are in aria-label and
+            /* ONE TOOLBAR, ABOVE THE TITLE (2026-10-18, Josh: "controls should
+              actually be above the image and project"; level with the
+              title from 2026-10-13): ↑ ↓, Add images, Add video, Delete as
+              one segmented strip of icons, at the block's right edge. The words are in aria-label and
               the tooltip. */
           }
           <div class="gallery-row-tools gallery-project-tools">

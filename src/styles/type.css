@@ -276,6 +276,15 @@
   font-weight: 400;
   line-height: 1.5;
 }
+/* A WORK'S TITLE UNDER ITS PICTURE: CAPTION, bold (2026-10-18, Josh: "the
+   image title should be the same size as flow text just bolder"). On a
+   desktop it steps down with the description and the text blocks to the
+   flow text's --fs-85 (the desktop block below); on a phone all are 13px. */
+.mprof__caption-line {
+  font-size: var(--fs-100);
+  font-weight: 600;
+  line-height: 1.5;
+}
 /* THE LIGHTBOX DESCRIPTION, A STEP UNDER ITS TITLE (2026-10-16, Josh: "the
    description text should be smaller on desktop"). 12px under the 14px title
    on a desktop; on a phone --fs-85 is the same 13px as CAPTION, so nothing
@@ -412,8 +421,8 @@
    flow text"). A work's description under its picture on the member page
    joined them the same day (Josh: "image descriptions should be smaller the
    same font size as the flow text for the profile"), with the bio's leading;
-   the title above it keeps CAPTION's size, and so did a project's text
-   blocks between its pictures (Josh: "yes the text blocks too"). On a phone
+   so did a project's text blocks between its pictures (Josh: "yes the
+   text blocks too"), and the work's title above it on 2026-10-18. On a phone
    all of them are 13px. */
 @media (--bp-desktop) {
   /* The card's role as .mprof__role (back on the card 2026-10-16, Josh:
@@ -425,7 +434,8 @@
   }
   .mprof__bio,
   .mprof__desc,
-  .mprof__text {
+  .mprof__text,
+  .mprof__caption-line {
     font-size: var(--fs-85);
   }
   .mprof__desc,
