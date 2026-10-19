@@ -509,8 +509,9 @@ const BRAND_SLOTS: BrandSlot[] = [
 
   /* THE COMPACT HEADER (BRAND_COMPACT): one row --header-h tall, the title at
      its left at a fixed size, the nav fixed over its right end (Navbar.astro).
-     It never rides away: on a desktop the ticker stands above .page-wrap, and
-     on a phone, where the document scrolls, it is sticky.
+     On a desktop the ticker stands above .page-wrap, and on a phone, where
+     the document scrolls, it is sticky. Since 2026-10-19 it rides away on a
+     scroll down and comes back on a scroll up (data-header-away, global.css).
      NO FILL (2026-10-13, Josh: "remove the background behind the VSCN title
      and the menu"): the row paints nothing, the page passes under the bare
      letters on a phone as it does under the nav on a desktop.
@@ -1096,8 +1097,33 @@ const BRAND_SLOTS: BrandSlot[] = [
   let brandHideFrame = 0;
   let leavingPage = false;
 
+  // ── THE HEADER RIDES AWAY ON A SCROLL DOWN, BACK ON A SCROLL UP ──
+  // (2026-10-19, Josh: "the navbar should move away on scrolling up".) The
+  // scroll's DIRECTION, not its offset: past the row's own height, a few px
+  // down puts data-header-away on <html> and the title row and the nav
+  // slide up together (global.css); a few px up brings them back, and the
+  // top always shows them. Not while a page is arriving or leaving: the
+  // arrival places the scroll itself (Back to a member), and that would read
+  // as a scroll down.
+  let headerLastY = 0;
+  function applyHeaderAway() {
+    const root = document.documentElement;
+    if (!brandScroller) return;
+    const y = brandScroller.scrollTop;
+    if (leavingPage || root.hasAttribute("data-arriving") || root.hasAttribute("data-arrive-hold")) {
+      headerLastY = y;
+      return;
+    }
+    const header = parseFloat(getComputedStyle(root).getPropertyValue("--header-h")) || 48;
+    if (y <= header) delete root.dataset.headerAway;
+    else if (y > headerLastY + 6) root.dataset.headerAway = "";
+    else if (y < headerLastY - 6) delete root.dataset.headerAway;
+    headerLastY = y;
+  }
+
   function applyBrandHide() {
     brandHideFrame = 0;
+    applyHeaderAway();
     const ticker = document.querySelector<HTMLElement>(".brand-ticker");
     if (!ticker) return;
     // On mobile the ticker leaves naturally with document scrolling, and the
@@ -1135,6 +1161,9 @@ const BRAND_SLOTS: BrandSlot[] = [
       window.addEventListener("scroll", onBrandHideScroll, { passive: true });
     }
     brandScroller?.addEventListener("scroll", onBrandHideScroll, { passive: true });
+    // A new page starts with the header shown, whatever the last one did.
+    delete document.documentElement.dataset.headerAway;
+    headerLastY = brandScroller?.scrollTop ?? 0;
     applyBrandHide();
   }
 
