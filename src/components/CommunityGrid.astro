@@ -1967,9 +1967,12 @@ const searchIndex: SearchIndex = {
       display: inline-block;
       transform: translateY(105%);
     }
-    /* The count, the links and PROFILE drift up into place. */
+    /* The count and PROFILE drift up into place. (.ccard__more since
+       2026-10-19, Josh: "animate the profile button as well" — the rule
+       named the panel the links lived in, gone with them, so PROFILE stood
+       there plainly from the first frame.) */
     :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__foot),
-    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__words > .pdisc) {
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__more) {
       opacity: 0;
       translate: 0 0.6rem;
     }
@@ -1996,7 +1999,7 @@ const searchIndex: SearchIndex = {
         opacity 0.7s var(--cpage-ease) var(--t-rest, 0.48s),
         translate 0.9s var(--cpage-ease) var(--t-rest, 0.48s);
     }
-    :global(:root:not([data-arrive-hold]) .cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__words > .pdisc) {
+    :global(:root:not([data-arrive-hold]) .cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__more) {
       opacity: 1;
       translate: 0 0;
       transition:

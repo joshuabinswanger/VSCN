@@ -181,6 +181,23 @@ body {
   }
 }
 
+/* NO SCROLL ANCHORING (2026-10-19, Josh: "still flicker there when loading
+   portfolios" — Back to a member further down the Portfolios). A page
+   leaves and arrives on a translate of <main> (Layout.astro), and WebKit's
+   scroll anchoring followed it: on a phone, where the document scrolls, the
+   offset crept 50–90px during the rise and was yanked back to the member's
+   snap stop when the transition ended, and it crept the same way under the
+   fade out. Measured in headless WebKit at 390px, local and on the dev host;
+   with anchoring off the card rises in place and the offset never moves.
+   Off for good, on every scroller: the cards and pictures all have their
+   heights before they load, so anchoring had nothing to do here anyway. */
+html,
+body,
+.page-wrap,
+main {
+  overflow-anchor: none;
+}
+
 /* THE MEMBER PAGE DOES NOT SNAP (2026-10-16). It snapped each project to
    the top for one afternoon, while a project was one screen: a heading and a
    carousel. With every work in line a project runs for several screens, and
