@@ -285,35 +285,36 @@ import "../styles/type.css";
     flex-direction: column;
   }
 
-  /* THREE PILLS, NO MENU (2026-10-14, Josh: "on desktop it should be 3
-     pills that are directly selectable" — and on a phone too since
-     2026-10-19: "when the menu scrolls away the chips at the top can be
-     next to each other also on mobile", the header rides away on a scroll
-     now, Layout.astro). The drop-down above is kept but unused: the same
-     list is a row in the header's flow, always shown, and the button is not
-     drawn. The open/closed machinery is switched off rather than removed:
-     the list is visible, each pill is at rest, and only the type's colour
-     and the current page's wipe animate. Two classes on the pill outrank the
-     closed state (.nav-link, one class) whatever the button says. */
-  .nav-menu-btn {
-    display: none;
-  }
-  .nav-links {
-    position: static;
-    flex-direction: row;
-    align-items: center;
-    gap: 6px;
-    width: auto;
-    visibility: visible;
-    transition: none;
-  }
-  .nav-right-group {
-    flex-direction: row;
-  }
-  .nav-links .nav-link {
-    opacity: 1;
-    transform: none;
-    transition: color 0.25s ease 0.08s;
+  /* THREE PILLS, NO MENU, ON A DESKTOP (2026-10-14, Josh: "on desktop it
+     should be 3 pills that are directly selectable"). The drop-down above is
+     the phone's; here the same list is a row in the header's flow, always
+     shown, and the button is not drawn. The open/closed machinery is
+     switched off rather than removed: the list is visible, each pill is at
+     rest, and only the type's colour and the current page's wipe animate.
+     Two classes on the pill outrank the closed state (.nav-link, one class)
+     whatever the button says, so a phone's open menu carried across the
+     breakpoint changes nothing here. */
+  @media (--bp-desktop) {
+    .nav-menu-btn {
+      display: none;
+    }
+    .nav-links {
+      position: static;
+      flex-direction: row;
+      align-items: center;
+      gap: 6px;
+      width: auto;
+      visibility: visible;
+      transition: none;
+    }
+    .nav-right-group {
+      flex-direction: row;
+    }
+    .nav-links .nav-link {
+      opacity: 1;
+      transform: none;
+      transition: color 0.25s ease 0.08s;
+    }
   }
 
   .lang-toggle {
@@ -349,16 +350,44 @@ import "../styles/type.css";
   }
 
   @media (--bp-mobile) {
-    /* The pills in a row here too since 2026-10-19 (the hamburger's rules
-       above are unused now); a touch tighter than the desktop's, 8px in
-       from the screen edge like the title. */
+    /* THE HAMBURGER (2026-10-13, Josh: "a hamburger will be better"): the
+       button becomes a 36px tap target holding three black bars on the bare
+       page (2026-10-15, Josh: "just black lines not a black dot with lines";
+       it was a black square with white bars until then), the word MENU
+       clipped out of sight (it stays as the button's name), and the drop-down
+       it opens is the three chips, a touch roomier than on a desktop for a
+       thumb. Both sit 8px in from the screen edge, where the title sits on
+       the left. */
     nav[data-astro-transition-persist="navbar"] {
-      --nav-chip-pad: 8px 10px 7px;
+      --nav-chip-pad: 9px 12px 8px;
       padding-right: 8px;
-      gap: 0;
+    }
+    .nav-menu-btn {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      justify-content: center;
+      background: transparent;
+      color: var(--nav-ink);
+    }
+    .nav-menu-btn:hover,
+    .nav-menu-btn[aria-expanded="true"] {
+      text-decoration: none;
+    }
+    .nav-menu-btn__label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    .nav-burger {
+      display: block;
     }
     .nav-links {
-      gap: 4px;
+      right: 8px;
+      top: calc(100% - 2px);
     }
 
     /* NOT FLOATING ON A PHONE (2026-09-24, Josh: "the language switch on
