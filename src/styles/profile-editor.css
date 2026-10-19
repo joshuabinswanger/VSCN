@@ -380,6 +380,21 @@
     position: relative;
   }
 
+  /* BOXES AROUND THE BLOCKS (2026-10-19, Josh: "add boxes and more white
+     space around blocks in the editor"). A project block is framed in the
+     site's border, 1.5px like a picture's frame, with --block-pad of air
+     inside; each work row (a pending upload too) sits in a lighter 1px box
+     of its own inside it, with --row-pad of air, and the text block after
+     the work stays in that box. The editor only: preview shows the page's
+     own works, which have no frame. The row is therefore NARROWER than the
+     page's figure by the two paddings and borders — on purpose now; the
+     outline-not-border note on .gallery-project below predates this. */
+  .gallery-item {
+    --row-pad: 1.25rem;
+    padding: var(--row-pad);
+    border: 1px solid var(--color-border);
+  }
+
   .gallery-row-tools {
     display: flex;
     flex-wrap: wrap;
@@ -406,7 +421,20 @@
      Add images, Add video, Delete — ProjectEditor.astro) at the block's
      right edge, on a line of its own, so the title runs the full width. */
   .gallery-project {
+    --block-pad: 1.5rem;
     position: relative;
+    padding: var(--block-pad);
+    border: 1.5px solid var(--color-border);
+  }
+
+  @media (--bp-mobile) {
+    .gallery-project {
+      --block-pad: 1rem;
+    }
+
+    .gallery-item {
+      --row-pad: 0.85rem;
+    }
   }
 
   .gallery-project-tools {
@@ -1083,7 +1111,8 @@
   .gallery-project-images {
     display: flex;
     flex-direction: column;
-    gap: var(--project-gap);
+    /* Boxed rows stand a little further apart than the page's bare ones. */
+    gap: calc(var(--project-gap) + 0.5rem);
   }
 
   /* An empty block shows its note instead of rows (renderGallery). */
