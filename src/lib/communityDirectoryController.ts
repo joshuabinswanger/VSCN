@@ -1026,6 +1026,9 @@ const PAGES_AT_KEY = "vscn:pages-at:";
  *  history.state is already the DESTINATION's by before-preparation. */
 let pagesEntryIndex: number | null = null;
 let arrivalTraverse = false;
+/** False until the router has swapped once: a page-load before that is the
+ *  document's own load, not a swap. */
+let swappedOnce = false;
 let arrivalSettled: Promise<void> = Promise.resolve();
 
 function pagesCellOnScreen(): HTMLElement | null {
@@ -1057,6 +1060,7 @@ document.addEventListener("astro:before-swap", (event) => {
   };
   delete document.documentElement.dataset.scrollKept;
   pagesEntryIndex = null;
+  swappedOnce = true;
   arrivalTraverse = swap.navigationType === "traverse";
   arrivalSettled = swap.viewTransition?.finished.catch(() => {}) ?? Promise.resolve();
 });
@@ -1090,7 +1094,16 @@ function restorePagesMember(mode: LayoutMode) {
   const index = (history.state as { index?: number } | null)?.index;
   pagesEntryIndex = mode === "pages" && typeof index === "number" ? index : null;
   const kept = document.documentElement.hasAttribute("data-scroll-kept");
-  const rank = arrivalTraverse ? savedPagesRank() : null;
+  // A BACK THAT IS A FULL LOAD (2026-10-19, Josh: "chrome on ios doesnt
+  // work"): a browser that drops the document between pages comes back to
+  // this entry with a fresh load, no swap, so no traverse is seen here —
+  // but the entry's history.state survives the round trip, and the rank
+  // filed under its index with it. The navigation entry says it is a Back.
+  const fullBack =
+    !swappedOnce &&
+    (performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined)?.type ===
+      "back_forward";
+  const rank = arrivalTraverse || fullBack ? savedPagesRank() : null;
   arrivalTraverse = false;
   if (mode !== "pages" || !rank) {
     if (kept) delete document.documentElement.dataset.scrollKept;
@@ -1123,10 +1136,14 @@ function restorePagesMember(mode: LayoutMode) {
   const root = document.documentElement;
   let last = NaN;
   let frames = 0;
+  // A full-load Back has no hold, and the browser's own scroll restoration
+  // can land late (scrollRestoration is "auto" across a full navigation),
+  // so the placement is kept up for a run of frames there.
+  const minFrames = fullBack ? 30 : 0;
   const settle = () => {
     const top = place();
     const held = root.hasAttribute("data-arrive-hold");
-    if (!held && top === last) return;
+    if (!held && top === last && frames >= minFrames) return;
     last = top;
     if (++frames < 120) requestAnimationFrame(settle);
   };
