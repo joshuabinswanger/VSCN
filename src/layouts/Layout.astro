@@ -1212,7 +1212,9 @@ const BRAND_SLOTS: BrandSlot[] = [
     const phone = window.matchMedia("(max-width: 767px)").matches;
     const fade = main
       .animate(
-        [{}, { opacity: 0, transform: "translateY(-36px) scale(0.98)", filter: "blur(6px)" }],
+        // A PLAIN FADE since 2026-10-20: the translate made WebKit's scroll
+        // follow it on a phone (the page's saved offset came back wrong).
+        [{}, { opacity: 0 }],
         { duration: LEAVE_MS, easing: "cubic-bezier(.5,0,.9,.4)", fill: "forwards" }
       )
       .finished.then(() => {});
@@ -1259,86 +1261,36 @@ const BRAND_SLOTS: BrandSlot[] = [
   // ended. Animating the live <main> instead keeps it in the root, under the
   // grain, the whole way. Same keyframes, same curve.
   const ENTER_MS = 620;
-  // The longest the page is held back waiting to be ready.
-  const ARRIVE_CAP_MS = 1400;
+  // A PLAIN FADE AFTER A FIXED PAUSE (2026-10-20, Josh: "replace the initial
+  // painting of the site after a short delay of 500ms it should then start
+  // fading in"). Until then the page rose out of a translate + scale + blur,
+  // held until fonts, pictures and two calm frames (cap 1.4s): the translate
+  // made WebKit's scroll follow it on a phone, and the variable hold was
+  // never quite the same twice. Now the arriving page is invisible for
+  // exactly this long after the swap and then only fades. data-arrive-hold
+  // on <html> holds the Portfolios entrance too (CommunityGrid.astro), and
+  // each card then waits for its own picture (pagesEntrance.ts).
+  const ARRIVE_DELAY_MS = 500;
 
-  const nextFrame = () => new Promise<number>((resolve) => requestAnimationFrame(resolve));
-
-  /** Resolves once the arrived page can rise without stalling: fonts in,
-   *  the pictures on (or just below) the screen decoded, and two frames in
-   *  a row that came on time. Each wait is bounded; start() has the cap. */
-  async function whenArrivalReady(main: HTMLElement): Promise<void> {
-    await document.fonts?.ready.catch(() => {});
-    // On the screen in BOTH directions: a carousel's next slides sit beside
-    // it and, being lazy, may never load — waiting on them held every member
-    // page to the cap. And never more than half a second of decoding.
-    const pictures = Array.from(main.querySelectorAll("img")).filter((img) => {
-      const r = img.getBoundingClientRect();
-      return r.width > 0 && r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth;
-    });
-    await Promise.race([
-      Promise.all(pictures.map((img) => img.decode().catch(() => {}))),
-      new Promise((resolve) => setTimeout(resolve, 500)),
-    ]);
-    // Quiet = no long task in the frame: 40ms is past any display's frame
-    // (WebKit's headless frames run ~30ms) and short of a 50ms long task.
-    let last = await nextFrame();
-    let calm = 0;
-    for (let i = 0; i < 12 && calm < 2; i++) {
-      const now = await nextFrame();
-      calm = now - last < 40 ? calm + 1 : 0;
-      last = now;
-    }
-  }
-
-  let arriveDirection: "forward" | "back" = "forward";
-  document.addEventListener("astro:before-swap", (event) => {
-    arriveDirection = (event as unknown as { direction?: string }).direction === "back" ? "back" : "forward";
-  });
   document.addEventListener("astro:after-swap", () => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const main = document.querySelector<HTMLElement>(".page-wrap main");
     if (!main) return;
-    const rise = arriveDirection === "back" ? -72 : 72;
-    // NO SNAPPING WHILE THE PAGE RISES (2026-10-15, the Portfolios flutter):
-    // the rise moves every snap area with <main>, and a mandatory snap
-    // re-snapped the scroll on each frame — the page arrived ~120px down and
-    // eased back. global.css only snaps while <html> carries no data-arriving.
+    // NO SNAPPING WHILE THE PAGE ARRIVES (2026-10-15, the Portfolios
+    // flutter; global.css only snaps while <html> carries no data-arriving).
     const root = document.documentElement;
     root.dataset.arriving = "";
-    const enter = main.animate(
-      [
-        { opacity: 0, transform: `translateY(${rise}px) scale(0.96)`, filter: "blur(10px)" },
-        { opacity: 1, transform: "none", filter: "none" },
-      ],
-      { duration: ENTER_MS, easing: "cubic-bezier(.18,1.25,.32,1)", fill: "backwards" }
-    );
-    // HELD UNTIL THE PAGE IS REALLY READY (2026-10-16, Josh: "it still
-    // stutters" twice, then "maybe delay page draw until it really is
-    // ready"). Started at the swap, the rise was timed from a moment the
-    // main thread then spent 300ms and more on a phone dealing and laying
-    // out /community, so its first visible frame was a third of the way up.
-    // Waiting for page-load alone still let it run into the rest: fonts,
-    // the pictures on screen decoding on their first paint, the motion
-    // layer's async measure. So it waits, invisible at its first frame, for
-    // all of that and then for the main thread to be QUIET (two short
-    // frames running), and only then plays — with a hard cap so a slow
-    // image can never keep the page hidden. data-arrive-hold on <html>
-    // holds the Portfolios entrance too (CommunityGrid.astro), so the
-    // picture opens with the rise instead of unseen behind it.
+    const enter = main.animate([{ opacity: 0 }, { opacity: 1 }], {
+      duration: ENTER_MS,
+      easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+      fill: "backwards",
+    });
     enter.pause();
     root.dataset.arriveHold = "";
-    let started = false;
-    const start = () => {
-      if (started) return;
-      started = true;
+    setTimeout(() => {
       delete root.dataset.arriveHold;
       if (enter.playState === "paused") enter.play();
-    };
-    setTimeout(start, ARRIVE_CAP_MS);
-    document.addEventListener("astro:page-load", () => void whenArrivalReady(main).then(start), {
-      once: true,
-    });
+    }, ARRIVE_DELAY_MS);
     enter.finished.catch(() => {}).finally(() => delete root.dataset.arriving);
   });
 
