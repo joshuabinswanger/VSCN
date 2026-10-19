@@ -262,6 +262,21 @@ const BRAND_SLOTS: BrandSlot[] = [
         window.addEventListener("pageshow", onChange);
       })();
     </script>
+    {
+      /* DID THE BROWSER ANIMATE THIS BACK ITSELF? An iOS edge swipe shows the
+        previous page sliding in before popstate fires, and says so on the
+        event (hasUAVisualTransition). The router's own popstate listener runs
+        before any listener added after it — same-target listeners fire in
+        registration order — and it dispatches astro:before-preparation
+        synchronously from inside it, so the flag has to be caught by a
+        listener registered BEFORE the router's: this inline script, which
+        runs ahead of every module. gestureHistory.ts reads the slot. */
+    }
+    <script is:inline>
+      addEventListener("popstate", function (e) {
+        window.__vscnPopstateUA = e.hasUAVisualTransition === true;
+      });
+    </script>
     <title>{title}</title>
     <meta name="description" content={metaDescription} />
     {noindex && <meta name="robots" content="noindex, nofollow" />}
@@ -725,6 +740,10 @@ const BRAND_SLOTS: BrandSlot[] = [
   // The directory's Portfolios deal, run on the incoming page before a swap
   // — on every page, because the directory's own script is not loaded yet.
   import "../lib/communityDealSwap.ts";
+  // The history entry of every navigation is pushed INSIDE the tap, or iOS's
+  // own Back skips it (gestureHistory.ts) — which also knows when the
+  // browser has already animated a Back, the iOS edge swipe.
+  import { browserAnimatedThisTraversal } from "../lib/gestureHistory.ts";
 
   type Lang = "en" | "de";
 
@@ -1244,6 +1263,9 @@ const BRAND_SLOTS: BrandSlot[] = [
 
   document.addEventListener("astro:before-preparation", (event) => {
     if (event.to.pathname === event.from.pathname) return;
+    // An iOS edge swipe has already shown the page coming back; fading the
+    // one just left on top of that shows it a second time.
+    if (browserAnimatedThisTraversal()) return;
     const load = event.loader;
     event.loader = async () => {
       await Promise.all([load(), leavePage()]);
@@ -1276,6 +1298,10 @@ const BRAND_SLOTS: BrandSlot[] = [
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const main = document.querySelector<HTMLElement>(".page-wrap main");
     if (!main) return;
+    // The browser animated this Back itself (the iOS edge swipe): the page
+    // is already on screen, so no hold and no fade — a blank half second
+    // after the swipe would read as the page failing to come back.
+    if (browserAnimatedThisTraversal()) return;
     // NO SNAPPING WHILE THE PAGE ARRIVES (2026-10-15, the Portfolios
     // flutter; global.css only snaps while <html> carries no data-arriving).
     const root = document.documentElement;
