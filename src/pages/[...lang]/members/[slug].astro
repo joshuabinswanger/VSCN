@@ -377,10 +377,45 @@ const jsonLd = memberPageJsonLd({
       )
     }
   </article>
+  {/* THE WAY BACK TO THE PORTFOLIOS (2026-10-20, Josh: "when in profile view
+      navigate back via a portfolios button at the bottom in the style of
+      the lower button"): one pill where the directory's bar floats, drawn
+      to its measures (profile.css). It is a link to the Portfolios, and
+      when this page was reached FROM them it goes back in history instead
+      (the script below), so the member left is the one landed on
+      (restorePagesMember, communityDirectoryController.ts). */}
+  <nav class="mprof-bar" aria-label={t("community.view.gallery")}>
+    <a class="mprof-bar__in" id="mprof-back" href={currentLang === "de" ? "/de/community" : "/community"}>
+      <span aria-hidden="true">←</span>
+      {t("community.view.gallery")}
+    </a>
+  </nav>
 </Layout>
 
 
 <script>
+  // The Portfolios pill goes BACK when the Portfolios are the entry behind
+  // this one: the directory files the member on screen under its history
+  // index on the way out (vscn:pages-at:<index>), so that key's presence for
+  // the previous index is the tell. Otherwise the link goes forward to them.
+  document.addEventListener("click", (event) => {
+    const link = (event.target as Element | null)?.closest?.("#mprof-back");
+    if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey) return;
+    const index = (history.state as { index?: number } | null)?.index;
+    if (typeof index !== "number" || index < 1) return;
+    let filed: string | null = null;
+    try {
+      filed = sessionStorage.getItem(`vscn:pages-at:${index - 1}`);
+    } catch {
+      /* Private mode: forward it is. */
+    }
+    if (filed === null) return;
+    event.preventDefault();
+    history.back();
+  }, { capture: true });
+  // Capture, so it runs ahead of the ClientRouter's own click listener,
+  // which steps aside for a prevented click.
+
   import type PhotoSwipeLightbox from "photoswipe/lightbox";
   // The options, the words and the video slides: one lightbox for the whole
   // site, defined once in lib/lightbox.ts (the grid and the editor's preview

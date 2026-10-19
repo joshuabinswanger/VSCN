@@ -733,3 +733,56 @@
     margin-top: 3rem;
   }
 }
+
+/* ── THE PORTFOLIOS PILL (2026-10-20) ─────────────────────────────────────
+   Where the directory's bar floats, drawn to its measures: the same paper
+   capsule with the black hairline (.community-bar__in in CommunityGrid),
+   its one word padded as a trigger is (--bar-pad 3px + --chip-pad-y), on
+   the corners' 20px line on a desktop and 12px off the home bar on a phone.
+   Type: the BAR sizes in type.css. */
+.mprof-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(20px - 3px - 0.4rem - 1px);
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.mprof-bar__in {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  box-sizing: border-box;
+  padding: calc(3px + 0.4rem) calc(3px + 0.9rem);
+  background: var(--color-bg);
+  color: var(--color-dark);
+  border: 1px solid var(--color-dark);
+  /* The capsule itself comes from CONTROLS in global.css (the square reset
+     lists this pill with the bar's). */
+  text-decoration: none;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+.mprof-bar__in:hover,
+.mprof-bar__in:focus-visible {
+  background: var(--color-dark);
+  color: var(--color-bg);
+  outline: none;
+}
+@media (--bp-mobile) {
+  .mprof-bar {
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+}
+@media (--bp-desktop) {
+  .mprof-bar {
+    bottom: 36px;
+  }
+  .mprof-bar__in {
+    padding: calc(3px + 0.55rem) calc(3px + 0.9rem);
+  }
+}
