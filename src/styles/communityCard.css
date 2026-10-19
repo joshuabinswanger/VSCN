@@ -165,7 +165,9 @@
   text-decoration-thickness: 1.5px;
 }
 .ccard__role {
-  margin: 1rem 0 0;
+  /* 1.5rem under the name (2026-10-19, Josh: "more gap between name and
+     role"; 1rem until then). */
+  margin: 1.5rem 0 0;
   min-width: 0;
   color: var(--color-dark);
 }
@@ -544,7 +546,7 @@
   /* The name bigger on a phone (2026-10-16, Josh: "on phone increase the
      Name font as well"), in type.css; the role tight under it. */
   .ccard__role {
-    margin-top: 0.25rem;
+    margin-top: 0.6rem;
   }
   /* NO PROFILE BUTTON ON A PHONE (2026-10-19, Josh: "remove profile button
      mobile"): the name is the way to the member's page. .ccard__more holds
@@ -626,6 +628,7 @@
    dots bigger and more gap in portfolio view"). The member page keeps the
    shared --carousel-dot sizes from type.css. */
 .ccard__dots {
-  --carousel-dot: 0.5rem;
+  /* 0.5rem until 2026-10-19 (Josh: "dots a bit smaller"). */
+  --carousel-dot: 0.4rem;
   --carousel-dot-gap: 0.5rem;
 }

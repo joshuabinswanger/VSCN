@@ -60,6 +60,49 @@ const SHOWN = 0.55;
 const GONE = 0.02;
 let io: IntersectionObserver | null = null;
 
+// NOT BEFORE EVERYTHING IS THERE (2026-10-19, Josh: "it animated in doubly.
+// fade in the image only after everything has loaded on the portfolio
+// page!"). On a full load the entrance used to start the moment a card was
+// in view: the frame opened over a picture still arriving, and on a first
+// visit under the intro still playing, so the picture came in twice. Now a
+// card in view waits for the intro to finish, the fonts, and its first
+// picture to load and decode — capped, so a picture that never comes still
+// lets the card in. A swap's arrival hold (Layout.astro) covers the same
+// for the card on screen; this covers full loads and every later card.
+const READY_CAP_MS = 4000;
+const wanted = new WeakSet<HTMLElement>();
+
+function whenIntroDone(): Promise<void> {
+  if (!document.getElementById("page-loader")) return Promise.resolve();
+  return new Promise((resolve) => {
+    const check = () => {
+      if (!document.body.classList.contains("page-loaded")) return;
+      observer.disconnect();
+      resolve();
+    };
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    check();
+  });
+}
+
+async function whenCardReady(cell: HTMLElement): Promise<void> {
+  const ready = (async () => {
+    await whenIntroDone();
+    await document.fonts?.ready.catch(() => {});
+    const img = cell.querySelector<HTMLImageElement>(".ccard__slide:first-child .ccard__img");
+    if (!img) return;
+    if (!img.complete) {
+      await new Promise<void>((resolve) => {
+        img.addEventListener("load", () => resolve(), { once: true });
+        img.addEventListener("error", () => resolve(), { once: true });
+      });
+    }
+    await img.decode().catch(() => {});
+  })();
+  await Promise.race([ready, new Promise<void>((resolve) => setTimeout(resolve, READY_CAP_MS))]);
+}
+
 export function setPagesEntrance(on: boolean): void {
   io?.disconnect();
   io = null;
@@ -70,10 +113,19 @@ export function setPagesEntrance(on: boolean): void {
     (entries) => {
       for (const entry of entries) {
         const cell = entry.target as HTMLElement;
-        if (entry.isIntersecting && entry.intersectionRatio >= SHOWN) cell.classList.add("is-in");
+        if (entry.isIntersecting && entry.intersectionRatio >= SHOWN) {
+          if (wanted.has(cell)) continue;
+          wanted.add(cell);
+          void whenCardReady(cell).then(() => {
+            if (wanted.has(cell)) cell.classList.add("is-in");
+          });
+        }
         // Gone, or all but gone — a card resting edge to edge with the one
         // on screen still "intersects" by its border.
-        else if (entry.intersectionRatio < GONE) cell.classList.remove("is-in");
+        else if (entry.intersectionRatio < GONE) {
+          wanted.delete(cell);
+          cell.classList.remove("is-in");
+        }
       }
     },
     { threshold: [0, GONE, SHOWN] },
