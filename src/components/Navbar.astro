@@ -467,8 +467,18 @@ import "../styles/type.css";
     return path.replace(/\/+$/, "") || "/";
   }
 
-  function setActiveLink() {
-    const path = normalisePath(window.location.pathname);
+  // THE CHIP WIPES BEFORE THE PAGE SWAPS (2026-10-19, Josh: "do animation
+  // of nav elements before page swap"): Layout's leave sequence holds the
+  // swap while the old page fades, so the destination's chip is marked at
+  // before-preparation and its wipe plays through that fade instead of on
+  // the new page's first frames. page-load marks it again, harmlessly.
+  document.addEventListener("astro:before-preparation", (event) => {
+    const to = (event as unknown as { to?: URL }).to;
+    if (to) setActiveLink(to.pathname);
+  });
+
+  function setActiveLink(pathname = window.location.pathname) {
+    const path = normalisePath(pathname);
     document.querySelectorAll<HTMLAnchorElement>(".nav-link").forEach((link) => {
       if (link.id === "nav-lang") return;
       const isActive = normalisePath(link.pathname) === path;

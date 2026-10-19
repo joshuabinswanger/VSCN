@@ -344,8 +344,17 @@ function settleBar(pill: HTMLElement) {
     barLeaving.style.removeProperty("pointer-events");
     barLeaving = null;
   }
-  const anyOpen = BAR_MENUS.some(([, id]) => document.getElementById(id)?.hidden === false);
-  if (!anyOpen) setBarR(pill, null);
+  const openPanel = BAR_MENUS.map(([, id]) => document.getElementById(id)).find((p) => p && !p.hidden) ?? null;
+  if (!openPanel) setBarR(pill, null);
+  // THE WORDS AFTER THE BOX (2026-10-19, Josh: "tags should be revealed
+  // after the box is fully revealed. smooth fade in"): a panel that opened
+  // with this size animation was held clear while the pill grew; now that
+  // the box stands, its content fades in.
+  if (openPanel && openPanel.dataset.entering !== undefined) {
+    delete openPanel.dataset.entering;
+    openPanel.style.removeProperty("opacity");
+    openPanel.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 360, easing: "ease-out" });
+  }
 }
 
 /** Open one drop-up (`null`: none), the pill GROWING round it (2026-10-16,
@@ -406,8 +415,13 @@ function setBarMenu(open: string | null) {
     leaving.animate([{ opacity: 1 }, { opacity: 0 }], { duration: BAR_MS * 0.6, fill: "forwards" });
     barLeaving = leaving;
   }
+  // The opening panel is kept clear until the pill has grown round it;
+  // settleBar fades it in once the size animation ends (or is retargeted).
   const entering = open ? document.getElementById(open) : null;
-  entering?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: BAR_MS, easing: BAR_EASE });
+  if (entering) {
+    entering.style.opacity = "0";
+    entering.dataset.entering = "";
+  }
   sizeBar(pill, from);
 }
 
