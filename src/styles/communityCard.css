@@ -546,20 +546,11 @@
   .ccard__role {
     margin-top: 0.25rem;
   }
-  /* Smaller on a phone (2026-10-12, Josh: "the Profile button smaller on
-     mobile!"): the type a step down in type.css. Its row is the card's last
-     (bio, tags and links are off the card). */
+  /* NO PROFILE BUTTON ON A PHONE (2026-10-19, Josh: "remove profile button
+     mobile"): the name is the way to the member's page. .ccard__more holds
+     nothing else there, so the row goes with it. */
   .ccard__more {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: baseline;
-    column-gap: 1rem;
-    row-gap: 0.35rem;
-  }
-  /* Left under the role on a phone too (2026-10-18). */
-  .ccard__profile {
-    align-self: baseline;
-    gap: 0.3rem;
+    display: none;
   }
   /* No edge arrows on a phone: paging is the swipe, and the count says where
      the swipe got to. */
