@@ -237,7 +237,7 @@ const jsonLd = memberPageJsonLd({
         />
       )}
       <div class="mprof__head-copy">
-        <h1 class="mprof__name" transition:name={`mname-${member.id}`}>{member.displayName}</h1>
+        <h1 class="mprof__name">{member.displayName}</h1>
         {member.role && <p class="mprof__role">{member.role}</p>}
         {member.affiliation && <p class="mprof__affiliation">{member.affiliation}</p>}
         {where && <p class="mprof__where">{where}</p>}
@@ -355,7 +355,6 @@ const jsonLd = memberPageJsonLd({
                 data-project-id={section.project.id}
                 works={section.works}
                 allWorks={works}
-                memberId={member.id}
                 displayName={member.displayName}
                 lang={currentLang}
               />
@@ -364,7 +363,6 @@ const jsonLd = memberPageJsonLd({
                 <MemberWork
                   work={w}
                   index={works.indexOf(w)}
-                  memberId={member.id}
                   displayName={member.displayName}
                   workAlt={t("member.workAlt")}
                   linkTitle={t("member.lightbox.link")}

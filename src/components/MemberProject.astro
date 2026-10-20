@@ -21,21 +21,19 @@ interface Props extends HTMLAttributes<"section"> {
   project: ProfileProject;
   /** This project's works, as the page rendered them (MemberWork's shape). */
   works: Work[];
-  /** The member's whole works list, for each work's index (transition name, eager loading). */
+  /** The member's whole works list, for each work's index (eager loading). */
   allWorks: Work[];
-  memberId: string;
   displayName: string;
   lang: Lang;
 }
 
-const { project, works, allWorks, memberId, displayName, lang, class: className, ...rest } = Astro.props;
+const { project, works, allWorks, displayName, lang, class: className, ...rest } = Astro.props;
 const t = useTranslations(lang);
 const title = projectTitle(project, lang);
 const desc = projectDescription(project, lang);
 const figure = (w: Work) => ({
   work: w,
   index: allWorks.indexOf(w),
-  memberId,
   displayName,
   workAlt: t("member.workAlt"),
   linkTitle: t("member.lightbox.link"),

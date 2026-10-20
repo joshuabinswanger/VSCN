@@ -143,17 +143,18 @@ const positionFor = (i: number) =>
   }
   <div class="ccard__body">
     {
-      /* The frame IS the Embla viewport. Wrapping it in one would have moved
-        transition:name off the box the member-page morph is keyed to, and
-        broken the frame's width formula, which reads this element's aspect
-        box. So Embla is handed this node as its root and everything it needs
-        is added INSIDE: a track it may translate, with the click target, the
-        arrows and the live region as siblings of that track, untouched by
-        the motion. */
+      /* The frame IS the Embla viewport. Wrapping it in one would have broken
+        the frame's width formula, which reads this element's aspect box. So
+        Embla is handed this node as its root and everything it needs is added
+        INSIDE: a track it may translate, with the click target, the arrows and
+        the live region as siblings of that track, untouched by the motion.
+        (Until 2026-10-20 the frame also carried the member page's picture
+        morph, mimg-<id>: gone, with the name's. The morph flew into a page
+        held invisible for its 500ms pause and vanished on iOS; see
+        MemberWork.astro.) */
     }
     <div
       class="ccard__frame"
-      transition:name={`mimg-${member.id}`}
       data-carousel
       data-position-label={isCarousel ? positionTemplate : undefined}
       role={isCarousel ? "group" : undefined}
@@ -303,7 +304,7 @@ const positionFor = (i: number) =>
     <div class="ccard__head">
       <div class="ccard__head-copy">
       <h2 class="ccard__name">
-        <a class="ccard__name-link" href={profileHref} transition:name={`mname-${member.id}`}>
+        <a class="ccard__name-link" href={profileHref}>
           {member.displayName}
         </a>
       </h2>

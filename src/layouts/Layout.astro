@@ -1293,6 +1293,11 @@ const BRAND_SLOTS: BrandSlot[] = [
   // on <html> holds the Portfolios entrance too (CommunityGrid.astro), and
   // each card then waits for its own picture (pagesEntrance.ts).
   const ARRIVE_DELAY_MS = 500;
+  // No element morphs across this pause any more: the card's picture and
+  // name used to carry view-transition names into the member page, and
+  // WebKit paints a named element at full strength under an opacity-0
+  // ancestor, so on an iPhone they flew in, vanished with the transition,
+  // and faded back in (2026-10-20; MemberWork.astro).
 
   document.addEventListener("astro:after-swap", () => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
