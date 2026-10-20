@@ -1348,8 +1348,9 @@ const searchIndex: SearchIndex = {
      The tags room's width and height cap; the field stays put while the
      results scroll under it. The rows are drawn by renderSearch, so every
      rule below the panel reaches them through :global. */
-  /* A glyph the height of a capital, on a trigger as wide as it is tall-ish:
-     the other triggers' side padding would leave it swimming. */
+  /* A glyph the height of a capital on its own trigger. 0.7rem of side room
+     until 2026-10-20 (Josh: "give the search glass a bit more white space"):
+     now 1rem, so the glass sits in a square-ish box instead of a tight one. */
   .search__glass {
     width: 1em;
     height: 1em;
@@ -1357,7 +1358,7 @@ const searchIndex: SearchIndex = {
   }
 
   .search-menu .bar-menu__trigger {
-    padding-inline: 0.7rem;
+    padding-inline: 1rem;
   }
 
   .search__panel {
