@@ -33,6 +33,13 @@ import "../styles/type.css";
       <a href="/login" class="nav-link" id="nav-join">LOGIN</a>
       <a href="/profile" class="nav-link" id="nav-profile" style="display:none;">PROFILE</a>
     </div>
+    {/* The language switch's place on the phone's sheet (2026-10-20): the
+        fixed .lang-toggle below is hidden on every page with a footer, so the
+        sheet carries its own copy, kept in step by updateNavLinks. Not drawn
+        on a desktop. */}
+    <a href="/de" class="nav-link nav-link--lang" id="nav-sheet-lang">
+      <span class="lang-cur">EN</span><span class="lang-sep"> / </span><span class="lang-tgt">DE</span>
+    </a>
   </div>
 </nav>
 
@@ -310,10 +317,35 @@ import "../styles/type.css";
     .nav-right-group {
       flex-direction: row;
     }
+    /* PLAIN TEXT, NOT PILLS (2026-10-20, Josh: "desktop stays for now,
+       just replace with normal text"): the black capsules are gone, the
+       three words stand on the paper, and the current page is underlined
+       where the chip used to invert. The wipe layer is not drawn. */
+    .nav-links {
+      gap: 1.6rem;
+    }
     .nav-links .nav-link {
       opacity: 1;
       transform: none;
+      padding: 0;
+      background: none;
+      box-shadow: none;
+      color: var(--nav-ink);
       transition: color 0.25s ease 0.08s;
+    }
+    .nav-links .nav-link:visited {
+      color: var(--nav-ink);
+    }
+    .nav-links .nav-link::before {
+      display: none;
+    }
+    .nav-links .nav-link--active {
+      text-decoration: underline;
+      text-underline-offset: 4px;
+      text-decoration-thickness: 1px;
+    }
+    .nav-link--lang {
+      display: none;
     }
   }
 
@@ -385,10 +417,122 @@ import "../styles/type.css";
     .nav-burger {
       display: block;
     }
-    .nav-links {
-      right: 8px;
-      top: calc(100% - 2px);
+    /* THE SHEET (2026-10-20, Josh: "remove pills. make the menu full screen
+       with nice animation in and out"). The chips under the cross are gone;
+       the list is a paper sheet over the whole screen below the header row,
+       and the destinations stand on it as large type (the MENU size in
+       type.css), stacked at the left where the title sits, the language
+       switch small beneath them. The current page carries an arrow after its
+       word, in place of the chips' inverted wipe.
+       IN: the sheet fades up and each line rises out of a short drop on the
+       site's curve, 60ms apart, top to bottom. OUT: the lines drop and fade
+       bottom to top, quicker and without the spring, and the sheet fades
+       after the last of them; visibility flips once that is done (the 0.5s
+       below stays above the longest leave). The hamburger sits above the
+       sheet so the cross stays tappable.
+       A TAPPED DESTINATION KEEPS THE SHEET UP (the "cut off" of 2026-10-20):
+       the menu used to close itself at astro:before-preparation, the same
+       moment the chip's wipe started, so the wipe died a few frames in. Now
+       the script closes it at astro:after-swap, once the new page is in and
+       held behind the sheet, and the sheet's own leave plays whole. */
+    .nav-menu-btn {
+      position: relative;
+      z-index: 1;
     }
+    .nav-links {
+      position: fixed;
+      inset: var(--header-h) 0 0 0;
+      z-index: 0;
+      width: auto;
+      justify-content: center;
+      gap: 0.9rem;
+      padding: 0 8px 7vh;
+      box-sizing: border-box;
+      background: var(--nav-paper);
+      overscroll-behavior: contain;
+      touch-action: none;
+      opacity: 0;
+      visibility: hidden;
+      transition:
+        opacity 0.28s ease 0.16s,
+        visibility 0s linear 0.5s;
+    }
+    .nav-menu-btn[aria-expanded="true"] ~ .nav-links {
+      opacity: 1;
+      visibility: visible;
+      transition:
+        opacity 0.3s ease,
+        visibility 0s linear 0s;
+    }
+    /* Not display: contents — WebKit's WebContent process died on the page
+       change with the sheet open while the group was (headless 2368, the
+       same family as documentation/20260831-webkit-details-display-contents-crash.md). */
+    .nav-right-group {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .nav-links .nav-link {
+      display: inline-flex;
+      align-items: baseline;
+      align-self: flex-start;
+      width: auto;
+      padding: 0;
+      background: none;
+      box-shadow: none;
+      color: var(--nav-ink);
+      opacity: 0;
+      transform: translateY(1.1rem);
+      transition:
+        opacity 0.18s ease calc((2 - var(--i, 0)) * 30ms),
+        transform 0.24s ease-in calc((2 - var(--i, 0)) * 30ms);
+    }
+    .nav-menu-btn[aria-expanded="true"] ~ .nav-links .nav-link {
+      opacity: 1;
+      transform: none;
+      transition:
+        opacity 0.5s ease calc(60ms + var(--i, 0) * 60ms),
+        transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) calc(60ms + var(--i, 0) * 60ms);
+    }
+    .nav-links .nav-link:visited {
+      color: var(--nav-ink);
+    }
+    .nav-links .nav-link:hover {
+      text-decoration: none;
+    }
+    /* No wipe layer on the sheet; the mark is the arrow after the word. */
+    .nav-links .nav-link::before {
+      display: none;
+    }
+    .nav-links .nav-link::after {
+      content: "\2192";
+      display: inline-block;
+      margin-left: 0.3em;
+      opacity: 0;
+      transform: translateX(-0.35em);
+      transition:
+        opacity 0.25s ease,
+        transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .nav-links .nav-link--active::after {
+      opacity: 1;
+      transform: none;
+    }
+    .nav-link--lang {
+      --i: 3;
+      margin-top: 1.4rem;
+    }
+    .nav-link--lang::after {
+      display: none;
+    }
+    .nav-link--lang .lang-sep,
+    .nav-link--lang .lang-tgt {
+      color: var(--color-muted);
+    }
+    /* The page stays put under the sheet by the sheet's own touch-action
+       above, NOT by overflow: hidden on the root: that rule, swapped off
+       the <html> mid view transition on the page change, crashed WebKit's
+       WebContent process every time (headless 2368, bisected 2026-10-20). */
 
     /* NOT FLOATING ON A PHONE (2026-09-24, Josh: "the language switch on
        mobile has to be placed underneath, so when you scroll all the way to
@@ -423,6 +567,9 @@ import "../styles/type.css";
   // block), so there is no `hidden` to toggle and no exit to wait for here.
   function setMenu(open: boolean) {
     document.getElementById("nav-menu-btn")?.setAttribute("aria-expanded", String(open));
+    // A header that had ridden away comes back to hold the cross
+    // (global.css, Layout.astro).
+    if (open) delete document.documentElement.dataset.headerAway;
   }
   // The menu is the phone's only (on a desktop the pills are always shown),
   // so crossing the breakpoint closes it: a phone menu left open must not
@@ -449,7 +596,15 @@ import "../styles/type.css";
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") setMenu(false);
   });
-  document.addEventListener("astro:before-preparation", () => setMenu(false));
+  // Closed once the new page is in, not when the old one starts to leave:
+  // a tapped destination's arrow and the sheet's own leave play whole over
+  // the arriving page, which Layout holds invisible for its pause anyway.
+  // Two frames late: the persisted nav has just been moved into the new
+  // document, and a style change in the same task as that move has no
+  // before-change style to transition from — the sheet snapped shut.
+  document.addEventListener("astro:after-swap", () => {
+    requestAnimationFrame(() => requestAnimationFrame(() => setMenu(false)));
+  });
 
   // The EN / DE switch is an explicit choice, and nothing may route against it:
   // it wins for this session, and a signed-in member's stored language follows
@@ -469,7 +624,7 @@ import "../styles/type.css";
   // left, so Stay records nothing. `documentElement.lang` is still the page
   // being left; the choice is its opposite.
   document.addEventListener("astro:before-preparation", (event) => {
-    const toggle = event.sourceElement?.closest?.("#nav-lang, #footer-lang");
+    const toggle = event.sourceElement?.closest?.("#nav-lang, #footer-lang, #nav-sheet-lang");
     if (!toggle) return;
     const chosen: SiteLanguage = document.documentElement.lang === "de" ? "en" : "de";
     rememberSessionChoice(chosen);
@@ -509,7 +664,7 @@ import "../styles/type.css";
   function setActiveLink(pathname = window.location.pathname) {
     const path = normalisePath(pathname);
     document.querySelectorAll<HTMLAnchorElement>(".nav-link").forEach((link) => {
-      if (link.id === "nav-lang") return;
+      if (link.id === "nav-lang" || link.id === "nav-sheet-lang") return;
       const isActive = normalisePath(link.pathname) === path;
       link.classList.toggle("nav-link--active", isActive);
       if (isActive) {
@@ -532,6 +687,7 @@ import "../styles/type.css";
     const navJoin = document.getElementById("nav-join") as HTMLAnchorElement | null;
     const navProfile = document.getElementById("nav-profile") as HTMLAnchorElement | null;
     const navLang = document.getElementById("nav-lang") as HTMLAnchorElement | null;
+    const sheetLang = document.getElementById("nav-sheet-lang") as HTMLAnchorElement | null;
 
     if (navInfo) {
       navInfo.href = `${prefix}/info`;
@@ -550,15 +706,16 @@ import "../styles/type.css";
       navProfile.textContent = labels.profile;
     }
 
-    if (navLang) {
+    for (const toggle of [navLang, sheetLang]) {
+      if (!toggle) continue;
       if (lang === "de") {
         const enPath = normalisePath(normPath.replace(/^\/de/, "")) || "/";
-        navLang.href = enPath;
-        navLang.innerHTML =
+        toggle.href = enPath;
+        toggle.innerHTML =
           '<span class="lang-tgt">EN</span><span class="lang-sep"> / </span><span class="lang-cur">DE</span>';
       } else {
-        navLang.href = "/de" + normPath;
-        navLang.innerHTML =
+        toggle.href = "/de" + normPath;
+        toggle.innerHTML =
           '<span class="lang-cur">EN</span><span class="lang-sep"> / </span><span class="lang-tgt">DE</span>';
       }
     }
