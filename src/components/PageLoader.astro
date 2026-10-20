@@ -198,7 +198,33 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
 
   const loader = document.getElementById("page-loader");
   const stack = document.getElementById("pl-stack");
-  if (loader && stack) play(loader, stack);
+  // NOT BEFORE ANYONE IS LOOKING (2026-10-20, Josh: "sometimes the initial
+  // VSCN animation on page load does not work"). The intro ran on a clock
+  // from the moment this script ran, visible or not — and a page can load
+  // out of sight: Safari preloads the address bar's top hit while you are
+  // still typing, a link can open in a background tab, Chrome prerenders
+  // likely navigations. There the letters wrote and flew unseen, and the
+  // visitor arrived on the full stacked name or on an empty paper. Now the
+  // intro waits for the page to be shown, and plays from its first beat.
+  if (loader && stack) void whenShown().then(() => play(loader, stack));
+
+  function whenShown(): Promise<void> {
+    const doc = document as Document & { prerendering?: boolean };
+    if (doc.prerendering) {
+      return new Promise<void>((resolve) =>
+        document.addEventListener("prerenderingchange", () => resolve(), { once: true }),
+      ).then(whenShown);
+    }
+    if (document.visibilityState === "visible") return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const onChange = () => {
+        if (document.visibilityState !== "visible") return;
+        document.removeEventListener("visibilitychange", onChange);
+        resolve();
+      };
+      document.addEventListener("visibilitychange", onChange);
+    });
+  }
 
   function play(loader: HTMLElement, stack: HTMLElement) {
     const rows = Array.from(stack.querySelectorAll<HTMLElement>(".pl-row")).map((row) =>
