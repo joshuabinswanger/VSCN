@@ -2050,13 +2050,8 @@ document.addEventListener("astro:page-load", () => {
   function syncProfileView() {
     if (!profileViewRoot || !form.classList.contains("is-works") || worksView !== "profile") return;
     const vm = currentViewModel();
-    // `member.openTo`, not `profile.view.openTo`: the shell renders the
-    // page's markup, so the words in it have to be the page's words. The two
-    // keys read identically today, and that is precisely the kind of
-    // agreement that survives only while someone remembers to maintain it.
     renderProfilePreview(profileViewRoot, worksMode === "edit" ? { ...vm, works: [], projects: [] } : vm, {
       defaultName: s["profile.view.defaultName"],
-      openTo: s["member.openTo"],
       noWorks: s["profile.view.noWorks"],
       with: s["member.project.with"],
       lang: worksLang,

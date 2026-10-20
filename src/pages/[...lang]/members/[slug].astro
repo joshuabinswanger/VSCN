@@ -251,13 +251,9 @@ const jsonLd = memberPageJsonLd({
         {member.role && <p class="mprof__role">{member.role}</p>}
         {member.affiliation && <p class="mprof__affiliation">{member.affiliation}</p>}
         {where && <p class="mprof__where">{where}</p>}
-        {
-          member.openTo.length > 0 && (
-            <p class="mprof__open">
-              {t("member.openTo")} {member.openTo.join(", ")}
-            </p>
-          )
-        }
+        {/* NO "OPEN TO" LINE (2026-10-20, Josh: "remove open to as well"): the
+            field stays in the editor, like the working languages, and is shown
+            nowhere public. */}
       </div>
     </header>
 

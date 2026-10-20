@@ -103,8 +103,6 @@ export function bindPreviewLightbox(
 export interface ProfilePreviewLabels {
   /** Shown in place of the name before the member has typed one. */
   defaultName: string;
-  /** Prefix for the availability line — the page's own `member.openTo`. */
-  openTo: string;
   /** Shown instead of artwork when the gallery is empty. Editor-only text. */
   noWorks: string;
   /** Prefix for a project's affiliations line — the page's own `member.project.with`. */
@@ -170,9 +168,6 @@ export function renderProfilePreview(
   if (where) where.textContent = whereText;
   show(where, Boolean(whereText));
 
-  const open = part("open");
-  if (open) open.textContent = `${labels.openTo} ${vm.openTo.join(", ")}`;
-  show(open, vm.openTo.length > 0);
 
   const bio = part("bio");
   if (bio) fillParagraphs(bio, vm.bio);
