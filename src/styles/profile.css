@@ -786,3 +786,94 @@
     padding: calc(3px + 0.55rem) calc(3px + 0.9rem);
   }
 }
+
+/* ── THE PAGE PAINTS IN (2026-10-20, Josh: "make an animation that paints
+   in the profile page after navigation … name, text, tags and then images,
+   so it looks smooth like scrolling on the Portfolios page") ─────────────
+   The Portfolios cards' entrance, on the head of this page: one long
+   expo-out curve, the portrait settling in, the name rising word by word
+   out of its line (profilePaint.ts splits it and stamps each word's --d),
+   every text line drifting up into place in page order, and last the first
+   picture opening out of an inset and settling from a slight zoom.
+   Everything after the first picture sits still. The start state applies
+   only under [data-motion] on .mprof (set before the first paint by the
+   page's inline script, never under reduced motion), and the transitions
+   live on .is-in alone. Until the script has stamped the schedule
+   (data-painted) the whole head and the works are held, so the plain page
+   never shows and then vanishes. Not in the editor's Works tab, which draws
+   the same markup without the flag. */
+@media (prefers-reduced-motion: no-preference) {
+  /* On the pill too: it sits outside the article, and a transition naming a
+     custom property it cannot see is no transition at all. */
+  .mprof[data-motion],
+  .mprof-bar[data-motion] {
+    --paint-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .mprof[data-motion]:not([data-painted]) .mprof__aside,
+  .mprof[data-motion]:not([data-painted]) .mprof__works {
+    opacity: 0;
+  }
+  .mprof[data-motion] [data-paint="avatar"] {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  .mprof[data-motion] .cw {
+    display: inline-block;
+    overflow: clip;
+    overflow-clip-margin: 2px;
+    /* Room for descenders inside the mask, given back to the line. */
+    padding-bottom: 0.12em;
+    margin-bottom: -0.12em;
+    vertical-align: top;
+  }
+  .mprof[data-motion] .cw__i {
+    display: inline-block;
+    transform: translateY(105%);
+  }
+  /* The pill sits outside the article; its start rule keeps matching under
+     .is-in (the end rule overrides it), as every other start rule here does —
+     a start rule that STOPS matching gave WebKit nothing to transition from. */
+  .mprof[data-motion] [data-paint="line"],
+  .mprof-bar[data-motion] {
+    opacity: 0;
+    translate: 0 0.6rem;
+  }
+  .mprof[data-motion] [data-paint="picture"] {
+    clip-path: inset(9% 9% 9% 9%);
+    opacity: 0;
+  }
+  .mprof[data-motion] [data-paint="picture"] .mprof__img {
+    transform: scale(1.16);
+  }
+
+  .mprof[data-motion].is-in [data-paint="avatar"] {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 0.6s var(--paint-ease),
+      transform 0.9s var(--paint-ease);
+  }
+  .mprof[data-motion].is-in .cw__i {
+    transform: none;
+    transition: transform 0.85s var(--paint-ease) var(--d, 0.05s);
+  }
+  .mprof[data-motion].is-in [data-paint="line"],
+  .mprof-bar[data-motion].is-in {
+    opacity: 1;
+    translate: 0 0;
+    transition:
+      opacity 0.7s var(--paint-ease) var(--d, 0.3s),
+      translate 0.9s var(--paint-ease) var(--d, 0.3s);
+  }
+  .mprof[data-motion].is-in [data-paint="picture"] {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+    transition:
+      clip-path 1.15s var(--paint-ease) var(--d, 0.6s),
+      opacity 0.6s var(--paint-ease) var(--d, 0.6s);
+  }
+  .mprof[data-motion].is-in [data-paint="picture"] .mprof__img {
+    transform: none;
+    transition: transform 1.5s var(--paint-ease) var(--d, 0.6s);
+  }
+}

@@ -14,6 +14,7 @@
 // inline script in CommunityGrid) and never under reduced motion — so the
 // hidden starting state can never show without this script to end it, and a
 // visitor without JavaScript sees the cards plainly.
+import { capped, splitWords, whenImageReady, whenIntroDone } from "./entrance.ts";
 
 // THE WORDS TAKE AS LONG AS THEY ARE (2026-10-15, Josh: "make the text
 // animate in according to its length"): the name and the role are split into
@@ -25,28 +26,14 @@ const NAME_STEP = 0.05;
 const ROLE_GAP = 0.06;
 const ROLE_STEP = 0.035;
 
-/** Splits el's text into word masks once; stamps each word's delay from
- *  `start`; returns when the last word starts. */
+/** Stamps the words' delays from `start`, a `step` apart (the split itself
+ *  lives in entrance.ts); returns when the last word starts. */
 function stagger(el: HTMLElement | null, start: number, step: number): number {
   if (!el) return start;
-  if (!el.hasAttribute("data-words")) {
-    const words = (el.textContent ?? "").trim().split(/\s+/).filter(Boolean);
-    el.textContent = "";
-    words.forEach((word, i) => {
-      if (i) el.append(" ");
-      const mask = document.createElement("span");
-      mask.className = "cw";
-      const inner = document.createElement("span");
-      inner.className = "cw__i";
-      inner.textContent = word;
-      mask.append(inner);
-      el.append(mask);
-    });
-    el.setAttribute("data-words", "");
-  }
-  const words = el.querySelectorAll<HTMLElement>(".cw__i");
-  words.forEach((w, i) => w.style.setProperty("--d", `${(start + i * step).toFixed(3)}s`));
-  return start + Math.max(0, words.length - 1) * step;
+  const count = (el.textContent ?? "").trim().split(/\s+/).filter(Boolean).length;
+  const delays = Array.from({ length: count }, (_, i) => start + i * step);
+  splitWords(el, delays);
+  return start + Math.max(0, count - 1) * step;
 }
 
 function prepare(cell: HTMLElement) {
@@ -72,35 +59,13 @@ let io: IntersectionObserver | null = null;
 const READY_CAP_MS = 4000;
 const wanted = new WeakSet<HTMLElement>();
 
-function whenIntroDone(): Promise<void> {
-  if (!document.getElementById("page-loader")) return Promise.resolve();
-  return new Promise((resolve) => {
-    const check = () => {
-      if (!document.body.classList.contains("page-loaded")) return;
-      observer.disconnect();
-      resolve();
-    };
-    const observer = new MutationObserver(check);
-    observer.observe(document.body, { attributes: true, attributeFilter: ["class"] });
-    check();
-  });
-}
-
 async function whenCardReady(cell: HTMLElement): Promise<void> {
   const ready = (async () => {
     await whenIntroDone();
     await document.fonts?.ready.catch(() => {});
-    const img = cell.querySelector<HTMLImageElement>(".ccard__slide:first-child .ccard__img");
-    if (!img) return;
-    if (!img.complete) {
-      await new Promise<void>((resolve) => {
-        img.addEventListener("load", () => resolve(), { once: true });
-        img.addEventListener("error", () => resolve(), { once: true });
-      });
-    }
-    await img.decode().catch(() => {});
+    await whenImageReady(cell.querySelector<HTMLImageElement>(".ccard__slide:first-child .ccard__img"));
   })();
-  await Promise.race([ready, new Promise<void>((resolve) => setTimeout(resolve, READY_CAP_MS))]);
+  await capped(ready, READY_CAP_MS);
 }
 
 export function setPagesEntrance(on: boolean): void {
