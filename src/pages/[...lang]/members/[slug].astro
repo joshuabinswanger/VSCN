@@ -222,7 +222,17 @@ const jsonLd = memberPageJsonLd({
   redirectTo={aliasOf}
   contentWide
 >
-  <article class="mprof">
+  <article class="mprof" data-paints-in>
+    {/* THE PAGE PAINTS IN (2026-10-20): the motion flag goes on before the
+        first paint, so the start state (profile.css) never flashes the plain
+        page first — and never under reduced motion, so the page shows plainly
+        there. Layout.astro sees data-paints-in and skips its whole-page fade
+        for this page; profilePaint.ts plays the build-up after the pause. */}
+    <script
+      is:inline
+      data-astro-rerun
+      set:html={`(function(){try{if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;var c=document.currentScript;var a=(c&&c.parentElement&&c.parentElement.classList.contains("mprof"))?c.parentElement:document.querySelector(".mprof");if(!a)return;a.dataset.motion="";var b=document.querySelector(".mprof-bar");if(b)b.dataset.motion=""}catch(e){}})()`}
+    />
     {/* The person, the left column on a desktop (profile.css). */}
     <div class="mprof__aside">
     <header class="mprof__head">
@@ -422,6 +432,9 @@ const jsonLd = memberPageJsonLd({
   // The list of projects and works in the third track (2026-10-14).
   import { initProfileIndex } from "../../../lib/profileIndex.ts";
   import { workKey } from "../../../lib/communitySearch.ts";
+  // The build-up after the pause (2026-10-20): name, text, tags, then the first picture.
+  import { paintIn, paintPlainly } from "../../../lib/profilePaint.ts";
+  import { browserAnimatedThisTraversal } from "../../../lib/gestureHistory.ts";
   import "photoswipe/style.css";
   // Immediately after the package sheet, never before: this is the chrome that
   // replaces it. The overrides are also written to win on specificity alone
@@ -462,6 +475,11 @@ const jsonLd = memberPageJsonLd({
 
   document.addEventListener("astro:page-load", () => {
     initProfileIndex(document.querySelector<HTMLElement>(".mprof"));
+    // The page the browser animated in itself (the iOS swipe back) is
+    // already on screen: no build-up over it.
+    const page = document.querySelector<HTMLElement>(".mprof");
+    if (browserAnimatedThisTraversal()) paintPlainly(page);
+    else void paintIn(page);
     revealLinked();
     lightbox?.destroy();
     lightbox = null;

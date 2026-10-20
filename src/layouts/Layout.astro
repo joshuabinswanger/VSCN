@@ -1311,6 +1311,18 @@ const BRAND_SLOTS: BrandSlot[] = [
     // flutter; global.css only snaps while <html> carries no data-arriving).
     const root = document.documentElement;
     root.dataset.arriving = "";
+    // A PAGE THAT PAINTS ITSELF IN (2026-10-20, the member page): the same
+    // pause, no whole-page fade — its head builds up piece by piece once
+    // data-arrive-hold is gone (profilePaint.ts), and it holds its own
+    // start state from the first frame (profile.css).
+    if (main.querySelector("[data-paints-in]")) {
+      root.dataset.arriveHold = "";
+      setTimeout(() => {
+        delete root.dataset.arriveHold;
+        delete root.dataset.arriving;
+      }, ARRIVE_DELAY_MS);
+      return;
+    }
     const enter = main.animate([{ opacity: 0 }, { opacity: 1 }], {
       duration: ENTER_MS,
       easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
