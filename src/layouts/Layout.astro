@@ -580,7 +580,9 @@ const BRAND_SLOTS: BrandSlot[] = [
   }
   @media (--bp-mobile) {
     .brand-ticker[data-wordmark="compact"] {
-      --brand-compact-size: 20px;
+      /* 26px since 2026-10-20 (Josh: "VSCN bigger"), with the phone menu's
+         40px lines under it; was 20px. */
+      --brand-compact-size: 26px;
       position: sticky;
       top: 0;
       z-index: 25;
