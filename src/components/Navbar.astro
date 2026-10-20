@@ -445,7 +445,8 @@ import "../styles/type.css";
       z-index: 0;
       width: auto;
       justify-content: center;
-      gap: 0.9rem;
+      /* Taller lines than the type alone, so the rule has room. */
+      gap: 1.1rem;
       padding: 0 8px 7vh;
       box-sizing: border-box;
       background: var(--nav-paper);
@@ -473,6 +474,7 @@ import "../styles/type.css";
       align-items: flex-start;
     }
     .nav-links .nav-link {
+      position: relative;
       display: inline-flex;
       align-items: baseline;
       align-self: flex-start;
@@ -500,23 +502,30 @@ import "../styles/type.css";
     .nav-links .nav-link:hover {
       text-decoration: none;
     }
-    /* No wipe layer on the sheet; the mark is the arrow after the word. */
+    /* No wipe layer on the sheet. THE MARK IS A LINE THAT SWEEPS (2026-10-20,
+       Josh: "another animation element than the arrow"): a rule under the
+       current page's word, drawn in from the left on the site's curve; when
+       another destination is tapped it leaves the old word to the right as
+       it arrives under the new one, the way the desktop's underline reads. */
     .nav-links .nav-link::before {
       display: none;
     }
     .nav-links .nav-link::after {
-      content: "\2192";
-      display: inline-block;
-      margin-left: 0.3em;
-      opacity: 0;
-      transform: translateX(-0.35em);
-      transition:
-        opacity 0.25s ease,
-        transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -0.1em;
+      height: 2px;
+      background: currentColor;
+      transform: scaleX(0);
+      transform-origin: right;
+      transition: transform 0.35s cubic-bezier(0.5, 0, 0.75, 0);
     }
     .nav-links .nav-link--active::after {
-      opacity: 1;
       transform: none;
+      transform-origin: left;
+      transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.08s;
     }
     .nav-link--lang {
       --i: 3;
