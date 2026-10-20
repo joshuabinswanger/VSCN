@@ -34,9 +34,8 @@ interface WorkProps {
 
 interface Props {
   work: WorkProps;
-  /** This work's position in the member's own (unsectioned) works list — drives transition:name and eager/lazy loading. */
+  /** This work's position in the member's own (unsectioned) works list — drives eager/lazy loading. */
   index: number;
-  memberId: string;
   displayName: string;
   /** t("member.workAlt") — the alt-text fallback for an uncaptioned image. */
   workAlt: string;
@@ -46,12 +45,20 @@ interface Props {
   siteLinkTitle: string;
 }
 
-const { work: w, index: i, memberId, displayName, workAlt, linkTitle, siteLinkTitle } = Astro.props as Props;
+const { work: w, index: i, displayName, workAlt, linkTitle, siteLinkTitle } = Astro.props as Props;
 ---
 
+{/* NO MORPH FROM THE CARD (2026-10-20, Josh: "the build up of the page is not
+    smooth and images and text jitter" on iOS). The first figure carried the
+    card frame's view-transition name, so the picture flew from the card to
+    its place here while the page is held invisible for its 500ms pause
+    (Layout.astro). WebKit paints a named element at full strength even
+    under an opacity-0 ancestor (Chromium does not), so on an iPhone the
+    picture flew in, vanished at the end of the view transition, and faded
+    back in with the page. Now it arrives with the page, once. The name's
+    morph in [slug].astro went the same way. */}
 <figure
   class="mprof__work"
-  transition:name={i === 0 ? `mimg-${memberId}` : undefined}
   style={`--work-ar: ${w.width / w.height}; --size-w: ${workSizeWidth(w)}`}
 >
   <a
