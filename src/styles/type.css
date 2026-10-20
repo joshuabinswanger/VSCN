@@ -90,6 +90,7 @@
   --fs-180: 24px; /* 23.40 */
   --fs-190: 26px; /* 24.70 */
   --fs-225: 30px; /* 29.25 */
+  --fs-300: 40px; /* 39.00 — the phone menu's lines */
   /* Every tag chip (.tagchip). Its own token because tags go the OTHER way on
      a phone: down to the whole pixel below 8.64px, where everything else goes
      up to the one above. Not in the desktop bump either: still 0.72rem.
@@ -140,6 +141,7 @@
     --fs-180: 26px;
     --fs-190: 28px;
     --fs-225: 32px;
+    --fs-300: 40px;
     --fs-tag: 10px;
     --fs-label: 11px;
   }
@@ -381,9 +383,18 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+/* MENU (2026-10-20): on a phone the links stand on a full-screen sheet as
+   large type, the language line beneath them at the NAV size. */
 @media (--bp-mobile) {
   .nav-link {
-    font-size: var(--fs-75);
+    font-size: var(--fs-300);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .nav-link--lang {
+    font-size: var(--fs-82);
+    font-weight: 600;
+    letter-spacing: 0.04em;
   }
 }
 
