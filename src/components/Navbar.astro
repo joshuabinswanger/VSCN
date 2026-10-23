@@ -302,6 +302,13 @@ import "../styles/type.css";
      whatever the button says, so a phone's open menu carried across the
      breakpoint changes nothing here. */
   @media (--bp-desktop) {
+    /* IN FROM THE CORNER (2026-10-23, Josh: "weird to find them all the way
+       in the corner"): the row ends on --shell-max's right edge, the
+       content's measure, not on the window's. A window narrower than the
+       measure keeps the old 15px. */
+    nav[data-astro-transition-persist="navbar"] {
+      padding-right: max(15px, calc((100vw - var(--shell-max)) / 2));
+    }
     .nav-menu-btn {
       display: none;
     }
