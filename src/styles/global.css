@@ -1194,7 +1194,7 @@ label:has(> .picker-input:focus-visible) {
 .ccard__dots .cdot,
 .ccard__dots .pager-chev,
 .ccard__slide,
-.ccard__profile,
+.profile-link,
 .ccard__name-link,
 .prail__tick {
   -webkit-tap-highlight-color: transparent;
@@ -1314,6 +1314,7 @@ label:has(> .picker-input:focus-visible) {
 :root {
   --radius-pill: 999px;
   --radius-tag: 0.5em;
+  --radius-card: 0.9rem;
 }
 
 *:not(
@@ -1333,8 +1334,7 @@ label:has(> .picker-input:focus-visible) {
     .gallery-project-select,
     .optchip,
     .nav-link,
-    .ccard__profile,
-    .cindex__profile,
+    .profile-link,
     .seg,
     .seg > *,
     .tagchip,
@@ -1351,6 +1351,7 @@ label:has(> .picker-input:focus-visible) {
     .ob-avatar-img,
     .ob-avatar-ph,
     .cindex__avatar,
+    .cindex__line,
     .search__thumb--round,
     .community-bar__in,
     .mprof-bar__in,
@@ -1383,8 +1384,7 @@ label:has(> .picker-input:focus-visible) {
     .gallery-project-select,
     .optchip,
     .nav-link,
-    .ccard__profile,
-    .cindex__profile,
+    .profile-link,
     .seg,
     .seg > *,
     .community-bar__in,
@@ -1411,6 +1411,14 @@ label:has(> .picker-input:focus-visible) {
    reset above was flattening them, so this lets them through. */
 :where(.mprof__avatar, .avatar-img, .avatar-placeholder, .ob-avatar-img, .ob-avatar-ph, .cindex__avatar, .search__thumb--round) {
   border-radius: 50% !important;
+}
+
+/* PEOPLE CARDS: a rounded box (2026-10-23, Josh: "rounded corners"), the
+   one card surface that curves. The People view's cards are a directory of
+   people, not a picture's frame, so the sharp-surfaces rule above does not
+   speak for them. */
+:where(.cindex__line) {
+  border-radius: var(--radius-card) !important;
 }
 
 /* ── SEGMENTED CONTROLS (2026-10-13) ─────────────────────────

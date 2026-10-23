@@ -1,6 +1,7 @@
 ---
 import { hasArtwork, stripStorageToken, type MemberView } from "../lib/memberView.ts";
 import { DEFAULT_VIEW } from "../lib/communityLayout.ts";
+import ProfileLink from "./ui/ProfileLink.astro";
 import { dealPagesInto, shuffleBands } from "../lib/communityDeal.ts";
 import { memberHref, workCaption } from "../lib/links.ts";
 import { workKey, type SearchIndex } from "../lib/communitySearch.ts";
@@ -850,9 +851,7 @@ const searchIndex: SearchIndex = {
           // of a bare member holds one thing — the way to their page — which
           // is honest: it is all there is to disclose.
           const profileLink = (
-            <a class="cindex__profile" href={memberHref(lang, m.slug)}>
-              {t("community.card.viewProfile.text")}
-            </a>
+            <ProfileLink lang={lang} href={memberHref(lang, m.slug)} />
           );
           return (
             <li class="cindex__row" data-tags={tagsAttr(m)}>
@@ -863,7 +862,7 @@ const searchIndex: SearchIndex = {
                     the only way to see anything in place — a 1rem target for a
                     whole row of content, and the entire row's click going
                     somewhere else. Now the row opens the row, and the page has
-                    a named link inside it (.cindex__profile). Same pairing as
+                    a named link inside it (ProfileLink). Same pairing as
                     the image cards: clicking a thing expands or opens THAT
                     thing, and travel is always a control that says where it
                     goes.
@@ -2541,34 +2540,10 @@ const searchIndex: SearchIndex = {
     margin-top: 0.35rem;
   }
 
-  /* THE NAMED WAY TO THE MEMBER'S PAGE — at the foot of the open dropdown,
-     and nowhere else since 2026-09-03, when every row became a disclosure (see
-     the row's note). Underlined at rest: it is the one control whose
-     job is to be findable, and the row it belongs to expands instead of
-     travelling, so nothing else announces that the page exists. Muted so it
-     does not outrank the name. Sized and voiced exactly like the image card's
-     .ccard__profile, because it is the same control in the same place. */
-  .cindex__profile {
-    white-space: nowrap;
-    color: var(--color-muted);
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    text-decoration-thickness: 1.5px;
-    transition: color 0.15s;
-  }
-
-  .cindex__profile:hover,
-  .cindex__profile:focus-visible {
-    color: var(--color-dark);
-  }
-
-  /* In the panel it is the last line and it is its OWN line, ranged left
-     under everything the panel said, which is where MemberDetailPanel's
-     footer slot is meant to read from. `align-self` so the column's stretch
-     does not make the whole line clickable. */
-  .cindex__line :global(.pdisc__body-inner) .cindex__profile {
-    align-self: flex-start;
-  }
+  /* THE NAMED WAY TO THE MEMBER'S PAGE is ProfileLink, the Portfolios
+     card's "PROFILE →" (2026-10-23, Josh: "profile should be the same as
+     the profile button on portfolio"). It was a muted underlined "View
+     profile" of its own here. */
 
   /* The name and its role as ONE unit. Flex, not plain inline flow, for one
      reason: flex drops the whitespace-only text node between the two spans, so
@@ -2691,10 +2666,15 @@ const searchIndex: SearchIndex = {
     .cindex {
       --people-portrait: 4.5rem;
       --people-pad: 1.5rem;
+      /* Wider cards and more air across (2026-10-23, Josh: "wider cards,
+         more white space horizontally"): the measure grows from 72rem to
+         96rem, the columns sit 4rem apart, and the words get 2rem from the
+         card's sides. */
+      --people-pad-x: 2rem;
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       /* More white space (Josh, same day, on the first boxed cut). */
-      gap: 3rem 2.5rem;
+      gap: 3rem 4rem;
     }
 
     .cindex__row,
@@ -2734,9 +2714,13 @@ const searchIndex: SearchIndex = {
       box-shadow: 0 0.75rem 2rem -0.75rem color-mix(in srgb, var(--color-dark) 35%, transparent);
     }
 
+    .cindex-wrap {
+      max-width: 96rem;
+    }
+
     .cindex__line :global(.pdisc__toggle) {
       gap: 0 var(--people-pad);
-      padding: var(--people-pad);
+      padding: var(--people-pad) var(--people-pad-x);
     }
 
     /* No hover tint: the card's border is the hover now. */
@@ -2776,7 +2760,7 @@ const searchIndex: SearchIndex = {
        component's translucent, blurred ground is for panels over artwork;
        here the card is already opaque paper. */
     .cindex__line :global(.pdisc__body) {
-      padding: 0 var(--people-pad) var(--people-pad);
+      padding: 0 var(--people-pad-x) var(--people-pad);
       background: none;
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
@@ -2788,6 +2772,17 @@ const searchIndex: SearchIndex = {
 
     .cindex__line :global(.pdisc__bio) {
       font-size: var(--fs-85);
+    }
+
+    /* Tags packed closer (2026-10-23, Josh: "tags less vertical spacing"):
+       each <li> was a line box taller than its chip, which added a strut's
+       worth of air under every row of tags on top of the 2px gap. */
+    .cindex__line :global(.pdisc__vals--tags) {
+      row-gap: 5px;
+    }
+
+    .cindex__line :global(.pdisc__vals--tags > li) {
+      display: flex;
     }
   }
 

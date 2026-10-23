@@ -465,44 +465,8 @@
 }
 
 /* ── The profile button ───────────────────────────────── */
-/* THE NAMED WAY TO THE PERSON, now a FILLED button at the foot's right end
-   (the sketch's "PROFILE →"). It used to be an underlined line at the end
-   of the dropdown; with the words in the open, the step after them wants a
-   control that looks like one. Ink on the page's ground inverted, square
-   like everything else on the card. The arrow is a glyph in the markup, not
-   generated content, so it is part of the link's text. Its voice
-   is HEADING in type.css (caps, tracked). */
-.ccard__profile {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  /* The last line of the words, at their LEFT edge under the role
-     (2026-10-18, Josh: "profile button left aligned under the role"; right
-     aligned from 2026-10-16 until then). */
-  align-self: flex-start;
-  /* Smaller since 2026-10-12 (Josh: "profile should be a smaller button,
-     white on black text"): the LABEL voice in type.css, and this padding.
-     Then PLAIN, the same day ("profile is too strong, make it without black
-     bg", then "no outline for Profile"): the word and its arrow, no box at
-     all, underlined while pointed at like the card's other links. */
-  padding: 0;
-  background: transparent;
-  color: var(--color-dark);
-  border-radius: 0;
-  white-space: nowrap;
-  text-decoration: none;
-  transition: background 0.15s;
-}
-.ccard__profile:hover,
-.ccard__profile:focus-visible {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-thickness: 1.5px;
-}
-.ccard__profile:focus-visible {
-  outline: 2px solid var(--color-dark);
-  outline-offset: 2px;
-}
+/* ProfileLink (src/components/ui/ProfileLink.astro) draws it; the card
+   only places it, as the last line of the words. */
 
 /* ── Mobile ───────────────────────────────────────────── */
 @media (--bp-mobile) {
@@ -611,10 +575,10 @@
   cursor: default;
 }
 
-.ccard.ccard--preview .ccard__profile {
+.ccard.ccard--preview .profile-link {
   cursor: default;
 }
-.ccard.ccard--preview .ccard__profile:hover {
+.ccard.ccard--preview .profile-link:hover {
   text-decoration: none;
 }
 

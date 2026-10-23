@@ -11,6 +11,7 @@ import { useTranslations, type Lang } from "../../i18n/utils.ts";
 // the rules out of a scoped <style> is the whole mechanism, because a scoped
 // block cannot be shared.
 import "../../styles/communityCard.css";
+import ProfileLink from "../ui/ProfileLink.astro";
 
 interface Props {
   member: MemberView;
@@ -322,10 +323,7 @@ const positionFor = (i: number) =>
           so the link reads as "Profile" and not as "Profile right arrow".
           The column's closing line (2026-10-14, Josh: "profile above the bar"). */
       }
-      <a class="ccard__profile" href={profileHref}>
-        {t("community.card.profile")}
-        <span aria-hidden="true">→</span>
-      </a>
+      <ProfileLink lang={lang} href={profileHref} />
     </div>
   </div>
       {
