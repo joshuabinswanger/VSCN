@@ -777,7 +777,8 @@
    expo-out curve, the portrait settling in, the name rising word by word
    out of its line (profilePaint.ts splits it and stamps each word's --d),
    every text line drifting up into place in page order, and last the first
-   picture opening out of an inset and settling from a slight zoom.
+   picture opening out of an inset and settling from a slight zoom (on a
+   phone; on desktop it fades out of a blur, as every later picture does).
    Everything after the first picture sits still. The start state applies
    only under [data-motion] on .mprof (set before the first paint by the
    page's inline script, never under reduced motion), and the transitions
@@ -875,5 +876,32 @@
     transition:
       opacity 0.9s ease-out var(--d, 0s),
       filter 1.2s ease-out var(--d, 0s);
+  }
+
+  /* The first picture too, on desktop (2026-10-23, Josh: "give the first
+     picture on the member page the same blur fade on desktop"): no inset,
+     no zoom, the same fade at its turn in the paint-in. Phones keep the
+     inset and the zoom. Same selectors as the rules above, later in the
+     file, so these win. */
+  @media (--bp-desktop) {
+    .mprof[data-motion] [data-paint="picture"] {
+      clip-path: none;
+      opacity: 1;
+    }
+    .mprof[data-motion] [data-paint="picture"] .mprof__img {
+      transform: none;
+      opacity: 0;
+      filter: blur(14px);
+    }
+    .mprof[data-motion].is-in [data-paint="picture"] {
+      transition: none;
+    }
+    .mprof[data-motion].is-in [data-paint="picture"] .mprof__img {
+      opacity: 1;
+      filter: none;
+      transition:
+        opacity 0.9s ease-out var(--d, 0.6s),
+        filter 1.2s ease-out var(--d, 0.6s);
+    }
   }
 }
