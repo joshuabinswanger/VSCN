@@ -476,7 +476,7 @@
     gap: 4px;
   }
 
-  .gallery-deck .gallery-key {
+  .gallery-key {
     position: relative;
     display: inline-flex;
     align-items: center;
@@ -506,36 +506,36 @@
       transform 0.1s;
   }
 
-  .gallery-deck .gallery-key:hover:not(:disabled) {
+  .gallery-key:hover:not(:disabled) {
     background: color-mix(in srgb, var(--color-dark) 5%, #fff);
   }
 
-  .gallery-deck .gallery-key:active:not(:disabled) {
+  .gallery-key:active:not(:disabled) {
     transform: translateY(1px);
     box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.08);
   }
 
-  .gallery-deck .gallery-key[aria-pressed="true"] {
+  .gallery-key[aria-pressed="true"] {
     background: var(--color-dark);
     color: #fff;
   }
 
-  .gallery-deck .gallery-key:disabled {
+  .gallery-key:disabled {
     opacity: 0.35;
     cursor: default;
   }
 
-  .gallery-deck .gallery-key:focus-visible,
-  .gallery-deck .gallery-key:has(:focus-visible) {
+  .gallery-key:focus-visible,
+  .gallery-key:has(:focus-visible) {
     outline: 2px solid var(--color-dark);
     outline-offset: 2px;
   }
 
-  .gallery-deck .gallery-tbtn--danger:hover:not(:disabled) {
+  .gallery-tbtn--danger:hover:not(:disabled) {
     color: var(--color-error);
   }
 
-  .gallery-deck .gallery-key[hidden] {
+  .gallery-key[hidden] {
     display: none;
   }
 
@@ -547,7 +547,7 @@
       padding: 8px;
     }
 
-    .gallery-deck .gallery-key {
+    .gallery-key {
       min-width: 32px;
       height: 36px;
       padding: 0 6px;
@@ -566,7 +566,7 @@
     display: none;
   }
 
-  .gallery-deck .gallery-key--wide {
+  .gallery-key--wide {
     flex: 1 1 9rem;
     justify-content: flex-start;
     padding: 0 12px;
@@ -576,11 +576,11 @@
 
   /* A select as a long key: the key is the wrapper (its chevron is the
      wrapper's ::after), the select fills it without a frame of its own. */
-  .gallery-deck .gallery-select-wrap.gallery-key {
+  .gallery-select-wrap.gallery-key {
     padding: 0;
   }
 
-  .gallery-deck .gallery-select-wrap > .gallery-project-select {
+  .gallery-select-wrap > .gallery-project-select {
     height: 100%;
     padding-inline: 12px 28px;
     border: 0;
@@ -627,6 +627,46 @@
   .gallery-inline::placeholder {
     color: var(--color-muted);
     opacity: 0.6;
+  }
+
+  /* A FIELD IN A BOX (2026-10-23, Josh: "make the title, description and so
+     on more clear and similar style to edit"). The dotted inline fields
+     looked like the page; now each has a small label over it and stands
+     in a white rounded box like the keys, so Edit reads as a form all the
+     way down. The voice classes on the inputs (.mprof__caption-line,
+     .mprof__project-title …) still set their type. Focus is the dark ring
+     the keys wear, not an underline. */
+  .gfield {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .gfield__lbl {
+    padding-inline-start: 2px;
+    color: var(--color-muted);
+  }
+
+  .gfield > .gallery-inline {
+    padding: 8px 12px;
+    border: 0;
+    background: #fff;
+    box-shadow:
+      0 1px 0 rgb(0 0 0 / 0.06),
+      0 0 0 0.5px rgb(0 0 0 / 0.07);
+    border-radius: var(--radius-key) !important;
+    transition: box-shadow 0.15s;
+  }
+
+  .gfield > .gallery-inline:hover {
+    box-shadow:
+      0 1px 0 rgb(0 0 0 / 0.08),
+      0 0 0 0.5px rgb(0 0 0 / 0.14);
+  }
+
+  .gfield > .gallery-inline:focus {
+    box-shadow: 0 0 0 2px var(--color-dark);
   }
 
   /* The description keeps the page's paragraph breaks while it is typed. */
@@ -899,9 +939,13 @@
     pointer-events: none;
   }
 
-  /* The selected slide's row stands under the tray at the row gap. */
+  /* The selected slide's row stands under the panel at the row gap. */
   .gallery-carousel-slide {
     margin-top: 0.75rem;
+  }
+
+  .gallery-carousel-details {
+    margin-top: 0.6rem;
   }
 
   .gallery-carousel-slide[hidden],
@@ -1091,8 +1135,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0 0 0.45rem;
-    border-bottom: 1px solid var(--color-border);
+    padding: 0 0 0.3rem;
     cursor: pointer;
     list-style: none;
     user-select: none;
@@ -1164,19 +1207,22 @@
     margin-bottom: 0.5rem;
   }
 
-  /* THE ROW'S OWN FOLD — see the markup comment. Same heading voice as the
-     tag fold inside it, so the two levels read as one idiom. Its chevron has
-     its own class: `.gallery-details[open] .gallery-tags-chevron` would also
-     turn the nested tag fold's arrow, whatever that fold's own state. */
+  /* THE EDIT PANEL (2026-10-23, Josh: "hide most of those options behind an
+     edit and + button"). The row's fold wears a KEY for its summary — the
+     pencil, "Edit", a chevron — pressed (dark) while the panel is open; the
+     body is the soft panel under it, holding the deck of keys, the links
+     and the tags. Its chevron has its own class: `.gallery-details[open]
+     .gallery-tags-chevron` would also turn the nested tag fold's arrow. */
+  .gallery-details {
+    margin-top: 10px;
+  }
+
   .gallery-details-summary {
-    display: flex;
-    align-items: baseline;
-    gap: 0.5rem;
-    padding: 0 0 0.45rem;
-    border-bottom: 1px solid var(--color-border);
-    cursor: pointer;
+    width: fit-content;
     list-style: none;
     user-select: none;
+    padding-inline: 10px 12px;
+    font-weight: 600;
   }
 
   .gallery-details-summary::-webkit-details-marker {
@@ -1185,38 +1231,143 @@
 
   .gallery-details-title {
     flex: none;
-    color: var(--color-muted);
-    transition: color 0.15s;
-  }
-
-  .gallery-details-summary:hover .gallery-details-title {
-    color: var(--color-dark);
   }
 
   .gallery-details-chevron {
     flex: none;
-    align-self: center;
-    width: 7px;
-    height: 7px;
-    border-right: 1px solid var(--color-muted);
-    border-bottom: 1px solid var(--color-muted);
+    width: 6px;
+    height: 6px;
+    margin: 0 0 3px 2px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
     transform: rotate(45deg);
     transition: transform 0.15s ease;
     transform-origin: 60% 60%;
   }
 
-  .gallery-details[open] .gallery-details-chevron {
-    transform: rotate(225deg);
+  .gallery-details[open] > .gallery-details-summary {
+    background: var(--color-dark);
+    color: #fff;
   }
 
-  .gallery-details[open] .gallery-details-summary {
-    margin-bottom: 0.5rem;
+  .gallery-details[open] > .gallery-details-summary:hover {
+    background: var(--color-dark);
+  }
+
+  .gallery-details[open] > .gallery-details-summary .gallery-details-chevron {
+    transform: rotate(225deg);
+    margin-bottom: -2px;
   }
 
   .gallery-details-body {
     display: flex;
     flex-direction: column;
+    gap: 14px;
+    margin-top: 8px;
+    padding: 10px;
+    background: color-mix(in srgb, var(--color-dark) 5%, var(--color-bg));
+    border-radius: var(--radius-soft-card) !important;
+  }
+
+  /* Inside the panel the deck is the panel: no second tint, no margins. */
+  .gallery-panel > .gallery-deck {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: none;
+  }
+
+  .gallery-panel__sec {
+    display: flex;
+    flex-direction: column;
     gap: 8px;
+  }
+
+  /* The tag picker's own inset (TagSelector.astro, for the wide form) would
+     narrow its fields twice over in a work's column; the panel's padding
+     is inset enough. */
+  .gallery-panel tag-selector {
+    --ts-inset: 0;
+  }
+
+  /* The link fields in the panel wear the keys' dress: no hairline frame,
+     a white box with the same soft shadow and corner. */
+  .gallery-panel .input-prefix-wrap {
+    border: 0;
+    background: #fff;
+    box-shadow:
+      0 1px 0 rgb(0 0 0 / 0.06),
+      0 0 0 0.5px rgb(0 0 0 / 0.07);
+    border-radius: var(--radius-key) !important;
+  }
+
+  .gallery-panel .input-prefix-wrap:focus-within {
+    box-shadow: 0 0 0 2px var(--color-dark);
+  }
+
+  .gallery-panel .input-prefix {
+    background: color-mix(in srgb, var(--color-dark) 4%, #fff);
+    border-right: 0;
+  }
+
+  /* EDIT AND + ADD ON A PROJECT: Add floats at the row's right, the Edit
+     fold flows past it — a float, because the fold's body has to run the
+     row's full width under both, which neither flex nor grid gives a
+     <details> without `display: contents` (which crashes iOS WebKit). */
+  .gallery-edit-row {
+    margin-top: 10px;
+  }
+
+  .gallery-edit-row::after {
+    content: "";
+    display: block;
+    clear: both;
+  }
+
+  .gallery-edit-row > .gallery-details {
+    margin-top: 0;
+  }
+
+  .gallery-addrow {
+    float: right;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+    margin: 0 0 6px 8px;
+  }
+
+  .gallery-addkeys {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+
+  .gallery-addkeys[hidden] {
+    display: none;
+  }
+
+  .gallery-key--plus[aria-expanded="true"] {
+    background: var(--color-dark);
+    color: #fff;
+  }
+
+  .gallery-key--plus[aria-expanded="true"]:hover {
+    background: var(--color-dark);
+  }
+
+  .gallery-key--plus[aria-expanded="true"] .gallery-icon {
+    transform: rotate(45deg);
+  }
+
+  .gallery-key--plus .gallery-icon {
+    transition: transform 0.2s ease;
+  }
+
+  .gallery-addkeys .gallery-key--wide {
+    flex: none;
+    padding-inline: 10px 12px;
   }
 
   .gallery-tools {
@@ -1310,9 +1461,6 @@
     min-width: 0;
   }
 
-  .gallery-project-fields > .gallery-details {
-    margin-top: 0.75rem;
-  }
 
   /* Not the tag picker's fields — see .gallery-fields .input above. */
   .gallery-project-fields .input:not(tag-selector *) {
@@ -1622,12 +1770,12 @@
   }
 
   .profile-form.is-works {
-    padding-bottom: 10rem;
+    padding-bottom: 9rem;
   }
 
   @media (--bp-mobile) {
     .profile-form.is-works {
-      padding-bottom: 11rem;
+      padding-bottom: 10rem;
     }
   }
 
@@ -1643,10 +1791,10 @@
      a handle above it that folds it away. */
   .ebar {
     box-sizing: content-box;
-    padding: 8px;
+    padding: 6px;
     background: var(--color-bg);
     border: 1px solid var(--color-border);
-    border-radius: 30px !important;
+    border-radius: 24px !important;
     box-shadow:
       0 8px 28px rgb(0 0 0 / 0.1),
       0 1px 3px rgb(0 0 0 / 0.06);
@@ -1681,7 +1829,7 @@
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 8px;
+    gap: 5px;
   }
 
   .ebar__row {
@@ -1698,23 +1846,25 @@
   }
 
   .ebar .seg > button {
-    min-height: 30px;
-    padding-inline: 12px;
+    min-height: 26px;
+    padding-inline: 10px;
   }
 
-  /* THE TWO ACTIONS: 44px pills sharing the row equally, icon and word. */
+  /* THE TWO ACTIONS: 36px pills sharing the row equally, icon and word
+     (44px on 2026-10-23 for a day: "a bit more compact"). */
   .ebar__plus,
   .ebar .profile-save-button {
     display: inline-flex;
     flex: 1 1 0;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    min-width: 8.5rem;
-    height: 44px;
+    gap: 7px;
+    min-width: 7rem;
+    height: 36px;
     min-height: 0;
-    padding: 0 22px;
+    padding: 0 16px;
     font: inherit;
+    font-size: var(--fs-85);
     font-weight: 600;
   }
 
@@ -1737,8 +1887,8 @@
   }
 
   .ebar__plus .ebar-icon {
-    width: 17px;
-    height: 17px;
+    width: 15px;
+    height: 15px;
     stroke-width: 2.2;
     transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1);
   }
@@ -1749,8 +1899,8 @@
   }
 
   .ebar .profile-save-icon {
-    width: 17px;
-    height: 17px;
+    width: 15px;
+    height: 15px;
     stroke-width: 2;
   }
 
@@ -1778,7 +1928,7 @@
 
     .ebar .seg > button {
       flex: 1 1 auto;
-      min-height: 34px;
+      min-height: 30px;
       padding-inline: 6px;
     }
 
@@ -1786,8 +1936,8 @@
       display: grid;
       place-items: center;
       align-self: center;
-      width: 48px;
-      height: 22px;
+      width: 44px;
+      height: 18px;
       padding: 0;
       border: 0;
       background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
@@ -2383,7 +2533,7 @@
      would make the row a containing block for the i boxes inside it. */
   .is-entering :is(.gallery-item > .gallery-fields, .mprof__project-head, .gallery-carousel-label),
   .is-entering :is(.gallery-thumb, .gallery-tray),
-  .is-entering :is(.gallery-row-tools, .gallery-project-details, .gallery-toolbar--head, [data-project-delete]) {
+  .is-entering :is(.gallery-details, .gallery-edit-row) {
     animation: gallery-enter 420ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
     animation-delay: calc(var(--enter-i, 0) * 70ms);
   }
@@ -2392,7 +2542,7 @@
     animation-delay: calc(var(--enter-i, 0) * 70ms + 140ms);
   }
 
-  .is-entering :is(.gallery-row-tools, .gallery-project-details, .gallery-toolbar--head, [data-project-delete]) {
+  .is-entering :is(.gallery-details, .gallery-edit-row) {
     animation-delay: calc(var(--enter-i, 0) * 70ms + 280ms);
   }
 

@@ -159,56 +159,101 @@ const t = useTranslations(lang);
         </div>
         <figcaption class="mprof__caption gallery-fields">
           {
-            /* THE WORDS, IN PLACE. Two panes, English and German, and the
-              bar's EN | DE decides which one is on screen (the stylesheet
-              reads the stage's data-lang). The German pair is optional: the
-              German site reads the English pane until it is filled in
-              (GalleryItem.captionDe / descriptionDe in gallery.ts). */
+            /* THE WORDS AS FIELDS (2026-10-23, Josh: "make the title,
+              description and so on more clear and similar style to edit"):
+              title and description as labelled soft boxes in the row's
+              column — a form, not the page in disguise, which is what the
+              dotted inline fields of 2026-10-13 were. Two panes, English
+              and German, and the bar's EN | DE decides which one is on
+              screen (the stylesheet reads the stage's data-lang). The German
+              pair is optional: the German site reads the English pane until
+              it is filled in (GalleryItem.captionDe / descriptionDe). */
           }
           <div class="gallery-lang-pane" data-gallery-lang-pane="en">
-            <input type="text" class="mprof__caption-line gallery-inline" data-gallery-field="caption" />
-            <textarea class="mprof__desc gallery-inline" rows="1" data-gallery-field="description"></textarea>
+            <label class="gfield"><span class="gfield__lbl t-label">{t("profile.gallery.caption")}</span><input type="text" class="mprof__caption-line gallery-inline" data-gallery-field="caption" /></label>
+            <label class="gfield"><span class="gfield__lbl t-label">{t("profile.gallery.description.label")}</span><textarea class="mprof__desc gallery-inline" rows="1" data-gallery-field="description"></textarea></label>
           </div>
           <div class="gallery-lang-pane" data-gallery-lang-pane="de">
-            <input type="text" class="mprof__caption-line gallery-inline" data-gallery-field="captionDe" />
-            <textarea class="mprof__desc gallery-inline" rows="1" data-gallery-field="descriptionDe"></textarea>
+            <label class="gfield"><span class="gfield__lbl t-label">{t("profile.gallery.caption.de")}</span><input type="text" class="mprof__caption-line gallery-inline" data-gallery-field="captionDe" /></label>
+            <label class="gfield"><span class="gfield__lbl t-label">{t("profile.gallery.description.de")}</span><textarea class="mprof__desc gallery-inline" rows="1" data-gallery-field="descriptionDe"></textarea></label>
           </div>
           {
-            /* THE FOLD holds what cannot be inline without becoming a form:
-              the two links, in the order the page prints them (own page
-              first, then where the piece appeared), and the tags. A row
-              already in the gallery when the page loads starts FOLDED; one
-              uploaded or linked in this session starts OPEN
-              (galleryDetailsOpenUI, keyed by imageId). */
+            /* EVERYTHING ELSE IS BEHIND EDIT (2026-10-23, Josh: "hide most of
+              those options behind an edit button"): one key under the words
+              opens the row's PANEL — its deck of keys (size, move, replace,
+              delete, the project and carousel pickers, In gallery), the two
+              links in the order the page prints them, and the tags. A
+              <details>, so the panel is a fold like the ones before it
+              (galleryDetailsOpenUI remembers it per imageId across
+              re-renders); the controller keeps ONE panel open at a time. A
+              row already in the gallery when the page loads starts closed;
+              one uploaded in this session starts open. */
           }
           <details class="gallery-details">
-            <summary class="gallery-details-summary">
-              <span class="gallery-details-title">{t("profile.gallery.details")}</span>
-              <span class="gallery-details-chevron" aria-hidden="true"></span>
-            </summary>
-            <div class="gallery-details-body">
-              <div class="label-row">
-                <label class="row-label" data-row-label="siteLink">{t("profile.gallery.siteLink")}</label>
-                <span class="row-optional">{t("profile.optional")}</span>
+            <summary class="gallery-details-summary gallery-key gallery-key--edit"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span class="gallery-details-title">{t("profile.deck.edit")}</span><span class="gallery-details-chevron" aria-hidden="true"></span></summary>
+            <div class="gallery-details-body gallery-panel">
+              <div class="gallery-row-tools gallery-deck" role="group" aria-label={t("profile.gallery.toolbar")}>
+                <div class="gallery-deck__grp gallery-size" role="group" data-gallery-size>
+                  <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.size")}</span>
+                  <div class="gallery-keys">
+                    <button type="button" class="gallery-key" data-size="s">S</button>
+                    <button type="button" class="gallery-key" data-size="m">M</button>
+                    <button type="button" class="gallery-key" data-size="l">L</button>
+                  </div>
+                </div>
+                <div class="gallery-deck__grp">
+                  <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.move")}</span>
+                  <div class="gallery-keys">
+                    <button type="button" class="gallery-key gallery-tbtn" data-gallery-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+                    <button type="button" class="gallery-key gallery-tbtn" data-gallery-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
+                  </div>
+                </div>
+                <div class="gallery-deck__grp">
+                  <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.work")}</span>
+                  <div class="gallery-keys">
+                    <button type="button" class="gallery-key gallery-tbtn" data-gallery-replace><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button>
+                    <button type="button" class="gallery-key gallery-tbtn gallery-tbtn--danger" data-gallery-remove><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+                  </div>
+                </div>
+                <div class="gallery-deck__row" data-deck-row>
+                  <div class="gallery-select-wrap gallery-key gallery-key--wide" data-gallery-project-wrap hidden>
+                    <select class="gallery-project-select" data-gallery-project></select>
+                  </div>
+                  <div class="gallery-select-wrap gallery-key gallery-key--wide" data-gallery-carousel-wrap hidden>
+                    <select class="gallery-project-select" data-gallery-carousel></select>
+                  </div>
+                  <button type="button" class="gallery-key gallery-key--wide" data-gallery-auto-thumb hidden></button>
+                  <label class="gallery-key gallery-key--wide gallery-include">
+                    <input type="checkbox" data-gallery-include checked />
+                    <span data-gallery-include-label></span>
+                  </label>
+                </div>
               </div>
-              <div class="input-prefix-wrap">
-                <span class="input-prefix">https://</span>
-                <input type="text" class="input input-prefixed" data-gallery-field="siteLink" />
-              </div>
-              <div class="label-row">
-                <label class="row-label" data-row-label="link">{t("profile.gallery.link")}</label>
-                <span class="row-optional">{t("profile.optional")}</span>
-              </div>
-              <div class="input-prefix-wrap">
-                <span class="input-prefix">https://</span>
-                <input type="text" class="input input-prefixed" data-gallery-field="link" />
+              <div class="gallery-panel__sec">
+                <div class="label-row">
+                  <label class="row-label" data-row-label="siteLink">{t("profile.gallery.siteLink")}</label>
+                  <span class="row-optional">{t("profile.optional")}</span>
+                </div>
+                <div class="input-prefix-wrap">
+                  <span class="input-prefix">https://</span>
+                  <input type="text" class="input input-prefixed" data-gallery-field="siteLink" />
+                </div>
+                <div class="label-row">
+                  <label class="row-label" data-row-label="link">{t("profile.gallery.link")}</label>
+                  <span class="row-optional">{t("profile.optional")}</span>
+                </div>
+                <div class="input-prefix-wrap">
+                  <span class="input-prefix">https://</span>
+                  <input type="text" class="input input-prefixed" data-gallery-field="link" />
+                </div>
               </div>
               {
                 /* WHAT IS IN THE PICTURE — the community wall filters by
                   this. Same element and registry as the member's own tags,
-                  capped lower. Folded, open to start with, remembered per
-                  imageId (galleryTagsOpenUI) across the re-renders every
-                  move and upload causes. */
+                  capped lower. Folded, closed to start with (its picked tags
+                  show on the folded line), remembered per imageId
+                  (galleryTagsOpenUI) across the re-renders every move and
+                  upload causes. */
               }
               <details class="gallery-tags" open>
                 <summary class="gallery-tags-summary">
@@ -223,58 +268,6 @@ const t = useTranslations(lang);
           </details>
         </figcaption>
         {
-          /* THE DECK (2026-10-23, Josh: "all the buttons for images etc move
-            below it in a field that is nicely organized and compact like a
-            keyboard for a synth"). Every control of the work sits UNDER its
-            words, in one soft panel of rounded keys, sorted into small
-            labelled groups: Size (S M L, from workSize.ts), Move (↑ ↓ — ← →
-            for a slide), Work (replace, delete). The second row holds the
-            long keys: the project select (hidden while there is no second
-            project), the carousel select (join one of this project's
-            carousels, start a new one, or leave — the way an existing work
-            gets into a carousel without dragging), the video's thumbnail
-            pill and In gallery (checked = on /community; a real checkbox,
-            stored at Save). Names and tooltips are written by
-            renderGallery(); the group labels are for the eye only. */
-        }
-        <div class="gallery-row-tools gallery-deck" role="group" aria-label={t("profile.gallery.toolbar")}>
-          <div class="gallery-deck__grp gallery-size" role="group" data-gallery-size>
-            <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.size")}</span>
-            <div class="gallery-keys">
-              <button type="button" class="gallery-key" data-size="s">S</button>
-              <button type="button" class="gallery-key" data-size="m">M</button>
-              <button type="button" class="gallery-key" data-size="l">L</button>
-            </div>
-          </div>
-          <div class="gallery-deck__grp">
-            <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.move")}</span>
-            <div class="gallery-keys">
-              <button type="button" class="gallery-key gallery-tbtn" data-gallery-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
-              <button type="button" class="gallery-key gallery-tbtn" data-gallery-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
-            </div>
-          </div>
-          <div class="gallery-deck__grp">
-            <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.work")}</span>
-            <div class="gallery-keys">
-              <button type="button" class="gallery-key gallery-tbtn" data-gallery-replace><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button>
-              <button type="button" class="gallery-key gallery-tbtn gallery-tbtn--danger" data-gallery-remove><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
-            </div>
-          </div>
-          <div class="gallery-deck__row" data-deck-row>
-            <div class="gallery-select-wrap gallery-key gallery-key--wide" data-gallery-project-wrap hidden>
-              <select class="gallery-project-select" data-gallery-project></select>
-            </div>
-            <div class="gallery-select-wrap gallery-key gallery-key--wide" data-gallery-carousel-wrap hidden>
-              <select class="gallery-project-select" data-gallery-carousel></select>
-            </div>
-            <button type="button" class="gallery-key gallery-key--wide" data-gallery-auto-thumb hidden></button>
-            <label class="gallery-key gallery-key--wide gallery-include">
-              <input type="checkbox" data-gallery-include checked />
-              <span data-gallery-include-label></span>
-            </label>
-          </div>
-        </div>
-        {
           /* THE TEXT BLOCK AFTER THE WORK (2026-10-16, Josh: "make it
             possible to add text block in between image in projects"). Typed
             where the page prints it, under the work and before the next one,
@@ -283,10 +276,10 @@ const t = useTranslations(lang);
         }
         <div class="mprof__text gallery-text">
           <div class="gallery-lang-pane" data-gallery-lang-pane="en">
-            <textarea class="gallery-inline" rows="1" data-gallery-field="textAfter"></textarea>
+            <label class="gfield"><span class="gfield__lbl t-label">{t("profile.gallery.textAfter")}</span><textarea class="gallery-inline" rows="1" data-gallery-field="textAfter"></textarea></label>
           </div>
           <div class="gallery-lang-pane" data-gallery-lang-pane="de">
-            <textarea class="gallery-inline" rows="1" data-gallery-field="textAfterDe"></textarea>
+            <label class="gfield"><span class="gfield__lbl t-label">{t("profile.gallery.textAfter.de")}</span><textarea class="gallery-inline" rows="1" data-gallery-field="textAfterDe"></textarea></label>
           </div>
         </div>
       </figure>
@@ -321,41 +314,52 @@ const t = useTranslations(lang);
             <input type="file" class="picker-input" accept="image/jpeg,image/png,image/webp,image/avif" multiple data-carousel-files />
           </label>
         </div>
-        <div class="gallery-row-tools gallery-carousel-tools gallery-deck" role="group" aria-label={t("profile.carousel.toolbar")}>
-          <div class="gallery-deck__grp gallery-size" role="group" data-carousel-size>
-            <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.size")}</span>
-            <div class="gallery-keys">
-              <button type="button" class="gallery-key" data-size="s">S</button>
-              <button type="button" class="gallery-key" data-size="m">M</button>
-              <button type="button" class="gallery-key" data-size="l">L</button>
+        {
+          /* The carousel's own controls behind Edit (2026-10-23), like a
+            work's: S/M/L, ↑ ↓ moving the run as a whole, ✕ dissolving it,
+            the project select. buildTray remembers the fold per carouselId
+            (TrayHooks.panelOpen). */
+        }
+        <details class="gallery-details gallery-carousel-details" data-carousel-details>
+          <summary class="gallery-details-summary gallery-key gallery-key--edit"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span class="gallery-details-title">{t("profile.deck.edit")}</span><span class="gallery-details-chevron" aria-hidden="true"></span></summary>
+          <div class="gallery-details-body gallery-panel">
+            <div class="gallery-row-tools gallery-carousel-tools gallery-deck" role="group" aria-label={t("profile.carousel.toolbar")}>
+              <div class="gallery-deck__grp gallery-size" role="group" data-carousel-size>
+                <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.size")}</span>
+                <div class="gallery-keys">
+                  <button type="button" class="gallery-key" data-size="s">S</button>
+                  <button type="button" class="gallery-key" data-size="m">M</button>
+                  <button type="button" class="gallery-key" data-size="l">L</button>
+                </div>
+              </div>
+              <div class="gallery-deck__grp">
+                <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.move")}</span>
+                <div class="gallery-keys">
+                  <button type="button" class="gallery-key gallery-tbtn" data-carousel-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+                  <button type="button" class="gallery-key gallery-tbtn" data-carousel-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
+                </div>
+              </div>
+              <div class="gallery-deck__grp">
+                <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.carousel")}</span>
+                <div class="gallery-keys">
+                  <button type="button" class="gallery-key gallery-tbtn gallery-tbtn--danger" data-carousel-dissolve><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+                </div>
+              </div>
+              <div class="gallery-deck__row">
+                <div class="gallery-select-wrap gallery-key gallery-key--wide" data-carousel-project-wrap hidden>
+                  <select class="gallery-project-select" data-carousel-project></select>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="gallery-deck__grp">
-            <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.move")}</span>
-            <div class="gallery-keys">
-              <button type="button" class="gallery-key gallery-tbtn" data-carousel-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
-              <button type="button" class="gallery-key gallery-tbtn" data-carousel-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
-            </div>
-          </div>
-          <div class="gallery-deck__grp">
-            <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.carousel")}</span>
-            <div class="gallery-keys">
-              <button type="button" class="gallery-key gallery-tbtn gallery-tbtn--danger" data-carousel-dissolve><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
-            </div>
-          </div>
-          <div class="gallery-deck__row">
-            <div class="gallery-select-wrap gallery-key gallery-key--wide" data-carousel-project-wrap hidden>
-              <select class="gallery-project-select" data-carousel-project></select>
-            </div>
-          </div>
-        </div>
+        </details>
         <div class="gallery-carousel-slide" data-carousel-slide-row></div>
         <div class="mprof__text gallery-text gallery-carousel-text" data-carousel-text>
           <div class="gallery-lang-pane" data-gallery-lang-pane="en">
-            <textarea class="gallery-inline" rows="1" data-carousel-field="textAfter"></textarea>
+            <label class="gfield"><span class="gfield__lbl t-label">{t("profile.gallery.textAfter")}</span><textarea class="gallery-inline" rows="1" data-carousel-field="textAfter"></textarea></label>
           </div>
           <div class="gallery-lang-pane" data-gallery-lang-pane="de">
-            <textarea class="gallery-inline" rows="1" data-carousel-field="textAfterDe"></textarea>
+            <label class="gfield"><span class="gfield__lbl t-label">{t("profile.gallery.textAfter.de")}</span><textarea class="gallery-inline" rows="1" data-carousel-field="textAfterDe"></textarea></label>
           </div>
         </div>
       </section>
