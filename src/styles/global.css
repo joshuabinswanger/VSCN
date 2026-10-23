@@ -1183,6 +1183,28 @@ label:has(> .picker-input:focus-visible) {
   display: none;
 }
 
+/* NO TAP FLASH (2026-10-23, Josh: "when i click on the button it has a
+   blinking sign for where i clicked"): the browser paints a translucent box
+   over a pressed control (-webkit-tap-highlight-color), which on the card's
+   small dots, arrows and the rail's ticks reads as a blink. The controls
+   have their own states (opacity, the dark current dot), and the keyboard
+   ring (:focus-visible) is untouched. A mouse press leaves no outline
+   either: only :focus-visible draws one. */
+.ccard__arrow,
+.ccard__dots .cdot,
+.ccard__dots .pager-chev,
+.ccard__slide,
+.ccard__profile,
+.ccard__name-link,
+.prail__tick {
+  -webkit-tap-highlight-color: transparent;
+}
+.ccard__arrow:focus:not(:focus-visible),
+.ccard__dots .cdot:focus:not(:focus-visible),
+.prail__tick:focus:not(:focus-visible) {
+  outline: none;
+}
+
 /* ── THE MEMBER RAIL (2026-10-23, the desktop UX review, suggestion 2) ──
    Where you are in the Portfolios pages: a column of ticks fixed at the
    right edge, one per member in the deal's order, built by
