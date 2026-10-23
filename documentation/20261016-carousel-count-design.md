@@ -1,9 +1,10 @@
 # The carousel's "‹ 2 / 7 ›" count — archived design
 
-> **Partly restored 2026-10-23** (the desktop UX review): the directory card shows
-> `‹ ●•• 2 / 3 ›` — the dots stayed and became buttons, the count stands beside them in
-> `.ccard__count`, the chevrons and the picture's hover arrows are back on a desktop. The
-> member page's rows are unchanged. The rest of this note is the 2026-10-16 archive.
+> **2026-10-23:** the desktop UX review brought the count back beside the dots for a few
+> hours (`‹ ●•• 2 / 3 ›`); Josh: "we do not need the count but arrows to the left and right
+> of the image". The card now has clickable dots alone under the picture and a prev/next arrow
+> standing beside the picture on a desktop (communityCard.css). The rest of this note is the
+> 2026-10-16 archive, still valid for bringing the count back.
 
 **Retired 2026-10-16**, when Josh asked for dots under the pictures instead of the numbers,
 modelled on Instagram (smaller fading dots at the edges, the current dot black). This note keeps

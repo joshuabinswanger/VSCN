@@ -119,15 +119,6 @@ export function initCarousels(root: ParentNode = document): void {
     const card = carousel.closest<HTMLElement>(".ccard") ?? carousel;
     const dotRow = card.querySelector<HTMLElement>(".ccard__dots");
     const dots = Array.from(card.querySelectorAll<HTMLElement>(".ccard__dots .cdot"));
-    // THE COUNT BESIDE THE DOTS (2026-10-23, the desktop UX review): "2 / 3"
-    // in the row, built here when the markup has none (the editor's preview).
-    // It lands before the next chevron because that one is appended later.
-    let count = card.querySelector<HTMLElement>(".ccard__count");
-    if (!count && dotRow) {
-      count = document.createElement("span");
-      count.className = "ccard__count";
-      dotRow.append(count);
-    }
     const liveRegion = carousel.querySelector<HTMLElement>("[data-carousel-live]");
     const positionLabel = carousel.dataset.positionLabel ?? "";
 
@@ -154,7 +145,6 @@ export function initCarousels(root: ParentNode = document): void {
         slide.tabIndex = n === i ? 0 : -1;
       });
       showDot?.(i);
-      if (count) count.textContent = `${i + 1} / ${total}`;
       if (liveRegion && !quiet) {
         liveRegion.textContent = positionLabel
           .replace("{n}", String(i + 1))
