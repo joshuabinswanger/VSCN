@@ -1145,17 +1145,11 @@ label:has(> .picker-input:focus-visible) {
 /* ...and since 2026-10-16 none on a desktop either (Josh: "remove the
    arrows from the desktop version of the carousel"): the dots stand alone,
    centred. The buttons are still built (pager.ts) and still named.
-   THE CARD'S PAIR IS BACK ON A DESKTOP (2026-10-23, the desktop UX review:
-   with a mouse there was no way to a member's other works) — "‹ ●•• 2 / 3 ›"
-   under the picture pages; the member page keeps none, and a phone keeps
-   none on the card either, where the swipe pages. */
-.mprof .pager-chev {
+   (The pair came back for a few hours on 2026-10-23 with a "2 / 3" count;
+   Josh: "we do not need the count but arrows to the left and right of the
+   image" — the arrows beside the picture page now, communityCard.css.) */
+:is(.ccard, .mprof) .pager-chev {
   display: none;
-}
-@media (--bp-mobile) {
-  .ccard .pager-chev {
-    display: none;
-  }
 }
 
 /* ── THE MEMBER RAIL (2026-10-23, the desktop UX review, suggestion 2) ──

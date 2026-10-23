@@ -200,7 +200,12 @@
     var(--ccard-pic-room)
   );
   aspect-ratio: var(--frame-ar, 1);
-  overflow: hidden;
+  /* NOT A CLIP (2026-10-23, Josh: "arrows to the left and right of the
+     image"): the prev/next arrows stand OUTSIDE the frame's box now, so the
+     frame lets them through. The track is the scroller and clips its own
+     slides; the entrance's clip-path moved onto the track too
+     (CommunityGrid.astro, THE ENTRANCE). */
+  overflow: visible;
   /* NO BORDER, deliberately. The artwork is its own edge; a grey rule around
      it read as a box the picture had been placed inside, which is the
      opposite of the page it sits on. */
@@ -287,11 +292,18 @@
      lightbox on the slide that was clicked — "click a thing and THAT thing
      opens". The cursor says which is which: zoom-in over the picture,
      a pointer over a strip. */
+  /* BESIDE THE PICTURE, NOT ON IT (2026-10-23, Josh: "we do not need the
+     count but arrows to the left and right of the image"): each arrow is a
+     strip the picture's full height standing just outside its edge — the
+     prev one's right edge on the frame's left edge, the next one's left
+     edge on its right — with the chevron centred in it. Always shown on a
+     desktop, muted, dark when pointed at; no longer a hover reveal. */
   top: 0;
   bottom: 0;
   z-index: 1;
   display: grid;
-  width: clamp(2.75rem, 16%, 4.5rem);
+  place-items: center;
+  width: 2.5rem;
   padding: 0;
   border: 0;
   /* No ground. The chevron is the whole control, so its contrast is now
@@ -300,53 +312,21 @@
      and the swipe page the same gallery either way. */
   background: none;
   color: var(--color-dark);
-  opacity: 0;
+  opacity: 0.35;
   cursor: pointer;
-  /* Slides out of the card's edge as it fades in. Written as a plain
-     transform per side rather than a var the two directions share: an
-     unregistered custom property is not itself animatable, and relying
-     on the substitution to carry a transition is a subtlety this file
-     does not need. Each state names its own transform. */
-  transform: translate(0, 0);
-  /* THIS IS THE HIDE. A transition on the base state is what plays on the
-     way back to it, so these timings are the ones that run when the pointer
-     leaves — a third shorter than the appear below, so the chevron clears
-     the artwork promptly instead of lingering over it. The appear keeps its
-     own, longer timings on the shown state. */
-  transition:
-    opacity 120ms ease,
-    transform 147ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: opacity 150ms ease;
 }
-/* :focus-within arrived with the keyboard support: the arrow keys are bound
-   to the frame, so a visitor who has tabbed to the click target can page
-   without ever hovering — and had no way to see the controls that prove it
-   until they came up with the focus. */
+/* Pointing at the picture lifts both a little; the one pointed at, or
+   focused from the keyboard, comes to full strength. (The old hover reveal
+   and the "rest after a click" hide are gone with the hover-only arrows:
+   a control that stands beside the picture stays where it is.) */
 .ccard__frame:hover .ccard__arrow,
-.ccard__frame:focus-within .ccard__arrow,
-.ccard__arrow:focus-visible {
-  opacity: 0.75;
-  transform: translate(0, 0);
-  /* The appear, unchanged: it may take its time coming out of the edge. */
-  transition:
-    opacity 180ms ease,
-    transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+.ccard__frame:focus-within .ccard__arrow {
+  opacity: 0.55;
 }
-/* With no block to invert, the active side states itself by coming to full
-   strength while the other stays held back. */
 .ccard__arrow:hover,
 .ccard__arrow:focus-visible {
   opacity: 1;
-}
-/* CLICKED, SO OUT OF THE WAY (2026-10-09). communityCarousel.ts sets this on
-   the frame after paging and clears it on pointer re-entry or keyboard
-   focus. Same specificity as the frame-hover rule above and
-   later, so it wins over hover and :focus-within (Chrome focuses a clicked
-   button) alike; it stays in place rather than sliding back to the edge, and
-   it is quicker than the ordinary hide because the visitor has already said
-   what they wanted. Opacity only: the strip is still there to click again. */
-.ccard__frame.is-arrows-resting .ccard__arrow {
-  opacity: 0;
-  transition: opacity 45ms ease-out;
 }
 /* A stroked chevron rather than a filled triangle — two borders on a box
    turned 45deg. Same drawing as the disclosure toggle in MemberDetailPanel,
@@ -364,24 +344,12 @@
 .ccard__arrow--next span {
   transform: translate(-0.05rem, 0) rotate(45deg);
 }
-/* The strips sit flush on the frame's edges, and the chevron is held to the
-   OUTER side of its strip by the padding rather than centred in it — so the
-   glyph stays about where it sat when the button was 2.4rem wide and 0.15rem
-   in (~1.35rem from the edge), however wide the strip gets. */
-/* The resting offset: tucked toward its own edge, so the block appears
-   to come out of the card rather than fade in on the spot. Overridden
-   by the :hover/:focus rule above, which is later and more specific. */
+/* Each strip's inner edge is the frame's edge. */
 .ccard__arrow--prev {
-  left: 0;
-  place-items: center start;
-  padding-left: 0.95rem;
-  transform: translate(-0.4rem, 0);
+  right: 100%;
 }
 .ccard__arrow--next {
-  right: 0;
-  place-items: center end;
-  padding-right: 0.95rem;
-  transform: translate(0.4rem, 0);
+  left: 100%;
 }
 
 /* ── The foot: the pager under the picture ────────────── */
@@ -418,8 +386,8 @@
   align-items: center;
   gap: var(--carousel-dot-gap);
 }
-/* CLICKABLE DOTS AND A COUNT (2026-10-23, the desktop UX review): the row is
-   a control now — "‹ ●•• 2 / 3 ›". Each dot is a button (the card's markup)
+/* CLICKABLE DOTS (2026-10-23, the desktop UX review): the row is a control
+   now — "●••". Each dot is a button (the card's markup)
    that pages to its slide, drawn at --carousel-dot and hit over a 20px-tall
    band one step wide (its ::after). global.css draws the dots and makes
    .cdots pointer-events: none for the member page's rows; the card takes
@@ -448,14 +416,6 @@
 }
 .ccard__dots .cdot--on:hover {
   opacity: 1;
-}
-/* The count beside the dots — the COUNT voice (type.css), muted like the
-   chevrons that flank the row. Built by communityCarousel.ts when the
-   markup has none (the editor's preview). */
-.ccard__count {
-  color: var(--color-muted);
-  white-space: nowrap;
-  margin-left: 0.35rem;
 }
 /* THE CHEVRONS CLOSE IN ON THE COUNT (2026-10-14, Josh: "make the image
    carousel arrows more tightly spaced"). global.css gives a pager chevron a
@@ -657,7 +617,8 @@
    member's second and third works were unreachable with a mouse — the edge
    arrows had been hidden here since 2026-10-16 ("remove the hover arrows on
    the pictures too"), the dots were inert and the keys needed focus inside
-   the frame. They show on hover and on keyboard focus (the rules above); a
+   the frame. Later the same day Josh placed them BESIDE the picture, always
+   shown ("arrows to the left and right of the image"; the rules above). A
    phone still hides them in its block. To hide them again:
    `.ccard .ccard__arrow { display: none; }` here. */
 

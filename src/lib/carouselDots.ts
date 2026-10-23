@@ -15,9 +15,8 @@
 // global.css; the size and gap are the --carousel-dot tokens in type.css.
 //
 // The "2 / 7" count it replaced is recorded in
-// documentation/20261016-carousel-count-design.md — and since 2026-10-23
-// stands beside the card's dots again (.ccard__count, communityCarousel.ts),
-// where the dots are buttons too.
+// documentation/20261016-carousel-count-design.md. Since 2026-10-23 the
+// card's dots are buttons (communityCarousel.ts pages on a press).
 
 const WINDOW = 5;
 
