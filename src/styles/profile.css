@@ -859,4 +859,21 @@
     transform: none;
     transition: transform 1.5s var(--paint-ease) var(--d, 0.6s);
   }
+
+  /* Every later picture, on desktop (2026-10-23, Josh: "fade in of images in
+     the profile view should be for all images on desktop"): the Portfolios
+     pictures' fade out of a soft blur, as it scrolls into view
+     (profilePaint.ts stamps data-paint="fade" only on desktop and adds
+     .is-seen). The blur is on the image, so its frame's edge stays crisp. */
+  .mprof[data-motion] [data-paint="fade"] .mprof__img {
+    opacity: 0;
+    filter: blur(14px);
+  }
+  .mprof[data-motion].is-in [data-paint="fade"].is-seen .mprof__img {
+    opacity: 1;
+    filter: none;
+    transition:
+      opacity 0.9s ease-out var(--d, 0s),
+      filter 1.2s ease-out var(--d, 0s);
+  }
 }

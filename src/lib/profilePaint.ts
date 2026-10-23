@@ -98,12 +98,53 @@ export function preparePaint(root: HTMLElement): HTMLImageElement | null {
   return firstWork?.querySelector<HTMLImageElement>(".mprof__img") ?? null;
 }
 
+// EVERY PICTURE FADES IN ON DESKTOP (2026-10-23, Josh: "fade in of images in
+// the profile view should be for all images on desktop"). The works after
+// the first no longer sit still there: each fades in out of a soft blur, the
+// Portfolios pictures' fade, once it is a fifth in view, and stays. A phone
+// keeps them still. One observer per page, dropped with the page.
+const DESKTOP = "(767px < width) and (not (pointer: coarse))";
+let fadeObserver: IntersectionObserver | null = null;
+
+function prepareFades(root: HTMLElement): HTMLElement[] {
+  fadeObserver?.disconnect();
+  fadeObserver = null;
+  if (!window.matchMedia(DESKTOP).matches) return [];
+  const works = Array.from(root.querySelectorAll<HTMLElement>(".mprof__works .mprof__work")).filter(
+    (work) => work.dataset.paint !== "picture",
+  );
+  for (const work of works) work.dataset.paint = "fade";
+  return works;
+}
+
+/** Starts watching the faded works, once the head is in. A work already in
+ *  view then fades straight after the first picture's turn. */
+function watchFades(works: HTMLElement[], firstDelay: string): void {
+  if (!works.length) return;
+  let initial = true;
+  fadeObserver = new IntersectionObserver(
+    (entries, observer) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const work = entry.target as HTMLElement;
+        if (initial) work.style.setProperty("--d", firstDelay);
+        work.classList.add("is-seen");
+        observer.unobserve(work);
+      }
+      initial = false;
+    },
+    { threshold: 0.2 },
+  );
+  for (const work of works) fadeObserver.observe(work);
+}
+
 /** Plays the paint-in once the page may be seen: after the intro on a full
  *  load, after the arrival pause on a swap, with the fonts and the first
  *  picture ready (capped). */
 export async function paintIn(root: HTMLElement | null): Promise<void> {
   if (!root || !root.hasAttribute("data-motion")) return;
   const img = preparePaint(root);
+  const fades = prepareFades(root);
   const ready = (async () => {
     await whenIntroDone();
     await whenHoldDone();
@@ -114,6 +155,8 @@ export async function paintIn(root: HTMLElement | null): Promise<void> {
   if (!root.isConnected) return;
   root.classList.add("is-in");
   document.querySelector(".mprof-bar")?.classList.add("is-in");
+  const first = root.querySelector<HTMLElement>('[data-paint="picture"]');
+  watchFades(fades, first?.style.getPropertyValue("--d") || "0s");
 }
 
 /** Shows the page plainly, with no build-up — for an arrival the browser
