@@ -28,9 +28,10 @@ const Tag = href ? "a" : "span";
 <style>
   /* The word and its arrow, no box (2026-10-12, Josh: "profile is too
      strong, make it without black bg", then "no outline for Profile"),
-     underlined while pointed at like the card's other links. Ranged at the
-     left edge of the column it ends (2026-10-18, Josh: "profile button
-     left aligned under the role"). */
+     underlined ALWAYS, not only while pointed at (2026-10-23, Josh:
+     "profile underline should be constant"). Ranged at the left edge of
+     the column it ends (2026-10-18, Josh: "profile button left aligned
+     under the role"). */
   .profile-link {
     display: inline-flex;
     align-items: center;
@@ -40,15 +41,10 @@ const Tag = href ? "a" : "span";
     background: transparent;
     color: var(--color-dark);
     white-space: nowrap;
-    text-decoration: none;
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  a.profile-link:hover,
-  a.profile-link:focus-visible {
     text-decoration: underline;
     text-underline-offset: 3px;
     text-decoration-thickness: 1.5px;
+    -webkit-tap-highlight-color: transparent;
   }
 
   a.profile-link:focus-visible {
