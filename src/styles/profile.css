@@ -743,9 +743,8 @@
    expo-out curve, the portrait settling in, the name rising word by word
    out of its line (profilePaint.ts splits it and stamps each word's --d),
    every text line drifting up into place in page order, and last the first
-   picture opening out of an inset and settling from a slight zoom (on a
-   phone; on desktop it fades out of a blur, as every later picture does).
-   Everything after the first picture sits still. The start state applies
+   picture fading in and growing to its size, as every later picture does
+   when it scrolls into view (the picture rules below). The start state applies
    only under [data-motion] on .mprof (set before the first paint by the
    page's inline script, never under reduced motion), and the transitions
    live on .is-in alone. Until the script has stamped the schedule
@@ -788,12 +787,18 @@
     opacity: 0;
     translate: 0 0.6rem;
   }
-  .mprof[data-motion] [data-paint="picture"] {
-    clip-path: inset(9% 9% 9% 9%);
+  /* Every picture — the first at its turn in the paint-in, each later one
+     as it scrolls into view (profilePaint.ts stamps data-paint="fade" and
+     adds .is-seen) — makes the site's picture entrance: the whole picture
+     fades in and grows to its size (--pic-in-* in global.css; 2026-10-23,
+     Josh: "the zoom in was nicer … the whole image … make it global"). It
+     replaced the first picture's 9% inset with a zoom inside it, and the
+     blur fade the desktop had that day. On the <img>, so the work's box
+     holds its place and size. */
+  .mprof[data-motion] [data-paint="picture"] .mprof__img,
+  .mprof[data-motion] [data-paint="fade"] .mprof__img {
     opacity: 0;
-  }
-  .mprof[data-motion] [data-paint="picture"] .mprof__img {
-    transform: scale(1.16);
+    transform: var(--pic-in-from);
   }
 
   .mprof[data-motion].is-in [data-paint="avatar"] {
@@ -815,59 +820,15 @@
       opacity 0.7s var(--paint-ease) var(--d, 0.3s),
       translate 0.9s var(--paint-ease) var(--d, 0.3s);
   }
-  .mprof[data-motion].is-in [data-paint="picture"] {
-    clip-path: inset(0 0 0 0);
-    opacity: 1;
-    transition:
-      clip-path 1.15s var(--paint-ease) var(--d, 0.6s),
-      opacity 0.6s var(--paint-ease) var(--d, 0.6s);
-  }
-  .mprof[data-motion].is-in [data-paint="picture"] .mprof__img {
-    transform: none;
-    transition: transform 1.5s var(--paint-ease) var(--d, 0.6s);
-  }
-
-  /* Every later picture, on desktop (2026-10-23, Josh: "fade in of images in
-     the profile view should be for all images on desktop"): the Portfolios
-     pictures' fade out of a soft blur, as it scrolls into view
-     (profilePaint.ts stamps data-paint="fade" only on desktop and adds
-     .is-seen). The blur is on the image, so its frame's edge stays crisp. */
-  .mprof[data-motion] [data-paint="fade"] .mprof__img {
-    opacity: 0;
-    filter: blur(14px);
-  }
+  .mprof[data-motion].is-in [data-paint="picture"] .mprof__img,
   .mprof[data-motion].is-in [data-paint="fade"].is-seen .mprof__img {
     opacity: 1;
-    filter: none;
+    transform: none;
     transition:
-      opacity 0.9s ease-out var(--d, 0s),
-      filter 1.2s ease-out var(--d, 0s);
+      opacity var(--pic-in-fade) var(--d, 0s),
+      transform var(--pic-in-zoom) var(--d, 0s);
   }
-
-  /* The first picture too, on desktop (2026-10-23, Josh: "give the first
-     picture on the member page the same blur fade on desktop"): no inset,
-     no zoom, the same fade at its turn in the paint-in. Phones keep the
-     inset and the zoom. Same selectors as the rules above, later in the
-     file, so these win. */
-  @media (--bp-desktop) {
-    .mprof[data-motion] [data-paint="picture"] {
-      clip-path: none;
-      opacity: 1;
-    }
-    .mprof[data-motion] [data-paint="picture"] .mprof__img {
-      transform: none;
-      opacity: 0;
-      filter: blur(14px);
-    }
-    .mprof[data-motion].is-in [data-paint="picture"] {
-      transition: none;
-    }
-    .mprof[data-motion].is-in [data-paint="picture"] .mprof__img {
-      opacity: 1;
-      filter: none;
-      transition:
-        opacity 0.9s ease-out var(--d, 0.6s),
-        filter 1.2s ease-out var(--d, 0.6s);
-    }
+  .mprof[data-motion].is-in [data-paint="picture"] .mprof__img {
+    transition-delay: var(--d, 0.6s);
   }
 }
