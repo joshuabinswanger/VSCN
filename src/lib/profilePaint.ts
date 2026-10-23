@@ -9,7 +9,7 @@
 // page order — role, affiliation, place, the bio's paragraphs, the tag rows,
 // the links, a first project's words, the Portfolios pill — drifts up into
 // place, and last the first picture opens out of an inset and settles from
-// a slight zoom, once it has loaded. Everything after the first picture sits
+// a slight zoom (a phone; on desktop it fades out of a blur), once it has loaded. Everything after the first picture sits
 // still (Josh: "sit still"). The CSS is in profile.css under
 // .mprof[data-motion]; the start state applies only under that flag, set
 // before the first paint by the page's inline script and never under
