@@ -19,6 +19,15 @@
   /* The header row: one VSCN at the left, MENU at the right (Layout.astro,
      Navbar.astro). */
   --header-h: 56px;
+  /* A PICTURE'S ENTRANCE, one for the site (2026-10-23, Josh: "the zoom in
+     was nicer … not the frame only but the whole image … make it global"):
+     the whole picture fades in and grows to its size. Used by the Portfolios
+     cards (CommunityGrid.astro) and the member page's works (profile.css).
+     The scale is on the <img> only, so the box that takes a swipe or a tap
+     is full size from the first frame. */
+  --pic-in-from: scale(0.9);
+  --pic-in-zoom: 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  --pic-in-fade: 0.45s ease-out;
   font-family: "Archivo", sans-serif;
   --font-size-base: 12px;
   --color-dark: #000000;

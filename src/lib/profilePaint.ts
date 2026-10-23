@@ -8,9 +8,10 @@
 // in, the name rises word by word out of its line, then every text line in
 // page order — role, affiliation, place, the bio's paragraphs, the tag rows,
 // the links, a first project's words, the Portfolios pill — drifts up into
-// place, and last the first picture opens out of an inset and settles from
-// a slight zoom (a phone; on desktop it fades out of a blur), once it has loaded. Everything after the first picture sits
-// still (Josh: "sit still"). The CSS is in profile.css under
+// place, and last the first picture fades in and grows to its size (the
+// site's picture entrance, --pic-in-* in global.css), once it has loaded.
+// Every later picture does the same as it scrolls into view (below; they
+// sat still until 2026-10-23). The CSS is in profile.css under
 // .mprof[data-motion]; the start state applies only under that flag, set
 // before the first paint by the page's inline script and never under
 // reduced motion, so a visitor without JavaScript sees the page plainly.
@@ -98,18 +99,16 @@ export function preparePaint(root: HTMLElement): HTMLImageElement | null {
   return firstWork?.querySelector<HTMLImageElement>(".mprof__img") ?? null;
 }
 
-// EVERY PICTURE FADES IN ON DESKTOP (2026-10-23, Josh: "fade in of images in
-// the profile view should be for all images on desktop"). The works after
-// the first no longer sit still there: each fades in out of a soft blur, the
-// Portfolios pictures' fade, once it is a fifth in view, and stays. A phone
-// keeps them still. One observer per page, dropped with the page.
-const DESKTOP = "(767px < width) and (not (pointer: coarse))";
+// EVERY PICTURE COMES IN (2026-10-23, Josh: "fade in of images in the
+// profile view should be for all images on desktop", then the same day "make
+// it global" — phones too). The works after the first no longer sit still:
+// each makes the site's picture entrance (profile.css) once it is a fifth in
+// view, and stays. One observer per page, dropped with the page.
 let fadeObserver: IntersectionObserver | null = null;
 
 function prepareFades(root: HTMLElement): HTMLElement[] {
   fadeObserver?.disconnect();
   fadeObserver = null;
-  if (!window.matchMedia(DESKTOP).matches) return [];
   const works = Array.from(root.querySelectorAll<HTMLElement>(".mprof__works .mprof__work")).filter(
     (work) => work.dataset.paint !== "picture",
   );
