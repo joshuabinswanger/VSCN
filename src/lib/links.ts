@@ -249,6 +249,17 @@ export function socialLinks(raw: string): SocialLink[] {
 }
 
 /**
+ * True when a social row holds text that socialLinks() cannot turn into a
+ * link: a bare handle ("compostdiv4", "@name") or anything else without a
+ * domain. Saving it is still allowed, since validateSocialMedia() checks length
+ * only. The editors use this to TELL the member before the directory prints
+ * the text as a chip that goes nowhere (2026-10-23).
+ */
+export function socialUnlinked(raw: string): boolean {
+  return socialLinks(raw).some((link) => link.href === null);
+}
+
+/**
  * Canonical URL of a member's public profile page, locale-aware. One place
  * rather than three, because the card, the panel and the editor preview all
  * link to the same page and a drifted prefix would 404 only in German.
