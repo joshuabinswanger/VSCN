@@ -2679,53 +2679,77 @@ const searchIndex: SearchIndex = {
 
   /* ── THE DIRECTORY OF CARDS (2026-10-23) ───────────────────
      Josh: "on desktop the people section can be a directory of cards with
-     their profile pic" — card-sized when open, not a full-width band, and
-     the same day: "cards in rows of 3 ... the image smaller and to the left
-     and then the information to the right". So: THREE fixed columns in the
-     72rem measure, and each card is the ledger's own line with more air —
-     a 4.5rem portrait at the left, name over role at the right, the chevron
-     at the card's far edge. (The first cut stood the summary up — a 7rem
-     portrait over centred words, auto-filled at 13rem — and lasted an
-     hour.) On paper with no box; the hairlines between rows go. An open
-     card grows DOWN inside its own column: its row grows with it and the
-     neighbours stay top-aligned (align-items: start) with paper below them.
-     The panel is indented to the words' column, so the card reads as one
-     block of text beside one picture. One open at a time — the <details>
-     share a name (see MemberDetailPanel). */
+     their profile pic", then "cards in rows of 3 ... the image smaller and
+     to the left and then the information to the right". So: THREE fixed
+     columns in the 72rem measure, a 4.5rem portrait at the left, name over
+     role at the right, the chevron at the card's far edge. One open at a
+     time — the <details> share a name (see MemberDetailPanel).
+
+     A BOX, AND ONLY THE CARD GROWS (2026-10-23, Josh, after two rounds of
+     unboxed cards under hairlines: "each name sits inside a card and not
+     the whole row expand but just that single card"). Each member is a
+     drawn card now, and an open card grows DOWN OVER the cards beneath it
+     instead of pushing its row taller: nothing else on the page moves.
+     The mechanism is the gallery card's (see MemberDetailPanel's note on
+     .pdisc__body): the <li> reserves the closed card's height in the grid
+     and the card itself, .cindex__line, is absolutely positioned inside it,
+     so its growth never reaches the layout. Do NOT position .pdisc__body
+     instead — ::details-content clips an out-of-flow body to nothing. The
+     card's ground is opaque paper so the panel covers what it lies over. */
   @media (--bp-desktop) {
-    /* Portrait size and the gap after it, stated once: the panel's indent
-       is their sum. */
+    /* Portrait size and card padding, stated once: the reserved height of
+       a closed card is their sum, plus the two border pixels. */
     .cindex {
       --people-portrait: 4.5rem;
-      --people-gap: 1rem;
+      --people-pad: 1rem;
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      /* MORE AIR, AND A HEAD RULE (2026-10-23, Josh, on the first three-wide
-         cut: "more space and maybe some kind of visual hierarchy so I can
-         differentiate them. maybe more white space is enough"). The row
-         gap went from 2rem to 3.5rem and the column gap to 3rem, and each
-         card keeps the ledger's hairline — ABOVE it, as the phone rows have
-         — so three cards on a line read as three entries with a rule over
-         each, not as one line of text with two gaps in it. Still no box. */
-      gap: 3.5rem 3rem;
-      align-items: start;
+      gap: 1.25rem;
     }
 
     .cindex__row,
     .cindex__row:last-child {
+      position: relative;
       border: 0;
-      border-top: 1px solid var(--color-border);
       min-width: 0;
+      height: calc(var(--people-portrait) + 2 * var(--people-pad) + 2px);
+    }
+
+    /* The open card, and the one being hovered, sit above their
+       neighbours: the open one so its panel covers the row below, the
+       hovered one so its darkened border is not cut by the next card's. */
+    .cindex__row:hover {
+      z-index: 1;
+    }
+
+    .cindex :global(.cindex__row:has(.pdisc[open])) {
+      z-index: 2;
+    }
+
+    .cindex__line {
+      position: absolute;
+      inset: 0 0 auto;
+      border: 1px solid var(--color-border);
+      background: var(--color-bg);
+      transition: border-color 0.15s, box-shadow 0.2s;
+    }
+
+    .cindex__line:hover,
+    .cindex__line:focus-within {
+      border-color: var(--color-dark);
+    }
+
+    .cindex :global(.cindex__line:has(.pdisc[open])) {
+      border-color: var(--color-dark);
+      box-shadow: 0 0.75rem 2rem -0.75rem color-mix(in srgb, var(--color-dark) 35%, transparent);
     }
 
     .cindex__line :global(.pdisc__toggle) {
-      gap: 0 var(--people-gap);
-      padding: 1.1rem 0.25rem 0.5rem 0;
+      gap: 0 var(--people-pad);
+      padding: var(--people-pad);
     }
 
-    /* No hover tint: a card has no box to tint, and a tinted rectangle
-       behind a round portrait would draw one. The hover is the ring and
-       the name's underline (base rules). */
+    /* No hover tint: the card's border is the hover now. */
     .cindex__line :global(.pdisc__toggle:hover),
     .cindex__line :global(.pdisc__toggle:focus-visible) {
       background-color: transparent;
@@ -2741,9 +2765,8 @@ const searchIndex: SearchIndex = {
     }
 
     /* Name over role, ranged left beside the portrait; the comma that
-       joined them on the ledger line goes, and the role gets back the gap
-       the comma's NBSP supplied. Closed, each is one line with an ellipsis
-       (base rules); open, both wrap. */
+       joined them on the ledger line goes. Closed, each is one line with an
+       ellipsis (base rules); open, both wrap. */
     .cindex__who {
       flex-direction: column;
       align-items: flex-start;
@@ -2759,10 +2782,14 @@ const searchIndex: SearchIndex = {
       max-width: 100%;
     }
 
-    /* The panel, under the words and not under the picture: indented by
-       the portrait and its gap, so the bio starts on the name's left edge. */
+    /* The panel takes the card's full width under the portrait row. The
+       component's translucent, blurred ground is for panels over artwork;
+       here the card is already opaque paper. */
     .cindex__line :global(.pdisc__body) {
-      padding: 0.1rem 0.25rem 0.6rem calc(var(--people-portrait) + var(--people-gap));
+      padding: 0 var(--people-pad) var(--people-pad);
+      background: none;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
     }
 
     .cindex__line :global(.pdisc__body-inner) {
