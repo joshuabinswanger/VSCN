@@ -49,14 +49,14 @@
 // member's data never reaches the build, so there is nothing to render here
 // until the form has loaded. The one thing rendered with words is the
 // profile button's label, which is the page's language and nobody's data.
-import { useTranslations, type Lang } from "../../i18n/utils.ts";
+import type { Lang } from "../../i18n/utils.ts";
+import ProfileLink from "../ui/ProfileLink.astro";
 import "../../styles/communityCard.css";
 
 interface Props {
   lang?: Lang;
 }
 const { lang = "en" } = Astro.props;
-const t = useTranslations(lang);
 ---
 
 {/* The slot's stand-in: an inline-size container, so the card can measure
@@ -137,10 +137,7 @@ const t = useTranslations(lang);
     <div class="ccard__more">
       {/* Last, as on the card — a <span> here because there is no page to
           go to from an unsaved form. */}
-      <span class="ccard__profile">
-        {t("community.card.profile")}
-        <span aria-hidden="true">→</span>
-      </span>
+      <ProfileLink lang={lang} />
     </div>
   </div>
   {/* The count, outside the words as on the card. */}

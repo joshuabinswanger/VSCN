@@ -1,0 +1,58 @@
+---
+/* THE NAMED WAY TO A MEMBER'S PAGE: "PROFILE →", one control wherever a
+   member's words end (2026-10-23, Josh: "profile should be the same as the
+   profile button on portfolio ... make a component for it"). Used by the
+   Portfolios card, the People card and the editor's card preview.
+   A LINK, not a <button>, because it goes somewhere. The arrow is markup,
+   aria-hidden, so the link reads as "Profile" and not as "Profile right
+   arrow". With no href it renders a <span> — the editor's preview has no
+   page to go to from an unsaved form. Its voice is LABEL in type.css. */
+import { useTranslations, type Lang } from "../../i18n/utils.ts";
+
+interface Props {
+  lang: Lang;
+  href?: string;
+  class?: string;
+}
+
+const { lang, href, class: className } = Astro.props;
+const t = useTranslations(lang);
+const Tag = href ? "a" : "span";
+---
+
+<Tag class:list={["profile-link", className]} href={href}>
+  {t("community.card.profile")}
+  <span aria-hidden="true">→</span>
+</Tag>
+
+<style>
+  /* The word and its arrow, no box (2026-10-12, Josh: "profile is too
+     strong, make it without black bg", then "no outline for Profile"),
+     underlined while pointed at like the card's other links. Ranged at the
+     left edge of the column it ends (2026-10-18, Josh: "profile button
+     left aligned under the role"). */
+  .profile-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    align-self: flex-start;
+    padding: 0;
+    background: transparent;
+    color: var(--color-dark);
+    white-space: nowrap;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  a.profile-link:hover,
+  a.profile-link:focus-visible {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
+  }
+
+  a.profile-link:focus-visible {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+</style>
