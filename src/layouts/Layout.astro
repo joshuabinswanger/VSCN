@@ -1225,8 +1225,11 @@ const BRAND_SLOTS: BrandSlot[] = [
   // the swap allowed. The loader is wrapped, so the fetch runs in parallel
   // and the swap waits for whichever finishes last. With nothing left
   // moving, the new page only rises (global.css stops the group's slide).
-  // Same-path navigations (the directory's view switches) keep their own
-  // behaviour, and reduced motion skips all of it.
+  // Reduced motion skips all of it. Same-path navigations (the directory's
+  // view, tag and sort switches) used to skip it too, and on a phone the old
+  // view cut straight to blank paper (2026-10-23, Josh: "make the animation
+  // smooth when i switch from page to page"); they fade out like any page
+  // now, and wait a shorter pause before the new view comes in (below).
   const LEAVE_MS = 220;
   const TITLE_MS = 260;
 
@@ -1271,7 +1274,7 @@ const BRAND_SLOTS: BrandSlot[] = [
   }
 
   document.addEventListener("astro:before-preparation", (event) => {
-    if (event.to.pathname === event.from.pathname) return;
+    arriveDelay = event.to.pathname === event.from.pathname ? SAME_PAGE_ARRIVE_DELAY_MS : ARRIVE_DELAY_MS;
     // An iOS edge swipe has already shown the page coming back; fading the
     // one just left on top of that shows it a second time.
     if (browserAnimatedThisTraversal()) return;
@@ -1302,6 +1305,11 @@ const BRAND_SLOTS: BrandSlot[] = [
   // on <html> holds the Portfolios entrance too (CommunityGrid.astro), and
   // each card then waits for its own picture (pagesEntrance.ts).
   const ARRIVE_DELAY_MS = 500;
+  // A view switch on /community is the same page dealt again, already
+  // faded out by the leave above: the full pause on top of that read as the
+  // page stalling, so it only breathes before the new view comes in.
+  const SAME_PAGE_ARRIVE_DELAY_MS = 150;
+  let arriveDelay = ARRIVE_DELAY_MS;
   // No element morphs across this pause any more: the card's picture and
   // name used to carry view-transition names into the member page, and
   // WebKit paints a named element at full strength under an opacity-0
@@ -1342,7 +1350,7 @@ const BRAND_SLOTS: BrandSlot[] = [
     setTimeout(() => {
       delete root.dataset.arriveHold;
       if (enter.playState === "paused") enter.play();
-    }, ARRIVE_DELAY_MS);
+    }, arriveDelay);
     enter.finished.catch(() => {}).finally(() => delete root.dataset.arriving);
   });
 
