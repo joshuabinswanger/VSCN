@@ -812,12 +812,22 @@ const searchIndex: SearchIndex = {
     <ol class="cindex">
       {
         indexMembers.map((m) => {
-          // The disclosure's lead image is the PROFILE picture, not the
-          // artwork — the galleries already show the work; the ledger's
-          // dropdown is about the person. Same avatar treatment as
-          // MemberCard: the stored URL, token stripped, no build pipeline
-          // (avatars are small).
+          // THE PORTRAIT IS ON THE CARD, NOT IN THE PANEL (2026-10-23, Josh:
+          // "on desktop the people section can be a directory of cards with
+          // their profile pic"). It was the open panel's lead image; now it
+          // heads the summary — the face is what a directory of people shows
+          // closed, and the panel has only words left to disclose. Same avatar
+          // treatment as MemberCard: the stored URL, token stripped, no build
+          // pipeline (avatars are small). A member with no photo gets the same
+          // circle holding their initials, so the grid stays one shape and
+          // nobody is demoted to a text row.
           const avatarSrc = stripStorageToken(m.photoURL ?? "");
+          const initials = (m.displayName || m.slug)
+            .split(/[\s-]+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((w) => w[0]!.toUpperCase())
+            .join("");
           // WHERE THE "VIEW PROFILE" CONTROL GOES: in the DROPDOWN, on every
           // row, without exception (2026-09-02, Josh: "index view profile in
           // the dropdown content"; 2026-09-03, "when there is no added
@@ -859,8 +869,27 @@ const searchIndex: SearchIndex = {
                     keeps the keyboard activation and the expanded/collapsed
                     announcement for free — see the summary slot in
                     MemberDetailPanel. */}
-                <MemberDetailPanel member={m} lang={lang} forceShow>
+                <MemberDetailPanel member={m} lang={lang} forceShow name="people">
                   <Fragment slot="summary">
+                    {/* The portrait, or the initials in its place. `alt` is
+                        empty and the initials are hidden from readers: the
+                        name is printed right after, so the picture names
+                        nobody the summary does not already name. */}
+                    {avatarSrc ? (
+                      <img
+                        class="cindex__avatar"
+                        src={avatarSrc}
+                        alt=""
+                        width="72"
+                        height="72"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <span class="cindex__avatar cindex__avatar--initials" aria-hidden="true">
+                        {initials}
+                      </span>
+                    )}
                     {/* NAME AND ROLE ARE ONE UNIT — "Jane Doe, Illustrator" —
                         not two columns. The role used to sit in its own track a
                         column and a half away from the person it described,
@@ -893,22 +922,11 @@ const searchIndex: SearchIndex = {
                         (.pdisc__vals--tags), and the tag FILTER never read
                         this — it reads data-tags on the row. */}
                   </Fragment>
-                  {/* The dropdown's lead: the profile picture, where there is
-                      one. Nothing else is conditional any more — every row is a
-                      disclosure (see the note above), so the panel always
-                      exists to hold whatever the member has. */}
-                  {avatarSrc && (
-                    <img
-                      slot="lead"
-                      class="cindex__avatar"
-                      src={avatarSrc}
-                      alt={m.displayName || m.slug}
-                      width="72"
-                      height="72"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  )}
+                  {/* No lead image any more: the portrait is on the summary
+                      (above). Every row is still a disclosure (see the note
+                      above), so the panel always exists to hold whatever
+                      words the member has, and at least the way to their
+                      page. */}
                   <Fragment slot="footer">{profileLink}</Fragment>
                 </MemberDetailPanel>
               </div>
@@ -2369,9 +2387,14 @@ const searchIndex: SearchIndex = {
   }
 
   /* ── The index ────────────────────────────────────────── */
-  /* A ledger, not a drawing: thin rules between rows, a fixed reading measure
-     centred in the wide shell. The one view whose geometry is the browser's
-     business, so it needs no slot table, no deal, no motion. */
+  /* A ledger on a phone, a directory of portrait cards on a desktop (the
+     --bp-desktop block at the end of this section, 2026-10-23). One markup
+     for both: a round portrait, then "Name, Role", then the chevron, all of
+     it the disclosure's summary. The ledger lays that out as a line with
+     hairlines between rows and a fixed reading measure centred in the wide
+     shell; the desktop stacks it into a column and tiles the columns. The
+     one view whose geometry is the browser's business, so it needs no slot
+     table, no deal, no motion. */
   .cindex-wrap {
     margin: 0 auto;
     padding: 4rem 0 10rem;
@@ -2431,11 +2454,15 @@ const searchIndex: SearchIndex = {
      mode (see MemberDetailPanel) — the grid was the override, so removing it
      restores the component's own box. */
   .cindex__line :global(.pdisc__toggle) {
-    gap: 0 1.5rem;
+    /* Portrait · who · chevron on one line. The portrait is the summary's
+       first item since 2026-10-23 (it was the open panel's lead), so the
+       line is a contact list's: a small round face, then the name. */
+    align-items: center;
+    gap: 0 0.85rem;
     /* No 2rem right reserve: the chevron is the last flex item and nothing
        runs under it. This was a live bug for a while — see the note in git
        history about a padding-right silently reset by a later shorthand. */
-    padding: 0.85rem 0.25rem;
+    padding: 0.6rem 0.25rem;
     box-sizing: border-box;
     transition: background-color 0.15s;
   }
@@ -2463,25 +2490,49 @@ const searchIndex: SearchIndex = {
     background-color: transparent;
   }
 
-  /* The dropdown's lead: the member's profile picture, a circle as on their
-     page (2026-10-14, Josh: "make the index avatar round too"; the shape is
-     the PORTRAITS rule in global.css). */
+  /* The member's profile picture, a circle as on their page (2026-10-14,
+     Josh: "make the index avatar round too"; the shape is the PORTRAITS rule
+     in global.css). On the ledger line it is small, a contact list's; the
+     desktop card sizes it up (see the --bp-desktop block). The hairline ring
+     is what a member without a photo still has: their initials sit inside
+     the same circle, so the ring is the shape and the picture is optional. */
   .cindex__avatar {
     display: block;
-    width: 5rem;
-    height: 5rem;
+    flex: 0 0 auto;
+    width: 2.5rem;
+    height: 2.5rem;
     object-fit: cover;
+    border: 1.5px solid var(--color-border);
     background: var(--color-bg);
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+  }
+
+  .cindex__avatar--initials {
+    display: grid;
+    place-items: center;
+    color: var(--color-muted);
+    /* No voice of its own: a monogram, not a word. Sized to the circle. */
+    font-size: calc(var(--fs-100) * 1.05);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    user-select: none;
+  }
+
+  .cindex__line :global(.pdisc__toggle:hover) .cindex__avatar,
+  .cindex__line :global(.pdisc__toggle:focus-visible) .cindex__avatar {
+    border-color: var(--color-dark);
   }
 
   /* The open panel reads as a profile fragment, not a full-measure spread:
-     capped to a reading width, breathing room above and below, and — when
-     there is a picture — the picture LEFT, the words RIGHT, the tag chips
-     running across the bottom. Scoped here so the cards' panels keep their
-     own compact stack; the :has() guard keeps avatar-less rows on the plain
-     column, where an empty picture column would only indent the text. */
+     capped to a reading width, breathing room above and below. One plain
+     column — bio, links, tags, the way to the page — since the portrait
+     moved up onto the summary (2026-10-23) and the two-column picture-left
+     drawing went with it. Scoped here so the cards' panels keep their own
+     compact stack. */
   .cindex__line :global(.pdisc__body) {
-    padding: 1rem 0.25rem 1.4rem;
+    padding: 0.6rem 0.25rem 1.4rem;
   }
 
   .cindex__line :global(.pdisc__body-inner) {
@@ -2489,27 +2540,7 @@ const searchIndex: SearchIndex = {
     gap: 1rem;
   }
 
-  .cindex__line :global(.pdisc__body-inner:has(> .cindex__avatar)) {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    column-gap: 1.5rem;
-    row-gap: 1rem;
-    align-items: start;
-  }
-
-  .cindex__line .cindex__avatar {
-    grid-row: 1;
-    grid-column: 1;
-  }
-
-  /* grid-column is inert in the no-avatar rows, which stay a flex column. */
-  .cindex__line :global(.pdisc__bio),
-  .cindex__line :global(.pdisc__row) {
-    grid-column: 2;
-  }
-
   .cindex__line :global(.pdisc__vals--tags) {
-    grid-column: 1 / -1;
     margin-top: 0.35rem;
   }
 
@@ -2534,15 +2565,12 @@ const searchIndex: SearchIndex = {
     color: var(--color-dark);
   }
 
-  /* In the panel it is the last line and it is its OWN line: the avatar rows
-     lay the body out as a two-column grid (picture left, words right), and a
-     link auto-placed into that would land in the picture's column. Full width
-     and ranged left puts it under everything the panel said, which is where
-     MemberDetailPanel's footer slot is meant to read from. `justify-self` so a
-     stretched grid item does not make the whole row clickable. */
+  /* In the panel it is the last line and it is its OWN line, ranged left
+     under everything the panel said, which is where MemberDetailPanel's
+     footer slot is meant to read from. `align-self` so the column's stretch
+     does not make the whole line clickable. */
   .cindex__line :global(.pdisc__body-inner) .cindex__profile {
-    grid-column: 1 / -1;
-    justify-self: start;
+    align-self: flex-start;
   }
 
   /* The name and its role as ONE unit. Flex, not plain inline flow, for one
@@ -2583,8 +2611,7 @@ const searchIndex: SearchIndex = {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    /* Voice: NAME in type.css (joined 2026-10-23; it was 600 here). */
     color: var(--color-dark);
   }
 
@@ -2603,7 +2630,7 @@ const searchIndex: SearchIndex = {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: var(--fs-85);
+    /* Voice: META in type.css (joined 2026-10-23; it was --fs-85 here). */
     color: var(--color-muted);
   }
 
@@ -2634,35 +2661,102 @@ const searchIndex: SearchIndex = {
       padding: 1.5rem 0 6rem;
     }
 
-    /* Stacked lines instead of two columns: the name line — WITH its role,
-       which now travels with the name instead of being dropped. Mobile used to
-       hide the role because it could not afford a third column for it; beside
-       the name it costs no column at all, and a directory row that says only
-       "Jane Doe" tells a phone reader strictly less than the desktop does for
-       no saving. Closed, it ends in an ellipsis when the measure runs out;
-       open, it wraps under the name (see .cindex__who). */
-    /* One column, and the chevron leaves the grid for the corner it used to
-       hold: four tracks on a phone would give the name about eight characters.
-       The row is still the toggle — it is only laid out as a stack. */
+    /* The phone keeps the ledger: portrait, "Name, Role" ending in an
+       ellipsis, chevron — the line the base rules draw. It used to stack the
+       who under nothing and pin the chevron to the corner, from the days of
+       four tracks; with the portrait on the line a row is a contact list's
+       and the flex line is the right drawing again. Open, the role wraps
+       under the name (see .cindex__who). */
+  }
+
+  /* ── THE DIRECTORY OF CARDS (2026-10-23) ───────────────────
+     Josh: "on desktop the people section can be a directory of cards with
+     their profile pic" — and card-sized when open, not a full-width band.
+     The same summary, stood up: portrait over name over role over chevron,
+     centred, on paper with no box; the hairlines between rows go. The
+     columns auto-fill at 13rem, which is wide enough for the open panel's
+     bio to have a reading measure. An open card grows DOWN inside its own
+     column: its row grows with it and the neighbours stay top-aligned
+     (align-items: start) with paper below them. One open at a time — the
+     <details> share a name (see MemberDetailPanel). */
+  @media (--bp-desktop) {
+    .cindex {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+      gap: 2.5rem 1.5rem;
+      align-items: start;
+    }
+
+    .cindex__row,
+    .cindex__row:last-child {
+      border: 0;
+      min-width: 0;
+    }
+
     .cindex__line :global(.pdisc__toggle) {
       flex-direction: column;
-      align-items: flex-start;
-      gap: 0.2rem;
-      padding-right: 2rem;
+      align-items: center;
+      gap: 0.75rem 0;
+      padding: 0.5rem 0.5rem 0.35rem;
+      text-align: center;
     }
 
-    /* The stack's flex-start sizes the name box to its CONTENT, which is the
-       whole unwrapped role, so it ran past the row instead of truncating.
-       Stretched, it is held to the row's width and the role's ellipsis fires. */
+    /* No hover tint: a card has no box to tint, and a tinted rectangle
+       behind a round portrait would draw one. The hover is the ring and
+       the name's underline (base rules). */
+    .cindex__line :global(.pdisc__toggle:hover),
+    .cindex__line :global(.pdisc__toggle:focus-visible) {
+      background-color: transparent;
+    }
+
+    .cindex__avatar {
+      width: 7rem;
+      height: 7rem;
+    }
+
+    .cindex__avatar--initials {
+      font-size: var(--fs-160);
+    }
+
+    /* Name over role, each on its own centred line; the comma that joined
+       them on the ledger line goes, and the role gets back the gap the
+       comma's NBSP supplied. */
     .cindex__who {
+      flex: 0 1 auto;
+      flex-direction: column;
+      align-items: center;
       align-self: stretch;
+      row-gap: 0.3rem;
     }
 
+    .cindex__role::before {
+      content: none;
+    }
+
+    .cindex__name,
+    .cindex__role {
+      max-width: 100%;
+    }
+
+    /* The chevron under the role, a small centred mark: the one thing on a
+       closed card that says it opens. */
     .cindex__line :global(.pdisc__toggle::after) {
-      position: absolute;
-      top: 1.15rem;
-      right: 0.5rem;
-      align-self: start;
+      margin-top: 0.1rem;
+    }
+
+    /* The panel, inside the card's column: ranged left under the centred
+       head, with the card's own side padding. */
+    .cindex__line :global(.pdisc__body) {
+      padding: 0.4rem 0.5rem 0.6rem;
+      text-align: left;
+    }
+
+    .cindex__line :global(.pdisc__body-inner) {
+      gap: 0.85rem;
+    }
+
+    .cindex__line :global(.pdisc__bio) {
+      font-size: var(--fs-85);
     }
   }
 

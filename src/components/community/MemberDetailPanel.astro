@@ -10,10 +10,15 @@ interface Props {
    *  slotting its own lead content (the index rows slot the member's
    *  profile picture, which is content worth a toggle by itself). */
   forceShow?: boolean;
-
+  /** ONE OPEN AT A TIME (2026-10-23, the People cards): the native exclusive
+   *  accordion — every <details> sharing a `name` closes when another of
+   *  that name opens. No script, so nothing to leak across ClientRouter
+   *  swaps (see the note below). The directory cards pass none: a visitor
+   *  may hold several artworks' panels open at once. */
+  name?: string;
 }
 
-const { member, lang, forceShow = false } = Astro.props;
+const { member, lang, forceShow = false, name } = Astro.props;
 const t = useTranslations(lang);
 
 // Native <details> on purpose. ClientRouter is active site-wide, so any script
@@ -49,7 +54,7 @@ const hasSummary = Astro.slots.has("summary");
 
 {
   show ? (
-    <details class="pdisc" class:list={{ "pdisc--line": hasSummary }}>
+    <details class="pdisc" class:list={{ "pdisc--line": hasSummary }} name={name}>
       {/* No aria-label in line mode: the summary names ITSELF there — its
           content is the member's name and field, which is a better label than
           any sentence written here, and an aria-label would silence all of
