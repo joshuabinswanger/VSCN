@@ -367,6 +367,12 @@ document.addEventListener("astro:page-load", () => {
   const projectAddOpenUI = new Map<string, boolean>();
   /** UI only: which carousels have their Edit panel open (buildTray reads it). */
   const carouselPanelOpenUI = new Map<string, boolean>();
+  /**
+   * TEXT BLOCKS ARE ADDED (2026-10-23, Josh: "text blocks are addable
+   * elements"): the field after a work or a carousel shows only once it holds
+   * words or was added in this session — by imageId, or "c:" + carouselId.
+   */
+  const textBlockOpenUI = new Set<string>();
   // A project block's tag fold (2026-09-27): galleryTagsOpenUI's rule,
   // keyed by projectId. Unknown = open, as the template draws it.
   const projectTagsOpenUI = new Map<string, boolean>();
@@ -612,7 +618,7 @@ document.addEventListener("astro:page-load", () => {
    * on, and drops focus to the document — so moving an image two places
    * would take a fresh click each time.
    */
-  type RowControl = "up" | "down" | "project" | "takeOut" | "carousel";
+  type RowControl = "up" | "down" | "project" | "takeOut" | "carousel" | "text";
   type FocusHint =
     | { imageId: string; control: RowControl }
     | { projectId: string; field?: string; control?: "up" | "down" | "carousel" }
@@ -844,10 +850,42 @@ document.addEventListener("astro:page-load", () => {
           };
           // A slide's text block is the carousel's (buildTray wires it).
           const textBlock = row.querySelector<HTMLElement>(".gallery-text");
-          if (slide && textBlock) textBlock.hidden = true;
-          else {
+          const textAdd = row.querySelector<HTMLButtonElement>("[data-gallery-text-add]");
+          const textRemove = row.querySelector<HTMLButtonElement>("[data-gallery-text-remove]");
+          if (slide && textBlock) {
+            textBlock.hidden = true;
+            if (textAdd) textAdd.hidden = true;
+          } else {
             wireTextAfter("textAfter", "profile.gallery.textAfter");
             wireTextAfter("textAfterDe", "profile.gallery.textAfter.de");
+            // Added, not always there: the block shows when it holds words
+            // or was added; the Text key in the panel shows otherwise.
+            const paintText = (open: boolean) => {
+              if (textBlock) textBlock.hidden = !open;
+              if (textAdd) textAdd.hidden = open;
+            };
+            paintText(Boolean(item.textAfter?.trim() || item.textAfterDe?.trim()) || textBlockOpenUI.has(item.imageId));
+            if (textAdd) {
+              named(textAdd, s["profile.gallery.textAdd"]).title = s["profile.gallery.textAdd"];
+              textAdd.addEventListener("click", () => {
+                textBlockOpenUI.add(item.imageId);
+                paintText(true);
+                refitInline();
+                row.querySelector<HTMLTextAreaElement>(`[data-gallery-field="${worksLang === "de" ? "textAfterDe" : "textAfter"}"]`)?.focus();
+              });
+            }
+            if (textRemove) {
+              named(textRemove, s["profile.gallery.textRemove"]).title = s["profile.gallery.textRemove"];
+              textRemove.addEventListener("click", () => {
+                delete gallery[index].textAfter;
+                delete gallery[index].textAfterDe;
+                row.querySelectorAll<HTMLTextAreaElement>('[data-gallery-field="textAfter"], [data-gallery-field="textAfterDe"]').forEach((a) => (a.value = ""));
+                textBlockOpenUI.delete(item.imageId);
+                paintText(false);
+                textAdd?.focus();
+                syncPreview();
+              });
+            }
           }
 
 
@@ -1244,6 +1282,26 @@ document.addEventListener("astro:page-load", () => {
         headCarousel.addEventListener("click", () => newCarousel(id));
       }
 
+      // TEXT (2026-10-23): a text block at the end of this block — after its
+      // last work, or after the carousel the last work is in. Nothing to
+      // hang it on while the block is empty.
+      const headText = el.querySelector<HTMLButtonElement>("[data-project-text]");
+      if (headText) {
+        named(headText, s["profile.project.addText"]).title = s["profile.project.addText"];
+        const last = block.indices.length ? gallery[block.indices[block.indices.length - 1]] : null;
+        headText.disabled = !last;
+        headText.addEventListener("click", () => {
+          if (!last) return;
+          if (last.carouselId) {
+            textBlockOpenUI.add(`c:${last.carouselId}`);
+            renderGallery({ carouselId: last.carouselId, control: "text" });
+          } else {
+            textBlockOpenUI.add(last.imageId);
+            renderGallery({ imageId: last.imageId, control: "text" });
+          }
+        });
+      }
+
       // THE BLOCK'S UNITS (2026-10-23): a run of works sharing a carouselId
       // (a run of one included — the editor shows any run as a tray) is one
       // carousel unit, drawn by buildTray with its selected slide inside;
@@ -1259,6 +1317,8 @@ document.addEventListener("astro:page-load", () => {
             projects: projectOptions,
             selected: carouselSelection,
             panelOpen: carouselPanelOpenUI,
+            textOpen: textBlockOpenUI,
+            lang: worksLang,
             uploadFull: galleryFull(),
             maxTextAfter: MAX_GALLERY_TEXT_AFTER,
             buildRow,
@@ -1362,12 +1422,16 @@ document.addEventListener("astro:page-load", () => {
                   galleryEditor.querySelector<HTMLElement>(`[data-tray-thumb][data-image-id="${focusHint.imageId}"]`))
               : focusHint.control === "takeOut"
                 ? (row?.querySelector<HTMLElement>("[data-gallery-take-out]") ?? pick(row, '[data-gallery-move="up"]', '[data-gallery-move="down"]', "up"))
-                : pick(row, '[data-gallery-move="up"]', '[data-gallery-move="down"]', focusHint.control);
+                : focusHint.control === "text"
+                  ? row?.querySelector<HTMLElement>(`[data-gallery-field="${worksLang === "de" ? "textAfterDe" : "textAfter"}"]`)
+                  : pick(row, '[data-gallery-move="up"]', '[data-gallery-move="down"]', focusHint.control);
       } else if ("carouselId" in focusHint) {
         const unit = galleryEditor.querySelector<HTMLElement>(`[data-carousel-block][data-carousel-id="${focusHint.carouselId}"]`);
         target =
           focusHint.control === "project"
             ? unit?.querySelector<HTMLElement>("[data-carousel-project]")
+            : focusHint.control === "text"
+              ? unit?.querySelector<HTMLElement>(`[data-carousel-field="${worksLang === "de" ? "textAfterDe" : "textAfter"}"]`)
             : focusHint.control === "add"
               ? unit?.querySelector<HTMLElement>("[data-carousel-files]")
               : pick(unit?.querySelector(".gallery-carousel-tools") ?? null, '[data-carousel-move="up"]', '[data-carousel-move="down"]', focusHint.control);

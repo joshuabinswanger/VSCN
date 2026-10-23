@@ -815,7 +815,22 @@
      the words, standing off them as the page's block stands off the
      picture (.mprof__project's gap). */
   .gallery-text {
+    position: relative;
     margin-top: var(--project-gap);
+  }
+
+  /* The added block's ✕, on the label's line at the right. */
+  .gallery-text-remove {
+    position: absolute;
+    top: -8px;
+    right: 0;
+    min-width: 26px;
+    height: 26px;
+    padding: 0;
+  }
+
+  .gallery-text-remove:hover:not(:disabled) {
+    color: var(--color-error);
   }
 
   /* ── A CAROUSEL IN THE EDITOR (2026-10-23, documentation/20261023-work-

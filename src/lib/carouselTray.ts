@@ -48,7 +48,7 @@ export interface SlideInfo {
 }
 
 export type TrayFocus =
-  | { carouselId: string; control: "up" | "down" | "project" | "add" }
+  | { carouselId: string; control: "up" | "down" | "project" | "add" | "text" }
   | { imageId: string; control: "thumb" };
 
 export interface TrayHooks {
@@ -62,6 +62,10 @@ export interface TrayHooks {
   selected: Map<string, string>;
   /** UI-only: which carousels have their Edit panel open (carouselId → open). */
   panelOpen: Map<string, boolean>;
+  /** UI-only: text blocks added this session; a carousel's key is "c:" + carouselId. */
+  textOpen: Set<string>;
+  /** The bar's language: which text-after pane takes focus. */
+  lang: "en" | "de";
   /** Whether the + slot can take files (the gallery cap); the note is the controller's. */
   uploadFull: boolean;
   maxTextAfter: number;
@@ -286,9 +290,44 @@ export function buildTray(hooks: TrayHooks, unit: TrayUnit): HTMLElement | null 
   }
   slideRow.hidden = selectedIndex === undefined;
 
-  // The text block after the carousel, on the lead's record; hidden, like
-  // the size, until there is a lead.
-  if (text) text.hidden = !lead;
+  // The text block after the carousel, on the lead's record. Hidden until
+  // there is a lead, and then until it holds words or was ADDED (the Text
+  // key in the panel; the block's ✕ clears and hides it again).
+  const textKey = `c:${unit.carouselId}`;
+  const textAdd = el.querySelector<HTMLButtonElement>("[data-carousel-text-add]");
+  const textRemove = el.querySelector<HTMLButtonElement>("[data-carousel-text-remove]");
+  const paintText = (open: boolean) => {
+    if (text) text.hidden = !lead || !open;
+    if (textAdd) textAdd.hidden = !lead || open;
+  };
+  paintText(Boolean(settings.textAfter?.trim() || settings.textAfterDe?.trim()) || hooks.textOpen.has(textKey));
+  if (textAdd) {
+    named(textAdd, s["profile.carousel.textAdd"]).title = s["profile.carousel.textAdd"];
+    textAdd.addEventListener("click", () => {
+      hooks.textOpen.add(textKey);
+      paintText(true);
+      const area = el.querySelector<HTMLTextAreaElement>(`[data-carousel-field="${hooks.lang === "de" ? "textAfterDe" : "textAfter"}"]`);
+      if (area) {
+        hooks.fitInline(area);
+        area.focus();
+      }
+    });
+  }
+  if (textRemove) {
+    named(textRemove, s["profile.gallery.textRemove"]).title = s["profile.gallery.textRemove"];
+    textRemove.addEventListener("click", () => {
+      if (lead) {
+        const record = hooks.gallery()[unit.indices[0]];
+        delete record.textAfter;
+        delete record.textAfterDe;
+      }
+      el.querySelectorAll<HTMLTextAreaElement>("[data-carousel-field]").forEach((a) => (a.value = ""));
+      hooks.textOpen.delete(textKey);
+      paintText(false);
+      textAdd?.focus();
+      hooks.syncPreview();
+    });
+  }
   const wireText = (key: "textAfter" | "textAfterDe", labelKey: string) => {
     const area = el.querySelector<HTMLTextAreaElement>(`[data-carousel-field="${key}"]`);
     if (!area) return;
