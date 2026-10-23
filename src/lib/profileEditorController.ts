@@ -10,6 +10,7 @@ import {
   mergeDraftProjects,
   projectSignature,
   uncommittedWorks,
+  workWords,
   type WorkWords,
 } from "./draftMerge.ts";
 import { auth, isAttestationFailing, isSecurityCheckBlocked } from "./firebase.ts";
@@ -87,7 +88,6 @@ import {
   insertUploaded,
   looseWorksProject,
   memberUidFor,
-  moveImage,
   moveProject,
   moveToProject,
   orderProjects,
@@ -100,6 +100,19 @@ import {
   type EditorProject,
 } from "./projectEditor.ts";
 import { bindPreviewLightbox, renderCardPreview, renderProfilePreview } from "./profilePreview.ts";
+// WORK CAROUSELS (2026-10-23): the grouping and lead-field rules, the pure
+// moves, and the tray's DOM glue. The controller keeps only the hooks.
+import { carouselSettings, groupCarousels, normaliseLeads } from "./carousels.ts";
+import { handOffLead, joinCarousel, leaveCarousel, moveWork, projectCarouselIds, takeOut } from "./carouselEditor.ts";
+import {
+  bindWorkDrag,
+  buildTray,
+  DESKTOP_QUERY,
+  setTrayPickersDisabled,
+  type SlideInfo,
+  type TrayFocus,
+} from "./carouselTray.ts";
+import { updateCarouselLead } from "./images.ts";
 import { bindMenuButton, followContentSize } from "./editorBar.ts";
 import { lightboxStringsFrom } from "./lightbox.ts";
 import type { Lang } from "../i18n/utils";
@@ -382,6 +395,16 @@ document.addEventListener("astro:page-load", () => {
   const galleryItemTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="item"]');
   const galleryTaskTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="task"]');
   const galleryProjectTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="project"]');
+  const galleryCarouselTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="carousel"]');
+  // CAROUSELS (2026-10-23). A carousel is stored as nothing but a carouselId
+  // on its slides, so one with no slide yet exists only here: made by a
+  // block's Carousel button with a random id, drawn at the end of its
+  // project, and dropped once a work names it (it is real then) or when it
+  // is dissolved or its project goes. Gone after a reload, like an empty
+  // project. `carouselSelection` is which slide each tray shows — UI only,
+  // the first slide unless the member clicked another.
+  let localCarousels: { carouselId: string; projectId: string }[] = [];
+  const carouselSelection = new Map<string, string>();
   const galleryAffiliationTpl = document.querySelector<HTMLTemplateElement>('[data-gallery-tpl="affiliation"]');
   const memberOptionsList = document.getElementById("gallery-member-options") as HTMLDataListElement;
   const galleryNewProject = document.getElementById("gallery-new-project") as HTMLButtonElement;
@@ -585,19 +608,31 @@ document.addEventListener("astro:page-load", () => {
    * on, and drops focus to the document — so moving an image two places
    * would take a fresh click each time.
    */
-  type RowControl = "up" | "down" | "project";
-  type FocusHint = { imageId: string; control: RowControl } | { projectId: string; field?: string; control?: "up" | "down" };
+  type RowControl = "up" | "down" | "project" | "takeOut";
+  type FocusHint =
+    | { imageId: string; control: RowControl }
+    | { projectId: string; field?: string; control?: "up" | "down" | "carousel" }
+    | TrayFocus;
 
   /**
    * Renders the committed gallery. `focusHint`: see FocusHint above.
    */
 
   function renderGallery(focusHint?: FocusHint) {
-    if (!galleryItemTpl || !galleryProjectTpl) return;
+    if (!galleryItemTpl || !galleryProjectTpl || !galleryCarouselTpl) return;
     // The list's shape: loose rows and project blocks in gallery order, then
     // the projects no image names yet (2026-09-23, editorBlocks in
     // projects.ts). Every move below is a pure function over this list.
     const blocks = editorBlocks(gallery, projects);
+    // A local carousel is real once a work names it, and gone with its project.
+    localCarousels = localCarousels.filter(
+      (l) => !gallery.some((g) => g.carouselId === l.carouselId) && projects.some((p) => p.projectId === l.projectId),
+    );
+    const projectOptions = projects.map((p) => ({
+      projectId: p.projectId,
+      label: projectLabel(projects, p.projectId, lang, s["profile.project.untitled"]),
+    }));
+    const dragDesktop = window.matchMedia(DESKTOP_QUERY).matches;
     // Where the caret was, so it can be put back. replaceChildren() destroys
     // the node it was in, and uploads now COMPLETE WHILE YOU TYPE — that is
     // the point of the queue — so a member writing a caption for image two
@@ -614,15 +649,23 @@ document.addEventListener("astro:page-load", () => {
         ? {
             imageId: typing.closest<HTMLElement>("[data-gallery-index]")?.dataset.imageId,
             projectId: typing.closest<HTMLElement>("[data-project-block]")?.dataset.projectId,
+            // A carousel's own text block (its field is data-carousel-field).
+            carouselId: typing.dataset.carouselField
+              ? typing.closest<HTMLElement>("[data-carousel-block]")?.dataset.carouselId
+              : undefined,
             // An affiliation input is found by its row's position and its
             // own field name, so the two selectors below can stay literal.
             affIndex: typing.closest<HTMLElement>("[data-aff-index]")?.dataset.affIndex,
-            field: typing.dataset.galleryField ?? typing.dataset.projectField ?? typing.dataset.affField,
+            field:
+              typing.dataset.galleryField ?? typing.dataset.projectField ?? typing.dataset.affField ?? typing.dataset.carouselField,
             start: typing.selectionStart,
             end: typing.selectionEnd,
           }
         : null;
-    const buildRow = (index: number): HTMLElement | null => {
+    // `slide` (2026-10-23): the row is a carousel's selected slide. Its size
+    // and its text block are the carousel's (on the lead, carousels.ts) and
+    // go; ↑ ↓ become ← → within the run (moveWork), and Take out is added.
+    const buildRow = (index: number, slide?: SlideInfo): HTMLElement | null => {
           const item = gallery[index];
           const row = galleryItemTpl.content.firstElementChild?.cloneNode(true);
           if (!(row instanceof HTMLElement)) return null;
@@ -675,14 +718,20 @@ document.addEventListener("astro:page-load", () => {
           // workSize.ts. The row is the page's figure, so it takes the same
           // --size-w and the editor shows the size the visitor gets.
           const sizeSeg = row.querySelector<HTMLElement>("[data-gallery-size]");
+          // A slide stands at the CAROUSEL's width: the run's settings, not its own.
+          const sized = () =>
+            slide
+              ? carouselSettings(gallery.filter((g) => g.carouselId === slide.carouselId && g.projectId === item.projectId))
+              : gallery[index];
           const paintSize = () => {
-            const current = workSize(gallery[index]);
-            row.style.setProperty("--size-w", workSizeWidth(gallery[index]));
+            const current = workSize(sized());
+            row.style.setProperty("--size-w", workSizeWidth(sized()));
             sizeSeg?.querySelectorAll<HTMLButtonElement>("[data-size]").forEach((b) => {
               b.setAttribute("aria-pressed", String(b.dataset.size === current));
             });
           };
-          if (sizeSeg) {
+          if (sizeSeg && slide) sizeSeg.hidden = true;
+          if (sizeSeg && !slide) {
             named(sizeSeg, s["profile.gallery.size"]);
             sizeSeg.querySelectorAll<HTMLButtonElement>("[data-size]").forEach((b) => {
               const key = b.dataset.size as WorkSize;
@@ -709,7 +758,25 @@ document.addEventListener("astro:page-load", () => {
           // 70vh cap on .mprof__work-link and the caption under it both read
           // it (profile.css), so the row is the size the visitor gets.
           if (item.width > 0 && item.height > 0) row.style.setProperty("--work-ar", String(item.width / item.height));
-          named(row, s["profile.gallery.rowLabel"].replace("{n}", String(index + 1)).replace("{total}", String(gallery.length)));
+          named(
+            row,
+            slide
+              ? s["profile.carousel.slide"]
+                  .replace("{i}", String(slide.position + 1))
+                  .replace("{n}", String(slide.count))
+                  .replace("{k}", String(slide.number))
+              : s["profile.gallery.rowLabel"].replace("{n}", String(index + 1)).replace("{total}", String(gallery.length)),
+          );
+          row.classList.toggle("is-slide", Boolean(slide));
+          // The picture can be dragged onto a tray (desktop pointer only;
+          // bindWorkDrag on the list). A slide's picture dragged onto the
+          // project line is Take out, like a tray thumbnail's.
+          const thumb = row.querySelector<HTMLElement>(".gallery-thumb");
+          if (thumb) {
+            thumb.dataset.dragWork = "";
+            thumb.dataset.imageId = item.imageId;
+            thumb.draggable = dragDesktop;
+          }
           named(remove, s["profile.gallery.remove"]).title = s["profile.gallery.remove"];
           remove.addEventListener("click", () => removeGalleryImage(index));
 
@@ -771,8 +838,13 @@ document.addEventListener("astro:page-load", () => {
               syncPreview();
             });
           };
-          wireTextAfter("textAfter", "profile.gallery.textAfter");
-          wireTextAfter("textAfterDe", "profile.gallery.textAfter.de");
+          // A slide's text block is the carousel's (buildTray wires it).
+          const textBlock = row.querySelector<HTMLElement>(".gallery-text");
+          if (slide && textBlock) textBlock.hidden = true;
+          else {
+            wireTextAfter("textAfter", "profile.gallery.textAfter");
+            wireTextAfter("textAfterDe", "profile.gallery.textAfter.de");
+          }
 
 
           // The two per-image links, wired identically — they differ in
@@ -826,19 +898,38 @@ document.addEventListener("astro:page-load", () => {
             syncPreview();
           });
 
-          // ↑/↓ within the row's container (moveImage: a loose row steps
-          // past the neighbouring block, a row inside a project stays
-          // inside it). Disabled, not hidden, at an edge: a button that
+          // ↑/↓ within the row's container: a row inside a project stays
+          // inside it. Disabled, not hidden, at an edge: a button that
           // vanished would make the row's tools jump.
+          // moveWork since 2026-10-23 (carouselEditor.ts), for both: a
+          // slide's ↑ ↓ are ← → within its run (it swaps with its sibling
+          // slide), and a plain work steps over a whole carousel as one
+          // unit and never enters it. Null at the project's edge, as
+          // moveImage's was.
           const wireMove = (button: HTMLButtonElement, delta: -1 | 1, control: RowControl) => {
-            const next = moveImage(blocks, index, delta);
-            const label = s[delta < 0 ? "profile.gallery.moveUp" : "profile.gallery.moveDown"];
+            const next = moveWork(gallery, index, delta);
+            const label = slide
+              ? s[delta < 0 ? "profile.carousel.slideEarlier" : "profile.carousel.slideLater"]
+              : s[delta < 0 ? "profile.gallery.moveUp" : "profile.gallery.moveDown"];
             named(button, label).title = label;
             button.disabled = next === null;
-            button.addEventListener("click", () => void applyBlockMove(next, { imageId: item.imageId, control }));
+            button.addEventListener("click", () => void applyGallery(next, { imageId: item.imageId, control }));
           };
           wireMove(moveUp, -1, "up");
           wireMove(moveDown, 1, "down");
+
+          // TAKE OUT (slides only): back into the project's line, directly
+          // after the carousel (takeOut). The carousel keeps its settings.
+          if (slide) {
+            const takeOutBtn = document.createElement("button");
+            takeOutBtn.type = "button";
+            takeOutBtn.className = "gallery-tpill";
+            takeOutBtn.dataset.galleryTakeOut = "";
+            takeOutBtn.textContent = s["profile.carousel.takeOut"];
+            takeOutBtn.title = s["profile.carousel.takeOut"];
+            takeOutBtn.addEventListener("click", () => void applyGallery(takeOut(gallery, index), { imageId: item.imageId, control: "takeOut" }));
+            moveUp.closest(".gallery-row-tools")?.insertBefore(takeOutBtn, sizeSeg?.nextSibling ?? null);
+          }
 
           // THE PROJECT DROPDOWN (2026-09-25). A project joins the image
           // at the END of that block (moveToProject). Membership is written
@@ -847,16 +938,40 @@ document.addEventListener("astro:page-load", () => {
           // work moves from one project to another, never out of all of
           // them — so the select only shows once there is a second project
           // to move to.
+          // CAROUSELS IN THE SAME SELECT (2026-10-23): under the projects, the
+          // current project's carousels ("Carousel 1", "Carousel 2") — the
+          // way a phone joins one without dragging (joinCarousel appends). A
+          // slide's select also offers "Not in a carousel", which is Take
+          // out; so is picking the project it is already in. Carousel
+          // values are "c:<id>", so they cannot collide with a project's.
+          const carouselIds = item.projectId ? projectCarouselIds(gallery, item.projectId, localCarousels) : [];
           const projectWrap = projectSelect.closest<HTMLElement>("[data-gallery-project-wrap]");
-          if (projectWrap) projectWrap.hidden = projects.length < 2;
+          if (projectWrap) projectWrap.hidden = projects.length < 2 && carouselIds.length === 0;
           named(projectSelect, s["profile.project.select"]).title = s["profile.project.select"];
-          projectSelect.replaceChildren(
-            ...projects.map((p) => new Option(projectLabel(projects, p.projectId, lang, s["profile.project.untitled"]), p.projectId)),
+          const choices: (HTMLOptionElement | HTMLOptGroupElement)[] = projects.map(
+            (p) => new Option(projectLabel(projects, p.projectId, lang, s["profile.project.untitled"]), p.projectId),
           );
-          if (item.projectId) projectSelect.value = item.projectId;
+          if (carouselIds.length) {
+            const group = document.createElement("optgroup");
+            group.label = s["profile.carousel"];
+            if (slide) group.append(new Option(s["profile.carousel.none"], "c:"));
+            carouselIds.forEach((id, k) => group.append(new Option(s["profile.carousel.n"].replace("{n}", String(k + 1)), `c:${id}`)));
+            choices.push(group);
+          }
+          projectSelect.replaceChildren(...choices);
+          projectSelect.value = slide ? `c:${slide.carouselId}` : (item.projectId ?? "");
           projectSelect.addEventListener("change", () => {
             const target = projectSelect.value;
-            if (target) void applyBlockMove(moveToProject(blocks, index, target), { imageId: item.imageId, control: "project" });
+            const focus = { imageId: item.imageId, control: "project" as const };
+            if (!target || !item.projectId) return;
+            if (target.startsWith("c:")) {
+              const carouselId = target.slice(2);
+              if (!carouselId) return void applyGallery(takeOut(gallery, index), focus);
+              if (slide && carouselId === slide.carouselId) return;
+              return void applyGallery(joinCarousel(gallery, index, { carouselId, projectId: item.projectId }), focus);
+            }
+            if (slide && target === item.projectId) return void applyGallery(takeOut(gallery, index), focus);
+            void moveWorkToProject(index, target, focus);
           });
 
           // New picture, same work: captions, description, links, tags and
@@ -1090,7 +1205,66 @@ document.addEventListener("astro:page-load", () => {
         label.htmlFor = control.id;
       });
 
-      images.append(...block.indices.map(buildRow).filter((n): n is HTMLElement => n !== null));
+      // CAROUSEL (2026-10-23): an empty carousel at the end of this block.
+      const headCarousel = head?.querySelector<HTMLButtonElement>("[data-project-carousel]");
+      if (headCarousel) {
+        named(headCarousel, s["profile.carousel.addTo"]).title = s["profile.carousel.addTo"];
+        headCarousel.addEventListener("click", () => newCarousel(id));
+      }
+
+      // THE BLOCK'S UNITS (2026-10-23): a run of works sharing a carouselId
+      // (a run of one included — the editor shows any run as a tray) is one
+      // carousel unit, drawn by buildTray with its selected slide inside;
+      // everything else is a row. The block's empty (local) carousels come
+      // last, in creation order.
+      const carouselIds = projectCarouselIds(gallery, id, localCarousels);
+      const unitOf = (carouselId: string, indices: readonly number[]) =>
+        buildTray(
+          {
+            s,
+            template: galleryCarouselTpl,
+            gallery,
+            projects: projectOptions,
+            selected: carouselSelection,
+            uploadFull: galleryFull(),
+            maxTextAfter: MAX_GALLERY_TEXT_AFTER,
+            buildRow,
+            commit: (next, focus) => void applyGallery(next, focus),
+            rerender: (focus) => renderGallery(focus),
+            addFiles: addGalleryFiles,
+            moveLocal: (carouselId, projectId) => {
+              localCarousels = localCarousels.map((l) => (l.carouselId === carouselId ? { ...l, projectId } : l));
+              renderGallery({ carouselId, control: "project" });
+            },
+            dissolveLocal: (carouselId) => {
+              localCarousels = localCarousels.filter((l) => l.carouselId !== carouselId);
+              renderGallery({ projectId: id, control: "carousel" });
+            },
+            syncPreview,
+            fitInline,
+          },
+          { carouselId, projectId: id, indices, number: carouselIds.indexOf(carouselId) + 1 },
+        );
+      const units = groupCarousels(
+        block.indices.map((index) => ({ index, carouselId: gallery[index].carouselId })),
+        1,
+      );
+      images.append(
+        ...units
+          .map((u) =>
+            u.kind === "work"
+              ? buildRow(u.work.index)
+              : unitOf(
+                  u.carouselId,
+                  u.works.map((w) => w.index),
+                ),
+          )
+          .filter((n): n is HTMLElement => n !== null),
+        ...localCarousels
+          .filter((l) => l.projectId === id)
+          .map((l) => unitOf(l.carouselId, []))
+          .filter((n): n is HTMLElement => n !== null),
+      );
       const emptyNote = el.querySelector<HTMLElement>("[data-project-empty]");
       if (emptyNote) emptyNote.hidden = block.indices.length > 0;
 
@@ -1111,8 +1285,12 @@ document.addEventListener("astro:page-load", () => {
     // a first paint cascades down the list rather than arriving all at once;
     // the CSS staggers name, picture and controls inside each one.
     let entering = 0;
-    galleryEditor.querySelectorAll<HTMLElement>(".gallery-item[data-image-id], [data-project-block]").forEach((el) => {
-      const key = el.dataset.imageId ? `image:${el.dataset.imageId}` : `project:${el.dataset.projectId}`;
+    galleryEditor.querySelectorAll<HTMLElement>(".gallery-item[data-image-id], [data-project-block], [data-carousel-block]").forEach((el) => {
+      const key = el.dataset.imageId
+        ? `image:${el.dataset.imageId}`
+        : el.dataset.carouselId
+          ? `carousel:${el.dataset.carouselId}`
+          : `project:${el.dataset.projectId}`;
       if (galleryEntered.has(key)) return;
       galleryEntered.add(key);
       el.classList.add("is-entering");
@@ -1139,31 +1317,48 @@ document.addEventListener("astro:page-load", () => {
       };
       let target: HTMLElement | null | undefined;
       if ("imageId" in focusHint) {
-        const row = galleryEditor.querySelector<HTMLElement>(`[data-image-id="${focusHint.imageId}"]`);
+        // `.gallery-item`: a tray thumbnail carries the same data-image-id.
+        const row = galleryEditor.querySelector<HTMLElement>(`.gallery-item[data-image-id="${focusHint.imageId}"]`);
+        target =
+          focusHint.control === "thumb"
+            ? galleryEditor.querySelector<HTMLElement>(`[data-tray-thumb][data-image-id="${focusHint.imageId}"]`)
+            : focusHint.control === "project"
+              ? row?.querySelector<HTMLElement>("[data-gallery-project]")
+              : focusHint.control === "takeOut"
+                ? (row?.querySelector<HTMLElement>("[data-gallery-take-out]") ?? pick(row, '[data-gallery-move="up"]', '[data-gallery-move="down"]', "up"))
+                : pick(row, '[data-gallery-move="up"]', '[data-gallery-move="down"]', focusHint.control);
+      } else if ("carouselId" in focusHint) {
+        const unit = galleryEditor.querySelector<HTMLElement>(`[data-carousel-block][data-carousel-id="${focusHint.carouselId}"]`);
         target =
           focusHint.control === "project"
-            ? row?.querySelector<HTMLElement>("[data-gallery-project]")
-            : pick(row, '[data-gallery-move="up"]', '[data-gallery-move="down"]', focusHint.control);
+            ? unit?.querySelector<HTMLElement>("[data-carousel-project]")
+            : focusHint.control === "add"
+              ? unit?.querySelector<HTMLElement>("[data-carousel-files]")
+              : pick(unit?.querySelector(":scope > .gallery-carousel-tools") ?? null, '[data-carousel-move="up"]', '[data-carousel-move="down"]', focusHint.control);
       } else {
         const block = galleryEditor.querySelector<HTMLElement>(`[data-project-id="${focusHint.projectId}"]`);
         target = focusHint.field
           ? block?.querySelector<HTMLElement>(`[data-project-field="${focusHint.field}"]`)
-          : pick(
-              block?.querySelector(":scope > .gallery-project-tools") ?? null,
-              '[data-project-move="up"]',
-              '[data-project-move="down"]',
-              focusHint.control ?? "up",
-            );
+          : focusHint.control === "carousel"
+            ? block?.querySelector<HTMLElement>("[data-project-carousel]")
+            : pick(
+                block?.querySelector(":scope > .gallery-project-tools") ?? null,
+                '[data-project-move="up"]',
+                '[data-project-move="down"]',
+                focusHint.control ?? "up",
+              );
       }
       target?.focus();
-    } else if (typingIn?.field && (typingIn.imageId || typingIn.projectId)) {
+    } else if (typingIn?.field && (typingIn.imageId || typingIn.projectId || typingIn.carouselId)) {
       // Restored by id, stable across everything a re-render can do to
       // positions. A reorder takes the branch above instead, and a removal
       // was a button press rather than a caret. A row's field first: a row
       // inside a block matches both ids, and its own is the nearer.
       const back = galleryEditor.querySelector<HTMLInputElement | HTMLTextAreaElement>(
-        typingIn.imageId
-          ? `[data-image-id="${typingIn.imageId}"] [data-gallery-field="${typingIn.field}"]`
+        typingIn.carouselId
+          ? `[data-carousel-id="${typingIn.carouselId}"] [data-carousel-field="${typingIn.field}"]`
+          : typingIn.imageId
+          ? `.gallery-item[data-image-id="${typingIn.imageId}"] [data-gallery-field="${typingIn.field}"]`
           : typingIn.affIndex !== undefined
             ? `[data-project-id="${typingIn.projectId}"] [data-aff-index="${typingIn.affIndex}"] [data-aff-field="${typingIn.field}"]`
             : `[data-project-id="${typingIn.projectId}"] [data-project-field="${typingIn.field}"]`,
@@ -1197,15 +1392,22 @@ document.addEventListener("astro:page-load", () => {
    */
   let galleryCapNote = "";
 
+  /** Whether another upload would pass the member's ceiling (pending ones count). */
+  function galleryFull(): boolean {
+    return gallery.length + galleryQueue.pendingCount() + videoPending >= galleryLimit(auth.currentUser);
+  }
+
   function updateGalleryControls() {
     const limit = galleryLimit(auth.currentUser);
-    const full = gallery.length + galleryQueue.pendingCount() + videoPending >= limit;
+    const full = galleryFull();
     // The blocks' pickers are the only ones since 2026-10-16, and they
-    // share the cap: an image is an image wherever it is added.
+    // share the cap: an image is an image wherever it is added. The trays'
+    // + (2026-10-23) is a picker like them.
     for (const picker of galleryEditor.querySelectorAll<HTMLInputElement>("[data-project-files]")) {
       picker.disabled = full;
       picker.closest(".gallery-project-add")?.setAttribute("aria-disabled", String(full));
     }
+    setTrayPickersDisabled(galleryEditor, full);
     // Here rather than in renderGallery: this runs on every queue change
     // too, and a row's Replace must come back when its upload ends without
     // rebuilding the rows (and the caret) under the member.
@@ -1476,6 +1678,17 @@ document.addEventListener("astro:page-load", () => {
    * that project's last image, inside its block (2026-09-23).
    */
   async function onGalleryUploaded(item: GalleryItem) {
+    // Through a tray's + into a carousel dissolved meanwhile: the id names
+    // nothing now, so the work arrives as a plain work of its project.
+    if (
+      item.carouselId &&
+      !gallery.some((g) => g.carouselId === item.carouselId) &&
+      !localCarousels.some((l) => l.carouselId === item.carouselId)
+    ) {
+      const plain = { ...item };
+      delete plain.carouselId;
+      item = plain;
+    }
     // `projects` passed so an upload into a block deleted meanwhile arrives
     // loose instead of carrying a dangling projectId onto its record.
     gallery = insertUploaded(gallery, item, projects);
@@ -1556,7 +1769,28 @@ document.addEventListener("astro:page-load", () => {
     // and shift the list while the dialog is open.
     const at = gallery.findIndex((work) => work.imageId === target.imageId);
     if (at === -1) return;
-    const [removed] = gallery.splice(at, 1);
+    // THE LEAD'S HAND-OFF (2026-10-23): a carousel's size and text live on
+    // its first slide, and a removal commits without Save — so before the
+    // lead goes, the next slide's record takes them (handOffLead, one
+    // narrow write). The carousel's text can never be lost with its lead.
+    const handed = handOffLead(gallery, at);
+    if (handed.heir !== undefined) {
+      gallery = handed.gallery;
+      const heir = gallery[handed.heir];
+      try {
+        await updateCarouselLead(heir.imageId, carouselSettings([heir]));
+        const words = committedWords.get(heir.imageId);
+        const fresh = workWords(heir);
+        if (words) committedWords.set(heir.imageId, { ...words, size: fresh.size, textAfter: fresh.textAfter, textAfterDe: fresh.textAfterDe });
+      } catch (error) {
+        // The in-memory heir holds them still; Save writes them again.
+        console.warn("[carousel] lead hand-off not written:", error);
+      }
+    }
+    // By id again: an upload can land during the write above.
+    const now = gallery.findIndex((work) => work.imageId === target.imageId);
+    if (now === -1) return;
+    const [removed] = gallery.splice(now, 1);
     if (removed) committedWords.delete(removed.imageId);
     // A new picture on its way to this work has nowhere to land any more.
     for (const task of galleryQueue.tasks()) {
@@ -1743,6 +1977,7 @@ document.addEventListener("astro:page-load", () => {
       return;
     }
     projects = projects.filter((p) => p.projectId !== projectId);
+    localCarousels = localCarousels.filter((l) => l.projectId !== projectId);
     projectDetailsOpenUI.delete(projectId);
     if (storedProjectIds.has(projectId)) deletedProjectIds.add(projectId);
     if (galleryVideoTarget === projectId) {
@@ -1754,6 +1989,60 @@ document.addEventListener("astro:page-load", () => {
     // The block and its buttons are gone; the way in, if it was the last one.
     (galleryFirst && !galleryFirst.hidden ? galleryFirstProject : document.getElementById("ebar-add"))?.focus();
   }
+
+  /**
+   * A CAROUSEL MOVE (2026-10-23): the pure functions in carouselEditor.ts
+   * return a new gallery array, or null for a move that changes nothing.
+   * The lead fields are normalised at once (carousels.ts), the list is
+   * re-rendered, and the order is stored as every reorder's is; membership
+   * (carouselId) and the lead fields reach the records at Save.
+   */
+  async function applyGallery(next: GalleryItem[] | null, focusHint?: FocusHint) {
+    if (!next) return;
+    const before = gallery;
+    gallery = normaliseLeads(next);
+    renderGallery(focusHint);
+    if (!sameIds(before, gallery)) await persistGalleryNow();
+  }
+
+  /**
+   * "Move to project →" for one work. A slide leaves its carousel first
+   * (leaveCarousel: the settings stay behind with the carousel), then the
+   * block move places it as before.
+   */
+  async function moveWorkToProject(index: number, projectId: string, focusHint?: FocusHint) {
+    if (gallery[index]?.carouselId) gallery = leaveCarousel(gallery, index);
+    await applyBlockMove(moveToProject(editorBlocks(gallery, projects), index, projectId), focusHint);
+  }
+
+  /** The block's Carousel button: an empty carousel at the end of that block, its + ready. */
+  function newCarousel(projectId: string) {
+    const carouselId = crypto.randomUUID();
+    localCarousels.push({ carouselId, projectId });
+    renderGallery({ carouselId, control: "add" });
+  }
+
+  // THE WORK DRAG (desktop pointer only), bound once: a row's picture or a
+  // tray thumbnail onto a tray joins at the drop position; a slide onto a
+  // project's line (outside any tray) is Take out, into that project.
+  bindWorkDrag(
+    galleryEditor,
+    {
+      gallery: () => gallery,
+      join: (imageId, target, position) => {
+        const index = gallery.findIndex((g) => g.imageId === imageId);
+        if (index !== -1) void applyGallery(joinCarousel(gallery, index, target, position), { imageId, control: "thumb" });
+      },
+      takeOutTo: (imageId, projectId) => {
+        const index = gallery.findIndex((g) => g.imageId === imageId);
+        if (index === -1) return;
+        const focus = { imageId, control: "up" as const };
+        if (gallery[index].projectId === projectId) void applyGallery(takeOut(gallery, index), focus);
+        else void moveWorkToProject(index, projectId, focus);
+      },
+    },
+    lifecycle.signal,
+  );
 
   async function applyBlockMove(next: EditorBlock[] | null, focusHint?: FocusHint) {
     // Null is the pure function saying the move changes nothing visible
@@ -1782,7 +2071,7 @@ document.addEventListener("astro:page-load", () => {
    * whole selection — the old loop overwrote one shared line per file, so a
    * six-file batch ended showing only whatever happened to the last one.
    */
-  function addGalleryFiles(files: File[], target: { projectId: string }) {
+  function addGalleryFiles(files: File[], target: { projectId: string; carouselId?: string }) {
     if (files.length === 0) return;
     const limit = galleryLimit(auth.currentUser);
     const outcome = galleryQueue.add(files, target);
@@ -1969,10 +2258,16 @@ document.addEventListener("astro:page-load", () => {
   });
 
   galleryDrop.addEventListener("drop", (event) => {
+    if (!galleryDragHasFiles(event)) return;
     event.preventDefault();
     const projectId = blockUnder(event)?.dataset.projectId;
+    // Files dropped on a tray go into that carousel (2026-10-23).
+    const carouselId =
+      event.target instanceof Element
+        ? event.target.closest<HTMLElement>("[data-carousel-tray]")?.closest<HTMLElement>("[data-carousel-block]")?.dataset.carouselId
+        : undefined;
     setDropBlock(null);
-    if (projectId) addGalleryFiles(Array.from(event.dataTransfer?.files ?? []), { projectId });
+    if (projectId) addGalleryFiles(Array.from(event.dataTransfer?.files ?? []), { projectId, ...(carouselId ? { carouselId } : {}) });
   });
 
   function getSelectedPrimaryAudiences() {
@@ -2954,6 +3249,11 @@ document.addEventListener("astro:page-load", () => {
       showSaveError(s["profile.save.slow"]);
       refocus();
     }, SAVE_TIMEOUT_MS);
+    // A carousel's settings sit on its first slide and nowhere else
+    // (carousels.ts): put the stored shape right before the records are
+    // written, so saveGalleryRecords writes the moved fields and clears
+    // the others.
+    gallery = normaliseLeads(gallery);
     // The words every record is about to hold, taken now: a save that
     // outlives the watchdog finishes under a form the member may have gone
     // on editing, and must not commit THOSE words as saved.

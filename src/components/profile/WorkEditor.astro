@@ -288,6 +288,54 @@ const t = useTranslations(lang);
         and blocks in one order, the gallery array's order. */
     }
     <ProjectEditor lang={lang} />
+    {
+      /* A CAROUSEL IN THE EDITOR (2026-10-23, documentation/20261023-work-
+        carousels-design.md): one unit in its project's line, cloned by
+        buildTray (src/lib/carouselTray.ts) for every run of works sharing a
+        carouselId, a run of one included. Its tools above (↑ ↓ move the run
+        as a whole, ✕ dissolves it, S/M/L and the project select are the
+        carousel's own), a muted "Carousel · N works" line, then the TRAY:
+        a dashed strip of thumbnail buttons (built by buildTray) with the +
+        slot at its end, which uploads straight into this carousel. Under
+        the tray stands the selected slide as an ordinary work row in slide
+        mode, and after it the carousel's text block (on the lead slide's
+        record, carousels.ts). */
+    }
+    <template data-gallery-tpl="carousel">
+      <section class="gallery-carousel" data-carousel-block role="group">
+        <div class="gallery-row-tools gallery-carousel-tools">
+          <div class="gallery-toolbar seg seg--actions" role="group" aria-label={t("profile.carousel.toolbar")}>
+            <button type="button" class="gallery-tbtn" data-carousel-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+            <button type="button" class="gallery-tbtn" data-carousel-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
+            <button type="button" class="gallery-tbtn gallery-tbtn--danger" data-carousel-dissolve><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+          </div>
+          <div class="gallery-size seg" role="group" data-carousel-size>
+            <button type="button" data-size="s">S</button>
+            <button type="button" data-size="m">M</button>
+            <button type="button" data-size="l">L</button>
+          </div>
+          <div class="gallery-select-wrap" data-carousel-project-wrap hidden>
+            <select class="gallery-project-select" data-carousel-project></select>
+          </div>
+        </div>
+        <p class="gallery-carousel-label t-label" data-carousel-label></p>
+        <div class="gallery-tray" data-carousel-tray>
+          <label class="gallery-tray-add" data-carousel-add>
+            <svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            <input type="file" class="picker-input" accept="image/jpeg,image/png,image/webp,image/avif" multiple data-carousel-files />
+          </label>
+        </div>
+        <div class="gallery-carousel-slide" data-carousel-slide-row></div>
+        <div class="mprof__text gallery-text gallery-carousel-text" data-carousel-text>
+          <div class="gallery-lang-pane" data-gallery-lang-pane="en">
+            <textarea class="gallery-inline" rows="1" data-carousel-field="textAfter"></textarea>
+          </div>
+          <div class="gallery-lang-pane" data-gallery-lang-pane="de">
+            <textarea class="gallery-inline" rows="1" data-carousel-field="textAfterDe"></textarea>
+          </div>
+        </div>
+      </section>
+    </template>
     <template data-gallery-tpl="affiliation">
       <div class="social-row gallery-aff-row">
         <div class="gallery-lang-switch seg" role="group">
