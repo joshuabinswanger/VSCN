@@ -1613,6 +1613,9 @@ document.addEventListener("astro:page-load", () => {
       const items = await loadGallery(uid, merge.added);
       gallery = [...gallery, ...items];
       for (const [id, words] of committedFromLoad(items)) committedWords.set(id, words);
+      // Merged-in records can bring stale lead fields too; after the snapshot,
+      // as at load, so the move reads as unsaved.
+      gallery = normaliseLeads(gallery);
       // A work this tab cannot place in a project it knows goes under
       // "Works", as at load. Its order is stored with the next write.
       homeLoose();
@@ -2731,7 +2734,7 @@ document.addEventListener("astro:page-load", () => {
           // words on the works present in both. A recovered draft cannot
           // resurrect removed media, and it must not hide media added since.
           const before = gallery;
-          gallery = mergeDraftGallery(gallery, value.works, new Set(projects.map(p => p.projectId)));
+          gallery = normaliseLeads(mergeDraftGallery(gallery, value.works, new Set(projects.map(p => p.projectId))));
           // A draft from before 2026-10-16 can hold a work's "No project";
           // that work goes back under "Works".
           homeLoose();
@@ -2943,6 +2946,11 @@ document.addEventListener("astro:page-load", () => {
     gallery = contiguous;
     // Every word on screen is now the record's: nothing is unsaved yet.
     committedWords = committedFromLoad(gallery);
+    // Gallery order is published before Save, so a loaded carousel can carry
+    // its settings on a slide that is no longer the lead. Moved onto the lead
+    // AFTER the snapshot above, so the next Save still sees the change and
+    // writes it (2026-10-23 review).
+    gallery = normaliseLeads(gallery);
     // EVERY WORK IN A PROJECT (2026-10-16, Josh: "images without project
     // are not allowed any longer!"). Works stored without one are filed
     // under a local "Works" / "Arbeiten" project AFTER the committed words

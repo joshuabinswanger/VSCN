@@ -95,3 +95,19 @@ test("normaliseLeads never mutates its input", () => {
   assert.deepEqual(items, before);
   assert.notEqual(out, items);
 });
+
+test("normaliseLeads: a stale lead (settings on the second slide) ends with the settings source and the write target on one slide", () => {
+  // Gallery order is published before Save, so a load can hold [B, A] with the
+  // carousel's settings still on A. The tray reads settings from the first
+  // slide carrying them and writes to the first slide: after normalising, both
+  // are the lead.
+  const stale = [w("B", "c1"), w("A", "c1", { size: "m", textAfter: "foo" })];
+  const source = (slides) => slides.find((s) => CAROUSEL_LEAD_FIELDS.some((f) => s[f]))?.id;
+  assert.equal(source(stale), "A");
+  const fixed = normaliseLeads(stale);
+  assert.equal(source(fixed), "B");
+  assert.equal(fixed[0].id, "B");
+  assert.deepEqual(carouselSettings(fixed), { size: "m", textAfter: "foo" });
+  assert.equal(fixed[1].size, undefined);
+  assert.equal(fixed[1].textAfter, undefined);
+});
