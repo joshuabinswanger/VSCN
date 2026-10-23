@@ -170,6 +170,14 @@ body {
   scroll-snap-type: y mandatory;
   scroll-padding-top: var(--header-h);
 }
+/* ONE POSITION CUE (2026-10-23, after the member rail, src/lib/pagesRail.ts):
+   while the pages are on, the scroller's own bar is invisible — its COLOUR,
+   not its width, so the stable gutter above keeps its size and nothing
+   shifts sideways when the view changes. The rail says where you are. A
+   phone scrolls the document, with overlay bars of its own. */
+.page-wrap:has(#member-grid[data-pattern="pages"]:not([hidden])) {
+  scrollbar-color: transparent transparent;
+}
 /* ON A PHONE THE DOCUMENT IS THE SCROLLER (the --bp-mobile block below
    gives html its overflow back so Safari can retract its toolbar), so the
    snap has to stand on html there; the attribute stays on .page-wrap as the
