@@ -172,51 +172,6 @@ const BRAND_SLOTS: BrandSlot[] = [
         at the top of global.css. */}
     <meta name="theme-color" content="#fcfbfa" />
 
-    {/* TEMPORARY (2026-10-23): ?debug prints script errors and bar taps on
-        screen, to find why the /community bar does nothing on an iPhone. */}
-    <script is:inline>
-      (function () {
-        if (!/[?&]debug\b/.test(location.search)) return;
-        const lines = [];
-        let box = null;
-        const log = (s) => {
-          lines.push(new Date().toISOString().slice(17, 23) + " " + s);
-          if (lines.length > 14) lines.shift();
-          if (!box && document.body) {
-            box = document.createElement("pre");
-            box.style.cssText =
-              "position:fixed;top:0;left:0;right:0;z-index:2147483647;margin:0;padding:6px;font:10px/1.3 monospace;background:rgba(255,255,220,.95);color:#000;pointer-events:none;white-space:pre-wrap;word-break:break-all;max-height:45vh;overflow:hidden";
-            document.documentElement.append(box);
-          }
-          if (box) box.textContent = lines.join("\n");
-        };
-        window.__dbg = log;
-        addEventListener("error", (e) =>
-          log("ERR " + e.message + " @" + (e.filename || "").split("/").pop() + ":" + e.lineno + ":" + e.colno));
-        addEventListener("unhandledrejection", (e) =>
-          log("REJ " + (e.reason && (e.reason.stack || e.reason.message) || e.reason)));
-        document.addEventListener("astro:page-load", () => log("page-load " + location.pathname + location.search));
-        const who = (t) => (t instanceof Element ? t.tagName + "." + (t.getAttribute("class") || "") + "#" + t.id : String(t));
-        ["touchend", "click"].forEach((type) =>
-          document.addEventListener(type, (e) => {
-            const t = e.target;
-            if (!(t instanceof Element) || !t.closest(".community-bar")) return;
-            const btn = t.closest("button");
-            log(type + " " + who(t) + (e.defaultPrevented ? " PREVENTED" : ""));
-            if (type === "click" && btn)
-              setTimeout(() => log("  -> " + btn.id + " aria-expanded=" + btn.getAttribute("aria-expanded")), 60);
-          }, true));
-        setTimeout(() => {
-          const b = document.getElementById("tag-filter-btn");
-          if (!b) return log("no #tag-filter-btn");
-          const r = b.getBoundingClientRect();
-          const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-          log("tag btn hit-test: " + who(hit));
-        }, 4000);
-        log("debug on " + navigator.userAgent.replace(/.*(OS [\d_]+).*(Version\/[\d.]+).*/, "$1 $2"));
-      })();
-    </script>
-
     {
       /* THE SHELL WATCHDOG. Inline and in the head on purpose: it has to have
         written --shell-h before the first paint, or the very load it exists to
