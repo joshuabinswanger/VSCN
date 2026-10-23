@@ -1,0 +1,197 @@
+---
+// A WORK CAROUSEL ON THE MEMBER PAGE (2026-10-23, Josh: "yes i want it back
+// but rebuild it from scratch according to the design we have going on now";
+// documentation/20261023-work-carousels-design.md). A run of two or more
+// consecutive works in one project sharing a carouselId (groupCarousels in
+// lib/carousels.ts) is ONE spot in the project's line: a frame that pages
+// the way the Portfolios card does (communityCarousel.ts, the same engine
+// over the same data hooks), the Instagram dots under it, the showing
+// slide's title under those, and then the carousel's own text block.
+//
+// Every slide is a full work: an `a.mprof__work-link` with the whole
+// data-pswp-* set MemberWork carries, so the page's flat lightbox
+// (`children: ".mprof__work-link"` in [slug].astro) picks the slides up in
+// page order with no lightbox change, and the carousel follows the lightbox
+// back (tellCarousel in lib/lightbox.ts).
+//
+// THE FRAME KEEPS THE LEAD'S HEIGHT. --work-ar is the first slide's aspect,
+// so the frame's box never changes as it pages; a slide of another shape
+// is centred in it, never cropped (profile.css), and nothing under the
+// frame moves. The captions are stacked in one grid cell for the same
+// reason: the block is as tall as the tallest, whichever is showing.
+//
+// The carousel's size and text block come from the first slide carrying
+// them (carouselSettings), not strictly from the lead — a reordered tray
+// whose lead fields are not saved yet still reads right.
+import type { ComponentProps } from "astro/types";
+import MemberWork from "./MemberWork.astro";
+import { embedDataAttrs } from "../lib/embed.ts";
+import { carouselSettings } from "../lib/carousels.ts";
+import { hostLabel } from "../lib/links.ts";
+import { splitParagraphs } from "../lib/paragraphs.ts";
+import { workSizeWidth } from "../lib/workSize.ts";
+import { useTranslations, type Lang } from "../i18n/utils.ts";
+
+type Work = ComponentProps<typeof MemberWork>["work"];
+
+interface Props {
+  /** The slides, in page order; the first is the lead. */
+  works: Work[];
+  /** The lead's position in the member's own works list — eager loading when 0. */
+  index: number;
+  displayName: string;
+  lang: Lang;
+  /** t("member.workAlt") — the alt-text fallback for an uncaptioned image. */
+  workAlt: string;
+  linkTitle: string;
+  siteLinkTitle: string;
+}
+
+const { works: slides, index, displayName, lang, workAlt, linkTitle, siteLinkTitle } = Astro.props;
+const t = useTranslations(lang);
+const lead = slides[0];
+// Each slide's textAfter arrives already picked for this page's locale
+// ([slug].astro, workTextAfter), so the first slide carrying one gives the
+// carousel's text in the right language; size the same way.
+const settings = carouselSettings(slides);
+const textAfter = settings.textAfter;
+
+const positionTemplate = t("community.card.imagePosition");
+const positionFor = (i: number) =>
+  positionTemplate.replace("{n}", String(i + 1)).replace("{total}", String(slides.length));
+const captionOf = (w: Work) => w.caption?.trim() || "";
+---
+
+<figure
+  class="mprof__work mprof__carousel"
+  data-carousel-scope
+  style={`--work-ar: ${lead.width / lead.height}; --size-w: ${workSizeWidth(settings)}`}
+>
+  <div
+    class="mprof__cframe"
+    data-carousel
+    data-position-label={positionTemplate}
+    role="group"
+    aria-roledescription={t("community.card.carousel")}
+    aria-label={`${captionOf(lead) || displayName} — ${t("community.card.carousel")}`}
+  >
+    {
+      /* The scroller is declared INLINE as well as in profile.css, as on the
+         card: the WebKit Back crash (documentation/20261016-webkit-back-crash-carousel-track.md). */
+    }
+    <div class="mprof__ctrack" data-carousel-track style="overflow: auto hidden">
+      {
+        slides.map((w, i) => (
+          <a
+            class="mprof__work-link"
+            data-carousel-slide
+            href={w.url}
+            target="_blank"
+            rel="noreferrer"
+            tabindex={i === 0 ? 0 : -1}
+            aria-roledescription={t("community.card.image")}
+            aria-label={`${t("community.card.openImage")} ${captionOf(w) || displayName} — ${positionFor(i)}`}
+            aria-hidden={i !== 0 ? "true" : undefined}
+            data-pswp-width={w.width}
+            data-pswp-height={w.height}
+            data-pswp-caption={captionOf(w) || undefined}
+            data-pswp-description={w.description || undefined}
+            data-pswp-link={w.link || undefined}
+            data-pswp-site-link={w.siteLink || undefined}
+            data-pswp-meta={w.pswpMeta || undefined}
+            data-pswp-project={w.slide.project}
+            data-pswp-project-link={w.slide.projectLink}
+            data-pswp-affiliations={w.slide.affiliations}
+            {...embedDataAttrs(w.embed)}
+          >
+            {
+              /* Only the lead carries a real src; the rest wait as data-src
+                 until the engine lands near them (communityCarousel.ts
+                 hydrate), as on the card. */
+            }
+            <img
+              class="mprof__img"
+              data-carousel-img
+              src={i === 0 ? w.rendered.src : undefined}
+              srcset={i === 0 ? w.rendered.srcSet.attribute : undefined}
+              data-src={i === 0 ? undefined : w.rendered.src}
+              data-srcset={i === 0 ? undefined : w.rendered.srcSet.attribute}
+              sizes="(min-width: 768px) min(94vw, 900px), 94vw"
+              width={w.width}
+              height={w.height}
+              loading={index === 0 && i === 0 ? "eager" : "lazy"}
+              decoding="async"
+              alt={captionOf(w) || `${displayName} — ${workAlt}`}
+              style={`background-color: ${w.color ?? "var(--color-border)"}`}
+            />
+            {w.embed && <span class="vscn-play vscn-play--over" aria-hidden="true" />}
+          </a>
+        ))
+      }
+    </div>
+    {/* The arrows stand OUTSIDE the frame's edges (profile.css); a phone hides them. */}
+    <button class="mprof__carrow mprof__carrow--prev" type="button" data-carousel-prev aria-label={t("community.card.prev")}>
+      <span aria-hidden="true" />
+    </button>
+    <button class="mprof__carrow mprof__carrow--next" type="button" data-carousel-next aria-label={t("community.card.next")}>
+      <span aria-hidden="true" />
+    </button>
+    <p class="mprof__clive" aria-live="polite" aria-atomic="true" data-carousel-live />
+  </div>
+  {/* The dots, drawn in their first state so nothing jumps before the engine
+      runs (carouselDots.ts); buttons, named, not tab stops — as on the card. */}
+  <div class="mprof__cdots" data-carousel-dots>
+    <span class="cdots" aria-hidden="true" style={`--cdots-n: ${Math.min(slides.length, 5)}`}>
+      <span class="cdots__strip">
+        {
+          slides.map((_, i) => (
+            <button
+              class="cdot"
+              class:list={{ "cdot--on": i === 0, "cdot--md": i === 3, "cdot--sm": i === 4, "cdot--out": i > 4 }}
+              type="button"
+              tabindex="-1"
+              data-carousel-dot={i}
+              aria-label={positionFor(i)}
+            />
+          ))
+        }
+      </span>
+    </span>
+  </div>
+  {/* ONE CAPTION PER SLIDE, stacked; the showing one is .is-on (memberCarousel.ts
+      follows the frame's data-index) and the rest cross-fade out. Every slide
+      gets a block, empty or not, so data-slide-caption indexes the slides. */}
+  <div class="mprof__captions">
+    {
+      slides.map((w, i) => (
+        <figcaption class="mprof__caption" class:list={{ "is-on": i === 0 }} data-slide-caption={i}>
+          {captionOf(w) && <span class="mprof__caption-line">{w.caption}</span>}
+          {(w.siteLink || w.link) && (
+            <span class="mprof__caption-links">
+              {w.siteLink && (
+                <a class="mprof__link" href={w.siteLink} target="_blank" rel="noopener" title={siteLinkTitle}>
+                  {hostLabel(w.siteLink)}
+                </a>
+              )}
+              {w.link && (
+                <a class="mprof__link" href={w.link} target="_blank" rel="noopener" title={linkTitle}>
+                  {hostLabel(w.link)}
+                </a>
+              )}
+            </span>
+          )}
+        </figcaption>
+      ))
+    }
+  </div>
+</figure>
+{
+  /* THE CAROUSEL'S TEXT BLOCK, after the captions and outside the figure,
+     exactly as a single work's (MemberWork.astro): the project's own words,
+     the column's width. */
+  textAfter?.trim() && (
+    <div class="mprof__text">
+      {splitParagraphs(textAfter).map((para) => <span class="mprof__para">{para}</span>)}
+    </div>
+  )
+}

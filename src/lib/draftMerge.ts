@@ -31,6 +31,13 @@ export interface WorkWords {
   siteLink: string;
   tags: string[];
   projectId: string;
+  carouselId: string;
+  textAfter: string;
+  textAfterDe: string;
+  /** "s", "m", or "" for the default L. */
+  size: string;
+  /** False only when the member took the work off /community. */
+  inGallery: boolean;
 }
 
 export interface DraftWork {
@@ -47,7 +54,7 @@ export interface DraftProjects {
   deletedProjectIds: string[];
 }
 
-export function workWords(item: Pick<GalleryItem, "caption" | "captionDe" | "description" | "descriptionDe" | "link" | "siteLink" | "tags" | "projectId">): WorkWords {
+export function workWords(item: Pick<GalleryItem, "caption" | "captionDe" | "description" | "descriptionDe" | "link" | "siteLink" | "tags" | "projectId" | "carouselId" | "textAfter" | "textAfterDe" | "size" | "inGallery">): WorkWords {
   return {
     caption: item.caption ?? "",
     captionDe: item.captionDe ?? "",
@@ -57,6 +64,11 @@ export function workWords(item: Pick<GalleryItem, "caption" | "captionDe" | "des
     siteLink: item.siteLink ?? "",
     tags: Array.isArray(item.tags) ? item.tags.slice() : [],
     projectId: item.projectId ?? "",
+    carouselId: item.carouselId ?? "",
+    textAfter: item.textAfter ?? "",
+    textAfterDe: item.textAfterDe ?? "",
+    size: item.size ?? "",
+    inGallery: item.inGallery !== false,
   };
 }
 
@@ -69,6 +81,11 @@ export function sameWords(a: WorkWords, b: WorkWords): boolean {
     a.link === b.link &&
     a.siteLink === b.siteLink &&
     a.projectId === b.projectId &&
+    a.carouselId === b.carouselId &&
+    a.textAfter === b.textAfter &&
+    a.textAfterDe === b.textAfterDe &&
+    a.size === b.size &&
+    a.inGallery === b.inGallery &&
     a.tags.length === b.tags.length &&
     a.tags.every((tag, i) => tag === b.tags[i])
   );
@@ -86,7 +103,8 @@ export function committedFromLoad(gallery: readonly GalleryItem[]): Map<string, 
  * an upload was dropped into is written onto it at Save like any other word.
  */
 export function committedForNew(item: GalleryItem): WorkWords {
-  return { ...workWords(item), projectId: "" };
+  // carouselId too: an upload into a tray is given its id at Save, like the project.
+  return { ...workWords(item), projectId: "", carouselId: "" };
 }
 
 /**
@@ -112,10 +130,21 @@ export function projectSignature(projects: readonly EditorProject[]): EditorProj
 
 function applyWords(item: GalleryItem, words: WorkWords, projectIds: ReadonlySet<string>): GalleryItem {
   const next: GalleryItem = { ...item, caption: words.caption };
-  const optional = ["captionDe", "description", "descriptionDe", "link", "siteLink"] as const;
+  const optional = ["captionDe", "description", "descriptionDe", "link", "siteLink", "carouselId", "textAfter", "textAfterDe"] as const;
   for (const key of optional) {
+    if (words[key] === undefined) continue;
     if (words[key]) next[key] = words[key];
     else delete next[key];
+  }
+  // A draft written before these fields existed lacks them: leave the
+  // record's own value then, rather than reading "absent" as "cleared".
+  if (words.size !== undefined) {
+    if (words.size === "s" || words.size === "m") next.size = words.size;
+    else delete next.size;
+  }
+  if (words.inGallery !== undefined) {
+    if (words.inGallery) delete next.inGallery;
+    else next.inGallery = false;
   }
   if (words.tags.length) next.tags = words.tags.slice();
   else delete next.tags;

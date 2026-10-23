@@ -135,27 +135,27 @@ function carouselHarness() {
   const slides = [new El(), new El(), new El()];
   slides.forEach((s, i) => { s.dataset.workUrl = `u${i}`; });
   const images = slides.map(() => new El());
-  const track = new El({ ".ccard__slide": slides, ".ccard__img": images });
+  const track = new El({ "[data-carousel-slide]": slides, "[data-carousel-img]": images });
   const chevPrev = new El();
   const chevNext = new El();
   const dots = [new El(), new El(), new El()];
   const strip = new El();
   strip.parentElement = new El();
   const dotRow = new El({ ".cdots__strip": strip, ".pager-chev--prev": chevPrev, ".pager-chev--next": chevNext });
-  const card = new El({ ".ccard__dots .cdot": dots, ".ccard__dots": dotRow });
+  const card = new El({ "[data-carousel-dots] .cdot": dots, "[data-carousel-dots]": dotRow });
   const prev = new El();
   const next = new El();
   const live = new El();
   const frame = new El(
     {
-      ".ccard__track": track,
-      ".ccard__img": images,
-      ".ccard__slide": slides,
+      "[data-carousel-track]": track,
+      "[data-carousel-img]": images,
+      "[data-carousel-slide]": slides,
       "[data-carousel-prev]": prev,
       "[data-carousel-next]": next,
       "[data-carousel-live]": live,
     },
-    { ".ccard": card },
+    { "[data-carousel-scope]": card },
   );
   frame.dataset.positionLabel = "Image {n} of {total}";
   const root = new El({ "[data-carousel]": frame });

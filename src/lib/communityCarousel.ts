@@ -20,12 +20,16 @@
 // needed a click overlay above it, and an overlay above a scroller eats the
 // scroller's touch pan, so the slides are the click targets now.
 //
-// Everything below is a contract with the MARKUP, not with either component:
-// `[data-carousel]` on the frame, `.ccard__track` inside it (the scroller),
-// `a.ccard__slide` per work (the lightbox trigger, see CARD_TRIGGER in
-// lightbox.ts), `.ccard__img` per slide, `[data-carousel-prev/next]`,
-// `[data-carousel-live]`, and `.ccard__dots` on the card. Render that shape
-// and it pages. The frame's `data-index` says which slide is showing.
+// Everything below is a contract with the MARKUP, not with any component, and
+// it is spelled in data attributes so a carousel need not be a card (the
+// classes stay on the card for its CSS): `[data-carousel]` on the frame,
+// `[data-carousel-track]` inside it (the scroller), `[data-carousel-slide]`
+// per work (the lightbox trigger on the card, see CARD_TRIGGER in
+// lightbox.ts), `[data-carousel-img]` per slide, `[data-carousel-prev/next]`,
+// `[data-carousel-live]`, and `[data-carousel-dots]` (holding `.cdot`
+// buttons) inside the `[data-carousel-scope]` ancestor that holds the frame
+// and the dots. Render that shape and it pages. The frame's `data-index`
+// says which slide is showing.
 import { mountDots } from "./carouselDots.ts";
 import { ensurePagerChevron } from "./pager.ts";
 import { hasKeyModifier } from "./keys.ts";
@@ -97,7 +101,7 @@ export function initCarousels(root: ParentNode = document): void {
     // as data-src until the visitor first touches or hovers THIS carousel,
     // or until the engine lands on them — before that, every member's whole
     // gallery decoded at once, which is what crash-looped iOS Safari.
-    const images = Array.from(carousel.querySelectorAll<HTMLImageElement>(".ccard__img"));
+    const images = Array.from(carousel.querySelectorAll<HTMLImageElement>("[data-carousel-img]"));
     const hydrate = (image: HTMLImageElement | undefined) => {
       if (!image?.dataset.src) return;
       image.src = image.dataset.src;
@@ -111,14 +115,14 @@ export function initCarousels(root: ParentNode = document): void {
 
     // A gallery of one still gets the track markup — same box, same CSS —
     // but nothing to page: no controls, no live region, no tab-stop dance.
-    const track = carousel.querySelector<HTMLElement>(".ccard__track");
-    const slides = Array.from(carousel.querySelectorAll<HTMLElement>(".ccard__slide"));
+    const track = carousel.querySelector<HTMLElement>("[data-carousel-track]");
+    const slides = Array.from(carousel.querySelectorAll<HTMLElement>("[data-carousel-slide]"));
     if (!track || slides.length < 2) return;
     const total = slides.length;
 
-    const card = carousel.closest<HTMLElement>(".ccard") ?? carousel;
-    const dotRow = card.querySelector<HTMLElement>(".ccard__dots");
-    const dots = Array.from(card.querySelectorAll<HTMLElement>(".ccard__dots .cdot"));
+    const scope = carousel.closest<HTMLElement>("[data-carousel-scope]") ?? carousel;
+    const dotRow = scope.querySelector<HTMLElement>("[data-carousel-dots]");
+    const dots = Array.from(scope.querySelectorAll<HTMLElement>("[data-carousel-dots] .cdot"));
     const liveRegion = carousel.querySelector<HTMLElement>("[data-carousel-live]");
     const positionLabel = carousel.dataset.positionLabel ?? "";
 

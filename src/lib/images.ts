@@ -158,6 +158,7 @@ export async function updateImageText(
     siteLink?: string;
     tags?: string[];
     projectId?: string;
+    carouselId?: string;
     inGallery?: boolean;
     textAfter?: string;
     textAfterDe?: string;
@@ -176,6 +177,7 @@ export async function updateImageText(
     siteLink: text.siteLink ? text.siteLink : deleteField(),
     tags: text.tags && text.tags.length ? text.tags : deleteField(),
     projectId: text.projectId ? text.projectId : deleteField(),
+    carouselId: text.carouselId?.trim() ? text.carouselId.trim() : deleteField(),
     // Absent means "in the gallery", so only the exception is stored.
     inGallery: text.inGallery === false ? false : deleteField(),
     textAfter: text.textAfter?.trim() ? text.textAfter : deleteField(),
@@ -190,6 +192,26 @@ export async function updateImageText(
     // permits the key, so this needs no rules deploy and would keep working
     // even if the allowance were dropped, since absence is what it produces.
     descriptionShort: deleteField(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * A CAROUSEL'S SETTINGS MOVE TO THEIR NEW LEAD AT ONCE (2026-10-23,
+ * documentation/20261023-work-carousels-design.md, "Deleting the lead moves
+ * its carousel fields at once"). A removal commits without Save, so the
+ * heir's record takes the size and the text blocks before the old lead is
+ * marked — only those three keys, so the heir's own unsaved words stay
+ * unsaved. The same absence rule as updateImageText: empty deletes the key.
+ */
+export async function updateCarouselLead(
+  imageId: string,
+  fields: { size?: string; textAfter?: string; textAfterDe?: string },
+): Promise<void> {
+  await updateDoc(doc(db, "images", imageId), {
+    size: fields.size === "s" || fields.size === "m" ? fields.size : deleteField(),
+    textAfter: fields.textAfter?.trim() ? fields.textAfter : deleteField(),
+    textAfterDe: fields.textAfterDe?.trim() ? fields.textAfterDe : deleteField(),
     updatedAt: serverTimestamp(),
   });
 }

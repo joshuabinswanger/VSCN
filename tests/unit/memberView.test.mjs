@@ -86,6 +86,16 @@ test("a work carries its text block raw, and a blank one not at all", () => {
   assert.deepEqual(m.works.map((w) => [w.textAfter, w.textAfterDe]), [["Between", "Dazwischen"], [undefined, undefined]]);
 });
 
+test("a work exposes its carouselId, and a blank one is dropped", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a", "b", "c"] }, [
+    rec("a", { carouselId: " c-1 " }),
+    rec("b", { carouselId: "  " }),
+    rec("c"),
+  ], BUCKET);
+  assert.deepEqual(m.works.map((w) => w.carouselId), ["c-1", undefined, undefined]);
+  assert.equal("carouselId" in m.works[1], false);
+});
+
 test("a work carries its S or M size; anything else is L, i.e. absent", () => {
   const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a", "b", "c"] }, [
     rec("a", { caption: "a", size: "s" }),

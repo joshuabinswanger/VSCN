@@ -204,7 +204,7 @@ export function firstUntitledProject(
  * end otherwise, as uploads always did. A project's first image goes to the
  * end too — the empty block waits there, and that is where it fills.
  */
-export function insertUploaded<T extends { projectId?: string }>(
+export function insertUploaded<T extends { projectId?: string; carouselId?: string }>(
   gallery: readonly T[],
   item: T,
   projects?: readonly { projectId: string }[],
@@ -219,7 +219,14 @@ export function insertUploaded<T extends { projectId?: string }>(
     item = loose;
   }
   const out = gallery.slice();
-  const last = item.projectId ? gallery.map((g) => g.projectId).lastIndexOf(item.projectId) : -1;
+  // Through a carousel's + (2026-10-23): after the last slide of that
+  // carousel, so the run stays one run. A carousel with no slide yet sits at
+  // the end of its project, which is where the project rule puts the item.
+  const lastSlide =
+    item.projectId && item.carouselId
+      ? gallery.map((g) => (g.projectId === item.projectId ? g.carouselId : undefined)).lastIndexOf(item.carouselId)
+      : -1;
+  const last = lastSlide !== -1 ? lastSlide : item.projectId ? gallery.map((g) => g.projectId).lastIndexOf(item.projectId) : -1;
   out.splice(last === -1 ? out.length : last + 1, 0, item);
   return out;
 }

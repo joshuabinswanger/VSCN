@@ -96,7 +96,15 @@ export function preparePaint(root: HTMLElement): HTMLImageElement | null {
     firstWork.style.setProperty("--d", `${schedule.picture.toFixed(3)}s`);
   }
   root.setAttribute("data-painted", "");
-  return firstWork?.querySelector<HTMLImageElement>(".mprof__img") ?? null;
+  // A CAROUSEL FIRST (2026-10-23, work carousels): the figure holds one
+  // image per slide, and the picture the page waits for is the LEAD slide's
+  // — the one showing. The entrance itself is on the figure, so the whole
+  // carousel comes in as one piece (MemberCarousel.astro).
+  if (!firstWork) return null;
+  const lead = firstWork.matches(".mprof__carousel")
+    ? firstWork.querySelector<HTMLImageElement>("[data-carousel-slide] .mprof__img")
+    : firstWork.querySelector<HTMLImageElement>(".mprof__img");
+  return lead ?? null;
 }
 
 // EVERY PICTURE COMES IN (2026-10-23, Josh: "fade in of images in the

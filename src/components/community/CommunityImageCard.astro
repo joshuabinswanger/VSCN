@@ -129,7 +129,7 @@ const positionFor = (i: number) =>
   positionTemplate.replace("{n}", String(i + 1)).replace("{total}", String(works.length));
 ---
 
-<article class="ccard" style={`--frame-ar:${works[0].width / works[0].height}`}>
+<article class="ccard" data-carousel-scope style={`--frame-ar:${works[0].width / works[0].height}`}>
   {
     /* THE PAGES CARD (2026-10-15, layout A of the brainstorm): one member a
       screen on /community. The artwork on the left, filling the frame's
@@ -172,7 +172,7 @@ const positionFor = (i: number) =>
           the moment it is inserted, whatever state the sheet is in.
           documentation/20261016-webkit-back-crash-carousel-track.md */
       }
-      <div class="ccard__track" style="overflow: auto hidden">
+      <div class="ccard__track" data-carousel-track style="overflow: auto hidden">
         {
           /* Only the first image carries a real src. The rest of the gallery
             waits as data-src until the visitor first touches or hovers THIS
@@ -188,6 +188,7 @@ const positionFor = (i: number) =>
           works.map((w, i) => (
             <a
               class="ccard__slide"
+              data-carousel-slide
               href={w.url}
               target="_blank"
               rel="noreferrer"
@@ -215,6 +216,7 @@ const positionFor = (i: number) =>
             >
               <img
                 class="ccard__img"
+                data-carousel-img
                 src={i === 0 ? w.rendered.src : undefined}
                 srcset={i === 0 ? w.rendered.srcSet.attribute : undefined}
                 data-src={i === 0 ? undefined : w.rendered.src}
@@ -356,7 +358,7 @@ const positionFor = (i: number) =>
       }
       {
         isCarousel && (
-          <div class="ccard__dots">
+          <div class="ccard__dots" data-carousel-dots>
             <button
               class="pager-chev pager-chev--prev"
               type="button"

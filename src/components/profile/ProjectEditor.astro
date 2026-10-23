@@ -41,6 +41,14 @@ const t = useTranslations(lang);
               </label>
               {/* Add video (2026-10-16): opens the bar's video sheet for THIS block; named by the controller. */}
               <button type="button" class="gallery-tbtn" data-project-video aria-expanded="false"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/></svg></button>
+              {
+                /* Carousel (2026-10-23): an empty carousel at the end of THIS
+                  block, to drag works into or fill through its +. With the
+                  block's own add controls, not the bar's Plus, so it is clear
+                  which project it lands in. The icon: a slide with the edges
+                  of its neighbours. Named by the controller. */
+              }
+              <button type="button" class="gallery-tbtn" data-project-carousel><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="12" height="14" rx="1"/><path d="M2 8v8"/><path d="M22 8v8"/></svg></button>
               <button type="button" class="gallery-tbtn gallery-tbtn--danger" data-project-delete aria-label={t("profile.project.delete")} title={t("profile.project.delete")}><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
             </div>
           </div>

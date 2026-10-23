@@ -61,6 +61,8 @@ export interface GalleryTask {
   readonly replaces?: string;
   /** The project an addition was dropped into, carried onto the uploaded item (2026-09-23). */
   readonly projectId?: string;
+  /** The carousel it was added through (the tray's +, 2026-10-23), carried the same way. */
+  readonly carouselId?: string;
   /** 0-100, meaningful only while `state === "uploading"`. */
   progress: number;
   error?: GalleryErrorCode;
@@ -103,8 +105,8 @@ export interface GalleryQueueOptions {
 }
 
 export interface GalleryQueue {
-  /** `target` puts every accepted file into that project. */
-  add(files: File[], target?: { projectId: string }): AddOutcome;
+  /** `target` puts every accepted file into that project, and into that carousel when one is named. */
+  add(files: File[], target?: { projectId: string; carouselId?: string }): AddOutcome;
   /**
    * Queues a new picture for an existing work. Returns why the file was turned
    * away, or null once it is queued. A work already mid-replacement refuses a
@@ -261,7 +263,12 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
       // one row settling into the gallery instead of two rows for one image.
       remove(task.id);
       if (task.replaces) options.onReplaced(item, task.replaces);
-      else options.onUploaded(task.projectId ? { ...item, projectId: task.projectId } : item);
+      else
+        options.onUploaded({
+          ...item,
+          ...(task.projectId ? { projectId: task.projectId } : {}),
+          ...(task.carouselId ? { carouselId: task.carouselId } : {}),
+        });
       options.onChange();
     } catch (error) {
       const code = galleryErrorCode(error);
@@ -275,7 +282,7 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
     }
   }
 
-  function enqueue(source: Blob, name: string, replaces?: string, projectId?: string): GalleryTask {
+  function enqueue(source: Blob, name: string, replaces?: string, projectId?: string, carouselId?: string): GalleryTask {
     const task: GalleryTask = {
       id: nextId(),
       name,
@@ -284,6 +291,7 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
       progress: 0,
       ...(replaces ? { replaces } : {}),
       ...(projectId ? { projectId } : {}),
+      ...(carouselId ? { carouselId } : {}),
     };
     tasks.push(task);
     // Started immediately and deliberately un-awaited: the limiters, not this
@@ -313,7 +321,7 @@ export function createGalleryQueue(options: GalleryQueueOptions): GalleryQueue {
         }
         room -= 1;
         outcome.queued += 1;
-        enqueue(file, file.name, undefined, target?.projectId);
+        enqueue(file, file.name, undefined, target?.projectId, target?.carouselId);
       }
       if (outcome.queued > 0) options.onChange();
       return outcome;

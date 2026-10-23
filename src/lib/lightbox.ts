@@ -224,6 +224,24 @@ export function createLightbox(
     });
   });
 
+  // THE CAROUSEL UNDERNEATH FOLLOWS. Every time the lightbox lands on a
+  // slide that lives in a carousel — opening included, and the close, so
+  // the zoom-out lands on the picture the visitor got to — the carousel is
+  // told, and turns to the same picture (communityCarousel.ts listens for
+  // this on the frame). Since 2026-10-23 this is spelled on the slide's
+  // data hook rather than the card's class, so the member page's work
+  // carousels (MemberCarousel.astro) follow the same way as the Portfolios
+  // card: its lightbox items are the page's flat list of work links, and
+  // only the ones inside a frame are told.
+  const tellCarousel = () => {
+    const el = lightbox.pswp?.currSlide?.data.element;
+    if (el instanceof HTMLElement && el.hasAttribute("data-carousel-slide") && el.closest("[data-carousel]")) {
+      el.dispatchEvent(new CustomEvent("vscn:carousel-show", { bubbles: true }));
+    }
+  };
+  lightbox.on("change", tellCarousel);
+  lightbox.on("close", tellCarousel);
+
   return lightbox;
 }
 
@@ -303,17 +321,8 @@ export function bindCardOpener(container: HTMLElement, lightbox: PhotoSwipeLight
   };
   container.addEventListener("click", openCard, true);
 
-  // THE CARD FOLLOWS. Every time the lightbox lands on one of a card's
-  // slides — opening included — the carousel underneath is told, and turns to
-  // the same picture (communityCarousel listens for this on the carousel).
-  // Closing then zooms out onto the image the visitor was looking at, not onto
-  // the one they opened; and the card is left showing where they got to.
-  lightbox.on("change", () => {
-    const el = lightbox.pswp?.currSlide?.data.element;
-    if (el?.classList.contains("ccard__slide")) {
-      el.dispatchEvent(new CustomEvent("vscn:carousel-show", { bubbles: true }));
-    }
-  });
+  // THE CARD FOLLOWS the lightbox's slide: createLightbox() registers that
+  // for every carousel on the site (tellCarousel above), the card included.
 
   return () => container.removeEventListener("click", openCard, true);
 }

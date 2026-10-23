@@ -9,7 +9,7 @@ const { queueMemberRebuild, flushMemberRebuilds } = require('../../functions/lib
 const { adminSetProfileActive } = require('../../functions/lib/adminOps.js');
 const { sweepImages } = require('../../functions/lib/maintenance.js');
 const adminModule = require('../../functions/lib/admin.js');
-const { authorizeImageUpload, completeImageUpload, webpDimensions } = require('../../functions/lib/uploads.js');
+const { authorizeImageUpload, completeImageUpload, webpDimensions, inheritedFields } = require('../../functions/lib/uploads.js');
 const { resolveEmbed, restoreAutoPoster } = require('../../functions/lib/embeds.js');
 const sharp = require('sharp');
 const backendRequire = require('node:module').createRequire(require('node:path').resolve('functions/package.json'));
@@ -20,6 +20,14 @@ beforeEach(async () => {
   assert.equal(response.ok, true);
 });
 after(async () => { mock.restoreAll(); await db.terminate(); });
+
+test('a replacement inherits the carouselId along with its other words', () => {
+  const inherited = inheritedFields({ caption: 'A', projectId: 'p-1', carouselId: 'c-1', size: 'm', ownerUid: 'x' }, 'member');
+  assert.equal(inherited.carouselId, 'c-1');
+  assert.equal(inherited.projectId, 'p-1');
+  assert.equal('ownerUid' in inherited, false);
+  assert.equal('carouselId' in inheritedFields({ caption: 'A' }, 'member'), false);
+});
 
 test('upload allocation counts stored works and serializes concurrent reservations', async () => {
   // Records, not files, since video links (2026-09-23): one work may own a

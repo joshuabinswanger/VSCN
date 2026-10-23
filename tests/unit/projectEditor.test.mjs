@@ -133,6 +133,17 @@ test("insertUploaded: into a project after its last image, otherwise at the end"
   assert.deepEqual(ids(insertUploaded(gallery, img("n", "r"))), [...ids(gallery), "n:r"]);
 });
 
+test("insertUploaded: through a carousel's +, after that carousel's last slide", () => {
+  const slide = (id, carouselId) => ({ ...img(id, "p"), carouselId });
+  const g = [img("a"), slide("b", "k"), slide("c", "k"), img("d", "p"), img("e", "q")];
+  assert.deepEqual(ids(insertUploaded(g, slide("n", "k"))), ["a", "b:p", "c:p", "n:p", "d:p", "e:q"]);
+  // A carousel no slide names yet (still local): the end of its project, as any upload.
+  assert.deepEqual(ids(insertUploaded(g, slide("n", "new"))), ["a", "b:p", "c:p", "d:p", "n:p", "e:q"]);
+  // A slide of the same id in ANOTHER project is not this carousel.
+  const h = [slide("b", "k"), { ...img("x", "q"), carouselId: "k" }];
+  assert.deepEqual(ids(insertUploaded(h, slide("n", "k"))), ["b:p", "n:p", "x:q"]);
+});
+
 test("orderProjects follows the given order and keeps the rest in their old order", () => {
   const out = orderProjects(projects, ["r", "p"]);
   assert.deepEqual(out.map((p) => p.projectId), ["r", "p", "q"]);

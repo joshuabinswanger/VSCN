@@ -90,6 +90,8 @@ export interface ProfileWork {
   addedAt?: string;
   /** The member's own project this work is in, when it is one the view model also carries in `projects`. */
   projectId?: string;
+  /** Works of one project sharing this id are one carousel; absent for a work on its own. */
+  carouselId?: string;
 }
 
 export interface ProfileViewModel {
