@@ -430,6 +430,10 @@ const jsonLd = memberPageJsonLd({
   import { workKey } from "../../../lib/communitySearch.ts";
   // The build-up after the pause (2026-10-20): name, text, tags, then the first picture.
   import { paintIn, paintPlainly } from "../../../lib/profilePaint.ts";
+  // The work carousels (2026-10-23): the Portfolios card's engine over
+  // MemberCarousel.astro's markup, their captions, and ← → for the one on screen.
+  import { initMemberCarousels } from "../../../lib/memberCarousel.ts";
+  import { initCarouselKeys } from "../../../lib/carouselKeys.ts";
   import { browserAnimatedThisTraversal } from "../../../lib/gestureHistory.ts";
   import "photoswipe/style.css";
   // Immediately after the package sheet, never before: this is the chrome that
@@ -481,6 +485,8 @@ const jsonLd = memberPageJsonLd({
     lightbox = null;
     const gallery = document.querySelector<HTMLElement>(".mprof__works");
     if (!gallery) return;
+    initMemberCarousels(gallery);
+    initCarouselKeys(gallery);
 
     lightbox = createLightbox(parseLightboxStrings(gallery.dataset.pswpI18n), {
       gallery: ".mprof__works",

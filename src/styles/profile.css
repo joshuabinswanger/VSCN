@@ -620,6 +620,222 @@
   align-self: start;
 }
 
+/* ── A WORK CAROUSEL (2026-10-23, Josh: "yes i want it back but rebuild it
+   from scratch according to the design we have going on now";
+   documentation/20261023-work-carousels-design.md) ──────────────────────
+   Several works in one spot of a project's line (MemberCarousel.astro),
+   paged by the Portfolios card's engine (communityCarousel.ts) over the
+   same data hooks. The figure is a .mprof__work, so the line's spacing,
+   the index and the paint-in treat it as one work; what differs is drawn
+   here: the frame at the LEAD's aspect and the carousel's S/M/L (the same
+   width formula as .mprof__work-link), a native scroll-snap track inside
+   it, the arrows beside the frame on a desktop, the dots and the stacked
+   captions under it. */
+.mprof__cframe {
+  position: relative;
+  /* The lead's aspect, the carousel's width — the frame never changes
+     shape as it pages, so nothing under it moves. */
+  max-width: min(var(--size-w, 100%), calc(70vh * var(--work-ar)));
+  aspect-ratio: var(--work-ar);
+  margin-inline: auto;
+  background: var(--color-bg);
+  /* The arrows stand OUTSIDE the box: the track clips its own slides. */
+  overflow: visible;
+  /* Both axes are the browser's: a sideways pan pages the track, a vertical
+     one scrolls the page (the design: vertical wins unless clearly sideways,
+     which is what the browser's own pan heuristics give). */
+  touch-action: pan-x pan-y pinch-zoom;
+}
+/* The track: one frame-wide column per slide, snapping on x, its scrollbar
+   hidden; repeated inline on the element (the WebKit Back crash). */
+.mprof__ctrack {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 100%;
+  grid-auto-rows: 100%;
+  overflow: auto hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.mprof__ctrack::-webkit-scrollbar {
+  display: none;
+}
+/* A slide is a work link, but inside the track it is the track's column —
+   not the width-capped, centred frame a single work's link is — and it
+   centres its picture. */
+.mprof__carousel .mprof__work-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  -webkit-tap-highlight-color: transparent;
+}
+/* A slide of another shape than the lead stands centred in the frame at
+   its own aspect, never cropped: the image's own box is what it draws, so
+   the lightbox grows out of the picture, not out of the letterbox. */
+.mprof__carousel .mprof__img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+}
+.mprof__carousel .mprof__work-link:focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: -5px;
+  box-shadow: inset 0 0 0 3px var(--color-bg);
+}
+
+/* THE ARROWS, the card's strips (communityCard.css .ccard__arrow, memory
+   works-paging-desktop): a 2.5rem strip the frame's full height just
+   outside each edge, the chevron centred, muted; pointing at the picture
+   lifts both, pointing at one brings it to full strength. */
+.mprof__carrow {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-dark);
+  opacity: 0.35;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.mprof__cframe:hover .mprof__carrow,
+.mprof__cframe:focus-within .mprof__carrow {
+  opacity: 0.55;
+}
+.mprof__carrow:hover,
+.mprof__carrow:focus-visible {
+  opacity: 1;
+}
+.mprof__carrow:focus:not(:focus-visible) {
+  outline: none;
+}
+.mprof__carrow span {
+  display: block;
+  width: var(--chevron-size);
+  height: var(--chevron-size);
+  border-top: var(--chevron-stroke) solid currentColor;
+  border-right: var(--chevron-stroke) solid currentColor;
+}
+.mprof__carrow--prev span {
+  transform: translate(0.05rem, 0) rotate(-135deg);
+}
+.mprof__carrow--next span {
+  transform: translate(-0.05rem, 0) rotate(45deg);
+}
+.mprof__carrow--prev {
+  right: 100%;
+}
+.mprof__carrow--next {
+  left: 100%;
+}
+/* The spoken position (the card's clip technique). */
+.mprof__clive {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* THE DOTS, centred under the frame, buttons that page (the card's rules
+   in communityCard.css; the dots themselves are .cdots / .cdot in
+   global.css). The chevrons the engine adds to the row are hidden on
+   .mprof (global.css) — the arrows beside the frame are the pager here. */
+.mprof__cdots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.1rem;
+  margin-top: 0.6rem;
+}
+.mprof__cdots .cdots {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  height: 1.25rem;
+}
+.mprof__cdots .cdot {
+  position: relative;
+  appearance: none;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.mprof__cdots .cdot::after {
+  content: "";
+  position: absolute;
+  inset: -0.45rem calc(var(--carousel-dot-gap) / -2);
+}
+.mprof__cdots .cdot:hover {
+  opacity: 0.6;
+}
+.mprof__cdots .cdot--on:hover {
+  opacity: 1;
+}
+.mprof__cdots .cdot:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* THE CAPTIONS, one per slide in ONE grid cell: the block is as tall as
+   the tallest caption whichever slide shows, so the text block after the
+   carousel never moves as it pages (the design's anti-goal). The showing
+   one is .is-on (memberCarousel.ts); the others cross-fade out on the
+   site's ease-out and are then taken out of the accessibility tree
+   (visibility), since opacity hides nothing from a screen reader. */
+.mprof__captions {
+  display: grid;
+}
+.mprof__captions > .mprof__caption {
+  grid-area: 1 / 1;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
+    visibility 0s linear 0.3s;
+}
+.mprof__captions > .mprof__caption.is-on {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
+    visibility 0s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mprof__captions > .mprof__caption {
+    transition: none;
+  }
+}
+
+@media (--bp-mobile) {
+  /* No arrows on a phone: paging is the swipe, and the dots say where it got to. */
+  .mprof__carrow {
+    display: none;
+  }
+}
+
 @media (--bp-mobile) {
   .mprof {
     padding-block: 4.5rem 6rem;

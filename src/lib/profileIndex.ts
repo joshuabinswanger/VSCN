@@ -22,11 +22,14 @@ document.addEventListener("astro:before-swap", () => {
 
 const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-/** The label an item is listed by, or "" to leave it out. */
+/** The label an item is listed by, or "" to leave it out. A carousel
+ *  (2026-10-23) is one entry, named by its lead slide's title. */
 function labelOf(item: HTMLElement): string {
   const el = item.matches(".mprof__project")
     ? item.querySelector(".mprof__project-title")
-    : item.querySelector(".mprof__caption-line");
+    : item.matches(".mprof__carousel")
+      ? item.querySelector('[data-slide-caption="0"] .mprof__caption-line')
+      : item.querySelector(".mprof__caption-line");
   return (el?.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 

@@ -10,6 +10,8 @@
 // block that follows it. The carousel of 2026-09-26 to 2026-10-16 is gone.
 import type { ComponentProps, HTMLAttributes } from "astro/types";
 import MemberWork from "./MemberWork.astro";
+import MemberCarousel from "./MemberCarousel.astro";
+import { groupCarousels } from "../lib/carousels.ts";
 import { affiliationHref, projectDescription, projectTitle, type ProfileProject } from "../lib/projects.ts";
 import { communityWorkTagHref, hostLabel } from "../lib/links.ts";
 import { useTranslations, type Lang } from "../i18n/utils.ts";
@@ -39,6 +41,10 @@ const figure = (w: Work) => ({
   linkTitle: t("member.lightbox.link"),
   siteLinkTitle: t("member.lightbox.siteLink"),
 });
+// WORK CAROUSELS (2026-10-23): a run of two or more consecutive works
+// sharing a carouselId is one spot in the line (MemberCarousel.astro); a run
+// of one prints as a plain work. lib/carousels.ts is the one grouping rule.
+const units = groupCarousels(works, 2);
 ---
 
 <section class:list={["mprof__project", className]} {...rest}>
@@ -109,7 +115,22 @@ const figure = (w: Work) => ({
     /* EVERY WORK IN LINE (2026-10-16, Josh: "projects dont have galleries
        anymore, images are all in line"): the works stack down the column in
        the member's order, each followed by its text block when it has one
-       (MemberWork.astro). The carousel of 2026-09-26 is gone. */
-    works.map((w) => <MemberWork {...figure(w)} />)
+       (MemberWork.astro). The carousel of 2026-09-26 is gone; since
+       2026-10-23 a run of works can share one spot (MemberCarousel.astro). */
+    units.map((unit) =>
+      unit.kind === "carousel" ? (
+        <MemberCarousel
+          works={unit.works}
+          index={allWorks.indexOf(unit.works[0])}
+          displayName={displayName}
+          lang={lang}
+          workAlt={t("member.workAlt")}
+          linkTitle={t("member.lightbox.link")}
+          siteLinkTitle={t("member.lightbox.siteLink")}
+        />
+      ) : (
+        <MemberWork {...figure(unit.work)} />
+      ),
+    )
   }
 </section>
