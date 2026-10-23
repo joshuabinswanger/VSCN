@@ -28,6 +28,7 @@ import { memberTypeFieldCopy } from "./memberType.ts";
 import {
   splitSocial,
   joinSocial,
+  socialUnlinked,
   profileBio,
   profileRole,
   MAX_SOCIAL_LINKS,
@@ -382,10 +383,11 @@ document.addEventListener("astro:page-load", () => {
   const socialRowTpl = document.querySelector<HTMLTemplateElement>('[data-ob-social-tpl="row"]');
   let socialValues: string[] = [""];
 
-  function setSocialStatus(text: string) {
+  function setSocialStatus(text: string, kind = "") {
     if (!socialStatus) return;
     socialStatus.textContent = text;
     socialStatus.style.display = text ? "block" : "none";
+    socialStatus.dataset.kind = kind;
   }
 
   /** The single stored value the rows add up to. */
@@ -393,14 +395,20 @@ document.addEventListener("astro:page-load", () => {
     return joinSocial(socialValues);
   }
 
-  function refreshSocialStatus() {
+  function refreshSocialStatus(settled = true) {
     if (socialAdd) socialAdd.disabled = socialValues.length >= MAX_SOCIAL_LINKS;
     // Length, not count, is the real limit — firestore.rules caps the joined
     // field at MAX_SOCIAL_MEDIA and rejects the WHOLE write over it, so the
     // member has to hear about it here rather than as a bare permission
     // error on the way out of the step.
+    // Bare handles: see the same branch in profileEditorController.
     if (socialStored().length > MAX_SOCIAL_MEDIA) {
       setSocialStatus(s["profile.social.tooLong"]);
+    } else if (
+      socialValues.some(socialUnlinked) &&
+      (settled || socialStatus?.dataset.kind === "unlinked")
+    ) {
+      setSocialStatus(s["profile.social.unlinked"], "unlinked");
     } else if (socialValues.length >= MAX_SOCIAL_LINKS) {
       setSocialStatus(s["profile.social.full"]);
     } else {
@@ -434,8 +442,9 @@ document.addEventListener("astro:page-load", () => {
           );
           input.addEventListener("input", () => {
             socialValues[index] = input.value;
-            refreshSocialStatus();
+            refreshSocialStatus(false);
           });
+          input.addEventListener("change", () => refreshSocialStatus());
 
           remove.setAttribute("aria-label", s["profile.social.remove"]);
           remove.addEventListener("click", () => removeSocialRow(index));
