@@ -64,12 +64,31 @@ export function dominantColor(source: CanvasImageSource): string {
   return `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
 
-export function toWebpBlob(canvas: HTMLCanvasElement, quality = WEBP_QUALITY): Promise<Blob> {
+function canvasBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error("Canvas export failed"))),
-      "image/webp",
-      quality,
-    );
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Canvas export failed"))), type, quality);
   });
+}
+
+/**
+ * WebP where the browser can write it. WEBKIT CANNOT (2026-10-23, Josh on an
+ * iPhone: "upload failed"): asked for WebP, its canvas returns a PNG, which
+ * ignores the quality ladder and was refused by the server as "not a WebP".
+ * There, the same pixels go out as a JPEG at the same quality, flattened onto
+ * white first (JPEG has no alpha; a transparent corner would turn black), and
+ * completeImageUpload (functions/src/uploads.ts) re-encodes it to WebP before
+ * anything is published. The upload still carries the .webp name and type the
+ * storage rules require.
+ */
+export async function toWebpBlob(canvas: HTMLCanvasElement, quality = WEBP_QUALITY): Promise<Blob> {
+  const webp = await canvasBlob(canvas, "image/webp", quality);
+  if (webp.type === "image/webp") return webp;
+  const flat = document.createElement("canvas");
+  flat.width = canvas.width;
+  flat.height = canvas.height;
+  const ctx = flat.getContext("2d")!;
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, flat.width, flat.height);
+  ctx.drawImage(canvas, 0, 0);
+  return canvasBlob(flat, "image/jpeg", quality);
 }
