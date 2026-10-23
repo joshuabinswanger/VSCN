@@ -429,6 +429,21 @@ document.addEventListener("astro:page-load", () => {
     return control;
   }
 
+  // A FOLDED tag row shows its picked tags (2026-10-23, Josh: "collapsed tag
+  // row in the work tab should show the selected tags"), read-only, as the
+  // bare `.tagchip` the profile page draws. CSS hides them while the fold is
+  // open, where the selector's own chips say the same.
+  function paintPickedTags(target: HTMLElement, tags: readonly string[]): void {
+    target.replaceChildren(
+      ...tags.map((tag) => {
+        const chip = document.createElement("span");
+        chip.className = "tagchip";
+        chip.textContent = tag;
+        return chip;
+      }),
+    );
+  }
+
   // ── Social links ──────────────────────────────────────
   // One row per link on screen; ONE comma-joined string in Firestore. The
   // stored shape is deliberately unchanged: every profile saved before today
@@ -630,9 +645,10 @@ document.addEventListener("astro:page-load", () => {
           );
           const tagsFold = row.querySelector<HTMLDetailsElement>(".gallery-tags");
           const tagsCount = row.querySelector<HTMLElement>("[data-gallery-tags-count]");
+          const tagsPicked = row.querySelector<HTMLElement>("[data-gallery-tags-picked]");
           const detailsFold = row.querySelector<HTMLDetailsElement>(".gallery-details");
           if (!img || !remove || !caption || !description) return null;
-          if (!tagsFold || !tagsCount || !detailsFold) return null;
+          if (!tagsFold || !tagsCount || !tagsPicked || !detailsFold) return null;
           if (!captionDe || !descriptionDe) return null;
           if (!link || !siteLink || !cover || !tagsSelector) return null;
           if (!moveUp || !moveDown || !projectSelect) return null;
@@ -790,6 +806,7 @@ document.addEventListener("astro:page-load", () => {
           // I tag this one?".
           const setTagsCount = (tags: string[]) => {
             tagsCount.textContent = tags.length ? `(${tags.length})` : "";
+            paintPickedTags(tagsPicked, tags);
           };
 
           tagsSelector.value = item.tags ?? [];
@@ -1037,9 +1054,11 @@ document.addEventListener("astro:page-load", () => {
       const projectTags = el.querySelector<HTMLElement & { value: string[] }>(".gallery-project-tags tag-selector");
       const projectTagsFold = el.querySelector<HTMLDetailsElement>(".gallery-project-tags");
       const projectTagsCount = el.querySelector<HTMLElement>("[data-project-tags-count]");
-      if (projectTags && projectTagsFold && projectTagsCount) {
+      const projectTagsPicked = el.querySelector<HTMLElement>("[data-project-tags-picked]");
+      if (projectTags && projectTagsFold && projectTagsCount && projectTagsPicked) {
         const setCount = (tags: readonly string[]) => {
           projectTagsCount.textContent = tags.length ? `(${tags.length})` : "";
+          paintPickedTags(projectTagsPicked, tags);
         };
         projectTags.value = project.tags ?? [];
         setCount(project.tags ?? []);

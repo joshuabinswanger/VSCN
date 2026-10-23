@@ -853,6 +853,22 @@
     transform: rotate(225deg);
   }
 
+  /* FOLDED, THE ROW SHOWS ITS PICKED TAGS after the arrow (2026-10-23), the
+     profile page's own chips. They stand in for the count, which says less;
+     open, the selector shows them and both go. */
+  .gallery-tags-picked {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    min-width: 0;
+  }
+
+  .gallery-tags[open] .gallery-tags-picked,
+  .gallery-tags-picked:empty,
+  .gallery-tags:not([open]) .gallery-tags-count:has(~ .gallery-tags-picked:not(:empty)) {
+    display: none;
+  }
+
   /* On the summary rather than on the selector below it: the selector is a
      child COMPONENT, so this block's scope attribute never lands on it and a
      `.gallery-tags > tag-selector` rule here would match nothing. */
