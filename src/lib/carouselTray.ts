@@ -155,10 +155,10 @@ export function buildTray(hooks: TrayHooks, unit: TrayUnit): HTMLElement | null 
     String(slides.length),
   );
 
-  // ↑ ↓ move the whole run past the neighbouring unit; disabled at the
+  // ↑ ↓ move the whole run (found by its first index, not its id: two runs can share one id) past the neighbouring unit; disabled at the
   // project's edge, and for a carousel with nothing in it yet.
   const wireMove = (button: HTMLButtonElement, delta: -1 | 1, control: "up" | "down") => {
-    const next = lead ? moveCarousel(gallery, unit.carouselId, delta) : null;
+    const next = lead ? moveCarousel(gallery, unit.indices[0], delta) : null;
     const text = s[delta < 0 ? "profile.carousel.moveUp" : "profile.carousel.moveDown"];
     named(button, text).title = text;
     button.disabled = next === null;
@@ -172,7 +172,7 @@ export function buildTray(hooks: TrayHooks, unit: TrayUnit): HTMLElement | null 
   named(dissolveBtn, s["profile.carousel.dissolve"]).title = s["profile.carousel.dissolve"];
   dissolveBtn.addEventListener("click", () => {
     if (!lead) return hooks.dissolveLocal(unit.carouselId);
-    hooks.commit(dissolve(gallery, unit.carouselId));
+    hooks.commit(dissolve(hooks.gallery(), unit.indices[0]));
   });
 
   // S M L: the carousel's one size, on the lead's record (carousels.ts).
@@ -214,7 +214,7 @@ export function buildTray(hooks: TrayHooks, unit: TrayUnit): HTMLElement | null 
     const target = projectSelect.value;
     if (!target || target === unit.projectId) return;
     if (!lead) return hooks.moveLocal(unit.carouselId, target);
-    hooks.commit(moveCarouselToProject(gallery, unit.carouselId, target), { carouselId: unit.carouselId, control: "project" });
+    hooks.commit(moveCarouselToProject(hooks.gallery(), unit.indices[0], target), { carouselId: unit.carouselId, control: "project" });
   });
 
   // THE TRAY: a thumbnail button per slide, the selected one pressed, then

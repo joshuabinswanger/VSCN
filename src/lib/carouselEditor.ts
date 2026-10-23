@@ -74,10 +74,14 @@ export function moveWork<T extends Item>(gallery: readonly T[], index: number, d
   return stepUnit(gallery, index, index + 1, delta);
 }
 
-/** The carousel as one unit steps over the neighbouring unit; null at its project's edge. */
-export function moveCarousel<T extends Item>(gallery: readonly T[], carouselId: string, delta: -1 | 1): T[] | null {
-  const at = gallery.findIndex((g) => g.carouselId === carouselId);
-  if (at === -1) return null;
+/**
+ * The carousel run holding gallery index `at` (its first slide, as the tray
+ * knows it) as one unit steps over the neighbouring unit; null at its
+ * project's edge. It takes a position, not the id: two runs can share one id
+ * (a split carousel), and the id would find the first of them every time.
+ */
+export function moveCarousel<T extends Item>(gallery: readonly T[], at: number, delta: -1 | 1): T[] | null {
+  if (!gallery[at]?.carouselId) return null;
   const [start, end] = unitAt(gallery, at);
   return stepUnit(gallery, start, end, delta);
 }
@@ -173,22 +177,26 @@ export function takeOut<T extends Item>(gallery: readonly T[], index: number): T
   return [...rest.slice(0, at), work, ...rest.slice(at)];
 }
 
-/** Clears the id from every slide, keeping their order. */
-export function dissolve<T extends Item>(gallery: readonly T[], carouselId: string): T[] {
-  return gallery.map((g) => {
-    if (g.carouselId !== carouselId) return g;
+/** Clears the id from every slide of the run holding index `at` (that run only), keeping their order. */
+export function dissolve<T extends Item>(gallery: readonly T[], at: number): T[] {
+  if (!gallery[at]?.carouselId) return gallery.slice();
+  const [start, end] = unitAt(gallery, at);
+  return gallery.map((g, k) => {
+    if (k < start || k >= end) return g;
     const next: T = { ...g };
     delete next.carouselId;
     return next;
   });
 }
 
-/** Sets the target project on every slide and moves the run, together, to the end of that project. */
-export function moveCarouselToProject<T extends Item>(gallery: readonly T[], carouselId: string, projectId: string): T[] {
-  const slides = gallery.filter((g) => g.carouselId === carouselId).map((g): T => ({ ...g, projectId }));
-  const rest = gallery.filter((g) => g.carouselId !== carouselId);
-  const at = endOfProject(rest, projectId);
-  return [...rest.slice(0, at), ...slides, ...rest.slice(at)];
+/** Sets the target project on every slide of the run holding index `at` and moves that run, together, to the end of that project. */
+export function moveCarouselToProject<T extends Item>(gallery: readonly T[], at: number, projectId: string): T[] {
+  if (!gallery[at]?.carouselId) return gallery.slice();
+  const [start, end] = unitAt(gallery, at);
+  const slides = gallery.slice(start, end).map((g): T => ({ ...g, projectId }));
+  const rest = [...gallery.slice(0, start), ...gallery.slice(end)];
+  const to = endOfProject(rest, projectId);
+  return [...rest.slice(0, to), ...slides, ...rest.slice(to)];
 }
 
 /**

@@ -60,11 +60,24 @@ test("moveWork: null at a project's edge", () => {
 
 test("moveCarousel: steps over a work or a carousel, null at the project's edge", () => {
   const gallery = [g("a", "P", "c1"), g("b", "P", "c1"), g("c", "P"), g("d", "P", "c2"), g("e", "P", "c2"), g("f", "Q")];
-  assert.equal(ids(moveCarousel(gallery, "c1", 1)), "cabdef");
-  assert.equal(ids(moveCarousel(gallery, "c2", -1)), "abdecf");
-  assert.equal(moveCarousel(gallery, "c1", -1), null);
-  assert.equal(moveCarousel(gallery, "c2", 1), null);
-  assert.equal(moveCarousel(gallery, "nope", 1), null);
+  assert.equal(ids(moveCarousel(gallery, 0, 1)), "cabdef");
+  assert.equal(ids(moveCarousel(gallery, 3, -1)), "abdecf");
+  assert.equal(moveCarousel(gallery, 0, -1), null);
+  assert.equal(moveCarousel(gallery, 3, 1), null);
+  assert.equal(moveCarousel(gallery, 2, 1), null);
+  assert.equal(moveCarousel(gallery, 99, 1), null);
+});
+
+test("two runs sharing one id: every action acts on the run it was given", () => {
+  // A split carousel: the same id on two separate runs, a lone work between.
+  const gallery = [g("a", "P", "c1"), g("b", "P", "c1"), g("m", "P"), g("c", "P", "c1"), g("d", "P", "c1"), g("z", "Q")];
+  assert.equal(ids(moveCarousel(gallery, 3, -1)), "abcdmz");
+  assert.equal(ids(moveCarousel(gallery, 0, 1)), "mabcdz");
+  const dissolved = dissolve(gallery, 3);
+  assert.deepEqual(dissolved.map((x) => x.carouselId), ["c1", "c1", undefined, undefined, undefined, undefined]);
+  const moved = moveCarouselToProject(gallery, 3, "Q");
+  assert.equal(ids(moved), "abmzcd");
+  assert.deepEqual(moved.map((x) => x.projectId), ["P", "P", "P", "Q", "Q", "Q"]);
 });
 
 test("joinCarousel: into a run at the end by default, at a position otherwise", () => {
@@ -127,7 +140,7 @@ test("takeOut: the only slide keeps its place; a work with no carousel changes n
 
 test("dissolve: clears the id from every slide and keeps the order", () => {
   const gallery = [g("a", "P"), g("b", "P", "c1"), g("c", "P", "c1"), g("d", "P", "c2")];
-  const out = dissolve(gallery, "c1");
+  const out = dissolve(gallery, 1);
   assert.equal(ids(out), "abcd");
   assert.deepEqual(out.map((x) => x.carouselId), [undefined, undefined, undefined, "c2"]);
   assert.equal("carouselId" in out[1], false);
@@ -135,7 +148,7 @@ test("dissolve: clears the id from every slide and keeps the order", () => {
 
 test("moveCarouselToProject: the run, together, to the end of the target project", () => {
   const gallery = [g("a", "P", "c1"), g("b", "P", "c1"), g("c", "P"), g("x", "Q"), g("y", "Q"), g("z", "R")];
-  const out = moveCarouselToProject(gallery, "c1", "Q");
+  const out = moveCarouselToProject(gallery, 0, "Q");
   assert.equal(ids(out), "cxyabz");
   assert.deepEqual(out.map((x) => x.projectId), ["P", "Q", "Q", "Q", "Q", "R"]);
   assert.deepEqual(out.slice(3, 5).map((x) => x.carouselId), ["c1", "c1"]);
@@ -189,12 +202,12 @@ test("none of the moves mutates its input", () => {
   const snapshot = structuredClone(gallery);
   moveWork(gallery, 2, -1);
   moveWork(gallery, 0, 1);
-  moveCarousel(gallery, "c1", 1);
+  moveCarousel(gallery, 0, 1);
   joinCarousel(gallery, 2, { carouselId: "c1", projectId: "P" }, 0);
   joinCarousel(gallery, 3, { carouselId: "new", projectId: "P" });
   takeOut(gallery, 0);
-  dissolve(gallery, "c1");
-  moveCarouselToProject(gallery, "c1", "Q");
+  dissolve(gallery, 0);
+  moveCarouselToProject(gallery, 0, "Q");
   handOffLead(gallery, 0);
   projectCarouselIds(gallery, "P", []);
   assert.deepEqual(gallery, snapshot);
