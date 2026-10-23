@@ -1161,7 +1161,8 @@ document.addEventListener("astro:page-load", () => {
       // A VIDEO INTO THIS PROJECT (2026-10-16). The Plus menu's general
       // "Add video" went with the general picker — every work is added to
       // a project — so each block opens the one video sheet for itself.
-      const headVideo = head?.querySelector<HTMLButtonElement>("[data-project-video]");
+      // In the block's + Add keys since 2026-10-23, not its deck: queried from the block.
+      const headVideo = el.querySelector<HTMLButtonElement>("[data-project-video]");
       if (headVideo) {
         named(headVideo, s["profile.project.addVideo"]).title = s["profile.project.addVideo"];
         // Its pressed state and the cap: updateGalleryControls.
@@ -1276,7 +1277,7 @@ document.addEventListener("astro:page-load", () => {
       });
 
       // CAROUSEL (2026-10-23): an empty carousel at the end of this block.
-      const headCarousel = head?.querySelector<HTMLButtonElement>("[data-project-carousel]");
+      const headCarousel = el.querySelector<HTMLButtonElement>("[data-project-carousel]");
       if (headCarousel) {
         named(headCarousel, s["profile.carousel.addTo"]).title = s["profile.carousel.addTo"];
         headCarousel.addEventListener("click", () => newCarousel(id));
