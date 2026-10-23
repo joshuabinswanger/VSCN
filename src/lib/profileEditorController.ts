@@ -1223,7 +1223,7 @@ document.addEventListener("astro:page-load", () => {
           {
             s,
             template: galleryCarouselTpl,
-            gallery,
+            gallery: () => gallery,
             projects: projectOptions,
             selected: carouselSelection,
             uploadFull: galleryFull(),

@@ -54,7 +54,8 @@ export type TrayFocus =
 export interface TrayHooks {
   s: Readonly<Record<string, string>>;
   template: HTMLTemplateElement;
-  gallery: readonly GalleryItem[];
+  /** A getter, like DragHooks': a handler writes to the gallery as it is at event time, not as it was at render. */
+  gallery: () => GalleryItem[];
   /** The projects a carousel can move to; the select hides while there is no second one. */
   projects: readonly { projectId: string; label: string }[];
   /** UI-only: which slide each carousel shows (carouselId → imageId). */
@@ -120,7 +121,8 @@ export function setTrayPickersDisabled(root: ParentNode, full: boolean): void {
 
 /** One carousel as the editor draws it: tools, label, tray, the selected slide's row, the text after. */
 export function buildTray(hooks: TrayHooks, unit: TrayUnit): HTMLElement | null {
-  const { s, gallery } = hooks;
+  const { s } = hooks;
+  const gallery = hooks.gallery();
   const el = hooks.template.content.firstElementChild?.cloneNode(true);
   if (!(el instanceof HTMLElement)) return null;
   const slides = unit.indices.map((i) => gallery[i]);
@@ -191,7 +193,7 @@ export function buildTray(hooks: TrayHooks, unit: TrayUnit): HTMLElement | null 
       named(b, text).title = text;
       b.addEventListener("click", () => {
         if (!lead) return;
-        const record = gallery[unit.indices[0]];
+        const record = hooks.gallery()[unit.indices[0]];
         if (key === "l") delete record.size;
         else record.size = key;
         paint();
@@ -286,7 +288,7 @@ export function buildTray(hooks: TrayHooks, unit: TrayUnit): HTMLElement | null 
     named(area, s[labelKey]);
     area.addEventListener("input", () => {
       if (!lead) return;
-      const record = gallery[unit.indices[0]];
+      const record = hooks.gallery()[unit.indices[0]];
       if (area.value.trim()) record[key] = area.value;
       else delete record[key];
       hooks.fitInline(area);
