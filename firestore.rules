@@ -141,7 +141,7 @@ service cloud.firestore {
                     && request.resource.data.get('posterSource', null) == resource.data.get('posterSource', null)
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                          'caption', 'captionDe', 'description', 'descriptionDe', 'descriptionShort',
-                         'link', 'siteLink', 'tags', 'projectId', 'inGallery', 'textAfter', 'textAfterDe',
+                         'link', 'siteLink', 'tags', 'projectId', 'carouselId', 'inGallery', 'textAfter', 'textAfterDe',
                          'size', 'status', 'updatedAt'])
                     && (request.resource.data.status == resource.data.status
                         || (resource.data.status == 'live' && request.resource.data.status == 'pendingDeletion'))
@@ -423,7 +423,7 @@ function validBioWordCount(bio) {
 // id IS the filename, and the owner IS the folder.
 function validImage(data, imageId) {
   return data.keys().hasOnly(['ownerUid', 'kind', 'storagePath', 'width', 'height', 'color',
-                              'caption', 'captionDe', 'description', 'descriptionDe', 'link', 'siteLink', 'tags', 'projectId', 'descriptionShort', 'origin',
+                              'caption', 'captionDe', 'description', 'descriptionDe', 'link', 'siteLink', 'tags', 'projectId', 'carouselId', 'descriptionShort', 'origin',
                               'provenance', 'media', 'embed', 'posterSource', 'inGallery', 'textAfter', 'textAfterDe',
                               'size', 'status', 'createdAt', 'updatedAt'])
     && data.ownerUid is string
@@ -466,6 +466,10 @@ function validImage(data, imageId) {
     // the READER's question (ownProjects in src/lib/projects.ts), exactly as
     // for a gallery id: a get() here would cost a read on every image save.
     && (!('projectId' in data) || (data.projectId is string && data.projectId.size() > 0 && data.projectId.size() <= 64))
+    // A carousel groups consecutive works of one project; the id is a plain
+    // label shared by its members. Same shape as projectId; the READER decides
+    // what a lone or scattered id means.
+    && (!('carouselId' in data) || (data.carouselId is string && data.carouselId.size() > 0 && data.carouselId.size() <= 64))
     && (!('descriptionShort' in data) || (data.descriptionShort is string && data.descriptionShort.size() <= 240))
     // THE MEMBER'S OWN "IN GALLERY" SWITCH (2026-10-16, Josh: "add an include
     // in gallery toggle for every image you add"). Only `false` is ever

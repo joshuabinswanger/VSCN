@@ -34,6 +34,7 @@ export interface GalleryRecord {
   tags?: string[];
   /** The member's project this work belongs to, if any (2026-09-23). Ownership is judged by ownProjects() in projects.ts. */
   projectId?: string;
+  carouselId?: string;
   /** The member's own switch: `false` keeps the work off /community (2026-10-16). Absent = included. */
   inGallery?: boolean;
   /** The text block after this work on the member page (2026-10-16), and its German counterpart. */
@@ -148,6 +149,8 @@ export function orderedGalleryItems(
     if (Array.isArray(rec.tags) && rec.tags.length) item.tags = rec.tags;
     const projectId = str(rec.projectId);
     if (projectId) item.projectId = projectId;
+    const carouselId = str(rec.carouselId)?.trim();
+    if (carouselId) item.carouselId = carouselId;
     if (rec.inGallery === false) item.inGallery = false;
     const textAfter = str(rec.textAfter);
     const textAfterDe = str(rec.textAfterDe);

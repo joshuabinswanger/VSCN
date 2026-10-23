@@ -900,6 +900,26 @@ test("images: the text block after a work is two optional strings of up to 2000"
   await assertFails(db.doc("images/img-1").update({ textAfter: ["a"], updatedAt: new Date() }));
 });
 
+test("images: carouselId is an optional string of 1 to 64, and may be cleared", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({ carouselId: "c-1", updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ carouselId: "x".repeat(64), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ carouselId: "x".repeat(65), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ carouselId: "", updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ carouselId: ["a"], updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ carouselId: deleteField(), updatedAt: new Date() }));
+});
+
+// Clients cannot create image records (the server allocates them), so
+// validImage's key list is exercised through an update to a record that
+// already carries the field: a key missing from hasOnly would reject this.
+test("images: a record that already carries a carouselId still passes validImage on a caption save", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live", carouselId: "c-1" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({ caption: "Still fine", updatedAt: new Date() }));
+});
+
 test("images: a work's page size is s or m, and absent means L", async () => {
   await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();

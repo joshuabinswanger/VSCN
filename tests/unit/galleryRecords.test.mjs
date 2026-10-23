@@ -89,6 +89,12 @@ test("MIGRATION WINDOW: an old-shape element is read by its imageId, and its wor
   assert.equal(item.width, 1200); // geometry is always the record's
 });
 
+test("carouselId rides the join from the record, trimmed, absent when blank", () => {
+  const [a, b] = orderedGalleryItems(UID, ["a", "b"], [record("a", { carouselId: " c-1 " }), record("b", { carouselId: "  " })], BUCKET);
+  assert.equal(a.carouselId, "c-1");
+  assert.equal("carouselId" in b, false);
+});
+
 test("tags ride the join from the record", () => {
   const [item] = orderedGalleryItems(UID, ["a"], [record("a", { tags: ["Botany", "Ink"] })], BUCKET);
   assert.deepEqual(item.tags, ["Botany", "Ink"]);

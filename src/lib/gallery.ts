@@ -207,6 +207,8 @@ export interface GalleryItem {
    * adjacent in it.
    */
   projectId?: string;
+  /** Consecutive works of one project sharing this id form a carousel (2026-10-23). 1 to 64, written at Save with the other words. */
+  carouselId?: string;
   /**
    * THE MEMBER'S "IN GALLERY" SWITCH (2026-10-16). `false` takes the work off
    * /community (Portfolios and Images) while the member's own page keeps it;
@@ -510,6 +512,7 @@ export async function saveGalleryRecords(items: readonly GalleryItem[]): Promise
         siteLink: item.siteLink,
         tags: item.tags,
         projectId: item.projectId,
+        carouselId: item.carouselId,
         inGallery: item.inGallery,
         textAfter: item.textAfter,
         textAfterDe: item.textAfterDe,

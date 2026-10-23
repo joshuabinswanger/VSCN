@@ -158,6 +158,7 @@ export async function updateImageText(
     siteLink?: string;
     tags?: string[];
     projectId?: string;
+    carouselId?: string;
     inGallery?: boolean;
     textAfter?: string;
     textAfterDe?: string;
@@ -176,6 +177,7 @@ export async function updateImageText(
     siteLink: text.siteLink ? text.siteLink : deleteField(),
     tags: text.tags && text.tags.length ? text.tags : deleteField(),
     projectId: text.projectId ? text.projectId : deleteField(),
+    carouselId: text.carouselId?.trim() ? text.carouselId.trim() : deleteField(),
     // Absent means "in the gallery", so only the exception is stored.
     inGallery: text.inGallery === false ? false : deleteField(),
     textAfter: text.textAfter?.trim() ? text.textAfter : deleteField(),

@@ -218,6 +218,7 @@ function works(
       ...(g.embed ? { embed: g.embed } : {}),
       ...(g.addedAt ? { addedAt: g.addedAt } : {}),
       ...(project ? { projectId: project.id } : {}),
+      ...(g.carouselId?.trim() ? { carouselId: g.carouselId.trim() } : {}),
       // A record that reached here without a precomputed score — an older
       // snapshot, or any caller that is not the build — gets its completeness
       // reading rather than a zero, which would sink it to the bottom of the

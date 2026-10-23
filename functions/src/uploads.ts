@@ -90,7 +90,7 @@ export async function reserveWork(
  * words between two pictures survive a swap of the first, and its S/M/L
  * size so the page keeps its shape.
  */
-export const WORK_TEXT_FIELDS = ["caption", "captionDe", "description", "descriptionDe", "link", "siteLink", "tags", "projectId", "inGallery", "textAfter", "textAfterDe", "size"] as const;
+export const WORK_TEXT_FIELDS = ["caption", "captionDe", "description", "descriptionDe", "link", "siteLink", "tags", "projectId", "carouselId", "inGallery", "textAfter", "textAfterDe", "size"] as const;
 
 /**
  * The words, plus what KIND of work it is. A video link keeps its video when
