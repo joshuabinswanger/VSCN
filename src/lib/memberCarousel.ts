@@ -21,12 +21,19 @@ function showCaption(figure: HTMLElement, i: string | undefined): void {
  * Starts every carousel under `root` and keeps each one's captions in step
  * with its frame. Safe to call again: a frame already running is skipped by
  * the engine, and its observer is only added once.
+ *
+ * The observers are released when the page is swapped out. A caller that
+ * destroys its frames itself, through destroyMemberCarousels(), passes
+ * `{ releaseOnLeave: false }`: the preview calls this on every keystroke, and
+ * each call would otherwise add a before-swap listener and a release closure
+ * that keeps the detached frames alive until the page leaves (2026-10-23
+ * review). Its frames sit inside the page and go with it.
  */
-export function initMemberCarousels(root: ParentNode = document): void {
+export function initMemberCarousels(root: ParentNode = document, { releaseOnLeave = true } = {}): void {
   initCarousels(root);
   const figures = Array.from(root.querySelectorAll<HTMLElement>(".mprof__carousel"));
   if (!figures.length) return;
-  const signal = pageLifetime();
+  const signal = releaseOnLeave ? pageLifetime() : null;
   for (const figure of figures) {
     const frame = figure.querySelector<HTMLElement>("[data-carousel]");
     if (!frame || frame.dataset.captionsFollow) continue;
@@ -35,7 +42,7 @@ export function initMemberCarousels(root: ParentNode = document): void {
     const observer = new MutationObserver(() => showCaption(figure, frame.dataset.index));
     observer.observe(frame, { attributes: true, attributeFilter: ["data-index"] });
     observers.set(frame, observer);
-    releaseWith(signal, () => stop(frame));
+    if (signal) releaseWith(signal, () => stop(frame));
   }
 }
 

@@ -510,7 +510,8 @@ export function renderProfilePreview(
       const visible = Array.from(works.querySelectorAll<HTMLElement>("[data-carousel]")).some(
         (frame) => frame.getBoundingClientRect().width > 0,
       );
-      if (visible) initMemberCarousels(works);
+      // Released by destroyMemberCarousels() above on the next render, not per page.
+      if (visible) initMemberCarousels(works, { releaseOnLeave: false });
       return visible;
     };
     if (!start()) requestAnimationFrame(start);
