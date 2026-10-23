@@ -8,6 +8,7 @@ import {
   dissolve,
   handOffLead,
   joinCarousel,
+  leaveCarousel,
   moveCarousel,
   moveCarouselToProject,
   moveWork,
@@ -197,4 +198,51 @@ test("none of the moves mutates its input", () => {
   handOffLead(gallery, 0);
   projectCarouselIds(gallery, "P", []);
   assert.deepEqual(gallery, snapshot);
+});
+
+test("takeOut of the lead: the carousel's settings stay behind on the next slide", () => {
+  const gallery = [g("a", "P", "c1", { size: "s", textAfter: "T" }), g("b", "P", "c1"), g("c", "P", "c1")];
+  const out = takeOut(gallery, 0);
+  assert.equal(ids(out), "bca");
+  assert.equal(out[0].size, "s");
+  assert.equal(out[0].textAfter, "T");
+  for (const k of ["carouselId", "size", "textAfter", "textAfterDe"]) assert.equal(k in out[2], false);
+});
+
+test("joinCarousel of a former lead at position 0: target keeps its settings, source's new lead has the source's", () => {
+  const gallery = [
+    g("a", "P", "c1", { size: "s", textAfter: "T" }),
+    g("b", "P", "c1"),
+    g("c", "P", "c2", { size: "l" }),
+    g("d", "P", "c2"),
+  ];
+  const out = normaliseLeads(joinCarousel(gallery, 0, { carouselId: "c2", projectId: "P" }, 0));
+  const by = Object.fromEntries(out.map((x) => [x.id, x]));
+  assert.equal(ids(out), "bacd");
+  // a is c2's new lead, so c2's own size now sits on it; nothing of c1's came along.
+  assert.equal(by.a.carouselId, "c2");
+  assert.equal(by.a.size, "l");
+  assert.equal("textAfter" in by.a, false);
+  assert.equal("size" in by.c, false);
+  assert.equal(by.b.size, "s");
+  assert.equal(by.b.textAfter, "T");
+});
+
+test("joinCarousel of a plain work carrying textAfter removes it", () => {
+  const gallery = [g("a", "P", "c1"), g("b", "P", "c1"), g("c", "P", undefined, { textAfter: "own" })];
+  const out = joinCarousel(gallery, 2, { carouselId: "c1", projectId: "P" });
+  assert.equal("textAfter" in out[2], false);
+});
+
+test("leaveCarousel on a plain work is unchanged and keeps its own fields", () => {
+  const gallery = [g("a", "P", undefined, { size: "s", textAfter: "T" })];
+  assert.deepEqual(leaveCarousel(gallery, 0), gallery);
+});
+
+test("handOffLead strips the leaving lead", () => {
+  const gallery = [g("a", "P", "c1", { size: "s", textAfterDe: "D" }), g("b", "P", "c1")];
+  const { gallery: out } = handOffLead(gallery, 0);
+  assert.equal(out[0].carouselId, "c1");
+  assert.equal("size" in out[0], false);
+  assert.equal("textAfterDe" in out[0], false);
 });

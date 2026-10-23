@@ -97,12 +97,45 @@ function endOfProject(gallery: readonly Item[], projectId: string): number {
   return gallery.length;
 }
 
+/** A copy of the work without the carousel's lead fields. */
+function withoutLeadFields<T extends Item>(work: T): T {
+  const next: T = { ...work };
+  for (const field of CAROUSEL_LEAD_FIELDS) delete next[field];
+  return next;
+}
+
+/**
+ * A slide leaves its run (position unchanged; the caller's move places it).
+ * When it is the run's first slide and another slide exists, that next slide
+ * (the heir) receives exactly carouselSettings(run), overwriting its own. The
+ * leaving work loses its carouselId AND size/textAfter/textAfterDe: those
+ * belong to the carousel and stay behind with it. A work that is in no
+ * carousel is returned unchanged; a plain work keeps its own fields.
+ * The controller must use this when a slide moves to another project through
+ * the project select.
+ */
+export function leaveCarousel<T extends Item>(gallery: readonly T[], index: number): T[] {
+  if (!gallery[index]?.carouselId) return gallery.slice();
+  const [start, end] = unitAt(gallery, index);
+  const out = gallery.slice();
+  if (index === start && end - start >= 2) {
+    out[index + 1] = { ...gallery[index + 1], ...carouselSettings(gallery.slice(start, end)) };
+  }
+  const left = withoutLeadFields(gallery[index]);
+  delete left.carouselId;
+  out[index] = left;
+  return out;
+}
+
 /**
  * Gives the work the carousel's id and project and moves it into the run at
- * `position` (default: the end). A carousel with no slides yet: the work keeps
- * its place when it is already in that project, otherwise it goes to the end of
- * that project. Arriving from another carousel it simply leaves that one (the
- * caller hands its lead off first).
+ * `position` (default: the end). A work arriving from another carousel leaves
+ * it first (leaveCarousel), and on arrival the joiner's own size/textAfter
+ * fields are deleted, so whatever the target run carries stays its settings
+ * (a joiner at position 0 becomes the lead with no fields; normaliseLeads then
+ * moves the run's settings onto it). A carousel with no slides yet: the work
+ * keeps its place when it is already in that project, otherwise it goes to the
+ * end of that project.
  */
 export function joinCarousel<T extends Item>(
   gallery: readonly T[],
@@ -110,8 +143,9 @@ export function joinCarousel<T extends Item>(
   target: { carouselId: string; projectId: string },
   position?: number,
 ): T[] {
-  const work: T = { ...gallery[index], carouselId: target.carouselId, projectId: target.projectId };
-  const rest = gallery.filter((_, k) => k !== index);
+  const left = leaveCarousel(gallery, index);
+  const work: T = { ...withoutLeadFields(left[index]), carouselId: target.carouselId, projectId: target.projectId };
+  const rest = left.filter((_, k) => k !== index);
   const slides = slideIndices(rest, target.carouselId, target.projectId);
   let at: number;
   if (slides.length === 0) {
@@ -124,15 +158,16 @@ export function joinCarousel<T extends Item>(
 }
 
 /**
- * Clears the work's carouselId and places it directly after the last remaining
- * slide of its run (it keeps its place when it was the only slide).
+ * Takes the work out of its carousel (leaveCarousel: the settings stay with
+ * the carousel) and places it directly after the last remaining slide of the
+ * run (it keeps its place when it was the only slide).
  */
 export function takeOut<T extends Item>(gallery: readonly T[], index: number): T[] {
   const { carouselId, projectId } = gallery[index];
   if (!carouselId) return gallery.slice();
-  const work: T = { ...gallery[index] };
-  delete work.carouselId;
-  const rest = gallery.filter((_, k) => k !== index);
+  const left = leaveCarousel(gallery, index);
+  const work = left[index];
+  const rest = left.filter((_, k) => k !== index);
   const slides = slideIndices(rest, carouselId, projectId);
   const at = slides.length ? slides[slides.length - 1] + 1 : index;
   return [...rest.slice(0, at), work, ...rest.slice(at)];
@@ -158,7 +193,8 @@ export function moveCarouselToProject<T extends Item>(gallery: readonly T[], car
 
 /**
  * When `index` is the first slide of a run with a second slide, copies the
- * carousel's lead fields onto that second slide. `heir` is its gallery index,
+ * carousel's lead fields onto that second slide (overwriting the heir's own)
+ * and strips them from the leaving lead, which keeps its carouselId. `heir` is its gallery index,
  * so the caller can write it to the record at once. Otherwise (not a lead, a
  * run of one, or nothing to hand over) the gallery comes back unchanged with no
  * heir.
@@ -172,6 +208,7 @@ export function handOffLead<T extends Item>(gallery: readonly T[], index: number
   if (CAROUSEL_LEAD_FIELDS.every((f) => settings[f] === undefined)) return unchanged;
   const out = gallery.slice();
   out[index + 1] = { ...gallery[index + 1], ...settings };
+  out[index] = withoutLeadFields(gallery[index]);
   return { gallery: out, heir: index + 1 };
 }
 
