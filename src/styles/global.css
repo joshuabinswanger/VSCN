@@ -247,13 +247,17 @@ main {
   animation: none;
 }
 
-/* THE PAPER GRAIN. STILL since 2026-10-19 (Josh: "still flicker there when
-   loading portfolios", with a screen recording in which nothing moved but
-   this): until then it jumped to a new offset every 70ms (page-noise,
-   0.35s in 5 steps, on a 140% box with a -20% inset and will-change), which
-   read as the whole page flickering. The texture stays, the motion is gone,
-   and with it the moving box and the promoted layer — exactly the viewport,
-   nothing for the compositor to keep. Multiply over everything. */
+/* THE PAPER GRAIN. Animated again since 2026-10-23, at film cadence.
+   The first animation (page-noise, 0.35s in steps(5) over ten intervals =
+   140 hops a second, a 140% box, -20% inset, will-change) read as the whole
+   page flickering on the iPhone and was stilled on 2026-10-19. This one
+   moves the TILE, not the box: background-position hops ten times a second
+   (steps(1) per interval, ten intervals in a second), so every hop is a
+   whole new frame of grain and nothing slides between them. The box stays
+   exactly the viewport and nothing is promoted — a fixed-size tiled fill
+   repainting at 10 fps is the whole cost. Longhands on purpose: the
+   minifier has folded the `animation` shorthand before. Still under
+   reduced motion. Multiply over everything. */
 body::before {
   content: "";
   position: fixed;
@@ -265,6 +269,33 @@ body::before {
   background-repeat: repeat;
   background-size: 180px 180px;
   mix-blend-mode: multiply;
+  animation-name: page-grain;
+  animation-duration: 1s;
+  animation-timing-function: steps(1, jump-end);
+  animation-iteration-count: infinite;
+}
+
+/* Ten offsets inside the 180px tile, each far from its neighbours so no two
+   consecutive frames share a visible pattern. With steps(1) the 100% frame
+   is never shown; it only closes the loop. */
+@keyframes page-grain {
+  0%   { background-position: 0 0; }
+  10%  { background-position: -47px 91px; }
+  20%  { background-position: 83px -29px; }
+  30%  { background-position: -121px -64px; }
+  40%  { background-position: 36px 142px; }
+  50%  { background-position: -88px 23px; }
+  60%  { background-position: 129px 97px; }
+  70%  { background-position: -15px -133px; }
+  80%  { background-position: 61px -76px; }
+  90%  { background-position: -154px 118px; }
+  100% { background-position: 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    animation-name: none;
+  }
 }
 
 main {
