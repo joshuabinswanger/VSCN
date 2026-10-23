@@ -143,48 +143,6 @@ const t = useTranslations(lang);
           row's identical buttons say which work they act on. */
       }
       <figure class="mprof__work gallery-item" role="group">
-        <div class="gallery-row-tools">
-          {
-            /* One segmented toolbar: move up, move down, replace, delete.
-              Names are in aria-label and the tooltip, set by renderGallery().
-              Up/down stay inside the row's container (moveImage in
-              projectEditor.ts). The select moves a work to another project
-              — never out of all of them since 2026-10-16, when "No project"
-              went — and is hidden while there is no second project. */
-          }
-          <div class="gallery-toolbar seg seg--actions" role="group" aria-label={t("profile.gallery.toolbar")}>
-            <button type="button" class="gallery-tbtn" data-gallery-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
-            <button type="button" class="gallery-tbtn" data-gallery-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
-            <button type="button" class="gallery-tbtn" data-gallery-replace><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button>
-            <button type="button" class="gallery-tbtn gallery-tbtn--danger" data-gallery-remove><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
-          </div>
-          {
-            /* S M L (2026-10-16, Josh: "select between S M L for the image
-              size width"): how wide the work stands on the page. Pressed
-              state, names and the px in the tooltip are written by
-              renderGallery from src/lib/workSize.ts. */
-          }
-          <div class="gallery-size seg" role="group" data-gallery-size>
-            <button type="button" data-size="s">S</button>
-            <button type="button" data-size="m">M</button>
-            <button type="button" data-size="l">L</button>
-          </div>
-          <div class="gallery-select-wrap" data-gallery-project-wrap hidden>
-            <select class="gallery-project-select" data-gallery-project></select>
-          </div>
-          <button type="button" class="gallery-tpill" data-gallery-auto-thumb hidden></button>
-          {
-            /* IN GALLERY (2026-10-16, Josh: "so we can control what gets
-              shown in the portfolio"). Checked = the work is on /community;
-              unchecked keeps it on the member's own page only. A real
-              checkbox inside the pill, so it is one tab stop and reads as a
-              checkbox. Stored on the record at Save. */
-          }
-          <label class="gallery-tpill gallery-include">
-            <input type="checkbox" data-gallery-include checked />
-            <span data-gallery-include-label></span>
-          </label>
-        </div>
         {
           /* A <div>, not the page's <a>: the editor's picture opens nothing.
             Both labels bottom left, stacked, so a video that is also the
@@ -265,6 +223,58 @@ const t = useTranslations(lang);
           </details>
         </figcaption>
         {
+          /* THE DECK (2026-10-23, Josh: "all the buttons for images etc move
+            below it in a field that is nicely organized and compact like a
+            keyboard for a synth"). Every control of the work sits UNDER its
+            words, in one soft panel of rounded keys, sorted into small
+            labelled groups: Size (S M L, from workSize.ts), Move (↑ ↓ — ← →
+            for a slide), Work (replace, delete). The second row holds the
+            long keys: the project select (hidden while there is no second
+            project), the carousel select (join one of this project's
+            carousels, start a new one, or leave — the way an existing work
+            gets into a carousel without dragging), the video's thumbnail
+            pill and In gallery (checked = on /community; a real checkbox,
+            stored at Save). Names and tooltips are written by
+            renderGallery(); the group labels are for the eye only. */
+        }
+        <div class="gallery-row-tools gallery-deck" role="group" aria-label={t("profile.gallery.toolbar")}>
+          <div class="gallery-deck__grp gallery-size" role="group" data-gallery-size>
+            <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.size")}</span>
+            <div class="gallery-keys">
+              <button type="button" class="gallery-key" data-size="s">S</button>
+              <button type="button" class="gallery-key" data-size="m">M</button>
+              <button type="button" class="gallery-key" data-size="l">L</button>
+            </div>
+          </div>
+          <div class="gallery-deck__grp">
+            <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.move")}</span>
+            <div class="gallery-keys">
+              <button type="button" class="gallery-key gallery-tbtn" data-gallery-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+              <button type="button" class="gallery-key gallery-tbtn" data-gallery-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
+            </div>
+          </div>
+          <div class="gallery-deck__grp">
+            <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.work")}</span>
+            <div class="gallery-keys">
+              <button type="button" class="gallery-key gallery-tbtn" data-gallery-replace><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button>
+              <button type="button" class="gallery-key gallery-tbtn gallery-tbtn--danger" data-gallery-remove><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+            </div>
+          </div>
+          <div class="gallery-deck__row" data-deck-row>
+            <div class="gallery-select-wrap gallery-key gallery-key--wide" data-gallery-project-wrap hidden>
+              <select class="gallery-project-select" data-gallery-project></select>
+            </div>
+            <div class="gallery-select-wrap gallery-key gallery-key--wide" data-gallery-carousel-wrap hidden>
+              <select class="gallery-project-select" data-gallery-carousel></select>
+            </div>
+            <button type="button" class="gallery-key gallery-key--wide" data-gallery-auto-thumb hidden></button>
+            <label class="gallery-key gallery-key--wide gallery-include">
+              <input type="checkbox" data-gallery-include checked />
+              <span data-gallery-include-label></span>
+            </label>
+          </div>
+        </div>
+        {
           /* THE TEXT BLOCK AFTER THE WORK (2026-10-16, Josh: "make it
             possible to add text block in between image in projects"). Typed
             where the page prints it, under the work and before the next one,
@@ -292,38 +302,52 @@ const t = useTranslations(lang);
       /* A CAROUSEL IN THE EDITOR (2026-10-23, documentation/20261023-work-
         carousels-design.md): one unit in its project's line, cloned by
         buildTray (src/lib/carouselTray.ts) for every run of works sharing a
-        carouselId, a run of one included. Its tools above (↑ ↓ move the run
-        as a whole, ✕ dissolves it, S/M/L and the project select are the
-        carousel's own), a muted "Carousel · N works" line, then the TRAY:
+        carouselId, a run of one included. A muted "Carousel · N works"
+        line, then the TRAY:
         a dashed strip of thumbnail buttons (built by buildTray) with the +
         slot at its end, which uploads straight into this carousel. Under
-        the tray stands the selected slide as an ordinary work row in slide
-        mode, and after it the carousel's text block (on the lead slide's
+        the tray, the carousel's DECK (2026-10-23, the works' soft panel of
+        keys: S/M/L, ↑ ↓ moving the run as a whole, ✕ dissolving it, the
+        project select); under that stands the selected slide as an
+        ordinary work row in slide mode, and after it the carousel's text block (on the lead slide's
         record, carousels.ts). */
     }
     <template data-gallery-tpl="carousel">
       <section class="gallery-carousel" data-carousel-block role="group">
-        <div class="gallery-row-tools gallery-carousel-tools">
-          <div class="gallery-toolbar seg seg--actions" role="group" aria-label={t("profile.carousel.toolbar")}>
-            <button type="button" class="gallery-tbtn" data-carousel-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
-            <button type="button" class="gallery-tbtn" data-carousel-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
-            <button type="button" class="gallery-tbtn gallery-tbtn--danger" data-carousel-dissolve><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
-          </div>
-          <div class="gallery-size seg" role="group" data-carousel-size>
-            <button type="button" data-size="s">S</button>
-            <button type="button" data-size="m">M</button>
-            <button type="button" data-size="l">L</button>
-          </div>
-          <div class="gallery-select-wrap" data-carousel-project-wrap hidden>
-            <select class="gallery-project-select" data-carousel-project></select>
-          </div>
-        </div>
         <p class="gallery-carousel-label t-label" data-carousel-label></p>
         <div class="gallery-tray" data-carousel-tray>
           <label class="gallery-tray-add" data-carousel-add>
             <svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
             <input type="file" class="picker-input" accept="image/jpeg,image/png,image/webp,image/avif" multiple data-carousel-files />
           </label>
+        </div>
+        <div class="gallery-row-tools gallery-carousel-tools gallery-deck" role="group" aria-label={t("profile.carousel.toolbar")}>
+          <div class="gallery-deck__grp gallery-size" role="group" data-carousel-size>
+            <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.size")}</span>
+            <div class="gallery-keys">
+              <button type="button" class="gallery-key" data-size="s">S</button>
+              <button type="button" class="gallery-key" data-size="m">M</button>
+              <button type="button" class="gallery-key" data-size="l">L</button>
+            </div>
+          </div>
+          <div class="gallery-deck__grp">
+            <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.move")}</span>
+            <div class="gallery-keys">
+              <button type="button" class="gallery-key gallery-tbtn" data-carousel-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+              <button type="button" class="gallery-key gallery-tbtn" data-carousel-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
+            </div>
+          </div>
+          <div class="gallery-deck__grp">
+            <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.carousel")}</span>
+            <div class="gallery-keys">
+              <button type="button" class="gallery-key gallery-tbtn gallery-tbtn--danger" data-carousel-dissolve><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+            </div>
+          </div>
+          <div class="gallery-deck__row">
+            <div class="gallery-select-wrap gallery-key gallery-key--wide" data-carousel-project-wrap hidden>
+              <select class="gallery-project-select" data-carousel-project></select>
+            </div>
+          </div>
         </div>
         <div class="gallery-carousel-slide" data-carousel-slide-row></div>
         <div class="mprof__text gallery-text gallery-carousel-text" data-carousel-text>
