@@ -15,6 +15,23 @@
 // hidden starting state can never show without this script to end it, and a
 // visitor without JavaScript sees the cards plainly.
 import { capped, splitWords, whenImageReady, whenIntroDone } from "./entrance.ts";
+import { cancelPixelReveal, pixelReveal } from "./pixelReveal.ts";
+
+/** The picture comes in by pixelReveal (2026-10-23), the rest by the CSS.
+ *  Like the CSS, the reveal waits out Layout's arrival hold, or it would play
+ *  behind the invisible page. */
+function enter(cell: HTMLElement): void {
+  if (cell.classList.contains("is-in")) return;
+  cell.classList.add("is-in");
+  const root = document.documentElement;
+  if (!root.hasAttribute("data-arrive-hold")) return pixelReveal(cell);
+  const mo = new MutationObserver(() => {
+    if (root.hasAttribute("data-arrive-hold")) return;
+    mo.disconnect();
+    if (cell.classList.contains("is-in")) pixelReveal(cell);
+  });
+  mo.observe(root, { attributes: true, attributeFilter: ["data-arrive-hold"] });
+}
 
 // THE WORDS TAKE AS LONG AS THEY ARE (2026-10-15, Josh: "make the text
 // animate in according to its length"): the name and the role are split into
@@ -72,7 +89,7 @@ export function enterNow(cell: HTMLElement): void {
   if (wanted.has(cell)) return;
   wanted.add(cell);
   void whenCardReady(cell).then(() => {
-    if (wanted.has(cell)) cell.classList.add("is-in");
+    if (wanted.has(cell)) enter(cell);
   });
 }
 
@@ -113,7 +130,7 @@ export function setPagesEntrance(on: boolean): void {
           if (wanted.has(cell)) continue;
           wanted.add(cell);
           void whenCardReady(cell).then(() => {
-            if (wanted.has(cell)) cell.classList.add("is-in");
+            if (wanted.has(cell)) enter(cell);
           });
         }
         // Gone, or all but gone — a card resting edge to edge with the one
@@ -122,6 +139,7 @@ export function setPagesEntrance(on: boolean): void {
           if (cell === stepping) continue;
           wanted.delete(cell);
           cell.classList.remove("is-in");
+          cancelPixelReveal(cell);
         }
       }
     },
