@@ -2548,10 +2548,16 @@ document.addEventListener("astro:page-load", () => {
     syncPreview();
     refitInline();
     if (!anchor) return;
-    const match = modePictures(mode).find((img) => img.getAttribute("src") === anchor.src && img.getBoundingClientRect().height > 0);
-    if (!match) return;
-    // Instant: a smooth scroll here would read as the page sliding away.
-    scrollerOf(match).scrollBy({ top: match.getBoundingClientRect().top - anchor.top, behavior: "instant" });
+    // In the frame AFTER refitInline's: the editor's text fields only take
+    // their height once shown, and every one above the picture moves it.
+    // Still before that frame paints, so nothing is seen to jump.
+    requestAnimationFrame(() => {
+      const match = modePictures(mode).find((img) => img.getAttribute("src") === anchor.src && img.getBoundingClientRect().height > 0);
+      if (!match) return;
+      // Instant: .page-wrap scrolls smoothly by default, and a glide here
+      // would read as the page sliding away.
+      scrollerOf(match).scrollBy({ top: match.getBoundingClientRect().top - anchor.top, behavior: "instant" });
+    });
   }
   function setWorksView(view: WorksView) {
     worksView = view;
