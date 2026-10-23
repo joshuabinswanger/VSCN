@@ -2700,19 +2700,27 @@ const searchIndex: SearchIndex = {
       --people-gap: 1rem;
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 2rem 2rem;
+      /* MORE AIR, AND A HEAD RULE (2026-10-23, Josh, on the first three-wide
+         cut: "more space and maybe some kind of visual hierarchy so I can
+         differentiate them. maybe more white space is enough"). The row
+         gap went from 2rem to 3.5rem and the column gap to 3rem, and each
+         card keeps the ledger's hairline — ABOVE it, as the phone rows have
+         — so three cards on a line read as three entries with a rule over
+         each, not as one line of text with two gaps in it. Still no box. */
+      gap: 3.5rem 3rem;
       align-items: start;
     }
 
     .cindex__row,
     .cindex__row:last-child {
       border: 0;
+      border-top: 1px solid var(--color-border);
       min-width: 0;
     }
 
     .cindex__line :global(.pdisc__toggle) {
       gap: 0 var(--people-gap);
-      padding: 0.5rem 0.25rem 0.5rem 0;
+      padding: 1.1rem 0.25rem 0.5rem 0;
     }
 
     /* No hover tint: a card has no box to tint, and a tinted rectangle
