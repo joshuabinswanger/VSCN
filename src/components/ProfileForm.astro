@@ -173,58 +173,82 @@ const t = useTranslations(lang);
         <span>{t("profile.project.new")}</span>
       </button>
     </div>
+    {
+      /* TWO ROWS (2026-10-23, Josh: "Bottom Buttons bigger 2 row 1 row add
+        and save the other row the other settings. they should be able to
+        be hidden on mobile"). The first row is the two actions, big and
+        labelled: + Project (the Plus menu) and Save. The second row is the
+        Works tab's three switches — Preview | Edit, Profile | Card, EN | DE
+        — at the switches' own size. On a phone a handle above them folds
+        the bar down to itself and back; the choice is remembered on the
+        device (editorBar.ts bindBarFold). */
+    }
     <div class="ebar" id="ebar">
       <div class="ebar__in" id="works-bar" role="toolbar" aria-label={t("profile.works.bar")}>
-        <div class="ebar__group" data-ebar-works hidden>
-          <div class="seg ebar__view" role="group" aria-label={t("profile.works.view")}>
-            <button type="button" data-works-view="profile" aria-pressed="true">{t("profile.works.view.profile")}</button>
-            <button type="button" data-works-view="card" aria-pressed="false">{t("profile.works.view.card")}</button>
+        <button
+          type="button"
+          class="ebar__handle"
+          id="ebar-handle"
+          aria-expanded="true"
+          aria-controls="ebar-rows"
+          data-label-hide={t("profile.works.bar.hide")}
+          data-label-show={t("profile.works.bar.show")}
+          aria-label={t("profile.works.bar.hide")}
+          title={t("profile.works.bar.hide")}
+        >
+          <svg class="ebar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="ebar__rows" id="ebar-rows">
+          <div class="ebar__row ebar__row--main">
+            <button
+              type="button"
+              id="ebar-add"
+              class="ebar__plus"
+              aria-haspopup="menu"
+              aria-expanded="false"
+              aria-controls="ebar-add-menu"
+              aria-label={t("profile.works.add")}
+              title={t("profile.works.add")}
+              data-ebar-works
+              data-ebar-plus
+              hidden
+            >
+              <svg class="ebar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              <span class="ebar__label">{t("profile.works.addShort")}</span>
+            </button>
+            {
+              /* SAVE, a black pill with the disk and its word (2026-10-23; an
+                icon alone from 2026-10-15). Its full words are its accessible
+                name and its tooltip. While saving, the controller swaps the
+                name and the CSS swaps the disk for the spinning ring. */
+            }
+            <Button
+              id="save-button"
+              type="submit"
+              class="btn-solid profile-save-button"
+              aria-label={t("profile.save")}
+              title={t("profile.save")}
+              ><svg class="ebar-icon profile-save-icon" viewBox="0 0 24 24" aria-hidden="true"
+                ><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"
+                ></path><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"></path><path d="M7 3v4a1 1 0 0 0 1 1h7"
+                ></path></svg
+              ><span class="ebar__label">{t("profile.saveShort")}</span></Button
+            >
           </div>
-          <div class="seg ebar__lang" role="group" aria-label={t("profile.works.lang")}>
-            <button type="button" data-works-lang="en" aria-pressed={lang === "en" ? "true" : "false"} title={t("profile.gallery.lang.en")}>EN</button>
-            <button type="button" data-works-lang="de" aria-pressed={lang === "de" ? "true" : "false"} title={t("profile.gallery.lang.de")}>DE</button>
+          <div class="ebar__row ebar__group" data-ebar-works hidden>
+            <div class="seg ebar__mode" role="group" aria-label={t("profile.works.mode")} data-works-mode-seg data-ebar-works hidden>
+              <button type="button" data-works-mode="preview" aria-pressed="false">{t("profile.works.mode.preview")}</button>
+              <button type="button" data-works-mode="edit" aria-pressed="true">{t("profile.works.mode.edit")}</button>
+            </div>
+            <div class="seg ebar__view" role="group" aria-label={t("profile.works.view")}>
+              <button type="button" data-works-view="profile" aria-pressed="true">{t("profile.works.view.profile")}</button>
+              <button type="button" data-works-view="card" aria-pressed="false">{t("profile.works.view.card")}</button>
+            </div>
+            <div class="seg ebar__lang" role="group" aria-label={t("profile.works.lang")}>
+              <button type="button" data-works-lang="en" aria-pressed={lang === "en" ? "true" : "false"} title={t("profile.gallery.lang.en")}>EN</button>
+              <button type="button" data-works-lang="de" aria-pressed={lang === "de" ? "true" : "false"} title={t("profile.gallery.lang.de")}>DE</button>
+            </div>
           </div>
-        </div>
-        <div class="ebar__group">
-          <div class="seg ebar__mode" role="group" aria-label={t("profile.works.mode")} data-works-mode-seg data-ebar-works hidden>
-            <button type="button" data-works-mode="preview" aria-pressed="false">{t("profile.works.mode.preview")}</button>
-            <button type="button" data-works-mode="edit" aria-pressed="true">{t("profile.works.mode.edit")}</button>
-          </div>
-          <button
-            type="button"
-            id="ebar-add"
-            class="ebar__plus"
-            aria-haspopup="menu"
-            aria-expanded="false"
-            aria-controls="ebar-add-menu"
-            aria-label={t("profile.works.add")}
-            title={t("profile.works.add")}
-            data-ebar-works
-            data-ebar-plus
-            hidden
-          >
-            <svg class="ebar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-          </button>
-          {
-            /* SAVE IS AN ICON (2026-10-15, Josh: "make save changes into a
-              small icon for save and then we have space for the profile/Card
-              and EnDe switch in the bottom row"). A black disc with a floppy
-              disk; its words are its accessible name and its tooltip. While
-              saving, the controller swaps the name and the CSS swaps the disk
-              for the spinning ring. */
-          }
-          <Button
-            id="save-button"
-            type="submit"
-            class="btn-solid profile-save-button"
-            aria-label={t("profile.save")}
-            title={t("profile.save")}
-            ><svg class="ebar-icon profile-save-icon" viewBox="0 0 24 24" aria-hidden="true"
-              ><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"
-              ></path><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"></path><path d="M7 3v4a1 1 0 0 0 1 1h7"
-              ></path></svg
-            ></Button
-          >
         </div>
       </div>
     </div>

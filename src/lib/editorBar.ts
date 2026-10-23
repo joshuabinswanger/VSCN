@@ -150,3 +150,42 @@ export function bindMenuButton(
 
   return { close };
 }
+
+/**
+ * THE BAR FOLDS AWAY ON A PHONE (2026-10-23, Josh: "they should be able to be
+ * hidden on mobile"). The handle above the bar's two rows toggles `is-folded`
+ * on the bar; the stylesheet hides the rows only at the phone breakpoint, so
+ * a desktop never shows the handle or a folded bar. The bar's measured size
+ * (followContentSize) animates the fold for free. Remembered on the device:
+ * a member who folds it away does not want it back on every visit.
+ */
+export function bindBarFold(handle: HTMLButtonElement, bar: HTMLElement, signal: AbortSignal): void {
+  const KEY = "vscn-ebar-folded";
+  const apply = (folded: boolean) => {
+    bar.classList.toggle("is-folded", folded);
+    handle.setAttribute("aria-expanded", String(!folded));
+    const label = (folded ? handle.dataset.labelShow : handle.dataset.labelHide) ?? "";
+    handle.setAttribute("aria-label", label);
+    handle.title = label;
+  };
+  let folded = false;
+  try {
+    folded = localStorage.getItem(KEY) === "1";
+  } catch {
+    /* storage blocked: the bar starts open */
+  }
+  apply(folded);
+  handle.addEventListener(
+    "click",
+    () => {
+      folded = !folded;
+      apply(folded);
+      try {
+        localStorage.setItem(KEY, folded ? "1" : "0");
+      } catch {
+        /* the choice lasts the page */
+      }
+    },
+    { signal },
+  );
+}

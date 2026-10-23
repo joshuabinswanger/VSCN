@@ -368,80 +368,209 @@
   }
 
   /* A row is the page's figure (.mprof__work, profile.css): the picture at
-     the page's size, the words under it at the picture's width.
-     THE TOOLS STAND ABOVE THE PICTURE (2026-10-18, Josh: "controls should
-     actually be above the image and project etc. so it is visually better
-     separated"). From 2026-10-13 they floated in the picture's top edge and
-     read as part of it; now they are a strip of their own in the figure's
-     flow, on the frame's own width and centre (the same --size-w / --work-ar
-     cap), never narrower than the tools need, so an S picture does not stack
-     them three rows deep. The project select leads, ↑ ↓ ↻ ✕ trail. */
+     the page's size, the words under it at the picture's width, and under
+     the words the row's DECK of keys (below). */
   .gallery-item {
     position: relative;
   }
 
-  /* BOXES AROUND THE BLOCKS (2026-10-19, Josh: "add boxes and more white
-     space around blocks in the editor"). A project block is framed in the
-     site's border, 1.5px like a picture's frame, with --block-pad of air
-     inside; each work row (a pending upload too) sits in a lighter 1px box
-     of its own inside it, with --row-pad of air, and the text block after
-     the work stays in that box. The editor only: preview shows the page's
-     own works, which have no frame. The row is therefore NARROWER than the
-     page's figure by the two paddings and borders — on purpose now; the
-     outline-not-border note on .gallery-project below predates this. */
-  .gallery-item {
+  /* SOFT CARDS (2026-10-23, Josh: "make the ui element softer, we go after
+     a softer look now with the pills"). The hairline boxes of 2026-10-19
+     ("add boxes and more white space around blocks") became soft surfaces:
+     a project block is a faint tinted panel, and each work row, pending
+     upload and carousel inside it a lighter card on it, with no border at
+     all. Same air as the boxes had (--block-pad, --row-pad). The corners
+     beat the square reset in global.css by specificity under its
+     !important, as the people cards do. The editor only: preview shows the
+     page's own works, which stay square and frameless. */
+  .gallery-item,
+  .gallery-carousel {
     --row-pad: 1.25rem;
     padding: var(--row-pad);
-    border: 1px solid var(--color-border);
+    border: 0;
+    background: color-mix(in srgb, #fff 78%, var(--color-bg));
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.05),
+      0 0 0 0.5px rgb(0 0 0 / 0.05);
+    border-radius: var(--radius-soft-card) !important;
   }
 
-  .gallery-row-tools {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-    max-width: calc(70vh * var(--work-ar));
-    max-width: max(min(var(--size-w, 100%), calc(70vh * var(--work-ar))), 26rem);
-    margin: 0 auto 0.75rem;
-  }
-
-  /* The strip itself trails; the select and the video's thumbnail pill lead. */
-  .gallery-row-tools > .gallery-toolbar {
-    order: 1;
-    margin-inline-start: auto;
-  }
-
-  .gallery-row-tools > :is(.gallery-toolbar, .gallery-size) {
-    background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
-  }
-
-  /* A PROJECT'S TOOLS, ABOVE ITS TITLE (2026-10-18, same request; level
-     with the title since 2026-10-13 until then). One segmented strip (↑ ↓,
-     Add images, Add video, Delete — ProjectEditor.astro) at the block's
-     right edge, on a line of its own, so the title runs the full width. */
   .gallery-project {
     --block-pad: 1.5rem;
     position: relative;
     padding: var(--block-pad);
-    border: 1.5px solid var(--color-border);
+    border: 0;
+    background: color-mix(in srgb, var(--color-dark) 3.5%, var(--color-bg));
+    border-radius: var(--radius-soft-block) !important;
+  }
+
+  .works-stage {
+    --radius-soft-card: 1.1rem;
+    --radius-soft-block: 1.6rem;
+    --radius-key: 0.65rem;
   }
 
   @media (--bp-mobile) {
     .gallery-project {
-      --block-pad: 1rem;
+      --block-pad: 0.75rem;
     }
 
-    .gallery-item {
+    .gallery-item,
+    .gallery-carousel {
       --row-pad: 0.85rem;
     }
   }
 
+  /* THE DECK (2026-10-23, Josh: "all the buttons for images etc move below
+     it in a field that is nicely organized and compact like a keyboard for a
+     synth"). One soft panel under the words, at the caption's width, never
+     narrower than its keys need: small labelled groups of equal keys side
+     by side (Size, Move, Work — or Move, Add, Project on a project, Size,
+     Move, Carousel on a carousel), and a second row of long keys (the
+     selects, In gallery, Take out) under them. A KEY is a soft rounded
+     square, white on the panel, pressed = dark — a synth's buttons, not the
+     site's capsules (beating the CONTROLS rule's !important by specificity,
+     as the cards above do). */
+  .gallery-deck {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px 14px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: max(min(var(--size-w, 100%), calc(70vh * var(--work-ar, 1))), 22rem);
+    margin: 0.9rem auto 0;
+    padding: 8px 10px 10px;
+    background: color-mix(in srgb, var(--color-dark) 5%, var(--color-bg));
+    border-radius: var(--radius-soft-card) !important;
+  }
+
   .gallery-project-tools {
-    justify-content: flex-end;
     max-width: none;
-    margin: 0 0 0.75rem;
-    flex-wrap: nowrap;
+    margin: 1rem 0 1.25rem;
+  }
+
+  .gallery-carousel-tools {
+    max-width: none;
+    margin: 0.75rem 0 0;
+  }
+
+  .gallery-deck__grp {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .gallery-deck__grp[hidden] {
+    display: none;
+  }
+
+  .gallery-deck__lbl {
+    padding-inline-start: 2px;
+    color: var(--color-muted);
+  }
+
+  .gallery-keys {
+    display: flex;
+    gap: 4px;
+  }
+
+  .gallery-deck .gallery-key {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-sizing: border-box;
+    min-width: 38px;
+    height: 38px;
+    margin: 0;
+    padding: 0 10px;
+    border: 0;
+    background: #fff;
+    color: var(--color-dark);
+    font: inherit;
+    font-size: var(--fs-72);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    box-shadow:
+      0 1px 0 rgb(0 0 0 / 0.08),
+      0 0 0 0.5px rgb(0 0 0 / 0.07);
+    border-radius: var(--radius-key) !important;
+    cursor: pointer;
+    transition:
+      background-color 0.15s,
+      color 0.15s,
+      box-shadow 0.15s,
+      transform 0.1s;
+  }
+
+  .gallery-deck .gallery-key:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-dark) 5%, #fff);
+  }
+
+  .gallery-deck .gallery-key:active:not(:disabled) {
+    transform: translateY(1px);
+    box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.08);
+  }
+
+  .gallery-deck .gallery-key[aria-pressed="true"] {
+    background: var(--color-dark);
+    color: #fff;
+  }
+
+  .gallery-deck .gallery-key:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .gallery-deck .gallery-key:focus-visible,
+  .gallery-deck .gallery-key:has(:focus-visible) {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
+  .gallery-deck .gallery-tbtn--danger:hover:not(:disabled) {
+    color: var(--color-error);
+  }
+
+  .gallery-deck .gallery-key[hidden] {
+    display: none;
+  }
+
+  /* The second row: long keys, sharing the deck's width. */
+  .gallery-deck__row {
+    display: flex;
+    flex-wrap: wrap;
+    flex-basis: 100%;
+    gap: 6px;
+  }
+
+  .gallery-deck__row:not(:has(> :not([hidden]))) {
+    display: none;
+  }
+
+  .gallery-deck .gallery-key--wide {
+    flex: 1 1 9rem;
+    justify-content: flex-start;
+    padding: 0 12px;
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+
+  /* A select as a long key: the key is the wrapper (its chevron is the
+     wrapper's ::after), the select fills it without a frame of its own. */
+  .gallery-deck .gallery-select-wrap.gallery-key {
+    padding: 0;
+  }
+
+  .gallery-deck .gallery-select-wrap > .gallery-project-select {
+    height: 100%;
+    padding-inline: 12px 28px;
+    border: 0;
+    background: transparent;
+    border-radius: inherit !important;
   }
 
   /* THE INLINE FIELDS. A work's title and description, a project's title
@@ -643,15 +772,15 @@
      so the thumbnail's own rule says 0 with !important and wins on
      specificity); the .seg and the pills keep their shapes. */
   .gallery-carousel {
-    --row-pad: 1.25rem;
     --tray-thumb: 72px;
-    padding: var(--row-pad);
-    border: 1px solid var(--color-border);
   }
 
-  .gallery-carousel-tools {
-    max-width: none;
-    margin: 0 0 0.75rem;
+  /* The selected slide is a work row INSIDE the carousel's card: no second
+     card around it, the carousel's own is enough. */
+  .gallery-carousel-slide > .gallery-item {
+    padding: 0;
+    background: none;
+    box-shadow: none;
   }
 
   .gallery-carousel-label {
@@ -1472,32 +1601,37 @@
   }
 
   /* Room at the end of every tab, so the last field is never under the bar:
-     its height, its gap, and a little air. Two rows on a phone's Works tab. */
+     its height, its gap, and a little air. The Works tab's bar has two rows. */
   .profile-form {
     padding-bottom: 6rem;
   }
 
+  .profile-form.is-works {
+    padding-bottom: 10rem;
+  }
+
   @media (--bp-mobile) {
     .profile-form.is-works {
-      padding-bottom: 10rem;
+      padding-bottom: 11rem;
     }
   }
 
   /* THE BAR ITSELF: paper, a hairline and a soft shadow, so it reads as one
-     floating object over pictures and text alike. Its corner is 22px and
-     not a capsule on purpose: 6px of padding around 32px capsules makes a
-     44px bar whose radius is CONCENTRIC with theirs (HIG toolbars › Best
-     practices: "ensure that its corner radius is also concentric with the
-     bar's corners"), and when a phone wraps it to two rows the same 22px
-     stays concentric where a capsule's would not. Width and height are set
-     by editorBar.ts and transition; the clip hides the content's new edge
-     while the box catches up. */
+     floating object over pictures and text alike. TWO ROWS since 2026-10-23
+     (Josh: "Bottom Buttons bigger 2 row 1 row add and save the other row the
+     other settings"): + Project and Save as two big labelled pills side by
+     side, and under them the Works tab's switches. Its corner is concentric
+     with the 44px pills in 8px of padding. Width and height are set by
+     editorBar.ts and transition; the clip hides the content's new edge while
+     the box catches up. Since the same day the bar keeps this one shape on a
+     phone too (it came apart into floating controls from 2026-10-13), with
+     a handle above it that folds it away. */
   .ebar {
     box-sizing: content-box;
-    padding: 6px;
+    padding: 8px;
     background: var(--color-bg);
     border: 1px solid var(--color-border);
-    border-radius: 22px !important;
+    border-radius: 30px !important;
     box-shadow:
       0 8px 28px rgb(0 0 0 / 0.1),
       0 1px 3px rgb(0 0 0 / 0.06);
@@ -1518,21 +1652,29 @@
 
   /* max-content, capped by the window: its size never depends on the bar's,
      which is what lets the bar be sized FROM it. 2 x 16px of window margin
-     and the bar's own 2 x 7px. */
+     and the bar's own 2 x 9px. */
   .ebar__in {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    width: max-content;
+    max-width: calc(100vw - 50px);
+  }
+
+  .ebar__rows {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .ebar__row {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
-    gap: 6px 10px;
-    width: max-content;
-    max-width: calc(100vw - 46px);
-  }
-
-  .ebar__group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    gap: 6px;
   }
 
   .ebar__group[hidden],
@@ -1540,19 +1682,28 @@
     display: none;
   }
 
-  /* In the bar every control is 32px tall: the segmented tracks (28px
-     segments in 2px of track), the Plus and Save. */
   .ebar .seg > button {
-    min-height: 28px;
+    min-height: 30px;
     padding-inline: 12px;
   }
 
+  /* THE TWO ACTIONS: 44px pills sharing the row equally, icon and word. */
+  .ebar__plus,
+  .ebar .profile-save-button {
+    display: inline-flex;
+    flex: 1 1 0;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 8.5rem;
+    height: 44px;
+    min-height: 0;
+    padding: 0 22px;
+    font: inherit;
+    font-weight: 600;
+  }
+
   .ebar__plus {
-    display: grid;
-    place-items: center;
-    width: 32px;
-    height: 32px;
-    padding: 0;
     background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
     color: var(--color-dark);
     border: 0;
@@ -1571,8 +1722,8 @@
   }
 
   .ebar__plus .ebar-icon {
-    width: 16px;
-    height: 16px;
+    width: 17px;
+    height: 17px;
     stroke-width: 2.2;
     transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1);
   }
@@ -1582,24 +1733,13 @@
     transform: rotate(45deg);
   }
 
-  /* Save is a black disc with the disk icon (2026-10-15), the same 32px as
-     the Plus; its words are its aria-label and tooltip (ProfileForm.astro). */
-  .ebar .profile-save-button {
-    display: grid;
-    place-items: center;
-    width: 32px;
-    height: 32px;
-    min-height: 0;
-    padding: 0;
-  }
-
   .ebar .profile-save-icon {
-    width: 16px;
-    height: 16px;
+    width: 17px;
+    height: 17px;
     stroke-width: 2;
   }
 
-  /* Saving: the ring takes the disk's place, centred, with no gap after it. */
+  /* Saving: the ring takes the disk's place. */
   .profile-save-button.is-saving .profile-save-icon {
     display: none;
   }
@@ -1607,140 +1747,63 @@
     margin-right: 0;
   }
 
-  /* ── ON A PHONE THE BAR COMES APART (2026-10-13, Josh: "the buttons on
-     mobile should be seperated and layed out better. atm there is a big bar
-     but either split it or float them. you make a design decision") ──
-     Floated. The slab became five controls standing on their own over the
-     page, each with its own shadow, in ONE row across the window between
-     the 16px gutters (2026-10-15, Josh: "preview edit is not on the same
-     bottom row… make everything smaller to fit if necessary for iphone 15"):
-        Profile|Card  EN|DE  Preview|Edit  (+) (S)
-     Save has been an icon since the same day, which is what makes room.
-     Save keeps the bottom-right corner on every tab, where the thumb is. The
-     other controls are Works-only, so elsewhere Save stands alone there.
-     Controls are 38px ("can be bigger…", seen on his iPhone 15 the same
-     day), and the three switches STRETCH to fill the row: their segments
-     share the width left after the Plus and Save, so English and German
-     both end flush at the right gutter. The segments' own padding is only
-     4px — the floor that lets German fit (measured on 393pt); the stretch
-     is what makes them wide. Narrower than that (an SE at 375pt in German)
-     the row may still wrap, Save last. The bar's
-     paper, hairline, clip and measured size are switched off; `!important`
-     beats the inline size editorBar.ts keeps writing, so nothing animates
-     here — each control fades in on its own when it appears instead. */
+  /* THE HANDLE: a phone's only (below). */
+  .ebar__handle {
+    display: none;
+  }
+
   @media (--bp-mobile) {
-    .form-footer {
-      left: 16px;
-      right: 16px;
-      width: auto;
-      transform: none;
-      align-items: stretch;
-    }
-
-    .ebar {
-      width: auto !important;
-      height: auto !important;
-      padding: 0;
-      background: none;
-      border: 0;
-      box-shadow: none;
-      overflow: visible;
-    }
-
-    /* One wrapping flex line; the groups dissolve so their controls can be
-       ordered across them. */
     .ebar__in {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 4px;
-      width: auto;
-      max-width: none;
-    }
-
-    .ebar__group {
-      display: contents;
-    }
-
-    .ebar__group[hidden] {
-      display: none;
-    }
-
-    .ebar__view {
-      order: 1;
-    }
-    .ebar__lang {
-      order: 2;
-    }
-    .ebar__mode {
-      order: 3;
-    }
-    .ebar__plus {
-      order: 4;
-    }
-    /* The Plus pushes itself and Save to the right edge as a pair; with no
-       Plus (any tab but Works) Save pushes itself. */
-    .ebar .profile-save-button {
-      order: 5;
-    }
-    .ebar__plus[hidden] ~ .profile-save-button {
-      margin-inline-start: auto;
-    }
-
-    .ebar .seg,
-    .ebar__plus,
-    .ebar .profile-save-button {
-      box-shadow:
-        0 6px 20px rgb(0 0 0 / 0.14),
-        0 1px 3px rgb(0 0 0 / 0.1);
-      animation: ebar-float-in 0.28s cubic-bezier(0.25, 1, 0.5, 1);
+      width: calc(100vw - 50px);
     }
 
     .ebar .seg {
       flex: 1 1 auto;
-      padding: 3px;
-      background: color-mix(in srgb, var(--color-dark) 5%, white);
     }
 
     .ebar .seg > button {
       flex: 1 1 auto;
-      min-height: 32px;
-      padding-inline: 4px;
+      min-height: 34px;
+      padding-inline: 6px;
     }
 
-    .ebar__plus {
-      flex: none;
-      width: 38px;
-      height: 38px;
-      background: white;
+    .ebar__handle {
+      display: grid;
+      place-items: center;
+      align-self: center;
+      width: 48px;
+      height: 22px;
+      padding: 0;
+      border: 0;
+      background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
+      color: var(--color-muted);
+      cursor: pointer;
     }
 
-    .ebar__plus:hover,
-    .ebar__plus[aria-expanded="true"] {
-      background: color-mix(in srgb, var(--color-dark) 7%, white);
+    .ebar__handle .ebar-icon {
+      width: 16px;
+      height: 16px;
+      stroke-width: 2.2;
+      transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1);
     }
 
-    .ebar .profile-save-button {
-      flex: none;
-      width: 38px;
-      height: 38px;
+    .ebar__handle:focus-visible {
+      outline: 2px solid var(--color-dark);
+      outline-offset: 2px;
     }
 
-    .ebar .profile-save-icon {
-      width: 18px;
-      height: 18px;
+    /* Folded: the handle alone, pointing up; the measured size shrinks the
+       bar round it. */
+    .ebar.is-folded .ebar__rows {
+      display: none;
     }
-  }
 
-  /* Nested for the reason given on .cwork's hover rule
-     (CommunityWorkCard.astro): no `and` onto a breakpoint alias. */
-  @media (--bp-mobile) {
-    @media (prefers-reduced-motion: reduce) {
-      .ebar .seg,
-      .ebar__plus,
-      .ebar .profile-save-button {
-        animation: none;
-      }
+    .ebar.is-folded .ebar__in {
+      width: max-content;
+    }
+
+    .ebar.is-folded .ebar__handle .ebar-icon {
+      transform: rotate(180deg);
     }
   }
 

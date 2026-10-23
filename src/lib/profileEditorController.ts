@@ -113,7 +113,7 @@ import {
   type TrayFocus,
 } from "./carouselTray.ts";
 import { updateCarouselLead } from "./images.ts";
-import { bindMenuButton, followContentSize } from "./editorBar.ts";
+import { bindMenuButton, followContentSize, bindBarFold } from "./editorBar.ts";
 import { lightboxStringsFrom } from "./lightbox.ts";
 import type { Lang } from "../i18n/utils";
 import "photoswipe/style.css";
@@ -608,7 +608,7 @@ document.addEventListener("astro:page-load", () => {
    * on, and drops focus to the document — so moving an image two places
    * would take a fresh click each time.
    */
-  type RowControl = "up" | "down" | "project" | "takeOut";
+  type RowControl = "up" | "down" | "project" | "takeOut" | "carousel";
   type FocusHint =
     | { imageId: string; control: RowControl }
     | { projectId: string; field?: string; control?: "up" | "down" | "carousel" }
@@ -923,12 +923,12 @@ document.addEventListener("astro:page-load", () => {
           if (slide) {
             const takeOutBtn = document.createElement("button");
             takeOutBtn.type = "button";
-            takeOutBtn.className = "gallery-tpill";
+            takeOutBtn.className = "gallery-key gallery-key--wide";
             takeOutBtn.dataset.galleryTakeOut = "";
             takeOutBtn.textContent = s["profile.carousel.takeOut"];
             takeOutBtn.title = s["profile.carousel.takeOut"];
             takeOutBtn.addEventListener("click", () => void applyGallery(takeOut(gallery, index), { imageId: item.imageId, control: "takeOut" }));
-            moveUp.closest(".gallery-row-tools")?.insertBefore(takeOutBtn, sizeSeg?.nextSibling ?? null);
+            row.querySelector("[data-deck-row]")?.prepend(takeOutBtn);
           }
 
           // THE PROJECT DROPDOWN (2026-09-25). A project joins the image
@@ -938,41 +938,52 @@ document.addEventListener("astro:page-load", () => {
           // work moves from one project to another, never out of all of
           // them — so the select only shows once there is a second project
           // to move to.
-          // CAROUSELS IN THE SAME SELECT (2026-10-23): under the projects, the
-          // current project's carousels ("Carousel 1", "Carousel 2") — the
-          // way a phone joins one without dragging (joinCarousel appends). A
-          // slide's select also offers "Not in a carousel", which is Take
-          // out; so is picking the project it is already in. Carousel
-          // values are "c:<id>", so they cannot collide with a project's.
-          const carouselIds = item.projectId ? projectCarouselIds(gallery, item.projectId, localCarousels) : [];
           const projectWrap = projectSelect.closest<HTMLElement>("[data-gallery-project-wrap]");
-          if (projectWrap) projectWrap.hidden = projects.length < 2 && carouselIds.length === 0;
+          if (projectWrap) projectWrap.hidden = projects.length < 2;
           named(projectSelect, s["profile.project.select"]).title = s["profile.project.select"];
-          const choices: (HTMLOptionElement | HTMLOptGroupElement)[] = projects.map(
-            (p) => new Option(projectLabel(projects, p.projectId, lang, s["profile.project.untitled"]), p.projectId),
+          projectSelect.replaceChildren(
+            ...projects.map((p) => new Option(projectLabel(projects, p.projectId, lang, s["profile.project.untitled"]), p.projectId)),
           );
-          if (carouselIds.length) {
-            const group = document.createElement("optgroup");
-            group.label = s["profile.carousel"];
-            if (slide) group.append(new Option(s["profile.carousel.none"], "c:"));
-            carouselIds.forEach((id, k) => group.append(new Option(s["profile.carousel.n"].replace("{n}", String(k + 1)), `c:${id}`)));
-            choices.push(group);
-          }
-          projectSelect.replaceChildren(...choices);
-          projectSelect.value = slide ? `c:${slide.carouselId}` : (item.projectId ?? "");
+          projectSelect.value = item.projectId ?? "";
           projectSelect.addEventListener("change", () => {
             const target = projectSelect.value;
-            const focus = { imageId: item.imageId, control: "project" as const };
-            if (!target || !item.projectId) return;
-            if (target.startsWith("c:")) {
-              const carouselId = target.slice(2);
-              if (!carouselId) return void applyGallery(takeOut(gallery, index), focus);
-              if (slide && carouselId === slide.carouselId) return;
-              return void applyGallery(joinCarousel(gallery, index, { carouselId, projectId: item.projectId }), focus);
-            }
-            if (slide && target === item.projectId) return void applyGallery(takeOut(gallery, index), focus);
-            void moveWorkToProject(index, target, focus);
+            if (!target || !item.projectId || target === item.projectId) return;
+            void moveWorkToProject(index, target, { imageId: item.imageId, control: "project" });
           });
+
+          // THE CAROUSEL SELECT (2026-10-23, Josh: "i want to be able to move
+          // current images to the carousel as well"): every work in a project
+          // can join one of that project's carousels ("Carousel 1", "Carousel
+          // 2" — joinCarousel appends), start a new one of its own (a fresh
+          // id: the work becomes a one-slide carousel where it stands, and
+          // its tray's + or a drag fills it), or leave ("Not in a carousel" —
+          // takeOut). Dragging onto a tray does the same on a desktop; this
+          // is the way that also works on a phone. Values are carousel ids;
+          // "" is none and NEW_CAROUSEL a new one.
+          const carouselSelect = row.querySelector<HTMLSelectElement>("[data-gallery-carousel]");
+          const carouselWrap = carouselSelect?.closest<HTMLElement>("[data-gallery-carousel-wrap]");
+          if (carouselSelect && carouselWrap && item.projectId) {
+            const NEW_CAROUSEL = "+new";
+            const carouselIds = projectCarouselIds(gallery, item.projectId, localCarousels);
+            carouselWrap.hidden = false;
+            named(carouselSelect, s["profile.carousel.select"]).title = s["profile.carousel.select"];
+            carouselSelect.replaceChildren(
+              new Option(s["profile.carousel.none"], ""),
+              ...carouselIds.map((id, k) => new Option(s["profile.carousel.n"].replace("{n}", String(k + 1)), id)),
+              new Option(s["profile.carousel.new"], NEW_CAROUSEL),
+            );
+            carouselSelect.value = slide?.carouselId ?? "";
+            carouselSelect.addEventListener("change", () => {
+              const focus = { imageId: item.imageId, control: "carousel" as const };
+              const value = carouselSelect.value;
+              if (!item.projectId || value === (slide?.carouselId ?? "")) return;
+              if (!value) return void applyGallery(takeOut(gallery, index), focus);
+              const carouselId = value === NEW_CAROUSEL ? crypto.randomUUID() : value;
+              // The tray opens on the work that just joined, so it stays in view.
+              carouselSelection.set(carouselId, item.imageId);
+              void applyGallery(joinCarousel(gallery, index, { carouselId, projectId: item.projectId }), focus);
+            });
+          }
 
           // New picture, same work: captions, description, links, tags and
           // position all stay. Disabled while one is already on its way —
@@ -1324,6 +1335,9 @@ document.addEventListener("astro:page-load", () => {
             ? galleryEditor.querySelector<HTMLElement>(`[data-tray-thumb][data-image-id="${focusHint.imageId}"]`)
             : focusHint.control === "project"
               ? row?.querySelector<HTMLElement>("[data-gallery-project]")
+              : focusHint.control === "carousel"
+                ? (row?.querySelector<HTMLElement>("[data-gallery-carousel]") ??
+                  galleryEditor.querySelector<HTMLElement>(`[data-tray-thumb][data-image-id="${focusHint.imageId}"]`))
               : focusHint.control === "takeOut"
                 ? (row?.querySelector<HTMLElement>("[data-gallery-take-out]") ?? pick(row, '[data-gallery-move="up"]', '[data-gallery-move="down"]', "up"))
                 : pick(row, '[data-gallery-move="up"]', '[data-gallery-move="down"]', focusHint.control);
@@ -2489,12 +2503,55 @@ document.addEventListener("astro:page-load", () => {
       el.hidden = !onWorks || (pageOnly && worksView !== "profile");
     });
   }
+  /**
+   * THE WORK ON SCREEN STAYS ON SCREEN (2026-10-23, Josh: "preview edit state
+   * should stay persistent on the image that is currently in the viewport").
+   * Before the switch: the picture nearest the window's middle in the mode
+   * that is showing, and where its top stands. After it: the same picture
+   * (by its url — the editor's row and the page's figure share it) in the
+   * other mode, scrolled back to that height. A picture the other mode does
+   * not show (a slide behind its carousel's first) falls back to its tray
+   * thumbnail or carousel, and with nothing to match the scroll is left as
+   * it is.
+   */
+  const modePictures = (mode: WorksMode): HTMLImageElement[] =>
+    worksStage
+      ? Array.from(
+          worksStage.querySelectorAll<HTMLImageElement>(
+            mode === "edit" ? "[data-works-editor] img[src]" : '[data-works-pane="profile"] [data-ppv="works"] img[src]',
+          ),
+        )
+      : [];
+  const pictureInView = (mode: WorksMode): { src: string; top: number } | null => {
+    const middle = window.innerHeight / 2;
+    let best: { src: string; top: number; d: number } | null = null;
+    for (const img of modePictures(mode)) {
+      const r = img.getBoundingClientRect();
+      if (r.height === 0 || r.bottom < 0 || r.top > window.innerHeight) continue;
+      const d = Math.abs((r.top + r.bottom) / 2 - middle);
+      if (!best || d < best.d) best = { src: img.getAttribute("src") ?? "", top: r.top, d };
+    }
+    return best && best.src ? { src: best.src, top: best.top } : null;
+  };
+  const scrollerOf = (el: HTMLElement): HTMLElement => {
+    for (let n = el.parentElement; n; n = n.parentElement) {
+      const o = getComputedStyle(n).overflowY;
+      if ((o === "auto" || o === "scroll") && n.scrollHeight > n.clientHeight) return n;
+    }
+    return (document.scrollingElement as HTMLElement | null) ?? document.documentElement;
+  };
   function setWorksMode(mode: WorksMode) {
+    const anchor = mode !== worksMode && worksView === "profile" ? pictureInView(worksMode) : null;
     worksMode = mode;
     remember("vscn-works-mode", mode);
     applyWorksBar();
     syncPreview();
     refitInline();
+    if (!anchor) return;
+    const match = modePictures(mode).find((img) => img.getAttribute("src") === anchor.src && img.getBoundingClientRect().height > 0);
+    if (!match) return;
+    // Instant: a smooth scroll here would read as the page sliding away.
+    scrollerOf(match).scrollBy({ top: match.getBoundingClientRect().top - anchor.top, behavior: "instant" });
   }
   function setWorksView(view: WorksView) {
     worksView = view;
@@ -2553,6 +2610,8 @@ document.addEventListener("astro:page-load", () => {
   if (barEl) {
     const stopFollowing = followContentSize(barEl, worksBar);
     lifecycle.signal.addEventListener("abort", stopFollowing, { once: true });
+    const handle = document.getElementById("ebar-handle");
+    if (handle instanceof HTMLButtonElement) bindBarFold(handle, barEl, lifecycle.signal);
   }
   applyWorksBar();
 

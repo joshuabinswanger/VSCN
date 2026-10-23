@@ -24,34 +24,6 @@ const t = useTranslations(lang);
             two or more page as a carousel. */
         }
         <section class="mprof__project gallery-project" data-project-block>
-          {
-            /* ONE TOOLBAR, ABOVE THE TITLE (2026-10-18, Josh: "controls should
-              actually be above the image and project"; level with the
-              title from 2026-10-13): ↑ ↓, Add images, Add video, Delete as
-              one segmented strip of icons, at the block's right edge. The words are in aria-label and
-              the tooltip. */
-          }
-          <div class="gallery-row-tools gallery-project-tools">
-            <div class="gallery-toolbar gallery-toolbar--head seg seg--actions" role="group">
-              <button type="button" class="gallery-tbtn" data-project-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
-              <button type="button" class="gallery-tbtn" data-project-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
-              <label class="gallery-tbtn gallery-project-add" title={t("profile.project.addImages")}>
-                <svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/><circle cx="9" cy="9" r="2"/><path d="M16 5h6M19 2v6"/></svg>
-                <input type="file" class="picker-input" accept="image/jpeg,image/png,image/webp,image/avif" multiple data-project-files aria-label={t("profile.project.addImages")} />
-              </label>
-              {/* Add video (2026-10-16): opens the bar's video sheet for THIS block; named by the controller. */}
-              <button type="button" class="gallery-tbtn" data-project-video aria-expanded="false"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/></svg></button>
-              {
-                /* Carousel (2026-10-23): an empty carousel at the end of THIS
-                  block, to drag works into or fill through its +. With the
-                  block's own add controls, not the bar's Plus, so it is clear
-                  which project it lands in. The icon: a slide with the edges
-                  of its neighbours. Named by the controller. */
-              }
-              <button type="button" class="gallery-tbtn" data-project-carousel><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="12" height="14" rx="1"/><path d="M2 8v8"/><path d="M22 8v8"/></svg></button>
-              <button type="button" class="gallery-tbtn gallery-tbtn--danger" data-project-delete aria-label={t("profile.project.delete")} title={t("profile.project.delete")}><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
-            </div>
-          </div>
           <div class="mprof__project-head gallery-project-fields">
             {
               /* The block's name for the controls that act on it, read by
@@ -139,6 +111,43 @@ const t = useTranslations(lang);
                 block.indices is empty. */
             }
             <p class="field-note gallery-project-empty" data-project-empty hidden>{t("profile.project.emptyNote")}</p>
+          </div>
+          {
+            /* THE PROJECT'S DECK (2026-10-23, Josh: "all the buttons ... below it
+              in a field ... like a keyboard for a synth"): under the title,
+              the words and the fold, before the works, in the same soft panel
+              of keys as a work's: Move (↑ ↓, moveProject), Add (images — a
+              <label> round a clipped file input, uploads land after the
+              block's last work; a video link; an empty carousel, so it is
+              clear which project it lands in) and Project (Delete: an empty
+              block only). Names in aria-label and the tooltip, written by
+              the controller. Before 2026-10-23 one strip above the title. */
+          }
+          <div class="gallery-row-tools gallery-project-tools gallery-deck">
+            <div class="gallery-deck__grp">
+              <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.move")}</span>
+              <div class="gallery-keys">
+                <button type="button" class="gallery-key gallery-tbtn" data-project-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+                <button type="button" class="gallery-key gallery-tbtn" data-project-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
+              </div>
+            </div>
+            <div class="gallery-deck__grp">
+              <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.add")}</span>
+              <div class="gallery-keys">
+                <label class="gallery-key gallery-tbtn gallery-project-add" title={t("profile.project.addImages")}>
+                  <svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/><circle cx="9" cy="9" r="2"/><path d="M16 5h6M19 2v6"/></svg>
+                  <input type="file" class="picker-input" accept="image/jpeg,image/png,image/webp,image/avif" multiple data-project-files aria-label={t("profile.project.addImages")} />
+                </label>
+                <button type="button" class="gallery-key gallery-tbtn" data-project-video aria-expanded="false"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/></svg></button>
+                <button type="button" class="gallery-key gallery-tbtn" data-project-carousel><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="12" height="14" rx="1"/><path d="M2 8v8"/><path d="M22 8v8"/></svg></button>
+              </div>
+            </div>
+            <div class="gallery-deck__grp">
+              <span class="gallery-deck__lbl t-label" aria-hidden="true">{t("profile.deck.project")}</span>
+              <div class="gallery-keys">
+                <button type="button" class="gallery-key gallery-tbtn gallery-tbtn--danger" data-project-delete aria-label={t("profile.project.delete")} title={t("profile.project.delete")}><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+              </div>
+            </div>
           </div>
           <div class="gallery-project-images" data-project-images></div>
         </section>
