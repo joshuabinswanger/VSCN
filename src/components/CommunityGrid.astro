@@ -2673,19 +2673,28 @@ const searchIndex: SearchIndex = {
 
   /* ── THE DIRECTORY OF CARDS (2026-10-23) ───────────────────
      Josh: "on desktop the people section can be a directory of cards with
-     their profile pic" — and card-sized when open, not a full-width band.
-     The same summary, stood up: portrait over name over role over chevron,
-     centred, on paper with no box; the hairlines between rows go. The
-     columns auto-fill at 13rem, which is wide enough for the open panel's
-     bio to have a reading measure. An open card grows DOWN inside its own
-     column: its row grows with it and the neighbours stay top-aligned
-     (align-items: start) with paper below them. One open at a time — the
-     <details> share a name (see MemberDetailPanel). */
+     their profile pic" — card-sized when open, not a full-width band, and
+     the same day: "cards in rows of 3 ... the image smaller and to the left
+     and then the information to the right". So: THREE fixed columns in the
+     72rem measure, and each card is the ledger's own line with more air —
+     a 4.5rem portrait at the left, name over role at the right, the chevron
+     at the card's far edge. (The first cut stood the summary up — a 7rem
+     portrait over centred words, auto-filled at 13rem — and lasted an
+     hour.) On paper with no box; the hairlines between rows go. An open
+     card grows DOWN inside its own column: its row grows with it and the
+     neighbours stay top-aligned (align-items: start) with paper below them.
+     The panel is indented to the words' column, so the card reads as one
+     block of text beside one picture. One open at a time — the <details>
+     share a name (see MemberDetailPanel). */
   @media (--bp-desktop) {
+    /* Portrait size and the gap after it, stated once: the panel's indent
+       is their sum. */
     .cindex {
+      --people-portrait: 4.5rem;
+      --people-gap: 1rem;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
-      gap: 2.5rem 1.5rem;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 2rem 2rem;
       align-items: start;
     }
 
@@ -2696,11 +2705,8 @@ const searchIndex: SearchIndex = {
     }
 
     .cindex__line :global(.pdisc__toggle) {
-      flex-direction: column;
-      align-items: center;
-      gap: 0.75rem 0;
-      padding: 0.5rem 0.5rem 0.35rem;
-      text-align: center;
+      gap: 0 var(--people-gap);
+      padding: 0.5rem 0.25rem 0.5rem 0;
     }
 
     /* No hover tint: a card has no box to tint, and a tinted rectangle
@@ -2712,23 +2718,22 @@ const searchIndex: SearchIndex = {
     }
 
     .cindex__avatar {
-      width: 7rem;
-      height: 7rem;
+      width: var(--people-portrait);
+      height: var(--people-portrait);
     }
 
     .cindex__avatar--initials {
-      font-size: var(--fs-160);
+      font-size: var(--fs-125);
     }
 
-    /* Name over role, each on its own centred line; the comma that joined
-       them on the ledger line goes, and the role gets back the gap the
-       comma's NBSP supplied. */
+    /* Name over role, ranged left beside the portrait; the comma that
+       joined them on the ledger line goes, and the role gets back the gap
+       the comma's NBSP supplied. Closed, each is one line with an ellipsis
+       (base rules); open, both wrap. */
     .cindex__who {
-      flex: 0 1 auto;
       flex-direction: column;
-      align-items: center;
-      align-self: stretch;
-      row-gap: 0.3rem;
+      align-items: flex-start;
+      row-gap: 0.25rem;
     }
 
     .cindex__role::before {
@@ -2740,17 +2745,10 @@ const searchIndex: SearchIndex = {
       max-width: 100%;
     }
 
-    /* The chevron under the role, a small centred mark: the one thing on a
-       closed card that says it opens. */
-    .cindex__line :global(.pdisc__toggle::after) {
-      margin-top: 0.1rem;
-    }
-
-    /* The panel, inside the card's column: ranged left under the centred
-       head, with the card's own side padding. */
+    /* The panel, under the words and not under the picture: indented by
+       the portrait and its gap, so the bio starts on the name's left edge. */
     .cindex__line :global(.pdisc__body) {
-      padding: 0.4rem 0.5rem 0.6rem;
-      text-align: left;
+      padding: 0.1rem 0.25rem 0.6rem calc(var(--people-portrait) + var(--people-gap));
     }
 
     .cindex__line :global(.pdisc__body-inner) {
