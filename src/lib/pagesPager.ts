@@ -31,6 +31,12 @@
 // until a click, which stops the fling. Now, once the lock has passed, a
 // delta that rises well above the tail's floor after the tail had decayed
 // (freshSwipe), or one in the other direction, starts a new gesture.
+//
+// ← → PAGE THE SHOWING CARD'S WORKS (2026-10-23, the desktop UX review): the
+// carousel's own keys only worked with focus inside its frame, so on a cold
+// page they did nothing. Here the keys find the card on screen (the stop
+// nearest the scroll offset) and ask its carousel to step
+// (communityCarousel.ts listens for vscn:carousel-step).
 
 const QUIET_MS = 180;
 const LOCK_MS = 650;
@@ -68,6 +74,16 @@ export function nextStop(stops: number[], current: number, dir: 1 | -1, end: num
   return behind ?? 0;
 }
 
+/** The card on screen: the index of the stop nearest `at`. `stops` are in
+ *  the cells' own order, not sorted, so the index is the cell's. */
+export function nearestStop(stops: number[], at: number): number {
+  let best = 0;
+  stops.forEach((s, i) => {
+    if (Math.abs(s - at) < Math.abs(stops[best] - at)) best = i;
+  });
+  return best;
+}
+
 let live: AbortController | null = null;
 
 /** The element that actually scrolls: .page-wrap on a desktop, the document
@@ -78,14 +94,21 @@ function scrollerOf(wrap: HTMLElement): HTMLElement {
     : wrap;
 }
 
-function step(wrap: HTMLElement, dir: 1 | -1) {
+/** Every showing cell with the scroll offset that puts its top under the
+ *  header, in the cells' own order. */
+function cellTops(wrap: HTMLElement) {
   const scroller = scrollerOf(wrap);
   const pad = parseFloat(getComputedStyle(scroller).scrollPaddingTop) || 0;
   const origin = scroller === wrap ? wrap.getBoundingClientRect().top : 0;
   const current = scroller.scrollTop;
-  const stops = [...document.querySelectorAll<HTMLElement>("#member-grid > .cgrid__cell:not([hidden])")]
-    .map((cell) => Math.round(cell.getBoundingClientRect().top - origin + current - pad))
-    .sort((a, b) => a - b);
+  const cells = [...document.querySelectorAll<HTMLElement>("#member-grid > .cgrid__cell:not([hidden])")];
+  const tops = cells.map((cell) => Math.round(cell.getBoundingClientRect().top - origin + current - pad));
+  return { scroller, current, cells, tops };
+}
+
+function step(wrap: HTMLElement, dir: 1 | -1) {
+  const { scroller, current, tops } = cellTops(wrap);
+  const stops = [...tops].sort((a, b) => a - b);
   const end = scroller.scrollHeight - scroller.clientHeight;
   const top = nextStop(stops, current, dir, end);
   if (top === current) return;
@@ -166,6 +189,19 @@ export function setPagesPaging(on: boolean): void {
     (e) => {
       if (e.altKey || e.ctrlKey || e.metaKey) return;
       if (typing(e.target) || document.querySelector(".pswp--open")) return;
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        // Inside the frame the carousel's own handler has them.
+        if (e.shiftKey || (e.target instanceof Element && e.target.closest("[data-carousel]"))) return;
+        const { current, cells, tops } = cellTops(wrap);
+        if (!cells.length) return;
+        const frame = cells[nearestStop(tops, current)].querySelector("[data-carousel]");
+        if (!frame) return;
+        e.preventDefault();
+        frame.dispatchEvent(
+          new CustomEvent("vscn:carousel-step", { detail: e.key === "ArrowRight" ? 1 : -1 }),
+        );
+        return;
+      }
       const down = e.key === "ArrowDown" || e.key === "PageDown" || (e.key === " " && !e.shiftKey);
       const up = e.key === "ArrowUp" || e.key === "PageUp" || (e.key === " " && e.shiftKey);
       if (!down && !up) return;

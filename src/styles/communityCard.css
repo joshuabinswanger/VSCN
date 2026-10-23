@@ -417,20 +417,57 @@
   display: flex;
   align-items: center;
   gap: var(--carousel-dot-gap);
-  /* Indicators, never controls — see the markup note. The chevrons inside
-     take their own pointer-events back (.pager-chev in global.css). */
-  pointer-events: none;
+}
+/* CLICKABLE DOTS AND A COUNT (2026-10-23, the desktop UX review): the row is
+   a control now — "‹ ●•• 2 / 3 ›". Each dot is a button (the card's markup)
+   that pages to its slide, drawn at --carousel-dot and hit over a 20px-tall
+   band one step wide (its ::after). global.css draws the dots and makes
+   .cdots pointer-events: none for the member page's rows; the card takes
+   them back. The row's chevrons were the only live part until now. */
+.ccard__dots .cdots {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  height: 1.25rem;
+}
+.ccard__dots .cdot {
+  position: relative;
+  appearance: none;
+  padding: 0;
+  border: 0;
+  min-height: 0;
+  cursor: pointer;
+}
+.ccard__dots .cdot::after {
+  content: "";
+  position: absolute;
+  inset: -0.45rem calc(var(--carousel-dot-gap) / -2);
+}
+.ccard__dots .cdot:hover {
+  opacity: 0.6;
+}
+.ccard__dots .cdot--on:hover {
+  opacity: 1;
+}
+/* The count beside the dots — the COUNT voice (type.css), muted like the
+   chevrons that flank the row. Built by communityCarousel.ts when the
+   markup has none (the editor's preview). */
+.ccard__count {
+  color: var(--color-muted);
+  white-space: nowrap;
+  margin-left: 0.35rem;
 }
 /* THE CHEVRONS CLOSE IN ON THE COUNT (2026-10-14, Josh: "make the image
    carousel arrows more tightly spaced"). global.css gives a pager chevron a
    24px-wide box with the glyph centred, which stood each one ~13px off the
    "1 / 3"; on the card the box is narrower and the row's gap smaller, so
-   the three read as one control. The hit area keeps its height. */
+   the three read as one control. The hit area keeps its height — and since
+   2026-10-23 a 20px width, the desktop minimum for a pointer. */
 .ccard__dots {
   gap: 0.1rem;
 }
 .ccard__dots .pager-chev {
-  min-width: 14px;
+  min-width: 20px;
   padding-left: 0.15rem;
   padding-right: 0.15rem;
 }
@@ -616,13 +653,13 @@
   display: none;
 }
 
-/* NO ARROWS ON THE PICTURE (2026-10-16, Josh: "remove the hover arrows on
-   the pictures too"): the swipe, the trackpad and the arrow keys page, and
-   the dots say where you are. The buttons stay in the markup and the engine
-   (communityCarousel.ts), so this rule is the whole switch back. */
-.ccard .ccard__arrow {
-  display: none;
-}
+/* THE ARROWS ARE BACK ON A DESKTOP (2026-10-23, the desktop UX review): a
+   member's second and third works were unreachable with a mouse — the edge
+   arrows had been hidden here since 2026-10-16 ("remove the hover arrows on
+   the pictures too"), the dots were inert and the keys needed focus inside
+   the frame. They show on hover and on keyboard focus (the rules above); a
+   phone still hides them in its block. To hide them again:
+   `.ccard .ccard__arrow { display: none; }` here. */
 
 /* BIGGER DOTS, MORE AIR, in the portfolio view (2026-10-16, Josh: "make the
    dots bigger and more gap in portfolio view"). The member page keeps the

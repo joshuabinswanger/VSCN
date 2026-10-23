@@ -119,6 +119,15 @@ export function initCarousels(root: ParentNode = document): void {
     const card = carousel.closest<HTMLElement>(".ccard") ?? carousel;
     const dotRow = card.querySelector<HTMLElement>(".ccard__dots");
     const dots = Array.from(card.querySelectorAll<HTMLElement>(".ccard__dots .cdot"));
+    // THE COUNT BESIDE THE DOTS (2026-10-23, the desktop UX review): "2 / 3"
+    // in the row, built here when the markup has none (the editor's preview).
+    // It lands before the next chevron because that one is appended later.
+    let count = card.querySelector<HTMLElement>(".ccard__count");
+    if (!count && dotRow) {
+      count = document.createElement("span");
+      count.className = "ccard__count";
+      dotRow.append(count);
+    }
     const liveRegion = carousel.querySelector<HTMLElement>("[data-carousel-live]");
     const positionLabel = carousel.dataset.positionLabel ?? "";
 
@@ -145,6 +154,7 @@ export function initCarousels(root: ParentNode = document): void {
         slide.tabIndex = n === i ? 0 : -1;
       });
       showDot?.(i);
+      if (count) count.textContent = `${i + 1} / ${total}`;
       if (liveRegion && !quiet) {
         liveRegion.textContent = positionLabel
           .replace("{n}", String(i + 1))
@@ -170,6 +180,11 @@ export function initCarousels(root: ParentNode = document): void {
     };
     const next = () => goTo(current + 1);
     const prev = () => goTo(current - 1);
+
+    // THE DOTS PAGE (2026-10-23, the desktop UX review: they were inert, and
+    // with the arrows hidden a mouse had no way to the other works). A press
+    // on the nth dot goes to the nth slide.
+    dots.forEach((dot, n) => dot.addEventListener("click", () => goTo(n), { signal }));
 
     // A swipe or a trackpad gesture moves the track without us: read it back
     // once a frame. (Not `scrollend` — Safari delivered it late or not at all
@@ -253,6 +268,20 @@ export function initCarousels(root: ParentNode = document): void {
       prevPager.addEventListener("click", rest, { signal });
       nextPager.addEventListener("click", rest, { signal });
     }
+
+    // THE PAGES' KEYS (2026-10-23): ← → with nothing focused page the
+    // showing card's works — pagesPager.ts finds that card and asks it here,
+    // so the keys work from a cold page without a click first.
+    carousel.addEventListener(
+      "vscn:carousel-step",
+      (e) => {
+        wake();
+        hydrateAll();
+        if ((e as CustomEvent<number>).detail > 0) next();
+        else prev();
+      },
+      { signal },
+    );
 
     // Arrow keys page while anything in the frame has focus — the showing
     // slide is the tab stop, and focus moves with the page so a second press
