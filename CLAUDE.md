@@ -93,9 +93,11 @@ Use tokens; raw hex values are treated as defects in review, though roughly a hu
 Breakpoints are **only** these two custom-media aliases, defined in [src/styles/custom-media.css](src/styles/custom-media.css), resolved by `@csstools/postcss-global-data` + `postcss-custom-media` and usable inside scoped Astro `<style>` blocks. **Keep that file to `@custom-media` lines.** global-data injects it into every stylesheet and afterwards removes only the nodes it inserted, while custom-media replaces each `@media (--bp-*)` with a clone — so any rule in the injected file survives into every CSS chunk. Until 2026-10-16 the injected file was all of global.css, and its phone blocks shipped in every chunk, some Astro-scoped:
 
 ```css
-@media (--bp-mobile)  { }  /* width <= 767px */
-@media (--bp-desktop) { }  /* 767px < width  */
+@media (--bp-mobile)  { }  /* width <= 767px, or a touch-first screen (iPad) */
+@media (--bp-desktop) { }  /* 767px < width, and not a touch-first screen    */
 ```
+
+Since 2026-10-23 a `(pointer: coarse)` screen is mobile at any width, so an iPad in landscape gets the phone layout. The JS `matchMedia()` calls spell the same two queries out and must change with the file. Never write `(--bp-*) and (…)`: `--bp-mobile` is a query list, and the plugin compiles that into sentinel `(color: 2147477350)` nests — nest a second `@media` inside instead.
 
 **Archivo** (self-hosted variable font, weights 100–900) is the typeface for everything. **Space Mono is registered in [astro.config.mjs](astro.config.mjs) and referenced nowhere in `src`** — dead config that still ships a font. `.font-mono` in `global.css` is aliased to Archivo, so it is not a mono class despite the name.
 

@@ -1572,11 +1572,15 @@
     }
   }
 
-  @media (--bp-mobile) and (prefers-reduced-motion: reduce) {
-    .ebar .seg,
-    .ebar__plus,
-    .ebar .profile-save-button {
-      animation: none;
+  /* Nested for the reason given on .cwork's hover rule
+     (CommunityWorkCard.astro): no `and` onto a breakpoint alias. */
+  @media (--bp-mobile) {
+    @media (prefers-reduced-motion: reduce) {
+      .ebar .seg,
+      .ebar__plus,
+      .ebar .profile-save-button {
+        animation: none;
+      }
     }
   }
 

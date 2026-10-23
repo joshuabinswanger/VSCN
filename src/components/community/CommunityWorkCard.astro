@@ -60,7 +60,7 @@ const rendered = await getImage({
   format: "webp",
 });
 
-const SIZES = "(max-width: 767px) 45vw, 200px";
+const SIZES = "(max-width: 767px) 45vw, (pointer: coarse) 45vw, 200px";
 
 // The frame keeps the artwork's true aspect — nothing is cropped. Tall work is
 // bounded by getting NARROWER instead, the same contract as the member card:
@@ -351,10 +351,15 @@ const pswpProject = projectSlideData(member.projects?.find((p) => p.id === work.
      tile would sit over its neighbours' captions at rest.
      GSAP owns the transform on this element (see the note on .cwork__img), but
      not its z-index, so there is nothing here to be overwritten. */
-  @media (--bp-desktop) and (hover: hover) and (pointer: fine) {
-    .cwork:hover,
-    .cwork:has(:focus-visible) {
-      z-index: 5;
+  /* Nested, not `(--bp-desktop) and (…)`: --bp-mobile is a query LIST, and
+     postcss-custom-media compiles an `and` onto an alias into a nest of
+     `(color: 2147477350)` sentinel queries. */
+  @media (--bp-desktop) {
+    @media (hover: hover) and (pointer: fine) {
+      .cwork:hover,
+      .cwork:has(:focus-visible) {
+        z-index: 5;
+      }
     }
   }
 

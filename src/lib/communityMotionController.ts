@@ -8,7 +8,7 @@
 // (~44 KB gzip). This page is the only importer of gsap in production —
 // a deliberate, recorded cost (design doc, conflict 3).
 // ────────────────────────────────────────────────────────────────────────
-const DESKTOP = "(min-width: 768px)";
+const DESKTOP = "(767px < width) and (not (pointer: coarse))";
 const REDUCED = "(prefers-reduced-motion: reduce)";
 
 
