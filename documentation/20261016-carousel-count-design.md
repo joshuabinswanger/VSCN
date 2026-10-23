@@ -1,5 +1,10 @@
 # The carousel's "‹ 2 / 7 ›" count — archived design
 
+> **Partly restored 2026-10-23** (the desktop UX review): the directory card shows
+> `‹ ●•• 2 / 3 ›` — the dots stayed and became buttons, the count stands beside them in
+> `.ccard__count`, the chevrons and the picture's hover arrows are back on a desktop. The
+> member page's rows are unchanged. The rest of this note is the 2026-10-16 archive.
+
 **Retired 2026-10-16**, when Josh asked for dots under the pictures instead of the numbers,
 modelled on Instagram (smaller fading dots at the edges, the current dot black). This note keeps
 the count design so it can come back. The last commit that shipped it is the parent of the
