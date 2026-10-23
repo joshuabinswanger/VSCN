@@ -1954,17 +1954,21 @@ const searchIndex: SearchIndex = {
     .cgrid[data-pattern="pages"][data-motion] {
       --cpage-ease: cubic-bezier(0.16, 1, 0.3, 1);
     }
-    /* The picture comes in as pixels (2026-10-23, Josh: "instead of having
-       the fade in for portfolios, i want this pixelation effect"): coarse
-       blocks refining to the picture under a dithered front from the top,
-       drawn by pixelReveal.ts on a canvas over the slide. It replaced the
-       fade, the 9% inset and the 1.16 zoom. Until .is-in the frame is not
-       there at all (2026-10-15, Josh: "the next portfolio element should
-       either be super faded in on the bottom edge always or never"): NEVER —
-       a card that is not the one on screen shows nothing, so no edge of the
-       next one ever peeks in at the bottom. */
+    /* The picture fades in out of a soft blur (2026-10-23, Josh: "a smooth
+       fade in of the image instead, maybe with a bit of blur" — after a
+       pixelation reveal was tried and dropped). It replaced the 9% inset and
+       the 1.16 zoom. Until .is-in the frame is not there at all (2026-10-15,
+       Josh: "the next portfolio element should either be super faded in on
+       the bottom edge always or never"): NEVER — a card that is not the one
+       on screen shows nothing, so no edge of the next one ever peeks in at
+       the bottom. The blur is on the picture, not the frame, so the arrows
+       and dots stay crisp. */
     :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__frame) {
       opacity: 0;
+    }
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__img) {
+      opacity: 0;
+      filter: blur(14px);
     }
     /* The name and the role rise word by word, each word out of its own
        mask (pagesEntrance.ts splits them and stamps each word's --d). Until
@@ -1999,9 +2003,14 @@ const searchIndex: SearchIndex = {
 
     :global(:root:not([data-arrive-hold]) .cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__frame) {
       opacity: 1;
-      /* Only the arrows and dots fade (briefly); the picture's own arrival
-         is the canvas, which starts empty. */
       transition: opacity 0.3s var(--cpage-ease);
+    }
+    :global(:root:not([data-arrive-hold]) .cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__img) {
+      opacity: 1;
+      filter: none;
+      transition:
+        opacity 0.9s ease-out,
+        filter 1.2s ease-out;
     }
     :global(:root:not([data-arrive-hold]) .cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .cw__i) {
       transform: none;
