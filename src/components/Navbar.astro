@@ -490,15 +490,45 @@ import "../styles/type.css";
     .nav-right-group {
       gap: 1.1rem;
     }
+    /* THE SHEET COVERS THE HEADER ROW TOO (2026-10-23, Josh: "mobile menu
+       needs to cover the whole viewport otherwise we can see images at the
+       top"). The row paints nothing, so a sheet starting below it left a
+       strip of page showing under the title. The sheet now starts at the
+       top edge, padded down by the row, and the title row is lifted above
+       it while the menu is open (it lets taps through to the cross beside
+       it); on the close it stays lifted until the sheet's leave is over. */
+    :root .brand-ticker[data-wordmark="compact"] {
+      transition:
+        transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1),
+        z-index 0s linear 0.5s;
+    }
+    :root:has(#nav-menu-btn[aria-expanded="true"]) .brand-ticker[data-wordmark="compact"] {
+      z-index: 31;
+      pointer-events: none;
+      transition:
+        transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1),
+        z-index 0s linear 0s;
+    }
+    :root:has(#nav-menu-btn[aria-expanded="true"]) .brand-ticker[data-wordmark="compact"] .brand-link {
+      pointer-events: auto;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      :root .brand-ticker[data-wordmark="compact"] {
+        transition: z-index 0s linear 0.5s;
+      }
+      :root:has(#nav-menu-btn[aria-expanded="true"]) .brand-ticker[data-wordmark="compact"] {
+        transition: none;
+      }
+    }
     .nav-links {
       position: fixed;
-      inset: var(--header-h) 0 0 0;
+      inset: 0;
       z-index: 0;
       width: auto;
       justify-content: center;
       /* Taller lines than the type alone, so the rule has room. */
       gap: 1.1rem;
-      padding: 0 8px 7vh;
+      padding: var(--header-h) 8px 7vh;
       box-sizing: border-box;
       background: var(--nav-paper);
       overscroll-behavior: contain;
