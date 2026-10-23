@@ -608,12 +608,13 @@ const BRAND_SLOTS: BrandSlot[] = [
      Only the title takes pointer events; the empty row lets clicks through. */
   @media (--bp-desktop) {
     .brand-ticker[data-wordmark="compact"] {
-      /* ON THE CONTENT'S LEFT EDGE (2026-10-23, Josh: "the VSCN should of
-         course be narrower as well"): the title starts where main's text
-         does, --shell-max centred plus main's 15px gutter, and the nav ends
-         on the mirror edge (Navbar.astro). A window narrower than the
-         measure keeps the 8px. */
-      --brand-compact-inset: max(8px, calc((100vw - var(--shell-max)) / 2 + 15px));
+      /* IN THE MIDDLE, A SIZE UP (2026-10-23, Josh: "do it like cosmos ...
+         in the middle vscn with the animation a bit bigger"): the title is
+         centred on the row, the destinations at its left and the account
+         at its right (Navbar.astro). The hover overwrite rides along. */
+      --brand-compact-size: 30px;
+      justify-content: center;
+      padding: 0;
       position: absolute;
       top: 0;
       left: 0;
