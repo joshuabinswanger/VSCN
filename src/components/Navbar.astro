@@ -594,7 +594,7 @@ import "../styles/type.css";
   // so crossing the breakpoint closes it: a phone menu left open must not
   // come back open after a round trip through the desktop width. The query is
   // --bp-mobile (global.css), which a script cannot read by name.
-  window.matchMedia("(max-width: 767px)").addEventListener("change", () => setMenu(false));
+  window.matchMedia("(width <= 767px), (pointer: coarse)").addEventListener("change", () => setMenu(false));
   document.addEventListener("click", (event) => {
     const target = event.target as Element | null;
     if (!target?.closest?.("#nav-menu-btn")) return;

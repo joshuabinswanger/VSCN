@@ -258,7 +258,7 @@ const BRAND_SLOTS: BrandSlot[] = [
         }
 
         function sync() {
-          if (window.matchMedia("(max-width: 767px)").matches) return;
+          if (window.matchMedia("(width <= 767px), (pointer: coarse)").matches) return;
           if (vv.scale !== 1 || editing()) return;
           const h = Math.round(vv.height);
           // A zero height is "not laid out yet", never a shell to adopt.
@@ -269,7 +269,7 @@ const BRAND_SLOTS: BrandSlot[] = [
 
         function settle() {
           settleTimer = 0;
-          if (vv.scale !== 1 || window.matchMedia("(max-width: 767px)").matches) return;
+          if (vv.scale !== 1 || window.matchMedia("(width <= 767px), (pointer: coarse)").matches) return;
           // Parked past the page's own end, or above its start: the state from
           // the bug report. Nothing else can undo it, because a document with
           // `overflow: hidden` gives the reader nothing to scroll back with.
@@ -1203,7 +1203,7 @@ const BRAND_SLOTS: BrandSlot[] = [
     if (
       !brandScroller ||
       ticker.dataset.wordmark === "compact" ||
-      window.matchMedia("(max-width: 767px)").matches
+      window.matchMedia("(width <= 767px), (pointer: coarse)").matches
     ) {
       ticker.style.removeProperty("--brand-hide");
       return;
@@ -1226,7 +1226,7 @@ const BRAND_SLOTS: BrandSlot[] = [
   function initBrandScrollHide() {
     brandScroller?.removeEventListener("scroll", onBrandHideScroll);
     window.removeEventListener("scroll", onBrandHideScroll);
-    brandScroller = window.matchMedia("(max-width: 767px)").matches
+    brandScroller = window.matchMedia("(width <= 767px), (pointer: coarse)").matches
       ? document.documentElement
       : document.querySelector<HTMLElement>(".page-wrap");
     if (brandScroller === document.documentElement) {
@@ -1239,7 +1239,7 @@ const BRAND_SLOTS: BrandSlot[] = [
     applyBrandHide();
   }
 
-  window.matchMedia("(max-width: 767px)").addEventListener("change", initBrandScrollHide);
+  window.matchMedia("(width <= 767px), (pointer: coarse)").addEventListener("change", initBrandScrollHide);
 
   // ── EVERY ARRIVAL STARTS AT THE TOP ──
   // (2026-10-16, Josh: "you dont have to keep scroll position when switching
@@ -1281,7 +1281,7 @@ const BRAND_SLOTS: BrandSlot[] = [
       return Promise.resolve();
     }
     leavingPage = true;
-    const phone = window.matchMedia("(max-width: 767px)").matches;
+    const phone = window.matchMedia("(width <= 767px), (pointer: coarse)").matches;
     const fade = main
       .animate(
         // A PLAIN FADE since 2026-10-20: the translate made WebKit's scroll
@@ -1411,7 +1411,7 @@ const BRAND_SLOTS: BrandSlot[] = [
     initBrandFit();
     initBrandScrollHide();
     const navigation = scrollNavigation;
-    if (arrivalWasTraverse && window.matchMedia("(max-width: 767px)").matches) {
+    if (arrivalWasTraverse && window.matchMedia("(width <= 767px), (pointer: coarse)").matches) {
       // At once, before the first frame shows the router's restored offset,
       // and again once the transition is done, in case it lands later.
       // Not when the page placed itself: Back to Portfolios returns to the

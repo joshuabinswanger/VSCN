@@ -395,7 +395,7 @@ function setBarMenu(open: string | null) {
   // after is measured, so the pill eases from the capsule to the screen;
   // cleared before the closing measure, so it eases back. The corners go
   // with it (--bar-r transitions) and the keyboard is dismissed on close.
-  const sheet = open === "search-panel" && window.matchMedia("(max-width: 767px)").matches;
+  const sheet = open === "search-panel" && window.matchMedia("(width <= 767px), (pointer: coarse)").matches;
   const bar = pill?.closest<HTMLElement>(".community-bar");
   if (bar) {
     if (sheet) bar.dataset.searchSheet = "";
@@ -1438,7 +1438,7 @@ window.addEventListener("resize", () => {
 // its own: on the phone the wall's knobs do not exist (its rule is
 // desktop-only), so the count that was stored is a mobile reading of a
 // layout mobile never used. Force the deal rather than compare.
-window.matchMedia("(min-width: 768px)").addEventListener("change", (e) => {
+window.matchMedia("(767px < width) and (not (pointer: coarse))").addEventListener("change", (e) => {
   if (!e.matches) return;
   wallCols = 0;
   redealWall();
