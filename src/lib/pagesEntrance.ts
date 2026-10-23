@@ -43,9 +43,38 @@ function prepare(cell: HTMLElement) {
   cell.setAttribute("data-words", "");
 }
 
-const SHOWN = 0.55;
+// 0.55 until 2026-10-23: a card coming in by a native flick (a phone, a
+// trackpad outside the picture) waited to be over half in view, which is
+// most of the trip. At rest a mandatory snap never shows more than a sliver
+// of a neighbour, so a third is still "this is the card" and starts sooner.
+const SHOWN = 0.3;
 const GONE = 0.02;
 let io: IntersectionObserver | null = null;
+
+// THE CARD A STEP IS HEADING FOR (2026-10-23, the desktop UX review,
+// suggestion 2): pagesPager hands it over before the scroll starts, so its
+// entrance plays across the trip and the two cards cross-fade. While it is
+// the destination, the observer's first sighting of it (a sliver under GONE
+// as it enters the viewport) must not reset what enterNow began; the hold is
+// released once the observer sees the card properly in, or after a cap, for
+// a scroll that never landed.
+let stepping: HTMLElement | null = null;
+let steppingTimer = 0;
+const STEP_CAP_MS = 1500;
+
+export function enterNow(cell: HTMLElement): void {
+  if (!io) return;
+  stepping = cell;
+  clearTimeout(steppingTimer);
+  steppingTimer = window.setTimeout(() => {
+    if (stepping === cell) stepping = null;
+  }, STEP_CAP_MS);
+  if (wanted.has(cell)) return;
+  wanted.add(cell);
+  void whenCardReady(cell).then(() => {
+    if (wanted.has(cell)) cell.classList.add("is-in");
+  });
+}
 
 // NOT BEFORE EVERYTHING IS THERE (2026-10-19, Josh: "it animated in doubly.
 // fade in the image only after everything has loaded on the portfolio
@@ -71,6 +100,7 @@ async function whenCardReady(cell: HTMLElement): Promise<void> {
 export function setPagesEntrance(on: boolean): void {
   io?.disconnect();
   io = null;
+  stepping = null;
   if (!on) return;
   const grid = document.getElementById("member-grid");
   if (!grid || !grid.hasAttribute("data-motion")) return;
@@ -79,6 +109,7 @@ export function setPagesEntrance(on: boolean): void {
       for (const entry of entries) {
         const cell = entry.target as HTMLElement;
         if (entry.isIntersecting && entry.intersectionRatio >= SHOWN) {
+          if (cell === stepping) stepping = null;
           if (wanted.has(cell)) continue;
           wanted.add(cell);
           void whenCardReady(cell).then(() => {
@@ -88,6 +119,7 @@ export function setPagesEntrance(on: boolean): void {
         // Gone, or all but gone — a card resting edge to edge with the one
         // on screen still "intersects" by its border.
         else if (entry.intersectionRatio < GONE) {
+          if (cell === stepping) continue;
           wanted.delete(cell);
           cell.classList.remove("is-in");
         }

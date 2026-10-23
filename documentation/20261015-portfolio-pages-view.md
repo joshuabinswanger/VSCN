@@ -234,3 +234,17 @@ What differs from the design above, and why:
 - **Not walked yet:** Safari/iPhone, and the flourish on a real wheel (the
   Browser pane freezes view timelines). The dev-host Playwright walk follows
   the merge.
+
+## 2026-10-23 — the member rail and the cross-fade (desktop UX review, suggestion 2)
+
+- **Where you are:** `src/lib/pagesRail.ts` builds a `nav.prail` of ticks at the right edge
+  (global.css), one per member in the deal's order, the showing one long and black
+  (`is-current`, `aria-current`), the name beside a hovered tick, a press jumps there
+  (`jumpTo` in pagesPager.ts). Built a frame after `reflectSnap()` so it reads the dealt,
+  filtered grid; torn down for other views and before a swap. Desktop only.
+- **No blank between members:** every step and jump calls `pagesEntrance.enterNow(cell)` on
+  the destination before the scroll starts, so its entrance plays across the trip while the
+  outgoing card's scroll-linked dim runs — a cross-fade. The observer's first sighting of the
+  destination (a sliver under GONE) no longer resets it while it is the step's target. The
+  observer's own threshold is 0.3 (was 0.55) so native flicks start sooner too. The "never
+  peek" decision stands: at rest nothing of a neighbour shows.

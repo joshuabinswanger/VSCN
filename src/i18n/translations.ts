@@ -327,6 +327,8 @@ export const ui: Record<string, Record<string, string>> = {
     "community.card.image": "image",
     "community.card.gallery": "gallery",
     "community.card.imagePosition": "Image {n} of {total}",
+    // The pages' member rail (pagesRail.ts): the nav's name.
+    "community.rail": "Members",
     "profile.gallery.nudge":
       "Your card in the directory shows no artwork yet — add images and it becomes an image card.",
     "profile.cardPreview": "Community card preview",
@@ -981,6 +983,7 @@ export const ui: Record<string, Record<string, string>> = {
     "community.card.image": "Bild",
     "community.card.gallery": "Galerie",
     "community.card.imagePosition": "Bild {n} von {total}",
+    "community.rail": "Mitglieder",
     "profile.gallery.nudge":
       "Deine Karte im Verzeichnis zeigt noch keine Arbeiten — füge Bilder hinzu und sie wird zur Bildkarte.",
     "profile.cardPreview": "Community-Karten-Vorschau",

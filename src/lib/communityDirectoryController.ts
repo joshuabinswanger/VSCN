@@ -5,6 +5,7 @@ import { isWorkSort, sectionWorks, type SortableWork, type WorkSort } from "./co
 import { DEFAULT_VIEW, viewFromParam, type ViewName } from "./communityLayout.ts";
 import { setPagesPaging } from "./pagesPager.ts";
 import { setPagesEntrance } from "./pagesEntrance.ts";
+import { setPagesRail } from "./pagesRail.ts";
 import { shuffleBands } from "./communityDeal.ts";
 import { searchDirectory, type SearchIndex } from "./communitySearch.ts";
 
@@ -1006,6 +1007,9 @@ function reflectSnap(mode: LayoutMode) {
   else delete wrap.dataset.snap;
   setPagesPaging(mode === "pages");
   setPagesEntrance(mode === "pages");
+  // The member rail (pagesRail.ts) reads the grid a frame later, once the
+  // deal below has hidden and ordered the cells.
+  setPagesRail(mode === "pages");
 }
 document.addEventListener("astro:before-swap", () => {
   const wrap = document.querySelector<HTMLElement>(".page-wrap");
