@@ -1150,8 +1150,92 @@ label:has(> .picker-input:focus-visible) {
   }
 }
 
+/* ── THE MEMBER RAIL (2026-10-23, the desktop UX review, suggestion 2) ──
+   Where you are in the Portfolios pages: a column of ticks fixed at the
+   right edge, one per member in the deal's order, built by
+   src/lib/pagesRail.ts while that view is on. The showing member's tick is
+   long and black; hover (or focus) a tick and its member's name stands to
+   its left; a press jumps there. The ticks share a height budget so a long
+   deal stays within the screen: each is at most 0.85rem, at least 5px. */
+.prail {
+  --prail-tick: clamp(5px, calc(70vh / var(--prail-n, 1)), 0.85rem);
+  position: fixed;
+  right: 0.75rem;
+  top: 50%;
+  translate: 0 -50%;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin: 0;
+  padding: 0;
+}
+.prail__tick {
+  position: relative;
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 1.5rem;
+  height: var(--prail-tick);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-dark);
+  cursor: pointer;
+}
+.prail__tick::after {
+  content: "";
+  width: 0.55rem;
+  height: 1.5px;
+  background: currentColor;
+  opacity: 0.28;
+  transition:
+    width 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 180ms ease;
+}
+.prail__tick:hover::after,
+.prail__tick:focus-visible::after {
+  opacity: 0.7;
+}
+.prail__tick.is-current::after {
+  width: 1.1rem;
+  opacity: 1;
+}
+.prail__tick:focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: 1px;
+}
+/* The name: to the tick's left, on its line; there only while pointed at. */
+.prail__name {
+  position: absolute;
+  right: calc(100% + 0.35rem);
+  top: 50%;
+  translate: 0 -50%;
+  white-space: nowrap;
+  color: var(--color-dark);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+}
+.prail__tick:hover .prail__name,
+.prail__tick:focus-visible .prail__name {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .prail__tick::after,
+  .prail__name {
+    transition: none;
+  }
+}
+
 /* Native document scrolling lets mobile Safari retract its browser toolbar. */
 @media (--bp-mobile) {
+  /* No rail on a phone: the picture takes the width, and a rail over the
+     artwork is a worse cue than none. The swipe pages. */
+  .prail { display: none; }
   html { height: auto; overflow: visible; overscroll-behavior-y: auto; }
   body { display: block; height: auto; min-height: 100svh; overflow: visible; overscroll-behavior-y: auto; }
   .page-wrap { overflow: visible; min-height: 100svh; scrollbar-gutter: auto; }

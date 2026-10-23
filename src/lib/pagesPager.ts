@@ -32,11 +32,21 @@
 // delta that rises well above the tail's floor after the tail had decayed
 // (freshSwipe), or one in the other direction, starts a new gesture.
 //
+// A STEP STARTS THE NEXT CARD'S ENTRANCE (2026-10-23, the desktop UX review,
+// suggestion 2): the card arriving used to stay invisible until the observer
+// saw it over half in view, so a wheel tick showed a blank page for a beat —
+// the one leaving already dimmed and mostly gone, the one coming not yet
+// there. Now every step (and the rail's jump, jumpTo) hands the destination
+// cell to pagesEntrance.enterNow before the scroll begins, so the two cards
+// cross: one dims out as the other opens in.
+//
 // ← → PAGE THE SHOWING CARD'S WORKS (2026-10-23, the desktop UX review): the
 // carousel's own keys only worked with focus inside its frame, so on a cold
 // page they did nothing. Here the keys find the card on screen (the stop
 // nearest the scroll offset) and ask its carousel to step
 // (communityCarousel.ts listens for vscn:carousel-step).
+
+import { enterNow } from "./pagesEntrance.ts";
 
 const QUIET_MS = 180;
 const LOCK_MS = 650;
@@ -95,8 +105,8 @@ function scrollerOf(wrap: HTMLElement): HTMLElement {
 }
 
 /** Every showing cell with the scroll offset that puts its top under the
- *  header, in the cells' own order. */
-function cellTops(wrap: HTMLElement) {
+ *  header, in the cells' own order. (pagesRail.ts reads it too.) */
+export function cellTops(wrap: HTMLElement) {
   const scroller = scrollerOf(wrap);
   const pad = parseFloat(getComputedStyle(scroller).scrollPaddingTop) || 0;
   const origin = scroller === wrap ? wrap.getBoundingClientRect().top : 0;
@@ -107,12 +117,29 @@ function cellTops(wrap: HTMLElement) {
 }
 
 function step(wrap: HTMLElement, dir: 1 | -1) {
-  const { scroller, current, tops } = cellTops(wrap);
+  const { scroller, current, cells, tops } = cellTops(wrap);
   const stops = [...tops].sort((a, b) => a - b);
   const end = scroller.scrollHeight - scroller.clientHeight;
   const top = nextStop(stops, current, dir, end);
   if (top === current) return;
+  go(scroller, top, cells[tops.indexOf(top)] ?? null);
+}
+
+/** The scroll itself, the destination card's entrance started first — see
+ *  the header. `cell` is null past the last card (the footer). */
+function go(scroller: HTMLElement, top: number, cell: HTMLElement | null) {
+  if (cell) enterNow(cell);
   scroller.scrollTo({ top, behavior: window.matchMedia(REDUCED).matches ? "instant" : "smooth" });
+}
+
+/** Straight to one card (the rail's ticks, pagesRail.ts). */
+export function jumpTo(cell: HTMLElement): void {
+  const wrap = document.querySelector<HTMLElement>(".page-wrap");
+  if (!wrap) return;
+  const { scroller, current, cells, tops } = cellTops(wrap);
+  const i = cells.indexOf(cell);
+  if (i < 0 || tops[i] === current) return;
+  go(scroller, tops[i], cell);
 }
 
 /** True when the event's target can still scroll that way on its own — the

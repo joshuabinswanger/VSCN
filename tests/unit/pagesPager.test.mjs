@@ -4,7 +4,7 @@ import { loadTs } from "../helpers/load-ts.mjs";
 
 const { nextStop, swipeStep, freshSwipe, nearestStop } = loadTs(
   "src/lib/pagesPager.ts",
-  {},
+  { "./pagesEntrance.ts": { enterNow() {} } },
   { document: { addEventListener() {} }, window: {} },
 );
 

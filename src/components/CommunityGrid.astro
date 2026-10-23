@@ -726,6 +726,7 @@ const searchIndex: SearchIndex = {
     data-pswp-i18n={lightboxStrings}
     data-sort-no-project={t("community.sort.noProject")}
     data-sort-no-field={t("community.sort.noField")}
+    data-rail-label={t("community.rail")}
     data-pattern={DEFAULT_VIEW}
     hidden={DEFAULT_VIEW !== "pages" && DEFAULT_VIEW !== "grid"}
   >
@@ -739,6 +740,7 @@ const searchIndex: SearchIndex = {
           data-rank={i}
           data-score={bestScore(member)}
           data-tags={tagsAttr(member)}
+          data-name={member.displayName}
         >
           <CommunityImageCard member={member} lang={lang} index={i} />
         </div>
