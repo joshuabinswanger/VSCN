@@ -2053,6 +2053,7 @@ document.addEventListener("astro:page-load", () => {
           description: workDescription(g, worksLang),
           textAfter: workTextAfter(g, worksLang),
           ...(g.size ? { size: g.size } : {}),
+          ...(g.carouselId ? { carouselId: g.carouselId } : {}),
           // Same rule the built page applies — works() in memberView.ts calls
           // this too — so the Preview tab shows a link exactly when a visitor
           // would get one, including showing none for a value that is not

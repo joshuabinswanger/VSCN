@@ -18,7 +18,9 @@ import { href, hostLabel, socialLinks } from "./links.ts";
 // picture that looks like one -- see renderCardPreview below and the header of
 // src/lib/communityCarousel.ts.
 import { destroyCarousel, initCarousels, refreshCarousel } from "./communityCarousel.ts";
+import { destroyMemberCarousels, initMemberCarousels } from "./memberCarousel.ts";
 import type { ProfileViewModel } from "./profileView.ts";
+import { carouselSettings, groupCarousels } from "./carousels.ts";
 import { groupWorks, projectTitle, projectDescription, affiliationHref, projectSlideData } from "./projects.ts";
 import type { ProfileProject } from "./projects.ts";
 import { embedDataAttrs } from "./embed.ts";
@@ -248,6 +250,45 @@ export function renderProfilePreview(
   const works = part("works");
   if (works) {
     const meta = vm.displayName.trim() || labels.defaultName;
+    /**
+     * A work's title and links, into any element holding the template's
+     * `data-ppv-work` caption parts — a single work's figcaption, or one of a
+     * carousel's. Returns the trimmed title.
+     */
+    const fillWords = (host: HTMLElement, w: PreviewWork): string => {
+      const workPart = <T extends HTMLElement = HTMLElement>(name: string) =>
+        host.querySelector<T>(`[data-ppv-work="${name}"]`);
+      // No description under the picture since 2026-10-16, as on the page
+      // (MemberWork.astro); the lightbox still reads it.
+      const captionText = w.caption?.trim() ?? "";
+
+      const caption = workPart("caption");
+      if (caption) {
+        caption.textContent = captionText;
+        caption.hidden = !captionText;
+      }
+
+      // `w.link` arrives already scheme-prefixed and already filtered for
+      // linkability — by workLink() in links.ts, which BOTH producers of this
+      // view model call: works() in memberView.ts at build time, and the
+      // editor's own mapping as the member types. The two build the model
+      // separately, so a shared rule is the only thing keeping the preview
+      // honest about what a visitor will get.
+      const setLink = (part: string, value: string | undefined) => {
+        const a = workPart<HTMLAnchorElement>(part);
+        if (!a) return;
+        a.textContent = value ? hostLabel(value) : "";
+        a.href = value ?? "";
+        a.hidden = !value;
+      };
+      // Own project page first, then where it appeared — the page's order.
+      setLink("site-link", w.siteLink);
+      setLink("link", w.link);
+      show(workPart("links"), Boolean(w.siteLink || w.link));
+
+      return captionText;
+    };
+
     const figureFor = (w: PreviewWork, project?: ProfileProject): HTMLElement | null => {
       const figure = clone("work");
       const img = figure?.querySelector("img");
@@ -287,44 +328,86 @@ export function renderProfilePreview(
       // A video work shows its poster with the play mark, as the page does.
       show(workPart("play"), Boolean(w.embed));
 
-      // No description under the picture since 2026-10-16, as on the page
-      // (MemberWork.astro); the lightbox still reads it.
-      const captionText = w.caption?.trim() ?? "";
-
-      const caption = workPart("caption");
-      if (caption) {
-        caption.textContent = captionText;
-        caption.hidden = !captionText;
-      }
-
-      // `w.link` arrives already scheme-prefixed and already filtered for
-      // linkability — by workLink() in links.ts, which BOTH producers of this
-      // view model call: works() in memberView.ts at build time, and the
-      // editor's own mapping as the member types. The two build the model
-      // separately, so a shared rule is the only thing keeping the preview
-      // honest about what a visitor will get.
-      const setLink = (part: string, value: string | undefined) => {
-        const a = workPart<HTMLAnchorElement>(part);
-        if (!a) return;
-        a.textContent = value ? hostLabel(value) : "";
-        a.href = value ?? "";
-        a.hidden = !value;
-      };
-      // Own project page first, then where it appeared — the page's order.
-      setLink("site-link", w.siteLink);
-      setLink("link", w.link);
-      show(workPart("links"), Boolean(w.siteLink || w.link));
-
+      const captionText = fillWords(figure, w);
       show(workPart("caption-block"), Boolean(captionText || w.link || w.siteLink));
       return figure;
     };
 
-    /** A work's text block, as MemberWork.astro prints it after the figure (2026-10-16). */
-    const textAfter = (w: PreviewWork): HTMLElement | null => {
-      if (!w.textAfter?.trim()) return null;
+    /**
+     * A WORK CAROUSEL, as MemberCarousel.astro prints it: the same frame,
+     * track, slides, dots and stacked captions, cloned from the shell's
+     * templates so profile.css and the engine apply. Every slide carries a
+     * real src (no data-src scheme: there is no build-time optimiser here).
+     */
+    const carouselFor = (slides: PreviewWork[], project?: ProfileProject): HTMLElement | null => {
+      const figure = clone("carousel");
+      const frame = figure?.querySelector<HTMLElement>("[data-carousel]");
+      const track = figure?.querySelector<HTMLElement>("[data-carousel-track]");
+      const strip = figure?.querySelector<HTMLElement>('[data-ppv-c="dots"]');
+      const captions = figure?.querySelector<HTMLElement>('[data-ppv-c="captions"]');
+      if (!figure || !frame || !track || !strip || !captions) return null;
+      const lead = slides[0];
+      figure.style.setProperty("--work-ar", String(lead.width / lead.height));
+      figure.style.setProperty("--size-w", workSizeWidth(carouselSettings(slides)));
+      const positionTemplate = frame.dataset.positionLabel ?? "";
+      const openImage = frame.dataset.openImage ?? "";
+      const workAlt = frame.dataset.workAlt ?? "";
+      const positionFor = (i: number) =>
+        positionTemplate.replace("{n}", String(i + 1)).replace("{total}", String(slides.length));
+      frame.setAttribute(
+        "aria-label",
+        `${lead.caption?.trim() || meta} — ${frame.getAttribute("aria-roledescription") ?? ""}`,
+      );
+
+      const slideNodes: HTMLElement[] = [];
+      const captionNodes: HTMLElement[] = [];
+      const dotNodes: HTMLElement[] = [];
+      slides.forEach((w, i) => {
+        const slide = clone("cslide");
+        const img = slide?.querySelector("img");
+        const caption = clone("ccaption");
+        const dot = clone("cdot");
+        if (!slide || !img || !caption || !dot) return;
+        slide.setAttribute("href", w.url);
+        writeSlideData(slide, w, meta, project, labels.lang);
+        slide.tabIndex = i === 0 ? 0 : -1;
+        if (i !== 0) slide.setAttribute("aria-hidden", "true");
+        slide.setAttribute("aria-label", `${openImage} ${w.caption?.trim() || meta} — ${positionFor(i)}`);
+        img.src = w.url;
+        img.width = w.width;
+        img.height = w.height;
+        img.alt = w.caption?.trim() || `${meta} — ${workAlt}`;
+        img.style.backgroundColor = w.color ?? "var(--color-border)";
+        const play = slide.querySelector<HTMLElement>('[data-ppv-work="play"]');
+        if (play) play.hidden = !w.embed;
+        slideNodes.push(slide);
+
+        caption.dataset.slideCaption = String(i);
+        caption.classList.toggle("is-on", i === 0);
+        fillWords(caption, w);
+        captionNodes.push(caption);
+
+        dot.dataset.carouselDot = String(i);
+        dot.setAttribute("aria-label", positionFor(i));
+        dot.classList.toggle("cdot--on", i === 0);
+        dot.classList.toggle("cdot--md", i === 3);
+        dot.classList.toggle("cdot--sm", i === 4);
+        dot.classList.toggle("cdot--out", i > 4);
+        dotNodes.push(dot);
+      });
+      track.replaceChildren(...slideNodes);
+      captions.replaceChildren(...captionNodes);
+      strip.replaceChildren(...dotNodes);
+      strip.parentElement?.style.setProperty("--cdots-n", String(Math.min(slides.length, 5)));
+      return figure;
+    };
+
+    /** A text block, as MemberWork.astro / MemberCarousel.astro print it after the figure. */
+    const textBlock = (text: string | undefined): HTMLElement | null => {
+      if (!text?.trim()) return null;
       const block = document.createElement("div");
       block.className = "mprof__text";
-      fillParagraphs(block, w.textAfter);
+      fillParagraphs(block, text);
       return block;
     };
 
@@ -334,8 +417,15 @@ export function renderProfilePreview(
     const sections = groupWorks(vm.works.filter((w) => w.url && w.width > 0 && w.height > 0), vm.projects ?? []);
     const nodes = sections.flatMap((section) => {
       // Every work in line, each followed by its text block (2026-10-16).
-      const figures = section.works
-        .flatMap((w) => [figureFor(w, section.project), textAfter(w)])
+      // A run of works sharing a carouselId is ONE spot in the line
+      // (groupCarousels, cut as MemberProject.astro cuts it), followed by the
+      // carousel's own text block.
+      const figures = groupCarousels(section.works, 2)
+        .flatMap((unit) =>
+          unit.kind === "carousel"
+            ? [carouselFor(unit.works, section.project), textBlock(carouselSettings(unit.works).textAfter)]
+            : [figureFor(unit.work, section.project), textBlock(unit.work.textAfter)],
+        )
         .filter((n): n is HTMLElement => n !== null);
       if (!section.project) return figures;
       const block = clone("project");
@@ -406,9 +496,24 @@ export function renderProfilePreview(
       return [block];
     });
 
+    // The previous render's carousels go first: their engine listeners and
+    // caption observers would otherwise keep watching detached frames.
+    works.querySelectorAll<HTMLElement>("[data-carousel]").forEach(destroyCarousel);
+    destroyMemberCarousels(works);
     works.replaceChildren(...nodes);
     show(works, nodes.length > 0);
     show(empty, nodes.length === 0);
+    // AFTER show(works): a frame measured inside a hidden box has no width
+    // (the project-work-carousels trap), so zero width means skip, and try
+    // once more on the next frame in case the box has appeared by then.
+    const start = () => {
+      const visible = Array.from(works.querySelectorAll<HTMLElement>("[data-carousel]")).some(
+        (frame) => frame.getBoundingClientRect().width > 0,
+      );
+      if (visible) initMemberCarousels(works);
+      return visible;
+    };
+    if (!start()) requestAnimationFrame(start);
     // The page's list of projects and works, rebuilt with them (profileIndex.ts).
     initProfileIndex(works.closest<HTMLElement>(".mprof"));
   }

@@ -8,6 +8,8 @@
 import { initCarousels } from "./communityCarousel.ts";
 import { pageLifetime, releaseWith } from "./pageLifecycle.ts";
 
+const observers = new WeakMap<HTMLElement, MutationObserver>();
+
 /** Marks caption `i` of a carousel figure as the showing one. */
 function showCaption(figure: HTMLElement, i: string | undefined): void {
   figure.querySelectorAll<HTMLElement>("[data-slide-caption]").forEach((caption) => {
@@ -32,9 +34,22 @@ export function initMemberCarousels(root: ParentNode = document): void {
     showCaption(figure, frame.dataset.index);
     const observer = new MutationObserver(() => showCaption(figure, frame.dataset.index));
     observer.observe(frame, { attributes: true, attributeFilter: ["data-index"] });
-    releaseWith(signal, () => {
-      observer.disconnect();
-      delete frame.dataset.captionsFollow;
-    });
+    observers.set(frame, observer);
+    releaseWith(signal, () => stop(frame));
   }
+}
+
+function stop(frame: HTMLElement): void {
+  observers.get(frame)?.disconnect();
+  observers.delete(frame);
+  delete frame.dataset.captionsFollow;
+}
+
+/**
+ * Drops the caption observers under `root` ahead of the page's own release.
+ * The editor's preview rebuilds its works on every change and calls this
+ * before the old frames go, so no observer outlives its carousel.
+ */
+export function destroyMemberCarousels(root: ParentNode = document): void {
+  root.querySelectorAll<HTMLElement>("[data-carousel]").forEach(stop);
 }
