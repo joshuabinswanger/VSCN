@@ -1800,6 +1800,12 @@ const searchIndex: SearchIndex = {
          padding's pull (.ccard__words). */
       margin-top: calc(var(--cpage-pic-h) / 2 - 5rem - 3px);
       max-height: calc(var(--cpage-pic-h) / 2 + 5rem);
+      /* Down to the picture row's foot, so PROFILE stands in the column's
+         bottom-right corner, on the same spot on every card (2026-10-23). */
+      height: calc(var(--cpage-pic-h) / 2 + 5rem);
+    }
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard .ccard__more) {
+      margin-top: auto;
     }
   }
   /* THE PICTURE'S SWIPE IS THE CAROUSEL'S (2026-10-16, Josh: "the vertical
