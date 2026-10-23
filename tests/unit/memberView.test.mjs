@@ -64,6 +64,47 @@ test("a work carries its priority and whether moderation hid it", () => {
   assert.deepEqual(m.works.map((w) => [w.score, w.hidden]), [[91, false], [12, true]]);
 });
 
+// THE MEMBER'S OWN SWITCH (2026-10-16): `inGallery: false` on the record
+// takes the work off /community the same way moderation does, and keeps it in
+// the member's own list (still a work here, so /members/<slug> renders it).
+test("a work the member took out of the gallery is hidden from /community but still a work", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a", "b", "c"] }, [
+    rec("a", { caption: "a" }),
+    rec("b", { caption: "b", inGallery: false }),
+    rec("c", { caption: "c", inGallery: true }),
+  ], BUCKET);
+  assert.deepEqual(m.works.map((w) => [w.caption, w.hidden]), [["a", false], ["b", true], ["c", false]]);
+});
+
+// THE TEXT BLOCK AFTER A WORK (2026-10-16) travels raw, both languages, so
+// each locale's page picks its own (workTextAfter in links.ts).
+test("a work carries its text block raw, and a blank one not at all", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a", "b"] }, [
+    rec("a", { caption: "a", textAfter: "Between", textAfterDe: "Dazwischen" }),
+    rec("b", { caption: "b", textAfter: "  " }),
+  ], BUCKET);
+  assert.deepEqual(m.works.map((w) => [w.textAfter, w.textAfterDe]), [["Between", "Dazwischen"], [undefined, undefined]]);
+});
+
+test("a work exposes its carouselId, and a blank one is dropped", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a", "b", "c"] }, [
+    rec("a", { carouselId: " c-1 " }),
+    rec("b", { carouselId: "  " }),
+    rec("c"),
+  ], BUCKET);
+  assert.deepEqual(m.works.map((w) => w.carouselId), ["c-1", undefined, undefined]);
+  assert.equal("carouselId" in m.works[1], false);
+});
+
+test("a work carries its S or M size; anything else is L, i.e. absent", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a", "b", "c"] }, [
+    rec("a", { caption: "a", size: "s" }),
+    rec("b", { caption: "b", size: "m" }),
+    rec("c", { caption: "c", size: "xl" }),
+  ], BUCKET);
+  assert.deepEqual(m.works.map((w) => w.size), ["s", "m", undefined]);
+});
+
 test("a record with no moderation row still scores, so nothing sorts as zero", () => {
   const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a"] }, [rec("a")], BUCKET);
   // 100 * (0.85 * 2.5 + 0.15 * 0) / 5 — neutral on the three human criteria,
@@ -133,12 +174,31 @@ test("works carry their own project; the project's link fills an empty siteLink"
   assert.equal(m.works[0].projectId, "p");
   assert.equal(m.works[0].siteLink, "https://lab.org/p");
   assert.equal(m.works[1].siteLink, "https://ada.ch/work/b");
-  assert.equal("projectId" in m.works[2], false);
+  // Someone else's project is no project: the work is filed under "Works"
+  // (2026-10-16), never shown project-less.
+  assert.equal(m.works[2].projectId, `works-${UID}`);
+  assert.deepEqual(m.projects.map((p) => p.id), ["p", `works-${UID}`]);
+});
+
+// EVERY WORK IN A PROJECT (2026-10-16, Josh: "images without project are not
+// allowed any longer!"). Old data with loose works reads as a virtual
+// "Works" / "Arbeiten" project, localized by projectTitle().
+test("loose works join a virtual Works project; no records at all means one project", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a"] }, [rec("a")], BUCKET);
+  assert.equal(m.works[0].projectId, `works-${UID}`);
+  assert.equal(m.projects.length, 1);
+  assert.equal(m.projects[0].title, "Works");
+  assert.equal(m.projects[0].titleDe, "Arbeiten");
+});
+
+test("a member whose works are all in projects gets no virtual project", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a"] }, [rec("a", { projectId: "p" })], BUCKET, [
+    { projectId: "p", ownerUid: UID, title: "P" },
+  ]);
   assert.deepEqual(m.projects.map((p) => p.id), ["p"]);
 });
 
-test("no project records means no projects and unchanged works", () => {
-  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a"] }, [rec("a")], BUCKET);
+test("no works means no projects", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada" }, [], BUCKET);
   assert.deepEqual(m.projects, []);
-  assert.equal("projectId" in m.works[0], false);
 });

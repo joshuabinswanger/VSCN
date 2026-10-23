@@ -18,12 +18,16 @@ import { href, hostLabel, socialLinks } from "./links.ts";
 // picture that looks like one -- see renderCardPreview below and the header of
 // src/lib/communityCarousel.ts.
 import { destroyCarousel, initCarousels, refreshCarousel } from "./communityCarousel.ts";
+import { destroyMemberCarousels, initMemberCarousels } from "./memberCarousel.ts";
 import type { ProfileViewModel } from "./profileView.ts";
+import { carouselSettings, groupCarousels } from "./carousels.ts";
 import { groupWorks, projectTitle, projectDescription, affiliationHref, projectSlideData } from "./projects.ts";
 import type { ProfileProject } from "./projects.ts";
 import { embedDataAttrs } from "./embed.ts";
+import { fillParagraphs } from "./paragraphs.ts";
+import { workSizeWidth } from "./workSize.ts";
 import { CARD_TRIGGER, bindCardOpener, createLightbox, type LightboxStrings } from "./lightbox.ts";
-import { initProjectCarousels, showInCarousel } from "./projectCarousel.ts";
+import { initProfileIndex } from "./profileIndex.ts";
 import type { Lang } from "../i18n/utils";
 
 type PreviewWork = ProfileViewModel["works"][number];
@@ -91,8 +95,6 @@ export function bindPreviewLightbox(
   const unbindCard = roots.card?.querySelector(CARD_TRIGGER)
     ? bindCardOpener(roots.card, lightbox)
     : () => {};
-  // As on the member page: the project carousel follows the lightbox.
-  lightbox.on("change", () => showInCarousel(lightbox.pswp?.currSlide?.data.element));
   lightbox.init();
   return () => {
     unbindCard();
@@ -103,16 +105,12 @@ export function bindPreviewLightbox(
 export interface ProfilePreviewLabels {
   /** Shown in place of the name before the member has typed one. */
   defaultName: string;
-  /** Prefix for the availability line — the page's own `member.openTo`. */
-  openTo: string;
   /** Shown instead of artwork when the gallery is empty. Editor-only text. */
   noWorks: string;
   /** Prefix for a project's affiliations line — the page's own `member.project.with`. */
   with: string;
   /** The editor's current tab locale, for projectTitle()/projectDescription()/affiliationHref() — same split those take everywhere else. */
   lang: Lang;
-  /** A project carousel's accessible names — the page's own `member.project.*` and `community.card.carousel`. */
-  carousel: { prev: string; next: string; position: string; works: string; roledescription: string };
 }
 
 export function renderProfilePreview(
@@ -172,12 +170,9 @@ export function renderProfilePreview(
   if (where) where.textContent = whereText;
   show(where, Boolean(whereText));
 
-  const open = part("open");
-  if (open) open.textContent = `${labels.openTo} ${vm.openTo.join(", ")}`;
-  show(open, vm.openTo.length > 0);
 
   const bio = part("bio");
-  if (bio) bio.textContent = vm.bio;
+  if (bio) fillParagraphs(bio, vm.bio);
   show(bio, Boolean(vm.bio));
 
   // ── Tags ──────────────────────────────────────────────────
@@ -255,56 +250,22 @@ export function renderProfilePreview(
   const works = part("works");
   if (works) {
     const meta = vm.displayName.trim() || labels.defaultName;
-    const figureFor = (w: PreviewWork, project?: ProfileProject): HTMLElement | null => {
-      const figure = clone("work");
-      const img = figure?.querySelector("img");
-      if (!figure || !img) return null;
-
-      // THE LIGHTBOX TRIGGER, as on the page: the link goes to the original
-      // and carries the data-pswp-* set PhotoSwipe opens from. It opens in a
-      // new tab (the template's target) should the lightbox ever fail to
-      // bind, so even the fallback never leaves the unsaved form.
-      const trigger = figure.querySelector<HTMLAnchorElement>(".mprof__work-link");
-      if (trigger) {
-        trigger.href = w.url;
-        writeSlideData(trigger, w, meta, project, labels.lang);
-      }
+    /**
+     * A work's title and links, into any element holding the template's
+     * `data-ppv-work` caption parts — a single work's figcaption, or one of a
+     * carousel's. Returns the trimmed title.
+     */
+    const fillWords = (host: HTMLElement, w: PreviewWork): string => {
       const workPart = <T extends HTMLElement = HTMLElement>(name: string) =>
-        figure.querySelector<T>(`[data-ppv-work="${name}"]`);
-
-      // The picture's shape, on the figure as the page writes it: the 60vh
-      // cap on .mprof__work-link and the caption under it both read it.
-      figure.style.setProperty("--work-ar", String(w.width / w.height));
-
-      img.src = w.url;
-      img.width = w.width;
-      img.height = w.height;
-      // A caption is real alt text; without one the image is decorative and
-      // an empty alt is the correct, honest value. The description is
-      // deliberately NOT used here — a paragraph read before every image is
-      // worse for a screen reader than no caption at all.
-      img.alt = w.caption?.trim() ?? "";
-      // Painted on the image, not on the frame around it — the page writes
-      // this inline on <img> too, so a slow upload shows the same colour
-      // block in both places.
-      img.style.backgroundColor = w.color ?? "var(--color-border)";
-
-      // A video work shows its poster with the play mark, as the page does.
-      show(workPart("play"), Boolean(w.embed));
-
+        host.querySelector<T>(`[data-ppv-work="${name}"]`);
+      // No description under the picture since 2026-10-16, as on the page
+      // (MemberWork.astro); the lightbox still reads it.
       const captionText = w.caption?.trim() ?? "";
-      const descText = w.description?.trim() ?? "";
 
       const caption = workPart("caption");
       if (caption) {
         caption.textContent = captionText;
         caption.hidden = !captionText;
-      }
-
-      const desc = workPart("desc");
-      if (desc) {
-        desc.textContent = descText;
-        desc.hidden = !descText;
       }
 
       // `w.link` arrives already scheme-prefixed and already filtered for
@@ -325,38 +286,129 @@ export function renderProfilePreview(
       setLink("link", w.link);
       show(workPart("links"), Boolean(w.siteLink || w.link));
 
-      show(workPart("caption-block"), Boolean(captionText || descText || w.link || w.siteLink));
+      return captionText;
+    };
+
+    const figureFor = (w: PreviewWork, project?: ProfileProject): HTMLElement | null => {
+      const figure = clone("work");
+      const img = figure?.querySelector("img");
+      if (!figure || !img) return null;
+
+      // THE LIGHTBOX TRIGGER, as on the page: the link goes to the original
+      // and carries the data-pswp-* set PhotoSwipe opens from. It opens in a
+      // new tab (the template's target) should the lightbox ever fail to
+      // bind, so even the fallback never leaves the unsaved form.
+      const trigger = figure.querySelector<HTMLAnchorElement>(".mprof__work-link");
+      if (trigger) {
+        trigger.href = w.url;
+        writeSlideData(trigger, w, meta, project, labels.lang);
+      }
+      const workPart = <T extends HTMLElement = HTMLElement>(name: string) =>
+        figure.querySelector<T>(`[data-ppv-work="${name}"]`);
+
+      // The picture's shape, on the figure as the page writes it: the 70vh
+      // cap on .mprof__work-link and the caption under it both read it.
+      figure.style.setProperty("--work-ar", String(w.width / w.height));
+      // Its S/M/L width, as MemberWork.astro writes it (2026-10-16).
+      figure.style.setProperty("--size-w", workSizeWidth(w));
+
+      img.src = w.url;
+      img.width = w.width;
+      img.height = w.height;
+      // A caption is real alt text; without one the image is decorative and
+      // an empty alt is the correct, honest value. The description is
+      // deliberately NOT used here — a paragraph read before every image is
+      // worse for a screen reader than no caption at all.
+      img.alt = w.caption?.trim() ?? "";
+      // Painted on the image, not on the frame around it — the page writes
+      // this inline on <img> too, so a slow upload shows the same colour
+      // block in both places.
+      img.style.backgroundColor = w.color ?? "var(--color-border)";
+
+      // A video work shows its poster with the play mark, as the page does.
+      show(workPart("play"), Boolean(w.embed));
+
+      const captionText = fillWords(figure, w);
+      show(workPart("caption-block"), Boolean(captionText || w.link || w.siteLink));
       return figure;
     };
 
-    /** A project's figures as MemberProject.astro's carousel (2026-09-26). */
-    const carouselOf = (figures: HTMLElement[], title: string): HTMLElement => {
-      const box = clone("carousel");
-      const track = box?.querySelector<HTMLElement>("[data-carousel-track]");
-      if (!box || !track) {
-        const plain = document.createElement("div");
-        plain.style.display = "contents";
-        plain.append(...figures);
-        return plain;
-      }
-      const words = labels.carousel;
-      const at = (n: number) => words.position.replace("{n}", String(n)).replace("{total}", String(figures.length));
-      box.dataset.positionLabel = words.position;
-      box.querySelector("[data-carousel-prev]")?.setAttribute("aria-label", words.prev);
-      box.querySelector("[data-carousel-next]")?.setAttribute("aria-label", words.next);
-      track.setAttribute("aria-roledescription", words.roledescription);
-      track.setAttribute("aria-label", title || words.works);
-      track.replaceChildren(
-        ...figures.map((figure, k) => {
-          const slide = document.createElement("div");
-          slide.className = "mprof__carousel-slide";
-          slide.setAttribute("role", "group");
-          slide.setAttribute("aria-label", at(k + 1));
-          slide.append(figure);
-          return slide;
-        }),
+    /**
+     * A WORK CAROUSEL, as MemberCarousel.astro prints it: the same frame,
+     * track, slides, dots and stacked captions, cloned from the shell's
+     * templates so profile.css and the engine apply. Every slide carries a
+     * real src (no data-src scheme: there is no build-time optimiser here).
+     */
+    const carouselFor = (slides: PreviewWork[], project?: ProfileProject): HTMLElement | null => {
+      const figure = clone("carousel");
+      const frame = figure?.querySelector<HTMLElement>("[data-carousel]");
+      const track = figure?.querySelector<HTMLElement>("[data-carousel-track]");
+      const strip = figure?.querySelector<HTMLElement>('[data-ppv-c="dots"]');
+      const captions = figure?.querySelector<HTMLElement>('[data-ppv-c="captions"]');
+      if (!figure || !frame || !track || !strip || !captions) return null;
+      const lead = slides[0];
+      figure.style.setProperty("--work-ar", String(lead.width / lead.height));
+      figure.style.setProperty("--size-w", workSizeWidth(carouselSettings(slides)));
+      const positionTemplate = frame.dataset.positionLabel ?? "";
+      const openImage = frame.dataset.openImage ?? "";
+      const workAlt = frame.dataset.workAlt ?? "";
+      const positionFor = (i: number) =>
+        positionTemplate.replace("{n}", String(i + 1)).replace("{total}", String(slides.length));
+      frame.setAttribute(
+        "aria-label",
+        `${lead.caption?.trim() || meta} — ${frame.getAttribute("aria-roledescription") ?? ""}`,
       );
-      return box;
+
+      const slideNodes: HTMLElement[] = [];
+      const captionNodes: HTMLElement[] = [];
+      const dotNodes: HTMLElement[] = [];
+      slides.forEach((w, i) => {
+        const slide = clone("cslide");
+        const img = slide?.querySelector("img");
+        const caption = clone("ccaption");
+        const dot = clone("cdot");
+        if (!slide || !img || !caption || !dot) return;
+        slide.setAttribute("href", w.url);
+        writeSlideData(slide, w, meta, project, labels.lang);
+        slide.tabIndex = i === 0 ? 0 : -1;
+        if (i !== 0) slide.setAttribute("aria-hidden", "true");
+        slide.setAttribute("aria-label", `${openImage} ${w.caption?.trim() || meta} — ${positionFor(i)}`);
+        img.src = w.url;
+        img.width = w.width;
+        img.height = w.height;
+        img.alt = w.caption?.trim() || `${meta} — ${workAlt}`;
+        img.style.backgroundColor = w.color ?? "var(--color-border)";
+        const play = slide.querySelector<HTMLElement>('[data-ppv-work="play"]');
+        if (play) play.hidden = !w.embed;
+        slideNodes.push(slide);
+
+        caption.dataset.slideCaption = String(i);
+        caption.classList.toggle("is-on", i === 0);
+        fillWords(caption, w);
+        captionNodes.push(caption);
+
+        dot.dataset.carouselDot = String(i);
+        dot.setAttribute("aria-label", positionFor(i));
+        dot.classList.toggle("cdot--on", i === 0);
+        dot.classList.toggle("cdot--md", i === 3);
+        dot.classList.toggle("cdot--sm", i === 4);
+        dot.classList.toggle("cdot--out", i > 4);
+        dotNodes.push(dot);
+      });
+      track.replaceChildren(...slideNodes);
+      captions.replaceChildren(...captionNodes);
+      strip.replaceChildren(...dotNodes);
+      strip.parentElement?.style.setProperty("--cdots-n", String(Math.min(slides.length, 5)));
+      return figure;
+    };
+
+    /** A text block, as MemberWork.astro / MemberCarousel.astro print it after the figure. */
+    const textBlock = (text: string | undefined): HTMLElement | null => {
+      if (!text?.trim()) return null;
+      const block = document.createElement("div");
+      block.className = "mprof__text";
+      fillParagraphs(block, text);
+      return block;
     };
 
     // PROJECT BLOCKS (2026-09-23): the gallery stays one list in the member's
@@ -364,8 +416,16 @@ export function renderProfilePreview(
     // in between — groupWorks() is the same cut the member page makes.
     const sections = groupWorks(vm.works.filter((w) => w.url && w.width > 0 && w.height > 0), vm.projects ?? []);
     const nodes = sections.flatMap((section) => {
-      const figures = section.works
-        .map((w) => figureFor(w, section.project))
+      // Every work in line, each followed by its text block (2026-10-16).
+      // A run of works sharing a carouselId is ONE spot in the line
+      // (groupCarousels, cut as MemberProject.astro cuts it), followed by the
+      // carousel's own text block.
+      const figures = groupCarousels(section.works, 2)
+        .flatMap((unit) =>
+          unit.kind === "carousel"
+            ? [carouselFor(unit.works, section.project), textBlock(carouselSettings(unit.works).textAfter)]
+            : [figureFor(unit.work, section.project), textBlock(unit.work.textAfter)],
+        )
         .filter((n): n is HTMLElement => n !== null);
       if (!section.project) return figures;
       const block = clone("project");
@@ -380,7 +440,7 @@ export function renderProfilePreview(
       const desc = projectDescription(section.project, labels.lang) ?? "";
       const descEl = slot("desc");
       if (descEl) {
-        descEl.textContent = desc;
+        fillParagraphs(descEl, desc);
         descEl.hidden = !desc;
       }
       // The link after the words, as MemberProject prints it (2026-09-28).
@@ -432,17 +492,31 @@ export function renderProfilePreview(
         tagsEl.replaceChildren(...chips.filter((n): n is HTMLElement => n !== null));
         tagsEl.hidden = chips.length === 0;
       }
-      slot("works")?.replaceChildren(...(figures.length > 1 ? [carouselOf(figures, title)] : figures));
+      slot("works")?.replaceChildren(...figures);
       return [block];
     });
 
+    // The previous render's carousels go first: their engine listeners and
+    // caption observers would otherwise keep watching detached frames.
+    works.querySelectorAll<HTMLElement>("[data-carousel]").forEach(destroyCarousel);
+    destroyMemberCarousels(works);
     works.replaceChildren(...nodes);
     show(works, nodes.length > 0);
     show(empty, nodes.length === 0);
-    // After the swap, so carousels that just left the document are released,
-    // and after the list is shown, so the new ones measure a real box
-    // (projectCarousel.ts).
-    initProjectCarousels(works);
+    // AFTER show(works): a frame measured inside a hidden box has no width
+    // (the project-work-carousels trap), so zero width means skip, and try
+    // once more on the next frame in case the box has appeared by then.
+    const start = () => {
+      const visible = Array.from(works.querySelectorAll<HTMLElement>("[data-carousel]")).some(
+        (frame) => frame.getBoundingClientRect().width > 0,
+      );
+      // Released by destroyMemberCarousels() above on the next render, not per page.
+      if (visible) initMemberCarousels(works, { releaseOnLeave: false });
+      return visible;
+    };
+    if (!start()) requestAnimationFrame(start);
+    // The page's list of projects and works, rebuilt with them (profileIndex.ts).
+    initProfileIndex(works.closest<HTMLElement>(".mprof"));
   }
 }
 
@@ -528,9 +602,18 @@ export function renderCardPreview(
   const nameEl = part("name");
   if (nameEl) nameEl.textContent = displayName;
 
+  // NAME, ROLE, PROFILE (2026-10-16, Josh: "actually just Name and Profile
+  // Button. Add Role back in."), as on the real card.
+  const role = vm.role.trim();
+  const roleEl = part("role");
+  if (roleEl) roleEl.textContent = role;
+  show(roleEl, Boolean(role));
+
   // Same filter the profile-page preview applies: a gallery item mid-upload has
   // no dimensions yet, and a slide with no aspect is a collapsed frame.
-  const works = vm.works.filter((w) => w.url && w.width > 0 && w.height > 0);
+  // And, being the CARD, it skips what /community skips: a work the member
+  // took out of the gallery (community.astro filters `hidden` the same way).
+  const works = vm.works.filter((w) => w.url && w.width > 0 && w.height > 0 && !w.hidden);
   const first = works[0];
   const isCarousel = works.length > 1;
 
@@ -544,12 +627,6 @@ export function renderCardPreview(
   // there instead of an empty box, so the shell has to as well.
   const frameIsRule = !first && tagLines.length === 0;
 
-  // The role prints in the caption on every face, always.
-  const role = vm.role.trim();
-  const roleEl = part("role");
-  if (roleEl) roleEl.textContent = role;
-  show(roleEl, Boolean(role));
-
   // ── The image face ────────────────────────────────────────
   const frame = part("frame");
   const track = part("track");
@@ -561,7 +638,6 @@ export function renderCardPreview(
       // artwork fills the preview's measure instead of narrowing to fit.
       root.style.setProperty("--frame-ar", String(first.width / first.height));
       frame.style.aspectRatio = `${first.width} / ${first.height}`;
-      frame.style.background = first.color ?? "";
 
       // ONLY WHEN THE PICTURES THEMSELVES CHANGED. renderCardPreview runs on
       // every keystroke in the form — the name, the role, a tag, a caption —
@@ -605,7 +681,6 @@ export function renderCardPreview(
             img.src = w.url;
             img.width = w.width;
             img.height = w.height;
-            if (w.color) img.style.background = w.color;
             // The words (alt and the data-pswp-* set) are written by the
             // in-place pass after the rebuild, which covers new slides too.
             slide.dataset.workUrl = w.url;
@@ -613,8 +688,8 @@ export function renderCardPreview(
             // A single picture is not a carousel: no group semantics, no
             // position label. Calling one image a carousel would be a lie to a
             // screen reader — the card's own reasoning, and its own markup.
+            slide.tabIndex = i === 0 ? 0 : -1;
             if (isCarousel) {
-              slide.setAttribute("role", "group");
               attr(slide, "aria-roledescription", labels.image ?? "");
               attr(slide, "aria-label", position(labels.imagePosition, i, works.length));
               if (i !== 0) slide.setAttribute("aria-hidden", "true");
@@ -624,16 +699,14 @@ export function renderCardPreview(
           .filter((n): n is HTMLElement => n !== null);
         track.replaceChildren(...slides);
 
-        // The dots live on the CARD, above the frame — one per work, and none
+        // The dots live on the CARD, in its foot row — one per work, and none
         // at all for a gallery of one.
         const dots = part("dots");
         if (dots) {
+          // communityCarousel.ts gathers them into the sliding window
+          // (carouselDots.ts) and marks the current one.
           const marks = (isCarousel ? works : [])
-            .map((_, i) => {
-              const dot = clone("dot");
-              if (dot && i === 0) dot.classList.add("ccard__dot--on");
-              return dot;
-            })
+            .map(() => clone("dot"))
             .filter((n): n is HTMLElement => n !== null);
           dots.replaceChildren(...marks);
         }

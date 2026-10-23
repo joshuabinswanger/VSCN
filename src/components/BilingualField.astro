@@ -55,7 +55,7 @@ const noteIdDe = `${idDe}-note`;
 <div class="field bifield" data-bifield>
   <div class="bifield__head">
     <label class="label" for={id} data-bifield-label>{label}</label>
-    <div class="bifield__switch" role="group" aria-label={label}>
+    <div class="bifield__switch seg" role="group" aria-label={label}>
       <button
         type="button"
         class="bifield__btn is-active"
@@ -130,51 +130,19 @@ const noteIdDe = `${idDe}-note`;
     gap: 12px;
   }
 
-  /* The gallery's switch (.gallery-lang-* in ProfileForm.astro), value for
-     value — the point of the change is that a member meets one control, not
-     two that look alike. */
+  /* The switch is the site's segmented control (.seg in global.css,
+     2026-10-13): the same drawing as the gallery's and the Works bar's, so a
+     member meets one control, not three that look alike. Smaller than the
+     default, though (2026-10-14, Josh: "the EN DE buttons should be
+     smaller"): it sits beside every field's title, where the 28px segments
+     outweighed the title itself. Box only; the face stays the .seg one. */
   .bifield__switch {
-    display: flex;
-    width: fit-content;
+    padding: 1px;
   }
 
   .bifield__btn {
-    padding: 3px 10px;
-    background: none;
-    border: 1.5px solid var(--color-border);
-    color: var(--color-muted);
-    font: inherit;
-    font-size: var(--fs-72);
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    cursor: pointer;
-    transition:
-      background 0.15s,
-      color 0.15s,
-      border-color 0.15s;
-  }
-
-  .bifield__btn + .bifield__btn {
-    border-left: none;
-  }
-
-  .bifield__btn:first-child {
-    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-  }
-
-  .bifield__btn:last-child {
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  }
-
-  .bifield__btn:hover:not(.is-active) {
-    color: var(--color-dark);
-    border-color: var(--color-dark);
-  }
-
-  .bifield__btn.is-active {
-    background: var(--color-dark);
-    color: var(--color-bg);
-    border-color: var(--color-dark);
+    min-height: 20px;
+    padding: 2px 7px;
   }
 </style>
 

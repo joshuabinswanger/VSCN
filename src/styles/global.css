@@ -16,6 +16,18 @@
 
 /* ── Design tokens ── */
 :root {
+  /* The header row: one VSCN at the left, MENU at the right (Layout.astro,
+     Navbar.astro). */
+  --header-h: 56px;
+  /* A PICTURE'S ENTRANCE, one for the site (2026-10-23, Josh: "the zoom in
+     was nicer … not the frame only but the whole image … make it global"):
+     the whole picture fades in and grows to its size. Used by the Portfolios
+     cards (CommunityGrid.astro) and the member page's works (profile.css).
+     The scale is on the <img> only, so the box that takes a swipe or a tap
+     is full size from the first frame. */
+  --pic-in-from: scale(0.9);
+  --pic-in-zoom: 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  --pic-in-fade: 0.45s ease-out;
   font-family: "Archivo", sans-serif;
   --font-size-base: 12px;
   --color-dark: #000000;
@@ -25,11 +37,15 @@
   --color-text-placeholder: #707070;
   --color-error: #b83232;
   --color-success: #217a47;
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 16px;
+  /* SHARP EDGES ALL OVER (2026-10-12, Josh: "use sharp edges all over the
+     visual design"). The tokens stay so every rule that names one keeps
+     working; they all say square now. The literal radii the tokens never
+     reached are flattened by the sharp-edges rule at the end of this file. */
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
   /* EVERY PAGER'S CHEVRON: the gallery card's and the project carousel's
      edge arrows and the lightbox's side arrows; the chevrons beside each
      "2 / 7" count (.pager-chev below) use the smaller pair after these. Two
@@ -74,10 +90,9 @@
   --veil-filter: none;
 }
 
-/* Media query aliases available in global CSS and Astro component styles. */
-
-@custom-media --bp-mobile (width <= 767px);
-@custom-media --bp-desktop (767px < width);
+/* Media query aliases (--bp-mobile, --bp-desktop) are defined in
+   custom-media.css, which PostCSS injects into this file and every Astro
+   component style. */
 
 /* THE DESKTOP BUMP IS ONE PIXEL, NOT TWO (2026-09-22, Josh, MacBook Pro 16:
    "everything is a bit big"). Nearly all type on the site is in rem, so this
@@ -154,92 +169,141 @@ body {
   scroll-behavior: smooth;
 }
 
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 420ms;
+/* THE PAGES VIEW SNAPS (2026-10-15, /community Portfolios): the directory
+   controller sets this while one member a screen is on; cleared on every
+   other view and before a swap. scroll-padding keeps a snapped card under
+   the floating header row, not behind it. */
+/* Keyed off the grid's own mark, which the SERVER renders (2026-10-15):
+   waiting for the controller's data-snap left the first frame unsnapped. */
+:root:not([data-arriving]) .page-wrap:has(#member-grid[data-pattern="pages"]:not([hidden])) {
+  scroll-snap-type: y mandatory;
+  scroll-padding-top: var(--header-h);
+}
+/* ONE POSITION CUE (2026-10-23, after the member rail, src/lib/pagesRail.ts):
+   while the pages are on, the scroller's own bar is invisible — its COLOUR,
+   not its width, so the stable gutter above keeps its size and nothing
+   shifts sideways when the view changes. The rail says where you are. A
+   phone scrolls the document, with overlay bars of its own. */
+.page-wrap:has(#member-grid[data-pattern="pages"]:not([hidden])) {
+  scrollbar-color: transparent transparent;
+}
+/* ON A PHONE THE DOCUMENT IS THE SCROLLER (the --bp-mobile block below
+   gives html its overflow back so Safari can retract its toolbar), so the
+   snap has to stand on html there; the attribute stays on .page-wrap as the
+   one switch, and :has() reads it. */
+@media (--bp-mobile) {
+  html:not([data-arriving]):has(#member-grid[data-pattern="pages"]:not([hidden])) {
+    scroll-snap-type: y mandatory;
+    scroll-padding-top: var(--header-h);
+  }
 }
 
-/* THE PAPER GRAIN — and why its box is the size it is.
-   This overlay only has to be large enough to still cover the viewport at the
-   animation's furthest excursion. `translate()` percentages resolve against
-   the element's OWN size, and page-noise never exceeds 8% on either axis, so
-   at 140% of the viewport the furthest it ever moves is 11.2% of the viewport
-   — a -20% offset leaves margin on every edge at every keyframe.
-   It was 200% at -50%: FOUR viewports of compositing surface where 1.96 does
-   the same job, i.e. 56% of the layer was never on screen at any point in the
-   cycle. That is not free, because mix-blend-mode means the whole thing is a
-   blend group the compositor keeps a backing store for: measured 2026-09-09 at
-   375x812, the old box was 750x1624 css px — 18.6 MB at dpr 2 and 41.8 MB on a
-   dpr 3 phone, for a decoration. Under iOS memory pressure a layer that size
-   is what gets its tiles dropped, and dropped tiles paint white.
-   If the keyframes below ever translate further than 8%, this box has to grow
-   with them or the grain will pull away from an edge. */
+/* THE HEADER RIDES AWAY ON A SCROLL DOWN AND COMES BACK ON A SCROLL UP
+   (2026-10-19, Josh: "the navbar should move away on scrolling up"). Layout
+   sets data-header-away on <html> from the scroll's direction once the page
+   is past the row's own height; the title row and the nav slide up together,
+   a little past the row so no edge of a chip lingers. Global, not in the
+   components' scoped sheets: both elements are transition:persist and keep
+   their old scope attributes across a deployment. */
+.brand-ticker[data-wordmark="compact"],
+nav[data-astro-transition-persist="navbar"] {
+  transition: transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+:root[data-header-away] .brand-ticker[data-wordmark="compact"],
+:root[data-header-away] nav[data-astro-transition-persist="navbar"] {
+  transform: translateY(calc(-1 * var(--header-h) - 6px));
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-ticker[data-wordmark="compact"],
+  nav[data-astro-transition-persist="navbar"] {
+    transition: none;
+  }
+}
+
+/* NO SCROLL ANCHORING (2026-10-19, Josh: "still flicker there when loading
+   portfolios" — Back to a member further down the Portfolios). A page
+   leaves and arrives on a translate of <main> (Layout.astro), and WebKit's
+   scroll anchoring followed it: on a phone, where the document scrolls, the
+   offset crept 50–90px during the rise and was yanked back to the member's
+   snap stop when the transition ended, and it crept the same way under the
+   fade out. Measured in headless WebKit at 390px, local and on the dev host;
+   with anchoring off the card rises in place and the offset never moves.
+   Off for good, on every scroller: the cards and pictures all have their
+   heights before they load, so anchoring had nothing to do here anyway. */
+html,
+body,
+.page-wrap,
+main {
+  overflow-anchor: none;
+}
+
+/* THE MEMBER PAGE DOES NOT SNAP (2026-10-16). It snapped each project to
+   the top for one afternoon, while a project was one screen: a heading and a
+   carousel. With every work in line a project runs for several screens, and
+   a mandatory snap on blocks taller than the window fights the reader. */
+
+/* NO CROSS-FADE ON THE ROOT (2026-10-12, Josh: "there is also a flicker when
+   navigating from page to page"). Everything the root snapshot holds is the
+   same on both sides of a page change — the persisted title and nav, the
+   bar, the paper — except the paper's GRAIN, which drifts, so a 420ms
+   cross-fade of two grains at different offsets was a double exposure that
+   pulsed. The content's motion is WAAPI on the live <main> (Layout.astro), so
+   the root simply switches. <main> deliberately has NO view-transition name:
+   a named group paints above the root, i.e. above the grain, and the page
+   flashed bare paper until the grain came back over it (2026-10-14). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* THE PAPER GRAIN. Animated again since 2026-10-23, at film cadence.
+   The first animation (page-noise, 0.35s in steps(5) over ten intervals =
+   140 hops a second, a 140% box, -20% inset, will-change) read as the whole
+   page flickering on the iPhone and was stilled on 2026-10-19. This one
+   moves the TILE, not the box: background-position hops ten times a second
+   (steps(1) per interval, ten intervals in a second), so every hop is a
+   whole new frame of grain and nothing slides between them. The box stays
+   exactly the viewport and nothing is promoted — a fixed-size tiled fill
+   repainting at 10 fps is the whole cost. Longhands on purpose: the
+   minifier has folded the `animation` shorthand before. Still under
+   reduced motion. Multiply over everything. */
 body::before {
   content: "";
   position: fixed;
-  top: -20%;
-  left: -20%;
-  width: 140%;
-  height: 140%;
+  inset: 0;
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.7;
+  opacity: 0.55;
   background-image: url("../assets/noise-transparent-2.png");
   background-repeat: repeat;
   background-size: 180px 180px;
   mix-blend-mode: multiply;
-  animation: page-noise 0.35s steps(5) infinite;
-  will-change: transform;
+  animation-name: page-grain;
+  animation-duration: 1s;
+  animation-timing-function: steps(1, jump-end);
+  animation-iteration-count: infinite;
 }
 
-@keyframes page-noise {
-  0% {
-    transform: translate(0, 0);
-  }
-  10% {
-    transform: translate(-4%, -5%);
-  }
-  20% {
-    transform: translate(-8%, 4%);
-  }
-  30% {
-    transform: translate(5%, -8%);
-  }
-  40% {
-    transform: translate(-4%, 8%);
-  }
-  50% {
-    transform: translate(-8%, 4%);
-  }
-  60% {
-    transform: translate(8%, 0);
-  }
-  70% {
-    transform: translate(0, 6%);
-  }
-  80% {
-    transform: translate(-8%, 0);
-  }
-  90% {
-    transform: translate(6%, 4%);
-  }
-  100% {
-    transform: translate(4%, 0);
-  }
+/* Ten offsets inside the 180px tile, each far from its neighbours so no two
+   consecutive frames share a visible pattern. With steps(1) the 100% frame
+   is never shown; it only closes the loop. */
+@keyframes page-grain {
+  0%   { background-position: 0 0; }
+  10%  { background-position: -47px 91px; }
+  20%  { background-position: 83px -29px; }
+  30%  { background-position: -121px -64px; }
+  40%  { background-position: 36px 142px; }
+  50%  { background-position: -88px 23px; }
+  60%  { background-position: 129px 97px; }
+  70%  { background-position: -15px -133px; }
+  80%  { background-position: 61px -76px; }
+  90%  { background-position: -154px 118px; }
+  100% { background-position: 0 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   body::before {
-    animation: none;
-    /* Nothing moves any more, so the overlay needs neither room to move in nor
-       a promoted layer — exactly the viewport, and let the compositor forget
-       it. `will-change: transform` on a static element is pure cost: it pinned
-       a backing store the size of the box above for an overlay that never
-       changed, which is the one case where the hint can only lose. */
-    inset: 0;
-    width: auto;
-    height: auto;
-    will-change: auto;
+    animation-name: none;
   }
 }
 
@@ -760,7 +824,9 @@ label:has(> .picker-input:focus-visible) {
      also what the site's other uppercase labels carry (info headings,
      lightbox links). */
   --tag-track: 0.06em;
-  padding: 2.5px 6px 1.5px calc(6px + var(--tag-track));
+  /* 1px less above and below again (2026-10-12, Josh: "vertical padding for
+     tags should be less"). */
+  padding: 0.5px 6px 0 calc(6px + var(--tag-track));
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-family: "Archivo", sans-serif;
@@ -788,7 +854,7 @@ label:has(> .picker-input:focus-visible) {
    tags are links, so the same reasoning applies there. */
 @media (pointer: coarse) {
   .tagchip {
-    padding: 4.5px 7px 3.5px calc(7px + var(--tag-track));
+    padding: 2px 7px 1px calc(7px + var(--tag-track));
   }
 }
 
@@ -998,6 +1064,60 @@ label:has(> .picker-input:focus-visible) {
   display: none;
 }
 
+/* ── A carousel's dots, Instagram's sliding window ─────────────────────
+   (2026-10-16, Josh: "model the dots after instagram (with the fading
+   smaller dots) but highlight color should be black".) Built and moved by
+   src/lib/carouselDots.ts; on the directory card and a project's carousel.
+   .cdots is a window --cdots-n dots wide; the strip inside slides by
+   --cdots-start dots; an edge dot with more beyond it shrinks. Grey, the
+   current one black. */
+.cdots {
+  --cdot-step: calc(var(--carousel-dot) + var(--carousel-dot-gap));
+  display: block;
+  flex: none;
+  width: calc(var(--cdots-n, 1) * var(--cdot-step) - var(--carousel-dot-gap));
+  height: var(--carousel-dot);
+  overflow: hidden;
+  pointer-events: none;
+}
+.cdots__strip {
+  display: flex;
+  gap: var(--carousel-dot-gap);
+  transform: translateX(calc(var(--cdots-start, 0) * -1 * var(--cdot-step)));
+  transition: transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.cdot {
+  flex: none;
+  width: var(--carousel-dot);
+  height: var(--carousel-dot);
+  border-radius: 50%;
+  background: var(--color-dark);
+  opacity: 0.22;
+  transition:
+    opacity 180ms ease,
+    transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.cdot--on {
+  opacity: 1;
+}
+/* Instagram's steps, measured off Josh's screenshot (2026-10-16): the 4th
+   dot about two thirds, the 5th under half. */
+.cdot--md {
+  transform: scale(0.66);
+}
+.cdot--sm {
+  transform: scale(0.4);
+}
+.cdot--out {
+  transform: scale(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cdots__strip,
+  .cdot {
+    transition: none;
+  }
+}
+
 /* ── A count's chevrons, "‹ 2 / 7 ›" ─────────────────────────────────────
    (2026-09-28, Josh: the gallery card, the project carousel and the
    lightbox should page the same way.) Built by src/lib/pager.ts, and in the
@@ -1062,8 +1182,332 @@ label:has(> .picker-input:focus-visible) {
    since it is one modal and its chevrons are its keyboard pager. The count
    rows are right-aligned, so dropping the buttons leaves "2 / 7" on the
    picture's right edge where the next chevron was. */
+/* ...and since 2026-10-16 none on a desktop either (Josh: "remove the
+   arrows from the desktop version of the carousel"): the dots stand alone,
+   centred. The buttons are still built (pager.ts) and still named.
+   (The pair came back for a few hours on 2026-10-23 with a "2 / 3" count;
+   Josh: "we do not need the count but arrows to the left and right of the
+   image" — the arrows beside the picture page now, communityCard.css.) */
+:is(.ccard, .mprof) .pager-chev {
+  display: none;
+}
+
+/* NO TAP FLASH (2026-10-23, Josh: "when i click on the button it has a
+   blinking sign for where i clicked"): the browser paints a translucent box
+   over a pressed control (-webkit-tap-highlight-color), which on the card's
+   small dots, arrows and the rail's ticks reads as a blink. The controls
+   have their own states (opacity, the dark current dot), and the keyboard
+   ring (:focus-visible) is untouched. A mouse press leaves no outline
+   either: only :focus-visible draws one. */
+.ccard__arrow,
+.ccard__dots .cdot,
+.ccard__dots .pager-chev,
+.ccard__slide,
+.profile-link,
+.ccard__name-link,
+.prail__tick {
+  -webkit-tap-highlight-color: transparent;
+}
+.ccard__arrow:focus:not(:focus-visible),
+.ccard__dots .cdot:focus:not(:focus-visible),
+.prail__tick:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ── THE MEMBER RAIL (2026-10-23, the desktop UX review, suggestion 2) ──
+   Where you are in the Portfolios pages: a column of ticks fixed at the
+   right edge, one per member in the deal's order, built by
+   src/lib/pagesRail.ts while that view is on. The showing member's tick is
+   long and black; hover (or focus) a tick and its member's name stands to
+   its left; a press jumps there. The ticks share a height budget so a long
+   deal stays within the screen: each is at most 0.85rem, at least 5px. */
+.prail {
+  --prail-tick: clamp(5px, calc(70vh / var(--prail-n, 1)), 0.85rem);
+  position: fixed;
+  right: 0.75rem;
+  top: 50%;
+  translate: 0 -50%;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin: 0;
+  padding: 0;
+}
+.prail__tick {
+  position: relative;
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 1.5rem;
+  height: var(--prail-tick);
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-dark);
+  cursor: pointer;
+}
+.prail__tick::after {
+  content: "";
+  width: 0.55rem;
+  height: 1.5px;
+  background: currentColor;
+  opacity: 0.28;
+  transition:
+    width 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 180ms ease;
+}
+.prail__tick:hover::after,
+.prail__tick:focus-visible::after {
+  opacity: 0.7;
+}
+.prail__tick.is-current::after {
+  width: 1.1rem;
+  opacity: 1;
+}
+.prail__tick:focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: 1px;
+}
+/* The name: to the tick's left, on its line; there only while pointed at. */
+.prail__name {
+  position: absolute;
+  right: calc(100% + 0.35rem);
+  top: 50%;
+  translate: 0 -50%;
+  white-space: nowrap;
+  color: var(--color-dark);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms ease;
+}
+.prail__tick:hover .prail__name,
+.prail__tick:focus-visible .prail__name {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .prail__tick::after,
+  .prail__name {
+    transition: none;
+  }
+}
+
+/* Native document scrolling lets mobile Safari retract its browser toolbar. */
 @media (--bp-mobile) {
-  :is(.ccard, .mprof) .pager-chev {
-    display: none;
+  /* No rail on a phone: the picture takes the width, and a rail over the
+     artwork is a worse cue than none. The swipe pages. */
+  .prail { display: none; }
+  html { height: auto; overflow: visible; overscroll-behavior-y: auto; }
+  body { display: block; height: auto; min-height: 100svh; overflow: visible; overscroll-behavior-y: auto; }
+  .page-wrap { overflow: visible; min-height: 100svh; scrollbar-gutter: auto; }
+}
+
+/* ── SHARP SURFACES, ROUND CONTROLS (2026-10-13) ─────────────
+   2026-10-12, Josh: "use sharp edges all over the visual design". 2026-10-13,
+   after living with it: "the ui feels strange with the square buttons
+   somehow… make the Buttons Round all over the site. tags get rounded
+   corners." So the split is by ROLE: pictures, cards, panels, fields and
+   rules stay square; everything you press is a capsule; a tag is a softly
+   rounded label. A capsule says "this does something" at a glance, which the
+   square controls never did against square pictures.
+   The radius tokens at the top of this file stay 0, because they dress the
+   surfaces. This block is the whole shape system: a control gets its curve
+   here, by being in CONTROLS, not by a radius of its own, and the universal
+   reset still flattens every literal radius the tokens never reached.
+   Kept square although they are buttons: the section tabs (an underline
+   would bend round a capsule's ends) and a project carousel's edge strips
+   (tall hover bands, not buttons to the eye). */
+:root {
+  --radius-pill: 999px;
+  --radius-tag: 0.5em;
+  --radius-card: 0.9rem;
+}
+
+*:not(
+    button:not(.section-tab),
+    select,
+    input:is([type="button"], [type="submit"], [type="reset"]),
+    [role="button"],
+    .btn-solid,
+    .btn-outline,
+    .btn-primary,
+    .btn-ghost,
+    .btn-danger,
+    .btn-join,
+    .choose-img,
+    .gallery-action,
+    .gallery-tpill,
+    .gallery-project-select,
+    .optchip,
+    .nav-link,
+    .profile-link,
+    .seg,
+    .seg > *,
+    .tagchip,
+    .mprof__val,
+    .pdisc__val,
+    .ccpv__tag,
+    .tag-suggestion-chip,
+    .ebar,
+    .ebar-menu,
+    .ebar-sheet,
+    .mprof__avatar,
+    .avatar-img,
+    .avatar-placeholder,
+    .ob-avatar-img,
+    .ob-avatar-ph,
+    .cindex__avatar,
+    .cindex__line,
+    .search__thumb--round,
+    .community-bar__in,
+    .mprof-bar__in,
+    .tag-filter__search,
+    .ts-filter,
+    .ts-input,
+    .cdot
+  ),
+*:not(.seg, .ebar, .ebar-menu, .profile-save-button, .nav-link)::before,
+*:not(.seg, .ebar, .ebar-menu)::after {
+  border-radius: 0 !important;
+}
+
+/* CONTROLS: a capsule. :where(), and so is TAGS below: both at zero
+   specificity, so ORDER decides, and a tag drawn as a <button> is a tag. */
+:where(
+    button:not(.section-tab),
+    select,
+    input:is([type="button"], [type="submit"], [type="reset"]),
+    [role="button"],
+    .btn-solid,
+    .btn-outline,
+    .btn-primary,
+    .btn-ghost,
+    .btn-danger,
+    .btn-join,
+    .choose-img,
+    .gallery-action,
+    .gallery-tpill,
+    .gallery-project-select,
+    .optchip,
+    .nav-link,
+    .profile-link,
+    .seg,
+    .seg > *,
+    .community-bar__in,
+    .mprof-bar__in,
+    .tag-filter__search,
+    .ts-filter,
+    .ts-input
+  ) {
+  border-radius: var(--radius-pill) !important;
+}
+
+/* TAGS: rounded corners, not a capsule — a tag is a label, not a button, even
+   where it links somewhere. Declared after CONTROLS at the same specificity,
+   so a tag drawn as a <button> (TagSelector's picked chips) is a tag. */
+:where(.tagchip, .mprof__val, .pdisc__val, .ccpv__tag, .tag-suggestion-chip) {
+  border-radius: var(--radius-tag) !important;
+}
+
+/* PORTRAITS: a circle (2026-10-14, Josh: "the profile should have a round
+   profile image"). The member's picture on their page, the editor's photo
+   field and the wizard's — one person, one shape wherever they set or see
+   it, and the community index's opened row (added the same day: "make the
+   index avatar round too"). Their own rules ask for 50% or nothing; the
+   reset above was flattening them, so this lets them through. */
+:where(.mprof__avatar, .avatar-img, .avatar-placeholder, .ob-avatar-img, .ob-avatar-ph, .cindex__avatar, .search__thumb--round) {
+  border-radius: 50% !important;
+}
+
+/* PEOPLE CARDS: a rounded box (2026-10-23, Josh: "rounded corners"), the
+   one card surface that curves. The People view's cards are a directory of
+   people, not a picture's frame, so the sharp-surfaces rule above does not
+   speak for them. */
+:where(.cindex__line) {
+  border-radius: var(--radius-card) !important;
+}
+
+/* ── SEGMENTED CONTROLS (2026-10-13) ─────────────────────────
+   One drawing for every two- or three-way switch and every joined strip of
+   small actions: a capsule TRACK in a faint tint, CAPSULE segments, and the
+   chosen one lifted onto a white thumb. Apple's segmented control, because
+   the joined square boxes it replaces could not survive round corners (a
+   shared hairline between two capsules is a seam, not a join) and because a
+   white thumb on a grey track reads as "this one" without spending the black
+   that Save owns. Used by the EN/DE switches (BilingualField, the gallery's
+   affiliation rows), the Works bar's switches, and a work's ↑ ↓ ↻ ✕ strip
+   (.seg--actions: nothing stays chosen there, the thumb is only hover).
+   Muted ink on the track: #686868 on about #eae9e8, 4.6:1. */
+.seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  width: fit-content;
+  padding: 2px;
+  background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
+}
+
+.seg > :is(button, label) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 12px;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-muted);
+  font-family: inherit;
+  font-size: var(--fs-72);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.seg > :is(button, label):hover:not(:disabled) {
+  color: var(--color-dark);
+}
+
+.seg > :is(button, label):is([aria-pressed="true"], .is-active),
+.seg--actions > :is(button, label):hover:not(:disabled) {
+  background: #fff;
+  color: var(--color-dark);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.14),
+    0 0 0 0.5px rgb(0 0 0 / 0.06);
+}
+
+.seg > :is(button, label):focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: 1px;
+}
+
+.seg > button:disabled {
+  color: color-mix(in srgb, var(--color-muted) 40%, transparent);
+  cursor: default;
+}
+
+.seg[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seg > :is(button, label) {
+    transition: none;
+  }
+}
+
+@media (--bp-mobile) {
+  :root {
+    --header-h: 48px;
   }
 }

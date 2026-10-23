@@ -43,6 +43,14 @@ export function workDescription(
   return pickLocaleText(item.description, item.descriptionDe, lang);
 }
 
+/** The text block after a work (2026-10-16), picked for a locale the way a description is. */
+export function workTextAfter(
+  item: { textAfter?: string; textAfterDe?: string },
+  lang: Lang,
+): string | undefined {
+  return pickLocaleText(item.textAfter, item.textAfterDe, lang);
+}
+
 /**
  * Which role and bio a locale shows (2026-09-23, "Alles sollte zweisprachig
  * sein"). The pickLocaleText() rule with ONE difference: it falls back in
@@ -238,6 +246,17 @@ export function joinSocial(values: string[]): string {
  */
 export function socialLinks(raw: string): SocialLink[] {
   return splitSocial(raw).map((part) => cleanOne(part) ?? { href: null, label: part });
+}
+
+/**
+ * True when a social row holds text that socialLinks() cannot turn into a
+ * link: a bare handle ("compostdiv4", "@name") or anything else without a
+ * domain. Saving it is still allowed, since validateSocialMedia() checks length
+ * only. The editors use this to TELL the member before the directory prints
+ * the text as a chip that goes nowhere (2026-10-23).
+ */
+export function socialUnlinked(raw: string): boolean {
+  return socialLinks(raw).some((link) => link.href === null);
 }
 
 /**

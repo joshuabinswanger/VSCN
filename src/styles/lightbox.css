@@ -33,6 +33,12 @@
    `.pswp { … }` variable block whatever order the two land in. */
 .pswp.pswp--vscn {
   --pswp-bg: var(--color-bg);
+  /* THE SITE'S MOTION (2026-10-16, Josh: "smoother animations as the rest
+     of the site"): the ease-out the nav chips, the page leave and the
+     community cards use, at a pace a reader can follow. Every transition in
+     this sheet takes these two; they were 140–150ms `ease` until then. */
+  --lb-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --lb-dur: 320ms;
   /* TRANSPARENT, NOT GREY (2026-09-06, Josh: "lose the grey frame"). PhotoSwipe
      paints a div at the incoming picture's exact box, in this colour, until
      the picture has decoded — so paging to the next image showed a
@@ -106,7 +112,7 @@
    "‹ 2 / 7 ›", registered in lightboxText.ts: the COUNT voice (type.css)
    between the site's pager chevrons (.pager-chev in global.css), the same
    pair the gallery card and the project carousel show. Grey like the + and
-   the Close beside it (2026-09-28, Josh: "add it to the top row, where
+   the Close that stood beside it then (2026-09-28, Josh: "add it to the top row, where
    close and + are … make the numbers and icons gery as well"). It spent part
    of that day on the artist line above the picture, in black. Hidden for a
    single picture, which has nowhere to page to. */
@@ -132,9 +138,9 @@
   opacity: 1;
   color: var(--color-dark);
   transition:
-    color 140ms ease,
-    background-color 140ms ease,
-    border-color 140ms ease;
+    color var(--lb-dur) var(--lb-ease),
+    background-color var(--lb-dur) var(--lb-ease),
+    border-color var(--lb-dur) var(--lb-ease);
 }
 .pswp--vscn .pswp__button:hover,
 .pswp--vscn .pswp__button:active,
@@ -148,69 +154,48 @@
 }
 
 /* ── Close ────────────────────────────────────────────────────────────────
-   Typographic, not a glyph in a circle: the localized word in the LABEL caps
-   the site names things in — muted, going dark on hover. No underline since
-   2026-09-28 (Josh: "make the close not underlined"); it had a 1px border,
-   then for a few hours the site's link underline. The word itself is
-   injected by the page script (PhotoSwipe's `closeSVG` option takes any
-   HTML) so it can be translated. */
+   AN X (2026-10-15, Josh: "instead of Close an X"): two hairlines crossed,
+   at the pager chevrons' stroke and in their grey (Josh: "make grey"),
+   going to ink on hover. It was the localized word in LABEL caps from
+   2026-09-06; the word is still the button's title and accessible name
+   (closeTitle in lightbox.ts). The padding is the hit box: 24px or more
+   around a 0.9rem glyph.
+   NO ZOOM BUTTON beside it since the same day (Josh: "remove the +"):
+   `zoom: false` in lightbox.ts. Click, pinch and wheel still zoom. */
 .pswp--vscn .pswp__button--close {
-  margin-right: 0;
-  margin-left: 0.25rem;
-}
-.pswp--vscn .pswp__vscn-word {
-  display: block;
-  color: var(--color-muted);
-  transition: color 140ms ease;
-}
-.pswp--vscn .pswp__button--close:hover .pswp__vscn-word,
-.pswp--vscn .pswp__button--close:focus-visible .pswp__vscn-word {
-  color: var(--color-dark);
-}
-
-/* ── Zoom ─────────────────────────────────────────────────────────────────
-   KEPT, not hidden. Pinch and click-to-zoom cover pointer and touch, but this
-   button is the only zoom a keyboard reaches, so removing it would remove
-   function rather than decoration. Redrawn as two hairlines: a plus, losing
-   its upright to become a minus once zoomed in — which is the same state
-   change the stock magnifier icon makes. */
-.pswp--vscn .pswp__button--zoom {
-  padding: 0.35rem;
+  margin-right: -0.4rem;
+  margin-left: 0.1rem;
+  padding: 0.4rem;
   color: var(--color-muted);
 }
-.pswp--vscn .pswp__button--zoom:hover,
-.pswp--vscn .pswp__button--zoom:focus-visible {
+.pswp--vscn .pswp__button--close:hover,
+.pswp--vscn .pswp__button--close:focus-visible {
   color: var(--color-dark);
 }
-.pswp--vscn .pswp__vscn-zoom {
+.pswp--vscn .pswp__vscn-x {
   position: relative;
   display: block;
-  width: 0.75rem;
-  height: 0.75rem;
+  width: 0.9rem;
+  height: 0.9rem;
 }
-.pswp--vscn .pswp__vscn-zoom::before,
-.pswp--vscn .pswp__vscn-zoom::after {
+.pswp--vscn .pswp__vscn-x::before,
+.pswp--vscn .pswp__vscn-x::after {
   content: "";
   position: absolute;
-  background: currentColor;
-}
-.pswp--vscn .pswp__vscn-zoom::before {
   top: 50%;
-  right: 0;
-  left: 0;
-  height: 1.5px;
-  margin-top: -0.75px;
+  left: -0.12rem;
+  right: -0.12rem;
+  /* The stroke of the "‹ 2 / 7 ›" chevrons beside it (2026-10-15, Josh: "x in
+     same line thickness as the other arrows"). A BORDER, as theirs is, not a
+     filled bar: a border width snaps to whole device pixels and a height
+     does not, so at the same number the bar drew heavier. */
+  height: 0;
+  border-top: var(--pager-chev-stroke) solid currentColor;
+  margin-top: calc(var(--pager-chev-stroke) / -2);
+  transform: rotate(45deg);
 }
-.pswp--vscn .pswp__vscn-zoom::after {
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 1.5px;
-  margin-left: -0.75px;
-  transition: opacity 140ms ease;
-}
-.pswp--vscn.pswp--zoomed-in .pswp__vscn-zoom::after {
-  opacity: 0;
+.pswp--vscn .pswp__vscn-x::after {
+  transform: rotate(-45deg);
 }
 
 /* ── Arrows ───────────────────────────────────────────────────────────────
@@ -233,7 +218,7 @@
   background: none;
   color: var(--color-dark);
   opacity: 0.75;
-  transition: opacity 140ms ease;
+  transition: opacity var(--lb-dur) var(--lb-ease);
 }
 .pswp--vscn .pswp__button--arrow--prev {
   right: auto;
@@ -304,42 +289,58 @@
    will fight the script and win on the wrong frames. What lives here is
    everything else: the type, the gaps, the lift, and the hide-on-zoom. */
 
-/* THE ARTIST, ON THE PICTURE'S TOP-LEFT CORNER. The script writes left/top at
-   the image's top-left; this lifts the line clear of that edge, so its own
-   height never has to be measured in JS. */
+/* THE ARTIST, PINNED TO THE WINDOW'S TOP-LEFT (2026-10-14, Josh: "make the
+   artist name stick to the top left"). It hung off the picture's top-left
+   corner until then, which in the 10 / 60 / 30 layout (lightboxPadding)
+   meant a different height on every shape. Now it is the left end of the
+   controls row: the row's own height and inset, so it centres on the same
+   line as the counter and Close, and it never moves. This is the one block
+   whose left/top are CSS rather than the script's — it is not glued to the
+   picture, which is also why it stays visible while zoomed. It stops short of
+   the controls cluster on the right (16rem covers the counter, + and Close
+   on a phone) and truncates rather than run under it. */
 .pswp--vscn .pswp__vscn-credit {
   position: absolute;
-  transform: translateY(-100%);
+  top: 0;
+  left: 1.5rem;
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
   /* Wider than the name only if the name is long; never a clickable strip
      across the window. */
-  max-width: 60ch;
+  max-width: min(60ch, calc(100% - 3rem - 16rem));
+}
+/* The ellipsis has to sit on the flex item that holds the text, not on the
+   flex container; the bottom padding keeps the link's underline inside the
+   clip. */
+.pswp--vscn .pswp__vscn-credit-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding-bottom: 3px;
 }
 .pswp--vscn .pswp__vscn-credit.is-empty {
   display: none;
 }
 .pswp--vscn .pswp__vscn-credit-name {
-  color: var(--color-muted);
+  color: var(--color-dark);
   text-decoration: none;
 }
 /* THE CREDIT AS THE WAY TO THE MEMBER'S PAGE (2026-09-03). Its type is META
-   since 2026-09-28, the Grid tile's author line, not small caps. See the renderer
-   in lightboxText.ts for why the name itself is the control. It is an <a> only
-   when the trigger carried a profile href, so this styles the openable case
-   and leaves the member page's own gallery, where the credit is just a credit,
-   exactly as it was.
-   UNDERLINED AT REST, unlike a tile's author line: this is the one control in
-   the words and the picture beside it is competing for every bit of attention,
-   so it has to look like a link before the pointer arrives — the same
-   reasoning as .cindex__profile in the ledger. */
+   since 2026-09-28, the Grid tile's author line, not small caps. See the
+   renderer in lightboxText.ts for why the name itself is the control. It is
+   an <a> only when the trigger carried a profile href.
+   BLACK, NO UNDERLINE since 2026-10-15 (Josh: "artist name top left without
+   underline and black"). It was muted and underlined at rest, to look like a
+   link before the pointer arrived; now it is the ink of a name, and the
+   hover takes it to muted, like the X across the row. */
 .pswp--vscn a.pswp__vscn-credit-name {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-thickness: 1.5px;
-  transition: color 0.15s;
+  transition: color var(--lb-dur) var(--lb-ease);
 }
 .pswp--vscn a.pswp__vscn-credit-name:hover,
 .pswp--vscn a.pswp__vscn-credit-name:focus-visible {
-  color: var(--color-dark);
+  color: var(--color-muted);
 }
 
 /* THE CAPTION, THE DESCRIPTION AND THE LINK — under the picture, at the
@@ -352,14 +353,12 @@
   position: absolute;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  /* A LAST RESORT, not the layout. paddingFn reserves enough room for a
-     600-character description at every arrangement's measure except the
-     phone's, where the reserve is deliberately smaller than the worst case
-     (see lightboxPadding). It is here so that an overrun costs the end of a
-     paragraph rather than a caption printed over the artwork. max-height is
-     written inline by the script, from the room actually left below or beside
-     the picture. */
+  align-items: flex-start;
+  /* A LAST RESORT, not the layout. The 30 % band under the picture is the
+     room (lightboxPadding); this is here so that an overrun costs the end
+     of a paragraph rather than a caption printed over the artwork. max-height
+     is written inline by the script, from the room actually left below the
+     picture. */
   overflow-y: auto;
   /* A wheel gesture that reaches the end must not then start dragging the
      lightbox itself. */
@@ -390,12 +389,82 @@
 .pswp--vscn .pswp__vscn-text.is-empty {
   display: none;
 }
-/* UNCLAMPED, unlike the band's caption line, which was held to two lines
-   because the band's height was a fixed reserve a third line would have grown
-   through. There is no band and the block scrolls, so there is nothing left to
-   protect the layout from. */
-.pswp--vscn .pswp__vscn-text-caption {
+
+/* THE TITLE IS THE DROPDOWN (2026-10-15, Josh: "the show more text should be
+   left aligned and be the title and drop down button to show the
+   description"). The caption, left-aligned, and the chevron at the RIGHT end
+   of the picture's measure (Josh, same day: "the drop down arrow should be
+   on the right") — the pager's chevron, turned down, and up while open. The
+   head spans the whole column, so the gap between them is clickable too. A bare button:
+   no box, no underline; the chevron is what says it opens. A <span> rather
+   than a button when the work has nothing but a caption. */
+.pswp--vscn .pswp__vscn-text-head {
+  display: flex;
+  align-self: stretch;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
   color: var(--color-dark);
+  font-family: inherit;
+  text-align: left;
+}
+.pswp--vscn button.pswp__vscn-text-head {
+  cursor: pointer;
+}
+.pswp--vscn button.pswp__vscn-text-head:hover,
+.pswp--vscn button.pswp__vscn-text-head:focus-visible {
+  color: var(--color-muted);
+}
+.pswp--vscn button.pswp__vscn-text-head:focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: 2px;
+}
+/* UNCLAMPED: the block scrolls, so there is nothing to protect the layout
+   from. Inherits the head's colour so the hover reaches it. */
+.pswp--vscn .pswp__vscn-text-caption {
+  color: inherit;
+}
+/* Two borders on a box turned 45deg, the site's chevron, pointing down,
+   pushed to the right end — also when there is no caption before it. */
+.pswp--vscn .pswp__vscn-text-chev {
+  flex: none;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin: -0.2rem 0.2rem 0 auto;
+  border-right: var(--chevron-stroke) solid currentColor;
+  border-bottom: var(--chevron-stroke) solid currentColor;
+  vertical-align: middle;
+  transform: rotate(45deg);
+  transition: transform var(--lb-dur) var(--lb-ease);
+}
+.pswp--vscn .pswp__vscn-text.is-open .pswp__vscn-text-chev {
+  transform: translate(0, 0.2rem) rotate(-135deg);
+}
+/* What the title unfolds. The UA's [hidden] does the folding. */
+.pswp--vscn .pswp__vscn-text-more {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+  /* It UNFOLDS rather than appearing: a fade and a short drop from under
+     the title, from the [hidden] state, on engines with @starting-style.
+     Elsewhere it simply appears, as before. */
+  transition:
+    opacity var(--lb-dur) var(--lb-ease),
+    translate var(--lb-dur) var(--lb-ease);
+}
+@starting-style {
+  .pswp--vscn .pswp__vscn-text-more {
+    opacity: 0;
+    translate: 0 -0.35rem;
+  }
+}
+.pswp--vscn .pswp__vscn-text-more[hidden] {
+  display: none;
 }
 /* `pre-line` because a member who wrote paragraphs meant them, and it is the
    same treatment .mprof__desc gives the identical string on the member's own
@@ -414,10 +483,10 @@
 .pswp--vscn .pswp__vscn-text-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.15rem 1rem;
+  gap: 0.3rem 1.4rem;
   align-self: flex-start;
   max-width: 100%;
-  margin-top: 0.15rem;
+  margin-top: 0.2rem;
 }
 .pswp--vscn .pswp__vscn-text-link {
   max-width: 100%;
@@ -425,7 +494,7 @@
   text-decoration: underline;
   text-underline-offset: 2px;
   overflow-wrap: anywhere;
-  transition: color 0.15s;
+  transition: color var(--lb-dur) var(--lb-ease);
 }
 .pswp--vscn .pswp__vscn-text-link:hover,
 .pswp--vscn .pswp__vscn-text-link:focus-visible {
@@ -439,7 +508,6 @@
 .pswp--vscn .pswp__vscn-text-project,
 .pswp--vscn .pswp__vscn-text-affiliations {
   display: block;
-  margin-top: 0.15rem;
   color: var(--color-muted);
 }
 .pswp--vscn .pswp__vscn-text-project a,
@@ -457,13 +525,22 @@
 
 /* ZOOMED IN: THE WORDS GO. They are glued to the picture's rect, and a zoomed
    picture's rect is mostly outside the window — following it would drag the
-   caption off-screen and the artist line under the top bar. The script sets
-   this class on the root; hiding is done here so the two halves of the
-   decision are not split across a stylesheet and a style attribute. */
-.pswp--vscn.pswp--vscn-zoomed-words .pswp__vscn-credit,
+   caption off-screen. The script sets this class on the root; hiding is
+   done here so the two halves of the decision are not split across a
+   stylesheet and a style attribute. The artist line is pinned to the
+   window now and stays. */
+.pswp--vscn .pswp__vscn-text {
+  transition: opacity var(--lb-dur) var(--lb-ease);
+}
 .pswp--vscn.pswp--vscn-zoomed-words .pswp__vscn-text {
   opacity: 0;
   pointer-events: none;
+}
+/* PAGING: the strip is between pictures (lightbox.ts), so the words leave
+   quickly rather than stand under nothing. The next work's fade in on arrival. */
+.pswp--vscn.pswp--vscn-paging .pswp__vscn-text {
+  opacity: 0;
+  transition-duration: 160ms;
 }
 
 /* ── Error ────────────────────────────────────────────────────────────────
@@ -484,6 +561,12 @@
     height: 2.25rem;
     padding: 0 1rem;
   }
+  /* The artist line follows the row: same height, same inset. */
+  .pswp--vscn .pswp__vscn-credit {
+    left: 1rem;
+    height: 2.25rem;
+    max-width: calc(100% - 2rem - 16rem);
+  }
   /* The words' size is CAPTION in src/styles/type.css, shared with the page
      the lightbox opens from (2026-09-28). */
 }
@@ -497,8 +580,9 @@
    two-class selector by more than source order. */
 @media (prefers-reduced-motion: reduce) {
   .pswp--vscn .pswp__button,
-  .pswp--vscn .pswp__vscn-word,
-  .pswp--vscn .pswp__vscn-zoom::after {
+  .pswp--vscn .pswp__vscn-text,
+  .pswp--vscn .pswp__vscn-text-more,
+  .pswp--vscn .pswp__vscn-text-chev {
     transition: none;
   }
   .pswp.pswp--vscn .pswp__hide-on-close {
@@ -546,7 +630,9 @@
 }
 .pswp--vscn .pswp__vscn-embed-play .vscn-play {
   --play-size: clamp(3.5rem, 9vmin, 5.5rem);
-  transition: transform 0.15s ease, background-color 0.15s ease;
+  transition:
+    transform var(--lb-dur) var(--lb-ease),
+    background-color var(--lb-dur) var(--lb-ease);
 }
 .pswp--vscn .pswp__vscn-embed-play:hover .vscn-play,
 .pswp--vscn .pswp__vscn-embed-play:focus-visible .vscn-play {

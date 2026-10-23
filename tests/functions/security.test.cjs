@@ -9,7 +9,7 @@ const { queueMemberRebuild, flushMemberRebuilds } = require('../../functions/lib
 const { adminSetProfileActive } = require('../../functions/lib/adminOps.js');
 const { sweepImages } = require('../../functions/lib/maintenance.js');
 const adminModule = require('../../functions/lib/admin.js');
-const { authorizeImageUpload, completeImageUpload, webpDimensions } = require('../../functions/lib/uploads.js');
+const { authorizeImageUpload, completeImageUpload, webpDimensions, isRasterFallback, inheritedFields } = require('../../functions/lib/uploads.js');
 const { resolveEmbed, restoreAutoPoster } = require('../../functions/lib/embeds.js');
 const sharp = require('sharp');
 const backendRequire = require('node:module').createRequire(require('node:path').resolve('functions/package.json'));
@@ -20,6 +20,14 @@ beforeEach(async () => {
   assert.equal(response.ok, true);
 });
 after(async () => { mock.restoreAll(); await db.terminate(); });
+
+test('a replacement inherits the carouselId along with its other words', () => {
+  const inherited = inheritedFields({ caption: 'A', projectId: 'p-1', carouselId: 'c-1', size: 'm', ownerUid: 'x' }, 'member');
+  assert.equal(inherited.carouselId, 'c-1');
+  assert.equal(inherited.projectId, 'p-1');
+  assert.equal('ownerUid' in inherited, false);
+  assert.equal('carouselId' in inheritedFields({ caption: 'A' }, 'member'), false);
+});
 
 test('upload allocation counts stored works and serializes concurrent reservations', async () => {
   // Records, not files, since video links (2026-09-23): one work may own a
@@ -71,6 +79,32 @@ test('server publishes only an uploaded WebP matching its record', async () => {
   assert.equal(copied, true);
   assert.equal((await db.doc(`images/${imageId}`).get()).data().status, 'live');
   assert.equal((await db.doc(`uploadPermits/${imageId}.webp`).get()).exists, false);
+});
+
+test('a JPEG or PNG under the .webp name is re-encoded to WebP before it goes live', async () => {
+  const uid = 'member';
+  for (const [imageId, format] of [['66666666-6666-4666-8666-666666666666', 'jpeg'], ['77777777-7777-4777-8777-777777777777', 'png']]) {
+    const path = `users/${uid}/gallery/${imageId}.webp`;
+    const uploadPath = `pending/${uid}/gallery/${imageId}.webp`;
+    const bytes = await sharp({ create: { width: 4, height: 5, channels: 3, background: '#336699' } })[format]().toBuffer();
+    assert.equal(isRasterFallback(bytes.subarray(0, 64)), true);
+    await db.doc(`images/${imageId}`).set({ ownerUid: uid, kind: 'gallery', storagePath: path, origin: 'member', status: 'uploading', width: 4, height: 5 });
+    await db.doc(`uploadPermits/${imageId}.webp`).set({ imageId, ownerUid: uid, kind: 'gallery', storagePath: path, uploadPath, expiresAt: Timestamp.fromMillis(Date.now() + 60000) });
+    let saved = null;
+    mock.method(adminModule, 'getBucket', () => ({ file: (name, options) => ({
+      name,
+      metadata: { generation: '789' },
+      getMetadata: async () => [{ contentType: 'image/webp', generation: '123', size: String(bytes.length) }],
+      download: async (range) => { assert.equal(options?.generation, '123'); return [range ? bytes.subarray(0, 64) : bytes]; },
+      copy: async () => { throw new Error('a fallback must not be copied as it is'); },
+      save: async (buffer, opts) => { assert.equal(name, path); assert.equal(opts.contentType, 'image/webp'); saved = buffer; },
+      delete: async () => {},
+    }) }));
+    await completeImageUpload.run({ auth: { uid, token: { email_verified: true } }, data: { imageId } });
+    assert.deepEqual(webpDimensions(saved.subarray(0, 64), saved.length), { width: 4, height: 5 });
+    assert.equal((await db.doc(`images/${imageId}`).get()).data().status, 'live');
+    mock.restoreAll();
+  }
 });
 
 test('mislabeled bytes and forged dimensions cannot become live', async () => {

@@ -6,13 +6,41 @@ import "../styles/type.css";
 ---
 
 <nav transition:persist="navbar">
-  <div class="nav-links">
+  {/* THREE PILLS ON A DESKTOP (2026-10-14, Josh: "on desktop it should be 3
+      pills that are directly selectable"). The links stand in a row on the
+      header's line at the right, always shown; the button is not drawn. (From
+      2026-10-12 they were behind a MENU button there.)
+      A HAMBURGER ON A PHONE (2026-10-13, Josh: "actually a hamburger will be
+      better"): the same button, drawn as three black bars on the bare page
+      that turn into a cross while it is open; the word MENU stays in the
+      markup, clipped, as the button's name. The three black chips Josh asked
+      for are what it opens. The links keep their ids, the script below still
+      sets their labels, their targets and which of LOGIN / PROFILE shows. */}
+  <button
+    type="button"
+    class="nav-menu-btn"
+    id="nav-menu-btn"
+    aria-expanded="false"
+    aria-controls="nav-menu"
+  >
+    <span class="nav-menu-btn__label">MENU</span>
+    <span class="nav-burger" aria-hidden="true"><i></i><i></i><i></i></span>
+  </button>
+  <div class="nav-links" id="nav-menu">
     <a href="/info" class="nav-link" id="nav-info">INFO</a>
     <a href="/community" class="nav-link nav-center" id="nav-community">COMMUNITY</a>
     <div class="nav-right-group">
       <a href="/login" class="nav-link" id="nav-join">LOGIN</a>
-      <a href="/profile" class="nav-link" id="nav-profile" style="display:none;">PROFILE</a>
+      <a href="/profile" class="nav-link nav-link--pill" id="nav-profile" style="display:none;">PROFILE</a>
+      <a href="/onboarding" class="nav-link nav-link--pill" id="nav-signup">SIGN UP</a>
     </div>
+    {/* The language switch's place on the phone's sheet (2026-10-20): the
+        fixed .lang-toggle below is hidden on every page with a footer, so the
+        sheet carries its own copy, kept in step by updateNavLinks. Not drawn
+        on a desktop. */}
+    <a href="/de" class="nav-link nav-link--lang" id="nav-sheet-lang">
+      <span class="lang-cur">EN</span><span class="lang-sep"> / </span><span class="lang-tgt">DE</span>
+    </a>
   </div>
 </nav>
 
@@ -24,104 +52,347 @@ import "../styles/type.css";
      scope attributes after a deployment. Stable selectors keep the new page's
      stylesheet matching those links. */}
 <style is:global>
+  /* ON THE HEADER'S LINE, AT THE RIGHT (2026-10-12, Josh: "the header should
+     be inline with the Menu buttons"). The title is one VSCN at the left of a
+     --header-h tall row (Layout.astro); the nav is fixed over that row's
+     right end, so the two read as one header and neither moves on scroll.
+     Nothing is painted behind it: the row has no fill and no veil
+     (2026-10-13, Josh), the page scrolls under the bare title and the black
+     chips. Type for the button and the links is the NAV voice in type.css;
+     this file sets boxes and colours only.
+     THE KNOBS: --nav-ink / --nav-paper are the chips' two colours (black on
+     white type, the current page inverted), --nav-chip-pad the chip's box. */
   nav[data-astro-transition-persist="navbar"] {
-    position: sticky;
+    --nav-ink: var(--color-dark);
+    --nav-paper: var(--color-bg);
+    --nav-chip-pad: 8px 10px 7px;
+    position: fixed;
     top: 0;
-    z-index: 10;
+    right: 0;
+    z-index: 30;
+    height: var(--header-h);
+    display: flex;
+    align-items: center;
+    padding-right: 15px;
     line-height: 1;
   }
 
-  /* THE BACKDROP IS A LAYER BEHIND THE LINKS, NOT THE NAV'S BACKGROUND
-     (2026-09-25: the page shows through while scrolling). Two reasons it is a
-     pseudo-element. It can reach further down than the nav's own box: on
-     /community CommunityGrid writes --nav-backdrop-extend on .page-wrap, and
-     the same single veil runs on behind the docked filter bar, which paints no
-     backdrop of its own. Two translucent layers would double up in the strip
-     where the bar docks into the nav's padding, and meeting edge to edge
-     instead is the one-device-pixel hairline the overlap exists to prevent.
-     And a backdrop-filter on the nav itself would make it the containing block
-     for any fixed-position descendant. .page-wrap is swapped on every
-     navigation and the nav is persisted into the new one, so the extension
-     disappears on its own when you leave the page that set it.
-     z-index -1 is inside the nav's own stacking context (sticky + z-index), so
-     the veil sits under the links and over whatever scrolls behind.
-     Both values are tokens in global.css and currently say "nothing" — the
-     header is bare. The layer stays so frosting can come back as a token
-     change, not a rebuild of the extension. */
-  nav[data-astro-transition-persist="navbar"]::before {
-    content: "";
+  /* MENU, the desktop trigger: black, white type (2026-10-13, Josh: "desktop
+     menu: black background with white type"); underlined under the pointer
+     and while open, like the links. */
+  .nav-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--nav-chip-pad);
+    border: 0;
+    border-radius: 0;
+    background: var(--nav-ink);
+    color: var(--nav-paper);
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .nav-menu-btn:hover,
+  .nav-menu-btn[aria-expanded="true"] {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+  .nav-menu-btn:focus-visible {
+    outline: 1.5px solid var(--nav-ink);
+    outline-offset: 2px;
+  }
+
+  /* THE HAMBURGER: three bars in a 16 x 12 box, drawn on a phone only. Open,
+     the outer two slide to the middle and turn through 45 degrees into a
+     cross while the middle one shrinks away. The turn overshoots on the
+     site's one springy curve (the same the current page's chip wipes in on),
+     and the middle bar leaves first so the cross is never drawn over a third
+     line. */
+  .nav-burger {
+    display: none;
+    position: relative;
+    width: 16px;
+    height: 12px;
+  }
+  .nav-burger i {
     position: absolute;
-    inset: 0 0 calc(-1 * var(--nav-backdrop-extend, 0px));
-    z-index: -1;
-    pointer-events: none;
-    background: var(--color-bg-veil);
-    -webkit-backdrop-filter: var(--veil-filter);
-    backdrop-filter: var(--veil-filter);
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: currentColor;
+    transition:
+      transform 0.42s cubic-bezier(0.2, 1.25, 0.35, 1) 0.04s,
+      opacity 0.12s ease 0.04s;
+  }
+  .nav-burger i:nth-child(1) {
+    top: 0;
+  }
+  .nav-burger i:nth-child(2) {
+    top: 5px;
+    transition-delay: 0.1s;
+  }
+  .nav-burger i:nth-child(3) {
+    top: 10px;
+  }
+  .nav-menu-btn[aria-expanded="true"] .nav-burger i:nth-child(1) {
+    transform: translateY(5px) rotate(45deg);
+  }
+  .nav-menu-btn[aria-expanded="true"] .nav-burger i:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0);
+    transition-delay: 0s;
+  }
+  .nav-menu-btn[aria-expanded="true"] .nav-burger i:nth-child(3) {
+    transform: translateY(-5px) rotate(-45deg);
   }
 
+  /* The drop-down: the three chips stacked under the button, its right edge
+     on the button's.
+     IT ANIMATES BOTH WAYS (2026-10-13, Josh: "pay attention to the
+     animation"). It used to be toggled with `hidden`, so it could only
+     appear with a one-shot keyframe and it vanished with no motion at all.
+     Now the button's aria-expanded is the single state: the list is
+     `visibility: hidden` while closed (out of the tab order and the
+     accessibility tree, and not clickable), and each chip is a transition on
+     opacity and transform. They arrive top to bottom, 55ms apart, dropping
+     in with the spring curve; they leave bottom to top, 30ms apart, faster
+     and without the spring. Visibility changes at the END of the close, once
+     the last chip has gone: the 0.3s below has to stay above the longest
+     leave (last chip's delay 60ms + 0.2s). */
   .nav-links {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    padding: 0px 5px;
-    width: 100%;
-    /* Shared with the brand ticker and <main> — see --shell-max in
-       global.css. 5px here plus the links' own 10px puts the nav text on
-       main's 15px content edge at any measure. */
-    max-width: var(--shell-max);
-    box-sizing: border-box;
-    margin: 0 auto;
+    position: absolute;
+    top: calc(100% - 6px);
+    right: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 10rem;
+    visibility: hidden;
+    transition: visibility 0s linear 0.3s;
+  }
+  .nav-menu-btn[aria-expanded="true"] ~ .nav-links {
+    visibility: visible;
+    transition-delay: 0s;
+  }
+  #nav-info {
+    --i: 0;
+  }
+  #nav-community {
+    --i: 1;
+  }
+  #nav-join,
+  #nav-profile {
+    --i: 2;
+  }
+  #nav-signup {
+    --i: 3;
   }
 
+  /* Each link is a black chip with white type, square (the site has no
+     radii), with a hairline the same black so the inverted chip below keeps
+     an edge. */
   .nav-link {
     position: relative;
-    justify-self: start;
-    padding: 10px;
-    font-family: "Archivo", sans-serif;
-    font-size: var(--fs-100);
-    font-weight: 600;
+    /* The link's own stacking context, so the active chip's wipe (::before,
+       z-index -1) paints over the chip's fill and under the type. */
+    isolation: isolate;
+    display: block;
+    box-sizing: border-box;
+    padding: var(--nav-chip-pad);
     text-decoration: none;
-    color: var(--color-dark);
+    color: var(--nav-paper);
     white-space: nowrap;
-    transition: color 0.15s;
+    border-radius: 0;
+    background: var(--nav-ink);
+    box-shadow: inset 0 0 0 1px var(--nav-ink);
+    /* Closed: lifted and clear. Leaves last-first (see the drop-down above). */
+    opacity: 0;
+    transform: translateY(-8px);
+    transition:
+      color 0.25s ease 0.08s,
+      opacity 0.14s ease calc((2 - var(--i, 0)) * 30ms),
+      transform 0.2s ease calc((2 - var(--i, 0)) * 30ms);
+  }
+  .nav-menu-btn[aria-expanded="true"] ~ .nav-links .nav-link {
+    opacity: 1;
+    transform: none;
+    transition:
+      color 0.25s ease 0.08s,
+      opacity 0.2s ease calc(30ms + var(--i, 0) * 55ms),
+      transform 0.4s cubic-bezier(0.2, 1.25, 0.35, 1) calc(30ms + var(--i, 0) * 55ms);
   }
 
-  .nav-link::after {
+  /* WHITE ON BLACK EVEN ONCE VISITED (2026-10-14, Josh: "the text is black on
+     black bg"). global.css resets links with `a, a:visited { color: inherit }`,
+     and a:visited (0,1,1) outranks .nav-link (0,1,0): every page the reader
+     had already been to inherited the nav's black and vanished into the chip.
+     A fresh browser has no history, and getComputedStyle reports :visited
+     links as unvisited on purpose, so neither a clean test run nor a script
+     can see this; look at it after visiting the pages. The current page's
+     own :visited rule below comes later and still wins. */
+  .nav-link:visited {
+    color: var(--nav-paper);
+  }
+
+  /* THE CURRENT PAGE IS THE INVERTED CHIP: a paper capsule with a black
+     hairline and black type. It wipes in (2026-10-12, "make the animation
+     more flashy!"): a layer under the type that sweeps across the chip from
+     the left.
+     A CAPSULE LIKE THE CHIP (2026-10-14, Josh: "take a close look at the UI
+     again"). Since the chips went round (global.css, CONTROLS) this layer
+     stayed a square: it covered the capsule's hairline, so the current page
+     read as loose black text on desktop and as a box with broken sides on a
+     phone. It now takes the chip's radius (global.css excludes it from the
+     square reset) and carries the hairline itself, and the wipe is a
+     clip-path instead of a scaleX, which would squash the round ends. */
+  .nav-link::before {
     content: "";
     position: absolute;
-    bottom: 8px;
-    left: 10px;
-    right: 10px;
-    height: 1.5px;
-    background: var(--color-dark);
-    transform: scaleX(0);
-    transform-origin: center;
-    transition: transform 0.25s ease;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: var(--nav-paper);
+    box-shadow: inset 0 0 0 1px var(--nav-ink);
+    clip-path: inset(0 100% 0 0);
+    transition: clip-path 0.28s cubic-bezier(0.5, 0, 0.75, 0);
   }
 
+  /* No grey and no thicker line under the pointer: the type underlines. */
   .nav-link:hover {
-    color: var(--color-dark);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
   }
 
   .nav-link--active,
   .nav-link--active:visited,
   .nav-link--active:hover {
-    color: var(--color-dark);
+    color: var(--nav-ink);
+  }
+  .nav-link--active::before {
+    clip-path: inset(0 0 0 0);
+    transition: clip-path 0.5s cubic-bezier(0.2, 0.9, 0.2, 1) 0.05s;
   }
 
-  .nav-link--active::after {
-    transform: scaleX(1);
+  @media (prefers-reduced-motion: reduce) {
+    .nav-link::before,
+    .nav-link--active::before,
+    .nav-burger i,
+    .nav-links,
+    .nav-link,
+    .nav-menu-btn[aria-expanded="true"] ~ .nav-links .nav-link {
+      transition: none !important;
+    }
   }
 
-  .nav-center {
-    justify-self: center;
-    text-align: center;
+  .nav-link:focus-visible {
+    outline: 1.5px solid var(--color-dark);
+    outline-offset: 2px;
   }
 
+  /* LOGIN and PROFILE share the third bar — only one of them is shown. */
   .nav-right-group {
     display: flex;
-    gap: 1.25rem;
-    justify-self: end;
-    align-items: center;
+    flex-direction: column;
+  }
+
+  /* THREE PILLS, NO MENU, ON A DESKTOP (2026-10-14, Josh: "on desktop it
+     should be 3 pills that are directly selectable"). The drop-down above is
+     the phone's; here the same list is a row in the header's flow, always
+     shown, and the button is not drawn. The open/closed machinery is
+     switched off rather than removed: the list is visible, each pill is at
+     rest, and only the type's colour and the current page's wipe animate.
+     Two classes on the pill outrank the closed state (.nav-link, one class)
+     whatever the button says, so a phone's open menu carried across the
+     breakpoint changes nothing here. */
+  @media (--bp-desktop) {
+    /* IN FROM THE CORNER (2026-10-23, Josh: "weird to find them all the way
+       in the corner"): the row ends where main's text does, --shell-max
+       centred plus main's 15px gutter, not on the window's edge; the title
+       starts on the mirror edge (Layout.astro). A window narrower than the
+       measure keeps the old 15px. */
+    /* LIKE COSMOS (2026-10-23, Josh: "do it like cosmos. left the
+       different things we can select in the middle vscn ... on the right
+       login as a pill", then "also with sign up and login"): the nav spans
+       the row, the destinations at its left, the account at its right —
+       LOGIN as a word and SIGN UP as a black pill, or PROFILE as the pill
+       once signed in — and the title centred between them (Layout.astro).
+       The row lets clicks through to the title; only the links take them. */
+    nav[data-astro-transition-persist="navbar"] {
+      left: 0;
+      padding: 0 max(15px, calc((100vw - var(--shell-max)) / 2 + 15px));
+      pointer-events: none;
+    }
+    .nav-links .nav-link {
+      pointer-events: auto;
+    }
+    .nav-menu-btn {
+      display: none;
+    }
+    .nav-links {
+      position: static;
+      flex-direction: row;
+      align-items: center;
+      gap: 6px;
+      width: auto;
+      visibility: visible;
+      transition: none;
+    }
+    .nav-links {
+      flex: 1;
+    }
+    .nav-right-group {
+      flex-direction: row;
+      align-items: center;
+      gap: 1rem;
+      margin-left: auto;
+    }
+    /* PLAIN TEXT, NOT PILLS (2026-10-20, Josh: "desktop stays for now,
+       just replace with normal text"): the black capsules are gone, the
+       three words stand on the paper, and the current page is underlined
+       where the chip used to invert. The wipe layer is not drawn.
+       NARROWER (2026-10-23, Josh: "navbar on desktop has to be narrower"):
+       the words stand 1rem apart, not 1.6rem. */
+    .nav-links {
+      gap: 1rem;
+    }
+    .nav-links .nav-link {
+      opacity: 1;
+      transform: none;
+      padding: 0;
+      background: none;
+      box-shadow: none;
+      color: var(--nav-ink);
+      transition: color 0.25s ease 0.08s;
+    }
+    .nav-links .nav-link:visited {
+      color: var(--nav-ink);
+    }
+    .nav-links .nav-link::before {
+      display: none;
+    }
+    .nav-links .nav-link--active {
+      text-decoration: underline;
+      text-underline-offset: 4px;
+      text-decoration-thickness: 1px;
+    }
+    .nav-link--lang {
+      display: none;
+    }
+    /* The account's action is the one filled shape in the row. */
+    .nav-links .nav-link--pill,
+    .nav-links .nav-link--pill:visited {
+      padding: var(--nav-chip-pad);
+      border-radius: var(--radius-pill);
+      background: var(--nav-ink);
+      color: var(--nav-paper);
+    }
+    .nav-links .nav-link--pill:hover {
+      text-decoration: underline;
+    }
+    .nav-links .nav-link--pill.nav-link--active {
+      text-decoration: none;
+    }
   }
 
   .lang-toggle {
@@ -156,41 +427,202 @@ import "../styles/type.css";
     color: var(--color-dark);
   }
 
-  /* On mobile the navbar is the top edge of the page — the giant title rides
-     up out of the way on scroll (see Layout.astro) and leaves the links
-     standing alone up there.
-     THEY SIT CLOSER TO THE EDGE THAN THE CONTENT DOES (2026-09-01, Josh:
-     "less border gap for the info and login on mobile"). Two failed extremes
-     bracket this number. At 0 the row ran hard against the viewport and
-     "LOGIN" fell off the right edge at 375px, because a link ranged against
-     the screen has nothing left to give. At 15px — the content edge that
-     .brand-name and <main> both hold (see --shell-max in CLAUDE.md) — INFO and
-     LOGIN read as two more items in the column of cards rather than as the
-     frame around them. 8px keeps the outermost letters clear of the edge while
-     letting the row sit outside the content measure, which is what makes it
-     read as chrome. Desktop keeps the shared measure, where 5px plus the
-     links' own 10px lands on the content edge. */
   @media (--bp-mobile) {
+    /* THE HAMBURGER (2026-10-13, Josh: "a hamburger will be better"): the
+       button becomes a 36px tap target holding three black bars on the bare
+       page (2026-10-15, Josh: "just black lines not a black dot with lines";
+       it was a black square with white bars until then), the word MENU
+       clipped out of sight (it stays as the button's name), and the drop-down
+       it opens is the three chips, a touch roomier than on a desktop for a
+       thumb. Both sit 8px in from the screen edge, where the title sits on
+       the left. */
+    nav[data-astro-transition-persist="navbar"] {
+      --nav-chip-pad: 9px 12px 8px;
+      padding-right: 8px;
+    }
+    .nav-menu-btn {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      justify-content: center;
+      background: transparent;
+      color: var(--nav-ink);
+    }
+    .nav-menu-btn:hover,
+    .nav-menu-btn[aria-expanded="true"] {
+      text-decoration: none;
+    }
+    .nav-menu-btn__label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    .nav-burger {
+      display: block;
+    }
+    /* THE SHEET (2026-10-20, Josh: "remove pills. make the menu full screen
+       with nice animation in and out"). The chips under the cross are gone;
+       the list is a paper sheet over the whole screen below the header row,
+       and the destinations stand on it as large type (the MENU size in
+       type.css), stacked at the left where the title sits, the language
+       switch small beneath them. The current page carries an arrow after its
+       word, in place of the chips' inverted wipe.
+       IN: the sheet fades up and each line rises out of a short drop on the
+       site's curve, 60ms apart, top to bottom. OUT: the lines drop and fade
+       bottom to top, quicker and without the spring, and the sheet fades
+       after the last of them; visibility flips once that is done (the 0.5s
+       below stays above the longest leave). The hamburger sits above the
+       sheet so the cross stays tappable.
+       A TAPPED DESTINATION KEEPS THE SHEET UP (the "cut off" of 2026-10-20):
+       the menu used to close itself at astro:before-preparation, the same
+       moment the chip's wipe started, so the wipe died a few frames in. Now
+       the script closes it at astro:after-swap, once the new page is in and
+       held behind the sheet, and the sheet's own leave plays whole. */
+    .nav-menu-btn {
+      position: relative;
+      z-index: 1;
+    }
+    /* LOGIN and SIGN UP stand as two lines of the sheet, spaced like
+       the rest. */
+    .nav-right-group {
+      gap: 1.1rem;
+    }
+    /* THE SHEET COVERS THE HEADER ROW TOO (2026-10-23, Josh: "mobile menu
+       needs to cover the whole viewport otherwise we can see images at the
+       top"). The row paints nothing, so a sheet starting below it left a
+       strip of page showing under the title. The sheet now starts at the
+       top edge, padded down by the row, and the title row is lifted above
+       it while the menu is open (it lets taps through to the cross beside
+       it); on the close it stays lifted until the sheet's leave is over. */
+    :root .brand-ticker[data-wordmark="compact"] {
+      transition:
+        transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1),
+        z-index 0s linear 0.5s;
+    }
+    :root:has(#nav-menu-btn[aria-expanded="true"]) .brand-ticker[data-wordmark="compact"] {
+      z-index: 31;
+      pointer-events: none;
+      transition:
+        transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1),
+        z-index 0s linear 0s;
+    }
+    :root:has(#nav-menu-btn[aria-expanded="true"]) .brand-ticker[data-wordmark="compact"] .brand-link {
+      pointer-events: auto;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      :root .brand-ticker[data-wordmark="compact"] {
+        transition: z-index 0s linear 0.5s;
+      }
+      :root:has(#nav-menu-btn[aria-expanded="true"]) .brand-ticker[data-wordmark="compact"] {
+        transition: none;
+      }
+    }
     .nav-links {
-      padding: 0 8px;
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      width: auto;
+      justify-content: center;
+      /* Taller lines than the type alone, so the rule has room. */
+      gap: 1.1rem;
+      padding: var(--header-h) 8px 7vh;
+      box-sizing: border-box;
+      background: var(--nav-paper);
+      overscroll-behavior: contain;
+      touch-action: none;
+      opacity: 0;
+      visibility: hidden;
+      transition:
+        opacity 0.28s ease 0.16s,
+        visibility 0s linear 0.5s;
     }
-
-    .nav-link {
-      /* Tighter to the title above it — on a phone the two read as one block,
-         so the 10px the desktop row uses to breathe just looks like a gap. */
-      padding: 5px 0 7px;
-      font-size: var(--fs-90);
+    .nav-menu-btn[aria-expanded="true"] ~ .nav-links {
+      opacity: 1;
+      visibility: visible;
+      transition:
+        opacity 0.3s ease,
+        visibility 0s linear 0s;
     }
-
-    .nav-link::after {
+    /* Not display: contents — WebKit's WebContent process died on the page
+       change with the sheet open while the group was (headless 2368, the
+       same family as documentation/20260831-webkit-details-display-contents-crash.md). */
+    .nav-right-group {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .nav-links .nav-link {
+      position: relative;
+      display: inline-flex;
+      align-items: baseline;
+      align-self: flex-start;
+      width: auto;
+      padding: 0;
+      background: none;
+      box-shadow: none;
+      color: var(--nav-ink);
+      opacity: 0;
+      transform: translateY(1.1rem);
+      transition:
+        opacity 0.18s ease calc((2 - var(--i, 0)) * 30ms),
+        transform 0.24s ease-in calc((2 - var(--i, 0)) * 30ms);
+    }
+    .nav-menu-btn[aria-expanded="true"] ~ .nav-links .nav-link {
+      opacity: 1;
+      transform: none;
+      transition:
+        opacity 0.5s ease calc(60ms + var(--i, 0) * 60ms),
+        transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) calc(60ms + var(--i, 0) * 60ms);
+    }
+    .nav-links .nav-link:visited {
+      color: var(--nav-ink);
+    }
+    .nav-links .nav-link:hover {
+      text-decoration: none;
+    }
+    /* No wipe layer on the sheet. THE MARK IS A LINE THAT SWEEPS (2026-10-20,
+       Josh: "another animation element than the arrow"): a rule under the
+       current page's word, drawn in from the left on the site's curve; when
+       another destination is tapped it leaves the old word to the right as
+       it arrives under the new one, the way the desktop's underline reads. */
+    .nav-links .nav-link::before {
+      display: none;
+    }
+    .nav-links .nav-link::after {
+      content: "";
+      position: absolute;
       left: 0;
       right: 0;
-      bottom: 4px;
+      bottom: -0.1em;
+      height: 2px;
+      background: currentColor;
+      transform: scaleX(0);
+      transform-origin: right;
+      transition: transform 0.35s cubic-bezier(0.5, 0, 0.75, 0);
     }
-
-    .nav-right-group {
-      gap: 0.5rem;
+    .nav-links .nav-link--active::after {
+      transform: none;
+      transform-origin: left;
+      transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.08s;
     }
+    .nav-link--lang {
+      --i: 4;
+      margin-top: 1.4rem;
+    }
+    .nav-link--lang::after {
+      display: none;
+    }
+    .nav-link--lang .lang-sep,
+    .nav-link--lang .lang-tgt {
+      color: var(--color-muted);
+    }
+    /* The page stays put under the sheet by the sheet's own touch-action
+       above, NOT by overflow: hidden on the root: that rule, swapped off
+       the <html> mid view transition on the page change, crashed WebKit's
+       WebContent process every time (headless 2368, bisected 2026-10-20). */
 
     /* NOT FLOATING ON A PHONE (2026-09-24, Josh: "the language switch on
        mobile has to be placed underneath, so when you scroll all the way to
@@ -216,6 +648,54 @@ import "../styles/type.css";
   import { savePreferredLanguage } from "../lib/firestore.ts";
   import { rememberSessionChoice, type SiteLanguage } from "../lib/siteLanguage.ts";
 
+  // ── MENU ──────────────────────────────────────────────
+  // Opens and closes the drop-down; a click outside it, Escape, or leaving
+  // the page closes it. The nav is persisted across page changes, so it is
+  // closed on the navigation itself or it would stay open on the next page.
+  // The open state is the button's aria-expanded and nothing else: the CSS
+  // shows and animates the list from it (see the drop-down in the style
+  // block), so there is no `hidden` to toggle and no exit to wait for here.
+  function setMenu(open: boolean) {
+    document.getElementById("nav-menu-btn")?.setAttribute("aria-expanded", String(open));
+    // A header that had ridden away comes back to hold the cross
+    // (global.css, Layout.astro).
+    if (open) delete document.documentElement.dataset.headerAway;
+  }
+  // The menu is the phone's only (on a desktop the pills are always shown),
+  // so crossing the breakpoint closes it: a phone menu left open must not
+  // come back open after a round trip through the desktop width. The query is
+  // --bp-mobile (global.css), which a script cannot read by name.
+  window.matchMedia("(width <= 767px), (pointer: coarse)").addEventListener("change", () => setMenu(false));
+  document.addEventListener("click", (event) => {
+    const target = event.target as Element | null;
+    if (!target?.closest?.("#nav-menu-btn")) return;
+    const btn = document.getElementById("nav-menu-btn");
+    setMenu(btn?.getAttribute("aria-expanded") !== "true");
+  });
+  // Outside presses close it at the capture phase: the gallery's pictures
+  // and the lightbox stop their clicks from bubbling, and a menu left open
+  // over an opened picture is the one place this must not survive.
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      const target = event.target as Element | null;
+      if (!target?.closest?.("#nav-menu, #nav-menu-btn")) setMenu(false);
+    },
+    { capture: true }
+  );
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setMenu(false);
+  });
+  // Closed once the new page is in, not when the old one starts to leave:
+  // a tapped destination's arrow and the sheet's own leave play whole over
+  // the arriving page, which Layout holds invisible for its pause anyway.
+  // Two frames late: the persisted nav has just been moved into the new
+  // document, and a style change in the same task as that move has no
+  // before-change style to transition from — the sheet snapped shut.
+  document.addEventListener("astro:after-swap", () => {
+    requestAnimationFrame(() => requestAnimationFrame(() => setMenu(false)));
+  });
+
   // The EN / DE switch is an explicit choice, and nothing may route against it:
   // it wins for this session, and a signed-in member's stored language follows
   // it — the same setting /profile labels "Your language". Registered once, at
@@ -234,7 +714,7 @@ import "../styles/type.css";
   // left, so Stay records nothing. `documentElement.lang` is still the page
   // being left; the choice is its opposite.
   document.addEventListener("astro:before-preparation", (event) => {
-    const toggle = event.sourceElement?.closest?.("#nav-lang, #footer-lang");
+    const toggle = event.sourceElement?.closest?.("#nav-lang, #footer-lang, #nav-sheet-lang");
     if (!toggle) return;
     const chosen: SiteLanguage = document.documentElement.lang === "de" ? "en" : "de";
     rememberSessionChoice(chosen);
@@ -249,10 +729,16 @@ import "../styles/type.css";
 
   const navLabels: Record<
     Lang,
-    { info: string; community: string; login: string; profile: string }
+    { info: string; community: string; login: string; signup: string; profile: string }
   > = {
-    en: { info: "INFO", community: "COMMUNITY", login: "LOGIN", profile: "PROFILE" },
-    de: { info: "INFO", community: "COMMUNITY", login: "ANMELDEN", profile: "PROFIL" },
+    en: { info: "INFO", community: "COMMUNITY", login: "LOGIN", signup: "SIGN UP", profile: "PROFILE" },
+    de: {
+      info: "INFO",
+      community: "COMMUNITY",
+      login: "ANMELDEN",
+      signup: "REGISTRIEREN",
+      profile: "PROFIL",
+    },
   };
 
   let unsubscribeAuth: (() => void) | null = null;
@@ -261,10 +747,20 @@ import "../styles/type.css";
     return path.replace(/\/+$/, "") || "/";
   }
 
-  function setActiveLink() {
-    const path = normalisePath(window.location.pathname);
+  // THE CHIP WIPES BEFORE THE PAGE SWAPS (2026-10-19, Josh: "do animation
+  // of nav elements before page swap"): Layout's leave sequence holds the
+  // swap while the old page fades, so the destination's chip is marked at
+  // before-preparation and its wipe plays through that fade instead of on
+  // the new page's first frames. page-load marks it again, harmlessly.
+  document.addEventListener("astro:before-preparation", (event) => {
+    const to = (event as unknown as { to?: URL }).to;
+    if (to) setActiveLink(to.pathname);
+  });
+
+  function setActiveLink(pathname = window.location.pathname) {
+    const path = normalisePath(pathname);
     document.querySelectorAll<HTMLAnchorElement>(".nav-link").forEach((link) => {
-      if (link.id === "nav-lang") return;
+      if (link.id === "nav-lang" || link.id === "nav-sheet-lang") return;
       const isActive = normalisePath(link.pathname) === path;
       link.classList.toggle("nav-link--active", isActive);
       if (isActive) {
@@ -286,7 +782,9 @@ import "../styles/type.css";
     const navCommunity = document.getElementById("nav-community") as HTMLAnchorElement | null;
     const navJoin = document.getElementById("nav-join") as HTMLAnchorElement | null;
     const navProfile = document.getElementById("nav-profile") as HTMLAnchorElement | null;
+    const navSignup = document.getElementById("nav-signup") as HTMLAnchorElement | null;
     const navLang = document.getElementById("nav-lang") as HTMLAnchorElement | null;
+    const sheetLang = document.getElementById("nav-sheet-lang") as HTMLAnchorElement | null;
 
     if (navInfo) {
       navInfo.href = `${prefix}/info`;
@@ -304,16 +802,21 @@ import "../styles/type.css";
       navProfile.href = `${prefix}/profile`;
       navProfile.textContent = labels.profile;
     }
+    if (navSignup) {
+      navSignup.href = `${prefix}/onboarding`;
+      navSignup.textContent = labels.signup;
+    }
 
-    if (navLang) {
+    for (const toggle of [navLang, sheetLang]) {
+      if (!toggle) continue;
       if (lang === "de") {
         const enPath = normalisePath(normPath.replace(/^\/de/, "")) || "/";
-        navLang.href = enPath;
-        navLang.innerHTML =
+        toggle.href = enPath;
+        toggle.innerHTML =
           '<span class="lang-tgt">EN</span><span class="lang-sep"> / </span><span class="lang-cur">DE</span>';
       } else {
-        navLang.href = "/de" + normPath;
-        navLang.innerHTML =
+        toggle.href = "/de" + normPath;
+        toggle.innerHTML =
           '<span class="lang-cur">EN</span><span class="lang-sep"> / </span><span class="lang-tgt">DE</span>';
       }
     }
@@ -340,11 +843,13 @@ import "../styles/type.css";
 
     const navJoin = document.getElementById("nav-join");
     const navProfile = document.getElementById("nav-profile");
+    const navSignup = document.getElementById("nav-signup");
     if (!navJoin || !navProfile) return;
 
     unsubscribeAuth?.();
     unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       navJoin.style.display = user ? "none" : "block";
+      if (navSignup) navSignup.style.display = user ? "none" : "block";
       navProfile.style.display = user ? "block" : "none";
       setActiveLink();
     });

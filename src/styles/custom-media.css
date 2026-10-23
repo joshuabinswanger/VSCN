@@ -1,0 +1,18 @@
+/* THE BREAKPOINTS, AND NOTHING ELSE (2026-10-16). postcss.config.mjs has
+   @csstools/postcss-global-data inject this file into EVERY stylesheet so
+   postcss-custom-media can resolve (--bp-*) in scoped component styles.
+   Keep it to @custom-media definitions: global-data removes only the nodes
+   it injected, and custom-media REPLACES each @media (--bp-*) with a clone,
+   so any rule injected from here would survive into every CSS chunk. That
+   is what happened while global.css itself was the injected file. */
+
+/* A TABLET IS A PHONE (2026-10-23, Josh: "on Ipad it should also display in
+   the way we display it on mobile"). The primary pointer decides it, not the
+   width: an iPad is 1024-1376px wide in landscape, as wide as a laptop, and
+   in its default "desktop website" mode it even reports a Mac user agent.
+   A touch-first screen is (pointer: coarse) at any width; a touchscreen
+   laptop's primary pointer is still its trackpad, so it stays desktop. The
+   two must stay exact complements. Every matchMedia() in src/ spells the same
+   two queries out (inline scripts cannot import), so change them together. */
+@custom-media --bp-mobile (width <= 767px), (pointer: coarse);
+@custom-media --bp-desktop (767px < width) and (not (pointer: coarse));

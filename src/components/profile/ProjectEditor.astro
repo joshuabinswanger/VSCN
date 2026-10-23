@@ -7,128 +7,156 @@ const { lang = "en" } = Astro.props;
 const t = useTranslations(lang);
 ---
       <template data-gallery-tpl="project">
-        <section class="gallery-project" data-project-block>
-          {
-            /* The block moves as a whole with its own ↑/↓, past the
-              neighbouring row or block (moveProject). Delete ungroups in
-              place: the images stay, loose, where the block stood, and the
-              document goes at Save. */
-          }
-          <header class="gallery-project-head">
-            <span class="gallery-project-name" data-project-name></span>
-            <div class="gallery-toolbar gallery-toolbar--head" role="group">
-              <button type="button" class="gallery-tbtn" data-project-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
-              <button type="button" class="gallery-tbtn" data-project-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
-            </div>
-            <button type="button" class="gallery-tpill gallery-tpill--danger" data-project-delete>{t("profile.project.delete")}</button>
-          </header>
-          {
-            /* THE PROJECT'S WORDS FOLD, LIKE A WORK'S (2026-09-25, Josh: "the
-              projects should be collapsible as well"). Same element, same
-              classes and the same rule as a work's Image Details: a project already
-              saved starts FOLDED, one added in this session starts OPEN
-              (projectDetailsOpenUI, keyed by projectId). Only the words fold.
-              The header keeps the name, the arrows and Delete, and the images
-              below stay listed, so a folded block can still be moved and its
-              works still reordered. The summary says "Project details" and
-              nothing else (2026-09-26), the twin of a work's "Image Details". */
-          }
-          <details class="gallery-details gallery-project-details">
-            <summary class="gallery-details-summary">
-              <span class="gallery-details-title">{t("profile.project.details")}</span>
-              <span class="gallery-details-chevron" aria-hidden="true"></span>
-            </summary>
-          <div class="gallery-project-fields">
-            <div class="gallery-lang-switch" role="group">
-              <button type="button" class="gallery-lang-btn is-active" data-gallery-lang-btn="en">EN</button>
-              <button type="button" class="gallery-lang-btn" data-gallery-lang-btn="de">DE</button>
-            </div>
-            {/* Titled like the image rows' fields (2026-09-24); see there. */}
+        {
+          /* A PROJECT IN THE PAGE'S CLOTHES (2026-10-13): the block is the
+            page's own `.mprof__project` — its heading group, then its works —
+            with the title and the description as inline fields in the
+            heading's own voices. The tools stand above the title: the
+            block's ↑/↓ (moveProject: the block moves as a whole, past the
+            neighbouring row or block), Delete, and the block's own picker
+            (uploads land after its last image, insertUploaded). Since
+            2026-10-16 (Josh: "images without project are not allowed any
+            longer!") the block is the ONLY way a work comes in — its picker,
+            a drop onto it, its "Add video" — and Delete takes an empty block
+            only (the document goes at Save); one that holds works asks for
+            them to be moved or removed first.
+            The works inside are listed one under the other here; on the page
+            two or more page as a carousel. */
+        }
+        <section class="mprof__project gallery-project" data-project-block>
+          <div class="mprof__project-head gallery-project-fields">
+            {
+              /* The block's name for the controls that act on it, read by
+                renderGallery (projectLabel); the title field below is what
+                the member sees. */
+            }
+            <span class="gallery-project-name" data-project-name hidden></span>
+            {
+              /* Title and description, one language at a time — the bar's
+                EN | DE, like a work's words. The German pair is optional and
+                falls back to the English one on the German site.
+                The title is a one-line TEXTAREA, not an input, so it wraps
+                beside the toolbar instead of being cut off under it; the
+                controller keeps it to one paragraph (no Enter, no pasted
+                line breaks). */
+            }
             <div class="gallery-lang-pane" data-gallery-lang-pane="en">
-              <label class="row-label" data-row-label="title">{t("profile.project.title.label")}</label>
-              <input type="text" class="input" data-project-field="title" />
-              <div class="label-row">
-                <label class="row-label" data-row-label="description">{t("profile.project.description.label")}</label>
-                <span class="row-optional">{t("profile.optional")}</span>
-              </div>
-              <textarea class="input textarea" rows="2" data-project-field="description"></textarea>
+              <label class="gfield"><span class="gfield__lbl t-label">{t("profile.project.title.label")}</span><textarea class="mprof__project-title gallery-inline" rows="1" data-project-field="title"></textarea></label>
+              <label class="gfield"><span class="gfield__lbl t-label">{t("profile.project.description.label")}</span><textarea class="mprof__project-desc gallery-inline" rows="1" data-project-field="description"></textarea></label>
             </div>
-            <div class="gallery-lang-pane" data-gallery-lang-pane="de" hidden>
-              <div class="label-row">
-                <label class="row-label" data-row-label="titleDe">{t("profile.project.title.de")}</label>
-                <span class="row-optional">{t("profile.optional")}</span>
-              </div>
-              <input type="text" class="input" data-project-field="titleDe" />
-              <div class="label-row">
-                <label class="row-label" data-row-label="descriptionDe">{t("profile.project.description.de")}</label>
-                <span class="row-optional">{t("profile.optional")}</span>
-              </div>
-              <textarea class="input textarea" rows="2" data-project-field="descriptionDe"></textarea>
-            </div>
-            <div class="label-row">
-              <label class="row-label" data-row-label="link">{t("profile.project.website")}</label>
-              <span class="row-optional">{t("profile.optional")}</span>
-            </div>
-            <p class="field-note" data-tip data-tip-note="link" hidden>{t("profile.project.linkNote")}</p>
-            <div class="input-prefix-wrap">
-              <span class="input-prefix">https://</span>
-              <input type="text" class="input input-prefixed" data-project-field="link" />
-              <InfoTip lang={lang} rowKey="link" />
+            <div class="gallery-lang-pane" data-gallery-lang-pane="de">
+              <label class="gfield"><span class="gfield__lbl t-label">{t("profile.project.title.de")}</span><textarea class="mprof__project-title gallery-inline" rows="1" data-project-field="titleDe"></textarea></label>
+              <label class="gfield"><span class="gfield__lbl t-label">{t("profile.project.description.de")}</span><textarea class="mprof__project-desc gallery-inline" rows="1" data-project-field="descriptionDe"></textarea></label>
             </div>
             {
-              /* AFFILIATIONS, like the Social Media rows: repeatable, + Add
-                and ✕ per row. Each row is a name with an optional link OR a
-                credit to a VSCN member (Josh: "no approval needed"); the
-                Name | Member switch is the rows' EN/DE switch at the same
-                scale. Rows are cloned from the template below the block's. */
+              /* THE PROJECT'S FOLD: the link (images inside the block without
+                a site link of their own inherit it — inheritedSiteLink in
+                projects.ts, which is what the ⓘ says), the affiliations and
+                the tags. A project already saved starts FOLDED, one added in
+                this session starts OPEN (projectDetailsOpenUI). */
             }
-            <div class="gallery-project-affiliations">
-              <div class="label-row">
-                <p class="row-label">{t("profile.project.affiliations")}</p>
-                <span class="row-optional">{t("profile.optional")}</span>
+            {
+              /* EDIT AND ADD (2026-10-23, Josh: "hide most of those options
+                behind an edit and + button"). Two keys under the words.
+                EDIT opens the block's PANEL: its deck (↑ ↓ moveProject;
+                Delete, an empty block only — the document goes at Save),
+                then the link (images inside the block without a site link
+                of their own inherit it — inheritedSiteLink in projects.ts,
+                which is what the ⓘ says), the affiliations and the tags.
+                Remembered per projectId (projectDetailsOpenUI); a project
+                already saved starts closed, one added in this session open.
+                ADD, floated at the row's right, unfolds the three ways a
+                work comes in (since 2026-10-16 the block is the ONLY way):
+                Images (a <label> round a clipped file input; uploads land
+                after the block's last work), Video (the bar's sheet, for
+                THIS block) and Carousel (an empty one at the block's end,
+                to drag works into or fill through its +). */
+            }
+            <div class="gallery-edit-row">
+              <div class="gallery-addrow">
+                <button type="button" class="gallery-key gallery-key--plus" data-project-add-toggle aria-expanded="false">
+                  <svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                  <span>{t("profile.deck.add")}</span>
+                </button>
+                <div class="gallery-addkeys" data-project-addkeys hidden>
+                  <label class="gallery-key gallery-key--wide gallery-project-add" title={t("profile.project.addImages")}>
+                    <svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/><circle cx="9" cy="9" r="2"/><path d="M16 5h6M19 2v6"/></svg>
+                    <span>{t("profile.deck.images")}</span>
+                    <input type="file" class="picker-input" accept="image/jpeg,image/png,image/webp,image/avif" multiple data-project-files aria-label={t("profile.project.addImages")} />
+                  </label>
+                  <button type="button" class="gallery-key gallery-key--wide" data-project-video aria-expanded="false"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/></svg><span>{t("profile.deck.video")}</span></button>
+                  <button type="button" class="gallery-key gallery-key--wide" data-project-carousel><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="12" height="14" rx="1"/><path d="M2 8v8"/><path d="M22 8v8"/></svg><span>{t("profile.deck.carousel")}</span></button>
+                  <button type="button" class="gallery-key gallery-key--wide" data-project-text><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg><span>{t("profile.deck.text")}</span></button>
+                </div>
               </div>
-              <div class="social-editor" data-affiliations></div>
-              <button type="button" class="btn-outline choose-img gallery-aff-add" data-aff-add>
-                {t("profile.project.affiliations.add")}
-              </button>
+              <details class="gallery-details gallery-project-details">
+                <summary class="gallery-details-summary gallery-key gallery-key--edit"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span class="gallery-details-title">{t("profile.deck.edit")}</span><span class="gallery-details-chevron" aria-hidden="true"></span></summary>
+                <div class="gallery-details-body gallery-panel">
+                <div class="gallery-row-tools gallery-project-tools gallery-deck">
+                  <div class="gallery-deck__grp">
+                    <div class="gallery-keys">
+                      <button type="button" class="gallery-key gallery-tbtn" data-project-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+                      <button type="button" class="gallery-key gallery-tbtn" data-project-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
+                    </div>
+                  </div>
+                  <div class="gallery-deck__grp">
+                    <div class="gallery-keys">
+                      <button type="button" class="gallery-key gallery-tbtn gallery-tbtn--danger" data-project-delete aria-label={t("profile.project.delete")} title={t("profile.project.delete")}><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
+                    </div>
+                  </div>
+                </div>
+                  <div class="label-row">
+                    <label class="row-label" data-row-label="link">{t("profile.project.website")}</label>
+                    <span class="row-optional">{t("profile.optional")}</span>
+                  </div>
+                  <p class="field-note" data-tip data-tip-note="link" hidden>{t("profile.project.linkNote")}</p>
+                  <div class="input-prefix-wrap">
+                    <span class="input-prefix">https://</span>
+                    <input type="text" class="input input-prefixed" data-project-field="link" />
+                    <InfoTip lang={lang} rowKey="link" />
+                  </div>
+                  {
+                    /* AFFILIATIONS, like the Social Media rows: repeatable, + Add
+                      and ✕ per row. Each row is a name with an optional link OR a
+                      credit to a VSCN member; the Name | Member switch is the
+                      rows' EN/DE switch at the same scale. Rows are cloned from
+                      the template in WorkEditor. */
+                  }
+                  <div class="gallery-project-affiliations">
+                    <div class="label-row">
+                      <p class="row-label">{t("profile.project.affiliations")}</p>
+                      <span class="row-optional">{t("profile.optional")}</span>
+                    </div>
+                    <div class="social-editor" data-affiliations></div>
+                    <button type="button" class="btn-outline choose-img gallery-aff-add" data-aff-add>
+                      {t("profile.project.affiliations.add")}
+                    </button>
+                  </div>
+                  {
+                    /* A PROJECT'S TAGS (2026-09-27): the work row's own fold and
+                      picker, cloned per block the same way, remembered per
+                      projectId (projectTagsOpenUI). */
+                  }
+                  <details class="gallery-tags gallery-project-tags" open>
+                    <summary class="gallery-tags-summary">
+                      <span class="gallery-tags-title">{t("profile.label.tags")}</span>
+                      <span class="gallery-tags-count" data-project-tags-count></span>
+                      <span class="gallery-tags-chevron" aria-hidden="true"></span>
+                      <span class="gallery-tags-picked" data-project-tags-picked></span>
+                    </summary>
+                    <TagSelector lang={lang} maxTags={7} />
+                  </details>
+                </div>
+              </details>
             </div>
             {
-              /* A PROJECT'S TAGS (2026-09-27, Josh: "add project tags"). The
-                work row's own fold and picker, cloned per block the same way,
-                so the vocabulary, the seven-tag cap and the chips are one
-                thing across the editor. Open by default like a work's, and
-                remembered per projectId (projectTagsOpenUI) across the
-                re-renders every move and upload causes. */
+              /* Save writes only the projects an image names, so a block that
+                holds none stays local and is gone after a reload. Said here,
+                in the block, not behind an ⓘ. renderGallery() shows it while
+                block.indices is empty. */
             }
-            <details class="gallery-tags gallery-project-tags" open>
-              <summary class="gallery-tags-summary">
-                <span class="gallery-tags-title">{t("profile.label.tags")}</span>
-                <span class="gallery-tags-count" data-project-tags-count></span>
-                <span class="gallery-tags-chevron" aria-hidden="true"></span>
-              </summary>
-              <TagSelector lang={lang} maxTags={7} />
-            </details>
+            <p class="field-note gallery-project-empty" data-project-empty hidden>{t("profile.project.emptyNote")}</p>
           </div>
-          </details>
           <div class="gallery-project-images" data-project-images></div>
-          {
-            /* Save writes only the projects an image names, so a block that
-              holds none stays local and is gone after a reload. Said here, in
-              the block, not behind an ⓘ — the words typed into an empty block
-              are exactly what would be lost (final review, 2026-09-24).
-              renderGallery() shows it while block.indices is empty. */
-          }
-          <p class="field-note gallery-project-empty" data-project-empty hidden>{t("profile.project.emptyNote")}</p>
-          {
-            /* Uploads straight into this block: the same queue as the general
-              picker, the task carrying the projectId, and the finished image
-              lands after the block's last image (insertUploaded). Its pending
-              row is shown INSIDE the block too (renderQueue homes it here), so
-              nothing appears at the bottom of the list and then jumps. */
-          }
-          <label class="btn-outline choose-img gallery-project-add">
-            {t("profile.project.addImages")}
-            <input type="file" class="picker-input" accept="image/jpeg,image/png,image/webp,image/avif" multiple data-project-files />
-          </label>
         </section>
       </template>

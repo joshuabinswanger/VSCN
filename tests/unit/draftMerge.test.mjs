@@ -38,6 +38,30 @@ test("committed membership and order are not unsaved; a typed caption is", () =>
   assert.equal(uncommittedWorks([a, { ...b, tags: ["x", "y"] }], committed).length, 1);
 });
 
+test("works differing only in carouselId, size, textAfter, textAfterDe or inGallery are unsaved", () => {
+  const base = work("a", { caption: "A" });
+  const committed = committedFromLoad([base]);
+  for (const change of [{ carouselId: "c-1" }, { size: "s" }, { textAfter: "T" }, { textAfterDe: "T" }, { inGallery: false }]) {
+    assert.equal(uncommittedWorks([{ ...base, ...change }], committed).length, 1, JSON.stringify(change));
+  }
+  assert.deepEqual(uncommittedWorks([base], committed), []);
+});
+
+test("a restored draft puts the carousel and the other work fields back on the record", () => {
+  const live = [work("a", { caption: "A" })];
+  const words = workWords(work("a", { caption: "A", carouselId: "c-1", size: "m", textAfter: "T", textAfterDe: "Z", inGallery: false }));
+  const [merged] = mergeDraftGallery(live, [{ imageId: "a", words }], new Set());
+  assert.equal(merged.carouselId, "c-1");
+  assert.equal(merged.size, "m");
+  assert.equal(merged.textAfter, "T");
+  assert.equal(merged.textAfterDe, "Z");
+  assert.equal(merged.inGallery, false);
+  const [cleared] = mergeDraftGallery([merged], [{ imageId: "a", words: workWords(live[0]) }], new Set());
+  assert.equal("carouselId" in cleared, false);
+  assert.equal("size" in cleared, false);
+  assert.equal("inGallery" in cleared, false);
+});
+
 test("a work that just arrived is committed with its initial words, but not its block", () => {
   const committed = committedFromLoad([]);
   const video = work("v", { caption: "Platform title", embed: { provider: "youtube", videoId: "1" } });
@@ -48,6 +72,11 @@ test("a work that just arrived is committed with its initial words, but not its 
   const inBlock = work("p", { projectId: "P" });
   committed.set("p", committedForNew(inBlock));
   assert.deepEqual(uncommittedWorks([inBlock], committed), [{ imageId: "p", words: workWords(inBlock) }]);
+  // Likewise a carousel: an upload into a tray is not stored with its id yet.
+  const inTray = work("t", { projectId: "P", carouselId: "c1" });
+  committed.set("t", committedForNew(inTray));
+  assert.equal(committed.get("t").carouselId, "");
+  assert.deepEqual(uncommittedWorks([inTray], committed), [{ imageId: "t", words: workWords(inTray) }]);
 });
 
 test("uncommitted works are keyed by id, sorted, independent of gallery order", () => {

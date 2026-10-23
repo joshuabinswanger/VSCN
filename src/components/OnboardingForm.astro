@@ -514,7 +514,7 @@ const prefix = lang === "de" ? "/de" : "";
       <p class="ob-sub">{t("onboarding.done.sub")}</p>
     </header>
     <div class="ob-done-card">
-      <CommunityCardPreview />
+      <CommunityCardPreview lang={lang} />
     </div>
     {
       /* Filled by finishToPreview from what is actually true of the profile
@@ -836,7 +836,6 @@ const prefix = lang === "de" ? "/de" : "";
     height: 100%;
     object-fit: cover;
     border-radius: var(--radius-sm);
-    border: 1.5px solid var(--color-border);
     box-sizing: border-box;
   }
 

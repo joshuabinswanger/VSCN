@@ -36,7 +36,8 @@ import "../styles/lightbox.css";
 const WALL_TRIGGERS = ".cgrid__cell:not([hidden]) .cwork__link";
 
 // THE GALLERY'S TRIGGER is NOT in that list, since 2026-09-08. The card puts
-// one bare link over its carousel (.ccard__frame-link), and as a PhotoSwipe
+// its slides as links (.ccard__slide, since 2026-10-15; before that one bare
+// link over the carousel), and as a PhotoSwipe
 // child that link was ONE item — the lightbox paged from card to card,
 // showing each member's currently selected picture and nothing else of
 // theirs (Josh: "photoswipe should pick all images in the gallery ... not

@@ -90,6 +90,7 @@
   --fs-180: 24px; /* 23.40 */
   --fs-190: 26px; /* 24.70 */
   --fs-225: 30px; /* 29.25 */
+  --fs-300: 40px; /* 39.00 — the phone menu's lines */
   /* Every tag chip (.tagchip). Its own token because tags go the OTHER way on
      a phone: down to the whole pixel below 8.64px, where everything else goes
      up to the one above. Not in the desktop bump either: still 0.72rem.
@@ -99,23 +100,17 @@
   /* The small caps that label things (see LABEL below). Its own token
      because it is a voice, not a factor: 10px here, 11px on a phone. */
   --fs-label: 10px;
-  /* A carousel's position dots, on the directory card (.ccard__dot) and on
-     a member page's project carousels (.mprof__carousel-dot): one size for
+  /* A carousel's position dots, on the directory card (.cdot in global.css) and on
+     a member page's project carousels: one size for
      both. Doubled from 0.18rem on 2026-09-28 (Josh: "make the dots
-     bigger"). */
-  --carousel-dot: 0.36rem;
-  --carousel-dot-gap: 0.28rem;
+     bigger"); Instagram-small on 2026-10-16 (Josh: "smaller dots"). */
+  --carousel-dot: 0.34rem;
+  --carousel-dot-gap: 0.26rem;
 }
 
-/* THE PHONE READS AT THE REFERENCE'S SIZE (2026-09-27, Josh: "text larger on
-   mobile, check illustratoren schweiz for reference"). Measured there at 375px:
-   captions and credits 12px, body 14px, section heads 16px, menu 16px. The
-   phone column now takes the DESKTOP pixel for every token, and the caption
-   band (0.78–0.80: card roles, profile links, card bios) one more on top, so
-   the smallest running text on a phone is 12px like the reference's. The old
-   phone pixel is in each comment. Tags stay at 8px: Josh took them down on
-   purpose on 2026-09-26, and they get letter-spacing instead (.tagchip).
-   An 11px trial on 2026-09-28 was reverted the same day. */
+/* Mobile follows the Koppen reference: 13px body, 16px large copy,
+   18–32px headings, and 10–12px metadata. The 12px root keeps layout
+   spacing independent of type. Smaller label tokens remain unchanged. */
 @media (--bp-mobile) {
   :root {
     --fs-58: 7px; /* 6.96 */
@@ -125,28 +120,29 @@
     --fs-66: 8px; /* 7.92 */
     --fs-68: 9px; /* 8.16 */
     --fs-70: 9px; /* 8.40 */
-    --fs-72: 10px; /* 9 */
-    --fs-74: 10px; /* 9 */
-    --fs-75: 11px; /* 10 */
-    --fs-76: 11px; /* 10 */
-    --fs-78: 12px; /* 10 */
-    --fs-80: 12px; /* 10 */
-    --fs-82: 12px; /* 10 */
-    --fs-85: 12px; /* 11 */
-    --fs-88: 13px; /* 11 */
-    --fs-90: 13px; /* 11 */
-    --fs-95: 13px; /* 12 */
-    --fs-100: 14px; /* 13 */
-    --fs-105: 15px; /* 13 */
-    --fs-115: 16px; /* 14 */
-    --fs-120: 17px; /* 15 */
-    --fs-125: 17px; /* 16 */
-    --fs-140: 19px; /* 17 */
-    --fs-160: 22px; /* 20 */
-    --fs-180: 24px; /* 22 */
-    --fs-190: 26px; /* 23 */
-    --fs-225: 30px; /* 28 */
-    --fs-tag: 8px; /* 8.64 */
+    --fs-72: 10px;
+    --fs-74: 10px;
+    --fs-75: 11px;
+    --fs-76: 12px;
+    --fs-78: 12px;
+    --fs-80: 13px;
+    --fs-82: 13px;
+    --fs-85: 13px;
+    --fs-88: 13px;
+    --fs-90: 13px;
+    --fs-95: 13px;
+    --fs-100: 13px;
+    --fs-105: 14px;
+    --fs-115: 16px;
+    --fs-120: 18px;
+    --fs-125: 18px;
+    --fs-140: 20px;
+    --fs-160: 24px;
+    --fs-180: 26px;
+    --fs-190: 28px;
+    --fs-225: 32px;
+    --fs-300: 40px;
+    --fs-tag: 10px;
     --fs-label: 11px;
   }
 }
@@ -175,13 +171,33 @@
   line-height: 1.5;
 }
 
-/* NAME: a member's name on a directory card. */
+/* NAME: a member's name on a directory card. (The Images view's section
+   heads spoke NAME for a day on 2026-10-15; they are BODY now — Josh: "the
+   same regular width as the rest of the text".) */
 .t-name,
-.ccard__name {
-  font-size: var(--fs-120);
-  font-weight: 700;
+.ccard__name,
+.cindex__name {
+  /* A step down from --fs-120 (2026-10-12, Josh: "name a tad smaller"). */
+  font-size: var(--fs-105);
+  /* 500, from 700 (2026-10-12, Josh: "lighter font weight"). */
+  font-weight: 500;
   line-height: 1.1;
   letter-spacing: -0.01em;
+}
+
+/* THE CARD'S NAME AS THE MEMBER PAGE SETS IT (2026-10-16, Josh: "the
+   portfolio text column should match the profile view"), .mprof__aside's
+   name in profile.css — at EVERY width since the same day: the name is the
+   card's first line beside the picture, and a phone sets it as big
+   (Josh: "on phone increase the Name font as well"). The clamp's floor is
+   what a phone gets. The role: at the foot of this file, after META, which
+   would otherwise win the tie. */
+.ccard__name {
+  /* A size up (2026-10-19, Josh: "Name on portfolio site bigger"). */
+  font-size: clamp(2.1rem, 2.6vw, 3.6rem);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
 }
 
 /* HEADING: section heads and field labels, in caps. The info and legal
@@ -209,13 +225,12 @@
    and artist credit left this voice on 2026-09-28 for COUNT and META. */
 .t-label,
 .mprof__key,
-.mprof__open,
 .pdisc__key,
 .tag-group-title,
 .gallery-tags-title,
-.gallery-details-title,
 .harness__label,
-.pswp--vscn .pswp__vscn-word {
+.profile-link,
+.search__group-title {
   font-size: var(--fs-label);
   font-weight: 600;
   line-height: 1.2;
@@ -232,13 +247,13 @@
    the member page. */
 .t-meta,
 .ccard__role,
+.prail__name,
+.cindex__role,
 .member-role,
-.mprof__link,
 .member-link,
-.pdisc__link,
-.cwork__author,
-.pswp--vscn .pswp__vscn-credit-name,
-.pswp--vscn .pswp__vscn-text-link {
+.mprof__index-link,
+.search__sub,
+.pswp--vscn .pswp__vscn-credit-name {
   font-size: var(--fs-78);
   font-weight: 500;
   line-height: 1.3;
@@ -248,28 +263,67 @@
    description, a card's bio, a project's description) wherever the picture
    is: on the member page, in the card's panel, in the lightbox. The lightbox
    used to set them a step smaller than the page it opened from. Colour (dark
-   title, muted description) stays with each component. */
+   title, muted description) stays with each component.
+   A STEP UP (2026-10-14, Josh: "make the font bigger on the work page it
+   seems extremely small", then "make the lightbox and card captions bigger
+   too"): 11px on a desktop until then, under pictures 700px wide and beside a
+   14px bio. Now the bio's size, everywhere a picture is. The lines that
+   follow a caption — "With …" and the links — are CAPTION'S SECOND LINE,
+   a step below. The editor's inline fields inherit, so editing grows too. */
 .t-caption,
 .mprof__caption,
 .mprof__project-desc,
-.mprof__project-with,
+.mprof__text,
 .pdisc__bio,
-.pswp--vscn .pswp__vscn-text-caption,
-.pswp--vscn .pswp__vscn-text-desc,
+.pswp--vscn .pswp__vscn-text-caption {
+  font-size: var(--fs-100);
+  font-weight: 400;
+  line-height: 1.5;
+}
+/* A WORK'S TITLE UNDER ITS PICTURE: CAPTION, bold (2026-10-18, Josh: "the
+   image title should be the same size as flow text just bolder"). On a
+   desktop it steps down with the description and the text blocks to the
+   flow text's --fs-85 (the desktop block below); on a phone all are 13px. */
+.mprof__caption-line {
+  font-size: var(--fs-100);
+  font-weight: 600;
+  line-height: 1.5;
+}
+/* THE LIGHTBOX DESCRIPTION, A STEP UNDER ITS TITLE (2026-10-16, Josh: "the
+   description text should be smaller on desktop"). 12px under the 14px title
+   on a desktop; on a phone --fs-85 is the same 13px as CAPTION, so nothing
+   changes there. More leading, since it is the one paragraph in the window. */
+.pswp--vscn .pswp__vscn-text-desc {
+  font-size: var(--fs-85);
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+/* CAPTION'S SECOND LINE: who a project was with, and the links under a
+   picture, on the page, in the card's panel and in the lightbox. */
+.mprof__project-with,
 .pswp--vscn .pswp__vscn-text-project,
 .pswp--vscn .pswp__vscn-text-affiliations {
-  font-size: var(--fs-78);
+  font-size: var(--fs-90);
   font-weight: 400;
   line-height: 1.45;
 }
 
-/* LINK: a small named step, meaning "View profile". Same size as LABEL, in
-   lower case: an action, not a name. The underline is drawn by each
-   component. (The lightbox's provenance lines were LINK until 2026-09-28;
-   they are META and CAPTION now, as the same lines are on the member page.) */
-.t-link,
-.ccard__profile,
-.cindex__profile {
+.mprof__link,
+.pdisc__link,
+.pswp--vscn .pswp__vscn-text-link {
+  font-size: var(--fs-90);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+/* LINK: a small named step, meaning "View profile" in the ledger rows. Same
+   size as LABEL, in lower case: an action, not a name. The underline is
+   drawn by each component. (The lightbox's provenance lines were LINK until
+   2026-09-28; they are META and CAPTION now, as the same lines are on the
+   member page. The gallery card's "PROFILE →" left for HEADING on
+   2026-10-12, when it became a filled button.) */
+.t-link {
   font-size: var(--fs-label);
   font-weight: 600;
   line-height: 1.3;
@@ -277,14 +331,12 @@
 }
 
 /* COUNT: a carousel's position, "2 / 7", wherever pictures are paged: the
-   directory card, a project's carousel on the member page, and the
-   lightbox's own counter (2026-09-28, Josh: "make the counter and all the
+   lightbox's own counter (the directory card and a project's carousel
+   show dots instead since 2026-10-16) (2026-09-28, Josh: "make the counter and all the
    styles in photoswipe adjusted to the rest of the site"). Plain numerals,
    not caps, with tabular figures so "9 / 12" and "10 / 12" do not shift.
    Colour (muted) stays with each component. */
 .t-count,
-.ccard__count,
-.mprof__carousel-count,
 .pswp--vscn .pswp__vscn-counter-count {
   font-size: var(--fs-75);
   font-weight: 400;
@@ -293,10 +345,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* BODY: running prose that is not a caption, meaning a member's bio. */
+/* BODY: running prose that is not a caption, meaning a member's bio — and
+   the Images view's section heads (2026-10-15, Josh: "make the separation
+   text the same regular width as the rest of the text"): the name beside
+   its rule in the regular weight, not NAME's heavier one. */
 .t-body,
 .mprof__bio,
-.member-bio {
+.member-bio,
+.cgrid__head {
   font-size: var(--fs-100);
   font-weight: 400;
   line-height: 1.6;
@@ -315,6 +371,34 @@
   text-transform: uppercase;
 }
 
+/* NAV: the header's MENU and its three links (Navbar.astro), which on a phone
+   are three chips in the header row. A step up from TAG on a phone on
+   purpose (2026-10-13, Josh: "a bit bigger than the tags"): --fs-tag is 10px
+   there, this is 11px. */
+.t-nav,
+.nav-link,
+.nav-menu-btn {
+  font-size: var(--fs-82);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+/* MENU (2026-10-20): on a phone the links stand on a full-screen sheet as
+   large type, the language line beneath them at the NAV size. */
+@media (--bp-mobile) {
+  .nav-link {
+    font-size: var(--fs-300);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .nav-link--lang {
+    font-size: var(--fs-82);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+}
+
 /* TAG: every tag, on every page. The chip's box (border, padding, the
    tracking compensation) is .tagchip in global.css; --tag-track is set there
    because the padding reads it too. */
@@ -325,4 +409,57 @@
   line-height: 1.25;
   letter-spacing: var(--tag-track);
   text-transform: uppercase;
+}
+
+/* Mobile gallery. Sizing and weights follow the Koppen reference while
+   retaining Archivo. (Until 2026-10-12 the card's name and role had a quiet
+   closed size and a large open one here; the second card has no closed
+   caption — its words are either open beside the picture or folded away —
+   so they speak NAME and META at every width.) */
+@media (--bp-mobile) {
+  .ccard__role { font-weight: 400; line-height: 1.4; }
+  .pdisc__bio { line-height: 1.6; }
+  .pdisc__link { font-weight: 400; line-height: 1.5; }
+}
+
+/* THE CARD'S ROLE AND THE MEMBER PAGE'S BIO ON A DESKTOP (2026-10-16), after
+   the voices they step out
+   of. The bio a step under BODY (2026-10-15,
+   Josh: "the paragraph a bit smaller"), and the member page's bio the same
+   size since 2026-10-16 (Josh: "the profile should get the same font size for
+   flow text"). A work's description under its picture on the member page
+   joined them the same day (Josh: "image descriptions should be smaller the
+   same font size as the flow text for the profile"), with the bio's leading;
+   so did a project's text blocks between its pictures (Josh: "yes the
+   text blocks too"), and the work's title above it on 2026-10-18. On a phone
+   all of them are 13px. */
+@media (--bp-desktop) {
+  /* The card's role as .mprof__role (back on the card 2026-10-16, Josh:
+     "Add Role back in."). */
+  .ccard__role {
+    font-size: var(--fs-90);
+    font-weight: 600;
+    line-height: 1.35;
+  }
+  .mprof__bio,
+  .mprof__desc,
+  .mprof__text,
+  .mprof__caption-line {
+    font-size: var(--fs-85);
+  }
+  .mprof__desc,
+  .mprof__text {
+    line-height: 1.6;
+  }
+}
+
+/* THE BAR'S WORD SIZES, for the member page's Portfolios pill (2026-10-20):
+   the directory's bar sets the same two on .community-bar__in itself. */
+.mprof-bar__in {
+  font-size: var(--fs-85);
+}
+@media (--bp-desktop) {
+  .mprof-bar__in {
+    font-size: var(--fs-95);
+  }
 }

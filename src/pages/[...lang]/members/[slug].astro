@@ -1,6 +1,7 @@
 ---
 import { getImage } from "astro:assets";
 import Layout from "../../../layouts/Layout.astro";
+import { splitParagraphs } from "../../../lib/paragraphs.ts";
 import { fetchMemberViews, fetchSlugAliases } from "../../../lib/membersBuild.ts";
 import { localizeMember, type MemberView } from "../../../lib/memberView.ts";
 import {
@@ -10,6 +11,7 @@ import {
   socialLinks,
   workCaption,
   workDescription,
+  workTextAfter,
 } from "../../../lib/links.ts";
 import { memberPageJsonLd, memberPageUrl, memberTitle } from "../../../lib/seo.ts";
 import { groupWorks, projectTitle, projectDescription, projectSlideData, type ProfileProject } from "../../../lib/projects.ts";
@@ -91,6 +93,7 @@ const works = await Promise.all(
       // screen reader speaks for this image.
       caption: workCaption(w, currentLang),
       description: workDescription(w, currentLang),
+      textAfter: workTextAfter(w, currentLang),
       rendered: await getImage({
         src: w.url,
         width: w.width,
@@ -118,11 +121,15 @@ const works = await Promise.all(
 );
 
 // PROJECT BLOCKS (2026-09-23): the gallery stays one list in the member's
-// order; a project's images sit together under its heading, loose works in
-// between. groupWorks() is the same cut the editor preview makes.
-// Projects stack in the member's order; each one with two or more works is
-// its own carousel (MemberProject.astro, 2026-09-26). The one slider that
-// paged between projects (2026-09-25) is gone with that change.
+// order; a project's images sit together under its heading. groupWorks() is
+// the same cut the editor preview makes. No loose works since 2026-10-16
+// (Josh: "images without project are not allowed any longer!"): the view
+// model files old project-less works under a virtual "Works" / "Arbeiten"
+// project (adoptLooseWorks in toMemberViewBase), so the bare-MemberWork
+// branch below is only a fallback.
+// Projects stack in the member's order, every work in line with the text
+// blocks between them (MemberProject.astro, 2026-10-16); the per-project
+// carousels of 2026-09-26 are gone.
 const sections = groupWorks(works, member.projects ?? []);
 
 // The lightbox's own labels. One attribute rather than five, for the same
@@ -136,10 +143,14 @@ const lightboxStrings = JSON.stringify({
   error: t("member.lightbox.error"),
   linkTitle: t("member.lightbox.link"),
   siteLinkTitle: t("member.lightbox.siteLink"),
+  linkText: t("member.lightbox.linkText"),
+  siteLinkText: t("member.lightbox.siteLinkText"),
   play: t("member.lightbox.play"),
   partOf: t("member.project.partOf"),
   with: t("member.project.with"),
   dialog: t("member.lightbox.dialog"),
+  hideText: t("member.lightbox.hideText"),
+  showText: t("member.lightbox.showText"),
 });
 
 const social = socialLinks(member.socialMedia);
@@ -209,8 +220,21 @@ const jsonLd = memberPageJsonLd({
   jsonLd={aliasOf ? undefined : jsonLd}
   noindex={Boolean(aliasOf)}
   redirectTo={aliasOf}
+  contentWide
 >
-  <article class="mprof">
+  <article class="mprof" data-paints-in>
+    {/* THE PAGE PAINTS IN (2026-10-20): the motion flag goes on before the
+        first paint, so the start state (profile.css) never flashes the plain
+        page first — and never under reduced motion, so the page shows plainly
+        there. Layout.astro sees data-paints-in and skips its whole-page fade
+        for this page; profilePaint.ts plays the build-up after the pause. */}
+    <script
+      is:inline
+      data-astro-rerun
+      set:html={`(function(){try{if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;var c=document.currentScript;var a=(c&&c.parentElement&&c.parentElement.classList.contains("mprof"))?c.parentElement:document.querySelector(".mprof");if(!a)return;a.dataset.motion="";var b=document.querySelector(".mprof-bar");if(b)b.dataset.motion=""}catch(e){}})()`}
+    />
+    {/* The person, the left column on a desktop (profile.css). */}
+    <div class="mprof__aside">
     <header class="mprof__head">
       {member.photoURL && (
         <img
@@ -223,21 +247,21 @@ const jsonLd = memberPageJsonLd({
         />
       )}
       <div class="mprof__head-copy">
-        <h1 class="mprof__name" transition:name={`mname-${member.id}`}>{member.displayName}</h1>
+        <h1 class="mprof__name">{member.displayName}</h1>
         {member.role && <p class="mprof__role">{member.role}</p>}
         {member.affiliation && <p class="mprof__affiliation">{member.affiliation}</p>}
         {where && <p class="mprof__where">{where}</p>}
-        {
-          member.openTo.length > 0 && (
-            <p class="mprof__open">
-              {t("member.openTo")} {member.openTo.join(", ")}
-            </p>
-          )
-        }
+        {/* NO "OPEN TO" LINE (2026-10-20, Josh: "remove open to as well"): the
+            field stays in the editor, like the working languages, and is shown
+            nowhere public. */}
       </div>
     </header>
 
-    {member.bio && <p class="mprof__bio">{member.bio}</p>}
+    {member.bio && (
+      <p class="mprof__bio">
+        {splitParagraphs(member.bio).map((para) => <span class="mprof__para">{para}</span>)}
+      </p>
+    )}
 
     <div class="mprof__meta">
       {
@@ -320,10 +344,11 @@ const jsonLd = memberPageJsonLd({
       }
 
     </div>
+    </div>
 
     {
       works.length > 0 && (
-        <div class="mprof__works" data-pswp-i18n={lightboxStrings}>
+        <div class="mprof__works" data-pswp-i18n={lightboxStrings} data-index-label={t("member.index")}>
           {/* Each work is a link to the original, which is what PhotoSwipe
               binds to — and what makes the image openable with scripting off
               rather than being inert. The gallery is still one list in the
@@ -333,9 +358,9 @@ const jsonLd = memberPageJsonLd({
             section.project ? (
               <MemberProject
                 project={section.project}
+                data-project-id={section.project.id}
                 works={section.works}
                 allWorks={works}
-                memberId={member.id}
                 displayName={member.displayName}
                 lang={currentLang}
               />
@@ -344,7 +369,6 @@ const jsonLd = memberPageJsonLd({
                 <MemberWork
                   work={w}
                   index={works.indexOf(w)}
-                  memberId={member.id}
                   displayName={member.displayName}
                   workAlt={t("member.workAlt")}
                   linkTitle={t("member.lightbox.link")}
@@ -357,17 +381,60 @@ const jsonLd = memberPageJsonLd({
       )
     }
   </article>
+  {/* THE WAY BACK TO THE PORTFOLIOS (2026-10-20, Josh: "when in profile view
+      navigate back via a portfolios button at the bottom in the style of
+      the lower button"): one pill where the directory's bar floats, drawn
+      to its measures (profile.css). It is a link to the Portfolios, and
+      when this page was reached FROM them it goes back in history instead
+      (the script below), so the member left is the one landed on
+      (restorePagesMember, communityDirectoryController.ts). */}
+  <nav class="mprof-bar" aria-label={t("community.view.gallery")}>
+    <a class="mprof-bar__in" id="mprof-back" href={currentLang === "de" ? "/de/community" : "/community"}>
+      <span aria-hidden="true">←</span>
+      {t("community.view.gallery")}
+    </a>
+  </nav>
 </Layout>
 
 
 <script>
+  // The Portfolios pill goes BACK when the Portfolios are the entry behind
+  // this one: the directory files the member on screen under its history
+  // index on the way out (vscn:pages-at:<index>), so that key's presence for
+  // the previous index is the tell. Otherwise the link goes forward to them.
+  document.addEventListener("click", (event) => {
+    const link = (event.target as Element | null)?.closest?.("#mprof-back");
+    if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey) return;
+    const index = (history.state as { index?: number } | null)?.index;
+    if (typeof index !== "number" || index < 1) return;
+    let filed: string | null = null;
+    try {
+      filed = sessionStorage.getItem(`vscn:pages-at:${index - 1}`);
+    } catch {
+      /* Private mode: forward it is. */
+    }
+    if (filed === null) return;
+    event.preventDefault();
+    history.back();
+  }, { capture: true });
+  // Capture, so it runs ahead of the ClientRouter's own click listener,
+  // which steps aside for a prevented click.
+
   import type PhotoSwipeLightbox from "photoswipe/lightbox";
   // The options, the words and the video slides: one lightbox for the whole
   // site, defined once in lib/lightbox.ts (the grid and the editor's preview
   // build theirs from the same function).
   import { createLightbox, parseLightboxStrings } from "../../../lib/lightbox.ts";
-  // The project carousels (2026-09-26); they release themselves on astro:before-swap.
-  import { initProjectCarousels, showInCarousel } from "../../../lib/projectCarousel.ts";
+  // The list of projects and works in the third track (2026-10-14).
+  import { initProfileIndex } from "../../../lib/profileIndex.ts";
+  import { workKey } from "../../../lib/communitySearch.ts";
+  // The build-up after the pause (2026-10-20): name, text, tags, then the first picture.
+  import { paintIn, paintPlainly } from "../../../lib/profilePaint.ts";
+  // The work carousels (2026-10-23): the Portfolios card's engine over
+  // MemberCarousel.astro's markup, their captions, and ← → for the one on screen.
+  import { initMemberCarousels } from "../../../lib/memberCarousel.ts";
+  import { initCarouselKeys } from "../../../lib/carouselKeys.ts";
+  import { browserAnimatedThisTraversal } from "../../../lib/gestureHistory.ts";
   import "photoswipe/style.css";
   // Immediately after the package sheet, never before: this is the chrome that
   // replaces it. The overrides are also written to win on specificity alone
@@ -380,20 +447,51 @@ const jsonLd = memberPageJsonLd({
   // elements. MemberCard is the existing precedent for this pair.
   let lightbox: PhotoSwipeLightbox | null = null;
 
+  // ARRIVING FROM THE DIRECTORY'S SEARCH (2026-10-16): ?work= names a
+  // picture by its stored path (workKey), ?project= a project by its id. The
+  // page opens on the picture, or on the project. Two frames late, so the
+  // layout has settled before the scroll.
+  function revealLinked() {
+    const params = new URLSearchParams(window.location.search);
+    const work = params.get("work");
+    const project = params.get("project");
+    if (!work && !project) return;
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        let target: HTMLElement | null = null;
+        if (work) {
+          const link = Array.from(document.querySelectorAll<HTMLAnchorElement>(".mprof__work-link")).find(
+            (a) => workKey(a.href) === work,
+          );
+          if (link) target = link.closest<HTMLElement>(".mprof__work");
+        }
+        if (!target && project) {
+          target = document.querySelector<HTMLElement>(`.mprof__project[data-project-id="${CSS.escape(project)}"]`);
+        }
+        target?.scrollIntoView({ block: "start", behavior: "instant" });
+      }),
+    );
+  }
+
   document.addEventListener("astro:page-load", () => {
-    initProjectCarousels();
+    initProfileIndex(document.querySelector<HTMLElement>(".mprof"));
+    // The page the browser animated in itself (the iOS swipe back) is
+    // already on screen: no build-up over it.
+    const page = document.querySelector<HTMLElement>(".mprof");
+    if (browserAnimatedThisTraversal()) paintPlainly(page);
+    else void paintIn(page);
+    revealLinked();
     lightbox?.destroy();
     lightbox = null;
     const gallery = document.querySelector<HTMLElement>(".mprof__works");
     if (!gallery) return;
+    initMemberCarousels(gallery);
+    initCarouselKeys(gallery);
 
     lightbox = createLightbox(parseLightboxStrings(gallery.dataset.pswpI18n), {
       gallery: ".mprof__works",
       children: ".mprof__work-link",
     });
-    // Paging the lightbox pages the project carousel behind it, so closing
-    // zooms back onto the picture the visitor ended on.
-    lightbox.on("change", () => showInCarousel(lightbox?.pswp?.currSlide?.data.element));
     lightbox.init();
   });
 

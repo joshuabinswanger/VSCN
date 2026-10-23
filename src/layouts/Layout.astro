@@ -1,5 +1,11 @@
 ---
 import { ClientRouter } from "astro:transitions";
+
+// THE PAGE CHANGE (2026-10-12, Josh: "make a smooth animation when switching
+// pages"). Only <main> moves: the old page fades out and lifts, the new one
+// rises in from below; Back plays it reversed in direction. Both halves are
+// WAAPI on the live <main> (the leave and enter sequences in the script
+// below), NOT a view-transition name on <main> — see enterPage() for why.
 import Navbar from "../components/Navbar.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import PageLoader from "../components/PageLoader.astro";
@@ -81,8 +87,16 @@ const BRAND_LETTERS = [
 // design rule here and six repeats keeps it rather than breaking it.
 // Mobile stays at four: there the measure is the phone's width, so six repeats
 // would shrink the title past the point where it reads as a title at all.
-const BRAND_REPEATS_MOBILE = 4;
-const BRAND_REPEATS_DESKTOP = 6;
+// ONE VSCN (2026-10-12, Josh: "we also only want a VSCN and not the wide
+// banner. it should still expand on hovering over the text", and "the header
+// should be inline with the Menu buttons"). BRAND_COMPACT draws the title as a
+// single copy at a fixed size at the left of a --header-h row, with the nav's
+// MENU at the row's right end; the word overwrite on hover is unchanged. The
+// repeat, fit and overshoot machinery below stays, switched off by these
+// numbers, so the banner is a constant away.
+const BRAND_COMPACT = true;
+const BRAND_REPEATS_MOBILE = BRAND_COMPACT ? 1 : 4;
+const BRAND_REPEATS_DESKTOP = BRAND_COMPACT ? 1 : 6;
 // One slot per glyph position of the resting title, then a run of spill slots.
 // Hovering a slot writes its tail OVER the slots that follow it, so the line
 // rewrites itself in place instead of growing and shoving its neighbours
@@ -123,10 +137,10 @@ const BRAND_COPY_TARGET_PX = 145;
 // "Communication" over twelve capitals, with room to spare.
 // ?wordmark=shell has none: that line ends at the measure, inside the window,
 // so letters past it would be seen.
-const BRAND_OVERSHOOT_REPEATS = 1;
+const BRAND_OVERSHOOT_REPEATS = BRAND_COMPACT ? 0 : 1;
 // Enough copies for a ~3500px window at the target size, plus the overshoot;
 // wider than that the line keeps this many and the fit lets the letters grow.
-const BRAND_POOL_REPEATS = 24 + BRAND_OVERSHOOT_REPEATS;
+const BRAND_POOL_REPEATS = BRAND_COMPACT ? 1 : 24 + BRAND_OVERSHOOT_REPEATS;
 // The markup carries the whole pool, one slot per glyph, every slot tagged with
 // its copy number. Without JS a desktop shows the first BRAND_REPEATS_DESKTOP
 // (`.brand-slot--pool` is display:none) and a phone the first
@@ -199,6 +213,7 @@ const BRAND_SLOTS: BrandSlot[] = [
         }
 
         function sync() {
+          if (window.matchMedia("(width <= 767px), (pointer: coarse)").matches) return;
           if (vv.scale !== 1 || editing()) return;
           const h = Math.round(vv.height);
           // A zero height is "not laid out yet", never a shell to adopt.
@@ -209,7 +224,7 @@ const BRAND_SLOTS: BrandSlot[] = [
 
         function settle() {
           settleTimer = 0;
-          if (vv.scale !== 1) return;
+          if (vv.scale !== 1 || window.matchMedia("(width <= 767px), (pointer: coarse)").matches) return;
           // Parked past the page's own end, or above its start: the state from
           // the bug report. Nothing else can undo it, because a document with
           // `overflow: hidden` gives the reader nothing to scroll back with.
@@ -246,6 +261,21 @@ const BRAND_SLOTS: BrandSlot[] = [
         // Coming back from the bfcache is a fresh chance to be wrong.
         window.addEventListener("pageshow", onChange);
       })();
+    </script>
+    {
+      /* DID THE BROWSER ANIMATE THIS BACK ITSELF? An iOS edge swipe shows the
+        previous page sliding in before popstate fires, and says so on the
+        event (hasUAVisualTransition). The router's own popstate listener runs
+        before any listener added after it — same-target listeners fire in
+        registration order — and it dispatches astro:before-preparation
+        synchronously from inside it, so the flag has to be caught by a
+        listener registered BEFORE the router's: this inline script, which
+        runs ahead of every module. gestureHistory.ts reads the slot. */
+    }
+    <script is:inline>
+      addEventListener("popstate", function (e) {
+        window.__vscnPopstateUA = e.hasUAVisualTransition === true;
+      });
     </script>
     <title>{title}</title>
     <meta name="description" content={metaDescription} />
@@ -293,8 +323,8 @@ const BRAND_SLOTS: BrandSlot[] = [
   <body class:list={[{ "content-wide": contentWide }]}>
     <div
       class="brand-ticker"
-      data-wordmark={BRAND_FIT_VIEWPORT ? "fit" : "shell"}
-      data-wordmark-default={BRAND_FIT_VIEWPORT ? "fit" : "shell"}
+      data-wordmark={BRAND_COMPACT ? "compact" : BRAND_FIT_VIEWPORT ? "fit" : "shell"}
+      data-wordmark-default={BRAND_COMPACT ? "compact" : BRAND_FIT_VIEWPORT ? "fit" : "shell"}
       data-brand-copy-target={BRAND_COPY_TARGET_PX}
       data-brand-repeats-desktop={BRAND_REPEATS_DESKTOP}
       data-brand-repeats-mobile={BRAND_REPEATS_MOBILE}
@@ -367,8 +397,9 @@ const BRAND_SLOTS: BrandSlot[] = [
      under the last link. The landing hero has no footer and keeps its fixed
      toggle, so it keeps the 80px. */
   @media (--bp-mobile) {
+    .brand-ticker { margin-top: 0; }
     .page-wrap.has-footer {
-      --page-wrap-pad-bottom: 30px;
+      --page-wrap-pad-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
     }
 
     /* THE FOOTER WAITS BELOW THE FIRST SCREEN (2026-09-27, Josh: "footer
@@ -489,6 +520,82 @@ const BRAND_SLOTS: BrandSlot[] = [
      wherever the rules sit. */
   .brand-slot.brand-slot--on.brand-slot--overshoot {
     display: inline-grid;
+  }
+
+  /* THE COMPACT HEADER (BRAND_COMPACT): one row --header-h tall, the title at
+     its left at a fixed size, the nav fixed over its right end (Navbar.astro).
+     On a desktop the ticker stands above .page-wrap, and on a phone, where
+     the document scrolls, it is sticky. Since 2026-10-19 it rides away on a
+     scroll down and comes back on a scroll up (data-header-away, global.css).
+     NO FILL (2026-10-13, Josh: "remove the background behind the VSCN title
+     and the menu"): the row paints nothing, the page passes under the bare
+     letters on a phone as it does under the nav on a desktop.
+     The two numbers Josh tunes by eye are the custom properties on the row:
+     the title's size and how far in from the screen's left edge it starts
+     (2026-10-13: "smaller and a bit to the left", 30px at 15px -> 24px at
+     8px on a desktop, 26px -> 20px on a phone). */
+  .brand-ticker[data-wordmark="compact"] {
+    --brand-compact-size: 24px;
+    --brand-compact-inset: 8px;
+    display: flex;
+    align-items: center;
+    height: var(--header-h);
+    padding: 0 15px 0 var(--brand-compact-inset);
+    margin-top: 0;
+    overflow-x: clip;
+  }
+  .brand-ticker[data-wordmark="compact"] .brand-link {
+    height: auto;
+  }
+  .brand-ticker[data-wordmark="compact"] .brand-name {
+    font-size: var(--brand-compact-size);
+    line-height: 1;
+  }
+  /* NO BAND ON A DESKTOP EITHER (2026-10-14, Josh: "on desktop the logo and
+     menu buttons should not be over a filled BG bar at the top"). The row
+     painted nothing, but it stood ABOVE .page-wrap, the desktop's scroller,
+     so the paper between the title and the pills was a strip the content
+     could never enter — a bar by position. Now the row floats over the
+     scroller's top and .page-wrap starts at the window's top edge, padded
+     down by the row's height, so the page passes under the bare letters as
+     it does on a phone. Sticky children pin inside that padding (ProfileForm
+     relies on the same for the bottom), so every sticky top keeps its place.
+     Only the title takes pointer events; the empty row lets clicks through. */
+  @media (--bp-desktop) {
+    .brand-ticker[data-wordmark="compact"] {
+      /* IN THE MIDDLE, A SIZE UP (2026-10-23, Josh: "do it like cosmos ...
+         in the middle vscn with the animation a bit bigger"): the title is
+         centred on the row, the destinations at its left and the account
+         at its right (Navbar.astro). The hover overwrite rides along. */
+      --brand-compact-size: 30px;
+      justify-content: center;
+      padding: 0;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 25;
+      pointer-events: none;
+    }
+    .brand-ticker[data-wordmark="compact"] .brand-link {
+      pointer-events: auto;
+    }
+    .brand-ticker[data-wordmark="compact"] ~ .page-wrap {
+      padding-top: var(--header-h);
+      scroll-padding-top: var(--header-h);
+    }
+  }
+  @media (--bp-mobile) {
+    .brand-ticker[data-wordmark="compact"] {
+      /* 26px since 2026-10-20 (Josh: "VSCN bigger"), with the phone menu's
+         40px lines under it; was 20px. */
+      --brand-compact-size: 26px;
+      position: sticky;
+      top: 0;
+      z-index: 25;
+      padding: 0 8px 0 var(--brand-compact-inset);
+      background: transparent;
+    }
   }
 
   .brand-link {
@@ -639,6 +746,14 @@ const BRAND_SLOTS: BrandSlot[] = [
 </style>
 
 <script>
+  // The directory's Portfolios deal, run on the incoming page before a swap
+  // — on every page, because the directory's own script is not loaded yet.
+  import "../lib/communityDealSwap.ts";
+  // The history entry of every navigation is pushed INSIDE the tap, or iOS's
+  // own Back skips it (gestureHistory.ts) — which also knows when the
+  // browser has already animated a Back, the iOS edge swipe.
+  import { browserAnimatedThisTraversal } from "../lib/gestureHistory.ts";
+
   type Lang = "en" | "de";
 
   function updateBrandHomeLink(lang: Lang) {
@@ -698,6 +813,14 @@ const BRAND_SLOTS: BrandSlot[] = [
     // Copies past the right edge, where the line ends on it (see
     // BRAND_OVERSHOOT_REPEATS). Taken out of the pool first, so the widest
     // window still has them.
+    if (ticker.dataset.wordmark === "compact") {
+      slots.forEach((slot) => {
+        const inLine = Number(slot.dataset.brandRepeat) === 0;
+        slot.classList.toggle("brand-slot--on", inLine);
+        slot.classList.toggle("brand-slot--off", !inLine);
+      });
+      return;
+    }
     const endsOnWindowEdge = isPhone || ticker.dataset.wordmark === "fit";
     const overshoot = endsOnWindowEdge ? Number(ticker.dataset.brandOvershoot) || 0 : 0;
     let count = desktop;
@@ -732,15 +855,23 @@ const BRAND_SLOTS: BrandSlot[] = [
     } catch {
       /* Private mode: the URL still works for this one page. */
     }
+    // The compact title has one copy in its markup, so the banner modes have
+    // nothing to show there; the choice only applies to a banner build.
+    const fallback = ticker.dataset.wordmarkDefault ?? "shell";
     ticker.dataset.wordmark =
-      choice === "shell" || choice === "fit" ? choice : (ticker.dataset.wordmarkDefault ?? "shell");
+      fallback !== "compact" && (choice === "shell" || choice === "fit") ? choice : fallback;
   }
 
   function fitBrandName() {
     const el = document.getElementById("brand-name") as HTMLElement | null;
     if (!el) return;
-    el.style.fontSize = "8rem";
     const ticker = el.closest<HTMLElement>(".brand-ticker");
+    // The compact title is a fixed size (the CSS states it); nothing to fit.
+    if (ticker?.dataset.wordmark === "compact") {
+      el.style.fontSize = "";
+      return;
+    }
+    el.style.fontSize = "8rem";
     if (!ticker) return;
     // clientWidth includes the ticker's inline padding; the text can only use
     // the content box, so subtract it or the title overflows by exactly the
@@ -965,7 +1096,16 @@ const BRAND_SLOTS: BrandSlot[] = [
     initWordmarkChoice(ticker);
     refreshBrandName();
     attachBrandOverwrite();
+    // observe() always reports once at the start, and refreshBrandName has
+    // just run above: that first report re-fitted the title for nothing and
+    // forced a second full layout of the page being arrived on — ~75–140ms
+    // of a phone's arrival (2026-10-16, the Portfolios stutter). Only a size
+    // that actually CHANGED does the work.
+    let fitted = `${ticker.offsetWidth}x${ticker.offsetHeight}`;
     brandResizeObserver = new ResizeObserver(() => {
+      const size = `${ticker.offsetWidth}x${ticker.offsetHeight}`;
+      if (size === fitted) return;
+      fitted = size;
       leaveBrandName();
       refreshBrandName();
       // The clamp on --brand-hide is the ticker's own height, and a resize is
@@ -983,12 +1123,44 @@ const BRAND_SLOTS: BrandSlot[] = [
   // above for why desktop was given the same behaviour.
   let brandScroller: HTMLElement | null = null;
   let brandHideFrame = 0;
+  let leavingPage = false;
+
+  // ── THE HEADER RIDES AWAY ON A SCROLL DOWN, BACK ON A SCROLL UP ──
+  // (2026-10-19, Josh: "the navbar should move away on scrolling up".) The
+  // scroll's DIRECTION, not its offset: past the row's own height, a few px
+  // down puts data-header-away on <html> and the title row and the nav
+  // slide up together (global.css); a few px up brings them back, and the
+  // top always shows them. Not while a page is arriving or leaving: the
+  // arrival places the scroll itself (Back to a member), and that would read
+  // as a scroll down.
+  let headerLastY = 0;
+  function applyHeaderAway() {
+    const root = document.documentElement;
+    if (!brandScroller) return;
+    const y = brandScroller.scrollTop;
+    if (leavingPage || root.hasAttribute("data-arriving") || root.hasAttribute("data-arrive-hold")) {
+      headerLastY = y;
+      return;
+    }
+    const header = parseFloat(getComputedStyle(root).getPropertyValue("--header-h")) || 48;
+    if (y <= header) delete root.dataset.headerAway;
+    else if (y > headerLastY + 6) root.dataset.headerAway = "";
+    else if (y < headerLastY - 6) delete root.dataset.headerAway;
+    headerLastY = y;
+  }
 
   function applyBrandHide() {
     brandHideFrame = 0;
+    applyHeaderAway();
     const ticker = document.querySelector<HTMLElement>(".brand-ticker");
     if (!ticker) return;
-    if (!brandScroller) {
+    // On mobile the ticker leaves naturally with document scrolling, and the
+    // compact title never leaves at all.
+    if (
+      !brandScroller ||
+      ticker.dataset.wordmark === "compact" ||
+      window.matchMedia("(width <= 767px), (pointer: coarse)").matches
+    ) {
       ticker.style.removeProperty("--brand-hide");
       return;
     }
@@ -999,9 +1171,8 @@ const BRAND_SLOTS: BrandSlot[] = [
   }
 
   function onBrandHideScroll() {
-    // Piggybacked on the one scroll listener the page already has, throttled
-    // separately — see saveScroll.
-    saveScroll();
+    // The leave sequence below owns the title while a page is being left.
+    if (leavingPage) return;
     if (brandHideFrame) return;
     brandHideFrame = requestAnimationFrame(applyBrandHide);
   }
@@ -1010,137 +1181,214 @@ const BRAND_SLOTS: BrandSlot[] = [
   // so the listener has to be moved to the new scroller each time.
   function initBrandScrollHide() {
     brandScroller?.removeEventListener("scroll", onBrandHideScroll);
-    brandScroller = document.querySelector<HTMLElement>(".page-wrap");
+    window.removeEventListener("scroll", onBrandHideScroll);
+    brandScroller = window.matchMedia("(width <= 767px), (pointer: coarse)").matches
+      ? document.documentElement
+      : document.querySelector<HTMLElement>(".page-wrap");
+    if (brandScroller === document.documentElement) {
+      window.addEventListener("scroll", onBrandHideScroll, { passive: true });
+    }
     brandScroller?.addEventListener("scroll", onBrandHideScroll, { passive: true });
+    // A new page starts with the header shown, whatever the last one did.
+    delete document.documentElement.dataset.headerAway;
+    headerLastY = brandScroller?.scrollTop ?? 0;
     applyBrandHide();
   }
 
-  // ── Back and forward have to land where you left ──────────
-  // ClientRouter restores scroll by writing to the WINDOW, and on this site the
-  // window does not scroll: body is `overflow: hidden` and .page-wrap is the
-  // scrollport (see the layout note at the top of this file). So its
-  // restoration is a no-op, and every Back landed at the top of the page it
-  // returned to — most visibly coming back from a member's page to the point in
-  // the community directory you had scrolled to. (2026-09-01, Josh: "back
-  // navigation dors not work getting back from profiles"; the other half of
-  // that report was ClientRouter's history state being overwritten — see
-  // syncURL in CommunityGrid.)
-  //
-  // KEYED BY ClientRouter'S OWN HISTORY INDEX, and stored in sessionStorage
-  // rather than in the history entry itself. Two reasons, both practical:
-  // writing scroll into history.state on every scroll frame would hit Safari's
-  // replaceState rate limit, and reading the index at save time and at restore
-  // time makes this independent of WHERE in the transition lifecycle each
-  // happens — a forward navigation gets a fresh index and so finds nothing
-  // saved, which is exactly the "start at the top" behaviour a new page wants.
-  const SCROLL_KEY = "vscn:scroll:";
-  // Saving on every scroll frame is pointless; a quarter second of granularity
-  // is finer than a reader can notice they lost.
-  const SCROLL_SAVE_MS = 250;
-  // ~1s of trying, in 50ms steps — long enough for the directory's deal and the
-  // motion layer's first measure, short enough that a page which genuinely
-  // cannot reach the offset any more (a member deleted, a filter in the URL)
-  // gives up before the reader notices anything twitching.
-  const SCROLL_RESTORE_TRIES = 20;
-  const SCROLL_RESTORE_STEP_MS = 50;
-  let lastScrollSave = 0;
-  // THE ENTRY WE ARE ACTUALLY ON, tracked rather than read from history.state
-  // at save time. On a Back the browser has already swapped history.state to
-  // the DESTINATION before Astro starts the transition, so a save keyed off
-  // history.state during that transition writes the page-being-left's offset
-  // under the destination's key — obliterating the very value about to be
-  // restored. (Observed: leave /community at 1400, press Back, and the stored
-  // 1400 became the member page's 0 a moment before the restore read it.)
-  // Updated on page-load, which is the one moment both the DOM and the entry
-  // are settled.
-  let currentIndex: number | null = null;
+  window.matchMedia("(width <= 767px), (pointer: coarse)").addEventListener("change", initBrandScrollHide);
 
-  function scrollKeyFor(index: number | null): string | null {
-    return typeof index === "number" ? SCROLL_KEY + index : null;
-  }
+  // ── EVERY ARRIVAL STARTS AT THE TOP ──
+  // (2026-10-16, Josh: "you dont have to keep scroll position when switching
+  // pages".) Back used to land where the page was left — offsets saved per
+  // history entry in sessionStorage and re-applied after the swap (since
+  // 2026-09-01) — and that re-application was the "portfolio page slides
+  // around" on arrival. Now nothing is remembered. A desktop arrival is at
+  // the top by construction (.page-wrap is a new element); on a phone the
+  // DOCUMENT scrolls and ClientRouter restores its offset on Back, so a
+  // traversal is put back at the top once the view transition is done (the
+  // router's own restore, and the browser's, can land as late as that).
+  let arrivalWasTraverse = false;
+  let scrollTransitionDone: Promise<unknown> = Promise.resolve();
+  let scrollNavigation = 0;
 
-  function saveScroll(force = false) {
-    if (!brandScroller) return;
-    const now = performance.now();
-    if (!force && now - lastScrollSave < SCROLL_SAVE_MS) return;
-    lastScrollSave = now;
-    const key = scrollKeyFor(currentIndex);
-    if (!key) return;
-    try {
-      sessionStorage.setItem(key, String(brandScroller.scrollTop));
-    } catch {
-      /* A private-mode quota refusal costs the restore, never the page. */
+  // ── LEAVING A PAGE: FINISH THE OLD MOTION, THEN SWAP ──
+  // (2026-10-12, Josh: "the animation trips up because of the disappearing
+  // header. check that animations are done before switching page".) The
+  // title rides away as a page scrolls, and a new page starts at the top, so
+  // the swap used to bring the title back in the same frame the content
+  // started moving — and the view transition's group for <main> slid the new
+  // page from the OLD page's scrolled position to its own, which is the
+  // stumble. Now the leave is a sequence the router waits for: the old page
+  // fades out where it stands, the title comes back (sliding down on a
+  // desktop; on a phone, where the document itself scrolls, the scroll is
+  // reset under the invisible page and the title fades in), and only then is
+  // the swap allowed. The loader is wrapped, so the fetch runs in parallel
+  // and the swap waits for whichever finishes last. With nothing left
+  // moving, the new page only rises (global.css stops the group's slide).
+  // Reduced motion skips all of it. Same-path navigations (the directory's
+  // view, tag and sort switches) used to skip it too, and on a phone the old
+  // view cut straight to blank paper (2026-10-23, Josh: "make the animation
+  // smooth when i switch from page to page"); they fade out like any page
+  // now, and wait a shorter pause before the new view comes in (below).
+  const LEAVE_MS = 220;
+  const TITLE_MS = 260;
+
+  function leavePage(): Promise<void> {
+    const main = document.querySelector<HTMLElement>(".page-wrap main");
+    const ticker = document.querySelector<HTMLElement>(".brand-ticker");
+    if (!main || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return Promise.resolve();
     }
+    leavingPage = true;
+    const phone = window.matchMedia("(width <= 767px), (pointer: coarse)").matches;
+    const fade = main
+      .animate(
+        // A PLAIN FADE since 2026-10-20: the translate made WebKit's scroll
+        // follow it on a phone (the page's saved offset came back wrong).
+        [{}, { opacity: 0 }],
+        { duration: LEAVE_MS, easing: "cubic-bezier(.5,0,.9,.4)", fill: "forwards" }
+      )
+      .finished.then(() => {});
+    let title: Promise<void> = Promise.resolve();
+    // The compact title never leaves the screen, so there is nothing to bring
+    // back; the old page only fades.
+    if (ticker?.dataset.wordmark === "compact") {
+      // nothing
+    } else if (ticker && !phone && (parseFloat(ticker.style.getPropertyValue("--brand-hide")) || 0) > 0) {
+      ticker.style.transition = `margin-top ${TITLE_MS}ms cubic-bezier(.2,.7,.2,1)`;
+      ticker.style.setProperty("--brand-hide", "0px");
+      title = new Promise<void>((resolve) => setTimeout(resolve, TITLE_MS)).then(() => {
+        ticker.style.transition = "";
+      });
+    } else if (ticker && phone && window.scrollY > 0) {
+      title = fade.then(() => {
+        window.scrollTo({ top: 0, behavior: "instant" });
+        return ticker
+          .animate([{ opacity: 0 }, { opacity: 1 }], { duration: TITLE_MS, easing: "ease-out" })
+          .finished.then(() => {});
+      });
+    }
+    return Promise.all([fade, title])
+      .then(() => {})
+      .catch(() => {});
   }
 
-  function restoreScroll() {
-    // Reads the entry we have just ARRIVED on, which is why currentIndex is
-    // refreshed from history.state immediately before this is called.
-    const key = scrollKeyFor(currentIndex);
-    const scroller = document.querySelector<HTMLElement>(".page-wrap");
-    if (!key || !scroller) return;
-    let saved: string | null;
-    try {
-      saved = sessionStorage.getItem(key);
-    } catch {
-      // A private-mode refusal costs the restore, never the page.
+  document.addEventListener("astro:before-preparation", (event) => {
+    arriveDelay = event.to.pathname === event.from.pathname ? SAME_PAGE_ARRIVE_DELAY_MS : ARRIVE_DELAY_MS;
+    // An iOS edge swipe has already shown the page coming back; fading the
+    // one just left on top of that shows it a second time.
+    if (browserAnimatedThisTraversal()) return;
+    const load = event.loader;
+    event.loader = async () => {
+      await Promise.all([load(), leavePage()]);
+    };
+  });
+
+  // ── ARRIVING: THE NEW PAGE RISES IN ──
+  // This used to be <main>'s transition:name + transition:animate, and that
+  // was the flash (2026-10-14, Josh: "on page transitions there is still this
+  // weird flashing"). A named element is lifted out of the page into its own
+  // ::view-transition-group, which the browser paints ABOVE the root snapshot
+  // — and the paper grain (body::before, a multiply overlay) lives in the
+  // root. So for the whole 620ms rise the content showed bare, un-grained and
+  // brighter, and the grain snapped back over it the moment the transition
+  // ended. Animating the live <main> instead keeps it in the root, under the
+  // grain, the whole way. Same keyframes, same curve.
+  const ENTER_MS = 620;
+  // A PLAIN FADE AFTER A FIXED PAUSE (2026-10-20, Josh: "replace the initial
+  // painting of the site after a short delay of 500ms it should then start
+  // fading in"). Until then the page rose out of a translate + scale + blur,
+  // held until fonts, pictures and two calm frames (cap 1.4s): the translate
+  // made WebKit's scroll follow it on a phone, and the variable hold was
+  // never quite the same twice. Now the arriving page is invisible for
+  // exactly this long after the swap and then only fades. data-arrive-hold
+  // on <html> holds the Portfolios entrance too (CommunityGrid.astro), and
+  // each card then waits for its own picture (pagesEntrance.ts).
+  const ARRIVE_DELAY_MS = 500;
+  // A view switch on /community is the same page dealt again, already
+  // faded out by the leave above: the full pause on top of that read as the
+  // page stalling, so it only breathes before the new view comes in.
+  const SAME_PAGE_ARRIVE_DELAY_MS = 150;
+  let arriveDelay = ARRIVE_DELAY_MS;
+  // No element morphs across this pause any more: the card's picture and
+  // name used to carry view-transition names into the member page, and
+  // WebKit paints a named element at full strength under an opacity-0
+  // ancestor, so on an iPhone they flew in, vanished with the transition,
+  // and faded back in (2026-10-20; MemberWork.astro).
+
+  document.addEventListener("astro:after-swap", () => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const main = document.querySelector<HTMLElement>(".page-wrap main");
+    if (!main) return;
+    // The browser animated this Back itself (the iOS edge swipe): the page
+    // is already on screen, so no hold and no fade — a blank half second
+    // after the swipe would read as the page failing to come back.
+    if (browserAnimatedThisTraversal()) return;
+    // NO SNAPPING WHILE THE PAGE ARRIVES (2026-10-15, the Portfolios
+    // flutter; global.css only snaps while <html> carries no data-arriving).
+    const root = document.documentElement;
+    root.dataset.arriving = "";
+    // A PAGE THAT PAINTS ITSELF IN (2026-10-20, the member page): the same
+    // pause, no whole-page fade — its head builds up piece by piece once
+    // data-arrive-hold is gone (profilePaint.ts), and it holds its own
+    // start state from the first frame (profile.css).
+    if (main.querySelector("[data-paints-in]")) {
+      root.dataset.arriveHold = "";
+      setTimeout(() => {
+        delete root.dataset.arriveHold;
+        delete root.dataset.arriving;
+      }, ARRIVE_DELAY_MS);
       return;
     }
-    if (saved === null) return;
-    const top = Number(saved);
-    if (!Number.isFinite(top) || top <= 0) return;
-    // UNTIL IT HOLDS, not once. An offset assigned to a scroller shorter than
-    // the offset is silently CLAMPED, and this runs at astro:page-load, when
-    // the page is still growing: the community directory deals its cards in its
-    // own page-load handler (whose order relative to this one is a bundling
-    // detail, not a guarantee) and the motion layer measures asynchronously
-    // after that. A single assignment, or even two a frame apart, lands on the
-    // short document and quietly becomes 0 — which is exactly what it did.
-    //
-    // Bounded, and it stops the moment it succeeds. It also stops if the
-    // scroller is found somewhere that is neither the target nor the top,
-    // because that means something else — most likely the reader — has taken
-    // over, and fighting them would be worse than not restoring at all.
-    let tries = 0;
-    const apply = () => {
-      const at = scroller.scrollTop;
-      const arrived = Math.abs(at - top) <= 1;
-      if (!arrived && at > 1) return;
-      scroller.scrollTop = top;
-      applyBrandHide();
-      if (Math.abs(scroller.scrollTop - top) > 1 && tries++ < SCROLL_RESTORE_TRIES) {
-        setTimeout(apply, SCROLL_RESTORE_STEP_MS);
-      }
-    };
-    apply();
-  }
-
-  // The last chance to record where the page being left was scrolled to: the
-  // throttle above can have skipped the final frames of a scroll that ended in
-  // a click. The entry index has not changed yet at this point for a forward
-  // navigation, so this writes against the OUTGOING entry, which is the one
-  // that has to remember.
-  document.addEventListener("astro:before-preparation", () => saveScroll(true));
+    const enter = main.animate([{ opacity: 0 }, { opacity: 1 }], {
+      duration: ENTER_MS,
+      easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+      fill: "backwards",
+    });
+    enter.pause();
+    root.dataset.arriveHold = "";
+    setTimeout(() => {
+      delete root.dataset.arriveHold;
+      if (enter.playState === "paused") enter.play();
+    }, arriveDelay);
+    enter.finished.catch(() => {}).finally(() => delete root.dataset.arriving);
+  });
 
   document.addEventListener("astro:before-swap", (event) => {
-    const swapEvent = event as unknown as { newDocument?: Document };
+    const swapEvent = event as unknown as {
+      newDocument?: Document;
+      navigationType?: string;
+      viewTransition?: { finished: Promise<void> };
+    };
+    arrivalWasTraverse = swapEvent.navigationType === "traverse";
+    scrollNavigation++;
+    scrollTransitionDone = swapEvent.viewTransition?.finished.catch(() => {}) ?? Promise.resolve();
     const newLang = swapEvent.newDocument?.documentElement?.lang === "de" ? "de" : "en";
     updateBrandHomeLink(newLang);
     swapEvent.newDocument?.getElementById("page-loader")?.remove();
   });
 
   document.addEventListener("astro:page-load", () => {
+    leavingPage = false;
     const lang = document.documentElement.lang === "de" ? "de" : "en";
     updateBrandHomeLink(lang);
     initBrandFit();
     initBrandScrollHide();
-    // Adopt the arrived-at entry BEFORE restoring, and leave it adopted: every
-    // save until the next navigation belongs to this entry. See currentIndex.
-    currentIndex = (history.state as { index?: number } | null)?.index ?? null;
-    // After initBrandScrollHide, which is what points brandScroller at the new
-    // .page-wrap — restoring before that would set an offset on the document
-    // that was just thrown away.
-    restoreScroll();
+    const navigation = scrollNavigation;
+    if (arrivalWasTraverse && window.matchMedia("(width <= 767px), (pointer: coarse)").matches) {
+      // At once, before the first frame shows the router's restored offset,
+      // and again once the transition is done, in case it lands later.
+      // Not when the page placed itself: Back to Portfolios returns to the
+      // member left (data-scroll-kept, communityDirectoryController.ts).
+      const toTop = () => {
+        if (document.documentElement.hasAttribute("data-scroll-kept")) return;
+        if (navigation === scrollNavigation && window.scrollY !== 0) {
+          window.scrollTo({ top: 0, behavior: "instant" });
+        }
+      };
+      toTop();
+      void scrollTransitionDone.then(() => requestAnimationFrame(toTop));
+    }
     // On client-side navigation there's no loader, so start animations immediately
     if (!document.getElementById("page-loader")) {
       document.body.classList.add("page-loaded");

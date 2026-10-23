@@ -61,86 +61,69 @@ const MOBILE_MAX = 767;
  * image edge, not against a text baseline, so it wants to be a hair looser
  * than a normal paragraph gap or the words read as part of the picture.
  */
-const GAP = 14;
+const GAP = 20;
 
 /**
  * THE SPACE THE WORDS NEED, RESERVED — the other half of the placement above.
  *
  * PhotoSwipe fits the image inside the viewport MINUS this padding and then
- * CENTRES it in what is left, so these two numbers do two jobs at once: their
- * SUM sets how big the picture comes out, and their DIFFERENCE decides where
- * it sits. That second job was the bug. The reserve used to be 56 over the
- * picture and 192 under it, and half of that 136px difference is 68px of lift:
- * the picture opened 68px above the middle of the window, and what read as
- * centred was the GROUP — picture and words together, 56px of paper above,
- * 63px below. Josh, 2026-09-08: "the image only should define the centering of
- * the content." So top and bottom are now the SAME number.
+ * CENTRES it in what is left, so `top` and `bottom` together decide how big
+ * the picture comes out and where it sits. THE WINDOW IS SPLIT BY HEIGHT
+ * since 2026-10-13 (Josh: "10vh top padding, then a 60vh band for the image,
+ * with the image centred inside it, then 30vh for the text"):
  *
- * THE SUM IS PRESERVED, deliberately: 124 + 124 is the 56 + 192 the old pair
- * added up to, 156 + 156 the old 56 + 256, 97 + 97 the phone's 44 + 150. The
- * picture therefore comes out at exactly the size it did before this change
- * and only moves — the artwork gives up nothing to gain its centre. What pays
- * instead is the room under it, which is now half the sum rather than all of
- * the bottom of it: a landscape's words get 124px of it, minus the GAP and a
- * 16px foot, so ~94px of usable height where they had ~162. A caption with a
- * description of any length overruns that and falls to the scroll-and-fade in
- * lightbox.css — routinely, not rarely. That is the accepted price of the
- * centre; the lever if it ever proves too tight is to raise BOTH numbers
- * together, which buys height under the picture by taking it off the picture.
+ *   ┌ 10 % ┐  the controls row and the artist line, above the picture
+ *   │ 60 % │  the picture, centred in this band whatever its shape
+ *   └ 30 % ┘  the words
  *
- * `paddingFn` is still handed the item's data, and the reserve still follows
- * the SHAPE: an upright picture comes out narrow — a 2:3 image in a 900px
- * window is ~390px wide — and a narrow measure wraps the same words taller,
- * roughly 85,000 ÷ measure px for a worst-case block (a 140-character caption,
- * a 600-character description and a long link). 156 against 124 is that
- * difference, carried over unchanged from the old 256 against 192.
+ * It replaces a SYMMETRIC reserve (the same number over and under the
+ * picture — 150 / 188 / 116 by shape and breakpoint, 2026-09-08 to
+ * 2026-10-13), which centred the picture on the window's midline and left
+ * the words whatever was under it: ~120px on a desktop landscape, less on a
+ * phone, so a caption with any description at all hit the scroll-and-fade
+ * in lightbox.css routinely. Josh: the text "gets too little room". The
+ * split pays for the words with the picture's height — on a 900px window a
+ * landscape stood 600px tall and now stands 540 — and makes the reserve
+ * the same fraction of every window instead of a fixed pixel count.
  *
- * THE TOP IS NO LONGER THE CONTROLS ROW, it merely clears it. The row lost its
- * band on 2026-09-06 (Josh: "lose the top bar in lightbox") — the close word,
- * zoom and preloader survive in a cluster at the top right, on bare
- * paper — and `top` was sized to exactly that row's height, 56 desktop (2.75rem
- * plus air) and 44 on a phone. Every number here is now comfortably above it,
- * so the row is a FLOOR rather than the value: nothing in this function may
- * fall below 56 desktop / 44 phone, or a wide picture runs under the close
- * word and the artist line above its top-left corner goes with it.
+ * THE TOP CLEARS THE CONTROLS ROW. The row lost its band on 2026-09-06 (Josh:
+ * "lose the top bar in lightbox") — the close word, zoom and preloader
+ * survive in a cluster at the top right, on bare paper — and its height, 56
+ * desktop (2.75rem plus air) and 44 on a phone, is a FLOOR: 10 % of a short
+ * window (under 560px desktop, 440px phone) would put a wide picture under
+ * the close word, and the artist line above its top-left corner with it, so
+ * the floor takes over there and the picture's band gives up the difference.
+ *
+ * ONE RESERVE FOR EVERY SHAPE. The symmetric version reserved more under an
+ * upright picture, which comes out narrow and wraps the same words taller.
+ * The band gives a portrait the same 30 % — the lever, if it proves tight,
+ * is BAND_TEXT, which trades picture height for room under it on every
+ * shape at once.
+ *
+ * `paddingFn` is still handed the item's data; nothing here reads it now.
  */
+// 17 / 60 / 23 since 2026-10-15 (Josh: "center images more on the vertical
+// in photoswipe"): the picture's band moved down, its centre from 40 % to 47 %
+// of the window; the words' band is shorter and scrolls past its foot.
+const BAND_TOP = 0.17;
+const BAND_TEXT = 0.23;
+// The band between them, 60 %, is what the two leave the picture.
 
-/**
- * Half of the old top + bottom, per shape, then bumped ~20% — Josh, 2026-09-08
- * (second pass): "make the image a bit smaller". The symmetry stays exact
- * (still SAME number top and bottom, still 56/44 as the floor); only the sum
- * grows, which is the lever the comment above names for buying room under the
- * picture by taking it off the picture — used here to trim the picture a
- * little rather than to fit more text.
- */
-const RESERVE_LANDSCAPE = 150; // was 124 (56 over, 192 under, pre-centring)
-const RESERVE_PORTRAIT = 188; // was 156 (56 over, 256 under, pre-centring)
-const RESERVE_MOBILE = 116; // was 97 (44 over, 150 under, pre-centring)
+/** The controls row's height, which `top` may never fall under. */
+const TOP_FLOOR_DESKTOP = 56;
+const TOP_FLOOR_MOBILE = 44;
 
-export function lightboxPadding(viewportSize: Point, itemData: SlideData) {
+export function lightboxPadding(viewportSize: Point, _itemData: SlideData) {
   const mobile = viewportSize.x <= MOBILE_MAX;
-  if (mobile) {
-    return { top: RESERVE_MOBILE, bottom: RESERVE_MOBILE, left: 12, right: 12 };
-  }
-  // Equal over and under, so the PICTURE is what sits in the middle of the
-  // window; an upright one reserves more on both sides, because it comes out
-  // narrower and its words wrap taller.
-  const reserve = isPortrait(itemData.width, itemData.height)
-    ? RESERVE_PORTRAIT
-    : RESERVE_LANDSCAPE;
-  return { top: reserve, bottom: reserve, left: 32, right: 32 };
-}
-
-/**
- * Taller than wide, with a deliberate margin. This used to choose the
- * ARRANGEMENT (a column beside the picture, 09-04 to 09-06) and now chooses
- * the RESERVE under it: a 1.05:1 image is square to the eye and comes out
- * nearly as wide as a landscape, so it wraps its words about as tall; only a
- * decisively upright picture is narrow enough to need the deeper reserve.
- */
-function isPortrait(width: number | undefined, height: number | undefined): boolean {
-  if (!width || !height) return false;
-  return height / width >= 1.15;
+  const top = Math.max(
+    Math.round(viewportSize.y * BAND_TOP),
+    mobile ? TOP_FLOOR_MOBILE : TOP_FLOOR_DESKTOP,
+  );
+  // The band stays reserved while the description is folded, so unfolding
+  // it never moves the picture.
+  const bottom = Math.round(viewportSize.y * BAND_TEXT);
+  const side = mobile ? 12 : 32;
+  return { top, bottom, left: side, right: side };
 }
 
 /** What the caption renderer reads off a trigger. All optional but width/height. */
@@ -198,6 +181,9 @@ export interface LightboxTextLabels {
   linkTitle: string;
   /** Accessible name for the member's own-site link, e.g. "This piece on the maker's own site". */
   siteLinkTitle: string;
+  /** The links' visible words, by role: "Publication", "Link". */
+  linkText: string;
+  siteLinkText: string;
   /** "Part of", before a project's title. */
   partOf: string;
   /** "With", before a project's affiliations. */
@@ -205,6 +191,9 @@ export interface LightboxTextLabels {
   /** Accessible names for the counter's two chevrons. */
   prev: string;
   next: string;
+  /** The title's dropdown, by what pressing it does. */
+  hideText: string;
+  showText: string;
 }
 
 /**
@@ -220,11 +209,17 @@ export function registerLightboxText(
     const ui = lightbox.pswp?.ui;
     if (!ui) return;
 
-    // ── The artist, on the picture's top-left corner ────────────────────
+    // ── The artist, pinned to the window's top-left ─────────────────────
+    // (2026-10-14: "make the artist name stick to the top left" — the
+    // paragraph below is the 09-04 reasoning for the line above the picture;
+    // where it stands is lightbox.css's call now.)
     // (2026-09-04: "artist name alway left top of the image".) It was the last
     // line of the bottom band, under the description — the furthest point in
     // the layout from the picture, for the one piece of text that says whose
     // picture it is.
+    //
+    // Black and not underlined since 2026-10-15 (Josh: "artist name top left
+    // without underline and black"): the name is still the link.
     //
     // It stays the ROUTE OUT (2026-09-03, Josh: "in lightbox a way to get to
     // the profile of a person"): the lightbox is the whole screen, so every
@@ -267,7 +262,7 @@ export function registerLightboxText(
 
     // ── The counter, "‹ 2 / 7 ›", in the top row ────────────────────────
     // (2026-09-28.) The site's own count with chevrons that page, the same
-    // pair the gallery card and the project carousel show (src/lib/pager.ts),
+    // pair the gallery card and the work carousel show (src/lib/pager.ts),
     // in the top row beside the + and Close, grey like them. It sat on the
     // artist line above the picture for part of that day, until Josh: "in
     // lightbox mode dont put it, just add it to the top row". On a phone the
@@ -299,6 +294,18 @@ export function registerLightboxText(
     });
 
     // ── The words about the picture ─────────────────────────────────────
+    // THE TITLE IS THE DROPDOWN (2026-10-15, Josh: "the show more text should
+    // be left aligned and be the title and drop down button to show the
+    // description"). The caption opens the block, left-aligned under the
+    // picture, with a chevron after it; pressing it unfolds everything else —
+    // description, links, project, affiliations — beneath it. Folded by
+    // default; the choice holds while paging, so a reader who opened one
+    // description reads the next one too, and a new lightbox starts folded.
+    // A work with no caption still gets the chevron alone (named by its
+    // aria-label); a work with nothing but a caption gets no chevron.
+    // Replaces the three-hairline words toggle of the same morning, which hid
+    // the title too.
+    let open = false;
     ui.registerElement({
       name: "vscn-text",
       className: "pswp__vscn-text",
@@ -310,17 +317,14 @@ export function registerLightboxText(
             pswp.currSlide?.data.element as HTMLElement | undefined,
           );
           el.replaceChildren();
-          if (caption) {
-            const line = document.createElement("span");
-            line.className = "pswp__vscn-text-caption";
-            line.textContent = caption;
-            el.append(line);
-          }
+          const more = document.createElement("div");
+          more.className = "pswp__vscn-text-more";
+          more.id = "pswp-vscn-text-more";
           if (description) {
             const desc = document.createElement("span");
             desc.className = "pswp__vscn-text-desc";
             desc.textContent = description;
-            el.append(desc);
+            more.append(desc);
           }
           // WHERE THIS IMAGE APPEARED (2026-09-04, from the sketch: "DESC
           // (WITH LINKS)"). The field has existed since the projects feature
@@ -331,24 +335,25 @@ export function registerLightboxText(
           //
           // TWO LINKS SINCE 2026-09-10 (Josh: "the image link should be
           // additional"): the member's own project page first, the
-          // publication second, on one row. Both print as bare hosts — the
-          // `title` is what says which is which, to a hover and to a reader.
+          // publication second, on one row. Since 2026-10-16 they print by
+          // ROLE, "Link" and "Publication" (Josh); two bare hosts never said
+          // which was which. The title carries the role and the host.
           if (siteLink || link) {
             const row = document.createElement("span");
             row.className = "pswp__vscn-text-links";
-            const add = (href: string, title: string) => {
+            const add = (href: string, text: string, title: string) => {
               const a = document.createElement("a");
               a.className = "pswp__vscn-text-link";
               a.href = href;
               a.target = "_blank";
               a.rel = "noopener";
-              a.title = title;
-              a.textContent = linkLabel(href);
+              a.title = `${title} — ${linkLabel(href)}`;
+              a.textContent = text;
               row.append(a);
             };
-            if (siteLink) add(siteLink, labels.siteLinkTitle);
-            if (link) add(link, labels.linkTitle);
-            el.append(row);
+            if (siteLink) add(siteLink, labels.siteLinkText, labels.siteLinkTitle);
+            if (link) add(link, labels.linkText, labels.linkTitle);
+            more.append(row);
           }
           // THE PROJECT THIS PICTURE IS PART OF (2026-09-23,
           // documentation/20260923-projects-design.md): its title, linked
@@ -366,7 +371,7 @@ export function registerLightboxText(
               name.rel = "noopener";
             }
             line.append(name);
-            el.append(line);
+            more.append(line);
           }
           if (affiliations.length) {
             const line = document.createElement("span");
@@ -383,12 +388,60 @@ export function registerLightboxText(
               }
               line.append(node);
             });
-            el.append(line);
+            more.append(line);
           }
-          el.classList.toggle("is-empty", !caption && !description && !link && !siteLink && !project && !affiliations.length);
+          const hasMore = more.childElementCount > 0;
+
+          // The head: the caption, a button when there is something to unfold.
+          if (caption || hasMore) {
+            const head = document.createElement(hasMore ? "button" : "span");
+            head.className = "pswp__vscn-text-head";
+            if (caption) {
+              const line = document.createElement("span");
+              line.className = "pswp__vscn-text-caption";
+              line.textContent = caption;
+              head.append(line);
+            }
+            el.append(head);
+            if (head instanceof HTMLButtonElement) {
+              head.type = "button";
+              head.setAttribute("aria-controls", more.id);
+              const chev = document.createElement("span");
+              chev.className = "pswp__vscn-text-chev";
+              chev.setAttribute("aria-hidden", "true");
+              head.append(chev);
+              el.append(more);
+              const apply = () => {
+                const name = open ? labels.hideText : labels.showText;
+                head.setAttribute("aria-expanded", String(open));
+                // A caption names the button itself; the chevron alone needs a name.
+                if (!caption) head.setAttribute("aria-label", name);
+                head.title = name;
+                more.hidden = !open;
+                el.classList.toggle("is-open", open);
+                el.scrollTop = 0;
+                markClipped(el);
+              };
+              head.addEventListener("click", () => {
+                open = !open;
+                apply();
+              });
+              apply();
+            }
+          }
+          el.classList.toggle("is-empty", !caption && !hasMore);
           // The block can scroll; a slide change has to start it at the top or
           // the next description opens mid-paragraph.
           el.scrollTop = 0;
+          // The next work's words FADE IN rather than swap (2026-10-16): the
+          // block is rebuilt per slide, so a CSS transition has nothing to
+          // start from. Same curve as --lb-ease in lightbox.css.
+          if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            el.animate(
+              [{ opacity: 0, translate: "0 0.25rem" }, { opacity: 1, translate: "0 0" }],
+              { duration: 360, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)" },
+            );
+          }
         };
         pswp.on("change", render);
         render();
@@ -406,30 +459,32 @@ export function registerLightboxText(
   });
 }
 
+/**
+ * Says whether there is text past the block's bottom edge, which is the only
+ * thing that makes the fade in lightbox.css appear. Read AFTER the width and
+ * max-height are written, and again when the description unfolds, because
+ * each changes the answer — and read off scrollHeight rather than predicted
+ * from the character count, since where a paragraph wraps is the browser's
+ * business.
+ */
+function markClipped(el: HTMLElement): void {
+  el.classList.toggle("is-clipped", el.scrollHeight > el.clientHeight + 1);
+}
+
 function attachPlacement(pswp: PhotoSwipe): void {
-  /**
-   * Says whether there is text past the block's bottom edge, which is the only
-   * thing that makes the fade in lightbox.css appear. Read AFTER the width and
-   * max-height above are written, because both change the answer — and read
-   * off scrollHeight rather than predicted from the character count, since
-   * where a paragraph wraps is the browser's business.
-   */
-  const markClipped = (el: HTMLElement) => {
-    el.classList.toggle("is-clipped", el.scrollHeight > el.clientHeight + 1);
-  };
 
   const place = () => {
     const root = pswp.element;
-    const credit = root?.querySelector<HTMLElement>(".pswp__vscn-credit");
     const text = root?.querySelector<HTMLElement>(".pswp__vscn-text");
     const slide = pswp.currSlide;
-    if (!root || !credit || !text || !slide) return;
+    if (!root || !text || !slide) return;
 
-    // HIDDEN WHILE ZOOMED IN. The blocks are glued to the picture's rect, and
-    // a zoomed picture's rect is mostly off-screen — following it would drag
-    // the caption out of the window and the artist line under the top bar. A
-    // reader who has zoomed in is looking at the picture, not reading about
-    // it. Compared against the slide's own initial level rather than 1: a
+    // THE WORDS ARE HIDDEN WHILE ZOOMED IN. The block is glued to the picture's
+    // rect, and a zoomed picture's rect is mostly off-screen — following it
+    // would drag the caption out of the window. A reader who has zoomed in is
+    // looking at the picture, not reading about it. (The artist line is not
+    // glued to the picture any more and stays: see the credit's rule in
+    // lightbox.css.) Compared against the slide's own initial level rather than 1: a
     // small image opens BELOW 1:1 and a large one above it, so 1 is not the
     // resting state of anything.
     const initial = slide.zoomLevels?.initial ?? 1;
@@ -444,24 +499,32 @@ function attachPlacement(pswp: PhotoSwipe): void {
     const y = slide.pan?.y ?? 0;
     if (!w || !h) return;
 
-    // Left-aligned to the picture's left edge and sitting just above its top
-    // edge — translateY(-100%) in the stylesheet does the lift, so the line's
-    // own height never has to be measured here.
-    credit.style.left = `${Math.round(x)}px`;
-    credit.style.top = `${Math.round(y - GAP)}px`;
+    // THE ARTIST LINE IS NOT PLACED HERE (2026-10-14, Josh: "make the artist
+    // name stick to the top left"). It is pinned to the window's top-left in
+    // lightbox.css, in the controls row's height, so it stays in one place
+    // from slide to slide and through zoom instead of floating at whatever
+    // height the picture's centring left its corner.
 
     const viewport = pswp.viewportSize;
-    // Under the picture, at the picture's own measure, on every shape: the
+    // In the words' band, at the picture's own measure, on every shape: the
     // artwork sets the column width, which is what makes the words look placed
     // rather than laid over the window. A portrait picture got a column to its
     // right instead from 09-04 to 09-06 — see the header and lightboxPadding
-    // for why that went, and what the reserve does about the narrower measure.
+    // for why that went.
+    // THE TOP IS THE PICTURE'S (2026-10-16, Josh: "wide images have a gap to
+    // the description"). From 10-13 the words started at the band's foot, so
+    // they sat at one height on every slide. But a wide picture is centred in
+    // its 60 % band, which left a hole between its bottom edge and the title.
+    // Now the title hangs off the picture itself, GAP below it, whatever its
+    // shape. The band below stays reserved (lightboxPadding), so the room
+    // under a wide picture only grows.
     // Bounded so a long description cannot run past the foot of the window;
     // past that it scrolls, and markClipped shows the fade that says so.
+    const top = y + h + GAP;
     text.style.left = `${Math.round(x)}px`;
-    text.style.top = `${Math.round(y + h + GAP)}px`;
+    text.style.top = `${Math.round(top)}px`;
     text.style.width = `${Math.round(w)}px`;
-    text.style.maxHeight = `${Math.round(viewport.y - (y + h + GAP) - 16)}px`;
+    text.style.maxHeight = `${Math.round(viewport.y - top - 16)}px`;
     markClipped(text);
   };
 

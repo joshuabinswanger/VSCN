@@ -1,162 +1,383 @@
 ---
-const WORDS = ["Visual", "Science", "Communication", "Network"];
+import { INTRO_WORDS } from "../lib/introCascade";
+
+// One row per word, one flap slot per glyph position of the longest word.
+const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
 ---
 
 <div id="page-loader" aria-hidden="true">
-  <div class="pl-stage">
-    <div class="pl-words" aria-label="Visual Science Communication Network">
-      {
-        WORDS.map((word) => (
-          <span class="pl-word">
-            <span class="pl-initial">{word[0]}</span><span class="pl-rest">{word.slice(1)}</span>
-          </span>
-        ))
-      }
-    </div>
+  <div class="pl-stack" id="pl-stack" aria-label="Visual Science Communication Network">
+    {
+      INTRO_WORDS.map(() => (
+        <span class="pl-row">
+          {Array.from({ length: SLOT_COUNT }, () => (
+            <span class="pl-slot">
+              <span class="pl-face" />
+              <span class="pl-face" />
+            </span>
+          ))}
+        </span>
+      ))
+    }
   </div>
 </div>
 
 <style>
+  /* THE INTRO IS THE HEADER'S FLAP, STACKED (2026-10-15, Josh: "i like the
+     vertical alignment ... make the animation vertical again but then
+     smoothly transition into the bar on the top left"). The header writes a
+     word over the letters after its initial, one split-flap turn per glyph
+     (Layout.astro, .brand-slot). This is four rows of the same slots at
+     display size, the initials aligned in a column: V S C N drop in top to
+     bottom, each row writes its word, the whole name holds, and then the words
+     fly straight into the header, each row folding to its initial in flight
+     and landing on its own slot of the header's VSCN while the paper lifts.
+     The choreography is data in src/lib/introCascade.ts; the script below
+     only plays it. */
   #page-loader {
+    --pl-beat: 0.17s;
+    --pl-travel: 0.5s;
+    /* The column's measure: the old intro's stage, 70vw up to 600px. */
+    --pl-measure: min(600px, 70vw);
+    /* Fallback before the script measures: "Communication" is about 7.9em
+       at this weight. */
+    --pl-size: min(64px, calc(var(--pl-measure) / 7.9));
     position: fixed;
     inset: 0;
     z-index: 9999;
-    background: #f7f6f5;
+    background: var(--color-bg);
     display: flex;
     align-items: center;
+    justify-content: center;
     pointer-events: none;
-    animation: pl-fade 0.35s ease-in 2.4s forwards;
+    transition: background-color var(--pl-travel) ease-in;
   }
 
-  @keyframes pl-fade {
-    to {
-      opacity: 0;
-    }
+  /* The paper lifts while the letters travel; they stay solid ink. */
+  #page-loader.pl--leaving {
+    background-color: transparent;
   }
 
-  .pl-stage {
-    width: 70vw;
-    margin: 0 auto;
-    padding: 0 15px;
-    box-sizing: border-box;
+  /* The header's own VSCN stays out of sight until the travellers land on
+     it: the intro's last frame is the site's first. The loader is removed in
+     the same frame the swap happens, so nothing is ever drawn twice. */
+  :global(body:has(#page-loader) #brand-name) {
+    visibility: hidden;
   }
 
-  @media (--bp-desktop) {
-    .pl-stage {
-      width: 600px;
-    }
-  }
-
-  .pl-words {
+  .pl-stack {
+    width: var(--pl-measure);
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
-  }
-
-  .pl-word {
-    /* min() keeps "Communication" inside the viewport on narrow phones —
-       a fixed 36px gets cut off below ~420px. Sized for the system fallback
-       font (wider than Archivo), since font-display: swap can show it while
-       the webfont downloads. */
-    font-size: min(36px, 6.5vw);
+    gap: 0.12em;
+    /* Same typography as .brand-name in Layout.astro, so that a transform
+       scale lands the glyphs exactly on the header's. */
+    font-size: var(--pl-size);
     font-weight: 800;
-    line-height: 1.08;
+    line-height: 1;
+    letter-spacing: 0;
     color: var(--color-dark);
     white-space: nowrap;
   }
 
-  @media (--bp-desktop) {
-    .pl-word {
-      font-size: 64px;
-    }
+  .pl-row {
+    display: block;
+    height: 1em;
   }
 
-  /* Phase 1: the four initials (VSCN) slide in with a quick stagger. */
-  .pl-initial {
-    display: inline-block;
+  /* One slot per glyph position, two faces stacked in one grid cell. The
+     cell's width is what the script animates (px, measured per glyph: a
+     transition cannot interpolate from auto), and it resizes on the second
+     beat only, as the incoming letter drops in. Mirrors .brand-slot. */
+  .pl-slot {
+    display: inline-grid;
+    justify-items: start;
+    width: 0;
+    vertical-align: top;
+    perspective: 12ch;
+    --pl-delay: 0s;
+    --pl-early: var(--pl-delay);
+    --pl-late: calc(var(--pl-delay) + var(--pl-beat));
+    transition-property: width;
+    transition-duration: var(--pl-beat);
+    transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+    transition-delay: var(--pl-late);
+    transform-origin: 0 0;
+  }
+
+  /* Folding in flight: the cell closes from the FIRST beat, together with
+     the letter tipping away, so the word contracts into its initial as the
+     row travels. Closing on the second beat, as a write does, left a gap
+     after the initial with the rest of the word stranded beyond it. */
+  .pl-row--folding .pl-slot {
+    transition-delay: var(--pl-early);
+    transition-duration: calc(var(--pl-beat) * 1.5);
+    /* ...and a closing cell cuts its own letter (2026-10-15, Josh: "on
+       mobile ... the letters overlap"). The cell shrinks while its glyph is
+       still tipping away, so unclipped the glyph spilled over the letters the
+       closing cells pulled in from the right ("S·ence", "C -ication").
+       Sideways only: the flap's turn may still overshoot the line. */
+    overflow-x: clip;
+  }
+
+  /* A face waits edge-on above the line (-90), drops in to 0 when it is
+     the front, tips away to +90 when it leaves: always forward, as a real
+     board falls. Opacity switches in zero time at the changeover, when both
+     faces are edge-on and invisible anyway. */
+  .pl-face {
+    grid-area: 1 / 1;
+    transform-origin: 50% 50%;
+    backface-visibility: hidden;
     opacity: 0;
-    transform: translateY(0.4em);
-    animation: pl-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    transform: rotateX(-90deg);
+    transition-property: opacity, transform;
+    transition-duration: 0s, var(--pl-beat);
+    transition-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
+    transition-delay: var(--pl-late), var(--pl-late);
   }
 
-  @keyframes pl-in {
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  .pl-face.is-front {
+    opacity: 1;
+    transform: rotateX(0deg);
   }
 
-  .pl-word:nth-child(1) .pl-initial {
-    animation-delay: 0.1s;
-  }
-  .pl-word:nth-child(2) .pl-initial {
-    animation-delay: 0.18s;
-  }
-  .pl-word:nth-child(3) .pl-initial {
-    animation-delay: 0.26s;
-  }
-  .pl-word:nth-child(4) .pl-initial {
-    animation-delay: 0.34s;
+  .pl-face.is-out {
+    opacity: 0;
+    transform: rotateX(90deg);
+    transition-delay: var(--pl-late), var(--pl-early);
   }
 
-  /* Phase 2: each initial completes into its word, one after the other. */
-  .pl-rest {
-    display: inline-block;
-    clip-path: inset(0 100% 0 0);
-    transform: translateX(-0.15em);
-    animation: pl-wipe 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  /* Resetting a spent face to its waiting position must not be seen. */
+  .pl-face.pl-face--snap {
+    transition: none;
   }
 
-  @keyframes pl-wipe {
-    to {
-      clip-path: inset(0 -0.1em 0 0);
-      transform: translateX(0);
-    }
+  /* Reduced motion: the column appears in place and the paper fades. */
+  #page-loader.pl--still,
+  #page-loader.pl--still .pl-slot,
+  #page-loader.pl--still .pl-face {
+    transition: none;
   }
-
-  .pl-word:nth-child(1) .pl-rest {
-    animation-delay: 0.75s;
+  #page-loader.pl--still {
+    transition: opacity 0.3s ease-out;
   }
-  .pl-word:nth-child(2) .pl-rest {
-    animation-delay: 1.05s;
-  }
-  .pl-word:nth-child(3) .pl-rest {
-    animation-delay: 1.35s;
-  }
-  .pl-word:nth-child(4) .pl-rest {
-    animation-delay: 1.65s;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .pl-initial,
-    .pl-rest {
-      animation: none;
-      opacity: 1;
-      clip-path: none;
-      transform: none;
-    }
-    #page-loader {
-      animation: pl-fade 0.3s ease-out 0.9s forwards;
-    }
+  #page-loader.pl--still.pl--leaving {
+    opacity: 0;
+    background-color: var(--color-bg);
   }
 </style>
 
 <script>
-  // The choreography lives entirely in CSS (clock-driven, so it can never
-  // stall waiting for animation frames). This script only removes the
-  // overlay once the fade finishes and unlocks the hero entrance.
+  import { INTRO_WORDS, planStack, type StackEvent } from "../lib/introCascade";
+
+  // The whole rhythm, in one place. Rows write with a short offset rather
+  // than one after the other: they are separate lines, so nothing overlays.
+  // Tightened 2026-10-15 twice (Josh: "start sooner and be a bit quicker",
+  // then "transition from full words directly into the top VSCN"): the
+  // fold and the travel are one move now, ~4.4 s -> ~2.9 s; then "shorten
+  // the hold on the full name too", ~2.75 s.
+  const TIMING = {
+    beat: 0.17,
+    stagger: 0.02,
+    lead: 0.2,
+    arriveStagger: 0.07,
+    hold: 0.1,
+    rowOffset: 0.18,
+    holdName: 0.15,
+    foldStagger: 0.04,
+    travelLag: 0.08,
+  };
+  // Long enough for the longest tail ("ommunication") to finish folding in
+  // flight, so every row lands as a single letter.
+  const TRAVEL_S = 0.5;
+  // Between one row setting off and the next, top to bottom: the column
+  // peels into the line rather than snapping to it.
+  const TRAVEL_STAGGER_S = 0.03;
+  const LONGEST = INTRO_WORDS.reduce((a, b) => (b.length > a.length ? b : a));
+  const CURVE = "cubic-bezier(0.65, 0, 0.35, 1)";
+
   const loader = document.getElementById("page-loader");
-  if (loader) {
+  const stack = document.getElementById("pl-stack");
+  // NOT BEFORE ANYONE IS LOOKING (2026-10-20, Josh: "sometimes the initial
+  // VSCN animation on page load does not work"). The intro ran on a clock
+  // from the moment this script ran, visible or not — and a page can load
+  // out of sight: Safari preloads the address bar's top hit while you are
+  // still typing, a link can open in a background tab, Chrome prerenders
+  // likely navigations. There the letters wrote and flew unseen, and the
+  // visitor arrived on the full stacked name or on an empty paper. Now the
+  // intro waits for the page to be shown, and plays from its first beat.
+  if (loader && stack) void whenShown().then(() => play(loader, stack));
+
+  function whenShown(): Promise<void> {
+    const doc = document as Document & { prerendering?: boolean };
+    if (doc.prerendering) {
+      return new Promise<void>((resolve) =>
+        document.addEventListener("prerenderingchange", () => resolve(), { once: true }),
+      ).then(whenShown);
+    }
+    if (document.visibilityState === "visible") return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const onChange = () => {
+        if (document.visibilityState !== "visible") return;
+        document.removeEventListener("visibilitychange", onChange);
+        resolve();
+      };
+      document.addEventListener("visibilitychange", onChange);
+    });
+  }
+
+  function play(loader: HTMLElement, stack: HTMLElement) {
+    const rows = Array.from(stack.querySelectorAll<HTMLElement>(".pl-row")).map((row) =>
+      Array.from(row.querySelectorAll<HTMLElement>(".pl-slot")),
+    );
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let done = false;
+
     const finish = () => {
-      if (!loader.isConnected) return;
+      if (done) return;
+      done = true;
+      timers.forEach(clearTimeout);
       loader.remove();
       document.body.classList.add("page-loaded");
     };
-    loader.addEventListener("animationend", (event) => {
-      if (event.target === loader) finish();
+
+    fitStack(stack);
+    const widths = measureGlyphs(stack);
+    const applyEvent = (event: StackEvent) => {
+      if (event.phase === "fold") rows[event.row]?.[0]?.parentElement?.classList.add("pl-row--folding");
+      event.changes.forEach((change) => {
+        const slot = rows[event.row]?.[change.index];
+        if (slot) flipSlot(slot, change.char, change.delay, widths.get(change.char) ?? 0);
+      });
+    };
+
+    const plan = planStack(INTRO_WORDS, TIMING);
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      loader.classList.add("pl--still");
+      plan.events.filter((e) => e.phase === "arrive").forEach(applyEvent);
+      timers.push(setTimeout(() => loader.classList.add("pl--leaving"), 600));
+      timers.push(setTimeout(finish, 950));
+      return;
+    }
+
+    loader.style.setProperty("--pl-beat", `${TIMING.beat}s`);
+    loader.style.setProperty("--pl-travel", `${TRAVEL_S}s`);
+    plan.events.forEach((event) => {
+      timers.push(setTimeout(() => applyEvent(event), event.at * 1000));
     });
-    // Safety net for environments that never deliver animation events
-    // (hidden tabs, some webviews): slightly past the fade's end time.
-    setTimeout(finish, 3400);
+    const rowEls = Array.from(stack.querySelectorAll<HTMLElement>(".pl-row"));
+    timers.push(setTimeout(() => travel(loader, rowEls, finish), plan.travelAt * 1000));
+    // Safety net for environments that never deliver transition events
+    // (hidden tabs, some webviews): past the travel's end.
+    const travelEnds = plan.travelAt + TRAVEL_S + (rowEls.length - 1) * TRAVEL_STAGGER_S;
+    timers.push(setTimeout(finish, travelEnds * 1000 + 1500));
+  }
+
+  // Fit the longest word to the column's measure, never larger than the
+  // stylesheet's size. Runs before any letter shows, so nothing is seen to jump.
+  function fitStack(stack: HTMLElement) {
+    const current = parseFloat(getComputedStyle(stack).fontSize);
+    const available = stack.clientWidth;
+    const mirror = document.createElement("span");
+    mirror.textContent = LONGEST;
+    mirror.style.cssText =
+      "position:absolute;visibility:hidden;pointer-events:none;white-space:nowrap;left:0;top:0";
+    stack.appendChild(mirror);
+    const width = mirror.getBoundingClientRect().width;
+    mirror.remove();
+    if (available > 0 && width > available) {
+      stack.style.fontSize = `${(current * available) / width}px`;
+    }
+  }
+
+  // Advance width of every glyph the words can show, at the fitted size.
+  function measureGlyphs(stack: HTMLElement): Map<string, number> {
+    const mirror = document.createElement("span");
+    mirror.style.cssText =
+      "position:absolute;visibility:hidden;pointer-events:none;white-space:pre;left:0;top:0";
+    stack.appendChild(mirror);
+    const widths = new Map<string, number>();
+    for (const char of new Set(INTRO_WORDS.join(""))) {
+      mirror.textContent = char;
+      widths.set(char, mirror.getBoundingClientRect().width);
+    }
+    mirror.remove();
+    return widths;
+  }
+
+  // Turn one slot to a new glyph: the showing face tips away on the first
+  // beat, the other face, reset edge-on without a transition and carrying the
+  // new glyph, drops in on the second, and the cell takes the new width with
+  // it. An empty glyph only tips the old one away and closes the cell.
+  function flipSlot(slot: HTMLElement, char: string, delay: number, width: number) {
+    const faces = Array.from(slot.querySelectorAll<HTMLElement>(".pl-face"));
+    const frontIndex = Number(slot.dataset.front ?? "1");
+    const incoming = faces[1 - frontIndex];
+    const outgoing = faces[frontIndex];
+    if (!incoming || !outgoing) return;
+
+    incoming.classList.add("pl-face--snap");
+    incoming.classList.remove("is-out", "is-front");
+    incoming.textContent = char;
+    void incoming.offsetWidth;
+    incoming.classList.remove("pl-face--snap");
+
+    slot.style.setProperty("--pl-delay", `${delay.toFixed(3)}s`);
+    if (outgoing.classList.contains("is-front")) {
+      outgoing.classList.remove("is-front");
+      outgoing.classList.add("is-out");
+    }
+    if (char) incoming.classList.add("is-front");
+    slot.style.width = `${width}px`;
+    slot.dataset.front = String(1 - frontIndex);
+  }
+
+  // The header's VSCN, letter by letter: the resting slots that show a glyph,
+  // in order. Hidden by visibility while the loader is up, so their boxes
+  // are real.
+  function headerLetterRects(count: number): DOMRect[] | null {
+    const brand = document.getElementById("brand-name");
+    if (!brand) return null;
+    const rects = Array.from(brand.querySelectorAll<HTMLElement>(".brand-slot"))
+      .filter((slot) => slot.offsetParent !== null)
+      .filter((slot) => (slot.querySelector(".brand-slot__rest")?.textContent ?? "") !== "")
+      .slice(0, count)
+      .map((slot) => slot.getBoundingClientRect());
+    return rects.length === count ? rects : null;
+  }
+
+  // Full words straight into the header: each ROW flies, scaled about its
+  // initial's top-left corner, from where its initial stands onto its own
+  // slot of the header's VSCN, top to bottom, while the paper lifts. The
+  // tails are folding inside the moving row at the same time, so a word
+  // shrinks to its initial on the way. The header's copy shows the instant
+  // the loader goes.
+  function travel(loader: HTMLElement, rows: HTMLElement[], finish: () => void) {
+    const targets = headerLetterRects(rows.length);
+    const brand = document.getElementById("brand-name");
+    const stack = rows[0]?.closest<HTMLElement>(".pl-stack");
+    if (!targets || !brand || !stack) {
+      loader.classList.add("pl--still", "pl--leaving");
+      setTimeout(finish, 350);
+      return;
+    }
+    const scale =
+      parseFloat(getComputedStyle(brand).fontSize) / parseFloat(getComputedStyle(stack).fontSize);
+    const last = rows[rows.length - 1];
+    rows.forEach((row, i) => {
+      const initial = row.querySelector<HTMLElement>(".pl-slot");
+      const to = targets[i];
+      if (!initial || !to) return;
+      const from = initial.getBoundingClientRect();
+      row.style.transformOrigin = "0 0";
+      row.style.transition = `transform ${TRAVEL_S}s ${CURVE} ${(i * TRAVEL_STAGGER_S).toFixed(3)}s`;
+      row.style.willChange = "transform";
+      row.style.transform = `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${scale})`;
+    });
+    loader.classList.add("pl--leaving");
+    last?.addEventListener("transitionend", (event) => {
+      if (event.target === last && event.propertyName === "transform") finish();
+    });
   }
 </script>
