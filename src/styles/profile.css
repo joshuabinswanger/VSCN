@@ -810,6 +810,11 @@
 }
 .mprof__captions > .mprof__caption {
   grid-area: 1 / 1;
+  /* THE PICTURE'S WIDTH, as under a single work: in a grid cell the
+     caption's auto inline margins would otherwise shrink it to its words
+     and centre them. Full width, then its own max-width (the frame's width
+     formula) and auto margins put its box exactly under the frame. */
+  width: 100%;
   opacity: 0;
   visibility: hidden;
   transition:
