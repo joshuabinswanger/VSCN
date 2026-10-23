@@ -62,7 +62,7 @@ const { lang = "en" } = Astro.props;
 {/* The slot's stand-in: an inline-size container, so the card can measure
     the room it has the way a directory card measures its cell. */}
 <div class="ccpv-slot">
-<article class="ccard ccard--preview" data-ccpv-root>
+<article class="ccard ccard--preview" data-ccpv-root data-carousel-scope>
   <div class="ccard__body" data-ccpv="body" hidden>
     {
       /* The frame IS the Embla viewport, exactly as on the card: the module
@@ -74,7 +74,7 @@ const { lang = "en" } = Astro.props;
          the live region is rebuilt from. */
     }
     <div class="ccard__frame" data-ccpv="frame" data-carousel>
-      <div class="ccard__track" data-ccpv="track"></div>
+      <div class="ccard__track" data-ccpv="track" data-carousel-track></div>
       {
         /* No click overlay: the slides are the lightbox's triggers (see the
            card), href-less here so a link to the raw Storage file can never
@@ -142,7 +142,7 @@ const { lang = "en" } = Astro.props;
   </div>
   {/* The count, outside the words as on the card. */}
   <div class="ccard__foot">
-    <div class="ccard__dots" data-ccpv="dots" hidden></div>
+    <div class="ccard__dots" data-ccpv="dots" data-carousel-dots hidden></div>
   </div>
 
   {
@@ -155,7 +155,7 @@ const { lang = "en" } = Astro.props;
        column's link and value templates follow it. */
   }
   <template data-ccpv-tpl="slide"
-    ><a class="ccard__slide" tabindex="-1"><img class="ccard__img" alt="" decoding="async" /></a></template
+    ><a class="ccard__slide" data-carousel-slide tabindex="-1"><img class="ccard__img" data-carousel-img alt="" decoding="async" /></a></template
   >
   <template data-ccpv-tpl="dot"><span class="cdot"></span></template>
   <template data-ccpv-tpl="tag"><li class="ccpv__tag"></li></template>

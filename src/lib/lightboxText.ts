@@ -262,7 +262,7 @@ export function registerLightboxText(
 
     // ── The counter, "‹ 2 / 7 ›", in the top row ────────────────────────
     // (2026-09-28.) The site's own count with chevrons that page, the same
-    // pair the gallery card and the project carousel show (src/lib/pager.ts),
+    // pair the gallery card and the work carousel show (src/lib/pager.ts),
     // in the top row beside the + and Close, grey like them. It sat on the
     // artist line above the picture for part of that day, until Josh: "in
     // lightbox mode dont put it, just add it to the top row". On a phone the

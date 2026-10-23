@@ -1,8 +1,8 @@
 // A CAROUSEL'S POSITION AS DOTS, THE INSTAGRAM WAY (2026-10-16, Josh: "the
 // carousel should get dots below the images instead of the numbers … model
 // the dots after instagram (with the fading smaller dots) but highlight color
-// should be black"). Shared by the directory card (communityCarousel.ts) and
-// a project's carousel on the member page (projectCarousel.ts).
+// should be black"). Shared by the directory card and
+// a work carousel on the member page, both driven by communityCarousel.ts.
 //
 // At most WINDOW dots show. A dot shrinks with its distance from the current
 // one — three away to MID 0.66, four to SMALL 0.4 — so the first slide of
