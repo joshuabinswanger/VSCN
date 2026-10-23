@@ -103,7 +103,8 @@ export function committedFromLoad(gallery: readonly GalleryItem[]): Map<string, 
  * an upload was dropped into is written onto it at Save like any other word.
  */
 export function committedForNew(item: GalleryItem): WorkWords {
-  return { ...workWords(item), projectId: "" };
+  // carouselId too: an upload into a tray is given its id at Save, like the project.
+  return { ...workWords(item), projectId: "", carouselId: "" };
 }
 
 /**

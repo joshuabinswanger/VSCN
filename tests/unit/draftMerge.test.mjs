@@ -72,6 +72,11 @@ test("a work that just arrived is committed with its initial words, but not its 
   const inBlock = work("p", { projectId: "P" });
   committed.set("p", committedForNew(inBlock));
   assert.deepEqual(uncommittedWorks([inBlock], committed), [{ imageId: "p", words: workWords(inBlock) }]);
+  // Likewise a carousel: an upload into a tray is not stored with its id yet.
+  const inTray = work("t", { projectId: "P", carouselId: "c1" });
+  committed.set("t", committedForNew(inTray));
+  assert.equal(committed.get("t").carouselId, "");
+  assert.deepEqual(uncommittedWorks([inTray], committed), [{ imageId: "t", words: workWords(inTray) }]);
 });
 
 test("uncommitted works are keyed by id, sorted, independent of gallery order", () => {
