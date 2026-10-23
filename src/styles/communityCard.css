@@ -57,7 +57,12 @@
   --ccard-air: 5.75rem;
   /* The words' column (2026-10-14, Josh: "make the text etc wider"). The
      editor preview reads this name too. */
-  --ccard-side-w: 20rem;
+  /* 28rem since 2026-10-23 (Josh: "THE NAME OF people can be wider on
+     desktop"): at 20rem a long surname broke mid-word ("Binswang-er") and
+     "Wong Chi Lui" wrapped. The room is the picture's to give: its column
+     keeps its 40cqw floor (--ccard-pic-room), so a small laptop gets a
+     narrower column, not a smaller picture. */
+  --ccard-side-w: 28rem;
   position: relative;
   display: grid;
   /* THE PICTURE AND THE WORDS STAY TOGETHER (2026-10-15, Josh: "text and
@@ -89,7 +94,7 @@
      picture, never over 50vw. 1440x900: a landscape picture 698 -> 619px.
      In the pages view this is also the picture's COLUMN, so every card's
      words stand on the same line (CommunityGrid). */
-  --ccard-words-min: 18rem;
+  --ccard-words-min: 28rem;
   --ccard-pic-room: clamp(40cqw, calc(100cqw - 2 * (var(--ccard-words-min) + var(--ccard-air))), 50vw);
   box-sizing: border-box;
   width: 100%;
