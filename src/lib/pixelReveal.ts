@@ -13,13 +13,15 @@
 // <img> is simply there, so nothing about the card changes once it has played.
 
 // Blocks across the picture, coarse to fine; the last step is the picture.
-const STEPS = [6, 9, 13, 18, 25, 34, 46, 62, 84, 112, 150];
+// (2026-10-23, Josh on the first cut, 6 → 150 over 1.3 s: "way too strong.
+// make it more subtle and way faster" — it now starts at a fine grain.)
+const STEPS = [28, 44, 70, 110];
 // The dithered edge's grid stops refining at this point of the reveal, so the
 // edge keeps a visible grain while the picture itself goes sharp.
-const EDGE_CAP = 0.7;
+const EDGE_CAP = 0.5;
 // The band below the front, as a share of the picture's height.
-const BAND = 0.22;
-const DURATION_MS = 1300;
+const BAND = 0.12;
+const DURATION_MS = 550;
 
 const running = new WeakMap<HTMLElement, () => void>();
 
