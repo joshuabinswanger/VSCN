@@ -3,12 +3,13 @@
 // width (give them in CSS Pixels) so we can steer a bit how our page looks").
 // The one place the numbers live: the page (MemberWork.astro), the editor's
 // rows and its preview all write the chosen one as `--size-w` on the figure.
-// L is the desktop works column (40rem at the 13px root, --works-w in
+// L is the desktop works column (48rem at the 13px root since 2026-10-23,
+// all three scaled by 1.2 from 240/380/520, --works-w in
 // profile.css). A picture is never wider than its column (a phone's is
 // ~345px) nor taller than 70vh — profile.css caps both. No Firebase here: the
 // static page imports it.
 
-export const WORK_SIZE_PX = { s: 240, m: 380, l: 520 } as const;
+export const WORK_SIZE_PX = { s: 288, m: 456, l: 624 } as const;
 export type WorkSize = keyof typeof WORK_SIZE_PX;
 
 /** The size a work is drawn at: its stored one ("s" or "m"), else L. */

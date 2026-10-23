@@ -87,8 +87,11 @@
     /* THE WORKS COLUMN, NARROWER (2026-10-16, Josh: "make the project
        column less wide"): 54rem -> 40rem (520px at the desktop's 13px root),
        now that a project's works stand in line in it rather than paging
-       sideways out of it. */
-    --works-w: 40rem;
+       sideways out of it.
+       A BIT WIDER AGAIN (2026-10-23, Josh: "desktop profile view can take up
+       a bit more space"): 40rem -> 48rem (624px), S/M/L in workSize.ts
+       scaled by the same 1.2. */
+    --works-w: 48rem;
     display: grid;
     grid-template-columns: minmax(var(--aside-w), 1fr) minmax(0, var(--works-w)) minmax(0, 1fr);
     column-gap: clamp(2.5rem, 4vw, 5rem);
@@ -156,76 +159,39 @@
 }
 
 /* THE INDEX (2026-10-14, Josh: "a small scroller on the right that lists the
-   projects (or image title if it stands alone)"). The third track's
-   occupant, built by src/lib/profileIndex.ts: a short list at the track's
-   right edge, mirroring the person at the left one, sticky at the same
-   height. A hairline down its left side, and the entry being read gets a
-   dark stretch of it, as a table of contents does. Only on a desktop, and
-   only when the track is wide enough for a title (the container query); a
-   phone has no third track. */
+   projects (or image title if it stands alone)"), built by
+   src/lib/profileIndex.ts. Only on a desktop.
+   THE PORTFOLIOS RAIL SINCE 2026-10-23 (Josh: "the chapters can use the same
+   horizontal bar style as the portfolio page and also in the middle
+   vertically"): the nav is a `.prail` and its links `.prail__tick`, so it is
+   drawn, placed (fixed, right edge, halfway down) and hovered by global.css's
+   MEMBER RAIL block. This file only keeps it off a phone and lets the list
+   element stand aside. The hairline table of contents in the third track
+   is gone, and that track is empty again. */
 .mprof__index {
   display: none;
 }
 
 @media (--bp-desktop) {
+  /* Centred by auto margins between top 0 and bottom 0, not by the rail's
+     translate: the paint-in (below) animates `translate` on this element and
+     would undo a -50%. */
   .mprof__index {
-    display: block;
-    grid-column: 3;
-    grid-row: 1 / span 6;
-    container-type: inline-size;
-    position: sticky;
-    top: var(--aside-top, 7rem);
-    max-height: calc(var(--shell-h, 100dvh) - 11rem);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    scrollbar-width: none;
-  }
-  .mprof__index::-webkit-scrollbar {
-    display: none;
+    display: flex;
+    top: 0;
+    bottom: 0;
+    height: fit-content;
+    margin-block: auto;
+    translate: none;
   }
 }
 
 .mprof__index-list {
-  width: fit-content;
-  max-width: 14rem;
-  margin: 0 0 0 auto;
-  padding: 0;
-  list-style: none;
-  border-left: 1px solid var(--color-border);
+  display: contents;
 }
 
-@container (width < 8rem) {
-  .mprof__index-list {
-    display: none;
-  }
-}
-
-/* Its type is META in type.css. */
-.mprof__index-link {
-  display: block;
-  margin-left: -1px;
-  padding: 0.35rem 0 0.35rem 0.9rem;
-  border-left: 2px solid transparent;
-  color: var(--color-muted);
-  text-decoration: none;
-  overflow-wrap: anywhere;
-  transition:
-    color 0.2s ease,
-    border-color 0.2s ease;
-}
-
-.mprof__index-link:hover {
-  color: var(--color-dark);
-}
-
-.mprof__index-link[aria-current] {
-  border-left-color: var(--color-dark);
-  color: var(--color-dark);
-}
-
-.mprof__index-link:focus-visible {
-  outline: 2px solid var(--color-dark);
-  outline-offset: 2px;
+.mprof__index-list > li {
+  display: contents;
 }
 
 /* Arriving at an item from the index leaves room for the header. */
@@ -552,7 +518,7 @@
 /* THE TEXT BLOCK AFTER A WORK (2026-10-16, Josh: "make it possible to add
    text block in between image in projects"). The project's own words between
    two pictures: the CAPTION voice (type.css) in the page's dark, the
-   column's width (40rem is a reading measure already), paragraphs as the
+   column's width (48rem, a reading measure still), paragraphs as the
    bio sets them. */
 .mprof__text {
   color: var(--color-dark);

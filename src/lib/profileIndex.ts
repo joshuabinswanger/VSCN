@@ -53,7 +53,8 @@ export function initProfileIndex(profile: HTMLElement | null): void {
   if (entries.length < 2) return;
 
   const nav = document.createElement("nav");
-  nav.className = "mprof__index";
+  nav.className = "mprof__index prail";
+  nav.style.setProperty("--prail-n", String(entries.length));
   nav.setAttribute("aria-label", works.dataset.indexLabel ?? "");
   const list = document.createElement("ol");
   list.className = "mprof__index-list";
@@ -62,9 +63,12 @@ export function initProfileIndex(profile: HTMLElement | null): void {
     if (!item.id) item.id = `mprof-item-${n + 1}`;
     const li = document.createElement("li");
     const a = document.createElement("a");
-    a.className = "mprof__index-link";
+    a.className = "mprof__index-link prail__tick";
     a.href = `#${item.id}`;
-    a.textContent = label;
+    const name = document.createElement("span");
+    name.className = "prail__name";
+    name.textContent = label;
+    a.append(name);
     a.addEventListener("click", (e) => {
       e.preventDefault();
       item.scrollIntoView({ behavior: REDUCED.matches ? "auto" : "smooth", block: "start" });
@@ -86,6 +90,7 @@ export function initProfileIndex(profile: HTMLElement | null): void {
       if (item.getBoundingClientRect().top <= line) on = item;
     }
     links.forEach((a, item) => {
+      a.classList.toggle("is-current", item === on);
       if (item === on) a.setAttribute("aria-current", "true");
       else a.removeAttribute("aria-current");
     });
