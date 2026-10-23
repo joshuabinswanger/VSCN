@@ -60,6 +60,8 @@ export interface TrayHooks {
   projects: readonly { projectId: string; label: string }[];
   /** UI-only: which slide each carousel shows (carouselId → imageId). */
   selected: Map<string, string>;
+  /** UI-only: which carousels have their Edit panel open (carouselId → open). */
+  panelOpen: Map<string, boolean>;
   /** Whether the + slot can take files (the gallery cap); the note is the controller's. */
   uploadFull: boolean;
   maxTextAfter: number;
@@ -144,6 +146,14 @@ export function buildTray(hooks: TrayHooks, unit: TrayUnit): HTMLElement | null 
   const projectSelect = el.querySelector<HTMLSelectElement>("[data-carousel-project]");
   const text = el.querySelector<HTMLElement>("[data-carousel-text]");
   if (!tray || !add || !picker || !label || !slideRow || !up || !down || !dissolveBtn || !projectSelect) return null;
+
+  // The Edit panel (2026-10-23): a fold remembered per carousel across
+  // re-renders, as a work's is (galleryDetailsOpenUI).
+  const panel = el.querySelector<HTMLDetailsElement>("[data-carousel-details]");
+  if (panel) {
+    panel.open = hooks.panelOpen.get(unit.carouselId) ?? false;
+    panel.addEventListener("toggle", () => hooks.panelOpen.set(unit.carouselId, panel.open));
+  }
 
   // The frame's shape and width, as a work row carries them, so the block
   // reads like the unit it is on the page.

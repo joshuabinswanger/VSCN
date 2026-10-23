@@ -363,6 +363,10 @@ document.addEventListener("astro:page-load", () => {
   // The same for a project block's words (2026-09-25), keyed by projectId:
   // unknown = folded, and newProject() opens the block it adds.
   const projectDetailsOpenUI = new Map<string, boolean>();
+  /** UI only: which project blocks have their + Add keys unfolded. */
+  const projectAddOpenUI = new Map<string, boolean>();
+  /** UI only: which carousels have their Edit panel open (buildTray reads it). */
+  const carouselPanelOpenUI = new Map<string, boolean>();
   // A project block's tag fold (2026-09-27): galleryTagsOpenUI's rule,
   // keyed by projectId. Unknown = open, as the template draws it.
   const projectTagsOpenUI = new Map<string, boolean>();
@@ -883,7 +887,7 @@ document.addEventListener("astro:page-load", () => {
 
           tagsSelector.value = item.tags ?? [];
           setTagsCount(item.tags ?? []);
-          tagsFold.open = galleryTagsOpenUI.get(item.imageId) ?? true;
+          tagsFold.open = galleryTagsOpenUI.get(item.imageId) ?? false;
           tagsFold.addEventListener("toggle", () => {
             galleryTagsOpenUI.set(item.imageId, tagsFold.open);
           });
@@ -1060,7 +1064,7 @@ document.addEventListener("astro:page-load", () => {
       el.dataset.projectId = project.projectId;
       const name = el.querySelector<HTMLElement>("[data-project-name]");
       const images = el.querySelector<HTMLElement>("[data-project-images]");
-      const head = el.querySelector<HTMLElement>(":scope > .gallery-project-tools");
+      const head = el.querySelector<HTMLElement>(".gallery-project-tools");
       const headUp = head?.querySelector<HTMLButtonElement>('[data-project-move="up"]');
       const headDown = head?.querySelector<HTMLButtonElement>('[data-project-move="down"]');
       const headDelete = head?.querySelector<HTMLButtonElement>("[data-project-delete]");
@@ -1071,12 +1075,29 @@ document.addEventListener("astro:page-load", () => {
       };
       setName();
 
-      // The block's words fold (2026-09-25), exactly like a work's Details.
-      // Queried before the rows are appended, so this cannot reach theirs.
+      // The block's Edit panel (2026-09-25 as the words fold; the panel since
+      // 2026-10-23), exactly like a work's. Queried before the rows are
+      // appended, so this cannot reach theirs.
       const detailsFold = el.querySelector<HTMLDetailsElement>(".gallery-project-details");
       if (detailsFold) {
         detailsFold.open = projectDetailsOpenUI.get(project.projectId) ?? false;
         detailsFold.addEventListener("toggle", () => projectDetailsOpenUI.set(project.projectId, detailsFold.open));
+      }
+      // + Add unfolds the block's three add keys (2026-10-23); remembered
+      // per projectId across re-renders, like the panel.
+      const addToggle = el.querySelector<HTMLButtonElement>("[data-project-add-toggle]");
+      const addKeys = el.querySelector<HTMLElement>("[data-project-addkeys]");
+      if (addToggle && addKeys) {
+        const paintAdd = () => {
+          const open = projectAddOpenUI.get(project.projectId) ?? false;
+          addKeys.hidden = !open;
+          addToggle.setAttribute("aria-expanded", String(open));
+        };
+        paintAdd();
+        addToggle.addEventListener("click", () => {
+          projectAddOpenUI.set(project.projectId, !(projectAddOpenUI.get(project.projectId) ?? false));
+          paintAdd();
+        });
       }
 
       // The header's ↑/↓ move the whole block past its neighbour. Delete
@@ -1189,7 +1210,7 @@ document.addEventListener("astro:page-load", () => {
         projectTags.value = project.tags ?? [];
         setCount(project.tags ?? []);
         named(projectTags, s["profile.label.tags"]);
-        projectTagsFold.open = projectTagsOpenUI.get(project.projectId) ?? true;
+        projectTagsFold.open = projectTagsOpenUI.get(project.projectId) ?? false;
         projectTagsFold.addEventListener("toggle", () => projectTagsOpenUI.set(project.projectId, projectTagsFold.open));
         projectTags.addEventListener("change", () => {
           const tags = projectTags.value;
@@ -1237,6 +1258,7 @@ document.addEventListener("astro:page-load", () => {
             gallery: () => gallery,
             projects: projectOptions,
             selected: carouselSelection,
+            panelOpen: carouselPanelOpenUI,
             uploadFull: galleryFull(),
             maxTextAfter: MAX_GALLERY_TEXT_AFTER,
             buildRow,
@@ -1348,7 +1370,7 @@ document.addEventListener("astro:page-load", () => {
             ? unit?.querySelector<HTMLElement>("[data-carousel-project]")
             : focusHint.control === "add"
               ? unit?.querySelector<HTMLElement>("[data-carousel-files]")
-              : pick(unit?.querySelector(":scope > .gallery-carousel-tools") ?? null, '[data-carousel-move="up"]', '[data-carousel-move="down"]', focusHint.control);
+              : pick(unit?.querySelector(".gallery-carousel-tools") ?? null, '[data-carousel-move="up"]', '[data-carousel-move="down"]', focusHint.control);
       } else {
         const block = galleryEditor.querySelector<HTMLElement>(`[data-project-id="${focusHint.projectId}"]`);
         target = focusHint.field
@@ -1356,7 +1378,7 @@ document.addEventListener("astro:page-load", () => {
           : focusHint.control === "carousel"
             ? block?.querySelector<HTMLElement>("[data-project-carousel]")
             : pick(
-                block?.querySelector(":scope > .gallery-project-tools") ?? null,
+                block?.querySelector(".gallery-project-tools") ?? null,
                 '[data-project-move="up"]',
                 '[data-project-move="down"]',
                 focusHint.control ?? "up",
@@ -2038,6 +2060,22 @@ document.addEventListener("astro:page-load", () => {
     localCarousels.push({ carouselId, projectId });
     renderGallery({ carouselId, control: "add" });
   }
+
+  // ONE EDIT PANEL AT A TIME (2026-10-23): opening a work's, a project's or
+  // a carousel's closes every other one, so the list never fans out into
+  // three panels of keys. `toggle` does not bubble; capture on the list
+  // sees them all. Each fold's own listener records its new state.
+  galleryEditor.addEventListener(
+    "toggle",
+    (e) => {
+      const opened = e.target;
+      if (!(opened instanceof HTMLDetailsElement) || !opened.open || !opened.classList.contains("gallery-details")) return;
+      galleryEditor.querySelectorAll<HTMLDetailsElement>("details.gallery-details[open]").forEach((other) => {
+        if (other !== opened) other.open = false;
+      });
+    },
+    { capture: true, signal: lifecycle.signal },
+  );
 
   // THE WORK DRAG (desktop pointer only), bound once: a row's picture or a
   // tray thumbnail onto a tray joins at the drop position; a slide onto a
