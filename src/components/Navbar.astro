@@ -31,7 +31,8 @@ import "../styles/type.css";
     <a href="/community" class="nav-link nav-center" id="nav-community">COMMUNITY</a>
     <div class="nav-right-group">
       <a href="/login" class="nav-link" id="nav-join">LOGIN</a>
-      <a href="/profile" class="nav-link" id="nav-profile" style="display:none;">PROFILE</a>
+      <a href="/profile" class="nav-link nav-link--pill" id="nav-profile" style="display:none;">PROFILE</a>
+      <a href="/onboarding" class="nav-link nav-link--pill" id="nav-signup">SIGN UP</a>
     </div>
     {/* The language switch's place on the phone's sheet (2026-10-20): the
         fixed .lang-toggle below is hidden on every page with a footer, so the
@@ -183,6 +184,9 @@ import "../styles/type.css";
   #nav-profile {
     --i: 2;
   }
+  #nav-signup {
+    --i: 3;
+  }
 
   /* Each link is a black chip with white type, square (the site has no
      radii), with a hairline the same black so the inverted chip below keeps
@@ -307,8 +311,20 @@ import "../styles/type.css";
        centred plus main's 15px gutter, not on the window's edge; the title
        starts on the mirror edge (Layout.astro). A window narrower than the
        measure keeps the old 15px. */
+    /* LIKE COSMOS (2026-10-23, Josh: "do it like cosmos. left the
+       different things we can select in the middle vscn ... on the right
+       login as a pill", then "also with sign up and login"): the nav spans
+       the row, the destinations at its left, the account at its right —
+       LOGIN as a word and SIGN UP as a black pill, or PROFILE as the pill
+       once signed in — and the title centred between them (Layout.astro).
+       The row lets clicks through to the title; only the links take them. */
     nav[data-astro-transition-persist="navbar"] {
-      padding-right: max(15px, calc((100vw - var(--shell-max)) / 2 + 15px));
+      left: 0;
+      padding: 0 max(15px, calc((100vw - var(--shell-max)) / 2 + 15px));
+      pointer-events: none;
+    }
+    .nav-links .nav-link {
+      pointer-events: auto;
     }
     .nav-menu-btn {
       display: none;
@@ -322,8 +338,14 @@ import "../styles/type.css";
       visibility: visible;
       transition: none;
     }
+    .nav-links {
+      flex: 1;
+    }
     .nav-right-group {
       flex-direction: row;
+      align-items: center;
+      gap: 1rem;
+      margin-left: auto;
     }
     /* PLAIN TEXT, NOT PILLS (2026-10-20, Josh: "desktop stays for now,
        just replace with normal text"): the black capsules are gone, the
@@ -356,6 +378,20 @@ import "../styles/type.css";
     }
     .nav-link--lang {
       display: none;
+    }
+    /* The account's action is the one filled shape in the row. */
+    .nav-links .nav-link--pill,
+    .nav-links .nav-link--pill:visited {
+      padding: var(--nav-chip-pad);
+      border-radius: var(--radius-pill);
+      background: var(--nav-ink);
+      color: var(--nav-paper);
+    }
+    .nav-links .nav-link--pill:hover {
+      text-decoration: underline;
+    }
+    .nav-links .nav-link--pill.nav-link--active {
+      text-decoration: none;
     }
   }
 
@@ -449,6 +485,11 @@ import "../styles/type.css";
       position: relative;
       z-index: 1;
     }
+    /* LOGIN and SIGN UP stand as two lines of the sheet, spaced like
+       the rest. */
+    .nav-right-group {
+      gap: 1.1rem;
+    }
     .nav-links {
       position: fixed;
       inset: var(--header-h) 0 0 0;
@@ -538,7 +579,7 @@ import "../styles/type.css";
       transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.08s;
     }
     .nav-link--lang {
-      --i: 3;
+      --i: 4;
       margin-top: 1.4rem;
     }
     .nav-link--lang::after {
@@ -658,10 +699,16 @@ import "../styles/type.css";
 
   const navLabels: Record<
     Lang,
-    { info: string; community: string; login: string; profile: string }
+    { info: string; community: string; login: string; signup: string; profile: string }
   > = {
-    en: { info: "INFO", community: "COMMUNITY", login: "LOGIN", profile: "PROFILE" },
-    de: { info: "INFO", community: "COMMUNITY", login: "ANMELDEN", profile: "PROFIL" },
+    en: { info: "INFO", community: "COMMUNITY", login: "LOGIN", signup: "SIGN UP", profile: "PROFILE" },
+    de: {
+      info: "INFO",
+      community: "COMMUNITY",
+      login: "ANMELDEN",
+      signup: "REGISTRIEREN",
+      profile: "PROFIL",
+    },
   };
 
   let unsubscribeAuth: (() => void) | null = null;
@@ -705,6 +752,7 @@ import "../styles/type.css";
     const navCommunity = document.getElementById("nav-community") as HTMLAnchorElement | null;
     const navJoin = document.getElementById("nav-join") as HTMLAnchorElement | null;
     const navProfile = document.getElementById("nav-profile") as HTMLAnchorElement | null;
+    const navSignup = document.getElementById("nav-signup") as HTMLAnchorElement | null;
     const navLang = document.getElementById("nav-lang") as HTMLAnchorElement | null;
     const sheetLang = document.getElementById("nav-sheet-lang") as HTMLAnchorElement | null;
 
@@ -723,6 +771,10 @@ import "../styles/type.css";
     if (navProfile) {
       navProfile.href = `${prefix}/profile`;
       navProfile.textContent = labels.profile;
+    }
+    if (navSignup) {
+      navSignup.href = `${prefix}/onboarding`;
+      navSignup.textContent = labels.signup;
     }
 
     for (const toggle of [navLang, sheetLang]) {
@@ -761,11 +813,13 @@ import "../styles/type.css";
 
     const navJoin = document.getElementById("nav-join");
     const navProfile = document.getElementById("nav-profile");
+    const navSignup = document.getElementById("nav-signup");
     if (!navJoin || !navProfile) return;
 
     unsubscribeAuth?.();
     unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       navJoin.style.display = user ? "none" : "block";
+      if (navSignup) navSignup.style.display = user ? "none" : "block";
       navProfile.style.display = user ? "block" : "none";
       setActiveLink();
     });
