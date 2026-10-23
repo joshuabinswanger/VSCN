@@ -303,11 +303,12 @@ import "../styles/type.css";
      breakpoint changes nothing here. */
   @media (--bp-desktop) {
     /* IN FROM THE CORNER (2026-10-23, Josh: "weird to find them all the way
-       in the corner"): the row ends on --shell-max's right edge, the
-       content's measure, not on the window's. A window narrower than the
+       in the corner"): the row ends where main's text does, --shell-max
+       centred plus main's 15px gutter, not on the window's edge; the title
+       starts on the mirror edge (Layout.astro). A window narrower than the
        measure keeps the old 15px. */
     nav[data-astro-transition-persist="navbar"] {
-      padding-right: max(15px, calc((100vw - var(--shell-max)) / 2));
+      padding-right: max(15px, calc((100vw - var(--shell-max)) / 2 + 15px));
     }
     .nav-menu-btn {
       display: none;
