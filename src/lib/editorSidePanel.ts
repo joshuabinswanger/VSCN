@@ -1,7 +1,9 @@
 // THE SIDE-PANEL EDITOR (2026-10-25, trial route /profile-panel). Josh: "edit
 // fields in a separate right panel (settings for image, changing captions,
 // title etc., add carousel images etc. all in a right side panel on desktop)
-// and on mobile in a separate frame on the bottom".
+// and on mobile in a separate frame on the bottom". On a phone the panel is
+// a full-screen page since the same day: a bottom sheet zoomed on iOS and
+// fought the keyboard.
 //
 // It changes no editor code. The list stays what profileEditorController
 // renders; picking a work, a project or a carousel MOVES that unit's fields
@@ -28,7 +30,6 @@ interface Borrowed {
   words: boolean;
 }
 
-const MOBILE = "(max-width: 767px), (pointer: coarse)";
 
 document.addEventListener("astro:page-load", () => {
   const panel = document.getElementById("epanel");
@@ -38,6 +39,9 @@ document.addEventListener("astro:page-load", () => {
   const signal = pageLifetime();
   const body = panel.querySelector<HTMLElement>("[data-epanel-body]")!;
   const title = panel.querySelector<HTMLElement>("[data-epanel-title]")!;
+  const thumb = panel.querySelector<HTMLImageElement>("[data-epanel-thumb]")!;
+  const save = panel.querySelector<HTMLButtonElement>("[data-epanel-save]")!;
+  const formSave = document.getElementById("save-button") as HTMLButtonElement | null;
   const editLabel = title.textContent ?? "";
 
   stage.append(panel);
@@ -156,19 +160,26 @@ document.addEventListener("astro:page-load", () => {
     giveBack();
     pick = next;
     body.replaceChildren();
-    const mobile = window.matchMedia(MOBILE).matches;
     panel.classList.toggle("is-open", !!next);
     stage.classList.toggle("is-picking", !!next);
     title.textContent = next ? panel.dataset[`label${next.kind[0].toUpperCase()}${next.kind.slice(1)}`] ?? editLabel : editLabel;
+    thumb.hidden = true;
     if (!next) {
       markPicked(null);
       return;
     }
     const unit = unitOf(next);
     if (!unit) return;
+    // The phone page shows what it edits: the work's picture, or a project's
+    // first. A carousel shows its tray instead.
+    const img = next.kind === "carousel" ? null : unit.querySelector<HTMLImageElement>(".mprof__img[src]");
+    if (img) {
+      thumb.src = img.currentSrc || img.src;
+      thumb.hidden = false;
+    }
     partsOf(next, unit).forEach(borrow);
     markPicked(unit);
-    if (mobile) requestAnimationFrame(() => unit.scrollIntoView({ block: "start", behavior: "smooth" }));
+    panel.scrollTop = 0;
   };
 
   const pickFrom = (target: Element): Pick | null => {
@@ -198,6 +209,15 @@ document.addEventListener("astro:page-load", () => {
   );
 
   panel.querySelector("[data-epanel-done]")!.addEventListener("click", () => setPick(null), { signal });
+  panel.querySelector("[data-epanel-back]")!.addEventListener("click", () => setPick(null), { signal });
+
+  // The phone page's Save is the form's own, pressed: the bar is hidden while
+  // the page is up. It mirrors that button's disabled state.
+  save.addEventListener("click", () => formSave?.click(), { signal });
+  const mirrorSave = () => (save.disabled = !formSave || formSave.disabled);
+  mirrorSave();
+  const saveObserver = new MutationObserver(mirrorSave);
+  if (formSave) saveObserver.observe(formSave, { attributes: true, attributeFilter: ["disabled"] });
   document.addEventListener(
     "keydown",
     (e) => {
@@ -238,6 +258,7 @@ document.addEventListener("astro:page-load", () => {
     "abort",
     () => {
       observer.disconnect();
+      saveObserver.disconnect();
       stageObserver.disconnect();
     },
     { once: true },

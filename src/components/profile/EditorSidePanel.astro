@@ -17,9 +17,14 @@ const t = useTranslations(lang);
   data-label-carousel={t("profile.deck.carousel")}
 >
   <div class="epanel__head">
+    <button type="button" class="epanel__back" data-epanel-back
+      ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg><span>{t("profile.panel.back")}</span></button
+    >
     <p class="epanel__title t-label" data-epanel-title>{t("profile.deck.edit")}</p>
     <button type="button" class="epanel__done" data-epanel-done>{t("profile.panel.done")}</button>
+    <button type="button" class="epanel__save" data-epanel-save>{t("profile.saveShort")}</button>
   </div>
+  <img class="epanel__thumb" alt="" data-epanel-thumb hidden />
   <p class="epanel__empty field-note" data-epanel-empty>{t("profile.panel.empty")}</p>
   <div class="epanel__body" data-epanel-body></div>
 </aside>
@@ -80,16 +85,18 @@ const t = useTranslations(lang);
   }
 
   @media (--bp-mobile) {
-    /* A sheet at the foot, over the bar, only while something is picked. */
+    /* A FULL-SCREEN PAGE on a phone (2026-10-25, after a bottom sheet: iOS
+       zoomed into every field and the keyboard pushed the sheet about). It
+       slides in over the list while something is picked; nothing in it is
+       pinned to the foot, so the keyboard simply scrolls it like a form. */
     .profile-editor .works-stage > .epanel {
-      left: 0;
-      right: 0;
-      bottom: 0;
-      max-height: 58svh;
-      padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
-      border-width: 1px 0 0;
-      border-radius: 20px 20px 0 0 !important;
-      transform: translateY(105%);
+      inset: 0;
+      z-index: 40;
+      gap: 16px;
+      padding: 0 16px calc(32px + env(safe-area-inset-bottom, 0px));
+      border: 0;
+      box-shadow: none;
+      transform: translateX(100%);
       visibility: hidden;
       transition:
         transform 0.32s cubic-bezier(0.25, 1, 0.5, 1),
@@ -102,19 +109,101 @@ const t = useTranslations(lang);
       transition: transform 0.32s cubic-bezier(0.25, 1, 0.5, 1);
     }
 
-    .profile-editor .works-stage > .epanel .epanel__empty {
+    .profile-editor .works-stage > .epanel .epanel__empty,
+    .epanel .epanel__done {
       display: none;
     }
 
-    /* Room to scroll the last work above the sheet. */
-    .works-stage.has-epanel.is-picking {
-      padding-bottom: 58svh;
+    /* Back · what is edited · Save, stuck to the top of the page. */
+    .epanel .epanel__head {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      margin-inline: -16px;
+      padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
+      background: var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
     }
 
-    /* The bar would stand over the sheet: it steps aside until Done. */
+    .epanel .epanel__title {
+      grid-column: 2;
+      text-align: center;
+    }
+
+    .profile-editor .epanel .epanel__back {
+      grid-column: 1;
+      justify-self: start;
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 8px 6px;
+      border: 0;
+      background: none;
+      color: var(--color-dark);
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .epanel .epanel__back svg {
+      width: 18px;
+      height: 18px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .profile-editor .epanel .epanel__save {
+      grid-column: 3;
+      justify-self: end;
+      display: inline-block;
+    }
+
+    /* What is being edited, small, so the page says which work this is. */
+    .profile-editor .epanel .epanel__thumb:not([hidden]) {
+      display: block;
+      width: auto;
+      max-width: 100%;
+      max-height: 28svh;
+      margin: 0 auto;
+      object-fit: contain;
+    }
+
+    /* 16px or more, or iOS zooms the page into every field it focuses. A
+       deliberate exception to "components set no font-size" (type.css):
+       the phone's form controls, in this panel only. */
+    .profile-editor .works-stage > .epanel :is(input:not([type="checkbox"], [type="file"]), textarea, select) {
+      font-size: 16px !important;
+    }
+
+    /* The bar steps aside while the page is up: its Save is in the head. */
     .profile-form:has(.works-stage.has-epanel.is-picking) .form-footer {
       display: none;
     }
+  }
+
+  /* Back, Save and the picture are the phone page's. */
+  .epanel__back,
+  .epanel__save,
+  .epanel__thumb {
+    display: none;
+  }
+
+  .profile-editor .epanel__save {
+    padding: 6px 14px;
+    border: 0;
+    border-radius: 999px !important;
+    background: var(--color-dark);
+    color: var(--color-bg);
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .profile-editor .epanel__save:disabled {
+    opacity: 0.4;
   }
 
   /* A carousel's own keys first, then the picked slide's words and keys,
