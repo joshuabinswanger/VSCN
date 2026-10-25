@@ -463,7 +463,8 @@ import "../styles/type.css";
       gap: 2px;
       min-width: 9rem;
       padding: 6px;
-      border-radius: 14px;
+      /* !important: global.css squares every corner it does not exempt. */
+      border-radius: 14px !important;
       background: var(--nav-paper);
       box-shadow:
         0 0 0 1px var(--color-border),
@@ -488,7 +489,7 @@ import "../styles/type.css";
     }
     .nav-links .nav-acct .nav-link {
       padding: 8px 10px 7px;
-      border-radius: 8px;
+      border-radius: 8px !important;
     }
     .nav-links .nav-acct .nav-link:hover {
       text-decoration: none;
@@ -497,8 +498,8 @@ import "../styles/type.css";
     .nav-links .nav-acct .nav-acct__lang {
       display: block;
       margin: 4px 0 0;
-      border-top: 1px solid var(--color-border);
-      border-radius: 0 0 8px 8px;
+      box-shadow: 0 -1px 0 var(--color-border);
+      border-radius: 0 0 8px 8px !important;
     }
     /* The account's action is the one filled shape in the row. */
     .nav-links .nav-link--pill,
@@ -770,6 +771,10 @@ import "../styles/type.css";
     .nav-link--lang {
       --i: 5;
       margin-top: 1.4rem;
+    }
+    /* The editor's bar would stand over the open sheet. */
+    :root:has(#nav-menu-btn[aria-expanded="true"]) .form-footer {
+      visibility: hidden;
     }
     /* Signed in, the sheet lists the editor's tabs in PROFILE's place. */
     #nav-profile,
