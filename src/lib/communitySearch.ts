@@ -1,6 +1,9 @@
 // THE DIRECTORY'S SEARCH (2026-10-16, Josh: "implement a search function for
 // names projects and images. it should sit beside the other pills in the
-// bottom"). A fourth drop-up in the community bar: one field, and under it
+// bottom"). Full text since 2026-10-25 (Josh: "a full text search that also
+// finds some thing like 'Alessandro' which is only in the studio description
+// for quaint"): each entry also carries `text`, the words of its long prose —
+// bio, descriptions, text blocks, both languages — see textIndex(). A fourth drop-up in the community bar: one field, and under it
 // three short lists — the people, the projects and the pictures the words
 // match. Every result is a way to the member's page; a project or a picture
 // carries ?project= / ?work= so the page arrives showing it (see
@@ -18,6 +21,8 @@ export interface SearchPerson {
   /** The profile picture, token stripped; empty when there is none. */
   photo: string;
   tags: string[];
+  /** The long prose's words, from textIndex(); matched at word starts only. */
+  text?: string;
 }
 
 export interface SearchProject {
@@ -25,6 +30,8 @@ export interface SearchProject {
   member: string;
   href: string;
   tags: string[];
+  /** The long prose's words, from textIndex(); matched at word starts only. */
+  text?: string;
 }
 
 export interface SearchImage {
@@ -35,6 +42,8 @@ export interface SearchImage {
   project: string;
   href: string;
   tags: string[];
+  /** The long prose's words, from textIndex(); matched at word starts only. */
+  text?: string;
 }
 
 export interface SearchIndex {
@@ -66,21 +75,53 @@ export function queryWords(q: string): string[] {
   return fold(q).split(/\s+/).filter(Boolean);
 }
 
+/** A word's letters and digits, folded, with whatever stood between them as one space. */
+function tokens(s: string): string[] {
+  return fold(s).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+}
+
 /**
- * How well `words` fit an entry whose own name is `primary` and whose other
- * words are `rest`, or -1 for no match. Every word must be in one of them;
- * the score prefers a name that STARTS with the query, then a word of the
- * name that does, then anything else — so "an" puts Anna before Johanna.
+ * The prose of an entry as the index carries it: its distinct folded words,
+ * space-separated with a leading space, so " alessandro" finds the start of a
+ * word and nothing in its middle. Distinct words only — a bio is searched,
+ * never shown, so the sentence can go and the page carries less.
  */
-export function scoreEntry(words: string[], primary: string, rest: string[]): number {
+export function textIndex(...texts: (string | undefined)[]): string {
+  const words = new Set(texts.flatMap((t) => tokens(t ?? "")));
+  return words.size ? ` ${[...words].join(" ")}` : "";
+}
+
+/**
+ * Does the prose index hold `word` at the start of a word? A word typed with
+ * punctuation in it ("quaint.ch") has to find its parts in a row.
+ */
+function inText(text: string, word: string): boolean {
+  const parts = tokens(word);
+  return parts.length > 0 && text.includes(` ${parts.join(" ")}`);
+}
+
+/**
+ * How well `words` fit an entry whose own name is `primary`, whose other
+ * words are `rest` and whose prose is `text` (a textIndex()), or -1 for no
+ * match. Every word must be in one of them — anywhere in the name and the
+ * rest, at a word's start in the prose, so a short query does not drag in
+ * every bio that happens to contain its letters. The score prefers a name
+ * that STARTS with the query, then a word of the name that does, then the
+ * name holding them all, then the role/tags/member, and last a match that
+ * needed the prose — so "an" puts Anna before Johanna, and a name always
+ * outranks a mention.
+ */
+export function scoreEntry(words: string[], primary: string, rest: string[], text = ""): number {
   if (!words.length) return -1;
   const name = fold(primary);
   const hay = [name, ...rest.map(fold)].join("\n");
-  if (!words.every((w) => hay.includes(w))) return -1;
+  const inHay = (w: string) => hay.includes(w);
+  if (!words.every((w) => inHay(w) || inText(text, w))) return -1;
   const phrase = words.join(" ");
-  if (name.startsWith(phrase)) return 3;
-  if (name.split(/[^\p{L}\p{N}]+/u).some((part) => part.startsWith(words[0]))) return 2;
-  if (words.every((w) => name.includes(w))) return 1;
+  if (name.startsWith(phrase)) return 4;
+  if (name.split(/[^\p{L}\p{N}]+/u).some((part) => part.startsWith(words[0]))) return 3;
+  if (words.every((w) => name.includes(w))) return 2;
+  if (words.every(inHay)) return 1;
   return 0;
 }
 
@@ -102,15 +143,15 @@ export function searchDirectory(
   const words = queryWords(query);
   if (!words.length) return { people: [], projects: [], images: [] };
   return {
-    people: ranked(index.people, (p) => scoreEntry(words, p.name, [p.role, ...p.tags]), limits.people),
+    people: ranked(index.people, (p) => scoreEntry(words, p.name, [p.role, ...p.tags], p.text), limits.people),
     projects: ranked(
       index.projects,
-      (p) => scoreEntry(words, p.title, [p.member, ...p.tags]),
+      (p) => scoreEntry(words, p.title, [p.member, ...p.tags], p.text),
       limits.projects,
     ),
     images: ranked(
       index.images,
-      (w) => scoreEntry(words, w.caption, [w.project, w.member, ...w.tags]),
+      (w) => scoreEntry(words, w.caption, [w.project, w.member, ...w.tags], w.text),
       limits.images,
     ),
   };

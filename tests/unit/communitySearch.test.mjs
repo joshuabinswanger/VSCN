@@ -2,7 +2,7 @@
 // field. Pure, so the matching is testable without the bar.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { fold, queryWords, scoreEntry, searchDirectory, workKey } from "../../src/lib/communitySearch.ts";
+import { fold, queryWords, scoreEntry, searchDirectory, textIndex, workKey } from "../../src/lib/communitySearch.ts";
 
 const INDEX = {
   people: [
@@ -67,4 +67,55 @@ test("workKey is the stored object's path, token and bucket aside", () => {
   assert.equal(workKey(url), "users/u1/gallery/img9.webp");
   assert.equal(workKey(url.replace("token=abc", "token=zzz")), workKey(url));
   assert.equal(workKey("not a url"), "not a url");
+});
+
+// Full text (2026-10-25): "Alessandro" is only in Quaint's bio.
+const STUDIO = {
+  people: [
+    { name: "Sandro Lochau", role: "Illustrator", href: "/members/sandro", photo: "", tags: [] },
+    {
+      name: "Quaint", role: "Visualization Studio", href: "/members/quaint", photo: "", tags: [],
+      text: textIndex("Look closer.\n\nOur team: Alessandro Holler, Sandro Lochau, Leana Wirth", "Zürich"),
+    },
+  ],
+  projects: [],
+  images: [
+    {
+      key: "q-0", caption: "Welcome", member: "Quaint", project: "", href: "#", tags: [],
+      text: textIndex("Welcome", "The first time Sandro & Alessandro worked together"),
+    },
+  ],
+};
+
+test("textIndex keeps each folded word once, behind a space", () => {
+  assert.equal(textIndex("Zürich, zurich! Bern", undefined, ""), " zurich bern");
+  assert.equal(textIndex(undefined, "  "), "");
+});
+
+test("a word only in the prose finds its entry", () => {
+  const r = searchDirectory(STUDIO, "Alessandro");
+  assert.deepEqual(r.people.map((p) => p.name), ["Quaint"]);
+  assert.deepEqual(r.images.map((w) => w.key), ["q-0"]);
+  assert.deepEqual(searchDirectory(STUDIO, "ales").people.map((p) => p.name), ["Quaint"]);
+  assert.deepEqual(searchDirectory(STUDIO, "zurich").people.map((p) => p.name), ["Quaint"]);
+});
+
+test("the prose matches at word starts only", () => {
+  assert.equal(searchDirectory(STUDIO, "essandro").people.length, 0);
+  assert.equal(searchDirectory(STUDIO, "oser").people.length, 0);
+});
+
+test("a name outranks a mention in someone's prose", () => {
+  assert.deepEqual(searchDirectory(STUDIO, "sandro").people.map((p) => p.name), ["Sandro Lochau", "Quaint"]);
+});
+
+test("name, rest and prose can share a query", () => {
+  assert.deepEqual(searchDirectory(STUDIO, "quaint alessandro").people.map((p) => p.name), ["Quaint"]);
+  assert.deepEqual(searchDirectory(STUDIO, "studio holler").people.map((p) => p.name), ["Quaint"]);
+});
+
+test("a word typed with punctuation finds its parts in a row", () => {
+  const idx = { people: [{ name: "Q", role: "", href: "#", photo: "", tags: [], text: textIndex("see quaint.ch") }], projects: [], images: [] };
+  assert.equal(searchDirectory(idx, "quaint.ch").people.length, 1);
+  assert.equal(searchDirectory(idx, "quaint.de").people.length, 0);
 });
