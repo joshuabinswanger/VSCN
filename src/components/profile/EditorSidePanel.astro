@@ -206,6 +206,16 @@ const t = useTranslations(lang);
     opacity: 0.4;
   }
 
+  /* AUTOSAVE'S QUIET STATE (2026-10-25, Josh: "add automatic saving, make
+     the UI match the rest"): nothing waiting, so Save reads "Saved" on the
+     bar's soft grey, the + key's colours, and turns black again once
+     something changed. Pressed, it still saves at once. */
+  .profile-editor .ebar .profile-save-button.is-clean,
+  .profile-editor .epanel__save.is-clean {
+    background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
+    color: var(--color-dark);
+  }
+
   /* A carousel's own keys first, then the picked slide's words and keys,
      set apart by a line. */
   .epanel .gallery-carousel-details ~ .gallery-fields {
@@ -348,6 +358,26 @@ const t = useTranslations(lang);
   .profile-editor .works-stage [data-works-editor] [data-project-block] > .epanel-edit {
     top: 14px;
     right: 14px;
+  }
+
+  /* SMALLER ON A DESKTOP (2026-10-25, Josh: "edit buttons can be smaller on
+     desktop"): a pointer needs no thumb-sized key. */
+  @media (--bp-desktop) {
+    .profile-editor .works-stage [data-works-editor] .epanel-edit {
+      top: 8px;
+      right: 8px;
+      gap: 4px;
+      padding: 3px 8px 3px 7px;
+    }
+
+    .profile-editor .works-stage [data-works-editor] .epanel-edit svg {
+      width: 11px;
+      height: 11px;
+    }
+
+    .works-stage.has-epanel [data-works-editor] :is([data-project-block] > .gallery-project-fields, [data-project-block] > .epanel-ghost) {
+      padding-inline-end: 72px;
+    }
   }
 
   .epanel-edit svg {

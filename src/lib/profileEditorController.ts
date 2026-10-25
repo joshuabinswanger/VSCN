@@ -215,16 +215,50 @@ document.addEventListener("astro:page-load", () => {
   const saveError = document.getElementById("save-error")!;
   const saveButton = document.getElementById("save-button") as HTMLButtonElement;
 
+  // AUTOSAVE (2026-10-25, Josh on the /profile-panel trial: "add automatic
+  // saving, make the UI match the rest"). Opted into by the form's
+  // data-autosave. The same Save runs on its own once editing pauses, and the
+  // fields stay live while it does: an inert form under a member who is still
+  // typing would throw their caret out mid-word.
+  const autosave = form.dataset.autosave !== undefined;
+
   /** Disabled AND visibly working — see .profile-save-button.is-saving. */
   function setSaving(on: boolean) {
     form.setAttribute("aria-busy", String(on));
-    form.querySelectorAll<HTMLElement>(".form-section, .editor-recovery, #section-tabs").forEach(section => { section.inert = on; });
+    if (!autosave) form.querySelectorAll<HTMLElement>(".form-section, .editor-recovery, #section-tabs").forEach(section => { section.inert = on; });
     saveButton.disabled = on;
     saveButton.classList.toggle("is-saving", on);
     // An icon button: the words are its name, not its face.
     const label = on ? s["profile.save.saving"] : s["profile.save"];
     saveButton.setAttribute("aria-label", label);
     saveButton.title = label;
+    if (autosave) queueMicrotask(paintAutosave);
+  }
+
+  // With autosave the Save pill reads "Saved", quiet, while nothing is
+  // waiting; it turns back into the black Save once something changed, and
+  // a press still saves at once.
+  const AUTOSAVE_MS = 1500;
+  let autosaveTimer = 0;
+  function paintAutosave() {
+    const clean = !saveButton.disabled && !draft?.hasChanges();
+    saveButton.classList.toggle("is-clean", clean);
+    const word = saveButton.querySelector(".ebar__label");
+    if (word) word.textContent = clean ? s["profile.save.saved"] : s["profile.saveShort"];
+  }
+  if (autosave) {
+    const schedule = () => {
+      requestAnimationFrame(paintAutosave);
+      clearTimeout(autosaveTimer);
+      autosaveTimer = window.setTimeout(() => {
+        if (!draft?.hasChanges() || saveButton.disabled || navigator.onLine === false) return;
+        form.requestSubmit(saveButton);
+      }, AUTOSAVE_MS);
+    };
+    for (const type of ["input", "change", "click"]) {
+      form.addEventListener(type, schedule, { signal: lifecycle.signal });
+    }
+    lifecycle.signal.addEventListener("abort", () => clearTimeout(autosaveTimer));
   }
 
   const avatarWrap = avatarImg.closest<HTMLElement>(".avatar-wrap")!;
@@ -2943,6 +2977,7 @@ document.addEventListener("astro:page-load", () => {
           leaveBusy: "Uploads are still in progress and will be cancelled if you leave. Leave this page?",
           stay: "Stay", go: "Leave" },
       });
+      if (autosave) paintAutosave();
     }
   }
 
