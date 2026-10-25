@@ -4,7 +4,7 @@ import { DEFAULT_VIEW } from "../lib/communityLayout.ts";
 import ProfileLink from "./ui/ProfileLink.astro";
 import { dealPagesInto, shuffleBands } from "../lib/communityDeal.ts";
 import { memberHref, workCaption } from "../lib/links.ts";
-import { workKey, type SearchIndex } from "../lib/communitySearch.ts";
+import { textIndex, workKey, type SearchIndex } from "../lib/communitySearch.ts";
 import { looseWorksProjectId, projectTitle } from "../lib/projects.ts";
 import CommunityImageCard from "./community/CommunityImageCard.astro";
 import CommunityWorkCard from "./community/CommunityWorkCard.astro";
@@ -333,7 +333,10 @@ const indexMembers = [...members].sort((a, b) =>
 // the page as JSON beside the bar, so a search is a pass over a list already
 // here. A project or picture link names it on the member page (?project=,
 // ?work=), which opens on it. The picture's thumbnail is NOT in here: the
-// wall's own tile already carries a rendered one, found by `key`.
+// wall's own tile already carries a rendered one, found by `key`. `text` is
+// the full-text half (2026-10-25): every word of the prose behind each entry,
+// in both languages where the record has both, so "Alessandro" finds Quaint
+// from a line in the bio.
 const searchIndex: SearchIndex = {
   people: indexMembers.map((m) => ({
     name: m.displayName || m.slug,
@@ -341,6 +344,7 @@ const searchIndex: SearchIndex = {
     href: memberHref(lang, m.slug),
     photo: stripStorageToken(m.photoURL ?? ""),
     tags: m.tags,
+    text: textIndex(m.bio, m.bioDe, m.roleDe, m.affiliation, m.location),
   })),
   projects: indexMembers.flatMap((m) =>
     (m.projects ?? []).flatMap((p) => {
@@ -354,6 +358,13 @@ const searchIndex: SearchIndex = {
         member: m.displayName || m.slug,
         href: `${memberHref(lang, m.slug)}?project=${encodeURIComponent(p.id)}`,
         tags: p.tags,
+        text: textIndex(
+          p.title,
+          p.titleDe,
+          p.description,
+          p.descriptionDe,
+          ...p.affiliations.map((a) => a.name),
+        ),
       }];
     })
   ),
@@ -364,6 +375,14 @@ const searchIndex: SearchIndex = {
     project: work.projectId === looseWorksProjectId(member.id) ? "" : (projectLabel(member, work) ?? ""),
     href: `${memberHref(lang, member.slug)}?work=${encodeURIComponent(workKey(work.url))}`,
     tags: work.tags,
+    text: textIndex(
+      work.caption,
+      work.captionDe,
+      work.description,
+      work.descriptionDe,
+      work.textAfter,
+      work.textAfterDe,
+    ),
   })),
 };
 ---
