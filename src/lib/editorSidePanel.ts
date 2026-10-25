@@ -138,7 +138,29 @@ document.addEventListener("astro:page-load", () => {
   // Bring the panel in line with the list: drop what a re-render orphaned,
   // move in what the unit's new rendering offers. Idempotent, so it can run
   // after every mutation, its own included.
+  // ONE EDIT KEY at the top right of every work's picture, of a carousel's
+  // shown slide and of a project's heading (Josh: "top right of images").
+  // The key only picks, through the list's click handler. Re-added after
+  // every re-render; adding it is a no-op where one stands.
+  const keyHtml = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>${editLabel}</span>`;
+  const addKey = (host: Element | null, kind: Kind) => {
+    if (!host || host.querySelector(":scope > .epanel-edit")) return;
+    const key = document.createElement("button");
+    key.type = "button";
+    key.className = "epanel-edit t-label";
+    key.dataset.epanelEdit = kind;
+    key.innerHTML = keyHtml;
+    host.append(key);
+  };
+  const addKeys = () => {
+    list.querySelectorAll(".gallery-item[data-image-id]:not(.gallery-task) > .gallery-thumb").forEach((thumb) => {
+      addKey(thumb, thumb.closest("[data-carousel-slide-row]") ? "carousel" : "work");
+    });
+    list.querySelectorAll("[data-project-block]").forEach((block) => addKey(block, "project"));
+  };
+
   const sync = () => {
+    addKeys();
     const unit = pick ? unitOf(pick) : null;
     if (!pick || !unit) {
       if (pick) setPick(null);
@@ -195,7 +217,7 @@ document.addEventListener("astro:page-load", () => {
     const project = target.closest<HTMLElement>("[data-project-block]");
     // The project is picked by its heading (or its stand-in), not by the
     // space between its works.
-    if (project?.dataset.projectId && target.closest(".gallery-project-fields, .epanel-ghost")) return { kind: "project", id: project.dataset.projectId };
+    if (project?.dataset.projectId && target.closest(".gallery-project-fields, .epanel-ghost, [data-epanel-edit='project']")) return { kind: "project", id: project.dataset.projectId };
     return null;
   };
 
@@ -250,6 +272,7 @@ document.addEventListener("astro:page-load", () => {
     });
   });
   observer.observe(list, { childList: true, subtree: true });
+  addKeys();
 
   // Language and mode come from the bar: repaint the stand-ins in the new
   // language, and hand everything back when Edit is left.

@@ -307,18 +307,64 @@ const t = useTranslations(lang);
   /* IN THE LIST the words read as the page prints them: no boxes, no labels,
      no + Add. A click on any of it picks the work (or project) and the real
      fields move into the panel.
-     THE EDIT KEY STAYS (2026-10-25, Josh: "add edit buttons"): each work,
-     project and carousel keeps its Edit key under its words, as the way in
-     that says so. In the list it only picks (editorSidePanel.ts stops the
-     fold); its body and chevron never show here. A carousel's slide wears
-     none: the carousel's own key picks both. */
-  .works-stage.has-epanel [data-works-editor] :is(.gfield__lbl, .gallery-addrow, .gallery-details-chevron, .gallery-details > :not(summary), [data-carousel-slide-row] .gallery-details) {
+     THE EDIT KEY SITS ON THE PICTURE (2026-10-25, Josh: "add edit buttons"
+     then "top right of images"): editorSidePanel.ts puts one .epanel-edit
+     key at the top right of every work's picture, of a carousel's shown
+     slide, and of a project's heading. The editor's own Edit fold never
+     shows in the list. */
+  .works-stage.has-epanel [data-works-editor] :is(.gfield__lbl, .gallery-details, .gallery-edit-row) {
     display: none !important;
   }
 
-  .works-stage.has-epanel [data-works-editor] .gallery-details {
-    float: none;
-    margin-top: 10px;
+  .works-stage.has-epanel [data-works-editor] :is(.gallery-thumb, [data-project-block]) {
+    position: relative;
+  }
+
+  .works-stage.has-epanel [data-works-editor] :is([data-project-block] > .gallery-project-fields, [data-project-block] > .epanel-ghost) {
+    padding-inline-end: 96px;
+  }
+
+  .profile-editor .works-stage [data-works-editor] .epanel-edit {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px 6px 10px;
+    border: 0;
+    border-radius: 999px !important;
+    background: rgb(255 255 255 / 0.92);
+    box-shadow:
+      0 1px 0 rgb(0 0 0 / 0.08),
+      0 0 0 0.5px rgb(0 0 0 / 0.12),
+      0 4px 14px rgb(0 0 0 / 0.1);
+    color: var(--color-dark);
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .profile-editor .works-stage [data-works-editor] [data-project-block] > .epanel-edit {
+    top: 14px;
+    right: 14px;
+  }
+
+  .epanel-edit svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* The picked unit's key is pressed: dark. */
+  .profile-editor .works-stage [data-works-editor] .is-epicked .epanel-edit,
+  .profile-editor .works-stage [data-works-editor] [data-project-block]:has(> .epanel-ghost.is-epicked) > .epanel-edit {
+    background: var(--color-dark);
+    color: var(--color-bg);
   }
 
   .works-stage.has-epanel [data-works-editor] .gfield > .gallery-inline {
