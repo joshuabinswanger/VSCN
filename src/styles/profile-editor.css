@@ -1199,14 +1199,22 @@
     transform: rotate(225deg);
   }
 
-  /* FOLDED, THE ROW SHOWS ITS PICKED TAGS after the arrow (2026-10-23), the
-     profile page's own chips. They stand in for the count, which says less;
-     open, the selector shows them and both go. */
+  /* FOLDED, THE ROW SHOWS ITS PICKED TAGS (2026-10-23), the profile page's
+     own chips. They stand in for the count, which says less; open, the
+     selector shows them and both go. ON A LINE OF THEIR OWN UNDER THE ROW
+     (2026-10-25, Josh: "the tags should stay below the drop down when
+     closed"); until then they ran on after the arrow. */
+  .gallery-tags-summary:has(> .gallery-tags-picked) {
+    flex-wrap: wrap;
+  }
+
   .gallery-tags-picked {
     display: flex;
     flex-wrap: wrap;
+    flex-basis: 100%;
     gap: 0.3rem;
     min-width: 0;
+    margin-top: 0.2rem;
   }
 
   .gallery-tags[open] .gallery-tags-picked,

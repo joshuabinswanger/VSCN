@@ -21,6 +21,16 @@
   "hosting": {
     "public": "dist",
     "cleanUrls": true,
+    "redirects": [
+      {
+        "//": "THE HOME PAGE IS PORTFOLIOS (2026-10-25, Josh: \"default page / home page should be portfolios\"). A 302, not a 301, so browsers do not remember it if the landing page ever comes back. The logo links to /community directly (Layout.astro).",
+        "source": "/",
+        "destination": "/community",
+        "type": 302
+      },
+      { "source": "/de", "destination": "/de/community", "type": 302 },
+      { "source": "/de/", "destination": "/de/community", "type": 302 }
+    ],
     "rewrites": [
       {
         "//": "The App Check mint endpoint, same-origin. The page swaps a Cloudflare Turnstile token for an App Check token here (src/lib/appCheckTurnstile.ts → functions/src/appCheck.ts). Same-origin on purpose: institutional web filters block Google hosts by category, and this keeps cloudfunctions.net out of the login path. Deploy the function BEFORE the hosting config that points at it.",

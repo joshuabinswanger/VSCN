@@ -492,6 +492,15 @@
   line-height: 1.5;
 }
 
+/* The link stands right under the title (2026-10-25): close to it, and the
+   title's own room moves below the link, before the description. */
+.mprof__project-head > .mprof__project-title:has(+ .mprof__project-links:not([hidden])) {
+  margin-bottom: 0.35rem;
+}
+.mprof__project-head > .mprof__project-links:not(:last-child) {
+  margin-bottom: 1rem;
+}
+
 /* The project's tags (2026-09-27): the profile's `.mprof__vals` row, a
    touch apart from the words above it. */
 .mprof__project-tags {

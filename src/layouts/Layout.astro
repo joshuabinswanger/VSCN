@@ -333,7 +333,7 @@ const BRAND_SLOTS: BrandSlot[] = [
     >
       <a
         id="brand-home-link"
-        href={lang === "de" ? "/de" : "/"}
+        href={lang === "de" ? "/de/community" : "/community"}
         class="brand-link"
         aria-label="Visual Science Communication Network"
       >
@@ -759,7 +759,7 @@ const BRAND_SLOTS: BrandSlot[] = [
   function updateBrandHomeLink(lang: Lang) {
     const brandLink = document.getElementById("brand-home-link") as HTMLAnchorElement | null;
     if (!brandLink) return;
-    brandLink.href = lang === "de" ? "/de" : "/";
+    brandLink.href = lang === "de" ? "/de/community" : "/community";
   }
 
   let brandResizeObserver: ResizeObserver | null = null;
