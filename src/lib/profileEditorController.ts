@@ -2892,6 +2892,10 @@ document.addEventListener("astro:page-load", () => {
     loadState = "loaded";
     if (loadingEl) loadingEl.style.display = "none";
     form.classList.add("is-loaded");
+    // ?tab= opens that tab (2026-10-25): the header's account menu links
+    // here with the tab it names (Navbar.astro).
+    const askedTab = new URLSearchParams(window.location.search).get("tab");
+    if (askedTab && sectionTabs.some((btn) => btn.dataset.section === askedTab)) setSection(askedTab);
     if (!draft && auth.currentUser) {
       // Explicit allowlist excludes account credentials, email and phone.
       const ids = ["name", "role", "role-de", "bio", "bio-de", "portfolio", "affiliation", "location"];

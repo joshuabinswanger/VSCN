@@ -37,6 +37,7 @@ const t = useTranslations(lang);
      templates, which carry that component's scope, not this one's. All of it
      is keyed to .has-epanel on the stage, so /profile never matches. */
 
+  .profile-form.has-epanel,
   .works-stage.has-epanel {
     --epanel-w: 360px;
   }
@@ -70,18 +71,99 @@ const t = useTranslations(lang);
 
   @media (--bp-desktop) {
     .profile-editor .works-stage > .epanel {
-      top: calc(var(--header-h) + 12px);
+      top: calc(var(--header-h) + 22px + var(--ebar-h, 0px));
       right: 16px;
       bottom: 20px;
       width: var(--epanel-w);
       border-radius: 20px !important;
     }
 
-    /* The works keep clear of the panel: the stage gives up as much of its
-       right edge as the panel reaches into it. */
-    .works-stage.has-epanel[data-mode="edit"][data-view="profile"] {
+    /* The works keep clear of the right column: the stage gives up as much
+       of its right edge as the column reaches into it, in every mode, since
+       the bar stands there in Preview too. */
+    .profile-form.has-epanel.is-works .works-stage.has-epanel {
       padding-inline-end: max(0px, calc(var(--epanel-w) + 32px - (100vw - 100%) / 2));
     }
+
+    /* THE BAR IN THE RIGHT COLUMN (2026-10-25, Josh: "all the bottom bar
+       should be in the right side but make it so that we can see the
+       preview / edit button very clearly"). On a desktop the bar leaves the
+       window's foot for the top of the column, over the panel; on the Works
+       tab it is the column's width and Preview / Edit is its first, widest
+       row. editorBar.ts's measured size is set aside here: the column
+       decides. What opened above the bar (the message, the + menu, the
+       video sheet) opens under it. */
+    .profile-form.has-epanel .form-footer {
+      top: calc(var(--header-h) + 12px);
+      right: 16px;
+      bottom: auto;
+      left: auto;
+      transform: none;
+      align-items: flex-end;
+    }
+
+    .profile-form.has-epanel.is-works .form-footer {
+      width: var(--epanel-w);
+      align-items: stretch;
+    }
+
+    .profile-form.has-epanel .form-footer .ebar {
+      width: auto !important;
+      height: auto !important;
+      border-radius: 20px !important;
+    }
+
+    .profile-form.has-epanel .form-footer .ebar__in {
+      width: auto;
+      max-width: none;
+    }
+
+    .profile-form.has-epanel .form-footer :is(.ebar-pop, .ebar-menu) {
+      top: calc(100% + 10px);
+      bottom: auto;
+    }
+
+    .profile-form.has-epanel .form-footer .ebar-pop {
+      left: auto;
+      right: 0;
+      transform: none;
+      align-items: flex-end;
+    }
+
+    .profile-form.has-epanel .ebar__group {
+      order: -1;
+    }
+
+    .profile-form.has-epanel .ebar__group .ebar__mode {
+      order: -1;
+      flex-basis: 100%;
+      display: flex;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 3px;
+      border-radius: 14px !important;
+    }
+
+    .profile-form.has-epanel .ebar .ebar__mode > button {
+      flex: 1 1 0;
+      min-height: 40px;
+      border-radius: 11px !important;
+    }
+
+    /* Edit pressed is the dark one: the state the column is for. */
+    .profile-form.has-epanel .ebar .ebar__mode > button[data-works-mode="edit"][aria-pressed="true"] {
+      background: var(--color-dark);
+      color: var(--color-bg);
+    }
+
+    .profile-form.has-epanel.is-works {
+      padding-bottom: 3rem;
+    }
+  }
+
+  /* The tabs are in the header's account menu (Navbar.astro). */
+  .profile-form.has-epanel #section-tabs {
+    display: none;
   }
 
   @media (--bp-mobile) {
@@ -342,7 +424,7 @@ const t = useTranslations(lang);
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 6px 12px 6px 10px;
+    padding: 6px 12px;
     border: 0;
     border-radius: 999px !important;
     background: rgb(255 255 255 / 0.92);
@@ -366,13 +448,7 @@ const t = useTranslations(lang);
     .profile-editor .works-stage [data-works-editor] .epanel-edit {
       top: 8px;
       right: 8px;
-      gap: 4px;
-      padding: 3px 8px 3px 7px;
-    }
-
-    .profile-editor .works-stage [data-works-editor] .epanel-edit svg {
-      width: 11px;
-      height: 11px;
+      padding: 3px 8px;
     }
 
     .works-stage.has-epanel [data-works-editor] :is([data-project-block] > .gallery-project-fields, [data-project-block] > .epanel-ghost) {
@@ -380,15 +456,6 @@ const t = useTranslations(lang);
     }
   }
 
-  .epanel-edit svg {
-    width: 14px;
-    height: 14px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
 
   /* The picked unit's key is pressed: dark. */
   .profile-editor .works-stage [data-works-editor] .is-epicked .epanel-edit,

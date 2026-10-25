@@ -47,6 +47,18 @@ document.addEventListener("astro:page-load", () => {
   stage.append(panel);
   stage.classList.add("has-epanel");
   panel.hidden = false;
+  // The form knows too: the bar moves into the right column on a desktop
+  // (EditorSidePanel.astro), and the panel starts under it — its height is
+  // --ebar-h on the form.
+  const form = stage.closest<HTMLElement>(".profile-form");
+  const footer = document.getElementById("form-footer");
+  form?.classList.add("has-epanel");
+  const barObserver = new ResizeObserver(() => {
+    const bar = footer?.querySelector<HTMLElement>(".ebar");
+    if (bar && form) form.style.setProperty("--ebar-h", `${Math.ceil(bar.getBoundingClientRect().height)}px`);
+  });
+  const barEl = footer?.querySelector<HTMLElement>(".ebar");
+  if (barEl) barObserver.observe(barEl);
 
   let pick: Pick | null = null;
   let borrowed: Borrowed[] = [];
@@ -142,7 +154,8 @@ document.addEventListener("astro:page-load", () => {
   // shown slide and of a project's heading (Josh: "top right of images").
   // The key only picks, through the list's click handler. Re-added after
   // every re-render; adding it is a no-op where one stands.
-  const keyHtml = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>${editLabel}</span>`;
+  // The word alone (2026-10-25, Josh: "only EDIT no icon").
+  const keyHtml = `<span>${editLabel}</span>`;
   const addKey = (host: Element | null, kind: Kind) => {
     if (!host || host.querySelector(":scope > .epanel-edit")) return;
     const key = document.createElement("button");
@@ -296,6 +309,7 @@ document.addEventListener("astro:page-load", () => {
       observer.disconnect();
       saveObserver.disconnect();
       stageObserver.disconnect();
+      barObserver.disconnect();
     },
     { once: true },
   );
