@@ -1018,9 +1018,6 @@ const searchIndex: SearchIndex = {
   }
 
   .community-bar {
-    /* The two colours the open pill swaps (below). */
-    --bar-ink: var(--color-dark);
-    --bar-paper: var(--color-bg);
     position: fixed;
     /* THE TYPE SITS ON THE CORNERS' LINE, NOT THE BOX. The footer and the
        toggle put their line boxes at 20px from the edge; the pill pads its
@@ -1060,9 +1057,7 @@ const searchIndex: SearchIndex = {
     border-radius: var(--bar-r, var(--radius-pill)) !important;
     /* The corners ease (the sheet takes them away, closing brings them
        back): --bar-r is registered below, so it interpolates. */
-    transition:
-      --bar-r 320ms cubic-bezier(0.22, 0.61, 0.36, 1),
-      background-color 0.2s ease;
+    transition: --bar-r 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
     /* ONE PILL, ONE OUTLINE (2026-10-15, Josh: "it is still seperated").
        The triggers sit INSIDE a single paper capsule with the black hairline
        (its curve comes from CONTROLS in global.css), and the capsule grows
@@ -1077,20 +1072,6 @@ const searchIndex: SearchIndex = {
     font-size: var(--fs-85);
     /* The pill never outgrows the screen; past this a label wraps inside it. */
     max-width: calc(100vw - 24px);
-  }
-
-  /* BLACK WHILE A MENU IS OPEN (2026-10-25, Josh: "make the drop up
-     black"). The open pill swaps the site's colour tokens for everything
-     inside it, so the rows, the tags, the fields and the search results all
-     turn over with it and none has a rule of its own. Muted and hairline
-     tones are re-mixed for the dark ground. */
-  .community-bar__in:has(> .community-bar__panels > :not([hidden])) {
-    --color-dark: var(--bar-paper);
-    --color-bg: var(--bar-ink);
-    --color-muted: color-mix(in srgb, var(--bar-paper) 62%, var(--bar-ink));
-    --color-border: color-mix(in srgb, var(--bar-paper) 30%, var(--bar-ink));
-    border-color: var(--bar-ink);
-    color: var(--color-dark);
   }
 
   .community-bar__row {
