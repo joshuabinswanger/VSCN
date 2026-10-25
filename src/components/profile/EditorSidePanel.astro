@@ -343,6 +343,20 @@ const t = useTranslations(lang);
     opacity: 0.4;
   }
 
+  /* NO BAR FOR SAVE ALONE (2026-10-25, Josh: "the drop up does not need to
+     be there when it is only the save button"): on Profile and Account the
+     bar held nothing but Save, and autosave does that. Its messages (the
+     .ebar-pop above it) still show. */
+  .profile-form.has-epanel:not(.is-works) .form-footer .ebar {
+    display: none;
+  }
+
+  /* The project's move keys at the panel's top, set apart by a line. */
+  .epanel .epanel__body > .gallery-project-tools {
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
   /* THE BAR IS BLACK (2026-10-25, Josh: "make the drop up black", the
      editor's bar at the foot). It swaps the site's colour tokens for what
      it holds, so Save, +, the switches and the handle turn over together

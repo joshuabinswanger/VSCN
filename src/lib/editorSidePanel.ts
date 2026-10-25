@@ -82,7 +82,12 @@ document.addEventListener("astro:page-load", () => {
   const partsOf = (p: Pick, unit: HTMLElement): HTMLElement[] => {
     const q = (sel: string) => Array.from(unit.querySelectorAll<HTMLElement>(sel));
     if (p.kind === "work") return q(":scope > .gallery-fields");
-    if (p.kind === "project") return q(":scope > .gallery-project-fields");
+    // A project's move keys come first (2026-10-25, Josh: "the moving of
+    // the projects needs to be on the first page"): lifted out of its Edit
+    // fold to the panel's top, put back into it on the way home.
+    if (p.kind === "project") {
+      return [...q(":scope > .gallery-project-fields .gallery-project-tools"), ...q(":scope > .gallery-project-fields")];
+    }
     // The carousel's own settings first (2026-10-25, Josh: "global carousel
     // settings should be at the top in carousel edit mode"), then its name,
     // its tray and the shown slide's words.
