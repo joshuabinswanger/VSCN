@@ -1736,6 +1736,19 @@
     margin-inline: auto;
   }
 
+  /* THE CARD AT THE PORTFOLIOS SIZE (2026-10-25, Josh: "the card should
+     have the same size as the portfolio gallery card"). The preview stated
+     a 24rem picture and a 16rem column of its own (CommunityCardPreview);
+     on a desktop it now takes the directory's: the picture as tall as the
+     pages view makes it (--cpage-pic-h in CommunityGrid, the same sum) and
+     the words' full 28rem. */
+  @media (--bp-desktop) {
+    .preview-card .ccard--preview {
+      --cpage-pic-h: calc(var(--shell-h, 100dvh) - var(--header-h) - 5.5rem - 22vh);
+      --ccard-side-w: 28rem;
+    }
+  }
+
 
   /* ── THE BAR (2026-10-13) ────────────────────────────────
      Josh: "make the Bar consistently sit at the same height. also add
