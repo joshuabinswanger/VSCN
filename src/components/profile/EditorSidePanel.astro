@@ -16,13 +16,16 @@ const t = useTranslations(lang);
   data-label-project={t("profile.deck.project")}
   data-label-carousel={t("profile.deck.carousel")}
 >
+  {/* Preview / Edit, Profile / Card and EN / DE: the bar's row of switches,
+      moved here on a desktop by editorSidePanel.ts. */}
+  <div class="epanel__controls" data-epanel-controls></div>
   <div class="epanel__head">
     <button type="button" class="epanel__back" data-epanel-back
       ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg><span>{t("profile.panel.back")}</span></button
     >
     <p class="epanel__title t-label" data-epanel-title>{t("profile.deck.edit")}</p>
-    <button type="button" class="epanel__done" data-epanel-done>{t("profile.panel.done")}</button>
-    <button type="button" class="epanel__save" data-epanel-save>{t("profile.saveShort")}</button>
+    <button type="button" class="epanel__done t-label" data-epanel-done>{t("profile.panel.done")}</button>
+    <button type="button" class="epanel__save t-label" data-epanel-save>{t("profile.saveShort")}</button>
   </div>
   <img class="epanel__thumb" alt="" data-epanel-thumb hidden />
   <p class="epanel__empty field-note" data-epanel-empty>{t("profile.panel.empty")}</p>
@@ -42,9 +45,13 @@ const t = useTranslations(lang);
     --epanel-w: 360px;
   }
 
-  /* The panel shows in Edit on the page view only. */
-  .works-stage.has-epanel:not([data-mode="edit"][data-view="profile"]) > .epanel {
-    display: none;
+  /* On a phone the panel is the page a pick opens, in Edit on the page view
+     only. On a desktop it stands for the whole Works tab: its top holds the
+     switches (Preview / Edit among them), so it cannot go away in Preview. */
+  @media (--bp-mobile) {
+    .works-stage.has-epanel:not([data-mode="edit"][data-view="profile"]) > .epanel {
+      display: none;
+    }
   }
 
   .profile-editor .works-stage > .epanel {
@@ -70,95 +77,123 @@ const t = useTranslations(lang);
   }
 
   @media (--bp-desktop) {
+    /* FULL HEIGHT (2026-10-25, Josh: "right side panel in edit mode should
+       stay full size"): from under the header to 20px off the foot, in
+       every mode. */
     .profile-editor .works-stage > .epanel {
-      top: calc(var(--header-h) + 22px + var(--ebar-h, 0px));
+      top: calc(var(--header-h) + 12px);
       right: 16px;
       bottom: 20px;
       width: var(--epanel-w);
       border-radius: 20px !important;
     }
 
-    /* The works keep clear of the right column: the stage gives up as much
-       of its right edge as the column reaches into it, in every mode, since
-       the bar stands there in Preview too. */
+    /* NEVER OVER THE WORKS (2026-10-25, Josh: "the menu should not shift
+       over the body of the portfolio"): the stage gives up as much of its
+       right edge as the panel reaches into it, in every mode and view, so
+       nothing moves when Preview and Edit swap either. */
     .profile-form.has-epanel.is-works .works-stage.has-epanel {
       padding-inline-end: max(0px, calc(var(--epanel-w) + 32px - (100vw - 100%) / 2));
     }
 
-    /* THE BAR IN THE RIGHT COLUMN (2026-10-25, Josh: "all the bottom bar
-       should be in the right side but make it so that we can see the
-       preview / edit button very clearly"). On a desktop the bar leaves the
-       window's foot for the top of the column, over the panel; on the Works
-       tab it is the column's width and Preview / Edit is its first, widest
-       row. editorBar.ts's measured size is set aside here: the column
-       decides. What opened above the bar (the message, the + menu, the
-       video sheet) opens under it. */
-    .profile-form.has-epanel .form-footer {
-      top: calc(var(--header-h) + 12px);
-      right: 16px;
-      bottom: auto;
-      left: auto;
-      transform: none;
-      align-items: flex-end;
-    }
-
+    /* SAVE STAYS AT THE FOOT (2026-10-25): the bar, now + and Save only,
+       keeps its place at the window's foot, centred on what the panel
+       leaves of the window rather than on the window. */
     .profile-form.has-epanel.is-works .form-footer {
-      width: var(--epanel-w);
-      align-items: stretch;
+      left: calc((100vw - var(--epanel-w) - 32px) / 2);
     }
 
-    .profile-form.has-epanel .form-footer .ebar {
-      width: auto !important;
-      height: auto !important;
-      border-radius: 20px !important;
+    /* The switches on top of the panel: one row of three, Preview / Edit
+       the widest, set apart from what is picked by a line. */
+    .epanel__controls {
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--color-border);
     }
 
-    .profile-form.has-epanel .form-footer .ebar__in {
-      width: auto;
-      max-width: none;
-    }
-
-    .profile-form.has-epanel .form-footer :is(.ebar-pop, .ebar-menu) {
-      top: calc(100% + 10px);
-      bottom: auto;
-    }
-
-    .profile-form.has-epanel .form-footer .ebar-pop {
-      left: auto;
-      right: 0;
-      transform: none;
-      align-items: flex-end;
-    }
-
-    .profile-form.has-epanel .ebar__group {
-      order: -1;
-    }
-
-    .profile-form.has-epanel .ebar__group .ebar__mode {
-      order: -1;
-      flex-basis: 100%;
+    .epanel__controls .ebar__group {
       display: flex;
-      width: 100%;
-      box-sizing: border-box;
-      padding: 3px;
-      border-radius: 14px !important;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: stretch;
     }
 
-    .profile-form.has-epanel .ebar .ebar__mode > button {
+    .epanel__controls .ebar__mode {
+      flex: 1 0 100%;
+      display: flex;
+    }
+
+    .epanel__controls .seg > button {
       flex: 1 1 0;
-      min-height: 40px;
-      border-radius: 11px !important;
     }
 
-    /* Edit pressed is the dark one: the state the column is for. */
-    .profile-form.has-epanel .ebar .ebar__mode > button[data-works-mode="edit"][aria-pressed="true"] {
+    .epanel__controls .ebar__view,
+    .epanel__controls .ebar__lang {
+      flex: 1 1 0;
+      display: flex;
+    }
+
+    /* Edit pressed is the dark one: the state the panel is for. */
+    .epanel__controls .ebar__mode > button[data-works-mode="edit"][aria-pressed="true"] {
       background: var(--color-dark);
       color: var(--color-bg);
     }
+  }
 
-    .profile-form.has-epanel.is-works {
-      padding-bottom: 3rem;
+  .epanel__controls:empty,
+  .epanel__controls [hidden] {
+    display: none !important;
+  }
+
+  /* ONE SIZE (2026-10-25, Josh: "more uniform not such big size
+     differences"): every control in the panel stands 30px tall — the
+     switches, Done, a work's keys — on the switches' type. */
+  .profile-form.has-epanel {
+    --epanel-ctl: 30px;
+  }
+
+  .epanel :is(.seg > button, .epanel__done, .epanel__save) {
+    min-height: var(--epanel-ctl);
+    height: var(--epanel-ctl);
+    box-sizing: border-box;
+  }
+
+  .profile-editor .epanel :is(.epanel__done, .epanel__save) {
+    align-items: center;
+    padding: 0 14px;
+  }
+
+  @media (--bp-desktop) {
+    .profile-editor .epanel .epanel__done {
+      display: inline-flex;
     }
+  }
+
+  /* The panel's fields are a form's, all one size: the list keeps the
+     page's voices (a project title as a heading), the panel does not. A
+     deliberate exception to "components set no font-size" (type.css), as
+     the phone's 16px below is. */
+  @media (--bp-desktop) {
+    .profile-editor .epanel .gfield > .gallery-inline {
+      font-size: var(--fs-95);
+      font-weight: 400;
+      letter-spacing: normal;
+      line-height: 1.4;
+    }
+
+    .profile-editor .epanel .gfield > .gallery-inline:is([data-project-field="title"], [data-gallery-field="caption"]) {
+      font-weight: 600;
+    }
+  }
+
+  .epanel .gallery-edit-row :is(button, .seg) {
+    min-height: var(--epanel-ctl);
+  }
+
+  .epanel .gallery-edit-row .seg > button,
+  .epanel .gallery-edit-row > button {
+    height: var(--epanel-ctl);
+    min-width: var(--epanel-ctl);
+    padding-inline: 10px;
   }
 
   /* The tabs are in the header's account menu (Navbar.astro). */
@@ -241,7 +276,7 @@ const t = useTranslations(lang);
     .profile-editor .epanel .epanel__save {
       grid-column: 3;
       justify-self: end;
-      display: inline-block;
+      display: inline-flex;
     }
 
     /* What is being edited, small, so the page says which work this is. */
