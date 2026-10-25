@@ -343,6 +343,39 @@ const t = useTranslations(lang);
     opacity: 0.4;
   }
 
+  /* THE BAR IS BLACK (2026-10-25, Josh: "make the drop up black", the
+     editor's bar at the foot). It swaps the site's colour tokens for what
+     it holds, so Save, +, the switches and the handle turn over together
+     and none has a rule of its own; muted and hairline tones are re-mixed
+     for the dark ground. The + menu and the video sheet open outside it
+     and keep theirs. */
+  .profile-form.has-epanel .form-footer {
+    --bar-ink: var(--color-dark);
+    --bar-paper: var(--color-bg);
+  }
+
+  .profile-editor .profile-form.has-epanel .form-footer .ebar {
+    --color-dark: var(--bar-paper);
+    --color-bg: var(--bar-ink);
+    --color-muted: color-mix(in srgb, var(--bar-paper) 62%, var(--bar-ink));
+    --color-border: color-mix(in srgb, var(--bar-paper) 30%, var(--bar-ink));
+    border-color: var(--bar-ink);
+    color: var(--color-dark);
+  }
+
+  /* Save is the white pill in it (.btn-solid hard-codes white type). */
+  .profile-editor .profile-form.has-epanel .ebar .profile-save-button:not(.is-clean) {
+    color: var(--color-bg);
+  }
+
+  /* The pressed switch is the one hard-coded white in the seg (global.css):
+     in the black bar it takes the paper with ink type. */
+  .profile-form.has-epanel .ebar .seg > button[aria-pressed="true"] {
+    background: var(--color-dark);
+    color: var(--color-bg);
+    box-shadow: none;
+  }
+
   /* AUTOSAVE'S QUIET STATE (2026-10-25, Josh: "add automatic saving, make
      the UI match the rest"): nothing waiting, so Save reads "Saved" on the
      bar's soft grey, the + key's colours, and turns black again once
