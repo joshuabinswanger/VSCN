@@ -305,10 +305,20 @@ const t = useTranslations(lang);
   }
 
   /* IN THE LIST the words read as the page prints them: no boxes, no labels,
-     no Edit or + Add. A click on any of it picks the work (or project) and
-     the real fields move into the panel. */
-  .works-stage.has-epanel [data-works-editor] :is(.gallery-details, .gallery-edit-row, .gfield__lbl) {
+     no + Add. A click on any of it picks the work (or project) and the real
+     fields move into the panel.
+     THE EDIT KEY STAYS (2026-10-25, Josh: "add edit buttons"): each work,
+     project and carousel keeps its Edit key under its words, as the way in
+     that says so. In the list it only picks (editorSidePanel.ts stops the
+     fold); its body and chevron never show here. A carousel's slide wears
+     none: the carousel's own key picks both. */
+  .works-stage.has-epanel [data-works-editor] :is(.gfield__lbl, .gallery-addrow, .gallery-details-chevron, .gallery-details > :not(summary), [data-carousel-slide-row] .gallery-details) {
     display: none !important;
+  }
+
+  .works-stage.has-epanel [data-works-editor] .gallery-details {
+    float: none;
+    margin-top: 10px;
   }
 
   .works-stage.has-epanel [data-works-editor] .gfield > .gallery-inline {
