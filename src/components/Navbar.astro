@@ -31,28 +31,6 @@ import "../styles/type.css";
   <div class="nav-links" id="nav-menu">
     <a href="/info" class="nav-link" id="nav-info">INFO</a>
     <a href="/community" class="nav-link nav-center" id="nav-community">COMMUNITY</a>
-    {
-      /* THE THREE VIEWS ON THE PHONE'S SHEET (2026-10-25, Josh: "the 3 tabs
-        should be in the menu when clicking on the hamburger"): Portfolios,
-        Images and People stand in COMMUNITY's place there, each the same
-        page with its ?pattern= (communityDirectoryController.ts). Not drawn
-        on a desktop, where COMMUNITY stays. */
-    }
-    <a href="/community" class="nav-link nav-link--view" id="nav-view-pages" data-pattern=""
-      >PORTFOLIOS</a
-    >
-    <a
-      href="/community?pattern=grid"
-      class="nav-link nav-link--view"
-      id="nav-view-grid"
-      data-pattern="grid">IMAGES</a
-    >
-    <a
-      href="/community?pattern=index"
-      class="nav-link nav-link--view"
-      id="nav-view-index"
-      data-pattern="index">PEOPLE</a
-    >
     <div class="nav-right-group">
       <a href="/login" class="nav-link" id="nav-join">LOGIN</a>
       {
@@ -68,10 +46,33 @@ import "../styles/type.css";
         class="nav-link nav-link--pill nav-link--profile"
         id="nav-profile"
         style="display:none;"
+        aria-expanded="false"
+        aria-controls="nav-acct"
       >
         <span class="nav-profile__word">PROFILE</span>
         <img class="nav-profile__pic" alt="" width="30" height="30" decoding="async" />
       </a>
+      {
+        /* THE ACCOUNT MENU (2026-10-25, Josh: "the 3 tabs should be in the
+          menu when clicking on the … icon", "EN DE should be in the menu
+          that open upon clicking the profile button"). Signed in, the
+          profile button opens this on a desktop: the editor's three tabs and
+          the language switch. On a phone the tabs are lines of the sheet
+          instead of PROFILE. On the editor page a tab line switches the tab
+          in place; anywhere else it opens /profile on that tab (?tab=). */
+      }
+      <div class="nav-acct" id="nav-acct" style="display:none;">
+        <a href="/profile?tab=profile" class="nav-link nav-link--tab" id="nav-tab-profile" data-tab="profile"
+          >PROFILE</a
+        >
+        <a href="/profile?tab=work" class="nav-link nav-link--tab" id="nav-tab-work" data-tab="work">WORK</a>
+        <a href="/profile?tab=account" class="nav-link nav-link--tab" id="nav-tab-account" data-tab="account"
+          >ACCOUNT</a
+        >
+        <a href="/de" class="nav-link nav-link--lang nav-acct__lang" id="nav-acct-lang">
+          <span class="lang-cur">EN</span><span class="lang-sep"> / </span><span class="lang-tgt">DE</span>
+        </a>
+      </div>
       <a href="/onboarding" class="nav-link nav-link--pill" id="nav-signup">SIGN UP</a>
     </div>
     {
@@ -227,21 +228,17 @@ import "../styles/type.css";
   #nav-community {
     --i: 1;
   }
-  #nav-view-pages {
-    --i: 1;
-  }
-  #nav-view-grid {
+  #nav-join,
+  #nav-profile,
+  #nav-tab-profile {
     --i: 2;
   }
-  #nav-view-index {
+  #nav-signup,
+  #nav-tab-work {
     --i: 3;
   }
-  #nav-join,
-  #nav-profile {
+  #nav-tab-account {
     --i: 4;
-  }
-  #nav-signup {
-    --i: 5;
   }
 
   /* Each link is a black chip with white type, square (the site has no
@@ -432,9 +429,6 @@ import "../styles/type.css";
       text-underline-offset: 4px;
       text-decoration-thickness: 1px;
     }
-    .nav-link--view {
-      display: none;
-    }
     .nav-links .nav-link--lang {
       margin-left: 1rem;
     }
@@ -450,6 +444,62 @@ import "../styles/type.css";
     }
     .lang-toggle {
       display: none;
+    }
+    /* Signed in, the switch lives in the account menu. */
+    nav.is-signed-in .nav-links > .nav-link--lang {
+      display: none;
+    }
+    /* THE ACCOUNT MENU drops from the profile button, its right edge on the
+       button's: a paper card, the three tabs and the switch stacked. */
+    .nav-right-group {
+      position: relative;
+    }
+    .nav-acct {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 2px;
+      min-width: 9rem;
+      padding: 6px;
+      /* !important: global.css squares every corner it does not exempt. */
+      border-radius: 14px !important;
+      background: var(--nav-paper);
+      box-shadow:
+        0 0 0 1px var(--color-border),
+        0 8px 24px rgb(0 0 0 / 0.1);
+      opacity: 0;
+      transform: translateY(-4px);
+      visibility: hidden;
+      pointer-events: none;
+      transition:
+        opacity 0.16s ease,
+        transform 0.2s ease,
+        visibility 0s linear 0.2s;
+    }
+    .nav-right-group:has(#nav-profile[aria-expanded="true"]) .nav-acct {
+      opacity: 1;
+      transform: none;
+      visibility: visible;
+      pointer-events: auto;
+      transition:
+        opacity 0.16s ease,
+        transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .nav-links .nav-acct .nav-link {
+      padding: 8px 10px 7px;
+      border-radius: 8px !important;
+    }
+    .nav-links .nav-acct .nav-link:hover {
+      text-decoration: none;
+      background: color-mix(in srgb, var(--nav-ink) 6%, var(--nav-paper));
+    }
+    .nav-links .nav-acct .nav-acct__lang {
+      display: block;
+      margin: 4px 0 0;
+      box-shadow: 0 -1px 0 var(--color-border);
+      border-radius: 0 0 8px 8px !important;
     }
     /* The account's action is the one filled shape in the row. */
     .nav-links .nav-link--pill,
@@ -718,12 +768,23 @@ import "../styles/type.css";
       transform-origin: left;
       transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.08s;
     }
-    #nav-community {
-      display: none;
-    }
     .nav-link--lang {
-      --i: 6;
+      --i: 5;
       margin-top: 1.4rem;
+    }
+    /* The editor's bar would stand over the open sheet. */
+    :root:has(#nav-menu-btn[aria-expanded="true"]) .form-footer {
+      visibility: hidden;
+    }
+    /* Signed in, the sheet lists the editor's tabs in PROFILE's place. */
+    #nav-profile,
+    .nav-acct__lang {
+      display: none !important;
+    }
+    .nav-acct {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1.1rem;
     }
     .nav-link--lang::after {
       display: none;
@@ -799,8 +860,55 @@ import "../styles/type.css";
     { capture: true }
   );
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") setMenu(false);
+    if (event.key === "Escape") {
+      setMenu(false);
+      setAccountMenu(false);
+    }
   });
+
+  // ── THE ACCOUNT MENU ──────────────────────────────────
+  // On a desktop the profile button opens it instead of going to /profile.
+  // Taken at the WINDOW's capture phase, ahead of the editor's leave guard
+  // (editorDraft.ts), which stops link clicks at the document's: opening a
+  // menu is not leaving the page.
+  // --bp-mobile (custom-media.css), spelled out: a script cannot read it.
+  const phone = window.matchMedia("(width <= 767px), (pointer: coarse)");
+  function setAccountMenu(open: boolean) {
+    document.getElementById("nav-profile")?.setAttribute("aria-expanded", String(open));
+  }
+  window.addEventListener(
+    "click",
+    (event) => {
+      const target = event.target as Element | null;
+      const profile = target?.closest?.("#nav-profile");
+      if (profile && !phone.matches) {
+        event.preventDefault();
+        event.stopPropagation();
+        setAccountMenu(profile.getAttribute("aria-expanded") !== "true");
+        return;
+      }
+      // A tab line on the editor page switches the tab in place.
+      const tab = target?.closest?.<HTMLAnchorElement>(".nav-link--tab");
+      const tabButton = tab && document.getElementById(`tab-${tab.dataset.tab}`);
+      if (tab && tabButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        tabButton.click();
+        setAccountMenu(false);
+        setMenu(false);
+      }
+    },
+    { capture: true }
+  );
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      const target = event.target as Element | null;
+      if (!target?.closest?.("#nav-acct, #nav-profile")) setAccountMenu(false);
+    },
+    { capture: true }
+  );
+  document.addEventListener("astro:after-swap", () => setAccountMenu(false));
   // Closed once the new page is in, not when the old one starts to leave:
   // a tapped destination's arrow and the sheet's own leave play whole over
   // the arriving page, which Layout holds invisible for its pause anyway.
@@ -829,7 +937,7 @@ import "../styles/type.css";
   // left, so Stay records nothing. `documentElement.lang` is still the page
   // being left; the choice is its opposite.
   document.addEventListener("astro:before-preparation", (event) => {
-    const toggle = event.sourceElement?.closest?.("#nav-lang, #footer-lang, #nav-sheet-lang");
+    const toggle = event.sourceElement?.closest?.("#nav-lang, #footer-lang, #nav-sheet-lang, #nav-acct-lang");
     if (!toggle) return;
     const chosen: SiteLanguage = document.documentElement.lang === "de" ? "en" : "de";
     rememberSessionChoice(chosen);
@@ -847,7 +955,7 @@ import "../styles/type.css";
     {
       info: string;
       community: string;
-      views: [string, string, string];
+      tabs: [string, string, string];
       login: string;
       signup: string;
       profile: string;
@@ -856,7 +964,7 @@ import "../styles/type.css";
     en: {
       info: "INFO",
       community: "COMMUNITY",
-      views: ["PORTFOLIOS", "IMAGES", "PEOPLE"],
+      tabs: ["PROFILE", "WORK", "ACCOUNT"],
       login: "LOGIN",
       signup: "SIGN UP",
       profile: "PROFILE",
@@ -864,7 +972,7 @@ import "../styles/type.css";
     de: {
       info: "INFO",
       community: "COMMUNITY",
-      views: ["PORTFOLIOS", "BILDER", "MENSCHEN"],
+      tabs: ["PROFIL", "ARBEITEN", "KONTO"],
       login: "ANMELDEN",
       signup: "REGISTRIEREN",
       profile: "PROFIL",
@@ -884,18 +992,15 @@ import "../styles/type.css";
   // the new page's first frames. page-load marks it again, harmlessly.
   document.addEventListener("astro:before-preparation", (event) => {
     const to = (event as unknown as { to?: URL }).to;
-    if (to) setActiveLink(to.pathname, to.search);
+    if (to) setActiveLink(to.pathname);
   });
 
-  // A view link is the current page only with its own ?pattern= as well.
-  function setActiveLink(pathname = window.location.pathname, search = window.location.search) {
+  function setActiveLink(pathname = window.location.pathname) {
     const path = normalisePath(pathname);
-    const pattern = new URLSearchParams(search).get("pattern") ?? "";
     document.querySelectorAll<HTMLAnchorElement>(".nav-link").forEach((link) => {
-      if (link.id === "nav-lang" || link.id === "nav-sheet-lang") return;
-      const isActive =
-        normalisePath(link.pathname) === path &&
-        (!link.classList.contains("nav-link--view") || link.dataset.pattern === pattern);
+      // The account menu's lines are the editor's tabs, not pages.
+      if (link.classList.contains("nav-link--lang") || link.classList.contains("nav-link--tab")) return;
+      const isActive = normalisePath(link.pathname) === path;
       link.classList.toggle("nav-link--active", isActive);
       if (isActive) {
         link.setAttribute("aria-current", "page");
@@ -919,6 +1024,7 @@ import "../styles/type.css";
     const navSignup = document.getElementById("nav-signup") as HTMLAnchorElement | null;
     const navLang = document.getElementById("nav-lang") as HTMLAnchorElement | null;
     const sheetLang = document.getElementById("nav-sheet-lang") as HTMLAnchorElement | null;
+    const acctLang = document.getElementById("nav-acct-lang") as HTMLAnchorElement | null;
 
     if (navInfo) {
       navInfo.href = `${prefix}/info`;
@@ -928,10 +1034,9 @@ import "../styles/type.css";
       navCommunity.href = `${prefix}/community`;
       navCommunity.textContent = labels.community;
     }
-    document.querySelectorAll<HTMLAnchorElement>(".nav-link--view").forEach((link, k) => {
-      const pattern = link.dataset.pattern;
-      link.href = `${prefix}/community${pattern ? `?pattern=${pattern}` : ""}`;
-      link.textContent = labels.views[k] ?? link.textContent;
+    document.querySelectorAll<HTMLAnchorElement>(".nav-link--tab").forEach((link, k) => {
+      link.href = `${prefix}/profile?tab=${link.dataset.tab}`;
+      link.textContent = labels.tabs[k] ?? link.textContent;
     });
     if (navJoin) {
       navJoin.href = `${prefix}/login`;
@@ -948,7 +1053,7 @@ import "../styles/type.css";
       navSignup.textContent = labels.signup;
     }
 
-    for (const toggle of [navLang, sheetLang]) {
+    for (const toggle of [navLang, sheetLang, acctLang]) {
       if (!toggle) continue;
       if (lang === "de") {
         const enPath = normalisePath(normPath.replace(/^\/de/, "")) || "/";
@@ -992,6 +1097,9 @@ import "../styles/type.css";
       navJoin.style.display = user ? "none" : "block";
       if (navSignup) navSignup.style.display = user ? "none" : "block";
       navProfile.style.display = user ? "block" : "none";
+      const acct = document.getElementById("nav-acct");
+      if (acct) acct.style.display = user ? "flex" : "none";
+      navProfile.closest("nav")?.classList.toggle("is-signed-in", !!user);
       // The avatar, when Auth holds one (profile.ts keeps it in step with the
       // saved photo). A photo that fails to load falls back to the word.
       const pic = navProfile.querySelector(".nav-profile__pic") as HTMLImageElement | null;
