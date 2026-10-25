@@ -295,12 +295,18 @@ const t = useTranslations(lang);
       gap: 24px;
     }
 
-    .epanel :is(.gallery-fields, .gallery-project-fields, .gallery-edit-row, .epanel__body) {
+    .epanel :is(.gallery-fields, .gallery-lang-pane, .gallery-project-fields, .gallery-details-body, .gallery-edit-row, .epanel__body) {
       gap: 24px !important;
     }
 
     .profile-editor .epanel .gfield {
       gap: 8px;
+    }
+
+    /* The link fields stand title, field, title, field in one column: the
+       air goes above each title. */
+    .profile-editor .epanel .label-row:not(:first-child) {
+      margin-top: 16px;
     }
 
     /* 16px or more, or iOS zooms the page into every field it focuses. A
