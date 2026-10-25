@@ -113,6 +113,9 @@ document.addEventListener("astro:page-load", () => {
     for (const b of borrowed) {
       if (b.stand.isConnected) b.stand.replaceWith(b.part);
       else b.part.remove();
+      // Back in the list the folds close, so the Edit key reads as a key.
+      b.part.querySelectorAll<HTMLDetailsElement>("details.gallery-details").forEach((d) => (d.open = false));
+      if (b.part instanceof HTMLDetailsElement) b.part.open = false;
     }
     borrowed = [];
   };
@@ -202,6 +205,8 @@ document.addEventListener("astro:page-load", () => {
       if (!(e.target instanceof Element)) return;
       // The text block after a work is typed where it stands.
       if (e.target.closest(".gallery-text")) return;
+      // An Edit key in the list picks; it does not unfold in place.
+      if (e.target.closest("summary.gallery-details-summary")) e.preventDefault();
       const next = pickFrom(e.target);
       if (next) setPick(next);
     },
