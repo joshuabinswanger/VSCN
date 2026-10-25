@@ -47,18 +47,26 @@ document.addEventListener("astro:page-load", () => {
   stage.append(panel);
   stage.classList.add("has-epanel");
   panel.hidden = false;
-  // The form knows too: the bar moves into the right column on a desktop
-  // (EditorSidePanel.astro), and the panel starts under it — its height is
-  // --ebar-h on the form.
+  // THE SWITCHES IN THE PANEL, SAVE AT THE FOOT (2026-10-25, Josh: "save
+  // button should stay at the bottom, right side panel in edit mode should
+  // stay full size"). On a desktop the bar's row of switches (Preview /
+  // Edit, Profile / Card, EN / DE) moves to the top of the panel; + and
+  // Save stay in the bar at the window's foot. Back into the bar on a phone,
+  // where the bar keeps everything. The controller finds the switches
+  // anywhere in the form.
   const form = stage.closest<HTMLElement>(".profile-form");
-  const footer = document.getElementById("form-footer");
   form?.classList.add("has-epanel");
-  const barObserver = new ResizeObserver(() => {
-    const bar = footer?.querySelector<HTMLElement>(".ebar");
-    if (bar && form) form.style.setProperty("--ebar-h", `${Math.ceil(bar.getBoundingClientRect().height)}px`);
-  });
-  const barEl = footer?.querySelector<HTMLElement>(".ebar");
-  if (barEl) barObserver.observe(barEl);
+  const controls = panel.querySelector<HTMLElement>("[data-epanel-controls]")!;
+  const switches = document.querySelector<HTMLElement>("#works-bar .ebar__group");
+  const switchesHome = switches?.parentElement ?? null;
+  const phone = window.matchMedia("(width <= 767px), (pointer: coarse)");
+  const placeSwitches = () => {
+    if (!switches || !switchesHome) return;
+    if (phone.matches) switchesHome.append(switches);
+    else controls.append(switches);
+  };
+  placeSwitches();
+  phone.addEventListener("change", placeSwitches, { signal });
 
   let pick: Pick | null = null;
   let borrowed: Borrowed[] = [];
@@ -309,7 +317,6 @@ document.addEventListener("astro:page-load", () => {
       observer.disconnect();
       saveObserver.disconnect();
       stageObserver.disconnect();
-      barObserver.disconnect();
     },
     { once: true },
   );

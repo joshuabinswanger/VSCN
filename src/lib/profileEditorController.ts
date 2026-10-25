@@ -2607,8 +2607,10 @@ document.addEventListener("astro:page-load", () => {
   let worksView: WorksView = "profile";
   let worksLang: Lang = remembered("vscn-works-lang") === "de" ? "de" : remembered("vscn-works-lang") === "en" ? "en" : lang;
 
+  // The switches are looked up in the whole form, not only in the bar:
+  // /profile-panel moves their row into its side panel (editorSidePanel.ts).
   const press = (attr: string, value: string) => {
-    worksBar.querySelectorAll<HTMLButtonElement>(`[${attr}]`).forEach((btn) => {
+    form.querySelectorAll<HTMLButtonElement>(`[${attr}]`).forEach((btn) => {
       btn.setAttribute("aria-pressed", String(btn.getAttribute(attr) === value));
     });
   };
@@ -2635,7 +2637,7 @@ document.addEventListener("astro:page-load", () => {
    */
   function syncBarContents() {
     const onWorks = form.classList.contains("is-works");
-    worksBar.querySelectorAll<HTMLElement>("[data-ebar-works]").forEach((el) => {
+    form.querySelectorAll<HTMLElement>("[data-ebar-works]").forEach((el) => {
       const pageOnly = el.matches("[data-works-mode-seg], [data-ebar-plus]");
       el.hidden = !onWorks || (pageOnly && worksView !== "profile");
     });
@@ -2709,13 +2711,13 @@ document.addEventListener("astro:page-load", () => {
     syncPreview();
     refitInline();
   }
-  worksBar.querySelectorAll<HTMLButtonElement>("[data-works-mode]").forEach((btn) => {
+  form.querySelectorAll<HTMLButtonElement>("[data-works-mode]").forEach((btn) => {
     btn.addEventListener("click", () => setWorksMode(btn.dataset.worksMode === "preview" ? "preview" : "edit"));
   });
-  worksBar.querySelectorAll<HTMLButtonElement>("[data-works-view]").forEach((btn) => {
+  form.querySelectorAll<HTMLButtonElement>("[data-works-view]").forEach((btn) => {
     btn.addEventListener("click", () => setWorksView(btn.dataset.worksView === "card" ? "card" : "profile"));
   });
-  worksBar.querySelectorAll<HTMLButtonElement>("[data-works-lang]").forEach((btn) => {
+  form.querySelectorAll<HTMLButtonElement>("[data-works-lang]").forEach((btn) => {
     btn.addEventListener("click", () => setWorksLang(btn.dataset.worksLang === "de" ? "de" : "en"));
   });
 
