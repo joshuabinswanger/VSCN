@@ -289,6 +289,20 @@ const t = useTranslations(lang);
       object-fit: contain;
     }
 
+    /* MORE AIR BETWEEN THE FIELDS ON A PHONE (2026-10-25, Josh: "more
+       white space between the fields in mobile"). */
+    .profile-editor .works-stage > .epanel {
+      gap: 24px;
+    }
+
+    .epanel :is(.gallery-fields, .gallery-project-fields, .gallery-edit-row, .epanel__body) {
+      gap: 24px !important;
+    }
+
+    .profile-editor .epanel .gfield {
+      gap: 8px;
+    }
+
     /* 16px or more, or iOS zooms the page into every field it focuses. A
        deliberate exception to "components set no font-size" (type.css):
        the phone's form controls, in this panel only. */
@@ -333,11 +347,11 @@ const t = useTranslations(lang);
     color: var(--color-dark);
   }
 
-  /* A carousel's own keys first, then the picked slide's words and keys,
-     set apart by a line. */
-  .epanel .gallery-carousel-details ~ .gallery-fields {
-    padding-top: 14px;
-    border-top: 1px solid var(--color-border);
+  /* A carousel's own settings first, under a line its name, tray and the
+     picked slide's words and keys. */
+  .epanel .gallery-carousel-details {
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--color-border);
   }
 
   @media (prefers-reduced-motion: reduce) {

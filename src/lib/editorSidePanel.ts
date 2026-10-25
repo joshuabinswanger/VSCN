@@ -83,9 +83,15 @@ document.addEventListener("astro:page-load", () => {
     const q = (sel: string) => Array.from(unit.querySelectorAll<HTMLElement>(sel));
     if (p.kind === "work") return q(":scope > .gallery-fields");
     if (p.kind === "project") return q(":scope > .gallery-project-fields");
-    return q(
-      ":scope > [data-carousel-label], :scope > [data-carousel-tray], :scope > [data-carousel-slide-row] .gallery-fields, :scope > [data-carousel-details]",
-    );
+    // The carousel's own settings first (2026-10-25, Josh: "global carousel
+    // settings should be at the top in carousel edit mode"), then its name,
+    // its tray and the shown slide's words.
+    return [
+      ...q(":scope > [data-carousel-details]"),
+      ...q(":scope > [data-carousel-label]"),
+      ...q(":scope > [data-carousel-tray]"),
+      ...q(":scope > [data-carousel-slide-row] .gallery-fields"),
+    ];
   };
 
   // A stand-in in the page's type: title over description, in the bar's
