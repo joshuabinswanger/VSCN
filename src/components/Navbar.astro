@@ -31,6 +31,28 @@ import "../styles/type.css";
   <div class="nav-links" id="nav-menu">
     <a href="/info" class="nav-link" id="nav-info">INFO</a>
     <a href="/community" class="nav-link nav-center" id="nav-community">COMMUNITY</a>
+    {
+      /* THE THREE VIEWS ON THE PHONE'S SHEET (2026-10-25, Josh: "the 3 tabs
+        should be in the menu when clicking on the hamburger"): Portfolios,
+        Images and People stand in COMMUNITY's place there, each the same
+        page with its ?pattern= (communityDirectoryController.ts). Not drawn
+        on a desktop, where COMMUNITY stays. */
+    }
+    <a href="/community" class="nav-link nav-link--view" id="nav-view-pages" data-pattern=""
+      >PORTFOLIOS</a
+    >
+    <a
+      href="/community?pattern=grid"
+      class="nav-link nav-link--view"
+      id="nav-view-grid"
+      data-pattern="grid">IMAGES</a
+    >
+    <a
+      href="/community?pattern=index"
+      class="nav-link nav-link--view"
+      id="nav-view-index"
+      data-pattern="index">PEOPLE</a
+    >
     <div class="nav-right-group">
       <a href="/login" class="nav-link" id="nav-join">LOGIN</a>
       {
@@ -55,8 +77,9 @@ import "../styles/type.css";
     {
       /* The language switch's place on the phone's sheet (2026-10-20): the
         fixed .lang-toggle below is hidden on every page with a footer, so the
-        sheet carries its own copy, kept in step by updateNavLinks. Not drawn
-        on a desktop. */
+        sheet carries its own copy, kept in step by updateNavLinks. On a
+        desktop it stands after the account button (2026-10-25, Josh: "EN DE
+        should be behind the account button") and the corner one is gone. */
     }
     <a href="/de" class="nav-link nav-link--lang" id="nav-sheet-lang">
       <span class="lang-cur">EN</span><span class="lang-sep"> / </span><span class="lang-tgt"
@@ -204,12 +227,21 @@ import "../styles/type.css";
   #nav-community {
     --i: 1;
   }
-  #nav-join,
-  #nav-profile {
+  #nav-view-pages {
+    --i: 1;
+  }
+  #nav-view-grid {
     --i: 2;
   }
-  #nav-signup {
+  #nav-view-index {
     --i: 3;
+  }
+  #nav-join,
+  #nav-profile {
+    --i: 4;
+  }
+  #nav-signup {
+    --i: 5;
   }
 
   /* Each link is a black chip with white type, square (the site has no
@@ -400,7 +432,23 @@ import "../styles/type.css";
       text-underline-offset: 4px;
       text-decoration-thickness: 1px;
     }
-    .nav-link--lang {
+    .nav-link--view {
+      display: none;
+    }
+    .nav-links .nav-link--lang {
+      margin-left: 1rem;
+    }
+    .nav-links .nav-link--lang:hover {
+      text-decoration: none;
+    }
+    .nav-link--lang .lang-sep,
+    .nav-link--lang .lang-tgt {
+      color: var(--color-muted);
+    }
+    .nav-link--lang:hover .lang-tgt {
+      color: var(--color-dark);
+    }
+    .lang-toggle {
       display: none;
     }
     /* The account's action is the one filled shape in the row. */
@@ -670,8 +718,11 @@ import "../styles/type.css";
       transform-origin: left;
       transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.08s;
     }
+    #nav-community {
+      display: none;
+    }
     .nav-link--lang {
-      --i: 4;
+      --i: 6;
       margin-top: 1.4rem;
     }
     .nav-link--lang::after {
@@ -793,11 +844,19 @@ import "../styles/type.css";
 
   const navLabels: Record<
     Lang,
-    { info: string; community: string; login: string; signup: string; profile: string }
+    {
+      info: string;
+      community: string;
+      views: [string, string, string];
+      login: string;
+      signup: string;
+      profile: string;
+    }
   > = {
     en: {
       info: "INFO",
       community: "COMMUNITY",
+      views: ["PORTFOLIOS", "IMAGES", "PEOPLE"],
       login: "LOGIN",
       signup: "SIGN UP",
       profile: "PROFILE",
@@ -805,6 +864,7 @@ import "../styles/type.css";
     de: {
       info: "INFO",
       community: "COMMUNITY",
+      views: ["PORTFOLIOS", "BILDER", "MENSCHEN"],
       login: "ANMELDEN",
       signup: "REGISTRIEREN",
       profile: "PROFIL",
@@ -824,14 +884,18 @@ import "../styles/type.css";
   // the new page's first frames. page-load marks it again, harmlessly.
   document.addEventListener("astro:before-preparation", (event) => {
     const to = (event as unknown as { to?: URL }).to;
-    if (to) setActiveLink(to.pathname);
+    if (to) setActiveLink(to.pathname, to.search);
   });
 
-  function setActiveLink(pathname = window.location.pathname) {
+  // A view link is the current page only with its own ?pattern= as well.
+  function setActiveLink(pathname = window.location.pathname, search = window.location.search) {
     const path = normalisePath(pathname);
+    const pattern = new URLSearchParams(search).get("pattern") ?? "";
     document.querySelectorAll<HTMLAnchorElement>(".nav-link").forEach((link) => {
       if (link.id === "nav-lang" || link.id === "nav-sheet-lang") return;
-      const isActive = normalisePath(link.pathname) === path;
+      const isActive =
+        normalisePath(link.pathname) === path &&
+        (!link.classList.contains("nav-link--view") || link.dataset.pattern === pattern);
       link.classList.toggle("nav-link--active", isActive);
       if (isActive) {
         link.setAttribute("aria-current", "page");
@@ -864,6 +928,11 @@ import "../styles/type.css";
       navCommunity.href = `${prefix}/community`;
       navCommunity.textContent = labels.community;
     }
+    document.querySelectorAll<HTMLAnchorElement>(".nav-link--view").forEach((link, k) => {
+      const pattern = link.dataset.pattern;
+      link.href = `${prefix}/community${pattern ? `?pattern=${pattern}` : ""}`;
+      link.textContent = labels.views[k] ?? link.textContent;
+    });
     if (navJoin) {
       navJoin.href = `${prefix}/login`;
       navJoin.textContent = labels.login;

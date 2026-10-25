@@ -54,6 +54,18 @@ const units = groupCarousels(works, 2);
         <h2 class="mprof__project-title">{title}</h2>
       )
     }
+    {
+      /* THE LINK UNDER THE TITLE (2026-10-25, Josh: "if a project has links
+         they should be right below the titles with enough white space"). From
+         2026-09-28 it came after all the words. The host is the link text. */
+      project.link && (
+        <p class="mprof__project-links">
+          <a class="mprof__link" href={project.link} target="_blank" rel="noopener">
+            {hostLabel(project.link)}
+          </a>
+        </p>
+      )
+    }
     {desc && (
       <p class="mprof__project-desc">
         {splitParagraphs(desc).map((para) => <span class="mprof__para">{para}</span>)}
@@ -78,19 +90,6 @@ const units = groupCarousels(works, 2);
               )}
             </>
           ))}
-        </p>
-      )
-    }
-    {
-      /* THE LINK AFTER THE WORDS (2026-09-28, Josh: "a project that has a link
-         should show it after the text"). It used to hide in the title, which
-         read as a plain heading. Now it is printed the way a work's links are,
-         after all the words: the host as the link text. */
-      project.link && (
-        <p class="mprof__project-links">
-          <a class="mprof__link" href={project.link} target="_blank" rel="noopener">
-            {hostLabel(project.link)}
-          </a>
         </p>
       )
     }

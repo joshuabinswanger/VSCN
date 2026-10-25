@@ -556,7 +556,6 @@ const searchIndex: SearchIndex = {
             class="view-toggle__btn"
             data-mode="index"
             aria-pressed={DEFAULT_VIEW === "index" ? "true" : "false"}
-            aria-describedby="member-index-note"
           >
             {t("community.view.index")}
           </button>
@@ -936,11 +935,8 @@ const searchIndex: SearchIndex = {
         })
       }
     </ol>
-    {/* Why this view is longer than the other two: the galleries are
-        artwork-only, so a member who has not uploaded yet is only here.
-        Below the list, so the people come first; still the Index button's
-        description, so it is heard before the switch. */}
-    <p id="member-index-note" class="field-note cindex__note">{t("community.index.note")}</p>
+    {/* No note under the list (2026-10-25, Josh: "remove the hint on the
+        people page"). It said why People is longer than the galleries. */}
   </div>
 
   <div id="community-signup-cta" class="community-signup-cta" style="display:none;">
@@ -1800,12 +1796,13 @@ const searchIndex: SearchIndex = {
          padding's pull (.ccard__words). */
       margin-top: calc(var(--cpage-pic-h) / 2 - 5rem - 3px);
       max-height: calc(var(--cpage-pic-h) / 2 + 5rem);
-      /* Down to the picture row's foot, so PROFILE stands in the column's
-         bottom-right corner, on the same spot on every card (2026-10-23). */
       height: calc(var(--cpage-pic-h) / 2 + 5rem);
     }
+    /* PROFILE UNDER THE ROLE (2026-10-25, Josh marked the spot on a
+       screenshot): a short drop below the words, still at the column's
+       right. From 2026-10-23 it stood down on the picture row's foot. */
     :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard .ccard__more) {
-      margin-top: auto;
+      margin-top: 2.5rem;
     }
   }
   /* THE PICTURE'S SWIPE IS THE CAROUSEL'S (2026-10-16, Josh: "the vertical
@@ -2418,10 +2415,6 @@ const searchIndex: SearchIndex = {
 
   .cindex-wrap[hidden] {
     display: none;
-  }
-
-  .cindex__note {
-    margin: 1rem 0 0;
   }
 
   .cindex {
