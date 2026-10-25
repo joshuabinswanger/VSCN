@@ -357,37 +357,47 @@ const t = useTranslations(lang);
     border-bottom: 1px solid var(--color-border);
   }
 
-  /* THE BAR IS BLACK (2026-10-25, Josh: "make the drop up black", the
-     editor's bar at the foot). It swaps the site's colour tokens for what
-     it holds, so Save, +, the switches and the handle turn over together
-     and none has a rule of its own; muted and hairline tones are re-mixed
-     for the dark ground. The + menu and the video sheet open outside it
-     and keep theirs. */
+  /* BLACK ONLY FOLDED, AND SMALLER ON A PHONE (2026-10-25, Josh, on his
+     iPhone: "this should be smaller drop up only black when collapsed";
+     black all the time was the step before). Open, the bar is the paper one
+     it always was; folded down to its handle it is a black tab. The fold
+     swaps the site's colour tokens for what it holds, so the handle turns
+     over with it. */
   .profile-form.has-epanel .form-footer {
     --bar-ink: var(--color-dark);
     --bar-paper: var(--color-bg);
   }
 
-  .profile-editor .profile-form.has-epanel .form-footer .ebar {
+  .profile-editor .profile-form.has-epanel .form-footer .ebar.is-folded {
     --color-dark: var(--bar-paper);
     --color-bg: var(--bar-ink);
-    --color-muted: color-mix(in srgb, var(--bar-paper) 62%, var(--bar-ink));
-    --color-border: color-mix(in srgb, var(--bar-paper) 30%, var(--bar-ink));
+    --color-muted: color-mix(in srgb, var(--bar-paper) 75%, var(--bar-ink));
     border-color: var(--bar-ink);
-    color: var(--color-dark);
   }
 
-  /* Save is the white pill in it (.btn-solid hard-codes white type). */
-  .profile-editor .profile-form.has-epanel .ebar .profile-save-button:not(.is-clean) {
-    color: var(--color-bg);
-  }
+  @media (--bp-mobile) {
+    .profile-editor .profile-form.has-epanel .ebar {
+      padding: 4px;
+    }
 
-  /* The pressed switch is the one hard-coded white in the seg (global.css):
-     in the black bar it takes the paper with ink type. */
-  .profile-form.has-epanel .ebar .seg > button[aria-pressed="true"] {
-    background: var(--color-dark);
-    color: var(--color-bg);
-    box-shadow: none;
+    .profile-editor .profile-form.has-epanel .ebar__in {
+      width: min(calc(100vw - 50px), 21rem);
+      gap: 4px;
+    }
+
+    .profile-editor .profile-form.has-epanel .ebar.is-folded .ebar__in {
+      width: max-content;
+    }
+
+    .profile-editor .profile-form.has-epanel .ebar :is(.ebar__plus, .profile-save-button) {
+      height: 30px;
+      min-width: 0;
+      padding-inline: 12px;
+    }
+
+    .profile-editor .profile-form.has-epanel .ebar .seg > button {
+      min-height: 24px;
+    }
   }
 
   /* AUTOSAVE'S QUIET STATE (2026-10-25, Josh: "add automatic saving, make
