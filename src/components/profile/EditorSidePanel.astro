@@ -1,0 +1,256 @@
+---
+// The panel the side-panel editor (/profile-panel) edits in. Rendered empty
+// and parked here; editorSidePanel.ts moves it into #works-stage, so the
+// editor's own rules (`.profile-editor …`, the stage's data-lang) still reach
+// the fields it borrows from the list.
+import { useTranslations, type Lang } from "../../i18n/utils";
+interface Props { lang?: Lang }
+const { lang = "en" } = Astro.props;
+const t = useTranslations(lang);
+---
+<aside
+  class="epanel"
+  id="epanel"
+  hidden
+  data-label-work={t("profile.deck.work")}
+  data-label-project={t("profile.deck.project")}
+  data-label-carousel={t("profile.deck.carousel")}
+>
+  <div class="epanel__head">
+    <p class="epanel__title t-label" data-epanel-title>{t("profile.deck.edit")}</p>
+    <button type="button" class="epanel__done" data-epanel-done>{t("profile.panel.done")}</button>
+  </div>
+  <p class="epanel__empty field-note" data-epanel-empty>{t("profile.panel.empty")}</p>
+  <div class="epanel__body" data-epanel-body></div>
+</aside>
+
+<script>import "../../lib/editorSidePanel.ts";</script>
+
+<style is:global>
+  /* Everything here is global on purpose: the panel is moved into the
+     editor's stage at runtime, and what it holds are clones of WorkEditor's
+     templates, which carry that component's scope, not this one's. All of it
+     is keyed to .has-epanel on the stage, so /profile never matches. */
+
+  .works-stage.has-epanel {
+    --epanel-w: 360px;
+  }
+
+  /* The panel shows in Edit on the page view only. */
+  .works-stage.has-epanel:not([data-mode="edit"][data-view="profile"]) > .epanel {
+    display: none;
+  }
+
+  .profile-editor .works-stage > .epanel {
+    position: fixed;
+    z-index: 32;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-sizing: border-box;
+    padding: 14px 16px 18px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    box-shadow:
+      0 8px 28px rgb(0 0 0 / 0.1),
+      0 1px 3px rgb(0 0 0 / 0.06);
+    text-align: start;
+  }
+
+  .profile-editor .works-stage > .epanel[hidden] {
+    display: none;
+  }
+
+  @media (--bp-desktop) {
+    .profile-editor .works-stage > .epanel {
+      top: calc(var(--header-h) + 12px);
+      right: 16px;
+      bottom: 20px;
+      width: var(--epanel-w);
+      border-radius: 20px !important;
+    }
+
+    /* The works keep clear of the panel: the stage gives up as much of its
+       right edge as the panel reaches into it. */
+    .works-stage.has-epanel[data-mode="edit"][data-view="profile"] {
+      padding-inline-end: max(0px, calc(var(--epanel-w) + 32px - (100vw - 100%) / 2));
+    }
+  }
+
+  @media (--bp-mobile) {
+    /* A sheet at the foot, over the bar, only while something is picked. */
+    .profile-editor .works-stage > .epanel {
+      left: 0;
+      right: 0;
+      bottom: 0;
+      max-height: 58svh;
+      padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+      border-width: 1px 0 0;
+      border-radius: 20px 20px 0 0 !important;
+      transform: translateY(105%);
+      visibility: hidden;
+      transition:
+        transform 0.32s cubic-bezier(0.25, 1, 0.5, 1),
+        visibility 0s linear 0.32s;
+    }
+
+    .profile-editor .works-stage > .epanel.is-open {
+      transform: none;
+      visibility: visible;
+      transition: transform 0.32s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .profile-editor .works-stage > .epanel .epanel__empty {
+      display: none;
+    }
+
+    /* Room to scroll the last work above the sheet. */
+    .works-stage.has-epanel.is-picking {
+      padding-bottom: 58svh;
+    }
+
+    /* The bar would stand over the sheet: it steps aside until Done. */
+    .profile-form:has(.works-stage.has-epanel.is-picking) .form-footer {
+      display: none;
+    }
+  }
+
+  /* A carousel's own keys first, then the picked slide's words and keys,
+     set apart by a line. */
+  .epanel .gallery-carousel-details ~ .gallery-fields {
+    padding-top: 14px;
+    border-top: 1px solid var(--color-border);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .profile-editor .works-stage > .epanel {
+      transition: none !important;
+    }
+  }
+
+  .epanel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .epanel__title {
+    margin: 0;
+    color: var(--color-muted);
+  }
+
+  .profile-editor .epanel__done {
+    padding: 6px 14px;
+    border: 0;
+    border-radius: 999px !important;
+    background: var(--color-dark);
+    color: var(--color-bg);
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  @media (--bp-desktop) {
+    .epanel:not(.is-open) .epanel__done {
+      visibility: hidden;
+    }
+  }
+
+  .epanel.is-open .epanel__empty {
+    display: none;
+  }
+
+  .epanel__body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+  }
+
+  .epanel__body:empty {
+    display: none;
+  }
+
+  /* IN THE PANEL the folds are always open: the Edit key's summary goes and
+     its body is simply the rest of the panel. Same for the project's + Add,
+     whose keys stand open. */
+  .epanel .gallery-details > .gallery-details-summary,
+  .epanel [data-project-add-toggle] {
+    display: none !important;
+  }
+
+  .epanel .gallery-details,
+  .epanel .gallery-addrow {
+    float: none !important;
+    width: 100%;
+    margin: 0;
+  }
+
+  .epanel [data-project-addkeys] {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .epanel .gallery-edit-row {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .epanel .gallery-fields,
+  .epanel .gallery-project-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: auto;
+    max-width: none;
+    margin: 0;
+  }
+
+  .epanel .gfield > .gallery-inline {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* IN THE LIST the words read as the page prints them: no boxes, no labels,
+     no Edit or + Add. A click on any of it picks the work (or project) and
+     the real fields move into the panel. */
+  .works-stage.has-epanel [data-works-editor] :is(.gallery-details, .gallery-edit-row, .gfield__lbl) {
+    display: none !important;
+  }
+
+  .works-stage.has-epanel [data-works-editor] .gfield > .gallery-inline {
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    pointer-events: none;
+    resize: none;
+  }
+
+  .works-stage.has-epanel [data-works-editor] :is(.gallery-item[data-image-id], [data-project-block] > .gallery-project-fields, [data-carousel-block]) {
+    cursor: pointer;
+  }
+
+  /* What is picked: a dark ring round the work, the project's heading or the
+     carousel. */
+  .works-stage.has-epanel .is-epicked {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 6px;
+    border-radius: 6px !important;
+  }
+
+  /* The stand-in left where the words were: the page's own type. */
+  .epanel-ghost {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    opacity: 0.55;
+  }
+
+  .epanel-ghost:empty {
+    display: none;
+  }
+</style>
