@@ -564,6 +564,23 @@ const t = useTranslations(lang);
     cursor: pointer;
   }
 
+  /* NOTHING MOVES SIDEWAYS BETWEEN EDIT AND PREVIEW (2026-10-25, Josh:
+     "would it be possible to have images etc not shift horizontally when
+     switching edit and preview?"). Both stand in the page's works column,
+     but Edit's soft boxes padded the pictures 2.75rem in from it. The boxes
+     now reach OUT into the gutter by their own padding instead, so a
+     project's words and every picture start on the column's edge, at the
+     column's width, as the page draws them. */
+  @media (--bp-desktop) {
+    .works-stage.has-epanel [data-works-editor] .gallery-project {
+      margin-inline: calc(-1 * var(--block-pad));
+    }
+
+    .works-stage.has-epanel [data-works-editor] [data-project-images] > :is(.gallery-item, .gallery-carousel) {
+      margin-inline: calc(-1 * var(--row-pad));
+    }
+  }
+
   /* What is picked: a dark ring round the work, the project's heading or the
      carousel. */
   .works-stage.has-epanel .is-epicked {
