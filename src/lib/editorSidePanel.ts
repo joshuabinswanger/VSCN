@@ -239,12 +239,20 @@ document.addEventListener("astro:page-load", () => {
   panel.querySelector("[data-epanel-back]")!.addEventListener("click", () => setPick(null), { signal });
 
   // The phone page's Save is the form's own, pressed: the bar is hidden while
-  // the page is up. It mirrors that button's disabled state.
+  // the page is up. It mirrors that button: disabled while saving, and with
+  // autosave its word and its quiet "Saved" look (profileEditorController).
   save.addEventListener("click", () => formSave?.click(), { signal });
-  const mirrorSave = () => (save.disabled = !formSave || formSave.disabled);
+  const mirrorSave = () => {
+    save.disabled = !formSave || formSave.disabled;
+    save.classList.toggle("is-clean", !!formSave?.classList.contains("is-clean"));
+    const word = formSave?.querySelector(".ebar__label")?.textContent;
+    if (word) save.textContent = word;
+  };
   mirrorSave();
   const saveObserver = new MutationObserver(mirrorSave);
-  if (formSave) saveObserver.observe(formSave, { attributes: true, attributeFilter: ["disabled"] });
+  if (formSave) {
+    saveObserver.observe(formSave, { attributes: true, attributeFilter: ["disabled", "class"], subtree: true, childList: true, characterData: true });
+  }
   document.addEventListener(
     "keydown",
     (e) => {

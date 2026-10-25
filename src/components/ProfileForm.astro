@@ -9,8 +9,10 @@ import type { Lang } from "../i18n/utils";
 
 interface Props {
   lang?: Lang;
+  /** Save on its own after each pause in editing (the /profile-panel trial). */
+  autosave?: boolean;
 }
-const { lang = "en" } = Astro.props;
+const { lang = "en", autosave = false } = Astro.props;
 const t = useTranslations(lang);
 ---
 <div class="profile-editor">
@@ -51,7 +53,7 @@ const t = useTranslations(lang);
   </p>
 </div>
 
-<form id="profile-form" class="profile-form" data-lang={lang}>
+<form id="profile-form" class="profile-form" data-lang={lang} data-autosave={autosave ? "" : undefined}>
   {
     /* Shown on every tab while a deletion is pending: the way back out of it
       must not be hidden behind the tab that scheduled it. */
