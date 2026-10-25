@@ -31,6 +31,18 @@ import "../styles/type.css";
   <div class="nav-links" id="nav-menu">
     <a href="/info" class="nav-link" id="nav-info">INFO</a>
     <a href="/community" class="nav-link nav-center" id="nav-community">COMMUNITY</a>
+    {
+      /* THE MENU IS A HIERARCHY ON A PHONE (2026-10-25, Josh: "the menu
+        should hierarchially stack the community info and profile tabs"):
+        each destination in the sheet's large type, its own pages under it a
+        size down — Community's three views here, Profile's three tabs in
+        .nav-acct below. Not drawn on a desktop, where the bar picks the view. */
+    }
+    <div class="nav-sub" id="nav-views">
+      <a href="/community" class="nav-link nav-link--sub nav-link--view" data-pattern="">PORTFOLIOS</a>
+      <a href="/community?pattern=grid" class="nav-link nav-link--sub nav-link--view" data-pattern="grid">IMAGES</a>
+      <a href="/community?pattern=index" class="nav-link nav-link--sub nav-link--view" data-pattern="index">PEOPLE</a>
+    </div>
     <div class="nav-right-group">
       <a href="/login" class="nav-link" id="nav-join">LOGIN</a>
       {
@@ -62,11 +74,11 @@ import "../styles/type.css";
           in place; anywhere else it opens /profile on that tab (?tab=). */
       }
       <div class="nav-acct" id="nav-acct" style="display:none;">
-        <a href="/profile?tab=profile" class="nav-link nav-link--tab" id="nav-tab-profile" data-tab="profile"
+        <a href="/profile?tab=profile" class="nav-link nav-link--tab nav-link--sub" id="nav-tab-profile" data-tab="profile"
           >PROFILE</a
         >
-        <a href="/profile?tab=work" class="nav-link nav-link--tab" id="nav-tab-work" data-tab="work">WORK</a>
-        <a href="/profile?tab=account" class="nav-link nav-link--tab" id="nav-tab-account" data-tab="account"
+        <a href="/profile?tab=work" class="nav-link nav-link--tab nav-link--sub" id="nav-tab-work" data-tab="work">WORK</a>
+        <a href="/profile?tab=account" class="nav-link nav-link--tab nav-link--sub" id="nav-tab-account" data-tab="account"
           >ACCOUNT</a
         >
         <a href="/de" class="nav-link nav-link--lang nav-acct__lang" id="nav-acct-lang">
@@ -228,17 +240,14 @@ import "../styles/type.css";
   #nav-community {
     --i: 1;
   }
+  #nav-views,
   #nav-join,
-  #nav-profile,
-  #nav-tab-profile {
+  #nav-profile {
     --i: 2;
   }
   #nav-signup,
-  #nav-tab-work {
+  #nav-acct {
     --i: 3;
-  }
-  #nav-tab-account {
-    --i: 4;
   }
 
   /* Each link is a black chip with white type, square (the site has no
@@ -443,6 +452,9 @@ import "../styles/type.css";
       color: var(--color-dark);
     }
     .lang-toggle {
+      display: none;
+    }
+    .nav-sub {
       display: none;
     }
     /* Signed in, the switch lives in the account menu. */
@@ -776,15 +788,21 @@ import "../styles/type.css";
     :root:has(#nav-menu-btn[aria-expanded="true"]) .form-footer {
       visibility: hidden;
     }
-    /* Signed in, the sheet lists the editor's tabs in PROFILE's place. */
-    #nav-profile,
+    /* Signed in, PROFILE heads the editor's tabs. */
     .nav-acct__lang {
       display: none !important;
     }
+    .nav-sub,
     .nav-acct {
+      display: flex;
       flex-direction: column;
       align-items: flex-start;
-      gap: 1.1rem;
+      gap: 0.55rem;
+      margin-top: -0.35rem;
+    }
+    .nav-sub .nav-link::after,
+    .nav-acct .nav-link::after {
+      display: none;
     }
     .nav-link--lang::after {
       display: none;
@@ -956,6 +974,7 @@ import "../styles/type.css";
       info: string;
       community: string;
       tabs: [string, string, string];
+      views: [string, string, string];
       login: string;
       signup: string;
       profile: string;
@@ -965,6 +984,7 @@ import "../styles/type.css";
       info: "INFO",
       community: "COMMUNITY",
       tabs: ["PROFILE", "WORK", "ACCOUNT"],
+      views: ["PORTFOLIOS", "IMAGES", "PEOPLE"],
       login: "LOGIN",
       signup: "SIGN UP",
       profile: "PROFILE",
@@ -973,6 +993,7 @@ import "../styles/type.css";
       info: "INFO",
       community: "COMMUNITY",
       tabs: ["PROFIL", "ARBEITEN", "KONTO"],
+      views: ["PORTFOLIOS", "BILDER", "MENSCHEN"],
       login: "ANMELDEN",
       signup: "REGISTRIEREN",
       profile: "PROFIL",
@@ -999,7 +1020,7 @@ import "../styles/type.css";
     const path = normalisePath(pathname);
     document.querySelectorAll<HTMLAnchorElement>(".nav-link").forEach((link) => {
       // The account menu's lines are the editor's tabs, not pages.
-      if (link.classList.contains("nav-link--lang") || link.classList.contains("nav-link--tab")) return;
+      if (link.classList.contains("nav-link--lang") || link.classList.contains("nav-link--sub")) return;
       const isActive = normalisePath(link.pathname) === path;
       link.classList.toggle("nav-link--active", isActive);
       if (isActive) {
@@ -1034,6 +1055,11 @@ import "../styles/type.css";
       navCommunity.href = `${prefix}/community`;
       navCommunity.textContent = labels.community;
     }
+    document.querySelectorAll<HTMLAnchorElement>(".nav-link--view").forEach((link, k) => {
+      const pattern = link.dataset.pattern;
+      link.href = `${prefix}/community${pattern ? `?pattern=${pattern}` : ""}`;
+      link.textContent = labels.views[k] ?? link.textContent;
+    });
     document.querySelectorAll<HTMLAnchorElement>(".nav-link--tab").forEach((link, k) => {
       link.href = `${prefix}/profile?tab=${link.dataset.tab}`;
       link.textContent = labels.tabs[k] ?? link.textContent;
