@@ -89,6 +89,24 @@ const t = useTranslations(lang);
       border-radius: 20px !important;
     }
 
+    /* PREVIEW COLLAPSES IT (2026-10-26, Josh: "on preview make the panel
+       collapse"): nothing is being edited, so the panel shrinks to its
+       switches (they are how one gets back to Edit). Its width stays, so the
+       column reserved for it, and the works with it, do not move. */
+    .profile-editor .works-stage[data-mode="preview"] > .epanel {
+      bottom: auto;
+      overflow: hidden;
+    }
+
+    .profile-editor .works-stage[data-mode="preview"] > .epanel > :not(.epanel__controls) {
+      display: none;
+    }
+
+    .profile-editor .works-stage[data-mode="preview"] > .epanel .epanel__controls {
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+
     /* NEVER OVER THE WORKS (2026-10-25, Josh: "the menu should not shift
        over the body of the portfolio"): the stage gives up as much of its
        right edge as the panel reaches into it, in every mode and view, so
