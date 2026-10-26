@@ -104,6 +104,31 @@ const t = useTranslations(lang);
       left: calc((100vw - var(--epanel-w) - 32px) / 2);
     }
 
+    /* BESIDE THE WORKS, NOT THE WINDOW (2026-10-26, Josh: "on very wide
+       desktop layouts we want the panel to sit closer to the content"): the
+       page's works column (every child of .mprof's middle track shares its
+       edges, so whichever is shown anchors it) places the panel 40px off its
+       right edge, never past 16px off the window's; Save centres under the
+       column. Card view has no column, so the fallbacks keep the window
+       placement; a browser without anchor positioning keeps it too. */
+    @supports (anchor-name: --a) {
+      .works-stage.has-epanel .mprof > :not(.mprof__aside, .mprof__index) {
+        anchor-name: --works-col;
+      }
+
+      .profile-editor .works-stage > .epanel {
+        right: auto;
+        left: min(
+          calc(anchor(--works-col right, calc(100vw - 56px - var(--epanel-w))) + 40px),
+          calc(100vw - 16px - var(--epanel-w))
+        );
+      }
+
+      .profile-form.has-epanel.is-works .form-footer {
+        left: anchor(--works-col center, calc((100vw - var(--epanel-w) - 32px) / 2));
+      }
+    }
+
     /* The switches on top of the panel: one row of three, Preview / Edit
        the widest, set apart from what is picked by a line. */
     .epanel__controls {
