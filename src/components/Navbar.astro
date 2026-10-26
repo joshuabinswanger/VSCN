@@ -91,8 +91,8 @@ import "../styles/type.css";
       /* The language switch's place on the phone's sheet (2026-10-20): the
         fixed .lang-toggle below is hidden on every page with a footer, so the
         sheet carries its own copy, kept in step by updateNavLinks. On a
-        desktop it stands after the account button (2026-10-25, Josh: "EN DE
-        should be behind the account button") and the corner one is gone. */
+        desktop the corner one is the only switch again (2026-10-26, Josh:
+        "smaller and in the bottom right corner on desktop"). */
     }
     <a href="/de" class="nav-link nav-link--lang" id="nav-sheet-lang">
       <span class="lang-cur">EN</span><span class="lang-sep"> / </span><span class="lang-tgt"
@@ -451,14 +451,18 @@ import "../styles/type.css";
     .nav-link--lang:hover .lang-tgt {
       color: var(--color-dark);
     }
+    /* BOTTOM RIGHT, SMALLER (2026-10-26, Josh: "EN DE should be smaller and in
+       the bottom right corner on desktop"). The switch is the fixed corner one
+       again; the header and the account menu carry no copy on a desktop. It
+       reads a size below the footer's line so it stays out of the way. */
     .lang-toggle {
-      display: none;
+      font-size: var(--fs-72);
     }
     .nav-sub {
       display: none;
     }
-    /* Signed in, the switch lives in the account menu. */
-    nav.is-signed-in .nav-links > .nav-link--lang {
+    .nav-links > .nav-link--lang,
+    .nav-links .nav-acct .nav-acct__lang {
       display: none;
     }
     /* THE ACCOUNT MENU drops from the profile button, its right edge on the
@@ -506,12 +510,6 @@ import "../styles/type.css";
     .nav-links .nav-acct .nav-link:hover {
       text-decoration: none;
       background: color-mix(in srgb, var(--nav-ink) 6%, var(--nav-paper));
-    }
-    .nav-links .nav-acct .nav-acct__lang {
-      display: block;
-      margin: 4px 0 0;
-      box-shadow: 0 -1px 0 var(--color-border);
-      border-radius: 0 0 8px 8px !important;
     }
     /* The account's action is the one filled shape in the row. */
     .nav-links .nav-link--pill,
