@@ -1,4 +1,4 @@
-// THE SIDE-PANEL EDITOR (2026-10-25, trial route /profile-panel). Josh: "edit
+// THE SIDE-PANEL EDITOR (2026-10-25, trialled at /profile-panel; /profile since 2026-10-26). Josh: "edit
 // fields in a separate right panel (settings for image, changing captions,
 // title etc., add carousel images etc. all in a right side panel on desktop)
 // and on mobile in a separate frame on the bottom". On a phone the panel is
