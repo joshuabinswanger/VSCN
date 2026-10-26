@@ -382,7 +382,10 @@ import "../styles/type.css";
        The row lets clicks through to the title; only the links take them. */
     nav[data-astro-transition-persist="navbar"] {
       left: 0;
-      padding: 0 max(15px, calc((100vw - var(--shell-max)) / 2 + 15px));
+      /* TO THE WINDOW'S EDGES (2026-10-26, Josh's top-bar mock): the title at
+         the left, the links after it, the account at the right, all on
+         --header-side, no longer on main's text edges. */
+      padding: 0 var(--header-side) 0 calc(var(--header-side) + var(--header-brand-room));
       pointer-events: none;
     }
     .nav-links .nav-link {

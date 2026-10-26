@@ -563,13 +563,15 @@ const BRAND_SLOTS: BrandSlot[] = [
      Only the title takes pointer events; the empty row lets clicks through. */
   @media (--bp-desktop) {
     .brand-ticker[data-wordmark="compact"] {
-      /* IN THE MIDDLE, A SIZE UP (2026-10-23, Josh: "do it like cosmos ...
-         in the middle vscn with the animation a bit bigger"): the title is
-         centred on the row, the destinations at its left and the account
-         at its right (Navbar.astro). The hover overwrite rides along. */
+      /* AT THE LEFT AGAIN (2026-10-26, Josh's top-bar mock): the title
+         first, the two links beside it (Navbar.astro starts them at
+         --header-brand-room), the directory's controls in the middle
+         (CommunityGrid.astro) and the account at the right. Was centred
+         between the links and the account since 2026-10-23, a size up. The
+         hover overwrite rides along. */
       --brand-compact-size: 30px;
-      justify-content: center;
-      padding: 0;
+      justify-content: flex-start;
+      padding: 0 0 0 var(--header-side);
       position: absolute;
       top: 0;
       left: 0;

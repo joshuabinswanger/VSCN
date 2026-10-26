@@ -611,6 +611,12 @@ const searchIndex: SearchIndex = {
               ></circle><path d="M7.7 7.7L11 11" fill="none" stroke="currentColor" stroke-width="1.3"
               ></path></svg
             >
+            {
+              /* The word beside the glass, on a desktop only (2026-10-26, Josh's
+                mock: a small "Search" pill in the header). The phone's pill
+                keeps the glass alone. */
+            }
+            <span class="search__word">{t("community.search")}</span>
           </button>
         </div>
         <div class="bar-menu tag-filter">
@@ -691,6 +697,35 @@ const searchIndex: SearchIndex = {
               ><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.2"
               ></path></svg
             >
+          </button>
+        </div>
+        {
+          /* THE VIEWS AS TABS, ON A DESKTOP (2026-10-26, Josh's top-bar mock:
+            Portfolios / Images / People in one segmented control). The same
+            three buttons as the view menu's panel, so the controller's
+            querySelectorAll over .view-toggle__btn presses, reflects and
+            navigates them with no new code. The phone keeps the drop-up
+            above and hides these. */
+        }
+        <div class="view-seg" role="group" aria-label={t("community.view.label")}>
+          <button
+            type="button"
+            class="view-toggle__btn"
+            data-mode="pages"
+            aria-pressed={DEFAULT_VIEW === "pages" ? "true" : "false"}
+          >
+            {t("community.view.gallery")}
+          </button>
+          <button type="button" class="view-toggle__btn" data-mode="grid" aria-pressed="false">
+            {t("community.view.grid")}
+          </button>
+          <button
+            type="button"
+            class="view-toggle__btn"
+            data-mode="index"
+            aria-pressed={DEFAULT_VIEW === "index" ? "true" : "false"}
+          >
+            {t("community.view.index")}
           </button>
         </div>
       </div>
@@ -2988,6 +3023,267 @@ const searchIndex: SearchIndex = {
       --masonry-cols: 2;
       --masonry-gap: 32px;
       --masonry-tile-gap: 44px;
+    }
+  }
+
+  /* ── THE BAR IN THE HEADER, ON A DESKTOP (2026-10-26) ──────────
+     Josh's top-bar mock (design-kit/mockups/vscn-desktop-topbar.af, from a
+     studio site's header): one row, VSCN and the two links at the left, the
+     directory's controls in the middle, LOGIN and SIGN UP at the right. The
+     bottom island is gone on a desktop; the SAME element, controller and
+     panels stay, restyled:
+       · the capsule at rest is nothing — each control is its own outlined
+         pill (search, the three views as tabs, Tags, and Sort on Images);
+       · the panels DROP from under the row as rounded cards instead of
+         growing the pill upward, and the size animation (sizeBar) is not
+         run, see setBarMenu;
+       · the search opens IN PLACE: its field is lifted over the row (the
+         head, absolutely positioned up by the row's height), the results
+         card under it.
+     The row's width is whatever its pills ask; the track keeps floors
+     either side for the title, the links and the account (--bar-reserve-*),
+     and a window too narrow for all of it drops the "Search" word first.
+     Phones are untouched. */
+  .view-seg,
+  .search__word {
+    display: none;
+  }
+
+  @keyframes cbar-drop {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (--bp-desktop) {
+    .community-bar {
+      --bar-h: 36px;
+      --bar-gap: 8px;
+      --bar-reserve-left: 320px;
+      --bar-reserve-right: 220px;
+      top: 0;
+      bottom: auto;
+      height: var(--header-h);
+      align-items: center;
+      grid-template-columns: minmax(var(--bar-reserve-left), 1fr) auto minmax(var(--bar-reserve-right), 1fr);
+    }
+
+    .community-bar__in {
+      position: relative;
+      display: block;
+      overflow: visible;
+      padding: 0;
+      border: none;
+      background: none;
+      max-width: none;
+      transition: none;
+      border-radius: 0 !important;
+    }
+
+    .community-bar__row {
+      gap: var(--bar-gap);
+      height: var(--bar-h);
+    }
+
+    .search-menu {
+      order: 1;
+    }
+    .view-seg {
+      order: 2;
+    }
+    .tag-filter {
+      order: 3;
+    }
+    .sort-menu {
+      order: 4;
+    }
+    .view-menu {
+      display: none;
+    }
+
+    /* A pill each: the border colour's hairline, paper inside. */
+    .bar-menu__trigger {
+      box-sizing: border-box;
+      height: var(--bar-h);
+      padding: 0 16px;
+      gap: 8px;
+      border: 1px solid var(--color-border);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .bar-menu__trigger:hover,
+    .bar-menu__trigger[aria-expanded="true"],
+    .bar-menu__trigger.filter-word--set {
+      border-color: var(--color-dark);
+    }
+
+    .search-menu .bar-menu__trigger {
+      padding-inline: 14px 18px;
+      color: var(--color-muted);
+    }
+    .search-menu .bar-menu__trigger:hover,
+    .search-menu .bar-menu__trigger[aria-expanded="true"] {
+      color: var(--color-bg);
+    }
+    .search__word {
+      display: inline;
+      font-weight: 500;
+    }
+    @media (max-width: 1199px) {
+      .search__word {
+        display: none;
+      }
+      .search-menu .bar-menu__trigger {
+        padding-inline: 14px;
+      }
+    }
+
+    /* The chevron points DOWN at rest — the panels drop now. */
+    .bar-menu__chev {
+      transform: rotate(180deg);
+    }
+    .bar-menu__trigger[aria-expanded="true"] .bar-menu__chev {
+      transform: none;
+    }
+
+    /* The segmented views: a track, the current one a black pill in it. */
+    .view-seg {
+      display: flex;
+      align-items: center;
+      box-sizing: border-box;
+      height: var(--bar-h);
+      padding: 3px;
+      gap: 2px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-pill);
+      background: var(--color-bg);
+    }
+    .view-seg .view-toggle__btn {
+      display: block;
+      flex: none;
+      height: 100%;
+      padding: 0 14px;
+      font-size: 1em !important;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .view-seg .view-toggle__btn:hover,
+    .view-seg .view-toggle__btn:focus-visible {
+      box-shadow: none;
+      background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
+    }
+    .view-seg .view-toggle__btn:focus-visible {
+      outline: 1.5px solid var(--color-dark);
+      outline-offset: 1px;
+    }
+    .view-seg .view-toggle__btn[aria-pressed="true"],
+    .view-seg .view-toggle__btn[aria-pressed="true"]:hover {
+      background: var(--color-dark);
+      color: var(--color-bg);
+    }
+    .view-seg .view-toggle__btn[aria-pressed="true"]::after {
+      content: none;
+    }
+
+    /* The panels: cards under the row, centred on it (Sort's at its end). */
+    .community-bar__panels {
+      position: absolute;
+      top: calc(var(--bar-h) + var(--bar-gap));
+      left: 0;
+      right: 0;
+      display: block;
+      pointer-events: none;
+    }
+    .community-bar__panels:not(:has(> :not([hidden]))) {
+      display: none;
+    }
+    .bar-menu__panel {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      translate: -50% 0;
+      margin: 0;
+      pointer-events: auto;
+      border: 1px solid var(--color-border);
+      border-radius: 18px;
+      background: var(--color-bg);
+      box-shadow: 0 10px 30px rgb(0 0 0 / 0.08);
+      animation: cbar-drop 0.2s ease-out;
+    }
+    .bar-menu__panel[hidden] {
+      display: none;
+    }
+    .sort-menu__panel {
+      left: auto;
+      right: 0;
+      translate: none;
+    }
+
+    /* The search: no card of its own — the head over the row, the results
+       card under it. */
+    .search__panel {
+      left: 0;
+      right: 0;
+      translate: none;
+      width: auto;
+      max-height: none;
+      overflow: visible;
+      padding: 0;
+      border: none;
+      background: none;
+      box-shadow: none;
+      animation: none;
+    }
+    .search__head {
+      position: absolute;
+      top: calc(-1 * (var(--bar-h) + var(--bar-gap)));
+      left: 0;
+      right: 0;
+      height: var(--bar-h);
+      margin: 0;
+      padding: 0;
+      background: var(--color-bg);
+      animation: cbar-drop 0.2s ease-out;
+    }
+    .search__input {
+      height: 100%;
+      padding: 0 88px 0 42px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Ccircle cx='5' cy='5' r='3.6' fill='none' stroke='%23000' stroke-width='1.3'/%3E%3Cpath d='M7.7 7.7L11 11' fill='none' stroke='%23000' stroke-width='1.3'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: 16px 50%;
+      background-size: 13px;
+      border-color: var(--color-border);
+    }
+    .search__input:focus {
+      border-color: var(--color-dark);
+      box-shadow: none;
+    }
+    .search__cancel {
+      display: block;
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      translate: 0 -50%;
+      padding: 0.35rem 0.7rem;
+    }
+    .search__results {
+      box-sizing: border-box;
+      max-height: min(60vh, 30rem);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 6px;
+      border: 1px solid var(--color-border);
+      border-radius: 18px;
+      background: var(--color-bg);
+      box-shadow: 0 10px 30px rgb(0 0 0 / 0.08);
+      scrollbar-width: thin;
+      scrollbar-color: var(--color-border) transparent;
+      animation: cbar-drop 0.2s ease-out;
     }
   }
 </style>

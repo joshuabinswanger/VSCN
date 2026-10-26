@@ -309,6 +309,9 @@ const BAR_MENUS = [
   ["view-menu-btn", "view-menu-panel"],
 ] as const;
 
+/** The two queries custom-media.css calls --bp-mobile, spelled out. */
+const PHONE_QUERY = "(width <= 767px), (pointer: coarse)";
+
 /** The site's ease-out (lightbox.ts), and long enough to read as the pill
  *  growing rather than jumping. */
 const BAR_EASE = "cubic-bezier(0.22, 0.61, 0.36, 1)";
@@ -369,6 +372,9 @@ function settleBar(pill: HTMLElement) {
  *  module-level listeners below survive ClientRouter swaps. */
 function setBarMenu(open: string | null) {
   const pill = document.querySelector<HTMLElement>(".community-bar__in");
+  // A desktop's bar is part of the header: its panels DROP as cards, the
+  // pill has no box to ease (see the header rules in CommunityGrid.astro).
+  const inHeader = !window.matchMedia(PHONE_QUERY).matches;
   if (barLeaving && !barLeaving.isConnected) barLeaving = null;
   // Already headed there (a second click outside while it closes, say): let
   // the animation run on rather than snap it to its end.
@@ -383,7 +389,7 @@ function setBarMenu(open: string | null) {
   if (prev === open) return;
   // The corners of the closed capsule, kept while the box is tall: a 999px
   // radius on an open pill would bulge into a stadium.
-  if (pill && !prev) setBarR(pill, `${pill.offsetHeight / 2}px`);
+  if (pill && !prev && !inHeader) setBarR(pill, `${pill.offsetHeight / 2}px`);
 
   for (const [btnId, panelId] of BAR_MENUS) {
     const panel = document.getElementById(panelId);
@@ -395,7 +401,7 @@ function setBarMenu(open: string | null) {
   // after is measured, so the pill eases from the capsule to the screen;
   // cleared before the closing measure, so it eases back. The corners go
   // with it (--bar-r transitions) and the keyboard is dismissed on close.
-  const sheet = open === "search-panel" && window.matchMedia("(width <= 767px), (pointer: coarse)").matches;
+  const sheet = open === "search-panel" && !inHeader;
   const bar = pill?.closest<HTMLElement>(".community-bar");
   if (bar) {
     if (sheet) bar.dataset.searchSheet = "";
@@ -406,7 +412,7 @@ function setBarMenu(open: string | null) {
     document.activeElement.blur();
   }
 
-  if (!pill || !from || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  if (!pill || !from || inHeader || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     if (pill && !open) setBarR(pill, null);
     return;
   }
@@ -472,6 +478,8 @@ function reflowBar() {
   const pill = document.querySelector<HTMLElement>(".community-bar__in");
   if (!pill || before?.el !== pill) return;
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  // A desktop's bar has no box to ease from one label to the next.
+  if (!window.matchMedia(PHONE_QUERY).matches) return;
   barAnim?.cancel();
   barAnim = null;
   sizeBar(pill, before.rect);
