@@ -2608,7 +2608,7 @@ document.addEventListener("astro:page-load", () => {
   let worksLang: Lang = remembered("vscn-works-lang") === "de" ? "de" : remembered("vscn-works-lang") === "en" ? "en" : lang;
 
   // The switches are looked up in the whole form, not only in the bar:
-  // /profile-panel moves their row into its side panel (editorSidePanel.ts).
+  // the side panel moves their row into itself (editorSidePanel.ts).
   const press = (attr: string, value: string) => {
     form.querySelectorAll<HTMLButtonElement>(`[${attr}]`).forEach((btn) => {
       btn.setAttribute("aria-pressed", String(btn.getAttribute(attr) === value));

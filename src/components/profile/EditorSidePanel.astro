@@ -1,5 +1,5 @@
 ---
-// The panel the side-panel editor (/profile-panel) edits in. Rendered empty
+// The panel the profile editor (/profile) edits in. Rendered empty
 // and parked here; editorSidePanel.ts moves it into #works-stage, so the
 // editor's own rules (`.profile-editor …`, the stage's data-lang) still reach
 // the fields it borrows from the list.
@@ -38,7 +38,8 @@ const t = useTranslations(lang);
   /* Everything here is global on purpose: the panel is moved into the
      editor's stage at runtime, and what it holds are clones of WorkEditor's
      templates, which carry that component's scope, not this one's. All of it
-     is keyed to .has-epanel on the stage, so /profile never matches. */
+     is keyed to .has-epanel, which editorSidePanel.ts sets, so an editor
+     without the panel (the styleguide's sample) never matches. */
 
   .profile-form.has-epanel,
   .works-stage.has-epanel {
