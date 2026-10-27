@@ -372,7 +372,7 @@ function settleBar(pill: HTMLElement) {
  *  module-level listeners below survive ClientRouter swaps. */
 function setBarMenu(open: string | null) {
   const pill = document.querySelector<HTMLElement>(".community-bar__in");
-  // A desktop's bar is a strip of separate pills: its panels RISE as cards,
+  // A desktop's bar is a strip of separate pills: its panels DROP as cards,
   // there is no pill box to ease (see the strip rules in CommunityGrid.astro).
   const inHeader = !window.matchMedia(PHONE_QUERY).matches;
   if (barLeaving && !barLeaving.isConnected) barLeaving = null;
