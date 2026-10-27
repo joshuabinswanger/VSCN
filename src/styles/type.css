@@ -384,14 +384,15 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-/* REGULAR SIZE ON A DESKTOP (2026-10-27, Josh: "use the regular size of
-   archivo all over the buttons on the main menu" — "i meant font size"): the
-   header's buttons (LOGIN, SIGN UP, the account's tabs) take BODY's size and
-   keep NAV's weight, case and tracking; the directory strip's view buttons
-   do the same in CommunityGrid.astro. */
+/* BIGGER, REGULAR WEIGHT ON A DESKTOP (2026-10-27, Josh: "the size should be
+   bigger according to the button size. but the font should be regular and
+   not semibold"): the header's buttons (LOGIN, SIGN UP, the account's tabs)
+   are 16px at weight 400, keeping NAV's case and tracking; the directory
+   strip's view buttons (40px pills) do the same in CommunityGrid.astro. */
 @media (--bp-desktop) {
   .nav-link {
-    font-size: var(--fs-100);
+    font-size: var(--fs-115);
+    font-weight: 400;
   }
 }
 /* MENU (2026-10-20): on a phone the links stand on a full-screen sheet as
