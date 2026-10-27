@@ -384,6 +384,19 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+/* REGULAR ARCHIVO ON A DESKTOP (2026-10-27, Josh: "use the regular size of
+   archivo all over the buttons on the main menu"): the header's buttons
+   (LOGIN, SIGN UP, the account's tabs) take BODY's size and weight in the
+   case they are written, no tracking; the directory strip's view buttons do
+   the same in CommunityGrid.astro. */
+@media (--bp-desktop) {
+  .nav-link {
+    font-size: var(--fs-100);
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+}
 /* MENU (2026-10-20): on a phone the links stand on a full-screen sheet as
    large type, the language line beneath them at the NAV size. */
 @media (--bp-mobile) {

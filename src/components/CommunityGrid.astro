@@ -3057,10 +3057,10 @@ const searchIndex: SearchIndex = {
     display: none;
   }
 
-  @keyframes cbar-rise {
+  @keyframes cbar-drop {
     from {
       opacity: 0;
-      transform: translateY(4px);
+      transform: translateY(-4px);
     }
     to {
       opacity: 1;
@@ -3069,20 +3069,15 @@ const searchIndex: SearchIndex = {
   }
 
   @media (--bp-desktop) {
-    /* BIGGER AND HIGHER (2026-10-27, Josh: "the pills on desktop need to be
-       bigger. and higher up"): 40px, were 32, and the strip stands 32px off
-       the bottom edge instead of ~11. The space the page keeps clear of it
-       follows. */
+    /* BIGGER (2026-10-27, Josh: "the pills on desktop need to be bigger"):
+       40px, were 32. AT THE TOP AGAIN (same day, "put the pills at the top
+       again"): the strip stands in the header's row, centred between VSCN and
+       the account, and its panels DROP from it. */
     .community-bar {
       --bar-h: 40px;
       --bar-gap: 10px;
-      bottom: 32px;
-    }
-    .community-wrapper {
-      padding-bottom: 7rem;
-    }
-    .cgrid[data-pattern="pages"] {
-      --cpage-chrome-b: 7rem;
+      top: calc((var(--header-h) - var(--bar-h)) / 2);
+      bottom: auto;
     }
 
     .community-bar__in {
@@ -3182,9 +3177,9 @@ const searchIndex: SearchIndex = {
       flex: none;
       height: 100%;
       padding: 0 16px;
-      font-size: 0.92em !important;
-      font-weight: 600;
-      letter-spacing: 0.02em;
+      font-size: var(--fs-100) !important;
+      font-weight: 400;
+      letter-spacing: 0;
     }
     .view-seg .view-toggle__btn:hover,
     .view-seg .view-toggle__btn:focus-visible {
@@ -3204,12 +3199,12 @@ const searchIndex: SearchIndex = {
       content: none;
     }
 
-    /* The panels: cards above the strip, centred on it (Sort's at its end).
-       The stack is a zero-height line a gap above the row; each panel grows
-       upward from it. */
+    /* The panels: cards under the strip, centred on it (Sort's at its end).
+       The stack is a zero-height line a gap below the row; each panel grows
+       downward from it. */
     .community-bar__panels {
       position: absolute;
-      bottom: calc(var(--bar-h) + var(--bar-gap));
+      top: calc(var(--bar-h) + var(--bar-gap));
       left: 0;
       right: 0;
       /* Over the triggers: the search's field is laid across them. */
@@ -3222,7 +3217,7 @@ const searchIndex: SearchIndex = {
     }
     .bar-menu__panel {
       position: absolute;
-      bottom: 0;
+      top: 0;
       left: 50%;
       translate: -50% 0;
       /* Not capped at the strip's width, as inside the pill. */
@@ -3232,8 +3227,8 @@ const searchIndex: SearchIndex = {
       border: 1px solid var(--color-border);
       border-radius: 18px;
       background: var(--color-bg);
-      box-shadow: 0 -10px 30px rgb(0 0 0 / 0.08);
-      animation: cbar-rise 0.2s ease-out;
+      box-shadow: 0 10px 30px rgb(0 0 0 / 0.08);
+      animation: cbar-drop 0.2s ease-out;
     }
     .bar-menu__panel[hidden] {
       display: none;
@@ -3261,15 +3256,15 @@ const searchIndex: SearchIndex = {
     }
     .search__head {
       position: absolute;
-      top: auto;
-      bottom: calc(-1 * (var(--bar-h) + var(--bar-gap)));
+      top: calc(-1 * (var(--bar-h) + var(--bar-gap)));
+      bottom: auto;
       left: 0;
       right: 0;
       height: var(--bar-h);
       margin: 0;
       padding: 0;
       background: var(--color-bg);
-      animation: cbar-rise 0.2s ease-out;
+      animation: cbar-drop 0.2s ease-out;
     }
     .search__input {
       height: 100%;
@@ -3301,10 +3296,10 @@ const searchIndex: SearchIndex = {
       border: 1px solid var(--color-border);
       border-radius: 18px;
       background: var(--color-bg);
-      box-shadow: 0 -10px 30px rgb(0 0 0 / 0.08);
+      box-shadow: 0 10px 30px rgb(0 0 0 / 0.08);
       scrollbar-width: thin;
       scrollbar-color: var(--color-border) transparent;
-      animation: cbar-rise 0.2s ease-out;
+      animation: cbar-drop 0.2s ease-out;
     }
   }
 </style>
