@@ -37,7 +37,7 @@
   --color-bg: #fcfbfa;
   --color-border: #e0e0e0;
   --color-muted: #686868;
-  --color-text-placeholder: #707070;
+  --color-text-placeholder: #a4a4a4; /* 2026-10-27, Josh: a lighter grey (2.4:1 on paper, kept knowingly) */
   --color-error: #b83232;
   --color-success: #217a47;
   /* SHARP EDGES ALL OVER (2026-10-12, Josh: "use sharp edges all over the
@@ -49,6 +49,9 @@
   --radius-md: 0;
   --radius-lg: 0;
   --radius-xl: 0;
+  /* FIELDS are the one soft box among the sharp edges (2026-10-27, Josh's design file: slim,
+     30px, a 5px corner). Opted back in by the FIELDS rule beside CONTROLS. */
+  --radius-field: 5px;
   /* EVERY PAGER'S CHEVRON: the gallery card's and the project carousel's
      edge arrows and the lightbox's side arrows; the chevrons beside each
      "2 / 7" count (.pager-chev below) use the smaller pair after these. Two
@@ -615,8 +618,10 @@ fieldset > legend.label {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  padding: 5px 15px;
-  border: 1.5px solid var(--color-border);
+  /* SLIM (2026-10-27): a 30px box, 1px border (Josh's design file). */
+  min-height: 30px;
+  padding: 4px 11px;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font: inherit;
   font-size: var(--fs-95);
@@ -658,7 +663,7 @@ fieldset > legend.label {
   border: 1.5px solid #ddd;
   border-radius: var(--radius-sm);
   font-size: var(--fs-88);
-  font-weight: 600;
+  font-weight: 400;
   color: #333;
   cursor: pointer;
   transition:
@@ -883,7 +888,7 @@ label:has(> .picker-input:focus-visible) {
   font: inherit;
   font-family: "Archivo", sans-serif;
   font-size: var(--fs-100);
-  font-weight: 700;
+  font-weight: 400;
   cursor: pointer;
   transition: background 0.2s;
 }
@@ -930,7 +935,7 @@ label:has(> .picker-input:focus-visible) {
   font: inherit;
   font-family: "Archivo", sans-serif;
   font-size: var(--fs-95);
-  font-weight: 700;
+  font-weight: 400;
   cursor: pointer;
   text-decoration: none;
   transition: background 0.2s;
@@ -1360,6 +1365,8 @@ label:has(> .picker-input:focus-visible) {
     .profile-link,
     .seg,
     .seg > *,
+    .input,
+    .textarea,
     .tagchip,
     .mprof__val,
     .pdisc__val,
@@ -1423,6 +1430,12 @@ label:has(> .picker-input:focus-visible) {
   border-radius: var(--radius-pill) !important;
 }
 
+/* FIELDS: a 5px corner. Zero specificity like the rules around it, so a field drawn
+   inside a control that sets its own radius keeps that one. */
+:where(.input, .textarea) {
+  border-radius: var(--radius-field) !important;
+}
+
 /* TAGS: rounded corners, not a capsule — a tag is a label, not a button, even
    where it links somewhere. Declared after CONTROLS at the same specificity,
    so a tag drawn as a <button> (TagSelector's picked chips) is a tag. */
@@ -1480,7 +1493,7 @@ label:has(> .picker-input:focus-visible) {
   color: var(--color-muted);
   font-family: inherit;
   font-size: var(--fs-72);
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: 0.03em;
   line-height: 1.2;
   white-space: nowrap;
