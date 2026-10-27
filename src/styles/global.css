@@ -641,6 +641,56 @@ fieldset > legend.label {
   color: var(--color-text-placeholder);
 }
 .input[aria-invalid="true"] { border-color: var(--color-error); }
+
+/* TITLE INSIDE THE FIELD (2026-10-27, Josh's design file: "fields should have
+   their title inside the field when empty and when filled out just very small
+   at the top of it"). `.ff` wraps ONE control and its `.ff__title`: while the
+   control is empty its title sits inside the box where a placeholder would,
+   and once it has a value the title lifts out above the box's top-left corner.
+   The state is the control's own `:placeholder-shown`, so a value set by script
+   moves it too; every control in a `.ff` must therefore carry a non-empty
+   placeholder (a space will do), which is hidden here because the title IS the
+   hint. The room above a `.field`'s first `.ff` is the zone the lifted title
+   sits in, kept free so nothing jumps. Type is in type.css (FIELD TITLE). */
+.ff {
+  position: relative;
+}
+.field > .ff,
+.ff--zone {
+  margin-top: calc(var(--fs-label) + 5px);
+}
+.ff .input::placeholder {
+  color: transparent;
+}
+.ff__title {
+  position: absolute;
+  z-index: 1;
+  left: 11px;
+  top: 15px;
+  max-width: calc(100% - 22px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-placeholder);
+  line-height: 1;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition:
+    top 0.12s ease-out,
+    left 0.12s ease-out;
+}
+.ff--area > .ff__title {
+  top: 15px;
+}
+.ff:has(> :is(input, textarea):not(:placeholder-shown)) > .ff__title {
+  top: -4px;
+  left: 0;
+  max-width: 100%;
+  transform: translateY(-100%);
+}
+.ff:has(> .input[aria-invalid="true"]) > .ff__title {
+  color: var(--color-error);
+}
 .ui-dialog {
   max-width: min(32rem, calc(100vw - 2rem));
   padding: 1.5rem;

@@ -27,12 +27,16 @@ const title = currentLang === "de" ? "Konto" : "Account";
       </header>
       <form id="reset-form" class="action-form">
         <div class="field">
-          <label class="label" for="new-password">{currentLang === "de" ? "Neues Passwort" : "New password"}</label>
-          <input id="new-password" type="password" class="input" placeholder="••••••••" required autocomplete="new-password" />
+          <div class="ff">
+            <label class="ff__title" for="new-password">{currentLang === "de" ? "Neues Passwort" : "New password"}</label>
+            <input id="new-password" type="password" class="input" placeholder=" " required autocomplete="new-password" />
+          </div>
         </div>
         <div class="field">
-          <label class="label" for="confirm-password">{currentLang === "de" ? "Passwort bestätigen" : "Confirm password"}</label>
-          <input id="confirm-password" type="password" class="input" placeholder="••••••••" required autocomplete="new-password" />
+          <div class="ff">
+            <label class="ff__title" for="confirm-password">{currentLang === "de" ? "Passwort bestätigen" : "Confirm password"}</label>
+            <input id="confirm-password" type="password" class="input" placeholder=" " required autocomplete="new-password" />
+          </div>
         </div>
         <p role="alert" id="reset-error" class="msg-err" style="display:none;"></p>
         <div class="action-footer">
