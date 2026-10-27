@@ -476,51 +476,82 @@ import "../styles/type.css";
     .nav-links .nav-acct .nav-acct__lang {
       display: none;
     }
-    /* THE ACCOUNT MENU drops from the profile button, its right edge on the
-       button's: a paper card, the three tabs and the switch stacked. */
+    /* THE ACCOUNT EXPANDS INTO PILLS (2026-10-27, Josh: "not a dropdown, it
+       should expand into pills"; the mock's "Profile selection open"): the
+       profile button opens ACCOUNT / PROFILE / WORK as one outlined pill
+       growing out of it to the left, the current tab black, in the mock's
+       order. Closed it is nothing: no width, no outline, out of the tab
+       order. On the editor page it stands open (nav[data-editor], set by the
+       script below) and the page's own tab row is not drawn; elsewhere the
+       tabs are links into /profile?tab=. The switch is the corner's alone. */
     .nav-right-group {
       position: relative;
     }
     .nav-acct {
-      position: absolute;
-      top: calc(100% + 10px);
-      right: 0;
-      flex-direction: column;
-      align-items: stretch;
+      order: -1;
+      flex-direction: row;
+      align-items: center;
       gap: 2px;
-      min-width: 9rem;
-      padding: 6px;
+      box-sizing: border-box;
+      max-width: 0;
+      margin-right: -0.5rem;
+      padding: 2px 0;
+      overflow: hidden;
       /* !important: global.css squares every corner it does not exempt. */
-      border-radius: 14px !important;
-      background: var(--nav-paper);
-      box-shadow:
-        0 0 0 1px var(--color-border),
-        0 8px 24px rgb(0 0 0 / 0.1);
+      border-radius: var(--radius-pill) !important;
+      box-shadow: inset 0 0 0 1px transparent;
       opacity: 0;
-      transform: translateY(-4px);
       visibility: hidden;
       pointer-events: none;
       transition:
+        max-width 0.3s cubic-bezier(0.5, 0, 0.75, 0),
+        padding 0.3s cubic-bezier(0.5, 0, 0.75, 0),
         opacity 0.16s ease,
-        transform 0.2s ease,
-        visibility 0s linear 0.2s;
+        box-shadow 0.2s ease,
+        visibility 0s linear 0.3s;
     }
-    .nav-right-group:has(#nav-profile[aria-expanded="true"]) .nav-acct {
+    .nav-right-group:has(#nav-profile[aria-expanded="true"]) .nav-acct,
+    nav[data-editor].is-signed-in .nav-acct {
+      max-width: 24rem;
+      padding: 2px;
+      box-shadow: inset 0 0 0 1px var(--color-border);
       opacity: 1;
-      transform: none;
       visibility: visible;
       pointer-events: auto;
       transition:
-        opacity 0.16s ease,
-        transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        max-width 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+        padding 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.2s ease 0.05s,
+        box-shadow 0.2s ease;
     }
     .nav-links .nav-acct .nav-link {
-      padding: 8px 10px 7px;
-      border-radius: 8px !important;
+      display: flex;
+      align-items: center;
+      height: 26px;
+      padding: 0 12px;
+      border-radius: var(--radius-pill) !important;
     }
     .nav-links .nav-acct .nav-link:hover {
       text-decoration: none;
-      background: color-mix(in srgb, var(--nav-ink) 6%, var(--nav-paper));
+      background: color-mix(in srgb, var(--nav-ink) 7%, var(--nav-paper));
+    }
+    .nav-links .nav-acct .nav-link--tab.is-current,
+    .nav-links .nav-acct .nav-link--tab.is-current:visited,
+    .nav-links .nav-acct .nav-link--tab.is-current:hover {
+      background: var(--nav-ink);
+      color: var(--nav-paper);
+    }
+    .nav-links .nav-acct .nav-acct__lang {
+      display: none;
+    }
+    #nav-tab-account {
+      order: 1;
+    }
+    #nav-tab-profile {
+      order: 2;
+    }
+    #nav-tab-work {
+      order: 3;
     }
     /* The account's action is the one filled shape in the row. */
     .nav-links .nav-link--pill,
@@ -574,57 +605,8 @@ import "../styles/type.css";
       opacity: 0.85;
     }
 
-    /* THE EDITOR'S TABS IN THE HEADER (2026-10-27, Josh's top-bar mock,
-       Artboard 3): on /profile, signed in, the account menu's three tab
-       lines stand beside the avatar as one outlined pill, the current tab
-       black (ACCOUNT, PROFILE, WORK, in the mock's order). The editor's own
-       tab row is not drawn then. Elsewhere the same lines stay in the
-       avatar's drop-down. nav[data-editor] is set by the script below. */
-    nav[data-editor].is-signed-in .nav-acct {
-      position: static;
-      order: -1;
-      flex-direction: row;
-      align-items: center;
-      gap: 2px;
-      min-width: 0;
-      padding: 2px;
-      border-radius: var(--radius-pill) !important;
-      box-shadow: inset 0 0 0 1px var(--color-border);
-      opacity: 1;
-      transform: none;
-      visibility: visible;
-      pointer-events: auto;
-      transition: none;
-    }
-    nav[data-editor].is-signed-in .nav-links .nav-acct .nav-link {
-      display: flex;
-      align-items: center;
-      height: 26px;
-      padding: 0 12px;
-      border-radius: var(--radius-pill) !important;
-    }
-    /* The switch is the corner's alone on a desktop. */
-    nav[data-editor].is-signed-in .nav-links .nav-acct .nav-acct__lang {
-      display: none;
-    }
-    nav[data-editor].is-signed-in .nav-links .nav-acct .nav-link:hover {
-      background: color-mix(in srgb, var(--nav-ink) 7%, var(--nav-paper));
-    }
-    nav[data-editor].is-signed-in .nav-links .nav-acct .nav-link--tab.is-current,
-    nav[data-editor].is-signed-in .nav-links .nav-acct .nav-link--tab.is-current:visited,
-    nav[data-editor].is-signed-in .nav-links .nav-acct .nav-link--tab.is-current:hover {
-      background: var(--nav-ink);
-      color: var(--nav-paper);
-    }
-    nav[data-editor] #nav-tab-account {
-      order: 1;
-    }
-    nav[data-editor] #nav-tab-profile {
-      order: 2;
-    }
-    nav[data-editor] #nav-tab-work {
-      order: 3;
-    }
+    /* The editor's own tab row is not drawn once the header carries the
+       tabs (nav[data-editor] is set by the script below). */
     :root:has(nav[data-editor].is-signed-in) .section-tabs {
       display: none;
     }
