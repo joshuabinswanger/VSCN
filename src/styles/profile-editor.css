@@ -819,18 +819,112 @@
     margin-top: var(--project-gap);
   }
 
-  /* The added block's ✕, on the label's line at the right. */
-  .gallery-text-remove {
-    position: absolute;
-    top: -8px;
-    right: 0;
-    min-width: 26px;
-    height: 26px;
-    padding: 0;
+  /* THE BOX'S HEAD (2026-10-27, Josh: the side panel is obsolete, "fold all
+     the settings in there into the boxes"; mock vscn-desktop-editor): a work,
+     a carousel and an added text block each carry what the panel's deck held
+     on their own top line. The kind (a carousel's "Carousel · N works") at
+     the left; at the right size S | L, ↑ ↓ and a word to remove (a
+     carousel's: Dissolve). Everything else is the box's More fold. */
+  .gallery-boxhead {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 6px 10px;
+    min-height: 28px;
+    margin: 0 0 0.75rem;
   }
 
-  .gallery-text-remove:hover:not(:disabled) {
+  .gallery-boxhead > .gallery-boxhead__lbl {
+    min-width: 0;
+    margin: 0;
+    color: var(--color-muted);
+  }
+
+  .gallery-boxhead__keys {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .gallery-boxhead__grp {
+    display: flex;
+    gap: 3px;
+  }
+
+  .gallery-boxhead__grp[hidden] {
+    display: none;
+  }
+
+  .gallery-boxhead .gallery-key {
+    min-width: 28px;
+    height: 28px;
+    padding: 0 8px;
+  }
+
+  .gallery-boxhead__word {
+    padding: 4px 2px;
+    border: 0;
+    background: none;
     color: var(--color-error);
+    font-family: inherit;
+    font-size: var(--fs-72);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+  }
+
+  .gallery-boxhead__word:hover:not(:disabled) {
+    text-decoration: underline;
+  }
+
+  .gallery-boxhead__word:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .gallery-boxhead__word:focus-visible {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
+  /* A slide stands inside its carousel's box: no second head of its own
+     beyond the arrows and Remove, which move and remove the slide. */
+  .gallery-carousel-slide .gallery-boxhead__lbl {
+    visibility: hidden;
+  }
+
+  /* REPLACE sits on the picture, top right: the soft white pill the panel's
+     Edit key was. */
+  .gallery-thumb-replace {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 3;
+    padding: 4px 10px;
+    border: 0;
+    background: rgb(255 255 255 / 0.92);
+    box-shadow:
+      0 1px 0 rgb(0 0 0 / 0.08),
+      0 0 0 0.5px rgb(0 0 0 / 0.12),
+      0 4px 14px rgb(0 0 0 / 0.1);
+    border-radius: 999px !important;
+    color: var(--color-dark);
+    font-family: inherit;
+    font-size: var(--fs-72);
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+  }
+
+  .gallery-thumb-replace:hover:not(:disabled) {
+    background: #fff;
+  }
+
+  .gallery-thumb-replace:focus-visible {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
   }
 
   /* ── A CAROUSEL IN THE EDITOR (2026-10-23, documentation/20261023-work-

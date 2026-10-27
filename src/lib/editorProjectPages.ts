@@ -13,7 +13,7 @@
 //               and what a visitor gets (the controller narrows Preview to
 //               the project on the stage's "works:focus" event).
 //
-// Like editorSidePanel.ts it changes no editor code: the list stays what
+// It changes no editor code: the list stays what
 // profileEditorController renders. The cards are DRAWN FROM the blocks, and
 // a MutationObserver on the list redraws them and re-applies the level after
 // every re-render (moves, uploads and saves all replace the list's children).
@@ -165,8 +165,6 @@ document.addEventListener("astro:page-load", () => {
   const open = (id: string | null) => {
     if (id === focus) return;
     const was = focus;
-    // A pick in the side panel belongs to the page it was made on.
-    document.querySelector<HTMLButtonElement>("[data-epanel-done]")?.click();
     focus = id;
     remember(id);
     apply();

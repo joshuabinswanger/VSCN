@@ -1,7 +1,6 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import ProfileForm from "../../components/ProfileForm.astro";
-import EditorSidePanel from "../../components/profile/EditorSidePanel.astro";
 import type { Lang } from "../../i18n/utils";
 
 export function getStaticPaths() {
@@ -20,12 +19,11 @@ const title = currentLang === "de" ? "Profil bearbeiten — VSCN" : "Edit Profil
 {/* contentWide (2026-10-13): the Works tab renders the member page, which
     lays out on that measure since it went to two columns on a desktop. The
     Profile and Account tabs keep their own 560px column inside it. */}
-{/* THE SIDE-PANEL EDITOR IS THE EDITOR (2026-10-26, Josh: "make it the
-    default on dev"). Trialled at /profile-panel from 2026-10-25: picking a
-    work, a project or a carousel moves its fields into a panel at the right
-    (a full-screen page on a phone), and the profile saves on its own.
-    /profile-panel now redirects here (firebase.json). */}
+{/* THE EDITOR (2026-10-26/27): the profile saves on its own (autosave), and
+    each project is edited in place on its own page, every work, text block
+    and carousel in a box that carries its own settings. The side panel the
+    boxes used to lend their fields to is gone (2026-10-27). /profile-panel
+    redirects here (firebase.json). */}
 <Layout title={title} noindex lang={currentLang} contentWide>
   <ProfileForm lang={currentLang} autosave />
-  <EditorSidePanel lang={currentLang} />
 </Layout>
