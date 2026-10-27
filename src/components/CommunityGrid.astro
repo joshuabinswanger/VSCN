@@ -1870,7 +1870,9 @@ const searchIndex: SearchIndex = {
          margin resolves against this grid cell, whose right edge is the
          picture's air. -3px undoes the focus padding's pull (.ccard__words). */
       justify-self: start;
-      width: fit-content;
+      /* wordsFit.ts narrows it to the longest wrapped LINE (2026-10-27); until
+         it has measured, or on a phone, it is the max-content. */
+      width: var(--ccard-words-fit, fit-content);
       max-width: var(--ccard-words-min);
       margin-left: max(-3px, calc(100% - var(--ccard-words-min) - 3px));
       /* The name's top a little above the row's middle — where a centred
@@ -3325,3 +3327,5 @@ const searchIndex: SearchIndex = {
 <script>import "../lib/communityMotionController.ts";</script>
 
 <script>import "../lib/communityLightboxController.ts";</script>
+
+<script>import "../lib/wordsFit.ts";</script>
