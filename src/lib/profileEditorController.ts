@@ -2616,8 +2616,8 @@ document.addEventListener("astro:page-load", () => {
   let worksView: WorksView = "profile";
   let worksLang: Lang = remembered("vscn-works-lang") === "de" ? "de" : remembered("vscn-works-lang") === "en" ? "en" : lang;
 
-  // The switches are looked up in the whole form, not only in the bar:
-  // the side panel moves their row into itself (editorSidePanel.ts).
+  // The switches are looked up in the whole form, not only in the bar: the
+  // Edit | Preview pair stands in the bar's main row, the others below it.
   const press = (attr: string, value: string) => {
     form.querySelectorAll<HTMLButtonElement>(`[${attr}]`).forEach((btn) => {
       btn.setAttribute("aria-pressed", String(btn.getAttribute(attr) === value));
