@@ -1861,7 +1861,18 @@ const searchIndex: SearchIndex = {
     }
     :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__words) {
       align-self: start;
-      width: min(var(--ccard-words-min), 100%);
+      /* PROFILE HUGS THE LONGEST LINE (2026-10-27, Josh: "the profile button
+         about this far out from the end of the studio / person title, so it
+         never has a huge gap"): the column was a fixed --ccard-words-min, so
+         a short name left PROFILE a column's width away from it. It is now as
+         wide as its words (head, below, adds the overhang) up to that width,
+         and its LEFT edge stays where the fixed column's was: the percentage
+         margin resolves against this grid cell, whose right edge is the
+         picture's air. -3px undoes the focus padding's pull (.ccard__words). */
+      justify-self: start;
+      width: fit-content;
+      max-width: var(--ccard-words-min);
+      margin-left: max(-3px, calc(100% - var(--ccard-words-min) - 3px));
       /* The name's top a little above the row's middle — where a centred
          two-line name and role used to start. -3px undoes the focus
          padding's pull (.ccard__words). */
@@ -1874,6 +1885,11 @@ const searchIndex: SearchIndex = {
        right. From 2026-10-23 it stood down on the picture row's foot. */
     :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard .ccard__more) {
       margin-top: 2.5rem;
+    }
+    /* The overhang: PROFILE (right-aligned in the column) ends this far past
+       the longest of name and role, about its own width less a hair. */
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard .ccard__head) {
+      padding-right: 4.5rem;
     }
   }
   /* THE PICTURE'S SWIPE IS THE CAROUSEL'S (2026-10-16, Josh: "the vertical
