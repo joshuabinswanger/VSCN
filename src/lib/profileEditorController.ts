@@ -2531,7 +2531,16 @@ document.addEventListener("astro:page-load", () => {
    */
   function syncProfileView() {
     if (!profileViewRoot || !form.classList.contains("is-works") || worksView !== "profile") return;
-    const vm = currentViewModel();
+    const all = currentViewModel();
+    // ONE PROJECT'S PAGE (2026-10-27): with a project open
+    // (editorProjectPages.ts writes data-focus on the stage), Preview shows
+    // that project's works alone, as its page will.
+    // Looked up here, not through worksStage: that const is declared further
+    // down, and this can run before it is.
+    const focus = document.getElementById("works-stage")?.dataset.focus;
+    const vm = focus
+      ? { ...all, works: all.works.filter((w) => w.projectId === focus), projects: all.projects?.filter((p) => p.id === focus) }
+      : all;
     renderProfilePreview(profileViewRoot, worksMode === "edit" ? { ...vm, works: [], projects: [] } : vm, {
       defaultName: s["profile.view.defaultName"],
       noWorks: s["profile.view.noWorks"],
@@ -2720,6 +2729,16 @@ document.addEventListener("astro:page-load", () => {
   form.querySelectorAll<HTMLButtonElement>("[data-works-lang]").forEach((btn) => {
     btn.addEventListener("click", () => setWorksLang(btn.dataset.worksLang === "de" ? "de" : "en"));
   });
+  // A project opened or closed (editorProjectPages.ts): Preview narrows to
+  // it or widens back to the whole page.
+  worksStage?.addEventListener(
+    "works:focus",
+    () => {
+      syncProfileView();
+      refitInline();
+    },
+    { signal: lifecycle.signal },
+  );
 
   // THE PLUS (2026-10-13, Josh: "Images Videos and Project now can be added
   // via a Plus Button in the bottom bar"). A pull-down whose items are the

@@ -38,6 +38,22 @@ const t = useTranslations(lang);
         language defaults to the tab's locale, as the old Preview tab did. */
     }
     <div class="works-stage" id="works-stage" data-mode="edit" data-view="profile" data-lang={lang}>
+      {
+        /* THE PROJECT PAGES (2026-10-27, Josh, on the desktop editor mock:
+          "having a project view and then a project edit page it is very
+          nice"). The tab opens on a LIST of the projects, each a card with
+          an Edit key; Edit opens ONE project as the whole page, every block
+          edited in place, and the bar's Edit | Preview switches that page
+          between the form and what a visitor gets. editorProjectPages.ts
+          keeps the level on the stage (data-level, data-focus). This row is
+          the project page's way back, in both modes. */
+      }
+      <nav class="pp-top" data-pp-top hidden aria-label={t("profile.projects.back")}>
+        <button type="button" class="pp-top__back" data-pp-back
+          ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg><span>{t("profile.projects.back")}</span></button
+        >
+        <button type="button" class="pp-top__done" data-pp-done>{t("profile.panel.done")}</button>
+      </nav>
       <div class="works-view" data-works-pane="profile">
         <ProfileViewPreview lang={lang}>
           {
@@ -48,6 +64,13 @@ const t = useTranslations(lang);
               upload lands, so a row does not jump when it completes. */
           }
           <div slot="editor" class="works-editor" data-works-editor>
+            {
+              /* THE LIST LEVEL: one card per project block, drawn by
+                editorProjectPages.ts from the block itself (its words, its
+                first pictures, its work count and tags), so a card can never
+                disagree with the project page it opens. */
+            }
+            <section class="pp-cards" data-pp-cards aria-label={t("profile.projects.list")} hidden></section>
             {
               /* THE WAY IN WITHOUT A PROJECT (2026-10-16, Josh: "We need
                 always a Project, just a title is mandatory"). A member with
@@ -296,6 +319,32 @@ const t = useTranslations(lang);
         and blocks in one order, the gallery array's order. */
     }
     <ProjectEditor lang={lang} />
+    {
+      /* A PROJECT CARD on the list level, cloned by editorProjectPages.ts.
+        The whole card opens the project; the Edit key says so. */
+    }
+    <template data-pp-tpl="card">
+      <article class="pp-card" data-pp-card>
+        <div class="pp-card__head">
+          <h3 class="pp-card__title mprof__project-title" data-pp-card-title></h3>
+          <button type="button" class="pp-card__edit gallery-key gallery-key--edit" data-pp-card-edit
+            ><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg><span>{t("profile.deck.edit")}</span></button
+          >
+        </div>
+        <p class="pp-card__desc mprof__project-desc" data-pp-card-desc hidden></p>
+        <div class="pp-card__thumbs" data-pp-card-thumbs></div>
+        <p class="pp-card__meta t-label" data-pp-card-meta></p>
+      </article>
+    </template>
+    <div
+      hidden
+      data-pp-strings
+      data-untitled={t("profile.projects.untitled")}
+      data-works={t("profile.projects.works")}
+      data-work={t("profile.projects.work")}
+      data-edit-one={t("profile.projects.editOne")}
+    ></div>
+    <script>import "../../lib/editorProjectPages.ts";</script>
     {
       /* A CAROUSEL IN THE EDITOR (2026-10-23, documentation/20261023-work-
         carousels-design.md): one unit in its project's line, cloned by
