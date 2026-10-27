@@ -202,6 +202,20 @@ const t = useTranslations(lang);
         </button>
         <div class="ebar__rows" id="ebar-rows">
           <div class="ebar__row ebar__row--main">
+            {
+              /* EDIT | PREVIEW, PROMINENT (2026-10-27, the desktop editor
+                mock): on a project's page it stands in the bar's main row
+                beside Save, Edit first, a black thumb sliding between the
+                two (editorProjectPages.ts animates the switch itself). On
+                the project list there is nothing to preview, so it goes
+                (profile-editor.css, by the form's data-pp-level). Moved out
+                of the switches' row below, which the side panel takes. */
+            }
+            <div class="seg ebar__mode" role="group" aria-label={t("profile.works.mode")} data-works-mode-seg data-ebar-works hidden>
+              <span class="ebar__mode-thumb" aria-hidden="true"></span>
+              <button type="button" data-works-mode="edit" aria-pressed="true">{t("profile.works.mode.edit")}</button>
+              <button type="button" data-works-mode="preview" aria-pressed="false">{t("profile.works.mode.preview")}</button>
+            </div>
             <button
               type="button"
               id="ebar-add"
@@ -238,10 +252,6 @@ const t = useTranslations(lang);
             >
           </div>
           <div class="ebar__row ebar__group" data-ebar-works hidden>
-            <div class="seg ebar__mode" role="group" aria-label={t("profile.works.mode")} data-works-mode-seg data-ebar-works hidden>
-              <button type="button" data-works-mode="preview" aria-pressed="false">{t("profile.works.mode.preview")}</button>
-              <button type="button" data-works-mode="edit" aria-pressed="true">{t("profile.works.mode.edit")}</button>
-            </div>
             <div class="seg ebar__view" role="group" aria-label={t("profile.works.view")}>
               <button type="button" data-works-view="profile" aria-pressed="true">{t("profile.works.view.profile")}</button>
               <button type="button" data-works-view="card" aria-pressed="false">{t("profile.works.view.card")}</button>

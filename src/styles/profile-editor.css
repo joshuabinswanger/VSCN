@@ -2621,6 +2621,301 @@
   .works-stage :where(.gallery-row-tools *, .gallery-details *)::after {
     box-sizing: border-box;
   }
+
+  /* ── THE PROJECT PAGES (2026-10-27) ─────────────────────────
+     editorProjectPages.ts keeps the level on the stage (data-level: list |
+     project) and on the form (data-pp-level), so the bar outside the stage
+     follows it too. The desktop editor mock (design-kit/mockups/
+     vscn-desktop-editor.af, boards A, B and B2) is the reference. */
+
+  /* THE LIST: the cards stand in the works column; the blocks they are
+     drawn from wait behind them. */
+  .works-stage[data-level="list"] :is(#gallery-drop, #gallery-status, .gallery-notes) {
+    display: none;
+  }
+
+  .pp-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .pp-cards[hidden] {
+    display: none;
+  }
+
+  .pp-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px 22px 18px;
+    background: color-mix(in srgb, var(--color-dark) 5%, var(--color-bg));
+    border-radius: var(--radius-soft-block) !important;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .pp-card:hover {
+    background: color-mix(in srgb, var(--color-dark) 8%, var(--color-bg));
+  }
+
+  .pp-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .pp-card__title {
+    padding-top: 6px;
+  }
+
+  .pp-card__desc {
+    margin: 0;
+  }
+
+  .pp-card__desc[hidden] {
+    display: none;
+  }
+
+  .pp-card__thumbs {
+    display: flex;
+    gap: 8px;
+  }
+
+  .pp-card__thumbs:empty {
+    display: none;
+  }
+
+  .pp-card__thumb {
+    width: calc((100% - 24px) / 4);
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    background: var(--color-border);
+  }
+
+  .pp-card__meta {
+    margin: 0;
+    color: var(--color-muted);
+  }
+
+  /* THE PROJECT PAGE: the open block alone, the profile's column gone, and
+     a row at the top to go back by. */
+  .gallery-editor > .pp-off {
+    display: none !important;
+  }
+
+  .works-stage[data-level="project"] .mprof__aside {
+    display: none;
+  }
+
+  /* With the profile's column gone, the works column stands in the middle. */
+  @media (--bp-desktop) {
+    .works-stage[data-level="project"] .mprof {
+      grid-template-columns: minmax(0, 1fr) minmax(0, var(--works-w)) minmax(0, 1fr);
+    }
+  }
+
+  .pp-top {
+    position: sticky;
+    top: calc(var(--header-h, 56px) + 8px);
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: var(--works-w, 48rem);
+    margin: 0 auto 1.5rem;
+    pointer-events: none;
+  }
+
+  .pp-top[hidden] {
+    display: none;
+  }
+
+  .pp-top > button {
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 32px;
+    padding: 0 14px;
+    border: 0;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .pp-top__back {
+    padding-inline-start: 8px !important;
+    background: var(--color-bg);
+    color: var(--color-dark);
+    box-shadow: 0 0 0 1px var(--color-border);
+  }
+
+  .pp-top__back:hover {
+    background: color-mix(in srgb, var(--color-dark) 6%, var(--color-bg));
+  }
+
+  .pp-top__back svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .pp-top__done {
+    background: var(--color-dark);
+    color: var(--color-bg);
+  }
+
+  .pp-top > button:focus-visible {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
+  /* EDIT | PREVIEW, IN THE BAR'S MAIN ROW. Only on a project's page: the
+     list has nothing to preview. Two equal halves on the seg's track and a
+     black thumb under the chosen one, sliding across (a CSS transition; a
+     view transition carries it where the page crossfades, see the
+     top-level rules at the foot of this file). */
+  .profile-form[data-pp-level="list"] .ebar__mode,
+  .profile-form[data-pp-level="project"] .ebar__plus {
+    display: none !important;
+  }
+
+  .ebar .ebar__mode {
+    position: relative;
+    isolation: isolate;
+    display: inline-grid;
+    grid-template-columns: 1fr 1fr;
+    flex: 1 1 0;
+    min-width: 12rem;
+    height: 36px;
+    box-sizing: border-box;
+  }
+
+  .ebar .ebar__mode > button {
+    min-height: 0;
+    height: 100%;
+    padding-inline: 18px;
+    background: none;
+    box-shadow: none;
+  }
+
+  .ebar .ebar__mode > button[aria-pressed="true"] {
+    background: none;
+    box-shadow: none;
+    color: var(--color-bg);
+  }
+
+  .ebar__mode-thumb {
+    position: absolute;
+    z-index: -1;
+    top: 2px;
+    bottom: 2px;
+    left: 2px;
+    width: calc(50% - 3px);
+    background: var(--color-dark);
+    view-transition-name: works-mode-thumb;
+    transition: transform 0.34s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  .ebar__mode:has([data-works-mode="preview"][aria-pressed="true"]) .ebar__mode-thumb {
+    transform: translateX(calc(100% + 2px));
+  }
+
+  .ebar .ebar__mode > [data-works-mode="edit"] {
+    view-transition-name: works-mode-edit;
+  }
+
+  .ebar .ebar__mode > [data-works-mode="preview"] {
+    view-transition-name: works-mode-preview;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ebar__mode-thumb {
+      transition: none;
+    }
+  }
+
+  /* FLOATING LABELS (2026-10-27, the mock: "instead of having a title above
+     the pill by default have the description in the pill; only on click it
+     should animate to above it"). The label rests INSIDE the box, small and
+     muted over the value; an empty box shows the label alone, in the
+     placeholder's place, and keeps its hint until it is focused; focus
+     lifts the label out above the box, in ink. The space above is held in
+     every state, so nothing below moves when it rises. Only fields with a
+     label: a text block's box has none. */
+  .gfield:has(> .gfield__lbl) {
+    position: relative;
+    padding-top: 1.15rem;
+    gap: 0;
+  }
+
+  .gfield > .gfield__lbl {
+    position: absolute;
+    z-index: 1;
+    top: calc(1.15rem + 8px);
+    left: 12px;
+    padding: 0;
+    pointer-events: none;
+    transform-origin: left top;
+    transition:
+      transform 0.22s cubic-bezier(0.25, 1, 0.5, 1),
+      color 0.22s ease;
+  }
+
+  .gfield:has(> .gfield__lbl) > .gallery-inline {
+    padding-top: 24px;
+  }
+
+  /* Empty and at rest: the label is the placeholder, down in the middle of
+     the box; the hint waits for focus. */
+  .gfield:has(> .gallery-inline:placeholder-shown):not(:focus-within) > .gfield__lbl {
+    transform: translateY(13px);
+  }
+
+  .gfield:has(> .gfield__lbl) > .gallery-inline:not(:focus)::placeholder {
+    color: transparent;
+  }
+
+  .gfield:focus-within > .gfield__lbl {
+    transform: translateY(calc(-1.15rem - 8px));
+    color: var(--color-dark);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .gfield > .gfield__lbl {
+      transition: none;
+    }
+  }
+}
+
+
+/* THE EDIT | PREVIEW CROSSFADE (2026-10-27, editorProjectPages.ts): only
+   while the project page switches modes. The page crossfades; the bar's
+   thumb, named in the .ebar__mode rules above, slides from its old box to
+   its new one, under the two words, which crossfade their colour. */
+html.pp-switching::view-transition-old(root),
+html.pp-switching::view-transition-new(root) {
+  animation-duration: 0.3s;
+  animation-timing-function: ease;
+}
+
+html.pp-switching::view-transition-group(works-mode-thumb) {
+  animation-duration: 0.34s;
+  animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+html.pp-switching::view-transition-old(works-mode-thumb) {
+  display: none;
+}
+
+html.pp-switching::view-transition-new(works-mode-thumb) {
+  animation: none;
 }
 
 /* At the top level: an @keyframes inside a style rule is invalid (see
