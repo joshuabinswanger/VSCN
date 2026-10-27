@@ -54,7 +54,6 @@ const noteIdDe = `${idDe}-note`;
 
 <div class="field bifield" data-bifield>
   <div class="bifield__head">
-    <label class="label" for={id} data-bifield-label>{label}</label>
     <div class="bifield__switch seg" role="group" aria-label={label}>
       <button
         type="button"
@@ -80,7 +79,8 @@ const noteIdDe = `${idDe}-note`;
       note sits under the control. */}
   <div class="bifield__pane" data-bifield-pane="en">
     {tip && note && <p id={noteId} class="field-note" data-tip hidden>{note}</p>}
-    <div class="infotip-field">
+    <div class={rows ? "infotip-field ff ff--area" : "infotip-field ff"}>
+      <label class="ff__title" for={id}>{label}</label>
       {
         rows ? (
           <textarea id={id} rows={rows} maxlength={maxlength} class="input textarea" aria-label={labelEn} placeholder={placeholder} aria-describedby={note ? noteId : undefined} />
@@ -95,7 +95,8 @@ const noteIdDe = `${idDe}-note`;
 
   <div class="bifield__pane" data-bifield-pane="de" hidden>
     {tip && noteDe && <p id={noteIdDe} class="field-note" data-tip hidden>{noteDe}</p>}
-    <div class="infotip-field">
+    <div class={rows ? "infotip-field ff ff--area" : "infotip-field ff"}>
+      <label class="ff__title" for={idDe}>{label}</label>
       {
         rows ? (
           <textarea id={idDe} rows={rows} maxlength={maxlength} class="input textarea" lang="de" aria-label={labelDe} placeholder={placeholderDe} aria-describedby={noteDe ? noteIdDe : undefined} />
@@ -126,7 +127,7 @@ const noteIdDe = `${idDe}-note`;
   .bifield__head {
     display: flex;
     align-items: flex-end;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 12px;
   }
 
@@ -163,8 +164,5 @@ const noteIdDe = `${idDe}-note`;
     root.querySelectorAll<HTMLElement>("[data-bifield-pane]").forEach((pane) => {
       pane.hidden = pane.dataset.bifieldPane !== lang;
     });
-    // The visible label names whichever control is showing.
-    const label = root.querySelector<HTMLLabelElement>("[data-bifield-label]");
-    if (label && btn.dataset.for) label.htmlFor = btn.dataset.for;
   });
 </script>

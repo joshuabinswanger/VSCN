@@ -34,8 +34,10 @@ const t = useTranslations(lang);
     <MemberTypeSelector lang={lang} note={false} />
 
     <div class="field">
-      <label class="label" for="name">{t("profile.label.name")}</label>
-      <Input id="name" type="text" class="input" maxlength={PROFILE_TEXT_CAPS.displayName} placeholder={t("profile.ph.name")} />
+      <div class="ff">
+        <label class="ff__title" for="name">{t("profile.label.name")}</label>
+        <Input id="name" type="text" class="input" maxlength={PROFILE_TEXT_CAPS.displayName} placeholder={t("profile.ph.name")} />
+      </div>
     </div>
 
     {
@@ -56,19 +58,23 @@ const t = useTranslations(lang);
     />
 
     <div class="field">
-      <label class="label" for="affiliation">{t("profile.label.affiliation")}</label>
-      <input
-        id="affiliation"
-        type="text"
-        class="input"
-        maxlength={PROFILE_TEXT_CAPS.affiliation}
-        placeholder={t("profile.ph.affiliation")}
-      />
+      <div class="ff">
+        <label class="ff__title" for="affiliation">{t("profile.label.affiliation")}</label>
+        <input
+          id="affiliation"
+          type="text"
+          class="input"
+          maxlength={PROFILE_TEXT_CAPS.affiliation}
+          placeholder={t("profile.ph.affiliation")}
+        />
+      </div>
     </div>
 
     <div class="field">
-      <label class="label" for="location">{t("profile.label.location")}</label>
-      <Input id="location" type="text" class="input" maxlength={PROFILE_TEXT_CAPS.location} placeholder={t("profile.ph.location")} />
+      <div class="ff">
+        <label class="ff__title" for="location">{t("profile.label.location")}</label>
+        <Input id="location" type="text" class="input" maxlength={PROFILE_TEXT_CAPS.location} placeholder={t("profile.ph.location")} />
+      </div>
     </div>
 
     <fieldset class="target-audience-field">
