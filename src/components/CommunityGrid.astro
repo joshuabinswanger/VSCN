@@ -611,12 +611,6 @@ const searchIndex: SearchIndex = {
               ></circle><path d="M7.7 7.7L11 11" fill="none" stroke="currentColor" stroke-width="1.3"
               ></path></svg
             >
-            {
-              /* The word beside the glass, on a desktop only (2026-10-26, Josh's
-                mock: a small "Search" pill in the header). The phone's pill
-                keeps the glass alone. */
-            }
-            <span class="search__word">{t("community.search")}</span>
           </button>
         </div>
         <div class="bar-menu tag-filter">
@@ -630,6 +624,16 @@ const searchIndex: SearchIndex = {
             <span id="tag-filter-label" data-rest={t("community.filter.tags")}>
               {t("community.filter.tags")}
             </span>
+            {
+              /* The round button's face on a desktop (2026-10-27, the mock's
+                sliders); the word above stays as its name. */
+            }
+            <svg class="bar-ico" viewBox="0 0 18 18" aria-hidden="true"
+              ><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                ><path d="M2 5.5h14M2 12.5h14"></path><circle cx="6" cy="5.5" r="2" fill="var(--color-bg)"
+                ></circle><circle cx="12" cy="12.5" r="2" fill="var(--color-bg)"></circle></g
+              ></svg
+            >
             <svg class="bar-menu__chev" viewBox="0 0 10 6" aria-hidden="true"
               ><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.2"
               ></path></svg
@@ -661,6 +665,11 @@ const searchIndex: SearchIndex = {
             <span id="sort-menu-label" data-rest={t("community.sort")}>
               {t("community.sort")}
             </span>
+            <svg class="bar-ico" viewBox="0 0 18 18" aria-hidden="true"
+              ><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                ><path d="M6 15V3M2.8 6.2L6 3l3.2 3.2"></path><path d="M12 3v12M8.8 11.8L12 15l3.2-3.2"></path></g
+              ></svg
+            >
             <svg class="bar-menu__chev" viewBox="0 0 10 6" aria-hidden="true"
               ><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.2"
               ></path></svg
@@ -3026,33 +3035,32 @@ const searchIndex: SearchIndex = {
     }
   }
 
-  /* ── THE BAR IN THE HEADER, ON A DESKTOP (2026-10-26) ──────────
-     Josh's top-bar mock (design-kit/mockups/vscn-desktop-topbar.af, from a
-     studio site's header): one row, VSCN and the two links at the left, the
-     directory's controls in the middle, LOGIN and SIGN UP at the right. The
-     bottom island is gone on a desktop; the SAME element, controller and
-     panels stay, restyled:
-       · the capsule at rest is nothing — each control is its own outlined
-         pill (search, the three views as tabs, Tags, and Sort on Images);
-       · the panels DROP from under the row as rounded cards instead of
-         growing the pill upward, and the size animation (sizeBar) is not
-         run, see setBarMenu;
-       · the search opens IN PLACE: its field is lifted over the row (the
-         head, absolutely positioned up by the row's height), the results
-         card under it.
-     The row's width is whatever its pills ask; the track keeps floors
-     either side for the title, the links and the account (--bar-reserve-*),
-     and a window too narrow for all of it drops the "Search" word first.
-     Phones are untouched. */
+  /* ── THE BAR ON A DESKTOP: A FLOATING STRIP (2026-10-27) ──────
+     Josh's top-bar mock (design-kit/mockups/vscn-desktop-topbar.af,
+     Artboard 2): the header is only VSCN and the account, and the
+     directory's controls float at the bottom centre as one strip of separate
+     pills, smaller than before (32px, were 36):
+       · search, Tags and Sort are round buttons with a drawn icon (their
+         words stay as the button's name, clipped); Tags fills black while a
+         tag is set;
+       · the three views are one segmented track, the current one black;
+       · the capsule at rest is nothing — each control has its own hairline;
+       · the panels RISE from the strip as rounded cards instead of growing
+         the pill, so the size animation (sizeBar) is not run, see setBarMenu;
+       · the search opens IN PLACE: its field is laid over the strip, the
+         results card above it.
+     From 2026-10-26 to 2026-10-27 the same controls stood in the header row
+     (595609c); the view tabs, the per-control pills and the panels as cards
+     come from that pass. Phones are untouched. */
   .view-seg,
-  .search__word {
+  .bar-ico {
     display: none;
   }
 
-  @keyframes cbar-drop {
+  @keyframes cbar-rise {
     from {
       opacity: 0;
-      transform: translateY(-4px);
+      transform: translateY(4px);
     }
     to {
       opacity: 1;
@@ -3062,15 +3070,8 @@ const searchIndex: SearchIndex = {
 
   @media (--bp-desktop) {
     .community-bar {
-      --bar-h: 36px;
+      --bar-h: 32px;
       --bar-gap: 8px;
-      --bar-reserve-left: 320px;
-      --bar-reserve-right: 220px;
-      top: 0;
-      bottom: auto;
-      height: var(--header-h);
-      align-items: center;
-      grid-template-columns: minmax(var(--bar-reserve-left), 1fr) auto minmax(var(--bar-reserve-right), 1fr);
     }
 
     .community-bar__in {
@@ -3108,13 +3109,12 @@ const searchIndex: SearchIndex = {
 
     /* A pill each: the border colour's hairline, paper inside. */
     .bar-menu__trigger {
+      position: relative;
       box-sizing: border-box;
       height: var(--bar-h);
-      padding: 0 16px;
+      padding: 0 14px;
       gap: 8px;
       border: 1px solid var(--color-border);
-      font-weight: 600;
-      letter-spacing: 0.02em;
     }
     .bar-menu__trigger:hover,
     .bar-menu__trigger[aria-expanded="true"],
@@ -3122,33 +3122,36 @@ const searchIndex: SearchIndex = {
       border-color: var(--color-dark);
     }
 
-    .search-menu .bar-menu__trigger {
-      padding-inline: 14px 18px;
-      color: var(--color-muted);
+    /* Search, Tags and Sort are circles holding an icon; the word is the
+       button's name only. */
+    .search-menu .bar-menu__trigger,
+    .tag-filter .bar-menu__trigger,
+    .sort-menu .bar-menu__trigger {
+      width: var(--bar-h);
+      padding: 0;
+      justify-content: center;
     }
-    .search-menu .bar-menu__trigger:hover,
-    .search-menu .bar-menu__trigger[aria-expanded="true"] {
-      color: var(--color-bg);
+    .tag-filter .bar-menu__trigger > span,
+    .sort-menu .bar-menu__trigger > span {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
-    .search__word {
-      display: inline;
-      font-weight: 500;
-    }
-    @media (max-width: 1199px) {
-      .search__word {
-        display: none;
-      }
-      .search-menu .bar-menu__trigger {
-        padding-inline: 14px;
-      }
-    }
-
-    /* The chevron points DOWN at rest — the panels drop now. */
     .bar-menu__chev {
-      transform: rotate(180deg);
+      display: none;
     }
-    .bar-menu__trigger[aria-expanded="true"] .bar-menu__chev {
-      transform: none;
+    .search__glass {
+      width: 15px;
+      height: 15px;
+    }
+    .bar-ico {
+      display: block;
+      width: 16px;
+      height: 16px;
+      flex: none;
     }
 
     /* The segmented views: a track, the current one a black pill in it. */
@@ -3157,7 +3160,7 @@ const searchIndex: SearchIndex = {
       align-items: center;
       box-sizing: border-box;
       height: var(--bar-h);
-      padding: 3px;
+      padding: 2px;
       gap: 2px;
       border: 1px solid var(--color-border);
       border-radius: var(--radius-pill);
@@ -3167,8 +3170,8 @@ const searchIndex: SearchIndex = {
       display: block;
       flex: none;
       height: 100%;
-      padding: 0 14px;
-      font-size: 1em !important;
+      padding: 0 12px;
+      font-size: 0.92em !important;
       font-weight: 600;
       letter-spacing: 0.02em;
     }
@@ -3190,12 +3193,16 @@ const searchIndex: SearchIndex = {
       content: none;
     }
 
-    /* The panels: cards under the row, centred on it (Sort's at its end). */
+    /* The panels: cards above the strip, centred on it (Sort's at its end).
+       The stack is a zero-height line a gap above the row; each panel grows
+       upward from it. */
     .community-bar__panels {
       position: absolute;
-      top: calc(var(--bar-h) + var(--bar-gap));
+      bottom: calc(var(--bar-h) + var(--bar-gap));
       left: 0;
       right: 0;
+      /* Over the triggers: the search's field is laid across them. */
+      z-index: 2;
       display: block;
       pointer-events: none;
     }
@@ -3204,16 +3211,18 @@ const searchIndex: SearchIndex = {
     }
     .bar-menu__panel {
       position: absolute;
-      top: 0;
+      bottom: 0;
       left: 50%;
       translate: -50% 0;
+      /* Not capped at the strip's width, as inside the pill. */
+      max-width: none;
       margin: 0;
       pointer-events: auto;
       border: 1px solid var(--color-border);
       border-radius: 18px;
       background: var(--color-bg);
-      box-shadow: 0 10px 30px rgb(0 0 0 / 0.08);
-      animation: cbar-drop 0.2s ease-out;
+      box-shadow: 0 -10px 30px rgb(0 0 0 / 0.08);
+      animation: cbar-rise 0.2s ease-out;
     }
     .bar-menu__panel[hidden] {
       display: none;
@@ -3224,13 +3233,13 @@ const searchIndex: SearchIndex = {
       translate: none;
     }
 
-    /* The search: no card of its own — the head over the row, the results
-       card under it. */
+    /* The search: no card of its own — the field laid over the strip, the
+       results card above it. */
     .search__panel {
-      left: 0;
-      right: 0;
-      translate: none;
-      width: auto;
+      left: 50%;
+      right: auto;
+      translate: -50% 0;
+      width: min(34rem, calc(100vw - 48px));
       max-height: none;
       overflow: visible;
       padding: 0;
@@ -3241,22 +3250,23 @@ const searchIndex: SearchIndex = {
     }
     .search__head {
       position: absolute;
-      top: calc(-1 * (var(--bar-h) + var(--bar-gap)));
+      top: auto;
+      bottom: calc(-1 * (var(--bar-h) + var(--bar-gap)));
       left: 0;
       right: 0;
       height: var(--bar-h);
       margin: 0;
       padding: 0;
       background: var(--color-bg);
-      animation: cbar-drop 0.2s ease-out;
+      animation: cbar-rise 0.2s ease-out;
     }
     .search__input {
       height: 100%;
-      padding: 0 88px 0 42px;
+      padding: 0 84px 0 38px;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Ccircle cx='5' cy='5' r='3.6' fill='none' stroke='%23000' stroke-width='1.3'/%3E%3Cpath d='M7.7 7.7L11 11' fill='none' stroke='%23000' stroke-width='1.3'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
-      background-position: 16px 50%;
-      background-size: 13px;
+      background-position: 14px 50%;
+      background-size: 12px;
       border-color: var(--color-border);
     }
     .search__input:focus {
@@ -3266,10 +3276,10 @@ const searchIndex: SearchIndex = {
     .search__cancel {
       display: block;
       position: absolute;
-      right: 6px;
+      right: 4px;
       top: 50%;
       translate: 0 -50%;
-      padding: 0.35rem 0.7rem;
+      padding: 0.3rem 0.7rem;
     }
     .search__results {
       box-sizing: border-box;
@@ -3280,10 +3290,10 @@ const searchIndex: SearchIndex = {
       border: 1px solid var(--color-border);
       border-radius: 18px;
       background: var(--color-bg);
-      box-shadow: 0 10px 30px rgb(0 0 0 / 0.08);
+      box-shadow: 0 -10px 30px rgb(0 0 0 / 0.08);
       scrollbar-width: thin;
       scrollbar-color: var(--color-border) transparent;
-      animation: cbar-drop 0.2s ease-out;
+      animation: cbar-rise 0.2s ease-out;
     }
   }
 </style>

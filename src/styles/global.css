@@ -19,10 +19,9 @@
   /* The header row: one VSCN at the left, MENU at the right (Layout.astro,
      Navbar.astro). */
   --header-h: 56px;
-  /* The desktop header's side inset, and the room the title takes before the
-     links start (30px VSCN, ~88px wide, plus a gap). See Layout.astro. */
+  /* The desktop header's side inset: the title and the account stand this far
+     in from the window's edges. See Layout.astro, Navbar.astro. */
   --header-side: 30px;
-  --header-brand-room: 118px;
   /* A PICTURE'S ENTRANCE, one for the site (2026-10-23, Josh: "the zoom in
      was nicer … not the frame only but the whole image … make it global"):
      the whole picture fades in and grows to its size. Used by the Portfolios
@@ -217,21 +216,9 @@ nav[data-astro-transition-persist="navbar"] {
 :root[data-header-away] nav[data-astro-transition-persist="navbar"] {
   transform: translateY(calc(-1 * var(--header-h) - 6px));
 }
-/* The directory's controls are part of that row on a desktop (2026-10-26,
-   CommunityGrid.astro) and go with it. The phone's bar is a bottom island and
-   stays. */
-@media (--bp-desktop) {
-  .community-bar {
-    transition: transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
-  }
-  :root[data-header-away] .community-bar {
-    transform: translateY(calc(-1 * var(--header-h) - 6px));
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .brand-ticker[data-wordmark="compact"],
-  nav[data-astro-transition-persist="navbar"],
-  .community-bar {
+  nav[data-astro-transition-persist="navbar"] {
     transition: none;
   }
 }

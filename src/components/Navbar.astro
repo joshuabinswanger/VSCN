@@ -383,15 +383,23 @@ import "../styles/type.css";
     nav[data-astro-transition-persist="navbar"] {
       left: 0;
       /* TO THE WINDOW'S EDGES (2026-10-26, Josh's top-bar mock): the title at
-         the left, the links after it, the account at the right, all on
-         --header-side, no longer on main's text edges. */
-      padding: 0 var(--header-side) 0 calc(var(--header-side) + var(--header-brand-room));
+         the left and the account at the right, both on --header-side, no
+         longer on main's text edges. */
+      padding: 0 var(--header-side);
       pointer-events: none;
     }
     .nav-links .nav-link {
       pointer-events: auto;
     }
     .nav-menu-btn {
+      display: none;
+    }
+    /* NO INFO / COMMUNITY IN A DESKTOP'S HEADER (2026-10-27, Josh, on the
+       top-bar mock: "drop INFO/COMMUNITY from the desktop header"): VSCN
+       goes home and the account stands alone at the right. The phone's sheet
+       keeps both words. */
+    #nav-info,
+    #nav-community {
       display: none;
     }
     .nav-links {
@@ -528,16 +536,21 @@ import "../styles/type.css";
     .nav-links .nav-link--pill.nav-link--active {
       text-decoration: none;
     }
+    /* A SIZE DOWN (2026-10-27, Josh: "make the pills a bit smaller"): SIGN UP
+       25px tall, was 27. */
+    .nav-links .nav-link--pill {
+      --nav-chip-pad: 7px 11px 6px;
+    }
     /* PROFILE: a smaller chip than SIGN UP, and once the member has a photo
-       the chip is the photo itself — a 30px disc on the header's line, the
+       the chip is the photo itself — a 28px disc on the header's line, the
        word kept for the screen reader only. */
     .nav-links .nav-link--profile {
-      --nav-chip-pad: 6px 9px 5px;
+      --nav-chip-pad: 5px 8px 4px;
     }
     .nav-links .nav-link--profile.has-pic {
       padding: 0;
-      width: 30px;
-      height: 30px;
+      width: 28px;
+      height: 28px;
       overflow: hidden;
       border-radius: 50%;
       box-shadow: inset 0 0 0 1px var(--nav-ink);
@@ -559,6 +572,61 @@ import "../styles/type.css";
     .nav-links .nav-link--profile.has-pic:hover {
       text-decoration: none;
       opacity: 0.85;
+    }
+
+    /* THE EDITOR'S TABS IN THE HEADER (2026-10-27, Josh's top-bar mock,
+       Artboard 3): on /profile, signed in, the account menu's three tab
+       lines stand beside the avatar as one outlined pill, the current tab
+       black (ACCOUNT, PROFILE, WORK, in the mock's order). The editor's own
+       tab row is not drawn then. Elsewhere the same lines stay in the
+       avatar's drop-down. nav[data-editor] is set by the script below. */
+    nav[data-editor].is-signed-in .nav-acct {
+      position: static;
+      order: -1;
+      flex-direction: row;
+      align-items: center;
+      gap: 2px;
+      min-width: 0;
+      padding: 2px;
+      border-radius: var(--radius-pill) !important;
+      box-shadow: inset 0 0 0 1px var(--color-border);
+      opacity: 1;
+      transform: none;
+      visibility: visible;
+      pointer-events: auto;
+      transition: none;
+    }
+    nav[data-editor].is-signed-in .nav-links .nav-acct .nav-link {
+      display: flex;
+      align-items: center;
+      height: 26px;
+      padding: 0 12px;
+      border-radius: var(--radius-pill) !important;
+    }
+    /* The switch is the corner's alone on a desktop. */
+    nav[data-editor].is-signed-in .nav-links .nav-acct .nav-acct__lang {
+      display: none;
+    }
+    nav[data-editor].is-signed-in .nav-links .nav-acct .nav-link:hover {
+      background: color-mix(in srgb, var(--nav-ink) 7%, var(--nav-paper));
+    }
+    nav[data-editor].is-signed-in .nav-links .nav-acct .nav-link--tab.is-current,
+    nav[data-editor].is-signed-in .nav-links .nav-acct .nav-link--tab.is-current:visited,
+    nav[data-editor].is-signed-in .nav-links .nav-acct .nav-link--tab.is-current:hover {
+      background: var(--nav-ink);
+      color: var(--nav-paper);
+    }
+    nav[data-editor] #nav-tab-account {
+      order: 1;
+    }
+    nav[data-editor] #nav-tab-profile {
+      order: 2;
+    }
+    nav[data-editor] #nav-tab-work {
+      order: 3;
+    }
+    :root:has(nav[data-editor].is-signed-in) .section-tabs {
+      display: none;
     }
   }
   /* The picture is a desktop thing: the phone's sheet shows the word. */
@@ -903,6 +971,12 @@ import "../styles/type.css";
       if (profile && !phone.matches) {
         event.preventDefault();
         event.stopPropagation();
+        // On the editor the tabs are in the header already: the avatar is
+        // the way back to the first one.
+        if (profile.closest("nav")?.hasAttribute("data-editor")) {
+          document.getElementById("tab-profile")?.click();
+          return;
+        }
         setAccountMenu(profile.getAttribute("aria-expanded") !== "true");
         return;
       }
@@ -1017,6 +1091,36 @@ import "../styles/type.css";
     if (to) setActiveLink(to.pathname);
   });
 
+  // THE EDITOR'S TABS IN THE HEADER (see nav[data-editor] in the style
+  // block): which tab is current is the editor's own aria-selected, watched
+  // for as long as the page stands. Set on page load, once the page's own
+  // tab row is in the document.
+  let tabObserver: MutationObserver | null = null;
+  function syncEditorTabs() {
+    const current = document.querySelector<HTMLElement>('#section-tabs [role="tab"][aria-selected="true"]')?.dataset
+      .section;
+    document.querySelectorAll<HTMLElement>(".nav-link--tab").forEach((link) => {
+      link.classList.toggle("is-current", link.dataset.tab === current);
+    });
+  }
+  function setEditorMode() {
+    tabObserver?.disconnect();
+    tabObserver = null;
+    const nav = document.querySelector<HTMLElement>('nav[data-astro-transition-persist="navbar"]');
+    if (!nav) return;
+    const tabs = document.getElementById("section-tabs");
+    if (!tabs) {
+      nav.removeAttribute("data-editor");
+      document.querySelectorAll(".nav-link--tab").forEach((link) => link.classList.remove("is-current"));
+      return;
+    }
+    nav.setAttribute("data-editor", "");
+    syncEditorTabs();
+    tabObserver = new MutationObserver(syncEditorTabs);
+    tabObserver.observe(tabs, { subtree: true, attributes: true, attributeFilter: ["aria-selected"] });
+  }
+  document.addEventListener("astro:before-swap", () => tabObserver?.disconnect());
+
   function setActiveLink(pathname = window.location.pathname) {
     const path = normalisePath(pathname);
     document.querySelectorAll<HTMLAnchorElement>(".nav-link").forEach((link) => {
@@ -1113,6 +1217,7 @@ import "../styles/type.css";
     const lang = (document.documentElement.lang ?? "en") as Lang;
     updateNavLinks(lang === "de" ? "de" : "en", window.location.pathname);
     setActiveLink();
+    setEditorMode();
 
     const navJoin = document.getElementById("nav-join");
     const navProfile = document.getElementById("nav-profile");
