@@ -38,6 +38,7 @@
   --color-border: #e0e0e0;
   --color-muted: #686868;
   --color-text-placeholder: #a4a4a4; /* 2026-10-27, Josh: a lighter grey (2.4:1 on paper, kept knowingly) */
+  --color-tint: #ecebea; /* 2026-10-28, vscn-design.af board 17: a selected key's fill, under an ink border */
   --color-error: #b83232;
   --color-success: #217a47;
   /* SHARP EDGES ALL OVER (2026-10-12, Josh: "use sharp edges all over the
@@ -746,20 +747,25 @@ fieldset > legend.label {
    Add .optchip--on to the element (or let :has(input:checked) do it for a
    label wrapping a hidden input) — never restate these values locally. Local
    rules that set size, shape, border or colour here are the bug this block
-   exists to prevent; components keep only their own layout. */
+   exists to prevent; components keep only their own layout.
+
+   THE CHIP MASTER (2026-10-28, vscn-design.af board 17, chip / chip-selected):
+   28px tall, 13px each side, a 1px border, Medium 11 in ink. */
 .optchip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.45rem 0.9rem;
-  border: 1.5px solid var(--color-border);
+  box-sizing: border-box;
+  min-height: 28px;
+  padding: 0.3rem 13px;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  background: transparent;
-  color: #555;
+  background: var(--color-bg);
+  color: var(--color-dark);
   font-family: "Archivo", sans-serif;
-  font-size: var(--fs-88);
-  font-weight: 400;
+  font-size: var(--fs-74);
+  font-weight: 500;
   line-height: 1.2;
   text-align: center;
   cursor: pointer;
