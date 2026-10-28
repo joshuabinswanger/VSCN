@@ -486,15 +486,9 @@
 }
 
 /* FIELD TITLE (2026-10-27, Josh's design file): the title of a `.ff` field.
-   Inside the empty box it speaks at the field's own size, plain; lifted above
-   a filled box it is the LABEL voice, a hair smaller. Layout is in global.css. */
+   Since 2026-10-28 the LABEL voice in every state, as the editor's floating
+   labels are: only its place changes. Layout is in global.css. */
 .ff__title {
-  font-size: var(--fs-95);
-  font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
-}
-.ff:has(> :is(input, textarea):not(:placeholder-shown)) > .ff__title {
   font-size: var(--fs-label);
   font-weight: 600;
   letter-spacing: 0.08em;

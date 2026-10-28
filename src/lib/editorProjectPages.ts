@@ -5,8 +5,8 @@
 //
 // Two levels on the Works tab, kept on the stage as data-level:
 //   "list"    — every project as a card (its title, description, first
-//               pictures, work count and tags) with an Edit key. Nothing to
-//               preview here, so the bar holds + Project and Save.
+//               pictures, work count and tags) with an Edit key. The bar
+//               holds Edit | Preview (the whole page), + Project and Save.
 //   "project" — ONE project as the whole page (data-focus = its id): the
 //               other blocks are set aside, the profile's column goes, and
 //               the bar's Edit | Preview switches the page between the form
@@ -159,8 +159,6 @@ document.addEventListener("astro:page-load", () => {
     if (applied !== focus) {
       const first = applied === undefined;
       applied = focus;
-      // Nothing to preview on the list: it is always the form.
-      if (!focus && stage.dataset.mode === "preview") pressMode("edit");
       stage.dispatchEvent(new CustomEvent("works:focus"));
       if (!first) scrollTop();
     }
@@ -210,12 +208,6 @@ document.addEventListener("astro:page-load", () => {
   // which carries its own view-transition-name, slides across. Without them
   // the thumb's CSS transition still slides it and the page swaps.
   let replaying = false;
-  // A switch made for the member, not by them: no transition.
-  const pressMode = (mode: string) => {
-    replaying = true;
-    form.querySelector<HTMLButtonElement>(`[data-works-mode="${mode}"]`)?.click();
-    replaying = false;
-  };
 
   form.addEventListener(
     "click",
