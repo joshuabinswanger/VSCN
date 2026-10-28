@@ -2829,6 +2829,23 @@
     display: none;
   }
 
+  /* CLEAR OF THE WORKS (2026-10-28): standing alone at the column's left
+     edge, the sticky key rode over the project's left-hand keys (More) as
+     the page scrolled. On a desktop it stands in the empty margin left of
+     the column; on a phone, where there is none, it stays at the top of the
+     page instead of riding along. */
+  @media (--bp-desktop) {
+    .pp-top > .pp-top__back {
+      translate: calc(-100% - 1rem) 0;
+    }
+  }
+
+  @media (--bp-mobile) {
+    .pp-top {
+      position: static;
+    }
+  }
+
   .pp-top > button {
     pointer-events: auto;
     display: inline-flex;

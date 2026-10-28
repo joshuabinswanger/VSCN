@@ -28,6 +28,16 @@ import "../styles/type.css";
     <span class="nav-menu-btn__label">MENU</span>
     <span class="nav-burger" aria-hidden="true"><i></i><i></i><i></i></span>
   </button>
+  {
+    /* BACK TO THE PORTFOLIOS (2026-10-28, Josh: "add a button at the top
+      that lets you return to the portfolios"). VSCN opens Info now, so this
+      key is the header's way into the directory: centred in the header row,
+      on every page but the directory itself (nav[data-directory], set by the
+      script below), where the bar already holds the views. */
+  }
+  <a href="/community" class="nav-portfolios" id="nav-portfolios"
+    ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg><span>PORTFOLIOS</span></a
+  >
   <div class="nav-links" id="nav-menu">
     <a href="/info" class="nav-link" id="nav-info">INFO</a>
     <a href="/community" class="nav-link nav-center" id="nav-community">COMMUNITY</a>
@@ -529,14 +539,14 @@ import "../styles/type.css";
        4px clear of it, so tabs and face read as one control. */
     .nav-right-group:has(#nav-profile.has-pic[aria-expanded="true"]) .nav-acct,
     nav[data-editor].is-signed-in .nav-right-group:has(#nav-profile.has-pic) .nav-acct {
-      margin-right: calc(-1rem - 40px);
-      padding-right: 44px;
+      margin-right: calc(-1rem - 34px);
+      padding-right: 38px;
     }
     .nav-links .nav-acct .nav-link {
       display: flex;
       align-items: center;
-      height: 36px;
-      padding: 0 16px;
+      height: 30px;
+      padding: 0 14px;
       border-radius: var(--radius-pill) !important;
     }
     .nav-links .nav-acct .nav-link:hover {
@@ -577,22 +587,24 @@ import "../styles/type.css";
     }
     /* A SIZE DOWN (2026-10-27, Josh: "make the pills a bit smaller"): SIGN UP
        25px tall, was 27. BACK TO THE MASTER (2026-10-28, vscn-design.af board
-       17, pill-ink): 36px tall, 16px each side. Padding, not flex: the script
+       17, pill-ink): 36px tall, 16px each side. ONE SET SMALLER (2026-10-28,
+       Josh: "the nav buttons should all be one set smaller"): 30px, 14px each
+       side, like the directory strip's pills. Padding, not flex: the script
        shows and hides these with an inline display. */
     .nav-links .nav-link--pill {
-      --nav-chip-pad: 12px 16px 11px;
-      height: 36px;
+      --nav-chip-pad: 9px 14px 8px;
+      height: 30px;
     }
     /* PROFILE: a smaller chip than SIGN UP, and once the member has a photo
        the chip is the photo itself — a 28px disc on the header's line, the
        word kept for the screen reader only. */
     .nav-links .nav-link--profile {
-      --nav-chip-pad: 12px 12px 11px;
+      --nav-chip-pad: 9px 11px 8px;
     }
     .nav-links .nav-link--profile.has-pic {
       padding: 0;
-      width: 36px;
-      height: 36px;
+      width: 30px;
+      height: 30px;
       overflow: hidden;
       border-radius: 50%;
       box-shadow: inset 0 0 0 1px var(--nav-ink);
@@ -657,6 +669,62 @@ import "../styles/type.css";
 
   .lang-toggle:hover .lang-tgt {
     color: var(--color-dark);
+  }
+
+  /* THE PORTFOLIOS KEY: an outlined pill with a back chevron, the editor's
+     ‹ Projects drawn at the header's size, centred in the header row. */
+  .nav-portfolios {
+    position: fixed;
+    top: calc((var(--header-h) - 30px) / 2);
+    left: 50%;
+    translate: -50% 0;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    box-sizing: border-box;
+    height: 30px;
+    padding: 0 14px 0 9px;
+    border-radius: var(--radius-pill) !important;
+    box-shadow: inset 0 0 0 1px var(--color-border);
+    background: var(--nav-paper);
+    color: var(--nav-ink);
+    text-decoration: none;
+    pointer-events: auto;
+    transition: box-shadow 0.2s ease;
+  }
+  .nav-portfolios:visited {
+    color: var(--nav-ink);
+  }
+  .nav-portfolios:hover {
+    box-shadow: inset 0 0 0 1px var(--nav-ink);
+  }
+  .nav-portfolios:focus-visible {
+    outline: 2px solid var(--nav-ink);
+    outline-offset: 2px;
+  }
+  .nav-portfolios svg {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  nav[data-directory] .nav-portfolios {
+    display: none;
+  }
+
+  @media (--bp-mobile) {
+    .nav-portfolios {
+      top: calc((var(--header-h) - 36px) / 2);
+      height: 36px;
+    }
+    /* Under the open sheet's paper: the sheet is the whole menu. */
+    :root:has(#nav-menu-btn[aria-expanded="true"]) .nav-portfolios {
+      visibility: hidden;
+    }
   }
 
   @media (--bp-mobile) {
@@ -874,6 +942,86 @@ import "../styles/type.css";
     .nav-link--lang .lang-tgt {
       color: var(--color-muted);
     }
+    /* THE SHEET REFLECTS THE DESKTOP (2026-10-28, Josh: "update the mobile
+       menu. it should reflect the desktop version"). The header's own
+       controls, as pills, centred: LOGIN and SIGN UP signed out; signed in,
+       the account's three tabs in one outlined capsule with the current one
+       black, as the desktop's open account pill. The language switch stays
+       beneath. Info is behind VSCN and the directory behind the Portfolios
+       key, so the large-type destinations (and Community's views) are not
+       drawn; nor is PROFILE, whose tabs are on the sheet. */
+    #nav-info,
+    #nav-community,
+    #nav-views,
+    #nav-profile {
+      display: none !important;
+    }
+    .nav-links {
+      align-items: center;
+    }
+    .nav-right-group {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    .nav-links .nav-link {
+      align-self: center;
+    }
+    .nav-links .nav-link::after {
+      display: none;
+    }
+    /* Padding, not height: the script sets these two an inline display. */
+    .nav-links #nav-join,
+    .nav-links #nav-signup {
+      box-sizing: border-box;
+      min-height: 46px;
+      padding: 16px 22px 15px;
+      border-radius: var(--radius-pill) !important;
+    }
+    .nav-links #nav-join {
+      box-shadow: inset 0 0 0 1px var(--color-border);
+    }
+    .nav-links #nav-signup,
+    .nav-links #nav-signup:visited {
+      background: var(--nav-ink);
+      color: var(--nav-paper);
+    }
+    .nav-links .nav-acct {
+      flex-direction: row;
+      align-items: center;
+      gap: 2px;
+      margin: 0;
+      padding: 4px;
+      border-radius: var(--radius-pill) !important;
+      box-shadow: inset 0 0 0 1px var(--color-border);
+    }
+    .nav-links .nav-acct .nav-link {
+      display: flex;
+      align-items: center;
+      height: 40px;
+      padding: 0 18px;
+      border-radius: var(--radius-pill) !important;
+    }
+    .nav-links .nav-acct .nav-link--tab.is-current,
+    .nav-links .nav-acct .nav-link--tab.is-current:visited {
+      background: var(--nav-ink);
+      color: var(--nav-paper);
+    }
+    #nav-tab-account {
+      order: 1;
+    }
+    #nav-tab-profile {
+      order: 2;
+    }
+    #nav-tab-work {
+      order: 3;
+    }
+    .nav-link--lang {
+      align-self: center;
+    }
+
     /* The page stays put under the sheet by the sheet's own touch-action
        above, NOT by overflow: hidden on the root: that rule, swapped off
        the <html> mid view transition on the page change, crashed WebKit's
@@ -898,6 +1046,7 @@ import "../styles/type.css";
 </style>
 
 <script>
+  import "../lib/pressFeedback.ts";
   import { auth } from "../lib/firebase.ts";
   import { onAuthStateChanged } from "firebase/auth";
   import { savePreferredLanguage } from "../lib/firestore.ts";
@@ -1145,6 +1294,18 @@ import "../styles/type.css";
     const navLang = document.getElementById("nav-lang") as HTMLAnchorElement | null;
     const sheetLang = document.getElementById("nav-sheet-lang") as HTMLAnchorElement | null;
     const acctLang = document.getElementById("nav-acct-lang") as HTMLAnchorElement | null;
+
+    const portfolios = document.getElementById("nav-portfolios") as HTMLAnchorElement | null;
+    if (portfolios) {
+      portfolios.href = `${prefix}/community`;
+      const word = portfolios.querySelector("span");
+      if (word) word.textContent = labels.views[0];
+    }
+    // The directory (and the bare root, which is it) has its own views bar.
+    const bare = normalisePath(normPath.replace(/^\/de(?=\/|$)/, "")) || "/";
+    document
+      .querySelector('nav[data-astro-transition-persist="navbar"]')
+      ?.toggleAttribute("data-directory", bare === "/" || bare === "/community");
 
     if (navInfo) {
       navInfo.href = `${prefix}/info`;
