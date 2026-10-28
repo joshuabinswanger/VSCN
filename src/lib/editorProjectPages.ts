@@ -185,7 +185,6 @@ document.addEventListener("astro:page-load", () => {
     { signal },
   );
   top.querySelector("[data-pp-back]")?.addEventListener("click", () => open(null), { signal });
-  top.querySelector("[data-pp-done]")?.addEventListener("click", () => open(null), { signal });
 
   // Add project (the bar's Plus menu, or the first-project prompt): the
   // controller appends the block; apply() opens it when it appears.
@@ -220,17 +219,15 @@ document.addEventListener("astro:page-load", () => {
       e.stopImmediatePropagation();
       const root = document.documentElement;
       root.classList.add("pp-switching");
-      const transition = document.startViewTransition(
-        () =>
-          new Promise<void>((resolve) => {
-            replaying = true;
-            btn.click();
-            replaying = false;
-            // Two frames: the controller re-anchors the scroll in the frame
-            // after the switch, and the new view must be captured after it.
-            requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-          }),
-      );
+      // Synchronous: the controller fits the fields and re-anchors the scroll
+      // inside the click while .pp-switching is on. Waiting frames here held
+      // the switch to the 4 s update timeout, since no frame runs until this
+      // callback is done.
+      const transition = document.startViewTransition(() => {
+        replaying = true;
+        btn.click();
+        replaying = false;
+      });
       transition.finished.finally(() => root.classList.remove("pp-switching"));
     },
     { capture: true, signal },

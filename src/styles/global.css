@@ -951,11 +951,33 @@ label:has(> .picker-input:focus-visible) {
   color: var(--color-muted);
 }
 
+/* THE EDITOR'S TAGS ARE TAGS (2026-10-28, Josh: "the tags should have the tag
+   style in the work editor"). TagSelector's chips are .optchip AND .tagchip,
+   and board 17's chip master (28px, 1px border, black when picked) had taken
+   them over. Two classes outrank either one, so the tag's own box comes back:
+   compact, the 1.5px border on paper in muted type, as on a member's page.
+   A picked tag is the same tag with its ×; it sits in its own row above the
+   suggestions, so it needs no fill to say it is picked. */
+.optchip.tagchip {
+  min-height: 0;
+  padding: 0.5px 6px 0 calc(6px + var(--tag-track));
+  border: 1.5px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-muted);
+}
+
+.optchip.tagchip:hover {
+  background: var(--color-bg);
+  border-color: var(--color-dark);
+  color: var(--color-dark);
+}
+
 /* A thumb is not 21px tall. Every chip grows its padding where the pointer is
    coarse; the compact drawing is what a mouse gets. On the public pages the
    tags are links, so the same reasoning applies there. */
 @media (pointer: coarse) {
-  .tagchip {
+  .tagchip,
+  .optchip.tagchip {
     padding: 2px 7px 1px calc(7px + var(--tag-track));
   }
 }
@@ -1641,7 +1663,7 @@ label:has(> .picker-input:focus-visible) {
   .btn-ghost {
     padding-block: 14px;
   }
-  .optchip {
+  .optchip:not(.tagchip) {
     min-height: 34px;
   }
   .seg > :is(button, label) {
