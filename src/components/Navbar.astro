@@ -27,6 +27,7 @@ import "../styles/type.css";
   >
     <span class="nav-menu-btn__label">MENU</span>
     <span class="nav-burger" aria-hidden="true"><i></i><i></i><i></i></span>
+    <img class="nav-menu-btn__pic" alt="" width="34" height="34" decoding="async" />
   </button>
   {
     /* BACK TO THE PORTFOLIOS (2026-10-28, Josh: "add a button at the top
@@ -719,7 +720,32 @@ import "../styles/type.css";
     display: none;
   }
 
+  .nav-menu-btn__pic {
+    display: none;
+  }
+
   @media (--bp-mobile) {
+    /* Signed in with a photo, the closed menu key shows the face, a 34px
+       disc; open, the cross. */
+    .nav-menu-btn .nav-menu-btn__pic {
+      position: absolute;
+      inset: 3px;
+      display: block;
+      width: 34px;
+      height: 34px;
+      object-fit: cover;
+      border-radius: 50% !important;
+      box-shadow: 0 0 0 1px var(--nav-ink);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .nav-menu-btn.has-pic:not([aria-expanded="true"]) .nav-menu-btn__pic {
+      opacity: 1;
+    }
+    .nav-menu-btn.has-pic:not([aria-expanded="true"]) .nav-burger {
+      opacity: 0;
+    }
     .nav-portfolios {
       top: calc((var(--header-h) - 36px) / 2);
       height: 36px;
@@ -1404,6 +1430,19 @@ import "../styles/type.css";
       } else {
         navProfile.classList.remove("has-pic");
         if (pic) pic.removeAttribute("src");
+      }
+      // THE PHONE'S MENU KEY IS THE MEMBER'S FACE (2026-10-28, Josh: "top
+      // right should be the avatar when logged in!"): the same picture on the
+      // hamburger, which turns to the cross while the sheet is open.
+      const menuBtn = document.getElementById("nav-menu-btn");
+      const menuPic = menuBtn?.querySelector(".nav-menu-btn__pic") as HTMLImageElement | null;
+      if (menuBtn && menuPic && url) {
+        menuPic.onerror = () => menuBtn.classList.remove("has-pic");
+        if (menuPic.src !== url) menuPic.src = url;
+        menuBtn.classList.add("has-pic");
+      } else if (menuBtn) {
+        menuBtn.classList.remove("has-pic");
+        menuPic?.removeAttribute("src");
       }
       setActiveLink();
     });

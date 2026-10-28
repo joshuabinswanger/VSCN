@@ -387,9 +387,14 @@ function setBarMenu(open: string | null) {
   if (pill) settleBar(pill);
   const prev = BAR_MENUS.find(([, id]) => document.getElementById(id)?.hidden === false)?.[1] ?? null;
   if (prev === open) return;
+  // CARDS ON A PHONE TOO (2026-10-28, Josh: "the tags and filter should
+  // open their own box that sits above the other pills"): Tags and Sort open
+  // as a card of their own above the pills, grown out of their pill as on a
+  // desktop; only the search still turns the island into the screen.
+  const cards = inHeader || (open !== "search-panel" && prev !== "search-panel");
   // The corners of the closed capsule, kept while the box is tall: a 999px
   // radius on an open pill would bulge into a stadium.
-  if (pill && !prev && !inHeader) setBarR(pill, `${pill.offsetHeight / 2}px`);
+  if (pill && !prev && !cards) setBarR(pill, `${pill.offsetHeight / 2}px`);
 
   for (const [btnId, panelId] of BAR_MENUS) {
     const panel = document.getElementById(panelId);
@@ -412,13 +417,13 @@ function setBarMenu(open: string | null) {
     document.activeElement.blur();
   }
 
-  // A DESKTOP'S PILL GROWS INTO ITS FIELD (2026-10-28): see growFromPill.
-  if (inHeader && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  // THE PILL GROWS INTO ITS FIELD (2026-10-28): see growFromPill.
+  if (cards && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     if (prev && prev !== open) shrinkIntoPill(prev);
     if (open) growFromPill(open);
     return;
   }
-  if (!pill || !from || inHeader || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  if (!pill || !from || cards || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     if (pill && !open) setBarR(pill, null);
     return;
   }
