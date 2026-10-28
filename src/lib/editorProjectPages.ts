@@ -99,7 +99,11 @@ document.addEventListener("astro:page-load", () => {
       Array.from(block.querySelectorAll<HTMLElement>("[data-image-id]")).map((el) => el.dataset.imageId),
     ).size;
     const works = count === 1 ? strings.work ?? "" : (strings.works ?? "").replace("{n}", String(count));
-    const tags = block.querySelector("[data-project-tags-picked]")?.textContent?.trim() ?? "";
+    // One chip per tag: read them one by one, or their words run together.
+    const picked = block.querySelector("[data-project-tags-picked]");
+    const tags = Array.from(picked?.children ?? [], (chip) => chip.textContent?.trim() ?? "")
+      .filter(Boolean)
+      .join(" · ");
     card.querySelector("[data-pp-card-meta]")!.textContent = [works, tags].filter(Boolean).join("  ·  ");
 
     const edit = card.querySelector<HTMLButtonElement>("[data-pp-card-edit]")!;
