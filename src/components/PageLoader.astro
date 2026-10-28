@@ -206,7 +206,25 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
   // likely navigations. There the letters wrote and flew unseen, and the
   // visitor arrived on the full stacked name or on an empty paper. Now the
   // intro waits for the page to be shown, and plays from its first beat.
-  if (loader && stack) void whenShown().then(() => play(loader, stack));
+  if (loader && stack) void whenShown().then(fontIn).then(() => play(loader, stack));
+
+  // NOT BEFORE THE FONT (2026-10-28, Josh: "the intro animation doesnt work
+  // when first visiting the site the letters overlap each other"). play()
+  // measures every glyph's advance once and sizes the cells to it; on a
+  // first visit Archivo was still downloading, so the cells took the
+  // fallback face's narrower widths and the real letters, arriving a moment
+  // later, ran over each other. Wait for the face the stack draws in, but
+  // never longer than 1.5 s: a font that does not come must not hold the
+  // page behind the loader.
+  function fontIn(): Promise<void> {
+    if (!document.fonts || !stack) return Promise.resolve();
+    const cs = getComputedStyle(stack);
+    const face = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    return Promise.race([
+      document.fonts.load(face, INTRO_WORDS.join("")).then(() => undefined),
+      new Promise<void>((resolve) => setTimeout(resolve, 1500)),
+    ]).catch(() => undefined);
+  }
 
   function whenShown(): Promise<void> {
     const doc = document as Document & { prerendering?: boolean };
@@ -329,6 +347,18 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
       outgoing.classList.add("is-out");
     }
     if (char) incoming.classList.add("is-front");
+    // A CELL THAT GROWS TAKES ITS WIDTH AT ONCE (2026-10-28, Josh: "the
+    // intro animation doesnt work when first visiting the site the letters
+    // overlap each other"). It used to ease open on the second beat, a
+    // layout transition, while the letter dropping in is a transform the
+    // compositor runs on its own; on a busy first load the main thread fell
+    // behind, the cells stayed narrow and the letters landed on each other.
+    // Set here, in the same frame as the flip starts, the cell is open
+    // before its letter shows. While a word writes, the cells to its right
+    // are still empty, so the step moves nothing that can be seen. A cell
+    // that closes (the fold) still eases, clipped (.pl-row--folding).
+    const grows = width > (parseFloat(slot.style.width) || 0);
+    slot.style.transition = grows ? "none" : "";
     slot.style.width = `${width}px`;
     slot.dataset.front = String(1 - frontIndex);
   }

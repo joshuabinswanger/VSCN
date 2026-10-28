@@ -167,7 +167,11 @@ const t = useTranslations(lang);
         allowed any longer! We need always a Project"): "Add images" and
         "Add video" added works to no project, so they moved into each
         project block (ProjectEditor.astro), and the picker they opened
-        went with them. */
+        went with them.
+        NOT OPENED SINCE 2026-10-28 (Josh: "project should not prompt a
+        second time"): the Plus makes the project itself by pressing this
+        item, whose handlers (the controller's and editorProjectPages.ts')
+        are what a new project runs. */
     }
     <div id="ebar-add-menu" class="ebar-menu" role="menu" aria-labelledby="ebar-add">
       <button type="button" role="menuitem" id="gallery-new-project" class="ebar-menu__item" tabindex="-1">
@@ -220,9 +224,6 @@ const t = useTranslations(lang);
               type="button"
               id="ebar-add"
               class="ebar__plus"
-              aria-haspopup="menu"
-              aria-expanded="false"
-              aria-controls="ebar-add-menu"
               aria-label={t("profile.works.add")}
               title={t("profile.works.add")}
               data-ebar-works
