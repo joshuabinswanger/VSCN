@@ -658,17 +658,18 @@ fieldset > legend.label {
    while the field is focused"): the same three states as the editor's
    `.gfield` labels. Empty and at rest, the title stands in the middle of the
    box; filled, it is tucked into the box's top above the value; focused, it
-   rises above the box in ink and the hint (if any) shows. */
+   rises above the box in ink and the hint (if any) shows.
+   SMALLER AND ABOVE (2026-10-28, Josh: "the name of the field can be smaller
+   and above the box"): board 07's rule again. Filled or focused, the title is
+   a tiny label (--fs-field-title) 4px above the box; empty and at rest it
+   stands in the box. The box is slim again (30px), and the zone above it is
+   held in every state so nothing jumps. Same on the editor's `.gfield`. */
 .ff {
   position: relative;
 }
 .field > .ff,
 .ff--zone {
-  margin-top: calc(var(--fs-label) + 5px);
-}
-.ff > :is(.input, .textarea) {
-  padding-top: 20px;
-  padding-bottom: 6px;
+  margin-top: calc(var(--fs-field-title) + 4px);
 }
 .ff .input:not(:focus)::placeholder {
   color: transparent;
@@ -676,9 +677,10 @@ fieldset > legend.label {
 .ff__title {
   position: absolute;
   z-index: 1;
-  left: 12px;
-  top: 7px;
-  max-width: calc(100% - 24px);
+  left: 1px;
+  top: -4px;
+  transform: translateY(-100%);
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -689,21 +691,24 @@ fieldset > legend.label {
     top 0.22s cubic-bezier(0.25, 1, 0.5, 1),
     left 0.22s cubic-bezier(0.25, 1, 0.5, 1),
     transform 0.22s cubic-bezier(0.25, 1, 0.5, 1),
+    font-size 0.22s cubic-bezier(0.25, 1, 0.5, 1),
+    letter-spacing 0.22s ease,
     color 0.22s ease;
 }
+/* Empty and at rest: the title is the placeholder, in the box, in the
+   value's size and the placeholder grey (type.css FIELD TITLE). */
 .ff:has(> :is(input, textarea):placeholder-shown):not(:focus-within) > .ff__title {
+  left: 12px;
   top: 50%;
+  max-width: calc(100% - 24px);
   transform: translateY(-50%);
+  color: var(--color-text-placeholder);
 }
 .ff--area:has(> textarea:placeholder-shown):not(:focus-within) > .ff__title {
-  top: 20px;
+  top: 12px;
   transform: none;
 }
 .ff:focus-within > .ff__title {
-  top: -4px;
-  left: 2px;
-  max-width: 100%;
-  transform: translateY(-100%);
   color: var(--color-dark);
 }
 .ff:has(> .input[aria-invalid="true"]) > .ff__title {
@@ -1618,5 +1623,28 @@ label:has(> .picker-input:focus-visible) {
 @media (--bp-mobile) {
   :root {
     --header-h: 48px;
+  }
+}
+
+/* BIGGER BUTTONS ON A PHONE (2026-10-28, Josh: "make mobile ui buttons a bit
+   bigger"): every pressable family a few pixels taller under a thumb. The
+   editor's keys and bar get theirs in profile-editor.css, the menu button in
+   Navbar.astro. Desktop keeps board 17's sizes. */
+@media (--bp-mobile) {
+  .btn-solid,
+  .btn-save,
+  .btn-outline,
+  .btn-logout {
+    min-height: 46px;
+  }
+  .btn-primary,
+  .btn-ghost {
+    padding-block: 14px;
+  }
+  .optchip {
+    min-height: 34px;
+  }
+  .seg > :is(button, label) {
+    min-height: 34px;
   }
 }

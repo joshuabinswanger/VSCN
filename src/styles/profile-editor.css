@@ -2942,34 +2942,41 @@
      placeholder's place, and keeps its hint until it is focused; focus
      lifts the label out above the box, in ink. The space above is held in
      every state, so nothing below moves when it rises. Only fields with a
-     label: a text block's box has none. */
+     label: a text block's box has none.
+     SMALLER AND ABOVE (2026-10-28, Josh: "the name of the field can be
+     smaller and above the box"): filled or focused, the label is the tiny
+     FIELD TITLE (type.css) in the zone above the box; empty and at rest it
+     stands in the middle of the box as the placeholder. Same as `.ff`. */
   .gfield:has(> .gfield__lbl) {
     position: relative;
-    padding-top: 1.15rem;
+    padding-top: calc(var(--fs-field-title) + 4px);
     gap: 0;
   }
 
   .gfield > .gfield__lbl {
     position: absolute;
     z-index: 1;
-    top: calc(1.15rem + 8px);
-    left: 12px;
+    top: 0;
+    left: 1px;
     padding: 0;
+    line-height: 1;
     pointer-events: none;
-    transform-origin: left top;
     transition:
+      top 0.22s cubic-bezier(0.25, 1, 0.5, 1),
+      left 0.22s cubic-bezier(0.25, 1, 0.5, 1),
       transform 0.22s cubic-bezier(0.25, 1, 0.5, 1),
+      font-size 0.22s cubic-bezier(0.25, 1, 0.5, 1),
       color 0.22s ease;
   }
 
-  .gfield:has(> .gfield__lbl) > .gallery-inline {
-    padding-top: 24px;
-  }
-
-  /* Empty and at rest: the label is the placeholder, down in the middle of
-     the box; the hint waits for focus. */
+  /* Empty and at rest: the label is the placeholder, in the middle of the
+     box (the box is the label's block minus the zone above it); the hint
+     waits for focus. */
   .gfield:has(> .gallery-inline:placeholder-shown):not(:focus-within) > .gfield__lbl {
-    transform: translateY(13px);
+    top: calc((100% + var(--fs-field-title) + 4px) / 2);
+    left: 12px;
+    transform: translateY(-50%);
+    color: var(--color-text-placeholder);
   }
 
   .gfield:has(> .gfield__lbl) > .gallery-inline:not(:focus)::placeholder {
@@ -2977,7 +2984,6 @@
   }
 
   .gfield:focus-within > .gfield__lbl {
-    transform: translateY(calc(-1.15rem - 8px));
     color: var(--color-dark);
   }
 
@@ -3048,5 +3054,31 @@ html.pp-switching::view-transition-new(works-mode-thumb) {
   from {
     opacity: 0;
     transform: translateY(6px) scale(0.98);
+  }
+}
+
+/* BIGGER BUTTONS ON A PHONE (2026-10-28, see global.css): the keys 36 → 40,
+   the small keys in a box's head and Replace 30 → 36, the bar 36 → 42, and
+   Remove gets a real target instead of a bare word. */
+@media (--bp-mobile) {
+  .profile-editor .gallery-key {
+    min-width: 40px;
+    height: 40px;
+  }
+  .profile-editor .gallery-boxhead .gallery-key,
+  .profile-editor .gallery-thumb-replace {
+    min-width: 36px;
+    height: 36px;
+  }
+  .profile-editor .gallery-boxhead__word {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 6px;
+  }
+  .profile-editor .ebar__plus,
+  .profile-editor .ebar .profile-save-button,
+  .profile-editor .ebar .ebar__mode {
+    height: 42px;
   }
 }
