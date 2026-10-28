@@ -3090,9 +3090,10 @@ const searchIndex: SearchIndex = {
     /* BIGGER (2026-10-27, Josh: "the pills on desktop need to be bigger"):
        40px, were 32. AT THE TOP AGAIN (same day, "put the pills at the top
        again"): the strip stands in the header's row, centred between VSCN and
-       the account, and its panels DROP from it. */
+       the account, and its panels DROP from it. THE DESIGN FILE (2026-10-28,
+       vscn-design.af board 04): 44px, the views 36 inside a 4px inset. */
     .community-bar {
-      --bar-h: 40px;
+      --bar-h: 44px;
       --bar-gap: 10px;
       top: calc((var(--header-h) - var(--bar-h)) / 2);
       bottom: auto;
@@ -3184,8 +3185,8 @@ const searchIndex: SearchIndex = {
       align-items: center;
       box-sizing: border-box;
       height: var(--bar-h);
-      padding: 2px;
-      gap: 2px;
+      padding: 3px;
+      gap: 0;
       border: 1px solid var(--color-border);
       border-radius: var(--radius-pill);
       background: var(--color-bg);
@@ -3194,10 +3195,11 @@ const searchIndex: SearchIndex = {
       display: block;
       flex: none;
       height: 100%;
-      padding: 0 16px;
-      font-size: var(--fs-115) !important;
+      padding: 0 24px;
+      font-size: var(--fs-95) !important;
       font-weight: 400;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.005em;
+      text-transform: uppercase;
     }
     .view-seg .view-toggle__btn:hover,
     .view-seg .view-toggle__btn:focus-visible {
@@ -3263,7 +3265,7 @@ const searchIndex: SearchIndex = {
       left: 50%;
       right: auto;
       translate: -50% 0;
-      width: min(34rem, calc(100vw - 48px));
+      width: min(380px, calc(100vw - 48px));
       max-height: none;
       overflow: visible;
       padding: 0;

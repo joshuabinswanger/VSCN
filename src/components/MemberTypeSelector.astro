@@ -48,16 +48,22 @@ const t = useTranslations(lang);
     gap: 0.6rem;
   }
 
+  /* THE CHIP MASTER (2026-10-28, vscn-design.af boards 06 and 17): an option
+     is a 28px pill like every other chip, its radio a 6px dot at the left,
+     paper on the ink of the chosen one. */
   .memberType-option {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.55rem 0.75rem;
-    border: 1.5px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: #333;
-    font-size: var(--fs-90);
+    gap: 8px;
+    box-sizing: border-box;
+    min-height: 28px;
+    padding: 0.3rem 13px 0.3rem 11px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill) !important;
+    background: var(--color-bg);
+    color: var(--color-dark);
+    font-size: var(--fs-74);
+    font-weight: 500;
     line-height: 1.2;
     cursor: pointer;
     transition:
@@ -66,26 +72,37 @@ const t = useTranslations(lang);
   }
 
   .memberType-option:hover {
-    border-color: #999;
-    background: #f5f5f5;
+    border-color: var(--color-dark);
   }
 
   .memberType-option:has(input:checked) {
     border-color: var(--color-dark);
     background: var(--color-dark);
-    color: #fff;
+    color: var(--color-bg);
   }
 
-  .memberType-option:focus-within {
-    border-color: var(--color-dark);
+  .memberType-option:has(input:focus-visible) {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
   }
 
   .memberType-option input {
-    width: 14px;
-    height: 14px;
-    accent-color: var(--color-dark);
+    appearance: none;
+    width: 6px;
+    height: 6px;
+    margin: 0;
+    border-radius: 50% !important;
+    background: var(--color-border);
     cursor: pointer;
     flex-shrink: 0;
+  }
+
+  .memberType-option input:checked {
+    background: var(--color-bg);
+  }
+
+  .memberType-option input:focus-visible {
+    outline: none;
   }
 
 </style>
