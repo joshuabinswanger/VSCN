@@ -652,7 +652,13 @@ fieldset > legend.label {
    moves it too; every control in a `.ff` must therefore carry a non-empty
    placeholder (a space will do), which is hidden here because the title IS the
    hint. The room above a `.field`'s first `.ff` is the zone the lifted title
-   sits in, kept free so nothing jumps. Type is in type.css (FIELD TITLE). */
+   sits in, kept free so nothing jumps. Type is in type.css (FIELD TITLE).
+   THE EDITOR'S PATTERN, EVERYWHERE (2026-10-28, Josh: "when a field is filled,
+   its title stays small inside the top of the box and only moves above the box
+   while the field is focused"): the same three states as the editor's
+   `.gfield` labels. Empty and at rest, the title stands in the middle of the
+   box; filled, it is tucked into the box's top above the value; focused, it
+   rises above the box in ink and the hint (if any) shows. */
 .ff {
   position: relative;
 }
@@ -660,37 +666,53 @@ fieldset > legend.label {
 .ff--zone {
   margin-top: calc(var(--fs-label) + 5px);
 }
-.ff .input::placeholder {
+.ff > :is(.input, .textarea) {
+  padding-top: 20px;
+  padding-bottom: 6px;
+}
+.ff .input:not(:focus)::placeholder {
   color: transparent;
 }
 .ff__title {
   position: absolute;
   z-index: 1;
-  left: 11px;
-  top: 15px;
-  max-width: calc(100% - 22px);
+  left: 12px;
+  top: 7px;
+  max-width: calc(100% - 24px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--color-text-placeholder);
+  color: var(--color-muted);
   line-height: 1;
   pointer-events: none;
-  transform: translateY(-50%);
   transition:
-    top 0.12s ease-out,
-    left 0.12s ease-out;
+    top 0.22s cubic-bezier(0.25, 1, 0.5, 1),
+    left 0.22s cubic-bezier(0.25, 1, 0.5, 1),
+    transform 0.22s cubic-bezier(0.25, 1, 0.5, 1),
+    color 0.22s ease;
 }
-.ff--area > .ff__title {
-  top: 15px;
+.ff:has(> :is(input, textarea):placeholder-shown):not(:focus-within) > .ff__title {
+  top: 50%;
+  transform: translateY(-50%);
 }
-.ff:has(> :is(input, textarea):not(:placeholder-shown)) > .ff__title {
+.ff--area:has(> textarea:placeholder-shown):not(:focus-within) > .ff__title {
+  top: 20px;
+  transform: none;
+}
+.ff:focus-within > .ff__title {
   top: -4px;
-  left: 0;
+  left: 2px;
   max-width: 100%;
   transform: translateY(-100%);
+  color: var(--color-dark);
 }
 .ff:has(> .input[aria-invalid="true"]) > .ff__title {
   color: var(--color-error);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ff__title {
+    transition: none;
+  }
 }
 .ui-dialog {
   max-width: min(32rem, calc(100vw - 2rem));
