@@ -2694,18 +2694,29 @@ document.addEventListener("astro:page-load", () => {
     remember("vscn-works-mode", mode);
     applyWorksBar();
     syncPreview();
-    refitInline();
-    if (!anchor) return;
-    // In the frame AFTER refitInline's: the editor's text fields only take
-    // their height once shown, and every one above the picture moves it.
-    // Still before that frame paints, so nothing is seen to jump.
-    requestAnimationFrame(() => {
+    const reanchor = () => {
+      if (!anchor) return;
       const match = modePictures(mode).find((img) => img.getAttribute("src") === anchor.src && img.getBoundingClientRect().height > 0);
       if (!match) return;
       // Instant: .page-wrap scrolls smoothly by default, and a glide here
       // would read as the page sliding away.
       scrollerOf(match).scrollBy({ top: match.getBoundingClientRect().top - anchor.top, behavior: "instant" });
-    });
+    };
+    // INSIDE THE SWITCH'S VIEW TRANSITION (editorProjectPages.ts), NOW. No
+    // frame runs while a transition's update is pending, so the frame-deferred
+    // version below held every switch to Chrome's 4 s update timeout
+    // (2026-10-28, Josh: "on first preview it is very slow to load"). Reading
+    // a box forces the layout that frame would have given.
+    if (document.documentElement.classList.contains("pp-switching")) {
+      galleryEditor.querySelectorAll<HTMLTextAreaElement>("textarea.gallery-inline").forEach(fitInline);
+      reanchor();
+      return;
+    }
+    refitInline();
+    // In the frame AFTER refitInline's: the editor's text fields only take
+    // their height once shown, and every one above the picture moves it.
+    // Still before that frame paints, so nothing is seen to jump.
+    requestAnimationFrame(reanchor);
   }
   function setWorksView(view: WorksView) {
     worksView = view;

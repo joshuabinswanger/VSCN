@@ -2816,7 +2816,10 @@
     z-index: 20;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    /* The column's full width, so the key stands at the works' left edge
+       rather than shrunk to its own width in the stage's middle. */
+    box-sizing: border-box;
+    width: 100%;
     max-width: var(--works-w, 48rem);
     margin: 0 auto 1.5rem;
     pointer-events: none;
@@ -2858,11 +2861,6 @@
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
-  }
-
-  .pp-top__done {
-    background: var(--color-dark);
-    color: var(--color-bg);
   }
 
   .pp-top > button:focus-visible {

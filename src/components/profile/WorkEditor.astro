@@ -46,13 +46,15 @@ const t = useTranslations(lang);
           edited in place, and the bar's Edit | Preview switches that page
           between the form and what a visitor gets. editorProjectPages.ts
           keeps the level on the stage (data-level, data-focus). This row is
-          the project page's way back, in both modes. */
+          the project page's way back, in both modes. ONE KEY since
+          2026-10-28 (Josh: "the Projects back button and the done button are
+          very close together. also they are redundant"): Done did exactly
+          what ‹ Projects does, and edits save as they are made. */
       }
       <nav class="pp-top" data-pp-top hidden aria-label={t("profile.projects.back")}>
         <button type="button" class="pp-top__back" data-pp-back
           ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg><span>{t("profile.projects.back")}</span></button
         >
-        <button type="button" class="pp-top__done" data-pp-done>{t("profile.panel.done")}</button>
       </nav>
       <div class="works-view" data-works-pane="profile">
         <ProfileViewPreview lang={lang}>

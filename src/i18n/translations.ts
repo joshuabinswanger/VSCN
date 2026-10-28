@@ -607,7 +607,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.deck.work": "Work",
     "profile.deck.add": "Add",
     "profile.panel.empty": "Select a work, a project or a carousel to edit it here.",
-    "profile.panel.done": "Done",
     "profile.panel.back": "Back",
     // THE PROJECT PAGES (2026-10-27): the Works tab lists the projects as
     // cards; Edit opens one as a page of its own (editorProjectPages.ts).
@@ -1250,7 +1249,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.deck.work": "Arbeit",
     "profile.deck.add": "Hinzufügen",
     "profile.panel.empty": "Wähle ein Werk, ein Projekt oder ein Karussell, um es hier zu bearbeiten.",
-    "profile.panel.done": "Fertig",
     "profile.panel.back": "Zurück",
     "profile.projects.back": "Projekte",
     "profile.projects.list": "Deine Projekte",
