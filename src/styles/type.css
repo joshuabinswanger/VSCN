@@ -100,6 +100,9 @@
   /* The small caps that label things (see LABEL below). Its own token
      because it is a voice, not a factor: 10px here, 11px on a phone. */
   --fs-label: 10px;
+  /* A field's title once it sits above the box (FIELD TITLE below): smaller
+     than a LABEL, 9px here and 10px on a phone (board 07, 2026-10-28). */
+  --fs-field-title: 9px;
   /* A carousel's position dots, on the directory card (.cdot in global.css) and on
      a member page's project carousels: one size for
      both. Doubled from 0.18rem on 2026-09-28 (Josh: "make the dots
@@ -144,6 +147,7 @@
     --fs-300: 40px;
     --fs-tag: 10px;
     --fs-label: 11px;
+    --fs-field-title: 10px;
   }
 }
 /* ══ THE VOICES ════════════════════════════════════════════════════════════ */
@@ -485,12 +489,22 @@
   }
 }
 
-/* FIELD TITLE (2026-10-27, Josh's design file): the title of a `.ff` field.
-   Since 2026-10-28 the LABEL voice in every state, as the editor's floating
-   labels are: only its place changes. Layout is in global.css. */
-.ff__title {
-  font-size: var(--fs-label);
+/* FIELD TITLE (2026-10-27, Josh's design file): the title of a `.ff` field
+   and of the editor's `.gfield`. Lifted (filled or focused) it is a tiny
+   label above the box, --fs-field-title (2026-10-28, Josh: "smaller and above
+   the box"); empty and at rest it reads as the placeholder, in the value's
+   size and case. Layout is in global.css and profile-editor.css. */
+.ff__title,
+.gfield > .gfield__lbl {
+  font-size: var(--fs-field-title);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+.ff:has(> :is(input, textarea):placeholder-shown):not(:focus-within) > .ff__title,
+.gfield:has(> .gallery-inline:placeholder-shown):not(:focus-within) > .gfield__lbl {
+  font-size: var(--fs-95);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
 }
