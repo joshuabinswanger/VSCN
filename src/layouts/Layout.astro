@@ -333,7 +333,7 @@ const BRAND_SLOTS: BrandSlot[] = [
     >
       <a
         id="brand-home-link"
-        href={lang === "de" ? "/de/community" : "/community"}
+        href={lang === "de" ? "/de/info" : "/info"}
         class="brand-link"
         aria-label="Visual Science Communication Network"
       >
@@ -762,7 +762,10 @@ const BRAND_SLOTS: BrandSlot[] = [
   function updateBrandHomeLink(lang: Lang) {
     const brandLink = document.getElementById("brand-home-link") as HTMLAnchorElement | null;
     if (!brandLink) return;
-    brandLink.href = lang === "de" ? "/de/community" : "/community";
+    // VSCN OPENS INFO (2026-10-28, Josh: "on click on vscn it should bring
+    // you to the info page"); the way back to the directory is the
+    // Portfolios key in the header (Navbar.astro).
+    brandLink.href = lang === "de" ? "/de/info" : "/info";
   }
 
   let brandResizeObserver: ResizeObserver | null = null;

@@ -343,7 +343,7 @@ function settleBar(pill: HTMLElement) {
   barAnim = null;
   delete pill.dataset.sizing;
   if (barLeaving) {
-    barLeaving.getAnimations().forEach((a) => a.cancel());
+    barLeaving.getAnimations({ subtree: true }).forEach((a) => a.cancel());
     barLeaving.hidden = true;
     barLeaving.style.removeProperty("pointer-events");
     barLeaving = null;
@@ -412,6 +412,12 @@ function setBarMenu(open: string | null) {
     document.activeElement.blur();
   }
 
+  // A DESKTOP'S PILL GROWS INTO ITS FIELD (2026-10-28): see growFromPill.
+  if (inHeader && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (prev && prev !== open) shrinkIntoPill(prev);
+    if (open) growFromPill(open);
+    return;
+  }
   if (!pill || !from || inHeader || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     if (pill && !open) setBarR(pill, null);
     return;
@@ -430,6 +436,89 @@ function setBarMenu(open: string | null) {
     entering.dataset.entering = "";
   }
   sizeBar(pill, from);
+}
+
+/** THE PILL GROWS INTO ITS FIELD (2026-10-28, Josh: "the pills should grow
+ *  into their field (search, tags and sort)"). On a desktop each control is
+ *  its own pill and its panel a card below the strip; the card now starts AS
+ *  the pill — its place, its size, its round ends and its fill — and opens
+ *  out to the card while its contents fade in behind. The search's field
+ *  grows out of the search circle the same way. Closing runs it back into
+ *  the pill. One element is animated (the card, or the search's field):
+ *  translated up onto the pill, clipped to the pill's box, in its colour. */
+const GROW_MS = 300;
+const GROW_EASE = "cubic-bezier(0.2, 0.9, 0.25, 1)";
+const SHRINK_EASE = "cubic-bezier(0.5, 0, 0.75, 0)";
+
+function pillParts(panelId: string) {
+  const pair = BAR_MENUS.find(([, id]) => id === panelId);
+  const trigger = pair ? document.getElementById(pair[0]) : null;
+  const panel = document.getElementById(panelId);
+  const box = panelId === "search-panel" ? (panel?.querySelector<HTMLElement>(".search__input") ?? null) : panel;
+  return { trigger, panel, box };
+}
+
+function pillFrames(trigger: HTMLElement, box: HTMLElement): Keyframe[] {
+  const t = trigger.getBoundingClientRect();
+  const r = box.getBoundingClientRect();
+  const end = Math.min(parseFloat(getComputedStyle(box).borderTopLeftRadius) || r.height / 2, r.height / 2, r.width / 2);
+  return [
+    {
+      transform: `translateY(${t.top - r.top}px)`,
+      clipPath: `inset(0px ${r.right - t.right}px ${r.height - t.height}px ${t.left - r.left}px round ${t.height / 2}px)`,
+      backgroundColor: getComputedStyle(trigger).backgroundColor,
+    },
+    { transform: "none", clipPath: `inset(0px 0px 0px 0px round ${end}px)`, backgroundColor: getComputedStyle(box).backgroundColor },
+  ];
+}
+
+/** What fades with the box: a card's contents, or the search's results and
+ *  its Cancel (which would stand over the strip's other pills meanwhile). */
+function pillContents(panel: HTMLElement, box: HTMLElement): HTMLElement[] {
+  if (box !== panel) return Array.from(panel.querySelectorAll<HTMLElement>(".search__results, .search__cancel"));
+  return Array.from(panel.children) as HTMLElement[];
+}
+
+/** A card stands under its own pill, so it can grow out of it: its right
+ *  edge on the pill's right edge for a pill in the window's right half, its
+ *  left on the pill's left otherwise, and never past the window's 16px. */
+function anchorUnder(trigger: HTMLElement, panel: HTMLElement) {
+  panel.style.removeProperty("margin-left");
+  const t = trigger.getBoundingClientRect();
+  const r = panel.getBoundingClientRect();
+  const want = t.left + t.width / 2 > window.innerWidth / 2 ? t.right - r.right : t.left - r.left;
+  const dx = Math.max(16 - r.left, Math.min(want, window.innerWidth - 16 - r.right));
+  if (Math.abs(dx) > 0.5) panel.style.marginLeft = `${dx}px`;
+}
+
+function growFromPill(panelId: string) {
+  const { trigger, panel, box } = pillParts(panelId);
+  if (!trigger || !panel || !box) return;
+  if (box === panel) anchorUnder(trigger, panel);
+  box.animate(pillFrames(trigger, box), { duration: GROW_MS, easing: GROW_EASE });
+  for (const el of pillContents(panel, box)) {
+    el.animate([{ opacity: 0 }, { opacity: 0, offset: 0.35 }, { opacity: 1 }], { duration: GROW_MS + 100, easing: "ease-out" });
+  }
+}
+
+function shrinkIntoPill(panelId: string) {
+  const { trigger, panel, box } = pillParts(panelId);
+  if (!trigger || !panel || !box) return;
+  // Kept on screen, out of reach, until it is back in the pill.
+  panel.hidden = false;
+  panel.style.pointerEvents = "none";
+  barLeaving = panel;
+  for (const el of pillContents(panel, box)) {
+    el.animate([{ opacity: 1 }, { opacity: 0, offset: 0.4 }, { opacity: 0 }], { duration: GROW_MS * 0.7, fill: "forwards" });
+  }
+  const anim = box.animate(pillFrames(trigger, box).reverse(), { duration: GROW_MS * 0.7, easing: SHRINK_EASE, fill: "forwards" });
+  anim.onfinish = () => {
+    if (barLeaving !== panel) return;
+    panel.hidden = true;
+    panel.style.removeProperty("pointer-events");
+    barLeaving = null;
+    panel.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+  };
 }
 
 /** Ease the pill from `from` to the size its content now asks for. A panel
@@ -1182,7 +1271,32 @@ function reflectMode(mode: LayoutMode) {
   });
   const label = document.getElementById("view-menu-label");
   if (label) label.textContent = current || (label.dataset.rest ?? "");
+  placeViewThumb();
 }
+
+/** THE VIEW SWITCH SLIDES (2026-10-28, Josh: "nice and smooth animations
+ *  between its states"): one black thumb under the pressed view, moved by
+ *  its offset and width; the CSS eases it once it has been placed (the
+ *  first placement jumps, data-thumb-ready). The strip persists across the
+ *  directory's navigations, so the thumb travels from the old view. */
+function placeViewThumb() {
+  document.querySelectorAll<HTMLElement>(".view-seg").forEach((seg) => {
+    const thumb = seg.querySelector<HTMLElement>(".view-seg__thumb");
+    const on = seg.querySelector<HTMLElement>('.view-toggle__btn[aria-pressed="true"]');
+    if (!thumb) return;
+    if (!on || !on.offsetWidth) {
+      thumb.style.opacity = "0";
+      return;
+    }
+    thumb.style.removeProperty("opacity");
+    thumb.style.setProperty("--thumb-x", `${on.offsetLeft}px`);
+    thumb.style.setProperty("--thumb-w", `${on.offsetWidth}px`);
+    if (seg.dataset.thumbReady === undefined) requestAnimationFrame(() => (seg.dataset.thumbReady = ""));
+  });
+}
+// The labels' widths settle once the font is in, and with the window.
+void document.fonts?.ready.then(placeViewThumb);
+window.addEventListener("resize", placeViewThumb);
 
 // Module scope so a page swap replaces the watch instead of stacking a
 // second one on a bar the first is still holding.
@@ -1245,6 +1359,8 @@ document.addEventListener("astro:page-load", () => {
         const next = btn.dataset.mode as LayoutMode;
         closeBarMenus();
         if (grid.dataset.pattern === next) return;
+        // The thumb sets off at the press, not when the new page is in.
+        reflectMode(next);
         const url = new URL(window.location.href);
         // The DEFAULT view is the bare URL; every other view is named.
         // Keyed off the constant rather than off "spread", so moving the
