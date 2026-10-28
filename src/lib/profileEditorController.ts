@@ -113,7 +113,7 @@ import {
   type TrayFocus,
 } from "./carouselTray.ts";
 import { updateCarouselLead } from "./images.ts";
-import { bindMenuButton, followContentSize, bindBarFold } from "./editorBar.ts";
+import { followContentSize, bindBarFold } from "./editorBar.ts";
 import { lightboxStringsFrom } from "./lightbox.ts";
 import type { Lang } from "../i18n/utils";
 import "photoswipe/style.css";
@@ -2578,7 +2578,6 @@ document.addEventListener("astro:page-load", () => {
     // also lets the form take the page's measure (profile-editor.css) and
     // shows the bar's switches.
     form.classList.toggle("is-works", section === "work");
-    addMenu?.close();
     if (section !== "work" && !galleryVideoPanel.hidden) setVideoPanel(false, false);
     syncBarContents();
     if (section === "work") {
@@ -2757,21 +2756,21 @@ document.addEventListener("astro:page-load", () => {
   // unchanged. One item since 2026-10-16, Add project: images and videos are
   // added from inside a project (the block's own buttons). Choosing it first
   // puts the tab into Edit on the page, where the new block will appear.
+  // STRAIGHT TO THE NAME (2026-10-28, Josh: "project should not prompt a
+  // second time but ask directly for the project name"). The Plus no longer
+  // opens a one-item menu: it makes the project at once, and the new
+  // project's page opens with its title field focused.
   const addButton = document.getElementById("ebar-add") as HTMLButtonElement | null;
-  const addMenuEl = document.getElementById("ebar-add-menu");
-  const addMenu =
-    addButton && addMenuEl
-      ? bindMenuButton(addButton, addMenuEl, {
-          signal: lifecycle.signal,
-          onOpen: () => {
-            if (!galleryVideoPanel.hidden) setVideoPanel(false, false);
-          },
-          onChoose: () => {
-            if (worksView !== "profile") setWorksView("profile");
-            if (worksMode !== "edit") setWorksMode("edit");
-          },
-        })
-      : null;
+  addButton?.addEventListener(
+    "click",
+    () => {
+      if (!galleryVideoPanel.hidden) setVideoPanel(false, false);
+      if (worksView !== "profile") setWorksView("profile");
+      if (worksMode !== "edit") setWorksMode("edit");
+      galleryNewProject.click();
+    },
+    { signal: lifecycle.signal },
+  );
   // Escape closes the video sheet too, as it closes the menu.
   galleryVideoPanel.addEventListener(
     "keydown",

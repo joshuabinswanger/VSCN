@@ -628,11 +628,14 @@ import "../styles/type.css";
       opacity: 0.85;
     }
 
-    /* The editor's own tab row is not drawn once the header carries the
-       tabs (nav[data-editor] is set by the script below). */
-    :root:has(nav[data-editor].is-signed-in) .section-tabs {
-      display: none;
-    }
+  }
+  /* The editor's own tab row is not drawn once the header carries the tabs
+     (nav[data-editor] is set by the script below). ON A PHONE TOO since
+     2026-10-28 (Josh: "loose the top menu in the account in mobile so you
+     switch only from the menu"): the sheet's ACCOUNT / PROFILE / WORK switch
+     the tab in place and close the sheet. */
+  :root:has(nav[data-editor].is-signed-in) .section-tabs {
+    display: none;
   }
   /* The picture is a desktop thing: the phone's sheet shows the word. */
   .nav-profile__pic {
@@ -721,9 +724,12 @@ import "../styles/type.css";
       top: calc((var(--header-h) - 36px) / 2);
       height: 36px;
     }
-    /* Under the open sheet's paper: the sheet is the whole menu. */
-    :root:has(#nav-menu-btn[aria-expanded="true"]) .nav-portfolios {
-      visibility: hidden;
+    /* ON THE OPEN SHEET TOO (2026-10-28, Josh: "the portfolio button also
+       in the window that pops up upon opening"): the sheet keeps the
+       header's row, VSCN, the key and the cross, on every page, the
+       directory's included. */
+    :root:has(#nav-menu-btn[aria-expanded="true"]) nav[data-directory] .nav-portfolios {
+      display: inline-flex;
     }
   }
 

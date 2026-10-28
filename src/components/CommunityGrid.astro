@@ -3070,11 +3070,8 @@ const searchIndex: SearchIndex = {
          results card above it.
      From 2026-10-26 to 2026-10-27 the same controls stood in the header row
      (595609c); the view tabs, the per-control pills and the panels as cards
-     come from that pass. Phones are untouched. */
-  .view-seg,
-  .bar-ico {
-    display: none;
-  }
+     come from that pass. Phones are untouched. (Since 2026-10-28 the phone
+     draws the same controls; see the shared block below.) */
 
   @keyframes cbar-drop {
     from {
@@ -3134,7 +3131,14 @@ const searchIndex: SearchIndex = {
     .view-menu {
       display: none;
     }
+  }
 
+  /* THE SAME CONTROLS ON A PHONE (2026-10-28, Josh: "on mobile update the
+     bottom bar on portfolios to be same to the desktop one"): the search,
+     Tags and Sort circles and the segmented views, drawn by the rules below
+     at both widths; the phone's own block after them sizes them for a
+     thumb and keeps the island's drop-ups. */
+  @media all {
     /* A pill each: the border colour's hairline, paper inside. */
     .bar-menu__trigger {
       position: relative;
@@ -3245,7 +3249,48 @@ const searchIndex: SearchIndex = {
     .view-seg .view-toggle__btn[aria-pressed="true"]::after {
       content: none;
     }
+  }
 
+  @media (--bp-mobile) {
+    /* A thumb's size, and the order the desktop strip reads in. */
+    .community-bar {
+      --bar-h: 38px;
+    }
+    .community-bar__row {
+      gap: 6px;
+    }
+    .search-menu {
+      order: 1;
+    }
+    .view-seg {
+      order: 2;
+    }
+    .tag-filter {
+      order: 3;
+    }
+    .sort-menu {
+      order: 4;
+    }
+    .view-menu {
+      display: none;
+    }
+    /* The views give way first on a narrow phone, so the row (with Sort on
+       Images) stays inside the screen. */
+    .view-seg .view-toggle__btn {
+      padding: 0 clamp(8px, 2.8vw, 16px);
+      font-size: var(--fs-75) !important;
+    }
+    /* The island draws nothing round the pills at rest — each is its own
+       outlined pill, as on a desktop — and becomes the paper box the panels
+       open in only while one is open. Its border and padding stay, clear,
+       so the row does not move. */
+    .community-bar__in:not(:has(.community-bar__panels > :not([hidden]))) {
+      border-color: transparent;
+      background: transparent;
+    }
+  }
+
+  @media (--bp-desktop) {
     /* The panels: cards under the strip, centred on it (Sort's at its end).
        The stack is a zero-height line a gap below the row; each panel grows
        downward from it. */
