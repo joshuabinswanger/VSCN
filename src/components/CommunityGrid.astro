@@ -1273,10 +1273,6 @@ const searchIndex: SearchIndex = {
     min-width: 9rem;
   }
 
-  .sort-menu[hidden] {
-    display: none;
-  }
-
   /* A size under the triggers (2026-10-25, Josh: "selector texts in the
      dropdowns smaller"), relative to the pill's own size like the pill's. */
   .view-toggle__btn,
@@ -3280,14 +3276,66 @@ const searchIndex: SearchIndex = {
       padding: 0 clamp(8px, 2.8vw, 16px);
       font-size: var(--fs-75) !important;
     }
-    /* The island draws nothing round the pills at rest — each is its own
-       outlined pill, as on a desktop — and becomes the paper box the panels
-       open in only while one is open. Its border and padding stay, clear,
-       so the row does not move. */
-    .community-bar__in:not(:has(.community-bar__panels > :not([hidden]))) {
+    /* The island draws nothing round the pills — each is its own outlined
+       pill, as on a desktop — except as the search's sheet. Its border and
+       padding stay, clear, so the row does not move. */
+    .community-bar:not([data-search-sheet]) .community-bar__in {
       border-color: transparent;
       background: transparent;
     }
+    .community-bar:not([data-search-sheet]) .community-bar__in:not([data-sizing]) {
+      overflow: visible;
+    }
+    /* TAGS AND SORT, A CARD OF THEIR OWN ABOVE THE PILLS (2026-10-28, Josh:
+       "the tags and filter should open their own box that sits above the
+       other pills"): the desktop's cards, rising instead of dropping, each
+       grown out of its pill (growFromPill) and stood over it (anchorUnder). */
+    .community-bar:not([data-search-sheet]) .community-bar__panels {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 0;
+      right: 0;
+      z-index: 2;
+      display: block;
+      pointer-events: none;
+    }
+    .community-bar:not([data-search-sheet]) .community-bar__panels:not(:has(> :not([hidden]))) {
+      display: none;
+    }
+    .community-bar:not([data-search-sheet]) .bar-menu__panel {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      translate: -50% 0;
+      box-sizing: border-box;
+      width: min(360px, calc(100vw - 24px));
+      max-height: min(60vh, 28rem);
+      overflow-y: auto;
+      margin: 0;
+      pointer-events: auto;
+      border: 1px solid var(--color-border);
+      border-radius: 18px !important;
+      background: var(--color-bg);
+      box-shadow: 0 10px 30px rgb(0 0 0 / 0.1);
+    }
+    .community-bar:not([data-search-sheet]) .bar-menu__panel[hidden] {
+      display: none;
+    }
+    /* Four short words: the sort's card is as wide as they are. */
+    .community-bar:not([data-search-sheet]) .sort-menu__panel {
+      width: max-content;
+      min-width: 11rem;
+    }
+  }
+
+  /* NO SHIFT BETWEEN VIEWS (2026-10-28, Josh: "there is still a shift in the
+     buttons after selecting another button (i.e. switching portfolio to
+     images)"). Sort, the wall's alone, used to join the row on Images and
+     leave it elsewhere, so the centred row moved by half a pill each time.
+     It keeps its place now, unseen and out of reach off the wall. */
+  .sort-menu[hidden] {
+    display: flex;
+    visibility: hidden;
   }
 
   @media (--bp-desktop) {
