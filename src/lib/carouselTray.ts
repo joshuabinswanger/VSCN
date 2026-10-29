@@ -291,28 +291,15 @@ export function buildTray(hooks: TrayHooks, unit: TrayUnit): HTMLElement | null 
   slideRow.hidden = selectedIndex === undefined;
 
   // The text block after the carousel, on the lead's record. Hidden until
-  // there is a lead, and then until it holds words or was ADDED (the Text
-  // key in the panel; the block's ✕ clears and hides it again).
+  // there is a lead, and then until it holds words or was ADDED (through the
+  // project's + Add → Text since 2026-10-29; the block's ✕ clears and hides
+  // it again).
   const textKey = `c:${unit.carouselId}`;
-  const textAdd = el.querySelector<HTMLButtonElement>("[data-carousel-text-add]");
   const textRemove = el.querySelector<HTMLButtonElement>("[data-carousel-text-remove]");
   const paintText = (open: boolean) => {
     if (text) text.hidden = !lead || !open;
-    if (textAdd) textAdd.hidden = !lead || open;
   };
   paintText(Boolean(settings.textAfter?.trim() || settings.textAfterDe?.trim()) || hooks.textOpen.has(textKey));
-  if (textAdd) {
-    named(textAdd, s["profile.carousel.textAdd"]).title = s["profile.carousel.textAdd"];
-    textAdd.addEventListener("click", () => {
-      hooks.textOpen.add(textKey);
-      paintText(true);
-      const area = el.querySelector<HTMLTextAreaElement>(`[data-carousel-field="${hooks.lang === "de" ? "textAfterDe" : "textAfter"}"]`);
-      if (area) {
-        hooks.fitInline(area);
-        area.focus();
-      }
-    });
-  }
   if (textRemove) {
     named(textRemove, s["profile.gallery.textRemove"]).title = s["profile.gallery.textRemove"];
     textRemove.addEventListener("click", () => {
@@ -324,7 +311,6 @@ export function buildTray(hooks: TrayHooks, unit: TrayUnit): HTMLElement | null 
       el.querySelectorAll<HTMLTextAreaElement>("[data-carousel-field]").forEach((a) => (a.value = ""));
       hooks.textOpen.delete(textKey);
       paintText(false);
-      textAdd?.focus();
       hooks.syncPreview();
     });
   }
