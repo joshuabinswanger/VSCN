@@ -2284,15 +2284,18 @@ document.addEventListener("astro:page-load", () => {
     if (open) {
       galleryVideoUrl.focus();
     } else {
+      // Whichever way the sheet closes (Cancel, Escape, a tab switch, the
+      // project deleted, + Project): the field is cleared. It is the form's
+      // one type="url" control, and a half-typed link left in it hidden
+      // fails the form's constraint validation, so every pressed Save
+      // after it would do nothing, silently (2026-10-29).
+      galleryVideoUrl.value = "";
       setVideoStatus("");
       if (refocus) (opener ?? document.getElementById("pp-add"))?.focus();
     }
     updateGalleryControls();
   }
-  galleryVideoCancel.addEventListener("click", () => {
-    galleryVideoUrl.value = "";
-    setVideoPanel(false);
-  });
+  galleryVideoCancel.addEventListener("click", () => setVideoPanel(false));
 
   async function addGalleryVideo() {
     const url = galleryVideoUrl.value.trim();
@@ -2341,10 +2344,6 @@ document.addEventListener("astro:page-load", () => {
   galleryVideoUrl.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !event.isComposing) {
       event.preventDefault();
-      // As Cancel: the field is cleared, or a half-typed link left in the
-      // hidden sheet fails the form's constraint validation and silently
-      // aborts every pressed Save after it.
-      galleryVideoUrl.value = "";
       setVideoPanel(false);
       return;
     }
@@ -3639,6 +3638,12 @@ document.addEventListener("astro:page-load", () => {
       // error, naming the project as its header does.
       const emptiedAtStart = await persistWorkMetadata(user.uid, gallery, projects, storedProjectIds, deletedProjectIds, lang, s);
 
+      // The fields as this Save reads them, in the same tick as the reads
+      // below: saved() compares against THIS afterwards, so a word typed
+      // while the writes are in flight stays a change and the re-armed
+      // autosave writes it, instead of the form at the save's end being
+      // taken as the saved state (2026-10-29).
+      const snapshot = draft?.snapshot();
       const saved = await handleProfileUpdate(
         user,
         {
@@ -3727,7 +3732,7 @@ document.addEventListener("astro:page-load", () => {
       saveMsg.style.display = "block";
       // Not after the watchdog fired: the member may have edited since, and
       // saved() would take THAT as the saved state. The next Save clears it.
-      if (!timedOut) draft?.saved();
+      if (!timedOut) draft?.saved(undefined, snapshot);
 
       // A GALLERY ERROR MUST NOT OUTLIVE THE SAVE THAT SETTLED IT.
       //

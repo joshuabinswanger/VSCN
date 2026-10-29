@@ -33,6 +33,12 @@ import { draftOffer, guardedLinkHref, leaveCopy, type StoredDraft } from './draf
  * in flight (`busy`) is asked about with its own sentence, because the
  * navigation cancels it and no draft brings an upload back.
  */
+/** What saved() compares against afterwards: see snapshot(). */
+export interface DraftSnapshot {
+  fields: string;
+  words: string;
+}
+
 export function editorDraft<T>(options: {
   key: string;
   /** Bump when the shape of `read()` changes; older drafts are ignored. */
@@ -196,8 +202,23 @@ export function editorDraft<T>(options: {
     /** Writes the draft now; true when the member's words are in storage — what a dialog may promise. */
     keep: persist,
     discard() { baseline = JSON.stringify(readDirty()); wordsBaseline = JSON.stringify(read()); remove(); controller.abort(); },
-    /** After a Save: the page holds the server's copy now, written at `at` (this tab's clock, which is at or after the stamp the save wrote). */
-    saved(at: number = Date.now()) { offered = false; baseline = JSON.stringify(readDirty()); wordsBaseline = JSON.stringify(read()); loadedAt = at; remove(); banner.remove(); },
+    /** The form as it stands, for saved(): taken when a Save READS the fields,
+     *  so whatever the member types while the save is in flight (the fields
+     *  stay live under autosave) is still a change after it — not absorbed
+     *  into the saved state and lost (2026-10-29). */
+    snapshot(): DraftSnapshot { return { fields: JSON.stringify(readDirty()), words: JSON.stringify(read()) }; },
+    /** After a Save: the page holds the server's copy now, written at `at` (this tab's clock, which is at or after the stamp the save wrote). `from` is the snapshot the save wrote; without one, the form as it stands now. */
+    saved(at: number = Date.now(), from?: DraftSnapshot) {
+      offered = false;
+      baseline = from?.fields ?? JSON.stringify(readDirty());
+      wordsBaseline = from?.words ?? JSON.stringify(read());
+      loadedAt = at;
+      // A draft is only ever written from a dirty form (persist), and the
+      // edits made since the snapshot are what the form holds now: nothing
+      // in storage is newer than the form, so the stored copy can go.
+      remove();
+      banner.remove();
+    },
     dispose() { persist(); clearTimeout(timer); controller.abort(); banner.remove(); },
   };
 }
