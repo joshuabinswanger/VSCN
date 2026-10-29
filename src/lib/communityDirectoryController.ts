@@ -443,7 +443,10 @@ function restingColour(trigger: HTMLElement): string {
 function pillFrames(trigger: HTMLElement, box: HTMLElement, closing = false): Keyframe[] {
   const t = trigger.getBoundingClientRect();
   const r = box.getBoundingClientRect();
-  const end = Math.min(parseFloat(getComputedStyle(box).borderTopLeftRadius) || r.height / 2, r.height / 2, r.width / 2);
+  // A square box (the phone's full-screen search) ends square: 0 is a radius,
+  // not a missing one.
+  const radius = parseFloat(getComputedStyle(box).borderTopLeftRadius);
+  const end = Math.min(Number.isNaN(radius) ? r.height / 2 : radius, r.height / 2, r.width / 2);
   return [
     {
       transform: `translateY(${t.top - r.top}px)`,
@@ -576,6 +579,9 @@ function fitBarToKeyboard() {
   const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
   bar.style.setProperty("--bar-kb", `${Math.round(kb)}px`);
   bar.style.setProperty("--bar-room", `${Math.round(vv.height)}px`);
+  // Where the visible screen starts: iOS scrolls the layout viewport up
+  // under the keyboard, and the full-screen search must start there.
+  bar.style.setProperty("--bar-vtop", `${Math.round(Math.max(0, vv.offsetTop))}px`);
 }
 window.visualViewport?.addEventListener("resize", fitBarToKeyboard);
 window.visualViewport?.addEventListener("scroll", fitBarToKeyboard);
