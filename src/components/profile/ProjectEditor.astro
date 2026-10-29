@@ -73,22 +73,6 @@ const t = useTranslations(lang);
                 to drag works into or fill through its +). */
             }
             <div class="gallery-edit-row">
-              <div class="gallery-addrow">
-                <button type="button" class="gallery-key gallery-key--plus" data-project-add-toggle aria-expanded="false">
-                  <svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-                  <span>{t("profile.deck.add")}</span>
-                </button>
-                <div class="gallery-addkeys" data-project-addkeys hidden>
-                  <label class="gallery-key gallery-key--wide gallery-project-add" title={t("profile.project.addImages")}>
-                    <svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/><circle cx="9" cy="9" r="2"/><path d="M16 5h6M19 2v6"/></svg>
-                    <span>{t("profile.deck.images")}</span>
-                    <input type="file" class="picker-input" accept="image/jpeg,image/png,image/webp,image/avif" multiple data-project-files aria-label={t("profile.project.addImages")} />
-                  </label>
-                  <button type="button" class="gallery-key gallery-key--wide" data-project-video aria-expanded="false"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/></svg><span>{t("profile.deck.video")}</span></button>
-                  <button type="button" class="gallery-key gallery-key--wide" data-project-carousel><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="12" height="14" rx="1"/><path d="M2 8v8"/><path d="M22 8v8"/></svg><span>{t("profile.deck.carousel")}</span></button>
-                  <button type="button" class="gallery-key gallery-key--wide" data-project-text><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg><span>{t("profile.deck.text")}</span></button>
-                </div>
-              </div>
               <details class="gallery-details gallery-project-details">
                 <summary class="gallery-details-summary gallery-key gallery-key--more"><span class="gallery-details-title">{t("profile.deck.more")}</span><span class="gallery-details-chevron" aria-hidden="true"></span></summary>
                 <div class="gallery-details-body gallery-panel">
@@ -148,6 +132,22 @@ const t = useTranslations(lang);
                   </details>
                 </div>
               </details>
+              <div class="gallery-addrow">
+                <button type="button" class="gallery-key gallery-key--plus" data-project-add-toggle aria-expanded="false">
+                  <svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                  <span>{t("profile.deck.add")}</span>
+                </button>
+                <div class="gallery-addkeys" data-project-addkeys hidden>
+                  <label class="gallery-key gallery-key--wide gallery-project-add" title={t("profile.project.addImages")}>
+                    <svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/><circle cx="9" cy="9" r="2"/><path d="M16 5h6M19 2v6"/></svg>
+                    <span>{t("profile.deck.images")}</span>
+                    <input type="file" class="picker-input" accept="image/jpeg,image/png,image/webp,image/avif" multiple data-project-files aria-label={t("profile.project.addImages")} />
+                  </label>
+                  <button type="button" class="gallery-key gallery-key--wide" data-project-video aria-expanded="false"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/></svg><span>{t("profile.deck.video")}</span></button>
+                  <button type="button" class="gallery-key gallery-key--wide" data-project-carousel><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="12" height="14" rx="1"/><path d="M2 8v8"/><path d="M22 8v8"/></svg><span>{t("profile.deck.carousel")}</span></button>
+                  <button type="button" class="gallery-key gallery-key--wide" data-project-text><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg><span>{t("profile.deck.text")}</span></button>
+                </div>
+              </div>
             </div>
             {
               /* Save writes only the projects an image names, so a block that
