@@ -72,7 +72,19 @@ const t = useTranslations(lang);
                 first pictures, its work count and tags), so a card can never
                 disagree with the project page it opens. */
             }
-            <section class="pp-cards" data-pp-cards aria-label={t("profile.projects.list")} hidden></section>
+            {
+              /* + PROJECT AFTER THE LAST PROJECT (2026-10-29, Josh: "add
+                project button after last project and not in the panel"):
+                the list's own last line, kept there by drawCards; it left
+                the bar. */
+            }
+            <section class="pp-cards" data-pp-cards aria-label={t("profile.projects.list")} hidden>
+              <button type="button" id="pp-add" class="pp-add" data-pp-add title={t("profile.works.add")}
+                ><svg class="ebar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg><span
+                  >{t("profile.project.new")}</span
+                ></button
+              >
+            </section>
             {
               /* THE WAY IN WITHOUT A PROJECT (2026-10-16, Josh: "We need
                 always a Project, just a title is mandatory"). A member with

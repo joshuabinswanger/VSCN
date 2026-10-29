@@ -173,7 +173,7 @@ const t = useTranslations(lang);
         item, whose handlers (the controller's and editorProjectPages.ts')
         are what a new project runs. */
     }
-    <div id="ebar-add-menu" class="ebar-menu" role="menu" aria-labelledby="ebar-add">
+    <div id="ebar-add-menu" class="ebar-menu" role="menu" aria-label={t("profile.works.add")}>
       <button type="button" role="menuitem" id="gallery-new-project" class="ebar-menu__item" tabindex="-1">
         <svg class="ebar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
         <span>{t("profile.project.new")}</span>
@@ -220,19 +220,11 @@ const t = useTranslations(lang);
               <button type="button" data-works-mode="edit" aria-pressed="true">{t("profile.works.mode.edit")}</button>
               <button type="button" data-works-mode="preview" aria-pressed="false">{t("profile.works.mode.preview")}</button>
             </div>
-            <button
-              type="button"
-              id="ebar-add"
-              class="ebar__plus"
-              aria-label={t("profile.works.add")}
-              title={t("profile.works.add")}
-              data-ebar-works
-              data-ebar-plus
-              hidden
-            >
-              <svg class="ebar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-              <span class="ebar__label">{t("profile.works.addShort")}</span>
-            </button>
+            {
+              /* + Project left the bar on 2026-10-29 (Josh: "add project
+                button after last project and not in the panel"): it is the
+                project list's last line now (WorkEditor.astro). */
+            }
             {
               /* SAVE, a black pill with the disk and its word (2026-10-23; an
                 icon alone from 2026-10-15). Its full words are its accessible

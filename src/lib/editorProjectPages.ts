@@ -5,8 +5,9 @@
 //
 // Two levels on the Works tab, kept on the stage as data-level:
 //   "list"    — every project as a card (its title, description, first
-//               pictures, work count and tags) with an Edit key. The bar
-//               holds Edit | Preview (the whole page), + Project and Save.
+//               pictures, work count and tags) with an Edit key, and
+//               + Project after the last. The bar holds Edit | Preview
+//               (the whole page) and Save.
 //   "project" — ONE project as the whole page (data-focus = its id): the
 //               other blocks are set aside, the profile's column goes, and
 //               the bar's Edit | Preview switches the page between the form
@@ -111,8 +112,13 @@ document.addEventListener("astro:page-load", () => {
     return card;
   };
 
+  // + Project, the list's last line. With no project yet the "first
+  // project" prompt is the way in, so it waits.
+  const addKey = cards.querySelector<HTMLElement>("[data-pp-add]");
   const drawCards = () => {
-    cards.replaceChildren(...blocks().flatMap((b) => drawCard(b) ?? []));
+    const present = blocks();
+    if (addKey) addKey.hidden = present.length === 0;
+    cards.replaceChildren(...present.flatMap((b) => drawCard(b) ?? []), ...(addKey ? [addKey] : []));
   };
 
   // ── THE LEVEL ────────────────────────────────────────────
@@ -186,7 +192,7 @@ document.addEventListener("astro:page-load", () => {
   );
   top.querySelector("[data-pp-back]")?.addEventListener("click", () => open(null), { signal });
 
-  // Add project (the bar's Plus menu, or the first-project prompt): the
+  // Add project (+ Project under the cards, or the first-project prompt): the
   // controller appends the block; apply() opens it when it appears.
   form.addEventListener(
     "click",

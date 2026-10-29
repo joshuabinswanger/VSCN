@@ -158,6 +158,9 @@ export function bindMenuButton(
  * a desktop never shows the handle or a folded bar. The bar's measured size
  * (followContentSize) animates the fold for free. Remembered on the device:
  * a member who folds it away does not want it back on every visit.
+ * A PANEL THAT FOLDS UP AND DOWN (2026-10-29): the handle is the phone
+ * panel's top edge, and a drag on it folds the panel the way it went —
+ * down folds, up unfolds — with the click that follows the drag swallowed.
  */
 export function bindBarFold(handle: HTMLButtonElement, bar: HTMLElement, signal: AbortSignal): void {
   const KEY = "vscn-ebar-folded";
@@ -175,16 +178,54 @@ export function bindBarFold(handle: HTMLButtonElement, bar: HTMLElement, signal:
     /* storage blocked: the bar starts open */
   }
   apply(folded);
+  const set = (next: boolean) => {
+    folded = next;
+    apply(folded);
+    try {
+      localStorage.setItem(KEY, folded ? "1" : "0");
+    } catch {
+      /* the choice lasts the page */
+    }
+  };
+  let startY: number | null = null;
+  let dragged = false;
+  handle.addEventListener(
+    "pointerdown",
+    (e) => {
+      startY = e.clientY;
+      dragged = false;
+      // The release lands on the handle even when the finger has left it.
+      handle.setPointerCapture(e.pointerId);
+    },
+    { signal },
+  );
+  handle.addEventListener(
+    "pointerup",
+    (e) => {
+      if (startY === null) return;
+      const dy = e.clientY - startY;
+      startY = null;
+      if (Math.abs(dy) < 16) return;
+      dragged = true;
+      set(dy > 0);
+    },
+    { signal },
+  );
+  handle.addEventListener(
+    "pointercancel",
+    () => {
+      startY = null;
+    },
+    { signal },
+  );
   handle.addEventListener(
     "click",
     () => {
-      folded = !folded;
-      apply(folded);
-      try {
-        localStorage.setItem(KEY, folded ? "1" : "0");
-      } catch {
-        /* the choice lasts the page */
+      if (dragged) {
+        dragged = false;
+        return;
       }
+      set(!folded);
     },
     { signal },
   );

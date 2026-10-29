@@ -2125,7 +2125,7 @@ document.addEventListener("astro:page-load", () => {
     clearGalleryStatus();
     renderGallery();
     // The block and its buttons are gone; the way in, if it was the last one.
-    (galleryFirst && !galleryFirst.hidden ? galleryFirstProject : document.getElementById("ebar-add"))?.focus();
+    (galleryFirst && !galleryFirst.hidden ? galleryFirstProject : document.getElementById("pp-add"))?.focus();
   }
 
   /**
@@ -2270,7 +2270,7 @@ document.addEventListener("astro:page-load", () => {
       galleryVideoUrl.focus();
     } else {
       setVideoStatus("");
-      if (refocus) (opener ?? document.getElementById("ebar-add"))?.focus();
+      if (refocus) (opener ?? document.getElementById("pp-add"))?.focus();
     }
     updateGalleryControls();
   }
@@ -2640,13 +2640,13 @@ document.addEventListener("astro:page-load", () => {
   /**
    * What the bar holds right now. Save, always. On the Works tab, the view
    * and language switches; and, while the PAGE is showing, the mode switch
-   * and the Plus — the card is drawn from the same fields and is never
-   * edited in place, so neither means anything over it.
+   * — the card is drawn from the same fields and is never edited in place,
+   * so it means nothing over it.
    */
   function syncBarContents() {
     const onWorks = form.classList.contains("is-works");
     form.querySelectorAll<HTMLElement>("[data-ebar-works]").forEach((el) => {
-      const pageOnly = el.matches("[data-works-mode-seg], [data-ebar-plus]");
+      const pageOnly = el.matches("[data-works-mode-seg]");
       el.hidden = !onWorks || (pageOnly && worksView !== "profile");
     });
   }
@@ -2760,7 +2760,10 @@ document.addEventListener("astro:page-load", () => {
   // second time but ask directly for the project name"). The Plus no longer
   // opens a one-item menu: it makes the project at once, and the new
   // project's page opens with its title field focused.
-  const addButton = document.getElementById("ebar-add") as HTMLButtonElement | null;
+  // AFTER THE LAST PROJECT (2026-10-29, Josh: "add project button after
+  // last project and not in the panel"): the Plus left the bar and is the
+  // project list's last line (WorkEditor.astro, editorProjectPages.ts).
+  const addButton = document.getElementById("pp-add") as HTMLButtonElement | null;
   addButton?.addEventListener(
     "click",
     () => {
