@@ -3525,6 +3525,17 @@ document.addEventListener("astro:page-load", () => {
    */
   const SAVE_TIMEOUT_MS = 30_000;
   let saveGeneration = 0;
+  /** An edit landed while a Save was writing (saveButton is disabled for
+   *  exactly that span): the Save must not take the form at its end as the
+   *  saved state. Every way a value changes passes one of these events. */
+  let editedDuringSave = false;
+  const noteEditDuringSave = () => {
+    if (saveButton.disabled) editedDuringSave = true;
+  };
+  for (const type of ["input", "change", "click"]) {
+    form.addEventListener(type, noteEditDuringSave, { signal: lifecycle.signal });
+  }
+  memberTypeSelector?.addEventListener("member-type-change", noteEditDuringSave, { signal: lifecycle.signal });
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -3608,6 +3619,7 @@ document.addEventListener("astro:page-load", () => {
 
     const generation = ++saveGeneration;
     let timedOut = false;
+    editedDuringSave = false;
     setSaving(true);
     const watchdog = setTimeout(() => {
       timedOut = true;
@@ -3638,12 +3650,6 @@ document.addEventListener("astro:page-load", () => {
       // error, naming the project as its header does.
       const emptiedAtStart = await persistWorkMetadata(user.uid, gallery, projects, storedProjectIds, deletedProjectIds, lang, s);
 
-      // The fields as this Save reads them, in the same tick as the reads
-      // below: saved() compares against THIS afterwards, so a word typed
-      // while the writes are in flight stays a change and the re-armed
-      // autosave writes it, instead of the form at the save's end being
-      // taken as the saved state (2026-10-29).
-      const snapshot = draft?.snapshot();
       const saved = await handleProfileUpdate(
         user,
         {
@@ -3730,9 +3736,16 @@ document.addEventListener("astro:page-load", () => {
       saveError.style.display = "none";
       watchPublication(saveMsg, lang, queued, lifecycle.signal, { listed: activeInput.checked });
       saveMsg.style.display = "block";
-      // Not after the watchdog fired: the member may have edited since, and
-      // saved() would take THAT as the saved state. The next Save clears it.
-      if (!timedOut) draft?.saved(undefined, snapshot);
+      // Not after the watchdog fired, and not when the member edited while
+      // this Save was in flight (the fields stay live under autosave):
+      // saved() takes the form as it stands NOW as the saved state, and
+      // would declare the later edit clean and lose it. Left dirty, the
+      // re-armed autosave writes it, and THAT save settles the baseline.
+      // (A snapshot taken when the fields were read was tried on
+      // 2026-10-29 and froze state the save itself settles — the committed
+      // work words, the avatar blob, an emptied project — so every clean
+      // save read as unsaved afterwards. The flag is the right grain.)
+      if (!timedOut && !editedDuringSave) draft?.saved();
 
       // A GALLERY ERROR MUST NOT OUTLIVE THE SAVE THAT SETTLED IT.
       //
