@@ -3384,15 +3384,17 @@ const searchIndex: SearchIndex = {
   }
 
   @media (--bp-desktop) {
-    /* The panels: cards under the strip, centred on it (Sort's at its end).
-       The stack is a zero-height line a gap below the row; each panel grows
-       downward from it. */
+    /* THE CARDS COVER THE STRIP (2026-10-29, Josh: "on desktop the search
+       tag etc. also need to cover the others with a smooth animation as in
+       mobile"). Search, Tags and Sort each open one card laid OVER the
+       strip, a rim wider than it on every side so the other pills are
+       hidden, grown out of its own pill (growFromPill). Until then the
+       cards dropped under the strip and the search's field lay across it. */
     .community-bar__panels {
       position: absolute;
-      top: calc(var(--bar-h) + var(--bar-gap));
+      top: 0;
       left: 0;
       right: 0;
-      /* Over the triggers: the search's field is laid across them. */
       z-index: 2;
       display: block;
       pointer-events: none;
@@ -3401,56 +3403,45 @@ const searchIndex: SearchIndex = {
       display: none;
     }
     .bar-menu__panel {
+      --card-rim: 6px;
       position: absolute;
-      top: 0;
+      top: calc(-1 * var(--card-rim));
       left: 50%;
       translate: -50% 0;
-      /* Not capped at the strip's width, as inside the pill. */
-      max-width: none;
+      min-width: calc(100% + 2 * var(--card-rim));
+      max-width: calc(100vw - 32px);
+      max-height: min(70vh, 32rem);
+      overflow-y: auto;
+      overscroll-behavior: contain;
       margin: 0;
+      padding: var(--card-rim);
       pointer-events: auto;
       border: 1px solid var(--color-border);
-      border-radius: 18px;
+      border-radius: calc(var(--bar-h) / 2 + var(--card-rim)) !important;
       background: var(--color-bg);
-      box-shadow: 0 10px 30px rgb(0 0 0 / 0.08);
+      box-shadow: 0 10px 30px rgb(0 0 0 / 0.1);
       /* It grows out of its pill instead (growFromPill in the controller). */
       animation: none;
     }
     .bar-menu__panel[hidden] {
       display: none;
     }
-    .sort-menu__panel {
-      left: auto;
-      right: 0;
-      translate: none;
-    }
 
-    /* The search: no card of its own — the field laid over the strip, the
-       results card above it. */
+    /* The search: the field at the card's top, where the strip was, and
+       the results under it, scrolling while the field stands. */
     .search__panel {
-      left: 50%;
-      right: auto;
-      translate: -50% 0;
-      width: min(380px, calc(100vw - 48px));
-      max-height: none;
-      overflow: visible;
-      padding: 0;
-      border: none;
-      background: none;
-      box-shadow: none;
-      animation: none;
+      display: flex;
+      flex-direction: column;
+      width: min(30rem, calc(100vw - 48px));
+      overflow: hidden;
     }
     .search__head {
-      position: absolute;
-      top: calc(-1 * (var(--bar-h) + var(--bar-gap)));
-      bottom: auto;
-      left: 0;
-      right: 0;
+      position: relative;
+      flex: none;
       height: var(--bar-h);
-      margin: 0;
+      margin: 0 0 6px;
       padding: 0;
       background: none;
-      animation: none;
     }
     .search__input {
       background-color: var(--color-bg);
@@ -3475,18 +3466,12 @@ const searchIndex: SearchIndex = {
       padding: 0.3rem 0.7rem;
     }
     .search__results {
-      box-sizing: border-box;
-      max-height: min(60vh, 30rem);
+      flex: 1;
+      min-height: 0;
       overflow-y: auto;
       overscroll-behavior: contain;
-      padding: 6px;
-      border: 1px solid var(--color-border);
-      border-radius: 18px;
-      background: var(--color-bg);
-      box-shadow: 0 10px 30px rgb(0 0 0 / 0.08);
       scrollbar-width: thin;
       scrollbar-color: var(--color-border) transparent;
-      animation: cbar-drop 0.2s ease-out;
     }
   }
 </style>

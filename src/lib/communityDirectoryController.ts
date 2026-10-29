@@ -398,7 +398,8 @@ function setBarMenu(open: string | null) {
   // sort and search. also the pills should morph over the bottom bar"). On
   // a phone Search, Tags and Sort each open the same card, laid over the
   // bar and grown out of its own pill (growFromPill); the search's
-  // full-screen sheet is gone. A desktop's cards drop under the strip.
+  // full-screen sheet is gone. A desktop's cards cover its strip the same
+  // way (2026-10-29).
   if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     if (prev && prev !== open) shrinkIntoPill(prev);
     if (open) growFromPill(open);
@@ -406,13 +407,12 @@ function setBarMenu(open: string | null) {
 }
 
 /** THE PILL GROWS INTO ITS FIELD (2026-10-28, Josh: "the pills should grow
- *  into their field (search, tags and sort)"). On a desktop each control is
- *  its own pill and its panel a card below the strip; the card now starts AS
- *  the pill — its place, its size, its round ends and its fill — and opens
- *  out to the card while its contents fade in behind. The search's field
- *  grows out of the search circle the same way. Closing runs it back into
- *  the pill. One element is animated (the card, or the search's field):
- *  translated up onto the pill, clipped to the pill's box, in its colour. */
+ *  into their field (search, tags and sort)"). Each control is its own pill
+ *  and its panel a card laid over the strip (or the phone's bar); the card
+ *  starts AS the pill — its place, its size, its round ends and its fill —
+ *  and opens out to the card while its contents fade in behind. Closing runs
+ *  it back into the pill. One element is animated, the card: translated onto
+ *  the pill, clipped to the pill's box, in its colour. */
 const GROW_MS = 300;
 const GROW_EASE = "cubic-bezier(0.2, 0.9, 0.25, 1)";
 const SHRINK_EASE = "cubic-bezier(0.5, 0, 0.75, 0)";
@@ -421,10 +421,7 @@ function pillParts(panelId: string) {
   const pair = BAR_MENUS.find(([, id]) => id === panelId);
   const trigger = pair ? document.getElementById(pair[0]) : null;
   const panel = document.getElementById(panelId);
-  // A desktop's search is its field laid over the strip; a phone's is a card.
-  const field = panelId === "search-panel" && !window.matchMedia(PHONE_QUERY).matches;
-  const box = field ? (panel?.querySelector<HTMLElement>(".search__input") ?? null) : panel;
-  return { trigger, panel, box };
+  return { trigger, panel, box: panel };
 }
 
 /** The colour the trigger is settling to. Closing, it is still easing out of
@@ -458,32 +455,16 @@ function pillFrames(trigger: HTMLElement, box: HTMLElement, closing = false): Ke
   ];
 }
 
-/** What fades with the box: a card's contents, or the search's results and
- *  its Cancel (which would stand over the strip's other pills meanwhile). */
-function pillContents(panel: HTMLElement, box: HTMLElement): HTMLElement[] {
-  if (box !== panel) return Array.from(panel.querySelectorAll<HTMLElement>(".search__results, .search__cancel"));
+/** What fades with the box: the card's contents. */
+function pillContents(panel: HTMLElement): HTMLElement[] {
   return Array.from(panel.children) as HTMLElement[];
-}
-
-/** A card stands under its own pill, so it can grow out of it: its right
- *  edge on the pill's right edge for a pill in the window's right half, its
- *  left on the pill's left otherwise, and never past the window's 16px. */
-function anchorUnder(trigger: HTMLElement, panel: HTMLElement) {
-  panel.style.removeProperty("margin-left");
-  const t = trigger.getBoundingClientRect();
-  const r = panel.getBoundingClientRect();
-  const want = t.left + t.width / 2 > window.innerWidth / 2 ? t.right - r.right : t.left - r.left;
-  const dx = Math.max(16 - r.left, Math.min(want, window.innerWidth - 16 - r.right));
-  if (Math.abs(dx) > 0.5) panel.style.marginLeft = `${dx}px`;
 }
 
 function growFromPill(panelId: string) {
   const { trigger, panel, box } = pillParts(panelId);
   if (!trigger || !panel || !box) return;
-  // A phone's card spans the bar: nothing to stand it under.
-  if (box === panel && !window.matchMedia(PHONE_QUERY).matches) anchorUnder(trigger, panel);
   box.animate(pillFrames(trigger, box), { duration: GROW_MS, easing: GROW_EASE });
-  for (const el of pillContents(panel, box)) {
+  for (const el of pillContents(panel)) {
     el.animate([{ opacity: 0 }, { opacity: 0, offset: 0.35 }, { opacity: 1 }], { duration: GROW_MS + 100, easing: "ease-out" });
   }
 }
@@ -495,7 +476,7 @@ function shrinkIntoPill(panelId: string) {
   panel.hidden = false;
   panel.style.pointerEvents = "none";
   barLeaving = panel;
-  for (const el of pillContents(panel, box)) {
+  for (const el of pillContents(panel)) {
     el.animate([{ opacity: 1 }, { opacity: 0, offset: 0.4 }, { opacity: 0 }], { duration: GROW_MS * 0.7, fill: "forwards" });
   }
   const anim = box.animate(pillFrames(trigger, box, true).reverse(), { duration: GROW_MS * 0.7, easing: SHRINK_EASE, fill: "forwards" });
