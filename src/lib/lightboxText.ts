@@ -54,6 +54,13 @@ import { pagerChevron } from "./pager.ts";
 
 /** Below this the viewport is a phone: one column, and the text always below. */
 const MOBILE_MAX = 767;
+/** The CSS's --bp-mobile (custom-media.css): that width, OR a touch-first
+ *  screen — an iPad in landscape draws the phone chrome (lightbox.css), so
+ *  the padding must agree with it. */
+function mobileViewport(viewportSize: Point): boolean {
+  if (viewportSize.x <= MOBILE_MAX) return true;
+  return typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+}
 
 /**
  * The gap between the picture's edge and the words, in px. Matches the
@@ -114,7 +121,7 @@ const TOP_FLOOR_DESKTOP = 56;
 const TOP_FLOOR_MOBILE = 44;
 
 export function lightboxPadding(viewportSize: Point, _itemData: SlideData) {
-  const mobile = viewportSize.x <= MOBILE_MAX;
+  const mobile = mobileViewport(viewportSize);
   const top = Math.max(
     Math.round(viewportSize.y * BAND_TOP),
     mobile ? TOP_FLOOR_MOBILE : TOP_FLOOR_DESKTOP,

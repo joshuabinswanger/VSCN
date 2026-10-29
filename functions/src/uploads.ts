@@ -254,7 +254,11 @@ export function settleReplacedModeration(
 }
 
 /** Only the server can publish a record after the uploaded object matches its declared dimensions. */
-export const completeImageUpload = onCall({ enforceAppCheck: true, maxInstances: 3 }, async (req) => {
+// 512 MiB (2026-10-29): the raster fallback (a phone JPEG, WebKit cannot
+// encode WebP) is decoded and re-encoded by sharp in-process, like
+// resolveEmbed. The default 256 MiB holds a 4000 px photo with little room
+// and is OOM-killed by a 7000 px one the rules still admit.
+export const completeImageUpload = onCall({ enforceAppCheck: true, maxInstances: 3, memory: "512MiB" }, async (req) => {
   const uid = requireUser(req);
   const imageId = req.data?.imageId;
   if (typeof imageId !== "string" || (imageId !== `${uid}-avatar` && imageId !== `${uid}-gallery` && !UUID.test(imageId))) {

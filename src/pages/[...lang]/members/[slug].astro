@@ -417,6 +417,21 @@ const jsonLd = memberPageJsonLd({
     event.preventDefault();
     history.back();
   }, { capture: true });
+  // A member page is never the Portfolios: a key filed under THIS entry's
+  // index belongs to a Portfolios that once held the index (reused after a
+  // Back), and would send the next member page's pill back here. Cleared
+  // on every arrival (2026-10-29). Module scripts run once per document,
+  // so the listener is guarded by the pill's presence.
+  document.addEventListener("astro:page-load", () => {
+    if (!document.getElementById("mprof-back")) return;
+    const index = (history.state as { index?: number } | null)?.index;
+    if (typeof index !== "number") return;
+    try {
+      sessionStorage.removeItem(`vscn:pages-at:${index}`);
+    } catch {
+      /* Private mode. */
+    }
+  });
   // Capture, so it runs ahead of the ClientRouter's own click listener,
   // which steps aside for a prevented click.
 

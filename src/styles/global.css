@@ -39,6 +39,7 @@
   --color-muted: #686868;
   --color-text-placeholder: #a4a4a4; /* 2026-10-27, Josh: a lighter grey (2.4:1 on paper, kept knowingly) */
   --color-tint: #ecebea; /* 2026-10-28, vscn-design.af board 17: a selected key's fill, under an ink border */
+  --color-white: #ffffff; /* 2026-10-29: a box whiter than the paper (the editor's fields, a pressed .seg key), and ink on a black key */
   --color-error: #b83232;
   --color-success: #217a47;
   /* SHARP EDGES ALL OVER (2026-10-12, Josh: "use sharp edges all over the
@@ -693,7 +694,6 @@ fieldset > legend.label {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--color-muted);
-  line-height: 1;
   pointer-events: none;
   transition:
     top 0.22s cubic-bezier(0.25, 1, 0.5, 1),
@@ -1623,7 +1623,7 @@ label:has(> .picker-input:focus-visible) {
 
 .seg > :is(button, label):is([aria-pressed="true"], .is-active),
 .seg--actions > :is(button, label):hover:not(:disabled) {
-  background: #fff;
+  background: var(--color-white);
   color: var(--color-dark);
   box-shadow:
     0 1px 2px rgb(0 0 0 / 0.14),

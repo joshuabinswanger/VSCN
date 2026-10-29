@@ -1163,6 +1163,11 @@ const PAGES_AT_KEY = "vscn:pages-at:";
 /** The index of the entry on screen, adopted at page-load — on a Back,
  *  history.state is already the DESTINATION's by before-preparation. */
 let pagesEntryIndex: number | null = null;
+/** The same index for ANY view of the directory. A history index is reused
+ *  after a Back (the router pushes ++index), so a key filed for it while it
+ *  was the Portfolios would outlive it under an Images or People wall and
+ *  send the member page's Portfolios pill back onto the wall (2026-10-29). */
+let entryIndex: number | null = null;
 let arrivalTraverse = false;
 /** False until the router has swapped once: a page-load before that is the
  *  document's own load, not a swap. */
@@ -1181,11 +1186,11 @@ function pagesCellOnScreen(): HTMLElement | null {
 }
 
 document.addEventListener("astro:before-preparation", () => {
-  if (pagesEntryIndex === null) return;
-  const rank = pagesCellOnScreen()?.dataset.rank;
+  if (entryIndex === null) return;
+  const rank = pagesEntryIndex === null ? undefined : pagesCellOnScreen()?.dataset.rank;
   try {
-    if (rank) sessionStorage.setItem(PAGES_AT_KEY + pagesEntryIndex, rank);
-    else sessionStorage.removeItem(PAGES_AT_KEY + pagesEntryIndex);
+    if (rank) sessionStorage.setItem(PAGES_AT_KEY + entryIndex, rank);
+    else sessionStorage.removeItem(PAGES_AT_KEY + entryIndex);
   } catch {
     /* Private mode: Back starts at the top, as everywhere else. */
   }
@@ -1198,6 +1203,7 @@ document.addEventListener("astro:before-swap", (event) => {
   };
   delete document.documentElement.dataset.scrollKept;
   pagesEntryIndex = null;
+  entryIndex = null;
   swappedOnce = true;
   arrivalTraverse = swap.navigationType === "traverse";
   arrivalSettled = swap.viewTransition?.finished.catch(() => {}) ?? Promise.resolve();
@@ -1230,7 +1236,8 @@ function layoutTop(el: HTMLElement): number {
 
 function restorePagesMember(mode: LayoutMode) {
   const index = (history.state as { index?: number } | null)?.index;
-  pagesEntryIndex = mode === "pages" && typeof index === "number" ? index : null;
+  entryIndex = typeof index === "number" ? index : null;
+  pagesEntryIndex = mode === "pages" ? entryIndex : null;
   const kept = document.documentElement.hasAttribute("data-scroll-kept");
   // A BACK THAT IS A FULL LOAD (2026-10-19, Josh: "chrome on ios doesnt
   // work"): a browser that drops the document between pages comes back to
