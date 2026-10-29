@@ -331,7 +331,7 @@ document.addEventListener("astro:page-load", () => {
   );
   const formSections = Array.from(form.querySelectorAll<HTMLElement>(".form-section"));
 
-  bindTabKeys(sectionTabs, tab => setSection(tab.dataset.section!), lifecycle.signal);
+  bindTabKeys(sectionTabs, tab => switchSection(tab.dataset.section!), lifecycle.signal);
 
   let avatarProcessing = false;
   let resizedAvatarBlob: Blob | null = null;
@@ -2586,6 +2586,97 @@ document.addEventListener("astro:page-load", () => {
     }
   }
 
+  // ── TABS SLIDE, AND A SWIPE SWITCHES THEM (2026-10-29) ────────────────
+  // Josh: "the page switching needs to be smoother", "on swiping left and
+  // right in profile mode switch pages". A tab the member picks slides: the
+  // old one leaves toward the side it lies on, the new one comes in from
+  // the other. The sections are display: contents, so it is their children
+  // that move, and fill "none" hands them back untransformed (a fixed panel
+  // inside one must not stay contained). In the header's order on a phone
+  // (Navbar.astro: ACCOUNT, PROFILE, WORK), the tab row's on a desktop.
+  function tabOrder(): string[] {
+    if (!window.matchMedia(DESKTOP_QUERY).matches) return ["account", "profile", "work"];
+    return sectionTabs.map((btn) => btn.dataset.section ?? "");
+  }
+  let switching: Animation[] = [];
+  function switchSection(section: string) {
+    const from = formSections.find((el) => el.classList.contains("is-active"))?.dataset.section;
+    switching.forEach((a) => a.cancel());
+    switching = [];
+    if (!from || from === section || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setSection(section);
+      return;
+    }
+    const order = tabOrder();
+    const dir = order.indexOf(section) > order.indexOf(from) ? 1 : -1;
+    const moving = (name: string) =>
+      Array.from(formSections.find((el) => el.dataset.section === name)?.children ?? []) as HTMLElement[];
+    const out = moving(from).map((el) =>
+      el.animate(
+        [{ opacity: 1, transform: "none" }, { opacity: 0, transform: `translateX(${-dir * 28}px)` }],
+        { duration: 130, easing: "cubic-bezier(0.5, 0, 0.75, 0)", fill: "forwards" },
+      ),
+    );
+    switching = out;
+    Promise.all(out.map((a) => a.finished))
+      .then(() => {
+        setSection(section);
+        out.forEach((a) => a.cancel());
+        switching = moving(section).map((el) =>
+          el.animate(
+            [{ opacity: 0, transform: `translateX(${dir * 36}px)` }, { opacity: 1, transform: "none" }],
+            { duration: 380, easing: "cubic-bezier(0.16, 1, 0.3, 1)" },
+          ),
+        );
+      })
+      // Cancelled by a newer switch, which sets its own section.
+      .catch(() => {});
+  }
+
+  // The swipe: a quick, mostly sideways stroke on the form. Not one that
+  // starts in a field, on something that scrolls sideways itself (a
+  // carousel, a strip of chips), on the bar, or at a screen edge, where
+  // iOS takes the stroke for Back.
+  function scrollsSideways(target: Element): boolean {
+    for (let el: Element | null = target; el && el !== form; el = el.parentElement) {
+      if (el.matches("input, textarea, select, [contenteditable], .form-footer")) return true;
+      const ox = getComputedStyle(el).overflowX;
+      if ((ox === "auto" || ox === "scroll") && el.scrollWidth > el.clientWidth + 1) return true;
+    }
+    return false;
+  }
+  let swipe: { x: number; y: number; t: number } | null = null;
+  form.addEventListener(
+    "touchstart",
+    (e) => {
+      const touch = e.touches[0];
+      const edge = touch.clientX < 24 || touch.clientX > window.innerWidth - 24;
+      swipe =
+        e.touches.length === 1 && !edge && e.target instanceof Element && !scrollsSideways(e.target)
+          ? { x: touch.clientX, y: touch.clientY, t: e.timeStamp }
+          : null;
+    },
+    { passive: true, signal: lifecycle.signal },
+  );
+  form.addEventListener(
+    "touchend",
+    (e) => {
+      if (!swipe) return;
+      const touch = e.changedTouches[0];
+      const dx = touch.clientX - swipe.x;
+      const dy = touch.clientY - swipe.y;
+      const quick = e.timeStamp - swipe.t < 600;
+      swipe = null;
+      if (!quick || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+      if (form.inert || window.getSelection()?.toString()) return;
+      const order = tabOrder();
+      const current = formSections.find((el) => el.classList.contains("is-active"))?.dataset.section ?? "";
+      const next = order[order.indexOf(current) + (dx < 0 ? 1 : -1)];
+      if (next) switchSection(next);
+    },
+    { passive: true, signal: lifecycle.signal },
+  );
+
   // ── THE WORKS BAR (2026-10-13) ────────────────────────────
   // Three switches at the foot of the form: which rendering (the page or the
   // directory card), whether it is being looked at or edited, and which
@@ -2840,7 +2931,7 @@ document.addEventListener("astro:page-load", () => {
 
   sectionTabs.forEach((btn) => {
     btn.addEventListener("click", () => {
-      setSection(btn.dataset.section ?? "profile");
+      switchSection(btn.dataset.section ?? "profile");
     });
   });
 

@@ -444,7 +444,16 @@ const searchIndex: SearchIndex = {
             its top, the results under it, and the bar lifted over the
             keyboard by fitBarToKeyboard. Cancel is the desktop's only. */
         }
+        {
+          /* THE CARDS FOLD (2026-10-29, Josh: "search tags etc need to be
+            collapsible"). A card covers its own pill on a phone, so the pill
+            cannot close it: the handle at its top does, by a tap or a drag
+            down (bindCardFold in the controller). Not drawn on a desktop. */
+        }
         <div id="search-panel" class="bar-menu__panel search__panel" hidden>
+          <button type="button" class="bar-card__handle" aria-label={t("community.bar.fold")} title={t("community.bar.fold")}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </button>
           <div class="search__head">
             <input
               id="search-input"
@@ -478,6 +487,9 @@ const searchIndex: SearchIndex = {
           />
         </div>
         <div id="tag-filter-panel" class="bar-menu__panel tag-filter__panel" hidden>
+          <button type="button" class="bar-card__handle" aria-label={t("community.bar.fold")} title={t("community.bar.fold")}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </button>
           <div class="tag-filter__head">
             <input
               id="tag-filter-search"
@@ -543,6 +555,9 @@ const searchIndex: SearchIndex = {
           aria-label={t("community.sort")}
           hidden
         >
+          <button type="button" class="bar-card__handle" aria-label={t("community.bar.fold")} title={t("community.bar.fold")}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </button>
           {
             (["date", "member", "project", "field"] as const).map((sort) => (
               <button type="button" class="sort-menu__btn" data-sort={sort} aria-pressed="false">
@@ -3277,6 +3292,53 @@ const searchIndex: SearchIndex = {
       overflow-y: auto;
       overscroll-behavior: contain;
     }
+    /* The tags' card the same way: the handle and the field stand, the
+       chips scroll under them. */
+    .community-bar .tag-filter__panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .community-bar .tag-filter__head,
+    .community-bar .tag-filter__scope {
+      flex: none;
+    }
+    .community-bar .tag-filter__list {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    /* The fold handle: the card's top edge, a chevron pointing the way it
+       folds. */
+    .community-bar .bar-card__handle {
+      display: grid;
+      place-items: center;
+      flex: none;
+      align-self: stretch;
+      width: auto;
+      height: 24px;
+      margin: -6px 0 2px;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--color-muted);
+      cursor: pointer;
+      touch-action: none;
+    }
+    .community-bar .bar-card__handle svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+  }
+
+  .bar-card__handle {
+    display: none;
   }
 
   /* NO SHIFT BETWEEN VIEWS (2026-10-28, Josh: "there is still a shift in the

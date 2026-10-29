@@ -622,6 +622,22 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeBarMenus();
 });
 
+/** A card's handle folds it (CommunityGrid.astro, .bar-card__handle): a tap,
+ *  or a drag that ends 16px or more below where it began. Delegated: the
+ *  bar persists from page to page. */
+let foldFrom: number | null = null;
+document.addEventListener("pointerdown", (e) => {
+  const handle = e.target instanceof Element ? e.target.closest(".bar-card__handle") : null;
+  foldFrom = handle ? e.clientY : null;
+});
+document.addEventListener("pointerup", (e) => {
+  if (foldFrom !== null && e.clientY - foldFrom >= 16) closeBarMenus();
+  foldFrom = null;
+});
+document.addEventListener("click", (e) => {
+  if (e.target instanceof Element && e.target.closest(".bar-card__handle")) closeBarMenus();
+});
+
 // ── THE SEARCH (2026-10-16, src/lib/communitySearch.ts) ─────────────────
 // The index rides in the bar as JSON; parsed once per bar (the bar persists
 // across the directory's own navigations, so usually once per visit).
