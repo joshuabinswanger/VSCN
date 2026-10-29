@@ -6,7 +6,6 @@ import { DEFAULT_VIEW, viewFromParam, type ViewName } from "./communityLayout.ts
 import { setPagesPaging } from "./pagesPager.ts";
 import { setPagesEntrance } from "./pagesEntrance.ts";
 import { setPagesRail } from "./pagesRail.ts";
-import { whenHoldDone } from "./entrance.ts";
 import { shuffleBands } from "./communityDeal.ts";
 import { searchDirectory, type SearchIndex } from "./communitySearch.ts";
 
@@ -652,22 +651,29 @@ document.addEventListener("astro:after-swap", () => {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const bar = document.querySelector<HTMLElement>(".community-bar");
   if (!bar) return;
-  const enter = bar.animate([{ opacity: 0 }, { opacity: 1 }], {
-    duration: 620,
-    easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
-    fill: "backwards",
-  });
-  enter.pause();
-  // Layout sets the hold in its own after-swap listener, which may run after
-  // this one; by the next frame it is there, or there is none (an iOS edge
-  // swipe shows the page at once, and so does the bar).
+  // Held at 0 by a still animation until <main>'s fade has a start time,
+  // then given a copy of that fade on <main>'s own clock: same timing, same
+  // startTime, so the two cannot drift. Never a paused animation played on
+  // later — that restarted under WebKit's compositor and faded in twice
+  // (Layout.astro, the arrival fade).
+  const held = bar.animate([{ opacity: 0 }, { opacity: 0 }], { duration: 1, fill: "forwards" });
+  // Layout makes <main>'s fade in its own after-swap listener, which may run
+  // after this one; by the next frame it is there, or there is none (an iOS
+  // edge swipe shows the page at once, and so does the bar).
   requestAnimationFrame(() => {
-    if (!document.documentElement.hasAttribute("data-arrive-hold")) {
-      enter.cancel();
+    const fade = document
+      .querySelector(".page-wrap main")
+      ?.getAnimations()
+      .find((a) => a instanceof Animation && !(a instanceof CSSTransition) && !(a instanceof CSSAnimation));
+    if (!fade) {
+      held.cancel();
       return;
     }
-    void whenHoldDone().then(() => {
-      if (enter.playState === "paused") enter.play();
+    void fade.ready.then(() => {
+      if (held.playState === "idle") return;
+      held.cancel();
+      const copy = bar.animate([{ opacity: 0 }, { opacity: 1 }], fade.effect?.getTiming());
+      copy.startTime = fade.startTime;
     });
   });
 });
