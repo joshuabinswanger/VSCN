@@ -558,12 +558,15 @@ function fitBarToKeyboard() {
   const bar = document.querySelector<HTMLElement>(".community-bar");
   const vv = window.visualViewport;
   if (!bar || !vv) return;
-  const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+  // A pinch-zoom shrinks the visual viewport too, without any keyboard:
+  // ignored while zoomed, as Layout.astro's --shell-h watchdog does.
+  const zoomed = vv.scale !== 1;
+  const kb = zoomed ? 0 : Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
   bar.style.setProperty("--bar-kb", `${Math.round(kb)}px`);
-  bar.style.setProperty("--bar-room", `${Math.round(vv.height)}px`);
+  bar.style.setProperty("--bar-room", `${Math.round(zoomed ? window.innerHeight : vv.height)}px`);
   // Where the visible screen starts: iOS scrolls the layout viewport up
   // under the keyboard, and the full-screen search must start there.
-  bar.style.setProperty("--bar-vtop", `${Math.round(Math.max(0, vv.offsetTop))}px`);
+  bar.style.setProperty("--bar-vtop", `${Math.round(zoomed ? 0 : Math.max(0, vv.offsetTop))}px`);
 }
 window.visualViewport?.addEventListener("resize", fitBarToKeyboard);
 window.visualViewport?.addEventListener("scroll", fitBarToKeyboard);

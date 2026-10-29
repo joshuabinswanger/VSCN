@@ -258,10 +258,23 @@ document.addEventListener("astro:page-load", () => {
       requestAnimationFrame(paintAutosave);
       clearTimeout(autosaveTimer);
       autosaveTimer = window.setTimeout(() => {
-        if (!draft?.hasChanges() || saveButton.disabled || navigator.onLine === false) return;
+        if (!draft?.hasChanges()) return;
+        // A save in flight, or no line: the edit is still waiting, so the
+        // timer re-arms itself instead of standing down — nothing else
+        // would (the save's end repaints the pill and fires no form event).
+        if (saveButton.disabled || navigator.onLine === false) {
+          schedule();
+          return;
+        }
         autosaveSubmit = true;
         try {
-          form.requestSubmit(saveButton);
+          // Dispatched, not requestSubmit(): that would run the browser's
+          // constraint validation over the whole form, and the video
+          // sheet's type="url" field holding a half-typed link would pop
+          // "Please enter a URL." over it, pull focus there and never
+          // submit. The handler validates what it saves itself
+          // (firstProfileProblem), and quietly.
+          form.dispatchEvent(new SubmitEvent("submit", { cancelable: true, submitter: saveButton }));
         } finally {
           autosaveSubmit = false;
         }
@@ -2328,6 +2341,10 @@ document.addEventListener("astro:page-load", () => {
   galleryVideoUrl.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !event.isComposing) {
       event.preventDefault();
+      // As Cancel: the field is cleared, or a half-typed link left in the
+      // hidden sheet fails the form's constraint validation and silently
+      // aborts every pressed Save after it.
+      galleryVideoUrl.value = "";
       setVideoPanel(false);
       return;
     }
