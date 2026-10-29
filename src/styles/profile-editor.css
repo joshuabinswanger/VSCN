@@ -2873,6 +2873,22 @@
     display: none;
   }
 
+  /* NO STAND-OFF ABOVE THE PROJECT (2026-10-29, Josh: "remove the top
+     gap"). The page's top padding, the works' --works-top and the stage's
+     gap all hold the works clear of the profile's words, which this level
+     hides: on a phone they stacked ~140px of paper between ‹ Projects and
+     the project. The key now sits close under the header, the project
+     close under the key. */
+  .works-stage[data-level="project"] {
+    gap: 1rem;
+    padding-top: 0.5rem;
+  }
+
+  .works-stage[data-level="project"] .mprof {
+    --works-top: 0px;
+    padding-top: 0;
+  }
+
   /* With the profile's column gone, the works column stands in the middle. */
   @media (--bp-desktop) {
     .works-stage[data-level="project"] .mprof {

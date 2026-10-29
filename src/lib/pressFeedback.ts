@@ -15,7 +15,6 @@
 const PRESSABLE = [
   ".nav-link",
   ".nav-menu-btn",
-  ".nav-portfolios",
   ".lang-toggle",
   ".bar-menu__trigger",
   ".view-toggle__btn",

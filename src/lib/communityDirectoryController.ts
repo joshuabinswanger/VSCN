@@ -426,7 +426,21 @@ function pillParts(panelId: string) {
   return { trigger, panel, box };
 }
 
-function pillFrames(trigger: HTMLElement, box: HTMLElement): Keyframe[] {
+/** The colour the trigger is settling to. Closing, it is still easing out of
+ *  its open fill (--color-dark) when the card starts back, and a card that
+ *  took that first frame's colour folded into a dark slab (2026-10-29, Josh:
+ *  "drop up button dark on collapse"). A running transition's last keyframe
+ *  is where it is going. */
+function restingColour(trigger: HTMLElement): string {
+  for (const a of trigger.getAnimations()) {
+    if (!(a instanceof CSSTransition) || a.transitionProperty !== "background-color") continue;
+    const last = (a.effect as KeyframeEffect | null)?.getKeyframes().at(-1)?.backgroundColor;
+    if (typeof last === "string") return last;
+  }
+  return getComputedStyle(trigger).backgroundColor;
+}
+
+function pillFrames(trigger: HTMLElement, box: HTMLElement, closing = false): Keyframe[] {
   const t = trigger.getBoundingClientRect();
   const r = box.getBoundingClientRect();
   const end = Math.min(parseFloat(getComputedStyle(box).borderTopLeftRadius) || r.height / 2, r.height / 2, r.width / 2);
@@ -434,7 +448,7 @@ function pillFrames(trigger: HTMLElement, box: HTMLElement): Keyframe[] {
     {
       transform: `translateY(${t.top - r.top}px)`,
       clipPath: `inset(0px ${r.right - t.right}px ${r.height - t.height}px ${t.left - r.left}px round ${t.height / 2}px)`,
-      backgroundColor: getComputedStyle(trigger).backgroundColor,
+      backgroundColor: closing ? restingColour(trigger) : getComputedStyle(trigger).backgroundColor,
     },
     { transform: "none", clipPath: `inset(0px 0px 0px 0px round ${end}px)`, backgroundColor: getComputedStyle(box).backgroundColor },
   ];
@@ -480,7 +494,7 @@ function shrinkIntoPill(panelId: string) {
   for (const el of pillContents(panel, box)) {
     el.animate([{ opacity: 1 }, { opacity: 0, offset: 0.4 }, { opacity: 0 }], { duration: GROW_MS * 0.7, fill: "forwards" });
   }
-  const anim = box.animate(pillFrames(trigger, box).reverse(), { duration: GROW_MS * 0.7, easing: SHRINK_EASE, fill: "forwards" });
+  const anim = box.animate(pillFrames(trigger, box, true).reverse(), { duration: GROW_MS * 0.7, easing: SHRINK_EASE, fill: "forwards" });
   anim.onfinish = () => {
     if (barLeaving !== panel) return;
     panel.hidden = true;

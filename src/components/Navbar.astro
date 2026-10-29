@@ -29,16 +29,6 @@ import "../styles/type.css";
     <span class="nav-burger" aria-hidden="true"><i></i><i></i><i></i></span>
     <img class="nav-menu-btn__pic" alt="" width="34" height="34" decoding="async" />
   </button>
-  {
-    /* BACK TO THE PORTFOLIOS (2026-10-28, Josh: "add a button at the top
-      that lets you return to the portfolios"). VSCN opens Info now, so this
-      key is the header's way into the directory: centred in the header row,
-      on every page but the directory itself (nav[data-directory], set by the
-      script below), where the bar already holds the views. */
-  }
-  <a href="/community" class="nav-portfolios" id="nav-portfolios"
-    ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg><span>PORTFOLIOS</span></a
-  >
   <div class="nav-links" id="nav-menu">
     <a href="/info" class="nav-link" id="nav-info">INFO</a>
     <a href="/community" class="nav-link nav-center" id="nav-community">COMMUNITY</a>
@@ -675,51 +665,6 @@ import "../styles/type.css";
     color: var(--color-dark);
   }
 
-  /* THE PORTFOLIOS KEY: an outlined pill with a back chevron, the editor's
-     ‹ Projects drawn at the header's size, centred in the header row. */
-  .nav-portfolios {
-    position: fixed;
-    top: calc((var(--header-h) - 30px) / 2);
-    left: 50%;
-    translate: -50% 0;
-    z-index: 1;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    box-sizing: border-box;
-    height: 30px;
-    padding: 0 14px 0 9px;
-    border-radius: var(--radius-pill) !important;
-    box-shadow: inset 0 0 0 1px var(--color-border);
-    background: var(--nav-paper);
-    color: var(--nav-ink);
-    text-decoration: none;
-    pointer-events: auto;
-    transition: box-shadow 0.2s ease;
-  }
-  .nav-portfolios:visited {
-    color: var(--nav-ink);
-  }
-  .nav-portfolios:hover {
-    box-shadow: inset 0 0 0 1px var(--nav-ink);
-  }
-  .nav-portfolios:focus-visible {
-    outline: 2px solid var(--nav-ink);
-    outline-offset: 2px;
-  }
-  .nav-portfolios svg {
-    width: 15px;
-    height: 15px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-  nav[data-directory] .nav-portfolios {
-    display: none;
-  }
-
   .nav-menu-btn__pic {
     display: none;
   }
@@ -745,48 +690,6 @@ import "../styles/type.css";
     }
     .nav-menu-btn.has-pic:not([aria-expanded="true"]) .nav-burger {
       opacity: 0;
-    }
-    /* SMALLER (2026-10-29, Josh: "the portfolio button should be
-       smaller"): 36 → 28px, the chevron with it. */
-    /* ONLY IN THE OPEN MENU (2026-10-29, Josh: "the back to portfolio
-       button should only pop up when opening the menu"): out of sight on
-       the page, it pops in on the sheet's header row with the cross. */
-    .nav-portfolios {
-      top: calc((var(--header-h) - 28px) / 2);
-      height: 28px;
-      padding: 0 11px 0 7px;
-      gap: 3px;
-      opacity: 0;
-      scale: 0.85;
-      visibility: hidden;
-      pointer-events: none;
-      transition:
-        box-shadow 0.2s ease,
-        opacity 0.18s ease,
-        scale 0.18s ease,
-        visibility 0s linear 0.18s;
-    }
-    :root:has(#nav-menu-btn[aria-expanded="true"]) .nav-portfolios {
-      opacity: 1;
-      scale: 1;
-      visibility: visible;
-      pointer-events: auto;
-      transition:
-        box-shadow 0.2s ease,
-        opacity 0.3s ease 0.12s,
-        scale 0.45s cubic-bezier(0.3, 1.25, 0.5, 1) 0.12s,
-        visibility 0s linear 0s;
-    }
-    .nav-portfolios svg {
-      width: 13px;
-      height: 13px;
-    }
-    /* ON THE OPEN SHEET TOO (2026-10-28, Josh: "the portfolio button also
-       in the window that pops up upon opening"): the sheet keeps the
-       header's row, VSCN, the key and the cross, on every page, the
-       directory's included. */
-    :root:has(#nav-menu-btn[aria-expanded="true"]) nav[data-directory] .nav-portfolios {
-      display: inline-flex;
     }
   }
 
@@ -1090,11 +993,16 @@ import "../styles/type.css";
        the menu key opens no sheet: ACCOUNT / PROFILE / WORK grow out of it
        to the left in one outlined pill on the header's line, the outline
        running round the face, as the desktop's open account pill (board
-       04). The Portfolios key steps aside while it is out; a tab switches
-       in place and folds it back (the script's tab handler). The sheet's
-       list is that strip: fixed on the header's line at the right, as wide
-       as the pill, the language switch left out (the footer has it). */
-    nav[data-editor].is-signed-in .nav-links {
+       04). On the editor a tab switches in place and folds it back (the
+       script's tab handler); elsewhere it opens /profile on that tab. The
+       sheet's list is that strip: fixed on the header's line at the right,
+       as wide as the pill, the language switch left out (the footer has
+       it). ON EVERY PAGE, SIGNED IN (2026-10-29, Josh: "make the pill
+       interaction on the profile consistent sometimes it still brings up
+       the full screen selection"): it keyed on nav[data-editor], so off
+       /profile the same face opened the full sheet. Signed out, the menu
+       key is still the hamburger and its sheet. */
+    nav.is-signed-in .nav-links {
       inset: 0 7px auto auto;
       height: var(--header-h);
       padding: 0;
@@ -1106,11 +1014,11 @@ import "../styles/type.css";
       opacity: 1;
       transition: visibility 0s linear 0.35s;
     }
-    nav[data-editor].is-signed-in .nav-menu-btn[aria-expanded="true"] ~ .nav-links {
+    nav.is-signed-in .nav-menu-btn[aria-expanded="true"] ~ .nav-links {
       opacity: 1;
       transition: visibility 0s linear 0s;
     }
-    nav[data-editor].is-signed-in #nav-sheet-lang {
+    nav.is-signed-in #nav-sheet-lang {
       display: none;
     }
     /* OUT OF THE FACE (2026-10-29, Josh: "pill needs to extend from
@@ -1119,7 +1027,7 @@ import "../styles/type.css";
        pill, and the tabs follow it out, the nearest first. Until today its
        max-width eased to 24rem, past the pill's own width, so the pill was
        all there a tenth of a second in and read as a pop, not a growth. */
-    nav[data-editor].is-signed-in .nav-links .nav-acct {
+    nav.is-signed-in .nav-links .nav-acct {
       box-sizing: border-box;
       padding: 4px 42px 4px 4px;
       box-shadow: inset 0 0 0 1px var(--color-border);
@@ -1130,19 +1038,19 @@ import "../styles/type.css";
         clip-path 0.32s cubic-bezier(0.5, 0, 0.75, 0),
         opacity 0.12s ease 0.2s;
     }
-    nav[data-editor].is-signed-in .nav-menu-btn[aria-expanded="true"] ~ .nav-links .nav-acct {
+    nav.is-signed-in .nav-menu-btn[aria-expanded="true"] ~ .nav-links .nav-acct {
       clip-path: inset(0 0 0 0 round 999px);
       opacity: 1;
       transition:
         clip-path 0.55s cubic-bezier(0.16, 1, 0.3, 1),
         opacity 0.1s ease;
     }
-    nav[data-editor].is-signed-in .nav-links .nav-link {
+    nav.is-signed-in .nav-links .nav-link {
       opacity: 1;
       transform: none;
       transition: background-color 0.2s ease;
     }
-    nav[data-editor].is-signed-in .nav-links .nav-acct .nav-link {
+    nav.is-signed-in .nav-links .nav-acct .nav-link {
       flex: none;
       height: 34px;
       /* 10px, not 12: open, the pill must stay clear of VSCN at 360px. */
@@ -1155,7 +1063,7 @@ import "../styles/type.css";
         transform 0.3s cubic-bezier(0.5, 0, 0.75, 0),
         background-color 0.2s ease;
     }
-    nav[data-editor].is-signed-in .nav-menu-btn[aria-expanded="true"] ~ .nav-links .nav-acct .nav-link {
+    nav.is-signed-in .nav-menu-btn[aria-expanded="true"] ~ .nav-links .nav-acct .nav-link {
       opacity: 1;
       transform: none;
       transition:
@@ -1163,26 +1071,21 @@ import "../styles/type.css";
         transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) var(--acct-delay, 0s),
         background-color 0.2s ease;
     }
-    nav[data-editor].is-signed-in #nav-tab-work {
+    nav.is-signed-in #nav-tab-work {
       --acct-delay: 40ms;
     }
-    nav[data-editor].is-signed-in #nav-tab-profile {
+    nav.is-signed-in #nav-tab-profile {
       --acct-delay: 90ms;
     }
-    nav[data-editor].is-signed-in #nav-tab-account {
+    nav.is-signed-in #nav-tab-account {
       --acct-delay: 140ms;
     }
     /* Open, the key keeps the face inside the pill, not the cross. */
-    nav[data-editor].is-signed-in .nav-menu-btn.has-pic .nav-menu-btn__pic {
+    nav.is-signed-in .nav-menu-btn.has-pic .nav-menu-btn__pic {
       opacity: 1;
     }
-    nav[data-editor].is-signed-in .nav-menu-btn.has-pic .nav-burger {
+    nav.is-signed-in .nav-menu-btn.has-pic .nav-burger {
       opacity: 0;
-    }
-    :root:has(nav[data-editor].is-signed-in #nav-menu-btn[aria-expanded="true"]) .nav-portfolios {
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
     }
     :root:has(nav[data-editor].is-signed-in #nav-menu-btn[aria-expanded="true"]) .form-footer {
       visibility: visible;
@@ -1461,12 +1364,6 @@ import "../styles/type.css";
     const sheetLang = document.getElementById("nav-sheet-lang") as HTMLAnchorElement | null;
     const acctLang = document.getElementById("nav-acct-lang") as HTMLAnchorElement | null;
 
-    const portfolios = document.getElementById("nav-portfolios") as HTMLAnchorElement | null;
-    if (portfolios) {
-      portfolios.href = `${prefix}/community`;
-      const word = portfolios.querySelector("span");
-      if (word) word.textContent = labels.views[0];
-    }
     // The directory (and the bare root, which is it) has its own views bar.
     const bare = normalisePath(normPath.replace(/^\/de(?=\/|$)/, "")) || "/";
     document
