@@ -435,15 +435,14 @@ const searchIndex: SearchIndex = {
             view behind it. */
         }
         {
-          /* ON A PHONE THE SEARCH IS A FULL-SCREEN SHEET (2026-10-16, Josh:
+          /* ON A PHONE THE SEARCH WAS A FULL-SCREEN SHEET (2026-10-16, Josh:
             "on iphone it does not pop up. i stay hidden behind the keyboard").
             A fixed bar at the bottom sits against the LAYOUT viewport, which
             iOS does not shrink for its keyboard, so a drop-up grew from under
-            it. The pill now morphs into a sheet (data-search-sheet on
-            .community-bar, set by setBarMenu): the field pinned at the top
-            with Cancel beside it, the keyboard owning the bottom, the results
-            scrolling between — the one layout every keyboard height leaves
-            readable. Desktop keeps the drop-up. */
+            it. SINCE 2026-10-29 a card like the tags' (one card for all three,
+            Josh: "unify the UX across filter sort and search"): the field at
+            its top, the results under it, and the bar lifted over the
+            keyboard by fitBarToKeyboard. Cancel is the desktop's only. */
         }
         <div id="search-panel" class="bar-menu__panel search__panel" hidden>
           <div class="search__head">
@@ -1159,10 +1158,10 @@ const searchIndex: SearchIndex = {
        (Layout.astro) is what lets the last card and the footer's last line
        scroll out from under it. */
     .community-bar {
-      bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+      /* With the keyboard up, 8px over it instead (fitBarToKeyboard). */
+      bottom: max(calc(12px + env(safe-area-inset-bottom, 0px)), calc(var(--bar-kb, 0px) + 8px));
       display: flex;
       justify-content: center;
-      /* The sheet sits on the screen's edge; the pill floats 12px off it. */
       transition: bottom 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
     }
   }
@@ -1476,79 +1475,6 @@ const searchIndex: SearchIndex = {
 
   .search__cancel {
     display: none;
-  }
-
-  /* ── The sheet (phone only) ───────────────────────────────
-     With data-search-sheet on the bar, the pill IS the screen: the bar's
-     track spans the viewport, the pill fills it, the triggers' row steps
-     out of flow and fades, and the search room becomes a column — head at
-     the top, results scrolling under it. setBarMenu eases the pill's box
-     from the capsule to the full size and --bar-r (registered, so it
-     transitions) takes the corners away. Half a screen of padding under the
-     last result lets it scroll out from under the keyboard, which iOS lays
-     over the page rather than resizing it. Above the header (z 30). */
-  @media (--bp-mobile) {
-    .community-bar[data-search-sheet] {
-      top: 0;
-      bottom: 0;
-      z-index: 40;
-      align-items: flex-end;
-    }
-
-    .community-bar[data-search-sheet] .community-bar__in {
-      width: 100%;
-      height: 100%;
-      max-width: none;
-      justify-content: flex-start;
-      padding: calc(6px + env(safe-area-inset-top, 0px)) 6px 0;
-      border: none;
-    }
-
-    .community-bar[data-search-sheet] .community-bar__row {
-      position: absolute;
-      bottom: 0;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.15s;
-    }
-
-    .community-bar[data-search-sheet] .community-bar__panels {
-      flex: 1;
-      min-height: 0;
-      width: 100%;
-    }
-
-    .community-bar[data-search-sheet] .search__panel {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      width: 100%;
-      min-height: 0;
-      max-height: none;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-    }
-
-    .community-bar[data-search-sheet] .search__head {
-      position: static;
-      flex: none;
-      margin: 0;
-      padding: 6px 6px 8px;
-    }
-
-    .community-bar[data-search-sheet] .search__cancel {
-      display: block;
-    }
-
-    .community-bar[data-search-sheet] .search__results {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      -webkit-overflow-scrolling: touch;
-      padding: 0 6px 50vh;
-    }
   }
 
   .search__results :global(.search__note) {
@@ -3277,54 +3203,79 @@ const searchIndex: SearchIndex = {
       font-size: var(--fs-75) !important;
     }
     /* The island draws nothing round the pills — each is its own outlined
-       pill, as on a desktop — except as the search's sheet. Its border and
-       padding stay, clear, so the row does not move. */
-    .community-bar:not([data-search-sheet]) .community-bar__in {
+       pill, as on a desktop. Its border and padding stay, clear, so the row
+       does not move. */
+    .community-bar .community-bar__in {
       border-color: transparent;
       background: transparent;
     }
-    .community-bar:not([data-search-sheet]) .community-bar__in:not([data-sizing]) {
+    .community-bar .community-bar__in:not([data-sizing]) {
       overflow: visible;
     }
-    /* TAGS AND SORT, A CARD OF THEIR OWN ABOVE THE PILLS (2026-10-28, Josh:
-       "the tags and filter should open their own box that sits above the
-       other pills"): the desktop's cards, rising instead of dropping, each
-       grown out of its pill (growFromPill) and stood over it (anchorUnder). */
-    .community-bar:not([data-search-sheet]) .community-bar__panels {
+    /* SEARCH, TAGS AND SORT: ONE CARD, OVER THE BAR (2026-10-29, Josh:
+       "unify the UX across filter sort and search. also the pills should
+       morph over the bottom bar"). Each opens the same card, the bar's full
+       width, its foot on the bar's foot so it covers the pills, grown out
+       of its own pill (growFromPill). Its height stops below the header
+       and above the keyboard (--bar-room, fitBarToKeyboard). Until
+       2026-10-28 the search was a full-screen sheet and Tags and Sort cards
+       floating above the pills. */
+    .community-bar .community-bar__panels {
       position: absolute;
-      bottom: calc(100% + 8px);
+      bottom: 0;
       left: 0;
       right: 0;
       z-index: 2;
       display: block;
       pointer-events: none;
     }
-    .community-bar:not([data-search-sheet]) .community-bar__panels:not(:has(> :not([hidden]))) {
+    .community-bar .community-bar__panels:not(:has(> :not([hidden]))) {
       display: none;
     }
-    .community-bar:not([data-search-sheet]) .bar-menu__panel {
+    .community-bar .bar-menu__panel {
+      --card-max: min(60vh, 28rem, calc(var(--bar-room, 100vh) - var(--header-h) - 20px));
       position: absolute;
       bottom: 0;
       left: 50%;
       translate: -50% 0;
       box-sizing: border-box;
-      width: min(360px, calc(100vw - 24px));
-      max-height: min(60vh, 28rem);
+      /* 8px off the screen's sides: the row runs a few px past the
+         island's box, and the card must cover its end pills. */
+      width: calc(100vw - 16px);
+      max-width: none;
+      max-height: var(--card-max);
       overflow-y: auto;
+      overscroll-behavior: contain;
       margin: 0;
+      padding: 10px;
       pointer-events: auto;
       border: 1px solid var(--color-border);
-      border-radius: 18px !important;
+      border-radius: 22px !important;
       background: var(--color-bg);
-      box-shadow: 0 10px 30px rgb(0 0 0 / 0.1);
+      box-shadow: 0 -6px 30px rgb(0 0 0 / 0.1);
     }
-    .community-bar:not([data-search-sheet]) .bar-menu__panel[hidden] {
+    .community-bar .bar-menu__panel[hidden] {
       display: none;
     }
-    /* Four short words: the sort's card is as wide as they are. */
-    .community-bar:not([data-search-sheet]) .sort-menu__panel {
-      width: max-content;
-      min-width: 11rem;
+    /* The search holds its height while the results change under the
+       field, which stays at the top as the rows scroll. */
+    .community-bar .search__panel {
+      display: flex;
+      flex-direction: column;
+      height: var(--card-max);
+      overflow: hidden;
+    }
+    .community-bar .search__head {
+      position: static;
+      flex: none;
+      margin: 0 0 6px;
+      padding: 0;
+    }
+    .community-bar .search__results {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
     }
   }
 
