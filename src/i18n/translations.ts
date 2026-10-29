@@ -8,6 +8,7 @@ export const ui: Record<string, Record<string, string>> = {
 
     // SiteFooter
     "footer.aria": "Legal",
+    "footer.info": "Info",
     "footer.impressum": "Impressum",
     "footer.contact": "Contact",
     "footer.privacy": "Privacy",
@@ -752,6 +753,7 @@ export const ui: Record<string, Record<string, string>> = {
 
     // SiteFooter
     "footer.aria": "Rechtliches",
+    "footer.info": "Info",
     "footer.impressum": "Impressum",
     "footer.contact": "Kontakt",
     "footer.privacy": "Datenschutz",

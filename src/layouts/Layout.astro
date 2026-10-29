@@ -333,7 +333,7 @@ const BRAND_SLOTS: BrandSlot[] = [
     >
       <a
         id="brand-home-link"
-        href={lang === "de" ? "/de/info" : "/info"}
+        href={lang === "de" ? "/de/community" : "/community"}
         class="brand-link"
         aria-label="Visual Science Communication Network"
       >
@@ -762,10 +762,11 @@ const BRAND_SLOTS: BrandSlot[] = [
   function updateBrandHomeLink(lang: Lang) {
     const brandLink = document.getElementById("brand-home-link") as HTMLAnchorElement | null;
     if (!brandLink) return;
-    // VSCN OPENS INFO (2026-10-28, Josh: "on click on vscn it should bring
-    // you to the info page"); the way back to the directory is the
-    // Portfolios key in the header (Navbar.astro).
-    brandLink.href = lang === "de" ? "/de/info" : "/info";
+    // VSCN OPENS THE PORTFOLIOS (2026-10-29, Josh: "[VSCN] button brings
+    // you back to portfolios. remove back to portfolio button"). It opened
+    // Info from 2026-10-28, with a ‹ Portfolios key in the header as the way
+    // back; the key is gone and Info is a line of the phone's menu again.
+    brandLink.href = lang === "de" ? "/de/community" : "/community";
   }
 
   let brandResizeObserver: ResizeObserver | null = null;
