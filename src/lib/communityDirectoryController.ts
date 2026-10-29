@@ -6,6 +6,7 @@ import { DEFAULT_VIEW, viewFromParam, type ViewName } from "./communityLayout.ts
 import { setPagesPaging } from "./pagesPager.ts";
 import { setPagesEntrance } from "./pagesEntrance.ts";
 import { setPagesRail } from "./pagesRail.ts";
+import { whenHoldDone } from "./entrance.ts";
 import { shuffleBands } from "./communityDeal.ts";
 import { searchDirectory, type SearchIndex } from "./communitySearch.ts";
 
@@ -607,11 +608,15 @@ function toggleBarMenu(panelId: string): boolean {
  *  the first frame of the new page, and on page-load for a full load; the
  *  swap finds a persisted element anywhere in the old body, so it comes
  *  back next time too. */
+let barLeave: Animation | null = null;
+let barArriving = false;
+
 function liftBar() {
   const bar = document.querySelector<HTMLElement>(".community-bar");
   if (bar && bar.parentElement !== document.body) document.body.append(bar);
   // A leave fade (below) whose navigation never left.
-  bar?.getAnimations().forEach((a) => a.cancel());
+  barLeave?.cancel();
+  barLeave = null;
   // Moving a node can drop the animation it carries, and then nothing would
   // ever finish it: release a held size and a panel left half-closed.
   const pill = bar?.querySelector<HTMLElement>(".community-bar__in");
@@ -625,11 +630,46 @@ document.addEventListener("astro:page-load", fitBarToKeyboard);
 // bar is a different one): the bar fades with the page it no longer belongs
 // to, since it is not in <main> to fade with it.
 document.addEventListener("astro:before-preparation", (e) => {
-  if (e.to.pathname === e.from.pathname) return;
+  barArriving = e.to.pathname !== e.from.pathname;
+  if (!barArriving) return;
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  document
-    .querySelector<HTMLElement>(".community-bar")
-    ?.animate([{}, { opacity: 0 }], { duration: 220, easing: "ease-in", fill: "forwards" });
+  barLeave =
+    document
+      .querySelector<HTMLElement>(".community-bar")
+      ?.animate([{}, { opacity: 0 }], { duration: 220, easing: "ease-in", fill: "forwards" }) ?? null;
+});
+
+// ...and comes in with the page it arrives on (2026-10-29, Josh: "there is
+// some flashing when switching pages"). Coming from another page the bar is
+// a new one, outside <main>, so it stood at full strength through the whole
+// pause Layout.astro holds the arriving page blank for, and the page then
+// faded in under it: the bar blinked on half a second ahead of everything
+// else. It now waits out the same hold and fades with <main> (same length,
+// same curve). A view switch keeps the persisted bar, which never left.
+document.addEventListener("astro:after-swap", () => {
+  if (!barArriving) return;
+  barArriving = false;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const bar = document.querySelector<HTMLElement>(".community-bar");
+  if (!bar) return;
+  const enter = bar.animate([{ opacity: 0 }, { opacity: 1 }], {
+    duration: 620,
+    easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+    fill: "backwards",
+  });
+  enter.pause();
+  // Layout sets the hold in its own after-swap listener, which may run after
+  // this one; by the next frame it is there, or there is none (an iOS edge
+  // swipe shows the page at once, and so does the bar).
+  requestAnimationFrame(() => {
+    if (!document.documentElement.hasAttribute("data-arrive-hold")) {
+      enter.cancel();
+      return;
+    }
+    void whenHoldDone().then(() => {
+      if (enter.playState === "paused") enter.play();
+    });
+  });
 });
 
 // Module scope, installed ONCE per session — not inside astro:page-load,
