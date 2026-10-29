@@ -336,6 +336,22 @@ main.is-wide {
   max-width: 1200px;
 }
 
+/* THE DIRECTORY KEEPS ITS LAYER (2026-10-29, Josh: "the image painting
+   flashed. it flickered again right after the images faded in on portfolio
+   images and people"). A page change fades the live <main> (Layout.astro),
+   and while that opacity animation runs WebKit gives <main> a layer of its
+   own. When the fade ENDS the layer is dropped, every picture is painted
+   again into the page's layer, and the pictures (decoding="async") showed
+   their ground for a frame before they came back: on all three views, at
+   the end of the fade. Nothing in the DOM changes at that moment — only the
+   animation ends. Kept on the layer for its whole life, <main> has
+   nothing to hand back. Only the directory: its <main> holds no fixed
+   overlay (the bar and the rail sit on body), so the stacking context this
+   makes changes nothing there. */
+.page-wrap main:has(#member-grid) {
+  will-change: opacity;
+}
+
 /* Opt-in wide CONTENT (`contentWide` on Layout) — deliberately NOT a wide
    shell. It widens <main> only and leaves --shell-max alone, so the header
    keeps its 900px measure and the giant VSCN title renders at exactly the size
