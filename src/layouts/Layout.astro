@@ -1355,18 +1355,25 @@ const BRAND_SLOTS: BrandSlot[] = [
       }, ARRIVE_DELAY_MS);
       return;
     }
-    const enter = main.animate([{ opacity: 0 }, { opacity: 1 }], {
+    // THE PAUSE IS THE ANIMATION'S OWN DELAY, NOT pause() + play()
+    // (2026-10-29, Josh's iPhone recording: "it flickered again right after
+    // the images faded in"). Started from paused when the hold ended, the
+    // fade restarted about 130ms in, most likely as WebKit's compositor took
+    // it over from its own start: the page dropped back to the
+    // strength of four frames earlier and faded in a second time, frame 93 of
+    // the recording on Images, frame 51 on Portfolios. With the pause as a
+    // delay the start time is fixed when the animation is made, so both run
+    // one clock.
+    main.animate([{ opacity: 0 }, { opacity: 1 }], {
       duration: ENTER_MS,
+      delay: arriveDelay,
       easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
       fill: "backwards",
-    });
-    enter.pause();
+    })
+      .finished.catch(() => {})
+      .finally(() => delete root.dataset.arriving);
     root.dataset.arriveHold = "";
-    setTimeout(() => {
-      delete root.dataset.arriveHold;
-      if (enter.playState === "paused") enter.play();
-    }, arriveDelay);
-    enter.finished.catch(() => {}).finally(() => delete root.dataset.arriving);
+    setTimeout(() => delete root.dataset.arriveHold, arriveDelay);
   });
 
   document.addEventListener("astro:before-swap", (event) => {
