@@ -1460,18 +1460,15 @@
     border-right: 0;
   }
 
-  /* EDIT AND + ADD ON A PROJECT: Add floats at the row's right, the Edit
-     fold flows past it — a float, because the fold's body has to run the
-     row's full width under both, which neither flex nor grid gives a
-     <details> without `display: contents` (which crashes iOS WebKit). */
+  /* MORE AND + ADD ON A PROJECT (2026-10-29, Josh: More comes first). More
+     is first in the row and its fold's body runs the row's full width;
+     + Add is pinned over the row's top right, and its keys open as a
+     drop-up above it, so neither key moves the other. Not flex or grid:
+     the fold's body would need `display: contents` on the <details>,
+     which crashes iOS WebKit. */
   .gallery-edit-row {
+    position: relative;
     margin-top: 10px;
-  }
-
-  .gallery-edit-row::after {
-    content: "";
-    display: block;
-    clear: both;
   }
 
   .gallery-edit-row > .gallery-details {
@@ -1479,18 +1476,21 @@
   }
 
   .gallery-addrow {
-    float: right;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 4px;
-    margin: 0 0 6px 8px;
+    position: absolute;
+    top: 0;
+    right: 0;
   }
 
+  /* The drop-UP: the keys rise above the + Add key instead of pushing the
+     row (and the More fold under it) down. Black, like the open key. */
   .gallery-addkeys {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 4px);
+    z-index: 5;
     display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    flex-direction: column;
+    align-items: flex-end;
     gap: 4px;
   }
 
@@ -1518,6 +1518,12 @@
   .gallery-addkeys .gallery-key--wide {
     flex: none;
     padding-inline: 10px 12px;
+    background: var(--color-dark);
+    color: #fff;
+  }
+
+  .gallery-addkeys .gallery-key--wide:hover {
+    background: var(--color-dark);
   }
 
   .gallery-tools {
