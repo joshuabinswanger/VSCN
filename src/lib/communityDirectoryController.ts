@@ -372,9 +372,6 @@ function settleBar(pill: HTMLElement) {
  *  module-level listeners below survive ClientRouter swaps. */
 function setBarMenu(open: string | null) {
   const pill = document.querySelector<HTMLElement>(".community-bar__in");
-  // A desktop's bar is a strip of separate pills: its panels DROP as cards,
-  // there is no pill box to ease (see the strip rules in CommunityGrid.astro).
-  const inHeader = !window.matchMedia(PHONE_QUERY).matches;
   if (barLeaving && !barLeaving.isConnected) barLeaving = null;
   // Already headed there (a second click outside while it closes, say): let
   // the animation run on rather than snap it to its end.
@@ -383,64 +380,28 @@ function setBarMenu(open: string | null) {
     return el?.hidden === false && el !== barLeaving;
   })?.[1];
   if ((shown ?? null) === open) return;
-  const from = pill?.getBoundingClientRect();
   if (pill) settleBar(pill);
   const prev = BAR_MENUS.find(([, id]) => document.getElementById(id)?.hidden === false)?.[1] ?? null;
   if (prev === open) return;
-  // CARDS ON A PHONE TOO (2026-10-28, Josh: "the tags and filter should
-  // open their own box that sits above the other pills"): Tags and Sort open
-  // as a card of their own above the pills, grown out of their pill as on a
-  // desktop; only the search still turns the island into the screen.
-  const cards = inHeader || (open !== "search-panel" && prev !== "search-panel");
-  // The corners of the closed capsule, kept while the box is tall: a 999px
-  // radius on an open pill would bulge into a stadium.
-  if (pill && !prev && !cards) setBarR(pill, `${pill.offsetHeight / 2}px`);
 
   for (const [btnId, panelId] of BAR_MENUS) {
     const panel = document.getElementById(panelId);
     if (panel) panel.hidden = panelId !== open;
     document.getElementById(btnId)?.setAttribute("aria-expanded", String(panelId === open));
   }
-  // THE SHEET (phone): the search opens as the whole screen, see the
-  // data-search-sheet rules in CommunityGrid.astro. Set before the size
-  // after is measured, so the pill eases from the capsule to the screen;
-  // cleared before the closing measure, so it eases back. The corners go
-  // with it (--bar-r transitions) and the keyboard is dismissed on close.
-  const sheet = open === "search-panel" && !inHeader;
-  const bar = pill?.closest<HTMLElement>(".community-bar");
-  if (bar) {
-    if (sheet) bar.dataset.searchSheet = "";
-    else delete bar.dataset.searchSheet;
-  }
-  if (sheet && pill) setBarR(pill, "0px", true);
   if (prev === "search-panel" && open !== prev && document.activeElement instanceof HTMLElement) {
     document.activeElement.blur();
   }
 
-  // THE PILL GROWS INTO ITS FIELD (2026-10-28): see growFromPill.
-  if (cards && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  // ONE CARD FOR ALL THREE (2026-10-29, Josh: "unify the UX across filter
+  // sort and search. also the pills should morph over the bottom bar"). On
+  // a phone Search, Tags and Sort each open the same card, laid over the
+  // bar and grown out of its own pill (growFromPill); the search's
+  // full-screen sheet is gone. A desktop's cards drop under the strip.
+  if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     if (prev && prev !== open) shrinkIntoPill(prev);
     if (open) growFromPill(open);
-    return;
   }
-  if (!pill || !from || cards || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    if (pill && !open) setBarR(pill, null);
-    return;
-  }
-  const leaving = !open && prev ? document.getElementById(prev) : null;
-  if (leaving) {
-    leaving.style.pointerEvents = "none";
-    leaving.animate([{ opacity: 1 }, { opacity: 0 }], { duration: BAR_MS * 0.6, fill: "forwards" });
-    barLeaving = leaving;
-  }
-  // The opening panel is kept clear until the pill has grown round it;
-  // settleBar fades it in once the size animation ends (or is retargeted).
-  const entering = open ? document.getElementById(open) : null;
-  if (entering) {
-    entering.style.opacity = "0";
-    entering.dataset.entering = "";
-  }
-  sizeBar(pill, from);
 }
 
 /** THE PILL GROWS INTO ITS FIELD (2026-10-28, Josh: "the pills should grow
@@ -459,7 +420,9 @@ function pillParts(panelId: string) {
   const pair = BAR_MENUS.find(([, id]) => id === panelId);
   const trigger = pair ? document.getElementById(pair[0]) : null;
   const panel = document.getElementById(panelId);
-  const box = panelId === "search-panel" ? (panel?.querySelector<HTMLElement>(".search__input") ?? null) : panel;
+  // A desktop's search is its field laid over the strip; a phone's is a card.
+  const field = panelId === "search-panel" && !window.matchMedia(PHONE_QUERY).matches;
+  const box = field ? (panel?.querySelector<HTMLElement>(".search__input") ?? null) : panel;
   return { trigger, panel, box };
 }
 
@@ -499,7 +462,8 @@ function anchorUnder(trigger: HTMLElement, panel: HTMLElement) {
 function growFromPill(panelId: string) {
   const { trigger, panel, box } = pillParts(panelId);
   if (!trigger || !panel || !box) return;
-  if (box === panel) anchorUnder(trigger, panel);
+  // A phone's card spans the bar: nothing to stand it under.
+  if (box === panel && !window.matchMedia(PHONE_QUERY).matches) anchorUnder(trigger, panel);
   box.animate(pillFrames(trigger, box), { duration: GROW_MS, easing: GROW_EASE });
   for (const el of pillContents(panel, box)) {
     el.animate([{ opacity: 0 }, { opacity: 0, offset: 0.35 }, { opacity: 1 }], { duration: GROW_MS + 100, easing: "ease-out" });
@@ -574,10 +538,33 @@ function reflowBar() {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   // A desktop's bar has no box to ease from one label to the next.
   if (!window.matchMedia(PHONE_QUERY).matches) return;
+  // NO SIZE CHANGE, NO EASE (2026-10-29, Josh: "there is still a shift in
+  // the bottom bar"). The views keep the same pills now, so the pill is the
+  // same size on both sides of a swap — but easing it anyway set
+  // data-sizing, which lays the row out at its own width, and every pill
+  // stepped 3–4px left and back.
+  const now = pill.getBoundingClientRect();
+  if (!barAnim && Math.abs(now.width - before.rect.width) < 0.5 && Math.abs(now.height - before.rect.height) < 0.5) return;
   barAnim?.cancel();
   barAnim = null;
   sizeBar(pill, before.rect);
 }
+
+/** THE CARD STAYS ABOVE THE KEYBOARD (2026-10-29). The bar is fixed to the
+ *  LAYOUT viewport's foot, which iOS does not raise for its keyboard; the
+ *  search and the tags' field would open behind it. The keyboard's height
+ *  lifts the bar (--bar-kb) and the visible height caps the cards
+ *  (--bar-room), see the phone rules in CommunityGrid.astro. */
+function fitBarToKeyboard() {
+  const bar = document.querySelector<HTMLElement>(".community-bar");
+  const vv = window.visualViewport;
+  if (!bar || !vv) return;
+  const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+  bar.style.setProperty("--bar-kb", `${Math.round(kb)}px`);
+  bar.style.setProperty("--bar-room", `${Math.round(vv.height)}px`);
+}
+window.visualViewport?.addEventListener("resize", fitBarToKeyboard);
+window.visualViewport?.addEventListener("scroll", fitBarToKeyboard);
 
 function closeBarMenus() {
   setBarMenu(null);
@@ -612,6 +599,7 @@ function liftBar() {
 }
 document.addEventListener("astro:after-swap", liftBar);
 document.addEventListener("astro:page-load", liftBar);
+document.addEventListener("astro:page-load", fitBarToKeyboard);
 
 // Off the directory (another page, or the other language's directory, whose
 // bar is a different one): the bar fades with the page it no longer belongs
@@ -735,22 +723,6 @@ function renderSearch() {
     parts.push(make("p", "field-note search__note", (q ? box.dataset.none : box.dataset.hint) ?? ""));
   }
   box.replaceChildren(...parts);
-}
-
-/** Size the pill to what the results now need, from where it stands. */
-function resizeSearch() {
-  const pill = document.querySelector<HTMLElement>(".community-bar__in");
-  // The sheet is the screen already; nothing to ease.
-  const sheet = pill?.closest<HTMLElement>(".community-bar")?.dataset.searchSheet !== undefined;
-  if (!pill || sheet || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    renderSearch();
-    return;
-  }
-  const from = pill.getBoundingClientRect();
-  barAnim?.cancel();
-  barAnim = null;
-  renderSearch();
-  sizeBar(pill, from);
 }
 
 /** The ledger's pass. Returns the visible count. */
@@ -1421,7 +1393,8 @@ document.addEventListener("astro:page-load", () => {
     document.getElementById("search-btn")?.addEventListener("click", () => {
       if (toggleBarMenu("search-panel")) searchInput?.focus({ preventScroll: true });
     }, { signal: life });
-    searchInput?.addEventListener("input", resizeSearch, { signal: life });
+    // The card holds its size while the results change under the field.
+    searchInput?.addEventListener("input", renderSearch, { signal: life });
     document.getElementById("search-cancel")?.addEventListener("click", closeBarMenus, { signal: life });
     searchInput?.addEventListener("keydown", (e) => {
       if (e.key !== "Enter") return;

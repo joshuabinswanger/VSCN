@@ -748,14 +748,34 @@ import "../styles/type.css";
     }
     /* SMALLER (2026-10-29, Josh: "the portfolio button should be
        smaller"): 36 → 28px, the chevron with it. */
+    /* ONLY IN THE OPEN MENU (2026-10-29, Josh: "the back to portfolio
+       button should only pop up when opening the menu"): out of sight on
+       the page, it pops in on the sheet's header row with the cross. */
     .nav-portfolios {
       top: calc((var(--header-h) - 28px) / 2);
       height: 28px;
       padding: 0 11px 0 7px;
       gap: 3px;
+      opacity: 0;
+      scale: 0.85;
+      visibility: hidden;
+      pointer-events: none;
       transition:
         box-shadow 0.2s ease,
-        opacity 0.2s ease;
+        opacity 0.18s ease,
+        scale 0.18s ease,
+        visibility 0s linear 0.18s;
+    }
+    :root:has(#nav-menu-btn[aria-expanded="true"]) .nav-portfolios {
+      opacity: 1;
+      scale: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition:
+        box-shadow 0.2s ease,
+        opacity 0.3s ease 0.12s,
+        scale 0.45s cubic-bezier(0.3, 1.25, 0.5, 1) 0.12s,
+        visibility 0s linear 0s;
     }
     .nav-portfolios svg {
       width: 13px;
@@ -1139,6 +1159,7 @@ import "../styles/type.css";
     }
     :root:has(nav[data-editor].is-signed-in #nav-menu-btn[aria-expanded="true"]) .nav-portfolios {
       opacity: 0;
+      visibility: hidden;
       pointer-events: none;
     }
     :root:has(nav[data-editor].is-signed-in #nav-menu-btn[aria-expanded="true"]) .form-footer {
