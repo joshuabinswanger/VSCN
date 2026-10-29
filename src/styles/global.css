@@ -220,20 +220,12 @@ nav[data-astro-transition-persist="navbar"] {
 :root[data-header-away] nav[data-astro-transition-persist="navbar"] {
   transform: translateY(calc(-1 * var(--header-h) - 6px));
 }
-/* The directory's controls are part of that row on a desktop (CommunityGrid.astro)
-   and go with it. The phone's bar is a bottom island and stays. */
-@media (--bp-desktop) {
-  .community-bar {
-    transition: transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1);
-  }
-  :root[data-header-away] .community-bar {
-    transform: translateY(calc(-1 * var(--header-h) - 6px));
-  }
-}
+/* The directory's controls sit in that row on a desktop (CommunityGrid.astro)
+   but do NOT go with it: they stay at the top, as the phone's bottom island
+   stays (2026-10-29, Josh: "the top pills should stay on desktop as well"). */
 @media (prefers-reduced-motion: reduce) {
   .brand-ticker[data-wordmark="compact"],
-  nav[data-astro-transition-persist="navbar"],
-  .community-bar {
+  nav[data-astro-transition-persist="navbar"] {
     transition: none;
   }
 }
