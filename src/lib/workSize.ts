@@ -12,7 +12,10 @@
 // than 70vh — profile.css caps both. No Firebase here: the static page
 // imports it.
 
-export const WORK_SIZE_PX = { s: 288, l: 624 } as const;
+// S SMALLER (2026-10-29, Josh: "S must be smaller"): 288 -> 200. At 288 it
+// filled ~83% of a phone's column and read as nearly L; 200 is about a third
+// of L on a desktop and just over half the column on a phone.
+export const WORK_SIZE_PX = { s: 200, l: 624 } as const;
 export type WorkSize = keyof typeof WORK_SIZE_PX;
 
 /** The size a work is drawn at: S for a stored "s" (or the retired "m"), else L. */
