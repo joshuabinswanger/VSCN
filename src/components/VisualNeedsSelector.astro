@@ -107,6 +107,7 @@ const t = useTranslations(lang);
         this.custom = [...this.custom, value];
         input.value = "";
         this.renderCustom();
+        this.emitChange();
         input.focus();
       };
 
@@ -190,6 +191,15 @@ const t = useTranslations(lang);
       this.dispatchEvent(new CustomEvent("visual-needs-change", { bubbles: true }));
     }
 
+    /** A bubbling change, as TagSelector's: the editor's draft, autosave and
+     *  "edited while saving" mark listen to the form for input, change and
+     *  click; visual-needs-change (the preview's own signal) reaches none of
+     *  them. From a member's own action only, never the value setter
+     *  (2026-10-29). */
+    private emitChange() {
+      this.dispatchEvent(new CustomEvent("change", { detail: { visualNeeds: this.value }, bubbles: true }));
+    }
+
     private renderCustom() {
       const list = this.querySelector("#visualNeeds-custom-list");
       if (!list) return;
@@ -206,6 +216,7 @@ const t = useTranslations(lang);
           btn.addEventListener("click", () => {
             this.custom = this.custom.filter((value) => value !== item);
             this.renderCustom();
+            this.emitChange();
           });
           return btn;
         })
