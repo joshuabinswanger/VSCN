@@ -240,6 +240,13 @@ document.addEventListener("astro:page-load", () => {
   // a press still saves at once.
   const AUTOSAVE_MS = 1500;
   let autosaveTimer = 0;
+  /** True only for the submit the timer itself dispatches (requestSubmit
+   *  is synchronous). The handler reads it before its first await. */
+  let autosaveSubmit = false;
+  /** Called by the upload queue when a work lands: the timer runs only on
+   *  the form's own events, and an upload that finishes after the last
+   *  keystroke would otherwise leave the draft waiting for the next one. */
+  let scheduleAutosave: () => void = () => {};
   function paintAutosave() {
     const clean = !saveButton.disabled && !draft?.hasChanges();
     saveButton.classList.toggle("is-clean", clean);
@@ -252,9 +259,15 @@ document.addEventListener("astro:page-load", () => {
       clearTimeout(autosaveTimer);
       autosaveTimer = window.setTimeout(() => {
         if (!draft?.hasChanges() || saveButton.disabled || navigator.onLine === false) return;
-        form.requestSubmit(saveButton);
+        autosaveSubmit = true;
+        try {
+          form.requestSubmit(saveButton);
+        } finally {
+          autosaveSubmit = false;
+        }
       }, AUTOSAVE_MS);
     };
+    scheduleAutosave = schedule;
     for (const type of ["input", "change", "click"]) {
       form.addEventListener(type, schedule, { signal: lifecycle.signal });
     }
@@ -1804,6 +1817,7 @@ document.addEventListener("astro:page-load", () => {
    * that project's last image, inside its block (2026-09-23).
    */
   async function onGalleryUploaded(item: GalleryItem) {
+    scheduleAutosave();
     // Through a tray's + into a carousel dissolved meanwhile: the id names
     // nothing now, so the work arrives as a plain work of its project.
     if (
@@ -3498,6 +3512,11 @@ document.addEventListener("astro:page-load", () => {
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    // AN AUTOSAVE IS QUIET (2026-10-29): it never raises an error, moves
+    // focus or scrolls — the member is still typing. Where a pressed Save
+    // would say "wait for uploads" or "a title, please", the autosave just
+    // stands down; the next event, or the upload landing, schedules it again.
+    const quiet = autosaveSubmit;
     saveMsg.style.display = "none";
     saveError.style.display = "none";
     for (const el of [...invalidControls]) unmarkInvalid(el);
@@ -3528,6 +3547,7 @@ document.addEventListener("astro:page-load", () => {
       }
     }
     if (avatarProcessing || restoringThumbs.size || galleryQueue.tasks().some(task => task.state !== "error") || videoPending) {
+      if (quiet) return;
       showSaveError(s["profile.save.waitUploads"]);
       refocus();
       return;
@@ -3552,6 +3572,7 @@ document.addEventListener("astro:page-load", () => {
       visualNeeds: needsVisuals(memberType) ? (visualNeedsSelector?.value ?? []) : [],
     }, s);
     if (problem) {
+      if (quiet) return;
       showSaveProblem(problem);
       return;
     }
@@ -3559,6 +3580,7 @@ document.addEventListener("astro:page-load", () => {
     // after the work before it has been written. Asked here, by name.
     const untitled = firstUntitledProject(projects, gallery);
     if (untitled) {
+      if (quiet) return;
       showUntitledProject(untitled);
       return;
     }

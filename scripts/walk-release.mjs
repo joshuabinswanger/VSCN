@@ -49,6 +49,26 @@ const startedAt = new Date();
 const caption = captionFor(args.release, startedAt);
 const tab = (name) => `#section-tabs .section-tab[data-section="${name}"]`;
 const galleryItems = () => page.locator("#gallery-editor .gallery-item");
+// THE EDITOR SINCE 2026-10-16 (project pages, 2026-10-27): every work lives
+// in a project, the Works tab shows a list of project cards or ONE project's
+// page, and the picker is the open project's own. The walk's project is
+// titled so the mandatory-title rule is met; it stays on the member between
+// runs (empty, it is not written, so the next run makes it again).
+const WALK_PROJECT_TITLE = "Release walk";
+const openBlock = () => page.locator("#gallery-editor [data-project-block]:not(.pp-off)");
+/** Reach a project's page: the first-project prompt, else the first card, else the page already open. */
+async function openProjectPage() {
+  const first = page.locator("#gallery-first-project");
+  if (await first.isVisible().catch(() => false)) {
+    await first.click();
+  } else {
+    const cards = page.locator("[data-pp-cards] [data-pp-card]");
+    if (await cards.count()) await cards.first().click();
+  }
+  await expect(openBlock()).toHaveCount(1, { timeout: 15_000 });
+  const title = openBlock().locator('[data-project-field="title"]');
+  if (!(await title.inputValue()).trim()) await title.fill(WALK_PROJECT_TITLE);
+}
 
 console.log(`Release walk on ${args.origin} (${args.project})${args.release ? ` for ${args.release.slice(0, 7)}` : ""}, ${startedAt.toISOString()}`);
 
@@ -171,6 +191,7 @@ try {
     // Leftovers from a failed earlier run would push the member toward the
     // cap and make a later walk fail for the wrong reason. Clear and count.
     await page.locator(tab("work")).click();
+    await openProjectPage();
     leftovers = await galleryItems().count();
     for (let i = 0; i < leftovers; i++) await removeFirstImage();
     if (leftovers) console.log(`\n  removed ${leftovers} leftover image(s) from an earlier run`);
@@ -179,7 +200,8 @@ try {
   let imageSrc = null;
   const ok2 = ok1 && await step("upload", async () => {
     await page.locator(tab("work")).click();
-    await page.locator("#gallery-files").setInputFiles(fixturePath);
+    await openProjectPage();
+    await openBlock().locator("[data-project-files]").setInputFiles(fixturePath);
     uploaded = true;
     const errorRow = page.locator("#gallery-queue .has-error [data-task-state]");
     const deadline = Date.now() + 90_000;
@@ -204,6 +226,8 @@ try {
     // The gallery write that follows the row is awaited by Save itself now
     // (fix/editor-save-path); the retry below stays for the row.
     // Wait for the queue to empty, then treat that one refusal as "not yet".
+    // The editor autosaves since 2026-10-27; a press still saves at once,
+    // and #save-msg is the confirmation either way.
     await expect(page.locator("#gallery-queue [data-task-state]")).toHaveCount(0, { timeout: 30_000 });
     for (let attempt = 1; ; attempt++) {
       await page.locator("#save-button").click();
@@ -218,8 +242,9 @@ try {
   });
 
   const ok4 = ok3 && await step("preview", async () => {
-    await page.locator(tab("preview")).click();
-    const img = page.locator("[data-ppv-root] img.mprof__img");
+    // The Preview tab became the project page's EDIT | PREVIEW switch (2026-10-27).
+    await page.locator('[data-works-mode-seg] [data-works-mode="preview"]').click();
+    const img = page.locator("[data-ppv-root] img.mprof__img[src]");
     await expect(img).toHaveCount(1, { timeout: 15_000 });
     const src = await img.getAttribute("src");
     if (src !== imageSrc) throw new Error(`preview shows ${src}, editor holds ${imageSrc}`);
@@ -229,6 +254,7 @@ try {
 
   const ok5 = ok4 && await step("delete", async () => {
     await page.locator(tab("work")).click();
+    await page.locator('[data-works-mode-seg] [data-works-mode="edit"]').click();
     await removeFirstImage();
     await expect(galleryItems()).toHaveCount(0);
     uploaded = false;
@@ -237,7 +263,9 @@ try {
   if (ok5) await step("anonymous", async () => {
     await page.locator(tab("account")).click();
     await page.locator("#btn-logout").click();
-    await page.waitForURL((url) => url.origin === args.origin && /^\/(de\/?)?$/.test(url.pathname), { timeout: 20_000 });
+    // Sign-out lands on "/", which firebase.json answers with a 302 to
+    // /community since 2026-10-25.
+    await page.waitForURL((url) => url.origin === args.origin && /^\/(de\/?)?(community\/?)?$/.test(url.pathname), { timeout: 20_000 });
     await expect(page.locator("#nav-join")).toBeVisible({ timeout: 15_000 });
 
     const home = await page.goto(`${args.origin}/`, { waitUntil: "domcontentloaded" });
@@ -260,6 +288,7 @@ try {
       if (!/\/profile/.test(page.url())) await page.goto(`${args.origin}/profile`, { waitUntil: "domcontentloaded" });
       await expect(page.locator("#profile-form")).toHaveClass(/\bis-loaded\b/, { timeout: 20_000 });
       await page.locator(tab("work")).click();
+      await openProjectPage();
       while (await galleryItems().count()) await removeFirstImage();
       console.log("  teardown: removed the walk's image");
     } catch (err) {

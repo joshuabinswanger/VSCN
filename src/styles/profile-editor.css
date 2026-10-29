@@ -421,7 +421,7 @@
     --row-pad: 1.25rem;
     padding: var(--row-pad);
     border: 0;
-    background: color-mix(in srgb, #fff 78%, var(--color-bg));
+    background: color-mix(in srgb, var(--color-white) 78%, var(--color-bg));
     box-shadow:
       0 1px 2px rgb(0 0 0 / 0.05),
       0 0 0 0.5px rgb(0 0 0 / 0.05);
@@ -685,7 +685,7 @@
   .gfield > .gallery-inline {
     padding: 8px 12px;
     border: 0;
-    background: #fff;
+    background: var(--color-white);
     box-shadow:
       0 1px 0 rgb(0 0 0 / 0.06),
       0 0 0 0.5px rgb(0 0 0 / 0.07);
@@ -1397,7 +1397,7 @@
 
   .gallery-details[open] > .gallery-details-summary {
     background: var(--color-dark);
-    color: #fff;
+    color: var(--color-white);
   }
 
   .gallery-details[open] > .gallery-details-summary:hover {
@@ -1444,7 +1444,7 @@
      a white box with the same soft shadow and corner. */
   .gallery-panel .input-prefix-wrap {
     border: 0;
-    background: #fff;
+    background: var(--color-white);
     box-shadow:
       0 1px 0 rgb(0 0 0 / 0.06),
       0 0 0 0.5px rgb(0 0 0 / 0.07);
@@ -1456,7 +1456,7 @@
   }
 
   .gallery-panel .input-prefix {
-    background: color-mix(in srgb, var(--color-dark) 4%, #fff);
+    background: color-mix(in srgb, var(--color-dark) 4%, var(--color-white));
     border-right: 0;
   }
 
@@ -1500,7 +1500,7 @@
 
   .gallery-key--plus[aria-expanded="true"] {
     background: var(--color-dark);
-    color: #fff;
+    color: var(--color-white);
   }
 
   .gallery-key--plus[aria-expanded="true"]:hover {
@@ -1519,7 +1519,7 @@
     flex: none;
     padding-inline: 10px 12px;
     background: var(--color-dark);
-    color: #fff;
+    color: var(--color-white);
   }
 
   .gallery-addkeys .gallery-key--wide:hover {
@@ -3016,20 +3016,11 @@
     left: 2px;
     width: calc(50% - 3px);
     background: var(--color-dark);
-    view-transition-name: works-mode-thumb;
     transition: transform 0.34s cubic-bezier(0.25, 1, 0.5, 1);
   }
 
   .ebar__mode:has([data-works-mode="preview"][aria-pressed="true"]) .ebar__mode-thumb {
     transform: translateX(calc(100% + 2px));
-  }
-
-  .ebar .ebar__mode > [data-works-mode="edit"] {
-    view-transition-name: works-mode-edit;
-  }
-
-  .ebar .ebar__mode > [data-works-mode="preview"] {
-    view-transition-name: works-mode-preview;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -3062,7 +3053,6 @@
     top: 0;
     left: 1px;
     padding: 0;
-    line-height: 1;
     pointer-events: none;
     transition:
       top 0.22s cubic-bezier(0.25, 1, 0.5, 1),
@@ -3100,8 +3090,27 @@
 
 /* THE EDIT | PREVIEW CROSSFADE (2026-10-27, editorProjectPages.ts): only
    while the project page switches modes. The page crossfades; the bar's
-   thumb, named in the .ebar__mode rules above, slides from its old box to
-   its new one, under the two words, which crossfade their colour. */
+   thumb slides from its old box to its new one, under the two words, which
+   crossfade their colour. THE NAMES ARE GIVEN ONLY FOR THAT SWITCH
+   (2026-10-29): WebKit snapshots a named element at full strength even
+   under an opacity-0 ancestor, so names left on through Layout's page
+   leave made the thumb and the two words pop back onto the blank paper
+   on every navigation away from the editor on an iPhone (the jitter class
+   of documentation/20261020-profile-arrival-morph-jitter.md).
+   editorProjectPages.ts adds .pp-switching synchronously before
+   startViewTransition and removes it when the transition has finished. */
+html.pp-switching .ebar__mode-thumb {
+  view-transition-name: works-mode-thumb;
+}
+
+html.pp-switching .ebar .ebar__mode > [data-works-mode="edit"] {
+  view-transition-name: works-mode-edit;
+}
+
+html.pp-switching .ebar .ebar__mode > [data-works-mode="preview"] {
+  view-transition-name: works-mode-preview;
+}
+
 html.pp-switching::view-transition-old(root),
 html.pp-switching::view-transition-new(root) {
   animation-duration: 0.3s;
