@@ -84,6 +84,7 @@ export const ui: Record<string, Record<string, string>> = {
     "community.search.images": "Images",
     "community.search.none": "Nothing matches.",
     "community.search.cancel": "Cancel",
+    "community.bar.fold": "Close",
 
     // MemberCard
     "member.showBio": "Show bio for",
@@ -826,6 +827,7 @@ export const ui: Record<string, Record<string, string>> = {
     "community.search.images": "Bilder",
     "community.search.none": "Keine Treffer.",
     "community.search.cancel": "Abbrechen",
+    "community.bar.fold": "Schliessen",
 
     // MemberCard
     "member.showBio": "Bio anzeigen für",

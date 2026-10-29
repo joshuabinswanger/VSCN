@@ -1113,30 +1113,29 @@ import "../styles/type.css";
     nav[data-editor].is-signed-in #nav-sheet-lang {
       display: none;
     }
+    /* OUT OF THE FACE (2026-10-29, Josh: "pill needs to extend from
+       profile"). The pill keeps its full size and is CLIPPED: shut, the clip
+       is the ring round the face; open, it runs out leftward over the whole
+       pill, and the tabs follow it out, the nearest first. Until today its
+       max-width eased to 24rem, past the pill's own width, so the pill was
+       all there a tenth of a second in and read as a pop, not a growth. */
     nav[data-editor].is-signed-in .nav-links .nav-acct {
       box-sizing: border-box;
-      max-width: 0;
-      padding: 4px 0;
-      overflow: hidden;
-      box-shadow: inset 0 0 0 1px transparent;
-      background: var(--nav-paper);
-      opacity: 0;
-      transition:
-        max-width 0.3s cubic-bezier(0.5, 0, 0.75, 0),
-        padding 0.3s cubic-bezier(0.5, 0, 0.75, 0),
-        opacity 0.16s ease 0.14s,
-        box-shadow 0.2s ease;
-    }
-    nav[data-editor].is-signed-in .nav-menu-btn[aria-expanded="true"] ~ .nav-links .nav-acct {
-      max-width: 24rem;
       padding: 4px 42px 4px 4px;
       box-shadow: inset 0 0 0 1px var(--color-border);
+      background: var(--nav-paper);
+      clip-path: inset(0 0 0 calc(100% - 42px) round 999px);
+      opacity: 0;
+      transition:
+        clip-path 0.32s cubic-bezier(0.5, 0, 0.75, 0),
+        opacity 0.12s ease 0.2s;
+    }
+    nav[data-editor].is-signed-in .nav-menu-btn[aria-expanded="true"] ~ .nav-links .nav-acct {
+      clip-path: inset(0 0 0 0 round 999px);
       opacity: 1;
       transition:
-        max-width 0.5s cubic-bezier(0.16, 1, 0.3, 1),
-        padding 0.5s cubic-bezier(0.16, 1, 0.3, 1),
-        opacity 0.2s ease,
-        box-shadow 0.2s ease;
+        clip-path 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.1s ease;
     }
     nav[data-editor].is-signed-in .nav-links .nav-link {
       opacity: 1;
@@ -1149,6 +1148,29 @@ import "../styles/type.css";
       /* 10px, not 12: open, the pill must stay clear of VSCN at 360px. */
       padding: 0 10px;
       white-space: nowrap;
+      opacity: 0;
+      transform: translateX(14px);
+      transition:
+        opacity 0.14s ease,
+        transform 0.3s cubic-bezier(0.5, 0, 0.75, 0),
+        background-color 0.2s ease;
+    }
+    nav[data-editor].is-signed-in .nav-menu-btn[aria-expanded="true"] ~ .nav-links .nav-acct .nav-link {
+      opacity: 1;
+      transform: none;
+      transition:
+        opacity 0.3s ease var(--acct-delay, 0s),
+        transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) var(--acct-delay, 0s),
+        background-color 0.2s ease;
+    }
+    nav[data-editor].is-signed-in #nav-tab-work {
+      --acct-delay: 40ms;
+    }
+    nav[data-editor].is-signed-in #nav-tab-profile {
+      --acct-delay: 90ms;
+    }
+    nav[data-editor].is-signed-in #nav-tab-account {
+      --acct-delay: 140ms;
     }
     /* Open, the key keeps the face inside the pill, not the cross. */
     nav[data-editor].is-signed-in .nav-menu-btn.has-pic .nav-menu-btn__pic {
