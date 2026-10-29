@@ -1073,8 +1073,16 @@ const BRAND_SLOTS: BrandSlot[] = [
     // against the CURRENT visible list, so it survives the breakpoint moving
     // under it; a slot that is not on that list resolves to -1, which
     // requestBrandOverwrite already treats as "no tail here, do nothing".
+    // NOT FOR A FINGER (2026-10-29, Josh: "there is some flashing when
+    // switching pages"). A touch fires pointerenter on touchdown and
+    // pointerleave on lift, so on a phone every tap on VSCN — since today
+    // the way back to Portfolios — wrote VSCommunication over the title and
+    // pulled it back while the page changed: the letters flickered.
     Array.from(brandName.querySelectorAll<HTMLElement>(".brand-slot")).forEach((slot) => {
-      slot.addEventListener("pointerenter", () => requestBrandOverwrite(brandSlots.indexOf(slot)));
+      slot.addEventListener("pointerenter", (event) => {
+        if (event.pointerType === "touch") return;
+        requestBrandOverwrite(brandSlots.indexOf(slot));
+      });
     });
 
     // Cleared on leaving the whole line, not the individual slot: the letters a
