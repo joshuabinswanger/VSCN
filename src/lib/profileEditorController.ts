@@ -884,30 +884,19 @@ document.addEventListener("astro:page-load", () => {
           };
           // A slide's text block is the carousel's (buildTray wires it).
           const textBlock = row.querySelector<HTMLElement>(".gallery-text");
-          const textAdd = row.querySelector<HTMLButtonElement>("[data-gallery-text-add]");
           const textRemove = row.querySelector<HTMLButtonElement>("[data-gallery-text-remove]");
           if (slide && textBlock) {
             textBlock.hidden = true;
-            if (textAdd) textAdd.hidden = true;
           } else {
             wireTextAfter("textAfter", "profile.gallery.textAfter");
             wireTextAfter("textAfterDe", "profile.gallery.textAfter.de");
             // Added, not always there: the block shows when it holds words
-            // or was added; the Text key in the panel shows otherwise.
+            // or was added through the project's + Add → Text (2026-10-29,
+            // Josh: no Text key on the work itself any more).
             const paintText = (open: boolean) => {
               if (textBlock) textBlock.hidden = !open;
-              if (textAdd) textAdd.hidden = open;
             };
             paintText(Boolean(item.textAfter?.trim() || item.textAfterDe?.trim()) || textBlockOpenUI.has(item.imageId));
-            if (textAdd) {
-              named(textAdd, s["profile.gallery.textAdd"]).title = s["profile.gallery.textAdd"];
-              textAdd.addEventListener("click", () => {
-                textBlockOpenUI.add(item.imageId);
-                paintText(true);
-                refitInline();
-                row.querySelector<HTMLTextAreaElement>(`[data-gallery-field="${worksLang === "de" ? "textAfterDe" : "textAfter"}"]`)?.focus();
-              });
-            }
             if (textRemove) {
               named(textRemove, s["profile.gallery.textRemove"]).title = s["profile.gallery.textRemove"];
               textRemove.addEventListener("click", () => {
@@ -916,7 +905,6 @@ document.addEventListener("astro:page-load", () => {
                 row.querySelectorAll<HTMLTextAreaElement>('[data-gallery-field="textAfter"], [data-gallery-field="textAfterDe"]').forEach((a) => (a.value = ""));
                 textBlockOpenUI.delete(item.imageId);
                 paintText(false);
-                textAdd?.focus();
                 syncPreview();
               });
             }
