@@ -3292,6 +3292,31 @@ const searchIndex: SearchIndex = {
       overflow-y: auto;
       overscroll-behavior: contain;
     }
+    /* THE SEARCH FILLS THE SCREEN (2026-10-29, Josh: "please make search
+       full screen on mobile"). Its card covers the whole visible screen,
+       header included, from the top edge down to the keyboard (or the
+       screen's foot); it still grows out of its pill and folds back by the
+       handle. Tags and Sort stay cards over the bar. The bar climbs over
+       the header (z 20 → 40) while it is open. */
+    .community-bar:has(#search-panel:not([hidden])) {
+      z-index: 40;
+    }
+    .community-bar .search__panel {
+      position: fixed;
+      top: var(--bar-vtop, 0px);
+      bottom: var(--bar-kb, 0px);
+      left: 0;
+      right: 0;
+      translate: none;
+      width: auto;
+      height: auto;
+      max-height: none;
+      padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px
+        calc(env(safe-area-inset-bottom, 0px) + 12px);
+      border: 0;
+      border-radius: 0 !important;
+      box-shadow: none;
+    }
     /* The tags' card the same way: the handle and the field stand, the
        chips scroll under them. */
     .community-bar .tag-filter__panel {
