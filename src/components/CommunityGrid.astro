@@ -3301,10 +3301,17 @@ const searchIndex: SearchIndex = {
     .community-bar:has(#search-panel:not([hidden])) {
       z-index: 40;
     }
+    /* TO THE SCREEN'S FOOT, BEHIND THE KEYBOARD (2026-10-29, Josh: "the
+       search bar does not cover the full screen we can still see the site
+       behind it"). The paper stopped at the keyboard's top (--bar-kb), and
+       the iOS keyboard is see-through and floats its suggestion bar above
+       itself, so the People list showed in the strip between them and
+       through the keys. The paper now runs to the bottom; the keyboard's
+       height is padding, so the results still end above it. */
     .community-bar .search__panel {
       position: fixed;
       top: var(--bar-vtop, 0px);
-      bottom: var(--bar-kb, 0px);
+      bottom: 0;
       left: 0;
       right: 0;
       translate: none;
@@ -3312,7 +3319,7 @@ const searchIndex: SearchIndex = {
       height: auto;
       max-height: none;
       padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px
-        calc(env(safe-area-inset-bottom, 0px) + 12px);
+        calc(var(--bar-kb, 0px) + env(safe-area-inset-bottom, 0px) + 12px);
       border: 0;
       border-radius: 0 !important;
       box-shadow: none;

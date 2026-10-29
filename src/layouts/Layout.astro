@@ -1349,31 +1349,46 @@ const BRAND_SLOTS: BrandSlot[] = [
     // start state from the first frame (profile.css).
     if (main.querySelector("[data-paints-in]")) {
       root.dataset.arriveHold = "";
-      setTimeout(() => {
-        delete root.dataset.arriveHold;
-        delete root.dataset.arriving;
-      }, ARRIVE_DELAY_MS);
+      // After the view transition too, as the fade below (2026-10-29).
+      void Promise.all([new Promise((resolve) => setTimeout(resolve, ARRIVE_DELAY_MS)), scrollTransitionDone]).then(
+        () => {
+          if (!main.isConnected) return;
+          delete root.dataset.arriveHold;
+          delete root.dataset.arriving;
+        }
+      );
       return;
     }
-    // THE PAUSE IS THE ANIMATION'S OWN DELAY, NOT pause() + play()
-    // (2026-10-29, Josh's iPhone recording: "it flickered again right after
-    // the images faded in"). Started from paused when the hold ended, the
-    // fade restarted about 130ms in, most likely as WebKit's compositor took
-    // it over from its own start: the page dropped back to the
-    // strength of four frames earlier and faded in a second time, frame 93 of
-    // the recording on Images, frame 51 on Portfolios. With the pause as a
-    // delay the start time is fixed when the animation is made, so both run
-    // one clock.
-    main.animate([{ opacity: 0 }, { opacity: 1 }], {
-      duration: ENTER_MS,
-      delay: arriveDelay,
-      easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
-      fill: "backwards",
-    })
-      .finished.catch(() => {})
-      .finally(() => delete root.dataset.arriving);
+    // NOT BEFORE THE VIEW TRANSITION IS OVER (2026-10-29, two of Josh's
+    // iPhone recordings: "it flickered again right after the images faded
+    // in"). The fade rose for two frames, dropped back to where it had
+    // started and rose again, frame 35 of the second recording on Images,
+    // frame 81 on Portfolios. It began while the router's view transition
+    // was still up, so its first frames were seen through the transition's
+    // picture of the new page; when the transition ended the live page took
+    // over, a few frames behind. Making the pause a delay instead of
+    // pause() + play() (de7ad48) changed nothing. So the page stays held at
+    // 0 until the pause is over AND the transition has finished, and only
+    // then is the fade made, running. <html> loses data-arrive-hold in the
+    // same task, which is the Portfolios bar's cue (communityDirectoryController.ts).
     root.dataset.arriveHold = "";
-    setTimeout(() => delete root.dataset.arriveHold, arriveDelay);
+    const held = main.animate([{ opacity: 0 }, { opacity: 0 }], { duration: 1, fill: "forwards" });
+    void Promise.all([new Promise((resolve) => setTimeout(resolve, arriveDelay)), scrollTransitionDone]).then(
+      () => {
+        // A later navigation has its own hold: leave it alone.
+        if (!main.isConnected) return;
+        delete root.dataset.arriveHold;
+        if (held.playState === "idle") return;
+        held.cancel();
+        main
+          .animate([{ opacity: 0 }, { opacity: 1 }], {
+            duration: ENTER_MS,
+            easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+          })
+          .finished.catch(() => {})
+          .finally(() => delete root.dataset.arriving);
+      }
+    );
   });
 
   document.addEventListener("astro:before-swap", (event) => {
