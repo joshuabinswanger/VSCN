@@ -212,6 +212,16 @@
   .choose-img {
     width: fit-content;
   }
+  /* A 30px key, like Add a link (2026-10-29, Josh: "the choose image …
+     button should be smaller"); it was the 46px phone action. */
+  .avatar-wrap .choose-img {
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    min-height: 0;
+    height: 30px;
+    padding: 0 14px;
+  }
 
   /* The video link field (2026-09-23), in the Plus menu's sheet since
      2026-10-13: its title, the field, then Cancel and Add on the right. */
@@ -1905,8 +1915,16 @@
     width: max-content;
     pointer-events: none;
 
+    /* A PANEL ON THE PHONE'S FOOT (2026-10-29, Josh: "make the floating
+       panel on mobile a filled out panel at the bottom that folds up and
+       down"): edge to edge and flush with the bottom, not floating. */
     @media (--bp-mobile) {
-      --ebar-gap: calc(12px + env(safe-area-inset-bottom, 0px));
+      --ebar-gap: 0px;
+      left: 0;
+      right: 0;
+      transform: none;
+      width: auto;
+      align-items: stretch;
     }
   }
 
@@ -1939,8 +1957,12 @@
   }
 
   @media (--bp-mobile) {
+    .profile-form {
+      padding-bottom: 8rem;
+    }
+
     .profile-form.is-works {
-      padding-bottom: 10rem;
+      padding-bottom: 11rem;
     }
   }
 
@@ -2005,8 +2027,7 @@
     gap: 6px;
   }
 
-  .ebar__group[hidden],
-  .ebar__plus[hidden] {
+  .ebar__group[hidden] {
     display: none;
   }
 
@@ -2015,9 +2036,9 @@
     padding-inline: 10px;
   }
 
-  /* THE TWO ACTIONS: 36px pills sharing the row equally, icon and word
-     (44px on 2026-10-23 for a day: "a bit more compact"). */
-  .ebar__plus,
+  /* THE ACTIONS: 36px pills sharing the row equally, icon and word (44px on
+     2026-10-23 for a day: "a bit more compact"). Save, and + Project until
+     it moved under the project cards (2026-10-29). */
   .ebar .profile-save-button {
     display: inline-flex;
     flex: 1 1 0;
@@ -2031,36 +2052,6 @@
     font: inherit;
     font-size: var(--fs-85);
     font-weight: 400;
-  }
-
-  .ebar__plus {
-    background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
-    color: var(--color-dark);
-    border: 0;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-  }
-
-  .ebar__plus:hover,
-  .ebar__plus[aria-expanded="true"] {
-    background: color-mix(in srgb, var(--color-dark) 14%, var(--color-bg));
-  }
-
-  .ebar__plus:focus-visible {
-    outline: 2px solid var(--color-dark);
-    outline-offset: 2px;
-  }
-
-  .ebar__plus .ebar-icon {
-    width: 15px;
-    height: 15px;
-    stroke-width: 2.2;
-    transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1);
-  }
-
-  /* The + turns into a × while its menu is open: the same button closes it. */
-  .ebar__plus[aria-expanded="true"] .ebar-icon {
-    transform: rotate(45deg);
   }
 
   .ebar .profile-save-icon {
@@ -2083,8 +2074,24 @@
   }
 
   @media (--bp-mobile) {
-    .ebar__in {
-      width: calc(100vw - 50px);
+    /* The panel (see .form-footer): the full width whatever editorBar.ts
+       measures (its height still follows the content, which is what
+       animates the fold), square at the foot, rounded at the top, its
+       shadow cast upward, and room under the controls for the home
+       indicator. */
+    .ebar {
+      width: auto !important;
+      padding: 0 12px calc(10px + env(safe-area-inset-bottom, 0px));
+      border: 0;
+      border-top: 1px solid var(--color-border);
+      border-radius: 20px 20px 0 0 !important;
+      box-shadow: 0 -6px 24px rgb(0 0 0 / 0.08);
+    }
+
+    .ebar__in,
+    .ebar.is-folded .ebar__in {
+      width: 100%;
+      max-width: none;
     }
 
     .ebar .seg {
@@ -2097,17 +2104,20 @@
       padding-inline: 6px;
     }
 
+    /* The handle is the panel's whole top edge: tap it, or drag it down or
+       up (editorBar.ts bindBarFold). */
     .ebar__handle {
       display: grid;
       place-items: center;
-      align-self: center;
-      width: 44px;
-      height: 18px;
+      align-self: stretch;
+      width: auto;
+      height: 26px;
       padding: 0;
       border: 0;
-      background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
+      background: none;
       color: var(--color-muted);
       cursor: pointer;
+      touch-action: none;
     }
 
     .ebar__handle .ebar-icon {
@@ -2126,10 +2136,6 @@
        bar round it. */
     .ebar.is-folded .ebar__rows {
       display: none;
-    }
-
-    .ebar.is-folded .ebar__in {
-      width: max-content;
     }
 
     .ebar.is-folded .ebar__handle .ebar-icon {
@@ -2816,6 +2822,47 @@
     color: var(--color-muted);
   }
 
+  /* + PROJECT, AFTER THE LAST CARD (2026-10-29): a card's place drawn as an
+     empty outline, the + and its word in the middle; it fills in on hover. */
+  .pp-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 64px;
+    padding: 0 22px;
+    background: none;
+    border: 1.5px dashed var(--color-border);
+    border-radius: var(--radius-soft-block) !important;
+    color: var(--color-dark);
+    font-family: inherit;
+    font-size: var(--fs-100);
+    cursor: pointer;
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  .pp-add:hover {
+    background: color-mix(in srgb, var(--color-dark) 5%, var(--color-bg));
+    border-color: var(--color-dark);
+  }
+
+  .pp-add:focus-visible {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
+  .pp-add[hidden] {
+    display: none;
+  }
+
+  .pp-add .ebar-icon {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2;
+  }
+
   /* THE PROJECT PAGE: the open block alone, the profile's column gone, and
      a row at the top to go back by. */
   .gallery-editor > .pp-off {
@@ -2914,10 +2961,6 @@
      the top-level rules at the foot of this file). ON THE LIST TOO
      (2026-10-28, Josh: "where is the preview button for the work page?"):
      Preview there is the whole page as a visitor gets it. */
-  .profile-form[data-pp-level="project"] .ebar__plus {
-    display: none !important;
-  }
-
   .ebar .ebar__mode {
     position: relative;
     isolation: isolate;
@@ -3095,6 +3138,14 @@ html.pp-switching::view-transition-new(works-mode-thumb) {
   }
 }
 
+/* The page's last lines clear the phone's bottom panel (2026-10-29), as the
+   form's own padding clears it for the last field. */
+@media (--bp-mobile) {
+  :root:has(#form-footer) .site-footer {
+    padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 /* BIGGER BUTTONS ON A PHONE (2026-10-28, see global.css): the keys 36 → 40,
    the small keys in a box's head and Replace 30 → 36, the bar 36 → 42, and
    Remove gets a real target instead of a bare word. */
@@ -3114,7 +3165,6 @@ html.pp-switching::view-transition-new(works-mode-thumb) {
     min-height: 36px;
     padding: 0 6px;
   }
-  .profile-editor .ebar__plus,
   .profile-editor .ebar .profile-save-button,
   .profile-editor .ebar .ebar__mode {
     height: 42px;

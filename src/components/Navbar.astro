@@ -746,9 +746,20 @@ import "../styles/type.css";
     .nav-menu-btn.has-pic:not([aria-expanded="true"]) .nav-burger {
       opacity: 0;
     }
+    /* SMALLER (2026-10-29, Josh: "the portfolio button should be
+       smaller"): 36 → 28px, the chevron with it. */
     .nav-portfolios {
-      top: calc((var(--header-h) - 36px) / 2);
-      height: 36px;
+      top: calc((var(--header-h) - 28px) / 2);
+      height: 28px;
+      padding: 0 11px 0 7px;
+      gap: 3px;
+      transition:
+        box-shadow 0.2s ease,
+        opacity 0.2s ease;
+    }
+    .nav-portfolios svg {
+      width: 13px;
+      height: 13px;
     }
     /* ON THE OPEN SHEET TOO (2026-10-28, Josh: "the portfolio button also
        in the window that pops up upon opening"): the sheet keeps the
@@ -1052,6 +1063,85 @@ import "../styles/type.css";
     }
     .nav-link--lang {
       align-self: center;
+    }
+
+    /* THE ACCOUNT FOLDS OUT ON THE EDITOR (2026-10-29, Josh: "make the top
+       navbar on profile fold out like on desktop"). Signed in on /profile
+       the menu key opens no sheet: ACCOUNT / PROFILE / WORK grow out of it
+       to the left in one outlined pill on the header's line, the outline
+       running round the face, as the desktop's open account pill (board
+       04). The Portfolios key steps aside while it is out; a tab switches
+       in place and folds it back (the script's tab handler). The sheet's
+       list is that strip: fixed on the header's line at the right, as wide
+       as the pill, the language switch left out (the footer has it). */
+    nav[data-editor].is-signed-in .nav-links {
+      inset: 0 7px auto auto;
+      height: var(--header-h);
+      padding: 0;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-end;
+      background: none;
+      touch-action: auto;
+      opacity: 1;
+      transition: visibility 0s linear 0.35s;
+    }
+    nav[data-editor].is-signed-in .nav-menu-btn[aria-expanded="true"] ~ .nav-links {
+      opacity: 1;
+      transition: visibility 0s linear 0s;
+    }
+    nav[data-editor].is-signed-in #nav-sheet-lang {
+      display: none;
+    }
+    nav[data-editor].is-signed-in .nav-links .nav-acct {
+      box-sizing: border-box;
+      max-width: 0;
+      padding: 4px 0;
+      overflow: hidden;
+      box-shadow: inset 0 0 0 1px transparent;
+      background: var(--nav-paper);
+      opacity: 0;
+      transition:
+        max-width 0.3s cubic-bezier(0.5, 0, 0.75, 0),
+        padding 0.3s cubic-bezier(0.5, 0, 0.75, 0),
+        opacity 0.16s ease 0.14s,
+        box-shadow 0.2s ease;
+    }
+    nav[data-editor].is-signed-in .nav-menu-btn[aria-expanded="true"] ~ .nav-links .nav-acct {
+      max-width: 24rem;
+      padding: 4px 42px 4px 4px;
+      box-shadow: inset 0 0 0 1px var(--color-border);
+      opacity: 1;
+      transition:
+        max-width 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+        padding 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 0.2s ease,
+        box-shadow 0.2s ease;
+    }
+    nav[data-editor].is-signed-in .nav-links .nav-link {
+      opacity: 1;
+      transform: none;
+      transition: background-color 0.2s ease;
+    }
+    nav[data-editor].is-signed-in .nav-links .nav-acct .nav-link {
+      flex: none;
+      height: 34px;
+      padding: 0 12px;
+      white-space: nowrap;
+    }
+    /* Open, the key keeps the face inside the pill, not the cross. */
+    nav[data-editor].is-signed-in .nav-menu-btn.has-pic .nav-menu-btn__pic {
+      opacity: 1;
+    }
+    nav[data-editor].is-signed-in .nav-menu-btn.has-pic .nav-burger {
+      opacity: 0;
+    }
+    :root:has(nav[data-editor].is-signed-in #nav-menu-btn[aria-expanded="true"]) .nav-portfolios {
+      opacity: 0;
+      pointer-events: none;
+    }
+    :root:has(nav[data-editor].is-signed-in #nav-menu-btn[aria-expanded="true"]) .form-footer {
+      visibility: visible;
     }
 
     /* The page stays put under the sheet by the sheet's own touch-action
