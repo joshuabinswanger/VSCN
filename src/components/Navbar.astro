@@ -670,14 +670,16 @@ import "../styles/type.css";
   }
 
   @media (--bp-mobile) {
-    /* Signed in with a photo, the closed menu key shows the face, a 34px
-       disc; open, the cross. */
+    /* Signed in with a photo, the closed menu key shows the face; open,
+       the cross. A 38px disc (2026-10-30, Josh: "the profile button has to
+       be the same size as the portfolio buttons"): the directory bar's
+       circles are 38px on a phone (--bar-h, CommunityGrid.astro). Was 34. */
     .nav-menu-btn .nav-menu-btn__pic {
       position: absolute;
-      inset: 3px;
+      inset: 1px;
       display: block;
-      width: 34px;
-      height: 34px;
+      width: 38px;
+      height: 38px;
       object-fit: cover;
       border-radius: 50% !important;
       box-shadow: 0 0 0 1px var(--nav-ink);

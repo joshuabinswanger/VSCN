@@ -1194,6 +1194,24 @@ const BRAND_SLOTS: BrandSlot[] = [
 
   // .page-wrap is replaced on every navigation (only the ticker is persisted),
   // so the listener has to be moved to the new scroller each time.
+  /** The header in its place at once: the ride-away flag off with the
+   *  slide's transition suspended for a frame. */
+  function showHeaderNow() {
+    const root = document.documentElement;
+    if (!root.hasAttribute("data-header-away")) return;
+    const parts = [
+      document.querySelector<HTMLElement>(".brand-ticker"),
+      document.querySelector<HTMLElement>('nav[data-astro-transition-persist="navbar"]'),
+    ];
+    for (const el of parts) el?.style.setProperty("transition", "none");
+    delete root.dataset.headerAway;
+    // A forced style flush, so the jump lands before the transition returns.
+    void root.offsetWidth;
+    requestAnimationFrame(() => {
+      for (const el of parts) el?.style.removeProperty("transition");
+    });
+  }
+
   function initBrandScrollHide() {
     brandScroller?.removeEventListener("scroll", onBrandHideScroll);
     window.removeEventListener("scroll", onBrandHideScroll);
@@ -1205,7 +1223,14 @@ const BRAND_SLOTS: BrandSlot[] = [
     }
     brandScroller?.addEventListener("scroll", onBrandHideScroll, { passive: true });
     // A new page starts with the header shown, whatever the last one did.
-    delete document.documentElement.dataset.headerAway;
+    // WITHOUT THE SLIDE (2026-10-30, Josh: "there is still a shift of the
+    // vscn type top left when navigating pages"): a page left while its
+    // header had ridden away arrived with the title and the nav sliding
+    // back down over the new page's first 400ms. The leave sequence drops
+    // the flag at the start of the fade (leavePage), and an arrival the
+    // sequence did not see (the iOS swipe back) drops it with no
+    // transition at all.
+    showHeaderNow();
     headerLastY = brandScroller?.scrollTop ?? 0;
     applyBrandHide();
   }
@@ -1255,6 +1280,9 @@ const BRAND_SLOTS: BrandSlot[] = [
       return Promise.resolve();
     }
     leavingPage = true;
+    // The header rides back while the old page fades, so the new one
+    // arrives under a title already in its place (see showHeaderNow).
+    delete document.documentElement.dataset.headerAway;
     const phone = window.matchMedia("(width <= 767px), (pointer: coarse)").matches;
     const fade = main
       .animate(
