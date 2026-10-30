@@ -755,6 +755,24 @@ const searchIndex: SearchIndex = {
         </div>
       </div>
     </div>
+    {
+      /* THE PICKED TAG, SHOWN WITH THE BAR SHUT (2026-10-30, Josh: "make the
+        tag that is selected show up not only when we open the tag bar … it
+        should just float above the big portfolio pill"). The Tags circle
+        only names its tag to a screen reader, so the filter was invisible
+        until the card opened. This tag rides over the views pill — above it
+        on a phone, where the bar sits at the foot; under it on a desktop,
+        where the bar stands in the header. Outside .community-bar__in so the
+        island's clip cannot cut it; reflectTagUI fills it, a tap opens the
+        Tags card. */
+    }
+    <button
+      type="button"
+      id="tag-float"
+      class="tagchip tag-float"
+      aria-controls="tag-filter-panel"
+      hidden
+    ></button>
   </div>
 
   {
@@ -3491,6 +3509,68 @@ const searchIndex: SearchIndex = {
       overscroll-behavior: contain;
       scrollbar-width: thin;
       scrollbar-color: var(--color-border) transparent;
+    }
+  }
+
+  /* THE PICKED TAG OVER THE VIEWS (2026-10-30; the markup's note says why).
+     Anchored to the views pill, not the bar: Sort keeps its slot in every
+     view (NO SHIFT BETWEEN VIEWS above), so the views sit half a circle and
+     a gap left of the bar's middle. Without anchor positioning that offset
+     is worked out by hand. Gone while any card is open: the card says the
+     same thing and grows over this spot. */
+  .view-seg {
+    anchor-name: --tag-views;
+  }
+  .tag-float {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 8px);
+    translate: calc(-50% - (var(--bar-h) + var(--bar-gap, 6px)) / 2) 0;
+    pointer-events: auto;
+    cursor: pointer;
+    max-width: min(16rem, calc(100vw - 32px));
+    min-height: 24px;
+    padding-inline: 10px calc(10px - var(--tag-track));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+    /* Dark, as the Tags circle is while a tag is set: the two say "filtered"
+       in one voice. */
+    background: var(--color-dark) !important;
+    color: var(--color-bg) !important;
+    border-color: var(--color-dark);
+    transition:
+      opacity 160ms ease,
+      visibility 0s linear 0s;
+  }
+  @supports (position-anchor: --a) {
+    .tag-float {
+      position-anchor: --tag-views;
+      left: anchor(center);
+      bottom: calc(anchor(top) + 8px);
+      translate: -50% 0;
+    }
+  }
+  .tag-float[hidden] {
+    display: none;
+  }
+  .community-bar:has(.community-bar__panels > :not([hidden])) .tag-float {
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 120ms ease,
+      visibility 0s linear 120ms;
+  }
+  @media (--bp-desktop) {
+    .tag-float {
+      bottom: auto;
+      top: calc(100% + 8px);
+    }
+    @supports (position-anchor: --a) {
+      .tag-float {
+        top: calc(anchor(bottom) + 8px);
+      }
     }
   }
 </style>
