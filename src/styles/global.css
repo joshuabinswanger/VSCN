@@ -1449,9 +1449,11 @@ label:has(> .picker-input:focus-visible) {
    surfaces. This block is the whole shape system: a control gets its curve
    here, by being in CONTROLS, not by a radius of its own, and the universal
    reset still flattens every literal radius the tokens never reached.
-   Kept square although they are buttons: the section tabs (an underline
-   would bend round a capsule's ends) and a project carousel's edge strips
-   (tall hover bands, not buttons to the eye). */
+   Kept square although they are buttons: the section tabs and .btn-link
+   (an underline would bend round a capsule's ends — the Account tab's
+   "Change email address" and "Delete account" sat on grey smiles until
+   2026-10-30) and a project carousel's edge strips (tall hover bands, not
+   buttons to the eye). */
 :root {
   --radius-pill: 999px;
   --radius-tag: 0.5em;
@@ -1459,7 +1461,7 @@ label:has(> .picker-input:focus-visible) {
 }
 
 *:not(
-    button:not(.section-tab),
+    button:not(.section-tab, .btn-link),
     select,
     input:is([type="button"], [type="submit"], [type="reset"]),
     [role="button"],
@@ -1515,7 +1517,7 @@ label:has(> .picker-input:focus-visible) {
 /* CONTROLS: a capsule. :where(), and so is TAGS below: both at zero
    specificity, so ORDER decides, and a tag drawn as a <button> is a tag. */
 :where(
-    button:not(.section-tab),
+    button:not(.section-tab, .btn-link),
     select,
     input:is([type="button"], [type="submit"], [type="reset"]),
     [role="button"],
