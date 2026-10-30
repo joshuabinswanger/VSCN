@@ -1074,7 +1074,14 @@ function applyLayout(grid: HTMLElement, mode: LayoutMode, reshuffle = true) {
       // left the multicol used to leave.
       const run = document.createElement("div");
       run.className = "cgrid__run";
-      const cols = Math.max(1, metrics.cols);
+      // Only as many columns as the run has tiles, each at the width a
+      // full run's column has (the measure's count rides on the run for
+      // the CSS), so a short run stands centred at the usual size
+      // (2026-10-30, Josh: "when there are not a lot of images they
+      // should arrange in the middle").
+      const measureCols = Math.max(1, metrics.cols);
+      run.style.setProperty("--run-cols", String(measureCols));
+      const cols = Math.max(1, Math.min(measureCols, section.items.length));
       const columns: { el: HTMLElement; height: number }[] = [];
       for (let c = 0; c < cols; c++) {
         const el = document.createElement("div");
