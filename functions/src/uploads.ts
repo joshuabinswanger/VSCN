@@ -3,6 +3,7 @@ import { logger } from "firebase-functions/v2";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { db, getBucket } from "./admin";
 import { requireUser } from "./util";
+import sharp from "sharp";
 
 /**
  * WORKS, NOT FILES (2026-09-23, release 1 of
@@ -84,9 +85,13 @@ export async function reserveWork(
  * (updateImageText in src/lib/images.ts), so a replacement is a NEW record —
  * a new id, because the id is the filename and a verified member's object is
  * cached `immutable` for a year — that starts life carrying these.
- * `projectId` rides along so a replaced picture stays in its project.
+ * `projectId` rides along so a replaced picture stays in its project, and
+ * `inGallery` so one the member took out of the gallery stays out, and the
+ * text block after the work (`textAfter`/`textAfterDe`, 2026-10-16) so the
+ * words between two pictures survive a swap of the first, and its S/M/L
+ * size so the page keeps its shape.
  */
-export const WORK_TEXT_FIELDS = ["caption", "captionDe", "description", "descriptionDe", "link", "siteLink", "tags", "projectId"] as const;
+export const WORK_TEXT_FIELDS = ["caption", "captionDe", "description", "descriptionDe", "link", "siteLink", "tags", "projectId", "carouselId", "inGallery", "textAfter", "textAfterDe", "size"] as const;
 
 /**
  * The words, plus what KIND of work it is. A video link keeps its video when
@@ -207,6 +212,21 @@ export function webpDimensions(header: Buffer, totalSize: number): { width: numb
 }
 
 /**
+ * WHAT A BROWSER WITHOUT A WEBP ENCODER SENDS (2026-10-23, Josh's iPhone:
+ * "upload failed"). WebKit's canvas cannot write WebP: asked for one, it
+ * hands back a PNG, and image.ts now asks it for a JPEG instead. The bytes
+ * still arrive under the .webp name and type the storage rules insist on.
+ * JPEG and PNG magic is all this recognises; anything else stays refused.
+ */
+export function isRasterFallback(header: Buffer): boolean {
+  if (header.length >= 3 && header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff) return true;
+  return header.length >= 8 && header[0] === 0x89 && header.toString("ascii", 1, 4) === "PNG";
+}
+
+/** The site's own WebP quality (src/lib/image.ts WEBP_QUALITY), for the server's re-encode. */
+const WEBP_QUALITY = 82;
+
+/**
  * WHAT A REPLACED PICTURE KEEPS OF ITS REVIEW (2026-09-23, Josh: "reset
  * ratings, keep hidden"). Moderation is post-hoc — uploads go live and admins
  * rank or hide them afterwards — so the danger in a replacement is a grade or
@@ -234,7 +254,11 @@ export function settleReplacedModeration(
 }
 
 /** Only the server can publish a record after the uploaded object matches its declared dimensions. */
-export const completeImageUpload = onCall({ enforceAppCheck: true, maxInstances: 3 }, async (req) => {
+// 512 MiB (2026-10-29): the raster fallback (a phone JPEG, WebKit cannot
+// encode WebP) is decoded and re-encoded by sharp in-process, like
+// resolveEmbed. The default 256 MiB holds a 4000 px photo with little room
+// and is OOM-killed by a 7000 px one the rules still admit.
+export const completeImageUpload = onCall({ enforceAppCheck: true, maxInstances: 3, memory: "512MiB" }, async (req) => {
   const uid = requireUser(req);
   const imageId = req.data?.imageId;
   if (typeof imageId !== "string" || (imageId !== `${uid}-avatar` && imageId !== `${uid}-gallery` && !UUID.test(imageId))) {
@@ -258,6 +282,9 @@ export const completeImageUpload = onCall({ enforceAppCheck: true, maxInstances:
   const file = bucket.file(allocation.uploadPath);
   let metadata;
   let header;
+  // Set when the upload is a JPEG/PNG fallback: the WebP the server made of it,
+  // published in place of a copy of the uploaded bytes.
+  let encoded: Buffer | null = null;
   try {
     [metadata] = await file.getMetadata();
     const size = Number(metadata.size);
@@ -267,7 +294,18 @@ export const completeImageUpload = onCall({ enforceAppCheck: true, maxInstances:
     }
     [header] = await bucket.file(allocation.uploadPath, { generation: metadata.generation }).download({ start: 0, end: 63 });
     const dimensions = webpDimensions(header, size);
-    if (!dimensions || dimensions.width !== data.width || dimensions.height !== data.height) {
+    if (!dimensions && isRasterFallback(header)) {
+      // The whole file, pinned to the same generation; the size cap above
+      // bounds it. Decoded at most once for the check and once to encode.
+      const [bytes] = await bucket.file(allocation.uploadPath, { generation: metadata.generation }).download();
+      const image = sharp(bytes, { limitInputPixels: 50_000_000, failOn: "error" });
+      const meta = await image.metadata().catch(() => null);
+      if (!meta || meta.width !== data.width || meta.height !== data.height) {
+        throw new HttpsError("invalid-argument", "Uploaded image dimensions do not match the record.");
+      }
+      encoded = await image.webp({ quality: WEBP_QUALITY }).toBuffer().catch(() => null);
+      if (!encoded) throw new HttpsError("invalid-argument", "Uploaded file is not a valid image.");
+    } else if (!dimensions || dimensions.width !== data.width || dimensions.height !== data.height) {
       throw new HttpsError("invalid-argument", "Uploaded image dimensions do not match the record.");
     }
   } catch (error) {
@@ -277,13 +315,20 @@ export const completeImageUpload = onCall({ enforceAppCheck: true, maxInstances:
   // The source generation is pinned. A concurrent overwrite can only cause
   // the copy to fail; it cannot swap different bytes into the public path.
   let publishedGeneration: string | undefined;
+  const cacheControl = imageId === `${uid}-${data.kind}` ? "public, max-age=60" : PUBLIC_CACHE;
   try {
-    const [, response] = await bucket.file(allocation.uploadPath, { generation: metadata.generation }).copy(bucket.file(data.storagePath), {
-      contentType: "image/webp",
-      cacheControl: imageId === `${uid}-${data.kind}` ? "public, max-age=60" : PUBLIC_CACHE,
-      metadata: { ownerUid: uid, imageId },
-    });
-    publishedGeneration = (response as { resource?: { generation?: string } }).resource?.generation;
+    if (encoded) {
+      const target = bucket.file(data.storagePath);
+      await target.save(encoded, { resumable: false, contentType: "image/webp", metadata: { cacheControl, metadata: { ownerUid: uid, imageId } } });
+      publishedGeneration = String(target.metadata?.generation ?? "") || undefined;
+    } else {
+      const [, response] = await bucket.file(allocation.uploadPath, { generation: metadata.generation }).copy(bucket.file(data.storagePath), {
+        contentType: "image/webp",
+        cacheControl,
+        metadata: { ownerUid: uid, imageId },
+      });
+      publishedGeneration = (response as { resource?: { generation?: string } }).resource?.generation;
+    }
   } catch {
     throw new HttpsError("failed-precondition", "Uploaded image changed before validation completed.");
   }

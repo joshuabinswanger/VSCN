@@ -27,6 +27,16 @@ export interface ImageDoc {
   tags?: string[];
   /** The member's project this work is in (2026-09-23). Carried over by a replacement; nothing else server-side reads it. */
   projectId?: string;
+  /** Works of one project sharing this id form a carousel on the member page (2026-10-23), 1 to 64. Carried over by a replacement. */
+  carouselId?: string;
+  /** The member's "In gallery" switch (2026-10-16): only `false` is stored, absent = shown on /community. */
+  inGallery?: boolean;
+  /** The text block printed after this work on the member page (2026-10-16), ≤ 2000. Mirrored for hasOnly parity and replacement only. */
+  textAfter?: string;
+  /** Its German counterpart, ≤ 2000. */
+  textAfterDe?: string;
+  /** How wide the work stands on the member page (2026-10-16): "s" or "m"; absent = L. */
+  size?: "s" | "m";
   origin: ImageOrigin;
   /**
    * What the work IS (2026-09-23, documentation/20260923-motion-works-design.md).

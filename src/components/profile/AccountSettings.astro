@@ -81,13 +81,11 @@ const t = useTranslations(lang);
     </div>
 
     <div class="field">
-      <div class="label-row">
-        <label class="label" for="phone">{t("profile.label.phone")}</label>
-      </div>
       <p id="note-phone" class="field-note" data-tip hidden>
         {t("profile.note.phone")}
       </p>
-      <div class="infotip-field">
+      <div class="infotip-field ff">
+        <label class="ff__title" for="phone">{t("profile.label.phone")}</label>
         <input
           id="phone"
           type="tel"
@@ -146,10 +144,14 @@ const t = useTranslations(lang);
       </div>
 
       <div id="email-form" class="account-disclosure" hidden>
-        <label class="label" for="email-new">{t("profile.email.new")}</label>
-        <input id="email-new" type="email" class="input" autocomplete="email" />
-        <label class="label" for="email-password">{t("profile.reauth.text")}</label>
-        <input id="email-password" type="password" class="input" autocomplete="current-password" />
+        <div class="ff ff--zone">
+          <label class="ff__title" for="email-new">{t("profile.email.new")}</label>
+          <input id="email-new" type="email" class="input" placeholder=" " autocomplete="email" />
+        </div>
+        <div class="ff ff--zone">
+          <label class="ff__title" for="email-password">{t("profile.reauth.text")}</label>
+          <input id="email-password" type="password" class="input" placeholder=" " autocomplete="current-password" />
+        </div>
         <p role="status" id="email-msg" class="msg-ok" style="display:none;"></p>
         <p role="alert" id="email-error" class="msg-err" style="display:none;"></p>
         <div class="account-actions">

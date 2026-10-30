@@ -93,6 +93,7 @@ const t = useTranslations(lang);
         this.customOpenTo = [...this.customOpenTo, value];
         openToInput.value = "";
         this.renderCustomOpenTo();
+        this.emitChange();
         openToInput.focus();
       };
 
@@ -164,6 +165,15 @@ const t = useTranslations(lang);
       });
     }
 
+    /** A bubbling change, as TagSelector's: the editor's draft, its autosave
+     *  and its "edited while saving" mark all listen to the form for input,
+     *  change and click, and a custom entry added or removed here passed
+     *  none of them (2026-10-29). Only from a member's own action, never
+     *  from the value setter, so a load stays clean. */
+    private emitChange() {
+      this.dispatchEvent(new CustomEvent("change", { detail: { openTo: this.value }, bubbles: true }));
+    }
+
     private renderCustomOpenTo() {
       const customOpenToList = this.querySelector("#openTo-custom-list");
       if (!customOpenToList) return;
@@ -183,6 +193,7 @@ const t = useTranslations(lang);
         btn.addEventListener("click", () => {
           this.customOpenTo = this.customOpenTo.filter((value) => value !== item);
           this.renderCustomOpenTo();
+          this.emitChange();
         });
 
         customOpenToList.appendChild(btn);

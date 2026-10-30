@@ -16,6 +16,14 @@ const currentLang = (lang || "en") as Lang;
 const title = currentLang === "de" ? "Profil bearbeiten — VSCN" : "Edit Profile — VSCN";
 ---
 
-<Layout title={title} noindex lang={currentLang}>
-  <ProfileForm lang={currentLang} />
+{/* contentWide (2026-10-13): the Works tab renders the member page, which
+    lays out on that measure since it went to two columns on a desktop. The
+    Profile and Account tabs keep their own 560px column inside it. */}
+{/* THE EDITOR (2026-10-26/27): the profile saves on its own (autosave), and
+    each project is edited in place on its own page, every work, text block
+    and carousel in a box that carries its own settings. The side panel the
+    boxes used to lend their fields to is gone (2026-10-27). /profile-panel
+    redirects here (firebase.json). */}
+<Layout title={title} noindex lang={currentLang} contentWide>
+  <ProfileForm lang={currentLang} autosave />
 </Layout>

@@ -129,22 +129,27 @@
     display: grid;
   }
 
-  /* THE PREVIEW TAB TAKES THE PAGE'S MEASURE (2026-09-25, Josh: the preview
-     "doesn't match the sizes of the real member profile page"). The form is a
-     560px column, and the preview used to be rendered inside it — so the
-     member page, which the real site lays straight into <main> at 870px,
-     came out at 560: every picture, the bio's measure and the head's grid
-     drawn at two-thirds of its real width. On this tab the form lets go of
-     its cap and fills <main>'s content box, which is exactly the box the real
-     page gets. Everything that is not the rendering (the tabs, the deletion
-     banner) keeps the column's width and centre, so the tab row does not
-     jump when Preview is chosen. 530 on a phone because the form's own 15px
-     padding came out of the 560 there; the desktop form has none. */
-  .profile-form.is-previewing {
+  /* THE WORKS TAB TAKES THE PAGE'S MEASURE (2026-09-25, Josh: the preview
+     "doesn't match the sizes of the real member profile page"; since
+     2026-10-13 the Works tab IS that rendering, edited in place). The form
+     is a 560px column, and the preview used to be rendered inside it — so
+     the member page, which the real site lays straight into <main> at
+     870px, came out at 560: every picture, the bio's measure and the head's
+     grid drawn at two-thirds of its real width. On this tab the form lets
+     go of its cap and fills <main>'s content box, which is exactly the box
+     the real page gets. Everything that is not the rendering (the tabs, the
+     deletion banner, the bar) keeps the column's width and centre, so the
+     tab row does not jump when Works is chosen. 530 on a phone because the
+     form's own 15px padding came out of the 560 there; the desktop form has
+     none. */
+  .profile-form.is-works {
     max-width: none;
   }
 
-  .profile-form.is-previewing > :not(.form-section) {
+  /* Not the bar: it is fixed, and this width and centring would reach it
+     (an abspos box takes justify-self too — on a phone it pushed the
+     floating controls 16px off the left edge). */
+  .profile-form.is-works > :not(.form-section, .form-footer) {
     justify-self: center;
     width: 100%;
     max-width: 530px;
@@ -207,35 +212,28 @@
   .choose-img {
     width: fit-content;
   }
+  /* A 30px key, like Add a link (2026-10-29, Josh: "the choose image …
+     button should be smaller"); it was the 46px phone action. */
+  .avatar-wrap .choose-img {
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    min-height: 0;
+    height: 30px;
+    padding: 0 14px;
+  }
 
-  /* The video link field (2026-09-23): a label, the field and its button on
-     one line, then its status and its note — the gallery's other controls'
-     spacing, one step below the drop zone. */
-  .gallery-video {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    margin-top: 0.75rem;
-  }
-  .gallery-video[hidden] {
-    display: none;
-  }
+  /* The video link field (2026-09-23), in the Plus menu's sheet since
+     2026-10-13: its title, the field, then Cancel and Add on the right. */
   .gallery-video-label {
     font-size: var(--fs-85);
     font-weight: 600;
   }
   .gallery-video-row {
     display: flex;
-    gap: 0.5rem;
-    min-width: 0;
-  }
-  .gallery-video-row .input {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-  .gallery-video-row .btn-solid,
-  .gallery-video-row .btn-link {
-    flex: none;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
   }
   .gallery-video-submit {
     padding: 0.5rem 1.1rem;
@@ -246,11 +244,15 @@
     cursor: not-allowed;
   }
 
-
+  /* THE OTHER FIELDS' SIZE (2026-10-28, Josh: "add a link and portfolio and
+     website fields still too big"): a 30px box with a 1px border, as .input,
+     the https:// prefix filling its height. It was 38px with a 1.5px frame. */
   .input-prefix-wrap {
     display: flex;
-    align-items: center;
-    border: 1.5px solid var(--color-border);
+    align-items: stretch;
+    box-sizing: border-box;
+    height: 30px;
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     overflow: hidden;
     transition: border-color 0.15s;
@@ -268,15 +270,19 @@
 
 
   .input-prefix {
-    padding: 8px 10px;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
     background: #f5f5f5;
     color: var(--color-muted);
     font-size: var(--fs-88);
-    border-right: 1.5px solid var(--color-border);
+    border-right: 1px solid var(--color-border);
     white-space: nowrap;
   }
 
   .input-prefixed {
+    min-height: 0;
+    height: 100%;
     border: none;
     border-radius: 0;
     flex: 1;
@@ -289,6 +295,20 @@
   .input-prefixed:focus,
   .input-prefixed:focus-visible {
     border: none;
+  }
+
+  /* The website's and the links' titles speak FIELD TITLE (type.css), as
+     every other field's lifted title does, 4px above the box; and Add a link
+     is a 30px key, not a 46px action (2026-10-28, "still too big"). */
+  #portfolio-label,
+  #social-label {
+    margin: 0 0 4px 1px;
+    color: var(--color-muted);
+  }
+  #social-add {
+    min-height: 30px;
+    height: 30px;
+    padding: 0 14px;
   }
 
   /* ── Social links ─────────────────────────────────────── */
@@ -342,125 +362,398 @@
     border-color: var(--color-error);
   }
 
-  /* Was a grid of bare 90px thumbs. Each image now carries a caption and a
-     description, which no square that small can hold — so an
-     entry is a row: thumb on the left, its words on the right. */
+  /* ── THE EDITOR IN THE PAGE'S COLUMN (2026-10-13) ──
+     Josh: "Edit mode should look like the preview: the same layout, the same
+     widths, and no horizontal shrinking of the content." The list sits where
+     the page's works do (the `editor` slot of ProfileViewPreview, right
+     after the page's own works slot) and takes the page's rhythm: the
+     same stand-off from the profile's words and the same window-sized gap
+     between works that .mprof__works has in profile.css. Since 2026-10-13
+     both read the same tokens off .mprof (--works-top, --works-gap), so they
+     cannot drift; the page's class on this wrapper would also space the
+     notes a screen apart, which is why it is not simply reused. */
+  .works-editor {
+    margin-top: var(--works-top);
+  }
+
   .gallery-editor {
     display: flex;
     flex-direction: column;
-    gap: 24px;
-    margin-bottom: 0.5rem;
-  }
-
-  /* ONE WORK PER BAND (2026-09-26, Josh: "add more spacing or group the
-     detail drop down to image relationship better"). At a 14px gap with
-     nothing between them, a row's toolbar and Image Details line sat as close to
-     the NEXT picture as to their own, so a fold could be read as belonging
-     to either. Now two neighbouring rows are parted by the list's hairline
-     with 24px of air on each side: everything between two lines is one
-     work. A project block needs no line, since its frame already parts it. */
-  .gallery-item + .gallery-item {
-    padding-top: 24px;
-    border-top: 1px solid var(--color-border);
+    gap: var(--works-gap);
   }
 
   .gallery-editor:empty {
     display: none;
   }
 
+  /* The Add row and the notes stand off the last work by the heading gap,
+     not the works gap: they are the foot of the list, not one more work. */
+
+  .gallery-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-top: 0.75rem;
+  }
+
+  .gallery-notes .field-note {
+    margin: 0;
+  }
+
+  /* A row is the page's figure (.mprof__work, profile.css): the picture at
+     the page's size, the words under it at the picture's width, and under
+     the words the row's DECK of keys (below). */
   .gallery-item {
-    display: grid;
-    /* The picture with its toolbar under it, then the words (2026-09-26). A
-       pending upload has no toolbar; its thumb is the column's only child. */
-    grid-template-columns: 120px minmax(0, 1fr);
-    gap: 14px;
-    align-items: start;
-  }
-
-  .gallery-media {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 0;
-  }
-
-  .gallery-row-tools {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    min-width: 0;
-  }
-
-  /* ── The toolbar (2026-09-26; restyled the same day, Josh: "the design
-     doesn't match the rest of the site") ──
-     Drawn in the site's own control language, the EN/DE switch's: joined
-     segments on white, a 1.5px hairline in --color-border, the small radius,
-     the muted ink at rest and the dark hairline on hover. No tint, no shadow,
-     no pill: every other control in the form is flat and square-cornered.
-     Disabled at an edge rather than removed, so the strip never changes
-     length. */
-  .gallery-toolbar {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(0, 1fr);
-  }
-
-  .gallery-tbtn {
     position: relative;
-    display: grid;
-    place-items: center;
-    height: 28px;
+  }
+
+  /* SOFT CARDS (2026-10-23, Josh: "make the ui element softer, we go after
+     a softer look now with the pills"). The hairline boxes of 2026-10-19
+     ("add boxes and more white space around blocks") became soft surfaces:
+     a project block is a faint tinted panel, and each work row, pending
+     upload and carousel inside it a lighter card on it, with no border at
+     all. Same air as the boxes had (--block-pad, --row-pad). The corners
+     beat the square reset in global.css by specificity under its
+     !important, as the people cards do. The editor only: preview shows the
+     page's own works, which stay square and frameless. */
+  .gallery-item,
+  .gallery-carousel {
+    --row-pad: 1.25rem;
+    padding: var(--row-pad);
+    border: 0;
+    background: color-mix(in srgb, var(--color-white) 78%, var(--color-bg));
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.05),
+      0 0 0 0.5px rgb(0 0 0 / 0.05);
+    border-radius: var(--radius-soft-card) !important;
+  }
+
+  .gallery-project {
+    --block-pad: 1.5rem;
+    position: relative;
+    padding: var(--block-pad);
+    border: 0;
+    background: color-mix(in srgb, var(--color-dark) 3.5%, var(--color-bg));
+    border-radius: var(--radius-soft-block) !important;
+  }
+
+  .works-stage {
+    --radius-soft-card: 1.1rem;
+    --radius-soft-block: 1.6rem;
+    --radius-key: 0.65rem;
+  }
+
+  @media (--bp-mobile) {
+    .gallery-project {
+      --block-pad: 0.75rem;
+    }
+
+    .gallery-item,
+    .gallery-carousel {
+      --row-pad: 0.85rem;
+    }
+  }
+
+  /* THE DECK (2026-10-23, Josh: "all the buttons for images etc move below
+     it in a field that is nicely organized and compact like a keyboard for a
+     synth"). One soft panel under the words, at the caption's width, never
+     narrower than its keys need: small labelled groups of equal keys side
+     by side (Size, Move, Work — or Move, Add, Project on a project, Size,
+     Move, Carousel on a carousel), and a second row of long keys (the
+     selects, In gallery, Take out) under them. A KEY is a soft rounded
+     square, white on the panel, pressed = dark — a synth's buttons, not the
+     site's capsules (beating the CONTROLS rule's !important by specificity,
+     as the cards above do). */
+  .gallery-deck {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 10px 14px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: max(min(var(--size-w, 100%), calc(70vh * var(--work-ar, 1))), 22rem);
+    margin: 0.9rem auto 0;
+    padding: 8px 10px 10px;
+    background: color-mix(in srgb, var(--color-dark) 5%, var(--color-bg));
+    border-radius: var(--radius-soft-card) !important;
+  }
+
+  .gallery-project-tools {
+    max-width: none;
+    margin: 1rem 0 1.25rem;
+  }
+
+  .gallery-carousel-tools {
+    max-width: none;
+    margin: 0.75rem 0 0;
+  }
+
+  .gallery-deck__grp {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
     min-width: 0;
-    padding: 0;
-    background: white;
+  }
+
+  .gallery-deck__grp[hidden] {
+    display: none;
+  }
+
+  .gallery-deck__lbl {
+    padding-inline-start: 2px;
     color: var(--color-muted);
-    border: 1.5px solid var(--color-border);
-    border-radius: 0;
+  }
+
+  .gallery-keys {
+    display: flex;
+    gap: 4px;
+  }
+
+  .gallery-key {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    box-sizing: border-box;
+    min-width: 30px;
+    height: 30px;
+    margin: 0;
+    padding: 0 14px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    color: var(--color-dark);
+    font: inherit;
+    font-size: var(--fs-74);
+    font-weight: 400;
+    letter-spacing: 0;
+    box-shadow: none;
+    border-radius: var(--radius-key) !important;
     cursor: pointer;
     transition:
+      background-color 0.15s,
       color 0.15s,
-      border-color 0.15s;
+      box-shadow 0.15s,
+      transform 0.1s;
   }
 
-  /* Shared walls: each segment after the first overlaps the one before by
-     its border, so the joins are one hairline wide, and a hovered segment
-     is raised so its dark wall is drawn whole. */
-  .gallery-tbtn + .gallery-tbtn {
-    margin-left: -1.5px;
-  }
-
-  .gallery-tbtn:first-child {
-    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-  }
-
-  .gallery-tbtn:last-child {
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  }
-
-  .gallery-tbtn:hover:not(:disabled),
-  .gallery-tbtn:focus-visible {
-    z-index: 1;
-    color: var(--color-dark);
+  /* THE KEY MASTERS (2026-10-28, vscn-design.af board 17): key-outline is
+     30px, a 1px border on paper, Regular 11; a pressed key is key-tint, the
+     tint under an ink border, not a black fill. */
+  .gallery-key:hover:not(:disabled) {
     border-color: var(--color-dark);
   }
 
-  .gallery-tbtn:focus-visible,
+  .gallery-key:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .gallery-key[aria-pressed="true"] {
+    border-color: var(--color-dark);
+    background: var(--color-tint);
+    color: var(--color-dark);
+  }
+
+  .gallery-key:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .gallery-key:focus-visible,
+  .gallery-key:has(:focus-visible) {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
+  .gallery-tbtn--danger:hover:not(:disabled) {
+    color: var(--color-error);
+  }
+
+  .gallery-key[hidden] {
+    display: none;
+  }
+
+  /* A phone: narrower keys, so Size, Move and Work stay on one line at
+     390px (measured on dev 2026-10-23: at 38px Work wrapped under). */
+  @media (--bp-mobile) {
+    .gallery-deck {
+      gap: 8px 10px;
+      padding: 8px;
+    }
+
+    .gallery-key {
+      min-width: 36px;
+      height: 36px;
+      padding: 0 10px;
+    }
+  }
+
+  /* The second row: long keys, sharing the deck's width. */
+  .gallery-deck__row {
+    display: flex;
+    flex-wrap: wrap;
+    flex-basis: 100%;
+    gap: 6px;
+  }
+
+  .gallery-deck__row:not(:has(> :not([hidden]))) {
+    display: none;
+  }
+
+  .gallery-key--wide {
+    flex: 1 1 9rem;
+    justify-content: flex-start;
+    padding: 0 12px;
+    font-weight: 500;
+    letter-spacing: 0;
+  }
+
+  /* A select as a long key: the key is the wrapper (its chevron is the
+     wrapper's ::after), the select fills it without a frame of its own. */
+  .gallery-select-wrap.gallery-key {
+    padding: 0;
+  }
+
+  .gallery-select-wrap > .gallery-project-select {
+    height: 100%;
+    padding-inline: 12px 28px;
+    border: 0;
+    background: transparent;
+    border-radius: inherit !important;
+  }
+
+  /* THE INLINE FIELDS. A work's title and description, a project's title
+     and description, as real inputs standing exactly where the page prints
+     the words: no box, the parent's voice (`font: inherit` at zero
+     specificity — at the FOOT of this file, outside the .profile-editor
+     block, or nesting would lift it to a tie with .mprof__project-title's
+     own voice, which must win), the parent's colour, and one dotted
+     hairline underneath that says
+     "this is yours to change" — solid and dark while it is being changed.
+     A textarea grows with its text (fitInline in the controller) and never
+     scrolls. */
+  .gallery-inline {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0 0 2px;
+    border: 0;
+    border-bottom: 1px dotted var(--color-border);
+    border-radius: 0;
+    background: none;
+    resize: none;
+    overflow: hidden;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .gallery-inline:hover {
+    border-bottom-color: var(--color-muted);
+  }
+
+  .gallery-inline:focus {
+    border-bottom-style: solid;
+    border-bottom-color: var(--color-dark);
+  }
+
+  .gallery-inline::placeholder {
+    color: var(--color-muted);
+    opacity: 0.6;
+  }
+
+  /* A FIELD IN A BOX (2026-10-23, Josh: "make the title, description and so
+     on more clear and similar style to edit"). The dotted inline fields
+     looked like the page; now each has a small label over it and stands
+     in a white rounded box like the keys, so Edit reads as a form all the
+     way down. The voice classes on the inputs (.mprof__caption-line,
+     .mprof__project-title …) still set their type. Focus is the dark ring
+     the keys wear, not an underline. */
+  .gfield {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .gfield__lbl {
+    padding-inline-start: 2px;
+    color: var(--color-muted);
+  }
+
+  .gfield > .gallery-inline {
+    padding: 8px 12px;
+    border: 0;
+    background: var(--color-white);
+    box-shadow:
+      0 1px 0 rgb(0 0 0 / 0.06),
+      0 0 0 0.5px rgb(0 0 0 / 0.07);
+    border-radius: var(--radius-key) !important;
+    transition: box-shadow 0.15s;
+  }
+
+  .gfield > .gallery-inline:hover {
+    box-shadow:
+      0 1px 0 rgb(0 0 0 / 0.08),
+      0 0 0 0.5px rgb(0 0 0 / 0.14);
+  }
+
+  .gfield > .gallery-inline:focus {
+    box-shadow: 0 0 0 2px var(--color-dark);
+  }
+
+  /* The description keeps the page's paragraph breaks while it is typed. */
+  textarea.gallery-inline {
+    white-space: pre-wrap;
+  }
+
+  /* One language at a time: the bar's EN | DE writes data-lang on the
+     stage, and the other pane goes. */
+  .works-stage[data-lang="en"] [data-gallery-lang-pane="de"],
+  .works-stage[data-lang="de"] [data-gallery-lang-pane="en"] {
+    display: none;
+  }
+
+  .gallery-lang-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  /* Preview shows the page's own works; edit shows the editor's list in
+     their place. Both are children of the same .mprof article, so the head
+     and the bio are the same nodes either way. */
+  .works-stage[data-mode="edit"] :is([data-ppv="works"], [data-ppv="works-empty"], .mprof__index),
+  .works-stage[data-mode="preview"] [data-works-editor] {
+    display: none;
+  }
+
+  .works-view[hidden] {
+    display: none;
+  }
+
+  /* ── A WORK'S TOOLBAR ── ↑ ↓ ↻ ✕ as the site's segmented control
+     (.seg.seg--actions in global.css, 2026-10-13): a capsule track of round
+     icon buttons, the white thumb only under the pointer. It replaced joined
+     square boxes (2026-09-26) that round corners could not survive. 32px
+     targets, up from 28. Disabled at an edge rather than removed, so the
+     strip never changes length. */
+  .gallery-toolbar > .gallery-tbtn {
+    width: 32px;
+    min-height: 32px;
+    padding: 0;
+  }
+
   .gallery-tpill:focus-visible,
   .gallery-project-select:focus-visible {
     outline: 2px solid var(--color-dark);
     outline-offset: 1px;
   }
 
-  /* Delete goes red on hover, as the social rows' remove does; replace stays
-     dark, because it keeps the work. */
-  .gallery-tbtn--danger:hover:not(:disabled) {
+  /* Delete goes red under the pointer; replace stays dark, it keeps the work. */
+  .gallery-toolbar > .gallery-tbtn--danger:hover:not(:disabled) {
     color: var(--color-error);
-    border-color: var(--color-error);
-  }
-
-  .gallery-tbtn:disabled {
-    color: var(--color-border);
-    cursor: default;
   }
 
   .gallery-icon {
@@ -506,74 +799,315 @@
     cursor: default;
   }
 
-  /* The project header's pair: the same strip, two buttons wide. */
+  /* IN GALLERY: a real checkbox in the pill's dress. Checked reads dark;
+     unchecked reads muted. The picture itself is never dimmed (Josh,
+     2026-10-16: "the images should not be greyed out"). */
+  .gallery-include {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+  }
+
+  .gallery-include input[type="checkbox"] {
+    margin: 0;
+    width: 13px;
+    height: 13px;
+    accent-color: var(--color-dark);
+    cursor: pointer;
+  }
+
+  .gallery-include:has(input:checked) {
+    color: var(--color-dark);
+  }
+
+  .gallery-include:has(input:focus-visible) {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
   .gallery-toolbar--head {
     flex: none;
-    width: 64px;
   }
 
-  .gallery-project-head .gallery-tpill {
-    flex: none;
+  /* "Add images" is a <label> around a clipped file input, a segment of
+     the project's toolbar like the buttons beside it. */
+  .gallery-project-add {
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
   }
 
+  /* The words are the page's own figcaption (.mprof__caption draws the
+     column, its gap and the picture's width); only the width guard is the
+     editor's. */
   .gallery-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
     min-width: 0;
   }
 
-
-  /* THE MODAL SWITCH — see the markup comment. A two-segment toggle at
-     .gallery-tool's own scale (same border weight, radius, muted resting
-     colour), because it is one more small control among the move buttons
-     below it, not a second set of tabs competing with .section-tab above the
-     whole form. Filled dark for the active half rather than an underline —
-     .section-tab's language reads right at tab width; at two letters wide an
-     underline would be nearly invisible, where a fill reads at a glance. */
-  .gallery-lang-switch {
-    display: flex;
-    width: fit-content;
+  /* The text block after the work (2026-10-16): in the figure here, after
+     the words, standing off them as the page's block stands off the
+     picture (.mprof__project's gap). */
+  .gallery-text {
+    position: relative;
+    margin-top: var(--project-gap);
   }
 
-  .gallery-lang-btn {
-    padding: 3px 10px;
-    background: none;
-    border: 1.5px solid var(--color-border);
+  /* THE BOX'S HEAD (2026-10-27, Josh: the side panel is obsolete, "fold all
+     the settings in there into the boxes"; mock vscn-desktop-editor): a work,
+     a carousel and an added text block each carry what the panel's deck held
+     on their own top line. The kind (a carousel's "Carousel · N works") at
+     the left; at the right size S | L, ↑ ↓ and a word to remove (a
+     carousel's: Dissolve). Everything else is the box's More fold. */
+  .gallery-boxhead {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 6px 10px;
+    min-height: 28px;
+    margin: 0 0 0.75rem;
+  }
+
+  .gallery-boxhead > .gallery-boxhead__lbl {
+    min-width: 0;
+    margin: 0;
     color: var(--color-muted);
-    font: inherit;
-    font-size: var(--fs-72);
-    font-weight: 700;
-    letter-spacing: 0.03em;
+  }
+
+  .gallery-boxhead__keys {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .gallery-boxhead__grp {
+    display: flex;
+    gap: 3px;
+  }
+
+  .gallery-boxhead__grp[hidden] {
+    display: none;
+  }
+
+  .gallery-boxhead .gallery-key {
+    min-width: 30px;
+    height: 30px;
+    padding: 0 10px;
+  }
+
+  .gallery-boxhead__word {
+    padding: 4px 2px;
+    border: 0;
+    background: none;
+    color: var(--color-error);
+    font-family: inherit;
+    font-size: var(--fs-74);
+    font-weight: 400;
+    letter-spacing: 0;
     cursor: pointer;
+  }
+
+  .gallery-boxhead__word:hover:not(:disabled) {
+    text-decoration: underline;
+  }
+
+  .gallery-boxhead__word:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .gallery-boxhead__word:focus-visible {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
+  /* A slide stands inside its carousel's box: no second head of its own
+     beyond the arrows and Remove, which move and remove the slide. */
+  .gallery-carousel-slide .gallery-boxhead__lbl {
+    visibility: hidden;
+  }
+
+  /* REPLACE sits on the picture, top right: the soft white pill the panel's
+     Edit key was. Since 2026-10-28 the key-outline master (vscn-design.af
+     board 17): 30px, paper, a 1px border, the key's corner, Regular 11. */
+  .gallery-thumb-replace {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 3;
+    box-sizing: border-box;
+    height: 30px;
+    padding: 0 14px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    border-radius: var(--radius-key, 0.65rem) !important;
+    color: var(--color-dark);
+    font-family: inherit;
+    font-size: var(--fs-74);
+    font-weight: 400;
+    letter-spacing: 0;
+    cursor: pointer;
+  }
+
+  .gallery-thumb-replace:hover:not(:disabled) {
+    border-color: var(--color-dark);
+  }
+
+  .gallery-thumb-replace:focus-visible {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
+  /* ── A CAROUSEL IN THE EDITOR (2026-10-23, documentation/20261023-work-
+     carousels-design.md "Editor") ── one unit of the project's line, in a
+     row's 1px box: its tools above, the "Carousel · N works" line, the
+     TRAY, the selected slide as a row of its own inside, then the
+     carousel's text block. The thumbnails and the + slot are SQUARE
+     surfaces (the CONTROLS capsule in global.css is :where() + !important,
+     so the thumbnail's own rule says 0 with !important and wins on
+     specificity); the .seg and the pills keep their shapes. */
+  .gallery-carousel {
+    --tray-thumb: 72px;
+  }
+
+  /* The selected slide is a work row INSIDE the carousel's card: no second
+     card around it, the carousel's own is enough. */
+  .gallery-carousel-slide > .gallery-item {
+    padding: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  .gallery-carousel-label {
+    margin: 0 0 0.5rem;
+    color: var(--color-muted);
+  }
+
+  .gallery-tray {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-height: calc(var(--tray-thumb) + 16px);
+    padding: 8px;
+    border: 1.5px dashed var(--color-border);
+    transition: border-color 0.15s ease;
+  }
+
+  /* A drag over it: the tray lights, and the bar below says where. */
+  .gallery-tray.is-drop-target {
+    border-color: var(--color-dark);
+  }
+
+  .gallery-tray-thumb {
+    display: block;
+    width: var(--tray-thumb);
+    height: var(--tray-thumb);
+    padding: 0;
+    border: 0;
+    border-radius: 0 !important;
+    background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .gallery-tray-thumb > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* The selected slide, outlined; the one under the pointer, a touch darker. */
+  .gallery-tray-thumb[aria-pressed="true"] {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
+  .gallery-tray-thumb:focus-visible {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
+  .gallery-tray-thumb:hover:not([aria-pressed="true"]) {
+    outline: 1.5px solid var(--color-muted);
+    outline-offset: 2px;
+  }
+
+  /* The picture that is being dragged, and the row picture too: lifted. */
+  .is-dragging {
+    opacity: 0.4;
+  }
+
+  /* THE DROP INDICATOR: a bar one gap wide, between the thumbnails where
+     the work would land. Its negative margins swallow exactly the gap, so
+     nothing moves under the pointer when it appears. */
+  .gallery-tray-drop {
+    display: block;
+    width: 2px;
+    height: var(--tray-thumb);
+    margin-inline: -4px;
+    background: var(--color-dark);
+    pointer-events: none;
+  }
+
+  /* THE + SLOT: a dashed square the thumbnails' size, a clipped file input
+     inside it (the label is the target, as the project's Add images is). */
+  .gallery-tray-add {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--tray-thumb);
+    height: var(--tray-thumb);
+    border: 1.5px dashed var(--color-border);
+    color: var(--color-muted);
+    cursor: pointer;
+    overflow: hidden;
     transition:
-      background 0.15s,
       color 0.15s,
       border-color 0.15s;
   }
 
-  .gallery-lang-btn + .gallery-lang-btn {
-    border-left: none;
-  }
-
-  .gallery-lang-btn:first-child {
-    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-  }
-
-  .gallery-lang-btn:last-child {
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  }
-
-  .gallery-lang-btn:hover:not(.is-active) {
+  .gallery-tray-add:hover {
     color: var(--color-dark);
     border-color: var(--color-dark);
   }
 
-  .gallery-lang-btn.is-active {
-    background: var(--color-dark);
-    color: var(--color-bg);
-    border-color: var(--color-dark);
+  .gallery-tray-add[aria-disabled="true"] {
+    opacity: 0.45;
+    pointer-events: none;
   }
+
+  /* The selected slide's row stands under the panel at the row gap. */
+  .gallery-carousel-slide {
+    margin-top: 0.75rem;
+  }
+
+  .gallery-carousel-details {
+    margin-top: 0.6rem;
+  }
+
+  .gallery-carousel-slide[hidden],
+  .gallery-text[hidden] {
+    display: none;
+  }
+
+  /* SLIDE MODE: the size and the text block are the carousel's (hidden),
+     and ↑ ↓ read as ← → — the same arrows, a quarter turn. */
+  .gallery-item.is-slide [data-gallery-move] > .gallery-icon {
+    transform: rotate(-90deg);
+  }
+
+  @media (--bp-mobile) {
+    .gallery-carousel {
+      --row-pad: 0.85rem;
+      --tray-thumb: 56px;
+    }
+  }
+
 
   .gallery-lang-pane {
     display: flex;
@@ -602,19 +1136,12 @@
     font-size: var(--fs-85);
   }
 
+  /* The picture is the page's frame (.mprof__work-link + .mprof__img in
+     profile.css): a <div> here, since the editor's picture opens nothing,
+     and no cursor to promise otherwise. */
   .gallery-thumb {
     position: relative;
-    aspect-ratio: 1;
-  }
-
-  .gallery-thumb img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: var(--radius-sm);
-    border: 1.5px solid var(--color-border);
-    box-sizing: border-box;
+    cursor: default;
   }
 
   .gallery-thumb-remove {
@@ -639,41 +1166,46 @@
     background: var(--color-error);
   }
 
-  /* The drop target. No border of its own until something is being dragged
-     over it — a permanently outlined box in the middle of a form reads as a
-     disabled field, and this one is only special for the two seconds a drag
-     lasts. */
+  /* The list that takes drops. Since 2026-10-16 a drop lands in the PROJECT
+     BLOCK under the pointer, so the block is what lights up, not the list:
+     no border of its own until something is dragged over it — a permanently
+     outlined box reads as a disabled field. */
   .gallery-drop {
     position: relative;
-    border: 1.5px dashed transparent;
-    border-radius: var(--radius-sm);
-    padding: 4px;
-    margin: -4px -4px 0.5rem;
-    transition: border-color 0.15s ease;
+    margin-bottom: 0.5rem;
   }
 
-  .gallery-drop.is-dragging {
-    border-color: var(--color-dark);
+  /* An OUTLINE, not a border (2026-10-13): a border took 3px off every row's
+     width, and the rows are the page's figures, which must be the page's
+     width to the pixel. The outline sits 4px outside the box and costs
+     nothing. */
+  .gallery-project {
+    outline: 1.5px dashed transparent;
+    outline-offset: 4px;
+    transition: outline-color 0.15s ease;
   }
 
-  /* Only ever seen mid-drag, so it costs nothing at rest and does not compete
-     with the Add button for the same job. */
-  .gallery-drop-hint {
+  .gallery-project.is-drop-target {
+    outline-color: var(--color-dark);
+  }
+
+  /* The way in for a member with no project yet (2026-10-16): a note and
+     the Add project button, where the first block will appear. */
+  .gallery-first {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 1rem;
+  }
+
+  .gallery-first[hidden] {
     display: none;
-    margin-left: 10px;
-    font-size: var(--fs-85);
-    color: var(--color-muted);
-  }
-
-  .gallery-drop.is-dragging .gallery-drop-hint {
-    display: inline;
   }
 
   /* The cap is a fact about the gallery, not an error, so the button says so by
      going quiet rather than by the form growing a message. */
-  .gallery-drop .choose-img[aria-disabled="true"],
-  .gallery-action[aria-disabled="true"],
-  .gallery-action:disabled {
+  .gallery-drop .choose-img[aria-disabled="true"] {
     opacity: 0.45;
     pointer-events: none;
   }
@@ -745,8 +1277,7 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0 0 0.45rem;
-    border-bottom: 1px solid var(--color-border);
+    padding: 0 0 0.3rem;
     cursor: pointer;
     list-style: none;
     user-select: none;
@@ -795,6 +1326,30 @@
     transform: rotate(225deg);
   }
 
+  /* FOLDED, THE ROW SHOWS ITS PICKED TAGS (2026-10-23), the profile page's
+     own chips. They stand in for the count, which says less; open, the
+     selector shows them and both go. ON A LINE OF THEIR OWN UNDER THE ROW
+     (2026-10-25, Josh: "the tags should stay below the drop down when
+     closed"); until then they ran on after the arrow. */
+  .gallery-tags-summary:has(> .gallery-tags-picked) {
+    flex-wrap: wrap;
+  }
+
+  .gallery-tags-picked {
+    display: flex;
+    flex-wrap: wrap;
+    flex-basis: 100%;
+    gap: 0.3rem;
+    min-width: 0;
+    margin-top: 0.2rem;
+  }
+
+  .gallery-tags[open] .gallery-tags-picked,
+  .gallery-tags-picked:empty,
+  .gallery-tags:not([open]) .gallery-tags-count:has(~ .gallery-tags-picked:not(:empty)) {
+    display: none;
+  }
+
   /* On the summary rather than on the selector below it: the selector is a
      child COMPONENT, so this block's scope attribute never lands on it and a
      `.gallery-tags > tag-selector` rule here would match nothing. */
@@ -802,19 +1357,22 @@
     margin-bottom: 0.5rem;
   }
 
-  /* THE ROW'S OWN FOLD — see the markup comment. Same heading voice as the
-     tag fold inside it, so the two levels read as one idiom. Its chevron has
-     its own class: `.gallery-details[open] .gallery-tags-chevron` would also
-     turn the nested tag fold's arrow, whatever that fold's own state. */
+  /* THE EDIT PANEL (2026-10-23, Josh: "hide most of those options behind an
+     edit and + button"). The row's fold wears a KEY for its summary — the
+     pencil, "Edit", a chevron — pressed (dark) while the panel is open; the
+     body is the soft panel under it, holding the deck of keys, the links
+     and the tags. Its chevron has its own class: `.gallery-details[open]
+     .gallery-tags-chevron` would also turn the nested tag fold's arrow. */
+  .gallery-details {
+    margin-top: 10px;
+  }
+
   .gallery-details-summary {
-    display: flex;
-    align-items: baseline;
-    gap: 0.5rem;
-    padding: 0 0 0.45rem;
-    border-bottom: 1px solid var(--color-border);
-    cursor: pointer;
+    width: fit-content;
     list-style: none;
     user-select: none;
+    padding-inline: 10px 12px;
+    font-weight: 400;
   }
 
   .gallery-details-summary::-webkit-details-marker {
@@ -823,38 +1381,149 @@
 
   .gallery-details-title {
     flex: none;
-    color: var(--color-muted);
-    transition: color 0.15s;
-  }
-
-  .gallery-details-summary:hover .gallery-details-title {
-    color: var(--color-dark);
   }
 
   .gallery-details-chevron {
     flex: none;
-    align-self: center;
-    width: 7px;
-    height: 7px;
-    border-right: 1px solid var(--color-muted);
-    border-bottom: 1px solid var(--color-muted);
+    width: 6px;
+    height: 6px;
+    margin: 0 0 3px 2px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
     transform: rotate(45deg);
     transition: transform 0.15s ease;
     transform-origin: 60% 60%;
   }
 
-  .gallery-details[open] .gallery-details-chevron {
-    transform: rotate(225deg);
+  .gallery-details[open] > .gallery-details-summary {
+    background: var(--color-dark);
+    color: var(--color-white);
   }
 
-  .gallery-details[open] .gallery-details-summary {
-    margin-bottom: 0.5rem;
+  .gallery-details[open] > .gallery-details-summary:hover {
+    background: var(--color-dark);
+  }
+
+  .gallery-details[open] > .gallery-details-summary .gallery-details-chevron {
+    transform: rotate(225deg);
+    margin-bottom: -2px;
   }
 
   .gallery-details-body {
     display: flex;
     flex-direction: column;
+    gap: 14px;
+    margin-top: 8px;
+    padding: 10px;
+    background: color-mix(in srgb, var(--color-dark) 5%, var(--color-bg));
+    border-radius: var(--radius-soft-card) !important;
+  }
+
+  /* Inside the panel the deck is the panel: no second tint, no margins. */
+  .gallery-panel > .gallery-deck {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: none;
+  }
+
+  .gallery-panel__sec {
+    display: flex;
+    flex-direction: column;
     gap: 8px;
+  }
+
+  /* The tag picker's own inset (TagSelector.astro, for the wide form) would
+     narrow its fields twice over in a work's column; the panel's padding
+     is inset enough. */
+  .gallery-panel tag-selector {
+    --ts-inset: 0;
+  }
+
+  /* The link fields in the panel wear the keys' dress: no hairline frame,
+     a white box with the same soft shadow and corner. */
+  .gallery-panel .input-prefix-wrap {
+    border: 0;
+    background: var(--color-white);
+    box-shadow:
+      0 1px 0 rgb(0 0 0 / 0.06),
+      0 0 0 0.5px rgb(0 0 0 / 0.07);
+    border-radius: var(--radius-key) !important;
+  }
+
+  .gallery-panel .input-prefix-wrap:focus-within {
+    box-shadow: 0 0 0 2px var(--color-dark);
+  }
+
+  .gallery-panel .input-prefix {
+    background: color-mix(in srgb, var(--color-dark) 4%, var(--color-white));
+    border-right: 0;
+  }
+
+  /* MORE AND + ADD ON A PROJECT (2026-10-29, Josh: More comes first). More
+     is first in the row and its fold's body runs the row's full width;
+     + Add is pinned over the row's top right, and its keys open as a
+     drop-up above it, so neither key moves the other. Not flex or grid:
+     the fold's body would need `display: contents` on the <details>,
+     which crashes iOS WebKit. */
+  .gallery-edit-row {
+    position: relative;
+    margin-top: 10px;
+  }
+
+  .gallery-edit-row > .gallery-details {
+    margin-top: 0;
+  }
+
+  .gallery-addrow {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
+  /* The drop-UP: the keys rise above the + Add key instead of pushing the
+     row (and the More fold under it) down. Black, like the open key. */
+  .gallery-addkeys {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 4px);
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+
+  .gallery-addkeys[hidden] {
+    display: none;
+  }
+
+  .gallery-key--plus[aria-expanded="true"] {
+    background: var(--color-dark);
+    color: var(--color-white);
+  }
+
+  .gallery-key--plus[aria-expanded="true"]:hover {
+    background: var(--color-dark);
+  }
+
+  .gallery-key--plus[aria-expanded="true"] .gallery-icon {
+    transform: rotate(45deg);
+  }
+
+  .gallery-key--plus .gallery-icon {
+    transition: transform 0.2s ease;
+  }
+
+  .gallery-addkeys .gallery-key--wide {
+    flex: none;
+    padding-inline: 10px 12px;
+    background: var(--color-dark);
+    color: var(--color-white);
+  }
+
+  .gallery-addkeys .gallery-key--wide:hover {
+    background: var(--color-dark);
   }
 
   .gallery-tools {
@@ -939,48 +1608,15 @@
     border-color: var(--color-dark);
   }
 
-  /* ── Project blocks (2026-09-23) ─────────────────────── */
-  /* A frame inside the list, at the row's own gap, so the images inside read
-     as the same rows they were outside — only enclosed. Hairline and radius
-     from the inputs, not a card: this is a grouping in a form, not content. */
-  .gallery-project {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 12px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-  }
-
-  .gallery-project-head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-  }
-
-  /* The label voice (uppercase, tracked) so the header reads as a heading
-     over its rows and not as one more input. It WRAPS (2026-09-28): a name
-     like "Interdisziplinäre Wissenschaftskommunikation" is longer than a
-     phone's block, and an ellipsis took the half that said what it was.
-     `hyphens: auto` so German breaks at a syllable, not mid-word (the
-     language is <html lang>); `anywhere` remains the last resort for a
-     word no dictionary knows. */
-  .gallery-project-name {
-    flex: 1 1 auto;
-    min-width: 0;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    hyphens: auto;
-    color: var(--color-dark);
-  }
-
+  /* ── Project blocks (2026-09-23; the page's own since 2026-10-13) ── */
+  /* The block is the page's .mprof__project (profile.css draws the column
+     and its gaps) and its heading group is the page's .mprof__project-head;
+     no frame of its own any more. The works inside are listed one under
+     the other at the heading gap, where the page pages them as a carousel. */
   .gallery-project-fields {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
     min-width: 0;
   }
+
 
   /* Not the tag picker's fields — see .gallery-fields .input above. */
   .gallery-project-fields .input:not(tag-selector *) {
@@ -1036,8 +1672,7 @@
     margin-bottom: 0;
   }
 
-  .gallery-aff-add,
-  .gallery-project-add {
+  .gallery-aff-add {
     padding: 0.5rem 1rem;
     font-size: var(--fs-80);
   }
@@ -1080,63 +1715,17 @@
     color: var(--color-error);
   }
 
-  /* The block's own rows, at the list's gap and with its dividers. */
+  /* The block's own rows, one under the other at the heading gap. */
   .gallery-project-images {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    /* Boxed rows stand a little further apart than the page's bare ones. */
+    gap: calc(var(--project-gap) + 0.5rem);
   }
 
   /* An empty block shows its note instead of rows (renderGallery). */
   .gallery-project-images:empty {
     display: none;
-  }
-
-  /* THREE BUTTONS OF ONE WEIGHT (2026-09-25). Images and video share the
-     solid outline and an equal share of the row; the project button is the
-     same size in a dashed outline with a ＋, because it adds a container,
-     not a work. On a phone the two works share the first line and the
-     project takes the second. */
-  .gallery-actions {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  /* border-box, or the <label> ("Add images") comes out its padding wider
-     than the <button> beside it: they are the same class, not the same
-     element, and only the button gets the UA's border-box. */
-  .gallery-action {
-    box-sizing: border-box;
-    width: 100%;
-    min-width: 0;
-    padding: 0.6rem 0.75rem;
-    font-size: var(--fs-85);
-    color: var(--color-dark);
-    border-color: var(--color-border);
-    text-align: center;
-  }
-
-  .gallery-action:hover {
-    border-color: var(--color-dark);
-    color: var(--color-dark);
-  }
-
-  .gallery-action.is-open {
-    border-color: var(--color-dark);
-  }
-
-  .gallery-action--project {
-    gap: 6px;
-    background: transparent;
-    border-style: dashed;
-    border-color: var(--color-muted);
-  }
-
-  .gallery-action-plus {
-    font-size: var(--fs-100);
-    font-weight: 600;
-    line-height: 1;
   }
 
   /* Names what the first image already IS. Not a control — pressing it would
@@ -1190,31 +1779,6 @@
     text-transform: uppercase;
   }
 
-  @media (--bp-mobile) {
-    /* On a phone the picture and its toolbar sit side by side, and the words
-       take the full width below them. */
-    .gallery-item {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    .gallery-media {
-      display: grid;
-      grid-template-columns: minmax(0, 140px) 136px;
-      gap: 12px;
-      align-items: start;
-    }
-    .gallery-actions {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .gallery-action--project {
-      grid-column: 1 / -1;
-    }
-    .gallery-task .gallery-thumb {
-      max-width: 140px;
-    }
-    .gallery-project {
-      padding: 10px;
-    }
-  }
 
   /* ── Section tabs ─────────────────────────────────────── */
   /* Text tabs on a hairline, in the same uppercase voice as .label — the
@@ -1267,7 +1831,7 @@
      hole between a page and the line that closes it. The profile page brings
      its own 3rem/10rem of internal air (profile.css), which is the whole point
      of showing it unmodified. */
-  .preview-section {
+  .works-stage {
     display: flex;
     flex-direction: column;
     gap: 2.5rem;
@@ -1285,7 +1849,7 @@
      clips at the padding edge, which is exactly where this reaches. Desktop
      needs nothing: .profile-form drops its padding there. */
   @media (--bp-mobile) {
-    .preview-section {
+    .works-stage {
       margin-inline: -15px;
     }
   }
@@ -1293,85 +1857,94 @@
   /* The card's label sits close over it and well clear of the page's
      closing rule above, so it reads as the card's name, not the page's
      last line. */
+  /* On the page's measure (profile.css caps .mprof at 86rem on a desktop),
+     so the card starts at the left edge the profile view's person column
+     does, not at the wide stage's. */
   .preview-card {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+    width: 100%;
+    max-width: 86rem;
+    margin-inline: auto;
   }
 
-  .preview-card-head {
+  /* THE CARD AT THE PORTFOLIOS SIZE (2026-10-25, Josh: "the card should
+     have the same size as the portfolio gallery card"). The preview stated
+     a 24rem picture and a 16rem column of its own (CommunityCardPreview);
+     on a desktop it now takes the directory's: the picture as tall as the
+     pages view makes it (--cpage-pic-h in CommunityGrid, the same sum),
+     no wider than the directory's picture column (communityCard.css's
+     --ccard-pic-room, worked out for the directory's cell: main's wide
+     measure less the grid's 3vw a side and main's gutter), and the words'
+     full 28rem. */
+  /* ON A PHONE TOO (2026-10-30, Josh: "card preview on mobile is not
+     correctly sized"): the preview kept its own 24rem picture there, while
+     the directory's pages view gives the picture the band it works out in
+     CommunityGrid.astro — the screen less the header, the bar, the words'
+     fixed rows and the lift, inside the top 70svh. The same sum here, so
+     the preview's picture is the size the visitor gets; the words follow
+     under it as the phone's card lays them. */
+  @media (--bp-mobile) {
+    .preview-card .ccard--preview {
+      --ccpv-cpage-h: calc(100svh - var(--header-h));
+      --ccpv-pic-fit: calc(var(--ccpv-cpage-h) - 4.5rem - 1rem - 2.5rem - 4.4rem - 1.7rem - 1.5rem);
+      --cpage-pic-h: min(var(--ccpv-pic-fit), 2 * (35svh - var(--header-h)));
+    }
+  }
+  @media (--bp-desktop) {
+    .preview-card .ccard--preview {
+      --cpage-pic-h: calc(var(--shell-h, 100dvh) - var(--header-h) - 5.5rem - 22vh);
+      --ccard-side-w: 28rem;
+      --ccpv-cell-w: calc(min(94vw, 1600px) - 6vw - 30px);
+      --ccard-pic-room: min(
+        calc(100cqw - var(--ccard-side-w) - var(--ccard-air)),
+        clamp(
+          calc(var(--ccpv-cell-w) * 0.4),
+          calc(var(--ccpv-cell-w) - 2 * (var(--ccard-words-min) + var(--ccard-air))),
+          50vw
+        )
+      );
+    }
+  }
+
+
+  /* ── THE BAR (2026-10-13) ────────────────────────────────
+     Josh: "make the Bar consistently sit at the same height. also add
+     smooth animation when its width changes". It was a reversed sticky
+     (2026-09-10 to 2026-10-13): resting at the end of a short tab, pinned
+     to the bottom of a long one, and on a desktop pinned 0px from the
+     window's edge because .page-wrap's padding was cancelled under it —
+     three heights depending on the tab and the device. Now it is FIXED:
+     centred, --ebar-gap up from the window's foot, on every tab, at both
+     breakpoints, the same line the desktop footer and language toggle sit
+     on (20px, SiteFooter.astro). The form keeps room for it at its end
+     (padding-bottom on .profile-form, below).
+     The positioner is click-through; the bar, the menu, the sheet and the
+     messages above it take their own clicks. */
+  .form-footer {
+    --ebar-gap: 20px;
+    position: fixed;
+    left: 50%;
+    bottom: calc(var(--ebar-gap) + var(--ebar-lift, 0px));
+    z-index: 30;
+    transform: translateX(-50%);
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
-  }
-
-  .preview-card-head p {
-    margin: 0;
-  }
-
-  /* The closing line under the directory card — same hairline
-     ProfileViewPreview draws above and below the page, so the tab reads as one
-     stack of rendered things rather than a page in a frame and a loose card. */
-  .preview-rule {
-    height: 0;
-    margin: 0;
-    border: 0;
-    border-top: 1px solid var(--color-border);
-  }
-
-  /* A REVERSED STICKY: pinned to the viewport bottom while the tab is longer
-     than the screen, resting at the END OF THE TAB'S OWN CONTENT when it is
-     not (2026-09-10, Josh: "save button should also attach to the bottom of
-     the profile tabs if it is shorter than the viewport"). That is what
-     `sticky` already means, so this is one property rather than a mechanism.
-     It was `fixed` between 2026-09-04 and now — Josh, "save changes at bottom
-     always" — which nailed Save to the viewport bottom on every tab, including
-     short ones (Account, a thin gallery) where it then floated over empty
-     space with the last field far above it. Sticky keeps it in
-     .profile-form's centered column, so unlike `fixed` it needs no copy of
-     that column's width and padding: inheriting them is the point.
-     Consequences of being in flow again, both intended: it unpins at
-     .profile-form's own bottom edge, so at full scroll it comes to rest above
-     the form's bottom margin rather than at the viewport's edge; and while
-     pinned on mobile it shares the bottom line with the site footer, which
-     holds the opposite corner (see SiteFooter.astro).
-     No bar behind it — just the button, so the container must not eat clicks
-     on the content it hovers over.
-     THE NEGATIVE BOTTOM (2026-09-23, Josh: "save button at bottom"). A sticky
-     box pins against the scroll container's PADDING edge, not its visible
-     edge, and .page-wrap carries 80px of bottom padding for the fixed site
-     footer — so `bottom: 0` parked Save ~100px up the screen, over the
-     portfolio hint, from the day it became sticky. Nobody saw it: /profile
-     needs a sign-in and this was only ever checked as compiled CSS.
-     Cancelling the padding puts it where every comment here assumed it was. */
-  .form-footer {
-    position: sticky;
-    bottom: calc(-1 * var(--page-wrap-pad-bottom, 0px));
-    z-index: 5;
-    display: flex;
     align-items: center;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+    width: max-content;
     pointer-events: none;
-    box-sizing: border-box;
-    padding: 0 0 1.25rem;
 
-    /* LOWER ON A PHONE (2026-09-11, Josh: "put save bar lower on mobile").
-       20px of lift is right on a desktop, where there is room below the fold
-       to spare; on a phone it pushed Save up into the last field it was meant
-       to sit under, and put it a clear step above the site footer's own
-       bottom: 20px in the opposite corner — two bottom fixtures on two
-       different lines. 8px drops it under the content and onto roughly the
-       footer's line, which is what makes the bottom edge read as one strip
-       rather than a staircase.
-       FLUSH RIGHT, LIKE DESKTOP (2026-09-24, Josh: "make button on mobile
-       align right as well"). For one day it was inset 3rem to clear the
-       language toggle, which then held this corner. The toggle moved to the
-       bottom-left on mobile instead (Navbar.astro) and the footer links went
-       into the flow (SiteFooter.astro), so Save has the right corner alone. */
+    /* A PANEL ON THE PHONE'S FOOT (2026-10-29, Josh: "make the floating
+       panel on mobile a filled out panel at the bottom that folds up and
+       down"): edge to edge and flush with the bottom, not floating. */
     @media (--bp-mobile) {
-      padding-bottom: 0.5rem;
+      --ebar-gap: 0px;
+      left: 0;
+      right: 0;
+      transform: none;
+      width: auto;
+      align-items: stretch;
     }
   }
 
@@ -1379,25 +1952,415 @@
     pointer-events: auto;
   }
 
-  /* Preview needs no Save: nothing on that tab can be edited. */
-  .profile-form.is-previewing .form-footer {
+  /* CLEAR OF THE SITE FOOTER (2026-10-13, measured): on the footer's line,
+     the Works tab's full bar (about 500px, 560 in German) ran over the
+     footer's links in any desktop window under about 1100px — 1024 and
+     860 were both hit. Below 1180px it rises 40px, over the footer row
+     instead of on it. A step, not a slide: the clamp is 0 or 40px with
+     nothing between (any width under 1180px gives at least 100 x 1 px).
+     Save alone (Profile, Account) is narrow enough never to reach the
+     links, so it stays on the line. */
+  @media (--bp-desktop) {
+    .profile-form.is-works .form-footer {
+      --ebar-lift: clamp(0px, (1180px - 100vw) * 100, 40px);
+    }
+  }
+
+  /* Room at the end of every tab, so the last field is never under the bar:
+     its height, its gap, and a little air. The Works tab's bar has two rows. */
+  .profile-form {
+    padding-bottom: 6rem;
+  }
+
+  .profile-form.is-works {
+    padding-bottom: 9rem;
+  }
+
+  @media (--bp-mobile) {
+    .profile-form {
+      padding-bottom: 8rem;
+    }
+
+    .profile-form.is-works {
+      padding-bottom: 11rem;
+    }
+  }
+
+  /* THE BAR ITSELF: paper, a hairline and a soft shadow, so it reads as one
+     floating object over pictures and text alike. TWO ROWS since 2026-10-23
+     (Josh: "Bottom Buttons bigger 2 row 1 row add and save the other row the
+     other settings"): + Project and Save as two big labelled pills side by
+     side, and under them the Works tab's switches. Its corner is concentric
+     with the 44px pills in 8px of padding. Width and height are set by
+     editorBar.ts and transition; the clip hides the content's new edge while
+     the box catches up. Since the same day the bar keeps this one shape on a
+     phone too (it came apart into floating controls from 2026-10-13), with
+     a handle above it that folds it away. */
+  .ebar {
+    box-sizing: content-box;
+    padding: 6px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 24px !important;
+    box-shadow:
+      0 8px 28px rgb(0 0 0 / 0.1),
+      0 1px 3px rgb(0 0 0 / 0.06);
+    overflow: hidden;
+  }
+
+  .ebar.is-sized {
+    transition:
+      width 0.38s cubic-bezier(0.25, 1, 0.5, 1),
+      height 0.38s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ebar.is-sized {
+      transition: none;
+    }
+  }
+
+  /* max-content, capped by the window: its size never depends on the bar's,
+     which is what lets the bar be sized FROM it. 2 x 16px of window margin
+     and the bar's own 2 x 9px. */
+  .ebar__in {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    width: max-content;
+    max-width: calc(100vw - 50px);
+  }
+
+  .ebar__rows {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+  }
+
+  .ebar__row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ebar__group[hidden] {
     display: none;
   }
 
-  /* The save/error message floats next to the button, so it carries its own
-     surface to stay legible over whatever it happens to hover above. */
-  .form-footer .msg-ok,
-  .form-footer .msg-err {
-    margin: 0;
-    padding: 0.45rem 0.9rem;
-    background: var(--color-bg);
-    border: 1.5px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  .ebar .seg > button {
+    min-height: 26px;
+    padding-inline: 10px;
   }
 
-  .profile-save-button {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  /* THE ACTIONS: 36px pills sharing the row equally, icon and word (44px on
+     2026-10-23 for a day: "a bit more compact"). Save, and + Project until
+     it moved under the project cards (2026-10-29). */
+  .ebar .profile-save-button {
+    display: inline-flex;
+    flex: 1 1 0;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-width: 7rem;
+    height: 36px;
+    min-height: 0;
+    padding: 0 16px;
+    font: inherit;
+    font-size: var(--fs-85);
+    font-weight: 400;
+  }
+
+  .ebar .profile-save-icon {
+    width: 15px;
+    height: 15px;
+    stroke-width: 2;
+  }
+
+  /* Saving: the ring takes the disk's place. */
+  .profile-save-button.is-saving .profile-save-icon {
+    display: none;
+  }
+  .ebar .profile-save-button.is-saving::before {
+    margin-right: 0;
+  }
+
+  /* THE HANDLE: a phone's only (below). */
+  .ebar__handle {
+    display: none;
+  }
+
+  @media (--bp-mobile) {
+    /* The panel (see .form-footer): the full width whatever editorBar.ts
+       measures (its height still follows the content, which is what
+       animates the fold), square at the foot, rounded at the top, its
+       shadow cast upward, and room under the controls for the home
+       indicator. */
+    .ebar {
+      width: auto !important;
+      padding: 0 12px calc(10px + env(safe-area-inset-bottom, 0px));
+      border: 0;
+      border-top: 1px solid var(--color-border);
+      border-radius: 20px 20px 0 0 !important;
+      box-shadow: 0 -6px 24px rgb(0 0 0 / 0.08);
+    }
+
+    .ebar__in,
+    .ebar.is-folded .ebar__in {
+      width: 100%;
+      max-width: none;
+    }
+
+    .ebar .seg {
+      flex: 1 1 auto;
+    }
+
+    .ebar .seg > button {
+      flex: 1 1 auto;
+      min-height: 30px;
+      padding-inline: 6px;
+    }
+
+    /* The handle is the panel's whole top edge: tap it, or drag it down or
+       up (editorBar.ts bindBarFold). */
+    .ebar__handle {
+      display: grid;
+      place-items: center;
+      align-self: stretch;
+      width: auto;
+      height: 26px;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--color-muted);
+      cursor: pointer;
+      touch-action: none;
+    }
+
+    .ebar__handle .ebar-icon {
+      width: 16px;
+      height: 16px;
+      stroke-width: 2.2;
+      transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .ebar__handle:focus-visible {
+      outline: 2px solid var(--color-dark);
+      outline-offset: 2px;
+    }
+
+    /* Folded: the handle alone, pointing up; the measured size shrinks the
+       bar round it. */
+    .ebar.is-folded .ebar__rows {
+      display: none;
+    }
+
+    .ebar.is-folded .ebar__handle .ebar-icon {
+      transform: rotate(180deg);
+    }
+  }
+
+  .ebar-icon {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* WHAT OPENS ABOVE THE BAR: the save message, the Plus menu, the video
+     sheet. Stacked in a column that grows upward from 10px over the bar. */
+  .ebar-pop {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: max-content;
+    max-width: calc(100vw - 32px);
+    pointer-events: none;
+  }
+
+  .ebar-pop > * {
+    pointer-events: auto;
+  }
+
+  .ebar-pop .msg-ok,
+  .ebar-pop .msg-err {
+    margin: 0;
+    padding: 0.5rem 0.9rem;
+    max-width: 100%;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.08);
+    text-align: center;
+  }
+
+  /* THE PLUS MENU (2026-10-13, Josh: "the add menu should be over the plus
+     icon … 3 buttons on desktop one next to each other. on mobile just black
+     bars, thinner though"). No panel: three black capsules with white words,
+     the site's MENU chips (Navbar.astro) at the bar's scale. On a desktop
+     they stand in a row centred over the Plus; on a phone they stack, their
+     right edge on the Plus's (--menu-align: end), 32px each. editorBar.ts
+     writes --menu-left from the Plus's position and keeps the row 16px inside
+     the window.
+     BOTH WAYS, like the site's MENU: the state is `.is-open`; closed, the
+     menu is `visibility: hidden` (and `inert`, set by the script), and each
+     capsule is a transition, arriving nearest-the-Plus first with the
+     site's spring and leaving faster without it. Visibility flips at the END
+     of the close, after the last capsule (0.3s > 2 x 30ms + 0.2s). */
+  .ebar-menu {
+    --menu-align: center;
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: var(--menu-left, 0px);
+    z-index: 1;
+    display: flex;
+    gap: 6px;
+    width: max-content;
+    visibility: hidden;
+    pointer-events: none;
+    transition: visibility 0s linear 0.3s;
+  }
+
+  .ebar-menu.is-open {
+    visibility: visible;
+    pointer-events: auto;
+    transition-delay: 0s;
+  }
+
+  .ebar-menu__item {
+    --i: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 34px;
+    padding: 0 16px 0 13px;
+    background: var(--color-dark);
+    border: 0;
+    color: var(--color-bg);
+    font-family: inherit;
+    font-size: var(--fs-85);
+    font-weight: 400;
+    white-space: nowrap;
+    text-align: left;
+    cursor: pointer;
+    box-shadow:
+      0 8px 22px rgb(0 0 0 / 0.18),
+      0 1px 3px rgb(0 0 0 / 0.12);
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+    transition:
+      background-color 0.15s ease,
+      opacity 0.14s ease calc((2 - var(--i)) * 30ms),
+      transform 0.2s ease calc((2 - var(--i)) * 30ms);
+  }
+
+  /* Nearest the Plus first: the middle of the row on a desktop is the Plus,
+     so the order is middle, then the two ends; on a phone the bottom of the
+     stack is nearest, so bottom up. */
+  .ebar-menu__item:nth-child(2) {
+    --i: 0;
+  }
+  .ebar-menu__item:nth-child(1) {
+    --i: 1;
+  }
+  .ebar-menu__item:nth-child(3) {
+    --i: 2;
+  }
+
+  .ebar-menu.is-open .ebar-menu__item {
+    opacity: 1;
+    transform: none;
+    transition:
+      background-color 0.15s ease,
+      opacity 0.2s ease calc(var(--i) * 55ms),
+      transform 0.4s cubic-bezier(0.2, 1.25, 0.35, 1) calc(var(--i) * 55ms);
+  }
+
+  .ebar-menu__item .ebar-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .ebar-menu__item:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-dark) 80%, white);
+  }
+
+  .ebar-menu__item:focus-visible {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
+  .ebar-menu__item:disabled {
+    background: color-mix(in srgb, var(--color-dark) 45%, white);
+    cursor: default;
+  }
+
+  @media (--bp-mobile) {
+    .ebar-menu {
+      --menu-align: end;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 4px;
+    }
+    .ebar-menu__item {
+      min-height: 32px;
+      padding: 0 14px 0 12px;
+    }
+    .ebar-menu__item:nth-child(3) {
+      --i: 0;
+    }
+    .ebar-menu__item:nth-child(2) {
+      --i: 1;
+    }
+    .ebar-menu__item:nth-child(1) {
+      --i: 2;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ebar-menu__item,
+    .ebar-menu.is-open .ebar-menu__item {
+      transform: none;
+      transition: opacity 0.15s ease;
+    }
+  }
+
+  .ebar-sheet[hidden] {
+    display: none;
+  }
+
+  /* THE VIDEO SHEET: the link field and its two buttons, in the menu's
+     material, as wide as a phone allows. */
+  .ebar-sheet {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: min(26rem, calc(100vw - 32px));
+    padding: 12px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 16px !important;
+    box-shadow:
+      0 12px 32px rgb(0 0 0 / 0.12),
+      0 1px 3px rgb(0 0 0 / 0.06);
+    animation: ebar-pop-in 0.18s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ebar-sheet {
+      animation: none;
+    }
   }
 
   /*
@@ -1484,7 +2447,7 @@
     border-radius: var(--radius-sm);
     font-family: "Archivo", sans-serif;
     font-size: var(--fs-95);
-    font-weight: 600;
+    font-weight: 400;
     cursor: pointer;
     transition:
       background 0.15s ease,
@@ -1613,7 +2576,7 @@
     border-radius: var(--radius-sm);
     font: inherit;
     font-size: var(--fs-80);
-    font-weight: 700;
+    font-weight: 400;
     cursor: pointer;
     transition: background 0.2s;
   }
@@ -1703,7 +2666,7 @@
     min-width: 0;
   }
 
-  .profile-form :is(.field, .gallery-project, .gallery-media, .gallery-item, .section-tabs) {
+  .profile-form :is(.field, .gallery-project, .gallery-item, .section-tabs) {
     min-width: 0;
   }
 
@@ -1747,22 +2710,6 @@
     flex-shrink: 0;
   }
 
-  @media (--bp-mobile) {
-    /* The picture and its toolbar split the width evenly on a phone. */
-    .gallery-media {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    }
-
-    .gallery-project-head {
-      flex-wrap: wrap;
-    }
-
-    .gallery-project-name {
-      display: block;
-      min-width: 0;
-    }
-  }
-
   /* A GALLERY ROW ARRIVES IN READING ORDER (2026-09-28, Josh: "add
      animations on gallery elements where you fade in Name First, then image
      then the controls and such"). Its name first (a project's name; an
@@ -1775,18 +2722,18 @@
      The backwards fill holds each part invisible through its own delay and
      leaves nothing behind once it has played: a transform still applied
      would make the row a containing block for the i boxes inside it. */
-  .is-entering :is(.gallery-item > .gallery-fields, .gallery-project-name),
-  .is-entering .gallery-thumb,
-  .is-entering :is(.gallery-row-tools, .gallery-project-details, .gallery-toolbar--head, [data-project-delete]) {
+  .is-entering :is(.gallery-item > .gallery-fields, .mprof__project-head, .gallery-carousel-label),
+  .is-entering :is(.gallery-thumb, .gallery-tray),
+  .is-entering :is(.gallery-details, .gallery-edit-row) {
     animation: gallery-enter 420ms cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
     animation-delay: calc(var(--enter-i, 0) * 70ms);
   }
 
-  .is-entering .gallery-thumb {
+  .is-entering :is(.gallery-thumb, .gallery-tray) {
     animation-delay: calc(var(--enter-i, 0) * 70ms + 140ms);
   }
 
-  .is-entering :is(.gallery-row-tools, .gallery-project-details, .gallery-toolbar--head, [data-project-delete]) {
+  .is-entering :is(.gallery-details, .gallery-edit-row) {
     animation-delay: calc(var(--enter-i, 0) * 70ms + 280ms);
   }
 
@@ -1798,17 +2745,403 @@
 
   /* BORDER-BOX FOR THE EDITOR'S OWN BOXES. global.css has no universal reset,
      and the editor's controls were sized as if there were one (a 28px toolbar
-     button with a 1.5px border came out 31px). NOT the Preview tab's
-     contents: `.preview-section` holds the REAL member page and the REAL
+     button with a 1.5px border came out 31px). NOT the Works stage's
+     contents: `.works-stage` holds the REAL member page and the REAL
      directory card, whose geometry is written for content-box (see the
      .ccard__frame note in communityCard.css), and a reset reaching them would
-     make the preview lie about the page. `:where()` keeps this at (0,1,0),
-     so any component rule that sets box-sizing itself still wins. */
-  :where(:not(.preview-section *)),
-  :where(:not(.preview-section *))::before,
-  :where(:not(.preview-section *))::after {
+     make the rendering lie about the page. `:where()` keeps this at (0,1,0),
+     so any component rule that sets box-sizing itself still wins. The
+     editor's own controls inside the stage — the toolbar, the folds, the
+     Add row, the video field — get the reset by name below. */
+  :where(:not(.works-stage *)),
+  :where(:not(.works-stage *))::before,
+  :where(:not(.works-stage *))::after {
     box-sizing: border-box;
   }
+
+  .works-stage :where(.gallery-row-tools, .gallery-row-tools *, .gallery-details, .gallery-details *, .gallery-notes, .gallery-notes *, .gallery-task .gallery-fields *, .gallery-thumb-remove, .gallery-thumb-labels *),
+  .works-stage :where(.gallery-row-tools *, .gallery-details *)::before,
+  .works-stage :where(.gallery-row-tools *, .gallery-details *)::after {
+    box-sizing: border-box;
+  }
+
+  /* ── THE PROJECT PAGES (2026-10-27) ─────────────────────────
+     editorProjectPages.ts keeps the level on the stage (data-level: list |
+     project) and on the form (data-pp-level), so the bar outside the stage
+     follows it too. The desktop editor mock (design-kit/mockups/
+     vscn-desktop-editor.af, boards A, B and B2) is the reference. */
+
+  /* THE LIST: the cards stand in the works column; the blocks they are
+     drawn from wait behind them. */
+  .works-stage[data-level="list"] :is(#gallery-drop, #gallery-status, .gallery-notes) {
+    display: none;
+  }
+
+  .pp-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .pp-cards[hidden] {
+    display: none;
+  }
+
+  .pp-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px 22px 18px;
+    background: color-mix(in srgb, var(--color-dark) 5%, var(--color-bg));
+    border-radius: var(--radius-soft-block) !important;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .pp-card:hover {
+    background: color-mix(in srgb, var(--color-dark) 8%, var(--color-bg));
+  }
+
+  .pp-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .pp-card__title {
+    padding-top: 6px;
+  }
+
+  .pp-card__desc {
+    margin: 0;
+  }
+
+  .pp-card__desc[hidden] {
+    display: none;
+  }
+
+  .pp-card__thumbs {
+    display: flex;
+    gap: 8px;
+  }
+
+  .pp-card__thumbs:empty {
+    display: none;
+  }
+
+  .pp-card__thumb {
+    width: calc((100% - 24px) / 4);
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    background: var(--color-border);
+  }
+
+  .pp-card__meta {
+    margin: 0;
+    color: var(--color-muted);
+  }
+
+  /* + PROJECT, AFTER THE LAST CARD (2026-10-29): a card's place drawn as an
+     empty outline, the + and its word in the middle; it fills in on hover. */
+  .pp-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 64px;
+    padding: 0 22px;
+    background: none;
+    border: 1.5px dashed var(--color-border);
+    border-radius: var(--radius-soft-block) !important;
+    color: var(--color-dark);
+    font-family: inherit;
+    font-size: var(--fs-100);
+    cursor: pointer;
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  .pp-add:hover {
+    background: color-mix(in srgb, var(--color-dark) 5%, var(--color-bg));
+    border-color: var(--color-dark);
+  }
+
+  .pp-add:focus-visible {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
+  .pp-add[hidden] {
+    display: none;
+  }
+
+  .pp-add .ebar-icon {
+    width: 16px;
+    height: 16px;
+    stroke-width: 2;
+  }
+
+  /* THE PROJECT PAGE: the open block alone, the profile's column gone, and
+     a row at the top to go back by. */
+  .gallery-editor > .pp-off {
+    display: none !important;
+  }
+
+  .works-stage[data-level="project"] .mprof__aside {
+    display: none;
+  }
+
+  /* NO STAND-OFF ABOVE THE PROJECT (2026-10-29, Josh: "remove the top
+     gap"). The page's top padding, the works' --works-top and the stage's
+     gap all hold the works clear of the profile's words, which this level
+     hides: on a phone they stacked ~140px of paper between ‹ Projects and
+     the project. The key now sits close under the header, the project
+     close under the key. */
+  .works-stage[data-level="project"] {
+    gap: 1rem;
+    padding-top: 0.5rem;
+  }
+
+  .works-stage[data-level="project"] .mprof {
+    --works-top: 0px;
+    padding-top: 0;
+  }
+
+  /* With the profile's column gone, the works column stands in the middle. */
+  @media (--bp-desktop) {
+    .works-stage[data-level="project"] .mprof {
+      grid-template-columns: minmax(0, 1fr) minmax(0, var(--works-w)) minmax(0, 1fr);
+    }
+  }
+
+  .pp-top {
+    position: sticky;
+    top: calc(var(--header-h, 56px) + 8px);
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    /* The column's full width, so the key stands at the works' left edge
+       rather than shrunk to its own width in the stage's middle. */
+    box-sizing: border-box;
+    width: 100%;
+    max-width: var(--works-w, 48rem);
+    margin: 0 auto 1.5rem;
+    pointer-events: none;
+  }
+
+  .pp-top[hidden] {
+    display: none;
+  }
+
+  /* CLEAR OF THE WORKS (2026-10-28): standing alone at the column's left
+     edge, the sticky key rode over the project's left-hand keys (More) as
+     the page scrolled. On a desktop it stands in the empty margin left of
+     the column; on a phone, where there is none, it stays at the top of the
+     page instead of riding along. */
+  @media (--bp-desktop) {
+    .pp-top > .pp-top__back {
+      translate: calc(-100% - 1rem) 0;
+    }
+  }
+
+  @media (--bp-mobile) {
+    .pp-top {
+      position: static;
+    }
+  }
+
+  .pp-top > button {
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 32px;
+    padding: 0 14px;
+    border: 0;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+
+  .pp-top__back {
+    padding-inline-start: 8px !important;
+    background: var(--color-bg);
+    color: var(--color-dark);
+    box-shadow: 0 0 0 1px var(--color-border);
+  }
+
+  .pp-top__back:hover {
+    background: color-mix(in srgb, var(--color-dark) 6%, var(--color-bg));
+  }
+
+  .pp-top__back svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .pp-top > button:focus-visible {
+    outline: 2px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
+  /* EDIT | PREVIEW, IN THE BAR'S MAIN ROW. Two equal halves on the seg's
+     track and a black thumb under the chosen one, sliding across (a CSS
+     transition; a view transition carries it where the page crossfades, see
+     the top-level rules at the foot of this file). ON THE LIST TOO
+     (2026-10-28, Josh: "where is the preview button for the work page?"):
+     Preview there is the whole page as a visitor gets it. */
+  .ebar .ebar__mode {
+    position: relative;
+    isolation: isolate;
+    display: inline-grid;
+    grid-template-columns: 1fr 1fr;
+    flex: 1 1 0;
+    min-width: 12rem;
+    height: 36px;
+    box-sizing: border-box;
+  }
+
+  .ebar .ebar__mode > button {
+    min-height: 0;
+    height: 100%;
+    padding-inline: 18px;
+    background: none;
+    box-shadow: none;
+  }
+
+  .ebar .ebar__mode > button[aria-pressed="true"] {
+    background: none;
+    box-shadow: none;
+    color: var(--color-bg);
+  }
+
+  .ebar__mode-thumb {
+    position: absolute;
+    z-index: -1;
+    top: 2px;
+    bottom: 2px;
+    left: 2px;
+    width: calc(50% - 3px);
+    background: var(--color-dark);
+    transition: transform 0.34s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  .ebar__mode:has([data-works-mode="preview"][aria-pressed="true"]) .ebar__mode-thumb {
+    transform: translateX(calc(100% + 2px));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ebar__mode-thumb {
+      transition: none;
+    }
+  }
+
+  /* FLOATING LABELS (2026-10-27, the mock: "instead of having a title above
+     the pill by default have the description in the pill; only on click it
+     should animate to above it"). The label rests INSIDE the box, small and
+     muted over the value; an empty box shows the label alone, in the
+     placeholder's place, and keeps its hint until it is focused; focus
+     lifts the label out above the box, in ink. The space above is held in
+     every state, so nothing below moves when it rises. Only fields with a
+     label: a text block's box has none.
+     SMALLER AND ABOVE (2026-10-28, Josh: "the name of the field can be
+     smaller and above the box"): filled or focused, the label is the tiny
+     FIELD TITLE (type.css) in the zone above the box; empty and at rest it
+     stands in the middle of the box as the placeholder. Same as `.ff`. */
+  .gfield:has(> .gfield__lbl) {
+    position: relative;
+    padding-top: calc(var(--fs-field-title) + 4px);
+    gap: 0;
+  }
+
+  .gfield > .gfield__lbl {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    left: 1px;
+    padding: 0;
+    pointer-events: none;
+    transition:
+      top 0.22s cubic-bezier(0.25, 1, 0.5, 1),
+      left 0.22s cubic-bezier(0.25, 1, 0.5, 1),
+      transform 0.22s cubic-bezier(0.25, 1, 0.5, 1),
+      font-size 0.22s cubic-bezier(0.25, 1, 0.5, 1),
+      color 0.22s ease;
+  }
+
+  /* Empty and at rest: the label is the placeholder, in the middle of the
+     box (the box is the label's block minus the zone above it); the hint
+     waits for focus. */
+  .gfield:has(> .gallery-inline:placeholder-shown):not(:focus-within) > .gfield__lbl {
+    top: calc((100% + var(--fs-field-title) + 4px) / 2);
+    left: 12px;
+    transform: translateY(-50%);
+    color: var(--color-text-placeholder);
+  }
+
+  .gfield:has(> .gfield__lbl) > .gallery-inline:not(:focus)::placeholder {
+    color: transparent;
+  }
+
+  .gfield:focus-within > .gfield__lbl {
+    color: var(--color-dark);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .gfield > .gfield__lbl {
+      transition: none;
+    }
+  }
+}
+
+
+/* THE EDIT | PREVIEW CROSSFADE (2026-10-27, editorProjectPages.ts): only
+   while the project page switches modes. The page crossfades; the bar's
+   thumb slides from its old box to its new one, under the two words, which
+   crossfade their colour. THE NAMES ARE GIVEN ONLY FOR THAT SWITCH
+   (2026-10-29): WebKit snapshots a named element at full strength even
+   under an opacity-0 ancestor, so names left on through Layout's page
+   leave made the thumb and the two words pop back onto the blank paper
+   on every navigation away from the editor on an iPhone (the jitter class
+   of documentation/20261020-profile-arrival-morph-jitter.md).
+   editorProjectPages.ts adds .pp-switching synchronously before
+   startViewTransition and removes it when the transition has finished. */
+html.pp-switching .ebar__mode-thumb {
+  view-transition-name: works-mode-thumb;
+}
+
+html.pp-switching .ebar .ebar__mode > [data-works-mode="edit"] {
+  view-transition-name: works-mode-edit;
+}
+
+html.pp-switching .ebar .ebar__mode > [data-works-mode="preview"] {
+  view-transition-name: works-mode-preview;
+}
+
+html.pp-switching::view-transition-old(root),
+html.pp-switching::view-transition-new(root) {
+  animation-duration: 0.3s;
+  animation-timing-function: ease;
+}
+
+html.pp-switching::view-transition-group(works-mode-thumb) {
+  animation-duration: 0.34s;
+  animation-timing-function: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+html.pp-switching::view-transition-old(works-mode-thumb) {
+  display: none;
+}
+
+html.pp-switching::view-transition-new(works-mode-thumb) {
+  animation: none;
 }
 
 /* At the top level: an @keyframes inside a style rule is invalid (see
@@ -1823,5 +3156,62 @@
 @keyframes profile-save-spin {
   to {
     transform: rotate(1turn);
+  }
+}
+
+/* At the top level, at zero specificity: the inline fields take their
+   parent's voice and colour unless the page gives the element one of its own
+   (.mprof__project-title, .mprof__caption-line). Inside the .profile-editor
+   block this would be (0,1,0) and tie with those. */
+:where(.gallery-inline) {
+  font: inherit;
+  color: inherit;
+}
+
+/* The Plus menu and the video sheet rise into place (2026-10-13). */
+@keyframes ebar-float-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.94);
+  }
+}
+
+@keyframes ebar-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+
+/* The page's last lines clear the phone's bottom panel (2026-10-29), as the
+   form's own padding clears it for the last field. */
+@media (--bp-mobile) {
+  :root:has(#form-footer) .site-footer {
+    padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* BIGGER BUTTONS ON A PHONE (2026-10-28, see global.css): the keys 36 → 40,
+   the small keys in a box's head and Replace 30 → 36, the bar 36 → 42, and
+   Remove gets a real target instead of a bare word. */
+@media (--bp-mobile) {
+  .profile-editor .gallery-key {
+    min-width: 40px;
+    height: 40px;
+  }
+  .profile-editor .gallery-boxhead .gallery-key,
+  .profile-editor .gallery-thumb-replace {
+    min-width: 36px;
+    height: 36px;
+  }
+  .profile-editor .gallery-boxhead__word {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    padding: 0 6px;
+  }
+  .profile-editor .ebar .profile-save-button,
+  .profile-editor .ebar .ebar__mode {
+    height: 42px;
   }
 }

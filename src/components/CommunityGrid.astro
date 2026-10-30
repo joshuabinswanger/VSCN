@@ -1,12 +1,11 @@
 ---
 import { hasArtwork, stripStorageToken, type MemberView } from "../lib/memberView.ts";
-import {
-  DEFAULT_VIEW,
-  GALLERY_PATTERNS,
-  STRIP_ROWS,
-  layOutSlots,
-} from "../lib/communityLayout.ts";
-import { memberHref } from "../lib/links.ts";
+import { DEFAULT_VIEW } from "../lib/communityLayout.ts";
+import ProfileLink from "./ui/ProfileLink.astro";
+import { dealPagesInto, shuffleBands } from "../lib/communityDeal.ts";
+import { memberHref, workCaption } from "../lib/links.ts";
+import { textIndex, workKey, type SearchIndex } from "../lib/communitySearch.ts";
+import { looseWorksProjectId, projectTitle } from "../lib/projects.ts";
 import CommunityImageCard from "./community/CommunityImageCard.astro";
 import CommunityWorkCard from "./community/CommunityWorkCard.astro";
 import MemberDetailPanel from "./community/MemberDetailPanel.astro";
@@ -129,6 +128,33 @@ const workTagsAttr = (w: MemberView["works"][number]) => {
   return keys.length ? `|${keys.join("|")}|` : "";
 };
 
+// THE WALL'S SORT KEYS (2026-10-15, src/lib/communitySort.ts). A work's
+// FIELDS are all of its tags: the field sort shows the picture under every
+// tag it carries (Josh: "show the image in every tag group it belongs to"),
+// cloning the tile for the second and later groups. The key is the lowercase
+// identity the filter uses; the label is the first spelling seen, from
+// tagIndex, so a section head and the dropdown's chip agree on how a tag is
+// written. JSON on one attribute, because a tag label can hold any character
+// a pipe encoding would have to escape.
+const workFields = (w: MemberView["works"][number]) => {
+  const seen = new Set<string>();
+  const out: { key: string; label: string }[] = [];
+  for (const raw of w.tags.map((t) => t.trim())) {
+    if (!raw) continue;
+    const key = raw.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ key, label: tagIndex.get(key)?.label ?? raw });
+  }
+  return out.length ? JSON.stringify(out) : undefined;
+};
+// A project's head is its title in this page's language; a project with
+// no title in either is named by its kind, so its works are still one run.
+const projectLabel = (m: MemberView, w: MemberView["works"][number]) => {
+  const p = w.projectId ? m.projects?.find((x) => x.id === w.projectId) : undefined;
+  return p ? (projectTitle(p, lang) ?? t("community.sort.project")) : undefined;
+};
+
 // ── The hand-authored grid ────────────────────────────────────────────────
 //
 // A 24-column placement grid with NO column gap; every slot is a rectangle in
@@ -175,8 +201,8 @@ const workTagsAttr = (w: MemberView["works"][number]) => {
 // communityLayout.ts).
 //
 // WHICH VIEW A BARE /community OPENS ON is DEFAULT_VIEW in communityLayout.ts,
-// not the spread by birthright — it is the ledger for now, because the
-// galleries are near-empty until members register and fill them. That constant
+// not the spread by birthright — the Portfolios since 2026-10-13; it was the
+// ledger from 2026-09-06 while the galleries were near-empty. That constant
 // is also what the server renders visible and what a no-JS visitor is left
 // with, so the three cannot drift apart. Mobile
 // keeps the full selector and re-lays whichever deal is active into its own
@@ -236,16 +262,10 @@ const rankedMembers = members.map((m) => ({ ...m, works: [...m.works].sort(bySco
 const imageMembers = rankedMembers
   .filter(hasArtwork)
   .sort((a, b) => bestScore(b) - bestScore(a));
-// textCards: 0 — TEXT_TILE plays no part in this pattern; it survives only as
-// the shelved strip mode's index ladder.
-const slots = layOutSlots(GALLERY_PATTERNS.spread, imageMembers.length, 0);
-const ordered = imageMembers;
-
-// Deal in row order, so the server-rendered DOM already reads top to bottom
-// for anyone without JS. Pairing member i with slot i is only correct because
-// the pattern is authored in ascending rowStart (rule 4, checked at module
-// load) and tilePattern repeats it in row order across tiles.
-const cells = slots.map((slot, i) => ({ slot, member: ordered[i] }));
+// THE PAGES (2026-10-15): one cell per member with artwork, in rank order,
+// which is the no-JS reading order; the client deal re-orders them within
+// score bands (communityDirectoryController.ts). No slot table any more.
+const cells = imageMembers;
 
 // ── The wall's own cells ──────────────────────────────────────────────────
 //
@@ -294,15 +314,77 @@ const lightboxStrings = JSON.stringify({
   error: t("member.lightbox.error"),
   linkTitle: t("member.lightbox.link"),
   siteLinkTitle: t("member.lightbox.siteLink"),
+  linkText: t("member.lightbox.linkText"),
+  siteLinkText: t("member.lightbox.siteLinkText"),
   play: t("member.lightbox.play"),
   partOf: t("member.project.partOf"),
   with: t("member.project.with"),
   dialog: t("member.lightbox.dialog"),
+  hideText: t("member.lightbox.hideText"),
+  showText: t("member.lightbox.showText"),
 });
 
 const indexMembers = [...members].sort((a, b) =>
   (a.displayName || a.slug).localeCompare(b.displayName || b.slug)
 );
+
+// THE SEARCH'S INDEX (2026-10-16, src/lib/communitySearch.ts): everyone in
+// the ledger, every titled project, every picture on the wall — printed into
+// the page as JSON beside the bar, so a search is a pass over a list already
+// here. A project or picture link names it on the member page (?project=,
+// ?work=), which opens on it. The picture's thumbnail is NOT in here: the
+// wall's own tile already carries a rendered one, found by `key`. `text` is
+// the full-text half (2026-10-25): every word of the prose behind each entry,
+// in both languages where the record has both, so "Alessandro" finds Quaint
+// from a line in the bio.
+const searchIndex: SearchIndex = {
+  people: indexMembers.map((m) => ({
+    name: m.displayName || m.slug,
+    role: m.role ?? "",
+    href: memberHref(lang, m.slug),
+    photo: stripStorageToken(m.photoURL ?? ""),
+    tags: m.tags,
+    text: textIndex(m.bio, m.bioDe, m.roleDe, m.affiliation, m.location),
+  })),
+  projects: indexMembers.flatMap((m) =>
+    (m.projects ?? []).flatMap((p) => {
+      // The "Works" every member has for pictures outside a project
+      // (adoptLooseWorks) is not a project anyone would search for.
+      if (p.id === looseWorksProjectId(m.id)) return [];
+      const title = projectTitle(p, lang)?.trim();
+      if (!title) return [];
+      return [{
+        title,
+        member: m.displayName || m.slug,
+        href: `${memberHref(lang, m.slug)}?project=${encodeURIComponent(p.id)}`,
+        tags: p.tags,
+        text: textIndex(
+          p.title,
+          p.titleDe,
+          p.description,
+          p.descriptionDe,
+          ...p.affiliations.map((a) => a.name),
+        ),
+      }];
+    })
+  ),
+  images: workCells.map(({ member, work, key }) => ({
+    key,
+    caption: workCaption(work, lang)?.trim() ?? "",
+    member: member.displayName || member.slug,
+    project: work.projectId === looseWorksProjectId(member.id) ? "" : (projectLabel(member, work) ?? ""),
+    href: `${memberHref(lang, member.slug)}?work=${encodeURIComponent(workKey(work.url))}`,
+    tags: work.tags,
+    text: textIndex(
+      work.caption,
+      work.captionDe,
+      work.description,
+      work.descriptionDe,
+      work.textAfter,
+      work.textAfterDe,
+    ),
+  })),
+};
 ---
 
 <div class="community-wrapper" data-lang={lang}>
@@ -314,50 +396,121 @@ const indexMembers = [...members].sort((a, b) =>
   <h1 class="sr-title">{t("community.title")}</h1>
 
   {
-    /* THE BAR: sticky at the top of .page-wrap's scrollport, which is flush
-      under the brand ticker (the ticker lives OUTSIDE the scroll container —
-      see Layout.astro). The outer strip spans the wide main and is
-      see-through, backed only by the nav's backdrop layer (Navbar.astro); the inner line and its
-      rule hold the header's 900px shell measure, mirroring the ticker's own
-      box (max-width + 15px inline padding), so the bar's edges align with the
-      title above it. Without JS every control renders and does nothing —
-      harmless rather than broken, and a no-JS visitor gets the full spread. */
+    /* THE BAR: a fixed island at the BOTTOM of the viewport (2026-10-12,
+      Josh: "the filter and gallery / grid / index in a bar at the bottom to
+      reflect modern UI design"). Until then it was sticky under the nav, docked
+      6px into its padding so the two read as one header. Now it fills the hole
+      in the bottom line of chrome between the footer (bottom-left) and the
+      language toggle (bottom-right), see SiteFooter.astro and Navbar.astro.
+      Rendered here, inside main, so it is swapped with the page it belongs to;
+      position:fixed lifts it out of the flow regardless. Without JS every
+      control renders and does nothing — harmless rather than broken, and a
+      no-JS visitor gets the full spread. */
   }
-  <div class="community-bar">
+  {
+    /* ONE BAR FOR THE WHOLE DIRECTORY (2026-10-16, Josh: "make it persistent
+      across page changes within community"). Every view, tag and sort is a
+      navigation to this same page, and each used to render a fresh bar that
+      rose and blurred in with <main>. transition:persist hands the SAME
+      element to the next page — its typed search, its scroll and a menu
+      still closing included — and liftBar (communityDirectoryController.ts) keeps it a
+      child of <body>, out of <main>'s rise. Keyed by language, so a switch
+      to German renders the German bar instead of keeping the English one. */
+  }
+  <div class="community-bar" transition:persist={`community-bar-${lang}`}>
     <div class="community-bar__in">
       {
-        /* The tags dropdown: browse every tag or type inside it to narrow the
-          list, pick one to filter. Single-select — "All tags" (or re-picking
-          the active tag) clears. The trigger is a filter-word like its
-          neighbours; the panel is the one boxed element the bar owns, and it
-          floats, so it never disturbs the line. */
+        /* THE CARDS LIVE INSIDE THE PILL (2026-10-16, Josh: "can the selections
+          stay contained in the outer pill so everything smoothly animates with
+          expands and contracts"). The three panels sit in one stack above the
+          row of triggers, both inside the capsule, so opening a menu GROWS the
+          pill upward around it instead of hanging a second card over the page.
+          animateBar in communityDirectoryController.ts eases the size change. */
       }
-      <div class="tag-filter">
-        <button
-          type="button"
-          id="tag-filter-btn"
-          class="filter-word"
-          aria-expanded="false"
-          aria-controls="tag-filter-panel"
-        >
-          <span id="tag-filter-label" data-rest={t("community.filter.tags")}>
-            {t("community.filter.tags")}
-          </span>
-          <span class="tag-filter__caret" aria-hidden="true">▾</span>
-        </button>
-        <div id="tag-filter-panel" class="tag-filter__panel" hidden>
-          <p class="field-note">{t("community.filter.tags.scope")}</p>
-          <input
-            id="tag-filter-search"
-            class="tag-filter__search"
-            type="search"
-            placeholder={t("community.filter.tags.search")}
-            aria-label={t("community.filter.tags.search")}
-            autocomplete="off"
+      <div class="community-bar__panels">
+        {
+          /* THE SEARCH (2026-10-16): a field, and under it the people, projects
+            and pictures it matches — drawn by renderSearch in the controller
+            from the JSON below. Results are links; nothing here filters the
+            view behind it. */
+        }
+        {
+          /* ON A PHONE THE SEARCH WAS A FULL-SCREEN SHEET (2026-10-16, Josh:
+            "on iphone it does not pop up. i stay hidden behind the keyboard").
+            A fixed bar at the bottom sits against the LAYOUT viewport, which
+            iOS does not shrink for its keyboard, so a drop-up grew from under
+            it. SINCE 2026-10-29 a card like the tags' (one card for all three,
+            Josh: "unify the UX across filter sort and search"): the field at
+            its top, the results under it, and the bar lifted over the
+            keyboard by fitBarToKeyboard. Cancel is the desktop's only. */
+        }
+        {
+          /* THE CARDS FOLD (2026-10-29, Josh: "search tags etc need to be
+            collapsible"). A card covers its own pill on a phone, so the pill
+            cannot close it: the handle at its top does, by a tap or a drag
+            down (bindCardFold in the controller). Not drawn on a desktop. */
+        }
+        <div id="search-panel" class="bar-menu__panel search__panel" hidden>
+          <button type="button" class="bar-card__handle" aria-label={t("community.bar.fold")} title={t("community.bar.fold")}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </button>
+          <div class="search__head">
+            <input
+              id="search-input"
+              class="tag-filter__search search__input"
+              type="search"
+              placeholder={t("community.search.placeholder")}
+              aria-label={t("community.search.placeholder")}
+              autocomplete="off"
+              enterkeyhint="search"
+            />
+            <button type="button" id="search-cancel" class="tag-filter__clear search__cancel">
+              {t("community.search.cancel")}
+            </button>
+          </div>
+          <div
+            id="search-results"
+            class="search__results"
+            aria-live="polite"
+            data-people={t("community.search.people")}
+            data-projects={t("community.search.projects")}
+            data-images={t("community.search.images")}
+            data-none={t("community.search.none")}
+            data-hint={t("community.search.hint")}
+          >
+            <p class="field-note search__note">{t("community.search.hint")}</p>
+          </div>
+          <script
+            type="application/json"
+            id="community-search-index"
+            set:html={JSON.stringify(searchIndex).replace(/</g, "\\u003c")}
           />
+        </div>
+        <div id="tag-filter-panel" class="bar-menu__panel tag-filter__panel" hidden>
+          <button type="button" class="bar-card__handle" aria-label={t("community.bar.fold")} title={t("community.bar.fold")}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </button>
+          <div class="tag-filter__head">
+            <input
+              id="tag-filter-search"
+              class="tag-filter__search"
+              type="search"
+              placeholder={t("community.filter.tags.search")}
+              aria-label={t("community.filter.tags.search")}
+              autocomplete="off"
+            />
+            {
+              /* Clear: one tap empties the search field AND drops the active
+                tag. Shown only while there is something to clear (a tag set
+                or text in the field) — reflectTagClear in the controller. */
+            }
+            <button type="button" id="tag-filter-clear" class="tag-filter__clear" hidden>
+              {t("community.filter.tags.clear")}
+            </button>
+          </div>
           <ul class="tag-filter__list">
             <li>
-              <button type="button" class="tag-filter__option" data-tag="">
+              <button type="button" class="tag-filter__option tagchip" data-tag="">
                 {t("community.filter.tags.all")}
               </button>
             </li>
@@ -379,7 +532,7 @@ const indexMembers = [...members].sort((a, b) =>
                 >
                   <button
                     type="button"
-                    class="tag-filter__option"
+                    class="tag-filter__option tagchip"
                     data-tag={key}
                     data-label={label}
                     data-count-members={members}
@@ -393,34 +546,213 @@ const indexMembers = [...members].sort((a, b) =>
               ))
             }
           </ul>
+          <p class="field-note tag-filter__scope">{t("community.filter.tags.scope")}</p>
+        </div>
+        <div
+          id="sort-menu-panel"
+          class="bar-menu__panel sort-menu__panel"
+          role="group"
+          aria-label={t("community.sort")}
+          hidden
+        >
+          <button type="button" class="bar-card__handle" aria-label={t("community.bar.fold")} title={t("community.bar.fold")}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </button>
+          {
+            (["date", "random", "member", "project", "field"] as const).map((sort) => (
+              <button type="button" class="sort-menu__btn" data-sort={sort} aria-pressed="false">
+                {t(`community.sort.${sort}`)}
+              </button>
+            ))
+          }
+        </div>
+        <div
+          id="view-menu-panel"
+          class="bar-menu__panel view-menu__panel view-toggle"
+          role="group"
+          aria-label={t("community.view.label")}
+          hidden
+        >
+          <button
+            type="button"
+            class="view-toggle__btn"
+            data-mode="pages"
+            aria-pressed={DEFAULT_VIEW === "pages" ? "true" : "false"}
+          >
+            {t("community.view.gallery")}
+          </button>
+          <button type="button" class="view-toggle__btn" data-mode="grid" aria-pressed="false">
+            {t("community.view.grid")}
+          </button>
+          <button
+            type="button"
+            class="view-toggle__btn"
+            data-mode="index"
+            aria-pressed={DEFAULT_VIEW === "index" ? "true" : "false"}
+          >
+            {t("community.view.index")}
+          </button>
         </div>
       </div>
-      {
-        /* All three views on every width: on mobile Gallery is a single
-          fading column, Grid the stacked two-column wall — see the
-          --bp-mobile block on .cgrid. */
-      }
-      <div class="view-toggle" role="group" aria-label={t("community.view.label")}>
-        <button
-          type="button"
-          class="view-toggle__btn"
-          data-mode="spread"
-          aria-pressed={DEFAULT_VIEW === "spread" ? "true" : "false"}
-        >
-          {t("community.view.gallery")}
-        </button>
-        <button type="button" class="view-toggle__btn" data-mode="grid" aria-pressed="false">
-          {t("community.view.grid")}
-        </button>
-        <button
-          type="button"
-          class="view-toggle__btn"
-          data-mode="index"
-          aria-pressed={DEFAULT_VIEW === "index" ? "true" : "false"}
-          aria-describedby="member-index-note"
-        >
-          {t("community.view.index")}
-        </button>
+      <div class="community-bar__row">
+        {
+          /* TWO DROP-UPS (2026-10-12, Josh: "floating bar. also restyle tags to
+            be more modern. the view version should also be a drop up"). Each is
+            a .bar-menu: a chip-shaped trigger and a card that rises from the
+            bar. Opening one closes the other; a click outside or Escape closes
+            both (communityDirectoryController.ts, closeBarMenus).
+
+            The tags menu: browse every tag as a chip or type to narrow them,
+            pick one to filter. Single-select — "All tags" (or re-picking the
+            active tag) clears. With a tag set, the trigger shows its name and
+            fills dark, so the bar says at a glance that the page is filtered. */
+        }
+        <div class="bar-menu search-menu">
+          <button
+            type="button"
+            id="search-btn"
+            class="bar-menu__trigger"
+            aria-expanded="false"
+            aria-controls="search-panel"
+            aria-label={t("community.search")}
+          >
+            {
+              /* The glass alone (2026-10-16, Josh: "remove 'search' just the
+                loope is enough"); the word stays as the button's name. */
+            }
+            <svg class="search__glass" viewBox="0 0 12 12" aria-hidden="true"
+              ><circle cx="5" cy="5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.3"
+              ></circle><path d="M7.7 7.7L11 11" fill="none" stroke="currentColor" stroke-width="1.3"
+              ></path></svg
+            >
+          </button>
+        </div>
+        <div class="bar-menu tag-filter">
+          <button
+            type="button"
+            id="tag-filter-btn"
+            class="bar-menu__trigger"
+            aria-expanded="false"
+            aria-controls="tag-filter-panel"
+          >
+            <span id="tag-filter-label" data-rest={t("community.filter.tags")}>
+              {t("community.filter.tags")}
+            </span>
+            {
+              /* The round button's face on a desktop (2026-10-27, the mock's
+                sliders); the word above stays as its name. */
+            }
+            <svg class="bar-ico" viewBox="0 0 18 18" aria-hidden="true"
+              ><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                ><path d="M2 5.5h14M2 12.5h14"></path><circle cx="6" cy="5.5" r="2" fill="var(--color-bg)"
+                ></circle><circle cx="12" cy="12.5" r="2" fill="var(--color-bg)"></circle></g
+              ></svg
+            >
+            <svg class="bar-menu__chev" viewBox="0 0 10 6" aria-hidden="true"
+              ><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.2"
+              ></path></svg
+            >
+          </button>
+        </div>
+        {
+          /* THE SORT MENU (2026-10-15, Josh: "we need sort for the images
+            page. sort by: date, member, project, field/tags"). Images only —
+            hidden in every other view (reflectSort in the controller; the
+            server renders it for the default view's state). Date orders the
+            wall newest first, Random shuffles it whole (2026-10-30); the
+            other three group it, with the group's name
+            over a hairline between one run of pictures and the next — a
+            member's name links to their page. Field runs are in random order,
+            as asked. One pick at a time; re-picking the active one clears it.
+            Same anatomy as the view menu: a chip trigger naming the current
+            sort ("Sort" at rest), a column of rows with a check on the one
+            pressed. */
+        }
+        <div class="bar-menu sort-menu" hidden={DEFAULT_VIEW !== "grid"}>
+          <button
+            type="button"
+            id="sort-menu-btn"
+            class="bar-menu__trigger"
+            aria-expanded="false"
+            aria-controls="sort-menu-panel"
+            aria-label={t("community.sort")}
+          >
+            <span id="sort-menu-label" data-rest={t("community.sort")}>
+              {t("community.sort")}
+            </span>
+            <svg class="bar-ico" viewBox="0 0 18 18" aria-hidden="true"
+              ><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                ><path d="M6 15V3M2.8 6.2L6 3l3.2 3.2"></path><path d="M12 3v12M8.8 11.8L12 15l3.2-3.2"></path></g
+              ></svg
+            >
+            <svg class="bar-menu__chev" viewBox="0 0 10 6" aria-hidden="true"
+              ><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.2"
+              ></path></svg
+            >
+          </button>
+        </div>
+        {
+          /* The view menu. All three views on every width: on mobile Gallery is
+            a single fading column, Grid the stacked two-column wall — see the
+            --bp-mobile block on .cgrid. The trigger names the current view
+            (reflectMode writes it; the server renders the default's name). In
+            strip mode, which is URL-only, no row is pressed and the trigger
+            falls back to "View". */
+        }
+        <div class="bar-menu view-menu">
+          <button
+            type="button"
+            id="view-menu-btn"
+            class="bar-menu__trigger"
+            aria-expanded="false"
+            aria-controls="view-menu-panel"
+            aria-label={t("community.view.label")}
+          >
+            <span id="view-menu-label" data-rest={t("community.view.label")}>
+              {t(
+                DEFAULT_VIEW === "index"
+                  ? "community.view.index"
+                  : DEFAULT_VIEW === "grid"
+                    ? "community.view.grid"
+                    : "community.view.gallery"
+              )}
+            </span>
+            <svg class="bar-menu__chev" viewBox="0 0 10 6" aria-hidden="true"
+              ><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.2"
+              ></path></svg
+            >
+          </button>
+        </div>
+        {
+          /* THE VIEWS AS TABS, ON A DESKTOP (2026-10-26, Josh's top-bar mock:
+            Portfolios / Images / People in one segmented control). The same
+            three buttons as the view menu's panel, so the controller's
+            querySelectorAll over .view-toggle__btn presses, reflects and
+            navigates them with no new code. The phone keeps the drop-up
+            above and hides these. */
+        }
+        <div class="view-seg" role="group" aria-label={t("community.view.label")}>
+          <span class="view-seg__thumb" aria-hidden="true"></span>
+          <button
+            type="button"
+            class="view-toggle__btn"
+            data-mode="pages"
+            aria-pressed={DEFAULT_VIEW === "pages" ? "true" : "false"}
+          >
+            {t("community.view.gallery")}
+          </button>
+          <button type="button" class="view-toggle__btn" data-mode="grid" aria-pressed="false">
+            {t("community.view.grid")}
+          </button>
+          <button
+            type="button"
+            class="view-toggle__btn"
+            data-mode="index"
+            aria-pressed={DEFAULT_VIEW === "index" ? "true" : "false"}
+          >
+            {t("community.view.index")}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -471,33 +803,25 @@ const indexMembers = [...members].sort((a, b) =>
     id="member-grid"
     class="cgrid"
     data-pswp-i18n={lightboxStrings}
-    hidden={DEFAULT_VIEW !== "spread" && DEFAULT_VIEW !== "grid"}
+    data-sort-no-project={t("community.sort.noProject")}
+    data-sort-no-field={t("community.sort.noField")}
+    data-rail-label={t("community.rail")}
+    data-pattern={DEFAULT_VIEW}
+    hidden={DEFAULT_VIEW !== "pages" && DEFAULT_VIEW !== "grid"}
   >
     {members.length === 0 && <p class="state-msg">{t("community.empty")}</p>}
-    {
-      /* The SHELVED strip layout's home (?pattern=strip — no UI reaches it): a
-        full-width flex row the client script moves the image cells into.
-        Rendered here (empty, hidden) rather than created in JS so it carries
-        the scoped-style attribute. Its row span has to agree with the index
-        offset the script computes, so both come from STRIP_ROWS in
-        communityLayout.ts. */
-    }
-    <div class="cgrid__strip" hidden style={`--gc:1 / span 24;--gr:1 / span ${STRIP_ROWS}`}></div>
 
     {
-      cells.map(({ slot, member }, i) => (
+      cells.map((member, i) => (
         <div
           class="cgrid__cell"
           data-slot="image"
           data-rank={i}
           data-score={bestScore(member)}
           data-tags={tagsAttr(member)}
-          data-row={slot.rowStart}
-          data-span={slot.rowSpan}
-          data-col={`${slot.colStart}-${slot.colStart + slot.colSpan - 1}`}
-          style={`--gc:${slot.colStart} / span ${slot.colSpan};--gr:${slot.rowStart} / span ${slot.rowSpan};--slot-rows:${slot.rowSpan}`}
+          data-name={member.displayName}
         >
-          <CommunityImageCard member={member} lang={lang} />
+          <CommunityImageCard member={member} lang={lang} index={i} />
         </div>
       ))
     }
@@ -524,6 +848,13 @@ const indexMembers = [...members].sort((a, b) =>
           data-work={key}
           data-row="0"
           data-col="0-0"
+          data-date={work.addedAt}
+          data-member={member.slug}
+          data-member-name={member.displayName}
+          data-member-href={memberHref(lang, member.slug)}
+          data-project={work.projectId}
+          data-project-name={projectLabel(member, work)}
+          data-fields={workFields(work)}
           hidden
         >
           <CommunityWorkCard member={member} work={work} lang={lang} />
@@ -531,6 +862,21 @@ const indexMembers = [...members].sort((a, b) =>
       ))
     }
   </div>
+
+  {
+    /* THE DEAL BEFORE THE FIRST PAINT, on a full load (2026-10-15, Josh: "the
+      initial images flutter"). Runs as the parser reaches it, before the
+      browser paints the grid, so the first card on screen is already this
+      visit's — it used to be the server's rank order, replaced a moment later.
+      communityDeal.ts's two functions inlined as text (they are written to
+      be self-contained). Leaves the grid alone when an in-site navigation
+      already dealt it (data-dealt) or another view is asked for; hands its
+      seed to the controller on window so page-load reproduces the order. */
+  }
+  <script
+    is:inline
+    set:html={`(function(){try{${shuffleBands.toString()};${dealPagesInto.toString()};var g=document.getElementById("member-grid");if(g&&!matchMedia("(prefers-reduced-motion: reduce)").matches)g.dataset.motion="";if(!g||g.dataset.dealt)return;var p=new URLSearchParams(location.search);var v=p.get("pattern");if(v&&v!=="pages"&&v!=="spread"&&v!=="strip")return;var t=p.get("tag")||"";if(t&&!document.querySelector('.tag-filter__option[data-tag="'+CSS.escape(t)+'"]'))t="";var s=0;try{var i=history.state&&history.state.index;if(typeof i==="number")s=Number(sessionStorage.getItem("vscn:deal:"+i))||0}catch(e){}if(!s)s=(Math.floor(Math.random()*4294967295)||1)>>>0;window.__vscnDeal=s;dealPagesInto(g,s,t)}catch(e){}})()`}
+  />
 
   {
     /* The index: every member as one ledger row — "Name, Role" and a chevron,
@@ -544,19 +890,25 @@ const indexMembers = [...members].sort((a, b) =>
       band above, shared by all three views — the ledger just hides rows. */
   }
   <div id="member-index" class="cindex-wrap" hidden={DEFAULT_VIEW !== "index"}>
-    {/* Why this view is longer than the other two: the galleries are
-        artwork-only, so a member who has not uploaded yet is only here.
-        Also the Index button's description, so it is heard before the switch. */}
-    <p id="member-index-note" class="field-note cindex__note">{t("community.index.note")}</p>
     <ol class="cindex">
       {
         indexMembers.map((m) => {
-          // The disclosure's lead image is the PROFILE picture, not the
-          // artwork — the galleries already show the work; the ledger's
-          // dropdown is about the person. Same avatar treatment as
-          // MemberCard: the stored URL, token stripped, no build pipeline
-          // (avatars are small).
+          // THE PORTRAIT IS ON THE CARD, NOT IN THE PANEL (2026-10-23, Josh:
+          // "on desktop the people section can be a directory of cards with
+          // their profile pic"). It was the open panel's lead image; now it
+          // heads the summary — the face is what a directory of people shows
+          // closed, and the panel has only words left to disclose. Same avatar
+          // treatment as MemberCard: the stored URL, token stripped, no build
+          // pipeline (avatars are small). A member with no photo gets the same
+          // circle holding their initials, so the grid stays one shape and
+          // nobody is demoted to a text row.
           const avatarSrc = stripStorageToken(m.photoURL ?? "");
+          const initials = (m.displayName || m.slug)
+            .split(/[\s-]+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((w) => w[0]!.toUpperCase())
+            .join("");
           // WHERE THE "VIEW PROFILE" CONTROL GOES: in the DROPDOWN, on every
           // row, without exception (2026-09-02, Josh: "index view profile in
           // the dropdown content"; 2026-09-03, "when there is no added
@@ -577,9 +929,7 @@ const indexMembers = [...members].sort((a, b) =>
           // of a bare member holds one thing — the way to their page — which
           // is honest: it is all there is to disclose.
           const profileLink = (
-            <a class="cindex__profile" href={memberHref(lang, m.slug)}>
-              {t("community.card.viewProfile.text")}
-            </a>
+            <ProfileLink lang={lang} href={memberHref(lang, m.slug)} />
           );
           return (
             <li class="cindex__row" data-tags={tagsAttr(m)}>
@@ -590,7 +940,7 @@ const indexMembers = [...members].sort((a, b) =>
                     the only way to see anything in place — a 1rem target for a
                     whole row of content, and the entire row's click going
                     somewhere else. Now the row opens the row, and the page has
-                    a named link inside it (.cindex__profile). Same pairing as
+                    a named link inside it (ProfileLink). Same pairing as
                     the image cards: clicking a thing expands or opens THAT
                     thing, and travel is always a control that says where it
                     goes.
@@ -598,8 +948,27 @@ const indexMembers = [...members].sort((a, b) =>
                     keeps the keyboard activation and the expanded/collapsed
                     announcement for free — see the summary slot in
                     MemberDetailPanel. */}
-                <MemberDetailPanel member={m} lang={lang} forceShow>
+                <MemberDetailPanel member={m} lang={lang} forceShow name="people">
                   <Fragment slot="summary">
+                    {/* The portrait, or the initials in its place. `alt` is
+                        empty and the initials are hidden from readers: the
+                        name is printed right after, so the picture names
+                        nobody the summary does not already name. */}
+                    {avatarSrc ? (
+                      <img
+                        class="cindex__avatar"
+                        src={avatarSrc}
+                        alt=""
+                        width="72"
+                        height="72"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <span class="cindex__avatar cindex__avatar--initials" aria-hidden="true">
+                        {initials}
+                      </span>
+                    )}
                     {/* NAME AND ROLE ARE ONE UNIT — "Jane Doe, Illustrator" —
                         not two columns. The role used to sit in its own track a
                         column and a half away from the person it described,
@@ -632,22 +1001,11 @@ const indexMembers = [...members].sort((a, b) =>
                         (.pdisc__vals--tags), and the tag FILTER never read
                         this — it reads data-tags on the row. */}
                   </Fragment>
-                  {/* The dropdown's lead: the profile picture, where there is
-                      one. Nothing else is conditional any more — every row is a
-                      disclosure (see the note above), so the panel always
-                      exists to hold whatever the member has. */}
-                  {avatarSrc && (
-                    <img
-                      slot="lead"
-                      class="cindex__avatar"
-                      src={avatarSrc}
-                      alt={m.displayName || m.slug}
-                      width="72"
-                      height="72"
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  )}
+                  {/* No lead image any more: the portrait is on the summary
+                      (above). Every row is still a disclosure (see the note
+                      above), so the panel always exists to hold whatever
+                      words the member has, and at least the way to their
+                      page. */}
                   <Fragment slot="footer">{profileLink}</Fragment>
                 </MemberDetailPanel>
               </div>
@@ -656,6 +1014,8 @@ const indexMembers = [...members].sort((a, b) =>
         })
       }
     </ol>
+    {/* No note under the list (2026-10-25, Josh: "remove the hint on the
+        people page"). It said why People is longer than the galleries. */}
   </div>
 
   <div id="community-signup-cta" class="community-signup-cta" style="display:none;">
@@ -685,250 +1045,378 @@ const indexMembers = [...members].sort((a, b) =>
     font-size: var(--fs-90);
   }
 
-  /* ── The view selector ────────────────────────────────── */
-  .view-toggle {
-    display: flex;
-    gap: 1.2rem;
-  }
-
-  .view-toggle__btn {
-    border: none;
-    background: none;
-    padding: 0;
-    font: inherit;
-    color: var(--color-muted);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: color 0.15s;
-  }
-
-  .view-toggle__btn:hover {
-    color: var(--color-dark);
-  }
-
-  .view-toggle__btn[aria-pressed="true"] {
-    color: var(--color-dark);
-    text-decoration: underline;
-    text-underline-offset: 0.35em;
-  }
-
   /* ── The bar ──────────────────────────────────────────── */
-  /* Sticky at top:0 of .page-wrap's scrollport = flush under the brand
-     ticker, which lives outside the scroll container. The outer strip spans
-     the wide main and lets the page show through, backed by the nav's
-     backdrop stretched down behind it (Navbar.astro), so cards pass under it
-     instead of colliding with its 900px content; the rule and the controls
-     hold the shell measure and align with the title's edges. z-index clears
-     the cells' own stacking contexts (GSAP transforms; an open disclosure
-     raises its cell to 3). */
+  /* A FLOATING PILL AT THE BOTTOM, ON EVERY WIDTH (2026-10-12). On desktop it
+     sits on one line of chrome with the footer's links fixed bottom-left at
+     20px (SiteFooter.astro) and the EN / DE toggle fixed bottom-right at 20px
+     (Navbar.astro). On a phone those corners are empty — the footer is in the
+     flow and carries the language switch — so the pill floats on its own,
+     lifted off the edge and the home bar. Paper with a hairline and a soft
+     shadow, no blur, in keeping with the bare header (--color-bg-veil in
+     global.css says "nothing"). z-index 20 matches its two neighbours and
+     clears the cells' own stacking contexts (GSAP transforms; an open
+     disclosure raises its cell to 3).
+
+     TWO ELEMENTS: the outer is a full-width TRACK that only positions, the
+     inner is the pill. A track rather than `left: 50%; translateX(-50%)`
+     because of the footer. Centred by the viewport alone, the pill meets the
+     footer's "© 2026 VSCN" on any desktop window narrower than ~930px, once
+     the footer has faded in at the end of the page. The track is a grid whose
+     outer columns are 1fr each — equal, so the pill is centred — with a floor
+     of --bar-reserve: when the window is too narrow for both floors and the
+     pill, the grid overflows to the RIGHT instead of shrinking the floors, and
+     the pill ends up just past the footer rather than on it. The reserve is
+     the footer's wider (German) line — 30px in, ~276px of links and ©,
+     measured 2026-10-12 — plus a gap; it moves if the footer's words do. The
+     track is see-through to clicks and the pill takes them back. */
+  /* Registered so the pill's corner radius can TRANSITION; a bare custom
+     property only snaps. Global, like every @property. */
+  @property --bar-r {
+    syntax: "<length>";
+    inherits: false;
+    initial-value: 999px;
+  }
+
   .community-bar {
-    position: sticky;
-    /* ── IT DOCKS 6px INTO THE NAV, ON PURPOSE ──────────
-       (2026-09-01, Josh: "no gap between commujity kinks and filters".)
-       The nav's box is one line of --fs-100 at line-height 1 plus the
-       links' 10px paddings, and the bar used to dock at exactly that height —
-       flush under the nav's BOX, which put 12px of dead air under the nav's
-       TEXT: 10px of the links' own bottom padding plus this bar's 2px top
-       padding. Two header lines with a gap between them read as two things.
-       So the dock moves 6px up, into space the nav only pads with, and the
-       inner drops its top padding (below) — about 8px closed, leaving ~4px.
-       WHY 6 AND NOT 8. The bar outranks the nav on z-index, and it used to
-       paint --color-bg, so whatever it docked over, it hid. The active link's
-       underline sits at `bottom: 8px` in a 1.5px band — 8 to 9.5px up from the
-       nav's bottom edge — so docking 8px up would land exactly on it and
-       subpixel rounding would eat it. 6px leaves the underline 2px of
-       clearance. If Navbar's padding or that offset changes, this changes with
-       it, and so does the mobile figure below.
-       The nav is still ABOVE the bar in every sense that matters: it is
-       sticky at top 0 and the bar never reaches its text. */
-    top: calc(var(--fs-100) + 14px);
+    position: fixed;
+    /* THE TYPE SITS ON THE CORNERS' LINE, NOT THE BOX. The footer and the
+       toggle put their line boxes at 20px from the edge; the pill pads its
+       triggers by --bar-pad, the triggers pad their text by --chip-pad-y, and
+       the pill has a 1px border — so the box sits that much lower and the
+       three texts share one line across the width. */
+    --bar-pad: 3px;
+    --chip-pad-y: 0.4rem;
+    --bar-reserve: 330px;
+    bottom: calc(20px - var(--bar-pad) - var(--chip-pad-y) - 1px);
+    left: 0;
+    right: 0;
     z-index: 20;
-    /* NO FILL OF ITS OWN (2026-09-25). The page shows through the header while
-       scrolling, and whatever backdrop sits behind these controls is the NAV'S (bare
-       since 2026-09-25, see --color-bg-veil in global.css) —
-       stretched down to this bar's bottom edge by --nav-backdrop-extend, which
-       the page-load script measures (see "WHERE THE GALLERY FADE BEGINS").
-       A second veil here would stack on the nav's in the 6px this bar docks
-       into it, and read as a denser stripe under the links. With the bar
-       transparent, the underline clearance argued below is no longer about
-       what the bar hides, only about the controls not touching it. */
-    background: transparent;
-    /* BOTH HALVES OF THE 6px, and it takes both. `top` governs only where a
-       sticky element STOPS once it is stuck; at rest the bar sits in normal
-       flow, directly after the nav, and no `top` in the world moves it there.
-       That is why the old contract — "resting and stuck are the same place" —
-       held: the offset happened to equal the nav's height. This margin is what
-       actually lifts the resting position, and the calc above keeps the stuck
-       position in agreement with it. Change one and you must change the other,
-       or the bar jumps by the difference the moment it docks. */
-    margin-top: -6px;
+    display: grid;
+    grid-template-columns: minmax(var(--bar-reserve), 1fr) auto minmax(var(--bar-reserve), 1fr);
+    pointer-events: none;
   }
 
   .community-bar__in {
-    max-width: var(--shell-max);
-    margin-inline: auto;
-    box-sizing: border-box;
-    /* NO TOP PADDING. The 0.15rem that used to be here was the last 2px of the
-       gap the dock offset above closes; with the bar riding into the nav's
-       padding there is nothing left for it to breathe away from. */
-    padding: 0 15px 0.6rem;
-    /* Two occupants pushed to the shell's two edges: tags holds the left,
-       the view switcher the right. Nothing centres any more, so this is a
-       flex row rather than the three-track grid it used to need — and on
-       mobile, where the view switcher is display:none, the lone tags
-       trigger simply keeps the left edge. */
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 0.6rem 1.75rem;
-    font-size: var(--fs-85);
-  }
-
-  @media (--bp-mobile) {
-    .community-bar {
-      /* The mobile nav is shorter than the desktop one: 0.9rem of type at
-         line-height 1 plus its 5px/7px paddings (Navbar.astro's --bp-mobile
-         block). Same contract as the calc above — if that block's size or
-         padding changes, change this with it or the bar overlaps the links.
-
-         ── IT OVERLAPS BY 2px RATHER THAN MEETING THE NAV EXACTLY ──
-         (2026-09-02, Josh: "gap between info community login and filters
-         should be 0px so i dont see images scroll behind it", on a phone.)
-         The figure used to be the nav's full height, which made the two boxes
-         share an edge to the subpixel: nav bottom and bar top landed on the
-         same fractional CSS pixel, and on a fractional-DPR screen — every
-         iPhone — a shared edge rounds to a one-device-pixel HAIRLINE that
-         neither box paints. Artwork scrolling under the header shows through
-         it as a moving line. An overlap cannot round to a gap; a shared edge
-         can, and did.
-         2px is also every pixel there is to take: the nav pads its bottom by 7
-         and its active underline sits at `bottom: 4px` in a 1.5px band, so
-         anything past 2px starts painting over the underline that says which
-         page you are on. Desktop takes 6px for the same reason at that scale
-         (see the calc above), and both figures move if Navbar's padding or
-         that offset does. */
-      top: calc(var(--fs-90) + 10px);
-      /* Both halves, exactly as on the desktop rule: `top` governs the docked
-         position, this governs the resting one, and they have to agree or the
-         bar jumps 2px the moment it sticks. */
-      margin-top: -2px;
-      /* Out through <main>'s 15px gutter so the bar reaches the screen edges
-         like the nav and the title above it — and so the backdrop behind it
-         covers the full width it is docking across. */
-      margin-inline: -15px;
-    }
-
-    .community-bar__in {
-      /* THE GUTTER IS BACK, and only the reason for dropping it has changed:
-         it was dropped to join a nav row that ran to the screen edges, and that
-         nav now holds the 15px content edge (see Navbar's --bp-mobile block,
-         2026-09-01). Flush controls under an inset nav is the misalignment the
-         old rule was trying to avoid, pointing the other way.
-         The OUTER strip keeps its full-bleed negative margin — it spans the
-         background the sticky bar docks across, and that has to reach the
-         screen edges whatever the controls inside it do.
-         Top padding still 0: the nav's own padding is all the separation the
-         two lines need. */
-      padding: 0 15px 0.35rem;
-    }
-  }
-
-  .filter-word {
-    border: none;
-    background: none;
-    padding: 0;
-    font: inherit;
-    color: var(--color-muted);
-    cursor: pointer;
-    white-space: nowrap;
-    transition: color 0.15s;
-  }
-
-  .filter-word:hover {
-    color: var(--color-dark);
-  }
-
-  .filter-word[aria-pressed="true"],
-  .filter-word--set {
-    color: var(--color-dark);
-    text-decoration: underline;
-    text-underline-offset: 0.35em;
-  }
-
-  @media (--bp-mobile) {
-    /* Touch targets: the hit area grows around the type without moving it —
-       padding out, the same distance back in margin. Must sit BELOW
-       `.filter-word { padding: 0 }` above: it used to live further up the
-       file, where that rule cancelled the padding and left the trigger with
-       the negative margin only — a 15px-tall tap target sitting 0.4rem left of
-       where it belonged, which the old 15px gutter hid. */
-    .view-toggle__btn,
-    .filter-word {
-      padding: 0.55rem 0.4rem;
-      margin: -0.55rem -0.4rem;
-    }
-  }
-
-  /* ── The tags dropdown ────────────────────────────────── */
-  .tag-filter {
+    grid-column: 2;
+    /* A COLUMN: the open panel on top, the triggers' row at the foot, both
+       inside the one outline (10-16, "contained in the outer pill"). Packed
+       to the END on purpose: while animateBar holds the box smaller than its
+       content, the overflow goes UP and out to both sides — clipped — so the
+       row stays put on the bottom line and the panel is uncovered from it. */
     position: relative;
-  }
-
-  .tag-filter__caret {
-    font-size: 0.6em;
-  }
-
-  /* The one boxed element the bar owns. Floats below the trigger, above the
-     grid — inside the bar's stacking context, so no z fight with the cells. */
-  .tag-filter__panel {
-    position: absolute;
-    top: calc(100% + 0.6rem);
-    /* Hangs from the trigger's left edge, which is now the shell's left
-       edge: centring a 16rem panel on a trigger that far left would hang
-       it off the side of the page. */
-    left: 0;
-    width: 16rem;
-    /* The list IS the panel's content, so this cap is what decides how many
-       tags read at a glance before scrolling. It hangs off a bar that is
-       sticky near the top of the viewport, so the vh half can't reach the
-       fold in practice; the rem half stops the panel drawing itself as a
-       full-height column on a tall screen. */
-    max-height: min(60vh, 34rem);
-    overflow-y: auto;
+    pointer-events: auto;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    overflow: clip;
+    /* A capsule at rest, and the SAME corners round a tall open box: a 999px
+       radius on a tall box is a stadium, and between the two it would bulge.
+       animateBar writes the closed half-height here before it grows. */
+    border-radius: var(--bar-r, var(--radius-pill)) !important;
+    /* The corners ease (the sheet takes them away, closing brings them
+       back): --bar-r is registered below, so it interpolates. */
+    transition: --bar-r 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    /* ONE PILL, ONE OUTLINE (2026-10-15, Josh: "it is still seperated").
+       The triggers sit INSIDE a single paper capsule with the black hairline
+       (its curve comes from CONTROLS in global.css), and the capsule grows
+       with whatever the labels say. Still one black outline, not two (10-12:
+       "only one black outline"): the triggers draw no frame of their own;
+       hovered, open or holding a tag, one fills black as a capsule inside the
+       capsule, inset by --bar-pad. Padding plus border is what the panels'
+       offsets add. */
+    padding: var(--bar-pad);
     background: var(--color-bg);
     border: 1px solid var(--color-dark);
-    /* No top padding of its own: the gap above the search field belongs TO
-       the field, so the field can stick flush to the scrollport edge with no
-       strip for the options to show through (see .tag-filter__search). */
-    padding: 0 0.7rem 0.4rem;
+    font-size: var(--fs-85);
+    /* The pill never outgrows the screen; past this a label wraps inside it. */
+    max-width: calc(100vw - 24px);
+  }
+
+  .community-bar__row {
+    display: flex;
+    align-items: center;
+    /* 4px between the triggers (10-16, Josh: "a 4px gap between the Tags
+       Search and View selection"). */
+    gap: 4px;
+    max-width: 100%;
+  }
+
+  /* While the pill eases its size (data-sizing, set by sizeBar) the row
+     keeps its own width and the pill's edges uncover it. Squeezed into
+     the starting width instead, the labels wrapped letter by letter
+     ("Tag/s", "So/rt") and the pill jumped a line taller for a few frames
+     — seen on an iPhone going Portfolios → Images, 2026-10-16. */
+  .community-bar__in[data-sizing] .community-bar__row {
+    width: max-content;
+    max-width: none;
+  }
+
+  /* The stack the panels open in. Nothing open, it is nothing. Its width is
+     the open panel's; the row's when the row is wider (stretch). */
+  .community-bar__panels {
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .community-bar__panels:not(:has(> :not([hidden]))) {
+    display: none;
+  }
+
+  @media (--bp-mobile) {
+    /* Floats on a phone too: centred, 12px off the bottom plus the home-bar
+       inset. The track is a plain block here — there is no footer to dodge —
+       and the pill centres in it. .page-wrap's 72px bottom padding
+       (Layout.astro) is what lets the last card and the footer's last line
+       scroll out from under it. */
+    .community-bar {
+      /* With the keyboard up, 8px over it instead (fitBarToKeyboard). */
+      bottom: max(calc(12px + env(safe-area-inset-bottom, 0px)), calc(var(--bar-kb, 0px) + 8px));
+      display: flex;
+      justify-content: center;
+      transition: bottom 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+  }
+
+  /* HIGHER AND A SIZE UP ON A DESKTOP (2026-10-12, Josh: "make it so that it
+     hovers a bit higher and a bit bigger on desktop"). It leaves the corners'
+     20px line for 36px of its own; the triggers' padding grows with the type. */
+  @media (--bp-desktop) {
+    .community-bar {
+      --chip-pad-y: 0.55rem;
+      bottom: 36px;
+    }
+    .community-bar__in {
+      font-size: var(--fs-95);
+    }
+  }
+
+  /* ── The two drop-ups ─────────────────────────────────── */
+
+  .bar-menu__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+    padding: var(--chip-pad-y, 0.4rem) 0.9rem;
+    border: none;
+    border-radius: 0;
+    /* PERSISTENT (2026-10-12, Josh: "make the tag and view button
+       persistent"): each trigger is a segment of the pill at rest, not a
+       word that only gets a ground when it is pointed at. Open, or holding
+       a tag, it is black. */
+    background: var(--color-bg);
+    font: inherit;
+    color: var(--color-dark);
+    cursor: pointer;
+    /* THE PILL GROWS WITH ITS WORDS (2026-10-15, Josh: "make the pills
+       expand so it is always contained in a pill"). No width cap and no
+       ellipsis: a long sort, view or tag name widens its own box. Only when
+       the row would leave the screen (the max-width on .community-bar__in)
+       does a label break onto a second line — still inside its frame. */
+    min-width: 0;
+    text-align: center;
+    transition:
+      background-color 0.15s,
+      color 0.15s;
+  }
+
+  .bar-menu__trigger > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  /* No grey (2026-10-12, "the grey hover tone I don't like"), and no thicker
+     line either ("make the outline thinner"): under the pointer the trigger
+     takes the black it will have once open. */
+  .bar-menu__trigger:hover {
+    background: var(--color-dark);
+    color: var(--color-bg);
+  }
+  .bar-menu__trigger[aria-expanded="true"] {
+    background: var(--color-dark);
+    color: var(--color-bg);
+  }
+
+  .bar-menu__trigger:focus-visible {
+    outline: 1.5px solid var(--color-dark);
+    outline-offset: 1px;
+  }
+
+  /* A tag is set: the trigger fills, so the bar says the page is filtered. */
+  .bar-menu__trigger.filter-word--set {
+    background: var(--color-dark);
+    color: var(--color-bg);
+  }
+
+  .bar-menu__chev {
+    width: 0.7em;
+    height: 0.42em;
+    flex: none;
+    transition: transform 0.2s ease;
+  }
+
+  .bar-menu__trigger[aria-expanded="true"] .bar-menu__chev {
+    transform: rotate(180deg);
+  }
+
+  /* A panel is a room of the pill, not a card of its own (10-16): no
+     outline, no shadow, no rise — the pill's outline is its outline and the
+     pill's growth is its entrance (animateBar). Above the row by a gap the
+     size of the row's own inset. */
+  .bar-menu__panel {
+    box-sizing: border-box;
+    flex: none;
+    max-width: 100%;
+    margin-bottom: var(--bar-pad);
+    padding: 6px;
+  }
+
+  .bar-menu__panel[hidden] {
+    display: none;
+  }
+
+  /* The view and sort menus: a column of rows the pill's width (or 9rem,
+     whichever is wider — the pill grows to it). */
+  .view-menu__panel,
+  .sort-menu__panel {
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    min-width: 9rem;
+  }
+
+  /* A size under the triggers (2026-10-25, Josh: "selector texts in the
+     dropdowns smaller"), relative to the pill's own size like the pill's. */
+  .view-toggle__btn,
+  .sort-menu__btn,
+  .tag-filter__clear {
+    font-size: var(--fs-75) !important;
+  }
+
+  .view-toggle__btn,
+  .sort-menu__btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.55rem 0.75rem;
+    border: none;
+    border-radius: 0;
+    background: none;
+    font: inherit;
+    text-align: left;
+    color: var(--color-dark);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s;
+  }
+
+  .view-toggle__btn:hover,
+  .sort-menu__btn:hover,
+  .sort-menu__btn:focus-visible,
+  .view-toggle__btn:focus-visible {
+    box-shadow: inset 0 0 0 1px var(--color-dark);
+    outline: none;
+  }
+
+  /* The current view: a check at the row's end. */
+  .view-toggle__btn[aria-pressed="true"]::after,
+  .sort-menu__btn[aria-pressed="true"]::after {
+    content: "";
+    width: 0.8em;
+    height: 0.45em;
+    margin-top: -0.25em;
+    border-left: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(-45deg);
+  }
+
+  /* ── The tags menu ────────────────────────────────────── */
+  .tag-filter__panel {
+    width: 22rem;
+    /* The chips ARE the panel's content, so this cap is what decides how
+       many read at a glance before scrolling. The vh half keeps the card
+       clear of the header; the rem half stops it drawing itself as a full
+       column on a tall screen. */
+    max-height: min(60vh, 30rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* The other two cards' 6px, top excepted — the head below carries it, so
+       it can paint over the chips scrolling under it. */
+    padding: 0 6px 6px;
     scrollbar-width: thin;
     scrollbar-color: var(--color-border) transparent;
   }
 
-  .tag-filter__panel[hidden] {
+  /* On a phone the tags room takes the whole width the pill may have. */
+  @media (--bp-mobile) {
+    .tag-filter__panel {
+      width: calc(100vw - 24px - 2 * var(--bar-pad) - 2px);
+    }
+  }
+
+  /* Holds the search field in place while the chips scroll under it. The
+     panel's top padding lives HERE, so the band paints over every chip
+     passing behind it. */
+  .tag-filter__head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    margin-bottom: 6px;
+    padding: 6px 0 6px;
+    background: var(--color-bg);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* MATCHES THE OTHER TWO CARDS (2026-10-15, Josh: "tags pill and tags
+     search needs design adjustment to match the rest"). Clear is a row of
+     the Sort and View menus — same type, same padding, no box at rest, the
+     inset hairline under the pointer — rather than a square in a grey
+     border at a smaller size. */
+  .tag-filter__clear {
+    flex: none;
+    padding: 0.55rem 0.75rem;
+    border: none;
+    background: none;
+    font: inherit;
+    color: var(--color-dark);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .tag-filter__clear:hover,
+  .tag-filter__clear:focus-visible {
+    box-shadow: inset 0 0 0 1px var(--color-dark);
+    outline: none;
+  }
+
+  .tag-filter__clear[hidden] {
     display: none;
   }
 
   .tag-filter__search {
     display: block;
+    flex: 1;
+    min-width: 0;
     width: 100%;
     box-sizing: border-box;
-    /* Holds its place while a long list scrolls under it. The panel's top
-       padding lives HERE instead, so the field's own box reaches the
-       scrollport edge and the sticky band paints over every option passing
-       behind it — with the type sitting exactly where it did before. */
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    margin-bottom: 0.5rem;
-    padding: 0.7rem 0 0.25rem;
-    border: none;
-    border-bottom: 1px solid var(--color-border);
-    border-radius: 0;
+    /* The bar's own field: a capsule (CONTROLS in global.css) on the paper,
+       drawn in the one black hairline the pill, the cards and the triggers
+       share, at the bar's type size and a row's padding. It was a grey-filled
+       square at a size of its own — the one surface in the bar that was
+       neither paper nor black. Focus thickens nothing ("make the outline
+       thinner"); it fills the field's ring in, inside. */
+    padding: 0.55rem 0.9rem;
+    border: 1px solid var(--color-dark);
     background: var(--color-bg);
     font: inherit;
-    font-size: var(--fs-85);
     color: var(--color-dark);
+    transition: box-shadow 0.15s;
   }
 
   .tag-filter__search::placeholder {
@@ -937,7 +1425,13 @@ const indexMembers = [...members].sort((a, b) =>
 
   .tag-filter__search:focus {
     outline: none;
-    border-bottom-color: var(--color-dark);
+    box-shadow: inset 0 0 0 0.5px var(--color-dark);
+  }
+
+  /* The browser's own clear cross on a search field: the Clear row does that
+     job, and the cross is a second, differently drawn control beside it. */
+  .tag-filter__search::-webkit-search-cancel-button {
+    appearance: none;
   }
 
   @media (--bp-mobile) {
@@ -948,36 +1442,204 @@ const indexMembers = [...members].sort((a, b) =>
     }
   }
 
-  .tag-filter__list {
+  /* ── The search room (2026-10-16) ─────────────────────────
+     The tags room's width and height cap; the field stays put while the
+     results scroll under it. The rows are drawn by renderSearch, so every
+     rule below the panel reaches them through :global. */
+  /* A glyph the height of a capital on its own trigger. 0.7rem of side room
+     until 2026-10-20 (Josh: "give the search glass a bit more white space"):
+     now 1rem, so the glass sits in a square-ish box instead of a tight one. */
+  .search__glass {
+    width: 1em;
+    height: 1em;
+    flex: none;
+  }
+
+  .search-menu .bar-menu__trigger {
+    padding-inline: 1rem;
+  }
+
+  .search__panel {
+    width: 22rem;
+    max-height: min(60vh, 30rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+  }
+
+  @media (--bp-mobile) {
+    .search__panel {
+      width: calc(100vw - 24px - 2 * var(--bar-pad) - 2px);
+    }
+  }
+
+  /* The field stays put while the rows scroll under it; the head's paper
+     covers them. Cancel is a sheet control (below) and not drawn here. */
+  .search__head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: -6px 0 6px;
+    padding: 6px 0;
+    background: var(--color-bg);
+  }
+
+  .search__cancel {
+    display: none;
+  }
+
+  .search__results :global(.search__note) {
+    margin: 0;
+    padding: 0.55rem 0.75rem;
+    color: var(--color-muted);
+  }
+
+  .search__results :global(.search__group) {
+    margin: 0 0 6px;
+  }
+
+  .search__results :global(.search__group-title) {
+    margin: 0;
+    padding: 0.5rem 0.75rem 0.3rem;
+    color: var(--color-muted);
+  }
+
+  .search__results :global(.search__list) {
     list-style: none;
     margin: 0;
     padding: 0;
   }
 
-  .tag-filter__option {
+  /* A row of the Sort and View menus: no box at rest, the inset hairline
+     under the pointer or the keyboard. */
+  .search__results :global(.search__row) {
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 1rem;
-    width: 100%;
-    border: none;
-    background: none;
-    padding: 0.3rem 0.25rem;
-    font: inherit;
-    font-size: var(--fs-85);
-    text-align: left;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem 0.75rem;
     color: var(--color-dark);
+    text-decoration: none;
+    text-align: left;
+  }
+
+  .search__results :global(.search__row:visited) {
+    color: var(--color-dark);
+  }
+
+  .search__results :global(.search__row:hover),
+  .search__results :global(.search__row:focus-visible) {
+    box-shadow: inset 0 0 0 1px var(--color-dark);
+    outline: none;
+  }
+
+  .search__results :global(.search__thumb) {
+    flex: none;
+    width: 2.2rem;
+    height: 2.2rem;
+    object-fit: cover;
+    background: var(--color-border);
+  }
+
+  .search__results :global(.search__thumb--round) {
+    border-radius: 50%;
+  }
+
+  .search__results :global(.search__words) {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .search__results :global(.search__name),
+  .search__results :global(.search__sub) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .search__results :global(.search__sub) {
+    color: var(--color-muted);
+  }
+
+  /* The pictures: a grid of squares, each one a link. */
+  .search__results :global(.search__grid) {
+    list-style: none;
+    margin: 0;
+    padding: 0 0.75rem;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+  }
+
+  .search__results :global(.search__tile) {
+    display: block;
+    aspect-ratio: 1;
+    background: var(--color-border);
+  }
+
+  .search__results :global(.search__tile img) {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .search__results :global(.search__tile:hover),
+  .search__results :global(.search__tile:focus-visible) {
+    outline: 1px solid var(--color-dark);
+    outline-offset: 1px;
+  }
+
+  /* The tags as chips: a wrapping cloud rather than a list, so many more
+     read at once and each is a clear tap target. */
+  .tag-filter__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    /* Tighter between the rows than across (2026-10-12, Josh: "less padding
+       between tags vertically"). */
+    gap: 3px 6px;
+  }
+
+  /* THE SITE'S TAG (2026-10-12, Josh: "the tags use the tag style"). Each
+     option is a .tagchip — the box in global.css, the TAG voice in type.css —
+     so the filter's tags look exactly like the tags on cards and profiles.
+     Only what a BUTTON needs on top is set here; no font-size or case, or
+     the voice forks (`font-family: inherit`, not `font: inherit`, for the
+     same reason). */
+  .tag-filter__option {
+    font-family: inherit;
     cursor: pointer;
+    white-space: nowrap;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s,
+      color 0.15s;
   }
 
   .tag-filter__option:hover,
   .tag-filter__option:focus-visible {
-    background-color: color-mix(in srgb, var(--color-dark) 5%, transparent);
+    border-color: var(--color-dark);
+    color: var(--color-dark);
+    outline: none;
   }
 
   .tag-filter__option[aria-pressed="true"] {
-    text-decoration: underline;
-    text-underline-offset: 0.35em;
+    background: var(--color-dark);
+    border-color: var(--color-dark);
+    color: var(--color-bg);
+  }
+
+  .tag-filter__scope {
+    margin: 10px 2px 0;
+    color: var(--color-muted);
   }
 
   .filter-empty {
@@ -1018,7 +1680,11 @@ const indexMembers = [...members].sort((a, b) =>
     /* No gap: gutters are columns the table leaves empty, so they can vary
        down the page. See the slot table's rule 4. */
     column-gap: 0;
-    width: min(100%, var(--grid-max));
+    /* MORE AIR AT THE SIDES (2026-10-12, Josh: "the gallery should get more
+       padding on the left and right"): 3vw a side inside main's own margin.
+       The wall and the phone set their own width and never read this. */
+    --cgrid-pad: 3vw;
+    width: min(100% - 2 * var(--cgrid-pad), var(--grid-max));
     /* Once <main> is wider than the cap — above a ~2160px viewport, where
        94vw minus main's padding clears 2000px — the leftover has to be split,
        or the whole drawing sits flush left and reads as off-centre against a
@@ -1071,6 +1737,379 @@ const indexMembers = [...members].sort((a, b) =>
        overwrite anything written here. */
     inset-inline: 0;
     margin-inline: auto;
+  }
+
+  /* ── THE PAGES (2026-10-15) ────────────────────────────────
+     One member a screen (documentation/20261015-portfolio-pages-view.md).
+     The frame is the viewport minus the header row the card sits under and
+     the bar's band at the bottom; each cell is a snap stop of the page's
+     own scroller (.page-wrap[data-snap], global.css). The card inside is in
+     flow and fills the frame — the spread kept it absolute and GSAP-scaled,
+     which the rule above still says for the wall's tiles. */
+  .cgrid[data-pattern="pages"] {
+    --cpage-h: calc(var(--shell-h, 100dvh) - var(--header-h));
+    /* The bar floats at the bottom of the viewport (.community-bar); this
+       keeps the card's last line above it. Tunable. */
+    --cpage-chrome-b: 5.5rem;
+    /* A LITTLE HIGHER (2026-10-16, Josh: "padding at the bottom of the
+       gallery card so they sit a bit higher on mobile and desktop"): extra
+       room under the card, so the centred card rises by half of it. */
+    --cpage-lift: 2.5rem;
+    /* MORE WHITE SPACE (2026-10-15, Josh): the picture is the frame less
+       an air band above and below, and the pair sits centred in it. */
+    --cpage-pic-h: calc(var(--cpage-h) - var(--cpage-chrome-b) - 22vh);
+    display: block;
+    width: min(100% - 2 * var(--cgrid-pad), var(--grid-max));
+    margin-inline: auto;
+    padding-block: 0;
+  }
+  .cgrid[data-pattern="pages"] > .cgrid__cell:not([hidden]) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-sizing: border-box;
+    min-height: var(--cpage-h);
+    padding-bottom: calc(var(--cpage-chrome-b) + var(--cpage-lift));
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    container-type: inline-size;
+  }
+  :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard) {
+    position: static;
+    margin: 0;
+  }
+  /* EVERY NAME ON THE SAME SPOT (2026-10-16, Josh: "put the Names always in
+     the same spott"). The card was as tall as its picture and the words hung
+     off the picture's edge, so a picture's shape moved the name both ways.
+     Now every card is the same box: the picture's column is the widest a
+     picture may be (--ccard-pic-room) and its row the tallest
+     (--cpage-pic-h), the picture centred in them; the words are a fixed
+     width against that column, their top a fixed drop into the row. The
+     count stays centred under the column, on the row's foot. */
+  @media (--bp-desktop) {
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard) {
+      grid-template-columns:
+        minmax(0, 1fr) var(--ccard-air) var(--ccard-pic-room) var(--ccard-air)
+        minmax(0, 1fr);
+      grid-template-rows: var(--cpage-pic-h) auto;
+    }
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__body) {
+      align-self: center;
+      justify-self: center;
+    }
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__words) {
+      align-self: start;
+      /* PROFILE HUGS THE LONGEST LINE (2026-10-27, Josh: "the profile button
+         about this far out from the end of the studio / person title, so it
+         never has a huge gap"): the column was a fixed --ccard-words-min, so
+         a short name left PROFILE a column's width away from it. It is now as
+         wide as its words (head, below, adds the overhang) up to that width,
+         and its LEFT edge stays where the fixed column's was: the percentage
+         margin resolves against this grid cell, whose right edge is the
+         picture's air. -3px undoes the focus padding's pull (.ccard__words). */
+      justify-self: start;
+      /* wordsFit.ts narrows it to the longest wrapped LINE (2026-10-27); until
+         it has measured, or on a phone, it is the max-content. */
+      width: var(--ccard-words-fit, fit-content);
+      max-width: var(--ccard-words-min);
+      margin-left: max(-3px, calc(100% - var(--ccard-words-min) - 3px));
+      /* The name's top a little above the row's middle — where a centred
+         two-line name and role used to start. -3px undoes the focus
+         padding's pull (.ccard__words). */
+      margin-top: calc(var(--cpage-pic-h) / 2 - 5rem - 3px);
+      max-height: calc(var(--cpage-pic-h) / 2 + 5rem);
+      height: calc(var(--cpage-pic-h) / 2 + 5rem);
+    }
+    /* PROFILE UNDER THE ROLE (2026-10-25, Josh marked the spot on a
+       screenshot): a short drop below the words, still at the column's
+       right. From 2026-10-23 it stood down on the picture row's foot. */
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard .ccard__more) {
+      margin-top: 2.5rem;
+    }
+    /* The overhang: PROFILE (right-aligned in the column) ends this far past
+       the longest of name and role, about its own width less a hair. */
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard .ccard__head) {
+      padding-right: 4.5rem;
+    }
+  }
+  /* THE PICTURE'S SWIPE IS THE CAROUSEL'S (2026-10-16, Josh: "the vertical
+     scroll is so sensitive that it is hard to swipe the gallery cards"):
+     with both axes the browser's, a sideways swipe a few degrees off level
+     locked onto the page and, under mandatory snap, jumped a whole member.
+     On the picture the browser now pans only sideways, so every swipe that
+     is not clearly vertical pages the works; a clearly vertical one is
+     turned into one card by pagesPager.ts. */
+  :global(.cgrid[data-pattern="pages"] .ccard__frame) {
+    touch-action: pan-x pinch-zoom;
+  }
+  @media (--bp-mobile) {
+    /* A STABLE HEIGHT ON A PHONE (2026-10-15, Josh: "without this part
+       where the card moves a bit further than it needs to and then drops
+       down"). --shell-h follows the visual viewport, which grows as Safari
+       retracts its toolbar mid-scroll: every card resized under the finger
+       and the snap re-aligned with a visible drop. svh never moves. */
+    .cgrid[data-pattern="pages"] {
+      --cpage-h: calc(100svh - var(--header-h));
+      --cpage-chrome-b: 4.5rem;
+      /* THE WORDS ARE A FIXED BLOCK ON THE PILLS (2026-10-15, Josh: "the
+         info for the member should be fix size and always just above the
+         pills. so it does not shift from portfolio to portfolio"): the name
+         and role get room for a two-line role whatever this member's is, the
+         links one line, and the block stands --cpage-words-air above the
+         bar. The picture has what is left above them, centred in it. */
+      --cpage-head-h: 4.4rem;
+      --cpage-links-h: 1.7rem;
+      --cpage-words-air: 1rem;
+      --cpage-row-gap: 0.75rem;
+      --cpage-card-h: calc(var(--cpage-h) - var(--cpage-chrome-b) - var(--cpage-words-air) - var(--cpage-lift));
+      /* What the picture may be, the words kept above the bar... */
+      --cpage-pic-fit: calc(
+        var(--cpage-card-h) - var(--cpage-head-h) - var(--cpage-links-h) - 2 * var(--cpage-row-gap)
+      );
+      /* ...and inside the top 70svh band, under the header (2026-10-16, Josh:
+         "on mobile make the gallery be centered in the top 70vh"). */
+      --cpage-band-mid: calc(35svh - var(--header-h));
+      --cpage-pic-h: min(var(--cpage-pic-fit), 2 * var(--cpage-band-mid));
+      width: 100%;
+    }
+    /* THE PICTURE TAKES THE PHONE'S WIDTH (2026-10-15, Josh: "on mobile the
+       image should take up more width"): no inset of its own inside main's
+       gutter — the spread's 24px cell padding was for its framed cards. */
+    .cgrid[data-pattern="pages"] > .cgrid__cell:not([hidden]) {
+      padding-inline: 0;
+      align-items: flex-start;
+    }
+    /* THE CARD IS THE FRAME LESS THE BAR, its rows fixed: the picture's
+       band, the name and role, the links. Every member's name, links and
+       PROFILE stand on the same lines, and the picture is centred in its
+       band (2026-10-15, Josh: "the image should be centered in the top
+       part"). The count hangs under the band's foot, on the name's line. */
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard) {
+      width: 100%;
+      height: var(--cpage-card-h);
+      /* THE PICTURE'S ROW AND THE WORDS' ROW APART (2026-10-19, Josh: "on
+         mobile the Image and Text Row should be seperated as well. so text
+         always stays at the same place"): the picture has a band of its own,
+         the tallest it may be (--cpage-pic-h, so its middle is the top 70svh's,
+         2026-10-16 "centered in the top 70vh"), and is centred in it; the
+         dots have a fixed row under the band, kept even by a gallery of one;
+         the name starts on the same line on every card. Until then the words
+         hung directly under the picture (2026-10-15, "the text doesn't sit
+         under the images directly"), so a short picture lifted them. */
+      grid-template-rows: var(--cpage-pic-h) 0.5rem auto auto;
+      align-content: start;
+      row-gap: var(--cpage-row-gap);
+      /* BETWEEN THE TWO TOOLBAR STATES (2026-10-15, Josh: "move it down half
+         of the vh of the collapsible bar so it sits in between"): the card is
+         sized for the toolbar SHOWN (svh) and set half the toolbar's height
+         lower, so it sits midway whether the bar is up or collapsed. A fixed
+         offset, never re-measured — following the toolbar live was tried
+         twice and was not smooth (reverted). `top`, not a transform: the
+         card's transform is the cpage-out exit. */
+      position: relative;
+      top: calc((100lvh - 100svh) / 2);
+    }
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__body) {
+      grid-area: 1 / 1 / 2 / 2;
+      align-self: center;
+      justify-content: center;
+    }
+    /* THE DOTS RIGHT UNDER THE PICTURE (2026-10-30, Josh: "the three dots
+       on mobile in portfolio mode should always be right beneath the
+       images"): they stood under the BAND, a long way below a landscape
+       picture centred in it. They now share the band's cell and hang from
+       the picture's bottom edge: the band's middle plus half the picture's
+       height — the frame is the card's width at the artwork's aspect, no
+       taller than the band — plus the old spacer row. The words' rows are
+       untouched, so the name still starts on the same line on every card. */
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__foot) {
+      grid-area: 1 / 1 / 2 / 2;
+      align-self: start;
+      justify-self: center;
+      margin-top: calc(
+        var(--cpage-pic-h) / 2 + min(var(--cpage-pic-h), 100% / var(--frame-ar, 1)) / 2 + 0.5rem
+      );
+      z-index: 1;
+    }
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard .ccard__head) {
+      grid-area: 3 / 1 / 4 / 2;
+    }
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard .ccard__more) {
+      grid-area: 4 / 1 / 5 / 2;
+    }
+    :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard .ccard__head) {
+      overflow: hidden;
+    }
+    /* Two lines at most, so the room kept for it is never outrun. */
+    :global(.cgrid[data-pattern="pages"] .ccard__role) {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      overflow: hidden;
+    }
+  }
+  /* What follows the last card must be reachable under mandatory snap. */
+  :global(.page-wrap:has(#member-grid[data-pattern="pages"]:not([hidden])) .community-signup-cta),
+  :global(.page-wrap:has(#member-grid[data-pattern="pages"]:not([hidden])) > .site-footer) {
+    scroll-snap-align: end;
+  }
+
+  /* ── THE FLOURISH (2026-10-15, Josh: entry 2 + exit 1 of the brainstorm)
+     The card leaving shrinks and dims, linked to the scroll. (Its arrival
+     was scroll-linked too until the timed ENTRANCE below replaced it.) View timelines against .page-wrap (the nearest
+     scrollport); the CELL — the snap stop — is never transformed, so the
+     snap geometry is layout's alone. LONGHANDS ONLY: the minifier folds a
+     following animation-timeline INTO an `animation` shorthand, which no
+     browser accepts, so the whole animation silently drops (memory note
+     minifier-folds-animation-timeline; checked in the built CSS). A browser without view() gets the plain
+     snap, which is the complete experience; reduced motion gets it too.
+     Amounts are the brainstorm demo's — tunable. The body's own crossing
+     is the timeline for the picture: on a desktop it is the card's height,
+     on a phone 60% of it, so the picture finishes arriving a little sooner
+     there, which reads fine. */
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      :global(.cgrid[data-pattern="pages"] .ccard) {
+        animation-name: cpage-out;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-timeline: view();
+        animation-range: exit 0% exit 100%;
+        transform-origin: 50% 50%;
+      }
+    }
+  }
+
+  /* ── THE ENTRANCE (2026-10-15, Josh: "a smooth animation where it moves in
+     satisfyingly. motion design style") ─────────────────────────────────
+     Timed, not scroll-linked: pagesEntrance.ts puts .is-in on a cell once it
+     is over half in view, and takes it off once it has fully left. The
+     starting state applies only under [data-motion] (set before the first
+     paint by the deal, never under reduced motion), and the transitions live
+     on the .is-in state alone, so leaving resets instantly, off screen.
+     One curve for everything — a long expo-out, fast off the mark and a
+     slow, soft landing — and a stagger: picture, then the name and role word
+     by word (so longer words take longer), then the count and the links.
+     Not while <html> carries data-arrive-hold (Layout.astro holds an arriving
+     page invisible until it is ready): a card counted as in view behind the
+     hold would otherwise play its entrance unseen, or half of it. */
+  @media (prefers-reduced-motion: no-preference) {
+    .cgrid[data-pattern="pages"][data-motion] {
+      --cpage-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    /* The WHOLE picture fades in and grows to its size — the site's picture
+       entrance, --pic-in-* in global.css (2026-10-23, Josh: "the zoom in was
+       nicer. but make it so that it is not the frame only but the whole
+       image that animates"; a pixel reveal and a blur fade were tried that
+       day and dropped). Until then the 9% inset clipped the picture while it
+       zoomed inside. The scale is on the <img>, never the frame or track:
+       the box that takes the carousel's swipe is full size from the start,
+       so a sideways swipe on an arriving card pans the works instead of
+       missing a shrunken frame and scrolling the page. Until .is-in the
+       frame is not there at all (2026-10-15, Josh: "the next portfolio
+       element should either be super faded in on the bottom edge always or
+       never"): NEVER — a card that is not the one on screen shows nothing,
+       so no edge of the next one ever peeks in at the bottom. */
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__frame) {
+      opacity: 0;
+    }
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__img) {
+      opacity: 0;
+      transform: var(--pic-in-from);
+    }
+    /* The name and the role rise word by word, each word out of its own
+       mask (pagesEntrance.ts splits them and stamps each word's --d). Until
+       the split has happened the words are held invisible, so the plain
+       text never shows and then vanishes. */
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell:not([data-words]) .ccard__name-link),
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell:not([data-words]) .ccard__role) {
+      opacity: 0;
+    }
+    :global(.cgrid[data-pattern="pages"][data-motion] .cw) {
+      display: inline-block;
+      overflow: clip;
+      overflow-clip-margin: 2px;
+      /* Room for descenders inside the mask, given back to the line. */
+      padding-bottom: 0.12em;
+      margin-bottom: -0.12em;
+      vertical-align: top;
+    }
+    :global(.cgrid[data-pattern="pages"][data-motion] .cw__i) {
+      display: inline-block;
+      transform: translateY(105%);
+    }
+    /* The count and PROFILE drift up into place. (.ccard__more since
+       2026-10-19, Josh: "animate the profile button as well" — the rule
+       named the panel the links lived in, gone with them, so PROFILE stood
+       there plainly from the first frame.) */
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__foot),
+    :global(.cgrid[data-pattern="pages"][data-motion] .cgrid__cell .ccard__more) {
+      opacity: 0;
+      translate: 0 0.6rem;
+    }
+
+    :global(:root:not([data-arrive-hold]) .cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__frame) {
+      opacity: 1;
+      transition: opacity 0.3s var(--cpage-ease);
+    }
+    :global(:root:not([data-arrive-hold]) .cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__img) {
+      opacity: 1;
+      transform: none;
+      transition:
+        opacity var(--pic-in-fade),
+        transform var(--pic-in-zoom);
+    }
+    :global(:root:not([data-arrive-hold]) .cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .cw__i) {
+      transform: none;
+      transition: transform 0.85s var(--cpage-ease) var(--d, 0.2s);
+    }
+    :global(:root:not([data-arrive-hold]) .cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__foot) {
+      opacity: 1;
+      translate: 0 0;
+      transition:
+        opacity 0.7s var(--cpage-ease) var(--t-rest, 0.48s),
+        translate 0.9s var(--cpage-ease) var(--t-rest, 0.48s);
+    }
+    :global(:root:not([data-arrive-hold]) .cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__more) {
+      opacity: 1;
+      translate: 0 0;
+      transition:
+        opacity 0.7s var(--cpage-ease) calc(var(--t-rest, 0.48s) + 0.08s),
+        translate 0.9s var(--cpage-ease) calc(var(--t-rest, 0.48s) + 0.08s);
+    }
+    /* On a desktop the count comes in last, after the words. */
+    @media (--bp-desktop) {
+      :global(:root:not([data-arrive-hold]) .cgrid[data-pattern="pages"][data-motion] .cgrid__cell.is-in .ccard__foot) {
+        transition:
+          opacity 0.7s var(--cpage-ease) calc(var(--t-rest, 0.48s) + 0.16s),
+          translate 0.9s var(--cpage-ease) calc(var(--t-rest, 0.48s) + 0.16s);
+      }
+    }
+  }
+  @keyframes cpage-out {
+    0% {
+      transform: none;
+      opacity: 1;
+    }
+    100% {
+      transform: scale(0.96);
+      opacity: 0.35;
+    }
+  }
+
+  /* THE SLOT IS MEASURED, AND THE PICTURE HOLDS ITS PLACE (2026-10-12,
+     gallery card v2). An open card is its folded picture plus a column of
+     words hung off the inner side (communityCard.css), so it is wider than
+     its slot. The cell is an inline-size container so the card can read the
+     slot's width as 100cqw, and the card is pinned by the margin on its
+     OUTER side to exactly where the folded card would centre its picture
+     and rail: the words then grow inward, into the gutter, and folding or
+     unfolding never moves the picture. Not in the strip, whose cells are
+     sized by their cards. */
+  .cgrid > .cgrid__cell[data-slot="image"] {
+    container-type: inline-size;
   }
 
   /* ── The grid wall ────────────────────────────────────── */
@@ -1153,7 +2192,15 @@ const indexMembers = [...members].sort((a, b) =>
      there. */
   @media (--bp-desktop) {
     .cgrid[data-pattern="grid"] {
-      --wall-card: 200px;
+      /* STATIC AND CENTRED (2026-10-12, Josh: "Images should be centered in a
+         static grid … and vertically centered!"): square cells, each artwork
+         centred in its cell on both axes, no brick step and no parallax
+         (communityDirectoryController and communityMotionController). Two
+         wide for an hour, then ("on desktop the images can be wider, maybe
+         300px per image and then dynamic depending on viewport width") 300px
+         cells, as many as the window fits — wallMetrics measures the count
+         from this, so it stays a plain length. */
+      --wall-card: 300px;
       --wall-gap-min: 80px;
       /* AND A CEILING, because a spread with only a floor has one bad width.
          Just under a step the row is a card short and the whole of that card's
@@ -1210,14 +2257,16 @@ const indexMembers = [...members].sort((a, b) =>
          floor the parallax sets: a row can close on the one below it as it
          travels, and 30px absorbs that with the wall's damped amplitude (see
          flowScale, which scales it to a third of the spread's). */
-      row-gap: calc(0.75 * var(--wall-gap-min));
+      /* 1.1 × the floor since 2026-10-12 (Josh: "more white space in grid
+         view"), from three quarters: 88px. */
+      row-gap: calc(1.1 * var(--wall-gap-min));
       /* EVERY ROW THE SAME HEIGHT: the frame cap plus the work tile's author
          line (1.2rem, --cwork-chrome in CommunityWorkCard — the third place
          that figure is stated, with the work-cell rule below). It was
          `minmax(0, auto)`, the tallest tile in the row, which made the row
          depth a property of whichever pictures the deal happened to put
          together. A tile shorter than the row sits at its top, as before. */
-      grid-auto-rows: calc(var(--wall-frame) + 1.2rem);
+      grid-auto-rows: var(--wall-frame);
       /* The 18rem tail is the SPREAD's — its cards are out of flow, so its
          last beat needs drawn whitespace under it where every earlier beat
          borrows the next one's. The wall's cards are in flow and its last row
@@ -1247,9 +2296,18 @@ const indexMembers = [...members].sort((a, b) =>
          would eat into a fixed-width track and shrink the card inside it, and
          GSAP owns the transform on every cell (the parallax). The cells are
          already position:relative, for the ?grid labels. */
-      left: var(--row-offset, 0px);
+      left: 0;
       /* The row-gap carries the vertical air now. */
       padding-bottom: 0;
+      /* THE CELL IS THE SQUARE, the tile sits in its middle. */
+      align-self: stretch;
+      align-items: center;
+      justify-content: center;
+    }
+    /* Visible cells only: a bare `display` here outranked the [hidden] rule
+       and put the gallery's hidden cells back into the grid. */
+    .cgrid[data-pattern="grid"] .cgrid__cell:not([hidden]) {
+      display: flex;
       /* The frame cap, stated directly instead of in rhythm units.
          CommunityImageCard computes --frame-cap as --slot-rows × --cgrid-row
          minus the card's chrome (5.4rem, mirrored here), and the wall's slots
@@ -1273,67 +2331,81 @@ const indexMembers = [...members].sort((a, b) =>
        tiles rattling inside rows that are the wrong depth rather than as an
        error. The extra specificity wins wherever this sits in the file. */
     .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
-      --cgrid-row: calc((var(--wall-frame) + 1.2rem) / var(--slot-rows, 1));
+      --cgrid-row: calc(var(--wall-frame) / var(--slot-rows, 1));
     }
   }
 
-  /* ── The strip ────────────────────────────────────────── */
-  /* The horizontal gallery: one grid item spanning all 24 columns and
-     STRIP_ROWS rows (the --gc/--gr inline on it, same convention as a cell),
-     scrolling on its own axis. The cells inside it are flex items again —
-     the grid placement props they carry go inert, which is what makes moving
-     them in and out of here cheap. */
-  .cgrid__strip {
-    grid-column: var(--gc);
-    grid-row: var(--gr);
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding-inline: 0.25rem;
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-border) transparent;
-  }
-
-  /* display:flex above would beat the [hidden] presentational hint. */
-  .cgrid__strip[hidden] {
+  /* ── The wall's section heads ─────────────────────────── */
+  /* One per run when the sort groups the wall (2026-10-15, Josh: "the name
+     of the member and a horizontal line separating the different images
+     from member to member"). Created by the deal (communityDirectoryController,
+     the grid branch), so they exist only on the wall — the rule below is
+     scoped to it all the same, because a view switch hides the grid rather
+     than emptying it. The wall is a MULTICOL flow (the masonry block at the
+     end of this sheet), so a head is a SPANNER: `column-span: all` ends the
+     columns above it, draws the head across the whole measure, and starts
+     fresh, rebalanced columns under it — one run of pictures per head, which
+     is the whole point. THE NAME AND THE LINE SHARE ONE LINE (2026-10-15,
+     Josh: "text and bar in one line"): the head is a flex row, the name
+     first and the rule a flex-grown pseudo-element running from after it to
+     the right edge. It was a border over the top of the name. The air ABOVE
+     the head is its own margin-top on top of the last tile's margin-bottom
+     ("more vertical spacing between bars"), zeroed on the first head, which
+     has no run above it; the margin below holds the name close over its
+     pictures. The voice is NAME (type.css); this rule is layout and colour.
+     :global because the heads are made by the script, which cannot give
+     them this block's scope attribute — the same reason the card roots
+     above are written global. */
+  .cgrid :global(.cgrid__head) {
     display: none;
   }
 
-  @media (--bp-desktop) {
-    /* A thumbnail at rest, the focus size on hover — the width transition is
-       the whole effect: the card inside follows its cell's width (see .ccard
-       in CommunityImageCard), the frame keeps its true aspect, and the flex
-       row pushes the neighbours aside. :focus-within grows a card the
-       keyboard is in, so the enlargement is not mouse-only. */
-    .cgrid__strip .cgrid__cell {
-      flex: none;
-      width: var(--strip-thumb, 13rem);
-      align-self: center;
-      transition: width 380ms cubic-bezier(0.22, 0.61, 0.36, 1);
-    }
+  .cgrid[data-pattern="grid"] :global(.cgrid__head) {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    /* (Was a multicol spanner until the script took over the columns.) */
+    /* 10rem ≈ 130px over the last tile's edge on a desktop and 3.5rem under
+       the head (2026-10-15, "more white space after and before the break",
+       from 7rem / 1.5rem the same afternoon) — twice the 60px the tiles keep
+       between themselves, so a run's end reads as an end. (The tile's own
+       margin-bottom does not add to this: the spanner's margin and the
+       column's trailing margin meet, they do not stack.) */
+    margin: 10rem 0 3.5rem;
+    color: var(--color-dark);
+  }
 
-    .cgrid__strip .cgrid__cell:hover,
-    .cgrid__strip .cgrid__cell:focus-within {
-      width: var(--strip-focus, 28rem);
+  .cgrid[data-pattern="grid"] :global(.cgrid__head:first-of-type) {
+    margin-top: 0;
+  }
+
+  .cgrid[data-pattern="grid"] :global(.cgrid__head::after) {
+    content: "";
+    flex: 1 1 auto;
+    /* THINNER (2026-10-15, "thinner line"): half a device pixel where the
+       screen has one to give, and faded to the muted grey everywhere — a 1x
+       screen rounds 0.5px back up to one, so the colour is what makes it
+       read lighter there. */
+    border-top: 0.5px solid var(--color-muted);
+  }
+
+  @media (--bp-mobile) {
+    .cgrid[data-pattern="grid"] :global(.cgrid__head) {
+      margin: 7rem 0 2.5rem;
     }
   }
 
-  /* Back into flow: the band centres each card on the strip's midline, and a
-     portrait narrowed by --slot-rows still needs centring in its grown cell —
-     auto margins on a static block do both jobs the absolute rule above was
-     doing. */
-  :global(.cgrid__strip .cgrid__cell > .ccard) {
-    position: static;
-    margin-inline: auto;
+  .cgrid :global(.cgrid__head a) {
+    color: inherit;
+    text-decoration: none;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .cgrid__strip .cgrid__cell {
-      transition: none;
-    }
+  .cgrid :global(.cgrid__head a:hover),
+  .cgrid :global(.cgrid__head a:focus-visible) {
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
   }
+
 
   /* The grid wall reads as a wall — aligned rows of equal cells — and a
      card growing a disclosure panel out of one of them breaks that row.
@@ -1369,9 +2441,14 @@ const indexMembers = [...members].sort((a, b) =>
   }
 
   /* ── The index ────────────────────────────────────────── */
-  /* A ledger, not a drawing: thin rules between rows, a fixed reading measure
-     centred in the wide shell. The one view whose geometry is the browser's
-     business, so it needs no slot table, no deal, no motion. */
+  /* A ledger on a phone, a directory of portrait cards on a desktop (the
+     --bp-desktop block at the end of this section, 2026-10-23). One markup
+     for both: a round portrait, then "Name, Role", then the chevron, all of
+     it the disclosure's summary. The ledger lays that out as a line with
+     hairlines between rows and a fixed reading measure centred in the wide
+     shell; the desktop stacks it into a column and tiles the columns. The
+     one view whose geometry is the browser's business, so it needs no slot
+     table, no deal, no motion. */
   .cindex-wrap {
     margin: 0 auto;
     padding: 4rem 0 10rem;
@@ -1380,10 +2457,6 @@ const indexMembers = [...members].sort((a, b) =>
 
   .cindex-wrap[hidden] {
     display: none;
-  }
-
-  .cindex__note {
-    margin: 0 0 1rem;
   }
 
   .cindex {
@@ -1431,11 +2504,15 @@ const indexMembers = [...members].sort((a, b) =>
      mode (see MemberDetailPanel) — the grid was the override, so removing it
      restores the component's own box. */
   .cindex__line :global(.pdisc__toggle) {
-    gap: 0 1.5rem;
+    /* Portrait · who · chevron on one line. The portrait is the summary's
+       first item since 2026-10-23 (it was the open panel's lead), so the
+       line is a contact list's: a small round face, then the name. */
+    align-items: center;
+    gap: 0 0.85rem;
     /* No 2rem right reserve: the chevron is the last flex item and nothing
        runs under it. This was a live bug for a while — see the note in git
        history about a padding-right silently reset by a later shorthand. */
-    padding: 0.85rem 0.25rem;
+    padding: 0.6rem 0.25rem;
     box-sizing: border-box;
     transition: background-color 0.15s;
   }
@@ -1463,25 +2540,49 @@ const indexMembers = [...members].sort((a, b) =>
     background-color: transparent;
   }
 
-  /* The dropdown's lead: the member's profile picture, in the same square
-     frame voice as every other image on the page. */
+  /* The member's profile picture, a circle as on their page (2026-10-14,
+     Josh: "make the index avatar round too"; the shape is the PORTRAITS rule
+     in global.css). On the ledger line it is small, a contact list's; the
+     desktop card sizes it up (see the --bp-desktop block). The hairline ring
+     is what a member without a photo still has: their initials sit inside
+     the same circle, so the ring is the shape and the picture is optional. */
   .cindex__avatar {
     display: block;
-    width: 5rem;
-    height: 5rem;
+    flex: 0 0 auto;
+    width: 2.5rem;
+    height: 2.5rem;
     object-fit: cover;
     border: 1.5px solid var(--color-border);
     background: var(--color-bg);
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+  }
+
+  .cindex__avatar--initials {
+    display: grid;
+    place-items: center;
+    color: var(--color-muted);
+    /* No voice of its own: a monogram, not a word. Sized to the circle. */
+    font-size: calc(var(--fs-100) * 1.05);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    user-select: none;
+  }
+
+  .cindex__line :global(.pdisc__toggle:hover) .cindex__avatar,
+  .cindex__line :global(.pdisc__toggle:focus-visible) .cindex__avatar {
+    border-color: var(--color-dark);
   }
 
   /* The open panel reads as a profile fragment, not a full-measure spread:
-     capped to a reading width, breathing room above and below, and — when
-     there is a picture — the picture LEFT, the words RIGHT, the tag chips
-     running across the bottom. Scoped here so the cards' panels keep their
-     own compact stack; the :has() guard keeps avatar-less rows on the plain
-     column, where an empty picture column would only indent the text. */
+     capped to a reading width, breathing room above and below. One plain
+     column — bio, links, tags, the way to the page — since the portrait
+     moved up onto the summary (2026-10-23) and the two-column picture-left
+     drawing went with it. Scoped here so the cards' panels keep their own
+     compact stack. */
   .cindex__line :global(.pdisc__body) {
-    padding: 1rem 0.25rem 1.4rem;
+    padding: 0.6rem 0.25rem 1.4rem;
   }
 
   .cindex__line :global(.pdisc__body-inner) {
@@ -1489,61 +2590,14 @@ const indexMembers = [...members].sort((a, b) =>
     gap: 1rem;
   }
 
-  .cindex__line :global(.pdisc__body-inner:has(> .cindex__avatar)) {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    column-gap: 1.5rem;
-    row-gap: 1rem;
-    align-items: start;
-  }
-
-  .cindex__line .cindex__avatar {
-    grid-row: 1;
-    grid-column: 1;
-  }
-
-  /* grid-column is inert in the no-avatar rows, which stay a flex column. */
-  .cindex__line :global(.pdisc__bio),
-  .cindex__line :global(.pdisc__row) {
-    grid-column: 2;
-  }
-
   .cindex__line :global(.pdisc__vals--tags) {
-    grid-column: 1 / -1;
     margin-top: 0.35rem;
   }
 
-  /* THE NAMED WAY TO THE MEMBER'S PAGE — at the foot of the open dropdown,
-     and nowhere else since 2026-09-03, when every row became a disclosure (see
-     the row's note). Underlined at rest: it is the one control whose
-     job is to be findable, and the row it belongs to expands instead of
-     travelling, so nothing else announces that the page exists. Muted so it
-     does not outrank the name. Sized and voiced exactly like the image card's
-     .ccard__profile, because it is the same control in the same place. */
-  .cindex__profile {
-    white-space: nowrap;
-    color: var(--color-muted);
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    text-decoration-thickness: 1.5px;
-    transition: color 0.15s;
-  }
-
-  .cindex__profile:hover,
-  .cindex__profile:focus-visible {
-    color: var(--color-dark);
-  }
-
-  /* In the panel it is the last line and it is its OWN line: the avatar rows
-     lay the body out as a two-column grid (picture left, words right), and a
-     link auto-placed into that would land in the picture's column. Full width
-     and ranged left puts it under everything the panel said, which is where
-     MemberDetailPanel's footer slot is meant to read from. `justify-self` so a
-     stretched grid item does not make the whole row clickable. */
-  .cindex__line :global(.pdisc__body-inner) .cindex__profile {
-    grid-column: 1 / -1;
-    justify-self: start;
-  }
+  /* THE NAMED WAY TO THE MEMBER'S PAGE is ProfileLink, the Portfolios
+     card's "PROFILE →" (2026-10-23, Josh: "profile should be the same as
+     the profile button on portfolio"). It was a muted underlined "View
+     profile" of its own here. */
 
   /* The name and its role as ONE unit. Flex, not plain inline flow, for one
      reason: flex drops the whitespace-only text node between the two spans, so
@@ -1583,8 +2637,7 @@ const indexMembers = [...members].sort((a, b) =>
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    /* Voice: NAME in type.css (joined 2026-10-23; it was 600 here). */
     color: var(--color-dark);
   }
 
@@ -1603,7 +2656,7 @@ const indexMembers = [...members].sort((a, b) =>
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: var(--fs-85);
+    /* Voice: META in type.css (joined 2026-10-23; it was --fs-85 here). */
     color: var(--color-muted);
   }
 
@@ -1634,76 +2687,156 @@ const indexMembers = [...members].sort((a, b) =>
       padding: 1.5rem 0 6rem;
     }
 
-    /* Stacked lines instead of two columns: the name line — WITH its role,
-       which now travels with the name instead of being dropped. Mobile used to
-       hide the role because it could not afford a third column for it; beside
-       the name it costs no column at all, and a directory row that says only
-       "Jane Doe" tells a phone reader strictly less than the desktop does for
-       no saving. Closed, it ends in an ellipsis when the measure runs out;
-       open, it wraps under the name (see .cindex__who). */
-    /* One column, and the chevron leaves the grid for the corner it used to
-       hold: four tracks on a phone would give the name about eight characters.
-       The row is still the toggle — it is only laid out as a stack. */
+    /* The phone keeps the ledger: portrait, "Name, Role" ending in an
+       ellipsis, chevron — the line the base rules draw. It used to stack the
+       who under nothing and pin the chevron to the corner, from the days of
+       four tracks; with the portrait on the line a row is a contact list's
+       and the flex line is the right drawing again. Open, the role wraps
+       under the name (see .cindex__who). */
+  }
+
+  /* ── THE DIRECTORY OF CARDS (2026-10-23) ───────────────────
+     Josh: "on desktop the people section can be a directory of cards with
+     their profile pic", then "cards in rows of 3 ... the image smaller and
+     to the left and then the information to the right". So: THREE fixed
+     columns in the 72rem measure, a 4.5rem portrait at the left, name over
+     role at the right, the chevron at the card's far edge. One open at a
+     time — the <details> share a name (see MemberDetailPanel).
+
+     A BOX, AND ONLY THE CARD GROWS (2026-10-23, Josh, after two rounds of
+     unboxed cards under hairlines: "each name sits inside a card and not
+     the whole row expand but just that single card"). Each member is a
+     drawn card now, and an open card grows DOWN OVER the cards beneath it
+     instead of pushing its row taller: nothing else on the page moves.
+     The mechanism is the gallery card's (see MemberDetailPanel's note on
+     .pdisc__body): the <li> reserves the closed card's height in the grid
+     and the card itself, .cindex__line, is absolutely positioned inside it,
+     so its growth never reaches the layout. Do NOT position .pdisc__body
+     instead — ::details-content clips an out-of-flow body to nothing. The
+     card's ground is opaque paper so the panel covers what it lies over. */
+  @media (--bp-desktop) {
+    /* Portrait size and card padding, stated once: the reserved height of
+       a closed card is their sum, plus the two border pixels. */
+    .cindex {
+      --people-portrait: 4.5rem;
+      --people-pad: 1.5rem;
+      /* Wider cards and more air across (2026-10-23, Josh: "wider cards,
+         more white space horizontally"): the measure grows from 72rem to
+         96rem, the columns sit 4rem apart, and the words get 2rem from the
+         card's sides. */
+      --people-pad-x: 2rem;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      /* More white space (Josh, same day, on the first boxed cut). */
+      gap: 3rem 4rem;
+    }
+
+    .cindex__row,
+    .cindex__row:last-child {
+      position: relative;
+      border: 0;
+      min-width: 0;
+      height: calc(var(--people-portrait) + 2 * var(--people-pad) + 2px);
+    }
+
+    /* The open card, and the one being hovered, sit above their
+       neighbours: the open one so its panel covers the row below, the
+       hovered one so its darkened border is not cut by the next card's. */
+    .cindex__row:hover {
+      z-index: 1;
+    }
+
+    .cindex :global(.cindex__row:has(.pdisc[open])) {
+      z-index: 2;
+    }
+
+    .cindex__line {
+      position: absolute;
+      inset: 0 0 auto;
+      border: 1px solid var(--color-border);
+      background: var(--color-bg);
+      transition: border-color 0.15s, box-shadow 0.2s;
+    }
+
+    .cindex__line:hover,
+    .cindex__line:focus-within {
+      border-color: var(--color-dark);
+    }
+
+    .cindex :global(.cindex__line:has(.pdisc[open])) {
+      border-color: var(--color-dark);
+      box-shadow: 0 0.75rem 2rem -0.75rem color-mix(in srgb, var(--color-dark) 35%, transparent);
+    }
+
+    .cindex-wrap {
+      max-width: 96rem;
+    }
+
     .cindex__line :global(.pdisc__toggle) {
+      gap: 0 var(--people-pad);
+      padding: var(--people-pad) var(--people-pad-x);
+    }
+
+    /* No hover tint: the card's border is the hover now. */
+    .cindex__line :global(.pdisc__toggle:hover),
+    .cindex__line :global(.pdisc__toggle:focus-visible) {
+      background-color: transparent;
+    }
+
+    .cindex__avatar {
+      width: var(--people-portrait);
+      height: var(--people-portrait);
+    }
+
+    .cindex__avatar--initials {
+      font-size: var(--fs-125);
+    }
+
+    /* Name over role, ranged left beside the portrait; the comma that
+       joined them on the ledger line goes. Closed, each is one line with an
+       ellipsis (base rules); open, both wrap. */
+    .cindex__who {
       flex-direction: column;
       align-items: flex-start;
-      gap: 0.2rem;
-      padding-right: 2rem;
+      row-gap: 0.25rem;
     }
 
-    /* The stack's flex-start sizes the name box to its CONTENT, which is the
-       whole unwrapped role, so it ran past the row instead of truncating.
-       Stretched, it is held to the row's width and the role's ellipsis fires. */
-    .cindex__who {
-      align-self: stretch;
+    .cindex__role::before {
+      content: none;
     }
 
-    .cindex__line :global(.pdisc__toggle::after) {
-      position: absolute;
-      top: 1.15rem;
-      right: 0.5rem;
-      align-self: start;
+    .cindex__name,
+    .cindex__role {
+      max-width: 100%;
     }
-  }
 
-  /* ?grid — the drawing aid, for tuning the slot table against the real page
-     instead of by arithmetic. Two rectangles per slot:
+    /* The panel takes the card's full width under the portrait row. The
+       component's translucent, blurred ground is for panels over artwork;
+       here the card is already opaque paper. */
+    .cindex__line :global(.pdisc__body) {
+      padding: 0 var(--people-pad-x) var(--people-pad);
+      background: none;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
 
-       The grey outline is the slot exactly as the table reserved it. It needs
-       no debug-only trickery to be that: the cell fills its rows in production
-       too, because the card inside it is out of flow.
+    .cindex__line :global(.pdisc__body-inner) {
+      gap: 0.85rem;
+    }
 
-       There is no second box any more. It marked a 2:3 ceiling that no longer
-       exists: a card is now bounded by its own slot (--slot-rows, read by
-       CommunityImageCard), so nothing can outgrow the grey box and there is
-       nothing to warn about. */
-  .cgrid--debug .cgrid__cell {
-    outline: 1px dashed color-mix(in srgb, var(--color-dark) 30%, transparent);
-  }
+    /* Tags packed closer (2026-10-23, Josh: "tags less vertical spacing"):
+       each <li> was a line box taller than its chip, which added a strut's
+       worth of air under every row of tags on top of the 2px gap. */
+    .cindex__line :global(.pdisc__vals--tags) {
+      row-gap: 5px;
+    }
 
-  .cgrid--debug .cgrid__cell::after {
-    content: attr(data-slot) " r" attr(data-row) "+" attr(data-span) " c" attr(data-col);
-    position: absolute;
-    /* Sits clear of the slot outline it labels — close enough to read as its
-       caption, far enough that the two lines never look like one edge. */
-    top: -2.6rem;
-    left: 0;
-    font-size: var(--fs-65);
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--color-muted);
-    pointer-events: none;
+    .cindex__line :global(.pdisc__vals--tags > li) {
+      display: flex;
+    }
   }
 
   @media (--bp-mobile) {
-    /* If the strip was active on desktop and the viewport crossed the
-       breakpoint, dissolve the wrapper so its cells become ordinary grid
-       items again. Still display:none while hidden — the [hidden] rule above
-       outranks this on specificity. */
-    .cgrid__strip {
-      display: contents;
-    }
 
     .cgrid {
       /* The slot table is a desktop drawing — a phone has no room for it.
@@ -1713,7 +2846,10 @@ const indexMembers = [...members].sort((a, b) =>
          full-width artwork; Grid is the stacked two-column wall. */
       display: grid;
       grid-template-columns: minmax(0, 1fr);
-      row-gap: 4.5rem;
+      /* 112, from 72 (2026-10-12, Josh: "space the cards vertically more"):
+         a card now ends in its name and foot, and at 72 the next picture
+         read as part of it. */
+      row-gap: 112px;
       align-items: start;
       width: auto;
       padding-block: 1.5rem 7rem;
@@ -1724,15 +2860,21 @@ const indexMembers = [...members].sort((a, b) =>
        uniform gap, so varied card heights never leave row-aligned holes.
        :not([hidden]) keeps this from tying with the `.cgrid[hidden]`
        display:none above, which an emptied filter depends on. */
+    /* Two wide and static on a phone too (2026-10-12, "a static grid 2 wide
+       and vertically centered"): square cells in two equal columns, each
+       artwork centred in its cell — it was a two-lane masonry flow. */
     .cgrid[data-pattern="grid"]:not([hidden]) {
-      display: block;
-      columns: 2;
-      column-gap: 1.1rem;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 24px;
+      row-gap: 40px;
     }
 
-    .cgrid[data-pattern="grid"] .cgrid__cell {
-      break-inside: avoid;
-      margin-bottom: 1.1rem;
+    .cgrid[data-pattern="grid"] .cgrid__cell:not([hidden]) {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     /* THE DESKTOP CAP, ON THE PHONE'S COLUMNS (2026-09-08, Josh: "very tall
@@ -1750,7 +2892,7 @@ const indexMembers = [...members].sort((a, b) =>
     .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
       container-type: inline-size;
       --slot-rows: 1;
-      --cgrid-row: calc((1.5 * 100cqw + 1.2rem) / var(--slot-rows, 1));
+      --cgrid-row: calc(100cqw / var(--slot-rows, 1));
     }
 
     .cgrid__cell {
@@ -1766,195 +2908,590 @@ const indexMembers = [...members].sort((a, b) =>
        its rows are DRAWN and nothing may feed back into them; the phone's
        rows ARE the cards, so the absolute rule above would leave every cell
        zero-height with the cards piled at the top. */
-    :global(.cgrid__cell > .ccard),
     :global(.cgrid__cell > .cwork) {
       position: static;
       margin-inline: auto;
     }
-  }
+    /* Relative, not static: the card's fold toggle is positioned against it
+       (MemberDetailPanel's mobile column rules), and the cell's padding below
+       would otherwise put the toggle outside the card. */
+    :global(.cgrid__cell > .ccard) {
+      position: relative;
+      margin-inline: auto;
+    }
 
-  /* ── ARRIVE BRIGHT, LEAVE DIM ───────────────────
-     (2026-09-03, Josh: "highlight only one carousel at a time in gallery
-     mode … the most prominent card is fully opaque the others are a bit
-     faded", xk.studio/work as the reference. 2026-09-04, Josh: "the fade …
-     should only start to happen once the top of the image touches the filter
-     bar", then — the correction that produced the shape below — "until they
-     reach the middle they should be faded out. i liked the fade in so far it
-     should have just changed the fade out".)
-
-     The mobile gallery is a single column of full-width cards, so scrolling it
-     is really paging through one member at a time — but every card in the
-     scrollport was drawn at full strength, which meant half-cards at the edges
-     competing with the one the reader is actually looking at, and three
-     carousels quietly advancing at once. So a card is dim on the way in,
-     reaches full strength around the middle of the screen, HOLDS it for the
-     whole time it is below the filter bar, and gives it up only as it slides
-     under the bar.
-
-     ── WHY THAT IS TWO ANIMATIONS AND NOT ONE ───────
-     Because the two ramps want different clocks, and one keyframe list can
-     only have one.
-     The way IN was always fitted to percentages of `cover`, and can only be
-     fitted: `cover`'s 0%..100% is linear in the SCROLL DISTANCE the whole card
-     travels (its own height plus the scrollport's), not in the screen position
-     of either edge, so "top edge halfway down the screen" falls at a different
-     percentage for a 236px card than for a 502px one. 35% is that fit against
-     this page's real cards (~353px average, spread ~236–502px, against an
-     812px viewport) and it is the fit Josh accepted, so it is kept EXACTLY as
-     it was — this is the ramp that was already liked.
-     The way OUT cannot be fitted, because "touching the filter bar" is a
-     specific line on the screen and a percentage of `cover` is not. It gets
-     its own timeline whose scrollport is INSET from the top by the bar's
-     height, which makes the `exit` range mean "leaving under the bar" rather
-     than "leaving at the top of the scrollport" — exact for every card height,
-     nothing fitted.
-
-     ── HOW THEY HAND OVER: THE FILL MODES ───────────
-     Both animate `opacity`, so the later one in the list wins wherever it
-     contributes at all — and `cgrid-cell-in` is listed second with fill
-     `backwards`, which is the whole trick. `backwards` fills the BEFORE phase
-     only, so the in-ramp holds 0.35 under a card that has not entered yet,
-     drives the ramp while it is entering, and then STOPS CONTRIBUTING at the
-     end of its range. From that moment `cgrid-cell-out` — listed first, fill
-     `both` — is the only animation left, holding its own 0% keyframe (opacity
-     1) until the card reaches the bar. Give the in-ramp `both` instead and it
-     would pin every card at 1 forever and the fade-out would never be seen.
-     The two ranges cannot overlap on this page: the in-ramp ends around 400px
-     of scroll for every card size above, the out-ramp starts at ~771px (the
-     scrollport height less the bar). A card taller than the scrollport would
-     close that gap, and there is none — the tallest is ~502px.
-
-     THE ONLY JS is a single measurement of where the docked filter bar's
-     bottom edge sits (--cgrid-fade-inset), taken on load and when the bar
-     resizes — never while scrolling. No observers, no scroll handler.
-
-     The grid wall gets only the arrival, and a shorter one — see the block
-     after this one. Browsers without scroll-driven animations get every card
-     at full opacity, which is the finished no-motion state and what the page
-     did before.
-
-     (Until 2026-09-28 a 5 s auto-advance in src/lib/communityCarousel.ts
-     followed the same idea of prominence, moving only the card nearest the
-     middle of the scrollport. Autoplay is gone; the fade is the page's only
-     motion of its own now.) */
-  @media (--bp-mobile) and (prefers-reduced-motion: no-preference) {
-    @supports (animation-timeline: view()) {
-      .cgrid:not([data-pattern="grid"]) .cgrid__cell {
-        /* Shorthand first: `animation` resets animation-timeline, so the
-           timelines must be declared after it. Order is load-bearing — see
-           the fill-mode note above. */
-        animation:
-          cgrid-cell-out both,
-          cgrid-cell-in backwards;
-        /* THE INSET IS THE FILTER BAR. `view()`'s inset shrinks the scrollport
-           the timeline is measured against, so moving the out-ramp's start
-           edge down to the docked bar's bottom makes `exit` mean "against the
-           bar" rather than "against the top of the scrollport" — which is what
-           the bar is, visually: the top of the page. Measured into
-           --cgrid-fade-inset by the page-load handler, because the bar's
-           height is type metrics and its dock offset is a calc that has
-           already had to be restated twice; the fallback is a plausible phone
-           value for the frame before the measurement lands.
-           The in-ramp keeps the plain, un-inset `view()` it always had. */
-        animation-timeline:
-          view(block var(--cgrid-fade-inset, 40px) 0px),
-          view();
-        /* `exit` — the card's departure UNDER THE BAR, and nothing else: 0% is
-           its top edge meeting the bar's bottom, 100% its own bottom edge
-           passing the same line. Against `cover 0% 35%`, which is the arrival,
-           unchanged. */
-        animation-range:
-          exit 0% exit 100%,
-          cover 0% cover 35%;
-      }
+    /* AIR AT THE SIDES of the gallery's cards (2026-10-12, Josh: "it is too
+       wide, it can benefit from a bit of white space"): main's 15px gutter
+       made each card the screen's width less a hairline, so the picture
+       ran all but edge to edge. The wall's two lanes keep
+       their width. */
+    .cgrid__cell[data-slot="image"] {
+      padding-inline: 24px;
     }
   }
 
-  /* ── THE PHONE'S GRID FADES IN TOO ───────────────
-     (2026-09-26, Josh: "the grid should have a faint fade in animation also on
-     mobile".) The desktop wall has always arrived — GSAP's grow-on-approach,
-     0.2 → 1 with a scale — but that layer is desktop-only by design (mobile
-     downloads no GSAP at all), so the phone's two-column wall just sat there.
-     This gives it the arrival and nothing else: no scale, no parallax, and no
-     fade-OUT, because the wall is a reference view to scan, not a column to
-     page through, and a tile dimming under the bar would read as greyed out.
-
-     (Same day, Josh: "make the mobile fade more pronounced".) The first cut
-     borrowed the gallery's 0.35 → 1 over the tile's `entry` alone, finished
-     the instant the whole tile was on screen — so short and so shallow that
-     it barely read. Now it is deeper AND longer, with keyframes of its own so
-     the gallery's liked fade is untouched:
-     - DEEPER: `cgrid-wall-in` starts at 0 — fully invisible below the fold
-       (Josh, same day: "fade from 0", after 0.12). A tile appears out of the
-       paper rather than brightening from a ghost.
-     - LONGER: `entry 0%` → `cover 30%`. It still starts as the top edge
-       crosses the bottom of the screen, but runs on until the tile is well
-       into the lower third (~300px of scroll for the page's ~180px tiles),
-       so the arrival is something you watch rather than a flicker.
-     Fill `backwards` for the same reason as the gallery's in-ramp: it holds
-     the dim start below the fold, then stops contributing and leaves the
-     tile at its own opacity of 1 for good. */
-  @media (--bp-mobile) and (prefers-reduced-motion: no-preference) {
-    @supports (animation-timeline: view()) {
-      .cgrid[data-pattern="grid"] .cgrid__cell {
-        /* LONGHANDS, NOT THE SHORTHAND — load-bearing. Written as
-           `animation: … ; animation-timeline: view()`, the build's CSS
-           minifier folds the timeline INTO the shorthand
-           (`animation: backwards cgrid-cell-in view()`), which no browser
-           accepts, so the whole declaration is dropped and the tile never
-           animates. The dev server does not minify, so it looked fine
-           locally and shipped dead (PR #111). The gallery rule above escapes
-           the fold only because it has two timelines. */
-        animation-name: cgrid-wall-in;
-        animation-fill-mode: backwards;
-        animation-timeline: view();
-        animation-range: entry 0% cover 30%;
-      }
-    }
-  }
-
-  /* @keyframes are global in Astro (see CLAUDE.md) — hence the prefix.
-
-     Opacity-only, both ways: the translateY these used to carry read as "the
-     card arriving/leaving" rather than a pure fade, and made the effect feel
-     softer than intended. Motion is gone; only the fade remains.
-
-     0.35 rather than the ~0.3 the xk.studio reference reads at: that page is
-     white on black, where a dimmed thing recedes into the ground, and this one
-     is dark on off-white, where the same figure washes a photograph out
-     instead of pushing it back. Far enough to be unmistakably secondary, near
-     enough that the card either side of the one in hand is still a picture. */
-  @keyframes cgrid-cell-in {
-    0% {
-      opacity: 0.35;
-    }
-    100% {
-      opacity: 1;
-    }
-  }
-
-  @keyframes cgrid-wall-in {
-    0% {
-      opacity: 0;
-    }
-    100% {
-      opacity: 1;
-    }
-  }
-
-  @keyframes cgrid-cell-out {
-    0% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 0.35;
-    }
-  }
 
   .community-signup-cta {
     padding-top: 5rem;
     display: flex;
     justify-content: center;
+  }
+
+  /* ── IMAGES AS A MASONRY (2026-10-12) ─────────────────────────
+     Josh, with illustratoren-schweiz.ch's grid as the reference: "the grid
+     view like this". Columns about 300px wide — as many as the window fits on
+     a desktop, two on a phone — each work at its own aspect, full column
+     width, one straight under the next (multicol packs the columns, so no
+     row leaves holes and the columns start out of step, as the reference's
+     do). Static: no brick, no parallax. The deal still writes its slots;
+     multicol ignores them. Stated last in this block so it outranks the
+     square-cell grid above at equal specificity on every width.
+     PICTURES ONLY, WITH MORE AIR (2026-10-13, Josh: "remove the names that
+     still appear under the pictures", "give the grid a bit more space"): the
+     tile lost its name line (CommunityWorkCard), so the gaps below carry the
+     whole distance between two works — wider than the day before on both
+     axes, so the wall reads as pictures on paper rather than a contact
+     sheet.
+     PLACED BY THE SCRIPT, NOT BY MULTICOL (2026-10-15, Josh: "there is a
+     weird stagger for the right column if sorted"). Multicol BALANCES: it
+     cuts the run at half its height and a tile that will not break goes
+     over to the next column, so a group of three stood as one tile on the
+     left and two on the right with a hole under the first — invisible in
+     one wall of forty tiles, plain in a sorted run of three. The deal now
+     builds each run as a flex row of N columns (`.cgrid__run` > `.cgrid__col`)
+     and drops every tile into the SHORTEST column, heights known from the
+     picture's own aspect (communityDirectoryController, the grid branch).
+     The three knobs the script reads are here: the column it aims for, the
+     gutter, and the air under a tile — the same 300 / 60 / 60 the multicol
+     drew (32 / 44 on a phone, two columns fixed). */
+  .cgrid[data-pattern="grid"]:not([hidden]) {
+    display: block;
+    --masonry-col: 220px;
+    --masonry-gap: 60px;
+    --masonry-tile-gap: 60px;
+    /* 0 = as many 220px columns as the measure holds; a phone fixes 2.
+       220 (2026-10-16, Josh): six columns on a 16" MacBook (1728px). */
+    --masonry-cols: 0;
+  }
+  /* A SHORT RUN STANDS IN THE MIDDLE (2026-10-30, Josh: "when there are
+     not a lot of images they should arrange in the middle"). The deal
+     builds only as many columns as a run has tiles (never more than the
+     measure's count, `--run-cols`, which it writes on the run) and every
+     column keeps the width a full run would give it, so three pictures in
+     a six-column measure stand centred at the usual size, not spread over
+     the whole width or pushed to the left. */
+  .cgrid[data-pattern="grid"] :global(.cgrid__run) {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: var(--masonry-gap);
+  }
+  .cgrid[data-pattern="grid"] :global(.cgrid__col) {
+    flex: 0 1 calc((100% - (var(--run-cols, 1) - 1) * var(--masonry-gap)) / var(--run-cols, 1));
+    min-width: 0;
+  }
+  .cgrid[data-pattern="grid"] .cgrid__cell:not([hidden]) {
+    display: block;
+    aspect-ratio: auto;
+    left: 0;
+    margin-bottom: var(--masonry-tile-gap);
+  }
+  /* The tallest a work may stand: one and a half times its column. */
+  .cgrid[data-pattern="grid"] .cgrid__cell[data-slot="work"] {
+    container-type: inline-size;
+    --slot-rows: 1;
+    --cgrid-row: calc(1.5 * 100cqw / var(--slot-rows, 1));
+  }
+  @media (--bp-mobile) {
+    .cgrid[data-pattern="grid"]:not([hidden]) {
+      --masonry-cols: 2;
+      --masonry-gap: 32px;
+      --masonry-tile-gap: 44px;
+    }
+  }
+
+  /* ── THE BAR ON A DESKTOP: A FLOATING STRIP (2026-10-27) ──────
+     Josh's top-bar mock (design-kit/mockups/vscn-desktop-topbar.af,
+     Artboard 2): the header is only VSCN and the account, and the
+     directory's controls float at the bottom centre as one strip of separate
+     pills, smaller than before (32px, were 36):
+       · search, Tags and Sort are round buttons with a drawn icon (their
+         words stay as the button's name, clipped); Tags fills black while a
+         tag is set;
+       · the three views are one segmented track, the current one black;
+       · the capsule at rest is nothing — each control has its own hairline;
+       · the panels RISE from the strip as rounded cards instead of growing
+         the pill, so the size animation (sizeBar) is not run, see setBarMenu;
+       · the search opens IN PLACE: its field is laid over the strip, the
+         results card above it.
+     From 2026-10-26 to 2026-10-27 the same controls stood in the header row
+     (595609c); the view tabs, the per-control pills and the panels as cards
+     come from that pass. Phones are untouched. (Since 2026-10-28 the phone
+     draws the same controls; see the shared block below.) */
+
+  @keyframes cbar-drop {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (--bp-desktop) {
+    /* BIGGER (2026-10-27, Josh: "the pills on desktop need to be bigger"):
+       40px, were 32. AT THE TOP AGAIN (same day, "put the pills at the top
+       again"): the strip stands in the header's row, centred between VSCN and
+       the account, and its panels DROP from it. THE DESIGN FILE (2026-10-28,
+       vscn-design.af board 04): 44px, the views 36 inside a 4px inset.
+       ONE SET SMALLER (2026-10-28, Josh: "the nav buttons should all be one
+       set smaller"): 36px, the views 30 inside the 3px inset, 12px type. */
+    .community-bar {
+      --bar-h: 36px;
+      --bar-gap: 10px;
+      top: calc((var(--header-h) - var(--bar-h)) / 2);
+      bottom: auto;
+    }
+
+    .community-bar__in {
+      position: relative;
+      display: block;
+      overflow: visible;
+      padding: 0;
+      border: none;
+      background: none;
+      max-width: none;
+      transition: none;
+      border-radius: 0 !important;
+    }
+
+    .community-bar__row {
+      gap: var(--bar-gap);
+      height: var(--bar-h);
+    }
+
+    .search-menu {
+      order: 1;
+    }
+    .view-seg {
+      order: 2;
+    }
+    .tag-filter {
+      order: 3;
+    }
+    .sort-menu {
+      order: 4;
+    }
+    .view-menu {
+      display: none;
+    }
+  }
+
+  /* THE SAME CONTROLS ON A PHONE (2026-10-28, Josh: "on mobile update the
+     bottom bar on portfolios to be same to the desktop one"): the search,
+     Tags and Sort circles and the segmented views, drawn by the rules below
+     at both widths; the phone's own block after them sizes them for a
+     thumb and keeps the island's drop-ups. */
+  @media all {
+    /* A pill each: the border colour's hairline, paper inside. */
+    .bar-menu__trigger {
+      position: relative;
+      box-sizing: border-box;
+      height: var(--bar-h);
+      padding: 0 14px;
+      gap: 6px;
+      border: 1px solid var(--color-border);
+    }
+    .bar-menu__trigger:hover,
+    .bar-menu__trigger[aria-expanded="true"],
+    .bar-menu__trigger.filter-word--set {
+      border-color: var(--color-dark);
+    }
+
+    /* Search, Tags and Sort are circles holding an icon; the word is the
+       button's name only. */
+    .search-menu .bar-menu__trigger,
+    .tag-filter .bar-menu__trigger,
+    .sort-menu .bar-menu__trigger {
+      width: var(--bar-h);
+      padding: 0;
+      justify-content: center;
+    }
+    .tag-filter .bar-menu__trigger > span,
+    .sort-menu .bar-menu__trigger > span {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    .bar-menu__chev {
+      display: none;
+    }
+    .search__glass {
+      width: 15px;
+      height: 15px;
+    }
+    .bar-ico {
+      display: block;
+      width: 16px;
+      height: 16px;
+      flex: none;
+    }
+
+    /* The segmented views: a track, the current one a black pill in it. */
+    .view-seg {
+      display: flex;
+      align-items: center;
+      box-sizing: border-box;
+      height: var(--bar-h);
+      padding: 3px;
+      gap: 0;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-pill);
+      background: var(--color-bg);
+    }
+    .view-seg {
+      position: relative;
+    }
+    .view-seg__thumb {
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      left: 0;
+      width: var(--thumb-w, 0px);
+      transform: translateX(var(--thumb-x, 0px));
+      border-radius: var(--radius-pill) !important;
+      background: var(--color-dark);
+      pointer-events: none;
+    }
+    .view-seg[data-thumb-ready] .view-seg__thumb {
+      transition:
+        transform 0.34s cubic-bezier(0.3, 1.25, 0.5, 1),
+        width 0.34s cubic-bezier(0.3, 1.25, 0.5, 1);
+    }
+    .view-seg .view-toggle__btn {
+      position: relative;
+      z-index: 1;
+      transition:
+        color 0.2s ease,
+        background-color 0.2s ease;
+      display: block;
+      flex: none;
+      height: 100%;
+      padding: 0 18px;
+      font-size: var(--fs-85) !important;
+      font-weight: 400;
+      letter-spacing: 0.005em;
+      text-transform: uppercase;
+    }
+    .view-seg .view-toggle__btn:hover,
+    .view-seg .view-toggle__btn:focus-visible {
+      box-shadow: none;
+      background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
+    }
+    .view-seg .view-toggle__btn:focus-visible {
+      outline: 1.5px solid var(--color-dark);
+      outline-offset: 1px;
+    }
+    .view-seg .view-toggle__btn[aria-pressed="true"],
+    .view-seg .view-toggle__btn[aria-pressed="true"]:hover {
+      background: transparent;
+      color: var(--color-bg);
+    }
+    .view-seg .view-toggle__btn[aria-pressed="true"]::after {
+      content: none;
+    }
+  }
+
+  @media (--bp-mobile) {
+    /* A thumb's size, and the order the desktop strip reads in. */
+    .community-bar {
+      --bar-h: 38px;
+    }
+    .community-bar__row {
+      gap: 6px;
+    }
+    .search-menu {
+      order: 1;
+    }
+    .view-seg {
+      order: 2;
+    }
+    .tag-filter {
+      order: 3;
+    }
+    .sort-menu {
+      order: 4;
+    }
+    .view-menu {
+      display: none;
+    }
+    /* The views give way first on a narrow phone, so the row (with Sort on
+       Images) stays inside the screen. */
+    .view-seg .view-toggle__btn {
+      padding: 0 clamp(8px, 2.8vw, 16px);
+      font-size: var(--fs-75) !important;
+    }
+    /* The island draws nothing round the pills — each is its own outlined
+       pill, as on a desktop. Its border and padding stay, clear, so the row
+       does not move. */
+    .community-bar .community-bar__in {
+      border-color: transparent;
+      background: transparent;
+    }
+    .community-bar .community-bar__in:not([data-sizing]) {
+      overflow: visible;
+    }
+    /* SEARCH, TAGS AND SORT: ONE CARD, OVER THE BAR (2026-10-29, Josh:
+       "unify the UX across filter sort and search. also the pills should
+       morph over the bottom bar"). Each opens the same card, the bar's full
+       width, its foot on the bar's foot so it covers the pills, grown out
+       of its own pill (growFromPill). Its height stops below the header
+       and above the keyboard (--bar-room, fitBarToKeyboard). Until
+       2026-10-28 the search was a full-screen sheet and Tags and Sort cards
+       floating above the pills. */
+    .community-bar .community-bar__panels {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 2;
+      display: block;
+      pointer-events: none;
+    }
+    .community-bar .community-bar__panels:not(:has(> :not([hidden]))) {
+      display: none;
+    }
+    .community-bar .bar-menu__panel {
+      --card-max: min(60vh, 28rem, calc(var(--bar-room, 100vh) - var(--header-h) - 20px));
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      translate: -50% 0;
+      box-sizing: border-box;
+      /* 8px off the screen's sides: the row runs a few px past the
+         island's box, and the card must cover its end pills. */
+      width: calc(100vw - 16px);
+      max-width: none;
+      max-height: var(--card-max);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      margin: 0;
+      padding: 10px;
+      pointer-events: auto;
+      border: 1px solid var(--color-border);
+      border-radius: 22px !important;
+      background: var(--color-bg);
+      box-shadow: 0 -6px 30px rgb(0 0 0 / 0.1);
+    }
+    .community-bar .bar-menu__panel[hidden] {
+      display: none;
+    }
+    /* The search holds its height while the results change under the
+       field, which stays at the top as the rows scroll. */
+    .community-bar .search__panel {
+      display: flex;
+      flex-direction: column;
+      height: var(--card-max);
+      overflow: hidden;
+    }
+    .community-bar .search__head {
+      position: static;
+      flex: none;
+      margin: 0 0 6px;
+      padding: 0;
+    }
+    .community-bar .search__results {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    /* THE SEARCH FILLS THE SCREEN (2026-10-29, Josh: "please make search
+       full screen on mobile"). Its card covers the whole visible screen,
+       header included, from the top edge down to the keyboard (or the
+       screen's foot); it still grows out of its pill and folds back by the
+       handle. Tags and Sort stay cards over the bar. The bar climbs over
+       the header (z 20 → 40) while it is open. */
+    .community-bar:has(#search-panel:not([hidden])) {
+      z-index: 40;
+    }
+    /* TO THE SCREEN'S FOOT, BEHIND THE KEYBOARD (2026-10-29, Josh: "the
+       search bar does not cover the full screen we can still see the site
+       behind it"). The paper stopped at the keyboard's top (--bar-kb), and
+       the iOS keyboard is see-through and floats its suggestion bar above
+       itself, so the People list showed in the strip between them and
+       through the keys. The paper now runs to the bottom; the keyboard's
+       height is padding, so the results still end above it. */
+    .community-bar .search__panel {
+      position: fixed;
+      top: var(--bar-vtop, 0px);
+      bottom: 0;
+      left: 0;
+      right: 0;
+      translate: none;
+      width: auto;
+      height: auto;
+      max-height: none;
+      padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px
+        calc(var(--bar-kb, 0px) + env(safe-area-inset-bottom, 0px) + 12px);
+      border: 0;
+      border-radius: 0 !important;
+      box-shadow: none;
+    }
+    /* The tags' card the same way: the handle and the field stand, the
+       chips scroll under them. */
+    .community-bar .tag-filter__panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .community-bar .tag-filter__head,
+    .community-bar .tag-filter__scope {
+      flex: none;
+    }
+    .community-bar .tag-filter__list {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    /* The fold handle: the card's top edge, a chevron pointing the way it
+       folds. */
+    .community-bar .bar-card__handle {
+      display: grid;
+      place-items: center;
+      flex: none;
+      align-self: stretch;
+      width: auto;
+      height: 24px;
+      margin: -6px 0 2px;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--color-muted);
+      cursor: pointer;
+      touch-action: none;
+    }
+    .community-bar .bar-card__handle svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+  }
+
+  .bar-card__handle {
+    display: none;
+  }
+
+  /* NO SHIFT BETWEEN VIEWS (2026-10-28, Josh: "there is still a shift in the
+     buttons after selecting another button (i.e. switching portfolio to
+     images)"). Sort, the wall's alone, used to join the row on Images and
+     leave it elsewhere, so the centred row moved by half a pill each time.
+     It keeps its place now, unseen and out of reach off the wall. */
+  .sort-menu[hidden] {
+    display: flex;
+    visibility: hidden;
+  }
+
+  @media (--bp-desktop) {
+    /* THE CARDS COVER THE STRIP (2026-10-29, Josh: "on desktop the search
+       tag etc. also need to cover the others with a smooth animation as in
+       mobile"). Search, Tags and Sort each open one card laid OVER the
+       strip, a rim wider than it on every side so the other pills are
+       hidden, grown out of its own pill (growFromPill). Until then the
+       cards dropped under the strip and the search's field lay across it. */
+    .community-bar__panels {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 2;
+      display: block;
+      pointer-events: none;
+    }
+    .community-bar__panels:not(:has(> :not([hidden]))) {
+      display: none;
+    }
+    .bar-menu__panel {
+      --card-rim: 6px;
+      position: absolute;
+      top: calc(-1 * var(--card-rim));
+      left: 50%;
+      translate: -50% 0;
+      min-width: calc(100% + 2 * var(--card-rim));
+      max-width: calc(100vw - 32px);
+      max-height: min(70vh, 32rem);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      margin: 0;
+      padding: var(--card-rim);
+      pointer-events: auto;
+      border: 1px solid var(--color-border);
+      border-radius: calc(var(--bar-h) / 2 + var(--card-rim)) !important;
+      background: var(--color-bg);
+      box-shadow: 0 10px 30px rgb(0 0 0 / 0.1);
+      /* It grows out of its pill instead (growFromPill in the controller). */
+      animation: none;
+    }
+    .bar-menu__panel[hidden] {
+      display: none;
+    }
+
+    /* The search: the field at the card's top, where the strip was, and
+       the results under it, scrolling while the field stands. */
+    .search__panel {
+      display: flex;
+      flex-direction: column;
+      width: min(30rem, calc(100vw - 48px));
+      overflow: hidden;
+    }
+    .search__head {
+      position: relative;
+      flex: none;
+      height: var(--bar-h);
+      margin: 0 0 6px;
+      padding: 0;
+      background: none;
+    }
+    .search__input {
+      background-color: var(--color-bg);
+      height: 100%;
+      padding: 0 76px 0 32px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Ccircle cx='5' cy='5' r='3.6' fill='none' stroke='%23000' stroke-width='1.3'/%3E%3Cpath d='M7.7 7.7L11 11' fill='none' stroke='%23000' stroke-width='1.3'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: 12px 50%;
+      background-size: 11px;
+      border-color: var(--color-border);
+    }
+    .search__input:focus {
+      border-color: var(--color-dark);
+      box-shadow: none;
+    }
+    .search__cancel {
+      display: block;
+      position: absolute;
+      right: 4px;
+      top: 50%;
+      translate: 0 -50%;
+      padding: 0.3rem 0.7rem;
+    }
+    .search__results {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: var(--color-border) transparent;
+    }
   }
 </style>
 
@@ -1963,3 +3500,5 @@ const indexMembers = [...members].sort((a, b) =>
 <script>import "../lib/communityMotionController.ts";</script>
 
 <script>import "../lib/communityLightboxController.ts";</script>
+
+<script>import "../lib/wordsFit.ts";</script>

@@ -25,9 +25,9 @@
 //   - THE `--preview` PADDING OVERRIDE, which zeroed `padding-block: 3rem
 //     10rem`. That padding is the page's own placement, and the point of this
 //     component is that the page's placement is what gets shown.
-// What is left is a rule above and a rule below. They are the only thing that
-// is not the page, and all that is needed: a thematic break is exactly what
-// the boundary between the form and the rendering IS.
+// What was left was a rule above and a rule below, and those went too
+// (2026-10-13, Josh: "the horizontal bars on the gallery card can be
+// removed!"): the Works tab IS the page now, with nothing to set it off from.
 //
 // `.mprof__empty`, the "no images yet" note, stays — it is the one editor-only
 // element with nothing to say once the member has artwork. The real page
@@ -50,9 +50,9 @@ const t = useTranslations(lang);
 ---
 
 <div class="ppv-stage">
-  <hr class="ppv-rule" />
-
   <article class="mprof mprof--preview" data-ppv-root>
+    {/* The person: the left column on a desktop, as on the page. */}
+    <div class="mprof__aside">
     <header class="mprof__head">
       {
         /* Hidden until the member has a picture, which is also how the grid
@@ -69,7 +69,6 @@ const t = useTranslations(lang);
         <p class="mprof__role" data-ppv="role" hidden></p>
         <p class="mprof__affiliation" data-ppv="affiliation" hidden></p>
         <p class="mprof__where" data-ppv="where" hidden></p>
-        <p class="mprof__open" data-ppv="open" hidden></p>
       </div>
     </header>
 
@@ -96,9 +95,17 @@ const t = useTranslations(lang);
         <ul class="mprof__vals mprof__vals--links" data-ppv="links"></ul>
       </div>
     </div>
+    </div>
 
-    <div class="mprof__works" data-ppv="works" hidden></div>
+    <div class="mprof__works" data-ppv="works" data-index-label={t("member.index")} hidden></div>
     <p class="mprof__empty" data-ppv="works-empty" hidden></p>
+    {
+      /* THE EDITOR'S PLACE (2026-10-13): the profile editor's Works tab
+         renders its rows here, in the page's works column, in edit mode —
+         WorkEditor.astro fills the slot; every other consumer leaves it
+         empty. */
+    }
+    <slot name="editor" />
 
     {
       /* Cloned by the renderer. Rendered here rather than built in JS for
@@ -142,7 +149,6 @@ const t = useTranslations(lang);
         <a class="mprof__work-link" target="_blank" rel="noreferrer"><img class="mprof__img" alt="" decoding="async" /><span class="vscn-play vscn-play--over" data-ppv-work="play" aria-hidden="true" hidden></span></a>
         <figcaption class="mprof__caption" data-ppv-work="caption-block" hidden>
           <span class="mprof__caption-line" data-ppv-work="caption" hidden></span>
-          <span class="mprof__desc" data-ppv-work="desc" hidden></span>
           {/* Where the image appeared. A real anchor carrying the page's own
               .mprof__link — both consumers share one stylesheet, so there is
               nothing left to mirror by hand, which is the point. */}
@@ -152,6 +158,58 @@ const t = useTranslations(lang);
           </span>
         </figcaption>
       </figure></template
+    >
+    {
+      /* A WORK CAROUSEL (2026-10-23): MemberCarousel.astro's own markup, class
+         for class and hook for hook, so profile.css and the shared engine
+         (communityCarousel.ts) apply untouched. The renderer fills the track
+         with clones of `cslide`, the captions with clones of `ccaption` and the
+         strip with clones of `cdot`. The labels the page gets from t() are
+         written here, where t() is in reach: the frame's roledescription, the
+         arrows' names, the slides' roledescription, and the two strings the
+         renderer composes per slide (data-open-image, data-position-label). */
+    }
+    <template data-ppv-tpl="carousel"
+      ><figure class="mprof__work mprof__carousel" data-carousel-scope>
+        <div
+          class="mprof__cframe"
+          data-carousel
+          role="group"
+          aria-roledescription={t("community.card.carousel")}
+          data-position-label={t("community.card.imagePosition")}
+          data-open-image={t("community.card.openImage")}
+          data-work-alt={t("member.workAlt")}
+        >
+          <div class="mprof__ctrack" data-carousel-track style="overflow: auto hidden"></div>
+          <button class="mprof__carrow mprof__carrow--prev" type="button" data-carousel-prev aria-label={t("community.card.prev")}>
+            <span aria-hidden="true"></span>
+          </button>
+          <button class="mprof__carrow mprof__carrow--next" type="button" data-carousel-next aria-label={t("community.card.next")}>
+            <span aria-hidden="true"></span>
+          </button>
+          <p class="mprof__clive" aria-live="polite" aria-atomic="true" data-carousel-live></p>
+        </div>
+        <div class="mprof__cdots" data-carousel-dots>
+          <span class="cdots" aria-hidden="true"><span class="cdots__strip" data-ppv-c="dots"></span></span>
+        </div>
+        <div class="mprof__captions" data-ppv-c="captions"></div>
+      </figure></template
+    >
+    <template data-ppv-tpl="cslide"
+      ><a class="mprof__work-link" data-carousel-slide target="_blank" rel="noreferrer" aria-roledescription={t("community.card.image")}><img class="mprof__img" data-carousel-img alt="" decoding="async" /><span class="vscn-play vscn-play--over" data-ppv-work="play" aria-hidden="true" hidden></span></a
+      ></template
+    >
+    <template data-ppv-tpl="cdot"
+      ><button class="cdot" type="button" tabindex="-1" data-carousel-dot></button></template
+    >
+    <template data-ppv-tpl="ccaption"
+      ><figcaption class="mprof__caption" data-slide-caption>
+        <span class="mprof__caption-line" data-ppv-work="caption" hidden></span>
+        <span class="mprof__caption-links" data-ppv-work="links" hidden>
+          <a class="mprof__link" data-ppv-work="site-link" target="_blank" rel="noopener" hidden></a>
+          <a class="mprof__link" data-ppv-work="link" target="_blank" rel="noopener" hidden></a>
+        </span>
+      </figcaption></template
     >
     {
       /* A PROJECT BLOCK (2026-09-23), cloned once per project that holds at
@@ -164,41 +222,17 @@ const t = useTranslations(lang);
       <section class="mprof__project">
         <div class="mprof__project-head">
           <h2 class="mprof__project-title" data-ppv-project="title"></h2>
-          <p class="mprof__project-desc" data-ppv-project="desc"></p>
-          <p class="mprof__project-with" data-ppv-project="with"></p>
           <p class="mprof__project-links" data-ppv-project="link">
             <a class="mprof__link" target="_blank" rel="noopener"></a>
           </p>
+          <p class="mprof__project-desc" data-ppv-project="desc"></p>
+          <p class="mprof__project-with" data-ppv-project="with"></p>
           <ul class="mprof__vals mprof__project-tags" data-ppv-project="tags"></ul>
         </div>
         <div data-ppv-project="works" style="display: contents"></div>
       </section>
     </template>
-    {
-      /* A PROJECT'S CAROUSEL (2026-09-26), wrapped around a project's figures
-         when it has two or more — MemberProject.astro's markup, attribute for
-         attribute, so projectCarousel.ts wires both the same way. The
-         renderer writes the labels and one slide per work; the script draws
-         the dots. */
-    }
-    <template data-ppv-tpl="carousel">
-      <div class="mprof__carousel" data-carousel>
-        <div class="mprof__carousel-dots" data-carousel-dots></div>
-        <div class="mprof__carousel-stage">
-          <div class="mprof__carousel-track" data-carousel-track tabindex="0" role="region"></div>
-          <button class="mprof__carousel-arrow mprof__carousel-arrow--prev" type="button" data-carousel-prev>
-            <span aria-hidden="true"></span>
-          </button>
-          <button class="mprof__carousel-arrow mprof__carousel-arrow--next" type="button" data-carousel-next>
-            <span aria-hidden="true"></span>
-          </button>
-        </div>
-        <p class="mprof__carousel-live" aria-live="polite" aria-atomic="true" data-carousel-live></p>
-      </div>
-    </template>
   </article>
-
-  <hr class="ppv-rule" />
 </div>
 
 <style>
@@ -207,16 +241,5 @@ const t = useTranslations(lang);
      here may describe it. */
   .ppv-stage {
     font-family: "Archivo", sans-serif;
-  }
-
-  /* The rule the whole thing now hangs on: one hairline in the border token,
-     square and full width, with no margin of its own. The page's own
-     padding-block is the air on either side of it — adding more here would be
-     the sheet's padding coming back under another name. */
-  .ppv-rule {
-    height: 0;
-    margin: 0;
-    border: 0;
-    border-top: 1px solid var(--color-border);
   }
 </style>

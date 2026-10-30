@@ -731,11 +731,12 @@ test("communication preferences validate private creates and public updates", as
 });
 
 // ── PROJECTS (2026-09-23, documentation/20260923-projects-design.md) ─────────
+// A title since 2026-10-16: every project carries one (validProject).
 function projectDoc(uid, overrides = {}) {
-  return { ownerUid: uid, createdAt: new Date(), updatedAt: new Date(), ...overrides };
+  return { ownerUid: uid, title: "Works", createdAt: new Date(), updatedAt: new Date(), ...overrides };
 }
 
-test("projects: the owner creates, edits and deletes their own; all fields optional", async () => {
+test("projects: the owner creates, edits and deletes their own; only the title is required", async () => {
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
   await assertSucceeds(db.doc("projects/p1").set(projectDoc(OWNER)));
   await assertSucceeds(db.doc("projects/p1").update({
@@ -749,6 +750,22 @@ test("projects: the owner creates, edits and deletes their own; all fields optio
   await assertSucceeds(db.doc("projects/p1").get());
   await assertSucceeds(db.collection("projects").where("ownerUid", "==", OWNER).get());
   await assertSucceeds(db.doc("projects/p1").delete());
+});
+
+test("projects: a title is mandatory — absent, blank, not a string or deleted is refused", async () => {
+  // 2026-10-16, Josh: "We need always a Project, just a title is mandatory".
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  const bare = { ownerUid: OWNER, createdAt: new Date(), updatedAt: new Date() };
+  await assertFails(db.doc("projects/p1").set(bare));
+  await assertFails(db.doc("projects/p1").set({ ...bare, titleDe: "Nur Deutsch" }));
+  await assertFails(db.doc("projects/p1").set({ ...bare, title: "" }));
+  await assertFails(db.doc("projects/p1").set({ ...bare, title: "   " }));
+  await assertFails(db.doc("projects/p1").set({ ...bare, title: " \t\n " }));
+  await assertFails(db.doc("projects/p1").set({ ...bare, title: 42 }));
+  await assertSucceeds(db.doc("projects/p1").set({ ...bare, title: " A " }));
+  await assertSucceeds(db.doc("projects/p1").update({ title: "Two\nlines", updatedAt: new Date() }));
+  await assertFails(db.doc("projects/p1").update({ title: deleteField(), updatedAt: new Date() }));
+  await assertFails(db.doc("projects/p1").update({ title: " ", updatedAt: new Date() }));
 });
 
 test("projects: caps hold — title, description, link, affiliation count and each entry", async () => {
@@ -803,16 +820,21 @@ test("projects: the exact payloads saveProjects() sends pass the rules — creat
   // The fixture must exercise every key an update writes, or a new key would
   // only ever be sent as deleteField() here and never reach hasOnly.
   assert.deepEqual(Object.keys(projectsModule.projectFields(full)).sort(), [...EDITABLE].sort());
-  const empty = { projectId: "p2" };
-  assert.deepEqual(projectsModule.projectFields(empty), {});
+  // The least a project can be since 2026-10-16: its title.
+  const empty = { projectId: "p2", title: "Only a title" };
+  assert.deepEqual(projectsModule.projectFields(empty), { title: "Only a title" });
 
-  assert.deepEqual(await saveProjects(OWNER, [full, empty], new Set()), [], "create, all fields and none");
+  assert.deepEqual(await saveProjects(OWNER, [full, empty], new Set()), [], "create, all fields and the title alone");
   const stored = new Set(["p1", "p2"]);
-  assert.deepEqual(await saveProjects(OWNER, [full, empty], stored), [], "update, all fields and none");
+  assert.deepEqual(await saveProjects(OWNER, [full, empty], stored), [], "update, all fields and the title alone");
   assert.deepEqual(await saveProjects(OWNER, [{ ...empty, projectId: "p1" }, { ...full, projectId: "p2" }], stored), [],
-    "update that empties every field, and one that fills every field");
+    "update that empties every optional field, and one that fills every field");
   const p1 = (await context.firestore().doc("projects/p1").get()).data();
-  assert.deepEqual(Object.keys(p1).sort(), ["createdAt", "ownerUid", "updatedAt"]);
+  assert.deepEqual(Object.keys(p1).sort(), ["createdAt", "ownerUid", "title", "updatedAt"]);
+  // A German-only title is written as the title too (projectFields), so the
+  // editor's German pane alone satisfies the rule.
+  assert.deepEqual(await saveProjects(OWNER, [{ projectId: "p3", titleDe: "Nur Deutsch" }], new Set()), []);
+  assert.equal((await context.firestore().doc("projects/p3").get()).data().title, "Nur Deutsch");
   const p2 = (await context.firestore().doc("projects/p2").get()).data();
   assert.equal(p2.link, "lab.example.org/ribosome");
   assert.equal(p2.description.length, 600);
@@ -855,6 +877,57 @@ test("images: a work names at most one project — projectId is a short string",
   await assertFails(db.doc("images/img-1").update({ projectId: "x".repeat(65), updatedAt: new Date() }));
   await assertFails(db.doc("images/img-1").update({ projectId: "", updatedAt: new Date() }));
   await assertFails(db.doc("images/img-1").update({ projectId: ["p1"], updatedAt: new Date() }));
+});
+
+test("images: the member's In gallery switch is a bool they may set and clear", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({ inGallery: false, updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ inGallery: deleteField(), updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ inGallery: true, updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ inGallery: "no", updatedAt: new Date() }));
+});
+
+test("images: the text block after a work is two optional strings of up to 2000", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({
+    textAfter: "x".repeat(2000), textAfterDe: "y".repeat(2000), updatedAt: new Date(),
+  }));
+  await assertSucceeds(db.doc("images/img-1").update({ textAfter: deleteField(), textAfterDe: deleteField(), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ textAfter: "x".repeat(2001), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ textAfterDe: "y".repeat(2001), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ textAfter: ["a"], updatedAt: new Date() }));
+});
+
+test("images: carouselId is an optional string of 1 to 64, and may be cleared", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({ carouselId: "c-1", updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ carouselId: "x".repeat(64), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ carouselId: "x".repeat(65), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ carouselId: "", updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ carouselId: ["a"], updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ carouselId: deleteField(), updatedAt: new Date() }));
+});
+
+// Clients cannot create image records (the server allocates them), so
+// validImage's key list is exercised through an update to a record that
+// already carries the field: a key missing from hasOnly would reject this.
+test("images: a record that already carries a carouselId still passes validImage on a caption save", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live", carouselId: "c-1" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({ caption: "Still fine", updatedAt: new Date() }));
+});
+
+test("images: a work's page size is s or m, and absent means L", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({ size: "s", updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ size: "m", updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ size: deleteField(), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ size: "l", updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ size: 240, updatedAt: new Date() }));
 });
 
 // SERVER-ONLY COLLECTIONS (review T2-18). None has a match block: each falls

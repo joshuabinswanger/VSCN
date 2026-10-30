@@ -30,6 +30,15 @@
    name sit further apart, and the bio, the meta rows and the works each stand
    off the block before them by more than they did. */
 .mprof {
+  /* THE PAGE'S RHYTHM, AS TOKENS (2026-10-13). The editor's list sits inside
+     this element (ProfileViewPreview's `editor` slot) and reads the same
+     three, so the edit view can never space its works differently from the
+     page: the gap between one work or project and the next, the stand-off
+     of the first work from the profile's words, and a project's heading to
+     its first work. Values and history at .mprof__works below. */
+  --works-gap: max(4.5rem, 16vh);
+  --works-top: max(5rem, 12vh);
+  --project-gap: 2.5rem;
   font-family: "Archivo", sans-serif;
   padding-block: 7rem 10rem;
 }
@@ -46,6 +55,160 @@
   }
 }
 
+/* TWO COLUMNS ON A DESKTOP (2026-10-13, Josh: "profile on desktop should
+   have a 2 column design left artist info right projects and images"). The
+   person on the left — picture, name, the lines under it, the bio, the
+   needs, tags and links, all in .mprof__aside — and the works beside them.
+   Both the page and the editor's Works tab render this element, so both
+   split the same way. The page lays out on Layout's `contentWide` measure.
+   A phone keeps the single column: the aside is a plain block there and
+   changes nothing.
+   PERSON AT THE EDGE, WORKS IN THE MIDDLE (2026-10-14, Josh: "the left
+   column should be sticky. also more to the left and the center column
+   should be in the middle"). Three tracks, not two: the works keep their
+   54rem column (702px at the desktop's 13px root, what a single-column page
+   gave them) and the two tracks either side share what is left equally, so
+   the works sit on the window's centre line — and on the Works bar's, which
+   is centred on the window too. The person stands at the left of the first
+   track; the third is empty on purpose. Below about 1100px the first track
+   keeps its 15rem minimum and the works give up their centring before they
+   give up width.
+   The aside spans every row the works column makes, so the works, the empty
+   note and the editor's list (whichever are showing) all stack in column 2.
+   STICKY, and never cut off: it stays put under the header while the works
+   scroll past, and an aside taller than the window (a long bio, many tags)
+   scrolls on its own, inside a box the window's height, rather than leaving
+   its foot unreachable until the end of the page. Its scrollbar is hidden
+   (a grey bar beside a name reads as a fault); a fade along its foot says
+   there is more, and goes once the last line is in view. */
+@media (--bp-desktop) {
+  .mprof {
+    --aside-w: 16rem;
+    /* THE WORKS COLUMN, NARROWER (2026-10-16, Josh: "make the project
+       column less wide"): 54rem -> 40rem (520px at the desktop's 13px root),
+       now that a project's works stand in line in it rather than paging
+       sideways out of it.
+       A BIT WIDER AGAIN (2026-10-23, Josh: "desktop profile view can take up
+       a bit more space"): 40rem -> 48rem (624px), S/M/L in workSize.ts
+       scaled by the same 1.2. */
+    --works-w: 48rem;
+    display: grid;
+    grid-template-columns: minmax(var(--aside-w), 1fr) minmax(0, var(--works-w)) minmax(0, 1fr);
+    column-gap: clamp(2.5rem, 4vw, 5rem);
+    align-items: start;
+    max-width: none;
+    --works-top: 0px;
+  }
+  .mprof > :not(.mprof__aside, .mprof__index) {
+    grid-column: 2;
+  }
+  .mprof__aside {
+    --aside-top: 7rem;
+    grid-column: 1;
+    grid-row: 1 / span 6;
+    justify-self: start;
+    width: 100%;
+    max-width: 22rem;
+    position: sticky;
+    top: var(--aside-top);
+    max-height: calc(var(--shell-h, 100dvh) - var(--aside-top) - 4rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    /* Room for a focused link's outline inside the scroll box's clip. */
+    padding: 3px;
+    margin: -3px;
+  }
+  .mprof__aside::-webkit-scrollbar {
+    display: none;
+  }
+  /* The fade is a scroll-driven animation on the aside's own scroll: a box
+     that does not overflow has no scroll timeline, so it never fades. No
+     support, no fade, and the aside still scrolls. Longhands, because the
+     minifier folds an `animation` shorthand holding a timeline. */
+  @supports (animation-timeline: scroll()) {
+    .mprof__aside {
+      animation-name: mprof-aside-more;
+      animation-duration: auto;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
+      animation-timeline: scroll(self block);
+    }
+  }
+  /* In a column a third of the page wide, the picture stands over the name
+     instead of beside it, and the name scales with the window rather than
+     at the page's full display size. */
+  .mprof__aside .mprof__head {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+  .mprof__aside .mprof__avatar {
+    width: 7rem;
+    height: 7rem;
+  }
+  /* Small enough that a long surname fits the column whole at 1280. */
+  .mprof__aside .mprof__name {
+    font-size: clamp(1.75rem, 2.2vw, 3.2rem);
+  }
+  .mprof__aside .mprof__bio {
+    margin-top: 2.5rem;
+  }
+  .mprof__aside .mprof__meta {
+    margin-top: 2.25rem;
+  }
+}
+
+/* THE INDEX (2026-10-14, Josh: "a small scroller on the right that lists the
+   projects (or image title if it stands alone)"), built by
+   src/lib/profileIndex.ts. Only on a desktop.
+   THE PORTFOLIOS RAIL SINCE 2026-10-23 (Josh: "the chapters can use the same
+   horizontal bar style as the portfolio page and also in the middle
+   vertically"): the nav is a `.prail` and its links `.prail__tick`, so it is
+   drawn, placed (fixed, right edge, halfway down) and hovered by global.css's
+   MEMBER RAIL block. This file only keeps it off a phone and lets the list
+   element stand aside. The hairline table of contents in the third track
+   is gone, and that track is empty again. */
+.mprof__index {
+  display: none;
+}
+
+@media (--bp-desktop) {
+  /* Centred by auto margins between top 0 and bottom 0, not by the rail's
+     translate: the paint-in (below) animates `translate` on this element and
+     would undo a -50%. */
+  .mprof__index {
+    display: flex;
+    top: 0;
+    bottom: 0;
+    height: fit-content;
+    margin-block: auto;
+    translate: none;
+  }
+}
+
+.mprof__index-list {
+  display: contents;
+}
+
+.mprof__index-list > li {
+  display: contents;
+}
+
+/* Arriving at an item from the index leaves room for the header. */
+.mprof__works > :is(.mprof__project, .mprof__work) {
+  scroll-margin-top: 7rem;
+}
+
+@keyframes mprof-aside-more {
+  0%,
+  97% {
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 3rem), transparent);
+  }
+  100% {
+    mask-image: none;
+  }
+}
+
 /* ── Identity ─────────────────────────────────────────── */
 .mprof__head {
   display: grid;
@@ -58,7 +221,6 @@
   display: block;
   width: clamp(5rem, 14vw, 9rem);
   height: clamp(5rem, 14vw, 9rem);
-  border: 1.5px solid var(--color-border);
   border-radius: 50%;
   object-fit: cover;
 }
@@ -102,22 +264,16 @@
   color: var(--color-muted);
 }
 
-/* A dot plus the words, never a bare coloured pill: the site has no accent
-     colour, and a dot alone carries no meaning to anyone who cannot see it. */
-.mprof__open {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin: 1rem 0 0;
-  color: var(--color-muted);
+
+/* ONE BLOCK PER PARAGRAPH (2026-10-12, Josh: "more vertical padding for
+   paragraphs in profile view"): the bio, a work's description and a
+   project's description are split on their blank lines (src/lib/paragraphs.ts)
+   and each paragraph stands this far below the last. */
+.mprof__para {
+  display: block;
 }
-.mprof__open::before {
-  content: "";
-  flex: 0 0 auto;
-  width: 5px;
-  height: 5px;
-  background: var(--color-dark);
-  border-radius: 50%;
+.mprof__para + .mprof__para {
+  margin-top: 1.1em;
 }
 
 .mprof__bio {
@@ -154,6 +310,14 @@
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+/* An item is as tall as its chip (2026-10-14, Josh: "less vertical spacing
+   on tags"): a list item is a block whose line box is the font's, 23px round
+   a 14px tag, so each row of tags stood 9px further apart than the 5px gap
+   said. */
+.mprof__vals > li {
+  display: flex;
 }
 
 /* `:not(.tagchip)` because TAGS LEFT THIS DRAWING (2026-09-08, Josh: "use this
@@ -238,8 +402,13 @@
      the floor for a short window. The first work stands off the profile's
      words by the same measure, half of it. 40vh at first, trimmed the same
      day (Josh: "a bit less gap between images and projects"). */
-  gap: max(7rem, 30vh);
-  margin-top: max(6rem, 15vh);
+  /* LESS AIR AGAIN (2026-10-13, Josh: "vertical padding between projects and
+     images less big"): 30vh -> 16vh, the first work 15vh -> 12vh off the
+     words, a project's heading 4rem -> 2.5rem off its first work. Now the
+     --works-gap / --works-top / --project-gap tokens on .mprof, which the
+     editor's list reads too. */
+  gap: var(--works-gap);
+  margin-top: var(--works-top);
 }
 
 /* A PROJECT BLOCK on the member page and in the editor's preview (2026-09-23).
@@ -258,7 +427,7 @@
 .mprof__project {
   display: flex;
   flex-direction: column;
-  gap: 4rem;
+  gap: var(--project-gap);
 }
 
 /* NO EXTRA AIR AROUND A PROJECT any more (2026-09-28, Josh: "less white
@@ -283,10 +452,12 @@
 
 /* A heading, in the name's face (2026-09-28, Josh: "Project Title should be
    bigger too"): bold and tight like .mprof__name, two sizes under it so the
-   member still outranks their project. */
+   member still outranks their project. A step back down on 2026-10-14
+   (Josh: "the project title smaller"): 30px over captions that had grown to
+   14px shouted; 22px still heads them. */
 .mprof__project-title {
   margin: 0;
-  font-size: var(--fs-225);
+  font-size: var(--fs-160);
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: -0.02em;
@@ -321,6 +492,15 @@
   line-height: 1.5;
 }
 
+/* The link stands right under the title (2026-10-25): close to it, and the
+   title's own room moves below the link, before the description. */
+.mprof__project-head > .mprof__project-title:has(+ .mprof__project-links:not([hidden])) {
+  margin-bottom: 0.35rem;
+}
+.mprof__project-head > .mprof__project-links:not(:last-child) {
+  margin-bottom: 1rem;
+}
+
 /* The project's tags (2026-09-27): the profile's `.mprof__vals` row, a
    touch apart from the words above it. */
 .mprof__project-tags {
@@ -332,243 +512,29 @@
   display: none;
 }
 
-/* ── A PROJECT'S CAROUSEL (2026-09-26) ────────────────────
-   A project with two or more works pages through them, one work per step
-   (Josh: "the projects should be shown as carousels on the profile page and
-   in the preview"). This replaced the 2026-09-25 slider that paged between
-   whole PROJECTS: those stack down the page again, and only the works move
-   sideways, so there is one level of swiping. The stepping is the browser's
-   own: a scroll container snapping to each work's start, so a swipe, a
-   trackpad flick, the arrow keys on the focused track and the prev/next
-   buttons all come to rest on a whole work. src/lib/projectCarousel.ts adds
-   the buttons, the measurement and the lightbox follow.
-
-   THE BLEED. At rest a work is exactly as wide as a work has always been —
-   the page's column — and the first one stands exactly where it stood. The
-   TRACK is wider than that: negative margins take it out to the edges of the
-   scrollport and the same distances come back as padding and as
-   scroll-padding, so the snap points still sit on the column's left edge
-   while the next work spills out to the right (and a passed one to the left).
-   --bleed-l / --bleed-r are measured by the script against .page-wrap's
-   client box; before it runs, or without it, they are 0 and the carousel is
-   a column-wide scroller that still snaps. */
-.mprof__carousel {
-  --bleed-l: 0px;
-  --bleed-r: 0px;
-  --carousel-gap: 3rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+/* EVERY WORK IN LINE (2026-10-16, Josh: "projects dont have galleries
+   anymore, images are all in line"). A project's works stack down its
+   column, a little further apart than the heading is from the first one, and
+   a text block (below) can stand after any of them. The carousel that paged
+   them from 2026-09-26 is gone, its markup, script and rules with it; the
+   last state of its design is in documentation/20261016-carousel-count-design.md
+   and the git history. */
+.mprof__project > .mprof__work + .mprof__work,
+.mprof__project > .mprof__text + .mprof__work {
+  margin-top: 2rem;
 }
 
-/* The heading group and the carousel's dots belong together: the project's
-   4rem works rhythm would push the dots a screen-width's worth of air away
-   from the title they serve. */
-.mprof__project:has(.mprof__carousel) {
-  gap: 1.5rem;
-}
-
-/* THE GALLERY CARD'S CHROME (2026-09-26, Josh: "use the same styles for the
-   project carousels! with the dots top right"). The carousel wears exactly
-   what the directory card wears (communityCard.css): a row of dots hard
-   right above the picture, and a bare chevron down each edge that comes out
-   on hover or focus. Restated here rather than shared because the card's
-   rules are keyed to .ccard__frame; the dots' SIZE is shared, as the
-   --carousel-dot tokens in global.css, so the two cannot drift apart.
-   2026-09-27 swapped the dots for a "2 / 7" count on the picture; 2026-09-28
-   brought them back, bigger, on the card too (Josh: "the carousel should be
-   dots again, but make the dots bigger. do it the same way as on the gallery
-   but bigger. also adjust the gallery").
-   ON THE PICTURE, NOT THE COLUMN. A capped work is centred and narrower than
-   the column, so the dots end at the current picture's right edge and the
-   chevrons run down its own two edges: --frame-l / --frame-r / --frame-h are
-   that picture's offsets, measured by projectCarousel.ts. Unmeasured they
-   fall back to the column. */
-.mprof__carousel-dots {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--carousel-dot-gap);
-  padding-right: var(--frame-r, 0px);
-  pointer-events: none;
-}
-
-.mprof__carousel-dot {
-  width: var(--carousel-dot);
-  height: var(--carousel-dot);
-  border-radius: 50%;
-  background: var(--color-dark);
-  opacity: 0.22;
-  transition: opacity 180ms ease;
-}
-.mprof__carousel-dot--on {
-  opacity: 1;
-}
-
-/* TEXT INSTEAD OF DOTS (2026-09-28), exactly as .ccard__count in
-   communityCard.css: the dots still follow the carousel, and this rule is
-   the whole switch back. */
-.mprof__carousel-dot {
-  display: none;
-}
-/* Its type is COUNT in type.css. */
-.mprof__carousel-count {
-  white-space: nowrap;
-  color: var(--color-muted);
-}
-
-/* The track and its two edge strips. The strips sit on the COLUMN's edges,
-   not the track's: the track bleeds out into the margins, the stage does
-   not. */
-.mprof__carousel-stage {
-  position: relative;
-}
-/* The strip's width is a share of the picture, as on the card, not of the
-   column: 16% of a column would take a third of a narrow portrait. */
-.mprof__carousel {
-  --frame-w: calc(100% - var(--frame-l, 0px) - var(--frame-r, 0px));
-}
-
-.mprof__carousel-arrow {
-  position: absolute;
-  top: 0;
-  height: var(--frame-h, 100%);
-  z-index: 1;
-  display: grid;
-  width: clamp(2.75rem, calc(var(--frame-w) * 0.16), 4.5rem);
-  padding: 0;
-  border: 0;
-  background: none;
+/* THE TEXT BLOCK AFTER A WORK (2026-10-16, Josh: "make it possible to add
+   text block in between image in projects"). The project's own words between
+   two pictures: the CAPTION voice (type.css) in the page's dark, the
+   column's width (48rem, a reading measure still), paragraphs as the
+   bio sets them. */
+.mprof__text {
   color: var(--color-dark);
-  opacity: 0;
-  cursor: pointer;
-  transform: translate(0, 0);
-  /* The hide, a third shorter than the appear, as on the card. */
-  transition:
-    opacity 120ms ease,
-    transform 147ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  overflow-wrap: anywhere;
 }
-.mprof__carousel-stage:hover .mprof__carousel-arrow,
-.mprof__carousel-stage:focus-within .mprof__carousel-arrow,
-.mprof__carousel-arrow:focus-visible {
-  opacity: 0.75;
-  transform: translate(0, 0);
-  transition:
-    opacity 180ms ease,
-    transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-.mprof__carousel-arrow:hover,
-.mprof__carousel-arrow:focus-visible {
-  opacity: 1;
-}
-/* A touch screen has no hover to call the chevrons out, so they are out
-   from the start (2026-09-27): with the dots, they are what says "swipe". */
-@media (hover: none) {
-  .mprof__carousel-arrow {
-    opacity: 0.75;
-    transform: translate(0, 0);
-  }
-}
-/* At either end there is nowhere to go, so that side's strip is not there
-   at all: no chevron, and the picture under it is the picture's again. */
-.mprof__carousel-stage .mprof__carousel-arrow:disabled {
-  visibility: hidden;
-}
-.mprof__carousel-arrow span {
-  display: block;
-  width: var(--chevron-size);
-  height: var(--chevron-size);
-  border-top: var(--chevron-stroke) solid currentColor;
-  border-right: var(--chevron-stroke) solid currentColor;
-}
-.mprof__carousel-arrow--prev span {
-  transform: translate(0.05rem, 0) rotate(-135deg);
-}
-.mprof__carousel-arrow--next span {
-  transform: translate(-0.05rem, 0) rotate(45deg);
-}
-.mprof__carousel-arrow--prev {
-  left: var(--frame-l, 0px);
-  place-items: center start;
-  padding-left: 0.95rem;
-  transform: translate(-0.4rem, 0);
-}
-.mprof__carousel-arrow--next {
-  right: var(--frame-r, 0px);
-  place-items: center end;
-  padding-right: 0.95rem;
-  transform: translate(0.4rem, 0);
-}
-
-.mprof__carousel-track {
-  /* The offset parent the script measures each slide's offsetLeft from. */
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--carousel-gap);
-  margin-inline: calc(-1 * var(--bleed-l)) calc(-1 * var(--bleed-r));
-  padding-inline: var(--bleed-l) var(--bleed-r);
-  scroll-padding-inline: var(--bleed-l) var(--bleed-r);
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x mandatory;
-  /* No scrollbar: the chevrons, the dots and the spill of the next work
-     are the affordance, and a bar under a tall picture would sit a screen
-     below the thing it scrolls. */
-  scrollbar-width: none;
-}
-.mprof__carousel-track::-webkit-scrollbar {
-  display: none;
-}
-.mprof__carousel-track:focus-visible {
-  outline: 2px solid var(--color-dark);
-  outline-offset: 4px;
-}
-
-/* One work per step, at the column's width: once the bleed is padded back
-   in, the track's content box IS the column, so 100% is that width.
-   scroll-snap-stop keeps a hard swipe from flying past a work. */
-.mprof__carousel-slide {
-  flex: 0 0 100%;
-  min-width: 0;
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-  transition: opacity 0.3s ease;
-}
-/* The work on the column reads at full strength; the ones spilling into the
-   margins are turned down so the step shows at a glance. Keyed to the
-   script's .is-current, so without the script every work stays full. */
-.mprof__carousel-track:has(.is-current) > .mprof__carousel-slide:not(.is-current) {
-  opacity: 0.4;
-}
-
-/* The spoken position — the clip technique, as .ccard__live. */
-.mprof__carousel-live {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  border: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-/* On a phone the column is the screen less its gutters, so there is no margin
-   for the next work to spill into; the gap only has to say "another one", and
-   the full 3rem would be swipe travel spent on paper. */
-@media (--bp-mobile) {
-  .mprof__carousel {
-    --carousel-gap: 1.25rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .mprof__carousel-slide,
-  .mprof__carousel-dot,
-  .mprof__carousel-arrow {
-    transition: none;
-  }
+.mprof__text .mprof__para {
+  white-space: pre-line;
 }
 
 .mprof__works-key {
@@ -593,12 +559,19 @@
      and by the editor's preview — and the image fills it. A landscape work
      never reaches the cap and keeps the full column. Without --work-ar the
      declaration is invalid and the frame is simply column-wide, as before. */
-  max-width: calc(60vh * var(--work-ar));
+  max-width: calc(70vh * var(--work-ar));
+  /* AND NO WIDER THAN ITS S/M/L (2026-10-16, Josh: "select between S M L
+     for the image size width (give them in CSS Pixels)"): --size-w is the
+     chosen width in px, written on the figure from src/lib/workSize.ts. The
+     column still caps it, so on a phone L and M are simply column-wide. */
+  /* 70vh SINCE 2026-10-18 (Josh: "images should have the same width always
+     unless they grow beyond the 70vh mark"): a work is its S/M/L width, and
+     only a picture that would then stand taller than 70vh narrows. */
+  max-width: min(var(--size-w, 100%), calc(70vh * var(--work-ar)));
   /* A frame narrower than the column sits in its middle (2026-09-26, Josh:
      "center the images horizontally"); a column-wide one is unaffected.
      --work-ar is set on the figure and inherited here. */
   margin-inline: auto;
-  border: 1.5px solid var(--color-border);
   border-radius: 0;
   background: var(--color-bg);
   overflow: hidden;
@@ -625,7 +598,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-  max-width: calc(60vh * var(--work-ar));
+  max-width: calc(70vh * var(--work-ar));
+  max-width: min(var(--size-w, 100%), calc(70vh * var(--work-ar)));
   margin: 0.7rem auto 0;
   color: var(--color-muted);
 }
@@ -644,12 +618,236 @@
    look like every other link on the page. They sit on one wrapping row, and
    the row shrink-wraps: the caption is a flex COLUMN, so a stretched child
    would make an underline read as a rule across the page.
-   One rule, both consumers — the page and the editor's preview. */
+   One rule, both consumers — the page and the editor's preview.
+   HIDDEN since 2026-10-16 (Josh: "dont show the extra links in the profile
+   view"): under a work only its title shows; the lightbox still carries
+   the links. `display: flex` brings them back. */
 .mprof__caption-links {
-  display: flex;
+  display: none;
   flex-wrap: wrap;
   gap: 0.35rem 1.1rem;
   align-self: start;
+}
+
+/* ── A WORK CAROUSEL (2026-10-23, Josh: "yes i want it back but rebuild it
+   from scratch according to the design we have going on now";
+   documentation/20261023-work-carousels-design.md) ──────────────────────
+   Several works in one spot of a project's line (MemberCarousel.astro),
+   paged by the Portfolios card's engine (communityCarousel.ts) over the
+   same data hooks. The figure is a .mprof__work, so the line's spacing,
+   the index and the paint-in treat it as one work; what differs is drawn
+   here: the frame at the LEAD's aspect and the carousel's S/M/L (the same
+   width formula as .mprof__work-link), a native scroll-snap track inside
+   it, the arrows beside the frame on a desktop, the dots and the stacked
+   captions under it. */
+.mprof__cframe {
+  position: relative;
+  /* The lead's aspect, the carousel's width — the frame never changes
+     shape as it pages, so nothing under it moves. */
+  max-width: min(var(--size-w, 100%), calc(70vh * var(--work-ar)));
+  aspect-ratio: var(--work-ar);
+  margin-inline: auto;
+  background: var(--color-bg);
+  /* The arrows stand OUTSIDE the box: the track clips its own slides. */
+  overflow: visible;
+  /* Both axes are the browser's: a sideways pan pages the track, a vertical
+     one scrolls the page (the design: vertical wins unless clearly sideways,
+     which is what the browser's own pan heuristics give). */
+  touch-action: pan-x pan-y pinch-zoom;
+}
+/* The track: one frame-wide column per slide, snapping on x, its scrollbar
+   hidden; repeated inline on the element (the WebKit Back crash). */
+.mprof__ctrack {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 100%;
+  grid-auto-rows: 100%;
+  overflow: auto hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.mprof__ctrack::-webkit-scrollbar {
+  display: none;
+}
+/* A slide is a work link, but inside the track it is the track's column —
+   not the width-capped, centred frame a single work's link is — and it
+   centres its picture. */
+.mprof__carousel .mprof__work-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  -webkit-tap-highlight-color: transparent;
+}
+/* A slide of another shape than the lead stands centred in the frame at
+   its own aspect, never cropped: the image's own box is what it draws, so
+   the lightbox grows out of the picture, not out of the letterbox. */
+.mprof__carousel .mprof__img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+}
+.mprof__carousel .mprof__work-link:focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: -5px;
+  box-shadow: inset 0 0 0 3px var(--color-bg);
+}
+
+/* THE ARROWS, the card's strips (communityCard.css .ccard__arrow, memory
+   works-paging-desktop): a 2.5rem strip the frame's full height just
+   outside each edge, the chevron centred, muted; pointing at the picture
+   lifts both, pointing at one brings it to full strength. */
+.mprof__carrow {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-dark);
+  opacity: 0.35;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.mprof__cframe:hover .mprof__carrow,
+.mprof__cframe:focus-within .mprof__carrow {
+  opacity: 0.55;
+}
+.mprof__carrow:hover,
+.mprof__carrow:focus-visible {
+  opacity: 1;
+}
+.mprof__carrow:focus:not(:focus-visible) {
+  outline: none;
+}
+.mprof__carrow span {
+  display: block;
+  width: var(--chevron-size);
+  height: var(--chevron-size);
+  border-top: var(--chevron-stroke) solid currentColor;
+  border-right: var(--chevron-stroke) solid currentColor;
+}
+.mprof__carrow--prev span {
+  transform: translate(0.05rem, 0) rotate(-135deg);
+}
+.mprof__carrow--next span {
+  transform: translate(-0.05rem, 0) rotate(45deg);
+}
+.mprof__carrow--prev {
+  right: 100%;
+}
+.mprof__carrow--next {
+  left: 100%;
+}
+/* The spoken position (the card's clip technique). */
+.mprof__clive {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* THE DOTS, centred under the frame, buttons that page (the card's rules
+   in communityCard.css; the dots themselves are .cdots / .cdot in
+   global.css). The chevrons the engine adds to the row are hidden on
+   .mprof (global.css) — the arrows beside the frame are the pager here. */
+.mprof__cdots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.1rem;
+  margin-top: 0.6rem;
+}
+.mprof__cdots .cdots {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  height: 1.25rem;
+}
+.mprof__cdots .cdot {
+  position: relative;
+  appearance: none;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.mprof__cdots .cdot::after {
+  content: "";
+  position: absolute;
+  inset: -0.45rem calc(var(--carousel-dot-gap) / -2);
+}
+.mprof__cdots .cdot:hover {
+  opacity: 0.6;
+}
+.mprof__cdots .cdot--on:hover {
+  opacity: 1;
+}
+.mprof__cdots .cdot:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* THE CAPTIONS, one per slide in ONE grid cell: the block is as tall as
+   the tallest caption whichever slide shows, so the text block after the
+   carousel never moves as it pages (the design's anti-goal). The showing
+   one is .is-on (memberCarousel.ts); the others cross-fade out on the
+   site's ease-out and are then taken out of the accessibility tree
+   (visibility), since opacity hides nothing from a screen reader. */
+.mprof__captions {
+  display: grid;
+}
+.mprof__captions > .mprof__caption {
+  grid-area: 1 / 1;
+  /* THE PICTURE'S WIDTH, as under a single work: in a grid cell the
+     caption's auto inline margins would otherwise shrink it to its words
+     and centre them. Full width, then its own max-width (the frame's width
+     formula) and auto margins put its box exactly under the frame. */
+  width: 100%;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
+    visibility 0s linear 0.3s;
+}
+.mprof__captions > .mprof__caption.is-on {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
+    visibility 0s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mprof__captions > .mprof__caption {
+    transition: none;
+  }
+}
+
+@media (--bp-mobile) {
+  /* No arrows on a phone: paging is the swipe, and the dots say where it got to. */
+  .mprof__carrow {
+    display: none;
+  }
 }
 
 @media (--bp-mobile) {
@@ -660,14 +858,16 @@
     gap: 1.25rem;
   }
   /* A phone picture is width-bound (the column is ~345px, so a square is
-     ~42% of the screen): 22vh is enough to keep the neighbours out of view. */
-  .mprof__works {
-    gap: max(4rem, 22vh);
-    margin-top: max(4rem, 11vh);
+     ~42% of the screen). 22vh until 2026-10-13, then 12vh with the desktop's
+     cut. */
+  .mprof {
+    --works-gap: max(3.5rem, 12vh);
+    --works-top: max(4rem, 10vh);
+    --project-gap: 2rem;
   }
   /* The name is 24px here, so the project title steps down to stay under it. */
   .mprof__project-title {
-    font-size: var(--fs-160);
+    font-size: var(--fs-140);
   }
   .mprof__works-key {
     margin-bottom: -1.25rem;
@@ -710,5 +910,181 @@
 @media (--bp-mobile) {
   .mprof__empty {
     margin-top: 3rem;
+  }
+}
+
+/* ── THE PORTFOLIOS PILL (2026-10-20) ─────────────────────────────────────
+   Where the directory's bar floats, drawn to its measures: the same paper
+   capsule with the black hairline (.community-bar__in in CommunityGrid),
+   its one word padded as a trigger is (--bar-pad 3px + --chip-pad-y), on
+   the corners' 20px line on a desktop and 12px off the home bar on a phone.
+   Type: the BAR sizes in type.css. */
+.mprof-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(20px - 3px - 0.4rem - 1px);
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.mprof-bar__in {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  box-sizing: border-box;
+  padding: calc(3px + 0.4rem) calc(3px + 0.9rem);
+  background: var(--color-bg);
+  color: var(--color-dark);
+  border: 1px solid var(--color-dark);
+  /* The capsule itself comes from CONTROLS in global.css (the square reset
+     lists this pill with the bar's). */
+  text-decoration: none;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+}
+.mprof-bar__in:hover,
+.mprof-bar__in:focus-visible {
+  background: var(--color-dark);
+  color: var(--color-bg);
+  outline: none;
+}
+@media (--bp-mobile) {
+  .mprof-bar {
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+}
+@media (--bp-desktop) {
+  .mprof-bar {
+    bottom: 36px;
+  }
+  .mprof-bar__in {
+    padding: calc(3px + 0.55rem) calc(3px + 0.9rem);
+  }
+}
+
+/* ── THE PAGE PAINTS IN (2026-10-20, Josh: "make an animation that paints
+   in the profile page after navigation … name, text, tags and then images,
+   so it looks smooth like scrolling on the Portfolios page") ─────────────
+   The Portfolios cards' entrance, on the head of this page: one long
+   expo-out curve, the portrait settling in, the name rising word by word
+   out of its line (profilePaint.ts splits it and stamps each word's --d),
+   every text line drifting up into place in page order, and last the first
+   picture fading in and growing to its size, as every later picture does
+   when it scrolls into view (the picture rules below). The start state applies
+   only under [data-motion] on .mprof (set before the first paint by the
+   page's inline script, never under reduced motion), and the transitions
+   live on .is-in alone. Until the script has stamped the schedule
+   (data-painted) the whole head and the works are held, so the plain page
+   never shows and then vanishes. Not in the editor's Works tab, which draws
+   the same markup without the flag. */
+@media (prefers-reduced-motion: no-preference) {
+  /* On the pill too: it sits outside the article, and a transition naming a
+     custom property it cannot see is no transition at all. */
+  .mprof[data-motion],
+  .mprof-bar[data-motion] {
+    --paint-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  /* The site's picture entrance, slower here (2026-10-23, Josh: "the effect
+     is a bit too fast on the profile page"); Portfolios keeps the global
+     timing. */
+  .mprof[data-motion] {
+    --pic-in-fade: 0.8s ease-out;
+    --pic-in-zoom: 1.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .mprof[data-motion]:not([data-painted]) .mprof__aside,
+  .mprof[data-motion]:not([data-painted]) .mprof__works {
+    opacity: 0;
+  }
+  .mprof[data-motion] [data-paint="avatar"] {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  .mprof[data-motion] .cw {
+    display: inline-block;
+    overflow: clip;
+    overflow-clip-margin: 2px;
+    /* Room for descenders inside the mask, given back to the line. */
+    padding-bottom: 0.12em;
+    margin-bottom: -0.12em;
+    vertical-align: top;
+  }
+  .mprof[data-motion] .cw__i {
+    display: inline-block;
+    transform: translateY(105%);
+  }
+  /* The pill sits outside the article; its start rule keeps matching under
+     .is-in (the end rule overrides it), as every other start rule here does —
+     a start rule that STOPS matching gave WebKit nothing to transition from. */
+  .mprof[data-motion] [data-paint="line"],
+  .mprof-bar[data-motion] {
+    opacity: 0;
+    translate: 0 0.6rem;
+  }
+  /* Every picture — the first at its turn in the paint-in, each later one
+     as it scrolls into view (profilePaint.ts stamps data-paint="fade" and
+     adds .is-seen) — makes the site's picture entrance: the whole picture
+     fades in and grows to its size (--pic-in-* in global.css; 2026-10-23,
+     Josh: "the zoom in was nicer … the whole image … make it global"). It
+     replaced the first picture's 9% inset with a zoom inside it, and the
+     blur fade the desktop had that day. On the <img>, so the work's box
+     holds its place and size. */
+  .mprof[data-motion] [data-paint="picture"] .mprof__img,
+  .mprof[data-motion] [data-paint="fade"] .mprof__img {
+    opacity: 0;
+    transform: var(--pic-in-from);
+  }
+  /* THE WORDS UNDER A PICTURE COME AFTER IT (2026-10-30, Josh: "text of
+     image is faded in before the images when opening a profile"). The
+     entrance is on the <img>, so a work's caption (and a carousel's dots
+     and stacked captions) stood there plainly from the first frame, before
+     the name. They are held with their picture and drift up like a line a
+     beat after it starts. */
+  .mprof[data-motion] :is([data-paint="picture"], [data-paint="fade"])
+    > :is(.mprof__caption, .mprof__captions, .mprof__cdots) {
+    opacity: 0;
+    translate: 0 0.6rem;
+  }
+
+  .mprof[data-motion].is-in [data-paint="avatar"] {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 0.6s var(--paint-ease),
+      transform 0.9s var(--paint-ease);
+  }
+  .mprof[data-motion].is-in .cw__i {
+    transform: none;
+    transition: transform 0.85s var(--paint-ease) var(--d, 0.05s);
+  }
+  .mprof[data-motion].is-in [data-paint="line"],
+  .mprof-bar[data-motion].is-in {
+    opacity: 1;
+    translate: 0 0;
+    transition:
+      opacity 0.7s var(--paint-ease) var(--d, 0.3s),
+      translate 0.9s var(--paint-ease) var(--d, 0.3s);
+  }
+  .mprof[data-motion].is-in [data-paint="picture"] .mprof__img,
+  .mprof[data-motion].is-in [data-paint="fade"].is-seen .mprof__img {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity var(--pic-in-fade) var(--d, 0s),
+      transform var(--pic-in-zoom) var(--d, 0s);
+  }
+  .mprof[data-motion].is-in [data-paint="picture"] .mprof__img {
+    transition-delay: var(--d, 0.6s);
+  }
+  .mprof[data-motion].is-in [data-paint="picture"] > :is(.mprof__caption, .mprof__captions, .mprof__cdots),
+  .mprof[data-motion].is-in [data-paint="fade"].is-seen > :is(.mprof__caption, .mprof__captions, .mprof__cdots) {
+    opacity: 1;
+    translate: 0 0;
+    transition:
+      opacity 0.7s var(--paint-ease) calc(var(--d, 0s) + 0.3s),
+      translate 0.9s var(--paint-ease) calc(var(--d, 0s) + 0.3s);
   }
 }

@@ -1,5 +1,13 @@
-// PROJECTS — A MEMBER'S OPTIONAL GROUPING OF THEIR OWN WORKS (2026-09-23,
+// PROJECTS — THE GROUPING OF A MEMBER'S OWN WORKS (2026-09-23,
 // documentation/20260923-projects-design.md).
+//
+// MANDATORY SINCE 2026-10-16 (Josh: "images without project are not allowed
+// any longer! We need always a Project, just a title is mandatory"). Every
+// work belongs to a project and every project has a title (validProject in
+// firestore.rules). Works stored before that, with no project, are filed
+// under a "Works" / "Arbeiten" project: virtually on the page
+// (adoptLooseWorks), locally in the editor until its next Save, and for good
+// by scripts/migrate-loose-works-to-projects.mjs.
 //
 // The second life of the feature. The first (withdrawn 2026-09-01, 95b43d2)
 // kept projects as an array on the profile document; this one follows the
@@ -171,7 +179,50 @@ export function contiguousOrder<T>(items: readonly T[], key: (item: T) => string
   return out;
 }
 
-/** The works in display order, cut into project blocks and runs of loose works. */
+/**
+ * THE PROJECT A WORK WITHOUT ONE IS FILED UNDER (2026-10-16). Both languages
+ * at once, so it reads right on either page and satisfies the title rule
+ * whichever pane the member edits. Keep the words and the id in sync with
+ * scripts/migrate-loose-works-to-projects.mjs, which stores this same project.
+ */
+export const LOOSE_WORKS_TITLE = { title: "Works", titleDe: "Arbeiten" } as const;
+
+/**
+ * One per member and derived, not random: the page's virtual project, the
+ * editor's local one and the migrated document are the same id, so a draft
+ * restored over a fresh load (or a load after the migration) finds the
+ * project it already knows instead of making a second "Works".
+ */
+export function looseWorksProjectId(uid: string): string {
+  return `works-${uid}`;
+}
+
+/**
+ * The page never shows a project-less work: works naming no known project
+ * join the member's "Works" project — the stored one if it exists, else a
+ * virtual one with no fields but its title. groupWorks() then gathers them
+ * where the first of them stood (contiguousOrder).
+ */
+export function adoptLooseWorks<W extends { projectId?: string }>(
+  uid: string,
+  works: readonly W[],
+  projects: readonly ProfileProject[],
+): { works: W[]; projects: ProfileProject[] } {
+  const known = new Set(projects.map((p) => p.id));
+  const housed = (w: W) => Boolean(w.projectId && known.has(w.projectId));
+  if (works.every(housed)) return { works: works.slice(), projects: projects.slice() };
+  const id = looseWorksProjectId(uid);
+  return {
+    works: works.map((w) => (housed(w) ? w : { ...w, projectId: id })),
+    projects: known.has(id) ? projects.slice() : [...projects, { id, ...LOOSE_WORKS_TITLE, affiliations: [], tags: [] }],
+  };
+}
+
+/**
+ * The works in display order, cut into project blocks. A run of loose works
+ * can still come out (a work naming an unknown project); the member page and
+ * the build pass works through adoptLooseWorks() first, so they never do.
+ */
 export function groupWorks<W extends { projectId?: string }>(
   works: readonly W[],
   projects: readonly ProfileProject[],
@@ -266,8 +317,12 @@ export function projectSlideData(
 /** What Save writes: trimmed, empties dropped, schemes stripped, affiliations capped. */
 export function projectFields(p: ProjectFields): ProjectFields {
   const out: ProjectFields = {};
-  const title = text(p.title);
   const titleDe = text(p.titleDe);
+  // The rules require `title` (2026-10-16). A member who named the project
+  // in the German pane only has named it: the German title is written as the
+  // title too, which changes nothing a visitor sees — projectTitle() already
+  // showed it on the English page as the fallback.
+  const title = text(p.title) ?? titleDe;
   const description = text(p.description);
   const descriptionDe = text(p.descriptionDe);
   const link = text(p.link);
@@ -297,7 +352,9 @@ export function projectFields(p: ProjectFields): ProjectFields {
  * The editor's linear list: loose image rows and project blocks in gallery
  * order, then projects that hold no image yet — a new, empty block waits at
  * the end until something is dragged into it. An image naming an unknown
- * project is a loose row.
+ * project is a loose row — which the editor no longer leaves standing: since
+ * 2026-10-16 it files every such work under "Works" first (homeLooseWorks in
+ * projectEditor.ts).
  */
 export function editorBlocks(
   gallery: readonly { projectId?: string }[],

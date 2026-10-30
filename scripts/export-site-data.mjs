@@ -26,7 +26,7 @@ if (!projectId || (expected && expected !== projectId)) throw new Error("Export 
 
 const pick = (data, keys) => Object.fromEntries(keys.filter((key) => data[key] !== undefined).map((key) => [key, data[key]]));
 const profileKeys = ["displayName", "photoURL", "photoImageId", "photoColor", "memberType", "role", "roleDe", "bio", "bioDe", "portfolio", "socialMedia", "affiliation", "location", "languages", "visualNeeds", "openTo", "primaryAudiences", "tags", "gallery", "active", "moderationHidden"];
-const imageKeys = ["ownerUid", "kind", "storagePath", "width", "height", "color", "caption", "captionDe", "description", "descriptionDe", "descriptionShort", "link", "siteLink", "tags", "status", "origin", "provenance", "media", "embed", "posterSource", "projectId"];
+const imageKeys = ["ownerUid", "kind", "storagePath", "width", "height", "color", "caption", "captionDe", "description", "descriptionDe", "descriptionShort", "link", "siteLink", "tags", "status", "origin", "provenance", "media", "embed", "posterSource", "projectId", "carouselId", "inGallery", "textAfter", "textAfterDe", "size"];
 const projectKeys = ["ownerUid", "title", "titleDe", "description", "descriptionDe", "link", "affiliations", "tags"];
 const app = initializeApp({ credential: credential ? cert(credential) : applicationDefault(), projectId }, `site-export-${Date.now()}`);
 try {
@@ -51,9 +51,11 @@ try {
     images: images.docs.filter((doc) => visible.has(doc.data().ownerUid) && referenced.has(doc.id))
       .map((doc) => ({
         imageId: doc.id, ...pick(doc.data(), imageKeys),
-        // A video work's uploadDate in its VideoObject (src/lib/seo.ts). As a
+        // When the work was added: a video work's uploadDate in its VideoObject
+        // (src/lib/seo.ts) and, since 2026-10-15, what the Images view sorts
+        // by date on — so EVERY image carries it, not only the embeds. As a
         // string: a Timestamp would serialise as {_seconds, _nanoseconds}.
-        ...(doc.data().media === "embed" && doc.data().createdAt?.toDate
+        ...(doc.data().createdAt?.toDate
           ? { createdAt: doc.data().createdAt.toDate().toISOString() } : {}),
       })),
     projects: projects.docs.filter((doc) => visible.has(doc.data().ownerUid))

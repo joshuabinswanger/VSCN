@@ -1,5 +1,5 @@
 // THE CHEVRONS BESIDE A COUNT — "‹ 2 / 7 ›" — shared by the gallery card, a
-// project's carousel on the member page and the lightbox (2026-09-28, Josh:
+// work carousel on the member page and the lightbox (2026-09-28, Josh:
 // the three pagers should match). One button, drawn by `.pager-chev` in
 // global.css; each engine decides what a press does.
 //
@@ -7,10 +7,10 @@
 // button — "Previous image" / "Vorheriges Bild", or the label its carousel
 // already gives its edge arrows — and its row is NOT aria-hidden, so the pair
 // and the count can be reached and pressed with a virtual cursor. On the card
-// and the project carousel they are `tabindex="-1"`: a directory holds a
+// and the work carousel they are `tabindex="-1"`: a directory holds a
 // couple of dozen cards, and two tab stops per card would put fifty stops in
 // front of the member links that are the page's actual journey, to duplicate
-// what the frame's arrow keys (communityCarousel.ts, and the project track's
+// what the frame's arrow keys (communityCarousel.ts, and a work carousel's
 // native scroll) already do. The lightbox's pair keeps its tab stops: it is
 // one modal with a handful of stops, and PhotoSwipe's own side arrows only
 // show once a mouse has been seen, so on a keyboard these are the visible

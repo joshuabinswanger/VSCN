@@ -48,16 +48,22 @@ const prefix = lang === "de" ? "/de" : "";
     <div id="ob-auth-form" style="display:none;">
       <div class="ob-fields">
         <div class="field">
-          <label class="label" for="ob-email">{t("onboarding.auth.email")}</label>
-          <input id="ob-email" type="email" class="input" autocomplete="email" />
+          <div class="ff">
+            <label class="ff__title" for="ob-email">{t("onboarding.auth.email")}</label>
+            <input id="ob-email" type="email" class="input" placeholder=" " autocomplete="email" />
+          </div>
         </div>
         <div class="field">
-          <label class="label" for="ob-password">{t("onboarding.auth.password")}</label>
-          <input id="ob-password" type="password" class="input" autocomplete="new-password" />
+          <div class="ff">
+            <label class="ff__title" for="ob-password">{t("onboarding.auth.password")}</label>
+            <input id="ob-password" type="password" class="input" placeholder=" " autocomplete="new-password" />
+          </div>
         </div>
         <div class="field">
-          <label class="label" for="ob-password-confirm">{t("onboarding.auth.passwordConfirm")}</label>
-          <input id="ob-password-confirm" type="password" class="input" autocomplete="new-password" />
+          <div class="ff">
+            <label class="ff__title" for="ob-password-confirm">{t("onboarding.auth.passwordConfirm")}</label>
+            <input id="ob-password-confirm" type="password" class="input" placeholder=" " autocomplete="new-password" />
+          </div>
         </div>
       </div>
       <div class="ob-footer">
@@ -79,8 +85,10 @@ const prefix = lang === "de" ? "/de" : "";
     <div class="ob-fields">
       <MemberTypeSelector lang={lang} name="ob-member-type" />
       <div class="field">
-        <label class="label" for="ob-name">{t("profile.label.name")}</label>
-        <input id="ob-name" type="text" class="input" placeholder={t("profile.ph.name")} />
+        <div class="ff">
+          <label class="ff__title" for="ob-name">{t("profile.label.name")}</label>
+          <input id="ob-name" type="text" class="input" placeholder={t("profile.ph.name")} />
+        </div>
       </div>
       {/* The German twin behind the EN/DE switch — see the same pair in ProfileForm.astro. */}
       <BilingualField
@@ -143,14 +151,16 @@ const prefix = lang === "de" ? "/de" : "";
         </template>
       </div>
       <div class="field">
-        <label class="label" for="ob-phone">{t("profile.label.phone")}</label>
-        <input
-          id="ob-phone"
-          type="tel"
-          class="input"
-          placeholder="+41 79 123 45 67"
-          autocomplete="tel"
-        />
+        <div class="ff">
+          <label class="ff__title" for="ob-phone">{t("profile.label.phone")}</label>
+          <input
+            id="ob-phone"
+            type="tel"
+            class="input"
+            placeholder="+41 79 123 45 67"
+            autocomplete="tel"
+          />
+        </div>
         <p class="field-note">{t("profile.note.phone")}</p>
       </div>
     </div>
@@ -192,10 +202,12 @@ const prefix = lang === "de" ? "/de" : "";
         <OpenToSelector lang={lang} />
       </div>
       <div class="field">
-        <label class="label" for="ob-platform-request">{t("onboarding.request.label")}</label>
+        <div class="ff ff--area">
+          <label class="ff__title" for="ob-platform-request">{t("onboarding.request.label")}</label>
+          <textarea id="ob-platform-request" rows="4" maxlength="1000" class="input textarea" placeholder=" "
+          ></textarea>
+        </div>
         <p class="field-note">{t("onboarding.request.helper")}</p>
-        <textarea id="ob-platform-request" rows="4" maxlength="1000" class="input textarea"
-        ></textarea>
       </div>
     </div>
     <div class="ob-footer">
@@ -380,13 +392,15 @@ const prefix = lang === "de" ? "/de" : "";
           <p class="field-note">{t("onboarding.step5.cover.note")}</p>
         </div>
         <div class="field">
-          <label class="label" for="ob-img-caption">{t("profile.gallery.caption")}</label>
-          <input
-            id="ob-img-caption"
-            type="text"
-            class="input"
-            placeholder={t("profile.gallery.caption.ph")}
-          />
+          <div class="ff">
+            <label class="ff__title" for="ob-img-caption">{t("profile.gallery.caption")}</label>
+            <input
+              id="ob-img-caption"
+              type="text"
+              class="input"
+              placeholder={t("profile.gallery.caption.ph")}
+            />
+          </div>
           <p class="field-note">{t("profile.gallery.captionNote")}</p>
         </div>
         {
@@ -399,10 +413,12 @@ const prefix = lang === "de" ? "/de" : "";
             uses. No placeholder, like the editor's. */
         }
         <div class="field">
-          <label class="label" for="ob-img-description"
-            >{t("profile.gallery.description.label")}</label
-          >
-          <textarea id="ob-img-description" class="input textarea" rows="3"></textarea>
+          <div class="ff ff--area">
+            <label class="ff__title" for="ob-img-description"
+              >{t("profile.gallery.description.label")}</label
+            >
+            <textarea id="ob-img-description" class="input textarea" rows="3" placeholder=" "></textarea>
+          </div>
           <p class="field-note">{t("profile.gallery.description")}</p>
         </div>
         {
@@ -514,7 +530,7 @@ const prefix = lang === "de" ? "/de" : "";
       <p class="ob-sub">{t("onboarding.done.sub")}</p>
     </header>
     <div class="ob-done-card">
-      <CommunityCardPreview />
+      <CommunityCardPreview lang={lang} />
     </div>
     {
       /* Filled by finishToPreview from what is actually true of the profile
@@ -836,7 +852,6 @@ const prefix = lang === "de" ? "/de" : "";
     height: 100%;
     object-fit: cover;
     border-radius: var(--radius-sm);
-    border: 1.5px solid var(--color-border);
     box-sizing: border-box;
   }
 

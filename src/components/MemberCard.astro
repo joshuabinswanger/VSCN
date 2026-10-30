@@ -2,7 +2,7 @@
 import type { MemberView } from "../lib/memberView.ts";
 import { stripStorageToken } from "../lib/memberView.ts";
 import { normaliseUrl } from "../lib/validation.ts";
-import { socialLinks } from "../lib/links.ts";
+import { communityTagHref, socialLinks } from "../lib/links.ts";
 import downArrowUrl from "../assets/downarrow.svg";
 import { useTranslations } from "../i18n/utils.ts";
 import type { Lang } from "../i18n/utils.ts";
@@ -75,7 +75,11 @@ const avatarSrc = stripStorageToken(m.photoURL ?? "");
       m.tags.length > 0 && (
         <ul class="member-tags">
           {m.tags.map((tag) => (
-            <li class="member-tag tagchip">{tag}</li>
+            <li>
+              <a class="member-tag tagchip" href={communityTagHref(lang, tag)}>
+                {tag}
+              </a>
+            </li>
           ))}
         </ul>
       )
@@ -194,10 +198,10 @@ const avatarSrc = stripStorageToken(m.photoURL ?? "");
     object-fit: cover;
     align-items: center;
     justify-content: center;
-    border: 1.5px solid #e5e5e5;
   }
 
   .member-avatar--placeholder {
+    border: 1.5px solid #e5e5e5;
     background: #f0f0f0;
     display: flex;
     font-size: var(--fs-180);
@@ -255,6 +259,29 @@ const avatarSrc = stripStorageToken(m.photoURL ?? "");
   .member-tag {
     min-width: 0;
     overflow-wrap: anywhere;
+  }
+
+  /* A profile tag is a way into the Portfolios view filtered by it
+     (2026-10-15, Josh: "tags should always be clickable"), drawn as the
+     member page draws its chip links: the chip keeps its look and gains only
+     the pointer and an ink hover. */
+  a.member-tag {
+    cursor: pointer;
+    transition:
+      color 0.15s,
+      border-color 0.15s;
+  }
+
+  a.member-tag:hover,
+  a.member-tag:focus-visible {
+    color: var(--color-dark);
+    border-color: var(--color-dark);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    a.member-tag {
+      transition: none;
+    }
   }
 
   .member-links {

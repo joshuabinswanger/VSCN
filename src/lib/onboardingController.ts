@@ -28,6 +28,7 @@ import { memberTypeFieldCopy } from "./memberType.ts";
 import {
   splitSocial,
   joinSocial,
+  socialUnlinked,
   profileBio,
   profileRole,
   MAX_SOCIAL_LINKS,
@@ -62,6 +63,10 @@ import {
   saveGalleryRecords,
   type GalleryItem,
 } from "./gallery.ts";
+// Every work in a project (2026-10-16): the wizard files its images under
+// the member's "Works" project — the editor's and the page's, by the same id.
+import { LOOSE_WORKS_TITLE, looseWorksProjectId } from "./projects.ts";
+import { loadProjects, saveProjects } from "./projectStore.ts";
 import { ui } from "../i18n/translations.ts";
 
 const STORAGE_KEY = "vscn:onboarding:state";
@@ -378,10 +383,11 @@ document.addEventListener("astro:page-load", () => {
   const socialRowTpl = document.querySelector<HTMLTemplateElement>('[data-ob-social-tpl="row"]');
   let socialValues: string[] = [""];
 
-  function setSocialStatus(text: string) {
+  function setSocialStatus(text: string, kind = "") {
     if (!socialStatus) return;
     socialStatus.textContent = text;
     socialStatus.style.display = text ? "block" : "none";
+    socialStatus.dataset.kind = kind;
   }
 
   /** The single stored value the rows add up to. */
@@ -389,14 +395,20 @@ document.addEventListener("astro:page-load", () => {
     return joinSocial(socialValues);
   }
 
-  function refreshSocialStatus() {
+  function refreshSocialStatus(settled = true) {
     if (socialAdd) socialAdd.disabled = socialValues.length >= MAX_SOCIAL_LINKS;
     // Length, not count, is the real limit — firestore.rules caps the joined
     // field at MAX_SOCIAL_MEDIA and rejects the WHOLE write over it, so the
     // member has to hear about it here rather than as a bare permission
     // error on the way out of the step.
+    // Bare handles: see the same branch in profileEditorController.
     if (socialStored().length > MAX_SOCIAL_MEDIA) {
       setSocialStatus(s["profile.social.tooLong"]);
+    } else if (
+      socialValues.some(socialUnlinked) &&
+      (settled || socialStatus?.dataset.kind === "unlinked")
+    ) {
+      setSocialStatus(s["profile.social.unlinked"], "unlinked");
     } else if (socialValues.length >= MAX_SOCIAL_LINKS) {
       setSocialStatus(s["profile.social.full"]);
     } else {
@@ -430,8 +442,9 @@ document.addEventListener("astro:page-load", () => {
           );
           input.addEventListener("input", () => {
             socialValues[index] = input.value;
-            refreshSocialStatus();
+            refreshSocialStatus(false);
           });
+          input.addEventListener("change", () => refreshSocialStatus());
 
           remove.setAttribute("aria-label", s["profile.social.remove"]);
           remove.addEventListener("click", () => removeSocialRow(index));
@@ -730,6 +743,46 @@ document.addEventListener("astro:page-load", () => {
     }
   }
 
+  // EVERY WORK IN A PROJECT (2026-10-16, Josh: "images without project are
+  // not allowed any longer! We need always a Project, just a title is
+  // mandatory"). The wizard asks no project question; its images go into the
+  // member's "Works" / "Arbeiten" project, created with the first upload
+  // that needs it, so /profile later opens them inside a block the member
+  // can rename. Project first, then each record's projectId — a record must
+  // never name a project that does not exist yet, as at the editor's Save.
+  let worksProjectReady: Promise<void> | null = null;
+
+  function ensureWorksProject(uid: string): Promise<void> {
+    worksProjectReady ??= (async () => {
+      const id = looseWorksProjectId(uid);
+      // Asked, not assumed: a member resuming the wizard may have it already,
+      // and a create over an existing document is refused (createdAt is pinned).
+      const stored = new Set((await loadProjects(uid)).map((r) => r.projectId));
+      if (stored.has(id)) return;
+      const failures = await saveProjects(uid, [{ projectId: id, ...LOOSE_WORKS_TITLE }], stored);
+      if (failures.length) throw failures[0].error;
+    })().catch((error: unknown) => {
+      // The next upload tries again.
+      worksProjectReady = null;
+      throw error;
+    });
+    return worksProjectReady;
+  }
+
+  /** Files the gallery's project-less works under "Works"; throws when a write is refused. */
+  async function fileUnderWorks(uid: string) {
+    const loose = gallery.filter((item) => !item.projectId);
+    if (loose.length === 0) return;
+    await ensureWorksProject(uid);
+    const id = looseWorksProjectId(uid);
+    const filed = loose.map((item) => ({ ...item, projectId: id }));
+    const failures = await saveGalleryRecords(filed);
+    // Only the ones that landed say so in memory; the rest are tried again.
+    const refused = new Set(failures.map((f) => f.imageId));
+    for (const item of loose) if (!refused.has(item.imageId)) item.projectId = id;
+    if (failures.length) throw failures[0].error;
+  }
+
   galleryInput?.addEventListener("change", async () => {
     const user = auth.currentUser;
     if (!user) return;
@@ -782,8 +835,10 @@ document.addEventListener("astro:page-load", () => {
       if (uploaded) {
         try {
           await persistGallery();
+          await fileUnderWorks(user.uid);
           if (!failed) setGalleryStatus(s["profile.upload.complete"]);
-        } catch {
+        } catch (error) {
+          console.warn("[onboarding] gallery not stored or not filed under Works:", error);
           setGalleryStatus(s["profile.gallery.error"]);
         }
       }

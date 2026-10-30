@@ -8,9 +8,9 @@ import { useTranslations, type Lang } from '../../../i18n/utils';
 export function getStaticPaths() { return [{ params: { lang: 'en' } }, { params: { lang: 'de' } }]; }
 const lang = Astro.params.lang as Lang;
 const t = useTranslations(lang);
-// All four tabs in the page's own language, as /profile draws them: the
+// All three tabs in the page's own language, as /profile draws them: the
 // widest set is what shows whether the bar still fits one row on a phone.
-const tabs = ['profile', 'work', 'account', 'preview'];
+const tabs = ['profile', 'work', 'account'];
 ---
 <Layout title="Editor component examples" lang={lang} noindex>
   <h1 class="t-heading">Editor component examples</h1>
