@@ -1195,8 +1195,9 @@ const BRAND_SLOTS: BrandSlot[] = [
   // .page-wrap is replaced on every navigation (only the ticker is persisted),
   // so the listener has to be moved to the new scroller each time.
   /** The header in its place at once: the ride-away flag off with the
-   *  slide's transition suspended for a frame. */
-  function showHeaderNow() {
+   *  slide's transition suspended for a frame. With `fade`, it then fades
+   *  in where it stands, so it is never seen moving. */
+  function showHeaderNow(fade = false) {
     const root = document.documentElement;
     if (!root.hasAttribute("data-header-away")) return;
     const parts = [
@@ -1210,6 +1211,10 @@ const BRAND_SLOTS: BrandSlot[] = [
     requestAnimationFrame(() => {
       for (const el of parts) el?.style.removeProperty("transition");
     });
+    if (!fade || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    for (const el of parts) {
+      el?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: TITLE_MS, easing: "ease-out" });
+    }
   }
 
   function initBrandScrollHide() {
@@ -1226,10 +1231,12 @@ const BRAND_SLOTS: BrandSlot[] = [
     // WITHOUT THE SLIDE (2026-10-30, Josh: "there is still a shift of the
     // vscn type top left when navigating pages"): a page left while its
     // header had ridden away arrived with the title and the nav sliding
-    // back down over the new page's first 400ms. The leave sequence drops
-    // the flag at the start of the fade (leavePage), and an arrival the
-    // sequence did not see (the iOS swipe back) drops it with no
-    // transition at all.
+    // back down over the new page's first 400ms. First try: the flag
+    // dropped at the start of the leave fade — the same slide, over the
+    // old page ("still shifting"). Now the header stays away through the
+    // leave and is put back at the swap, unseen, fading in where it stands
+    // (astro:after-swap below); this call catches an arrival the swap
+    // handler did not see (the iOS swipe back), with no transition.
     showHeaderNow();
     headerLastY = brandScroller?.scrollTop ?? 0;
     applyBrandHide();
@@ -1280,9 +1287,6 @@ const BRAND_SLOTS: BrandSlot[] = [
       return Promise.resolve();
     }
     leavingPage = true;
-    // The header rides back while the old page fades, so the new one
-    // arrives under a title already in its place (see showHeaderNow).
-    delete document.documentElement.dataset.headerAway;
     const phone = window.matchMedia("(width <= 767px), (pointer: coarse)").matches;
     const fade = main
       .animate(
@@ -1420,6 +1424,12 @@ const BRAND_SLOTS: BrandSlot[] = [
   });
 
   document.addEventListener("astro:before-swap", (event) => {
+    // A header that had ridden away comes back here, between the old page
+    // and the new, with no slide (see showHeaderNow). BEFORE the swap: the
+    // swap writes the new document's <html> attributes, which drops the
+    // flag itself, and that drop would run the 0.4s slide; here the flag
+    // is still on and the transition can be switched off first.
+    showHeaderNow(true);
     const swapEvent = event as unknown as {
       newDocument?: Document;
       navigationType?: string;
