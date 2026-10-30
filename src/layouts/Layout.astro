@@ -1320,8 +1320,36 @@ const BRAND_SLOTS: BrandSlot[] = [
       .catch(() => {});
   }
 
+  // A TAB OLDER THAN THE SITE LOADS THE NEXT PAGE IN FULL (2026-10-30, Josh:
+  // "somehow the filter doesnt open"). A tab left open across a deploy swaps
+  // in a page whose scripts carry new hashes, and the router runs them
+  // beside the old copies still in memory: two directory controllers, two
+  // click handlers on the Tags pill, and one click opened the card and
+  // closed it again (a black slab folding back into the pill). The stamp in
+  // <head> names the commit; when the incoming page's differs, the browser
+  // loads it fresh instead, the swap never happens. Same commit (a member
+  // rebuild) means the same scripts, so those still swap.
+  const buildOf = (doc: Document) =>
+    doc.querySelector<HTMLMetaElement>('meta[name="build-commit"]')?.content ?? "";
   document.addEventListener("astro:before-preparation", (event) => {
-    arriveDelay = event.to.pathname === event.from.pathname ? SAME_PAGE_ARRIVE_DELAY_MS : ARRIVE_DELAY_MS;
+    if (event.formData) return;
+    const ours = buildOf(document);
+    const load = event.loader;
+    event.loader = async () => {
+      await load();
+      const theirs = buildOf(event.newDocument);
+      if (!ours || !theirs || theirs === ours) return;
+      // Back/Forward has already moved the address bar; the others have not.
+      if (event.navigationType === "traverse") location.reload();
+      else if (event.navigationType === "replace") location.replace(event.to.href);
+      else location.assign(event.to.href);
+      // Hold the router here: the page is going.
+      await new Promise<never>(() => {});
+    };
+  });
+
+  document.addEventListener("astro:before-preparation", (event) => {
+    arriveDelay =event.to.pathname === event.from.pathname ? SAME_PAGE_ARRIVE_DELAY_MS : ARRIVE_DELAY_MS;
     // An iOS edge swipe has already shown the page coming back; fading the
     // one just left on top of that shows it a second time.
     if (browserAnimatedThisTraversal()) return;
