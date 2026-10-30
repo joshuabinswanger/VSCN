@@ -1037,6 +1037,17 @@
     opacity: 0;
     transform: var(--pic-in-from);
   }
+  /* THE WORDS UNDER A PICTURE COME AFTER IT (2026-10-30, Josh: "text of
+     image is faded in before the images when opening a profile"). The
+     entrance is on the <img>, so a work's caption (and a carousel's dots
+     and stacked captions) stood there plainly from the first frame, before
+     the name. They are held with their picture and drift up like a line a
+     beat after it starts. */
+  .mprof[data-motion] :is([data-paint="picture"], [data-paint="fade"])
+    > :is(.mprof__caption, .mprof__captions, .mprof__cdots) {
+    opacity: 0;
+    translate: 0 0.6rem;
+  }
 
   .mprof[data-motion].is-in [data-paint="avatar"] {
     opacity: 1;
@@ -1067,5 +1078,13 @@
   }
   .mprof[data-motion].is-in [data-paint="picture"] .mprof__img {
     transition-delay: var(--d, 0.6s);
+  }
+  .mprof[data-motion].is-in [data-paint="picture"] > :is(.mprof__caption, .mprof__captions, .mprof__cdots),
+  .mprof[data-motion].is-in [data-paint="fade"].is-seen > :is(.mprof__caption, .mprof__captions, .mprof__cdots) {
+    opacity: 1;
+    translate: 0 0;
+    transition:
+      opacity 0.7s var(--paint-ease) calc(var(--d, 0s) + 0.3s),
+      translate 0.9s var(--paint-ease) calc(var(--d, 0s) + 0.3s);
   }
 }
