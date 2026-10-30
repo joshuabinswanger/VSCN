@@ -30,7 +30,11 @@
 // Within a section the input order is kept, and the controller passes the
 // standing shuffled-in-bands order, so a section still reads best-first.
 
-export const WORK_SORTS = ["date", "member", "project", "field"] as const;
+//  - random: one unlabelled run in a seeded shuffle of the whole wall
+//    (2026-10-30, Josh: "add a random sort mode as well"). The unsorted
+//    wall is shuffled IN BANDS, best-first (communityDirectoryController's
+//    shuffledInBands); this one ignores the ranking altogether.
+export const WORK_SORTS = ["date", "random", "member", "project", "field"] as const;
 export type WorkSort = (typeof WORK_SORTS)[number];
 
 export function isWorkSort(value: unknown): value is WorkSort {
@@ -132,6 +136,10 @@ export function sectionWorks<T extends SortableWork>(
       return da < db ? 1 : -1;
     });
     return [{ key: "", label: "", items: sorted }];
+  }
+
+  if (sort === "random") {
+    return [{ key: "", label: "", items: shuffled(items, opts.random) }];
   }
 
   if (sort === "member") {

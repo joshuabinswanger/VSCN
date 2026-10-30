@@ -559,7 +559,7 @@ const searchIndex: SearchIndex = {
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
           </button>
           {
-            (["date", "member", "project", "field"] as const).map((sort) => (
+            (["date", "random", "member", "project", "field"] as const).map((sort) => (
               <button type="button" class="sort-menu__btn" data-sort={sort} aria-pressed="false">
                 {t(`community.sort.${sort}`)}
               </button>
@@ -659,7 +659,8 @@ const searchIndex: SearchIndex = {
             page. sort by: date, member, project, field/tags"). Images only —
             hidden in every other view (reflectSort in the controller; the
             server renders it for the default view's state). Date orders the
-            wall newest first; the other three group it, with the group's name
+            wall newest first, Random shuffles it whole (2026-10-30); the
+            other three group it, with the group's name
             over a hairline between one run of pictures and the next — a
             member's name links to their page. Field runs are in random order,
             as asked. One pick at a time; re-picking the active one clears it.
@@ -2958,13 +2959,21 @@ const searchIndex: SearchIndex = {
        220 (2026-10-16, Josh): six columns on a 16" MacBook (1728px). */
     --masonry-cols: 0;
   }
+  /* A SHORT RUN STANDS IN THE MIDDLE (2026-10-30, Josh: "when there are
+     not a lot of images they should arrange in the middle"). The deal
+     builds only as many columns as a run has tiles (never more than the
+     measure's count, `--run-cols`, which it writes on the run) and every
+     column keeps the width a full run would give it, so three pictures in
+     a six-column measure stand centred at the usual size, not spread over
+     the whole width or pushed to the left. */
   .cgrid[data-pattern="grid"] :global(.cgrid__run) {
     display: flex;
+    justify-content: center;
     align-items: flex-start;
     gap: var(--masonry-gap);
   }
   .cgrid[data-pattern="grid"] :global(.cgrid__col) {
-    flex: 1 1 0;
+    flex: 0 1 calc((100% - (var(--run-cols, 1) - 1) * var(--masonry-gap)) / var(--run-cols, 1));
     min-width: 0;
   }
   .cgrid[data-pattern="grid"] .cgrid__cell:not([hidden]) {

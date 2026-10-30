@@ -14,8 +14,8 @@ const seq = (...vals) => {
 const OPTS = { random: () => 0.5, noProject: "Without project", noField: "Untagged" };
 const ids = (section) => section.items.map((w) => w.id);
 
-test("the four sorts, and nothing else, are sorts", () => {
-  assert.deepEqual(WORK_SORTS, ["date", "member", "project", "field"]);
+test("the five sorts, and nothing else, are sorts", () => {
+  assert.deepEqual(WORK_SORTS, ["date", "random", "member", "project", "field"]);
   assert.equal(isWorkSort("member"), true);
   assert.equal(isWorkSort("score"), false);
   assert.equal(isWorkSort(null), false);
@@ -33,6 +33,17 @@ test("date: one unlabelled section, newest first, undated last, stable", () => {
   assert.equal(out.length, 1);
   assert.equal(out[0].label, "");
   assert.deepEqual(ids(out[0]), ["c", "a", "d", "b", "e"]);
+});
+
+test("random: one unlabelled section, the whole wall shuffled by the caller's source", () => {
+  const items = [W("a"), W("b"), W("c"), W("d")];
+  const out = sectionWorks(items, "random", { ...OPTS, random: seq(0, 0.4, 0.5) });
+  assert.equal(out.length, 1);
+  assert.equal(out[0].label, "");
+  assert.deepEqual([...ids(out[0])].sort(), ["a", "b", "c", "d"]);
+  assert.notDeepEqual(ids(out[0]), ["a", "b", "c", "d"]);
+  // The input is untouched.
+  assert.deepEqual(items.map((w) => w.id), ["a", "b", "c", "d"]);
 });
 
 test("member: one section per member, A to Z by name, items keep their order", () => {
