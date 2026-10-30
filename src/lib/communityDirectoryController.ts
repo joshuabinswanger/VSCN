@@ -868,19 +868,50 @@ function reflectTagOptions(mode: LayoutMode) {
 function reflectTagUI(mode: LayoutMode) {
   reflectTagOptions(mode);
   let activeLabel = "";
+  let activeRow: HTMLElement | null = null;
   document
     .querySelectorAll<HTMLButtonElement>(".tag-filter__option[data-label]")
     .forEach((opt) => {
       const active = Boolean(tagFilter) && opt.dataset.tag === tagFilter;
       opt.setAttribute("aria-pressed", String(active));
-      if (active) activeLabel = opt.dataset.label ?? "";
+      if (active) {
+        activeLabel = opt.dataset.label ?? "";
+        activeRow = opt.closest("li");
+      }
     });
+  liftTagRow(activeRow);
   const label = document.getElementById("tag-filter-label");
   if (label) label.textContent = activeLabel || (label.dataset.rest ?? "");
   document
     .getElementById("tag-filter-btn")
     ?.classList.toggle("filter-word--set", Boolean(tagFilter));
   reflectTagClear();
+}
+
+/** THE PICKED TAG FIRST (2026-10-30, Josh: "selected tags need to be at the
+ *  top of the tag search bar"): the active row moves to the head of the
+ *  list, right after "All tags", and every other row keeps the build's
+ *  order (stamped once as data-order, so clearing the tag restores it). */
+function liftTagRow(active: HTMLElement | null) {
+  const list = document.querySelector<HTMLElement>(".tag-filter__list");
+  if (!list) return;
+  const rows = Array.from(list.children) as HTMLElement[];
+  rows.forEach((li, i) => {
+    if (!li.dataset.order) li.dataset.order = String(i);
+  });
+  const [all, ...rest] = rows;
+  rest.sort((a, b) => {
+    if (a === active) return -1;
+    if (b === active) return 1;
+    return Number(a.dataset.order) - Number(b.dataset.order);
+  });
+  // Only what is out of place moves: a wholesale re-append on every
+  // reflect would tear the list down for nothing.
+  const current = Array.from(list.children);
+  if (all && current[0] !== all) list.prepend(all);
+  rest.forEach((li, i) => {
+    if (current[i + 1] !== li) list.appendChild(li);
+  });
 }
 
 /** The tags card's Clear button stands only while there is something to

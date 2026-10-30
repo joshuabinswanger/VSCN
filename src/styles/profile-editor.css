@@ -1878,6 +1878,20 @@
      --ccard-pic-room, worked out for the directory's cell: main's wide
      measure less the grid's 3vw a side and main's gutter), and the words'
      full 28rem. */
+  /* ON A PHONE TOO (2026-10-30, Josh: "card preview on mobile is not
+     correctly sized"): the preview kept its own 24rem picture there, while
+     the directory's pages view gives the picture the band it works out in
+     CommunityGrid.astro — the screen less the header, the bar, the words'
+     fixed rows and the lift, inside the top 70svh. The same sum here, so
+     the preview's picture is the size the visitor gets; the words follow
+     under it as the phone's card lays them. */
+  @media (--bp-mobile) {
+    .preview-card .ccard--preview {
+      --ccpv-cpage-h: calc(100svh - var(--header-h));
+      --ccpv-pic-fit: calc(var(--ccpv-cpage-h) - 4.5rem - 1rem - 2.5rem - 4.4rem - 1.7rem - 1.5rem);
+      --cpage-pic-h: min(var(--ccpv-pic-fit), 2 * (35svh - var(--header-h)));
+    }
+  }
   @media (--bp-desktop) {
     .preview-card .ccard--preview {
       --cpage-pic-h: calc(var(--shell-h, 100dvh) - var(--header-h) - 5.5rem - 22vh);

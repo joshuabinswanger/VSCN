@@ -1915,8 +1915,22 @@ const searchIndex: SearchIndex = {
       align-self: center;
       justify-content: center;
     }
+    /* THE DOTS RIGHT UNDER THE PICTURE (2026-10-30, Josh: "the three dots
+       on mobile in portfolio mode should always be right beneath the
+       images"): they stood under the BAND, a long way below a landscape
+       picture centred in it. They now share the band's cell and hang from
+       the picture's bottom edge: the band's middle plus half the picture's
+       height — the frame is the card's width at the artwork's aspect, no
+       taller than the band — plus the old spacer row. The words' rows are
+       untouched, so the name still starts on the same line on every card. */
     :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard > .ccard__foot) {
-      grid-area: 2 / 1 / 3 / 2;
+      grid-area: 1 / 1 / 2 / 2;
+      align-self: start;
+      justify-self: center;
+      margin-top: calc(
+        var(--cpage-pic-h) / 2 + min(var(--cpage-pic-h), 100% / var(--frame-ar, 1)) / 2 + 0.5rem
+      );
+      z-index: 1;
     }
     :global(.cgrid[data-pattern="pages"] > .cgrid__cell > .ccard .ccard__head) {
       grid-area: 3 / 1 / 4 / 2;
