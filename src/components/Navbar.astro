@@ -671,15 +671,18 @@ import "../styles/type.css";
 
   @media (--bp-mobile) {
     /* Signed in with a photo, the closed menu key shows the face; open,
-       the cross. A 38px disc (2026-10-30, Josh: "the profile button has to
-       be the same size as the portfolio buttons"): the directory bar's
-       circles are 38px on a phone (--bar-h, CommunityGrid.astro). Was 34. */
+       the cross. 38px OUTSIDE, RING INCLUDED (2026-10-30, Josh: "the profile
+       button has to be the same size as the portfolio buttons", then "the
+       account pill still big"): the directory bar's circles are 38px on a
+       phone with their hairline inside (--bar-h, border-box,
+       CommunityGrid.astro). The disc was 38 with its ring outside, 40 in
+       all; now a 36px disc inside the ring, the key's 40 around it. */
     .nav-menu-btn .nav-menu-btn__pic {
       position: absolute;
-      inset: 1px;
+      inset: 2px;
       display: block;
-      width: 38px;
-      height: 38px;
+      width: 36px;
+      height: 36px;
       object-fit: cover;
       border-radius: 50% !important;
       box-shadow: 0 0 0 1px var(--nav-ink);
@@ -1005,7 +1008,9 @@ import "../styles/type.css";
        /profile the same face opened the full sheet. Signed out, the menu
        key is still the hamburger and its sheet. */
     nav.is-signed-in .nav-links {
-      inset: 0 7px auto auto;
+      /* 9px, so the pill's right edge is the face's ring (the key sits 8px
+         in, its 36px disc 2px inside that). */
+      inset: 0 9px auto auto;
       height: var(--header-h);
       padding: 0;
       flex-direction: row;
@@ -1029,12 +1034,15 @@ import "../styles/type.css";
        pill, and the tabs follow it out, the nearest first. Until today its
        max-width eased to 24rem, past the pill's own width, so the pill was
        all there a tenth of a second in and read as a pop, not a growth. */
+    /* 38px TALL (2026-10-30, Josh: "open account pill should be changed
+       too"): the pill stood 42px, the bar's circles 38. Its ring now runs
+       exactly round the face's own. */
     nav.is-signed-in .nav-links .nav-acct {
       box-sizing: border-box;
-      padding: 4px 42px 4px 4px;
+      padding: 4px 38px 4px 4px;
       box-shadow: inset 0 0 0 1px var(--color-border);
       background: var(--nav-paper);
-      clip-path: inset(0 0 0 calc(100% - 42px) round 999px);
+      clip-path: inset(0 0 0 calc(100% - 38px) round 999px);
       opacity: 0;
       transition:
         clip-path 0.32s cubic-bezier(0.5, 0, 0.75, 0),
@@ -1054,7 +1062,7 @@ import "../styles/type.css";
     }
     nav.is-signed-in .nav-links .nav-acct .nav-link {
       flex: none;
-      height: 34px;
+      height: 30px;
       /* 10px, not 12: open, the pill must stay clear of VSCN at 360px. */
       padding: 0 10px;
       white-space: nowrap;
