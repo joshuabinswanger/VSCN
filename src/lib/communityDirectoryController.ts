@@ -663,7 +663,7 @@ document.addEventListener("astro:after-swap", () => {
 // where document-level listeners would stack one copy per navigation.
 // The whole pill counts as inside: the panels are no longer in .bar-menu.
 document.addEventListener("click", (e) => {
-  if (!(e.target instanceof Element) || !e.target.closest(".community-bar__in")) closeBarMenus();
+  if (!(e.target instanceof Element) || !e.target.closest(".community-bar__in, .tag-float")) closeBarMenus();
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeBarMenus();
@@ -882,6 +882,13 @@ function reflectTagUI(mode: LayoutMode) {
   liftTagRow(activeRow);
   const label = document.getElementById("tag-filter-label");
   if (label) label.textContent = activeLabel || (label.dataset.rest ?? "");
+  // The same name over the views pill, so the filter shows with the card shut.
+  const float = document.getElementById("tag-float");
+  const floatName = document.getElementById("tag-float-name");
+  if (float && floatName) {
+    floatName.textContent = activeLabel;
+    float.hidden = !activeLabel;
+  }
   document
     .getElementById("tag-filter-btn")
     ?.classList.toggle("filter-word--set", Boolean(tagFilter));
@@ -1516,6 +1523,17 @@ document.addEventListener("astro:page-load", () => {
       .getElementById("sort-menu-btn")
       ?.addEventListener("click", () => toggleBarMenu("sort-menu-panel"), { signal: life });
 
+    // The floating tag: its name opens the card it summarises, its × drops
+    // the tag — a navigation like the card's Clear, so it is a history entry.
+    document
+      .getElementById("tag-float-name")
+      ?.addEventListener("click", () => tagBtn?.click(), { signal: life });
+    document.getElementById("tag-float-x")?.addEventListener("click", () => {
+      closeBarMenus();
+      const url = new URL(window.location.href);
+      url.searchParams.delete("tag");
+      goTo(url);
+    }, { signal: life });
     tagBtn?.addEventListener("click", () => {
       if (!tagPanel) return;
       const opening = toggleBarMenu("tag-filter-panel");

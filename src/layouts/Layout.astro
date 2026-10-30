@@ -165,6 +165,22 @@ const BRAND_SLOTS: BrandSlot[] = [
 <html lang={lang}>
   <head>
     <meta charset="utf-8" />
+    {
+      /* THE FACE EVERYTHING IS SET IN, ASKED FOR FIRST (2026-10-30). Found by
+        the stylesheet alone, Archivo was requested only once the CSS had
+        parsed, and on a cold phone load it could arrive after the intro had
+        started in the fallback face — the letters then changed width under
+        cells sized for the other font (PageLoader.astro). crossorigin is
+        required for a font preload even on the same origin, or the browser
+        fetches it twice. */
+    }
+    <link
+      rel="preload"
+      href="/fonts/archivo/Archivo-Variable.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin
+    />
     <link rel="icon" type="image/png" href={favicon.src} />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     {/* The paper colour, so the browser's own furniture and any strip of canvas
