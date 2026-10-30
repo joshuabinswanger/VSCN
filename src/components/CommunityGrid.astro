@@ -763,16 +763,29 @@ const searchIndex: SearchIndex = {
         until the card opened. This tag rides over the views pill — above it
         on a phone, where the bar sits at the foot; under it on a desktop,
         where the bar stands in the header. Outside .community-bar__in so the
-        island's clip cannot cut it; reflectTagUI fills it, a tap opens the
-        Tags card. */
+        island's clip cannot cut it; reflectTagUI fills it, a tap on the name
+        opens the Tags card. The × beside it drops the tag (same day, Josh:
+        "make it deleteable with an X button next to it"). */
     }
-    <button
-      type="button"
-      id="tag-float"
-      class="tagchip tag-float"
-      aria-controls="tag-filter-panel"
-      hidden
-    ></button>
+    <span id="tag-float" class="tagchip tag-float" hidden>
+      <button
+        type="button"
+        id="tag-float-name"
+        class="tag-float__name"
+        aria-controls="tag-filter-panel"
+      ></button>
+      <button
+        type="button"
+        id="tag-float-x"
+        class="tag-float__x"
+        aria-label={t("community.filter.tags.clear")}
+      >
+        <svg viewBox="0 0 10 10" aria-hidden="true"
+          ><path d="M2 2l6 6M8 2l-6 6" fill="none" stroke="currentColor" stroke-width="1.4"
+          ></path></svg
+        >
+      </button>
+    </span>
   </div>
 
   {
@@ -3527,14 +3540,12 @@ const searchIndex: SearchIndex = {
     bottom: calc(100% + 8px);
     translate: calc(-50% - (var(--bar-h) + var(--bar-gap, 6px)) / 2) 0;
     pointer-events: auto;
-    cursor: pointer;
     max-width: min(16rem, calc(100vw - 32px));
     min-height: 24px;
-    padding-inline: 10px calc(10px - var(--tag-track));
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    display: block;
+    padding: 0 4px 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 2px;
     /* Dark, as the Tags circle is while a tag is set: the two say "filtered"
        in one voice. */
     background: var(--color-dark) !important;
@@ -3554,6 +3565,40 @@ const searchIndex: SearchIndex = {
   }
   .tag-float[hidden] {
     display: none;
+  }
+  .tag-float__name,
+  .tag-float__x {
+    margin: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .tag-float__name {
+    min-width: 0;
+    padding: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* A 20px target round a 9px cross; the chip's own height carries the rest. */
+  .tag-float__x {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border-radius: 50%;
+  }
+  .tag-float__x svg {
+    width: 9px;
+    height: 9px;
+  }
+  .tag-float__x:hover,
+  .tag-float__x:focus-visible {
+    background: color-mix(in srgb, var(--color-bg) 22%, transparent);
   }
   .community-bar:has(.community-bar__panels > :not([hidden])) .tag-float {
     opacity: 0;

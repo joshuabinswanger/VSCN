@@ -884,8 +884,9 @@ function reflectTagUI(mode: LayoutMode) {
   if (label) label.textContent = activeLabel || (label.dataset.rest ?? "");
   // The same name over the views pill, so the filter shows with the card shut.
   const float = document.getElementById("tag-float");
-  if (float) {
-    float.textContent = activeLabel;
+  const floatName = document.getElementById("tag-float-name");
+  if (float && floatName) {
+    floatName.textContent = activeLabel;
     float.hidden = !activeLabel;
   }
   document
@@ -1522,10 +1523,17 @@ document.addEventListener("astro:page-load", () => {
       .getElementById("sort-menu-btn")
       ?.addEventListener("click", () => toggleBarMenu("sort-menu-panel"), { signal: life });
 
-    // The floating tag opens the card it summarises.
+    // The floating tag: its name opens the card it summarises, its × drops
+    // the tag — a navigation like the card's Clear, so it is a history entry.
     document
-      .getElementById("tag-float")
+      .getElementById("tag-float-name")
       ?.addEventListener("click", () => tagBtn?.click(), { signal: life });
+    document.getElementById("tag-float-x")?.addEventListener("click", () => {
+      closeBarMenus();
+      const url = new URL(window.location.href);
+      url.searchParams.delete("tag");
+      goTo(url);
+    }, { signal: life });
     tagBtn?.addEventListener("click", () => {
       if (!tagPanel) return;
       const opening = toggleBarMenu("tag-filter-panel");
