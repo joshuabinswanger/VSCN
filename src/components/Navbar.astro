@@ -923,8 +923,8 @@ import "../styles/type.css";
        menu. it should reflect the desktop version"). The header's own
        controls, as pills, centred: LOGIN and SIGN UP signed out; signed in,
        the account's three tabs in one outlined capsule with the current one
-       black, as the desktop's open account pill. The language switch stays
-       beneath. Info is behind VSCN and the directory behind the Portfolios
+       black, as the desktop's open account pill. The language switch
+       is in the footer. Info is behind VSCN and the directory behind the Portfolios
        key, so the large-type destinations (and Community's views) are not
        drawn; nor is PROFILE, whose tabs are on the sheet. */
     #nav-info,
@@ -949,12 +949,30 @@ import "../styles/type.css";
     .nav-links .nav-link::after {
       display: none;
     }
+    /* LOGIN AND SIGN UP AT THE TOP RIGHT (2026-10-31, Josh: "make the
+       Login/ Signup Button be in the top right when opening the menu. the
+       EN/DE Swtich can sit in the bottom where the impressum etc ist"). The
+       two pills stand on the header's line, left of the cross, at the bar's
+       38px; the language switch leaves the sheet for the footer, which
+       already carries it (as the signed-in strip left it out). */
+    nav:not(.is-signed-in) .nav-right-group {
+      position: absolute;
+      top: 0;
+      right: 56px;
+      height: var(--header-h);
+      flex-wrap: nowrap;
+      gap: 8px;
+    }
+    #nav-sheet-lang {
+      display: none;
+    }
     /* Padding, not height: the script sets these two an inline display. */
     .nav-links #nav-join,
     .nav-links #nav-signup {
       box-sizing: border-box;
-      min-height: 46px;
-      padding: 16px 22px 15px;
+      min-height: 38px;
+      padding: 12px 16px 11px;
+      white-space: nowrap;
       border-radius: var(--radius-pill) !important;
     }
     .nav-links #nav-join {
@@ -1031,9 +1049,6 @@ import "../styles/type.css";
     nav.is-signed-in .nav-menu-btn[aria-expanded="true"] ~ .nav-links {
       opacity: 1;
       transition: visibility 0s linear 0s;
-    }
-    nav.is-signed-in #nav-sheet-lang {
-      display: none;
     }
     /* OUT OF THE FACE (2026-10-29, Josh: "pill needs to extend from
        profile"). The pill keeps its full size and is CLIPPED: shut, the clip
