@@ -55,11 +55,11 @@ import { pagerChevron } from "./pager.ts";
 /** Below this the viewport is a phone: one column, and the text always below. */
 const MOBILE_MAX = 767;
 /** The CSS's --bp-mobile (custom-media.css): that width, OR a touch-first
- *  screen — an iPad in landscape draws the phone chrome (lightbox.css), so
- *  the padding must agree with it. */
+ *  screen no taller than 500px, a phone turned sideways (lightbox.css), so
+ *  the padding must agree with it. A tablet is desktop (2026-10-31). */
 function mobileViewport(viewportSize: Point): boolean {
   if (viewportSize.x <= MOBILE_MAX) return true;
-  return typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+  return typeof matchMedia === "function" && matchMedia("(pointer: coarse) and (height <= 500px)").matches;
 }
 
 /**

@@ -23,7 +23,7 @@ import { dissolve, moveCarousel, moveCarouselToProject } from "./carouselEditor.
 import { WORK_SIZE_PX, workSize, workSizeWidth, type WorkSize } from "./workSize.ts";
 
 /** The same two queries as custom-media.css; a drag needs a pointer that can drag. */
-export const DESKTOP_QUERY = "(767px < width) and (not (pointer: coarse))";
+export const DESKTOP_QUERY = "(767px < width) and ((not (pointer: coarse)) or (500px < height))";
 
 /** The drag's own MIME type, so the editor's FILE drops (dragover checks for "Files") stay untouched. */
 const WORK_DRAG_TYPE = "application/x-vscn-work";

@@ -17,7 +17,7 @@
 // ────────────────────────────────────────────────────────────────────────
 import { pageLifetime, releaseWith } from "./pageLifecycle.ts";
 
-const DESKTOP = "(767px < width) and (not (pointer: coarse))";
+const DESKTOP = "(767px < width) and ((not (pointer: coarse)) or (500px < height))";
 const FIT = "--ccard-words-fit";
 const WORDS = '.cgrid[data-pattern="pages"] > .cgrid__cell:not([hidden]) > .ccard > .ccard__words';
 
