@@ -56,7 +56,16 @@ const { work: w, index: i, displayName, workAlt, linkTitle, siteLinkTitle } = As
 // page about it. One arrow, one destination; both still live in the lightbox.
 const outHref = w.link || w.siteLink;
 const outTitle = w.link ? linkTitle : siteLinkTitle;
-const showDesc = w.showDescription === true && Boolean(w.description?.trim());
+// THE PANEL BESIDE THE PICTURE (2026-10-31, Josh: "on desktop i want to the
+// right of the images carousel etc. to have a panel ... a panel per image
+// and carousel that contains the details", then "everything except the links
+// and descriptions" stays under the picture, and the description is in it
+// "always"): the description and the links stand in a .mprof__panel to the
+// picture's right on a desktop, whatever the switch says. The switch only
+// governs the PHONE now, where the panel folds back under the title and the
+// description prints there when it is on (is-phone-desc, profile.css).
+const description = w.description?.trim() || "";
+const showDesc = w.showDescription === true && Boolean(description);
 ---
 
 {/* NO MORPH FROM THE CARD (2026-10-20, Josh: "the build up of the page is not
@@ -121,16 +130,24 @@ const showDesc = w.showDescription === true && Boolean(w.description?.trim());
       switches it on PER WORK since 2026-10-31 (showDescription). The title
       stays; the lightbox reads the description either way, behind the
       title's dropdown (data-pswp-description above). */}
-  {(w.caption?.trim() || showDesc || w.link || w.siteLink) && (
+  {w.caption?.trim() && (
     <figcaption class="mprof__caption">
-      {w.caption?.trim() && <span class="mprof__caption-line">{w.caption}</span>}
-      {showDesc && <span class="mprof__desc">{w.description}</span>}
+      <span class="mprof__caption-line">{w.caption}</span>
+    </figcaption>
+  )}
+  {/* The details panel: a SIBLING of the figcaption, not a child — the
+      caption's paint-in animates `translate`, which would make it the
+      panel's containing block and pin the panel under the picture. Against
+      the figure, profile.css stands it beside the picture on a desktop. */}
+  {(description || w.siteLink || w.link) && (
+    <div class="mprof__panel" class:list={{ "is-phone-desc": showDesc }}>
+      {description && <span class="mprof__desc">{description}</span>}
       {/* Where the piece lives in the world: the member's own project page
           first, then the publication it appeared in (two links since
-          2026-09-10). In the caption and not on the image, because the
-          image's own anchor is the lightbox trigger — wrapping that in an
-          outbound link would take the reader off the page every time they
-          tried to look closer. The host IS the link text. */}
+          2026-09-10). Beside the picture and not on it, because the image's
+          own anchor is the lightbox trigger — wrapping that in an outbound
+          link would take the reader off the page every time they tried to
+          look closer. The host IS the link text. */}
       {(w.siteLink || w.link) && (
         <span class="mprof__caption-links">
           {w.siteLink && (
@@ -145,7 +162,7 @@ const showDesc = w.showDescription === true && Boolean(w.description?.trim());
           )}
         </span>
       )}
-    </figcaption>
+    </div>
   )}
 </figure>
 {

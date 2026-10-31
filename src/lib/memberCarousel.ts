@@ -10,10 +10,14 @@ import { pageLifetime, releaseWith } from "./pageLifecycle.ts";
 
 const observers = new WeakMap<HTMLElement, MutationObserver>();
 
-/** Marks caption `i` of a carousel figure as the showing one. */
+/** Marks caption `i` of a carousel figure — and its details panel beside the frame (2026-10-31) — as the showing one. */
 function showCaption(figure: HTMLElement, i: string | undefined): void {
+  const on = i ?? "0";
   figure.querySelectorAll<HTMLElement>("[data-slide-caption]").forEach((caption) => {
-    caption.classList.toggle("is-on", caption.dataset.slideCaption === (i ?? "0"));
+    caption.classList.toggle("is-on", caption.dataset.slideCaption === on);
+  });
+  figure.querySelectorAll<HTMLElement>("[data-slide-panel]").forEach((panel) => {
+    panel.classList.toggle("is-on", panel.dataset.slidePanel === on);
   });
 }
 

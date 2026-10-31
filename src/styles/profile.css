@@ -659,20 +659,92 @@
   white-space: pre-line;
 }
 
+/* ── THE DETAILS PANEL (2026-10-31, Josh: "on desktop i want to the right
+   of the images carousel etc. to have a panel ... a panel per image and
+   carousel that contains the details"; under the picture stays "everything
+   except the links and descriptions"; the description is in it "always")
+   ───────────────────────────────────────────────────────────────────────
+   The description and the links, as one block after the figcaption (a
+   SIBLING: the caption's paint-in animates `translate`, which would make it
+   the block's containing block). On a PHONE the block folds under the
+   title at the caption's width: the links stay hidden there (since
+   2026-10-16, Josh: "dont show the extra links in the profile view"; the
+   lightbox carries them) and the block prints only when the member switched
+   the description on for the work (is-phone-desc, the showDescription
+   switch of 2026-10-31). On a DESKTOP the block stands beside the picture
+   (the desktop rules below). */
+.mprof__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-width: calc(70vh * var(--work-ar));
+  max-width: min(var(--size-w, 100%), calc(70vh * var(--work-ar)));
+  margin: 0.45rem auto 0;
+  color: var(--color-muted);
+}
+@media (--bp-mobile) {
+  .mprof__panel:not(.is-phone-desc) {
+    display: none;
+  }
+}
+
 /* The per-image links — the member's own project page, then where the image
    appeared (two since 2026-09-10) — reuse .mprof__link wholesale: they should
    look like every other link on the page. They sit on one wrapping row, and
-   the row shrink-wraps: the caption is a flex COLUMN, so a stretched child
+   the row shrink-wraps: the panel is a flex COLUMN, so a stretched child
    would make an underline read as a rule across the page.
-   One rule, both consumers — the page and the editor's preview.
-   HIDDEN since 2026-10-16 (Josh: "dont show the extra links in the profile
-   view"): under a work only its title shows; the lightbox still carries
-   the links. `display: flex` brings them back. */
+   One rule, both consumers — the page and the editor's preview. */
 .mprof__caption-links {
   display: none;
   flex-wrap: wrap;
   gap: 0.35rem 1.1rem;
   align-self: start;
+}
+
+@media (--bp-desktop) {
+  /* BESIDE THE PICTURE. Absolute against the figure (position: relative on
+     .mprof__work), so a carousel's stacked captions put every slide's panel
+     in the same spot and the caption's cross-fade carries it. Its left edge
+     is the frame's right edge plus a gutter, from the same formula that
+     centres the frame (.mprof__out): the frame is min(column, --size-w,
+     70vh x aspect) wide in the column's middle. It stands in the grid's
+     empty third track, top-aligned with the picture. A phone never gets
+     here: the panel folds under the title there. */
+  /* ITS WIDTH: 16rem, less when the window leaves no room. The third track
+     is what is left of a 94vw main after the aside (half the leftover),
+     the 48rem column and two gaps, so beside an L picture the room comes
+     to about 50vw - 34rem; at 1280px that is the full 16rem, at 1024px the
+     7rem floor, which still clears the window's edge. */
+  .mprof__work {
+    --panel-w: clamp(7rem, calc(50vw - 34rem), 16rem);
+  }
+  .mprof__panel {
+    position: absolute;
+    top: 0;
+    left: calc((100% + min(100%, var(--size-w, 100%), 70vh * var(--work-ar, 1))) / 2 + 2rem);
+    width: var(--panel-w);
+    max-width: none;
+    margin: 0;
+    gap: 0.7rem;
+  }
+  .mprof__panel > .mprof__desc {
+    max-width: none;
+  }
+  .mprof__panel > .mprof__caption-links {
+    display: flex;
+  }
+  /* A carousel's stacked panels share the spot through their parent: the
+     stack takes the absolute place and the panels lie in its one grid cell. */
+  .mprof__panels {
+    position: absolute;
+    top: 0;
+    left: calc((100% + min(100%, var(--size-w, 100%), 70vh * var(--work-ar, 1))) / 2 + 2rem);
+    width: var(--panel-w);
+  }
+  .mprof__panels > .mprof__panel {
+    position: static;
+    width: 100%;
+  }
 }
 
 /* ── A WORK CAROUSEL (2026-10-23, Josh: "yes i want it back but rebuild it
@@ -860,10 +932,12 @@
    one is .is-on (memberCarousel.ts); the others cross-fade out on the
    site's ease-out and are then taken out of the accessibility tree
    (visibility), since opacity hides nothing from a screen reader. */
-.mprof__captions {
+.mprof__captions,
+.mprof__panels {
   display: grid;
 }
-.mprof__captions > .mprof__caption {
+.mprof__captions > .mprof__caption,
+.mprof__panels > .mprof__panel {
   grid-area: 1 / 1;
   /* THE PICTURE'S WIDTH, as under a single work: in a grid cell the
      caption's auto inline margins would otherwise shrink it to its words
@@ -876,7 +950,8 @@
     opacity 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
     visibility 0s linear 0.3s;
 }
-.mprof__captions > .mprof__caption.is-on {
+.mprof__captions > .mprof__caption.is-on,
+.mprof__panels > .mprof__panel.is-on {
   opacity: 1;
   visibility: visible;
   transition:
@@ -884,7 +959,8 @@
     visibility 0s;
 }
 @media (prefers-reduced-motion: reduce) {
-  .mprof__captions > .mprof__caption {
+  .mprof__captions > .mprof__caption,
+  .mprof__panels > .mprof__panel {
     transition: none;
   }
 }
@@ -1090,7 +1166,7 @@
      the name. They are held with their picture and drift up like a line a
      beat after it starts. */
   .mprof[data-motion] :is([data-paint="picture"], [data-paint="fade"])
-    > :is(.mprof__caption, .mprof__captions, .mprof__cdots, .mprof__out) {
+    > :is(.mprof__caption, .mprof__captions, .mprof__panel, .mprof__panels, .mprof__cdots, .mprof__out) {
     opacity: 0;
     translate: 0 0.6rem;
   }
@@ -1125,8 +1201,8 @@
   .mprof[data-motion].is-in [data-paint="picture"] .mprof__img {
     transition-delay: var(--d, 0.6s);
   }
-  .mprof[data-motion].is-in [data-paint="picture"] > :is(.mprof__caption, .mprof__captions, .mprof__cdots, .mprof__out),
-  .mprof[data-motion].is-in [data-paint="fade"].is-seen > :is(.mprof__caption, .mprof__captions, .mprof__cdots, .mprof__out) {
+  .mprof[data-motion].is-in [data-paint="picture"] > :is(.mprof__caption, .mprof__captions, .mprof__panel, .mprof__panels, .mprof__cdots, .mprof__out),
+  .mprof[data-motion].is-in [data-paint="fade"].is-seen > :is(.mprof__caption, .mprof__captions, .mprof__panel, .mprof__panels, .mprof__cdots, .mprof__out) {
     opacity: 1;
     translate: 0 0;
     transition:
