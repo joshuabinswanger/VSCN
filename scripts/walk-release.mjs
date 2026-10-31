@@ -58,13 +58,13 @@ const galleryItems = () => page.locator("#gallery-editor .gallery-item");
 // runs (empty, it is not written, so the next run makes it again).
 const WALK_PROJECT_TITLE = "Release walk";
 const openBlock = () => page.locator("#gallery-editor [data-project-block]:not(.pp-off)");
-/** Reach a project's page: the first-project prompt, else the first card, else the page already open. */
+/** Reach a project's page: the first-project prompt, else the first card on show, else the page already open (its list is then hidden, cards and all). */
 async function openProjectPage() {
   const first = page.locator("#gallery-first-project");
   if (await first.isVisible().catch(() => false)) {
     await first.click();
   } else {
-    const cards = page.locator("[data-pp-cards] [data-pp-card]");
+    const cards = page.locator("[data-pp-cards] [data-pp-card]:visible");
     if (await cards.count()) await cards.first().click();
   }
   await expect(openBlock()).toHaveCount(1, { timeout: 15_000 });
