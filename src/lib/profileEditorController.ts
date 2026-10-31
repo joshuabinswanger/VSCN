@@ -13,7 +13,8 @@ import {
   workWords,
   type WorkWords,
 } from "./draftMerge.ts";
-import { auth, isAttestationFailing, isSecurityCheckBlocked } from "./firebase.ts";
+import { appCheckReady, auth, isAttestationFailing, isSecurityCheckBlocked, warmUpAppCheck } from "./firebase.ts";
+import { PROFILE_AUTH_WATCHDOG_MS, PROFILE_READ_TIMEOUT_MS } from "./appCheckTiming.ts";
 import {
   signOut,
   reauthenticateWithCredential,
@@ -3021,7 +3022,19 @@ document.addEventListener("astro:page-load", () => {
   // the button re-runs the chain in place, and if that fails too it reloads
   // the page, which is the one remedy known to work. Coming back to the tab
   // after a failure retries once on its own.
-  const LOAD_TIMEOUT_MS = 15000;
+  //
+  // THE CLOCK STARTS AFTER THE APP CHECK TOKEN (2026-10-31, Josh: "opening
+  // the profile for the first time gives a timeout sometimes"). Firestore
+  // arms its own 10 s first-connect timer in the same statement as the watch
+  // stream, and that stream then waits for the App Check token; on a first
+  // open nothing had attested yet, so the whole Turnstile attestation ran
+  // inside Firestore's 10 s and any slow challenge ended in "client is
+  // offline" on a working network. Now attestation starts when the page
+  // mounts (overlapping auth), runLoad awaits the token before its first
+  // read, and the clock below measures only the reads
+  // (appCheckTiming.ts, FIRESTORE_FIRST_CONNECT_MS).
+  const LOAD_TIMEOUT_MS = PROFILE_READ_TIMEOUT_MS;
+  warmUpAppCheck();
   let loadGeneration = 0;
   let loadFailures = 0;
   let loadState: "loading" | "loaded" | "failed" = "loading";
@@ -3171,6 +3184,10 @@ document.addEventListener("astro:page-load", () => {
       loadingEl.textContent = s["profile.loading"];
       loadingEl.style.display = "";
     }
+    // Token first, then the reads; attestation has its own budget and its
+    // own sentence (showLoadFailed asks isAttestationFailing).
+    await appCheckReady();
+    if (generation !== loadGeneration || lifecycle.signal.aborted) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const clock = new Promise<never>((_, reject) => {
       timer = setTimeout(() => reject(new Error("profile load timed out")), LOAD_TIMEOUT_MS);
@@ -3341,12 +3358,14 @@ document.addEventListener("astro:page-load", () => {
   // requireAuth settles the verification claim before calling back, and that
   // step has no clock of its own: if auth itself never answers, the timer
   // below shows the same failure, whose button reloads for want of a user.
+  // An expired ID token refreshes through App Check too, so on a cold open
+  // auth may spend a whole attestation here before the reads can start.
   const authWatchdog = setTimeout(() => {
     if (loadState === "loading" && loadGeneration === 0) {
       loadFailures = 2;
       showLoadFailed(null);
     }
-  }, LOAD_TIMEOUT_MS);
+  }, PROFILE_AUTH_WATCHDOG_MS);
 
   unsubscribeAuth?.();
   unsubscribeAuth = requireAuth(async (user) => {

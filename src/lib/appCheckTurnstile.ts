@@ -285,3 +285,13 @@ export function turnstileProvider(siteKey: string, projectId: string): CustomPro
 export function warmUp(appCheck: AppCheck): void {
   void getAppCheckToken(appCheck).catch(() => {});
 }
+
+/**
+ * The same attempt, awaited: resolves when a token is in hand or when the
+ * attempt has failed (the SDK dedupes, so a warm-up already running is the
+ * promise awaited here). See appCheckReady() in firebase.ts for the reader
+ * that needs it.
+ */
+export function ready(appCheck: AppCheck): Promise<void> {
+  return getAppCheckToken(appCheck).then(() => undefined, () => undefined);
+}
