@@ -166,24 +166,6 @@ const captionOf = (w: Work) => w.caption?.trim() || "";
       slides.map((w, i) => (
         <figcaption class="mprof__caption" class:list={{ "is-on": i === 0 }} data-slide-caption={i}>
           {captionOf(w) && <span class="mprof__caption-line">{w.caption}</span>}
-        </figcaption>
-      ))
-    }
-  </div>
-  {/* ONE DETAILS PANEL PER SLIDE (2026-10-31), stacked like the captions and
-      following the frame the same way (data-slide-panel, memberCarousel.ts):
-      the slide's description and links, beside the frame on a desktop
-      (MemberWork.astro has the single work's). Every slide gets a block,
-      empty or not, so the index matches. */}
-  <div class="mprof__panels">
-    {
-      slides.map((w, i) => (
-        <div
-          class="mprof__panel"
-          class:list={{ "is-on": i === 0, "is-phone-desc": w.showDescription === true && Boolean(w.description?.trim()) }}
-          data-slide-panel={i}
-        >
-          {w.description?.trim() && <span class="mprof__desc">{w.description.trim()}</span>}
           {(w.siteLink || w.link) && (
             <span class="mprof__caption-links">
               {w.siteLink && (
@@ -198,7 +180,7 @@ const captionOf = (w: Work) => w.caption?.trim() || "";
               )}
             </span>
           )}
-        </div>
+        </figcaption>
       ))
     }
   </div>
