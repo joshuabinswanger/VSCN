@@ -15,9 +15,10 @@ const portfoliosHref = lang === "de" ? "/de/community" : "/community";
 
 // INFO LEADS INTO THE PORTFOLIOS (2026-10-31, Josh: "update that page so
 // people naturally flow into opening the portfolio page"). The way in is
-// said three times: a button under the opening lines, a strip of the
-// network's own pictures that all open the Portfolios, and the button again
-// once the reading is done. The strip is the wall's guest list (hidden works
+// the views switcher in the header (ViewsPill.astro), a strip of the
+// network's own pictures that all open the Portfolios, and a button once the
+// reading is done. The button under the opening lines went the same day
+// (Josh: "remove the first pill on the landing page"). The strip is the wall's guest list (hidden works
 // stay off, as on /community), best first, one picture a member before any
 // member gets a second, six at most.
 const WALL_MAX = 6;
@@ -54,9 +55,6 @@ const wall = await Promise.all(
   <section class="info-section">
     <p>{t("info.intro")}</p>
     <p>{t("info.p2")}</p>
-    <div class="info-cta">
-      <a href={portfoliosHref} class="btn-solid info-cta__btn">{t("info.cta.portfolios")}<span aria-hidden="true">→</span></a>
-    </div>
   </section>
 
   {
@@ -189,10 +187,9 @@ const wall = await Promise.all(
     flex-wrap: wrap;
     align-items: center;
     gap: 12px;
-    padding-top: 1.5rem;
   }
   .info-cta--end {
-    padding-top: 2rem;
+    padding-top: 3.5rem;
   }
   .info-cta__btn {
     display: inline-flex;
