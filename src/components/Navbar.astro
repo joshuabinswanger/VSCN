@@ -676,13 +676,19 @@ import "../styles/type.css";
        account pill still big"): the directory bar's circles are 38px on a
        phone with their hairline inside (--bar-h, border-box,
        CommunityGrid.astro). The disc was 38 with its ring outside, 40 in
-       all; now a 36px disc inside the ring, the key's 40 around it. */
+       all; now a 36px disc inside the ring, the key's 40 around it.
+       30px OUTSIDE (2026-10-31, Josh: "the profile itself need to be the same
+       height as the buttons in a pill like portfolio"): a button inside the
+       views pill is 30px (38 less its 3px inset and hairline), so the face
+       is a 28px disc in its 1px ring, centred in the 40px key. Open, it
+       sits in the account pill's right end the way PORTFOLIOS sits in its
+       track, 4px in. */
     .nav-menu-btn .nav-menu-btn__pic {
       position: absolute;
-      inset: 2px;
+      inset: 6px;
       display: block;
-      width: 36px;
-      height: 36px;
+      width: 28px;
+      height: 28px;
       object-fit: cover;
       border-radius: 50% !important;
       box-shadow: 0 0 0 1px var(--nav-ink);
@@ -1008,8 +1014,9 @@ import "../styles/type.css";
        /profile the same face opened the full sheet. Signed out, the menu
        key is still the hamburger and its sheet. */
     nav.is-signed-in .nav-links {
-      /* 9px, so the pill's right edge is the face's ring (the key sits 8px
-         in, its 36px disc 2px inside that). */
+      /* 9px, so the pill's 38px end holds the 30px face 4px in, as the
+         views pill holds its buttons (the key sits 8px in, its face 6px
+         inside that). */
       inset: 0 9px auto auto;
       height: var(--header-h);
       padding: 0;
@@ -1035,8 +1042,8 @@ import "../styles/type.css";
        max-width eased to 24rem, past the pill's own width, so the pill was
        all there a tenth of a second in and read as a pop, not a growth. */
     /* 38px TALL (2026-10-30, Josh: "open account pill should be changed
-       too"): the pill stood 42px, the bar's circles 38. Its ring now runs
-       exactly round the face's own. */
+       too"): the pill stood 42px, the bar's circles 38. Since 2026-10-31 the
+       face is 30 and sits inside its right end, as a button in a pill. */
     nav.is-signed-in .nav-links .nav-acct {
       box-sizing: border-box;
       padding: 4px 38px 4px 4px;
