@@ -76,6 +76,18 @@ test("a work the member took out of the gallery is hidden from /community but st
   assert.deepEqual(m.works.map((w) => [w.caption, w.hidden]), [["a", false], ["b", true], ["c", false]]);
 });
 
+// THE MEMBER'S "SHOW DESCRIPTION" SWITCH (2026-10-31): only `true` reaches
+// the page, so MemberWork.astro prints the description under the picture for
+// exactly the works the member switched on.
+test("a work carries showDescription only when the member switched it on", () => {
+  const m = toMemberViewBase(UID, { displayName: "Ada", gallery: ["a", "b", "c"] }, [
+    rec("a", { caption: "a", showDescription: true }),
+    rec("b", { caption: "b", showDescription: false }),
+    rec("c", { caption: "c" }),
+  ], BUCKET);
+  assert.deepEqual(m.works.map((w) => w.showDescription), [true, undefined, undefined]);
+});
+
 // THE TEXT BLOCK AFTER A WORK (2026-10-16) travels raw, both languages, so
 // each locale's page picks its own (workTextAfter in links.ts).
 test("a work carries its text block raw, and a blank one not at all", () => {

@@ -141,7 +141,7 @@ service cloud.firestore {
                     && request.resource.data.get('posterSource', null) == resource.data.get('posterSource', null)
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                          'caption', 'captionDe', 'description', 'descriptionDe', 'descriptionShort',
-                         'link', 'siteLink', 'tags', 'projectId', 'carouselId', 'inGallery', 'textAfter', 'textAfterDe',
+                         'link', 'siteLink', 'tags', 'projectId', 'carouselId', 'inGallery', 'showDescription', 'textAfter', 'textAfterDe',
                          'size', 'status', 'updatedAt'])
                     && (request.resource.data.status == resource.data.status
                         || (resource.data.status == 'live' && request.resource.data.status == 'pendingDeletion'))
@@ -424,7 +424,7 @@ function validBioWordCount(bio) {
 function validImage(data, imageId) {
   return data.keys().hasOnly(['ownerUid', 'kind', 'storagePath', 'width', 'height', 'color',
                               'caption', 'captionDe', 'description', 'descriptionDe', 'link', 'siteLink', 'tags', 'projectId', 'carouselId', 'descriptionShort', 'origin',
-                              'provenance', 'media', 'embed', 'posterSource', 'inGallery', 'textAfter', 'textAfterDe',
+                              'provenance', 'media', 'embed', 'posterSource', 'inGallery', 'showDescription', 'textAfter', 'textAfterDe',
                               'size', 'status', 'createdAt', 'updatedAt'])
     && data.ownerUid is string
     && (data.kind == 'avatar' || data.kind == 'gallery')
@@ -476,6 +476,11 @@ function validImage(data, imageId) {
     // stored — absent means included, so every older record passes as shown.
     // It takes the work off /community only; the member's page keeps it.
     && (!('inGallery' in data) || data.inGallery is bool)
+    // THE MEMBER'S "SHOW DESCRIPTION" SWITCH (2026-10-31, Josh: "switch on
+    // per image if the description should be shown"). Only `true` is ever
+    // stored — absent means the description stays in the lightbox, as every
+    // work has since 2026-10-16; `true` prints it under the picture too.
+    && (!('showDescription' in data) || data.showDescription is bool)
     // THE TEXT BLOCK AFTER THE WORK (2026-10-16, Josh: "make it possible to
     // add text block in between image in projects"). A paragraph or a few,
     // printed on the member page between this work and the next, so every

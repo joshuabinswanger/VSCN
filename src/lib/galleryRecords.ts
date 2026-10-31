@@ -37,6 +37,8 @@ export interface GalleryRecord {
   carouselId?: string;
   /** The member's own switch: `false` keeps the work off /community (2026-10-16). Absent = included. */
   inGallery?: boolean;
+  /** The member's "Show description" switch (2026-10-31): `true` prints the description under the picture. Absent = lightbox only. */
+  showDescription?: boolean;
   /** The text block after this work on the member page (2026-10-16), and its German counterpart. */
   textAfter?: string;
   textAfterDe?: string;
@@ -152,6 +154,7 @@ export function orderedGalleryItems(
     const carouselId = str(rec.carouselId)?.trim();
     if (carouselId) item.carouselId = carouselId;
     if (rec.inGallery === false) item.inGallery = false;
+    if (rec.showDescription === true) item.showDescription = true;
     const textAfter = str(rec.textAfter);
     const textAfterDe = str(rec.textAfterDe);
     if (textAfter) item.textAfter = textAfter;

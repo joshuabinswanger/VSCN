@@ -160,6 +160,7 @@ export async function updateImageText(
     projectId?: string;
     carouselId?: string;
     inGallery?: boolean;
+    showDescription?: boolean;
     textAfter?: string;
     textAfterDe?: string;
     size?: "s" | "m";
@@ -180,6 +181,8 @@ export async function updateImageText(
     carouselId: text.carouselId?.trim() ? text.carouselId.trim() : deleteField(),
     // Absent means "in the gallery", so only the exception is stored.
     inGallery: text.inGallery === false ? false : deleteField(),
+    // Absent means "lightbox only", so only the exception is stored.
+    showDescription: text.showDescription === true ? true : deleteField(),
     textAfter: text.textAfter?.trim() ? text.textAfter : deleteField(),
     textAfterDe: text.textAfterDe?.trim() ? text.textAfterDe : deleteField(),
     // Only S and M are stored; L is the absence.

@@ -784,6 +784,22 @@ document.addEventListener("astro:page-load", () => {
             });
           }
 
+          // SHOW DESCRIPTION (2026-10-31): ticked prints the description
+          // under the picture on the page; unticked leaves it to the lightbox.
+          const showDesc = row.querySelector<HTMLInputElement>("[data-gallery-show-desc]");
+          const showDescLabel = row.querySelector<HTMLElement>("[data-gallery-show-desc-label]");
+          if (showDesc && showDescLabel) {
+            showDesc.checked = item.showDescription === true;
+            showDescLabel.textContent = s["profile.gallery.showDesc"];
+            const pill = showDesc.closest("label");
+            if (pill) pill.title = s["profile.gallery.showDesc.hint"];
+            showDesc.addEventListener("change", () => {
+              if (showDesc.checked) gallery[index].showDescription = true;
+              else delete gallery[index].showDescription;
+              syncPreview();
+            });
+          }
+
           // S M L (2026-10-16): the work's width on the page, in px from
           // workSize.ts. The row is the page's figure, so it takes the same
           // --size-w and the editor shows the size the visitor gets.
@@ -2534,6 +2550,7 @@ document.addEventListener("astro:page-load", () => {
           ...(project ? { projectId: project.id } : {}),
           // The card preview skips it, as /community does.
           ...(g.inGallery === false ? { hidden: true } : {}),
+          ...(g.showDescription === true ? { showDescription: true as const } : {}),
         };
       }),
     };
@@ -2564,6 +2581,8 @@ document.addEventListener("astro:page-load", () => {
       noWorks: s["profile.view.noWorks"],
       with: s["member.project.with"],
       lang: worksLang,
+      linkTitle: s["member.lightbox.link"],
+      siteLinkTitle: s["member.lightbox.siteLink"],
     });
   }
 
