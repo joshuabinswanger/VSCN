@@ -6,13 +6,13 @@
    so any rule injected from here would survive into every CSS chunk. That
    is what happened while global.css itself was the injected file. */
 
-/* A TABLET IS A PHONE (2026-10-23, Josh: "on Ipad it should also display in
-   the way we display it on mobile"). The primary pointer decides it, not the
-   width: an iPad is 1024-1376px wide in landscape, as wide as a laptop, and
-   in its default "desktop website" mode it even reports a Mac user agent.
-   A touch-first screen is (pointer: coarse) at any width; a touchscreen
-   laptop's primary pointer is still its trackpad, so it stays desktop. The
-   two must stay exact complements. Every matchMedia() in src/ spells the same
+/* A TABLET IS A DESKTOP (2026-10-31, Josh: "on tablets the breakpoint
+   should already trigger desktop version"), reversing 2026-10-23's "a tablet
+   is a phone". Width decides it again, with one exception: a PHONE turned
+   sideways is 844-956px wide, past the breakpoint, but at most ~440px tall,
+   so a touch-first screen no taller than 500px stays mobile. A tablet is
+   never that short (iPad mini landscape is 744px tall). The two must stay
+   exact complements. Every matchMedia() in src/ spells the same
    two queries out (inline scripts cannot import), so change them together. */
-@custom-media --bp-mobile (width <= 767px), (pointer: coarse);
-@custom-media --bp-desktop (767px < width) and (not (pointer: coarse));
+@custom-media --bp-mobile (width <= 767px), (pointer: coarse) and (height <= 500px);
+@custom-media --bp-desktop (767px < width) and ((not (pointer: coarse)) or (500px < height));

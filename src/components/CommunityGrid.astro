@@ -3118,6 +3118,23 @@ const searchIndex: SearchIndex = {
     .view-menu {
       display: none;
     }
+
+    /* A TABLET HELD UPRIGHT (2026-10-31, Josh: "on tablets the breakpoint
+       should already trigger desktop version"). From 768px the strip stands
+       in the header row between VSCN and the account, but centred at full
+       spacing it needs about 860px, so below 960 it closes up, and its floors
+       are the header's own sides (VSCN ~120px; Anmelden + Registrieren ~230px)
+       instead of the footer's 330px, which pushed it onto the account. The
+       extra class outweighs the shared view-seg padding further down. */
+    @media (width < 960px) {
+      .community-bar {
+        --bar-gap: 6px;
+        grid-template-columns: minmax(130px, 1fr) auto minmax(240px, 1fr);
+      }
+      .community-bar .view-seg .view-toggle__btn {
+        padding: 0 11px;
+      }
+    }
   }
 
   /* THE SAME CONTROLS ON A PHONE (2026-10-28, Josh: "on mobile update the

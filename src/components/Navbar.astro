@@ -1149,7 +1149,7 @@ import "../styles/type.css";
   // come back open after a round trip through the desktop width. The query is
   // --bp-mobile (global.css), which a script cannot read by name.
   window
-    .matchMedia("(width <= 767px), (pointer: coarse)")
+    .matchMedia("(width <= 767px), (pointer: coarse) and (height <= 500px)")
     .addEventListener("change", () => setMenu(false));
   document.addEventListener("click", (event) => {
     const target = event.target as Element | null;
@@ -1181,7 +1181,7 @@ import "../styles/type.css";
   // (editorDraft.ts), which stops link clicks at the document's: opening a
   // menu is not leaving the page.
   // --bp-mobile (custom-media.css), spelled out: a script cannot read it.
-  const phone = window.matchMedia("(width <= 767px), (pointer: coarse)");
+  const phone = window.matchMedia("(width <= 767px), (pointer: coarse) and (height <= 500px)");
   function setAccountMenu(open: boolean) {
     document.getElementById("nav-profile")?.setAttribute("aria-expanded", String(open));
   }

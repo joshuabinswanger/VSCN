@@ -720,7 +720,7 @@
     // is reading `window.scrollY`; every scroll question in this file has to
     // be asked of that element.
     const scroller = (): HTMLElement =>
-      window.matchMedia("(width <= 767px), (pointer: coarse)").matches
+      window.matchMedia("(width <= 767px), (pointer: coarse) and (height <= 500px)").matches
         ? (document.scrollingElement as HTMLElement)
         : (document.querySelector(".page-wrap") as HTMLElement | null) ??
       (document.scrollingElement as HTMLElement);
