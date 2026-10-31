@@ -217,6 +217,18 @@ const t = useTranslations(lang);
             >
           </div>
         </div>
+        {
+          /* THE DETAILS BESIDE THE PICTURE (2026-10-31, Josh: "a panel per
+            image and carousel that contains the details", in the editor). An
+            empty soft card to the right of the work's card on a desktop with
+            room for it: editorDetailsSide.ts moves the description fields
+            and the two links in here, and back under the picture and into
+            More when there is no room or on a phone. */
+        }
+        <div class="gallery-side" hidden>
+          <div class="gallery-lang-pane" data-gallery-lang-pane="en"></div>
+          <div class="gallery-lang-pane" data-gallery-lang-pane="de"></div>
+        </div>
         <figcaption class="mprof__caption gallery-fields">
           {
             /* THE WORDS AS FIELDS (2026-10-23, Josh: "make the title,

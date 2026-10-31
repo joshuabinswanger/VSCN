@@ -115,6 +115,7 @@ import {
 } from "./carouselTray.ts";
 import { updateCarouselLead } from "./images.ts";
 import { followContentSize, bindBarFold } from "./editorBar.ts";
+import { bindDetailsPlacement, placeAllDetails } from "./editorDetailsSide.ts";
 import { lightboxStringsFrom } from "./lightbox.ts";
 import type { Lang } from "../i18n/utils";
 import "photoswipe/style.css";
@@ -2934,9 +2935,13 @@ document.addEventListener("astro:page-load", () => {
   }
   function refitInline() {
     requestAnimationFrame(() => {
+      // The details beside the picture first (editorDetailsSide.ts): moving
+      // a description changes its width, so it is measured after the move.
+      placeAllDetails(galleryEditor);
       galleryEditor.querySelectorAll<HTMLTextAreaElement>("textarea.gallery-inline").forEach(fitInline);
     });
   }
+  bindDetailsPlacement(galleryEditor, lifecycle.signal);
 
   /** Scientists and research groups get lab-facing field wording. */
   function syncMemberTypeCopy() {

@@ -428,6 +428,38 @@
     border-radius: var(--radius-soft-card) !important;
   }
 
+  /* THE DETAILS BESIDE THE PICTURE (2026-10-31, Josh: "a panel per image
+     and carousel that contains the details", in the editor). A card in the
+     row's dress to the right of the work's card, level with the picture's
+     top; editorDetailsSide.ts measures --side-left / --side-top and fills it
+     with the description fields and the links, on a desktop with room only.
+     The row grows to hold it (--side-h), so a long description never runs
+     into the next work. */
+  .gallery-side[hidden] {
+    display: none;
+  }
+
+  .gallery-item.has-side {
+    min-height: calc(var(--side-top, 0px) + var(--side-h, 0px) + var(--row-pad, 0px));
+  }
+
+  .gallery-item.has-side > .gallery-side {
+    position: absolute;
+    top: var(--side-top, 0);
+    left: var(--side-left, 100%);
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 17rem;
+    padding: 1rem;
+    background: color-mix(in srgb, var(--color-white) 78%, var(--color-bg));
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.05),
+      0 0 0 0.5px rgb(0 0 0 / 0.05);
+    border-radius: var(--radius-soft-card) !important;
+  }
+
   .gallery-project {
     --block-pad: 1.5rem;
     position: relative;
