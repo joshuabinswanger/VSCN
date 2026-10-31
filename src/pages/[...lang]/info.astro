@@ -1,6 +1,7 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import InfoPage from "../../components/InfoPage.astro";
+import ViewsPill from "../../components/ViewsPill.astro";
 import type { Lang } from "../../i18n/utils";
 
 export function getStaticPaths() {
@@ -24,5 +25,6 @@ const description = currentLang === "de"
   description={description}
   lang={currentLang}
 >
+  <ViewsPill lang={currentLang} />
   <InfoPage lang={currentLang} />
 </Layout>

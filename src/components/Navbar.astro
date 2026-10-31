@@ -36,8 +36,8 @@ import "../styles/type.css";
       opens Info, so the profile editor and the sign-in pages, which have no
       directory bar, get this key: centred in the header row, shown only on
       nav[data-account] (set by the script below). It was on every page
-      from 2026-10-28 to 10-29. ON INFO TOO (same day, Josh: "the pill menu
-      has to be there too when on the info / landing page"). */
+      from 2026-10-28 to 10-29. Info has the views switcher instead
+      (ViewsPill.astro). */
   }
   <a href="/community" class="nav-portfolios" id="nav-portfolios"
     ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg><span>PORTFOLIOS</span></a
@@ -1485,12 +1485,12 @@ import "../styles/type.css";
     document
       .querySelector('nav[data-astro-transition-persist="navbar"]')
       ?.toggleAttribute("data-directory", bare === "/" || bare === "/community");
-    // The account pages (the editor and the sign-in flow) and Info.
+    // The account pages: the editor and the sign-in flow.
     document
       .querySelector('nav[data-astro-transition-persist="navbar"]')
       ?.toggleAttribute(
         "data-account",
-        /^\/(profile|login|signup|onboarding|verify-email|auth|info)(\/|$)/.test(bare),
+        /^\/(profile|login|signup|onboarding|verify-email|auth)(\/|$)/.test(bare),
       );
     const portfolios = document.getElementById("nav-portfolios") as HTMLAnchorElement | null;
     if (portfolios) {
