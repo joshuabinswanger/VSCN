@@ -1,0 +1,98 @@
+---
+// THE VIEWS SWITCHER OFF THE DIRECTORY (2026-10-31, Josh: "the pill menu has
+// to be there too when on the info / landing page" → "the views switcher").
+// The directory's PORTFOLIOS / IMAGES / PEOPLE track drawn as three links,
+// where the directory has it: in the header row on a desktop, floating at the
+// foot on a phone (CommunityGrid.astro's .view-seg and .community-bar). None
+// is current here, so none is black; each opens its view of /community.
+// Links, not the directory's buttons: its controller is not on this page.
+import { useTranslations, type Lang } from "../i18n/utils.ts";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+const base = lang === "de" ? "/de/community" : "/community";
+const views = [
+  { href: base, label: t("community.view.gallery") },
+  { href: `${base}?pattern=grid`, label: t("community.view.grid") },
+  { href: `${base}?pattern=index`, label: t("community.view.index") },
+];
+---
+
+<nav class="views-pill" aria-label={t("community.view.label")}>
+  {
+    views.map((v) => (
+      <a href={v.href} class="views-pill__link">
+        {v.label}
+      </a>
+    ))
+  }
+</nav>
+
+<style>
+  .views-pill {
+    --bar-h: 36px;
+    position: fixed;
+    top: calc((var(--header-h) - var(--bar-h)) / 2);
+    left: 50%;
+    translate: -50% 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    height: var(--bar-h);
+    padding: 3px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-pill) !important;
+    background: var(--color-bg);
+  }
+  .views-pill__link {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 18px;
+    border-radius: var(--radius-pill) !important;
+    color: var(--color-dark);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 0.2s ease;
+  }
+  .views-pill__link:visited {
+    color: var(--color-dark);
+  }
+  .views-pill__link:hover,
+  .views-pill__link:focus-visible {
+    background: color-mix(in srgb, var(--color-dark) 7%, var(--color-bg));
+  }
+  .views-pill__link:focus-visible {
+    outline: 1.5px solid var(--color-dark);
+    outline-offset: 1px;
+  }
+
+  @media (--bp-desktop) {
+    /* Narrow desktops close it up, as the directory's strip does. */
+    @media (width < 960px) {
+      .views-pill__link {
+        padding: 0 11px;
+      }
+    }
+  }
+
+  @media (--bp-mobile) {
+    .views-pill {
+      --bar-h: 38px;
+      top: auto;
+      bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    }
+    .views-pill__link {
+      padding: 0 clamp(8px, 2.8vw, 16px);
+    }
+    /* The open menu covers the page; the pill would stand on its sheet. */
+    :global(:root:has(#nav-menu-btn[aria-expanded="true"])) .views-pill {
+      visibility: hidden;
+    }
+  }
+</style>

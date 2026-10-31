@@ -40,6 +40,9 @@ export const ui: Record<string, Record<string, string>> = {
     "info.h2.started": "We’re in the early stages",
     "info.p4": "If you’d like to help build and shape this community, feel free to reach out:",
     "info.contact": "Contact",
+    "info.cta.portfolios": "Browse the portfolios",
+    "info.wall.heading": "From the network",
+    "info.wall.all": "All portfolios",
 
     // CommunityGrid
     "community.title": "Community",
@@ -786,6 +789,9 @@ export const ui: Record<string, Record<string, string>> = {
     "info.h2.started": "Wir sind gerade erst gestartet",
     "info.p4": "Wenn du diese Community mitgestalten möchtest, melde dich gerne direkt bei:",
     "info.contact": "Kontakt",
+    "info.cta.portfolios": "Portfolios ansehen",
+    "info.wall.heading": "Aus dem Netzwerk",
+    "info.wall.all": "Alle Portfolios",
 
     // CommunityGrid
     "community.title": "Community",

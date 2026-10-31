@@ -1,6 +1,9 @@
 ---
+import { getImage } from "astro:assets";
 import { useTranslations } from "../i18n/utils.ts";
 import type { Lang } from "../i18n/utils.ts";
+import { fetchMemberViews } from "../lib/membersBuild.ts";
+import { workCaption } from "../lib/links.ts";
 
 interface Props {
   lang?: Lang;
@@ -8,6 +11,44 @@ interface Props {
 
 const { lang = "en" } = Astro.props;
 const t = useTranslations(lang);
+const portfoliosHref = lang === "de" ? "/de/community" : "/community";
+
+// INFO LEADS INTO THE PORTFOLIOS (2026-10-31, Josh: "update that page so
+// people naturally flow into opening the portfolio page"). The way in is
+// the views switcher in the header (ViewsPill.astro), a strip of the
+// network's own pictures that all open the Portfolios, and a button once the
+// reading is done. The button under the opening lines went the same day
+// (Josh: "remove the first pill on the landing page"). The strip is the wall's guest list (hidden works
+// stay off, as on /community), best first, one picture a member before any
+// member gets a second, six at most.
+const WALL_MAX = 6;
+const ranked = (await fetchMemberViews())
+  .map((m) => ({
+    name: m.displayName,
+    works: m.works.filter((w) => !w.hidden).sort((a, b) => b.score - a.score),
+  }))
+  .filter((m) => m.works.length > 0)
+  .sort((a, b) => b.works[0].score - a.works[0].score);
+const picks: { name: string; work: (typeof ranked)[number]["works"][number] }[] = [];
+for (let round = 0; picks.length < WALL_MAX && ranked.some((m) => m.works[round]); round++) {
+  for (const m of ranked) {
+    if (picks.length >= WALL_MAX) break;
+    if (m.works[round]) picks.push({ name: m.name, work: m.works[round] });
+  }
+}
+const wall = await Promise.all(
+  picks.map(async ({ name, work }) => ({
+    name,
+    alt: workCaption(work, lang) || name,
+    rendered: await getImage({
+      src: work.url,
+      width: work.width,
+      height: work.height,
+      widths: [400, 800],
+      format: "webp",
+    }),
+  }))
+);
 ---
 
 <div class="info-page">
@@ -15,6 +56,32 @@ const t = useTranslations(lang);
     <p>{t("info.intro")}</p>
     <p>{t("info.p2")}</p>
   </section>
+
+  {
+    wall.length > 0 && (
+      <section class="info-section info-wall" aria-labelledby="info-wall-heading">
+        <h2 class="info-heading" id="info-wall-heading">{t("info.wall.heading")}</h2>
+        <ul class="info-wall__grid">
+          {wall.map((tile) => (
+            <li>
+              <a href={portfoliosHref} class="info-wall__tile">
+                <img
+                  src={tile.rendered.src}
+                  srcset={tile.rendered.srcSet.attribute}
+                  sizes="(max-width: 767px) 50vw, 300px"
+                  alt={tile.alt}
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="t-meta info-wall__name">{tile.name}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+        <a href={portfoliosHref} class="profile-link info-wall__all">{t("info.wall.all")} →</a>
+      </section>
+    )
+  }
 
   <section class="info-section">
     <h2 class="info-heading">{t("info.h2.building")}</h2>
@@ -44,8 +111,11 @@ const t = useTranslations(lang);
     </p>
   </section>
 
-  <section id="info-signup-cta" class="info-signup-cta" style="display:none;">
-    <a href={lang === "de" ? "/de/signup" : "/signup"} class="btn-solid">{t("signup.cta.info")}</a>
+  <section class="info-cta info-cta--end">
+    <a href={portfoliosHref} class="btn-solid info-cta__btn">{t("info.cta.portfolios")}<span aria-hidden="true">→</span></a>
+    <a href={lang === "de" ? "/de/signup" : "/signup"} class="btn-outline" id="info-signup-cta" style="display:none;"
+      >{t("signup.cta.info")}</a
+    >
   </section>
 </div>
 
@@ -112,10 +182,68 @@ const t = useTranslations(lang);
     opacity: 0.5;
   }
 
-  .info-signup-cta {
-    padding-top: 4rem;
+  .info-cta {
     display: flex;
-    justify-content: left;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+  .info-cta--end {
+    padding-top: 3.5rem;
+  }
+  .info-cta__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6em;
+  }
+  .info-cta__btn span {
+    transition: translate 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .info-cta__btn:hover span {
+    translate: 4px 0;
+  }
+
+  .info-wall__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 1rem 0 0;
+    padding: 0;
+    list-style: none;
+
+    @media (--bp-mobile) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+  }
+  .info-wall__tile {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: var(--color-dark);
+    text-decoration: none;
+  }
+  .info-wall__tile img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    background: var(--color-border);
+    transition: opacity 0.2s ease;
+  }
+  .info-wall__tile:hover img,
+  .info-wall__tile:focus-visible img {
+    opacity: 0.85;
+  }
+  .info-wall__name {
+    color: var(--color-muted);
+  }
+  .info-wall__all {
+    align-self: flex-start;
+    margin-top: 1rem;
+    color: var(--color-dark);
+    text-decoration: none;
   }
 </style>
 

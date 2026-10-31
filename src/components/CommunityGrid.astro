@@ -1981,10 +1981,17 @@ const searchIndex: SearchIndex = {
       overflow: hidden;
     }
   }
-  /* What follows the last card must be reachable under mandatory snap. */
-  :global(.page-wrap:has(#member-grid[data-pattern="pages"]:not([hidden])) .community-signup-cta),
-  :global(.page-wrap:has(#member-grid[data-pattern="pages"]:not([hidden])) > .site-footer) {
+  /* What follows the last card must be reachable under mandatory snap. The
+     stop is the footer's sentinel, the flow's last box (2026-10-31, Josh: "on
+     portfolio it does not appear"): the sign-up box's end stopped 65px short
+     of it, so on a desktop, where the footer is fixed, the reveal never
+     fired. Everything above the sentinel is in view at that stop. Its
+     margin is .page-wrap's bottom padding (Layout.astro), so the stop
+     is the scroll's very end: aligned on the sentinel itself it landed a
+     subpixel short of the edge and the observer still said no. */
+  :global(.page-wrap:has(#member-grid[data-pattern="pages"]:not([hidden])) > .footer-sentinel) {
     scroll-snap-align: end;
+    scroll-margin-bottom: var(--page-wrap-pad-bottom, 80px);
   }
 
   /* ── THE FLOURISH (2026-10-15, Josh: entry 2 + exit 1 of the brainstorm)
