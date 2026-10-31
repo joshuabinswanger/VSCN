@@ -147,8 +147,13 @@ const t = useTranslations(lang);
     <template data-ppv-tpl="work"
       ><figure class="mprof__work">
         <a class="mprof__work-link" target="_blank" rel="noreferrer"><img class="mprof__img" alt="" decoding="async" /><span class="vscn-play vscn-play--over" data-ppv-work="play" aria-hidden="true" hidden></span></a>
+        {/* The arrow out to the publication or the member's own page
+            (2026-10-31), as MemberWork.astro prints it: a sibling of the
+            trigger, desktop only. */}
+        <a class="mprof__out" data-ppv-work="out" target="_blank" rel="noopener" hidden><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="M5 3h8v8M13 3 3 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></a>
         <figcaption class="mprof__caption" data-ppv-work="caption-block" hidden>
           <span class="mprof__caption-line" data-ppv-work="caption" hidden></span>
+          <span class="mprof__desc" data-ppv-work="desc" hidden></span>
           {/* Where the image appeared. A real anchor carrying the page's own
               .mprof__link — both consumers share one stylesheet, so there is
               nothing left to mirror by hand, which is the point. */}

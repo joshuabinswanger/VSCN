@@ -38,6 +38,8 @@ export interface WorkWords {
   size: string;
   /** False only when the member took the work off /community. */
   inGallery: boolean;
+  /** True only when the member switched the description on under the picture. */
+  showDescription: boolean;
 }
 
 export interface DraftWork {
@@ -54,7 +56,7 @@ export interface DraftProjects {
   deletedProjectIds: string[];
 }
 
-export function workWords(item: Pick<GalleryItem, "caption" | "captionDe" | "description" | "descriptionDe" | "link" | "siteLink" | "tags" | "projectId" | "carouselId" | "textAfter" | "textAfterDe" | "size" | "inGallery">): WorkWords {
+export function workWords(item: Pick<GalleryItem, "caption" | "captionDe" | "description" | "descriptionDe" | "link" | "siteLink" | "tags" | "projectId" | "carouselId" | "textAfter" | "textAfterDe" | "size" | "inGallery" | "showDescription">): WorkWords {
   return {
     caption: item.caption ?? "",
     captionDe: item.captionDe ?? "",
@@ -69,6 +71,7 @@ export function workWords(item: Pick<GalleryItem, "caption" | "captionDe" | "des
     textAfterDe: item.textAfterDe ?? "",
     size: item.size ?? "",
     inGallery: item.inGallery !== false,
+    showDescription: item.showDescription === true,
   };
 }
 
@@ -86,6 +89,7 @@ export function sameWords(a: WorkWords, b: WorkWords): boolean {
     a.textAfterDe === b.textAfterDe &&
     a.size === b.size &&
     a.inGallery === b.inGallery &&
+    a.showDescription === b.showDescription &&
     a.tags.length === b.tags.length &&
     a.tags.every((tag, i) => tag === b.tags[i])
   );
@@ -145,6 +149,10 @@ function applyWords(item: GalleryItem, words: WorkWords, projectIds: ReadonlySet
   if (words.inGallery !== undefined) {
     if (words.inGallery) delete next.inGallery;
     else next.inGallery = false;
+  }
+  if (words.showDescription !== undefined) {
+    if (words.showDescription) next.showDescription = true;
+    else delete next.showDescription;
   }
   if (words.tags.length) next.tags = words.tags.slice();
   else delete next.tags;

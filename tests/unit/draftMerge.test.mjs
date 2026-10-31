@@ -38,10 +38,10 @@ test("committed membership and order are not unsaved; a typed caption is", () =>
   assert.equal(uncommittedWorks([a, { ...b, tags: ["x", "y"] }], committed).length, 1);
 });
 
-test("works differing only in carouselId, size, textAfter, textAfterDe or inGallery are unsaved", () => {
+test("works differing only in carouselId, size, textAfter, textAfterDe, inGallery or showDescription are unsaved", () => {
   const base = work("a", { caption: "A" });
   const committed = committedFromLoad([base]);
-  for (const change of [{ carouselId: "c-1" }, { size: "s" }, { textAfter: "T" }, { textAfterDe: "T" }, { inGallery: false }]) {
+  for (const change of [{ carouselId: "c-1" }, { size: "s" }, { textAfter: "T" }, { textAfterDe: "T" }, { inGallery: false }, { showDescription: true }]) {
     assert.equal(uncommittedWorks([{ ...base, ...change }], committed).length, 1, JSON.stringify(change));
   }
   assert.deepEqual(uncommittedWorks([base], committed), []);
@@ -49,17 +49,19 @@ test("works differing only in carouselId, size, textAfter, textAfterDe or inGall
 
 test("a restored draft puts the carousel and the other work fields back on the record", () => {
   const live = [work("a", { caption: "A" })];
-  const words = workWords(work("a", { caption: "A", carouselId: "c-1", size: "m", textAfter: "T", textAfterDe: "Z", inGallery: false }));
+  const words = workWords(work("a", { caption: "A", carouselId: "c-1", size: "m", textAfter: "T", textAfterDe: "Z", inGallery: false, showDescription: true }));
   const [merged] = mergeDraftGallery(live, [{ imageId: "a", words }], new Set());
   assert.equal(merged.carouselId, "c-1");
   assert.equal(merged.size, "m");
   assert.equal(merged.textAfter, "T");
   assert.equal(merged.textAfterDe, "Z");
   assert.equal(merged.inGallery, false);
+  assert.equal(merged.showDescription, true);
   const [cleared] = mergeDraftGallery([merged], [{ imageId: "a", words: workWords(live[0]) }], new Set());
   assert.equal("carouselId" in cleared, false);
   assert.equal("size" in cleared, false);
   assert.equal("inGallery" in cleared, false);
+  assert.equal("showDescription" in cleared, false);
 });
 
 test("a work that just arrived is committed with its initial words, but not its block", () => {
