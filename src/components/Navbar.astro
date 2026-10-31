@@ -29,6 +29,18 @@ import "../styles/type.css";
     <span class="nav-burger" aria-hidden="true"><i></i><i></i><i></i></span>
     <img class="nav-menu-btn__pic" alt="" width="34" height="34" decoding="async" />
   </button>
+  {
+    /* BACK TO THE PORTFOLIOS FROM THE ACCOUNT PAGES (2026-10-31, Josh: "the
+      vscn should lead back to the about page ... also add a back to
+      portfolios button when you are on any of the acount pages"). VSCN
+      opens Info, so the profile editor and the sign-in pages, which have no
+      directory bar, get this key: centred in the header row, shown only on
+      nav[data-account] (set by the script below). It was on every page
+      from 2026-10-28 to 10-29. */
+  }
+  <a href="/community" class="nav-portfolios" id="nav-portfolios"
+    ><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg><span>PORTFOLIOS</span></a
+  >
   <div class="nav-links" id="nav-menu">
     <a href="/info" class="nav-link" id="nav-info">INFO</a>
     <a href="/community" class="nav-link nav-center" id="nav-community">COMMUNITY</a>
@@ -667,6 +679,77 @@ import "../styles/type.css";
 
   .nav-menu-btn__pic {
     display: none;
+  }
+
+  /* THE PORTFOLIOS KEY: an outlined pill with a back chevron, the editor's
+     ‹ Projects drawn at the header's size, centred in the header row. */
+  .nav-portfolios {
+    position: fixed;
+    top: calc((var(--header-h) - 30px) / 2);
+    left: 50%;
+    translate: -50% 0;
+    z-index: 1;
+    display: none;
+    align-items: center;
+    gap: 4px;
+    box-sizing: border-box;
+    height: 30px;
+    padding: 0 14px 0 9px;
+    border-radius: var(--radius-pill) !important;
+    box-shadow: inset 0 0 0 1px var(--color-border);
+    background: var(--nav-paper);
+    color: var(--nav-ink);
+    text-decoration: none;
+    pointer-events: auto;
+    transition:
+      box-shadow 0.2s ease,
+      opacity 0.18s ease,
+      visibility 0s linear 0s;
+  }
+  nav[data-account] .nav-portfolios {
+    display: inline-flex;
+  }
+  .nav-portfolios:visited {
+    color: var(--nav-ink);
+  }
+  .nav-portfolios:hover {
+    box-shadow: inset 0 0 0 1px var(--nav-ink);
+  }
+  .nav-portfolios:focus-visible {
+    outline: 2px solid var(--nav-ink);
+    outline-offset: 2px;
+  }
+  .nav-portfolios svg {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  /* On a phone the open menu needs the row: the sheet's LOGIN / SIGN UP
+     and the signed-in account pill both run in from the right. */
+  @media (--bp-mobile) {
+    .nav-portfolios {
+      top: calc((var(--header-h) - 28px) / 2);
+      height: 28px;
+      padding: 0 11px 0 7px;
+      gap: 3px;
+    }
+    .nav-portfolios svg {
+      width: 13px;
+      height: 13px;
+    }
+    :root:has(#nav-menu-btn[aria-expanded="true"]) .nav-portfolios {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition:
+        box-shadow 0.2s ease,
+        opacity 0.12s ease,
+        visibility 0s linear 0.12s;
+    }
   }
 
   @media (--bp-mobile) {
@@ -1401,6 +1484,19 @@ import "../styles/type.css";
     document
       .querySelector('nav[data-astro-transition-persist="navbar"]')
       ?.toggleAttribute("data-directory", bare === "/" || bare === "/community");
+    // The account pages: the editor and the sign-in flow.
+    document
+      .querySelector('nav[data-astro-transition-persist="navbar"]')
+      ?.toggleAttribute(
+        "data-account",
+        /^\/(profile|login|signup|onboarding|verify-email|auth)(\/|$)/.test(bare),
+      );
+    const portfolios = document.getElementById("nav-portfolios") as HTMLAnchorElement | null;
+    if (portfolios) {
+      portfolios.href = `${prefix}/community`;
+      const word = portfolios.querySelector("span");
+      if (word) word.textContent = labels.views[0];
+    }
 
     if (navInfo) {
       navInfo.href = `${prefix}/info`;

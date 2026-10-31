@@ -349,7 +349,7 @@ const BRAND_SLOTS: BrandSlot[] = [
     >
       <a
         id="brand-home-link"
-        href={lang === "de" ? "/de/community" : "/community"}
+        href={lang === "de" ? "/de/info" : "/info"}
         class="brand-link"
         aria-label="Visual Science Communication Network"
       >
@@ -778,11 +778,12 @@ const BRAND_SLOTS: BrandSlot[] = [
   function updateBrandHomeLink(lang: Lang) {
     const brandLink = document.getElementById("brand-home-link") as HTMLAnchorElement | null;
     if (!brandLink) return;
-    // VSCN OPENS THE PORTFOLIOS (2026-10-29, Josh: "[VSCN] button brings
-    // you back to portfolios. remove back to portfolio button"). It opened
-    // Info from 2026-10-28, with a ‹ Portfolios key in the header as the way
-    // back; the key is gone and Info is a line of the phone's menu again.
-    brandLink.href = lang === "de" ? "/de/community" : "/community";
+    // VSCN OPENS INFO AGAIN (2026-10-31, Josh: "the vscn should lead back to
+    // the about page now i points to portfolio but then also add a back to
+    // portfolios button when you are on any of the acount pages"). It opened
+    // the Portfolios from 2026-10-29; the way back to them from the account
+    // pages is the ‹ Portfolios key (Navbar.astro), elsewhere the bar.
+    brandLink.href = lang === "de" ? "/de/info" : "/info";
   }
 
   let brandResizeObserver: ResizeObserver | null = null;
