@@ -311,7 +311,7 @@ const BAR_MENUS = [
 ] as const;
 
 /** The two queries custom-media.css calls --bp-mobile, spelled out. */
-const PHONE_QUERY = "(width <= 767px), (pointer: coarse)";
+const PHONE_QUERY = "(width <= 767px), (pointer: coarse) and (height <= 500px)";
 
 /** The site's ease-out (lightbox.ts), and long enough to read as the pill
  *  growing rather than jumping. */
@@ -1666,7 +1666,7 @@ window.addEventListener("resize", () => {
 // its own: on the phone the wall's knobs do not exist (its rule is
 // desktop-only), so the count that was stored is a mobile reading of a
 // layout mobile never used. Force the deal rather than compare.
-window.matchMedia("(767px < width) and (not (pointer: coarse))").addEventListener("change", (e) => {
+window.matchMedia("(767px < width) and ((not (pointer: coarse)) or (500px < height))").addEventListener("change", (e) => {
   if (!e.matches) return;
   wallCols = 0;
   redealWall();
