@@ -47,7 +47,9 @@ mkdirSync(artifactsDir, { recursive: true });
 
 const startedAt = new Date();
 const caption = captionFor(args.release, startedAt);
-const tab = (name) => `#section-tabs .section-tab[data-section="${name}"]`;
+// The editor's tabs moved into the header (2026-10-28, #nav-tab-*); the old
+// strip stays in the page but hidden on a desktop. Whichever one shows.
+const tab = (name) => `#nav-tab-${name}:visible, #section-tabs .section-tab[data-section="${name}"]:visible`;
 const galleryItems = () => page.locator("#gallery-editor .gallery-item");
 // THE EDITOR SINCE 2026-10-16 (project pages, 2026-10-27): every work lives
 // in a project, the Works tab shows a list of project cards or ONE project's
@@ -56,13 +58,13 @@ const galleryItems = () => page.locator("#gallery-editor .gallery-item");
 // runs (empty, it is not written, so the next run makes it again).
 const WALK_PROJECT_TITLE = "Release walk";
 const openBlock = () => page.locator("#gallery-editor [data-project-block]:not(.pp-off)");
-/** Reach a project's page: the first-project prompt, else the first card, else the page already open. */
+/** Reach a project's page: the first-project prompt, else the first card on show, else the page already open (its list is then hidden, cards and all). */
 async function openProjectPage() {
   const first = page.locator("#gallery-first-project");
   if (await first.isVisible().catch(() => false)) {
     await first.click();
   } else {
-    const cards = page.locator("[data-pp-cards] [data-pp-card]");
+    const cards = page.locator("[data-pp-cards] [data-pp-card]:visible");
     if (await cards.count()) await cards.first().click();
   }
   await expect(openBlock()).toHaveCount(1, { timeout: 15_000 });
@@ -244,8 +246,10 @@ try {
   const ok4 = ok3 && await step("preview", async () => {
     // The Preview tab became the project page's EDIT | PREVIEW switch (2026-10-27).
     await page.locator('[data-works-mode-seg] [data-works-mode="preview"]').click();
-    const img = page.locator("[data-ppv-root] img.mprof__img[src]");
-    await expect(img).toHaveCount(1, { timeout: 15_000 });
+    // The work carousel (2026-10-23) keeps more than one img in the page;
+    // the one on show is the one that counts.
+    const img = page.locator("[data-ppv-root] img.mprof__img[src]:visible").first();
+    await expect(img).toBeVisible({ timeout: 15_000 });
     const src = await img.getAttribute("src");
     if (src !== imageSrc) throw new Error(`preview shows ${src}, editor holds ${imageSrc}`);
     // Not merely present: fetched and decoded, which is Storage serving the object.
