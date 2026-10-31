@@ -153,6 +153,11 @@ const t = useTranslations(lang);
         <a class="mprof__out" data-ppv-work="out" target="_blank" rel="noopener" hidden><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="M5 3h8v8M13 3 3 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></a>
         <figcaption class="mprof__caption" data-ppv-work="caption-block" hidden>
           <span class="mprof__caption-line" data-ppv-work="caption" hidden></span>
+        </figcaption>
+        {/* The details panel beside the picture (2026-10-31), as
+            MemberWork.astro prints it: a sibling of the figcaption holding
+            the description and the links, placed by profile.css. */}
+        <div class="mprof__panel" data-ppv-work="panel" hidden>
           <span class="mprof__desc" data-ppv-work="desc" hidden></span>
           {/* Where the image appeared. A real anchor carrying the page's own
               .mprof__link — both consumers share one stylesheet, so there is
@@ -161,7 +166,7 @@ const t = useTranslations(lang);
             <a class="mprof__link" data-ppv-work="site-link" target="_blank" rel="noopener" hidden></a>
             <a class="mprof__link" data-ppv-work="link" target="_blank" rel="noopener" hidden></a>
           </span>
-        </figcaption>
+        </div>
       </figure></template
     >
     {
@@ -198,6 +203,7 @@ const t = useTranslations(lang);
           <span class="cdots" aria-hidden="true"><span class="cdots__strip" data-ppv-c="dots"></span></span>
         </div>
         <div class="mprof__captions" data-ppv-c="captions"></div>
+        <div class="mprof__panels" data-ppv-c="panels"></div>
       </figure></template
     >
     <template data-ppv-tpl="cslide"
@@ -210,11 +216,18 @@ const t = useTranslations(lang);
     <template data-ppv-tpl="ccaption"
       ><figcaption class="mprof__caption" data-slide-caption>
         <span class="mprof__caption-line" data-ppv-work="caption" hidden></span>
+      </figcaption></template
+    >
+    {/* A slide's details panel (2026-10-31), one per slide in the carousel's
+        .mprof__panels stack, as MemberCarousel.astro prints them. */}
+    <template data-ppv-tpl="cpanel"
+      ><div class="mprof__panel" data-ppv-work="panel" data-slide-panel>
+        <span class="mprof__desc" data-ppv-work="desc" hidden></span>
         <span class="mprof__caption-links" data-ppv-work="links" hidden>
           <a class="mprof__link" data-ppv-work="site-link" target="_blank" rel="noopener" hidden></a>
           <a class="mprof__link" data-ppv-work="link" target="_blank" rel="noopener" hidden></a>
         </span>
-      </figcaption></template
+      </div></template
     >
     {
       /* A PROJECT BLOCK (2026-09-23), cloned once per project that holds at

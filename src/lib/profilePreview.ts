@@ -262,11 +262,12 @@ export function renderProfilePreview(
     const fillWords = (host: HTMLElement, w: PreviewWork): string => {
       const workPart = <T extends HTMLElement = HTMLElement>(name: string) =>
         host.querySelector<T>(`[data-ppv-work="${name}"]`);
-      // No description under the picture since 2026-10-16 UNLESS the member
-      // switched it on for this work (showDescription, 2026-10-31), as on
-      // the page (MemberWork.astro); the lightbox reads it either way.
+      // The description and the links fill the details panel beside the
+      // picture (2026-10-31, MemberWork.astro): always, on a desktop. The
+      // member's switch (showDescription) only decides whether a PHONE
+      // prints the description under the title — is-phone-desc, profile.css.
       const captionText = w.caption?.trim() ?? "";
-      const descText = w.showDescription === true ? (w.description?.trim() ?? "") : "";
+      const descText = w.description?.trim() ?? "";
 
       const caption = workPart("caption");
       if (caption) {
@@ -296,6 +297,14 @@ export function renderProfilePreview(
       setLink("site-link", w.siteLink);
       setLink("link", w.link);
       show(workPart("links"), Boolean(w.siteLink || w.link));
+      // The panel itself: hidden when it would be empty under a single work;
+      // a carousel's slide panels stay in the stack (data-slide-panel) so
+      // their indexes hold, empty or not, as on the page.
+      const panel = workPart("panel");
+      if (panel) {
+        if (!("slidePanel" in panel.dataset)) panel.hidden = !(descText || w.siteLink || w.link);
+        panel.classList.toggle("is-phone-desc", w.showDescription === true && Boolean(descText));
+      }
 
       return captionText || descText;
     };
@@ -367,7 +376,8 @@ export function renderProfilePreview(
       const track = figure?.querySelector<HTMLElement>("[data-carousel-track]");
       const strip = figure?.querySelector<HTMLElement>('[data-ppv-c="dots"]');
       const captions = figure?.querySelector<HTMLElement>('[data-ppv-c="captions"]');
-      if (!figure || !frame || !track || !strip || !captions) return null;
+      const panels = figure?.querySelector<HTMLElement>('[data-ppv-c="panels"]');
+      if (!figure || !frame || !track || !strip || !captions || !panels) return null;
       const lead = slides[0];
       figure.style.setProperty("--work-ar", String(lead.width / lead.height));
       figure.style.setProperty("--size-w", workSizeWidth(carouselSettings(slides)));
@@ -383,13 +393,15 @@ export function renderProfilePreview(
 
       const slideNodes: HTMLElement[] = [];
       const captionNodes: HTMLElement[] = [];
+      const panelNodes: HTMLElement[] = [];
       const dotNodes: HTMLElement[] = [];
       slides.forEach((w, i) => {
         const slide = clone("cslide");
         const img = slide?.querySelector("img");
         const caption = clone("ccaption");
+        const panel = clone("cpanel");
         const dot = clone("cdot");
-        if (!slide || !img || !caption || !dot) return;
+        if (!slide || !img || !caption || !panel || !dot) return;
         slide.setAttribute("href", w.url);
         writeSlideData(slide, w, meta, project, labels.lang);
         slide.tabIndex = i === 0 ? 0 : -1;
@@ -409,6 +421,11 @@ export function renderProfilePreview(
         fillWords(caption, w);
         captionNodes.push(caption);
 
+        panel.dataset.slidePanel = String(i);
+        panel.classList.toggle("is-on", i === 0);
+        fillWords(panel, w);
+        panelNodes.push(panel);
+
         dot.dataset.carouselDot = String(i);
         dot.setAttribute("aria-label", positionFor(i));
         dot.classList.toggle("cdot--on", i === 0);
@@ -419,6 +436,7 @@ export function renderProfilePreview(
       });
       track.replaceChildren(...slideNodes);
       captions.replaceChildren(...captionNodes);
+      panels.replaceChildren(...panelNodes);
       strip.replaceChildren(...dotNodes);
       strip.parentElement?.style.setProperty("--cdots-n", String(Math.min(slides.length, 5)));
       return figure;
