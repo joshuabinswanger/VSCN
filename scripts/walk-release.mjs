@@ -246,8 +246,10 @@ try {
   const ok4 = ok3 && await step("preview", async () => {
     // The Preview tab became the project page's EDIT | PREVIEW switch (2026-10-27).
     await page.locator('[data-works-mode-seg] [data-works-mode="preview"]').click();
-    const img = page.locator("[data-ppv-root] img.mprof__img[src]");
-    await expect(img).toHaveCount(1, { timeout: 15_000 });
+    // The work carousel (2026-10-23) keeps more than one img in the page;
+    // the one on show is the one that counts.
+    const img = page.locator("[data-ppv-root] img.mprof__img[src]:visible").first();
+    await expect(img).toBeVisible({ timeout: 15_000 });
     const src = await img.getAttribute("src");
     if (src !== imageSrc) throw new Error(`preview shows ${src}, editor holds ${imageSrc}`);
     // Not merely present: fetched and decoded, which is Storage serving the object.
