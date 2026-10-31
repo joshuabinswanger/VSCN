@@ -47,7 +47,9 @@ mkdirSync(artifactsDir, { recursive: true });
 
 const startedAt = new Date();
 const caption = captionFor(args.release, startedAt);
-const tab = (name) => `#section-tabs .section-tab[data-section="${name}"]`;
+// The editor's tabs moved into the header (2026-10-28, #nav-tab-*); the old
+// strip stays in the page but hidden on a desktop. Whichever one shows.
+const tab = (name) => `#nav-tab-${name}:visible, #section-tabs .section-tab[data-section="${name}"]:visible`;
 const galleryItems = () => page.locator("#gallery-editor .gallery-item");
 // THE EDITOR SINCE 2026-10-16 (project pages, 2026-10-27): every work lives
 // in a project, the Works tab shows a list of project cards or ONE project's
