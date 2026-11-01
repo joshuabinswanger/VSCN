@@ -2955,6 +2955,18 @@
     color: var(--color-muted);
   }
 
+  /* No count-and-tags line on a desktop (2026-11-01, Josh's board 09
+     specimen): the card ends 30px under its pictures. The phone keeps it. */
+  @media (--bp-desktop) {
+    .pp-card {
+      padding-bottom: 30px;
+    }
+
+    .pp-card__meta {
+      display: none;
+    }
+  }
+
   /* + PROJECT, AFTER THE LAST CARD (2026-10-29): a card's place drawn as an
      empty outline, the + and its word in the middle; it fills in on hover. */
   .pp-add {
