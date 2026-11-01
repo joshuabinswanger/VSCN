@@ -692,6 +692,26 @@ document.addEventListener("astro:page-load", () => {
 
   function renderGallery(focusHint?: FocusHint) {
     if (!galleryItemTpl || !galleryProjectTpl || !galleryCarouselTpl) return;
+    // NO JUMP ON A SLIDE PICK (2026-11-01, Josh: "dont auto scroll when i
+    // select another image in the carousel"). The whole list is rebuilt, so
+    // the new slide's picture loads in late and its settings card moves out
+    // a frame later; together they nudged the page ~25px. The tray that was
+    // clicked is put back exactly where it stood, now and after the
+    // placement frame.
+    const trayHold =
+      focusHint && "imageId" in focusHint && focusHint.control === "thumb"
+        ? galleryEditor.querySelector<HTMLElement>(`[data-tray-thumb][data-image-id="${focusHint.imageId}"]`)?.closest<HTMLElement>("[data-carousel-tray]")
+        : null;
+    const trayTop = trayHold?.getBoundingClientRect().top;
+    const holdTray = () => {
+      if (trayTop === undefined || !focusHint || !("imageId" in focusHint)) return;
+      const tray = galleryEditor
+        .querySelector<HTMLElement>(`[data-tray-thumb][data-image-id="${focusHint.imageId}"]`)
+        ?.closest<HTMLElement>("[data-carousel-tray]");
+      if (!tray) return;
+      const drift = tray.getBoundingClientRect().top - trayTop;
+      if (Math.abs(drift) >= 1) scrollerOf(tray).scrollBy({ top: drift, behavior: "instant" });
+    };
     // The list's shape: loose rows and project blocks in gallery order, then
     // the projects no image names yet (2026-09-23, editorBlocks in
     // projects.ts). Every move below is a pure function over this list.
@@ -1515,7 +1535,12 @@ document.addEventListener("astro:page-load", () => {
                 focusHint.control ?? "up",
               );
       }
-      target?.focus();
+      target?.focus({ preventScroll: Boolean(trayHold) });
+      if (trayHold) {
+        holdTray();
+        // After refitInline's frame, which places the settings cards.
+        requestAnimationFrame(() => requestAnimationFrame(holdTray));
+      }
     } else if (typingIn?.field && (typingIn.imageId || typingIn.projectId || typingIn.carouselId)) {
       // Restored by id, stable across everything a re-render can do to
       // positions. A reorder takes the branch above instead, and a removal
