@@ -1,61 +1,76 @@
 /**
- * THE DETAILS BESIDE THE PICTURE, IN THE EDITOR (2026-10-31, Josh: "on
- * desktop i want to the right of the images carousel etc. to have a panel
- * ... a panel per image and carousel that contains the details", then: "i
- * was talking about the editor"). On a desktop with room for it, a work's
- * description fields and its two links stand in a soft card to the right of
- * the work's card, level with the top of the picture. The title, the More
- * fold and the text block stay under the picture. On a phone, or a window
- * too narrow for a card beside the column, nothing moves: the description
- * stays under the title and the links stay in More, as before.
+ * THE SETTINGS BESIDE THE PICTURE, IN THE EDITOR (2026-10-31/11-01, Josh:
+ * "Image Title, Description, Links all below it. All the settings in More to
+ * the right of it. also the size and move buttons etc."). On a desktop with
+ * room for it, a work's card keeps its picture and its WORDS — title,
+ * description and both links, the links lifted out of More to sit under the
+ * description — and a soft card to its right takes its SETTINGS: the head's
+ * keys (size, move, remove) and everything More held (the project and
+ * carousel pickers, the video thumbnail key, In gallery, Show description,
+ * the tags). More itself is then empty and hidden. A carousel does the same
+ * with its own head and its More (the project picker); its selected slide is
+ * a work row and gets its own settings card, level with the slide's picture.
  *
- * The NODES move, not copies: the controller wires each field once in
- * buildRow by querying the row, and every listener and value travels with
- * its element. Moving back puts each one where the template had it.
+ * On a phone, or a window too narrow for a card beside the column, nothing
+ * moves: the head stays on top, the links and the settings stay in More.
+ *
+ * The NODES move, not copies: the controller and the tray wire each control
+ * once by querying the row or the carousel, and every listener and value
+ * travels with its element. Moving back restores the template's order.
  *
  * Placement is MEASURED, not a formula: the side card goes at the right edge
- * of the work's own card (the carousel's card for a slide, which has none of
- * its own), and only where that edge plus the card still fits the window.
- * A row that is not laid out (hidden in Preview, another tab) keeps whatever
- * it had; refitInline() calls placeAllDetails again when it shows.
+ * of the card (the carousel's for a slide, which has none of its own), level
+ * with the picture (the tray, for a carousel), and only where that edge plus
+ * the card still fits the window. A unit that is not laid out (hidden in
+ * Preview, another tab) keeps what it had; refitInline() calls
+ * placeAllDetails again when it shows.
  */
 
 /** The --bp-desktop query from custom-media.css, spelled out (see that file). */
 const DESKTOP = "(767px < width) and ((not (pointer: coarse)) or (500px < height))";
 
-/** The side card's width, the gap before it and the margin it keeps from the window edge, in rem. */
+/** The side card's width, the gap before it, the margin it keeps from the window edge, and the gap between two stacked cards, in rem. */
 const SIDE_REM = 17;
 const GAP_REM = 1.5;
 const EDGE_REM = 1;
+const STACK_REM = 0.75;
 
 function remPx(): number {
   return parseFloat(getComputedStyle(document.documentElement).fontSize) || 13;
 }
 
-function descLabel(scope: Element | null | undefined, key: "description" | "descriptionDe"): HTMLElement | null {
-  return scope?.querySelector(`[data-gallery-field="${key}"]`)?.closest<HTMLElement>("label.gfield") ?? null;
-}
-
-/** Move one row's description and links to the side card, or back home. */
-function moveParts(row: HTMLElement, side: HTMLElement, toSide: boolean): void {
-  const fields = row.querySelector<HTMLElement>(":scope > .gallery-fields");
-  for (const [lang, key] of [["en", "description"], ["de", "descriptionDe"]] as const) {
-    const home = fields?.querySelector<HTMLElement>(`:scope > [data-gallery-lang-pane="${lang}"]`);
-    const away = side.querySelector<HTMLElement>(`[data-gallery-lang-pane="${lang}"]`);
-    if (!home || !away) continue;
-    const label = descLabel(toSide ? home : away, key);
-    if (label) (toSide ? away : home).append(label);
-  }
-  const tools = row.querySelector<HTMLElement>(".gallery-details-body > .gallery-row-tools");
+/** A work row: its head and More's settings go to the side; the links go under the description. */
+function moveWork(row: HTMLElement, side: HTMLElement, toSide: boolean): void {
+  const head = row.querySelector<HTMLElement>(":scope > .gallery-boxhead") ?? side.querySelector<HTMLElement>(":scope > .gallery-boxhead");
+  const body = row.querySelector<HTMLElement>(".gallery-details-body");
+  const details = row.querySelector<HTMLElement>(".gallery-fields > .gallery-details");
+  const deck = row.querySelector<HTMLElement>(".gallery-row-tools");
   const links = row.querySelector<HTMLElement>(".gallery-panel__sec");
-  if (links && tools) {
-    if (toSide) side.append(links);
-    else tools.after(links);
+  const tags = row.querySelector<HTMLElement>(".gallery-tags");
+  if (toSide) {
+    side.append(...[head, deck, tags].filter((el): el is HTMLElement => Boolean(el)));
+    if (links && details) details.before(links);
+  } else {
+    if (head) row.prepend(head);
+    body?.append(...[deck, links, tags].filter((el): el is HTMLElement => Boolean(el)));
   }
 }
 
-function fit(row: HTMLElement): void {
-  row.querySelectorAll<HTMLTextAreaElement>("textarea.gallery-inline").forEach((el) => {
+/** A carousel: its head and its More's deck go to the side. */
+function moveCarousel(block: HTMLElement, side: HTMLElement, toSide: boolean): void {
+  const head = block.querySelector<HTMLElement>(":scope > .gallery-boxhead") ?? side.querySelector<HTMLElement>(":scope > .gallery-boxhead");
+  const body = block.querySelector<HTMLElement>(":scope > [data-carousel-details] > .gallery-details-body");
+  const deck = (toSide ? body : side)?.querySelector<HTMLElement>(":scope > .gallery-row-tools") ?? null;
+  if (toSide) {
+    side.append(...[head, deck].filter((el): el is HTMLElement => Boolean(el)));
+  } else {
+    if (head) block.prepend(head);
+    if (deck) body?.append(deck);
+  }
+}
+
+function fit(unit: HTMLElement): void {
+  unit.querySelectorAll<HTMLTextAreaElement>("textarea.gallery-inline").forEach((el) => {
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
   });
@@ -63,50 +78,71 @@ function fit(row: HTMLElement): void {
 
 const watched = new WeakMap<HTMLElement, ResizeObserver>();
 
-/** Keep the row at least as tall as its side card, so the card never runs into the next work. */
-function watchHeight(row: HTMLElement, side: HTMLElement, on: boolean): void {
+/** Keep the unit at least as tall as its side card, so the card never runs into the next one. */
+function watchHeight(unit: HTMLElement, side: HTMLElement, on: boolean): void {
   if (!on) {
-    watched.get(row)?.disconnect();
-    watched.delete(row);
-    row.style.removeProperty("--side-h");
+    watched.get(unit)?.disconnect();
+    watched.delete(unit);
+    unit.style.removeProperty("--side-h");
     return;
   }
-  if (watched.has(row) || typeof ResizeObserver === "undefined") return;
-  const ro = new ResizeObserver(() => row.style.setProperty("--side-h", `${side.offsetHeight}px`));
+  if (watched.has(unit) || typeof ResizeObserver === "undefined") return;
+  const ro = new ResizeObserver(() => unit.style.setProperty("--side-h", `${side.offsetHeight}px`));
   ro.observe(side);
-  watched.set(row, ro);
+  watched.set(unit, ro);
 }
 
-/** Place one work row's details: beside its card when there is room on a desktop, under the picture otherwise. */
-export function placeDetails(row: HTMLElement): void {
-  const side = row.querySelector<HTMLElement>(":scope > .gallery-side");
-  const thumb = row.querySelector<HTMLElement>(":scope > .gallery-thumb");
-  if (!side || !thumb) return;
-  const rowBox = row.getBoundingClientRect();
+/** Place one unit — a work row or a carousel — beside its card when there is room on a desktop, in its card otherwise. */
+export function placeDetails(unit: HTMLElement): void {
+  const isCarousel = unit.classList.contains("gallery-carousel");
+  const side = unit.querySelector<HTMLElement>(":scope > .gallery-side");
+  const anchor = unit.querySelector<HTMLElement>(isCarousel ? ":scope > [data-carousel-tray]" : ":scope > .gallery-thumb");
+  if (!side || !anchor) return;
+  const box = unit.getBoundingClientRect();
   // Not laid out: keep what it has, measure again when it shows.
-  if (rowBox.width === 0) return;
-  const card = row.closest<HTMLElement>(".gallery-carousel") ?? row;
+  if (box.width === 0) return;
+  const card = isCarousel ? unit : (unit.closest<HTMLElement>(".gallery-carousel") ?? unit);
   const rem = remPx();
-  const left = card.getBoundingClientRect().right - rowBox.left + GAP_REM * rem;
-  const roomy = rowBox.left + left + (SIDE_REM + EDGE_REM) * rem <= document.documentElement.clientWidth;
+  const left = card.getBoundingClientRect().right - box.left + GAP_REM * rem;
+  const roomy = box.left + left + (SIDE_REM + EDGE_REM) * rem <= document.documentElement.clientWidth;
   const want = matchMedia(DESKTOP).matches && roomy;
-  if (want !== row.classList.contains("has-side")) {
-    moveParts(row, side, want);
-    row.classList.toggle("has-side", want);
+  if (want !== unit.classList.contains("has-side")) {
+    (isCarousel ? moveCarousel : moveWork)(unit, side, want);
+    unit.classList.toggle("has-side", want);
     side.hidden = !want;
-    fit(row);
+    fit(unit);
   }
-  watchHeight(row, side, want);
+  watchHeight(unit, side, want);
   if (want) {
-    row.style.setProperty("--side-left", `${Math.round(left)}px`);
-    row.style.setProperty("--side-top", `${Math.round(thumb.getBoundingClientRect().top - rowBox.top)}px`);
-    row.style.setProperty("--side-h", `${side.offsetHeight}px`);
+    unit.style.setProperty("--side-left", `${Math.round(left)}px`);
+    unit.style.setProperty("--side-top", `${Math.round(anchor.getBoundingClientRect().top - box.top)}px`);
+    unit.style.setProperty("--side-h", `${side.offsetHeight}px`);
   }
 }
 
-/** Every work row under `root`. Called by refitInline() and on resize. */
+/**
+ * A carousel's card and its selected slide's card stand in the same column
+ * to the right of the carousel; the slide's is pushed down if the two would
+ * touch.
+ */
+function unstack(block: HTMLElement): void {
+  const own = block.querySelector<HTMLElement>(":scope > .gallery-side");
+  const slide = block.querySelector<HTMLElement>("[data-carousel-slide-row] > .gallery-item.has-side");
+  const slideSide = slide?.querySelector<HTMLElement>(":scope > .gallery-side");
+  if (!own || own.hidden || !slide || !slideSide) return;
+  const gap = STACK_REM * remPx();
+  const overlap = own.getBoundingClientRect().bottom + gap - slideSide.getBoundingClientRect().top;
+  if (overlap > 0) {
+    const top = parseFloat(slide.style.getPropertyValue("--side-top")) || 0;
+    slide.style.setProperty("--side-top", `${Math.round(top + overlap)}px`);
+  }
+}
+
+/** Every carousel and work row under `root`. Called by refitInline() and on resize. */
 export function placeAllDetails(root: ParentNode): void {
+  root.querySelectorAll<HTMLElement>(".gallery-carousel").forEach(placeDetails);
   root.querySelectorAll<HTMLElement>(".gallery-item").forEach(placeDetails);
+  root.querySelectorAll<HTMLElement>(".gallery-carousel.has-side").forEach(unstack);
 }
 
 /** Re-place on resize, a frame at a time; torn down with the editor's lifecycle. */
