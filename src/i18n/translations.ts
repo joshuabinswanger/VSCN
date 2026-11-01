@@ -593,7 +593,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.project.addImages": "Add images to this project",
     "profile.project.delete": "Delete project",
     "profile.project.select": "Project",
-    "profile.project.deleteHasWorks": "Move or remove its works first — a project that holds works can't be deleted.",
+    "profile.project.deleteWithWork.confirm": "Remove this project and its work? The image and everything written about it are deleted for good.",
+    "profile.project.deleteWithWorks.confirm": "Remove this project and its {n} works? Their images and everything written about them are deleted for good.",
     "profile.project.addVideo": "Add a video to this project",
     // WORK CAROUSELS (2026-10-23, documentation/20261023-work-carousels-design.md)
     "profile.carousel": "Carousel",
@@ -1243,7 +1244,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.project.addImages": "Bilder zu diesem Projekt hinzufügen",
     "profile.project.delete": "Projekt löschen",
     "profile.project.select": "Projekt",
-    "profile.project.deleteHasWorks": "Verschiebe oder entferne zuerst seine Arbeiten — ein Projekt mit Arbeiten kann nicht gelöscht werden.",
+    "profile.project.deleteWithWork.confirm": "Dieses Projekt und sein Werk entfernen? Bild und alle Angaben dazu werden endgültig gelöscht.",
+    "profile.project.deleteWithWorks.confirm": "Dieses Projekt und seine {n} Werke entfernen? Bilder und alle Angaben dazu werden endgültig gelöscht.",
     "profile.project.addVideo": "Video zu diesem Projekt hinzufügen",
     // WORK CAROUSELS (2026-10-23)
     "profile.carousel": "Karussell",
