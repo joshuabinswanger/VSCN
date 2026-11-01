@@ -463,7 +463,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.cover": "Cover",
     "profile.gallery.include": "In gallery",
     "profile.gallery.include.hint": "Show this work in the community gallery. Unticked, it stays on your profile page only.",
-    "profile.gallery.showDesc": "Show description",
+    "profile.gallery.showDesc": "Description",
     "profile.gallery.showDesc.hint": "Print the description under the picture on your page. Unticked, it is read in the full-screen view only.",
     "profile.gallery.coverNote":
       "The first image is your cover: its proportions set the shape of your card in the directory.",
@@ -613,7 +613,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.deck.size": "Size",
     "profile.deck.move": "Move",
     "profile.deck.work": "Work",
-    "profile.deck.add": "Add",
+    "profile.deck.add": "Add to Project",
     "profile.panel.empty": "Select a work, a project or a carousel to edit it here.",
     "profile.panel.back": "Back",
     // THE PROJECT PAGES (2026-10-27): the Works tab lists the projects as
@@ -1163,7 +1163,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.cover": "Titelbild",
     "profile.gallery.include": "In Galerie",
     "profile.gallery.include.hint": "Diese Arbeit in der Community-Galerie zeigen. Ohne Häkchen erscheint sie nur auf deiner Profilseite.",
-    "profile.gallery.showDesc": "Beschreibung zeigen",
+    "profile.gallery.showDesc": "Beschreibung",
     "profile.gallery.showDesc.hint": "Die Beschreibung unter dem Bild auf deiner Seite zeigen. Ohne Häkchen ist sie nur in der Vollbildansicht zu lesen.",
     "profile.gallery.coverNote":
       "Das erste Bild ist dein Titelbild: seine Proportionen bestimmen die Form deiner Karte im Verzeichnis.",
@@ -1263,7 +1263,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.deck.size": "Grösse",
     "profile.deck.move": "Verschieben",
     "profile.deck.work": "Arbeit",
-    "profile.deck.add": "Hinzufügen",
+    "profile.deck.add": "Zum Projekt hinzufügen",
     "profile.panel.empty": "Wähle ein Werk, ein Projekt oder ein Karussell, um es hier zu bearbeiten.",
     "profile.panel.back": "Zurück",
     "profile.projects.back": "Projekte",

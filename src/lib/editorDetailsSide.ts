@@ -18,9 +18,10 @@
  * once by querying the row or the carousel, and every listener and value
  * travels with its element. Moving back restores the template's order.
  *
- * Placement is MEASURED, not a formula: the side card goes at the right edge
- * of the card (the carousel's for a slide, which has none of its own), level
- * with the picture (the tray, for a carousel), and only where that edge plus
+ * Placement is MEASURED, not a formula: the side card goes outside the
+ * project block, a rem past its right edge (2026-11-01, Josh's board 22:
+ * the cards no longer straddle the block's edge), level with the picture
+ * (a carousel's with the top of its card), and only where that edge plus
  * the card still fits the window. A unit that is not laid out (hidden in
  * Preview, another tab) keeps what it had; refitInline() calls
  * placeAllDetails again when it shows.
@@ -29,9 +30,9 @@
 /** The --bp-desktop query from custom-media.css, spelled out (see that file). */
 const DESKTOP = "(767px < width) and ((not (pointer: coarse)) or (500px < height))";
 
-/** The side card's width, the gap before it, the margin it keeps from the window edge, and the gap between two stacked cards, in rem. */
+/** The side card's width, its gap from the project block's edge, the margin it keeps from the window edge, and the gap between two stacked cards, in rem. */
 const SIDE_REM = 17;
-const GAP_REM = 1.5;
+const GAP_REM = 1;
 const EDGE_REM = 1;
 const STACK_REM = 0.75;
 
@@ -96,12 +97,12 @@ function watchHeight(unit: HTMLElement, side: HTMLElement, on: boolean): void {
 export function placeDetails(unit: HTMLElement): void {
   const isCarousel = unit.classList.contains("gallery-carousel");
   const side = unit.querySelector<HTMLElement>(":scope > .gallery-side");
-  const anchor = unit.querySelector<HTMLElement>(isCarousel ? ":scope > [data-carousel-tray]" : ":scope > .gallery-thumb");
+  const anchor = isCarousel ? unit : unit.querySelector<HTMLElement>(":scope > .gallery-thumb");
   if (!side || !anchor) return;
   const box = unit.getBoundingClientRect();
   // Not laid out: keep what it has, measure again when it shows.
   if (box.width === 0) return;
-  const card = isCarousel ? unit : (unit.closest<HTMLElement>(".gallery-carousel") ?? unit);
+  const card = unit.closest<HTMLElement>(".gallery-project") ?? unit.closest<HTMLElement>(".gallery-carousel") ?? unit;
   const rem = remPx();
   const left = card.getBoundingClientRect().right - box.left + GAP_REM * rem;
   const roomy = box.left + left + (SIDE_REM + EDGE_REM) * rem <= document.documentElement.clientWidth;

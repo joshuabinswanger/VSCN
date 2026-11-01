@@ -680,7 +680,7 @@ document.addEventListener("astro:page-load", () => {
    * on, and drops focus to the document — so moving an image two places
    * would take a fresh click each time.
    */
-  type RowControl = "up" | "down" | "project" | "takeOut" | "carousel" | "text";
+  type RowControl = "up" | "down" | "project" | "carousel" | "text";
   type FocusHint =
     | { imageId: string; control: RowControl }
     | { projectId: string; field?: string; control?: "up" | "down" | "carousel" }
@@ -756,7 +756,7 @@ document.addEventListener("astro:page-load", () => {
         : null;
     // `slide` (2026-10-23): the row is a carousel's selected slide. Its size
     // and its text block are the carousel's (on the lead, carousels.ts) and
-    // go; ↑ ↓ become ← → within the run (moveWork), and Take out is added.
+    // go; ↑ ↓ become ← → within the run (moveWork). Take out is the Carousel select's "Not in a carousel".
     const buildRow = (index: number, slide?: SlideInfo): HTMLElement | null => {
           const item = gallery[index];
           const row = galleryItemTpl.content.firstElementChild?.cloneNode(true);
@@ -1046,19 +1046,6 @@ document.addEventListener("astro:page-load", () => {
           wireMove(moveUp, -1, "up");
           wireMove(moveDown, 1, "down");
 
-          // TAKE OUT (slides only): back into the project's line, directly
-          // after the carousel (takeOut). The carousel keeps its settings.
-          if (slide) {
-            const takeOutBtn = document.createElement("button");
-            takeOutBtn.type = "button";
-            takeOutBtn.className = "gallery-key gallery-key--wide";
-            takeOutBtn.dataset.galleryTakeOut = "";
-            takeOutBtn.textContent = s["profile.carousel.takeOut"];
-            takeOutBtn.title = s["profile.carousel.takeOut"];
-            takeOutBtn.addEventListener("click", () => void applyGallery(takeOut(gallery, index), { imageId: item.imageId, control: "takeOut" }));
-            row.querySelector("[data-deck-row]")?.prepend(takeOutBtn);
-          }
-
           // THE PROJECT DROPDOWN (2026-09-25). A project joins the image
           // at the END of that block (moveToProject). Membership is written
           // at Save, like every field here. NO "No project" since 2026-10-16
@@ -1066,8 +1053,12 @@ document.addEventListener("astro:page-load", () => {
           // work moves from one project to another, never out of all of
           // them — so the select only shows once there is a second project
           // to move to.
+          // A SLIDE HAS NONE (2026-11-01, Josh's board 22): its carousel's
+          // own picker moves the run between projects, and the Carousel
+          // select's "Not in a carousel" is what Take out was, so the
+          // slide's card keeps neither.
           const projectWrap = projectSelect.closest<HTMLElement>("[data-gallery-project-wrap]");
-          if (projectWrap) projectWrap.hidden = projects.length < 2;
+          if (projectWrap) projectWrap.hidden = projects.length < 2 || Boolean(slide);
           named(projectSelect, s["profile.project.select"]).title = s["profile.project.select"];
           projectSelect.replaceChildren(
             ...projects.map((p) => new Option(projectLabel(projects, p.projectId, lang, s["profile.project.untitled"]), p.projectId)),
@@ -1507,9 +1498,7 @@ document.addEventListener("astro:page-load", () => {
               : focusHint.control === "carousel"
                 ? (row?.querySelector<HTMLElement>("[data-gallery-carousel]") ??
                   galleryEditor.querySelector<HTMLElement>(`[data-tray-thumb][data-image-id="${focusHint.imageId}"]`))
-              : focusHint.control === "takeOut"
-                ? (row?.querySelector<HTMLElement>("[data-gallery-take-out]") ?? pick(row, '[data-gallery-move="up"]', '[data-gallery-move="down"]', "up"))
-                : focusHint.control === "text"
+              : focusHint.control === "text"
                   ? row?.querySelector<HTMLElement>(`[data-gallery-field="${worksLang === "de" ? "textAfterDe" : "textAfter"}"]`)
                   : pick(row, '[data-gallery-move="up"]', '[data-gallery-move="down"]', focusHint.control);
       } else if ("carouselId" in focusHint) {
