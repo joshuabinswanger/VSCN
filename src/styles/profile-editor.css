@@ -448,8 +448,7 @@
     min-height: calc(var(--side-top, 0px) + var(--side-h, 0px) + var(--row-pad, 0px));
   }
 
-  .gallery-item.has-side > .gallery-fields > .gallery-details,
-  .gallery-carousel.has-side > [data-carousel-details] {
+  .gallery-item.has-side > .gallery-fields > .gallery-details {
     display: none;
   }
 
@@ -475,19 +474,21 @@
 
   /* A work's settings stand straight on the card, no tinted panel of their
      own (a carousel's keeps it): the pickers across, In gallery and
-     Description side by side under them. */
-  .gallery-item > .gallery-side > .gallery-deck {
+     Description side by side under them. The same in More, where a phone
+     or a narrow window keeps them (2026-11-01, Josh: "mirror the styling
+     of the more content … as the style of the desktop"). */
+  .gallery-item :is(.gallery-side, .gallery-details-body) > .gallery-deck {
     max-width: none;
     margin: 0;
     padding: 0;
     background: none;
   }
 
-  .gallery-item > .gallery-side .gallery-deck__row > :is(.gallery-select-wrap, [data-gallery-auto-thumb]) {
+  .gallery-item :is(.gallery-side, .gallery-details-body) .gallery-deck__row > :is(.gallery-select-wrap, [data-gallery-auto-thumb]) {
     flex-basis: 100%;
   }
 
-  .gallery-item > .gallery-side .gallery-deck__row > .gallery-include {
+  .gallery-item :is(.gallery-side, .gallery-details-body) .gallery-deck__row > .gallery-include {
     flex: 1 1 0;
     min-width: 0;
     padding-inline: 10px;
@@ -572,6 +573,11 @@
   .gallery-carousel-tools {
     max-width: none;
     margin: 0.75rem 0 0;
+  }
+
+  /* One project: the picker is hidden, and its panel with it. */
+  .gallery-carousel-tools:not(:has(> .gallery-deck__row > :not([hidden]))) {
+    display: none;
   }
 
   .gallery-deck__grp {
@@ -1179,10 +1185,6 @@
     margin-top: 0.75rem;
   }
 
-  .gallery-carousel-details {
-    margin-top: 0.6rem;
-  }
-
   .gallery-carousel-slide[hidden],
   .gallery-text[hidden] {
     display: none;
@@ -1519,6 +1521,18 @@
     padding: 10px;
     background: color-mix(in srgb, var(--color-dark) 5%, var(--color-bg));
     border-radius: var(--radius-soft-card) !important;
+  }
+
+  /* A work's More, where the side card cannot stand (a phone, a narrow
+     window), is that card: the same soft white surface, padding and gaps
+     (2026-11-01, Josh). */
+  .gallery-item > .gallery-fields > .gallery-details > .gallery-details-body {
+    gap: 12px;
+    padding: 1rem;
+    background: color-mix(in srgb, var(--color-white) 78%, var(--color-bg));
+    box-shadow:
+      0 1px 2px rgb(0 0 0 / 0.05),
+      0 0 0 0.5px rgb(0 0 0 / 0.05);
   }
 
   /* Inside the panel the deck is the panel: no second tint, no margins. */

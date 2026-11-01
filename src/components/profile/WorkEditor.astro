@@ -402,7 +402,7 @@ const t = useTranslations(lang);
         {
           /* The carousel's own head (2026-10-27): its name, then size S | L,
             ↑ ↓ moving the run as a whole and Dissolve. The project select
-            and the text block's key are its More fold. */
+            stands under the tray. */
         }
         <div class="gallery-boxhead">
           <p class="gallery-boxhead__lbl gallery-carousel-label t-label" data-carousel-label></p>
@@ -425,23 +425,19 @@ const t = useTranslations(lang);
           </label>
         </div>
         {
-          /* The carousel's own controls behind Edit (2026-10-23), like a
-            work's: S/L, ↑ ↓ moving the run as a whole, ✕ dissolving it,
-            the project select. buildTray remembers the fold per carouselId
-            (TrayHooks.panelOpen). */
+          /* The carousel's project picker, in the open under the tray (no
+            More fold since 2026-11-01, Josh: "the more button here is
+            unnecessary" — it held this one select). On a wide desktop it
+            moves into the side card (editorDetailsSide.ts); with one
+            project it is hidden, and so is its panel. */
         }
-        <details class="gallery-details gallery-carousel-details" data-carousel-details>
-          <summary class="gallery-details-summary gallery-key gallery-key--more"><span class="gallery-details-title">{t("profile.deck.more")}</span><span class="gallery-details-chevron" aria-hidden="true"></span></summary>
-          <div class="gallery-details-body gallery-panel">
-            <div class="gallery-row-tools gallery-carousel-tools gallery-deck">
-              <div class="gallery-deck__row">
-                <div class="gallery-select-wrap gallery-key gallery-key--wide" data-carousel-project-wrap hidden>
-                  <select class="gallery-project-select" data-carousel-project></select>
-                </div>
-              </div>
+        <div class="gallery-row-tools gallery-carousel-tools gallery-deck">
+          <div class="gallery-deck__row">
+            <div class="gallery-select-wrap gallery-key gallery-key--wide" data-carousel-project-wrap hidden>
+              <select class="gallery-project-select" data-carousel-project></select>
             </div>
           </div>
-        </details>
+        </div>
         {/* The carousel's settings beside it on a wide desktop, as a work's (editorDetailsSide.ts). */}
         <div class="gallery-side" hidden></div>
         <div class="gallery-carousel-slide" data-carousel-slide-row></div>

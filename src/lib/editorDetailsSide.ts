@@ -8,7 +8,7 @@
  * keys (size, move, remove) and everything More held (the project and
  * carousel pickers, the video thumbnail key, In gallery, Show description,
  * the tags). More itself is then empty and hidden. A carousel does the same
- * with its own head and its More (the project picker); its selected slide is
+ * with its own head and its project picker; its selected slide is
  * a work row and gets its own settings card, level with the slide's picture.
  *
  * On a phone, or a window too narrow for a card beside the column, nothing
@@ -57,16 +57,15 @@ function moveWork(row: HTMLElement, side: HTMLElement, toSide: boolean): void {
   }
 }
 
-/** A carousel: its head and its More's deck go to the side. */
+/** A carousel: its head and its project picker (under the tray) go to the side. */
 function moveCarousel(block: HTMLElement, side: HTMLElement, toSide: boolean): void {
   const head = block.querySelector<HTMLElement>(":scope > .gallery-boxhead") ?? side.querySelector<HTMLElement>(":scope > .gallery-boxhead");
-  const body = block.querySelector<HTMLElement>(":scope > [data-carousel-details] > .gallery-details-body");
-  const deck = (toSide ? body : side)?.querySelector<HTMLElement>(":scope > .gallery-row-tools") ?? null;
+  const deck = (toSide ? block : side).querySelector<HTMLElement>(":scope > .gallery-row-tools");
   if (toSide) {
     side.append(...[head, deck].filter((el): el is HTMLElement => Boolean(el)));
   } else {
     if (head) block.prepend(head);
-    if (deck) body?.append(deck);
+    if (deck) block.querySelector(":scope > [data-carousel-tray]")?.after(deck);
   }
 }
 

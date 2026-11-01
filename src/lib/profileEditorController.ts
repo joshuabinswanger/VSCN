@@ -427,8 +427,6 @@ document.addEventListener("astro:page-load", () => {
   const projectDetailsOpenUI = new Map<string, boolean>();
   /** UI only: which project blocks have their + Add keys unfolded. */
   const projectAddOpenUI = new Map<string, boolean>();
-  /** UI only: which carousels have their Edit panel open (buildTray reads it). */
-  const carouselPanelOpenUI = new Map<string, boolean>();
   /**
    * TEXT BLOCKS ARE ADDED (2026-10-23, Josh: "text blocks are addable
    * elements"): the field after a work or a carousel shows only once it holds
@@ -1392,7 +1390,6 @@ document.addEventListener("astro:page-load", () => {
             gallery: () => gallery,
             projects: projectOptions,
             selected: carouselSelection,
-            panelOpen: carouselPanelOpenUI,
             textOpen: textBlockOpenUI,
             lang: worksLang,
             uploadFull: galleryFull(),
