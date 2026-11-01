@@ -569,15 +569,6 @@
     border-radius: var(--radius-soft-card) !important;
   }
 
-  /* REMOVE ON A PROJECT (2026-11-01, Josh): the work card's red word, at
-     the block's top right, level with the title's label. */
-  .gallery-project-remove {
-    position: absolute;
-    top: calc(var(--block-pad) - 6px);
-    right: var(--block-pad);
-    z-index: 1;
-  }
-
   .gallery-carousel-tools {
     max-width: none;
     margin: 0.75rem 0 0;
@@ -2928,6 +2919,31 @@
 
   .pp-card__title {
     padding-top: 6px;
+  }
+
+  /* ↑ ↓, EDIT, REMOVE (2026-11-01, Josh: "the remove should be on the
+     overview page and there we also need a way to move the projects
+     around"): the card's keys at its top right, in the work card's order —
+     the moves, then Edit, then the red word. */
+  .pp-card__keys {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pp-card__moves {
+    display: flex;
+    gap: 3px;
+  }
+
+  .pp-card__keys .gallery-key {
+    min-width: 30px;
+    height: 30px;
+  }
+
+  .pp-card__keys .gallery-tbtn {
+    padding: 0 10px;
   }
 
   .pp-card__desc {

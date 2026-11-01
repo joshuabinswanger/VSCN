@@ -60,6 +60,12 @@ document.addEventListener("astro:page-load", () => {
   const ids = () => blocks().map((b) => b.dataset.projectId ?? "");
 
   // ── THE CARDS ────────────────────────────────────────────
+  const blockKey = (block: HTMLElement, which: string) =>
+    block.querySelector<HTMLButtonElement>(which === "delete" ? "[data-project-delete]" : `[data-project-move="${which}"]`);
+  // A key pressed on a card: the list re-renders under it, so the same key
+  // on the same card takes the focus back once the cards are redrawn.
+  let refocus: { id: string; which: string } | null = null;
+
   const field = (block: HTMLElement, name: string) =>
     block.querySelector<HTMLTextAreaElement>(`[data-project-field="${name}"]`)?.value.trim() ?? "";
 
@@ -109,6 +115,20 @@ document.addEventListener("astro:page-load", () => {
 
     const edit = card.querySelector<HTMLButtonElement>("[data-pp-card-edit]")!;
     edit.setAttribute("aria-label", (strings.editOne ?? "").replace("{name}", title));
+
+    // ↑ ↓ and Remove mirror the block's hidden keys: their names, their
+    // tooltips (Remove's says when the project still holds works) and where
+    // the edges disable them.
+    card.querySelectorAll<HTMLButtonElement>("[data-pp-card-key]").forEach((key) => {
+      const own = blockKey(block, key.dataset.ppCardKey ?? "");
+      if (!own) return;
+      // The block's Remove refuses a project that holds works with a line the
+      // list level does not show, so the card's is plainly off for one.
+      key.disabled = own.disabled || (key.dataset.ppCardKey === "delete" && count > 0);
+      key.title = own.title;
+      const name = own.getAttribute("aria-label");
+      if (name) key.setAttribute("aria-label", `${name}: ${title}`);
+    });
     return card;
   };
 
@@ -119,6 +139,13 @@ document.addEventListener("astro:page-load", () => {
     const present = blocks();
     if (addKey) addKey.hidden = present.length === 0;
     cards.replaceChildren(...present.flatMap((b) => drawCard(b) ?? []), ...(addKey ? [addKey] : []));
+    if (refocus) {
+      const card = cards.querySelector<HTMLElement>(`[data-pp-card][data-project-id="${CSS.escape(refocus.id)}"]`);
+      const key = card?.querySelector<HTMLButtonElement>(`[data-pp-card-key="${refocus.which}"]`);
+      if (key && !key.disabled) key.focus();
+      else card?.querySelector<HTMLButtonElement>("[data-pp-card-edit]")?.focus();
+      refocus = null;
+    }
   };
 
   // ── THE LEVEL ────────────────────────────────────────────
@@ -186,7 +213,21 @@ document.addEventListener("astro:page-load", () => {
     "click",
     (e) => {
       const card = e.target instanceof Element ? e.target.closest<HTMLElement>("[data-pp-card]") : null;
-      if (card?.dataset.projectId) open(card.dataset.projectId);
+      const id = card?.dataset.projectId;
+      if (!id) return;
+      const key = (e.target as Element).closest<HTMLButtonElement>("[data-pp-card-key]");
+      if (key) {
+        const which = key.dataset.ppCardKey ?? "";
+        const block = blocks().find((b) => b.dataset.projectId === id);
+        const own = block && blockKey(block, which);
+        if (own && !own.disabled) {
+          // Remove hands the focus on itself (to + Project) when it goes.
+          if (which !== "delete") refocus = { id, which };
+          own.click();
+        }
+        return;
+      }
+      open(id);
     },
     { signal },
   );

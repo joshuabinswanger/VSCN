@@ -11,9 +11,9 @@ const t = useTranslations(lang);
           /* A PROJECT IN THE PAGE'S CLOTHES (2026-10-13): the block is the
             page's own `.mprof__project` — its heading group, then its works —
             with the title and the description as inline fields in the
-            heading's own voices. Remove stands at the block's top right
-            (2026-11-01; ↑/↓ went, the editor shows one project at a time);
-            uploads land after its last image (insertUploaded). Since
+            heading's own voices. Its ↑/↓ and Remove are on the project
+            list's card since 2026-11-01 (the editor shows one project at a
+            time); uploads land after its last image (insertUploaded). Since
             2026-10-16 (Josh: "images without project are not allowed any
             longer!") the block is the ONLY way a work comes in — its picker,
             a drop onto it, its "Add video" — and Delete takes an empty block
@@ -23,7 +23,17 @@ const t = useTranslations(lang);
             two or more page as a carousel. */
         }
         <section class="mprof__project gallery-project" data-project-block>
-          <button type="button" class="gallery-boxhead__word gallery-boxhead__word--danger gallery-project-remove" data-project-delete>{t("profile.deck.remove")}</button>
+          {
+            /* The block's ↑ ↓ and Remove, never shown in the block: the
+              project list's card presses them (editorProjectPages.ts), so the
+              controller's wiring — moveProject, the edge limits, Remove for
+              an empty project only — is the one place that decides. */
+          }
+          <div class="gallery-project-keys" hidden>
+            <button type="button" data-project-move="up"></button>
+            <button type="button" data-project-move="down"></button>
+            <button type="button" data-project-delete></button>
+          </div>
           <div class="mprof__project-head gallery-project-fields">
             {
               /* The block's name for the controls that act on it, read by
