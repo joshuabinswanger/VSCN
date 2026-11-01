@@ -351,15 +351,23 @@ const t = useTranslations(lang);
     <ProjectEditor lang={lang} />
     {
       /* A PROJECT CARD on the list level, cloned by editorProjectPages.ts.
-        The whole card opens the project; the Edit key says so. */
+        The whole card opens the project; the Edit key says so. ↑ ↓ and
+        Remove (2026-11-01) press the block's own hidden keys. */
     }
     <template data-pp-tpl="card">
       <article class="pp-card" data-pp-card>
         <div class="pp-card__head">
           <h3 class="pp-card__title mprof__project-title" data-pp-card-title></h3>
-          <button type="button" class="pp-card__edit gallery-key gallery-key--edit" data-pp-card-edit
-            ><span>{t("profile.deck.edit")}</span></button
-          >
+          <div class="pp-card__keys">
+            <div class="pp-card__moves">
+              <button type="button" class="gallery-key gallery-tbtn" data-pp-card-key="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+              <button type="button" class="gallery-key gallery-tbtn" data-pp-card-key="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
+            </div>
+            <button type="button" class="pp-card__edit gallery-key gallery-key--edit" data-pp-card-edit
+              ><span>{t("profile.deck.edit")}</span></button
+            >
+            <button type="button" class="gallery-boxhead__word gallery-boxhead__word--danger" data-pp-card-key="delete">{t("profile.deck.remove")}</button>
+          </div>
         </div>
         <p class="pp-card__desc mprof__project-desc" data-pp-card-desc hidden></p>
         <div class="pp-card__thumbs" data-pp-card-thumbs></div>
