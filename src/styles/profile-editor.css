@@ -452,24 +452,8 @@
     display: none;
   }
 
-  /* The head in the side card: its label on its own line, the keys under
-     it across the card — the moves at the left, Remove (Dissolve) at the
-     right (2026-11-01, Josh's board 22). A slide's hidden label takes no
-     line here. */
   .gallery-side > .gallery-boxhead {
     margin: 0;
-  }
-
-  .gallery-side > .gallery-boxhead > .gallery-boxhead__keys {
-    flex: 1 1 100%;
-  }
-
-  .gallery-side .gallery-boxhead__word {
-    margin-left: auto;
-  }
-
-  .gallery-carousel-slide .gallery-side .gallery-boxhead__lbl {
-    display: none;
   }
 
   /* A work's settings stand straight on the card, no tinted panel of their
@@ -959,18 +943,22 @@
      a carousel and an added text block each carry what the panel's deck held
      on their own top line. The kind (a carousel's "Carousel · N works") at
      the left; at the right size S | L, ↑ ↓ and a word to remove (a
-     carousel's: Dissolve). Everything else is the box's More fold. */
+     carousel's: Dissolve). Everything else is the box's More fold.
+     Since 2026-11-01 (Josh: "the field titles above still smaller the
+     buttons by default on the left except the red delete/remove"): the
+     kind on its own line in the field-title voice, the keys under it from
+     the left, the red word alone at the right. */
   .gallery-boxhead {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    justify-content: space-between;
     gap: 6px 10px;
     min-height: 28px;
     margin: 0 0 0.75rem;
   }
 
   .gallery-boxhead > .gallery-boxhead__lbl {
+    flex: 1 1 100%;
     min-width: 0;
     margin: 0;
     color: var(--color-muted);
@@ -978,9 +966,13 @@
 
   .gallery-boxhead__keys {
     display: flex;
-    flex: none;
+    flex: 1 1 100%;
     align-items: center;
     gap: 10px;
+  }
+
+  .gallery-boxhead__word {
+    margin-left: auto;
   }
 
   .gallery-boxhead__grp {
@@ -1027,7 +1019,7 @@
   /* A slide stands inside its carousel's box: no second head of its own
      beyond the arrows and Remove, which move and remove the slide. */
   .gallery-carousel-slide .gallery-boxhead__lbl {
-    visibility: hidden;
+    display: none;
   }
 
   /* REPLACE sits on the picture, top right: the soft white pill the panel's
@@ -2982,6 +2974,18 @@
   /* A long title, or a phone, puts the keys on their own line under it. */
   .pp-card__head {
     flex-wrap: wrap;
+  }
+
+  /* On a phone that line runs across the card: the keys from the left,
+     Remove alone at the right (2026-11-01, as the box heads). */
+  .pp-card__keys .gallery-boxhead__word {
+    margin-left: auto;
+  }
+
+  @media (--bp-mobile) {
+    .pp-card__keys {
+      flex: 1 1 100%;
+    }
   }
 
   .pp-card__desc {
