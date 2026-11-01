@@ -117,14 +117,11 @@ document.addEventListener("astro:page-load", () => {
     edit.setAttribute("aria-label", (strings.editOne ?? "").replace("{name}", title));
 
     // ↑ ↓ and Remove mirror the block's hidden keys: their names, their
-    // tooltips (Remove's says when the project still holds works) and where
-    // the edges disable them.
+    // tooltips and where the edges disable them.
     card.querySelectorAll<HTMLButtonElement>("[data-pp-card-key]").forEach((key) => {
       const own = blockKey(block, key.dataset.ppCardKey ?? "");
       if (!own) return;
-      // The block's Remove refuses a project that holds works with a line the
-      // list level does not show, so the card's is plainly off for one.
-      key.disabled = own.disabled || (key.dataset.ppCardKey === "delete" && count > 0);
+      key.disabled = own.disabled;
       key.title = own.title;
       const name = own.getAttribute("aria-label");
       if (name) key.setAttribute("aria-label", `${name}: ${title}`);

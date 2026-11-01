@@ -1218,10 +1218,8 @@ document.addEventListener("astro:page-load", () => {
       // "the remove should be on the overview page and there we also need a
       // way to move the projects around"). The block keeps them hidden and
       // its card on the list mirrors and presses them (editorProjectPages).
-      // ↑/↓ move the whole block past its neighbour. Remove takes an EMPTY
-      // block only (2026-10-16): a work cannot be left without a project,
-      // so one that still holds works says to move or remove them first.
-      // The document itself goes at Save.
+      // ↑/↓ move the whole block past its neighbour. Remove takes the
+      // project and, once confirmed, its works (deleteProject).
       const id = project.projectId;
       const wireHeadMove = (button: HTMLButtonElement, delta: -1 | 1, control: "up" | "down") => {
         const next = moveProject(blocks, id, delta);
@@ -1232,10 +1230,8 @@ document.addEventListener("astro:page-load", () => {
       };
       wireHeadMove(headUp, -1, "up");
       wireHeadMove(headDown, 1, "down");
-      headDelete.title = block.indices.length
-        ? `${s["profile.project.delete"]}. ${s["profile.project.deleteHasWorks"]}`
-        : s["profile.project.delete"];
-      headDelete.addEventListener("click", () => deleteProject(id));
+      headDelete.title = s["profile.project.delete"];
+      headDelete.addEventListener("click", () => void deleteProject(id));
 
       // A VIDEO INTO THIS PROJECT (2026-10-16). The Plus menu's general
       // "Add video" went with the general picker — every work is added to
@@ -2145,18 +2141,32 @@ document.addEventListener("astro:page-load", () => {
   }
 
   /**
-   * "Delete project", for an EMPTY block only (2026-10-16, Josh: "images
-   * without project are not allowed any longer!"). It used to dissolve in
-   * place and leave its images loose; now a block that holds works refuses,
-   * on the gallery's status line, and the member moves them (the row's
-   * project select) or removes them first. Nothing is stored now: the
-   * document is deleted at Save — `deletedProjectIds` is how Save still knows
-   * about a project no longer in `projects`.
+   * REMOVE A PROJECT, from its card on the project list. A work cannot be
+   * left without a project (2026-10-16, Josh: "images without project are
+   * not allowed any longer!"), so one that holds works goes WITH them, once
+   * the member has confirmed (2026-11-01, Josh: yes to "should Remove also
+   * delete a project's works, after asking first?"). The works go as a
+   * work's own Remove takes one: out of the gallery, the order stored at
+   * once, each record marked after Firestore stops pointing at it. The
+   * project document is deleted at Save — `deletedProjectIds` is how Save
+   * still knows about a project no longer in `projects`.
    */
-  function deleteProject(projectId: string) {
-    if (gallery.some((g) => g.projectId === projectId)) {
-      setGalleryStatus(s["profile.project.deleteHasWorks"]);
-      return;
+  async function deleteProject(projectId: string) {
+    const held = gallery.filter((g) => g.projectId === projectId).length;
+    if (held > 0) {
+      const ask = s[held === 1 ? "profile.project.deleteWithWork.confirm" : "profile.project.deleteWithWorks.confirm"].replace("{n}", String(held));
+      if (!await confirmDialog(ask, { confirm: s["profile.deck.remove"], cancel: s["profile.delete.cancel"] })) return;
+    }
+    // Read again after the dialog: an upload can land while it is open.
+    const removed = gallery.filter((g) => g.projectId === projectId);
+    if (removed.length) {
+      const gone = new Set(removed.map((g) => g.imageId));
+      gallery = gallery.filter((g) => !gone.has(g.imageId));
+      for (const id of gone) committedWords.delete(id);
+      // A picture on its way to one of them, or into the project, has nowhere to land.
+      for (const task of galleryQueue.tasks()) {
+        if ((task.replaces && gone.has(task.replaces)) || task.projectId === projectId) galleryQueue.cancel(task.id);
+      }
     }
     projects = projects.filter((p) => p.projectId !== projectId);
     localCarousels = localCarousels.filter((l) => l.projectId !== projectId);
@@ -2170,6 +2180,9 @@ document.addEventListener("astro:page-load", () => {
     renderGallery();
     // The block and its buttons are gone; the way in, if it was the last one.
     (galleryFirst && !galleryFirst.hidden ? galleryFirstProject : document.getElementById("pp-add"))?.focus();
+    if (removed.length && (await persistGalleryNow())) {
+      for (const work of removed) await markImageForDeletion(work.imageId);
+    }
   }
 
   /**
