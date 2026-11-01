@@ -1192,8 +1192,13 @@ document.addEventListener("astro:page-load", () => {
       // appended, so this cannot reach theirs.
       const detailsFold = el.querySelector<HTMLDetailsElement>(".gallery-project-details");
       if (detailsFold) {
-        detailsFold.open = projectDetailsOpenUI.get(project.projectId) ?? false;
-        detailsFold.addEventListener("toggle", () => projectDetailsOpenUI.set(project.projectId, detailsFold.open));
+        // Always open on a phone, its More key hidden (2026-11-01, Josh:
+        // "the more button here is unnecessary"): the project page is the
+        // project, so its link, affiliations and tags stand in the open.
+        detailsFold.open = !window.matchMedia(DESKTOP_QUERY).matches || (projectDetailsOpenUI.get(project.projectId) ?? false);
+        detailsFold.addEventListener("toggle", () => {
+          if (window.matchMedia(DESKTOP_QUERY).matches) projectDetailsOpenUI.set(project.projectId, detailsFold.open);
+        });
       }
       // + Add unfolds the block's three add keys (2026-10-23); remembered
       // per projectId across re-renders, like the panel.
