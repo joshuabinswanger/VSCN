@@ -89,7 +89,6 @@ import {
   insertUploaded,
   looseWorksProject,
   memberUidFor,
-  moveProject,
   moveToProject,
   orderProjects,
   previewProjects,
@@ -1179,11 +1178,8 @@ document.addEventListener("astro:page-load", () => {
       el.dataset.projectId = project.projectId;
       const name = el.querySelector<HTMLElement>("[data-project-name]");
       const images = el.querySelector<HTMLElement>("[data-project-images]");
-      const head = el.querySelector<HTMLElement>(".gallery-project-tools");
-      const headUp = head?.querySelector<HTMLButtonElement>('[data-project-move="up"]');
-      const headDown = head?.querySelector<HTMLButtonElement>('[data-project-move="down"]');
-      const headDelete = head?.querySelector<HTMLButtonElement>("[data-project-delete]");
-      if (!name || !images || !headUp || !headDown || !headDelete) return null;
+      const headDelete = el.querySelector<HTMLButtonElement>("[data-project-delete]");
+      if (!name || !images || !headDelete) return null;
 
       const setName = () => {
         name.textContent = projectLabel(projects, project.projectId, lang, s["profile.project.untitled"]);
@@ -1215,21 +1211,13 @@ document.addEventListener("astro:page-load", () => {
         });
       }
 
-      // The header's ↑/↓ move the whole block past its neighbour. Delete
-      // takes an EMPTY block only (2026-10-16): a work cannot be left
-      // without a project, so one that still holds works says to move or
-      // remove them first. The document itself goes at Save.
+      // REMOVE, top right of the block (2026-11-01, Josh: "the move buttons
+      // can go and the delete icon should become a remove at the top
+      // right" — the editor shows one project at a time, so ↑ ↓ had nothing
+      // to step past). Takes an EMPTY block only (2026-10-16): a work cannot
+      // be left without a project, so one that still holds works says to
+      // move or remove them first. The document itself goes at Save.
       const id = project.projectId;
-      const wireHeadMove = (button: HTMLButtonElement, delta: -1 | 1, control: "up" | "down") => {
-        const next = moveProject(blocks, id, delta);
-        const label = s[delta < 0 ? "profile.project.moveUp" : "profile.project.moveDown"];
-        named(button, label).title = label;
-        button.disabled = next === null;
-        button.addEventListener("click", () => void applyBlockMove(next, { projectId: id, control }));
-      };
-      wireHeadMove(headUp, -1, "up");
-      wireHeadMove(headDown, 1, "down");
-      // An icon now (2026-10-13), so the tooltip carries the name too.
       headDelete.title = block.indices.length
         ? `${s["profile.project.delete"]}. ${s["profile.project.deleteHasWorks"]}`
         : s["profile.project.delete"];
@@ -1517,12 +1505,7 @@ document.addEventListener("astro:page-load", () => {
           ? block?.querySelector<HTMLElement>(`[data-project-field="${focusHint.field}"]`)
           : focusHint.control === "carousel"
             ? block?.querySelector<HTMLElement>("[data-project-carousel]")
-            : pick(
-                block?.querySelector(".gallery-project-tools") ?? null,
-                '[data-project-move="up"]',
-                '[data-project-move="down"]',
-                focusHint.control ?? "up",
-              );
+            : block?.querySelector<HTMLElement>("[data-project-delete]");
       }
       target?.focus({ preventScroll: Boolean(trayHold) });
       if (trayHold) {
