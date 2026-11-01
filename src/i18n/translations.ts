@@ -621,8 +621,6 @@ export const ui: Record<string, Record<string, string>> = {
     // cards; Edit opens one as a page of its own (editorProjectPages.ts).
     "profile.projects.back": "Projects",
     "profile.projects.list": "Your projects",
-    "profile.projects.works": "{n} works",
-    "profile.projects.work": "1 work",
     "profile.projects.untitled": "Untitled project",
     "profile.projects.editOne": "Edit {name}",
     "profile.deck.project": "Project",
@@ -1270,8 +1268,6 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.panel.back": "Zurück",
     "profile.projects.back": "Projekte",
     "profile.projects.list": "Deine Projekte",
-    "profile.projects.works": "{n} Arbeiten",
-    "profile.projects.work": "1 Arbeit",
     "profile.projects.untitled": "Unbenanntes Projekt",
     "profile.projects.editOne": "{name} bearbeiten",
     "profile.deck.project": "Projekt",
