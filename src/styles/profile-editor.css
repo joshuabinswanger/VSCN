@@ -1582,9 +1582,9 @@
     margin-top: 1rem;
   }
 
-  .gallery-addrow > .gallery-key--plus {
+  /* In + Add project's dress (.pp-add, below), the block's width. */
+  .gallery-addrow > .pp-add {
     width: 100%;
-    border-style: dashed;
   }
 
   .gallery-addkeys {
@@ -1601,6 +1601,7 @@
 
   .gallery-key--plus[aria-expanded="true"] {
     background: var(--color-dark);
+    border-color: var(--color-dark);
     color: var(--color-white);
   }
 
@@ -1608,11 +1609,11 @@
     background: var(--color-dark);
   }
 
-  .gallery-key--plus[aria-expanded="true"] .gallery-icon {
+  .gallery-key--plus[aria-expanded="true"] :is(.gallery-icon, .ebar-icon) {
     transform: rotate(45deg);
   }
 
-  .gallery-key--plus .gallery-icon {
+  .gallery-key--plus :is(.gallery-icon, .ebar-icon) {
     transition: transform 0.2s ease;
   }
 
