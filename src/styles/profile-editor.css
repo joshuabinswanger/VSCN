@@ -1991,6 +1991,13 @@
     width: max-content;
     pointer-events: none;
 
+    /* A BIT HIGHER ON A DESKTOP (2026-11-01, Josh: "the bottom menu can be
+       a bit higher up on desktop"): 40px off the window's foot, clear of
+       the footer's line rather than on it. */
+    @media (--bp-desktop) {
+      --ebar-gap: 40px;
+    }
+
     /* A PANEL ON THE PHONE'S FOOT (2026-10-29, Josh: "make the floating
        panel on mobile a filled out panel at the bottom that folds up and
        down"): edge to edge and flush with the bottom, not floating. */
