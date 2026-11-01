@@ -569,9 +569,13 @@
     border-radius: var(--radius-soft-card) !important;
   }
 
-  .gallery-project-tools {
-    max-width: none;
-    margin: 1rem 0 1.25rem;
+  /* REMOVE ON A PROJECT (2026-11-01, Josh): the work card's red word, at
+     the block's top right, level with the title's label. */
+  .gallery-project-remove {
+    position: absolute;
+    top: calc(var(--block-pad) - 6px);
+    right: var(--block-pad);
+    z-index: 1;
   }
 
   .gallery-carousel-tools {

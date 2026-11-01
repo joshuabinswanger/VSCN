@@ -11,10 +11,9 @@ const t = useTranslations(lang);
           /* A PROJECT IN THE PAGE'S CLOTHES (2026-10-13): the block is the
             page's own `.mprof__project` — its heading group, then its works —
             with the title and the description as inline fields in the
-            heading's own voices. The tools stand above the title: the
-            block's ↑/↓ (moveProject: the block moves as a whole, past the
-            neighbouring row or block), Delete, and the block's own picker
-            (uploads land after its last image, insertUploaded). Since
+            heading's own voices. Remove stands at the block's top right
+            (2026-11-01; ↑/↓ went, the editor shows one project at a time);
+            uploads land after its last image (insertUploaded). Since
             2026-10-16 (Josh: "images without project are not allowed any
             longer!") the block is the ONLY way a work comes in — its picker,
             a drop onto it, its "Add video" — and Delete takes an empty block
@@ -24,6 +23,7 @@ const t = useTranslations(lang);
             two or more page as a carousel. */
         }
         <section class="mprof__project gallery-project" data-project-block>
+          <button type="button" class="gallery-boxhead__word gallery-boxhead__word--danger gallery-project-remove" data-project-delete>{t("profile.deck.remove")}</button>
           <div class="mprof__project-head gallery-project-fields">
             {
               /* The block's name for the controls that act on it, read by
@@ -58,9 +58,7 @@ const t = useTranslations(lang);
             {
               /* EDIT AND ADD (2026-10-23, Josh: "hide most of those options
                 behind an edit and + button"). Two keys under the words.
-                EDIT opens the block's PANEL: its deck (↑ ↓ moveProject;
-                Delete, an empty block only — the document goes at Save),
-                then the link (images inside the block without a site link
+                EDIT opens the block's PANEL: the link (images inside the block without a site link
                 of their own inherit it — inheritedSiteLink in projects.ts,
                 which is what the ⓘ says), the affiliations and the tags.
                 Remembered per projectId (projectDetailsOpenUI); a project
@@ -76,19 +74,6 @@ const t = useTranslations(lang);
               <details class="gallery-details gallery-project-details">
                 <summary class="gallery-details-summary gallery-key gallery-key--more"><span class="gallery-details-title">{t("profile.deck.more")}</span><span class="gallery-details-chevron" aria-hidden="true"></span></summary>
                 <div class="gallery-details-body gallery-panel">
-                <div class="gallery-row-tools gallery-project-tools gallery-deck">
-                  <div class="gallery-deck__grp">
-                    <div class="gallery-keys">
-                      <button type="button" class="gallery-key gallery-tbtn" data-project-move="up"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
-                      <button type="button" class="gallery-key gallery-tbtn" data-project-move="down"><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button>
-                    </div>
-                  </div>
-                  <div class="gallery-deck__grp">
-                    <div class="gallery-keys">
-                      <button type="button" class="gallery-key gallery-tbtn gallery-tbtn--danger" data-project-delete aria-label={t("profile.project.delete")} title={t("profile.project.delete")}><svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>
-                    </div>
-                  </div>
-                </div>
                   <div class="label-row">
                     <label class="row-label" data-row-label="link">{t("profile.project.website")}</label>
                     <span class="row-optional">{t("profile.optional")}</span>
