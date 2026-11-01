@@ -1524,10 +1524,14 @@ const searchIndex: SearchIndex = {
     display: none;
   }
 
+  /* "Results appear here", and "no matches" in the same place (2026-11-01,
+     Josh's design file: the hint centred under the field, a little more air
+     round it). */
   .search__results :global(.search__note) {
     margin: 0;
-    padding: 0.55rem 0.75rem;
+    padding: 1rem 0.75rem;
     color: var(--color-muted);
+    text-align: center;
   }
 
   .search__results :global(.search__group) {
@@ -1668,9 +1672,16 @@ const searchIndex: SearchIndex = {
     color: var(--color-bg);
   }
 
+  /* Centred under the chips (2026-11-01, Josh's design file), with room
+     under it before the card's edge on a desktop. */
   .tag-filter__scope {
     margin: 10px 2px 0;
     color: var(--color-muted);
+    text-align: center;
+
+    @media (--bp-desktop) {
+      margin-bottom: 18px;
+    }
   }
 
   .filter-empty {
@@ -3345,6 +3356,25 @@ const searchIndex: SearchIndex = {
     }
     .community-bar .bar-menu__panel[hidden] {
       display: none;
+    }
+    /* TAGS AND SORT REACH THE SCREEN'S FOOT (2026-11-01, Josh's design
+       file): a sheet the screen's full width, standing on its bottom edge,
+       round only at the top. As with the search, the paper runs down
+       behind the keyboard and the home bar, and their height is padding,
+       so the last row still ends above them. */
+    .community-bar .tag-filter__panel,
+    .community-bar .sort-menu__panel {
+      --sheet-foot: max(env(safe-area-inset-bottom, 0px), var(--bar-kb, 0px));
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      translate: none;
+      width: auto;
+      max-height: calc(var(--card-max) + var(--sheet-foot));
+      padding-bottom: calc(var(--sheet-foot) + 12px);
+      border-width: 1px 0 0;
+      border-radius: 22px 22px 0 0 !important;
     }
     /* The search holds its height while the results change under the
        field, which stays at the top as the rows scroll. */

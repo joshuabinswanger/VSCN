@@ -442,16 +442,22 @@ function pillFrames(trigger: HTMLElement, box: HTMLElement, closing = false): Ke
   const t = trigger.getBoundingClientRect();
   const r = box.getBoundingClientRect();
   // A square box (the phone's full-screen search) ends square: 0 is a radius,
-  // not a missing one.
-  const radius = parseFloat(getComputedStyle(box).borderTopLeftRadius);
-  const end = Math.min(Number.isNaN(radius) ? r.height / 2 : radius, r.height / 2, r.width / 2);
+  // not a missing one. Each corner on its own, so a sheet round only at the
+  // top (the phone's Tags and Sort) ends on its own shape.
+  const cs = getComputedStyle(box);
+  const end = [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomRightRadius, cs.borderBottomLeftRadius]
+    .map((v) => {
+      const radius = parseFloat(v);
+      return `${Math.min(Number.isNaN(radius) ? r.height / 2 : radius, r.height / 2, r.width / 2)}px`;
+    })
+    .join(" ");
   return [
     {
       transform: `translateY(${t.top - r.top}px)`,
       clipPath: `inset(0px ${r.right - t.right}px ${r.height - t.height}px ${t.left - r.left}px round ${t.height / 2}px)`,
       backgroundColor: closing ? restingColour(trigger) : getComputedStyle(trigger).backgroundColor,
     },
-    { transform: "none", clipPath: `inset(0px 0px 0px 0px round ${end}px)`, backgroundColor: getComputedStyle(box).backgroundColor },
+    { transform: "none", clipPath: `inset(0px 0px 0px 0px round ${end})`, backgroundColor: cs.backgroundColor },
   ];
 }
 

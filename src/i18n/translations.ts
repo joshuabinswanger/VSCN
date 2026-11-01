@@ -43,6 +43,8 @@ export const ui: Record<string, Record<string, string>> = {
     "info.cta.portfolios": "Browse the portfolios",
     "info.wall.heading": "From the network",
     "info.wall.all": "All portfolios",
+    "info.wall.prev": "Previous member",
+    "info.wall.next": "Next member",
 
     // CommunityGrid
     "community.title": "Community",
@@ -83,7 +85,7 @@ export const ui: Record<string, Record<string, string>> = {
     "community.sort.noField": "Without tags",
     "community.search": "Search",
     "community.search.placeholder": "Search names, projects, images…",
-    "community.search.hint": "Type a name, a project or a picture's title.",
+    "community.search.hint": "Results appear here",
     "community.search.people": "People",
     "community.search.projects": "Projects",
     "community.search.images": "Images",
@@ -794,6 +796,8 @@ export const ui: Record<string, Record<string, string>> = {
     "info.cta.portfolios": "Portfolios ansehen",
     "info.wall.heading": "Aus dem Netzwerk",
     "info.wall.all": "Alle Portfolios",
+    "info.wall.prev": "Vorheriges Mitglied",
+    "info.wall.next": "Nächstes Mitglied",
 
     // CommunityGrid
     "community.title": "Community",
@@ -831,7 +835,7 @@ export const ui: Record<string, Record<string, string>> = {
     "community.sort.noField": "Ohne Tags",
     "community.search": "Suchen",
     "community.search.placeholder": "Namen, Projekte, Bilder suchen…",
-    "community.search.hint": "Einen Namen, ein Projekt oder einen Bildtitel eingeben.",
+    "community.search.hint": "Ergebnisse erscheinen hier",
     "community.search.people": "Personen",
     "community.search.projects": "Projekte",
     "community.search.images": "Bilder",
