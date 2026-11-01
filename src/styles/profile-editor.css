@@ -1588,6 +1588,17 @@
     margin-top: 0;
   }
 
+  /* On a phone the project's More stays open and its key goes. */
+  @media (--bp-mobile) {
+    .gallery-project-details > .gallery-details-summary {
+      display: none;
+    }
+
+    .gallery-project-details > .gallery-details-body {
+      margin-top: 0;
+    }
+  }
+
   /* + ADD TO PROJECT (2026-11-01, Josh's board 22): a dashed key the
      block's width under its last work, its keys unfolding in a row under
      it — in the flow, since nothing follows it in the block. Was a small
@@ -2263,9 +2274,17 @@
       touch-action: none;
     }
 
+    /* Black, so it is seen (2026-11-01, Josh: "on mobile we need to have
+       the drop up button to be black for people to notice"): a small ink
+       pill round the chevron. */
     .ebar__handle .ebar-icon {
+      box-sizing: content-box;
       width: 16px;
       height: 16px;
+      padding: 3px 14px;
+      border-radius: 999px;
+      background: var(--color-dark);
+      color: var(--color-white);
       stroke-width: 2.2;
       transition: transform 0.25s cubic-bezier(0.25, 1, 0.5, 1);
     }
