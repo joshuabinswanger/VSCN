@@ -389,11 +389,11 @@ const t = useTranslations(lang);
         buildTray (src/lib/carouselTray.ts) for every run of works sharing a
         carouselId, a run of one included. A muted "Carousel · N works"
         line, then the TRAY:
-        a dashed strip of thumbnail buttons (built by buildTray) with the +
-        slot at its end, which uploads straight into this carousel. Under
+        a thin-lined strip of thumbnail buttons (built by buildTray) with the +
+        slot at its end, which uploads straight into this carousel. Over
         the tray, the carousel's DECK (2026-10-23, the works' soft panel of
         keys: S/L, ↑ ↓ moving the run as a whole, ✕ dissolving it, the
-        project select); under that stands the selected slide as an
+        project select); under the tray stands the selected slide as an
         ordinary work row in slide mode, and after it the carousel's text block (on the lead slide's
         record, carousels.ts). */
     }
@@ -402,7 +402,7 @@ const t = useTranslations(lang);
         {
           /* The carousel's own head (2026-10-27): its name, then size S | L,
             ↑ ↓ moving the run as a whole and Dissolve. The project select
-            stands under the tray. */
+            stands right under it. */
         }
         <div class="gallery-boxhead">
           <p class="gallery-boxhead__lbl gallery-carousel-label t-label" data-carousel-label></p>
@@ -418,16 +418,11 @@ const t = useTranslations(lang);
             <button type="button" class="gallery-boxhead__word gallery-boxhead__word--danger" data-carousel-dissolve>{t("profile.deck.dissolve")}</button>
           </div>
         </div>
-        <div class="gallery-tray" data-carousel-tray>
-          <label class="gallery-tray-add" data-carousel-add>
-            <svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-            <input type="file" class="picker-input" accept="image/jpeg,image/png,image/webp,image/avif" multiple data-carousel-files />
-          </label>
-        </div>
         {
-          /* The carousel's project picker, in the open under the tray (no
+          /* The carousel's project picker, in the open under its keys (no
             More fold since 2026-11-01, Josh: "the more button here is
-            unnecessary" — it held this one select). On a wide desktop it
+            unnecessary" — it held this one select; then "the button should
+            come back but right under the arrows"). On a wide desktop it
             moves into the side card (editorDetailsSide.ts); with one
             project it is hidden, and so is its panel. */
         }
@@ -437,6 +432,12 @@ const t = useTranslations(lang);
               <select class="gallery-project-select" data-carousel-project></select>
             </div>
           </div>
+        </div>
+        <div class="gallery-tray" data-carousel-tray>
+          <label class="gallery-tray-add" data-carousel-add>
+            <svg class="gallery-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            <input type="file" class="picker-input" accept="image/jpeg,image/png,image/webp,image/avif" multiple data-carousel-files />
+          </label>
         </div>
         {/* The carousel's settings beside it on a wide desktop, as a work's (editorDetailsSide.ts). */}
         <div class="gallery-side" hidden></div>

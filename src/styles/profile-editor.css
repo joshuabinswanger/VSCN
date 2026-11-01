@@ -570,22 +570,16 @@
     border-radius: var(--radius-soft-card) !important;
   }
 
+  /* Right under the carousel's keys, over the tray (2026-11-01, Josh:
+     "the button should come back but right under the arrows"). */
   .gallery-carousel-tools {
     max-width: none;
-    margin: 0.75rem 0 0;
+    margin: 0 0 0.75rem;
   }
 
-  /* One project: the picker is hidden, and its panel with it. On a phone
-     always (2026-11-01, Josh: "i can still select a project in the
-     carousel"): a carousel stays in the project it is in. */
+  /* One project: the picker is hidden, and its panel with it. */
   .gallery-carousel-tools:not(:has(> .gallery-deck__row > :not([hidden]))) {
     display: none;
-  }
-
-  @media (--bp-mobile) {
-    .gallery-carousel > .gallery-carousel-tools {
-      display: none;
-    }
   }
 
   .gallery-deck__grp {
@@ -1099,7 +1093,7 @@
     gap: 6px;
     min-height: calc(var(--tray-thumb) + 16px);
     padding: 8px;
-    border: 1.5px dashed var(--color-border);
+    border: 1px solid var(--color-border);
     transition: border-color 0.15s ease;
   }
 
@@ -1160,7 +1154,8 @@
     pointer-events: none;
   }
 
-  /* THE + SLOT: a dashed square the thumbnails' size, a clipped file input
+  /* THE + SLOT: a square in a thin full line (2026-11-01, Josh: "instead
+     of dotted lines i want thin full lines"), the thumbnails' size, a clipped file input
      inside it (the label is the target, as the project's Add images is). */
   .gallery-tray-add {
     position: relative;
@@ -1169,7 +1164,7 @@
     justify-content: center;
     width: var(--tray-thumb);
     height: var(--tray-thumb);
-    border: 1.5px dashed var(--color-border);
+    border: 1px solid var(--color-border);
     color: var(--color-muted);
     cursor: pointer;
     overflow: hidden;
@@ -2273,7 +2268,7 @@
       place-items: center;
       align-self: stretch;
       width: auto;
-      height: 36px;
+      height: 30px;
       padding: 0;
       border: 0;
       background: none;
@@ -2283,14 +2278,15 @@
     }
 
     /* Black, so it is seen (2026-11-01, Josh: "on mobile we need to have
-       the drop up button to be black for people to notice"): an ink disc
-       round the chevron, round (beating global.css's square reset). */
+       the drop up button to be black for people to notice"): a small flat
+       ink pill round the chevron ("the drop up should be a pill as well
+       small and flat"), round-ended, beating global.css's square reset. */
     .ebar__handle .ebar-icon {
       box-sizing: content-box;
-      width: 16px;
-      height: 16px;
-      padding: 6px;
-      border-radius: 50% !important;
+      width: 14px;
+      height: 14px;
+      padding: 2px 14px;
+      border-radius: 999px !important;
       background: var(--color-dark);
       color: var(--color-white);
       stroke-width: 2.2;

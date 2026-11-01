@@ -57,7 +57,7 @@ function moveWork(row: HTMLElement, side: HTMLElement, toSide: boolean): void {
   }
 }
 
-/** A carousel: its head and its project picker (under the tray) go to the side. */
+/** A carousel: its head and its project picker (under the head) go to the side. */
 function moveCarousel(block: HTMLElement, side: HTMLElement, toSide: boolean): void {
   const head = block.querySelector<HTMLElement>(":scope > .gallery-boxhead") ?? side.querySelector<HTMLElement>(":scope > .gallery-boxhead");
   const deck = (toSide ? block : side).querySelector<HTMLElement>(":scope > .gallery-row-tools");
@@ -65,7 +65,7 @@ function moveCarousel(block: HTMLElement, side: HTMLElement, toSide: boolean): v
     side.append(...[head, deck].filter((el): el is HTMLElement => Boolean(el)));
   } else {
     if (head) block.prepend(head);
-    if (deck) block.querySelector(":scope > [data-carousel-tray]")?.after(deck);
+    if (deck) block.querySelector(":scope > [data-carousel-tray]")?.before(deck);
   }
 }
 

@@ -2,7 +2,7 @@
 // documentation/20261023-work-carousels-design.md "Editor"; the decisions are
 // in carouselEditor.ts and carousels.ts).
 //
-// In Edit mode a carousel opens out into a dashed tray of thumbnails with a
+// In Edit mode a carousel opens out into a tray of thumbnails with a
 // + slot at the end (Josh, option A of the mockups). Clicking a thumbnail
 // selects that slide and the controller builds its row underneath in slide
 // mode. This module clones WorkEditor.astro's `carousel` template, fills it
