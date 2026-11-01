@@ -575,9 +575,17 @@
     margin: 0.75rem 0 0;
   }
 
-  /* One project: the picker is hidden, and its panel with it. */
+  /* One project: the picker is hidden, and its panel with it. On a phone
+     always (2026-11-01, Josh: "i can still select a project in the
+     carousel"): a carousel stays in the project it is in. */
   .gallery-carousel-tools:not(:has(> .gallery-deck__row > :not([hidden]))) {
     display: none;
+  }
+
+  @media (--bp-mobile) {
+    .gallery-carousel > .gallery-carousel-tools {
+      display: none;
+    }
   }
 
   .gallery-deck__grp {
@@ -2265,7 +2273,7 @@
       place-items: center;
       align-self: stretch;
       width: auto;
-      height: 26px;
+      height: 36px;
       padding: 0;
       border: 0;
       background: none;
@@ -2275,14 +2283,14 @@
     }
 
     /* Black, so it is seen (2026-11-01, Josh: "on mobile we need to have
-       the drop up button to be black for people to notice"): a small ink
-       pill round the chevron. */
+       the drop up button to be black for people to notice"): an ink disc
+       round the chevron, round (beating global.css's square reset). */
     .ebar__handle .ebar-icon {
       box-sizing: content-box;
       width: 16px;
       height: 16px;
-      padding: 3px 14px;
-      border-radius: 999px;
+      padding: 6px;
+      border-radius: 50% !important;
       background: var(--color-dark);
       color: var(--color-white);
       stroke-width: 2.2;
