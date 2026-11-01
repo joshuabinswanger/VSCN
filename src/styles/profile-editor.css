@@ -453,9 +453,44 @@
     display: none;
   }
 
-  /* The head in the side card: its label on its own line, the keys under it. */
+  /* The head in the side card: its label on its own line, the keys under
+     it across the card — the moves at the left, Remove (Dissolve) at the
+     right (2026-11-01, Josh's board 22). A slide's hidden label takes no
+     line here. */
   .gallery-side > .gallery-boxhead {
     margin: 0;
+  }
+
+  .gallery-side > .gallery-boxhead > .gallery-boxhead__keys {
+    flex: 1 1 100%;
+  }
+
+  .gallery-side .gallery-boxhead__word {
+    margin-left: auto;
+  }
+
+  .gallery-carousel-slide .gallery-side .gallery-boxhead__lbl {
+    display: none;
+  }
+
+  /* A work's settings stand straight on the card, no tinted panel of their
+     own (a carousel's keeps it): the pickers across, In gallery and
+     Description side by side under them. */
+  .gallery-item > .gallery-side > .gallery-deck {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: none;
+  }
+
+  .gallery-item > .gallery-side .gallery-deck__row > :is(.gallery-select-wrap, [data-gallery-auto-thumb]) {
+    flex-basis: 100%;
+  }
+
+  .gallery-item > .gallery-side .gallery-deck__row > .gallery-include {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 10px;
   }
 
   .gallery-side > .gallery-tags {
@@ -1207,6 +1242,15 @@
     cursor: default;
   }
 
+  /* SHORTER THAN THE PAGE'S (2026-11-01, Josh's board 22: 553 x 525 where
+     the page's 70vh cap gave 553 x 635): the editor's picture stops at
+     58vh, whole, on the frame's paper — the words and settings stay in
+     reach. The page and Preview keep 70vh. */
+  .gallery-item > .gallery-thumb > .mprof__img {
+    max-height: 58vh;
+    object-fit: contain;
+  }
+
   .gallery-thumb-remove {
     position: absolute;
     top: 4px;
@@ -1523,12 +1567,9 @@
     border-right: 0;
   }
 
-  /* MORE AND + ADD ON A PROJECT (2026-10-29, Josh: More comes first). More
-     is first in the row and its fold's body runs the row's full width;
-     + Add is pinned over the row's top right, and its keys open as a
-     drop-up above it, so neither key moves the other. Not flex or grid:
-     the fold's body would need `display: contents` on the <details>,
-     which crashes iOS WebKit. */
+  /* MORE ON A PROJECT: first under the words. Not flex or grid: the
+     fold's body would need `display: contents` on the <details>, which
+     crashes iOS WebKit. */
   .gallery-edit-row {
     position: relative;
     margin-top: 10px;
@@ -1538,23 +1579,25 @@
     margin-top: 0;
   }
 
+  /* + ADD TO PROJECT (2026-11-01, Josh's board 22): a dashed key the
+     block's width under its last work, its keys unfolding in a row under
+     it — in the flow, since nothing follows it in the block. Was a small
+     + Add pinned at More's right with a drop-up (2026-10-29). */
   .gallery-addrow {
-    position: absolute;
-    top: 0;
-    right: 0;
+    margin-top: 1rem;
   }
 
-  /* The drop-UP: the keys rise above the + Add key instead of pushing the
-     row (and the More fold under it) down. Black, like the open key. */
+  .gallery-addrow > .gallery-key--plus {
+    width: 100%;
+    border-style: dashed;
+  }
+
   .gallery-addkeys {
-    position: absolute;
-    right: 0;
-    bottom: calc(100% + 4px);
-    z-index: 5;
     display: flex;
-    flex-direction: column;
-    align-items: flex-end;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 4px;
+    margin-top: 6px;
   }
 
   .gallery-addkeys[hidden] {
@@ -1579,7 +1622,7 @@
   }
 
   .gallery-addkeys .gallery-key--wide {
-    flex: none;
+    flex: 1 1 0;
     padding-inline: 10px 12px;
     background: var(--color-dark);
     color: var(--color-white);
