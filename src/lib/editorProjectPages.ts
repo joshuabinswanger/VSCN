@@ -4,8 +4,8 @@
 // nicely animate between edit and preview").
 //
 // Two levels on the Works tab, kept on the stage as data-level:
-//   "list"    — every project as a card (its title, description, first
-//               pictures, work count and tags) with an Edit key, and
+//   "list"    — every project as a card (its title and first pictures,
+//               no words beyond the title since 2026-11-02) with its keys, and
 //               + Project after the last. The bar holds Edit | Preview
 //               (the whole page) and Save.
 //   "project" — ONE project as the whole page (data-focus = its id): the
@@ -78,13 +78,9 @@ document.addEventListener("astro:page-load", () => {
       block.querySelector("[data-project-name]")?.textContent?.trim() ||
       strings.untitled ||
       "";
-    const desc = de ? field(block, "descriptionDe") || field(block, "description") : field(block, "description");
     card.dataset.projectId = block.dataset.projectId;
 
     card.querySelector("[data-pp-card-title]")!.textContent = title;
-    const descEl = card.querySelector<HTMLElement>("[data-pp-card-desc]")!;
-    descEl.textContent = desc;
-    descEl.hidden = !desc;
 
     // The block's own pictures, in its order: a work row's and a carousel
     // tray's share the URL, so each counts once.
