@@ -218,17 +218,15 @@ const t = useTranslations(lang);
           </div>
         </div>
         {
-          /* THE DETAILS BESIDE THE PICTURE (2026-10-31, Josh: "a panel per
-            image and carousel that contains the details", in the editor). An
-            empty soft card to the right of the work's card on a desktop with
-            room for it: editorDetailsSide.ts moves the description fields
-            and the two links in here, and back under the picture and into
-            More when there is no room or on a phone. */
+          /* THE SETTINGS BESIDE THE PICTURE (2026-11-01, Josh: "Image Title,
+            Description, Links all below it. All the settings in More to the
+            right of it. also the size and move buttons"). An empty soft card
+            to the right of the work's card on a desktop with room for it:
+            editorDetailsSide.ts moves the head's keys and More's settings in
+            here and the links under the description, and all of it back when
+            there is no room or on a phone. */
         }
-        <div class="gallery-side" hidden>
-          <div class="gallery-lang-pane" data-gallery-lang-pane="en"></div>
-          <div class="gallery-lang-pane" data-gallery-lang-pane="de"></div>
-        </div>
+        <div class="gallery-side" hidden></div>
         <figcaption class="mprof__caption gallery-fields">
           {
             /* THE WORDS AS FIELDS (2026-10-23, Josh: "make the title,
@@ -436,6 +434,8 @@ const t = useTranslations(lang);
             </div>
           </div>
         </details>
+        {/* The carousel's settings beside it on a wide desktop, as a work's (editorDetailsSide.ts). */}
+        <div class="gallery-side" hidden></div>
         <div class="gallery-carousel-slide" data-carousel-slide-row></div>
         <div class="mprof__text gallery-text gallery-carousel-text" data-carousel-text hidden>
           <div class="gallery-boxhead">

@@ -428,29 +428,53 @@
     border-radius: var(--radius-soft-card) !important;
   }
 
-  /* THE DETAILS BESIDE THE PICTURE (2026-10-31, Josh: "a panel per image
-     and carousel that contains the details", in the editor). A card in the
-     row's dress to the right of the work's card, level with the picture's
-     top; editorDetailsSide.ts measures --side-left / --side-top and fills it
-     with the description fields and the links, on a desktop with room only.
-     The row grows to hold it (--side-h), so a long description never runs
-     into the next work. */
+  /* THE SETTINGS BESIDE THE PICTURE (2026-11-01, Josh: "Image Title,
+     Description, Links all below it. All the settings in More to the right
+     of it. also the size and move buttons"). A card in the row's dress to
+     the right of a work's or a carousel's card, level with the picture (the
+     tray, for a carousel); editorDetailsSide.ts measures --side-left /
+     --side-top and moves the head's keys and More's settings into it, on a
+     desktop with room only. More is then empty and goes. The unit grows to
+     hold the card (--side-h), so the tags never run into the next one. */
   .gallery-side[hidden] {
     display: none;
   }
 
-  .gallery-item.has-side {
+  .gallery-carousel {
+    position: relative;
+  }
+
+  :is(.gallery-item, .gallery-carousel).has-side {
     min-height: calc(var(--side-top, 0px) + var(--side-h, 0px) + var(--row-pad, 0px));
   }
 
-  .gallery-item.has-side > .gallery-side {
+  .gallery-item.has-side > .gallery-fields > .gallery-details,
+  .gallery-carousel.has-side > [data-carousel-details] {
+    display: none;
+  }
+
+  /* The head in the side card: its label on its own line, the keys under it. */
+  .gallery-side > .gallery-boxhead {
+    margin: 0;
+  }
+
+  .gallery-side > .gallery-tags {
+    margin: 0;
+  }
+
+  /* As in More: the card's padding is inset enough for the tag picker. */
+  .gallery-side tag-selector {
+    --ts-inset: 0;
+  }
+
+  :is(.gallery-item, .gallery-carousel).has-side > .gallery-side {
     position: absolute;
     top: var(--side-top, 0);
     left: var(--side-left, 100%);
     z-index: 1;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
     width: 17rem;
     padding: 1rem;
     background: color-mix(in srgb, var(--color-white) 78%, var(--color-bg));
