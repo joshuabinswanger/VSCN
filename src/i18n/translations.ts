@@ -106,7 +106,7 @@ export const ui: Record<string, Record<string, string>> = {
     // close key; the rest reuses auth.* and onboarding.auth.*.
     "join.close": "Close",
     "join.tab.join": "Join",
-    "join.tab.login": "Log in",
+    "join.tab.login": "Login",
     "auth.label.email": "Email",
     "auth.label.password": "Password",
     "auth.title.reset": "Reset Password",
@@ -858,8 +858,8 @@ export const ui: Record<string, Record<string, string>> = {
     // AuthForm
     "auth.title.login": "Anmelden",
     "join.close": "Schließen",
-    "join.tab.join": "Beitreten",
-    "join.tab.login": "Anmelden",
+    "join.tab.join": "Join",
+    "join.tab.login": "Login",
     "auth.label.email": "E-Mail",
     "auth.label.password": "Passwort",
     "auth.title.reset": "Passwort zurücksetzen",
