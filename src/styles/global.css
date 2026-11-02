@@ -670,7 +670,7 @@ fieldset > legend.label {
    rises above the box in ink and the hint (if any) shows.
    SMALLER AND ABOVE (2026-10-28, Josh: "the name of the field can be smaller
    and above the box"): board 07's rule again. Filled or focused, the title is
-   a tiny label (--fs-field-title) 4px above the box; empty and at rest it
+   a tiny label (--fs-field-title) 2px above the box; empty and at rest it
    stands in the box. The box is slim again (30px), and the zone above it is
    held in every state so nothing jumps. Same on the editor's `.gfield`. */
 .ff {
@@ -687,13 +687,16 @@ fieldset > legend.label {
   position: absolute;
   z-index: 1;
   left: 1px;
-  top: -4px;
+  /* Lifted (board 07, 2026-11-02, Josh): the placeholder grey, 2px above
+     the box; desktop first, the phone matched to it the same day. The focus
+     and error rules below are more specific and keep the ink and the red. */
+  top: -2px;
   transform: translateY(-100%);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--color-muted);
+  color: var(--color-text-placeholder);
   pointer-events: none;
   transition:
     top 0.22s cubic-bezier(0.25, 1, 0.5, 1),
@@ -721,17 +724,7 @@ fieldset > legend.label {
 }
 .ff:has(> .input[aria-invalid="true"]) > .ff__title {
   color: var(--color-error);
-}
-/* Lifted on the desktop (board 07, 2026-11-02, Josh): the placeholder grey,
-   2px above the box. Below the focus and error rules in effect: they are
-   more specific and keep the ink and the error red. */
-@media (--bp-desktop) {
-  .ff__title {
-    top: -2px;
-    color: var(--color-text-placeholder);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
+}@media (prefers-reduced-motion: reduce) {
   .ff__title {
     transition: none;
   }
