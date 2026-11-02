@@ -2289,10 +2289,21 @@
       outline-offset: 2px;
     }
 
-    /* Folded: the handle alone, pointing up; the measured size shrinks the
-       bar round it. */
-    .ebar.is-folded .ebar__rows {
+    /* Folded: the handle, pointing up, over Save alone; the measured size
+       shrinks the bar round it. Save never folds away (2026-11-02, Josh:
+       "the save button should always be there on mobile"): only Edit |
+       Preview and the switches' row go. */
+    .ebar.is-folded :is(.ebar__mode, .ebar__group) {
       display: none;
+    }
+
+    /* Off the Works tab Save is the whole bar, so there is nothing to fold. */
+    .profile-form:not(.is-works) .ebar__handle {
+      display: none;
+    }
+
+    .profile-form:not(.is-works) .ebar {
+      padding-top: 10px;
     }
 
     .ebar.is-folded .ebar__handle .ebar-icon {
