@@ -126,6 +126,8 @@ import {
   splitSocial,
   joinSocial,
   socialUnlinked,
+  stripScheme,
+  stripSchemeInPlace,
   workLink,
   workCaption,
   profileRole,
@@ -606,7 +608,7 @@ document.addEventListener("astro:page-load", () => {
         // apart to anyone who cannot see the stack.
         named(input, `${socialLabel?.textContent ?? ""} ${index + 1}`.trim());
         input.addEventListener("input", () => {
-          socialValues[index] = input.value;
+          socialValues[index] = stripSchemeInPlace(input);
           refreshSocialStatus(false);
           syncPreview();
         });
@@ -625,7 +627,7 @@ document.addEventListener("astro:page-load", () => {
     // Always at least one row: this field was a text box until today, and an
     // empty stack with only a button reads as a missing field rather than an
     // empty one. The blank row costs nothing — joinSocial() drops it.
-    socialValues = values.length > 0 ? values : [""];
+    socialValues = values.length > 0 ? values.map(stripScheme) : [""];
     renderSocial();
   }
 
@@ -3017,7 +3019,12 @@ document.addEventListener("astro:page-load", () => {
   roleDeInput.addEventListener("input", syncPreview);
   bioInput.addEventListener("input", syncPreview);
   bioDeInput.addEventListener("input", syncPreview);
-  portfolioInput.addEventListener("input", syncPreview);
+  // The website and link fields print "https://" themselves, so a stored or
+  // pasted scheme would read twice (2026-11-02).
+  portfolioInput.addEventListener("input", () => {
+    stripSchemeInPlace(portfolioInput);
+    syncPreview();
+  });
   affiliationInput.addEventListener("input", syncProfileView);
   locationInput.addEventListener("input", syncProfileView);
   languageInputs.forEach((input) => input.addEventListener("change", syncProfileView));
@@ -3306,7 +3313,7 @@ document.addEventListener("astro:page-load", () => {
     roleDeInput.value = data.roleDe ?? "";
     bioInput.value = data.bio ?? "";
     bioDeInput.value = data.bioDe ?? "";
-    portfolioInput.value = data.portfolio ?? "";
+    portfolioInput.value = stripScheme(data.portfolio ?? "");
     // The stored string IS the row list — an old single-value profile simply
     // arrives as one row, with nothing to migrate.
     setSocialValues(splitSocial(data.socialMedia ?? ""));

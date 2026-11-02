@@ -84,6 +84,32 @@ export function href(raw: string): string {
 }
 
 /**
+ * A link without its leading http(s)://. The editors' website and link fields
+ * print "https://" in a grey prefix, so a pasted full URL read
+ * "https:// https://www.instagram.com/…" (2026-11-02). href() and socialLinks()
+ * put the scheme back, so storing the bare form changes no rendered link.
+ */
+export function stripScheme(value: string): string {
+  return value.replace(/^\s*https?:\/\//i, "");
+}
+
+/**
+ * stripScheme() on a field as the member types or pastes into it, the caret
+ * kept where it was in the rest of the text. Returns the field's value.
+ */
+export function stripSchemeInPlace(input: HTMLInputElement): string {
+  const bare = stripScheme(input.value);
+  const cut = input.value.length - bare.length;
+  if (cut > 0) {
+    const caret = input.selectionStart ?? input.value.length;
+    input.value = bare;
+    const at = Math.max(0, caret - cut);
+    input.setSelectionRange(at, at);
+  }
+  return bare;
+}
+
+/**
  * The bare host of an absolute URL, `www.` dropped — visible text for a link
  * that has no label of its own.
  *

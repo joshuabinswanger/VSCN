@@ -22,7 +22,7 @@
 // so every rule about projects is written here once and unit-tested without
 // an emulator.
 import type { Lang } from "../i18n/utils";
-import { memberHref, workLink } from "./links.ts";
+import { memberHref, stripScheme, workLink } from "./links.ts";
 
 // Keep in sync with validProject() / validAffiliation() in firestore.rules.
 export const MAX_PROJECT_TITLE = 100;
@@ -104,10 +104,6 @@ export interface ProjectFields {
 
 function text(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
-}
-
-function stripScheme(value: string): string {
-  return value.replace(/^https?:\/\//i, "");
 }
 
 /** Trimmed, empties and case-insensitive repeats dropped, first spelling kept. */
