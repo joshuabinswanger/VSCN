@@ -43,8 +43,9 @@ export function followContentSize(bar: HTMLElement, inner: HTMLElement): () => v
  * hidden on mobile"). The handle above the bar's two rows toggles `is-folded`
  * on the bar; the stylesheet hides the rows only at the phone breakpoint, so
  * a desktop never shows the handle or a folded bar. The bar's measured size
- * (followContentSize) animates the fold for free. Remembered on the device:
- * a member who folds it away does not want it back on every visit.
+ * (followContentSize) animates the fold for free.
+ * OPEN ON ARRIVAL (2026-11-02, Josh: "start open when we reach the site"):
+ * the fold lasts the page only. It was remembered on the device until then.
  * A PANEL THAT FOLDS UP AND DOWN (2026-10-29): the handle is the phone
  * panel's top edge, and a drag on it folds the panel the way it went —
  * down folds, up unfolds — with the click that follows the drag swallowed.
@@ -52,7 +53,6 @@ export function followContentSize(bar: HTMLElement, inner: HTMLElement): () => v
  * switches fold away, and off the Works tab the handle is not drawn.
  */
 export function bindBarFold(handle: HTMLButtonElement, bar: HTMLElement, signal: AbortSignal): void {
-  const KEY = "vscn-ebar-folded";
   const apply = (folded: boolean) => {
     bar.classList.toggle("is-folded", folded);
     handle.setAttribute("aria-expanded", String(!folded));
@@ -62,19 +62,14 @@ export function bindBarFold(handle: HTMLButtonElement, bar: HTMLElement, signal:
   };
   let folded = false;
   try {
-    folded = localStorage.getItem(KEY) === "1";
+    localStorage.removeItem("vscn-ebar-folded"); // the old remembered fold
   } catch {
-    /* storage blocked: the bar starts open */
+    /* storage blocked: nothing was kept */
   }
   apply(folded);
   const set = (next: boolean) => {
     folded = next;
     apply(folded);
-    try {
-      localStorage.setItem(KEY, folded ? "1" : "0");
-    } catch {
-      /* the choice lasts the page */
-    }
   };
   let startY: number | null = null;
   let dragged = false;
