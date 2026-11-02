@@ -91,6 +91,10 @@
   --fs-190: 26px; /* 24.70 */
   --fs-225: 30px; /* 29.25 */
   --fs-300: 40px; /* 39.00 — the phone menu's lines */
+  /* THE INFO PAGE'S OPENING LINES (2026-11-02, Josh: "bigger and bolder";
+     design-kit/vscn-landing.af): the headline and the sentence under it. */
+  --fs-hero: 64px;
+  --fs-hero-sub: 24px;
   /* Every tag chip (.tagchip). Its own token because tags go the OTHER way on
      a phone: down to the whole pixel below 8.64px, where everything else goes
      up to the one above. Not in the desktop bump either: still 0.72rem.
@@ -147,6 +151,8 @@
     --fs-190: 28px;
     --fs-225: 32px;
     --fs-300: 40px;
+    --fs-hero: 38px;
+    --fs-hero-sub: 16px;
     --fs-tag: 10px;
     --fs-label: 11px;
   }
@@ -295,6 +301,19 @@
   font-size: var(--fs-100);
   font-weight: 600;
   line-height: 1.5;
+}
+/* THE INFO HERO (2026-11-02, vscn-landing.af): a display headline, bold and
+   tight, and a light sentence under it. 64 / 24 on a desktop, 38 / 16 on a phone. */
+.info-hero__title {
+  font-size: var(--fs-hero);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+.info-hero__sub {
+  font-size: var(--fs-hero-sub);
+  font-weight: 300;
+  line-height: 1.4;
 }
 /* THE LIGHTBOX DESCRIPTION, A STEP UNDER ITS TITLE (2026-10-16, Josh: "the
    description text should be smaller on desktop"). 12px under the 14px title
