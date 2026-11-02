@@ -21,25 +21,19 @@ export const ui: Record<string, Record<string, string>> = {
     "hero.cta.join": "Join our community",
     "hero.cta.community": "Community",
 
-    // InfoPage
-    "info.intro":
-      "The Visual Science Communication Network — VSCN, pronounced “Vision” — connects people passionate about visualizing knowledge.",
-    "info.p2":
-      "We believe that more knowledge deserves to be given a visual form. Images make research accessible, spark curiosity, and build bridges between science and society.",
+    // InfoPage (restyled 2026-11-02, design-kit/vscn-landing.af)
+    "info.hero.title": "Knowledge, made visible.",
+    "info.hero.sub":
+      "We believe more knowledge deserves a visual form. Well-made images make ideas accessible in any field, carry them further than words alone, spark curiosity, and connect the people who know with the people who want to understand.",
     "info.h2.building": "What We’re Building",
-    "info.li.1": "Building a comprehensive registry of illustrators, designers, and scientists.",
-    "info.li.2": "Organizing events for and about visual science communication.",
-    "info.li.3": "Showcasing and celebrating outstanding visual storytelling.",
-    "info.li.4": "Creating stronger links between the sciences, illustration, and design.",
+    "info.li.1": "A directory of illustrators, designers and the experts they work with.",
+    "info.li.2": "A showcase for outstanding visual storytelling.",
+    "info.li.3": "Stronger links between every field of knowledge, illustration and design.",
+    "info.li.4": "Events for and about visual knowledge transfer.",
     "info.h2.scientists": "For Scientists & Research Groups",
     "info.p.scientists":
-      "VSCN is not only for the people who make the images — it is just as much for the researchers who need them. If you want your work to be seen and understood, you belong here. No portfolio required.",
-    "info.li.sci.1": "Find illustrators, designers, and animators who already work in your field.",
-    "info.li.sci.2": "Make your research group findable for visual collaborations.",
-    "info.li.sci.3": "Show how your research has been visualized — and who helped do it.",
-    "info.h2.started": "We’re in the early stages",
-    "info.p4": "If you’d like to help build and shape this community, feel free to reach out:",
-    "info.contact": "Contact",
+      "VSCN is also for the researchers who need these images. List your group, and find the people who already draw your field.",
+    "info.contact.ask": "Want to help shape it?",
     "info.cta.portfolios": "Browse the portfolios",
     "info.wall.heading": "From the network",
     "info.wall.all": "All portfolios",
@@ -778,27 +772,19 @@ export const ui: Record<string, Record<string, string>> = {
     "hero.cta.join": "Werde Teil unserer Community",
     "hero.cta.community": "Community",
 
-    // InfoPage
-    "info.intro":
-      "Das Visual Science Communication Network — VSCN, ausgesprochen „Vision“ — verbindet Menschen, die mit Leidenschaft Wissen in Bilder übersetzten.",
-    "info.p2":
-      "Wir glauben, dass es mehr Wissen verdient hat eine visuelle Form zu bekommen! Bilder machen Forschung verständlich, wecken Neugier und schaffen Brücken zwischen Wissenschaft und Gesellschaft.",
+    // InfoPage (restyled 2026-11-02, design-kit/vscn-landing.af)
+    "info.hero.title": "Wissen, sichtbar gemacht.",
+    "info.hero.sub":
+      "Wir glauben, dass mehr Wissen eine visuelle Form verdient. Gut gemachte Bilder machen Ideen in jedem Fachgebiet zugänglich, tragen sie weiter als Worte allein, wecken Neugier und verbinden die, die etwas wissen, mit denen, die es verstehen wollen.",
     "info.h2.building": "Was wir aufbauen",
-    "info.li.1":
-      "Ein umfassendes Verzeichnis von Gestalter:innen und Forschenden im Bereich der visuellen Wissenschaftskommunikation.",
-    "info.li.2": "Veranstaltungen für Austausch, Wissenstransfer und Vernetzung.",
-    "info.li.3": "Herausragendes visuelles Storytelling sichtbar machen.",
-    "info.li.4": "Verbindungen zwischen Wissenschaft, Illustration und Design stärken.",
+    "info.li.1": "Ein Verzeichnis von Illustrator:innen, Designer:innen und den Fachleuten, mit denen sie arbeiten.",
+    "info.li.2": "Ein Schaufenster für herausragendes visuelles Storytelling.",
+    "info.li.3": "Engere Verbindungen zwischen allen Wissensgebieten, Illustration und Design.",
+    "info.li.4": "Veranstaltungen für und über visuellen Wissenstransfer.",
     "info.h2.scientists": "Für Wissenschaft & Forschungsgruppen",
     "info.p.scientists":
-      "VSCN ist nicht nur für Menschen, die Bilder machen — sondern genauso für Forschende, die sie brauchen. Wenn du möchtest, dass deine Arbeit gesehen und verstanden wird, bist du hier richtig. Ein Portfolio brauchst du dafür nicht.",
-    "info.li.sci.1":
-      "Illustrator:innen, Designer:innen und Animator:innen finden, die dein Fachgebiet schon kennen.",
-    "info.li.sci.2": "Deine Forschungsgruppe für visuelle Zusammenarbeit auffindbar machen.",
-    "info.li.sci.3": "Zeigen, wie deine Forschung visualisiert wurde — und von wem.",
-    "info.h2.started": "Wir sind gerade erst gestartet",
-    "info.p4": "Wenn du diese Community mitgestalten möchtest, melde dich gerne direkt bei:",
-    "info.contact": "Kontakt",
+      "VSCN ist auch für die Forschenden, die diese Bilder brauchen. Trag deine Gruppe ein und finde die Menschen, die dein Fachgebiet schon zeichnen.",
+    "info.contact.ask": "Lust, VSCN mitzugestalten?",
     "info.cta.portfolios": "Portfolios ansehen",
     "info.wall.heading": "Aus dem Netzwerk",
     "info.wall.all": "Alle Portfolios",
