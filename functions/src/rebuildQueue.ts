@@ -6,6 +6,25 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { db } from "./admin";
 import { dispatchRebuild, githubRebuildToken } from "./rebuild";
 
+const absent = (value: unknown) => value === "" || (Array.isArray(value) && value.length === 0);
+const content = (data: Record<string, unknown>) => Object.fromEntries(
+  Object.entries(data)
+    .filter(([key, value]) => key !== "updatedAt" && key !== "createdAt" && !absent(value))
+    .sort(([a], [b]) => a.localeCompare(b)),
+);
+
+/**
+ * Whether a write changed anything the fingerprint reads. A write that only
+ * moved `updatedAt` cannot change what the site shows, so its trigger has
+ * nothing to queue (2026-11-02, save-latency audit: every Save used to
+ * rewrite every record, and each such no-op ran a queue transaction on the
+ * same two documents the Save's own requestRebuild was waiting on).
+ */
+export function sameContent(before: Record<string, unknown> | undefined, after: Record<string, unknown> | undefined): boolean {
+  if (!before || !after) return false;
+  return JSON.stringify(content(before)) === JSON.stringify(content(after));
+}
+
 /**
  * Ignore bookkeeping timestamps: resaving identical content needs no build.
  * An empty string or an empty array is fingerprinted as ABSENT, because that
@@ -20,12 +39,6 @@ export function rebuildFingerprint(
   images: { id: string; data: Record<string, unknown> }[],
   projects: { id: string; data: Record<string, unknown> }[] = [],
 ): string {
-  const absent = (value: unknown) => value === "" || (Array.isArray(value) && value.length === 0);
-  const content = (data: Record<string, unknown>) => Object.fromEntries(
-    Object.entries(data)
-      .filter(([key, value]) => key !== "updatedAt" && key !== "createdAt" && !absent(value))
-      .sort(([a], [b]) => a.localeCompare(b)),
-  );
   const rows = (docs: { id: string; data: Record<string, unknown> }[]) =>
     docs.map((row) => [row.id, content(row.data)]).sort(([a], [b]) => String(a).localeCompare(String(b)));
   // No projects fingerprints exactly as before projects existed, so a member
@@ -126,6 +139,7 @@ export async function queueMemberRebuild(uid: string): Promise<void> {
 
 /** Image text, removal, and completed uploads publish even if the tab closes. */
 export const onImageWritten = onDocumentWritten({ document: "images/{imageId}", retry: true }, async (event) => {
+  if (sameContent(event.data?.before.data(), event.data?.after.data())) return;
   const uid = event.data?.after.data()?.ownerUid ?? event.data?.before.data()?.ownerUid;
   if (typeof uid === "string") await queueMemberRebuild(uid);
 });

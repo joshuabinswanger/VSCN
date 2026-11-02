@@ -25,7 +25,7 @@ const running = new WeakMap<HTMLElement, AbortController>();
 const POLL_MS = { first: 15_000, max: 60_000 };
 
 export function watchPublication(
-  root: HTMLElement, lang: 'en' | 'de', queued: boolean, parent: AbortSignal, options: { listed?: boolean } = {},
+  root: HTMLElement, lang: 'en' | 'de', queued: boolean | Promise<boolean>, parent: AbortSignal, options: { listed?: boolean } = {},
 ) {
   // A Save that finishes after the page has gone: an abort listener added to
   // an already-aborted signal never fires, so the poll would run from a dead page.
@@ -68,6 +68,14 @@ export function watchPublication(
     } catch { if (!controller.signal.aborted) show('unknown'); }
   };
   if (options.listed === false) { show('saved'); return; }
+  // The rebuild request may still be on its way (2026-11-02: Save no longer
+  // waits for it). Until it answers, the line says only what is certain; the
+  // first poll follows the answer, so it reads the generation it queued.
+  if (typeof queued !== 'boolean') {
+    show('saved');
+    void queued.then((q) => { if (controller.signal.aborted) return; show(q ? 'queued' : 'unknown'); void poll(); });
+    return;
+  }
   show(queued ? 'queued' : 'unknown');
   void poll();
 }

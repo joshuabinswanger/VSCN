@@ -101,6 +101,22 @@ interface LegacyElement {
   link?: unknown;
 }
 
+/**
+ * The ids the stored list still holds in the object form. Their words may live
+ * only in the element, not on the record, so the editor's first Save must
+ * write those records even though nothing was typed (Save writes only changed
+ * works since 2026-11-02, and its array write drops the element's words).
+ */
+export function legacyArrayIds(stored: unknown): Set<string> {
+  const ids = new Set<string>();
+  if (!Array.isArray(stored)) return ids;
+  for (const element of stored) {
+    const id = element && typeof element === "object" ? str((element as LegacyElement).imageId) : undefined;
+    if (id) ids.add(id);
+  }
+  return ids;
+}
+
 function str(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
 }

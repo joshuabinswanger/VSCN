@@ -23,6 +23,7 @@ import {
   emptyProjectIds,
   LOOSE_WORKS_TITLE,
   looseWorksProjectId,
+  projectFields,
   projectTitle,
   resolveMemberCredits,
   toProfileProject,
@@ -244,6 +245,30 @@ export function writtenProjectIds(
 ): string[] {
   const failed = new Set(failures.map((f) => f.projectId));
   return used.map((p) => p.projectId).filter((id) => !failed.has(id));
+}
+
+/**
+ * What saveProjects() would write for a project, as one comparable string:
+ * projectFields() decides the stored shape, so two editor states that store
+ * the same document give the same key.
+ */
+export function projectRecordKey(p: EditorProject): string {
+  const fields = projectFields(toProjectRecord(p));
+  return JSON.stringify(Object.keys(fields).sort().map((key) => [key, fields[key as keyof ProjectFields]]));
+}
+
+/**
+ * ONLY WHAT CHANGED IS WRITTEN (2026-11-02, save-latency audit: every Save
+ * rewrote every project, and the project writes are a round trip of their
+ * own ahead of the records). A project goes when it is not stored yet, or
+ * when its key differs from the one it had at load or at its last write.
+ */
+export function projectsToWrite<P extends EditorProject>(
+  used: readonly P[],
+  storedIds: ReadonlySet<string>,
+  committed: ReadonlyMap<string, string>,
+): P[] {
+  return used.filter((p) => !storedIds.has(p.projectId) || committed.get(p.projectId) !== projectRecordKey(p));
 }
 
 /**

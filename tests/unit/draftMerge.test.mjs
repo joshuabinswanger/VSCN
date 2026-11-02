@@ -17,6 +17,7 @@ import {
   projectSignature,
   uncommittedWorks,
   workWords,
+  worksToWrite,
 } from "../../src/lib/draftMerge.ts";
 
 const work = (imageId, extra = {}) => ({ imageId, url: `u/${imageId}`, caption: "", width: 4, height: 3, ...extra });
@@ -220,4 +221,31 @@ test("the leave dialog promises a draft only when one was written, and names upl
   // A caller with only the one sentence keeps it.
   assert.equal(leaveCopy({ busy: true, kept: false }, { leave: "kept" }), "kept");
   assert.equal(leaveCopy({ busy: false, kept: false }, { leave: "kept" }), "kept");
+});
+
+test("Save writes only the works whose words moved, in gallery order; a new work always goes", () => {
+  const a = work("a", { caption: "A" });
+  const b = work("b", { caption: "B", projectId: "p" });
+  const c = work("c", { caption: "C" });
+  const committed = committedFromLoad([a, b, c]);
+  // A one-word edit writes one record, not all of them.
+  assert.deepEqual(worksToWrite([a, b, c], committed), []);
+  const edited = { ...c, caption: "C edited" };
+  assert.deepEqual(worksToWrite([a, b, edited], committed).map((w) => w.imageId), ["c"]);
+  // A move into another project is a word too.
+  assert.deepEqual(worksToWrite([a, { ...b, projectId: "q" }, c], committed).map((w) => w.imageId), ["b"]);
+  // A work with no committed words (an arrival) is written, its project with it.
+  const arrived = work("d", { caption: "D", projectId: "p" });
+  committed.set("d", committedForNew(arrived));
+  assert.deepEqual(worksToWrite([a, arrived], committed).map((w) => w.imageId), ["d"]);
+  assert.deepEqual(worksToWrite([work("e")], committed).map((w) => w.imageId), ["e"]);
+});
+
+test("a work Save cannot vouch for is written although its words look committed", () => {
+  const a = work("a", { caption: "A" });
+  const b = work("b", { caption: "B" });
+  const committed = committedFromLoad([a, b]);
+  assert.deepEqual(worksToWrite([a, b], committed, new Set(["b"])).map((w) => w.imageId), ["b"]);
+  // An id no longer in the gallery is nothing to write.
+  assert.deepEqual(worksToWrite([a], committed, new Set(["gone"])), []);
 });
