@@ -982,15 +982,6 @@ label:has(> .picker-input:focus-visible) {
   color: var(--color-dark);
 }
 
-/* A thumb is not 21px tall. Every chip grows its padding where the pointer is
-   coarse; the compact drawing is what a mouse gets. On the public pages the
-   tags are links, so the same reasoning applies there. */
-@media (pointer: coarse) {
-  .tagchip,
-  .optchip.tagchip {
-    padding: 2px 7px 1px calc(7px + var(--tag-track));
-  }
-}
 
 /* ── Buttons ── */
 .btn-primary {
@@ -1661,26 +1652,9 @@ label:has(> .picker-input:focus-visible) {
   }
 }
 
-/* BIGGER BUTTONS ON A PHONE (2026-10-28, Josh: "make mobile ui buttons a bit
-   bigger"): every pressable family a few pixels taller under a thumb. The
-   editor's bar gets its own in profile-editor.css (its keys went back to the
-   desktop's sizes 2026-11-02), the menu button in
-   Navbar.astro. Desktop keeps board 17's sizes. */
-@media (--bp-mobile) {
-  .btn-solid,
-  .btn-save,
-  .btn-outline,
-  .btn-logout {
-    min-height: 46px;
-  }
-  .btn-primary,
-  .btn-ghost {
-    padding-block: 14px;
-  }
-  .optchip:not(.tagchip) {
-    min-height: 34px;
-  }
-  .seg > :is(button, label) {
-    min-height: 34px;
-  }
-}
+/* Buttons and chips are board 17's sizes on a phone too. From 2026-10-28
+   ("make mobile ui buttons a bit bigger") to 2026-11-02 a phone block made
+   .btn-solid/.btn-save/.btn-outline/.btn-logout 46px, .btn-primary/.btn-ghost
+   14px padding, option chips and .seg 34px, and tag chips a fatter padding on
+   a coarse pointer; Josh had them match the desktop again ("Shrink those
+   too"). The phone menu button keeps its 40px (Navbar.astro). */
