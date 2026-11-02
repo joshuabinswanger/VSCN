@@ -1250,13 +1250,32 @@ import "../styles/type.css";
        two pills stand on the header's line, left of the cross, at the bar's
        38px; the language switch leaves the sheet for the footer, which
        already carries it (as the signed-in strip left it out). */
+    /* NO HAMBURGER SIGNED OUT (2026-11-02, Josh: "we do not need the
+       hamburger anymore then no?"): its sheet held nothing but the one chip,
+       so the chip stands in the header itself, at the right, and the key and
+       the sheet are not drawn. Signed in, the key stays: it is the face and
+       the fold-out account pill. */
+    nav:not(.is-signed-in) .nav-menu-btn {
+      display: none;
+    }
+    nav:not(.is-signed-in) .nav-links {
+      position: static;
+      inset: auto;
+      width: auto;
+      padding: 0;
+      background: none;
+      opacity: 1;
+      visibility: visible;
+      transition: none;
+    }
     nav:not(.is-signed-in) .nav-right-group {
-      position: absolute;
-      top: 0;
-      right: 56px;
-      height: var(--header-h);
       flex-wrap: nowrap;
       gap: 8px;
+    }
+    nav:not(.is-signed-in) .nav-links #nav-join {
+      opacity: 1;
+      transform: none;
+      transition: none;
     }
     #nav-sheet-lang {
       display: none;
