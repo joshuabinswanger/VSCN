@@ -722,6 +722,15 @@ fieldset > legend.label {
 .ff:has(> .input[aria-invalid="true"]) > .ff__title {
   color: var(--color-error);
 }
+/* Lifted on the desktop (board 07, 2026-11-02, Josh): the placeholder grey,
+   2px above the box. Below the focus and error rules in effect: they are
+   more specific and keep the ink and the error red. */
+@media (--bp-desktop) {
+  .ff__title {
+    top: -2px;
+    color: var(--color-text-placeholder);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .ff__title {
     transition: none;
