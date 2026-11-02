@@ -34,6 +34,23 @@ test("the caps are the ones firestore.rules enforces", () => {
   assert.equal(PROFILE_LIST_CAPS.visualNeeds, cap("visualNeeds"));
 });
 
+test("an empty display name is refused, by name, in both languages", () => {
+  const en = firstProfileProblem({ ...ok, displayName: "" }, ui.en);
+  assert.equal(en.field, "displayName");
+  assert.equal(en.message, "Display Name is required.");
+  const de = firstProfileProblem({ ...ok, displayName: "" }, ui.de);
+  assert.equal(de.message, "Anzeigename ist erforderlich.");
+});
+
+test("an empty name is reported before a later field's problem", () => {
+  const p = firstProfileProblem({ ...ok, displayName: "", role: "x".repeat(101) }, ui.en);
+  assert.equal(p.field, "displayName");
+});
+
+test("the other text fields stay optional", () => {
+  assert.equal(firstProfileProblem({ ...ok, role: "", roleDe: "", bio: "", phone: "" }, ui.en), null);
+});
+
 test("an over-long role names the field and the cap", () => {
   const p = firstProfileProblem({ ...ok, role: "x".repeat(101) }, ui.en);
   assert.equal(p.field, "role");
@@ -72,5 +89,6 @@ for (const lang of ["en", "de"]) {
     assert.ok(ui[lang]["profile.validation.tooLong"].includes("{n}"));
     assert.ok(ui[lang]["profile.validation.tooManyWords"].includes("{n}"));
     assert.ok(ui[lang]["profile.validation.tooMany"].includes("{n}"));
+    assert.ok(ui[lang]["profile.validation.required"].includes("{field}"));
   });
 }
