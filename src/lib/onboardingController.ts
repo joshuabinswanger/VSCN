@@ -854,6 +854,14 @@ document.addEventListener("astro:page-load", () => {
   document.getElementById("ob-next-0")?.addEventListener("click", async () => {
     const user = auth.currentUser;
     if (!user) return;
+    // The name is not optional: an empty one moves the member's public URL
+    // (see REQUIRED_FIELDS in profileValidation.ts). Asked here, by name.
+    if (!getInputValue("ob-name").trim()) {
+      setError(s["profile.validation.required"].replace("{field}", s["profile.label.name"]));
+      document.getElementById("ob-name")?.focus();
+      return;
+    }
+    setError("");
     setBtnState("ob-next-0", true, s["onboarding.nav.next"]);
     try {
       const nameVal = getInputValue("ob-name").trim();

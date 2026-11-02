@@ -669,6 +669,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.validation.tooLong": "{field} must be {n} characters or fewer.",
     "profile.validation.tooManyWords": "{field} must be {n} words or fewer.",
     "profile.validation.tooMany": "{field}: choose at most {n}.",
+    "profile.validation.required": "{field} is required.",
     "profile.gallery.remove.confirm": "Remove this work? Its image and everything written about it are deleted for good.",
 
     // Onboarding
@@ -1319,6 +1320,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.validation.tooLong": "{field} darf höchstens {n} Zeichen lang sein.",
     "profile.validation.tooManyWords": "{field} darf höchstens {n} Wörter haben.",
     "profile.validation.tooMany": "{field}: höchstens {n} auswählen.",
+    "profile.validation.required": "{field} ist erforderlich.",
     "profile.gallery.remove.confirm": "Dieses Werk entfernen? Bild und alle Angaben dazu werden endgültig gelöscht.",
 
     // Onboarding

@@ -63,6 +63,13 @@ const CHECK_ORDER: ProfileField[] = [
   "portfolio", "socialMedia", "tags", "openTo", "visualNeeds", "phone",
 ];
 
+/**
+ * Fields that must not be empty. Callers pass values already trimmed, so
+ * whitespace alone counts as empty. Client-side only: firestore.rules still
+ * allows "" (a rules minimum is weighed against the evaluation budget).
+ */
+const REQUIRED_FIELDS: ProfileField[] = ["displayName"];
+
 function fill(template: string, field: string, n: number): string {
   return template.replace("{field}", field).replace("{n}", String(n));
 }
@@ -83,6 +90,12 @@ export function firstProfileProblem(values: ProfileValues, s: Record<string, str
     }
     const value = values[field as ProfileTextField];
     const cap = PROFILE_TEXT_CAPS[field as ProfileTextField];
+    // The name is the one field a member cannot leave empty: the rules accept
+    // "" (they only cap it), and an empty name makes the slug function fall
+    // back to the uid and move the member's public URL. See REQUIRED_FIELDS.
+    if (REQUIRED_FIELDS.includes(field) && value === "") {
+      return { field, message: fill(s["profile.validation.required"], label, 0) };
+    }
     if (field === "socialMedia" && value.length > cap) {
       return { field, message: s["profile.social.tooLong"] };
     }
