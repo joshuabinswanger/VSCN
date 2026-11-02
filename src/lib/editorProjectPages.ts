@@ -21,7 +21,8 @@
 import { pageLifetime } from "./pageLifecycle.ts";
 
 const FOCUS_KEY = "vscn-works-project";
-const CARD_THUMBS = 4;
+// Three across, so each is big enough to tell apart (2026-11-02, Josh: "images bigger on project overview").
+const CARD_THUMBS = 3;
 
 const remembered = (): string | null => {
   try {
