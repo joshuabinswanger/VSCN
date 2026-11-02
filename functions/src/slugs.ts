@@ -2,7 +2,7 @@ import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { logger } from "firebase-functions/v2";
 import { FieldValue, type DocumentSnapshot } from "firebase-admin/firestore";
 import { db } from "./admin";
-import { queueMemberRebuild } from "./rebuildQueue";
+import { queueMemberRebuild, sameContent } from "./rebuildQueue";
 
 // COPY of slugifyName() in src/lib/memberView.ts — functions is a separate TS
 // project (CommonJS) and cannot import from src/. Change both or neither.
@@ -87,5 +87,8 @@ export const onPublicProfileWritten = onDocumentWritten({ document: "publicProfi
     const slug = await claimSlug(event.params.uid);
     logger.info("Slug claimed", { uid: event.params.uid, slug });
   }
+  // A Save whose profile fields did not change still writes `updatedAt`;
+  // nothing the site shows moved, so there is nothing to queue.
+  if (sameContent(before?.data(), after.data())) return;
   await queueMemberRebuild(event.params.uid);
 });

@@ -94,6 +94,7 @@ import {
   orderProjects,
   previewProjects,
   projectLabel,
+  projectRecordKey,
   projectsToDelete,
   sameIds,
   withoutDanglingProjects,
@@ -380,8 +381,13 @@ document.addEventListener("astro:page-load", () => {
   // Each work's words AS THE RECORD HOLDS THEM — set at load, per arrival,
   // and after a Save. The draft compares against this, not against the
   // gallery array, so that committed membership and order never read as
-  // unsaved (draftMerge.ts).
+  // unsaved (draftMerge.ts). Save writes only the works that differ from it
+  // (worksToWrite), so it must never claim words a record does not hold.
   let committedWords = new Map<string, WorkWords>();
+  // Each stored project's projectRecordKey() AS ITS DOCUMENT HOLDS IT — set
+  // at load and as each project write lands. Save writes only the projects
+  // whose key moved (profilePersistence.ts).
+  const committedProjects = new Map<string, string>();
   /** When the loaded profile was last saved (ms) — the draft banner says so when the server copy is the newer one. */
   let loadedUpdatedAt: number | undefined;
   let previewSlugs = new Map<string, string>();
@@ -3359,6 +3365,8 @@ document.addEventListener("astro:page-load", () => {
     }));
     storedProjectIds = new Set(records.map((r) => r.projectId));
     deletedProjectIds.clear();
+    committedProjects.clear();
+    for (const p of projects) committedProjects.set(p.projectId, projectRecordKey(p));
     // An id naming no stored project goes now, or saveGalleryRecords()
     // would write it back onto the record at every Save.
     gallery = withoutDanglingProjects(gallery, storedProjectIds);
@@ -3724,7 +3732,8 @@ document.addEventListener("astro:page-load", () => {
       // and never filled stays local, so Firestore never holds a project
       // that was empty from birth. A refused project write is THE Save
       // error, naming the project as its header does.
-      const emptiedAtStart = await persistWorkMetadata(user.uid, gallery, projects, storedProjectIds, deletedProjectIds, lang, s);
+      const emptiedAtStart = await persistWorkMetadata(user.uid, gallery, projects, storedProjectIds, deletedProjectIds,
+        { words: committedWords, projects: committedProjects }, lang, s);
 
       const saved = await handleProfileUpdate(
         user,
@@ -3785,6 +3794,7 @@ document.addEventListener("astro:page-load", () => {
         if (deleteFailures.some((f) => f.projectId === id)) continue;
         storedProjectIds.delete(id);
         deletedProjectIds.delete(id);
+        committedProjects.delete(id);
         projects = projects.filter((p) => p.projectId !== id);
       }
       renderGallery();
@@ -3800,7 +3810,14 @@ document.addEventListener("astro:page-load", () => {
       }
 
       syncHiddenBanner(user.emailVerified, activeInput.checked);
-      const queued = await triggerRebuild();
+      // THE REBUILD REQUEST DOES NOT HOLD THE SAVE (2026-11-02, save-latency
+      // audit): everything is written by now, and the callable's answer
+      // only picks the publication line, while its cold start and its
+      // queue transaction cost seconds before "Saved". Sent last, after the
+      // project deletes, so its fingerprint sees the final state; the
+      // triggers on the profile and the records queue the same build
+      // should this page go before it lands (profile.ts, triggerRebuild).
+      const queued = triggerRebuild();
       resizedAvatarBlob = null;
       // The records hold the words that were on screen when this Save began
       // (persistWorkMetadata ran first) — for the works still here.
@@ -3837,6 +3854,8 @@ document.addEventListener("astro:page-load", () => {
       // site follows it now rather than at the next sign-in.
       if (!timedOut && savedLanguage !== lang) {
         rememberSessionChoice(savedLanguage);
+        // A full load cancels a request in flight; this rare Save waits.
+        await queued;
         window.location.replace(localePath(window.location.pathname, savedLanguage));
       }
     } catch (err: unknown) {

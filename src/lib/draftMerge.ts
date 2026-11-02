@@ -112,6 +112,20 @@ export function committedForNew(item: GalleryItem): WorkWords {
 }
 
 /**
+ * The works whose words differ from their record's, in gallery order — the
+ * only records a Save writes (2026-11-02, save-latency audit: rewriting every
+ * record on every Save cost a write per work, and each write bumped
+ * `updatedAt` and so fired the server's rebuild trigger once per work). A
+ * work with no committed words is new and always goes.
+ */
+export function worksToWrite<T extends GalleryItem>(gallery: readonly T[], committed: ReadonlyMap<string, WorkWords>): T[] {
+  return gallery.filter((item) => {
+    const base = committed.get(item.imageId);
+    return !base || !sameWords(workWords(item), base);
+  });
+}
+
+/**
  * The works Save would still write, sorted by id so that committed order and
  * membership never register as a change. This is both the dirty signature's
  * gallery half and what the draft stores.
