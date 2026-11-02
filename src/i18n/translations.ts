@@ -102,6 +102,11 @@ export const ui: Record<string, Record<string, string>> = {
 
     // AuthForm
     "auth.title.login": "Log In",
+    // The signed-out chip's full-screen sheet (Navbar.astro). The tabs and the
+    // close key; the rest reuses auth.* and onboarding.auth.*.
+    "join.close": "Close",
+    "join.tab.join": "Join",
+    "join.tab.login": "Log in",
     "auth.label.email": "Email",
     "auth.label.password": "Password",
     "auth.title.reset": "Reset Password",
@@ -851,6 +856,9 @@ export const ui: Record<string, Record<string, string>> = {
 
     // AuthForm
     "auth.title.login": "Anmelden",
+    "join.close": "Schließen",
+    "join.tab.join": "Beitreten",
+    "join.tab.login": "Anmelden",
     "auth.label.email": "E-Mail",
     "auth.label.password": "Passwort",
     "auth.title.reset": "Passwort zurücksetzen",
