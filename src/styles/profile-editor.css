@@ -2297,6 +2297,26 @@
       display: none;
     }
 
+    /* THE SWITCHES ON TOP, SAVE UNDER THEM (2026-11-02, Josh: "save should
+       stay the size it is collapsed on also at the bottom and centered and
+       all the other three buttons at the top in one row. this means make
+       them less wide"). Edit | Preview joins the switches' row on a phone
+       (editorBar.ts bindPhoneBarRows); that row comes first and holds all
+       three on one line, each only as wide as it needs, and Save alone fills
+       the row under it, the width it has folded. */
+    .ebar__group {
+      order: -1;
+      flex-wrap: nowrap;
+    }
+    .ebar .ebar__group .ebar__mode {
+      flex: 1 1 auto;
+      min-width: 0;
+      height: auto;
+    }
+    .ebar .ebar__group .ebar__mode > button {
+      padding-inline: 6px;
+    }
+
     /* Off the Works tab Save is the whole bar, so there is nothing to fold. */
     .profile-form:not(.is-works) .ebar__handle {
       display: none;

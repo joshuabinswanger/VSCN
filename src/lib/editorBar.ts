@@ -114,3 +114,31 @@ export function bindBarFold(handle: HTMLButtonElement, bar: HTMLElement, signal:
     { signal },
   );
 }
+
+/**
+ * THE PHONE BAR'S TWO ROWS (2026-11-02, Josh: "save should stay the size it
+ * is collapsed on also at the bottom and centered and all the other three
+ * buttons at the top in one row"). On a phone the three switches (Edit |
+ * Preview, Profile | Card, EN | DE) share the top row and Save stands alone
+ * under them, as wide as it is folded. Edit | Preview lives in Save's row in
+ * the markup, beside Save as a desktop wants it, so on a phone it is moved to
+ * the head of the switches' row and back when the window grows; the
+ * stylesheet puts that row first. Moving the element keeps its listeners.
+ */
+export function bindPhoneBarRows(bar: HTMLElement, signal: AbortSignal): void {
+  const mode = bar.querySelector<HTMLElement>(".ebar__mode");
+  const main = bar.querySelector<HTMLElement>(".ebar__row--main");
+  const group = bar.querySelector<HTMLElement>(".ebar__group");
+  if (!mode || !main || !group) return;
+  // --bp-mobile (custom-media.css), spelled out: a script cannot read it.
+  const phone = window.matchMedia("(width <= 767px), (pointer: coarse) and (height <= 500px)");
+  const place = () => {
+    if (phone.matches) {
+      if (mode.parentElement !== group) group.prepend(mode);
+    } else if (mode.parentElement !== main) {
+      main.prepend(mode);
+    }
+  };
+  place();
+  phone.addEventListener("change", place, { signal });
+}

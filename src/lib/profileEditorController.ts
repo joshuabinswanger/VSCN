@@ -114,7 +114,7 @@ import {
   type TrayFocus,
 } from "./carouselTray.ts";
 import { updateCarouselLead } from "./images.ts";
-import { followContentSize, bindBarFold } from "./editorBar.ts";
+import { followContentSize, bindBarFold, bindPhoneBarRows } from "./editorBar.ts";
 import { bindDetailsPlacement, placeAllDetails } from "./editorDetailsSide.ts";
 import { lightboxStringsFrom } from "./lightbox.ts";
 import type { Lang } from "../i18n/utils";
@@ -2947,6 +2947,7 @@ document.addEventListener("astro:page-load", () => {
     lifecycle.signal.addEventListener("abort", stopFollowing, { once: true });
     const handle = document.getElementById("ebar-handle");
     if (handle instanceof HTMLButtonElement) bindBarFold(handle, barEl, lifecycle.signal);
+    bindPhoneBarRows(barEl, lifecycle.signal);
   }
   applyWorksBar();
 
