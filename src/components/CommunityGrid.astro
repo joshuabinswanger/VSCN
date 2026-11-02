@@ -1211,6 +1211,28 @@ const searchIndex: SearchIndex = {
       justify-content: center;
       transition: bottom 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
     }
+    /* A PAPER GRADIENT BEHIND THE BAR (2026-11-02, Josh: "lets try a
+       gradient on the bottom just behind the nav bar for images etc"): the
+       foot of the screen fades to paper under the pills, so pictures
+       scrolling beneath do not fight them. Fixed to the screen's edge, under
+       the bar's own pills (z-index -1 inside the bar's stacking context),
+       and it never takes a tap. */
+    .community-bar::before {
+      content: "";
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: -1;
+      height: calc(var(--bar-h, 38px) + 60px + env(safe-area-inset-bottom, 0px));
+      background: linear-gradient(
+        to top,
+        var(--color-bg) 0%,
+        color-mix(in srgb, var(--color-bg) 85%, transparent) 35%,
+        transparent 100%
+      );
+      pointer-events: none;
+    }
   }
 
   /* HIGHER AND A SIZE UP ON A DESKTOP (2026-10-12, Josh: "make it so that it
