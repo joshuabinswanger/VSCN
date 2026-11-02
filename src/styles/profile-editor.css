@@ -652,7 +652,8 @@
   }
 
   /* A phone: narrower keys, so Size, Move and Work stay on one line at
-     390px (measured on dev 2026-10-23: at 38px Work wrapped under). */
+     390px (measured on dev 2026-10-23: at 38px Work wrapped under). The
+     desktop's 30px height since 2026-11-02 (Josh: "match desktop there"). */
   @media (--bp-mobile) {
     .gallery-deck {
       gap: 8px 10px;
@@ -660,8 +661,6 @@
     }
 
     .gallery-key {
-      min-width: 36px;
-      height: 36px;
       padding: 0 10px;
     }
   }
@@ -3361,25 +3360,12 @@ html.pp-switching::view-transition-new(works-mode-thumb) {
   }
 }
 
-/* BIGGER BUTTONS ON A PHONE (2026-10-28, see global.css): the keys 36 → 40,
-   the small keys in a box's head and Replace 30 → 36, the bar 36 → 42, and
-   Remove gets a real target instead of a bare word. */
+/* BIGGER BUTTONS ON A PHONE (2026-10-28, see global.css): the bar 36 → 42.
+   The keys, the small keys in a box's head, Replace and Remove had theirs
+   too (40, 36, 36, 36) until 2026-11-02, when they went back to the
+   desktop's sizes (Josh: "the more buttons etc. on mobile can be less high
+   as well match desktop there"). */
 @media (--bp-mobile) {
-  .profile-editor .gallery-key {
-    min-width: 40px;
-    height: 40px;
-  }
-  .profile-editor .gallery-boxhead .gallery-key,
-  .profile-editor .gallery-thumb-replace {
-    min-width: 36px;
-    height: 36px;
-  }
-  .profile-editor .gallery-boxhead__word {
-    display: inline-flex;
-    align-items: center;
-    min-height: 36px;
-    padding: 0 6px;
-  }
   .profile-editor .ebar .profile-save-button,
   .profile-editor .ebar .ebar__mode {
     height: 42px;
