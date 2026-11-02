@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { firstProfileProblem, PROFILE_LIST_CAPS, PROFILE_TEXT_CAPS } from "../../src/lib/profileValidation.ts";
+import { firstProfileProblem, stripPhoneSpaces, PROFILE_LIST_CAPS, PROFILE_TEXT_CAPS } from "../../src/lib/profileValidation.ts";
 import { ui } from "../../src/i18n/translations.ts";
 
 const ok = {
@@ -49,6 +49,23 @@ test("an empty name is reported before a later field's problem", () => {
 
 test("the other text fields stay optional", () => {
   assert.equal(firstProfileProblem({ ...ok, role: "", roleDe: "", bio: "", phone: "" }, ui.en), null);
+});
+
+test("a phone is an optional + and 6 to 15 digits, nothing else", () => {
+  for (const good of ["", "+41791234567", "0791234567", "123456", "+123456789012345"]) {
+    assert.equal(firstProfileProblem({ ...ok, phone: good }, ui.en), null, good);
+  }
+  for (const bad of ["abc-not-a-phone", "12345", "+1234567890123456", "041-79-123", "+41 (0)79", "++41791234567", "41+791234567", "+41 79 123 45 67"]) {
+    const p = firstProfileProblem({ ...ok, phone: bad }, ui.en);
+    assert.equal(p?.field, "phone", bad);
+    assert.match(p.message, /^Phone Number: only a leading \+ and digits/);
+  }
+  assert.match(firstProfileProblem({ ...ok, phone: "x" }, ui.de).message, /^Telefonnummer: nur ein führendes \+ und Ziffern/);
+});
+
+test("stripPhoneSpaces takes out every kind of whitespace and nothing else", () => {
+  assert.equal(stripPhoneSpaces("+41 79 123\u00a045\t67 "), "+41791234567");
+  assert.equal(stripPhoneSpaces("079-123"), "079-123");
 });
 
 test("an over-long role names the field and the cap", () => {

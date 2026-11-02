@@ -670,6 +670,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.validation.tooManyWords": "{field} must be {n} words or fewer.",
     "profile.validation.tooMany": "{field}: choose at most {n}.",
     "profile.validation.required": "{field} is required.",
+    "profile.validation.phone": "{field}: only a leading + and digits, 6 to 15 of them, for example +41791234567.",
     "profile.gallery.remove.confirm": "Remove this work? Its image and everything written about it are deleted for good.",
 
     // Onboarding
@@ -1321,6 +1322,7 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.validation.tooManyWords": "{field} darf höchstens {n} Wörter haben.",
     "profile.validation.tooMany": "{field}: höchstens {n} auswählen.",
     "profile.validation.required": "{field} ist erforderlich.",
+    "profile.validation.phone": "{field}: nur ein führendes + und Ziffern erlaubt, 6 bis 15 Stück, zum Beispiel +41791234567.",
     "profile.gallery.remove.confirm": "Dieses Werk entfernen? Bild und alle Angaben dazu werden endgültig gelöscht.",
 
     // Onboarding

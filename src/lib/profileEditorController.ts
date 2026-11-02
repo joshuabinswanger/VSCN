@@ -28,7 +28,7 @@ import { hasVerifiedClaim, requireAuth } from "./auth.ts";
 import { providerName } from "./embed.ts";
 import { getUser, getPublicProfileActive } from "./firestore.ts";
 import type { GalleryMerge } from "./galleryMerge.ts";
-import { firstProfileProblem, type ProfileField, type ProfileProblem } from "./profileValidation.ts";
+import { firstProfileProblem, stripPhoneSpaces, stripPhoneSpacesInPlace, type ProfileField, type ProfileProblem } from "./profileValidation.ts";
 import { saveErrorMessage } from "./saveError.ts";
 import { markImageForDeletion } from "./images.ts";
 import {
@@ -3019,6 +3019,8 @@ document.addEventListener("astro:page-load", () => {
   roleDeInput.addEventListener("input", syncPreview);
   bioInput.addEventListener("input", syncPreview);
   bioDeInput.addEventListener("input", syncPreview);
+  // Spaces never stay in a phone number (PHONE_FORMAT, profileValidation.ts).
+  phoneInput.addEventListener("input", () => stripPhoneSpacesInPlace(phoneInput), { signal: lifecycle.signal });
   // The website and link fields print "https://" themselves, so a stored or
   // pasted scheme would read twice (2026-11-02).
   portfolioInput.addEventListener("input", () => {
@@ -3399,7 +3401,7 @@ document.addEventListener("astro:page-load", () => {
         })
         .catch(() => {});
     } else previewSlugs = new Map();
-    phoneInput.value = data.phone ?? "";
+    phoneInput.value = stripPhoneSpaces(data.phone ?? "");
     wantsToContributeInput.checked = data.wantsToContribute ?? false;
     communityEmailPreferenceKnown = typeof data.receiveCommunityEmails === "boolean";
     communityEmailPreferenceChanged = false;
@@ -3669,7 +3671,7 @@ document.addEventListener("astro:page-load", () => {
       bioDe: bioDeInput.value.trim(),
       portfolio: portfolioInput.value.trim(),
       socialMedia: socialStored(),
-      phone: phoneInput.value.trim(),
+      phone: stripPhoneSpaces(phoneInput.value),
       tags: tagSelector?.value ?? [],
       openTo: openToSelector?.value ?? [],
       visualNeeds: needsVisuals(memberType) ? (visualNeedsSelector?.value ?? []) : [],
@@ -3755,7 +3757,7 @@ document.addEventListener("astro:page-load", () => {
           ...(shouldSaveCommunityEmailPreference
             ? { receiveCommunityEmails: receiveCommunityEmailsInput.checked }
             : {}),
-          phone: phoneInput.value.trim(),
+          phone: stripPhoneSpaces(phoneInput.value),
           resizedAvatarBlob,
           previousPhotoImageId: currentPhotoImageId,
           ...(resizedAvatarBlob && avatarColor ? { photoColor: avatarColor } : {}),
