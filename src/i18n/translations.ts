@@ -36,8 +36,9 @@ export const ui: Record<string, Record<string, string>> = {
       "VSCN is also for the researchers who need these images. List your group, and find the people who already draw your field.",
     "info.contact.ask": "And if you’d like to help shape VSCN, we’d love to hear from you:",
     "info.cta.portfolios": "Browse the portfolios",
+    "info.story.cue": "Scroll",
+    "info.story.people": "Meet the people behind the pictures.",
     "info.wall.heading": "From the network",
-    "info.wall.all": "All portfolios",
     "info.wall.prev": "Previous member",
     "info.wall.next": "Next member",
 
@@ -788,8 +789,9 @@ export const ui: Record<string, Record<string, string>> = {
       "VSCN ist auch für die Forschenden, die diese Bilder brauchen. Trag deine Gruppe ein und finde die Menschen, die dein Fachgebiet schon zeichnen.",
     "info.contact.ask": "Und wenn du VSCN mitgestalten möchtest, freuen wir uns, von dir zu hören:",
     "info.cta.portfolios": "Portfolios ansehen",
+    "info.story.cue": "Scrollen",
+    "info.story.people": "Lerne die Menschen hinter den Bildern kennen.",
     "info.wall.heading": "Aus dem Netzwerk",
-    "info.wall.all": "Alle Portfolios",
     "info.wall.prev": "Vorheriges Mitglied",
     "info.wall.next": "Nächstes Mitglied",
 
