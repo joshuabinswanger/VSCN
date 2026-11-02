@@ -152,6 +152,14 @@ import "../styles/type.css";
             ><path d="M5 12h14M13 6l6 6-6 6"></path></svg
           ></a
         >
+        <p class="join-alt"
+          ><span class="join-alt__q" id="join-alt-login-q"></span><button
+            type="button"
+            class="join-alt__btn"
+            id="join-alt-login"
+            data-mode="login"></button
+          ></p
+        >
       </section>
 
       <form class="join-panel" id="join-panel-login" novalidate>
@@ -180,6 +188,14 @@ import "../styles/type.css";
         <p role="alert" class="msg-err" id="join-error" style="display:none;"></p>
         <p class="join-status" id="join-status" aria-live="polite" style="display:none;"></p>
         <button type="submit" class="btn-solid join-btn" id="join-submit" disabled></button>
+        <p class="join-alt"
+          ><span class="join-alt__q" id="join-alt-join-q"></span><button
+            type="button"
+            class="join-alt__btn"
+            id="join-alt-join"
+            data-mode="join"></button
+          ></p
+        >
       </form>
 
       <form class="join-panel" id="join-panel-reset" novalidate>
@@ -194,12 +210,6 @@ import "../styles/type.css";
         <button type="submit" class="btn-solid join-btn" id="join-reset-send"></button>
         <button type="button" class="btn-link join-back" id="join-reset-back"></button>
       </form>
-    </div>
-
-    <div class="join-tabs" role="tablist" id="join-tabs">
-      <span class="join-tabs__thumb" aria-hidden="true"></span>
-      <button type="button" role="tab" class="join-tab" id="join-tab-join" data-mode="join"></button>
-      <button type="button" role="tab" class="join-tab" id="join-tab-login" data-mode="login"></button>
     </div>
   </div>
 </div>
@@ -861,74 +871,47 @@ import "../styles/type.css";
     transform: none;
     transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.05s;
   }
-  /* THE SWITCH UNDER THE FORM (2026-11-02, Josh: "the switch should be with
-     a grey background", then "bigger and right under the Login fields",
-     placed under the button): the views pill's shape a size up, 44px, on the
-     tint grey, centred under the panel; the current side is a black pill
-     that SLIDES to the other (the views pill's thumb and its spring), and the
-     panel above changes height with it (setJoinMode). */
-  /* Two classes: global.css squares every corner it does not list, at
-     one class and !important. */
-  .join-sheet .join-tabs {
-    position: relative;
-    justify-self: center;
+  /* ONE LINE TO THE OTHER SIDE (2026-11-02, Josh: "on join there is a line
+     that says already have an account (button Login) and vice versa"). It
+     replaces the JOIN / LOGIN switch: under each side's button, a muted
+     question and a small light pill to the other side, the LOGIN pill's
+     dress. Changing side still eases the panel's height (setJoinMode). */
+  .join-alt {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 0.25rem 0 0;
+    color: var(--color-muted);
+  }
+  .join-alt__btn {
     box-sizing: border-box;
-    height: 44px;
-    margin-top: 0.5rem;
-    padding: 4px;
-    border-radius: var(--radius-pill) !important;
-    background: var(--color-tint);
-  }
-  .join-sheet .join-tabs__thumb {
-    position: absolute;
-    top: 4px;
-    bottom: 4px;
-    left: 0;
-    width: var(--thumb-w, 0px);
-    transform: translateX(var(--thumb-x, 0px));
-    border-radius: var(--radius-pill) !important;
-    background: var(--color-dark);
-    pointer-events: none;
-  }
-  .join-tabs[data-thumb-ready] .join-tabs__thumb {
-    transition:
-      transform 0.34s cubic-bezier(0.3, 1.25, 0.5, 1),
-      width 0.34s cubic-bezier(0.3, 1.25, 0.5, 1);
-  }
-  .join-tab {
-    position: relative;
-    z-index: 1;
-    height: 100%;
-    padding: 0 26px;
+    height: 30px;
+    padding: 9px 14px 8px;
     border: 0;
     border-radius: var(--radius-pill) !important;
-    background: none;
+    background: var(--color-bg);
     color: var(--color-dark);
+    box-shadow: inset 0 0 0 1px var(--color-border);
     font-family: inherit;
     white-space: nowrap;
     cursor: pointer;
-    transition:
-      color 0.2s ease,
-      background-color 0.2s ease;
+    transition: box-shadow 0.2s ease;
   }
-  .join-tab:not([aria-selected="true"]):hover,
-  .join-tab:not([aria-selected="true"]):focus-visible {
-    background: color-mix(in srgb, var(--color-dark) 7%, var(--color-tint));
+  .join-alt__btn:hover {
+    box-shadow: inset 0 0 0 1px var(--color-dark);
   }
-  .join-tab:focus-visible {
+  .join-alt__btn:focus-visible {
     outline: 1.5px solid var(--color-dark);
-    outline-offset: 1px;
-  }
-  .join-tab[aria-selected="true"] {
-    color: var(--color-bg);
+    outline-offset: 2px;
   }
   @media (--bp-mobile) {
     .join-sheet__bar {
       padding: 0 8px;
     }
-    .join-sheet__close {
+    .join-sheet__close,
+    .join-alt__btn {
       padding: 9px 17px 8px;
     }
     /* More room at the sides on a phone (2026-11-02, Josh): the desktop
@@ -952,13 +935,9 @@ import "../styles/type.css";
         z-index 0s linear 0s;
     }
   }
-  .join-sheet[data-mode="reset"] .join-tabs {
-    display: none;
-  }
   /* The panels' box eases from one panel's height to the next (the
      script sets a fixed height for the change and clears it after), and the
-     arriving panel fades up, so the switch under it glides instead of
-     jumping. */
+     arriving panel fades up, so the change glides instead of jumping. */
   .join-panels {
     transition: height 0.38s cubic-bezier(0.16, 1, 0.3, 1);
   }
@@ -1712,8 +1691,10 @@ import "../styles/type.css";
     const s = ui[joinLang()];
     const prefix = joinLang() === "de" ? "/de" : "";
     joinText("join-close", s["join.close"]);
-    joinText("join-tab-join", s["join.tab.join"]);
-    joinText("join-tab-login", s["join.tab.login"]);
+    joinText("join-alt-login-q", s["onboarding.auth.haveAccount"]);
+    joinText("join-alt-login", s["join.tab.login"]);
+    joinText("join-alt-join-q", s["auth.noAccount"]);
+    joinText("join-alt-join", s["join.tab.join"]);
     joinText("join-join-sub", s["onboarding.auth.sub"]);
     joinText("join-create-label", s["onboarding.auth.cta"]);
     (joinEl("join-create") as HTMLAnchorElement).href = `${prefix}/onboarding`;
@@ -1725,14 +1706,6 @@ import "../styles/type.css";
     joinText("join-reset-success", s["auth.reset.success"]);
     joinText("join-reset-send", s["auth.reset.send"]);
     joinText("join-reset-back", s["auth.reset.back"]);
-  }
-  // The black pill under the current side of the switch, measured from it.
-  function placeJoinThumb() {
-    const tabs = joinEl("join-tabs");
-    const current = tabs?.querySelector<HTMLElement>('.join-tab[aria-selected="true"]');
-    if (!tabs || !current) return;
-    tabs.style.setProperty("--thumb-x", `${current.offsetLeft}px`);
-    tabs.style.setProperty("--thumb-w", `${current.offsetWidth}px`);
   }
   // Log In is ready once both fields hold something; until then it wears
   // the editor's greyed-out fill.
@@ -1754,10 +1727,6 @@ import "../styles/type.css";
     const from = glide && panels ? panels.offsetHeight : 0;
     sheet.dataset.mode = mode;
     joinText("join-title", mode === "join" ? s["onboarding.auth.title"] : mode === "login" ? s["auth.title.login"] : s["auth.title.reset"]);
-    for (const tab of sheet.querySelectorAll<HTMLElement>(".join-tab")) {
-      tab.setAttribute("aria-selected", String(tab.dataset.mode === mode));
-    }
-    placeJoinThumb();
     syncJoinSubmit();
     if (!glide || !panels || !title) return;
     // The title fades up with the panel.
@@ -1783,17 +1752,10 @@ import "../styles/type.css";
     if (open) {
       joinReturnFocus = document.activeElement as HTMLElement | null;
       fillJoinSheet();
-      const tabs = joinEl("join-tabs");
-      tabs?.removeAttribute("data-thumb-ready");
       setJoinMode(mode);
       setMenu(false);
       sheet.removeAttribute("inert");
       sheet.setAttribute("data-open", "");
-      // Measured once the sheet is drawn; it slides from then on.
-      requestAnimationFrame(() => {
-        placeJoinThumb();
-        requestAnimationFrame(() => tabs?.setAttribute("data-thumb-ready", ""));
-      });
       // Start the App Check attestation while the member types, so the
       // sign-in click does not spend Auth's clock on a slow challenge.
       warmUpAppCheck();
@@ -1833,8 +1795,13 @@ import "../styles/type.css";
   document.addEventListener("click", (event) => {
     const target = event.target as Element | null;
     if (target?.closest?.("#join-close")) setJoinSheet(false);
-    const tab = target?.closest?.<HTMLElement>(".join-tab");
-    if (tab) setJoinMode(tab.dataset.mode as JoinMode, true);
+    // The other side's button goes, so focus follows to the new side.
+    const alt = target?.closest?.<HTMLElement>(".join-alt__btn");
+    if (alt) {
+      const mode = alt.dataset.mode as JoinMode;
+      setJoinMode(mode, true);
+      (mode === "join" ? joinEl("join-create") : joinEl("join-email"))?.focus({ preventScroll: true });
+    }
     if (target?.closest?.("#join-forgot")) {
       const email = joinEl("join-email") as HTMLInputElement;
       (joinEl("join-reset-email") as HTMLInputElement).value = email.value;
@@ -1909,7 +1876,6 @@ import "../styles/type.css";
   document.addEventListener("input", (event) => {
     if ((event.target as Element | null)?.closest?.("#join-panel-login")) syncJoinSubmit();
   });
-  window.addEventListener("resize", placeJoinThumb);
 
   // A page change closes the sheet (a tapped link, the language switch), and
   // a sign-in from anywhere takes the chip away, so the sheet goes with it.
