@@ -422,7 +422,6 @@
    SMALLER (2026-10-28): 12px inside 30px pills. */
 @media (--bp-desktop) {
   .nav-link,
-  .join-tab,
   .join-sheet__close {
     font-size: var(--fs-85);
     font-weight: 400;
@@ -458,11 +457,10 @@
     letter-spacing: 0.005em;
   }
   /* THE LOGIN PILL ON A PHONE (2026-11-02, Josh, vscn-header.af board 28):
-     11px, a size under the other pills' 13. Its sheet's close key and its
-     JOIN / LOGIN switch speak the same, as the views pill does. */
+     11px, a size under the other pills' 13. Its sheet's close key speaks
+     the same. */
   .nav-right-group #nav-join,
-  .join-sheet__close,
-  .join-tab {
+  .join-sheet__close {
     font-size: var(--fs-75);
     font-weight: 400;
     letter-spacing: 0.005em;
@@ -488,6 +486,13 @@
   .views-pill__link {
     font-size: var(--fs-75);
   }
+}
+/* THE JOIN / LOGIN SWITCH, BIGGER (2026-11-02, Josh): the pill type a size
+   up, the same on both breakpoints. */
+.join-tab {
+  font-size: var(--fs-95);
+  font-weight: 400;
+  letter-spacing: 0.005em;
 }
 
 /* TAG: every tag, on every page. The chip's box (border, padding, the

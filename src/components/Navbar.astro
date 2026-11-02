@@ -141,58 +141,66 @@ import "../styles/type.css";
   <div class="join-sheet__bar">
     <button type="button" class="join-sheet__close" id="join-close"></button>
   </div>
-  <div class="join-tabs" role="tablist" id="join-tabs">
-    <button type="button" role="tab" class="join-tab" id="join-tab-join" data-mode="join"></button>
-    <button type="button" role="tab" class="join-tab" id="join-tab-login" data-mode="login"></button>
-  </div>
   <div class="join-sheet__body">
-    <h2 class="t-title" id="join-title"></h2>
+    <h2 class="t-title join-title" id="join-title"></h2>
 
-    <section class="join-panel" id="join-panel-join">
-      <p class="t-sub" id="join-join-sub"></p>
-      <a href="/onboarding" class="btn-solid" id="join-create"></a>
-    </section>
+    <div class="join-panels" id="join-panels">
+      <section class="join-panel" id="join-panel-join">
+        <p class="t-sub" id="join-join-sub"></p>
+        <a href="/onboarding" class="btn-solid join-btn" id="join-create"
+          ><span id="join-create-label"></span><svg class="join-btn__arrow" viewBox="0 0 24 24" aria-hidden="true"
+            ><path d="M5 12h14M13 6l6 6-6 6"></path></svg
+          ></a
+        >
+      </section>
 
-    <form class="join-panel" id="join-panel-login" novalidate>
-      <div class="field">
-        <div class="ff">
-          <label class="ff__title" for="join-email" id="join-email-label"></label>
-          <input id="join-email" type="email" class="input" placeholder=" " required autocomplete="email" />
+      <form class="join-panel" id="join-panel-login" novalidate>
+        <div class="field">
+          <div class="ff">
+            <label class="ff__title" for="join-email" id="join-email-label"></label>
+            <input id="join-email" type="email" class="input" placeholder=" " required autocomplete="email" />
+          </div>
         </div>
-      </div>
-      <div class="field">
-        <div class="ff">
-          <label class="ff__title" for="join-password" id="join-password-label"></label>
-          <input
-            id="join-password"
-            type="password"
-            class="input"
-            placeholder=" "
-            required
-            autocomplete="current-password"
-          />
+        <div class="field">
+          <div class="ff">
+            <label class="ff__title" for="join-password" id="join-password-label"></label>
+            <input
+              id="join-password"
+              type="password"
+              class="input"
+              placeholder=" "
+              required
+              autocomplete="current-password"
+            />
+          </div>
+          <div class="join-forgot-row">
+            <button type="button" class="btn-link join-forgot" id="join-forgot"></button>
+          </div>
         </div>
-        <div class="join-forgot-row">
-          <button type="button" class="btn-link join-forgot" id="join-forgot"></button>
-        </div>
-      </div>
-      <p role="alert" class="msg-err" id="join-error" style="display:none;"></p>
-      <p class="join-status" id="join-status" aria-live="polite" style="display:none;"></p>
-      <button type="submit" class="btn-solid" id="join-submit"></button>
-    </form>
+        <p role="alert" class="msg-err" id="join-error" style="display:none;"></p>
+        <p class="join-status" id="join-status" aria-live="polite" style="display:none;"></p>
+        <button type="submit" class="btn-solid join-btn" id="join-submit" disabled></button>
+      </form>
 
-    <form class="join-panel" id="join-panel-reset" novalidate>
-      <div class="field">
-        <div class="ff">
-          <label class="ff__title" for="join-reset-email" id="join-reset-email-label"></label>
-          <input id="join-reset-email" type="email" class="input" placeholder=" " autocomplete="email" />
+      <form class="join-panel" id="join-panel-reset" novalidate>
+        <div class="field">
+          <div class="ff">
+            <label class="ff__title" for="join-reset-email" id="join-reset-email-label"></label>
+            <input id="join-reset-email" type="email" class="input" placeholder=" " autocomplete="email" />
+          </div>
         </div>
-      </div>
-      <p role="alert" class="msg-err" id="join-reset-error" style="display:none;"></p>
-      <p role="status" class="msg-ok" id="join-reset-success" style="display:none;"></p>
-      <button type="submit" class="btn-solid" id="join-reset-send"></button>
-      <button type="button" class="btn-link join-back" id="join-reset-back"></button>
-    </form>
+        <p role="alert" class="msg-err" id="join-reset-error" style="display:none;"></p>
+        <p role="status" class="msg-ok" id="join-reset-success" style="display:none;"></p>
+        <button type="submit" class="btn-solid join-btn" id="join-reset-send"></button>
+        <button type="button" class="btn-link join-back" id="join-reset-back"></button>
+      </form>
+    </div>
+
+    <div class="join-tabs" role="tablist" id="join-tabs">
+      <span class="join-tabs__thumb" aria-hidden="true"></span>
+      <button type="button" role="tab" class="join-tab" id="join-tab-join" data-mode="join"></button>
+      <button type="button" role="tab" class="join-tab" id="join-tab-login" data-mode="login"></button>
+    </div>
   </div>
 </div>
 
@@ -853,31 +861,47 @@ import "../styles/type.css";
     transform: none;
     transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.05s;
   }
-  /* THE SWITCH IS THE VIEWS BAR'S PILL, ON GREY (2026-11-02, Josh: "the
-     switch should be with a grey background and placed where the portfolio
-     bar is"): JOIN / LOGIN stand where PORTFOLIOS / IMAGES / PEOPLE do, centred
-     in the header row on a desktop and floating at the foot on a phone, at
-     the views pill's size (CommunityGrid.astro's .view-seg, ViewsPill.astro),
-     the track the tint grey and the current one the black pill in it. */
-  .join-tabs {
-    --bar-h: 36px;
-    position: fixed;
-    top: calc((var(--header-h) - var(--bar-h)) / 2);
-    left: 50%;
-    translate: -50% 0;
-    z-index: 1;
+  /* THE SWITCH UNDER THE FORM (2026-11-02, Josh: "the switch should be with
+     a grey background", then "bigger and right under the Login fields",
+     placed under the button): the views pill's shape a size up, 44px, on the
+     tint grey, centred under the panel; the current side is a black pill
+     that SLIDES to the other (the views pill's thumb and its spring), and the
+     panel above changes height with it (setJoinMode). */
+  /* Two classes: global.css squares every corner it does not list, at
+     one class and !important. */
+  .join-sheet .join-tabs {
+    position: relative;
+    justify-self: center;
     display: flex;
     align-items: center;
     box-sizing: border-box;
-    height: var(--bar-h);
-    padding: 3px;
-    border: 1px solid var(--color-tint);
+    height: 44px;
+    margin-top: 0.5rem;
+    padding: 4px;
     border-radius: var(--radius-pill) !important;
     background: var(--color-tint);
   }
+  .join-sheet .join-tabs__thumb {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 0;
+    width: var(--thumb-w, 0px);
+    transform: translateX(var(--thumb-x, 0px));
+    border-radius: var(--radius-pill) !important;
+    background: var(--color-dark);
+    pointer-events: none;
+  }
+  .join-tabs[data-thumb-ready] .join-tabs__thumb {
+    transition:
+      transform 0.34s cubic-bezier(0.3, 1.25, 0.5, 1),
+      width 0.34s cubic-bezier(0.3, 1.25, 0.5, 1);
+  }
   .join-tab {
+    position: relative;
+    z-index: 1;
     height: 100%;
-    padding: 0 18px;
+    padding: 0 26px;
     border: 0;
     border-radius: var(--radius-pill) !important;
     background: none;
@@ -889,17 +913,15 @@ import "../styles/type.css";
       color 0.2s ease,
       background-color 0.2s ease;
   }
-  .join-tab:hover,
-  .join-tab:focus-visible {
+  .join-tab:not([aria-selected="true"]):hover,
+  .join-tab:not([aria-selected="true"]):focus-visible {
     background: color-mix(in srgb, var(--color-dark) 7%, var(--color-tint));
   }
   .join-tab:focus-visible {
     outline: 1.5px solid var(--color-dark);
     outline-offset: 1px;
   }
-  .join-tab[aria-selected="true"],
-  .join-tab[aria-selected="true"]:hover {
-    background: var(--color-dark);
+  .join-tab[aria-selected="true"] {
     color: var(--color-bg);
   }
   @media (--bp-mobile) {
@@ -909,36 +931,104 @@ import "../styles/type.css";
     .join-sheet__close {
       padding: 9px 17px 8px;
     }
-    .join-tabs {
-      --bar-h: 38px;
-      top: auto;
-      bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    /* More room at the sides on a phone (2026-11-02, Josh): the desktop
+       header's 30px gutter. */
+    .join-sheet__body {
+      padding-inline: var(--header-side);
     }
-    .join-tab {
-      padding: 0 clamp(8px, 2.8vw, 16px);
+  }
+  /* VSCN STAYS (2026-11-02, Josh: "the VSCN does not need to disappear"):
+     the title is lifted over the sheet while it is open, as it is over the
+     phone's menu sheet, and it still goes home (which closes the sheet). */
+  :root:has(#join-sheet[data-open]) .brand-ticker[data-wordmark="compact"] {
+    z-index: 101;
+  }
+  /* A phone delays the title's z-index for the menu sheet's leave; lifted
+     over this sheet it comes at once. */
+  @media (--bp-mobile) {
+    :root:has(#join-sheet[data-open]) .brand-ticker[data-wordmark="compact"] {
+      transition:
+        transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1),
+        z-index 0s linear 0s;
     }
   }
   .join-sheet[data-mode="reset"] .join-tabs {
     display: none;
   }
+  /* The panels' box eases from one panel's height to the next (the
+     script sets a fixed height for the change and clears it after), and the
+     arriving panel fades up, so the switch under it glides instead of
+     jumping. */
+  .join-panels {
+    transition: height 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .join-panels.is-resizing {
+    overflow: clip;
+    overflow-clip-margin: 4px;
+  }
   .join-panel {
     display: none;
     grid-auto-rows: min-content;
     gap: 1.5rem;
+    animation: join-sheet-panel-in 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .join-title.is-changing {
+    animation: join-sheet-panel-in 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes join-sheet-panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
   }
   .join-sheet[data-mode="join"] #join-panel-join,
   .join-sheet[data-mode="login"] #join-panel-login,
   .join-sheet[data-mode="reset"] #join-panel-reset {
     display: grid;
   }
-  .join-panel .btn-solid,
-  .join-panel .join-back {
-    justify-self: start;
+  /* THE SHEET'S BUTTONS ARE THE EDITOR'S (2026-11-02, Josh: "the button in
+     the style of the editor grey out buttons (rounded)"): the editor bar's
+     36px pill, Regular, an ink fill that greys out (the editor menu's
+     disabled grey) until there is something to send. Centred under the
+     fields; Create Account carries an arrow at its end. */
+  .join-panel .join-btn {
+    justify-self: center;
+    gap: 7px;
+    height: 36px;
+    min-height: 0;
+    padding: 0 22px;
+    border-radius: var(--radius-pill) !important;
+    font-size: var(--fs-85);
+    font-weight: 400;
+    transition: background-color 0.2s ease;
   }
-  /* Under the password field, at the column's left edge (2026-11-02, Josh:
-     "the forgot underneath the field"). */
+  .join-panel .join-btn:disabled {
+    background: color-mix(in srgb, var(--color-dark) 45%, white);
+    cursor: default;
+  }
+  /* Signing in stays black, as the editor's Save does while it saves: the
+     news is that it is working, not that it cannot be pressed. */
+  .join-panel .join-btn[data-busy]:disabled {
+    background: var(--color-dark);
+    cursor: progress;
+  }
+  .join-btn__arrow {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .join-panel .join-back {
+    justify-self: center;
+  }
+  /* Under the password field, at its right end (2026-11-02, Josh: "the
+     forgot underneath the field", then "on the right side"). */
   .join-forgot-row {
     display: flex;
+    justify-content: flex-end;
     margin-top: 8px;
   }
   .join-forgot {
@@ -1625,7 +1715,7 @@ import "../styles/type.css";
     joinText("join-tab-join", s["join.tab.join"]);
     joinText("join-tab-login", s["join.tab.login"]);
     joinText("join-join-sub", s["onboarding.auth.sub"]);
-    joinText("join-create", s["onboarding.auth.cta"]);
+    joinText("join-create-label", s["onboarding.auth.cta"]);
     (joinEl("join-create") as HTMLAnchorElement).href = `${prefix}/onboarding`;
     joinText("join-email-label", s["auth.label.email"]);
     joinText("join-password-label", s["auth.label.password"]);
@@ -1636,15 +1726,56 @@ import "../styles/type.css";
     joinText("join-reset-send", s["auth.reset.send"]);
     joinText("join-reset-back", s["auth.reset.back"]);
   }
-  function setJoinMode(mode: JoinMode) {
+  // The black pill under the current side of the switch, measured from it.
+  function placeJoinThumb() {
+    const tabs = joinEl("join-tabs");
+    const current = tabs?.querySelector<HTMLElement>('.join-tab[aria-selected="true"]');
+    if (!tabs || !current) return;
+    tabs.style.setProperty("--thumb-x", `${current.offsetLeft}px`);
+    tabs.style.setProperty("--thumb-w", `${current.offsetWidth}px`);
+  }
+  // Log In is ready once both fields hold something; until then it wears
+  // the editor's greyed-out fill.
+  function syncJoinSubmit() {
+    const submit = joinEl("join-submit") as HTMLButtonElement | null;
+    if (!submit || submit.dataset.busy) return;
+    const email = (joinEl("join-email") as HTMLInputElement).value.trim();
+    const password = (joinEl("join-password") as HTMLInputElement).value;
+    submit.disabled = !email || !password;
+  }
+  function setJoinMode(mode: JoinMode, animate = false) {
     const sheet = joinSheet();
     if (!sheet) return;
     const s = ui[joinLang()];
+    const panels = joinEl("join-panels");
+    const title = joinEl("join-title");
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const glide = animate && !reduced && !!panels && sheet.dataset.mode !== mode;
+    const from = glide && panels ? panels.offsetHeight : 0;
     sheet.dataset.mode = mode;
     joinText("join-title", mode === "join" ? s["onboarding.auth.title"] : mode === "login" ? s["auth.title.login"] : s["auth.title.reset"]);
     for (const tab of sheet.querySelectorAll<HTMLElement>(".join-tab")) {
       tab.setAttribute("aria-selected", String(tab.dataset.mode === mode));
     }
+    placeJoinThumb();
+    syncJoinSubmit();
+    if (!glide || !panels || !title) return;
+    // The title fades up with the panel.
+    title.classList.remove("is-changing");
+    void title.offsetWidth;
+    title.classList.add("is-changing");
+    // From the old panel's height to the new one's, then back to auto.
+    const to = panels.offsetHeight;
+    panels.classList.add("is-resizing");
+    panels.style.height = `${from}px`;
+    void panels.offsetHeight;
+    panels.style.height = `${to}px`;
+    const done = () => {
+      panels.style.height = "";
+      panels.classList.remove("is-resizing");
+    };
+    panels.addEventListener("transitionend", done, { once: true });
+    window.setTimeout(done, 500);
   }
   function setJoinSheet(open: boolean, mode: JoinMode = "login") {
     const sheet = joinSheet();
@@ -1652,10 +1783,17 @@ import "../styles/type.css";
     if (open) {
       joinReturnFocus = document.activeElement as HTMLElement | null;
       fillJoinSheet();
+      const tabs = joinEl("join-tabs");
+      tabs?.removeAttribute("data-thumb-ready");
       setJoinMode(mode);
       setMenu(false);
       sheet.removeAttribute("inert");
       sheet.setAttribute("data-open", "");
+      // Measured once the sheet is drawn; it slides from then on.
+      requestAnimationFrame(() => {
+        placeJoinThumb();
+        requestAnimationFrame(() => tabs?.setAttribute("data-thumb-ready", ""));
+      });
       // Start the App Check attestation while the member types, so the
       // sign-in click does not spend Auth's clock on a slow challenge.
       warmUpAppCheck();
@@ -1696,15 +1834,15 @@ import "../styles/type.css";
     const target = event.target as Element | null;
     if (target?.closest?.("#join-close")) setJoinSheet(false);
     const tab = target?.closest?.<HTMLElement>(".join-tab");
-    if (tab) setJoinMode(tab.dataset.mode as JoinMode);
+    if (tab) setJoinMode(tab.dataset.mode as JoinMode, true);
     if (target?.closest?.("#join-forgot")) {
       const email = joinEl("join-email") as HTMLInputElement;
       (joinEl("join-reset-email") as HTMLInputElement).value = email.value;
       joinMessage("join-reset-error");
       (joinEl("join-reset-success") as HTMLElement).style.display = "none";
-      setJoinMode("reset");
+      setJoinMode("reset", true);
     }
-    if (target?.closest?.("#join-reset-back")) setJoinMode("login");
+    if (target?.closest?.("#join-reset-back")) setJoinMode("login", true);
   });
 
   document.addEventListener("submit", async (event) => {
@@ -1721,6 +1859,7 @@ import "../styles/type.css";
         return;
       }
       submit.disabled = true;
+      submit.dataset.busy = "";
       submit.textContent = s["auth.submit.loginLoading"];
       joinMessage("join-status", s["auth.status.login"]);
       try {
@@ -1734,8 +1873,9 @@ import "../styles/type.css";
         // fresh page and a settled session.
         window.location.href = `${lang === "de" ? "/de" : ""}/profile`;
       } catch (err: unknown) {
-        submit.disabled = false;
+        delete submit.dataset.busy;
         submit.textContent = s["auth.submit.login"];
+        syncJoinSubmit();
         joinMessage("join-status");
         const { code, detail } = errorParts(err);
         joinMessage("join-error", friendlyError(code, s, detail));
@@ -1765,6 +1905,11 @@ import "../styles/type.css";
       }
     }
   });
+
+  document.addEventListener("input", (event) => {
+    if ((event.target as Element | null)?.closest?.("#join-panel-login")) syncJoinSubmit();
+  });
+  window.addEventListener("resize", placeJoinThumb);
 
   // A page change closes the sheet (a tapped link, the language switch), and
   // a sign-in from anywhere takes the chip away, so the sheet goes with it.
