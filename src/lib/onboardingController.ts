@@ -29,6 +29,8 @@ import {
   splitSocial,
   joinSocial,
   socialUnlinked,
+  stripScheme,
+  stripSchemeInPlace,
   profileBio,
   profileRole,
   MAX_SOCIAL_LINKS,
@@ -441,7 +443,7 @@ document.addEventListener("astro:page-load", () => {
             `${socialLabel?.textContent ?? ""} ${index + 1}`.trim()
           );
           input.addEventListener("input", () => {
-            socialValues[index] = input.value;
+            socialValues[index] = stripSchemeInPlace(input);
             refreshSocialStatus(false);
           });
           input.addEventListener("change", () => refreshSocialStatus());
@@ -460,7 +462,7 @@ document.addEventListener("astro:page-load", () => {
     // missing field rather than an empty one, and this is a sign-up form
     // where a field that looks absent is a question nobody answers. The
     // blank row costs nothing — joinSocial() drops it.
-    socialValues = values.length > 0 ? values : [""];
+    socialValues = values.length > 0 ? values.map(stripScheme) : [""];
     renderSocial();
   }
 
@@ -1271,6 +1273,14 @@ document.addEventListener("astro:page-load", () => {
       // after it rather than ask it again.
       if (restoredStep === STEP_VERIFY && emailVerified) restoredStep = STEP_VISIBILITY;
       clearTransientState();
+    }
+
+    // The website field prints "https://" itself, so a stored or pasted
+    // scheme would read twice (2026-11-02).
+    const portfolioField = document.getElementById("ob-portfolio") as HTMLInputElement | null;
+    if (portfolioField) {
+      portfolioField.value = stripScheme(portfolioField.value);
+      portfolioField.addEventListener("input", () => stripSchemeInPlace(portfolioField), { signal: lifetime });
     }
 
     // Save state before navigating away (e.g. clicking the lang toggle).
