@@ -3656,8 +3656,18 @@ document.addEventListener("astro:page-load", () => {
     // throws focus to <body> and never brought it back; the finally does.
     const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const refocus = () => {
-      const target = focused?.isConnected && !focused.closest("[inert]") ? focused : saveButton;
-      target.focus({ preventScroll: true });
+      if (focused?.isConnected && !focused.closest("[inert]")) {
+        focused.focus({ preventScroll: true });
+        return;
+      }
+      // The Save re-rendered the gallery, which REPLACES a work's or a
+      // project's fields and puts the caret back into the successor itself
+      // (renderGallery, keyed by id). Leave it there: taking it to Save
+      // pulled the member out of a caption after every autosave (measured
+      // on dev, 2026-11-02).
+      const now = document.activeElement;
+      if (now instanceof HTMLElement && now !== document.body && form.contains(now) && !now.closest("[inert]")) return;
+      saveButton.focus({ preventScroll: true });
     };
 
     // A gallery write in flight is not an upload: it is this tab's own
