@@ -60,7 +60,12 @@ const wall = await Promise.all(
 <div class="info-page">
   <section class="info-hero">
     <h1 class="info-hero__title">{t("info.hero.title")}</h1>
-    <p class="info-hero__sub">{t("info.hero.sub")}</p>
+    {/* The belief at the big size, the reasons under it at reading size
+        (Josh, 2026-11-02: "only the first one" big, "the one after normal"). */}
+    <div class="info-hero__text">
+      <p class="info-hero__sub">{t("info.hero.lead")}</p>
+      <p class="info-hero__body">{t("info.hero.body")}</p>
+    </div>
   </section>
 
   {
@@ -122,18 +127,19 @@ const wall = await Promise.all(
   </section>
 
   <section class="info-cta info-cta--end">
-    {/* The early-stages block went (2026-11-02); its way to reach out stays,
-        above the buttons (Josh: "cta before the buttons"). */}
-    <p class="info-contact">
-      {t("info.contact.ask")}
-      <!--email_off--><a href="mailto:info@vscn.ch">info@vscn.ch</a><!--/email_off-->
-    </p>
     <div class="info-cta__row">
       <a href={portfoliosHref} class="btn-solid info-cta__btn">{t("info.cta.portfolios")}<span aria-hidden="true">→</span></a>
       <a href={lang === "de" ? "/de/signup" : "/signup"} class="btn-outline" id="info-signup-cta" style="display:none;"
         >{t("signup.cta.info")}</a
       >
     </div>
+    {/* The early-stages block went (2026-11-02); its way to reach out stays as
+        the page's last sentence, after the buttons (Josh, same evening: "cta at
+        the end but in a sentence"). */}
+    <p class="info-contact">
+      {t("info.contact.ask")}{" "}
+      <!--email_off--><a href="mailto:info@vscn.ch">info@vscn.ch</a><!--/email_off-->
+    </p>
   </section>
 </div>
 
@@ -183,31 +189,44 @@ const wall = await Promise.all(
     color: var(--color-dark);
     font-family: "Archivo", sans-serif;
   }
-  .info-hero__sub {
+  .info-hero__text {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
     max-width: 58rem;
+  }
+  .info-hero__sub {
     margin: 0;
     color: var(--color-dark);
   }
+  /* The reasons read as the page's body copy (.info-section p below). */
+  .info-hero__body {
+    max-width: 46rem;
+    margin: 0;
+    font-size: clamp(var(--fs-100), 1.2vw, 1.08rem);
+    color: #333;
+    line-height: 1.85;
+  }
   .info-hero__title,
-  .info-hero__sub,
+  .info-hero__text,
   .info-wall {
     animation: info-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
     animation-play-state: paused;
   }
-  .info-hero__sub {
+  .info-hero__text {
     animation-delay: 0.25s;
   }
   .info-wall {
     animation-delay: 0.5s;
   }
   :global(.page-loaded) .info-hero__title,
-  :global(.page-loaded) .info-hero__sub,
+  :global(.page-loaded) .info-hero__text,
   :global(.page-loaded) .info-wall {
     animation-play-state: running;
   }
   @media (prefers-reduced-motion: reduce) {
     .info-hero__title,
-    .info-hero__sub,
+    .info-hero__text,
     .info-wall {
       animation: none;
     }
@@ -500,7 +519,7 @@ const wall = await Promise.all(
   // or focusing it holds the timer; the chevrons and a click on a side
   // picture step at once and start the timer over. No timer for a visitor
   // who asks for reduced motion.
-  const STEP_MS = 4500;
+  const STEP_MS = 3200; // 4500 until 2026-11-02 evening (Josh: "the switch a bit faster")
   const SCROLL_STEP_PX = 240;
   // Where each distance from the focus stands: offset as a share of the
   // WINDOW's width (the fan spreads past the 900px column, as on the board),
@@ -516,7 +535,7 @@ const wall = await Promise.all(
 
   // PHONE, THE STRIP: a step every few seconds, held while a finger is on
   // it and for a moment after; the settle wait after the last scroll event.
-  const STRIP_STEP_MS = 3500;
+  const STRIP_STEP_MS = 2500; // 3500 until the same evening ("a bit faster")
   const RESUME_MS = 2500;
   const SETTLE_MS = 140;
 
