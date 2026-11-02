@@ -441,6 +441,22 @@ import "../styles/type.css";
     outline-offset: 2px;
   }
 
+  /* THE LOGIN CHIP IS LIGHT (2026-11-02, Josh: "login button should be light
+     and black font like the other button when inactive"): paper, black type,
+     the hairline round it, as an inactive tab of the account pill and the
+     PORTFOLIOS key are; the hairline darkens under the pointer. An id, so it
+     outranks the filled pill (.nav-link--pill) on a desktop and the phone's
+     sheet rules alike. */
+  .nav-links #nav-join,
+  .nav-links #nav-join:visited {
+    background: var(--nav-paper);
+    color: var(--nav-ink);
+    box-shadow: inset 0 0 0 1px var(--color-border);
+  }
+  .nav-links #nav-join:hover {
+    box-shadow: inset 0 0 0 1px var(--nav-ink);
+  }
+
   /* LOGIN and PROFILE share the third bar — only one of them is shown. */
   .nav-right-group {
     display: flex;
@@ -1280,21 +1296,17 @@ import "../styles/type.css";
     #nav-sheet-lang {
       display: none;
     }
-    /* ONE CHIP since 2026-11-02 (then LOGIN), black like SIGN UP was. 30px
-       TALL (2026-11-02, Josh: "too big on mobile should be the same as
-       portfolio buttons"): a button in the directory's views pill is 30px,
-       as the desktop's pills are. */
+    /* ONE CHIP since 2026-11-02 (then LOGIN); its colours are the light
+       outlined pill set once above the media blocks. 30px TALL (2026-11-02,
+       Josh: "too big on mobile should be the same as portfolio buttons"): a
+       button in the directory's views pill is 30px, as the desktop's pills
+       are. */
     .nav-links #nav-join {
       box-sizing: border-box;
       height: 30px;
       padding: 9px 14px 8px;
       white-space: nowrap;
       border-radius: var(--radius-pill) !important;
-    }
-    .nav-links #nav-join,
-    .nav-links #nav-join:visited {
-      background: var(--nav-ink);
-      color: var(--nav-paper);
     }
     .nav-links .nav-acct {
       flex-direction: row;
