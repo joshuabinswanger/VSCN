@@ -13,27 +13,30 @@ const { lang = "en" } = Astro.props;
 const t = useTranslations(lang);
 const portfoliosHref = lang === "de" ? "/de/community" : "/community";
 
-// THE LANDING RESTYLE (2026-11-02, Josh; drawn in design-kit/vscn-landing.af,
-// boards 01 Desktop Info and 02 Phone Info). "This is a place for great
-// knowledge visualisation. They should see images": the page opens on two
-// big lines about knowledge in any field (not research only), then the
-// network's pictures, then two short sections and one way to reach out.
+// THE INFO PAGE TELLS A STORY AS IT SCROLLS (2026-11-02, Josh: "like a
+// storytelling with smooth scroll and animations"). The landing restyle of the
+// same day (design-kit/vscn-landing.af) laid the parts out; this turns them
+// into chapters, each a tall section with a frame that stays put (sticky)
+// while the scroll plays it:
 //
-// INFO LEADS INTO THE PORTFOLIOS (2026-10-31): the views switcher in the
-// header, the carousel whose pictures all open the Portfolios, and a button
-// once the reading is done.
+//   1. HERO. "Knowledge, made visible." is there on arrival. Scrolling fades
+//      in the belief (the big sentence), then the reasons at reading size.
+//   2. WORKS. The network's pictures come into view, and scrolling steps
+//      through the first three of them (desktop: the fan; phone: the strip).
+//   3. COMMUNITY. What we're building, point by point, then the scientists.
+//   4. PORTFOLIOS. One line and the button, the moment that sends people on.
+//   5. CONTACT. The closing sentence, as the page runs out.
 //
-// THE CAROUSEL, ONE MEMBER IN FOCUS. The guest list is the wall's (hidden
-// works stay off, as on /community): each member's best picture, the best
-// members first, twelve at most.
-// - DESKTOP: a fan. One picture in focus at 332px, two each side receding
-//   (0.8 and 0.62 of the size, 60% and 35%), upright (Josh: "no tilt"). It
-//   steps on a timer, on the chevrons and as the page scrolls; a click on a
-//   side picture brings it to the middle, the middle one opens the Portfolios.
-// - PHONE: a strip that steps one picture to the left every few seconds
-//   (Josh, same evening: "a stepped moving of the images"; it drifted
-//   continuously in the first version) and that a finger can swipe. The
-//   pictures beside the one in focus are a little faded and smaller.
+// The scroll does not move anything by itself: each chapter's progress (0 at
+// its start, 1 when its frame is about to leave) sets --t on the parts marked
+// data-in="from to", and CSS turns --t into opacity and a short rise, with a
+// transition on top so a quick flick still reads as a smooth fade. A visitor
+// who asks for reduced motion, or a browser without the script, gets the
+// whole page at once, in normal flow.
+//
+// The carousel's guest list is the wall's (hidden works stay off, as on
+// /community): each member's best picture, the best members first, twelve at
+// most. Chevrons and a click on a side picture still page it by hand.
 const WALL_MAX = 12;
 const picks = (await fetchMemberViews())
   .flatMap((m) => {
@@ -55,88 +58,99 @@ const wall = await Promise.all(
     }),
   }))
 );
+// How many pictures the scroll steps through in the works chapter.
+const STORY_STEPS = Math.min(3, wall.length);
 ---
 
-<div class="info-page">
-  <section class="info-hero">
-    <h1 class="info-hero__title">{t("info.hero.title")}</h1>
-    {/* The belief at the big size, the reasons under it at reading size
-        (Josh, 2026-11-02: "only the first one" big, "the one after normal"). */}
-    <div class="info-hero__text">
-      <p class="info-hero__sub">{t("info.hero.lead")}</p>
-      <p class="info-hero__body">{t("info.hero.body")}</p>
+<div class="info-page story" data-story-root>
+  <!-- 1. HERO -->
+  <section class="story-ch story-ch--hero" data-story-ch style="--len: 2.4">
+    <div class="story-frame">
+      <div class="info-hero">
+        <h1 class="info-hero__title">{t("info.hero.title")}</h1>
+        {/* The belief at the big size, the reasons under it at reading size. */}
+        <div class="info-hero__text">
+          <p class="info-hero__sub" data-in="0.08 0.34">{t("info.hero.lead")}</p>
+          <p class="info-hero__body" data-in="0.38 0.7">{t("info.hero.body")}</p>
+        </div>
+      </div>
+      <span class="story-cue" data-out="0 0.08" aria-hidden="true">{t("info.story.cue")}<span class="story-cue__line"></span></span>
     </div>
   </section>
 
+  <!-- 2. WORKS -->
   {
     wall.length > 0 && (
-      <section
-        class="info-section info-wall"
-        aria-roledescription="carousel"
-        aria-label={t("info.wall.heading")}
-        data-info-wall
-      >
-        <div class="info-wall__stage">
-          {wall.length > 1 && (
-            <button type="button" class="info-wall__arrow info-wall__arrow--prev" data-wall-prev aria-label={t("info.wall.prev")}>
-              <span aria-hidden="true" />
-            </button>
-          )}
-          <ul class="info-wall__slides" data-wall-track>
-            {wall.map((tile, i) => (
-              <li class="info-wall__slide" data-wall-slide aria-hidden={i === 0 ? undefined : "true"} data-current={i === 0 ? "" : undefined}>
-                <a href={portfoliosHref} class="info-wall__tile" tabindex={i === 0 ? undefined : -1} draggable="false">
-                  <img
-                    src={tile.rendered.src}
-                    srcset={tile.rendered.srcSet.attribute}
-                    sizes="(max-width: 767px) 74vw, 332px"
-                    alt={tile.alt}
-                    loading={i < 3 || i > wall.length - 3 ? "eager" : "lazy"}
-                    decoding="async"
-                    draggable="false"
-                  />
-                  <span class="info-wall__name">{tile.name}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-          {wall.length > 1 && (
-            <button type="button" class="info-wall__arrow info-wall__arrow--next" data-wall-next aria-label={t("info.wall.next")}>
-              <span aria-hidden="true" />
-            </button>
-          )}
+      <section class="story-ch story-ch--works" data-story-ch data-story-works={STORY_STEPS} style={`--len: ${1.4 + STORY_STEPS * 0.7}`}>
+        <div class="story-frame">
+          <div class="info-wall" data-in="0 0.18" aria-roledescription="carousel" aria-label={t("info.wall.heading")} data-info-wall>
+            <div class="info-wall__stage">
+              {wall.length > 1 && (
+                <button type="button" class="info-wall__arrow info-wall__arrow--prev" data-wall-prev aria-label={t("info.wall.prev")}>
+                  <span aria-hidden="true" />
+                </button>
+              )}
+              <ul class="info-wall__slides" data-wall-track>
+                {wall.map((tile, i) => (
+                  <li class="info-wall__slide" data-wall-slide aria-hidden={i === 0 ? undefined : "true"} data-current={i === 0 ? "" : undefined}>
+                    <a href={portfoliosHref} class="info-wall__tile" tabindex={i === 0 ? undefined : -1} draggable="false">
+                      <img
+                        src={tile.rendered.src}
+                        srcset={tile.rendered.srcSet.attribute}
+                        sizes="(max-width: 767px) 74vw, 332px"
+                        alt={tile.alt}
+                        loading={i < 3 || i > wall.length - 3 ? "eager" : "lazy"}
+                        decoding="async"
+                        draggable="false"
+                      />
+                      <span class="info-wall__name">{tile.name}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              {wall.length > 1 && (
+                <button type="button" class="info-wall__arrow info-wall__arrow--next" data-wall-next aria-label={t("info.wall.next")}>
+                  <span aria-hidden="true" />
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-        <a href={portfoliosHref} class="profile-link info-wall__all">{t("info.wall.all")} →</a>
       </section>
     )
   }
 
-  <section class="info-section">
-    <h2 class="info-heading">{t("info.h2.building")}</h2>
-    <ul class="info-list">
-      <li>{t("info.li.1")}</li>
-      <li>{t("info.li.2")}</li>
-      <li>{t("info.li.3")}</li>
-      <li>{t("info.li.4")}</li>
-    </ul>
-  </section>
-
-  <section class="info-section">
-    <h2 class="info-heading">{t("info.h2.scientists")}</h2>
-    <p>{t("info.p.scientists")}</p>
-  </section>
-
-  <section class="info-cta info-cta--end">
-    <div class="info-cta__row">
-      <a href={portfoliosHref} class="btn-solid info-cta__btn">{t("info.cta.portfolios")}<span aria-hidden="true">→</span></a>
-      <a href={lang === "de" ? "/de/signup" : "/signup"} class="btn-outline" id="info-signup-cta" style="display:none;"
-        >{t("signup.cta.info")}</a
-      >
+  <!-- 3. COMMUNITY -->
+  <section class="story-ch story-ch--community" data-story-ch style="--len: 2.6">
+    <div class="story-frame story-frame--text">
+      <h2 class="info-heading" data-in="0.02 0.14">{t("info.h2.building")}</h2>
+      <ul class="info-list">
+        <li data-in="0.12 0.24">{t("info.li.1")}</li>
+        <li data-in="0.22 0.34">{t("info.li.2")}</li>
+        <li data-in="0.32 0.44">{t("info.li.3")}</li>
+        <li data-in="0.42 0.54">{t("info.li.4")}</li>
+      </ul>
+      <h2 class="info-heading info-heading--next" data-in="0.58 0.7">{t("info.h2.scientists")}</h2>
+      <p class="info-text" data-in="0.66 0.8">{t("info.p.scientists")}</p>
     </div>
-    {/* The early-stages block went (2026-11-02); its way to reach out stays as
-        the page's last sentence, after the buttons (Josh, same evening: "cta at
-        the end but in a sentence"). */}
-    <p class="info-contact">
+  </section>
+
+  <!-- 4. PORTFOLIOS -->
+  <section class="story-ch story-ch--portfolios" data-story-ch style="--len: 1.8">
+    <div class="story-frame story-frame--center">
+      <p class="info-people" data-in="0.05 0.3">{t("info.story.people")}</p>
+      <div class="info-cta__row" data-in="0.25 0.5">
+        <a href={portfoliosHref} class="btn-solid info-cta__btn">{t("info.cta.portfolios")}<span aria-hidden="true">→</span></a>
+        <a href={lang === "de" ? "/de/signup" : "/signup"} class="btn-outline" id="info-signup-cta" style="display:none;"
+          >{t("signup.cta.info")}</a
+        >
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. CONTACT: the page's last line, in the flow (no frame), revealed as it arrives. -->
+  <section class="story-ch story-ch--contact" data-story-ch data-story-flow>
+    <p class="info-contact" data-in="0.1 0.6">
       {t("info.contact.ask")}{" "}
       <!--email_off--><a href="mailto:info@vscn.ch">info@vscn.ch</a><!--/email_off-->
     </p>
@@ -158,23 +172,70 @@ const wall = await Promise.all(
   .info-page {
     width: 100%;
     max-width: 1200px;
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-    padding-top: 2.5rem;
-    padding-bottom: 8rem;
     margin: 0 auto;
+    /* The viewport a frame fills: the scroller's height under the header
+       row. A desktop scrolls .page-wrap, as tall as the shell; a phone
+       scrolls the document, so the small viewport height keeps a frame from
+       jumping as the toolbars come and go. */
+    --story-vh: calc(var(--shell-h, 100dvh) - var(--header-h));
 
-    @media (--bp-desktop) {
-      padding-top: 5rem;
+    @media (--bp-mobile) {
+      --story-vh: calc(100svh - var(--header-h));
     }
   }
 
-  /* THE OPENING LINES: the / hero's fade-and-rise, headline first, the
-     sentence a beat later, then the pictures. Held until the page loader is
-     done (body.page-loaded), at once on a client-side visit (Layout.astro). */
-  /* The sentence stands apart from the headline (Josh: "bigger and
-     separated"): a clear gap, not a subtitle tucked under it. */
+  /* ── CHAPTERS ──────────────────────────────────────────────────────────
+     Without the script (or with reduced motion) a chapter is just its
+     content, one after the other. With it, a chapter is --len screens tall
+     and its frame sticks under the header for the length of it. */
+  .story-ch {
+    position: relative;
+  }
+  .story-frame {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1.5rem;
+    padding: 3rem 0;
+  }
+  .story[data-story-on] .story-ch:not([data-story-flow]) {
+    height: calc(var(--len, 2) * var(--story-vh));
+  }
+  /* Sticks at the top of the scroller's padding box: on a desktop
+     .page-wrap is already padded by the header row, so 0; on a phone the
+     document scrolls under the sticky header, so the header's height. */
+  .story[data-story-on] .story-frame {
+    position: sticky;
+    top: 0;
+    height: var(--story-vh);
+    box-sizing: border-box;
+    padding: 0;
+  }
+  @media (--bp-mobile) {
+    .story[data-story-on] .story-frame {
+      top: var(--header-h);
+    }
+  }
+  .story-frame--center {
+    align-items: center;
+    text-align: center;
+  }
+
+  /* A part waiting for its moment in the scroll: --t runs 0 → 1 (set by the
+     script from the chapter's progress); the transition smooths a flick. */
+  .story[data-story-on] [data-in] {
+    opacity: var(--t, 0);
+    transform: translateY(calc((1 - var(--t, 0)) * 28px));
+    transition:
+      opacity 0.7s ease-out,
+      transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .story[data-story-on] [data-out] {
+    opacity: calc(1 - var(--t, 0));
+    transition: opacity 0.5s ease-out;
+  }
+
+  /* ── 1. HERO ─────────────────────────────────────────────────────────── */
   .info-hero {
     display: flex;
     flex-direction: column;
@@ -188,6 +249,11 @@ const wall = await Promise.all(
     margin: 0;
     color: var(--color-dark);
     font-family: "Archivo", sans-serif;
+    animation: info-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-play-state: paused;
+  }
+  :global(.page-loaded) .info-hero__title {
+    animation-play-state: running;
   }
   .info-hero__text {
     display: flex;
@@ -199,101 +265,97 @@ const wall = await Promise.all(
     margin: 0;
     color: var(--color-dark);
   }
-  /* The reasons read as the page's body copy (.info-section p below). */
-  .info-hero__body {
+  /* The reasons read as the page's body copy (.info-text below). */
+  .info-hero__body,
+  .info-text {
     max-width: 46rem;
     margin: 0;
     font-size: clamp(var(--fs-100), 1.2vw, 1.08rem);
     color: #333;
     line-height: 1.85;
   }
-  .info-hero__title,
-  .info-hero__text,
-  .info-wall {
-    animation: info-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
-    animation-play-state: paused;
+  /* The cue at the foot of the first screen: a word and a line that grows
+     down, gone at the first stretch of scrolling. Only with the story on. */
+  .story-cue {
+    display: none;
   }
-  .info-hero__text {
-    animation-delay: 0.25s;
+  .story[data-story-on] .story-cue {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    translate: -50% 0;
+    color: var(--color-muted);
+    font-size: var(--fs-label);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
-  .info-wall {
-    animation-delay: 0.5s;
+  .story-cue__line {
+    width: 1px;
+    height: 2.5rem;
+    background: currentColor;
+    transform-origin: top;
+    animation: story-cue 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
   }
-  :global(.page-loaded) .info-hero__title,
-  :global(.page-loaded) .info-hero__text,
-  :global(.page-loaded) .info-wall {
-    animation-play-state: running;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .info-hero__title,
-    .info-hero__text,
-    .info-wall {
-      animation: none;
+  @keyframes story-cue {
+    0% {
+      transform: scaleY(0);
+    }
+    50% {
+      transform: scaleY(1);
+      transform-origin: top;
+    }
+    51% {
+      transform-origin: bottom;
+    }
+    100% {
+      transform: scaleY(0);
+      transform-origin: bottom;
     }
   }
 
-  .info-section {
-    display: flex;
-    flex-direction: column;
-    padding-bottom: 1rem;
-  }
-
+  /* ── 3. COMMUNITY ────────────────────────────────────────────────────── */
   .info-heading {
+    margin: 0;
     font-family: "Archivo", sans-serif;
     color: var(--color-dark);
   }
-
-  .info-section p {
-    font-size: clamp(var(--fs-100), 1.2vw, 1.08rem);
-    color: #333;
-    line-height: 1.85;
+  .info-heading--next {
+    margin-top: 2rem;
   }
-
   .info-list {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 0.9rem;
+    margin: 0;
     padding-left: 1.25rem;
   }
-
   .info-list li {
     font-size: clamp(var(--fs-100), 1.2vw, 1.08rem);
     color: #333;
     line-height: 1.6;
   }
+  /* Point by point: each line slides in from the left as well as rising. */
+  .story[data-story-on] .info-list li {
+    transform: translateX(calc((1 - var(--t, 0)) * -24px));
+  }
 
-  .info-contact {
+  /* ── 4. PORTFOLIOS ───────────────────────────────────────────────────── */
+  .info-people {
+    max-width: 40rem;
     margin: 0;
-    color: var(--color-muted);
-  }
-
-  .info-contact a {
     color: var(--color-dark);
-    border-bottom: 0;
-    font-weight: 600;
-    text-decoration: none;
-    transition: opacity 0.15s;
-  }
-
-  .info-contact a:hover,
-  .info-contact a:focus-visible {
-    opacity: 0.5;
-  }
-
-  .info-cta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1.5rem;
   }
   .info-cta__row {
     display: flex;
     flex-wrap: wrap;
+    justify-content: center;
     align-items: center;
     gap: 12px;
-  }
-  .info-cta--end {
-    padding-top: 2.5rem;
   }
   .info-cta__btn {
     display: inline-flex;
@@ -306,21 +368,44 @@ const wall = await Promise.all(
   .info-cta__btn:hover span {
     translate: 4px 0;
   }
+  .story[data-story-on] .info-cta__row {
+    transform: scale(calc(0.92 + var(--t, 0) * 0.08));
+  }
 
-  /* ── THE CAROUSEL ─────────────────────────────────────────────────────
+  /* ── 5. CONTACT ──────────────────────────────────────────────────────── */
+  .story-ch--contact {
+    display: flex;
+    justify-content: center;
+    padding: 4rem 0 8rem;
+    text-align: center;
+  }
+  .info-contact {
+    margin: 0;
+    color: var(--color-muted);
+  }
+  .info-contact a {
+    color: var(--color-dark);
+    border-bottom: 0;
+    font-weight: 600;
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+  .info-contact a:hover,
+  .info-contact a:focus-visible {
+    opacity: 0.5;
+  }
+
+  /* ── 2. WORKS: THE CAROUSEL ───────────────────────────────────────────
      DESKTOP, THE FAN. Every slide sits in the one grid cell, the picture's
      width, and the script places each by its distance from the one in
-     focus (--d, -2..2; further ones wait unseen at the edge). The side
-     pictures stand out past the column, never past the window (FAN below). */
-  .info-wall {
-    padding-bottom: 0;
-  }
+     focus. The side pictures stand out past the column, never past the
+     window (FAN in the script). */
   .info-wall__stage {
     --wall-w: min(332px, 30vw);
     --wall-gap: clamp(6px, 1.7vw, 25px);
     position: relative;
     width: var(--wall-w);
-    margin: 1rem auto 0;
+    margin: 0 auto;
   }
   .info-wall__slides {
     display: grid;
@@ -329,7 +414,6 @@ const wall = await Promise.all(
     list-style: none;
   }
   .info-wall__slide {
-    --d: 0;
     --x: 0px;
     --s: 1;
     --o: 1;
@@ -348,11 +432,6 @@ const wall = await Promise.all(
   }
   .info-wall__slide[data-far] {
     pointer-events: none;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .info-wall[data-fan-ready] .info-wall__slide {
-      transition: none;
-    }
   }
   .info-wall__tile {
     display: flex;
@@ -425,23 +504,27 @@ const wall = await Promise.all(
   .info-wall__arrow--next span {
     transform: translate(-0.05rem, 0) rotate(45deg);
   }
-  .info-wall__all {
-    align-self: center;
-    margin-top: 1.5rem;
-    color: var(--color-dark);
-    text-decoration: none;
+
+  @media (prefers-reduced-motion: reduce) {
+    .info-hero__title,
+    .story-cue__line {
+      animation: none;
+    }
+    .info-wall[data-fan-ready] .info-wall__slide {
+      transition: none;
+    }
   }
 
   /* PHONE, THE STEPPED STRIP. Edge to edge across the screen: a row the
      finger scrolls natively, snapping each picture to the middle, pictures
      at three quarters of the width, 12px apart. The script clones the row
-     twice so the steps and the swipe never reach an end. The ones beside
-     the picture in focus are faded and a little smaller, and grow into
-     place as they arrive (the site's picture entrance curve). */
+     twice so a swipe never reaches an end. The ones beside the picture in
+     focus are faded and a little smaller, and grow into place as they
+     arrive (the site's picture entrance curve). */
   @media (--bp-mobile) {
     .info-wall__stage {
       width: 100vw;
-      margin: 1rem 0 0 calc(50% - 50vw);
+      margin: 0 0 0 calc(50% - 50vw);
     }
     .info-wall__arrow {
       display: none;
@@ -509,23 +592,17 @@ const wall = await Promise.all(
     });
   });
 
-  // ── THE CAROUSEL ──────────────────────────────────────────────────────
-  // Two behaviours over one list, picked by the site's breakpoint and swapped
-  // if a window crosses it (custom-media.css, --bp-mobile).
+  // The site's phone breakpoint, spelled out (custom-media.css, --bp-mobile).
   const PHONE = "(width <= 767px), (pointer: coarse) and (height <= 500px)";
 
-  // DESKTOP, THE FAN: a step every few seconds while on screen, a step for
-  // every stretch of scrolling (down = next, up = previous). Pointing at it
-  // or focusing it holds the timer; the chevrons and a click on a side
-  // picture step at once and start the timer over. No timer for a visitor
-  // who asks for reduced motion.
-  const STEP_MS = 3200; // 4500 until 2026-11-02 evening (Josh: "the switch a bit faster")
-  const SCROLL_STEP_PX = 240;
+  type Carousel = { go: (i: number) => void; undo: () => void };
+
+  // ── DESKTOP, THE FAN ──────────────────────────────────────────────────
   // Where each distance from the focus stands: offset as a share of the
-  // WINDOW's width (the fan spreads past the 900px column, as on the board),
-  // capped in px, then size and opacity. 3 = waiting unseen behind the
-  // outer pair, so nothing ever stands past the window's edge (0.36 of the
-  // width plus half a 0.62 picture stays inside from 736px up).
+  // WINDOW's width (the fan spreads past the 900px column), capped in px,
+  // then size and opacity. 3 = waiting unseen behind the outer pair, so
+  // nothing ever stands past the window's edge (0.36 of the width plus half
+  // a 0.62 picture stays inside from 736px up).
   const FAN = [
     { x: 0, cap: 0, s: 1, o: 1 },
     { x: 0.2, cap: 290, s: 0.8, o: 0.6 },
@@ -533,20 +610,9 @@ const wall = await Promise.all(
     { x: 0.36, cap: 520, s: 0.5, o: 0 },
   ];
 
-  // PHONE, THE STRIP: a step every few seconds, held while a finger is on
-  // it and for a moment after; the settle wait after the last scroll event.
-  const STRIP_STEP_MS = 2500; // 3500 until the same evening ("a bit faster")
-  const RESUME_MS = 2500;
-  const SETTLE_MS = 140;
-
-  function fan(wall: HTMLElement, slides: HTMLElement[], signal: AbortSignal) {
-    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function fan(wall: HTMLElement, slides: HTMLElement[], signal: AbortSignal): Carousel {
     const n = slides.length;
     let at = 0;
-    let timer = 0;
-    let held = false;
-    let seen = false;
-
     const place = () => {
       const width = document.documentElement.clientWidth;
       slides.forEach((slide, k) => {
@@ -572,22 +638,12 @@ const wall = await Promise.all(
         }
       });
     };
-    const show = (i: number) => {
+    const go = (i: number) => {
       at = (i + n) % n;
       place();
     };
-    const stop = () => {
-      clearInterval(timer);
-      timer = 0;
-    };
-    const start = () => {
-      stop();
-      if (still || held || !seen || document.hidden) return;
-      timer = window.setInterval(() => show(at + 1), STEP_MS);
-    };
-
-    wall.querySelector("[data-wall-prev]")?.addEventListener("click", () => (show(at - 1), start()), { signal });
-    wall.querySelector("[data-wall-next]")?.addEventListener("click", () => (show(at + 1), start()), { signal });
+    wall.querySelector("[data-wall-prev]")?.addEventListener("click", () => go(at - 1), { signal });
+    wall.querySelector("[data-wall-next]")?.addEventListener("click", () => go(at + 1), { signal });
     // A click on a side picture brings it to the middle instead of leaving.
     slides.forEach((slide, k) => {
       slide.addEventListener(
@@ -595,67 +651,34 @@ const wall = await Promise.all(
         (e) => {
           if (slide.hasAttribute("data-current")) return;
           e.preventDefault();
-          show(k);
-          start();
+          go(k);
         },
         { signal }
       );
     });
-    const hold = (on: boolean) => () => ((held = on), start());
-    wall.addEventListener("pointerenter", hold(true), { signal });
-    wall.addEventListener("pointerleave", hold(false), { signal });
-    wall.addEventListener("focusin", hold(true), { signal });
-    wall.addEventListener("focusout", hold(false), { signal });
-    document.addEventListener("visibilitychange", start, { signal });
     window.addEventListener("resize", place, { passive: true, signal });
-
-    const io = new IntersectionObserver(([entry]) => {
-      seen = entry.isIntersecting;
-      start();
-    });
-    io.observe(wall);
-    signal.addEventListener("abort", () => (io.disconnect(), stop()), { once: true });
-
-    // .page-wrap scrolls on a desktop, the document on a phone (CLAUDE.md,
-    // "Layout and scrolling"): listen to both, count only the one that moved.
-    const wrap = document.querySelector<HTMLElement>(".page-wrap");
-    const pos = () => (wrap?.scrollTop ?? 0) + window.scrollY;
-    let last = pos();
-    let travel = 0;
-    const onScroll = () => {
-      const now = pos();
-      if (seen) travel += now - last;
-      last = now;
-      while (Math.abs(travel) >= SCROLL_STEP_PX) {
-        const dir = Math.sign(travel);
-        travel -= dir * SCROLL_STEP_PX;
-        show(at + dir);
-        start();
-      }
-    };
-    wrap?.addEventListener("scroll", onScroll, { passive: true, signal });
-    window.addEventListener("scroll", onScroll, { passive: true, signal });
-
     place();
     requestAnimationFrame(() => requestAnimationFrame(() => wall.setAttribute("data-fan-ready", "")));
-    return () => {
-      wall.removeAttribute("data-fan-ready");
-      stop();
-      io.disconnect();
-      slides.forEach((slide, i) => {
-        for (const p of ["--x", "--s", "--o", "--rank"]) slide.style.removeProperty(p);
-        slide.removeAttribute("data-far");
-        slide.toggleAttribute("data-current", i === 0);
-      });
+    return {
+      go,
+      undo: () => {
+        wall.removeAttribute("data-fan-ready");
+        slides.forEach((slide, i) => {
+          for (const p of ["--x", "--s", "--o", "--rank"]) slide.style.removeProperty(p);
+          slide.removeAttribute("data-far");
+          slide.toggleAttribute("data-current", i === 0);
+        });
+      },
     };
   }
 
-  function strip(wall: HTMLElement, track: HTMLElement, slides: HTMLElement[], signal: AbortSignal) {
-    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // ── PHONE, THE STRIP ──────────────────────────────────────────────────
+  const SETTLE_MS = 140;
+
+  function strip(track: HTMLElement, slides: HTMLElement[], signal: AbortSignal): Carousel {
     // Three copies of the row: the visitor starts in the middle one and is
-    // moved back by a whole row whenever a step or a swipe strays out of it.
-    // A row is a whole number of snap stops, so the jump lands on one and
-    // looks like nothing at all.
+    // moved back by a whole row whenever a swipe strays out of it. A row is
+    // a whole number of snap stops, so the jump lands on one unseen.
     const clones: HTMLElement[] = [];
     for (const where of ["before", "after"] as const) {
       const set = slides.map((s) => {
@@ -677,7 +700,6 @@ const wall = await Promise.all(
     const all = Array.from(track.children) as HTMLElement[];
     const n = slides.length;
     const row = () => slides[0].offsetLeft - clones[0].offsetLeft;
-    // the scrollLeft that puts a slide in the middle of the strip
     const stop = (el: HTMLElement) => el.offsetLeft - clones[0].offsetLeft + el.offsetWidth / 2 - track.clientWidth / 2;
     const nearest = () => {
       const x = track.scrollLeft;
@@ -689,18 +711,11 @@ const wall = await Promise.all(
     };
     const mark = (k: number) => all.forEach((el, i) => el.toggleAttribute("data-current", i === k));
     const jump = (x: number) => track.scrollTo({ left: x, behavior: "instant" as ScrollBehavior });
-
-    // Start on the middle row's first picture.
     jump(stop(slides[0]));
     mark(n);
 
     let touching = false;
-    let resumeAt = 0;
-    let seen = false;
     let settleTimer = 0;
-    // Once a scroll has come to rest (a step's glide or a swipe): mark the
-    // picture in focus, and bring the strip back into the middle row if it
-    // strayed out of it.
     const settle = () => {
       const k = nearest();
       if (!touching && row() > 0 && (k < n || k >= 2 * n)) {
@@ -718,57 +733,120 @@ const wall = await Promise.all(
       },
       { passive: true, signal }
     );
-    const step = () => {
-      if (still || touching || !seen || document.hidden || performance.now() < resumeAt) return;
-      const next = all[nearest() + 1];
-      if (next) track.scrollTo({ left: stop(next), behavior: "smooth" });
-    };
-    const timer = window.setInterval(step, STRIP_STEP_MS);
-    const grab = () => {
-      touching = true;
-    };
+    track.addEventListener("touchstart", () => (touching = true), { passive: true, signal });
     const release = () => {
       touching = false;
-      resumeAt = performance.now() + RESUME_MS;
       clearTimeout(settleTimer);
       settleTimer = window.setTimeout(settle, SETTLE_MS * 3);
     };
-    track.addEventListener("touchstart", grab, { passive: true, signal });
     track.addEventListener("touchend", release, { passive: true, signal });
     track.addEventListener("touchcancel", release, { passive: true, signal });
-    const io = new IntersectionObserver(([entry]) => (seen = entry.isIntersecting));
-    io.observe(wall);
-    signal.addEventListener("abort", () => (io.disconnect(), clearInterval(timer), clearTimeout(settleTimer)), { once: true });
-
-    return () => {
-      clearInterval(timer);
-      clearTimeout(settleTimer);
-      io.disconnect();
-      clones.forEach((c) => c.remove());
-      track.scrollLeft = 0;
-      slides.forEach((s, i) => s.toggleAttribute("data-current", i === 0));
+    signal.addEventListener("abort", () => clearTimeout(settleTimer), { once: true });
+    return {
+      // The story's step i: the middle row's picture i, glided to the middle.
+      go: (i: number) => {
+        if (!touching) track.scrollTo({ left: stop(slides[((i % n) + n) % n]), behavior: "smooth" });
+      },
+      undo: () => {
+        clearTimeout(settleTimer);
+        clones.forEach((c) => c.remove());
+        track.scrollLeft = 0;
+        slides.forEach((s, i) => s.toggleAttribute("data-current", i === 0));
+      },
     };
   }
 
+  // ── THE STORY ─────────────────────────────────────────────────────────
+  // Each chapter's progress from where its frame sits: 0 as the frame
+  // reaches the header, 1 as it is about to leave. The chapter in the flow
+  // (contact) runs from entering the bottom of the screen to half-way up.
+  // Every data-in="a b" part gets --t = (progress - a) / (b - a), clamped;
+  // data-out runs the same way and fades out.
+  function story(root: HTMLElement, carousel: () => Carousel | null, signal: AbortSignal) {
+    const chapters = Array.from(root.querySelectorAll<HTMLElement>("[data-story-ch]")).map((el) => ({
+      el,
+      frame: el.querySelector<HTMLElement>(".story-frame"),
+      flow: el.hasAttribute("data-story-flow"),
+      steps: Number(el.dataset.storyWorks || 0),
+      lastStep: -1,
+      parts: Array.from(el.querySelectorAll<HTMLElement>("[data-in], [data-out]")).map((p) => {
+        const [a, b] = (p.dataset.in ?? p.dataset.out ?? "0 1").split(" ").map(Number);
+        return { p, a, b, last: -1 };
+      }),
+    }));
+    const progress = (c: (typeof chapters)[number]) => {
+      const r = c.el.getBoundingClientRect();
+      const vh = window.innerHeight;
+      if (c.flow || !c.frame) return Math.min(1, Math.max(0, (vh - r.top) / (vh * 0.5)));
+      const top = parseFloat(getComputedStyle(c.frame).top) || 0;
+      const run = r.height - c.frame.offsetHeight;
+      return run > 0 ? Math.min(1, Math.max(0, (top - r.top) / run)) : 1;
+    };
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      for (const c of chapters) {
+        const p = progress(c);
+        for (const part of c.parts) {
+          const t = Math.round(Math.min(1, Math.max(0, (p - part.a) / (part.b - part.a))) * 1000) / 1000;
+          if (t !== part.last) {
+            part.last = t;
+            part.p.style.setProperty("--t", String(t));
+          }
+        }
+        // The works chapter: after its entrance, the scroll steps through
+        // its pictures, one per equal stretch.
+        if (c.steps > 0) {
+          const s = Math.min(c.steps - 1, Math.max(0, Math.floor(((p - 0.2) / 0.75) * c.steps)));
+          if (s !== c.lastStep) {
+            c.lastStep = s;
+            carousel()?.go(s);
+          }
+        }
+      }
+    };
+    const request = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    // .page-wrap scrolls on a desktop, the document on a phone (CLAUDE.md,
+    // "Layout and scrolling"): listen to both.
+    document.querySelector(".page-wrap")?.addEventListener("scroll", request, { passive: true, signal });
+    window.addEventListener("scroll", request, { passive: true, signal });
+    window.addEventListener("resize", request, { passive: true, signal });
+    signal.addEventListener("abort", () => cancelAnimationFrame(frame), { once: true });
+    update();
+  }
+
   document.addEventListener("astro:page-load", () => {
-    const wall = document.querySelector<HTMLElement>("[data-info-wall]");
+    const root = document.querySelector<HTMLElement>("[data-story-root]");
+    if (!root) return;
+    const signal = pageLifetime();
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // The carousel: fan or strip by the breakpoint, swapped if a window
+    // crosses it. One signal per mode that ends with the visit OR the mode
+    // (no AbortSignal.any: iOS 17.4+).
+    const wall = root.querySelector<HTMLElement>("[data-info-wall]");
     const track = wall?.querySelector<HTMLElement>("[data-wall-track]");
     const slides = wall ? Array.from(wall.querySelectorAll<HTMLElement>("[data-wall-slide]")) : [];
-    if (!wall || !track || slides.length < 2) return;
-    const signal = pageLifetime();
-    const phone = matchMedia(PHONE);
+    let current: Carousel | null = null;
     let mode: AbortController | null = null;
-    let undo: (() => void) | null = null;
-    const pick = () => {
-      undo?.();
-      mode?.abort();
-      // one signal that ends with the visit OR with this mode (no AbortSignal.any: iOS 17.4+)
-      const own = new AbortController();
-      mode = own;
-      signal.addEventListener("abort", () => own.abort(), { once: true, signal: own.signal });
-      undo = phone.matches ? strip(wall, track, slides, own.signal) : fan(wall, slides, own.signal);
-    };
-    phone.addEventListener("change", pick, { signal });
-    pick();
+    if (wall && track && slides.length > 1) {
+      const phone = matchMedia(PHONE);
+      const pick = () => {
+        current?.undo();
+        mode?.abort();
+        const own = new AbortController();
+        mode = own;
+        signal.addEventListener("abort", () => own.abort(), { once: true, signal: own.signal });
+        current = phone.matches ? strip(track, slides, own.signal) : fan(wall, slides, own.signal);
+      };
+      phone.addEventListener("change", pick, { signal });
+      pick();
+    }
+
+    if (still) return;
+    root.setAttribute("data-story-on", "");
+    story(root, () => current, signal);
   });
 </script>
