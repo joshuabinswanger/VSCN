@@ -925,6 +925,13 @@ import "../styles/type.css";
      phone's menu sheet, and it still goes home (which closes the sheet). */
   :root:has(#join-sheet[data-open]) .brand-ticker[data-wordmark="compact"] {
     z-index: 101;
+    /* The title's row spans the screen: lifted, it must not take the taps
+       meant for the close key at its right end (2026-11-02, Josh: "I can't
+       close the window anymore"). Only the word itself stays a link. */
+    pointer-events: none;
+  }
+  :root:has(#join-sheet[data-open]) .brand-ticker[data-wordmark="compact"] .brand-link {
+    pointer-events: auto;
   }
   /* A phone delays the title's z-index for the menu sheet's leave; lifted
      over this sheet it comes at once. */
