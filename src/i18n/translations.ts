@@ -102,8 +102,8 @@ export const ui: Record<string, Record<string, string>> = {
 
     // AuthForm
     "auth.title.login": "Log In",
-    // The signed-out chip's full-screen sheet (Navbar.astro). The tabs and the
-    // close key; the rest reuses auth.* and onboarding.auth.*.
+    // The signed-out chip's full-screen sheet (Navbar.astro): the buttons to
+    // the other side and the close key; the rest reuses auth.* and onboarding.auth.*.
     "join.close": "Close",
     "join.tab.join": "Join",
     "join.tab.login": "Login",
