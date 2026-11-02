@@ -62,6 +62,7 @@ import {
   type GalleryTask,
 } from "./galleryQueue.ts";
 import { updateUserProfile } from "./firestore.ts";
+import { legacyArrayIds } from "./galleryRecords.ts";
 import {
   contiguousOrder,
   editorBlocks,
@@ -263,7 +264,7 @@ document.addEventListener("astro:page-load", () => {
       requestAnimationFrame(paintAutosave);
       clearTimeout(autosaveTimer);
       autosaveTimer = window.setTimeout(() => {
-        if (!draft?.hasChanges()) return;
+        if (!draft?.hasChanges() && mustWriteRecords.size === 0) return;
         // A save in flight, or no line: the edit is still waiting, so the
         // timer re-arms itself instead of standing down — nothing else
         // would (the save's end repaints the pill and fires no form event).
@@ -388,6 +389,11 @@ document.addEventListener("astro:page-load", () => {
   // at load and as each project write lands. Save writes only the projects
   // whose key moved (profilePersistence.ts).
   const committedProjects = new Map<string, string>();
+  // Records the next Save writes whatever committedWords says: works loaded
+  // from an old-style array element (their words may live only there), and
+  // a replacement's new record, whose words the server copied from the old
+  // one — possibly before a Save in flight had written the newer words.
+  const mustWriteRecords = new Set<string>();
   /** When the loaded profile was last saved (ms) — the draft banner says so when the server copy is the newer one. */
   let loadedUpdatedAt: number | undefined;
   let previewSlugs = new Map<string, string>();
@@ -1932,6 +1938,11 @@ document.addEventListener("astro:page-load", () => {
       // had typed but not saved stays unsaved.
       committedWords.set(item.imageId, committedWords.get(replaced) ?? committedForNew(gallery[index]));
       committedWords.delete(replaced);
+      // The copy was taken when the replacement was authorised; a Save
+      // writing newer words onto the old record meanwhile is not on it.
+      // Written again, soon, rather than trusted.
+      mustWriteRecords.add(item.imageId);
+      scheduleAutosave();
     }
     renderGallery();
     syncPreview();
@@ -3348,6 +3359,8 @@ document.addEventListener("astro:page-load", () => {
     // sanitizeGalleryItems(), stripping withdrawn keys out of stored objects;
     // there are no objects in the array to strip now.)
     gallery = await loadGallery(user.uid, data.gallery);
+    mustWriteRecords.clear();
+    for (const id of legacyArrayIds(data.gallery)) mustWriteRecords.add(id);
     // PROJECTS (2026-09-23): the member's project documents, then the
     // gallery made contiguous per stored project — a Save that failed
     // halfway can leave a project's ids apart, and the block must still be
@@ -3720,6 +3733,7 @@ document.addEventListener("astro:page-load", () => {
     // outlives the watchdog finishes under a form the member may have gone
     // on editing, and must not commit THOSE words as saved.
     const wordsWritten = committedFromLoad(gallery);
+    const forcedWritten = [...mustWriteRecords];
 
     try {
       const savedLanguage = preferredLanguageInput.value === "en" ? "en" : "de";
@@ -3733,7 +3747,7 @@ document.addEventListener("astro:page-load", () => {
       // that was empty from birth. A refused project write is THE Save
       // error, naming the project as its header does.
       const emptiedAtStart = await persistWorkMetadata(user.uid, gallery, projects, storedProjectIds, deletedProjectIds,
-        { words: committedWords, projects: committedProjects }, lang, s);
+        { words: committedWords, mustWrite: mustWriteRecords, projects: committedProjects }, lang, s);
 
       const saved = await handleProfileUpdate(
         user,
@@ -3820,9 +3834,19 @@ document.addEventListener("astro:page-load", () => {
       const queued = triggerRebuild();
       resizedAvatarBlob = null;
       // The records hold the words that were on screen when this Save began
-      // (persistWorkMetadata ran first) — for the works still here.
-      for (const [id, words] of wordsWritten) {
-        if (gallery.some((work) => work.imageId === id)) committedWords.set(id, words);
+      // (persistWorkMetadata ran first) — for the works still here. Only the
+      // latest Save says so: one that outlived the watchdog and lands after
+      // a newer Save would put its older words back over what is stored.
+      if (generation === saveGeneration) {
+        for (const [id, words] of wordsWritten) {
+          if (gallery.some((work) => work.imageId === id)) committedWords.set(id, words);
+        }
+        for (const id of forcedWritten) mustWriteRecords.delete(id);
+        // A work removed since is nothing to write, and must not keep the
+        // autosave timer firing.
+        for (const id of [...mustWriteRecords]) {
+          if (!gallery.some((work) => work.imageId === id)) mustWriteRecords.delete(id);
+        }
       }
       // A later Save owns the footer now; this one's result is its business.
       if (generation !== saveGeneration) return;

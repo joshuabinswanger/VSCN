@@ -116,10 +116,17 @@ export function committedForNew(item: GalleryItem): WorkWords {
  * only records a Save writes (2026-11-02, save-latency audit: rewriting every
  * record on every Save cost a write per work, and each write bumped
  * `updatedAt` and so fired the server's rebuild trigger once per work). A
- * work with no committed words is new and always goes.
+ * work with no committed words is new and always goes, and so does one in
+ * `mustWrite`: a record whose words the editor cannot vouch for although they
+ * look committed (an old-style array element, a replacement made mid-Save).
  */
-export function worksToWrite<T extends GalleryItem>(gallery: readonly T[], committed: ReadonlyMap<string, WorkWords>): T[] {
+export function worksToWrite<T extends GalleryItem>(
+  gallery: readonly T[],
+  committed: ReadonlyMap<string, WorkWords>,
+  mustWrite: ReadonlySet<string> = new Set(),
+): T[] {
   return gallery.filter((item) => {
+    if (mustWrite.has(item.imageId)) return true;
     const base = committed.get(item.imageId);
     return !base || !sameWords(workWords(item), base);
   });

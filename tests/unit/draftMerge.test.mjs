@@ -240,3 +240,12 @@ test("Save writes only the works whose words moved, in gallery order; a new work
   assert.deepEqual(worksToWrite([a, arrived], committed).map((w) => w.imageId), ["d"]);
   assert.deepEqual(worksToWrite([work("e")], committed).map((w) => w.imageId), ["e"]);
 });
+
+test("a work Save cannot vouch for is written although its words look committed", () => {
+  const a = work("a", { caption: "A" });
+  const b = work("b", { caption: "B" });
+  const committed = committedFromLoad([a, b]);
+  assert.deepEqual(worksToWrite([a, b], committed, new Set(["b"])).map((w) => w.imageId), ["b"]);
+  // An id no longer in the gallery is nothing to write.
+  assert.deepEqual(worksToWrite([a], committed, new Set(["gone"])), []);
+});

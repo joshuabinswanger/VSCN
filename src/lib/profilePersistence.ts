@@ -8,6 +8,8 @@ import type { Lang } from "../i18n/utils";
 export interface CommittedState {
   /** Each work's words as its record holds them. Read only: the caller moves it once the whole Save has landed. */
   words: ReadonlyMap<string, WorkWords>;
+  /** Works written whatever their words say — see worksToWrite. */
+  mustWrite: ReadonlySet<string>;
   /** Each stored project's projectRecordKey(). Moved here, per project, as each write lands. */
   projects: Map<string, string>;
 }
@@ -27,7 +29,7 @@ export async function persistWorkMetadata(uid: string, gallery: GalleryItem[], p
   // the records are written only after the project round trip. What lands
   // must be what the caller records as committed (wordsWritten), or a word
   // typed meanwhile and then undone would be stored and never seen as dirty.
-  const changedWorks = worksToWrite(gallery, committed.words)
+  const changedWorks = worksToWrite(gallery, committed.words, committed.mustWrite)
     .map((item) => ({ ...item, ...(item.tags ? { tags: item.tags.slice() } : {}) }));
   const projectFailures = changedProjects.length
     ? await saveProjects(uid, changedProjects.map(toProjectRecord), storedProjectIds)
