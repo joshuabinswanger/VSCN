@@ -444,27 +444,138 @@
 .pswp--vscn .pswp__vscn-text.is-open .pswp__vscn-text-chev {
   transform: translate(0, 0.2rem) rotate(-135deg);
 }
-/* What the title unfolds. The UA's [hidden] does the folding. */
-.pswp--vscn .pswp__vscn-text-more {
+/* ── The sheet ────────────────────────────────────────────────────────
+   WHAT THE TITLE OPENS (2026-11-04, Josh: "a way to read the long
+   descriptions comfortably ... a sheet that slides up", over the image on
+   desktop as well). Until then the title unfolded the words in place, in the
+   23 % band under the picture, where a phone gave a long paragraph about
+   180px and pressed its links against the browser's bottom edge.
+
+   It rises from the window's foot over the picture: full width on a phone,
+   a reading measure centred on a desktop. Its own box scrolls; the title
+   and grip above that stay put and are the handle (tap or drag down to
+   shut, lightboxText.ts). The end pads clear of the home bar. It is a
+   sibling of PhotoSwipe's scroll-wrap, so the picture around it keeps its
+   gestures. `transform` slides it, `translate` is the finger's (inline). */
+.pswp--vscn .pswp__vscn-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Over PhotoSwipe's side arrows (10), which stand at half height. */
+  z-index: 11;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-  margin-top: 0.75rem;
-  /* It UNFOLDS rather than appearing: a fade and a short drop from under
-     the title, from the [hidden] state, on engines with @starting-style.
-     Elsewhere it simply appears, as before. */
+  width: min(40rem, calc(100% - 4rem));
+  max-height: 50%;
+  margin-inline: auto;
+  background: var(--color-bg);
+  border-top: 1px solid var(--color-border);
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -0.75rem 2.5rem rgb(0 0 0 / 0.08);
+  /* PhotoSwipe's root is touch-action: none; the words must scroll. */
+  touch-action: pan-y;
+  user-select: text;
+  transform: translateY(calc(100% + 3rem));
+  visibility: hidden;
   transition:
-    opacity var(--lb-dur) var(--lb-ease),
-    translate var(--lb-dur) var(--lb-ease);
+    transform var(--lb-dur) var(--lb-ease),
+    translate var(--lb-dur) var(--lb-ease),
+    visibility 0s linear var(--lb-dur);
 }
-@starting-style {
-  .pswp--vscn .pswp__vscn-text-more {
-    opacity: 0;
-    translate: 0 -0.35rem;
-  }
+.pswp--vscn .pswp__vscn-sheet.is-open {
+  transform: translateY(0);
+  visibility: visible;
+  transition:
+    transform var(--lb-dur) var(--lb-ease),
+    translate var(--lb-dur) var(--lb-ease),
+    visibility 0s;
 }
-.pswp--vscn .pswp__vscn-text-more[hidden] {
+.pswp--vscn .pswp__vscn-sheet.is-dragging {
+  transition: none;
+}
+.pswp--vscn .pswp__vscn-sheet-handle {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  padding: 0.55rem 1.5rem 0;
+  /* The finger drags the sheet here, never the page. */
+  touch-action: none;
+  cursor: grab;
+}
+.pswp--vscn .pswp__vscn-sheet-grip {
+  align-self: center;
+  width: 2.25rem;
+  height: 4px;
+  margin-bottom: 0.7rem;
+  border-radius: 2px;
+  background: var(--color-border);
+}
+/* The title again, at the sheet's top, with the chevron turned up: the
+   same head as under the picture, now the way to shut. */
+.pswp--vscn .pswp__vscn-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0;
+  padding: 0 0 0.85rem;
+  border: 0;
+  background: none;
+  color: var(--color-dark);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pswp--vscn .pswp__vscn-sheet-head:hover,
+.pswp--vscn .pswp__vscn-sheet-head:focus-visible {
+  color: var(--color-muted);
+}
+.pswp--vscn .pswp__vscn-sheet-head:focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: 2px;
+}
+.pswp--vscn .pswp__vscn-sheet-caption:empty {
   display: none;
+}
+.pswp--vscn .pswp__vscn-sheet-head .pswp__vscn-text-chev {
+  transform: translate(0, 0.2rem) rotate(-135deg);
+}
+.pswp--vscn .pswp__vscn-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding: 0 1.5rem calc(1.75rem + env(safe-area-inset-bottom, 0px));
+}
+.pswp--vscn .pswp__vscn-sheet-body > p {
+  margin: 0;
+}
+/* While the sheet is up, the title under the picture steps back: the
+   sheet's own head says it, and a wide picture's title would show twice. */
+.pswp--vscn.pswp--vscn-sheet-open .pswp__vscn-text {
+  opacity: 0;
+  pointer-events: none;
+}
+@media (--bp-mobile) {
+  .pswp--vscn .pswp__vscn-sheet {
+    width: 100%;
+    max-height: 70%;
+    border-inline: 0;
+  }
+  .pswp--vscn .pswp__vscn-sheet-handle,
+  .pswp--vscn .pswp__vscn-sheet-body {
+    padding-inline: 1rem;
+  }
+  /* A phone on its side has little height to spare. */
+  @media (height <= 500px) {
+    .pswp--vscn .pswp__vscn-sheet {
+      max-height: 85%;
+    }
+  }
 }
 /* `pre-line` because a member who wrote paragraphs meant them, and it is the
    same treatment .mprof__desc gives the identical string on the member's own
@@ -581,7 +692,7 @@
 @media (prefers-reduced-motion: reduce) {
   .pswp--vscn .pswp__button,
   .pswp--vscn .pswp__vscn-text,
-  .pswp--vscn .pswp__vscn-text-more,
+  .pswp--vscn .pswp__vscn-sheet,
   .pswp--vscn .pswp__vscn-text-chev {
     transition: none;
   }

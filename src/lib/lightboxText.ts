@@ -143,6 +143,8 @@ interface TriggerText {
   siteLink: string;
   project: string;
   projectLink: string;
+  /** The project on the member's page, `/members/<slug>#project-<id>` (2026-11-04). */
+  projectHref: string;
   affiliations: { name: string; href?: string }[];
 }
 
@@ -169,6 +171,7 @@ function readTrigger(el: HTMLElement | undefined): TriggerText {
     siteLink: el?.dataset.pswpSiteLink?.trim() || "",
     project: el?.dataset.pswpProject?.trim() || "",
     projectLink: el?.dataset.pswpProjectLink?.trim() || "",
+    projectHref: el?.dataset.pswpProjectHref?.trim() || "",
     affiliations: parseAffiliations(el?.dataset.pswpAffiliations),
   };
 }
@@ -300,19 +303,37 @@ export function registerLightboxText(
       },
     });
 
-    // ── The words about the picture ─────────────────────────────────────
+    // ── The words about the picture: a title under it, a sheet over it ──
     // THE TITLE IS THE DROPDOWN (2026-10-15, Josh: "the show more text should
     // be left aligned and be the title and drop down button to show the
-    // description"). The caption opens the block, left-aligned under the
-    // picture, with a chevron after it; pressing it unfolds everything else —
-    // description, links, project, affiliations — beneath it. Folded by
-    // default; the choice holds while paging, so a reader who opened one
-    // description reads the next one too, and a new lightbox starts folded.
-    // A work with no caption still gets the chevron alone (named by its
-    // aria-label); a work with nothing but a caption gets no chevron.
-    // Replaces the three-hairline words toggle of the same morning, which hid
-    // the title too.
+    // description"). The caption sits left-aligned under the picture with a
+    // chevron after it. A work with no caption still gets the chevron alone
+    // (named by its aria-label); a work with nothing but a caption gets none.
+    //
+    // WHAT IT OPENS IS A SHEET (2026-11-04, Josh: "a way to read the long
+    // descriptions comfortably ... a sheet that slides up", over the image on
+    // desktop as well). From 10-15 the title unfolded the description IN
+    // PLACE, inside the 23 % band under the picture: on a phone that was a
+    // ~180px slot for a paragraph plus its links, scrolling inside itself,
+    // with the links pressed against the browser's bottom edge where they
+    // could not be hit. The sheet rises from the window's foot over the
+    // picture, scrolls like a page, and pads its end clear of the home bar.
+    // It sits OUTSIDE PhotoSwipe's scroll-wrap, so the picture around it
+    // still drags, pinches and zooms, and a swipe inside it never pages.
+    //
+    // Open or shut holds while paging, so a reader who opened one description
+    // reads the next one too; a new lightbox starts shut (this closure is
+    // per open). Tap the title, swipe the sheet down or press Esc to shut it.
     let open = false;
+    // Both elements register below; each fills in its half of `apply`.
+    let applyHead: () => void = () => {};
+    let applySheet: (focus: boolean) => void = () => {};
+    const setOpen = (next: boolean, focus = false) => {
+      open = next;
+      applyHead();
+      applySheet(focus);
+    };
+
     ui.registerElement({
       name: "vscn-text",
       className: "pswp__vscn-text",
@@ -320,136 +341,172 @@ export function registerLightboxText(
       order: 10,
       onInit: (el, pswp) => {
         const render = () => {
-          const { caption, description, link, siteLink, project, projectLink, affiliations } = readTrigger(
-            pswp.currSlide?.data.element as HTMLElement | undefined,
-          );
+          const t = readTrigger(pswp.currSlide?.data.element as HTMLElement | undefined);
+          const hasMore = hasSheetContent(t);
           el.replaceChildren();
-          const more = document.createElement("div");
-          more.className = "pswp__vscn-text-more";
-          more.id = "pswp-vscn-text-more";
-          if (description) {
-            const desc = document.createElement("span");
-            desc.className = "pswp__vscn-text-desc";
-            desc.textContent = description;
-            more.append(desc);
-          }
-          // WHERE THIS IMAGE APPEARED (2026-09-04, from the sketch: "DESC
-          // (WITH LINKS)"). The field has existed since the projects feature
-          // was withdrawn and its only surface was the member's own page, so
-          // an image opened from the directory lost the paper it illustrates.
-          // Stored without a scheme and rendered with one — the same split
-          // href()/workLink() make everywhere else on the site.
-          //
-          // TWO LINKS SINCE 2026-09-10 (Josh: "the image link should be
-          // additional"): the member's own project page first, the
-          // publication second, on one row. Since 2026-10-16 they print by
-          // ROLE, "Link" and "Publication" (Josh); two bare hosts never said
-          // which was which. The title carries the role and the host.
-          if (siteLink || link) {
-            const row = document.createElement("span");
-            row.className = "pswp__vscn-text-links";
-            const add = (href: string, text: string, title: string) => {
-              const a = document.createElement("a");
-              a.className = "pswp__vscn-text-link";
-              a.href = href;
-              a.target = "_blank";
-              a.rel = "noopener";
-              a.title = `${title} — ${linkLabel(href)}`;
-              a.textContent = text;
-              row.append(a);
-            };
-            if (siteLink) add(siteLink, labels.siteLinkText, labels.siteLinkTitle);
-            if (link) add(link, labels.linkText, labels.linkTitle);
-            more.append(row);
-          }
-          // THE PROJECT THIS PICTURE IS PART OF (2026-09-23,
-          // documentation/20260923-projects-design.md): its title, linked
-          // when the project has a link, then who it was made with. Member
-          // text, so textContent throughout.
-          if (project) {
-            const line = document.createElement("span");
-            line.className = "pswp__vscn-text-project";
-            line.append(`${labels.partOf} `);
-            const name = document.createElement(projectLink ? "a" : "span");
-            name.textContent = project;
-            if (name instanceof HTMLAnchorElement) {
-              name.href = projectLink;
-              name.target = "_blank";
-              name.rel = "noopener";
-            }
-            line.append(name);
-            more.append(line);
-          }
-          if (affiliations.length) {
-            const line = document.createElement("span");
-            line.className = "pswp__vscn-text-affiliations";
-            line.append(`${labels.with} `);
-            affiliations.forEach((a, i) => {
-              if (i > 0) line.append(" · ");
-              const node = document.createElement(a.href ? "a" : "span");
-              node.textContent = a.name;
-              if (node instanceof HTMLAnchorElement && a.href) {
-                node.href = a.href;
-                // A member credit is on-site (ClientRouter picks it up); an external one opens a tab.
-                if (/^https?:/i.test(a.href)) { node.target = "_blank"; node.rel = "noopener"; }
-              }
-              line.append(node);
-            });
-            more.append(line);
-          }
-          const hasMore = more.childElementCount > 0;
-
-          // The head: the caption, a button when there is something to unfold.
-          if (caption || hasMore) {
+          applyHead = () => {};
+          if (t.caption || hasMore) {
             const head = document.createElement(hasMore ? "button" : "span");
             head.className = "pswp__vscn-text-head";
-            if (caption) {
+            if (t.caption) {
               const line = document.createElement("span");
               line.className = "pswp__vscn-text-caption";
-              line.textContent = caption;
+              line.textContent = t.caption;
               head.append(line);
             }
             el.append(head);
             if (head instanceof HTMLButtonElement) {
               head.type = "button";
-              head.setAttribute("aria-controls", more.id);
+              head.setAttribute("aria-controls", SHEET_ID);
               const chev = document.createElement("span");
               chev.className = "pswp__vscn-text-chev";
               chev.setAttribute("aria-hidden", "true");
               head.append(chev);
-              el.append(more);
-              const apply = () => {
+              applyHead = () => {
                 const name = open ? labels.hideText : labels.showText;
                 head.setAttribute("aria-expanded", String(open));
                 // A caption names the button itself; the chevron alone needs a name.
-                if (!caption) head.setAttribute("aria-label", name);
+                if (!t.caption) head.setAttribute("aria-label", name);
                 head.title = name;
-                more.hidden = !open;
                 el.classList.toggle("is-open", open);
-                el.scrollTop = 0;
-                markClipped(el);
               };
-              head.addEventListener("click", () => {
-                open = !open;
-                apply();
-              });
-              apply();
+              // A keyboard press moves focus into the sheet; a tap leaves it be.
+              head.addEventListener("click", (e) => setOpen(!open, e.detail === 0));
+              applyHead();
             }
           }
-          el.classList.toggle("is-empty", !caption && !hasMore);
-          // The block can scroll; a slide change has to start it at the top or
-          // the next description opens mid-paragraph.
-          el.scrollTop = 0;
+          el.classList.toggle("is-empty", !t.caption && !hasMore);
           // The next work's words FADE IN rather than swap (2026-10-16): the
           // block is rebuilt per slide, so a CSS transition has nothing to
           // start from. Same curve as --lb-ease in lightbox.css.
-          if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
-            el.animate(
-              [{ opacity: 0, translate: "0 0.25rem" }, { opacity: 1, translate: "0 0" }],
-              { duration: 360, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)" },
-            );
-          }
+          fadeIn(el);
         };
+        pswp.on("change", render);
+        render();
+      },
+    });
+
+    ui.registerElement({
+      name: "vscn-sheet",
+      className: "pswp__vscn-sheet",
+      appendTo: "root",
+      order: 11,
+      onInit: (el, pswp) => {
+        el.id = SHEET_ID;
+        el.setAttribute("role", "region");
+
+        // The grip and the title are the sheet's handle: tap to shut, or
+        // drag down. The body below them is the part that scrolls.
+        const handle = document.createElement("div");
+        handle.className = "pswp__vscn-sheet-handle";
+        const grip = document.createElement("span");
+        grip.className = "pswp__vscn-sheet-grip";
+        grip.setAttribute("aria-hidden", "true");
+        const head = document.createElement("button");
+        head.type = "button";
+        head.className = "pswp__vscn-sheet-head";
+        head.title = labels.hideText;
+        head.setAttribute("aria-controls", SHEET_ID);
+        head.setAttribute("aria-expanded", "true");
+        const caption = document.createElement("span");
+        caption.className = "pswp__vscn-sheet-caption";
+        const chev = document.createElement("span");
+        chev.className = "pswp__vscn-text-chev";
+        chev.setAttribute("aria-hidden", "true");
+        head.append(caption, chev);
+        handle.append(grip, head);
+        const body = document.createElement("div");
+        body.className = "pswp__vscn-sheet-body";
+        el.append(handle, body);
+
+        let hasMore = false;
+        applySheet = (focus: boolean) => {
+          const shown = open && hasMore;
+          el.classList.toggle("is-open", shown);
+          el.toggleAttribute("inert", !shown);
+          el.setAttribute("aria-hidden", String(!shown));
+          pswp.element?.classList.toggle("pswp--vscn-sheet-open", shown);
+          el.style.translate = "";
+          if (!focus) return;
+          if (shown) head.focus({ preventScroll: true });
+          else pswp.element?.querySelector<HTMLElement>("button.pswp__vscn-text-head")?.focus({ preventScroll: true });
+        };
+
+        const render = () => {
+          const t = readTrigger(pswp.currSlide?.data.element as HTMLElement | undefined);
+          hasMore = hasSheetContent(t);
+          caption.textContent = t.caption;
+          head.setAttribute("aria-label", t.caption ? `${t.caption} — ${labels.hideText}` : labels.hideText);
+          el.setAttribute("aria-label", t.caption || labels.showText);
+          body.replaceChildren(...sheetContent(t, labels, pswp));
+          body.scrollTop = 0;
+          applySheet(false);
+          if (open && hasMore) fadeIn(body);
+        };
+
+        head.addEventListener("click", () => {
+          if (dragged) return;
+          setOpen(false, true);
+        });
+
+        // SWIPE DOWN TO SHUT, on the handle. The sheet follows the finger
+        // and goes past 70px or on a flick; short of that it springs back.
+        let startY = 0;
+        let startT = 0;
+        let dy = 0;
+        let dragging = false;
+        let dragged = false;
+        handle.addEventListener("pointerdown", (e) => {
+          if (!open || e.button !== 0) return;
+          dragging = true;
+          dragged = false;
+          startY = e.clientY;
+          startT = e.timeStamp;
+          dy = 0;
+          handle.setPointerCapture(e.pointerId);
+        });
+        handle.addEventListener("pointermove", (e) => {
+          if (!dragging) return;
+          dy = Math.max(0, e.clientY - startY);
+          if (dy > 6) {
+            dragged = true;
+            el.classList.add("is-dragging");
+            el.style.translate = `0 ${dy}px`;
+          }
+        });
+        const release = (e: PointerEvent) => {
+          if (!dragging) return;
+          dragging = false;
+          el.classList.remove("is-dragging");
+          const flick = dy > 24 && dy / Math.max(1, e.timeStamp - startT) > 0.5;
+          if (dragged && (dy > 70 || flick)) setOpen(false);
+          else el.style.translate = "";
+          // The click that follows a drag must not count as a tap.
+          if (dragged) setTimeout(() => (dragged = false), 0);
+        };
+        handle.addEventListener("pointerup", release);
+        handle.addEventListener("pointercancel", release);
+
+        // PhotoSwipe takes every wheel on its root (to pan the picture) and
+        // cancels it, which would stop the sheet scrolling; stop it here.
+        el.addEventListener("wheel", (e) => e.stopPropagation(), { passive: true });
+
+        // ESC SHUTS THE SHEET FIRST, the lightbox on the next press. Keys
+        // meant for the text — scrolling it, or pressing a link — are left
+        // to the browser while focus is inside the sheet: PhotoSwipe would
+        // otherwise pan the picture with the arrows.
+        pswp.on("keydown", (ev) => {
+          const e = ev.originalEvent;
+          if (e.key === "Escape" && open && hasMore) {
+            ev.preventDefault();
+            setOpen(false, el.contains(document.activeElement));
+            return;
+          }
+          if (el.contains(e.target as Node) && ["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " ", "Enter"].includes(e.key)) {
+            ev.preventDefault();
+          }
+        });
+
         pswp.on("change", render);
         render();
       },
@@ -476,6 +533,116 @@ export function registerLightboxText(
  */
 function markClipped(el: HTMLElement): void {
   el.classList.toggle("is-clipped", el.scrollHeight > el.clientHeight + 1);
+}
+
+
+/** The sheet's id, which both the title under the picture and the sheet's own head control. */
+const SHEET_ID = "pswp-vscn-sheet";
+
+/** Whether a work has anything for the sheet to hold beyond its title. */
+function hasSheetContent(t: TriggerText): boolean {
+  return Boolean(t.description || t.link || t.siteLink || t.project || t.affiliations.length);
+}
+
+function fadeIn(el: HTMLElement): void {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  el.animate(
+    [{ opacity: 0, translate: "0 0.25rem" }, { opacity: 1, translate: "0 0" }],
+    { duration: 360, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)" },
+  );
+}
+
+/** Same page, ignoring a trailing slash: the project is on the page under the lightbox. */
+function samePage(url: URL): boolean {
+  const strip = (p: string) => p.replace(/\/+$/, "") || "/";
+  return url.origin === location.origin && strip(url.pathname) === strip(location.pathname);
+}
+
+/**
+ * What the sheet holds under its title: the description, the piece's links,
+ * the project it is part of and who it was made with. Member text throughout,
+ * so textContent, never innerHTML.
+ */
+function sheetContent(t: TriggerText, labels: LightboxTextLabels, pswp: PhotoSwipe): Node[] {
+  const out: Node[] = [];
+  if (t.description) {
+    const desc = document.createElement("p");
+    desc.className = "pswp__vscn-text-desc";
+    desc.textContent = t.description;
+    out.push(desc);
+  }
+  // WHERE THIS IMAGE APPEARED (2026-09-04) and the member's own project page
+  // (2026-09-10), by ROLE since 2026-10-16: "Link" and "Publication" (Josh).
+  // The title carries the role and the host. Since 2026-11-04 the PROJECT's
+  // own outside link joins them, labelled by its host as on the member page:
+  // "Part of …" now goes to the project on VSCN instead (below).
+  const projectSite = t.projectLink && t.projectLink !== t.siteLink && t.projectLink !== t.link ? t.projectLink : "";
+  if (t.siteLink || t.link || projectSite) {
+    const row = document.createElement("p");
+    row.className = "pswp__vscn-text-links";
+    const add = (href: string, text: string, title: string) => {
+      const a = document.createElement("a");
+      a.className = "pswp__vscn-text-link";
+      a.href = href;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.title = title ? `${title} — ${linkLabel(href)}` : linkLabel(href);
+      a.textContent = text;
+      row.append(a);
+    };
+    if (t.siteLink) add(t.siteLink, labels.siteLinkText, labels.siteLinkTitle);
+    if (t.link) add(t.link, labels.linkText, labels.linkTitle);
+    if (projectSite) add(projectSite, linkLabel(projectSite).split("/")[0], "");
+    out.push(row);
+  }
+  // THE PROJECT THIS PICTURE IS PART OF (2026-09-23), and since 2026-11-04
+  // (Josh: "a way to navigate to the projects from the lightbox") a link to
+  // that project on the member's page, `/members/<slug>#project-<id>`. On
+  // another page the router takes it and the lightbox goes with the swap;
+  // on the member's own page the lightbox closes and the page scrolls to the
+  // project. No href (the editor's preview) prints the title plain.
+  if (t.project) {
+    const line = document.createElement("p");
+    line.className = "pswp__vscn-text-project";
+    line.append(`${labels.partOf} `);
+    const name = document.createElement(t.projectHref ? "a" : "span");
+    name.textContent = t.project;
+    if (name instanceof HTMLAnchorElement) {
+      name.href = t.projectHref;
+      name.addEventListener("click", (e) => {
+        if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        const url = new URL(name.href, location.href);
+        if (!samePage(url)) return;
+        e.preventDefault();
+        const target = url.hash ? document.getElementById(decodeURIComponent(url.hash.slice(1))) : null;
+        pswp.on("destroy", () => {
+          const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+          target?.scrollIntoView({ block: "start", behavior: reduced ? "instant" : "smooth" });
+        });
+        pswp.close();
+      });
+    }
+    line.append(name);
+    out.push(line);
+  }
+  if (t.affiliations.length) {
+    const line = document.createElement("p");
+    line.className = "pswp__vscn-text-affiliations";
+    line.append(`${labels.with} `);
+    t.affiliations.forEach((a, i) => {
+      if (i > 0) line.append(" · ");
+      const node = document.createElement(a.href ? "a" : "span");
+      node.textContent = a.name;
+      if (node instanceof HTMLAnchorElement && a.href) {
+        node.href = a.href;
+        // A member credit is on-site (ClientRouter picks it up); an external one opens a tab.
+        if (/^https?:/i.test(a.href)) { node.target = "_blank"; node.rel = "noopener"; }
+      }
+      line.append(node);
+    });
+    out.push(line);
+  }
+  return out;
 }
 
 function attachPlacement(pswp: PhotoSwipe): void {

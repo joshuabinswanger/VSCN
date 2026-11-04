@@ -113,7 +113,7 @@ const works = await Promise.all(
       pswpMeta: member.displayName,
       // The project this work is in, as data-pswp-* strings for the lightbox's
       // shared renderer — see projectSlideData() in lib/projects.ts.
-      slide: projectSlideData(project, currentLang),
+      slide: projectSlideData(project, currentLang, member.slug),
       // The project this work is in, resolved once above for SEO and lightbox.
       project,
     };

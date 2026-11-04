@@ -119,7 +119,7 @@ const pswpMeta = member.displayName;
 
 // THE PROJECT THIS WORK IS IN (2026-09-23) — the lightbox's "Part of …" line
 // and its affiliations, same data every other trigger on the site carries.
-const pswpProject = projectSlideData(member.projects?.find((p) => p.id === work.projectId), lang);
+const pswpProject = projectSlideData(member.projects?.find((p) => p.id === work.projectId), lang, member.slug);
 ---
 
 <article class="cwork" style={`--frame-ar:${frameAspect}`}>
@@ -187,6 +187,7 @@ const pswpProject = projectSlideData(member.projects?.find((p) => p.id === work.
       data-pswp-profile={profileHref}
       data-pswp-project={pswpProject.project}
       data-pswp-project-link={pswpProject.projectLink}
+      data-pswp-project-href={pswpProject.projectHref}
       data-pswp-affiliations={pswpProject.affiliations}
       {...embedDataAttrs(work.embed)}
     >
