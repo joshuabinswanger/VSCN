@@ -58,7 +58,7 @@ export function shuffleBands<T extends { dataset: DOMStringMap }>(items: T[], se
  * picture loading eagerly. Stamps `data-dealt` so a second caller on the same
  * document leaves it alone.
  */
-export function dealPagesInto(grid: HTMLElement, seed: number, tag: string): void {
+export function dealPagesInto(grid: HTMLElement, seed: number, tag: string, who = ""): void {
   const cells = Array.from(grid.querySelectorAll<HTMLElement>('.cgrid__cell[data-slot="image"]')).sort(
     (x, y) => Number(x.dataset.rank) - Number(y.dataset.rank),
   );
@@ -66,7 +66,9 @@ export function dealPagesInto(grid: HTMLElement, seed: number, tag: string): voi
   const hidden: HTMLElement[] = [];
   let first: HTMLElement | null = null;
   for (const cell of ordered) {
-    const show = !tag || (cell.dataset.tags ?? "").includes(`|${tag}|`);
+    const show =
+      (!tag || (cell.dataset.tags ?? "").includes(`|${tag}|`)) &&
+      (!who || (cell.dataset.who ?? "").includes(`|${who}|`));
     cell.hidden = !show;
     if (!show) {
       hidden.push(cell);
