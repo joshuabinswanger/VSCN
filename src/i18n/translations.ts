@@ -23,9 +23,8 @@ export const ui: Record<string, Record<string, string>> = {
 
     // InfoPage (restyled 2026-11-02, design-kit/vscn-landing.af)
     "info.hero.title": "Knowledge, made visible.",
-    "info.hero.lead": "We believe more knowledge deserves a visual form.",
-    "info.hero.body":
-      "Well-made images make ideas accessible in any field, carry them further than words alone, spark curiosity, and connect the people who know with the people who want to understand.",
+    "info.hero.sub":
+      "We believe more knowledge deserves a visual form. Well-made images make ideas accessible in any field, carry them further than words alone, spark curiosity, and connect the people who know with the people who want to understand.",
     "info.h2.building": "What We’re Building",
     "info.li.1": "A directory of illustrators, designers and the experts they work with.",
     "info.li.2": "A showcase for outstanding visual storytelling.",
@@ -34,7 +33,7 @@ export const ui: Record<string, Record<string, string>> = {
     "info.h2.scientists": "For Scientists & Research Groups",
     "info.p.scientists":
       "VSCN is also for the researchers who need these images. List your group, and find the people who already draw your field.",
-    "info.contact.ask": "And if you’d like to help shape VSCN, we’d love to hear from you:",
+    "info.contact.ask": "Want to help shape it?",
     "info.cta.portfolios": "Browse the portfolios",
     "info.wall.heading": "From the network",
     "info.wall.all": "All portfolios",
@@ -787,9 +786,8 @@ export const ui: Record<string, Record<string, string>> = {
 
     // InfoPage (restyled 2026-11-02, design-kit/vscn-landing.af)
     "info.hero.title": "Wissen, sichtbar gemacht.",
-    "info.hero.lead": "Wir glauben, dass mehr Wissen eine visuelle Form verdient.",
-    "info.hero.body":
-      "Gut gemachte Bilder machen Ideen in jedem Fachgebiet zugänglich, tragen sie weiter als Worte allein, wecken Neugier und verbinden die, die etwas wissen, mit denen, die es verstehen wollen.",
+    "info.hero.sub":
+      "Wir glauben, dass mehr Wissen eine visuelle Form verdient. Gut gemachte Bilder machen Ideen in jedem Fachgebiet zugänglich, tragen sie weiter als Worte allein, wecken Neugier und verbinden die, die etwas wissen, mit denen, die es verstehen wollen.",
     "info.h2.building": "Was wir aufbauen",
     "info.li.1": "Ein Verzeichnis von Illustrator:innen, Designer:innen und den Fachleuten, mit denen sie arbeiten.",
     "info.li.2": "Ein Schaufenster für herausragendes visuelles Storytelling.",
@@ -798,7 +796,7 @@ export const ui: Record<string, Record<string, string>> = {
     "info.h2.scientists": "Für Wissenschaft & Forschungsgruppen",
     "info.p.scientists":
       "VSCN ist auch für die Forschenden, die diese Bilder brauchen. Trag deine Gruppe ein und finde die Menschen, die dein Fachgebiet schon zeichnen.",
-    "info.contact.ask": "Und wenn du VSCN mitgestalten möchtest, freuen wir uns, von dir zu hören:",
+    "info.contact.ask": "Lust, VSCN mitzugestalten?",
     "info.cta.portfolios": "Portfolios ansehen",
     "info.wall.heading": "Aus dem Netzwerk",
     "info.wall.all": "Alle Portfolios",
