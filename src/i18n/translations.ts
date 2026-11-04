@@ -431,8 +431,13 @@ export const ui: Record<string, Record<string, string>> = {
     // already have landed — only the profile write was skipped. The tail says
     // what was NOT saved (the profile), not "nothing".
     "profile.gallery.saveFailed": "The text for image {n} could not be saved.",
+    // The work by its place in its project, as the list shows it (finding 27).
+    "profile.gallery.saveFailedIn": "The text for work {n} in “{project}” could not be saved.",
     "profile.gallery.saveFailed.tail":
       "Your profile was not saved — please try again.",
+    // A refusal is not a hiccup: the same words are refused every time.
+    "profile.gallery.saveFailed.refused":
+      "The server refused it, so saving it unchanged will not help: shorten or correct its texts, then save. Your profile was not saved.",
     // ONE MESSAGE PER CAUSE (see GalleryErrorCode in src/lib/gallery.ts). The
     // single "please try again" above was wrong advice for most of them — an
     // expired session and a file that will never fit do not improve on a
@@ -1139,8 +1144,11 @@ export const ui: Record<string, Record<string, string>> = {
       "Bestätige deine E-Mail, um weitere Bilder hinzuzufügen. Der Link ist in deinem Posteingang.",
     "profile.gallery.error": "Bild konnte nicht hochgeladen werden. Bitte erneut versuchen.",
     "profile.gallery.saveFailed": "Der Text zu Bild {n} konnte nicht gespeichert werden.",
+    "profile.gallery.saveFailedIn": "Der Text zu Werk {n} in „{project}“ konnte nicht gespeichert werden.",
     "profile.gallery.saveFailed.tail":
       "Das Profil wurde nicht gespeichert – bitte erneut versuchen.",
+    "profile.gallery.saveFailed.refused":
+      "Der Server hat ihn abgelehnt, unverändert zu speichern hilft also nicht: Kürze oder korrigiere die Texte, dann speichere. Das Profil wurde nicht gespeichert.",
     "profile.gallery.err.tooBig": "Über 25 MB. Bitte kleiner exportieren.",
     "profile.gallery.err.svg":
       "SVGs können nicht hochgeladen werden. Als PNG oder JPEG exportieren.",

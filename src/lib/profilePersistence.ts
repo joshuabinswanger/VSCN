@@ -1,8 +1,23 @@
 import { saveGalleryRecords, type GalleryItem } from "./gallery.ts";
 import { saveProjects } from "./projectStore.ts";
-import { emptiedStoredIds, writtenProjectIds, projectLabel, projectRecordKey, projectsToWrite, toProjectRecord, type EditorProject } from "./projectEditor.ts";
+import { emptiedStoredIds, writtenProjectIds, projectLabel, projectRecordKey, projectsToWrite, toProjectRecord, workPlace, type EditorProject } from "./projectEditor.ts";
 import { worksToWrite, type WorkWords } from "./draftMerge.ts";
+import { saveErrorKind } from "./saveError.ts";
 import type { Lang } from "../i18n/utils";
+
+/**
+ * A work's record did not land (audit finding 27, 2026-11-04). It carries
+ * the work so the editor can take the member to it, and whether the server
+ * REFUSED it: a refusal comes back the same however often it is retried, so
+ * the message says to change the text instead of "try again", and the
+ * autosave stops resending the same words.
+ */
+export class WorkSaveError extends Error {
+  constructor(message: string, readonly imageId: string, readonly refused: boolean) {
+    super(message);
+    this.name = "WorkSaveError";
+  }
+}
 
 /** What Firestore holds, as the editor last saw it: Save writes only what differs (2026-11-02). */
 export interface CommittedState {
@@ -67,13 +82,15 @@ export async function persistWorkMetadata(uid: string, gallery: GalleryItem[], p
     recordFailures.forEach((f) =>
       console.warn(`[gallery] record ${f.imageId} not saved:`, f.error)
     );
-    throw new Error(
+    const refused = recordFailures.find((f) => saveErrorKind(f.error) === "refused");
+    const first = refused ?? recordFailures[0];
+    throw new WorkSaveError(
       [
-        ...recordFailures.map((f) =>
-          s["profile.gallery.saveFailed"].replace("{n}", String(gallery.findIndex((g) => g.imageId === f.imageId) + 1))
-        ),
-        s["profile.gallery.saveFailed.tail"],
-      ].join(" ")
+        ...recordFailures.map((f) => workPlace(gallery, projects, f.imageId, lang, s)),
+        s[refused ? "profile.gallery.saveFailed.refused" : "profile.gallery.saveFailed.tail"],
+      ].join(" "),
+      first.imageId,
+      !!refused,
     );
   }
 

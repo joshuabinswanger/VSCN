@@ -215,6 +215,16 @@ document.addEventListener("astro:page-load", () => {
     { signal },
   );
   top.querySelector("[data-pp-back]")?.addEventListener("click", () => open(null), { signal });
+  // The controller asks for a project when a Save error names a field in it
+  // (a refused work, an untitled project): set aside, it could not take the focus.
+  stage.addEventListener(
+    "works:open",
+    (e) => {
+      const id = e instanceof CustomEvent ? (e.detail as { projectId?: string } | null)?.projectId : undefined;
+      if (id && ids().includes(id)) open(id);
+    },
+    { signal },
+  );
 
   // Add project (+ Project under the cards, or the first-project prompt): the
   // controller appends the block; apply() opens it when it appears.

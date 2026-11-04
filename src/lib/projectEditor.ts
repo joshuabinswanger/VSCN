@@ -322,6 +322,31 @@ export function projectLabel(
   return untitled.replace("{n}", n === -1 ? "?" : String(n + 1));
 }
 
+/**
+ * A work as the member can find it in a Save error (audit finding 27,
+ * 2026-11-04): its place in its project and the project's name. The
+ * account-wide index the message used to give counted every project's works
+ * and matched nothing on screen. A work without a known project keeps the
+ * old wording.
+ */
+export function workPlace(
+  gallery: readonly { imageId: string; projectId?: string }[],
+  projects: readonly { projectId: string; title?: string; titleDe?: string }[],
+  imageId: string,
+  lang: Lang,
+  s: Record<string, string>,
+): string {
+  const item = gallery.find((g) => g.imageId === imageId);
+  const projectId = item?.projectId;
+  if (!projectId || !projects.some((p) => p.projectId === projectId)) {
+    return s["profile.gallery.saveFailed"].replace("{n}", String(gallery.findIndex((g) => g.imageId === imageId) + 1));
+  }
+  const n = gallery.filter((g) => g.projectId === projectId).findIndex((g) => g.imageId === imageId) + 1;
+  return s["profile.gallery.saveFailedIn"]
+    .replace("{n}", String(n))
+    .replace("{project}", projectLabel(projects, projectId, lang, s["profile.project.untitled"]));
+}
+
 export function editorAffiliations(records: readonly AffiliationRecord[] | undefined): EditorAffiliation[] {
   return (records ?? []).map((a) =>
     "memberUid" in a

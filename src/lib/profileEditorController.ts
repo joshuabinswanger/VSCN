@@ -1,4 +1,4 @@
-import { persistWorkMetadata } from "./profilePersistence.ts";
+import { persistWorkMetadata, WorkSaveError } from "./profilePersistence.ts";
 import { confirmDialog } from "./confirmDialog.ts";
 import { bindTabKeys } from "./uiTabs.ts";
 import { watchPublication } from "./publicationStatus.ts";
@@ -9,6 +9,7 @@ import {
   mergeDraftGallery,
   mergeDraftProjects,
   projectSignature,
+  sameWords,
   uncommittedWorks,
   workWords,
   type WorkWords,
@@ -2282,6 +2283,15 @@ document.addEventListener("astro:page-load", () => {
     renderGallery();
     // The block and its buttons are gone; the way in, if it was the last one.
     (galleryFirst && !galleryFirst.hidden ? galleryFirstProject : document.getElementById("pp-add"))?.focus();
+    // THE SAVE THAT DELETES THE PROJECT, ASKED FOR HERE (audit finding 29,
+    // 2026-11-04). The autosave timer runs on the form's own events, and the
+    // last one was the click on Remove: its 1.5 s ran out while the confirm
+    // dialog was open, found nothing changed, and stood down. The works went
+    // (the gallery write below) and the pill still read "Saved" from that
+    // click, but the project document waited for a Save nothing scheduled,
+    // so the next load showed an empty card of the same name. Scheduled
+    // after the change, the timer also repaints the pill.
+    scheduleAutosave();
     if (removed.length && (await persistGalleryNow())) {
       for (const work of removed) await markImageForDeletion(work.imageId);
     }
@@ -3718,6 +3728,7 @@ document.addEventListener("astro:page-load", () => {
     setSection("work");
     if (worksView !== "profile") setWorksView("profile");
     if (worksMode !== "edit") setWorksMode("edit");
+    openProject(projectId);
     showSaveError(s["profile.project.titleRequired"]);
     const field = galleryEditor.querySelector<HTMLElement>(
       `[data-project-id="${projectId}"] [data-project-field="${worksLang === "de" ? "titleDe" : "title"}"]`,
@@ -3727,6 +3738,53 @@ document.addEventListener("astro:page-load", () => {
     field.focus();
     field.scrollIntoView?.({ block: "center" });
   }
+
+  /** Opens one project as the page (editorProjectPages.ts listens): a field in a set-aside block cannot take the focus. */
+  function openProject(projectId: string) {
+    worksStage?.dispatchEvent(new CustomEvent("works:open", { detail: { projectId } }));
+  }
+
+  /**
+   * A work whose record the server refused (finding 27): its project opened,
+   * the row in Edit, and the field that broke a cap — a value longer than
+   * its own maxlength, which only a paste through devtools or an older tab
+   * gets past — flagged and focused; the title in the bar's language if
+   * none does. Focus used to stay on Save, away from anything to fix.
+   */
+  function showRefusedWork(imageId: string) {
+    const item = gallery.find((g) => g.imageId === imageId);
+    if (!item) return;
+    setSection("work");
+    if (worksView !== "profile") setWorksView("profile");
+    if (worksMode !== "edit") setWorksMode("edit");
+    if (item.projectId) openProject(item.projectId);
+    const row = galleryEditor.querySelector<HTMLElement>(`.gallery-item[data-image-id="${CSS.escape(imageId)}"]`);
+    if (!row) return;
+    const fields = Array.from(row.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("[data-gallery-field]"));
+    const over = fields.find((f) => f.maxLength > 0 && f.value.length > f.maxLength);
+    const field = over ?? row.querySelector<HTMLElement>(`[data-gallery-field="${worksLang === "de" ? "captionDe" : "caption"}"]`);
+    if (!field) return;
+    const pane = field.closest<HTMLElement>("[data-gallery-lang-pane]")?.dataset.galleryLangPane;
+    if ((pane === "de" || pane === "en") && pane !== worksLang) setWorksLang(pane);
+    const fold = field.closest("details");
+    if (fold && !fold.open) fold.open = true;
+    markInvalid(field);
+    field.focus();
+    field.scrollIntoView?.({ block: "center" });
+  }
+
+  /**
+   * A record the server refused, with the words it refused. The autosave
+   * does not send the same words again — the answer would be the same, and
+   * the footer would flash it once per keystroke elsewhere. Any change to
+   * that work's words, or a pressed Save, tries again.
+   */
+  let refusedWork: { imageId: string; words: WorkWords } | null = null;
+  const refusedUnchanged = () => {
+    if (!refusedWork) return false;
+    const item = gallery.find((g) => g.imageId === refusedWork!.imageId);
+    return !!item && sameWords(workWords(item), refusedWork.words);
+  };
 
   /**
    * A save that has not settled in this long has lost the network: Firestore
@@ -3758,6 +3816,8 @@ document.addEventListener("astro:page-load", () => {
     // would say "wait for uploads" or "a title, please", the autosave just
     // stands down; the next event, or the upload landing, schedules it again.
     const quiet = autosaveSubmit;
+    // The refusal stays on screen, unsent again, until those words change.
+    if (quiet && refusedUnchanged()) return;
     saveMsg.style.display = "none";
     saveError.style.display = "none";
     for (const el of [...invalidControls]) unmarkInvalid(el);
@@ -3849,6 +3909,8 @@ document.addEventListener("astro:page-load", () => {
 
     const generation = ++saveGeneration;
     let timedOut = false;
+    /** The work a refused record write takes the focus to, once the editor is live again. */
+    let takeTo: string | null = null;
     editedDuringSave = false;
     setSaving(true);
     const watchdog = setTimeout(() => {
@@ -3885,6 +3947,7 @@ document.addEventListener("astro:page-load", () => {
       // error, naming the project as its header does.
       const emptiedAtStart = await persistWorkMetadata(user.uid, gallery, projects, storedProjectIds, deletedProjectIds,
         { words: committedWords, mustWrite: mustWriteRecords, projects: committedProjects }, lang, s);
+      refusedWork = null;
 
       const saved = await handleProfileUpdate(
         user,
@@ -4030,11 +4093,18 @@ document.addEventListener("astro:page-load", () => {
       }
       if (generation !== saveGeneration) return;
       showSaveError(saveErrorMessage(err, s));
+      if (err instanceof WorkSaveError) {
+        const item = gallery.find((g) => g.imageId === err.imageId);
+        refusedWork = err.refused && item ? { imageId: err.imageId, words: workWords(item) } : null;
+        // A pressed Save goes to the work; an autosave leaves the caret where the member types.
+        if (!quiet) takeTo = err.imageId;
+      }
     } finally {
       clearTimeout(watchdog);
       if (!timedOut) {
         setSaving(false);
-        refocus();
+        if (takeTo) showRefusedWork(takeTo);
+        else refocus();
       }
     }
   });
