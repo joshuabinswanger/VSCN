@@ -2380,7 +2380,10 @@
          background so the buttons dont float in the editor"). Desktop keeps
          bare glass controls; the phone's drop-up is a full-width glass sheet
          with a hairline on top, so the works don't show between the keys. */
-      background: var(--glass-paper);
+      /* FROSTED, AND THINNER THAN ITS KEYS (2026-11-04, Josh: "the bg
+         should get this frosted glass look and have a bit more
+         transparency than the ui buttons"): the panel's own token. */
+      background: var(--glass-panel);
       -webkit-backdrop-filter: var(--glass-blur);
       backdrop-filter: var(--glass-blur);
       box-shadow: inset 0 1px 0 var(--color-border);
@@ -2456,11 +2459,13 @@
       outline-offset: 2px;
     }
 
-    /* Folded: the handle, pointing up, over Save alone; the measured size
-       shrinks the bar round it. Save never folds away (2026-11-02, Josh:
-       "the save button should always be there on mobile"): only Edit |
-       Preview and the switches' row go. */
-    .ebar.is-folded :is(.ebar__mode, .ebar__group) {
+    /* Folded: the handle alone, pointing up; the measured size shrinks the
+       panel round it. SAVE FOLDS AWAY TOO (2026-11-04, Josh: "on mobile
+       the save button should disappear too on collapse"), reversing
+       2026-11-02's "always there": autosave keeps saving. Only on the
+       Works tab, where the handle is drawn; off it Save is the whole bar
+       and nothing folds, even if the fold was left closed on Works. */
+    .profile-form.is-works .ebar.is-folded .ebar__rows {
       display: none;
     }
 
