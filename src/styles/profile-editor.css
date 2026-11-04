@@ -813,6 +813,39 @@
     display: none;
   }
 
+  /* EDIT PROFILE under the person (2026-11-04): the light 30px pill of the
+     header's LOGIN key, shown in Edit mode only. The head is a rendering,
+     not a form, so this is the way from it to its fields. */
+  .ppv-edit-profile {
+    display: none;
+  }
+  .works-stage[data-mode="edit"] .ppv-edit-profile {
+    display: inline-flex;
+    align-items: center;
+    justify-self: start;
+    align-self: start;
+    box-sizing: border-box;
+    height: 30px;
+    margin-top: 1rem;
+    padding: 9px 14px 8px;
+    border: 0;
+    border-radius: var(--radius-pill) !important;
+    background: var(--color-bg);
+    color: var(--color-dark);
+    box-shadow: inset 0 0 0 1px var(--color-border);
+    font-family: inherit;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: box-shadow 0.2s ease;
+  }
+  .works-stage[data-mode="edit"] .ppv-edit-profile:hover {
+    box-shadow: inset 0 0 0 1px var(--color-dark);
+  }
+  .works-stage[data-mode="edit"] .ppv-edit-profile:focus-visible {
+    outline: 1.5px solid var(--color-dark);
+    outline-offset: 2px;
+  }
+
   .works-view[hidden] {
     display: none;
   }
@@ -1003,6 +1036,27 @@
 
   .gallery-boxhead__word:hover:not(:disabled) {
     text-decoration: underline;
+  }
+
+  /* MOVE beside Remove (2026-11-04): the same word key in the ink colour;
+     it takes the push to the right and Remove follows it at the row's gap. */
+  .gallery-boxhead__word--move {
+    color: var(--color-dark);
+  }
+  .gallery-boxhead__word--move[hidden] {
+    display: none;
+  }
+  .gallery-boxhead__word--move:not([hidden]) + .gallery-boxhead__word {
+    margin-left: 0;
+  }
+
+  /* The project and carousel selects are the Move key's engine now and are
+     never drawn (moveMenu.ts); a carousel's tools held only its select. */
+  [data-gallery-project-wrap],
+  [data-gallery-carousel-wrap],
+  [data-carousel-project-wrap],
+  .gallery-carousel-tools {
+    display: none !important;
   }
 
   .gallery-boxhead__word:disabled {

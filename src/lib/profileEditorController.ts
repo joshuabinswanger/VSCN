@@ -140,6 +140,7 @@ import {
   MAX_SOCIAL_MEDIA,
 } from "./links.ts";
 import { WORK_SIZE_PX, workSize, workSizeWidth, type WorkSize } from "./workSize.ts";
+import { bindMoveKey } from "./moveMenu.ts";
 import { ui } from "../i18n/translations.ts";
 import {
   isSiteLanguage,
@@ -1136,6 +1137,17 @@ document.addEventListener("astro:page-load", () => {
             });
           }
 
+          // THE MOVE KEY beside Remove (2026-11-04): one menu for both selects
+          // above, which stay as the engine and are no longer drawn.
+          const moveTo = row.querySelector<HTMLButtonElement>("[data-gallery-moveto]");
+          if (moveTo) {
+            moveTo.title = s["profile.deck.move"];
+            bindMoveKey(moveTo, [
+              ...(carouselSelect ? [{ label: s["profile.carousel.select"], select: carouselSelect, wrap: carouselWrap ?? null }] : []),
+              { label: s["profile.project.select"], select: projectSelect, wrap: projectWrap },
+            ]);
+          }
+
           // New picture, same work: captions, description, links, tags and
           // position all stay. Disabled while one is already on its way —
           // see updateGalleryControls, which the queue repaints through.
@@ -1528,9 +1540,10 @@ document.addEventListener("astro:page-load", () => {
           focusHint.control === "thumb"
             ? galleryEditor.querySelector<HTMLElement>(`[data-tray-thumb][data-image-id="${focusHint.imageId}"]`)
             : focusHint.control === "project"
-              ? row?.querySelector<HTMLElement>("[data-gallery-project]")
+              ? (row?.querySelector<HTMLElement>("[data-gallery-moveto]:not([hidden])") ??
+                row?.querySelector<HTMLElement>('[data-gallery-move="up"]'))
               : focusHint.control === "carousel"
-                ? (row?.querySelector<HTMLElement>("[data-gallery-carousel]") ??
+                ? (row?.querySelector<HTMLElement>("[data-gallery-moveto]:not([hidden])") ??
                   galleryEditor.querySelector<HTMLElement>(`[data-tray-thumb][data-image-id="${focusHint.imageId}"]`))
               : focusHint.control === "text"
                   ? row?.querySelector<HTMLElement>(`[data-gallery-field="${worksLang === "de" ? "textAfterDe" : "textAfter"}"]`)
@@ -1539,7 +1552,8 @@ document.addEventListener("astro:page-load", () => {
         const unit = galleryEditor.querySelector<HTMLElement>(`[data-carousel-block][data-carousel-id="${focusHint.carouselId}"]`);
         target =
           focusHint.control === "project"
-            ? unit?.querySelector<HTMLElement>("[data-carousel-project]")
+            ? (unit?.querySelector<HTMLElement>("[data-carousel-moveto]:not([hidden])") ??
+              unit?.querySelector<HTMLElement>('[data-carousel-move="up"]'))
             : focusHint.control === "text"
               ? unit?.querySelector<HTMLElement>(`[data-carousel-field="${worksLang === "de" ? "textAfterDe" : "textAfter"}"]`)
             : focusHint.control === "add"
@@ -3057,6 +3071,13 @@ document.addEventListener("astro:page-load", () => {
     btn.addEventListener("click", () => {
       switchSection(btn.dataset.section ?? "profile");
     });
+  });
+
+  // EDIT PROFILE under the person in the Work tab's Edit mode (2026-11-04):
+  // the same as pressing the PROFILE tab, so the tab row, the URL and the
+  // phone's swipe order all follow as they do for a tab.
+  document.querySelector<HTMLButtonElement>("[data-ppv-edit-profile]")?.addEventListener("click", () => {
+    document.getElementById("tab-profile")?.click();
   });
 
   // Tags fill the directory card's typographic face as well as the profile

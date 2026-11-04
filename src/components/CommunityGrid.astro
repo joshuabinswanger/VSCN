@@ -3385,7 +3385,8 @@ const searchIndex: SearchIndex = {
        behind the keyboard and the home bar, and their height is padding,
        so the last row still ends above them. */
     .community-bar .tag-filter__panel,
-    .community-bar .sort-menu__panel {
+    .community-bar .sort-menu__panel,
+    .community-bar .search__panel {
       --sheet-foot: max(env(safe-area-inset-bottom, 0px), var(--bar-kb, 0px));
       position: fixed;
       left: 0;
@@ -3403,7 +3404,7 @@ const searchIndex: SearchIndex = {
     .community-bar .search__panel {
       display: flex;
       flex-direction: column;
-      height: var(--card-max);
+      height: calc(var(--card-max) + var(--sheet-foot));
       overflow: hidden;
     }
     .community-bar .search__head {
@@ -3418,37 +3419,16 @@ const searchIndex: SearchIndex = {
       overflow-y: auto;
       overscroll-behavior: contain;
     }
-    /* THE SEARCH FILLS THE SCREEN (2026-10-29, Josh: "please make search
-       full screen on mobile"). Its card covers the whole visible screen,
-       header included, from the top edge down to the keyboard (or the
-       screen's foot); it still grows out of its pill and folds back by the
-       handle. Tags and Sort stay cards over the bar. The bar climbs over
-       the header (z 20 → 40) while it is open. */
+    /* THE SEARCH STAYS AT THE FOOT (2026-11-04, Josh: "the search bar on
+       mobile to just pop open and stay at the bottom instead of sliding all
+       the way up. So it is more consistent with the lower bar"). It is the
+       tags' and sort's sheet again (the rule above), standing on the
+       screen's foot with the keyboard's height as padding, so the field and
+       the results sit just above the keys. Until today it filled the screen
+       (2026-10-29, "please make search full screen on mobile"). The bar
+       still climbs over the header while it is open. */
     .community-bar:has(#search-panel:not([hidden])) {
       z-index: 40;
-    }
-    /* TO THE SCREEN'S FOOT, BEHIND THE KEYBOARD (2026-10-29, Josh: "the
-       search bar does not cover the full screen we can still see the site
-       behind it"). The paper stopped at the keyboard's top (--bar-kb), and
-       the iOS keyboard is see-through and floats its suggestion bar above
-       itself, so the People list showed in the strip between them and
-       through the keys. The paper now runs to the bottom; the keyboard's
-       height is padding, so the results still end above it. */
-    .community-bar .search__panel {
-      position: fixed;
-      top: var(--bar-vtop, 0px);
-      bottom: 0;
-      left: 0;
-      right: 0;
-      translate: none;
-      width: auto;
-      height: auto;
-      max-height: none;
-      padding: calc(env(safe-area-inset-top, 0px) + 10px) 12px
-        calc(var(--bar-kb, 0px) + env(safe-area-inset-bottom, 0px) + 12px);
-      border: 0;
-      border-radius: 0 !important;
-      box-shadow: none;
     }
     /* The tags' card the same way: the handle and the field stand, the
        chips scroll under them. */
