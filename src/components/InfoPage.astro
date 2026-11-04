@@ -3,7 +3,8 @@ import { getImage } from "astro:assets";
 import { useTranslations } from "../i18n/utils.ts";
 import type { Lang } from "../i18n/utils.ts";
 import { fetchMemberViews } from "../lib/membersBuild.ts";
-import { workCaption } from "../lib/links.ts";
+import { workCaption, memberHref } from "../lib/links.ts";
+import { projectTitle, looseWorksProjectId } from "../lib/projects.ts";
 
 interface Props {
   lang?: Lang;
@@ -14,77 +15,83 @@ const t = useTranslations(lang);
 const portfoliosHref = lang === "de" ? "/de/community" : "/community";
 
 // THE INFO PAGE TELLS A STORY AS IT SCROLLS (2026-11-02, Josh: "like a
-// storytelling with smooth scroll and animations"). The landing restyle of the
-// same day (design-kit/vscn-landing.af) laid the parts out; this turns them
-// into chapters, each a tall section with a frame that stays put (sticky)
-// while the scroll plays it:
+// storytelling with smooth scroll and animations"; 2026-11-04: "scroll has
+// to be faster. it should snap as well"). Every chapter is one screen, and
+// the scroller snaps from one to the next (the same y mandatory snap as the
+// Portfolios view, global.css). A chapter plays its entrance the first time
+// it is reached: its data-in parts rise and fade in, each after its own
+// --d delay, so a list still arrives point by point.
 //
-//   1. HERO. "Visuals create knowledge." is there on arrival. Scrolling fades
-//      in the second sentence (the big size), then the third at reading size.
-//   2. WORKS. The network's pictures come into view, and scrolling steps
-//      through the first three of them (desktop: the fan; phone: the strip).
+//   1. HERO. "Visuals create knowledge." on arrival, then the second
+//      sentence (the big size), then the third at reading size.
+//   2. WORKS. One picture at a time, the artist and the project under it:
+//      a plain carousel the visitor swipes (phone) or drags (desktop), with
+//      a moving hint beneath until they do.
 //   3-5. MISSION, HOW, PLAN (Josh's content layout of 11-04). Each heading,
 //      then its three points one by one.
 //   6. PORTFOLIOS. One line and the button, the moment that sends people on.
 //   7. CONTACT. The closing sentence, as the page runs out.
 //
-// The scroll does not move anything by itself: each chapter's progress (0 at
-// its start, 1 when its frame is about to leave) sets --t on the parts marked
-// data-in="from to", and CSS turns --t into opacity and a short rise, with a
-// transition on top so a quick flick still reads as a smooth fade. A visitor
-// who asks for reduced motion, or a browser without the script, gets the
-// whole page at once, in normal flow.
+// A visitor who asks for reduced motion, or a browser without the script,
+// gets every part shown at once (the snap stays: it is not motion).
 //
 // The carousel's guest list is the wall's (hidden works stay off, as on
 // /community): each member's best picture, the best members first, twelve at
-// most. Chevrons and a click on a side picture still page it by hand.
+// most.
 const WALL_MAX = 12;
 const picks = (await fetchMemberViews())
   .flatMap((m) => {
     const work = m.works.filter((w) => !w.hidden).sort((a, b) => b.score - a.score)[0];
-    return work ? [{ name: m.displayName, work }] : [];
+    if (!work) return [];
+    // Under the name: the work's project, or its own title when it is in
+    // none (the derived "Works" project is a shelf, not a project name).
+    const project = m.projects?.find((p) => p.id === work.projectId && p.id !== looseWorksProjectId(m.id));
+    const line = (project && projectTitle(project, lang)) || workCaption(work, lang);
+    return [{ name: m.displayName, href: memberHref(lang, m.slug), project: line, work }];
   })
   .sort((a, b) => b.work.score - a.work.score)
   .slice(0, WALL_MAX);
 const wall = await Promise.all(
-  picks.map(async ({ name, work }) => ({
+  picks.map(async ({ name, href, project, work }) => ({
     name,
+    href,
+    project,
+    width: work.width,
+    height: work.height,
     alt: workCaption(work, lang) || name,
     rendered: await getImage({
       src: work.url,
       width: work.width,
       height: work.height,
-      widths: [400, 800],
+      widths: [600, 1200],
       format: "webp",
     }),
   }))
 );
-// How many pictures the scroll steps through in the works chapter.
-const STORY_STEPS = Math.min(3, wall.length);
 ---
 
 <div class="info-page story" data-story-root>
   <!-- 1. HERO -->
-  <section class="story-ch story-ch--hero" data-story-ch style="--len: 2.4">
+  <section class="story-ch story-ch--hero" data-story-ch>
     <div class="story-frame">
       <div class="info-hero">
         <h1 class="info-hero__title">{t("info.hero.title")}</h1>
         {/* The belief at the big size, the reasons under it at reading size. */}
         <div class="info-hero__text">
-          <p class="info-hero__sub" data-in="0.08 0.34">{t("info.hero.lead")}</p>
-          <p class="info-hero__body" data-in="0.38 0.7">{t("info.hero.body")}</p>
+          <p class="info-hero__sub" data-in style="--d: 0.45s">{t("info.hero.lead")}</p>
+          <p class="info-hero__body" data-in style="--d: 1s">{t("info.hero.body")}</p>
         </div>
       </div>
-      <span class="story-cue" data-out="0 0.08" aria-hidden="true">{t("info.story.cue")}<span class="story-cue__line"></span></span>
+      <span class="story-cue" aria-hidden="true">{t("info.story.cue")}<span class="story-cue__line"></span></span>
     </div>
   </section>
 
   <!-- 2. WORKS -->
   {
     wall.length > 0 && (
-      <section class="story-ch story-ch--works" data-story-ch data-story-works={STORY_STEPS} style={`--len: ${1.4 + STORY_STEPS * 0.7}`}>
-        <div class="story-frame">
-          <div class="info-wall" data-in="0 0.18" aria-roledescription="carousel" aria-label={t("info.wall.heading")} data-info-wall>
+      <section class="story-ch story-ch--works" data-story-ch>
+        <div class="story-frame story-frame--center">
+          <div class="info-wall" data-in aria-roledescription="carousel" aria-label={t("info.wall.heading")} data-info-wall>
             <div class="info-wall__stage">
               {wall.length > 1 && (
                 <button type="button" class="info-wall__arrow info-wall__arrow--prev" data-wall-prev aria-label={t("info.wall.prev")}>
@@ -94,17 +101,21 @@ const STORY_STEPS = Math.min(3, wall.length);
               <ul class="info-wall__slides" data-wall-track>
                 {wall.map((tile, i) => (
                   <li class="info-wall__slide" data-wall-slide aria-hidden={i === 0 ? undefined : "true"} data-current={i === 0 ? "" : undefined}>
-                    <a href={portfoliosHref} class="info-wall__tile" tabindex={i === 0 ? undefined : -1} draggable="false">
+                    <a href={tile.href} class="info-wall__tile" tabindex={i === 0 ? undefined : -1} draggable="false">
                       <img
                         src={tile.rendered.src}
                         srcset={tile.rendered.srcSet.attribute}
-                        sizes="(max-width: 767px) 74vw, 332px"
+                        sizes="(max-width: 767px) 92vw, 600px"
+                        width={tile.width}
+                        height={tile.height}
+                        style={`--ar: ${tile.width / tile.height}`}
                         alt={tile.alt}
-                        loading={i < 3 || i > wall.length - 3 ? "eager" : "lazy"}
+                        loading={i < 2 ? "eager" : "lazy"}
                         decoding="async"
                         draggable="false"
                       />
                       <span class="info-wall__name">{tile.name}</span>
+                      {tile.project && <span class="info-wall__project t-caption">{tile.project}</span>}
                     </a>
                   </li>
                 ))}
@@ -115,6 +126,13 @@ const STORY_STEPS = Math.min(3, wall.length);
                 </button>
               )}
             </div>
+            {wall.length > 1 && (
+              <p class="info-wall__hint" aria-hidden="true">
+                <span class="info-wall__nudge" />
+                <span class="info-wall__hint-touch">{t("info.wall.hint.swipe")}</span>
+                <span class="info-wall__hint-drag">{t("info.wall.hint.drag")}</span>
+              </p>
+            )}
           </div>
         </div>
       </section>
@@ -122,44 +140,44 @@ const STORY_STEPS = Math.min(3, wall.length);
   }
 
   <!-- 3-5. MISSION / HOW / PLAN: three bullet chapters, each revealed point by point. -->
-  <section class="story-ch story-ch--mission" data-story-ch style="--len: 1.8">
+  <section class="story-ch story-ch--mission" data-story-ch>
     <div class="story-frame story-frame--text">
-      <h2 class="info-heading" data-in="0.02 0.16">{t("info.h2.mission")}</h2>
+      <h2 class="info-heading" data-in>{t("info.h2.mission")}</h2>
       <ul class="info-list">
-        <li data-in="0.14 0.28">{t("info.mission.1")}</li>
-        <li data-in="0.26 0.4">{t("info.mission.2")}</li>
-        <li data-in="0.38 0.52">{t("info.mission.3")}</li>
+        <li data-in style="--d: 0.2s">{t("info.mission.1")}</li>
+        <li data-in style="--d: 0.35s">{t("info.mission.2")}</li>
+        <li data-in style="--d: 0.5s">{t("info.mission.3")}</li>
       </ul>
     </div>
   </section>
 
-  <section class="story-ch story-ch--how" data-story-ch style="--len: 1.8">
+  <section class="story-ch story-ch--how" data-story-ch>
     <div class="story-frame story-frame--text">
-      <h2 class="info-heading" data-in="0.02 0.16">{t("info.h2.how")}</h2>
+      <h2 class="info-heading" data-in>{t("info.h2.how")}</h2>
       <ul class="info-list">
-        <li data-in="0.14 0.28">{t("info.how.1")}</li>
-        <li data-in="0.26 0.4">{t("info.how.2")}</li>
-        <li data-in="0.38 0.52">{t("info.how.3")}</li>
+        <li data-in style="--d: 0.2s">{t("info.how.1")}</li>
+        <li data-in style="--d: 0.35s">{t("info.how.2")}</li>
+        <li data-in style="--d: 0.5s">{t("info.how.3")}</li>
       </ul>
     </div>
   </section>
 
-  <section class="story-ch story-ch--plan" data-story-ch style="--len: 1.8">
+  <section class="story-ch story-ch--plan" data-story-ch>
     <div class="story-frame story-frame--text">
-      <h2 class="info-heading" data-in="0.02 0.16">{t("info.h2.plan")}</h2>
+      <h2 class="info-heading" data-in>{t("info.h2.plan")}</h2>
       <ul class="info-list">
-        <li data-in="0.14 0.28">{t("info.plan.1")}</li>
-        <li data-in="0.26 0.4">{t("info.plan.2")}</li>
-        <li data-in="0.38 0.52">{t("info.plan.3")}</li>
+        <li data-in style="--d: 0.2s">{t("info.plan.1")}</li>
+        <li data-in style="--d: 0.35s">{t("info.plan.2")}</li>
+        <li data-in style="--d: 0.5s">{t("info.plan.3")}</li>
       </ul>
     </div>
   </section>
 
   <!-- 6. PORTFOLIOS -->
-  <section class="story-ch story-ch--portfolios" data-story-ch style="--len: 1.8">
+  <section class="story-ch story-ch--portfolios" data-story-ch>
     <div class="story-frame story-frame--center">
-      <p class="info-people" data-in="0.05 0.3">{t("info.story.people")}</p>
-      <div class="info-cta__row" data-in="0.25 0.5">
+      <p class="info-people" data-in>{t("info.story.people")}</p>
+      <div class="info-cta__row" data-in style="--d: 0.25s">
         <a href={portfoliosHref} class="btn-solid info-cta__btn">{t("info.cta.portfolios")}<span aria-hidden="true">→</span></a>
         <a href={lang === "de" ? "/de/signup" : "/signup"} class="btn-outline" id="info-signup-cta" style="display:none;"
           >{t("signup.cta.info")}</a
@@ -168,9 +186,9 @@ const STORY_STEPS = Math.min(3, wall.length);
     </div>
   </section>
 
-  <!-- 7. CONTACT: the page's last line, in the flow (no frame), revealed as it arrives. -->
-  <section class="story-ch story-ch--contact" data-story-ch data-story-flow>
-    <p class="info-contact" data-in="0.1 0.6">
+  <!-- 7. CONTACT: the page's last line, a short last stop. -->
+  <section class="story-ch story-ch--contact" data-story-ch>
+    <p class="info-contact" data-in>
       {t("info.contact.ask")}{" "}
       <!--email_off--><a href="mailto:info@vscn.ch">info@vscn.ch</a><!--/email_off-->
     </p>
@@ -193,10 +211,10 @@ const STORY_STEPS = Math.min(3, wall.length);
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    /* The viewport a frame fills: the scroller's height under the header
-       row. A desktop scrolls .page-wrap, as tall as the shell; a phone
-       scrolls the document, so the small viewport height keeps a frame from
-       jumping as the toolbars come and go. */
+    /* A chapter's height: the scroller's height under the header row. A
+       desktop scrolls .page-wrap, as tall as the shell; a phone scrolls the
+       document, so the small viewport height keeps a chapter from jumping
+       as the toolbars come and go. */
     --story-vh: calc(var(--shell-h, 100dvh) - var(--header-h));
 
     @media (--bp-mobile) {
@@ -204,10 +222,7 @@ const STORY_STEPS = Math.min(3, wall.length);
     }
   }
 
-  /* ── CHAPTERS ──────────────────────────────────────────────────────────
-     Without the script (or with reduced motion) a chapter is just its
-     content, one after the other. With it, a chapter is --len screens tall
-     and its frame sticks under the header for the length of it. */
+  /* ── CHAPTERS: ONE SCREEN EACH, SNAPPED ─────────────────────────────── */
   .story-ch {
     position: relative;
   }
@@ -216,43 +231,46 @@ const STORY_STEPS = Math.min(3, wall.length);
     flex-direction: column;
     justify-content: center;
     gap: 1.5rem;
-    padding: 3rem 0;
-  }
-  .story[data-story-on] .story-ch:not([data-story-flow]) {
-    height: calc(var(--len, 2) * var(--story-vh));
-  }
-  /* Sticks at the top of the scroller's padding box: on a desktop
-     .page-wrap is already padded by the header row, so 0; on a phone the
-     document scrolls under the sticky header, so the header's height. */
-  .story[data-story-on] .story-frame {
-    position: sticky;
-    top: 0;
-    height: var(--story-vh);
+    min-height: var(--story-vh);
     box-sizing: border-box;
-    padding: 0;
-  }
-  @media (--bp-mobile) {
-    .story[data-story-on] .story-frame {
-      top: var(--header-h);
-    }
+    padding: 2rem 0;
+    scroll-snap-align: start;
   }
   .story-frame--center {
     align-items: center;
     text-align: center;
   }
-
-  /* A part waiting for its moment in the scroll: --t runs 0 → 1 (set by the
-     script from the chapter's progress); the transition smooths a flick. */
-  .story[data-story-on] [data-in] {
-    opacity: var(--t, 0);
-    transform: translateY(calc((1 - var(--t, 0)) * 28px));
-    transition:
-      opacity 0.7s ease-out,
-      transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  /* The scroller snaps chapter to chapter: .page-wrap on a desktop, the
+     document on a phone (the Portfolios view's rule, global.css). Keyed off
+     the server-rendered mark, so the first frame is already snapped. */
+  :global(:root:not([data-arriving]) .page-wrap:has(.story)) {
+    scroll-snap-type: y mandatory;
+    scroll-padding-top: var(--header-h);
   }
-  .story[data-story-on] [data-out] {
-    opacity: calc(1 - var(--t, 0));
-    transition: opacity 0.5s ease-out;
+  @media (--bp-mobile) {
+    :global(html:not([data-arriving]):has(.story)) {
+      scroll-snap-type: y mandatory;
+      scroll-padding-top: var(--header-h);
+    }
+    /* The phone footer follows the page in the flow: a stop of its own,
+       so the mandatory snap still lets the Impressum be reached. */
+    :global(html:has(.story) .site-footer) {
+      scroll-snap-align: end;
+    }
+  }
+
+  /* A part waiting for its chapter: hidden until the chapter is reached
+     (data-seen, set once by the script), then rising in after its --d. */
+  .story[data-story-on] [data-in] {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 0.6s ease-out var(--d, 0s),
+      transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0s);
+  }
+  .story[data-story-on] [data-seen] [data-in] {
+    opacity: 1;
+    transform: none;
   }
 
   /* ── 1. HERO ─────────────────────────────────────────────────────────── */
@@ -295,11 +313,12 @@ const STORY_STEPS = Math.min(3, wall.length);
     line-height: 1.85;
   }
   /* The cue at the foot of the first screen: a word and a line that grows
-     down, gone at the first stretch of scrolling. Only with the story on. */
+     down. Only with the story on. */
   .story-cue {
     display: none;
   }
   .story[data-story-on] .story-cue {
+    transition: opacity 0.4s ease;
     position: absolute;
     bottom: 2rem;
     left: 50%;
@@ -313,6 +332,11 @@ const STORY_STEPS = Math.min(3, wall.length);
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+  }
+  /* Gone once the next chapter is reached, so its foot never shows under
+     the header there. */
+  .story[data-story-on]:has(.story-ch--works[data-seen], .story-ch--mission[data-seen]) .story-cue {
+    opacity: 0;
   }
   .story-cue__line {
     width: 1px;
@@ -358,7 +382,7 @@ const STORY_STEPS = Math.min(3, wall.length);
   }
   /* Point by point: each line slides in from the left as well as rising. */
   .story[data-story-on] .info-list li {
-    transform: translateX(calc((1 - var(--t, 0)) * -24px));
+    transform: translateX(-24px);
   }
 
   /* ── 6. PORTFOLIOS ───────────────────────────────────────────────────── */
@@ -386,15 +410,18 @@ const STORY_STEPS = Math.min(3, wall.length);
     translate: 4px 0;
   }
   .story[data-story-on] .info-cta__row {
-    transform: scale(calc(0.92 + var(--t, 0) * 0.08));
+    transform: scale(0.92);
   }
 
-  /* ── 5. CONTACT ──────────────────────────────────────────────────────── */
+  /* ── 7. CONTACT ──────────────────────────────────────────────────────── */
   .story-ch--contact {
     display: flex;
     justify-content: center;
-    padding: 4rem 0 8rem;
+    align-items: center;
+    min-height: calc(var(--story-vh) * 0.4);
+    padding: 2rem 0 4rem;
     text-align: center;
+    scroll-snap-align: end;
   }
   .info-contact {
     margin: 0;
@@ -412,90 +439,108 @@ const STORY_STEPS = Math.min(3, wall.length);
     opacity: 0.5;
   }
 
-  /* ── 2. WORKS: THE CAROUSEL ───────────────────────────────────────────
-     DESKTOP, THE FAN. Every slide sits in the one grid cell, the picture's
-     width, and the script places each by its distance from the one in
-     focus. The side pictures stand out past the column, never past the
-     window (FAN in the script). */
+  /* ── 2. WORKS: ONE PICTURE AT A TIME ────────────────────────────────
+     A row the visitor scrolls sideways, one slide its full width, snapped
+     to the middle. The picture keeps its own shape at one height (the
+     screen's, less the words under it), the artist and the project under
+     it. The neighbours fade and shrink a little as they leave. */
+  .info-wall {
+    --pic-h: min(calc(var(--story-vh) - 15rem), 640px);
+    width: 100%;
+  }
   .info-wall__stage {
-    --wall-w: min(332px, 30vw);
-    --wall-gap: clamp(6px, 1.7vw, 25px);
     position: relative;
-    width: var(--wall-w);
+    width: min(100%, 760px);
     margin: 0 auto;
   }
   .info-wall__slides {
-    display: grid;
+    display: flex;
     margin: 0;
     padding: 0;
     list-style: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    cursor: grab;
   }
+  .info-wall__slides::-webkit-scrollbar {
+    display: none;
+  }
+  .info-wall__slides[data-dragging] {
+    scroll-snap-type: none;
+    cursor: grabbing;
+  }
+  /* Pictures differ in shape, so each slide stands on its bottom edge: the
+     words under it keep their place as the row moves. */
   .info-wall__slide {
-    --x: 0px;
-    --s: 1;
-    --o: 1;
-    grid-area: 1 / 1;
-    position: relative;
-    z-index: calc(10 - var(--rank, 0));
-    transform: translateX(var(--x)) scale(var(--s));
-    opacity: var(--o);
-  }
-  /* The glide starts once the fan is first laid out, so the pictures do not
-     fly out of the middle on arrival. */
-  .info-wall[data-fan-ready] .info-wall__slide {
-    transition:
-      transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
-      opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .info-wall__slide[data-far] {
-    pointer-events: none;
+    display: flex;
+    flex: 0 0 100%;
+    justify-content: center;
+    align-items: flex-end;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
   }
   .info-wall__tile {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    align-items: center;
+    width: 100%;
     color: var(--color-dark);
     text-decoration: none;
     -webkit-user-drag: none;
+    opacity: 0.35;
+    transition: opacity var(--pic-in-fade);
   }
   .info-wall__tile img {
     display: block;
-    width: 100%;
-    aspect-ratio: 4 / 5;
-    object-fit: cover;
+    /* As wide as its shape allows at --pic-h, never past the slide; the
+       height follows from the width attributes' ratio. */
+    width: min(100%, calc(var(--pic-h) * var(--ar, 0.8)));
+    height: auto;
     border-radius: var(--radius-sm);
-    background: var(--color-border);
-    transition: opacity 0.2s ease;
+    transform: scale(0.92);
+    transition:
+      transform var(--pic-in-zoom),
+      opacity 0.2s ease;
+    user-select: none;
+  }
+  .info-wall__slide[data-current] .info-wall__tile {
+    opacity: 1;
+  }
+  .info-wall__slide[data-current] .info-wall__tile img {
+    transform: none;
   }
   .info-wall__slide[data-current] .info-wall__tile:hover img,
   .info-wall__slide[data-current] .info-wall__tile:focus-visible img {
     opacity: 0.85;
   }
   .info-wall__name {
+    margin-top: 14px;
     color: var(--color-dark);
-    text-align: center;
-    transition: opacity 0.4s ease;
   }
-  /* On the fan only the picture in focus carries its name. */
-  .info-wall__slide:not([data-current]) .info-wall__name {
-    opacity: 0;
+  .info-wall__project {
+    margin-top: 4px;
+    color: var(--color-muted);
   }
-  /* The card's arrows (communityCard.css): a strip the picture's height
-     beside each edge, a stroked chevron in it, muted until pointed at. */
+  /* The card's arrows (communityCard.css): a stroked chevron beside each
+     edge of the stage, muted until pointed at. */
   .info-wall__arrow {
     position: absolute;
-    top: 0;
-    z-index: 20;
+    top: calc(var(--pic-h) / 2);
+    z-index: 2;
     display: grid;
     place-items: center;
     width: 2.5rem;
-    height: calc(var(--wall-w) * 1.25);
+    height: 4rem;
     padding: 0;
     border: 0;
     background: none;
     color: var(--color-dark);
     opacity: 0.35;
     cursor: pointer;
+    translate: 0 -50%;
     transition: opacity 150ms ease;
   }
   .info-wall__arrow:hover,
@@ -503,10 +548,10 @@ const STORY_STEPS = Math.min(3, wall.length);
     opacity: 1;
   }
   .info-wall__arrow--prev {
-    right: calc(100% + var(--wall-gap));
+    right: 100%;
   }
   .info-wall__arrow--next {
-    left: calc(100% + var(--wall-gap));
+    left: 100%;
   }
   .info-wall__arrow span {
     display: block;
@@ -522,75 +567,88 @@ const STORY_STEPS = Math.min(3, wall.length);
     transform: translate(-0.05rem, 0) rotate(45deg);
   }
 
+  /* THE HINT under the picture: a dot sliding from side to side and the
+     word for the gesture (swipe on a touch screen, drag with a mouse). It
+     goes once the visitor has moved the row. */
+  .info-wall__hint {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.7rem;
+    margin: 1.4rem 0 0;
+    color: var(--color-muted);
+    font-size: var(--fs-label);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    transition: opacity 0.5s ease;
+  }
+  .info-wall[data-moved] .info-wall__hint {
+    opacity: 0;
+  }
+  .info-wall__nudge {
+    position: relative;
+    width: 2.25rem;
+    height: 1px;
+    background: currentColor;
+    opacity: 0.6;
+  }
+  .info-wall__nudge::after {
+    content: "";
+    position: absolute;
+    top: -3px;
+    left: 0;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: info-nudge 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
+  }
+  @keyframes info-nudge {
+    to {
+      translate: calc(2.25rem - 7px) 0;
+    }
+  }
+  .info-wall__hint-drag {
+    display: none;
+  }
+  @media (pointer: fine) {
+    .info-wall__hint-touch {
+      display: none;
+    }
+    .info-wall__hint-drag {
+      display: inline;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .info-hero__title,
-    .story-cue__line {
+    .story-cue__line,
+    .info-wall__nudge::after {
       animation: none;
     }
-    .info-wall[data-fan-ready] .info-wall__slide {
+    .info-wall__tile,
+    .info-wall__tile img {
       transition: none;
     }
   }
 
-  /* PHONE, THE STEPPED STRIP. Edge to edge across the screen: a row the
-     finger scrolls natively, snapping each picture to the middle, pictures
-     at three quarters of the width, 12px apart. The script clones the row
-     twice so a swipe never reaches an end. The ones beside the picture in
-     focus are faded and a little smaller, and grow into place as they
-     arrive (the site's picture entrance curve). */
+  /* PHONE: the row runs edge to edge, the picture at the screen's width
+     less the gutters, and the arrows give way to the finger. */
   @media (--bp-mobile) {
+    .info-wall {
+      --pic-h: min(calc(var(--story-vh) - 11rem), 125vw);
+    }
     .info-wall__stage {
       width: 100vw;
       margin: 0 0 0 calc(50% - 50vw);
     }
+    .info-wall__slide {
+      box-sizing: border-box;
+      padding: 0 16px;
+    }
     .info-wall__arrow {
       display: none;
-    }
-    .info-wall__slides {
-      display: flex;
-      gap: 12px;
-      overflow-x: auto;
-      overflow-y: hidden;
-      overscroll-behavior-x: contain;
-      scroll-snap-type: x mandatory;
-      scrollbar-width: none;
-      -webkit-overflow-scrolling: touch;
-    }
-    .info-wall__slides::-webkit-scrollbar {
-      display: none;
-    }
-    .info-wall__slide,
-    .info-wall[data-fan-ready] .info-wall__slide {
-      flex: 0 0 74vw;
-      scroll-snap-align: center;
-      transform: none;
-      opacity: 1;
-      transition: none;
-    }
-    .info-wall__tile {
-      opacity: 0.45;
-      transition: opacity var(--pic-in-fade);
-    }
-    .info-wall__tile img {
-      transform: scale(0.9);
-      transition:
-        transform var(--pic-in-zoom),
-        opacity 0.2s ease;
-    }
-    .info-wall__slide[data-current] .info-wall__tile {
-      opacity: 1;
-    }
-    .info-wall__slide[data-current] .info-wall__tile img {
-      transform: none;
-    }
-    .info-wall__slide:not([data-current]) .info-wall__name {
-      opacity: 1;
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .info-wall__tile,
-      .info-wall__tile img {
-        transition: none;
-      }
     }
   }
 </style>
@@ -609,41 +667,20 @@ const STORY_STEPS = Math.min(3, wall.length);
     });
   });
 
-  // The site's phone breakpoint, spelled out (custom-media.css, --bp-mobile).
-  const PHONE = "(width <= 767px), (pointer: coarse) and (height <= 500px)";
-
-  type Carousel = { go: (i: number) => void; undo: () => void };
-
-  // ── DESKTOP, THE FAN ──────────────────────────────────────────────────
-  // Where each distance from the focus stands: offset as a share of the
-  // WINDOW's width (the fan spreads past the 900px column), capped in px,
-  // then size and opacity. 3 = waiting unseen behind the outer pair, so
-  // nothing ever stands past the window's edge (0.36 of the width plus half
-  // a 0.62 picture stays inside from 736px up).
-  const FAN = [
-    { x: 0, cap: 0, s: 1, o: 1 },
-    { x: 0.2, cap: 290, s: 0.8, o: 0.6 },
-    { x: 0.36, cap: 520, s: 0.62, o: 0.35 },
-    { x: 0.36, cap: 520, s: 0.5, o: 0 },
-  ];
-
-  function fan(wall: HTMLElement, slides: HTMLElement[], signal: AbortSignal): Carousel {
+  // ── THE CAROUSEL ──────────────────────────────────────────────────────
+  // A native sideways scroll does the work (touch, trackpad, shift-wheel);
+  // the script marks the picture in the middle, lets a mouse drag the row,
+  // and pages it from the chevrons, round from the last back to the first.
+  function carousel(wall: HTMLElement, track: HTMLElement, slides: HTMLElement[], signal: AbortSignal) {
     const n = slides.length;
-    let at = 0;
-    const place = () => {
-      const width = document.documentElement.clientWidth;
-      slides.forEach((slide, k) => {
-        let d = (((k - at) % n) + n) % n;
-        if (d > n / 2) d -= n;
-        const rank = Math.min(Math.abs(d), 3);
-        const spot = FAN[rank];
-        const x = Math.min(spot.x * width, spot.cap || spot.x * width) * Math.sign(d);
-        slide.style.setProperty("--x", `${x}px`);
-        slide.style.setProperty("--s", String(spot.s));
-        slide.style.setProperty("--o", String(spot.o));
-        slide.style.setProperty("--rank", String(rank));
-        slide.toggleAttribute("data-far", rank >= 3);
-        const on = d === 0;
+    let at = -1;
+    const nearest = () => Math.min(n - 1, Math.max(0, Math.round(track.scrollLeft / track.clientWidth)));
+    const mark = () => {
+      const k = nearest();
+      if (k === at) return;
+      at = k;
+      slides.forEach((slide, i) => {
+        const on = i === k;
         slide.toggleAttribute("data-current", on);
         const link = slide.querySelector("a");
         if (on) {
@@ -656,214 +693,121 @@ const STORY_STEPS = Math.min(3, wall.length);
       });
     };
     const go = (i: number) => {
-      at = (i + n) % n;
-      place();
+      wall.setAttribute("data-moved", "");
+      track.scrollTo({ left: (((i % n) + n) % n) * track.clientWidth, behavior: "smooth" });
     };
-    wall.querySelector("[data-wall-prev]")?.addEventListener("click", () => go(at - 1), { signal });
-    wall.querySelector("[data-wall-next]")?.addEventListener("click", () => go(at + 1), { signal });
-    // A click on a side picture brings it to the middle instead of leaving.
-    slides.forEach((slide, k) => {
-      slide.addEventListener(
-        "click",
-        (e) => {
-          if (slide.hasAttribute("data-current")) return;
-          e.preventDefault();
-          go(k);
-        },
-        { signal }
-      );
-    });
-    window.addEventListener("resize", place, { passive: true, signal });
-    place();
-    requestAnimationFrame(() => requestAnimationFrame(() => wall.setAttribute("data-fan-ready", "")));
-    return {
-      go,
-      undo: () => {
-        wall.removeAttribute("data-fan-ready");
-        slides.forEach((slide, i) => {
-          for (const p of ["--x", "--s", "--o", "--rank"]) slide.style.removeProperty(p);
-          slide.removeAttribute("data-far");
-          slide.toggleAttribute("data-current", i === 0);
-        });
-      },
-    };
-  }
-
-  // ── PHONE, THE STRIP ──────────────────────────────────────────────────
-  const SETTLE_MS = 140;
-
-  function strip(track: HTMLElement, slides: HTMLElement[], signal: AbortSignal): Carousel {
-    // Three copies of the row: the visitor starts in the middle one and is
-    // moved back by a whole row whenever a swipe strays out of it. A row is
-    // a whole number of snap stops, so the jump lands on one unseen.
-    const clones: HTMLElement[] = [];
-    for (const where of ["before", "after"] as const) {
-      const set = slides.map((s) => {
-        const c = s.cloneNode(true) as HTMLElement;
-        c.setAttribute("aria-hidden", "true");
-        c.removeAttribute("data-current");
-        c.querySelector("a")?.setAttribute("tabindex", "-1");
-        c.querySelector("img")?.setAttribute("loading", "lazy");
-        return c;
-      });
-      clones.push(...set);
-      if (where === "before") track.prepend(...set);
-      else track.append(...set);
-    }
-    slides.forEach((s) => {
-      s.removeAttribute("aria-hidden");
-      s.querySelector("a")?.removeAttribute("tabindex");
-    });
-    const all = Array.from(track.children) as HTMLElement[];
-    const n = slides.length;
-    const row = () => slides[0].offsetLeft - clones[0].offsetLeft;
-    const stop = (el: HTMLElement) => el.offsetLeft - clones[0].offsetLeft + el.offsetWidth / 2 - track.clientWidth / 2;
-    const nearest = () => {
-      const x = track.scrollLeft;
-      let best = 0;
-      all.forEach((el, k) => {
-        if (Math.abs(stop(el) - x) < Math.abs(stop(all[best]) - x)) best = k;
-      });
-      return best;
-    };
-    const mark = (k: number) => all.forEach((el, i) => el.toggleAttribute("data-current", i === k));
-    const jump = (x: number) => track.scrollTo({ left: x, behavior: "instant" as ScrollBehavior });
-    jump(stop(slides[0]));
-    mark(n);
-
-    let touching = false;
-    let settleTimer = 0;
-    const settle = () => {
-      const k = nearest();
-      if (!touching && row() > 0 && (k < n || k >= 2 * n)) {
-        const back = k < n ? k + n : k - n;
-        jump(track.scrollLeft + (back < k ? -row() : row()));
-        mark(back);
-      } else mark(k);
-    };
+    let frame = 0;
     track.addEventListener(
       "scroll",
       () => {
-        mark(nearest());
-        clearTimeout(settleTimer);
-        settleTimer = window.setTimeout(settle, SETTLE_MS);
+        if (!frame)
+          frame = requestAnimationFrame(() => {
+            frame = 0;
+            mark();
+          });
       },
       { passive: true, signal }
     );
-    track.addEventListener("touchstart", () => (touching = true), { passive: true, signal });
-    const release = () => {
-      touching = false;
-      clearTimeout(settleTimer);
-      settleTimer = window.setTimeout(settle, SETTLE_MS * 3);
-    };
-    track.addEventListener("touchend", release, { passive: true, signal });
-    track.addEventListener("touchcancel", release, { passive: true, signal });
-    signal.addEventListener("abort", () => clearTimeout(settleTimer), { once: true });
-    return {
-      // The story's step i: the middle row's picture i, glided to the middle.
-      go: (i: number) => {
-        if (!touching) track.scrollTo({ left: stop(slides[((i % n) + n) % n]), behavior: "smooth" });
+    // Any hand on the row retires the hint.
+    for (const type of ["touchstart", "wheel", "pointerdown"]) {
+      track.addEventListener(type, () => wall.setAttribute("data-moved", ""), { passive: true, signal });
+    }
+    wall.querySelector("[data-wall-prev]")?.addEventListener("click", () => go(at - 1), { signal });
+    wall.querySelector("[data-wall-next]")?.addEventListener("click", () => go(at + 1), { signal });
+
+    // A mouse drags the row; a drag of more than a few pixels is not a
+    // click, and lands on the next picture in its direction.
+    let startX = 0;
+    let startLeft = 0;
+    let dragging = false;
+    let moved = false;
+    track.addEventListener(
+      "pointerdown",
+      (e) => {
+        if (e.pointerType !== "mouse" || e.button !== 0) return;
+        dragging = true;
+        moved = false;
+        startX = e.clientX;
+        startLeft = track.scrollLeft;
       },
-      undo: () => {
-        clearTimeout(settleTimer);
-        clones.forEach((c) => c.remove());
-        track.scrollLeft = 0;
-        slides.forEach((s, i) => s.toggleAttribute("data-current", i === 0));
+      { signal }
+    );
+    window.addEventListener(
+      "pointermove",
+      (e) => {
+        if (!dragging) return;
+        const dx = e.clientX - startX;
+        if (!moved && Math.abs(dx) > 5) {
+          moved = true;
+          track.setAttribute("data-dragging", "");
+        }
+        if (moved) track.scrollLeft = startLeft - dx;
       },
+      { signal }
+    );
+    const drop = (e: PointerEvent) => {
+      if (!dragging) return;
+      dragging = false;
+      if (!moved) return;
+      track.removeAttribute("data-dragging");
+      const dx = e.clientX - startX;
+      const from = Math.round(startLeft / track.clientWidth);
+      const to = Math.abs(dx) > track.clientWidth * 0.12 ? from - Math.sign(dx) : from;
+      track.scrollTo({ left: Math.min(n - 1, Math.max(0, to)) * track.clientWidth, behavior: "smooth" });
     };
+    window.addEventListener("pointerup", drop, { signal });
+    window.addEventListener("pointercancel", drop, { signal });
+    // The click that ends a drag does not open the member.
+    track.addEventListener(
+      "click",
+      (e) => {
+        if (moved) {
+          e.preventDefault();
+          moved = false;
+        }
+      },
+      { capture: true, signal }
+    );
+    window.addEventListener(
+      "resize",
+      () => track.scrollTo({ left: Math.max(0, at) * track.clientWidth, behavior: "instant" as ScrollBehavior }),
+      { passive: true, signal }
+    );
+    signal.addEventListener("abort", () => cancelAnimationFrame(frame), { once: true });
+    mark();
   }
 
   // ── THE STORY ─────────────────────────────────────────────────────────
-  // Each chapter's progress from where its frame sits: 0 as the frame
-  // reaches the header, 1 as it is about to leave. The chapter in the flow
-  // (contact) runs from entering the bottom of the screen to half-way up.
-  // Every data-in="a b" part gets --t = (progress - a) / (b - a), clamped;
-  // data-out runs the same way and fades out.
-  function story(root: HTMLElement, carousel: () => Carousel | null, signal: AbortSignal) {
-    const chapters = Array.from(root.querySelectorAll<HTMLElement>("[data-story-ch]")).map((el) => ({
-      el,
-      frame: el.querySelector<HTMLElement>(".story-frame"),
-      flow: el.hasAttribute("data-story-flow"),
-      steps: Number(el.dataset.storyWorks || 0),
-      lastStep: -1,
-      parts: Array.from(el.querySelectorAll<HTMLElement>("[data-in], [data-out]")).map((p) => {
-        const [a, b] = (p.dataset.in ?? p.dataset.out ?? "0 1").split(" ").map(Number);
-        return { p, a, b, last: -1 };
-      }),
-    }));
-    const progress = (c: (typeof chapters)[number]) => {
-      const r = c.el.getBoundingClientRect();
-      const vh = window.innerHeight;
-      if (c.flow || !c.frame) return Math.min(1, Math.max(0, (vh - r.top) / (vh * 0.5)));
-      const top = parseFloat(getComputedStyle(c.frame).top) || 0;
-      const run = r.height - c.frame.offsetHeight;
-      return run > 0 ? Math.min(1, Math.max(0, (top - r.top) / run)) : 1;
-    };
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      for (const c of chapters) {
-        const p = progress(c);
-        for (const part of c.parts) {
-          const t = Math.round(Math.min(1, Math.max(0, (p - part.a) / (part.b - part.a))) * 1000) / 1000;
-          if (t !== part.last) {
-            part.last = t;
-            part.p.style.setProperty("--t", String(t));
-          }
+  // A chapter plays its entrance once, the first time a good part of it is
+  // on screen. The observer's root is the viewport, which clips .page-wrap
+  // on a desktop and is the scroller itself on a phone.
+  function story(root: HTMLElement, signal: AbortSignal) {
+    const seen = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          entry.target.setAttribute("data-seen", "");
+          seen.unobserve(entry.target);
         }
-        // The works chapter: after its entrance, the scroll steps through
-        // its pictures, one per equal stretch.
-        if (c.steps > 0) {
-          const s = Math.min(c.steps - 1, Math.max(0, Math.floor(((p - 0.2) / 0.75) * c.steps)));
-          if (s !== c.lastStep) {
-            c.lastStep = s;
-            carousel()?.go(s);
-          }
-        }
-      }
-    };
-    const request = () => {
-      if (!frame) frame = requestAnimationFrame(update);
-    };
-    // .page-wrap scrolls on a desktop, the document on a phone (CLAUDE.md,
-    // "Layout and scrolling"): listen to both.
-    document.querySelector(".page-wrap")?.addEventListener("scroll", request, { passive: true, signal });
-    window.addEventListener("scroll", request, { passive: true, signal });
-    window.addEventListener("resize", request, { passive: true, signal });
-    signal.addEventListener("abort", () => cancelAnimationFrame(frame), { once: true });
-    update();
+      },
+      { threshold: 0.35 }
+    );
+    root.querySelectorAll("[data-story-ch]").forEach((ch) => seen.observe(ch));
+    signal.addEventListener("abort", () => seen.disconnect(), { once: true });
   }
 
   document.addEventListener("astro:page-load", () => {
     const root = document.querySelector<HTMLElement>("[data-story-root]");
     if (!root) return;
     const signal = pageLifetime();
-    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    // The carousel: fan or strip by the breakpoint, swapped if a window
-    // crosses it. One signal per mode that ends with the visit OR the mode
-    // (no AbortSignal.any: iOS 17.4+).
     const wall = root.querySelector<HTMLElement>("[data-info-wall]");
     const track = wall?.querySelector<HTMLElement>("[data-wall-track]");
     const slides = wall ? Array.from(wall.querySelectorAll<HTMLElement>("[data-wall-slide]")) : [];
-    let current: Carousel | null = null;
-    let mode: AbortController | null = null;
-    if (wall && track && slides.length > 1) {
-      const phone = matchMedia(PHONE);
-      const pick = () => {
-        current?.undo();
-        mode?.abort();
-        const own = new AbortController();
-        mode = own;
-        signal.addEventListener("abort", () => own.abort(), { once: true, signal: own.signal });
-        current = phone.matches ? strip(track, slides, own.signal) : fan(wall, slides, own.signal);
-      };
-      phone.addEventListener("change", pick, { signal });
-      pick();
-    }
+    if (wall && track && slides.length > 1) carousel(wall, track, slides, signal);
 
-    if (still) return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     root.setAttribute("data-story-on", "");
-    story(root, () => current, signal);
+    story(root, signal);
   });
 </script>

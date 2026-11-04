@@ -45,6 +45,8 @@ export const ui: Record<string, Record<string, string>> = {
     "info.wall.heading": "From the network",
     "info.wall.prev": "Previous member",
     "info.wall.next": "Next member",
+    "info.wall.hint.swipe": "Swipe to see more",
+    "info.wall.hint.drag": "Drag to see more",
 
     // CommunityGrid
     "community.title": "Community",
@@ -802,6 +804,8 @@ export const ui: Record<string, Record<string, string>> = {
     "info.wall.heading": "Aus dem Netzwerk",
     "info.wall.prev": "Vorheriges Mitglied",
     "info.wall.next": "Nächstes Mitglied",
+    "info.wall.hint.swipe": "Wischen für mehr",
+    "info.wall.hint.drag": "Ziehen für mehr",
 
     // CommunityGrid
     "community.title": "Community",
