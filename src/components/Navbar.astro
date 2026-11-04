@@ -1054,11 +1054,21 @@ import "../styles/type.css";
 
   /* THE PORTFOLIOS KEY: an outlined pill with a back chevron, the editor's
      ‹ Projects drawn at the header's size, centred in the header row. */
+  /* CENTRED FROM THE RIGHT, IN VW (2026-11-04, Josh's recording: "the
+     portfolio button overlaps the profile button on up swipe"). While the
+     header rides away or back, the nav carries a transform (global.css),
+     and a transformed box becomes the containing block of its fixed
+     children. On a phone the nav is only the strip round the account face
+     at the right, so `left: 50%` measured half of THAT strip and the key
+     slid back in on top of the face, then jumped to the middle when the
+     transform cleared. Both boxes it can resolve against end at the
+     window's right edge, so `right: 50vw` and a half-width nudge put its
+     middle on the window's middle in either case. */
   .nav-portfolios {
     position: fixed;
     top: calc((var(--header-h) - 30px) / 2);
-    left: 50%;
-    translate: -50% 0;
+    right: 50vw;
+    translate: 50% 0;
     z-index: 1;
     display: none;
     align-items: center;
