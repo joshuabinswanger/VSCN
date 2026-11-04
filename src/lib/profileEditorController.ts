@@ -1687,6 +1687,8 @@ document.addEventListener("astro:page-load", () => {
    * for each thumbnail.
    */
   const galleryTaskRows = new Map<string, HTMLElement>();
+  /** Failed uploads whose refusal has been said in the bar, by task id. */
+  const failuresSaid = new Set<string>();
 
   function renderQueue() {
     if (!galleryTaskTpl) return;
@@ -1696,6 +1698,7 @@ document.addEventListener("astro:page-load", () => {
       if (live.has(id)) continue;
       row.remove();
       galleryTaskRows.delete(id);
+      failuresSaid.delete(id);
     }
     for (const task of tasks) {
       let row = galleryTaskRows.get(task.id);
@@ -1715,6 +1718,15 @@ document.addEventListener("astro:page-load", () => {
         galleryQueueEl;
       if (row.parentElement !== home) home.appendChild(row);
       paintTaskRow(row, task);
+      // A REFUSAL NOBODY COULD SEE (2026-11-04, upload rate limit in the
+      // re-walk). The row goes into its project's block, and that block is
+      // not drawn while the list of projects is showing, nor is the queue
+      // under it; the "image cap reached" sentence sat there unseen. When
+      // the failed row is not on screen, the bar's line says it once.
+      if (task.state === "error" && !failuresSaid.has(task.id)) {
+        failuresSaid.add(task.id);
+        if (!row.getClientRects().length) showSaveError(`${task.name}: ${s[galleryErrorKey(task.error ?? "unknown")]}`);
+      }
     }
     updateGalleryControls();
   }
@@ -2990,6 +3002,8 @@ document.addEventListener("astro:page-load", () => {
     () => {
       syncProfileView();
       refitInline();
+      // An upload's row goes with its project's block: shown when it opens.
+      renderQueue();
     },
     { signal: lifecycle.signal },
   );
