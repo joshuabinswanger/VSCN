@@ -197,6 +197,14 @@ export function editorDraft<T>(options: {
     keep: persist,
     discard() { baseline = JSON.stringify(readDirty()); wordsBaseline = JSON.stringify(read()); remove(); controller.abort(); },
     /** After a Save: the page holds the server's copy now, written at `at` (this tab's clock, which is at or after the stamp the save wrote). */
+    /**
+     * This tab wrote the profile at `at` (the stamp it stored) without settling
+     * the form — a gallery write, or a Save the member typed through. The
+     * draft is based on that copy now, so a return no longer calls this tab's
+     * own write one "saved elsewhere" (audit finding 14). A draft still on
+     * offer keeps the stamp it was written against.
+     */
+    seen(at: number) { loadedAt = at; if (!offered) persist(); },
     saved(at: number = Date.now()) { offered = false; baseline = JSON.stringify(readDirty()); wordsBaseline = JSON.stringify(read()); loadedAt = at; remove(); banner.remove(); },
     dispose() { persist(); clearTimeout(timer); controller.abort(); banner.remove(); },
   };

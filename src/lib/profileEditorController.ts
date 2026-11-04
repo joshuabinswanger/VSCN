@@ -61,7 +61,7 @@ import {
   isRetryable,
   type GalleryTask,
 } from "./galleryQueue.ts";
-import { updateUserProfile } from "./firestore.ts";
+import { getStoredUpdatedAt, stampMillis, updateUserProfile } from "./firestore.ts";
 import { legacyArrayIds } from "./galleryRecords.ts";
 import {
   contiguousOrder,
@@ -396,6 +396,26 @@ document.addEventListener("astro:page-load", () => {
   const mustWriteRecords = new Set<string>();
   /** When the loaded profile was last saved (ms) — the draft banner says so when the server copy is the newer one. */
   let loadedUpdatedAt: number | undefined;
+  // A STALE TAB MAY NOT SAVE (2026-11-04, audit finding 26). Every Save
+  // writes the whole profile as this tab holds it, so a tab left open while
+  // another saved put the older text and order back without a word. Each
+  // write of users/{uid} stamps `updatedAt`; this tab knows the stamp it
+  // loaded and every stamp it wrote itself, and a stored stamp it does not
+  // know means somebody else saved since. Save then refuses and asks for a
+  // reload — the draft carries what was typed here across it.
+  const ownStamps = new Set<number>();
+  let profileStale = false;
+  /** A fresh `updatedAt` for a write of this tab's, known before it lands. */
+  function stamp(): Date {
+    const at = new Date();
+    ownStamps.add(at.getTime());
+    return at;
+  }
+  const unknownStamp = (stored: number | undefined) => stored !== undefined && !ownStamps.has(stored);
+  class ProfileStaleError extends Error {}
+  const refuseIfStale = (stored: number | undefined) => {
+    if (unknownStamp(stored)) throw new ProfileStaleError();
+  };
   let previewSlugs = new Map<string, string>();
   // The member type-ahead's options, loaded once on the first Member-mode
   // focus: every visible member's display name, the way the directory
@@ -1768,10 +1788,16 @@ document.addEventListener("astro:page-load", () => {
   async function persistGallery() {
     const user = auth.currentUser;
     if (!user) return;
+    // Not refused when stale: the array write is what keeps an upload's
+    // record from being orphaned, and the merge keeps the other tab's order
+    // and membership. But a stamp this tab never saw marks it stale, or this
+    // write's own stamp would let the next Save through.
+    const at = stamp();
     const merge = await updateUserProfile(user.uid, {
       gallery: galleryIds(gallery),
-      updatedAt: new Date(),
-    }, { galleryBase });
+      updatedAt: at,
+    }, { galleryBase, checkStored: (stored) => { if (unknownStamp(stored)) profileStale = true; } });
+    draft?.seen(at.getTime());
     await adoptGalleryMerge(merge, user.uid);
   }
 
@@ -1809,6 +1835,15 @@ document.addEventListener("astro:page-load", () => {
       // A work this tab cannot place in a project it knows goes under
       // "Works", as at load. Its order is stored with the next write.
       homeLoose();
+      renderGallery();
+      syncPreview();
+    }
+    // The merge may have kept an order another tab arranged (galleryMerge.ts,
+    // arrange): show the order that was stored.
+    const rank = new Map(merge.merged.map((id, i) => [id, i]));
+    const ordered = [...gallery].sort((a, b) => (rank.get(a.imageId) ?? Infinity) - (rank.get(b.imageId) ?? Infinity));
+    if (!sameIds(ordered, gallery)) {
+      gallery = normaliseLeads(ordered);
       renderGallery();
       syncPreview();
     }
@@ -3303,8 +3338,8 @@ document.addEventListener("astro:page-load", () => {
     const data = await getUser(user.uid);
     if (lifecycle.signal.aborted) return;
     // getUser() hands back raw Firestore data: a Timestamp at runtime, a Date by type.
-    const stamp = data.updatedAt as unknown as Date | { toMillis?: () => number } | undefined;
-    loadedUpdatedAt = stamp instanceof Date ? stamp.getTime() : typeof stamp?.toMillis === "function" ? stamp.toMillis() : undefined;
+    loadedUpdatedAt = stampMillis(data.updatedAt);
+    if (loadedUpdatedAt !== undefined) ownStamps.add(loadedUpdatedAt);
 
     // Sign-in lands here, so this is where a member's stored language takes
     // them to their locale — unless they switched EN / DE on this visit,
@@ -3318,7 +3353,15 @@ document.addEventListener("astro:page-load", () => {
     }
 
     currentPhotoImageId = data.photoImageId ?? "";
-    await ensureEmailSynced(user, data.email);
+    // The sync stamps the profile server-side; that stamp is this load's, not
+    // another tab's, or the first Save would be refused as stale.
+    if (await ensureEmailSynced(user, data.email)) {
+      const synced = await getStoredUpdatedAt(user.uid).catch(() => undefined);
+      if (synced !== undefined) {
+        loadedUpdatedAt = synced;
+        ownStamps.add(synced);
+      }
+    }
     if (lifecycle.signal.aborted) return;
     // Safe to call here: showDeletionBanner and the consts it closes over are declared below, but the auth callback cannot run before this astro:page-load body has finished.
     if (data.status === "pendingDeletion" && data.purgeAfter) {
@@ -3532,6 +3575,22 @@ document.addEventListener("astro:page-load", () => {
     saveError.style.display = "block";
   }
 
+  /** Another tab or device saved since this tab loaded: no Save here until a reload. */
+  function showStale() {
+    showSaveError(s["profile.save.stale"]);
+    const reload = document.createElement("button");
+    reload.type = "button";
+    reload.className = "btn-outline";
+    reload.textContent = s["profile.save.reload"];
+    // dispose() writes the draft and drops the leave prompt; the reloaded
+    // page offers the draft back, as written before the other save.
+    reload.addEventListener("click", () => {
+      draft?.dispose();
+      window.location.reload();
+    });
+    saveError.append(" ", reload);
+  }
+
   /**
    * Where a refused field lives: its control, its tab, and for a bilingual
    * field which of the two panes — the German bio sits behind the EN/DE
@@ -3726,6 +3785,12 @@ document.addEventListener("astro:page-load", () => {
       refocus();
       return;
     }
+    // Said even by an autosave: typing on in a tab that can no longer save
+    // is the loss this guards against.
+    if (profileStale) {
+      showStale();
+      return;
+    }
 
     const generation = ++saveGeneration;
     let timedOut = false;
@@ -3752,6 +3817,10 @@ document.addEventListener("astro:page-load", () => {
       const savedLanguage = preferredLanguageInput.value === "en" ? "en" : "de";
       const shouldSaveCommunityEmailPreference =
         communityEmailPreferenceKnown || communityEmailPreferenceChanged;
+      // Asked before the records and projects go, which are written outside
+      // the profile's transaction; the transaction asks again (checkStored).
+      refuseIfStale(await getStoredUpdatedAt(user.uid));
+      const savedAt = stamp();
       // PROJECTS FIRST (2026-09-23): an image record must never name a
       // project that does not exist yet. Then the records (with projectId),
       // then the profile's order, then the projects no image names any
@@ -3800,6 +3869,8 @@ document.addEventListener("astro:page-load", () => {
           // showed as an error over a profile that had in fact saved).
           active: activeInput.checked,
           galleryBase,
+          updatedAt: savedAt,
+          checkStored: refuseIfStale,
         },
         (pct) => {
           uploadStatus.textContent = `${s["profile.upload.uploading"]} ${pct}%`;
@@ -3808,6 +3879,7 @@ document.addEventListener("astro:page-load", () => {
       );
 
       if (saved.photoImageId) currentPhotoImageId = saved.photoImageId;
+      draft?.seen(savedAt.getTime());
       await adoptGalleryMerge(saved.gallery, user.uid);
 
       // Stored projects that no image names any more — dragged empty, or
@@ -3896,6 +3968,11 @@ document.addEventListener("astro:page-load", () => {
         window.location.replace(localePath(window.location.pathname, savedLanguage));
       }
     } catch (err: unknown) {
+      if (err instanceof ProfileStaleError) {
+        profileStale = true;
+        showStale();
+        return;
+      }
       if (generation !== saveGeneration) return;
       showSaveError(saveErrorMessage(err, s));
     } finally {
