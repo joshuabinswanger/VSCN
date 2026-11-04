@@ -30,10 +30,9 @@ const portfoliosHref = lang === "de" ? "/de/community" : "/community";
 //   (0.8 and 0.62 of the size, 60% and 35%), upright (Josh: "no tilt"). It
 //   steps on a timer, on the chevrons and as the page scrolls; a click on a
 //   side picture brings it to the middle, the middle one opens the Portfolios.
-// - PHONE: a strip that steps one picture to the left every few seconds
-//   (Josh, same evening: "a stepped moving of the images"; it drifted
-//   continuously in the first version) and that a finger can swipe. The
-//   pictures beside the one in focus are a little faded and smaller.
+// - PHONE: a strip that drifts slowly right to left on its own, about one
+//   picture every 8 s, and that a finger can swipe; the drift picks up again
+//   a moment after the finger lets go.
 const WALL_MAX = 12;
 const picks = (await fetchMemberViews())
   .flatMap((m) => {
@@ -122,18 +121,17 @@ const wall = await Promise.all(
   </section>
 
   <section class="info-cta info-cta--end">
-    {/* The early-stages block went (2026-11-02); its way to reach out stays,
-        above the buttons (Josh: "cta before the buttons"). */}
-    <p class="info-contact">
-      {t("info.contact.ask")}
-      <!--email_off--><a href="mailto:info@vscn.ch">info@vscn.ch</a><!--/email_off-->
-    </p>
     <div class="info-cta__row">
       <a href={portfoliosHref} class="btn-solid info-cta__btn">{t("info.cta.portfolios")}<span aria-hidden="true">→</span></a>
       <a href={lang === "de" ? "/de/signup" : "/signup"} class="btn-outline" id="info-signup-cta" style="display:none;"
         >{t("signup.cta.info")}</a
       >
     </div>
+    {/* The early-stages block went (2026-11-02); its way to reach out stays. */}
+    <p class="info-contact">
+      {t("info.contact.ask")}
+      <!--email_off--><a href="mailto:info@vscn.ch">info@vscn.ch</a><!--/email_off-->
+    </p>
   </section>
 </div>
 
@@ -167,16 +165,10 @@ const wall = await Promise.all(
   /* THE OPENING LINES: the / hero's fade-and-rise, headline first, the
      sentence a beat later, then the pictures. Held until the page loader is
      done (body.page-loaded), at once on a client-side visit (Layout.astro). */
-  /* The sentence stands apart from the headline (Josh: "bigger and
-     separated"): a clear gap, not a subtitle tucked under it. */
   .info-hero {
     display: flex;
     flex-direction: column;
-    gap: 2.75rem;
-
-    @media (--bp-desktop) {
-      gap: 3.25rem;
-    }
+    gap: 1.5rem;
   }
   .info-hero__title {
     margin: 0;
@@ -184,7 +176,7 @@ const wall = await Promise.all(
     font-family: "Archivo", sans-serif;
   }
   .info-hero__sub {
-    max-width: 58rem;
+    max-width: 50rem;
     margin: 0;
     color: var(--color-dark);
   }
@@ -413,12 +405,10 @@ const wall = await Promise.all(
     text-decoration: none;
   }
 
-  /* PHONE, THE STEPPED STRIP. Edge to edge across the screen: a row the
-     finger scrolls natively, snapping each picture to the middle, pictures
-     at three quarters of the width, 12px apart. The script clones the row
-     twice so the steps and the swipe never reach an end. The ones beside
-     the picture in focus are faded and a little smaller, and grow into
-     place as they arrive (the site's picture entrance curve). */
+  /* PHONE, THE DRIFTING STRIP. Edge to edge across the screen: a row the
+     finger scrolls natively, pictures at three quarters of the width, 12px
+     apart, every name showing. The script clones the row twice so the drift
+     and the swipe never reach an end, and moves scrollLeft itself. */
   @media (--bp-mobile) {
     .info-wall__stage {
       width: 100vw;
@@ -433,7 +423,6 @@ const wall = await Promise.all(
       overflow-x: auto;
       overflow-y: hidden;
       overscroll-behavior-x: contain;
-      scroll-snap-type: x mandatory;
       scrollbar-width: none;
       -webkit-overflow-scrolling: touch;
     }
@@ -443,35 +432,12 @@ const wall = await Promise.all(
     .info-wall__slide,
     .info-wall[data-fan-ready] .info-wall__slide {
       flex: 0 0 74vw;
-      scroll-snap-align: center;
       transform: none;
       opacity: 1;
       transition: none;
     }
-    .info-wall__tile {
-      opacity: 0.45;
-      transition: opacity var(--pic-in-fade);
-    }
-    .info-wall__tile img {
-      transform: scale(0.9);
-      transition:
-        transform var(--pic-in-zoom),
-        opacity 0.2s ease;
-    }
-    .info-wall__slide[data-current] .info-wall__tile {
-      opacity: 1;
-    }
-    .info-wall__slide[data-current] .info-wall__tile img {
-      transform: none;
-    }
     .info-wall__slide:not([data-current]) .info-wall__name {
       opacity: 1;
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .info-wall__tile,
-      .info-wall__tile img {
-        transition: none;
-      }
     }
   }
 </style>
@@ -514,11 +480,10 @@ const wall = await Promise.all(
     { x: 0.36, cap: 520, s: 0.5, o: 0 },
   ];
 
-  // PHONE, THE STRIP: a step every few seconds, held while a finger is on
-  // it and for a moment after; the settle wait after the last scroll event.
-  const STRIP_STEP_MS = 3500;
-  const RESUME_MS = 2500;
-  const SETTLE_MS = 140;
+  // PHONE, THE STRIP: px per second of drift (a 74vw picture plus its gap
+  // every ~8 s) and the pause after a finger lets go.
+  const DRIFT_S_PER_CARD = 8;
+  const RESUME_MS = 1600;
 
   function fan(wall: HTMLElement, slides: HTMLElement[], signal: AbortSignal) {
     const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -634,9 +599,8 @@ const wall = await Promise.all(
   function strip(wall: HTMLElement, track: HTMLElement, slides: HTMLElement[], signal: AbortSignal) {
     const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
     // Three copies of the row: the visitor starts in the middle one and is
-    // moved back by a whole row whenever a step or a swipe strays out of it.
-    // A row is a whole number of snap stops, so the jump lands on one and
-    // looks like nothing at all.
+    // moved back by a whole row whenever the drift or a swipe strays out of
+    // it, which looks like nothing at all.
     const clones: HTMLElement[] = [];
     for (const where of ["before", "after"] as const) {
       const set = slides.map((s) => {
@@ -655,79 +619,72 @@ const wall = await Promise.all(
       s.removeAttribute("aria-hidden");
       s.querySelector("a")?.removeAttribute("tabindex");
     });
-    const all = Array.from(track.children) as HTMLElement[];
-    const n = slides.length;
-    const row = () => slides[0].offsetLeft - clones[0].offsetLeft;
-    // the scrollLeft that puts a slide in the middle of the strip
-    const stop = (el: HTMLElement) => el.offsetLeft - clones[0].offsetLeft + el.offsetWidth / 2 - track.clientWidth / 2;
-    const nearest = () => {
-      const x = track.scrollLeft;
-      let best = 0;
-      all.forEach((el, k) => {
-        if (Math.abs(stop(el) - x) < Math.abs(stop(all[best]) - x)) best = k;
-      });
-      return best;
-    };
-    const mark = (k: number) => all.forEach((el, i) => el.toggleAttribute("data-current", i === k));
-    const jump = (x: number) => track.scrollTo({ left: x, behavior: "instant" as ScrollBehavior });
 
-    // Start on the middle row's first picture.
-    jump(stop(slides[0]));
-    mark(n);
+    const row = () => slides[0].offsetLeft - clones[0].offsetLeft;
+    let x = 0;
+    const settle = () => {
+      const r = row();
+      if (r <= 0) return;
+      // keep x inside the middle row: [r * 0.5, r * 1.5)
+      while (x < r * 0.5) x += r;
+      while (x >= r * 1.5) x -= r;
+    };
+    x = row();
+    track.scrollLeft = x;
 
     let touching = false;
     let resumeAt = 0;
     let seen = false;
-    let settleTimer = 0;
-    // Once a scroll has come to rest (a step's glide or a swipe): mark the
-    // picture in focus, and bring the strip back into the middle row if it
-    // strayed out of it.
-    const settle = () => {
-      const k = nearest();
-      if (!touching && row() > 0 && (k < n || k >= 2 * n)) {
-        const back = k < n ? k + n : k - n;
-        jump(track.scrollLeft + (back < k ? -row() : row()));
-        mark(back);
-      } else mark(k);
+    let frame = 0;
+    let lastT = 0;
+    const tick = (t: number) => {
+      frame = requestAnimationFrame(tick);
+      const dt = lastT ? Math.min(t - lastT, 64) : 0;
+      lastT = t;
+      if (still || touching || !seen || document.hidden || t < resumeAt) return;
+      const card = slides[0].offsetWidth + 12;
+      x += (card / DRIFT_S_PER_CARD) * (dt / 1000);
+      settle();
+      track.scrollLeft = x;
     };
-    track.addEventListener(
-      "scroll",
-      () => {
-        mark(nearest());
-        clearTimeout(settleTimer);
-        settleTimer = window.setTimeout(settle, SETTLE_MS);
-      },
-      { passive: true, signal }
-    );
-    const step = () => {
-      if (still || touching || !seen || document.hidden || performance.now() < resumeAt) return;
-      const next = all[nearest() + 1];
-      if (next) track.scrollTo({ left: stop(next), behavior: "smooth" });
-    };
-    const timer = window.setInterval(step, STRIP_STEP_MS);
     const grab = () => {
       touching = true;
     };
     const release = () => {
       touching = false;
       resumeAt = performance.now() + RESUME_MS;
-      clearTimeout(settleTimer);
-      settleTimer = window.setTimeout(settle, SETTLE_MS * 3);
     };
     track.addEventListener("touchstart", grab, { passive: true, signal });
+    track.addEventListener("pointerdown", grab, { passive: true, signal });
     track.addEventListener("touchend", release, { passive: true, signal });
     track.addEventListener("touchcancel", release, { passive: true, signal });
+    track.addEventListener("pointerup", release, { passive: true, signal });
+    // A swipe's own glide keeps scrolling after the finger lifts: while it
+    // does, hold the drift and follow where the visitor left it.
+    track.addEventListener(
+      "scroll",
+      () => {
+        if (Math.abs(track.scrollLeft - x) < 2) return;
+        x = track.scrollLeft;
+        if (!touching) resumeAt = performance.now() + RESUME_MS;
+        if (!touching) {
+          const before = x;
+          settle();
+          if (x !== before) track.scrollLeft = x;
+        }
+      },
+      { passive: true, signal }
+    );
     const io = new IntersectionObserver(([entry]) => (seen = entry.isIntersecting));
     io.observe(wall);
-    signal.addEventListener("abort", () => (io.disconnect(), clearInterval(timer), clearTimeout(settleTimer)), { once: true });
+    frame = requestAnimationFrame(tick);
+    signal.addEventListener("abort", () => (io.disconnect(), cancelAnimationFrame(frame)), { once: true });
 
     return () => {
-      clearInterval(timer);
-      clearTimeout(settleTimer);
+      cancelAnimationFrame(frame);
       io.disconnect();
       clones.forEach((c) => c.remove());
       track.scrollLeft = 0;
-      slides.forEach((s, i) => s.toggleAttribute("data-current", i === 0));
     };
   }
 
