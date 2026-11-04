@@ -74,21 +74,22 @@ const wall = await Promise.all(
 );
 ---
 
-<div class="info-page story" data-story-root>
-  {/* Story on before the first paint, so the parts never show and then
-      hide again while the module loads (they did, then replayed). */}
-  <script is:inline>
-    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.querySelector("[data-story-root]")?.setAttribute("data-story-on", "");
-  </script>
+{/* The story is on in the markup itself, so its parts are hidden from the
+    first frame of a full load AND of an in-site arrival (set by a script,
+    they showed, hid and replayed). Without the script, the noscript style
+    shows them; with reduced motion, the media rule at the end of the
+    styles does, and the script switches the story off. */}
+<div class="info-page story" data-story-root data-paints-in data-story-on>
+  <noscript><style>.story [data-in] { opacity: 1 !important; transform: none !important; }</style></noscript>
   <!-- 1. HERO -->
   <section class="story-ch story-ch--hero" data-story-ch>
     <div class="story-frame">
       <div class="info-hero">
-        <h1 class="info-hero__title">{t("info.hero.title")}</h1>
+        <h1 class="info-hero__title" data-in>{t("info.hero.title")}</h1>
         {/* The belief at the big size, the reasons under it at reading size. */}
         <div class="info-hero__text">
-          <p class="info-hero__sub" data-in style="--d: 0.45s">{t("info.hero.lead")}</p>
-          <p class="info-hero__body" data-in style="--d: 1s">{t("info.hero.body")}</p>
+          <p class="info-hero__sub" data-in style="--d: 0.35s">{t("info.hero.lead")}</p>
+          <p class="info-hero__body" data-in style="--d: 0.8s">{t("info.hero.body")}</p>
         </div>
       </div>
       <span class="story-cue" aria-hidden="true">{t("info.story.cue")}<span class="story-cue__line"></span></span>
@@ -203,17 +204,6 @@ const wall = await Promise.all(
 </div>
 
 <style>
-  @keyframes info-rise {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
   .info-page {
     width: 100%;
     max-width: 1200px;
@@ -248,9 +238,10 @@ const wall = await Promise.all(
   }
 
   /* A part waiting for its chapter: hidden until the chapter is reached
-     (data-seen, set once by the script) AND the page is shown (page-loaded:
-     on a first visit the loader covers the page, and the hero played out
-     unseen under it), then rising in after its --d. */
+     (data-seen, set once by the script, and only once the page is on
+     screen: after the first visit's intro and after the hold that follows
+     an in-site link; the hero used to play out unseen under either), then
+     rising in after its --d. */
   .story[data-story-on] [data-in] {
     opacity: 0;
     transform: translateY(24px);
@@ -258,7 +249,7 @@ const wall = await Promise.all(
       opacity 0.6s ease-out var(--d, 0s),
       transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0s);
   }
-  :global(body.page-loaded) .story[data-story-on] [data-seen] [data-in] {
+  .story[data-story-on] [data-seen] [data-in] {
     opacity: 1;
     transform: none;
   }
@@ -277,11 +268,6 @@ const wall = await Promise.all(
     margin: 0;
     color: var(--color-dark);
     font-family: "Archivo", sans-serif;
-    animation: info-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
-    animation-play-state: paused;
-  }
-  :global(.page-loaded) .info-hero__title {
-    animation-play-state: running;
   }
   .info-hero__text {
     display: flex;
@@ -616,7 +602,11 @@ const wall = await Promise.all(
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .info-hero__title,
+    .story[data-story-on] [data-in] {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
     .story-cue__line,
     .info-wall__nudge::after {
       animation: none;
@@ -649,6 +639,7 @@ const wall = await Promise.all(
 <script>
   import { watchAuth } from "../lib/auth.ts";
   import { pageLifetime } from "../lib/pageLifecycle.ts";
+  import { whenHoldDone, whenIntroDone } from "../lib/entrance.ts";
 
   document.addEventListener("astro:page-load", () => {
     const cta = document.getElementById("info-signup-cta");
@@ -774,7 +765,10 @@ const wall = await Promise.all(
   // A chapter plays its entrance once, the first time a good part of it is
   // on screen. The observer's root is the viewport, which clips .page-wrap
   // on a desktop and is the scroller itself on a phone.
-  function story(root: HTMLElement, signal: AbortSignal) {
+  async function story(root: HTMLElement, signal: AbortSignal) {
+    await whenIntroDone();
+    await whenHoldDone();
+    if (signal.aborted) return;
     const seen = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -789,6 +783,77 @@ const wall = await Promise.all(
     signal.addEventListener("abort", () => seen.disconnect(), { once: true });
   }
 
+  // ── SMOOTH SCROLL (desktop) ───────────────────────────────────────────
+  // Josh 11-04: "add smooth scroll". A wheel or trackpad no longer moves
+  // .page-wrap in steps: each wheel event moves a target, and the page eases
+  // toward it every frame (time-based, so 60 and 120 Hz feel the same). The
+  // keyboard and the scrollbar stay native; a sideways gesture over the
+  // carousel is left to the carousel. A phone's own touch scroll is already
+  // smooth and is not touched.
+  type Smoother = { to: (y: number) => void; busy: () => boolean };
+  const EASE_MS = 120;
+
+  function smoother(wrap: HTMLElement, signal: AbortSignal): Smoother {
+    let target = wrap.scrollTop;
+    let current = target;
+    let raf = 0;
+    let last = 0;
+    const before = wrap.style.scrollBehavior;
+    // Our own per-frame writes must land at once, not each start a glide.
+    wrap.style.scrollBehavior = "auto";
+    const max = () => wrap.scrollHeight - wrap.clientHeight;
+    const step = (now: number) => {
+      const dt = last ? Math.min(64, now - last) : 16;
+      last = now;
+      current += (target - current) * (1 - Math.exp(-dt / EASE_MS));
+      if (Math.abs(target - current) < 0.5) current = target;
+      wrap.scrollTop = current;
+      if (current === target) {
+        raf = 0;
+        last = 0;
+      } else raf = requestAnimationFrame(step);
+    };
+    const kick = () => {
+      if (!raf) raf = requestAnimationFrame(step);
+    };
+    wrap.addEventListener(
+      "wheel",
+      (e) => {
+        if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+        e.preventDefault();
+        if (!raf) target = current = wrap.scrollTop;
+        const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? wrap.clientHeight : 1;
+        target = Math.max(0, Math.min(max(), target + e.deltaY * unit));
+        kick();
+      },
+      { passive: false, signal }
+    );
+    // A scroll that is not ours (keys, scrollbar, find in page) resets us.
+    wrap.addEventListener(
+      "scroll",
+      () => {
+        if (!raf) target = current = wrap.scrollTop;
+      },
+      { passive: true, signal }
+    );
+    signal.addEventListener(
+      "abort",
+      () => {
+        cancelAnimationFrame(raf);
+        wrap.style.scrollBehavior = before;
+      },
+      { once: true }
+    );
+    return {
+      to: (y: number) => {
+        if (!raf) current = wrap.scrollTop;
+        target = Math.max(0, Math.min(max(), y));
+        kick();
+      },
+      busy: () => raf !== 0,
+    };
+  }
+
   // ── THE SETTLE ────────────────────────────────────────────────────────
   // When a scroll has ended (no scroll event for a moment, no finger on the
   // glass) the scroller glides to a chapter's top, under the header. Moved
@@ -799,7 +864,7 @@ const wall = await Promise.all(
   const SETTLE_MS = 160;
   const NUDGE = 0.2;
 
-  function settle(root: HTMLElement, signal: AbortSignal) {
+  function settle(root: HTMLElement, signal: AbortSignal, smooth: Smoother | null) {
     const phone = () => matchMedia(PHONE).matches;
     const scroller = () => (phone() ? document.scrollingElement : document.querySelector(".page-wrap")) as HTMLElement | null;
     const chapters = Array.from(root.querySelectorAll<HTMLElement>("[data-story-ch]")).filter((c) => !c.classList.contains("story-ch--contact"));
@@ -815,7 +880,7 @@ const wall = await Promise.all(
     };
     const run = () => {
       const s = scroller();
-      if (!s || touching) return;
+      if (!s || touching || smooth?.busy()) return;
       const y = s.scrollTop;
       const at = tops(s);
       const vh = s.clientHeight;
@@ -844,7 +909,8 @@ const wall = await Promise.all(
       }
       rest = to;
       gliding = true;
-      s.scrollTo({ top: at[to], behavior: "smooth" });
+      if (smooth && s !== document.scrollingElement) smooth.to(at[to]);
+      else s.scrollTo({ top: at[to], behavior: "smooth" });
     };
     const onScroll = () => {
       clearTimeout(timer);
@@ -875,12 +941,17 @@ const wall = await Promise.all(
     const slides = wall ? Array.from(wall.querySelectorAll<HTMLElement>("[data-wall-slide]")) : [];
     if (wall && track && slides.length > 1) carousel(wall, track, slides, signal);
 
-    // The settle is not motion the visitor did not ask for: it only ends
-    // their own scroll, so it runs with reduced motion too.
-    settle(root, signal);
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    // Normally already on (the inline script above the chapters).
-    root.setAttribute("data-story-on", "");
-    story(root, signal);
+    // Smooth wheel on a desktop (.page-wrap scrolls there). The settle is
+    // not motion the visitor did not ask for: it only ends their own
+    // scroll, so it runs with reduced motion too, without the easing.
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const wrap = document.querySelector<HTMLElement>(".page-wrap");
+    const smooth = !still && wrap && !matchMedia(PHONE).matches ? smoother(wrap, signal) : null;
+    settle(root, signal, smooth);
+    if (still) {
+      root.removeAttribute("data-story-on");
+      return;
+    }
+    void story(root, signal);
   });
 </script>
