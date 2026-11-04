@@ -1038,6 +1038,27 @@
     text-decoration: underline;
   }
 
+  /* MOVE beside Remove (2026-11-04): the same word key in the ink colour;
+     it takes the push to the right and Remove follows it at the row's gap. */
+  .gallery-boxhead__word--move {
+    color: var(--color-dark);
+  }
+  .gallery-boxhead__word--move[hidden] {
+    display: none;
+  }
+  .gallery-boxhead__word--move:not([hidden]) + .gallery-boxhead__word {
+    margin-left: 0;
+  }
+
+  /* The project and carousel selects are the Move key's engine now and are
+     never drawn (moveMenu.ts); a carousel's tools held only its select. */
+  [data-gallery-project-wrap],
+  [data-gallery-carousel-wrap],
+  [data-carousel-project-wrap],
+  .gallery-carousel-tools {
+    display: none !important;
+  }
+
   .gallery-boxhead__word:disabled {
     opacity: 0.35;
     cursor: default;
