@@ -111,6 +111,10 @@ export interface ProfilePreviewLabels {
   with: string;
   /** The editor's current tab locale, for projectTitle()/projectDescription()/affiliationHref() — same split those take everywhere else. */
   lang: Lang;
+  /** `member.lightbox.link` — the arrow out's name when it goes to the publication (2026-10-31). */
+  linkTitle?: string;
+  /** `member.lightbox.siteLink` — its name when it goes to the member's own page. */
+  siteLinkTitle?: string;
 }
 
 export function renderProfilePreview(
@@ -258,14 +262,21 @@ export function renderProfilePreview(
     const fillWords = (host: HTMLElement, w: PreviewWork): string => {
       const workPart = <T extends HTMLElement = HTMLElement>(name: string) =>
         host.querySelector<T>(`[data-ppv-work="${name}"]`);
-      // No description under the picture since 2026-10-16, as on the page
-      // (MemberWork.astro); the lightbox still reads it.
+      // No description under the picture since 2026-10-16 UNLESS the member
+      // switched it on for this work (showDescription, 2026-10-31), as on
+      // the page (MemberWork.astro); the lightbox reads it either way.
       const captionText = w.caption?.trim() ?? "";
+      const descText = w.showDescription === true ? (w.description?.trim() ?? "") : "";
 
       const caption = workPart("caption");
       if (caption) {
         caption.textContent = captionText;
         caption.hidden = !captionText;
+      }
+      const desc = workPart("desc");
+      if (desc) {
+        desc.textContent = descText;
+        desc.hidden = !descText;
       }
 
       // `w.link` arrives already scheme-prefixed and already filtered for
@@ -286,7 +297,7 @@ export function renderProfilePreview(
       setLink("link", w.link);
       show(workPart("links"), Boolean(w.siteLink || w.link));
 
-      return captionText;
+      return captionText || descText;
     };
 
     const figureFor = (w: PreviewWork, project?: ProfileProject): HTMLElement | null => {
@@ -327,6 +338,17 @@ export function renderProfilePreview(
 
       // A video work shows its poster with the play mark, as the page does.
       show(workPart("play"), Boolean(w.embed));
+
+      // The arrow out (2026-10-31): the publication first, else the member's
+      // own page — the page's rule (MemberWork.astro).
+      const out = workPart<HTMLAnchorElement>("out");
+      if (out) {
+        const href = w.link || w.siteLink;
+        out.href = href ?? "";
+        out.title = w.link ? (labels.linkTitle ?? "") : (labels.siteLinkTitle ?? "");
+        out.setAttribute("aria-label", out.title);
+        out.hidden = !href;
+      }
 
       const captionText = fillWords(figure, w);
       show(workPart("caption-block"), Boolean(captionText || w.link || w.siteLink));

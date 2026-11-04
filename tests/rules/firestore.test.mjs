@@ -888,6 +888,14 @@ test("images: the member's In gallery switch is a bool they may set and clear", 
   await assertFails(db.doc("images/img-1").update({ inGallery: "no", updatedAt: new Date() }));
 });
 
+test("images: the member's Show description switch is a bool they may set and clear", async () => {
+  await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
+  const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();
+  await assertSucceeds(db.doc("images/img-1").update({ showDescription: true, updatedAt: new Date() }));
+  await assertSucceeds(db.doc("images/img-1").update({ showDescription: deleteField(), updatedAt: new Date() }));
+  await assertFails(db.doc("images/img-1").update({ showDescription: "yes", updatedAt: new Date() }));
+});
+
 test("images: the text block after a work is two optional strings of up to 2000", async () => {
   await seed(env, "images/img-1", imageDoc(OWNER, "img-1", { status: "live" }));
   const db = env.authenticatedContext(OWNER, verified(OWNER)).firestore();

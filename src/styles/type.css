@@ -101,8 +101,10 @@
      because it is a voice, not a factor: 10px here, 11px on a phone. */
   --fs-label: 10px;
   /* A field's title once it sits above the box (FIELD TITLE below): smaller
-     than a LABEL, 9px here and 10px on a phone (board 07, 2026-10-28). */
-  --fs-field-title: 9px;
+     than a LABEL, 8px on desktop and phone alike (board 07, 2026-10-28;
+     the desktop board 9px to 7px, then 8px, 2026-11-02; the phone, 10px
+     until then, matched to the desktop the same day, Josh). */
+  --fs-field-title: 8px;
   /* A carousel's position dots, on the directory card (.cdot in global.css) and on
      a member page's project carousels: one size for
      both. Doubled from 0.18rem on 2026-09-28 (Josh: "make the dots
@@ -147,7 +149,6 @@
     --fs-300: 40px;
     --fs-tag: 10px;
     --fs-label: 11px;
-    --fs-field-title: 10px;
   }
 }
 /* ══ THE VOICES ════════════════════════════════════════════════════════════ */
@@ -287,8 +288,10 @@
 /* A WORK'S TITLE UNDER ITS PICTURE: CAPTION, bold (2026-10-18, Josh: "the
    image title should be the same size as flow text just bolder"). On a
    desktop it steps down with the description and the text blocks to the
-   flow text's --fs-85 (the desktop block below); on a phone all are 13px. */
-.mprof__caption-line {
+   flow text's --fs-85 (the desktop block below); on a phone all are 13px.
+   The member's name under Info's carousel picture speaks it too. */
+.mprof__caption-line,
+.info-wall__name {
   font-size: var(--fs-100);
   font-weight: 600;
   line-height: 1.5;
@@ -381,7 +384,9 @@
    there, this is 11px. */
 .t-nav,
 .nav-link,
-.nav-menu-btn {
+.nav-menu-btn,
+.join-alt__btn,
+.join-sheet__close {
   font-size: var(--fs-82);
   font-weight: 600;
   line-height: 1;
@@ -397,7 +402,9 @@
    on board 17): 13px Regular, capitals, 0.005em, inside 36px pills. ONE SET
    SMALLER (2026-10-28): 12px inside 30px pills. */
 @media (--bp-desktop) {
-  .nav-link {
+  .nav-link,
+  .join-sheet__close,
+  .join-alt__btn {
     font-size: var(--fs-85);
     font-weight: 400;
     letter-spacing: 0.005em;
@@ -428,6 +435,16 @@
   .nav-right-group .nav-link,
   .nav-acct .nav-link {
     font-size: var(--fs-100);
+    font-weight: 400;
+    letter-spacing: 0.005em;
+  }
+  /* THE LOGIN PILL ON A PHONE (2026-11-02, Josh, vscn-header.af board 28):
+     11px, a size under the other pills' 13. Its sheet's close key and the
+     sheet's JOIN / LOGIN buttons speak the same. */
+  .nav-right-group #nav-join,
+  .join-sheet__close,
+  .join-alt__btn {
+    font-size: var(--fs-75);
     font-weight: 400;
     letter-spacing: 0.005em;
   }
@@ -501,6 +518,7 @@
   .mprof__desc,
   .mprof__text,
   .mprof__caption-line,
+  .info-wall__name,
   .cindex__line .pdisc__bio {
     font-size: var(--fs-85);
   }
@@ -525,9 +543,12 @@
    and of the editor's `.gfield`. Lifted (filled or focused) it is a tiny
    label above the box, --fs-field-title (2026-10-28, Josh: "smaller and above
    the box"); empty and at rest it reads as the placeholder, in the value's
-   size and case. Layout is in global.css and profile-editor.css. */
+   size and case. Layout is in global.css and profile-editor.css. The
+   editor's box heads ("Image", "Carousel · 2 works") speak it too since
+   2026-11-01, over their keys. */
 .ff__title,
 .gfield > .gfield__lbl,
+.gallery-boxhead__lbl,
 #portfolio-label,
 #social-label {
   font-size: var(--fs-field-title);

@@ -25,6 +25,8 @@ interface WorkProps {
   textAfter?: string;
   /** S/M/L (2026-10-16); absent = L. See src/lib/workSize.ts. */
   size?: string;
+  /** The member's switch (2026-10-31): `true` prints the description under the picture as well as in the lightbox. */
+  showDescription?: boolean;
   /** The carousel this work is a slide of (2026-10-23); MemberProject groups on it. */
   carouselId?: string;
   embed?: EmbedRef;
@@ -48,6 +50,13 @@ interface Props {
 }
 
 const { work: w, index: i, displayName, workAlt, linkTitle, siteLinkTitle } = Astro.props as Props;
+// THE WAY OUT (2026-10-31, Josh: "on desktop the image should have a small
+// arrow diagonally up icon that would send you to the linked publication or
+// url"): the publication the piece appeared in first, else the member's own
+// page about it. One arrow, one destination; both still live in the lightbox.
+const outHref = w.link || w.siteLink;
+const outTitle = w.link ? linkTitle : siteLinkTitle;
+const showDesc = w.showDescription === true && Boolean(w.description?.trim());
 ---
 
 {/* NO MORPH FROM THE CARD (2026-10-20, Josh: "the build up of the page is not
@@ -94,13 +103,28 @@ const { work: w, index: i, displayName, workAlt, linkTitle, siteLinkTitle } = As
     />
     {w.embed && <span class="vscn-play vscn-play--over" aria-hidden="true" />}
   </a>
-  {/* NO DESCRIPTION UNDER THE PICTURE (2026-10-16, Josh: "we also want to
-      get rid of image descriptions on the profile page"). The title and the
-      links stay; the description is read in the lightbox, behind the
+  {/* THE ARROW OUT, in the picture's top-right corner (2026-10-31). A
+      SIBLING of the lightbox trigger, never inside it — an anchor cannot
+      hold an anchor, and the picture's own click stays the lightbox's. It
+      finds the corner from the same --size-w / --work-ar formula the frame
+      is centred by (profile.css .mprof__out). Desktop only: the CSS hides
+      it on a phone, where the lightbox's own links do the job. */}
+  {outHref && (
+    <a class="mprof__out" href={outHref} target="_blank" rel="noopener" title={outTitle} aria-label={outTitle}>
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false">
+        <path d="M5 3h8v8M13 3 3 13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </a>
+  )}
+  {/* NO DESCRIPTION UNDER THE PICTURE BY DEFAULT (2026-10-16, Josh: "we also
+      want to get rid of image descriptions on the profile page"); the member
+      switches it on PER WORK since 2026-10-31 (showDescription). The title
+      stays; the lightbox reads the description either way, behind the
       title's dropdown (data-pswp-description above). */}
-  {(w.caption?.trim() || w.link || w.siteLink) && (
+  {(w.caption?.trim() || showDesc || w.link || w.siteLink) && (
     <figcaption class="mprof__caption">
       {w.caption?.trim() && <span class="mprof__caption-line">{w.caption}</span>}
+      {showDesc && <span class="mprof__desc">{w.description}</span>}
       {/* Where the piece lives in the world: the member's own project page
           first, then the publication it appeared in (two links since
           2026-09-10). In the caption and not on the image, because the

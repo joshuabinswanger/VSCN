@@ -31,6 +31,8 @@ export interface ImageDoc {
   carouselId?: string;
   /** The member's "In gallery" switch (2026-10-16): only `false` is stored, absent = shown on /community. */
   inGallery?: boolean;
+  /** The member's "Show description" switch (2026-10-31): only `true` is stored, absent = lightbox only. */
+  showDescription?: boolean;
   /** The text block printed after this work on the member page (2026-10-16), ≤ 2000. Mirrored for hasOnly parity and replacement only. */
   textAfter?: string;
   /** Its German counterpart, ≤ 2000. */

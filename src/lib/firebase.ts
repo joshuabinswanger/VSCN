@@ -4,7 +4,7 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getFunctions } from "firebase/functions";
 import { initializeAppCheck, type AppCheck } from "firebase/app-check";
-import { turnstileProvider, warmUp } from "./appCheckTurnstile.ts";
+import { ready, turnstileProvider, warmUp } from "./appCheckTurnstile.ts";
 
 const firebaseConfig = {
   apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
@@ -52,11 +52,23 @@ export const appCheck = appCheckInstance;
 // take 15-25 s; started when a login form appears, it overlaps the member's
 // typing and is cached by the time Auth asks (2026-09-08, Chrome on iOS
 // reported "server not reached" — appCheckTurnstile.ts, lessons 2 and 3).
-// Called by the login and sign-up forms only, NOT here: this module runs on
-// every page through the Navbar, and a visitor reading the landing page must
-// not be handed a Turnstile checkbox.
+// Called by the login and sign-up forms and the profile editor only, NOT
+// here: this module runs on every page through the Navbar, and a visitor
+// reading the landing page must not be handed a Turnstile checkbox.
 export function warmUpAppCheck(): void {
   if (appCheckInstance) warmUp(appCheckInstance);
+}
+
+// Settles once this page holds an App Check token, or once attestation has
+// given up. A page that READS at load awaits this before its first Firestore
+// call: Firestore arms its 10 s first-connect timer in the same statement as
+// the stream that then waits for this very token, so a cold attestation
+// slower than that is reported as "client is offline" on a working network
+// (appCheckTiming.ts, FIRESTORE_FIRST_CONNECT_MS). Never rejects: a failed
+// attestation is reported by the read that follows, with isAttestationFailing()
+// naming the cause.
+export function appCheckReady(): Promise<void> {
+  return appCheckInstance ? ready(appCheckInstance) : Promise.resolve();
 }
 
 // True once the Turnstile script has failed to load on this page. The forms

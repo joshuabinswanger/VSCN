@@ -71,20 +71,27 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
     white-space: nowrap;
   }
 
+  /* A row is a flex line: the whitespace between slots draws nothing. */
   .pl-row {
-    display: block;
+    display: flex;
     height: 1em;
     transform-origin: 0 0;
   }
 
   /* One slot per glyph position. Each slot shows one letter in the whole
      intro (it drops in on the write, tips away on the fold), so one face is
-     enough. The cell's px width is set by the script, per glyph. */
+     enough. NO WIDTH IS EVER SET OR ANIMATED (2026-11-02, Josh: "try one
+     last time to find a definitive solution to the problem that the words
+     on initial load overlap"): every cell is as wide as its own letter in
+     whatever face the browser is drawing, the moment it draws it. Four fixes
+     measured the glyphs and fixed each cell's px width (and closed the cells
+     on the fold); each still overlapped on some iPhone load where the face
+     the cells were measured in was not the face that was painted. With the
+     browser laying the letters out there is nothing to get wrong: a font
+     that lands late reflows the letters into place like any text. */
   .pl-slot {
-    display: inline-grid;
-    justify-items: start;
-    width: 0;
-    vertical-align: top;
+    display: block;
+    flex: none;
     perspective: 12ch;
   }
 
@@ -92,7 +99,7 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
      +90: always forward, as a real board falls. Hidden until its animation
      says otherwise. */
   .pl-face {
-    grid-area: 1 / 1;
+    display: block;
     transform-origin: 50% 50%;
     backface-visibility: hidden;
     opacity: 0;
@@ -108,24 +115,26 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
   // Tightened 2026-10-15 twice (Josh: "start sooner and be a bit quicker",
   // then "transition from full words directly into the top VSCN"): the
   // fold and the travel are one move now, ~4.4 s -> ~2.9 s; then "shorten
-  // the hold on the full name too", ~2.75 s.
+  // the hold on the full name too", ~2.75 s. Then all of it at 0.75
+  // (2026-11-02, Josh: "it can be also a bit faster 0.75"), ~2.1 s.
+  const SPEED = 0.75;
   const TIMING = {
-    beat: 0.17,
-    stagger: 0.02,
-    lead: 0.2,
-    arriveStagger: 0.07,
-    hold: 0.1,
-    rowOffset: 0.18,
-    holdName: 0.15,
-    foldStagger: 0.04,
-    travelLag: 0.08,
+    beat: 0.17 * SPEED,
+    stagger: 0.02 * SPEED,
+    lead: 0.2 * SPEED,
+    arriveStagger: 0.07 * SPEED,
+    hold: 0.1 * SPEED,
+    rowOffset: 0.18 * SPEED,
+    holdName: 0.15 * SPEED,
+    foldStagger: 0.04 * SPEED,
+    travelLag: 0.08 * SPEED,
   };
   // Long enough for the longest tail ("ommunication") to finish folding in
   // flight, so every row lands as a single letter.
-  const TRAVEL_S = 0.5;
+  const TRAVEL_S = 0.5 * SPEED;
   // Between one row setting off and the next, top to bottom: the column
   // peels into the line rather than snapping to it.
-  const TRAVEL_STAGGER_S = 0.03;
+  const TRAVEL_STAGGER_S = 0.03 * SPEED;
   const LONGEST = INTRO_WORDS.reduce((a, b) => (b.length > a.length ? b : a));
   const CURVE = "cubic-bezier(0.65, 0, 0.35, 1)";
 
@@ -146,14 +155,11 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
       .then(() => play(loader, stack, font));
   }
 
-  // NOT BEFORE THE FONT (2026-10-28, Josh: "the intro animation doesnt work
-  // when first visiting the site the letters overlap each other"). play()
-  // measures every glyph's advance and sizes the cells to it; on a first
-  // visit Archivo was still downloading, so the cells took the fallback
-  // face's widths and the real letters, arriving a moment later, ran over
-  // each other. Wait for the face the stack draws in, but never longer than
-  // 1.5 s: a font that does not come must not hold the page behind the
-  // loader. A font that comes LATER than that is caught in play() (size).
+  // NOT BEFORE THE FONT (2026-10-28), so the letters write in Archivo and
+  // not in a fallback that swaps mid-word. Never longer than 1.5 s: a font
+  // that does not come must not hold the page behind the loader. One that
+  // comes later only refits the stack (play(), size); the letters reflow by
+  // themselves, since no cell has a width of its own.
   function fontLoad(stack: HTMLElement): Promise<void> {
     if (!document.fonts) return Promise.resolve();
     const cs = getComputedStyle(stack);
@@ -202,9 +208,8 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
   function play(loader: HTMLElement, stack: HTMLElement, font: Promise<void>) {
     const rowEls = Array.from(stack.querySelectorAll<HTMLElement>(".pl-row"));
     const rows = rowEls.map((row) => Array.from(row.querySelectorAll<HTMLElement>(".pl-slot")));
-    // Each folding cell's width animation, so a late font can re-aim it.
-    const folds = new Map<HTMLElement, Animation>();
     let done = false;
+    let flights: Animation[] | null = null;
 
     const finish = () => {
       if (done) return;
@@ -217,11 +222,9 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
     const beat = TIMING.beat * 1000;
 
     // Each slot shows exactly one glyph in the whole intro: the initial from
-    // its arrival, a tail letter from its write until its fold. Give every
-    // cell its letter and its full width before the first frame. While a
-    // word writes, the cells to its right are still empty, so their being
-    // open already moves nothing that can be seen — and there is no width
-    // to catch up with when the letter shows.
+    // its arrival, a tail letter from its write until its fold. Every cell
+    // holds its letter, unseen, from the first frame, so the row is laid out
+    // once at its full width and no letter that shows moves another.
     rows.forEach((slots, r) => {
       const word = INTRO_WORDS[r];
       slots.forEach((slot, i) => {
@@ -231,19 +234,14 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
     });
     size();
 
-    // THE FONT THAT CAME LATE (2026-10-30, Josh: "fix the loading screen
-    // animation so it does not overlap letters when opening on an iOS").
-    // The 1.5 s wait above is a ceiling, and a cold phone load can need more:
-    // the intro then started in the fallback face, every cell took that
-    // face's widths, and when Archivo landed mid-intro its letters changed
-    // width inside cells sized for the other font (a frame sheet in WebKit
-    // with the font held back 2.5 s shows it) — on an iPhone, where Archivo
-    // at this weight is the wider face, they ran over each other. Now the
-    // arrival re-measures: the stack refits, every cell takes the real
-    // advance, and every fold already booked starts from the new width. The
-    // flights are re-aimed by retarget below if they have not left yet.
+    // THE FONT THAT CAME LATE (2026-10-30): the 1.5 s wait above is a
+    // ceiling, and a cold phone load can need more. The letters reflow into
+    // the new face on their own; the stack refits to the column, and the
+    // flights are re-aimed if they have not left yet.
     void font.then(() => {
-      if (!done) size();
+      if (done) return;
+      size();
+      if (flights) retarget(rowEls, flights);
     });
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -251,7 +249,6 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
       rows.forEach((slots) => {
         const face = slots[0]?.querySelector<HTMLElement>(".pl-face");
         if (face) face.style.cssText = "opacity:1;transform:none";
-        slots.slice(1).forEach((slot) => (slot.style.width = "0px"));
       });
       loader
         .animate([{ opacity: 1 }, { opacity: 0 }], {
@@ -282,7 +279,9 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
             { duration: beat, delay: at + beat, fill: "both" }
           );
         } else {
-          // The fold: the letter tips away on the first beat...
+          // The fold: the letter tips away on the first beat, the last
+          // letter first, while its row is already flying. The cell keeps
+          // its width, so nothing slides over a letter still turning.
           face.animate(
             [
               { opacity: 1, transform: "rotateX(0deg)", easing: CURVE },
@@ -290,16 +289,6 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
               { opacity: 0, transform: "rotateX(90deg)" },
             ],
             { duration: beat, delay: at, fill: "forwards" }
-          );
-          // ...while its cell closes from the same moment over a beat and a
-          // half, so the word contracts into its initial in flight.
-          folds.set(
-            slot,
-            slot.animate(foldFrames(slot.style.width), {
-              duration: beat * 1.5,
-              delay: at,
-              fill: "forwards",
-            })
           );
         }
       });
@@ -309,7 +298,7 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
     // measured now and again just before take-off, in case the header
     // re-fitted itself in between.
     const travelAt = plan.travelAt * 1000;
-    const flights = travel(loader, rowEls, travelAt);
+    flights = travel(loader, rowEls, travelAt);
     if (!flights) {
       setTimeout(() => {
         loader
@@ -318,40 +307,19 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
       }, travelAt);
       return;
     }
-    setTimeout(() => retarget(rowEls, flights), Math.max(0, travelAt - 120));
-    Promise.all(flights.map((f) => f.finished)).then(finish, finish);
+    const booked = flights;
+    setTimeout(() => retarget(rowEls, booked), Math.max(0, travelAt - 120));
+    Promise.all(booked.map((f) => f.finished)).then(finish, finish);
     // Safety net for environments whose animations never finish (frozen
     // timelines in some webviews): past the travel's end.
     const travelEnds = travelAt + (TRAVEL_S + (rowEls.length - 1) * TRAVEL_STAGGER_S) * 1000;
     setTimeout(finish, travelEnds + 1500);
 
-    // Fit the stack and give every cell its glyph's advance in whatever face
-    // is drawing now; a fold already booked starts from the new width.
+    // Fit the stack to the column in whatever face is drawing now.
     function size() {
       stack.style.fontSize = "";
       fitStack(stack);
-      const widths = measureGlyphs(stack);
-      rows.forEach((slots, r) => {
-        const word = INTRO_WORDS[r];
-        slots.forEach((slot, i) => {
-          const width = `${widths.get(word[i] ?? "") ?? 0}px`;
-          slot.style.width = width;
-          (folds.get(slot)?.effect as KeyframeEffect | null)?.setKeyframes(foldFrames(width));
-        });
-      });
     }
-  }
-
-  // A fold's cell closes from its full width to nothing, and cuts its own
-  // letter (2026-10-15, Josh: "on mobile ... the letters overlap"):
-  // unclipped, a glyph still tipping away spilled over the letters the
-  // closing cells pulled in from the right. Sideways only: the flap's turn
-  // may overshoot the line.
-  function foldFrames(width: string): Keyframe[] {
-    return [
-      { width, clipPath: "inset(-1em 0)", easing: CURVE },
-      { width: "0px", clipPath: "inset(-1em 0)" },
-    ];
   }
 
   // Fit the longest word to the column's measure, never larger than the
@@ -369,21 +337,6 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
     if (available > 0 && width > available) {
       stack.style.fontSize = `${(current * available) / width}px`;
     }
-  }
-
-  // Advance width of every glyph the words can show, at the fitted size.
-  function measureGlyphs(stack: HTMLElement): Map<string, number> {
-    const mirror = document.createElement("span");
-    mirror.style.cssText =
-      "position:absolute;visibility:hidden;pointer-events:none;white-space:pre;left:0;top:0";
-    stack.appendChild(mirror);
-    const widths = new Map<string, number>();
-    for (const char of new Set(INTRO_WORDS.join(""))) {
-      mirror.textContent = char;
-      widths.set(char, mirror.getBoundingClientRect().width);
-    }
-    mirror.remove();
-    return widths;
   }
 
   // The header's VSCN, letter by letter: the resting slots that show a glyph,
@@ -419,8 +372,8 @@ const SLOT_COUNT = Math.max(...INTRO_WORDS.map((w) => w.length));
   }
 
   // Full words straight into the header: each ROW flies top to bottom while
-  // the paper lifts. The tails are folding inside the moving row at the same
-  // time, so a word shrinks to its initial on the way. The header's copy
+  // the paper lifts. The tails tip away inside the moving row at the same
+  // time, from the end, so a word lands as its initial. The header's copy
   // shows the instant the loader goes.
   function travel(loader: HTMLElement, rows: HTMLElement[], at: number): Animation[] | null {
     const ends = flightTransforms(rows);

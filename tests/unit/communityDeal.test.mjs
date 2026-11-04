@@ -42,3 +42,22 @@ test("dealPagesInto orders the grid, hides a tag's misses at the end, and marks 
   assert.equal(appended[0].img.attrs.fetchpriority, "high");
   assert.equal(grid.dataset.dealt, "7");
 });
+
+test("dealPagesInto narrows by who as well as tag; 'both' answers to either", () => {
+  const whos = ["|sci|", "|vis|", "|sci|vis|", "|vis|"];
+  const make = () => whos.map((who, rank) => ({
+    rank, hidden: false,
+    dataset: { rank: String(rank), score: "50", tags: rank < 2 ? "|ink|" : "|paint|", who },
+    querySelector() { return null; },
+  }));
+  const run = (tag, who) => {
+    const cells = make();
+    const grid = { dataset: {}, querySelectorAll: () => cells, appendChild: () => {} };
+    dealPagesInto(grid, 3, tag, who);
+    return cells.filter((c) => !c.hidden).map((c) => c.rank).sort();
+  };
+  assert.deepEqual(run("", "sci"), [0, 2]);
+  assert.deepEqual(run("", "vis"), [1, 2, 3]);
+  assert.deepEqual(run("ink", "sci"), [0]);
+  assert.deepEqual(run("", ""), [0, 1, 2, 3]);
+});

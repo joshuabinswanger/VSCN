@@ -543,6 +543,52 @@
 
 .mprof__work {
   margin: 0;
+  /* The arrow out (.mprof__out) is placed against the figure. */
+  position: relative;
+}
+
+/* ── THE ARROW OUT (2026-10-31, Josh: "on desktop the image should have a
+   small arrow diagonally up icon that would send you to the linked
+   publication or url") ────────────────────────────────────────────────
+   A small paper chip in the picture's top-right corner, holding an arrow
+   out. It is a SIBLING of the lightbox trigger (an anchor cannot hold an
+   anchor), so it finds the picture's corner by arithmetic: the frame is
+   centred in the figure at min(column, --size-w, 70vh x aspect) wide, so
+   the frame's right edge is half the leftover inset from the figure's.
+   Desktop only: on a phone the lightbox carries the links. */
+.mprof__out {
+  display: none;
+  position: absolute;
+  top: 0.55rem;
+  right: calc((100% - min(100%, var(--size-w, 100%), 70vh * var(--work-ar, 1))) / 2 + 0.55rem);
+  z-index: 1;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  background: var(--color-bg);
+  color: var(--color-dark);
+  opacity: 0.82;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+.mprof__out svg {
+  display: block;
+}
+.mprof__out:hover,
+.mprof__out:focus-visible {
+  opacity: 1;
+  transform: translate(1px, -1px);
+}
+.mprof__out:focus-visible {
+  outline: 2px solid var(--color-dark);
+  outline-offset: 2px;
+}
+@media (--bp-desktop) {
+  .mprof__out {
+    display: grid;
+    place-items: center;
+  }
 }
 
 .mprof__work-link {
@@ -1044,7 +1090,7 @@
      the name. They are held with their picture and drift up like a line a
      beat after it starts. */
   .mprof[data-motion] :is([data-paint="picture"], [data-paint="fade"])
-    > :is(.mprof__caption, .mprof__captions, .mprof__cdots) {
+    > :is(.mprof__caption, .mprof__captions, .mprof__cdots, .mprof__out) {
     opacity: 0;
     translate: 0 0.6rem;
   }
@@ -1079,8 +1125,8 @@
   .mprof[data-motion].is-in [data-paint="picture"] .mprof__img {
     transition-delay: var(--d, 0.6s);
   }
-  .mprof[data-motion].is-in [data-paint="picture"] > :is(.mprof__caption, .mprof__captions, .mprof__cdots),
-  .mprof[data-motion].is-in [data-paint="fade"].is-seen > :is(.mprof__caption, .mprof__captions, .mprof__cdots) {
+  .mprof[data-motion].is-in [data-paint="picture"] > :is(.mprof__caption, .mprof__captions, .mprof__cdots, .mprof__out),
+  .mprof[data-motion].is-in [data-paint="fade"].is-seen > :is(.mprof__caption, .mprof__captions, .mprof__cdots, .mprof__out) {
     opacity: 1;
     translate: 0 0;
     transition:

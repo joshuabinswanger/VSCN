@@ -2,7 +2,7 @@
 // documentation/20261023-work-carousels-design.md "Editor"; the decisions are
 // in carouselEditor.ts and carousels.ts).
 //
-// In Edit mode a carousel opens out into a dashed tray of thumbnails with a
+// In Edit mode a carousel opens out into a tray of thumbnails with a
 // + slot at the end (Josh, option A of the mockups). Clicking a thumbnail
 // selects that slide and the controller builds its row underneath in slide
 // mode. This module clones WorkEditor.astro's `carousel` template, fills it
@@ -21,6 +21,7 @@ import type { GalleryItem } from "./gallery.ts";
 import { carouselSettings } from "./carousels.ts";
 import { dissolve, moveCarousel, moveCarouselToProject } from "./carouselEditor.ts";
 import { WORK_SIZE_PX, workSize, workSizeWidth, type WorkSize } from "./workSize.ts";
+import { bindMoveKey } from "./moveMenu.ts";
 
 /** The same two queries as custom-media.css; a drag needs a pointer that can drag. */
 export const DESKTOP_QUERY = "(767px < width) and ((not (pointer: coarse)) or (500px < height))";
@@ -60,8 +61,6 @@ export interface TrayHooks {
   projects: readonly { projectId: string; label: string }[];
   /** UI-only: which slide each carousel shows (carouselId → imageId). */
   selected: Map<string, string>;
-  /** UI-only: which carousels have their Edit panel open (carouselId → open). */
-  panelOpen: Map<string, boolean>;
   /** UI-only: text blocks added this session; a carousel's key is "c:" + carouselId. */
   textOpen: Set<string>;
   /** The bar's language: which text-after pane takes focus. */
@@ -151,14 +150,6 @@ export function buildTray(hooks: TrayHooks, unit: TrayUnit): HTMLElement | null 
   const text = el.querySelector<HTMLElement>("[data-carousel-text]");
   if (!tray || !add || !picker || !label || !slideRow || !up || !down || !dissolveBtn || !projectSelect) return null;
 
-  // The Edit panel (2026-10-23): a fold remembered per carousel across
-  // re-renders, as a work's is (galleryDetailsOpenUI).
-  const panel = el.querySelector<HTMLDetailsElement>("[data-carousel-details]");
-  if (panel) {
-    panel.open = hooks.panelOpen.get(unit.carouselId) ?? false;
-    panel.addEventListener("toggle", () => hooks.panelOpen.set(unit.carouselId, panel.open));
-  }
-
   // The frame's shape and width, as a work row carries them, so the block
   // reads like the unit it is on the page.
   if (lead && lead.width > 0 && lead.height > 0) el.style.setProperty("--work-ar", String(lead.width / lead.height));
@@ -230,6 +221,12 @@ export function buildTray(hooks: TrayHooks, unit: TrayUnit): HTMLElement | null 
     if (!lead) return hooks.moveLocal(unit.carouselId, target);
     hooks.commit(moveCarouselToProject(hooks.gallery(), unit.indices[0], target), { carouselId: unit.carouselId, control: "project" });
   });
+  // THE MOVE KEY beside Dissolve (2026-11-04): the select above is its engine.
+  const moveTo = el.querySelector<HTMLButtonElement>("[data-carousel-moveto]");
+  if (moveTo) {
+    moveTo.title = s["profile.deck.move"];
+    bindMoveKey(moveTo, [{ label: s["profile.project.select"], select: projectSelect, wrap: projectWrap }]);
+  }
 
   // THE TRAY: a thumbnail button per slide, the selected one pressed, then
   // the + slot. The first slide is selected unless the member picked another.

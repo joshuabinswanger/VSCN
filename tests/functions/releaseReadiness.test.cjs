@@ -257,3 +257,14 @@ test('an empty string or empty array fingerprints as absent, so the editor writi
   await queueMemberRebuild('blank');
   assert.equal((await db.doc('rebuildQueue/site').get()).data().revision, revision, 'no build was queued for two empty strings');
 });
+
+test('a write that only moved updatedAt is no content change, so its trigger queues nothing', () => {
+  const { sameContent } = require('../../functions/lib/rebuildQueue.js');
+  const record = { ownerUid: 'u', caption: 'c', status: 'live', updatedAt: 1 };
+  assert.equal(sameContent(record, { ...record, updatedAt: 2 }), true);
+  assert.equal(sameContent(record, { ...record, captionDe: '' }), true);
+  assert.equal(sameContent(record, { ...record, caption: 'd' }), false);
+  assert.equal(sameContent(record, { ...record, status: 'pendingDeletion' }), false);
+  assert.equal(sameContent(undefined, record), false);
+  assert.equal(sameContent(record, undefined), false);
+});

@@ -5,7 +5,7 @@ import { requireAdmin } from "./util";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { logger } from "firebase-functions/v2";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
-import { adminAuth, db, getBucket } from "./admin";
+import { adminAuth, db } from "./admin";
 import { adminNotifyTo, sendToOperator, smtpPassword } from "./mail";
 import { adminDigest, deliver, type ImageReport, type Report, type SignupReport } from "./notify";
 import type { ImageDoc } from "./types";
@@ -227,9 +227,6 @@ async function imageReport(ev: AdminEvent): Promise<ImageReport> {
   const [imageSnap, profileSnap] = await Promise.all([db.doc(`images/${imageId}`).get(), db.doc(`publicProfiles/${ev.uid}`).get()]);
   const img = imageSnap.data() as Partial<ImageDoc> | undefined;
   const live = img?.status === "live";
-  const url = live && typeof img?.storagePath === "string"
-    ? `https://firebasestorage.googleapis.com/v0/b/${getBucket().name}/o/${encodeURIComponent(img.storagePath)}?alt=media`
-    : null;
   return {
     kind: "image",
     imageId,
@@ -240,7 +237,6 @@ async function imageReport(ev: AdminEvent): Promise<ImageReport> {
     caption: str(img?.caption),
     width: typeof img?.width === "number" ? img.width : null,
     height: typeof img?.height === "number" ? img.height : null,
-    url,
     at: ev.at.toDate(),
   };
 }

@@ -4,7 +4,7 @@
 // live and its owner matches" is written down, and both callers must agree.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { galleryIds, orderedGalleryItems, storageUrl } from "../../src/lib/galleryRecords.ts";
+import { galleryIds, legacyArrayIds, orderedGalleryItems, storageUrl } from "../../src/lib/galleryRecords.ts";
 
 const BUCKET = "vscn-dev-f4b60.firebasestorage.app";
 const UID = "owner-uid-000001";
@@ -136,4 +136,10 @@ test("a record that claims to be a video without a playable id is shown as the s
   ], BUCKET);
   assert.equal(items.length, 3);
   assert.equal(items.some((item) => "embed" in item || "posterSource" in item), false);
+});
+
+test("legacyArrayIds names only the works the array still holds as objects", () => {
+  assert.deepEqual([...legacyArrayIds(["a", { imageId: "b", caption: "B" }, { caption: "no id" }, null, "c"])], ["b"]);
+  assert.deepEqual([...legacyArrayIds(undefined)], []);
+  assert.deepEqual([...legacyArrayIds(["a", "b"])], []);
 });

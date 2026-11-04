@@ -10,6 +10,7 @@ import { returnTo } from "./authEmail.ts";
 import { hasVerifiedClaim } from "./auth.ts";
 import { friendlyError, isCredentialError, errorParts, SECURITY_CHECK_BLOCKED } from "./authErrors.ts";
 import { validateAvatar, resizeAvatar } from "./validation.ts";
+import { PHONE_FORMAT, stripPhoneSpaces, stripPhoneSpacesInPlace } from "./profileValidation.ts";
 import {
   createUser,
   getUser,
@@ -29,6 +30,8 @@ import {
   splitSocial,
   joinSocial,
   socialUnlinked,
+  stripScheme,
+  stripSchemeInPlace,
   profileBio,
   profileRole,
   MAX_SOCIAL_LINKS,
@@ -441,7 +444,7 @@ document.addEventListener("astro:page-load", () => {
             `${socialLabel?.textContent ?? ""} ${index + 1}`.trim()
           );
           input.addEventListener("input", () => {
-            socialValues[index] = input.value;
+            socialValues[index] = stripSchemeInPlace(input);
             refreshSocialStatus(false);
           });
           input.addEventListener("change", () => refreshSocialStatus());
@@ -460,7 +463,7 @@ document.addEventListener("astro:page-load", () => {
     // missing field rather than an empty one, and this is a sign-up form
     // where a field that looks absent is a question nobody answers. The
     // blank row costs nothing — joinSocial() drops it.
-    socialValues = values.length > 0 ? values : [""];
+    socialValues = values.length > 0 ? values.map(stripScheme) : [""];
     renderSocial();
   }
 
@@ -852,6 +855,21 @@ document.addEventListener("astro:page-load", () => {
   document.getElementById("ob-next-0")?.addEventListener("click", async () => {
     const user = auth.currentUser;
     if (!user) return;
+    // The name is not optional: an empty one moves the member's public URL
+    // (see REQUIRED_FIELDS in profileValidation.ts). Asked here, by name.
+    if (!getInputValue("ob-name").trim()) {
+      setError(s["profile.validation.required"].replace("{field}", s["profile.label.name"]));
+      document.getElementById("ob-name")?.focus();
+      return;
+    }
+    // Only a leading + and digits (PHONE_FORMAT); spaces are taken out as the
+    // member types, so this refuses letters and punctuation by name.
+    if (!PHONE_FORMAT.test(stripPhoneSpaces(getInputValue("ob-phone")))) {
+      setError(s["profile.validation.phone"].replace("{field}", s["profile.label.phone"]));
+      document.getElementById("ob-phone")?.focus();
+      return;
+    }
+    setError("");
     setBtnState("ob-next-0", true, s["onboarding.nav.next"]);
     try {
       const nameVal = getInputValue("ob-name").trim();
@@ -859,7 +877,7 @@ document.addEventListener("astro:page-load", () => {
       const roleDeVal = getInputValue("ob-role-de").trim();
       const portfolioVal = getInputValue("ob-portfolio").trim();
       const socialVal = socialStored();
-      const phoneVal = getInputValue("ob-phone").trim();
+      const phoneVal = stripPhoneSpaces(getInputValue("ob-phone"));
       const memberTypeVal = memberTypeSelector?.value ?? "";
 
       await handleProfileUpdate(user, {
@@ -1174,7 +1192,7 @@ document.addEventListener("astro:page-load", () => {
       if (roleDeEl) roleDeEl.value = data.roleDe ?? "";
       portfolioEl.value = data.portfolio ?? "";
       setSocialValues(splitSocial(data.socialMedia ?? ""));
-      phoneEl.value = data.phone ?? "";
+      phoneEl.value = stripPhoneSpaces(data.phone ?? "");
       if (bioEl) bioEl.value = data.bio ?? "";
       const bioDeEl = document.getElementById("ob-bio-de") as HTMLTextAreaElement | null;
       if (bioDeEl) bioDeEl.value = data.bioDe ?? "";
@@ -1271,6 +1289,16 @@ document.addEventListener("astro:page-load", () => {
       // after it rather than ask it again.
       if (restoredStep === STEP_VERIFY && emailVerified) restoredStep = STEP_VISIBILITY;
       clearTransientState();
+    }
+
+    // The website field prints "https://" itself, so a stored or pasted
+    // scheme would read twice (2026-11-02).
+    const phoneField = document.getElementById("ob-phone") as HTMLInputElement | null;
+    phoneField?.addEventListener("input", () => stripPhoneSpacesInPlace(phoneField), { signal: lifetime });
+    const portfolioField = document.getElementById("ob-portfolio") as HTMLInputElement | null;
+    if (portfolioField) {
+      portfolioField.value = stripScheme(portfolioField.value);
+      portfolioField.addEventListener("input", () => stripSchemeInPlace(portfolioField), { signal: lifetime });
     }
 
     // Save state before navigating away (e.g. clicking the lang toggle).

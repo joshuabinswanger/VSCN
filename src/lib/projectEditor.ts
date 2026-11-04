@@ -23,6 +23,7 @@ import {
   emptyProjectIds,
   LOOSE_WORKS_TITLE,
   looseWorksProjectId,
+  projectFields,
   projectTitle,
   resolveMemberCredits,
   toProfileProject,
@@ -247,6 +248,30 @@ export function writtenProjectIds(
 }
 
 /**
+ * What saveProjects() would write for a project, as one comparable string:
+ * projectFields() decides the stored shape, so two editor states that store
+ * the same document give the same key.
+ */
+export function projectRecordKey(p: EditorProject): string {
+  const fields = projectFields(toProjectRecord(p));
+  return JSON.stringify(Object.keys(fields).sort().map((key) => [key, fields[key as keyof ProjectFields]]));
+}
+
+/**
+ * ONLY WHAT CHANGED IS WRITTEN (2026-11-02, save-latency audit: every Save
+ * rewrote every project, and the project writes are a round trip of their
+ * own ahead of the records). A project goes when it is not stored yet, or
+ * when its key differs from the one it had at load or at its last write.
+ */
+export function projectsToWrite<P extends EditorProject>(
+  used: readonly P[],
+  storedIds: ReadonlySet<string>,
+  committed: ReadonlyMap<string, string>,
+): P[] {
+  return used.filter((p) => !storedIds.has(p.projectId) || committed.get(p.projectId) !== projectRecordKey(p));
+}
+
+/**
  * Which member a credit row names. While the text is still the name the
  * credit was stored or matched with, the existing member is KEPT — a
  * member who has since hidden their profile is not in the options any more,
@@ -295,6 +320,31 @@ export function projectLabel(
   const untitledIds = projects.filter((x) => !projectTitle(x, lang)?.trim()).map((x) => x.projectId);
   const n = untitledIds.indexOf(projectId);
   return untitled.replace("{n}", n === -1 ? "?" : String(n + 1));
+}
+
+/**
+ * A work as the member can find it in a Save error (audit finding 27,
+ * 2026-11-04): its place in its project and the project's name. The
+ * account-wide index the message used to give counted every project's works
+ * and matched nothing on screen. A work without a known project keeps the
+ * old wording.
+ */
+export function workPlace(
+  gallery: readonly { imageId: string; projectId?: string }[],
+  projects: readonly { projectId: string; title?: string; titleDe?: string }[],
+  imageId: string,
+  lang: Lang,
+  s: Record<string, string>,
+): string {
+  const item = gallery.find((g) => g.imageId === imageId);
+  const projectId = item?.projectId;
+  if (!projectId || !projects.some((p) => p.projectId === projectId)) {
+    return s["profile.gallery.saveFailed"].replace("{n}", String(gallery.findIndex((g) => g.imageId === imageId) + 1));
+  }
+  const n = gallery.filter((g) => g.projectId === projectId).findIndex((g) => g.imageId === imageId) + 1;
+  return s["profile.gallery.saveFailedIn"]
+    .replace("{n}", String(n))
+    .replace("{project}", projectLabel(projects, projectId, lang, s["profile.project.untitled"]));
 }
 
 export function editorAffiliations(records: readonly AffiliationRecord[] | undefined): EditorAffiliation[] {

@@ -6,6 +6,7 @@ import MemberTypeSelector from "./MemberTypeSelector.astro";
 import BilingualField from "./BilingualField.astro";
 import TagSelector from "./TagSelector.astro";
 import OpenToSelector from "./OpenToSelector.astro";
+import { PROFILE_TEXT_CAPS } from "../lib/profileValidation.ts";
 
 interface Props {
   lang?: Lang;
@@ -157,7 +158,8 @@ const prefix = lang === "de" ? "/de" : "";
             id="ob-phone"
             type="tel"
             class="input"
-            placeholder="+41 79 123 45 67"
+            maxlength={PROFILE_TEXT_CAPS.phone}
+            placeholder="+41791234567"
             autocomplete="tel"
           />
         </div>

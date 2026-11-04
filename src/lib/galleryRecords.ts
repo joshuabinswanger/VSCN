@@ -37,6 +37,8 @@ export interface GalleryRecord {
   carouselId?: string;
   /** The member's own switch: `false` keeps the work off /community (2026-10-16). Absent = included. */
   inGallery?: boolean;
+  /** The member's "Show description" switch (2026-10-31): `true` prints the description under the picture. Absent = lightbox only. */
+  showDescription?: boolean;
   /** The text block after this work on the member page (2026-10-16), and its German counterpart. */
   textAfter?: string;
   textAfterDe?: string;
@@ -99,6 +101,22 @@ interface LegacyElement {
   link?: unknown;
 }
 
+/**
+ * The ids the stored list still holds in the object form. Their words may live
+ * only in the element, not on the record, so the editor's first Save must
+ * write those records even though nothing was typed (Save writes only changed
+ * works since 2026-11-02, and its array write drops the element's words).
+ */
+export function legacyArrayIds(stored: unknown): Set<string> {
+  const ids = new Set<string>();
+  if (!Array.isArray(stored)) return ids;
+  for (const element of stored) {
+    const id = element && typeof element === "object" ? str((element as LegacyElement).imageId) : undefined;
+    if (id) ids.add(id);
+  }
+  return ids;
+}
+
 function str(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value : undefined;
 }
@@ -152,6 +170,7 @@ export function orderedGalleryItems(
     const carouselId = str(rec.carouselId)?.trim();
     if (carouselId) item.carouselId = carouselId;
     if (rec.inGallery === false) item.inGallery = false;
+    if (rec.showDescription === true) item.showDescription = true;
     const textAfter = str(rec.textAfter);
     const textAfterDe = str(rec.textAfterDe);
     if (textAfter) item.textAfter = textAfter;

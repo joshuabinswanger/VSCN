@@ -63,6 +63,41 @@ const CHECK_ORDER: ProfileField[] = [
   "portfolio", "socialMedia", "tags", "openTo", "visualNeeds", "phone",
 ];
 
+/**
+ * Fields that must not be empty. Callers pass values already trimmed, so
+ * whitespace alone counts as empty. Client-side only: firestore.rules still
+ * allows "" (a rules minimum is weighed against the evaluation budget).
+ */
+const REQUIRED_FIELDS: ProfileField[] = ["displayName"];
+
+/**
+ * The phone is stored as an optional leading + and 6 to 15 digits, nothing
+ * else (2026-11-02, Josh: "only plus and digits"). Spaces are the one thing
+ * the editors take out for the member, since that is how a number is written
+ * and pasted: stripPhoneSpaces(). The 40-character cap above still applies,
+ * and firestore.rules still holds only that cap.
+ */
+export const PHONE_FORMAT = /^(\+?[0-9]{6,15})?$/;
+
+export function stripPhoneSpaces(value: string): string {
+  return value.replace(/\s+/g, "");
+}
+
+/**
+ * stripPhoneSpaces() on a field as the member types or pastes into it, the
+ * caret kept where it was in the rest of the text. Returns the field's value.
+ */
+export function stripPhoneSpacesInPlace(input: HTMLInputElement): string {
+  const bare = stripPhoneSpaces(input.value);
+  if (bare !== input.value) {
+    const caret = input.selectionStart ?? input.value.length;
+    const at = stripPhoneSpaces(input.value.slice(0, caret)).length;
+    input.value = bare;
+    input.setSelectionRange(at, at);
+  }
+  return bare;
+}
+
 function fill(template: string, field: string, n: number): string {
   return template.replace("{field}", field).replace("{n}", String(n));
 }
@@ -83,11 +118,20 @@ export function firstProfileProblem(values: ProfileValues, s: Record<string, str
     }
     const value = values[field as ProfileTextField];
     const cap = PROFILE_TEXT_CAPS[field as ProfileTextField];
+    // The name is the one field a member cannot leave empty: the rules accept
+    // "" (they only cap it), and an empty name makes the slug function fall
+    // back to the uid and move the member's public URL. See REQUIRED_FIELDS.
+    if (REQUIRED_FIELDS.includes(field) && value === "") {
+      return { field, message: fill(s["profile.validation.required"], label, 0) };
+    }
     if (field === "socialMedia" && value.length > cap) {
       return { field, message: s["profile.social.tooLong"] };
     }
     if (value.length > cap) {
       return { field, message: fill(s["profile.validation.tooLong"], label, cap) };
+    }
+    if (field === "phone" && !PHONE_FORMAT.test(value)) {
+      return { field, message: fill(s["profile.validation.phone"], label, 0) };
     }
     if ((field === "bio" || field === "bioDe") && countWords(value) > MAX_BIO_WORDS) {
       return { field, message: fill(s["profile.validation.tooManyWords"], label, MAX_BIO_WORDS) };

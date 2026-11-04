@@ -212,6 +212,7 @@ function works(
       ...(g.textAfter ? { textAfter: g.textAfter } : {}),
       ...(g.textAfterDe ? { textAfterDe: g.textAfterDe } : {}),
       ...(g.size ? { size: g.size } : {}),
+      ...(g.showDescription === true ? { showDescription: true } : {}),
       link: workLink(g.link),
       siteLink: inheritedSiteLink(workLink(g.siteLink), project),
       tags: inheritedTags(g.tags ?? [], project),

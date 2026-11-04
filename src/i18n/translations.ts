@@ -43,6 +43,8 @@ export const ui: Record<string, Record<string, string>> = {
     "info.cta.portfolios": "Browse the portfolios",
     "info.wall.heading": "From the network",
     "info.wall.all": "All portfolios",
+    "info.wall.prev": "Previous member",
+    "info.wall.next": "Next member",
 
     // CommunityGrid
     "community.title": "Community",
@@ -73,6 +75,10 @@ export const ui: Record<string, Record<string, string>> = {
     "community.filter.tags.all": "All tags",
     "community.filter.tags.search": "Search tags…",
     "community.filter.tags.clear": "Clear",
+    "community.filter.who": "Show",
+    "community.filter.who.all": "Everyone",
+    "community.filter.who.sci": "Scientists",
+    "community.filter.who.vis": "Visual creators",
     "community.sort": "Sort",
     "community.sort.date": "Date",
     "community.sort.random": "Random",
@@ -83,7 +89,7 @@ export const ui: Record<string, Record<string, string>> = {
     "community.sort.noField": "Without tags",
     "community.search": "Search",
     "community.search.placeholder": "Search names, projects, images…",
-    "community.search.hint": "Type a name, a project or a picture's title.",
+    "community.search.hint": "Results appear here",
     "community.search.people": "People",
     "community.search.projects": "Projects",
     "community.search.images": "Images",
@@ -100,6 +106,11 @@ export const ui: Record<string, Record<string, string>> = {
 
     // AuthForm
     "auth.title.login": "Log In",
+    // The signed-out chip's full-screen sheet (Navbar.astro): the buttons to
+    // the other side and the close key; the rest reuses auth.* and onboarding.auth.*.
+    "join.close": "Close",
+    "join.tab.join": "Join",
+    "join.tab.login": "Login",
     "auth.label.email": "Email",
     "auth.label.password": "Password",
     "auth.title.reset": "Reset Password",
@@ -428,8 +439,13 @@ export const ui: Record<string, Record<string, string>> = {
     // already have landed — only the profile write was skipped. The tail says
     // what was NOT saved (the profile), not "nothing".
     "profile.gallery.saveFailed": "The text for image {n} could not be saved.",
+    // The work by its place in its project, as the list shows it (finding 27).
+    "profile.gallery.saveFailedIn": "The text for work {n} in “{project}” could not be saved.",
     "profile.gallery.saveFailed.tail":
       "Your profile was not saved — please try again.",
+    // A refusal is not a hiccup: the same words are refused every time.
+    "profile.gallery.saveFailed.refused":
+      "The server refused it, so saving it unchanged will not help: shorten or correct its texts, then save. Your profile was not saved.",
     // ONE MESSAGE PER CAUSE (see GalleryErrorCode in src/lib/gallery.ts). The
     // single "please try again" above was wrong advice for most of them — an
     // expired session and a file that will never fit do not improve on a
@@ -461,6 +477,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.cover": "Cover",
     "profile.gallery.include": "In gallery",
     "profile.gallery.include.hint": "Show this work in the community gallery. Unticked, it stays on your profile page only.",
+    "profile.gallery.showDesc": "Description",
+    "profile.gallery.showDesc.hint": "Print the description under the picture on your page. Unticked, it is read in the full-screen view only.",
     "profile.gallery.coverNote":
       "The first image is your cover: its proportions set the shape of your card in the directory.",
     "profile.gallery.moveUp": "Move image earlier",
@@ -589,7 +607,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.project.addImages": "Add images to this project",
     "profile.project.delete": "Delete project",
     "profile.project.select": "Project",
-    "profile.project.deleteHasWorks": "Move or remove its works first — a project that holds works can't be deleted.",
+    "profile.project.deleteWithWork.confirm": "Remove this project and its work? The image and everything written about it are deleted for good.",
+    "profile.project.deleteWithWorks.confirm": "Remove this project and its {n} works? Their images and everything written about them are deleted for good.",
     "profile.project.addVideo": "Add a video to this project",
     // WORK CAROUSELS (2026-10-23, documentation/20261023-work-carousels-design.md)
     "profile.carousel": "Carousel",
@@ -609,15 +628,13 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.deck.size": "Size",
     "profile.deck.move": "Move",
     "profile.deck.work": "Work",
-    "profile.deck.add": "Add",
+    "profile.deck.add": "Add to Project",
     "profile.panel.empty": "Select a work, a project or a carousel to edit it here.",
     "profile.panel.back": "Back",
     // THE PROJECT PAGES (2026-10-27): the Works tab lists the projects as
     // cards; Edit opens one as a page of its own (editorProjectPages.ts).
     "profile.projects.back": "Projects",
     "profile.projects.list": "Your projects",
-    "profile.projects.works": "{n} works",
-    "profile.projects.work": "1 work",
     "profile.projects.untitled": "Untitled project",
     "profile.projects.editOne": "Edit {name}",
     "profile.deck.project": "Project",
@@ -657,10 +674,14 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.save.error.session": "Could not save: your sign-in has expired. Sign in again, then try once more.",
     "profile.save.offline": "You appear to be offline. Check your connection and try again.",
     "profile.save.slow": "Saving is taking longer than usual. Check your connection — the save continues in the background.",
+    "profile.save.stale": "Your profile was saved in another tab or window since you opened it here, so this tab can no longer save. Reload to continue from the latest version; what you typed here is offered back after the reload.",
+    "profile.save.reload": "Reload",
     "profile.save.waitUploads": "Please wait for uploads to finish before saving.",
     "profile.validation.tooLong": "{field} must be {n} characters or fewer.",
     "profile.validation.tooManyWords": "{field} must be {n} words or fewer.",
     "profile.validation.tooMany": "{field}: choose at most {n}.",
+    "profile.validation.required": "{field} is required.",
+    "profile.validation.phone": "{field}: only a leading + and digits, 6 to 15 of them, for example +41791234567.",
     "profile.gallery.remove.confirm": "Remove this work? Its image and everything written about it are deleted for good.",
 
     // Onboarding
@@ -705,6 +726,7 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.done.disclaimer":
       "Note: Your profile may take a moment to appear in the public community feed. You can edit it any time on your profile page.",
     "onboarding.done.edit": "Edit profile",
+    "profile.works.editProfile": "Edit profile",
     "onboarding.done.goCommunity": "Go to community",
     "onboarding.done.disclaimer.unverified":
       "Your profile is hidden until you verify your email — the link is in your inbox. Once verified, you appear in the directory automatically.",
@@ -792,6 +814,8 @@ export const ui: Record<string, Record<string, string>> = {
     "info.cta.portfolios": "Portfolios ansehen",
     "info.wall.heading": "Aus dem Netzwerk",
     "info.wall.all": "Alle Portfolios",
+    "info.wall.prev": "Vorheriges Mitglied",
+    "info.wall.next": "Nächstes Mitglied",
 
     // CommunityGrid
     "community.title": "Community",
@@ -819,6 +843,10 @@ export const ui: Record<string, Record<string, string>> = {
     "community.filter.tags.all": "Alle Tags",
     "community.filter.tags.search": "Tags suchen…",
     "community.filter.tags.clear": "Zurücksetzen",
+    "community.filter.who": "Zeigen",
+    "community.filter.who.all": "Alle",
+    "community.filter.who.sci": "Wissenschaft",
+    "community.filter.who.vis": "Gestaltung",
     "community.sort": "Sortieren",
     "community.sort.date": "Datum",
     "community.sort.random": "Zufällig",
@@ -829,7 +857,7 @@ export const ui: Record<string, Record<string, string>> = {
     "community.sort.noField": "Ohne Tags",
     "community.search": "Suchen",
     "community.search.placeholder": "Namen, Projekte, Bilder suchen…",
-    "community.search.hint": "Einen Namen, ein Projekt oder einen Bildtitel eingeben.",
+    "community.search.hint": "Ergebnisse erscheinen hier",
     "community.search.people": "Personen",
     "community.search.projects": "Projekte",
     "community.search.images": "Bilder",
@@ -846,6 +874,9 @@ export const ui: Record<string, Record<string, string>> = {
 
     // AuthForm
     "auth.title.login": "Anmelden",
+    "join.close": "Schließen",
+    "join.tab.join": "Join",
+    "join.tab.login": "Login",
     "auth.label.email": "E-Mail",
     "auth.label.password": "Passwort",
     "auth.title.reset": "Passwort zurücksetzen",
@@ -1131,8 +1162,11 @@ export const ui: Record<string, Record<string, string>> = {
       "Bestätige deine E-Mail, um weitere Bilder hinzuzufügen. Der Link ist in deinem Posteingang.",
     "profile.gallery.error": "Bild konnte nicht hochgeladen werden. Bitte erneut versuchen.",
     "profile.gallery.saveFailed": "Der Text zu Bild {n} konnte nicht gespeichert werden.",
+    "profile.gallery.saveFailedIn": "Der Text zu Werk {n} in „{project}“ konnte nicht gespeichert werden.",
     "profile.gallery.saveFailed.tail":
       "Das Profil wurde nicht gespeichert – bitte erneut versuchen.",
+    "profile.gallery.saveFailed.refused":
+      "Der Server hat ihn abgelehnt, unverändert zu speichern hilft also nicht: Kürze oder korrigiere die Texte, dann speichere. Das Profil wurde nicht gespeichert.",
     "profile.gallery.err.tooBig": "Über 25 MB. Bitte kleiner exportieren.",
     "profile.gallery.err.svg":
       "SVGs können nicht hochgeladen werden. Als PNG oder JPEG exportieren.",
@@ -1157,6 +1191,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.gallery.cover": "Titelbild",
     "profile.gallery.include": "In Galerie",
     "profile.gallery.include.hint": "Diese Arbeit in der Community-Galerie zeigen. Ohne Häkchen erscheint sie nur auf deiner Profilseite.",
+    "profile.gallery.showDesc": "Beschreibung",
+    "profile.gallery.showDesc.hint": "Die Beschreibung unter dem Bild auf deiner Seite zeigen. Ohne Häkchen ist sie nur in der Vollbildansicht zu lesen.",
     "profile.gallery.coverNote":
       "Das erste Bild ist dein Titelbild: seine Proportionen bestimmen die Form deiner Karte im Verzeichnis.",
     "profile.gallery.moveUp": "Bild nach vorne",
@@ -1235,7 +1271,8 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.project.addImages": "Bilder zu diesem Projekt hinzufügen",
     "profile.project.delete": "Projekt löschen",
     "profile.project.select": "Projekt",
-    "profile.project.deleteHasWorks": "Verschiebe oder entferne zuerst seine Arbeiten — ein Projekt mit Arbeiten kann nicht gelöscht werden.",
+    "profile.project.deleteWithWork.confirm": "Dieses Projekt und sein Werk entfernen? Bild und alle Angaben dazu werden endgültig gelöscht.",
+    "profile.project.deleteWithWorks.confirm": "Dieses Projekt und seine {n} Werke entfernen? Bilder und alle Angaben dazu werden endgültig gelöscht.",
     "profile.project.addVideo": "Video zu diesem Projekt hinzufügen",
     // WORK CAROUSELS (2026-10-23)
     "profile.carousel": "Karussell",
@@ -1255,13 +1292,11 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.deck.size": "Grösse",
     "profile.deck.move": "Verschieben",
     "profile.deck.work": "Arbeit",
-    "profile.deck.add": "Hinzufügen",
+    "profile.deck.add": "Zum Projekt hinzufügen",
     "profile.panel.empty": "Wähle ein Werk, ein Projekt oder ein Karussell, um es hier zu bearbeiten.",
     "profile.panel.back": "Zurück",
     "profile.projects.back": "Projekte",
     "profile.projects.list": "Deine Projekte",
-    "profile.projects.works": "{n} Arbeiten",
-    "profile.projects.work": "1 Arbeit",
     "profile.projects.untitled": "Unbenanntes Projekt",
     "profile.projects.editOne": "{name} bearbeiten",
     "profile.deck.project": "Projekt",
@@ -1301,10 +1336,14 @@ export const ui: Record<string, Record<string, string>> = {
     "profile.save.error.session": "Speichern fehlgeschlagen: Deine Anmeldung ist abgelaufen. Melde dich erneut an und versuche es noch einmal.",
     "profile.save.offline": "Du scheinst offline zu sein. Prüfe deine Verbindung und versuche es erneut.",
     "profile.save.slow": "Das Speichern dauert länger als üblich. Prüfe deine Verbindung — das Speichern läuft im Hintergrund weiter.",
+    "profile.save.stale": "Dein Profil wurde seit dem Öffnen in einem anderen Tab oder Fenster gespeichert, darum kann dieser Tab nicht mehr speichern. Lade die Seite neu, um beim neuesten Stand weiterzumachen; was du hier eingegeben hast, wird dir danach wieder angeboten.",
+    "profile.save.reload": "Neu laden",
     "profile.save.waitUploads": "Bitte warten, bis die Uploads abgeschlossen sind.",
     "profile.validation.tooLong": "{field} darf höchstens {n} Zeichen lang sein.",
     "profile.validation.tooManyWords": "{field} darf höchstens {n} Wörter haben.",
     "profile.validation.tooMany": "{field}: höchstens {n} auswählen.",
+    "profile.validation.required": "{field} ist erforderlich.",
+    "profile.validation.phone": "{field}: nur ein führendes + und Ziffern erlaubt, 6 bis 15 Stück, zum Beispiel +41791234567.",
     "profile.gallery.remove.confirm": "Dieses Werk entfernen? Bild und alle Angaben dazu werden endgültig gelöscht.",
 
     // Onboarding
@@ -1352,6 +1391,7 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.done.disclaimer":
       "Hinweis: Es kann einen Moment dauern, bis dein Profil im öffentlichen Community-Feed erscheint. Du kannst es jederzeit auf deiner Profilseite bearbeiten.",
     "onboarding.done.edit": "Profil bearbeiten",
+    "profile.works.editProfile": "Profil bearbeiten",
     "onboarding.done.goCommunity": "Zur Community",
     "onboarding.done.disclaimer.unverified":
       "Dein Profil bleibt verborgen, bis du deine E-Mail bestätigt hast — der Link liegt in deinem Posteingang. Danach erscheinst du automatisch im Verzeichnis.",

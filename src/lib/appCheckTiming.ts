@@ -41,3 +41,31 @@ export const SPARE_MAX_AGE_MS = 240_000;
 export function spareIsUsable(issuedAt: number, now: number): boolean {
   return now - issuedAt < SPARE_MAX_AGE_MS;
 }
+
+/**
+ * Firestore's own clock on a first connection (ONLINE_STATE_TIMEOUT_MS):
+ * the watch stream and this timer start in the same statement, and the
+ * stream then AWAITS the auth and App Check tokens before it opens. When no
+ * App Check token is cached, the whole attestation above runs inside these
+ * 10 s, so any attestation slower than that — a managed challenge on a
+ * desktop, most challenges on a phone — makes the SDK declare the backend
+ * unreachable and reject `getDoc` with "client is offline" on a working
+ * network (2026-10-31, "opening the profile for the first time gives a
+ * timeout"). A page that reads at load must therefore have its token in
+ * hand BEFORE its first read; see appCheckReady() in firebase.ts.
+ */
+export const FIRESTORE_FIRST_CONNECT_MS = 10_000;
+
+/**
+ * The profile editor's clock on its reads (user document, publish flag),
+ * started only once the App Check token is in hand, so it measures the
+ * reads and not the attestation.
+ */
+export const PROFILE_READ_TIMEOUT_MS = 15_000;
+
+/**
+ * The editor's watchdog on auth settling before the reads can start. An
+ * expired ID token refreshes through App Check too, so a cold open may
+ * spend a full attestation there, and the reads follow.
+ */
+export const PROFILE_AUTH_WATCHDOG_MS = ATTESTATION_BUDGET_MS + PROFILE_READ_TIMEOUT_MS;

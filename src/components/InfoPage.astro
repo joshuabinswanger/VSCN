@@ -18,24 +18,21 @@ const portfoliosHref = lang === "de" ? "/de/community" : "/community";
 // the views switcher in the header (ViewsPill.astro), a strip of the
 // network's own pictures that all open the Portfolios, and a button once the
 // reading is done. The button under the opening lines went the same day
-// (Josh: "remove the first pill on the landing page"). The strip is the wall's guest list (hidden works
-// stay off, as on /community), best first, one picture a member before any
-// member gets a second, six at most.
-const WALL_MAX = 6;
-const ranked = (await fetchMemberViews())
-  .map((m) => ({
-    name: m.displayName,
-    works: m.works.filter((w) => !w.hidden).sort((a, b) => b.score - a.score),
-  }))
-  .filter((m) => m.works.length > 0)
-  .sort((a, b) => b.works[0].score - a.works[0].score);
-const picks: { name: string; work: (typeof ranked)[number]["works"][number] }[] = [];
-for (let round = 0; picks.length < WALL_MAX && ranked.some((m) => m.works[round]); round++) {
-  for (const m of ranked) {
-    if (picks.length >= WALL_MAX) break;
-    if (m.works[round]) picks.push({ name: m.name, work: m.works[round] });
-  }
-}
+// (Josh: "remove the first pill on the landing page").
+// ONE MEMBER AT A TIME (2026-11-01, Josh's design file, board 26: "members
+// change on scroll and have a timer"). The strip of six became a carousel:
+// one picture, the member's name under it, a chevron each side. It steps on
+// a timer and as the page scrolls. The guest list is the wall's (hidden
+// works stay off, as on /community): each member's best picture, the best
+// members first, twelve at most.
+const WALL_MAX = 12;
+const picks = (await fetchMemberViews())
+  .flatMap((m) => {
+    const work = m.works.filter((w) => !w.hidden).sort((a, b) => b.score - a.score)[0];
+    return work ? [{ name: m.displayName, work }] : [];
+  })
+  .sort((a, b) => b.work.score - a.work.score)
+  .slice(0, WALL_MAX);
 const wall = await Promise.all(
   picks.map(async ({ name, work }) => ({
     name,
@@ -59,25 +56,41 @@ const wall = await Promise.all(
 
   {
     wall.length > 0 && (
-      <section class="info-section info-wall" aria-labelledby="info-wall-heading">
-        <h2 class="info-heading" id="info-wall-heading">{t("info.wall.heading")}</h2>
-        <ul class="info-wall__grid">
-          {wall.map((tile) => (
-            <li>
-              <a href={portfoliosHref} class="info-wall__tile">
-                <img
-                  src={tile.rendered.src}
-                  srcset={tile.rendered.srcSet.attribute}
-                  sizes="(max-width: 767px) 50vw, 300px"
-                  alt={tile.alt}
-                  loading="lazy"
-                  decoding="async"
-                />
-                <span class="t-meta info-wall__name">{tile.name}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
+      <section
+        class="info-section info-wall"
+        aria-roledescription="carousel"
+        aria-label={t("info.wall.heading")}
+        data-info-wall
+      >
+        <div class="info-wall__stage">
+          {wall.length > 1 && (
+            <button type="button" class="info-wall__arrow info-wall__arrow--prev" data-wall-prev aria-label={t("info.wall.prev")}>
+              <span aria-hidden="true" />
+            </button>
+          )}
+          <ul class="info-wall__slides">
+            {wall.map((tile, i) => (
+              <li class="info-wall__slide" data-wall-slide aria-hidden={i === 0 ? undefined : "true"} data-current={i === 0 ? "" : undefined}>
+                <a href={portfoliosHref} class="info-wall__tile" tabindex={i === 0 ? undefined : -1}>
+                  <img
+                    src={tile.rendered.src}
+                    srcset={tile.rendered.srcSet.attribute}
+                    sizes="(max-width: 767px) 74vw, 332px"
+                    alt={tile.alt}
+                    loading={i === 0 ? "eager" : "lazy"}
+                    decoding="async"
+                  />
+                  <span class="info-wall__name">{tile.name}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+          {wall.length > 1 && (
+            <button type="button" class="info-wall__arrow info-wall__arrow--next" data-wall-next aria-label={t("info.wall.next")}>
+              <span aria-hidden="true" />
+            </button>
+          )}
+        </div>
         <a href={portfoliosHref} class="profile-link info-wall__all">{t("info.wall.all")} →</a>
       </section>
     )
@@ -203,23 +216,50 @@ const wall = await Promise.all(
     translate: 4px 0;
   }
 
-  .info-wall__grid {
+  /* THE CAROUSEL (board 26 and the phone's Info): one 4:5 picture in the
+     middle of the column, 332px on a desktop and three quarters of a
+     phone's width, with the portfolio card's chevrons standing just outside
+     its edges. The stage is a size container, so the chevrons can stand at
+     the picture's half height (cqw) whatever its width. */
+  .info-wall__stage {
+    --wall-gap: clamp(6px, 1.7vw, 25px);
+    position: relative;
+    /* On a phone the chevrons stand in the page's side margin, as drawn. */
+    width: min(25.5rem, 74vw);
+    margin: 2.5rem auto 0;
+    container-type: inline-size;
+  }
+  .info-wall__slides {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-    margin: 1rem 0 0;
+    margin: 0;
     padding: 0;
     list-style: none;
-
-    @media (--bp-mobile) {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
+  }
+  /* Every slide in the one cell; the current one shows, the rest wait
+     faded out underneath (their pictures load while they wait). */
+  .info-wall__slide {
+    grid-area: 1 / 1;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 0.6s ease,
+      visibility 0s 0.6s;
+  }
+  .info-wall__slide[data-current] {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.6s ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .info-wall__slide,
+    .info-wall__slide[data-current] {
+      transition: none;
     }
   }
   .info-wall__tile {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 12px;
     color: var(--color-dark);
     text-decoration: none;
   }
@@ -237,11 +277,52 @@ const wall = await Promise.all(
     opacity: 0.85;
   }
   .info-wall__name {
-    color: var(--color-muted);
+    color: var(--color-dark);
+  }
+  /* The card's arrows (communityCard.css): a strip the picture's height
+     beside each edge, a stroked chevron in it, muted until pointed at. */
+  .info-wall__arrow {
+    position: absolute;
+    top: 0;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 125cqw;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-dark);
+    opacity: 0.35;
+    cursor: pointer;
+    transition: opacity 150ms ease;
+  }
+  .info-wall__arrow:hover,
+  .info-wall__arrow:focus-visible {
+    opacity: 1;
+  }
+  .info-wall__arrow--prev {
+    right: calc(100% + var(--wall-gap));
+  }
+  .info-wall__arrow--next {
+    left: calc(100% + var(--wall-gap));
+  }
+  .info-wall__arrow span {
+    display: block;
+    width: var(--chevron-size);
+    height: var(--chevron-size);
+    border-top: var(--chevron-stroke) solid currentColor;
+    border-right: var(--chevron-stroke) solid currentColor;
+  }
+  .info-wall__arrow--prev span {
+    transform: translate(0.05rem, 0) rotate(-135deg);
+  }
+  .info-wall__arrow--next span {
+    transform: translate(-0.05rem, 0) rotate(45deg);
   }
   .info-wall__all {
-    align-self: flex-start;
-    margin-top: 1rem;
+    align-self: center;
+    margin-top: 1.5rem;
     color: var(--color-dark);
     text-decoration: none;
   }
@@ -259,5 +340,87 @@ const wall = await Promise.all(
     watchAuth(pageLifetime(), (user) => {
       cta.style.display = user ? "none" : "flex";
     });
+  });
+
+  // THE CAROUSEL STEPS ON ITS OWN (2026-11-01, Josh's design file: "members
+  // change on scroll and have a timer"). While it is on screen: a step every
+  // few seconds, and a step for every stretch of scrolling (down = next,
+  // up = previous). Pointing at it or focusing it holds the timer; the
+  // chevrons step at once and start the timer over. No timer for a visitor
+  // who asks for reduced motion.
+  const STEP_MS = 4500;
+  const SCROLL_STEP_PX = 240;
+
+  document.addEventListener("astro:page-load", () => {
+    const wall = document.querySelector<HTMLElement>("[data-info-wall]");
+    const slides = wall ? Array.from(wall.querySelectorAll<HTMLElement>("[data-wall-slide]")) : [];
+    if (!wall || slides.length < 2) return;
+    const signal = pageLifetime();
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let at = 0;
+    let timer = 0;
+    let held = false;
+    let seen = false;
+
+    const show = (i: number) => {
+      at = (i + slides.length) % slides.length;
+      slides.forEach((slide, k) => {
+        const on = k === at;
+        slide.toggleAttribute("data-current", on);
+        const link = slide.querySelector("a");
+        if (on) {
+          slide.removeAttribute("aria-hidden");
+          link?.removeAttribute("tabindex");
+        } else {
+          slide.setAttribute("aria-hidden", "true");
+          link?.setAttribute("tabindex", "-1");
+        }
+      });
+    };
+    const stop = () => {
+      clearInterval(timer);
+      timer = 0;
+    };
+    const start = () => {
+      stop();
+      if (still || held || !seen || document.hidden) return;
+      timer = window.setInterval(() => show(at + 1), STEP_MS);
+    };
+
+    wall.querySelector("[data-wall-prev]")?.addEventListener("click", () => (show(at - 1), start()), { signal });
+    wall.querySelector("[data-wall-next]")?.addEventListener("click", () => (show(at + 1), start()), { signal });
+    const hold = (on: boolean) => () => ((held = on), start());
+    wall.addEventListener("pointerenter", hold(true), { signal });
+    wall.addEventListener("pointerleave", hold(false), { signal });
+    wall.addEventListener("focusin", hold(true), { signal });
+    wall.addEventListener("focusout", hold(false), { signal });
+    document.addEventListener("visibilitychange", start, { signal });
+
+    const io = new IntersectionObserver(([entry]) => {
+      seen = entry.isIntersecting;
+      start();
+    });
+    io.observe(wall);
+    signal.addEventListener("abort", () => (io.disconnect(), stop()), { once: true });
+
+    // .page-wrap scrolls on a desktop, the document on a phone (CLAUDE.md,
+    // "Layout and scrolling"): listen to both, count only the one that moved.
+    const wrap = document.querySelector<HTMLElement>(".page-wrap");
+    const pos = () => (wrap?.scrollTop ?? 0) + window.scrollY;
+    let last = pos();
+    let travel = 0;
+    const onScroll = () => {
+      const now = pos();
+      if (seen) travel += now - last;
+      last = now;
+      while (Math.abs(travel) >= SCROLL_STEP_PX) {
+        const dir = Math.sign(travel);
+        travel -= dir * SCROLL_STEP_PX;
+        show(at + dir);
+        start();
+      }
+    };
+    wrap?.addEventListener("scroll", onScroll, { passive: true, signal });
+    window.addEventListener("scroll", onScroll, { passive: true, signal });
   });
 </script>

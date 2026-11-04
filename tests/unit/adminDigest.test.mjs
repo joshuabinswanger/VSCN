@@ -26,7 +26,7 @@ const abandoned = {
 
 const image = (over = {}) => ({
   kind: "image", imageId: "img1", uid: "abc123", ownerName: "Ada Lovelace", imageKind: "gallery", deleted: false,
-  caption: "Heart, coronal", width: 3000, height: 2000, url: "https://firebasestorage.googleapis.com/v0/b/x/o/users%2Fabc123%2Fgallery%2Fimg1.webp?alt=media",
+  caption: "Heart, coronal", width: 3000, height: 2000,
   at: created, ...over,
 });
 
@@ -62,15 +62,18 @@ test("an account deleted again before the digest ran is reported as exactly that
   assert.doesNotMatch(msg.text, /Wizard:/);
 });
 
-test("a gallery upload is one mail listing the images, each with its public URL", () => {
+test("a gallery upload is one mail listing the images in sentences, with no link but the console's", () => {
   const msg = adminDigest([image(), image({ imageId: "img2", caption: null, width: null, height: null })], "vscn-39508");
   assert.equal(msg.subject, "VSCN: 2 images from Ada Lovelace");
-  assert.match(msg.text, /- Ada Lovelace: gallery 3000×2000 — "Heart, coronal"\n {2}https:\/\/firebasestorage/);
-  assert.match(msg.text, /- Ada Lovelace: gallery\n/);
+  assert.match(msg.text, /These images are now public on the site:/);
+  assert.match(msg.text, /- Ada Lovelace added a gallery image, 3000 by 2000 pixels, with the caption "Heart, coronal"\./);
+  assert.match(msg.text, /- Ada Lovelace added a gallery image, without a caption\./);
+  assert.doesNotMatch(msg.text, /firebasestorage/);
+  assert.match(msg.text, /You can see them in the admin console:\nhttps:\/\/vscn\.ch\/admin\n$/);
 });
 
 test("a single image and a signup share one subject; an image gone again is named, not linked", () => {
-  const msg = adminDigest([finished, image({ deleted: true, url: null, ownerName: null })], "vscn-39508");
+  const msg = adminDigest([finished, image({ deleted: true, ownerName: null })], "vscn-39508");
   assert.equal(msg.subject, "VSCN: Ada Lovelace signed up; an image from abc123");
   assert.match(msg.text, /- abc123: gallery image img1 — gone again before this report/);
 });

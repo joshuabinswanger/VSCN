@@ -8,6 +8,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   AUTH_REQUEST_TIMEOUT_MS,
+  FIRESTORE_FIRST_CONNECT_MS,
+  PROFILE_AUTH_WATCHDOG_MS,
+  PROFILE_READ_TIMEOUT_MS,
   ATTESTATION_BUDGET_MS,
   SPARE_MAX_AGE_MS,
   TURNSTILE_TOKEN_TTL_MS,
@@ -28,4 +31,18 @@ test("a late Turnstile token is kept as a spare only while Cloudflare still acce
   assert.equal(spareIsUsable(at, at + SPARE_MAX_AGE_MS - 1), true);
   assert.equal(spareIsUsable(at, at + SPARE_MAX_AGE_MS), false);
   assert.equal(spareIsUsable(at, at + TURNSTILE_TOKEN_TTL_MS), false);
+});
+
+// The profile editor's first Firestore read races the SDK's own 10 s
+// "online state" timer, which is armed in the same statement as the watch
+// stream that then AWAITS the App Check token. A cold attestation slower than
+// those 10 s made getDoc reject "client is offline" on a working network
+// (2026-10-31, "opening the profile for the first time gives a timeout").
+// So the editor awaits the token before its read clock starts, and its
+// auth watchdog allows for a full attestation on top of the reads.
+test("the profile editor's clocks allow for a cold attestation before the first read", () => {
+  assert.equal(FIRESTORE_FIRST_CONNECT_MS, 10_000, "firestore ONLINE_STATE_TIMEOUT_MS");
+  assert.ok(ATTESTATION_BUDGET_MS > FIRESTORE_FIRST_CONNECT_MS, "the token must be awaited before the read, not during it");
+  assert.ok(PROFILE_READ_TIMEOUT_MS > FIRESTORE_FIRST_CONNECT_MS);
+  assert.ok(PROFILE_AUTH_WATCHDOG_MS >= ATTESTATION_BUDGET_MS + PROFILE_READ_TIMEOUT_MS);
 });

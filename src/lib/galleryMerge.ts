@@ -10,7 +10,7 @@
  *
  * `base` is what THIS tab last saw stored (loaded, or last written by it),
  * `ours` is what it holds now, `theirs` is what Firestore holds at the moment
- * of the write. Ours keeps its order; ids another session added since base
+ * of the write. The order follows `arrange` below; ids another session added since base
  * are appended; ids another session removed since base leave ours — their
  * records are `pendingDeletion` and would render as broken images.
  *
@@ -39,6 +39,40 @@ export function mergeGalleryIds(base: readonly string[], ours: readonly string[]
   const added = [...new Set(stored.filter((id) => !baseSet.has(id) && !oursSet.has(id)))];
   const dropped = ours.filter((id) => baseSet.has(id) && !storedSet.has(id));
   const droppedSet = new Set(dropped);
-  const merged = [...ours.filter((id) => !droppedSet.has(id)), ...added];
-  return { merged, added, dropped };
+  const kept = ours.filter((id) => !droppedSet.has(id));
+  return { merged: [...arrange(base, kept, stored), ...added], added, dropped };
+}
+
+/**
+ * THE ORDER IS MERGED TOO (2026-11-04, audit finding 26). Ours used to win
+ * outright, so a stale tab that only uploaded or removed a work put back the
+ * order another tab had just arranged. Now the works all three know keep
+ * THEIR stored order unless this tab itself moved one of them since base;
+ * a tab that did reorder still wins, as before. Works only this tab knows
+ * stay right after the work they followed here.
+ */
+function arrange(base: readonly string[], kept: readonly string[], stored: readonly string[]): string[] {
+  const keptSet = new Set(kept);
+  const storedSet = new Set(stored);
+  const known = (id: string) => keptSet.has(id) && storedSet.has(id);
+  const baseSet = new Set(base);
+  const common = (list: readonly string[]) => list.filter((id) => baseSet.has(id) && known(id));
+  const ours = common(kept);
+  const before = common(base);
+  const reordered = ours.some((id, i) => id !== before[i]);
+  const order = reordered ? ours : [...new Set(common(stored))];
+  const placed = new Set(order);
+  const out = [...order];
+  // Each remaining work of ours goes in after the one it followed here.
+  let at = 0;
+  for (const id of kept) {
+    if (placed.has(id)) {
+      at = out.indexOf(id) + 1;
+      continue;
+    }
+    out.splice(at, 0, id);
+    placed.add(id);
+    at += 1;
+  }
+  return out;
 }

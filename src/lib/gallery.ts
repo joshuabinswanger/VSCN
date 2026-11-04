@@ -216,6 +216,13 @@ export interface GalleryItem {
    */
   inGallery?: false;
   /**
+   * THE MEMBER'S "SHOW DESCRIPTION" SWITCH (2026-10-31, Josh: "switch on per
+   * image if the description should be shown"). `true` prints the description
+   * under the picture on the member page; absent keeps it in the lightbox
+   * only, as every work has since 2026-10-16. Written onto the record at Save.
+   */
+  showDescription?: true;
+  /**
    * THE TEXT BLOCK AFTER THIS WORK (2026-10-16, Josh: "make it possible to
    * add text block in between image in projects"). Printed on the member page
    * between this work and the next one, in its project's column. German
@@ -514,6 +521,7 @@ export async function saveGalleryRecords(items: readonly GalleryItem[]): Promise
         projectId: item.projectId,
         carouselId: item.carouselId,
         inGallery: item.inGallery,
+        showDescription: item.showDescription,
         textAfter: item.textAfter,
         textAfterDe: item.textAfterDe,
         size: item.size,

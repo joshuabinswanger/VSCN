@@ -54,7 +54,18 @@
   /* FIELDS are the one soft box among the sharp edges (2026-10-27, Josh's design file: slim,
      30px, a 5px corner). Opted back in by the FIELDS rule beside CONTROLS. */
   --radius-field: 5px;
-  /* EVERY PAGER'S CHEVRON: the gallery card's and the project carousel's
+  /* GLASS (2026-11-04, Josh: "the pills ... a very strong blur and a very,
+     very faint opacity change. So it looks a little bit like it's all the
+     same color, but that the background shimmers through a little bit";
+     after It's Nice That's bar, blur(32px) over 64% grey). The paper at 93%
+     (86% for a day; 11-04, Josh: "even fainter"), so it reads as paper, and
+     a heavy blur under it. On the CONTROLS themselves, never on a pill that
+     holds them (11-04, Josh: "instead of the pill behind the UI element it
+     should be on the UI elements itself"): the community bar's triggers,
+     views and cards, the editor bar's switches, the header's LOGIN and
+     PORTFOLIOS keys. */
+  --glass-paper: rgb(252 251 250 / 0.93);
+  --glass-blur: blur(32px) saturate(1.3);  /* EVERY PAGER'S CHEVRON: the gallery card's and the project carousel's
      edge arrows and the lightbox's side arrows; the chevrons beside each
      "2 / 7" count (.pager-chev below) use the smaller pair after these. Two
      borders on a box turned 45deg.
@@ -670,7 +681,7 @@ fieldset > legend.label {
    rises above the box in ink and the hint (if any) shows.
    SMALLER AND ABOVE (2026-10-28, Josh: "the name of the field can be smaller
    and above the box"): board 07's rule again. Filled or focused, the title is
-   a tiny label (--fs-field-title) 4px above the box; empty and at rest it
+   a tiny label (--fs-field-title) 2px above the box; empty and at rest it
    stands in the box. The box is slim again (30px), and the zone above it is
    held in every state so nothing jumps. Same on the editor's `.gfield`. */
 .ff {
@@ -687,13 +698,16 @@ fieldset > legend.label {
   position: absolute;
   z-index: 1;
   left: 1px;
-  top: -4px;
+  /* Lifted (board 07, 2026-11-02, Josh): the placeholder grey, 2px above
+     the box; desktop first, the phone matched to it the same day. The focus
+     and error rules below are more specific and keep the ink and the red. */
+  top: -2px;
   transform: translateY(-100%);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--color-muted);
+  color: var(--color-text-placeholder);
   pointer-events: none;
   transition:
     top 0.22s cubic-bezier(0.25, 1, 0.5, 1),
@@ -721,8 +735,7 @@ fieldset > legend.label {
 }
 .ff:has(> .input[aria-invalid="true"]) > .ff__title {
   color: var(--color-error);
-}
-@media (prefers-reduced-motion: reduce) {
+}@media (prefers-reduced-motion: reduce) {
   .ff__title {
     transition: none;
   }
@@ -980,15 +993,6 @@ label:has(> .picker-input:focus-visible) {
   color: var(--color-dark);
 }
 
-/* A thumb is not 21px tall. Every chip grows its padding where the pointer is
-   coarse; the compact drawing is what a mouse gets. On the public pages the
-   tags are links, so the same reasoning applies there. */
-@media (pointer: coarse) {
-  .tagchip,
-  .optchip.tagchip {
-    padding: 2px 7px 1px calc(7px + var(--tag-track));
-  }
-}
 
 /* ── Buttons ── */
 .btn-primary {
@@ -1659,25 +1663,50 @@ label:has(> .picker-input:focus-visible) {
   }
 }
 
-/* BIGGER BUTTONS ON A PHONE (2026-10-28, Josh: "make mobile ui buttons a bit
-   bigger"): every pressable family a few pixels taller under a thumb. The
-   editor's keys and bar get theirs in profile-editor.css, the menu button in
-   Navbar.astro. Desktop keeps board 17's sizes. */
-@media (--bp-mobile) {
-  .btn-solid,
-  .btn-save,
-  .btn-outline,
-  .btn-logout {
-    min-height: 46px;
-  }
-  .btn-primary,
-  .btn-ghost {
-    padding-block: 14px;
-  }
-  .optchip:not(.tagchip) {
-    min-height: 34px;
-  }
-  .seg > :is(button, label) {
-    min-height: 34px;
-  }
+/* Buttons and chips are board 17's sizes on a phone too. From 2026-10-28
+   ("make mobile ui buttons a bit bigger") to 2026-11-02 a phone block made
+   .btn-solid/.btn-save/.btn-outline/.btn-logout 46px, .btn-primary/.btn-ghost
+   14px padding, option chips and .seg 34px, and tag chips a fatter padding on
+   a coarse pointer; Josh had them match the desktop again ("Shrink those
+   too"). The phone menu button keeps its 40px (Navbar.astro). */
+
+/* THE MOVE MENU (2026-11-04, src/lib/moveMenu.ts): a popover in the top
+   layer under the editor's Move key, listing where a work, slide or carousel
+   can go, grouped Carousel / Project. A paper card, the editor's hairline,
+   rows of the editor's word size. Placed by the script (fixed left/top). */
+.move-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  min-width: 11rem;
+  max-width: min(18rem, calc(100vw - 16px));
+  max-height: min(60vh, 24rem);
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-field) !important;
+  background: var(--color-bg);
+  color: var(--color-dark);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.08);
+}
+.move-menu__lbl {
+  margin: 6px 8px 2px;
+  color: var(--color-muted);
+}
+.move-menu__item {
+  display: block;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: var(--radius-sm) !important;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.move-menu__item:hover,
+.move-menu__item:focus-visible {
+  background: rgb(0 0 0 / 0.05);
+  outline: none;
 }

@@ -77,8 +77,6 @@ export interface ImageReport {
   caption: string | null;
   width: number | null;
   height: number | null;
-  /** Public download URL derived from storagePath, when the doc still exists. */
-  url: string | null;
   at: Date;
 }
 
@@ -127,14 +125,17 @@ function signupSection(r: SignupReport, projectId: string): string[] {
   return lines;
 }
 
+// A sentence per image, and no link of its own (2026-11-02): a dev notice
+// that was one name, one size and a long encoded Storage URL was refused by
+// Infomaniak's outgoing filter twelve times in a row ("550 5.2.0 Spam
+// message rejected"), where the same notice with more words had gone out.
+// The admin console's link under the list is where the pictures are seen.
 function imageLine(r: ImageReport): string {
   const who = r.ownerName ?? r.uid;
   if (r.deleted) return `- ${who}: ${r.imageKind} image ${r.imageId} — gone again before this report`;
-  const size = r.width && r.height ? ` ${r.width}×${r.height}` : "";
-  const cap = r.caption ? ` — "${r.caption}"` : "";
-  return [`- ${who}: ${r.imageKind}${size}${cap}`, r.url ? `  ${r.url}` : null]
-    .filter((l): l is string => l !== null)
-    .join("\n");
+  const size = r.width && r.height ? `, ${r.width} by ${r.height} pixels` : "";
+  const cap = r.caption ? `, with the caption "${r.caption}"` : ", without a caption";
+  return `- ${who} added a ${r.imageKind} image${size}${cap}.`;
 }
 
 /**
@@ -167,7 +168,16 @@ export function adminDigest(reports: Report[], projectId: string): AdminMessage 
     for (const s of signups) body.push(...signupSection(s, projectId), "");
   }
   if (images.length) {
-    body.push("# Images that went live", "", ...images.map(imageLine), "", adminUrl(projectId));
+    body.push(
+      "# Images that went live",
+      "",
+      images.length === 1 ? "This image is now public on the site:" : "These images are now public on the site:",
+      "",
+      ...images.map(imageLine),
+      "",
+      "You can see them in the admin console:",
+      adminUrl(projectId),
+    );
   }
   return { subject, text: body.join("\n").trimEnd() + "\n" };
 }

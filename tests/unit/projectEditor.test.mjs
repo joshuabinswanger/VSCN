@@ -20,6 +20,9 @@ import {
   orderProjects,
   previewProjects,
   projectLabel,
+  workPlace,
+  projectRecordKey,
+  projectsToWrite,
   sameIds,
   toProjectRecord,
   memberUidFor,
@@ -250,4 +253,41 @@ test("projectsToDelete: decided when Save starts, minus any project an image nam
   assert.deepEqual(projectsToDelete(["r", "q"], now), ["r"]);
   // A project emptied DURING the Save is not a candidate: it was not empty when Save read the gallery.
   assert.deepEqual(projectsToDelete([], [img("a")]), []);
+});
+
+test("Save writes only new projects and projects whose stored document would change", () => {
+  const a = { projectId: "a", title: "A", affiliations: [] };
+  const b = { projectId: "b", title: "B", affiliations: [{ mode: "name", name: "Lab" }] };
+  const committed = new Map([[a.projectId, projectRecordKey(a)], [b.projectId, projectRecordKey(b)]]);
+  const stored = new Set(["a", "b"]);
+  assert.deepEqual(projectsToWrite([a, b], stored, committed), []);
+  // An edit that projectFields() stores the same way (padding) is no change.
+  assert.deepEqual(projectsToWrite([{ ...a, title: " A " }, b], stored, committed), []);
+  // A retitle, a credit, a new block.
+  assert.deepEqual(projectsToWrite([{ ...a, title: "A2" }, b], stored, committed).map((p) => p.projectId), ["a"]);
+  assert.deepEqual(projectsToWrite([a, { ...b, affiliations: [] }], stored, committed).map((p) => p.projectId), ["b"]);
+  const fresh = { projectId: "c", title: "C", affiliations: [] };
+  assert.deepEqual(projectsToWrite([a, fresh], stored, committed).map((p) => p.projectId), ["c"]);
+  // Stored but never keyed (written before this tab knew it): written.
+  assert.deepEqual(projectsToWrite([fresh], new Set(["c"]), committed).map((p) => p.projectId), ["c"]);
+});
+
+test("workPlace: a refused work is named by its place in its project, not the account", () => {
+  const s = {
+    "profile.gallery.saveFailed": "image {n}",
+    "profile.gallery.saveFailedIn": "work {n} in “{project}”",
+    "profile.project.untitled": "Project {n}",
+  };
+  const gallery = [
+    { imageId: "a", projectId: "p" },
+    { imageId: "b", projectId: "q" },
+    { imageId: "c", projectId: "q" },
+    { imageId: "d" },
+  ];
+  const projects = [{ projectId: "p", title: "Ribosome" }, { projectId: "q", title: "Glacier", titleDe: "Gletscher" }];
+  assert.equal(workPlace(gallery, projects, "c", "en", s), "work 2 in “Glacier”");
+  assert.equal(workPlace(gallery, projects, "c", "de", s), "work 2 in “Gletscher”");
+  assert.equal(workPlace(gallery, projects, "a", "en", s), "work 1 in “Ribosome”");
+  // No project, or one this editor does not know: the account-wide wording.
+  assert.equal(workPlace(gallery, projects, "d", "en", s), "image 4");
 });

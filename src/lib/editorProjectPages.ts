@@ -4,8 +4,8 @@
 // nicely animate between edit and preview").
 //
 // Two levels on the Works tab, kept on the stage as data-level:
-//   "list"    — every project as a card (its title, description, first
-//               pictures, work count and tags) with an Edit key, and
+//   "list"    — every project as a card (its title and first pictures,
+//               no words beyond the title since 2026-11-02) with its keys, and
 //               + Project after the last. The bar holds Edit | Preview
 //               (the whole page) and Save.
 //   "project" — ONE project as the whole page (data-focus = its id): the
@@ -21,7 +21,8 @@
 import { pageLifetime } from "./pageLifecycle.ts";
 
 const FOCUS_KEY = "vscn-works-project";
-const CARD_THUMBS = 4;
+// Three across, so each is big enough to tell apart (2026-11-02, Josh: "images bigger on project overview").
+const CARD_THUMBS = 3;
 
 const remembered = (): string | null => {
   try {
@@ -60,6 +61,12 @@ document.addEventListener("astro:page-load", () => {
   const ids = () => blocks().map((b) => b.dataset.projectId ?? "");
 
   // ── THE CARDS ────────────────────────────────────────────
+  const blockKey = (block: HTMLElement, which: string) =>
+    block.querySelector<HTMLButtonElement>(which === "delete" ? "[data-project-delete]" : `[data-project-move="${which}"]`);
+  // A key pressed on a card: the list re-renders under it, so the same key
+  // on the same card takes the focus back once the cards are redrawn.
+  let refocus: { id: string; which: string } | null = null;
+
   const field = (block: HTMLElement, name: string) =>
     block.querySelector<HTMLTextAreaElement>(`[data-project-field="${name}"]`)?.value.trim() ?? "";
 
@@ -72,13 +79,9 @@ document.addEventListener("astro:page-load", () => {
       block.querySelector("[data-project-name]")?.textContent?.trim() ||
       strings.untitled ||
       "";
-    const desc = de ? field(block, "descriptionDe") || field(block, "description") : field(block, "description");
     card.dataset.projectId = block.dataset.projectId;
 
     card.querySelector("[data-pp-card-title]")!.textContent = title;
-    const descEl = card.querySelector<HTMLElement>("[data-pp-card-desc]")!;
-    descEl.textContent = desc;
-    descEl.hidden = !desc;
 
     // The block's own pictures, in its order: a work row's and a carousel
     // tray's share the URL, so each counts once.
@@ -96,19 +99,19 @@ document.addEventListener("astro:page-load", () => {
       }),
     );
 
-    const count = new Set(
-      Array.from(block.querySelectorAll<HTMLElement>("[data-image-id]")).map((el) => el.dataset.imageId),
-    ).size;
-    const works = count === 1 ? strings.work ?? "" : (strings.works ?? "").replace("{n}", String(count));
-    // One chip per tag: read them one by one, or their words run together.
-    const picked = block.querySelector("[data-project-tags-picked]");
-    const tags = Array.from(picked?.children ?? [], (chip) => chip.textContent?.trim() ?? "")
-      .filter(Boolean)
-      .join(" · ");
-    card.querySelector("[data-pp-card-meta]")!.textContent = [works, tags].filter(Boolean).join("  ·  ");
-
     const edit = card.querySelector<HTMLButtonElement>("[data-pp-card-edit]")!;
     edit.setAttribute("aria-label", (strings.editOne ?? "").replace("{name}", title));
+
+    // ↑ ↓ and Remove mirror the block's hidden keys: their names, their
+    // tooltips and where the edges disable them.
+    card.querySelectorAll<HTMLButtonElement>("[data-pp-card-key]").forEach((key) => {
+      const own = blockKey(block, key.dataset.ppCardKey ?? "");
+      if (!own) return;
+      key.disabled = own.disabled;
+      key.title = own.title;
+      const name = own.getAttribute("aria-label");
+      if (name) key.setAttribute("aria-label", `${name}: ${title}`);
+    });
     return card;
   };
 
@@ -119,6 +122,13 @@ document.addEventListener("astro:page-load", () => {
     const present = blocks();
     if (addKey) addKey.hidden = present.length === 0;
     cards.replaceChildren(...present.flatMap((b) => drawCard(b) ?? []), ...(addKey ? [addKey] : []));
+    if (refocus) {
+      const card = cards.querySelector<HTMLElement>(`[data-pp-card][data-project-id="${CSS.escape(refocus.id)}"]`);
+      const key = card?.querySelector<HTMLButtonElement>(`[data-pp-card-key="${refocus.which}"]`);
+      if (key && !key.disabled) key.focus();
+      else card?.querySelector<HTMLButtonElement>("[data-pp-card-edit]")?.focus();
+      refocus = null;
+    }
   };
 
   // ── THE LEVEL ────────────────────────────────────────────
@@ -186,11 +196,35 @@ document.addEventListener("astro:page-load", () => {
     "click",
     (e) => {
       const card = e.target instanceof Element ? e.target.closest<HTMLElement>("[data-pp-card]") : null;
-      if (card?.dataset.projectId) open(card.dataset.projectId);
+      const id = card?.dataset.projectId;
+      if (!id) return;
+      const key = (e.target as Element).closest<HTMLButtonElement>("[data-pp-card-key]");
+      if (key) {
+        const which = key.dataset.ppCardKey ?? "";
+        const block = blocks().find((b) => b.dataset.projectId === id);
+        const own = block && blockKey(block, which);
+        if (own && !own.disabled) {
+          // Remove hands the focus on itself (to + Project) when it goes.
+          if (which !== "delete") refocus = { id, which };
+          own.click();
+        }
+        return;
+      }
+      open(id);
     },
     { signal },
   );
   top.querySelector("[data-pp-back]")?.addEventListener("click", () => open(null), { signal });
+  // The controller asks for a project when a Save error names a field in it
+  // (a refused work, an untitled project): set aside, it could not take the focus.
+  stage.addEventListener(
+    "works:open",
+    (e) => {
+      const id = e instanceof CustomEvent ? (e.detail as { projectId?: string } | null)?.projectId : undefined;
+      if (id && ids().includes(id)) open(id);
+    },
+    { signal },
+  );
 
   // Add project (+ Project under the cards, or the first-project prompt): the
   // controller appends the block; apply() opens it when it appears.
