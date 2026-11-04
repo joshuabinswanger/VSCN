@@ -19,13 +19,14 @@ const portfoliosHref = lang === "de" ? "/de/community" : "/community";
 // into chapters, each a tall section with a frame that stays put (sticky)
 // while the scroll plays it:
 //
-//   1. HERO. "Knowledge, made visible." is there on arrival. Scrolling fades
-//      in the belief (the big sentence), then the reasons at reading size.
+//   1. HERO. "Visuals create knowledge." is there on arrival. Scrolling fades
+//      in the second sentence (the big size), then the third at reading size.
 //   2. WORKS. The network's pictures come into view, and scrolling steps
 //      through the first three of them (desktop: the fan; phone: the strip).
-//   3. COMMUNITY. What we're building, point by point, then the scientists.
-//   4. PORTFOLIOS. One line and the button, the moment that sends people on.
-//   5. CONTACT. The closing sentence, as the page runs out.
+//   3-5. MISSION, HOW, PLAN (Josh's content layout of 11-04). Each heading,
+//      then its three points one by one.
+//   6. PORTFOLIOS. One line and the button, the moment that sends people on.
+//   7. CONTACT. The closing sentence, as the page runs out.
 //
 // The scroll does not move anything by itself: each chapter's progress (0 at
 // its start, 1 when its frame is about to leave) sets --t on the parts marked
@@ -120,22 +121,41 @@ const STORY_STEPS = Math.min(3, wall.length);
     )
   }
 
-  <!-- 3. COMMUNITY -->
-  <section class="story-ch story-ch--community" data-story-ch style="--len: 2.6">
+  <!-- 3-5. MISSION / HOW / PLAN: three bullet chapters, each revealed point by point. -->
+  <section class="story-ch story-ch--mission" data-story-ch style="--len: 1.8">
     <div class="story-frame story-frame--text">
-      <h2 class="info-heading" data-in="0.02 0.14">{t("info.h2.building")}</h2>
+      <h2 class="info-heading" data-in="0.02 0.16">{t("info.h2.mission")}</h2>
       <ul class="info-list">
-        <li data-in="0.12 0.24">{t("info.li.1")}</li>
-        <li data-in="0.22 0.34">{t("info.li.2")}</li>
-        <li data-in="0.32 0.44">{t("info.li.3")}</li>
-        <li data-in="0.42 0.54">{t("info.li.4")}</li>
+        <li data-in="0.14 0.28">{t("info.mission.1")}</li>
+        <li data-in="0.26 0.4">{t("info.mission.2")}</li>
+        <li data-in="0.38 0.52">{t("info.mission.3")}</li>
       </ul>
-      <h2 class="info-heading info-heading--next" data-in="0.58 0.7">{t("info.h2.scientists")}</h2>
-      <p class="info-text" data-in="0.66 0.8">{t("info.p.scientists")}</p>
     </div>
   </section>
 
-  <!-- 4. PORTFOLIOS -->
+  <section class="story-ch story-ch--how" data-story-ch style="--len: 1.8">
+    <div class="story-frame story-frame--text">
+      <h2 class="info-heading" data-in="0.02 0.16">{t("info.h2.how")}</h2>
+      <ul class="info-list">
+        <li data-in="0.14 0.28">{t("info.how.1")}</li>
+        <li data-in="0.26 0.4">{t("info.how.2")}</li>
+        <li data-in="0.38 0.52">{t("info.how.3")}</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="story-ch story-ch--plan" data-story-ch style="--len: 1.8">
+    <div class="story-frame story-frame--text">
+      <h2 class="info-heading" data-in="0.02 0.16">{t("info.h2.plan")}</h2>
+      <ul class="info-list">
+        <li data-in="0.14 0.28">{t("info.plan.1")}</li>
+        <li data-in="0.26 0.4">{t("info.plan.2")}</li>
+        <li data-in="0.38 0.52">{t("info.plan.3")}</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 6. PORTFOLIOS -->
   <section class="story-ch story-ch--portfolios" data-story-ch style="--len: 1.8">
     <div class="story-frame story-frame--center">
       <p class="info-people" data-in="0.05 0.3">{t("info.story.people")}</p>
@@ -148,7 +168,7 @@ const STORY_STEPS = Math.min(3, wall.length);
     </div>
   </section>
 
-  <!-- 5. CONTACT: the page's last line, in the flow (no frame), revealed as it arrives. -->
+  <!-- 7. CONTACT: the page's last line, in the flow (no frame), revealed as it arrives. -->
   <section class="story-ch story-ch--contact" data-story-ch data-story-flow>
     <p class="info-contact" data-in="0.1 0.6">
       {t("info.contact.ask")}{" "}
@@ -318,14 +338,11 @@ const STORY_STEPS = Math.min(3, wall.length);
     }
   }
 
-  /* ── 3. COMMUNITY ────────────────────────────────────────────────────── */
+  /* ── 3-5. MISSION / HOW / PLAN ──────────────────────────────────────────────────── */
   .info-heading {
     margin: 0;
     font-family: "Archivo", sans-serif;
     color: var(--color-dark);
-  }
-  .info-heading--next {
-    margin-top: 2rem;
   }
   .info-list {
     display: flex;
@@ -344,7 +361,7 @@ const STORY_STEPS = Math.min(3, wall.length);
     transform: translateX(calc((1 - var(--t, 0)) * -24px));
   }
 
-  /* ── 4. PORTFOLIOS ───────────────────────────────────────────────────── */
+  /* ── 6. PORTFOLIOS ───────────────────────────────────────────────────── */
   .info-people {
     max-width: 40rem;
     margin: 0;
