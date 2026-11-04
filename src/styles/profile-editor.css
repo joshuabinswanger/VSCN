@@ -997,8 +997,9 @@
   }
 
   /* ONE ROW (2026-11-04, Josh: "the buttons wraps cant we make the stay
-     on one row?"). Never wraps; on a phone the keys and gaps tighten so
-     S L, the arrows and Replace / Move / Remove fit a 390px screen. */
+     on one row?"). Never wraps on a phone, where the keys and gaps tighten
+     so S L, the arrows and Replace / Move / Remove fit a 390px screen. A
+     desktop splits it in two (see TWO ROWS below). */
   .gallery-boxhead__keys {
     display: flex;
     flex: 1 1 100%;
@@ -1071,6 +1072,39 @@
   }
   .gallery-boxhead__word--move:not([hidden]) + .gallery-boxhead__word {
     margin-left: 0;
+  }
+
+  /* TWO ROWS ON A DESKTOP (2026-11-04, Josh: "buttons overflow on desktop
+     … move and remove can be a second row. remove aligned right"). The side
+     card is too narrow for S L, the arrows, Replace, Move and Remove in one
+     line. A zero-height flex break (::after, order 1) sends Move and the red
+     word (order 2) under the rest: Move from the left, the red word alone at
+     the right. Only rows with size or arrow keys (:has(grp)); a text block's
+     lone Remove stays as it was. The phone keeps its single tight row. */
+  @media (--bp-desktop) {
+    .gallery-boxhead__keys:has(> .gallery-boxhead__grp) {
+      flex-wrap: wrap;
+      /* the break is a line of its own: two half gaps = the row's 10px */
+      row-gap: 5px;
+    }
+    .gallery-boxhead__keys:has(> .gallery-boxhead__grp)::after {
+      content: "";
+      flex-basis: 100%;
+      height: 0;
+      order: 1;
+    }
+    .gallery-boxhead__keys:has(> .gallery-boxhead__grp) > .gallery-boxhead__word--replace {
+      margin-left: 0;
+    }
+    .gallery-boxhead__keys:has(> .gallery-boxhead__grp) > :is(.gallery-boxhead__word--move, .gallery-boxhead__word--danger) {
+      order: 2;
+    }
+    .gallery-boxhead__keys:has(> .gallery-boxhead__grp) > .gallery-boxhead__word--move {
+      margin-left: 0;
+    }
+    .gallery-boxhead__keys:has(> .gallery-boxhead__grp) > .gallery-boxhead__word--danger {
+      margin-left: auto;
+    }
   }
 
   /* The phone's tighter row (see .gallery-boxhead__keys): after the base
