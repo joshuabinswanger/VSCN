@@ -120,6 +120,25 @@ const tagsAttr = (m: MemberView) => {
   return keys.length ? `|${keys.join("|")}|` : "";
 };
 
+// WHO A MEMBER IS, for the Scientists / Visual creators switch at the top of
+// the Tags card (2026-11-04, Josh: "add a filter for filtering just for
+// scientist or just for visual creators"). Same pipe encoding as data-tags.
+// "Both" answers to either; a research group counts as science; a member who
+// never picked a type counts as a visual creator, the directory's original
+// audience. Stamped on every cell and row, the wall's tiles carrying their
+// MAKER's — the switch is about people, not pictures.
+const whoAttr = (m: MemberView) => {
+  switch (m.memberType) {
+    case "scientist":
+    case "organization":
+      return "|sci|";
+    case "both":
+      return "|sci|vis|";
+    default:
+      return "|vis|";
+  }
+};
+
 // THE WALL'S OWN VERSION OF tagsAttr — what is IN the picture, not who made
 // it (2026-09-08). Only the wall's tiles use this; the spread's cards and the
 // ledger's rows keep tagsAttr(member) above, unchanged.
@@ -490,6 +509,11 @@ const searchIndex: SearchIndex = {
           <button type="button" class="bar-card__handle" aria-label={t("community.bar.fold")} title={t("community.bar.fold")}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
           </button>
+          <div class="seg who-filter" role="group" aria-label={t("community.filter.who")}>
+            <button type="button" data-who="" aria-pressed="true">{t("community.filter.who.all")}</button>
+            <button type="button" data-who="sci" aria-pressed="false">{t("community.filter.who.sci")}</button>
+            <button type="button" data-who="vis" aria-pressed="false">{t("community.filter.who.vis")}</button>
+          </div>
           <div class="tag-filter__head">
             <input
               id="tag-filter-search"
@@ -850,6 +874,7 @@ const searchIndex: SearchIndex = {
           data-rank={i}
           data-score={bestScore(member)}
           data-tags={tagsAttr(member)}
+          data-who={whoAttr(member)}
           data-name={member.displayName}
         >
           <CommunityImageCard member={member} lang={lang} index={i} />
@@ -876,6 +901,7 @@ const searchIndex: SearchIndex = {
           data-rank={i}
           data-score={work.score}
           data-tags={workTagsAttr(work)}
+          data-who={whoAttr(member)}
           data-work={key}
           data-row="0"
           data-col="0-0"
@@ -906,7 +932,7 @@ const searchIndex: SearchIndex = {
   }
   <script
     is:inline
-    set:html={`(function(){try{${shuffleBands.toString()};${dealPagesInto.toString()};var g=document.getElementById("member-grid");if(g&&!matchMedia("(prefers-reduced-motion: reduce)").matches)g.dataset.motion="";if(!g||g.dataset.dealt)return;var p=new URLSearchParams(location.search);var v=p.get("pattern");if(v&&v!=="pages"&&v!=="spread"&&v!=="strip")return;var t=p.get("tag")||"";if(t&&!document.querySelector('.tag-filter__option[data-tag="'+CSS.escape(t)+'"]'))t="";var s=0;try{var i=history.state&&history.state.index;if(typeof i==="number")s=Number(sessionStorage.getItem("vscn:deal:"+i))||0}catch(e){}if(!s)s=(Math.floor(Math.random()*4294967295)||1)>>>0;window.__vscnDeal=s;dealPagesInto(g,s,t)}catch(e){}})()`}
+    set:html={`(function(){try{${shuffleBands.toString()};${dealPagesInto.toString()};var g=document.getElementById("member-grid");if(g&&!matchMedia("(prefers-reduced-motion: reduce)").matches)g.dataset.motion="";if(!g||g.dataset.dealt)return;var p=new URLSearchParams(location.search);var v=p.get("pattern");if(v&&v!=="pages"&&v!=="spread"&&v!=="strip")return;var t=p.get("tag")||"";var w=p.get("who");if(w!=="sci"&&w!=="vis")w="";if(t&&!document.querySelector('.tag-filter__option[data-tag="'+CSS.escape(t)+'"]'))t="";var s=0;try{var i=history.state&&history.state.index;if(typeof i==="number")s=Number(sessionStorage.getItem("vscn:deal:"+i))||0}catch(e){}if(!s)s=(Math.floor(Math.random()*4294967295)||1)>>>0;window.__vscnDeal=s;dealPagesInto(g,s,t,w)}catch(e){}})()`}
   />
 
   {
@@ -963,7 +989,7 @@ const searchIndex: SearchIndex = {
             <ProfileLink lang={lang} href={memberHref(lang, m.slug)} />
           );
           return (
-            <li class="cindex__row" data-tags={tagsAttr(m)}>
+            <li class="cindex__row" data-tags={tagsAttr(m)} data-who={whoAttr(m)}>
               <div class="cindex__line">
                 {/* THE LINE IS THE TOGGLE (2026-09-01, Josh: "in index
                     clicking on the profile expands it"). It used to be a link
@@ -1707,6 +1733,17 @@ const searchIndex: SearchIndex = {
     @media (--bp-desktop) {
       margin-bottom: 18px;
     }
+  }
+
+  /* The who switch: centred atop the Tags card, above the field. */
+  .who-filter {
+    display: flex;
+    margin: 0 auto 10px;
+    max-width: 100%;
+  }
+
+  .who-filter > button {
+    flex: 1 1 auto;
   }
 
   .filter-empty {
@@ -3469,6 +3506,7 @@ const searchIndex: SearchIndex = {
       flex-direction: column;
       overflow: hidden;
     }
+    .community-bar .who-filter,
     .community-bar .tag-filter__head,
     .community-bar .tag-filter__scope {
       flex: none;
