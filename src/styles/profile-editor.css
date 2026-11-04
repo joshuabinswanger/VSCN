@@ -996,12 +996,16 @@
     color: var(--color-muted);
   }
 
+  /* ONE ROW (2026-11-04, Josh: "the buttons wraps cant we make the stay
+     on one row?"). Never wraps; on a phone the keys and gaps tighten so
+     S L, the arrows and Replace / Move / Remove fit a 390px screen. */
   .gallery-boxhead__keys {
     display: flex;
     flex: 1 1 100%;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
-    gap: 6px 10px;
+    gap: 10px;
+    min-width: 0;
   }
 
   .gallery-boxhead__word {
@@ -1067,6 +1071,23 @@
   }
   .gallery-boxhead__word--move:not([hidden]) + .gallery-boxhead__word {
     margin-left: 0;
+  }
+
+  /* The phone's tighter row (see .gallery-boxhead__keys): after the base
+     rules so it wins at the same specificity. */
+  @media (--bp-mobile) {
+    .gallery-boxhead__keys {
+      gap: 5px;
+    }
+    .gallery-boxhead .gallery-key {
+      min-width: 28px;
+      height: 28px;
+      padding: 0 7px;
+    }
+    .gallery-boxhead__word {
+      height: 28px;
+      padding: 0 8px;
+    }
   }
 
   /* The project and carousel selects are the Move key's engine now and are
