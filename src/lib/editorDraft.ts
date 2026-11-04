@@ -96,6 +96,17 @@ export function editorDraft<T>(options: {
     const stored: StoredDraft<T> = { version, at: Date.now(), loadedAt, value: words ? read() : null };
     try { sessionStorage.setItem(key, JSON.stringify(stored)); return words; } catch { return false; }
   };
+  /**
+   * After dispose the form is gone and read() cannot run: a write of this
+   * tab's that lands then moves the stored draft's base stamp only, so the
+   * return does not call that write one made "elsewhere".
+   */
+  const restamp = () => {
+    try {
+      const stored = JSON.parse(sessionStorage.getItem(key) ?? 'null') as StoredDraft<T> | null;
+      if (stored) sessionStorage.setItem(key, JSON.stringify({ ...stored, loadedAt }));
+    } catch { /* Storage may be unavailable. */ }
+  };
   const focusAfter = (target: HTMLElement | null | undefined) => {
     const fallback = root.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
     const el = target ?? fallback ?? root;
@@ -204,8 +215,18 @@ export function editorDraft<T>(options: {
      * own write one "saved elsewhere" (audit finding 14). A draft still on
      * offer keeps the stamp it was written against.
      */
-    seen(at: number) { loadedAt = at; if (!offered) persist(); },
-    saved(at: number = Date.now()) { offered = false; baseline = JSON.stringify(readDirty()); wordsBaseline = JSON.stringify(read()); loadedAt = at; remove(); banner.remove(); },
+    seen(at: number) {
+      loadedAt = at;
+      if (signal.aborted) restamp();
+      else if (!offered) persist();
+    },
+    saved(at: number = Date.now()) {
+      // A Save that lands after the page was left (audit findings 14 and 31):
+      // the form is gone, so readDirty() would throw on its missing fields,
+      // and the draft written on leaving holds exactly what this Save stored.
+      if (signal.aborted) { loadedAt = at; remove(); return; }
+      offered = false; baseline = JSON.stringify(readDirty()); wordsBaseline = JSON.stringify(read()); loadedAt = at; remove(); banner.remove();
+    },
     dispose() { persist(); clearTimeout(timer); controller.abort(); banner.remove(); },
   };
 }
