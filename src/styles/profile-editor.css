@@ -1078,8 +1078,8 @@
      … move and remove can be a second row. remove aligned right"). The side
      card is too narrow for S L, the arrows, Replace, Move and Remove in one
      line. A zero-height flex break (::after, order 1) sends Move and the red
-     word (order 2) under the rest: Move from the left, the red word alone at
-     the right. Only rows with size or arrow keys (:has(grp)); a text block's
+     word (order 2) under the rest: Move from the left, the red word at the
+     right, Replace at the right of the row above. Only rows with size or arrow keys (:has(grp)); a text block's
      lone Remove stays as it was. The phone keeps its single tight row. */
   @media (--bp-desktop) {
     .gallery-boxhead__keys:has(> .gallery-boxhead__grp) {
@@ -1093,8 +1093,10 @@
       height: 0;
       order: 1;
     }
+    /* Replace at the right of the first row, over the red key (Josh:
+       "align replace to the right aswell"). */
     .gallery-boxhead__keys:has(> .gallery-boxhead__grp) > .gallery-boxhead__word--replace {
-      margin-left: 0;
+      margin-left: auto;
     }
     .gallery-boxhead__keys:has(> .gallery-boxhead__grp) > :is(.gallery-boxhead__word--move, .gallery-boxhead__word--danger) {
       order: 2;
