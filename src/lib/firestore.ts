@@ -6,6 +6,7 @@ import {
   deleteField,
   type FieldValue,
   getDoc,
+  getDocFromServer,
   getDocs,
   setDoc,
   updateDoc,
@@ -265,6 +266,25 @@ export interface ProfileWriteOptions {
    * work another session added. The merge that was written comes back.
    */
   galleryBase?: readonly string[];
+  /**
+   * Shown the stored `updatedAt` (ms) inside the write's transaction, before
+   * anything is written. Throwing refuses the write; the editor uses it to
+   * stop a tab overwriting what another tab saved since (2026-11-04).
+   */
+  checkStored?: (storedUpdatedAt: number | undefined) => void;
+}
+
+/** A stored `updatedAt` as ms: a Timestamp from Firestore, a Date by type. */
+export function stampMillis(value: unknown): number | undefined {
+  if (value instanceof Date) return value.getTime();
+  const toMillis = typeof value === "object" && value !== null ? Reflect.get(value, "toMillis") : undefined;
+  return typeof toMillis === "function" ? (toMillis.call(value) as number) : undefined;
+}
+
+/** The stored profile's `updatedAt` (ms), read from the server, never the cache. */
+export async function getStoredUpdatedAt(uid: string): Promise<number | undefined> {
+  const snap = await getDocFromServer(doc(db, "users", uid));
+  return snap.exists() ? stampMillis(snap.data().updatedAt) : undefined;
 }
 
 export async function updateUserProfile(
@@ -284,11 +304,17 @@ export async function updateUserProfile(
     if (auth.currentUser && !auth.currentUser.emailVerified) publicData.active = false;
     return publicData;
   };
-  if (options.galleryBase && data.gallery) {
+  if ((options.galleryBase && data.gallery) || options.checkStored) {
     const base = options.galleryBase;
     const ours = data.gallery;
     return runTransaction(db, async (tx) => {
       const stored = await tx.get(userRef);
+      options.checkStored?.(stored.exists() ? stampMillis(stored.data().updatedAt) : undefined);
+      if (!base || !ours) {
+        tx.set(userRef, { ...data, ...cleanup }, { merge: true });
+        tx.set(publicRef, project(data), { merge: true });
+        return null;
+      }
       const merge = mergeGalleryIds(base, ours, stored.exists() ? stored.data().gallery : undefined);
       const payload = { ...data, gallery: merge.merged };
       tx.set(userRef, { ...payload, ...cleanup }, { merge: true });
