@@ -13,26 +13,18 @@ const { lang = "en" } = Astro.props;
 const t = useTranslations(lang);
 const portfoliosHref = lang === "de" ? "/de/community" : "/community";
 
-// THE LANDING RESTYLE (2026-11-02, Josh; drawn in design-kit/vscn-landing.af,
-// boards 01 Desktop Info and 02 Phone Info). "This is a place for great
-// knowledge visualisation. They should see images": the page opens on two
-// big lines about knowledge in any field (not research only), then the
-// network's pictures, then two short sections and one way to reach out.
-//
-// INFO LEADS INTO THE PORTFOLIOS (2026-10-31): the views switcher in the
-// header, the carousel whose pictures all open the Portfolios, and a button
-// once the reading is done.
-//
-// THE CAROUSEL, ONE MEMBER IN FOCUS. The guest list is the wall's (hidden
+// INFO LEADS INTO THE PORTFOLIOS (2026-10-31, Josh: "update that page so
+// people naturally flow into opening the portfolio page"). The way in is
+// the views switcher in the header (ViewsPill.astro), a strip of the
+// network's own pictures that all open the Portfolios, and a button once the
+// reading is done. The button under the opening lines went the same day
+// (Josh: "remove the first pill on the landing page").
+// ONE MEMBER AT A TIME (2026-11-01, Josh's design file, board 26: "members
+// change on scroll and have a timer"). The strip of six became a carousel:
+// one picture, the member's name under it, a chevron each side. It steps on
+// a timer and as the page scrolls. The guest list is the wall's (hidden
 // works stay off, as on /community): each member's best picture, the best
 // members first, twelve at most.
-// - DESKTOP: a fan. One picture in focus at 332px, two each side receding
-//   (0.8 and 0.62 of the size, 60% and 35%), upright (Josh: "no tilt"). It
-//   steps on a timer, on the chevrons and as the page scrolls; a click on a
-//   side picture brings it to the middle, the middle one opens the Portfolios.
-// - PHONE: a strip that drifts slowly right to left on its own, about one
-//   picture every 8 s, and that a finger can swipe; the drift picks up again
-//   a moment after the finger lets go.
 const WALL_MAX = 12;
 const picks = (await fetchMemberViews())
   .flatMap((m) => {
@@ -57,9 +49,9 @@ const wall = await Promise.all(
 ---
 
 <div class="info-page">
-  <section class="info-hero">
-    <h1 class="info-hero__title">{t("info.hero.title")}</h1>
-    <p class="info-hero__sub">{t("info.hero.sub")}</p>
+  <section class="info-section">
+    <p>{t("info.intro")}</p>
+    <p>{t("info.p2")}</p>
   </section>
 
   {
@@ -76,18 +68,17 @@ const wall = await Promise.all(
               <span aria-hidden="true" />
             </button>
           )}
-          <ul class="info-wall__slides" data-wall-track>
+          <ul class="info-wall__slides">
             {wall.map((tile, i) => (
               <li class="info-wall__slide" data-wall-slide aria-hidden={i === 0 ? undefined : "true"} data-current={i === 0 ? "" : undefined}>
-                <a href={portfoliosHref} class="info-wall__tile" tabindex={i === 0 ? undefined : -1} draggable="false">
+                <a href={portfoliosHref} class="info-wall__tile" tabindex={i === 0 ? undefined : -1}>
                   <img
                     src={tile.rendered.src}
                     srcset={tile.rendered.srcSet.attribute}
                     sizes="(max-width: 767px) 74vw, 332px"
                     alt={tile.alt}
-                    loading={i < 3 || i > wall.length - 3 ? "eager" : "lazy"}
+                    loading={i === 0 ? "eager" : "lazy"}
                     decoding="async"
-                    draggable="false"
                   />
                   <span class="info-wall__name">{tile.name}</span>
                 </a>
@@ -118,90 +109,42 @@ const wall = await Promise.all(
   <section class="info-section">
     <h2 class="info-heading">{t("info.h2.scientists")}</h2>
     <p>{t("info.p.scientists")}</p>
+    <ul class="info-list">
+      <li>{t("info.li.sci.1")}</li>
+      <li>{t("info.li.sci.2")}</li>
+      <li>{t("info.li.sci.3")}</li>
+    </ul>
+  </section>
+
+  <section class="info-section">
+    <h2 class="info-heading">{t("info.h2.started")}</h2>
+    <p class="info-contact">
+      {t("info.p4")}
+      <!--email_off--><a href="mailto:info@vscn.ch">info@vscn.ch</a><!--/email_off-->
+    </p>
   </section>
 
   <section class="info-cta info-cta--end">
-    <div class="info-cta__row">
-      <a href={portfoliosHref} class="btn-solid info-cta__btn">{t("info.cta.portfolios")}<span aria-hidden="true">→</span></a>
-      <a href={lang === "de" ? "/de/signup" : "/signup"} class="btn-outline" id="info-signup-cta" style="display:none;"
-        >{t("signup.cta.info")}</a
-      >
-    </div>
-    {/* The early-stages block went (2026-11-02); its way to reach out stays. */}
-    <p class="info-contact">
-      {t("info.contact.ask")}
-      <!--email_off--><a href="mailto:info@vscn.ch">info@vscn.ch</a><!--/email_off-->
-    </p>
+    <a href={portfoliosHref} class="btn-solid info-cta__btn">{t("info.cta.portfolios")}<span aria-hidden="true">→</span></a>
+    <a href={lang === "de" ? "/de/signup" : "/signup"} class="btn-outline" id="info-signup-cta" style="display:none;"
+      >{t("signup.cta.info")}</a
+    >
   </section>
 </div>
 
 <style>
-  @keyframes info-rise {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
   .info-page {
     width: 100%;
     max-width: 1200px;
     display: flex;
     flex-direction: column;
     gap: 2rem;
-    padding-top: 2.5rem;
+    padding-top: 2rem;
     padding-bottom: 8rem;
     margin: 0 auto;
 
     @media (--bp-desktop) {
-      padding-top: 5rem;
-    }
-  }
-
-  /* THE OPENING LINES: the / hero's fade-and-rise, headline first, the
-     sentence a beat later, then the pictures. Held until the page loader is
-     done (body.page-loaded), at once on a client-side visit (Layout.astro). */
-  .info-hero {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-  .info-hero__title {
-    margin: 0;
-    color: var(--color-dark);
-    font-family: "Archivo", sans-serif;
-  }
-  .info-hero__sub {
-    max-width: 50rem;
-    margin: 0;
-    color: var(--color-dark);
-  }
-  .info-hero__title,
-  .info-hero__sub,
-  .info-wall {
-    animation: info-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
-    animation-play-state: paused;
-  }
-  .info-hero__sub {
-    animation-delay: 0.25s;
-  }
-  .info-wall {
-    animation-delay: 0.5s;
-  }
-  :global(.page-loaded) .info-hero__title,
-  :global(.page-loaded) .info-hero__sub,
-  :global(.page-loaded) .info-wall {
-    animation-play-state: running;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .info-hero__title,
-    .info-hero__sub,
-    .info-wall {
-      animation: none;
+      padding-top: 4rem;
     }
   }
 
@@ -236,8 +179,7 @@ const wall = await Promise.all(
   }
 
   .info-contact {
-    margin: 0;
-    color: var(--color-muted);
+    display: block;
   }
 
   .info-contact a {
@@ -255,18 +197,12 @@ const wall = await Promise.all(
 
   .info-cta {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1.5rem;
-  }
-  .info-cta__row {
-    display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 12px;
   }
   .info-cta--end {
-    padding-top: 2.5rem;
+    padding-top: 3.5rem;
   }
   .info-cta__btn {
     display: inline-flex;
@@ -280,20 +216,18 @@ const wall = await Promise.all(
     translate: 4px 0;
   }
 
-  /* ── THE CAROUSEL ─────────────────────────────────────────────────────
-     DESKTOP, THE FAN. Every slide sits in the one grid cell, the picture's
-     width, and the script places each by its distance from the one in
-     focus (--d, -2..2; further ones wait unseen at the edge). The side
-     pictures stand out past the column, never past the window (FAN below). */
-  .info-wall {
-    padding-bottom: 0;
-  }
+  /* THE CAROUSEL (board 26 and the phone's Info): one 4:5 picture in the
+     middle of the column, 332px on a desktop and three quarters of a
+     phone's width, with the portfolio card's chevrons standing just outside
+     its edges. The stage is a size container, so the chevrons can stand at
+     the picture's half height (cqw) whatever its width. */
   .info-wall__stage {
-    --wall-w: min(332px, 30vw);
     --wall-gap: clamp(6px, 1.7vw, 25px);
     position: relative;
-    width: var(--wall-w);
-    margin: 1rem auto 0;
+    /* On a phone the chevrons stand in the page's side margin, as drawn. */
+    width: min(25.5rem, 74vw);
+    margin: 2.5rem auto 0;
+    container-type: inline-size;
   }
   .info-wall__slides {
     display: grid;
@@ -301,29 +235,24 @@ const wall = await Promise.all(
     padding: 0;
     list-style: none;
   }
+  /* Every slide in the one cell; the current one shows, the rest wait
+     faded out underneath (their pictures load while they wait). */
   .info-wall__slide {
-    --d: 0;
-    --x: 0px;
-    --s: 1;
-    --o: 1;
     grid-area: 1 / 1;
-    position: relative;
-    z-index: calc(10 - var(--rank, 0));
-    transform: translateX(var(--x)) scale(var(--s));
-    opacity: var(--o);
-  }
-  /* The glide starts once the fan is first laid out, so the pictures do not
-     fly out of the middle on arrival. */
-  .info-wall[data-fan-ready] .info-wall__slide {
+    opacity: 0;
+    visibility: hidden;
     transition:
-      transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
-      opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      opacity 0.6s ease,
+      visibility 0s 0.6s;
   }
-  .info-wall__slide[data-far] {
-    pointer-events: none;
+  .info-wall__slide[data-current] {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.6s ease;
   }
   @media (prefers-reduced-motion: reduce) {
-    .info-wall[data-fan-ready] .info-wall__slide {
+    .info-wall__slide,
+    .info-wall__slide[data-current] {
       transition: none;
     }
   }
@@ -333,7 +262,6 @@ const wall = await Promise.all(
     gap: 12px;
     color: var(--color-dark);
     text-decoration: none;
-    -webkit-user-drag: none;
   }
   .info-wall__tile img {
     display: block;
@@ -344,29 +272,23 @@ const wall = await Promise.all(
     background: var(--color-border);
     transition: opacity 0.2s ease;
   }
-  .info-wall__slide[data-current] .info-wall__tile:hover img,
-  .info-wall__slide[data-current] .info-wall__tile:focus-visible img {
+  .info-wall__tile:hover img,
+  .info-wall__tile:focus-visible img {
     opacity: 0.85;
   }
   .info-wall__name {
     color: var(--color-dark);
-    text-align: center;
-    transition: opacity 0.4s ease;
-  }
-  /* On the fan only the picture in focus carries its name. */
-  .info-wall__slide:not([data-current]) .info-wall__name {
-    opacity: 0;
   }
   /* The card's arrows (communityCard.css): a strip the picture's height
      beside each edge, a stroked chevron in it, muted until pointed at. */
   .info-wall__arrow {
     position: absolute;
     top: 0;
-    z-index: 20;
+    z-index: 1;
     display: grid;
     place-items: center;
     width: 2.5rem;
-    height: calc(var(--wall-w) * 1.25);
+    height: 125cqw;
     padding: 0;
     border: 0;
     background: none;
@@ -404,42 +326,6 @@ const wall = await Promise.all(
     color: var(--color-dark);
     text-decoration: none;
   }
-
-  /* PHONE, THE DRIFTING STRIP. Edge to edge across the screen: a row the
-     finger scrolls natively, pictures at three quarters of the width, 12px
-     apart, every name showing. The script clones the row twice so the drift
-     and the swipe never reach an end, and moves scrollLeft itself. */
-  @media (--bp-mobile) {
-    .info-wall__stage {
-      width: 100vw;
-      margin: 1rem 0 0 calc(50% - 50vw);
-    }
-    .info-wall__arrow {
-      display: none;
-    }
-    .info-wall__slides {
-      display: flex;
-      gap: 12px;
-      overflow-x: auto;
-      overflow-y: hidden;
-      overscroll-behavior-x: contain;
-      scrollbar-width: none;
-      -webkit-overflow-scrolling: touch;
-    }
-    .info-wall__slides::-webkit-scrollbar {
-      display: none;
-    }
-    .info-wall__slide,
-    .info-wall[data-fan-ready] .info-wall__slide {
-      flex: 0 0 74vw;
-      transform: none;
-      opacity: 1;
-      transition: none;
-    }
-    .info-wall__slide:not([data-current]) .info-wall__name {
-      opacity: 1;
-    }
-  }
 </style>
 
 <script>
@@ -456,57 +342,30 @@ const wall = await Promise.all(
     });
   });
 
-  // ── THE CAROUSEL ──────────────────────────────────────────────────────
-  // Two behaviours over one list, picked by the site's breakpoint and swapped
-  // if a window crosses it (custom-media.css, --bp-mobile).
-  const PHONE = "(width <= 767px), (pointer: coarse) and (height <= 500px)";
-
-  // DESKTOP, THE FAN: a step every few seconds while on screen, a step for
-  // every stretch of scrolling (down = next, up = previous). Pointing at it
-  // or focusing it holds the timer; the chevrons and a click on a side
-  // picture step at once and start the timer over. No timer for a visitor
+  // THE CAROUSEL STEPS ON ITS OWN (2026-11-01, Josh's design file: "members
+  // change on scroll and have a timer"). While it is on screen: a step every
+  // few seconds, and a step for every stretch of scrolling (down = next,
+  // up = previous). Pointing at it or focusing it holds the timer; the
+  // chevrons step at once and start the timer over. No timer for a visitor
   // who asks for reduced motion.
   const STEP_MS = 4500;
   const SCROLL_STEP_PX = 240;
-  // Where each distance from the focus stands: offset as a share of the
-  // WINDOW's width (the fan spreads past the 900px column, as on the board),
-  // capped in px, then size and opacity. 3 = waiting unseen behind the
-  // outer pair, so nothing ever stands past the window's edge (0.36 of the
-  // width plus half a 0.62 picture stays inside from 736px up).
-  const FAN = [
-    { x: 0, cap: 0, s: 1, o: 1 },
-    { x: 0.2, cap: 290, s: 0.8, o: 0.6 },
-    { x: 0.36, cap: 520, s: 0.62, o: 0.35 },
-    { x: 0.36, cap: 520, s: 0.5, o: 0 },
-  ];
 
-  // PHONE, THE STRIP: px per second of drift (a 74vw picture plus its gap
-  // every ~8 s) and the pause after a finger lets go.
-  const DRIFT_S_PER_CARD = 8;
-  const RESUME_MS = 1600;
-
-  function fan(wall: HTMLElement, slides: HTMLElement[], signal: AbortSignal) {
+  document.addEventListener("astro:page-load", () => {
+    const wall = document.querySelector<HTMLElement>("[data-info-wall]");
+    const slides = wall ? Array.from(wall.querySelectorAll<HTMLElement>("[data-wall-slide]")) : [];
+    if (!wall || slides.length < 2) return;
+    const signal = pageLifetime();
     const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const n = slides.length;
     let at = 0;
     let timer = 0;
     let held = false;
     let seen = false;
 
-    const place = () => {
-      const width = document.documentElement.clientWidth;
+    const show = (i: number) => {
+      at = (i + slides.length) % slides.length;
       slides.forEach((slide, k) => {
-        let d = (((k - at) % n) + n) % n;
-        if (d > n / 2) d -= n;
-        const rank = Math.min(Math.abs(d), 3);
-        const spot = FAN[rank];
-        const x = Math.min(spot.x * width, spot.cap || spot.x * width) * Math.sign(d);
-        slide.style.setProperty("--x", `${x}px`);
-        slide.style.setProperty("--s", String(spot.s));
-        slide.style.setProperty("--o", String(spot.o));
-        slide.style.setProperty("--rank", String(rank));
-        slide.toggleAttribute("data-far", rank >= 3);
-        const on = d === 0;
+        const on = k === at;
         slide.toggleAttribute("data-current", on);
         const link = slide.querySelector("a");
         if (on) {
@@ -517,10 +376,6 @@ const wall = await Promise.all(
           link?.setAttribute("tabindex", "-1");
         }
       });
-    };
-    const show = (i: number) => {
-      at = (i + n) % n;
-      place();
     };
     const stop = () => {
       clearInterval(timer);
@@ -534,26 +389,12 @@ const wall = await Promise.all(
 
     wall.querySelector("[data-wall-prev]")?.addEventListener("click", () => (show(at - 1), start()), { signal });
     wall.querySelector("[data-wall-next]")?.addEventListener("click", () => (show(at + 1), start()), { signal });
-    // A click on a side picture brings it to the middle instead of leaving.
-    slides.forEach((slide, k) => {
-      slide.addEventListener(
-        "click",
-        (e) => {
-          if (slide.hasAttribute("data-current")) return;
-          e.preventDefault();
-          show(k);
-          start();
-        },
-        { signal }
-      );
-    });
     const hold = (on: boolean) => () => ((held = on), start());
     wall.addEventListener("pointerenter", hold(true), { signal });
     wall.addEventListener("pointerleave", hold(false), { signal });
     wall.addEventListener("focusin", hold(true), { signal });
     wall.addEventListener("focusout", hold(false), { signal });
     document.addEventListener("visibilitychange", start, { signal });
-    window.addEventListener("resize", place, { passive: true, signal });
 
     const io = new IntersectionObserver(([entry]) => {
       seen = entry.isIntersecting;
@@ -581,132 +422,5 @@ const wall = await Promise.all(
     };
     wrap?.addEventListener("scroll", onScroll, { passive: true, signal });
     window.addEventListener("scroll", onScroll, { passive: true, signal });
-
-    place();
-    requestAnimationFrame(() => requestAnimationFrame(() => wall.setAttribute("data-fan-ready", "")));
-    return () => {
-      wall.removeAttribute("data-fan-ready");
-      stop();
-      io.disconnect();
-      slides.forEach((slide, i) => {
-        for (const p of ["--x", "--s", "--o", "--rank"]) slide.style.removeProperty(p);
-        slide.removeAttribute("data-far");
-        slide.toggleAttribute("data-current", i === 0);
-      });
-    };
-  }
-
-  function strip(wall: HTMLElement, track: HTMLElement, slides: HTMLElement[], signal: AbortSignal) {
-    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    // Three copies of the row: the visitor starts in the middle one and is
-    // moved back by a whole row whenever the drift or a swipe strays out of
-    // it, which looks like nothing at all.
-    const clones: HTMLElement[] = [];
-    for (const where of ["before", "after"] as const) {
-      const set = slides.map((s) => {
-        const c = s.cloneNode(true) as HTMLElement;
-        c.setAttribute("aria-hidden", "true");
-        c.removeAttribute("data-current");
-        c.querySelector("a")?.setAttribute("tabindex", "-1");
-        c.querySelector("img")?.setAttribute("loading", "lazy");
-        return c;
-      });
-      clones.push(...set);
-      if (where === "before") track.prepend(...set);
-      else track.append(...set);
-    }
-    slides.forEach((s) => {
-      s.removeAttribute("aria-hidden");
-      s.querySelector("a")?.removeAttribute("tabindex");
-    });
-
-    const row = () => slides[0].offsetLeft - clones[0].offsetLeft;
-    let x = 0;
-    const settle = () => {
-      const r = row();
-      if (r <= 0) return;
-      // keep x inside the middle row: [r * 0.5, r * 1.5)
-      while (x < r * 0.5) x += r;
-      while (x >= r * 1.5) x -= r;
-    };
-    x = row();
-    track.scrollLeft = x;
-
-    let touching = false;
-    let resumeAt = 0;
-    let seen = false;
-    let frame = 0;
-    let lastT = 0;
-    const tick = (t: number) => {
-      frame = requestAnimationFrame(tick);
-      const dt = lastT ? Math.min(t - lastT, 64) : 0;
-      lastT = t;
-      if (still || touching || !seen || document.hidden || t < resumeAt) return;
-      const card = slides[0].offsetWidth + 12;
-      x += (card / DRIFT_S_PER_CARD) * (dt / 1000);
-      settle();
-      track.scrollLeft = x;
-    };
-    const grab = () => {
-      touching = true;
-    };
-    const release = () => {
-      touching = false;
-      resumeAt = performance.now() + RESUME_MS;
-    };
-    track.addEventListener("touchstart", grab, { passive: true, signal });
-    track.addEventListener("pointerdown", grab, { passive: true, signal });
-    track.addEventListener("touchend", release, { passive: true, signal });
-    track.addEventListener("touchcancel", release, { passive: true, signal });
-    track.addEventListener("pointerup", release, { passive: true, signal });
-    // A swipe's own glide keeps scrolling after the finger lifts: while it
-    // does, hold the drift and follow where the visitor left it.
-    track.addEventListener(
-      "scroll",
-      () => {
-        if (Math.abs(track.scrollLeft - x) < 2) return;
-        x = track.scrollLeft;
-        if (!touching) resumeAt = performance.now() + RESUME_MS;
-        if (!touching) {
-          const before = x;
-          settle();
-          if (x !== before) track.scrollLeft = x;
-        }
-      },
-      { passive: true, signal }
-    );
-    const io = new IntersectionObserver(([entry]) => (seen = entry.isIntersecting));
-    io.observe(wall);
-    frame = requestAnimationFrame(tick);
-    signal.addEventListener("abort", () => (io.disconnect(), cancelAnimationFrame(frame)), { once: true });
-
-    return () => {
-      cancelAnimationFrame(frame);
-      io.disconnect();
-      clones.forEach((c) => c.remove());
-      track.scrollLeft = 0;
-    };
-  }
-
-  document.addEventListener("astro:page-load", () => {
-    const wall = document.querySelector<HTMLElement>("[data-info-wall]");
-    const track = wall?.querySelector<HTMLElement>("[data-wall-track]");
-    const slides = wall ? Array.from(wall.querySelectorAll<HTMLElement>("[data-wall-slide]")) : [];
-    if (!wall || !track || slides.length < 2) return;
-    const signal = pageLifetime();
-    const phone = matchMedia(PHONE);
-    let mode: AbortController | null = null;
-    let undo: (() => void) | null = null;
-    const pick = () => {
-      undo?.();
-      mode?.abort();
-      // one signal that ends with the visit OR with this mode (no AbortSignal.any: iOS 17.4+)
-      const own = new AbortController();
-      mode = own;
-      signal.addEventListener("abort", () => own.abort(), { once: true, signal: own.signal });
-      undo = phone.matches ? strip(wall, track, slides, own.signal) : fan(wall, slides, own.signal);
-    };
-    phone.addEventListener("change", pick, { signal });
-    pick();
   });
 </script>
