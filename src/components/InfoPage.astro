@@ -15,22 +15,26 @@ const t = useTranslations(lang);
 const portfoliosHref = lang === "de" ? "/de/community" : "/community";
 
 // THE INFO PAGE TELLS A STORY AS IT SCROLLS (2026-11-02, Josh: "like a
-// storytelling with smooth scroll and animations"; 2026-11-04: "scroll has
-// to be faster. it should snap as well"). Every chapter is one screen, and
-// the scroller snaps from one to the next (the same y mandatory snap as the
-// Portfolios view, global.css). A chapter plays its entrance the first time
-// it is reached: its data-in parts rise and fade in, each after its own
-// --d delay, so a list still arrives point by point.
+// storytelling with smooth scroll and animations"; 2026-11-04: "it should
+// snap as well", then "moving between sections needs to be smooth and also
+// more scroll"). Every chapter is one screen, and when a scroll ends the
+// script glides to a chapter: back to the one left after a nudge, on to the
+// next after a real scroll (settle(); CSS snapping either jumped at the
+// first wheel tick or, as proximity, left the page between two chapters).
+// A chapter plays its entrance the
+// first time it is reached and the page is shown: its data-in parts rise
+// and fade in, each after its own --d delay, so a list arrives point by
+// point.
 //
 //   1. HERO. "Visuals create knowledge." on arrival, then the second
 //      sentence (the big size), then the third at reading size.
 //   2. WORKS. One picture at a time, the artist and the project under it:
 //      a plain carousel the visitor swipes (phone) or drags (desktop), with
-//      a moving hint beneath until they do.
-//   3-5. MISSION, HOW, PLAN (Josh's content layout of 11-04). Each heading,
-//      then its three points one by one.
-//   6. PORTFOLIOS. One line and the button, the moment that sends people on.
-//   7. CONTACT. The closing sentence, as the page runs out.
+//      a moving hint beneath until they do. No fades on the pictures.
+//   3. ABOUT. Our mission, How we do that, What we plan side by side (one
+//      overview, Josh 11-04), each column's points arriving one by one.
+//   4. PORTFOLIOS. One line and the button, the moment that sends people on.
+//   5. CONTACT. The closing sentence, as the page runs out.
 //
 // A visitor who asks for reduced motion, or a browser without the script,
 // gets every part shown at once (the snap stays: it is not motion).
@@ -71,6 +75,11 @@ const wall = await Promise.all(
 ---
 
 <div class="info-page story" data-story-root>
+  {/* Story on before the first paint, so the parts never show and then
+      hide again while the module loads (they did, then replayed). */}
+  <script is:inline>
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.querySelector("[data-story-root]")?.setAttribute("data-story-on", "");
+  </script>
   <!-- 1. HERO -->
   <section class="story-ch story-ch--hero" data-story-ch>
     <div class="story-frame">
@@ -91,7 +100,7 @@ const wall = await Promise.all(
     wall.length > 0 && (
       <section class="story-ch story-ch--works" data-story-ch>
         <div class="story-frame story-frame--center">
-          <div class="info-wall" data-in aria-roledescription="carousel" aria-label={t("info.wall.heading")} data-info-wall>
+          <div class="info-wall" aria-roledescription="carousel" aria-label={t("info.wall.heading")} data-info-wall>
             <div class="info-wall__stage">
               {wall.length > 1 && (
                 <button type="button" class="info-wall__arrow info-wall__arrow--prev" data-wall-prev aria-label={t("info.wall.prev")}>
@@ -139,41 +148,39 @@ const wall = await Promise.all(
     )
   }
 
-  <!-- 3-5. MISSION / HOW / PLAN: three bullet chapters, each revealed point by point. -->
-  <section class="story-ch story-ch--mission" data-story-ch>
-    <div class="story-frame story-frame--text">
-      <h2 class="info-heading" data-in>{t("info.h2.mission")}</h2>
-      <ul class="info-list">
-        <li data-in style="--d: 0.2s">{t("info.mission.1")}</li>
-        <li data-in style="--d: 0.35s">{t("info.mission.2")}</li>
-        <li data-in style="--d: 0.5s">{t("info.mission.3")}</li>
-      </ul>
+  <!-- 3. ABOUT: mission, how, plan in one overview, point by point. -->
+  <section class="story-ch story-ch--about" data-story-ch>
+    <div class="story-frame">
+      <div class="info-about">
+      <div class="info-col">
+        <h2 class="info-heading" data-in>{t("info.h2.mission")}</h2>
+        <ul class="info-list">
+          <li data-in style="--d: 0.15s">{t("info.mission.1")}</li>
+          <li data-in style="--d: 0.27s">{t("info.mission.2")}</li>
+          <li data-in style="--d: 0.39s">{t("info.mission.3")}</li>
+        </ul>
+      </div>
+      <div class="info-col">
+        <h2 class="info-heading" data-in style="--d: 0.25s">{t("info.h2.how")}</h2>
+        <ul class="info-list">
+          <li data-in style="--d: 0.40s">{t("info.how.1")}</li>
+          <li data-in style="--d: 0.52s">{t("info.how.2")}</li>
+          <li data-in style="--d: 0.64s">{t("info.how.3")}</li>
+        </ul>
+      </div>
+      <div class="info-col">
+        <h2 class="info-heading" data-in style="--d: 0.50s">{t("info.h2.plan")}</h2>
+        <ul class="info-list">
+          <li data-in style="--d: 0.65s">{t("info.plan.1")}</li>
+          <li data-in style="--d: 0.77s">{t("info.plan.2")}</li>
+          <li data-in style="--d: 0.89s">{t("info.plan.3")}</li>
+        </ul>
+      </div>
+      </div>
     </div>
   </section>
 
-  <section class="story-ch story-ch--how" data-story-ch>
-    <div class="story-frame story-frame--text">
-      <h2 class="info-heading" data-in>{t("info.h2.how")}</h2>
-      <ul class="info-list">
-        <li data-in style="--d: 0.2s">{t("info.how.1")}</li>
-        <li data-in style="--d: 0.35s">{t("info.how.2")}</li>
-        <li data-in style="--d: 0.5s">{t("info.how.3")}</li>
-      </ul>
-    </div>
-  </section>
-
-  <section class="story-ch story-ch--plan" data-story-ch>
-    <div class="story-frame story-frame--text">
-      <h2 class="info-heading" data-in>{t("info.h2.plan")}</h2>
-      <ul class="info-list">
-        <li data-in style="--d: 0.2s">{t("info.plan.1")}</li>
-        <li data-in style="--d: 0.35s">{t("info.plan.2")}</li>
-        <li data-in style="--d: 0.5s">{t("info.plan.3")}</li>
-      </ul>
-    </div>
-  </section>
-
-  <!-- 6. PORTFOLIOS -->
+  <!-- 4. PORTFOLIOS -->
   <section class="story-ch story-ch--portfolios" data-story-ch>
     <div class="story-frame story-frame--center">
       <p class="info-people" data-in>{t("info.story.people")}</p>
@@ -186,7 +193,7 @@ const wall = await Promise.all(
     </div>
   </section>
 
-  <!-- 7. CONTACT: the page's last line, a short last stop. -->
+  <!-- 5. CONTACT: the page's last line, a short last stop. -->
   <section class="story-ch story-ch--contact" data-story-ch>
     <p class="info-contact" data-in>
       {t("info.contact.ask")}{" "}
@@ -234,33 +241,16 @@ const wall = await Promise.all(
     min-height: var(--story-vh);
     box-sizing: border-box;
     padding: 2rem 0;
-    scroll-snap-align: start;
   }
   .story-frame--center {
     align-items: center;
     text-align: center;
   }
-  /* The scroller snaps chapter to chapter: .page-wrap on a desktop, the
-     document on a phone (the Portfolios view's rule, global.css). Keyed off
-     the server-rendered mark, so the first frame is already snapped. */
-  :global(:root:not([data-arriving]) .page-wrap:has(.story)) {
-    scroll-snap-type: y mandatory;
-    scroll-padding-top: var(--header-h);
-  }
-  @media (--bp-mobile) {
-    :global(html:not([data-arriving]):has(.story)) {
-      scroll-snap-type: y mandatory;
-      scroll-padding-top: var(--header-h);
-    }
-    /* The phone footer follows the page in the flow: a stop of its own,
-       so the mandatory snap still lets the Impressum be reached. */
-    :global(html:has(.story) .site-footer) {
-      scroll-snap-align: end;
-    }
-  }
 
   /* A part waiting for its chapter: hidden until the chapter is reached
-     (data-seen, set once by the script), then rising in after its --d. */
+     (data-seen, set once by the script) AND the page is shown (page-loaded:
+     on a first visit the loader covers the page, and the hero played out
+     unseen under it), then rising in after its --d. */
   .story[data-story-on] [data-in] {
     opacity: 0;
     transform: translateY(24px);
@@ -268,7 +258,7 @@ const wall = await Promise.all(
       opacity 0.6s ease-out var(--d, 0s),
       transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0s);
   }
-  .story[data-story-on] [data-seen] [data-in] {
+  :global(body.page-loaded) .story[data-story-on] [data-seen] [data-in] {
     opacity: 1;
     transform: none;
   }
@@ -335,7 +325,7 @@ const wall = await Promise.all(
   }
   /* Gone once the next chapter is reached, so its foot never shows under
      the header there. */
-  .story[data-story-on]:has(.story-ch--works[data-seen], .story-ch--mission[data-seen]) .story-cue {
+  .story[data-story-on]:has(.story-ch--works[data-seen], .story-ch--about[data-seen]) .story-cue {
     opacity: 0;
   }
   .story-cue__line {
@@ -362,7 +352,22 @@ const wall = await Promise.all(
     }
   }
 
-  /* ── 3-5. MISSION / HOW / PLAN ──────────────────────────────────────────────────── */
+  /* ── 3. ABOUT: THREE COLUMNS, ONE OVERVIEW ───────────────────────────── */
+  .info-about {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 3rem;
+
+    @media (--bp-mobile) {
+      grid-template-columns: 1fr;
+      gap: 2.25rem;
+    }
+  }
+  .info-col {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
   .info-heading {
     margin: 0;
     font-family: "Archivo", sans-serif;
@@ -371,14 +376,15 @@ const wall = await Promise.all(
   .info-list {
     display: flex;
     flex-direction: column;
-    gap: 0.9rem;
+    gap: 0.75rem;
     margin: 0;
     padding-left: 1.25rem;
   }
+  /* A step up from body copy (Josh 11-04: "a bit bigger"). */
   .info-list li {
-    font-size: clamp(var(--fs-100), 1.2vw, 1.08rem);
+    font-size: clamp(1.25rem, 1.45vw, 1.45rem);
     color: #333;
-    line-height: 1.6;
+    line-height: 1.45;
   }
   /* Point by point: each line slides in from the left as well as rising. */
   .story[data-story-on] .info-list li {
@@ -421,7 +427,6 @@ const wall = await Promise.all(
     min-height: calc(var(--story-vh) * 0.4);
     padding: 2rem 0 4rem;
     text-align: center;
-    scroll-snap-align: end;
   }
   .info-contact {
     margin: 0;
@@ -443,7 +448,7 @@ const wall = await Promise.all(
      A row the visitor scrolls sideways, one slide its full width, snapped
      to the middle. The picture keeps its own shape at one height (the
      screen's, less the words under it), the artist and the project under
-     it. The neighbours fade and shrink a little as they leave. */
+     it. No fades: the picture is simply there (Josh 11-04). */
   .info-wall {
     --pic-h: min(calc(var(--story-vh) - 15rem), 640px);
     width: 100%;
@@ -490,8 +495,6 @@ const wall = await Promise.all(
     color: var(--color-dark);
     text-decoration: none;
     -webkit-user-drag: none;
-    opacity: 0.35;
-    transition: opacity var(--pic-in-fade);
   }
   .info-wall__tile img {
     display: block;
@@ -500,17 +503,8 @@ const wall = await Promise.all(
     width: min(100%, calc(var(--pic-h) * var(--ar, 0.8)));
     height: auto;
     border-radius: var(--radius-sm);
-    transform: scale(0.92);
-    transition:
-      transform var(--pic-in-zoom),
-      opacity 0.2s ease;
+    transition: opacity 0.2s ease;
     user-select: none;
-  }
-  .info-wall__slide[data-current] .info-wall__tile {
-    opacity: 1;
-  }
-  .info-wall__slide[data-current] .info-wall__tile img {
-    transform: none;
   }
   .info-wall__slide[data-current] .info-wall__tile:hover img,
   .info-wall__slide[data-current] .info-wall__tile:focus-visible img {
@@ -627,7 +621,6 @@ const wall = await Promise.all(
     .info-wall__nudge::after {
       animation: none;
     }
-    .info-wall__tile,
     .info-wall__tile img {
       transition: none;
     }
@@ -796,6 +789,82 @@ const wall = await Promise.all(
     signal.addEventListener("abort", () => seen.disconnect(), { once: true });
   }
 
+  // ── THE SETTLE ────────────────────────────────────────────────────────
+  // When a scroll has ended (no scroll event for a moment, no finger on the
+  // glass) the scroller glides to a chapter's top, under the header. Moved
+  // less than a fifth of a screen from the chapter it last rested on: back
+  // to it. More: on to the chapter nearest in that direction. A chapter
+  // taller than the screen lets the visitor read through it, and the page's
+  // end (contact, the phone footer) is left alone.
+  const SETTLE_MS = 160;
+  const NUDGE = 0.2;
+
+  function settle(root: HTMLElement, signal: AbortSignal) {
+    const phone = () => matchMedia(PHONE).matches;
+    const scroller = () => (phone() ? document.scrollingElement : document.querySelector(".page-wrap")) as HTMLElement | null;
+    const chapters = Array.from(root.querySelectorAll<HTMLElement>("[data-story-ch]")).filter((c) => !c.classList.contains("story-ch--contact"));
+    let rest = 0;
+    let gliding = false;
+    let touching = false;
+    let timer = 0;
+    const header = () => parseFloat(getComputedStyle(root).getPropertyValue("--header-h")) || (phone() ? 48 : 56);
+    // A chapter's resting scroll offset: its top just under the header.
+    const tops = (s: HTMLElement) => {
+      const base = s === document.scrollingElement ? 0 : s.getBoundingClientRect().top;
+      return chapters.map((c) => Math.max(0, c.getBoundingClientRect().top - base + s.scrollTop - header()));
+    };
+    const run = () => {
+      const s = scroller();
+      if (!s || touching) return;
+      const y = s.scrollTop;
+      const at = tops(s);
+      const vh = s.clientHeight;
+      if (gliding) {
+        gliding = false;
+        rest = at.reduce((best, top, i) => (Math.abs(top - y) < Math.abs(at[best] - y) ? i : best), 0);
+        return;
+      }
+      const max = s.scrollHeight - vh;
+      const last = at.length - 1;
+      if (y > at[last] + 4 || y >= max - 2) return;
+      const inside = at.findIndex((top, i) => y >= top - 2 && y <= (i < last ? at[i + 1] : max) - vh + 2 && chapters[i].offsetHeight > vh * 1.05);
+      if (inside >= 0) {
+        rest = inside;
+        return;
+      }
+      const delta = y - at[rest];
+      let to = rest;
+      if (Math.abs(delta) >= vh * NUDGE) {
+        const ahead = at.map((top, i) => i).filter((i) => (delta > 0 ? at[i] > at[rest] : at[i] < at[rest]));
+        if (ahead.length) to = ahead.reduce((best, i) => (Math.abs(at[i] - y) < Math.abs(at[best] - y) ? i : best), ahead[0]);
+      }
+      if (Math.abs(at[to] - y) < 2) {
+        rest = to;
+        return;
+      }
+      rest = to;
+      gliding = true;
+      s.scrollTo({ top: at[to], behavior: "smooth" });
+    };
+    const onScroll = () => {
+      clearTimeout(timer);
+      timer = window.setTimeout(run, SETTLE_MS);
+    };
+    document.querySelector(".page-wrap")?.addEventListener("scroll", onScroll, { passive: true, signal });
+    window.addEventListener("scroll", onScroll, { passive: true, signal });
+    window.addEventListener("touchstart", () => (touching = true), { passive: true, signal });
+    const lift = () => {
+      touching = false;
+      onScroll();
+    };
+    window.addEventListener("touchend", lift, { passive: true, signal });
+    window.addEventListener("touchcancel", lift, { passive: true, signal });
+    signal.addEventListener("abort", () => clearTimeout(timer), { once: true });
+  }
+
+  // The site's phone breakpoint, spelled out (custom-media.css, --bp-mobile).
+  const PHONE = "(width <= 767px), (pointer: coarse) and (height <= 500px)";
+
   document.addEventListener("astro:page-load", () => {
     const root = document.querySelector<HTMLElement>("[data-story-root]");
     if (!root) return;
@@ -806,7 +875,11 @@ const wall = await Promise.all(
     const slides = wall ? Array.from(wall.querySelectorAll<HTMLElement>("[data-wall-slide]")) : [];
     if (wall && track && slides.length > 1) carousel(wall, track, slides, signal);
 
+    // The settle is not motion the visitor did not ask for: it only ends
+    // their own scroll, so it runs with reduced motion too.
+    settle(root, signal);
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // Normally already on (the inline script above the chapters).
     root.setAttribute("data-story-on", "");
     story(root, signal);
   });
