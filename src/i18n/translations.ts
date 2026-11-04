@@ -713,6 +713,7 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.done.disclaimer":
       "Note: Your profile may take a moment to appear in the public community feed. You can edit it any time on your profile page.",
     "onboarding.done.edit": "Edit profile",
+    "profile.works.editProfile": "Edit profile",
     "onboarding.done.goCommunity": "Go to community",
     "onboarding.done.disclaimer.unverified":
       "Your profile is hidden until you verify your email — the link is in your inbox. Once verified, you appear in the directory automatically.",
@@ -1364,6 +1365,7 @@ export const ui: Record<string, Record<string, string>> = {
     "onboarding.done.disclaimer":
       "Hinweis: Es kann einen Moment dauern, bis dein Profil im öffentlichen Community-Feed erscheint. Du kannst es jederzeit auf deiner Profilseite bearbeiten.",
     "onboarding.done.edit": "Profil bearbeiten",
+    "profile.works.editProfile": "Profil bearbeiten",
     "onboarding.done.goCommunity": "Zur Community",
     "onboarding.done.disclaimer.unverified":
       "Dein Profil bleibt verborgen, bis du deine E-Mail bestätigt hast — der Link liegt in deinem Posteingang. Danach erscheinst du automatisch im Verzeichnis.",

@@ -3059,6 +3059,13 @@ document.addEventListener("astro:page-load", () => {
     });
   });
 
+  // EDIT PROFILE under the person in the Work tab's Edit mode (2026-11-04):
+  // the same as pressing the PROFILE tab, so the tab row, the URL and the
+  // phone's swipe order all follow as they do for a tab.
+  document.querySelector<HTMLButtonElement>("[data-ppv-edit-profile]")?.addEventListener("click", () => {
+    document.getElementById("tab-profile")?.click();
+  });
+
   // Tags fill the directory card's typographic face as well as the profile
   // view, so they sync both; openTo reaches only the profile view.
   // <tag-selector> dispatches a bubbling `change`; <open-to-selector> has no
