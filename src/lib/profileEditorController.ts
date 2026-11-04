@@ -53,6 +53,7 @@ import {
   addVideoLink,
   restoreAutoThumbnail,
   embedErrorCode,
+  saveGalleryRecords,
   type GalleryItem,
 } from "./gallery.ts";
 import {
@@ -1945,6 +1946,25 @@ document.addEventListener("astro:page-load", () => {
     galleryDetailsOpenUI.set(item.imageId, true);
     renderGallery();
     await persistGalleryNow();
+    await fileUploadNow(item.imageId);
+  }
+
+  /**
+   * AN UPLOAD IS FILED AT ONCE (2026-11-04, audit finding 30). Its project
+   * used to reach the record only at Save, so an upload whose Save never
+   * came — the tab was stale and may not save, or the member left — came
+   * back after a reload as a loose work under "Works". Written here when the
+   * project is already stored (a record must never name a project that does
+   * not exist yet); a new block still waits for Save, which writes the
+   * projects first. The carousel is left to Save: a tray can be local.
+   * committedWords keeps the empty project, so Save writes it again, which
+   * is harmless; a refusal here is too, as Save tries once more.
+   */
+  async function fileUploadNow(imageId: string) {
+    const work = gallery.find((g) => g.imageId === imageId);
+    if (!work?.projectId || !storedProjectIds.has(work.projectId)) return;
+    const failures = await saveGalleryRecords([{ ...work, carouselId: undefined }]);
+    failures.forEach((f) => console.warn(`[gallery] ${f.imageId} not filed:`, f.error));
   }
 
   /**
