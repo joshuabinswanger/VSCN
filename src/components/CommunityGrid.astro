@@ -789,8 +789,31 @@ const searchIndex: SearchIndex = {
         where the bar stands in the header. Outside .community-bar__in so the
         island's clip cannot cut it; reflectTagUI fills it, a tap on the name
         opens the Tags card. The × beside it drops the tag (same day, Josh:
-        "make it deleteable with an X button next to it"). */
+        "make it deleteable with an X button next to it"). TWO CHIPS since
+        2026-11-04 (Josh: "the tag chips should be separated … one for the
+        people and one for the field"): the who chip and the tag chip side by
+        side in one anchored row, each with its own ×. */
     }
+    <div class="filter-floats">
+    <span id="who-float" class="tagchip tag-float" hidden>
+      <button
+        type="button"
+        id="who-float-name"
+        class="tag-float__name"
+        aria-controls="tag-filter-panel"
+      ></button>
+      <button
+        type="button"
+        id="who-float-x"
+        class="tag-float__x"
+        aria-label={t("community.filter.who.all")}
+      >
+        <svg viewBox="0 0 10 10" aria-hidden="true"
+          ><path d="M2 2l6 6M8 2l-6 6" fill="none" stroke="currentColor" stroke-width="1.4"
+          ></path></svg
+        >
+      </button>
+    </span>
     <span id="tag-float" class="tagchip tag-float" hidden>
       <button
         type="button"
@@ -810,6 +833,7 @@ const searchIndex: SearchIndex = {
         >
       </button>
     </span>
+    </div>
   </div>
 
   {
@@ -3662,13 +3686,24 @@ const searchIndex: SearchIndex = {
   .view-seg {
     anchor-name: --tag-views;
   }
-  .tag-float {
+  .filter-floats {
     position: absolute;
     left: 50%;
     bottom: calc(100% + 8px);
     translate: calc(-50% - (var(--bar-h) + var(--bar-gap, 6px)) / 2) 0;
+    display: flex;
+    gap: 6px;
+    width: max-content;
+    max-width: calc(100vw - 32px);
+    pointer-events: none;
+    transition:
+      opacity 160ms ease,
+      visibility 0s linear 0s;
+  }
+  .tag-float {
     pointer-events: auto;
-    max-width: min(16rem, calc(100vw - 32px));
+    min-width: 0;
+    max-width: 16rem;
     min-height: 24px;
     padding: 0 4px 0 10px;
     display: flex;
@@ -3679,12 +3714,9 @@ const searchIndex: SearchIndex = {
     background: var(--color-dark) !important;
     color: var(--color-bg) !important;
     border-color: var(--color-dark);
-    transition:
-      opacity 160ms ease,
-      visibility 0s linear 0s;
   }
   @supports (position-anchor: --a) {
-    .tag-float {
+    .filter-floats {
       position-anchor: --tag-views;
       left: anchor(center);
       bottom: calc(anchor(top) + 8px);
@@ -3705,7 +3737,10 @@ const searchIndex: SearchIndex = {
   }
   .tag-float__name {
     min-width: 0;
-    padding: 0;
+    /* 1px each side: the overflow clip below otherwise shaves the first
+       capital's edge (the chip's left padding gives that pixel back). */
+    padding: 0 1px;
+    margin-left: -1px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -3728,7 +3763,7 @@ const searchIndex: SearchIndex = {
   .tag-float__x:focus-visible {
     background: color-mix(in srgb, var(--color-bg) 22%, transparent);
   }
-  .community-bar:has(.community-bar__panels > :not([hidden])) .tag-float {
+  .community-bar:has(.community-bar__panels > :not([hidden])) .filter-floats {
     opacity: 0;
     visibility: hidden;
     transition:
@@ -3736,12 +3771,12 @@ const searchIndex: SearchIndex = {
       visibility 0s linear 120ms;
   }
   @media (--bp-desktop) {
-    .tag-float {
+    .filter-floats {
       bottom: auto;
       top: calc(100% + 8px);
     }
     @supports (position-anchor: --a) {
-      .tag-float {
+      .filter-floats {
         top: calc(anchor(bottom) + 8px);
       }
     }

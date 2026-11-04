@@ -908,14 +908,15 @@ function reflectTagUI(mode: LayoutMode) {
   });
   const label = document.getElementById("tag-filter-label");
   if (label) label.textContent = activeLabel || whoLabel || (label.dataset.rest ?? "");
-  // The same name over the views pill, so the filter shows with the card shut
-  // — the who and the tag together when both are set; × drops both.
-  const floatText = [whoLabel, activeLabel].filter(Boolean).join(" · ");
-  const float = document.getElementById("tag-float");
-  const floatName = document.getElementById("tag-float-name");
-  if (float && floatName) {
-    floatName.textContent = floatText;
-    float.hidden = !floatText;
+  // The same names over the views pill, so the filter shows with the card
+  // shut — one chip for who, one for the tag, each with its own ×.
+  for (const [id, text] of [["who-float", whoLabel], ["tag-float", activeLabel]] as const) {
+    const float = document.getElementById(id);
+    const floatName = document.getElementById(`${id}-name`);
+    if (float && floatName) {
+      floatName.textContent = text;
+      float.hidden = !text;
+    }
   }
   document
     .getElementById("tag-filter-btn")
@@ -1557,13 +1558,17 @@ document.addEventListener("astro:page-load", () => {
     document
       .getElementById("tag-float-name")
       ?.addEventListener("click", () => tagBtn?.click(), { signal: life });
-    document.getElementById("tag-float-x")?.addEventListener("click", () => {
-      closeBarMenus();
-      const url = new URL(window.location.href);
-      url.searchParams.delete("tag");
-      url.searchParams.delete("who");
-      goTo(url);
-    }, { signal: life });
+    document
+      .getElementById("who-float-name")
+      ?.addEventListener("click", () => tagBtn?.click(), { signal: life });
+    for (const [id, param] of [["tag-float-x", "tag"], ["who-float-x", "who"]] as const) {
+      document.getElementById(id)?.addEventListener("click", () => {
+        closeBarMenus();
+        const url = new URL(window.location.href);
+        url.searchParams.delete(param);
+        goTo(url);
+      }, { signal: life });
+    }
     tagBtn?.addEventListener("click", () => {
       if (!tagPanel) return;
       const opening = toggleBarMenu("tag-filter-panel");
