@@ -33,7 +33,7 @@ interface WorkProps {
   color?: string;
   rendered: { src: string; srcSet: { attribute: string } };
   /** THE PROJECT THIS WORK IS IN, as data-pswp-* strings — see projectSlideData() in lib/projects.ts. */
-  slide: { project?: string; projectLink?: string; affiliations?: string };
+  slide: { project?: string; projectLink?: string; projectHref?: string; affiliations?: string };
 }
 
 interface Props {
@@ -86,6 +86,7 @@ const showDesc = w.showDescription === true && Boolean(w.description?.trim());
     data-pswp-meta={w.pswpMeta || undefined}
     data-pswp-project={w.slide.project}
     data-pswp-project-link={w.slide.projectLink}
+    data-pswp-project-href={w.slide.projectHref}
     data-pswp-affiliations={w.slide.affiliations}
     {...embedDataAttrs(w.embed)}
   >

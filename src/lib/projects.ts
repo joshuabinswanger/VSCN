@@ -283,6 +283,11 @@ export function affiliationHref(a: ProjectAffiliation, lang: string): string | u
   return a.memberSlug ? memberHref(lang, a.memberSlug) : a.href;
 }
 
+/** A project's id on its member's page (`#project-<id>`), the address the SEO graph already uses (seo.ts). */
+export function projectAnchor(id: string): string {
+  return `project-${id}`;
+}
+
 /**
  * What a lightbox trigger carries about its project, as data-pswp-* values.
  * Strings only, because they travel as attributes: the lightbox script is a
@@ -291,13 +296,16 @@ export function affiliationHref(a: ProjectAffiliation, lang: string): string | u
 export function projectSlideData(
   p: ProfileProject | undefined,
   lang: Lang,
-): { project?: string; projectLink?: string; affiliations?: string } {
+  /** The member's slug: with it the lightbox's "Part of …" links to the project on their page (2026-11-04). */
+  memberSlug?: string,
+): { project?: string; projectLink?: string; projectHref?: string; affiliations?: string } {
   if (!p) return {};
-  const out: { project?: string; projectLink?: string; affiliations?: string } = {};
+  const out: { project?: string; projectLink?: string; projectHref?: string; affiliations?: string } = {};
   const title = projectTitle(p, lang);
   if (title) {
     out.project = title;
     if (p.link) out.projectLink = p.link;
+    if (memberSlug) out.projectHref = `${memberHref(lang, memberSlug)}#${projectAnchor(p.id)}`;
   }
   if (p.affiliations.length) {
     out.affiliations = JSON.stringify(
