@@ -3426,16 +3426,41 @@ const searchIndex: SearchIndex = {
       overflow-y: auto;
       overscroll-behavior: contain;
     }
-    /* THE SEARCH STAYS AT THE FOOT (2026-11-04, Josh: "the search bar on
-       mobile to just pop open and stay at the bottom instead of sliding all
-       the way up. So it is more consistent with the lower bar"). It is the
-       tags' and sort's sheet again (the rule above), standing on the
-       screen's foot with the keyboard's height as padding, so the field and
-       the results sit just above the keys. Until today it filled the screen
-       (2026-10-29, "please make search full screen on mobile"). The bar
-       still climbs over the header while it is open. */
+    /* THE SEARCH FILLS THE SCREEN, ITS FIELD AT THE FOOT (2026-11-04,
+       Josh: "the bar stays where the search button is at first. It just
+       expands in a smooth animation, and then we need a full screen search
+       panel ... the drop down button ... either at the very top or just
+       above the search bar"). The card grows out of the search pill
+       (growFromPill) to cover the screen from the top edge to the bottom;
+       the field stays down where the pill was, standing on the keyboard
+       (its height is padding), the results fill the screen above it and
+       the fold handle sits at the very top. Order only: the markup keeps
+       handle, field, results, so a screen reader still meets the field
+       first. Earlier: full screen with the field at the top (10-29), then
+       the tags' half sheet (11-04 morning, "stay at the bottom"). */
     .community-bar:has(#search-panel:not([hidden])) {
       z-index: 40;
+    }
+    .community-bar .search__panel {
+      top: var(--bar-vtop, 0px);
+      bottom: 0;
+      height: auto;
+      max-height: none;
+      padding: calc(env(safe-area-inset-top, 0px) + 6px) 12px
+        calc(var(--sheet-foot) + 12px);
+      border: 0;
+      border-radius: 0 !important;
+      box-shadow: none;
+    }
+    .community-bar .search__panel > .bar-card__handle {
+      order: 0;
+    }
+    .community-bar .search__results {
+      order: 1;
+    }
+    .community-bar .search__head {
+      order: 2;
+      margin: 8px 0 0;
     }
     /* The tags' card the same way: the handle and the field stand, the
        chips scroll under them. */
