@@ -1275,11 +1275,26 @@ const searchIndex: SearchIndex = {
       right: 0;
       bottom: 0;
       z-index: -1;
-      height: calc(var(--bar-h, 38px) + 60px + env(safe-area-inset-bottom, 0px));
+      /* AS SMOOTH AS COSMOS' (2026-11-04, Josh's screenshot of its feed):
+         taller, never quite opaque at the foot, and EASED — a scrim curve
+         in thirteen stops instead of two straight ramps, whose kinks read
+         as a line across the pictures. The alphas follow the classic
+         easing-gradient table, scaled to 0.94 at the foot. */
+      height: calc(var(--bar-h, 38px) + 110px + env(safe-area-inset-bottom, 0px));
       background: linear-gradient(
         to top,
-        var(--color-bg) 0%,
-        color-mix(in srgb, var(--color-bg) 85%, transparent) 35%,
+        color-mix(in srgb, var(--color-bg) 94%, transparent) 0%,
+        color-mix(in srgb, var(--color-bg) 69.4%, transparent) 19%,
+        color-mix(in srgb, var(--color-bg) 50.9%, transparent) 34%,
+        color-mix(in srgb, var(--color-bg) 35.9%, transparent) 47%,
+        color-mix(in srgb, var(--color-bg) 26.1%, transparent) 56.5%,
+        color-mix(in srgb, var(--color-bg) 18.2%, transparent) 65%,
+        color-mix(in srgb, var(--color-bg) 11.8%, transparent) 73%,
+        color-mix(in srgb, var(--color-bg) 7.1%, transparent) 80.2%,
+        color-mix(in srgb, var(--color-bg) 3.9%, transparent) 86.1%,
+        color-mix(in srgb, var(--color-bg) 2%, transparent) 91%,
+        color-mix(in srgb, var(--color-bg) 0.8%, transparent) 95.2%,
+        color-mix(in srgb, var(--color-bg) 0.2%, transparent) 98.2%,
         transparent 100%
       );
       pointer-events: none;
