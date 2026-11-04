@@ -2337,7 +2337,14 @@
       padding: 0 12px calc(10px + env(safe-area-inset-bottom, 0px));
       border: 0;
       border-radius: 0 !important;
-      box-shadow: none;
+      /* A PANEL AGAIN ON A PHONE (2026-11-04, Josh: "drop up should have a
+         background so the buttons dont float in the editor"). Desktop keeps
+         bare glass controls; the phone's drop-up is a full-width glass sheet
+         with a hairline on top, so the works don't show between the keys. */
+      background: var(--glass-paper);
+      -webkit-backdrop-filter: var(--glass-blur);
+      backdrop-filter: var(--glass-blur);
+      box-shadow: inset 0 1px 0 var(--color-border);
     }
 
     .ebar__in,
