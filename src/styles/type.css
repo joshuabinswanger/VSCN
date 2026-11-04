@@ -93,7 +93,9 @@
   --fs-300: 40px; /* 39.00 — the phone menu's lines */
   /* THE INFO PAGE'S OPENING LINES (2026-11-02, Josh: "bigger and bolder";
      design-kit/vscn-landing.af): the headline and the sentence under it. */
-  --fs-hero: 64px;
+  /* About 70% of the window wide for the Info headline (Josh 11-04, "can
+     be bigger, 70vw"): the line is ~12 em long, so 5.8vw; never under 64. */
+  --fs-hero: max(64px, 5.8vw);
   --fs-hero-sub: 30px; /* 24 until 2026-11-02 evening, Josh: "second sentence bigger" */
   /* Every tag chip (.tagchip). Its own token because tags go the OTHER way on
      a phone: down to the whole pixel below 8.64px, where everything else goes
@@ -151,7 +153,7 @@
     --fs-190: 28px;
     --fs-225: 32px;
     --fs-300: 40px;
-    --fs-hero: 38px;
+    --fs-hero: 12vw;
     --fs-hero-sub: 20px;
     --fs-tag: 10px;
     --fs-label: 11px;
@@ -304,7 +306,9 @@
   line-height: 1.5;
 }
 /* THE INFO HERO (2026-11-02, vscn-landing.af): a display headline, bold and
-   tight, and a light sentence under it. 64 / 30 on a desktop, 38 / 20 on a phone. */
+   tight, about 70% of the window wide on a desktop (two lines across a
+   phone), and light sentences under it, both at 30 / 20 (11-04: "3
+   sentence same size as 2nd"). */
 .info-hero__title {
   font-size: var(--fs-hero);
   font-weight: 700;
@@ -312,6 +316,7 @@
   letter-spacing: -0.02em;
 }
 .info-hero__sub,
+.info-hero__body,
 .info-people {
   font-size: var(--fs-hero-sub);
   font-weight: 300;
