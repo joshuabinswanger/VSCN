@@ -999,8 +999,9 @@
   .gallery-boxhead__keys {
     display: flex;
     flex: 1 1 100%;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
+    gap: 6px 10px;
   }
 
   .gallery-boxhead__word {
@@ -1022,20 +1023,38 @@
     padding: 0 10px;
   }
 
+  /* THE WORD KEYS ARE KEYS (2026-11-04, Josh: "the buttons should have
+     borders as well"): Replace, Move, Remove and Dissolve wear the arrows'
+     box (.gallery-key: 30px, the hairline, paper), the danger word keeps its
+     red type. Until then they were bare words. */
   .gallery-boxhead__word {
-    padding: 4px 2px;
-    border: 0;
-    background: none;
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-key) !important;
+    background: var(--color-bg);
     color: var(--color-error);
     font-family: inherit;
     font-size: var(--fs-74);
     font-weight: 400;
     letter-spacing: 0;
+    white-space: nowrap;
     cursor: pointer;
+    transition: border-color 0.15s;
   }
 
   .gallery-boxhead__word:hover:not(:disabled) {
-    text-decoration: underline;
+    border-color: var(--color-dark);
+  }
+
+  .gallery-boxhead__word--replace {
+    color: var(--color-dark);
+  }
+  .gallery-boxhead__word--replace + .gallery-boxhead__word {
+    margin-left: 0;
   }
 
   /* MOVE beside Remove (2026-11-04): the same word key in the ink colour;
@@ -2181,15 +2200,24 @@
   .ebar {
     box-sizing: content-box;
     padding: 6px;
+    /* NO PANEL BEHIND THE CONTROLS (2026-11-04, Josh: "instead of it being
+       applied to the pill behind the ui element it should be on the ui
+       elements itself"). The bar is only a box that sizes and folds; each
+       switch is its own glass pill (below) and Save keeps its black. */
+    background: none;
+    border: 0;
+    border-radius: 24px !important;
+    box-shadow: none;
+    overflow: hidden;
+  }
+
+  .ebar .seg {
     background: var(--glass-paper);
     -webkit-backdrop-filter: var(--glass-blur);
     backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--color-border);
-    border-radius: 24px !important;
     box-shadow:
-      0 8px 28px rgb(0 0 0 / 0.1),
-      0 1px 3px rgb(0 0 0 / 0.06);
-    overflow: hidden;
+      inset 0 0 0 1px var(--color-border),
+      0 1px 4px rgb(0 0 0 / 0.08);
   }
 
   .ebar.is-sized {
@@ -2287,15 +2315,31 @@
       width: auto !important;
       padding: 0 12px calc(10px + env(safe-area-inset-bottom, 0px));
       border: 0;
-      border-top: 1px solid var(--color-border);
-      border-radius: 20px 20px 0 0 !important;
-      box-shadow: 0 -6px 24px rgb(0 0 0 / 0.08);
+      border-radius: 0 !important;
+      box-shadow: none;
     }
 
     .ebar__in,
     .ebar.is-folded .ebar__in {
       width: 100%;
       max-width: none;
+    }
+
+    /* AWAY WHILE TYPING (2026-11-04, Josh's iPhone screenshot: the bar
+       floating mid-screen over the description he was typing in). iOS lays
+       the keyboard over the page and pans it, and a fixed bar stays put
+       against a layout viewport that is now half under the keys, so it lands
+       on the very field in use. While a text field has focus the bar fades
+       out and takes no taps; autosave keeps saving, and it is back the
+       moment the keyboard goes. */
+    .ebar {
+      transition: opacity 0.18s ease, visibility 0s linear 0s;
+    }
+    &:has(:is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="button"], [type="submit"]), textarea, select, [contenteditable="true"]):focus) .ebar {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.12s ease, visibility 0s linear 0.12s;
     }
 
     .ebar .seg {
