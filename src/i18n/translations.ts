@@ -25,7 +25,7 @@ export const ui: Record<string, Record<string, string>> = {
     "info.hero.title": "Knowledge, made visible.",
     "info.hero.lead": "We believe more knowledge deserves a visual form.",
     "info.hero.body":
-      "Images make ideas intuitively accessible, carry information words can’t, and spark curiosity naturally. Ultimately, we want to connect more people who know with the people who want to understand, through aesthetic visuals.",
+      "Well-made images make ideas accessible in any field, carry them further than words alone, spark curiosity, and connect the people who know with the people who want to understand.",
     "info.h2.building": "What We’re Building",
     "info.li.1": "A directory of illustrators, designers and the experts they work with.",
     "info.li.2": "A showcase for outstanding visual storytelling.",
@@ -790,7 +790,7 @@ export const ui: Record<string, Record<string, string>> = {
     "info.hero.title": "Wissen, sichtbar gemacht.",
     "info.hero.lead": "Wir glauben, dass mehr Wissen eine visuelle Form verdient.",
     "info.hero.body":
-      "Bilder machen Ideen intuitiv zugänglich, tragen, was Worte nicht können, und wecken ganz natürlich Neugier. Letztlich wollen wir mit ästhetischen Bildern mehr Menschen, die etwas wissen, mit denen verbinden, die es verstehen wollen.",
+      "Gut gemachte Bilder machen Ideen in jedem Fachgebiet zugänglich, tragen sie weiter als Worte allein, wecken Neugier und verbinden die, die etwas wissen, mit denen, die es verstehen wollen.",
     "info.h2.building": "Was wir aufbauen",
     "info.li.1": "Ein Verzeichnis von Illustrator:innen, Designer:innen und den Fachleuten, mit denen sie arbeiten.",
     "info.li.2": "Ein Schaufenster für herausragendes visuelles Storytelling.",
