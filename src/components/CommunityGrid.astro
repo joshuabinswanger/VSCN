@@ -1158,7 +1158,9 @@ const searchIndex: SearchIndex = {
        capsule, inset by --bar-pad. Padding plus border is what the panels'
        offsets add. */
     padding: var(--bar-pad);
-    background: var(--color-bg);
+    background: var(--glass-paper);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
     border: 1px solid var(--color-dark);
     font-size: var(--fs-85);
     /* The pill never outgrows the screen; past this a label wraps inside it. */
@@ -1261,7 +1263,9 @@ const searchIndex: SearchIndex = {
        persistent"): each trigger is a segment of the pill at rest, not a
        word that only gets a ground when it is pointed at. Open, or holding
        a tag, it is black. */
-    background: var(--color-bg);
+    background: var(--glass-paper);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
     font: inherit;
     color: var(--color-dark);
     cursor: pointer;
@@ -3240,7 +3244,9 @@ const searchIndex: SearchIndex = {
       gap: 0;
       border: 1px solid var(--color-border);
       border-radius: var(--radius-pill);
-      background: var(--color-bg);
+      background: var(--glass-paper);
+      -webkit-backdrop-filter: var(--glass-blur);
+      backdrop-filter: var(--glass-blur);
     }
     .view-seg {
       position: relative;
@@ -3373,7 +3379,9 @@ const searchIndex: SearchIndex = {
       pointer-events: auto;
       border: 1px solid var(--color-border);
       border-radius: 22px !important;
-      background: var(--color-bg);
+      background: var(--glass-paper);
+      -webkit-backdrop-filter: var(--glass-blur);
+      backdrop-filter: var(--glass-blur);
       box-shadow: 0 -6px 30px rgb(0 0 0 / 0.1);
     }
     .community-bar .bar-menu__panel[hidden] {
@@ -3524,7 +3532,9 @@ const searchIndex: SearchIndex = {
       pointer-events: auto;
       border: 1px solid var(--color-border);
       border-radius: calc(var(--bar-h) / 2 + var(--card-rim)) !important;
-      background: var(--color-bg);
+      background: var(--glass-paper);
+      -webkit-backdrop-filter: var(--glass-blur);
+      backdrop-filter: var(--glass-blur);
       box-shadow: 0 10px 30px rgb(0 0 0 / 0.1);
       /* It grows out of its pill instead (growFromPill in the controller). */
       animation: none;
