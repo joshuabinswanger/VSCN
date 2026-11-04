@@ -3406,6 +3406,19 @@
     transform: translateX(calc(100% + 2px));
   }
 
+  /* OVER THE CARD (2026-11-04, Josh: "they should stay in place"): the
+     switch keeps its place and size, faded and out of reach, so the bar
+     never resizes on Profile | Card and nothing beside it moves. */
+  .ebar .ebar__mode {
+    transition: opacity 0.25s ease;
+  }
+  .ebar .ebar__mode[data-off] {
+    opacity: 0.35;
+  }
+  .ebar .ebar__mode[data-off] > button {
+    cursor: default;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .ebar__mode-thumb {
       transition: none;

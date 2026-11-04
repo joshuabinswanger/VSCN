@@ -2905,15 +2905,24 @@ document.addEventListener("astro:page-load", () => {
 
   /**
    * What the bar holds right now. Save, always. On the Works tab, the view
-   * and language switches; and, while the PAGE is showing, the mode switch
-   * — the card is drawn from the same fields and is never edited in place,
-   * so it means nothing over it.
+   * and language switches and the mode switch. The card is drawn from the
+   * same fields and is never edited in place, so over it the mode switch
+   * means nothing — but it STAYS, faded and disabled (2026-11-04, Josh:
+   * "when switching from profile to card make the UI buttons not jump …
+   * they should stay in place"). Hiding it shrank the bar and slid Save and
+   * the other switches across under the finger that had just pressed Card.
    */
   function syncBarContents() {
     const onWorks = form.classList.contains("is-works");
     form.querySelectorAll<HTMLElement>("[data-ebar-works]").forEach((el) => {
-      const pageOnly = el.matches("[data-works-mode-seg]");
-      el.hidden = !onWorks || (pageOnly && worksView !== "profile");
+      el.hidden = !onWorks;
+      if (!el.matches("[data-works-mode-seg]")) return;
+      const off = worksView !== "profile";
+      el.toggleAttribute("data-off", off);
+      el.setAttribute("aria-disabled", String(off));
+      el.querySelectorAll<HTMLButtonElement>("button").forEach((btn) => {
+        btn.disabled = off;
+      });
     });
   }
   /**
