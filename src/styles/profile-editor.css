@@ -2292,14 +2292,17 @@
   /* THE ACTIONS: 36px pills sharing the row equally, icon and word (44px on
      2026-10-23 for a day: "a bit more compact"). Save, and + Project until
      it moved under the project cards (2026-10-29). */
+  /* Only as wide as its icon and word, centred in its row (2026-11-04, Josh:
+     "make the save button less wide! more inline with the rest of our
+     buttons"); it stretched across the whole row before. */
   .ebar .profile-save-button {
     display: inline-flex;
-    flex: 1 1 0;
+    flex: none;
     align-items: center;
     justify-content: center;
-    gap: 7px;
-    min-width: 7rem;
-    height: 36px;
+    gap: 6px;
+    min-width: 0;
+    height: 32px;
     min-height: 0;
     padding: 0 16px;
     font: inherit;
