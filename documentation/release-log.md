@@ -10,6 +10,56 @@ rather than as a member's email.
 Nothing appends to this file by itself. Entries dated 2026-09-28 and 2026-09-29 were written
 afterwards, on 2026-09-29, from the CI run records (`gh run view <id>`); what a run record cannot
 show, chiefly a by-hand `verify:release` result, is marked "operator-reported" or "not confirmed".
+The entries from 2026-10-30 to 2026-10-31 were likewise written afterwards, on 2026-11-04.
+
+## 2026-11-04 · a91201a · prod · Join/Login sheet, Who filter, editor Move key + glass, faster Save (Info story held)
+Machine: GREEN after a fix. `verify:release --project prod` by Claude at ~16:05Z: 7 passing, 1 WARN,
+         probe 5 "UNEXPECTED BINDING requestRebuild: GITHUB_REBUILD_TOKEN@2". The save-latency change
+         made `requestRebuild` only queue, so it stopped declaring the secret, and a deploy never
+         clears a function's last secret. Cleared by a Functions v2 PATCH of
+         `serviceConfig.secretEnvironmentVariables` (dev by Claude 16:43Z, prod by Josh ~17:00Z,
+         revision requestrebuild-00017-xoc). Re-run ~17:05Z: GREEN, 8 of 8, no warnings.
+Walk:    GREEN, run 41861615568 (PR #217 merged 15:48Z, walk job 15:58-16:00Z).
+Action:  none further. Cut as branch `release/2026-11-04` = dev 827ea4f with the five
+         `feat/landing-restyle` merges reverted, so the Info scroll story stays on dev and returns
+         with the next release from dev. Before release, on dev: Move, project reorder and
+         Remove-with-works walked signed in on throwaway projects; a WebKit phone pass of the
+         login sheet, phone search and glass. After release Josh confirmed the same on an iPhone.
+         Rules: `showDescription` on images. Functions: `onImageWritten` skips writes that only
+         move `updatedAt`; digest wording.
+
+## 2026-10-31 · 2114430 · prod · VSCN opens Info, Info leads into the Portfolios
+Machine: not run at release. Covered by the 2026-11-04 run, whose window starts here.
+Walk:    GREEN, run 41199272135 (PR #215 merged 12:01Z, walk job 12:09-12:12Z).
+Action:  none. Front end only.
+
+## 2026-10-31 · 1b909d5 · prod · the release walk follows the editor
+Machine: not run.
+Walk:    GREEN, run 41169862732 (PR #214 merged 04:45Z, walk job 04:53-04:56Z). First green walk
+         since 2026-10-06: the four releases below were red on stale walk locators, not on the site.
+Action:  none. #214 fixed the walk: header tabs (`#nav-tab-*`) instead of the hidden section
+         strip, the first visible carousel picture in Preview, and only visible project cards.
+
+## 2026-10-31 · 5894734 · prod · profile face the height of a pill's buttons
+Machine: not run.
+Walk:    RED, run 41168584135 (walk job 04:34-04:36Z). Walk fault, fixed by 1b909d5.
+Action:  none. Front end only.
+
+## 2026-10-31 · e5c6b99 · prod · tablets get the desktop layout
+Machine: not run.
+Walk:    RED, run 41148548562 (walk job 00:13-00:15Z). Walk fault, fixed by 1b909d5.
+Action:  none. Front end only.
+
+## 2026-10-30 · e0d90dd · prod · floating tag chip, account links, intro font fix
+Machine: not run.
+Walk:    RED, run 41140621654 (walk job 22:55-22:56Z). Walk fault, fixed by 1b909d5.
+Action:  none. Front end only.
+
+## 2026-10-30 · 3766bdc · prod · gallery card v2, bottom bar, nav blocks, page motion
+Machine: not run.
+Walk:    RED, run 41081997931 (walk job 15:42-15:43Z). Walk fault: the editor tabs had moved into
+         the header. Fixed by 1b909d5.
+Action:  none. Front end only. Every deploy job in these runs passed; only the walk failed.
 
 ## 2026-10-06 · 137ccfb · prod · audit fixes, Functions on TypeScript 7, Actions majors
 Machine: GREEN, 8 of 8, `verify:release --project prod` run by Claude at 08:10Z: live build 137ccfb,
