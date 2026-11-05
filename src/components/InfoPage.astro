@@ -476,8 +476,10 @@ const wall = await Promise.all(
       gap: 16px;
     }
   }
-  /* Square, as every corner on the site is (global.css). */
+  /* Round (Josh 11-05: "make the portraits a circle"): the one exception to
+     the site's square corners, which global.css enforces with !important. */
   .info-faces img {
+    border-radius: 50% !important;
     width: 100%;
     height: auto;
     aspect-ratio: 1;
