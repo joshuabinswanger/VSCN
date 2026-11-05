@@ -292,6 +292,13 @@ const wall = await Promise.all(
       visibility 0s linear 0.25s;
   }
 
+  /* Josh 11-05: "dont show the impressum etc." The story ends on its
+     contact frame; the footer links are not part of it. */
+  :global(:root:has(.story) #site-footer),
+  :global(:root:has(.story) .footer-sentinel) {
+    display: none !important;
+  }
+
   /* ── 1. HERO ─────────────────────────────────────────────────────────── */
   /* Board 03.1: the headline centred over the window, the sentences in a
      narrower centred column under it, left-aligned. */
@@ -894,7 +901,11 @@ const wall = await Promise.all(
   // From the scroll position: which step each chapter is at (data-at),
   // which chapter is on screen (data-current on the root), and which parts
   // to show. A part, once shown, stays. Waits until the page is on screen.
-  const REST_BAND = 0.12;
+  // Josh 11-05: OUR MISSION was "just already there": with a band of 12% of
+  // a screen, the parts started rising while the glide still had a quarter
+  // second to go, and the motion hid their entrance. Now only a frame that
+  // has really stopped (within a few px) plays its parts.
+  const REST_PX = 4;
 
   async function story(root: HTMLElement, chapters: Chapter[], signal: AbortSignal) {
     await whenIntroDone();
@@ -917,7 +928,7 @@ const wall = await Promise.all(
         // on screen is enough.
         const off = line - r.top - at * fh;
         const atEnd = (scrollerEl()?.scrollTop ?? 0) >= (scrollerEl()?.scrollHeight ?? 0) - (scrollerEl()?.clientHeight ?? 0) - 2;
-        if (Math.abs(off) < fh * REST_BAND || (atEnd && r.top < vh * 0.6 && r.bottom > vh * 0.4)) {
+        if (Math.abs(off) < REST_PX || (atEnd && r.top < vh * 0.6 && r.bottom > vh * 0.4)) {
           for (const part of c.parts) if (part.step <= at) part.el.setAttribute("data-shown", "");
         }
         if (r.top <= vh * 0.5 && r.bottom > vh * 0.5) root.dataset.current = c.key;
