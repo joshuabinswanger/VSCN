@@ -629,8 +629,7 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
     // IT HANGS UNDER THE PICTURE (2026-11-05, Josh: "it should sit under
     // the image on desktop", "the tab should pull down", and then "on
     // mobile it should also sit under the image"). A rounded tab GAP below
-    // the picture, at the picture's width (a reading minimum, centred on
-    // it); opening unfolds it DOWNWARD into the band under the picture.
+    // the picture, at the picture's width; opening unfolds it DOWNWARD into the band under the picture.
     sheet.classList.add("is-anchored");
     // ZOOMED IN, THE TAB GOES TO THE WINDOW'S FOOT (2026-11-05, Josh: "label
     // should not disappear when zoomed in", then "just make it move to the
@@ -657,9 +656,10 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
     const x = slide.pan?.x ?? 0;
     const y = slide.pan?.y ?? 0;
     const edge = mobile ? 12 : 32;
-    const minW = 22 * parseFloat(getComputedStyle(document.documentElement).fontSize);
-    const width = Math.min(viewport.x - 2 * edge, Math.max(w, minW));
-    const left = Math.min(viewport.x - edge - width, Math.max(edge, x + w / 2 - width / 2));
+    // EXACTLY THE PICTURE'S WIDTH (2026-11-05, Josh: "make the box the same
+    // width as the image"); a 22rem reading minimum went with it.
+    const width = Math.min(viewport.x - 2 * edge, w);
+    const left = Math.min(viewport.x - edge - width, Math.max(edge, x));
     let top = y + h + GAP;
     const foot = 16;
     // AN OPEN TAB GROWS DOWN FIRST, and up only when its words need more
