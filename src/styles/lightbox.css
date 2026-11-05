@@ -529,7 +529,10 @@
   padding-bottom: 0;
   overflow: hidden;
 }
-/* The grabber at the foot: only a desktop tab with words past its title. */
+/* THE FOOT IS A CHEVRON (2026-11-05, Josh: "on desktop it should be a drop
+   down icon not a bar", then the same on a phone, "make it thin"): a thin
+   chevron centred at the tab's foot, pointing down, and up while open.
+   Only on a tab with words past its title. */
 .pswp--vscn .pswp__vscn-sheet-foot {
   display: none;
 }
@@ -537,42 +540,31 @@
   display: block;
   flex: none;
   align-self: center;
-  width: 2.25rem;
-  height: 4px;
-  margin: 0.15rem 0 0.55rem;
-  border-radius: 2px;
-  background: var(--color-border);
+  width: 0.5rem;
+  height: 0.5rem;
+  margin: -0.1rem 0 0.7rem;
+  border-right: 1px solid var(--color-dark);
+  border-bottom: 1px solid var(--color-dark);
+  transform: rotate(45deg);
   cursor: pointer;
-  transition: background-color var(--lb-dur) var(--lb-ease);
+  transition:
+    transform var(--lb-dur) var(--lb-ease),
+    border-color var(--lb-dur) var(--lb-ease);
+}
+/* A thumb-sized target round the small mark. */
+.pswp--vscn .pswp__vscn-sheet.is-anchored.has-more .pswp__vscn-sheet-foot {
+  position: relative;
+}
+.pswp--vscn .pswp__vscn-sheet.is-anchored.has-more .pswp__vscn-sheet-foot::before {
+  content: "";
+  position: absolute;
+  inset: -0.9rem;
 }
 .pswp--vscn .pswp__vscn-sheet.is-anchored.has-more:hover .pswp__vscn-sheet-foot {
-  background: var(--color-muted);
+  border-color: var(--color-muted);
 }
-/* ON A DESKTOP THE FOOT IS A CHEVRON (2026-11-05, Josh: "on desktop it
-   should be a drop down icon not a bar"): the pager's chevron, centred at
-   the tab's foot, pointing down, and up while open. A phone keeps the
-   grabber bar, the touch convention. */
-@media (--bp-desktop) {
-  .pswp--vscn .pswp__vscn-sheet.is-anchored.has-more .pswp__vscn-sheet-foot {
-    width: 0.5rem;
-    height: 0.5rem;
-    margin: -0.1rem 0 0.7rem;
-    border-radius: 0;
-    background: none;
-    border-right: var(--chevron-stroke) solid var(--color-dark);
-    border-bottom: var(--chevron-stroke) solid var(--color-dark);
-    transform: rotate(45deg);
-    transition:
-      transform var(--lb-dur) var(--lb-ease),
-      border-color var(--lb-dur) var(--lb-ease);
-  }
-  .pswp--vscn .pswp__vscn-sheet.is-anchored.has-more:hover .pswp__vscn-sheet-foot {
-    background: none;
-    border-color: var(--color-muted);
-  }
-  .pswp--vscn .pswp__vscn-sheet.is-anchored.is-open .pswp__vscn-sheet-foot {
-    transform: translateY(0.25rem) rotate(-135deg);
-  }
+.pswp--vscn .pswp__vscn-sheet.is-anchored.is-open .pswp__vscn-sheet-foot {
+  transform: translateY(0.25rem) rotate(-135deg);
 }
 @media (--bp-mobile) {
   .pswp--vscn .pswp__vscn-sheet-handle,
