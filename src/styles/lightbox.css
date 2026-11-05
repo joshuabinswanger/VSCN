@@ -372,11 +372,14 @@
   margin-inline: auto;
   background: var(--color-bg);
   border-top: 1px solid var(--color-border);
-  border-radius: 14px 14px 0 0;
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
   box-shadow: 0 -0.75rem 2.5rem rgb(0 0 0 / 0.06);
   /* PhotoSwipe's root is touch-action: none; the words must scroll. */
   touch-action: pan-y;
   user-select: text;
+  /* No text I-beam over the words or the tab (Josh, 2026-11-05): the
+     arrow at rest, the hand on what opens or links. */
+  cursor: default;
   transform: translateY(calc(100% - var(--peek, 3rem) - env(safe-area-inset-bottom, 0px)));
   transition:
     transform var(--lb-dur) var(--lb-ease),
@@ -435,6 +438,9 @@
   background: var(--color-muted);
 }
 /* The title, left-aligned, the whole width: a bare button, no box. */
+.pswp--vscn .pswp__vscn-sheet.has-more .pswp__vscn-sheet-head {
+  cursor: pointer;
+}
 .pswp--vscn .pswp__vscn-sheet-head {
   display: block;
   margin: 0;
@@ -444,7 +450,7 @@
   color: var(--color-dark);
   font-family: inherit;
   text-align: left;
-  cursor: inherit;
+  cursor: default;
 }
 .pswp--vscn .pswp__vscn-sheet-head:disabled {
   color: var(--color-dark);
@@ -478,21 +484,109 @@
 .pswp--vscn .pswp__vscn-sheet-body > p {
   margin: 0;
 }
-@media (--bp-mobile) {
-  .pswp--vscn .pswp__vscn-sheet {
-    width: 100%;
-    max-height: 70%;
-    border-inline: 0;
+/* UNDER THE PICTURE ON A DESKTOP (2026-11-05, Josh: "it should sit under
+   the image on desktop", "the tab should pull down", "make the tab rounded
+   to fit better with the overall style"). lightboxText.ts writes left, width
+   and top off the picture's rect: a rounded tab hangs just under the
+   picture, and opening unfolds its body DOWNWARD into the band below. The
+   grabber moves to the tab's foot, where a pull-down handle belongs. No
+   slide, no drag: the body's height does it. */
+.pswp--vscn .pswp__vscn-sheet.is-anchored {
+  right: auto;
+  bottom: auto;
+  margin-inline: 0;
+  transform: none;
+  border: 1px solid var(--color-border);
+  /* The site's card corner (global.css), like the people cards. */
+  border-radius: var(--radius-card);
+  box-shadow: none;
+}
+.pswp--vscn .pswp__vscn-sheet.is-anchored.is-toggling {
+  transition:
+    top var(--lb-dur) var(--lb-ease),
+    opacity var(--lb-dur) var(--lb-ease),
+    box-shadow var(--lb-dur) var(--lb-ease);
+}
+.pswp--vscn .pswp__vscn-sheet.is-anchored.is-open {
+  box-shadow: 0 0.75rem 2.5rem rgb(0 0 0 / 0.08);
+}
+.pswp--vscn .pswp__vscn-sheet.is-anchored .pswp__vscn-sheet-grip {
+  display: none;
+}
+.pswp--vscn .pswp__vscn-sheet.is-anchored .pswp__vscn-sheet-handle {
+  padding-top: 0.75rem;
+}
+.pswp--vscn .pswp__vscn-sheet.is-anchored .pswp__vscn-sheet-head {
+  padding-bottom: 0.4rem;
+}
+.pswp--vscn .pswp__vscn-sheet.is-anchored:not(.has-more) .pswp__vscn-sheet-head {
+  padding-bottom: 0.75rem;
+}
+.pswp--vscn .pswp__vscn-sheet.is-anchored .pswp__vscn-sheet-body {
+  max-height: var(--body-max, 40vh);
+  padding-bottom: 1rem;
+  transition:
+    max-height var(--lb-dur) var(--lb-ease),
+    padding-bottom var(--lb-dur) var(--lb-ease);
+}
+.pswp--vscn .pswp__vscn-sheet.is-anchored:not(.is-open) .pswp__vscn-sheet-body {
+  max-height: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+/* The grabber at the foot: only a desktop tab with words past its title. */
+.pswp--vscn .pswp__vscn-sheet-foot {
+  display: none;
+}
+.pswp--vscn .pswp__vscn-sheet.is-anchored.has-more .pswp__vscn-sheet-foot {
+  display: block;
+  flex: none;
+  align-self: center;
+  width: 2.25rem;
+  height: 4px;
+  margin: 0.15rem 0 0.55rem;
+  border-radius: 2px;
+  background: var(--color-border);
+  cursor: pointer;
+  transition: background-color var(--lb-dur) var(--lb-ease);
+}
+.pswp--vscn .pswp__vscn-sheet.is-anchored.has-more:hover .pswp__vscn-sheet-foot {
+  background: var(--color-muted);
+}
+/* ON A DESKTOP THE FOOT IS A CHEVRON (2026-11-05, Josh: "on desktop it
+   should be a drop down icon not a bar"): the pager's chevron, centred at
+   the tab's foot, pointing down, and up while open. A phone keeps the
+   grabber bar, the touch convention. */
+@media (--bp-desktop) {
+  .pswp--vscn .pswp__vscn-sheet.is-anchored.has-more .pswp__vscn-sheet-foot {
+    width: 0.5rem;
+    height: 0.5rem;
+    margin: -0.1rem 0 0.7rem;
+    border-radius: 0;
+    background: none;
+    border-right: var(--chevron-stroke) solid var(--color-dark);
+    border-bottom: var(--chevron-stroke) solid var(--color-dark);
+    transform: rotate(45deg);
+    transition:
+      transform var(--lb-dur) var(--lb-ease),
+      border-color var(--lb-dur) var(--lb-ease);
   }
+  .pswp--vscn .pswp__vscn-sheet.is-anchored.has-more:hover .pswp__vscn-sheet-foot {
+    background: none;
+    border-color: var(--color-muted);
+  }
+  .pswp--vscn .pswp__vscn-sheet.is-anchored.is-open .pswp__vscn-sheet-foot {
+    transform: translateY(0.25rem) rotate(-135deg);
+  }
+}
+.pswp--vscn.pswp--vscn-zoomed-words .pswp__vscn-sheet.is-anchored:not(.is-open) {
+  opacity: 0;
+  pointer-events: none;
+}
+@media (--bp-mobile) {
   .pswp--vscn .pswp__vscn-sheet-handle,
   .pswp--vscn .pswp__vscn-sheet-body {
     padding-inline: 1rem;
-  }
-  /* A phone on its side has little height to spare. */
-  @media (height <= 500px) {
-    .pswp--vscn .pswp__vscn-sheet {
-      max-height: 85%;
-    }
   }
 }
 /* `pre-line` because a member who wrote paragraphs meant them, and it is the

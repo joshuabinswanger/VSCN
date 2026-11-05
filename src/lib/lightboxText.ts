@@ -112,6 +112,9 @@ const BAND_TEXT = 0.23;
 const TOP_FLOOR_DESKTOP = 56;
 const TOP_FLOOR_MOBILE = 44;
 
+/** The gap between the picture's bottom edge and the tab under it, in px. */
+const GAP = 10;
+
 export function lightboxPadding(viewportSize: Point, _itemData: SlideData) {
   const mobile = mobileViewport(viewportSize);
   const top = Math.max(
@@ -319,6 +322,9 @@ export function registerLightboxText(
     // Open or shut holds while paging, so a reader who opened one description
     // reads the next one too; a new lightbox starts shut (this closure is per
     // open). Tap the title, swipe the sheet down or press Esc to shut it.
+    // Filled in below, once the placement is attached; the sheet calls it
+    // when it opens or shuts.
+    let placeSheet: () => void = () => {};
     ui.registerElement({
       name: "vscn-sheet",
       className: "pswp__vscn-sheet",
@@ -345,7 +351,14 @@ export function registerLightboxText(
         handle.append(grip, head);
         const body = document.createElement("div");
         body.className = "pswp__vscn-sheet-body";
-        el.append(handle, body);
+        // On a desktop the panel hangs under the picture and PULLS DOWN, so
+        // its grabber sits at its foot instead (lightbox.css shows one or
+        // the other); a click on it toggles like the title.
+        const foot = document.createElement("span");
+        foot.className = "pswp__vscn-sheet-foot";
+        foot.setAttribute("aria-hidden", "true");
+        el.append(handle, body, foot);
+        foot.addEventListener("click", () => hasMore && setOpen(!open));
 
         // THE PEEK IS THE HANDLE'S HEIGHT, measured: a title that wraps to
         // two lines peeks taller, and the CSS slides the rest below the edge.
@@ -380,6 +393,11 @@ export function registerLightboxText(
         const setOpen = (next: boolean, focus = false) => {
           open = next;
           apply(focus);
+          // A phone may lift an open tab (attachSheetPlacement); the move
+          // animates only for the toggle, never while PhotoSwipe pans.
+          el.classList.add("is-toggling");
+          placeSheet();
+          setTimeout(() => el.classList.remove("is-toggling"), 450);
         };
 
         const render = () => {
@@ -413,7 +431,8 @@ export function registerLightboxText(
         let dragging = false;
         let dragged = false;
         handle.addEventListener("pointerdown", (e) => {
-          if (!hasMore || e.button !== 0) return;
+          // Under the picture on a desktop it is a mouse's: click, no drag.
+          if (!hasMore || e.button !== 0 || el.classList.contains("is-anchored")) return;
           dragging = true;
           dragged = false;
           startY = e.clientY;
@@ -475,7 +494,7 @@ export function registerLightboxText(
     // A ZOOMED PICTURE PUTS THE PEEK AWAY: a reader who has zoomed in is
     // looking at the picture. An open sheet stays (lightbox.css).
     const pswp = lightbox.pswp;
-    if (pswp) attachZoomWatch(pswp);
+    if (pswp) placeSheet = attachSheetPlacement(pswp);
   });
 }
 
@@ -588,17 +607,64 @@ function sheetContent(t: TriggerText, labels: LightboxTextLabels, pswp: PhotoSwi
   return out;
 }
 
-function attachZoomWatch(pswp: PhotoSwipe): void {
+function attachSheetPlacement(pswp: PhotoSwipe): () => void {
   // Compared against the slide's own initial level rather than 1: a small
   // image opens BELOW 1:1 and a large one above it, so 1 is not the resting
   // state of anything.
-  const watch = () => {
+  const place = () => {
     const slide = pswp.currSlide;
-    if (!slide) return;
+    const root = pswp.element;
+    const sheet = root?.querySelector<HTMLElement>(".pswp__vscn-sheet");
+    if (!slide || !root || !sheet) return;
     const initial = slide.zoomLevels?.initial ?? 1;
     const zoomed = (slide.currZoomLevel ?? initial) > initial * 1.02;
-    pswp.element?.classList.toggle("pswp--vscn-zoomed-words", zoomed);
+    root.classList.toggle("pswp--vscn-zoomed-words", zoomed);
+
+    // IT HANGS UNDER THE PICTURE (2026-11-05, Josh: "it should sit under
+    // the image on desktop", "the tab should pull down", and then "on
+    // mobile it should also sit under the image"). A rounded tab GAP below
+    // the picture, at the picture's width (a reading minimum, centred on
+    // it); opening unfolds it DOWNWARD into the band under the picture.
+    sheet.classList.add("is-anchored");
+    if (zoomed) return;
+    const viewport = pswp.viewportSize;
+    const mobile = mobileViewport(viewport);
+    const zoom = slide.currZoomLevel || 1;
+    const w = (slide.width || 0) * zoom;
+    const h = (slide.height || 0) * zoom;
+    if (!w || !h) return;
+    const x = slide.pan?.x ?? 0;
+    const y = slide.pan?.y ?? 0;
+    const edge = mobile ? 12 : 32;
+    const minW = 22 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const width = Math.min(viewport.x - 2 * edge, Math.max(w, minW));
+    const left = Math.min(viewport.x - edge - width, Math.max(edge, x + w / 2 - width / 2));
+    let top = y + h + GAP;
+    const foot = 16;
+    // A PHONE LIFTS AN OPEN TAB when the words would not fit below: the band
+    // under a phone's picture is ~150px, which is what "crammed on the
+    // bottom" was. The tab still opens downward, then rises as far as its
+    // text needs, never above 30 % of the window. A desktop never lifts: the
+    // band there is the room (Josh rejected the panel over the picture).
+    if (mobile && sheet.classList.contains("is-open")) {
+      const handle = sheet.querySelector<HTMLElement>(".pswp__vscn-sheet-handle");
+      const body = sheet.querySelector<HTMLElement>(".pswp__vscn-sheet-body");
+      const tail = sheet.querySelector<HTMLElement>(".pswp__vscn-sheet-foot");
+      const need = (handle?.offsetHeight ?? 0) + (body?.scrollHeight ?? 0) + (tail?.offsetHeight ?? 0) + 40;
+      const floor = viewport.y - foot - need;
+      if (floor < top) top = Math.max(viewport.y * 0.3, floor);
+    }
+    const room = Math.max(0, viewport.y - top - foot);
+    const peek = parseFloat(sheet.style.getPropertyValue("--peek")) || 48;
+    sheet.style.left = `${Math.round(left)}px`;
+    sheet.style.width = `${Math.round(width)}px`;
+    sheet.style.top = `${Math.round(top)}px`;
+    sheet.style.maxHeight = `${Math.round(room)}px`;
+    sheet.style.setProperty("--body-max", `${Math.round(Math.max(0, room - peek - 30))}px`);
   };
-  pswp.on("change", watch);
-  pswp.on("zoomPanUpdate", watch);
+  pswp.on("change", place);
+  pswp.on("initialZoomPan", place);
+  pswp.on("resize", place);
+  pswp.on("zoomPanUpdate", place);
+  return place;
 }
