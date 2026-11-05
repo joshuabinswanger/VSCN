@@ -16,6 +16,7 @@
 import PhotoSwipeLightbox from "photoswipe/lightbox";
 import type { SlideData } from "photoswipe";
 import { lightboxPadding, registerLightboxText } from "./lightboxText.ts";
+import { attachIdleHide } from "./lightboxIdle.ts";
 import { registerLightboxEmbeds } from "./lightboxEmbed.ts";
 
 export interface LightboxStrings {
@@ -208,6 +209,11 @@ export function createLightbox(
   // chevrons, the side arrows, the keyboard — all go through goTo(), which
   // moves the strip with animate unset, so the picture JUMPED. Same call with
   // animate on: the strip glides on the spring a swipe ends with.
+  // A desktop's controls step back on a resting mouse; see lightboxIdle.ts.
+  lightbox.on("afterInit", () => {
+    if (lightbox.pswp) attachIdleHide(lightbox.pswp);
+  });
+
   lightbox.on("init", () => {
     const pswp = lightbox.pswp;
     if (!pswp || reduced) return;

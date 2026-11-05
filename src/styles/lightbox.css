@@ -637,6 +637,13 @@
   color: var(--color-dark);
 }
 
+/* A RESTING MOUSE HIDES THE POINTER TOO (lightboxIdle.ts): the controls
+   fade with pswp--ui-visible, and the arrow over the picture goes with them. */
+.pswp--vscn.pswp--vscn-idle,
+.pswp--vscn.pswp--vscn-idle * {
+  cursor: none !important;
+}
+
 /* ── Error ────────────────────────────────────────────────────────────────
    Inherits --pswp-error-text-color from the block at the top; only the type
    needs bringing into the page's scale. */
