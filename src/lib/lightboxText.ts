@@ -617,7 +617,8 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
     const sheet = root?.querySelector<HTMLElement>(".pswp__vscn-sheet");
     if (!slide || !root || !sheet) return;
     const initial = slide.zoomLevels?.initial ?? 1;
-    const zoomed = (slide.currZoomLevel ?? initial) > initial * 1.02;
+    // A hair over the resting level, so the tab stops where the picture rested.
+    const zoomed = (slide.currZoomLevel ?? initial) > initial * 1.001;
     root.classList.toggle("pswp--vscn-zoomed-words", zoomed);
 
     // IT HANGS UNDER THE PICTURE (2026-11-05, Josh: "it should sit under
@@ -626,6 +627,10 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
     // the picture, at the picture's width (a reading minimum, centred on
     // it); opening unfolds it DOWNWARD into the band under the picture.
     sheet.classList.add("is-anchored");
+    // ZOOMED IN, THE TAB STAYS WHERE IT WAS (2026-11-05, Josh: "label should
+    // not disappear when zoomed in"). It was hidden from 10-13, because a
+    // zoomed picture's rect runs off the window and the tab would follow it
+    // out; now it simply stops following until the picture is back.
     if (zoomed) return;
     const viewport = pswp.viewportSize;
     const mobile = mobileViewport(viewport);
