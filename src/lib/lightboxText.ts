@@ -612,7 +612,6 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
   // image opens BELOW 1:1 and a large one above it, so 1 is not the resting
   // state of anything.
   let wasZoomed = false;
-  let settle: ReturnType<typeof setTimeout> | undefined;
   const place = () => {
     const slide = pswp.currSlide;
     const root = pswp.element;
@@ -622,14 +621,10 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
     // A hair over the resting level, so the tab leaves as the zoom starts.
     const zoomed = (slide.currZoomLevel ?? initial) > initial * 1.001;
     root.classList.toggle("pswp--vscn-zoomed-words", zoomed);
-    // The move between the two places animates; following the picture
-    // while it pans or opens never does.
-    if (zoomed !== wasZoomed) {
-      wasZoomed = zoomed;
-      sheet.classList.add("is-toggling");
-      clearTimeout(settle);
-      settle = setTimeout(() => sheet.classList.remove("is-toggling"), 450);
-    }
+    // The move between the two places animates (a FLIP: measure, re-anchor,
+    // slide from the old place); following the picture never does.
+    const flip = zoomed !== wasZoomed ? sheet.getBoundingClientRect().top : null;
+    wasZoomed = zoomed;
 
     // IT HANGS UNDER THE PICTURE (2026-11-05, Josh: "it should sit under
     // the image on desktop", "the tab should pull down", and then "on
@@ -641,11 +636,18 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
     // should not disappear when zoomed in", then "just make it move to the
     // bottom on zoom in"). A zoomed picture's rect runs off the window, so
     // the tab stops following it and sits at the foot, keeping its width.
+    // Anchored by its BOTTOM there, so shutting it collapses DOWN into the
+    // foot and opening grows up.
     if (zoomed) {
       const vy = pswp.viewportSize.y;
-      sheet.style.top = `${Math.round(Math.max(64, vy - 16 - sheet.offsetHeight))}px`;
+      sheet.style.top = "auto";
+      sheet.style.bottom = "16px";
+      sheet.style.maxHeight = `${Math.round(vy - 80)}px`;
+      sheet.style.setProperty("--body-max", `${Math.round(Math.max(0, vy - 80 - 90))}px`);
+      slideFrom(sheet, flip);
       return;
     }
+    sheet.style.bottom = "";
     const viewport = pswp.viewportSize;
     const mobile = mobileViewport(viewport);
     const zoom = slide.currZoomLevel || 1;
@@ -680,10 +682,22 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
     sheet.style.top = `${Math.round(top)}px`;
     sheet.style.maxHeight = `${Math.round(room)}px`;
     sheet.style.setProperty("--body-max", `${Math.round(Math.max(0, room - peek - 30))}px`);
+    slideFrom(sheet, flip);
   };
   pswp.on("change", place);
   pswp.on("initialZoomPan", place);
   pswp.on("resize", place);
   pswp.on("zoomPanUpdate", place);
   return place;
+}
+
+/** Slides the tab from where it stood (`from`, a rect top) to where it is now. */
+function slideFrom(sheet: HTMLElement, from: number | null): void {
+  if (from === null || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const dy = from - sheet.getBoundingClientRect().top;
+  if (Math.abs(dy) < 1) return;
+  sheet.animate([{ translate: `0 ${dy}px` }, { translate: "0 0" }], {
+    duration: 360,
+    easing: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+  });
 }
