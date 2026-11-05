@@ -343,120 +343,21 @@
   color: var(--color-muted);
 }
 
-/* THE CAPTION, THE DESCRIPTION AND THE LINK — under the picture, at the
-   picture's own width, whatever its shape. Where and how wide is the script's
-   call; this is a plain column. (From 09-04 to 09-06 a portrait picture got a
-   column beside it instead — one design in two arrangements — until Josh asked
-   for the words "always below the images". One arrangement now; the deeper
-   reserve a narrow upright picture needs lives in lightboxPadding.) */
-.pswp--vscn .pswp__vscn-text {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  /* A LAST RESORT, not the layout. The 30 % band under the picture is the
-     room (lightboxPadding); this is here so that an overrun costs the end
-     of a paragraph rather than a caption printed over the artwork. max-height
-     is written inline by the script, from the room actually left below the
-     picture. */
-  overflow-y: auto;
-  /* A wheel gesture that reaches the end must not then start dragging the
-     lightbox itself. */
-  overscroll-behavior: contain;
-  /* NO SCROLLBAR CHROME. Chromium paints a classic track with arrows for an
-     overflow:auto box on Windows even at rest, and it landed as a 15px gutter
-     of grey furniture down the right edge of the description — in the one
-     layout on this site whose entire point was getting rid of furniture
-     (caught in the browser; nothing about the CSS predicts it). The bar is
-     hidden, not the scrolling: wheel, touch, and keyboard all still work. What
-     replaces it as the affordance is the fade below, which appears only when
-     there is actually something past the edge. */
-  scrollbar-width: none;
-}
-.pswp--vscn .pswp__vscn-text::-webkit-scrollbar {
-  display: none;
-}
-/* THE ONLY SIGN THAT THERE IS MORE. The script sets this class when the block's
-   content is taller than the room it was given; at every other time the mask
-   is absent and the text has a hard bottom edge like any other paragraph. A
-   gradient rather than an arrow or a "more" control: this is a paragraph that
-   continues, and the reader's own scroll is the way to continue it. */
-.pswp--vscn .pswp__vscn-text.is-clipped {
-  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 1.6rem), transparent);
-  mask-image: linear-gradient(to bottom, #000 calc(100% - 1.6rem), transparent);
-}
-/* A work with no caption, description or link gets no empty block. */
-.pswp--vscn .pswp__vscn-text.is-empty {
-  display: none;
-}
-
-/* THE TITLE IS THE DROPDOWN (2026-10-15, Josh: "the show more text should be
-   left aligned and be the title and drop down button to show the
-   description"). The caption, left-aligned, and the chevron at the RIGHT end
-   of the picture's measure (Josh, same day: "the drop down arrow should be
-   on the right") — the pager's chevron, turned down, and up while open. The
-   head spans the whole column, so the gap between them is clickable too. A bare button:
-   no box, no underline; the chevron is what says it opens. A <span> rather
-   than a button when the work has nothing but a caption. */
-.pswp--vscn .pswp__vscn-text-head {
-  display: flex;
-  align-self: stretch;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--color-dark);
-  font-family: inherit;
-  text-align: left;
-}
-.pswp--vscn button.pswp__vscn-text-head {
-  cursor: pointer;
-}
-.pswp--vscn button.pswp__vscn-text-head:hover,
-.pswp--vscn button.pswp__vscn-text-head:focus-visible {
-  color: var(--color-muted);
-}
-.pswp--vscn button.pswp__vscn-text-head:focus-visible {
-  outline: 2px solid var(--color-dark);
-  outline-offset: 2px;
-}
-/* UNCLAMPED: the block scrolls, so there is nothing to protect the layout
-   from. Inherits the head's colour so the hover reaches it. */
-.pswp--vscn .pswp__vscn-text-caption {
-  color: inherit;
-}
-/* Two borders on a box turned 45deg, the site's chevron, pointing down,
-   pushed to the right end — also when there is no caption before it. */
-.pswp--vscn .pswp__vscn-text-chev {
-  flex: none;
-  width: 0.45rem;
-  height: 0.45rem;
-  margin: -0.2rem 0.2rem 0 auto;
-  border-right: var(--chevron-stroke) solid currentColor;
-  border-bottom: var(--chevron-stroke) solid currentColor;
-  vertical-align: middle;
-  transform: rotate(45deg);
-  transition: transform var(--lb-dur) var(--lb-ease);
-}
-.pswp--vscn .pswp__vscn-text.is-open .pswp__vscn-text-chev {
-  transform: translate(0, 0.2rem) rotate(-135deg);
-}
 /* ── The sheet ────────────────────────────────────────────────────────
-   WHAT THE TITLE OPENS (2026-11-04, Josh: "a way to read the long
+   THE WORDS ABOUT THE PICTURE (2026-11-04, Josh: "a way to read the long
    descriptions comfortably ... a sheet that slides up", over the image on
    desktop as well). Until then the title unfolded the words in place, in the
    23 % band under the picture, where a phone gave a long paragraph about
    180px and pressed its links against the browser's bottom edge.
 
-   It rises from the window's foot over the picture: full width on a phone,
-   a reading measure centred on a desktop. Its own box scrolls; the title
-   and grip above that stay put and are the handle (tap or drag down to
-   shut, lightboxText.ts). The end pads clear of the home bar. It is a
-   sibling of PhotoSwipe's scroll-wrap, so the picture around it keeps its
-   gestures. `transform` slides it, `translate` is the finger's (inline). */
+   IT PEEKS (2026-11-05, Josh: the title's "drop down arrow is placed
+   weirdly"). Shut, only its top shows at the window's foot: the grabber and
+   the title, --peek tall (measured by lightboxText.ts) plus the home bar.
+   Open, the same panel grows up over the picture. Full width on a phone, a
+   reading measure centred on a desktop. Its own box scrolls; the handle
+   above that stays put. It is a sibling of PhotoSwipe's scroll-wrap, so the
+   picture around it keeps its gestures. `transform` slides it, `translate`
+   is the finger's (inline). */
 .pswp--vscn .pswp__vscn-sheet {
   position: absolute;
   left: 0;
@@ -472,52 +373,70 @@
   background: var(--color-bg);
   border-top: 1px solid var(--color-border);
   border-radius: 14px 14px 0 0;
-  box-shadow: 0 -0.75rem 2.5rem rgb(0 0 0 / 0.08);
+  box-shadow: 0 -0.75rem 2.5rem rgb(0 0 0 / 0.06);
   /* PhotoSwipe's root is touch-action: none; the words must scroll. */
   touch-action: pan-y;
   user-select: text;
-  transform: translateY(calc(100% + 3rem));
-  visibility: hidden;
+  transform: translateY(calc(100% - var(--peek, 3rem) - env(safe-area-inset-bottom, 0px)));
   transition:
     transform var(--lb-dur) var(--lb-ease),
     translate var(--lb-dur) var(--lb-ease),
-    visibility 0s linear var(--lb-dur);
+    opacity var(--lb-dur) var(--lb-ease),
+    box-shadow var(--lb-dur) var(--lb-ease);
 }
 .pswp--vscn .pswp__vscn-sheet.is-open {
   transform: translateY(0);
-  visibility: visible;
-  transition:
-    transform var(--lb-dur) var(--lb-ease),
-    translate var(--lb-dur) var(--lb-ease),
-    visibility 0s;
+  box-shadow: 0 -0.75rem 2.5rem rgb(0 0 0 / 0.1);
 }
 .pswp--vscn .pswp__vscn-sheet.is-dragging {
   transition: none;
+}
+/* A work with no title and no words gets no sheet at all. */
+.pswp--vscn .pswp__vscn-sheet.is-empty {
+  display: none;
+}
+/* ZOOMED IN, THE PEEK GOES: the reader is looking at the picture. An open
+   sheet stays, since the reader opened it (2026-11-04). */
+.pswp--vscn.pswp--vscn-zoomed-words .pswp__vscn-sheet:not(.is-open) {
+  transform: translateY(calc(100% + 3rem));
+}
+/* PAGING: the strip is between pictures (lightbox.ts), so the title leaves
+   quickly rather than name nothing; the next work's fades in on arrival. */
+.pswp--vscn.pswp--vscn-paging .pswp__vscn-sheet:not(.is-open) .pswp__vscn-sheet-head {
+  opacity: 0;
+  transition: opacity 160ms var(--lb-ease);
 }
 .pswp--vscn .pswp__vscn-sheet-handle {
   flex: none;
   display: flex;
   flex-direction: column;
-  padding: 0.55rem 1.5rem 0;
+  padding: 0.5rem 1.5rem 0;
+}
+.pswp--vscn .pswp__vscn-sheet.has-more .pswp__vscn-sheet-handle {
   /* The finger drags the sheet here, never the page. */
   touch-action: none;
-  cursor: grab;
+  cursor: pointer;
 }
+/* THE GRABBER is what says "pull this up". Without words past the title it
+   holds its room unseen, so paging never makes the peek jump. */
 .pswp--vscn .pswp__vscn-sheet-grip {
   align-self: center;
   width: 2.25rem;
   height: 4px;
-  margin-bottom: 0.7rem;
+  margin-bottom: 0.6rem;
   border-radius: 2px;
   background: var(--color-border);
+  transition: background-color var(--lb-dur) var(--lb-ease);
 }
-/* The title again, at the sheet's top, with the chevron turned up: the
-   same head as under the picture, now the way to shut. */
+.pswp--vscn .pswp__vscn-sheet:not(.has-more) .pswp__vscn-sheet-grip {
+  visibility: hidden;
+}
+.pswp--vscn .pswp__vscn-sheet.has-more .pswp__vscn-sheet-handle:hover .pswp__vscn-sheet-grip {
+  background: var(--color-muted);
+}
+/* The title, left-aligned, the whole width: a bare button, no box. */
 .pswp--vscn .pswp__vscn-sheet-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  display: block;
   margin: 0;
   padding: 0 0 0.85rem;
   border: 0;
@@ -525,9 +444,12 @@
   color: var(--color-dark);
   font-family: inherit;
   text-align: left;
-  cursor: pointer;
+  cursor: inherit;
 }
-.pswp--vscn .pswp__vscn-sheet-head:hover,
+.pswp--vscn .pswp__vscn-sheet-head:disabled {
+  color: var(--color-dark);
+}
+.pswp--vscn .pswp__vscn-sheet-head:not(:disabled):hover,
 .pswp--vscn .pswp__vscn-sheet-head:focus-visible {
   color: var(--color-muted);
 }
@@ -535,11 +457,13 @@
   outline: 2px solid var(--color-dark);
   outline-offset: 2px;
 }
-.pswp--vscn .pswp__vscn-sheet-caption:empty {
-  display: none;
-}
-.pswp--vscn .pswp__vscn-sheet-head .pswp__vscn-text-chev {
-  transform: translate(0, 0.2rem) rotate(-135deg);
+/* Shut, a long title keeps to one line, so the peek stands at one height
+   from work to work; open, it reads in full. */
+.pswp--vscn .pswp__vscn-sheet:not(.is-open) .pswp__vscn-sheet-caption {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .pswp--vscn .pswp__vscn-sheet-body {
   display: flex;
@@ -553,12 +477,6 @@
 }
 .pswp--vscn .pswp__vscn-sheet-body > p {
   margin: 0;
-}
-/* While the sheet is up, the title under the picture steps back: the
-   sheet's own head says it, and a wide picture's title would show twice. */
-.pswp--vscn.pswp--vscn-sheet-open .pswp__vscn-text {
-  opacity: 0;
-  pointer-events: none;
 }
 @media (--bp-mobile) {
   .pswp--vscn .pswp__vscn-sheet {
@@ -634,26 +552,6 @@
   color: var(--color-dark);
 }
 
-/* ZOOMED IN: THE WORDS GO. They are glued to the picture's rect, and a zoomed
-   picture's rect is mostly outside the window — following it would drag the
-   caption off-screen. The script sets this class on the root; hiding is
-   done here so the two halves of the decision are not split across a
-   stylesheet and a style attribute. The artist line is pinned to the
-   window now and stays. */
-.pswp--vscn .pswp__vscn-text {
-  transition: opacity var(--lb-dur) var(--lb-ease);
-}
-.pswp--vscn.pswp--vscn-zoomed-words .pswp__vscn-text {
-  opacity: 0;
-  pointer-events: none;
-}
-/* PAGING: the strip is between pictures (lightbox.ts), so the words leave
-   quickly rather than stand under nothing. The next work's fade in on arrival. */
-.pswp--vscn.pswp--vscn-paging .pswp__vscn-text {
-  opacity: 0;
-  transition-duration: 160ms;
-}
-
 /* ── Error ────────────────────────────────────────────────────────────────
    Inherits --pswp-error-text-color from the block at the top; only the type
    needs bringing into the page's scale. */
@@ -691,9 +589,8 @@
    two-class selector by more than source order. */
 @media (prefers-reduced-motion: reduce) {
   .pswp--vscn .pswp__button,
-  .pswp--vscn .pswp__vscn-text,
   .pswp--vscn .pswp__vscn-sheet,
-  .pswp--vscn .pswp__vscn-text-chev {
+  .pswp--vscn .pswp__vscn-sheet-grip {
     transition: none;
   }
   .pswp.pswp--vscn .pswp__hide-on-close {
