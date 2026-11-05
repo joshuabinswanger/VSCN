@@ -90,25 +90,26 @@ const wall = await Promise.all(
     styles does, and the script switches the story off. */}
 <div class="info-page story" data-story-root data-paints-in data-story-on>
   <noscript><style>.story [data-in] { opacity: 1 !important; transform: none !important; }</style></noscript>
-  <!-- 1. HERO -->
-  <section class="story-ch story-ch--hero" data-story-ch="hero" data-steps="1" style="--steps: 1">
+  <!-- Josh 11-05, restructured: a frame each for the headline; the two
+       sentences; the works; the mission with the ways in; the next steps
+       with the way to reach us. -->
+  <!-- 1. HERO: the headline alone -->
+  <section class="story-ch story-ch--hero" data-story-ch="hero">
     <div class="story-frame">
       <div class="info-hero">
         <h1 class="info-hero__title" data-in>{t("info.hero.title")}</h1>
-        {/* The belief at the big size, the reasons under it at reading size. */}
-        <div class="info-hero__text">
-          <p class="info-hero__sub" data-in data-step="1">{t("info.hero.lead")}</p>
-          <p class="info-hero__sub info-hero__claim" data-in data-step="1" style="--d: 0.35s">{t("info.hero.claim")}</p>
-        </div>
       </div>
       <span class="story-cue" aria-hidden="true">{t("info.story.cue")}<span class="story-cue__line"></span></span>
     </div>
   </section>
 
-  <!-- 1b. THE NETWORK: one sentence, its own screen (Josh 11-05) -->
-  <section class="story-ch story-ch--network" data-story-ch="network">
-    <div class="story-frame story-frame--center">
-      <p class="info-network" data-in>{t("info.hero.body")}</p>
+  <!-- 1b. WHY: the two sentences -->
+  <section class="story-ch story-ch--intro" data-story-ch="intro">
+    <div class="story-frame">
+      <div class="info-hero__text">
+        <p class="info-hero__sub" data-in>{t("info.hero.lead")}</p>
+        <p class="info-hero__sub info-hero__claim" data-in style="--d: 0.5s">{t("info.hero.claim")}</p>
+      </div>
     </div>
   </section>
 
@@ -164,58 +165,42 @@ const wall = await Promise.all(
     )
   }
 
-  <!-- 3. ABOUT: mission, how, plan. A column per scroll. -->
-  <section class="story-ch story-ch--about" data-story-ch="about" data-steps="2" style="--steps: 2">
+  <!-- 3. MISSION, then the two ways in -->
+  <section class="story-ch story-ch--about story-ch--mission" data-story-ch="mission">
     <div class="story-frame">
       <div class="info-about">
         <div class="info-col" data-col="0">
-          <h2 class="info-heading" data-in data-step="0">{t("info.h2.mission")}</h2>
+          <h2 class="info-heading" data-in>{t("info.h2.mission")}</h2>
           <ul class="info-list">
-            <li data-in data-step="0" style="--d: 0.15s">{t("info.mission.1")}</li>
-            <li data-in data-step="0" style="--d: 0.30s">{t("info.mission.2")}</li>
-            <li data-in data-step="0" style="--d: 0.45s">{t("info.mission.3")}</li>
+            <li data-in style="--d: 0.15s">{t("info.mission.1")}</li>
+            <li data-in style="--d: 0.30s">{t("info.mission.2")}</li>
+            <li data-in style="--d: 0.45s">{t("info.mission.3")}</li>
           </ul>
-        </div>
-        <div class="info-col" data-col="1">
-          <h2 class="info-heading" data-in data-step="1">{t("info.h2.how")}</h2>
-          <ul class="info-list">
-            <li data-in data-step="1" style="--d: 0.15s">{t("info.how.1")}</li>
-            <li data-in data-step="1" style="--d: 0.30s">{t("info.how.2")}</li>
-            <li data-in data-step="1" style="--d: 0.45s">{t("info.how.3")}</li>
-          </ul>
-        </div>
-        <div class="info-col" data-col="2">
-          <h2 class="info-heading" data-in data-step="2">{t("info.h2.plan")}</h2>
-          <ul class="info-list">
-            <li data-in data-step="2" style="--d: 0.15s">{t("info.plan.1")}</li>
-            <li data-in data-step="2" style="--d: 0.30s">{t("info.plan.2")}</li>
-            <li data-in data-step="2" style="--d: 0.45s">{t("info.plan.3")}</li>
-          </ul>
+          <div class="info-cta__row">
+            <a href={portfoliosHref} class="btn-solid info-cta__btn" data-in style="--d: 0.7s">{t("info.cta.portfolios")}<span aria-hidden="true">→</span></a>
+            <a href={peopleHref} class="btn-solid info-cta__btn" data-in style="--d: 0.8s">{t("info.cta.members")}<span aria-hidden="true">→</span></a>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- 4. PORTFOLIOS -->
-  <section class="story-ch story-ch--portfolios" data-story-ch="portfolios">
-    <div class="story-frame story-frame--center">
-      <div class="info-cta__col">
-        <a href={portfoliosHref} class="btn-solid info-cta__btn" data-in>{t("info.cta.portfolios")}<span aria-hidden="true">→</span></a>
-        <a href={peopleHref} class="btn-solid info-cta__btn" data-in style="--d: 0.15s">{t("info.cta.people")}<span aria-hidden="true">→</span></a>
-        <a href={lang === "de" ? "/de/signup" : "/signup"} class="btn-outline" id="info-signup-cta" style="display:none; --d: 0.3s" data-in
-          >{t("signup.cta.info")}</a
-        >
+  <!-- 4. NEXT STEPS, then reach out. The last screen: one scroll more goes to the portfolios. -->
+  <section class="story-ch story-ch--about story-ch--steps" data-story-ch="steps" data-onward={portfoliosHref}>
+    <div class="story-frame">
+      <div class="info-about">
+        <div class="info-col" data-col="0">
+          <h2 class="info-heading" data-in>{t("info.h2.plan")}</h2>
+          <ul class="info-list">
+            <li data-in style="--d: 0.15s">{t("info.plan.1")}</li>
+            <li data-in style="--d: 0.30s">{t("info.plan.2")}</li>
+            <li data-in style="--d: 0.45s">{t("info.plan.3")}</li>
+          </ul>
+          <div class="info-cta__row">
+            <!--email_off--><a href="mailto:info@vscn.ch" class="btn-outline info-cta__btn" data-in style="--d: 0.7s">{t("info.cta.contact")}<span aria-hidden="true">→</span></a><!--/email_off-->
+          </div>
+        </div>
       </div>
-    </div>
-  </section>
-
-  <!-- 5. CONTACT: the last screen; one scroll more goes to the portfolios. -->
-  <section class="story-ch story-ch--contact" data-story-ch="contact" data-onward={portfoliosHref}>
-    <div class="story-frame story-frame--center">
-      <p class="info-contact" data-in>
-        {t("info.contact.ask")}{" "}
-        <!--email_off--><a href="mailto:info@vscn.ch">info@vscn.ch</a><!--/email_off-->
-      </p>
     </div>
   </section>
 </div>
@@ -296,7 +281,7 @@ const wall = await Promise.all(
       opacity 0.4s ease,
       visibility 0s linear 0s;
   }
-  :global(:root:has(.story[data-story-on]:not([data-current="portfolios"], [data-current="contact"])) .views-pill) {
+  :global(:root:has(.story[data-story-on]:not([data-current="mission"], [data-current="steps"])) .views-pill) {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
@@ -307,6 +292,11 @@ const wall = await Promise.all(
 
   /* Josh 11-05: "dont show the impressum etc." The story ends on its
      contact frame; the footer links are not part of it. */
+  /* Nor the room kept under the page for that footer: the last frame is
+     the page's end, so the pager has no stray stretch after it. */
+  :global(:root:has(.story) .page-wrap) {
+    padding-bottom: 0 !important;
+  }
   :global(:root:has(.story) #site-footer),
   :global(:root:has(.story) .footer-sentinel) {
     display: none !important;
@@ -343,6 +333,7 @@ const wall = await Promise.all(
     flex-direction: column;
     gap: 2.25rem;
     width: min(100%, 48rem);
+    margin: 0 auto;
 
     @media (--bp-mobile) {
       gap: 1.5rem;
@@ -497,20 +488,14 @@ const wall = await Promise.all(
     transform: translateX(-24px);
   }
 
-  /* ── 4. PORTFOLIOS: THREE BUTTONS, ONE ABOVE THE OTHER ───────────────
-     Board 03.4: the two solid ones the same width, 90px apart. */
-  .story-ch--portfolios .story-frame {
-    padding-bottom: 56px;
-  }
-  .info-cta__col {
+  /* ── THE WAYS IN: a row of buttons under a list (Portfolios | Members
+     under the mission, Reach out under the next steps), the solid ones
+     the same width. */
+  .info-cta__row {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 90px;
-
-    @media (--bp-mobile) {
-      gap: 56px;
-    }
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 1rem;
   }
   .info-cta__btn {
     display: inline-flex;
@@ -518,11 +503,19 @@ const wall = await Promise.all(
     align-items: center;
     gap: 0.6em;
     box-sizing: border-box;
-    min-width: 15rem;
+    min-width: 11rem;
     white-space: nowrap;
 
     @media (--bp-mobile) {
-      min-width: 16rem;
+      flex: 1 1 0;
+      min-width: 0;
+    }
+  }
+  .info-cta__row:has(> :only-child) .info-cta__btn {
+    flex: 0 0 auto;
+
+    @media (--bp-mobile) {
+      min-width: 11rem;
     }
   }
   .info-cta__btn span {
@@ -530,34 +523,6 @@ const wall = await Promise.all(
   }
   .info-cta__btn:hover span {
     translate: 4px 0;
-  }
-
-  /* ── 7. CONTACT ──────────────────────────────────────────────────────── */
-  .info-contact {
-    max-width: 40rem;
-    margin: 0;
-    color: var(--color-muted);
-  }
-  .info-contact a {
-    color: var(--color-dark);
-    border-bottom: 0;
-    font-weight: 600;
-    text-decoration: none;
-    transition: opacity 0.15s;
-  }
-  .info-contact a:hover,
-  .info-contact a:focus-visible {
-    opacity: 0.5;
-  }
-
-  /* ── 1b. THE NETWORK ─────────────────────────────────────────────────
-     The sentence that was the hero's third, alone in the middle of its
-     screen at the hero's second size (type.css, with .info-hero__sub). */
-  .info-network {
-    width: min(100%, 40rem);
-    margin: 0 auto;
-    color: var(--color-dark);
-    text-align: center;
   }
 
   /* THE WORKS CUE: the same growing line, without its word, at the foot of
