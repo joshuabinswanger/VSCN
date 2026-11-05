@@ -215,12 +215,12 @@ const wall = await Promise.all(
     /* A chapter's height: the scroller's height under the header row. A
        desktop scrolls .page-wrap, as tall as the shell; a phone scrolls the
        document, so the small viewport height keeps a chapter from jumping
-       as the toolbars come and go. */
+       as the toolbars come and go. A phone's chapter is the VISIBLE screen
+       (--shell-h, the visual viewport, Layout.astro): with the small
+       viewport, Safari's collapsed toolbars let the next chapter peek in
+       under the frame. The phone pager moves the page itself, so the
+       toolbars no longer come and go mid-story. */
     --story-vh: calc(var(--shell-h, 100dvh) - var(--header-h));
-
-    @media (--bp-mobile) {
-      --story-vh: calc(100svh - var(--header-h));
-    }
   }
 
   /* ── CHAPTERS: ONE SCREEN EACH, SNAPPED ─────────────────────────────── */
@@ -402,8 +402,8 @@ const wall = await Promise.all(
   .story[data-story-on] .info-col {
     grid-area: col;
     transition:
-      opacity 0.4s ease,
-      visibility 0s linear 0.4s;
+      opacity 0.2s ease,
+      visibility 0s linear 0.2s;
   }
   .story[data-story-on] .story-ch--about:not([data-at="0"]) .info-col[data-col="0"],
   .story[data-story-on] .story-ch--about:not([data-at="1"]) .info-col[data-col="1"],
@@ -414,7 +414,7 @@ const wall = await Promise.all(
   .story[data-story-on] .story-ch--about[data-at="0"] .info-col[data-col="0"],
   .story[data-story-on] .story-ch--about[data-at="1"] .info-col[data-col="1"],
   .story[data-story-on] .story-ch--about[data-at="2"] .info-col[data-col="2"] {
-    transition: opacity 0.4s ease;
+    transition: opacity 0.3s ease 0.2s;
   }
   /* One line, as on the board, even where it is wider than the points. */
   .info-heading {
@@ -876,6 +876,8 @@ const wall = await Promise.all(
   // From the scroll position: which step each chapter is at (data-at),
   // which chapter is on screen (data-current on the root), and which parts
   // to show. A part, once shown, stays. Waits until the page is on screen.
+  const REST_BAND = 0.12;
+
   async function story(root: HTMLElement, chapters: Chapter[], signal: AbortSignal) {
     await whenIntroDone();
     await whenHoldDone();
@@ -890,7 +892,14 @@ const wall = await Promise.all(
         const fh = c.frame.offsetHeight || vh;
         const at = Math.min(c.steps, Math.max(0, Math.round((line - r.top) / fh)));
         if (c.el.dataset.at !== String(at)) c.el.dataset.at = String(at);
-        if (r.top < vh * 0.65 && r.bottom > vh * 0.35) {
+        // Josh 11-05: "the frames should always stop and animate in when
+        // visible". A part waits until its frame has (nearly) come to rest
+        // under the header, not while it is still sliding through; at the
+        // page's end, where the last frame may not reach the line, being
+        // on screen is enough.
+        const off = line - r.top - at * fh;
+        const atEnd = (scrollerEl()?.scrollTop ?? 0) >= (scrollerEl()?.scrollHeight ?? 0) - (scrollerEl()?.clientHeight ?? 0) - 2;
+        if (Math.abs(off) < fh * REST_BAND || (atEnd && r.top < vh * 0.6 && r.bottom > vh * 0.4)) {
           for (const part of c.parts) if (part.step <= at) part.el.setAttribute("data-shown", "");
         }
         if (r.top <= vh * 0.5 && r.bottom > vh * 0.5) root.dataset.current = c.key;
@@ -983,6 +992,143 @@ const wall = await Promise.all(
     signal.addEventListener("abort", () => clearTimeout(timer), { once: true });
   }
 
+  // ── THE PHONE PAGER ───────────────────────────────────────────────────
+  // Josh 11-05 (iPhone recording): one flick ran the whole story by, the
+  // momentum sailing past every stop before the settle could act. On a phone
+  // the page follows the finger itself: a vertical drag moves it 1:1 (native
+  // scrolling is held off with preventDefault, so Safari's momentum and
+  // toolbars stay out of it), and the release glides to exactly ONE stop on
+  // in the direction moved, or back if the move was small and slow. Where
+  // content runs past its stops (the page's end, under the last frame) the
+  // release keeps a little momentum inside that stretch. A sideways drag is
+  // left to the carousel; a tap is never touched.
+  const PAGE_MS = 520;
+  const FLICK = 0.35; // px/ms: a quick flick counts as a full move
+
+  function pager(root: HTMLElement, chapters: Chapter[], signal: AbortSignal) {
+    const s = document.scrollingElement as HTMLElement;
+    let raf = 0;
+    let startX = 0;
+    let startY = 0;
+    let startTop = 0;
+    let axis: "x" | "y" | null = null;
+    let from = 0;
+    let samples: { t: number; y: number }[] = [];
+    const max = () => s.scrollHeight - innerHeight;
+    const stops = () => {
+      const line = restLine(root);
+      const out: number[] = [];
+      for (const c of chapters) {
+        const top = Math.max(0, c.el.getBoundingClientRect().top + s.scrollTop - line);
+        const fh = c.frame.offsetHeight || innerHeight;
+        for (let i = 0; i <= c.steps; i++) out.push(Math.min(max(), top + i * fh));
+      }
+      return out;
+    };
+    const nearest = (list: number[], y: number) => list.reduce((b, v, i) => (Math.abs(v - y) < Math.abs(list[b] - y) ? i : b), 0);
+    const stop = () => {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    };
+    const glide = (to: number, ms = PAGE_MS) => {
+      stop();
+      const a = s.scrollTop;
+      const t0 = performance.now();
+      const tick = (now: number) => {
+        const k = Math.min(1, (now - t0) / ms);
+        const e = 1 - Math.pow(1 - k, 3);
+        window.scrollTo(0, a + (to - a) * e);
+        raf = k < 1 ? requestAnimationFrame(tick) : 0;
+      };
+      raf = requestAnimationFrame(tick);
+    };
+    const mine = (e: TouchEvent) => e.touches.length === 1 && !!(e.target as Element | null)?.closest?.(".page-wrap");
+    document.addEventListener(
+      "touchstart",
+      (e) => {
+        if (!mine(e)) return;
+        stop();
+        axis = null;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        startTop = s.scrollTop;
+        from = nearest(stops(), startTop);
+        samples = [{ t: e.timeStamp, y: startY }];
+      },
+      { passive: true, signal }
+    );
+    document.addEventListener(
+      "touchmove",
+      (e) => {
+        if (!mine(e) || axis === "x") return;
+        const x = e.touches[0].clientX;
+        const y = e.touches[0].clientY;
+        if (!axis) {
+          if (Math.abs(x - startX) < 6 && Math.abs(y - startY) < 6) return;
+          axis = Math.abs(x - startX) > Math.abs(y - startY) ? "x" : "y";
+          if (axis === "x") return;
+        }
+        e.preventDefault();
+        window.scrollTo(0, Math.max(0, Math.min(max(), startTop + startY - y)));
+        samples.push({ t: e.timeStamp, y });
+        if (samples.length > 6) samples.shift();
+      },
+      { passive: false, signal }
+    );
+    const release = () => {
+      if (axis !== "y") return;
+      axis = null;
+      const first = samples[0];
+      const last = samples[samples.length - 1];
+      const dt = last.t - first.t;
+      // px/ms, positive when the page moves down (the finger goes up)
+      const v = dt > 0 && dt < 200 ? (first.y - last.y) / dt : 0;
+      const list = stops();
+      const y = s.scrollTop;
+      const end = list[list.length - 1];
+      const vh = innerHeight;
+      // Past the last frame's stop: free, with a little momentum, until
+      // the gesture heads back above that stop.
+      if (y > end + 2) {
+        const to = y + v * 260;
+        glide(to < end + vh * 0.15 ? end : Math.min(max(), to), 420);
+        return;
+      }
+      const delta = y - list[from];
+      const go = Math.abs(delta) >= vh * NUDGE || Math.abs(v) >= FLICK ? Math.sign(Math.abs(v) >= FLICK ? v : delta) : 0;
+      let to = from;
+      if (go > 0) to = list.findIndex((p, i) => i > from && p > list[from] + 1);
+      if (go < 0) {
+        to = from;
+        for (let i = from - 1; i >= 0; i--) if (list[i] < list[from] - 1) { to = i; break; }
+      }
+      if (to < 0) {
+        // down from the last stop: into the free end
+        glide(Math.min(max(), y + Math.max(v, 0) * 260 + vh * 0.25), 420);
+        return;
+      }
+      glide(list[to]);
+    };
+    document.addEventListener("touchend", release, { passive: true, signal });
+    document.addEventListener("touchcancel", release, { passive: true, signal });
+    // A toolbar change or rotation moves every stop: land on the nearest.
+    let resized = 0;
+    window.addEventListener(
+      "resize",
+      () => {
+        clearTimeout(resized);
+        resized = window.setTimeout(() => {
+          if (raf || axis) return;
+          const list = stops();
+          const y = s.scrollTop;
+          if (y <= list[list.length - 1] + 2) window.scrollTo(0, list[nearest(list, y)]);
+        }, 200);
+      },
+      { passive: true, signal }
+    );
+    signal.addEventListener("abort", () => (stop(), clearTimeout(resized)), { once: true });
+  }
+
   // ── ONWARD ────────────────────────────────────────────────────────────
   // At the very end of the page, one more scroll down (a wheel pushed on
   // past the end, or a finger pulling up there) goes to the portfolios.
@@ -1050,8 +1196,8 @@ const wall = await Promise.all(
     }
     const chapters = chaptersOf(root);
     const wrap = document.querySelector<HTMLElement>(".page-wrap");
-    const smooth = wrap && !phone() ? smoother(wrap, signal) : null;
-    settle(root, chapters, signal, smooth);
+    if (phone()) pager(root, chapters, signal);
+    else settle(root, chapters, signal, wrap ? smoother(wrap, signal) : null);
     void story(root, chapters, signal);
   });
 </script>
