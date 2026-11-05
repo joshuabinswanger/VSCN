@@ -660,20 +660,30 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
     const minW = 22 * parseFloat(getComputedStyle(document.documentElement).fontSize);
     const width = Math.min(viewport.x - 2 * edge, Math.max(w, minW));
     const left = Math.min(viewport.x - edge - width, Math.max(edge, x + w / 2 - width / 2));
-    const top = y + h + GAP;
+    let top = y + h + GAP;
     const foot = 16;
-    // AN OPEN TAB GROWS DOWN ONLY, as far as the window allows, on every
-    // screen (2026-11-05, Josh: "it should expand down as far possible and
-    // not expand from the middle"). From earlier that day a phone lifted an
-    // open tab over the picture to fit its words, which read as the panel
-    // growing both ways at once; past the window's foot the body scrolls.
+    // AN OPEN TAB GROWS DOWN FIRST, and up only when its words need more
+    // than the room below (2026-11-05, Josh: "it should expand down as far
+    // possible and not expand from the middle", then "the box can grow up
+    // too when there is a lot of text"). It rises over the picture no
+    // further than its text needs and never under the controls row; past
+    // that the body scrolls.
+    if (sheet.classList.contains("is-open")) {
+      const handle = sheet.querySelector<HTMLElement>(".pswp__vscn-sheet-handle");
+      const body = sheet.querySelector<HTMLElement>(".pswp__vscn-sheet-body");
+      const tail = sheet.querySelector<HTMLElement>(".pswp__vscn-sheet-foot");
+      const tailBox = tail ? tail.offsetHeight + 24 : 0;
+      const need = (handle?.offsetHeight ?? 0) + (body?.scrollHeight ?? 0) + tailBox + 8;
+      const floor = viewport.y - foot - need;
+      if (floor < top) top = Math.max(mobile ? 52 : 64, floor);
+    }
     const room = Math.max(0, viewport.y - top - foot);
     const peek = parseFloat(sheet.style.getPropertyValue("--peek")) || 48;
     sheet.style.left = `${Math.round(left)}px`;
     sheet.style.width = `${Math.round(width)}px`;
     sheet.style.top = `${Math.round(top)}px`;
     sheet.style.maxHeight = `${Math.round(room)}px`;
-    sheet.style.setProperty("--body-max", `${Math.round(Math.max(0, room - peek - 30))}px`);
+    sheet.style.setProperty("--body-max", `${Math.round(Math.max(0, room - peek - 44))}px`);
     slideFrom(sheet, flip);
   };
   pswp.on("change", place);
