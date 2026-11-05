@@ -660,21 +660,13 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
     const minW = 22 * parseFloat(getComputedStyle(document.documentElement).fontSize);
     const width = Math.min(viewport.x - 2 * edge, Math.max(w, minW));
     const left = Math.min(viewport.x - edge - width, Math.max(edge, x + w / 2 - width / 2));
-    let top = y + h + GAP;
+    const top = y + h + GAP;
     const foot = 16;
-    // A PHONE LIFTS AN OPEN TAB when the words would not fit below: the band
-    // under a phone's picture is ~150px, which is what "crammed on the
-    // bottom" was. The tab still opens downward, then rises as far as its
-    // text needs, never above 30 % of the window. A desktop never lifts: the
-    // band there is the room (Josh rejected the panel over the picture).
-    if (mobile && sheet.classList.contains("is-open")) {
-      const handle = sheet.querySelector<HTMLElement>(".pswp__vscn-sheet-handle");
-      const body = sheet.querySelector<HTMLElement>(".pswp__vscn-sheet-body");
-      const tail = sheet.querySelector<HTMLElement>(".pswp__vscn-sheet-foot");
-      const need = (handle?.offsetHeight ?? 0) + (body?.scrollHeight ?? 0) + (tail?.offsetHeight ?? 0) + 40;
-      const floor = viewport.y - foot - need;
-      if (floor < top) top = Math.max(viewport.y * 0.3, floor);
-    }
+    // AN OPEN TAB GROWS DOWN ONLY, as far as the window allows, on every
+    // screen (2026-11-05, Josh: "it should expand down as far possible and
+    // not expand from the middle"). From earlier that day a phone lifted an
+    // open tab over the picture to fit its words, which read as the panel
+    // growing both ways at once; past the window's foot the body scrolls.
     const room = Math.max(0, viewport.y - top - foot);
     const peek = parseFloat(sheet.style.getPropertyValue("--peek")) || 48;
     sheet.style.left = `${Math.round(left)}px`;
