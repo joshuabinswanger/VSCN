@@ -672,7 +672,7 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
       const handle = sheet.querySelector<HTMLElement>(".pswp__vscn-sheet-handle");
       const body = sheet.querySelector<HTMLElement>(".pswp__vscn-sheet-body");
       const tail = sheet.querySelector<HTMLElement>(".pswp__vscn-sheet-foot");
-      const tailBox = tail ? tail.offsetHeight + 24 : 0;
+      const tailBox = tail ? tail.offsetHeight + 6 : 0;
       const need = (handle?.offsetHeight ?? 0) + (body?.scrollHeight ?? 0) + tailBox + 8;
       const floor = viewport.y - foot - need;
       if (floor < top) top = Math.max(mobile ? 52 : 64, floor);
@@ -683,7 +683,7 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
     sheet.style.width = `${Math.round(width)}px`;
     sheet.style.top = `${Math.round(top)}px`;
     sheet.style.maxHeight = `${Math.round(room)}px`;
-    sheet.style.setProperty("--body-max", `${Math.round(Math.max(0, room - peek - 44))}px`);
+    sheet.style.setProperty("--body-max", `${Math.round(Math.max(0, room - peek - 48))}px`);
     slideFrom(sheet, flip);
   };
   pswp.on("change", place);
