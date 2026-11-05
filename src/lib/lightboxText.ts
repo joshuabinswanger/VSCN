@@ -611,15 +611,25 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
   // Compared against the slide's own initial level rather than 1: a small
   // image opens BELOW 1:1 and a large one above it, so 1 is not the resting
   // state of anything.
+  let wasZoomed = false;
+  let settle: ReturnType<typeof setTimeout> | undefined;
   const place = () => {
     const slide = pswp.currSlide;
     const root = pswp.element;
     const sheet = root?.querySelector<HTMLElement>(".pswp__vscn-sheet");
     if (!slide || !root || !sheet) return;
     const initial = slide.zoomLevels?.initial ?? 1;
-    // A hair over the resting level, so the tab stops where the picture rested.
+    // A hair over the resting level, so the tab leaves as the zoom starts.
     const zoomed = (slide.currZoomLevel ?? initial) > initial * 1.001;
     root.classList.toggle("pswp--vscn-zoomed-words", zoomed);
+    // The move between the two places animates; following the picture
+    // while it pans or opens never does.
+    if (zoomed !== wasZoomed) {
+      wasZoomed = zoomed;
+      sheet.classList.add("is-toggling");
+      clearTimeout(settle);
+      settle = setTimeout(() => sheet.classList.remove("is-toggling"), 450);
+    }
 
     // IT HANGS UNDER THE PICTURE (2026-11-05, Josh: "it should sit under
     // the image on desktop", "the tab should pull down", and then "on
@@ -627,11 +637,15 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
     // the picture, at the picture's width (a reading minimum, centred on
     // it); opening unfolds it DOWNWARD into the band under the picture.
     sheet.classList.add("is-anchored");
-    // ZOOMED IN, THE TAB STAYS WHERE IT WAS (2026-11-05, Josh: "label should
-    // not disappear when zoomed in"). It was hidden from 10-13, because a
-    // zoomed picture's rect runs off the window and the tab would follow it
-    // out; now it simply stops following until the picture is back.
-    if (zoomed) return;
+    // ZOOMED IN, THE TAB GOES TO THE WINDOW'S FOOT (2026-11-05, Josh: "label
+    // should not disappear when zoomed in", then "just make it move to the
+    // bottom on zoom in"). A zoomed picture's rect runs off the window, so
+    // the tab stops following it and sits at the foot, keeping its width.
+    if (zoomed) {
+      const vy = pswp.viewportSize.y;
+      sheet.style.top = `${Math.round(Math.max(64, vy - 16 - sheet.offsetHeight))}px`;
+      return;
+    }
     const viewport = pswp.viewportSize;
     const mobile = mobileViewport(viewport);
     const zoom = slide.currZoomLevel || 1;
