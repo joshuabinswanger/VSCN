@@ -531,36 +531,39 @@
 .pswp--vscn .pswp__vscn-sheet-foot {
   display: none;
 }
+/* THE FOOT IS A STRIP, THE CHEVRON ITS MARK (2026-11-05, Josh: "make the
+   hitbox for the drop up a bit bigger"). The whole bottom band of the tab,
+   full width and ~2.25rem tall, takes the click; the 1px chevron is drawn
+   in its middle. A gap above it keeps it clear of the last link when the
+   words are scrolled to their end. */
 .pswp--vscn .pswp__vscn-sheet.is-anchored.has-more .pswp__vscn-sheet-foot {
   display: block;
   flex: none;
-  align-self: center;
+  position: relative;
+  align-self: stretch;
+  height: 2.25rem;
+  margin-top: 0.25rem;
+  cursor: pointer;
+}
+.pswp--vscn .pswp__vscn-sheet.is-anchored.has-more .pswp__vscn-sheet-foot::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 0.55rem;
   width: 0.5rem;
   height: 0.5rem;
-  /* Clear of the last link when the words are scrolled to their end. */
-  margin: 0.6rem 0 0.7rem;
   border-right: 1px solid var(--color-dark);
   border-bottom: 1px solid var(--color-dark);
-  transform: rotate(45deg);
-  cursor: pointer;
+  transform: translateX(-50%) rotate(45deg);
   transition:
     transform var(--lb-dur) var(--lb-ease),
     border-color var(--lb-dur) var(--lb-ease);
 }
-/* A thumb-sized target round the small mark. */
-.pswp--vscn .pswp__vscn-sheet.is-anchored.has-more .pswp__vscn-sheet-foot {
-  position: relative;
-}
-.pswp--vscn .pswp__vscn-sheet.is-anchored.has-more .pswp__vscn-sheet-foot::before {
-  content: "";
-  position: absolute;
-  inset: -0.5rem -1rem -0.7rem;
-}
-.pswp--vscn .pswp__vscn-sheet.is-anchored.has-more:hover .pswp__vscn-sheet-foot {
+.pswp--vscn .pswp__vscn-sheet.is-anchored.has-more:hover .pswp__vscn-sheet-foot::after {
   border-color: var(--color-muted);
 }
-.pswp--vscn .pswp__vscn-sheet.is-anchored.is-open .pswp__vscn-sheet-foot {
-  transform: translateY(0.25rem) rotate(-135deg);
+.pswp--vscn .pswp__vscn-sheet.is-anchored.is-open .pswp__vscn-sheet-foot::after {
+  transform: translate(-50%, 0.25rem) rotate(-135deg);
 }
 @media (--bp-mobile) {
   .pswp--vscn .pswp__vscn-sheet-handle,
