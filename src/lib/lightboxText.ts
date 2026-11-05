@@ -680,6 +680,27 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
   pswp.on("initialZoomPan", place);
   pswp.on("resize", place);
   pswp.on("zoomPanUpdate", place);
+
+  // THE TAB TRAVELS WITH ITS PICTURE (2026-11-05, Josh: "animate the
+  // description box on drag with the image together"). While the strip
+  // moves — a finger's swipe or a paging glide — the tab is shifted by the
+  // same distance and dims as it goes, so it leaves with the picture it
+  // names; the next work's tab arrives with the next picture, since by then
+  // `change` has rebuilt it and the offset counts from the new slide.
+  pswp.on("moveMainScroll", ({ x }) => {
+    const sheet = pswp.element?.querySelector<HTMLElement>(".pswp__vscn-sheet");
+    if (!sheet) return;
+    const dx = x - pswp.mainScroll.getCurrSlideX();
+    if (Math.abs(dx) <= 1) {
+      sheet.style.translate = "";
+      sheet.style.opacity = "";
+      sheet.classList.remove("is-travelling");
+      return;
+    }
+    sheet.classList.add("is-travelling");
+    sheet.style.translate = `${Math.round(dx)}px 0`;
+    sheet.style.opacity = String(Math.max(0, 1 - Math.abs(dx) / (pswp.viewportSize.x * 0.6)));
+  });
   return place;
 }
 

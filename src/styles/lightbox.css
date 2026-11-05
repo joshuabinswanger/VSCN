@@ -391,18 +391,13 @@
   transform: translateY(0);
   box-shadow: 0 -0.75rem 2.5rem rgb(0 0 0 / 0.1);
 }
-.pswp--vscn .pswp__vscn-sheet.is-dragging {
+.pswp--vscn .pswp__vscn-sheet.is-dragging,
+.pswp--vscn .pswp__vscn-sheet.is-travelling {
   transition: none;
 }
 /* A work with no title and no words gets no sheet at all. */
 .pswp--vscn .pswp__vscn-sheet.is-empty {
   display: none;
-}
-/* PAGING: the strip is between pictures (lightbox.ts), so the title leaves
-   quickly rather than name nothing; the next work's fades in on arrival. */
-.pswp--vscn.pswp--vscn-paging .pswp__vscn-sheet:not(.is-open) .pswp__vscn-sheet-head {
-  opacity: 0;
-  transition: opacity 160ms var(--lb-ease);
 }
 .pswp--vscn .pswp__vscn-sheet-handle {
   flex: none;
