@@ -398,11 +398,6 @@
 .pswp--vscn .pswp__vscn-sheet.is-empty {
   display: none;
 }
-/* ZOOMED IN, THE PEEK GOES: the reader is looking at the picture. An open
-   sheet stays, since the reader opened it (2026-11-04). */
-.pswp--vscn.pswp--vscn-zoomed-words .pswp__vscn-sheet:not(.is-open) {
-  transform: translateY(calc(100% + 3rem));
-}
 /* PAGING: the strip is between pictures (lightbox.ts), so the title leaves
    quickly rather than name nothing; the next work's fades in on arrival. */
 .pswp--vscn.pswp--vscn-paging .pswp__vscn-sheet:not(.is-open) .pswp__vscn-sheet-head {
@@ -578,10 +573,6 @@
   .pswp--vscn .pswp__vscn-sheet.is-anchored.is-open .pswp__vscn-sheet-foot {
     transform: translateY(0.25rem) rotate(-135deg);
   }
-}
-.pswp--vscn.pswp--vscn-zoomed-words .pswp__vscn-sheet.is-anchored:not(.is-open) {
-  opacity: 0;
-  pointer-events: none;
 }
 @media (--bp-mobile) {
   .pswp--vscn .pswp__vscn-sheet-handle,
