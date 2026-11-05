@@ -274,6 +274,24 @@ const wall = await Promise.all(
     transform: none;
   }
 
+  /* THE VIEWS PILL WAITS FOR ITS CHAPTER. Josh 11-05: the Portfolios /
+     Images / People pill appears only once the portfolios frame (Browse,
+     Find People) comes into view, and stays for the contact frame after it.
+     Without the story (no script, reduced motion) it is simply there. */
+  :global(:root:has(.story) .views-pill) {
+    transition:
+      opacity 0.4s ease,
+      visibility 0s linear 0s;
+  }
+  :global(:root:has(.story[data-story-on]:not([data-current="portfolios"], [data-current="contact"])) .views-pill) {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 0.25s ease,
+      visibility 0s linear 0.25s;
+  }
+
   /* ── 1. HERO ─────────────────────────────────────────────────────────── */
   /* Board 03.1: the headline centred over the window, the sentences in a
      narrower centred column under it, left-aligned. */
