@@ -2076,11 +2076,12 @@ import "../styles/type.css";
     const sheetLang = document.getElementById("nav-sheet-lang") as HTMLAnchorElement | null;
     const acctLang = document.getElementById("nav-acct-lang") as HTMLAnchorElement | null;
 
-    // The directory (and the bare root, which is it) has its own views bar.
+    // The directory has its own views bar. (The bare root was it from
+    // 2026-10-25; since 2026-11-05 it forwards to the story, /info.)
     const bare = normalisePath(normPath.replace(/^\/de(?=\/|$)/, "")) || "/";
     document
       .querySelector('nav[data-astro-transition-persist="navbar"]')
-      ?.toggleAttribute("data-directory", bare === "/" || bare === "/community");
+      ?.toggleAttribute("data-directory", bare === "/community");
     // The account pages: the editor and the sign-in flow.
     document
       .querySelector('nav[data-astro-transition-persist="navbar"]')

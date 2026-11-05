@@ -34,7 +34,8 @@ export default defineConfig({
       },
       filter: (page) =>
         // The landing pages: firebase.json answers / and /de/ with a 302 to
-        // /community (2026-10-25), so they are not addresses to list.
+        // /info (2026-11-05; /community from 2026-10-25), so they are not
+        // addresses to list.
         !/^https?:\/\/[^/]+\/(de\/)?$/.test(page) &&
         !page.includes('/proto') &&
         !page.includes('/styleguide') &&
