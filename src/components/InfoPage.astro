@@ -98,11 +98,17 @@ const wall = await Promise.all(
         {/* The belief at the big size, the reasons under it at reading size. */}
         <div class="info-hero__text">
           <p class="info-hero__sub" data-in data-step="1">{t("info.hero.lead")}</p>
-          <p class="info-hero__body" data-in data-step="1" style="--d: 0.35s">{t("info.hero.body")}</p>
-          <p class="info-hero__sub info-hero__claim" data-in data-step="1" style="--d: 0.7s">{t("info.hero.claim")}</p>
+          <p class="info-hero__sub info-hero__claim" data-in data-step="1" style="--d: 0.35s">{t("info.hero.claim")}</p>
         </div>
       </div>
       <span class="story-cue" aria-hidden="true">{t("info.story.cue")}<span class="story-cue__line"></span></span>
+    </div>
+  </section>
+
+  <!-- 1b. THE NETWORK: one sentence, its own screen (Josh 11-05) -->
+  <section class="story-ch story-ch--network" data-story-ch="network">
+    <div class="story-frame story-frame--center">
+      <p class="info-network" data-in>{t("info.hero.body")}</p>
     </div>
   </section>
 
@@ -112,6 +118,11 @@ const wall = await Promise.all(
       <section class="story-ch story-ch--works" data-story-ch="works">
         <div class="story-frame story-frame--center">
           <div class="info-wall" aria-roledescription="carousel" aria-label={t("info.wall.heading")} data-info-wall>
+            {wall.length > 1 && (
+              <span class="info-wall__swipe" aria-hidden="true">
+                <span class="info-wall__swipe-line" />
+              </span>
+            )}
             <div class="info-wall__stage">
               {wall.length > 1 && (
                 <button type="button" class="info-wall__arrow info-wall__arrow--prev" data-wall-prev aria-label={t("info.wall.prev")}>
@@ -147,6 +158,7 @@ const wall = await Promise.all(
               )}
             </div>
           </div>
+          <span class="story-cue story-cue--bare" aria-hidden="true"><span class="story-cue__line"></span></span>
         </div>
       </section>
     )
@@ -538,13 +550,81 @@ const wall = await Promise.all(
     opacity: 0.5;
   }
 
+  /* ── 1b. THE NETWORK ─────────────────────────────────────────────────
+     The sentence that was the hero's third, alone in the middle of its
+     screen at the hero's second size (type.css, with .info-hero__sub). */
+  .info-network {
+    width: min(100%, 40rem);
+    margin: 0 auto;
+    color: var(--color-dark);
+    text-align: center;
+  }
+
+  /* THE WORKS CUE: the same growing line, without its word, at the foot of
+     the works frame while that frame is on screen. */
+  .story[data-story-on]:not([data-current="works"]) .story-ch--works .story-cue {
+    opacity: 0;
+  }
+
+  /* THE SWIPE HINT (Josh 11-05): an arrow over the picture that keeps
+     nudging right while the row turns by itself, until the visitor moves
+     the row (data-touched, set by the carousel). */
+  .info-wall__swipe {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2rem;
+    color: var(--color-dark);
+    transition: opacity 0.4s ease;
+
+    @media (--bp-mobile) {
+      margin-bottom: 1.25rem;
+    }
+  }
+  .info-wall[data-touched] .info-wall__swipe {
+    opacity: 0;
+  }
+  .info-wall__swipe-line {
+    position: relative;
+    display: block;
+    width: 3.5rem;
+    height: 1.5px;
+    background: currentColor;
+    animation: info-swipe 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+  .info-wall__swipe-line::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: 9px;
+    height: 9px;
+    border-top: 1.5px solid currentColor;
+    border-right: 1.5px solid currentColor;
+    transform: translate(0, -50%) rotate(45deg);
+    transform-origin: center;
+  }
+  @keyframes info-swipe {
+    0%,
+    100% {
+      transform: translateX(-10px);
+    }
+    50% {
+      transform: translateX(10px);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .info-wall__swipe-line {
+      animation: none;
+    }
+  }
+
   /* ── 2. WORKS: ONE PICTURE AT A TIME ────────────────────────────────
      A row the visitor scrolls sideways, one slide its full width, snapped
      to the middle. The picture keeps its own shape at one height (the
      screen's, less the words under it), the artist and the project under
      it. No fades: the picture is simply there (Josh 11-04). */
   .info-wall {
-    --pic-h: min(calc(var(--story-vh) - 15rem), 640px);
+    --pic-h: min(calc(var(--story-vh) - 19rem), 640px);
     width: 100%;
   }
   .info-wall__stage {
@@ -671,7 +751,7 @@ const wall = await Promise.all(
      less the gutters, and the arrows give way to the finger. */
   @media (--bp-mobile) {
     .info-wall {
-      --pic-h: min(calc(var(--story-vh) - 11rem), 125vw);
+      --pic-h: min(calc(var(--story-vh) - 17rem), 125vw);
     }
     .info-wall__stage {
       width: 100vw;
@@ -707,8 +787,38 @@ const wall = await Promise.all(
   // A native sideways scroll does the work (touch, trackpad, shift-wheel);
   // the script marks the picture in the middle, lets a mouse drag the row,
   // and pages it from the chevrons, round from the last back to the first.
-  function carousel(wall: HTMLElement, track: HTMLElement, slides: HTMLElement[], signal: AbortSignal) {
+  // Josh 11-05: the row turns by itself while the works frame is the one on
+  // screen, one picture every AUTO_MS; a visitor moving it (finger, mouse,
+  // arrows) pauses that for IDLE_MS and puts the swipe hint away.
+  const AUTO_MS = 3500;
+  const IDLE_MS = 8000;
+
+  function carousel(root: HTMLElement, wall: HTMLElement, track: HTMLElement, slides: HTMLElement[], signal: AbortSignal) {
     const n = slides.length;
+    let touchedAt = 0;
+    const touch = () => {
+      touchedAt = Date.now();
+      wall.setAttribute("data-touched", "");
+    };
+    for (const type of ["pointerdown", "touchstart", "wheel"] as const)
+      wall.addEventListener(type, (e) => { if (type !== "wheel" || Math.abs((e as WheelEvent).deltaX) > Math.abs((e as WheelEvent).deltaY)) touch(); }, { passive: true, signal });
+    // Counted from arriving on the frame, the last turn, or the end of the
+    // pause after a touch, whichever is latest.
+    let arrived = 0;
+    let turned = 0;
+    const auto = window.setInterval(() => {
+      const now = Date.now();
+      if (root.dataset.current !== "works" || document.hidden) {
+        arrived = 0;
+        return;
+      }
+      if (!arrived) arrived = now;
+      const since = Math.max(arrived, turned, touchedAt ? touchedAt + IDLE_MS - AUTO_MS : 0);
+      if (now - since < AUTO_MS) return;
+      turned = now;
+      go(at + 1);
+    }, 250);
+    signal.addEventListener("abort", () => clearInterval(auto), { once: true });
     let at = -1;
     const nearest = () => Math.min(n - 1, Math.max(0, Math.round(track.scrollLeft / track.clientWidth)));
     const mark = () => {
@@ -1215,7 +1325,7 @@ const wall = await Promise.all(
     const wall = root.querySelector<HTMLElement>("[data-info-wall]");
     const track = wall?.querySelector<HTMLElement>("[data-wall-track]");
     const slides = wall ? Array.from(wall.querySelectorAll<HTMLElement>("[data-wall-slide]")) : [];
-    if (wall && track && slides.length > 1) carousel(wall, track, slides, signal);
+    if (wall && track && slides.length > 1) carousel(root, wall, track, slides, signal);
 
     const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const href = root.querySelector<HTMLElement>("[data-onward]")?.dataset.onward;
