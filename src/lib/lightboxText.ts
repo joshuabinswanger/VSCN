@@ -683,23 +683,55 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
 
   // THE TAB TRAVELS WITH ITS PICTURE (2026-11-05, Josh: "animate the
   // description box on drag with the image together"). While the strip
-  // moves — a finger's swipe or a paging glide — the tab is shifted by the
-  // same distance and dims as it goes, so it leaves with the picture it
-  // names; the next work's tab arrives with the next picture, since by then
-  // `change` has rebuilt it and the offset counts from the new slide.
+  // moves — a finger's swipe or a paging glide — the tab is shifted by its
+  // own picture's offset and dims as it goes, so it leaves with it.
+  //
+  // Measured from the slide the tab BELONGS to: PhotoSwipe moves its target
+  // index the moment a glide starts but only swaps `currSlide` (and fires
+  // `change`) when it lands, so counting from the target made the old tab
+  // jump and slide back in under the new picture before it was rebuilt —
+  // the size change Josh saw. THE NEXT TAB FADES IN on landing, already
+  // placed under its picture ("make the description box fade in").
+  let travelled = false;
+  const sheetEl = () => pswp.element?.querySelector<HTMLElement>(".pswp__vscn-sheet") ?? null;
+  const ownSlideX = () => {
+    const n = pswp.getNumItems();
+    let d = pswp.potentialIndex - pswp.currIndex;
+    if (pswp.canLoop() && n > 0) {
+      d = ((d % n) + n) % n;
+      if (d > n / 2) d -= n;
+    }
+    // getCurrSlideX() is slideWidth × the TARGET position index, which a glide
+    // lowered by d; the tab's own slide stands d positions back.
+    return pswp.mainScroll.getCurrSlideX() + d * pswp.mainScroll.slideWidth;
+  };
   pswp.on("moveMainScroll", ({ x }) => {
-    const sheet = pswp.element?.querySelector<HTMLElement>(".pswp__vscn-sheet");
+    const sheet = sheetEl();
     if (!sheet) return;
-    const dx = x - pswp.mainScroll.getCurrSlideX();
+    const dx = x - ownSlideX();
     if (Math.abs(dx) <= 1) {
       sheet.style.translate = "";
       sheet.style.opacity = "";
       sheet.classList.remove("is-travelling");
       return;
     }
+    travelled = true;
     sheet.classList.add("is-travelling");
     sheet.style.translate = `${Math.round(dx)}px 0`;
-    sheet.style.opacity = String(Math.max(0, 1 - Math.abs(dx) / (pswp.viewportSize.x * 0.6)));
+    sheet.style.opacity = String(Math.max(0, 1 - Math.abs(dx) / (pswp.viewportSize.x * 0.5)));
+  });
+  pswp.on("change", () => {
+    if (!travelled) return;
+    travelled = false;
+    const sheet = sheetEl();
+    if (!sheet) return;
+    place();
+    sheet.style.translate = "";
+    sheet.style.opacity = "";
+    sheet.classList.remove("is-travelling");
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      sheet.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 280, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)" });
+    }
   });
   return place;
 }
