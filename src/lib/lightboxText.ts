@@ -736,8 +736,12 @@ function attachSheetPlacement(pswp: PhotoSwipe): () => void {
     const sheet = sheetEl();
     if (!sheet) return;
     place();
+    // Cleared while transitions are still off, and committed (the reflow)
+    // before they come back: otherwise the tab's `translate` transition
+    // carried it in from where the old one left, sliding in from the side.
     sheet.style.translate = "";
     sheet.style.opacity = "";
+    void sheet.offsetWidth;
     sheet.classList.remove("is-travelling");
     if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
       sheet.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 280, easing: "cubic-bezier(0.22, 0.61, 0.36, 1)" });
