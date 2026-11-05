@@ -570,13 +570,14 @@ const wall = await Promise.all(
     scroll-snap-type: none;
     cursor: grabbing;
   }
-  /* Pictures differ in shape, so each slide stands on its bottom edge: the
-     words under it keep their place as the row moves. */
+  /* Pictures differ in shape; each card (picture, name, project) sits in
+     the middle of the row, so a wide picture is not left standing at the
+     bottom of a portrait one's height (Josh 11-05: "weirdly aligned"). */
   .info-wall__slide {
     display: flex;
     flex: 0 0 100%;
     justify-content: center;
-    align-items: flex-end;
+    align-items: center;
     scroll-snap-align: center;
     scroll-snap-stop: always;
   }
