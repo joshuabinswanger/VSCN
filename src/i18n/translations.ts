@@ -40,14 +40,11 @@ export const ui: Record<string, Record<string, string>> = {
     "info.plan.3": "Workshops",
     "info.contact.ask": "And if you’d like to help shape VSCN, we’d love to hear from you:",
     "info.cta.portfolios": "Browse the portfolios",
+    "info.cta.people": "Find People",
     "info.story.cue": "Scroll",
-    "info.story.onward": "Keep scrolling for the portfolios",
-    "info.story.people": "Meet the people behind the pictures.",
     "info.wall.heading": "From the network",
     "info.wall.prev": "Previous member",
     "info.wall.next": "Next member",
-    "info.wall.hint.swipe": "Swipe to see more",
-    "info.wall.hint.drag": "Drag to see more",
 
     // CommunityGrid
     "community.title": "Community",
@@ -812,14 +809,11 @@ export const ui: Record<string, Record<string, string>> = {
     "info.plan.3": "Workshops",
     "info.contact.ask": "Und wenn du VSCN mitgestalten möchtest, freuen wir uns, von dir zu hören:",
     "info.cta.portfolios": "Portfolios ansehen",
+    "info.cta.people": "Menschen finden",
     "info.story.cue": "Scrollen",
-    "info.story.onward": "Weiterscrollen zu den Portfolios",
-    "info.story.people": "Lerne die Menschen hinter den Bildern kennen.",
     "info.wall.heading": "Aus dem Netzwerk",
     "info.wall.prev": "Vorheriges Mitglied",
     "info.wall.next": "Nächstes Mitglied",
-    "info.wall.hint.swipe": "Wischen für mehr",
-    "info.wall.hint.drag": "Ziehen für mehr",
 
     // CommunityGrid
     "community.title": "Community",

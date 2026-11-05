@@ -13,6 +13,7 @@ interface Props {
 const { lang = "en" } = Astro.props;
 const t = useTranslations(lang);
 const portfoliosHref = lang === "de" ? "/de/community" : "/community";
+const peopleHref = `${portfoliosHref}?pattern=index`;
 
 // THE INFO PAGE TELLS A STORY AS IT SCROLLS (2026-11-02, Josh: "like a
 // storytelling with smooth scroll and animations"; reworked through
@@ -23,20 +24,22 @@ const portfoliosHref = lang === "de" ? "/de/community" : "/community";
 // nearest stop in the direction moved; on a desktop the wheel eases
 // (smoother()).
 //
-//   1. HERO. "Visuals create knowledge." on arrival, set to about 70% of the
-//      window's width; the next scroll brings the two sentences under it,
-//      both at the second sentence's size. The scroll cue stays while the
-//      hero is the chapter on screen.
+//   1. HERO. "Visuals create knowledge." on arrival, about 70% of the
+//      window's width, centred; the next scroll brings the two sentences
+//      under it in a narrower centred column, the third smaller. The scroll
+//      cue stays while the hero is the chapter on screen.
 //   2. WORKS. One picture at a time, the artist and the project under it:
-//      a plain carousel the visitor swipes (phone) or drags (desktop), with
-//      a moving hint beneath until they do. No fades on the pictures.
-//   3. ABOUT. Our mission, How we do that, What we plan: on a desktop side by
-//      side, one column per scroll, its points one after the other; on a
-//      phone each column is a page of its own, in the same place.
-//   4. PORTFOLIOS. "Meet the people behind the pictures." over a faint wall
-//      of the members' portraits, and the button.
+//      a plain carousel the visitor swipes (phone) or drags (desktop). No
+//      fades on the pictures.
+//   3. ABOUT. Our mission, How we do that, What we plan: one centred column
+//      per scroll, swapped in place, its points one after the other.
+//   4. PORTFOLIOS. Three buttons, one above the other: the portfolios, the
+//      people, and joining (signed out only).
 //   5. CONTACT. The closing sentence in the middle of the last screen. One
 //      more scroll past it goes on to the portfolios.
+//
+// The layout of 1, 2, 3 and 4 follows Josh's boards of 2026-11-05
+// (Desktop/vscn-split/vscn-landing-story.af, 03.1-03.4; the phone follows).
 //
 // A part is hidden from the first frame (data-story-on is in the markup)
 // and shown once its chapter and step are reached AND the page is on
@@ -61,17 +64,6 @@ const picks = members
   })
   .sort((a, b) => b.work.score - a.work.score)
   .slice(0, WALL_MAX);
-// The faint wall behind "Meet the people": every member's portrait, small.
-const FACES_MAX = 40;
-const faces = await Promise.all(
-  members
-    .filter((m) => m.photoURL)
-    .slice(0, FACES_MAX)
-    .map(async (m) => (await getImage({ src: m.photoURL as string, inferSize: true, width: 160, format: "webp" })).src)
-);
-// More tiles than any screen holds (the wall clips them, centred), however
-// few portraits there are.
-const faceTiles = faces.length ? Array.from({ length: 96 }, (_, i) => faces[i % faces.length]) : [];
 const wall = await Promise.all(
   picks.map(async ({ name, href, project, work }) => ({
     name,
@@ -142,7 +134,7 @@ const wall = await Promise.all(
                         draggable="false"
                       />
                       <span class="info-wall__name">{tile.name}</span>
-                      {tile.project && <span class="info-wall__project t-caption">{tile.project}</span>}
+                      {tile.project && <span class="info-wall__project">{tile.project}</span>}
                     </a>
                   </li>
                 ))}
@@ -153,13 +145,6 @@ const wall = await Promise.all(
                 </button>
               )}
             </div>
-            {wall.length > 1 && (
-              <p class="info-wall__hint" aria-hidden="true">
-                <span class="info-wall__nudge" />
-                <span class="info-wall__hint-touch">{t("info.wall.hint.swipe")}</span>
-                <span class="info-wall__hint-drag">{t("info.wall.hint.drag")}</span>
-              </p>
-            )}
           </div>
         </div>
       </section>
@@ -201,19 +186,10 @@ const wall = await Promise.all(
   <!-- 4. PORTFOLIOS -->
   <section class="story-ch story-ch--portfolios" data-story-ch="portfolios">
     <div class="story-frame story-frame--center">
-      {
-        faceTiles.length > 0 && (
-          <div class="info-faces" aria-hidden="true" data-in>
-            {faceTiles.map((src) => (
-              <img src={src} alt="" width="160" height="160" loading="lazy" decoding="async" />
-            ))}
-          </div>
-        )
-      }
-      <p class="info-people" data-in>{t("info.story.people")}</p>
-      <div class="info-cta__row" data-in style="--d: 0.25s">
-        <a href={portfoliosHref} class="btn-solid info-cta__btn">{t("info.cta.portfolios")}<span aria-hidden="true">→</span></a>
-        <a href={lang === "de" ? "/de/signup" : "/signup"} class="btn-outline" id="info-signup-cta" style="display:none;"
+      <div class="info-cta__col">
+        <a href={portfoliosHref} class="btn-solid info-cta__btn" data-in>{t("info.cta.portfolios")}<span aria-hidden="true">→</span></a>
+        <a href={peopleHref} class="btn-solid info-cta__btn" data-in style="--d: 0.15s">{t("info.cta.people")}<span aria-hidden="true">→</span></a>
+        <a href={lang === "de" ? "/de/signup" : "/signup"} class="btn-outline" id="info-signup-cta" style="display:none; --d: 0.3s" data-in
           >{t("signup.cta.info")}</a
         >
       </div>
@@ -227,7 +203,6 @@ const wall = await Promise.all(
         {t("info.contact.ask")}{" "}
         <!--email_off--><a href="mailto:info@vscn.ch">info@vscn.ch</a><!--/email_off-->
       </p>
-      <span class="story-cue story-cue--onward" aria-hidden="true">{t("info.story.onward")}<span class="story-cue__line"></span></span>
     </div>
   </section>
 </div>
@@ -300,21 +275,26 @@ const wall = await Promise.all(
   }
 
   /* ── 1. HERO ─────────────────────────────────────────────────────────── */
+  /* Board 03.1: the headline centred over the window, the sentences in a
+     narrower centred column under it, left-aligned. */
   .info-hero {
     display: flex;
     flex-direction: column;
-    gap: 2.75rem;
+    align-items: center;
+    gap: 3.5rem;
 
     @media (--bp-desktop) {
-      gap: 3.25rem;
+      gap: 7.5rem;
     }
   }
-  /* One line on a desktop, about 70% of the window (type.css), reaching
-     past the 900px column to the right; two lines across a phone. */
+  /* One line on a desktop, about 70% of the window (type.css): wider than
+     the 900px column, centred over it (a centred flex item overflows both
+     sides alike); two centred lines across a phone. */
   .info-hero__title {
     margin: 0;
     color: var(--color-dark);
     font-family: "Archivo", sans-serif;
+    text-align: center;
 
     @media (--bp-desktop) {
       white-space: nowrap;
@@ -323,8 +303,12 @@ const wall = await Promise.all(
   .info-hero__text {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    max-width: 58rem;
+    gap: 2.25rem;
+    width: min(100%, 48rem);
+
+    @media (--bp-mobile) {
+      gap: 1.5rem;
+    }
   }
   /* The two sentences speak the same voice (type.css). */
   .info-hero__sub,
@@ -341,7 +325,11 @@ const wall = await Promise.all(
   .story[data-story-on] .story-cue {
     transition: opacity 0.4s ease;
     position: absolute;
-    bottom: 2rem;
+    bottom: 5rem;
+
+    @media (--bp-mobile) {
+      bottom: 2.5rem;
+    }
     left: 50%;
     display: flex;
     flex-direction: column;
@@ -381,63 +369,88 @@ const wall = await Promise.all(
     }
   }
 
-  /* ── 3. ABOUT: THREE COLUMNS, A COLUMN PER SCROLL ────────────────────── */
+  /* ── 3. ABOUT: ONE CENTRED COLUMN PER SCROLL ──────────────────────────
+     Boards 03.31-03.33: one column on the screen at a time, in the middle,
+     swapped in place by the next scroll (data-at, written by the script).
+     Without the story they simply stack. */
   .info-about {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 5rem;
+    justify-items: center;
+    gap: 4rem;
+  }
+  /* The board sits the column above the middle of the screen. */
+  .story-ch--about .story-frame {
+    padding-bottom: 8rem;
 
     @media (--bp-mobile) {
-      grid-template-columns: 1fr;
-      gap: 2.5rem;
+      padding-bottom: 4rem;
     }
   }
   .info-col {
     display: flex;
     flex-direction: column;
-    gap: 1.75rem;
-  }
-  /* On a phone each column is a page of its own: all three in one cell,
-     only the step's column shown (data-at, written by the script). */
-  @media (--bp-mobile) {
-    .story[data-story-on] .info-about {
-      grid-template-areas: "col";
-    }
-    .story[data-story-on] .info-col {
-      grid-area: col;
-      transition:
-        opacity 0.4s ease,
-        visibility 0s linear 0.4s;
-    }
-    .story[data-story-on] .story-ch--about:not([data-at="0"]) .info-col[data-col="0"],
-    .story[data-story-on] .story-ch--about:not([data-at="1"]) .info-col[data-col="1"],
-    .story[data-story-on] .story-ch--about:not([data-at="2"]) .info-col[data-col="2"] {
-      opacity: 0;
-      visibility: hidden;
-    }
-    .story[data-story-on] .story-ch--about[data-at="0"] .info-col[data-col="0"],
-    .story[data-story-on] .story-ch--about[data-at="1"] .info-col[data-col="1"],
-    .story[data-story-on] .story-ch--about[data-at="2"] .info-col[data-col="2"] {
-      transition: opacity 0.4s ease;
+    gap: 3rem;
+    width: min(100%, 24rem);
+
+    @media (--bp-mobile) {
+      gap: 2rem;
     }
   }
+  .story[data-story-on] .info-about {
+    grid-template-areas: "col";
+  }
+  .story[data-story-on] .info-col {
+    grid-area: col;
+    transition:
+      opacity 0.4s ease,
+      visibility 0s linear 0.4s;
+  }
+  .story[data-story-on] .story-ch--about:not([data-at="0"]) .info-col[data-col="0"],
+  .story[data-story-on] .story-ch--about:not([data-at="1"]) .info-col[data-col="1"],
+  .story[data-story-on] .story-ch--about:not([data-at="2"]) .info-col[data-col="2"] {
+    opacity: 0;
+    visibility: hidden;
+  }
+  .story[data-story-on] .story-ch--about[data-at="0"] .info-col[data-col="0"],
+  .story[data-story-on] .story-ch--about[data-at="1"] .info-col[data-col="1"],
+  .story[data-story-on] .story-ch--about[data-at="2"] .info-col[data-col="2"] {
+    transition: opacity 0.4s ease;
+  }
+  /* One line, as on the board, even where it is wider than the points. */
   .info-heading {
     margin: 0;
+    white-space: nowrap;
     font-family: "Archivo", sans-serif;
     color: var(--color-dark);
   }
   .info-list {
     display: flex;
     flex-direction: column;
-    gap: 1.1rem;
+    gap: 2.1rem;
     margin: 0;
-    padding-left: 1.25rem;
+    padding: 0;
+    list-style: none;
+
+    @media (--bp-mobile) {
+      gap: 1.6rem;
+    }
   }
-  /* Well above body copy (Josh 11-04: "bigger, more white space"). */
+  /* The board's bullet: a round dot, 7px, 18px before the words, on the
+     first line's middle. (Round despite global.css's square ::before.) */
   .info-list li {
-    font-size: clamp(1.5rem, 1.9vw, 1.9rem);
+    position: relative;
+    padding-left: 18px;
     color: #333;
-    line-height: 1.35;
+  }
+  .info-list li::before {
+    content: "";
+    position: absolute;
+    top: 0.59em;
+    left: 0;
+    width: 7px;
+    height: 7px;
+    border-radius: 50% !important;
+    background: var(--color-dark);
   }
   /* Point by point: each line slides in from the left as well as rising. */
   /* (:not([data-shown]): Astro's scope attributes make this selector
@@ -446,76 +459,39 @@ const wall = await Promise.all(
     transform: translateX(-24px);
   }
 
-  /* ── 6. PORTFOLIOS ───────────────────────────────────────────────────── */
+  /* ── 4. PORTFOLIOS: THREE BUTTONS, ONE ABOVE THE OTHER ───────────────
+     Board 03.4: the two solid ones the same width, 90px apart. */
   .story-ch--portfolios .story-frame {
-    position: relative;
+    padding-bottom: 56px;
   }
-  .info-people {
-    position: relative;
-    max-width: 40rem;
-    margin: 0;
-    color: var(--color-dark);
-  }
-  /* THE FAINT WALL OF PORTRAITS behind the line: small round faces in a
-     grid filling the screen, washed out, and clear of the middle so the
-     words read. */
-  .info-faces {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
-    gap: 22px;
-    align-content: center;
-    overflow: hidden;
-    pointer-events: none;
-    -webkit-mask-image: radial-gradient(ellipse 60% 55% at center, transparent 30%, #000 85%);
-    mask-image: radial-gradient(ellipse 60% 55% at center, transparent 30%, #000 85%);
+  .info-cta__col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 90px;
 
     @media (--bp-mobile) {
-      grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
-      gap: 16px;
+      gap: 56px;
     }
-  }
-  /* Round (Josh 11-05: "make the portraits a circle"): the one exception to
-     the site's square corners, which global.css enforces with !important. */
-  .info-faces img {
-    border-radius: 50% !important;
-    width: 100%;
-    height: auto;
-    aspect-ratio: 1;
-    object-fit: cover;
-    filter: grayscale(1);
-  }
-  .story[data-story-on] .info-faces[data-in][data-shown],
-  .info-faces {
-    opacity: 0.16;
-  }
-  .story[data-story-on] .info-faces[data-in] {
-    transform: none;
-  }
-  .info-cta__row {
-    position: relative;
-  }
-  .info-cta__row {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 12px;
   }
   .info-cta__btn {
     display: inline-flex;
+    justify-content: center;
     align-items: center;
     gap: 0.6em;
+    box-sizing: border-box;
+    min-width: 15rem;
+    white-space: nowrap;
+
+    @media (--bp-mobile) {
+      min-width: 16rem;
+    }
   }
   .info-cta__btn span {
     transition: translate 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .info-cta__btn:hover span {
     translate: 4px 0;
-  }
-  .story[data-story-on] .info-cta__row:not([data-shown]) {
-    transform: scale(0.92);
   }
 
   /* ── 7. CONTACT ──────────────────────────────────────────────────────── */
@@ -597,12 +573,17 @@ const wall = await Promise.all(
     border-radius: var(--radius-sm);
     user-select: none;
   }
+  /* Board 03.2: the name large, the project small under it. */
   .info-wall__name {
-    margin-top: 14px;
+    margin-top: 28px;
     color: var(--color-dark);
+
+    @media (--bp-mobile) {
+      margin-top: 18px;
+    }
   }
   .info-wall__project {
-    margin-top: 4px;
+    margin-top: 6px;
     color: var(--color-muted);
   }
   /* The card's arrows (communityCard.css): a stroked chevron beside each
@@ -648,68 +629,13 @@ const wall = await Promise.all(
     transform: translate(-0.05rem, 0) rotate(45deg);
   }
 
-  /* THE HINT under the picture: a dot sliding from side to side and the
-     word for the gesture (swipe on a touch screen, drag with a mouse). It
-     goes once the visitor has moved the row. */
-  .info-wall__hint {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 0.7rem;
-    margin: 1.4rem 0 0;
-    color: var(--color-muted);
-    font-size: var(--fs-label);
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    transition: opacity 0.5s ease;
-  }
-  .info-wall[data-moved] .info-wall__hint {
-    opacity: 0;
-  }
-  .info-wall__nudge {
-    position: relative;
-    width: 2.25rem;
-    height: 1px;
-    background: currentColor;
-    opacity: 0.6;
-  }
-  .info-wall__nudge::after {
-    content: "";
-    position: absolute;
-    top: -3px;
-    left: 0;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: currentColor;
-    animation: info-nudge 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
-  }
-  @keyframes info-nudge {
-    to {
-      translate: calc(2.25rem - 7px) 0;
-    }
-  }
-  .info-wall__hint-drag {
-    display: none;
-  }
-  @media (pointer: fine) {
-    .info-wall__hint-touch {
-      display: none;
-    }
-    .info-wall__hint-drag {
-      display: inline;
-    }
-  }
-
   @media (prefers-reduced-motion: reduce) {
     .story[data-story-on] [data-in] {
       opacity: 1;
       transform: none;
       transition: none;
     }
-    .story-cue__line,
-    .info-wall__nudge::after {
+    .story-cue__line {
       animation: none;
     }
   }
@@ -776,7 +702,6 @@ const wall = await Promise.all(
       });
     };
     const go = (i: number) => {
-      wall.setAttribute("data-moved", "");
       track.scrollTo({ left: (((i % n) + n) % n) * track.clientWidth, behavior: "smooth" });
     };
     let frame = 0;
@@ -791,10 +716,6 @@ const wall = await Promise.all(
       },
       { passive: true, signal }
     );
-    // Any hand on the row retires the hint.
-    for (const type of ["touchstart", "wheel", "pointerdown"]) {
-      track.addEventListener(type, () => wall.setAttribute("data-moved", ""), { passive: true, signal });
-    }
     wall.querySelector("[data-wall-prev]")?.addEventListener("click", () => go(at - 1), { signal });
     wall.querySelector("[data-wall-next]")?.addEventListener("click", () => go(at + 1), { signal });
 
