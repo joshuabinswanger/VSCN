@@ -12,6 +12,16 @@ afterwards, on 2026-09-29, from the CI run records (`gh run view <id>`); what a 
 show, chiefly a by-hand `verify:release` result, is marked "operator-reported" or "not confirmed".
 The entries from 2026-10-30 to 2026-10-31 were likewise written afterwards, on 2026-11-04.
 
+## 2026-11-06 · 8fea055 · prod · Info story is the landing page, views pill re-centred, fixed header, lightbox tab
+Machine: GREEN. `verify:release --project prod` by Claude at ~19:50Z: 8 of 8 passing, 0 warnings.
+Walk:    GREEN, run 42280415391 (PR #218 merged ~19:35Z).
+Action:  none. Cut as branch `release/2026-11-06` = dev f4647c9 + `git merge -s ours origin/main`
+         (tree identical to dev, 85174e3): a plain dev → main merge would have kept the five
+         11-04 story reverts and conflicted in type.css. Ships the Info scroll story ("Images
+         create understanding." → VSCN sentence → portfolios carousel → Our mission), the views
+         pill as Images | Portfolios | People centred as a whole, the header that never rides away,
+         and the lightbox description tab. Not yet seen on a real iPhone.
+
 ## 2026-11-04 · a91201a · prod · Join/Login sheet, Who filter, editor Move key + glass, faster Save (Info story held)
 Machine: GREEN after a fix. `verify:release --project prod` by Claude at ~16:05Z: 7 passing, 1 WARN,
          probe 5 "UNEXPECTED BINDING requestRebuild: GITHUB_REBUILD_TOKEN@2". The save-latency change
