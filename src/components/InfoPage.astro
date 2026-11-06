@@ -107,7 +107,7 @@ const wall = await Promise.all(
   <section class="story-ch story-ch--intro" data-story-ch="intro">
     <div class="story-frame">
       <div class="info-hero__text">
-        <p class="info-hero__sub" data-in>{t("info.hero.lead")}</p>
+        <p class="info-hero__sub info-hero__lead" data-in>{t("info.hero.lead")}</p>
       </div>
     </div>
   </section>
@@ -903,82 +903,14 @@ const wall = await Promise.all(
     mark();
   }
 
-  // ── SMOOTH SCROLL (desktop) ───────────────────────────────────────────
-  // Josh 11-04: "add smooth scroll". A wheel or trackpad no longer moves
-  // .page-wrap in steps: each wheel event moves a target, and the page eases
-  // toward it every frame (time-based, so 60 and 120 Hz feel the same). The
-  // keyboard and the scrollbar stay native; a sideways gesture over the
-  // carousel is left to the carousel. A phone's own touch scroll is already
-  // smooth and is not touched.
+  // (The smoother of 11-04, which eased every wheel event, gave way on
+  // 11-06 to the wheel pager below: one gesture, one frame.)
   type Smoother = { to: (y: number) => void; busy: () => boolean };
-  const EASE_MS = 70;
-
-  function smoother(wrap: HTMLElement, signal: AbortSignal): Smoother {
-    let target = wrap.scrollTop;
-    let current = target;
-    let raf = 0;
-    let last = 0;
-    const before = wrap.style.scrollBehavior;
-    // Our own per-frame writes must land at once, not each start a glide.
-    wrap.style.scrollBehavior = "auto";
-    const max = () => wrap.scrollHeight - wrap.clientHeight;
-    const step = (now: number) => {
-      const dt = last ? Math.min(64, now - last) : 16;
-      last = now;
-      current += (target - current) * (1 - Math.exp(-dt / EASE_MS));
-      if (Math.abs(target - current) < 0.5) current = target;
-      wrap.scrollTop = current;
-      if (current === target) {
-        raf = 0;
-        last = 0;
-      } else raf = requestAnimationFrame(step);
-    };
-    const kick = () => {
-      if (!raf) raf = requestAnimationFrame(step);
-    };
-    wrap.addEventListener(
-      "wheel",
-      (e) => {
-        if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-        e.preventDefault();
-        if (!raf) target = current = wrap.scrollTop;
-        const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? wrap.clientHeight : 1;
-        target = Math.max(0, Math.min(max(), target + e.deltaY * unit));
-        kick();
-      },
-      { passive: false, signal }
-    );
-    // A scroll that is not ours (keys, scrollbar, find in page) resets us.
-    wrap.addEventListener(
-      "scroll",
-      () => {
-        if (!raf) target = current = wrap.scrollTop;
-      },
-      { passive: true, signal }
-    );
-    signal.addEventListener(
-      "abort",
-      () => {
-        cancelAnimationFrame(raf);
-        wrap.style.scrollBehavior = before;
-      },
-      { once: true }
-    );
-    return {
-      to: (y: number) => {
-        if (!raf) current = wrap.scrollTop;
-        target = Math.max(0, Math.min(max(), y));
-        kick();
-      },
-      busy: () => raf !== 0,
-    };
-  }
 
   // ── CHAPTERS AND STOPS ────────────────────────────────────────────────
   // The site's phone breakpoint, spelled out (custom-media.css, --bp-mobile).
   const PHONE = "(width <= 767px), (pointer: coarse) and (height <= 500px)";
-
-  type Chapter = { el: HTMLElement; key: string; steps: number; frame: HTMLElement; parts: { el: HTMLElement; step: number }[] };
+  type Chapter ={ el: HTMLElement; key: string; steps: number; frame: HTMLElement; parts: { el: HTMLElement; step: number }[] };
 
   function chaptersOf(root: HTMLElement): Chapter[] {
     return Array.from(root.querySelectorAll<HTMLElement>("[data-story-ch]")).map((el) => ({
@@ -1044,6 +976,115 @@ const wall = await Promise.all(
     window.addEventListener("resize", request, { passive: true, signal });
     signal.addEventListener("abort", () => cancelAnimationFrame(frame), { once: true });
     update();
+  }
+
+  // ── THE WHEEL PAGER (desktop) ─────────────────────────────────────────
+  // Josh 11-06: "scroll past with one scroll for each frame". A wheel notch
+  // or a trackpad swipe moves exactly one frame, gliding there; the rest of
+  // that gesture (a trackpad's momentum tail, more notches in a quick spin)
+  // is swallowed until the wheel has been quiet for WHEEL_QUIET_MS, or a
+  // clearly new push arrives after the glide (the deltas jump up again).
+  // Past the last frame's stop the wheel scrolls freely. A sideways gesture
+  // is left to the carousel; keys and the scrollbar stay native (the settle
+  // still lands those on a frame).
+  const WHEEL_MS = 650;
+  const WHEEL_QUIET_MS = 180;
+  const WHEEL_MIN = 12;
+
+  function wheelPager(root: HTMLElement, chapters: Chapter[], wrap: HTMLElement, signal: AbortSignal) {
+    const before = wrap.style.scrollBehavior;
+    wrap.style.scrollBehavior = "auto";
+    let raf = 0;
+    let target = -1;
+    let armed = true;
+    let quiet = 0;
+    let gl0 = 0;
+    let lastAbs = 0;
+    let push = 0;
+    const max = () => wrap.scrollHeight - wrap.clientHeight;
+    const stops = () => {
+      const base = wrap.getBoundingClientRect().top;
+      const line = restLine(root);
+      const out: number[] = [];
+      for (const c of chapters) {
+        const top = Math.max(0, c.el.getBoundingClientRect().top - base + wrap.scrollTop - line);
+        const fh = c.frame.offsetHeight || wrap.clientHeight;
+        for (let i = 0; i <= c.steps; i++) out.push(Math.min(max(), top + i * fh));
+      }
+      return out.filter((y, i, a) => i === 0 || y > a[i - 1] + 1);
+    };
+    const glide = (to: number) => {
+      cancelAnimationFrame(raf);
+      target = to;
+      const a = wrap.scrollTop;
+      const t0 = (gl0 = performance.now());
+      const tick = (now: number) => {
+        const k = Math.min(1, (now - t0) / WHEEL_MS);
+        const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+        wrap.scrollTop = a + (to - a) * e;
+        if (k < 1) raf = requestAnimationFrame(tick);
+        else {
+          raf = 0;
+          target = -1;
+        }
+      };
+      raf = requestAnimationFrame(tick);
+    };
+    wrap.addEventListener(
+      "wheel",
+      (e) => {
+        if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+        e.preventDefault();
+        const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? wrap.clientHeight : 1;
+        const dy = e.deltaY * unit;
+        const abs = Math.abs(dy);
+        // A new push inside a momentum tail: the deltas rise again.
+        if (!armed && !raf && performance.now() - gl0 > WHEEL_MS && abs > WHEEL_MIN * 2 && abs > lastAbs * 1.6) armed = true;
+        lastAbs = abs;
+        clearTimeout(quiet);
+        quiet = window.setTimeout(() => {
+          armed = true;
+          push = 0;
+          lastAbs = 0;
+        }, WHEEL_QUIET_MS);
+        const list = stops();
+        const end = list[list.length - 1];
+        const y = raf ? target : wrap.scrollTop;
+        // Below the last frame: free, until the wheel heads back above it.
+        if (y > end + 2 && !raf) {
+          const to = Math.min(max(), y + dy);
+          if (to >= end) {
+            wrap.scrollTop = to;
+            return;
+          }
+        }
+        if (!armed) return;
+        push += dy;
+        if (Math.abs(push) < WHEEL_MIN) return;
+        const dir = Math.sign(push);
+        push = 0;
+        armed = false;
+        const at = list.reduce((b, v, i) => (Math.abs(v - y) < Math.abs(list[b] - y) ? i : b), 0);
+        const next = at + dir;
+        if (next < 0) return;
+        if (next >= list.length) {
+          // On from the last frame: into the free end, if there is one.
+          if (max() > end + 2) wrap.scrollTop = Math.min(max(), wrap.scrollTop + dy);
+          return;
+        }
+        glide(list[next]);
+      },
+      { passive: false, signal }
+    );
+    signal.addEventListener(
+      "abort",
+      () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(quiet);
+        wrap.style.scrollBehavior = before;
+      },
+      { once: true }
+    );
   }
 
   // ── THE SETTLE ────────────────────────────────────────────────────────
@@ -1328,7 +1369,10 @@ const wall = await Promise.all(
     const chapters = chaptersOf(root);
     const wrap = document.querySelector<HTMLElement>(".page-wrap");
     if (phone()) pager(root, chapters, signal);
-    else settle(root, chapters, signal, wrap ? smoother(wrap, signal) : null);
+    else {
+      if (wrap) wheelPager(root, chapters, wrap, signal);
+      settle(root, chapters, signal, null);
+    }
     void story(root, chapters, signal);
   });
 </script>
