@@ -141,8 +141,8 @@ const wall = await Promise.all(
                         decoding="async"
                         draggable="false"
                       />
-                      <span class="info-wall__name">{tile.name}</span>
                       {tile.project && <span class="info-wall__project">{tile.project}</span>}
+                      <span class="info-wall__name">{tile.name}</span>
                     </a>
                   </li>
                 ))}
@@ -617,14 +617,20 @@ const wall = await Promise.all(
     border-radius: var(--radius-sm);
     user-select: none;
   }
-  /* Board 03.2: the name large, the project small under it. */
+  /* Board 03.2 had the name large, the project small under it; reversed 11-06. */
   /* Josh 11-06: the words right under the picture. */
+  /* Josh 11-06: the description right under the picture, then the name,
+     a step bigger, after a gap. Without a description the name takes its
+     place under the picture. */
   .info-wall__name {
-    margin-top: 0;
+    margin-top: 10px;
     color: var(--color-dark);
   }
+  .info-wall__tile img + .info-wall__name {
+    margin-top: 0;
+  }
   .info-wall__project {
-    margin-top: 10px;
+    margin-top: 0;
     color: var(--color-muted);
   }
   /* The card's arrows (communityCard.css): a stroked chevron beside each
