@@ -522,6 +522,14 @@ const wall = await Promise.all(
   .story-ch--network .info-hero__text {
     width: min(100%, 62rem);
   }
+  /* Josh 11-06: the Browse Portfolios cue "a little bit more to the top". */
+  .story[data-story-on] .story-ch--network .story-cue {
+    bottom: calc(8rem + 15px);
+
+    @media (--bp-mobile) {
+      bottom: calc(5rem + 15px);
+    }
+  }
   .story[data-story-on]:not([data-current="network"]) .story-ch--network .story-cue {
     opacity: 0;
   }
@@ -550,8 +558,10 @@ const wall = await Promise.all(
      to the middle. The picture keeps its own shape at one height (the
      screen's, less the words under it), the artist and the project under
      it. No fades: the picture is simply there (Josh 11-04). */
-  .info-wall {
+  .story-ch--works {
     --pic-h: min(calc(var(--story-vh) - 24rem), 560px);
+  }
+  .info-wall {
     width: 100%;
   }
   .info-wall__stage {
@@ -614,7 +624,7 @@ const wall = await Promise.all(
     color: var(--color-dark);
   }
   .info-wall__project {
-    margin-top: 6px;
+    margin-top: 10px;
     color: var(--color-muted);
   }
   /* The card's arrows (communityCard.css): a stroked chevron beside each
@@ -671,10 +681,35 @@ const wall = await Promise.all(
     }
   }
 
+  /* PHONE, ALL FRAMES ABOUT A TENTH OF A SCREEN HIGHER (2026-11-06, Josh:
+     "the text and the cards ... a bit more to the top on mobile, maybe like
+     10 view heights up"). A centred frame moves up by half what its foot
+     gains, so the foot gains a fifth. The works frame is placed from the
+     top instead: its picture fills most of a small screen, so it rises by
+     that tenth only as far as the header lets it. */
+  @media (--bp-mobile) {
+    .story-ch .story-frame {
+      padding-bottom: calc(2rem + var(--story-vh) * 0.2);
+    }
+    .story-ch--about .story-frame {
+      padding-bottom: calc(8rem + var(--story-vh) * 0.2);
+    }
+    .story-ch--works .story-frame {
+      justify-content: flex-start;
+      padding-top: max(1rem, calc(2rem + (var(--story-vh) - 8rem - var(--pic-h) - 5rem) / 2 - var(--story-vh) * 0.1));
+      padding-bottom: 0;
+    }
+    /* Josh 11-06: "a bit more horizontal padding" round the mission. */
+    .story-ch--mission .info-col {
+      box-sizing: border-box;
+      padding: 0 1.5rem;
+    }
+  }
+
   /* PHONE: the row runs edge to edge, the picture at the screen's width
      less the gutters, and the arrows give way to the finger. */
   @media (--bp-mobile) {
-    .info-wall {
+    .story-ch--works {
       --pic-h: min(calc(var(--story-vh) - 19rem), 110vw);
     }
     .info-wall__stage {
