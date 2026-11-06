@@ -1194,6 +1194,13 @@ const BRAND_SLOTS: BrandSlot[] = [
     const root = document.documentElement;
     if (!brandScroller) return;
     const y = brandScroller.scrollTop;
+    // The Info story keeps VSCN and the login in view: every frame is a
+    // scroll down, so the row would never come back (Josh 11-06).
+    if (document.querySelector("[data-story-root]")) {
+      delete root.dataset.headerAway;
+      headerLastY = y;
+      return;
+    }
     if (leavingPage || root.hasAttribute("data-arriving") || root.hasAttribute("data-arrive-hold")) {
       headerLastY = y;
       return;
