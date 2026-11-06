@@ -23,7 +23,7 @@ export const ui: Record<string, Record<string, string>> = {
 
     // InfoPage (restyled 2026-11-02, design-kit/vscn-landing.af)
     "info.hero.title": "Knowledge deserves a visual form.",
-    "info.hero.lead": "Images are the most engaging way to communicate. Their beauty draws people in, while making complex ideas clear at a glance.",
+    "info.hero.lead": "We are a community of artists & scientists who create understanding through engaging visual communication. Images hold the power to reveal the beauty in our world and communicate complex topics at a glance.",
     "info.hero.claim": "That is why science needs more visuals!",
     "info.network.pre": "The ",
     "info.network.name": "Visual Science Communication Network",
@@ -790,7 +790,7 @@ export const ui: Record<string, Record<string, string>> = {
 
     // InfoPage (restyled 2026-11-02, design-kit/vscn-landing.af)
     "info.hero.title": "Wissen verdient eine visuelle Form.",
-    "info.hero.lead": "Bilder sind die wirkungsvollste Art zu kommunizieren. Ihre Schönheit zieht Menschen an und macht komplexe Ideen auf einen Blick verständlich.",
+    "info.hero.lead": "Wir sind eine Gemeinschaft von Künstler:innen & Wissenschaftler:innen, die durch packende visuelle Kommunikation Verständnis schaffen. Bilder haben die Kraft, die Schönheit unserer Welt sichtbar zu machen und komplexe Themen auf einen Blick zu vermitteln.",
     "info.hero.claim": "Darum braucht die Wissenschaft mehr Bilder!",
     "info.network.pre": "Das ",
     "info.network.name": "Visual Science Communication Network",
