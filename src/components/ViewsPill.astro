@@ -15,10 +15,11 @@ interface Props {
 const { lang } = Astro.props;
 const t = useTranslations(lang);
 const base = lang === "de" ? "/de/community" : "/community";
+// People / Portfolios / Images, as the directory has them (2026-11-06).
 const views = [
+  { href: `${base}?pattern=index`, label: t("community.view.index") },
   { href: base, label: t("community.view.gallery") },
   { href: `${base}?pattern=grid`, label: t("community.view.grid") },
-  { href: `${base}?pattern=index`, label: t("community.view.index") },
 ];
 ---
 
